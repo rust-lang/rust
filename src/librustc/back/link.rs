@@ -12,8 +12,9 @@ use back::archive::{Archive, METADATA_FILENAME};
 use back::rpath;
 use back::svh::Svh;
 use driver::driver::{CrateTranslation, OutputFilenames};
-use driver::session::{NoDebugInfo, Session};
-use driver::session;
+use driver::config::NoDebugInfo;
+use driver::session::Session;
+use driver::config;
 use lib::llvm::llvm;
 use lib::llvm::ModuleRef;
 use lib;
@@ -92,8 +93,9 @@ pub mod write {
     use back::link::{OutputTypeExe, OutputTypeLlvmAssembly};
     use back::link::{OutputTypeObject};
     use driver::driver::{CrateTranslation, OutputFilenames};
-    use driver::session::{NoDebugInfo, Session};
-    use driver::session;
+    use driver::config::NoDebugInfo;
+    use driver::session::Session;
+    use driver::config;
     use lib::llvm::llvm;
     use lib::llvm::{ModuleRef, TargetMachineRef, PassManagerRef};
     use lib;
@@ -139,10 +141,10 @@ pub mod write {
             }
 
             let opt_level = match sess.opts.optimize {
-              session::No => lib::llvm::CodeGenLevelNone,
-              session::Less => lib::llvm::CodeGenLevelLess,
-              session::Default => lib::llvm::CodeGenLevelDefault,
-              session::Aggressive => lib::llvm::CodeGenLevelAggressive,
+              config::No => lib::llvm::CodeGenLevelNone,
+              config::Less => lib::llvm::CodeGenLevelLess,
+              config::Default => lib::llvm::CodeGenLevelDefault,
+              config::Aggressive => lib::llvm::CodeGenLevelAggressive,
             };
             let use_softfp = sess.opts.cg.soft_float;
 
@@ -231,7 +233,7 @@ pub mod write {
             // emitting an rlib. Whenever an rlib is created, the bytecode is
             // inserted into the archive in order to allow LTO against it.
             if sess.opts.cg.save_temps ||
-               (sess.crate_types.borrow().contains(&session::CrateTypeRlib) &&
+               (sess.crate_types.borrow().contains(&config::CrateTypeRlib) &&
                 sess.opts.output_types.contains(&OutputTypeExe)) {
                 output.temp_path(OutputTypeBitcode).with_c_str(|buf| {
                     llvm::LLVMWriteBitcodeToFile(llmod, buf);
@@ -378,10 +380,10 @@ pub mod write {
         // Copy what clang does by turning on loop vectorization at O2 and
         // slp vectorization at O3
         let vectorize_loop = !sess.opts.cg.no_vectorize_loops &&
-                             (sess.opts.optimize == session::Default ||
-                              sess.opts.optimize == session::Aggressive);
+                             (sess.opts.optimize == config::Default ||
+                              sess.opts.optimize == config::Aggressive);
         let vectorize_slp = !sess.opts.cg.no_vectorize_slp &&
-                            sess.opts.optimize == session::Aggressive;
+                            sess.opts.optimize == config::Aggressive;
 
         let mut llvm_c_strs = Vec::new();
         let mut llvm_args = Vec::new();
@@ -823,14 +825,14 @@ fn is_writeable(p: &Path) -> bool {
     }
 }
 
-pub fn filename_for_input(sess: &Session, crate_type: session::CrateType,
+pub fn filename_for_input(sess: &Session, crate_type: config::CrateType,
                           id: &CrateId, out_filename: &Path) -> Path {
     let libname = output_lib_filename(id);
     match crate_type {
-        session::CrateTypeRlib => {
+        config::CrateTypeRlib => {
             out_filename.with_filename(format!("lib{}.rlib", libname))
         }
-        session::CrateTypeDylib => {
+        config::CrateTypeDylib => {
             let (prefix, suffix) = match sess.targ_cfg.os {
                 abi::OsWin32 => (loader::WIN32_DLL_PREFIX, loader::WIN32_DLL_SUFFIX),
                 abi::OsMacos => (loader::MACOS_DLL_PREFIX, loader::MACOS_DLL_SUFFIX),
@@ -840,16 +842,16 @@ pub fn filename_for_input(sess: &Session, crate_type: session::CrateType,
             };
             out_filename.with_filename(format!("{}{}{}", prefix, libname, suffix))
         }
-        session::CrateTypeStaticlib => {
+        config::CrateTypeStaticlib => {
             out_filename.with_filename(format!("lib{}.a", libname))
         }
-        session::CrateTypeExecutable => out_filename.clone(),
+        config::CrateTypeExecutable => out_filename.clone(),
     }
 }
 
 fn link_binary_output(sess: &Session,
                       trans: &CrateTranslation,
-                      crate_type: session::CrateType,
+                      crate_type: config::CrateType,
                       outputs: &OutputFilenames,
                       id: &CrateId) -> Path {
     let obj_filename = outputs.temp_path(OutputTypeObject);
@@ -877,16 +879,16 @@ fn link_binary_output(sess: &Session,
     }
 
     match crate_type {
-        session::CrateTypeRlib => {
+        config::CrateTypeRlib => {
             link_rlib(sess, Some(trans), &obj_filename, &out_filename);
         }
-        session::CrateTypeStaticlib => {
+        config::CrateTypeStaticlib => {
             link_staticlib(sess, &obj_filename, &out_filename);
         }
-        session::CrateTypeExecutable => {
+        config::CrateTypeExecutable => {
             link_natively(sess, trans, false, &obj_filename, &out_filename);
         }
-        session::CrateTypeDylib => {
+        config::CrateTypeDylib => {
             link_natively(sess, trans, true, &obj_filename, &out_filename);
         }
     }
@@ -1045,7 +1047,7 @@ fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
     let mut cc_args = sess.targ_cfg.target_strs.cc_args.clone();
     cc_args.push_all_move(link_args(sess, dylib, tmpdir.path(), trans,
                                     obj_filename, out_filename));
-    if (sess.opts.debugging_opts & session::PRINT_LINK_ARGS) != 0 {
+    if (sess.opts.debugging_opts & config::PRINT_LINK_ARGS) != 0 {
         println!("{} link args: '{}'", cc_prog, cc_args.connect("' '"));
     }
 
@@ -1161,8 +1163,8 @@ fn link_args(sess: &Session,
 
         // GNU-style linkers support optimization with -O. GNU ld doesn't need a
         // numeric argument, but other linkers do.
-        if sess.opts.optimize == session::Default ||
-           sess.opts.optimize == session::Aggressive {
+        if sess.opts.optimize == config::Default ||
+           sess.opts.optimize == config::Aggressive {
             args.push("-Wl,-O1".to_owned());
         }
     } else if sess.targ_cfg.os == abi::OsMacos {
@@ -1373,9 +1375,9 @@ fn add_upstream_rust_crates(args: &mut Vec<~str>, sess: &Session,
     // involves just passing the right -l flag.
 
     let data = if dylib {
-        trans.crate_formats.get(&session::CrateTypeDylib)
+        trans.crate_formats.get(&config::CrateTypeDylib)
     } else {
-        trans.crate_formats.get(&session::CrateTypeExecutable)
+        trans.crate_formats.get(&config::CrateTypeExecutable)
     };
 
     // Invoke get_used_crates to ensure that we get a topological sorting of
@@ -1403,7 +1405,7 @@ fn add_upstream_rust_crates(args: &mut Vec<~str>, sess: &Session,
     }
 
     // Converts a library file-stem into a cc -l argument
-    fn unlib(config: &session::Config, stem: &str) -> ~str {
+    fn unlib(config: &config::Config, stem: &str) -> ~str {
         if stem.starts_with("lib") && config.os != abi::OsWin32 {
             stem.slice(3, stem.len()).to_owned()
         } else {

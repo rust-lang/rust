@@ -27,8 +27,9 @@
 
 use back::link::{mangle_exported_name};
 use back::{link, abi};
-use driver::session;
-use driver::session::{Session, NoDebugInfo, FullDebugInfo};
+use driver::config;
+use driver::config::{NoDebugInfo, FullDebugInfo};
+use driver::session::Session;
 use driver::driver::OutputFilenames;
 use driver::driver::{CrateAnalysis, CrateTranslation};
 use lib::llvm::{ModuleRef, ValueRef, BasicBlockRef};
@@ -1725,11 +1726,11 @@ pub fn create_entry_wrapper(ccx: &CrateContext,
                            main_llfn: ValueRef) {
     let et = ccx.sess().entry_type.get().unwrap();
     match et {
-        session::EntryMain => {
+        config::EntryMain => {
             create_entry_fn(ccx, main_llfn, true);
         }
-        session::EntryStart => create_entry_fn(ccx, main_llfn, false),
-        session::EntryNone => {}    // Do nothing.
+        config::EntryStart => create_entry_fn(ccx, main_llfn, false),
+        config::EntryNone => {}    // Do nothing.
     }
 
     fn create_entry_fn(ccx: &CrateContext,
@@ -2068,7 +2069,7 @@ pub fn write_metadata(cx: &CrateContext, krate: &ast::Crate) -> Vec<u8> {
     use flate;
 
     let any_library = cx.sess().crate_types.borrow().iter().any(|ty| {
-        *ty != session::CrateTypeExecutable
+        *ty != config::CrateTypeExecutable
     });
     if !any_library {
         return Vec::new()

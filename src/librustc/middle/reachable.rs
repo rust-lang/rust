@@ -15,7 +15,7 @@
 // makes all other generics or inline functions that it references
 // reachable as well.
 
-use driver::session;
+use driver::config;
 use middle::ty;
 use middle::typeck;
 use middle::privacy;
@@ -162,7 +162,7 @@ impl<'a> ReachableContext<'a> {
     // Creates a new reachability computation context.
     fn new(tcx: &'a ty::ctxt) -> ReachableContext<'a> {
         let any_library = tcx.sess.crate_types.borrow().iter().any(|ty| {
-            *ty != session::CrateTypeExecutable
+            *ty != config::CrateTypeExecutable
         });
         ReachableContext {
             tcx: tcx,
