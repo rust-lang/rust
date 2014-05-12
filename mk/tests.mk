@@ -227,8 +227,8 @@ ALL_HS := $(wildcard $(S)src/rt/*.h \
                      $(S)src/rt/*/*.h \
                      $(S)src/rt/*/*/*.h \
                      $(S)src/rustllvm/*.h)
-ALL_HS := $(filter-out $(S)src/rt/vg/valgrind.h \
-                       $(S)src/rt/vg/memcheck.h \
+ALL_HS := $(filter-out $(S)src/rt/valgrind/valgrind.h \
+                       $(S)src/rt/valgrind/memcheck.h \
                        $(S)src/rt/msvc/typeof.h \
                        $(S)src/rt/msvc/stdint.h \
                        $(S)src/rt/msvc/inttypes.h \

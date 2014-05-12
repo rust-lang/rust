@@ -260,6 +260,7 @@ $$(JEMALLOC_LIB_$(1)): $$(JEMALLOC_DEPS) $$(MKFILE_DEPS)
 		CC="$$(CC_$(1))" \
 		AR="$$(AR_$(1))" \
 		RANLIB="$$(AR_$(1)) s" \
+		CPPFLAGS="-I $(S)src/rt/" \
 		EXTRA_CFLAGS="$$(CFG_CFLAGS_$(1))"
 	$$(Q)$$(MAKE) -C "$$(JEMALLOC_BUILD_DIR_$(1))" build_lib_static
 	$$(Q)cp $$(JEMALLOC_BUILD_DIR_$(1))/lib/$$(JEMALLOC_REAL_NAME_$(1)) $$(JEMALLOC_LIB_$(1))

@@ -33,7 +33,7 @@ use option::{Option, Some, None};
 use ptr;
 use ptr::RawPtr;
 use mem::{min_align_of, size_of};
-use rt::heap::exchange_free;
+use rt::heap::deallocate;
 
 struct RcBox<T> {
     value: T,
@@ -105,8 +105,8 @@ impl<T> Drop for Rc<T> {
                     self.dec_weak();
 
                     if self.weak() == 0 {
-                        exchange_free(self.ptr as *mut u8, size_of::<RcBox<T>>(),
-                                      min_align_of::<RcBox<T>>())
+                        deallocate(self.ptr as *mut u8, size_of::<RcBox<T>>(),
+                                   min_align_of::<RcBox<T>>())
                     }
                 }
             }
@@ -179,8 +179,8 @@ impl<T> Drop for Weak<T> {
                 // the weak count starts at 1, and will only go to
                 // zero if all the strong pointers have disappeared.
                 if self.weak() == 0 {
-                    exchange_free(self.ptr as *mut u8, size_of::<RcBox<T>>(),
-                                  min_align_of::<RcBox<T>>())
+                    deallocate(self.ptr as *mut u8, size_of::<RcBox<T>>(),
+                               min_align_of::<RcBox<T>>())
                 }
             }
         }
