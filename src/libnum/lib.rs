@@ -10,7 +10,7 @@
 
 #![feature(macro_rules)]
 
-#![crate_id = "num#0.11-pre"]
+#![crate_id = "num#0.11.0-pre"]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![license = "MIT/ASL2"]
