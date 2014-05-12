@@ -57,6 +57,7 @@ fn color_to_bits(color: color::Color) -> u16 {
 
 impl<T: Writer> WinConsole<T> {
     fn apply(&mut self) {
+        let _unused = self.buf.flush();
         let mut accum: libc::WORD = 0;
         accum |= color_to_bits(self.foreground);
         accum |= color_to_bits(self.background) << 4;
