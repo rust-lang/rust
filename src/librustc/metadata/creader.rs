@@ -15,7 +15,7 @@
 use back::link;
 use back::svh::Svh;
 use driver::session::Session;
-use driver::{driver, session};
+use driver::{driver, config};
 use metadata::cstore;
 use metadata::cstore::CStore;
 use metadata::decoder;
@@ -331,7 +331,7 @@ fn resolve_crate<'a>(e: &mut Env,
                 id_hash: id_hash,
                 hash: hash.map(|a| &*a),
                 filesearch: e.sess.target_filesearch(),
-                os: session::sess_os_to_meta_os(e.sess.targ_cfg.os),
+                os: config::cfg_os_to_meta_os(e.sess.targ_cfg.os),
                 triple: e.sess.targ_cfg.target_strs.target_triple.as_slice(),
                 root: root,
                 rejected_via_hash: vec!(),
@@ -387,7 +387,7 @@ impl<'a> CrateLoader for Loader<'a> {
         let is_cross = target_triple != driver::host_triple();
         let mut should_link = info.should_link && !is_cross;
         let id_hash = link::crate_id_hash(&info.crate_id);
-        let os = driver::get_os(driver::host_triple()).unwrap();
+        let os = config::get_os(driver::host_triple()).unwrap();
         let mut load_ctxt = loader::Context {
             sess: self.env.sess,
             span: krate.span,
@@ -397,7 +397,7 @@ impl<'a> CrateLoader for Loader<'a> {
             hash: None,
             filesearch: self.env.sess.host_filesearch(),
             triple: driver::host_triple(),
-            os: session::sess_os_to_meta_os(os),
+            os: config::cfg_os_to_meta_os(os),
             root: &None,
             rejected_via_hash: vec!(),
             rejected_via_triple: vec!(),
@@ -408,7 +408,7 @@ impl<'a> CrateLoader for Loader<'a> {
                 // try loading from target crates (only valid if there are
                 // no syntax extensions)
                 load_ctxt.triple = target_triple;
-                load_ctxt.os = session::sess_os_to_meta_os(self.env.sess.targ_cfg.os);
+                load_ctxt.os = config::cfg_os_to_meta_os(self.env.sess.targ_cfg.os);
                 load_ctxt.filesearch = self.env.sess.target_filesearch();
                 let lib = load_ctxt.load_library_crate();
                 if decoder::get_macro_registrar_fn(lib.metadata.as_slice()).is_some() {

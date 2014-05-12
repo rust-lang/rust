@@ -125,8 +125,8 @@ is still disabled, so there is no need to do anything special with source locati
 */
 
 
-use driver::session;
-use driver::session::{FullDebugInfo, LimitedDebugInfo, NoDebugInfo};
+use driver::config;
+use driver::config::{FullDebugInfo, LimitedDebugInfo, NoDebugInfo};
 use lib::llvm::llvm;
 use lib::llvm::{ModuleRef, ContextRef, ValueRef};
 use lib::llvm::debuginfo::*;
@@ -748,7 +748,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
                     true,
                     scope_line as c_uint,
                     FlagPrototyped as c_uint,
-                    cx.sess().opts.optimize != session::No,
+                    cx.sess().opts.optimize != config::No,
                     llfn,
                     template_parameters,
                     ptr::null())
@@ -981,7 +981,7 @@ fn compile_unit_metadata(cx: &CrateContext) {
                                 compile_unit_name,
                                 work_dir,
                                 producer,
-                                cx.sess().opts.optimize != session::No,
+                                cx.sess().opts.optimize != config::No,
                                 flags,
                                 0,
                                 split_name);
@@ -1032,7 +1032,7 @@ fn declare_local(bcx: &Block,
                         file_metadata,
                         loc.line as c_uint,
                         type_metadata,
-                        cx.sess().opts.optimize != session::No,
+                        cx.sess().opts.optimize != config::No,
                         0,
                         argument_index)
                 }

@@ -65,6 +65,7 @@ use collections::HashMap;
 use syntax::ast;
 
 use driver::session;
+use driver::config;
 use metadata::cstore;
 use metadata::csearch;
 use middle::ty;
@@ -80,7 +81,7 @@ pub type DependencyList = Vec<Option<cstore::LinkagePreference>>;
 /// A mapping of all required dependencies for a particular flavor of output.
 ///
 /// This is local to the tcx, and is generally relevant to one session.
-pub type Dependencies = HashMap<session::CrateType, DependencyList>;
+pub type Dependencies = HashMap<config::CrateType, DependencyList>;
 
 pub fn calculate(tcx: &ty::ctxt) {
     let mut fmts = tcx.dependency_formats.borrow_mut();
@@ -91,11 +92,11 @@ pub fn calculate(tcx: &ty::ctxt) {
 }
 
 fn calculate_type(sess: &session::Session,
-                  ty: session::CrateType) -> DependencyList {
+                  ty: config::CrateType) -> DependencyList {
     match ty {
         // If the global prefer_dynamic switch is turned off, first attempt
         // static linkage (this can fail).
-        session::CrateTypeExecutable if !sess.opts.cg.prefer_dynamic => {
+        config::CrateTypeExecutable if !sess.opts.cg.prefer_dynamic => {
             match attempt_static(sess) {
                 Some(v) => return v,
                 None => {}
@@ -104,11 +105,11 @@ fn calculate_type(sess: &session::Session,
 
         // No linkage happens with rlibs, we just needed the metadata (which we
         // got long ago), so don't bother with anything.
-        session::CrateTypeRlib => return Vec::new(),
+        config::CrateTypeRlib => return Vec::new(),
 
         // Staticlibs must have all static dependencies. If any fail to be
         // found, we generate some nice pretty errors.
-        session::CrateTypeStaticlib => {
+        config::CrateTypeStaticlib => {
             match attempt_static(sess) {
                 Some(v) => return v,
                 None => {}
@@ -123,7 +124,7 @@ fn calculate_type(sess: &session::Session,
         }
 
         // Everything else falls through below
-        session::CrateTypeExecutable | session::CrateTypeDylib => {},
+        config::CrateTypeExecutable | config::CrateTypeDylib => {},
     }
 
     let mut formats = HashMap::new();

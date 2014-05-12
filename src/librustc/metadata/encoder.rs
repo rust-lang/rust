@@ -14,7 +14,7 @@
 #![allow(non_camel_case_types)]
 
 use back::svh::Svh;
-use driver::session;
+use driver::config;
 use metadata::common::*;
 use metadata::cstore;
 use metadata::decoder;
@@ -1697,7 +1697,7 @@ fn encode_crate_triple(ebml_w: &mut Encoder, triple: &str) {
 
 fn encode_dylib_dependency_formats(ebml_w: &mut Encoder, ecx: &EncodeContext) {
     ebml_w.start_tag(tag_dylib_dependency_formats);
-    match ecx.tcx.dependency_formats.borrow().find(&session::CrateTypeDylib) {
+    match ecx.tcx.dependency_formats.borrow().find(&config::CrateTypeDylib) {
         Some(arr) => {
             let s = arr.iter().enumerate().filter_map(|(i, slot)| {
                 slot.map(|kind| format!("{}:{}", i + 1, match kind {
