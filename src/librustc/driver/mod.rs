@@ -104,17 +104,17 @@ fn run_compiler(args: &[~str]) {
     driver::compile_input(sess, cfg, &input, &odir, &ofile);
 }
 
-pub fn version(argv0: &str) {
+pub fn version(command: &str) {
     let vers = match option_env!("CFG_VERSION") {
         Some(vers) => vers,
         None => "unknown version"
     };
-    println!("{} {}", argv0, vers);
+    println!("{} {}", command, vers);
     println!("host: {}", driver::host_triple());
 }
 
-fn usage(argv0: &str) {
-    let message = format!("Usage: {} [OPTIONS] INPUT", argv0);
+fn usage() {
+    let message = format!("Usage: rustc [OPTIONS] INPUT");
     println!("{}\n\
 Additional help:
     -C help             Print codegen options
@@ -192,9 +192,10 @@ fn describe_codegen_flags() {
 /// should continue, returns a getopts::Matches object parsed from args, otherwise
 /// returns None.
 pub fn handle_options(mut args: Vec<~str>) -> Option<getopts::Matches> {
-    let binary = args.shift().unwrap();
+    // Throw away the first argument, the name of the binary
+    let _binary = args.shift().unwrap();
 
-    if args.is_empty() { usage(binary); return None; }
+    if args.is_empty() { usage(); return None; }
 
     let matches =
         match getopts::getopts(args.as_slice(), config::optgroups().as_slice()) {
@@ -205,7 +206,7 @@ pub fn handle_options(mut args: Vec<~str>) -> Option<getopts::Matches> {
         };
 
     if matches.opt_present("h") || matches.opt_present("help") {
-        usage(binary);
+        usage();
         return None;
     }
 
@@ -234,7 +235,7 @@ pub fn handle_options(mut args: Vec<~str>) -> Option<getopts::Matches> {
     }
 
     if matches.opt_present("v") || matches.opt_present("version") {
-        version(binary);
+        version("rustc");
         return None;
     }
 
