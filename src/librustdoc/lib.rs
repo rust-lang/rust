@@ -153,7 +153,7 @@ pub fn main_args(args: &[StrBuf]) -> int {
         usage(args[0].as_slice());
         return 0;
     } else if matches.opt_present("version") {
-        rustc::driver::version(args[0].as_slice());
+        rustc::driver::version("rustdoc");
         return 0;
     }
 
