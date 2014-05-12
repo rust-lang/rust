@@ -12,6 +12,7 @@
 //! trees. The only requirement for the types is that the key implements
 //! `TotalOrd`.
 
+use std::iter;
 use std::iter::{Peekable};
 use std::cmp::Ordering;
 use std::mem::{replace, swap};
@@ -618,6 +619,12 @@ impl<T: TotalOrd> TreeSet<T> {
         RevSetItems{iter: self.map.rev_iter()}
     }
 
+    /// Get a lazy iterator that consumes the set.
+    #[inline]
+    pub fn move_iter(self) -> MoveSetItems<T> {
+        self.map.move_iter().map(|(value, _)| value)
+    }
+
     /// Get a lazy iterator pointing to the first value not less than `v` (greater or equal).
     /// If all elements in the set are less than `v` empty iterator is returned.
     #[inline]
@@ -664,6 +671,9 @@ pub struct SetItems<'a, T> {
 pub struct RevSetItems<'a, T> {
     iter: RevEntries<'a, T, ()>
 }
+
+/// Lazy forward iterator over a set that consumes the set while iterating
+pub type MoveSetItems<T> = iter::Map<'static, (T, ()), T, MoveEntries<T, ()>>;
 
 /// Lazy iterator producing elements in the set difference (in-order)
 pub struct DifferenceItems<'a, T> {
@@ -1540,6 +1550,33 @@ mod test_set {
             assert_eq!(*x, n);
             n -= 1;
         }
+    }
+
+    #[test]
+    fn test_move_iter() {
+        let s: TreeSet<int> = range(0, 5).collect();
+
+        let mut n = 0;
+        for x in s.move_iter() {
+            assert_eq!(x, n);
+            n += 1;
+        }
+    }
+
+    #[test]
+    fn test_move_iter_size_hint() {
+        let s: TreeSet<int> = vec!(0, 1).move_iter().collect();
+
+        let mut it = s.move_iter();
+
+        assert_eq!(it.size_hint(), (2, Some(2)));
+        assert!(it.next() != None);
+
+        assert_eq!(it.size_hint(), (1, Some(1)));
+        assert!(it.next() != None);
+
+        assert_eq!(it.size_hint(), (0, Some(0)));
+        assert_eq!(it.next(), None);
     }
 
     #[test]
