@@ -422,6 +422,7 @@ pub fn chown(_p: &CString, _uid: int, _gid: int) -> IoResult<()> {
 
 pub fn readlink(p: &CString) -> IoResult<Path> {
     // FIXME: I have a feeling that this reads intermediate symlinks as well.
+    use io::c::compat::kernel32::GetFinalPathNameByHandleW;
     let handle = unsafe {
         as_utf16_p(p.as_str().unwrap(), |p| {
             libc::CreateFileW(p,
@@ -439,10 +440,10 @@ pub fn readlink(p: &CString) -> IoResult<Path> {
     // Specify (sz - 1) because the documentation states that it's the size
     // without the null pointer
     let ret = fill_utf16_buf_and_decode(|buf, sz| unsafe {
-        libc::GetFinalPathNameByHandleW(handle,
-                                        buf as *u16,
-                                        sz - 1,
-                                        libc::VOLUME_NAME_DOS)
+        GetFinalPathNameByHandleW(handle,
+                                  buf as *u16,
+                                  sz - 1,
+                                  libc::VOLUME_NAME_DOS)
     });
     let ret = match ret {
         Some(ref s) if s.starts_with(r"\\?\") => Ok(Path::new(s.slice_from(4))),
@@ -454,9 +455,10 @@ pub fn readlink(p: &CString) -> IoResult<Path> {
 }
 
 pub fn symlink(src: &CString, dst: &CString) -> IoResult<()> {
+    use io::c::compat::kernel32::CreateSymbolicLinkW;
     super::mkerr_winbool(as_utf16_p(src.as_str().unwrap(), |src| {
         as_utf16_p(dst.as_str().unwrap(), |dst| {
-            unsafe { libc::CreateSymbolicLinkW(dst, src, 0) }
+            unsafe { CreateSymbolicLinkW(dst, src, 0) }
         }) as libc::BOOL
     }))
 }
