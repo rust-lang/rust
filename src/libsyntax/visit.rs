@@ -61,7 +61,17 @@ pub fn generics_of_fn(fk: &FnKind) -> Generics {
     }
 }
 
+/// Each method of the Visitor trait is a hook to be potentially
+/// overriden.  Each method's default implementation recursively visits
+/// the substructure of the input via the corresponding `walk` method;
+/// e.g. the `visit_mod` method by default calls `visit::walk_mod`.
+///
+/// If you want to ensure that your code handles every variant
+/// explicitly, you need to override each method.  (And you also need
+/// to monitor future changes to `Visitor` in case a new method with a
+/// new default implementation gets introduced.)
 pub trait Visitor<E: Clone> {
+
     fn visit_ident(&mut self, _sp: Span, _ident: Ident, _e: E) {
         /*! Visit the idents */
     }
@@ -179,9 +189,9 @@ pub fn walk_local<E: Clone, V: Visitor<E>>(visitor: &mut V, local: &Local, env: 
     }
 }
 
-fn walk_explicit_self<E: Clone, V: Visitor<E>>(visitor: &mut V,
-                                               explicit_self: &ExplicitSelf,
-                                               env: E) {
+pub fn walk_explicit_self<E: Clone, V: Visitor<E>>(visitor: &mut V,
+                                                   explicit_self: &ExplicitSelf,
+                                                   env: E) {
     match explicit_self.node {
         SelfStatic | SelfValue | SelfUniq => {}
         SelfRegion(ref lifetime, _) => {
