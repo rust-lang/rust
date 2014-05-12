@@ -114,15 +114,7 @@ pub fn stats_print() {
 }
 
 /// The allocator for unique pointers.
-#[cfg(stage0)]
-#[lang="exchange_malloc"]
-#[inline(always)]
-pub unsafe fn exchange_malloc_(size: uint) -> *mut u8 {
-    exchange_malloc(size)
-}
-
-/// The allocator for unique pointers.
-#[cfg(not(test), not(stage0))]
+#[cfg(not(test))]
 #[lang="exchange_malloc"]
 #[inline(always)]
 pub unsafe fn exchange_malloc_(size: uint, align: uint) -> *mut u8 {
@@ -130,23 +122,6 @@ pub unsafe fn exchange_malloc_(size: uint, align: uint) -> *mut u8 {
 }
 
 /// The allocator for unique pointers.
-#[cfg(stage0)]
-#[inline]
-pub unsafe fn exchange_malloc(size: uint) -> *mut u8 {
-    // The compiler never calls `exchange_free` on ~ZeroSizeType, so zero-size
-    // allocations can point to this `static`. It would be incorrect to use a null
-    // pointer, due to enums assuming types like unique pointers are never null.
-    static EMPTY: () = ();
-
-    if size == 0 {
-        &EMPTY as *() as *mut u8
-    } else {
-        allocate(size, 8)
-    }
-}
-
-/// The allocator for unique pointers.
-#[cfg(not(stage0))]
 #[inline]
 pub unsafe fn exchange_malloc(size: uint, align: uint) -> *mut u8 {
     // The compiler never calls `exchange_free` on ~ZeroSizeType, so zero-size
@@ -187,16 +162,7 @@ unsafe fn closure_exchange_malloc(drop_glue: fn(*mut u8), size: uint, align: uin
 #[no_mangle]
 #[doc(hidden)]
 #[deprecated]
-#[cfg(stage0, not(test))]
-pub unsafe extern "C" fn rust_malloc(size: uint) -> *mut u8 {
-    exchange_malloc(size)
-}
-
-// hack for libcore
-#[no_mangle]
-#[doc(hidden)]
-#[deprecated]
-#[cfg(not(stage0), not(test))]
+#[cfg(not(test))]
 pub unsafe extern "C" fn rust_malloc(size: uint, align: uint) -> *mut u8 {
     exchange_malloc(size, align)
 }
