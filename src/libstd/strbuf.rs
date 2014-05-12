@@ -12,6 +12,7 @@
 
 use c_vec::CVec;
 use char::Char;
+use cmp::Equiv;
 use container::{Container, Mutable};
 use fmt;
 use io::Writer;
@@ -238,6 +239,13 @@ impl StrBuf {
     }
 }
 
+impl<S: Str> Equiv<S> for StrBuf {
+    #[inline]
+    fn equiv(&self, other: &S) -> bool {
+        self.as_slice() == other.as_slice()
+    }
+}
+
 impl Container for StrBuf {
     #[inline]
     fn len(&self) -> uint {
@@ -305,6 +313,7 @@ impl<H:Writer> ::hash::Hash<H> for StrBuf {
 #[cfg(test)]
 mod tests {
     extern crate test;
+    use cmp::Equiv;
     use container::{Container, Mutable};
     use self::test::Bencher;
     use str::{Str, StrSlice};
@@ -332,18 +341,18 @@ mod tests {
         unsafe {
             s.push_bytes([ 'D' as u8 ]);
         }
-        assert_eq!(s.as_slice(), "ABCD");
+        assert_equiv!(s, "ABCD");
     }
 
     #[test]
     fn test_push_str() {
         let mut s = StrBuf::new();
         s.push_str("");
-        assert_eq!(s.as_slice().slice_from(0), "");
+        assert_equiv!(s, "");
         s.push_str("abc");
-        assert_eq!(s.as_slice().slice_from(0), "abc");
+        assert_equiv!(s, "abc");
         s.push_str("ประเทศไทย中华Việt Nam");
-        assert_eq!(s.as_slice().slice_from(0), "abcประเทศไทย中华Việt Nam");
+        assert_equiv!(s, "abcประเทศไทย中华Việt Nam");
     }
 
     #[test]
@@ -354,18 +363,18 @@ mod tests {
         data.push_char('¢'); // 2 byte
         data.push_char('€'); // 3 byte
         data.push_char('𤭢'); // 4 byte
-        assert_eq!(data.as_slice(), "ประเทศไทย中华b¢€𤭢");
+        assert_equiv!(data, "ประเทศไทย中华b¢€𤭢");
     }
 
     #[test]
     fn test_str_truncate() {
         let mut s = StrBuf::from_str("12345");
         s.truncate(5);
-        assert_eq!(s.as_slice(), "12345");
+        assert_equiv!(s, "12345");
         s.truncate(3);
-        assert_eq!(s.as_slice(), "123");
+        assert_equiv!(s, "123");
         s.truncate(0);
-        assert_eq!(s.as_slice(), "");
+        assert_equiv!(s, "");
 
         let mut s = StrBuf::from_str("12345");
         let p = s.as_slice().as_ptr();

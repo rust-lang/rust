@@ -125,6 +125,34 @@ macro_rules! assert_eq(
     })
 )
 
+/// Asserts that two expressions are equivalent to each other, testing equality in
+/// both directions.
+///
+/// On failure, this macro will print the values of the expressions.
+///
+/// # Example
+///
+/// ```
+/// let a = 3;
+/// let b = 1 + 2;
+/// assert_equiv!(a, b);
+/// ```
+#[macro_export]
+macro_rules! assert_equiv(
+    ($given:expr , $expected:expr) => ({
+        match (&($given), &($expected)) {
+            (given_val, expected_val) => {
+                // check both directions of equality....
+                if !(given_val.equiv(expected_val) &&
+                     expected_val.equiv(given_val)) {
+                    fail!("assertion failed: `left.equiv(right) && right.equiv(left)` \
+                           (left: `{}`, right: `{}`)", *given_val, *expected_val)
+                }
+            }
+        }
+    })
+)
+
 /// Ensure that a boolean expression is `true` at runtime.
 ///
 /// This will invoke the `fail!` macro if the provided expression cannot be
