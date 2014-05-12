@@ -228,7 +228,6 @@ use ops::{BitOr, BitAnd, Sub};
 use option::{Option, Some, None};
 use os;
 use owned::Box;
-use path::Path;
 use result::{Ok, Err, Result};
 use slice::{Vector, MutableVector, ImmutableVector};
 use str::{StrSlice, StrAllocating};
@@ -1516,8 +1515,6 @@ pub enum FileType {
 /// ```
 #[deriving(Hash)]
 pub struct FileStat {
-    /// The path that this stat structure is describing
-    pub path: Path,
     /// The size of the file, in bytes
     pub size: u64,
     /// The kind of file this path points to (directory, file, pipe, etc.)
