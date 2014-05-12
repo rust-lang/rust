@@ -15,16 +15,19 @@
 use mem;
 use char;
 use clone::Clone;
+use cmp;
 use cmp::{Eq, TotalEq};
 use container::Container;
 use default::Default;
 use iter::{Filter, Map, Iterator};
 use iter::{Rev, DoubleEndedIterator, ExactSize};
+use iter::range;
 use num::Saturating;
 use option::{None, Option, Some};
 use raw::Repr;
 use slice::{ImmutableVector, Vector};
 use slice;
+use uint;
 
 /*
 Section: Creating a string
@@ -316,13 +319,207 @@ impl<'a, Sep: CharEq> Iterator<&'a str> for CharSplitsN<'a, Sep> {
     }
 }
 
+/// The internal state of an iterator that searches for matches of a substring
+/// within a larger string using naive search
+#[deriving(Clone)]
+struct NaiveSearcher {
+    position: uint
+}
+
+impl NaiveSearcher {
+    fn new() -> NaiveSearcher {
+        NaiveSearcher { position: 0 }
+    }
+
+    fn next(&mut self, haystack: &[u8], needle: &[u8]) -> Option<(uint, uint)> {
+        while self.position + needle.len() <= haystack.len() {
+            if haystack.slice(self.position, self.position + needle.len()) == needle {
+                let matchPos = self.position;
+                self.position += needle.len(); // add 1 for all matches
+                return Some((matchPos, matchPos + needle.len()));
+            } else {
+                self.position += 1;
+            }
+        }
+        None
+    }
+}
+
+/// The internal state of an iterator that searches for matches of a substring
+/// within a larger string using two-way search
+#[deriving(Clone)]
+struct TwoWaySearcher {
+    // constants
+    critPos: uint,
+    period: uint,
+    byteset: u64,
+
+    // variables
+    position: uint,
+    memory: uint
+}
+
+impl TwoWaySearcher {
+    fn new(needle: &[u8]) -> TwoWaySearcher {
+        let (critPos1, period1) = TwoWaySearcher::maximal_suffix(needle, false);
+        let (critPos2, period2) = TwoWaySearcher::maximal_suffix(needle, true);
+
+        let critPos;
+        let period;
+        if critPos1 > critPos2 {
+            critPos = critPos1;
+            period = period1;
+        } else {
+            critPos = critPos2;
+            period = period2;
+        }
+
+        let byteset = needle.iter().fold(0, |a, &b| (1 << (b & 0x3f)) | a);
+
+        if needle.slice_to(critPos) == needle.slice_from(needle.len() - critPos) {
+            TwoWaySearcher {
+                critPos: critPos,
+                period: period,
+                byteset: byteset,
+
+                position: 0,
+                memory: 0
+            }
+        } else {
+            TwoWaySearcher {
+                critPos: critPos,
+                period: cmp::max(critPos, needle.len() - critPos) + 1,
+                byteset: byteset,
+
+                position: 0,
+                memory: uint::MAX // Dummy value to signify that the period is long
+            }
+        }
+    }
+
+    #[inline]
+    fn next(&mut self, haystack: &[u8], needle: &[u8], longPeriod: bool) -> Option<(uint, uint)> {
+        'search: loop {
+            // Check that we have room to search in
+            if self.position + needle.len() > haystack.len() {
+                return None;
+            }
+
+            // Quickly skip by large portions unrelated to our substring
+            if (self.byteset >> (haystack[self.position + needle.len() - 1] & 0x3f)) & 1 == 0 {
+                self.position += needle.len();
+                continue 'search;
+            }
+
+            // See if the right part of the needle matches
+            let start = if longPeriod { self.critPos } else { cmp::max(self.critPos, self.memory) };
+            for i in range(start, needle.len()) {
+                if needle[i] != haystack[self.position + i] {
+                    self.position += i - self.critPos + 1;
+                    if !longPeriod {
+                        self.memory = 0;
+                    }
+                    continue 'search;
+                }
+            }
+
+            // See if the left part of the needle matches
+            let start = if longPeriod { 0 } else { self.memory };
+            for i in range(start, self.critPos).rev() {
+                if needle[i] != haystack[self.position + i] {
+                    self.position += self.period;
+                    if !longPeriod {
+                        self.memory = needle.len() - self.period;
+                    }
+                    continue 'search;
+                }
+            }
+
+            // We have found a match!
+            let matchPos = self.position;
+            self.position += needle.len(); // add self.period for all matches
+            if !longPeriod {
+                self.memory = 0; // set to needle.len() - self.period for all matches
+            }
+            return Some((matchPos, matchPos + needle.len()));
+        }
+    }
+
+    #[inline]
+    fn maximal_suffix(arr: &[u8], reversed: bool) -> (uint, uint) {
+        let mut left = -1; // Corresponds to i in the paper
+        let mut right = 0; // Corresponds to j in the paper
+        let mut offset = 1; // Corresponds to k in the paper
+        let mut period = 1; // Corresponds to p in the paper
+
+        while right + offset < arr.len() {
+            let a;
+            let b;
+            if reversed {
+                a = arr[left + offset];
+                b = arr[right + offset];
+            } else {
+                a = arr[right + offset];
+                b = arr[left + offset];
+            }
+            if a < b {
+                // Suffix is smaller, period is entire prefix so far.
+                right += offset;
+                offset = 1;
+                period = right - left;
+            } else if a == b {
+                // Advance through repetition of the current period.
+                if offset == period {
+                    right += offset;
+                    offset = 1;
+                } else {
+                    offset += 1;
+                }
+            } else {
+                // Suffix is larger, start over from current location.
+                left = right;
+                right += 1;
+                offset = 1;
+                period = 1;
+            }
+        }
+        (left + 1, period)
+    }
+}
+
+/// The internal state of an iterator that searches for matches of a substring
+/// within a larger string using a dynamically chosed search algorithm
+#[deriving(Clone)]
+enum Searcher {
+    Naive(NaiveSearcher),
+    TwoWay(TwoWaySearcher),
+    TwoWayLong(TwoWaySearcher)
+}
+
+impl Searcher {
+    fn new(haystack: &[u8], needle: &[u8]) -> Searcher {
+        // FIXME: Tune this.
+        if needle.len() > haystack.len() - 20 {
+            Naive(NaiveSearcher::new())
+        } else {
+            let searcher = TwoWaySearcher::new(needle);
+            if searcher.memory == uint::MAX { // If the period is long
+                TwoWayLong(searcher)
+            } else {
+                TwoWay(searcher)
+            }
+        }
+    }
+}
+
 /// An iterator over the start and end indices of the matches of a
 /// substring within a larger string
 #[deriving(Clone)]
 pub struct MatchIndices<'a> {
+    // constants
     haystack: &'a str,
     needle: &'a str,
-    position: uint,
+    searcher: Searcher
 }
 
 /// An iterator over the substrings of a string separated by a given
@@ -337,31 +534,14 @@ pub struct StrSplits<'a> {
 impl<'a> Iterator<(uint, uint)> for MatchIndices<'a> {
     #[inline]
     fn next(&mut self) -> Option<(uint, uint)> {
-        // See Issue #1932 for why this is a naive search
-        let (h_len, n_len) = (self.haystack.len(), self.needle.len());
-        let mut match_start = 0;
-        let mut match_i = 0;
-
-        while self.position < h_len {
-            if self.haystack[self.position] == self.needle[match_i] {
-                if match_i == 0 { match_start = self.position; }
-                match_i += 1;
-                self.position += 1;
-
-                if match_i == n_len {
-                    // found a match!
-                    return Some((match_start, self.position));
-                }
-            } else {
-                // failed match, backtrack
-                if match_i > 0 {
-                    match_i = 0;
-                    self.position = match_start;
-                }
-                self.position += 1;
-            }
+        match self.searcher {
+            Naive(ref mut searcher)
+                => searcher.next(self.haystack.as_bytes(), self.needle.as_bytes()),
+            TwoWay(ref mut searcher)
+                => searcher.next(self.haystack.as_bytes(), self.needle.as_bytes(), false),
+            TwoWayLong(ref mut searcher)
+                => searcher.next(self.haystack.as_bytes(), self.needle.as_bytes(), true)
         }
-        None
     }
 }
 
@@ -1581,7 +1761,7 @@ impl<'a> StrSlice<'a> for &'a str {
         MatchIndices {
             haystack: *self,
             needle: sep,
-            position: 0
+            searcher: Searcher::new(self.as_bytes(), sep.as_bytes())
         }
     }
 
