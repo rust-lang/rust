@@ -352,7 +352,7 @@
 //! characters in the search text and `m` is the number of instructions in a
 //! compiled expression.
 
-#![crate_id = "regex#0.11-pre"]
+#![crate_id = "regex#0.11.0-pre"]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![experimental]

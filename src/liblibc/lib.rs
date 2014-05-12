@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #![feature(globs)]
-#![crate_id = "libc#0.11-pre"]
+#![crate_id = "libc#0.11.0-pre"]
 #![experimental]
 #![no_std] // we don't need std, and we can't have std, since it doesn't exist
            // yet. std depends on us.
