@@ -1124,6 +1124,9 @@ impl<T: Show> Show for Box<T> {
 impl<'a, T: Show> Show for &'a T {
     fn fmt(&self, f: &mut Formatter) -> Result { secret_show(*self, f) }
 }
+impl<'a, T: Show> Show for &'a mut T {
+    fn fmt(&self, f: &mut Formatter) -> Result { secret_show(*self, f) }
+}
 
 impl Bool for bool {
     fn fmt(&self, f: &mut Formatter) -> Result {
