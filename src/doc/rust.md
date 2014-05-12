@@ -4006,26 +4006,15 @@ compiler must at some point make a choice between these two formats. With this
 in mind, the compiler follows these rules when determining what format of
 dependencies will be used:
 
-1. If a dynamic library is being produced, then it is required for all upstream
-   Rust dependencies to also be dynamic. This is a limitation of the current
-   implementation of the linkage model.  The reason behind this limitation is to
-   prevent multiple copies of the same upstream library from showing up, and in
-   the future it is planned to support a mixture of dynamic and static linking.
-
-   When producing a dynamic library, the compiler will generate an error if an
-   upstream dependency could not be found, and also if an upstream dependency
-   could only be found in an `rlib` format. Remember that `staticlib` formats
-   are always ignored by `rustc` for crate-linking purposes.
-
-2. If a static library is being produced, all upstream dependencies are
+1. If a static library is being produced, all upstream dependencies are
    required to be available in `rlib` formats. This requirement stems from the
-   same reasons that a dynamic library must have all dynamic dependencies.
+   reason that a dynamic library cannot be converted into a static format.
 
    Note that it is impossible to link in native dynamic dependencies to a static
    library, and in this case warnings will be printed about all unlinked native
    dynamic dependencies.
 
-3. If an `rlib` file is being produced, then there are no restrictions on what
+2. If an `rlib` file is being produced, then there are no restrictions on what
    format the upstream dependencies are available in. It is simply required that
    all upstream dependencies be available for reading metadata from.
 
@@ -4033,18 +4022,29 @@ dependencies will be used:
    dependencies. It wouldn't be very efficient for all `rlib` files to contain a
    copy of `libstd.rlib`!
 
-4. If an executable is being produced, then things get a little interesting. As
-   with the above limitations in dynamic and static libraries, it is required
-   for all upstream dependencies to be in the same format. The next question is
-   whether to prefer a dynamic or a static format. The compiler currently favors
-   static linking over dynamic linking, but this can be inverted with the `-C
-   prefer-dynamic` flag to the compiler.
+3. If an executable is being produced and the `-C prefer-dynamic` flag is not
+   specified, then dependencies are first attempted to be found in the `rlib`
+   format. If some dependencies are not available in an rlib format, then
+   dynamic linking is attempted (see below).
 
-   What this means is that first the compiler will attempt to find all upstream
-   dependencies as `rlib` files, and if successful, it will create a statically
-   linked executable. If an upstream dependency is missing as an `rlib` file,
-   then the compiler will force all dependencies to be dynamic and will generate
-   errors if dynamic versions could not be found.
+4. If a dynamic library or an executable that is being dynamically linked is
+   being produced, then the compiler will attempt to reconcile the available
+   dependencies in either the rlib or dylib format to create a final product.
+
+   A major goal of the compiler is to ensure that a library never appears more
+   than once in any artifact. For example, if dynamic libraries B and C were
+   each statically linked to library A, then a crate could not link to B and C
+   together because there would be two copies of A. The compiler allows mixing
+   the rlib and dylib formats, but this restriction must be satisfied.
+
+   The compiler currently implements no method of hinting what format a library
+   should be linked with. When dynamically linking, the compiler will attempt to
+   maximize dynamic dependencies while still allowing some dependencies to be
+   linked in via an rlib.
+
+   For most situations, having all libraries available as a dylib is recommended
+   if dynamically linking. For other situations, the compiler will emit a
+   warning if it is unable to determine which formats to link each library with.
 
 In general, `--crate-type=bin` or `--crate-type=lib` should be sufficient for
 all compilation needs, and the other options are just available if more
