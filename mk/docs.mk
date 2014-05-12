@@ -30,7 +30,7 @@ DOCS := index intro tutorial guide-ffi guide-macros guide-lifetimes \
 	guide-tasks guide-container guide-pointers guide-testing \
 	guide-runtime complement-bugreport complement-cheatsheet \
 	complement-lang-faq complement-project-faq rust rustdoc \
-	guide-unsafe
+	guide-unsafe not_found
 
 PDF_DOCS := tutorial rust
 
