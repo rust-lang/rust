@@ -12,7 +12,7 @@
 
 #![allow(missing_doc, non_uppercase_statics)]
 
-pub mod decompose {
+pub mod normalization {
     use option::{Some, None};
     use slice::ImmutableVector;
 

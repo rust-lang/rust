@@ -256,13 +256,13 @@ def format_table_content(f, content, indent):
             line = " "*indent + chunk
     f.write(line)
 
-def emit_core_decomp_module(f, canon, compat):
+def emit_core_norm_module(f, canon, compat):
     canon_keys = canon.keys()
     canon_keys.sort()
 
     compat_keys = compat.keys()
     compat_keys.sort()
-    f.write("pub mod decompose {\n");
+    f.write("pub mod normalization {\n");
     f.write("    use option::Option;\n");
     f.write("    use option::{Some, None};\n");
     f.write("    use slice::ImmutableVector;\n");
@@ -401,8 +401,8 @@ def emit_core_decomp_module(f, canon, compat):
 
 """)
 
-def emit_std_decomp_module(f, combine):
-    f.write("pub mod decompose {\n");
+def emit_std_norm_module(f, combine):
+    f.write("pub mod normalization {\n");
     f.write("    use option::{Some, None};\n");
     f.write("    use slice::ImmutableVector;\n");
 
@@ -467,7 +467,7 @@ def gen_core_unicode():
         emit_bsearch_range_table(rf);
         emit_property_module(rf, "general_category", gencats)
 
-        emit_core_decomp_module(rf, canon_decomp, compat_decomp)
+        emit_core_norm_module(rf, canon_decomp, compat_decomp)
 
         derived = load_properties("DerivedCoreProperties.txt",
                 ["XID_Start", "XID_Continue", "Alphabetic", "Lowercase", "Uppercase"])
@@ -485,7 +485,7 @@ def gen_std_unicode():
     with open(r, "w") as rf:
         # Preamble
         rf.write(preamble)
-        emit_std_decomp_module(rf, combines)
+        emit_std_norm_module(rf, combines)
 
 gen_core_unicode()
 gen_std_unicode()

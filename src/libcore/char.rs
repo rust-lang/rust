@@ -30,9 +30,9 @@ use iter::{Iterator, range_step};
 use unicode::{derived_property, property, general_category, conversions};
 
 /// Returns the canonical decomposition of a character.
-pub use unicode::decompose::decompose_canonical;
+pub use unicode::normalization::decompose_canonical;
 /// Returns the compatibility decomposition of a character.
-pub use unicode::decompose::decompose_compatible;
+pub use unicode::normalization::decompose_compatible;
 
 #[cfg(not(test))] use cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering};
 #[cfg(not(test))] use default::Default;
