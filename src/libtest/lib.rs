@@ -23,7 +23,7 @@
 // running tests while providing a base that other test frameworks may
 // build off of.
 
-#![crate_id = "test#0.11-pre"]
+#![crate_id = "test#0.11.0-pre"]
 #![comment = "Rust internal test library only used by rustc"]
 #![license = "MIT/ASL2"]
 #![crate_type = "rlib"]
