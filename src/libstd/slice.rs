@@ -109,7 +109,7 @@ use ops::Drop;
 use option::{None, Option, Some};
 use ptr::RawPtr;
 use ptr;
-use rt::heap::{exchange_malloc, exchange_free};
+use rt::heap::{exchange_malloc, deallocate};
 use unstable::finally::try_finally;
 use vec::Vec;
 
@@ -330,7 +330,7 @@ impl<'a, T: Clone> CloneableVector<T> for &'a [T] {
                         ptr::read(&*p.offset(j));
                     }
                     // FIXME: #13994 (should pass align and size here)
-                    exchange_free(ret as *mut u8, 0, 8);
+                    deallocate(ret as *mut u8, 0, 8);
                 });
             mem::transmute(ret)
         }
@@ -377,7 +377,7 @@ impl<'a, T: Clone> CloneableVector<T> for &'a [T] {
                         ptr::read(&*p.offset(j));
                     }
                     // FIXME: #13994 (should pass align and size here)
-                    exchange_free(ret as *mut u8, 0, 8);
+                    deallocate(ret as *mut u8, 0, 8);
                 });
             mem::transmute(ret)
         }
@@ -817,7 +817,7 @@ impl<T> Drop for MoveItems<T> {
         for _x in *self {}
         unsafe {
             // FIXME: #13994 (should pass align and size here)
-            exchange_free(self.allocation, 0, 8)
+            deallocate(self.allocation, 0, 8)
         }
     }
 }

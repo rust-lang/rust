@@ -10,7 +10,7 @@
 
 /* Foreign builtins. */
 
-#include "vg/valgrind.h"
+#include "valgrind/valgrind.h"
 
 #include <stdint.h>
 #include <time.h>
