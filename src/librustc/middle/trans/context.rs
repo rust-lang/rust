@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-use driver::session::NoDebugInfo;
+use driver::config::NoDebugInfo;
 use driver::session::Session;
 use lib::llvm::{ContextRef, ModuleRef, ValueRef};
 use lib::llvm::{llvm, TargetData, TypeNames};

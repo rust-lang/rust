@@ -11,6 +11,7 @@
 use back::archive::ArchiveRO;
 use back::link;
 use driver::session;
+use driver::config;
 use lib::llvm::{ModuleRef, TargetMachineRef, llvm, True, False};
 use metadata::cstore;
 use util::common::time;
@@ -29,7 +30,7 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
     // Make sure we actually can run LTO
     for crate_type in sess.crate_types.borrow().iter() {
         match *crate_type {
-            session::CrateTypeExecutable | session::CrateTypeStaticlib => {}
+            config::CrateTypeExecutable | config::CrateTypeStaticlib => {}
             _ => {
                 sess.fatal("lto can only be run for executables and \
                             static library outputs");

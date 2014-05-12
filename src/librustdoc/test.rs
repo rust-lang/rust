@@ -19,6 +19,7 @@ use std::strbuf::StrBuf;
 use collections::{HashSet, HashMap};
 use testing;
 use rustc::back::link;
+use rustc::driver::config;
 use rustc::driver::driver;
 use rustc::driver::session;
 use rustc::metadata::creader::Loader;
@@ -43,11 +44,11 @@ pub fn run(input: &str,
     let input_path = Path::new(input);
     let input = driver::FileInput(input_path.clone());
 
-    let sessopts = session::Options {
+    let sessopts = config::Options {
         maybe_sysroot: Some(os::self_exe_path().unwrap().dir_path()),
         addl_lib_search_paths: RefCell::new(libs.clone()),
-        crate_types: vec!(session::CrateTypeDylib),
-        ..session::basic_options().clone()
+        crate_types: vec!(config::CrateTypeDylib),
+        ..config::basic_options().clone()
     };
 
 
@@ -56,11 +57,11 @@ pub fn run(input: &str,
     let span_diagnostic_handler =
     diagnostic::mk_span_handler(diagnostic_handler, codemap);
 
-    let sess = driver::build_session_(sessopts,
+    let sess = session::build_session_(sessopts,
                                       Some(input_path.clone()),
                                       span_diagnostic_handler);
 
-    let mut cfg = driver::build_configuration(&sess);
+    let mut cfg = config::build_configuration(&sess);
     cfg.extend(cfgs.move_iter().map(|cfg_| {
         let cfg_ = token::intern_and_get_ident(cfg_);
         @dummy_spanned(ast::MetaWord(cfg_))
@@ -101,17 +102,17 @@ fn runtest(test: &str, cratename: &str, libs: HashSet<Path>, should_fail: bool,
     let test = maketest(test, cratename, loose_feature_gating);
     let input = driver::StrInput(test);
 
-    let sessopts = session::Options {
+    let sessopts = config::Options {
         maybe_sysroot: Some(os::self_exe_path().unwrap().dir_path()),
         addl_lib_search_paths: RefCell::new(libs),
-        crate_types: vec!(session::CrateTypeExecutable),
+        crate_types: vec!(config::CrateTypeExecutable),
         output_types: vec!(link::OutputTypeExe),
         no_trans: no_run,
-        cg: session::CodegenOptions {
+        cg: config::CodegenOptions {
             prefer_dynamic: true,
-            .. session::basic_codegen_options()
+            .. config::basic_codegen_options()
         },
-        ..session::basic_options().clone()
+        ..config::basic_options().clone()
     };
 
     // Shuffle around a few input and output handles here. We're going to pass
@@ -142,13 +143,13 @@ fn runtest(test: &str, cratename: &str, libs: HashSet<Path>, should_fail: bool,
     let span_diagnostic_handler =
         diagnostic::mk_span_handler(diagnostic_handler, codemap);
 
-    let sess = driver::build_session_(sessopts,
+    let sess = session::build_session_(sessopts,
                                       None,
                                       span_diagnostic_handler);
 
     let outdir = TempDir::new("rustdoctest").expect("rustdoc needs a tempdir");
     let out = Some(outdir.path().clone());
-    let cfg = driver::build_configuration(&sess);
+    let cfg = config::build_configuration(&sess);
     driver::compile_input(sess, cfg, &input, &out, &None);
 
     if no_run { return }

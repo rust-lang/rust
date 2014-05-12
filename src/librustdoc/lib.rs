@@ -145,7 +145,7 @@ pub fn main_args(args: &[~str]) -> int {
         usage(args[0]);
         return 0;
     } else if matches.opt_present("version") {
-        rustc::version(args[0]);
+        rustc::driver::version(args[0]);
         return 0;
     }
 

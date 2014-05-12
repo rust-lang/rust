@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use lib::llvm::*;
-use driver::session::FullDebugInfo;
+use driver::config::FullDebugInfo;
 use middle::lang_items::{FailFnLangItem, FailBoundsCheckFnLangItem};
 use middle::trans::base::*;
 use middle::trans::build::*;

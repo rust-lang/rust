@@ -195,7 +195,7 @@
 #![allow(non_camel_case_types)]
 
 use back::abi;
-use driver::session::FullDebugInfo;
+use driver::config::FullDebugInfo;
 use lib::llvm::{llvm, ValueRef, BasicBlockRef};
 use middle::const_eval;
 use middle::lang_items::{UniqStrEqFnLangItem, StrEqFnLangItem};
