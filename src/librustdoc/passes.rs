@@ -14,6 +14,7 @@ use std::cmp;
 use std::strbuf::StrBuf;
 use std::uint;
 use syntax::ast;
+use syntax::ast_util;
 
 use clean;
 use clean::Item;
@@ -206,7 +207,7 @@ impl<'a> fold::DocFolder for ImplStripper<'a> {
                 match imp.trait_ {
                     Some(clean::ResolvedPath{ did, .. }) => {
                         let ImplStripper(s) = *self;
-                        if !s.contains(&did.node) {
+                        if ast_util::is_local(did) && !s.contains(&did.node) {
                             return None;
                         }
                     }
