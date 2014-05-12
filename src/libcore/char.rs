@@ -27,7 +27,12 @@
 use mem::transmute;
 use option::{None, Option, Some};
 use iter::{Iterator, range_step};
-use unicode::{derived_property, property, general_category, decompose, conversions};
+use unicode::{derived_property, property, general_category, conversions};
+
+/// Returns the canonical decomposition of a character.
+pub use unicode::decompose::decompose_canonical;
+/// Returns the compatibility decomposition of a character.
+pub use unicode::decompose::decompose_compatible;
 
 #[cfg(not(test))] use cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering};
 #[cfg(not(test))] use default::Default;
@@ -282,53 +287,6 @@ pub fn from_digit(num: uint, radix: uint) -> Option<char> {
         }
     } else {
         None
-    }
-}
-
-// Constants from Unicode 6.2.0 Section 3.12 Conjoining Jamo Behavior
-static S_BASE: u32 = 0xAC00;
-static L_BASE: u32 = 0x1100;
-static V_BASE: u32 = 0x1161;
-static T_BASE: u32 = 0x11A7;
-static L_COUNT: u32 = 19;
-static V_COUNT: u32 = 21;
-static T_COUNT: u32 = 28;
-static N_COUNT: u32 = (V_COUNT * T_COUNT);
-static S_COUNT: u32 = (L_COUNT * N_COUNT);
-
-// Decompose a precomposed Hangul syllable
-fn decompose_hangul(s: char, f: |char|) {
-    let si = s as u32 - S_BASE;
-
-    let li = si / N_COUNT;
-    unsafe {
-        f(transmute(L_BASE + li));
-
-        let vi = (si % N_COUNT) / T_COUNT;
-        f(transmute(V_BASE + vi));
-
-        let ti = si % T_COUNT;
-        if ti > 0 {
-            f(transmute(T_BASE + ti));
-        }
-    }
-}
-
-/// Returns the canonical decomposition of a character
-pub fn decompose_canonical(c: char, f: |char|) {
-    if (c as u32) < S_BASE || (c as u32) >= (S_BASE + S_COUNT) {
-        decompose::canonical(c, f);
-    } else {
-        decompose_hangul(c, f);
-    }
-}
-
-/// Returns the compatibility decomposition of a character
-pub fn decompose_compatible(c: char, f: |char|) {
-    if (c as u32) < S_BASE || (c as u32) >= (S_BASE + S_COUNT) {
-        decompose::compatibility(c, f);
-    } else {
-        decompose_hangul(c, f);
     }
 }
 
