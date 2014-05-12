@@ -169,7 +169,7 @@ fn bsearch_range_table(c: char, r: &'static [(char,char)]) -> bool {
         else if hi < c { Less }
         else { Greater }
     }) != None
-}\n\n
+}\n
 """);
 
 def emit_property_module(f, mod, tbl):
@@ -193,11 +193,11 @@ def emit_property_module(f, mod, tbl):
         f.write("    pub fn %s(c: char) -> bool {\n" % cat)
         f.write("        super::bsearch_range_table(c, %s_table)\n" % cat)
         f.write("    }\n\n")
-    f.write("}\n")
+    f.write("}\n\n")
 
 
 def emit_conversions_module(f, lowerupper, upperlower):
-    f.write("pub mod conversions {\n")
+    f.write("pub mod conversions {")
     f.write("""
     use cmp::{Equal, Less, Greater};
     use slice::ImmutableVector;
@@ -225,13 +225,14 @@ def emit_conversions_module(f, lowerupper, upperlower):
             else { Greater }
         })
     }
+
 """);
     emit_caseconversion_table(f, "LuLl", upperlower)
     emit_caseconversion_table(f, "LlLu", lowerupper)
     f.write("}\n")
 
 def emit_caseconversion_table(f, name, table):
-    f.write("   static %s_table : &'static [(char, char)] = &[\n" % name)
+    f.write("    static %s_table : &'static [(char, char)] = &[\n" % name)
     sorted_table = sorted(table.iteritems(), key=operator.itemgetter(0))
     ix = 0
     for key, value in sorted_table:
@@ -255,7 +256,7 @@ def format_table_content(f, content, indent):
             line = " "*indent + chunk
     f.write(line)
 
-def emit_decomp_module(f, canon, compat, combine):
+def emit_core_decomp_module(f, canon, compat):
     canon_keys = canon.keys()
     canon_keys.sort()
 
@@ -278,23 +279,6 @@ def emit_decomp_module(f, canon, compat, combine):
                 Some(result)
             }
             None => None
-        }
-    }\n
-""")
-
-    f.write("""
-    fn bsearch_range_value_table(c: char, r: &'static [(char, char, u8)]) -> u8 {
-        use cmp::{Equal, Less, Greater};
-        match r.bsearch(|&(lo, hi, _)| {
-            if lo <= c && c <= hi { Equal }
-            else if hi < c { Less }
-            else { Greater }
-        }) {
-            Some(idx) => {
-                let (_, _, result) = r[idx];
-                result
-            }
-            None => 0
         }
     }\n\n
 """)
@@ -337,21 +321,10 @@ def emit_decomp_module(f, canon, compat, combine):
     format_table_content(f, data, 8)
     f.write("\n    ];\n\n")
 
-    f.write("    static combining_class_table : &'static [(char, char, u8)] = &[\n")
-    ix = 0
-    for pair in combine:
-        f.write(ch_prefix(ix))
-        f.write("(%s, %s, %s)" % (escape_char(pair[0]), escape_char(pair[1]), pair[2]))
-        ix += 1
-    f.write("\n    ];\n")
-
     f.write("    pub fn canonical(c: char, i: |char|) "
         + "{ d(c, i, false); }\n\n")
     f.write("    pub fn compatibility(c: char, i: |char|) "
             +"{ d(c, i, true); }\n\n")
-    f.write("    pub fn canonical_combining_class(c: char) -> u8 {\n"
-        + "        bsearch_range_value_table(c, combining_class_table)\n"
-        + "    }\n\n")
     f.write("    fn d(c: char, i: |char|, k: bool) {\n")
     f.write("        use iter::Iterator;\n");
 
@@ -389,17 +362,43 @@ def emit_decomp_module(f, canon, compat, combine):
     f.write("    }\n")
     f.write("}\n\n")
 
-r = "unicode.rs"
-for i in [r]:
-    if os.path.exists(i):
-        os.remove(i);
-rf = open(r, "w")
+def emit_std_decomp_module(f, combine):
+    f.write("pub mod decompose {\n");
+    f.write("    use option::{Some, None};\n");
+    f.write("    use slice::ImmutableVector;\n");
 
-(canon_decomp, compat_decomp, gencats,
- combines, lowerupper, upperlower) = load_unicode_data("UnicodeData.txt")
+    f.write("""
+    fn bsearch_range_value_table(c: char, r: &'static [(char, char, u8)]) -> u8 {
+        use cmp::{Equal, Less, Greater};
+        match r.bsearch(|&(lo, hi, _)| {
+            if lo <= c && c <= hi { Equal }
+            else if hi < c { Less }
+            else { Greater }
+        }) {
+            Some(idx) => {
+                let (_, _, result) = r[idx];
+                result
+            }
+            None => 0
+        }
+    }\n\n
+""")
 
-# Preamble
-rf.write('''// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+    f.write("    static combining_class_table : &'static [(char, char, u8)] = &[\n")
+    ix = 0
+    for pair in combine:
+        f.write(ch_prefix(ix))
+        f.write("(%s, %s, %s)" % (escape_char(pair[0]), escape_char(pair[1]), pair[2]))
+        ix += 1
+    f.write("\n    ];\n\n")
+
+    f.write("    pub fn canonical_combining_class(c: char) -> u8 {\n"
+        + "        bsearch_range_value_table(c, combining_class_table)\n"
+        + "    }\n")
+    f.write("}\n")
+
+
+preamble = '''// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -409,23 +408,45 @@ rf.write('''// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGH
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// The following code was generated by "src/etc/unicode.py"
+// NOTE: The following code was generated by "src/etc/unicode.py", do not edit directly
 
-#![allow(missing_doc)]
-#![allow(non_uppercase_statics)]
+#![allow(missing_doc, non_uppercase_statics)]
 
-''')
+'''
 
-emit_bsearch_range_table(rf);
-emit_property_module(rf, "general_category", gencats)
+(canon_decomp, compat_decomp, gencats,
+ combines, lowerupper, upperlower) = load_unicode_data("UnicodeData.txt")
 
-emit_decomp_module(rf, canon_decomp, compat_decomp, combines)
+def gen_core_unicode():
+    r = "core_unicode.rs"
+    if os.path.exists(r):
+        os.remove(r);
+    with open(r, "w") as rf:
+        # Preamble
+        rf.write(preamble)
 
-derived = load_properties("DerivedCoreProperties.txt",
-        ["XID_Start", "XID_Continue", "Alphabetic", "Lowercase", "Uppercase"])
+        emit_bsearch_range_table(rf);
+        emit_property_module(rf, "general_category", gencats)
 
-emit_property_module(rf, "derived_property", derived)
+        emit_core_decomp_module(rf, canon_decomp, compat_decomp)
 
-props = load_properties("PropList.txt", ["White_Space"])
-emit_property_module(rf, "property", props)
-emit_conversions_module(rf, lowerupper, upperlower)
+        derived = load_properties("DerivedCoreProperties.txt",
+                ["XID_Start", "XID_Continue", "Alphabetic", "Lowercase", "Uppercase"])
+
+        emit_property_module(rf, "derived_property", derived)
+
+        props = load_properties("PropList.txt", ["White_Space"])
+        emit_property_module(rf, "property", props)
+        emit_conversions_module(rf, lowerupper, upperlower)
+
+def gen_std_unicode():
+    r = "std_unicode.rs"
+    if os.path.exists(r):
+        os.remove(r);
+    with open(r, "w") as rf:
+        # Preamble
+        rf.write(preamble)
+        emit_std_decomp_module(rf, combines)
+
+gen_core_unicode()
+gen_std_unicode()
