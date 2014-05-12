@@ -380,11 +380,11 @@ idomenu (imenu with `ido-mode') for best mileage.")
 ;;; Defun Motions
 
 ;;; Start of a Rust item
-(setq rust-top-item-beg-re
-      (concat "^\\s-*\\(?:priv\\|pub\\)?\\s-*"
-              (regexp-opt
-               '("enum" "struct" "type" "mod" "use" "fn" "static" "impl"
-                 "extern" "impl" "static" "trait"))))
+(defvar rust-top-item-beg-re
+  (concat "^\\s-*\\(?:priv\\|pub\\)?\\s-*"
+          (regexp-opt
+           '("enum" "struct" "type" "mod" "use" "fn" "static" "impl"
+             "extern" "impl" "static" "trait"))))
 
 (defun rust-beginning-of-defun (&optional arg)
   "Move backward to the beginning of the current defun.
