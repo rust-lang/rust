@@ -341,29 +341,7 @@ struct TypedArenaChunk<T> {
 }
 
 impl<T> TypedArenaChunk<T> {
-    #[cfg(stage0)]
     #[inline]
-    fn new(next: Option<Box<TypedArenaChunk<T>>>, capacity: uint)
-           -> Box<TypedArenaChunk<T>> {
-        let mut size = mem::size_of::<TypedArenaChunk<T>>();
-        size = round_up(size, min_align_of::<T>());
-        let elem_size = mem::size_of::<T>();
-        let elems_size = elem_size.checked_mul(&capacity).unwrap();
-        size = size.checked_add(&elems_size).unwrap();
-
-        let mut chunk = unsafe {
-            let chunk = exchange_malloc(size);
-            let mut chunk: Box<TypedArenaChunk<T>> = mem::transmute(chunk);
-            mem::move_val_init(&mut chunk.next, next);
-            chunk
-        };
-
-        chunk.capacity = capacity;
-        chunk
-    }
-
-    #[inline]
-    #[cfg(not(stage0))]
     fn new(next: Option<Box<TypedArenaChunk<T>>>, capacity: uint)
            -> Box<TypedArenaChunk<T>> {
         let mut size = mem::size_of::<TypedArenaChunk<T>>();
