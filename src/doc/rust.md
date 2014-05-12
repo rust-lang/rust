@@ -208,7 +208,7 @@ The keywords are the following strings:
 ~~~~ {.notrust .keyword}
 as
 box break
-crate
+continue crate
 else enum extern
 false fn for
 if impl in
@@ -2924,9 +2924,7 @@ while i < 10 {
 
 ### Infinite loops
 
-The keyword `loop` in Rust appears both in _loop expressions_ and in _continue expressions_.
-A loop expression denotes an infinite loop;
-see [Continue expressions](#continue-expressions) for continue expressions.
+A `loop` expression denotes an infinite loop.
 
 ~~~~ {.notrust .ebnf .gram}
 loop_expr : [ lifetime ':' ] "loop" '{' block '}';
@@ -2934,8 +2932,8 @@ loop_expr : [ lifetime ':' ] "loop" '{' block '}';
 
 A `loop` expression may optionally have a _label_.
 If a label is present,
-then labeled `break` and `loop` expressions nested within this loop may exit out of this loop or return control to its head.
-See [Break expressions](#break-expressions).
+then labeled `break` and `continue` expressions nested within this loop may exit out of this loop or return control to its head.
+See [Break expressions](#break-expressions) and [Continue expressions](#continue-expressions).
 
 ### Break expressions
 
@@ -2953,21 +2951,21 @@ but must enclose it.
 ### Continue expressions
 
 ~~~~ {.notrust .ebnf .gram}
-continue_expr : "loop" [ lifetime ];
+continue_expr : "continue" [ lifetime ];
 ~~~~
 
-A continue expression, written `loop`, also has an optional `label`.
+A `continue` expression has an optional `label`.
 If the label is absent,
-then executing a `loop` expression immediately terminates the current iteration of the innermost loop enclosing it,
+then executing a `continue` expression immediately terminates the current iteration of the innermost loop enclosing it,
 returning control to the loop *head*.
 In the case of a `while` loop,
 the head is the conditional expression controlling the loop.
 In the case of a `for` loop, the head is the call-expression controlling the loop.
-If the label is present, then `loop foo` returns control to the head of the loop with label `foo`,
+If the label is present, then `continue foo` returns control to the head of the loop with label `foo`,
 which need not be the innermost label enclosing the `break` expression,
 but must enclose it.
 
-A `loop` expression is only permitted in the body of a loop.
+A `continue` expression is only permitted in the body of a loop.
 
 ### For expressions
 
