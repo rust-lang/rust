@@ -193,7 +193,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
 
     krate = time(time_passes, "expansion", krate, |krate| {
         // Windows dlls do not have rpaths, so they don't know how to find their
-        // dependencies. It's up to use to tell the system where to find all the
+        // dependencies. It's up to us to tell the system where to find all the
         // dependent dlls. Note that this uses cfg!(windows) as opposed to
         // targ_cfg because syntax extensions are always loaded for the host
         // compiler, not for the target.
