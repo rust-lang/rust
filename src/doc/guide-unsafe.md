@@ -3,9 +3,9 @@
 # Introduction
 
 Rust aims to provide safe abstractions over the low-level details of
-the CPU and operating system, but sometimes one needs to drop down
-and write code at that level. This guide aims to provide an overview of the dangers and
-power one gets with Rust's unsafe subset.
+the CPU and operating system, but sometimes one needs to drop down and
+write code at that level. This guide aims to provide an overview of
+the dangers and power one gets with Rust's unsafe subset.
 
 Rust provides an escape hatch in the form of the `unsafe { ... }`
 block which allows the programmer to dodge some of the compiler's
@@ -19,11 +19,10 @@ checks and do a wide range of operations, such as:
 Note that an `unsafe` block does not relax the rules about lifetimes
 of `&` and the freezing of borrowed data.
 
-Any
-use of `unsafe` is the programmer saying "I know more than you" to the
-compiler, and, as such, the programmer should be very sure that they
-actually do know more about why that piece of code is valid. 
-In general, one should try to minimize the amount of unsafe code in a
+Any use of `unsafe` is the programmer saying "I know more than you" to
+the compiler, and, as such, the programmer should be very sure that
+they actually do know more about why that piece of code is valid.  In
+general, one should try to minimize the amount of unsafe code in a
 code base; preferably by using the bare minimum `unsafe` blocks to
 build safe interfaces.
 
@@ -37,17 +36,17 @@ build safe interfaces.
 
 ## References
 
-One of Rust's biggest features is memory safety.
-This is achieved in part via [the lifetime system](guide-lifetimes.html),
-which is how the
+One of Rust's biggest features is memory safety.  This is achieved in
+part via [the lifetime system](guide-lifetimes.html), which is how the
 compiler can guarantee that every `&` reference is always valid, and,
 for example, never pointing to freed memory.
 
 These restrictions on `&` have huge advantages. However, they also
-constrain how we can use them. For example, `&` doesn't behave identically to C's
-pointers, and so cannot be used for pointers in foreign function interface (FFI). Additionally,
-both immutable (`&`) and mutable (`&mut`) references have some
-aliasing and freezing guarantees, required for memory safety.
+constrain how we can use them. For example, `&` doesn't behave
+identically to C's pointers, and so cannot be used for pointers in
+foreign function interface (FFI). Additionally, both immutable (`&`)
+and mutable (`&mut`) references have some aliasing and freezing
+guarantees, required for memory safety.
 
 In particular, if you have an `&T` reference, then the `T` must not be
 modified through that reference or any other reference. There are some
@@ -105,18 +104,18 @@ offered by the Rust language and libraries. For example, they
 
 Fortunately, they come with a redeeming feature: the weaker guarantees
 mean weaker restrictions. The missing restrictions make raw pointers
-appropriate as a building block for implementing things
-like smart pointers and vectors inside libraries. For example, `*`
-pointers are allowed to alias, allowing them to be used to write
-shared-ownership types like reference counted and garbage collected
-pointers, and even thread-safe shared memory types (`Rc` and the `Arc`
-types are both implemented entirely in Rust).
+appropriate as a building block for implementing things like smart
+pointers and vectors inside libraries. For example, `*` pointers are
+allowed to alias, allowing them to be used to write shared-ownership
+types like reference counted and garbage collected pointers, and even
+thread-safe shared memory types (`Rc` and the `Arc` types are both
+implemented entirely in Rust).
 
 There are two things that you are required to be careful about
 (i.e. require an `unsafe { ... }` block) with raw pointers:
 
 - dereferencing: they can have any value: so possible results include
-  a crash, a read of uninitialised memory, a use-after-free, or 
+  a crash, a read of uninitialised memory, a use-after-free, or
   reading data as normal.
 - pointer arithmetic via the `offset` [intrinsic](#intrinsics) (or
   `.offset` method): this intrinsic uses so-called "in-bounds"
@@ -178,8 +177,8 @@ code:
   the pointer in one place.
 - use `assert!()` a lot: since you can't rely on the protection of the
   compiler & type-system to ensure that your `unsafe` code is correct
-  at compile-time, use `assert!()` to verify that it is doing the right
-  thing at run-time.
+  at compile-time, use `assert!()` to verify that it is doing the
+  right thing at run-time.
 - implement the `Drop` for resource clean-up via a destructor, and use
   RAII (Resource Acquisition Is Initialization). This reduces the need
   for any manual memory management by users, and automatically ensures
@@ -298,8 +297,8 @@ asm!(assembly template
 Any use of `asm` is feature gated (requires `#![feature(asm)]` on the
 crate to allow) and of course requires an `unsafe` block.
 
-> **Note**: the examples here are given in x86/x86-64 assembly, but all
-> platforms are supported.
+> **Note**: the examples here are given in x86/x86-64 assembly, but
+> all platforms are supported.
 
 ## Assembly template
 
@@ -497,7 +496,7 @@ detects that it will overflow its stack. The example above uses the
 > parts of the language may never be full specified and so details may
 > differ wildly between implementations (and even versions of `rustc`
 > itself).
->
+> 
 > Furthermore, this is just an overview; the best form of
 > documentation for specific instances of these features are their
 > definitions and uses in `std`.
@@ -584,8 +583,7 @@ fn main(_argc: int, _argv: **u8) -> int {
 ```
 
 Note the use of `abort`: the `exchange_malloc` lang item is assumed to
-return a valid pointer, and so needs to do the check
-internally.
+return a valid pointer, and so needs to do the check internally.
 
 Other features provided by lang items include:
 
