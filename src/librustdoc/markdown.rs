@@ -19,10 +19,10 @@ use html::escape::Escape;
 use html::markdown::{MarkdownWithToc, find_testable_code, reset_headers};
 use test::Collector;
 
-fn load_string(input: &Path) -> io::IoResult<Option<~str>> {
+fn load_string(input: &Path) -> io::IoResult<Option<StrBuf>> {
     let mut f = try!(io::File::open(input));
     let d = try!(f.read_to_end());
-    Ok(str::from_utf8(d.as_slice()).map(|s| s.to_owned()))
+    Ok(str::from_utf8(d.as_slice()).map(|s| s.to_strbuf()))
 }
 macro_rules! load_or_return {
     ($input: expr, $cant_read: expr, $not_utf8: expr) => {
@@ -61,13 +61,13 @@ fn extract_leading_metadata<'a>(s: &'a str) -> (Vec<&'a str>, &'a str) {
     (metadata, "")
 }
 
-fn load_external_files(names: &[~str]) -> Option<~str> {
+fn load_external_files(names: &[StrBuf]) -> Option<StrBuf> {
     let mut out = StrBuf::new();
     for name in names.iter() {
-        out.push_str(load_or_return!(name.as_slice(), None, None));
+        out.push_str(load_or_return!(name.as_slice(), None, None).as_slice());
         out.push_char('\n');
     }
-    Some(out.into_owned())
+    Some(out)
 }
 
 /// Render `input` (e.g. "foo.md") into an HTML file in `output`
@@ -87,10 +87,19 @@ pub fn render(input: &str, mut output: Path, matches: &getopts::Matches) -> int 
 
     let (in_header, before_content, after_content) =
         match (load_external_files(matches.opt_strs("markdown-in-header")
+                                          .move_iter()
+                                          .map(|x| x.to_strbuf())
+                                          .collect::<Vec<_>>()
                                           .as_slice()),
                load_external_files(matches.opt_strs("markdown-before-content")
+                                          .move_iter()
+                                          .map(|x| x.to_strbuf())
+                                          .collect::<Vec<_>>()
                                           .as_slice()),
                load_external_files(matches.opt_strs("markdown-after-content")
+                                          .move_iter()
+                                          .map(|x| x.to_strbuf())
+                                          .collect::<Vec<_>>()
                                           .as_slice())) {
         (Some(a), Some(b), Some(c)) => (a,b,c),
         _ => return 3
@@ -106,7 +115,7 @@ pub fn render(input: &str, mut output: Path, matches: &getopts::Matches) -> int 
         Ok(f) => f
     };
 
-    let (metadata, text) = extract_leading_metadata(input_str);
+    let (metadata, text) = extract_leading_metadata(input_str.as_slice());
     if metadata.len() == 0 {
         let _ = writeln!(&mut io::stderr(),
                          "invalid markdown file: expecting initial line with `% ...TITLE...`");
@@ -161,12 +170,16 @@ pub fn render(input: &str, mut output: Path, matches: &getopts::Matches) -> int 
 }
 
 /// Run any tests/code examples in the markdown file `input`.
-pub fn test(input: &str, libs: HashSet<Path>, mut test_args: Vec<~str>) -> int {
+pub fn test(input: &str, libs: HashSet<Path>, mut test_args: Vec<StrBuf>) -> int {
     let input_str = load_or_return!(input, 1, 2);
 
-    let mut collector = Collector::new(input.to_owned(), libs, true, true);
-    find_testable_code(input_str, &mut collector);
-    test_args.unshift("rustdoctest".to_owned());
-    testing::test_main(test_args.as_slice(), collector.tests);
+    let mut collector = Collector::new(input.to_strbuf(), libs, true, true);
+    find_testable_code(input_str.as_slice(), &mut collector);
+    test_args.unshift("rustdoctest".to_strbuf());
+    testing::test_main(test_args.move_iter()
+                                .map(|x| x.to_str())
+                                .collect::<Vec<_>>()
+                                .as_slice(),
+                       collector.tests);
     0
 }
