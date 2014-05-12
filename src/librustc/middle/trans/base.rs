@@ -165,11 +165,11 @@ impl<'a> Drop for StatRecorder<'a> {
 }
 
 // only use this for foreign function ABIs and glue, use `decl_rust_fn` for Rust functions
-fn decl_fn(llmod: ModuleRef, name: &str, cc: lib::llvm::CallConv,
+fn decl_fn(ccx: &CrateContext, name: &str, cc: lib::llvm::CallConv,
            ty: Type, output: ty::t) -> ValueRef {
     let llfn: ValueRef = name.with_c_str(|buf| {
         unsafe {
-            llvm::LLVMGetOrInsertFunction(llmod, buf, ty.to_ref())
+            llvm::LLVMGetOrInsertFunction(ccx.llmod, buf, ty.to_ref())
         }
     });
 
@@ -193,22 +193,25 @@ fn decl_fn(llmod: ModuleRef, name: &str, cc: lib::llvm::CallConv,
     lib::llvm::SetFunctionCallConv(llfn, cc);
     // Function addresses in Rust are never significant, allowing functions to be merged.
     lib::llvm::SetUnnamedAddr(llfn, true);
-    set_split_stack(llfn);
+
+    if !ccx.sess().opts.cg.no_split_stack {
+        set_split_stack(llfn);
+    }
 
     llfn
 }
 
 // only use this for foreign function ABIs and glue, use `decl_rust_fn` for Rust functions
-pub fn decl_cdecl_fn(llmod: ModuleRef,
+pub fn decl_cdecl_fn(ccx: &CrateContext,
                      name: &str,
                      ty: Type,
                      output: ty::t) -> ValueRef {
-    decl_fn(llmod, name, lib::llvm::CCallConv, ty, output)
+    decl_fn(ccx, name, lib::llvm::CCallConv, ty, output)
 }
 
 // only use this for foreign function ABIs and glue, use `get_extern_rust_fn` for Rust functions
 pub fn get_extern_fn(externs: &mut ExternMap,
-                     llmod: ModuleRef,
+                     ccx: &CrateContext,
                      name: &str,
                      cc: lib::llvm::CallConv,
                      ty: Type,
@@ -218,7 +221,7 @@ pub fn get_extern_fn(externs: &mut ExternMap,
         Some(n) => return *n,
         None => {}
     }
-    let f = decl_fn(llmod, name, cc, ty, output);
+    let f = decl_fn(ccx, name, cc, ty, output);
     externs.insert(name.to_strbuf(), f);
     f
 }
@@ -246,7 +249,7 @@ pub fn decl_rust_fn(ccx: &CrateContext, has_env: bool,
     use middle::ty::{BrAnon, ReLateBound};
 
     let llfty = type_of_rust_fn(ccx, has_env, inputs, output);
-    let llfn = decl_cdecl_fn(ccx.llmod, name, llfty, output);
+    let llfn = decl_cdecl_fn(ccx, name, llfty, output);
 
     let uses_outptr = type_of::return_uses_outptr(ccx, output);
     let offset = if uses_outptr { 1 } else { 0 };
@@ -512,7 +515,7 @@ pub fn get_res_dtor(ccx: &CrateContext,
         let llty = type_of_dtor(ccx, class_ty);
 
         get_extern_fn(&mut *ccx.externs.borrow_mut(),
-                      ccx.llmod,
+                      ccx,
                       name.as_slice(),
                       lib::llvm::CCallConv,
                       llty,
@@ -1735,7 +1738,7 @@ pub fn register_fn_llvmty(ccx: &CrateContext,
                           output: ty::t) -> ValueRef {
     debug!("register_fn_llvmty id={} sym={}", node_id, sym);
 
-    let llfn = decl_fn(ccx.llmod, sym.as_slice(), cc, fn_ty, output);
+    let llfn = decl_fn(ccx, sym.as_slice(), cc, fn_ty, output);
     finish_register_fn(ccx, sp, sym, node_id, llfn);
     llfn
 }
@@ -1767,7 +1770,7 @@ pub fn create_entry_wrapper(ccx: &CrateContext,
         let llfty = Type::func([ccx.int_type, Type::i8p(ccx).ptr_to()],
                                &ccx.int_type);
 
-        let llfn = decl_cdecl_fn(ccx.llmod, "main", llfty, ty::mk_nil());
+        let llfn = decl_cdecl_fn(ccx, "main", llfty, ty::mk_nil());
         let llbb = "top".with_c_str(|buf| {
             unsafe {
                 llvm::LLVMAppendBasicBlockInContext(ccx.llcx, llfn, buf)
