@@ -65,3 +65,96 @@ extern "system" {
     pub fn CancelIoEx(hFile: libc::HANDLE,
                       lpOverlapped: libc::LPOVERLAPPED) -> libc::BOOL;
 }
+
+pub mod compat {
+    use std::intrinsics::{atomic_store_relaxed, transmute};
+    use libc::types::os::arch::extra::{LPCWSTR, HMODULE, LPCSTR, LPVOID};
+    use std::os::win32::as_utf16_p;
+
+    extern "system" {
+        fn GetModuleHandleW(lpModuleName: LPCWSTR) -> HMODULE;
+        fn GetProcAddress(hModule: HMODULE, lpProcName: LPCSTR) -> LPVOID;
+    }
+
+    // store_func() is idempotent, so using relaxed ordering for the atomics should be enough.
+    // This way, calling a function in this compatibility layer (after it's loaded) shouldn't
+    // be any slower than a regular DLL call.
+    unsafe fn store_func<T: Copy>(ptr: *mut T, module: &str, symbol: &str, fallback: T) {
+        as_utf16_p(module, |module| {
+            symbol.with_c_str(|symbol| {
+                let handle = GetModuleHandleW(module);
+                let func: Option<T> = transmute(GetProcAddress(handle, symbol));
+                atomic_store_relaxed(ptr, func.unwrap_or(fallback))
+            })
+        })
+    }
+
+    /// Macro for creating a compatibility fallback for a Windows function
+    ///
+    /// # Example
+    /// ```
+    /// compat_fn!(adll32::SomeFunctionW(_arg: LPCWSTR) {
+    ///     // Fallback implementation
+    /// })
+    /// ```
+    ///
+    /// Note that arguments unused by the fallback implementation should not be called `_` as
+    /// they are used to be passed to the real function if available.
+    macro_rules! compat_fn(
+        ($module:ident::$symbol:ident($($argname:ident: $argtype:ty),*)
+                                      -> $rettype:ty $fallback:block) => (
+            #[inline(always)]
+            pub unsafe fn $symbol($($argname: $argtype),*) -> $rettype {
+                static mut ptr: extern "system" fn($($argname: $argtype),*) -> $rettype = thunk;
+
+                extern "system" fn thunk($($argname: $argtype),*) -> $rettype {
+                    unsafe {
+                        ::io::c::compat::store_func(&mut ptr,
+                                                             stringify!($module),
+                                                             stringify!($symbol),
+                                                             fallback);
+                        ::std::intrinsics::atomic_load_relaxed(&ptr)($($argname),*)
+                    }
+                }
+
+                extern "system" fn fallback($($argname: $argtype),*) -> $rettype $fallback
+
+                ::std::intrinsics::atomic_load_relaxed(&ptr)($($argname),*)
+            }
+        );
+
+        ($module:ident::$symbol:ident($($argname:ident: $argtype:ty),*) $fallback:block) => (
+            compat_fn!($module::$symbol($($argname: $argtype),*) -> () $fallback)
+        )
+    )
+
+    /// Compatibility layer for functions in `kernel32.dll`
+    ///
+    /// Latest versions of Windows this is needed for:
+    ///
+    /// * `CreateSymbolicLinkW`: Windows XP, Windows Server 2003
+    /// * `GetFinalPathNameByHandleW`: Windows XP, Windows Server 2003
+    pub mod kernel32 {
+        use libc::types::os::arch::extra::{DWORD, LPCWSTR, BOOLEAN, HANDLE};
+        use libc::consts::os::extra::ERROR_CALL_NOT_IMPLEMENTED;
+
+        extern "system" {
+            fn SetLastError(dwErrCode: DWORD);
+        }
+
+        compat_fn!(kernel32::CreateSymbolicLinkW(_lpSymlinkFileName: LPCWSTR,
+                                                 _lpTargetFileName: LPCWSTR,
+                                                 _dwFlags: DWORD) -> BOOLEAN {
+            unsafe { SetLastError(ERROR_CALL_NOT_IMPLEMENTED as DWORD); }
+            0
+        })
+
+        compat_fn!(kernel32::GetFinalPathNameByHandleW(_hFile: HANDLE,
+                                                       _lpszFilePath: LPCWSTR,
+                                                       _cchFilePath: DWORD,
+                                                       _dwFlags: DWORD) -> DWORD {
+            unsafe { SetLastError(ERROR_CALL_NOT_IMPLEMENTED as DWORD); }
+            0
+        })
+    }
+}

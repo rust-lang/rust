@@ -252,7 +252,6 @@ pub use funcs::bsd43::{shutdown};
 #[cfg(windows)] pub use funcs::extra::kernel32::{FlushFileBuffers, SetEndOfFile, CreateFileW};
 #[cfg(windows)] pub use funcs::extra::kernel32::{CreateDirectoryW, FindFirstFileW};
 #[cfg(windows)] pub use funcs::extra::kernel32::{FindNextFileW, FindClose, DeleteFileW};
-#[cfg(windows)] pub use funcs::extra::kernel32::{GetFinalPathNameByHandleW, CreateSymbolicLinkW};
 #[cfg(windows)] pub use funcs::extra::kernel32::{CreateHardLinkW, CreateEventW};
 #[cfg(windows)] pub use funcs::extra::kernel32::{FlushFileBuffers, CreateNamedPipeW};
 #[cfg(windows)] pub use funcs::extra::kernel32::{SetNamedPipeHandleState, WaitNamedPipeW};
@@ -1735,6 +1734,7 @@ pub mod consts {
             pub static ERROR_INVALID_HANDLE : c_int = 6;
             pub static ERROR_BROKEN_PIPE: c_int = 109;
             pub static ERROR_DISK_FULL : c_int = 112;
+            pub static ERROR_CALL_NOT_IMPLEMENTED : c_int = 120;
             pub static ERROR_INSUFFICIENT_BUFFER : c_int = 122;
             pub static ERROR_INVALID_NAME : c_int = 123;
             pub static ERROR_ALREADY_EXISTS : c_int = 183;
@@ -4189,9 +4189,9 @@ pub mod funcs {
                                                LPSTARTUPINFO,
                                                LPPROCESS_INFORMATION,
                                                LPMEMORY_BASIC_INFORMATION,
-                                               LPSYSTEM_INFO, BOOLEAN,
-                                               HANDLE, LPHANDLE, LARGE_INTEGER,
-                                               PLARGE_INTEGER, LPFILETIME};
+                                               LPSYSTEM_INFO, HANDLE, LPHANDLE,
+                                               LARGE_INTEGER, PLARGE_INTEGER,
+                                               LPFILETIME};
 
             extern "system" {
                 pub fn GetEnvironmentVariableW(n: LPCWSTR,
@@ -4301,9 +4301,6 @@ pub mod funcs {
                 pub fn MoveFileExW(lpExistingFileName: LPCWSTR,
                                    lpNewFileName: LPCWSTR,
                                    dwFlags: DWORD) -> BOOL;
-                pub fn CreateSymbolicLinkW(lpSymlinkFileName: LPCWSTR,
-                                           lpTargetFileName: LPCWSTR,
-                                           dwFlags: DWORD) -> BOOLEAN;
                 pub fn CreateHardLinkW(lpSymlinkFileName: LPCWSTR,
                                        lpTargetFileName: LPCWSTR,
                                        lpSecurityAttributes: LPSECURITY_ATTRIBUTES)
@@ -4316,10 +4313,6 @@ pub mod funcs {
                                    dwCreationDisposition: DWORD,
                                    dwFlagsAndAttributes: DWORD,
                                    hTemplateFile: HANDLE) -> HANDLE;
-                pub fn GetFinalPathNameByHandleW(hFile: HANDLE,
-                                                 lpszFilePath: LPCWSTR,
-                                                 cchFilePath: DWORD,
-                                                 dwFlags: DWORD) -> DWORD;
                 pub fn ReadFile(hFile: HANDLE,
                                 lpBuffer: LPVOID,
                                 nNumberOfBytesToRead: DWORD,
