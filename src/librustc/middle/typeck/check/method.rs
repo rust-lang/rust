@@ -1498,11 +1498,11 @@ impl<'a> LookupContext<'a> {
         self.fcx.tcx()
     }
 
-    fn ty_to_str(&self, t: ty::t) -> ~str {
+    fn ty_to_str(&self, t: ty::t) -> StrBuf {
         self.fcx.infcx().ty_to_str(t)
     }
 
-    fn did_to_str(&self, did: DefId) -> ~str {
+    fn did_to_str(&self, did: DefId) -> StrBuf {
         ty::item_path_str(self.tcx(), did)
     }
 
@@ -1512,23 +1512,24 @@ impl<'a> LookupContext<'a> {
 }
 
 impl Repr for Candidate {
-    fn repr(&self, tcx: &ty::ctxt) -> ~str {
-        format!("Candidate(rcvr_ty={}, rcvr_substs={}, method_ty={}, origin={:?})",
-                self.rcvr_match_condition.repr(tcx),
-                self.rcvr_substs.repr(tcx),
-                self.method_ty.repr(tcx),
-                self.origin)
+    fn repr(&self, tcx: &ty::ctxt) -> StrBuf {
+        format_strbuf!("Candidate(rcvr_ty={}, rcvr_substs={}, method_ty={}, \
+                        origin={:?})",
+                       self.rcvr_match_condition.repr(tcx),
+                       self.rcvr_substs.repr(tcx),
+                       self.method_ty.repr(tcx),
+                       self.origin)
     }
 }
 
 impl Repr for RcvrMatchCondition {
-    fn repr(&self, tcx: &ty::ctxt) -> ~str {
+    fn repr(&self, tcx: &ty::ctxt) -> StrBuf {
         match *self {
             RcvrMatchesIfObject(d) => {
-                format!("RcvrMatchesIfObject({})", d.repr(tcx))
+                format_strbuf!("RcvrMatchesIfObject({})", d.repr(tcx))
             }
             RcvrMatchesIfSubtype(t) => {
-                format!("RcvrMatchesIfSubtype({})", t.repr(tcx))
+                format_strbuf!("RcvrMatchesIfSubtype({})", t.repr(tcx))
             }
         }
     }

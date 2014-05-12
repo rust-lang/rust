@@ -254,8 +254,9 @@ impl<'a, 'b> Reflector<'a, 'b> {
               }
 
               let extra = (vec!(
-                  self.c_slice(token::intern_and_get_ident(ty_to_str(tcx,
-                                                                     t))),
+                  self.c_slice(
+                      token::intern_and_get_ident(ty_to_str(tcx,
+                                                            t).as_slice())),
                   self.c_bool(named_fields),
                   self.c_uint(fields.len())
               )).append(self.c_size_and_align(t).as_slice());
@@ -288,7 +289,11 @@ impl<'a, 'b> Reflector<'a, 'b> {
                 let sym = mangle_internal_name_by_path_and_seq(
                     ast_map::Values([].iter()).chain(None), "get_disr");
 
-                let llfdecl = decl_internal_rust_fn(ccx, false, [opaqueptrty], ty::mk_u64(), sym);
+                let llfdecl = decl_internal_rust_fn(ccx,
+                                                    false,
+                                                    [opaqueptrty],
+                                                    ty::mk_u64(),
+                                                    sym.as_slice());
                 let arena = TypedArena::new();
                 let fcx = new_fn_ctxt(ccx, llfdecl, -1, false,
                                       ty::mk_u64(), None, None, &arena);
@@ -344,7 +349,8 @@ impl<'a, 'b> Reflector<'a, 'b> {
 
           ty::ty_trait(..) => {
               let extra = [
-                  self.c_slice(token::intern_and_get_ident(ty_to_str(tcx, t)))
+                  self.c_slice(token::intern_and_get_ident(
+                          ty_to_str(tcx, t).as_slice()))
               ];
               self.visit("trait", extra);
           }

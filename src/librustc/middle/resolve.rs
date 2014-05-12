@@ -57,7 +57,7 @@ pub type TraitMap = NodeMap<Vec<DefId> >;
 pub type ExportMap2 = RefCell<NodeMap<Vec<Export2> >>;
 
 pub struct Export2 {
-    pub name: ~str,        // The name of the target.
+    pub name: StrBuf,        // The name of the target.
     pub def_id: DefId,     // The definition of the target.
 }
 
@@ -2046,7 +2046,7 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    fn idents_to_str(&mut self, idents: &[Ident]) -> ~str {
+    fn idents_to_str(&mut self, idents: &[Ident]) -> StrBuf {
         let mut first = true;
         let mut result = StrBuf::new();
         for ident in idents.iter() {
@@ -2057,10 +2057,10 @@ impl<'a> Resolver<'a> {
             }
             result.push_str(token::get_ident(*ident).get());
         };
-        result.into_owned()
+        result
     }
 
-    fn path_idents_to_str(&mut self, path: &Path) -> ~str {
+    fn path_idents_to_str(&mut self, path: &Path) -> StrBuf {
         let identifiers: Vec<ast::Ident> = path.segments
                                              .iter()
                                              .map(|seg| seg.identifier)
@@ -2070,25 +2070,26 @@ impl<'a> Resolver<'a> {
 
     fn import_directive_subclass_to_str(&mut self,
                                         subclass: ImportDirectiveSubclass)
-                                        -> ~str {
+                                        -> StrBuf {
         match subclass {
             SingleImport(_, source) => {
-                token::get_ident(source).get().to_str()
+                token::get_ident(source).get().to_strbuf()
             }
-            GlobImport => "*".to_owned()
+            GlobImport => "*".to_strbuf()
         }
     }
 
     fn import_path_to_str(&mut self,
                           idents: &[Ident],
                           subclass: ImportDirectiveSubclass)
-                          -> ~str {
+                          -> StrBuf {
         if idents.is_empty() {
             self.import_directive_subclass_to_str(subclass)
         } else {
             (format!("{}::{}",
                      self.idents_to_str(idents),
-                     self.import_directive_subclass_to_str(subclass)))
+                     self.import_directive_subclass_to_str(
+                         subclass))).to_strbuf()
         }
     }
 
@@ -2219,8 +2220,11 @@ impl<'a> Resolver<'a> {
 
         let lp = match lp {
             LastMod(lp) => lp,
-            LastImport{..} => self.session.span_bug(directive.span,
-                                                    "Not expecting Import here, must be LastMod"),
+            LastImport {..} => {
+                self.session
+                    .span_bug(directive.span,
+                              "not expecting Import here, must be LastMod")
+            }
         };
 
         // We need to resolve both namespaces for this to succeed.
@@ -2614,7 +2618,7 @@ impl<'a> Resolver<'a> {
                 Failed => {
                     let segment_name = token::get_ident(name);
                     let module_name = self.module_to_str(&*search_module);
-                    if "???" == module_name {
+                    if "???" == module_name.as_slice() {
                         let span = Span {
                             lo: span.lo,
                             hi: span.lo + Pos::from_uint(segment_name.get().len()),
@@ -2732,14 +2736,18 @@ impl<'a> Resolver<'a> {
         match module_prefix_result {
             Failed => {
                 let mpath = self.idents_to_str(module_path);
-                match mpath.rfind(':') {
+                match mpath.as_slice().rfind(':') {
                     Some(idx) => {
-                        self.resolve_error(span, format!("unresolved import: could not find `{}` \
-                                                         in `{}`",
-                                                         // idx +- 1 to account for the colons
-                                                         // on either side
-                                                         mpath.slice_from(idx + 1),
-                                                         mpath.slice_to(idx - 1)));
+                        self.resolve_error(span,
+                                           format!("unresolved import: could \
+                                                    not find `{}` in `{}`",
+                                                   // idx +- 1 to account for
+                                                   // the colons on either
+                                                   // side
+                                                   mpath.as_slice()
+                                                        .slice_from(idx + 1),
+                                                   mpath.as_slice()
+                                                        .slice_to(idx - 1)));
                     },
                     None => (),
                 };
@@ -3283,7 +3291,7 @@ impl<'a> Resolver<'a> {
                 debug!("(computing exports) YES: export '{}' => {:?}",
                        name, def_id_of_def(d));
                 exports2.push(Export2 {
-                    name: name.get().to_str(),
+                    name: name.get().to_strbuf(),
                     def_id: def_id_of_def(d)
                 });
             }
@@ -4557,10 +4565,11 @@ impl<'a> Resolver<'a> {
             let def = self.resolve_module_relative_path(path, namespace);
             match (def, unqualified_def) {
                 (Some((d, _)), Some((ud, _))) if d == ud => {
-                    self.session.add_lint(UnnecessaryQualification,
-                                          id,
-                                          path.span,
-                                          "unnecessary qualification".to_owned());
+                    self.session
+                        .add_lint(UnnecessaryQualification,
+                                  id,
+                                  path.span,
+                                  "unnecessary qualification".to_strbuf());
                 }
                 _ => ()
             }
@@ -4875,7 +4884,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn find_best_match_for_name(&mut self, name: &str, max_distance: uint)
-                                -> Option<~str> {
+                                -> Option<StrBuf> {
         let this = &mut *self;
 
         let mut maybes: Vec<token::InternedString> = Vec::new();
@@ -4907,7 +4916,7 @@ impl<'a> Resolver<'a> {
             *values.get(smallest) <= max_distance &&
             name != maybes.get(smallest).get() {
 
-            Some(maybes.get(smallest).get().to_str())
+            Some(maybes.get(smallest).get().to_strbuf())
 
         } else {
             None
@@ -4977,17 +4986,20 @@ impl<'a> Resolver<'a> {
                             _ =>
                                // limit search to 5 to reduce the number
                                // of stupid suggestions
-                               match self.find_best_match_for_name(wrong_name, 5) {
+                               match self.find_best_match_for_name(
+                                        wrong_name.as_slice(),
+                                        5) {
                                    Some(m) => {
                                        self.resolve_error(expr.span,
                                            format!("unresolved name `{}`. \
                                                     Did you mean `{}`?",
-                                                    wrong_name, m));
+                                                    wrong_name,
+                                                    m));
                                    }
                                    None => {
                                        self.resolve_error(expr.span,
                                             format!("unresolved name `{}`.",
-                                                    wrong_name));
+                                                    wrong_name.as_slice()));
                                    }
                                }
                         }
@@ -5240,8 +5252,11 @@ impl<'a> Resolver<'a> {
                     ViewPathGlob(_, id) => {
                         if !self.used_imports.contains(&(id, TypeNS)) &&
                            !self.used_imports.contains(&(id, ValueNS)) {
-                            self.session.add_lint(UnusedImports, id, p.span,
-                                                  "unused import".to_owned());
+                            self.session
+                                .add_lint(UnusedImports,
+                                          id,
+                                          p.span,
+                                          "unused import".to_strbuf());
                         }
                     },
                 }
@@ -5257,19 +5272,27 @@ impl<'a> Resolver<'a> {
     // public or private item, we will check the correct thing, dependent on how the import
     // is used.
     fn finalize_import(&mut self, id: NodeId, span: Span) {
-        debug!("finalizing import uses for {}", self.session.codemap().span_to_snippet(span));
+        debug!("finalizing import uses for {}",
+               self.session.codemap().span_to_snippet(span));
 
         if !self.used_imports.contains(&(id, TypeNS)) &&
            !self.used_imports.contains(&(id, ValueNS)) {
-            self.session.add_lint(UnusedImports, id, span, "unused import".to_owned());
+            self.session.add_lint(UnusedImports,
+                                  id,
+                                  span,
+                                  "unused import".to_strbuf());
         }
 
         let (v_priv, t_priv) = match self.last_private.find(&id) {
-            Some(&LastImport{value_priv: v,
-                             value_used: _,
-                             type_priv: t,
-                             type_used: _}) => (v, t),
-            Some(_) => fail!("We should only have LastImport for `use` directives"),
+            Some(&LastImport {
+                value_priv: v,
+                value_used: _,
+                type_priv: t,
+                type_used: _
+            }) => (v, t),
+            Some(_) => {
+                fail!("we should only have LastImport for `use` directives")
+            }
             _ => return,
         };
 
@@ -5306,7 +5329,7 @@ impl<'a> Resolver<'a> {
     //
 
     /// A somewhat inefficient routine to obtain the name of a module.
-    fn module_to_str(&mut self, module: &Module) -> ~str {
+    fn module_to_str(&mut self, module: &Module) -> StrBuf {
         let mut idents = Vec::new();
 
         fn collect_mod(idents: &mut Vec<ast::Ident>, module: &Module) {
@@ -5325,7 +5348,7 @@ impl<'a> Resolver<'a> {
         collect_mod(&mut idents, module);
 
         if idents.len() == 0 {
-            return "???".to_owned();
+            return "???".to_strbuf();
         }
         self.idents_to_str(idents.move_iter().rev()
                                  .collect::<Vec<ast::Ident>>()

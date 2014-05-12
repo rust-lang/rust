@@ -184,8 +184,8 @@ fn item_method_sort(item: ebml::Doc) -> char {
     ret
 }
 
-fn item_symbol(item: ebml::Doc) -> ~str {
-    reader::get_doc(item, tag_items_data_item_symbol).as_str()
+fn item_symbol(item: ebml::Doc) -> StrBuf {
+    reader::get_doc(item, tag_items_data_item_symbol).as_str().to_strbuf()
 }
 
 fn item_parent_item(d: ebml::Doc) -> Option<ast::DefId> {
@@ -451,7 +451,7 @@ pub fn get_impl_vtables(cdata: Cmd,
 }
 
 
-pub fn get_symbol(data: &[u8], id: ast::NodeId) -> ~str {
+pub fn get_symbol(data: &[u8], id: ast::NodeId) -> StrBuf {
     return item_symbol(lookup_item(id, data));
 }
 
@@ -1097,13 +1097,15 @@ pub fn get_crate_deps(data: &[u8]) -> Vec<CrateDep> {
     let cratedoc = reader::Doc(data);
     let depsdoc = reader::get_doc(cratedoc, tag_crate_deps);
     let mut crate_num = 1;
-    fn docstr(doc: ebml::Doc, tag_: uint) -> ~str {
+    fn docstr(doc: ebml::Doc, tag_: uint) -> StrBuf {
         let d = reader::get_doc(doc, tag_);
-        d.as_str_slice().to_str()
+        d.as_str_slice().to_strbuf()
     }
     reader::tagged_docs(depsdoc, tag_crate_dep, |depdoc| {
-        let crate_id = from_str(docstr(depdoc, tag_crate_dep_crateid)).unwrap();
-        let hash = Svh::new(docstr(depdoc, tag_crate_dep_hash));
+        let crate_id =
+            from_str(docstr(depdoc,
+                            tag_crate_dep_crateid).as_slice()).unwrap();
+        let hash = Svh::new(docstr(depdoc, tag_crate_dep_hash).as_slice());
         deps.push(CrateDep {
             cnum: crate_num,
             crate_id: crate_id,
@@ -1144,10 +1146,10 @@ pub fn maybe_get_crate_id(data: &[u8]) -> Option<CrateId> {
     })
 }
 
-pub fn get_crate_triple(data: &[u8]) -> ~str {
+pub fn get_crate_triple(data: &[u8]) -> StrBuf {
     let cratedoc = reader::Doc(data);
     let triple_doc = reader::maybe_get_doc(cratedoc, tag_crate_triple);
-    triple_doc.expect("No triple in crate").as_str()
+    triple_doc.expect("No triple in crate").as_str().to_strbuf()
 }
 
 pub fn get_crate_id(data: &[u8]) -> CrateId {
@@ -1239,7 +1241,8 @@ pub fn get_trait_of_method(cdata: Cmd, id: ast::NodeId, tcx: &ty::ctxt)
 }
 
 
-pub fn get_native_libraries(cdata: Cmd) -> Vec<(cstore::NativeLibaryKind, ~str)> {
+pub fn get_native_libraries(cdata: Cmd)
+                            -> Vec<(cstore::NativeLibaryKind, StrBuf)> {
     let libraries = reader::get_doc(reader::Doc(cdata.data()),
                                     tag_native_libraries);
     let mut result = Vec::new();
@@ -1248,7 +1251,7 @@ pub fn get_native_libraries(cdata: Cmd) -> Vec<(cstore::NativeLibaryKind, ~str)>
         let name_doc = reader::get_doc(lib_doc, tag_native_libraries_name);
         let kind: cstore::NativeLibaryKind =
             FromPrimitive::from_u32(reader::doc_as_u32(kind_doc)).unwrap();
-        let name = name_doc.as_str();
+        let name = name_doc.as_str().to_strbuf();
         result.push((kind, name));
         true
     });
@@ -1260,12 +1263,12 @@ pub fn get_macro_registrar_fn(data: &[u8]) -> Option<ast::NodeId> {
         .map(|doc| FromPrimitive::from_u32(reader::doc_as_u32(doc)).unwrap())
 }
 
-pub fn get_exported_macros(data: &[u8]) -> Vec<~str> {
+pub fn get_exported_macros(data: &[u8]) -> Vec<StrBuf> {
     let macros = reader::get_doc(reader::Doc(data),
                                  tag_exported_macros);
     let mut result = Vec::new();
     reader::tagged_docs(macros, tag_macro_def, |macro_doc| {
-        result.push(macro_doc.as_str());
+        result.push(macro_doc.as_str().to_strbuf());
         true
     });
     result

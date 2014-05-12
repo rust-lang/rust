@@ -45,9 +45,9 @@ pub struct Stats {
     pub n_inlines: Cell<uint>,
     pub n_closures: Cell<uint>,
     pub n_llvm_insns: Cell<uint>,
-    pub llvm_insns: RefCell<HashMap<~str, uint>>,
+    pub llvm_insns: RefCell<HashMap<StrBuf, uint>>,
     // (ident, time-in-ms, llvm-instructions)
-    pub fn_stats: RefCell<Vec<(~str, uint, uint)> >,
+    pub fn_stats: RefCell<Vec<(StrBuf, uint, uint)> >,
 }
 
 pub struct CrateContext {
@@ -60,7 +60,7 @@ pub struct CrateContext {
     pub item_vals: RefCell<NodeMap<ValueRef>>,
     pub exp_map2: resolve::ExportMap2,
     pub reachable: NodeSet,
-    pub item_symbols: RefCell<NodeMap<~str>>,
+    pub item_symbols: RefCell<NodeMap<StrBuf>>,
     pub link_meta: LinkMeta,
     pub drop_glues: RefCell<HashMap<ty::t, ValueRef>>,
     pub tydescs: RefCell<HashMap<ty::t, Rc<tydesc_info>>>,
@@ -109,8 +109,8 @@ pub struct CrateContext {
     pub llsizingtypes: RefCell<HashMap<ty::t, Type>>,
     pub adt_reprs: RefCell<HashMap<ty::t, Rc<adt::Repr>>>,
     pub symbol_hasher: RefCell<Sha256>,
-    pub type_hashcodes: RefCell<HashMap<ty::t, ~str>>,
-    pub all_llvm_symbols: RefCell<HashSet<~str>>,
+    pub type_hashcodes: RefCell<HashMap<ty::t, StrBuf>>,
+    pub all_llvm_symbols: RefCell<HashSet<StrBuf>>,
     pub tcx: ty::ctxt,
     pub stats: Stats,
     pub int_type: Type,
@@ -141,16 +141,30 @@ impl CrateContext {
             let metadata_llmod = format!("{}_metadata", name).with_c_str(|buf| {
                 llvm::LLVMModuleCreateWithNameInContext(buf, llcx)
             });
-            tcx.sess.targ_cfg.target_strs.data_layout.with_c_str(|buf| {
+            tcx.sess
+               .targ_cfg
+               .target_strs
+               .data_layout
+               .as_slice()
+               .with_c_str(|buf| {
                 llvm::LLVMSetDataLayout(llmod, buf);
                 llvm::LLVMSetDataLayout(metadata_llmod, buf);
             });
-            tcx.sess.targ_cfg.target_strs.target_triple.with_c_str(|buf| {
+            tcx.sess
+               .targ_cfg
+               .target_strs
+               .target_triple
+               .as_slice()
+               .with_c_str(|buf| {
                 llvm::LLVMRustSetNormalizedTarget(llmod, buf);
                 llvm::LLVMRustSetNormalizedTarget(metadata_llmod, buf);
             });
 
-            let td = mk_target_data(tcx.sess.targ_cfg.target_strs.data_layout);
+            let td = mk_target_data(tcx.sess
+                                       .targ_cfg
+                                       .target_strs
+                                       .data_layout
+                                       .as_slice());
 
             let dbg_cx = if tcx.sess.opts.debuginfo != NoDebugInfo {
                 Some(debuginfo::CrateDebugContext::new(llmod))

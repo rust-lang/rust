@@ -1830,7 +1830,7 @@ impl<'a> IdVisitingOperation for Context<'a> {
             None => {}
             Some(l) => {
                 for (lint, span, msg) in l.move_iter() {
-                    self.span_lint(lint, span, msg)
+                    self.span_lint(lint, span, msg.as_slice())
                 }
             }
         }

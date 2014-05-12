@@ -100,7 +100,7 @@ pub fn run(input: &str,
 fn runtest(test: &str, cratename: &str, libs: HashSet<Path>, should_fail: bool,
            no_run: bool, loose_feature_gating: bool) {
     let test = maketest(test, cratename, loose_feature_gating);
-    let input = driver::StrInput(test);
+    let input = driver::StrInput(test.to_strbuf());
 
     let sessopts = config::Options {
         maybe_sysroot: Some(os::self_exe_path().unwrap().dir_path()),
