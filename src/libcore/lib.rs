@@ -81,6 +81,7 @@ pub mod container;
 mod unicode;
 mod unit;
 pub mod any;
+pub mod atomics;
 pub mod bool;
 pub mod cell;
 pub mod char;
