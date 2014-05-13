@@ -1116,7 +1116,7 @@ mod test {
             spawn(proc() {
                 tx.send(TcpStream::connect(addr.ip.to_str(), port).unwrap());
             });
-            let l = rx.recv();
+            let _l = rx.recv();
             for i in range(0, 1001) {
                 match a.accept() {
                     Ok(..) => break,
