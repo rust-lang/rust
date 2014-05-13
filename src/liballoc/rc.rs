@@ -23,17 +23,18 @@ pointers, and then storing the parent pointers as `Weak` pointers.
 
 */
 
-use mem::transmute;
-use cell::Cell;
-use clone::Clone;
-use cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering};
-use kinds::marker;
-use ops::{Deref, Drop};
-use option::{Option, Some, None};
-use ptr;
-use ptr::RawPtr;
-use mem::{min_align_of, size_of};
-use rt::heap::deallocate;
+use core::mem::transmute;
+use core::cell::Cell;
+use core::clone::Clone;
+use core::cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering};
+use core::kinds::marker;
+use core::ops::{Deref, Drop};
+use core::option::{Option, Some, None};
+use core::ptr;
+use core::ptr::RawPtr;
+use core::mem::{min_align_of, size_of};
+
+use heap::deallocate;
 
 struct RcBox<T> {
     value: T,
@@ -230,9 +231,11 @@ impl<T> RcBoxPtr<T> for Weak<T> {
 
 #[cfg(test)]
 mod tests {
-    use prelude::*;
-    use super::*;
-    use cell::RefCell;
+    use super::{Rc, Weak};
+    use std::cell::RefCell;
+    use std::option::{Option, Some, None};
+    use std::mem::drop;
+    use std::clone::Clone;
 
     #[test]
     fn test_clone() {
@@ -280,7 +283,7 @@ mod tests {
     #[test]
     fn gc_inside() {
         // see issue #11532
-        use gc::Gc;
+        use std::gc::Gc;
         let a = Rc::new(RefCell::new(Gc::new(1)));
         assert!(a.try_borrow_mut().is_some());
     }
