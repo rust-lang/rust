@@ -20,7 +20,7 @@ use vm::{CaptureLocs, MatchKind, Exists, Location, Submatches};
 
 /// Escapes all regular expression meta characters in `text` so that it may be
 /// safely used in a regular expression as a literal string.
-pub fn quote(text: &str) -> ~str {
+pub fn quote(text: &str) -> StrBuf {
     let mut quoted = StrBuf::with_capacity(text.len());
     for c in text.chars() {
         if parse::is_punct(c) {
@@ -28,7 +28,7 @@ pub fn quote(text: &str) -> ~str {
         }
         quoted.push_char(c);
     }
-    quoted.into_owned()
+    quoted
 }
 
 /// Tests if the given regular expression matches somewhere in the text given.
@@ -107,9 +107,9 @@ pub struct Regex {
     /// See the comments for the `program` module in `lib.rs` for a more
     /// detailed explanation for what `regex!` requires.
     #[doc(hidden)]
-    pub original: ~str,
+    pub original: StrBuf,
     #[doc(hidden)]
-    pub names: Vec<Option<~str>>,
+    pub names: Vec<Option<StrBuf>>,
     #[doc(hidden)]
     pub p: MaybeNative,
 }
@@ -146,7 +146,10 @@ impl Regex {
     pub fn new(re: &str) -> Result<Regex, parse::Error> {
         let ast = try!(parse::parse(re));
         let (prog, names) = Program::new(ast);
-        Ok(Regex { original: re.to_owned(), names: names, p: Dynamic(prog) })
+        Ok(Regex {
+            original: re.to_strbuf(),
+            names: names, p: Dynamic(prog),
+        })
     }
 
     /// Returns true if and only if the regex matches the string given.
@@ -404,7 +407,7 @@ impl Regex {
     /// ```
     ///
     /// But anything satisfying the `Replacer` trait will work. For example,
-    /// a closure of type `|&Captures| -> ~str` provides direct access to the
+    /// a closure of type `|&Captures| -> StrBuf` provides direct access to the
     /// captures corresponding to a match. This allows one to access
     /// submatches easily:
     ///
@@ -414,7 +417,7 @@ impl Regex {
     /// # use regex::Captures; fn main() {
     /// let re = regex!(r"([^,\s]+),\s+(\S+)");
     /// let result = re.replace("Springsteen, Bruce", |caps: &Captures| {
-    ///     format!("{} {}", caps.at(2), caps.at(1))
+    ///     format_strbuf!("{} {}", caps.at(2), caps.at(1))
     /// });
     /// assert_eq!(result.as_slice(), "Bruce Springsteen");
     /// # }
@@ -526,7 +529,7 @@ impl<'t> Replacer for &'t str {
     }
 }
 
-impl<'a> Replacer for |&Captures|: 'a -> ~str {
+impl<'a> Replacer for |&Captures|: 'a -> StrBuf {
     fn reg_replace<'r>(&'r mut self, caps: &Captures) -> MaybeOwned<'r> {
         Owned((*self)(caps).into_owned())
     }
@@ -605,7 +608,7 @@ impl<'r, 't> Iterator<&'t str> for RegexSplitsN<'r, 't> {
 pub struct Captures<'t> {
     text: &'t str,
     locs: CaptureLocs,
-    named: Option<HashMap<~str, uint>>,
+    named: Option<HashMap<StrBuf, uint>>,
 }
 
 impl<'t> Captures<'t> {
@@ -624,7 +627,7 @@ impl<'t> Captures<'t> {
                     match name {
                         &None => {},
                         &Some(ref name) => {
-                            named.insert(name.to_owned(), i);
+                            named.insert(name.to_strbuf(), i);
                         }
                     }
                 }
@@ -707,12 +710,14 @@ impl<'t> Captures<'t> {
         // How evil can you get?
         // FIXME: Don't use regexes for this. It's completely unnecessary.
         let re = Regex::new(r"(^|[^$]|\b)\$(\w+)").unwrap();
-        let text = re.replace_all(text, |refs: &Captures| -> ~str {
+        let text = re.replace_all(text, |refs: &Captures| -> StrBuf {
             let (pre, name) = (refs.at(1), refs.at(2));
-            pre + match from_str::<uint>(name) {
-                None => self.name(name).to_owned(),
-                Some(i) => self.at(i).to_owned(),
-            }
+            format_strbuf!("{}{}",
+                           pre,
+                           match from_str::<uint>(name.as_slice()) {
+                None => self.name(name).to_strbuf(),
+                Some(i) => self.at(i).to_strbuf(),
+            })
         });
         let re = Regex::new(r"\$\$").unwrap();
         re.replace_all(text.as_slice(), NoExpand("$"))

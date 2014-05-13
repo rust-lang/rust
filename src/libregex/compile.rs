@@ -83,12 +83,12 @@ pub struct Program {
     /// If the regular expression requires a literal prefix in order to have a
     /// match, that prefix is stored here. (It's used in the VM to implement
     /// an optimization.)
-    pub prefix: ~str,
+    pub prefix: StrBuf,
 }
 
 impl Program {
     /// Compiles a Regex given its AST.
-    pub fn new(ast: parse::Ast) -> (Program, Vec<Option<~str>>) {
+    pub fn new(ast: parse::Ast) -> (Program, Vec<Option<StrBuf>>) {
         let mut c = Compiler {
             insts: Vec::with_capacity(100),
             names: Vec::with_capacity(10),
@@ -113,7 +113,7 @@ impl Program {
         let Compiler { insts, names } = c;
         let prog = Program {
             insts: insts,
-            prefix: pre.into_owned(),
+            prefix: pre,
         };
         (prog, names)
     }
@@ -135,7 +135,7 @@ impl Program {
 
 struct Compiler<'r> {
     insts: Vec<Inst>,
-    names: Vec<Option<~str>>,
+    names: Vec<Option<StrBuf>>,
 }
 
 // The compiler implemented here is extremely simple. Most of the complexity
