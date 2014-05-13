@@ -246,15 +246,17 @@ pub enum fixup_err {
     region_var_bound_by_region_var(RegionVid, RegionVid)
 }
 
-pub fn fixup_err_to_str(f: fixup_err) -> ~str {
+pub fn fixup_err_to_str(f: fixup_err) -> StrBuf {
     match f {
-      unresolved_int_ty(_) => "unconstrained integral type".to_owned(),
-      unresolved_ty(_) => "unconstrained type".to_owned(),
-      cyclic_ty(_) => "cyclic type of infinite size".to_owned(),
-      unresolved_region(_) => "unconstrained region".to_owned(),
+      unresolved_int_ty(_) => "unconstrained integral type".to_strbuf(),
+      unresolved_ty(_) => "unconstrained type".to_strbuf(),
+      cyclic_ty(_) => "cyclic type of infinite size".to_strbuf(),
+      unresolved_region(_) => "unconstrained region".to_strbuf(),
       region_var_bound_by_region_var(r1, r2) => {
-        format!("region var {:?} bound by another region var {:?}; this is \
-              a bug in rustc", r1, r2)
+        format_strbuf!("region var {:?} bound by another region var {:?}; \
+                        this is a bug in rustc",
+                       r1,
+                       r2)
       }
     }
 }
@@ -649,17 +651,17 @@ impl<'a> InferCtxt<'a> {
         self.report_region_errors(&errors); // see error_reporting.rs
     }
 
-    pub fn ty_to_str(&self, t: ty::t) -> ~str {
+    pub fn ty_to_str(&self, t: ty::t) -> StrBuf {
         ty_to_str(self.tcx,
                   self.resolve_type_vars_if_possible(t))
     }
 
-    pub fn tys_to_str(&self, ts: &[ty::t]) -> ~str {
-        let tstrs: Vec<~str> = ts.iter().map(|t| self.ty_to_str(*t)).collect();
-        format!("({})", tstrs.connect(", "))
+    pub fn tys_to_str(&self, ts: &[ty::t]) -> StrBuf {
+        let tstrs: Vec<StrBuf> = ts.iter().map(|t| self.ty_to_str(*t)).collect();
+        format_strbuf!("({})", tstrs.connect(", "))
     }
 
-    pub fn trait_ref_to_str(&self, t: &ty::TraitRef) -> ~str {
+    pub fn trait_ref_to_str(&self, t: &ty::TraitRef) -> StrBuf {
         let t = self.resolve_type_vars_in_trait_ref_if_possible(t);
         trait_ref_to_str(self.tcx, &t)
     }
@@ -712,19 +714,19 @@ impl<'a> InferCtxt<'a> {
     // errors.
     pub fn type_error_message_str(&self,
                                   sp: Span,
-                                  mk_msg: |Option<~str>, ~str| -> ~str,
-                                  actual_ty: ~str,
+                                  mk_msg: |Option<StrBuf>, StrBuf| -> StrBuf,
+                                  actual_ty: StrBuf,
                                   err: Option<&ty::type_err>) {
         self.type_error_message_str_with_expected(sp, mk_msg, None, actual_ty, err)
     }
 
     pub fn type_error_message_str_with_expected(&self,
                                                 sp: Span,
-                                                mk_msg: |Option<~str>,
-                                                         ~str|
-                                                         -> ~str,
+                                                mk_msg: |Option<StrBuf>,
+                                                         StrBuf|
+                                                         -> StrBuf,
                                                 expected_ty: Option<ty::t>,
-                                                actual_ty: ~str,
+                                                actual_ty: StrBuf,
                                                 err: Option<&ty::type_err>) {
         debug!("hi! expected_ty = {:?}, actual_ty = {}", expected_ty, actual_ty);
 
@@ -751,7 +753,7 @@ impl<'a> InferCtxt<'a> {
 
     pub fn type_error_message(&self,
                               sp: Span,
-                              mk_msg: |~str| -> ~str,
+                              mk_msg: |StrBuf| -> StrBuf,
                               actual_ty: ty::t,
                               err: Option<&ty::type_err>) {
         let actual_ty = self.resolve_type_vars_if_possible(actual_ty);
@@ -775,10 +777,12 @@ impl<'a> InferCtxt<'a> {
             // Don't report an error if expected is ty_err
             ty::ty_err => return,
             _ => {
-                // if I leave out : ~str, it infers &str and complains
-                |actual: ~str| {
-                    format!("mismatched types: expected `{}` but found `{}`",
-                         self.ty_to_str(resolved_expected), actual)
+                // if I leave out : StrBuf, it infers &str and complains
+                |actual: StrBuf| {
+                    format_strbuf!("mismatched types: expected `{}` but \
+                                    found `{}`",
+                                   self.ty_to_str(resolved_expected),
+                                   actual)
                 }
             }
         };
@@ -818,8 +822,8 @@ impl TypeTrace {
 }
 
 impl Repr for TypeTrace {
-    fn repr(&self, tcx: &ty::ctxt) -> ~str {
-        format!("TypeTrace({})", self.origin.repr(tcx))
+    fn repr(&self, tcx: &ty::ctxt) -> StrBuf {
+        format_strbuf!("TypeTrace({})", self.origin.repr(tcx))
     }
 }
 
@@ -838,15 +842,27 @@ impl TypeOrigin {
 }
 
 impl Repr for TypeOrigin {
-    fn repr(&self, tcx: &ty::ctxt) -> ~str {
+    fn repr(&self, tcx: &ty::ctxt) -> StrBuf {
         match *self {
-            MethodCompatCheck(a) => format!("MethodCompatCheck({})", a.repr(tcx)),
-            ExprAssignable(a) => format!("ExprAssignable({})", a.repr(tcx)),
-            Misc(a) => format!("Misc({})", a.repr(tcx)),
-            RelateTraitRefs(a) => format!("RelateTraitRefs({})", a.repr(tcx)),
-            RelateSelfType(a) => format!("RelateSelfType({})", a.repr(tcx)),
-            MatchExpression(a) => format!("MatchExpression({})", a.repr(tcx)),
-            IfExpression(a) => format!("IfExpression({})", a.repr(tcx)),
+            MethodCompatCheck(a) => {
+                format_strbuf!("MethodCompatCheck({})", a.repr(tcx))
+            }
+            ExprAssignable(a) => {
+                format_strbuf!("ExprAssignable({})", a.repr(tcx))
+            }
+            Misc(a) => format_strbuf!("Misc({})", a.repr(tcx)),
+            RelateTraitRefs(a) => {
+                format_strbuf!("RelateTraitRefs({})", a.repr(tcx))
+            }
+            RelateSelfType(a) => {
+                format_strbuf!("RelateSelfType({})", a.repr(tcx))
+            }
+            MatchExpression(a) => {
+                format_strbuf!("MatchExpression({})", a.repr(tcx))
+            }
+            IfExpression(a) => {
+                format_strbuf!("IfExpression({})", a.repr(tcx))
+            }
         }
     }
 }
@@ -875,26 +891,44 @@ impl SubregionOrigin {
 }
 
 impl Repr for SubregionOrigin {
-    fn repr(&self, tcx: &ty::ctxt) -> ~str {
+    fn repr(&self, tcx: &ty::ctxt) -> StrBuf {
         match *self {
-            Subtype(ref a) => format!("Subtype({})", a.repr(tcx)),
-            InfStackClosure(a) => format!("InfStackClosure({})", a.repr(tcx)),
-            InvokeClosure(a) => format!("InvokeClosure({})", a.repr(tcx)),
-            DerefPointer(a) => format!("DerefPointer({})", a.repr(tcx)),
-            FreeVariable(a, b) => format!("FreeVariable({}, {})", a.repr(tcx), b),
-            IndexSlice(a) => format!("IndexSlice({})", a.repr(tcx)),
-            RelateObjectBound(a) => format!("RelateObjectBound({})", a.repr(tcx)),
-            Reborrow(a) => format!("Reborrow({})", a.repr(tcx)),
-            ReborrowUpvar(a, b) => format!("ReborrowUpvar({},{:?})", a.repr(tcx), b),
-            ReferenceOutlivesReferent(_, a) =>
-                format!("ReferenceOutlivesReferent({})", a.repr(tcx)),
-            BindingTypeIsNotValidAtDecl(a) =>
-                format!("BindingTypeIsNotValidAtDecl({})", a.repr(tcx)),
-            CallRcvr(a) => format!("CallRcvr({})", a.repr(tcx)),
-            CallArg(a) => format!("CallArg({})", a.repr(tcx)),
-            CallReturn(a) => format!("CallReturn({})", a.repr(tcx)),
-            AddrOf(a) => format!("AddrOf({})", a.repr(tcx)),
-            AutoBorrow(a) => format!("AutoBorrow({})", a.repr(tcx)),
+            Subtype(ref a) => {
+                format_strbuf!("Subtype({})", a.repr(tcx))
+            }
+            InfStackClosure(a) => {
+                format_strbuf!("InfStackClosure({})", a.repr(tcx))
+            }
+            InvokeClosure(a) => {
+                format_strbuf!("InvokeClosure({})", a.repr(tcx))
+            }
+            DerefPointer(a) => {
+                format_strbuf!("DerefPointer({})", a.repr(tcx))
+            }
+            FreeVariable(a, b) => {
+                format_strbuf!("FreeVariable({}, {})", a.repr(tcx), b)
+            }
+            IndexSlice(a) => {
+                format_strbuf!("IndexSlice({})", a.repr(tcx))
+            }
+            RelateObjectBound(a) => {
+                format_strbuf!("RelateObjectBound({})", a.repr(tcx))
+            }
+            Reborrow(a) => format_strbuf!("Reborrow({})", a.repr(tcx)),
+            ReborrowUpvar(a, b) => {
+                format_strbuf!("ReborrowUpvar({},{:?})", a.repr(tcx), b)
+            }
+            ReferenceOutlivesReferent(_, a) => {
+                format_strbuf!("ReferenceOutlivesReferent({})", a.repr(tcx))
+            }
+            BindingTypeIsNotValidAtDecl(a) => {
+                format_strbuf!("BindingTypeIsNotValidAtDecl({})", a.repr(tcx))
+            }
+            CallRcvr(a) => format_strbuf!("CallRcvr({})", a.repr(tcx)),
+            CallArg(a) => format_strbuf!("CallArg({})", a.repr(tcx)),
+            CallReturn(a) => format_strbuf!("CallReturn({})", a.repr(tcx)),
+            AddrOf(a) => format_strbuf!("AddrOf({})", a.repr(tcx)),
+            AutoBorrow(a) => format_strbuf!("AutoBorrow({})", a.repr(tcx)),
         }
     }
 }
@@ -918,25 +952,43 @@ impl RegionVariableOrigin {
 }
 
 impl Repr for RegionVariableOrigin {
-    fn repr(&self, tcx: &ty::ctxt) -> ~str {
+    fn repr(&self, tcx: &ty::ctxt) -> StrBuf {
         match *self {
-            MiscVariable(a) => format!("MiscVariable({})", a.repr(tcx)),
-            PatternRegion(a) => format!("PatternRegion({})", a.repr(tcx)),
-            AddrOfRegion(a) => format!("AddrOfRegion({})", a.repr(tcx)),
-            AddrOfSlice(a) => format!("AddrOfSlice({})", a.repr(tcx)),
-            Autoref(a) => format!("Autoref({})", a.repr(tcx)),
-            Coercion(ref a) => format!("Coercion({})", a.repr(tcx)),
-            EarlyBoundRegion(a, b) => format!("EarlyBoundRegion({},{})",
-                                              a.repr(tcx), b.repr(tcx)),
-            LateBoundRegion(a, b) => format!("LateBoundRegion({},{})",
-                                             a.repr(tcx), b.repr(tcx)),
-            BoundRegionInFnType(a, b) => format!("bound_regionInFnType({},{})",
-                                              a.repr(tcx), b.repr(tcx)),
-            BoundRegionInCoherence(a) => format!("bound_regionInCoherence({})",
-                                                 a.repr(tcx)),
-            UpvarRegion(a, b) => format!("UpvarRegion({}, {})",
-                                         a.repr(tcx),
-                                         b.repr(tcx)),
+            MiscVariable(a) => {
+                format_strbuf!("MiscVariable({})", a.repr(tcx))
+            }
+            PatternRegion(a) => {
+                format_strbuf!("PatternRegion({})", a.repr(tcx))
+            }
+            AddrOfRegion(a) => {
+                format_strbuf!("AddrOfRegion({})", a.repr(tcx))
+            }
+            AddrOfSlice(a) => format_strbuf!("AddrOfSlice({})", a.repr(tcx)),
+            Autoref(a) => format_strbuf!("Autoref({})", a.repr(tcx)),
+            Coercion(ref a) => format_strbuf!("Coercion({})", a.repr(tcx)),
+            EarlyBoundRegion(a, b) => {
+                format_strbuf!("EarlyBoundRegion({},{})",
+                               a.repr(tcx),
+                               b.repr(tcx))
+            }
+            LateBoundRegion(a, b) => {
+                format_strbuf!("LateBoundRegion({},{})",
+                               a.repr(tcx),
+                               b.repr(tcx))
+            }
+            BoundRegionInFnType(a, b) => {
+                format_strbuf!("bound_regionInFnType({},{})",
+                               a.repr(tcx),
+                               b.repr(tcx))
+            }
+            BoundRegionInCoherence(a) => {
+                format_strbuf!("bound_regionInCoherence({})", a.repr(tcx))
+            }
+            UpvarRegion(a, b) => {
+                format_strbuf!("UpvarRegion({}, {})",
+                               a.repr(tcx),
+                               b.repr(tcx))
+            }
         }
     }
 }

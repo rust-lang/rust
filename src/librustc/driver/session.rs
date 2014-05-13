@@ -28,7 +28,6 @@ use syntax::{ast, codemap};
 use std::os;
 use std::cell::{Cell, RefCell};
 
-
 pub struct Session {
     pub targ_cfg: config::Config,
     pub opts: config::Options,
@@ -43,7 +42,7 @@ pub struct Session {
     // expected to be absolute. `None` means that there is no source file.
     pub local_crate_source_file: Option<Path>,
     pub working_dir: Path,
-    pub lints: RefCell<NodeMap<Vec<(lint::Lint, codemap::Span, ~str)>>>,
+    pub lints: RefCell<NodeMap<Vec<(lint::Lint, codemap::Span, StrBuf)>>>,
     pub node_id: Cell<ast::NodeId>,
     pub crate_types: RefCell<Vec<config::CrateType>>,
     pub features: front::feature_gate::Features,
@@ -109,7 +108,7 @@ impl Session {
                     lint: lint::Lint,
                     id: ast::NodeId,
                     sp: Span,
-                    msg: ~str) {
+                    msg: StrBuf) {
         let mut lints = self.lints.borrow_mut();
         match lints.find_mut(&id) {
             Some(arr) => { arr.push((lint, sp, msg)); return; }
@@ -180,10 +179,9 @@ impl Session {
         }
     }
     pub fn target_filesearch<'a>(&'a self) -> filesearch::FileSearch<'a> {
-        filesearch::FileSearch::new(
-            self.sysroot(),
-            self.opts.target_triple,
-            &self.opts.addl_lib_search_paths)
+        filesearch::FileSearch::new(self.sysroot(),
+                                    self.opts.target_triple.as_slice(),
+                                    &self.opts.addl_lib_search_paths)
     }
     pub fn host_filesearch<'a>(&'a self) -> filesearch::FileSearch<'a> {
         filesearch::FileSearch::new(
@@ -244,7 +242,6 @@ pub fn build_session_(sopts: config::Options,
         recursion_limit: Cell::new(64),
     }
 }
-
 
 // Seems out of place, but it uses session, so I'm putting it here
 pub fn expect<T:Clone>(sess: &Session, opt: Option<T>, msg: || -> StrBuf)

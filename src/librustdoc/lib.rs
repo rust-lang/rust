@@ -85,7 +85,10 @@ local_data_key!(pub analysiskey: core::CrateAnalysis)
 type Output = (clean::Crate, Vec<plugins::PluginJson> );
 
 pub fn main() {
-    std::os::set_exit_status(main_args(std::os::args().as_slice()));
+    std::os::set_exit_status(main_args(std::os::args().iter()
+                                                      .map(|x| x.to_strbuf())
+                                                      .collect::<Vec<_>>()
+                                                      .as_slice()));
 }
 
 pub fn opts() -> Vec<getopts::OptGroup> {
@@ -133,8 +136,13 @@ pub fn usage(argv0: &str) {
                             opts().as_slice()));
 }
 
-pub fn main_args(args: &[~str]) -> int {
-    let matches = match getopts::getopts(args.tail(), opts().as_slice()) {
+pub fn main_args(args: &[StrBuf]) -> int {
+    let matches = match getopts::getopts(args.tail()
+                                             .iter()
+                                             .map(|x| (*x).to_owned())
+                                             .collect::<Vec<_>>()
+                                             .as_slice(),
+                                         opts().as_slice()) {
         Ok(m) => m,
         Err(err) => {
             println!("{}", err.to_err_msg());
@@ -142,10 +150,10 @@ pub fn main_args(args: &[~str]) -> int {
         }
     };
     if matches.opt_present("h") || matches.opt_present("help") {
-        usage(args[0]);
+        usage(args[0].as_slice());
         return 0;
     } else if matches.opt_present("version") {
-        rustc::driver::version(args[0]);
+        rustc::driver::version(args[0].as_slice());
         return 0;
     }
 
@@ -161,10 +169,10 @@ pub fn main_args(args: &[~str]) -> int {
     let libs = matches.opt_strs("L").iter().map(|s| Path::new(s.as_slice())).collect();
 
     let test_args = matches.opt_strs("test-args");
-    let test_args: Vec<~str> = test_args.iter()
-                                        .flat_map(|s| s.words())
-                                        .map(|s| s.to_owned())
-                                        .collect();
+    let test_args: Vec<StrBuf> = test_args.iter()
+                                          .flat_map(|s| s.words())
+                                          .map(|s| s.to_strbuf())
+                                          .collect();
 
     let should_test = matches.opt_present("test");
     let markdown_input = input.ends_with(".md") || input.ends_with(".markdown");
@@ -178,9 +186,14 @@ pub fn main_args(args: &[~str]) -> int {
                                   libs,
                                   test_args.move_iter().collect())
         }
-        (true, false) => return test::run(input, cfgs.move_iter().collect(),
-                                          libs, test_args),
-
+        (true, false) => {
+            return test::run(input,
+                             cfgs.move_iter()
+                                 .map(|x| x.to_strbuf())
+                                 .collect(),
+                             libs,
+                             test_args)
+        }
         (false, true) => return markdown::render(input, output.unwrap_or(Path::new("doc")),
                                                  &matches),
         (false, false) => {}
@@ -235,11 +248,11 @@ pub fn main_args(args: &[~str]) -> int {
 /// Looks inside the command line arguments to extract the relevant input format
 /// and files and then generates the necessary rustdoc output for formatting.
 fn acquire_input(input: &str,
-                 matches: &getopts::Matches) -> Result<Output, ~str> {
+                 matches: &getopts::Matches) -> Result<Output, StrBuf> {
     match matches.opt_str("r").as_ref().map(|s| s.as_slice()) {
         Some("rust") => Ok(rust_input(input, matches)),
         Some("json") => json_input(input),
-        Some(s) => Err("unknown input format: " + s),
+        Some(s) => Err(format_strbuf!("unknown input format: {}", s)),
         None => {
             if input.ends_with(".json") {
                 json_input(input)
@@ -258,7 +271,10 @@ fn acquire_input(input: &str,
 fn rust_input(cratefile: &str, matches: &getopts::Matches) -> Output {
     let mut default_passes = !matches.opt_present("no-defaults");
     let mut passes = matches.opt_strs("passes");
-    let mut plugins = matches.opt_strs("plugins");
+    let mut plugins = matches.opt_strs("plugins")
+                             .move_iter()
+                             .map(|x| x.to_strbuf())
+                             .collect::<Vec<_>>();
 
     // First, parse the crate and extract all relevant information.
     let libs: Vec<Path> = matches.opt_strs("L")
@@ -270,8 +286,8 @@ fn rust_input(cratefile: &str, matches: &getopts::Matches) -> Output {
     info!("starting to run rustc");
     let (krate, analysis) = std::task::try(proc() {
         let cr = cr;
-        core::run_core(libs.move_iter().collect(),
-                       cfgs.move_iter().collect(),
+        core::run_core(libs.move_iter().map(|x| x.clone()).collect(),
+                       cfgs.move_iter().map(|x| x.to_strbuf()).collect(),
                        &cr)
     }).unwrap();
     info!("finished with rustc");
@@ -283,17 +299,20 @@ fn rust_input(cratefile: &str, matches: &getopts::Matches) -> Output {
         Some(nested) => {
             for inner in nested.iter() {
                 match *inner {
-                    clean::Word(ref x) if "no_default_passes" == *x => {
+                    clean::Word(ref x)
+                            if "no_default_passes" == x.as_slice() => {
                         default_passes = false;
                     }
-                    clean::NameValue(ref x, ref value) if "passes" == *x => {
-                        for pass in value.words() {
+                    clean::NameValue(ref x, ref value)
+                            if "passes" == x.as_slice() => {
+                        for pass in value.as_slice().words() {
                             passes.push(pass.to_owned());
                         }
                     }
-                    clean::NameValue(ref x, ref value) if "plugins" == *x => {
-                        for p in value.words() {
-                            plugins.push(p.to_owned());
+                    clean::NameValue(ref x, ref value)
+                            if "plugins" == x.as_slice() => {
+                        for p in value.as_slice().words() {
+                            plugins.push(p.to_strbuf());
                         }
                     }
                     _ => {}
@@ -333,39 +352,45 @@ fn rust_input(cratefile: &str, matches: &getopts::Matches) -> Output {
 
 /// This input format purely deserializes the json output file. No passes are
 /// run over the deserialized output.
-fn json_input(input: &str) -> Result<Output, ~str> {
+fn json_input(input: &str) -> Result<Output, StrBuf> {
     let mut input = match File::open(&Path::new(input)) {
         Ok(f) => f,
-        Err(e) => return Err(format!("couldn't open {}: {}", input, e)),
+        Err(e) => {
+            return Err(format_strbuf!("couldn't open {}: {}", input, e))
+        }
     };
     match json::from_reader(&mut input) {
-        Err(s) => Err(s.to_str()),
+        Err(s) => Err(s.to_str().to_strbuf()),
         Ok(json::Object(obj)) => {
             let mut obj = obj;
             // Make sure the schema is what we expect
             match obj.pop(&"schema".to_owned()) {
                 Some(json::String(version)) => {
                     if version.as_slice() != SCHEMA_VERSION {
-                        return Err(format!("sorry, but I only understand \
-                                            version {}", SCHEMA_VERSION))
+                        return Err(format_strbuf!(
+                                "sorry, but I only understand version {}",
+                                SCHEMA_VERSION))
                     }
                 }
-                Some(..) => return Err("malformed json".to_owned()),
-                None => return Err("expected a schema version".to_owned()),
+                Some(..) => return Err("malformed json".to_strbuf()),
+                None => return Err("expected a schema version".to_strbuf()),
             }
-            let krate = match obj.pop(&"crate".to_owned()) {
+            let krate = match obj.pop(&"crate".to_str()) {
                 Some(json) => {
                     let mut d = json::Decoder::new(json);
                     Decodable::decode(&mut d).unwrap()
                 }
-                None => return Err("malformed json".to_owned()),
+                None => return Err("malformed json".to_strbuf()),
             };
             // FIXME: this should read from the "plugins" field, but currently
             //      Json doesn't implement decodable...
             let plugin_output = Vec::new();
             Ok((krate, plugin_output))
         }
-        Ok(..) => Err("malformed json input: expected an object at the top".to_owned()),
+        Ok(..) => {
+            Err("malformed json input: expected an object at the \
+                 top".to_strbuf())
+        }
     }
 }
 
@@ -380,7 +405,15 @@ fn json_output(krate: clean::Crate, res: Vec<plugins::PluginJson> ,
     // }
     let mut json = box collections::TreeMap::new();
     json.insert("schema".to_owned(), json::String(SCHEMA_VERSION.to_owned()));
-    let plugins_json = box res.move_iter().filter_map(|opt| opt).collect();
+    let plugins_json = box res.move_iter()
+                              .filter_map(|opt| {
+                                  match opt {
+                                      None => None,
+                                      Some((string, json)) => {
+                                          Some((string.to_owned(), json))
+                                      }
+                                  }
+                              }).collect();
 
     // FIXME #8335: yuck, Rust -> str -> JSON round trip! No way to .encode
     // straight to the Rust JSON representation.

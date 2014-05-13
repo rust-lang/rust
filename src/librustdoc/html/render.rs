@@ -70,7 +70,7 @@ use html::markdown;
 pub struct Context {
     /// Current hierarchy of components leading down to what's currently being
     /// rendered
-    pub current: Vec<~str> ,
+    pub current: Vec<StrBuf> ,
     /// String representation of how to get back to the root path of the 'doc/'
     /// folder in terms of a relative URL.
     pub root_path: StrBuf,
@@ -85,7 +85,7 @@ pub struct Context {
     /// functions), and the value is the list of containers belonging to this
     /// header. This map will change depending on the surrounding context of the
     /// page.
-    pub sidebar: HashMap<~str, Vec<~str> >,
+    pub sidebar: HashMap<StrBuf, Vec<StrBuf> >,
     /// This flag indicates whether [src] links should be generated or not. If
     /// the source files are present in the html rendering, then this will be
     /// `true`.
@@ -95,7 +95,7 @@ pub struct Context {
 /// Indicates where an external crate can be found.
 pub enum ExternalLocation {
     /// Remote URL root of the external crate
-    Remote(~str),
+    Remote(StrBuf),
     /// This external crate can be found in the local doc/ folder
     Local,
     /// The external crate could not be found.
@@ -124,7 +124,7 @@ pub struct Cache {
     /// Mapping of typaram ids to the name of the type parameter. This is used
     /// when pretty-printing a type (so pretty printing doesn't have to
     /// painfully maintain a context like this)
-    pub typarams: HashMap<ast::NodeId, ~str>,
+    pub typarams: HashMap<ast::NodeId, StrBuf>,
 
     /// Maps a type id to all known implementations for that type. This is only
     /// recognized for intra-crate `ResolvedPath` types, and is used to print
@@ -132,14 +132,14 @@ pub struct Cache {
     ///
     /// The values of the map are a list of implementations and documentation
     /// found on that implementation.
-    pub impls: HashMap<ast::NodeId, Vec<(clean::Impl, Option<~str>)> >,
+    pub impls: HashMap<ast::NodeId, Vec<(clean::Impl, Option<StrBuf>)> >,
 
     /// Maintains a mapping of local crate node ids to the fully qualified name
     /// and "short type description" of that node. This is used when generating
     /// URLs when a type is being linked to. External paths are not located in
     /// this map because the `External` type itself has all the information
     /// necessary.
-    pub paths: HashMap<ast::DefId, (Vec<~str>, ItemType)>,
+    pub paths: HashMap<ast::DefId, (Vec<StrBuf>, ItemType)>,
 
     /// This map contains information about all known traits of this crate.
     /// Implementations of a crate should inherit the documentation of the
@@ -157,7 +157,7 @@ pub struct Cache {
 
     // Private fields only used when initially crawling a crate to build a cache
 
-    stack: Vec<~str> ,
+    stack: Vec<StrBuf> ,
     parent_stack: Vec<ast::NodeId> ,
     search_index: Vec<IndexItem> ,
     privmod: bool,
@@ -176,7 +176,7 @@ struct SourceCollector<'a> {
     cx: &'a mut Context,
 
     /// Processed source-file paths
-    seen: HashSet<~str>,
+    seen: HashSet<StrBuf>,
     /// Root destination to place all HTML output into
     dst: Path,
 }
@@ -195,16 +195,16 @@ struct Sidebar<'a> { cx: &'a Context, item: &'a clean::Item, }
 /// by hand to a large JS file at the end of cache-creation.
 struct IndexItem {
     ty: ItemType,
-    name: ~str,
-    path: ~str,
-    desc: ~str,
+    name: StrBuf,
+    path: StrBuf,
+    desc: StrBuf,
     parent: Option<ast::NodeId>,
 }
 
 // TLS keys used to carry information around during rendering.
 
 local_data_key!(pub cache_key: Arc<Cache>)
-local_data_key!(pub current_location_key: Vec<~str> )
+local_data_key!(pub current_location_key: Vec<StrBuf> )
 
 /// Generates the documentation for `crate` into the directory `dst`
 pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
@@ -214,8 +214,8 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
         root_path: StrBuf::new(),
         sidebar: HashMap::new(),
         layout: layout::Layout {
-            logo: "".to_owned(),
-            favicon: "".to_owned(),
+            logo: "".to_strbuf(),
+            favicon: "".to_strbuf(),
             krate: krate.name.clone(),
         },
         include_sources: true,
@@ -226,13 +226,16 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
         Some(attrs) => {
             for attr in attrs.iter() {
                 match *attr {
-                    clean::NameValue(ref x, ref s) if "html_favicon_url" == *x => {
-                        cx.layout.favicon = s.to_owned();
+                    clean::NameValue(ref x, ref s)
+                            if "html_favicon_url" == x.as_slice() => {
+                        cx.layout.favicon = s.to_strbuf();
                     }
-                    clean::NameValue(ref x, ref s) if "html_logo_url" == *x => {
-                        cx.layout.logo = s.to_owned();
+                    clean::NameValue(ref x, ref s)
+                            if "html_logo_url" == x.as_slice() => {
+                        cx.layout.logo = s.to_strbuf();
                     }
-                    clean::Word(ref x) if "html_no_source" == *x => {
+                    clean::Word(ref x)
+                            if "html_no_source" == x.as_slice() => {
                         cx.include_sources = false;
                     }
                     _ => {}
@@ -291,8 +294,9 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
                     index.push(IndexItem {
                         ty: shortty(item),
                         name: item.name.clone().unwrap(),
-                        path: fqp.slice_to(fqp.len() - 1).connect("::"),
-                        desc: shorter(item.doc_value()).to_owned(),
+                        path: fqp.slice_to(fqp.len() - 1).connect("::")
+                                                         .to_strbuf(),
+                        desc: shorter(item.doc_value()).to_strbuf(),
                         parent: Some(pid),
                     });
                 },
@@ -322,14 +326,14 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
         let mut w = MemWriter::new();
         try!(write!(&mut w, r#"searchIndex['{}'] = \{"items":["#, krate.name));
 
-        let mut lastpath = "".to_owned();
+        let mut lastpath = "".to_strbuf();
         for (i, item) in cache.search_index.iter().enumerate() {
             // Omit the path if it is same to that of the prior item.
             let path;
-            if lastpath == item.path {
+            if lastpath.as_slice() == item.path.as_slice() {
                 path = "";
             } else {
-                lastpath = item.path.clone();
+                lastpath = item.path.to_strbuf();
                 path = item.path.as_slice();
             };
 
@@ -485,14 +489,15 @@ fn extern_location(e: &clean::ExternalCrate, dst: &Path) -> ExternalLocation {
     // external crate
     for attr in e.attrs.iter() {
         match *attr {
-            clean::List(ref x, ref list) if "doc" == *x => {
+            clean::List(ref x, ref list) if "doc" == x.as_slice() => {
                 for attr in list.iter() {
                     match *attr {
-                        clean::NameValue(ref x, ref s) if "html_root_url" == *x => {
-                            if s.ends_with("/") {
-                                return Remote(s.to_owned());
+                        clean::NameValue(ref x, ref s)
+                                if "html_root_url" == x.as_slice() => {
+                            if s.as_slice().ends_with("/") {
+                                return Remote(s.to_strbuf());
                             }
-                            return Remote(*s + "/");
+                            return Remote(format_strbuf!("{}/", s));
                         }
                         _ => {}
                     }
@@ -517,7 +522,10 @@ impl<'a> DocFolder for SourceCollector<'a> {
             // something like that), so just don't include sources for the
             // entire crate. The other option is maintaining this mapping on a
             // per-file basis, but that's probably not worth it...
-            self.cx.include_sources = match self.emit_source(item.source.filename) {
+            self.cx
+                .include_sources = match self.emit_source(item.source
+                                                              .filename
+                                                              .as_slice()) {
                 Ok(()) => true,
                 Err(e) => {
                     println!("warning: source code was requested to be rendered, \
@@ -689,9 +697,9 @@ impl DocFolder for Cache {
                     (parent, Some(path)) if !self.privmod => {
                         self.search_index.push(IndexItem {
                             ty: shortty(&item),
-                            name: s.to_owned(),
-                            path: path.connect("::"),
-                            desc: shorter(item.doc_value()).to_owned(),
+                            name: s.to_strbuf(),
+                            path: path.connect("::").to_strbuf(),
+                            desc: shorter(item.doc_value()).to_strbuf(),
                             parent: parent,
                         });
                     }
@@ -710,7 +718,7 @@ impl DocFolder for Cache {
         let pushed = if item.name.is_some() {
             let n = item.name.get_ref();
             if n.len() > 0 {
-                self.stack.push(n.to_owned());
+                self.stack.push(n.to_strbuf());
                 true
             } else { false }
         } else { false };
@@ -779,7 +787,10 @@ impl DocFolder for Cache {
                                 // extract relevant documentation for this impl
                                 match attrs.move_iter().find(|a| {
                                     match *a {
-                                        clean::NameValue(ref x, _) if "doc" == *x => true,
+                                        clean::NameValue(ref x, _)
+                                                if "doc" == x.as_slice() => {
+                                            true
+                                        }
                                         _ => false
                                     }
                                 }) {
@@ -828,7 +839,7 @@ impl<'a> Cache {
 impl Context {
     /// Recurse in the directory structure and change the "root path" to make
     /// sure it always points to the top (relatively)
-    fn recurse<T>(&mut self, s: ~str, f: |&mut Context| -> T) -> T {
+    fn recurse<T>(&mut self, s: StrBuf, f: |&mut Context| -> T) -> T {
         if s.len() == 0 {
             fail!("what {:?}", self);
         }
@@ -898,7 +909,7 @@ impl Context {
                 if title.len() > 0 {
                     title.push_str("::");
                 }
-                title.push_str(*it.name.get_ref());
+                title.push_str(it.name.get_ref().as_slice());
             }
             title.push_str(" - Rust");
             let page = layout::Page {
@@ -923,7 +934,7 @@ impl Context {
             // modules are special because they add a namespace. We also need to
             // recurse into the items of the module as well.
             clean::ModuleItem(..) => {
-                let name = item.name.get_ref().to_owned();
+                let name = item.name.get_ref().to_strbuf();
                 let mut item = Some(item);
                 self.recurse(name, |this| {
                     let item = item.take_unwrap();
@@ -963,21 +974,23 @@ impl<'a> Item<'a> {
         }
     }
 
-    fn link(&self) -> ~str {
+    fn link(&self) -> StrBuf {
         let mut path = Vec::new();
         clean_srcpath(self.item.source.filename.as_bytes(), |component| {
             path.push(component.to_owned());
         });
         let href = if self.item.source.loline == self.item.source.hiline {
-            format!("{}", self.item.source.loline)
+            format_strbuf!("{}", self.item.source.loline)
         } else {
-            format!("{}-{}", self.item.source.loline, self.item.source.hiline)
+            format_strbuf!("{}-{}",
+                           self.item.source.loline,
+                           self.item.source.hiline)
         };
-        format!("{root}src/{krate}/{path}.html\\#{href}",
-                root = self.cx.root_path,
-                krate = self.cx.layout.krate,
-                path = path.connect("/"),
-                href = href)
+        format_strbuf!("{root}src/{krate}/{path}.html\\#{href}",
+                       root = self.cx.root_path,
+                       krate = self.cx.layout.krate,
+                       path = path.connect("/"),
+                       href = href)
     }
 }
 
@@ -1047,18 +1060,24 @@ impl<'a> fmt::Show for Item<'a> {
     }
 }
 
-fn item_path(item: &clean::Item) -> ~str {
+fn item_path(item: &clean::Item) -> StrBuf {
     match item.inner {
-        clean::ModuleItem(..) => *item.name.get_ref() + "/index.html",
-        _ => shortty(item).to_static_str() + "." + *item.name.get_ref() + ".html"
+        clean::ModuleItem(..) => {
+            format_strbuf!("{}/index.html", item.name.get_ref())
+        }
+        _ => {
+            format_strbuf!("{}.{}.html",
+                           shortty(item).to_static_str(),
+                           *item.name.get_ref())
+        }
     }
 }
 
-fn full_path(cx: &Context, item: &clean::Item) -> ~str {
+fn full_path(cx: &Context, item: &clean::Item) -> StrBuf {
     let mut s = StrBuf::from_str(cx.current.connect("::"));
     s.push_str("::");
     s.push_str(item.name.get_ref().as_slice());
-    return s.into_owned();
+    return s
 }
 
 fn blank<'a>(s: Option<&'a str>) -> &'a str {
@@ -1197,7 +1216,7 @@ fn item_module(w: &mut Writer, cx: &Context,
                 VisSpace(myitem.visibility),
                 *myitem.name.get_ref(),
                 s.type_,
-                Initializer(s.expr, Item { cx: cx, item: myitem }),
+                Initializer(s.expr.as_slice(), Item { cx: cx, item: myitem }),
                 Markdown(blank(myitem.doc_value()))));
             }
 
@@ -1584,11 +1603,11 @@ fn render_methods(w: &mut Writer, it: &clean::Item) -> fmt::Result {
             let mut non_trait = v.iter().filter(|p| {
                 p.ref0().trait_.is_none()
             });
-            let non_trait = non_trait.collect::<Vec<&(clean::Impl, Option<~str>)>>();
+            let non_trait = non_trait.collect::<Vec<&(clean::Impl, Option<StrBuf>)>>();
             let mut traits = v.iter().filter(|p| {
                 p.ref0().trait_.is_some()
             });
-            let traits = traits.collect::<Vec<&(clean::Impl, Option<~str>)>>();
+            let traits = traits.collect::<Vec<&(clean::Impl, Option<StrBuf>)>>();
 
             if non_trait.len() > 0 {
                 try!(write!(w, "<h2 id='methods'>Methods</h2>"));
@@ -1624,7 +1643,7 @@ fn render_methods(w: &mut Writer, it: &clean::Item) -> fmt::Result {
 }
 
 fn render_impl(w: &mut Writer, i: &clean::Impl,
-               dox: &Option<~str>) -> fmt::Result {
+               dox: &Option<StrBuf>) -> fmt::Result {
     try!(write!(w, "<h3 class='impl'><code>impl{} ", i.generics));
     let trait_id = match i.trait_ {
         Some(ref ty) => {
@@ -1760,15 +1779,15 @@ impl<'a> fmt::Show for Sidebar<'a> {
     }
 }
 
-fn build_sidebar(m: &clean::Module) -> HashMap<~str, Vec<~str> > {
+fn build_sidebar(m: &clean::Module) -> HashMap<StrBuf, Vec<StrBuf> > {
     let mut map = HashMap::new();
     for item in m.items.iter() {
         let short = shortty(item).to_static_str();
         let myname = match item.name {
             None => continue,
-            Some(ref s) => s.to_owned(),
+            Some(ref s) => s.to_strbuf(),
         };
-        let v = map.find_or_insert_with(short.to_owned(), |_| Vec::new());
+        let v = map.find_or_insert_with(short.to_strbuf(), |_| Vec::new());
         v.push(myname);
     }
 
@@ -1800,6 +1819,7 @@ impl<'a> fmt::Show for Source<'a> {
 
 fn item_macro(w: &mut Writer, it: &clean::Item,
               t: &clean::Macro) -> fmt::Result {
-    try!(w.write_str(highlight::highlight(t.source, Some("macro"))));
+    try!(w.write_str(highlight::highlight(t.source.as_slice(),
+                                          Some("macro")).as_slice()));
     document(w, it)
 }

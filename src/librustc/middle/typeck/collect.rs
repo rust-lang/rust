@@ -438,8 +438,10 @@ pub fn ensure_supertraits(ccx: &CrateCtxt,
     }
     if sized == ast::StaticSize {
         match tcx.lang_items.require(SizedTraitLangItem) {
-            Ok(def_id) => { ty::try_add_builtin_trait(tcx, def_id, &mut bounds); },
-            Err(s) => tcx.sess.err(s),
+            Ok(def_id) => {
+                ty::try_add_builtin_trait(tcx, def_id, &mut bounds);
+            }
+            Err(s) => tcx.sess.err(s.as_slice()),
         };
     }
 

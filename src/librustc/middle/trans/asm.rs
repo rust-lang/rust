@@ -65,15 +65,13 @@ pub fn trans_inline_asm<'a>(bcx: &'a Block<'a>, ia: &ast::InlineAsm)
 
     let mut constraints =
         StrBuf::from_str(constraints.iter()
-                                    .map(|s| s.get().to_str())
-                                    .collect::<Vec<~str>>()
+                                    .map(|s| s.get().to_strbuf())
+                                    .collect::<Vec<StrBuf>>()
                                     .connect(","));
 
-    let mut clobbers = StrBuf::from_str(getClobbers());
+    let mut clobbers = getClobbers();
     if !ia.clobbers.get().is_empty() && !clobbers.is_empty() {
-        clobbers = StrBuf::from_owned_str(format!("{},{}",
-                                                  ia.clobbers.get(),
-                                                  clobbers));
+        clobbers = format_strbuf!("{},{}", ia.clobbers.get(), clobbers);
     } else {
         clobbers.push_str(ia.clobbers.get());
     }
@@ -136,12 +134,12 @@ pub fn trans_inline_asm<'a>(bcx: &'a Block<'a>, ia: &ast::InlineAsm)
 
 #[cfg(target_arch = "arm")]
 #[cfg(target_arch = "mips")]
-fn getClobbers() -> ~str {
-    "".to_owned()
+fn getClobbers() -> StrBuf {
+    "".to_strbuf()
 }
 
 #[cfg(target_arch = "x86")]
 #[cfg(target_arch = "x86_64")]
-fn getClobbers() -> ~str {
-    "~{dirflag},~{fpsr},~{flags}".to_owned()
+fn getClobbers() -> StrBuf {
+    "~{dirflag},~{fpsr},~{flags}".to_strbuf()
 }

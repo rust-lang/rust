@@ -35,7 +35,7 @@ impl<'f> Sub<'f> {
 
 impl<'f> Combine for Sub<'f> {
     fn infcx<'a>(&'a self) -> &'a InferCtxt<'a> { self.get_ref().infcx }
-    fn tag(&self) -> ~str { "sub".to_owned() }
+    fn tag(&self) -> StrBuf { "sub".to_strbuf() }
     fn a_is_expected(&self) -> bool { self.get_ref().a_is_expected }
     fn trace(&self) -> TypeTrace { self.get_ref().trace.clone() }
 

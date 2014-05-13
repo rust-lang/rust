@@ -120,8 +120,11 @@ fn visit_view_item(e: &mut Env, i: &ast::ViewItem) {
 
     match extract_crate_info(e, i) {
         Some(info) => {
-            let (cnum, _, _) = resolve_crate(e, &None, info.ident,
-                                             &info.crate_id, None,
+            let (cnum, _, _) = resolve_crate(e,
+                                             &None,
+                                             info.ident.as_slice(),
+                                             &info.crate_id,
+                                             None,
                                              i.span);
             e.sess.cstore.add_extern_mod_stmt_cnum(info.id, cnum);
         }
@@ -130,7 +133,7 @@ fn visit_view_item(e: &mut Env, i: &ast::ViewItem) {
 }
 
 struct CrateInfo {
-    ident: ~str,
+    ident: StrBuf,
     crate_id: CrateId,
     id: ast::NodeId,
     should_link: bool,
@@ -156,7 +159,7 @@ fn extract_crate_info(e: &Env, i: &ast::ViewItem) -> Option<CrateInfo> {
                 None => from_str(ident.get().to_str()).unwrap()
             };
             Some(CrateInfo {
-                ident: ident.get().to_str(),
+                ident: ident.get().to_strbuf(),
                 crate_id: crate_id,
                 id: id,
                 should_link: should_link(i),
@@ -237,7 +240,9 @@ fn visit_item(e: &Env, i: &ast::Item) {
                         if n.get().is_empty() {
                             e.sess.span_err(m.span, "#[link(name = \"\")] given with empty name");
                         } else {
-                            e.sess.cstore.add_used_library(n.get().to_owned(), kind);
+                            e.sess
+                             .cstore
+                             .add_used_library(n.get().to_strbuf(), kind);
                         }
                     }
                     None => {}
@@ -279,7 +284,7 @@ fn register_crate<'a>(e: &mut Env,
     // Stash paths for top-most crate locally if necessary.
     let crate_paths = if root.is_none() {
         Some(CratePaths {
-            ident: ident.to_owned(),
+            ident: ident.to_strbuf(),
             dylib: lib.dylib.clone(),
             rlib:  lib.rlib.clone(),
         })
@@ -294,7 +299,7 @@ fn register_crate<'a>(e: &mut Env,
     let loader::Library{ dylib, rlib, metadata } = lib;
 
     let cmeta = Rc::new( cstore::crate_metadata {
-        name: crate_id.name.to_owned(),
+        name: crate_id.name.to_strbuf(),
         data: metadata,
         cnum_map: cnum_map,
         cnum: cnum,
@@ -328,7 +333,7 @@ fn resolve_crate<'a>(e: &mut Env,
                 span: span,
                 ident: ident,
                 crate_id: crate_id,
-                id_hash: id_hash,
+                id_hash: id_hash.as_slice(),
                 hash: hash.map(|a| &*a),
                 filesearch: e.sess.target_filesearch(),
                 os: config::cfg_os_to_meta_os(e.sess.targ_cfg.os),
@@ -391,9 +396,9 @@ impl<'a> CrateLoader for Loader<'a> {
         let mut load_ctxt = loader::Context {
             sess: self.env.sess,
             span: krate.span,
-            ident: info.ident,
+            ident: info.ident.as_slice(),
             crate_id: &info.crate_id,
-            id_hash: id_hash,
+            id_hash: id_hash.as_slice(),
             hash: None,
             filesearch: self.env.sess.host_filesearch(),
             triple: driver::host_triple(),

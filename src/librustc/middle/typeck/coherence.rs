@@ -421,7 +421,9 @@ impl<'a> CoherenceChecker<'a> {
                             let crate_store = &self.crate_context.tcx.sess.cstore;
                             let cdata = crate_store.get_crate_data(impl_b.krate);
                             session.note(
-                                "conflicting implementation in crate `" + cdata.name + "`");
+                                format!("conflicting implementation in crate \
+                                         `{}`",
+                                        cdata.name));
                         }
                     }
                 }
