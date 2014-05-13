@@ -1028,17 +1028,20 @@ mod tests {
     #[test]
     fn test_boxplot_nonpositive() {
         #[allow(deprecated_owned_vector)]
-        fn t(s: &Summary<f64>, expected: ~str) {
+        fn t(s: &Summary<f64>, expected: StrBuf) {
             use std::io::MemWriter;
             let mut m = MemWriter::new();
             write_boxplot(&mut m as &mut io::Writer, s, 30).unwrap();
-            let out = str::from_utf8(m.unwrap().as_slice()).unwrap().to_owned();
+            let out = str::from_utf8(m.unwrap().as_slice()).unwrap().to_strbuf();
             assert_eq!(out, expected);
         }
 
-        t(&Summary::new([-2.0, -1.0]), "-2 |[------******#*****---]| -1".to_owned());
-        t(&Summary::new([0.0, 2.0]), "0 |[-------*****#*******---]| 2".to_owned());
-        t(&Summary::new([-2.0, 0.0]), "-2 |[------******#******---]| 0".to_owned());
+        t(&Summary::new([-2.0, -1.0]),
+                        "-2 |[------******#*****---]| -1".to_strbuf());
+        t(&Summary::new([0.0, 2.0]),
+                        "0 |[-------*****#*******---]| 2".to_strbuf());
+        t(&Summary::new([-2.0, 0.0]),
+                        "-2 |[------******#******---]| 0".to_strbuf());
 
     }
     #[test]
