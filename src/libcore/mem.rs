@@ -380,7 +380,7 @@ mod tests {
     use mem::*;
     use option::{Some,None};
     use realstd::str::StrAllocating;
-    use owned::Box;
+    use realstd::owned::Box;
     use raw;
 
     #[test]

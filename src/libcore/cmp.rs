@@ -193,7 +193,6 @@ pub fn max<T: TotalOrd>(v1: T, v2: T) -> T {
 #[cfg(not(test))]
 mod impls {
     use cmp::{Ord, TotalOrd, Eq, TotalEq, Ordering};
-    use owned::Box;
 
     // & pointers
     impl<'a, T: Eq> Eq for &'a T {
@@ -240,29 +239,6 @@ mod impls {
         fn cmp(&self, other: &@T) -> Ordering { (**self).cmp(*other) }
     }
     impl<T: TotalEq> TotalEq for @T {}
-
-    // box pointers
-    impl<T:Eq> Eq for Box<T> {
-        #[inline]
-        fn eq(&self, other: &Box<T>) -> bool { *(*self) == *(*other) }
-        #[inline]
-        fn ne(&self, other: &Box<T>) -> bool { *(*self) != *(*other) }
-    }
-    impl<T:Ord> Ord for Box<T> {
-        #[inline]
-        fn lt(&self, other: &Box<T>) -> bool { *(*self) < *(*other) }
-        #[inline]
-        fn le(&self, other: &Box<T>) -> bool { *(*self) <= *(*other) }
-        #[inline]
-        fn ge(&self, other: &Box<T>) -> bool { *(*self) >= *(*other) }
-        #[inline]
-        fn gt(&self, other: &Box<T>) -> bool { *(*self) > *(*other) }
-    }
-    impl<T: TotalOrd> TotalOrd for Box<T> {
-        #[inline]
-        fn cmp(&self, other: &Box<T>) -> Ordering { (**self).cmp(*other) }
-    }
-    impl<T: TotalEq> TotalEq for Box<T> {}
 }
 
 #[cfg(test)]

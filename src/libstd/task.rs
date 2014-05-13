@@ -47,10 +47,11 @@ use rt::local::Local;
 use rt::task::Task;
 use str::{Str, SendStr, IntoMaybeOwned};
 
-#[cfg(test)] use any::{AnyOwnExt, AnyRefExt};
+#[cfg(test)] use any::AnyRefExt;
+#[cfg(test)] use owned::AnyOwnExt;
+#[cfg(test)] use realstd::result::ResultUnwrap;
 #[cfg(test)] use result;
 #[cfg(test)] use str::StrAllocating;
-#[cfg(test)] use realstd::result::ResultUnwrap;
 
 /// Indicates the manner in which a task exited.
 ///
