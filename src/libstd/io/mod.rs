@@ -1509,7 +1509,6 @@ pub enum FileType {
 ///     Err(e) => fail!("couldn't read foo.txt: {}", e),
 /// };
 ///
-/// println!("path: {}", info.path.display());
 /// println!("byte size: {}", info.size);
 /// # }
 /// ```

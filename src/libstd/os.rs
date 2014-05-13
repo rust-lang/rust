@@ -95,13 +95,12 @@ pub fn getcwd() -> Path {
 
 #[cfg(windows)]
 pub mod win32 {
-    use iter::Iterator;
     use libc::types::os::arch::extra::DWORD;
     use libc;
     use option::{None, Option, Expect};
     use option;
     use os::TMPBUF_SZ;
-    use slice::{MutableVector, ImmutableVector, OwnedVector};
+    use slice::{MutableVector, ImmutableVector};
     use str::{StrSlice, StrAllocating};
     use str;
     use vec::Vec;
