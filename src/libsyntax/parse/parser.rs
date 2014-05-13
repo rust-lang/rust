@@ -125,7 +125,11 @@ enum ItemOrViewItem {
     IoviViewItem(ViewItem)
 }
 
-/* The expr situation is not as complex as I thought it would be.
+
+// Possibly accept an `INTERPOLATED` expression (a pre-parsed expression
+// dropped into the token stream, which happens while parsing the
+// result of macro expansion)
+/* Placement of these is not as complex as I feared it would be.
 The important thing is to make sure that lookahead doesn't balk
 at INTERPOLATED tokens */
 macro_rules! maybe_whole_expr (
@@ -135,7 +139,7 @@ macro_rules! maybe_whole_expr (
                 INTERPOLATED(token::NtPath(ref pt)) => Some((**pt).clone()),
                 _ => None,
             };
-            let ret = match ($p).token {
+            let found = match ($p).token {
                 INTERPOLATED(token::NtExpr(e)) => {
                     Some(e)
                 }
@@ -145,7 +149,7 @@ macro_rules! maybe_whole_expr (
                 }
                 _ => None
             };
-            match ret {
+            match found {
                 Some(e) => {
                     $p.bump();
                     return e;
@@ -156,16 +160,17 @@ macro_rules! maybe_whole_expr (
     )
 )
 
+// As above, but for things other than expressions
 macro_rules! maybe_whole (
     ($p:expr, $constructor:ident) => (
         {
-            let __found__ = match ($p).token {
+            let found = match ($p).token {
                 INTERPOLATED(token::$constructor(_)) => {
                     Some(($p).bump_and_get())
                 }
                 _ => None
             };
-            match __found__ {
+            match found {
                 Some(INTERPOLATED(token::$constructor(x))) => {
                     return x.clone()
                 }
@@ -175,13 +180,13 @@ macro_rules! maybe_whole (
     );
     (no_clone $p:expr, $constructor:ident) => (
         {
-            let __found__ = match ($p).token {
+            let found = match ($p).token {
                 INTERPOLATED(token::$constructor(_)) => {
                     Some(($p).bump_and_get())
                 }
                 _ => None
             };
-            match __found__ {
+            match found {
                 Some(INTERPOLATED(token::$constructor(x))) => {
                     return x
                 }
@@ -191,13 +196,13 @@ macro_rules! maybe_whole (
     );
     (deref $p:expr, $constructor:ident) => (
         {
-            let __found__ = match ($p).token {
+            let found = match ($p).token {
                 INTERPOLATED(token::$constructor(_)) => {
                     Some(($p).bump_and_get())
                 }
                 _ => None
             };
-            match __found__ {
+            match found {
                 Some(INTERPOLATED(token::$constructor(x))) => {
                     return (*x).clone()
                 }
@@ -207,13 +212,13 @@ macro_rules! maybe_whole (
     );
     (Some $p:expr, $constructor:ident) => (
         {
-            let __found__ = match ($p).token {
+            let found = match ($p).token {
                 INTERPOLATED(token::$constructor(_)) => {
                     Some(($p).bump_and_get())
                 }
                 _ => None
             };
-            match __found__ {
+            match found {
                 Some(INTERPOLATED(token::$constructor(x))) => {
                     return Some(x.clone()),
                 }
@@ -223,13 +228,13 @@ macro_rules! maybe_whole (
     );
     (iovi $p:expr, $constructor:ident) => (
         {
-            let __found__ = match ($p).token {
+            let found = match ($p).token {
                 INTERPOLATED(token::$constructor(_)) => {
                     Some(($p).bump_and_get())
                 }
                 _ => None
             };
-            match __found__ {
+            match found {
                 Some(INTERPOLATED(token::$constructor(x))) => {
                     return IoviItem(x.clone())
                 }
@@ -239,13 +244,13 @@ macro_rules! maybe_whole (
     );
     (pair_empty $p:expr, $constructor:ident) => (
         {
-            let __found__ = match ($p).token {
+            let found = match ($p).token {
                 INTERPOLATED(token::$constructor(_)) => {
                     Some(($p).bump_and_get())
                 }
                 _ => None
             };
-            match __found__ {
+            match found {
                 Some(INTERPOLATED(token::$constructor(x))) => {
                     return (Vec::new(), x)
                 }

@@ -11,7 +11,7 @@
 //! This crate provides the `regex!` macro. Its use is documented in the
 //! `regex` crate.
 
-#![crate_id = "regex_macros#0.11-pre"]
+#![crate_id = "regex_macros#0.11.0-pre"]
 #![crate_type = "dylib"]
 #![experimental]
 #![license = "MIT/ASL2"]
