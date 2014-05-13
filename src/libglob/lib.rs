@@ -310,7 +310,7 @@ impl Pattern {
      * brackets. The resulting string will, when compiled into a `Pattern`,
      * match the input string and nothing else.
      */
-    pub fn escape(s: &str) -> ~str {
+    pub fn escape(s: &str) -> StrBuf {
         let mut escaped = StrBuf::new();
         for c in s.chars() {
             match c {
@@ -325,7 +325,7 @@ impl Pattern {
                 }
             }
         }
-        escaped.into_owned()
+        escaped
     }
 
     /**
@@ -767,8 +767,8 @@ mod test {
     #[test]
     fn test_pattern_escape() {
         let s = "_[_]_?_*_!_";
-        assert_eq!(Pattern::escape(s), "_[[]_[]]_[?]_[*]_!_".to_owned());
-        assert!(Pattern::new(Pattern::escape(s)).matches(s));
+        assert_eq!(Pattern::escape(s), "_[[]_[]]_[?]_[*]_!_".to_strbuf());
+        assert!(Pattern::new(Pattern::escape(s).as_slice()).matches(s));
     }
 
     #[test]
