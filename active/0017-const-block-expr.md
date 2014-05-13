@@ -1,6 +1,6 @@
 - Start Date: 2014-05-07
-- RFC PR #: (leave this empty)
-- Rust Issue #: (leave this empty)
+- RFC PR #: 71
+- Rust Issue #: 14181
 
 # Summary
 
