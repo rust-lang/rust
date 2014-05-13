@@ -9,7 +9,7 @@
 // except according to those terms.
 
 struct foo {
-    x: ~str,
+    x: StrBuf,
 }
 
 impl Drop for foo {
@@ -19,5 +19,7 @@ impl Drop for foo {
 }
 
 pub fn main() {
-    let _z = foo { x: "Hello".to_owned() };
+    let _z = foo {
+        x: "Hello".to_strbuf()
+    };
 }

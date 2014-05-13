@@ -27,7 +27,7 @@ enum SafeEnum {
     Variant1,
     Variant2(int),
     Variant3(WithDtor),
-    Variant4(~str)
+    Variant4(StrBuf)
 }
 
 // These should be ok
@@ -106,8 +106,11 @@ static mut STATIC12: UnsafeStruct = UnsafeStruct;
 static mut STATIC13: SafeStruct = SafeStruct{field1: Variant1, field2: Variant3(WithDtor)};
 //~^ ERROR mutable static items are not allowed to have destructors
 
-static mut STATIC14: SafeStruct = SafeStruct{field1: Variant1, field2: Variant4("str".to_owned())};
+static mut STATIC14: SafeStruct = SafeStruct {
 //~^ ERROR mutable static items are not allowed to have destructors
+    field1: Variant1,
+    field2: Variant4("str".to_strbuf())
+};
 
 static STATIC15: &'static [Box<MyOwned>] = &'static [box MyOwned, box MyOwned];
 //~^ ERROR static items are not allowed to have owned pointers

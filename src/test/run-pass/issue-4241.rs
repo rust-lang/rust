@@ -24,8 +24,8 @@ enum Result {
   Int(int),
   Data(~[u8]),
   List(~[Result]),
-  Error(~str),
-  Status(~str)
+  Error(StrBuf),
+  Status(StrBuf)
 }
 
 priv fn parse_data(len: uint, io: @io::Reader) -> Result {
@@ -55,7 +55,7 @@ priv fn parse_list(len: uint, io: @io::Reader) -> Result {
     return List(list);
 }
 
-priv fn chop(s: ~str) -> ~str {
+priv fn chop(s: StrBuf) -> StrBuf {
   s.slice(0, s.len() - 1).to_owned()
 }
 
@@ -96,7 +96,7 @@ priv fn parse_response(io: @io::Reader) -> Result {
     }
 }
 
-priv fn cmd_to_str(cmd: ~[~str]) -> ~str {
+priv fn cmd_to_str(cmd: ~[StrBuf]) -> StrBuf {
   let mut res = "*".to_owned();
   res.push_str(cmd.len().to_str());
   res.push_str("\r\n");
@@ -107,7 +107,7 @@ priv fn cmd_to_str(cmd: ~[~str]) -> ~str {
   res
 }
 
-fn query(cmd: ~[~str], sb: TcpSocketBuf) -> Result {
+fn query(cmd: ~[StrBuf], sb: TcpSocketBuf) -> Result {
   let cmd = cmd_to_str(cmd);
   //println!("{}", cmd);
   sb.write_str(cmd);
@@ -115,7 +115,7 @@ fn query(cmd: ~[~str], sb: TcpSocketBuf) -> Result {
   res
 }
 
-fn query2(cmd: ~[~str]) -> Result {
+fn query2(cmd: ~[StrBuf]) -> Result {
   let _cmd = cmd_to_str(cmd);
     io::with_str_reader("$3\r\nXXX\r\n".to_owned())(|sb| {
     let res = parse_response(@sb as @io::Reader);

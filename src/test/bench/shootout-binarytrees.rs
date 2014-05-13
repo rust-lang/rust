@@ -74,10 +74,10 @@ fn main() {
                     let b = bottom_up_tree(&arena, -i, depth);
                     chk += item_check(a) + item_check(b);
                 }
-                format!("{}\t trees of depth {}\t check: {}",
-                        iterations * 2, depth, chk)
+                format_strbuf!("{}\t trees of depth {}\t check: {}",
+                               iterations * 2, depth, chk)
             })
-        }).collect::<Vec<Future<~str>>>();
+        }).collect::<Vec<Future<StrBuf>>>();
 
     for message in messages.mut_iter() {
         println!("{}", *message.get_ref());

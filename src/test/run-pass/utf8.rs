@@ -24,27 +24,27 @@ pub fn main() {
     assert_eq!(pi as int, '\u03a0' as int);
     assert_eq!('\x0a' as int, '\n' as int);
 
-    let bhutan: ~str = "འབྲུག་ཡུལ།".to_owned();
-    let japan: ~str = "日本".to_owned();
-    let uzbekistan: ~str = "Ўзбекистон".to_owned();
-    let austria: ~str = "Österreich".to_owned();
+    let bhutan: StrBuf = "འབྲུག་ཡུལ།".to_strbuf();
+    let japan: StrBuf = "日本".to_strbuf();
+    let uzbekistan: StrBuf = "Ўзбекистон".to_strbuf();
+    let austria: StrBuf = "Österreich".to_strbuf();
 
-    let bhutan_e: ~str =
-        "\u0f60\u0f56\u0fb2\u0f74\u0f42\u0f0b\u0f61\u0f74\u0f63\u0f0d".to_owned();
-    let japan_e: ~str = "\u65e5\u672c".to_owned();
-    let uzbekistan_e: ~str =
-        "\u040e\u0437\u0431\u0435\u043a\u0438\u0441\u0442\u043e\u043d".to_owned();
-    let austria_e: ~str = "\u00d6sterreich".to_owned();
+    let bhutan_e: StrBuf =
+        "\u0f60\u0f56\u0fb2\u0f74\u0f42\u0f0b\u0f61\u0f74\u0f63\u0f0d".to_strbuf();
+    let japan_e: StrBuf = "\u65e5\u672c".to_strbuf();
+    let uzbekistan_e: StrBuf =
+        "\u040e\u0437\u0431\u0435\u043a\u0438\u0441\u0442\u043e\u043d".to_strbuf();
+    let austria_e: StrBuf = "\u00d6sterreich".to_strbuf();
 
     let oo: char = 'Ö';
     assert_eq!(oo as int, 0xd6);
 
-    fn check_str_eq(a: ~str, b: ~str) {
+    fn check_str_eq(a: StrBuf, b: StrBuf) {
         let mut i: int = 0;
-        for ab in a.bytes() {
+        for ab in a.as_slice().bytes() {
             println!("{}", i);
             println!("{}", ab);
-            let bb: u8 = b[i as uint];
+            let bb: u8 = b.as_slice()[i as uint];
             println!("{}", bb);
             assert_eq!(ab, bb);
             i += 1;

@@ -17,11 +17,11 @@ pub mod name_pool {
     pub type name_pool = ();
 
     pub trait add {
-        fn add(&self, s: ~str);
+        fn add(&self, s: StrBuf);
     }
 
     impl add for name_pool {
-        fn add(&self, _s: ~str) {
+        fn add(&self, _s: StrBuf) {
         }
     }
 }

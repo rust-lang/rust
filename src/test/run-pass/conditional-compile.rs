@@ -108,8 +108,8 @@ mod test_foreign_items {
     pub mod rustrt {
         extern {
             #[cfg(bogus)]
-            pub fn write() -> ~str;
-            pub fn write() -> ~str;
+            pub fn write() -> StrBuf;
+            pub fn write() -> StrBuf;
         }
     }
 }

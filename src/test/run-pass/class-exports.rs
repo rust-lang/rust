@@ -17,14 +17,14 @@ use kitty::cat;
 mod kitty {
     pub struct cat {
         meows: uint,
-        name: ~str,
+        name: StrBuf,
     }
 
     impl cat {
-        pub fn get_name(&self) -> ~str { self.name.clone() }
+        pub fn get_name(&self) -> StrBuf { self.name.clone() }
     }
 
-    pub fn cat(in_name: ~str) -> cat {
+    pub fn cat(in_name: StrBuf) -> cat {
         cat {
             name: in_name,
             meows: 0u
@@ -33,5 +33,6 @@ mod kitty {
 }
 
 pub fn main() {
-  assert_eq!(cat("Spreckles".to_owned()).get_name(), "Spreckles".to_owned());
+  assert_eq!(cat("Spreckles".to_strbuf()).get_name(),
+                 "Spreckles".to_strbuf());
 }

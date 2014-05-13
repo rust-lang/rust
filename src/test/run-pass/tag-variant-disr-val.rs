@@ -27,17 +27,17 @@ impl Eq for color {
 }
 
 pub fn main() {
-    test_color(red, 0xff0000, "red".to_owned());
-    test_color(green, 0x00ff00, "green".to_owned());
-    test_color(blue, 0x0000ff, "blue".to_owned());
-    test_color(black, 0x000000, "black".to_owned());
-    test_color(white, 0xFFFFFF, "white".to_owned());
-    test_color(imaginary, -1, "imaginary".to_owned());
-    test_color(purple, 2, "purple".to_owned());
-    test_color(orange, 4, "orange".to_owned());
+    test_color(red, 0xff0000, "red".to_strbuf());
+    test_color(green, 0x00ff00, "green".to_strbuf());
+    test_color(blue, 0x0000ff, "blue".to_strbuf());
+    test_color(black, 0x000000, "black".to_strbuf());
+    test_color(white, 0xFFFFFF, "white".to_strbuf());
+    test_color(imaginary, -1, "imaginary".to_strbuf());
+    test_color(purple, 2, "purple".to_strbuf());
+    test_color(orange, 4, "orange".to_strbuf());
 }
 
-fn test_color(color: color, val: int, name: ~str) {
+fn test_color(color: color, val: int, name: StrBuf) {
     //assert!(unsafe::transmute(color) == val);
     assert_eq!(color as int, val);
     assert_eq!(color as f64, val as f64);
@@ -45,27 +45,27 @@ fn test_color(color: color, val: int, name: ~str) {
     assert!(get_color_if(color) == name);
 }
 
-fn get_color_alt(color: color) -> ~str {
+fn get_color_alt(color: color) -> StrBuf {
     match color {
-      red => {"red".to_owned()}
-      green => {"green".to_owned()}
-      blue => {"blue".to_owned()}
-      black => {"black".to_owned()}
-      white => {"white".to_owned()}
-      imaginary => {"imaginary".to_owned()}
-      purple => {"purple".to_owned()}
-      orange => {"orange".to_owned()}
+      red => {"red".to_strbuf()}
+      green => {"green".to_strbuf()}
+      blue => {"blue".to_strbuf()}
+      black => {"black".to_strbuf()}
+      white => {"white".to_strbuf()}
+      imaginary => {"imaginary".to_strbuf()}
+      purple => {"purple".to_strbuf()}
+      orange => {"orange".to_strbuf()}
     }
 }
 
-fn get_color_if(color: color) -> ~str {
-    if color == red {"red".to_owned()}
-    else if color == green {"green".to_owned()}
-    else if color == blue {"blue".to_owned()}
-    else if color == black {"black".to_owned()}
-    else if color == white {"white".to_owned()}
-    else if color == imaginary {"imaginary".to_owned()}
-    else if color == purple {"purple".to_owned()}
-    else if color == orange {"orange".to_owned()}
-    else {"unknown".to_owned()}
+fn get_color_if(color: color) -> StrBuf {
+    if color == red {"red".to_strbuf()}
+    else if color == green {"green".to_strbuf()}
+    else if color == blue {"blue".to_strbuf()}
+    else if color == black {"black".to_strbuf()}
+    else if color == white {"white".to_strbuf()}
+    else if color == imaginary {"imaginary".to_strbuf()}
+    else if color == purple {"purple".to_strbuf()}
+    else if color == orange {"orange".to_strbuf()}
+    else {"unknown".to_strbuf()}
 }

@@ -9,12 +9,12 @@
 // except according to those terms.
 
 #[deriving(Eq, Show)]
-struct Foo(int, int, ~str);
+struct Foo(int, int, StrBuf);
 
 pub fn main() {
-  let a1 = Foo(5, 6, "abc".to_owned());
-  let a2 = Foo(5, 6, "abc".to_owned());
-  let b = Foo(5, 7, "def".to_owned());
+  let a1 = Foo(5, 6, "abc".to_strbuf());
+  let a2 = Foo(5, 6, "abc".to_strbuf());
+  let b = Foo(5, 7, "def".to_strbuf());
 
   assert!(a1 == a1);
   assert!(a2 == a1);

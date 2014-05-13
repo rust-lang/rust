@@ -15,7 +15,7 @@
 
 pub mod m1 {
     pub mod m2 {
-        pub fn where_am_i() -> ~str { (module_path!()).to_owned() }
+        pub fn where_am_i() -> StrBuf { (module_path!()).to_strbuf() }
     }
 }
 
@@ -26,16 +26,19 @@ pub fn main() {
     //assert!((col!() == 11));
     assert_eq!(indirect_line!(), 27);
     assert!((file!().to_owned().ends_with("syntax-extension-source-utils.rs")));
-    assert_eq!(stringify!((2*3) + 5).to_owned(), "( 2 * 3 ) + 5".to_owned());
-    assert!(include!("syntax-extension-source-utils-files/includeme.fragment").to_owned()
-           == "victory robot 6".to_owned());
+    assert_eq!(stringify!((2*3) + 5).to_strbuf(), "( 2 * 3 ) + 5".to_strbuf());
+    assert!(include!("syntax-extension-source-utils-files/includeme.\
+                      fragment").to_strbuf()
+           == "victory robot 6".to_strbuf());
 
     assert!(
-        include_str!("syntax-extension-source-utils-files/includeme.fragment").to_owned()
+        include_str!("syntax-extension-source-utils-files/includeme.\
+                      fragment").to_strbuf()
+        .as_slice()
         .starts_with("/* this is for "));
     assert!(
         include_bin!("syntax-extension-source-utils-files/includeme.fragment")
         [1] == (42 as u8)); // '*'
     // The Windows tests are wrapped in an extra module for some reason
-    assert!((m1::m2::where_am_i().ends_with("m1::m2")));
+    assert!((m1::m2::where_am_i().as_slice().ends_with("m1::m2")));
 }

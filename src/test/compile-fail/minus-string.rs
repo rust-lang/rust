@@ -8,6 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:cannot apply unary operator `-` to type `~str`
+// error-pattern:cannot apply unary operator `-` to type `std::strbuf::StrBuf`
 
-fn main() { -"foo".to_owned(); }
+fn main() { -"foo".to_strbuf(); }
