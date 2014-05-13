@@ -23,21 +23,21 @@ use std::num::{Zero,One,ToStrRadix};
 
 /// A complex number in Cartesian form.
 #[deriving(Eq,Clone)]
-pub struct Cmplx<T> {
+pub struct Complex<T> {
     /// Real portion of the complex number
     pub re: T,
     /// Imaginary portion of the complex number
     pub im: T
 }
 
-pub type Complex32 = Cmplx<f32>;
-pub type Complex64 = Cmplx<f64>;
+pub type Complex32 = Complex<f32>;
+pub type Complex64 = Complex<f64>;
 
-impl<T: Clone + Num> Cmplx<T> {
-    /// Create a new Cmplx
+impl<T: Clone + Num> Complex<T> {
+    /// Create a new Complex
     #[inline]
-    pub fn new(re: T, im: T) -> Cmplx<T> {
-        Cmplx { re: re, im: im }
+    pub fn new(re: T, im: T) -> Complex<T> {
+        Complex { re: re, im: im }
     }
 
     /**
@@ -52,33 +52,33 @@ impl<T: Clone + Num> Cmplx<T> {
 
     /// Returns the complex conjugate. i.e. `re - i im`
     #[inline]
-    pub fn conj(&self) -> Cmplx<T> {
-        Cmplx::new(self.re.clone(), -self.im)
+    pub fn conj(&self) -> Complex<T> {
+        Complex::new(self.re.clone(), -self.im)
     }
 
 
     /// Multiplies `self` by the scalar `t`.
     #[inline]
-    pub fn scale(&self, t: T) -> Cmplx<T> {
-        Cmplx::new(self.re * t, self.im * t)
+    pub fn scale(&self, t: T) -> Complex<T> {
+        Complex::new(self.re * t, self.im * t)
     }
 
     /// Divides `self` by the scalar `t`.
     #[inline]
-    pub fn unscale(&self, t: T) -> Cmplx<T> {
-        Cmplx::new(self.re / t, self.im / t)
+    pub fn unscale(&self, t: T) -> Complex<T> {
+        Complex::new(self.re / t, self.im / t)
     }
 
     /// Returns `1/self`
     #[inline]
-    pub fn inv(&self) -> Cmplx<T> {
+    pub fn inv(&self) -> Complex<T> {
         let norm_sqr = self.norm_sqr();
-        Cmplx::new(self.re / norm_sqr,
+        Complex::new(self.re / norm_sqr,
                     -self.im / norm_sqr)
     }
 }
 
-impl<T: Clone + Float> Cmplx<T> {
+impl<T: Clone + Float> Complex<T> {
     /// Calculate |self|
     #[inline]
     pub fn norm(&self) -> T {
@@ -86,7 +86,7 @@ impl<T: Clone + Float> Cmplx<T> {
     }
 }
 
-impl<T: Clone + Float> Cmplx<T> {
+impl<T: Clone + Float> Complex<T> {
     /// Calculate the principal Arg of self.
     #[inline]
     pub fn arg(&self) -> T {
@@ -100,58 +100,58 @@ impl<T: Clone + Float> Cmplx<T> {
     }
     /// Convert a polar representation into a complex number.
     #[inline]
-    pub fn from_polar(r: &T, theta: &T) -> Cmplx<T> {
-        Cmplx::new(*r * theta.cos(), *r * theta.sin())
+    pub fn from_polar(r: &T, theta: &T) -> Complex<T> {
+        Complex::new(*r * theta.cos(), *r * theta.sin())
     }
 }
 
 /* arithmetic */
 // (a + i b) + (c + i d) == (a + c) + i (b + d)
-impl<T: Clone + Num> Add<Cmplx<T>, Cmplx<T>> for Cmplx<T> {
+impl<T: Clone + Num> Add<Complex<T>, Complex<T>> for Complex<T> {
     #[inline]
-    fn add(&self, other: &Cmplx<T>) -> Cmplx<T> {
-        Cmplx::new(self.re + other.re, self.im + other.im)
+    fn add(&self, other: &Complex<T>) -> Complex<T> {
+        Complex::new(self.re + other.re, self.im + other.im)
     }
 }
 // (a + i b) - (c + i d) == (a - c) + i (b - d)
-impl<T: Clone + Num> Sub<Cmplx<T>, Cmplx<T>> for Cmplx<T> {
+impl<T: Clone + Num> Sub<Complex<T>, Complex<T>> for Complex<T> {
     #[inline]
-    fn sub(&self, other: &Cmplx<T>) -> Cmplx<T> {
-        Cmplx::new(self.re - other.re, self.im - other.im)
+    fn sub(&self, other: &Complex<T>) -> Complex<T> {
+        Complex::new(self.re - other.re, self.im - other.im)
     }
 }
 // (a + i b) * (c + i d) == (a*c - b*d) + i (a*d + b*c)
-impl<T: Clone + Num> Mul<Cmplx<T>, Cmplx<T>> for Cmplx<T> {
+impl<T: Clone + Num> Mul<Complex<T>, Complex<T>> for Complex<T> {
     #[inline]
-    fn mul(&self, other: &Cmplx<T>) -> Cmplx<T> {
-        Cmplx::new(self.re*other.re - self.im*other.im,
+    fn mul(&self, other: &Complex<T>) -> Complex<T> {
+        Complex::new(self.re*other.re - self.im*other.im,
                    self.re*other.im + self.im*other.re)
     }
 }
 
 // (a + i b) / (c + i d) == [(a + i b) * (c - i d)] / (c*c + d*d)
 //   == [(a*c + b*d) / (c*c + d*d)] + i [(b*c - a*d) / (c*c + d*d)]
-impl<T: Clone + Num> Div<Cmplx<T>, Cmplx<T>> for Cmplx<T> {
+impl<T: Clone + Num> Div<Complex<T>, Complex<T>> for Complex<T> {
     #[inline]
-    fn div(&self, other: &Cmplx<T>) -> Cmplx<T> {
+    fn div(&self, other: &Complex<T>) -> Complex<T> {
         let norm_sqr = other.norm_sqr();
-        Cmplx::new((self.re*other.re + self.im*other.im) / norm_sqr,
+        Complex::new((self.re*other.re + self.im*other.im) / norm_sqr,
                    (self.im*other.re - self.re*other.im) / norm_sqr)
     }
 }
 
-impl<T: Clone + Num> Neg<Cmplx<T>> for Cmplx<T> {
+impl<T: Clone + Num> Neg<Complex<T>> for Complex<T> {
     #[inline]
-    fn neg(&self) -> Cmplx<T> {
-        Cmplx::new(-self.re, -self.im)
+    fn neg(&self) -> Complex<T> {
+        Complex::new(-self.re, -self.im)
     }
 }
 
 /* constants */
-impl<T: Clone + Num> Zero for Cmplx<T> {
+impl<T: Clone + Num> Zero for Complex<T> {
     #[inline]
-    fn zero() -> Cmplx<T> {
-        Cmplx::new(Zero::zero(), Zero::zero())
+    fn zero() -> Complex<T> {
+        Complex::new(Zero::zero(), Zero::zero())
     }
 
     #[inline]
@@ -160,15 +160,15 @@ impl<T: Clone + Num> Zero for Cmplx<T> {
     }
 }
 
-impl<T: Clone + Num> One for Cmplx<T> {
+impl<T: Clone + Num> One for Complex<T> {
     #[inline]
-    fn one() -> Cmplx<T> {
-        Cmplx::new(One::one(), Zero::zero())
+    fn one() -> Complex<T> {
+        Complex::new(One::one(), Zero::zero())
     }
 }
 
 /* string conversions */
-impl<T: fmt::Show + Num + Ord> fmt::Show for Cmplx<T> {
+impl<T: fmt::Show + Num + Ord> fmt::Show for Complex<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if self.im < Zero::zero() {
             write!(f.buf, "{}-{}i", self.re, -self.im)
@@ -178,7 +178,7 @@ impl<T: fmt::Show + Num + Ord> fmt::Show for Cmplx<T> {
     }
 }
 
-impl<T: ToStrRadix + Num + Ord> ToStrRadix for Cmplx<T> {
+impl<T: ToStrRadix + Num + Ord> ToStrRadix for Complex<T> {
     fn to_str_radix(&self, radix: uint) -> ~str {
         if self.im < Zero::zero() {
             format!("{}-{}i", self.re.to_str_radix(radix), (-self.im).to_str_radix(radix))
@@ -192,22 +192,22 @@ impl<T: ToStrRadix + Num + Ord> ToStrRadix for Cmplx<T> {
 mod test {
     #![allow(non_uppercase_statics)]
 
-    use super::{Complex64, Cmplx};
+    use super::{Complex64, Complex};
     use std::num::{Zero,One,Float};
 
-    pub static _0_0i : Complex64 = Cmplx { re: 0.0, im: 0.0 };
-    pub static _1_0i : Complex64 = Cmplx { re: 1.0, im: 0.0 };
-    pub static _1_1i : Complex64 = Cmplx { re: 1.0, im: 1.0 };
-    pub static _0_1i : Complex64 = Cmplx { re: 0.0, im: 1.0 };
-    pub static _neg1_1i : Complex64 = Cmplx { re: -1.0, im: 1.0 };
-    pub static _05_05i : Complex64 = Cmplx { re: 0.5, im: 0.5 };
+    pub static _0_0i : Complex64 = Complex { re: 0.0, im: 0.0 };
+    pub static _1_0i : Complex64 = Complex { re: 1.0, im: 0.0 };
+    pub static _1_1i : Complex64 = Complex { re: 1.0, im: 1.0 };
+    pub static _0_1i : Complex64 = Complex { re: 0.0, im: 1.0 };
+    pub static _neg1_1i : Complex64 = Complex { re: -1.0, im: 1.0 };
+    pub static _05_05i : Complex64 = Complex { re: 0.5, im: 0.5 };
     pub static all_consts : [Complex64, .. 5] = [_0_0i, _1_0i, _1_1i, _neg1_1i, _05_05i];
 
     #[test]
     fn test_consts() {
-        // check our constants are what Cmplx::new creates
+        // check our constants are what Complex::new creates
         fn test(c : Complex64, r : f64, i: f64) {
-            assert_eq!(c, Cmplx::new(r,i));
+            assert_eq!(c, Complex::new(r,i));
         }
         test(_0_0i, 0.0, 0.0);
         test(_1_0i, 1.0, 0.0);
@@ -246,7 +246,7 @@ mod test {
     #[test]
     fn test_conj() {
         for &c in all_consts.iter() {
-            assert_eq!(c.conj(), Cmplx::new(c.re, -c.im));
+            assert_eq!(c.conj(), Complex::new(c.re, -c.im));
             assert_eq!(c.conj().conj(), c);
         }
     }
@@ -280,7 +280,7 @@ mod test {
     fn test_polar_conv() {
         fn test(c: Complex64) {
             let (r, theta) = c.to_polar();
-            assert!((c - Cmplx::from_polar(&r, &theta)).norm() < 1e-6);
+            assert!((c - Complex::from_polar(&r, &theta)).norm() < 1e-6);
         }
         for &c in all_consts.iter() { test(c); }
     }
