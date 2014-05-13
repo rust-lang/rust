@@ -19,7 +19,6 @@ use util;
 
 use std::io::File;
 use std::io::fs;
-use std::io::net::ip::{Ipv4Addr, SocketAddr};
 use std::io::net::tcp;
 use std::io::process::ProcessExit;
 use std::io::process;
@@ -316,10 +315,7 @@ fn run_debuginfo_gdb_test(config: &config, props: &TestProps, testfile: &Path) {
                 //waiting 1 second for gdbserver start
                 timer::sleep(1000);
                 let result = task::try(proc() {
-                    tcp::TcpStream::connect(SocketAddr {
-                        ip: Ipv4Addr(127, 0, 0, 1),
-                        port: 5039,
-                    }).unwrap();
+                    tcp::TcpStream::connect("127.0.0.1", 5039).unwrap();
                 });
                 if result.is_err() {
                     continue;
