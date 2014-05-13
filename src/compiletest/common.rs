@@ -126,6 +126,9 @@ pub struct Config {
     // Host triple for the compiler being invoked
     pub host: ~str,
 
+    // Path to the android tools
+    pub android_cross_path: Path,
+
     // Extra parameter to run adb on arm-linux-androideabi
     pub adb_path: ~str,
 
