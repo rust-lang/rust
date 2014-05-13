@@ -103,7 +103,6 @@ pub mod container;
 /* Core types and methods on primitives */
 
 mod unicode;
-mod unit;
 pub mod any;
 pub mod atomics;
 pub mod bool;
