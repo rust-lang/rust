@@ -30,20 +30,23 @@
 //! of a value and take action, always accounting for the `None` case.
 //!
 //! ```
-//! # // FIXME This is not the greatest first example
-//! // cow_says contains the word "moo"
-//! let cow_says = Some("moo");
-//! // dog_says does not contain a value
-//! let dog_says: Option<&str> = None;
+//! fn divide(numerator: f64, denominator: f64) -> Option<f64> {
+//!     if denominator == 0.0 {
+//!         None
+//!     } else {
+//!         Some(numerator / denominator)
+//!     }
+//! }
+//!
+//! // The return value of the function is an option
+//! let result = divide(2.0, 3.0);
 //!
 //! // Pattern match to retrieve the value
-//! match (cow_says, dog_says) {
-//!     (Some(cow_words), Some(dog_words)) => {
-//!         println!("Cow says {} and dog says {}!", cow_words, dog_words);
-//!     }
-//!     (Some(cow_words), None) => println!("Cow says {}", cow_words),
-//!     (None, Some(dog_words)) => println!("Dog says {}", dog_words),
-//!     (None, None) => println!("Cow and dog are suspiciously silent")
+//! match result {
+//!     // The division was valid
+//!     Some(x) => println!("Result: {}", x),
+//!     // The division was invalid
+//!     None    => println!("Cannot divide by 0")
 //! }
 //! ```
 //!

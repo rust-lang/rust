@@ -266,7 +266,7 @@ pub fn main() {
 
 */
 
-#![crate_id = "graphviz#0.11-pre"]
+#![crate_id = "graphviz#0.11.0-pre"]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![license = "MIT/ASL2"]

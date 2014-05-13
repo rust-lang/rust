@@ -70,6 +70,12 @@ impl FsRequest {
         }).map(|req| req.mkstat())
     }
 
+    pub fn fstat(loop_: &Loop, fd: c_int) -> Result<FileStat, UvError> {
+        execute(|req, cb| unsafe {
+            uvll::uv_fs_fstat(loop_.handle, req, fd, cb)
+        }).map(|req| req.mkstat())
+    }
+
     pub fn write(loop_: &Loop, fd: c_int, buf: &[u8], offset: i64)
         -> Result<(), UvError>
     {
@@ -262,8 +268,6 @@ impl FsRequest {
     }
 
     pub fn mkstat(&self) -> FileStat {
-        let path = unsafe { uvll::get_path_from_fs_req(self.req) };
-        let path = unsafe { Path::new(CString::new(path, false)) };
         let stat = self.get_stat();
         fn to_msec(stat: uvll::uv_timespec_t) -> u64 {
             // Be sure to cast to u64 first to prevent overflowing if the tv_sec
@@ -279,7 +283,6 @@ impl FsRequest {
             _ => io::TypeUnknown,
         };
         FileStat {
-            path: path,
             size: stat.st_size as u64,
             kind: kind,
             perm: unsafe {
@@ -463,6 +466,11 @@ impl rtio::RtioFileStream for FileWatcher {
         let r = FsRequest::truncate(&self.loop_, self.fd, offset);
         r.map_err(uv_error_to_io_error)
     }
+
+    fn fstat(&mut self) -> Result<FileStat, IoError> {
+        let _m = self.fire_homing_missile();
+        FsRequest::fstat(&self.loop_, self.fd).map_err(uv_error_to_io_error)
+    }
 }
 
 #[cfg(test)]
@@ -534,6 +542,10 @@ mod test {
         assert!(result.is_ok());
 
         let result = FsRequest::stat(l(), path);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().size, 5);
+
+        let result = FsRequest::fstat(l(), file.fd);
         assert!(result.is_ok());
         assert_eq!(result.unwrap().size, 5);
 

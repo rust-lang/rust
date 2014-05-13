@@ -166,6 +166,14 @@ impl rtio::RtioFileStream for FileDesc {
             libc::ftruncate(self.fd(), offset as libc::off_t)
         }))
     }
+
+    fn fstat(&mut self) -> IoResult<io::FileStat> {
+        let mut stat: libc::stat = unsafe { mem::uninit() };
+        match retry(|| unsafe { libc::fstat(self.fd(), &mut stat) }) {
+            0 => Ok(mkstat(&stat)),
+            _ => Err(super::last_error()),
+        }
+    }
 }
 
 impl rtio::RtioPipe for FileDesc {
@@ -317,6 +325,10 @@ impl rtio::RtioFileStream for CFile {
     fn truncate(&mut self, offset: i64) -> Result<(), IoError> {
         self.flush().and_then(|()| self.fd.truncate(offset))
     }
+
+    fn fstat(&mut self) -> IoResult<io::FileStat> {
+        self.flush().and_then(|()| self.fd.fstat())
+    }
 }
 
 impl Drop for CFile {
@@ -455,9 +467,7 @@ pub fn link(src: &CString, dst: &CString) -> IoResult<()> {
     }))
 }
 
-fn mkstat(stat: &libc::stat, path: &CString) -> io::FileStat {
-    let path = unsafe { CString::new(path.with_ref(|p| p), false) };
-
+fn mkstat(stat: &libc::stat) -> io::FileStat {
     // FileStat times are in milliseconds
     fn mktime(secs: u64, nsecs: u64) -> u64 { secs * 1000 + nsecs / 1000000 }
 
@@ -481,7 +491,6 @@ fn mkstat(stat: &libc::stat, path: &CString) -> io::FileStat {
     fn gen(_stat: &libc::stat) -> u64 { 0 }
 
     io::FileStat {
-        path: Path::new(path),
         size: stat.st_size as u64,
         kind: kind,
         perm: unsafe {
@@ -508,7 +517,7 @@ fn mkstat(stat: &libc::stat, path: &CString) -> io::FileStat {
 pub fn stat(p: &CString) -> IoResult<io::FileStat> {
     let mut stat: libc::stat = unsafe { mem::uninit() };
     match retry(|| unsafe { libc::stat(p.with_ref(|p| p), &mut stat) }) {
-        0 => Ok(mkstat(&stat, p)),
+        0 => Ok(mkstat(&stat)),
         _ => Err(super::last_error()),
     }
 }
@@ -516,7 +525,7 @@ pub fn stat(p: &CString) -> IoResult<io::FileStat> {
 pub fn lstat(p: &CString) -> IoResult<io::FileStat> {
     let mut stat: libc::stat = unsafe { mem::uninit() };
     match retry(|| unsafe { libc::lstat(p.with_ref(|p| p), &mut stat) }) {
-        0 => Ok(mkstat(&stat, p)),
+        0 => Ok(mkstat(&stat)),
         _ => Err(super::last_error()),
     }
 }

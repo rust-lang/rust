@@ -95,13 +95,12 @@ pub fn getcwd() -> Path {
 
 #[cfg(windows)]
 pub mod win32 {
-    use iter::Iterator;
     use libc::types::os::arch::extra::DWORD;
     use libc;
     use option::{None, Option, Expect};
     use option;
     use os::TMPBUF_SZ;
-    use slice::{MutableVector, ImmutableVector, OwnedVector};
+    use slice::{MutableVector, ImmutableVector};
     use str::{StrSlice, StrAllocating};
     use str;
     use vec::Vec;
@@ -142,7 +141,7 @@ pub mod win32 {
     }
 
     pub fn as_utf16_p<T>(s: &str, f: |*u16| -> T) -> T {
-        let mut t = s.to_utf16().move_iter().collect::<Vec<u16>>();
+        let mut t = s.to_utf16();
         // Null terminate before passing on.
         t.push(0u16);
         f(t.as_ptr())

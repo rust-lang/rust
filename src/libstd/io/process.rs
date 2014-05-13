@@ -140,6 +140,7 @@ pub struct ProcessConfig<'a> {
 }
 
 /// The output of a finished process.
+#[deriving(Eq, TotalEq, Clone)]
 pub struct ProcessOutput {
     /// The status (exit code) of the process.
     pub status: ProcessExit,
