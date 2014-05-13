@@ -260,7 +260,7 @@ pub trait Rng {
     ///
     /// println!("{}", task_rng().gen_ascii_str(10));
     /// ```
-    fn gen_ascii_str(&mut self, len: uint) -> ~str {
+    fn gen_ascii_str(&mut self, len: uint) -> StrBuf {
         static GEN_ASCII_STR_CHARSET: &'static [u8] = bytes!("ABCDEFGHIJKLMNOPQRSTUVWXYZ\
                                                              abcdefghijklmnopqrstuvwxyz\
                                                              0123456789");
@@ -268,7 +268,7 @@ pub trait Rng {
         for _ in range(0, len) {
             s.push_char(self.choose(GEN_ASCII_STR_CHARSET) as char)
         }
-        s.into_owned()
+        s
     }
 
     /// Choose an item randomly, failing if `values` is empty.
