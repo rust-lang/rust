@@ -11,6 +11,8 @@
 #![allow(non_camel_case_types)]
 
 use middle::pat_util::{PatIdMap, pat_id_map, pat_is_binding, pat_is_const};
+use middle::subst;
+use middle::subst::Subst;
 use middle::ty;
 use middle::typeck::check::demand;
 use middle::typeck::check::{check_expr, check_expr_has_type, FnCtxt};
@@ -151,7 +153,7 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: &ast::Pat, path: &ast::Path,
                             if var_tpt.generics.type_param_defs().len() ==
                                 expected_substs.tps.len()
                             {
-                                ty::subst(tcx, expected_substs, *t)
+                                t.subst(tcx, expected_substs)
                             }
                             else {
                                 *t // In this case, an error was already signaled
@@ -301,7 +303,7 @@ pub fn check_struct_pat_fields(pcx: &pat_ctxt,
                                fields: &[ast::FieldPat],
                                class_fields: Vec<ty::field_ty>,
                                class_id: ast::DefId,
-                               substitutions: &ty::substs,
+                               substitutions: &subst::Substs,
                                etc: bool) {
     let tcx = pcx.fcx.ccx.tcx;
 
@@ -362,7 +364,7 @@ pub fn check_struct_pat(pcx: &pat_ctxt, pat_id: ast::NodeId, span: Span,
                         expected: ty::t, path: &ast::Path,
                         fields: &[ast::FieldPat], etc: bool,
                         struct_id: ast::DefId,
-                        substitutions: &ty::substs) {
+                        substitutions: &subst::Substs) {
     let fcx = pcx.fcx;
     let tcx = pcx.fcx.ccx.tcx;
 
@@ -400,7 +402,7 @@ pub fn check_struct_like_enum_variant_pat(pcx: &pat_ctxt,
                                           fields: &[ast::FieldPat],
                                           etc: bool,
                                           enum_id: ast::DefId,
-                                          substitutions: &ty::substs) {
+                                          substitutions: &subst::Substs) {
     let fcx = pcx.fcx;
     let tcx = pcx.fcx.ccx.tcx;
 
@@ -565,10 +567,10 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
                                           fields.as_slice(),
                                           etc,
                                           supplied_def_id,
-                                          &ty::substs {
+                                          &subst::Substs {
                                               self_ty: None,
                                               tps: Vec::new(),
-                                              regions: ty::ErasedRegions,
+                                              regions: subst::ErasedRegions,
                                           });
                     }
                     _ => () // Error, but we're already in an error case

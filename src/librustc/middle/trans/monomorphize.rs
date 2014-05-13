@@ -11,6 +11,8 @@
 use back::link::exported_name;
 use driver::session;
 use lib::llvm::ValueRef;
+use middle::subst;
+use middle::subst::Subst;
 use middle::trans::base::{set_llvm_fn_attrs, set_inline_hint};
 use middle::trans::base::{trans_enum_variant, push_ctxt, get_item_val};
 use middle::trans::base::{trans_fn, decl_internal_rust_fn};
@@ -29,7 +31,7 @@ use std::hash::{sip, Hash};
 
 pub fn monomorphic_fn(ccx: &CrateContext,
                       fn_id: ast::DefId,
-                      real_substs: &ty::substs,
+                      real_substs: &subst::Substs,
                       vtables: Option<typeck::vtable_res>,
                       self_vtables: Option<typeck::vtable_param_res>,
                       ref_id: Option<ast::NodeId>)
@@ -139,7 +141,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
 
     debug!("monomorphic_fn about to subst into {}", llitem_ty.repr(ccx.tcx()));
     let mono_ty = match is_static_provided {
-        None => ty::subst(ccx.tcx(), real_substs, llitem_ty),
+        None => llitem_ty.subst(ccx.tcx(), real_substs),
         Some(num_method_ty_params) => {
             // Static default methods are a little unfortunate, in
             // that the "internal" and "external" type of them differ.
@@ -161,14 +163,14 @@ pub fn monomorphic_fn(ccx: &CrateContext,
             tps.push(real_substs.self_ty.unwrap());
             tps.push_all(real_substs.tps.tailn(idx));
 
-            let substs = ty::substs { regions: ty::ErasedRegions,
-                                      self_ty: None,
-                                      tps: tps };
+            let substs = subst::Substs { regions: subst::ErasedRegions,
+                                         self_ty: None,
+                                         tps: tps };
 
             debug!("static default: changed substitution to {}",
                    substs.repr(ccx.tcx()));
 
-            ty::subst(ccx.tcx(), &substs, llitem_ty)
+            llitem_ty.subst(ccx.tcx(), &substs)
         }
     };
 

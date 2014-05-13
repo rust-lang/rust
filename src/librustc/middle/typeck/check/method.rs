@@ -80,6 +80,7 @@ obtained the type `Foo`, we would never match this method.
 */
 
 
+use middle::subst;
 use middle::subst::Subst;
 use middle::ty::*;
 use middle::ty;
@@ -104,7 +105,6 @@ use syntax::ast::{MutMutable, MutImmutable};
 use syntax::ast;
 use syntax::codemap::Span;
 use syntax::parse::token;
-use syntax::owned_slice::OwnedSlice;
 
 #[deriving(PartialEq)]
 pub enum CheckTraitsFlag {
@@ -233,7 +233,7 @@ fn construct_transformed_self_ty_for_object(
     tcx: &ty::ctxt,
     span: Span,
     trait_def_id: ast::DefId,
-    rcvr_substs: &ty::substs,
+    rcvr_substs: &subst::Substs,
     method_ty: &ty::Method)
     -> ty::t {
     /*!
@@ -257,7 +257,7 @@ fn construct_transformed_self_ty_for_object(
         * match below.
         */
 
-    let substs = ty::substs {regions: rcvr_substs.regions.clone(),
+    let substs = subst::Substs {regions: rcvr_substs.regions.clone(),
                                 self_ty: None,
                                 tps: rcvr_substs.tps.clone()};
     match method_ty.explicit_self {
@@ -319,7 +319,7 @@ struct LookupContext<'a> {
 #[deriving(Clone)]
 struct Candidate {
     rcvr_match_condition: RcvrMatchCondition,
-    rcvr_substs: ty::substs,
+    rcvr_substs: subst::Substs,
     method_ty: Rc<ty::Method>,
     origin: MethodOrigin,
 }
@@ -500,7 +500,7 @@ impl<'a> LookupContext<'a> {
 
     fn push_inherent_candidates_from_object(&mut self,
                                             did: DefId,
-                                            substs: &ty::substs) {
+                                            substs: &subst::Substs) {
         debug!("push_inherent_candidates_from_object(did={}, substs={})",
                self.did_to_str(did),
                substs.repr(self.tcx()));
@@ -516,7 +516,7 @@ impl<'a> LookupContext<'a> {
         //
         // `confirm_candidate()` also relies upon this substitution
         // for Self. (fix)
-        let rcvr_substs = substs {
+        let rcvr_substs = subst::Substs {
             self_ty: Some(ty::mk_err()),
             ..(*substs).clone()
         };
@@ -1047,7 +1047,7 @@ impl<'a> LookupContext<'a> {
             return Some(MethodCallee {
                 origin: relevant_candidates.get(0).origin,
                 ty: ty::mk_err(),
-                substs: substs::empty()
+                substs: subst::Substs::empty()
             });
         }
 
@@ -1140,8 +1140,10 @@ impl<'a> LookupContext<'a> {
         // Determine values for the early-bound lifetime parameters.
         // FIXME -- permit users to manually specify lifetimes
         let mut all_regions: Vec<Region> = match candidate.rcvr_substs.regions {
-            NonerasedRegions(ref v) => v.iter().map(|r| r.clone()).collect(),
-            ErasedRegions => tcx.sess.span_bug(self.span, "ErasedRegions")
+            subst::NonerasedRegions(ref v) => {
+                v.iter().map(|r| r.clone()).collect()
+            }
+            subst::ErasedRegions => tcx.sess.span_bug(self.span, "ErasedRegions")
         };
         let m_regions =
             self.fcx.infcx().region_vars_for_defs(
@@ -1153,9 +1155,9 @@ impl<'a> LookupContext<'a> {
 
         // Construct the full set of type parameters for the method,
         // which is equal to the class tps + the method tps.
-        let all_substs = substs {
+        let all_substs = subst::Substs {
             tps: candidate.rcvr_substs.tps.clone().append(m_substs.as_slice()),
-            regions: NonerasedRegions(OwnedSlice::from_vec(all_regions)),
+            regions: subst::NonerasedRegions(all_regions),
             self_ty: candidate.rcvr_substs.self_ty,
         };
 
@@ -1164,7 +1166,7 @@ impl<'a> LookupContext<'a> {
         // Compute the method type with type parameters substituted
         debug!("fty={} all_substs={}",
                bare_fn_ty.repr(tcx),
-               ty::substs_to_str(tcx, &all_substs));
+               all_substs.repr(tcx));
 
         let fn_sig = &bare_fn_ty.sig;
         let inputs = match candidate.origin {

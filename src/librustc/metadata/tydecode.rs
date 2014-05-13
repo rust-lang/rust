@@ -16,6 +16,7 @@
 
 #![allow(non_camel_case_types)]
 
+use middle::subst;
 use middle::ty;
 
 use std::rc::Rc;
@@ -25,7 +26,6 @@ use std::uint;
 use syntax::abi;
 use syntax::ast;
 use syntax::ast::*;
-use syntax::owned_slice::OwnedSlice;
 use syntax::parse::token;
 
 // Compact string representation for ty::t values. API ty_str &
@@ -133,7 +133,7 @@ pub fn parse_trait_ref_data(data: &[u8], crate_num: ast::CrateNum, pos: uint, tc
 }
 
 pub fn parse_substs_data(data: &[u8], crate_num: ast::CrateNum, pos: uint, tcx: &ty::ctxt,
-                         conv: conv_did) -> ty::substs {
+                         conv: conv_did) -> subst::Substs {
     let mut st = parse_state_from_data(data, crate_num, pos, tcx);
     parse_substs(&mut st, conv)
 }
@@ -162,7 +162,7 @@ fn parse_trait_store(st: &mut PState, conv: conv_did) -> ty::TraitStore {
     }
 }
 
-fn parse_substs(st: &mut PState, conv: conv_did) -> ty::substs {
+fn parse_substs(st: &mut PState, conv: conv_did) -> subst::Substs {
     let regions = parse_region_substs(st, |x,y| conv(x,y));
 
     let self_ty = parse_opt(st, |st| parse_ty(st, |x,y| conv(x,y)) );
@@ -172,16 +172,16 @@ fn parse_substs(st: &mut PState, conv: conv_did) -> ty::substs {
     while peek(st) != ']' { params.push(parse_ty(st, |x,y| conv(x,y))); }
     st.pos = st.pos + 1u;
 
-    return ty::substs {
+    return subst::Substs {
         regions: regions,
         self_ty: self_ty,
         tps: params
     };
 }
 
-fn parse_region_substs(st: &mut PState, conv: conv_did) -> ty::RegionSubsts {
+fn parse_region_substs(st: &mut PState, conv: conv_did) -> subst::RegionSubsts {
     match next(st) {
-        'e' => ty::ErasedRegions,
+        'e' => subst::ErasedRegions,
         'n' => {
             let mut regions = vec!();
             while peek(st) != '.' {
@@ -189,7 +189,7 @@ fn parse_region_substs(st: &mut PState, conv: conv_did) -> ty::RegionSubsts {
                 regions.push(r);
             }
             assert_eq!(next(st), '.');
-            ty::NonerasedRegions(OwnedSlice::from_vec(regions))
+            subst::NonerasedRegions(regions)
         }
         _ => fail!("parse_bound_region: bad input")
     }
