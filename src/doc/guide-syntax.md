@@ -1,10 +1,12 @@
 % The Guide to Rust Syntax
 
+<-- We're still figuring out exactly what to do with this, so don't waste much time checking it. -->
+
 A *very* brief guide to Rust syntax. It assumes you are already familar with programming concepts. 
 
 # Arguments
 
-# Conditions
+# Conditional Statements
 
 # `enum`
 
@@ -28,8 +30,6 @@ fn main() {
 
 # Loops
 
-## `if`
-
 ## `loop`
 
 ## `while`
@@ -48,8 +48,8 @@ fn main() {
 
 There are two types of variable in Rust:
 
-* `immutable` - the value cannot be changed. Introduced with `let mut`.
-* `mutable` - the value of can be changed. Introduced with `let`.
+* `immutable` - the value cannot be changed. Introduced with `let`.
+* `mutable` - the value of can be changed. Introduced with `let mut`.
 
 ~~~~
 fn main() {
