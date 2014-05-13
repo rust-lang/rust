@@ -1906,7 +1906,7 @@ mod test_map {
         }
         assert_eq!(m.len(), 32);
 
-        let mut observed = 0;
+        let mut observed: u32 = 0;
 
         for (k, v) in m.iter() {
             assert_eq!(*v, *k * 2);
@@ -2102,7 +2102,7 @@ mod test_set {
         for i in range(0u, 32) {
             assert!(a.insert(i));
         }
-        let mut observed = 0;
+        let mut observed: u32 = 0;
         for k in a.iter() {
             observed |= 1 << *k;
         }
