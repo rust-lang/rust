@@ -601,6 +601,7 @@ CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3) :=						\
         --stage-id stage$(1)-$(2)							\
         --target $(2)                                       \
         --host $(3)                                       \
+        --android-cross-path=$(CFG_ANDROID_CROSS_PATH)    \
         --adb-path=$(CFG_ADB)                          \
         --adb-test-dir=$(CFG_ADB_TEST_DIR)                  \
         --host-rustcflags "$(RUSTC_FLAGS_$(3)) $$(CTEST_RUSTC_FLAGS) -L $$(RT_OUTPUT_DIR_$(3))" \
