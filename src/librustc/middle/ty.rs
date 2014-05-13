@@ -26,7 +26,7 @@ use middle::subst::Subst;
 use middle::typeck;
 use middle::typeck::MethodCall;
 use middle::ty_fold;
-use middle::ty_fold::TypeFolder;
+use middle::ty_fold::{TypeFoldable,TypeFolder};
 use middle;
 use util::ppaux::{note_and_explain_region, bound_region_ptr_to_str};
 use util::ppaux::{trait_store_to_str, ty_to_str};
@@ -1034,7 +1034,7 @@ pub struct ParameterEnvironment {
     pub self_param_bound: Option<Rc<TraitRef>>,
 
     /// Bounds on each numbered type parameter
-    pub type_param_bounds: Vec<ParamBounds> ,
+    pub type_param_bounds: Vec<ParamBounds>,
 }
 
 /// A polytype.
@@ -1519,7 +1519,9 @@ pub fn walk_regions_and_ty(cx: &ctxt, ty: t, fldr: |r: Region|, fldt: |t: t|)
 
 impl ItemSubsts {
     pub fn empty() -> ItemSubsts {
-        ItemSubsts { substs: substs::empty() }
+        ItemSubsts {
+            substs: substs::empty(),
+        }
     }
 
     pub fn is_noop(&self) -> bool {
@@ -4127,8 +4129,8 @@ pub fn normalize_ty(cx: &ctxt, t: t) -> t {
                        substs: &substs)
                        -> substs {
             substs { regions: ErasedRegions,
-                     self_ty: ty_fold::fold_opt_ty(self, substs.self_ty),
-                     tps: ty_fold::fold_ty_vec(self, substs.tps.as_slice()) }
+                     self_ty: substs.self_ty.fold_with(self),
+                     tps: substs.tps.fold_with(self) }
         }
 
         fn fold_sig(&mut self,
@@ -4138,8 +4140,8 @@ pub fn normalize_ty(cx: &ctxt, t: t) -> t {
             // are erased at trans time.
             ty::FnSig {
                 binder_id: ast::DUMMY_NODE_ID,
-                inputs: ty_fold::fold_ty_vec(self, sig.inputs.as_slice()),
-                output: self.fold_ty(sig.output),
+                inputs: sig.inputs.fold_with(self),
+                output: sig.output.fold_with(self),
                 variadic: sig.variadic,
             }
         }

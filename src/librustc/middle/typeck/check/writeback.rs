@@ -15,7 +15,7 @@
 
 use middle::pat_util;
 use middle::ty;
-use middle::ty_fold::TypeFolder;
+use middle::ty_fold::{TypeFolder,TypeFoldable};
 use middle::typeck::astconv::AstConv;
 use middle::typeck::check::FnCtxt;
 use middle::typeck::infer::{force_all, resolve_all, resolve_region};
@@ -23,7 +23,6 @@ use middle::typeck::infer::resolve_type;
 use middle::typeck::infer;
 use middle::typeck::impl_res;
 use middle::typeck::{MethodCall, MethodCallee};
-use middle::typeck::{vtable_origin, vtable_static, vtable_param};
 use middle::typeck::write_substs_to_tcx;
 use middle::typeck::write_ty_to_tcx;
 use util::ppaux::Repr;
@@ -355,77 +354,9 @@ trait ResolveIn {
     fn resolve_in(&self, resolver: &mut Resolver) -> Self;
 }
 
-impl<T:ResolveIn> ResolveIn for Option<T> {
-    fn resolve_in(&self, resolver: &mut Resolver) -> Option<T> {
-        self.as_ref().map(|t| t.resolve_in(resolver))
-    }
-}
-
-impl<T:ResolveIn> ResolveIn for Vec<T> {
-    fn resolve_in(&self, resolver: &mut Resolver) -> Vec<T> {
-        self.iter().map(|t| t.resolve_in(resolver)).collect()
-    }
-}
-
-impl ResolveIn for ty::TraitStore {
-    fn resolve_in(&self, resolver: &mut Resolver) -> ty::TraitStore {
-        resolver.fold_trait_store(*self)
-    }
-}
-
-impl ResolveIn for ty::t {
-    fn resolve_in(&self, resolver: &mut Resolver) -> ty::t {
-        resolver.fold_ty(*self)
-    }
-}
-
-impl ResolveIn for ty::Region {
-    fn resolve_in(&self, resolver: &mut Resolver) -> ty::Region {
-        resolver.fold_region(*self)
-    }
-}
-
-impl ResolveIn for ty::substs {
-    fn resolve_in(&self, resolver: &mut Resolver) -> ty::substs {
-        resolver.fold_substs(self)
-    }
-}
-
-impl ResolveIn for ty::ItemSubsts {
-    fn resolve_in(&self, resolver: &mut Resolver) -> ty::ItemSubsts {
-        ty::ItemSubsts {
-            substs: self.substs.resolve_in(resolver)
-        }
-    }
-}
-
-impl ResolveIn for ty::AutoRef {
-    fn resolve_in(&self, resolver: &mut Resolver) -> ty::AutoRef {
-        resolver.fold_autoref(self)
-    }
-}
-
-impl ResolveIn for vtable_origin {
-    fn resolve_in(&self, resolver: &mut Resolver) -> vtable_origin {
-        match *self {
-            vtable_static(def_id, ref substs, ref origins) => {
-                let r_substs = substs.resolve_in(resolver);
-                let r_origins = origins.resolve_in(resolver);
-                vtable_static(def_id, r_substs, r_origins)
-            }
-            vtable_param(n, b) => {
-                vtable_param(n, b)
-            }
-        }
-    }
-}
-
-impl ResolveIn for impl_res {
-    fn resolve_in(&self, resolver: &mut Resolver) -> impl_res {
-        impl_res {
-            trait_vtables: self.trait_vtables.resolve_in(resolver),
-            self_vtables: self.self_vtables.resolve_in(resolver),
-        }
+impl<T:TypeFoldable> ResolveIn for T {
+    fn resolve_in(&self, resolver: &mut Resolver) -> T {
+        self.fold_with(resolver)
     }
 }
 
