@@ -124,21 +124,21 @@
 // Make and rand accessible for benchmarking/testcases
 #[cfg(test)] extern crate rand;
 
-extern crate libc;
+extern crate alloc;
 extern crate core;
+extern crate libc;
 
 // Make std testable by not duplicating lang items. See #2912
 #[cfg(test)] extern crate realstd = "std";
-#[cfg(test)] pub use kinds = realstd::kinds;
-#[cfg(test)] pub use ops = realstd::ops;
-#[cfg(test)] pub use cmp = realstd::cmp;
-#[cfg(test)] pub use ty = realstd::ty;
-#[cfg(test)] pub use owned = realstd::owned;
+#[cfg(test)] pub use realstd::kinds;
+#[cfg(test)] pub use realstd::ops;
+#[cfg(test)] pub use realstd::cmp;
+#[cfg(test)] pub use realstd::ty;
 
-#[cfg(not(test))] pub use cmp = core::cmp;
-#[cfg(not(test))] pub use kinds = core::kinds;
-#[cfg(not(test))] pub use ops = core::ops;
-#[cfg(not(test))] pub use ty = core::ty;
+#[cfg(not(test))] pub use core::cmp;
+#[cfg(not(test))] pub use core::kinds;
+#[cfg(not(test))] pub use core::ops;
+#[cfg(not(test))] pub use core::ty;
 
 pub use core::any;
 pub use core::bool;
@@ -154,6 +154,9 @@ pub use core::ptr;
 pub use core::raw;
 pub use core::tuple;
 pub use core::result;
+
+pub use alloc::owned;
+pub use alloc::rc;
 
 // Run tests with libgreen instead of libnative.
 //
@@ -205,10 +208,7 @@ pub mod strbuf;
 
 pub mod ascii;
 
-pub mod rc;
 pub mod gc;
-#[cfg(not(test))]
-pub mod owned;
 
 /* Common traits */
 

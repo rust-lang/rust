@@ -27,17 +27,18 @@
 #[cfg(test)]
 #[phase(syntax, link)] extern crate log;
 
+extern crate alloc;
+
 pub use comm::{DuplexStream, duplex};
 pub use task_pool::TaskPool;
 pub use future::Future;
-pub use arc::{Arc, Weak};
+pub use alloc::arc::{Arc, Weak};
 pub use lock::{Mutex, MutexGuard, Condvar, Barrier,
                RWLock, RWLockReadGuard, RWLockWriteGuard};
 
 // The mutex/rwlock in this module are not meant for reexport
 pub use raw::{Semaphore, SemaphoreGuard};
 
-mod arc;
 mod comm;
 mod future;
 mod lock;

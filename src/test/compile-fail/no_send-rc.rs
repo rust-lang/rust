@@ -15,6 +15,6 @@ fn bar<T: Send>(_: T) {}
 fn main() {
     let x = Rc::new(5);
     bar(x);
-    //~^ ERROR instantiating a type parameter with an incompatible type `std::rc::Rc<int>`,
+    //~^ ERROR instantiating a type parameter with an incompatible type `alloc::rc::Rc<int>`,
     //         which does not fulfill `Send`
 }

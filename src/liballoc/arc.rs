@@ -13,11 +13,16 @@
  * between tasks.
  */
 
-use std::mem;
-use std::ptr;
-use std::rt::heap::deallocate;
-use std::sync::atomics;
-use std::mem::{min_align_of, size_of};
+use core::atomics;
+use core::clone::Clone;
+use core::kinds::{Share, Send};
+use core::mem::{min_align_of, size_of, drop};
+use core::mem;
+use core::ops::{Drop, Deref};
+use core::option::{Some, None, Option};
+use core::ptr;
+use core::ptr::RawPtr;
+use heap::deallocate;
 
 /// An atomically reference counted wrapper for shared state.
 ///
@@ -28,6 +33,8 @@ use std::mem::{min_align_of, size_of};
 /// task.
 ///
 /// ```rust
+/// extern crate sync;
+///
 /// use sync::Arc;
 ///
 /// fn main() {
@@ -251,10 +258,16 @@ impl<T: Share + Send> Drop for Weak<T> {
 #[cfg(test)]
 #[allow(experimental)]
 mod tests {
-    use super::{Arc, Weak};
+    use std::clone::Clone;
+    use std::comm::channel;
+    use std::mem::drop;
+    use std::ops::{Drop, Deref, DerefMut};
+    use std::option::{Option, Some, None};
     use std::sync::atomics;
     use std::task;
-    use Mutex;
+    use std::vec::Vec;
+    use super::{Arc, Weak};
+    use sync::Mutex;
 
     struct Canary(*mut atomics::AtomicUint);
 

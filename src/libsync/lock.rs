@@ -447,7 +447,7 @@ mod tests {
     use std::task;
     use std::task::TaskBuilder;
 
-    use arc::Arc;
+    use Arc;
     use super::{Mutex, Barrier, RWLock};
 
     #[test]
