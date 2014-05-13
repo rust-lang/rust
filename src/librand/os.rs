@@ -109,6 +109,7 @@ mod imp {
                                      CRYPT_VERIFYCONTEXT | CRYPT_SILENT)
             };
 
+            // FIXME #13259:
             // It turns out that if we can't acquire a context with the
             // NTE_BAD_SIGNATURE error code, the documentation states:
             //
