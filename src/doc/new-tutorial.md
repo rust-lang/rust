@@ -25,15 +25,13 @@ To install Rust on OS X:
 
 To install Rust on Linux:
 
-1. Download and extract the latest stable binaries (tar.gz) from the [Rust website][install].
+1. Download and extract the latest stable binaries (.tar.gz) from the [Rust website][install].
 2. Run the `./install.sh` inside the directory.  
 
 There are more complete [installation intructions][install-wiki] on the wiki.
 
 [install]: http://www.rust-lang.org/install.html
 [install-wiki]: https://github.com/mozilla/rust/wiki/Doc-packages,-editors,-and-other-tools
-
-<!-- FIXME: I think there is a real issue here, with the install instructions -->
 
 ## Compiling and Running Rust Examples
 
@@ -46,10 +44,7 @@ There are more complete [installation intructions][install-wiki] on the wiki.
     ~~~~
 
 2. Run `rustc example.rs`
-3. If there are no compiler errors, you can run `./example`. 
-
-<!-- FIXME non linux example? -->
-
+3. If there are no compiler errors, run `"./example"` and see "Hello world!" printed to screen. 
 
 # Stack, Heap and Inline Structures
 
@@ -72,7 +67,8 @@ fn main() {
 }
 ~~~~
 
-<!-- FIXME
+<!-- FIXME: more detail, help from @nikomatsakis? 
+
 The data for the point is stored directly on the stack, there is no heap allocation or pointer indirection, which improves performance. 
 -->
 
@@ -105,7 +101,7 @@ https://github.com/mozilla/rust/pull/14017#discussion_r12404628
                                  -----------------------------
 ~~~~
 
-<!-- FIXME: reword 
+<!-- FIXME: more detail, help from @nikomatsakis? 
 
 Storing aggregate data inline is critical for improving performance, because malloc/free, pointer chasing and cache invalidation require a complex runtime with garbage collector.  
 -->
@@ -157,7 +153,7 @@ The stack is very efficient but it is also limited in size, so can't be used to 
 
 <!-- FIXME: not really happy with this, we're already talking about allocating memory, so the ~ is forced -->
 
-In Rust, the `~` operator allocates memory, so `~expr` allocates space on the heap, evaluates `expr` and stores the result on the heap. For example, `p=~Point { x: 1, y: 2 }`. `p` is not of type `Point` but of type `~Point`,  the `~` indicates that it is a pointer to a heap allocation.
+In Rust, the box operator (`~`) allocates memory, so `~expr` allocates space on the heap, evaluates `expr` and stores the result on the heap. For example, `p=~Point { x: 1, y: 2 }`. `p` is not of type `Point` but of type `~Point`,  the `~` indicates that it is a pointer to a heap allocation.
 
 One very common use for heap allocation is to store [arrays][arrays]. For example, a function to draw a polygon of an arbitrary list of points:
 
