@@ -151,11 +151,13 @@ fn resolved_path(w: &mut io::Writer, did: ast::DefId, p: &clean::Path,
     path(w, p, print_all,
         |cache, loc| {
             if ast_util::is_local(did) {
-                Some("../".repeat(loc.len()))
+                Some(("../".repeat(loc.len())).to_strbuf())
             } else {
                 match *cache.extern_locations.get(&did.krate) {
-                    render::Remote(ref s) => Some(s.clone()),
-                    render::Local => Some("../".repeat(loc.len())),
+                    render::Remote(ref s) => Some(s.to_strbuf()),
+                    render::Local => {
+                        Some(("../".repeat(loc.len())).to_strbuf())
+                    }
                     render::Unknown => None,
                 }
             }
@@ -169,8 +171,8 @@ fn resolved_path(w: &mut io::Writer, did: ast::DefId, p: &clean::Path,
 }
 
 fn path(w: &mut io::Writer, path: &clean::Path, print_all: bool,
-        root: |&render::Cache, &[~str]| -> Option<~str>,
-        info: |&render::Cache| -> Option<(Vec<~str> , ItemType)>)
+        root: |&render::Cache, &[StrBuf]| -> Option<StrBuf>,
+        info: |&render::Cache| -> Option<(Vec<StrBuf> , ItemType)>)
     -> fmt::Result
 {
     // The generics will get written to both the title and link
@@ -206,10 +208,11 @@ fn path(w: &mut io::Writer, path: &clean::Path, print_all: bool,
             Some(root) => {
                 let mut root = StrBuf::from_str(root);
                 for seg in path.segments.slice_to(amt).iter() {
-                    if "super" == seg.name || "self" == seg.name {
+                    if "super" == seg.name.as_slice() ||
+                            "self" == seg.name.as_slice() {
                         try!(write!(w, "{}::", seg.name));
                     } else {
-                        root.push_str(seg.name);
+                        root.push_str(seg.name.as_slice());
                         root.push_str("/");
                         try!(write!(w, "<a class='mod'
                                             href='{}index.html'>{}</a>::",
@@ -229,21 +232,21 @@ fn path(w: &mut io::Writer, path: &clean::Path, print_all: bool,
     match info(&**cache) {
         // This is a documented path, link to it!
         Some((ref fqp, shortty)) if abs_root.is_some() => {
-            let mut url = StrBuf::from_str(abs_root.unwrap());
+            let mut url = StrBuf::from_str(abs_root.unwrap().as_slice());
             let to_link = fqp.slice_to(fqp.len() - 1);
             for component in to_link.iter() {
-                url.push_str(*component);
+                url.push_str(component.as_slice());
                 url.push_str("/");
             }
             match shortty {
                 item_type::Module => {
-                    url.push_str(*fqp.last().unwrap());
+                    url.push_str(fqp.last().unwrap().as_slice());
                     url.push_str("/index.html");
                 }
                 _ => {
                     url.push_str(shortty.to_static_str());
                     url.push_str(".");
-                    url.push_str(*fqp.last().unwrap());
+                    url.push_str(fqp.last().unwrap().as_slice());
                     url.push_str(".html");
                 }
             }
@@ -352,16 +355,20 @@ impl fmt::Show for clean::Type {
                                {arrow, select, yes{ -&gt; {ret}} other{}}",
                        style = FnStyleSpace(decl.fn_style),
                        lifetimes = if decl.lifetimes.len() == 0 {
-                           "".to_owned()
+                           "".to_strbuf()
                        } else {
-                           format!("&lt;{:#}&gt;", decl.lifetimes)
+                           format_strbuf!("&lt;{:#}&gt;", decl.lifetimes)
                        },
                        args = decl.decl.inputs,
                        bounds = if decl.bounds.len() == 0 {
-                           "".to_owned()
+                           "".to_strbuf()
                        } else {
-                           let mut m = decl.bounds.iter().map(|s| s.to_str());
-                           ": " + m.collect::<Vec<~str>>().connect(" + ")
+                           let mut m = decl.bounds
+                                           .iter()
+                                           .map(|s| s.to_str().to_strbuf());
+                           format_strbuf!(
+                               ": {}",
+                               m.collect::<Vec<StrBuf>>().connect(" + "))
                        },
                        arrow = match decl.decl.output { clean::Unit => "no", _ => "yes" },
                        ret = decl.decl.output)
@@ -370,9 +377,9 @@ impl fmt::Show for clean::Type {
                 write!(f.buf, "{}{}fn{}{}",
                        FnStyleSpace(decl.fn_style),
                        match decl.abi.as_slice() {
-                           "" => " extern ".to_owned(),
-                           "\"Rust\"" => "".to_owned(),
-                           s => format!(" extern {} ", s)
+                           "" => " extern ".to_strbuf(),
+                           "\"Rust\"" => "".to_strbuf(),
+                           s => format_strbuf!(" extern {} ", s)
                        },
                        decl.generics,
                        decl.decl)

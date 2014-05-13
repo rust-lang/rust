@@ -445,7 +445,7 @@ pub fn trans_foreign_mod(ccx: &CrateContext, foreign_mod: &ast::ForeignMod) {
 
         let lname = link_name(foreign_item);
         ccx.item_symbols.borrow_mut().insert(foreign_item.id,
-                                             lname.get().to_owned());
+                                             lname.get().to_strbuf());
     }
 }
 
@@ -476,7 +476,7 @@ pub fn trans_foreign_mod(ccx: &CrateContext, foreign_mod: &ast::ForeignMod) {
 
 pub fn register_rust_fn_with_foreign_abi(ccx: &CrateContext,
                                          sp: Span,
-                                         sym: ~str,
+                                         sym: StrBuf,
                                          node_id: ast::NodeId)
                                          -> ValueRef {
     let _icx = push_ctxt("foreign::register_foreign_fn");
@@ -553,7 +553,7 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: &CrateContext,
                                                false,
                                                f.sig.inputs.as_slice(),
                                                f.sig.output,
-                                               ps);
+                                               ps.as_slice());
         base::set_llvm_fn_attrs(attrs, llfn);
         base::trans_fn(ccx, decl, body, llfn, None, id, []);
         llfn

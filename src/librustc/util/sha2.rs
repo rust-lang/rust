@@ -257,9 +257,9 @@ pub trait Digest {
     }
 
     /// Convenience function that retrieves the result of a digest as a
-    /// ~str in hexadecimal format.
-    fn result_str(&mut self) -> ~str {
-        self.result_bytes().as_slice().to_hex()
+    /// StrBuf in hexadecimal format.
+    fn result_str(&mut self) -> StrBuf {
+        self.result_bytes().as_slice().to_hex().to_strbuf()
     }
 }
 
@@ -543,15 +543,15 @@ mod tests {
     }
 
     struct Test {
-        input: ~str,
-        output_str: ~str,
+        input: StrBuf,
+        output_str: StrBuf,
     }
 
     fn test_hash<D: Digest>(sh: &mut D, tests: &[Test]) {
         // Test that it works when accepting the message all at once
         for t in tests.iter() {
             sh.reset();
-            sh.input_str(t.input);
+            sh.input_str(t.input.as_slice());
             let out_str = sh.result_str();
             assert!(out_str == t.output_str);
         }
@@ -563,7 +563,9 @@ mod tests {
             let mut left = len;
             while left > 0u {
                 let take = (left + 1u) / 2u;
-                sh.input_str(t.input.slice(len - left, take + len - left));
+                sh.input_str(t.input
+                              .as_slice()
+                              .slice(len - left, take + len - left));
                 left = left - take;
             }
             let out_str = sh.result_str();
@@ -576,19 +578,21 @@ mod tests {
         // Examples from wikipedia
         let wikipedia_tests = vec!(
             Test {
-                input: "".to_owned(),
+                input: "".to_strbuf(),
                 output_str: "e3b0c44298fc1c149afb\
-            f4c8996fb92427ae41e4649b934ca495991b7852b855".to_owned()
+            f4c8996fb92427ae41e4649b934ca495991b7852b855".to_strbuf()
             },
             Test {
-                input: "The quick brown fox jumps over the lazy dog".to_owned(),
+                input: "The quick brown fox jumps over the lazy \
+                        dog".to_strbuf(),
                 output_str: "d7a8fbb307d7809469ca\
-            9abcb0082e4f8d5651e46d3cdb762d02d0bf37c9e592".to_owned()
+            9abcb0082e4f8d5651e46d3cdb762d02d0bf37c9e592".to_strbuf()
             },
             Test {
-                input: "The quick brown fox jumps over the lazy dog.".to_owned(),
+                input: "The quick brown fox jumps over the lazy \
+                        dog.".to_strbuf(),
                 output_str: "ef537f25c895bfa78252\
-            6529a9b63d97aa631564d5d789c2b765448c8635fb6c".to_owned()
+            6529a9b63d97aa631564d5d789c2b765448c8635fb6c".to_strbuf()
             });
 
         let tests = wikipedia_tests;

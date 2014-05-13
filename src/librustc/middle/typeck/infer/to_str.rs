@@ -20,75 +20,80 @@ use util::ppaux::{mt_to_str, ty_to_str, trait_ref_to_str};
 use syntax::ast;
 
 pub trait InferStr {
-    fn inf_str(&self, cx: &InferCtxt) -> ~str;
+    fn inf_str(&self, cx: &InferCtxt) -> StrBuf;
 }
 
 impl InferStr for ty::t {
-    fn inf_str(&self, cx: &InferCtxt) -> ~str {
+    fn inf_str(&self, cx: &InferCtxt) -> StrBuf {
         ty_to_str(cx.tcx, *self)
     }
 }
 
 impl InferStr for FnSig {
-    fn inf_str(&self, cx: &InferCtxt) -> ~str {
-        format!("({}) -> {}",
-             self.inputs.iter().map(|a| a.inf_str(cx)).collect::<Vec<~str>>().connect(", "),
-             self.output.inf_str(cx))
+    fn inf_str(&self, cx: &InferCtxt) -> StrBuf {
+        format_strbuf!("({}) -> {}",
+                       self.inputs
+                           .iter()
+                           .map(|a| a.inf_str(cx))
+                           .collect::<Vec<StrBuf>>().connect(", "),
+                       self.output.inf_str(cx))
     }
 }
 
 impl InferStr for ty::mt {
-    fn inf_str(&self, cx: &InferCtxt) -> ~str {
+    fn inf_str(&self, cx: &InferCtxt) -> StrBuf {
         mt_to_str(cx.tcx, self)
     }
 }
 
 impl InferStr for ty::Region {
-    fn inf_str(&self, _cx: &InferCtxt) -> ~str {
-        format!("{:?}", *self)
+    fn inf_str(&self, _cx: &InferCtxt) -> StrBuf {
+        format_strbuf!("{:?}", *self)
     }
 }
 
 impl<V:InferStr> InferStr for Bound<V> {
-    fn inf_str(&self, cx: &InferCtxt) -> ~str {
+    fn inf_str(&self, cx: &InferCtxt) -> StrBuf {
         match *self {
-          Some(ref v) => v.inf_str(cx),
-          None => "none".to_owned()
+            Some(ref v) => v.inf_str(cx),
+            None => "none".to_strbuf()
         }
     }
 }
 
 impl<T:InferStr> InferStr for Bounds<T> {
-    fn inf_str(&self, cx: &InferCtxt) -> ~str {
-        format!("\\{{} <: {}\\}",
-             self.lb.inf_str(cx),
-             self.ub.inf_str(cx))
+    fn inf_str(&self, cx: &InferCtxt) -> StrBuf {
+        format_strbuf!("\\{{} <: {}\\}",
+                       self.lb.inf_str(cx),
+                       self.ub.inf_str(cx))
     }
 }
 
 impl<V:Vid + ToStr,T:InferStr> InferStr for VarValue<V, T> {
-    fn inf_str(&self, cx: &InferCtxt) -> ~str {
+    fn inf_str(&self, cx: &InferCtxt) -> StrBuf {
         match *self {
-          Redirect(ref vid) => format!("Redirect({})", vid.to_str()),
-          Root(ref pt, rk) => format!("Root({}, {})", pt.inf_str(cx), rk)
+          Redirect(ref vid) => format_strbuf!("Redirect({})", vid.to_str()),
+          Root(ref pt, rk) => {
+              format_strbuf!("Root({}, {})", pt.inf_str(cx), rk)
+          }
         }
     }
 }
 
 impl InferStr for IntVarValue {
-    fn inf_str(&self, _cx: &InferCtxt) -> ~str {
-        self.to_str()
+    fn inf_str(&self, _cx: &InferCtxt) -> StrBuf {
+        self.to_str().to_strbuf()
     }
 }
 
 impl InferStr for ast::FloatTy {
-    fn inf_str(&self, _cx: &InferCtxt) -> ~str {
-        self.to_str()
+    fn inf_str(&self, _cx: &InferCtxt) -> StrBuf {
+        self.to_str().to_strbuf()
     }
 }
 
 impl InferStr for ty::TraitRef {
-    fn inf_str(&self, cx: &InferCtxt) -> ~str {
+    fn inf_str(&self, cx: &InferCtxt) -> StrBuf {
         trait_ref_to_str(cx.tcx, self)
     }
 }

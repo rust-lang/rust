@@ -40,7 +40,7 @@ pub fn trans_stmt<'a>(cx: &'a Block<'a>,
     debug!("trans_stmt({})", s.repr(cx.tcx()));
 
     if cx.sess().asm_comments() {
-        add_span_comment(cx, s.span, s.repr(cx.tcx()));
+        add_span_comment(cx, s.span, s.repr(cx.tcx()).as_slice());
     }
 
     let mut bcx = cx;

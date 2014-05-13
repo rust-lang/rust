@@ -25,7 +25,7 @@ use html::escape::Escape;
 use t = syntax::parse::token;
 
 /// Highlights some source code, returning the HTML output.
-pub fn highlight(src: &str, class: Option<&str>) -> ~str {
+pub fn highlight(src: &str, class: Option<&str>) -> StrBuf {
     let sess = parse::new_parse_sess();
     let fm = parse::string_to_filemap(&sess,
                                       src.to_strbuf(),
@@ -36,7 +36,7 @@ pub fn highlight(src: &str, class: Option<&str>) -> ~str {
          lexer::new_string_reader(&sess.span_diagnostic, fm),
          class,
          &mut out).unwrap();
-    str::from_utf8_lossy(out.unwrap().as_slice()).into_owned()
+    str::from_utf8_lossy(out.unwrap().as_slice()).to_strbuf()
 }
 
 /// Exhausts the `lexer` writing the output into `out`.

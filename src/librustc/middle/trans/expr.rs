@@ -86,10 +86,10 @@ pub enum Dest {
 }
 
 impl Dest {
-    pub fn to_str(&self, ccx: &CrateContext) -> ~str {
+    pub fn to_str(&self, ccx: &CrateContext) -> StrBuf {
         match *self {
-            SaveIn(v) => format!("SaveIn({})", ccx.tn.val_to_str(v)),
-            Ignore => "Ignore".to_owned()
+            SaveIn(v) => format_strbuf!("SaveIn({})", ccx.tn.val_to_str(v)),
+            Ignore => "Ignore".to_strbuf()
         }
     }
 }
@@ -545,7 +545,7 @@ fn trans_def<'a>(bcx: &'a Block<'a>,
                         let symbol = csearch::get_symbol(
                             &bcx.ccx().sess().cstore,
                             did);
-                        let llval = symbol.with_c_str(|buf| {
+                        let llval = symbol.as_slice().with_c_str(|buf| {
                                 llvm::LLVMAddGlobal(bcx.ccx().llmod,
                                                     llty.to_ref(),
                                                     buf)
