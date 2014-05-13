@@ -106,6 +106,7 @@ pub mod atomics;
 pub mod bool;
 pub mod cell;
 pub mod char;
+pub mod failure;
 pub mod finally;
 pub mod iter;
 pub mod option;
@@ -118,12 +119,14 @@ pub mod tuple;
 #[cfg(stage0, not(test))]
 pub mod owned;
 
-mod failure;
-
 // FIXME: this module should not exist. Once owned allocations are no longer a
 //        language type, this module can move outside to the owned allocation
 //        crate.
 mod should_not_exist;
+
+mod core {
+    pub use failure;
+}
 
 mod std {
     pub use clone;
