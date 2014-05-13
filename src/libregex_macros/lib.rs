@@ -105,8 +105,8 @@ struct NfaGen<'a> {
     cx: &'a ExtCtxt<'a>,
     sp: codemap::Span,
     prog: Program,
-    names: Vec<Option<~str>>,
-    original: ~str,
+    names: Vec<Option<StrBuf>>,
+    original: StrBuf,
 }
 
 impl<'a> NfaGen<'a> {
@@ -119,7 +119,7 @@ impl<'a> NfaGen<'a> {
             |cx, name| match *name {
                 Some(ref name) => {
                     let name = name.as_slice();
-                    quote_expr!(cx, Some($name.to_owned()))
+                    quote_expr!(cx, Some($name.to_strbuf()))
                 }
                 None => cx.expr_none(self.sp),
             }
@@ -311,7 +311,7 @@ fn exec<'t>(which: ::regex::native::MatchKind, input: &'t str,
 }
 
 ::regex::Regex {
-    original: $regex.to_owned(),
+    original: $regex.to_strbuf(),
     names: vec!$cap_names,
     p: ::regex::native::Native(exec),
 }
@@ -601,14 +601,14 @@ fn exec<'t>(which: ::regex::native::MatchKind, input: &'t str,
 
 /// Looks for a single string literal and returns it.
 /// Otherwise, logs an error with cx.span_err and returns None.
-fn parse(cx: &mut ExtCtxt, tts: &[ast::TokenTree]) -> Option<~str> {
+fn parse(cx: &mut ExtCtxt, tts: &[ast::TokenTree]) -> Option<StrBuf> {
     let mut parser = parse::new_parser_from_tts(cx.parse_sess(), cx.cfg(),
                                                 Vec::from_slice(tts));
     let entry = cx.expand_expr(parser.parse_expr());
     let regex = match entry.node {
         ast::ExprLit(lit) => {
             match lit.node {
-                ast::LitStr(ref s, _) => s.to_str(),
+                ast::LitStr(ref s, _) => s.to_str().to_strbuf(),
                 _ => {
                     cx.span_err(entry.span, format!(
                         "expected string literal but got `{}`",
