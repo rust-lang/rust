@@ -69,7 +69,7 @@ println!("{:?}", tuple_ptr)
 ```
 */
 
-#![crate_id = "rand#0.11-pre"]
+#![crate_id = "rand#0.11.0-pre"]
 #![license = "MIT/ASL2"]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]

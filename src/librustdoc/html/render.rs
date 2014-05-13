@@ -1775,6 +1775,7 @@ impl<'a> fmt::Show for Sidebar<'a> {
         try!(block(fmt.buf, "enum", "Enums", it, cx));
         try!(block(fmt.buf, "trait", "Traits", it, cx));
         try!(block(fmt.buf, "fn", "Functions", it, cx));
+        try!(block(fmt.buf, "macro", "Macros", it, cx));
         Ok(())
     }
 }

@@ -96,7 +96,7 @@
 //! all the standard macros, such as `assert!`, `fail!`, `println!`,
 //! and `format!`, also available to all Rust code.
 
-#![crate_id = "std#0.11-pre"]
+#![crate_id = "std#0.11.0-pre"]
 #![comment = "The Rust standard library"]
 #![license = "MIT/ASL2"]
 #![crate_type = "rlib"]

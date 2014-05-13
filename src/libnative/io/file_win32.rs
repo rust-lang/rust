@@ -197,6 +197,14 @@ impl rtio::RtioFileStream for FileDesc {
         let _ = self.seek(orig_pos as i64, io::SeekSet);
         return ret;
     }
+
+    fn fstat(&mut self) -> IoResult<io::FileStat> {
+        let mut stat: libc::stat = unsafe { mem::uninit() };
+        match unsafe { libc::fstat(self.fd(), &mut stat) } {
+            0 => Ok(mkstat(&stat)),
+            _ => Err(super::last_error()),
+        }
+    }
 }
 
 impl rtio::RtioPipe for FileDesc {
@@ -471,8 +479,7 @@ pub fn link(src: &CString, dst: &CString) -> IoResult<()> {
     }))
 }
 
-fn mkstat(stat: &libc::stat, path: &CString) -> io::FileStat {
-    let path = unsafe { CString::new(path.with_ref(|p| p), false) };
+fn mkstat(stat: &libc::stat) -> io::FileStat {
     let kind = match (stat.st_mode as c_int) & libc::S_IFMT {
         libc::S_IFREG => io::TypeFile,
         libc::S_IFDIR => io::TypeDirectory,
@@ -483,7 +490,6 @@ fn mkstat(stat: &libc::stat, path: &CString) -> io::FileStat {
     };
 
     io::FileStat {
-        path: Path::new(path),
         size: stat.st_size as u64,
         kind: kind,
         perm: unsafe {
@@ -511,7 +517,7 @@ pub fn stat(p: &CString) -> IoResult<io::FileStat> {
     let mut stat: libc::stat = unsafe { mem::uninit() };
     as_utf16_p(p.as_str().unwrap(), |up| {
         match unsafe { libc::wstat(up, &mut stat) } {
-            0 => Ok(mkstat(&stat, p)),
+            0 => Ok(mkstat(&stat)),
             _ => Err(super::last_error()),
         }
     })

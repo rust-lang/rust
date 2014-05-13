@@ -70,33 +70,30 @@ struct Planet {
 
 fn advance(bodies: &mut [Planet, ..N_BODIES], dt: f64, steps: int) {
     for _ in range(0, steps) {
-        {
-            let mut b_slice = bodies.as_mut_slice();
-            loop {
-                let bi = match b_slice.mut_shift_ref() {
-                    Some(bi) => bi,
-                    None => break
-                };
-                for bj in b_slice.mut_iter() {
-                    let dx = bi.x - bj.x;
-                    let dy = bi.y - bj.y;
-                    let dz = bi.z - bj.z;
+        let mut b_slice = bodies.as_mut_slice();
+        loop {
+            let bi = match b_slice.mut_shift_ref() {
+                Some(bi) => bi,
+                None => break
+            };
+            for bj in b_slice.mut_iter() {
+                let dx = bi.x - bj.x;
+                let dy = bi.y - bj.y;
+                let dz = bi.z - bj.z;
 
-                    let d2 = dx * dx + dy * dy + dz * dz;
-                    let mag = dt / (d2 * d2.sqrt());
+                let d2 = dx * dx + dy * dy + dz * dz;
+                let mag = dt / (d2 * d2.sqrt());
 
-                    bi.vx -= dx * bj.mass * mag;
-                    bi.vy -= dy * bj.mass * mag;
-                    bi.vz -= dz * bj.mass * mag;
+                let massj_mag = bj.mass * mag;
+                bi.vx -= dx * massj_mag;
+                bi.vy -= dy * massj_mag;
+                bi.vz -= dz * massj_mag;
 
-                    bj.vx += dx * bi.mass * mag;
-                    bj.vy += dy * bi.mass * mag;
-                    bj.vz += dz * bi.mass * mag;
-                }
+                let massi_mag = bi.mass * mag;
+                bj.vx += dx * massi_mag;
+                bj.vy += dy * massi_mag;
+                bj.vz += dz * massi_mag;
             }
-        }
-
-        for bi in bodies.mut_iter() {
             bi.x += dt * bi.vx;
             bi.y += dt * bi.vy;
             bi.z += dt * bi.vz;

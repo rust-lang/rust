@@ -214,6 +214,11 @@ impl File {
     pub fn eof(&self) -> bool {
         self.last_nread == 0
     }
+
+    /// Queries information about the underlying file.
+    pub fn stat(&mut self) -> IoResult<FileStat> {
+        self.fd.fstat()
+    }
 }
 
 /// Unlink a file from the underlying filesystem.
@@ -887,9 +892,12 @@ mod test {
         let tmpdir = tmpdir();
         let filename = &tmpdir.join("file_stat_correct_on_is_file.txt");
         {
-            let mut fs = File::open_mode(filename, Open, ReadWrite);
+            let mut fs = check!(File::open_mode(filename, Open, ReadWrite));
             let msg = "hw";
             fs.write(msg.as_bytes()).unwrap();
+
+            let fstat_res = check!(fs.stat());
+            assert_eq!(fstat_res.kind, io::TypeFile);
         }
         let stat_res_fn = check!(stat(filename));
         assert_eq!(stat_res_fn.kind, io::TypeFile);
@@ -1228,12 +1236,12 @@ mod test {
         check!(file.fsync());
 
         // Do some simple things with truncation
-        assert_eq!(check!(stat(&path)).size, 3);
+        assert_eq!(check!(file.stat()).size, 3);
         check!(file.truncate(10));
-        assert_eq!(check!(stat(&path)).size, 10);
+        assert_eq!(check!(file.stat()).size, 10);
         check!(file.write(bytes!("bar")));
         check!(file.fsync());
-        assert_eq!(check!(stat(&path)).size, 10);
+        assert_eq!(check!(file.stat()).size, 10);
         assert_eq!(check!(File::open(&path).read_to_end()),
                    (Vec::from_slice(bytes!("foobar", 0, 0, 0, 0))));
 
@@ -1241,10 +1249,10 @@ mod test {
         // Ensure that the intermediate zeroes are all filled in (we're seeked
         // past the end of the file).
         check!(file.truncate(2));
-        assert_eq!(check!(stat(&path)).size, 2);
+        assert_eq!(check!(file.stat()).size, 2);
         check!(file.write(bytes!("wut")));
         check!(file.fsync());
-        assert_eq!(check!(stat(&path)).size, 9);
+        assert_eq!(check!(file.stat()).size, 9);
         assert_eq!(check!(File::open(&path).read_to_end()),
                    (Vec::from_slice(bytes!("fo", 0, 0, 0, 0, "wut"))));
         drop(file);

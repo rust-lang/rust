@@ -505,7 +505,7 @@ pub trait ImmutableVector<'a, T> {
     fn bsearch(&self, f: |&T| -> Ordering) -> Option<uint>;
 
     /**
-     * Returns a mutable reference to the first element in this slice
+     * Returns an immutable reference to the first element in this slice
      * and adjusts the slice in place so that it no longer contains
      * that element. O(1).
      *
@@ -523,7 +523,7 @@ pub trait ImmutableVector<'a, T> {
     fn shift_ref(&mut self) -> Option<&'a T>;
 
     /**
-     * Returns a mutable reference to the last element in this slice
+     * Returns an immutable reference to the last element in this slice
      * and adjusts the slice in place so that it no longer contains
      * that element. O(1).
      *
@@ -693,18 +693,22 @@ impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
     }
 
     fn shift_ref(&mut self) -> Option<&'a T> {
-        if self.len() == 0 { return None; }
         unsafe {
             let s: &mut Slice<T> = transmute(self);
-            Some(&*raw::shift_ptr(s))
+            match raw::shift_ptr(s) {
+                Some(p) => Some(&*p),
+                None => None
+            }
         }
     }
 
     fn pop_ref(&mut self) -> Option<&'a T> {
-        if self.len() == 0 { return None; }
         unsafe {
             let s: &mut Slice<T> = transmute(self);
-            Some(&*raw::pop_ptr(s))
+            match raw::pop_ptr(s) {
+                Some(p) => Some(&*p),
+                None => None
+            }
         }
     }
 }
@@ -1059,22 +1063,26 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
     }
 
     fn mut_shift_ref(&mut self) -> Option<&'a mut T> {
-        if self.len() == 0 { return None; }
         unsafe {
             let s: &mut Slice<T> = transmute(self);
-            // FIXME #13933: this `&` -> `&mut` cast is a little
-            // dubious
-            Some(&mut *(raw::shift_ptr(s) as *mut _))
+            match raw::shift_ptr(s) {
+                // FIXME #13933: this `&` -> `&mut` cast is a little
+                // dubious
+                Some(p) => Some(&mut *(p as *mut _)),
+                None => None,
+            }
         }
     }
 
     fn mut_pop_ref(&mut self) -> Option<&'a mut T> {
-        if self.len() == 0 { return None; }
         unsafe {
             let s: &mut Slice<T> = transmute(self);
-            // FIXME #13933: this `&` -> `&mut` cast is a little
-            // dubious
-            Some(&mut *(raw::pop_ptr(s) as *mut _))
+            match raw::pop_ptr(s) {
+                // FIXME #13933: this `&` -> `&mut` cast is a little
+                // dubious
+                Some(p) => Some(&mut *(p as *mut _)),
+                None => None,
+            }
         }
     }
 
@@ -1165,6 +1173,7 @@ pub mod raw {
     use iter::Iterator;
     use ptr::RawPtr;
     use raw::Slice;
+    use option::{None, Option, Some};
 
     /**
      * Form a slice from a pointer and length (as a number of units,
@@ -1198,27 +1207,29 @@ pub mod raw {
 
     /**
      * Returns a pointer to first element in slice and adjusts
-     * slice so it no longer contains that element. Fails if
-     * slice is empty. O(1).
+     * slice so it no longer contains that element. Returns None
+     * if the slice is empty. O(1).
      */
-    pub unsafe fn shift_ptr<T>(slice: &mut Slice<T>) -> *T {
-        if slice.len == 0 { fail!("shift on empty slice"); }
+     #[inline]
+    pub unsafe fn shift_ptr<T>(slice: &mut Slice<T>) -> Option<*T> {
+        if slice.len == 0 { return None; }
         let head: *T = slice.data;
         slice.data = slice.data.offset(1);
         slice.len -= 1;
-        head
+        Some(head)
     }
 
     /**
      * Returns a pointer to last element in slice and adjusts
-     * slice so it no longer contains that element. Fails if
-     * slice is empty. O(1).
+     * slice so it no longer contains that element. Returns None
+     * if the slice is empty. O(1).
      */
-    pub unsafe fn pop_ptr<T>(slice: &mut Slice<T>) -> *T {
-        if slice.len == 0 { fail!("pop on empty slice"); }
+     #[inline]
+    pub unsafe fn pop_ptr<T>(slice: &mut Slice<T>) -> Option<*T> {
+        if slice.len == 0 { return None; }
         let tail: *T = slice.data.offset((slice.len - 1) as int);
         slice.len -= 1;
-        tail
+        Some(tail)
     }
 }
 
