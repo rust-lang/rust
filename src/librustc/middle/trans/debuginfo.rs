@@ -131,6 +131,7 @@ use lib::llvm::llvm;
 use lib::llvm::{ModuleRef, ContextRef, ValueRef};
 use lib::llvm::debuginfo::*;
 use metadata::csearch;
+use middle::subst;
 use middle::trans::adt;
 use middle::trans::common::*;
 use middle::trans::datum::{Datum, Lvalue};
@@ -1356,7 +1357,7 @@ impl StructMemberDescriptionFactory {
 fn prepare_struct_metadata(cx: &CrateContext,
                            struct_type: ty::t,
                            def_id: ast::DefId,
-                           substs: &ty::substs,
+                           substs: &subst::Substs,
                            span: Span)
                         -> RecursiveTypeDescription {
     let struct_name = ppaux::ty_to_str(cx.tcx(), struct_type);
@@ -2251,7 +2252,7 @@ fn subroutine_type_metadata(cx: &CrateContext,
 fn trait_metadata(cx: &CrateContext,
                   def_id: ast::DefId,
                   trait_type: ty::t,
-                  substs: &ty::substs,
+                  substs: &subst::Substs,
                   trait_store: ty::TraitStore,
                   _: &ty::BuiltinBounds)
                -> DIType {

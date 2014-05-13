@@ -23,6 +23,7 @@ use middle::typeck::{vtable_origin, vtable_res, vtable_param_res};
 use middle::typeck::{vtable_static, vtable_param, impl_res};
 use middle::typeck::{param_numbered, param_self, param_index};
 use middle::typeck::MethodCall;
+use middle::subst;
 use middle::subst::Subst;
 use util::common::indenter;
 use util::ppaux;
@@ -81,7 +82,7 @@ fn has_trait_bounds(type_param_defs: &[ty::TypeParameterDef]) -> bool {
 fn lookup_vtables(vcx: &VtableContext,
                   span: Span,
                   type_param_defs: &[ty::TypeParameterDef],
-                  substs: &ty::substs,
+                  substs: &subst::Substs,
                   is_early: bool) -> vtable_res {
     debug!("lookup_vtables(span={:?}, \
             type_param_defs={}, \
@@ -118,7 +119,7 @@ fn lookup_vtables(vcx: &VtableContext,
 fn lookup_vtables_for_param(vcx: &VtableContext,
                             span: Span,
                             // None for substs means the identity
-                            substs: Option<&ty::substs>,
+                            substs: Option<&subst::Substs>,
                             type_param_bounds: &ty::ParamBounds,
                             ty: ty::t,
                             is_early: bool) -> vtable_param_res {
@@ -464,9 +465,9 @@ fn search_for_vtable(vcx: &VtableContext,
 fn fixup_substs(vcx: &VtableContext,
                 span: Span,
                 id: ast::DefId,
-                substs: ty::substs,
+                substs: subst::Substs,
                 is_early: bool)
-                -> Option<ty::substs> {
+                -> Option<subst::Substs> {
     let tcx = vcx.tcx();
     // use a dummy type just to package up the substs that need fixing up
     let t = ty::mk_trait(tcx,
@@ -503,7 +504,7 @@ fn fixup_ty(vcx: &VtableContext,
 
 fn connect_trait_tps(vcx: &VtableContext,
                      span: Span,
-                     impl_substs: &ty::substs,
+                     impl_substs: &subst::Substs,
                      trait_ref: Rc<ty::TraitRef>,
                      impl_did: ast::DefId) {
     let tcx = vcx.tcx();
@@ -566,7 +567,7 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
                       let vcx = fcx.vtable_context();
                       let target_trait_ref = Rc::new(ty::TraitRef {
                           def_id: target_def_id,
-                          substs: ty::substs {
+                          substs: subst::Substs {
                               tps: target_substs.tps.clone(),
                               regions: target_substs.regions.clone(),
                               self_ty: Some(typ)
@@ -799,7 +800,7 @@ pub fn resolve_impl(tcx: &ty::ctxt,
 /// Resolve vtables for a method call after typeck has finished.
 /// Used by trans to monomorphize artificial method callees (e.g. drop).
 pub fn trans_resolve_method(tcx: &ty::ctxt, id: ast::NodeId,
-                            substs: &ty::substs) -> Option<vtable_res> {
+                            substs: &subst::Substs) -> Option<vtable_res> {
     let generics = ty::lookup_item_type(tcx, ast_util::local_def(id)).generics;
     let type_param_defs = &*generics.type_param_defs;
     if has_trait_bounds(type_param_defs.as_slice()) {

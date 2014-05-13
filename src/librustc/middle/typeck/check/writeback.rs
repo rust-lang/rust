@@ -14,6 +14,7 @@
 
 
 use middle::pat_util;
+use middle::subst;
 use middle::ty;
 use middle::ty_fold::{TypeFolder,TypeFoldable};
 use middle::typeck::astconv::AstConv;
@@ -291,7 +292,7 @@ impl<'cx> WritebackCx<'cx> {
                 // probably for invocations on objects, and this
                 // causes encoding failures). -nmatsakis
                 new_method.substs.self_ty = None;
-                new_method.substs.regions = ty::ErasedRegions;
+                new_method.substs.regions = subst::ErasedRegions;
 
                 self.tcx().method_map.borrow_mut().insert(
                     method_call,

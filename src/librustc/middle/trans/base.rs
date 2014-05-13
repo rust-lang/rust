@@ -40,6 +40,8 @@ use middle::lint;
 use middle::astencode;
 use middle::lang_items::{LangItem, ExchangeMallocFnLangItem, StartFnLangItem};
 use middle::weak_lang_items;
+use middle::subst;
+use middle::subst::Subst;
 use middle::trans::_match;
 use middle::trans::adt;
 use middle::trans::build::*;
@@ -442,7 +444,7 @@ pub fn get_res_dtor(ccx: &CrateContext,
                     did: ast::DefId,
                     t: ty::t,
                     parent_id: ast::DefId,
-                    substs: &ty::substs)
+                    substs: &subst::Substs)
                  -> ValueRef {
     let _icx = push_ctxt("trans_res_dtor");
     let did = if did.krate != ast::LOCAL_CRATE {
@@ -463,8 +465,7 @@ pub fn get_res_dtor(ccx: &CrateContext,
     } else {
         let tcx = ccx.tcx();
         let name = csearch::get_symbol(&ccx.sess().cstore, did);
-        let class_ty = ty::subst(tcx, substs,
-                                 ty::lookup_item_type(tcx, parent_id).ty);
+        let class_ty = ty::lookup_item_type(tcx, parent_id).ty.subst(tcx, substs);
         let llty = type_of_dtor(ccx, class_ty);
         let dtor_ty = ty::mk_ctor_fn(ccx.tcx(), ast::DUMMY_NODE_ID,
                                      [glue::get_drop_glue_type(ccx, t)], ty::mk_nil());
@@ -633,7 +634,7 @@ pub fn iter_structural_ty<'r,
                     repr: &adt::Repr,
                     av: ValueRef,
                     variant: &ty::VariantInfo,
-                    substs: &ty::substs,
+                    substs: &subst::Substs,
                     f: val_and_ty_fn<'r,'b>)
                     -> &'b Block<'b> {
         let _icx = push_ctxt("iter_variant");
@@ -643,7 +644,7 @@ pub fn iter_structural_ty<'r,
         for (i, &arg) in variant.args.iter().enumerate() {
             cx = f(cx,
                    adt::trans_field_ptr(cx, repr, av, variant.disr_val, i),
-                   ty::subst(tcx, substs, arg));
+                   arg.subst(tcx, substs));
         }
         return cx;
     }

@@ -11,6 +11,7 @@
 
 use middle::freevars::freevar_entry;
 use middle::freevars;
+use middle::subst;
 use middle::ty;
 use middle::typeck;
 use util::ppaux::{Repr, ty_to_str};
@@ -19,7 +20,6 @@ use util::ppaux::UserString;
 use syntax::ast::*;
 use syntax::attr;
 use syntax::codemap::Span;
-use syntax::owned_slice::OwnedSlice;
 use syntax::print::pprust::{expr_to_str,path_to_str};
 use syntax::{visit,ast_util};
 use syntax::visit::Visitor;
@@ -87,8 +87,8 @@ fn check_struct_safe_for_destructor(cx: &mut Context,
                                     struct_did: DefId) {
     let struct_tpt = ty::lookup_item_type(cx.tcx, struct_did);
     if !struct_tpt.generics.has_type_params() {
-        let struct_ty = ty::mk_struct(cx.tcx, struct_did, ty::substs {
-            regions: ty::NonerasedRegions(OwnedSlice::empty()),
+        let struct_ty = ty::mk_struct(cx.tcx, struct_did, subst::Substs {
+            regions: subst::NonerasedRegions(Vec::new()),
             self_ty: None,
             tps: Vec::new()
         });

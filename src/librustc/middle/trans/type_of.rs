@@ -10,6 +10,7 @@
 
 #![allow(non_camel_case_types)]
 
+use middle::subst;
 use middle::trans::adt;
 use middle::trans::common::*;
 use middle::trans::foreign;
@@ -21,7 +22,6 @@ use middle::trans::type_::Type;
 
 use syntax::abi;
 use syntax::ast;
-use syntax::owned_slice::OwnedSlice;
 
 pub fn arg_is_indirect(ccx: &CrateContext, arg_ty: ty::t) -> bool {
     !type_is_immediate(ccx, arg_ty)
@@ -310,8 +310,7 @@ pub fn llvm_type_name(cx: &CrateContext,
     let tstr = ppaux::parameterized(cx.tcx(),
                                     ty::item_path_str(cx.tcx(),
                                                       did).as_slice(),
-                                    &ty::NonerasedRegions(
-                                        OwnedSlice::empty()),
+                                    &subst::ErasedRegions,
                                     tps,
                                     did,
                                     false);

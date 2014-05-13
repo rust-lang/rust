@@ -18,13 +18,14 @@ use lib::llvm::{True, False, Bool};
 use lib::llvm::llvm;
 use lib;
 use middle::lang_items::LangItem;
+use middle::subst;
+use middle::subst::Subst;
 use middle::trans::build;
 use middle::trans::cleanup;
 use middle::trans::datum;
 use middle::trans::debuginfo;
 use middle::trans::type_::Type;
 use middle::ty;
-use middle::subst::Subst;
 use middle::typeck;
 use util::ppaux::Repr;
 use util::nodemap::NodeMap;
@@ -177,7 +178,7 @@ pub type ExternMap = HashMap<String, ValueRef>;
 // Here `self_ty` is the real type of the self parameter to this method. It
 // will only be set in the case of default methods.
 pub struct param_substs {
-    pub substs: ty::substs,
+    pub substs: subst::Substs,
     pub vtables: Option<typeck::vtable_res>,
     pub self_vtables: Option<typeck::vtable_param_res>
 }
@@ -697,7 +698,7 @@ pub fn is_null(val: ValueRef) -> bool {
 pub fn monomorphize_type(bcx: &Block, t: ty::t) -> ty::t {
     match bcx.fcx.param_substs {
         Some(ref substs) => {
-            ty::subst(bcx.tcx(), &substs.substs, t)
+            t.subst(bcx.tcx(), &substs.substs)
         }
         _ => {
             assert!(!ty::type_has_params(t));
@@ -733,7 +734,7 @@ pub enum ExprOrMethodCall {
 
 pub fn node_id_substs(bcx: &Block,
                       node: ExprOrMethodCall)
-                      -> ty::substs {
+                      -> subst::Substs {
     let tcx = bcx.tcx();
 
     let substs = match node {
