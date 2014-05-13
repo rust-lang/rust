@@ -9,7 +9,7 @@
 // except according to those terms.
 
 struct cat {
-  name: ~str,
+  name: StrBuf,
 }
 
 impl Drop for cat {
@@ -26,12 +26,12 @@ impl Drop for cat {
 /**
 Maybe it should technically be a kitten_maker.
 */
-fn cat(name: ~str) -> cat {
+fn cat(name: StrBuf) -> cat {
     cat {
         name: name
     }
 }
 
 pub fn main() {
-  let _kitty = cat("Spotty".to_owned());
+  let _kitty = cat("Spotty".to_strbuf());
 }

@@ -8,9 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct S { f0: ~str, f1: ~str }
+struct S {
+    f0: StrBuf,
+    f1: StrBuf,
+}
 
 pub fn main() {
-    let s = "Hello, world!".to_owned();
-    let _s = S { f1: s.to_owned(), f0: s };
+    let s = "Hello, world!".to_strbuf();
+    let _s = S {
+        f1: s.to_strbuf(),
+        f0: s
+    };
 }

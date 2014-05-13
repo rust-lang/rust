@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn parse_args() -> ~str {
+fn parse_args() -> StrBuf {
     let args = ::std::os::args();
     let args = args.as_slice();
     let mut n = 0;
@@ -17,13 +17,13 @@ fn parse_args() -> ~str {
         match args[n].as_slice() {
             "-v" => (),
             s => {
-                return s.into_owned();
+                return s.to_strbuf();
             }
         }
         n += 1;
     }
 
-    return "".to_owned()
+    return "".to_strbuf()
 }
 
 pub fn main() {

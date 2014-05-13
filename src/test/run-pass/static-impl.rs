@@ -21,16 +21,18 @@ mod a {
 
 mod b {
     use plus;
-    impl plus for ~str { fn plus(&self) -> int { 200 } }
+    impl plus for StrBuf { fn plus(&self) -> int { 200 } }
 }
 
 trait uint_utils {
-    fn str(&self) -> ~str;
+    fn str(&self) -> StrBuf;
     fn multi(&self, f: |uint|);
 }
 
 impl uint_utils for uint {
-    fn str(&self) -> ~str { self.to_str() }
+    fn str(&self) -> StrBuf {
+        self.to_str().to_strbuf()
+    }
     fn multi(&self, f: |uint|) {
         let mut c = 0u;
         while c < *self { f(c); c += 1u; }
@@ -57,9 +59,9 @@ impl<T> vec_utils<T> for Vec<T> {
 
 pub fn main() {
     assert_eq!(10u.plus(), 30);
-    assert_eq!(("hi".to_owned()).plus(), 200);
+    assert_eq!(("hi".to_strbuf()).plus(), 200);
 
-    assert_eq!((vec!(1)).length_().str(), "1".to_owned());
+    assert_eq!((vec!(1)).length_().str(), "1".to_strbuf());
     let vect = vec!(3, 4).map_(|a| *a + 4);
     assert_eq!(*vect.get(0), 7);
     let vect = (vec!(3, 4)).map_::<uint>(|a| *a as uint + 4u);

@@ -13,7 +13,7 @@
 #![allow(unreachable_code)]
 #![allow(unused_variable)]
 
-fn foo(s: ~str) { }
+fn foo(s: StrBuf) { }
 
 fn main() {
     let i =

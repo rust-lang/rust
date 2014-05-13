@@ -10,16 +10,16 @@
 
 struct cat {
 
-  name : ~str,
+  name : StrBuf,
 
 }
 
-fn cat(in_name: ~str) -> cat {
+fn cat(in_name: StrBuf) -> cat {
     cat {
         name: in_name
     }
 }
 
 pub fn main() {
-  let _nyan = cat("nyan".to_owned());
+  let _nyan = cat("nyan".to_strbuf());
 }

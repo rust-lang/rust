@@ -12,7 +12,7 @@
 
 enum Either {
     One,
-    Other(~str,~str)
+    Other(StrBuf,StrBuf)
 }
 
 static one : Either = One;

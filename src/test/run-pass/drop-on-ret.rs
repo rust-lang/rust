@@ -13,7 +13,7 @@
 
 fn f() -> int {
     if true {
-        let _s: ~str = "should not leak".to_owned();
+        let _s: StrBuf = "should not leak".to_strbuf();
         return 1;
     }
     return 0;

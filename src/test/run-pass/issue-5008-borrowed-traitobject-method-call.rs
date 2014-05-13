@@ -16,20 +16,20 @@ It fixes itself if the &Trait is changed to @Trait.
 */
 
 trait Debuggable {
-    fn debug_name(&self) -> ~str;
+    fn debug_name(&self) -> StrBuf;
 }
 
 #[deriving(Clone)]
 struct Thing {
-name: ~str,
+    name: StrBuf,
 }
 
 impl Thing {
-    fn new() -> Thing { Thing { name: "dummy".to_owned() } }
+    fn new() -> Thing { Thing { name: "dummy".to_strbuf() } }
 }
 
 impl Debuggable for Thing {
-    fn debug_name(&self) -> ~str { self.name.clone() }
+    fn debug_name(&self) -> StrBuf { self.name.clone() }
 }
 
 fn print_name(x: &Debuggable)

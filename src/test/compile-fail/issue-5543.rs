@@ -13,7 +13,7 @@
 use std::io::ReaderUtil;
 use std::io::Reader;
 
-fn bar(r:@ReaderUtil) -> ~str { r.read_line() }
+fn bar(r:@ReaderUtil) -> StrBuf { r.read_line() }
 
 fn main() {
     let r : @Reader = io::stdin();

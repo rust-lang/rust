@@ -13,15 +13,15 @@ use std::str;
 pub fn main() {
     // Chars of 1, 2, 3, and 4 bytes
     let chs: Vec<char> = vec!('e', 'é', '€', '\U00010000');
-    let s: ~str = str::from_chars(chs.as_slice());
-    let schs: Vec<char> = s.chars().collect();
+    let s: StrBuf = str::from_chars(chs.as_slice()).to_strbuf();
+    let schs: Vec<char> = s.as_slice().chars().collect();
 
     assert!(s.len() == 10u);
-    assert!(s.char_len() == 4u);
+    assert!(s.as_slice().char_len() == 4u);
     assert!(schs.len() == 4u);
-    assert!(str::from_chars(schs.as_slice()) == s);
-    assert!(s.char_at(0u) == 'e');
-    assert!(s.char_at(1u) == 'é');
+    assert!(str::from_chars(schs.as_slice()).to_strbuf() == s);
+    assert!(s.as_slice().char_at(0u) == 'e');
+    assert!(s.as_slice().char_at(1u) == 'é');
 
     assert!((str::is_utf8(s.as_bytes())));
     // invalid prefix

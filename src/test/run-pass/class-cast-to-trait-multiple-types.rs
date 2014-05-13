@@ -53,7 +53,7 @@ struct cat {
   meows: uint,
 
   how_hungry: int,
-  name: ~str,
+  name: StrBuf,
 }
 
 impl noisy for cat {
@@ -79,7 +79,7 @@ impl cat {
     }
 }
 
-fn cat(in_x: uint, in_y: int, in_name: ~str) -> cat {
+fn cat(in_x: uint, in_y: int, in_name: StrBuf) -> cat {
     cat {
         meows: in_x,
         how_hungry: in_y,
@@ -93,7 +93,7 @@ fn annoy_neighbors(critter: &mut noisy) {
 }
 
 pub fn main() {
-  let mut nyan: cat = cat(0u, 2, "nyan".to_owned());
+  let mut nyan: cat = cat(0u, 2, "nyan".to_strbuf());
   let mut whitefang: dog = dog();
   annoy_neighbors(&mut nyan);
   annoy_neighbors(&mut whitefang);

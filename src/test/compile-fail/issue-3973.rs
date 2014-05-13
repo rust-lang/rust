@@ -22,7 +22,7 @@ impl ToStr for Point { //~ ERROR implements a method not defined in the trait
         Point { x: x, y: y }
     }
 
-    fn to_str(&self) -> ~str {
+    fn to_str(&self) -> StrBuf {
         format!("({}, {})", self.x, self.y)
     }
 }
