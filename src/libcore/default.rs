@@ -16,6 +16,11 @@ pub trait Default {
     fn default() -> Self;
 }
 
+impl Default for () {
+    #[inline]
+    fn default() -> () { () }
+}
+
 impl<T: Default + 'static> Default for @T {
     fn default() -> @T { @Default::default() }
 }
