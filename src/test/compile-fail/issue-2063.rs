@@ -16,14 +16,14 @@
 struct t(Box<t>); //~ ERROR this type cannot be instantiated
 
 trait to_str_2 {
-    fn my_to_str() -> ~str;
+    fn my_to_str() -> StrBuf;
 }
 
 // I use an impl here because it will cause
 // the compiler to attempt autoderef and then
 // try to resolve the method.
 impl to_str_2 for t {
-    fn my_to_str() -> ~str { "t".to_owned() }
+    fn my_to_str() -> StrBuf { "t".to_strbuf() }
 }
 
 fn new_t(x: t) {

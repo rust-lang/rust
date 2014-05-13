@@ -10,17 +10,17 @@
 
 enum E {
     Foo,
-    Bar(~str)
+    Bar(StrBuf)
 }
 
 struct S {
     x: E
 }
 
-fn f(x: ~str) {}
+fn f(x: StrBuf) {}
 
 fn main() {
-    let s = S { x: Bar("hello".to_owned()) };
+    let s = S { x: Bar("hello".to_strbuf()) };
     match &s.x {
         &Foo => {}
         &Bar(identifier) => f(identifier.clone())  //~ ERROR cannot move

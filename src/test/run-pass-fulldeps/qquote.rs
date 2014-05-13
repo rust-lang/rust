@@ -75,7 +75,7 @@ fn main() {
 }
 
 fn check_pp<T>(cx: fake_ext_ctxt,
-               expr: T, f: |pprust::ps, T|, expect: ~str) {
+               expr: T, f: |pprust::ps, T|, expect: StrBuf) {
     let s = io::with_str_writer(|wr| {
         let pp = pprust::rust_printer(wr, cx.parse_sess().interner);
         f(pp, expr);

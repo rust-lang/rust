@@ -15,13 +15,21 @@ use std::hash::Hash;
 #[deriving(Hash)]
 struct Person {
     id: uint,
-    name: ~str,
+    name: StrBuf,
     phone: uint,
 }
 
 fn main() {
-    let person1 = Person { id: 5, name: "Janet".to_owned(), phone: 555_666_7777 };
-    let person2 = Person { id: 5, name: "Bob".to_owned(), phone: 555_666_7777 };
+    let person1 = Person {
+        id: 5,
+        name: "Janet".to_strbuf(),
+        phone: 555_666_7777
+    };
+    let person2 = Person {
+        id: 5,
+        name: "Bob".to_strbuf(),
+        phone: 555_666_7777
+    };
     assert!(hash::hash(&person1) == hash::hash(&person1));
     assert!(hash::hash(&person1) != hash::hash(&person2));
 }

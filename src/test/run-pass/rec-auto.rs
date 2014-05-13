@@ -14,10 +14,10 @@
 
 // Issue #50.
 
-struct X { foo: ~str, bar: ~str }
+struct X { foo: StrBuf, bar: StrBuf }
 
 pub fn main() {
-    let x = X {foo: "hello".to_owned(), bar: "world".to_owned()};
+    let x = X {foo: "hello".to_strbuf(), bar: "world".to_strbuf()};
     println!("{}", x.foo.clone());
     println!("{}", x.bar.clone());
 }

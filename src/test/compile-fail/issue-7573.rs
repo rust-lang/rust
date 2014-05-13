@@ -10,15 +10,15 @@
 
 
 pub struct CrateId {
-    local_path: ~str,
-    junk: ~str
+    local_path: StrBuf,
+    junk: StrBuf
 }
 
 impl CrateId {
     fn new(s: &str) -> CrateId {
         CrateId {
-            local_path: s.to_owned(),
-            junk: "wutevs".to_owned()
+            local_path: s.to_strbuf(),
+            junk: "wutevs".to_strbuf()
         }
     }
 }

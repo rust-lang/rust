@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo(b: bool) -> Result<bool,~str> {
+fn foo(b: bool) -> Result<bool,StrBuf> {
     Err("bar".to_owned());
     //~^ ERROR: cannot determine a type for this expression: unconstrained type
 }

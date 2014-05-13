@@ -9,8 +9,8 @@
 // except according to those terms.
 
 fn main() {
-    match "foo".to_owned() {
-        ['f', 'o', ..] => { } //~ ERROR mismatched types: expected `~str` but found a vector pattern
+    match "foo".to_strbuf() {
+        ['f', 'o', ..] => {} //~ ERROR mismatched types
         _ => { }
     }
 }

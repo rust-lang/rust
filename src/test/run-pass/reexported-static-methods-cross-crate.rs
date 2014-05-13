@@ -20,5 +20,5 @@ pub fn main() {
     assert_eq!(42, Foo::foo());
     assert_eq!(84, Baz::bar());
     assert!(Boz::boz(1));
-    assert_eq!("bort()".to_owned(), Bort::bort());
+    assert_eq!("bort()".to_strbuf(), Bort::bort());
 }

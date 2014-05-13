@@ -9,14 +9,14 @@
 // except according to those terms.
 
 struct A<'a> {
-    a: &'a [~str],
-    b: Option<&'a [~str]>,
+    a: &'a [StrBuf],
+    b: Option<&'a [StrBuf]>,
 }
 
 pub fn main() {
-    let b = &["foo".to_owned()];
+    let b = &["foo".to_strbuf()];
     let a = A {
-        a: &["test".to_owned()],
+        a: &["test".to_strbuf()],
         b: Some(b),
     };
     assert_eq!(a.b.get_ref()[0].as_slice(), "foo");

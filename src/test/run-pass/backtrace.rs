@@ -36,14 +36,21 @@ fn double() {
 }
 
 fn runtest(me: &str) {
-    let mut env = os::env().move_iter().collect::<Vec<(~str, ~str)>>();
-    match env.iter().position(|&(ref s, _)| "RUST_BACKTRACE" == *s) {
+    let mut env = os::env().move_iter()
+                           .map(|(ref k, ref v)| {
+                               (k.to_strbuf(), v.to_strbuf())
+                           }).collect::<Vec<(StrBuf,StrBuf)>>();
+    match env.iter()
+             .position(|&(ref s, _)| "RUST_BACKTRACE" == s.as_slice()) {
         Some(i) => { env.remove(i); }
         None => {}
     }
-    env.push(("RUST_BACKTRACE".to_owned(), "1".to_owned()));
+    env.push(("RUST_BACKTRACE".to_strbuf(), "1".to_strbuf()));
 
     // Make sure that the stack trace is printed
+    let env = env.iter()
+                 .map(|&(ref k, ref v)| (k.to_owned(), v.to_owned()))
+                 .collect::<Vec<_>>();
     let mut p = Process::configure(ProcessConfig {
         program: me,
         args: ["fail".to_owned()],
