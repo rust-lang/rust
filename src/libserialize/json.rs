@@ -3098,7 +3098,7 @@ mod tests {
         }
     }
     #[test]
-    #[ignore(cfg(windows))] // FIXME(#14064)
+    #[ignore(cfg(target_word_size = "32"))] // FIXME(#14064)
     fn test_read_object_streaming() {
         assert_eq!(last_event("{ "),      Error(SyntaxError(EOFWhileParsingObject, 1, 3)));
         assert_eq!(last_event("{1"),      Error(SyntaxError(KeyMustBeAString,      1, 2)));
@@ -3170,7 +3170,7 @@ mod tests {
         );
     }
     #[test]
-    #[ignore(cfg(windows))] // FIXME(#14064)
+    #[ignore(cfg(target_word_size = "32"))] // FIXME(#14064)
     fn test_read_list_streaming() {
         assert_stream_equal(
             "[]",
