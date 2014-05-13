@@ -11,30 +11,34 @@
 
 
 trait to_str {
-    fn to_string(&self) -> ~str;
+    fn to_string(&self) -> StrBuf;
 }
 
 impl to_str for int {
-    fn to_string(&self) -> ~str { self.to_str() }
+    fn to_string(&self) -> StrBuf { self.to_str().to_strbuf() }
 }
 
 impl<T:to_str> to_str for Vec<T> {
-    fn to_string(&self) -> ~str {
-        format!("[{}]", self.iter().map(|e| e.to_string()).collect::<Vec<~str>>().connect(", "))
+    fn to_string(&self) -> StrBuf {
+        format_strbuf!("[{}]",
+                       self.iter()
+                           .map(|e| e.to_string())
+                           .collect::<Vec<StrBuf>>()
+                           .connect(", "))
     }
 }
 
 pub fn main() {
-    assert!(1.to_string() == "1".to_owned());
-    assert!((vec!(2, 3, 4)).to_string() == "[2, 3, 4]".to_owned());
+    assert!(1.to_string() == "1".to_strbuf());
+    assert!((vec!(2, 3, 4)).to_string() == "[2, 3, 4]".to_strbuf());
 
-    fn indirect<T:to_str>(x: T) -> ~str {
-        x.to_string() + "!"
+    fn indirect<T:to_str>(x: T) -> StrBuf {
+        format_strbuf!("{}!", x.to_string())
     }
-    assert!(indirect(vec!(10, 20)) == "[10, 20]!".to_owned());
+    assert!(indirect(vec!(10, 20)) == "[10, 20]!".to_strbuf());
 
-    fn indirect2<T:to_str>(x: T) -> ~str {
+    fn indirect2<T:to_str>(x: T) -> StrBuf {
         indirect(x)
     }
-    assert!(indirect2(vec!(1)) == "[1]!".to_owned());
+    assert!(indirect2(vec!(1)) == "[1]!".to_strbuf());
 }

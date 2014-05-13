@@ -11,9 +11,9 @@
 use std::task;
 
 pub fn main() {
-    task::spawn(proc() child("Hello".to_owned()) );
+    task::spawn(proc() child("Hello".to_strbuf()) );
 }
 
-fn child(_s: ~str) {
+fn child(_s: StrBuf) {
 
 }

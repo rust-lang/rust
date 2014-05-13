@@ -52,9 +52,10 @@ struct Config {
     stress: bool
 }
 
-fn parse_opts(argv: Vec<~str> ) -> Config {
+fn parse_opts(argv: Vec<StrBuf> ) -> Config {
     let opts = vec!(getopts::optflag("", "stress", ""));
 
+    let argv = argv.iter().map(|x| x.to_str()).collect::<Vec<_>>();
     let opt_args = argv.slice(1, argv.len());
 
     match getopts::getopts(opt_args, opts.as_slice()) {
@@ -92,11 +93,11 @@ fn stress(num_tasks: int) {
 fn main() {
     let args = os::args();
     let args = if os::getenv("RUST_BENCH").is_some() {
-        vec!("".to_owned(), "20".to_owned())
+        vec!("".to_strbuf(), "20".to_strbuf())
     } else if args.len() <= 1u {
-        vec!("".to_owned(), "8".to_owned())
+        vec!("".to_strbuf(), "8".to_strbuf())
     } else {
-        args.move_iter().collect()
+        args.move_iter().map(|x| x.to_strbuf()).collect()
     };
 
     let opts = parse_opts(args.clone());

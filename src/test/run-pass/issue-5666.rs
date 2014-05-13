@@ -10,23 +10,23 @@
 
 
 struct Dog {
-    name : ~str
+    name : StrBuf
 }
 
 trait Barks {
-    fn bark(&self) -> ~str;
+    fn bark(&self) -> StrBuf;
 }
 
 impl Barks for Dog {
-    fn bark(&self) -> ~str {
-        return format!("woof! (I'm {})", self.name);
+    fn bark(&self) -> StrBuf {
+        return format!("woof! (I'm {})", self.name).to_strbuf();
     }
 }
 
 
 pub fn main() {
-    let snoopy = box Dog{name: "snoopy".to_owned()};
-    let bubbles = box Dog{name: "bubbles".to_owned()};
+    let snoopy = box Dog{name: "snoopy".to_strbuf()};
+    let bubbles = box Dog{name: "bubbles".to_strbuf()};
     let barker = [snoopy as Box<Barks>, bubbles as Box<Barks>];
 
     for pup in barker.iter() {

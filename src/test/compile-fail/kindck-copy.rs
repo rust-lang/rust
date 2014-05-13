@@ -39,7 +39,7 @@ fn test<'a,T,U:Copy>(_: &'a int) {
 
     // ~ pointers are not ok
     assert_copy::<Box<int>>();   //~ ERROR does not fulfill
-    assert_copy::<~str>();   //~ ERROR does not fulfill
+    assert_copy::<StrBuf>();   //~ ERROR does not fulfill
     assert_copy::<Vec<int> >(); //~ ERROR does not fulfill
     assert_copy::<Box<&'a mut int>>(); //~ ERROR does not fulfill
 

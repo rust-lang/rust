@@ -11,7 +11,7 @@
 
 pub fn main() {
   trait Text {
-    fn to_str(&self) -> ~str;
+    fn to_str(&self) -> StrBuf;
   }
 
   fn to_string(t: Box<Text>) {

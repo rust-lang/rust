@@ -17,6 +17,6 @@ trait foo {
     fn foo(&self);
 }
 
-impl foo for ~str {
+impl foo for StrBuf {
     fn foo(&self) {}
 }

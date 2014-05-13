@@ -10,4 +10,7 @@
 
 // error-pattern:meh
 
-fn main() { let str_var: ~str = "meh".to_owned(); fail!("{}", str_var); }
+fn main() {
+    let str_var: StrBuf = "meh".to_strbuf();
+    fail!("{}", str_var);
+}

@@ -11,12 +11,12 @@
 #![feature(managed_boxes)]
 
 enum Token {
-    Text(@~str),
-    ETag(@Vec<~str> , @~str),
-    UTag(@Vec<~str> , @~str),
-    Section(@Vec<~str> , bool, @Vec<Token> , @~str, @~str, @~str, @~str, @~str),
-    IncompleteSection(@Vec<~str> , bool, @~str, bool),
-    Partial(@~str, @~str, @~str),
+    Text(@StrBuf),
+    ETag(@Vec<StrBuf> , @StrBuf),
+    UTag(@Vec<StrBuf> , @StrBuf),
+    Section(@Vec<StrBuf> , bool, @Vec<Token> , @StrBuf, @StrBuf, @StrBuf, @StrBuf, @StrBuf),
+    IncompleteSection(@Vec<StrBuf> , bool, @StrBuf, bool),
+    Partial(@StrBuf, @StrBuf, @StrBuf),
 }
 
 fn check_strs(actual: &str, expected: &str) -> bool
@@ -35,10 +35,13 @@ pub fn main()
 // assert!(check_strs(fmt!("%?", ETag(@~["foo".to_owned()], @"bar".to_owned())),
 //                    "ETag(@~[ ~\"foo\" ], @~\"bar\")"));
 
-    let t = Text(@"foo".to_owned());
-    let u = Section(@vec!("alpha".to_owned()), true, @vec!(t), @"foo".to_owned(),
-                    @"foo".to_owned(), @"foo".to_owned(), @"foo".to_owned(),
-                    @"foo".to_owned());
+    let t = Text(@"foo".to_strbuf());
+    let u = Section(@vec!("alpha".to_strbuf()),
+                          true,
+                          @vec!(t),
+                          @"foo".to_strbuf(),
+                    @"foo".to_strbuf(), @"foo".to_strbuf(), @"foo".to_strbuf(),
+                    @"foo".to_strbuf());
     let v = format!("{:?}", u);    // this is the line that causes the seg fault
     assert!(v.len() > 0);
 }

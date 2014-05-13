@@ -20,8 +20,8 @@ use std::cell::RefCell;
 use collections::HashMap;
 
 pub fn main() {
-  let v = vec!(@"hi".to_owned());
+  let v = vec!(@"hi".to_strbuf());
   let mut m: req::header_map = HashMap::new();
-  m.insert("METHOD".to_owned(), @RefCell::new(v));
+  m.insert("METHOD".to_strbuf(), @RefCell::new(v));
   request::<int>(&m);
 }

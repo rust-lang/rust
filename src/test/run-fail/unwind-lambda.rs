@@ -13,17 +13,17 @@
 // error-pattern:fail
 
 fn main() {
-    let cheese = "roquefort".to_owned();
-    let carrots = @"crunchy".to_owned();
+    let cheese = "roquefort".to_strbuf();
+    let carrots = @"crunchy".to_strbuf();
 
-    let result: |@~str, |~str||: 'static = (|tasties, macerate| {
+    let result: |@StrBuf, |StrBuf||: 'static = (|tasties, macerate| {
         macerate((*tasties).clone());
     });
     result(carrots, |food| {
-        let mush = food + cheese;
+        let mush = format_strbuf!("{}{}", food, cheese);
         let cheese = cheese.clone();
         let f: || = || {
-            let _chew = mush + cheese;
+            let _chew = format_strbuf!("{}{}", mush, cheese);
             fail!("so yummy")
         };
         f();

@@ -16,5 +16,5 @@ extern crate a;
 use a::to_strz;
 
 impl to_strz for bool {
-    fn to_strz() -> ~str { fmt!("%b", self) }
+    fn to_strz() -> StrBuf { fmt!("%b", self) }
 }
