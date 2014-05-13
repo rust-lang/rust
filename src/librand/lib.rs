@@ -30,20 +30,27 @@ after generating 32 KiB of random data.
 
 # Cryptographic security
 
-An application that requires random numbers for cryptographic purposes
-should prefer `OSRng`, which reads randomness from one of the source
-that the operating system provides (e.g. `/dev/urandom` on
-Unixes). The other random number generators provided by this module
-are either known to be insecure (`XorShiftRng`), or are not verified
-to be secure (`IsaacRng`, `Isaac64Rng` and `StdRng`).
+An application that requires an entropy source for cryptographic purposes
+must use `OSRng`, which reads randomness from the source that the operating
+system provides (e.g. `/dev/urandom` on Unixes or `CryptGenRandom()` on Windows).
+The other random number generators provided by this module are not suitable
+for such purposes.
 
-*Note*: on Linux, `/dev/random` is more secure than `/dev/urandom`,
-but it is a blocking RNG, and will wait until it has determined that
-it has collected enough entropy to fulfill a request for random
-data. It can be used with the `Rng` trait provided by this module by
-opening the file and passing it to `reader::ReaderRng`. Since it
-blocks, `/dev/random` should only be used to retrieve small amounts of
-randomness.
+*Note*: many Unix systems provide `/dev/random` as well as `/dev/urandom`.
+This module uses `/dev/urandom` for the following reasons:
+
+-   On Linux, `/dev/random` may block if entropy pool is empty; `/dev/urandom` will not block.
+    This does not mean that `/dev/random` provides better output than
+    `/dev/urandom`; the kernel internally runs a cryptographically secure pseudorandom
+    number generator (CSPRNG) based on entropy pool for random number generation,
+    so the "quality" of `/dev/random` is not better than `/dev/urandom` in most cases.
+    However, this means that `/dev/urandom` can yield somewhat predictable randomness
+    if the entropy pool is very small, such as immediately after first booting.
+    If an application likely to be run soon after first booting, or on a system with very
+    few entropy sources, one should consider using `/dev/random` via `ReaderRng`.
+-   On some systems (e.g. FreeBSD, OpenBSD and Mac OS X) there is no difference
+    between the two sources. (Also note that, on some systems e.g. FreeBSD, both `/dev/random`
+    and `/dev/urandom` may block once if the CSPRNG has not seeded yet.)
 
 # Examples
 
