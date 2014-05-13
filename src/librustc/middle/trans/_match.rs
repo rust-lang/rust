@@ -400,12 +400,12 @@ struct Match<'a, 'b> {
 }
 
 impl<'a, 'b> Repr for Match<'a, 'b> {
-    fn repr(&self, tcx: &ty::ctxt) -> ~str {
+    fn repr(&self, tcx: &ty::ctxt) -> StrBuf {
         if tcx.sess.verbose() {
             // for many programs, this just take too long to serialize
             self.pats.repr(tcx)
         } else {
-            format!("{} pats", self.pats.len())
+            format_strbuf!("{} pats", self.pats.len())
         }
     }
 }
@@ -1851,11 +1851,14 @@ fn create_bindings_map(bcx: &Block, pat: @ast::Pat) -> BindingsMap {
                 // but during matching we need to store a *T as explained
                 // above
                 llmatch = alloca(bcx, llvariable_ty.ptr_to(), "__llmatch");
-                trmode = TrByValue(alloca(bcx, llvariable_ty,
-                                          bcx.ident(ident)));
+                trmode = TrByValue(alloca(bcx,
+                                          llvariable_ty,
+                                          bcx.ident(ident).as_slice()));
             }
             ast::BindByRef(_) => {
-                llmatch = alloca(bcx, llvariable_ty, bcx.ident(ident));
+                llmatch = alloca(bcx,
+                                 llvariable_ty,
+                                 bcx.ident(ident).as_slice());
                 trmode = TrByRef;
             }
         };
@@ -2103,7 +2106,7 @@ fn mk_binding_alloca<'a,A>(bcx: &'a Block<'a>,
     let ident = ast_util::path_to_ident(path);
 
     // Allocate memory on stack for the binding.
-    let llval = alloc_ty(bcx, var_ty, bcx.ident(ident));
+    let llval = alloc_ty(bcx, var_ty, bcx.ident(ident).as_slice());
 
     // Subtle: be sure that we *populate* the memory *before*
     // we schedule the cleanup.

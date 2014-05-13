@@ -228,8 +228,11 @@ pub fn unindent_comments(krate: clean::Crate) -> plugins::PluginResult {
             let mut avec: Vec<clean::Attribute> = Vec::new();
             for attr in i.attrs.iter() {
                 match attr {
-                    &clean::NameValue(ref x, ref s) if "doc" == *x => avec.push(
-                        clean::NameValue("doc".to_owned(), unindent(*s))),
+                    &clean::NameValue(ref x, ref s)
+                            if "doc" == x.as_slice() => {
+                        avec.push(clean::NameValue("doc".to_strbuf(),
+                                                   unindent(s.as_slice())))
+                    }
                     x => avec.push(x.clone())
                 }
             }
@@ -250,19 +253,20 @@ pub fn collapse_docs(krate: clean::Crate) -> plugins::PluginResult {
             let mut i = i;
             for attr in i.attrs.iter() {
                 match *attr {
-                    clean::NameValue(ref x, ref s) if "doc" == *x => {
-                        docstr.push_str(s.clone());
+                    clean::NameValue(ref x, ref s)
+                            if "doc" == x.as_slice() => {
+                        docstr.push_str(s.as_slice());
                         docstr.push_char('\n');
                     },
                     _ => ()
                 }
             }
             let mut a: Vec<clean::Attribute> = i.attrs.iter().filter(|&a| match a {
-                &clean::NameValue(ref x, _) if "doc" == *x => false,
+                &clean::NameValue(ref x, _) if "doc" == x.as_slice() => false,
                 _ => true
             }).map(|x| x.clone()).collect();
             if docstr.len() > 0 {
-                a.push(clean::NameValue("doc".to_owned(), docstr.into_owned()));
+                a.push(clean::NameValue("doc".to_strbuf(), docstr));
             }
             i.attrs = a;
             self.fold_item_recur(i)
@@ -273,7 +277,7 @@ pub fn collapse_docs(krate: clean::Crate) -> plugins::PluginResult {
     (krate, None)
 }
 
-pub fn unindent(s: &str) -> ~str {
+pub fn unindent(s: &str) -> StrBuf {
     let lines = s.lines_any().collect::<Vec<&str> >();
     let mut saw_first_line = false;
     let mut saw_second_line = false;
@@ -318,18 +322,18 @@ pub fn unindent(s: &str) -> ~str {
     });
 
     if lines.len() >= 1 {
-        let mut unindented = vec!( lines.get(0).trim() );
+        let mut unindented = vec![ lines.get(0).trim().to_strbuf() ];
         unindented.push_all(lines.tail().iter().map(|&line| {
             if line.is_whitespace() {
-                line
+                line.to_strbuf()
             } else {
                 assert!(line.len() >= min_indent);
-                line.slice_from(min_indent)
+                line.slice_from(min_indent).to_strbuf()
             }
         }).collect::<Vec<_>>().as_slice());
-        unindented.connect("\n")
+        unindented.connect("\n").to_strbuf()
     } else {
-        s.to_owned()
+        s.to_strbuf()
     }
 }
 
@@ -341,14 +345,14 @@ mod unindent_tests {
     fn should_unindent() {
         let s = "    line1\n    line2".to_owned();
         let r = unindent(s);
-        assert_eq!(r, "line1\nline2".to_owned());
+        assert_eq!(r.as_slice(), "line1\nline2");
     }
 
     #[test]
     fn should_unindent_multiple_paragraphs() {
         let s = "    line1\n\n    line2".to_owned();
         let r = unindent(s);
-        assert_eq!(r, "line1\n\nline2".to_owned());
+        assert_eq!(r.as_slice(), "line1\n\nline2");
     }
 
     #[test]
@@ -357,7 +361,7 @@ mod unindent_tests {
         // base indentation and should be preserved
         let s = "    line1\n\n        line2".to_owned();
         let r = unindent(s);
-        assert_eq!(r, "line1\n\n    line2".to_owned());
+        assert_eq!(r.as_slice(), "line1\n\n    line2");
     }
 
     #[test]
@@ -369,13 +373,13 @@ mod unindent_tests {
         //          and continue here"]
         let s = "line1\n    line2".to_owned();
         let r = unindent(s);
-        assert_eq!(r, "line1\nline2".to_owned());
+        assert_eq!(r.as_slice(), "line1\nline2");
     }
 
     #[test]
     fn should_not_ignore_first_line_indent_in_a_single_line_para() {
         let s = "line1\n\n    line2".to_owned();
         let r = unindent(s);
-        assert_eq!(r, "line1\n\n    line2".to_owned());
+        assert_eq!(r.as_slice(), "line1\n\n    line2");
     }
 }

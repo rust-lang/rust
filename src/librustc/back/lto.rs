@@ -20,7 +20,7 @@ use libc;
 use flate;
 
 pub fn run(sess: &session::Session, llmod: ModuleRef,
-           tm: TargetMachineRef, reachable: &[~str]) {
+           tm: TargetMachineRef, reachable: &[StrBuf]) {
     if sess.opts.cg.prefer_dynamic {
         sess.err("cannot prefer dynamic linking when performing LTO");
         sess.note("only 'staticlib' and 'bin' outputs are supported with LTO");
@@ -67,13 +67,16 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
             if !llvm::LLVMRustLinkInExternalBitcode(llmod,
                                                     ptr as *libc::c_char,
                                                     bc.len() as libc::size_t) {
-                link::llvm_err(sess, format!("failed to load bc of `{}`", name));
+                link::llvm_err(sess,
+                               (format_strbuf!("failed to load bc of `{}`",
+                                               name)));
             }
         });
     }
 
     // Internalize everything but the reachable symbols of the current module
-    let cstrs: Vec<::std::c_str::CString> = reachable.iter().map(|s| s.to_c_str()).collect();
+    let cstrs: Vec<::std::c_str::CString> =
+        reachable.iter().map(|s| s.as_slice().to_c_str()).collect();
     let arr: Vec<*i8> = cstrs.iter().map(|c| c.with_ref(|p| p)).collect();
     let ptr = arr.as_ptr();
     unsafe {

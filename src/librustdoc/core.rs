@@ -32,7 +32,7 @@ pub enum MaybeTyped {
 }
 
 pub type ExternalPaths = RefCell<Option<HashMap<ast::DefId,
-                                                (Vec<~str>, clean::TypeKind)>>>;
+                                                (Vec<StrBuf>, clean::TypeKind)>>>;
 
 pub struct DocContext {
     pub krate: ast::Crate,
@@ -57,7 +57,7 @@ pub struct CrateAnalysis {
 }
 
 /// Parses, resolves, and typechecks the given crate
-fn get_ast_and_resolve(cpath: &Path, libs: HashSet<Path>, cfgs: Vec<~str>)
+fn get_ast_and_resolve(cpath: &Path, libs: HashSet<Path>, cfgs: Vec<StrBuf>)
                        -> (DocContext, CrateAnalysis) {
     use syntax::codemap::dummy_spanned;
     use rustc::driver::driver::{FileInput,
@@ -88,7 +88,7 @@ fn get_ast_and_resolve(cpath: &Path, libs: HashSet<Path>, cfgs: Vec<~str>)
 
     let mut cfg = build_configuration(&sess);
     for cfg_ in cfgs.move_iter() {
-        let cfg_ = token::intern_and_get_ident(cfg_);
+        let cfg_ = token::intern_and_get_ident(cfg_.as_slice());
         cfg.push(@dummy_spanned(ast::MetaWord(cfg_)));
     }
 
@@ -112,7 +112,7 @@ fn get_ast_and_resolve(cpath: &Path, libs: HashSet<Path>, cfgs: Vec<~str>)
     })
 }
 
-pub fn run_core(libs: HashSet<Path>, cfgs: Vec<~str>, path: &Path)
+pub fn run_core(libs: HashSet<Path>, cfgs: Vec<StrBuf>, path: &Path)
                 -> (clean::Crate, CrateAnalysis) {
     let (ctxt, analysis) = get_ast_and_resolve(path, libs, cfgs);
     let ctxt = @ctxt;

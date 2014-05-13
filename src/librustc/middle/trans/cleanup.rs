@@ -599,7 +599,9 @@ impl<'a> CleanupHelperMethods<'a> for FunctionContext<'a> {
             {
                 let name = scope.block_name("clean");
                 debug!("generating cleanups for {}", name);
-                let bcx_in = self.new_block(label.is_unwind(), name, None);
+                let bcx_in = self.new_block(label.is_unwind(),
+                                            name.as_slice(),
+                                            None);
                 let mut bcx_out = bcx_in;
                 for cleanup in scope.cleanups.iter().rev() {
                     if cleanup_is_suitable_for(*cleanup, label) {
@@ -649,7 +651,7 @@ impl<'a> CleanupHelperMethods<'a> for FunctionContext<'a> {
                 Some(llbb) => { return llbb; }
                 None => {
                     let name = last_scope.block_name("unwind");
-                    pad_bcx = self.new_block(true, name, None);
+                    pad_bcx = self.new_block(true, name.as_slice(), None);
                     last_scope.cached_landing_pad = Some(pad_bcx.llbb);
                 }
             }
@@ -731,16 +733,16 @@ impl<'a> CleanupScope<'a> {
             self.cleanups.iter().any(|c| c.clean_on_unwind())
     }
 
-    fn block_name(&self, prefix: &str) -> ~str {
+    fn block_name(&self, prefix: &str) -> StrBuf {
         /*!
          * Returns a suitable name to use for the basic block that
          * handles this cleanup scope
          */
 
         match self.kind {
-            CustomScopeKind => format!("{}_custom_", prefix),
-            AstScopeKind(id) => format!("{}_ast_{}_", prefix, id),
-            LoopScopeKind(id, _) => format!("{}_loop_{}_", prefix, id),
+            CustomScopeKind => format_strbuf!("{}_custom_", prefix),
+            AstScopeKind(id) => format_strbuf!("{}_ast_{}_", prefix, id),
+            LoopScopeKind(id, _) => format_strbuf!("{}_loop_{}_", prefix, id),
         }
     }
 }

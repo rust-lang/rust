@@ -69,7 +69,7 @@ impl<T: Clean<U>, U> Clean<Vec<U>> for syntax::owned_slice::OwnedSlice<T> {
 
 #[deriving(Clone, Encodable, Decodable)]
 pub struct Crate {
-    pub name: ~str,
+    pub name: StrBuf,
     pub module: Option<Item>,
     pub externs: Vec<(ast::CrateNum, ExternalCrate)>,
 }
@@ -90,9 +90,9 @@ impl<'a> Clean<Crate> for visit_ast::RustdocVisitor<'a> {
                                                        self.attrs.as_slice(),
                                                        cx.sess());
         let id = link::find_crate_id(self.attrs.as_slice(),
-                                     t_outputs.out_filestem);
+                                     t_outputs.out_filestem.as_slice());
         Crate {
-            name: id.name.to_owned(),
+            name: id.name.to_strbuf(),
             module: Some(self.module.clean()),
             externs: externs,
         }
@@ -101,14 +101,14 @@ impl<'a> Clean<Crate> for visit_ast::RustdocVisitor<'a> {
 
 #[deriving(Clone, Encodable, Decodable)]
 pub struct ExternalCrate {
-    pub name: ~str,
+    pub name: StrBuf,
     pub attrs: Vec<Attribute>,
 }
 
 impl Clean<ExternalCrate> for cstore::crate_metadata {
     fn clean(&self) -> ExternalCrate {
         ExternalCrate {
-            name: self.name.to_owned(),
+            name: self.name.to_strbuf(),
             attrs: decoder::get_crate_attributes(self.data()).clean()
                                                              .move_iter()
                                                              .collect(),
@@ -124,7 +124,7 @@ pub struct Item {
     /// Stringified span
     pub source: Span,
     /// Not everything has a name. E.g., impls
-    pub name: Option<~str>,
+    pub name: Option<StrBuf>,
     pub attrs: Vec<Attribute> ,
     pub inner: ItemEnum,
     pub visibility: Option<Visibility>,
@@ -137,7 +137,9 @@ impl Item {
     pub fn doc_list<'a>(&'a self) -> Option<&'a [Attribute]> {
         for attr in self.attrs.iter() {
             match *attr {
-                List(ref x, ref list) if "doc" == *x => { return Some(list.as_slice()); }
+                List(ref x, ref list) if "doc" == x.as_slice() => {
+                    return Some(list.as_slice());
+                }
                 _ => {}
             }
         }
@@ -149,7 +151,9 @@ impl Item {
     pub fn doc_value<'a>(&'a self) -> Option<&'a str> {
         for attr in self.attrs.iter() {
             match *attr {
-                NameValue(ref x, ref v) if "doc" == *x => { return Some(v.as_slice()); }
+                NameValue(ref x, ref v) if "doc" == x.as_slice() => {
+                    return Some(v.as_slice());
+                }
                 _ => {}
             }
         }
@@ -161,7 +165,9 @@ impl Item {
             Some(ref l) => {
                 for innerattr in l.iter() {
                     match *innerattr {
-                        Word(ref s) if "hidden" == *s => return true,
+                        Word(ref s) if "hidden" == s.as_slice() => {
+                            return true
+                        }
                         _ => (),
                     }
                 }
@@ -225,7 +231,7 @@ impl Clean<Item> for doctree::Module {
         let name = if self.name.is_some() {
             self.name.unwrap().clean()
         } else {
-            "".to_owned()
+            "".to_strbuf()
         };
         let mut foreigns = Vec::new();
         for subforeigns in self.foreigns.clean().move_iter() {
@@ -281,20 +287,20 @@ impl Clean<Item> for doctree::Module {
 
 #[deriving(Clone, Encodable, Decodable)]
 pub enum Attribute {
-    Word(~str),
-    List(~str, Vec<Attribute> ),
-    NameValue(~str, ~str)
+    Word(StrBuf),
+    List(StrBuf, Vec<Attribute> ),
+    NameValue(StrBuf, StrBuf)
 }
 
 impl Clean<Attribute> for ast::MetaItem {
     fn clean(&self) -> Attribute {
         match self.node {
-            ast::MetaWord(ref s) => Word(s.get().to_owned()),
+            ast::MetaWord(ref s) => Word(s.get().to_strbuf()),
             ast::MetaList(ref s, ref l) => {
-                List(s.get().to_owned(), l.clean().move_iter().collect())
+                List(s.get().to_strbuf(), l.clean().move_iter().collect())
             }
             ast::MetaNameValue(ref s, ref v) => {
-                NameValue(s.get().to_owned(), lit_to_str(v))
+                NameValue(s.get().to_strbuf(), lit_to_str(v))
             }
         }
     }
@@ -311,14 +317,16 @@ impl<'a> attr::AttrMetaMethods for &'a Attribute {
     fn name(&self) -> InternedString {
         match **self {
             Word(ref n) | List(ref n, _) | NameValue(ref n, _) => {
-                token::intern_and_get_ident(*n)
+                token::intern_and_get_ident(n.as_slice())
             }
         }
     }
 
     fn value_str(&self) -> Option<InternedString> {
         match **self {
-            NameValue(_, ref v) => Some(token::intern_and_get_ident(*v)),
+            NameValue(_, ref v) => {
+                Some(token::intern_and_get_ident(v.as_slice()))
+            }
             _ => None,
         }
     }
@@ -330,7 +338,7 @@ impl<'a> attr::AttrMetaMethods for &'a Attribute {
 
 #[deriving(Clone, Encodable, Decodable)]
 pub struct TyParam {
-    pub name: ~str,
+    pub name: StrBuf,
     pub id: ast::NodeId,
     pub bounds: Vec<TyParamBound>,
 }
@@ -362,19 +370,19 @@ impl Clean<TyParamBound> for ast::TyParamBound {
 }
 
 #[deriving(Clone, Encodable, Decodable)]
-pub struct Lifetime(~str);
+pub struct Lifetime(StrBuf);
 
 impl Lifetime {
     pub fn get_ref<'a>(&'a self) -> &'a str {
         let Lifetime(ref s) = *self;
-        let s: &'a str = *s;
+        let s: &'a str = s.as_slice();
         return s;
     }
 }
 
 impl Clean<Lifetime> for ast::Lifetime {
     fn clean(&self) -> Lifetime {
-        Lifetime(token::get_name(self.name).get().to_owned())
+        Lifetime(token::get_name(self.name).get().to_strbuf())
     }
 }
 
@@ -566,7 +574,7 @@ impl Clean<FnDecl> for ast::FnDecl {
 #[deriving(Clone, Encodable, Decodable)]
 pub struct Argument {
     pub type_: Type,
-    pub name: ~str,
+    pub name: StrBuf,
     pub id: ast::NodeId,
 }
 
@@ -687,7 +695,7 @@ pub enum Type {
     BareFunction(Box<BareFunctionDecl>),
     Tuple(Vec<Type>),
     Vector(Box<Type>),
-    FixedVector(Box<Type>, ~str),
+    FixedVector(Box<Type>, StrBuf),
     String,
     Bool,
     /// aka TyNil
@@ -890,7 +898,7 @@ impl Clean<VariantKind> for ast::VariantKind {
 
 #[deriving(Clone, Encodable, Decodable)]
 pub struct Span {
-    pub filename: ~str,
+    pub filename: StrBuf,
     pub loline: uint,
     pub locol: uint,
     pub hiline: uint,
@@ -905,7 +913,7 @@ impl Clean<Span> for syntax::codemap::Span {
         let lo = cm.lookup_char_pos(self.lo);
         let hi = cm.lookup_char_pos(self.hi);
         Span {
-            filename: filename.to_owned(),
+            filename: filename.to_strbuf(),
             loline: lo.line,
             locol: lo.col.to_uint(),
             hiline: hi.line,
@@ -931,7 +939,7 @@ impl Clean<Path> for ast::Path {
 
 #[deriving(Clone, Encodable, Decodable)]
 pub struct PathSegment {
-    pub name: ~str,
+    pub name: StrBuf,
     pub lifetimes: Vec<Lifetime>,
     pub types: Vec<Type>,
 }
@@ -946,7 +954,7 @@ impl Clean<PathSegment> for ast::PathSegment {
     }
 }
 
-fn path_to_str(p: &ast::Path) -> ~str {
+fn path_to_str(p: &ast::Path) -> StrBuf {
     use syntax::parse::token;
 
     let mut s = StrBuf::new();
@@ -959,12 +967,12 @@ fn path_to_str(p: &ast::Path) -> ~str {
         }
         s.push_str(i.get());
     }
-    s.into_owned()
+    s
 }
 
-impl Clean<~str> for ast::Ident {
-    fn clean(&self) -> ~str {
-        token::get_ident(*self).get().to_owned()
+impl Clean<StrBuf> for ast::Ident {
+    fn clean(&self) -> StrBuf {
+        token::get_ident(*self).get().to_strbuf()
     }
 }
 
@@ -995,7 +1003,7 @@ pub struct BareFunctionDecl {
     pub fn_style: ast::FnStyle,
     pub generics: Generics,
     pub decl: FnDecl,
-    pub abi: ~str,
+    pub abi: StrBuf,
 }
 
 impl Clean<BareFunctionDecl> for ast::BareFnTy {
@@ -1007,7 +1015,7 @@ impl Clean<BareFunctionDecl> for ast::BareFnTy {
                 type_params: Vec::new(),
             },
             decl: self.decl.clean(),
-            abi: self.abi.to_str(),
+            abi: self.abi.to_str().to_strbuf(),
         }
     }
 }
@@ -1019,7 +1027,7 @@ pub struct Static {
     /// It's useful to have the value of a static documented, but I have no
     /// desire to represent expressions (that'd basically be all of the AST,
     /// which is huge!). So, have a string.
-    pub expr: ~str,
+    pub expr: StrBuf,
 }
 
 impl Clean<Item> for doctree::Static {
@@ -1116,7 +1124,7 @@ impl Clean<Item> for ast::ViewItem {
 
 #[deriving(Clone, Encodable, Decodable)]
 pub enum ViewItemInner {
-    ExternCrate(~str, Option<~str>, ast::NodeId),
+    ExternCrate(StrBuf, Option<StrBuf>, ast::NodeId),
     Import(ViewPath)
 }
 
@@ -1126,7 +1134,7 @@ impl Clean<ViewItemInner> for ast::ViewItem_ {
             &ast::ViewItemExternCrate(ref i, ref p, ref id) => {
                 let string = match *p {
                     None => None,
-                    Some((ref x, _)) => Some(x.get().to_owned()),
+                    Some((ref x, _)) => Some(x.get().to_strbuf()),
                 };
                 ExternCrate(i.clean(), string, *id)
             }
@@ -1140,7 +1148,7 @@ impl Clean<ViewItemInner> for ast::ViewItem_ {
 #[deriving(Clone, Encodable, Decodable)]
 pub enum ViewPath {
     // use str = source;
-    SimpleImport(~str, ImportSource),
+    SimpleImport(StrBuf, ImportSource),
     // use source::*;
     GlobImport(ImportSource),
     // use source::{a, b, c};
@@ -1170,7 +1178,7 @@ impl Clean<ViewPath> for ast::ViewPath {
 
 #[deriving(Clone, Encodable, Decodable)]
 pub struct ViewListIdent {
-    pub name: ~str,
+    pub name: StrBuf,
     pub source: Option<ast::DefId>,
 }
 
@@ -1203,7 +1211,7 @@ impl Clean<Item> for ast::ForeignItem {
                 ForeignStaticItem(Static {
                     type_: ty.clean(),
                     mutability: if mutbl {Mutable} else {Immutable},
-                    expr: "".to_owned(),
+                    expr: "".to_strbuf(),
                 })
             }
         };
@@ -1221,56 +1229,56 @@ impl Clean<Item> for ast::ForeignItem {
 // Utilities
 
 trait ToSource {
-    fn to_src(&self) -> ~str;
+    fn to_src(&self) -> StrBuf;
 }
 
 impl ToSource for syntax::codemap::Span {
-    fn to_src(&self) -> ~str {
+    fn to_src(&self) -> StrBuf {
         debug!("converting span {:?} to snippet", self.clean());
         let ctxt = super::ctxtkey.get().unwrap();
         let cm = ctxt.sess().codemap().clone();
         let sn = match cm.span_to_snippet(*self) {
-            Some(x) => x.to_owned(),
-            None    => "".to_owned()
+            Some(x) => x.to_strbuf(),
+            None    => "".to_strbuf()
         };
         debug!("got snippet {}", sn);
         sn
     }
 }
 
-fn lit_to_str(lit: &ast::Lit) -> ~str {
+fn lit_to_str(lit: &ast::Lit) -> StrBuf {
     match lit.node {
-        ast::LitStr(ref st, _) => st.get().to_owned(),
-        ast::LitBinary(ref data) => format!("{:?}", data.as_slice()),
-        ast::LitChar(c) => format!("'{}'", c),
-        ast::LitInt(i, _t) => i.to_str(),
-        ast::LitUint(u, _t) => u.to_str(),
-        ast::LitIntUnsuffixed(i) => i.to_str(),
-        ast::LitFloat(ref f, _t) => f.get().to_str(),
-        ast::LitFloatUnsuffixed(ref f) => f.get().to_str(),
-        ast::LitBool(b) => b.to_str(),
-        ast::LitNil => "".to_owned(),
+        ast::LitStr(ref st, _) => st.get().to_strbuf(),
+        ast::LitBinary(ref data) => format_strbuf!("{:?}", data.as_slice()),
+        ast::LitChar(c) => format_strbuf!("'{}'", c),
+        ast::LitInt(i, _t) => i.to_str().to_strbuf(),
+        ast::LitUint(u, _t) => u.to_str().to_strbuf(),
+        ast::LitIntUnsuffixed(i) => i.to_str().to_strbuf(),
+        ast::LitFloat(ref f, _t) => f.get().to_strbuf(),
+        ast::LitFloatUnsuffixed(ref f) => f.get().to_strbuf(),
+        ast::LitBool(b) => b.to_str().to_strbuf(),
+        ast::LitNil => "".to_strbuf(),
     }
 }
 
-fn name_from_pat(p: &ast::Pat) -> ~str {
+fn name_from_pat(p: &ast::Pat) -> StrBuf {
     use syntax::ast::*;
     debug!("Trying to get a name from pattern: {:?}", p);
 
     match p.node {
-        PatWild => "_".to_owned(),
-        PatWildMulti => "..".to_owned(),
+        PatWild => "_".to_strbuf(),
+        PatWildMulti => "..".to_strbuf(),
         PatIdent(_, ref p, _) => path_to_str(p),
         PatEnum(ref p, _) => path_to_str(p),
         PatStruct(..) => fail!("tried to get argument name from pat_struct, \
                                 which is not allowed in function arguments"),
-        PatTup(..) => "(tuple arg NYI)".to_owned(),
+        PatTup(..) => "(tuple arg NYI)".to_strbuf(),
         PatUniq(p) => name_from_pat(p),
         PatRegion(p) => name_from_pat(p),
         PatLit(..) => {
             warn!("tried to get argument name from PatLit, \
                   which is silly in function arguments");
-            "()".to_owned()
+            "()".to_strbuf()
         },
         PatRange(..) => fail!("tried to get argument name from PatRange, \
                               which is not allowed in function arguments"),
@@ -1326,7 +1334,7 @@ fn register_def(cx: &core::DocContext, def: ast::Def) -> ast::DefId {
         core::NotTyped(_) => return did
     };
     let fqn = csearch::get_item_path(tcx, did);
-    let fqn = fqn.move_iter().map(|i| i.to_str()).collect();
+    let fqn = fqn.move_iter().map(|i| i.to_str().to_strbuf()).collect();
     debug!("recording {} => {}", did, fqn);
     cx.external_paths.borrow_mut().get_mut_ref().insert(did, (fqn, kind));
     return did;
@@ -1351,13 +1359,13 @@ fn resolve_def(id: ast::NodeId) -> Option<ast::DefId> {
 
 #[deriving(Clone, Encodable, Decodable)]
 pub struct Macro {
-    pub source: ~str,
+    pub source: StrBuf,
 }
 
 impl Clean<Item> for doctree::Macro {
     fn clean(&self) -> Item {
         Item {
-            name: Some(self.name.clean() + "!"),
+            name: Some(format_strbuf!("{}!", self.name.clean())),
             attrs: self.attrs.clean(),
             source: self.where.clean(),
             visibility: ast::Public.clean(),

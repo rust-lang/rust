@@ -119,7 +119,6 @@ pub mod lib {
     pub mod llvmdeps;
 }
 
-
 pub fn main() {
     std::os::set_exit_status(driver::main_args(std::os::args().as_slice()));
 }

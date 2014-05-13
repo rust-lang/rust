@@ -562,7 +562,7 @@ pub fn check_cast_for_escaping_regions(
 }
 
 // Ensure that `ty` has a statically known size (i.e., it has the `Sized` bound).
-fn check_sized(tcx: &ty::ctxt, ty: ty::t, name: ~str, sp: Span) {
+fn check_sized(tcx: &ty::ctxt, ty: ty::t, name: StrBuf, sp: Span) {
     if !ty::type_is_sized(tcx, ty) {
         tcx.sess.span_err(sp, format!("variable `{}` has dynamically sized type `{}`",
                                       name, ty_to_str(tcx, ty)));
@@ -572,8 +572,8 @@ fn check_sized(tcx: &ty::ctxt, ty: ty::t, name: ~str, sp: Span) {
 // Check that any variables in a pattern have types with statically known size.
 fn check_pat(cx: &mut Context, pat: &Pat) {
     let var_name = match pat.node {
-        PatWild => Some("_".to_owned()),
-        PatIdent(_, ref path, _) => Some(path_to_str(path).to_owned()),
+        PatWild => Some("_".to_strbuf()),
+        PatIdent(_, ref path, _) => Some(path_to_str(path).to_strbuf()),
         _ => None
     };
 

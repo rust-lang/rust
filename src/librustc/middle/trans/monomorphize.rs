@@ -109,9 +109,10 @@ pub fn monomorphic_fn(ccx: &CrateContext,
         ccx.sess(),
         ccx.tcx.map.find(fn_id.node),
         || {
-            (format!("while monomorphizing {:?}, couldn't find it in the \
-                      item map (may have attempted to monomorphize an item \
-                      defined in a different crate?)", fn_id)).to_strbuf()
+            format_strbuf!("while monomorphizing {:?}, couldn't find it in \
+                            the item map (may have attempted to monomorphize \
+                            an item defined in a different crate?)",
+                           fn_id)
         });
 
     match map_node {
@@ -212,9 +213,11 @@ pub fn monomorphic_fn(ccx: &CrateContext,
     // This shouldn't need to option dance.
     let mut hash_id = Some(hash_id);
     let mk_lldecl = || {
-        let lldecl = decl_internal_rust_fn(ccx, false,
+        let lldecl = decl_internal_rust_fn(ccx,
+                                           false,
                                            f.sig.inputs.as_slice(),
-                                           f.sig.output, s);
+                                           f.sig.output,
+                                           s.as_slice());
         ccx.monomorphized.borrow_mut().insert(hash_id.take_unwrap(), lldecl);
         lldecl
     };

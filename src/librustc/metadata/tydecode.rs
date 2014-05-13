@@ -201,7 +201,7 @@ fn parse_bound_region(st: &mut PState, conv: conv_did) -> ty::BoundRegion {
         }
         '[' => {
             let def = parse_def(st, RegionParameter, |x,y| conv(x,y));
-            let ident = token::str_to_ident(parse_str(st, ']'));
+            let ident = token::str_to_ident(parse_str(st, ']').as_slice());
             ty::BrNamed(def, ident.name)
         }
         'f' => {
@@ -229,7 +229,7 @@ fn parse_region(st: &mut PState, conv: conv_did) -> ty::Region {
         assert_eq!(next(st), '|');
         let index = parse_uint(st);
         assert_eq!(next(st), '|');
-        let nm = token::str_to_ident(parse_str(st, ']'));
+        let nm = token::str_to_ident(parse_str(st, ']').as_slice());
         ty::ReEarlyBound(node_id, index, nm.name)
       }
       'f' => {
@@ -264,7 +264,7 @@ fn parse_opt<T>(st: &mut PState, f: |&mut PState| -> T) -> Option<T> {
     }
 }
 
-fn parse_str(st: &mut PState, term: char) -> ~str {
+fn parse_str(st: &mut PState, term: char) -> StrBuf {
     let mut result = StrBuf::new();
     while peek(st) != term {
         unsafe {
@@ -272,7 +272,7 @@ fn parse_str(st: &mut PState, term: char) -> ~str {
         }
     }
     next(st);
-    return result.into_owned();
+    result
 }
 
 fn parse_trait_ref(st: &mut PState, conv: conv_did) -> ty::TraitRef {

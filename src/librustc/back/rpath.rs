@@ -22,7 +22,7 @@ fn not_win32(os: abi::Os) -> bool {
   os != abi::OsWin32
 }
 
-pub fn get_rpath_flags(sess: &Session, out_filename: &Path) -> Vec<~str> {
+pub fn get_rpath_flags(sess: &Session, out_filename: &Path) -> Vec<StrBuf> {
     let os = sess.targ_cfg.os;
 
     // No rpath on windows
@@ -33,9 +33,9 @@ pub fn get_rpath_flags(sess: &Session, out_filename: &Path) -> Vec<~str> {
     let mut flags = Vec::new();
 
     if sess.targ_cfg.os == abi::OsFreebsd {
-        flags.push_all(["-Wl,-rpath,/usr/local/lib/gcc46".to_owned(),
-                        "-Wl,-rpath,/usr/local/lib/gcc44".to_owned(),
-                        "-Wl,-z,origin".to_owned()]);
+        flags.push_all(["-Wl,-rpath,/usr/local/lib/gcc46".to_strbuf(),
+                        "-Wl,-rpath,/usr/local/lib/gcc44".to_strbuf(),
+                        "-Wl,-z,origin".to_strbuf()]);
     }
 
     debug!("preparing the RPATH!");
@@ -47,16 +47,19 @@ pub fn get_rpath_flags(sess: &Session, out_filename: &Path) -> Vec<~str> {
         l.map(|p| p.clone())
     }).collect::<Vec<_>>();
 
-    let rpaths = get_rpaths(os, sysroot, output, libs.as_slice(),
-                            sess.opts.target_triple);
+    let rpaths = get_rpaths(os,
+                            sysroot,
+                            output,
+                            libs.as_slice(),
+                            sess.opts.target_triple.as_slice());
     flags.push_all(rpaths_to_flags(rpaths.as_slice()).as_slice());
     flags
 }
 
-pub fn rpaths_to_flags(rpaths: &[~str]) -> Vec<~str> {
+pub fn rpaths_to_flags(rpaths: &[StrBuf]) -> Vec<StrBuf> {
     let mut ret = Vec::new();
     for rpath in rpaths.iter() {
-        ret.push("-Wl,-rpath," + *rpath);
+        ret.push(("-Wl,-rpath," + (*rpath).as_slice()).to_strbuf());
     }
     return ret;
 }
@@ -65,7 +68,7 @@ fn get_rpaths(os: abi::Os,
               sysroot: &Path,
               output: &Path,
               libs: &[Path],
-              target_triple: &str) -> Vec<~str> {
+              target_triple: &str) -> Vec<StrBuf> {
     debug!("sysroot: {}", sysroot.display());
     debug!("output: {}", output.display());
     debug!("libs:");
@@ -82,7 +85,7 @@ fn get_rpaths(os: abi::Os,
     // And a final backup rpath to the global library location.
     let fallback_rpaths = vec!(get_install_prefix_rpath(sysroot, target_triple));
 
-    fn log_rpaths(desc: &str, rpaths: &[~str]) {
+    fn log_rpaths(desc: &str, rpaths: &[StrBuf]) {
         debug!("{} rpaths:", desc);
         for rpath in rpaths.iter() {
             debug!("    {}", *rpath);
@@ -102,14 +105,14 @@ fn get_rpaths(os: abi::Os,
 
 fn get_rpaths_relative_to_output(os: abi::Os,
                                  output: &Path,
-                                 libs: &[Path]) -> Vec<~str> {
+                                 libs: &[Path]) -> Vec<StrBuf> {
     libs.iter().map(|a| get_rpath_relative_to_output(os, output, a)).collect()
 }
 
 pub fn get_rpath_relative_to_output(os: abi::Os,
                                     output: &Path,
                                     lib: &Path)
-                                 -> ~str {
+                                 -> StrBuf {
     use std::os;
 
     assert!(not_win32(os));
@@ -129,10 +132,11 @@ pub fn get_rpath_relative_to_output(os: abi::Os,
     let relative = lib.path_relative_from(&output);
     let relative = relative.expect("could not create rpath relative to output");
     // FIXME (#9639): This needs to handle non-utf8 paths
-    prefix+"/"+relative.as_str().expect("non-utf8 component in path")
+    (prefix + "/" + relative.as_str()
+                            .expect("non-utf8 component in path")).to_strbuf()
 }
 
-pub fn get_install_prefix_rpath(sysroot: &Path, target_triple: &str) -> ~str {
+pub fn get_install_prefix_rpath(sysroot: &Path, target_triple: &str) -> StrBuf {
     let install_prefix = option_env!("CFG_PREFIX").expect("CFG_PREFIX");
 
     let tlib = filesearch::relative_target_lib_path(sysroot, target_triple);
@@ -140,10 +144,10 @@ pub fn get_install_prefix_rpath(sysroot: &Path, target_triple: &str) -> ~str {
     path.push(&tlib);
     let path = os::make_absolute(&path);
     // FIXME (#9639): This needs to handle non-utf8 paths
-    path.as_str().expect("non-utf8 component in rpath").to_owned()
+    path.as_str().expect("non-utf8 component in rpath").to_strbuf()
 }
 
-pub fn minimize_rpaths(rpaths: &[~str]) -> Vec<~str> {
+pub fn minimize_rpaths(rpaths: &[StrBuf]) -> Vec<StrBuf> {
     let mut set = HashSet::new();
     let mut minimized = Vec::new();
     for rpath in rpaths.iter() {
@@ -163,8 +167,13 @@ mod test {
 
     #[test]
     fn test_rpaths_to_flags() {
-        let flags = rpaths_to_flags(["path1".to_owned(), "path2".to_owned()]);
-        assert_eq!(flags, vec!("-Wl,-rpath,path1".to_owned(), "-Wl,-rpath,path2".to_owned()));
+        let flags = rpaths_to_flags([
+            "path1".to_strbuf(),
+            "path2".to_strbuf()
+        ]);
+        assert_eq!(flags,
+                   vec!("-Wl,-rpath,path1".to_strbuf(),
+                        "-Wl,-rpath,path2".to_strbuf()));
     }
 
     #[test]
@@ -190,18 +199,37 @@ mod test {
 
     #[test]
     fn test_minimize1() {
-        let res = minimize_rpaths(["rpath1".to_owned(), "rpath2".to_owned(), "rpath1".to_owned()]);
-        assert!(res.as_slice() == ["rpath1".to_owned(), "rpath2".to_owned()]);
+        let res = minimize_rpaths([
+            "rpath1".to_strbuf(),
+            "rpath2".to_strbuf(),
+            "rpath1".to_strbuf()
+        ]);
+        assert!(res.as_slice() == [
+            "rpath1".to_strbuf(),
+            "rpath2".to_strbuf()
+        ]);
     }
 
     #[test]
     fn test_minimize2() {
-        let res = minimize_rpaths(["1a".to_owned(), "2".to_owned(),  "2".to_owned(),
-                                   "1a".to_owned(), "4a".to_owned(), "1a".to_owned(),
-                                   "2".to_owned(),  "3".to_owned(),  "4a".to_owned(),
-                                   "3".to_owned()]);
-        assert!(res.as_slice() == ["1a".to_owned(), "2".to_owned(), "4a".to_owned(),
-                                   "3".to_owned()]);
+        let res = minimize_rpaths([
+            "1a".to_strbuf(),
+            "2".to_strbuf(),
+            "2".to_strbuf(),
+            "1a".to_strbuf(),
+            "4a".to_strbuf(),
+            "1a".to_strbuf(),
+            "2".to_strbuf(),
+            "3".to_strbuf(),
+            "4a".to_strbuf(),
+            "3".to_strbuf()
+        ]);
+        assert!(res.as_slice() == [
+            "1a".to_strbuf(),
+            "2".to_strbuf(),
+            "4a".to_strbuf(),
+            "3".to_strbuf()
+        ]);
     }
 
     #[test]

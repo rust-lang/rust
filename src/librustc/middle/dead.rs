@@ -352,11 +352,17 @@ impl<'a> DeadVisitor<'a> {
         false
     }
 
-    fn warn_dead_code(&mut self, id: ast::NodeId,
-                      span: codemap::Span, ident: ast::Ident) {
-        self.tcx.sess.add_lint(DeadCode, id, span,
-                               format!("code is never used: `{}`",
-                                       token::get_ident(ident)));
+    fn warn_dead_code(&mut self,
+                      id: ast::NodeId,
+                      span: codemap::Span,
+                      ident: ast::Ident) {
+        self.tcx
+            .sess
+            .add_lint(DeadCode,
+                      id,
+                      span,
+                      format_strbuf!("code is never used: `{}`",
+                                     token::get_ident(ident)));
     }
 }
 

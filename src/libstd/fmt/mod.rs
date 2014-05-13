@@ -504,6 +504,7 @@ use slice::{Vector, ImmutableVector};
 use slice;
 use str::{StrSlice, StrAllocating, UTF16Item, ScalarValue, LoneSurrogate};
 use str;
+use strbuf::StrBuf;
 
 pub use self::num::radix;
 pub use self::num::Radix;
@@ -788,6 +789,11 @@ pub fn format(args: &Arguments) -> ~str {
     unsafe { format_unsafe(args.fmt, args.args) }
 }
 
+/// Temporary transitionary thing.
+pub fn format_strbuf(args: &Arguments) -> StrBuf {
+    unsafe { format_unsafe_strbuf(args.fmt, args.args) }
+}
+
 /// The unsafe version of the formatting function.
 ///
 /// This is currently an unsafe function because the types of all arguments
@@ -813,6 +819,14 @@ pub unsafe fn format_unsafe(fmt: &[rt::Piece], args: &[Argument]) -> ~str {
     let mut output = MemWriter::new();
     write_unsafe(&mut output as &mut io::Writer, fmt, args).unwrap();
     return str::from_utf8(output.unwrap().as_slice()).unwrap().to_owned();
+}
+
+/// Temporary transitionary thing.
+pub unsafe fn format_unsafe_strbuf(fmt: &[rt::Piece], args: &[Argument])
+                                   -> StrBuf {
+    let mut output = MemWriter::new();
+    write_unsafe(&mut output as &mut io::Writer, fmt, args).unwrap();
+    return str::from_utf8(output.unwrap().as_slice()).unwrap().into_strbuf();
 }
 
 impl<'a> Formatter<'a> {
