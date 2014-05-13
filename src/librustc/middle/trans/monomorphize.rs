@@ -55,23 +55,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
     let _icx = push_ctxt("monomorphic_fn");
 
     let substs_iter = real_substs.self_ty.iter().chain(real_substs.tps.iter());
-    let param_ids: Vec<MonoParamId> = match vtables {
-        Some(ref vts) => {
-            debug!("make_mono_id vtables={} psubsts={}",
-                   vts.repr(ccx.tcx()), real_substs.tps.repr(ccx.tcx()));
-            let vts_iter = self_vtables.iter().chain(vts.iter());
-            vts_iter.zip(substs_iter).map(|(vtable, subst)| MonoParamId {
-                subst: *subst,
-                // Do we really need the vtables to be hashed? Isn't the type enough?
-                vtables: vtable.iter().map(|vt| make_vtable_id(ccx, vt)).collect()
-            }).collect()
-        }
-        None => substs_iter.map(|subst| MonoParamId {
-            subst: *subst,
-            vtables: Vec::new()
-        }).collect()
-    };
-
+    let param_ids: Vec<ty::t> = substs_iter.map(|t| *t).collect();
     let hash_id = MonoId {
         def: fn_id,
         params: param_ids
@@ -317,33 +301,22 @@ pub fn monomorphic_fn(ccx: &CrateContext,
 #[deriving(PartialEq, Eq, Hash)]
 pub struct MonoParamId {
     pub subst: ty::t,
-    // Do we really need the vtables to be hashed? Isn't the type enough?
-    pub vtables: Vec<MonoId>
 }
 
 #[deriving(PartialEq, Eq, Hash)]
 pub struct MonoId {
     pub def: ast::DefId,
-    pub params: Vec<MonoParamId>
+    pub params: Vec<ty::t>
 }
 
-pub fn make_vtable_id(ccx: &CrateContext,
+pub fn make_vtable_id(_ccx: &CrateContext,
                       origin: &typeck::vtable_origin)
                       -> MonoId {
     match origin {
-        &typeck::vtable_static(impl_id, ref substs, ref sub_vtables) => {
+        &typeck::vtable_static(impl_id, ref substs, _) => {
             MonoId {
                 def: impl_id,
-                // FIXME(NDM) -- this is pretty bogus. It ignores self-type,
-                // and vtables are not necessary, AND they are not guaranteed
-                // to be same length as the number of TPS ANYHOW!
-                params: sub_vtables.iter().zip(substs.tps.iter()).map(|(vtable, subst)| {
-                    MonoParamId {
-                        subst: *subst,
-                        // Do we really need the vtables to be hashed? Isn't the type enough?
-                        vtables: vtable.iter().map(|vt| make_vtable_id(ccx, vt)).collect()
-                    }
-                }).collect()
+                params: substs.tps.iter().map(|subst| *subst).collect()
             }
         }
 
