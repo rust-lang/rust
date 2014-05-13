@@ -4022,10 +4022,12 @@ pub fn instantiate_path(fcx: &FnCtxt,
         (tps, regions)
     };
 
+    let substs = substs { regions: regions,
+                          self_ty: None,
+                          tps: tps };
+
     fcx.write_ty_substs(node_id, tpt.ty, ty::ItemSubsts {
-        substs: substs { regions: regions,
-                         self_ty: None,
-                         tps: tps }
+        substs: substs,
     });
 
     debug!("<<<");
