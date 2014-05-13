@@ -10,7 +10,7 @@
 
 // Make sure the destructor is run for unit-like structs.
 
-use std::any::AnyOwnExt;
+use std::owned::AnyOwnExt;
 use std::task;
 
 struct Foo;

@@ -21,8 +21,6 @@ the `clone` method.
 
 */
 
-use owned::Box;
-
 /// A common trait for cloning an object.
 pub trait Clone {
     /// Returns a copy of the value. The contents of owned pointers
@@ -38,18 +36,6 @@ pub trait Clone {
     #[inline(always)]
     fn clone_from(&mut self, source: &Self) {
         *self = source.clone()
-    }
-}
-
-impl<T: Clone> Clone for Box<T> {
-    /// Return a copy of the owned box.
-    #[inline]
-    fn clone(&self) -> Box<T> { box {(**self).clone()} }
-
-    /// Perform copy-assignment from `source` by reusing the existing allocation.
-    #[inline]
-    fn clone_from(&mut self, source: &Box<T>) {
-        (**self).clone_from(&(**source));
     }
 }
 
@@ -129,12 +115,22 @@ extern_fn_clone!(A, B, C, D, E, F, G, H)
 #[cfg(test)]
 mod test {
     use prelude::*;
-    use owned::Box;
+    use realstd::owned::Box;
+
+    fn realclone<T: ::realstd::clone::Clone>(t: &T) -> T {
+        use realstd::clone::Clone;
+        t.clone()
+    }
+
+    fn realclone_from<T: ::realstd::clone::Clone>(t1: &mut T, t2: &T) {
+        use realstd::clone::Clone;
+        t1.clone_from(t2)
+    }
 
     #[test]
     fn test_owned_clone() {
         let a = box 5i;
-        let b: Box<int> = a.clone();
+        let b: Box<int> = realclone(&a);
         assert_eq!(a, b);
     }
 
@@ -157,7 +153,7 @@ mod test {
     fn test_clone_from() {
         let a = box 5;
         let mut b = box 10;
-        b.clone_from(&a);
+        realclone_from(&mut b, &a);
         assert_eq!(*b, 5);
     }
 
