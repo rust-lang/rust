@@ -14,6 +14,7 @@ use lib::llvm::llvm;
 use lib::llvm::ValueRef;
 use lib;
 use metadata::csearch;
+use middle::subst;
 use middle::trans::base::*;
 use middle::trans::build::*;
 use middle::trans::callee::*;
@@ -277,9 +278,9 @@ fn trans_monomorphized_callee<'a>(bcx: &'a Block<'a>,
 fn combine_impl_and_methods_tps(bcx: &Block,
                                 mth_did: ast::DefId,
                                 node: ExprOrMethodCall,
-                                rcvr_substs: ty::substs,
+                                rcvr_substs: subst::Substs,
                                 rcvr_origins: typeck::vtable_res)
-                                -> (ty::substs, typeck::vtable_res)
+                                -> (subst::Substs, typeck::vtable_res)
 {
     /*!
      * Creates a concatenated set of substitutions which includes
@@ -335,9 +336,9 @@ fn combine_impl_and_methods_tps(bcx: &Block,
         }
     }
 
-    let ty_substs = ty::substs {
+    let ty_substs = subst::Substs {
         tps: tps,
-        regions: ty::ErasedRegions,
+        regions: subst::ErasedRegions,
         self_ty: rcvr_self_ty
     };
 
@@ -493,7 +494,7 @@ pub fn make_vtable<I: Iterator<ValueRef>>(ccx: &CrateContext,
 
 fn emit_vtable_methods(bcx: &Block,
                        impl_id: ast::DefId,
-                       substs: ty::substs,
+                       substs: subst::Substs,
                        vtables: typeck::vtable_res)
                        -> Vec<ValueRef> {
     let ccx = bcx.ccx();

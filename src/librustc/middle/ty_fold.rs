@@ -10,6 +10,7 @@
 
 // Generalized type folding mechanism.
 
+use middle::subst;
 use middle::ty;
 use middle::typeck;
 use std::rc::Rc;
@@ -50,8 +51,8 @@ pub trait TypeFolder {
     }
 
     fn fold_substs(&mut self,
-                   substs: &ty::substs)
-                   -> ty::substs {
+                   substs: &subst::Substs)
+                   -> subst::Substs {
         super_fold_substs(self, substs)
     }
 
@@ -180,8 +181,8 @@ impl TypeFoldable for ty::Region {
     }
 }
 
-impl TypeFoldable for ty::substs {
-    fn fold_with<F:TypeFolder>(&self, folder: &mut F) -> ty::substs {
+impl TypeFoldable for subst::Substs {
+    fn fold_with<F:TypeFolder>(&self, folder: &mut F) -> subst::Substs {
         folder.fold_substs(self)
     }
 }
@@ -278,20 +279,20 @@ pub fn super_fold_ty<T:TypeFolder>(this: &mut T,
 }
 
 pub fn super_fold_substs<T:TypeFolder>(this: &mut T,
-                                       substs: &ty::substs)
-                                       -> ty::substs {
+                                       substs: &subst::Substs)
+                                       -> subst::Substs {
     let regions = match substs.regions {
-        ty::ErasedRegions => {
-            ty::ErasedRegions
+        subst::ErasedRegions => {
+            subst::ErasedRegions
         }
-        ty::NonerasedRegions(ref regions) => {
-            ty::NonerasedRegions(regions.fold_with(this))
+        subst::NonerasedRegions(ref regions) => {
+            subst::NonerasedRegions(regions.fold_with(this))
         }
     };
 
-    ty::substs { regions: regions,
-                 self_ty: substs.self_ty.fold_with(this),
-                 tps: substs.tps.fold_with(this) }
+    subst::Substs { regions: regions,
+                    self_ty: substs.self_ty.fold_with(this),
+                    tps: substs.tps.fold_with(this) }
 }
 
 pub fn super_fold_sig<T:TypeFolder>(this: &mut T,

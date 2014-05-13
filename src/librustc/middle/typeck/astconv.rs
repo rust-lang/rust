@@ -51,8 +51,8 @@
 
 
 use middle::const_eval;
-use middle::subst::Subst;
-use middle::ty::{substs};
+use middle::subst;
+use middle::subst::{Subst, Substs};
 use middle::ty::{ty_param_substs_and_ty};
 use middle::ty;
 use middle::typeck::rscope;
@@ -152,7 +152,7 @@ fn ast_path_substs<AC:AstConv,RS:RegionScope>(
     rscope: &RS,
     decl_generics: &ty::Generics,
     self_ty: Option<ty::t>,
-    path: &ast::Path) -> ty::substs
+    path: &ast::Path) -> subst::Substs
 {
     /*!
      * Given a path `path` that refers to an item `I` with the
@@ -232,8 +232,8 @@ fn ast_path_substs<AC:AstConv,RS:RegionScope>(
                             .map(|&a_t| ast_ty_to_ty(this, rscope, a_t))
                             .collect();
 
-    let mut substs = substs {
-        regions: ty::NonerasedRegions(OwnedSlice::from_vec(regions)),
+    let mut substs = subst::Substs {
+        regions: subst::NonerasedRegions(regions),
         self_ty: self_ty,
         tps: tps
     };
@@ -261,7 +261,7 @@ pub fn ast_path_to_substs_and_ty<AC:AstConv,
     } = this.get_item_ty(did);
 
     let substs = ast_path_substs(this, rscope, &generics, None, path);
-    let ty = ty::subst(tcx, &substs, decl_ty);
+    let ty = decl_ty.subst(tcx, &substs);
     ty_param_substs_and_ty { substs: substs, ty: ty }
 }
 

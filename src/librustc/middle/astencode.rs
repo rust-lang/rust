@@ -23,6 +23,7 @@ use metadata::tydecode;
 use metadata::tydecode::{DefIdSource, NominalType, TypeWithId, TypeParameter,
                          RegionParameter};
 use metadata::tyencode;
+use middle::subst;
 use middle::typeck::{MethodCall, MethodCallee, MethodOrigin};
 use middle::{ty, typeck};
 use util::ppaux::ty_to_str;
@@ -796,7 +797,7 @@ trait ebml_writer_helpers {
     fn emit_tpbt(&mut self,
                  ecx: &e::EncodeContext,
                  tpbt: ty::ty_param_bounds_and_ty);
-    fn emit_substs(&mut self, ecx: &e::EncodeContext, substs: &ty::substs);
+    fn emit_substs(&mut self, ecx: &e::EncodeContext, substs: &subst::Substs);
     fn emit_auto_adjustment(&mut self, ecx: &e::EncodeContext, adj: &ty::AutoAdjustment);
 }
 
@@ -842,7 +843,7 @@ impl<'a> ebml_writer_helpers for Encoder<'a> {
         });
     }
 
-    fn emit_substs(&mut self, ecx: &e::EncodeContext, substs: &ty::substs) {
+    fn emit_substs(&mut self, ecx: &e::EncodeContext, substs: &subst::Substs) {
         self.emit_opaque(|this| Ok(tyencode::enc_substs(this.writer,
                                                            &ecx.ty_str_ctxt(),
                                                            substs)));
@@ -1076,7 +1077,7 @@ trait ebml_decoder_decoder_helpers {
                            -> ty::TypeParameterDef;
     fn read_ty_param_bounds_and_ty(&mut self, xcx: &ExtendedDecodeContext)
                                 -> ty::ty_param_bounds_and_ty;
-    fn read_substs(&mut self, xcx: &ExtendedDecodeContext) -> ty::substs;
+    fn read_substs(&mut self, xcx: &ExtendedDecodeContext) -> subst::Substs;
     fn read_auto_adjustment(&mut self, xcx: &ExtendedDecodeContext) -> ty::AutoAdjustment;
     fn convert_def_id(&mut self,
                       xcx: &ExtendedDecodeContext,
@@ -1093,7 +1094,7 @@ trait ebml_decoder_decoder_helpers {
                       cdata: &cstore::crate_metadata) -> Vec<ty::t>;
     fn read_substs_noxcx(&mut self, tcx: &ty::ctxt,
                          cdata: &cstore::crate_metadata)
-                         -> ty::substs;
+                         -> subst::Substs;
 }
 
 impl<'a> ebml_decoder_decoder_helpers for reader::Decoder<'a> {
@@ -1121,7 +1122,7 @@ impl<'a> ebml_decoder_decoder_helpers for reader::Decoder<'a> {
     fn read_substs_noxcx(&mut self,
                          tcx: &ty::ctxt,
                          cdata: &cstore::crate_metadata)
-                         -> ty::substs
+                         -> subst::Substs
     {
         self.read_opaque(|_, doc| {
             Ok(tydecode::parse_substs_data(
@@ -1210,7 +1211,7 @@ impl<'a> ebml_decoder_decoder_helpers for reader::Decoder<'a> {
         }).unwrap()
     }
 
-    fn read_substs(&mut self, xcx: &ExtendedDecodeContext) -> ty::substs {
+    fn read_substs(&mut self, xcx: &ExtendedDecodeContext) -> subst::Substs {
         self.read_opaque(|this, doc| {
             Ok(tydecode::parse_substs_data(doc.data,
                                         xcx.dcx.cdata.cnum,

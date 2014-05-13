@@ -18,6 +18,7 @@ use back::link::*;
 use lib::llvm::{llvm, ValueRef, True};
 use lib;
 use middle::lang_items::{FreeFnLangItem, ExchangeFreeFnLangItem};
+use middle::subst;
 use middle::trans::adt;
 use middle::trans::base::*;
 use middle::trans::build::*;
@@ -229,7 +230,7 @@ fn trans_struct_drop_flag<'a>(bcx: &'a Block<'a>,
                               v0: ValueRef,
                               dtor_did: ast::DefId,
                               class_did: ast::DefId,
-                              substs: &ty::substs)
+                              substs: &subst::Substs)
                               -> &'a Block<'a> {
     let repr = adt::represent_type(bcx.ccx(), t);
     let drop_flag = adt::trans_drop_flag_ptr(bcx, &*repr, v0);
@@ -243,7 +244,7 @@ fn trans_struct_drop<'a>(bcx: &'a Block<'a>,
                          v0: ValueRef,
                          dtor_did: ast::DefId,
                          class_did: ast::DefId,
-                         substs: &ty::substs)
+                         substs: &subst::Substs)
                          -> &'a Block<'a> {
     let repr = adt::represent_type(bcx.ccx(), t);
 

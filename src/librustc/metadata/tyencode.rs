@@ -17,6 +17,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::io::MemWriter;
 
+use middle::subst;
 use middle::ty::param_ty;
 use middle::ty;
 
@@ -96,7 +97,7 @@ fn enc_opt<T>(w: &mut MemWriter, t: Option<T>, enc_f: |&mut MemWriter, T|) {
     }
 }
 
-pub fn enc_substs(w: &mut MemWriter, cx: &ctxt, substs: &ty::substs) {
+pub fn enc_substs(w: &mut MemWriter, cx: &ctxt, substs: &subst::Substs) {
     enc_region_substs(w, cx, &substs.regions);
     enc_opt(w, substs.self_ty, |w, t| enc_ty(w, cx, t));
     mywrite!(w, "[");
@@ -104,12 +105,12 @@ pub fn enc_substs(w: &mut MemWriter, cx: &ctxt, substs: &ty::substs) {
     mywrite!(w, "]");
 }
 
-fn enc_region_substs(w: &mut MemWriter, cx: &ctxt, substs: &ty::RegionSubsts) {
+fn enc_region_substs(w: &mut MemWriter, cx: &ctxt, substs: &subst::RegionSubsts) {
     match *substs {
-        ty::ErasedRegions => {
+        subst::ErasedRegions => {
             mywrite!(w, "e");
         }
-        ty::NonerasedRegions(ref regions) => {
+        subst::NonerasedRegions(ref regions) => {
             mywrite!(w, "n");
             for &r in regions.iter() {
                 enc_region(w, cx, r);

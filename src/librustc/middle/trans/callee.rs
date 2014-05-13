@@ -21,6 +21,8 @@ use driver::session;
 use lib::llvm::ValueRef;
 use lib::llvm::llvm;
 use metadata::csearch;
+use middle::subst;
+use middle::subst::Subst;
 use middle::trans::base;
 use middle::trans::base::*;
 use middle::trans::build::*;
@@ -39,7 +41,6 @@ use middle::trans::monomorphize;
 use middle::trans::type_of;
 use middle::trans::foreign;
 use middle::ty;
-use middle::subst::Subst;
 use middle::typeck;
 use middle::typeck::coherence::make_substs_for_receiver_types;
 use middle::typeck::MethodCall;
@@ -184,7 +185,7 @@ pub fn trans_fn_ref(bcx: &Block, def_id: ast::DefId, node: ExprOrMethodCall) -> 
 fn trans_fn_ref_with_vtables_to_callee<'a>(bcx: &'a Block<'a>,
                                            def_id: ast::DefId,
                                            ref_id: ast::NodeId,
-                                           substs: ty::substs,
+                                           substs: subst::Substs,
                                            vtables: Option<typeck::vtable_res>)
                                            -> Callee<'a> {
     Callee {bcx: bcx,
@@ -195,7 +196,7 @@ fn trans_fn_ref_with_vtables_to_callee<'a>(bcx: &'a Block<'a>,
 fn resolve_default_method_vtables(bcx: &Block,
                                   impl_id: ast::DefId,
                                   method: &ty::Method,
-                                  substs: &ty::substs,
+                                  substs: &subst::Substs,
                                   impl_vtables: Option<typeck::vtable_res>)
                           -> (typeck::vtable_res, typeck::vtable_param_res) {
 
@@ -241,7 +242,7 @@ pub fn trans_fn_ref_with_vtables(
         bcx: &Block,       //
         def_id: ast::DefId,   // def id of fn
         node: ExprOrMethodCall,  // node id of use of fn; may be zero if N/A
-        substs: ty::substs, // values for fn's ty params
+        substs: subst::Substs, // values for fn's ty params
         vtables: Option<typeck::vtable_res>) // vtables for the call
      -> ValueRef {
     /*!
@@ -504,7 +505,7 @@ pub fn trans_lang_call<'a>(
                                 trans_fn_ref_with_vtables_to_callee(bcx,
                                                                     did,
                                                                     0,
-                                                                    ty::substs::empty(),
+                                                                    subst::Substs::empty(),
                                                                     None)
                              },
                              ArgVals(args),
