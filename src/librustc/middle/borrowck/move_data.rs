@@ -147,27 +147,13 @@ pub struct Assignment {
     pub span: Span,
 }
 
+#[deriving(Clone)]
 pub struct MoveDataFlowOperator;
-
-/// FIXME(pcwalton): Should just be #[deriving(Clone)], but that doesn't work
-/// yet on unit structs.
-impl Clone for MoveDataFlowOperator {
-    fn clone(&self) -> MoveDataFlowOperator {
-        MoveDataFlowOperator
-    }
-}
 
 pub type MoveDataFlow<'a> = DataFlowContext<'a, MoveDataFlowOperator>;
 
+#[deriving(Clone)]
 pub struct AssignDataFlowOperator;
-
-/// FIXME(pcwalton): Should just be #[deriving(Clone)], but that doesn't work
-/// yet on unit structs.
-impl Clone for AssignDataFlowOperator {
-    fn clone(&self) -> AssignDataFlowOperator {
-        AssignDataFlowOperator
-    }
-}
 
 pub type AssignDataFlow<'a> = DataFlowContext<'a, AssignDataFlowOperator>;
 
