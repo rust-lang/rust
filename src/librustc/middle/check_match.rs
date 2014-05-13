@@ -239,7 +239,15 @@ fn is_useful(cx: &MatchCheckCtxt, m: &matrix, v: &[@Pat]) -> useful {
         return not_useful
     }
     let real_pat = match m.iter().find(|r| r.get(0).id != 0) {
-      Some(r) => *r.get(0), None => v[0]
+        Some(r) => {
+            match r.get(0).node {
+                // An arm of the form `ref x @ sub_pat` has type
+                // `sub_pat`, not `&sub_pat` as `x` itself does.
+                PatIdent(BindByRef(_), _, Some(sub)) => sub,
+                _ => *r.get(0)
+            }
+        }
+        None => v[0]
     };
     let left_ty = if real_pat.id == 0 { ty::mk_nil() }
                   else { ty::node_id_to_type(cx.tcx, real_pat.id) };
