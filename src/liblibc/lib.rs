@@ -208,7 +208,7 @@ pub use funcs::bsd43::{shutdown};
 #[cfg(windows)] pub use consts::os::extra::{TRUE, FALSE, INFINITE};
 #[cfg(windows)] pub use consts::os::extra::{PROCESS_TERMINATE, PROCESS_QUERY_INFORMATION};
 #[cfg(windows)] pub use consts::os::extra::{STILL_ACTIVE, DETACHED_PROCESS};
-#[cfg(windows)] pub use consts::os::extra::{CREATE_NEW_PROCESS_GROUP};
+#[cfg(windows)] pub use consts::os::extra::{CREATE_NEW_PROCESS_GROUP, CREATE_UNICODE_ENVIRONMENT};
 #[cfg(windows)] pub use consts::os::extra::{FILE_BEGIN, FILE_END, FILE_CURRENT};
 #[cfg(windows)] pub use consts::os::extra::{FILE_GENERIC_READ, FILE_GENERIC_WRITE};
 #[cfg(windows)] pub use consts::os::extra::{FILE_SHARE_READ, FILE_SHARE_WRITE, FILE_SHARE_DELETE};
@@ -1937,6 +1937,7 @@ pub mod consts {
 
             pub static DETACHED_PROCESS: DWORD = 0x00000008;
             pub static CREATE_NEW_PROCESS_GROUP: DWORD = 0x00000200;
+            pub static CREATE_UNICODE_ENVIRONMENT: DWORD = 0x00000400;
 
             pub static PIPE_ACCESS_DUPLEX: DWORD = 0x00000003;
             pub static PIPE_ACCESS_INBOUND: DWORD = 0x00000001;
@@ -4193,8 +4194,8 @@ pub mod funcs {
         pub mod kernel32 {
             use types::os::arch::c95::{c_uint};
             use types::os::arch::extra::{BOOL, DWORD, SIZE_T, HMODULE,
-                                               LPCWSTR, LPWSTR, LPCSTR, LPSTR,
-                                               LPCH, LPDWORD, LPVOID,
+                                               LPCWSTR, LPWSTR,
+                                               LPWCH, LPDWORD, LPVOID,
                                                LPCVOID, LPOVERLAPPED,
                                                LPSECURITY_ATTRIBUTES,
                                                LPSTARTUPINFO,
@@ -4211,8 +4212,8 @@ pub mod funcs {
                                                -> DWORD;
                 pub fn SetEnvironmentVariableW(n: LPCWSTR, v: LPCWSTR)
                                                -> BOOL;
-                pub fn GetEnvironmentStringsA() -> LPCH;
-                pub fn FreeEnvironmentStringsA(env_ptr: LPCH) -> BOOL;
+                pub fn GetEnvironmentStringsW() -> LPWCH;
+                pub fn FreeEnvironmentStringsW(env_ptr: LPWCH) -> BOOL;
                 pub fn GetModuleFileNameW(hModule: HMODULE,
                                           lpFilename: LPWSTR,
                                           nSize: DWORD)
@@ -4251,8 +4252,8 @@ pub mod funcs {
                                    dwProcessId: DWORD)
                                    -> HANDLE;
                 pub fn GetCurrentProcess() -> HANDLE;
-                pub fn CreateProcessA(lpApplicationName: LPCSTR,
-                                      lpCommandLine: LPSTR,
+                pub fn CreateProcessW(lpApplicationName: LPCWSTR,
+                                      lpCommandLine: LPWSTR,
                                       lpProcessAttributes:
                                       LPSECURITY_ATTRIBUTES,
                                       lpThreadAttributes:
@@ -4260,7 +4261,7 @@ pub mod funcs {
                                       bInheritHandles: BOOL,
                                       dwCreationFlags: DWORD,
                                       lpEnvironment: LPVOID,
-                                      lpCurrentDirectory: LPCSTR,
+                                      lpCurrentDirectory: LPCWSTR,
                                       lpStartupInfo: LPSTARTUPINFO,
                                       lpProcessInformation:
                                       LPPROCESS_INFORMATION)

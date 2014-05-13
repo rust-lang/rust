@@ -31,7 +31,7 @@
 use clone::Clone;
 use container::Container;
 use libc;
-use libc::{c_char, c_void, c_int};
+use libc::{c_void, c_int};
 use option::{Some, None, Option};
 use os;
 use ops::Drop;
@@ -49,6 +49,8 @@ use vec::Vec;
 
 #[cfg(unix)]
 use c_str::ToCStr;
+#[cfg(unix)]
+use libc::c_char;
 #[cfg(windows)]
 use str::OwnedStr;
 
@@ -141,10 +143,14 @@ pub mod win32 {
     }
 
     pub fn as_utf16_p<T>(s: &str, f: |*u16| -> T) -> T {
+        as_mut_utf16_p(s, |t| { f(t as *u16) })
+    }
+
+    pub fn as_mut_utf16_p<T>(s: &str, f: |*mut u16| -> T) -> T {
         let mut t = s.to_utf16();
         // Null terminate before passing on.
         t.push(0u16);
-        f(t.as_ptr())
+        f(t.as_mut_ptr())
     }
 }
 
@@ -182,22 +188,42 @@ pub fn env_as_bytes() -> Vec<(~[u8],~[u8])> {
     unsafe {
         #[cfg(windows)]
         unsafe fn get_env_pairs() -> Vec<~[u8]> {
-            use c_str;
+            use slice::raw;
 
             use libc::funcs::extra::kernel32::{
-                GetEnvironmentStringsA,
-                FreeEnvironmentStringsA
+                GetEnvironmentStringsW,
+                FreeEnvironmentStringsW
             };
-            let ch = GetEnvironmentStringsA();
+            let ch = GetEnvironmentStringsW();
             if ch as uint == 0 {
                 fail!("os::env() failure getting env string from OS: {}",
                        os::last_os_error());
             }
+            // Here, we lossily decode the string as UTF16.
+            //
+            // The docs suggest that the result should be in Unicode, but
+            // Windows doesn't guarantee it's actually UTF16 -- it doesn't
+            // validate the environment string passed to CreateProcess nor
+            // SetEnvironmentVariable.  Yet, it's unlikely that returning a
+            // raw u16 buffer would be of practical use since the result would
+            // be inherently platform-dependent and introduce additional
+            // complexity to this code.
+            //
+            // Using the non-Unicode version of GetEnvironmentStrings is even
+            // worse since the result is in an OEM code page.  Characters that
+            // can't be encoded in the code page would be turned into question
+            // marks.
             let mut result = Vec::new();
-            c_str::from_c_multistring(ch as *c_char, None, |cstr| {
-                result.push(cstr.as_bytes_no_nul().to_owned());
-            });
-            FreeEnvironmentStringsA(ch);
+            let mut i = 0;
+            while *ch.offset(i) != 0 {
+                let p = &*ch.offset(i);
+                let len = ptr::position(p, |c| *c == 0);
+                raw::buf_as_slice(p, len, |s| {
+                    result.push(str::from_utf16_lossy(s).into_bytes());
+                });
+                i += len as int + 1;
+            }
+            FreeEnvironmentStringsW(ch);
             result
         }
         #[cfg(unix)]
