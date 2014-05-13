@@ -83,11 +83,9 @@ Some examples of obvious things you might want to do
 
     ```rust,should_fail
     # #![allow(unused_must_use)]
-    use std::io::net::ip::SocketAddr;
     use std::io::net::tcp::TcpStream;
 
-    let addr = from_str::<SocketAddr>("127.0.0.1:8080").unwrap();
-    let mut socket = TcpStream::connect(addr).unwrap();
+    let mut socket = TcpStream::connect("127.0.0.1", 8080).unwrap();
     socket.write(bytes!("GET / HTTP/1.0\n\n"));
     let response = socket.read_to_end();
     ```
@@ -99,11 +97,9 @@ Some examples of obvious things you might want to do
     # fn foo() {
     # #![allow(dead_code)]
     use std::io::{TcpListener, TcpStream};
-    use std::io::net::ip::{Ipv4Addr, SocketAddr};
     use std::io::{Acceptor, Listener};
 
-    let addr = SocketAddr { ip: Ipv4Addr(127, 0, 0, 1), port: 80 };
-    let listener = TcpListener::bind(addr);
+    let listener = TcpListener::bind("127.0.0.1", 80);
 
     // bind the listener to the specified address
     let mut acceptor = listener.listen();
