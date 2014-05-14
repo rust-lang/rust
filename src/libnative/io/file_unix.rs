@@ -493,9 +493,7 @@ fn mkstat(stat: &libc::stat) -> io::FileStat {
     io::FileStat {
         size: stat.st_size as u64,
         kind: kind,
-        perm: unsafe {
-            io::FilePermission::from_bits(stat.st_mode as u32) & io::AllPermissions
-        },
+        perm: io::FilePermission::from_bits_truncate(stat.st_mode as u32),
         created: mktime(stat.st_ctime as u64, stat.st_ctime_nsec as u64),
         modified: mktime(stat.st_mtime as u64, stat.st_mtime_nsec as u64),
         accessed: mktime(stat.st_atime as u64, stat.st_atime_nsec as u64),
