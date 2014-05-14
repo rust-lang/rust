@@ -126,10 +126,12 @@ impl<T: Writer> Terminal<T> {
     /// Returns `Err()` on failure to open the terminfo database correctly.
     /// Also, in the event that the individual terminfo database entry can not
     /// be parsed.
-    pub fn new(out: T) -> Result<Terminal<T>, ~str> {
+    pub fn new(out: T) -> Result<Terminal<T>, StrBuf> {
         let term = match os::getenv("TERM") {
             Some(t) => t,
-            None => return Err("TERM environment variable undefined".to_owned())
+            None => {
+                return Err("TERM environment variable undefined".to_strbuf())
+            }
         };
 
         let mut file = match open(term) {
@@ -251,7 +253,8 @@ impl<T: Writer> Terminal<T> {
                 cap = self.ti.strings.find_equiv(&("op"));
             }
         }
-        let s = cap.map_or(Err("can't find terminfo capability `sgr0`".to_owned()), |op| {
+        let s = cap.map_or(Err("can't find terminfo capability \
+                                `sgr0`".to_strbuf()), |op| {
             expand(op.as_slice(), [], &mut Variables::new())
         });
         if s.is_ok() {
