@@ -220,7 +220,7 @@ use int;
 use iter::Iterator;
 use libc;
 use mem::transmute;
-use ops::{BitOr, BitAnd, Sub};
+use ops::{BitOr, BitAnd, Sub, Not};
 use option::{Option, Some, None};
 use os;
 use owned::Box;
