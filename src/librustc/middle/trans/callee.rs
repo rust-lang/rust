@@ -21,6 +21,7 @@ use driver::session;
 use lib::llvm::ValueRef;
 use lib::llvm::llvm;
 use metadata::csearch;
+use middle::def;
 use middle::subst;
 use middle::subst::Subst;
 use middle::trans::base;
@@ -114,42 +115,42 @@ fn trans<'a>(bcx: &'a Block<'a>, expr: &ast::Expr) -> Callee<'a> {
         return Callee {bcx: bcx, data: Fn(llfn)};
     }
 
-    fn trans_def<'a>(bcx: &'a Block<'a>, def: ast::Def, ref_expr: &ast::Expr)
+    fn trans_def<'a>(bcx: &'a Block<'a>, def: def::Def, ref_expr: &ast::Expr)
                  -> Callee<'a> {
         match def {
-            ast::DefFn(did, _) |
-            ast::DefStaticMethod(did, ast::FromImpl(_), _) => {
+            def::DefFn(did, _) |
+            def::DefStaticMethod(did, def::FromImpl(_), _) => {
                 fn_callee(bcx, trans_fn_ref(bcx, did, ExprId(ref_expr.id)))
             }
-            ast::DefStaticMethod(impl_did,
-                                   ast::FromTrait(trait_did),
-                                   _) => {
+            def::DefStaticMethod(impl_did,
+                                 def::FromTrait(trait_did),
+                                 _) => {
                 fn_callee(bcx, meth::trans_static_method_callee(bcx, impl_did,
                                                                 trait_did,
                                                                 ref_expr.id))
             }
-            ast::DefVariant(tid, vid, _) => {
+            def::DefVariant(tid, vid, _) => {
                 // nullary variants are not callable
                 assert!(ty::enum_variant_with_id(bcx.tcx(),
                                                       tid,
                                                       vid).args.len() > 0u);
                 fn_callee(bcx, trans_fn_ref(bcx, vid, ExprId(ref_expr.id)))
             }
-            ast::DefStruct(def_id) => {
+            def::DefStruct(def_id) => {
                 fn_callee(bcx, trans_fn_ref(bcx, def_id, ExprId(ref_expr.id)))
             }
-            ast::DefStatic(..) |
-            ast::DefArg(..) |
-            ast::DefLocal(..) |
-            ast::DefBinding(..) |
-            ast::DefUpvar(..) => {
+            def::DefStatic(..) |
+            def::DefArg(..) |
+            def::DefLocal(..) |
+            def::DefBinding(..) |
+            def::DefUpvar(..) => {
                 datum_callee(bcx, ref_expr)
             }
-            ast::DefMod(..) | ast::DefForeignMod(..) | ast::DefTrait(..) |
-            ast::DefTy(..) | ast::DefPrimTy(..) |
-            ast::DefUse(..) | ast::DefTyParamBinder(..) |
-            ast::DefRegion(..) | ast::DefLabel(..) | ast::DefTyParam(..) |
-            ast::DefSelfTy(..) | ast::DefMethod(..) => {
+            def::DefMod(..) | def::DefForeignMod(..) | def::DefTrait(..) |
+            def::DefTy(..) | def::DefPrimTy(..) |
+            def::DefUse(..) | def::DefTyParamBinder(..) |
+            def::DefRegion(..) | def::DefLabel(..) | def::DefTyParam(..) |
+            def::DefSelfTy(..) | def::DefMethod(..) => {
                 bcx.tcx().sess.span_bug(
                     ref_expr.span,
                     format!("cannot translate def {:?} \

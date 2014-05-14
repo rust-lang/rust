@@ -32,6 +32,7 @@ are represented as `ty_param()` instances.
 
 
 use metadata::csearch;
+use middle::def;
 use middle::lang_items::SizedTraitLangItem;
 use middle::resolve_lifetime;
 use middle::subst;
@@ -740,7 +741,7 @@ pub fn convert_struct(ccx: &CrateCtxt,
             ast::TyPath(_, _, path_id) => {
                 let def_map = tcx.def_map.borrow();
                 match def_map.find(&path_id) {
-                    Some(&ast::DefStruct(def_id)) => {
+                    Some(&def::DefStruct(def_id)) => {
                         // FIXME(#12511) Check for cycles in the inheritance hierarchy.
                         // Check super-struct is virtual.
                         match tcx.map.find(def_id.node) {
@@ -831,7 +832,7 @@ pub fn instantiate_trait_ref(ccx: &CrateCtxt,
     let rscope = ExplicitRscope;
 
     match lookup_def_tcx(ccx.tcx, ast_trait_ref.path.span, ast_trait_ref.ref_id) {
-        ast::DefTrait(trait_did) => {
+        def::DefTrait(trait_did) => {
             let trait_ref =
                 astconv::ast_path_to_trait_ref(
                     ccx, &rscope, trait_did, Some(self_ty), &ast_trait_ref.path);

@@ -35,13 +35,14 @@ use middle::typeck::infer::InferCtxt;
 use middle::typeck::infer::{new_infer_ctxt, resolve_ivar, resolve_type};
 use middle::typeck::infer;
 use util::ppaux::Repr;
-use syntax::ast::{Crate, DefId, DefStruct, DefTy};
+use middle::def::{DefStruct, DefTy};
+use syntax::ast::{Crate, DefId};
 use syntax::ast::{Item, ItemEnum, ItemImpl, ItemMod, ItemStruct};
 use syntax::ast::{LOCAL_CRATE, TraitRef, TyPath};
 use syntax::ast;
 use syntax::ast_map::NodeItem;
 use syntax::ast_map;
-use syntax::ast_util::{def_id_of_def, local_def};
+use syntax::ast_util::{local_def};
 use syntax::codemap::Span;
 use syntax::parse::token;
 use syntax::visit;
@@ -543,7 +544,7 @@ impl<'a> CoherenceChecker<'a> {
     fn trait_ref_to_trait_def_id(&self, trait_ref: &TraitRef) -> DefId {
         let def_map = &self.crate_context.tcx.def_map;
         let trait_def = def_map.borrow().get_copy(&trait_ref.ref_id);
-        let trait_id = def_id_of_def(trait_def);
+        let trait_id = trait_def.def_id();
         return trait_id;
     }
 

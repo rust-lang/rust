@@ -10,6 +10,7 @@
 
 
 use driver::session::Session;
+use middle::def::*;
 use middle::resolve;
 use middle::ty;
 use middle::typeck;

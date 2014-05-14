@@ -63,6 +63,7 @@ independently:
 
 use driver::config;
 
+use middle::def;
 use middle::resolve;
 use middle::subst;
 use middle::ty;
@@ -266,7 +267,7 @@ pub fn write_substs_to_tcx(tcx: &ty::ctxt,
         tcx.item_substs.borrow_mut().insert(node_id, item_substs);
     }
 }
-pub fn lookup_def_tcx(tcx:&ty::ctxt, sp: Span, id: ast::NodeId) -> ast::Def {
+pub fn lookup_def_tcx(tcx:&ty::ctxt, sp: Span, id: ast::NodeId) -> def::Def {
     match tcx.def_map.borrow().find(&id) {
         Some(&x) => x,
         _ => {
@@ -276,7 +277,7 @@ pub fn lookup_def_tcx(tcx:&ty::ctxt, sp: Span, id: ast::NodeId) -> ast::Def {
 }
 
 pub fn lookup_def_ccx(ccx: &CrateCtxt, sp: Span, id: ast::NodeId)
-                   -> ast::Def {
+                   -> def::Def {
     lookup_def_tcx(ccx.tcx, sp, id)
 }
 

@@ -16,6 +16,7 @@
 // reachable as well.
 
 use driver::config;
+use middle::def;
 use middle::ty;
 use middle::typeck;
 use middle::privacy;
@@ -25,7 +26,7 @@ use std::collections::HashSet;
 use syntax::abi;
 use syntax::ast;
 use syntax::ast_map;
-use syntax::ast_util::{def_id_of_def, is_local};
+use syntax::ast_util::{is_local};
 use syntax::attr;
 use syntax::visit::Visitor;
 use syntax::visit;
@@ -109,7 +110,7 @@ impl<'a> Visitor<()> for ReachableContext<'a> {
                     }
                 };
 
-                let def_id = def_id_of_def(def);
+                let def_id = def.def_id();
                 if is_local(def_id) {
                     if self.def_id_represents_local_inlined_item(def_id) {
                         self.worklist.push(def_id.node)
@@ -119,7 +120,7 @@ impl<'a> Visitor<()> for ReachableContext<'a> {
                             // to do some work to figure out whether the static
                             // is indeed reachable (address_insignificant
                             // statics are *never* reachable).
-                            ast::DefStatic(..) => {
+                            def::DefStatic(..) => {
                                 self.worklist.push(def_id.node);
                             }
 

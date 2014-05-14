@@ -17,6 +17,9 @@
  */
 
 
+use middle::def;
+use middle::ty;
+use middle::typeck;
 use std::io;
 use std::string::String;
 use std::uint;
@@ -24,8 +27,6 @@ use syntax::ast;
 use syntax::ast_util;
 use syntax::ast_util::IdRange;
 use syntax::print::{pp, pprust};
-use middle::ty;
-use middle::typeck;
 use util::ppaux::Repr;
 use util::nodemap::NodeMap;
 
@@ -757,7 +758,7 @@ impl<'a, 'b, O:DataFlowOperator> PropagationContext<'a, 'b, O> {
 
             Some(_) => {
                 match self.tcx().def_map.borrow().find(&expr.id) {
-                    Some(&ast::DefLabel(loop_id)) => {
+                    Some(&def::DefLabel(loop_id)) => {
                         match loop_scopes.iter().position(|l| l.loop_id == loop_id) {
                             Some(i) => i,
                             None => {

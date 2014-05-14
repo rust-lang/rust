@@ -16,6 +16,7 @@ use metadata::csearch;
 use mc = middle::mem_categorization;
 use middle::lint;
 use middle::const_eval;
+use middle::def;
 use middle::dependency_format;
 use middle::lang_items::{ExchangeHeapLangItem, OpaqueStructLangItem};
 use middle::lang_items::{TyDescStructLangItem, TyVisitorTraitLangItem};
@@ -2945,7 +2946,7 @@ pub fn method_call_type_param_defs(tcx: &ctxt, origin: typeck::MethodOrigin)
     }
 }
 
-pub fn resolve_expr(tcx: &ctxt, expr: &ast::Expr) -> ast::Def {
+pub fn resolve_expr(tcx: &ctxt, expr: &ast::Expr) -> def::Def {
     match tcx.def_map.borrow().find(&expr.id) {
         Some(&def) => def,
         None => {
@@ -2993,7 +2994,7 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
     match expr.node {
         ast::ExprPath(..) => {
             match resolve_expr(tcx, expr) {
-                ast::DefVariant(tid, vid, _) => {
+                def::DefVariant(tid, vid, _) => {
                     let variant_info = enum_variant_with_id(tcx, tid, vid);
                     if variant_info.args.len() > 0u {
                         // N-ary variant.
@@ -3004,7 +3005,7 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
                     }
                 }
 
-                ast::DefStruct(_) => {
+                def::DefStruct(_) => {
                     match get(expr_ty(tcx, expr)).sty {
                         ty_bare_fn(..) => RvalueDatumExpr,
                         _ => RvalueDpsExpr
@@ -3012,16 +3013,16 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
                 }
 
                 // Fn pointers are just scalar values.
-                ast::DefFn(..) | ast::DefStaticMethod(..) => RvalueDatumExpr,
+                def::DefFn(..) | def::DefStaticMethod(..) => RvalueDatumExpr,
 
                 // Note: there is actually a good case to be made that
                 // DefArg's, particularly those of immediate type, ought to
                 // considered rvalues.
-                ast::DefStatic(..) |
-                ast::DefBinding(..) |
-                ast::DefUpvar(..) |
-                ast::DefArg(..) |
-                ast::DefLocal(..) => LvalueExpr,
+                def::DefStatic(..) |
+                def::DefBinding(..) |
+                def::DefUpvar(..) |
+                def::DefArg(..) |
+                def::DefLocal(..) => LvalueExpr,
 
                 def => {
                     tcx.sess.span_bug(
@@ -3112,7 +3113,7 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
                 Some(&def) => def,
                 None => fail!("no def for place"),
             };
-            let def_id = ast_util::def_id_of_def(definition);
+            let def_id = definition.def_id();
             match tcx.lang_items.items.get(ExchangeHeapLangItem as uint) {
                 &Some(item_def_id) if def_id == item_def_id => {
                     RvalueDatumExpr
@@ -3534,7 +3535,7 @@ pub fn trait_ref_to_def_id(tcx: &ctxt, tr: &ast::TraitRef) -> ast::DefId {
     let def = *tcx.def_map.borrow()
                      .find(&tr.ref_id)
                      .expect("no def-map entry for trait");
-    ast_util::def_id_of_def(def)
+    def.def_id()
 }
 
 pub fn try_add_builtin_trait(tcx: &ctxt,

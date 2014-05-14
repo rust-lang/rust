@@ -52,33 +52,6 @@ pub fn stmt_id(s: &Stmt) -> NodeId {
     }
 }
 
-pub fn variant_def_ids(d: Def) -> Option<(DefId, DefId)> {
-    match d {
-      DefVariant(enum_id, var_id, _) => {
-          Some((enum_id, var_id))
-      }
-      _ => None
-    }
-}
-
-pub fn def_id_of_def(d: Def) -> DefId {
-    match d {
-        DefFn(id, _) | DefStaticMethod(id, _, _) | DefMod(id) |
-        DefForeignMod(id) | DefStatic(id, _) |
-        DefVariant(_, id, _) | DefTy(id) | DefTyParam(id, _) |
-        DefUse(id) | DefStruct(id) | DefTrait(id) | DefMethod(id, _) => {
-            id
-        }
-        DefArg(id, _) | DefLocal(id, _) | DefSelfTy(id)
-        | DefUpvar(id, _, _, _) | DefBinding(id, _) | DefRegion(id)
-        | DefTyParamBinder(id) | DefLabel(id) => {
-            local_def(id)
-        }
-
-        DefPrimTy(_) => fail!()
-    }
-}
-
 pub fn binop_to_str(op: BinOp) -> &'static str {
     match op {
         BiAdd => "+",
