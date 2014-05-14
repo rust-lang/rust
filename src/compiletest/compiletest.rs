@@ -14,7 +14,6 @@
 // we use our own (green) start below; do not link in libnative; issue #13247.
 #![no_start]
 
-#![allow(non_camel_case_types)]
 #![deny(warnings)]
 
 extern crate test;
@@ -27,9 +26,10 @@ extern crate rustuv;
 use std::os;
 use std::io;
 use std::io::fs;
+use std::from_str::FromStr;
 use getopts::{optopt, optflag, reqopt};
-use common::{config, mode_run_pass, mode_run_fail, mode_compile_fail, mode_pretty,
-             mode_debug_info_gdb, mode_debug_info_lldb, mode_codegen, mode};
+use common::Config;
+use common::{Pretty, DebugInfoGdb, Codegen};
 use util::logv;
 
 pub mod procsrv;
@@ -51,7 +51,7 @@ pub fn main() {
     run_tests(&config);
 }
 
-pub fn parse_config(args: Vec<~str> ) -> config {
+pub fn parse_config(args: Vec<~str> ) -> Config {
 
     let groups : Vec<getopts::OptGroup> =
         vec!(reqopt("", "compile-lib-path", "path to host shared libraries", "PATH"),
@@ -112,7 +112,7 @@ pub fn parse_config(args: Vec<~str> ) -> config {
         Path::new(m.opt_str(nm).unwrap())
     }
 
-    config {
+    Config {
         compile_lib_path: matches.opt_str("compile-lib-path").unwrap(),
         run_lib_path: matches.opt_str("run-lib-path").unwrap(),
         rustc_path: opt_path(matches, "rustc-path"),
@@ -122,7 +122,7 @@ pub fn parse_config(args: Vec<~str> ) -> config {
         build_base: opt_path(matches, "build-base"),
         aux_base: opt_path(matches, "aux-base"),
         stage_id: matches.opt_str("stage-id").unwrap(),
-        mode: str_mode(matches.opt_str("mode").unwrap()),
+        mode: FromStr::from_str(matches.opt_str("mode").unwrap()).expect("invalid mode"),
         run_ignored: matches.opt_present("ignored"),
         filter:
             if !matches.free.is_empty() {
@@ -155,7 +155,7 @@ pub fn parse_config(args: Vec<~str> ) -> config {
     }
 }
 
-pub fn log_config(config: &config) {
+pub fn log_config(config: &Config) {
     let c = config;
     logv(c, format!("configuration:"));
     logv(c, format!("compile_lib_path: {}", config.compile_lib_path));
@@ -164,7 +164,7 @@ pub fn log_config(config: &config) {
     logv(c, format!("src_base: {}", config.src_base.display()));
     logv(c, format!("build_base: {}", config.build_base.display()));
     logv(c, format!("stage_id: {}", config.stage_id));
-    logv(c, format!("mode: {}", mode_str(config.mode)));
+    logv(c, format!("mode: {}", config.mode));
     logv(c, format!("run_ignored: {}", config.run_ignored));
     logv(c, format!("filter: {}", opt_str(&config.filter)));
     logv(c, format!("runtool: {}", opt_str(&config.runtool)));
@@ -198,35 +198,10 @@ pub fn opt_str2(maybestr: Option<~str>) -> ~str {
     match maybestr { None => "(none)".to_owned(), Some(s) => { s } }
 }
 
-pub fn str_mode(s: ~str) -> mode {
-    match s.as_slice() {
-        "compile-fail" => mode_compile_fail,
-        "run-fail" => mode_run_fail,
-        "run-pass" => mode_run_pass,
-        "pretty" => mode_pretty,
-        "debuginfo-gdb" => mode_debug_info_gdb,
-        "debuginfo-lldb" => mode_debug_info_lldb,
-        "codegen" => mode_codegen,
-        s => fail!("invalid mode: " + s)
-    }
-}
-
-pub fn mode_str(mode: mode) -> ~str {
-    match mode {
-      mode_compile_fail => "compile-fail".to_owned(),
-      mode_run_fail => "run-fail".to_owned(),
-      mode_run_pass => "run-pass".to_owned(),
-      mode_pretty => "pretty".to_owned(),
-      mode_debug_info_gdb => "debuginfo-gdb".to_owned(),
-      mode_debug_info_lldb => "debuginfo-lldb".to_owned(),
-      mode_codegen => "codegen".to_owned(),
-    }
-}
-
-pub fn run_tests(config: &config) {
+pub fn run_tests(config: &Config) {
     if config.target == "arm-linux-androideabi".to_owned() {
-        match config.mode{
-            mode_debug_info_gdb => {
+        match config.mode {
+            DebugInfoGdb => {
                 println!("arm-linux-androideabi debug-info \
                          test uses tcp 5039 port. please reserve it");
             }
@@ -255,7 +230,7 @@ pub fn run_tests(config: &config) {
     }
 }
 
-pub fn test_opts(config: &config) -> test::TestOpts {
+pub fn test_opts(config: &Config) -> test::TestOpts {
     test::TestOpts {
         filter: config.filter.clone(),
         run_ignored: config.run_ignored,
@@ -270,7 +245,7 @@ pub fn test_opts(config: &config) -> test::TestOpts {
     }
 }
 
-pub fn make_tests(config: &config) -> Vec<test::TestDescAndFn> {
+pub fn make_tests(config: &Config) -> Vec<test::TestDescAndFn> {
     debug!("making tests from {}",
            config.src_base.display());
     let mut tests = Vec::new();
@@ -281,7 +256,7 @@ pub fn make_tests(config: &config) -> Vec<test::TestDescAndFn> {
         if is_test(config, &file) {
             let t = make_test(config, &file, || {
                 match config.mode {
-                    mode_codegen => make_metrics_test_closure(config, &file),
+                    Codegen => make_metrics_test_closure(config, &file),
                     _ => make_test_closure(config, &file)
                 }
             });
@@ -291,11 +266,11 @@ pub fn make_tests(config: &config) -> Vec<test::TestDescAndFn> {
     tests
 }
 
-pub fn is_test(config: &config, testfile: &Path) -> bool {
+pub fn is_test(config: &Config, testfile: &Path) -> bool {
     // Pretty-printer does not work with .rc files yet
     let valid_extensions =
         match config.mode {
-          mode_pretty => vec!(".rs".to_owned()),
+          Pretty => vec!(".rs".to_owned()),
           _ => vec!(".rc".to_owned(), ".rs".to_owned())
         };
     let invalid_prefixes = vec!(".".to_owned(), "#".to_owned(), "~".to_owned());
@@ -314,7 +289,7 @@ pub fn is_test(config: &config, testfile: &Path) -> bool {
     return valid;
 }
 
-pub fn make_test(config: &config, testfile: &Path, f: || -> test::TestFn)
+pub fn make_test(config: &Config, testfile: &Path, f: || -> test::TestFn)
                  -> test::TestDescAndFn {
     test::TestDescAndFn {
         desc: test::TestDesc {
@@ -326,7 +301,7 @@ pub fn make_test(config: &config, testfile: &Path, f: || -> test::TestFn)
     }
 }
 
-pub fn make_test_name(config: &config, testfile: &Path) -> test::TestName {
+pub fn make_test_name(config: &Config, testfile: &Path) -> test::TestName {
 
     // Try to elide redundant long paths
     fn shorten(path: &Path) -> ~str {
@@ -336,19 +311,17 @@ pub fn make_test_name(config: &config, testfile: &Path) -> test::TestName {
         format!("{}/{}", dir.unwrap_or(""), filename.unwrap_or(""))
     }
 
-    test::DynTestName(format!("[{}] {}",
-                              mode_str(config.mode),
-                              shorten(testfile)))
+    test::DynTestName(format!("[{}] {}", config.mode, shorten(testfile)))
 }
 
-pub fn make_test_closure(config: &config, testfile: &Path) -> test::TestFn {
+pub fn make_test_closure(config: &Config, testfile: &Path) -> test::TestFn {
     let config = (*config).clone();
     // FIXME (#9639): This needs to handle non-utf8 paths
     let testfile = testfile.as_str().unwrap().to_owned();
     test::DynTestFn(proc() { runtest::run(config, testfile) })
 }
 
-pub fn make_metrics_test_closure(config: &config, testfile: &Path) -> test::TestFn {
+pub fn make_metrics_test_closure(config: &Config, testfile: &Path) -> test::TestFn {
     let config = (*config).clone();
     // FIXME (#9639): This needs to handle non-utf8 paths
     let testfile = testfile.as_str().unwrap().to_owned();

@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-pretty
 // aux-build:foreign_lib.rs
 
 // The purpose of this test is to check that we can

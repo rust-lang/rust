@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use common::config;
+use common::Config;
 use common;
 use util;
 
@@ -34,6 +34,8 @@ pub struct TestProps {
     pub check_stdout: bool,
     // Don't force a --crate-type=dylib flag on the command line
     pub no_prefer_dynamic: bool,
+    // Don't run --pretty expanded when running pretty printing tests
+    pub no_pretty_expanded: bool,
 }
 
 // Load any test directives embedded in the file
@@ -48,6 +50,7 @@ pub fn load_props(testfile: &Path) -> TestProps {
     let mut force_host = false;
     let mut check_stdout = false;
     let mut no_prefer_dynamic = false;
+    let mut no_pretty_expanded = false;
     iter_header(testfile, |ln| {
         match parse_error_pattern(ln) {
           Some(ep) => error_patterns.push(ep),
@@ -76,6 +79,10 @@ pub fn load_props(testfile: &Path) -> TestProps {
 
         if !no_prefer_dynamic {
             no_prefer_dynamic = parse_no_prefer_dynamic(ln);
+        }
+
+        if !no_pretty_expanded {
+            no_pretty_expanded = parse_no_pretty_expanded(ln);
         }
 
         match parse_aux_build(ln) {
@@ -107,14 +114,15 @@ pub fn load_props(testfile: &Path) -> TestProps {
         force_host: force_host,
         check_stdout: check_stdout,
         no_prefer_dynamic: no_prefer_dynamic,
+        no_pretty_expanded: no_pretty_expanded,
     }
 }
 
-pub fn is_test_ignored(config: &config, testfile: &Path) -> bool {
-    fn ignore_target(config: &config) -> ~str {
+pub fn is_test_ignored(config: &Config, testfile: &Path) -> bool {
+    fn ignore_target(config: &Config) -> ~str {
         "ignore-".to_owned() + util::get_os(config.target)
     }
-    fn ignore_stage(config: &config) -> ~str {
+    fn ignore_stage(config: &Config) -> ~str {
         "ignore-".to_owned() + config.stage_id.split('-').next().unwrap()
     }
 
@@ -122,7 +130,7 @@ pub fn is_test_ignored(config: &config, testfile: &Path) -> bool {
         if parse_name_directive(ln, "ignore-test") { false }
         else if parse_name_directive(ln, ignore_target(config)) { false }
         else if parse_name_directive(ln, ignore_stage(config)) { false }
-        else if config.mode == common::mode_pretty &&
+        else if config.mode == common::Pretty &&
             parse_name_directive(ln, "ignore-pretty") { false }
         else if config.target != config.host &&
             parse_name_directive(ln, "ignore-cross-compile") { false }
@@ -178,6 +186,10 @@ fn parse_check_stdout(line: &str) -> bool {
 
 fn parse_no_prefer_dynamic(line: &str) -> bool {
     parse_name_directive(line, "no-prefer-dynamic")
+}
+
+fn parse_no_pretty_expanded(line: &str) -> bool {
+    parse_name_directive(line, "no-pretty-expanded")
 }
 
 fn parse_exec_env(line: &str) -> Option<(~str, ~str)> {

@@ -275,7 +275,8 @@ pub trait RtioFileStream {
 pub trait RtioProcess {
     fn id(&self) -> libc::pid_t;
     fn kill(&mut self, signal: int) -> IoResult<()>;
-    fn wait(&mut self) -> ProcessExit;
+    fn wait(&mut self) -> IoResult<ProcessExit>;
+    fn set_timeout(&mut self, timeout: Option<u64>);
 }
 
 pub trait RtioPipe {

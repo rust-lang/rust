@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // ignore-android see #10393 #13206
-// ignore-pretty
 
 extern crate sync;
 

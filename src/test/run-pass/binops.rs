@@ -10,6 +10,8 @@
 
 // Binop corner cases
 
+#![feature(managed_boxes)]
+
 fn test_nil() {
     assert_eq!((), ());
     assert!((!(() != ())));

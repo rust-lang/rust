@@ -133,13 +133,15 @@ extern crate core;
 #[cfg(test)] pub use ops = realstd::ops;
 #[cfg(test)] pub use cmp = realstd::cmp;
 #[cfg(test)] pub use ty = realstd::ty;
-#[cfg(test)] pub use owned = realstd::owned;
+#[cfg(not(stage0), test)] pub use owned = realstd::owned;
 
 #[cfg(not(test))] pub use cmp = core::cmp;
 #[cfg(not(test))] pub use kinds = core::kinds;
 #[cfg(not(test))] pub use ops = core::ops;
-#[cfg(not(test))] pub use owned = core::owned;
 #[cfg(not(test))] pub use ty = core::ty;
+
+#[cfg(stage0, test)] pub use owned = realstd::owned;
+#[cfg(stage0, not(test))] pub use owned = core::owned;
 
 pub use core::any;
 pub use core::bool;
@@ -207,6 +209,8 @@ pub mod ascii;
 
 pub mod rc;
 pub mod gc;
+#[cfg(not(stage0), not(test))]
+pub mod owned;
 
 /* Common traits */
 

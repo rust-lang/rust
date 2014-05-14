@@ -208,6 +208,13 @@ mod tests {
     }
 
     #[test]
+    fn test_from_bits() {
+        assert!(unsafe { Flags::from_bits(0x00000000) } == Flags::empty());
+        assert!(unsafe { Flags::from_bits(0x00000001) } == FlagA);
+        assert!(unsafe { Flags::from_bits(0x00000111) } == FlagABC);
+    }
+
+    #[test]
     fn test_is_empty(){
         assert!(Flags::empty().is_empty());
         assert!(!FlagA.is_empty());

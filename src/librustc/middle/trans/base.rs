@@ -1611,6 +1611,9 @@ pub fn trans_item(ccx: &CrateContext, item: &ast::Item) {
         }
       }
       ast::ItemStatic(_, m, expr) => {
+          // Recurse on the expression to catch items in blocks
+          let mut v = TransItemVisitor{ ccx: ccx };
+          v.visit_expr(expr, ());
           consts::trans_const(ccx, m, item.id);
           // Do static_assert checking. It can't really be done much earlier
           // because we need to get the value of the bool out of LLVM

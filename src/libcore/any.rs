@@ -22,11 +22,8 @@
 
 use mem::{transmute, transmute_copy};
 use option::{Option, Some, None};
-use owned::Box;
 use raw::TraitObject;
-use result::{Result, Ok, Err};
 use intrinsics::TypeId;
-use intrinsics;
 
 /// A type with no inhabitants
 pub enum Void { }
@@ -117,38 +114,11 @@ impl<'a> AnyMutRefExt<'a> for &'a mut Any {
     }
 }
 
-/// Extension methods for an owning `Any` trait object
-pub trait AnyOwnExt {
-    /// Returns the boxed value if it is of type `T`, or
-    /// `Err(Self)` if it isn't.
-    fn move<T: 'static>(self) -> Result<Box<T>, Self>;
-}
-
-impl AnyOwnExt for Box<Any> {
-    #[inline]
-    fn move<T: 'static>(self) -> Result<Box<T>, Box<Any>> {
-        if self.is::<T>() {
-            unsafe {
-                // Get the raw representation of the trait object
-                let to: TraitObject = transmute_copy(&self);
-
-                // Prevent destructor on self being run
-                intrinsics::forget(self);
-
-                // Extract the data pointer
-                Ok(transmute(to.data))
-            }
-        } else {
-            Err(self)
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use prelude::*;
     use super::*;
-    use owned::Box;
+    use realstd::owned::{Box, AnyOwnExt};
     use realstd::str::StrAllocating;
 
     #[deriving(Eq, Show)]
@@ -253,6 +223,8 @@ mod tests {
 
     #[test]
     fn any_move() {
+        use realstd::any::Any;
+        use realstd::result::{Ok, Err};
         let a = box 8u as Box<Any>;
         let b = box Test as Box<Any>;
 

@@ -50,7 +50,7 @@ fn runtest(me: &str) {
         env: Some(env.as_slice()),
         .. ProcessConfig::new()
     }).unwrap();
-    let out = p.wait_with_output();
+    let out = p.wait_with_output().unwrap();
     assert!(!out.status.success());
     let s = str::from_utf8(out.error.as_slice()).unwrap();
     assert!(s.contains("stack backtrace") && s.contains("foo::h"),
@@ -62,7 +62,7 @@ fn runtest(me: &str) {
         args: ["fail".to_owned()],
         .. ProcessConfig::new()
     }).unwrap();
-    let out = p.wait_with_output();
+    let out = p.wait_with_output().unwrap();
     assert!(!out.status.success());
     let s = str::from_utf8(out.error.as_slice()).unwrap();
     assert!(!s.contains("stack backtrace") && !s.contains("foo::h"),
@@ -74,7 +74,7 @@ fn runtest(me: &str) {
         args: ["double-fail".to_owned()],
         .. ProcessConfig::new()
     }).unwrap();
-    let out = p.wait_with_output();
+    let out = p.wait_with_output().unwrap();
     assert!(!out.status.success());
     let s = str::from_utf8(out.error.as_slice()).unwrap();
     assert!(s.contains("stack backtrace") && s.contains("double::h"),
@@ -87,7 +87,7 @@ fn runtest(me: &str) {
         env: Some(env.as_slice()),
         .. ProcessConfig::new()
     }).unwrap();
-    let out = p.wait_with_output();
+    let out = p.wait_with_output().unwrap();
     assert!(!out.status.success());
     let s = str::from_utf8(out.error.as_slice()).unwrap();
     let mut i = 0;

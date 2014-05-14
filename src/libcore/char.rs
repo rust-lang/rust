@@ -27,19 +27,25 @@
 use mem::transmute;
 use option::{None, Option, Some};
 use iter::{Iterator, range_step};
-use unicode::{derived_property, property, general_category, decompose, conversions};
+use unicode::{derived_property, property, general_category, conversions};
+
+/// Returns the canonical decomposition of a character.
+pub use unicode::normalization::decompose_canonical;
+/// Returns the compatibility decomposition of a character.
+pub use unicode::normalization::decompose_compatible;
 
 #[cfg(not(test))] use cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering};
 #[cfg(not(test))] use default::Default;
 
 // UTF-8 ranges and tags for encoding characters
-static TAG_CONT: uint = 128u;
-static MAX_ONE_B: uint = 128u;
-static TAG_TWO_B: uint = 192u;
-static MAX_TWO_B: uint = 2048u;
-static TAG_THREE_B: uint = 224u;
-static MAX_THREE_B: uint = 65536u;
-static TAG_FOUR_B: uint = 240u;
+static TAG_CONT: u8    = 0b1000_0000u8;
+static TAG_TWO_B: u8   = 0b1100_0000u8;
+static TAG_THREE_B: u8 = 0b1110_0000u8;
+static TAG_FOUR_B: u8  = 0b1111_0000u8;
+static MAX_ONE_B: u32   =     0x80u32;
+static MAX_TWO_B: u32   =    0x800u32;
+static MAX_THREE_B: u32 =  0x10000u32;
+static MAX_FOUR_B:  u32 = 0x200000u32;
 
 /*
     Lu  Uppercase_Letter        an uppercase letter
@@ -284,53 +290,6 @@ pub fn from_digit(num: uint, radix: uint) -> Option<char> {
     }
 }
 
-// Constants from Unicode 6.2.0 Section 3.12 Conjoining Jamo Behavior
-static S_BASE: uint = 0xAC00;
-static L_BASE: uint = 0x1100;
-static V_BASE: uint = 0x1161;
-static T_BASE: uint = 0x11A7;
-static L_COUNT: uint = 19;
-static V_COUNT: uint = 21;
-static T_COUNT: uint = 28;
-static N_COUNT: uint = (V_COUNT * T_COUNT);
-static S_COUNT: uint = (L_COUNT * N_COUNT);
-
-// Decompose a precomposed Hangul syllable
-fn decompose_hangul(s: char, f: |char|) {
-    let si = s as uint - S_BASE;
-
-    let li = si / N_COUNT;
-    unsafe {
-        f(transmute((L_BASE + li) as u32));
-
-        let vi = (si % N_COUNT) / T_COUNT;
-        f(transmute((V_BASE + vi) as u32));
-
-        let ti = si % T_COUNT;
-        if ti > 0 {
-            f(transmute((T_BASE + ti) as u32));
-        }
-    }
-}
-
-/// Returns the canonical decomposition of a character
-pub fn decompose_canonical(c: char, f: |char|) {
-    if (c as uint) < S_BASE || (c as uint) >= (S_BASE + S_COUNT) {
-        decompose::canonical(c, f);
-    } else {
-        decompose_hangul(c, f);
-    }
-}
-
-/// Returns the compatibility decomposition of a character
-pub fn decompose_compatible(c: char, f: |char|) {
-    if (c as uint) < S_BASE || (c as uint) >= (S_BASE + S_COUNT) {
-        decompose::compatibility(c, f);
-    } else {
-        decompose_hangul(c, f);
-    }
-}
-
 ///
 /// Returns the hexadecimal Unicode escape of a `char`
 ///
@@ -386,12 +345,7 @@ pub fn escape_default(c: char, f: |char|) {
 
 /// Returns the amount of bytes this `char` would need if encoded in UTF-8
 pub fn len_utf8_bytes(c: char) -> uint {
-    static MAX_ONE_B:   uint = 128u;
-    static MAX_TWO_B:   uint = 2048u;
-    static MAX_THREE_B: uint = 65536u;
-    static MAX_FOUR_B:  uint = 2097152u;
-
-    let code = c as uint;
+    let code = c as u32;
     match () {
         _ if code < MAX_ONE_B   => 1u,
         _ if code < MAX_TWO_B   => 2u,
@@ -606,41 +560,40 @@ impl Char for char {
 
     fn len_utf8_bytes(&self) -> uint { len_utf8_bytes(*self) }
 
-    fn encode_utf8(&self, dst: &mut [u8]) -> uint {
-        let code = *self as uint;
+    fn encode_utf8<'a>(&self, dst: &'a mut [u8]) -> uint {
+        let code = *self as u32;
         if code < MAX_ONE_B {
             dst[0] = code as u8;
-            return 1;
+            1
         } else if code < MAX_TWO_B {
-            dst[0] = (code >> 6u & 31u | TAG_TWO_B) as u8;
-            dst[1] = (code & 63u | TAG_CONT) as u8;
-            return 2;
+            dst[0] = (code >> 6u & 0x1F_u32) as u8 | TAG_TWO_B;
+            dst[1] = (code & 0x3F_u32) as u8 | TAG_CONT;
+            2
         } else if code < MAX_THREE_B {
-            dst[0] = (code >> 12u & 15u | TAG_THREE_B) as u8;
-            dst[1] = (code >> 6u & 63u | TAG_CONT) as u8;
-            dst[2] = (code & 63u | TAG_CONT) as u8;
-            return 3;
+            dst[0] = (code >> 12u & 0x0F_u32) as u8 | TAG_THREE_B;
+            dst[1] = (code >>  6u & 0x3F_u32) as u8 | TAG_CONT;
+            dst[2] = (code & 0x3F_u32) as u8 | TAG_CONT;
+            3
         } else {
-            dst[0] = (code >> 18u & 7u | TAG_FOUR_B) as u8;
-            dst[1] = (code >> 12u & 63u | TAG_CONT) as u8;
-            dst[2] = (code >> 6u & 63u | TAG_CONT) as u8;
-            dst[3] = (code & 63u | TAG_CONT) as u8;
-            return 4;
+            dst[0] = (code >> 18u & 0x07_u32) as u8 | TAG_FOUR_B;
+            dst[1] = (code >> 12u & 0x3F_u32) as u8 | TAG_CONT;
+            dst[2] = (code >>  6u & 0x3F_u32) as u8 | TAG_CONT;
+            dst[3] = (code & 0x3F_u32) as u8 | TAG_CONT;
+            4
         }
     }
 
     fn encode_utf16(&self, dst: &mut [u16]) -> uint {
-        let mut ch = *self as uint;
-        if (ch & 0xFFFF_u) == ch {
-            // The BMP falls through (assuming non-surrogate, as it
-            // should)
-            assert!(ch <= 0xD7FF_u || ch >= 0xE000_u);
+        let mut ch = *self as u32;
+        if (ch & 0xFFFF_u32) == ch {
+            // The BMP falls through (assuming non-surrogate, as it should)
+            assert!(ch <= 0xD7FF_u32 || ch >= 0xE000_u32);
             dst[0] = ch as u16;
             1
         } else {
             // Supplementary planes break into surrogates.
-            assert!(ch >= 0x1_0000_u && ch <= 0x10_FFFF_u);
-            ch -= 0x1_0000_u;
+            assert!(ch >= 0x1_0000_u32 && ch <= 0x10_FFFF_u32);
+            ch -= 0x1_0000_u32;
             dst[0] = 0xD800_u16 | ((ch >> 10) as u16);
             dst[1] = 0xDC00_u16 | ((ch as u16) & 0x3FF_u16);
             2

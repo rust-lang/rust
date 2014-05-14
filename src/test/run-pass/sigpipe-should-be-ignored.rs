@@ -31,5 +31,5 @@ fn main() {
     }
 
     let mut p = Process::new(args[0], ["test".to_owned()]).unwrap();
-    assert!(p.wait().success());
+    assert!(p.wait().unwrap().success());
 }

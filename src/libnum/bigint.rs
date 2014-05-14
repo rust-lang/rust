@@ -19,6 +19,7 @@ A `BigInt` is a combination of `BigUint` and `Sign`.
 use Integer;
 
 use std::cmp;
+use std::default::Default;
 use std::fmt;
 use std::from_str::FromStr;
 use std::num::CheckedDiv;
@@ -110,6 +111,11 @@ impl TotalOrd for BigUint {
         }
         return Equal;
     }
+}
+
+impl Default for BigUint {
+    #[inline]
+    fn default() -> BigUint { BigUint::new(Vec::new()) }
 }
 
 impl fmt::Show for BigUint {
@@ -828,6 +834,11 @@ impl TotalOrd for BigInt {
             Minus => other.data.cmp(&self.data),
         }
     }
+}
+
+impl Default for BigInt {
+    #[inline]
+    fn default() -> BigInt { BigInt::new(Zero, Vec::new()) }
 }
 
 impl fmt::Show for BigInt {

@@ -2648,9 +2648,9 @@ before the expression they apply to.
   : Logical negation. On the boolean type, this flips between `true` and
     `false`. On integer types, this inverts the individual bits in the
     two's complement representation of the value.
-* `~`
+* `box`
   :  [Boxing](#pointer-types) operators. Allocate a box to hold the value they are applied to,
-     and store the value in it. `~` creates an owned box.
+     and store the value in it. `box` creates an owned box.
 * `&`
   : Borrow operator. Returns a reference, pointing to its operand.
     The operand of a borrow is statically proven to outlive the resulting pointer.
@@ -3156,7 +3156,7 @@ fn main() {
 ~~~~
 
 Patterns can also dereference pointers by using the `&`,
-`~` or `@` symbols, as appropriate. For example, these two matches
+`box` or `@` symbols, as appropriate. For example, these two matches
 on `x: &int` are equivalent:
 
 ~~~~
@@ -3438,11 +3438,11 @@ All pointers in Rust are explicit first-class values.
 They can be copied, stored into data structures, and returned from functions.
 There are four varieties of pointer in Rust:
 
-* Owning pointers (`~`)
+* Owning pointers (`Box`)
   : These point to owned heap allocations (or "boxes") in the shared, inter-task heap.
     Each owned box has a single owning pointer; pointer and pointee retain a 1:1 relationship at all times.
-    Owning pointers are written `~content`,
-    for example `~int` means an owning pointer to an owned box containing an integer.
+    Owning pointers are written `Box<content>`,
+    for example `Box<int>` means an owning pointer to an owned box containing an integer.
     Copying an owned box is a "deep" operation:
     it involves allocating a new owned box and copying the contents of the old box into the new box.
     Releasing an owning pointer immediately releases its corresponding owned box.
@@ -3562,8 +3562,8 @@ Whereas most calls to trait methods are "early bound" (statically resolved) to s
 a call to a method on an object type is only resolved to a vtable entry at compile time.
 The actual implementation for each vtable entry can vary on an object-by-object basis.
 
-Given a pointer-typed expression `E` of type `&T` or `~T`, where `T` implements trait `R`,
-casting `E` to the corresponding pointer type `&R` or `~R` results in a value of the _object type_ `R`.
+Given a pointer-typed expression `E` of type `&T` or `Box<T>`, where `T` implements trait `R`,
+casting `E` to the corresponding pointer type `&R` or `Box<R>` results in a value of the _object type_ `R`.
 This result is represented as a pair of pointers:
 the vtable pointer for the `T` implementation of `R`, and the pointer value of `E`.
 
@@ -3761,7 +3761,7 @@ Local variables are immutable unless declared otherwise like: `let mut x = ...`.
 
 Function parameters are immutable unless declared with `mut`. The
 `mut` keyword applies only to the following parameter (so `|mut x, y|`
-and `fn f(mut x: ~int, y: ~int)` declare one mutable variable `x` and
+and `fn f(mut x: Box<int>, y: Box<int>)` declare one mutable variable `x` and
 one immutable variable `y`).
 
 Methods that take either `self` or `~self` can optionally place them in a

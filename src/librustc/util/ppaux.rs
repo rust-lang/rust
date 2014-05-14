@@ -355,18 +355,14 @@ pub fn ty_to_str(cx: &ctxt, typ: t) -> StrBuf {
       ty_bot => "!".to_strbuf(),
       ty_bool => "bool".to_strbuf(),
       ty_char => "char".to_strbuf(),
-      ty_int(t) => ast_util::int_ty_to_str(t, None),
-      ty_uint(t) => ast_util::uint_ty_to_str(t, None),
-      ty_float(t) => ast_util::float_ty_to_str(t),
-      ty_box(typ) => {
-          ("@".to_owned() + ty_to_str(cx, typ).as_slice()).to_strbuf()
-      }
-      ty_uniq(typ) => {
-          ("~".to_owned() + ty_to_str(cx, typ).as_slice()).to_strbuf()
-      }
-      ty_ptr(ref tm) => {
-          ("*".to_owned() + mt_to_str(cx, tm).as_slice()).to_strbuf()
-      }
+      ty_int(t) => ast_util::int_ty_to_str(t, None,
+                                           ast_util::AutoSuffix).to_strbuf(),
+      ty_uint(t) => ast_util::uint_ty_to_str(t, None,
+                                             ast_util::AutoSuffix).to_strbuf(),
+      ty_float(t) => ast_util::float_ty_to_str(t).to_strbuf(),
+      ty_box(typ) => format_strbuf!("@{}", ty_to_str(cx, typ)),
+      ty_uniq(typ) => format_strbuf!("~{}", ty_to_str(cx, typ)),
+      ty_ptr(ref tm) => format_strbuf!("*{}", mt_to_str(cx, tm)),
       ty_rptr(r, ref tm) => {
           let mut buf = region_ptr_to_str(cx, r);
           buf.push_str(mt_to_str(cx, tm).as_slice());
@@ -374,7 +370,7 @@ pub fn ty_to_str(cx: &ctxt, typ: t) -> StrBuf {
       }
       ty_tup(ref elems) => {
         let strs: Vec<StrBuf> = elems.iter().map(|elem| ty_to_str(cx, *elem)).collect();
-        ("(".to_owned() + strs.connect(",") + ")").to_strbuf()
+        format_strbuf!("({})", strs.connect(","))
       }
       ty_closure(ref f) => {
           closure_to_str(cx, *f)

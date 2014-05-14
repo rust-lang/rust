@@ -46,6 +46,7 @@ use middle::typeck::astconv::{ast_ty_to_ty, AstConv};
 use middle::typeck::infer;
 use middle::typeck;
 use util::ppaux::{ty_to_str};
+use util::nodemap::NodeSet;
 
 use std::cmp;
 use collections::HashMap;
@@ -453,10 +454,13 @@ struct Context<'a> {
     // When recursing into an attributed node of the ast which modifies lint
     // levels, this stack keeps track of the previous lint levels of whatever
     // was modified.
-    lint_stack: Vec<(Lint, level, LintSource)> ,
+    lint_stack: Vec<(Lint, level, LintSource)>,
 
     // id of the last visited negated expression
-    negated_expr_id: ast::NodeId
+    negated_expr_id: ast::NodeId,
+
+    // ids of structs/enums which have been checked for raw_pointer_deriving
+    checked_raw_pointers: NodeSet,
 }
 
 impl<'a> Context<'a> {
@@ -1014,10 +1018,26 @@ impl<'a> Visitor<()> for RawPtrDerivingVisitor<'a> {
     fn visit_block(&mut self, _: &ast::Block, _: ()) {}
 }
 
-fn check_raw_ptr_deriving(cx: &Context, item: &ast::Item) {
-    if !attr::contains_name(item.attrs.as_slice(), "deriving") {
+fn check_raw_ptr_deriving(cx: &mut Context, item: &ast::Item) {
+    if !attr::contains_name(item.attrs.as_slice(), "automatically_derived") {
         return
     }
+    let did = match item.node {
+        ast::ItemImpl(..) => {
+            match ty::get(ty::node_id_to_type(cx.tcx, item.id)).sty {
+                ty::ty_enum(did, _) => did,
+                ty::ty_struct(did, _) => did,
+                _ => return,
+            }
+        }
+        _ => return,
+    };
+    if !ast_util::is_local(did) { return }
+    let item = match cx.tcx.map.find(did.node) {
+        Some(ast_map::NodeItem(item)) => item,
+        _ => return,
+    };
+    if !cx.checked_raw_pointers.insert(item.id) { return }
     match item.node {
         ast::ItemStruct(..) | ast::ItemEnum(..) => {
             let mut visitor = RawPtrDerivingVisitor { cx: cx };
@@ -1848,7 +1868,8 @@ pub fn check_crate(tcx: &ty::ctxt,
         cur_struct_def_id: -1,
         is_doc_hidden: false,
         lint_stack: Vec::new(),
-        negated_expr_id: -1
+        negated_expr_id: -1,
+        checked_raw_pointers: NodeSet::new(),
     };
 
     // Install default lint levels, followed by the command line levels, and

@@ -149,6 +149,7 @@ pub fn render(w: &mut io::Writer, s: &str, print_toc: bool) -> fmt::Result {
             let my_opaque: &MyOpaque = &*((*opaque).opaque as *MyOpaque);
             slice::raw::buf_as_slice((*text).data, (*text).size as uint, |text| {
                 let text = str::from_utf8(text).unwrap();
+                debug!("docblock: ==============\n{}\n=======", text);
                 let mut lines = text.lines().filter(|l| {
                     stripped_filtered_line(*l).is_none()
                 });

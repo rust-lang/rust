@@ -13,7 +13,6 @@
 //! local storage, and logging. Even a 'freestanding' Rust would likely want
 //! to implement this.
 
-use any::AnyOwnExt;
 use cleanup;
 use clone::Clone;
 use comm::Sender;
@@ -24,7 +23,7 @@ use local_data;
 use mem;
 use ops::Drop;
 use option::{Option, Some, None};
-use owned::Box;
+use owned::{AnyOwnExt, Box};
 use prelude::drop;
 use result::{Result, Ok, Err};
 use rt::Runtime;

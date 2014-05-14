@@ -55,6 +55,7 @@
 // NB this crate explicitly does *not* allow glob imports, please seriously
 //    consider whether they're needed before adding that feature here (the
 //    answer is that you don't need them)
+#![feature(macro_rules)]
 
 extern crate libc;
 
