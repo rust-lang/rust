@@ -115,7 +115,7 @@ impl<'a> Visitor<()> for AnnotateFreevarsVisitor<'a> {
                 blk: &ast::Block, s: Span, nid: ast::NodeId, _: ()) {
         let vars = collect_freevars(self.def_map, blk);
         self.freevars.insert(nid, vars);
-        visit::walk_fn(self, fk, fd, blk, s, nid, ());
+        visit::walk_fn(self, fk, fd, blk, s, ());
     }
 }
 
