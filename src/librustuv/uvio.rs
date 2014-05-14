@@ -28,7 +28,7 @@ use std::rt::rtio;
 use std::rt::rtio::{IoFactory, EventLoop};
 use ai = std::io::net::addrinfo;
 
-#[cfg(test)] use std::unstable::run_in_bare_thread;
+#[cfg(test)] use std::rt::Thread;
 
 use super::{uv_error_to_io_error, Loop};
 
@@ -117,7 +117,7 @@ impl EventLoop for UvEventLoop {
 
 #[test]
 fn test_callback_run_once() {
-    run_in_bare_thread(proc() {
+    Thread::start(proc() {
         let mut event_loop = UvEventLoop::new();
         let mut count = 0;
         let count_ptr: *mut int = &mut count;
@@ -126,7 +126,7 @@ fn test_callback_run_once() {
         });
         event_loop.run();
         assert_eq!(count, 1);
-    });
+    }).join();
 }
 
 pub struct UvIoFactory {
