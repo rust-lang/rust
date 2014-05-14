@@ -77,25 +77,31 @@ pub trait AnyOwnExt {
     /// Returns the boxed value if it is of type `T`, or
     /// `Err(Self)` if it isn't.
     fn move<T: 'static>(self) -> Result<Box<T>, Self>;
+
+    /// Returns the boxed value which must be of type `T`.
+    /// This is as dangerous as `transmute`; you should almost always use `move` instead.
+    unsafe fn move_unchecked<T: 'static>(self) -> Box<T>;
 }
 
 impl AnyOwnExt for Box<Any> {
     #[inline]
     fn move<T: 'static>(self) -> Result<Box<T>, Box<Any>> {
         if self.is::<T>() {
-            unsafe {
-                // Get the raw representation of the trait object
-                let to: TraitObject =
-                    *mem::transmute::<&Box<Any>, &TraitObject>(&self);
-
-                // Prevent destructor on self being run
-                intrinsics::forget(self);
-
-                // Extract the data pointer
-                Ok(mem::transmute(to.data))
-            }
+            Ok(unsafe { self.move_unchecked() })
         } else {
             Err(self)
         }
+    }
+
+    #[inline]
+    unsafe fn move_unchecked<T: 'static>(self) -> Box<T> {
+        // Get the raw representation of the trait object
+        let to: TraitObject = *mem::transmute::<&Box<Any>, &TraitObject>(&self);
+
+        // Prevent destructor on self being run
+        intrinsics::forget(self);
+
+        // Extract the data pointer
+        mem::transmute(to.data)
     }
 }
