@@ -78,6 +78,7 @@ type parameter).
 
 
 use middle::const_eval;
+use middle::def;
 use middle::lang_items::{ExchangeHeapLangItem, GcLangItem};
 use middle::lang_items::{ManagedHeapLangItem};
 use middle::lint::UnreachableCode;
@@ -1523,13 +1524,13 @@ pub enum DerefArgs {
 // Given the provenance of a static method, returns the generics of the static
 // method's container.
 fn generics_of_static_method_container(type_context: &ty::ctxt,
-                                       provenance: ast::MethodProvenance)
+                                       provenance: def::MethodProvenance)
                                        -> ty::Generics {
     match provenance {
-        ast::FromTrait(trait_def_id) => {
+        def::FromTrait(trait_def_id) => {
             ty::lookup_trait_def(type_context, trait_def_id).generics.clone()
         }
-        ast::FromImpl(impl_def_id) => {
+        def::FromImpl(impl_def_id) => {
             ty::lookup_item_type(type_context, impl_def_id).generics.clone()
         }
     }
@@ -1539,7 +1540,7 @@ fn generics_of_static_method_container(type_context: &ty::ctxt,
 // locations.
 fn check_type_parameter_positions_in_path(function_context: &FnCtxt,
                                           path: &ast::Path,
-                                          def: ast::Def) {
+                                          def: def::Def) {
     // We only care about checking the case in which the path has two or
     // more segments.
     if path.segments.len() < 2 {
@@ -1580,13 +1581,13 @@ fn check_type_parameter_positions_in_path(function_context: &FnCtxt,
         // ensure that the segment of the path which names the trait or
         // implementation (the penultimate segment) is annotated with the
         // right number of type parameters.
-        ast::DefStaticMethod(_, provenance, _) => {
+        def::DefStaticMethod(_, provenance, _) => {
             let generics =
                 generics_of_static_method_container(function_context.ccx.tcx,
                                                     provenance);
             let name = match provenance {
-                ast::FromTrait(_) => "trait",
-                ast::FromImpl(_) => "impl",
+                def::FromTrait(_) => "trait",
+                def::FromImpl(_) => "impl",
             };
 
             let trait_segment = &path.segments.get(path.segments.len() - 2);
@@ -2706,7 +2707,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                   // FIXME(pcwalton): For now we hardcode the two permissible
                   // places: the exchange heap and the managed heap.
                   let definition = lookup_def(fcx, path.span, place.id);
-                  let def_id = ast_util::def_id_of_def(definition);
+                  let def_id = definition.def_id();
                   match tcx.lang_items
                            .items
                            .get(ExchangeHeapLangItem as uint) {
@@ -3256,11 +3257,11 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         // Resolve the path.
         let def = tcx.def_map.borrow().find(&id).map(|i| *i);
         match def {
-            Some(ast::DefStruct(type_def_id)) => {
+            Some(def::DefStruct(type_def_id)) => {
                 check_struct_constructor(fcx, id, expr.span, type_def_id,
                                          fields.as_slice(), base_expr);
             }
-            Some(ast::DefVariant(enum_id, variant_id, _)) => {
+            Some(def::DefVariant(enum_id, variant_id, _)) => {
                 check_struct_enum_variant(fcx, id, expr.span, enum_id,
                                           variant_id, fields.as_slice());
             }
@@ -3809,54 +3810,54 @@ pub fn check_enum_variants(ccx: &CrateCtxt,
     check_instantiable(ccx.tcx, sp, id);
 }
 
-pub fn lookup_def(fcx: &FnCtxt, sp: Span, id: ast::NodeId) -> ast::Def {
+pub fn lookup_def(fcx: &FnCtxt, sp: Span, id: ast::NodeId) -> def::Def {
     lookup_def_ccx(fcx.ccx, sp, id)
 }
 
 // Returns the type parameter count and the type for the given definition.
 pub fn ty_param_bounds_and_ty_for_def(fcx: &FnCtxt,
                                       sp: Span,
-                                      defn: ast::Def)
+                                      defn: def::Def)
                                    -> ty_param_bounds_and_ty {
     match defn {
-      ast::DefArg(nid, _) | ast::DefLocal(nid, _) |
-      ast::DefBinding(nid, _) => {
+      def::DefArg(nid, _) | def::DefLocal(nid, _) |
+      def::DefBinding(nid, _) => {
           let typ = fcx.local_ty(sp, nid);
           return no_params(typ);
       }
-      ast::DefFn(id, _) | ast::DefStaticMethod(id, _, _) |
-      ast::DefStatic(id, _) | ast::DefVariant(_, id, _) |
-      ast::DefStruct(id) => {
+      def::DefFn(id, _) | def::DefStaticMethod(id, _, _) |
+      def::DefStatic(id, _) | def::DefVariant(_, id, _) |
+      def::DefStruct(id) => {
         return ty::lookup_item_type(fcx.ccx.tcx, id);
       }
-      ast::DefUpvar(_, inner, _, _) => {
+      def::DefUpvar(_, inner, _, _) => {
         return ty_param_bounds_and_ty_for_def(fcx, sp, *inner);
       }
-      ast::DefTrait(_) |
-      ast::DefTy(_) |
-      ast::DefPrimTy(_) |
-      ast::DefTyParam(..)=> {
+      def::DefTrait(_) |
+      def::DefTy(_) |
+      def::DefPrimTy(_) |
+      def::DefTyParam(..)=> {
         fcx.ccx.tcx.sess.span_bug(sp, "expected value but found type");
       }
-      ast::DefMod(..) | ast::DefForeignMod(..) => {
+      def::DefMod(..) | def::DefForeignMod(..) => {
         fcx.ccx.tcx.sess.span_bug(sp, "expected value but found module");
       }
-      ast::DefUse(..) => {
+      def::DefUse(..) => {
         fcx.ccx.tcx.sess.span_bug(sp, "expected value but found use");
       }
-      ast::DefRegion(..) => {
+      def::DefRegion(..) => {
         fcx.ccx.tcx.sess.span_bug(sp, "expected value but found region");
       }
-      ast::DefTyParamBinder(..) => {
+      def::DefTyParamBinder(..) => {
         fcx.ccx.tcx.sess.span_bug(sp, "expected value but found type parameter");
       }
-      ast::DefLabel(..) => {
+      def::DefLabel(..) => {
         fcx.ccx.tcx.sess.span_bug(sp, "expected value but found label");
       }
-      ast::DefSelfTy(..) => {
+      def::DefSelfTy(..) => {
         fcx.ccx.tcx.sess.span_bug(sp, "expected value but found self ty");
       }
-      ast::DefMethod(..) => {
+      def::DefMethod(..) => {
         fcx.ccx.tcx.sess.span_bug(sp, "expected value but found method");
       }
     }
@@ -3867,7 +3868,7 @@ pub fn ty_param_bounds_and_ty_for_def(fcx: &FnCtxt,
 pub fn instantiate_path(fcx: &FnCtxt,
                         pth: &ast::Path,
                         tpt: ty_param_bounds_and_ty,
-                        def: ast::Def,
+                        def: def::Def,
                         span: Span,
                         node_id: ast::NodeId) {
     debug!(">>> instantiate_path");
@@ -3918,7 +3919,7 @@ pub fn instantiate_path(fcx: &FnCtxt,
     // of type parameters actually manifest in the AST. This will differ from
     // the internal type parameter count when there are self types involved.
     let (user_ty_param_count, user_ty_param_req, self_parameter_index) = match def {
-        ast::DefStaticMethod(_, provenance @ ast::FromTrait(_), _) => {
+        def::DefStaticMethod(_, provenance @ def::FromTrait(_), _) => {
             let generics = generics_of_static_method_container(fcx.ccx.tcx,
                                                                provenance);
             (ty_param_count - 1, ty_param_req - 1, Some(generics.type_param_defs().len()))
@@ -4153,7 +4154,7 @@ pub fn may_break(cx: &ty::ctxt, id: ast::NodeId, b: ast::P<ast::Block>) -> bool 
         match e.node {
             ast::ExprBreak(Some(_)) => {
                 match cx.def_map.borrow().find(&e.id) {
-                    Some(&ast::DefLabel(loop_id)) if id == loop_id => true,
+                    Some(&def::DefLabel(loop_id)) if id == loop_id => true,
                     _ => false,
                 }
             }

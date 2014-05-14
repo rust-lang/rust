@@ -206,49 +206,6 @@ impl Generics {
     }
 }
 
-#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
-pub enum MethodProvenance {
-    FromTrait(DefId),
-    FromImpl(DefId),
-}
-
-#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
-pub enum Def {
-    DefFn(DefId, FnStyle),
-    DefStaticMethod(/* method */ DefId, MethodProvenance, FnStyle),
-    DefSelfTy(/* trait id */ NodeId),
-    DefMod(DefId),
-    DefForeignMod(DefId),
-    DefStatic(DefId, bool /* is_mutbl */),
-    DefArg(NodeId, BindingMode),
-    DefLocal(NodeId, BindingMode),
-    DefVariant(DefId /* enum */, DefId /* variant */, bool /* is_structure */),
-    DefTy(DefId),
-    DefTrait(DefId),
-    DefPrimTy(PrimTy),
-    DefTyParam(DefId, uint),
-    DefBinding(NodeId, BindingMode),
-    DefUse(DefId),
-    DefUpvar(NodeId,  // id of closed over var
-              @Def,     // closed over def
-              NodeId,  // expr node that creates the closure
-              NodeId), // id for the block/body of the closure expr
-
-    /// Note that if it's a tuple struct's definition, the node id of the DefId
-    /// may either refer to the item definition's id or the StructDef.ctor_id.
-    ///
-    /// The cases that I have encountered so far are (this is not exhaustive):
-    /// - If it's a ty_path referring to some tuple struct, then DefMap maps
-    ///   it to a def whose id is the item definition's id.
-    /// - If it's an ExprPath referring to some tuple struct, then DefMap maps
-    ///   it to a def whose id is the StructDef.ctor_id.
-    DefStruct(DefId),
-    DefTyParamBinder(NodeId), /* struct, impl or trait with ty params */
-    DefRegion(NodeId),
-    DefLabel(NodeId),
-    DefMethod(DefId /* method */, Option<DefId> /* trait */),
-}
-
 #[deriving(Clone, PartialEq, Eq, Hash, Encodable, Decodable, Show)]
 pub enum DefRegion {
     DefStaticRegion,

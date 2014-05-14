@@ -24,7 +24,7 @@ use syntax::codemap::Span;
  * Represents the values to use when substituting lifetime parameters.
  * If the value is `ErasedRegions`, then this subst is occurring during
  * trans, and all region parameters will be replaced with `ty::ReStatic`. */
-#[deriving(Clone, Eq, TotalEq, Hash)]
+#[deriving(Clone, PartialEq, Eq, Hash)]
 pub enum RegionSubsts {
     ErasedRegions,
     NonerasedRegions(Vec<ty::Region>)
@@ -47,7 +47,7 @@ pub enum RegionSubsts {
  * - `self_ty` is the type to which `self` should be remapped, if any.  The
  *   `self` type is rather funny in that it can only appear on traits and is
  *   always substituted away to the implementing type for a trait. */
-#[deriving(Clone, Eq, TotalEq, Hash)]
+#[deriving(Clone, PartialEq, Eq, Hash)]
 pub struct Substs {
     pub self_ty: Option<ty::t>,
     pub tps: Vec<ty::t>,

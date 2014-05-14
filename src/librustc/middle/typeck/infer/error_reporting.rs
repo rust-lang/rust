@@ -60,6 +60,7 @@ time of error detection.
 */
 
 use std::collections::HashSet;
+use middle::def;
 use middle::ty;
 use middle::ty::{Region, ReFree};
 use middle::typeck::infer;
@@ -1045,7 +1046,7 @@ impl<'a> Rebuilder<'a> {
                         Some(&d) => d
                     };
                     match a_def {
-                        ast::DefTy(did) | ast::DefStruct(did) => {
+                        def::DefTy(did) | def::DefStruct(did) => {
                             let ty::ty_param_bounds_and_ty {
                                 generics: generics,
                                 ty: _

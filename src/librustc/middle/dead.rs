@@ -12,6 +12,7 @@
 // closely. The idea is that all reachable symbols are live, codes called
 // from live codes are live, and everything else is dead.
 
+use middle::def;
 use middle::lint::{Allow, contains_lint, DeadCode};
 use middle::privacy;
 use middle::ty;
@@ -21,7 +22,7 @@ use util::nodemap::NodeSet;
 use std::collections::HashSet;
 use syntax::ast;
 use syntax::ast_map;
-use syntax::ast_util::{local_def, def_id_of_def, is_local};
+use syntax::ast_util::{local_def, is_local};
 use syntax::attr;
 use syntax::codemap;
 use syntax::parse::token;
@@ -77,9 +78,9 @@ impl<'a> MarkSymbolVisitor<'a> {
             None => return
         };
         let def_id = match def {
-            ast::DefVariant(enum_id, _, _) => Some(enum_id),
-            ast::DefPrimTy(_) => None,
-            _ => Some(def_id_of_def(def)),
+            def::DefVariant(enum_id, _, _) => Some(enum_id),
+            def::DefPrimTy(_) => None,
+            _ => Some(def.def_id())
         };
         match def_id {
             Some(def_id) => self.check_def_id(def_id),

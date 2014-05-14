@@ -13,12 +13,13 @@
 
 #![allow(non_camel_case_types)]
 
+use middle::def;
 use middle::resolve;
 use middle::ty;
 use util::nodemap::{NodeMap, NodeSet};
 
 use syntax::codemap::Span;
-use syntax::{ast, ast_util};
+use syntax::{ast};
 use syntax::visit;
 use syntax::visit::Visitor;
 
@@ -35,7 +36,7 @@ pub enum CaptureMode {
 // (The def_upvar will already have been stripped).
 #[deriving(Encodable, Decodable)]
 pub struct freevar_entry {
-    pub def: ast::Def, //< The variable being accessed free.
+    pub def: def::Def, //< The variable being accessed free.
     pub span: Span     //< First span where it is accessed (there can be multiple)
 }
 pub type freevar_map = NodeMap<Vec<freevar_entry>>;
@@ -64,13 +65,13 @@ impl<'a> Visitor<int> for CollectFreevarsVisitor<'a> {
                         let mut def = df;
                         while i < depth {
                             match def {
-                                ast::DefUpvar(_, inner, _, _) => { def = *inner; }
+                                def::DefUpvar(_, inner, _, _) => { def = *inner; }
                                 _ => break
                             }
                             i += 1;
                         }
                         if i == depth { // Made it to end of loop
-                            let dnum = ast_util::def_id_of_def(def).node;
+                            let dnum = def.def_id().node;
                             if !self.seen.contains(&dnum) {
                                 self.refs.push(freevar_entry {
                                     def: def,

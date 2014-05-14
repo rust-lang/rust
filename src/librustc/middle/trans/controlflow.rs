@@ -10,6 +10,7 @@
 
 use lib::llvm::*;
 use driver::config::FullDebugInfo;
+use middle::def;
 use middle::lang_items::{FailFnLangItem, FailBoundsCheckFnLangItem};
 use middle::trans::base::*;
 use middle::trans::build::*;
@@ -288,7 +289,7 @@ pub fn trans_break_cont<'a>(bcx: &'a Block<'a>,
         None => fcx.top_loop_scope(),
         Some(_) => {
             match bcx.tcx().def_map.borrow().find(&expr_id) {
-                Some(&ast::DefLabel(loop_id)) => loop_id,
+                Some(&def::DefLabel(loop_id)) => loop_id,
                 ref r => {
                     bcx.tcx().sess.bug(format!("{:?} in def-map for label",
                                                r).as_slice())

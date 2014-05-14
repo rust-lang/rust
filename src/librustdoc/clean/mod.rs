@@ -25,6 +25,7 @@ use rustc::driver::driver;
 use rustc::metadata::cstore;
 use rustc::metadata::csearch;
 use rustc::metadata::decoder;
+use rustc::middle::def;
 use rustc::middle::subst;
 use rustc::middle::ty;
 
@@ -191,7 +192,7 @@ impl Clean<ExternalCrate> for cstore::crate_metadata {
                                                       self.cnum,
                                                       |def, _, _| {
                     let did = match def {
-                        decoder::DlDef(ast::DefMod(did)) => did,
+                        decoder::DlDef(def::DefMod(did)) => did,
                         _ => return
                     };
                     let attrs = inline::load_attrs(tcx, did);
@@ -1949,8 +1950,8 @@ fn resolve_type(path: Path, tpbs: Option<Vec<TyParamBound>>,
     };
 
     match def {
-        ast::DefSelfTy(i) => return Self(ast_util::local_def(i)),
-        ast::DefPrimTy(p) => match p {
+        def::DefSelfTy(i) => return Self(ast_util::local_def(i)),
+        def::DefPrimTy(p) => match p {
             ast::TyStr => return Primitive(Str),
             ast::TyBool => return Primitive(Bool),
             ast::TyChar => return Primitive(Char),
@@ -1968,24 +1969,24 @@ fn resolve_type(path: Path, tpbs: Option<Vec<TyParamBound>>,
             ast::TyFloat(ast::TyF64) => return Primitive(F64),
             ast::TyFloat(ast::TyF128) => return Primitive(F128),
         },
-        ast::DefTyParam(i, _) => return Generic(i),
-        ast::DefTyParamBinder(i) => return TyParamBinder(i),
+        def::DefTyParam(i, _) => return Generic(i),
+        def::DefTyParamBinder(i) => return TyParamBinder(i),
         _ => {}
     };
     let did = register_def(&**cx, def);
     ResolvedPath { path: path, typarams: tpbs, did: did }
 }
 
-fn register_def(cx: &core::DocContext, def: ast::Def) -> ast::DefId {
+fn register_def(cx: &core::DocContext, def: def::Def) -> ast::DefId {
     let (did, kind) = match def {
-        ast::DefFn(i, _) => (i, TypeFunction),
-        ast::DefTy(i) => (i, TypeEnum),
-        ast::DefTrait(i) => (i, TypeTrait),
-        ast::DefStruct(i) => (i, TypeStruct),
-        ast::DefMod(i) => (i, TypeModule),
-        ast::DefStatic(i, _) => (i, TypeStatic),
-        ast::DefVariant(i, _, _) => (i, TypeEnum),
-        _ => return ast_util::def_id_of_def(def),
+        def::DefFn(i, _) => (i, TypeFunction),
+        def::DefTy(i) => (i, TypeEnum),
+        def::DefTrait(i) => (i, TypeTrait),
+        def::DefStruct(i) => (i, TypeStruct),
+        def::DefMod(i) => (i, TypeModule),
+        def::DefStatic(i, _) => (i, TypeStatic),
+        def::DefVariant(i, _, _) => (i, TypeEnum),
+        _ => return def.def_id()
     };
     if ast_util::is_local(did) { return did }
     let tcx = match cx.maybe_typed {

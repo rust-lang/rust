@@ -38,6 +38,8 @@
 use driver::session;
 use metadata::csearch;
 use middle::dead::DEAD_CODE_LINT_STR;
+use middle::def;
+use middle::def::*;
 use middle::pat_util;
 use middle::privacy;
 use middle::trans::adt; // for `adt::is_ffi_safe`
@@ -935,17 +937,17 @@ fn check_item_ctypes(cx: &Context, it: &ast::Item) {
         match ty.node {
             ast::TyPath(_, _, id) => {
                 match cx.tcx.def_map.borrow().get_copy(&id) {
-                    ast::DefPrimTy(ast::TyInt(ast::TyI)) => {
+                    def::DefPrimTy(ast::TyInt(ast::TyI)) => {
                         cx.span_lint(CTypes, ty.span,
                                 "found rust type `int` in foreign module, while \
                                 libc::c_int or libc::c_long should be used");
                     }
-                    ast::DefPrimTy(ast::TyUint(ast::TyU)) => {
+                    def::DefPrimTy(ast::TyUint(ast::TyU)) => {
                         cx.span_lint(CTypes, ty.span,
                                 "found rust type `uint` in foreign module, while \
                                 libc::c_uint or libc::c_ulong should be used");
                     }
-                    ast::DefTy(def_id) => {
+                    def::DefTy(def_id) => {
                         if !adt::is_ffi_safe(cx.tcx, def_id) {
                             cx.span_lint(CTypes, ty.span,
                                          "found enum type without foreign-function-safe \
@@ -1394,7 +1396,7 @@ fn check_item_non_uppercase_statics(cx: &Context, it: &ast::Item) {
 fn check_pat_non_uppercase_statics(cx: &Context, p: &ast::Pat) {
     // Lint for constants that look like binding identifiers (#7526)
     match (&p.node, cx.tcx.def_map.borrow().find(&p.id)) {
-        (&ast::PatIdent(_, ref path, _), Some(&ast::DefStatic(_, false))) => {
+        (&ast::PatIdent(_, ref path, _), Some(&def::DefStatic(_, false))) => {
             // last identifier alone is right choice for this lint.
             let ident = path.segments.last().unwrap().identifier;
             let s = token::get_ident(ident);
@@ -1411,8 +1413,8 @@ fn check_pat_uppercase_variable(cx: &Context, p: &ast::Pat) {
     match &p.node {
         &ast::PatIdent(_, ref path, _) => {
             match cx.tcx.def_map.borrow().find(&p.id) {
-                Some(&ast::DefLocal(_, _)) | Some(&ast::DefBinding(_, _)) |
-                        Some(&ast::DefArg(_, _)) => {
+                Some(&def::DefLocal(_, _)) | Some(&def::DefBinding(_, _)) |
+                        Some(&def::DefArg(_, _)) => {
                     // last identifier alone is right choice for this lint.
                     let ident = path.segments.last().unwrap().identifier;
                     let s = token::get_ident(ident);
@@ -1726,7 +1728,7 @@ fn check_stability(cx: &Context, e: &ast::Expr) {
     let id = match e.node {
         ast::ExprPath(..) | ast::ExprStruct(..) => {
             match cx.tcx.def_map.borrow().find(&e.id) {
-                Some(&def) => ast_util::def_id_of_def(def),
+                Some(&def) => def.def_id(),
                 None => return
             }
         }

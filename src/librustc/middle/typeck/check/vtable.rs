@@ -632,7 +632,7 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
             debug!("vtable resolution on parameter bounds for expr {}",
                    ex.repr(fcx.tcx()));
             let def = cx.tcx.def_map.borrow().get_copy(&ex.id);
-            let did = ast_util::def_id_of_def(def);
+            let did = def.def_id();
             let item_ty = ty::lookup_item_type(cx.tcx, did);
             debug!("early resolve expr: def {:?} {:?}, {:?}, {}", ex.id, did, def,
                    fcx.infcx().ty_to_str(item_ty.ty));

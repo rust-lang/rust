@@ -13,6 +13,7 @@
 use driver::session::Session;
 use metadata::csearch;
 use metadata::decoder::{DefLike, DlDef, DlField, DlImpl};
+use middle::def::*;
 use middle::lang_items::LanguageItems;
 use middle::lint::{UnnecessaryQualification, UnusedImports};
 use middle::pat_util::pat_bindings;
@@ -20,7 +21,7 @@ use util::nodemap::{NodeMap, DefIdSet, FnvHashMap};
 
 use syntax::ast::*;
 use syntax::ast;
-use syntax::ast_util::{def_id_of_def, local_def};
+use syntax::ast_util::{local_def};
 use syntax::ast_util::{path_to_ident, walk_pat, trait_method_to_ty_method};
 use syntax::ext::mtwt;
 use syntax::parse::token::special_idents;
@@ -1599,7 +1600,7 @@ impl<'a> Resolver<'a> {
             }
         };
         if is_exported {
-            self.external_exports.insert(def_id_of_def(def));
+            self.external_exports.insert(def.def_id());
         }
         match def {
           DefMod(def_id) | DefForeignMod(def_id) | DefStruct(def_id) |
@@ -2438,7 +2439,7 @@ impl<'a> Resolver<'a> {
             Some(ref target) => {
                 let def = target.bindings.def_for_namespace(ValueNS).unwrap();
                 self.def_map.borrow_mut().insert(directive.id, def);
-                let did = def_id_of_def(def);
+                let did = def.def_id();
                 if value_used_public {Some(lp)} else {Some(DependsOn(did))}
             },
             // AllPublic here and below is a dummy value, it should never be used because
@@ -2449,7 +2450,7 @@ impl<'a> Resolver<'a> {
             Some(ref target) => {
                 let def = target.bindings.def_for_namespace(TypeNS).unwrap();
                 self.def_map.borrow_mut().insert(directive.id, def);
-                let did = def_id_of_def(def);
+                let did = def.def_id();
                 if type_used_public {Some(lp)} else {Some(DependsOn(did))}
             },
             None => None,
@@ -3307,10 +3308,10 @@ impl<'a> Resolver<'a> {
             Some(d) => {
                 let name = token::get_name(name);
                 debug!("(computing exports) YES: export '{}' => {:?}",
-                       name, def_id_of_def(d));
+                       name, d.def_id());
                 exports2.push(Export2 {
                     name: name.get().to_string(),
-                    def_id: def_id_of_def(d)
+                    def_id: d.def_id()
                 });
             }
             d_opt => {
@@ -3434,10 +3435,10 @@ impl<'a> Resolver<'a> {
                 }
                 FunctionRibKind(function_id, body_id) => {
                     if !is_ty_param {
-                        def = DefUpvar(def_id_of_def(def).node,
-                                        @def,
-                                        function_id,
-                                        body_id);
+                        def = DefUpvar(def.def_id().node,
+                                       @def,
+                                       function_id,
+                                       body_id);
                     }
                 }
                 MethodRibKind(item_id, _) => {
@@ -3967,7 +3968,7 @@ impl<'a> Resolver<'a> {
 
                 match self.def_map.borrow().find(&trait_ref.ref_id) {
                     Some(def) => {
-                        let did = def_id_of_def(*def);
+                        let did = def.def_id();
                         Some((did, trait_ref.clone()))
                     }
                     None => None
@@ -4638,7 +4639,7 @@ impl<'a> Resolver<'a> {
                         let p = child_name_bindings.defined_in_public_namespace(
                                         namespace);
                         let lp = if p {LastMod(AllPublic)} else {
-                            LastMod(DependsOn(def_id_of_def(def)))
+                            LastMod(DependsOn(def.def_id()))
                         };
                         return ChildNameDefinition(def, lp);
                     }

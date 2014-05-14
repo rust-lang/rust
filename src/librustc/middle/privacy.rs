@@ -15,6 +15,7 @@
 use std::mem::replace;
 
 use metadata::csearch;
+use middle::def;
 use middle::lint;
 use middle::resolve;
 use middle::ty;
@@ -24,7 +25,7 @@ use util::nodemap::{NodeMap, NodeSet};
 
 use syntax::ast;
 use syntax::ast_map;
-use syntax::ast_util::{is_local, def_id_of_def, local_def};
+use syntax::ast_util::{is_local, local_def};
 use syntax::attr;
 use syntax::codemap::Span;
 use syntax::parse::token;
@@ -243,9 +244,9 @@ impl<'a> Visitor<()> for EmbargoVisitor<'a> {
                 let public_ty = match ty.node {
                     ast::TyPath(_, _, id) => {
                         match self.tcx.def_map.borrow().get_copy(&id) {
-                            ast::DefPrimTy(..) => true,
+                            def::DefPrimTy(..) => true,
                             def => {
-                                let did = def_id_of_def(def);
+                                let did = def.def_id();
                                 !is_local(did) ||
                                  self.exported_items.contains(&did.node)
                             }
@@ -301,9 +302,9 @@ impl<'a> Visitor<()> for EmbargoVisitor<'a> {
                 match ty.node {
                     ast::TyPath(_, _, id) => {
                         match self.tcx.def_map.borrow().get_copy(&id) {
-                            ast::DefPrimTy(..) => {},
+                            def::DefPrimTy(..) => {},
                             def => {
-                                let did = def_id_of_def(def);
+                                let did = def.def_id();
                                 if is_local(did) {
                                     self.exported_items.insert(did.node);
                                 }
@@ -576,7 +577,7 @@ impl<'a> PrivacyVisitor<'a> {
                             _ => return Some((err_span, err_msg, None)),
                         };
                         let def = self.tcx.def_map.borrow().get_copy(&id);
-                        let did = def_id_of_def(def);
+                        let did = def.def_id();
                         assert!(is_local(did));
                         match self.tcx.map.get(did.node) {
                             ast_map::NodeItem(item) => item,
@@ -673,7 +674,7 @@ impl<'a> PrivacyVisitor<'a> {
                                                 .last()
                                                 .unwrap()
                                                 .identifier);
-                let origdid = def_id_of_def(orig_def);
+                let origdid = orig_def.def_id();
                 self.ensure_public(span,
                                    def,
                                    Some(origdid),
@@ -750,16 +751,16 @@ impl<'a> PrivacyVisitor<'a> {
         // be accurate and we can get slightly wonky error messages (but type
         // checking is always correct).
         match self.tcx.def_map.borrow().get_copy(&path_id) {
-            ast::DefStaticMethod(..) => ck("static method"),
-            ast::DefFn(..) => ck("function"),
-            ast::DefStatic(..) => ck("static"),
-            ast::DefVariant(..) => ck("variant"),
-            ast::DefTy(..) => ck("type"),
-            ast::DefTrait(..) => ck("trait"),
-            ast::DefStruct(..) => ck("struct"),
-            ast::DefMethod(_, Some(..)) => ck("trait method"),
-            ast::DefMethod(..) => ck("method"),
-            ast::DefMod(..) => ck("module"),
+            def::DefStaticMethod(..) => ck("static method"),
+            def::DefFn(..) => ck("function"),
+            def::DefStatic(..) => ck("static"),
+            def::DefVariant(..) => ck("variant"),
+            def::DefTy(..) => ck("type"),
+            def::DefTrait(..) => ck("trait"),
+            def::DefStruct(..) => ck("struct"),
+            def::DefMethod(_, Some(..)) => ck("trait method"),
+            def::DefMethod(..) => ck("method"),
+            def::DefMod(..) => ck("module"),
             _ => {}
         }
     }
@@ -829,7 +830,7 @@ impl<'a> Visitor<()> for PrivacyVisitor<'a> {
                     }
                     ty::ty_enum(_, _) => {
                         match self.tcx.def_map.borrow().get_copy(&expr.id) {
-                            ast::DefVariant(_, variant_id, _) => {
+                            def::DefVariant(_, variant_id, _) => {
                                 for field in fields.iter() {
                                     self.check_field(expr.span, variant_id,
                                                      NamedField(field.ident.node));
@@ -862,7 +863,7 @@ impl<'a> Visitor<()> for PrivacyVisitor<'a> {
                     }
                 };
                 match self.tcx.def_map.borrow().find(&expr.id) {
-                    Some(&ast::DefStruct(did)) => {
+                    Some(&def::DefStruct(did)) => {
                         guard(if is_local(did) {
                             local_def(self.tcx.map.get_parent(did.node))
                         } else {
@@ -877,7 +878,7 @@ impl<'a> Visitor<()> for PrivacyVisitor<'a> {
                     }
                     // Tuple struct constructors across crates are identified as
                     // DefFn types, so we explicitly handle that case here.
-                    Some(&ast::DefFn(did, _)) if !is_local(did) => {
+                    Some(&def::DefFn(did, _)) if !is_local(did) => {
                         match csearch::get_tuple_struct_definition_if_ctor(
                                     &self.tcx.sess.cstore, did) {
                             Some(did) => guard(did),
@@ -940,7 +941,7 @@ impl<'a> Visitor<()> for PrivacyVisitor<'a> {
                     }
                     ty::ty_enum(_, _) => {
                         match self.tcx.def_map.borrow().find(&pattern.id) {
-                            Some(&ast::DefVariant(_, variant_id, _)) => {
+                            Some(&def::DefVariant(_, variant_id, _)) => {
                                 for field in fields.iter() {
                                     self.check_field(pattern.span, variant_id,
                                                      NamedField(field.ident));
@@ -1205,8 +1206,8 @@ impl<'a> VisiblePrivateTypesVisitor<'a> {
     fn path_is_private_type(&self, path_id: ast::NodeId) -> bool {
         let did = match self.tcx.def_map.borrow().find_copy(&path_id) {
             // `int` etc. (None doesn't seem to occur.)
-            None | Some(ast::DefPrimTy(..)) => return false,
-            Some(def) => def_id_of_def(def)
+            None | Some(def::DefPrimTy(..)) => return false,
+            Some(def) => def.def_id()
         };
         // A path can only be private if:
         // it's in this crate...
