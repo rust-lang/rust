@@ -356,6 +356,7 @@ pub struct CrateTranslation {
     pub metadata: Vec<u8>,
     pub reachable: Vec<StrBuf>,
     pub crate_formats: dependency_format::Dependencies,
+    pub no_builtins: bool,
 }
 
 /// Run the translation phase to LLVM, after which the AST and analysis can
