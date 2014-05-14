@@ -15,12 +15,12 @@
  */
 
 use mc = middle::mem_categorization;
+use middle::def;
 use middle::freevars;
 use middle::pat_util;
 use middle::ty;
 use middle::typeck;
 use syntax::ast;
-use syntax::ast_util;
 use syntax::codemap::{Span};
 use util::ppaux::Repr;
 
@@ -814,7 +814,7 @@ impl<'d,'t,TYPER:mc::Typer> ExprUseVisitor<'d,'t,TYPER> {
                             closure_expr: &ast::Expr,
                             freevars: &[freevars::freevar_entry]) {
         for freevar in freevars.iter() {
-            let id_var = ast_util::def_id_of_def(freevar.def).node;
+            let id_var = freevar.def.def_id().node;
             let cmt_var = return_if_err!(self.cat_captured_var(closure_expr.id,
                                                                closure_expr.span,
                                                                freevar.def));
@@ -850,11 +850,11 @@ impl<'d,'t,TYPER:mc::Typer> ExprUseVisitor<'d,'t,TYPER> {
     fn cat_captured_var(&mut self,
                         closure_id: ast::NodeId,
                         closure_span: Span,
-                        upvar_def: ast::Def)
+                        upvar_def: def::Def)
                         -> mc::McResult<mc::cmt> {
         // Create the cmt for the variable being borrowed, from the
         // caller's perspective
-        let var_id = ast_util::def_id_of_def(upvar_def).node;
+        let var_id = upvar_def.def_id().node;
         let var_ty = ty::node_id_to_type(self.tcx(), var_id);
         self.mc.cat_def(closure_id, closure_span, var_ty, upvar_def)
     }

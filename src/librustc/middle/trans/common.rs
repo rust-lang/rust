@@ -17,6 +17,7 @@ use lib::llvm::{ValueRef, BasicBlockRef, BuilderRef};
 use lib::llvm::{True, False, Bool};
 use lib::llvm::llvm;
 use lib;
+use middle::def;
 use middle::lang_items::LangItem;
 use middle::subst;
 use middle::subst::Subst;
@@ -454,7 +455,7 @@ impl<'a> Block<'a> {
         e.repr(self.tcx())
     }
 
-    pub fn def(&self, nid: ast::NodeId) -> ast::Def {
+    pub fn def(&self, nid: ast::NodeId) -> def::Def {
         match self.tcx().def_map.borrow().find(&nid) {
             Some(&v) => v,
             None => {
