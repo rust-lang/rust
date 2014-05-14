@@ -352,11 +352,11 @@ mod svh_visitor {
         }
 
         fn visit_struct_def(&mut self, s: &StructDef, ident: Ident,
-                            g: &Generics, n: NodeId, e: E) {
+                            g: &Generics, _n: NodeId, e: E) {
             SawStructDef(content(ident)).hash(self.st);
             // For some reason walk_struct_def does not call walk_generics.
             visit::walk_generics(self, g, e.clone());
-            visit::walk_struct_def(self, s, ident, g, n, e)
+            visit::walk_struct_def(self, s, e)
         }
 
         fn visit_variant(&mut self, v: &Variant, g: &Generics, e: E) {
@@ -461,8 +461,9 @@ mod svh_visitor {
             SawGenerics.hash(self.st); visit::walk_generics(self, g, e)
         }
 
-        fn visit_fn(&mut self, fk: &FnKind, fd: &FnDecl, b: &Block, s: Span, n: NodeId, e: E) {
-            SawFn.hash(self.st); visit::walk_fn(self, fk, fd, b, s, n, e)
+        fn visit_fn(&mut self, fk: &FnKind, fd: &FnDecl, b: &Block, s: Span,
+                    _n: NodeId, e: E) {
+            SawFn.hash(self.st); visit::walk_fn(self, fk, fd, b, s, e)
         }
 
         fn visit_ty_method(&mut self, t: &TypeMethod, e: E) {

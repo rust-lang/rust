@@ -45,16 +45,17 @@ extern "rust-intrinsic" {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn memcpy(dest: *mut u8, src: *u8, n: uint) {
+pub unsafe extern "C" fn memcpy(dest: *mut u8, src: *u8, n: uint) -> *mut u8 {
     let mut i = 0;
     while i < n {
         *(offset(dest as *u8, i as int) as *mut u8) = *offset(src, i as int);
         i += 1;
     }
+    return dest;
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn memmove(dest: *mut u8, src: *u8, n: uint) {
+pub unsafe extern "C" fn memmove(dest: *mut u8, src: *u8, n: uint) -> *mut u8 {
     if src < dest as *u8 { // copy from end
         let mut i = n;
         while i != 0 {
@@ -68,15 +69,17 @@ pub unsafe extern "C" fn memmove(dest: *mut u8, src: *u8, n: uint) {
             i += 1;
         }
     }
+    return dest;
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn memset(s: *mut u8, c: i32, n: uint) {
+pub unsafe extern "C" fn memset(s: *mut u8, c: i32, n: uint) -> *mut u8 {
     let mut i = 0;
     while i < n {
         *(offset(s as *u8, i as int) as *mut u8) = c as u8;
         i += 1;
     }
+    return s;
 }
 
 #[no_mangle]
