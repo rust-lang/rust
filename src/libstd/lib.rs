@@ -105,7 +105,7 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://static.rust-lang.org/doc/master")]
 #![feature(macro_rules, globs, asm, managed_boxes, thread_local, link_args,
-           simd, linkage, default_type_params, phase, concat_idents, quad_precision_float)]
+           linkage, default_type_params, phase, concat_idents, quad_precision_float)]
 
 // Don't link to std. We are std.
 #![no_std]
@@ -154,6 +154,7 @@ pub use core::ptr;
 pub use core::raw;
 pub use core::tuple;
 pub use core::result;
+pub use core::simd;
 
 // Run tests with libgreen instead of libnative.
 //
@@ -238,8 +239,6 @@ pub mod io;
 pub mod path;
 pub mod fmt;
 pub mod cleanup;
-#[experimental]
-pub mod simd;
 
 /* Unsupported interfaces */
 

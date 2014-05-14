@@ -42,7 +42,7 @@
        html_root_url = "http://static.rust-lang.org/doc/master")]
 
 #![no_std]
-#![feature(globs, macro_rules, managed_boxes, phase)]
+#![feature(globs, macro_rules, managed_boxes, phase, simd)]
 #![deny(missing_doc)]
 
 #[cfg(test)] extern crate realcore = "core";
@@ -117,6 +117,11 @@ pub mod slice;
 pub mod str;
 pub mod tuple;
 pub mod fmt;
+#[experimental]
+pub mod simd;
+
+#[cfg(stage0, not(test))]
+pub mod owned;
 
 // FIXME: this module should not exist. Once owned allocations are no longer a
 //        language type, this module can move outside to the owned allocation
