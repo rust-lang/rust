@@ -142,8 +142,12 @@ The two `Point`s are laid out inline inside the `Line` struct, which avoids the 
 
 Function parameters are laid out inline in the same way. A function that takes two points as arguments reserves space on the stack for the two point arguments:
 
-~~~~{.notrust}
-fn draw_line(from: Point, to: Point) { // Draw the line }
+~~~~
+# struct Point {
+#     x: int,
+#     y: int
+# }
+fn draw_line(from: Point, to: Point) { /* Draw the line */ }
 ~~~~
 
 
@@ -165,7 +169,7 @@ struct Point {
     y: int
 }
 
-fn draw_line(from: Point, to: Point) { // Draw the line }
+fn draw_line(from: Point, to: Point) { /* Draw the line */ }
 
 fn draw_polygon(points: ~[Point]) {
     let mut i = 0;
@@ -183,7 +187,7 @@ The type `~[...]` in Rust indicates a heap-allocated array containing a variable
 
 ~~~~
 # struct Point { x: int, y: int }
-# fn draw_line(from: Point, to: Point) { // Draw the line }
+# fn draw_line(from: Point, to: Point) { /* Draw the line */ }
 fn draw_polygon(points: ~[Point]) {
     let mut i = 0;
     while i < points.len() - 1 {
@@ -223,17 +227,22 @@ Rust is designed to guarantee that once a pointer is freed, it can never be used
 
 Revisiting the `draw_polygon` example:
 
-~~~~
+~~~~{.ignore}
 struct Point {
     x: int,
     y: int
 }
 
-fn draw_polygon(points: ~[Point]) { // Draw the line }
+fn draw_polygon(points: ~[Point]) { /* Draw the line */ }
+
+fn draw_line(from: Point, to: Point) { /* Draw the line */ }
 
 fn main() {
     // `points` is initially owned by `main()`
-    let points = ~[...];
+    let p1 = Point { x: 0, y: 0 }; 
+    let p2 = Point { x: 0, y: 100 }; 
+    let p3 = Point { x: 100, y: 100 }; 
+    let points = ~[p1, p2, p3]; 
     
     // `points` is given to `draw_polygon()`
     draw_polygon(points);
@@ -259,9 +268,14 @@ fn draw_polygon(points: ~[Point]) -> ~[Point] {
     return points;
 }
 
+fn draw_line(from: Point, to: Point) { /* Draw the line */ }
+
 fn main() {
     // `points` is initially owned by `main()`
-    let points = ~[...];
+    let p1 = Point { x: 0, y: 0 }; 
+    let p2 = Point { x: 0, y: 100 }; 
+    let p3 = Point { x: 100, y: 100 }; 
+    let points = ~[p1, p2, p3]; 
     
     // `points` is given to `draw_polygon()` then taken back.
     let points = draw_polygon(points);
@@ -301,6 +315,10 @@ Now that we have indicated that `Point` values should be copied and not moved, w
 #    x: int,
 #    y: int
 # }
+
+# fn draw_line(from: Point, to: Point) { /* Draw the line */ }
+
+# fn draw_polygon(points: ~[Point]) -> ~[Point] { points }
 
 fn main() {
     let point1 = Point { x:1, y:2 };
