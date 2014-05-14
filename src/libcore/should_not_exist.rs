@@ -8,6 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// As noted by this file name, this file should not exist. This file should not
+// exist because it performs allocations which libcore is not allowed to do. The
+// reason for this file's existence is that the `~[T]` and `~str` types are
+// language-defined types. Traits are defined in libcore, such as `Clone`, which
+// these types need to implement, but the implementation can only be found in
+// libcore.
+//
+// Plan of attack for solving this problem:
+//
+//      1. Implement DST
+//      2. Make `Box<T>` not a language feature
+//      3. Move `Box<T>` to a separate crate, liballoc.
+//      4. Implement relevant trais in liballoc, not libcore
+//
+// Currently, no progress has been made on this list.
+
 use char::Char;
 use clone::Clone;
 use container::Container;
