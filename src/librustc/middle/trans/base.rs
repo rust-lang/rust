@@ -2226,6 +2226,7 @@ pub fn trans_crate(krate: ast::Crate,
 
     let metadata_module = ccx.metadata_llmod;
     let formats = ccx.tcx.dependency_formats.borrow().clone();
+    let no_builtins = attr::contains_name(krate.attrs.as_slice(), "no_builtins");
 
     (ccx.tcx, CrateTranslation {
         context: llcx,
@@ -2235,5 +2236,6 @@ pub fn trans_crate(krate: ast::Crate,
         metadata: metadata,
         reachable: reachable,
         crate_formats: formats,
+        no_builtins: no_builtins,
     })
 }

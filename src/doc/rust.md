@@ -1799,6 +1799,8 @@ type int8_t = i8;
 - `no_start` - disable linking to the `native` crate, which specifies the
   "start" language item.
 - `no_std` - disable linking to the `std` crate.
+- `no_builtins` - disable optimizing certain code patterns to invocations of
+                  library functions that are assumed to exist
 
 ### Module-only attributes
 
