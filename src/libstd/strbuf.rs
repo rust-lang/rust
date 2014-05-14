@@ -20,6 +20,7 @@ use mem;
 use option::{None, Option, Some};
 use ptr::RawPtr;
 use ptr;
+use result::{Result, Ok, Err};
 use slice::{OwnedVector, Vector, CloneableVector};
 use str::{CharRange, OwnedStr, Str, StrSlice, StrAllocating};
 use str;
@@ -72,14 +73,17 @@ impl StrBuf {
         }
     }
 
-    /// Tries to create a new string buffer from the given byte
-    /// vector, validating that the vector is UTF-8 encoded.
+    /// Returns the vector as a string buffer, if possible, taking care not to
+    /// copy it.
+    ///
+    /// Returns `Err` with the original vector if the vector contains invalid
+    /// UTF-8.
     #[inline]
-    pub fn from_utf8(vec: Vec<u8>) -> Option<StrBuf> {
+    pub fn from_utf8(vec: Vec<u8>) -> Result<StrBuf, Vec<u8>> {
         if str::is_utf8(vec.as_slice()) {
-            Some(StrBuf { vec: vec })
+            Ok(StrBuf { vec: vec })
         } else {
-            None
+            Err(vec)
         }
     }
 
