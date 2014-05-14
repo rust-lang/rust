@@ -273,12 +273,7 @@ mod imp {
         assert_eq!(pthread_detach(native), 0);
     }
 
-    #[cfg(target_os = "macos")]
-    #[cfg(target_os = "android")]
     pub unsafe fn yield_now() { assert_eq!(sched_yield(), 0); }
-
-    #[cfg(not(target_os = "macos"), not(target_os = "android"))]
-    pub unsafe fn yield_now() { assert_eq!(pthread_yield(), 0); }
 
     // glibc >= 2.15 has a __pthread_get_minstack() function that returns
     // PTHREAD_STACK_MIN plus however many bytes are needed for thread-local
@@ -326,12 +321,7 @@ mod imp {
         fn pthread_attr_setdetachstate(attr: *mut libc::pthread_attr_t,
                                        state: libc::c_int) -> libc::c_int;
         fn pthread_detach(thread: libc::pthread_t) -> libc::c_int;
-
-        #[cfg(target_os = "macos")]
-        #[cfg(target_os = "android")]
         fn sched_yield() -> libc::c_int;
-        #[cfg(not(target_os = "macos"), not(target_os = "android"))]
-        fn pthread_yield() -> libc::c_int;
     }
 }
 
