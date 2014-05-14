@@ -62,7 +62,7 @@ fn main() {
             cwd: Some(&cwd),
             env: Some(my_env.append_one(env).as_slice()),
             .. ProcessConfig::new()
-        }).unwrap().wait_with_output();
+        }).unwrap().wait_with_output().unwrap();
 
         // display the output
         assert!(io::stdout().write(p.output.as_slice()).is_ok());

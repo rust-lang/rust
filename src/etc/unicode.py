@@ -169,7 +169,7 @@ fn bsearch_range_table(c: char, r: &'static [(char,char)]) -> bool {
         else if hi < c { Less }
         else { Greater }
     }) != None
-}\n\n
+}\n
 """);
 
 def emit_property_module(f, mod, tbl):
@@ -193,11 +193,11 @@ def emit_property_module(f, mod, tbl):
         f.write("    pub fn %s(c: char) -> bool {\n" % cat)
         f.write("        super::bsearch_range_table(c, %s_table)\n" % cat)
         f.write("    }\n\n")
-    f.write("}\n")
+    f.write("}\n\n")
 
 
 def emit_conversions_module(f, lowerupper, upperlower):
-    f.write("pub mod conversions {\n")
+    f.write("pub mod conversions {")
     f.write("""
     use cmp::{Equal, Less, Greater};
     use slice::ImmutableVector;
@@ -225,13 +225,14 @@ def emit_conversions_module(f, lowerupper, upperlower):
             else { Greater }
         })
     }
+
 """);
     emit_caseconversion_table(f, "LuLl", upperlower)
     emit_caseconversion_table(f, "LlLu", lowerupper)
     f.write("}\n")
 
 def emit_caseconversion_table(f, name, table):
-    f.write("   static %s_table : &'static [(char, char)] = &[\n" % name)
+    f.write("    static %s_table : &'static [(char, char)] = &[\n" % name)
     sorted_table = sorted(table.iteritems(), key=operator.itemgetter(0))
     ix = 0
     for key, value in sorted_table:
@@ -255,13 +256,13 @@ def format_table_content(f, content, indent):
             line = " "*indent + chunk
     f.write(line)
 
-def emit_decomp_module(f, canon, compat, combine):
+def emit_core_norm_module(f, canon, compat):
     canon_keys = canon.keys()
     canon_keys.sort()
 
     compat_keys = compat.keys()
     compat_keys.sort()
-    f.write("pub mod decompose {\n");
+    f.write("pub mod normalization {\n");
     f.write("    use option::Option;\n");
     f.write("    use option::{Some, None};\n");
     f.write("    use slice::ImmutableVector;\n");
@@ -278,23 +279,6 @@ def emit_decomp_module(f, canon, compat, combine):
                 Some(result)
             }
             None => None
-        }
-    }\n
-""")
-
-    f.write("""
-    fn bsearch_range_value_table(c: char, r: &'static [(char, char, u8)]) -> u8 {
-        use cmp::{Equal, Less, Greater};
-        match r.bsearch(|&(lo, hi, _)| {
-            if lo <= c && c <= hi { Equal }
-            else if hi < c { Less }
-            else { Greater }
-        }) {
-            Some(idx) => {
-                let (_, _, result) = r[idx];
-                result
-            }
-            None => 0
         }
     }\n\n
 """)
@@ -337,28 +321,24 @@ def emit_decomp_module(f, canon, compat, combine):
     format_table_content(f, data, 8)
     f.write("\n    ];\n\n")
 
-    f.write("    static combining_class_table : &'static [(char, char, u8)] = &[\n")
-    ix = 0
-    for pair in combine:
-        f.write(ch_prefix(ix))
-        f.write("(%s, %s, %s)" % (escape_char(pair[0]), escape_char(pair[1]), pair[2]))
-        ix += 1
-    f.write("\n    ];\n")
-
-    f.write("    pub fn canonical(c: char, i: |char|) "
-        + "{ d(c, i, false); }\n\n")
-    f.write("    pub fn compatibility(c: char, i: |char|) "
-            +"{ d(c, i, true); }\n\n")
-    f.write("    pub fn canonical_combining_class(c: char) -> u8 {\n"
-        + "        bsearch_range_value_table(c, combining_class_table)\n"
-        + "    }\n\n")
-    f.write("    fn d(c: char, i: |char|, k: bool) {\n")
-    f.write("        use iter::Iterator;\n");
-
-    f.write("        if c <= '\\x7f' { i(c); return; }\n")
-
-    # First check the canonical decompositions
     f.write("""
+    pub fn decompose_canonical(c: char, i: |char|) { d(c, i, false); }
+
+    pub fn decompose_compatible(c: char, i: |char|) { d(c, i, true); }
+
+    fn d(c: char, i: |char|, k: bool) {
+        use iter::Iterator;
+
+        // 7-bit ASCII never decomposes
+        if c <= '\\x7f' { i(c); return; }
+
+        // Perform decomposition for Hangul
+        if (c as u32) >= S_BASE && (c as u32) < (S_BASE + S_COUNT) {
+            decompose_hangul(c, i);
+            return;
+        }
+
+        // First check the canonical decompositions
         match bsearch_table(c, canonical_table) {
             Some(canon) => {
                 for x in canon.iter() {
@@ -367,13 +347,12 @@ def emit_decomp_module(f, canon, compat, combine):
                 return;
             }
             None => ()
-        }\n\n""")
+        }
 
-    # Bottom out if we're not doing compat.
-    f.write("        if !k { i(c); return; }\n")
+        // Bottom out if we're not doing compat.
+        if !k { i(c); return; }
 
-    # Then check the compatibility decompositions
-    f.write("""
+        // Then check the compatibility decompositions
         match bsearch_table(c, compatibility_table) {
             Some(compat) => {
                 for x in compat.iter() {
@@ -382,24 +361,83 @@ def emit_decomp_module(f, canon, compat, combine):
                 return;
             }
             None => ()
-        }\n\n""")
+        }
 
-    # Finally bottom out.
-    f.write("        i(c);\n")
-    f.write("    }\n")
-    f.write("}\n\n")
+        // Finally bottom out.
+        i(c);
+    }
 
-r = "unicode.rs"
-for i in [r]:
-    if os.path.exists(i):
-        os.remove(i);
-rf = open(r, "w")
+    // Constants from Unicode 6.2.0 Section 3.12 Conjoining Jamo Behavior
+    static S_BASE: u32 = 0xAC00;
+    static L_BASE: u32 = 0x1100;
+    static V_BASE: u32 = 0x1161;
+    static T_BASE: u32 = 0x11A7;
+    static L_COUNT: u32 = 19;
+    static V_COUNT: u32 = 21;
+    static T_COUNT: u32 = 28;
+    static N_COUNT: u32 = (V_COUNT * T_COUNT);
+    static S_COUNT: u32 = (L_COUNT * N_COUNT);
 
-(canon_decomp, compat_decomp, gencats,
- combines, lowerupper, upperlower) = load_unicode_data("UnicodeData.txt")
+    // Decompose a precomposed Hangul syllable
+    fn decompose_hangul(s: char, f: |char|) {
+        use cast::transmute;
 
-# Preamble
-rf.write('''// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+        let si = s as u32 - S_BASE;
+
+        let li = si / N_COUNT;
+        unsafe {
+            f(transmute(L_BASE + li));
+
+            let vi = (si % N_COUNT) / T_COUNT;
+            f(transmute(V_BASE + vi));
+
+            let ti = si % T_COUNT;
+            if ti > 0 {
+                f(transmute(T_BASE + ti));
+            }
+        }
+    }
+}
+
+""")
+
+def emit_std_norm_module(f, combine):
+    f.write("pub mod normalization {\n");
+    f.write("    use option::{Some, None};\n");
+    f.write("    use slice::ImmutableVector;\n");
+
+    f.write("""
+    fn bsearch_range_value_table(c: char, r: &'static [(char, char, u8)]) -> u8 {
+        use cmp::{Equal, Less, Greater};
+        match r.bsearch(|&(lo, hi, _)| {
+            if lo <= c && c <= hi { Equal }
+            else if hi < c { Less }
+            else { Greater }
+        }) {
+            Some(idx) => {
+                let (_, _, result) = r[idx];
+                result
+            }
+            None => 0
+        }
+    }\n\n
+""")
+
+    f.write("    static combining_class_table : &'static [(char, char, u8)] = &[\n")
+    ix = 0
+    for pair in combine:
+        f.write(ch_prefix(ix))
+        f.write("(%s, %s, %s)" % (escape_char(pair[0]), escape_char(pair[1]), pair[2]))
+        ix += 1
+    f.write("\n    ];\n\n")
+
+    f.write("    pub fn canonical_combining_class(c: char) -> u8 {\n"
+        + "        bsearch_range_value_table(c, combining_class_table)\n"
+        + "    }\n")
+    f.write("}\n")
+
+
+preamble = '''// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -409,23 +447,45 @@ rf.write('''// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGH
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// The following code was generated by "src/etc/unicode.py"
+// NOTE: The following code was generated by "src/etc/unicode.py", do not edit directly
 
-#![allow(missing_doc)]
-#![allow(non_uppercase_statics)]
+#![allow(missing_doc, non_uppercase_statics)]
 
-''')
+'''
 
-emit_bsearch_range_table(rf);
-emit_property_module(rf, "general_category", gencats)
+(canon_decomp, compat_decomp, gencats,
+ combines, lowerupper, upperlower) = load_unicode_data("UnicodeData.txt")
 
-emit_decomp_module(rf, canon_decomp, compat_decomp, combines)
+def gen_core_unicode():
+    r = "core_unicode.rs"
+    if os.path.exists(r):
+        os.remove(r);
+    with open(r, "w") as rf:
+        # Preamble
+        rf.write(preamble)
 
-derived = load_properties("DerivedCoreProperties.txt",
-        ["XID_Start", "XID_Continue", "Alphabetic", "Lowercase", "Uppercase"])
+        emit_bsearch_range_table(rf);
+        emit_property_module(rf, "general_category", gencats)
 
-emit_property_module(rf, "derived_property", derived)
+        emit_core_norm_module(rf, canon_decomp, compat_decomp)
 
-props = load_properties("PropList.txt", ["White_Space"])
-emit_property_module(rf, "property", props)
-emit_conversions_module(rf, lowerupper, upperlower)
+        derived = load_properties("DerivedCoreProperties.txt",
+                ["XID_Start", "XID_Continue", "Alphabetic", "Lowercase", "Uppercase"])
+
+        emit_property_module(rf, "derived_property", derived)
+
+        props = load_properties("PropList.txt", ["White_Space"])
+        emit_property_module(rf, "property", props)
+        emit_conversions_module(rf, lowerupper, upperlower)
+
+def gen_std_unicode():
+    r = "std_unicode.rs"
+    if os.path.exists(r):
+        os.remove(r);
+    with open(r, "w") as rf:
+        # Preamble
+        rf.write(preamble)
+        emit_std_norm_module(rf, combines)
+
+gen_core_unicode()
+gen_std_unicode()

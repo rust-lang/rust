@@ -168,7 +168,7 @@ pub fn tt_to_str(tt: &ast::TokenTree) -> StrBuf {
 }
 
 pub fn tts_to_str(tts: &[ast::TokenTree]) -> StrBuf {
-    to_str(|s| s.print_tts(&tts))
+    to_str(|s| s.print_tts(tts))
 }
 
 pub fn stmt_to_str(stmt: &ast::Stmt) -> StrBuf {
@@ -244,6 +244,15 @@ pub fn visibility_qualified(vis: ast::Visibility, s: &str) -> StrBuf {
     match vis {
         ast::Public => format!("pub {}", s).to_strbuf(),
         ast::Inherited => s.to_strbuf()
+    }
+}
+
+fn needs_parentheses(expr: &ast::Expr) -> bool {
+    match expr.node {
+        ast::ExprAssign(..) | ast::ExprBinary(..) |
+        ast::ExprFnBlock(..) | ast::ExprProc(..) |
+        ast::ExprAssignOp(..) | ast::ExprCast(..) => true,
+        _ => false,
     }
 }
 
@@ -714,7 +723,7 @@ impl<'a> State<'a> {
                 try!(self.print_ident(item.ident));
                 try!(self.cbox(indent_unit));
                 try!(self.popen());
-                try!(self.print_tts(&(tts.as_slice())));
+                try!(self.print_tts(tts.as_slice()));
                 try!(self.pclose());
                 try!(self.end());
             }
@@ -830,9 +839,15 @@ impl<'a> State<'a> {
     /// expression arguments as expressions). It can be done! I think.
     pub fn print_tt(&mut self, tt: &ast::TokenTree) -> IoResult<()> {
         match *tt {
-            ast::TTDelim(ref tts) => self.print_tts(&(tts.as_slice())),
+            ast::TTDelim(ref tts) => self.print_tts(tts.as_slice()),
             ast::TTTok(_, ref tk) => {
-                word(&mut self.s, parse::token::to_str(tk).as_slice())
+                try!(word(&mut self.s, parse::token::to_str(tk).as_slice()));
+                match *tk {
+                    parse::token::DOC_COMMENT(..) => {
+                        hardbreak(&mut self.s)
+                    }
+                    _ => Ok(())
+                }
             }
             ast::TTSeq(_, ref tts, ref sep, zerok) => {
                 try!(word(&mut self.s, "$("));
@@ -856,7 +871,7 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn print_tts(&mut self, tts: & &[ast::TokenTree]) -> IoResult<()> {
+    pub fn print_tts(&mut self, tts: &[ast::TokenTree]) -> IoResult<()> {
         try!(self.ibox(0));
         for (i, tt) in tts.iter().enumerate() {
             if i != 0 {
@@ -1113,7 +1128,7 @@ impl<'a> State<'a> {
                 try!(self.print_path(pth, false));
                 try!(word(&mut self.s, "!"));
                 try!(self.popen());
-                try!(self.print_tts(&tts.as_slice()));
+                try!(self.print_tts(tts.as_slice()));
                 self.pclose()
             }
         }
@@ -1134,6 +1149,18 @@ impl<'a> State<'a> {
         try!(self.popen());
         try!(self.commasep_exprs(Inconsistent, args));
         self.pclose()
+    }
+
+    pub fn print_expr_maybe_paren(&mut self, expr: &ast::Expr) -> IoResult<()> {
+        let needs_par = needs_parentheses(expr);
+        if needs_par {
+            try!(self.popen());
+        }
+        try!(self.print_expr(expr));
+        if needs_par {
+            try!(self.pclose());
+        }
+        Ok(())
     }
 
     pub fn print_expr(&mut self, expr: &ast::Expr) -> IoResult<()> {
@@ -1209,7 +1236,7 @@ impl<'a> State<'a> {
                 try!(self.pclose());
             }
             ast::ExprCall(func, ref args) => {
-                try!(self.print_expr(func));
+                try!(self.print_expr_maybe_paren(func));
                 try!(self.print_call_post(args.as_slice()));
             }
             ast::ExprMethodCall(ident, ref tys, ref args) => {
@@ -1233,17 +1260,12 @@ impl<'a> State<'a> {
             }
             ast::ExprUnary(op, expr) => {
                 try!(word(&mut self.s, ast_util::unop_to_str(op)));
-                try!(self.print_expr(expr));
+                try!(self.print_expr_maybe_paren(expr));
             }
             ast::ExprAddrOf(m, expr) => {
                 try!(word(&mut self.s, "&"));
                 try!(self.print_mutability(m));
-                // Avoid `& &e` => `&&e`.
-                match (m, &expr.node) {
-                    (ast::MutImmutable, &ast::ExprAddrOf(..)) => try!(space(&mut self.s)),
-                    _ => { }
-                }
-                try!(self.print_expr(expr));
+                try!(self.print_expr_maybe_paren(expr));
             }
             ast::ExprLit(lit) => try!(self.print_literal(lit)),
             ast::ExprCast(expr, ty) => {
@@ -1474,22 +1496,27 @@ impl<'a> State<'a> {
                 try!(self.popen());
                 try!(self.print_string(a.asm.get(), a.asm_str_style));
                 try!(self.word_space(":"));
-                for &(ref co, o) in a.outputs.iter() {
-                    try!(self.print_string(co.get(), ast::CookedStr));
-                    try!(self.popen());
-                    try!(self.print_expr(o));
-                    try!(self.pclose());
-                    try!(self.word_space(","));
-                }
+
+                try!(self.commasep(Inconsistent, a.outputs.as_slice(), |s, &(ref co, o)| {
+                    try!(s.print_string(co.get(), ast::CookedStr));
+                    try!(s.popen());
+                    try!(s.print_expr(o));
+                    try!(s.pclose());
+                    Ok(())
+                }));
+                try!(space(&mut self.s));
                 try!(self.word_space(":"));
-                for &(ref co, o) in a.inputs.iter() {
-                    try!(self.print_string(co.get(), ast::CookedStr));
-                    try!(self.popen());
-                    try!(self.print_expr(o));
-                    try!(self.pclose());
-                    try!(self.word_space(","));
-                }
+
+                try!(self.commasep(Inconsistent, a.inputs.as_slice(), |s, &(ref co, o)| {
+                    try!(s.print_string(co.get(), ast::CookedStr));
+                    try!(s.popen());
+                    try!(s.print_expr(o));
+                    try!(s.pclose());
+                    Ok(())
+                }));
+                try!(space(&mut self.s));
                 try!(self.word_space(":"));
+
                 try!(self.print_string(a.clobbers.get(), ast::CookedStr));
                 try!(self.pclose());
             }
@@ -2211,11 +2238,13 @@ impl<'a> State<'a> {
             }
             ast::LitInt(i, t) => {
                 word(&mut self.s,
-                     ast_util::int_ty_to_str(t, Some(i)).as_slice())
+                     ast_util::int_ty_to_str(t, Some(i),
+                                             ast_util::AutoSuffix).as_slice())
             }
             ast::LitUint(u, t) => {
                 word(&mut self.s,
-                     ast_util::uint_ty_to_str(t, Some(u)).as_slice())
+                     ast_util::uint_ty_to_str(t, Some(u),
+                                              ast_util::ForceSuffix).as_slice())
             }
             ast::LitIntUnsuffixed(i) => {
                 word(&mut self.s, format!("{}", i))

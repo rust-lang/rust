@@ -90,7 +90,7 @@ fn get_base_type(inference_context: &InferCtxt,
     }
 }
 
-fn type_is_defined_in_local_crate(original_type: t) -> bool {
+fn type_is_defined_in_local_crate(tcx: &ty::ctxt, original_type: t) -> bool {
     /*!
      *
      * For coherence, when we have `impl Trait for Type`, we need to
@@ -107,6 +107,14 @@ fn type_is_defined_in_local_crate(original_type: t) -> bool {
             ty_struct(def_id, _) => {
                 if def_id.krate == ast::LOCAL_CRATE {
                     found_nominal = true;
+                }
+            }
+            ty_uniq(..) => {
+                match tcx.lang_items.owned_box() {
+                    Some(did) if did.krate == ast::LOCAL_CRATE => {
+                        found_nominal = true;
+                    }
+                    _ => {}
                 }
             }
 
@@ -194,11 +202,10 @@ impl<'a> visit::Visitor<()> for PrivilegedScopeVisitor<'a> {
                 }
             }
             ItemImpl(_, Some(ref trait_ref), _, _) => {
+                let tcx = self.cc.crate_context.tcx;
                 // `for_ty` is `Type` in `impl Trait for Type`
-                let for_ty =
-                    ty::node_id_to_type(self.cc.crate_context.tcx,
-                                        item.id);
-                if !type_is_defined_in_local_crate(for_ty) {
+                let for_ty = ty::node_id_to_type(tcx, item.id);
+                if !type_is_defined_in_local_crate(tcx, for_ty) {
                     // This implementation is not in scope of its base
                     // type. This still might be OK if the trait is
                     // defined in the same crate.

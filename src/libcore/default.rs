@@ -10,8 +10,6 @@
 
 //! The `Default` trait for types which may have meaningful default values
 
-use owned::Box;
-
 /// A trait that types which have a useful default value should implement.
 pub trait Default {
     /// Return the "default value" for a type.
@@ -20,8 +18,4 @@ pub trait Default {
 
 impl<T: Default + 'static> Default for @T {
     fn default() -> @T { @Default::default() }
-}
-
-impl<T: Default> Default for Box<T> {
-    fn default() -> Box<T> { box Default::default() }
 }

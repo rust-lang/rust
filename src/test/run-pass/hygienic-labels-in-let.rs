@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-pretty: pprust doesn't print hygiene output
+
 #![feature(macro_rules)]
 
 macro_rules! loop_x {

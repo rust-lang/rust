@@ -47,7 +47,6 @@ use std::rc::Rc;
 //        fixed-size vectors and strings: [] and ""/_
 //        vector and string slices: &[] and &""
 //        tuples: (,)
-//        records: {...}
 //        enums: foo(...)
 //        floating point literals and operators
 //        & and * pointers
@@ -240,6 +239,13 @@ impl<'a> ConstEvalVisitor<'a> {
             ast::ExprPath(_) => self.lookup_constness(e),
 
             ast::ExprRepeat(..) => general_const,
+
+            ast::ExprBlock(ref block) => {
+                match block.expr {
+                    Some(ref e) => self.classify(&**e),
+                    None => integral_const
+                }
+            }
 
             _ => non_const
         };
@@ -479,6 +485,12 @@ pub fn eval_const_expr_partial<T: ty::ExprTyProvider>(tcx: &T, e: &Expr)
       // If we have a vstore, just keep going; it has to be a string
       ExprVstore(e, _) => eval_const_expr_partial(tcx, e),
       ExprParen(e)     => eval_const_expr_partial(tcx, e),
+      ExprBlock(ref block) => {
+        match block.expr {
+            Some(ref expr) => eval_const_expr_partial(tcx, &**expr),
+            None => Ok(const_int(0i64))
+        }
+      }
       _ => Err("unsupported constant expr".to_strbuf())
     }
 }

@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-pretty #13324
-
 #![allow(dead_code)]
 
 fn foo<T>() {}
@@ -45,6 +43,12 @@ fn g<'a>(a: &'a int, f: proc<'b>(&'b int) -> &'b int) -> &'a int {
     f(a)
 }
 
+struct A;
+
+impl A {
+    fn foo<T>(&self) {}
+}
+
 fn bar<'b>() {
     foo::<||>();
     foo::<|| -> ()>();
@@ -60,17 +64,25 @@ fn bar<'b>() {
     foo::<proc():Share>();
     foo::<proc<'a>(int, f32, &'a int):'static + Share -> &'a int>();
 
+    foo::<<'a>||>();
+
     // issue #11209
     let _: ||: 'b; // for comparison
     let _: <'a> ||;
 
     let _: Option<||:'b>;
-    // let _: Option<<'a>||>;
+    let _: Option<<'a>||>;
     let _: Option< <'a>||>;
 
     // issue #11210
     let _: ||: 'static;
+
+    let a = A;
+    a.foo::<<'a>||>();
 }
+
+struct B<T>;
+impl<'b> B<<'a>||: 'b> {}
 
 pub fn main() {
 }

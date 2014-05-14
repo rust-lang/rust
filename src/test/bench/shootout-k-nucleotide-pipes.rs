@@ -9,8 +9,8 @@
 // except according to those terms.
 
 // ignore-android: FIXME(#10393)
+// ignore-pretty very bad with line comments
 
-// ignore-pretty the `let to_child` line gets an extra newline
 // multi tasking k-nucleotide
 
 extern crate collections;

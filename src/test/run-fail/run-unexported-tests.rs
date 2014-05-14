@@ -11,6 +11,7 @@
 // error-pattern:runned an unexported test
 // compile-flags:--test
 // check-stdout
+// ignore-pretty: does not work well with `--test`
 
 mod m {
     pub fn exported() { }
