@@ -116,9 +116,6 @@ pub mod slice;
 pub mod str;
 pub mod tuple;
 
-#[cfg(stage0, not(test))]
-pub mod owned;
-
 // FIXME: this module should not exist. Once owned allocations are no longer a
 //        language type, this module can move outside to the owned allocation
 //        crate.
