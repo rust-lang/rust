@@ -136,7 +136,8 @@ pub mod win32 {
                     // closure returned invalid UTF-16, rather than
                     // set `res` to None and continue.
                     let s = str::from_utf16(sub)
-                        .expect("fill_utf16_buf_and_decode: closure created invalid UTF-16");
+                        .expect("fill_utf16_buf_and_decode: closure created invalid UTF-16")
+                        .into_owned();
                     res = option::Some(s)
                 }
             }
@@ -210,7 +211,7 @@ pub fn env_as_bytes() -> Vec<(~[u8],~[u8])> {
                 let p = &*ch.offset(i);
                 let len = ptr::position(p, |c| *c == 0);
                 raw::buf_as_slice(p, len, |s| {
-                    result.push(str::from_utf16_lossy(s).into_bytes());
+                    result.push(str::from_utf16_lossy(s).into_owned().into_bytes());
                 });
                 i += len as int + 1;
             }
@@ -863,7 +864,7 @@ fn real_args() -> Vec<~str> {
         let opt_s = slice::raw::buf_as_slice(ptr, len, |buf| {
             str::from_utf16(str::truncate_utf16_at_nul(buf))
         });
-        opt_s.expect("CommandLineToArgvW returned invalid UTF-16")
+        opt_s.expect("CommandLineToArgvW returned invalid UTF-16").into_owned()
     });
 
     unsafe {

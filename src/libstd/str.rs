@@ -347,7 +347,7 @@ Section: Misc
 /// v[4] = 0xD800;
 /// assert_eq!(str::from_utf16(v), None);
 /// ```
-pub fn from_utf16(v: &[u16]) -> Option<~str> {
+pub fn from_utf16(v: &[u16]) -> Option<StrBuf> {
     let mut s = StrBuf::with_capacity(v.len() / 2);
     for c in utf16_items(v) {
         match c {
@@ -355,7 +355,7 @@ pub fn from_utf16(v: &[u16]) -> Option<~str> {
             LoneSurrogate(_) => return None
         }
     }
-    Some(s.into_owned())
+    Some(s.into_strbuf())
 }
 
 /// Decode a UTF-16 encoded vector `v` into a string, replacing
@@ -373,7 +373,7 @@ pub fn from_utf16(v: &[u16]) -> Option<~str> {
 /// assert_eq!(str::from_utf16_lossy(v),
 ///            "𝄞mus\uFFFDic\uFFFD".to_owned());
 /// ```
-pub fn from_utf16_lossy(v: &[u16]) -> ~str {
+pub fn from_utf16_lossy(v: &[u16]) -> StrBuf {
     utf16_items(v).map(|c| c.to_char_lossy()).collect()
 }
 
@@ -1658,8 +1658,9 @@ mod tests {
             assert!(is_utf16(u.as_slice()));
             assert_eq!(s.to_utf16(), u);
 
-            assert_eq!(from_utf16(u.as_slice()).unwrap(), s);
+            let s = s.to_strbuf();
             assert_eq!(from_utf16_lossy(u.as_slice()), s);
+            assert_eq!(from_utf16(u.as_slice()).unwrap(), s);
 
             assert_eq!(from_utf16(s.to_utf16().as_slice()).unwrap(), s);
             assert_eq!(from_utf16(u.as_slice()).unwrap().to_utf16(), u);
@@ -1685,15 +1686,16 @@ mod tests {
     fn test_utf16_lossy() {
         // completely positive cases tested above.
         // lead + eof
-        assert_eq!(from_utf16_lossy([0xD800]), "\uFFFD".to_owned());
+        assert_eq!(from_utf16_lossy([0xD800]), "\uFFFD".to_strbuf());
         // lead + lead
-        assert_eq!(from_utf16_lossy([0xD800, 0xD800]), "\uFFFD\uFFFD".to_owned());
+        assert_eq!(from_utf16_lossy([0xD800, 0xD800]), "\uFFFD\uFFFD".to_strbuf());
 
         // isolated trail
-        assert_eq!(from_utf16_lossy([0x0061, 0xDC00]), "a\uFFFD".to_owned());
+        assert_eq!(from_utf16_lossy([0x0061, 0xDC00]), "a\uFFFD".to_strbuf());
 
         // general
-        assert_eq!(from_utf16_lossy([0xD800, 0xd801, 0xdc8b, 0xD800]), "\uFFFD𐒋\uFFFD".to_owned());
+        assert_eq!(from_utf16_lossy([0xD800, 0xd801, 0xdc8b, 0xD800]),
+                   "\uFFFD𐒋\uFFFD".to_strbuf());
     }
 
     #[test]
