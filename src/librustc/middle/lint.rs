@@ -1775,7 +1775,7 @@ impl<'a> Visitor<()> for Context<'a> {
     fn visit_fn(&mut self, fk: &visit::FnKind, decl: &ast::FnDecl,
                 body: &ast::Block, span: Span, id: ast::NodeId, _: ()) {
         let recurse = |this: &mut Context| {
-            visit::walk_fn(this, fk, decl, body, span, id, ());
+            visit::walk_fn(this, fk, decl, body, span, ());
         };
 
         for a in decl.inputs.iter(){
@@ -1810,15 +1810,15 @@ impl<'a> Visitor<()> for Context<'a> {
 
     fn visit_struct_def(&mut self,
                         s: &ast::StructDef,
-                        i: ast::Ident,
-                        g: &ast::Generics,
+                        _: ast::Ident,
+                        _: &ast::Generics,
                         id: ast::NodeId,
                         _: ()) {
         check_struct_uppercase_variable(self, s);
 
         let old_id = self.cur_struct_def_id;
         self.cur_struct_def_id = id;
-        visit::walk_struct_def(self, s, i, g, id, ());
+        visit::walk_struct_def(self, s, ());
         self.cur_struct_def_id = old_id;
     }
 

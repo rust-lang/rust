@@ -79,13 +79,13 @@ pub trait Visitor<E: Clone> {
     fn visit_expr_post(&mut self, _ex: &Expr, _e: E) { }
     fn visit_ty(&mut self, t: &Ty, e: E) { walk_ty(self, t, e) }
     fn visit_generics(&mut self, g: &Generics, e: E) { walk_generics(self, g, e) }
-    fn visit_fn(&mut self, fk: &FnKind, fd: &FnDecl, b: &Block, s: Span, n: NodeId, e: E) {
-        walk_fn(self, fk, fd, b, s, n , e)
+    fn visit_fn(&mut self, fk: &FnKind, fd: &FnDecl, b: &Block, s: Span, _: NodeId, e: E) {
+        walk_fn(self, fk, fd, b, s, e)
     }
     fn visit_ty_method(&mut self, t: &TypeMethod, e: E) { walk_ty_method(self, t, e) }
     fn visit_trait_method(&mut self, t: &TraitMethod, e: E) { walk_trait_method(self, t, e) }
-    fn visit_struct_def(&mut self, s: &StructDef, i: Ident, g: &Generics, n: NodeId, e: E) {
-        walk_struct_def(self, s, i, g, n, e)
+    fn visit_struct_def(&mut self, s: &StructDef, _: Ident, _: &Generics, _: NodeId, e: E) {
+        walk_struct_def(self, s, e)
     }
     fn visit_struct_field(&mut self, s: &StructField, e: E) { walk_struct_field(self, s, e) }
     fn visit_variant(&mut self, v: &Variant, g: &Generics, e: E) { walk_variant(self, v, g, e) }
@@ -522,7 +522,6 @@ pub fn walk_fn<E: Clone, V: Visitor<E>>(visitor: &mut V,
                                         function_declaration: &FnDecl,
                                         function_body: &Block,
                                         _span: Span,
-                                        _: NodeId,
                                         env: E) {
     walk_fn_decl(visitor, function_declaration, env.clone());
 
@@ -566,9 +565,6 @@ pub fn walk_trait_method<E: Clone, V: Visitor<E>>(visitor: &mut V,
 
 pub fn walk_struct_def<E: Clone, V: Visitor<E>>(visitor: &mut V,
                                                 struct_definition: &StructDef,
-                                                _: Ident,
-                                                _: &Generics,
-                                                _: NodeId,
                                                 env: E) {
     match struct_definition.super_struct {
         Some(t) => visitor.visit_ty(t, env.clone()),

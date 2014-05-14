@@ -102,10 +102,10 @@ impl<'a, 'b> Visitor<Scope<'a>> for LifetimeContext<'b> {
             visit::FkMethod(_, generics, _) => {
                 self.visit_fn_decl(
                     n, generics, scope,
-                    |this, scope1| visit::walk_fn(this, fk, fd, b, s, n, scope1))
+                    |this, scope1| visit::walk_fn(this, fk, fd, b, s, scope1))
             }
             visit::FkFnBlock(..) => {
-                visit::walk_fn(self, fk, fd, b, s, n, scope)
+                visit::walk_fn(self, fk, fd, b, s, scope)
             }
         }
     }
