@@ -635,14 +635,14 @@ impl<T> Vec<T> {
     /// ```
     pub fn truncate(&mut self, len: uint) {
         unsafe {
-            let mut i = len;
             // drop any extra elements
-            while i < self.len {
-                ptr::read(self.as_slice().unsafe_ref(i));
-                i += 1;
+            while len < self.len {
+                // decrement len before the read(), so a failure on Drop doesn't
+                // re-drop the just-failed value.
+                self.len -= 1;
+                ptr::read(self.as_slice().unsafe_ref(self.len));
             }
         }
-        self.len = len;
     }
 
     /// Work with `self` as a mutable slice.
@@ -1861,5 +1861,40 @@ mod tests {
         assert_eq!(b.len(), 2);
         assert_eq!(b[0].x, 42);
         assert_eq!(b[1].x, 84);
+    }
+
+    #[test]
+    fn test_vec_truncate_drop() {
+        static mut drops: uint = 0;
+        struct Elem(int);
+        impl Drop for Elem {
+            fn drop(&mut self) {
+                unsafe { drops += 1; }
+            }
+        }
+
+        let mut v = vec![Elem(1), Elem(2), Elem(3), Elem(4), Elem(5)];
+        assert_eq!(unsafe { drops }, 0);
+        v.truncate(3);
+        assert_eq!(unsafe { drops }, 2);
+        v.truncate(0);
+        assert_eq!(unsafe { drops }, 5);
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_vec_truncate_fail() {
+        struct BadElem(int);
+        impl Drop for BadElem {
+            fn drop(&mut self) {
+                let BadElem(ref mut x) = *self;
+                if *x == 0xbadbeef {
+                    fail!("BadElem failure: 0xbadbeef")
+                }
+            }
+        }
+
+        let mut v = vec![BadElem(1), BadElem(2), BadElem(0xbadbeef), BadElem(4)];
+        v.truncate(0);
     }
 }
