@@ -383,7 +383,7 @@ fn visit_fn(ir: &mut IrMaps,
 
     // gather up the various local variables, significant expressions,
     // and so forth:
-    visit::walk_fn(&mut fn_maps, fk, decl, body, sp, id, ());
+    visit::walk_fn(&mut fn_maps, fk, decl, body, sp, ());
 
     // Special nodes and variables:
     // - exit_ln represents the end of the fn, either by return or fail
