@@ -17,7 +17,7 @@ macro_rules! fail(
         fail!("explicit failure")
     );
     ($msg:expr) => (
-        ::failure::begin_unwind($msg, file!(), line!())
+        ::core::failure::begin_unwind($msg, file!(), line!())
     );
 )
 

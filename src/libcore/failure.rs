@@ -10,7 +10,7 @@
 
 //! Failure support for libcore
 
-#![allow(dead_code)]
+#![allow(dead_code, missing_doc)]
 
 #[cfg(not(test))]
 use str::raw::c_str_to_static_slice;
