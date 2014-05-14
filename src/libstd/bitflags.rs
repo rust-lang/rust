@@ -34,6 +34,7 @@
 //!     assert!((e1 | e2) == FlagABC);   // union
 //!     assert!((e1 & e2) == FlagC);     // intersection
 //!     assert!((e1 - e2) == FlagA);     // set difference
+//!     assert!(!e2 == FlagA);           // set complement
 //! }
 //! ~~~
 //!
@@ -88,14 +89,17 @@
 //! - `BitOr`: union
 //! - `BitAnd`: intersection
 //! - `Sub`: set difference
+//! - `Not`: set complement
 //!
 //! # Methods
 //!
 //! The following methods are defined for the generated `struct`:
 //!
 //! - `empty`: an empty set of flags
+//! - `all`: the set of all flags
 //! - `bits`: the raw value of the flags currently stored
 //! - `is_empty`: `true` if no flags are currently stored
+//! - `is_all`: `true` if all flags are currently set
 //! - `intersects`: `true` if there are flags common to both `self` and `other`
 //! - `contains`: `true` all of the flags in `other` are contained within `self`
 //! - `insert`: inserts the specified flags in-place
@@ -122,6 +126,11 @@ macro_rules! bitflags(
                 $BitFlags { bits: 0 }
             }
 
+            /// Returns the set containing all flags.
+            pub fn all() -> $BitFlags {
+                $BitFlags { bits: $($value)|+ }
+            }
+
             /// Returns the raw value of the flags currently stored.
             pub fn bits(&self) -> $T {
                 self.bits
@@ -136,6 +145,11 @@ macro_rules! bitflags(
             /// Returns `true` if no flags are currently stored.
             pub fn is_empty(&self) -> bool {
                 *self == $BitFlags::empty()
+            }
+
+            /// Returns `true` if all flags are currently set.
+            pub fn is_all(&self) -> bool {
+                *self == $BitFlags::all()
             }
 
             /// Returns `true` if there are flags common to both `self` and `other`.
@@ -182,12 +196,20 @@ macro_rules! bitflags(
                 $BitFlags { bits: self.bits & !other.bits }
             }
         }
+
+        impl Not<$BitFlags> for $BitFlags {
+            /// Returns the complement of this set of flags.
+            #[inline]
+            fn not(&self) -> $BitFlags {
+                $BitFlags { bits: !self.bits } & $BitFlags::all()
+            }
+        }
     )
 )
 
 #[cfg(test)]
 mod tests {
-    use ops::{BitOr, BitAnd, Sub};
+    use ops::{BitOr, BitAnd, Sub, Not};
 
     bitflags!(
         flags Flags: u32 {
@@ -219,6 +241,13 @@ mod tests {
         assert!(Flags::empty().is_empty());
         assert!(!FlagA.is_empty());
         assert!(!FlagABC.is_empty());
+    }
+
+    #[test]
+    fn test_is_all() {
+        assert!(Flags::all().is_all());
+        assert!(!FlagA.is_all());
+        assert!(FlagABC.is_all());
     }
 
     #[test]
@@ -281,5 +310,6 @@ mod tests {
         assert!((e1 | e2) == FlagABC);   // union
         assert!((e1 & e2) == FlagC);     // intersection
         assert!((e1 - e2) == FlagA);     // set difference
+        assert!(!e2 == FlagA);           // set complement
     }
 }
