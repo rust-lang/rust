@@ -347,18 +347,10 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
                 break;
             }
 
-            let args = split_maybe_args(&config.target_rustcflags);
-            let mut tool_path = StrBuf::new();
-            for arg in args.iter() {
-                if arg.contains("android-cross-path=") {
-                    tool_path = StrBuf::from_str(arg.replace("android-cross-path=", ""));
-                    break;
-                }
-            }
-
-            if tool_path.is_empty() {
-                fatal("cannot found android cross path".to_owned());
-            }
+            let tool_path = match config.android_cross_path.as_str() {
+                Some(x) => x.to_strbuf(),
+                None => fatal("cannot find android cross path".to_owned())
+            };
 
             let debugger_script = make_out_name(config, testfile, "debugger.script");
             // FIXME (#9639): This needs to handle non-utf8 paths
