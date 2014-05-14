@@ -236,13 +236,13 @@ pub mod dl {
     use ptr;
     use result::{Ok, Err, Result};
     use str;
-    use c_str::ToCStr;
+    use c_str::{ToCStr, ToCU16Str};
 
     pub unsafe fn open_external<T: ToCStr>(filename: T) -> *u8 {
         // Windows expects Unicode data
         let filename_cstr = filename.to_c_str();
         let filename_str = str::from_utf8(filename_cstr.as_bytes_no_nul()).unwrap();
-        os::win32::as_utf16_p(filename_str, |raw_name| {
+        filename_str.with_c_u16_str(|raw_name| {
             LoadLibraryW(raw_name as *libc::c_void) as *u8
         })
     }

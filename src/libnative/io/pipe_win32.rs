@@ -85,10 +85,9 @@
 //! me!
 
 use libc;
-use std::c_str::CString;
+use std::c_str::{CString, ToCU16Str};
 use std::intrinsics;
 use std::io;
-use std::os::win32::as_utf16_p;
 use std::os;
 use std::ptr;
 use std::rt::rtio;
@@ -254,7 +253,7 @@ impl UnixStream {
     }
 
     pub fn connect(addr: &CString, timeout: Option<u64>) -> IoResult<UnixStream> {
-        as_utf16_p(addr.as_str().unwrap(), |p| {
+        addr.as_str().unwrap().with_c_u16_str(|p| {
             let start = ::io::timer::now();
             loop {
                 match UnixStream::try_connect(p) {
@@ -553,7 +552,7 @@ impl UnixListener {
         // Although we technically don't need the pipe until much later, we
         // create the initial handle up front to test the validity of the name
         // and such.
-        as_utf16_p(addr.as_str().unwrap(), |p| {
+        addr.as_str().unwrap().with_c_u16_str(|p| {
             let ret = unsafe { pipe(p, true) };
             if ret == libc::INVALID_HANDLE_VALUE as libc::HANDLE {
                 Err(super::last_error())
@@ -667,7 +666,7 @@ impl UnixAcceptor {
         // Now that we've got a connected client to our handle, we need to
         // create a second server pipe. If this fails, we disconnect the
         // connected client and return an error (see comments above).
-        let new_handle = as_utf16_p(self.listener.name.as_str().unwrap(), |p| {
+        let new_handle = self.listener.name.as_str().unwrap().with_c_u16_str(|p| {
             unsafe { pipe(p, false) }
         });
         if new_handle == libc::INVALID_HANDLE_VALUE as libc::HANDLE {

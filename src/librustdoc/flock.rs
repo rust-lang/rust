@@ -135,7 +135,7 @@ mod imp {
 mod imp {
     use libc;
     use std::mem;
-    use std::os::win32::as_utf16_p;
+    use std::c_str::ToCU16Str;
     use std::os;
     use std::ptr;
 
@@ -161,7 +161,7 @@ mod imp {
 
     impl Lock {
         pub fn new(p: &Path) -> Lock {
-            let handle = as_utf16_p(p.as_str().unwrap(), |p| unsafe {
+            let handle = p.as_str().unwrap().with_c_u16_str(|p| unsafe {
                 libc::CreateFileW(p,
                                   libc::FILE_GENERIC_READ |
                                     libc::FILE_GENERIC_WRITE,

@@ -24,6 +24,7 @@ use super::file;
 use super::util;
 
 #[cfg(windows)] use std::strbuf::StrBuf;
+#[cfg(windows)] use std::c_str::ToCU16Str;
 #[cfg(unix)] use super::c;
 #[cfg(unix)] use super::retry;
 #[cfg(unix)] use io::helper_thread::Helper;
@@ -323,18 +324,17 @@ fn spawn_process_os(cfg: ProcessConfig, in_fd: c_int, out_fd: c_int, err_fd: c_i
 
         with_envp(cfg.env, |envp| {
             with_dirp(cfg.cwd, |dirp| {
-                os::win32::as_mut_utf16_p(cmd_str, |cmdp| {
-                    let created = CreateProcessW(ptr::null(),
-                                                 cmdp,
-                                                 ptr::mut_null(),
-                                                 ptr::mut_null(),
-                                                 TRUE,
-                                                 flags, envp, dirp,
-                                                 &mut si, &mut pi);
-                    if created == FALSE {
-                        create_err = Some(super::last_error());
-                    }
-                })
+                let mut cmd_str_16 = cmd_str.to_c_u16_str();
+                let created = CreateProcessW(ptr::null(),
+                                             cmd_str_16.as_mut_ptr(),
+                                             ptr::mut_null(),
+                                             ptr::mut_null(),
+                                             TRUE,
+                                             flags, envp, dirp,
+                                             &mut si, &mut pi);
+                if created == FALSE {
+                    create_err = Some(super::last_error());
+                }
             })
         });
 
@@ -712,7 +712,7 @@ fn with_dirp<T>(d: Option<&CString>, cb: |*u16| -> T) -> T {
       Some(dir) => {
           let dir_str = dir.as_str()
                            .expect("expected workingdirectory to be utf-8 encoded");
-          os::win32::as_utf16_p(dir_str, cb)
+          dir_str.with_c_u16_str(cb)
       },
       None => cb(ptr::null())
     }
