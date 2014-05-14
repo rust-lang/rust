@@ -144,7 +144,7 @@ fn borrowck_fn(this: &mut BorrowckCtxt,
     check_loans::check_loans(this, &loan_dfcx, flowed_moves,
                              all_loans.as_slice(), body);
 
-    visit::walk_fn(this, fk, decl, body, sp, id, ());
+    visit::walk_fn(this, fk, decl, body, sp, ());
 }
 
 // ----------------------------------------------------------------------
@@ -830,4 +830,3 @@ impl Repr for LoanPath {
         }
     }
 }
-
