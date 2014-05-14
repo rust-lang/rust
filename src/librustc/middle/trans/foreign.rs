@@ -934,7 +934,7 @@ fn add_argument_attributes(tys: &ForeignTypes,
             Some(attr) => {
                 let llarg = get_param(llfn, i);
                 unsafe {
-                    llvm::LLVMAddAttribute(llarg, attr as c_uint);
+                    llvm::LLVMAddAttribute(llarg, attr.bits() as c_uint);
                 }
             }
             None => {}
@@ -954,7 +954,7 @@ fn add_argument_attributes(tys: &ForeignTypes,
             Some(attr) => {
                 let llarg = get_param(llfn, i);
                 unsafe {
-                    llvm::LLVMAddAttribute(llarg, attr as c_uint);
+                    llvm::LLVMAddAttribute(llarg, attr.bits() as c_uint);
                 }
             }
             None => ()

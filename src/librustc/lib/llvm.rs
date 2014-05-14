@@ -63,34 +63,34 @@ pub enum Linkage {
 }
 
 #[deriving(Clone)]
-pub enum Attribute {
-    ZExtAttribute = 1 << 0,
-    SExtAttribute = 1 << 1,
-    NoReturnAttribute = 1 << 2,
-    InRegAttribute = 1 << 3,
-    StructRetAttribute = 1 << 4,
-    NoUnwindAttribute = 1 << 5,
-    NoAliasAttribute = 1 << 6,
-    ByValAttribute = 1 << 7,
-    NestAttribute = 1 << 8,
-    ReadNoneAttribute = 1 << 9,
-    ReadOnlyAttribute = 1 << 10,
-    NoInlineAttribute = 1 << 11,
-    AlwaysInlineAttribute = 1 << 12,
-    OptimizeForSizeAttribute = 1 << 13,
-    StackProtectAttribute = 1 << 14,
-    StackProtectReqAttribute = 1 << 15,
-    AlignmentAttribute = 31 << 16,
-    NoCaptureAttribute = 1 << 21,
-    NoRedZoneAttribute = 1 << 22,
-    NoImplicitFloatAttribute = 1 << 23,
-    NakedAttribute = 1 << 24,
-    InlineHintAttribute = 1 << 25,
-    StackAttribute = 7 << 26,
-    ReturnsTwiceAttribute = 1 << 29,
-    UWTableAttribute = 1 << 30,
-    NonLazyBindAttribute = 1 << 31,
-}
+bitflags!(flags Attribute: u32 {
+    static ZExtAttribute = 1 << 0,
+    static SExtAttribute = 1 << 1,
+    static NoReturnAttribute = 1 << 2,
+    static InRegAttribute = 1 << 3,
+    static StructRetAttribute = 1 << 4,
+    static NoUnwindAttribute = 1 << 5,
+    static NoAliasAttribute = 1 << 6,
+    static ByValAttribute = 1 << 7,
+    static NestAttribute = 1 << 8,
+    static ReadNoneAttribute = 1 << 9,
+    static ReadOnlyAttribute = 1 << 10,
+    static NoInlineAttribute = 1 << 11,
+    static AlwaysInlineAttribute = 1 << 12,
+    static OptimizeForSizeAttribute = 1 << 13,
+    static StackProtectAttribute = 1 << 14,
+    static StackProtectReqAttribute = 1 << 15,
+    static AlignmentAttribute = 31 << 16,
+    static NoCaptureAttribute = 1 << 21,
+    static NoRedZoneAttribute = 1 << 22,
+    static NoImplicitFloatAttribute = 1 << 23,
+    static NakedAttribute = 1 << 24,
+    static InlineHintAttribute = 1 << 25,
+    static StackAttribute = 7 << 26,
+    static ReturnsTwiceAttribute = 1 << 29,
+    static UWTableAttribute = 1 << 30,
+    static NonLazyBindAttribute = 1 << 31
+})
 
 // enum for the LLVM IntPredicate type
 pub enum IntPredicate {
@@ -1833,7 +1833,7 @@ pub fn ConstFCmp(pred: RealPredicate, v1: ValueRef, v2: ValueRef) -> ValueRef {
 
 pub fn SetFunctionAttribute(fn_: ValueRef, attr: Attribute) {
     unsafe {
-        llvm::LLVMAddFunctionAttr(fn_, attr as c_uint)
+        llvm::LLVMAddFunctionAttr(fn_, attr.bits as c_uint)
     }
 }
 /* Memory-managed object interface to type handles. */
