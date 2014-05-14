@@ -60,7 +60,7 @@ To return an Owned String (~str) use the str helper function [`from_utf8_owned`]
 ~~~
 use std::str;
 
-let x: Option<~str> = str::from_utf8_owned(~[104u8,105u8]);
+let x: Result<~str,~[u8]> = str::from_utf8_owned(~[104u8,105u8]);
 let y: ~str = x.unwrap();
 ~~~
 
