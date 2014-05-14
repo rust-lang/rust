@@ -1,4 +1,4 @@
-% The Rust Tutorial 
+% The (New) Rust Tutorial 
 
 Rust is a compiled programming language with a focus on type safety, memory safety, concurrency and performance. It has a sophisticated memory model that encourages efficient data structures and safe concurrency patterns, forbidding invalid memory accesses that would otherwise cause segmentation faults. 
 
