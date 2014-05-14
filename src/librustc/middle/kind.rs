@@ -235,7 +235,7 @@ fn check_fn(
         });
     });
 
-    visit::walk_fn(cx, fk, decl, body, sp, fn_id, ());
+    visit::walk_fn(cx, fk, decl, body, sp, ());
 }
 
 pub fn check_expr(cx: &mut Context, e: &Expr) {

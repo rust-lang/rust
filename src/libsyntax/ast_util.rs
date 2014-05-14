@@ -546,7 +546,6 @@ impl<'a, O: IdVisitingOperation> Visitor<()> for IdVisitor<'a, O> {
                         function_declaration,
                         block,
                         span,
-                        node_id,
                         env);
 
         if !self.pass_through_items {
@@ -564,13 +563,13 @@ impl<'a, O: IdVisitingOperation> Visitor<()> for IdVisitor<'a, O> {
 
     fn visit_struct_def(&mut self,
                         struct_def: &StructDef,
-                        ident: ast::Ident,
-                        generics: &ast::Generics,
+                        _: ast::Ident,
+                        _: &ast::Generics,
                         id: NodeId,
                         _: ()) {
         self.operation.visit_id(id);
         struct_def.ctor_id.map(|ctor_id| self.operation.visit_id(ctor_id));
-        visit::walk_struct_def(self, struct_def, ident, generics, id, ());
+        visit::walk_struct_def(self, struct_def, ());
     }
 
     fn visit_trait_method(&mut self, tm: &ast::TraitMethod, _: ()) {

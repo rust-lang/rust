@@ -37,8 +37,8 @@ impl<'a> Visitor<()> for MatchCheckCtxt<'a> {
     fn visit_local(&mut self, l: &Local, _: ()) {
         check_local(self, l);
     }
-    fn visit_fn(&mut self, fk: &FnKind, fd: &FnDecl, b: &Block, s: Span, n: NodeId, _: ()) {
-        check_fn(self, fk, fd, b, s, n);
+    fn visit_fn(&mut self, fk: &FnKind, fd: &FnDecl, b: &Block, s: Span, _: NodeId, _: ()) {
+        check_fn(self, fk, fd, b, s);
     }
 }
 
@@ -866,9 +866,8 @@ fn check_fn(cx: &mut MatchCheckCtxt,
             kind: &FnKind,
             decl: &FnDecl,
             body: &Block,
-            sp: Span,
-            id: NodeId) {
-    visit::walk_fn(cx, kind, decl, body, sp, id, ());
+            sp: Span) {
+    visit::walk_fn(cx, kind, decl, body, sp, ());
     for input in decl.inputs.iter() {
         if is_refutable(cx, input.pat) {
             cx.tcx.sess.span_err(input.pat.span,

@@ -107,11 +107,11 @@ impl Visitor<()> for ParentVisitor {
         if !self.parents.contains_key(&id) {
             self.parents.insert(id, self.curparent);
         }
-        visit::walk_fn(self, a, b, c, d, id, ());
+        visit::walk_fn(self, a, b, c, d, ());
     }
 
-    fn visit_struct_def(&mut self, s: &ast::StructDef, i: ast::Ident,
-                        g: &ast::Generics, n: ast::NodeId, _: ()) {
+    fn visit_struct_def(&mut self, s: &ast::StructDef, _: ast::Ident,
+                        _: &ast::Generics, n: ast::NodeId, _: ()) {
         // Struct constructors are parented to their struct definitions because
         // they essentially are the struct definitions.
         match s.ctor_id {
@@ -124,7 +124,7 @@ impl Visitor<()> for ParentVisitor {
         for field in s.fields.iter() {
             self.parents.insert(field.node.id, self.curparent);
         }
-        visit::walk_struct_def(self, s, i, g, n, ())
+        visit::walk_struct_def(self, s, ())
     }
 }
 
@@ -1006,10 +1006,10 @@ impl<'a> Visitor<()> for SanePrivacyVisitor<'a> {
     }
 
     fn visit_fn(&mut self, fk: &visit::FnKind, fd: &ast::FnDecl,
-                b: &ast::Block, s: Span, n: ast::NodeId, _: ()) {
+                b: &ast::Block, s: Span, _: ast::NodeId, _: ()) {
         // This catches both functions and methods
         let orig_in_fn = replace(&mut self.in_fn, true);
-        visit::walk_fn(self, fk, fd, b, s, n, ());
+        visit::walk_fn(self, fk, fd, b, s, ());
         self.in_fn = orig_in_fn;
     }
 
@@ -1363,7 +1363,7 @@ impl<'a> Visitor<()> for VisiblePrivateTypesVisitor<'a> {
                 _: ()) {
         // needs special handling for methods.
         if self.exported_items.contains(&id) {
-            visit::walk_fn(self, fk, fd, b, s, id, ());
+            visit::walk_fn(self, fk, fd, b, s, ());
         }
     }
 
