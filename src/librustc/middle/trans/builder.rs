@@ -168,7 +168,7 @@ impl<'a> Builder<'a> {
                                           catch,
                                           noname());
             for &(idx, attr) in attributes.iter() {
-                llvm::LLVMAddInstrAttribute(v, idx as c_uint, attr as c_uint);
+                llvm::LLVMAddInstrAttribute(v, idx as c_uint, attr.bits() as c_uint);
             }
             v
         }
@@ -811,7 +811,7 @@ impl<'a> Builder<'a> {
             let v = llvm::LLVMBuildCall(self.llbuilder, llfn, args.as_ptr(),
                                         args.len() as c_uint, noname());
             for &(idx, attr) in attributes.iter() {
-                llvm::LLVMAddInstrAttribute(v, idx as c_uint, attr as c_uint);
+                llvm::LLVMAddInstrAttribute(v, idx as c_uint, attr.bits() as c_uint);
             }
             v
         }

@@ -176,14 +176,14 @@ fn decl_fn(llmod: ModuleRef, name: &str, cc: lib::llvm::CallConv,
         // functions returning bottom may unwind, but can never return normally
         ty::ty_bot => {
             unsafe {
-                llvm::LLVMAddFunctionAttr(llfn, lib::llvm::NoReturnAttribute as c_uint)
+                llvm::LLVMAddFunctionAttr(llfn, lib::llvm::NoReturnAttribute.bits() as c_uint)
             }
         }
         // `~` pointer return values never alias because ownership is transferred
         ty::ty_uniq(..) // | ty::ty_trait(_, _, ty::UniqTraitStore, _, _)
          => {
             unsafe {
-                llvm::LLVMAddReturnAttribute(llfn, lib::llvm::NoAliasAttribute as c_uint);
+                llvm::LLVMAddReturnAttribute(llfn, lib::llvm::NoAliasAttribute.bits() as c_uint);
             }
         }
         _ => {}
@@ -257,13 +257,13 @@ pub fn decl_rust_fn(ccx: &CrateContext, has_env: bool,
             // `~` pointer parameters never alias because ownership is transferred
             ty::ty_uniq(..) => {
                 unsafe {
-                    llvm::LLVMAddAttribute(llarg, lib::llvm::NoAliasAttribute as c_uint);
+                    llvm::LLVMAddAttribute(llarg, lib::llvm::NoAliasAttribute.bits() as c_uint);
                 }
             }
             // `&mut` pointer parameters never alias other parameters, or mutable global data
             ty::ty_rptr(_, mt) if mt.mutbl == ast::MutMutable => {
                 unsafe {
-                    llvm::LLVMAddAttribute(llarg, lib::llvm::NoAliasAttribute as c_uint);
+                    llvm::LLVMAddAttribute(llarg, lib::llvm::NoAliasAttribute.bits() as c_uint);
                 }
             }
             // When a reference in an argument has no named lifetime, it's impossible for that
@@ -271,7 +271,7 @@ pub fn decl_rust_fn(ccx: &CrateContext, has_env: bool,
             ty::ty_rptr(ReLateBound(_, BrAnon(_)), _) => {
                 debug!("marking argument of {} as nocapture because of anonymous lifetime", name);
                 unsafe {
-                    llvm::LLVMAddAttribute(llarg, lib::llvm::NoCaptureAttribute as c_uint);
+                    llvm::LLVMAddAttribute(llarg, lib::llvm::NoCaptureAttribute.bits() as c_uint);
                 }
             }
             _ => {
@@ -279,8 +279,8 @@ pub fn decl_rust_fn(ccx: &CrateContext, has_env: bool,
                 // the value on the stack, so there are no aliases
                 if !type_is_immediate(ccx, arg_ty) {
                     unsafe {
-                        llvm::LLVMAddAttribute(llarg, lib::llvm::NoAliasAttribute as c_uint);
-                        llvm::LLVMAddAttribute(llarg, lib::llvm::NoCaptureAttribute as c_uint);
+                        llvm::LLVMAddAttribute(llarg, lib::llvm::NoAliasAttribute.bits() as c_uint);
+                        llvm::LLVMAddAttribute(llarg, lib::llvm::NoCaptureAttribute.bits() as c_uint);
                     }
                 }
             }
@@ -293,8 +293,8 @@ pub fn decl_rust_fn(ccx: &CrateContext, has_env: bool,
     if uses_outptr {
         unsafe {
             let outptr = llvm::LLVMGetParam(llfn, 0);
-            llvm::LLVMAddAttribute(outptr, lib::llvm::StructRetAttribute as c_uint);
-            llvm::LLVMAddAttribute(outptr, lib::llvm::NoAliasAttribute as c_uint);
+            llvm::LLVMAddAttribute(outptr, lib::llvm::StructRetAttribute.bits() as c_uint);
+            llvm::LLVMAddAttribute(outptr, lib::llvm::NoAliasAttribute.bits() as c_uint);
         }
     }
 
