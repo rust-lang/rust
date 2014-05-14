@@ -79,6 +79,7 @@ pub fn parse_config(args: Vec<~str> ) -> Config {
           optflag("", "jit", "run tests under the JIT"),
           optopt("", "target", "the target to build for", "TARGET"),
           optopt("", "host", "the host to build for", "HOST"),
+          optopt("", "android-cross-path", "Android NDK standalone path", "PATH"),
           optopt("", "adb-path", "path to the android debugger", "PATH"),
           optopt("", "adb-test-dir", "path to tests for the android debugger", "PATH"),
           optopt("", "lldb-python-dir", "directory containing LLDB's python module", "PATH"),
@@ -142,6 +143,7 @@ pub fn parse_config(args: Vec<~str> ) -> Config {
         jit: matches.opt_present("jit"),
         target: opt_str2(matches.opt_str("target")).to_str(),
         host: opt_str2(matches.opt_str("host")).to_str(),
+        android_cross_path: opt_path(matches, "android-cross-path"),
         adb_path: opt_str2(matches.opt_str("adb-path")).to_str(),
         adb_test_dir:
             opt_str2(matches.opt_str("adb-test-dir")).to_str(),
@@ -173,6 +175,7 @@ pub fn log_config(config: &Config) {
     logv(c, format!("jit: {}", config.jit));
     logv(c, format!("target: {}", config.target));
     logv(c, format!("host: {}", config.host));
+    logv(c, format!("android-cross-path: {}", config.android_cross_path.display()));
     logv(c, format!("adb_path: {}", config.adb_path));
     logv(c, format!("adb_test_dir: {}", config.adb_test_dir));
     logv(c, format!("adb_device_status: {}", config.adb_device_status));

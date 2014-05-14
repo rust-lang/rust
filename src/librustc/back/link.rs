@@ -757,40 +757,15 @@ pub fn get_cc_prog(sess: &Session) -> StrBuf {
     // instead of hard-coded gcc.
     // For win32, there is no cc command, so we add a condition to make it use gcc.
     match sess.targ_cfg.os {
-        abi::OsWin32 => return "gcc".to_strbuf(),
-        _ => {},
-    }
-
-    get_system_tool(sess, "cc")
+        abi::OsWin32 => "gcc",
+        _ => "cc",
+    }.to_strbuf()
 }
 
 pub fn get_ar_prog(sess: &Session) -> StrBuf {
     match sess.opts.cg.ar {
-        Some(ref ar) => return (*ar).clone(),
-        None => {}
-    }
-
-    get_system_tool(sess, "ar")
-}
-
-fn get_system_tool(sess: &Session, tool: &str) -> StrBuf {
-    match sess.targ_cfg.os {
-        abi::OsAndroid => match sess.opts.cg.android_cross_path {
-            Some(ref path) => {
-                let tool_str = match tool {
-                    "cc" => "gcc",
-                    _ => tool
-                };
-                format_strbuf!("{}/bin/arm-linux-androideabi-{}",
-                               *path,
-                               tool_str)
-            }
-            None => {
-                sess.fatal(format!("need Android NDK path for the '{}' tool \
-                                    (-C android-cross-path)", tool))
-            }
-        },
-        _ => tool.to_strbuf(),
+        Some(ref ar) => (*ar).clone(),
+        None => "ar".to_strbuf()
     }
 }
 

@@ -294,8 +294,6 @@ cgoptions!(
         "a list of arguments to pass to llvm (space separated)"),
     save_temps: bool = (false, parse_bool,
         "save all temporary output files during compilation"),
-    android_cross_path: Option<StrBuf> = (None, parse_opt_string,
-        "the path to the Android NDK"),
     no_rpath: bool = (false, parse_bool,
         "disables setting the rpath in libs/exes"),
     no_prepopulate_passes: bool = (false, parse_bool,

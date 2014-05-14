@@ -5,7 +5,6 @@ local -a _rustc_opts_switches _rustc_opts_lint _rustc_opts_debug
 typeset -A opt_args
 
 _rustc_opts_switches=(
-    --android-cross-path'[The path to the Android NDK]'
     --ar'[Program to use for managing archives instead of the default.]'
     -c'[Compile and assemble, but do not link]'
     --cfg'[Configure the compilation environment]'
