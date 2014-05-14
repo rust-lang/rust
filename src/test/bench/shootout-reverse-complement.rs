@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-pretty very bad with line comments
 // ignore-android doesn't terminate?
-// ignore-pretty
 
 use std::iter::range_step;
 use std::io::{stdin, stdout, File};

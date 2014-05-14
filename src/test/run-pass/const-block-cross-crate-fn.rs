@@ -1,4 +1,4 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags:--test
-// ignore-win32 #10872
-// ignore-pretty: does not work well with `--test`
+// aux-build:cci_const_block.rs
 
-// Building as a test runner means that a synthetic main will be run,
-// not ours
-pub fn main() { fail!(); }
+extern crate cci_const_block;
+
+pub fn main() {
+    assert_eq!(cci_const_block::BLOCK_FN_DEF(390), 400);
+}

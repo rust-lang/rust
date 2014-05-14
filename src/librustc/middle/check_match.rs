@@ -239,7 +239,15 @@ fn is_useful(cx: &MatchCheckCtxt, m: &matrix, v: &[@Pat]) -> useful {
         return not_useful
     }
     let real_pat = match m.iter().find(|r| r.get(0).id != 0) {
-      Some(r) => *r.get(0), None => v[0]
+        Some(r) => {
+            match r.get(0).node {
+                // An arm of the form `ref x @ sub_pat` has type
+                // `sub_pat`, not `&sub_pat` as `x` itself does.
+                PatIdent(BindByRef(_), _, Some(sub)) => sub,
+                _ => *r.get(0)
+            }
+        }
+        None => v[0]
     };
     let left_ty = if real_pat.id == 0 { ty::mk_nil() }
                   else { ty::node_id_to_type(cx.tcx, real_pat.id) };
@@ -258,7 +266,7 @@ fn is_useful(cx: &MatchCheckCtxt, m: &matrix, v: &[@Pat]) -> useful {
                                                 val(const_bool(false)),
                                                 0u, left_ty)
                       }
-                      ref u => (*u).clone(),
+                      u => u,
                   }
               }
               ty::ty_enum(eid, _) => {
@@ -266,7 +274,7 @@ fn is_useful(cx: &MatchCheckCtxt, m: &matrix, v: &[@Pat]) -> useful {
                       match is_useful_specialized(cx, m, v, variant(va.id),
                                                   va.args.len(), left_ty) {
                         not_useful => (),
-                        ref u => return (*u).clone(),
+                        u => return u,
                       }
                   }
                   not_useful
@@ -288,7 +296,7 @@ fn is_useful(cx: &MatchCheckCtxt, m: &matrix, v: &[@Pat]) -> useful {
                       for n in iter::range(0u, max_len + 1) {
                           match is_useful_specialized(cx, m, v, vec(n), n, left_ty) {
                               not_useful => (),
-                              ref u => return (*u).clone(),
+                              u => return u,
                           }
                       }
                       not_useful
@@ -304,21 +312,21 @@ fn is_useful(cx: &MatchCheckCtxt, m: &matrix, v: &[@Pat]) -> useful {
               }
             }
           }
-          Some(ref ctor) => {
+          Some(ctor) => {
             match is_useful(cx,
                             &m.iter().filter_map(|r| {
                                 default(cx, r.as_slice())
                             }).collect::<matrix>(),
                             v.tail()) {
-              useful_ => useful(left_ty, (*ctor).clone()),
-              ref u => (*u).clone(),
+              useful_ => useful(left_ty, ctor),
+              u => u,
             }
           }
         }
       }
-      Some(ref v0_ctor) => {
-        let arity = ctor_arity(cx, v0_ctor, left_ty);
-        is_useful_specialized(cx, m, v, (*v0_ctor).clone(), arity, left_ty)
+      Some(v0_ctor) => {
+        let arity = ctor_arity(cx, &v0_ctor, left_ty);
+        is_useful_specialized(cx, m, v, v0_ctor, arity, left_ty)
       }
     }
 }
@@ -337,7 +345,7 @@ fn is_useful_specialized(cx: &MatchCheckCtxt,
         cx, &ms, specialize(cx, v, &ctor, arity, lty).unwrap().as_slice());
     match could_be_useful {
       useful_ => useful(lty, ctor),
-      ref u => (*u).clone(),
+      u => u,
     }
 }
 
@@ -408,9 +416,9 @@ fn missing_ctor(cx: &MatchCheckCtxt,
         let mut found = Vec::new();
         for r in m.iter() {
             let r = pat_ctor_id(cx, *r.get(0));
-            for id in r.iter() {
-                if !found.contains(id) {
-                    found.push((*id).clone());
+            for id in r.move_iter() {
+                if !found.contains(&id) {
+                    found.push(id);
                 }
             }
         }
@@ -812,30 +820,17 @@ fn specialize(cx: &MatchCheckCtxt,
                         let num_elements = before.len() + after.len();
                         if num_elements < arity && slice.is_some() {
                             let mut result = Vec::new();
-                            for pat in before.iter() {
-                                result.push((*pat).clone());
-                            }
-                            for _ in iter::range(0, arity - num_elements) {
-                                result.push(wild())
-                            }
-                            for pat in after.iter() {
-                                result.push((*pat).clone());
-                            }
-                            for pat in r.tail().iter() {
-                                result.push((*pat).clone());
-                            }
+                            let wilds = Vec::from_elem(arity - num_elements, wild());
+                            result.push_all_move(before);
+                            result.push_all_move(wilds);
+                            result.push_all_move(after);
+                            result.push_all(r.tail());
                             Some(result)
                         } else if num_elements == arity {
                             let mut result = Vec::new();
-                            for pat in before.iter() {
-                                result.push((*pat).clone());
-                            }
-                            for pat in after.iter() {
-                                result.push((*pat).clone());
-                            }
-                            for pat in r.tail().iter() {
-                                result.push((*pat).clone());
-                            }
+                            result.push_all_move(before);
+                            result.push_all_move(after);
+                            result.push_all(r.tail());
                             Some(result)
                         } else {
                             None

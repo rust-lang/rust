@@ -1,5 +1,3 @@
-// ignore-pretty
-
 // Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
@@ -16,6 +14,8 @@
 // groups, but that shouldn't have to happen for already-dead groups.
 //
 // The filename is a song reference; google it in quotes.
+
+// ignore-pretty very bad with line comments
 
 use std::comm;
 use std::os;

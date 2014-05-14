@@ -120,7 +120,7 @@ pub fn test_destroy_actually_kills(force: bool) {
             () = rx1.recv() => {}
         }
     });
-    match p.wait() {
+    match p.wait().unwrap() {
         ExitStatus(..) => fail!("expected a signal"),
         ExitSignal(..) => tx.send(()),
     }

@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-pretty
 // aux-build:anon-extern-mod-cross-crate-1.rs
 extern crate anonexternmod;
 

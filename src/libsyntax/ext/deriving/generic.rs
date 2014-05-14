@@ -182,6 +182,7 @@ use std::cell::RefCell;
 use ast;
 use ast::{P, EnumDef, Expr, Ident, Generics, StructDef};
 use ast_util;
+use attr::AttrMetaMethods;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use codemap;
@@ -330,21 +331,34 @@ impl<'a> TraitDef<'a> {
                   _mitem: @ast::MetaItem,
                   item: @ast::Item,
                   push: |@ast::Item|) {
-        match item.node {
+        let newitem = match item.node {
             ast::ItemStruct(struct_def, ref generics) => {
-                push(self.expand_struct_def(cx,
-                                            struct_def,
-                                            item.ident,
-                                            generics));
+                self.expand_struct_def(cx,
+                                       struct_def,
+                                       item.ident,
+                                       generics)
             }
             ast::ItemEnum(ref enum_def, ref generics) => {
-                push(self.expand_enum_def(cx,
-                                          enum_def,
-                                          item.ident,
-                                          generics));
+                self.expand_enum_def(cx,
+                                     enum_def,
+                                     item.ident,
+                                     generics)
             }
-            _ => ()
-        }
+            _ => return
+        };
+        // Keep the lint attributes of the previous item to control how the
+        // generated implementations are linted
+        let mut attrs = newitem.attrs.clone();
+        attrs.extend(item.attrs.iter().filter(|a| {
+            match a.name().get() {
+                "allow" | "warn" | "deny" | "forbid" => true,
+                _ => false,
+            }
+        }).map(|a| a.clone()));
+        push(@ast::Item {
+            attrs: attrs,
+            ..(*newitem).clone()
+        })
     }
 
     /**

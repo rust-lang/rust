@@ -2334,7 +2334,7 @@ mod tests {
     use realstd::num;
 
     use cmp;
-    use owned::Box;
+    use realstd::owned::Box;
     use uint;
 
     #[test]

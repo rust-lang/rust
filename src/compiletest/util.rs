@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use common::config;
+use common::Config;
 
 #[cfg(target_os = "win32")]
 use std::os::getenv;
@@ -51,7 +51,7 @@ pub fn lib_path_env_var() -> ~str { "PATH".to_owned() }
 #[cfg(target_os = "win32")]
 pub fn path_div() -> ~str { ";".to_owned() }
 
-pub fn logv(config: &config, s: ~str) {
+pub fn logv(config: &Config, s: ~str) {
     debug!("{}", s);
     if config.verbose { println!("{}", s); }
 }

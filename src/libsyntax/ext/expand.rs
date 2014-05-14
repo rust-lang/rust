@@ -156,7 +156,7 @@ pub fn expand_expr(e: @ast::Expr, fld: &mut MacroExpander) -> @ast::Expr {
             //     }
             //   }
 
-            let local_ident = token::gensym_ident("i");
+            let local_ident = token::gensym_ident("__i"); // FIXME #13573
             let next_ident = fld.cx.ident_of("next");
             let none_ident = fld.cx.ident_of("None");
 
@@ -262,7 +262,8 @@ pub fn expand_item(it: @ast::Item, fld: &mut MacroExpander)
     let it = expand_item_modifiers(it, fld);
 
     let mut decorator_items = SmallVector::zero();
-    for attr in it.attrs.iter().rev() {
+    let mut new_attrs = Vec::new();
+    for attr in it.attrs.iter() {
         let mname = attr.name();
 
         match fld.extsbox.find(&intern(mname.get())) {
@@ -286,7 +287,7 @@ pub fn expand_item(it: @ast::Item, fld: &mut MacroExpander)
 
                 fld.cx.bt_pop();
             }
-            _ => {}
+            _ => new_attrs.push((*attr).clone()),
         }
     }
 
@@ -294,14 +295,21 @@ pub fn expand_item(it: @ast::Item, fld: &mut MacroExpander)
         ast::ItemMac(..) => expand_item_mac(it, fld),
         ast::ItemMod(_) | ast::ItemForeignMod(_) => {
             fld.cx.mod_push(it.ident);
-            let macro_escape = contains_macro_escape(it.attrs.as_slice());
+            let macro_escape = contains_macro_escape(new_attrs.as_slice());
             let result = with_exts_frame!(fld.extsbox,
                                           macro_escape,
                                           noop_fold_item(it, fld));
             fld.cx.mod_pop();
             result
         },
-        _ => noop_fold_item(it, fld)
+        _ => {
+            let it = @ast::Item {
+                attrs: new_attrs,
+                ..(*it).clone()
+
+            };
+            noop_fold_item(it, fld)
+        }
     };
 
     new_items.push_all(decorator_items);

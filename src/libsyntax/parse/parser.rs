@@ -587,13 +587,61 @@ impl<'a> Parser<'a> {
                 self.replace_token(token::BINOP(token::OR), lo, self.span.hi)
             }
             _ => {
-                let token_str = self.this_token_to_str();
-                let found_token =
+                let found_token = self.this_token_to_str();
+                let token_str =
                     Parser::token_to_str(&token::BINOP(token::OR));
                 self.fatal(format!("expected `{}`, found `{}`",
-                                   found_token,
-                                   token_str))
+                                   token_str, found_token))
             }
+        }
+    }
+
+    // Attempt to consume a `<`. If `<<` is seen, replace it with a single
+    // `<` and continue. If a `<` is not seen, return false.
+    //
+    // This is meant to be used when parsing generics on a path to get the
+    // starting token. The `force` parameter is used to forcefully break up a
+    // `<<` token. If `force` is false, then `<<` is only broken when a lifetime
+    // shows up next. For example, consider the expression:
+    //
+    //      foo as bar << test
+    //
+    // The parser needs to know if `bar <<` is the start of a generic path or if
+    // it's a left-shift token. If `test` were a lifetime, then it's impossible
+    // for the token to be a left-shift, but if it's not a lifetime, then it's
+    // considered a left-shift.
+    //
+    // The reason for this is that the only current ambiguity with `<<` is when
+    // parsing closure types:
+    //
+    //      foo::<<'a> ||>();
+    //      impl Foo<<'a> ||>() { ... }
+    fn eat_lt(&mut self, force: bool) -> bool {
+        match self.token {
+            token::LT => { self.bump(); true }
+            token::BINOP(token::SHL) => {
+                let next_lifetime = self.look_ahead(1, |t| match *t {
+                    token::LIFETIME(..) => true,
+                    _ => false,
+                });
+                if force || next_lifetime {
+                    let lo = self.span.lo + BytePos(1);
+                    self.replace_token(token::LT, lo, self.span.hi);
+                    true
+                } else {
+                    false
+                }
+            }
+            _ => false,
+        }
+    }
+
+    fn expect_lt(&mut self) {
+        if !self.eat_lt(true) {
+            let found_token = self.this_token_to_str();
+            let token_str = Parser::token_to_str(&token::LT);
+            self.fatal(format!("expected `{}`, found `{}`",
+                               token_str, found_token))
         }
     }
 
@@ -1500,7 +1548,7 @@ impl<'a> Parser<'a> {
 
             // Parse the `<` before the lifetime and types, if applicable.
             let (any_lifetime_or_types, lifetimes, types) = {
-                if mode != NoTypesAllowed && self.eat(&token::LT) {
+                if mode != NoTypesAllowed && self.eat_lt(false) {
                     let (lifetimes, types) =
                         self.parse_generic_values_after_lt();
                     (true, lifetimes, OwnedSlice::from_vec(types))
@@ -1948,7 +1996,7 @@ impl<'a> Parser<'a> {
                     hi = self.span.hi;
                     self.bump();
                     let (_, tys) = if self.eat(&token::MOD_SEP) {
-                        self.expect(&token::LT);
+                        self.expect_lt();
                         self.parse_generic_values_after_lt()
                     } else {
                         (Vec::new(), Vec::new())
@@ -2239,9 +2287,6 @@ impl<'a> Parser<'a> {
             // HACK: turn &[...] into a &-vec
             ex = match e.node {
               ExprVec(..) if m == MutImmutable => {
-                ExprVstore(e, ExprVstoreSlice)
-              }
-              ExprLit(lit) if lit_is_str(lit) && m == MutImmutable => {
                 ExprVstore(e, ExprVstoreSlice)
               }
               ExprVec(..) if m == MutMutable => {
