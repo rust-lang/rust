@@ -860,15 +860,8 @@ pub fn trans_external_path(ccx: &CrateContext, did: ast::DefId, t: ty::t) -> Val
                                        did)
                 }
                 Some(..) | None => {
-                    let c = foreign::llvm_calling_convention(ccx, fn_ty.abi);
-                    let cconv = c.unwrap_or(lib::llvm::CCallConv);
-                    let llty = type_of_fn_from_ty(ccx, t);
-                    get_extern_fn(&mut *ccx.externs.borrow_mut(),
-                                  ccx.llmod,
-                                  name.as_slice(),
-                                  cconv,
-                                  llty,
-                                  fn_ty.sig.output)
+                    foreign::register_foreign_item_fn(ccx, fn_ty.abi, t,
+                                                      name.as_slice(), None)
                 }
             }
         }
@@ -1976,7 +1969,11 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
             match ni.node {
                 ast::ForeignItemFn(..) => {
                     let abi = ccx.tcx.map.get_foreign_abi(id);
-                    foreign::register_foreign_item_fn(ccx, abi, ni)
+                    let ty = ty::node_id_to_type(ccx.tcx(), ni.id);
+                    let name = foreign::link_name(ni);
+                    foreign::register_foreign_item_fn(ccx, abi, ty,
+                                                      name.get().as_slice(),
+                                                      Some(ni.span))
                 }
                 ast::ForeignItemStatic(..) => {
                     foreign::register_static(ccx, ni)

@@ -180,33 +180,42 @@ pub fn register_static(ccx: &CrateContext,
     }
 }
 
-pub fn register_foreign_item_fn(ccx: &CrateContext, abi: Abi,
-                                foreign_item: &ast::ForeignItem) -> ValueRef {
+pub fn register_foreign_item_fn(ccx: &CrateContext, abi: Abi, fty: ty::t,
+                                name: &str, span: Option<Span>) -> ValueRef {
     /*!
      * Registers a foreign function found in a library.
      * Just adds a LLVM global.
      */
 
     debug!("register_foreign_item_fn(abi={}, \
-            path={}, \
-            foreign_item.id={})",
+            ty={}, \
+            name={})",
            abi.repr(ccx.tcx()),
-           ccx.tcx.map.path_to_str(foreign_item.id),
-           foreign_item.id);
+           fty.repr(ccx.tcx()),
+           name);
 
     let cc = match llvm_calling_convention(ccx, abi) {
         Some(cc) => cc,
         None => {
-            ccx.sess().span_fatal(foreign_item.span,
-                format!("ABI `{}` has no suitable calling convention \
-                      for target architecture",
-                      abi.user_string(ccx.tcx())));
+            match span {
+                Some(s) => {
+                    ccx.sess().span_fatal(s,
+                        format!("ABI `{}` has no suitable calling convention \
+                              for target architecture",
+                              abi.user_string(ccx.tcx())))
+                }
+                None => {
+                    ccx.sess().fatal(
+                        format!("ABI `{}` has no suitable calling convention \
+                              for target architecture",
+                              abi.user_string(ccx.tcx())))
+                }
+            }
         }
     };
 
     // Register the function as a C extern fn
-    let lname = link_name(foreign_item);
-    let tys = foreign_types_for_id(ccx, foreign_item.id);
+    let tys = foreign_types_for_fn_ty(ccx, fty);
 
     // Make sure the calling convention is right for variadic functions
     // (should've been caught if not in typeck)
@@ -219,7 +228,7 @@ pub fn register_foreign_item_fn(ccx: &CrateContext, abi: Abi,
 
     let llfn = base::get_extern_fn(&mut *ccx.externs.borrow_mut(),
                                    ccx.llmod,
-                                   lname.get(),
+                                   name,
                                    cc,
                                    llfn_ty,
                                    tys.fn_sig.output);
@@ -433,17 +442,23 @@ pub fn trans_native_call<'a>(
 pub fn trans_foreign_mod(ccx: &CrateContext, foreign_mod: &ast::ForeignMod) {
     let _icx = push_ctxt("foreign::trans_foreign_mod");
     for &foreign_item in foreign_mod.items.iter() {
+        let lname = link_name(foreign_item);
+
         match foreign_item.node {
             ast::ForeignItemFn(..) => {
                 match foreign_mod.abi {
                     Rust | RustIntrinsic => {}
-                    abi => { register_foreign_item_fn(ccx, abi, foreign_item); }
+                    abi => {
+                        let ty = ty::node_id_to_type(ccx.tcx(), foreign_item.id);
+                        register_foreign_item_fn(ccx, abi, ty,
+                                                 lname.get().as_slice(),
+                                                 Some(foreign_item.span));
+                    }
                 }
             }
             _ => {}
         }
 
-        let lname = link_name(foreign_item);
         ccx.item_symbols.borrow_mut().insert(foreign_item.id,
                                              lname.get().to_strbuf());
     }
