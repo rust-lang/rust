@@ -209,7 +209,7 @@ impl<W: Writer> Writer for BufferedWriter<W> {
 impl<W: Writer> Drop for BufferedWriter<W> {
     fn drop(&mut self) {
         if self.inner.is_some() {
-            // FIXME(#12628): should this error be ignored?
+            // dtors should not fail, so we ignore a failed flush
             let _ = self.flush_buf();
         }
     }
@@ -370,6 +370,7 @@ mod test {
     use io;
     use prelude::*;
     use super::*;
+    use super::super::{IoResult, EndOfFile};
     use super::super::mem::{MemReader, MemWriter, BufReader};
     use self::test::Bencher;
     use str::StrSlice;
@@ -582,6 +583,24 @@ mod test {
         assert_eq!(it.next(), Some(Ok('ß')));
         assert_eq!(it.next(), Some(Ok('a')));
         assert_eq!(it.next(), None);
+    }
+
+    #[test]
+    #[should_fail]
+    fn dont_fail_in_drop_on_failed_flush() {
+        struct FailFlushWriter;
+
+        impl Writer for FailFlushWriter {
+            fn write(&mut self, _buf: &[u8]) -> IoResult<()> { Ok(()) }
+            fn flush(&mut self) -> IoResult<()> { Err(io::standard_error(EndOfFile)) }
+        }
+
+        let writer = FailFlushWriter;
+        let _writer = BufferedWriter::new(writer);
+
+        // Trigger failure. If writer fails *again* due to the flush
+        // error then the process will abort.
+        fail!();
     }
 
     #[bench]
