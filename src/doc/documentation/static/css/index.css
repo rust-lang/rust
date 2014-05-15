@@ -23,7 +23,7 @@ strong {
 
 a:link,
 a:visited {
-  color: #f30;
+  color: #d8714d;
 }
 
 a:hover {
@@ -111,6 +111,20 @@ a:hover {
   list-style: none;
   font-size: 1rem;
   line-height: 1.6;
+}
+
+.next {
+  width: 70%;
+  background: #4d8bd8;
+  color: #fff;
+  padding: 20px;
+  border-radius: 6px;
+}
+
+.next a {
+  color: #fff;
+  padding-bottom: 3px;
+  border-bottom: 1px dashed #eee;
 }
 
 /* Code */
