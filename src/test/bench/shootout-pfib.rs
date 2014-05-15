@@ -55,7 +55,7 @@ struct Config {
 fn parse_opts(argv: Vec<StrBuf> ) -> Config {
     let opts = vec!(getopts::optflag("", "stress", ""));
 
-    let argv = argv.iter().map(|x| x.to_str()).collect::<Vec<_>>();
+    let argv = argv.iter().map(|x| x.to_strbuf()).collect::<Vec<_>>();
     let opt_args = argv.slice(1, argv.len());
 
     match getopts::getopts(opt_args, opts.as_slice()) {

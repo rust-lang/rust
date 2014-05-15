@@ -101,11 +101,7 @@ pub fn parse_config(args: Vec<StrBuf> ) -> Config {
     }
 
     let matches =
-        &match getopts::getopts(args_.iter()
-                                     .map(|x| x.to_owned())
-                                     .collect::<Vec<_>>()
-                                     .as_slice(),
-                                groups.as_slice()) {
+        &match getopts::getopts(args_.as_slice(), groups.as_slice()) {
           Ok(m) => m,
           Err(f) => fail!("{}", f.to_err_msg())
         };
@@ -146,7 +142,9 @@ pub fn parse_config(args: Vec<StrBuf> ) -> Config {
         build_base: opt_path(matches, "build-base"),
         aux_base: opt_path(matches, "aux-base"),
         stage_id: matches.opt_str("stage-id").unwrap().to_strbuf(),
-        mode: FromStr::from_str(matches.opt_str("mode").unwrap()).expect("invalid mode"),
+        mode: FromStr::from_str(matches.opt_str("mode")
+                                       .unwrap()
+                                       .as_slice()).expect("invalid mode"),
         run_ignored: matches.opt_present("ignored"),
         filter: filter,
         logfile: matches.opt_str("logfile").map(|s| Path::new(s)),
@@ -154,7 +152,8 @@ pub fn parse_config(args: Vec<StrBuf> ) -> Config {
         ratchet_metrics:
             matches.opt_str("ratchet-metrics").map(|s| Path::new(s)),
         ratchet_noise_percent:
-            matches.opt_str("ratchet-noise-percent").and_then(|s| from_str::<f64>(s)),
+            matches.opt_str("ratchet-noise-percent")
+                   .and_then(|s| from_str::<f64>(s.as_slice())),
         runtool: matches.opt_str("runtool").map(|x| x.to_strbuf()),
         host_rustcflags: matches.opt_str("host-rustcflags")
                                 .map(|x| x.to_strbuf()),
