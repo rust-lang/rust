@@ -61,7 +61,7 @@ DEPS_std := core libc native:rustrt native:compiler-rt native:backtrace native:j
 DEPS_green := std rand native:context_switch
 DEPS_rustuv := std native:uv native:uv_support
 DEPS_native := std
-DEPS_syntax := std term serialize collections log fmt_macros
+DEPS_syntax := std term serialize collections log fmt_macros semver
 DEPS_rustc := syntax native:rustllvm flate arena serialize sync getopts \
               collections time log
 DEPS_rustdoc := rustc native:hoedown serialize sync getopts collections \
