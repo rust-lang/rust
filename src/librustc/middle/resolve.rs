@@ -2993,7 +2993,7 @@ impl<'a> Resolver<'a> {
                     Some(ref type_def) => {
                         match type_def.module_def {
                             None => {
-                                error!("!!! (resolving module in lexical \
+                                debug!("!!! (resolving module in lexical \
                                         scope) module wasn't actually a \
                                         module!");
                                 return Failed;
@@ -3004,7 +3004,7 @@ impl<'a> Resolver<'a> {
                         }
                     }
                     None => {
-                        error!("!!! (resolving module in lexical scope) module
+                        debug!("!!! (resolving module in lexical scope) module
                                 wasn't actually a module!");
                         return Failed;
                     }
