@@ -1,0 +1,59 @@
+# A list of file extensions that nanoc will consider to be textual rather than
+# binary. If an item with an extension not in this list is found,  the file
+# will be considered as binary.
+text_extensions: [ 'coffee', 'css', 'erb', 'haml', 'handlebars', 'hb', 'htm', 'html', 'js', 'less', 'markdown', 'md', 'ms', 'mustache', 'php', 'rb', 'sass', 'scss', 'txt', 'xhtml', 'xml' ]
+
+# The path to the directory where all generated files will be written to. This
+# can be an absolute path starting with a slash, but it can also be path
+# relative to the site directory.
+output_dir: output
+
+# A list of index filenames, i.e. names of files that will be served by a web
+# server when a directory is requested. Usually, index files are named
+# “index.html”, but depending on the web server, this may be something else,
+# such as “default.htm”. This list is used by nanoc to generate pretty URLs.
+index_filenames: [ 'index.html' ]
+
+# Whether or not to generate a diff of the compiled content when compiling a
+# site. The diff will contain the differences between the compiled content
+# before and after the last site compilation.
+enable_output_diff: false
+
+prune:
+  # Whether to automatically remove files not managed by nanoc from the output
+  # directory. For safety reasons, this is turned off by default.
+  auto_prune: false
+
+  # Which files and directories you want to exclude from pruning. If you version
+  # your output directory, you should probably exclude VCS directories such as
+  # .git, .svn etc.
+  exclude: [ '.git', '.hg', '.svn', 'CVS' ]
+
+# The data sources where nanoc loads its data from. This is an array of
+# hashes; each array element represents a single data source. By default,
+# there is only a single data source that reads data from the “content/” and
+# “layout/” directories in the site directory.
+data_sources:
+  -
+    # The type is the identifier of the data source. By default, this will be
+    # `filesystem_unified`.
+    type: filesystem_unified
+
+    # The path where items should be mounted (comparable to mount points in
+    # Unix-like systems). This is “/” by default, meaning that items will have
+    # “/” prefixed to their identifiers. If the items root were “/en/”
+    # instead, an item at content/about.html would have an identifier of
+    # “/en/about/” instead of just “/about/”.
+    items_root: /
+
+    # The path where layouts should be mounted. The layouts root behaves the
+    # same as the items root, but applies to layouts rather than items.
+    layouts_root: /
+
+    # Whether to allow periods in identifiers. When turned off, everything
+    # past the first period is considered to be the extension, and when
+    # turned on, only the characters past the last period are considered to
+    # be the extension. For example,  a file named “content/about.html.erb”
+    # will have the identifier “/about/” when turned off, but when turned on
+    # it will become “/about.html/” instead.
+    allow_periods_in_identifiers: false
