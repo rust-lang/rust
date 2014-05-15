@@ -343,12 +343,9 @@ fn main() {
     let numbers_arc = Arc::new(numbers);
 
     for num in range(1u, 10) {
-        let (tx, rx) = channel();
-        tx.send(numbers_arc.clone());
+        let task_numbers = numbers_arc.clone();
 
         spawn(proc() {
-            let local_arc : Arc<Vec<f64>> = rx.recv();
-            let task_numbers = &*local_arc;
             println!("{}-norm = {}", num, pnorm(task_numbers.as_slice(), num));
         });
     }
@@ -369,39 +366,26 @@ let numbers_arc=Arc::new(numbers);
 # }
 ~~~
 
-and a clone of it is sent to each task
+and a unique clone is captured for each task via a procedure. This only copies the wrapper and not
+it's contents. Within the task's procedure, the captured Arc reference can be used as an immutable
+reference to the underlying vector as if it were local.
 
 ~~~
 # extern crate sync;
 # extern crate rand;
 # use sync::Arc;
+# fn pnorm(nums: &[f64], p: uint) -> f64 { 4.0 }
 # fn main() {
 # let numbers=Vec::from_fn(1000000, |_| rand::random::<f64>());
 # let numbers_arc = Arc::new(numbers);
-# let (tx, rx) = channel();
-tx.send(numbers_arc.clone());
+# let num = 4;
+let task_numbers = numbers_arc.clone();
+spawn(proc() {
+    // Capture task_numbers and use it as if it was the underlying vector
+    println!("{}-norm = {}", num, pnorm(task_numbers.as_slice(), num));
+});
 # }
 ~~~
-
-copying only the wrapper and not its contents.
-
-Each task recovers the underlying data by
-
-~~~
-# extern crate sync;
-# extern crate rand;
-# use sync::Arc;
-# fn main() {
-# let numbers=Vec::from_fn(1000000, |_| rand::random::<f64>());
-# let numbers_arc=Arc::new(numbers);
-# let (tx, rx) = channel();
-# tx.send(numbers_arc.clone());
-# let local_arc : Arc<Vec<f64>> = rx.recv();
-let task_numbers = &*local_arc;
-# }
-~~~
-
-and can use it as if it were local.
 
 The `arc` module also implements Arcs around mutable data that are not covered here.
 
