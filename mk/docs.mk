@@ -30,7 +30,7 @@ DOCS := index intro tutorial guide-ffi guide-macros guide-lifetimes \
 	guide-tasks guide-container guide-pointers guide-testing \
 	guide-runtime complement-bugreport complement-cheatsheet \
 	complement-lang-faq complement-project-faq rust rustdoc \
-	guide-unsafe not_found
+	guide-unsafe
 
 PDF_DOCS := tutorial rust
 
@@ -42,9 +42,10 @@ L10N_LANGS := ja
 # Generally no need to edit below here.
 
 # The options are passed to the documentation generators.
-RUSTDOC_HTML_OPTS = --markdown-css rust.css \
-	--markdown-before-content=doc/version_info.html \
+RUSTDOC_HTML_OPTS_NO_CSS = --markdown-before-content=doc/version_info.html \
 	--markdown-in-header=doc/favicon.inc --markdown-after-content=doc/footer.inc
+
+RUSTDOC_HTML_OPTS = $(RUSTDOC_HTML_OPTS_NO_CSS) --markdown-css rust.css
 
 PANDOC_BASE_OPTS := --standalone --toc --number-sections
 PANDOC_TEX_OPTS = $(PANDOC_BASE_OPTS) --include-before-body=doc/version.tex \
@@ -151,6 +152,11 @@ $(foreach docname,$(PDF_DOCS),$(eval $(call DEF_SHOULD_BUILD_PDF_DOC,$(docname))
 doc/footer.tex: $(D)/footer.inc | doc/
 	@$(call E, pandoc: $@)
 	$(CFG_PANDOC) --from=html --to=latex $< --output=$@
+
+# HTML (rustdoc)
+DOC_TARGETS += doc/not_found.html
+doc/not_found.html: $(D)/not_found.md $(HTML_DEPS) | doc/
+	$(RUSTDOC) $(RUSTDOC_HTML_OPTS_NO_CSS) --markdown-css http://static.rust-lang.org/doc/master/rust.css $<
 
 define DEF_DOC
 

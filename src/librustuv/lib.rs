@@ -472,7 +472,7 @@ fn local_loop() -> &'static mut uvio::UvIoFactory {
 #[cfg(test)]
 mod test {
     use std::mem::transmute;
-    use std::unstable::run_in_bare_thread;
+    use std::rt::thread::Thread;
 
     use super::{slice_to_uv_buf, Loop};
 
@@ -496,10 +496,10 @@ mod test {
 
     #[test]
     fn loop_smoke_test() {
-        run_in_bare_thread(proc() {
+        Thread::start(proc() {
             let mut loop_ = Loop::new();
             loop_.run();
             loop_.close();
-        });
+        }).join();
     }
 }

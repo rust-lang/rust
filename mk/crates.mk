@@ -51,19 +51,21 @@
 
 TARGET_CRATES := libc std green rustuv native flate arena glob term semver \
                  uuid serialize sync getopts collections num test time rand \
-		 workcache url log regex graphviz core
+		 workcache url log regex graphviz core rlibc
 HOST_CRATES := syntax rustc rustdoc fourcc hexfloat regex_macros fmt_macros
 CRATES := $(TARGET_CRATES) $(HOST_CRATES)
 TOOLS := compiletest rustdoc rustc
 
 DEPS_core :=
+DEPS_rlibc :=
 DEPS_std := core libc native:rustrt native:compiler-rt native:backtrace native:jemalloc
+DEPS_graphviz := std
 DEPS_green := std rand native:context_switch
 DEPS_rustuv := std native:uv native:uv_support
 DEPS_native := std
 DEPS_syntax := std term serialize collections log fmt_macros
 DEPS_rustc := syntax native:rustllvm flate arena serialize sync getopts \
-              collections time log
+              collections time log graphviz
 DEPS_rustdoc := rustc native:hoedown serialize sync getopts collections \
                 test time
 DEPS_flate := std native:miniz
@@ -98,6 +100,7 @@ TOOL_SOURCE_rustdoc := $(S)src/driver/driver.rs
 TOOL_SOURCE_rustc := $(S)src/driver/driver.rs
 
 ONLY_RLIB_core := 1
+ONLY_RLIB_rlibc := 1
 
 ################################################################################
 # You should not need to edit below this line

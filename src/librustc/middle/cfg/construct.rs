@@ -18,10 +18,10 @@ use util::nodemap::NodeMap;
 
 struct CFGBuilder<'a> {
     tcx: &'a ty::ctxt,
-    method_map: typeck::MethodMap,
     exit_map: NodeMap<CFGIndex>,
     graph: CFGGraph,
-    loop_scopes: Vec<LoopScope> ,
+    fn_exit: CFGIndex,
+    loop_scopes: Vec<LoopScope>,
 }
 
 struct LoopScope {
@@ -31,22 +31,35 @@ struct LoopScope {
 }
 
 pub fn construct(tcx: &ty::ctxt,
-                 method_map: typeck::MethodMap,
                  blk: &ast::Block) -> CFG {
+    let mut graph = graph::Graph::new();
+    let entry = add_initial_dummy_node(&mut graph);
+
+    // `fn_exit` is target of return exprs, which lies somewhere
+    // outside input `blk`. (Distinguishing `fn_exit` and `block_exit`
+    // also resolves chicken-and-egg problem that arises if you try to
+    // have return exprs jump to `block_exit` during construction.)
+    let fn_exit = add_initial_dummy_node(&mut graph);
+    let block_exit;
+
     let mut cfg_builder = CFGBuilder {
         exit_map: NodeMap::new(),
-        graph: graph::Graph::new(),
+        graph: graph,
+        fn_exit: fn_exit,
         tcx: tcx,
-        method_map: method_map,
         loop_scopes: Vec::new()
     };
-    let entry = cfg_builder.add_node(0, []);
-    let exit = cfg_builder.block(blk, entry);
+    block_exit = cfg_builder.block(blk, entry);
+    cfg_builder.add_contained_edge(block_exit, fn_exit);
     let CFGBuilder {exit_map, graph, ..} = cfg_builder;
     CFG {exit_map: exit_map,
          graph: graph,
          entry: entry,
-         exit: exit}
+         exit: fn_exit}
+}
+
+fn add_initial_dummy_node(g: &mut CFGGraph) -> CFGIndex {
+    g.add_node(CFGNodeData { id: ast::DUMMY_NODE_ID })
 }
 
 impl<'a> CFGBuilder<'a> {
@@ -327,24 +340,25 @@ impl<'a> CFGBuilder<'a> {
 
             ast::ExprRet(v) => {
                 let v_exit = self.opt_expr(v, pred);
-                let loop_scope = *self.loop_scopes.get(0);
-                self.add_exiting_edge(expr, v_exit,
-                                      loop_scope, loop_scope.break_index);
-                self.add_node(expr.id, [])
+                let b = self.add_node(expr.id, [v_exit]);
+                self.add_returning_edge(expr, b);
+                self.add_node(ast::DUMMY_NODE_ID, [])
             }
 
             ast::ExprBreak(label) => {
                 let loop_scope = self.find_scope(expr, label);
-                self.add_exiting_edge(expr, pred,
+                let b = self.add_node(expr.id, [pred]);
+                self.add_exiting_edge(expr, b,
                                       loop_scope, loop_scope.break_index);
-                self.add_node(expr.id, [])
+                self.add_node(ast::DUMMY_NODE_ID, [])
             }
 
             ast::ExprAgain(label) => {
                 let loop_scope = self.find_scope(expr, label);
-                self.add_exiting_edge(expr, pred,
+                let a = self.add_node(expr.id, [pred]);
+                self.add_exiting_edge(expr, a,
                                       loop_scope, loop_scope.continue_index);
-                self.add_node(expr.id, [])
+                self.add_node(ast::DUMMY_NODE_ID, [])
             }
 
             ast::ExprVec(ref elems) => {
@@ -453,13 +467,16 @@ impl<'a> CFGBuilder<'a> {
     }
 
     fn add_dummy_node(&mut self, preds: &[CFGIndex]) -> CFGIndex {
-        self.add_node(0, preds)
+        self.add_node(ast::DUMMY_NODE_ID, preds)
     }
 
     fn add_node(&mut self, id: ast::NodeId, preds: &[CFGIndex]) -> CFGIndex {
         assert!(!self.exit_map.contains_key(&id));
         let node = self.graph.add_node(CFGNodeData {id: id});
-        self.exit_map.insert(id, node);
+        if id != ast::DUMMY_NODE_ID {
+            assert!(!self.exit_map.contains_key(&id));
+            self.exit_map.insert(id, node);
+        }
         for &pred in preds.iter() {
             self.add_contained_edge(pred, node);
         }
@@ -486,6 +503,16 @@ impl<'a> CFGBuilder<'a> {
             scope_id = self.tcx.region_maps.encl_scope(scope_id);
         }
         self.graph.add_edge(from_index, to_index, data);
+    }
+
+    fn add_returning_edge(&mut self,
+                          _from_expr: @ast::Expr,
+                          from_index: CFGIndex) {
+        let mut data = CFGEdgeData {exiting_scopes: vec!() };
+        for &LoopScope { loop_id: id, .. } in self.loop_scopes.iter().rev() {
+            data.exiting_scopes.push(id);
+        }
+        self.graph.add_edge(from_index, self.fn_exit, data);
     }
 
     fn find_scope(&self,
@@ -521,6 +548,6 @@ impl<'a> CFGBuilder<'a> {
 
     fn is_method_call(&self, expr: &ast::Expr) -> bool {
         let method_call = typeck::MethodCall::expr(expr.id);
-        self.method_map.borrow().contains_key(&method_call)
+        self.tcx.method_map.borrow().contains_key(&method_call)
     }
 }

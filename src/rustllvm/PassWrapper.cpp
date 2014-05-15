@@ -128,17 +128,27 @@ LLVMRustAddAnalysisPasses(LLVMTargetMachineRef TM,
 // Unfortunately, the LLVM C API doesn't provide a way to set the `LibraryInfo`
 // field of a PassManagerBuilder, we expose our own method of doing so.
 extern "C" void
-LLVMRustAddBuilderLibraryInfo(LLVMPassManagerBuilderRef PMB, LLVMModuleRef M) {
+LLVMRustAddBuilderLibraryInfo(LLVMPassManagerBuilderRef PMB,
+                              LLVMModuleRef M,
+                              bool DisableSimplifyLibCalls) {
     Triple TargetTriple(unwrap(M)->getTargetTriple());
-    unwrap(PMB)->LibraryInfo = new TargetLibraryInfo(TargetTriple);
+    TargetLibraryInfo *TLI = new TargetLibraryInfo(TargetTriple);
+    if (DisableSimplifyLibCalls)
+      TLI->disableAllFunctions();
+    unwrap(PMB)->LibraryInfo = TLI;
 }
 
 // Unfortunately, the LLVM C API doesn't provide a way to create the
 // TargetLibraryInfo pass, so we use this method to do so.
 extern "C" void
-LLVMRustAddLibraryInfo(LLVMPassManagerRef PMB, LLVMModuleRef M) {
+LLVMRustAddLibraryInfo(LLVMPassManagerRef PMB,
+                       LLVMModuleRef M,
+                       bool DisableSimplifyLibCalls) {
     Triple TargetTriple(unwrap(M)->getTargetTriple());
-    unwrap(PMB)->add(new TargetLibraryInfo(TargetTriple));
+    TargetLibraryInfo *TLI = new TargetLibraryInfo(TargetTriple);
+    if (DisableSimplifyLibCalls)
+      TLI->disableAllFunctions();
+    unwrap(PMB)->add(TLI);
 }
 
 // Unfortunately, the LLVM C API doesn't provide an easy way of iterating over
