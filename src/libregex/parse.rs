@@ -32,7 +32,7 @@ pub struct Error {
     /// The *approximate* character index of where the error occurred.
     pub pos: uint,
     /// A message describing the error.
-    pub msg: ~str,
+    pub msg: StrBuf,
 }
 
 impl fmt::Show for Error {
@@ -59,7 +59,7 @@ pub enum Ast {
     Begin(Flags),
     End(Flags),
     WordBoundary(Flags),
-    Capture(uint, Option<~str>, Box<Ast>),
+    Capture(uint, Option<StrBuf>, Box<Ast>),
     // Represent concatenation as a flat vector to avoid blowing the
     // stack in the compiler.
     Cat(Vec<Ast>),
@@ -104,7 +104,7 @@ impl Greed {
 #[deriving(Show)]
 enum BuildAst {
     Ast(Ast),
-    Paren(Flags, uint, ~str), // '('
+    Paren(Flags, uint, StrBuf), // '('
     Bar, // '|'
 }
 
@@ -131,7 +131,7 @@ impl BuildAst {
         }
     }
 
-    fn capture_name(&self) -> Option<~str> {
+    fn capture_name(&self) -> Option<StrBuf> {
         match *self {
             Paren(_, 0, _) => None,
             Paren(_, _, ref name) => {
@@ -185,7 +185,7 @@ struct Parser<'a> {
     // opening a capture group).
     caps: uint,
     // A set of all capture group names used only to detect duplicates.
-    names: Vec<~str>,
+    names: Vec<StrBuf>,
 }
 
 pub fn parse(s: &str) -> Result<Ast, Error> {
@@ -222,7 +222,7 @@ impl<'a> Parser<'a> {
                         self.caps += 1;
                         self.stack.push(Paren(self.flags,
                                               self.caps,
-                                              "".to_owned()))
+                                              "".to_strbuf()))
                     }
                 }
                 ')' => {
@@ -470,7 +470,7 @@ impl<'a> Parser<'a> {
                 FLAG_EMPTY
             };
         let name = self.slice(name_start, closer - 1);
-        match find_class(ASCII_CLASSES, name) {
+        match find_class(ASCII_CLASSES, name.as_slice()) {
             None => None,
             Some(ranges) => {
                 self.chari = closer;
@@ -611,7 +611,7 @@ impl<'a> Parser<'a> {
     // character).
     fn parse_unicode_name(&mut self) -> Result<Ast, Error> {
         let negated = if self.cur() == 'P' { FLAG_NEGATED } else { FLAG_EMPTY };
-        let mut name: ~str;
+        let mut name: StrBuf;
         if self.peek_is(1, '{') {
             try!(self.expect('{'))
             let closer =
@@ -633,7 +633,7 @@ impl<'a> Parser<'a> {
             name = self.slice(self.chari + 1, self.chari + 2);
             self.chari += 1;
         }
-        match find_class(UNICODE_CLASSES, name) {
+        match find_class(UNICODE_CLASSES, name.as_slice()) {
             None => return self.err(format!(
                 "Could not find Unicode class '{}'", name)),
             Some(ranges) => {
@@ -657,7 +657,7 @@ impl<'a> Parser<'a> {
             }
         }
         let s = self.slice(start, end);
-        match num::from_str_radix::<u32>(s, 8) {
+        match num::from_str_radix::<u32>(s.as_slice(), 8) {
             Some(n) => Ok(Literal(try!(self.char_from_u32(n)), FLAG_EMPTY)),
             None => self.err(format!(
                 "Could not parse '{}' as octal number.", s)),
@@ -679,7 +679,7 @@ impl<'a> Parser<'a> {
                 Some(i) => i,
             };
         self.chari = closer;
-        self.parse_hex_digits(self.slice(start, closer))
+        self.parse_hex_digits(self.slice(start, closer).as_slice())
     }
 
     // Parses a two-digit hex number.
@@ -690,7 +690,7 @@ impl<'a> Parser<'a> {
         let (start, end) = (self.chari, self.chari + 2);
         let bad = self.slice(start - 2, self.chars.len());
         try!(self.noteof(format!("Invalid hex escape sequence '{}'", bad)))
-        self.parse_hex_digits(self.slice(start, end))
+        self.parse_hex_digits(self.slice(start, end).as_slice())
     }
 
     // Parses `s` as a hexadecimal number.
@@ -717,7 +717,7 @@ impl<'a> Parser<'a> {
             return self.err("Capture names must have at least 1 character.")
         }
         let name = self.slice(self.chari, closer);
-        if !name.chars().all(is_valid_cap) {
+        if !name.as_slice().chars().all(is_valid_cap) {
             return self.err(
                 "Capture names can only have underscores, letters and digits.")
         }
@@ -771,7 +771,7 @@ impl<'a> Parser<'a> {
                     }
                     if self.cur() == ':' {
                         // Save the old flags with the opening paren.
-                        self.stack.push(Paren(self.flags, 0, "".to_owned()));
+                        self.stack.push(Paren(self.flags, 0, "".to_strbuf()));
                     }
                     self.flags = flags;
                     return Ok(())
@@ -892,7 +892,7 @@ impl<'a> Parser<'a> {
     fn err<T>(&self, msg: &str) -> Result<T, Error> {
         Err(Error {
             pos: self.chari,
-            msg: msg.to_owned(),
+            msg: msg.to_strbuf(),
         })
     }
 
@@ -911,8 +911,8 @@ impl<'a> Parser<'a> {
         *self.chars.get(self.chari)
     }
 
-    fn slice(&self, start: uint, end: uint) -> ~str {
-        str::from_chars(self.chars.as_slice().slice(start, end))
+    fn slice(&self, start: uint, end: uint) -> StrBuf {
+        str::from_chars(self.chars.as_slice().slice(start, end)).to_strbuf()
     }
 }
 

@@ -37,7 +37,7 @@ fn f64_cmp(x: f64, y: f64) -> Ordering {
 }
 
 // given a map, print a sorted version of it
-fn sort_and_fmt(mm: &HashMap<Vec<u8> , uint>, total: uint) -> ~str {
+fn sort_and_fmt(mm: &HashMap<Vec<u8> , uint>, total: uint) -> StrBuf {
    fn pct(xx: uint, yy: uint) -> f64 {
       return (xx as f64) * 100.0 / (yy as f64);
    }
@@ -67,12 +67,12 @@ fn sort_and_fmt(mm: &HashMap<Vec<u8> , uint>, total: uint) -> ~str {
                                .into_str(), v));
    }
 
-   return buffer.into_owned();
+   return buffer
 }
 
 // given a map, search for the frequency of a pattern
-fn find(mm: &HashMap<Vec<u8> , uint>, key: ~str) -> uint {
-   let key = key.into_ascii().as_slice().to_lower().into_str();
+fn find(mm: &HashMap<Vec<u8> , uint>, key: StrBuf) -> uint {
+   let key = key.to_owned().into_ascii().as_slice().to_lower().into_str();
    match mm.find_equiv(&key.as_bytes()) {
       option::None      => { return 0u; }
       option::Some(&num) => { return num; }
@@ -106,7 +106,7 @@ fn windows_with_carry(bb: &[u8], nn: uint, it: |window: &[u8]|) -> Vec<u8> {
 
 fn make_sequence_processor(sz: uint,
                            from_parent: &Receiver<Vec<u8>>,
-                           to_parent: &Sender<~str>) {
+                           to_parent: &Sender<StrBuf>) {
    let mut freqs: HashMap<Vec<u8>, uint> = HashMap::new();
    let mut carry = Vec::new();
    let mut total: uint = 0u;
@@ -129,13 +129,13 @@ fn make_sequence_processor(sz: uint,
    let buffer = match sz {
        1u => { sort_and_fmt(&freqs, total) }
        2u => { sort_and_fmt(&freqs, total) }
-       3u => { format!("{}\t{}", find(&freqs, "GGT".to_owned()), "GGT") }
-       4u => { format!("{}\t{}", find(&freqs, "GGTA".to_owned()), "GGTA") }
-       6u => { format!("{}\t{}", find(&freqs, "GGTATT".to_owned()), "GGTATT") }
-      12u => { format!("{}\t{}", find(&freqs, "GGTATTTTAATT".to_owned()), "GGTATTTTAATT") }
-      18u => { format!("{}\t{}", find(&freqs, "GGTATTTTAATTTATAGT".to_owned()),
+       3u => { format_strbuf!("{}\t{}", find(&freqs, "GGT".to_strbuf()), "GGT") }
+       4u => { format_strbuf!("{}\t{}", find(&freqs, "GGTA".to_strbuf()), "GGTA") }
+       6u => { format_strbuf!("{}\t{}", find(&freqs, "GGTATT".to_strbuf()), "GGTATT") }
+      12u => { format_strbuf!("{}\t{}", find(&freqs, "GGTATTTTAATT".to_strbuf()), "GGTATTTTAATT") }
+      18u => { format_strbuf!("{}\t{}", find(&freqs, "GGTATTTTAATTTATAGT".to_strbuf()),
                        "GGTATTTTAATTTATAGT") }
-        _ => { "".to_owned() }
+        _ => { "".to_strbuf() }
    };
 
     to_parent.send(buffer);
@@ -155,7 +155,7 @@ fn main() {
 
     // initialize each sequence sorter
     let sizes = vec!(1u,2,3,4,6,12,18);
-    let mut streams = Vec::from_fn(sizes.len(), |_| Some(channel::<~str>()));
+    let mut streams = Vec::from_fn(sizes.len(), |_| Some(channel::<StrBuf>()));
     let mut from_child = Vec::new();
     let to_child  = sizes.iter().zip(streams.mut_iter()).map(|(sz, stream_ref)| {
         let sz = *sz;

@@ -14,10 +14,10 @@
 
 enum sty { ty_nil, }
 
-struct RawT {struct_: sty, cname: Option<~str>, hash: uint}
+struct RawT {struct_: sty, cname: Option<StrBuf>, hash: uint}
 
-fn mk_raw_ty(st: sty, cname: Option<~str>) -> RawT {
+fn mk_raw_ty(st: sty, cname: Option<StrBuf>) -> RawT {
     return RawT {struct_: st, cname: cname, hash: 0u};
 }
 
-pub fn main() { mk_raw_ty(ty_nil, None::<~str>); }
+pub fn main() { mk_raw_ty(ty_nil, None::<StrBuf>); }

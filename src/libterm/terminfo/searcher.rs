@@ -76,15 +76,17 @@ pub fn get_dbpath_for_term(term: &str) -> Option<Box<Path>> {
 }
 
 /// Return open file for `term`
-pub fn open(term: &str) -> Result<File, ~str> {
+pub fn open(term: &str) -> Result<File, StrBuf> {
     match get_dbpath_for_term(term) {
         Some(x) => {
             match File::open(x) {
                 Ok(file) => Ok(file),
-                Err(e) => Err(format!("error opening file: {}", e)),
+                Err(e) => Err(format_strbuf!("error opening file: {}", e)),
             }
         }
-        None => Err(format!("could not find terminfo entry for {}", term))
+        None => {
+            Err(format_strbuf!("could not find terminfo entry for {}", term))
+        }
     }
 }
 
@@ -95,14 +97,14 @@ fn test_get_dbpath_for_term() {
     // note: current tests won't work with non-standard terminfo hierarchies (e.g. OS X's)
     use std::os::{setenv, unsetenv};
     // FIXME (#9639): This needs to handle non-utf8 paths
-    fn x(t: &str) -> ~str {
+    fn x(t: &str) -> StrBuf {
         let p = get_dbpath_for_term(t).expect("no terminfo entry found");
-        p.as_str().unwrap().to_owned()
+        p.as_str().unwrap().to_strbuf()
     };
-    assert!(x("screen") == "/usr/share/terminfo/s/screen".to_owned());
+    assert!(x("screen") == "/usr/share/terminfo/s/screen".to_strbuf());
     assert!(get_dbpath_for_term("") == None);
     setenv("TERMINFO_DIRS", ":");
-    assert!(x("screen") == "/usr/share/terminfo/s/screen".to_owned());
+    assert!(x("screen") == "/usr/share/terminfo/s/screen".to_strbuf());
     unsetenv("TERMINFO_DIRS");
 }
 

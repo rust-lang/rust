@@ -11,7 +11,7 @@
 // pp-exact - Make sure we actually print the attributes
 
 struct cat {
-    name: ~str,
+    name: StrBuf,
 }
 
 impl Drop for cat {
@@ -21,6 +21,6 @@ impl Drop for cat {
 
 
 #[cat_maker]
-fn cat(name: ~str) -> cat { cat{name: name,} }
+fn cat(name: StrBuf) -> cat { cat{name: name,} }
 
-pub fn main() { let _kitty = cat("Spotty".to_owned()); }
+pub fn main() { let _kitty = cat("Spotty".to_strbuf()); }

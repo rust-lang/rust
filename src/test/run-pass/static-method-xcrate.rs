@@ -15,8 +15,8 @@ extern crate static_methods_crate;
 use static_methods_crate::read;
 
 pub fn main() {
-    let result: int = read("5".to_owned());
+    let result: int = read("5".to_strbuf());
     assert_eq!(result, 5);
-    assert_eq!(read::readMaybe("false".to_owned()), Some(false));
-    assert_eq!(read::readMaybe("foo".to_owned()), None::<bool>);
+    assert_eq!(read::readMaybe("false".to_strbuf()), Some(false));
+    assert_eq!(read::readMaybe("foo".to_strbuf()), None::<bool>);
 }

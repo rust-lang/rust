@@ -176,10 +176,6 @@ pub fn test(input: &str, libs: HashSet<Path>, mut test_args: Vec<StrBuf>) -> int
     let mut collector = Collector::new(input.to_strbuf(), libs, true, true);
     find_testable_code(input_str.as_slice(), &mut collector);
     test_args.unshift("rustdoctest".to_strbuf());
-    testing::test_main(test_args.move_iter()
-                                .map(|x| x.to_str())
-                                .collect::<Vec<_>>()
-                                .as_slice(),
-                       collector.tests);
+    testing::test_main(test_args.as_slice(), collector.tests);
     0
 }

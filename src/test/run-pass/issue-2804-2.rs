@@ -16,8 +16,8 @@ extern crate collections;
 
 use collections::HashMap;
 
-fn add_interfaces(managed_ip: ~str, device: HashMap<~str, int>)  {
-     println!("{}, {:?}", managed_ip, device.get(&"interfaces".to_owned()));
+fn add_interfaces(managed_ip: StrBuf, device: HashMap<StrBuf, int>)  {
+     println!("{}, {:?}", managed_ip, device.get(&"interfaces".to_strbuf()));
 }
 
 pub fn main() {}

@@ -10,16 +10,16 @@
 
 // Regression test for #13428
 
-fn foo() -> ~str {  //~ ERROR not all control paths return a value
-    format!("Hello {}",
-            "world")
+fn foo() -> StrBuf {  //~ ERROR not all control paths return a value
+    format_strbuf!("Hello {}",
+                   "world")
     // Put the trailing semicolon on its own line to test that the
     // note message gets the offending semicolon exactly
     ;   //~ NOTE consider removing this semicolon
 }
 
-fn bar() -> ~str {  //~ ERROR not all control paths return a value
-    "foobar".to_owned()
+fn bar() -> StrBuf {  //~ ERROR not all control paths return a value
+    "foobar".to_strbuf()
     ;   //~ NOTE consider removing this semicolon
 }
 

@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Wrapper(~str);
+struct Wrapper(StrBuf);
 
 impl Wrapper {
-    pub fn new(wrapped: ~str) -> Wrapper {
+    pub fn new(wrapped: StrBuf) -> Wrapper {
         Wrapper(wrapped)
     }
 
@@ -28,12 +28,12 @@ impl Drop for Wrapper {
 pub fn main() {
     {
         // This runs without complaint.
-        let x = Wrapper::new("Bob".to_owned());
+        let x = Wrapper::new("Bob".to_strbuf());
         x.say_hi();
     }
     {
         // This fails to compile, circa 0.8-89-gc635fba.
         // error: internal compiler error: drop_ty_immediate: non-box ty
-        Wrapper::new("Bob".to_owned()).say_hi();
+        Wrapper::new("Bob".to_strbuf()).say_hi();
     }
 }

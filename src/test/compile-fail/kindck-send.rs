@@ -30,7 +30,7 @@ fn test<'a,T,U:Send>(_: &'a int) {
 
     // boxes are ok
     assert_send::<Box<int>>();
-    assert_send::<~str>();
+    assert_send::<StrBuf>();
     assert_send::<Vec<int> >();
 
     // but not if they own a bad thing

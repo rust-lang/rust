@@ -8,20 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct S {f:~str}
+struct S {f:StrBuf}
 impl Drop for S {
     fn drop(&mut self) { println!("{}", self.f); }
 }
 
 fn move_in_match() {
-    match S {f:"foo".to_owned()} {
+    match S {f:"foo".to_strbuf()} {
         S {f:_s} => {}
         //~^ ERROR cannot move out of type `S`, which defines the `Drop` trait
     }
 }
 
 fn move_in_let() {
-    let S {f:_s} = S {f:"foo".to_owned()};
+    let S {f:_s} = S {f:"foo".to_strbuf()};
     //~^ ERROR cannot move out of type `S`, which defines the `Drop` trait
 }
 
