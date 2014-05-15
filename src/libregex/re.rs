@@ -100,38 +100,45 @@ pub fn is_match(regex: &str, text: &str) -> Result<bool, parse::Error> {
 /// documentation.
 #[deriving(Clone)]
 #[allow(visible_private_types)]
-pub struct Regex {
-    /// The representation of `Regex` is exported to support the `regex!`
-    /// syntax extension. Do not rely on it.
-    ///
-    /// See the comments for the `program` module in `lib.rs` for a more
-    /// detailed explanation for what `regex!` requires.
+pub enum Regex {
+    // The representation of `Regex` is exported to support the `regex!`
+    // syntax extension. Do not rely on it.
+    //
+    // See the comments for the `program` module in `lib.rs` for a more
+    // detailed explanation for what `regex!` requires.
     #[doc(hidden)]
-    pub original: String,
+    Dynamic(Dynamic),
     #[doc(hidden)]
-    pub names: Vec<Option<String>>,
+    Native(Native),
+}
+
+#[deriving(Clone)]
+#[doc(hidden)]
+pub struct Dynamic {
+    original: String,
+    names: Vec<Option<String>>,
     #[doc(hidden)]
-    pub p: MaybeNative,
+    pub prog: Program
+}
+
+#[doc(hidden)]
+pub struct Native {
+    #[doc(hidden)]
+    pub original: &'static str,
+    #[doc(hidden)]
+    pub names: &'static [Option<&'static str>],
+    #[doc(hidden)]
+    pub prog: fn(MatchKind, &str, uint, uint) -> Vec<Option<uint>>
+}
+
+impl Clone for Native {
+    fn clone(&self) -> Native { *self }
 }
 
 impl fmt::Show for Regex {
     /// Shows the original regular expression.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.original)
-    }
-}
-
-pub enum MaybeNative {
-    Dynamic(Program),
-    Native(fn(MatchKind, &str, uint, uint) -> Vec<Option<uint>>),
-}
-
-impl Clone for MaybeNative {
-    fn clone(&self) -> MaybeNative {
-        match *self {
-            Dynamic(ref p) => Dynamic(p.clone()),
-            Native(fp) => Native(fp),
-        }
+        write!(f, "{}", self.as_str())
     }
 }
 
@@ -146,10 +153,11 @@ impl Regex {
     pub fn new(re: &str) -> Result<Regex, parse::Error> {
         let ast = try!(parse::parse(re));
         let (prog, names) = Program::new(ast);
-        Ok(Regex {
+        Ok(Dynamic(Dynamic {
             original: re.to_strbuf(),
-            names: names, p: Dynamic(prog),
-        })
+            names: names,
+            prog: prog,
+        }))
     }
 
     /// Returns true if and only if the regex matches the string given.
@@ -495,6 +503,46 @@ impl Regex {
         }
         new.append(text.slice(last_match, text.len()))
     }
+
+    /// Returns the original string of this regex.
+    pub fn as_str<'a>(&'a self) -> &'a str {
+        match *self {
+            Dynamic(Dynamic { ref original, .. }) => original.as_slice(),
+            Native(Native { ref original, .. }) => original.as_slice(),
+        }
+    }
+
+    #[doc(hidden)]
+    #[allow(visible_private_types)]
+    #[experimental]
+    pub fn names_iter<'a>(&'a self) -> NamesIter<'a> {
+        match *self {
+            Native(ref n) => NamesIterNative(n.names.iter()),
+            Dynamic(ref d) => NamesIterDynamic(d.names.iter())
+        }
+    }
+
+    fn names_len(&self) -> uint {
+        match *self {
+            Native(ref n) => n.names.len(),
+            Dynamic(ref d) => d.names.len()
+        }
+    }
+
+}
+
+enum NamesIter<'a> {
+    NamesIterNative(::std::slice::Items<'a, Option<&'static str>>),
+    NamesIterDynamic(::std::slice::Items<'a, Option<String>>)
+}
+
+impl<'a> Iterator<Option<String>> for NamesIter<'a> {
+    fn next(&mut self) -> Option<Option<String>> {
+        match *self {
+            NamesIterNative(ref mut i) => i.next().map(|x| x.map(|s| s.to_strbuf())),
+            NamesIterDynamic(ref mut i) => i.next().map(|x| x.as_ref().map(|s| s.to_strbuf())),
+        }
+    }
 }
 
 /// NoExpand indicates literal string replacement.
@@ -612,6 +660,7 @@ pub struct Captures<'t> {
 }
 
 impl<'t> Captures<'t> {
+    #[allow(experimental)]
     fn new(re: &Regex, search: &'t str, locs: CaptureLocs)
           -> Option<Captures<'t>> {
         if !has_match(&locs) {
@@ -619,15 +668,15 @@ impl<'t> Captures<'t> {
         }
 
         let named =
-            if re.names.len() == 0 {
+            if re.names_len() == 0 {
                 None
             } else {
                 let mut named = HashMap::new();
-                for (i, name) in re.names.iter().enumerate() {
+                for (i, name) in re.names_iter().enumerate() {
                     match name {
-                        &None => {},
-                        &Some(ref name) => {
-                            named.insert(name.to_strbuf(), i);
+                        None => {},
+                        Some(name) => {
+                            named.insert(name, i);
                         }
                     }
                 }
@@ -862,9 +911,9 @@ fn exec(re: &Regex, which: MatchKind, input: &str) -> CaptureLocs {
 
 fn exec_slice(re: &Regex, which: MatchKind,
               input: &str, s: uint, e: uint) -> CaptureLocs {
-    match re.p {
-        Dynamic(ref prog) => vm::run(which, prog, input, s, e),
-        Native(exec) => exec(which, input, s, e),
+    match *re {
+        Dynamic(Dynamic { ref prog, .. }) => vm::run(which, prog, input, s, e),
+        Native(Native { prog, .. }) => prog(which, input, s, e),
     }
 }
 
