@@ -1239,14 +1239,14 @@ impl<K: TotalEq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// Return the value corresponding to the key in the map, or insert
     /// and return the value if it doesn't exist.
     pub fn find_or_insert<'a>(&'a mut self, k: K, v: V) -> &'a mut V {
-        self.mangle(k, v, |_k, a| a, |_k, _v, _a| ())
+        self.find_with_or_insert_with(k, v, |_k, _v, _a| (), |_k, a| a)
     }
 
     /// Return the value corresponding to the key in the map, or create,
     /// insert, and return a new value if it doesn't exist.
     pub fn find_or_insert_with<'a>(&'a mut self, k: K, f: |&K| -> V)
                                -> &'a mut V {
-        self.mangle(k, (), |k, _a| f(k), |_k, _v, _a| ())
+        self.find_with_or_insert_with(k, (), |_k, _v, _a| (), |k, _a| f(k))
     }
 
     /// Insert a key-value pair into the map if the key is not already present.
@@ -1258,7 +1258,7 @@ impl<K: TotalEq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
                                  v: V,
                                  f: |&K, &mut V|)
                                  -> &'a mut V {
-        self.mangle(k, v, |_k, a| a, |k, v, _a| f(k, v))
+        self.find_with_or_insert_with(k, v, |k, v, _a| f(k, v), |_k, a| a)
     }
 
     /// Modify and return the value corresponding to the key in the map, or
@@ -1282,31 +1282,33 @@ impl<K: TotalEq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// let new = vec!["a key", "b key", "z key"];
     ///
     /// for k in new.move_iter() {
-    ///     map.mangle(k, "new value",
-    ///                // if the key doesn't exist in the map yet, add it in
-    ///                // the obvious way.
-    ///                |_k, v| vec![v],
-    ///                // if the key does exist either prepend or append this
-    ///                // new value based on the first letter of the key.
-    ///                |key, already, new| {
-    ///                    if key.as_slice().starts_with("z") {
-    ///                        already.unshift(new);
-    ///                    } else {
-    ///                        already.push(new);
-    ///                    }
-    ///                });
+    ///     map.find_with_or_insert_with(
+    ///         k, "new value",
+    ///         // if the key does exist either prepend or append this
+    ///         // new value based on the first letter of the key.
+    ///         |key, already, new| {
+    ///             if key.as_slice().starts_with("z") {
+    ///                 already.unshift(new);
+    ///             } else {
+    ///                 already.push(new);
+    ///             }
+    ///         },
+    ///         // if the key doesn't exist in the map yet, add it in
+    ///         // the obvious way.
+    ///         |_k, v| vec![v],
+    ///     );
     /// }
     ///
     /// for (k, v) in map.iter() {
     ///     println!("{} -> {}", *k, *v);
     /// }
     /// ```
-    pub fn mangle<'a, A>(&'a mut self,
-                         k: K,
-                         a: A,
-                         not_found: |&K, A| -> V,
-                         found: |&K, &mut V, A|)
-                        -> &'a mut V {
+    pub fn find_with_or_insert_with<'a, A>(&'a mut self,
+                                           k: K,
+                                           a: A,
+                                           found: |&K, &mut V, A|,
+                                           not_found: |&K, A| -> V)
+                                          -> &'a mut V {
         let hash = self.make_hash(&k);
         match self.search_hashed(&hash, &k) {
             None => {
