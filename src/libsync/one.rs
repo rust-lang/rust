@@ -64,6 +64,11 @@ impl Once {
     /// When this function returns, it is guaranteed that some initialization
     /// has run and completed (it may not be the closure specified).
     pub fn doit(&self, f: ||) {
+        // Optimize common path: load is much cheaper than fetch_add.
+        if self.cnt.load(atomics::SeqCst) < 0 {
+            return
+        }
+
         // Implementation-wise, this would seem like a fairly trivial primitive.
         // The stickler part is where our mutexes currently require an
         // allocation, and usage of a `Once` should't leak this allocation.
