@@ -212,7 +212,8 @@ pub mod write {
             if !sess.opts.cg.no_prepopulate_passes {
                 llvm::LLVMRustAddAnalysisPasses(tm, fpm, llmod);
                 llvm::LLVMRustAddAnalysisPasses(tm, mpm, llmod);
-                populate_llvm_passes(fpm, mpm, llmod, opt_level);
+                populate_llvm_passes(fpm, mpm, llmod, opt_level,
+                                     trans.no_builtins);
             }
 
             for pass in sess.opts.cg.passes.iter() {
@@ -264,11 +265,11 @@ pub mod write {
             // escape the closure itself, and the manager should only be
             // used once.
             fn with_codegen(tm: TargetMachineRef, llmod: ModuleRef,
-                            f: |PassManagerRef|) {
+                            no_builtins: bool, f: |PassManagerRef|) {
                 unsafe {
                     let cpm = llvm::LLVMCreatePassManager();
                     llvm::LLVMRustAddAnalysisPasses(tm, cpm, llmod);
-                    llvm::LLVMRustAddLibraryInfo(cpm, llmod);
+                    llvm::LLVMRustAddLibraryInfo(cpm, llmod, no_builtins);
                     f(cpm);
                     llvm::LLVMDisposePassManager(cpm);
                 }
@@ -286,7 +287,7 @@ pub mod write {
                     }
                     OutputTypeLlvmAssembly => {
                         path.with_c_str(|output| {
-                            with_codegen(tm, llmod, |cpm| {
+                            with_codegen(tm, llmod, trans.no_builtins, |cpm| {
                                 llvm::LLVMRustPrintModule(cpm, llmod, output);
                             })
                         })
@@ -303,7 +304,7 @@ pub mod write {
                             needs_metadata = true;
                             output.temp_path(OutputTypeAssembly)
                         };
-                        with_codegen(tm, llmod, |cpm| {
+                        with_codegen(tm, llmod, trans.no_builtins, |cpm| {
                             WriteOutputFile(sess, tm, cpm, llmod, &path,
                                             lib::llvm::AssemblyFile);
                         });
@@ -321,7 +322,7 @@ pub mod write {
             time(sess.time_passes(), "codegen passes", (), |()| {
                 match object_file {
                     Some(ref path) => {
-                        with_codegen(tm, llmod, |cpm| {
+                        with_codegen(tm, llmod, trans.no_builtins, |cpm| {
                             WriteOutputFile(sess, tm, cpm, llmod, path,
                                             lib::llvm::ObjectFile);
                         });
@@ -329,7 +330,8 @@ pub mod write {
                     None => {}
                 }
                 if needs_metadata {
-                    with_codegen(tm, trans.metadata_module, |cpm| {
+                    with_codegen(tm, trans.metadata_module,
+                                 trans.no_builtins, |cpm| {
                         let out = output.temp_path(OutputTypeObject)
                                         .with_extension("metadata.o");
                         WriteOutputFile(sess, tm, cpm,
@@ -437,7 +439,8 @@ pub mod write {
     unsafe fn populate_llvm_passes(fpm: lib::llvm::PassManagerRef,
                                    mpm: lib::llvm::PassManagerRef,
                                    llmod: ModuleRef,
-                                   opt: lib::llvm::CodeGenOptLevel) {
+                                   opt: lib::llvm::CodeGenOptLevel,
+                                   no_builtins: bool) {
         // Create the PassManagerBuilder for LLVM. We configure it with
         // reasonable defaults and prepare it to actually populate the pass
         // manager.
@@ -461,7 +464,7 @@ pub mod write {
             }
         }
         llvm::LLVMPassManagerBuilderSetOptLevel(builder, opt as c_uint);
-        llvm::LLVMRustAddBuilderLibraryInfo(builder, llmod);
+        llvm::LLVMRustAddBuilderLibraryInfo(builder, llmod, no_builtins);
 
         // Use the builder to populate the function/module pass managers.
         llvm::LLVMPassManagerBuilderPopulateFunctionPassManager(builder, fpm);

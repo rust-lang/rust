@@ -1050,6 +1050,7 @@ fn check_raw_ptr_deriving(cx: &mut Context, item: &ast::Item) {
 static crate_attrs: &'static [&'static str] = &[
     "crate_type", "feature", "no_start", "no_main", "no_std", "crate_id",
     "desc", "comment", "license", "copyright", // not used in rustc now
+    "no_builtins",
 ];
 
 

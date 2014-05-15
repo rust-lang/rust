@@ -1137,11 +1137,10 @@ mod test {
     fn test_schedule_home_states() {
         use sleeper_list::SleeperList;
         use super::{Shutdown, Scheduler, SchedHandle};
-        use std::unstable::run_in_bare_thread;
         use std::rt::thread::Thread;
         use std::sync::deque::BufferPool;
 
-        run_in_bare_thread(proc() {
+        Thread::start(proc() {
             let sleepers = SleeperList::new();
             let mut pool = BufferPool::new();
             let (normal_worker, normal_stealer) = pool.deque();
@@ -1260,7 +1259,7 @@ mod test {
 
             normal_thread.join();
             special_thread.join();
-        });
+        }).join();
     }
 
     //#[test]

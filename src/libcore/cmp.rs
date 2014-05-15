@@ -192,7 +192,23 @@ pub fn max<T: TotalOrd>(v1: T, v2: T) -> T {
 // Implementation of Eq/TotalEq for some primitive types
 #[cfg(not(test))]
 mod impls {
-    use cmp::{Ord, TotalOrd, Eq, TotalEq, Ordering};
+    use cmp::{Ord, TotalOrd, Eq, TotalEq, Ordering, Equal};
+
+    impl Eq for () {
+        #[inline]
+        fn eq(&self, _other: &()) -> bool { true }
+        #[inline]
+        fn ne(&self, _other: &()) -> bool { false }
+    }
+    impl TotalEq for () {}
+    impl Ord for () {
+        #[inline]
+        fn lt(&self, _other: &()) -> bool { false }
+    }
+    impl TotalOrd for () {
+        #[inline]
+        fn cmp(&self, _other: &()) -> Ordering { Equal }
+    }
 
     // & pointers
     impl<'a, T: Eq> Eq for &'a T {

@@ -1,0 +1,17 @@
+digraph block {
+    N0[label="entry"];
+    N1[label="exit"];
+    N2[label="expr inner"];
+    N3[label="expr inner"];
+    N4[label="expr 18"];
+    N5[label="expr inner(18)"];
+    N6[label="expr inner(inner(18))"];
+    N7[label="block {\l    fn inner(x: int) -> int { x + x }\l    inner(inner(18));\l}\l"];
+    N0 -> N2;
+    N2 -> N3;
+    N3 -> N4;
+    N4 -> N5;
+    N5 -> N6;
+    N6 -> N7;
+    N7 -> N1;
+}

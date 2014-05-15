@@ -519,12 +519,13 @@ pub fn optgroups() -> Vec<getopts::OptGroup> {
         optopt( "",  "out-dir", "Write output to compiler-chosen filename in <dir>", "DIR"),
         optflag("", "parse-only", "Parse only; do not compile, assemble, or link"),
         optflagopt("", "pretty",
-                 "Pretty-print the input instead of compiling;
-                  valid types are: normal (un-annotated source),
-                  expanded (crates expanded),
-                  typed (crates expanded, with type annotations),
-                  or identified (fully parenthesized,
-                  AST nodes and blocks with IDs)", "TYPE"),
+                   "Pretty-print the input instead of compiling;
+                   valid types are: `normal` (un-annotated source),
+                   `expanded` (crates expanded),
+                   `typed` (crates expanded, with type annotations),
+                   `expanded,identified` (fully parenthesized, AST nodes with IDs), or
+                   `flowgraph=<nodeid>` (graphviz formatted flowgraph for node)",
+                 "TYPE"),
         optflagopt("", "dep-info",
                  "Output dependency info to <filename> after compiling, \
                   in a format suitable for use by Makefiles", "FILENAME"),

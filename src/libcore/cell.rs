@@ -186,6 +186,25 @@ impl<'b, T> Deref<T> for Ref<'b, T> {
     }
 }
 
+/// Copy a `Ref`.
+///
+/// The `RefCell` is already immutably borrowed, so this cannot fail.
+///
+/// A `Clone` implementation would interfere with the widespread
+/// use of `r.borrow().clone()` to clone the contents of a `RefCell`.
+#[experimental]
+pub fn clone_ref<'b, T>(orig: &Ref<'b, T>) -> Ref<'b, T> {
+    // Since this Ref exists, we know the borrow flag
+    // is not set to WRITING.
+    let borrow = orig.parent.borrow.get();
+    debug_assert!(borrow != WRITING && borrow != UNUSED);
+    orig.parent.borrow.set(borrow + 1);
+
+    Ref {
+        parent: orig.parent,
+    }
+}
+
 /// Wraps a mutable borrowed reference to a value in a `RefCell` box.
 pub struct RefMut<'b, T> {
     parent: &'b RefCell<T>
@@ -306,5 +325,20 @@ mod test {
         let _b = x.borrow();
         let _ = _b;
         let _b = x.borrow_mut();
+    }
+
+    #[test]
+    fn clone_ref_updates_flag() {
+        let x = RefCell::new(0);
+        {
+            let b1 = x.borrow();
+            assert!(x.try_borrow_mut().is_none());
+            {
+                let _b2 = clone_ref(&b1);
+                assert!(x.try_borrow_mut().is_none());
+            }
+            assert!(x.try_borrow_mut().is_none());
+        }
+        assert!(x.try_borrow_mut().is_some());
     }
 }

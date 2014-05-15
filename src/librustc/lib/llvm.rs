@@ -1755,8 +1755,10 @@ pub mod llvm {
                                          PM: PassManagerRef,
                                          M: ModuleRef);
         pub fn LLVMRustAddBuilderLibraryInfo(PMB: PassManagerBuilderRef,
-                                             M: ModuleRef);
-        pub fn LLVMRustAddLibraryInfo(PM: PassManagerRef, M: ModuleRef);
+                                             M: ModuleRef,
+                                             DisableSimplifyLibCalls: bool);
+        pub fn LLVMRustAddLibraryInfo(PM: PassManagerRef, M: ModuleRef,
+                                      DisableSimplifyLibCalls: bool);
         pub fn LLVMRustRunFunctionPassManager(PM: PassManagerRef, M: ModuleRef);
         pub fn LLVMRustWriteOutputFile(T: TargetMachineRef,
                                        PM: PassManagerRef,
