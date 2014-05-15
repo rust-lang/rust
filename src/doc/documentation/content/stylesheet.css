@@ -7,6 +7,7 @@
 
 body {
   background: #fff;
+  font-size: 1.2rem;
 }
 
 a {
@@ -22,51 +23,56 @@ a:hover {
   color: #f90;
 }
 
-#main {
-  position: absolute;
-
-  top: 40px;
-  left: 280px;
-
-  width: 500px;
+.container {
+  position: relative;
+  width: 80%;
+  margin: 40px auto;
 }
 
-#main h1 {
-  font-size: 40px;
+.container h1 {
+  color: #333;
   font-weight: normal;
-
   line-height: 40px;
-
+  border-bottom: 2px dashed #eee;
+  padding-bottom: 13px;
   letter-spacing: -1px;
 }
 
-#main p {
-  margin: 20px 0;
-
-  font-size: 15px;
-
-  line-height: 20px;
+.container .content h2 {
+  font-size: 1.7rem;
+  color: #000;
+  font-weight: 500;
+  margin: 40px 0 25px 0;
+  border-bottom: 1px solid #eaeaea;
+  padding-bottom: 16px;
 }
 
-#main ul, #main ol {
+.container p {
+  font-size: 1.1rem;
+  margin: 20px 0;
+  line-height: 1.7;
+}
+
+.container ul, .container ol {
   margin: 20px;
 }
 
-#main li {
-  font-size: 15px;
-
-  line-height: 20px;
+.container li {
+  font-size: 1rem;
+  line-height: 1.6;
 }
 
-#main ul li {
+.container .content ul li {
   list-style-type: square;
 }
 
-#sidebar {
-  position: absolute;
+.container .content {
+  margin-left: 260px;
+  min-width: 400px;
+}
 
-  top: 40px;
-  left: 20px;
+.sidebar {
+  position: fixed;
   width: 200px;
 
   padding: 20px 20px 0 0;
@@ -76,26 +82,26 @@ a:hover {
   text-align: right;
 }
 
-#sidebar h2 {
+.sidebar h2 {
   text-transform: uppercase;
 
-  font-size: 13px;
+  font-size: 1rem;
 
   color: #333;
 
   letter-spacing: 1px;
 
-  line-height: 20px;
+  line-height: 1.5;
 }
 
-#sidebar ul {
-  list-style-type: none;
+.sidebar ul {
+  list-style: none;
 
   margin: 20px 0;
 }
 
-#sidebar li {
-  font-size: 14px;
-
-  line-height: 20px;
+.sidebar li {
+  list-style: none;
+  font-size: 1rem;
+  line-height: 1.6;
 }

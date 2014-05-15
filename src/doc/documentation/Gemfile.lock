@@ -1,0 +1,51 @@
+GEM
+  remote: http://rubygems.org/
+  specs:
+    adsf (1.2.0)
+      rack (>= 1.0.0)
+    blankslate (3.1.2)
+    builder (3.2.2)
+    coderay (1.1.0)
+    colored (1.2)
+    cri (2.6.0)
+      colored (~> 1.2)
+    daemons (1.1.9)
+    eventmachine (1.0.3)
+    ffi (1.0.11)
+    fssm (0.2.10)
+    kramdown (0.13.8)
+    mime-types (1.25.1)
+    mini_portile (0.6.0)
+    nanoc (3.6.11)
+      cri (~> 2.3)
+    nokogiri (1.6.2.1)
+      mini_portile (= 0.6.0)
+    pygments.rb (0.2.13)
+      rubypython (~> 0.5.3)
+    rack (1.5.2)
+    rake (0.9.6)
+    rubypython (0.5.3)
+      blankslate (>= 2.1.2.3)
+      ffi (~> 1.0.7)
+    thin (1.6.2)
+      daemons (>= 1.0.9)
+      eventmachine (>= 1.0.0)
+      rack (>= 1.0.0)
+    yajl-ruby (0.8.3)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  adsf
+  builder
+  coderay
+  fssm
+  kramdown (~> 0.13.2)
+  mime-types (~> 1.16)
+  nanoc
+  nokogiri (~> 1.6.0)
+  pygments.rb
+  rake (~> 0.9.2)
+  thin
+  yajl-ruby (~> 0.8.2)
