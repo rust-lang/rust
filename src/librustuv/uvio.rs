@@ -27,7 +27,7 @@ use std::rt::rtio;
 use std::rt::rtio::{ProcessConfig, IoFactory, EventLoop};
 use ai = std::io::net::addrinfo;
 
-#[cfg(test)] use std::rt::Thread;
+#[cfg(test)] use std::rt::thread::Thread;
 
 use super::{uv_error_to_io_error, Loop};
 

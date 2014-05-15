@@ -1137,7 +1137,6 @@ mod test {
     fn test_schedule_home_states() {
         use sleeper_list::SleeperList;
         use super::{Shutdown, Scheduler, SchedHandle};
-        use std::unstable::Thread;
         use std::rt::thread::Thread;
         use std::sync::deque::BufferPool;
 

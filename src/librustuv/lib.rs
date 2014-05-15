@@ -472,7 +472,7 @@ fn local_loop() -> &'static mut uvio::UvIoFactory {
 #[cfg(test)]
 mod test {
     use std::mem::transmute;
-    use std::rt::Thread;
+    use std::rt::thread::Thread;
 
     use super::{slice_to_uv_buf, Loop};
 
