@@ -5,9 +5,8 @@ end
 
 compile '*' do
   filter :erb
-  filter :kramdown, :toc_levels => [2]
-  filter :colorize_syntax,
-    :colorizers => {:javascript => :pygmentsrb}
+  filter :pandoc
+  filter :colorize_syntax, :default_colorizer => :pygmentsrb
   layout item[:layout] || 'default'
 end
 

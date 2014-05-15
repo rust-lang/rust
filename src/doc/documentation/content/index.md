@@ -27,18 +27,19 @@ and is the feature from which many of Rust's powerful capabilities are derived.
 write, and ultimately release, memory.
 Let's start by looking at some C++ code:
 
-    #!cpp
-    int* dangling(void)
-    {
-        int i = 1234;
-        return &i;
-    }
+```cpp
+int* dangling(void)
+{
+    int i = 1234;
+    return &i;
+}
 
-    int add_one(void)
-    {
-        int* num = dangling();
-        return *num + 1;
-    }
+int add_one(void)
+{
+    int* num = dangling();
+    return *num + 1;
+}
+```
 
 
 **Note: obviously this is very simple and non-idiomatic C++.
@@ -61,7 +62,7 @@ This problem is called a 'dangling pointer,'
 and it's not possible to write Rust code that has it.
 Let's try writing it in Rust:
 
-```ignore
+```rust
 fn dangling() -> &int {
     let i = 1234;
     return &i;
@@ -74,11 +75,13 @@ fn add_one() -> int {
 
 fn main() {
     add_one();
-}```
+}
+```
+
 
 Save this program as `dangling.rs`. When you try to compile this program with `rustc dangling.rs`, you'll get an interesting (and long) error message:
 
-```notrust
+```bash
 dangling.rs:3:12: 3:14 error: `i` does not live long enough
 dangling.rs:3     return &i;
                          ^~
@@ -92,7 +95,8 @@ dangling.rs:1 fn dangling() -> &int {
 dangling.rs:2     let i = 1234;
 dangling.rs:3     return &i;
 dangling.rs:4 }
-error: aborting due to previous error```
+error: aborting due to previous error
+```
 
 In order to fully understand this error message,
 we need to talk about what it means to "own" something.
@@ -132,8 +136,8 @@ Rust has a second kind of pointer,
 an 'owned box',
 that you can create with the `box` operator.
 Check it out:
-```
 
+```rust
 fn dangling() -> Box<int> {
     let i = box 1234;
     return i;
@@ -142,7 +146,8 @@ fn dangling() -> Box<int> {
 fn add_one() -> int {
     let num = dangling();
     return *num + 1;
-}```
+}
+```
 
 Now instead of a stack allocated `1234`,
 we have a heap allocated `box 1234`.
@@ -150,14 +155,17 @@ Whereas `&` borrows a pointer to existing memory,
 creating an owned box allocates memory on the heap and places a value in it,
 giving you the sole pointer to that memory.
 You can roughly compare these two lines:
-```
-// Rust
-let i = box 1234;```
 
-```notrust
+```rust
+// Rust
+let i = box 1234;
+```
+
+```cpp
 // C++
 int *i = new int;
-*i = 1234;```
+*i = 1234;
+```
 
 Rust infers the correct type,
 allocates the correct amount of memory and sets it to the value you asked for.
@@ -193,7 +201,8 @@ First, let's go over a simple concurrency example.
 Rust makes it easy to create "tasks",
 otherwise known as "threads".
 Typically, tasks do not share memory but instead communicate amongst each other with 'channels', like this:
-```
+
+```rust
 fn main() {
     let numbers = ~[1,2,3];
 
@@ -204,7 +213,8 @@ fn main() {
         let numbers = rx.recv();
         println!("{}", numbers[0]);
     })
-}```
+}
+```
 
 In this example, we create a boxed array of numbers.
 We then make a 'channel',
@@ -231,7 +241,7 @@ while also ensuring that the original owning task cannot create data races by co
 To prove that Rust performs the ownership transfer,
 try to modify the previous example to continue using the variable `numbers`:
 
-```ignore
+```rust
 fn main() {
     let numbers = ~[1,2,3];
 
@@ -245,20 +255,23 @@ fn main() {
 
     // Try to print a number from the original task
     println!("{}", numbers[0]);
-}```
+}
+```
 
 This will result an error indicating that the value is no longer in scope:
 
-```notrust
+```bash
 concurrency.rs:12:20: 12:27 error: use of moved value: 'numbers'
 concurrency.rs:12     println!("{}", numbers[0]);
-                                     ^~~~~~~```
+                                     ^~~~~~~
+```
 
 Since only one task can own a boxed array at a time,
 if instead of distributing our `numbers` array to a single task we wanted to distribute it to many tasks,
 we would need to copy the array for each.
 Let's see an example that uses the `clone` method to create copies of the data:
-```
+
+```rust
 fn main() {
     let numbers = ~[1,2,3];
 
@@ -272,7 +285,8 @@ fn main() {
             println!("{:d}", numbers[num as uint]);
         })
     }
-}```
+}
+```
 
 This is similar to the code we had before,
 except now we loop three times,
@@ -287,7 +301,8 @@ Enter `Arc`,
 an atomically reference counted box ("A.R.C." == "atomically reference counted").
 `Arc` is the most common way to *share* data between tasks.
 Here's some code:
-```
+
+```rust
 extern crate sync;
 use sync::Arc;
 
@@ -304,7 +319,8 @@ fn main() {
             println!("{:d}", numbers[num as uint]);
         })
     }
-}```
+}
+```
 
 This is almost exactly the same,
 except that this time `numbers` is first put into an `Arc`.
@@ -332,7 +348,8 @@ Rust provides mutexes but makes it impossible to use them in a way that subverts
 
 Let's take the same example yet again,
 and modify it to mutate the shared state:
-```
+
+```rust
 extern crate sync;
 use sync::{Arc, Mutex};
 
@@ -356,7 +373,8 @@ fn main() {
             // When `numbers` goes out of scope the lock is dropped
         })
     }
-}```
+}
+```
 
 This example is starting to get more subtle,
 but it hints at the powerful composability of Rust's concurrent types.
