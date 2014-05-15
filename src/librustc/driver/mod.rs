@@ -35,7 +35,7 @@ pub mod session;
 pub mod config;
 
 
-pub fn main_args(args: &[~str]) -> int {
+pub fn main_args(args: &[StrBuf]) -> int {
     let owned_args = args.to_owned();
     monitor(proc() run_compiler(owned_args));
     0
@@ -44,7 +44,7 @@ pub fn main_args(args: &[~str]) -> int {
 static BUG_REPORT_URL: &'static str =
     "http://static.rust-lang.org/doc/master/complement-bugreport.html";
 
-fn run_compiler(args: &[~str]) {
+fn run_compiler(args: &[StrBuf]) {
     let matches = match handle_options(Vec::from_slice(args)) {
         Some(matches) => matches,
         None => return
@@ -73,7 +73,7 @@ fn run_compiler(args: &[~str]) {
     let ofile = matches.opt_str("o").map(|o| Path::new(o));
 
     let pretty = matches.opt_default("pretty", "normal").map(|a| {
-        parse_pretty(&sess, a)
+        parse_pretty(&sess, a.as_slice())
     });
     match pretty {
         Some::<PpMode>(ppm) => {
@@ -84,7 +84,7 @@ fn run_compiler(args: &[~str]) {
     }
 
     let r = matches.opt_strs("Z");
-    if r.contains(&("ls".to_owned())) {
+    if r.contains(&("ls".to_strbuf())) {
         match input {
             FileInput(ref ifile) => {
                 let mut stdout = io::stdout();
@@ -191,17 +191,20 @@ fn describe_codegen_flags() {
 /// Process command line options. Emits messages as appropirate.If compilation
 /// should continue, returns a getopts::Matches object parsed from args, otherwise
 /// returns None.
-pub fn handle_options(mut args: Vec<~str>) -> Option<getopts::Matches> {
+pub fn handle_options(mut args: Vec<StrBuf>) -> Option<getopts::Matches> {
     // Throw away the first argument, the name of the binary
     let _binary = args.shift().unwrap();
 
-    if args.is_empty() { usage(); return None; }
+    if args.is_empty() {
+        usage();
+        return None;
+    }
 
     let matches =
         match getopts::getopts(args.as_slice(), config::optgroups().as_slice()) {
             Ok(m) => m,
             Err(f) => {
-                early_error(f.to_err_msg());
+                early_error(f.to_err_msg().as_slice());
             }
         };
 
@@ -212,24 +215,24 @@ pub fn handle_options(mut args: Vec<~str>) -> Option<getopts::Matches> {
 
     let lint_flags = matches.opt_strs("W").move_iter().collect::<Vec<_>>().append(
                                     matches.opt_strs("warn").as_slice());
-    if lint_flags.iter().any(|x| x == &"help".to_owned()) {
+    if lint_flags.iter().any(|x| x.as_slice() == "help") {
         describe_warnings();
         return None;
     }
 
     let r = matches.opt_strs("Z");
-    if r.iter().any(|x| x == &"help".to_owned()) {
+    if r.iter().any(|x| x.as_slice() == "help") {
         describe_debug_flags();
         return None;
     }
 
     let cg_flags = matches.opt_strs("C");
-    if cg_flags.iter().any(|x| x == &"help".to_owned()) {
+    if cg_flags.iter().any(|x| x.as_slice() == "help") {
         describe_codegen_flags();
         return None;
     }
 
-    if cg_flags.contains(&"passes=list".to_owned()) {
+    if cg_flags.contains(&"passes=list".to_strbuf()) {
         unsafe { ::lib::llvm::llvm::LLVMRustPrintPasses(); }
         return None;
     }
