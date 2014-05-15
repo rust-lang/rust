@@ -136,10 +136,20 @@ macro_rules! bitflags(
                 self.bits
             }
 
-            /// Convert from underlying bit representation. Unsafe because the
-            /// bits are not guaranteed to represent valid flags.
-            pub unsafe fn from_bits(bits: $T) -> $BitFlags {
-                $BitFlags { bits: bits }
+            /// Convert from underlying bit representation, unless that
+            /// representation contains bits that do not correspond to a flag.
+            pub fn from_bits(bits: $T) -> ::std::option::Option<$BitFlags> {
+                if (bits & !$BitFlags::all().bits()) != 0 {
+                    ::std::option::None
+                } else {
+                    ::std::option::Some($BitFlags { bits: bits })
+                }
+            }
+
+            /// Convert from underlying bit representation, dropping any bits
+            /// that do not correspond to flags.
+            pub fn from_bits_truncate(bits: $T) -> $BitFlags {
+                $BitFlags { bits: bits } & $BitFlags::all()
             }
 
             /// Returns `true` if no flags are currently stored.
@@ -209,6 +219,7 @@ macro_rules! bitflags(
 
 #[cfg(test)]
 mod tests {
+    use option::{Some, None};
     use ops::{BitOr, BitAnd, Sub, Not};
 
     bitflags!(
@@ -231,9 +242,21 @@ mod tests {
 
     #[test]
     fn test_from_bits() {
-        assert!(unsafe { Flags::from_bits(0x00000000) } == Flags::empty());
-        assert!(unsafe { Flags::from_bits(0x00000001) } == FlagA);
-        assert!(unsafe { Flags::from_bits(0x00000111) } == FlagABC);
+        assert!(Flags::from_bits(0) == Some(Flags::empty()));
+        assert!(Flags::from_bits(0x1) == Some(FlagA));
+        assert!(Flags::from_bits(0x10) == Some(FlagB));
+        assert!(Flags::from_bits(0x11) == Some(FlagA | FlagB));
+        assert!(Flags::from_bits(0x1000) == None);
+    }
+
+    #[test]
+    fn test_from_bits_truncate() {
+        assert!(Flags::from_bits_truncate(0) == Flags::empty());
+        assert!(Flags::from_bits_truncate(0x1) == FlagA);
+        assert!(Flags::from_bits_truncate(0x10) == FlagB);
+        assert!(Flags::from_bits_truncate(0x11) == (FlagA | FlagB));
+        assert!(Flags::from_bits_truncate(0x1000) == Flags::empty());
+        assert!(Flags::from_bits_truncate(0x1001) == FlagA);
     }
 
     #[test]

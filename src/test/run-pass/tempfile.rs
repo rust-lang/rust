@@ -74,6 +74,50 @@ fn test_rm_tempdir() {
     assert!(!path.exists());
 }
 
+fn test_rm_tempdir_close() {
+    let (tx, rx) = channel();
+    let f: proc():Send = proc() {
+        let tmp = TempDir::new("test_rm_tempdir").unwrap();
+        tx.send(tmp.path().clone());
+        tmp.close();
+        fail!("fail to unwind past `tmp`");
+    };
+    task::try(f);
+    let path = rx.recv();
+    assert!(!path.exists());
+
+    let tmp = TempDir::new("test_rm_tempdir").unwrap();
+    let path = tmp.path().clone();
+    let f: proc():Send = proc() {
+        let tmp = tmp;
+        tmp.close();
+        fail!("fail to unwind past `tmp`");
+    };
+    task::try(f);
+    assert!(!path.exists());
+
+    let path;
+    {
+        let f = proc() {
+            TempDir::new("test_rm_tempdir").unwrap()
+        };
+        let tmp = task::try(f).ok().expect("test_rm_tmdir");
+        path = tmp.path().clone();
+        assert!(path.exists());
+        tmp.close();
+    }
+    assert!(!path.exists());
+
+    let path;
+    {
+        let tmp = TempDir::new("test_rm_tempdir").unwrap();
+        path = tmp.unwrap();
+    }
+    assert!(path.exists());
+    fs::rmdir_recursive(&path);
+    assert!(!path.exists());
+}
+
 // Ideally these would be in std::os but then core would need
 // to depend on std
 fn recursive_mkdir_rel() {
@@ -130,6 +174,19 @@ pub fn test_rmdir_recursive_ok() {
     assert!(!root.join("bar").join("blat").exists());
 }
 
+pub fn dont_double_fail() {
+    let r: Result<(), _> = task::try(proc() {
+        let tmpdir = TempDir::new("test").unwrap();
+        // Remove the temporary directory so that TempDir sees
+        // an error on drop
+        fs::rmdir(tmpdir.path());
+        // Trigger failure. If TempDir fails *again* due to the rmdir
+        // error then the process will abort.
+        fail!();
+    });
+    assert!(r.is_err());
+}
+
 fn in_tmpdir(f: ||) {
     let tmpdir = TempDir::new("test").expect("can't make tmpdir");
     assert!(os::change_dir(tmpdir.path()));
@@ -140,8 +197,10 @@ fn in_tmpdir(f: ||) {
 pub fn main() {
     in_tmpdir(test_tempdir);
     in_tmpdir(test_rm_tempdir);
+    in_tmpdir(test_rm_tempdir_close);
     in_tmpdir(recursive_mkdir_rel);
     in_tmpdir(recursive_mkdir_dot);
     in_tmpdir(recursive_mkdir_rel_2);
     in_tmpdir(test_rmdir_recursive_ok);
+    in_tmpdir(dont_double_fail);
 }

@@ -32,7 +32,7 @@ ifdef CHECK_IGNORED
   TESTARGS += --ignored
 endif
 
-TEST_BENCH = --bench
+TEST_BENCH =
 
 # Arguments to the cfail/rfail/rpass/bench tests
 ifdef CFG_VALGRIND
@@ -40,8 +40,8 @@ ifdef CFG_VALGRIND
   TEST_BENCH =
 endif
 
-ifdef NO_BENCH
-  TEST_BENCH =
+ifdef PLEASE_BENCH
+  TEST_BENCH = --bench
 endif
 
 # Arguments to the perf tests

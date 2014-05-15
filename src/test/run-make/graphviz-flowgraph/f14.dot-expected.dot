@@ -1,0 +1,28 @@
+digraph block {
+    N0[label="entry"];
+    N1[label="exit"];
+    N2[label="expr 14"];
+    N3[label="local x"];
+    N4[label="expr x"];
+    N5[label="expr 1"];
+    N6[label="expr x > 1"];
+    N7[label="expr return"];
+    N8[label="(dummy_node)"];
+    N9[label="expr \"unreachable\""];
+    N10[label="block { return; \"unreachable\"; }"];
+    N11[label="expr if x > 1 { return; \"unreachable\"; }"];
+    N12[label="block { let x = 14; if x > 1 { return; \"unreachable\"; } }"];
+    N0 -> N2;
+    N2 -> N3;
+    N3 -> N4;
+    N4 -> N5;
+    N5 -> N6;
+    N6 -> N7;
+    N7 -> N1;
+    N8 -> N9;
+    N9 -> N10;
+    N6 -> N11;
+    N10 -> N11;
+    N11 -> N12;
+    N12 -> N1;
+}

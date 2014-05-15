@@ -11,7 +11,7 @@
 extern crate libc;
 
 use std::mem;
-use std::unstable::run_in_bare_thread;
+use std::rt::thread::Thread;
 
 #[link(name = "rustrt")]
 extern {
@@ -21,10 +21,10 @@ extern {
 
 pub fn main() {
     unsafe {
-        run_in_bare_thread(proc() {
+        Thread::start(proc() {
             let i = &100;
             rust_dbg_call(callback, mem::transmute(i));
-        });
+        }).join();
     }
 }
 

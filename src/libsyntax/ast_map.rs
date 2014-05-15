@@ -103,6 +103,7 @@ pub enum Node {
     NodeStmt(@Stmt),
     NodeArg(@Pat),
     NodeLocal(@Pat),
+    NodePat(@Pat),
     NodeBlock(P<Block>),
 
     /// NodeStructCtor represents a tuple struct.
@@ -127,6 +128,7 @@ enum MapEntry {
     EntryStmt(NodeId, @Stmt),
     EntryArg(NodeId, @Pat),
     EntryLocal(NodeId, @Pat),
+    EntryPat(NodeId, @Pat),
     EntryBlock(NodeId, P<Block>),
     EntryStructCtor(NodeId, @StructDef),
     EntryLifetime(NodeId, @Lifetime),
@@ -154,6 +156,7 @@ impl MapEntry {
             EntryStmt(id, _) => id,
             EntryArg(id, _) => id,
             EntryLocal(id, _) => id,
+            EntryPat(id, _) => id,
             EntryBlock(id, _) => id,
             EntryStructCtor(id, _) => id,
             EntryLifetime(id, _) => id,
@@ -172,6 +175,7 @@ impl MapEntry {
             EntryStmt(_, p) => NodeStmt(p),
             EntryArg(_, p) => NodeArg(p),
             EntryLocal(_, p) => NodeLocal(p),
+            EntryPat(_, p) => NodePat(p),
             EntryBlock(_, p) => NodeBlock(p),
             EntryStructCtor(_, p) => NodeStructCtor(p),
             EntryLifetime(_, p) => NodeLifetime(p),
@@ -399,6 +403,7 @@ impl Map {
             Some(NodeExpr(expr)) => expr.span,
             Some(NodeStmt(stmt)) => stmt.span,
             Some(NodeArg(pat)) | Some(NodeLocal(pat)) => pat.span,
+            Some(NodePat(pat)) => pat.span,
             Some(NodeBlock(block)) => block.span,
             Some(NodeStructCtor(_)) => self.expect_item(self.get_parent(id)).span,
             _ => fail!("node_span: could not find span for id {}", id),
@@ -513,7 +518,9 @@ impl<'a, F: FoldOps> Folder for Ctx<'a, F> {
                 // Note: this is at least *potentially* a pattern...
                 self.insert(pat.id, EntryLocal(self.parent, pat));
             }
-            _ => {}
+            _ => {
+                self.insert(pat.id, EntryPat(self.parent, pat));
+            }
         }
 
         pat
@@ -703,6 +710,9 @@ fn node_id_to_str(map: &Map, id: NodeId) -> StrBuf {
         Some(NodeLocal(pat)) => {
             (format!("local {} (id={})",
                     pprust::pat_to_str(pat), id)).to_strbuf()
+        }
+        Some(NodePat(pat)) => {
+            (format!("pat {} (id={})", pprust::pat_to_str(pat), id)).to_strbuf()
         }
         Some(NodeBlock(block)) => {
             (format!("block {} (id={})",

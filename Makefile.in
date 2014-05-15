@@ -68,7 +68,7 @@
 #
 #   * `TESTNAME=...` - Specify the name of tests to run
 #   * `CHECK_IGNORED=1` - Run normally-ignored tests
-#   * `NO_BENCH=1` - Don't run crate benchmarks (disable `--bench` flag)
+#   * `PLEASE_BENCH=1` - Run crate benchmarks (enable `--bench` flag)
 #
 #   * `CFG_ENABLE_VALGRIND=1` - Run tests under valgrind
 #   * `VALGRIND_COMPILE=1` - Run the compiler itself under valgrind
