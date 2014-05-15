@@ -1067,8 +1067,8 @@ fn calc_result(desc: &TestDesc, task_succeeded: bool) -> TestResult {
 impl ToJson for Metric {
     fn to_json(&self) -> json::Json {
         let mut map = box TreeMap::new();
-        map.insert("value".to_owned(), json::Number(self.value));
-        map.insert("noise".to_owned(), json::Number(self.noise));
+        map.insert("value".to_strbuf(), json::Number(self.value));
+        map.insert("noise".to_strbuf(), json::Number(self.noise));
         json::Object(map)
     }
 }
@@ -1105,7 +1105,7 @@ impl MetricMap {
         // FIXME(pcwalton): Yuck.
         let mut new_map = TreeMap::new();
         for (ref key, ref value) in map.iter() {
-            new_map.insert(key.to_owned(), (*value).clone());
+            new_map.insert(key.to_strbuf(), (*value).clone());
         }
 
         new_map.to_json().to_pretty_writer(&mut file)

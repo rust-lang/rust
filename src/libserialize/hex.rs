@@ -16,7 +16,7 @@ use std::fmt;
 pub trait ToHex {
     /// Converts the value of `self` to a hex value, returning the owned
     /// string.
-    fn to_hex(&self) -> ~str;
+    fn to_hex(&self) -> StrBuf;
 }
 
 static CHARS: &'static[u8] = bytes!("0123456789abcdef");
@@ -37,7 +37,7 @@ impl<'a> ToHex for &'a [u8] {
      * }
      * ```
      */
-    fn to_hex(&self) -> ~str {
+    fn to_hex(&self) -> StrBuf {
         let mut v = Vec::with_capacity(self.len() * 2);
         for &byte in self.iter() {
             v.push(CHARS[(byte >> 4) as uint]);
@@ -45,7 +45,7 @@ impl<'a> ToHex for &'a [u8] {
         }
 
         unsafe {
-            str::raw::from_utf8(v.as_slice()).to_owned()
+            str::raw::from_utf8(v.as_slice()).to_strbuf()
         }
     }
 }
@@ -94,7 +94,7 @@ impl<'a> FromHex for &'a str {
      * fn main () {
      *     let hello_str = "Hello, World".as_bytes().to_hex();
      *     println!("{}", hello_str);
-     *     let bytes = hello_str.from_hex().unwrap();
+     *     let bytes = hello_str.as_slice().from_hex().unwrap();
      *     println!("{:?}", bytes);
      *     let result_str = StrBuf::from_utf8(bytes).unwrap();
      *     println!("{}", result_str);
@@ -143,7 +143,7 @@ mod tests {
 
     #[test]
     pub fn test_to_hex() {
-        assert_eq!("foobar".as_bytes().to_hex(), "666f6f626172".to_owned());
+        assert_eq!("foobar".as_bytes().to_hex(), "666f6f626172".to_strbuf());
     }
 
     #[test]
@@ -174,7 +174,8 @@ mod tests {
     #[test]
     pub fn test_to_hex_all_bytes() {
         for i in range(0, 256) {
-            assert_eq!([i as u8].to_hex(), format!("{:02x}", i as uint));
+            assert_eq!([i as u8].to_hex(),
+                       format_strbuf!("{:02x}", i as uint));
         }
     }
 
@@ -202,7 +203,7 @@ mod tests {
                  ウヰノオクヤマ ケフコエテ アサキユメミシ ヱヒモセスン";
         let sb = s.as_bytes().to_hex();
         b.iter(|| {
-            sb.from_hex().unwrap();
+            sb.as_slice().from_hex().unwrap();
         });
         b.bytes = sb.len() as u64;
     }

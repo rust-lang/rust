@@ -606,7 +606,8 @@ impl<'a> Equiv<&'a str> for InternedString {
 
 impl<D:Decoder<E>, E> Decodable<D, E> for InternedString {
     fn decode(d: &mut D) -> Result<InternedString, E> {
-        Ok(get_name(get_ident_interner().intern(try!(d.read_str()))))
+        Ok(get_name(get_ident_interner().intern(
+                    try!(d.read_str()).as_slice())))
     }
 }
 

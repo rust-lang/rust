@@ -108,7 +108,7 @@ pub trait Decoder<E> {
     fn read_f64(&mut self) -> Result<f64, E>;
     fn read_f32(&mut self) -> Result<f32, E>;
     fn read_char(&mut self) -> Result<char, E>;
-    fn read_str(&mut self) -> Result<~str, E>;
+    fn read_str(&mut self) -> Result<StrBuf, E>;
 
     // Compound types:
     fn read_enum<T>(&mut self, name: &str, f: |&mut Self| -> Result<T, E>) -> Result<T, E>;
@@ -301,18 +301,6 @@ impl<'a, E, S:Encoder<E>> Encodable<S, E> for &'a str {
     }
 }
 
-impl<E, S:Encoder<E>> Encodable<S, E> for ~str {
-    fn encode(&self, s: &mut S) -> Result<(), E> {
-        s.emit_str(*self)
-    }
-}
-
-impl<E, D:Decoder<E>> Decodable<D, E> for ~str {
-    fn decode(d: &mut D) -> Result<~str, E> {
-        d.read_str()
-    }
-}
-
 impl<E, S:Encoder<E>> Encodable<S, E> for StrBuf {
     fn encode(&self, s: &mut S) -> Result<(), E> {
         s.emit_str(self.as_slice())
@@ -321,7 +309,7 @@ impl<E, S:Encoder<E>> Encodable<S, E> for StrBuf {
 
 impl<E, D:Decoder<E>> Decodable<D, E> for StrBuf {
     fn decode(d: &mut D) -> Result<StrBuf, E> {
-        Ok(StrBuf::from_str(try!(d.read_str())))
+        Ok(StrBuf::from_str(try!(d.read_str()).as_slice()))
     }
 }
 
