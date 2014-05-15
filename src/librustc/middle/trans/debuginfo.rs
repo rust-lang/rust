@@ -1208,33 +1208,108 @@ fn pointer_type_metadata(cx: &CrateContext,
     return ptr_metadata;
 }
 
+//=-------------------------------------------------------------------------------------------------
+// Common facilities for record-like types (structs, enums, tuples)
+//=-------------------------------------------------------------------------------------------------
+
+enum MemberOffset {
+    FixedMemberOffset { bytes: uint },
+    // For ComputedMemberOffset, the offset is read from the llvm type definition
+    ComputedMemberOffset
+}
+
+// Description of a type member, which can either be a regular field (as in structs or tuples) or
+// an enum variant
+struct MemberDescription {
+    name: String,
+    llvm_type: Type,
+    type_metadata: DIType,
+    offset: MemberOffset,
+}
+
+// A factory for MemberDescriptions. It produces a list of member descriptions for some record-like
+// type. MemberDescriptionFactories are used to defer the creation of type member descriptions in
+// order to break cycles arising from recursive type definitions.
 enum MemberDescriptionFactory {
-    StructMD(StructMemberDescriptionFactory),
-    TupleMD(TupleMemberDescriptionFactory),
-    GeneralMD(GeneralMemberDescriptionFactory),
-    EnumVariantMD(EnumVariantMemberDescriptionFactory)
+    StructMDF(StructMemberDescriptionFactory),
+    TupleMDF(TupleMemberDescriptionFactory),
+    EnumMDF(EnumMemberDescriptionFactory),
+    VariantMDF(VariantMemberDescriptionFactory)
 }
 
 impl MemberDescriptionFactory {
-    fn create_member_descriptions(&self, cx: &CrateContext)
-                                  -> Vec<MemberDescription> {
+    fn create_member_descriptions(&self, cx: &CrateContext) -> Vec<MemberDescription> {
         match *self {
-            StructMD(ref this) => {
+            StructMDF(ref this) => {
                 this.create_member_descriptions(cx)
             }
-            TupleMD(ref this) => {
+            TupleMDF(ref this) => {
                 this.create_member_descriptions(cx)
             }
-            GeneralMD(ref this) => {
+            EnumMDF(ref this) => {
                 this.create_member_descriptions(cx)
             }
-            EnumVariantMD(ref this) => {
+            VariantMDF(ref this) => {
                 this.create_member_descriptions(cx)
             }
         }
     }
 }
 
+// A description of some recursive type. It can either be already finished (as with FinalMetadata)
+// or it is not yet finished, but contains all information needed to generate the missing parts of
+// the description. See the documentation section on Recursive Types at the top of this file for
+// more information.
+enum RecursiveTypeDescription {
+    UnfinishedMetadata {
+        cache_id: uint,
+        metadata_stub: DICompositeType,
+        llvm_type: Type,
+        file_metadata: DIFile,
+        member_description_factory: MemberDescriptionFactory,
+    },
+    FinalMetadata(DICompositeType)
+}
+
+impl RecursiveTypeDescription {
+    // Finishes up the description of the type in question (mostly by providing description of the
+    // fields of the given type) and returns the final type metadata.
+    fn finalize(&self, cx: &CrateContext) -> DICompositeType {
+        match *self {
+            FinalMetadata(metadata) => metadata,
+            UnfinishedMetadata {
+                cache_id,
+                metadata_stub,
+                llvm_type,
+                file_metadata,
+                ref member_description_factory
+            } => {
+                // Insert the stub into the cache in order to allow recursive references ...
+                debug_context(cx).created_types.borrow_mut()
+                                 .insert(cache_id, metadata_stub);
+
+                // ... then create the member descriptions ...
+                let member_descriptions = member_description_factory.create_member_descriptions(cx);
+
+                // ... and attach them to the stub to complete it.
+                set_members_of_composite_type(cx,
+                                              metadata_stub,
+                                              llvm_type,
+                                              member_descriptions.as_slice(),
+                                              file_metadata,
+                                              codemap::DUMMY_SP);
+                return metadata_stub;
+            }
+        }
+    }
+}
+
+
+//=-------------------------------------------------------------------------------------------------
+// Structs
+//=-------------------------------------------------------------------------------------------------
+
+// Creates MemberDescriptions for the fields of a struct
 struct StructMemberDescriptionFactory {
     fields: Vec<ty::field>,
     is_simd: bool,
@@ -1248,7 +1323,7 @@ impl StructMemberDescriptionFactory {
         }
 
         let field_size = if self.is_simd {
-            machine::llsize_of_alloc(cx, type_of::type_of(cx, self.fields.get(0).mt.ty))
+            machine::llsize_of_alloc(cx, type_of::type_of(cx, self.fields.get(0).mt.ty)) as uint
         } else {
             0xdeadbeef
         };
@@ -1262,7 +1337,7 @@ impl StructMemberDescriptionFactory {
 
             let offset = if self.is_simd {
                 assert!(field_size != 0xdeadbeef);
-                FixedMemberOffset { bytes: i as u64 * field_size }
+                FixedMemberOffset { bytes: i * field_size }
             } else {
                 ComputedMemberOffset
             };
@@ -1305,7 +1380,7 @@ fn prepare_struct_metadata(cx: &CrateContext,
         metadata_stub: struct_metadata_stub,
         llvm_type: struct_llvm_type,
         file_metadata: file_metadata,
-        member_description_factory: StructMD(StructMemberDescriptionFactory {
+        member_description_factory: StructMDF(StructMemberDescriptionFactory {
             fields: fields,
             is_simd: ty::type_is_simd(cx.tcx(), struct_type),
             span: span,
@@ -1313,49 +1388,12 @@ fn prepare_struct_metadata(cx: &CrateContext,
     }
 }
 
-enum RecursiveTypeDescription {
-    UnfinishedMetadata {
-        cache_id: uint,
-        metadata_stub: DICompositeType,
-        llvm_type: Type,
-        file_metadata: DIFile,
-        member_description_factory: MemberDescriptionFactory,
-    },
-    FinalMetadata(DICompositeType)
-}
 
-impl RecursiveTypeDescription {
+//=-------------------------------------------------------------------------------------------------
+// Tuples
+//=-------------------------------------------------------------------------------------------------
 
-    fn finalize(&self, cx: &CrateContext) -> DICompositeType {
-        match *self {
-            FinalMetadata(metadata) => metadata,
-            UnfinishedMetadata {
-                cache_id,
-                metadata_stub,
-                llvm_type,
-                file_metadata,
-                ref member_description_factory
-            } => {
-                // Insert the stub into the cache in order to allow recursive references ...
-                debug_context(cx).created_types.borrow_mut()
-                                 .insert(cache_id, metadata_stub);
-
-                // ... then create the member descriptions ...
-                let member_descriptions = member_description_factory.create_member_descriptions(cx);
-
-                // ... and attach them to the stub to complete it.
-                set_members_of_composite_type(cx,
-                                              metadata_stub,
-                                              llvm_type,
-                                              member_descriptions.as_slice(),
-                                              file_metadata,
-                                              codemap::DUMMY_SP);
-                return metadata_stub;
-            }
-        }
-    }
-}
-
+// Creates MemberDescriptions for the fields of a tuple
 struct TupleMemberDescriptionFactory {
     component_types: Vec<ty::t> ,
     span: Span,
@@ -1396,25 +1434,33 @@ fn prepare_tuple_metadata(cx: &CrateContext,
                                           span),
         llvm_type: tuple_llvm_type,
         file_metadata: file_metadata,
-        member_description_factory: TupleMD(TupleMemberDescriptionFactory {
+        member_description_factory: TupleMDF(TupleMemberDescriptionFactory {
             component_types: Vec::from_slice(component_types),
             span: span,
         })
     }
 }
 
-struct GeneralMemberDescriptionFactory {
+
+//=-------------------------------------------------------------------------------------------------
+// Enums
+//=-------------------------------------------------------------------------------------------------
+
+// Describes the members of an enum value: An enum is described as a union of structs in DWARF. This
+// MemberDescriptionFactory provides the description for the members of this union; so for every
+// variant of the given enum, this factory will produce one MemberDescription (all with no name and
+// a fixed offset of zero bytes).
+struct EnumMemberDescriptionFactory {
     type_rep: Rc<adt::Repr>,
     variants: Rc<Vec<Rc<ty::VariantInfo>>>,
-    discriminant_type_metadata: ValueRef,
+    discriminant_type_metadata: DIType,
     containing_scope: DIScope,
     file_metadata: DIFile,
     span: Span,
 }
 
-impl GeneralMemberDescriptionFactory {
-    fn create_member_descriptions(&self, cx: &CrateContext)
-                                  -> Vec<MemberDescription> {
+impl EnumMemberDescriptionFactory {
+    fn create_member_descriptions(&self, cx: &CrateContext) -> Vec<MemberDescription> {
         // Capture type_rep, so we don't have to copy the struct_defs array
         let struct_defs = match *self.type_rep {
             adt::General(_, ref struct_defs) => struct_defs,
@@ -1429,7 +1475,7 @@ impl GeneralMemberDescriptionFactory {
                     describe_enum_variant(cx,
                                           struct_def,
                                           &**self.variants.get(i),
-                                          Some(self.discriminant_type_metadata),
+                                          RegularDiscriminant(self.discriminant_type_metadata),
                                           self.containing_scope,
                                           self.file_metadata,
                                           self.span);
@@ -1453,15 +1499,15 @@ impl GeneralMemberDescriptionFactory {
     }
 }
 
-struct EnumVariantMemberDescriptionFactory {
+// Creates MemberDescriptions for the fields of a single enum variant
+struct VariantMemberDescriptionFactory {
     args: Vec<(String, ty::t)> ,
     discriminant_type_metadata: Option<DIType>,
     span: Span,
 }
 
-impl EnumVariantMemberDescriptionFactory {
-    fn create_member_descriptions(&self, cx: &CrateContext)
-                                  -> Vec<MemberDescription> {
+impl VariantMemberDescriptionFactory {
+    fn create_member_descriptions(&self, cx: &CrateContext) -> Vec<MemberDescription> {
         self.args.iter().enumerate().map(|(i, &(ref name, ty))| {
             MemberDescription {
                 name: name.to_string(),
@@ -1476,10 +1522,19 @@ impl EnumVariantMemberDescriptionFactory {
     }
 }
 
+enum EnumDiscriminantInfo {
+    RegularDiscriminant(DIType),
+    OptimizedDiscriminant(uint),
+    NoDiscriminant
+}
+
+// Returns a tuple of (1) type_metadata_stub of the variant, (2) the llvm_type of the variant, and
+// (3) a MemberDescriptionFactory for producing the descriptions of the fields of the variant. This
+// is a rudimentary version of a full RecursiveTypeDescription.
 fn describe_enum_variant(cx: &CrateContext,
                          struct_def: &adt::Struct,
                          variant_info: &ty::VariantInfo,
-                         discriminant_type_metadata: Option<DIType>,
+                         discriminant_info: EnumDiscriminantInfo,
                          containing_scope: DIScope,
                          file_metadata: DIFile,
                          span: Span)
@@ -1520,9 +1575,10 @@ fn describe_enum_variant(cx: &CrateContext,
     };
 
     // If this is not a univariant enum, there is also the (unnamed) discriminant field
-    if discriminant_type_metadata.is_some() {
-        arg_names.insert(0, "".to_string());
-    }
+    match discriminant_info {
+        RegularDiscriminant(_) => arg_names.insert(0, "".to_string()),
+        _ => { /* do nothing */ }
+    };
 
     // Build an array of (field name, field type) pairs to be captured in the factory closure.
     let args: Vec<(String, ty::t)> = arg_names.iter()
@@ -1531,9 +1587,12 @@ fn describe_enum_variant(cx: &CrateContext,
         .collect();
 
     let member_description_factory =
-        EnumVariantMD(EnumVariantMemberDescriptionFactory {
+        VariantMDF(VariantMemberDescriptionFactory {
             args: args,
-            discriminant_type_metadata: discriminant_type_metadata,
+            discriminant_type_metadata: match discriminant_info {
+                RegularDiscriminant(discriminant_type_metadata) => Some(discriminant_type_metadata),
+                _ => None
+            },
             span: span,
         });
 
@@ -1638,7 +1697,7 @@ fn prepare_enum_metadata(cx: &CrateContext,
                     describe_enum_variant(cx,
                                           struct_def,
                                           &**variants.get(0),
-                                          None,
+                                          NoDiscriminant,
                                           containing_scope,
                                           file_metadata,
                                           span);
@@ -1680,7 +1739,7 @@ fn prepare_enum_metadata(cx: &CrateContext,
                 metadata_stub: enum_metadata,
                 llvm_type: enum_llvm_type,
                 file_metadata: file_metadata,
-                member_description_factory: GeneralMD(GeneralMemberDescriptionFactory {
+                member_description_factory: EnumMDF(EnumMemberDescriptionFactory {
                     type_rep: type_rep.clone(),
                     variants: variants,
                     discriminant_type_metadata: discriminant_type_metadata,
@@ -1693,14 +1752,14 @@ fn prepare_enum_metadata(cx: &CrateContext,
         adt::RawNullablePointer { nnty, .. } => {
             FinalMetadata(type_metadata(cx, nnty, span))
         }
-        adt::StructWrappedNullablePointer { nonnull: ref struct_def, nndiscr, .. } => {
+        adt::StructWrappedNullablePointer { nonnull: ref struct_def, nndiscr, ptrfield, .. } => {
             let (metadata_stub,
                  variant_llvm_type,
                  member_description_factory) =
                     describe_enum_variant(cx,
                                           struct_def,
                                           &**variants.get(nndiscr as uint),
-                                          None,
+                                          OptimizedDiscriminant(ptrfield),
                                           containing_scope,
                                           file_metadata,
                                           span);
@@ -1723,19 +1782,6 @@ fn prepare_enum_metadata(cx: &CrateContext,
 
         token::get_name(name)
     }
-}
-
-enum MemberOffset {
-    FixedMemberOffset { bytes: u64 },
-    // For ComputedMemberOffset, the offset is read from the llvm type definition
-    ComputedMemberOffset
-}
-
-struct MemberDescription {
-    name: String,
-    llvm_type: Type,
-    type_metadata: DIType,
-    offset: MemberOffset,
 }
 
 /// Creates debug information for a composite type, that is, anything that results in a LLVM struct.
