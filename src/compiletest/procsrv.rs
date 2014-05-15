@@ -13,7 +13,7 @@ use std::str;
 use std::io::process::{ProcessExit, Command, Process, ProcessOutput};
 
 #[cfg(target_os = "win32")]
-fn target_env(lib_path: &str, prog: &str) -> Vec<(~str, ~str)> {
+fn target_env(lib_path: &str, prog: &str) -> Vec<(StrBuf, StrBuf)> {
     let env = os::env();
 
     // Make sure we include the aux directory in the path
@@ -22,14 +22,14 @@ fn target_env(lib_path: &str, prog: &str) -> Vec<(~str, ~str)> {
 
     let mut new_env: Vec<_> = env.move_iter().map(|(k, v)| {
         let new_v = if "PATH" == k {
-            format!("{};{};{}", v, lib_path, aux_path)
+            format_strbuf!("{};{};{}", v, lib_path, aux_path)
         } else {
-            v
+            v.to_strbuf()
         };
-        (k, new_v)
+        (k.to_strbuf(), new_v)
     }).collect();
     if prog.ends_with("rustc.exe") {
-        new_env.push(("RUST_THREADS".to_owned(), "1".to_owned()));
+        new_env.push(("RUST_THREADS".to_strbuf(), "1".to_strbuf()));
     }
     return new_env;
 }
@@ -37,11 +37,14 @@ fn target_env(lib_path: &str, prog: &str) -> Vec<(~str, ~str)> {
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "freebsd")]
-fn target_env(lib_path: &str, prog: &str) -> Vec<(~str,~str)> {
+fn target_env(lib_path: &str, prog: &str) -> Vec<(StrBuf,StrBuf)> {
     // Make sure we include the aux directory in the path
     let aux_path = prog + ".libaux";
 
-    let mut env: Vec<(~str,~str)> = os::env().move_iter().collect();
+    let mut env: Vec<(StrBuf,StrBuf)> =
+        os::env().move_iter()
+                 .map(|(ref k, ref v)| (k.to_strbuf(), v.to_strbuf()))
+                 .collect();
     let var = if cfg!(target_os = "macos") {
         "DYLD_LIBRARY_PATH"
     } else {
@@ -49,23 +52,23 @@ fn target_env(lib_path: &str, prog: &str) -> Vec<(~str,~str)> {
     };
     let prev = match env.iter().position(|&(ref k, _)| k.as_slice() == var) {
         Some(i) => env.remove(i).unwrap().val1(),
-        None => "".to_owned(),
+        None => "".to_strbuf(),
     };
-    env.push((var.to_owned(), if prev.is_empty() {
-        lib_path + ":" + aux_path
+    env.push((var.to_strbuf(), if prev.is_empty() {
+        format_strbuf!("{}:{}", lib_path, aux_path)
     } else {
-        lib_path + ":" + aux_path + ":" + prev
+        format_strbuf!("{}:{}:{}", lib_path, aux_path, prev)
     }));
     return env;
 }
 
-pub struct Result {pub status: ProcessExit, pub out: ~str, pub err: ~str}
+pub struct Result {pub status: ProcessExit, pub out: StrBuf, pub err: StrBuf}
 
 pub fn run(lib_path: &str,
            prog: &str,
-           args: &[~str],
-           env: Vec<(~str, ~str)> ,
-           input: Option<~str>) -> Option<Result> {
+           args: &[StrBuf],
+           env: Vec<(StrBuf, StrBuf)> ,
+           input: Option<StrBuf>) -> Option<Result> {
 
     let env = env.clone().append(target_env(lib_path, prog).as_slice());
     match Command::new(prog).args(args).env(env.as_slice()).spawn() {
@@ -78,8 +81,8 @@ pub fn run(lib_path: &str,
 
             Some(Result {
                 status: status,
-                out: str::from_utf8(output.as_slice()).unwrap().to_owned(),
-                err: str::from_utf8(error.as_slice()).unwrap().to_owned()
+                out: str::from_utf8(output.as_slice()).unwrap().to_strbuf(),
+                err: str::from_utf8(error.as_slice()).unwrap().to_strbuf()
             })
         },
         Err(..) => None
@@ -88,9 +91,9 @@ pub fn run(lib_path: &str,
 
 pub fn run_background(lib_path: &str,
            prog: &str,
-           args: &[~str],
-           env: Vec<(~str, ~str)> ,
-           input: Option<~str>) -> Option<Process> {
+           args: &[StrBuf],
+           env: Vec<(StrBuf, StrBuf)> ,
+           input: Option<StrBuf>) -> Option<Process> {
 
     let env = env.clone().append(target_env(lib_path, prog).as_slice());
     match Command::new(prog).args(args).env(env.as_slice()).spawn() {
