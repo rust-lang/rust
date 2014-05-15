@@ -500,7 +500,7 @@ impl<T: Encoder<E>, E> Encodable<T, E> for Uuid {
 impl<T: Decoder<E>, E> Decodable<T, E> for Uuid {
     /// Decode a UUID from a string
     fn decode(d: &mut T) -> Result<Uuid, E> {
-        Ok(from_str(try!(d.read_str())).unwrap())
+        Ok(from_str(try!(d.read_str()).as_slice()).unwrap())
     }
 }
 
