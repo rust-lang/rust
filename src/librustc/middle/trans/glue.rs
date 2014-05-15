@@ -479,7 +479,9 @@ fn make_generic_glue(ccx: &CrateContext,
     let _s = StatRecorder::new(ccx, glue_name);
 
     let arena = TypedArena::new();
-    let fcx = new_fn_ctxt(ccx, llfn, -1, false, ty::mk_nil(), None, None, &arena);
+    let empty_param_substs = param_substs::empty();
+    let fcx = new_fn_ctxt(ccx, llfn, -1, false, ty::mk_nil(),
+                          &empty_param_substs, None, &arena);
 
     init_function(&fcx, false, ty::mk_nil());
 

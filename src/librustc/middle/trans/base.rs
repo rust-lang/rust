@@ -1098,11 +1098,11 @@ pub fn new_fn_ctxt<'a>(ccx: &'a CrateContext,
                        id: ast::NodeId,
                        has_env: bool,
                        output_type: ty::t,
-                       param_substs: Option<&'a param_substs>,
+                       param_substs: &'a param_substs,
                        sp: Option<Span>,
                        block_arena: &'a TypedArena<Block<'a>>)
                        -> FunctionContext<'a> {
-    for p in param_substs.iter() { p.validate(); }
+    param_substs.validate();
 
     debug!("new_fn_ctxt(path={}, id={}, param_substs={})",
            if id == -1 {
@@ -1110,7 +1110,7 @@ pub fn new_fn_ctxt<'a>(ccx: &'a CrateContext,
            } else {
                ccx.tcx.map.path_to_str(id).to_string()
            },
-           id, param_substs.map(|s| s.repr(ccx.tcx())));
+           id, param_substs.repr(ccx.tcx()));
 
     let substd_output_type = output_type.substp(ccx.tcx(), param_substs);
     let uses_outptr = type_of::return_uses_outptr(ccx, substd_output_type);
@@ -1303,7 +1303,7 @@ pub fn trans_closure(ccx: &CrateContext,
                      decl: &ast::FnDecl,
                      body: &ast::Block,
                      llfndecl: ValueRef,
-                     param_substs: Option<&param_substs>,
+                     param_substs: &param_substs,
                      id: ast::NodeId,
                      _attributes: &[ast::Attribute],
                      output_type: ty::t,
@@ -1314,7 +1314,7 @@ pub fn trans_closure(ccx: &CrateContext,
     set_uwtable(llfndecl);
 
     debug!("trans_closure(..., param_substs={})",
-           param_substs.map(|s| s.repr(ccx.tcx())));
+           param_substs.repr(ccx.tcx()));
 
     let has_env = match ty::get(ty::node_id_to_type(ccx.tcx(), id)).sty {
         ty::ty_closure(_) => true,
@@ -1327,7 +1327,7 @@ pub fn trans_closure(ccx: &CrateContext,
                           id,
                           has_env,
                           output_type,
-                          param_substs.map(|s| &*s),
+                          param_substs,
                           Some(body.span),
                           &arena);
     init_function(&fcx, false, output_type);
@@ -1403,11 +1403,11 @@ pub fn trans_fn(ccx: &CrateContext,
                 decl: &ast::FnDecl,
                 body: &ast::Block,
                 llfndecl: ValueRef,
-                param_substs: Option<&param_substs>,
+                param_substs: &param_substs,
                 id: ast::NodeId,
                 attrs: &[ast::Attribute]) {
     let _s = StatRecorder::new(ccx, ccx.tcx.map.path_to_str(id).to_string());
-    debug!("trans_fn(param_substs={})", param_substs.map(|s| s.repr(ccx.tcx())));
+    debug!("trans_fn(param_substs={})", param_substs.repr(ccx.tcx()));
     let _icx = push_ctxt("trans_fn");
     let output_type = ty::ty_fn_ret(ty::node_id_to_type(ccx.tcx(), id));
     trans_closure(ccx, decl, body, llfndecl,
@@ -1419,7 +1419,7 @@ pub fn trans_enum_variant(ccx: &CrateContext,
                           variant: &ast::Variant,
                           _args: &[ast::VariantArg],
                           disr: ty::Disr,
-                          param_substs: Option<&param_substs>,
+                          param_substs: &param_substs,
                           llfndecl: ValueRef) {
     let _icx = push_ctxt("trans_enum_variant");
 
@@ -1434,7 +1434,7 @@ pub fn trans_enum_variant(ccx: &CrateContext,
 pub fn trans_tuple_struct(ccx: &CrateContext,
                           _fields: &[ast::StructField],
                           ctor_id: ast::NodeId,
-                          param_substs: Option<&param_substs>,
+                          param_substs: &param_substs,
                           llfndecl: ValueRef) {
     let _icx = push_ctxt("trans_tuple_struct");
 
@@ -1449,7 +1449,7 @@ pub fn trans_tuple_struct(ccx: &CrateContext,
 fn trans_enum_variant_or_tuple_like_struct(ccx: &CrateContext,
                                            ctor_id: ast::NodeId,
                                            disr: ty::Disr,
-                                           param_substs: Option<&param_substs>,
+                                           param_substs: &param_substs,
                                            llfndecl: ValueRef) {
     let ctor_ty = ty::node_id_to_type(ccx.tcx(), ctor_id);
     let ctor_ty = ctor_ty.substp(ccx.tcx(), param_substs);
@@ -1464,7 +1464,7 @@ fn trans_enum_variant_or_tuple_like_struct(ccx: &CrateContext,
 
     let arena = TypedArena::new();
     let fcx = new_fn_ctxt(ccx, llfndecl, ctor_id, false, result_ty,
-                          param_substs.map(|s| &*s), None, &arena);
+                          param_substs, None, &arena);
     init_function(&fcx, false, result_ty);
 
     let arg_tys = ty::ty_fn_args(ctor_ty);
@@ -1500,7 +1500,7 @@ fn trans_enum_def(ccx: &CrateContext, enum_definition: &ast::EnumDef,
             ast::TupleVariantKind(ref args) if args.len() > 0 => {
                 let llfn = get_item_val(ccx, variant.node.id);
                 trans_enum_variant(ccx, id, variant, args.as_slice(),
-                                   disr_val, None, llfn);
+                                   disr_val, &param_substs::empty(), llfn);
             }
             ast::TupleVariantKind(_) => {
                 // Nothing to do.
@@ -1587,7 +1587,7 @@ pub fn trans_item(ccx: &CrateContext, item: &ast::Item) {
                      decl,
                      body,
                      llfn,
-                     None,
+                     &param_substs::empty(),
                      item.id,
                      item.attrs.as_slice());
         } else {
@@ -1660,7 +1660,7 @@ pub fn trans_struct_def(ccx: &CrateContext, struct_def: @ast::StructDef) {
         Some(ctor_id) if struct_def.fields.len() > 0 => {
             let llfndecl = get_item_val(ccx, ctor_id);
             trans_tuple_struct(ccx, struct_def.fields.as_slice(),
-                               ctor_id, None, llfndecl);
+                               ctor_id, &param_substs::empty(), llfndecl);
         }
         Some(_) | None => {}
     }
