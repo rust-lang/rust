@@ -284,7 +284,7 @@ fn rust_input(cratefile: &str, matches: &getopts::Matches) -> Output {
         core::run_core(libs.move_iter().map(|x| x.clone()).collect(),
                        cfgs.move_iter().map(|x| x.to_strbuf()).collect(),
                        &cr)
-    }).unwrap();
+    }).map_err(|boxed_any|format!("{:?}", boxed_any)).unwrap();
     info!("finished with rustc");
     analysiskey.replace(Some(analysis));
 

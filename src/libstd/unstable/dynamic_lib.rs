@@ -16,16 +16,16 @@ A simple wrapper over the platform's dynamic library facilities
 
 */
 
-
+use clone::Clone;
 use c_str::ToCStr;
+use iter::Iterator;
 use mem;
 use ops::*;
 use option::*;
 use os;
-use path::GenericPath;
-use path;
+use path::{Path,GenericPath};
 use result::*;
-use slice::Vector;
+use slice::{Vector,ImmutableVector};
 use str;
 use vec::Vec;
 
@@ -76,22 +76,55 @@ impl DynamicLibrary {
         }
     }
 
-    /// Appends a path to the system search path for dynamic libraries
-    pub fn add_search_path(path: &path::Path) {
-        let (envvar, sep) = if cfg!(windows) {
-            ("PATH", ';' as u8)
+    /// Prepends a path to this process's search path for dynamic libraries
+    pub fn prepend_search_path(path: &Path) {
+        let mut search_path = DynamicLibrary::search_path();
+        search_path.insert(0, path.clone());
+        let newval = DynamicLibrary::create_path(search_path.as_slice());
+        os::setenv(DynamicLibrary::envvar(),
+                   str::from_utf8(newval.as_slice()).unwrap());
+    }
+
+    /// From a slice of paths, create a new vector which is suitable to be an
+    /// environment variable for this platforms dylib search path.
+    pub fn create_path(path: &[Path]) -> Vec<u8> {
+        let mut newvar = Vec::new();
+        for (i, path) in path.iter().enumerate() {
+            if i > 0 { newvar.push(DynamicLibrary::separator()); }
+            newvar.push_all(path.as_vec());
+        }
+        return newvar;
+    }
+
+    /// Returns the environment variable for this process's dynamic library
+    /// search path
+    pub fn envvar() -> &'static str {
+        if cfg!(windows) {
+            "PATH"
         } else if cfg!(target_os = "macos") {
-            ("DYLD_LIBRARY_PATH", ':' as u8)
+            "DYLD_LIBRARY_PATH"
         } else {
-            ("LD_LIBRARY_PATH", ':' as u8)
-        };
-        let mut newenv = Vec::from_slice(path.as_vec());
-        newenv.push(sep);
-        match os::getenv_as_bytes(envvar) {
-            Some(bytes) => newenv.push_all(bytes),
+            "LD_LIBRARY_PATH"
+        }
+    }
+
+    fn separator() -> u8 {
+        if cfg!(windows) {';' as u8} else {':' as u8}
+    }
+
+    /// Returns the current search path for dynamic libraries being used by this
+    /// process
+    pub fn search_path() -> Vec<Path> {
+        let mut ret = Vec::new();
+        match os::getenv_as_bytes(DynamicLibrary::envvar()) {
+            Some(env) => {
+                for portion in env.split(|a| *a == DynamicLibrary::separator()) {
+                    ret.push(Path::new(portion));
+                }
+            }
             None => {}
         }
-        os::setenv(envvar, str::from_utf8(newenv.as_slice()).unwrap());
+        return ret;
     }
 
     /// Access the value at the symbol of the dynamic library
@@ -168,11 +201,12 @@ mod test {
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "freebsd")]
 pub mod dl {
+    use prelude::*;
+
     use c_str::ToCStr;
     use libc;
     use ptr;
     use str;
-    use result::*;
 
     pub unsafe fn open_external<T: ToCStr>(filename: T) -> *u8 {
         filename.with_c_str(|raw_name| {
