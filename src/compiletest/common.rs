@@ -10,6 +10,7 @@
 
 use std::from_str::FromStr;
 use std::fmt;
+use regex::Regex;
 
 #[deriving(Clone, Eq)]
 pub enum Mode {
@@ -88,7 +89,7 @@ pub struct Config {
     pub run_ignored: bool,
 
     // Only run tests that match this filter
-    pub filter: Option<~str>,
+    pub filter: Option<Regex>,
 
     // Write out a parseable log of tests that were run
     pub logfile: Option<Path>,

@@ -16,8 +16,8 @@ A simple wrapper over the platform's dynamic library facilities
 
 */
 
+
 use c_str::ToCStr;
-use iter::Iterator;
 use mem;
 use ops::*;
 use option::*;
@@ -25,7 +25,7 @@ use os;
 use path::GenericPath;
 use path;
 use result::*;
-use slice::{Vector,OwnedVector};
+use slice::Vector;
 use str;
 use vec::Vec;
 
@@ -85,10 +85,12 @@ impl DynamicLibrary {
         } else {
             ("LD_LIBRARY_PATH", ':' as u8)
         };
-        let newenv = os::getenv_as_bytes(envvar).unwrap_or(box []);
-        let mut newenv = newenv.move_iter().collect::<Vec<_>>();
-        newenv.push_all(&[sep]);
-        newenv.push_all(path.as_vec());
+        let mut newenv = Vec::from_slice(path.as_vec());
+        newenv.push(sep);
+        match os::getenv_as_bytes(envvar) {
+            Some(bytes) => newenv.push_all(bytes),
+            None => {}
+        }
         os::setenv(envvar, str::from_utf8(newenv.as_slice()).unwrap());
     }
 
