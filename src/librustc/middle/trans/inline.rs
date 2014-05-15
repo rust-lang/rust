@@ -131,7 +131,8 @@ pub fn maybe_instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
 
           if num_type_params == 0 {
               let llfn = get_item_val(ccx, mth.id);
-              trans_fn(ccx, mth.decl, mth.body, llfn, None, mth.id, []);
+              trans_fn(ccx, mth.decl, mth.body, llfn,
+                       &param_substs::empty(), mth.id, []);
           }
           local_def(mth.id)
         }

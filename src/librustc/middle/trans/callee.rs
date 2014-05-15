@@ -187,7 +187,7 @@ fn trans_fn_ref_with_vtables_to_callee<'a>(bcx: &'a Block<'a>,
                                            def_id: ast::DefId,
                                            ref_id: ast::NodeId,
                                            substs: subst::Substs,
-                                           vtables: Option<typeck::vtable_res>)
+                                           vtables: typeck::vtable_res)
                                            -> Callee<'a> {
     Callee {bcx: bcx,
             data: Fn(trans_fn_ref_with_vtables(bcx, def_id, ExprId(ref_id),
@@ -198,8 +198,9 @@ fn resolve_default_method_vtables(bcx: &Block,
                                   impl_id: ast::DefId,
                                   method: &ty::Method,
                                   substs: &subst::Substs,
-                                  impl_vtables: Option<typeck::vtable_res>)
-                          -> (typeck::vtable_res, typeck::vtable_param_res) {
+                                  impl_vtables: typeck::vtable_res)
+                          -> (typeck::vtable_res, typeck::vtable_param_res)
+{
 
     // Get the vtables that the impl implements the trait at
     let impl_res = ty::lookup_impl_vtables(bcx.tcx(), impl_id);
@@ -213,27 +214,15 @@ fn resolve_default_method_vtables(bcx: &Block,
     };
 
     let mut param_vtables = resolve_vtables_under_param_substs(
-        bcx.tcx(), Some(&param_substs), impl_res.trait_vtables.as_slice());
+        bcx.tcx(), &param_substs, impl_res.trait_vtables.as_slice());
 
     // Now we pull any vtables for parameters on the actual method.
     let num_method_vtables = method.generics.type_param_defs().len();
-    match impl_vtables {
-        Some(ref vtables) => {
-            let num_impl_type_parameters =
-                vtables.len() - num_method_vtables;
-            param_vtables.push_all(vtables.tailn(num_impl_type_parameters))
-        },
-        None => {
-            param_vtables.extend(range(0, num_method_vtables).map(
-                |_| -> typeck::vtable_param_res {
-                    Vec::new()
-                }
-            ))
-        }
-    }
+    let num_impl_type_parameters = impl_vtables.len() - num_method_vtables;
+    param_vtables.push_all(impl_vtables.tailn(num_impl_type_parameters));
 
     let self_vtables = resolve_param_vtables_under_param_substs(
-        bcx.tcx(), Some(&param_substs), impl_res.self_vtables.as_slice());
+        bcx.tcx(), &param_substs, impl_res.self_vtables.as_slice());
 
     (param_vtables, self_vtables)
 }
@@ -244,7 +233,7 @@ pub fn trans_fn_ref_with_vtables(
         def_id: ast::DefId,   // def id of fn
         node: ExprOrMethodCall,  // node id of use of fn; may be zero if N/A
         substs: subst::Substs, // values for fn's ty params
-        vtables: Option<typeck::vtable_res>) // vtables for the call
+        vtables: typeck::vtable_res) // vtables for the call
      -> ValueRef {
     /*!
      * Translates a reference to a fn/method item, monomorphizing and
@@ -336,7 +325,7 @@ pub fn trans_fn_ref_with_vtables(
                    self_vtables.repr(tcx), param_vtables.repr(tcx));
 
             (true, source_id,
-             new_substs, Some(self_vtables), Some(param_vtables))
+             new_substs, Some(self_vtables), param_vtables)
         }
     };
 
@@ -507,7 +496,7 @@ pub fn trans_lang_call<'a>(
                                                                     did,
                                                                     0,
                                                                     subst::Substs::empty(),
-                                                                    None)
+                                                                    Vec::new())
                              },
                              ArgVals(args),
                              dest)

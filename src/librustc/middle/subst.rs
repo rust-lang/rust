@@ -63,6 +63,14 @@ impl Substs {
         }
     }
 
+    pub fn trans_empty() -> Substs {
+        Substs {
+            self_ty: None,
+            tps: Vec::new(),
+            regions: ErasedRegions
+        }
+    }
+
     pub fn is_noop(&self) -> bool {
         let regions_is_noop = match self.regions {
             ErasedRegions => false, // may be used to canonicalize
