@@ -23,6 +23,8 @@ extern crate log;
 extern crate green;
 extern crate rustuv;
 
+extern crate regex;
+
 use std::os;
 use std::io;
 use std::io::fs;
@@ -113,6 +115,19 @@ pub fn parse_config(args: Vec<~str> ) -> Config {
         Path::new(m.opt_str(nm).unwrap())
     }
 
+    let filter = if !matches.free.is_empty() {
+        let s = matches.free.get(0).as_slice();
+        match regex::Regex::new(s) {
+            Ok(re) => Some(re),
+            Err(e) => {
+                println!("failed to parse filter /{}/: {}", s, e);
+                fail!()
+            }
+        }
+    } else {
+        None
+    };
+
     Config {
         compile_lib_path: matches.opt_str("compile-lib-path").unwrap(),
         run_lib_path: matches.opt_str("run-lib-path").unwrap(),
@@ -125,12 +140,7 @@ pub fn parse_config(args: Vec<~str> ) -> Config {
         stage_id: matches.opt_str("stage-id").unwrap(),
         mode: FromStr::from_str(matches.opt_str("mode").unwrap()).expect("invalid mode"),
         run_ignored: matches.opt_present("ignored"),
-        filter:
-            if !matches.free.is_empty() {
-                 Some((*matches.free.get(0)).clone())
-            } else {
-                None
-            },
+        filter: filter,
         logfile: matches.opt_str("logfile").map(|s| Path::new(s)),
         save_metrics: matches.opt_str("save-metrics").map(|s| Path::new(s)),
         ratchet_metrics:
@@ -169,7 +179,7 @@ pub fn log_config(config: &Config) {
     logv(c, format!("stage_id: {}", config.stage_id));
     logv(c, format!("mode: {}", config.mode));
     logv(c, format!("run_ignored: {}", config.run_ignored));
-    logv(c, format!("filter: {}", opt_str(&config.filter)));
+    logv(c, format!("filter: {}", opt_str(&config.filter.as_ref().map(|re| re.to_str()))));
     logv(c, format!("runtool: {}", opt_str(&config.runtool)));
     logv(c, format!("host-rustcflags: {}", opt_str(&config.host_rustcflags)));
     logv(c, format!("target-rustcflags: {}", opt_str(&config.target_rustcflags)));
@@ -238,7 +248,7 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
     test::TestOpts {
         filter: match config.filter {
             None => None,
-            Some(ref filter) => Some(filter.to_strbuf()),
+            Some(ref filter) => Some(filter.clone()),
         },
         run_ignored: config.run_ignored,
         logfile: config.logfile.clone(),
