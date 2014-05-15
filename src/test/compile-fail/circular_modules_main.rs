@@ -11,7 +11,7 @@
 
 mod circular_modules_hello; //~ERROR: circular modules
 
-pub fn hi_str() -> ~str {
+pub fn hi_str() -> StrBuf {
   "Hi!".to_owned()
 }
 

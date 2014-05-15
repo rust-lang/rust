@@ -11,37 +11,27 @@
 use std::strbuf::StrBuf;
 
 fn test_stack_assign() {
-    let s: ~str = "a".to_owned();
+    let s: StrBuf = "a".to_strbuf();
     println!("{}", s.clone());
-    let t: ~str = "a".to_owned();
+    let t: StrBuf = "a".to_strbuf();
     assert!(s == t);
-    let u: ~str = "b".to_owned();
+    let u: StrBuf = "b".to_strbuf();
     assert!((s != u));
 }
 
-fn test_heap_lit() { "a big string".to_owned(); }
+fn test_heap_lit() { "a big string".to_strbuf(); }
 
 fn test_heap_assign() {
-    let s: ~str = "a big ol' string".to_owned();
-    let t: ~str = "a big ol' string".to_owned();
+    let s: StrBuf = "a big ol' string".to_strbuf();
+    let t: StrBuf = "a big ol' string".to_strbuf();
     assert!(s == t);
-    let u: ~str = "a bad ol' string".to_owned();
+    let u: StrBuf = "a bad ol' string".to_strbuf();
     assert!((s != u));
 }
 
-fn test_heap_log() { let s = "a big ol' string".to_owned(); println!("{}", s); }
-
-fn test_stack_add() {
-    assert_eq!("a".to_owned() + "b", "ab".to_owned());
-    let s: ~str = "a".to_owned();
-    assert_eq!(s + s, "aa".to_owned());
-    assert_eq!("".to_owned() + "", "".to_owned());
-}
-
-fn test_stack_heap_add() { assert!(("a".to_owned() + "bracadabra" == "abracadabra".to_owned())); }
-
-fn test_heap_add() {
-    assert_eq!("this should".to_owned() + " totally work", "this should totally work".to_owned());
+fn test_heap_log() {
+    let s = "a big ol' string".to_strbuf();
+    println!("{}", s);
 }
 
 fn test_append() {
@@ -67,8 +57,5 @@ pub fn main() {
     test_heap_lit();
     test_heap_assign();
     test_heap_log();
-    test_stack_add();
-    test_stack_heap_add();
-    test_heap_add();
     test_append();
 }

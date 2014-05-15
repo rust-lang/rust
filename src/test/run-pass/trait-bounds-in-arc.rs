@@ -25,43 +25,54 @@ trait Pet {
 
 struct Catte {
     num_whiskers: uint,
-    name: ~str,
+    name: StrBuf,
 }
 
 struct Dogge {
     bark_decibels: uint,
     tricks_known: uint,
-    name: ~str,
+    name: StrBuf,
 }
 
 struct Goldfyshe {
     swim_speed: uint,
-    name: ~str,
+    name: StrBuf,
 }
 
 impl Pet for Catte {
-    fn name(&self, blk: |&str|) { blk(self.name) }
+    fn name(&self, blk: |&str|) { blk(self.name.as_slice()) }
     fn num_legs(&self) -> uint { 4 }
     fn of_good_pedigree(&self) -> bool { self.num_whiskers >= 4 }
 }
 impl Pet for Dogge {
-    fn name(&self, blk: |&str|) { blk(self.name) }
+    fn name(&self, blk: |&str|) { blk(self.name.as_slice()) }
     fn num_legs(&self) -> uint { 4 }
     fn of_good_pedigree(&self) -> bool {
         self.bark_decibels < 70 || self.tricks_known > 20
     }
 }
 impl Pet for Goldfyshe {
-    fn name(&self, blk: |&str|) { blk(self.name) }
+    fn name(&self, blk: |&str|) { blk(self.name.as_slice()) }
     fn num_legs(&self) -> uint { 0 }
     fn of_good_pedigree(&self) -> bool { self.swim_speed >= 500 }
 }
 
 pub fn main() {
-    let catte = Catte { num_whiskers: 7, name: "alonzo_church".to_owned() };
-    let dogge1 = Dogge { bark_decibels: 100, tricks_known: 42, name: "alan_turing".to_owned() };
-    let dogge2 = Dogge { bark_decibels: 55,  tricks_known: 11, name: "albert_einstein".to_owned() };
-    let fishe = Goldfyshe { swim_speed: 998, name: "alec_guinness".to_owned() };
+    let catte = Catte { num_whiskers: 7, name: "alonzo_church".to_strbuf() };
+    let dogge1 = Dogge {
+        bark_decibels: 100,
+        tricks_known: 42,
+        name: "alan_turing".to_strbuf(),
+    };
+    let dogge2 = Dogge {
+        bark_decibels: 55,
+        tricks_known: 11,
+        name: "albert_einstein".to_strbuf(),
+    };
+    let fishe = Goldfyshe {
+        swim_speed: 998,
+        name: "alec_guinness".to_strbuf(),
+    };
     let arc = Arc::new(vec!(box catte  as Box<Pet:Share+Send>,
                             box dogge1 as Box<Pet:Share+Send>,
                             box fishe  as Box<Pet:Share+Send>,

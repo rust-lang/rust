@@ -13,13 +13,13 @@
 #![feature(struct_variant)]
 
 enum Animal {
-    Dog (~str, f64),
-    Cat { name: ~str, weight: f64 }
+    Dog (StrBuf, f64),
+    Cat { name: StrBuf, weight: f64 }
 }
 
 pub fn main() {
-    let mut a: Animal = Dog("Cocoa".to_owned(), 37.2);
-    a = Cat{ name: "Spotty".to_owned(), weight: 2.7 };
+    let mut a: Animal = Dog("Cocoa".to_strbuf(), 37.2);
+    a = Cat{ name: "Spotty".to_strbuf(), weight: 2.7 };
     // permuting the fields should work too
-    let _c = Cat { weight: 3.1, name: "Spreckles".to_owned() };
+    let _c = Cat { weight: 3.1, name: "Spreckles".to_strbuf() };
 }

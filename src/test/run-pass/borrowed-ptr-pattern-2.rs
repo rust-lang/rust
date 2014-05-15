@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo(s: &~str) -> bool {
+fn foo(s: &StrBuf) -> bool {
     match s.as_slice() {
         "kitty" => true,
         _ => false
@@ -16,6 +16,6 @@ fn foo(s: &~str) -> bool {
 }
 
 pub fn main() {
-    assert!(foo(&"kitty".to_owned()));
-    assert!(!foo(&"gata".to_owned()));
+    assert!(foo(&"kitty".to_strbuf()));
+    assert!(!foo(&"gata".to_strbuf()));
 }

@@ -15,9 +15,9 @@ use collections::HashMap;
 // Test that trait types printed in error msgs include the type arguments.
 
 fn main() {
-    let x: Box<HashMap<~str, ~str>> = box HashMap::new();
-    let x: Box<Map<~str, ~str>> = x;
-    let y: Box<Map<uint, ~str>> = box x;
-    //~^ ERROR failed to find an implementation of trait core::container::Map<uint,~str>
-    //         for ~core::container::Map<~str,~str>:Send
+    let x: Box<HashMap<int, int>> = box HashMap::new();
+    let x: Box<Map<int, int>> = x;
+    let y: Box<Map<uint, int>> = box x;
+    //~^ ERROR failed to find an implementation of trait core::container::Map<uint,int>
+    //         for ~core::container::Map<int,int>:Send
 }

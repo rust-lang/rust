@@ -14,13 +14,13 @@ extern crate cci_class_cast;
 use std::to_str::ToStr;
 use cci_class_cast::kitty::cat;
 
-fn print_out(thing: Box<ToStr>, expected: ~str) {
+fn print_out(thing: Box<ToStr>, expected: StrBuf) {
   let actual = thing.to_str();
   println!("{}", actual);
-  assert_eq!(actual, expected);
+  assert_eq!(actual.to_strbuf(), expected);
 }
 
 pub fn main() {
-  let nyan: Box<ToStr> = box cat(0u, 2, "nyan".to_owned()) as Box<ToStr>;
-  print_out(nyan, "nyan".to_owned());
+  let nyan: Box<ToStr> = box cat(0u, 2, "nyan".to_strbuf()) as Box<ToStr>;
+  print_out(nyan, "nyan".to_strbuf());
 }

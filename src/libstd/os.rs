@@ -1511,9 +1511,9 @@ mod tests {
 
     fn make_rand_name() -> ~str {
         let mut rng = rand::task_rng();
-        let n = "TEST".to_owned() + rng.gen_ascii_str(10u);
-        assert!(getenv(n).is_none());
-        n
+        let n = format_strbuf!("TEST{}", rng.gen_ascii_str(10u).as_slice());
+        assert!(getenv(n.as_slice()).is_none());
+        n.into_owned()
     }
 
     #[test]

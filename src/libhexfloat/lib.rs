@@ -70,30 +70,39 @@ pub fn macro_registrar(register: |Name, SyntaxExtension|) {
 
 //Check if the literal is valid (as LLVM expects),
 //and return a descriptive error if not.
-fn hex_float_lit_err(s: &str) -> Option<(uint, ~str)> {
+fn hex_float_lit_err(s: &str) -> Option<(uint, StrBuf)> {
     let mut chars = s.chars().peekable();
     let mut i = 0;
     if chars.peek() == Some(&'-') { chars.next(); i+= 1 }
-    if chars.next() != Some('0') { return Some((i, "Expected '0'".to_owned())); } i+=1;
-    if chars.next() != Some('x') { return Some((i, "Expected 'x'".to_owned())); } i+=1;
+    if chars.next() != Some('0') {
+        return Some((i, "Expected '0'".to_strbuf()));
+    } i+=1;
+    if chars.next() != Some('x') {
+        return Some((i, "Expected 'x'".to_strbuf()));
+    } i+=1;
     let mut d_len = 0;
     for _ in chars.take_while(|c| c.is_digit_radix(16)) { chars.next(); i+=1; d_len += 1;}
-    if chars.next() != Some('.') { return Some((i, "Expected '.'".to_owned())); } i+=1;
+    if chars.next() != Some('.') {
+        return Some((i, "Expected '.'".to_strbuf()));
+    } i+=1;
     let mut f_len = 0;
     for _ in chars.take_while(|c| c.is_digit_radix(16)) { chars.next(); i+=1; f_len += 1;}
     if d_len == 0 && f_len == 0 {
-        return Some((i, "Expected digits before or after decimal point".to_owned()));
+        return Some((i, "Expected digits before or after decimal \
+                         point".to_strbuf()));
     }
-    if chars.next() != Some('p') { return Some((i, "Expected 'p'".to_owned())); } i+=1;
+    if chars.next() != Some('p') {
+        return Some((i, "Expected 'p'".to_strbuf()));
+    } i+=1;
     if chars.peek() == Some(&'-') { chars.next(); i+= 1 }
     let mut e_len = 0;
     for _ in chars.take_while(|c| c.is_digit()) { chars.next(); i+=1; e_len += 1}
     if e_len == 0 {
-        return Some((i, "Expected exponent digits".to_owned()));
+        return Some((i, "Expected exponent digits".to_strbuf()));
     }
     match chars.next() {
         None => None,
-        Some(_) => Some((i, "Expected end of string".to_owned()))
+        Some(_) => Some((i, "Expected end of string".to_strbuf()))
     }
 }
 

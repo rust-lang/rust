@@ -10,7 +10,7 @@
 
 enum foo {
   a(uint),
-  b(~str),
+  b(StrBuf),
   c,
 }
 
@@ -19,8 +19,7 @@ enum bar {
 }
 
 pub fn main() {
-    assert_eq!("a(22u)".to_owned(), format!("{:?}", a(22u)));
-    assert_eq!("b(~\"hi\")".to_owned(), format!("{:?}", b("hi".to_owned())));
-    assert_eq!("c".to_owned(), format!("{:?}", c));
-    assert_eq!("d".to_owned(), format!("{:?}", d));
+    assert_eq!("a(22u)".to_strbuf(), format_strbuf!("{:?}", a(22u)));
+    assert_eq!("c".to_strbuf(), format_strbuf!("{:?}", c));
+    assert_eq!("d".to_strbuf(), format_strbuf!("{:?}", d));
 }

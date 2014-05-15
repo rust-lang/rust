@@ -8,16 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn wants_uniq(x: ~str) { }
+fn wants_uniq(x: StrBuf) { }
 fn wants_slice(x: &str) { }
 
-fn has_uniq(x: ~str) {
+fn has_uniq(x: StrBuf) {
    wants_uniq(x);
-   wants_slice(x);
+   wants_slice(x.as_slice());
 }
 
 fn has_slice(x: &str) {
-   wants_uniq(x); //~ ERROR mismatched types: expected `~str` but found `&str` (expected box but f
+   wants_uniq(x); //~ ERROR mismatched types
    wants_slice(x);
 }
 

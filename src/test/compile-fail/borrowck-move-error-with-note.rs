@@ -26,15 +26,15 @@ fn blah() {
 }
 
 struct S {
-    f: ~str,
-    g: ~str
+    f: StrBuf,
+    g: StrBuf
 }
 impl Drop for S {
     fn drop(&mut self) { println!("{}", self.f); }
 }
 
 fn move_in_match() {
-    match S {f: "foo".to_owned(), g: "bar".to_owned()} {
+    match S {f: "foo".to_strbuf(), g: "bar".to_strbuf()} {
         S {         //~ ERROR cannot move out of type `S`, which defines the `Drop` trait
             f: _s,  //~ NOTE attempting to move value to here
             g: _t   //~ NOTE and here

@@ -10,11 +10,6 @@
 
 #![feature(managed_boxes)]
 
-#[deriving(Clone)]
-struct Foo {
-    a: ~str,
-}
-
 pub fn main() {
     let x = [ [true], ..512 ];
     let y = [ 0, ..1 ];

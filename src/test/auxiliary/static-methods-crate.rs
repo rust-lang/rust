@@ -14,17 +14,17 @@
 use std::int;
 
 pub trait read {
-    fn readMaybe(s: ~str) -> Option<Self>;
+    fn readMaybe(s: StrBuf) -> Option<Self>;
 }
 
 impl read for int {
-    fn readMaybe(s: ~str) -> Option<int> {
-        from_str::<int>(s)
+    fn readMaybe(s: StrBuf) -> Option<int> {
+        from_str::<int>(s.as_slice())
     }
 }
 
 impl read for bool {
-    fn readMaybe(s: ~str) -> Option<bool> {
+    fn readMaybe(s: StrBuf) -> Option<bool> {
         match s.as_slice() {
           "true" => Some(true),
           "false" => Some(false),
@@ -33,7 +33,7 @@ impl read for bool {
     }
 }
 
-pub fn read<T:read>(s: ~str) -> T {
+pub fn read<T:read>(s: StrBuf) -> T {
     match read::readMaybe(s) {
       Some(x) => x,
       _ => fail!("read failed!")

@@ -1865,60 +1865,60 @@ mod biguint_tests {
         assert!(((one << 64) + one).is_odd());
     }
 
-    fn to_str_pairs() -> Vec<(BigUint, Vec<(uint, ~str)>)> {
+    fn to_str_pairs() -> Vec<(BigUint, Vec<(uint, StrBuf)>)> {
         let bits = BigDigit::bits;
         vec!(( Zero::zero(), vec!(
-            (2, "0".to_owned()), (3, "0".to_owned())
+            (2, "0".to_strbuf()), (3, "0".to_strbuf())
         )), ( BigUint::from_slice([ 0xff ]), vec!(
-            (2,  "11111111".to_owned()),
-            (3,  "100110".to_owned()),
-            (4,  "3333".to_owned()),
-            (5,  "2010".to_owned()),
-            (6,  "1103".to_owned()),
-            (7,  "513".to_owned()),
-            (8,  "377".to_owned()),
-            (9,  "313".to_owned()),
-            (10, "255".to_owned()),
-            (11, "212".to_owned()),
-            (12, "193".to_owned()),
-            (13, "168".to_owned()),
-            (14, "143".to_owned()),
-            (15, "120".to_owned()),
-            (16, "ff".to_owned())
+            (2,  "11111111".to_strbuf()),
+            (3,  "100110".to_strbuf()),
+            (4,  "3333".to_strbuf()),
+            (5,  "2010".to_strbuf()),
+            (6,  "1103".to_strbuf()),
+            (7,  "513".to_strbuf()),
+            (8,  "377".to_strbuf()),
+            (9,  "313".to_strbuf()),
+            (10, "255".to_strbuf()),
+            (11, "212".to_strbuf()),
+            (12, "193".to_strbuf()),
+            (13, "168".to_strbuf()),
+            (14, "143".to_strbuf()),
+            (15, "120".to_strbuf()),
+            (16, "ff".to_strbuf())
         )), ( BigUint::from_slice([ 0xfff ]), vec!(
-            (2,  "111111111111".to_owned()),
-            (4,  "333333".to_owned()),
-            (16, "fff".to_owned())
+            (2,  "111111111111".to_strbuf()),
+            (4,  "333333".to_strbuf()),
+            (16, "fff".to_strbuf())
         )), ( BigUint::from_slice([ 1, 2 ]), vec!(
             (2,
-             "10".to_owned() +
-             "0".repeat(bits - 1) + "1"),
+             format_strbuf!("10{}1", "0".repeat(bits - 1))),
             (4,
-             "2".to_owned() +
-             "0".repeat(bits / 2 - 1) + "1"),
+             format_strbuf!("2{}1", "0".repeat(bits / 2 - 1))),
             (10, match bits {
-                32 => "8589934593".to_owned(), 16 => "131073".to_owned(), _ => fail!()
-            }),
-            (16,
-             "2".to_owned() +
-             "0".repeat(bits / 4 - 1) + "1")
-        )), ( BigUint::from_slice([ 1, 2, 3 ]), vec!(
-            (2,
-             "11".to_owned() +
-             "0".repeat(bits - 2) + "10" +
-             "0".repeat(bits - 1) + "1"),
-            (4,
-             "3".to_owned() +
-             "0".repeat(bits / 2 - 1) + "2" +
-             "0".repeat(bits / 2 - 1) + "1"),
-            (10, match bits {
-                32 => "55340232229718589441".to_owned(),
-                16 => "12885032961".to_owned(),
+                32 => "8589934593".to_strbuf(),
+                16 => "131073".to_strbuf(),
                 _ => fail!()
             }),
-            (16, "3".to_owned() +
-             "0".repeat(bits / 4 - 1) + "2" +
-             "0".repeat(bits / 4 - 1) + "1")
+            (16,
+             format_strbuf!("2{}1", "0".repeat(bits / 4 - 1)))
+        )), ( BigUint::from_slice([ 1, 2, 3 ]), vec!(
+            (2,
+             format_strbuf!("11{}10{}1",
+                            "0".repeat(bits - 2),
+                            "0".repeat(bits - 1))),
+            (4,
+             format_strbuf!("3{}2{}1",
+                            "0".repeat(bits / 2 - 1),
+                            "0".repeat(bits / 2 - 1))),
+            (10, match bits {
+                32 => "55340232229718589441".to_strbuf(),
+                16 => "12885032961".to_strbuf(),
+                _ => fail!()
+            }),
+            (16,
+             format_strbuf!("3{}2{}1",
+                            "0".repeat(bits / 4 - 1),
+                            "0".repeat(bits / 4 - 1)))
         )) )
     }
 
@@ -1929,7 +1929,8 @@ mod biguint_tests {
             let &(ref n, ref rs) = num_pair;
             for str_pair in rs.iter() {
                 let &(ref radix, ref str) = str_pair;
-                assert_eq!(&n.to_str_radix(*radix), str);
+                assert_eq!(n.to_str_radix(*radix).as_slice(),
+                           str.as_slice());
             }
         }
     }
@@ -1941,7 +1942,9 @@ mod biguint_tests {
             let &(ref n, ref rs) = num_pair;
             for str_pair in rs.iter() {
                 let &(ref radix, ref str) = str_pair;
-                assert_eq!(n, &FromStrRadix::from_str_radix(*str, *radix).unwrap());
+                assert_eq!(n,
+                           &FromStrRadix::from_str_radix(str.as_slice(),
+                                                         *radix).unwrap());
             }
         }
 

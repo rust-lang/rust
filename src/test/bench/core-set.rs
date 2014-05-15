@@ -80,7 +80,7 @@ impl Results {
         }
     }
 
-    pub fn bench_str<T:MutableSet<~str>,
+    pub fn bench_str<T:MutableSet<StrBuf>,
                      R:rand::Rng>(
                      &mut self,
                      rng: &mut R,
@@ -90,11 +90,11 @@ impl Results {
             let mut set = f();
             timed(&mut self.sequential_strings, || {
                 for i in range(0u, num_keys) {
-                    set.insert(i.to_str());
+                    set.insert(i.to_str().to_strbuf());
                 }
 
                 for i in range(0u, num_keys) {
-                    assert!(set.contains(&i.to_str()));
+                    assert!(set.contains(&i.to_str().to_strbuf()));
                 }
             })
         }
@@ -103,7 +103,7 @@ impl Results {
             let mut set = f();
             timed(&mut self.random_strings, || {
                 for _ in range(0, num_keys) {
-                    let s = rng.gen::<uint>().to_str();
+                    let s = rng.gen::<uint>().to_str().to_strbuf();
                     set.insert(s);
                 }
             })
@@ -112,11 +112,11 @@ impl Results {
         {
             let mut set = f();
             for i in range(0u, num_keys) {
-                set.insert(i.to_str());
+                set.insert(i.to_str().to_strbuf());
             }
             timed(&mut self.delete_strings, || {
                 for i in range(0u, num_keys) {
-                    assert!(set.remove(&i.to_str()));
+                    assert!(set.remove(&i.to_str().to_strbuf()));
                 }
             })
         }
@@ -175,7 +175,7 @@ fn main() {
             s
         });
         results.bench_str(&mut rng, num_keys, || {
-            let s: HashSet<~str> = HashSet::new();
+            let s: HashSet<StrBuf> = HashSet::new();
             s
         });
         write_results("collections::HashSet", &results);
@@ -189,7 +189,7 @@ fn main() {
             s
         });
         results.bench_str(&mut rng, num_keys, || {
-            let s: TreeSet<~str> = TreeSet::new();
+            let s: TreeSet<StrBuf> = TreeSet::new();
             s
         });
         write_results("collections::TreeSet", &results);

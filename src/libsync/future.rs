@@ -189,7 +189,7 @@ mod test {
     #[should_fail]
     fn test_futurefail() {
         let mut f = Future::spawn(proc() fail!());
-        let _x: ~str = f.get();
+        let _x: StrBuf = f.get();
     }
 
     #[test]

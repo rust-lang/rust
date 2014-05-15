@@ -17,7 +17,7 @@ struct cat {
   meows : uint,
 
   how_hungry : int,
-  name : ~str,
+  name : StrBuf,
 }
 
 impl cat {
@@ -49,7 +49,7 @@ impl cat {
     }
 }
 
-fn cat(in_x : uint, in_y : int, in_name: ~str) -> cat {
+fn cat(in_x : uint, in_y : int, in_name: StrBuf) -> cat {
     cat {
         meows: in_x,
         how_hungry: in_y,
@@ -58,6 +58,6 @@ fn cat(in_x : uint, in_y : int, in_name: ~str) -> cat {
 }
 
 fn main() {
-  let nyan: Box<noisy> = box cat(0, 2, "nyan".to_owned()) as Box<noisy>;
+  let nyan: Box<noisy> = box cat(0, 2, "nyan".to_strbuf()) as Box<noisy>;
   nyan.eat(); //~ ERROR does not implement any method in scope named `eat`
 }

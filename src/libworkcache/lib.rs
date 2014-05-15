@@ -103,31 +103,31 @@ use std::io::{File, MemWriter};
 
 #[deriving(Clone, Eq, Encodable, Decodable, Ord, TotalOrd, TotalEq)]
 struct WorkKey {
-    kind: ~str,
-    name: ~str
+    kind: StrBuf,
+    name: StrBuf
 }
 
 impl WorkKey {
     pub fn new(kind: &str, name: &str) -> WorkKey {
         WorkKey {
-            kind: kind.to_owned(),
-            name: name.to_owned(),
+            kind: kind.to_strbuf(),
+            name: name.to_strbuf(),
         }
     }
 }
 
-// FIXME #8883: The key should be a WorkKey and not a ~str.
+// FIXME #8883: The key should be a WorkKey and not a StrBuf.
 // This is working around some JSON weirdness.
 #[deriving(Clone, Eq, Encodable, Decodable)]
-struct WorkMap(TreeMap<~str, KindMap>);
+struct WorkMap(TreeMap<StrBuf, KindMap>);
 
 #[deriving(Clone, Eq, Encodable, Decodable)]
-struct KindMap(TreeMap<~str, ~str>);
+struct KindMap(TreeMap<StrBuf, StrBuf>);
 
 impl WorkMap {
     fn new() -> WorkMap { WorkMap(TreeMap::new()) }
 
-    fn insert_work_key(&mut self, k: WorkKey, val: ~str) {
+    fn insert_work_key(&mut self, k: WorkKey, val: StrBuf) {
         let WorkKey { kind, name } = k;
         let WorkMap(ref mut map) = *self;
         match map.find_mut(&name) {
@@ -142,7 +142,7 @@ impl WorkMap {
 
 pub struct Database {
     db_filename: Path,
-    db_cache: TreeMap<~str, ~str>,
+    db_cache: TreeMap<StrBuf, StrBuf>,
     pub db_dirty: bool,
 }
 
@@ -163,11 +163,11 @@ impl Database {
     pub fn prepare(&self,
                    fn_name: &str,
                    declared_inputs: &WorkMap)
-                   -> Option<(WorkMap, WorkMap, ~str)> {
+                   -> Option<(WorkMap, WorkMap, StrBuf)> {
         let k = json_encode(&(fn_name, declared_inputs));
         match self.db_cache.find(&k) {
             None => None,
-            Some(v) => Some(json_decode(*v))
+            Some(v) => Some(json_decode(v.as_slice()))
         }
     }
 
@@ -188,7 +188,14 @@ impl Database {
     // FIXME #4330: This should have &mut self and should set self.db_dirty to false.
     fn save(&self) -> io::IoResult<()> {
         let mut f = File::create(&self.db_filename);
-        self.db_cache.to_json().to_pretty_writer(&mut f)
+
+        // FIXME(pcwalton): Yuck.
+        let mut new_db_cache = TreeMap::new();
+        for (ref k, ref v) in self.db_cache.iter() {
+            new_db_cache.insert((*k).to_owned(), (*v).to_owned());
+        }
+
+        new_db_cache.to_json().to_pretty_writer(&mut f)
     }
 
     fn load(&mut self) {
@@ -222,7 +229,7 @@ impl Drop for Database {
     }
 }
 
-pub type FreshnessMap = TreeMap<~str,extern fn(&str,&str)->bool>;
+pub type FreshnessMap = TreeMap<StrBuf,extern fn(&str,&str)->bool>;
 
 #[deriving(Clone)]
 pub struct Context {
@@ -253,11 +260,11 @@ enum Work<'a, T> {
     WorkFromTask(&'a Prep<'a>, Receiver<(Exec, T)>),
 }
 
-fn json_encode<'a, T:Encodable<json::Encoder<'a>, io::IoError>>(t: &T) -> ~str {
+fn json_encode<'a, T:Encodable<json::Encoder<'a>, io::IoError>>(t: &T) -> StrBuf {
     let mut writer = MemWriter::new();
     let mut encoder = json::Encoder::new(&mut writer as &mut io::Writer);
     let _ = t.encode(&mut encoder);
-    str::from_utf8(writer.unwrap().as_slice()).unwrap().to_owned()
+    str::from_utf8(writer.unwrap().as_slice()).unwrap().to_strbuf()
 }
 
 // FIXME(#5121)
@@ -308,7 +315,7 @@ impl Exec {
                           dependency_val: &str) {
         debug!("Discovering input {} {} {}", dependency_kind, dependency_name, dependency_val);
         self.discovered_inputs.insert_work_key(WorkKey::new(dependency_kind, dependency_name),
-                                 dependency_val.to_owned());
+                                 dependency_val.to_strbuf());
     }
     pub fn discover_output(&mut self,
                            dependency_kind: &str,
@@ -316,11 +323,11 @@ impl Exec {
                            dependency_val: &str) {
         debug!("Discovering output {} {} {}", dependency_kind, dependency_name, dependency_val);
         self.discovered_outputs.insert_work_key(WorkKey::new(dependency_kind, dependency_name),
-                                 dependency_val.to_owned());
+                                 dependency_val.to_strbuf());
     }
 
     // returns pairs of (kind, name)
-    pub fn lookup_discovered_inputs(&self) -> Vec<(~str, ~str)> {
+    pub fn lookup_discovered_inputs(&self) -> Vec<(StrBuf, StrBuf)> {
         let mut rs = vec![];
         let WorkMap(ref discovered_inputs) = self.discovered_inputs;
         for (k, v) in discovered_inputs.iter() {
@@ -342,7 +349,7 @@ impl<'a> Prep<'a> {
         }
     }
 
-    pub fn lookup_declared_inputs(&self) -> Vec<~str> {
+    pub fn lookup_declared_inputs(&self) -> Vec<StrBuf> {
         let mut rs = vec![];
         let WorkMap(ref declared_inputs) = self.declared_inputs;
         for (_, v) in declared_inputs.iter() {
@@ -359,12 +366,11 @@ impl<'a> Prep<'a> {
     pub fn declare_input(&mut self, kind: &str, name: &str, val: &str) {
         debug!("Declaring input {} {} {}", kind, name, val);
         self.declared_inputs.insert_work_key(WorkKey::new(kind, name),
-                                 val.to_owned());
+                                 val.to_strbuf());
     }
 
-    fn is_fresh(&self, cat: &str, kind: &str,
-                name: &str, val: &str) -> bool {
-        let k = kind.to_owned();
+    fn is_fresh(&self, cat: &str, kind: &str, name: &str, val: &str) -> bool {
+        let k = kind.to_strbuf();
         let f = self.ctxt.freshness.deref().find(&k);
         debug!("freshness for: {}/{}/{}/{}", cat, kind, name, val)
         let fresh = match f {
@@ -384,7 +390,10 @@ impl<'a> Prep<'a> {
         for (k_name, kindmap) in map.iter() {
             let KindMap(ref kindmap_) = *kindmap;
             for (k_kind, v) in kindmap_.iter() {
-               if ! self.is_fresh(cat, *k_kind, *k_name, *v) {
+               if !self.is_fresh(cat,
+                                 k_kind.as_slice(),
+                                 k_name.as_slice(),
+                                 v.as_slice()) {
                   return false;
             }
           }
@@ -420,7 +429,7 @@ impl<'a> Prep<'a> {
                 debug!("Cache hit!");
                 debug!("Trying to decode: {:?} / {:?} / {}",
                        disc_in, disc_out, *res);
-                Work::from_value(json_decode(*res))
+                Work::from_value(json_decode(res.as_slice()))
             }
 
             _ => {
@@ -467,7 +476,7 @@ impl<'a, T:Send +
                                      &prep.declared_inputs,
                                      &exe.discovered_inputs,
                                      &exe.discovered_outputs,
-                                     s);
+                                     s.as_slice());
                 v
             }
         }
@@ -484,7 +493,7 @@ fn test() {
 
     // Create a path to a new file 'filename' in the directory in which
     // this test is running.
-    fn make_path(filename: ~str) -> Path {
+    fn make_path(filename: StrBuf) -> Path {
         let pth = os::self_exe_path().expect("workcache::test failed").with_filename(filename);
         if pth.exists() {
             fs::unlink(&pth).unwrap();
@@ -492,10 +501,10 @@ fn test() {
         return pth;
     }
 
-    let pth = make_path("foo.c".to_owned());
+    let pth = make_path("foo.c".to_strbuf());
     File::create(&pth).write(bytes!("int main() { return 0; }")).unwrap();
 
-    let db_path = make_path("db.json".to_owned());
+    let db_path = make_path("db.json".to_strbuf());
 
     let cx = Context::new(Arc::new(RWLock::new(Database::new(db_path))),
                           Arc::new(TreeMap::new()));
@@ -511,7 +520,7 @@ fn test() {
         // FIXME (#9639): This needs to handle non-utf8 paths
         prep.declare_input("file", pth.as_str().unwrap(), file_content);
         prep.exec(proc(_exe) {
-            let out = make_path("foo.o".to_owned());
+            let out = make_path("foo.o".to_strbuf());
             let compiler = if cfg!(windows) {"gcc"} else {"cc"};
             // FIXME (#9639): This needs to handle non-utf8 paths
             Process::status(compiler, [pth.as_str().unwrap().to_owned(),

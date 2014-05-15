@@ -152,7 +152,8 @@ pub fn parse_config(args: Vec<~str> ) -> Config {
             "(none)" != opt_str2(matches.opt_str("adb-test-dir")) &&
             !opt_str2(matches.opt_str("adb-test-dir")).is_empty(),
         lldb_python_dir: matches.opt_str("lldb-python-dir"),
-        test_shard: test::opt_shard(matches.opt_str("test-shard")),
+        test_shard: test::opt_shard(matches.opt_str("test-shard")
+                                           .map(|x| x.to_strbuf())),
         verbose: matches.opt_present("verbose")
     }
 }
@@ -235,7 +236,10 @@ pub fn run_tests(config: &Config) {
 
 pub fn test_opts(config: &Config) -> test::TestOpts {
     test::TestOpts {
-        filter: config.filter.clone(),
+        filter: match config.filter {
+            None => None,
+            Some(ref filter) => Some(filter.to_strbuf()),
+        },
         run_ignored: config.run_ignored,
         logfile: config.logfile.clone(),
         run_tests: true,
@@ -314,7 +318,9 @@ pub fn make_test_name(config: &Config, testfile: &Path) -> test::TestName {
         format!("{}/{}", dir.unwrap_or(""), filename.unwrap_or(""))
     }
 
-    test::DynTestName(format!("[{}] {}", config.mode, shorten(testfile)))
+    test::DynTestName(format_strbuf!("[{}] {}",
+                                     config.mode,
+                                     shorten(testfile)))
 }
 
 pub fn make_test_closure(config: &Config, testfile: &Path) -> test::TestFn {
