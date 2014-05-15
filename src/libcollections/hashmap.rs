@@ -1299,9 +1299,10 @@ impl<K: TotalEq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     ///     );
     /// }
     ///
-    /// for (k, v) in map.iter() {
-    ///     println!("{} -> {}", *k, *v);
-    /// }
+    /// assert_eq!(map.len(), 3);
+    /// assert_eq!(map.get(&"a key"), &vec!["value", "new value"]);
+    /// assert_eq!(map.get(&"b key"), &vec!["new value"]);
+    /// assert_eq!(map.get(&"z key"), &vec!["new value", "value"]);
     /// ```
     pub fn find_with_or_insert_with<'a, A>(&'a mut self,
                                            k: K,
