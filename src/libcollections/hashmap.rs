@@ -1275,15 +1275,14 @@ impl<K: TotalEq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// use collections::HashMap;
     ///
     /// // map some strings to vectors of strings
-    /// let mut map = HashMap::<StrBuf, Vec<StrBuf>>::new();
-    /// map.insert(StrBuf::from_str("a key"), vec![StrBuf::from_str("value")]);
-    /// map.insert(StrBuf::from_str("z key"), vec![StrBuf::from_str("value")]);
+    /// let mut map = HashMap::new();
+    /// map.insert("a key", vec!["value"]);
+    /// map.insert("z key", vec!["value"]);
     ///
-    /// let new = vec![StrBuf::from_str("a key"),
-    ///                StrBuf::from_str("b key"),
-    ///                StrBuf::from_str("z key")];
+    /// let new = vec!["a key", "b key", "z key"];
+    ///
     /// for k in new.move_iter() {
-    ///     map.mangle(k, StrBuf::from_str("new value"),
+    ///     map.mangle(k, "new value",
     ///                // if the key doesn't exist in the map yet, add it in
     ///                // the obvious way.
     ///                |_k, v| vec![v],
@@ -1299,7 +1298,7 @@ impl<K: TotalEq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// }
     ///
     /// for (k, v) in map.iter() {
-    ///     println!("{} -> {:?}", *k, *v);
+    ///     println!("{} -> {}", *k, *v);
     /// }
     /// ```
     pub fn mangle<'a, A>(&'a mut self,
