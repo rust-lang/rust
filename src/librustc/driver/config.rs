@@ -27,6 +27,7 @@ use syntax::ast;
 use syntax::ast::{IntTy, UintTy};
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
+use syntax::diagnostic::{ColorConfig, Auto, Always, Never};
 use syntax::parse;
 use syntax::parse::token::InternedString;
 
@@ -92,6 +93,7 @@ pub struct Options {
     /// Crate id-related things to maybe print. It's (crate_id, crate_name, crate_file_name).
     pub print_metas: (bool, bool, bool),
     pub cg: CodegenOptions,
+    pub color: ColorConfig,
 }
 
 /// Some reasonable defaults
@@ -115,6 +117,7 @@ pub fn basic_options() -> Options {
         write_dependency_info: (false, None),
         print_metas: (false, false, false),
         cg: basic_codegen_options(),
+        color: Auto,
     }
 }
 
@@ -536,7 +539,11 @@ pub fn optgroups() -> Vec<getopts::OptGroup> {
         optmulti("F", "forbid", "Set lint forbidden", "OPT"),
         optmulti("C", "codegen", "Set a codegen option", "OPT[=VALUE]"),
         optmulti("Z", "", "Set internal debugging options", "FLAG"),
-        optflag( "v", "version", "Print version info and exit")
+        optflag("v", "version", "Print version info and exit"),
+        optopt("", "color", "Configure coloring of output:
+            auto   = colorize, if output goes to a tty (default);
+            always = always colorize output;
+            never  = never colorize output", "auto|always|never")
     )
 }
 
@@ -707,6 +714,18 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
                        matches.opt_present("crate-file-name"));
     let cg = build_codegen_options(matches);
 
+    let color = match matches.opt_str("color").as_ref().map(|s| s.as_slice()) {
+        Some("auto")   => Auto,
+        Some("always") => Always,
+        Some("never")  => Never,
+
+        None => Auto,
+
+        Some(arg) => early_error(format!(
+            "argument for --color must be auto, always or never (instead was `{}`)",
+            arg))
+    };
+
     Options {
         crate_types: crate_types,
         gc: gc,
@@ -726,6 +745,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         write_dependency_info: write_dependency_info,
         print_metas: print_metas,
         cg: cg,
+        color: color
     }
 }
 

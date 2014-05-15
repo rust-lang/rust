@@ -196,7 +196,7 @@ pub fn build_session(sopts: config::Options,
                      -> Session {
     let codemap = codemap::CodeMap::new();
     let diagnostic_handler =
-        diagnostic::default_handler();
+        diagnostic::default_handler(sopts.color);
     let span_diagnostic_handler =
         diagnostic::mk_span_handler(diagnostic_handler, codemap);
 
