@@ -140,7 +140,7 @@ macro_rules! throughput(
         fn $name(b: &mut Bencher) {
             let text = gen_text($size);
             b.bytes = $size;
-            b.iter(|| if $regex.is_match(text) { fail!("match") });
+            b.iter(|| if $regex.is_match(text.as_slice()) { fail!("match") });
         }
     );
 )
@@ -151,7 +151,7 @@ fn medium() -> Regex { regex!("[XYZ]ABCDEFGHIJKLMNOPQRSTUVWXYZ$") }
 fn hard() -> Regex { regex!("[ -~]*ABCDEFGHIJKLMNOPQRSTUVWXYZ$") }
 
 #[allow(deprecated_owned_vector)]
-fn gen_text(n: uint) -> ~str {
+fn gen_text(n: uint) -> StrBuf {
     let mut rng = task_rng();
     let mut bytes = rng.gen_ascii_str(n).into_bytes();
     for (i, b) in bytes.mut_iter().enumerate() {
@@ -159,7 +159,7 @@ fn gen_text(n: uint) -> ~str {
             *b = '\n' as u8
         }
     }
-    str::from_utf8(bytes).unwrap().to_owned()
+    str::from_utf8(bytes.as_slice()).unwrap().to_strbuf()
 }
 
 throughput!(easy0_32, easy0(), 32)

@@ -17,9 +17,11 @@ extern crate collections;
 use std::cell::RefCell;
 use collections::HashMap;
 
-pub type header_map = HashMap<~str, @RefCell<Vec<@~str>>>;
+pub type header_map = HashMap<StrBuf, @RefCell<Vec<@StrBuf>>>;
 
 // the unused ty param is necessary so this gets monomorphized
 pub fn request<T>(req: &header_map) {
-  let _x = (**((**req.get(&"METHOD".to_owned())).clone()).borrow().clone().get(0)).clone();
+  let _x = (**((**req.get(&"METHOD".to_strbuf())).clone()).borrow()
+                                                          .clone()
+                                                          .get(0)).clone();
 }

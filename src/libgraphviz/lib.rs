@@ -433,10 +433,10 @@ impl<'a> LabelText<'a> {
     }
 
     /// Renders text as string suitable for a label in a .dot file.
-    pub fn escape(&self) -> ~str {
+    pub fn escape(&self) -> StrBuf {
         match self {
-            &LabelStr(ref s) => s.as_slice().escape_default(),
-            &EscStr(ref s) => LabelText::escape_str(s.as_slice()).into_owned(),
+            &LabelStr(ref s) => s.as_slice().escape_default().to_strbuf(),
+            &EscStr(ref s) => LabelText::escape_str(s.as_slice()).to_strbuf(),
         }
     }
 }
@@ -661,11 +661,14 @@ mod tests {
         }
     }
 
-    fn test_input(g: LabelledGraph) -> IoResult<~str> {
+    fn test_input(g: LabelledGraph) -> IoResult<StrBuf> {
         let mut writer = MemWriter::new();
         render(&g, &mut writer).unwrap();
         let mut r = BufReader::new(writer.get_ref());
-        r.read_to_str()
+        match r.read_to_str() {
+            Ok(string) => Ok(string.to_strbuf()),
+            Err(err) => Err(err),
+        }
     }
 
     // All of the tests use raw-strings as the format for the expected outputs,

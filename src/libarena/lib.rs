@@ -530,7 +530,7 @@ mod tests {
     }
 
     struct Noncopy {
-        string: ~str,
+        string: StrBuf,
         array: Vec<int> ,
     }
 
@@ -539,7 +539,7 @@ mod tests {
         let arena = TypedArena::new();
         for _ in range(0, 100000) {
             arena.alloc(Noncopy {
-                string: "hello world".to_owned(),
+                string: "hello world".to_strbuf(),
                 array: vec!( 1, 2, 3, 4, 5 ),
             });
         }
@@ -550,7 +550,7 @@ mod tests {
         let arena = TypedArena::new();
         b.iter(|| {
             arena.alloc(Noncopy {
-                string: "hello world".to_owned(),
+                string: "hello world".to_strbuf(),
                 array: vec!( 1, 2, 3, 4, 5 ),
             })
         })
@@ -560,7 +560,7 @@ mod tests {
     pub fn bench_noncopy_nonarena(b: &mut Bencher) {
         b.iter(|| {
             box Noncopy {
-                string: "hello world".to_owned(),
+                string: "hello world".to_strbuf(),
                 array: vec!( 1, 2, 3, 4, 5 ),
             }
         })
@@ -571,7 +571,7 @@ mod tests {
         let arena = Arena::new();
         b.iter(|| {
             arena.alloc(|| Noncopy {
-                string: "hello world".to_owned(),
+                string: "hello world".to_strbuf(),
                 array: vec!( 1, 2, 3, 4, 5 ),
             })
         })

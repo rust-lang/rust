@@ -9,7 +9,7 @@
 // except according to those terms.
 
 struct Foo {
-    t: ~str
+    t: StrBuf
 }
 
 fn cond() -> bool { true }

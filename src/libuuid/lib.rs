@@ -322,20 +322,20 @@ impl Uuid {
     /// Returns the UUID as a string of 16 hexadecimal digits
     ///
     /// Example: `936DA01F9ABD4d9d80C702AF85C822A8`
-    pub fn to_simple_str(&self) -> ~str {
+    pub fn to_simple_str(&self) -> StrBuf {
         let mut s: Vec<u8> = Vec::from_elem(32, 0u8);
         for i in range(0u, 16u) {
             let digit = format!("{:02x}", self.bytes[i] as uint);
             *s.get_mut(i*2+0) = digit[0];
             *s.get_mut(i*2+1) = digit[1];
         }
-        str::from_utf8(s.as_slice()).unwrap().to_str()
+        str::from_utf8(s.as_slice()).unwrap().to_strbuf()
     }
 
     /// Returns a string of hexadecimal digits, separated into groups with a hyphen.
     ///
     /// Example: `550e8400-e29b-41d4-a716-446655440000`
-    pub fn to_hyphenated_str(&self) -> ~str {
+    pub fn to_hyphenated_str(&self) -> StrBuf {
         use std::mem::{to_be16, to_be32};
         // Convert to field-based struct as it matches groups in output.
         // Ensure fields are in network byte order, as per RFC.
@@ -346,8 +346,8 @@ impl Uuid {
         uf.data1 = to_be32(uf.data1);
         uf.data2 = to_be16(uf.data2);
         uf.data3 = to_be16(uf.data3);
-        let s = format!("{:08x}-{:04x}-{:04x}-{:02x}{:02x}-\
-                         {:02x}{:02x}{:02x}{:02x}{:02x}{:02x}",
+        let s = format_strbuf!("{:08x}-{:04x}-{:04x}-{:02x}{:02x}-\
+                                {:02x}{:02x}{:02x}{:02x}{:02x}{:02x}",
             uf.data1,
             uf.data2, uf.data3,
             uf.data4[0], uf.data4[1],
@@ -361,8 +361,8 @@ impl Uuid {
     /// This is the same as the hyphenated format, but with the "urn:uuid:" prefix.
     ///
     /// Example: `urn:uuid:F9168C5E-CEB2-4faa-B6BF-329BF39FA1E4`
-    pub fn to_urn_str(&self) -> ~str {
-        "urn:uuid:" + self.to_hyphenated_str()
+    pub fn to_urn_str(&self) -> StrBuf {
+        format_strbuf!("urn:uuid:{}", self.to_hyphenated_str())
     }
 
     /// Parses a UUID from a string of hexadecimal digits with optional hyphens
@@ -493,7 +493,7 @@ impl TotalEq for Uuid {}
 impl<T: Encoder<E>, E> Encodable<T, E> for Uuid {
     /// Encode a UUID as a hypenated string
     fn encode(&self, e: &mut T) -> Result<(), E> {
-        e.emit_str(self.to_hyphenated_str())
+        e.emit_str(self.to_hyphenated_str().as_slice())
     }
 }
 
@@ -647,7 +647,7 @@ mod test {
         let s = uuid1.to_simple_str();
 
         assert!(s.len() == 32);
-        assert!(s.chars().all(|c| c.is_digit_radix(16)));
+        assert!(s.as_slice().chars().all(|c| c.is_digit_radix(16)));
     }
 
     #[test]
@@ -656,7 +656,7 @@ mod test {
         let s = uuid1.to_str();
 
         assert!(s.len() == 32);
-        assert!(s.chars().all(|c| c.is_digit_radix(16)));
+        assert!(s.as_slice().chars().all(|c| c.is_digit_radix(16)));
     }
 
     #[test]
@@ -665,18 +665,20 @@ mod test {
         let s = uuid1.to_hyphenated_str();
 
         assert!(s.len() == 36);
-        assert!(s.chars().all(|c| c.is_digit_radix(16) || c == '-'));
+        assert!(s.as_slice().chars().all(|c| c.is_digit_radix(16) || c == '-'));
     }
 
     #[test]
     fn test_to_urn_str() {
         let uuid1 = Uuid::new_v4();
         let ss = uuid1.to_urn_str();
-        let s = ss.slice(9, ss.len());
+        let s = ss.as_slice().slice(9, ss.len());
 
-        assert!(ss.starts_with("urn:uuid:"));
+        assert!(ss.as_slice().starts_with("urn:uuid:"));
         assert!(s.len() == 36);
-        assert!(s.chars().all(|c| c.is_digit_radix(16) || c == '-'));
+        assert!(s.as_slice()
+                 .chars()
+                 .all(|c| c.is_digit_radix(16) || c == '-'));
     }
 
     #[test]
@@ -686,7 +688,8 @@ mod test {
         let hs = uuid1.to_hyphenated_str();
         let ss = uuid1.to_str();
 
-        let hsn = str::from_chars(hs.chars()
+        let hsn = str::from_chars(hs.as_slice()
+                                    .chars()
                                     .filter(|&c| c != '-')
                                     .collect::<Vec<char>>()
                                     .as_slice());
@@ -699,7 +702,7 @@ mod test {
         let uuid = Uuid::new_v4();
 
         let hs = uuid.to_hyphenated_str();
-        let uuid_hs = Uuid::parse_string(hs).unwrap();
+        let uuid_hs = Uuid::parse_string(hs.as_slice()).unwrap();
         assert!(uuid_hs == uuid);
 
         let ss = uuid.to_str();
@@ -727,7 +730,7 @@ mod test {
 
         let u = Uuid::from_fields(d1, d2, d3, d4.as_slice());
 
-        let expected = "a1a2a3a4b1b2c1c2d1d2d3d4d5d6d7d8".to_owned();
+        let expected = "a1a2a3a4b1b2c1c2d1d2d3d4d5d6d7d8".to_strbuf();
         let result = u.to_simple_str();
         assert!(result == expected);
     }
@@ -738,7 +741,7 @@ mod test {
                    0xd1, 0xd2, 0xd3, 0xd4, 0xd5, 0xd6, 0xd7, 0xd8 );
 
         let u = Uuid::from_bytes(b.as_slice()).unwrap();
-        let expected = "a1a2a3a4b1b2c1c2d1d2d3d4d5d6d7d8".to_owned();
+        let expected = "a1a2a3a4b1b2c1c2d1d2d3d4d5d6d7d8".to_strbuf();
 
         assert!(u.to_simple_str() == expected);
     }

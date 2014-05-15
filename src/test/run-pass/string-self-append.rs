@@ -10,13 +10,13 @@
 
 pub fn main() {
     // Make sure we properly handle repeated self-appends.
-    let mut a: ~str = "A".to_owned();
+    let mut a: StrBuf = "A".to_strbuf();
     let mut i = 20;
     let mut expected_len = 1u;
     while i > 0 {
         println!("{}", a.len());
         assert_eq!(a.len(), expected_len);
-        a = a + a; // FIXME(#3387)---can't write a += a
+        a = format_strbuf!("{}{}", a, a);
         i -= 1;
         expected_len *= 2u;
     }

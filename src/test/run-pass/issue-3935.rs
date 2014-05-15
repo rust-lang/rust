@@ -10,12 +10,12 @@
 
 #[deriving(Eq)]
 struct Bike {
-    name: ~str,
+    name: StrBuf,
 }
 
 pub fn main() {
-    let town_bike = Bike { name: "schwinn".to_owned() };
-    let my_bike = Bike { name: "surly".to_owned() };
+    let town_bike = Bike { name: "schwinn".to_strbuf() };
+    let my_bike = Bike { name: "surly".to_strbuf() };
 
     assert!(town_bike != my_bike);
 }

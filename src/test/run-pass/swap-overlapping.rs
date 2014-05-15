@@ -15,7 +15,7 @@ use std::ptr;
 pub fn main() {
     let mut test = TestDescAndFn {
         desc: TestDesc {
-            name: DynTestName("test".to_owned()),
+            name: DynTestName("test".to_strbuf()),
             should_fail: false
         },
         testfn: DynTestFn(proc() ()),
@@ -30,7 +30,7 @@ fn do_swap(test: &mut TestDescAndFn) {
 }
 
 pub enum TestName {
-    DynTestName(~str)
+    DynTestName(StrBuf)
 }
 
 pub enum TestFn {

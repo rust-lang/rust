@@ -10,17 +10,17 @@
 
 pub fn main() {
     let v: Vec<int> = vec!(0, 1, 2, 3, 4, 5);
-    let s: ~str = "abcdef".to_owned();
+    let s: StrBuf = "abcdef".to_strbuf();
     assert_eq!(v.as_slice()[3u], 3);
     assert_eq!(v.as_slice()[3u8], 3); //~ ERROR: mismatched types
     assert_eq!(v.as_slice()[3i8], 3); //~ ERROR: mismatched types
     assert_eq!(v.as_slice()[3u32], 3); //~ ERROR: mismatched types
     assert_eq!(v.as_slice()[3i32], 3); //~ ERROR: mismatched types
     println!("{}", v.as_slice()[3u8]); //~ ERROR: mismatched types
-    assert_eq!(s[3u], 'd' as u8);
-    assert_eq!(s[3u8], 'd' as u8); //~ ERROR: mismatched types
-    assert_eq!(s[3i8], 'd' as u8); //~ ERROR: mismatched types
-    assert_eq!(s[3u32], 'd' as u8); //~ ERROR: mismatched types
-    assert_eq!(s[3i32], 'd' as u8); //~ ERROR: mismatched types
-    println!("{}", s[3u8]); //~ ERROR: mismatched types
+    assert_eq!(s.as_slice()[3u], 'd' as u8);
+    assert_eq!(s.as_slice()[3u8], 'd' as u8); //~ ERROR: mismatched types
+    assert_eq!(s.as_slice()[3i8], 'd' as u8); //~ ERROR: mismatched types
+    assert_eq!(s.as_slice()[3u32], 'd' as u8); //~ ERROR: mismatched types
+    assert_eq!(s.as_slice()[3i32], 'd' as u8); //~ ERROR: mismatched types
+    println!("{}", s.as_slice()[3u8]); //~ ERROR: mismatched types
 }

@@ -8,6 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:`^` cannot be applied to type `~str`
+// error-pattern:`^` cannot be applied to type `std::strbuf::StrBuf`
 
-fn main() { let x = "a".to_owned() ^ "b".to_owned(); }
+fn main() { let x = "a".to_strbuf() ^ "b".to_strbuf(); }

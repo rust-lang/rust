@@ -12,14 +12,14 @@
 
 #[deriving(Clone)]
 struct Foo {
-    string: ~str
+    string: StrBuf
 }
 
 pub fn main() {
     let x = vec!(
-        Foo { string: "foo".to_owned() },
-        Foo { string: "bar".to_owned() },
-        Foo { string: "baz".to_owned() }
+        Foo { string: "foo".to_strbuf() },
+        Foo { string: "bar".to_strbuf() },
+        Foo { string: "baz".to_strbuf() }
     );
     let x: &[Foo] = x.as_slice();
     match x {

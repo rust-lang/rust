@@ -555,16 +555,16 @@ mod test {
 
     #[test]
     fn test_to_from_str() {
-        fn test(r: Rational, s: ~str) {
-            assert_eq!(FromStr::from_str(s), Some(r));
-            assert_eq!(r.to_str(), s);
+        fn test(r: Rational, s: StrBuf) {
+            assert_eq!(FromStr::from_str(s.as_slice()), Some(r));
+            assert_eq!(r.to_str().to_strbuf(), s);
         }
-        test(_1, "1/1".to_owned());
-        test(_0, "0/1".to_owned());
-        test(_1_2, "1/2".to_owned());
-        test(_3_2, "3/2".to_owned());
-        test(_2, "2/1".to_owned());
-        test(_neg1_2, "-1/2".to_owned());
+        test(_1, "1/1".to_strbuf());
+        test(_0, "0/1".to_strbuf());
+        test(_1_2, "1/2".to_strbuf());
+        test(_3_2, "3/2".to_strbuf());
+        test(_2, "2/1".to_strbuf());
+        test(_neg1_2, "-1/2".to_strbuf());
     }
     #[test]
     fn test_from_str_fail() {
@@ -581,30 +581,31 @@ mod test {
 
     #[test]
     fn test_to_from_str_radix() {
-        fn test(r: Rational, s: ~str, n: uint) {
-            assert_eq!(FromStrRadix::from_str_radix(s, n), Some(r));
-            assert_eq!(r.to_str_radix(n), s);
+        fn test(r: Rational, s: StrBuf, n: uint) {
+            assert_eq!(FromStrRadix::from_str_radix(s.to_owned(), n),
+                       Some(r));
+            assert_eq!(r.to_str_radix(n).to_strbuf(), s);
         }
-        fn test3(r: Rational, s: ~str) { test(r, s, 3) }
-        fn test16(r: Rational, s: ~str) { test(r, s, 16) }
+        fn test3(r: Rational, s: StrBuf) { test(r, s, 3) }
+        fn test16(r: Rational, s: StrBuf) { test(r, s, 16) }
 
-        test3(_1, "1/1".to_owned());
-        test3(_0, "0/1".to_owned());
-        test3(_1_2, "1/2".to_owned());
-        test3(_3_2, "10/2".to_owned());
-        test3(_2, "2/1".to_owned());
-        test3(_neg1_2, "-1/2".to_owned());
-        test3(_neg1_2 / _2, "-1/11".to_owned());
+        test3(_1, "1/1".to_strbuf());
+        test3(_0, "0/1".to_strbuf());
+        test3(_1_2, "1/2".to_strbuf());
+        test3(_3_2, "10/2".to_strbuf());
+        test3(_2, "2/1".to_strbuf());
+        test3(_neg1_2, "-1/2".to_strbuf());
+        test3(_neg1_2 / _2, "-1/11".to_strbuf());
 
-        test16(_1, "1/1".to_owned());
-        test16(_0, "0/1".to_owned());
-        test16(_1_2, "1/2".to_owned());
-        test16(_3_2, "3/2".to_owned());
-        test16(_2, "2/1".to_owned());
-        test16(_neg1_2, "-1/2".to_owned());
-        test16(_neg1_2 / _2, "-1/4".to_owned());
-        test16(Ratio::new(13,15), "d/f".to_owned());
-        test16(_1_2*_1_2*_1_2*_1_2, "1/10".to_owned());
+        test16(_1, "1/1".to_strbuf());
+        test16(_0, "0/1".to_strbuf());
+        test16(_1_2, "1/2".to_strbuf());
+        test16(_3_2, "3/2".to_strbuf());
+        test16(_2, "2/1".to_strbuf());
+        test16(_neg1_2, "-1/2".to_strbuf());
+        test16(_neg1_2 / _2, "-1/4".to_strbuf());
+        test16(Ratio::new(13,15), "d/f".to_strbuf());
+        test16(_1_2*_1_2*_1_2*_1_2, "1/10".to_strbuf());
     }
 
     #[test]

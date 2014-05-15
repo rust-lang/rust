@@ -21,7 +21,4 @@ pub fn main() {
     assert_eq!(mem::size_of::<S<u8, u8>>(), 3);
 
     assert_eq!(mem::size_of::<S<u64, u16>>(), 11);
-
-    assert_eq!(mem::size_of::<S<~str, Vec<int> >>(),
-               1 + mem::size_of::<~str>() + mem::size_of::<Vec<int> >());
 }

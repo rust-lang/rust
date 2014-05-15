@@ -9,62 +9,62 @@
 // except according to those terms.
 
 trait Base: Base2 + Base3{
-    fn foo(&self) -> ~str;
-    fn foo1(&self) -> ~str;
-    fn foo2(&self) -> ~str{
-        "base foo2".to_owned()
+    fn foo(&self) -> StrBuf;
+    fn foo1(&self) -> StrBuf;
+    fn foo2(&self) -> StrBuf{
+        "base foo2".to_strbuf()
     }
 }
 
 trait Base2: Base3{
-    fn baz(&self) -> ~str;
+    fn baz(&self) -> StrBuf;
 }
 
 trait Base3{
-    fn root(&self) -> ~str;
+    fn root(&self) -> StrBuf;
 }
 
 trait Super: Base{
-    fn bar(&self) -> ~str;
+    fn bar(&self) -> StrBuf;
 }
 
 struct X;
 
 impl Base for X {
-    fn foo(&self) -> ~str{
-        "base foo".to_owned()
+    fn foo(&self) -> StrBuf{
+        "base foo".to_strbuf()
     }
-    fn foo1(&self) -> ~str{
-        "base foo1".to_owned()
+    fn foo1(&self) -> StrBuf{
+        "base foo1".to_strbuf()
     }
 
 }
 
 impl Base2 for X {
-    fn baz(&self) -> ~str{
-        "base2 baz".to_owned()
+    fn baz(&self) -> StrBuf{
+        "base2 baz".to_strbuf()
     }
 }
 
 impl Base3 for X {
-    fn root(&self) -> ~str{
-        "base3 root".to_owned()
+    fn root(&self) -> StrBuf{
+        "base3 root".to_strbuf()
     }
 }
 
 impl Super for X {
-    fn bar(&self) -> ~str{
-        "super bar".to_owned()
+    fn bar(&self) -> StrBuf{
+        "super bar".to_strbuf()
     }
 }
 
 pub fn main() {
     let n = X;
     let s = &n as &Super;
-    assert_eq!(s.bar(),"super bar".to_owned());
-    assert_eq!(s.foo(),"base foo".to_owned());
-    assert_eq!(s.foo1(),"base foo1".to_owned());
-    assert_eq!(s.foo2(),"base foo2".to_owned());
-    assert_eq!(s.baz(),"base2 baz".to_owned());
-    assert_eq!(s.root(),"base3 root".to_owned());
+    assert_eq!(s.bar(),"super bar".to_strbuf());
+    assert_eq!(s.foo(),"base foo".to_strbuf());
+    assert_eq!(s.foo1(),"base foo1".to_strbuf());
+    assert_eq!(s.foo2(),"base foo2".to_strbuf());
+    assert_eq!(s.baz(),"base2 baz".to_strbuf());
+    assert_eq!(s.root(),"base3 root".to_strbuf());
 }

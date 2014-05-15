@@ -10,8 +10,8 @@
 
 #![feature(managed_boxes)]
 
-fn assert_repr_eq<T>(obj : T, expected : ~str) {
-    assert_eq!(expected, format!("{:?}", obj));
+fn assert_repr_eq<T>(obj : T, expected : StrBuf) {
+    assert_eq!(expected, format_strbuf!("{:?}", obj));
 }
 
 pub fn main() {
@@ -21,10 +21,10 @@ pub fn main() {
     let slice = x.slice(0,1);
     let z = @x;
 
-    assert_repr_eq(abc, "[1, 2, 3]".to_owned());
-    assert_repr_eq(tf, "[true, false]".to_owned());
-    assert_repr_eq(x, "[(), ()]".to_owned());
-    assert_repr_eq(slice, "&[()]".to_owned());
-    assert_repr_eq(&x, "&[(), ()]".to_owned());
-    assert_repr_eq(z, "@[(), ()]".to_owned());
+    assert_repr_eq(abc, "[1, 2, 3]".to_strbuf());
+    assert_repr_eq(tf, "[true, false]".to_strbuf());
+    assert_repr_eq(x, "[(), ()]".to_strbuf());
+    assert_repr_eq(slice, "&[()]".to_strbuf());
+    assert_repr_eq(&x, "&[(), ()]".to_strbuf());
+    assert_repr_eq(z, "@[(), ()]".to_strbuf());
 }

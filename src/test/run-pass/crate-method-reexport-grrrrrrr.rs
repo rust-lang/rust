@@ -24,5 +24,5 @@ pub fn main() {
     let x = @();
     x.cx();
     let y = ();
-    y.add("hi".to_owned());
+    y.add("hi".to_strbuf());
 }

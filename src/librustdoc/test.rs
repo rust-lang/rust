@@ -92,10 +92,7 @@ pub fn run(input: &str,
 
     test_args.unshift("rustdoctest".to_strbuf());
 
-    testing::test_main(test_args.move_iter()
-                                .map(|x| x.to_str())
-                                .collect::<Vec<_>>()
-                                .as_slice(),
+    testing::test_main(test_args.as_slice(),
                        collector.tests.move_iter().collect());
     0
 }
@@ -235,9 +232,9 @@ impl Collector {
     pub fn add_test(&mut self, test: StrBuf, should_fail: bool, no_run: bool, should_ignore: bool) {
         let name = if self.use_headers {
             let s = self.current_header.as_ref().map(|s| s.as_slice()).unwrap_or("");
-            format!("{}_{}", s, self.cnt)
+            format_strbuf!("{}_{}", s, self.cnt)
         } else {
-            format!("{}_{}", self.names.connect("::"), self.cnt)
+            format_strbuf!("{}_{}", self.names.connect("::"), self.cnt)
         };
         self.cnt += 1;
         let libs = self.libs.clone();

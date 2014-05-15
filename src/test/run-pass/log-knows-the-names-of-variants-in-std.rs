@@ -12,29 +12,23 @@
 #[deriving(Clone)]
 enum foo {
   a(uint),
-  b(~str),
+  b(StrBuf),
 }
 
-fn check_log<T>(exp: ~str, v: T) {
-    assert_eq!(exp, format!("{:?}", v));
+fn check_log<T>(exp: StrBuf, v: T) {
+    assert_eq!(exp, format_strbuf!("{:?}", v));
 }
 
 pub fn main() {
     let mut x = Some(a(22u));
-    let exp = "Some(a(22u))".to_owned();
-    let act = format!("{:?}", x);
-    assert_eq!(act, exp);
-    check_log(exp, x);
-
-    x = Some(b("hi".to_owned()));
-    let exp = "Some(b(~\"hi\"))".to_owned();
-    let act = format!("{:?}", x);
+    let exp = "Some(a(22u))".to_strbuf();
+    let act = format_strbuf!("{:?}", x);
     assert_eq!(act, exp);
     check_log(exp, x);
 
     x = None;
-    let exp = "None".to_owned();
-    let act = format!("{:?}", x);
+    let exp = "None".to_strbuf();
+    let act = format_strbuf!("{:?}", x);
     assert_eq!(act, exp);
     check_log(exp, x);
 }

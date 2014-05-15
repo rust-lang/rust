@@ -9,7 +9,7 @@
 // except according to those terms.
 
 struct X {
-    x: ~str,
+    x: StrBuf,
 }
 
 impl Drop for X {
@@ -19,7 +19,7 @@ impl Drop for X {
 }
 
 fn main() {
-    let x = X { x: "hello".to_owned() };
+    let x = X { x: "hello".to_strbuf() };
 
     match x {
         X { x: y } => println!("contents: {}", y)

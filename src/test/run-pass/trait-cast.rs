@@ -22,33 +22,38 @@ struct TreeR {
 }
 
 trait to_str {
-    fn to_str_(&self) -> ~str;
+    fn to_str_(&self) -> StrBuf;
 }
 
 impl<T:to_str> to_str for Option<T> {
-    fn to_str_(&self) -> ~str {
+    fn to_str_(&self) -> StrBuf {
         match *self {
-          None => { "none".to_owned() }
-          Some(ref t) => { "some(".to_owned() + t.to_str_() + ")".to_owned() }
+          None => { "none".to_strbuf() }
+          Some(ref t) => format_strbuf!("some({})", t.to_str_()),
         }
     }
 }
 
 impl to_str for int {
-    fn to_str_(&self) -> ~str { self.to_str() }
+    fn to_str_(&self) -> StrBuf {
+        self.to_str().to_strbuf()
+    }
 }
 
 impl to_str for Tree {
-    fn to_str_(&self) -> ~str {
+    fn to_str_(&self) -> StrBuf {
         let Tree(t) = *self;
         let this = t.borrow();
         let (l, r) = (this.left, this.right);
         let val = &this.val;
-        format!("[{}, {}, {}]", val.to_str_(), l.to_str_(), r.to_str_())
+        format_strbuf!("[{}, {}, {}]",
+                       val.to_str_(),
+                       l.to_str_(),
+                       r.to_str_())
     }
 }
 
-fn foo<T:to_str>(x: T) -> ~str { x.to_str_() }
+fn foo<T:to_str>(x: T) -> StrBuf { x.to_str_() }
 
 pub fn main() {
     let t1 = Tree(@RefCell::new(TreeR{left: None,
@@ -57,7 +62,8 @@ pub fn main() {
     let t2 = Tree(@RefCell::new(TreeR{left: Some(t1),
                                       right: Some(t1),
                                       val: box 2 as Box<to_str:Send>}));
-    let expected = "[2, some([1, none, none]), some([1, none, none])]".to_owned();
+    let expected =
+        "[2, some([1, none, none]), some([1, none, none])]".to_strbuf();
     assert!(t2.to_str_() == expected);
     assert!(foo(t2) == expected);
 
