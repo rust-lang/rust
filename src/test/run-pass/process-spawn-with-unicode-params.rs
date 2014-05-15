@@ -20,8 +20,7 @@ extern crate native;
 
 use std::io;
 use std::io::fs;
-use std::io::process::Process;
-use std::io::process::ProcessConfig;
+use std::io::Command;
 use std::os;
 use std::path::Path;
 
@@ -56,13 +55,11 @@ fn main() {
         assert!(fs::copy(&my_path, &child_path).is_ok());
 
         // run child
-        let p = Process::configure(ProcessConfig {
-            program: child_path.as_str().unwrap(),
-            args: [arg.to_owned()],
-            cwd: Some(&cwd),
-            env: Some(my_env.append_one(env).as_slice()),
-            .. ProcessConfig::new()
-        }).unwrap().wait_with_output().unwrap();
+        let p = Command::new(&child_path)
+                        .arg(arg)
+                        .cwd(&cwd)
+                        .env(my_env.append_one(env).as_slice())
+                        .spawn().unwrap().wait_with_output().unwrap();
 
         // display the output
         assert!(io::stdout().write(p.output.as_slice()).is_ok());

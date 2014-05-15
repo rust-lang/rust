@@ -27,7 +27,8 @@ fn bar() { }
 fn baz() { }
 
 pub fn test() {
-    let lib = DynamicLibrary::open(None).unwrap();
+    let none: Option<Path> = None; // appease the typechecker
+    let lib = DynamicLibrary::open(none).unwrap();
     unsafe {
         assert!(lib.symbol::<int>("foo").is_ok());
         assert!(lib.symbol::<int>("baz").is_err());

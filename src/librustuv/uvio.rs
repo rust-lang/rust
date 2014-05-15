@@ -13,7 +13,6 @@
 use std::c_str::CString;
 use std::io::IoError;
 use std::io::net::ip::SocketAddr;
-use std::io::process::ProcessConfig;
 use std::io::signal::Signum;
 use std::io::{FileMode, FileAccess, Open, Append, Truncate, Read, Write,
               ReadWrite, FileStat};
@@ -25,7 +24,7 @@ use libc::{O_CREAT, O_APPEND, O_TRUNC, O_RDWR, O_RDONLY, O_WRONLY, S_IRUSR,
 use libc;
 use std::path::Path;
 use std::rt::rtio;
-use std::rt::rtio::{IoFactory, EventLoop};
+use std::rt::rtio::{ProcessConfig, IoFactory, EventLoop};
 use ai = std::io::net::addrinfo;
 
 #[cfg(test)] use std::unstable::run_in_bare_thread;
@@ -270,12 +269,12 @@ impl IoFactory for UvIoFactory {
         r.map_err(uv_error_to_io_error)
     }
 
-    fn spawn(&mut self, config: ProcessConfig)
+    fn spawn(&mut self, cfg: ProcessConfig)
             -> Result<(Box<rtio::RtioProcess:Send>,
                        Vec<Option<Box<rtio::RtioPipe:Send>>>),
                       IoError>
     {
-        match Process::spawn(self, config) {
+        match Process::spawn(self, cfg) {
             Ok((p, io)) => {
                 Ok((p as Box<rtio::RtioProcess:Send>,
                     io.move_iter().map(|i| i.map(|p| {
