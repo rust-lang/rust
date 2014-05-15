@@ -27,7 +27,7 @@
 // gdb-check:$3 = {{Case3, a = 0, b = 22873, c = 22873, d = 22873, e = 22873}, {Case3, a = 0, b = 1499027801, c = 1499027801}, {Case3, a = 0, b = 6438275382588823897}}
 
 // gdb-command:print univariant
-// gdb-check:$4 = {a = -1}
+// gdb-check:$4 = {{a = -1}}
 
 #![allow(unused_variable)]
 #![feature(struct_variant)]
