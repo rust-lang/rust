@@ -27,7 +27,7 @@
 // gdb-check:$3 = {{Case3, 0, 22873, 22873, 22873, 22873}, {Case3, 0, 1499027801, 1499027801}, {Case3, 0, 6438275382588823897}}
 
 // gdb-command:print univariant
-// gdb-check:$4 = {-1}
+// gdb-check:$4 = {{-1}}
 
 
 // NOTE: This is a copy of the non-generic test case. The `Txx` type parameters have to be

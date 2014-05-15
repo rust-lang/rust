@@ -22,7 +22,7 @@
 // gdb-check:$2 = {{TheB, x = 0, y = 1229782938247303441}, {TheB, 0, 286331153, 286331153}}
 
 // gdb-command:print univariant->val
-// gdb-check:$3 = {-9747455}
+// gdb-check:$3 = {{-9747455}}
 
 #![allow(unused_variable)]
 #![feature(struct_variant, managed_boxes)]
