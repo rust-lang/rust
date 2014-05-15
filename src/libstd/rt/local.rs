@@ -53,24 +53,24 @@ impl Local<local_ptr::Borrowed<Task>> for Task {
 #[cfg(test)]
 mod test {
     use option::{None, Option};
-    use unstable::run_in_bare_thread;
+    use rt::thread::Thread;
     use super::*;
     use owned::Box;
     use rt::task::Task;
 
     #[test]
     fn thread_local_task_smoke_test() {
-        run_in_bare_thread(proc() {
+        Thread::start(proc() {
             let task = box Task::new();
             Local::put(task);
             let task: Box<Task> = Local::take();
             cleanup_task(task);
-        });
+        }).join();
     }
 
     #[test]
     fn thread_local_task_two_instances() {
-        run_in_bare_thread(proc() {
+        Thread::start(proc() {
             let task = box Task::new();
             Local::put(task);
             let task: Box<Task> = Local::take();
@@ -79,12 +79,12 @@ mod test {
             Local::put(task);
             let task: Box<Task> = Local::take();
             cleanup_task(task);
-        });
+        }).join();
     }
 
     #[test]
     fn borrow_smoke_test() {
-        run_in_bare_thread(proc() {
+        Thread::start(proc() {
             let task = box Task::new();
             Local::put(task);
 
@@ -93,12 +93,12 @@ mod test {
             }
             let task: Box<Task> = Local::take();
             cleanup_task(task);
-        });
+        }).join();
     }
 
     #[test]
     fn borrow_with_return() {
-        run_in_bare_thread(proc() {
+        Thread::start(proc() {
             let task = box Task::new();
             Local::put(task);
 
@@ -108,12 +108,12 @@ mod test {
 
             let task: Box<Task> = Local::take();
             cleanup_task(task);
-        });
+        }).join();
     }
 
     #[test]
     fn try_take() {
-        run_in_bare_thread(proc() {
+        Thread::start(proc() {
             let task = box Task::new();
             Local::put(task);
 
@@ -122,7 +122,7 @@ mod test {
             assert!(u.is_none());
 
             cleanup_task(t);
-        });
+        }).join();
     }
 
     fn cleanup_task(mut t: Box<Task>) {
