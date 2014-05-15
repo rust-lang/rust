@@ -24,6 +24,7 @@ extern crate rustuv;
 extern crate libc;
 
 use std::io::process;
+use std::io::process::Command;
 use std::io::signal::{Listener, Interrupt};
 
 #[start]
@@ -34,19 +35,12 @@ fn start(argc: int, argv: **u8) -> int {
 fn main() {
     unsafe { libc::setsid(); }
 
-    let config = process::ProcessConfig {
-        program : "/bin/sh",
-        args: &["-c".to_owned(), "read a".to_owned()],
-        detach: true,
-        .. process::ProcessConfig::new()
-    };
-
     // we shouldn't die because of an interrupt
     let mut l = Listener::new();
     l.register(Interrupt).unwrap();
 
     // spawn the child
-    let mut p = process::Process::configure(config).unwrap();
+    let mut p = Command::new("/bin/sh").arg("-c").arg("read a").detached().spawn().unwrap();
 
     // send an interrupt to everyone in our process group
     unsafe { libc::funcs::posix88::signal::kill(0, libc::SIGINT); }
@@ -59,4 +53,3 @@ fn main() {
         process::ExitSignal(..) => fail!()
     }
 }
-

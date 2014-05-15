@@ -50,10 +50,8 @@ fn main() {
 fn parent(flavor: StrBuf) {
     let args = os::args();
     let args = args.as_slice();
-    let mut p = io::Process::new(args[0].as_slice(), [
-        "child".to_owned(),
-        flavor.to_owned()
-    ]).unwrap();
+    let mut p = io::process::Command::new(args[0].as_slice())
+                                     .arg("child").arg(flavor).spawn().unwrap();
     p.stdin.get_mut_ref().write_str("test1\ntest2\ntest3").unwrap();
     let out = p.wait_with_output().unwrap();
     assert!(out.status.success());

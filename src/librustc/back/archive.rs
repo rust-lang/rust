@@ -16,7 +16,7 @@ use metadata::filesearch;
 use lib::llvm::{ArchiveRef, llvm};
 
 use libc;
-use std::io::process::{ProcessConfig, Process, ProcessOutput};
+use std::io::process::{Command, ProcessOutput};
 use std::io::{fs, TempDir};
 use std::io;
 use std::mem;
@@ -39,26 +39,24 @@ pub struct ArchiveRO {
 fn run_ar(sess: &Session, args: &str, cwd: Option<&Path>,
           paths: &[&Path]) -> ProcessOutput {
     let ar = get_ar_prog(sess);
+    let mut cmd = Command::new(ar.as_slice());
 
-    let mut args = vec!(args.to_owned());
-    let paths = paths.iter().map(|p| p.as_str().unwrap().to_owned());
-    args.extend(paths);
-    debug!("{} {}", ar, args.connect(" "));
+    cmd.arg(args).args(paths);
+    debug!("{}", cmd);
+
     match cwd {
-        Some(p) => { debug!("inside {}", p.display()); }
+        Some(p) => {
+            cmd.cwd(p);
+            debug!("inside {}", p.display());
+        }
         None => {}
     }
-    match Process::configure(ProcessConfig {
-        program: ar.as_slice(),
-        args: args.as_slice(),
-        cwd: cwd.map(|a| &*a),
-        .. ProcessConfig::new()
-    }) {
+
+    match cmd.spawn() {
         Ok(prog) => {
             let o = prog.wait_with_output().unwrap();
             if !o.status.success() {
-                sess.err(format!("{} {} failed with: {}", ar, args.connect(" "),
-                                 o.status));
+                sess.err(format!("{} failed with: {}", cmd, o.status));
                 sess.note(format!("stdout ---\n{}",
                                   str::from_utf8(o.output.as_slice()).unwrap()));
                 sess.note(format!("stderr ---\n{}",
@@ -68,7 +66,7 @@ fn run_ar(sess: &Session, args: &str, cwd: Option<&Path>,
             o
         },
         Err(e) => {
-            sess.err(format!("could not exec `{}`: {}", ar, e));
+            sess.err(format!("could not exec `{}`: {}", ar.as_slice(), e));
             sess.abort_if_errors();
             fail!("rustc::back::archive::run_ar() should not reach this point");
         }
