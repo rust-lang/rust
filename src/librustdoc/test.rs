@@ -53,7 +53,7 @@ pub fn run(input: &str,
 
 
     let codemap = CodeMap::new();
-    let diagnostic_handler = diagnostic::default_handler();
+    let diagnostic_handler = diagnostic::default_handler(diagnostic::Auto);
     let span_diagnostic_handler =
     diagnostic::mk_span_handler(diagnostic_handler, codemap);
 

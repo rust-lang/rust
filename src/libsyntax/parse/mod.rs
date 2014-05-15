@@ -13,7 +13,7 @@
 
 use ast;
 use codemap::{Span, CodeMap, FileMap};
-use diagnostic::{SpanHandler, mk_span_handler, default_handler};
+use diagnostic::{SpanHandler, mk_span_handler, default_handler, Auto};
 use parse::attr::ParserAttr;
 use parse::parser::Parser;
 
@@ -41,7 +41,7 @@ pub struct ParseSess {
 
 pub fn new_parse_sess() -> ParseSess {
     ParseSess {
-        span_diagnostic: mk_span_handler(default_handler(), CodeMap::new()),
+        span_diagnostic: mk_span_handler(default_handler(Auto), CodeMap::new()),
         included_mod_stack: RefCell::new(Vec::new()),
     }
 }
