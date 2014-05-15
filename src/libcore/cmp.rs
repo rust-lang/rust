@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -217,6 +217,29 @@ mod impls {
     }
     impl<'a, T: TotalEq> TotalEq for &'a T {}
 
+    // &mut pointers
+    impl<'a, T: Eq> Eq for &'a mut T {
+        #[inline]
+        fn eq(&self, other: &&'a mut T) -> bool { **self == *(*other) }
+        #[inline]
+        fn ne(&self, other: &&'a mut T) -> bool { **self != *(*other) }
+    }
+    impl<'a, T: Ord> Ord for &'a mut T {
+        #[inline]
+        fn lt(&self, other: &&'a mut T) -> bool { **self < **other }
+        #[inline]
+        fn le(&self, other: &&'a mut T) -> bool { **self <= **other }
+        #[inline]
+        fn ge(&self, other: &&'a mut T) -> bool { **self >= **other }
+        #[inline]
+        fn gt(&self, other: &&'a mut T) -> bool { **self > **other }
+    }
+    impl<'a, T: TotalOrd> TotalOrd for &'a mut T {
+        #[inline]
+        fn cmp(&self, other: &&'a mut T) -> Ordering { (**self).cmp(*other) }
+    }
+    impl<'a, T: TotalEq> TotalEq for &'a mut T {}
+
     // @ pointers
     impl<T:Eq> Eq for @T {
         #[inline]
@@ -252,6 +275,15 @@ mod test {
         assert_eq!(5u.cmp(&5), Equal);
         assert_eq!((-5u).cmp(&12), Less);
         assert_eq!(12u.cmp(-5), Greater);
+    }
+
+    #[test]
+    fn test_mut_int_totalord() {
+        assert_eq!((&mut 5u).cmp(&10), Less);
+        assert_eq!((&mut 10u).cmp(&5), Greater);
+        assert_eq!((&mut 5u).cmp(&5), Equal);
+        assert_eq!((&mut -5u).cmp(&12), Less);
+        assert_eq!((&mut 12u).cmp(-5), Greater);
     }
 
     #[test]
