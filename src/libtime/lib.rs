@@ -24,6 +24,8 @@
 #[cfg(test)] #[phase(syntax, link)] extern crate log;
 extern crate serialize;
 extern crate libc;
+#[cfg(target_os = "macos")]
+extern crate sync;
 
 use std::io::BufReader;
 use std::num;
@@ -159,10 +161,16 @@ pub fn precise_time_ns() -> u64 {
 
     #[cfg(target_os = "macos")]
     fn os_precise_time_ns() -> u64 {
-        let time = unsafe { imp::mach_absolute_time() };
-        let mut info = libc::mach_timebase_info { numer: 0, denom: 0 };
-        unsafe { imp::mach_timebase_info(&mut info); }
-        return time * ((info.numer / info.denom) as u64);
+        static mut TIMEBASE: libc::mach_timebase_info = libc::mach_timebase_info { numer: 0,
+                                                                                   denom: 0 };
+        static mut ONCE: sync::one::Once = sync::one::ONCE_INIT;
+        unsafe {
+            ONCE.doit(|| {
+                imp::mach_timebase_info(&mut TIMEBASE);
+            });
+            let time = imp::mach_absolute_time();
+            time * TIMEBASE.numer as u64 / TIMEBASE.denom as u64
+        }
     }
 
     #[cfg(not(windows), not(target_os = "macos"))]
@@ -1080,11 +1088,13 @@ pub fn strftime(format: &str, tm: &Tm) -> StrBuf {
 
 #[cfg(test)]
 mod tests {
+    extern crate test;
     use super::{Timespec, get_time, precise_time_ns, precise_time_s, tzset,
                 at_utc, at, strptime};
 
     use std::f64;
     use std::result::{Err, Ok};
+    use self::test::Bencher;
 
     #[cfg(windows)]
     fn set_time_zone() {
@@ -1519,5 +1529,10 @@ mod tests {
         test_ctime();
         test_strftime();
         test_timespec_eq_ord();
+    }
+
+    #[bench]
+    fn bench_precise_time_ns(b: &mut Bencher) {
+        b.iter(|| precise_time_ns())
     }
 }
