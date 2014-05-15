@@ -180,11 +180,19 @@ pub type ExternMap = HashMap<String, ValueRef>;
 // will only be set in the case of default methods.
 pub struct param_substs {
     pub substs: subst::Substs,
-    pub vtables: Option<typeck::vtable_res>,
+    pub vtables: typeck::vtable_res,
     pub self_vtables: Option<typeck::vtable_param_res>
 }
 
 impl param_substs {
+    pub fn empty() -> param_substs {
+        param_substs {
+            substs: subst::Substs::trans_empty(),
+            vtables: Vec::new(),
+            self_vtables: None
+        }
+    }
+
     pub fn validate(&self) {
         for t in self.substs.tps.iter() {
             assert!(!ty::type_needs_infer(*t));
@@ -206,21 +214,13 @@ impl Repr for param_substs {
 }
 
 pub trait SubstP {
-    fn substp(&self, tcx: &ty::ctxt, param_substs: Option<&param_substs>)
+    fn substp(&self, tcx: &ty::ctxt, param_substs: &param_substs)
               -> Self;
 }
 
 impl<T:Subst+Clone> SubstP for T {
-    fn substp(&self, tcx: &ty::ctxt, param_substs: Option<&param_substs>)
-              -> T {
-        match param_substs {
-            Some(substs) => {
-                self.subst(tcx, &substs.substs)
-            }
-            None => {
-                (*self).clone()
-            }
-        }
+    fn substp(&self, tcx: &ty::ctxt, substs: &param_substs) -> T {
+        self.subst(tcx, &substs.substs)
     }
 }
 
@@ -281,7 +281,7 @@ pub struct FunctionContext<'a> {
 
     // If this function is being monomorphized, this contains the type
     // substitutions used.
-    pub param_substs: Option<&'a param_substs>,
+    pub param_substs: &'a param_substs,
 
     // The source span and nesting context where this function comes from, for
     // error reporting and symbol generation.
@@ -697,16 +697,7 @@ pub fn is_null(val: ValueRef) -> bool {
 }
 
 pub fn monomorphize_type(bcx: &Block, t: ty::t) -> ty::t {
-    match bcx.fcx.param_substs {
-        Some(ref substs) => {
-            t.subst(bcx.tcx(), &substs.substs)
-        }
-        _ => {
-            assert!(!ty::type_has_params(t));
-            assert!(!ty::type_has_self(t));
-            t
-        }
-    }
+    t.subst(bcx.tcx(), &bcx.fcx.param_substs.substs)
 }
 
 pub fn node_id_type(bcx: &Block, id: ast::NodeId) -> ty::t {
@@ -759,10 +750,10 @@ pub fn node_id_substs(bcx: &Block,
 }
 
 pub fn node_vtables(bcx: &Block, id: typeck::MethodCall)
-                 -> Option<typeck::vtable_res> {
+                 -> typeck::vtable_res {
     bcx.tcx().vtable_map.borrow().find(&id).map(|vts| {
         resolve_vtables_in_fn_ctxt(bcx.fcx, vts.as_slice())
-    })
+    }).unwrap_or_else(|| Vec::new())
 }
 
 // Apply the typaram substitutions in the FunctionContext to some
@@ -776,7 +767,7 @@ pub fn resolve_vtables_in_fn_ctxt(fcx: &FunctionContext,
 }
 
 pub fn resolve_vtables_under_param_substs(tcx: &ty::ctxt,
-                                          param_substs: Option<&param_substs>,
+                                          param_substs: &param_substs,
                                           vts: &[typeck::vtable_param_res])
                                           -> typeck::vtable_res {
     vts.iter().map(|ds| {
@@ -788,7 +779,7 @@ pub fn resolve_vtables_under_param_substs(tcx: &ty::ctxt,
 
 pub fn resolve_param_vtables_under_param_substs(
     tcx: &ty::ctxt,
-    param_substs: Option<&param_substs>,
+    param_substs: &param_substs,
     ds: &[typeck::vtable_origin])
     -> typeck::vtable_param_res {
     ds.iter().map(|d| {
@@ -801,7 +792,7 @@ pub fn resolve_param_vtables_under_param_substs(
 
 
 pub fn resolve_vtable_under_param_substs(tcx: &ty::ctxt,
-                                         param_substs: Option<&param_substs>,
+                                         param_substs: &param_substs,
                                          vt: &typeck::vtable_origin)
                                          -> typeck::vtable_origin {
     match *vt {
@@ -812,16 +803,7 @@ pub fn resolve_vtable_under_param_substs(tcx: &ty::ctxt,
                 resolve_vtables_under_param_substs(tcx, param_substs, sub.as_slice()))
         }
         typeck::vtable_param(n_param, n_bound) => {
-            match param_substs {
-                Some(substs) => {
-                    find_vtable(tcx, substs, n_param, n_bound)
-                }
-                _ => {
-                    tcx.sess.bug(format!(
-                        "resolve_vtable_under_param_substs: asked to lookup \
-                         but no vtables in the fn_ctxt!").as_slice())
-                }
-            }
+            find_vtable(tcx, param_substs, n_param, n_bound)
         }
     }
 }
@@ -837,9 +819,7 @@ pub fn find_vtable(tcx: &ty::ctxt,
     let param_bounds = match n_param {
         typeck::param_self => ps.self_vtables.as_ref().expect("self vtables missing"),
         typeck::param_numbered(n) => {
-            let tables = ps.vtables.as_ref()
-                .expect("vtables missing where they are needed");
-            tables.get(n)
+            ps.vtables.get(n)
         }
     };
     param_bounds.get(n_bound).clone()

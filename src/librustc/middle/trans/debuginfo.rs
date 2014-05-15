@@ -621,7 +621,7 @@ pub fn start_emitting_source_locations(fcx: &FunctionContext) {
 /// indicates why no debuginfo should be created for the function.
 pub fn create_function_debug_context(cx: &CrateContext,
                                      fn_ast_id: ast::NodeId,
-                                     param_substs: Option<&param_substs>,
+                                     param_substs: &param_substs,
                                      llfn: ValueRef) -> FunctionDebugContext {
     if cx.sess().opts.debuginfo == NoDebugInfo {
         return FunctionDebugContext { repr: DebugInfoDisabled };
@@ -788,7 +788,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
     fn get_function_signature(cx: &CrateContext,
                               fn_ast_id: ast::NodeId,
                               fn_decl: &ast::FnDecl,
-                              param_substs: Option<&param_substs>,
+                              param_substs: &param_substs,
                               error_span: Span) -> DIArray {
         if cx.sess().opts.debuginfo == LimitedDebugInfo {
             return create_DIArray(DIB(cx), []);
@@ -823,14 +823,11 @@ pub fn create_function_debug_context(cx: &CrateContext,
 
     fn get_template_parameters(cx: &CrateContext,
                                generics: &ast::Generics,
-                               param_substs: Option<&param_substs>,
+                               param_substs: &param_substs,
                                file_metadata: DIFile,
                                name_to_append_suffix_to: &mut String)
                                -> DIArray {
-        let self_type = match param_substs {
-            Some(param_substs) => param_substs.substs.self_ty,
-            _ => None
-        };
+        let self_type = param_substs.substs.self_ty;
 
         // Only true for static default methods:
         let has_self_type = self_type.is_some();
@@ -884,13 +881,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
         }
 
         // Handle other generic parameters
-        let actual_types = match param_substs {
-            Some(param_substs) => &param_substs.substs.tps,
-            None => {
-                return create_DIArray(DIB(cx), template_params.as_slice());
-            }
-        };
-
+        let actual_types = &param_substs.substs.tps;
         for (index, &ast::TyParam{ ident: ident, .. }) in generics.ty_params.iter().enumerate() {
             let actual_type = *actual_types.get(index);
             // Add actual type name to <...> clause of function name
