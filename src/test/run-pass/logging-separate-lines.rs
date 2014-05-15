@@ -16,7 +16,7 @@
 #[phase(syntax, link)]
 extern crate log;
 
-use std::io::{Process, ProcessConfig};
+use std::io::Command;
 use std::os;
 use std::str;
 
@@ -30,16 +30,11 @@ fn main() {
     }
 
     let env = [("RUST_LOG".to_owned(), "debug".to_owned())];
-    let config = ProcessConfig {
-        program: args[0].as_slice(),
-        args: &["child".to_owned()],
-        env: Some(env.as_slice()),
-        ..ProcessConfig::new()
-    };
-    let p = Process::configure(config).unwrap().wait_with_output().unwrap();
+    let p = Command::new(args[0].as_slice())
+                    .arg("child").env(env.as_slice())
+                    .spawn().unwrap().wait_with_output().unwrap();
     assert!(p.status.success());
     let mut lines = str::from_utf8(p.error.as_slice()).unwrap().lines();
     assert!(lines.next().unwrap().contains("foo"));
     assert!(lines.next().unwrap().contains("bar"));
 }
-

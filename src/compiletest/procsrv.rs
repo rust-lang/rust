@@ -10,7 +10,7 @@
 
 use std::os;
 use std::str;
-use std::io::process::{ProcessExit, Process, ProcessConfig, ProcessOutput};
+use std::io::process::{ProcessExit, Command, Process, ProcessOutput};
 
 #[cfg(target_os = "win32")]
 fn target_env(lib_path: &str, prog: &str) -> Vec<(~str, ~str)> {
@@ -68,14 +68,7 @@ pub fn run(lib_path: &str,
            input: Option<~str>) -> Option<Result> {
 
     let env = env.clone().append(target_env(lib_path, prog).as_slice());
-    let opt_process = Process::configure(ProcessConfig {
-        program: prog,
-        args: args,
-        env: Some(env.as_slice()),
-        .. ProcessConfig::new()
-    });
-
-    match opt_process {
+    match Command::new(prog).args(args).env(env.as_slice()).spawn() {
         Ok(mut process) => {
             for input in input.iter() {
                 process.stdin.get_mut_ref().write(input.as_bytes()).unwrap();
@@ -100,14 +93,7 @@ pub fn run_background(lib_path: &str,
            input: Option<~str>) -> Option<Process> {
 
     let env = env.clone().append(target_env(lib_path, prog).as_slice());
-    let opt_process = Process::configure(ProcessConfig {
-        program: prog,
-        args: args,
-        env: Some(env.as_slice()),
-        .. ProcessConfig::new()
-    });
-
-    match opt_process {
+    match Command::new(prog).args(args).env(env.as_slice()).spawn() {
         Ok(mut process) => {
             for input in input.iter() {
                 process.stdin.get_mut_ref().write(input.as_bytes()).unwrap();

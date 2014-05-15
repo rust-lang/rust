@@ -15,8 +15,9 @@ use std::mem;
 use std::os;
 use std::ptr;
 use std::rt::rtio;
+use std::rt::rtio::ProcessConfig;
+use std::c_str::CString;
 use p = std::io::process;
-
 
 use super::IoResult;
 use super::file;
@@ -65,27 +66,11 @@ impl Process {
     /// Creates a new process using native process-spawning abilities provided
     /// by the OS. Operations on this process will be blocking instead of using
     /// the runtime for sleeping just this current task.
-    ///
-    /// # Arguments
-    ///
-    /// * prog - the program to run
-    /// * args - the arguments to pass to the program, not including the program
-    ///          itself
-    /// * env - an optional environment to specify for the child process. If
-    ///         this value is `None`, then the child will inherit the parent's
-    ///         environment
-    /// * cwd - an optionally specified current working directory of the child,
-    ///         defaulting to the parent's current working directory
-    /// * stdin, stdout, stderr - These optionally specified file descriptors
-    ///     dictate where the stdin/out/err of the child process will go. If
-    ///     these are `None`, then this module will bind the input/output to an
-    ///     os pipe instead. This process takes ownership of these file
-    ///     descriptors, closing them upon destruction of the process.
-    pub fn spawn(config: p::ProcessConfig)
+    pub fn spawn(cfg: ProcessConfig)
         -> Result<(Process, Vec<Option<file::FileDesc>>), io::IoError>
     {
         // right now we only handle stdin/stdout/stderr.
-        if config.extra_io.len() > 0 {
+        if cfg.extra_io.len() > 0 {
             return Err(super::unimpl());
         }
 
@@ -109,14 +94,11 @@ impl Process {
         }
 
         let mut ret_io = Vec::new();
-        let (in_pipe, in_fd) = get_io(config.stdin, &mut ret_io);
-        let (out_pipe, out_fd) = get_io(config.stdout, &mut ret_io);
-        let (err_pipe, err_fd) = get_io(config.stderr, &mut ret_io);
+        let (in_pipe, in_fd) = get_io(cfg.stdin, &mut ret_io);
+        let (out_pipe, out_fd) = get_io(cfg.stdout, &mut ret_io);
+        let (err_pipe, err_fd) = get_io(cfg.stderr, &mut ret_io);
 
-        let env = config.env.map(|a| a.to_owned());
-        let cwd = config.cwd.map(|a| Path::new(a));
-        let res = spawn_process_os(config, env, cwd.as_ref(), in_fd, out_fd,
-                                   err_fd);
+        let res = spawn_process_os(cfg, in_fd, out_fd, err_fd);
 
         unsafe {
             for pipe in in_pipe.iter() { let _ = libc::close(pipe.input); }
@@ -262,11 +244,8 @@ struct SpawnProcessResult {
 }
 
 #[cfg(windows)]
-fn spawn_process_os(config: p::ProcessConfig,
-                    env: Option<~[(~str, ~str)]>,
-                    dir: Option<&Path>,
-                    in_fd: c_int, out_fd: c_int,
-                    err_fd: c_int) -> IoResult<SpawnProcessResult> {
+fn spawn_process_os(cfg: ProcessConfig, in_fd: c_int, out_fd: c_int, err_fd: c_int)
+                 -> IoResult<SpawnProcessResult> {
     use libc::types::os::arch::extra::{DWORD, HANDLE, STARTUPINFO};
     use libc::consts::os::extra::{
         TRUE, FALSE,
@@ -284,7 +263,7 @@ fn spawn_process_os(config: p::ProcessConfig,
 
     use std::mem;
 
-    if config.gid.is_some() || config.uid.is_some() {
+    if cfg.gid.is_some() || cfg.uid.is_some() {
         return Err(io::IoError {
             kind: io::OtherIoError,
             desc: "unsupported gid/uid requested on windows",
@@ -293,7 +272,6 @@ fn spawn_process_os(config: p::ProcessConfig,
     }
 
     unsafe {
-
         let mut si = zeroed_startupinfo();
         si.cb = mem::size_of::<STARTUPINFO>() as DWORD;
         si.dwFlags = STARTF_USESTDHANDLES;
@@ -333,23 +311,26 @@ fn spawn_process_os(config: p::ProcessConfig,
             }
         }
 
-        let cmd = make_command_line(config.program, config.args);
+        let cmd_str = make_command_line(cfg.program, cfg.args);
         let mut pi = zeroed_process_information();
         let mut create_err = None;
 
         // stolen from the libuv code.
         let mut flags = libc::CREATE_UNICODE_ENVIRONMENT;
-        if config.detach {
+        if cfg.detach {
             flags |= libc::DETACHED_PROCESS | libc::CREATE_NEW_PROCESS_GROUP;
         }
 
-        with_envp(env, |envp| {
-            with_dirp(dir, |dirp| {
-                os::win32::as_mut_utf16_p(cmd, |cmdp| {
-                    let created = CreateProcessW(ptr::null(), cmdp,
-                                                 ptr::mut_null(), ptr::mut_null(), TRUE,
-                                                 flags, envp, dirp, &mut si,
-                                                 &mut pi);
+        with_envp(cfg.env, |envp| {
+            with_dirp(cfg.cwd, |dirp| {
+                os::win32::as_mut_utf16_p(cmd_str, |cmdp| {
+                    let created = CreateProcessW(ptr::null(),
+                                                 cmdp,
+                                                 ptr::mut_null(),
+                                                 ptr::mut_null(),
+                                                 TRUE,
+                                                 flags, envp, dirp,
+                                                 &mut si, &mut pi);
                     if created == FALSE {
                         create_err = Some(super::last_error());
                     }
@@ -415,12 +396,14 @@ fn zeroed_process_information() -> libc::types::os::arch::extra::PROCESS_INFORMA
 }
 
 #[cfg(windows)]
-fn make_command_line(prog: &str, args: &[~str]) -> ~str {
+fn make_command_line(prog: &CString, args: &[CString]) -> ~str {
     let mut cmd = StrBuf::new();
-    append_arg(&mut cmd, prog);
+    append_arg(&mut cmd, prog.as_str()
+                             .expect("expected program name to be utf-8 encoded"));
     for arg in args.iter() {
         cmd.push_char(' ');
-        append_arg(&mut cmd, *arg);
+        append_arg(&mut cmd, arg.as_str()
+                                .expect("expected argument to be utf-8 encoded"));
     }
     return cmd.into_owned();
 
@@ -468,11 +451,9 @@ fn make_command_line(prog: &str, args: &[~str]) -> ~str {
 }
 
 #[cfg(unix)]
-fn spawn_process_os(config: p::ProcessConfig,
-                    env: Option<~[(~str, ~str)]>,
-                    dir: Option<&Path>,
-                    in_fd: c_int, out_fd: c_int,
-                    err_fd: c_int) -> IoResult<SpawnProcessResult> {
+fn spawn_process_os(cfg: ProcessConfig, in_fd: c_int, out_fd: c_int, err_fd: c_int)
+                -> IoResult<SpawnProcessResult>
+{
     use libc::funcs::posix88::unistd::{fork, dup2, close, chdir, execvp};
     use libc::funcs::bsd44::getdtablesize;
     use io::c;
@@ -500,11 +481,10 @@ fn spawn_process_os(config: p::ProcessConfig,
         assert_eq!(ret, 0);
     }
 
-    let dirp = dir.map(|p| p.to_c_str());
-    let dirp = dirp.as_ref().map(|c| c.with_ref(|p| p)).unwrap_or(ptr::null());
+    let dirp = cfg.cwd.map(|c| c.with_ref(|p| p)).unwrap_or(ptr::null());
 
-    with_envp(env, proc(envp) {
-        with_argv(config.program, config.args, proc(argv) unsafe {
+    with_envp(cfg.env, proc(envp) {
+        with_argv(cfg.program, cfg.args, proc(argv) unsafe {
             let pipe = os::pipe();
             let mut input = file::FileDesc::new(pipe.input, true);
             let mut output = file::FileDesc::new(pipe.out, true);
@@ -605,7 +585,7 @@ fn spawn_process_os(config: p::ProcessConfig,
                 }
             }
 
-            match config.gid {
+            match cfg.gid {
                 Some(u) => {
                     if libc::setgid(u as libc::gid_t) != 0 {
                         fail(&mut output);
@@ -613,7 +593,7 @@ fn spawn_process_os(config: p::ProcessConfig,
                 }
                 None => {}
             }
-            match config.uid {
+            match cfg.uid {
                 Some(u) => {
                     // When dropping privileges from root, the `setgroups` call will
                     // remove any extraneous groups. If we don't call this, then
@@ -633,7 +613,7 @@ fn spawn_process_os(config: p::ProcessConfig,
                 }
                 None => {}
             }
-            if config.detach {
+            if cfg.detach {
                 // Don't check the error of setsid because it fails if we're the
                 // process leader already. We just forked so it shouldn't return
                 // error, but ignore it anyway.
@@ -652,47 +632,47 @@ fn spawn_process_os(config: p::ProcessConfig,
 }
 
 #[cfg(unix)]
-fn with_argv<T>(prog: &str, args: &[~str], cb: proc(**libc::c_char) -> T) -> T {
-    // We can't directly convert `str`s into `*char`s, as someone needs to hold
-    // a reference to the intermediary byte buffers. So first build an array to
-    // hold all the ~[u8] byte strings.
-    let mut tmps = Vec::with_capacity(args.len() + 1);
+fn with_argv<T>(prog: &CString, args: &[CString], cb: proc(**libc::c_char) -> T) -> T {
+    let mut ptrs: Vec<*libc::c_char> = Vec::with_capacity(args.len()+1);
 
-    tmps.push(prog.to_c_str());
+    // Convert the CStrings into an array of pointers. Note: the
+    // lifetime of the various CStrings involved is guaranteed to be
+    // larger than the lifetime of our invocation of cb, but this is
+    // technically unsafe as the callback could leak these pointers
+    // out of our scope.
+    ptrs.push(prog.with_ref(|buf| buf));
+    ptrs.extend(args.iter().map(|tmp| tmp.with_ref(|buf| buf)));
 
-    for arg in args.iter() {
-        tmps.push(arg.to_c_str());
-    }
-
-    // Next, convert each of the byte strings into a pointer. This is
-    // technically unsafe as the caller could leak these pointers out of our
-    // scope.
-    let mut ptrs: Vec<_> = tmps.iter().map(|tmp| tmp.with_ref(|buf| buf)).collect();
-
-    // Finally, make sure we add a null pointer.
+    // Add a terminating null pointer (required by libc).
     ptrs.push(ptr::null());
 
     cb(ptrs.as_ptr())
 }
 
 #[cfg(unix)]
-fn with_envp<T>(env: Option<~[(~str, ~str)]>, cb: proc(*c_void) -> T) -> T {
+fn with_envp<T>(env: Option<&[(CString, CString)]>, cb: proc(*c_void) -> T) -> T {
     // On posixy systems we can pass a char** for envp, which is a
-    // null-terminated array of "k=v\n" strings. Like `with_argv`, we have to
-    // have a temporary buffer to hold the intermediary `~[u8]` byte strings.
+    // null-terminated array of "k=v\0" strings. Since we must create
+    // these strings locally, yet expose a raw pointer to them, we
+    // create a temporary vector to own the CStrings that outlives the
+    // call to cb.
     match env {
         Some(env) => {
             let mut tmps = Vec::with_capacity(env.len());
 
             for pair in env.iter() {
-                let kv = format!("{}={}", *pair.ref0(), *pair.ref1());
-                tmps.push(kv.to_c_str());
+                let mut kv = Vec::new();
+                kv.push_all(pair.ref0().as_bytes_no_nul());
+                kv.push('=' as u8);
+                kv.push_all(pair.ref1().as_bytes()); // includes terminal \0
+                tmps.push(kv);
             }
 
-            // Once again, this is unsafe.
-            let mut ptrs: Vec<*libc::c_char> = tmps.iter()
-                                                   .map(|tmp| tmp.with_ref(|buf| buf))
-                                                   .collect();
+            // As with `with_argv`, this is unsafe, since cb could leak the pointers.
+            let mut ptrs: Vec<*libc::c_char> =
+                tmps.iter()
+                    .map(|tmp| tmp.as_ptr() as *libc::c_char)
+                    .collect();
             ptrs.push(ptr::null());
 
             cb(ptrs.as_ptr() as *c_void)
@@ -702,7 +682,7 @@ fn with_envp<T>(env: Option<~[(~str, ~str)]>, cb: proc(*c_void) -> T) -> T {
 }
 
 #[cfg(windows)]
-fn with_envp<T>(env: Option<~[(~str, ~str)]>, cb: |*mut c_void| -> T) -> T {
+fn with_envp<T>(env: Option<&[(CString, CString)]>, cb: |*mut c_void| -> T) -> T {
     // On win32 we pass an "environment block" which is not a char**, but
     // rather a concatenation of null-terminated k=v\0 sequences, with a final
     // \0 to terminate.
@@ -711,7 +691,9 @@ fn with_envp<T>(env: Option<~[(~str, ~str)]>, cb: |*mut c_void| -> T) -> T {
             let mut blk = Vec::new();
 
             for pair in env.iter() {
-                let kv = format!("{}={}", *pair.ref0(), *pair.ref1());
+                let kv = format!("{}={}",
+                                 pair.ref0().as_str().unwrap(),
+                                 pair.ref1().as_str().unwrap());
                 blk.push_all(kv.to_utf16().as_slice());
                 blk.push(0);
             }
@@ -725,11 +707,12 @@ fn with_envp<T>(env: Option<~[(~str, ~str)]>, cb: |*mut c_void| -> T) -> T {
 }
 
 #[cfg(windows)]
-fn with_dirp<T>(d: Option<&Path>, cb: |*u16| -> T) -> T {
+fn with_dirp<T>(d: Option<&CString>, cb: |*u16| -> T) -> T {
     match d {
-      Some(dir) => match dir.as_str() {
-          Some(dir_str) => os::win32::as_utf16_p(dir_str, cb),
-          None => cb(ptr::null())
+      Some(dir) => {
+          let dir_str = dir.as_str()
+                           .expect("expected workingdirectory to be utf-8 encoded");
+          os::win32::as_utf16_p(dir_str, cb)
       },
       None => cb(ptr::null())
     }
@@ -1106,25 +1089,37 @@ mod tests {
 
     #[test] #[cfg(windows)]
     fn test_make_command_line() {
+        use std::str;
+        use std::c_str::CString;
         use super::make_command_line;
+
+        fn test_wrapper(prog: &str, args: &[&str]) -> ~str {
+            make_command_line(&prog.to_c_str(),
+                              args.iter()
+                                  .map(|a| a.to_c_str())
+                                  .collect::<Vec<CString>>()
+                                  .as_slice())
+        }
+
         assert_eq!(
-            make_command_line("prog", ["aaa".to_owned(), "bbb".to_owned(), "ccc".to_owned()]),
+            test_wrapper("prog", ["aaa", "bbb", "ccc"]),
             "prog aaa bbb ccc".to_owned()
         );
+
         assert_eq!(
-            make_command_line("C:\\Program Files\\blah\\blah.exe", ["aaa".to_owned()]),
+            test_wrapper("C:\\Program Files\\blah\\blah.exe", ["aaa"]),
             "\"C:\\Program Files\\blah\\blah.exe\" aaa".to_owned()
         );
         assert_eq!(
-            make_command_line("C:\\Program Files\\test", ["aa\"bb".to_owned()]),
+            test_wrapper("C:\\Program Files\\test", ["aa\"bb"]),
             "\"C:\\Program Files\\test\" aa\\\"bb".to_owned()
         );
         assert_eq!(
-            make_command_line("echo", ["a b c".to_owned()]),
+            test_wrapper("echo", ["a b c"]),
             "echo \"a b c\"".to_owned()
         );
         assert_eq!(
-            make_command_line("\u03c0\u042f\u97f3\u00e6\u221e", []),
+            test_wrapper("\u03c0\u042f\u97f3\u00e6\u221e", []),
             "\u03c0\u042f\u97f3\u00e6\u221e".to_owned()
         );
     }

@@ -12,7 +12,7 @@ extern crate rand;
 use rand::{task_rng, Rng};
 
 use std::{char, os, str};
-use std::io::{File, Process};
+use std::io::{File, Command};
 
 // creates a file with `fn main() { <random ident> }` and checks the
 // compiler emits a span of the appropriate length (for the
@@ -37,9 +37,7 @@ fn main() {
     let args = os::args();
     let rustc = args.get(1).as_slice();
     let tmpdir = Path::new(args.get(2).as_slice());
-
     let main_file = tmpdir.join("span_main.rs");
-    let main_file_str = main_file.as_str().unwrap();
 
     for _ in range(0, 100) {
         let n = task_rng().gen_range(3u, 20);
@@ -53,7 +51,9 @@ fn main() {
 
         // rustc is passed to us with --out-dir and -L etc., so we
         // can't exec it directly
-        let result = Process::output("sh", ["-c".to_owned(), rustc + " " + main_file_str]).unwrap();
+        let result = Command::new("sh")
+                             .arg("-c").arg(rustc + " " + main_file.as_str().unwrap())
+                             .output().unwrap();
 
         let err = str::from_utf8_lossy(result.error.as_slice());
 

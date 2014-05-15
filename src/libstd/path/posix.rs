@@ -79,16 +79,35 @@ impl FromStr for Path {
     }
 }
 
+// FIXME (#12938): Until DST lands, we cannot decompose &str into & and str, so
+// we cannot usefully take ToCStr arguments by reference (without forcing an
+// additional & around &str). So we are instead temporarily adding an instance
+// for &Path, so that we can take ToCStr as owned. When DST lands, the &Path
+// instance should be removed, and arguments bound by ToCStr should be passed by
+// reference.
+
 impl ToCStr for Path {
     #[inline]
     fn to_c_str(&self) -> CString {
         // The Path impl guarantees no internal NUL
-        unsafe { self.as_vec().to_c_str_unchecked() }
+        unsafe { self.to_c_str_unchecked() }
     }
 
     #[inline]
     unsafe fn to_c_str_unchecked(&self) -> CString {
         self.as_vec().to_c_str_unchecked()
+    }
+}
+
+impl<'a> ToCStr for &'a Path {
+    #[inline]
+    fn to_c_str(&self) -> CString {
+        (*self).to_c_str()
+    }
+
+    #[inline]
+    unsafe fn to_c_str_unchecked(&self) -> CString {
+        (*self).to_c_str_unchecked()
     }
 }
 

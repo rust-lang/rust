@@ -14,13 +14,15 @@
 
 use prelude::*;
 
+use std::str;
 use fmt;
 use io::IoResult;
 use io;
 use libc;
 use mem;
 use owned::Box;
-use rt::rtio::{RtioProcess, IoFactory, LocalIo};
+use rt::rtio::{RtioProcess, ProcessConfig, IoFactory, LocalIo};
+use c_str::CString;
 
 /// Signal a process to exit, without forcibly killing it. Corresponds to
 /// SIGTERM on unix platforms.
@@ -37,16 +39,16 @@ use rt::rtio::{RtioProcess, IoFactory, LocalIo};
 
 /// Representation of a running or exited child process.
 ///
-/// This structure is used to create, run, and manage child processes. A process
-/// is configured with the `ProcessConfig` struct which contains specific
-/// options for dictating how the child is spawned.
+/// This structure is used to represent and manage child processes. A child
+/// process is created via the `Command` struct, which configures the spawning
+/// process and can itself be constructed using a builder-style interface.
 ///
 /// # Example
 ///
 /// ```should_fail
-/// use std::io::Process;
+/// use std::io::Command;
 ///
-/// let mut child = match Process::new("/bin/cat", ["file.txt".to_owned()]) {
+/// let mut child = match Command::new("/bin/cat").arg("file.txt").spawn() {
 ///     Ok(child) => child,
 ///     Err(e) => fail!("failed to execute child: {}", e),
 /// };
@@ -74,71 +76,244 @@ pub struct Process {
     pub extra_io: Vec<Option<io::PipeStream>>,
 }
 
-/// This configuration describes how a new process should be spawned. A blank
-/// configuration can be created with `ProcessConfig::new()`. It is also
-/// recommented to use a functional struct update pattern when creating process
-/// configuration:
+/// The `Command` type acts as a process builder, providing fine-grained control
+/// over how a new process should be spawned. A default configuration can be
+/// generated using `Command::new(program)`, where `program` gives a path to the
+/// program to be executed. Additional builder methods allow the configuration
+/// to be changed (for example, by adding arguments) prior to spawning:
 ///
 /// ```
-/// use std::io::ProcessConfig;
+/// use std::io::Command;
 ///
-/// let config = ProcessConfig {
-///     program: "/bin/sh",
-///     args: &["-c".to_owned(), "true".to_owned()],
-///     .. ProcessConfig::new()
+/// let mut process = match Command::new("sh").arg("-c").arg("echo hello").spawn() {
+///   Ok(p) => p,
+///   Err(e) => fail!("failed to execute process: {}", e),
 /// };
+///
+/// let output = process.stdout.get_mut_ref().read_to_end();
 /// ```
-pub struct ProcessConfig<'a> {
-    /// Path to the program to run
-    pub program: &'a str,
+pub struct Command {
+    // The internal data for the builder. Documented by the builder
+    // methods below, and serialized into rt::rtio::ProcessConfig.
+    program: CString,
+    args: Vec<CString>,
+    env: Option<Vec<(CString, CString)>>,
+    cwd: Option<CString>,
+    stdin: StdioContainer,
+    stdout: StdioContainer,
+    stderr: StdioContainer,
+    extra_io: Vec<StdioContainer>,
+    uid: Option<uint>,
+    gid: Option<uint>,
+    detach: bool,
+}
 
-    /// Arguments to pass to the program (doesn't include the program itself)
-    pub args: &'a [~str],
+// FIXME (#12938): Until DST lands, we cannot decompose &str into & and str, so
+// we cannot usefully take ToCStr arguments by reference (without forcing an
+// additional & around &str). So we are instead temporarily adding an instance
+// for &Path, so that we can take ToCStr as owned. When DST lands, the &Path
+// instance should be removed, and arguments bound by ToCStr should be passed by
+// reference. (Here: {new, arg, args, env}.)
 
-    /// Optional environment to specify for the program. If this is None, then
-    /// it will inherit the current process's environment.
-    pub env: Option<&'a [(~str, ~str)]>,
+impl Command {
+    /// Constructs a new `Command` for launching the program at
+    /// path `program`, with the following default configuration:
+    ///
+    /// * No arguments to the program
+    /// * Inherit the current process's environment
+    /// * Inherit the current process's working directory
+    /// * A readable pipe for stdin (file descriptor 0)
+    /// * A writeable pipe for stdour and stderr (file descriptors 1 and 2)
+    ///
+    /// Builder methods are provided to change these defaults and
+    /// otherwise configure the process.
+    pub fn new<T:ToCStr>(program: T) -> Command {
+        Command {
+            program: program.to_c_str(),
+            args: Vec::new(),
+            env: None,
+            cwd: None,
+            stdin: CreatePipe(true, false),
+            stdout: CreatePipe(false, true),
+            stderr: CreatePipe(false, true),
+            extra_io: Vec::new(),
+            uid: None,
+            gid: None,
+            detach: false,
+        }
+    }
 
-    /// Optional working directory for the new process. If this is None, then
-    /// the current directory of the running process is inherited.
-    pub cwd: Option<&'a Path>,
+    /// Add an argument to pass to the program.
+    pub fn arg<'a, T:ToCStr>(&'a mut self, arg: T) -> &'a mut Command {
+        self.args.push(arg.to_c_str());
+        self
+    }
+
+    /// Add multiple arguments to pass to the program.
+    pub fn args<'a, T:ToCStr>(&'a mut self, args: &[T]) -> &'a mut Command {
+        self.args.extend(args.iter().map(|arg| arg.to_c_str()));;
+        self
+    }
+
+    /// Sets the environment for the child process (rather than inheriting it
+    /// from the current process).
+
+    // FIXME (#13851): We should change this interface to allow clients to (1)
+    // build up the env vector incrementally and (2) allow both inheriting the
+    // current process's environment AND overriding/adding additional
+    // environment variables. The underlying syscalls assume that the
+    // environment has no duplicate names, so we really want to use a hashtable
+    // to compute the environment to pass down to the syscall; resolving issue
+    // #13851 will make it possible to use the standard hashtable.
+    pub fn env<'a, T:ToCStr>(&'a mut self, env: &[(T,T)]) -> &'a mut Command {
+        self.env = Some(env.iter().map(|&(ref name, ref val)| {
+            (name.to_c_str(), val.to_c_str())
+        }).collect());
+        self
+    }
+
+    /// Set the working directory for the child process.
+    pub fn cwd<'a>(&'a mut self, dir: &Path) -> &'a mut Command {
+        self.cwd = Some(dir.to_c_str());
+        self
+    }
 
     /// Configuration for the child process's stdin handle (file descriptor 0).
-    /// This field defaults to `CreatePipe(true, false)` so the input can be
-    /// written to.
-    pub stdin: StdioContainer,
+    /// Defaults to `CreatePipe(true, false)` so the input can be written to.
+    pub fn stdin<'a>(&'a mut self, cfg: StdioContainer) -> &'a mut Command {
+        self.stdin = cfg;
+        self
+    }
 
     /// Configuration for the child process's stdout handle (file descriptor 1).
-    /// This field defaults to `CreatePipe(false, true)` so the output can be
-    /// collected.
-    pub stdout: StdioContainer,
+    /// Defaults to `CreatePipe(false, true)` so the output can be collected.
+    pub fn stdout<'a>(&'a mut self, cfg: StdioContainer) -> &'a mut Command {
+        self.stdout = cfg;
+        self
+    }
 
-    /// Configuration for the child process's stdout handle (file descriptor 2).
-    /// This field defaults to `CreatePipe(false, true)` so the output can be
-    /// collected.
-    pub stderr: StdioContainer,
-
-    /// Any number of streams/file descriptors/pipes may be attached to this
-    /// process. This list enumerates the file descriptors and such for the
-    /// process to be spawned, and the file descriptors inherited will start at
-    /// 3 and go to the length of this array. The first three file descriptors
-    /// (stdin/stdout/stderr) are configured with the `stdin`, `stdout`, and
-    /// `stderr` fields.
-    pub extra_io: &'a [StdioContainer],
+    /// Configuration for the child process's stderr handle (file descriptor 2).
+    /// Defaults to `CreatePipe(false, true)` so the output can be collected.
+    pub fn stderr<'a>(&'a mut self, cfg: StdioContainer) -> &'a mut Command {
+        self.stderr = cfg;
+        self
+    }
+    /// Attaches a stream/file descriptor/pipe to the child process. Inherited
+    /// file descriptors are numbered consecutively, starting at 3; the first
+    /// three file descriptors (stdin/stdout/stderr) are configured with the
+    /// `stdin`, `stdout`, and `stderr` methods.
+    pub fn extra_io<'a>(&'a mut self, cfg: StdioContainer) -> &'a mut Command {
+        self.extra_io.push(cfg);
+        self
+    }
 
     /// Sets the child process's user id. This translates to a `setuid` call in
     /// the child process. Setting this value on windows will cause the spawn to
     /// fail. Failure in the `setuid` call on unix will also cause the spawn to
     /// fail.
-    pub uid: Option<uint>,
+    pub fn uid<'a>(&'a mut self, id: uint) -> &'a mut Command {
+        self.uid = Some(id);
+        self
+    }
 
     /// Similar to `uid`, but sets the group id of the child process. This has
     /// the same semantics as the `uid` field.
-    pub gid: Option<uint>,
+    pub fn gid<'a>(&'a mut self, id: uint) -> &'a mut Command {
+        self.gid = Some(id);
+        self
+    }
 
-    /// If true, the child process is spawned in a detached state. On unix, this
+    /// Sets the child process to be spawned in a detached state. On unix, this
     /// means that the child is the leader of a new process group.
-    pub detach: bool,
+    pub fn detached<'a>(&'a mut self) -> &'a mut Command {
+        self.detach = true;
+        self
+    }
+
+    /// Executes the command as a child process, which is returned.
+    pub fn spawn(&self) -> IoResult<Process> {
+        LocalIo::maybe_raise(|io| {
+            let cfg = ProcessConfig {
+                program: &self.program,
+                args: self.args.as_slice(),
+                env: self.env.as_ref().map(|env| env.as_slice()),
+                cwd: self.cwd.as_ref(),
+                stdin: self.stdin,
+                stdout: self.stdout,
+                stderr: self.stderr,
+                extra_io: self.extra_io.as_slice(),
+                uid: self.uid,
+                gid: self.gid,
+                detach: self.detach,
+            };
+            io.spawn(cfg).map(|(p, io)| {
+                let mut io = io.move_iter().map(|p| {
+                    p.map(|p| io::PipeStream::new(p))
+                });
+                Process {
+                    handle: p,
+                    stdin: io.next().unwrap(),
+                    stdout: io.next().unwrap(),
+                    stderr: io.next().unwrap(),
+                    extra_io: io.collect(),
+                }
+            })
+        })
+    }
+
+    /// Executes the command as a child process, waiting for it to finish and
+    /// collecting all of its output.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::io::Command;
+    /// use std::str;
+    ///
+    /// let output = match Command::new("cat").arg("foot.txt").output() {
+    ///     Ok(output) => output,
+    ///     Err(e) => fail!("failed to execute process: {}", e),
+    /// };
+    ///
+    /// println!("status: {}", output.status);
+    /// println!("stdout: {}", str::from_utf8_lossy(output.output.as_slice()));
+    /// println!("stderr: {}", str::from_utf8_lossy(output.error.as_slice()));
+    /// ```
+    pub fn output(&self) -> IoResult<ProcessOutput> {
+        self.spawn().and_then(|p| p.wait_with_output())
+    }
+
+    /// Executes a command as a child process, waiting for it to finish and
+    /// collecting its exit status.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::io::Command;
+    ///
+    /// let status = match Command::new("ls").status() {
+    ///     Ok(status) => status,
+    ///     Err(e) => fail!("failed to execute process: {}", e),
+    /// };
+    ///
+    /// println!("process exited with: {}", status);
+    /// ```
+    pub fn status(&self) -> IoResult<ProcessExit> {
+        self.spawn().and_then(|mut p| p.wait())
+    }
+}
+
+impl fmt::Show for Command {
+    /// Format the program and arguments of a Command for display. Any
+    /// non-utf8 data is lossily converted using the utf8 replacement
+    /// character.
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        try!(write!(f.buf, "{}", str::from_utf8_lossy(self.program.as_bytes_no_nul())));
+        for arg in self.args.iter() {
+            try!(write!(f.buf, " '{}'", str::from_utf8_lossy(arg.as_bytes_no_nul())));
+        }
+        Ok(())
+    }
 }
 
 /// The output of a finished process.
@@ -206,127 +381,7 @@ impl ProcessExit {
     }
 }
 
-impl<'a> ProcessConfig<'a> {
-    /// Creates a new configuration with blanks as all of the defaults. This is
-    /// useful when using functional struct updates:
-    ///
-    /// ```rust
-    /// use std::io::process::{ProcessConfig, Process};
-    ///
-    /// let config = ProcessConfig {
-    ///     program: "/bin/sh",
-    ///     args: &["-c".to_owned(), "echo hello".to_owned()],
-    ///     .. ProcessConfig::new()
-    /// };
-    ///
-    /// let p = Process::configure(config);
-    /// ```
-    ///
-    pub fn new<'a>() -> ProcessConfig<'a> {
-        ProcessConfig {
-            program: "",
-            args: &[],
-            env: None,
-            cwd: None,
-            stdin: CreatePipe(true, false),
-            stdout: CreatePipe(false, true),
-            stderr: CreatePipe(false, true),
-            extra_io: &[],
-            uid: None,
-            gid: None,
-            detach: false,
-        }
-    }
-}
-
 impl Process {
-    /// Creates a new process for the specified program/arguments, using
-    /// otherwise default configuration.
-    ///
-    /// By default, new processes have their stdin/stdout/stderr handles created
-    /// as pipes the can be manipulated through the respective fields of the
-    /// returned `Process`.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use std::io::Process;
-    ///
-    /// let mut process = match Process::new("sh", &["c".to_owned(), "echo hello".to_owned()]) {
-    ///     Ok(p) => p,
-    ///     Err(e) => fail!("failed to execute process: {}", e),
-    /// };
-    ///
-    /// let output = process.stdout.get_mut_ref().read_to_end();
-    /// ```
-    pub fn new(prog: &str, args: &[~str]) -> IoResult<Process> {
-        Process::configure(ProcessConfig {
-            program: prog,
-            args: args,
-            .. ProcessConfig::new()
-        })
-    }
-
-    /// Executes the specified program with arguments, waiting for it to finish
-    /// and collecting all of its output.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use std::io::Process;
-    /// use std::str;
-    ///
-    /// let output = match Process::output("cat", ["foo.txt".to_owned()]) {
-    ///     Ok(output) => output,
-    ///     Err(e) => fail!("failed to execute process: {}", e),
-    /// };
-    ///
-    /// println!("status: {}", output.status);
-    /// println!("stdout: {}", str::from_utf8_lossy(output.output.as_slice()));
-    /// println!("stderr: {}", str::from_utf8_lossy(output.error.as_slice()));
-    /// ```
-    pub fn output(prog: &str, args: &[~str]) -> IoResult<ProcessOutput> {
-        Process::new(prog, args).and_then(|p| p.wait_with_output())
-    }
-
-    /// Executes a child process and collects its exit status. This will block
-    /// waiting for the child to exit.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use std::io::Process;
-    ///
-    /// let status = match Process::status("ls", []) {
-    ///     Ok(status) => status,
-    ///     Err(e) => fail!("failed to execute process: {}", e),
-    /// };
-    ///
-    /// println!("process exited with: {}", status);
-    /// ```
-    pub fn status(prog: &str, args: &[~str]) -> IoResult<ProcessExit> {
-        Process::new(prog, args).and_then(|mut p| p.wait())
-    }
-
-    /// Creates a new process with the specified configuration.
-    pub fn configure(config: ProcessConfig) -> IoResult<Process> {
-        let mut config = Some(config);
-        LocalIo::maybe_raise(|io| {
-            io.spawn(config.take_unwrap()).map(|(p, io)| {
-                let mut io = io.move_iter().map(|p| {
-                    p.map(|p| io::PipeStream::new(p))
-                });
-                Process {
-                    handle: p,
-                    stdin: io.next().unwrap(),
-                    stdout: io.next().unwrap(),
-                    stderr: io.next().unwrap(),
-                    extra_io: io.collect(),
-                }
-            })
-        })
-    }
-
     /// Sends `signal` to another process in the system identified by `id`.
     ///
     /// Note that windows doesn't quite have the same model as unix, so some
@@ -403,11 +458,11 @@ impl Process {
     ///
     /// ```no_run
     /// # #![allow(experimental)]
-    /// use std::io::process::{Process, ProcessExit};
+    /// use std::io::process::{Command, ProcessExit};
     /// use std::io::IoResult;
     ///
     /// fn run_gracefully(prog: &str) -> IoResult<ProcessExit> {
-    ///     let mut p = try!(Process::new("long-running-process", []));
+    ///     let mut p = try!(Command::new("long-running-process").spawn());
     ///
     ///     // give the process 10 seconds to finish completely
     ///     p.set_timeout(Some(10_000));
@@ -487,18 +542,14 @@ impl Drop for Process {
 
 #[cfg(test)]
 mod tests {
-    use io::process::{ProcessConfig, Process};
+    use io::process::{Command, Process};
     use prelude::*;
 
     // FIXME(#10380) these tests should not all be ignored on android.
 
     #[cfg(not(target_os="android"))]
     iotest!(fn smoke() {
-        let args = ProcessConfig {
-            program: "true",
-            .. ProcessConfig::new()
-        };
-        let p = Process::configure(args);
+        let p = Command::new("true").spawn();
         assert!(p.is_ok());
         let mut p = p.unwrap();
         assert!(p.wait().unwrap().success());
@@ -506,11 +557,7 @@ mod tests {
 
     #[cfg(not(target_os="android"))]
     iotest!(fn smoke_failure() {
-        let args = ProcessConfig {
-            program: "if-this-is-a-binary-then-the-world-has-ended",
-            .. ProcessConfig::new()
-        };
-        match Process::configure(args) {
+        match Command::new("if-this-is-a-binary-then-the-world-has-ended").spawn() {
             Ok(..) => fail!(),
             Err(..) => {}
         }
@@ -518,11 +565,7 @@ mod tests {
 
     #[cfg(not(target_os="android"))]
     iotest!(fn exit_reported_right() {
-        let args = ProcessConfig {
-            program: "false",
-            .. ProcessConfig::new()
-        };
-        let p = Process::configure(args);
+        let p = Command::new("false").spawn();
         assert!(p.is_ok());
         let mut p = p.unwrap();
         assert!(p.wait().unwrap().matches_exit_status(1));
@@ -531,12 +574,7 @@ mod tests {
 
     #[cfg(unix, not(target_os="android"))]
     iotest!(fn signal_reported_right() {
-        let args = ProcessConfig {
-            program: "/bin/sh",
-            args: &["-c".to_owned(), "kill -1 $$".to_owned()],
-            .. ProcessConfig::new()
-        };
-        let p = Process::configure(args);
+        let p = Command::new("/bin/sh").arg("-c").arg("kill -1 $$").spawn();
         assert!(p.is_ok());
         let mut p = p.unwrap();
         match p.wait().unwrap() {
@@ -549,8 +587,8 @@ mod tests {
         input.read_to_str().unwrap()
     }
 
-    pub fn run_output(args: ProcessConfig) -> ~str {
-        let p = Process::configure(args);
+    pub fn run_output(cmd: Command) -> ~str {
+        let p = cmd.spawn();
         assert!(p.is_ok());
         let mut p = p.unwrap();
         assert!(p.stdout.is_some());
@@ -561,38 +599,27 @@ mod tests {
 
     #[cfg(not(target_os="android"))]
     iotest!(fn stdout_works() {
-        let args = ProcessConfig {
-            program: "echo",
-            args: &["foobar".to_owned()],
-            stdout: CreatePipe(false, true),
-            .. ProcessConfig::new()
-        };
-        assert_eq!(run_output(args), "foobar\n".to_owned());
+        let mut cmd = Command::new("echo");
+        cmd.arg("foobar").stdout(CreatePipe(false, true));
+        assert_eq!(run_output(cmd), "foobar\n".to_owned());
     })
 
     #[cfg(unix, not(target_os="android"))]
     iotest!(fn set_cwd_works() {
-        let cwd = Path::new("/");
-        let args = ProcessConfig {
-            program: "/bin/sh",
-            args: &["-c".to_owned(), "pwd".to_owned()],
-            cwd: Some(&cwd),
-            stdout: CreatePipe(false, true),
-            .. ProcessConfig::new()
-        };
-        assert_eq!(run_output(args), "/\n".to_owned());
+        let mut cmd = Command::new("/bin/sh");
+        cmd.arg("-c").arg("pwd")
+           .cwd(&Path::new("/"))
+           .stdout(CreatePipe(false, true));
+        assert_eq!(run_output(cmd), "/\n".to_owned());
     })
 
     #[cfg(unix, not(target_os="android"))]
     iotest!(fn stdin_works() {
-        let args = ProcessConfig {
-            program: "/bin/sh",
-            args: &["-c".to_owned(), "read line; echo $line".to_owned()],
-            stdin: CreatePipe(true, false),
-            stdout: CreatePipe(false, true),
-            .. ProcessConfig::new()
-        };
-        let mut p = Process::configure(args).unwrap();
+        let mut p = Command::new("/bin/sh")
+                            .arg("-c").arg("read line; echo $line")
+                            .stdin(CreatePipe(true, false))
+                            .stdout(CreatePipe(false, true))
+                            .spawn().unwrap();
         p.stdin.get_mut_ref().write("foobar".as_bytes()).unwrap();
         drop(p.stdin.take());
         let out = read_all(p.stdout.get_mut_ref() as &mut Reader);
@@ -602,36 +629,23 @@ mod tests {
 
     #[cfg(not(target_os="android"))]
     iotest!(fn detach_works() {
-        let args = ProcessConfig {
-            program: "true",
-            detach: true,
-            .. ProcessConfig::new()
-        };
-        let mut p = Process::configure(args).unwrap();
+        let mut p = Command::new("true").detached().spawn().unwrap();
         assert!(p.wait().unwrap().success());
     })
 
     #[cfg(windows)]
     iotest!(fn uid_fails_on_windows() {
-        let args = ProcessConfig {
-            program: "test",
-            uid: Some(10),
-            .. ProcessConfig::new()
-        };
-        assert!(Process::configure(args).is_err());
+        assert!(Command::new("test").uid(10).spawn().is_err());
     })
 
     #[cfg(unix, not(target_os="android"))]
     iotest!(fn uid_works() {
         use libc;
-        let args = ProcessConfig {
-            program: "/bin/sh",
-            args: &["-c".to_owned(), "true".to_owned()],
-            uid: Some(unsafe { libc::getuid() as uint }),
-            gid: Some(unsafe { libc::getgid() as uint }),
-            .. ProcessConfig::new()
-        };
-        let mut p = Process::configure(args).unwrap();
+        let mut p = Command::new("/bin/sh")
+                            .arg("-c").arg("true")
+                            .uid(unsafe { libc::getuid() as uint })
+                            .gid(unsafe { libc::getgid() as uint })
+                            .spawn().unwrap();
         assert!(p.wait().unwrap().success());
     })
 
@@ -642,26 +656,20 @@ mod tests {
         // if we're already root, this isn't a valid test. Most of the bots run
         // as non-root though (android is an exception).
         if unsafe { libc::getuid() == 0 } { return }
-        let args = ProcessConfig {
-            program: "/bin/ls",
-            uid: Some(0),
-            gid: Some(0),
-            .. ProcessConfig::new()
-        };
-        assert!(Process::configure(args).is_err());
+        assert!(Command::new("/bin/ls").uid(0).gid(0).spawn().is_err());
     })
 
     #[cfg(not(target_os="android"))]
     iotest!(fn test_process_status() {
-        let mut status = Process::status("false", []).unwrap();
+        let mut status = Command::new("false").status().unwrap();
         assert!(status.matches_exit_status(1));
 
-        status = Process::status("true", []).unwrap();
+        status = Command::new("true").status().unwrap();
         assert!(status.success());
     })
 
     iotest!(fn test_process_output_fail_to_start() {
-        match Process::output("/no-binary-by-this-name-should-exist", []) {
+        match Command::new("/no-binary-by-this-name-should-exist").output() {
             Err(e) => assert_eq!(e.kind, FileNotFound),
             Ok(..) => fail!()
         }
@@ -669,9 +677,8 @@ mod tests {
 
     #[cfg(not(target_os="android"))]
     iotest!(fn test_process_output_output() {
-
         let ProcessOutput {status, output, error}
-             = Process::output("echo", ["hello".to_owned()]).unwrap();
+             = Command::new("echo").arg("hello").output().unwrap();
         let output_str = str::from_utf8(output.as_slice()).unwrap();
 
         assert!(status.success());
@@ -685,7 +692,7 @@ mod tests {
     #[cfg(not(target_os="android"))]
     iotest!(fn test_process_output_error() {
         let ProcessOutput {status, output, error}
-             = Process::output("mkdir", [".".to_owned()]).unwrap();
+             = Command::new("mkdir").arg(".").output().unwrap();
 
         assert!(status.matches_exit_status(1));
         assert_eq!(output, Vec::new());
@@ -694,21 +701,20 @@ mod tests {
 
     #[cfg(not(target_os="android"))]
     iotest!(fn test_finish_once() {
-        let mut prog = Process::new("false", []).unwrap();
+        let mut prog = Command::new("false").spawn().unwrap();
         assert!(prog.wait().unwrap().matches_exit_status(1));
     })
 
     #[cfg(not(target_os="android"))]
     iotest!(fn test_finish_twice() {
-        let mut prog = Process::new("false", []).unwrap();
+        let mut prog = Command::new("false").spawn().unwrap();
         assert!(prog.wait().unwrap().matches_exit_status(1));
         assert!(prog.wait().unwrap().matches_exit_status(1));
     })
 
     #[cfg(not(target_os="android"))]
     iotest!(fn test_wait_with_output_once() {
-
-        let prog = Process::new("echo", ["hello".to_owned()]).unwrap();
+        let prog = Command::new("echo").arg("hello").spawn().unwrap();
         let ProcessOutput {status, output, error} = prog.wait_with_output().unwrap();
         let output_str = str::from_utf8(output.as_slice()).unwrap();
 
@@ -721,36 +727,26 @@ mod tests {
     })
 
     #[cfg(unix,not(target_os="android"))]
-    pub fn run_pwd(dir: Option<&Path>) -> Process {
-        Process::configure(ProcessConfig {
-            program: "pwd",
-            cwd: dir,
-            .. ProcessConfig::new()
-        }).unwrap()
+    pub fn pwd_cmd() -> Command {
+        Command::new("pwd")
     }
     #[cfg(target_os="android")]
-    pub fn run_pwd(dir: Option<&Path>) -> Process {
-        Process::configure(ProcessConfig {
-            program: "/system/bin/sh",
-            args: &["-c".to_owned(),"pwd".to_owned()],
-            cwd: dir.map(|a| &*a),
-            .. ProcessConfig::new()
-        }).unwrap()
+    pub fn pwd_cmd() -> Command {
+        let mut cmd = Command::new("/system/bin/sh");
+        cmd.arg("-c").arg("pwd");
+        cmd
     }
 
     #[cfg(windows)]
-    pub fn run_pwd(dir: Option<&Path>) -> Process {
-        Process::configure(ProcessConfig {
-            program: "cmd",
-            args: &["/c".to_owned(), "cd".to_owned()],
-            cwd: dir.map(|a| &*a),
-            .. ProcessConfig::new()
-        }).unwrap()
+    pub fn pwd_cmd() -> Command {
+        let mut cmd = Command::new("cmd");
+        cmd.arg("/c").arg("cd");
+        cmd
     }
 
     iotest!(fn test_keep_current_working_dir() {
         use os;
-        let prog = run_pwd(None);
+        let prog = pwd_cmd().spawn().unwrap();
 
         let output = str::from_utf8(prog.wait_with_output().unwrap()
                                         .output.as_slice()).unwrap().to_owned();
@@ -769,7 +765,7 @@ mod tests {
         // test changing to the parent of os::getcwd() because we know
         // the path exists (and os::getcwd() is not expected to be root)
         let parent_dir = os::getcwd().dir_path();
-        let prog = run_pwd(Some(&parent_dir));
+        let prog = pwd_cmd().cwd(&parent_dir).spawn().unwrap();
 
         let output = str::from_utf8(prog.wait_with_output().unwrap()
                                         .output.as_slice()).unwrap().to_owned();
@@ -783,31 +779,21 @@ mod tests {
     })
 
     #[cfg(unix,not(target_os="android"))]
-    pub fn run_env(env: Option<~[(~str, ~str)]>) -> Process {
-        Process::configure(ProcessConfig {
-            program: "env",
-            env: env.as_ref().map(|e| e.as_slice()),
-            .. ProcessConfig::new()
-        }).unwrap()
+    pub fn env_cmd() -> Command {
+        Command::new("env")
     }
     #[cfg(target_os="android")]
-    pub fn run_env(env: Option<~[(~str, ~str)]>) -> Process {
-        Process::configure(ProcessConfig {
-            program: "/system/bin/sh",
-            args: &["-c".to_owned(),"set".to_owned()],
-            env: env.as_ref().map(|e| e.as_slice()),
-            .. ProcessConfig::new()
-        }).unwrap()
+    pub fn env_cmd() -> Command {
+        let mut cmd = Command::new("/system/bin/sh");
+        cmd.arg("-c").arg("set");
+        cmd
     }
 
     #[cfg(windows)]
-    pub fn run_env(env: Option<~[(~str, ~str)]>) -> Process {
-        Process::configure(ProcessConfig {
-            program: "cmd",
-            args: &["/c".to_owned(), "set".to_owned()],
-            env: env.as_ref().map(|e| e.as_slice()),
-            .. ProcessConfig::new()
-        }).unwrap()
+    pub fn env_cmd() -> Command {
+        let mut cmd = Command::new("cmd");
+        cmd.arg("/c").arg("set");
+        cmd
     }
 
     #[cfg(not(target_os="android"))]
@@ -815,7 +801,7 @@ mod tests {
         use os;
         if running_on_valgrind() { return; }
 
-        let prog = run_env(None);
+        let prog = env_cmd().spawn().unwrap();
         let output = str::from_utf8(prog.wait_with_output().unwrap()
                                         .output.as_slice()).unwrap().to_owned();
 
@@ -830,7 +816,7 @@ mod tests {
         use os;
         if running_on_valgrind() { return; }
 
-        let prog = run_env(None);
+        let mut prog = env_cmd().spawn().unwrap();
         let output = str::from_utf8(prog.wait_with_output()
                                         .unwrap().output.as_slice())
                                    .unwrap().to_owned();
@@ -846,9 +832,8 @@ mod tests {
     })
 
     iotest!(fn test_add_to_env() {
-        let new_env = box [("RUN_TEST_NEW_ENV".to_owned(), "123".to_owned())];
-
-        let prog = run_env(Some(new_env));
+        let new_env = box [("RUN_TEST_NEW_ENV", "123")];
+        let prog = env_cmd().env(new_env).spawn().unwrap();
         let result = prog.wait_with_output().unwrap();
         let output = str::from_utf8_lossy(result.output.as_slice()).into_owned();
 
@@ -858,14 +843,14 @@ mod tests {
 
     #[cfg(unix)]
     pub fn sleeper() -> Process {
-        Process::new("sleep", ["1000".to_owned()]).unwrap()
+        Command::new("sleep").arg("1000").spawn().unwrap()
     }
     #[cfg(windows)]
     pub fn sleeper() -> Process {
         // There's a `timeout` command on windows, but it doesn't like having
         // its output piped, so instead just ping ourselves a few times with
         // gaps inbetweeen so we're sure this process is alive for awhile
-        Process::new("ping", ["127.0.0.1".to_owned(), "-n".to_owned(), "1000".to_owned()]).unwrap()
+        Command::new("ping").arg("127.0.0.1").arg("-n").arg("1000").spawn().unwrap()
     }
 
     iotest!(fn test_kill() {
