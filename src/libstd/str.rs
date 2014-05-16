@@ -87,6 +87,7 @@ use iter::{Iterator, range, AdditiveIterator};
 use mem::transmute;
 use mem;
 use option::{None, Option, Some};
+use result::{Result, Ok, Err};
 use slice::Vector;
 use slice::{ImmutableVector, MutableVector, CloneableVector};
 use strbuf::StrBuf;
@@ -105,12 +106,14 @@ Section: Creating a string
 */
 
 /// Consumes a vector of bytes to create a new utf-8 string.
-/// Returns None if the vector contains invalid UTF-8.
-pub fn from_utf8_owned(vv: ~[u8]) -> Option<~str> {
+///
+/// Returns `Err` with the original vector if the vector contains invalid
+/// UTF-8.
+pub fn from_utf8_owned(vv: ~[u8]) -> Result<~str, ~[u8]> {
     if is_utf8(vv) {
-        Some(unsafe { raw::from_utf8_owned(vv) })
+        Ok(unsafe { raw::from_utf8_owned(vv) })
     } else {
-        None
+        Err(vv)
     }
 }
 
@@ -2120,13 +2123,13 @@ mod tests {
     #[test]
     fn test_str_from_utf8_owned() {
         let xs = bytes!("hello").to_owned();
-        assert_eq!(from_utf8_owned(xs), Some("hello".to_owned()));
+        assert_eq!(from_utf8_owned(xs), Ok("hello".to_owned()));
 
         let xs = bytes!("ศไทย中华Việt Nam").to_owned();
-        assert_eq!(from_utf8_owned(xs), Some("ศไทย中华Việt Nam".to_owned()));
+        assert_eq!(from_utf8_owned(xs), Ok("ศไทย中华Việt Nam".to_owned()));
 
         let xs = bytes!("hello", 0xff).to_owned();
-        assert_eq!(from_utf8_owned(xs), None);
+        assert_eq!(from_utf8_owned(xs), Err(bytes!("hello", 0xff).to_owned()));
     }
 
     #[test]
