@@ -1295,8 +1295,7 @@ impl<K: TotalEq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     ///         },
     ///         // if the key doesn't exist in the map yet, add it in
     ///         // the obvious way.
-    ///         |_k, v| vec![v],
-    ///     );
+    ///         |_k, v| vec![v]);
     /// }
     ///
     /// assert_eq!(map.len(), 3);
