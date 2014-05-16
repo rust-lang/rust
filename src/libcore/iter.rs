@@ -969,7 +969,7 @@ impl<A: TotalOrd, T: Iterator<A>> OrdIterator<A> for T {
 }
 
 /// `MinMaxResult` is an enum returned by `min_max`. See `OrdIterator::min_max` for more detail.
-#[deriving(Clone, Eq)]
+#[deriving(Clone, Eq, Show)]
 pub enum MinMaxResult<T> {
     /// Empty iterator
     NoElements,
@@ -2329,19 +2329,48 @@ pub mod order {
 
 #[cfg(test)]
 mod tests {
-    use realstd::prelude::*;
-    use realstd::iter::*;
-    use realstd::num;
+    use prelude::*;
+    use iter::*;
+    use num;
+    use realstd::vec::Vec;
+    use realstd::slice::Vector;
 
     use cmp;
     use realstd::owned::Box;
     use uint;
 
+    impl<T> FromIterator<T> for Vec<T> {
+        fn from_iter<I: Iterator<T>>(mut iterator: I) -> Vec<T> {
+            let mut v = Vec::new();
+            for e in iterator {
+                v.push(e);
+            }
+            return v;
+        }
+    }
+
+    impl<'a, T> Iterator<&'a T> for ::realcore::slice::Items<'a, T> {
+        fn next(&mut self) -> Option<&'a T> {
+            use RealSome = realcore::option::Some;
+            use RealNone = realcore::option::None;
+            fn mynext<T, I: ::realcore::iter::Iterator<T>>(i: &mut I)
+                -> ::realcore::option::Option<T>
+            {
+                use realcore::iter::Iterator;
+                i.next()
+            }
+            match mynext(self) {
+                RealSome(t) => Some(t),
+                RealNone => None,
+            }
+        }
+    }
+
     #[test]
     fn test_counter_from_iter() {
         let it = count(0, 5).take(10);
         let xs: Vec<int> = FromIterator::from_iter(it);
-        assert_eq!(xs, vec![0, 5, 10, 15, 20, 25, 30, 35, 40, 45]);
+        assert!(xs == vec![0, 5, 10, 15, 20, 25, 30, 35, 40, 45]);
     }
 
     #[test]
@@ -2371,7 +2400,7 @@ mod tests {
     fn test_filter_map() {
         let mut it = count(0u, 1u).take(10)
             .filter_map(|x| if x % 2 == 0 { Some(x*x) } else { None });
-        assert_eq!(it.collect::<Vec<uint>>(), vec![0*0, 2*2, 4*4, 6*6, 8*8]);
+        assert!(it.collect::<Vec<uint>>() == vec![0*0, 2*2, 4*4, 6*6, 8*8]);
     }
 
     #[test]
@@ -2630,7 +2659,7 @@ mod tests {
     fn test_collect() {
         let a = vec![1, 2, 3, 4, 5];
         let b: Vec<int> = a.iter().map(|&x| x).collect();
-        assert_eq!(a, b);
+        assert!(a == b);
     }
 
     #[test]
@@ -2702,7 +2731,8 @@ mod tests {
         let mut it = xs.iter();
         it.next();
         it.next();
-        assert_eq!(it.rev().map(|&x| x).collect::<Vec<int>>(), vec![16, 14, 12, 10, 8, 6]);
+        assert!(it.rev().map(|&x| x).collect::<Vec<int>>() ==
+                vec![16, 14, 12, 10, 8, 6]);
     }
 
     #[test]
@@ -2940,12 +2970,12 @@ mod tests {
 
     #[test]
     fn test_double_ended_range() {
-        assert_eq!(range(11i, 14).rev().collect::<Vec<int>>(), vec![13i, 12, 11]);
+        assert!(range(11i, 14).rev().collect::<Vec<int>>() == vec![13i, 12, 11]);
         for _ in range(10i, 0).rev() {
             fail!("unreachable");
         }
 
-        assert_eq!(range(11u, 14).rev().collect::<Vec<uint>>(), vec![13u, 12, 11]);
+        assert!(range(11u, 14).rev().collect::<Vec<uint>>() == vec![13u, 12, 11]);
         for _ in range(10u, 0).rev() {
             fail!("unreachable");
         }
@@ -2997,14 +3027,14 @@ mod tests {
             }
         }
 
-        assert_eq!(range(0i, 5).collect::<Vec<int>>(), vec![0i, 1, 2, 3, 4]);
-        assert_eq!(range(-10i, -1).collect::<Vec<int>>(),
+        assert!(range(0i, 5).collect::<Vec<int>>() == vec![0i, 1, 2, 3, 4]);
+        assert!(range(-10i, -1).collect::<Vec<int>>() ==
                    vec![-10, -9, -8, -7, -6, -5, -4, -3, -2]);
-        assert_eq!(range(0i, 5).rev().collect::<Vec<int>>(), vec![4, 3, 2, 1, 0]);
-        assert_eq!(range(200, -5).collect::<Vec<int>>(), vec![]);
-        assert_eq!(range(200, -5).rev().collect::<Vec<int>>(), vec![]);
-        assert_eq!(range(200, 200).collect::<Vec<int>>(), vec![]);
-        assert_eq!(range(200, 200).rev().collect::<Vec<int>>(), vec![]);
+        assert!(range(0i, 5).rev().collect::<Vec<int>>() == vec![4, 3, 2, 1, 0]);
+        assert_eq!(range(200, -5).len(), 0);
+        assert_eq!(range(200, -5).rev().len(), 0);
+        assert_eq!(range(200, 200).len(), 0);
+        assert_eq!(range(200, 200).rev().len(), 0);
 
         assert_eq!(range(0i, 100).size_hint(), (100, Some(100)));
         // this test is only meaningful when sizeof uint < sizeof u64
@@ -3015,32 +3045,44 @@ mod tests {
 
     #[test]
     fn test_range_inclusive() {
-        assert_eq!(range_inclusive(0i, 5).collect::<Vec<int>>(), vec![0i, 1, 2, 3, 4, 5]);
-        assert_eq!(range_inclusive(0i, 5).rev().collect::<Vec<int>>(), vec![5i, 4, 3, 2, 1, 0]);
-        assert_eq!(range_inclusive(200, -5).collect::<Vec<int>>(), vec![]);
-        assert_eq!(range_inclusive(200, -5).rev().collect::<Vec<int>>(), vec![]);
-        assert_eq!(range_inclusive(200, 200).collect::<Vec<int>>(), vec![200]);
-        assert_eq!(range_inclusive(200, 200).rev().collect::<Vec<int>>(), vec![200]);
+        assert!(range_inclusive(0i, 5).collect::<Vec<int>>() ==
+                vec![0i, 1, 2, 3, 4, 5]);
+        assert!(range_inclusive(0i, 5).rev().collect::<Vec<int>>() ==
+                vec![5i, 4, 3, 2, 1, 0]);
+        assert_eq!(range_inclusive(200, -5).len(), 0);
+        assert_eq!(range_inclusive(200, -5).rev().len(), 0);
+        assert!(range_inclusive(200, 200).collect::<Vec<int>>() == vec![200]);
+        assert!(range_inclusive(200, 200).rev().collect::<Vec<int>>() == vec![200]);
     }
 
     #[test]
     fn test_range_step() {
-        assert_eq!(range_step(0i, 20, 5).collect::<Vec<int>>(), vec![0, 5, 10, 15]);
-        assert_eq!(range_step(20i, 0, -5).collect::<Vec<int>>(), vec![20, 15, 10, 5]);
-        assert_eq!(range_step(20i, 0, -6).collect::<Vec<int>>(), vec![20, 14, 8, 2]);
-        assert_eq!(range_step(200u8, 255, 50).collect::<Vec<u8>>(), vec![200u8, 250]);
-        assert_eq!(range_step(200, -5, 1).collect::<Vec<int>>(), vec![]);
-        assert_eq!(range_step(200, 200, 1).collect::<Vec<int>>(), vec![]);
+        assert!(range_step(0i, 20, 5).collect::<Vec<int>>() ==
+                vec![0, 5, 10, 15]);
+        assert!(range_step(20i, 0, -5).collect::<Vec<int>>() ==
+                vec![20, 15, 10, 5]);
+        assert!(range_step(20i, 0, -6).collect::<Vec<int>>() ==
+                vec![20, 14, 8, 2]);
+        assert!(range_step(200u8, 255, 50).collect::<Vec<u8>>() ==
+                vec![200u8, 250]);
+        assert!(range_step(200, -5, 1).collect::<Vec<int>>() == vec![]);
+        assert!(range_step(200, 200, 1).collect::<Vec<int>>() == vec![]);
     }
 
     #[test]
     fn test_range_step_inclusive() {
-        assert_eq!(range_step_inclusive(0i, 20, 5).collect::<Vec<int>>(), vec![0, 5, 10, 15, 20]);
-        assert_eq!(range_step_inclusive(20i, 0, -5).collect::<Vec<int>>(), vec![20, 15, 10, 5, 0]);
-        assert_eq!(range_step_inclusive(20i, 0, -6).collect::<Vec<int>>(), vec![20, 14, 8, 2]);
-        assert_eq!(range_step_inclusive(200u8, 255, 50).collect::<Vec<u8>>(), vec![200u8, 250]);
-        assert_eq!(range_step_inclusive(200, -5, 1).collect::<Vec<int>>(), vec![]);
-        assert_eq!(range_step_inclusive(200, 200, 1).collect::<Vec<int>>(), vec![200]);
+        assert!(range_step_inclusive(0i, 20, 5).collect::<Vec<int>>() ==
+                vec![0, 5, 10, 15, 20]);
+        assert!(range_step_inclusive(20i, 0, -5).collect::<Vec<int>>() ==
+                vec![20, 15, 10, 5, 0]);
+        assert!(range_step_inclusive(20i, 0, -6).collect::<Vec<int>>() ==
+                vec![20, 14, 8, 2]);
+        assert!(range_step_inclusive(200u8, 255, 50).collect::<Vec<u8>>() ==
+                vec![200u8, 250]);
+        assert!(range_step_inclusive(200, -5, 1).collect::<Vec<int>>() ==
+                vec![]);
+        assert!(range_step_inclusive(200, 200, 1).collect::<Vec<int>>() ==
+                vec![200]);
     }
 
     #[test]

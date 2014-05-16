@@ -16,7 +16,6 @@
 //! them in the future to instead emit any format desired.
 
 use std::fmt;
-use std::io;
 use std::strbuf::StrBuf;
 
 use syntax::ast;
@@ -52,46 +51,46 @@ impl FnStyleSpace {
 impl fmt::Show for clean::Generics {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if self.lifetimes.len() == 0 && self.type_params.len() == 0 { return Ok(()) }
-        try!(f.buf.write("&lt;".as_bytes()));
+        try!(f.write("&lt;".as_bytes()));
 
         for (i, life) in self.lifetimes.iter().enumerate() {
             if i > 0 {
-                try!(f.buf.write(", ".as_bytes()));
+                try!(f.write(", ".as_bytes()));
             }
-            try!(write!(f.buf, "{}", *life));
+            try!(write!(f, "{}", *life));
         }
 
         if self.type_params.len() > 0 {
             if self.lifetimes.len() > 0 {
-                try!(f.buf.write(", ".as_bytes()));
+                try!(f.write(", ".as_bytes()));
             }
 
             for (i, tp) in self.type_params.iter().enumerate() {
                 if i > 0 {
-                    try!(f.buf.write(", ".as_bytes()))
+                    try!(f.write(", ".as_bytes()))
                 }
-                try!(f.buf.write(tp.name.as_bytes()));
+                try!(f.write(tp.name.as_bytes()));
 
                 if tp.bounds.len() > 0 {
-                    try!(f.buf.write(": ".as_bytes()));
+                    try!(f.write(": ".as_bytes()));
                     for (i, bound) in tp.bounds.iter().enumerate() {
                         if i > 0 {
-                            try!(f.buf.write(" + ".as_bytes()));
+                            try!(f.write(" + ".as_bytes()));
                         }
-                        try!(write!(f.buf, "{}", *bound));
+                        try!(write!(f, "{}", *bound));
                     }
                 }
             }
         }
-        try!(f.buf.write("&gt;".as_bytes()));
+        try!(f.write("&gt;".as_bytes()));
         Ok(())
     }
 }
 
 impl fmt::Show for clean::Lifetime {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(f.buf.write("'".as_bytes()));
-        try!(f.buf.write(self.get_ref().as_bytes()));
+        try!(f.write("'".as_bytes()));
+        try!(f.write(self.get_ref().as_bytes()));
         Ok(())
     }
 }
@@ -100,10 +99,10 @@ impl fmt::Show for clean::TyParamBound {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             clean::RegionBound => {
-                f.buf.write("'static".as_bytes())
+                f.write("::".as_bytes())
             }
             clean::TraitBound(ref ty) => {
-                write!(f.buf, "{}", *ty)
+                write!(f, "{}", *ty)
             }
         }
     }
@@ -112,32 +111,33 @@ impl fmt::Show for clean::TyParamBound {
 impl fmt::Show for clean::Path {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if self.global {
-            try!(f.buf.write("::".as_bytes()))
+            try!(f.write("::".as_bytes()))
         }
+
         for (i, seg) in self.segments.iter().enumerate() {
             if i > 0 {
-                try!(f.buf.write("::".as_bytes()))
+                try!(f.write("::".as_bytes()))
             }
-            try!(f.buf.write(seg.name.as_bytes()));
+            try!(f.write(seg.name.as_bytes()));
 
             if seg.lifetimes.len() > 0 || seg.types.len() > 0 {
-                try!(f.buf.write("&lt;".as_bytes()));
+                try!(f.write("&lt;".as_bytes()));
                 let mut comma = false;
                 for lifetime in seg.lifetimes.iter() {
                     if comma {
-                        try!(f.buf.write(", ".as_bytes()));
+                        try!(f.write(", ".as_bytes()));
                     }
                     comma = true;
-                    try!(write!(f.buf, "{}", *lifetime));
+                    try!(write!(f, "{}", *lifetime));
                 }
                 for ty in seg.types.iter() {
                     if comma {
-                        try!(f.buf.write(", ".as_bytes()));
+                        try!(f.write(", ".as_bytes()));
                     }
                     comma = true;
-                    try!(write!(f.buf, "{}", *ty));
+                    try!(write!(f, "{}", *ty));
                 }
-                try!(f.buf.write("&gt;".as_bytes()));
+                try!(f.write("&gt;".as_bytes()));
             }
         }
         Ok(())
@@ -146,7 +146,7 @@ impl fmt::Show for clean::Path {
 
 /// Used when rendering a `ResolvedPath` structure. This invokes the `path`
 /// rendering function with the necessary arguments for linking to a local path.
-fn resolved_path(w: &mut io::Writer, did: ast::DefId, p: &clean::Path,
+fn resolved_path(w: &mut fmt::Formatter, did: ast::DefId, p: &clean::Path,
                  print_all: bool) -> fmt::Result {
     path(w, p, print_all,
         |cache, loc| {
@@ -170,7 +170,7 @@ fn resolved_path(w: &mut io::Writer, did: ast::DefId, p: &clean::Path,
         })
 }
 
-fn path(w: &mut io::Writer, path: &clean::Path, print_all: bool,
+fn path(w: &mut fmt::Formatter, path: &clean::Path, print_all: bool,
         root: |&render::Cache, &[StrBuf]| -> Option<StrBuf>,
         info: |&render::Cache| -> Option<(Vec<StrBuf> , ItemType)>)
     -> fmt::Result
@@ -264,7 +264,7 @@ fn path(w: &mut io::Writer, path: &clean::Path, print_all: bool,
 }
 
 /// Helper to render type parameters
-fn tybounds(w: &mut io::Writer,
+fn tybounds(w: &mut fmt::Formatter,
             typarams: &Option<Vec<clean::TyParamBound> >) -> fmt::Result {
     match *typarams {
         Some(ref params) => {
@@ -286,13 +286,13 @@ impl fmt::Show for clean::Type {
         match *self {
             clean::TyParamBinder(id) | clean::Generic(id) => {
                 let m = cache_key.get().unwrap();
-                f.buf.write(m.typarams.get(&id).as_bytes())
+                f.write(m.typarams.get(&id).as_bytes())
             }
             clean::ResolvedPath{ did, ref typarams, ref path} => {
-                try!(resolved_path(f.buf, did, path, false));
-                tybounds(f.buf, typarams)
+                try!(resolved_path(f, did, path, false));
+                tybounds(f, typarams)
             }
-            clean::Self(..) => f.buf.write("Self".as_bytes()),
+            clean::Self(..) => f.write("Self".as_bytes()),
             clean::Primitive(prim) => {
                 let s = match prim {
                     ast::TyInt(ast::TyI) => "int",
@@ -312,11 +312,11 @@ impl fmt::Show for clean::Type {
                     ast::TyBool => "bool",
                     ast::TyChar => "char",
                 };
-                f.buf.write(s.as_bytes())
+                f.write(s.as_bytes())
             }
             clean::Closure(ref decl, ref region) => {
-                write!(f.buf, "{style}{lifetimes}|{args}|{bounds}\
-                               {arrow, select, yes{ -&gt; {ret}} other{}}",
+                write!(f, "{style}{lifetimes}|{args}|{bounds}\
+                           {arrow, select, yes{ -&gt; {ret}} other{}}",
                        style = FnStyleSpace(decl.fn_style),
                        lifetimes = if decl.lifetimes.len() == 0 {
                            "".to_owned()
@@ -351,8 +351,8 @@ impl fmt::Show for clean::Type {
                        })
             }
             clean::Proc(ref decl) => {
-                write!(f.buf, "{style}{lifetimes}proc({args}){bounds}\
-                               {arrow, select, yes{ -&gt; {ret}} other{}}",
+                write!(f, "{style}{lifetimes}proc({args}){bounds}\
+                           {arrow, select, yes{ -&gt; {ret}} other{}}",
                        style = FnStyleSpace(decl.fn_style),
                        lifetimes = if decl.lifetimes.len() == 0 {
                            "".to_strbuf()
@@ -374,7 +374,7 @@ impl fmt::Show for clean::Type {
                        ret = decl.decl.output)
             }
             clean::BareFunction(ref decl) => {
-                write!(f.buf, "{}{}fn{}{}",
+                write!(f, "{}{}fn{}{}",
                        FnStyleSpace(decl.fn_style),
                        match decl.abi.as_slice() {
                            "" => " extern ".to_strbuf(),
@@ -385,27 +385,27 @@ impl fmt::Show for clean::Type {
                        decl.decl)
             }
             clean::Tuple(ref typs) => {
-                try!(f.buf.write("(".as_bytes()));
+                try!(f.write("(".as_bytes()));
                 for (i, typ) in typs.iter().enumerate() {
                     if i > 0 {
-                        try!(f.buf.write(", ".as_bytes()))
+                        try!(f.write(", ".as_bytes()))
                     }
-                    try!(write!(f.buf, "{}", *typ));
+                    try!(write!(f, "{}", *typ));
                 }
-                f.buf.write(")".as_bytes())
+                f.write(")".as_bytes())
             }
-            clean::Vector(ref t) => write!(f.buf, "[{}]", **t),
+            clean::Vector(ref t) => write!(f, "[{}]", **t),
             clean::FixedVector(ref t, ref s) => {
-                write!(f.buf, "[{}, ..{}]", **t, *s)
+                write!(f, "[{}, ..{}]", **t, *s)
             }
-            clean::String => f.buf.write("str".as_bytes()),
-            clean::Bool => f.buf.write("bool".as_bytes()),
-            clean::Unit => f.buf.write("()".as_bytes()),
-            clean::Bottom => f.buf.write("!".as_bytes()),
-            clean::Unique(ref t) => write!(f.buf, "~{}", **t),
-            clean::Managed(ref t) => write!(f.buf, "@{}", **t),
+            clean::String => f.write("str".as_bytes()),
+            clean::Bool => f.write("bool".as_bytes()),
+            clean::Unit => f.write("()".as_bytes()),
+            clean::Bottom => f.write("!".as_bytes()),
+            clean::Unique(ref t) => write!(f, "~{}", **t),
+            clean::Managed(ref t) => write!(f, "@{}", **t),
             clean::RawPointer(m, ref t) => {
-                write!(f.buf, "*{}{}",
+                write!(f, "*{}{}",
                        match m {
                            clean::Mutable => "mut ",
                            clean::Immutable => "",
@@ -413,7 +413,7 @@ impl fmt::Show for clean::Type {
             }
             clean::BorrowedRef{ lifetime: ref l, mutability, type_: ref ty} => {
                 let lt = match *l { Some(ref l) => format!("{} ", *l), _ => "".to_owned() };
-                write!(f.buf, "&amp;{}{}{}",
+                write!(f, "&amp;{}{}{}",
                        lt,
                        match mutability {
                            clean::Mutable => "mut ",
@@ -428,11 +428,11 @@ impl fmt::Show for clean::Type {
 impl fmt::Show for clean::Arguments {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for (i, input) in self.values.iter().enumerate() {
-            if i > 0 { try!(write!(f.buf, ", ")); }
+            if i > 0 { try!(write!(f, ", ")); }
             if input.name.len() > 0 {
-                try!(write!(f.buf, "{}: ", input.name));
+                try!(write!(f, "{}: ", input.name));
             }
-            try!(write!(f.buf, "{}", input.type_));
+            try!(write!(f, "{}", input.type_));
         }
         Ok(())
     }
@@ -440,7 +440,7 @@ impl fmt::Show for clean::Arguments {
 
 impl fmt::Show for clean::FnDecl {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f.buf, "({args}){arrow, select, yes{ -&gt; {ret}} other{}}",
+        write!(f, "({args}){arrow, select, yes{ -&gt; {ret}} other{}}",
                args = self.inputs,
                arrow = match self.output { clean::Unit => "no", _ => "yes" },
                ret = self.output)
@@ -475,7 +475,7 @@ impl<'a> fmt::Show for Method<'a> {
             }
             args.push_str(format!("{}", input.type_));
         }
-        write!(f.buf,
+        write!(f,
                "({args}){arrow, select, yes{ -&gt; {ret}} other{}}",
                args = args,
                arrow = match d.output { clean::Unit => "no", _ => "yes" },
@@ -486,7 +486,7 @@ impl<'a> fmt::Show for Method<'a> {
 impl fmt::Show for VisSpace {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.get() {
-            Some(ast::Public) => write!(f.buf, "pub "),
+            Some(ast::Public) => write!(f, "pub "),
             Some(ast::Inherited) | None => Ok(())
         }
     }
@@ -495,7 +495,7 @@ impl fmt::Show for VisSpace {
 impl fmt::Show for FnStyleSpace {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.get() {
-            ast::UnsafeFn => write!(f.buf, "unsafe "),
+            ast::UnsafeFn => write!(f, "unsafe "),
             ast::NormalFn => Ok(())
         }
     }
@@ -506,23 +506,23 @@ impl fmt::Show for clean::ViewPath {
         match *self {
             clean::SimpleImport(ref name, ref src) => {
                 if *name == src.path.segments.last().unwrap().name {
-                    write!(f.buf, "use {};", *src)
+                    write!(f, "use {};", *src)
                 } else {
-                    write!(f.buf, "use {} = {};", *name, *src)
+                    write!(f, "use {} = {};", *name, *src)
                 }
             }
             clean::GlobImport(ref src) => {
-                write!(f.buf, "use {}::*;", *src)
+                write!(f, "use {}::*;", *src)
             }
             clean::ImportList(ref src, ref names) => {
-                try!(write!(f.buf, "use {}::\\{", *src));
+                try!(write!(f, "use {}::\\{", *src));
                 for (i, n) in names.iter().enumerate() {
                     if i > 0 {
-                        try!(write!(f.buf, ", "));
+                        try!(write!(f, ", "));
                     }
-                    try!(write!(f.buf, "{}", *n));
+                    try!(write!(f, "{}", *n));
                 }
-                write!(f.buf, "\\};")
+                write!(f, "\\};")
             }
         }
     }
@@ -531,13 +531,13 @@ impl fmt::Show for clean::ViewPath {
 impl fmt::Show for clean::ImportSource {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.did {
-            Some(did) => resolved_path(f.buf, did, &self.path, true),
+            Some(did) => resolved_path(f, did, &self.path, true),
             _ => {
                 for (i, seg) in self.path.segments.iter().enumerate() {
                     if i > 0 {
-                        try!(write!(f.buf, "::"))
+                        try!(write!(f, "::"))
                     }
-                    try!(write!(f.buf, "{}", seg.name));
+                    try!(write!(f, "{}", seg.name));
                 }
                 Ok(())
             }
@@ -557,9 +557,9 @@ impl fmt::Show for clean::ViewListIdent {
                         types: Vec::new(),
                     })
                 };
-                resolved_path(f.buf, did, &path, false)
+                resolved_path(f, did, &path, false)
             }
-            _ => write!(f.buf, "{}", self.name),
+            _ => write!(f, "{}", self.name),
         }
     }
 }

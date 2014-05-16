@@ -96,18 +96,18 @@ pub struct Version {
 impl fmt::Show for Version {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f.buf, "{}.{}.{}", self.major, self.minor, self.patch))
+        try!(write!(f, "{}.{}.{}", self.major, self.minor, self.patch))
         if !self.pre.is_empty() {
-            try!(write!(f.buf, "-"));
+            try!(write!(f, "-"));
             for (i, x) in self.pre.iter().enumerate() {
-                if i != 0 { try!(write!(f.buf, ".")) };
+                if i != 0 { try!(write!(f, ".")) };
                 try!(x.fmt(f));
             }
         }
         if !self.build.is_empty() {
-            try!(write!(f.buf, "+"));
+            try!(write!(f, "+"));
             for (i, x) in self.build.iter().enumerate() {
-                if i != 0 { try!(write!(f.buf, ".")) };
+                if i != 0 { try!(write!(f, ".")) };
                 try!(x.fmt(f));
             }
         }

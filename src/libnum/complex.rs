@@ -78,7 +78,7 @@ impl<T: Clone + Num> Complex<T> {
     }
 }
 
-impl<T: Clone + Float> Complex<T> {
+impl<T: Clone + FloatMath> Complex<T> {
     /// Calculate |self|
     #[inline]
     pub fn norm(&self) -> T {
@@ -86,7 +86,7 @@ impl<T: Clone + Float> Complex<T> {
     }
 }
 
-impl<T: Clone + Float> Complex<T> {
+impl<T: Clone + FloatMath> Complex<T> {
     /// Calculate the principal Arg of self.
     #[inline]
     pub fn arg(&self) -> T {
@@ -171,9 +171,9 @@ impl<T: Clone + Num> One for Complex<T> {
 impl<T: fmt::Show + Num + Ord> fmt::Show for Complex<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if self.im < Zero::zero() {
-            write!(f.buf, "{}-{}i", self.re, -self.im)
+            write!(f, "{}-{}i", self.re, -self.im)
         } else {
-            write!(f.buf, "{}+{}i", self.re, self.im)
+            write!(f, "{}+{}i", self.re, self.im)
         }
     }
 }

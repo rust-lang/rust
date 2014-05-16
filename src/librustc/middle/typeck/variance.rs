@@ -240,9 +240,9 @@ enum VarianceTerm<'a> {
 impl<'a> fmt::Show for VarianceTerm<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            ConstantTerm(c1) => write!(f.buf, "{}", c1),
-            TransformTerm(v1, v2) => write!(f.buf, "({} \u00D7 {})", v1, v2),
-            InferredTerm(id) => write!(f.buf, "[{}]", { let InferredIndex(i) = id; i })
+            ConstantTerm(c1) => write!(f, "{}", c1),
+            TransformTerm(v1, v2) => write!(f, "({} \u00D7 {})", v1, v2),
+            InferredTerm(id) => write!(f, "[{}]", { let InferredIndex(i) = id; i })
         }
     }
 }

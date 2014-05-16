@@ -281,7 +281,10 @@ pub fn syntax_expander_table() -> SyntaxEnv {
                                 ext::fmt::expand_syntax_ext));
     syntax_expanders.insert(intern("format_args"),
                             builtin_normal_expander(
-                                ext::format::expand_args));
+                                ext::format::expand_format_args));
+    syntax_expanders.insert(intern("format_args_method"),
+                            builtin_normal_expander(
+                                ext::format::expand_format_args_method));
     syntax_expanders.insert(intern("env"),
                             builtin_normal_expander(
                                     ext::env::expand_env));

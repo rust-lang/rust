@@ -29,7 +29,7 @@ enum square {
 
 impl fmt::Show for square {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f.buf, "{}", match *self {
+        write!(f, "{}", match *self {
           bot => { "R".to_owned() }
           wall => { "#".to_owned() }
           rock => { "*".to_owned() }

@@ -251,10 +251,17 @@ macro_rules! format_strbuf(
 /// write!(&mut w, "formatted {}", "arguments");
 /// ```
 #[macro_export]
+#[cfg(not(stage0))]
 macro_rules! write(
     ($dst:expr, $($arg:tt)*) => ({
-        let dst: &mut ::std::io::Writer = $dst;
-        format_args!(|args| { ::std::fmt::write(dst, args) }, $($arg)*)
+        format_args_method!($dst, write_fmt, $($arg)*)
+    })
+)
+#[cfg(stage0)]
+#[macro_export]
+macro_rules! write(
+    ($dst:expr, $($arg:tt)*) => ({
+        format_args!(|args| { $dst.write_fmt(args) }, $($arg)*)
     })
 )
 
@@ -262,10 +269,9 @@ macro_rules! write(
 /// the message is written.
 #[macro_export]
 macro_rules! writeln(
-    ($dst:expr, $($arg:tt)*) => ({
-        let dst: &mut ::std::io::Writer = $dst;
-        format_args!(|args| { ::std::fmt::writeln(dst, args) }, $($arg)*)
-    })
+    ($dst:expr, $fmt:expr $($arg:tt)*) => (
+        write!($dst, concat!($fmt, "\n") $($arg)*)
+    )
 )
 
 /// Equivalent to the `println!` macro except that a newline is not printed at

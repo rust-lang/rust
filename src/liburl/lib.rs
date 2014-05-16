@@ -427,8 +427,8 @@ fn split_char_first(s: &str, c: char) -> (StrBuf, StrBuf) {
 impl fmt::Show for UserInfo {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.pass {
-            Some(ref pass) => write!(f.buf, "{}:{}@", self.user, *pass),
-            None => write!(f.buf, "{}@", self.user),
+            Some(ref pass) => write!(f, "{}:{}@", self.user, *pass),
+            None => write!(f, "{}@", self.user),
         }
     }
 }
@@ -824,30 +824,30 @@ impl fmt::Show for Url {
      * result in just "http://somehost.com".
      */
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f.buf, "{}:", self.scheme));
+        try!(write!(f, "{}:", self.scheme));
 
         if !self.host.is_empty() {
-            try!(write!(f.buf, "//"));
+            try!(write!(f, "//"));
             match self.user {
-                Some(ref user) => try!(write!(f.buf, "{}", *user)),
+                Some(ref user) => try!(write!(f, "{}", *user)),
                 None => {}
             }
             match self.port {
-                Some(ref port) => try!(write!(f.buf, "{}:{}", self.host,
+                Some(ref port) => try!(write!(f, "{}:{}", self.host,
                                                 *port)),
-                None => try!(write!(f.buf, "{}", self.host)),
+                None => try!(write!(f, "{}", self.host)),
             }
         }
 
-        try!(write!(f.buf, "{}", self.path));
+        try!(write!(f, "{}", self.path));
 
         if !self.query.is_empty() {
-            try!(write!(f.buf, "?{}", query_to_str(&self.query)));
+            try!(write!(f, "?{}", query_to_str(&self.query)));
         }
 
         match self.fragment {
             Some(ref fragment) => {
-                write!(f.buf, "\\#{}", encode_component(fragment.as_slice()))
+                write!(f, "\\#{}", encode_component(fragment.as_slice()))
             }
             None => Ok(()),
         }
@@ -856,14 +856,14 @@ impl fmt::Show for Url {
 
 impl fmt::Show for Path {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f.buf, "{}", self.path));
+        try!(write!(f, "{}", self.path));
         if !self.query.is_empty() {
-            try!(write!(f.buf, "?{}", self.query))
+            try!(write!(f, "?{}", self.query))
         }
 
         match self.fragment {
             Some(ref fragment) => {
-                write!(f.buf, "\\#{}", encode_component(fragment.as_slice()))
+                write!(f, "\\#{}", encode_component(fragment.as_slice()))
             }
             None => Ok(())
         }

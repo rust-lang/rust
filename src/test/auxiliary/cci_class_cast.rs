@@ -19,7 +19,7 @@ pub mod kitty {
 
     impl fmt::Show for cat {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            write!(f.buf, "{}", self.name)
+            write!(f, "{}", self.name)
         }
     }
 

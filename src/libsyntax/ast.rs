@@ -711,7 +711,7 @@ pub enum IntTy {
 
 impl fmt::Show for IntTy {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f.buf, "{}",
+        write!(f, "{}",
                ast_util::int_ty_to_str(*self, None, ast_util::AutoSuffix))
     }
 }
@@ -727,7 +727,7 @@ pub enum UintTy {
 
 impl fmt::Show for UintTy {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f.buf, "{}",
+        write!(f, "{}",
                ast_util::uint_ty_to_str(*self, None, ast_util::AutoSuffix))
     }
 }
@@ -741,7 +741,7 @@ pub enum FloatTy {
 
 impl fmt::Show for FloatTy {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f.buf, "{}", ast_util::float_ty_to_str(*self))
+        write!(f, "{}", ast_util::float_ty_to_str(*self))
     }
 }
 

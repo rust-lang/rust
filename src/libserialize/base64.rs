@@ -170,8 +170,8 @@ impl fmt::Show for FromBase64Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             InvalidBase64Character(ch, idx) =>
-                write!(f.buf, "Invalid character '{}' at position {}", ch, idx),
-            InvalidBase64Length => write!(f.buf, "Invalid length"),
+                write!(f, "Invalid character '{}' at position {}", ch, idx),
+            InvalidBase64Length => write!(f, "Invalid length"),
         }
     }
 }

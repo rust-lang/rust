@@ -172,7 +172,7 @@ macro_rules! integer {
         int_base!(Octal    for $Int as $Uint  -> Octal)
         int_base!(LowerHex for $Int as $Uint  -> LowerHex)
         int_base!(UpperHex for $Int as $Uint  -> UpperHex)
-        radix_fmt!($Int as $Uint, fmt_int)
+        radix_fmt!($Int as $Int, fmt_int)
 
         int_base!(Show     for $Uint as $Uint -> Decimal)
         int_base!(Unsigned for $Uint as $Uint -> Decimal)
@@ -194,7 +194,7 @@ mod tests {
     use fmt::radix;
     use super::{Binary, Octal, Decimal, LowerHex, UpperHex};
     use super::{GenericRadix, Radix};
-    use str::StrAllocating;
+    use realstd::str::StrAllocating;
 
     #[test]
     fn test_radix_base() {
@@ -400,7 +400,6 @@ mod bench {
         use super::test::Bencher;
         use fmt::radix;
         use rand::{XorShiftRng, Rng};
-        use realstd::result::ResultUnwrap;
 
         #[bench]
         fn format_bin(b: &mut Bencher) {
@@ -437,7 +436,6 @@ mod bench {
         use super::test::Bencher;
         use fmt::radix;
         use rand::{XorShiftRng, Rng};
-        use realstd::result::ResultUnwrap;
 
         #[bench]
         fn format_bin(b: &mut Bencher) {

@@ -41,15 +41,15 @@ impl FromStr for Mode {
 impl fmt::Show for Mode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let msg = match *self {
-          CompileFail => "compile-fail",
-          RunFail => "run-fail",
-          RunPass => "run-pass",
-          Pretty => "pretty",
-          DebugInfoGdb => "debuginfo-gdb",
-          DebugInfoLldb => "debuginfo-lldb",
-          Codegen => "codegen",
+            CompileFail => "compile-fail",
+            RunFail => "run-fail",
+            RunPass => "run-pass",
+            Pretty => "pretty",
+            DebugInfoGdb => "debuginfo-gdb",
+            DebugInfoLldb => "debuginfo-lldb",
+            Codegen => "codegen",
         };
-        write!(f.buf, "{}", msg)
+        msg.fmt(f)
     }
 }
 

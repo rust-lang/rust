@@ -14,11 +14,29 @@
 #[macro_export]
 macro_rules! fail(
     () => (
-        fail!("explicit failure")
+        fail!("{}", "explicit failure")
     );
     ($msg:expr) => (
-        ::core::failure::begin_unwind($msg, file!(), line!())
+        fail!("{}", $msg)
     );
+    ($fmt:expr, $($arg:tt)*) => ({
+        // a closure can't have return type !, so we need a full
+        // function to pass to format_args!, *and* we need the
+        // file and line numbers right here; so an inner bare fn
+        // is our only choice.
+        //
+        // LLVM doesn't tend to inline this, presumably because begin_unwind_fmt
+        // is #[cold] and #[inline(never)] and because this is flagged as cold
+        // as returning !. We really do want this to be inlined, however,
+        // because it's just a tiny wrapper. Small wins (156K to 149K in size)
+        // were seen when forcing this to be inlined, and that number just goes
+        // up with the number of calls to fail!()
+        #[inline(always)]
+        fn run_fmt(fmt: &::std::fmt::Arguments) -> ! {
+            ::core::failure::begin_unwind(fmt, file!(), line!())
+        }
+        format_args!(run_fmt, $fmt, $($arg)*)
+    });
 )
 
 /// Runtime assertion, for details see std::macros
@@ -29,6 +47,22 @@ macro_rules! assert(
             fail!(concat!("assertion failed: ", stringify!($cond)))
         }
     );
+    ($cond:expr, $($arg:tt)*) => (
+        if !$cond {
+            fail!($($arg)*)
+        }
+    );
+)
+
+/// Runtime assertion for equality, for details see std::macros
+macro_rules! assert_eq(
+    ($cond1:expr, $cond2:expr) => ({
+        let c1 = $cond1;
+        let c2 = $cond2;
+        if c1 != c2 || c2 != c1 {
+            fail!("expressions not equal, left: {}, right: {}", c1, c2);
+        }
+    })
 )
 
 /// Runtime assertion, disableable at compile time
@@ -36,3 +70,19 @@ macro_rules! assert(
 macro_rules! debug_assert(
     ($($arg:tt)*) => (if cfg!(not(ndebug)) { assert!($($arg)*); })
 )
+
+/// Short circuiting evaluation on Err
+#[macro_export]
+macro_rules! try(
+    ($e:expr) => (match $e { Ok(e) => e, Err(e) => return Err(e) })
+)
+
+#[cfg(test)]
+macro_rules! vec( ($($e:expr),*) => ({
+    let mut _v = ::std::vec::Vec::new();
+    $(_v.push($e);)*
+    _v
+}) )
+
+#[cfg(test)]
+macro_rules! format( ($($arg:tt)*) => (format_args!(::fmt::format, $($arg)*)) )

@@ -29,7 +29,6 @@
 use libc;
 use std::cell::RefCell;
 use std::fmt;
-use std::io;
 use std::slice;
 use std::str;
 use collections::HashMap;
@@ -141,7 +140,7 @@ fn stripped_filtered_line<'a>(s: &'a str) -> Option<&'a str> {
 
 local_data_key!(used_header_map: RefCell<HashMap<StrBuf, uint>>)
 
-pub fn render(w: &mut io::Writer, s: &str, print_toc: bool) -> fmt::Result {
+pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
     extern fn block(ob: *mut hoedown_buffer, text: *hoedown_buffer,
                     lang: *hoedown_buffer, opaque: *mut libc::c_void) {
         unsafe {
@@ -355,13 +354,13 @@ impl<'a> fmt::Show for Markdown<'a> {
         let Markdown(md) = *self;
         // This is actually common enough to special-case
         if md.len() == 0 { return Ok(()) }
-        render(fmt.buf, md.as_slice(), false)
+        render(fmt, md.as_slice(), false)
     }
 }
 
 impl<'a> fmt::Show for MarkdownWithToc<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let MarkdownWithToc(md) = *self;
-        render(fmt.buf, md.as_slice(), true)
+        render(fmt, md.as_slice(), true)
     }
 }

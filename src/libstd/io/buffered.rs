@@ -16,7 +16,7 @@ use io::{Reader, Writer, Stream, Buffer, DEFAULT_BUF_SIZE, IoResult};
 use iter::ExactSize;
 use ops::Drop;
 use option::{Some, None, Option};
-use result::{Ok, Err, ResultUnwrap};
+use result::{Ok, Err};
 use slice::{ImmutableVector, MutableVector};
 use slice;
 use vec::Vec;

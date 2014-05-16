@@ -255,7 +255,7 @@ mod test {
     fn cell_has_sensible_show() {
         use str::StrSlice;
 
-        let x = ::realcore::cell::Cell::new("foo bar");
+        let x = Cell::new("foo bar");
         assert!(format!("{}", x).contains(x.get()));
 
         x.set("baz qux");
