@@ -354,11 +354,7 @@ Test Attributes:
 pub fn parse_opts(args: &[StrBuf]) -> Option<OptRes> {
     let args_ = args.tail();
     let matches =
-        match getopts::getopts(args_.iter()
-                                    .map(|x| x.to_owned())
-                                    .collect::<Vec<_>>()
-                                    .as_slice(),
-                               optgroups().as_slice()) {
+        match getopts::getopts(args_.as_slice(), optgroups().as_slice()) {
           Ok(m) => m,
           Err(f) => return Some(Err(f.to_err_msg().to_strbuf()))
         };
@@ -388,7 +384,8 @@ pub fn parse_opts(args: &[StrBuf]) -> Option<OptRes> {
     let ratchet_metrics = ratchet_metrics.map(|s| Path::new(s));
 
     let ratchet_noise_percent = matches.opt_str("ratchet-noise-percent");
-    let ratchet_noise_percent = ratchet_noise_percent.map(|s| from_str::<f64>(s).unwrap());
+    let ratchet_noise_percent =
+        ratchet_noise_percent.map(|s| from_str::<f64>(s.as_slice()).unwrap());
 
     let save_metrics = matches.opt_str("save-metrics");
     let save_metrics = save_metrics.map(|s| Path::new(s));
@@ -1068,8 +1065,8 @@ fn calc_result(desc: &TestDesc, task_succeeded: bool) -> TestResult {
 impl ToJson for Metric {
     fn to_json(&self) -> json::Json {
         let mut map = box TreeMap::new();
-        map.insert("value".to_owned(), json::Number(self.value));
-        map.insert("noise".to_owned(), json::Number(self.noise));
+        map.insert("value".to_strbuf(), json::Number(self.value));
+        map.insert("noise".to_strbuf(), json::Number(self.noise));
         json::Object(map)
     }
 }
@@ -1106,7 +1103,7 @@ impl MetricMap {
         // FIXME(pcwalton): Yuck.
         let mut new_map = TreeMap::new();
         for (ref key, ref value) in map.iter() {
-            new_map.insert(key.to_owned(), (*value).clone());
+            new_map.insert(key.to_strbuf(), (*value).clone());
         }
 
         new_map.to_json().to_pretty_writer(&mut file)

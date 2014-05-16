@@ -463,11 +463,11 @@ Here is the function that implements the child task:
 ~~~
 extern crate sync;
 # fn main() {
-fn stringifier(channel: &sync::DuplexStream<~str, uint>) {
+fn stringifier(channel: &sync::DuplexStream<StrBuf, uint>) {
     let mut value: uint;
     loop {
         value = channel.recv();
-        channel.send(value.to_str());
+        channel.send(value.to_str().to_strbuf());
         if value == 0 { break; }
     }
 }
@@ -488,11 +488,11 @@ Here is the code for the parent task:
 extern crate sync;
 # use std::task::spawn;
 # use sync::DuplexStream;
-# fn stringifier(channel: &sync::DuplexStream<~str, uint>) {
+# fn stringifier(channel: &sync::DuplexStream<StrBuf, uint>) {
 #     let mut value: uint;
 #     loop {
 #         value = channel.recv();
-#         channel.send(value.to_str());
+#         channel.send(value.to_str().to_strbuf());
 #         if value == 0u { break; }
 #     }
 # }
@@ -505,13 +505,13 @@ spawn(proc() {
 });
 
 from_child.send(22);
-assert!(from_child.recv() == "22".to_owned());
+assert!(from_child.recv().as_slice() == "22");
 
 from_child.send(23);
 from_child.send(0);
 
-assert!(from_child.recv() == "23".to_owned());
-assert!(from_child.recv() == "0".to_owned());
+assert!(from_child.recv().as_slice() == "23");
+assert!(from_child.recv().as_slice() == "0");
 
 # }
 ~~~

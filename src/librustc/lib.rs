@@ -121,5 +121,8 @@ pub mod lib {
 }
 
 pub fn main() {
-    std::os::set_exit_status(driver::main_args(std::os::args().as_slice()));
+    let args = std::os::args().iter()
+                              .map(|x| x.to_strbuf())
+                              .collect::<Vec<_>>();
+    std::os::set_exit_status(driver::main_args(args.as_slice()));
 }

@@ -192,7 +192,7 @@ pub fn tzset() {
 
 /// Holds a calendar date and time broken down into its components (year, month, day, and so on),
 /// also called a broken-down time value.
-#[deriving(Clone, Eq, Encodable, Decodable, Show)]
+#[deriving(Clone, Eq, Show)]
 pub struct Tm {
     /// Seconds after the minute – [0, 60]
     pub tm_sec: i32,
