@@ -13,5 +13,5 @@
 use std::os;
 
 pub fn main() {
-    assert_eq!(os::getenv("TEST_EXEC_ENV"), Some("22".to_owned()));
+    assert_eq!(os::getenv("TEST_EXEC_ENV"), Some("22".to_strbuf()));
 }

@@ -402,7 +402,7 @@ impl<'cx> Resolver<'cx> {
                         span,
                         format!("cannot determine a type for \
                                  this expression: {}",
-                                infer::fixup_err_to_str(e)))
+                                infer::fixup_err_to_str(e)).as_slice())
                 }
 
                 ResolvingLocal(span) => {
@@ -410,7 +410,7 @@ impl<'cx> Resolver<'cx> {
                         span,
                         format!("cannot determine a type for \
                                  this local variable: {}",
-                                infer::fixup_err_to_str(e)))
+                                infer::fixup_err_to_str(e)).as_slice())
                 }
 
                 ResolvingPattern(span) => {
@@ -418,7 +418,7 @@ impl<'cx> Resolver<'cx> {
                         span,
                         format!("cannot determine a type for \
                                  this pattern binding: {}",
-                                infer::fixup_err_to_str(e)))
+                                infer::fixup_err_to_str(e)).as_slice())
                 }
 
                 ResolvingUpvar(upvar_id) => {
@@ -430,13 +430,15 @@ impl<'cx> Resolver<'cx> {
                                 ty::local_var_name_str(
                                     self.tcx,
                                     upvar_id.var_id).get().to_str(),
-                                infer::fixup_err_to_str(e)));
+                                infer::fixup_err_to_str(e)).as_slice());
                 }
 
                 ResolvingImplRes(span) => {
-                    self.tcx.sess.span_err(
-                        span,
-                        format!("cannot determine a type for impl supertrait"));
+                    self.tcx
+                        .sess
+                        .span_err(span,
+                                  "cannot determine a type for impl \
+                                   supertrait");
                 }
             }
         }

@@ -158,10 +158,14 @@ impl<'a> ParserObsoleteMethods for Parser<'a> {
               kind: ObsoleteSyntax,
               kind_str: &str,
               desc: &str) {
-        self.span_err(sp, format!("obsolete syntax: {}", kind_str));
+        self.span_err(sp,
+                      format!("obsolete syntax: {}", kind_str).as_slice());
 
         if !self.obsolete_set.contains(&kind) {
-            self.sess.span_diagnostic.handler().note(format!("{}", desc));
+            self.sess
+                .span_diagnostic
+                .handler()
+                .note(format!("{}", desc).as_slice());
             self.obsolete_set.insert(kind);
         }
     }

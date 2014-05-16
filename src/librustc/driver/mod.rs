@@ -120,7 +120,8 @@ Additional help:
     -C help             Print codegen options
     -W help             Print 'lint' options and default settings
     -Z help             Print internal options for debugging rustc\n",
-              getopts::usage(message, config::optgroups().as_slice()));
+              getopts::usage(message.as_slice(),
+                             config::optgroups().as_slice()));
 }
 
 fn describe_warnings() {
@@ -305,16 +306,18 @@ pub fn parse_pretty(sess: &Session, name: &str) -> PpMode {
         (arg, "flowgraph") => {
              match arg.and_then(from_str) {
                  Some(id) => PpmFlowGraph(id),
-                 None => sess.fatal(format_strbuf!("`pretty flowgraph=<nodeid>` needs \
-                                                     an integer <nodeid>; got {}",
-                                                   arg.unwrap_or("nothing")).as_slice())
+                 None => {
+                     sess.fatal(format!("`pretty flowgraph=<nodeid>` needs \
+                                         an integer <nodeid>; got {}",
+                                        arg.unwrap_or("nothing")).as_slice())
+                 }
              }
         }
         _ => {
             sess.fatal(format!(
                 "argument to `pretty` must be one of `normal`, \
                  `expanded`, `flowgraph=<nodeid>`, `typed`, `identified`, \
-                 or `expanded,identified`; got {}", name));
+                 or `expanded,identified`; got {}", name).as_slice());
         }
     }
 }
@@ -406,9 +409,13 @@ fn monitor(f: proc():Send) {
 
                 match r.read_to_str() {
                     Ok(s) => println!("{}", s),
-                    Err(e) => emitter.emit(None,
-                                           format!("failed to read internal stderr: {}", e),
-                                           diagnostic::Error),
+                    Err(e) => {
+                        emitter.emit(None,
+                                     format!("failed to read internal \
+                                              stderr: {}",
+                                             e).as_slice(),
+                                     diagnostic::Error)
+                    }
                 }
             }
 

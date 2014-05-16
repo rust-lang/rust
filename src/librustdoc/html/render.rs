@@ -407,8 +407,11 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
             if path.exists() {
                 for line in BufferedReader::new(File::open(path)).lines() {
                     let line = try!(line);
-                    if !line.starts_with(key) { continue }
-                    if line.starts_with(format!("{}['{}']", key, krate)) {
+                    if !line.as_slice().starts_with(key) {
+                        continue
+                    }
+                    if line.as_slice().starts_with(
+                            format!("{}['{}']", key, krate).as_slice()) {
                         continue
                     }
                     ret.push(line.to_strbuf());
@@ -646,7 +649,7 @@ impl<'a> SourceCollector<'a> {
 
         let title = format!("{} -- source", cur.filename_display());
         let page = layout::Page {
-            title: title,
+            title: title.as_slice(),
             ty: "source",
             root_path: root_path.as_slice(),
         };
@@ -1344,7 +1347,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         parents.push_str(": ");
         for (i, p) in t.parents.iter().enumerate() {
             if i > 0 { parents.push_str(" + "); }
-            parents.push_str(format!("{}", *p));
+            parents.push_str(format!("{}", *p).as_slice());
         }
     }
 

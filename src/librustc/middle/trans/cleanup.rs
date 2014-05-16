@@ -329,7 +329,7 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
 
         self.ccx.sess().bug(
             format!("no cleanup scope {} found",
-                    self.ccx.tcx.map.node_to_str(cleanup_scope)));
+                    self.ccx.tcx.map.node_to_str(cleanup_scope)).as_slice());
     }
 
     fn schedule_clean_in_custom_scope(&self,
@@ -531,7 +531,7 @@ impl<'a> CleanupHelperMethods<'a> for FunctionContext<'a> {
                     LoopExit(id, _) => {
                         self.ccx.sess().bug(format!(
                                 "cannot exit from scope {:?}, \
-                                not in scope", id));
+                                not in scope", id).as_slice());
                     }
                 }
             }
@@ -878,7 +878,8 @@ pub fn temporary_scope(tcx: &ty::ctxt,
             r
         }
         None => {
-            tcx.sess.bug(format!("no temporary scope available for expr {}", id))
+            tcx.sess.bug(format!("no temporary scope available for expr {}",
+                                 id).as_slice())
         }
     }
 }

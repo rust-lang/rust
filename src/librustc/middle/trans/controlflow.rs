@@ -165,7 +165,7 @@ pub fn trans_if<'a>(bcx: &'a Block<'a>,
     }
 
     let name = format!("then-block-{}-", thn.id);
-    let then_bcx_in = bcx.fcx.new_id_block(name, thn.id);
+    let then_bcx_in = bcx.fcx.new_id_block(name.as_slice(), thn.id);
     let then_bcx_out = trans_block(then_bcx_in, thn, dest);
     debuginfo::clear_source_location(bcx.fcx);
 
@@ -287,7 +287,8 @@ pub fn trans_break_cont<'a>(bcx: &'a Block<'a>,
             match bcx.tcx().def_map.borrow().find(&expr_id) {
                 Some(&ast::DefLabel(loop_id)) => loop_id,
                 ref r => {
-                    bcx.tcx().sess.bug(format!("{:?} in def-map for label", r))
+                    bcx.tcx().sess.bug(format!("{:?} in def-map for label",
+                                               r).as_slice())
                 }
             }
         }

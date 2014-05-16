@@ -16,21 +16,22 @@ More runtime type reflection
 
 #![allow(missing_doc)]
 
-use mem::transmute;
 use char;
 use container::Container;
+use intrinsics::{Disr, Opaque, TyDesc, TyVisitor, get_tydesc, visit_tydesc};
 use io;
 use iter::Iterator;
+use mem::transmute;
 use option::{Some, None, Option};
 use ptr::RawPtr;
-use reflect;
-use reflect::{MovePtr, align};
-use result::{Ok, Err};
-use str::StrSlice;
-use to_str::ToStr;
-use slice::Vector;
-use intrinsics::{Disr, Opaque, TyDesc, TyVisitor, get_tydesc, visit_tydesc};
 use raw;
+use reflect::{MovePtr, align};
+use reflect;
+use result::{Ok, Err};
+use slice::Vector;
+use str::{Str, StrSlice};
+use strbuf::StrBuf;
+use to_str::ToStr;
 use vec::Vec;
 
 macro_rules! try( ($me:expr, $e:expr) => (
@@ -296,10 +297,7 @@ impl<'a> TyVisitor for ReprVisitor<'a> {
     }
 
     fn visit_estr_uniq(&mut self) -> bool {
-        self.get::<~str>(|this, s| {
-            try!(this, this.writer.write(['~' as u8]));
-            this.write_escaped_slice(*s)
-        })
+        true
     }
 
     fn visit_estr_slice(&mut self) -> bool {
@@ -604,14 +602,14 @@ pub fn write_repr<T>(writer: &mut io::Writer, object: &T) -> io::IoResult<()> {
     }
 }
 
-pub fn repr_to_str<T>(t: &T) -> ~str {
+pub fn repr_to_str<T>(t: &T) -> StrBuf {
     use str;
     use str::StrAllocating;
     use io;
 
     let mut result = io::MemWriter::new();
     write_repr(&mut result as &mut io::Writer, t).unwrap();
-    str::from_utf8(result.unwrap().as_slice()).unwrap().to_owned()
+    str::from_utf8(result.unwrap().as_slice()).unwrap().to_strbuf()
 }
 
 #[cfg(test)]
@@ -638,8 +636,6 @@ fn test_repr() {
     exact_test(&false, "false");
     exact_test(&1.234, "1.234f64");
     exact_test(&("hello"), "\"hello\"");
-    // FIXME What do I do about this one?
-    exact_test(&("he\u10f3llo".to_owned()), "~\"he\\u10f3llo\"");
 
     exact_test(&(@10), "@10");
     exact_test(&(box 10), "box 10");
@@ -659,14 +655,6 @@ fn test_repr() {
                "@repr::P{a: 10, b: 1.234f64}");
     exact_test(&(box P{a:10, b:1.234}),
                "box repr::P{a: 10, b: 1.234f64}");
-    exact_test(&(10u8, "hello".to_owned()),
-               "(10u8, ~\"hello\")");
-    exact_test(&(10u16, "hello".to_owned()),
-               "(10u16, ~\"hello\")");
-    exact_test(&(10u32, "hello".to_owned()),
-               "(10u32, ~\"hello\")");
-    exact_test(&(10u64, "hello".to_owned()),
-               "(10u64, ~\"hello\")");
 
     exact_test(&(&[1, 2]), "&[1, 2]");
     exact_test(&(&mut [1, 2]), "&mut [1, 2]");

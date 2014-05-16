@@ -781,7 +781,7 @@ mod tests {
         t!(s: "a/b/c", ["d", "e"], "a/b/c/d/e");
         t!(s: "a/b/c", ["d", "/e"], "/e");
         t!(s: "a/b/c", ["d", "/e", "f"], "/e/f");
-        t!(s: "a/b/c", ["d".to_owned(), "e".to_owned()], "a/b/c/d/e");
+        t!(s: "a/b/c", ["d".to_strbuf(), "e".to_strbuf()], "a/b/c/d/e");
         t!(v: b!("a/b/c"), [b!("d"), b!("e")], b!("a/b/c/d/e"));
         t!(v: b!("a/b/c"), [b!("d"), b!("/e"), b!("f")], b!("/e/f"));
         t!(v: b!("a/b/c"), [Vec::from_slice(b!("d")), Vec::from_slice(b!("e"))], b!("a/b/c/d/e"));
@@ -886,7 +886,7 @@ mod tests {
         t!(s: "a/b/c", ["d", "e"], "a/b/c/d/e");
         t!(s: "a/b/c", ["..", "d"], "a/b/d");
         t!(s: "a/b/c", ["d", "/e", "f"], "/e/f");
-        t!(s: "a/b/c", ["d".to_owned(), "e".to_owned()], "a/b/c/d/e");
+        t!(s: "a/b/c", ["d".to_strbuf(), "e".to_strbuf()], "a/b/c/d/e");
         t!(v: b!("a/b/c"), [b!("d"), b!("e")], b!("a/b/c/d/e"));
         t!(v: b!("a/b/c"), [Vec::from_slice(b!("d")), Vec::from_slice(b!("e"))], b!("a/b/c/d/e"));
     }

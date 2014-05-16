@@ -420,11 +420,11 @@ mod test {
 
     #[test]
     fn tls() {
-        local_data_key!(key: @~str)
-        key.replace(Some(@"data".to_owned()));
+        local_data_key!(key: @StrBuf)
+        key.replace(Some(@"data".to_strbuf()));
         assert_eq!(key.get().unwrap().as_slice(), "data");
-        local_data_key!(key2: @~str)
-        key2.replace(Some(@"data".to_owned()));
+        local_data_key!(key2: @StrBuf)
+        key2.replace(Some(@"data".to_strbuf()));
         assert_eq!(key2.get().unwrap().as_slice(), "data");
     }
 

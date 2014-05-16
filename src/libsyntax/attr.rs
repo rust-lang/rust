@@ -396,7 +396,8 @@ pub fn require_unique_names(diagnostic: &SpanHandler, metas: &[@MetaItem]) {
 
         if !set.insert(name.clone()) {
             diagnostic.span_fatal(meta.span,
-                                  format!("duplicate meta item `{}`", name));
+                                  format!("duplicate meta item `{}`",
+                                          name).as_slice());
         }
     }
 }

@@ -74,7 +74,7 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &Expr) {
                // We know the type is inhabited, so this must be wrong
                cx.tcx.sess.span_err(ex.span, format!("non-exhaustive patterns: \
                             type {} is non-empty",
-                            ty_to_str(cx.tcx, pat_ty)));
+                            ty_to_str(cx.tcx, pat_ty)).as_slice());
            }
            // If the type *is* empty, it's vacuously exhaustive
            return;
@@ -164,8 +164,8 @@ fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, pats: Vec<@Pat> ) {
             match ty::get(ty).sty {
                 ty::ty_bool => {
                     match *ctor {
-                        val(const_bool(true)) => Some("true".to_owned()),
-                        val(const_bool(false)) => Some("false".to_owned()),
+                        val(const_bool(true)) => Some("true".to_strbuf()),
+                        val(const_bool(false)) => Some("false".to_strbuf()),
                         _ => None
                     }
                 }
@@ -177,7 +177,11 @@ fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, pats: Vec<@Pat> ) {
                     let variants = ty::enum_variants(cx.tcx, id);
 
                     match variants.iter().find(|v| v.id == vid) {
-                        Some(v) => Some(token::get_ident(v.name).get().to_str()),
+                        Some(v) => {
+                            Some(token::get_ident(v.name).get()
+                                                         .to_str()
+                                                         .into_strbuf())
+                        }
                         None => {
                             fail!("check_exhaustive: bad variant in ctor")
                         }
@@ -185,7 +189,9 @@ fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, pats: Vec<@Pat> ) {
                 }
                 ty::ty_vec(..) | ty::ty_rptr(..) => {
                     match *ctor {
-                        vec(n) => Some(format!("vectors of length {}", n)),
+                        vec(n) => {
+                            Some(format_strbuf!("vectors of length {}", n))
+                        }
                         _ => None
                     }
                 }
@@ -193,11 +199,11 @@ fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, pats: Vec<@Pat> ) {
             }
         }
     };
-    let msg = "non-exhaustive patterns".to_owned() + match ext {
-        Some(ref s) => format!(": {} not covered",  *s),
-        None => "".to_owned()
-    };
-    cx.tcx.sess.span_err(sp, msg);
+    let msg = format_strbuf!("non-exhaustive patterns{}", match ext {
+        Some(ref s) => format_strbuf!(": {} not covered", *s),
+        None => "".to_strbuf()
+    });
+    cx.tcx.sess.span_err(sp, msg.as_slice());
 }
 
 type matrix = Vec<Vec<@Pat> > ;
@@ -739,7 +745,8 @@ fn specialize(cx: &MatchCheckCtxt,
                                     pat_span,
                                     format!("struct pattern resolved to {}, \
                                           not a struct",
-                                         ty_to_str(cx.tcx, left_ty)));
+                                         ty_to_str(cx.tcx,
+                                                   left_ty)).as_slice());
                             }
                         }
                         let args = class_fields.iter().map(|class_field| {
@@ -980,9 +987,10 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
                     _ => {
                         cx.tcx.sess.span_bug(
                             p.span,
-                            format!("binding pattern {} is \
-                                  not an identifier: {:?}",
-                                 p.id, p.node));
+                            format!("binding pattern {} is not an \
+                                     identifier: {:?}",
+                                    p.id,
+                                    p.node).as_slice());
                     }
                 }
             }

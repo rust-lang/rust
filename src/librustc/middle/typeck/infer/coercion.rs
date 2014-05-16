@@ -212,7 +212,7 @@ impl<'f> Coerce<'f> {
                 self.get_ref().infcx.tcx.sess.span_bug(
                     self.get_ref().trace.origin.span(),
                     format!("failed to resolve even without \
-                          any force options: {:?}", e));
+                          any force options: {:?}", e).as_slice());
             }
         }
     }

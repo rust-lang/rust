@@ -623,7 +623,7 @@ impl<'a> State<'a> {
             }
             ast::ItemForeignMod(ref nmod) => {
                 try!(self.head("extern"));
-                try!(self.word_nbsp(nmod.abi.to_str()));
+                try!(self.word_nbsp(nmod.abi.to_str().as_slice()));
                 try!(self.bopen());
                 try!(self.print_foreign_mod(nmod, item.attrs.as_slice()));
                 try!(self.bclose(item.span));
@@ -2247,7 +2247,7 @@ impl<'a> State<'a> {
                                               ast_util::ForceSuffix).as_slice())
             }
             ast::LitIntUnsuffixed(i) => {
-                word(&mut self.s, format!("{}", i))
+                word(&mut self.s, format!("{}", i).as_slice())
             }
             ast::LitFloat(ref f, t) => {
                 word(&mut self.s,
@@ -2261,8 +2261,13 @@ impl<'a> State<'a> {
             ast::LitBinary(ref arr) => {
                 try!(self.ibox(indent_unit));
                 try!(word(&mut self.s, "["));
-                try!(self.commasep_cmnt(Inconsistent, arr.as_slice(),
-                                        |s, u| word(&mut s.s, format!("{}", *u)),
+                try!(self.commasep_cmnt(Inconsistent,
+                                        arr.as_slice(),
+                                        |s, u| {
+                                            word(&mut s.s,
+                                                 format!("{}",
+                                                         *u).as_slice())
+                                        },
                                         |_| lit.span));
                 try!(word(&mut self.s, "]"));
                 self.end()
@@ -2354,11 +2359,16 @@ impl<'a> State<'a> {
     pub fn print_string(&mut self, st: &str,
                         style: ast::StrStyle) -> IoResult<()> {
         let st = match style {
-            ast::CookedStr => format!("\"{}\"", st.escape_default()),
-            ast::RawStr(n) => format!("r{delim}\"{string}\"{delim}",
-                                      delim="#".repeat(n), string=st)
+            ast::CookedStr => {
+                (format!("\"{}\"", st.escape_default()))
+            }
+            ast::RawStr(n) => {
+                (format!("r{delim}\"{string}\"{delim}",
+                         delim="#".repeat(n),
+                         string=st))
+            }
         };
-        word(&mut self.s, st)
+        word(&mut self.s, st.as_slice())
     }
 
     pub fn next_comment(&mut self) -> Option<comments::Comment> {
@@ -2389,7 +2399,7 @@ impl<'a> State<'a> {
             Some(abi::Rust) => Ok(()),
             Some(abi) => {
                 try!(self.word_nbsp("extern"));
-                self.word_nbsp(abi.to_str())
+                self.word_nbsp(abi.to_str().as_slice())
             }
             None => Ok(())
         }
@@ -2400,7 +2410,7 @@ impl<'a> State<'a> {
         match opt_abi {
             Some(abi) => {
                 try!(self.word_nbsp("extern"));
-                self.word_nbsp(abi.to_str())
+                self.word_nbsp(abi.to_str().as_slice())
             }
             None => Ok(())
         }
@@ -2416,7 +2426,7 @@ impl<'a> State<'a> {
 
         if abi != abi::Rust {
             try!(self.word_nbsp("extern"));
-            try!(self.word_nbsp(abi.to_str()));
+            try!(self.word_nbsp(abi.to_str().as_slice()));
         }
 
         word(&mut self.s, "fn")

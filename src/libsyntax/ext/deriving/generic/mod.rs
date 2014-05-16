@@ -574,7 +574,7 @@ impl<'a> MethodDef<'a> {
 
         for (i, ty) in self.args.iter().enumerate() {
             let ast_ty = ty.to_ty(cx, trait_.span, type_ident, generics);
-            let ident = cx.ident_of(format!("__arg_{}", i));
+            let ident = cx.ident_of(format!("__arg_{}", i).as_slice());
             arg_tys.push((ident, ast_ty));
 
             let arg_expr = cx.expr_ident(trait_.span, ident);
@@ -674,9 +674,13 @@ impl<'a> MethodDef<'a> {
                                  // [fields of next Self arg], [etc]]
         let mut patterns = Vec::new();
         for i in range(0u, self_args.len()) {
-            let (pat, ident_expr) = trait_.create_struct_pattern(cx, type_ident, struct_def,
-                                                                 format!("__self_{}", i),
-                                                                 ast::MutImmutable);
+            let (pat, ident_expr) =
+                trait_.create_struct_pattern(cx,
+                                             type_ident,
+                                             struct_def,
+                                             format!("__self_{}",
+                                                     i).as_slice(),
+                                             ast::MutImmutable);
             patterns.push(pat);
             raw_fields.push(ident_expr);
         }
@@ -875,7 +879,7 @@ impl<'a> MethodDef<'a> {
 
         } else {  // there are still matches to create
             let current_match_str = if match_count == 0 {
-                "__self".to_owned()
+                "__self".to_strbuf()
             } else {
                 format!("__arg_{}", match_count)
             };
@@ -895,10 +899,11 @@ impl<'a> MethodDef<'a> {
 
                 // matching-variant match
                 let variant = *enum_def.variants.get(index);
-                let (pattern, idents) = trait_.create_enum_variant_pattern(cx,
-                                                                           variant,
-                                                                           current_match_str,
-                                                                           ast::MutImmutable);
+                let (pattern, idents) = trait_.create_enum_variant_pattern(
+                    cx,
+                    variant,
+                    current_match_str.as_slice(),
+                    ast::MutImmutable);
 
                 matches_so_far.push((index, variant, idents));
                 let arm_expr = self.build_enum_match(cx,
@@ -926,10 +931,12 @@ impl<'a> MethodDef<'a> {
             } else {
                 // create an arm matching on each variant
                 for (index, &variant) in enum_def.variants.iter().enumerate() {
-                    let (pattern, idents) = trait_.create_enum_variant_pattern(cx,
-                                                                               variant,
-                                                                               current_match_str,
-                                                                               ast::MutImmutable);
+                    let (pattern, idents) =
+                        trait_.create_enum_variant_pattern(
+                            cx,
+                            variant,
+                            current_match_str.as_slice(),
+                            ast::MutImmutable);
 
                     matches_so_far.push((index, variant, idents));
                     let new_matching =
@@ -1081,7 +1088,11 @@ impl<'a> TraitDef<'a> {
                     cx.span_bug(sp, "a struct with named and unnamed fields in `deriving`");
                 }
             };
-            let path = cx.path_ident(sp, cx.ident_of(format!("{}_{}", prefix, i)));
+            let path =
+                cx.path_ident(sp,
+                              cx.ident_of(format!("{}_{}",
+                                                  prefix,
+                                                  i).as_slice()));
             paths.push(path.clone());
             let val = cx.expr(
                 sp, ast::ExprParen(
@@ -1127,7 +1138,11 @@ impl<'a> TraitDef<'a> {
                 let mut ident_expr = Vec::new();
                 for (i, va) in variant_args.iter().enumerate() {
                     let sp = self.set_expn_info(cx, va.ty.span);
-                    let path = cx.path_ident(sp, cx.ident_of(format!("{}_{}", prefix, i)));
+                    let path =
+                        cx.path_ident(sp,
+                                      cx.ident_of(format!("{}_{}",
+                                                          prefix,
+                                                          i).as_slice()));
 
                     paths.push(path.clone());
                     let val = cx.expr(

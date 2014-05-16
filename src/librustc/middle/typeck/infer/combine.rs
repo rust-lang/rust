@@ -118,10 +118,9 @@ pub trait Combine {
                 // I think it should never happen that we unify two
                 // substs and one of them has a self_ty and one
                 // doesn't...? I could be wrong about this.
-                self.infcx().tcx.sess.bug(
-                                          format!("substitution a had a self_ty \
-                                               and substitution b didn't, \
-                                               or vice versa"));
+                self.infcx().tcx.sess.bug("substitution a had a self_ty \
+                                           and substitution b didn't, or \
+                                           vice versa");
             }
         }
     }
@@ -403,9 +402,9 @@ pub fn super_tys<C:Combine>(this: &C, a: ty::t, b: ty::t) -> cres<ty::t> {
       (_, &ty::ty_infer(TyVar(_))) => {
         tcx.sess.bug(
             format!("{}: bot and var types should have been handled ({},{})",
-                 this.tag(),
-                 a.inf_str(this.infcx()),
-                 b.inf_str(this.infcx())));
+                    this.tag(),
+                    a.inf_str(this.infcx()),
+                    b.inf_str(this.infcx())).as_slice());
       }
 
         // Relate integral variables to other types

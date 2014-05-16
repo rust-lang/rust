@@ -1312,7 +1312,8 @@ fn decode_side_tables(xcx: &ExtendedDecodeContext,
         match c::astencode_tag::from_uint(tag) {
             None => {
                 xcx.dcx.tcx.sess.bug(
-                    format!("unknown tag found in side tables: {:x}", tag));
+                    format!("unknown tag found in side tables: {:x}",
+                            tag).as_slice());
             }
             Some(value) => {
                 let val_doc = entry_doc.get(c::tag_table_val as uint);
@@ -1376,7 +1377,8 @@ fn decode_side_tables(xcx: &ExtendedDecodeContext,
                     }
                     _ => {
                         xcx.dcx.tcx.sess.bug(
-                            format!("unknown tag found in side tables: {:x}", tag));
+                            format!("unknown tag found in side tables: {:x}",
+                                    tag).as_slice());
                     }
                 }
             }

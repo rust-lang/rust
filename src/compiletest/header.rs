@@ -157,9 +157,14 @@ fn iter_header(testfile: &Path, it: |&str| -> bool) -> bool {
         // module or function. This doesn't seem to be an optimization
         // with a warm page cache. Maybe with a cold one.
         let ln = ln.unwrap();
-        if ln.starts_with("fn") || ln.starts_with("mod") {
+        if ln.as_slice().starts_with("fn") ||
+                ln.as_slice().starts_with("mod") {
             return true;
-        } else { if !(it(ln.trim())) { return false; } }
+        } else {
+            if !(it(ln.as_slice().trim())) {
+                return false;
+            }
+        }
     }
     return true;
 }

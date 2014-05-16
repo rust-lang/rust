@@ -263,7 +263,7 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: &ast::Pat, path: &ast::Path,
                          npat = subpats_len,
                          kind = kind_name,
                          narg = arg_len);
-            tcx.sess.span_err(pat.span, s);
+            tcx.sess.span_err(pat.span, s.as_slice());
             error_happened = true;
         }
 
@@ -280,7 +280,7 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: &ast::Pat, path: &ast::Path,
                                    {npat, plural, =1{# field} other{# fields}}, \
                                    but the corresponding {kind} has no fields",
                                npat = subpats_len,
-                               kind = kind_name));
+                               kind = kind_name).as_slice());
         error_happened = true;
     }
 
@@ -324,7 +324,7 @@ pub fn check_struct_pat_fields(pcx: &pat_ctxt,
             Some(&(_, true)) => {
                 tcx.sess.span_err(span,
                     format!("field `{}` bound twice in pattern",
-                            token::get_ident(field.ident)));
+                            token::get_ident(field.ident)).as_slice());
             }
             Some(&(index, ref mut used)) => {
                 *used = true;
@@ -343,8 +343,8 @@ pub fn check_struct_pat_fields(pcx: &pat_ctxt,
                 check_pat(pcx, field.pat, ty::mk_err());
                 tcx.sess.span_err(span,
                     format!("struct `{}` does not have a field named `{}`",
-                         name,
-                         token::get_ident(field.ident)));
+                            name,
+                            token::get_ident(field.ident)).as_slice());
             }
         }
     }
@@ -356,9 +356,10 @@ pub fn check_struct_pat_fields(pcx: &pat_ctxt,
                 continue;
             }
 
-            tcx.sess.span_err(span,
-                              format!("pattern does not mention field `{}`",
-                                  token::get_name(field.name)));
+            tcx.sess
+               .span_err(span,
+                         format!("pattern does not mention field `{}`",
+                                 token::get_name(field.name)).as_slice());
         }
     }
 }
@@ -381,10 +382,12 @@ pub fn check_struct_pat(pcx: &pat_ctxt, pat_id: ast::NodeId, span: Span,
         }
         Some(&ast::DefStruct(..)) | Some(&ast::DefVariant(..)) => {
             let name = pprust::path_to_str(path);
-            tcx.sess.span_err(span,
-                              format!("mismatched types: expected `{}` but found `{}`",
-                                   fcx.infcx().ty_to_str(expected),
-                                   name));
+            tcx.sess
+               .span_err(span,
+                         format!("mismatched types: expected `{}` but found \
+                                  `{}`",
+                                 fcx.infcx().ty_to_str(expected),
+                                 name).as_slice());
         }
         _ => {
             tcx.sess.span_bug(span, "resolve didn't write in struct ID");
@@ -421,9 +424,9 @@ pub fn check_struct_like_enum_variant_pat(pcx: &pat_ctxt,
             let name = pprust::path_to_str(path);
             tcx.sess.span_err(span,
                               format!("mismatched types: expected `{}` but \
-                                    found `{}`",
-                                   fcx.infcx().ty_to_str(expected),
-                                   name));
+                                       found `{}`",
+                                      fcx.infcx().ty_to_str(expected),
+                                      name).as_slice());
         }
         _ => {
             tcx.sess.span_bug(span, "resolve didn't write in variant");

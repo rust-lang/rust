@@ -248,7 +248,7 @@ fn encode_symbol(ecx: &EncodeContext,
         }
         None => {
             ecx.diag.handler().bug(
-                format!("encode_symbol: id not found {}", id));
+                format!("encode_symbol: id not found {}", id).as_slice());
         }
     }
     ebml_w.end_tag();
@@ -375,7 +375,7 @@ fn encode_reexported_static_method(ebml_w: &mut Encoder,
     ebml_w.start_tag(tag_items_data_item_reexport_name);
     ebml_w.wr_str(format!("{}::{}",
                           exp.name,
-                          token::get_ident(method_ident)));
+                          token::get_ident(method_ident)).as_slice());
     ebml_w.end_tag();
     ebml_w.end_tag();
 }
@@ -1439,7 +1439,10 @@ fn synthesize_crate_attrs(ecx: &EncodeContext,
         attr::mk_attr_inner(
             attr::mk_name_value_item_str(
                 InternedString::new("crate_id"),
-                token::intern_and_get_ident(ecx.link_meta.crateid.to_str())))
+                token::intern_and_get_ident(ecx.link_meta
+                                               .crateid
+                                               .to_str()
+                                               .as_slice())))
     }
 
     let mut attrs = Vec::new();

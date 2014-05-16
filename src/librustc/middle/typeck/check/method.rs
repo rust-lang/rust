@@ -284,7 +284,7 @@ fn construct_transformed_self_ty_for_object(
                 _ => {
                     tcx.sess.span_bug(span,
                         format!("'impossible' transformed_self_ty: {}",
-                                transformed_self_ty.repr(tcx)));
+                                transformed_self_ty.repr(tcx)).as_slice());
                 }
             }
         }
@@ -950,7 +950,7 @@ impl<'a> LookupContext<'a> {
 
             ty_infer(TyVar(_)) => {
                 self.bug(format!("unexpected type: {}",
-                              self.ty_to_str(self_ty)));
+                                 self.ty_to_str(self_ty)).as_slice());
             }
         }
     }
@@ -1235,9 +1235,10 @@ impl<'a> LookupContext<'a> {
                                 rcvr_ty, transformed_self_ty) {
             Ok(_) => {}
             Err(_) => {
-                self.bug(format!("{} was a subtype of {} but now is not?",
-                              self.ty_to_str(rcvr_ty),
-                              self.ty_to_str(transformed_self_ty)));
+                self.bug(format!(
+                        "{} was a subtype of {} but now is not?",
+                        self.ty_to_str(rcvr_ty),
+                        self.ty_to_str(transformed_self_ty)).as_slice());
             }
         }
 
@@ -1465,25 +1466,25 @@ impl<'a> LookupContext<'a> {
         self.tcx().sess.span_note(
             span,
             format!("candidate \\#{} is `{}`",
-                 idx+1u,
-                 ty::item_path_str(self.tcx(), did)));
+                    idx + 1u,
+                    ty::item_path_str(self.tcx(), did)).as_slice());
     }
 
     fn report_param_candidate(&self, idx: uint, did: DefId) {
         self.tcx().sess.span_note(
             self.span,
             format!("candidate \\#{} derives from the bound `{}`",
-                 idx+1u,
-                 ty::item_path_str(self.tcx(), did)));
+                    idx + 1u,
+                    ty::item_path_str(self.tcx(), did)).as_slice());
     }
 
     fn report_trait_candidate(&self, idx: uint, did: DefId) {
         self.tcx().sess.span_note(
             self.span,
             format!("candidate \\#{} derives from the type of the receiver, \
-                  which is the trait `{}`",
-                 idx+1u,
-                 ty::item_path_str(self.tcx(), did)));
+                     which is the trait `{}`",
+                    idx + 1u,
+                    ty::item_path_str(self.tcx(), did)).as_slice());
     }
 
     fn infcx(&'a self) -> &'a infer::InferCtxt<'a> {

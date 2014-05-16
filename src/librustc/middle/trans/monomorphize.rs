@@ -205,7 +205,8 @@ pub fn monomorphic_fn(ccx: &CrateContext,
         hash_id.hash(&mut state);
         mono_ty.hash(&mut state);
 
-        exported_name(path, format!("h{}", state.result()),
+        exported_name(path,
+                      format!("h{}", state.result()).as_slice(),
                       ccx.link_meta.crateid.version_or_default())
     });
     debug!("monomorphize_fn mangled to {}", s);
@@ -287,7 +288,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
                 }
                 _ => {
                     ccx.sess().bug(format!("can't monomorphize a {:?}",
-                                           map_node))
+                                           map_node).as_slice())
                 }
             }
         }
@@ -311,7 +312,8 @@ pub fn monomorphic_fn(ccx: &CrateContext,
         ast_map::NodeBlock(..) |
         ast_map::NodePat(..) |
         ast_map::NodeLocal(..) => {
-            ccx.sess().bug(format!("can't monomorphize a {:?}", map_node))
+            ccx.sess().bug(format!("can't monomorphize a {:?}",
+                                   map_node).as_slice())
         }
     };
 

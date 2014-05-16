@@ -136,9 +136,16 @@ impl<'a> ToCStr for &'a Path {
 }
 
 impl<S: Writer> ::hash::Hash<S> for Path {
+    #[cfg(not(test))]
     #[inline]
     fn hash(&self, state: &mut S) {
         self.repr.hash(state)
+    }
+
+    #[cfg(test)]
+    #[inline]
+    fn hash(&self, _: &mut S) {
+        // No-op because the `hash` implementation will be wrong.
     }
 }
 
@@ -589,7 +596,7 @@ impl GenericPath for Path {
                     }
                 }
             }
-            Some(Path::new(comps.connect("\\")))
+            Some(Path::new(comps.connect("\\").into_strbuf()))
         }
     }
 
@@ -754,7 +761,10 @@ impl Path {
                                 let mut s = StrBuf::from_str(s.slice_to(len));
                                 unsafe {
                                     let v = s.as_mut_vec();
-                                    *v.get_mut(0) = v.get(0).to_ascii().to_upper().to_byte();
+                                    *v.get_mut(0) = v.get(0)
+                                                     .to_ascii()
+                                                     .to_upper()
+                                                     .to_byte();
                                 }
                                 if is_abs {
                                     // normalize C:/ to C:\
@@ -913,7 +923,7 @@ pub fn make_non_verbatim(path: &Path) -> Option<Path> {
         }
         Some(VerbatimUNCPrefix(_,_)) => {
             // \\?\UNC\server\share
-            Path::new(format!(r"\\{}", repr.slice_from(7)))
+            Path::new(format_strbuf!(r"\\{}", repr.slice_from(7)))
         }
     };
     if new_path.prefix.is_none() {
@@ -1331,9 +1341,9 @@ mod tests {
     #[test]
     fn test_display_str() {
         let path = Path::new("foo");
-        assert_eq!(path.display().to_str(), "foo".to_owned());
+        assert_eq!(path.display().to_str(), "foo".to_strbuf());
         let path = Path::new(b!("\\"));
-        assert_eq!(path.filename_display().to_str(), "".to_owned());
+        assert_eq!(path.filename_display().to_str(), "".to_strbuf());
 
         let path = Path::new("foo");
         let mo = path.display().as_maybe_owned();
@@ -1594,7 +1604,7 @@ mod tests {
         t!(s: "a\\b\\c", ["d", "e"], "a\\b\\c\\d\\e");
         t!(s: "a\\b\\c", ["d", "\\e"], "\\e");
         t!(s: "a\\b\\c", ["d", "\\e", "f"], "\\e\\f");
-        t!(s: "a\\b\\c", ["d".to_owned(), "e".to_owned()], "a\\b\\c\\d\\e");
+        t!(s: "a\\b\\c", ["d".to_strbuf(), "e".to_strbuf()], "a\\b\\c\\d\\e");
         t!(v: b!("a\\b\\c"), [b!("d"), b!("e")], b!("a\\b\\c\\d\\e"));
         t!(v: b!("a\\b\\c"), [b!("d"), b!("\\e"), b!("f")], b!("\\e\\f"));
         t!(v: b!("a\\b\\c"), [Vec::from_slice(b!("d")), Vec::from_slice(b!("e"))],
@@ -1735,7 +1745,7 @@ mod tests {
         t!(s: "a\\b\\c", ["d", "e"], "a\\b\\c\\d\\e");
         t!(s: "a\\b\\c", ["..", "d"], "a\\b\\d");
         t!(s: "a\\b\\c", ["d", "\\e", "f"], "\\e\\f");
-        t!(s: "a\\b\\c", ["d".to_owned(), "e".to_owned()], "a\\b\\c\\d\\e");
+        t!(s: "a\\b\\c", ["d".to_strbuf(), "e".to_strbuf()], "a\\b\\c\\d\\e");
         t!(v: b!("a\\b\\c"), [b!("d"), b!("e")], b!("a\\b\\c\\d\\e"));
         t!(v: b!("a\\b\\c"), [Vec::from_slice(b!("d")), Vec::from_slice(b!("e"))],
            b!("a\\b\\c\\d\\e"));
