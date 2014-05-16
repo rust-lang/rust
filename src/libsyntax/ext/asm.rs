@@ -20,7 +20,6 @@ use parse;
 use parse::token::InternedString;
 use parse::token;
 
-
 enum State {
     Asm,
     Outputs,
@@ -214,7 +213,7 @@ pub fn expand_asm(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                                                  out));
     }
 
-    MacExpr::new(@ast::Expr {
+    MacExpr::new(box(GC) ast::Expr {
         id: ast::DUMMY_NODE_ID,
         node: ast::ExprInlineAsm(ast::InlineAsm {
             asm: token::intern_and_get_ident(asm.get()),

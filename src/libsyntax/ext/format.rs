@@ -20,6 +20,7 @@ use rsparse = parse;
 
 use parse = fmt_macros;
 use std::collections::{HashMap, HashSet};
+use std::gc::Gc;
 
 #[deriving(PartialEq)]
 enum ArgumentType {
@@ -39,20 +40,20 @@ struct Context<'a, 'b> {
 
     // Parsed argument expressions and the types that we've found so far for
     // them.
-    args: Vec<@ast::Expr>,
+    args: Vec<Gc<ast::Expr>>,
     arg_types: Vec<Option<ArgumentType>>,
     // Parsed named expressions and the types that we've found for them so far.
     // Note that we keep a side-array of the ordering of the named arguments
     // found to be sure that we can translate them in the same order that they
     // were declared in.
-    names: HashMap<String, @ast::Expr>,
+    names: HashMap<String, Gc<ast::Expr>>,
     name_types: HashMap<String, ArgumentType>,
     name_ordering: Vec<String>,
 
     // Collection of the compiled `rt::Piece` structures
-    pieces: Vec<@ast::Expr> ,
+    pieces: Vec<Gc<ast::Expr>>,
     name_positions: HashMap<String, uint>,
-    method_statics: Vec<@ast::Item> ,
+    method_statics: Vec<Gc<ast::Item>>,
 
     // Updated as arguments are consumed or methods are entered
     nest_level: uint,
@@ -60,8 +61,8 @@ struct Context<'a, 'b> {
 }
 
 pub enum Invocation {
-    Call(@ast::Expr),
-    MethodCall(@ast::Expr, ast::Ident),
+    Call(Gc<ast::Expr>),
+    MethodCall(Gc<ast::Expr>, ast::Ident),
 }
 
 /// Parses the arguments from the given list of tokens, returning None
@@ -74,10 +75,10 @@ pub enum Invocation {
 ///           named arguments))
 fn parse_args(ecx: &mut ExtCtxt, sp: Span, allow_method: bool,
               tts: &[ast::TokenTree])
-    -> (Invocation, Option<(@ast::Expr, Vec<@ast::Expr>, Vec<String>,
-                            HashMap<String, @ast::Expr>)>) {
+    -> (Invocation, Option<(Gc<ast::Expr>, Vec<Gc<ast::Expr>>, Vec<String>,
+                            HashMap<String, Gc<ast::Expr>>)>) {
     let mut args = Vec::new();
-    let mut names = HashMap::<String, @ast::Expr>::new();
+    let mut names = HashMap::<String, Gc<ast::Expr>>::new();
     let mut order = Vec::new();
 
     let mut p = rsparse::new_parser_from_tts(ecx.parse_sess(),
@@ -399,7 +400,7 @@ impl<'a, 'b> Context<'a, 'b> {
           self.ecx.ident_of("rt"), self.ecx.ident_of(s))
     }
 
-    fn none(&self) -> @ast::Expr {
+    fn none(&self) -> Gc<ast::Expr> {
         let none = self.ecx.path_global(self.fmtsp, vec!(
                 self.ecx.ident_of("std"),
                 self.ecx.ident_of("option"),
@@ -407,7 +408,7 @@ impl<'a, 'b> Context<'a, 'b> {
         self.ecx.expr_path(none)
     }
 
-    fn some(&self, e: @ast::Expr) -> @ast::Expr {
+    fn some(&self, e: Gc<ast::Expr>) -> Gc<ast::Expr> {
         let p = self.ecx.path_global(self.fmtsp, vec!(
                 self.ecx.ident_of("std"),
                 self.ecx.ident_of("option"),
@@ -416,7 +417,7 @@ impl<'a, 'b> Context<'a, 'b> {
         self.ecx.expr_call(self.fmtsp, p, vec!(e))
     }
 
-    fn trans_count(&self, c: parse::Count) -> @ast::Expr {
+    fn trans_count(&self, c: parse::Count) -> Gc<ast::Expr> {
         let sp = self.fmtsp;
         match c {
             parse::CountIs(i) => {
@@ -447,7 +448,7 @@ impl<'a, 'b> Context<'a, 'b> {
         }
     }
 
-    fn trans_method(&mut self, method: &parse::Method) -> @ast::Expr {
+    fn trans_method(&mut self, method: &parse::Method) -> Gc<ast::Expr> {
         let sp = self.fmtsp;
         let method = match *method {
             parse::Select(ref arms, ref default) => {
@@ -528,7 +529,7 @@ impl<'a, 'b> Context<'a, 'b> {
     }
 
     /// Translate a `parse::Piece` to a static `rt::Piece`
-    fn trans_piece(&mut self, piece: &parse::Piece) -> @ast::Expr {
+    fn trans_piece(&mut self, piece: &parse::Piece) -> Gc<ast::Expr> {
         let sp = self.fmtsp;
         match *piece {
             parse::String(s) => {
@@ -615,7 +616,7 @@ impl<'a, 'b> Context<'a, 'b> {
 
     /// Actually builds the expression which the iformat! block will be expanded
     /// to
-    fn to_expr(&self, invocation: Invocation) -> @ast::Expr {
+    fn to_expr(&self, invocation: Invocation) -> Gc<ast::Expr> {
         let mut lets = Vec::new();
         let mut locals = Vec::new();
         let mut names = Vec::from_fn(self.name_positions.len(), |_| None);
@@ -625,8 +626,8 @@ impl<'a, 'b> Context<'a, 'b> {
         // First, declare all of our methods that are statics
         for &method in self.method_statics.iter() {
             let decl = respan(self.fmtsp, ast::DeclItem(method));
-            lets.push(@respan(self.fmtsp,
-                              ast::StmtDecl(@decl, ast::DUMMY_NODE_ID)));
+            lets.push(box(GC) respan(self.fmtsp,
+                              ast::StmtDecl(box(GC) decl, ast::DUMMY_NODE_ID)));
         }
 
         // Next, build up the static array which will become our precompiled
@@ -653,7 +654,8 @@ impl<'a, 'b> Context<'a, 'b> {
         let item = self.ecx.item(self.fmtsp, static_name,
                                  self.static_attrs(), st);
         let decl = respan(self.fmtsp, ast::DeclItem(item));
-        lets.push(@respan(self.fmtsp, ast::StmtDecl(@decl, ast::DUMMY_NODE_ID)));
+        lets.push(box(GC) respan(self.fmtsp,
+                                 ast::StmtDecl(box(GC) decl, ast::DUMMY_NODE_ID)));
 
         // Right now there is a bug such that for the expression:
         //      foo(bar(&1))
@@ -766,8 +768,8 @@ impl<'a, 'b> Context<'a, 'b> {
         self.ecx.expr_match(self.fmtsp, head, vec!(arm))
     }
 
-    fn format_arg(&self, sp: Span, argno: Position, arg: @ast::Expr)
-                  -> @ast::Expr {
+    fn format_arg(&self, sp: Span, argno: Position, arg: Gc<ast::Expr>)
+                  -> Gc<ast::Expr> {
         let ty = match argno {
             Exact(ref i) => self.arg_types.get(*i).get_ref(),
             Named(ref s) => self.name_types.get(s)
@@ -854,9 +856,12 @@ pub fn expand_format_args_method(ecx: &mut ExtCtxt, sp: Span,
 /// expression.
 pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt, sp: Span,
                                     invocation: Invocation,
-                                    efmt: @ast::Expr, args: Vec<@ast::Expr>,
+                                    efmt: Gc<ast::Expr>,
+                                    args: Vec<Gc<ast::Expr>>,
                                     name_ordering: Vec<String>,
-                                    names: HashMap<String, @ast::Expr>) -> @ast::Expr {
+                                    names: HashMap<String, Gc<ast::Expr>>)
+    -> Gc<ast::Expr>
+{
     let arg_types = Vec::from_fn(args.len(), |_| None);
     let mut cx = Context {
         ecx: ecx,

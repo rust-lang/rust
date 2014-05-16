@@ -17,11 +17,13 @@ use ext::deriving::generic::*;
 use ext::deriving::generic::ty::*;
 use parse::token::InternedString;
 
+use std::gc::Gc;
+
 pub fn expand_deriving_hash(cx: &mut ExtCtxt,
                             span: Span,
-                            mitem: @MetaItem,
-                            item: @Item,
-                            push: |@Item|) {
+                            mitem: Gc<MetaItem>,
+                            item: Gc<Item>,
+                            push: |Gc<Item>|) {
 
     let (path, generics, args) = if cx.ecfg.deriving_hash_type_parameter {
         (Path::new_(vec!("std", "hash", "Hash"), None,
@@ -64,7 +66,8 @@ pub fn expand_deriving_hash(cx: &mut ExtCtxt,
     hash_trait_def.expand(cx, mitem, item, push);
 }
 
-fn hash_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) -> @Expr {
+fn hash_substructure(cx: &mut ExtCtxt, trait_span: Span,
+                     substr: &Substructure) -> Gc<Expr> {
     let state_expr = match substr.nonself_args {
         [state_expr] => state_expr,
         _ => cx.span_bug(trait_span, "incorrect number of arguments in `deriving(Hash)`")

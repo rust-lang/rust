@@ -16,11 +16,13 @@ use ext::deriving::generic::*;
 use ext::deriving::generic::ty::*;
 use parse::token::InternedString;
 
+use std::gc::Gc;
+
 pub fn expand_deriving_clone(cx: &mut ExtCtxt,
                              span: Span,
-                             mitem: @MetaItem,
-                             item: @Item,
-                             push: |@Item|) {
+                             mitem: Gc<MetaItem>,
+                             item: Gc<Item>,
+                             push: |Gc<Item>|) {
     let inline = cx.meta_word(span, InternedString::new("inline"));
     let attrs = vec!(cx.attribute(span, inline));
     let trait_def = TraitDef {
@@ -51,7 +53,7 @@ pub fn expand_deriving_clone(cx: &mut ExtCtxt,
 fn cs_clone(
     name: &str,
     cx: &mut ExtCtxt, trait_span: Span,
-    substr: &Substructure) -> @Expr {
+    substr: &Substructure) -> Gc<Expr> {
     let clone_ident = substr.method_ident;
     let ctor_ident;
     let all_fields;

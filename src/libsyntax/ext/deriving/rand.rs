@@ -16,11 +16,13 @@ use ext::build::{AstBuilder};
 use ext::deriving::generic::*;
 use ext::deriving::generic::ty::*;
 
+use std::gc::Gc;
+
 pub fn expand_deriving_rand(cx: &mut ExtCtxt,
                             span: Span,
-                            mitem: @MetaItem,
-                            item: @Item,
-                            push: |@Item|) {
+                            mitem: Gc<MetaItem>,
+                            item: Gc<Item>,
+                            push: |Gc<Item>|) {
     let trait_def = TraitDef {
         span: span,
         attributes: Vec::new(),
@@ -53,7 +55,8 @@ pub fn expand_deriving_rand(cx: &mut ExtCtxt,
     trait_def.expand(cx, mitem, item, push)
 }
 
-fn rand_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) -> @Expr {
+fn rand_substructure(cx: &mut ExtCtxt, trait_span: Span,
+                     substr: &Substructure) -> Gc<Expr> {
     let rng = match substr.nonself_args {
         [rng] => vec!( rng ),
         _ => cx.bug("Incorrect number of arguments to `rand` in `deriving(Rand)`")
@@ -134,8 +137,8 @@ fn rand_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) 
                   trait_span: Span,
                   ctor_ident: Ident,
                   summary: &StaticFields,
-                  rand_call: |&mut ExtCtxt, Span| -> @Expr)
-                  -> @Expr {
+                  rand_call: |&mut ExtCtxt, Span| -> Gc<Expr>)
+                  -> Gc<Expr> {
         match *summary {
             Unnamed(ref fields) => {
                 if fields.is_empty() {
