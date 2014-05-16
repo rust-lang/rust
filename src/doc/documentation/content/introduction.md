@@ -62,7 +62,7 @@ This problem is called a 'dangling pointer,'
 and it's not possible to write Rust code that has it.
 Let's try writing it in Rust:
 
-```rust
+``` {.rust .dontcheck}
 fn dangling() -> &int {
     let i = 1234;
     return &i;
@@ -241,7 +241,7 @@ while also ensuring that the original owning task cannot create data races by co
 To prove that Rust performs the ownership transfer,
 try to modify the previous example to continue using the variable `numbers`:
 
-```rust
+``` {.rust .dontcheck}
 fn main() {
     let numbers = ~[1,2,3];
 

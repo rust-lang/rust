@@ -93,3 +93,4 @@ src/doc/documentation/tmp
 src/doc/documentation/output
 src/doc/documentation/public
 src/doc/documentation/*.log
+src/doc/documentation/target

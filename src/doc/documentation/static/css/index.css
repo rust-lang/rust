@@ -191,7 +191,7 @@ pre code span {
 .kr { color: #006699; } /* Keyword.Reserved */
 .kt, .predefined-type, .dt, .directive { color: #536bcf; } /* Keyword.Type */
 .m { color: #ed4e4e } /* Literal.Number */
-.s { color: #d44950 } /* Literal.String */
+.s, .st { color: #d44950 } /* Literal.String */
 .na { color: #4f9fcf } /* Name.Attribute */
 .nb { color: #336666 } /* Name.Builtin */
 .nc { color: #00AA88; } /* Name.Class */

@@ -15,11 +15,10 @@ Head over to [Rust's homepage](http://www.rust-lang.org/) and download the night
 
 Now that Rust is installed, you'll have access to the `rustc` executable. That's the Rust compiler.
 
-Let's create a new file called `hello_world.rs`. The Rust file extension, if you didn't know already is `rs`.
+Let's create a new file called `hello_world.rs`. The Rust file extension, if you didn't know already, is `rs`.
 
-```rust
+``` {.rust}
 // hello_world.rs
-
 fn main() {
   println!("Hello World!");
 }
