@@ -1,3 +1,13 @@
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution and at
+// http://rust-lang.org/COPYRIGHT.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
 #![crate_id = "validator"]
 #![crate_type = "bin"]
 #![feature(phase)]
@@ -129,7 +139,6 @@ impl<'a, 'r, 't> Page<'a, 'r, 't> {
         for capture in iter {
             count = count + 1;
             let (start, end) = capture.pos(1).unwrap();
-            println!("\n\n{}\n\n", capture.at(1));
             let block = Block::new(self.path, capture.at(1), start, end);
             try!(block.compile());
         }
@@ -139,13 +148,13 @@ impl<'a, 'r, 't> Page<'a, 'r, 't> {
 }
 
 fn main() {
+    // Skip a line to not crowd things.
     println!("");
 
     let mut args  = os::args();
     let dir       = args.pop().unwrap();
     let dir_path  = Path::new(StrBuf::from_owned_str(dir));
 
-    // Precompile the regular expression to match code blocks.
     let re = regex!(r"``` \{\.rust\}\n([^`]+)\n");
 
     let mut files = fs::walk_dir(&dir_path).unwrap();
@@ -153,7 +162,10 @@ fn main() {
     for file in files {
         let page = Page::new(&file);
         match page.compile(&re) {
-            Ok(count) => println!("Successfully compiled {} blocks from: {}", count, file.display()),
+            Ok(count) => println!(
+                "Successfully compiled {} blocks from: {}", count,
+                file.display()
+            ),
             Err(err) => fail!("{}", err)
         }
     }
