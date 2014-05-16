@@ -8,6 +8,72 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! A simple function caching system.
+//!
+//! This is a loose clone of the [fbuild build system](https://github.com/felix-lang/fbuild),
+//! made a touch more generic (not wired to special cases on files) and much
+//! less metaprogram-y due to rust's comparative weakness there, relative to
+//! python.
+//!
+//! It's based around _imperative builds_ that happen to have some function
+//! calls cached. That is, it's _just_ a mechanism for describing cached
+//! functions. This makes it much simpler and smaller than a "build system"
+//! that produces an IR and evaluates it. The evaluation order is normal
+//! function calls. Some of them just return really quickly.
+//!
+//! A cached function consumes and produces a set of _works_. A work has a
+//! name, a kind (that determines how the value is to be checked for
+//! freshness) and a value. Works must also be (de)serializable. Some
+//! examples of works:
+//!
+//!    kind   name    value
+//!   ------------------------
+//!    cfg    os      linux
+//!    file   foo.c   <sha1>
+//!    url    foo.com <etag>
+//!
+//! Works are conceptually single units, but we store them most of the time
+//! in maps of the form (type,name) => value. These are WorkMaps.
+//!
+//! A cached function divides the works it's interested in into inputs and
+//! outputs, and subdivides those into declared (input) works and
+//! discovered (input and output) works.
+//!
+//! A _declared_ input or is one that is given to the workcache before
+//! any work actually happens, in the "prep" phase. Even when a function's
+//! work-doing part (the "exec" phase) never gets called, it has declared
+//! inputs, which can be checked for freshness (and potentially
+//! used to determine that the function can be skipped).
+//!
+//! The workcache checks _all_ works for freshness, but uses the set of
+//! discovered outputs from the _previous_ exec (which it will re-discover
+//! and re-record each time the exec phase runs).
+//!
+//! Therefore the discovered works cached in the db might be a
+//! mis-approximation of the current discoverable works, but this is ok for
+//! the following reason: we assume that if an artifact A changed from
+//! depending on B,C,D to depending on B,C,D,E, then A itself changed (as
+//! part of the change-in-dependencies), so we will be ok.
+//!
+//! Each function has a single discriminated output work called its _result_.
+//! This is only different from other works in that it is returned, by value,
+//! from a call to the cacheable function; the other output works are used in
+//! passing to invalidate dependencies elsewhere in the cache, but do not
+//! otherwise escape from a function invocation. Most functions only have one
+//! output work anyways.
+//!
+//! A database (the central store of a workcache) stores a mappings:
+//!
+//! (fn_name,{declared_input}) => ({discovered_input},
+//!                                {discovered_output},result)
+//!
+//! (Note: fbuild, which workcache is based on, has the concept of a declared
+//! output as separate from a discovered output. This distinction exists only
+//! as an artifact of how fbuild works: via annotations on function types
+//! and metaprogramming, with explicit dependency declaration as a fallback.
+//! Workcache is more explicit about dependencies, and as such treats all
+//! outputs the same, as discovered-during-the-last-run.)
+
 #![crate_id = "workcache#0.11.0-pre"]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
@@ -32,74 +98,6 @@ use collections::TreeMap;
 use std::str;
 use std::io;
 use std::io::{File, MemWriter};
-
-/**
-*
-* This is a loose clone of the [fbuild build system](https://github.com/felix-lang/fbuild),
-* made a touch more generic (not wired to special cases on files) and much
-* less metaprogram-y due to rust's comparative weakness there, relative to
-* python.
-*
-* It's based around _imperative builds_ that happen to have some function
-* calls cached. That is, it's _just_ a mechanism for describing cached
-* functions. This makes it much simpler and smaller than a "build system"
-* that produces an IR and evaluates it. The evaluation order is normal
-* function calls. Some of them just return really quickly.
-*
-* A cached function consumes and produces a set of _works_. A work has a
-* name, a kind (that determines how the value is to be checked for
-* freshness) and a value. Works must also be (de)serializable. Some
-* examples of works:
-*
-*    kind   name    value
-*   ------------------------
-*    cfg    os      linux
-*    file   foo.c   <sha1>
-*    url    foo.com <etag>
-*
-* Works are conceptually single units, but we store them most of the time
-* in maps of the form (type,name) => value. These are WorkMaps.
-*
-* A cached function divides the works it's interested in into inputs and
-* outputs, and subdivides those into declared (input) works and
-* discovered (input and output) works.
-*
-* A _declared_ input or is one that is given to the workcache before
-* any work actually happens, in the "prep" phase. Even when a function's
-* work-doing part (the "exec" phase) never gets called, it has declared
-* inputs, which can be checked for freshness (and potentially
-* used to determine that the function can be skipped).
-*
-* The workcache checks _all_ works for freshness, but uses the set of
-* discovered outputs from the _previous_ exec (which it will re-discover
-* and re-record each time the exec phase runs).
-*
-* Therefore the discovered works cached in the db might be a
-* mis-approximation of the current discoverable works, but this is ok for
-* the following reason: we assume that if an artifact A changed from
-* depending on B,C,D to depending on B,C,D,E, then A itself changed (as
-* part of the change-in-dependencies), so we will be ok.
-*
-* Each function has a single discriminated output work called its _result_.
-* This is only different from other works in that it is returned, by value,
-* from a call to the cacheable function; the other output works are used in
-* passing to invalidate dependencies elsewhere in the cache, but do not
-* otherwise escape from a function invocation. Most functions only have one
-* output work anyways.
-*
-* A database (the central store of a workcache) stores a mappings:
-*
-* (fn_name,{declared_input}) => ({discovered_input},
-*                                {discovered_output},result)
-*
-* (Note: fbuild, which workcache is based on, has the concept of a declared
-* output as separate from a discovered output. This distinction exists only
-* as an artifact of how fbuild works: via annotations on function types
-* and metaprogramming, with explicit dependency declaration as a fallback.
-* Workcache is more explicit about dependencies, and as such treats all
-* outputs the same, as discovered-during-the-last-run.)
-*
-*/
 
 #[deriving(Clone, Eq, Encodable, Decodable, Ord, TotalOrd, TotalEq)]
 struct WorkKey {

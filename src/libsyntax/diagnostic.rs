@@ -259,7 +259,7 @@ pub struct EmitterWriter {
 }
 
 enum Destination {
-    Terminal(term::Terminal<io::stdio::StdWriter>),
+    Terminal(Box<term::Terminal<Box<Writer:Send>>:Send>),
     Raw(Box<Writer:Send>),
 }
 
@@ -274,9 +274,9 @@ impl EmitterWriter {
         };
 
         if use_color {
-            let dst = match term::Terminal::new(stderr.unwrap()) {
-                Ok(t) => Terminal(t),
-                Err(..) => Raw(box io::stderr()),
+            let dst = match term::stderr() {
+                Some(t) => Terminal(t),
+                None    => Raw(box stderr),
             };
             EmitterWriter { dst: dst }
         } else {

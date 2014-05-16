@@ -8,6 +8,40 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Simple numerics.
+//!
+//! This crate contains arbitrary-sized integer, rational, and complex types.
+//!
+//! ## Example
+//!
+//! This example uses the BigRational type and [Newton's method][newt] to
+//! approximate a square root to arbitrary precision:
+//!
+//! ```
+//! extern crate num;
+//!
+//! use num::bigint::BigInt;
+//! use num::rational::{Ratio, BigRational};
+//!
+//! fn approx_sqrt(number: u64, iterations: uint) -> BigRational {
+//!     let start: Ratio<BigInt> = Ratio::from_integer(FromPrimitive::from_u64(number).unwrap());
+//!     let mut approx = start.clone();
+//!
+//!     for _ in range(0, iterations) {
+//!         approx = (approx + (start / approx)) /
+//!             Ratio::from_integer(FromPrimitive::from_u64(2).unwrap());
+//!     }
+//!
+//!     approx
+//! }
+//!
+//! fn main() {
+//!     println!("{}", approx_sqrt(10, 4)); // prints 4057691201/1283082416
+//! }
+//! ```
+//!
+//! [newt]: https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Babylonian_method
+
 #![feature(macro_rules)]
 
 #![crate_id = "num#0.11.0-pre"]
