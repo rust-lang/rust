@@ -17,19 +17,16 @@ use std::os;
 use std::io::fs;
 
 pub struct Compiler {
-    dir: TempDir,
+    input: ~str,
     args: Vec<~str>,
     process: Option<Process>
 }
 
 impl Compiler {
     pub fn new(input: ~str) -> Compiler {
-        let tmp = TempDir::new("exec-compiler").unwrap();
-        let path = tmp.path().as_str().unwrap().to_owned();
-
         Compiler {
-            dir: tmp,
-            args: vec![input, "--out-dir".to_owned(), path],
+            input: input,
+            args: vec![],
             process: None
         }
     }
@@ -43,7 +40,31 @@ impl Compiler {
         config
     }
 
+
     pub fn exec(&mut self) -> Result<(), ~str>{
+        // Create a tmp directory to stash all the files.
+        let tmp = TempDir::new("exec_compiler").unwrap();
+
+        // Save the path to that directory.
+        let path = tmp.path();
+
+        // Join a path for the block.rs file.
+        let block_path = path.join("block.rs");
+
+        // Create a new file with the previous path.
+        let mut file = File::create(&block_path).unwrap();
+
+        match file.write(self.input.as_bytes()) {
+            Ok(r) => {},
+            Err(err) => fail!("Oops: {}", err)
+        }
+
+        let f = File::open(&block_path);
+
+        self.args.push(block_path.as_str().unwrap().to_owned());
+        self.args.push("--out-dir".to_owned());
+        self.args.push(path.as_str().unwrap().to_owned());
+
         let mut config = self.config();
 
         config.stdout = InheritFd(1);
@@ -63,21 +84,23 @@ impl Compiler {
 
 pub struct Block<'a> {
     file: &'a Path,
+    input: &'a str,
     start: uint,
     end: uint
 }
 
 impl<'a> Block<'a> {
-    pub fn new(file: &'a Path, start: uint, end: uint) -> Block<'a> {
+    pub fn new(file: &'a Path, input: &'a str, start: uint, end: uint) -> Block<'a> {
         Block {
             file: file,
+            input: input,
             start: start,
             end: end
         }
     }
 
     pub fn compile(&self) -> Result<(), ~str> {
-        let mut compiler = Compiler::new(self.file.as_str().unwrap().to_owned());
+        let mut compiler = Compiler::new(self.input.to_owned());
         compiler.exec()
     }
 }
@@ -99,41 +122,27 @@ impl<'a, 'r, 't> Page<'a, 'r, 't> {
         }
     }
 
-    pub fn compile(&'t self, regex: &'r Regex) -> Result<(), ~str> {
+    pub fn compile(&'t self, regex: &'r Regex) -> Result<uint, ~str> {
         let mut iter = regex.captures_iter(self.input);
+        let mut count = 0;
 
         for capture in iter {
-            let block = self.block(self.path, &capture);
+            count = count + 1;
+            let (start, end) = capture.pos(1).unwrap();
+            let block = Block::new(self.path, capture.at(1), start, end);
             try!(block.compile());
         }
 
-        Ok(())
-    }
-
-    pub fn block(&self, path: &'a Path, capture: &'t Captures<'t>) -> Block<'a> {
-        let (start, end) = capture.pos(1).unwrap();
-        Block::new(path, start, end)
+        Ok(count)
     }
 }
 
 fn main() {
     println!("");
 
-    // Create a new temporary directory that we can work within:
-    let tmp_dir = TempDir::new("validator-block").unwrap();
-
     let mut args  = os::args();
     let dir       = args.pop().unwrap();
     let dir_path  = Path::new(StrBuf::from_owned_str(dir));
-
-    // Walk the directory and capture all the
-    // markdown files.
-
-    // for path in dirs {
-    //     let file = fs::File::open(&path).read_to_str().unwrap();
-    //     let caps = re.captures(file.as_slice());
-    //     println!("{}", caps.at(1));
-    // }
 
     // Precompile the regular expression to match code blocks.
     let re = regex!(r"``` \{\.rust\}\n([^`]+)\n");
@@ -142,33 +151,8 @@ fn main() {
 
     for file in files {
         let page = Page::new(&file);
-        page.compile(&re);
-    }
-
-    let raw = r"
-    ``` {.rust}
-    fn main() {}
-    ```";
-
-    let mut i = 0;
-
-    for caps in re.captures_iter(raw) {
-        i = i + 1;
-        let block = caps.at(1);
-        let mut path  = Path::new("");
-
-        path.push(tmp_dir.path());
-        path.push(Path::new(format!("block-{}.rs", i)));
-
-        // Create a new file
-        let mut file = File::create(&path).unwrap();
-        file.write(block.as_bytes());
-
-        let (start, end) = caps.pos(1).unwrap();
-
-        let mut block = Block::new(&path, start, end);
-        match block.compile() {
-            Ok(r) => println!("Success"),
+        match page.compile(&re) {
+            Ok(count) => println!("Successfully compiled {} blocks from: {}", count, file.display()),
             Err(err) => fail!("{}", err)
         }
     }
