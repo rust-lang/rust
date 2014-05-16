@@ -1439,7 +1439,10 @@ fn synthesize_crate_attrs(ecx: &EncodeContext,
         attr::mk_attr(
             attr::mk_name_value_item_str(
                 InternedString::new("crate_id"),
-                token::intern_and_get_ident(ecx.link_meta.crateid.to_str())))
+                token::intern_and_get_ident(ecx.link_meta
+                                               .crateid
+                                               .to_str()
+                                               .as_slice())))
     }
 
     let mut attrs = Vec::new();

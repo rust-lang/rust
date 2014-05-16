@@ -623,7 +623,7 @@ impl<'a> State<'a> {
             }
             ast::ItemForeignMod(ref nmod) => {
                 try!(self.head("extern"));
-                try!(self.word_nbsp(nmod.abi.to_str()));
+                try!(self.word_nbsp(nmod.abi.to_str().as_slice()));
                 try!(self.bopen());
                 try!(self.print_foreign_mod(nmod, item.attrs.as_slice()));
                 try!(self.bclose(item.span));
@@ -2389,7 +2389,7 @@ impl<'a> State<'a> {
             Some(abi::Rust) => Ok(()),
             Some(abi) => {
                 try!(self.word_nbsp("extern"));
-                self.word_nbsp(abi.to_str())
+                self.word_nbsp(abi.to_str().as_slice())
             }
             None => Ok(())
         }
@@ -2400,7 +2400,7 @@ impl<'a> State<'a> {
         match opt_abi {
             Some(abi) => {
                 try!(self.word_nbsp("extern"));
-                self.word_nbsp(abi.to_str())
+                self.word_nbsp(abi.to_str().as_slice())
             }
             None => Ok(())
         }
@@ -2416,7 +2416,7 @@ impl<'a> State<'a> {
 
         if abi != abi::Rust {
             try!(self.word_nbsp("extern"));
-            try!(self.word_nbsp(abi.to_str()));
+            try!(self.word_nbsp(abi.to_str().as_slice()));
         }
 
         word(&mut self.s, "fn")

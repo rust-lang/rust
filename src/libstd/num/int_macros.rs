@@ -77,8 +77,8 @@ pub fn to_str_bytes<U>(n: $T, radix: uint, f: |v: &[u8]| -> U) -> U {
 impl ToStrRadix for $T {
     /// Convert to a string in a given base.
     #[inline]
-    fn to_str_radix(&self, radix: uint) -> ~str {
-        format!("{}", ::fmt::radix(*self, radix as u8))
+    fn to_str_radix(&self, radix: uint) -> StrBuf {
+        format_strbuf!("{}", ::fmt::radix(*self, radix as u8))
     }
 }
 
@@ -136,39 +136,39 @@ mod tests {
 
     #[test]
     fn test_to_str() {
-        assert_eq!((0 as $T).to_str_radix(10u), "0".to_owned());
-        assert_eq!((1 as $T).to_str_radix(10u), "1".to_owned());
-        assert_eq!((-1 as $T).to_str_radix(10u), "-1".to_owned());
-        assert_eq!((127 as $T).to_str_radix(16u), "7f".to_owned());
-        assert_eq!((100 as $T).to_str_radix(10u), "100".to_owned());
+        assert_eq!((0 as $T).to_str_radix(10u), "0".to_strbuf());
+        assert_eq!((1 as $T).to_str_radix(10u), "1".to_strbuf());
+        assert_eq!((-1 as $T).to_str_radix(10u), "-1".to_strbuf());
+        assert_eq!((127 as $T).to_str_radix(16u), "7f".to_strbuf());
+        assert_eq!((100 as $T).to_str_radix(10u), "100".to_strbuf());
 
     }
 
     #[test]
     fn test_int_to_str_overflow() {
         let mut i8_val: i8 = 127_i8;
-        assert_eq!(i8_val.to_str(), "127".to_owned());
+        assert_eq!(i8_val.to_str(), "127".to_strbuf());
 
         i8_val += 1 as i8;
-        assert_eq!(i8_val.to_str(), "-128".to_owned());
+        assert_eq!(i8_val.to_str(), "-128".to_strbuf());
 
         let mut i16_val: i16 = 32_767_i16;
-        assert_eq!(i16_val.to_str(), "32767".to_owned());
+        assert_eq!(i16_val.to_str(), "32767".to_strbuf());
 
         i16_val += 1 as i16;
-        assert_eq!(i16_val.to_str(), "-32768".to_owned());
+        assert_eq!(i16_val.to_str(), "-32768".to_strbuf());
 
         let mut i32_val: i32 = 2_147_483_647_i32;
-        assert_eq!(i32_val.to_str(), "2147483647".to_owned());
+        assert_eq!(i32_val.to_str(), "2147483647".to_strbuf());
 
         i32_val += 1 as i32;
-        assert_eq!(i32_val.to_str(), "-2147483648".to_owned());
+        assert_eq!(i32_val.to_str(), "-2147483648".to_strbuf());
 
         let mut i64_val: i64 = 9_223_372_036_854_775_807_i64;
-        assert_eq!(i64_val.to_str(), "9223372036854775807".to_owned());
+        assert_eq!(i64_val.to_str(), "9223372036854775807".to_strbuf());
 
         i64_val += 1 as i64;
-        assert_eq!(i64_val.to_str(), "-9223372036854775808".to_owned());
+        assert_eq!(i64_val.to_str(), "-9223372036854775808".to_strbuf());
     }
 
     #[test]

@@ -340,7 +340,8 @@ pub fn create_global_var_metadata(cx: &CrateContext,
 
     let namespace_node = namespace_for_item(cx, ast_util::local_def(node_id));
     let var_name = token::get_ident(ident).get().to_str();
-    let linkage_name = namespace_node.mangled_name_of_contained_item(var_name);
+    let linkage_name =
+        namespace_node.mangled_name_of_contained_item(var_name.as_slice());
     let var_scope = namespace_node.scope;
 
     var_name.as_slice().with_c_str(|var_name| {
@@ -1481,14 +1482,17 @@ fn describe_enum_variant(cx: &CrateContext,
     // Get the argument names from the enum variant info
     let mut arg_names: Vec<_> = match variant_info.arg_names {
         Some(ref names) => {
-            names.iter().map(|ident| token::get_ident(*ident).get().to_str()).collect()
+            names.iter()
+                 .map(|ident| {
+                     token::get_ident(*ident).get().to_str().into_strbuf()
+                 }).collect()
         }
-        None => variant_info.args.iter().map(|_| "".to_owned()).collect()
+        None => variant_info.args.iter().map(|_| "".to_strbuf()).collect()
     };
 
     // If this is not a univariant enum, there is also the (unnamed) discriminant field
     if discriminant_type_metadata.is_some() {
-        arg_names.insert(0, "".to_owned());
+        arg_names.insert(0, "".to_strbuf());
     }
 
     // Build an array of (field name, field type) pairs to be captured in the factory closure.

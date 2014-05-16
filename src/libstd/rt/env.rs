@@ -13,6 +13,7 @@
 use from_str::from_str;
 use option::{Some, None, Expect};
 use os;
+use str::Str;
 
 // Note that these are all accessed without any synchronization.
 // They are expected to be initialized once then left alone.
@@ -25,15 +26,19 @@ static mut DEBUG_BORROW: bool = false;
 pub fn init() {
     unsafe {
         match os::getenv("RUST_MIN_STACK") {
-            Some(s) => match from_str(s) {
+            Some(s) => match from_str(s.as_slice()) {
                 Some(i) => MIN_STACK = i,
                 None => ()
             },
             None => ()
         }
         match os::getenv("RUST_MAX_CACHED_STACKS") {
-            Some(max) => MAX_CACHED_STACKS = from_str(max).expect("expected positive integer in \
-                                                                   RUST_MAX_CACHED_STACKS"),
+            Some(max) => {
+                MAX_CACHED_STACKS =
+                    from_str(max.as_slice()).expect("expected positive \
+                                                     integer in \
+                                                     RUST_MAX_CACHED_STACKS")
+            }
             None => ()
         }
         match os::getenv("RUST_DEBUG_BORROW") {

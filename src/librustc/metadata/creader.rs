@@ -156,7 +156,7 @@ fn extract_crate_info(e: &Env, i: &ast::ViewItem) -> Option<CrateInfo> {
                         Some(id) => id
                     }
                 }
-                None => from_str(ident.get().to_str()).unwrap()
+                None => from_str(ident.get().to_str().as_slice()).unwrap()
             };
             Some(CrateInfo {
                 ident: ident.get().to_strbuf(),

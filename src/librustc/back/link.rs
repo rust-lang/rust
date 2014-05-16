@@ -815,7 +815,7 @@ pub fn filename_for_input(sess: &Session, crate_type: config::CrateType,
     let libname = output_lib_filename(id);
     match crate_type {
         config::CrateTypeRlib => {
-            out_filename.with_filename(format!("lib{}.rlib", libname))
+            out_filename.with_filename(format_strbuf!("lib{}.rlib", libname))
         }
         config::CrateTypeDylib => {
             let (prefix, suffix) = match sess.targ_cfg.os {
@@ -825,10 +825,13 @@ pub fn filename_for_input(sess: &Session, crate_type: config::CrateType,
                 abi::OsAndroid => (loader::ANDROID_DLL_PREFIX, loader::ANDROID_DLL_SUFFIX),
                 abi::OsFreebsd => (loader::FREEBSD_DLL_PREFIX, loader::FREEBSD_DLL_SUFFIX),
             };
-            out_filename.with_filename(format!("{}{}{}", prefix, libname, suffix))
+            out_filename.with_filename(format_strbuf!("{}{}{}",
+                                                      prefix,
+                                                      libname,
+                                                      suffix))
         }
         config::CrateTypeStaticlib => {
-            out_filename.with_filename(format!("lib{}.a", libname))
+            out_filename.with_filename(format_strbuf!("lib{}.a", libname))
         }
         config::CrateTypeExecutable => out_filename.clone(),
     }

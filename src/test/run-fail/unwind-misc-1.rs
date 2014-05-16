@@ -22,9 +22,9 @@ fn main() {
     let mut map = collections::HashMap::new();
     let mut arr = Vec::new();
     for _i in range(0u, 10u) {
-        arr.push(@"key stuff".to_owned());
+        arr.push(@"key stuff".to_strbuf());
         map.insert(arr.clone(),
-                   arr.clone().append([@"value stuff".to_owned()]));
+                   arr.clone().append([@"value stuff".to_strbuf()]));
         if arr.len() == 5 {
             fail!();
         }

@@ -164,8 +164,8 @@ fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, pats: Vec<@Pat> ) {
             match ty::get(ty).sty {
                 ty::ty_bool => {
                     match *ctor {
-                        val(const_bool(true)) => Some("true".to_owned()),
-                        val(const_bool(false)) => Some("false".to_owned()),
+                        val(const_bool(true)) => Some("true".to_strbuf()),
+                        val(const_bool(false)) => Some("false".to_strbuf()),
                         _ => None
                     }
                 }
@@ -177,7 +177,11 @@ fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, pats: Vec<@Pat> ) {
                     let variants = ty::enum_variants(cx.tcx, id);
 
                     match variants.iter().find(|v| v.id == vid) {
-                        Some(v) => Some(token::get_ident(v.name).get().to_str()),
+                        Some(v) => {
+                            Some(token::get_ident(v.name).get()
+                                                         .to_str()
+                                                         .into_strbuf())
+                        }
                         None => {
                             fail!("check_exhaustive: bad variant in ctor")
                         }
@@ -185,7 +189,9 @@ fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, pats: Vec<@Pat> ) {
                 }
                 ty::ty_vec(..) | ty::ty_rptr(..) => {
                     match *ctor {
-                        vec(n) => Some(format!("vectors of length {}", n)),
+                        vec(n) => {
+                            Some(format_strbuf!("vectors of length {}", n))
+                        }
                         _ => None
                     }
                 }
@@ -193,11 +199,11 @@ fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, pats: Vec<@Pat> ) {
             }
         }
     };
-    let msg = "non-exhaustive patterns".to_owned() + match ext {
-        Some(ref s) => format!(": {} not covered",  *s),
-        None => "".to_owned()
-    };
-    cx.tcx.sess.span_err(sp, msg);
+    let msg = format_strbuf!("non-exhaustive patterns{}", match ext {
+        Some(ref s) => format_strbuf!(": {} not covered", *s),
+        None => "".to_strbuf()
+    });
+    cx.tcx.sess.span_err(sp, msg.as_slice());
 }
 
 type matrix = Vec<Vec<@Pat> > ;

@@ -36,12 +36,13 @@ fn main() {
     let blah       = "\u03c0\u042f\u97f3\u00e6\u221e";
 
     let child_name = "child";
-    let child_dir  = "process-spawn-with-unicode-params-" + blah;
+    let child_dir  = format_strbuf!("process-spawn-with-unicode-params-{}",
+                                    blah);
 
     // parameters sent to child / expected to be received from parent
     let arg = blah;
     let cwd = my_dir.join(Path::new(child_dir.clone()));
-    let env = ("RUST_TEST_PROC_SPAWN_UNICODE".to_owned(), blah.to_owned());
+    let env = ("RUST_TEST_PROC_SPAWN_UNICODE".to_strbuf(), blah.to_strbuf());
 
     // am I the parent or the child?
     if my_args.len() == 1 {             // parent

@@ -23,7 +23,7 @@
  * #[deriving(Hash)]
  * struct Person {
  *     id: uint,
- *     name: ~str,
+ *     name: StrBuf,
  *     phone: u64,
  * }
  *
@@ -43,7 +43,7 @@
  *
  * struct Person {
  *     id: uint,
- *     name: ~str,
+ *     name: StrBuf,
  *     phone: u64,
  * }
  *
@@ -142,13 +142,6 @@ impl<'a, S: Writer> Hash<S> for &'a str {
     fn hash(&self, state: &mut S) {
         state.write(self.as_bytes());
         state.write_u8(0xFF);
-    }
-}
-
-impl<S: Writer> Hash<S> for ~str {
-    #[inline]
-    fn hash(&self, state: &mut S) {
-        self.as_slice().hash(state);
     }
 }
 

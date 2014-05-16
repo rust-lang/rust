@@ -589,10 +589,12 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
 
         let level_short = level_name.slice_chars(0, 1);
         let level_short = level_short.to_ascii().to_upper().into_str();
-        let flags = matches.opt_strs(level_short).move_iter().collect::<Vec<_>>().append(
-                                   matches.opt_strs(level_name).as_slice());
+        let flags = matches.opt_strs(level_short.as_slice())
+                           .move_iter()
+                           .collect::<Vec<_>>()
+                           .append(matches.opt_strs(level_name).as_slice());
         for lint_name in flags.iter() {
-            let lint_name = lint_name.replace("-", "_");
+            let lint_name = lint_name.replace("-", "_").into_strbuf();
             match lint_dict.find_equiv(&lint_name) {
               None => {
                 early_error(format!("unknown {} flag: {}",

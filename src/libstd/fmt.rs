@@ -488,7 +488,7 @@ use io;
 use option::None;
 use repr;
 use result::{Ok, Err};
-use str::{StrAllocating};
+use str::{Str, StrAllocating};
 use str;
 use strbuf::StrBuf;
 use slice::Vector;
@@ -572,7 +572,7 @@ impl<T> Poly for T {
             // this allocation of a new string
             _ => {
                 let s = repr::repr_to_str(self);
-                f.pad(s)
+                f.pad(s.as_slice())
             }
         }
     }
