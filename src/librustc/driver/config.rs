@@ -319,7 +319,7 @@ pub fn build_codegen_options(matches: &getopts::Matches) -> CodegenOptions
 {
     let mut cg = basic_codegen_options();
     for option in matches.opt_strs("C").move_iter() {
-        let mut iter = option.splitn('=', 1);
+        let mut iter = option.as_slice().splitn('=', 1);
         let key = iter.next().unwrap();
         let value = iter.next();
         let option_to_lookup = key.replace("-", "_");
@@ -563,7 +563,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     let mut crate_types: Vec<CrateType> = Vec::new();
     let unparsed_crate_types = matches.opt_strs("crate-type");
     for unparsed_crate_type in unparsed_crate_types.iter() {
-        for part in unparsed_crate_type.split(',') {
+        for part in unparsed_crate_type.as_slice().split(',') {
             let new_part = match part {
                 "lib"       => default_lib_output(),
                 "rlib"      => CrateTypeRlib,
@@ -612,7 +612,10 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         let mut this_bit = 0;
         for tuple in debug_map.iter() {
             let (name, bit) = match *tuple { (ref a, _, b) => (a, b) };
-            if *name == *debug_flag { this_bit = bit; break; }
+            if *name == debug_flag.as_slice() {
+                this_bit = bit;
+                break;
+            }
         }
         if this_bit == 0 {
             early_error(format!("unknown debug flag: {}", *debug_flag))
@@ -628,7 +631,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     if !parse_only && !no_trans {
         let unparsed_output_types = matches.opt_strs("emit");
         for unparsed_output_type in unparsed_output_types.iter() {
-            for part in unparsed_output_type.split(',') {
+            for part in unparsed_output_type.as_slice().split(',') {
                 let output_type = match part.as_slice() {
                     "asm"  => link::OutputTypeAssembly,
                     "ir"   => link::OutputTypeLlvmAssembly,
@@ -765,7 +768,7 @@ mod test {
     #[test]
     fn test_switch_implies_cfg_test() {
         let matches =
-            &match getopts(["--test".to_owned()], optgroups().as_slice()) {
+            &match getopts(["--test".to_strbuf()], optgroups().as_slice()) {
               Ok(m) => m,
               Err(f) => fail!("test_switch_implies_cfg_test: {}", f.to_err_msg())
             };
@@ -780,7 +783,7 @@ mod test {
     #[test]
     fn test_switch_implies_cfg_test_unless_cfg_test() {
         let matches =
-            &match getopts(["--test".to_owned(), "--cfg=test".to_owned()],
+            &match getopts(["--test".to_strbuf(), "--cfg=test".to_strbuf()],
                            optgroups().as_slice()) {
               Ok(m) => m,
               Err(f) => {

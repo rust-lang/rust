@@ -8,7 +8,7 @@ Use [`ToStr`](http://static.rust-lang.org/doc/master/std/to_str/trait.ToStr.html
 
 ~~~
 let x: int = 42;
-let y: ~str = x.to_str();
+let y: StrBuf = x.to_str().to_strbuf();
 ~~~
 
 **String to int**
@@ -22,14 +22,14 @@ let y: int = x.unwrap();
 
 **Int to string, in non-base-10**
 
-Use the `format!` syntax extension.
+Use the `format_strbuf!` syntax extension.
 
 ~~~
 let x: int = 42;
-let y: ~str = format!("{:t}", x);   // binary
-let y: ~str = format!("{:o}", x);   // octal
-let y: ~str = format!("{:x}", x);   // lowercase hexadecimal
-let y: ~str = format!("{:X}", x);   // uppercase hexadecimal
+let y: StrBuf = format_strbuf!("{:t}", x);   // binary
+let y: StrBuf = format_strbuf!("{:o}", x);   // octal
+let y: StrBuf = format_strbuf!("{:x}", x);   // lowercase hexadecimal
+let y: StrBuf = format_strbuf!("{:X}", x);   // uppercase hexadecimal
 ~~~
 
 **String to int, in non-base-10**
@@ -55,13 +55,14 @@ let x: Option<&str> = str::from_utf8(bytes);
 let y: &str = x.unwrap();
 ~~~
 
-To return an Owned String (~str) use the str helper function [`from_utf8_owned`](http://static.rust-lang.org/doc/master/std/str/fn.from_utf8_owned.html).
+To return an Owned String (StrBuf) use the str helper function [`from_utf8_owned`](http://static.rust-lang.org/doc/master/std/str/fn.from_utf8_owned.html).
 
 ~~~
 use std::str;
 
-let x: Result<~str,~[u8]> = str::from_utf8_owned(~[104u8,105u8]);
-let y: ~str = x.unwrap();
+let x: Result<StrBuf,~[u8]> =
+    str::from_utf8_owned(~[104u8,105u8]).map(|x| x.to_strbuf());
+let y: StrBuf = x.unwrap();
 ~~~
 
 To return a [`MaybeOwned`](http://static.rust-lang.org/doc/master/std/str/enum.MaybeOwned.html) use the str helper function [`from_utf8_lossy`](http://static.rust-lang.org/doc/master/std/str/fn.from_utf8_owned.html).  This function also replaces non-valid utf-8 sequences with U+FFFD replacement character.
@@ -181,7 +182,7 @@ enum Closed {}
 Phantom types are useful for enforcing state at compile time. For example:
 
 ~~~
-struct Door<State>(~str);
+struct Door<State>(StrBuf);
 
 struct Open;
 struct Closed;
@@ -194,13 +195,13 @@ fn open(Door(name): Door<Closed>) -> Door<Open> {
     Door::<Open>(name)
 }
 
-let _ = close(Door::<Open>("front".to_owned()));
+let _ = close(Door::<Open>("front".to_strbuf()));
 ~~~
 
 Attempting to close a closed door is prevented statically:
 
 ~~~ {.ignore}
-let _ = close(Door::<Closed>("front".to_owned())); // error: mismatched types: expected `main::Door<main::Open>` but found `main::Door<main::Closed>`
+let _ = close(Door::<Closed>("front".to_strbuf())); // error: mismatched types: expected `main::Door<main::Open>` but found `main::Door<main::Closed>`
 ~~~
 
 # FFI (Foreign Function Interface)

@@ -23,7 +23,7 @@ enum object {
 
 fn lookup(table: Box<json::Object>, key: StrBuf, default: StrBuf) -> StrBuf
 {
-    match table.find(&key.to_owned()) {
+    match table.find(&key.to_strbuf()) {
         option::Some(&json::String(ref s)) => {
             (*s).to_strbuf()
         }

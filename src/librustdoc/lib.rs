@@ -137,12 +137,7 @@ pub fn usage(argv0: &str) {
 }
 
 pub fn main_args(args: &[StrBuf]) -> int {
-    let matches = match getopts::getopts(args.tail()
-                                             .iter()
-                                             .map(|x| (*x).to_owned())
-                                             .collect::<Vec<_>>()
-                                             .as_slice(),
-                                         opts().as_slice()) {
+    let matches = match getopts::getopts(args.tail(), opts().as_slice()) {
         Ok(m) => m,
         Err(err) => {
             println!("{}", err.to_err_msg());
@@ -170,7 +165,7 @@ pub fn main_args(args: &[StrBuf]) -> int {
 
     let test_args = matches.opt_strs("test-args");
     let test_args: Vec<StrBuf> = test_args.iter()
-                                          .flat_map(|s| s.words())
+                                          .flat_map(|s| s.as_slice().words())
                                           .map(|s| s.to_strbuf())
                                           .collect();
 
@@ -199,7 +194,7 @@ pub fn main_args(args: &[StrBuf]) -> int {
         (false, false) => {}
     }
 
-    if matches.opt_strs("passes").as_slice() == &["list".to_owned()] {
+    if matches.opt_strs("passes").as_slice() == &["list".to_strbuf()] {
         println!("Available passes for running rustdoc:");
         for &(name, _, description) in PASSES.iter() {
             println!("{:>20s} - {}", name, description);
@@ -306,7 +301,7 @@ fn rust_input(cratefile: &str, matches: &getopts::Matches) -> Output {
                     clean::NameValue(ref x, ref value)
                             if "passes" == x.as_slice() => {
                         for pass in value.as_slice().words() {
-                            passes.push(pass.to_owned());
+                            passes.push(pass.to_strbuf());
                         }
                     }
                     clean::NameValue(ref x, ref value)
@@ -323,15 +318,19 @@ fn rust_input(cratefile: &str, matches: &getopts::Matches) -> Output {
     }
     if default_passes {
         for name in DEFAULT_PASSES.iter().rev() {
-            passes.unshift(name.to_owned());
+            passes.unshift(name.to_strbuf());
         }
     }
 
     // Load all plugins/passes into a PluginManager
-    let path = matches.opt_str("plugin-path").unwrap_or("/tmp/rustdoc/plugins".to_owned());
+    let path = matches.opt_str("plugin-path")
+                      .unwrap_or("/tmp/rustdoc/plugins".to_strbuf());
     let mut pm = plugins::PluginManager::new(Path::new(path));
     for pass in passes.iter() {
-        let plugin = match PASSES.iter().position(|&(p, _, _)| p == *pass) {
+        let plugin = match PASSES.iter()
+                                 .position(|&(p, _, _)| {
+                                     p == pass.as_slice()
+                                 }) {
             Some(i) => PASSES[i].val1(),
             None => {
                 error!("unknown pass {}, skipping", *pass);
@@ -364,7 +363,7 @@ fn json_input(input: &str) -> Result<Output, StrBuf> {
         Ok(json::Object(obj)) => {
             let mut obj = obj;
             // Make sure the schema is what we expect
-            match obj.pop(&"schema".to_owned()) {
+            match obj.pop(&"schema".to_strbuf()) {
                 Some(json::String(version)) => {
                     if version.as_slice() != SCHEMA_VERSION {
                         return Err(format_strbuf!(
@@ -375,7 +374,7 @@ fn json_input(input: &str) -> Result<Output, StrBuf> {
                 Some(..) => return Err("malformed json".to_strbuf()),
                 None => return Err("expected a schema version".to_strbuf()),
             }
-            let krate = match obj.pop(&"crate".to_str()) {
+            let krate = match obj.pop(&"crate".to_strbuf()) {
                 Some(json) => {
                     let mut d = json::Decoder::new(json);
                     Decodable::decode(&mut d).unwrap()
@@ -404,13 +403,14 @@ fn json_output(krate: clean::Crate, res: Vec<plugins::PluginJson> ,
     //   "plugins": { output of plugins ... }
     // }
     let mut json = box collections::TreeMap::new();
-    json.insert("schema".to_owned(), json::String(SCHEMA_VERSION.to_owned()));
+    json.insert("schema".to_strbuf(),
+                json::String(SCHEMA_VERSION.to_strbuf()));
     let plugins_json = box res.move_iter()
                               .filter_map(|opt| {
                                   match opt {
                                       None => None,
                                       Some((string, json)) => {
-                                          Some((string.to_owned(), json))
+                                          Some((string.to_strbuf(), json))
                                       }
                                   }
                               }).collect();
@@ -423,15 +423,15 @@ fn json_output(krate: clean::Crate, res: Vec<plugins::PluginJson> ,
             let mut encoder = json::Encoder::new(&mut w as &mut io::Writer);
             krate.encode(&mut encoder).unwrap();
         }
-        str::from_utf8(w.unwrap().as_slice()).unwrap().to_owned()
+        str::from_utf8(w.unwrap().as_slice()).unwrap().to_strbuf()
     };
-    let crate_json = match json::from_str(crate_json_str) {
+    let crate_json = match json::from_str(crate_json_str.as_slice()) {
         Ok(j) => j,
         Err(e) => fail!("Rust generated JSON is invalid: {:?}", e)
     };
 
-    json.insert("crate".to_owned(), crate_json);
-    json.insert("plugins".to_owned(), json::Object(plugins_json));
+    json.insert("crate".to_strbuf(), crate_json);
+    json.insert("plugins".to_strbuf(), json::Object(plugins_json));
 
     let mut file = try!(File::create(&dst));
     try!(json::Object(json).to_writer(&mut file));

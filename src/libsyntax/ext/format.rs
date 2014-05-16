@@ -886,7 +886,9 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt, sp: Span,
     }
     match parser.errors.shift() {
         Some(error) => {
-            cx.ecx.span_err(efmt.span, "invalid format string: " + error);
+            cx.ecx.span_err(efmt.span,
+                            format_strbuf!("invalid format string: {}",
+                                           error).as_slice());
             return DummyResult::raw_expr(sp);
         }
         None => {}

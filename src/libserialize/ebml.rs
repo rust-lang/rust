@@ -34,8 +34,8 @@ impl<'doc> Doc<'doc> {
         str::from_utf8(self.data.slice(self.start, self.end)).unwrap()
     }
 
-    pub fn as_str(&self) -> ~str {
-        self.as_str_slice().to_owned()
+    pub fn as_str(&self) -> StrBuf {
+        self.as_str_slice().to_strbuf()
     }
 }
 
@@ -80,7 +80,7 @@ pub enum EbmlEncoderTag {
 #[deriving(Show)]
 pub enum Error {
     IntTooBig(uint),
-    Expected(~str),
+    Expected(StrBuf),
     IoError(io::IoError)
 }
 // --------------------------------------
@@ -312,7 +312,10 @@ pub mod reader {
                     self.pos = r_doc.end;
                     let str = r_doc.as_str_slice();
                     if lbl != str {
-                        return Err(Expected(format!("Expected label {} but found {}", lbl, str)));
+                        return Err(Expected(format_strbuf!("Expected label \
+                                                            {} but found {}",
+                                                           lbl,
+                                                           str)));
                     }
                 }
             }
@@ -322,7 +325,8 @@ pub mod reader {
         fn next_doc(&mut self, exp_tag: EbmlEncoderTag) -> DecodeResult<Doc<'doc>> {
             debug!(". next_doc(exp_tag={:?})", exp_tag);
             if self.pos >= self.parent.end {
-                return Err(Expected(format!("no more documents in current node!")));
+                return Err(Expected(format_strbuf!("no more documents in \
+                                                    current node!")));
             }
             let TaggedDoc { tag: r_tag, doc: r_doc } =
                 try!(doc_at(self.parent.data, self.pos));
@@ -334,12 +338,18 @@ pub mod reader {
                    r_doc.start,
                    r_doc.end);
             if r_tag != (exp_tag as uint) {
-                return Err(Expected(format!("expected EBML doc with tag {:?} but found tag {:?}",
-                       exp_tag, r_tag)));
+                return Err(Expected(format_strbuf!("expected EBML doc with \
+                                                    tag {:?} but found tag \
+                                                    {:?}",
+                                                   exp_tag,
+                                                   r_tag)));
             }
             if r_doc.end > self.parent.end {
-                return Err(Expected(format!("invalid EBML, child extends to {:#x}, parent to {:#x}",
-                      r_doc.end, self.parent.end)));
+                return Err(Expected(format_strbuf!("invalid EBML, child \
+                                                    extends to {:#x}, parent \
+                                                    to {:#x}",
+                                                   r_doc.end,
+                                                   self.parent.end)));
             }
             self.pos = r_doc.end;
             Ok(r_doc)
@@ -433,7 +443,7 @@ pub mod reader {
         fn read_char(&mut self) -> DecodeResult<char> {
             Ok(char::from_u32(doc_as_u32(try!(self.next_doc(EsChar)))).unwrap())
         }
-        fn read_str(&mut self) -> DecodeResult<~str> {
+        fn read_str(&mut self) -> DecodeResult<StrBuf> {
             Ok(try!(self.next_doc(EsStr)).as_str())
         }
 
@@ -570,7 +580,10 @@ pub mod reader {
                     match idx {
                         0 => f(this, false),
                         1 => f(this, true),
-                        _ => Err(Expected(format!("Expected None or Some"))),
+                        _ => {
+                            Err(Expected(format_strbuf!("Expected None or \
+                                                         Some")))
+                        }
                     }
                 })
             })
