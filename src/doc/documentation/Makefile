@@ -2,10 +2,11 @@ RUSTC ?= rustc
 RUSTC_FLAGS ?=
 
 check: validator-build
-	./target/validator content/**/*.md
+	./target/validator content/
 
 validator-build: validator/bin.rs
-	$(RUSTC) validator/bin.rs --output-dir target
+	mkdir -p target
+	$(RUSTC) validator/bin.rs --out-dir target
 
 validator-clean:
 	@rm -rf target
