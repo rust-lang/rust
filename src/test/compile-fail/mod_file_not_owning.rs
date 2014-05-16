@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[path = "circular_modules_hello.rs"]
-mod circular_modules_hello; //~ERROR: circular modules
+// error-pattern: cannot declare a new module at this location
 
-pub fn hi_str() -> StrBuf {
-  "Hi!".to_owned()
-}
+mod mod_file_not_owning_aux1;
 
-fn main() {
-    circular_modules_hello::say_hello();
-}
+fn main() {}
