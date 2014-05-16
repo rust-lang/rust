@@ -16,15 +16,17 @@ use parse::token;
 use parse::parser::Parser;
 use parse::token::INTERPOLATED;
 
+use std::gc::Gc;
+
 // a parser that can parse attributes.
 pub trait ParserAttr {
-    fn parse_outer_attributes(&mut self) -> Vec<ast::Attribute> ;
+    fn parse_outer_attributes(&mut self) -> Vec<ast::Attribute>;
     fn parse_attribute(&mut self, permit_inner: bool) -> ast::Attribute;
     fn parse_inner_attrs_and_next(&mut self)
-                                  -> (Vec<ast::Attribute> , Vec<ast::Attribute> );
-    fn parse_meta_item(&mut self) -> @ast::MetaItem;
-    fn parse_meta_seq(&mut self) -> Vec<@ast::MetaItem> ;
-    fn parse_optional_meta(&mut self) -> Vec<@ast::MetaItem> ;
+                                  -> (Vec<ast::Attribute>, Vec<ast::Attribute>);
+    fn parse_meta_item(&mut self) -> Gc<ast::MetaItem>;
+    fn parse_meta_seq(&mut self) -> Vec<Gc<ast::MetaItem>>;
+    fn parse_optional_meta(&mut self) -> Vec<Gc<ast::MetaItem>>;
 }
 
 impl<'a> ParserAttr for Parser<'a> {
@@ -157,7 +159,7 @@ impl<'a> ParserAttr for Parser<'a> {
     // matches meta_item = IDENT
     // | IDENT = lit
     // | IDENT meta_seq
-    fn parse_meta_item(&mut self) -> @ast::MetaItem {
+    fn parse_meta_item(&mut self) -> Gc<ast::MetaItem> {
         match self.token {
             token::INTERPOLATED(token::NtMeta(e)) => {
                 self.bump();
@@ -184,29 +186,29 @@ impl<'a> ParserAttr for Parser<'a> {
                     }
                 }
                 let hi = self.span.hi;
-                @spanned(lo, hi, ast::MetaNameValue(name, lit))
+                box(GC) spanned(lo, hi, ast::MetaNameValue(name, lit))
             }
             token::LPAREN => {
                 let inner_items = self.parse_meta_seq();
                 let hi = self.span.hi;
-                @spanned(lo, hi, ast::MetaList(name, inner_items))
+                box(GC) spanned(lo, hi, ast::MetaList(name, inner_items))
             }
             _ => {
                 let hi = self.last_span.hi;
-                @spanned(lo, hi, ast::MetaWord(name))
+                box(GC) spanned(lo, hi, ast::MetaWord(name))
             }
         }
     }
 
     // matches meta_seq = ( COMMASEP(meta_item) )
-    fn parse_meta_seq(&mut self) -> Vec<@ast::MetaItem> {
+    fn parse_meta_seq(&mut self) -> Vec<Gc<ast::MetaItem>> {
         self.parse_seq(&token::LPAREN,
                        &token::RPAREN,
                        seq_sep_trailing_disallowed(token::COMMA),
                        |p| p.parse_meta_item()).node
     }
 
-    fn parse_optional_meta(&mut self) -> Vec<@ast::MetaItem> {
+    fn parse_optional_meta(&mut self) -> Vec<Gc<ast::MetaItem>> {
         match self.token {
             token::LPAREN => self.parse_meta_seq(),
             _ => Vec::new()

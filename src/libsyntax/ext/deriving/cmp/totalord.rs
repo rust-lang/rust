@@ -18,12 +18,13 @@ use ext::deriving::generic::ty::*;
 use parse::token::InternedString;
 
 use std::cmp::{Ordering, Equal, Less, Greater};
+use std::gc::Gc;
 
 pub fn expand_deriving_totalord(cx: &mut ExtCtxt,
                                 span: Span,
-                                mitem: @MetaItem,
-                                item: @Item,
-                                push: |@Item|) {
+                                mitem: Gc<MetaItem>,
+                                item: Gc<Item>,
+                                push: |Gc<Item>|) {
     let inline = cx.meta_word(span, InternedString::new("inline"));
     let attrs = vec!(cx.attribute(span, inline));
     let trait_def = TraitDef {
@@ -65,7 +66,7 @@ pub fn ordering_const(cx: &mut ExtCtxt, span: Span, cnst: Ordering) -> ast::Path
 }
 
 pub fn cs_cmp(cx: &mut ExtCtxt, span: Span,
-              substr: &Substructure) -> @Expr {
+              substr: &Substructure) -> Gc<Expr> {
     let test_id = cx.ident_of("__test");
     let equals_path = ordering_const(cx, span, Equal);
 

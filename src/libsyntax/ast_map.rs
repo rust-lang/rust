@@ -20,9 +20,9 @@ use util::small_vector::SmallVector;
 
 use std::cell::RefCell;
 use std::fmt;
+use std::gc::Gc;
 use std::iter;
 use std::slice;
-use std::string::String;
 
 #[deriving(Clone, PartialEq)]
 pub enum PathElem {
@@ -94,22 +94,22 @@ pub fn path_to_str<PI: Iterator<PathElem>>(mut path: PI) -> String {
 
 #[deriving(Clone)]
 pub enum Node {
-    NodeItem(@Item),
-    NodeForeignItem(@ForeignItem),
-    NodeTraitMethod(@TraitMethod),
-    NodeMethod(@Method),
+    NodeItem(Gc<Item>),
+    NodeForeignItem(Gc<ForeignItem>),
+    NodeTraitMethod(Gc<TraitMethod>),
+    NodeMethod(Gc<Method>),
     NodeVariant(P<Variant>),
-    NodeExpr(@Expr),
-    NodeStmt(@Stmt),
-    NodeArg(@Pat),
-    NodeLocal(@Pat),
-    NodePat(@Pat),
+    NodeExpr(Gc<Expr>),
+    NodeStmt(Gc<Stmt>),
+    NodeArg(Gc<Pat>),
+    NodeLocal(Gc<Pat>),
+    NodePat(Gc<Pat>),
     NodeBlock(P<Block>),
 
     /// NodeStructCtor represents a tuple struct.
-    NodeStructCtor(@StructDef),
+    NodeStructCtor(Gc<StructDef>),
 
-    NodeLifetime(@Lifetime),
+    NodeLifetime(Gc<Lifetime>),
 }
 
 // The odd layout is to bring down the total size.
@@ -119,19 +119,19 @@ enum MapEntry {
     NotPresent,
 
     // All the node types, with a parent ID.
-    EntryItem(NodeId, @Item),
-    EntryForeignItem(NodeId, @ForeignItem),
-    EntryTraitMethod(NodeId, @TraitMethod),
-    EntryMethod(NodeId, @Method),
+    EntryItem(NodeId, Gc<Item>),
+    EntryForeignItem(NodeId, Gc<ForeignItem>),
+    EntryTraitMethod(NodeId, Gc<TraitMethod>),
+    EntryMethod(NodeId, Gc<Method>),
     EntryVariant(NodeId, P<Variant>),
-    EntryExpr(NodeId, @Expr),
-    EntryStmt(NodeId, @Stmt),
-    EntryArg(NodeId, @Pat),
-    EntryLocal(NodeId, @Pat),
-    EntryPat(NodeId, @Pat),
+    EntryExpr(NodeId, Gc<Expr>),
+    EntryStmt(NodeId, Gc<Stmt>),
+    EntryArg(NodeId, Gc<Pat>),
+    EntryLocal(NodeId, Gc<Pat>),
+    EntryPat(NodeId, Gc<Pat>),
     EntryBlock(NodeId, P<Block>),
-    EntryStructCtor(NodeId, @StructDef),
-    EntryLifetime(NodeId, @Lifetime),
+    EntryStructCtor(NodeId, Gc<StructDef>),
+    EntryLifetime(NodeId, Gc<Lifetime>),
 
     // Roots for node trees.
     RootCrate,
@@ -262,14 +262,14 @@ impl Map {
         }
     }
 
-    pub fn expect_item(&self, id: NodeId) -> @Item {
+    pub fn expect_item(&self, id: NodeId) -> Gc<Item> {
         match self.find(id) {
             Some(NodeItem(item)) => item,
             _ => fail!("expected item, found {}", self.node_to_str(id))
         }
     }
 
-    pub fn expect_struct(&self, id: NodeId) -> @StructDef {
+    pub fn expect_struct(&self, id: NodeId) -> Gc<StructDef> {
         match self.find(id) {
             Some(NodeItem(i)) => {
                 match i.node {
@@ -294,7 +294,7 @@ impl Map {
         }
     }
 
-    pub fn expect_foreign_item(&self, id: NodeId) -> @ForeignItem {
+    pub fn expect_foreign_item(&self, id: NodeId) -> Gc<ForeignItem> {
         match self.find(id) {
             Some(NodeForeignItem(item)) => item,
             _ => fail!("expected foreign item, found {}", self.node_to_str(id))
@@ -457,11 +457,11 @@ impl<'a, F: FoldOps> Folder for Ctx<'a, F> {
         self.fold_ops.new_span(span)
     }
 
-    fn fold_item(&mut self, i: @Item) -> SmallVector<@Item> {
+    fn fold_item(&mut self, i: Gc<Item>) -> SmallVector<Gc<Item>> {
         let parent = self.parent;
         self.parent = DUMMY_NODE_ID;
 
-        let i = fold::noop_fold_item(i, self).expect_one("expected one item");
+        let i = fold::noop_fold_item(&*i, self).expect_one("expected one item");
         assert_eq!(self.parent, i.id);
 
         match i.node {
@@ -476,16 +476,17 @@ impl<'a, F: FoldOps> Folder for Ctx<'a, F> {
                 }
             }
             ItemForeignMod(ref nm) => {
-                for &nitem in nm.items.iter() {
-                    self.insert(nitem.id, EntryForeignItem(self.parent, nitem));
+                for nitem in nm.items.iter() {
+                    self.insert(nitem.id, EntryForeignItem(self.parent,
+                                                           nitem.clone()));
                 }
             }
-            ItemStruct(struct_def, _) => {
+            ItemStruct(ref struct_def, _) => {
                 // If this is a tuple-like struct, register the constructor.
                 match struct_def.ctor_id {
                     Some(ctor_id) => {
                         self.insert(ctor_id, EntryStructCtor(self.parent,
-                                                             struct_def));
+                                                             struct_def.clone()));
                     }
                     None => {}
                 }
@@ -499,11 +500,11 @@ impl<'a, F: FoldOps> Folder for Ctx<'a, F> {
                     match *tm {
                         Required(ref m) => {
                             self.insert(m.id, EntryTraitMethod(self.parent,
-                                                               @(*tm).clone()));
+                                                               box(GC) (*tm).clone()));
                         }
                         Provided(m) => {
                             self.insert(m.id, EntryTraitMethod(self.parent,
-                                                               @Provided(m)));
+                                                               box(GC) Provided(m)));
                         }
                     }
                 }
@@ -517,7 +518,7 @@ impl<'a, F: FoldOps> Folder for Ctx<'a, F> {
         SmallVector::one(i)
     }
 
-    fn fold_pat(&mut self, pat: @Pat) -> @Pat {
+    fn fold_pat(&mut self, pat: Gc<Pat>) -> Gc<Pat> {
         let pat = fold::noop_fold_pat(pat, self);
         match pat.node {
             PatIdent(..) => {
@@ -532,7 +533,7 @@ impl<'a, F: FoldOps> Folder for Ctx<'a, F> {
         pat
     }
 
-    fn fold_expr(&mut self, expr: @Expr) -> @Expr {
+    fn fold_expr(&mut self, expr: Gc<Expr>) -> Gc<Expr> {
         let expr = fold::noop_fold_expr(expr, self);
 
         self.insert(expr.id, EntryExpr(self.parent, expr));
@@ -540,9 +541,9 @@ impl<'a, F: FoldOps> Folder for Ctx<'a, F> {
         expr
     }
 
-    fn fold_stmt(&mut self, stmt: &Stmt) -> SmallVector<@Stmt> {
+    fn fold_stmt(&mut self, stmt: &Stmt) -> SmallVector<Gc<Stmt>> {
         let stmt = fold::noop_fold_stmt(stmt, self).expect_one("expected one statement");
-        self.insert(ast_util::stmt_id(stmt), EntryStmt(self.parent, stmt));
+        self.insert(ast_util::stmt_id(&*stmt), EntryStmt(self.parent, stmt));
         SmallVector::one(stmt)
     }
 
@@ -555,10 +556,10 @@ impl<'a, F: FoldOps> Folder for Ctx<'a, F> {
         m
     }
 
-    fn fold_method(&mut self, m: @Method) -> @Method {
+    fn fold_method(&mut self, m: Gc<Method>) -> Gc<Method> {
         let parent = self.parent;
         self.parent = DUMMY_NODE_ID;
-        let m = fold::noop_fold_method(m, self);
+        let m = fold::noop_fold_method(&*m, self);
         assert_eq!(self.parent, m.id);
         self.parent = parent;
         m
@@ -580,7 +581,7 @@ impl<'a, F: FoldOps> Folder for Ctx<'a, F> {
 
     fn fold_lifetime(&mut self, lifetime: &Lifetime) -> Lifetime {
         let lifetime = fold::noop_fold_lifetime(lifetime, self);
-        self.insert(lifetime.id, EntryLifetime(self.parent, @lifetime));
+        self.insert(lifetime.id, EntryLifetime(self.parent, box(GC) lifetime));
         lifetime
     }
 }
@@ -643,7 +644,7 @@ pub fn map_decoded_item<F: FoldOps>(map: &Map,
         IIItem(_) => {}
         IIMethod(impl_did, is_provided, m) => {
             let entry = if is_provided {
-                EntryTraitMethod(cx.parent, @Provided(m))
+                EntryTraitMethod(cx.parent, box(GC) Provided(m))
             } else {
                 EntryMethod(cx.parent, m)
             };
@@ -701,28 +702,28 @@ fn node_id_to_str(map: &Map, id: NodeId) -> String {
                     token::get_ident(variant.node.name),
                     map.path_to_str(id), id)).to_string()
         }
-        Some(NodeExpr(expr)) => {
+        Some(NodeExpr(ref expr)) => {
             (format!("expr {} (id={})",
-                    pprust::expr_to_str(expr), id)).to_string()
+                    pprust::expr_to_str(&**expr), id)).to_string()
         }
-        Some(NodeStmt(stmt)) => {
+        Some(NodeStmt(ref stmt)) => {
             (format!("stmt {} (id={})",
-                    pprust::stmt_to_str(stmt), id)).to_string()
+                    pprust::stmt_to_str(&**stmt), id)).to_string()
         }
-        Some(NodeArg(pat)) => {
+        Some(NodeArg(ref pat)) => {
             (format!("arg {} (id={})",
-                    pprust::pat_to_str(pat), id)).to_string()
+                    pprust::pat_to_str(&**pat), id)).to_string()
         }
-        Some(NodeLocal(pat)) => {
+        Some(NodeLocal(ref pat)) => {
             (format!("local {} (id={})",
-                    pprust::pat_to_str(pat), id)).to_string()
+                    pprust::pat_to_str(&**pat), id)).to_string()
         }
-        Some(NodePat(pat)) => {
-            (format!("pat {} (id={})", pprust::pat_to_str(pat), id)).to_string()
+        Some(NodePat(ref pat)) => {
+            (format!("pat {} (id={})", pprust::pat_to_str(&**pat), id)).to_string()
         }
-        Some(NodeBlock(block)) => {
+        Some(NodeBlock(ref block)) => {
             (format!("block {} (id={})",
-                    pprust::block_to_str(block), id)).to_string()
+                    pprust::block_to_str(&**block), id)).to_string()
         }
         Some(NodeStructCtor(_)) => {
             (format!("struct_ctor {} (id={})",
@@ -730,7 +731,7 @@ fn node_id_to_str(map: &Map, id: NodeId) -> String {
         }
         Some(NodeLifetime(ref l)) => {
             (format!("lifetime {} (id={})",
-                    pprust::lifetime_to_str(*l), id)).to_string()
+                    pprust::lifetime_to_str(&**l), id)).to_string()
         }
         None => {
             (format!("unknown node (id={})", id)).to_string()

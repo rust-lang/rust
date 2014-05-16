@@ -18,10 +18,10 @@ use util::interner;
 
 use serialize::{Decodable, Decoder, Encodable, Encoder};
 use std::fmt;
-use std::path::BytesContainer;
+use std::gc::Gc;
 use std::mem;
+use std::path::BytesContainer;
 use std::rc::Rc;
-use std::string::String;
 
 #[allow(non_camel_case_types)]
 #[deriving(Clone, Encodable, Decodable, PartialEq, Eq, Hash, Show)]
@@ -105,16 +105,16 @@ pub enum Token {
 #[deriving(Clone, Encodable, Decodable, PartialEq, Eq, Hash)]
 /// For interpolation during macro expansion.
 pub enum Nonterminal {
-    NtItem(@ast::Item),
+    NtItem(Gc<ast::Item>),
     NtBlock(P<ast::Block>),
-    NtStmt(@ast::Stmt),
-    NtPat( @ast::Pat),
-    NtExpr(@ast::Expr),
+    NtStmt(Gc<ast::Stmt>),
+    NtPat( Gc<ast::Pat>),
+    NtExpr(Gc<ast::Expr>),
     NtTy(  P<ast::Ty>),
     NtIdent(Box<ast::Ident>, bool),
-    NtMeta(@ast::MetaItem), // stuff inside brackets for attributes
+    NtMeta(Gc<ast::MetaItem>), // stuff inside brackets for attributes
     NtPath(Box<ast::Path>),
-    NtTT(  @ast::TokenTree), // needs @ed to break a circularity
+    NtTT(  Gc<ast::TokenTree>), // needs @ed to break a circularity
     NtMatchers(Vec<ast::Matcher> )
 }
 
@@ -241,8 +241,8 @@ pub fn to_str(t: &Token) -> String {
       EOF => "<eof>".to_string(),
       INTERPOLATED(ref nt) => {
         match nt {
-            &NtExpr(e) => ::print::pprust::expr_to_str(e),
-            &NtMeta(e) => ::print::pprust::meta_item_to_str(e),
+            &NtExpr(ref e) => ::print::pprust::expr_to_str(&**e),
+            &NtMeta(ref e) => ::print::pprust::meta_item_to_str(&**e),
             _ => {
                 let mut s = "an interpolated ".to_string();
                 match *nt {
