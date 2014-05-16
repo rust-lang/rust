@@ -1811,13 +1811,14 @@ def_type_content_sets!(
         OwnsAffine                          = 0b0000_0000__0000_1000__0000,
         OwnsAll                             = 0b0000_0000__1111_1111__0000,
 
-        // Things that are reachable by the value in any way (fourth nibble):
+        // Things that are reachable by the value in any way (fourth nibble (and more)):
         ReachesNonsendAnnot                 = 0b0000_0001__0000_0000__0000,
         ReachesBorrowed                     = 0b0000_0010__0000_0000__0000,
         // ReachesManaged /* see [1] below */  = 0b0000_0100__0000_0000__0000,
         ReachesMutable                      = 0b0000_1000__0000_0000__0000,
         ReachesNoShare                      = 0b0001_0000__0000_0000__0000,
-        ReachesAll                          = 0b0001_1111__0000_0000__0000,
+        ReachesUnsafe                       = 0b0010_0000__0000_0000__0000,
+        ReachesAll                          = 0b0011_1111__0000_0000__0000,
 
         // Things that cause values to *move* rather than *copy*
         Moves                               = 0b0000_0000__0000_1011__0000,
@@ -1911,6 +1912,10 @@ impl TypeContents {
         self.intersects(TC::InteriorUnsafe)
     }
 
+    pub fn reaches_unsafe(&self) -> bool {
+        self.intersects(TC::ReachesUnsafe)
+    }
+
     pub fn interior_unsized(&self) -> bool {
         self.intersects(TC::InteriorUnsized)
     }
@@ -2001,6 +2006,9 @@ pub fn type_is_sendable(cx: &ctxt, t: ty::t) -> bool {
 
 pub fn type_interior_is_unsafe(cx: &ctxt, t: ty::t) -> bool {
     type_contents(cx, t).interior_unsafe()
+}
+pub fn type_interior_reaches_unsafe(cx: &ctxt, t: ty::t) -> bool {
+    type_contents(cx, t).reaches_unsafe()
 }
 
 pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
@@ -2186,7 +2194,7 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
         } else if Some(did) == cx.lang_items.unsafe_type() {
             // FIXME(#13231): This shouldn't be needed after
             // opt-in built-in bounds are implemented.
-            (tc | TC::InteriorUnsafe) - TC::Nonsharable
+            (tc | TC::ReachesUnsafe | TC::InteriorUnsafe) - TC::Nonsharable
         } else {
             tc
         }

@@ -89,6 +89,7 @@ pub enum Lint {
     TypeOverflow,
     UnusedUnsafe,
     UnsafeBlock,
+    InternalMutability,
     AttributeUsage,
     UnknownFeatures,
     UnknownCrateType,
@@ -280,6 +281,13 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
         desc: "usage of an `unsafe` block",
         default: allow
     }),
+
+    ("internal_mutability",
+     LintSpec {
+         lint: InternalMutability,
+         desc: "detect the use of types with internal (non-inherited) mutability",
+         default: allow
+     }),
 
     ("attribute_usage",
      LintSpec {
@@ -1388,6 +1396,25 @@ fn check_unsafe_block(cx: &Context, e: &ast::Expr) {
     }
 }
 
+fn check_internal_mutability(cx: &Context, e: &ast::Expr) {
+    let (name, args) = match e.node {
+        ast::ExprMethodCall(_, _, ref args) => ("method", args),
+        ast::ExprCall(_, ref args) => ("function", args),
+        _ => return
+    };
+
+    for arg in args.iter() {
+        let arg_ty = ty::expr_ty(cx.tcx, *arg);
+        let reaches_unsafe = ty::type_interior_reaches_unsafe(cx.tcx, arg_ty);
+
+        if reaches_unsafe {
+            cx.span_lint(InternalMutability, arg.span,
+                         format_strbuf!("internally mutable type used in {} call",
+                                        name).as_slice())
+        }
+    }
+}
+
 fn check_unused_mut_pat(cx: &Context, pats: &[@ast::Pat]) {
     // collect all mutable pattern and group their NodeIDs by their Identifier to
     // avoid false warnings in match arms with multiple patterns
@@ -1743,6 +1770,7 @@ impl<'a> Visitor<()> for Context<'a> {
         check_unnecessary_parens_expr(self, e);
         check_unused_unsafe(self, e);
         check_unsafe_block(self, e);
+        check_internal_mutability(self, e);
         check_unnecessary_allocation(self, e);
         check_heap_expr(self, e);
 
