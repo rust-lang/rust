@@ -80,9 +80,8 @@ impl<'a> FromHex for &'a str {
      * Convert any hexadecimal encoded string (literal, `@`, `&`, or `~`)
      * to the byte values it encodes.
      *
-     * You can use the `from_utf8_owned` function in `std::str`
-     * to turn a `[u8]` into a string with characters corresponding to those
-     * values.
+     * You can use the `StrBuf::from_utf8` function in `std::strbuf` to turn a
+     * `Vec<u8>` into a string with characters corresponding to those values.
      *
      * # Example
      *
