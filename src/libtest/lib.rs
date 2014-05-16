@@ -447,7 +447,7 @@ pub enum TestResult {
 }
 
 enum OutputLocation<T> {
-    Pretty(term::Terminal<T>),
+    Pretty(Box<term::Terminal<Box<Writer:Send>>:Send>),
     Raw(T),
 }
 
@@ -472,10 +472,11 @@ impl<T: Writer> ConsoleTestState<T> {
             Some(ref path) => Some(try!(File::create(path))),
             None => None
         };
-        let out = match term::Terminal::new(io::stdio::stdout_raw()) {
-            Err(_) => Raw(io::stdio::stdout_raw()),
-            Ok(t) => Pretty(t)
+        let out = match term::stdout() {
+            None => Raw(io::stdio::stdout_raw()),
+            Some(t) => Pretty(t)
         };
+
         Ok(ConsoleTestState {
             out: out,
             log_out: log_out,
