@@ -12,7 +12,8 @@
 use back::link;
 use driver::session::Session;
 use driver::{config, PpMode};
-use driver::PpmFlowGraph; // FIXME (#14221).
+use driver::{PpmFlowGraph, PpmExpanded, PpmExpandedIdentified, PpmTyped};
+use driver::{PpmIdentified};
 use front;
 use lib::llvm::{ContextRef, ModuleRef};
 use metadata::common::LinkMeta;
