@@ -166,12 +166,12 @@ mod tests {
 
         match a.as_ref::<uint>() {
             Some(&5) => {}
-            x => fail!("Unexpected value {:?}", x)
+            x => fail!("Unexpected value {}", x)
         }
 
         match a.as_ref::<Test>() {
             None => {}
-            x => fail!("Unexpected value {:?}", x)
+            x => fail!("Unexpected value {}", x)
         }
     }
 
@@ -189,7 +189,7 @@ mod tests {
                 assert_eq!(*x, 5u);
                 *x = 612;
             }
-            x => fail!("Unexpected value {:?}", x)
+            x => fail!("Unexpected value {}", x)
         }
 
         match b_r.as_mut::<uint>() {
@@ -197,27 +197,27 @@ mod tests {
                 assert_eq!(*x, 7u);
                 *x = 413;
             }
-            x => fail!("Unexpected value {:?}", x)
+            x => fail!("Unexpected value {}", x)
         }
 
         match a_r.as_mut::<Test>() {
             None => (),
-            x => fail!("Unexpected value {:?}", x)
+            x => fail!("Unexpected value {}", x)
         }
 
         match b_r.as_mut::<Test>() {
             None => (),
-            x => fail!("Unexpected value {:?}", x)
+            x => fail!("Unexpected value {}", x)
         }
 
         match a_r.as_mut::<uint>() {
             Some(&612) => {}
-            x => fail!("Unexpected value {:?}", x)
+            x => fail!("Unexpected value {}", x)
         }
 
         match b_r.as_mut::<uint>() {
             Some(&413) => {}
-            x => fail!("Unexpected value {:?}", x)
+            x => fail!("Unexpected value {}", x)
         }
     }
 
@@ -229,11 +229,11 @@ mod tests {
         let b = box Test as Box<Any>;
 
         match a.move::<uint>() {
-            Ok(a) => { assert_eq!(a, box 8u); }
+            Ok(a) => { assert!(a == box 8u); }
             Err(..) => fail!()
         }
         match b.move::<Test>() {
-            Ok(a) => { assert_eq!(a, box Test); }
+            Ok(a) => { assert!(a == box Test); }
             Err(..) => fail!()
         }
 
@@ -246,13 +246,14 @@ mod tests {
 
     #[test]
     fn test_show() {
-        let a = box 8u as Box<::realcore::any::Any>;
-        let b = box Test as Box<::realcore::any::Any>;
-        assert_eq!(format!("{}", a), "Box<Any>".to_owned());
-        assert_eq!(format!("{}", b), "Box<Any>".to_owned());
+        use realstd::to_str::ToStr;
+        let a = box 8u as Box<::realstd::any::Any>;
+        let b = box Test as Box<::realstd::any::Any>;
+        assert_eq!(a.to_str(), "Box<Any>".to_owned());
+        assert_eq!(b.to_str(), "Box<Any>".to_owned());
 
-        let a = &8u as &::realcore::any::Any;
-        let b = &Test as &::realcore::any::Any;
+        let a = &8u as &Any;
+        let b = &Test as &Any;
         assert_eq!(format!("{}", a), "&Any".to_owned());
         assert_eq!(format!("{}", b), "&Any".to_owned());
     }

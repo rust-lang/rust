@@ -542,7 +542,7 @@ pub struct UTF16Items<'a> {
     iter: slice::Items<'a, u16>
 }
 /// The possibilities for values decoded from a `u16` stream.
-#[deriving(Eq, TotalEq, Clone)]
+#[deriving(Eq, TotalEq, Clone, Show)]
 pub enum UTF16Item {
     /// A valid codepoint.
     ScalarValue(char),

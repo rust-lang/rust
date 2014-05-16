@@ -19,7 +19,6 @@ use num::{Float, FPNaN, FPInfinite, ToPrimitive};
 use num;
 use ops::{Add, Sub, Mul, Div, Rem, Neg};
 use option::{None, Option, Some};
-use result::ResultUnwrap;
 use slice::{CloneableVector, ImmutableVector, MutableVector};
 use std::cmp::{Ord, Eq};
 use str::{StrAllocating, StrSlice};
@@ -170,6 +169,7 @@ static NAN_BUF:          [u8, ..3] = ['N' as u8, 'a' as u8, 'N' as u8];
  * # Failure
  * - Fails if `radix` < 2 or `radix` > 36.
  */
+#[deprecated = "format!() and friends should be favored instead"]
 pub fn int_to_str_bytes_common<T: Int>(num: T, radix: uint, sign: SignFormat, f: |u8|) {
     assert!(2 <= radix && radix <= 36);
 
@@ -258,6 +258,7 @@ pub fn int_to_str_bytes_common<T: Int>(num: T, radix: uint, sign: SignFormat, f:
  * - Fails if `radix` > 25 and `exp_format` is `ExpBin` due to conflict
  *   between digit and exponent sign `'p'`.
  */
+#[allow(deprecated)]
 pub fn float_to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Float+
                                   Div<T,T>+Neg<T>+Rem<T,T>+Mul<T,T>>(
         num: T, radix: uint, negative_zero: bool,
@@ -820,7 +821,6 @@ mod bench {
         use super::test::Bencher;
         use rand::{XorShiftRng, Rng};
         use num::ToStrRadix;
-        use realstd::result::ResultUnwrap;
 
         #[bench]
         fn to_str_bin(b: &mut Bencher) {
@@ -857,7 +857,6 @@ mod bench {
         use super::test::Bencher;
         use rand::{XorShiftRng, Rng};
         use num::ToStrRadix;
-        use realstd::result::ResultUnwrap;
 
         #[bench]
         fn to_str_bin(b: &mut Bencher) {
@@ -894,7 +893,6 @@ mod bench {
         use super::test::Bencher;
         use rand::{XorShiftRng, Rng};
         use f64;
-        use realstd::result::ResultUnwrap;
 
         #[bench]
         fn float_to_str(b: &mut Bencher) {

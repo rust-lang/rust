@@ -33,16 +33,16 @@ pub struct CrateId {
 
 impl fmt::Show for CrateId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f.buf, "{}", self.path));
+        try!(write!(f, "{}", self.path));
         let version = match self.version {
             None => "0.0",
             Some(ref version) => version.as_slice(),
         };
         if self.path == self.name ||
                 self.path.as_slice().ends_with(format!("/{}", self.name)) {
-            write!(f.buf, "\\#{}", version)
+            write!(f, "\\#{}", version)
         } else {
-            write!(f.buf, "\\#{}:{}", self.name, version)
+            write!(f, "\\#{}:{}", self.name, version)
         }
     }
 }

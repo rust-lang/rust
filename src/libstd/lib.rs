@@ -153,6 +153,7 @@ pub use core::mem;
 pub use core::ptr;
 pub use core::raw;
 pub use core::tuple;
+pub use core::result;
 
 // Run tests with libgreen instead of libnative.
 //
@@ -218,7 +219,6 @@ pub mod hash;
 
 /* Common data structures */
 
-pub mod result;
 pub mod option;
 
 /* Tasks and communication */

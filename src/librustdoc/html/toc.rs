@@ -174,17 +174,17 @@ impl TocBuilder {
 
 impl fmt::Show for Toc {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(fmt.buf, "<ul>"));
+        try!(write!(fmt, "<ul>"));
         for entry in self.entries.iter() {
             // recursively format this table of contents (the
             // `{children}` is the key).
-            try!(write!(fmt.buf,
+            try!(write!(fmt,
                         "\n<li><a href=\"\\#{id}\">{num} {name}</a>{children}</li>",
                         id = entry.id,
                         num = entry.sec_number, name = entry.name,
                         children = entry.children))
         }
-        write!(fmt.buf, "</ul>")
+        write!(fmt, "</ul>")
     }
 }
 

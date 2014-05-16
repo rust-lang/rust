@@ -154,17 +154,17 @@ impl fmt::Show for ParseError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             ErrorInvalidLength(found) =>
-                write!(f.buf, "Invalid length; expecting 32, 36 or 45 chars, \
-                               found {}", found),
+                write!(f, "Invalid length; expecting 32, 36 or 45 chars, \
+                           found {}", found),
             ErrorInvalidCharacter(found, pos) =>
-                write!(f.buf, "Invalid character; found `{}` (0x{:02x}) at \
-                               offset {}", found, found as uint, pos),
+                write!(f, "Invalid character; found `{}` (0x{:02x}) at \
+                           offset {}", found, found as uint, pos),
             ErrorInvalidGroups(found) =>
-                write!(f.buf, "Malformed; wrong number of groups: expected 1 \
-                               or 5, found {}", found),
+                write!(f, "Malformed; wrong number of groups: expected 1 \
+                           or 5, found {}", found),
             ErrorInvalidGroupLength(group, found, expecting) =>
-                write!(f.buf, "Malformed; length of group {} was {}, \
-                               expecting {}", group, found, expecting),
+                write!(f, "Malformed; length of group {} was {}, \
+                           expecting {}", group, found, expecting),
         }
     }
 }
@@ -474,7 +474,7 @@ impl FromStr for Uuid {
 /// Convert the UUID to a hexadecimal-based string representation
 impl fmt::Show for Uuid {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f.buf, "{}", self.to_simple_str())
+        write!(f, "{}", self.to_simple_str())
     }
 }
 
