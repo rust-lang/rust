@@ -10,7 +10,23 @@
 
 //! The core prelude
 //!
-//! For more information, see std::prelude.
+//! This module is intended for users of libcore which do not link to libstd as
+//! well. This module is not imported by default, but using the entire contents
+//! of this module will provide all of the useful traits and types in libcore
+//! that one would expect from the standard library as well.
+//!
+//! There is no method to automatically inject this prelude, and this prelude is
+//! a subset of the standard library's prelude.
+//!
+//! # Example
+//!
+//! ```ignore
+//! # fn main() {
+//! #![feature(globs)]
+//!
+//! use core::prelude::*;
+//! # }
+//! ```
 
 // Reexported core operators
 pub use kinds::{Copy, Send, Sized, Share};
