@@ -234,7 +234,7 @@ impl<'a> ReachableContext<'a> {
                 None => {
                     self.tcx.sess.bug(format!("found unmapped ID in worklist: \
                                                {}",
-                                              search_item))
+                                              search_item).as_slice())
                 }
             }
         }
@@ -324,9 +324,12 @@ impl<'a> ReachableContext<'a> {
             ast_map::NodeVariant(_) |
             ast_map::NodeStructCtor(_) => {}
             _ => {
-                self.tcx.sess.bug(format!("found unexpected thingy in \
-                                           worklist: {}",
-                                          self.tcx.map.node_to_str(search_item)))
+                self.tcx
+                    .sess
+                    .bug(format!("found unexpected thingy in worklist: {}",
+                                 self.tcx
+                                     .map
+                                     .node_to_str(search_item)).as_slice())
             }
         }
     }

@@ -12,6 +12,7 @@
 
 use c_vec::CVec;
 use char::Char;
+use cmp::Equiv;
 use container::{Container, Mutable};
 use fmt;
 use io::Writer;
@@ -334,6 +335,13 @@ impl<H:Writer> ::hash::Hash<H> for StrBuf {
     #[inline]
     fn hash(&self, hasher: &mut H) {
         self.as_slice().hash(hasher)
+    }
+}
+
+impl<'a, S: Str> Equiv<S> for StrBuf {
+    #[inline]
+    fn equiv(&self, other: &S) -> bool {
+        self.as_slice() == other.as_slice()
     }
 }
 

@@ -130,7 +130,7 @@ fn parse_args(ecx: &mut ExtCtxt, sp: Span, allow_method: bool,
                 _ => {
                     ecx.span_err(p.span,
                                  format!("expected ident for named argument, but found `{}`",
-                                         p.this_token_to_str()));
+                                         p.this_token_to_str()).as_slice());
                     return (invocation, None);
                 }
             };
@@ -141,7 +141,9 @@ fn parse_args(ecx: &mut ExtCtxt, sp: Span, allow_method: bool,
             match names.find_equiv(&name) {
                 None => {}
                 Some(prev) => {
-                    ecx.span_err(e.span, format!("duplicate argument named `{}`", name));
+                    ecx.span_err(e.span,
+                                 format!("duplicate argument named `{}`",
+                                         name).as_slice());
                     ecx.parse_sess.span_diagnostic.span_note(prev.span, "previously here");
                     continue
                 }
@@ -246,13 +248,15 @@ impl<'a, 'b> Context<'a, 'b> {
                         match arm.selector {
                             parse::Keyword(name) => {
                                 self.ecx.span_err(self.fmtsp,
-                                                  format!("duplicate selector \
-                                                           `{}`", name));
+                                                  format!("duplicate \
+                                                           selector `{}`",
+                                                          name).as_slice());
                             }
                             parse::Literal(idx) => {
                                 self.ecx.span_err(self.fmtsp,
-                                                  format!("duplicate selector \
-                                                           `={}`", idx));
+                                                  format!("duplicate \
+                                                           selector `={}`",
+                                                          idx).as_slice());
                             }
                         }
                     }
@@ -267,7 +271,7 @@ impl<'a, 'b> Context<'a, 'b> {
                     if !seen_cases.insert(arm.selector) {
                         self.ecx.span_err(self.fmtsp,
                                           format!("duplicate selector `{}`",
-                                               arm.selector));
+                                                  arm.selector).as_slice());
                     } else if arm.selector == "" {
                         self.ecx.span_err(self.fmtsp,
                                           "empty selector in `select`");
@@ -286,7 +290,7 @@ impl<'a, 'b> Context<'a, 'b> {
                 if self.args.len() <= arg {
                     let msg = format!("invalid reference to argument `{}` (there \
                                     are {} arguments)", arg, self.args.len());
-                    self.ecx.span_err(self.fmtsp, msg);
+                    self.ecx.span_err(self.fmtsp, msg.as_slice());
                     return;
                 }
                 {
@@ -306,7 +310,7 @@ impl<'a, 'b> Context<'a, 'b> {
                     Some(e) => e.span,
                     None => {
                         let msg = format!("there is no argument named `{}`", name);
-                        self.ecx.span_err(self.fmtsp, msg);
+                        self.ecx.span_err(self.fmtsp, msg.as_slice());
                         return;
                     }
                 };
@@ -349,19 +353,19 @@ impl<'a, 'b> Context<'a, 'b> {
                                   format!("argument redeclared with type `{}` when \
                                            it was previously `{}`",
                                           *ty,
-                                          *cur));
+                                          *cur).as_slice());
             }
             (&Known(ref cur), _) => {
                 self.ecx.span_err(sp,
                                   format!("argument used to format with `{}` was \
                                            attempted to not be used for formatting",
-                                           *cur));
+                                           *cur).as_slice());
             }
             (_, &Known(ref ty)) => {
                 self.ecx.span_err(sp,
                                   format!("argument previously used as a format \
                                            argument attempted to be used as `{}`",
-                                           *ty));
+                                           *ty).as_slice());
             }
             (_, _) => {
                 self.ecx.span_err(sp, "argument declared with multiple formats");
@@ -480,7 +484,7 @@ impl<'a, 'b> Context<'a, 'b> {
                             }).collect();
                         let (lr, selarg) = match arm.selector {
                             parse::Keyword(t) => {
-                                let p = self.rtpath(t.to_str());
+                                let p = self.rtpath(t.to_str().as_slice());
                                 let p = self.ecx.path_global(sp, p);
                                 (self.rtpath("Keyword"), self.ecx.expr_path(p))
                             }
@@ -516,7 +520,8 @@ impl<'a, 'b> Context<'a, 'b> {
                     ), None);
         let st = ast::ItemStatic(ty, ast::MutImmutable, method);
         let static_name = self.ecx.ident_of(format!("__STATIC_METHOD_{}",
-                                                    self.method_statics.len()));
+                                                    self.method_statics
+                                                        .len()).as_slice());
         let item = self.ecx.item(sp, static_name, self.static_attrs(), st);
         self.method_statics.push(item);
         self.ecx.expr_ident(sp, static_name)
@@ -662,7 +667,7 @@ impl<'a, 'b> Context<'a, 'b> {
                 continue // error already generated
             }
 
-            let name = self.ecx.ident_of(format!("__arg{}", i));
+            let name = self.ecx.ident_of(format!("__arg{}", i).as_slice());
             pats.push(self.ecx.pat_ident(e.span, name));
             heads.push(self.ecx.expr_addr_of(e.span, e));
             locals.push(self.format_arg(e.span, Exact(i),
@@ -674,7 +679,8 @@ impl<'a, 'b> Context<'a, 'b> {
                 Some(..) | None => continue
             };
 
-            let lname = self.ecx.ident_of(format!("__arg{}", *name));
+            let lname = self.ecx.ident_of(format!("__arg{}",
+                                                  *name).as_slice());
             pats.push(self.ecx.pat_ident(e.span, lname));
             heads.push(self.ecx.expr_addr_of(e.span, e));
             *names.get_mut(*self.name_positions.get(name)) =
@@ -786,8 +792,10 @@ impl<'a, 'b> Context<'a, 'b> {
                     "x" => "secret_lower_hex",
                     "X" => "secret_upper_hex",
                     _ => {
-                        self.ecx.span_err(sp, format!("unknown format trait `{}`",
-                                                      *tyname));
+                        self.ecx
+                            .span_err(sp,
+                                      format!("unknown format trait `{}`",
+                                              *tyname).as_slice());
                         "dummy"
                     }
                 }

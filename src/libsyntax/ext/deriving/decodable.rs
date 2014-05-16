@@ -168,7 +168,7 @@ fn decode_static_fields(cx: &mut ExtCtxt,
                 let fields = fields.iter().enumerate().map(|(i, &span)| {
                     getarg(cx, span,
                            token::intern_and_get_ident(format!("_field{}",
-                                                               i)),
+                                                               i).as_slice()),
                            i)
                 }).collect();
 

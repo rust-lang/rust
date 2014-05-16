@@ -104,9 +104,10 @@ fn get_error(_: c_int) -> IoError {
 #[cfg(not(windows))]
 fn get_error(s: c_int) -> IoError {
     use std::io;
-    use std::str::raw::from_c_str;
 
-    let err_str = unsafe { from_c_str(gai_strerror(s)) };
+    let err_str = unsafe {
+        CString::new(gai_strerror(s), false).as_str().unwrap().to_strbuf()
+    };
     IoError {
         kind: io::OtherIoError,
         desc: "unable to resolve host",

@@ -27,10 +27,10 @@ fn checktests() {
     let tests = __test::TESTS;
 
     assert!(
-        tests.iter().any(|t| t.desc.name.to_str() == "shouldignore".to_owned() &&
+        tests.iter().any(|t| t.desc.name.to_str().as_slice() == "shouldignore" &&
                          t.desc.ignore));
 
     assert!(
-        tests.iter().any(|t| t.desc.name.to_str() == "shouldnotignore".to_owned() &&
+        tests.iter().any(|t| t.desc.name.to_str().as_slice() == "shouldnotignore" &&
                          !t.desc.ignore));
 }

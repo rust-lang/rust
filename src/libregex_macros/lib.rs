@@ -85,7 +85,7 @@ fn native(cx: &mut ExtCtxt, sp: codemap::Span, tts: &[ast::TokenTree])
     let re = match Regex::new(regex.to_owned()) {
         Ok(re) => re,
         Err(err) => {
-            cx.span_err(sp, err.to_str());
+            cx.span_err(sp, err.to_str().as_slice());
             return DummyResult::any(sp)
         }
     };
@@ -612,7 +612,7 @@ fn parse(cx: &mut ExtCtxt, tts: &[ast::TokenTree]) -> Option<StrBuf> {
                 _ => {
                     cx.span_err(entry.span, format!(
                         "expected string literal but got `{}`",
-                        pprust::lit_to_str(lit)));
+                        pprust::lit_to_str(lit)).as_slice());
                     return None
                 }
             }
@@ -620,7 +620,7 @@ fn parse(cx: &mut ExtCtxt, tts: &[ast::TokenTree]) -> Option<StrBuf> {
         _ => {
             cx.span_err(entry.span, format!(
                 "expected string literal but got `{}`",
-                pprust::expr_to_str(entry)));
+                pprust::expr_to_str(entry)).as_slice());
             return None
         }
     };

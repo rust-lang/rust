@@ -396,7 +396,7 @@ pub fn trans_intrinsic(ccx: &CrateContext,
                             intype = ty_to_str(ccx.tcx(), in_type),
                             insize = in_type_size as uint,
                             outtype = ty_to_str(ccx.tcx(), out_type),
-                            outsize = out_type_size as uint));
+                            outsize = out_type_size as uint).as_slice());
             }
 
             if !return_type_is_void(ccx, out_type) {

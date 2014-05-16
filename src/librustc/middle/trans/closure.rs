@@ -205,7 +205,7 @@ pub fn store_environment<'a>(
 
         if ccx.sess().asm_comments() {
             add_comment(bcx, format!("Copy {} into closure",
-                                  bv.to_str(ccx)));
+                                     bv.to_str(ccx)).as_slice());
         }
 
         let bound_data = GEPi(bcx, llbox, [0u, abi::box_field_body, i]);
@@ -386,8 +386,9 @@ pub fn get_wrapper_for_bare_fn(ccx: &CrateContext,
         ast::DefVariant(_, did, _) | ast::DefStruct(did) => did,
         _ => {
             ccx.sess().bug(format!("get_wrapper_for_bare_fn: \
-                                    expected a statically resolved fn, got {:?}",
-                                    def));
+                                    expected a statically resolved fn, got \
+                                    {:?}",
+                                    def).as_slice());
         }
     };
 
@@ -405,7 +406,7 @@ pub fn get_wrapper_for_bare_fn(ccx: &CrateContext,
         _ => {
             ccx.sess().bug(format!("get_wrapper_for_bare_fn: \
                                     expected a closure ty, got {}",
-                                    closure_ty.repr(tcx)));
+                                    closure_ty.repr(tcx)).as_slice());
         }
     };
 

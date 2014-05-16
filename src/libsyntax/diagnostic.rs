@@ -143,13 +143,13 @@ impl Handler {
         let s;
         match self.err_count.get() {
           0u => return,
-          1u => s = "aborting due to previous error".to_owned(),
+          1u => s = "aborting due to previous error".to_strbuf(),
           _  => {
             s = format!("aborting due to {} previous errors",
-                     self.err_count.get());
+                        self.err_count.get());
           }
         }
-        self.fatal(s);
+        self.fatal(s.as_slice());
     }
     pub fn warn(&self, msg: &str) {
         self.emit.borrow_mut().emit(None, msg, Warning);
@@ -267,9 +267,12 @@ fn print_diagnostic(dst: &mut EmitterWriter,
         try!(write!(&mut dst.dst, "{} ", topic));
     }
 
-    try!(print_maybe_styled(dst, format!("{}: ", lvl.to_str()),
+    try!(print_maybe_styled(dst,
+                            format!("{}: ", lvl.to_str()).as_slice(),
                             term::attr::ForegroundColor(lvl.color())));
-    try!(print_maybe_styled(dst, format!("{}\n", msg), term::attr::Bold));
+    try!(print_maybe_styled(dst,
+                            format!("{}\n", msg).as_slice(),
+                            term::attr::Bold));
     Ok(())
 }
 
@@ -495,7 +498,8 @@ fn print_macro_backtrace(w: &mut EmitterWriter,
         };
         try!(print_diagnostic(w, ss.as_slice(), Note,
                               format!("in expansion of {}{}{}", pre,
-                                      ei.callee.name, post)));
+                                      ei.callee.name,
+                                      post).as_slice()));
         let ss = cm.span_to_str(ei.call_site);
         try!(print_diagnostic(w, ss.as_slice(), Note, "expansion site"));
         try!(print_macro_backtrace(w, cm, ei.call_site));

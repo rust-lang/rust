@@ -213,7 +213,8 @@ fn maketest(s: &str, cratename: &str, loose_feature_gating: bool) -> StrBuf {
 
     if !s.contains("extern crate") {
         if s.contains(cratename) {
-            prog.push_str(format!("extern crate {};\n", cratename));
+            prog.push_str(format!("extern crate {};\n",
+                                  cratename).as_slice());
         }
     }
     if s.contains("fn main") {

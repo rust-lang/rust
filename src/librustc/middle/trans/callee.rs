@@ -102,8 +102,9 @@ fn trans<'a>(bcx: &'a Block<'a>, expr: &ast::Expr) -> Callee<'a> {
             _ => {
                 bcx.tcx().sess.span_bug(
                     expr.span,
-                    format!("type of callee is neither bare-fn nor closure: {}",
-                         bcx.ty_to_str(datum.ty)));
+                    format!("type of callee is neither bare-fn nor closure: \
+                             {}",
+                            bcx.ty_to_str(datum.ty)).as_slice());
             }
         }
     }
@@ -151,7 +152,7 @@ fn trans<'a>(bcx: &'a Block<'a>, expr: &ast::Expr) -> Callee<'a> {
                 bcx.tcx().sess.span_bug(
                     ref_expr.span,
                     format!("cannot translate def {:?} \
-                          to a callable thing!", def));
+                             to a callable thing!", def).as_slice());
             }
         }
     }

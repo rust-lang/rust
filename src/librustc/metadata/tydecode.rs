@@ -155,7 +155,10 @@ fn parse_trait_store(st: &mut PState, conv: conv_did) -> ty::TraitStore {
     match next(st) {
         '~' => ty::UniqTraitStore,
         '&' => ty::RegionTraitStore(parse_region(st, conv), parse_mutability(st)),
-        c => st.tcx.sess.bug(format!("parse_trait_store(): bad input '{}'", c))
+        c => {
+            st.tcx.sess.bug(format!("parse_trait_store(): bad input '{}'",
+                                    c).as_slice())
+        }
     }
 }
 

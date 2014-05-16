@@ -284,4 +284,5 @@ mod std {
 
     // The test runner requires std::slice::Vector, so re-export std::slice just for it.
     #[cfg(test)] pub use slice;
+    #[cfg(test)] pub use strbuf;
 }

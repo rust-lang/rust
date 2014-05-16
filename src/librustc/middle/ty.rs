@@ -2620,7 +2620,7 @@ pub fn node_id_to_trait_ref(cx: &ctxt, id: ast::NodeId) -> Rc<ty::TraitRef> {
         Some(t) => t.clone(),
         None => cx.sess.bug(
             format!("node_id_to_trait_ref: no trait ref for node `{}`",
-                cx.map.node_to_str(id)))
+                    cx.map.node_to_str(id)).as_slice())
     }
 }
 
@@ -2633,7 +2633,7 @@ pub fn node_id_to_type(cx: &ctxt, id: ast::NodeId) -> t {
        Some(t) => t,
        None => cx.sess.bug(
            format!("node_id_to_type: no type for node `{}`",
-               cx.map.node_to_str(id)))
+                   cx.map.node_to_str(id)).as_slice())
     }
 }
 
@@ -2717,7 +2717,8 @@ pub fn ty_region(tcx: &ctxt,
         ref s => {
             tcx.sess.span_bug(
                 span,
-                format!("ty_region() invoked on in appropriate ty: {:?}", s));
+                format!("ty_region() invoked on in appropriate ty: {:?}",
+                        s).as_slice());
         }
     }
 }
@@ -2774,11 +2775,12 @@ pub fn expr_span(cx: &ctxt, id: NodeId) -> Span {
         }
         Some(f) => {
             cx.sess.bug(format!("Node id {} is not an expr: {:?}",
-                                id, f));
+                                id,
+                                f).as_slice());
         }
         None => {
             cx.sess.bug(format!("Node id {} is not present \
-                                in the node map", id));
+                                in the node map", id).as_slice());
         }
     }
 }
@@ -2793,14 +2795,15 @@ pub fn local_var_name_str(cx: &ctxt, id: NodeId) -> InternedString {
                 _ => {
                     cx.sess.bug(
                         format!("Variable id {} maps to {:?}, not local",
-                                id, pat));
+                                id,
+                                pat).as_slice());
                 }
             }
         }
         r => {
-            cx.sess.bug(
-                format!("Variable id {} maps to {:?}, not local",
-                        id, r));
+            cx.sess.bug(format!("Variable id {} maps to {:?}, not local",
+                                id,
+                                r).as_slice());
         }
     }
 }
@@ -2832,7 +2835,7 @@ pub fn adjust_ty(cx: &ctxt,
                             cx.sess.bug(
                                 format!("add_env adjustment on non-bare-fn: \
                                          {:?}",
-                                        b));
+                                        b).as_slice());
                         }
                     }
                 }
@@ -2857,7 +2860,8 @@ pub fn adjust_ty(cx: &ctxt,
                                         format!("the {}th autoderef failed: \
                                                 {}",
                                                 i,
-                                                ty_to_str(cx, adjusted_ty)));
+                                                ty_to_str(cx, adjusted_ty))
+                                                          .as_slice());
                                 }
                             }
                         }
@@ -2923,7 +2927,8 @@ pub fn adjust_ty(cx: &ctxt,
                 _ => {
                     cx.sess.span_bug(
                         span,
-                        format!("borrow-vec associated with bad sty: {:?}", get(ty).sty));
+                        format!("borrow-vec associated with bad sty: {:?}",
+                                get(ty).sty).as_slice());
                 }
             },
             ty_vec(mt, Some(_)) => ty::mk_slice(cx, r, ty::mt {ty: mt.ty, mutbl: m}),
@@ -2931,7 +2936,8 @@ pub fn adjust_ty(cx: &ctxt,
             ref s => {
                 cx.sess.span_bug(
                     span,
-                    format!("borrow-vec associated with bad sty: {:?}", s));
+                    format!("borrow-vec associated with bad sty: {:?}",
+                            s).as_slice());
             }
         }
     }
@@ -2947,7 +2953,7 @@ pub fn adjust_ty(cx: &ctxt,
                 cx.sess.span_bug(
                     span,
                     format!("borrow-trait-obj associated with bad sty: {:?}",
-                         s));
+                            s).as_slice());
             }
         }
     }
@@ -2996,7 +3002,7 @@ pub fn resolve_expr(tcx: &ctxt, expr: &ast::Expr) -> ast::Def {
         Some(&def) => def,
         None => {
             tcx.sess.span_bug(expr.span, format!(
-                "no def-map entry for expr {:?}", expr.id));
+                "no def-map entry for expr {:?}", expr.id).as_slice());
         }
     }
 }
@@ -3070,9 +3076,11 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
                 ast::DefLocal(..) => LvalueExpr,
 
                 def => {
-                    tcx.sess.span_bug(expr.span, format!(
-                        "uncategorized def for expr {:?}: {:?}",
-                        expr.id, def));
+                    tcx.sess.span_bug(
+                        expr.span,
+                        format!("uncategorized def for expr {:?}: {:?}",
+                                expr.id,
+                                def).as_slice());
                 }
             }
         }
@@ -3193,7 +3201,7 @@ pub fn field_idx_strict(tcx: &ctxt, name: ast::Name, fields: &[field])
         token::get_name(name),
         fields.iter()
               .map(|f| token::get_ident(f.ident).get().to_strbuf())
-              .collect::<Vec<StrBuf>>()));
+              .collect::<Vec<StrBuf>>()).as_slice());
 }
 
 pub fn method_idx(id: ast::Ident, meths: &[Rc<Method>]) -> Option<uint> {
@@ -3444,10 +3452,18 @@ pub fn provided_trait_methods(cx: &ctxt, id: ast::DefId) -> Vec<Rc<Method>> {
                         let (_, p) = ast_util::split_trait_methods(ms.as_slice());
                         p.iter().map(|m| method(cx, ast_util::local_def(m.id))).collect()
                     }
-                    _ => cx.sess.bug(format!("provided_trait_methods: `{}` is not a trait", id))
+                    _ => {
+                        cx.sess.bug(format!("provided_trait_methods: `{}` is \
+                                             not a trait",
+                                            id).as_slice())
+                    }
                 }
             }
-            _ => cx.sess.bug(format!("provided_trait_methods: `{}` is not a trait", id))
+            _ => {
+                cx.sess.bug(format!("provided_trait_methods: `{}` is not a \
+                                     trait",
+                                    id).as_slice())
+            }
         }
     } else {
         csearch::get_provided_trait_methods(cx, id)
@@ -3800,7 +3816,7 @@ pub fn enum_variants(cx: &ctxt, id: ast::DefId) -> Rc<Vec<Rc<VariantInfo>>> {
                                         cx.sess
                                           .span_err(e.span,
                                                     format!("expected constant: {}",
-                                                            *err));
+                                                            *err).as_slice());
                                     }
                                 },
                                 None => {}
@@ -3963,7 +3979,7 @@ fn each_super_struct(cx: &ctxt, mut did: ast::DefId, f: |ast::DefId|) {
             None => {
                 cx.sess.bug(
                     format!("ID not mapped to super-struct: {}",
-                        cx.map.node_to_str(did.node)));
+                            cx.map.node_to_str(did.node)).as_slice());
             }
         }
     }
@@ -3985,7 +4001,7 @@ pub fn lookup_struct_fields(cx: &ctxt, did: ast::DefId) -> Vec<field_ty> {
                 _ => {
                     cx.sess.bug(
                         format!("ID not mapped to struct fields: {}",
-                            cx.map.node_to_str(did.node)));
+                                cx.map.node_to_str(did.node)).as_slice());
                 }
             }
         });

@@ -174,8 +174,9 @@ fn check_aliasability(bccx: &BorrowckCtxt,
                     // static item resides in immutable memory and mutating it would
                     // cause segfaults.
                     bccx.tcx.sess.span_err(borrow_span,
-                                           format!("borrow of immutable static items with \
-                                                    unsafe interior is not allowed"));
+                                           "borrow of immutable static items \
+                                            with unsafe interior is not \
+                                            allowed");
                     Err(())
                 }
                 mc::InteriorSafe => {
@@ -290,7 +291,8 @@ impl<'a> GatherLoanCtxt<'a> {
                     ty::ReInfer(..) => {
                         self.tcx().sess.span_bug(
                             cmt.span,
-                            format!("invalid borrow lifetime: {:?}", loan_region));
+                            format!("invalid borrow lifetime: {:?}",
+                                    loan_region).as_slice());
                     }
                 };
                 debug!("loan_scope = {:?}", loan_scope);

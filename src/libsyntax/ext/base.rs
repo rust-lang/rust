@@ -533,7 +533,7 @@ pub fn check_zero_tts(cx: &ExtCtxt,
                       tts: &[ast::TokenTree],
                       name: &str) {
     if tts.len() != 0 {
-        cx.span_err(sp, format!("{} takes no arguments", name));
+        cx.span_err(sp, format!("{} takes no arguments", name).as_slice());
     }
 }
 
@@ -545,14 +545,17 @@ pub fn get_single_str_from_tts(cx: &ExtCtxt,
                                name: &str)
                                -> Option<StrBuf> {
     if tts.len() != 1 {
-        cx.span_err(sp, format!("{} takes 1 argument.", name));
+        cx.span_err(sp, format!("{} takes 1 argument.", name).as_slice());
     } else {
         match tts[0] {
             ast::TTTok(_, token::LIT_STR(ident))
             | ast::TTTok(_, token::LIT_STR_RAW(ident, _)) => {
                 return Some(token::get_ident(ident).get().to_strbuf())
             }
-            _ => cx.span_err(sp, format!("{} requires a string.", name)),
+            _ => {
+                cx.span_err(sp,
+                            format!("{} requires a string.", name).as_slice())
+            }
         }
     }
     None

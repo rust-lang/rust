@@ -1085,14 +1085,14 @@ impl<'a> Resolver<'a> {
                     self.resolve_error(sp,
                         format!("duplicate definition of {} `{}`",
                              namespace_error_to_str(duplicate_type),
-                             token::get_ident(name)));
+                             token::get_ident(name)).as_slice());
                     {
                         let r = child.span_for_namespace(ns);
                         for sp in r.iter() {
                             self.session.span_note(*sp,
                                  format!("first definition of {} `{}` here",
                                       namespace_error_to_str(duplicate_type),
-                                      token::get_ident(name)));
+                                      token::get_ident(name)).as_slice());
                         }
                     }
                 }
@@ -2054,7 +2054,7 @@ impl<'a> Resolver<'a> {
                                        import_directive.module_path
                                                        .as_slice(),
                                        import_directive.subclass));
-                    self.resolve_error(import_directive.span, msg);
+                    self.resolve_error(import_directive.span, msg.as_slice());
                 }
                 Indeterminate => {
                     // Bail out. We'll come around next time.
@@ -2427,7 +2427,7 @@ impl<'a> Resolver<'a> {
                                `{}` in `{}`",
                               token::get_ident(source),
                               self.module_to_str(&*containing_module));
-            self.resolve_error(directive.span, msg);
+            self.resolve_error(directive.span, msg.as_slice());
             return Failed;
         }
         let value_used_public = value_used_reexport || value_used_public;
@@ -2651,14 +2651,17 @@ impl<'a> Resolver<'a> {
                             expn_info: span.expn_info,
                         };
                         self.resolve_error(span,
-                                              format!("unresolved import. maybe \
+                                           format!("unresolved import. maybe \
                                                     a missing `extern crate \
                                                     {}`?",
-                                                    segment_name));
+                                                   segment_name).as_slice());
                         return Failed;
                     }
-                    self.resolve_error(span, format!("unresolved import: could not find `{}` in \
-                                                     `{}`.", segment_name, module_name));
+                    self.resolve_error(span,
+                                       format!("unresolved import: could not \
+                                                find `{}` in `{}`.",
+                                               segment_name,
+                                               module_name).as_slice());
                     return Failed;
                 }
                 Indeterminate => {
@@ -2675,8 +2678,11 @@ impl<'a> Resolver<'a> {
                             match type_def.module_def {
                                 None => {
                                     // Not a module.
-                                    self.resolve_error(span, format!("not a module `{}`",
-                                                                 token::get_ident(name)));
+                                    self.resolve_error(
+                                        span,
+                                        format!("not a module `{}`",
+                                                token::get_ident(name))
+                                                .as_slice());
                                     return Failed;
                                 }
                                 Some(ref module_def) => {
@@ -2717,9 +2723,10 @@ impl<'a> Resolver<'a> {
                         }
                         None => {
                             // There are no type bindings at all.
-                            self.resolve_error(span,
-                                                  format!("not a module `{}`",
-                                                       token::get_ident(name)));
+                            self.resolve_error(
+                                span,
+                                format!("not a module `{}`",
+                                        token::get_ident(name)).as_slice());
                             return Failed;
                         }
                     }
@@ -2764,16 +2771,15 @@ impl<'a> Resolver<'a> {
                 let mpath = self.idents_to_str(module_path);
                 match mpath.as_slice().rfind(':') {
                     Some(idx) => {
-                        self.resolve_error(span,
-                                           format!("unresolved import: could \
-                                                    not find `{}` in `{}`",
-                                                   // idx +- 1 to account for
-                                                   // the colons on either
-                                                   // side
-                                                   mpath.as_slice()
-                                                        .slice_from(idx + 1),
-                                                   mpath.as_slice()
-                                                        .slice_to(idx - 1)));
+                        self.resolve_error(
+                            span,
+                            format!("unresolved import: could not find `{}` \
+                                     in `{}`",
+                                    // idx +- 1 to account for the colons on \
+                                    // either side
+                                    mpath.as_slice().slice_from(idx + 1),
+                                    mpath.as_slice()
+                                         .slice_to(idx - 1)).as_slice());
                     },
                     None => (),
                 };
@@ -3200,7 +3206,7 @@ impl<'a> Resolver<'a> {
             } else {
                 let err = format!("unresolved import (maybe you meant `{}::*`?)",
                                   sn.as_slice().slice(0, sn.len()));
-                self.resolve_error(imports.get(index).span, err);
+                self.resolve_error(imports.get(index).span, err.as_slice());
             }
         }
 
@@ -3870,7 +3876,7 @@ impl<'a> Resolver<'a> {
                 };
 
                 let msg = format!("attempt to {} a nonexistent trait `{}`", usage_str, path_str);
-                self.resolve_error(trait_reference.path.span, msg);
+                self.resolve_error(trait_reference.path.span, msg.as_slice());
             }
             Some(def) => {
                 debug!("(resolving trait) found trait def: {:?}", def);
@@ -4071,7 +4077,7 @@ impl<'a> Resolver<'a> {
                         format!("variable `{}` from pattern \\#1 is \
                                   not bound in pattern \\#{}",
                                 token::get_name(key),
-                                i + 1));
+                                i + 1).as_slice());
                   }
                   Some(binding_i) => {
                     if binding_0.binding_mode != binding_i.binding_mode {
@@ -4080,7 +4086,7 @@ impl<'a> Resolver<'a> {
                             format!("variable `{}` is bound with different \
                                       mode in pattern \\#{} than in pattern \\#1",
                                     token::get_name(key),
-                                    i + 1));
+                                    i + 1).as_slice());
                     }
                   }
                 }
@@ -4093,7 +4099,7 @@ impl<'a> Resolver<'a> {
                         format!("variable `{}` from pattern \\#{} is \
                                   not bound in pattern \\#1",
                                 token::get_name(key),
-                                i + 1));
+                                i + 1).as_slice());
                 }
             }
         }
@@ -4220,7 +4226,7 @@ impl<'a> Resolver<'a> {
                     None => {
                         let msg = format!("use of undeclared type name `{}`",
                                           self.path_idents_to_str(path));
-                        self.resolve_error(ty.span, msg);
+                        self.resolve_error(ty.span, msg.as_slice());
                     }
                 }
 
@@ -4285,12 +4291,12 @@ impl<'a> Resolver<'a> {
                             self.record_def(pattern.id, (def, lp));
                         }
                         FoundStructOrEnumVariant(..) => {
-                            self.resolve_error(pattern.span,
-                                                  format!("declaration of `{}` \
-                                                        shadows an enum \
-                                                        variant or unit-like \
-                                                        struct in scope",
-                                                        token::get_name(renamed)));
+                            self.resolve_error(
+                                pattern.span,
+                                format!("declaration of `{}` shadows an enum \
+                                         variant or unit-like struct in \
+                                         scope",
+                                        token::get_name(renamed)).as_slice());
                         }
                         FoundConst(def, lp) if mode == RefutableMode => {
                             debug!("(resolving pattern) resolving `{}` to \
@@ -4359,9 +4365,10 @@ impl<'a> Resolver<'a> {
                                       // in the same disjunct, which is an
                                       // error
                                      self.resolve_error(pattern.span,
-                                       format!("identifier `{}` is bound more \
-                                             than once in the same pattern",
-                                            path_to_str(path)));
+                                       format!("identifier `{}` is bound \
+                                                more than once in the same \
+                                                pattern",
+                                               path_to_str(path)).as_slice());
                                   }
                                   // Not bound in the same pattern: do nothing
                                 }
@@ -4406,8 +4413,11 @@ impl<'a> Resolver<'a> {
                             self.resolve_error(
                                 path.span,
                                 format!("`{}` is not an enum variant or constant",
-                                     token::get_ident(
-                                         path.segments.last().unwrap().identifier)))
+                                        token::get_ident(
+                                            path.segments
+                                                .last()
+                                                .unwrap()
+                                                .identifier)).as_slice())
                         }
                         None => {
                             self.resolve_error(path.span,
@@ -4435,16 +4445,20 @@ impl<'a> Resolver<'a> {
                         Some(_) => {
                             self.resolve_error(path.span,
                                 format!("`{}` is not an enum variant, struct or const",
-                                    token::get_ident(path.segments
-                                                         .last().unwrap()
-                                                         .identifier)));
+                                    token::get_ident(
+                                        path.segments
+                                            .last()
+                                            .unwrap()
+                                            .identifier)).as_slice());
                         }
                         None => {
                             self.resolve_error(path.span,
                                 format!("unresolved enum variant, struct or const `{}`",
-                                    token::get_ident(path.segments
-                                                         .last().unwrap()
-                                                         .identifier)));
+                                    token::get_ident(
+                                        path.segments
+                                            .last()
+                                            .unwrap()
+                                            .identifier)).as_slice());
                         }
                     }
 
@@ -4485,7 +4499,7 @@ impl<'a> Resolver<'a> {
                                     def: {:?}", result);
                             let msg = format!("`{}` does not name a structure",
                                               self.path_idents_to_str(path));
-                            self.resolve_error(path.span, msg);
+                            self.resolve_error(path.span, msg.as_slice());
                         }
                     }
                 }
@@ -4705,7 +4719,7 @@ impl<'a> Resolver<'a> {
             Failed => {
                 let msg = format!("use of undeclared module `{}`",
                                   self.idents_to_str(module_path_idents.as_slice()));
-                self.resolve_error(path.span, msg);
+                self.resolve_error(path.span, msg.as_slice());
                 return None;
             }
 
@@ -4776,7 +4790,7 @@ impl<'a> Resolver<'a> {
             Failed => {
                 let msg = format!("use of undeclared module `::{}`",
                                   self.idents_to_str(module_path_idents.as_slice()));
-                self.resolve_error(path.span, msg);
+                self.resolve_error(path.span, msg.as_slice());
                 return None;
             }
 
@@ -5096,12 +5110,12 @@ impl<'a> Resolver<'a> {
                                         format!("`{}` is a structure name, but \
                                                  this expression \
                                                  uses it like a function name",
-                                                wrong_name));
+                                                wrong_name).as_slice());
 
                                 self.session.span_note(expr.span,
                                     format!("Did you mean to write: \
                                             `{} \\{ /* fields */ \\}`?",
-                                            wrong_name));
+                                            wrong_name).as_slice());
 
                             }
                             _ => {
@@ -5119,10 +5133,11 @@ impl<'a> Resolver<'a> {
 
                                 if method_scope && token::get_name(self.self_ident.name).get()
                                                                         == wrong_name.as_slice() {
-                                        self.resolve_error(expr.span,
-                                                            format!("`self` is not available in a \
-                                                                    static method. Maybe a `self` \
-                                                                    argument is missing?"));
+                                        self.resolve_error(
+                                            expr.span,
+                                            "`self` is not available \
+                                             in a static method. Maybe a \
+                                             `self` argument is missing?");
                                 } else {
                                     let name = path_to_ident(path).name;
                                     let mut msg = match self.find_fallback_in_self_type(name) {
@@ -5130,7 +5145,7 @@ impl<'a> Resolver<'a> {
                                             // limit search to 5 to reduce the number
                                             // of stupid suggestions
                                             self.find_best_match_for_name(wrong_name.as_slice(), 5)
-                                                                .map_or("".into_owned(),
+                                                                .map_or("".to_strbuf(),
                                                                         |x| format!("`{}`", x))
                                         }
                                         Field =>
@@ -5147,8 +5162,11 @@ impl<'a> Resolver<'a> {
                                         msg = format!(" Did you mean {}?", msg)
                                     }
 
-                                    self.resolve_error(expr.span, format!("unresolved name `{}`.{}",
-                                                                            wrong_name, msg));
+                                    self.resolve_error(
+                                        expr.span,
+                                        format!("unresolved name `{}`.{}",
+                                                wrong_name,
+                                                msg).as_slice());
                                 }
                             }
                         }
@@ -5182,7 +5200,7 @@ impl<'a> Resolver<'a> {
                                 def: {:?}", result);
                         let msg = format!("`{}` does not name a structure",
                                           self.path_idents_to_str(path));
-                        self.resolve_error(path.span, msg);
+                        self.resolve_error(path.span, msg.as_slice());
                     }
                 }
 
@@ -5211,10 +5229,12 @@ impl<'a> Resolver<'a> {
                 let renamed = mtwt::resolve(label);
                 match self.search_ribs(self.label_ribs.borrow().as_slice(),
                                        renamed, expr.span) {
-                    None =>
-                        self.resolve_error(expr.span,
-                                              format!("use of undeclared label `{}`",
-                                                   token::get_ident(label))),
+                    None => {
+                        self.resolve_error(
+                            expr.span,
+                            format!("use of undeclared label `{}`",
+                                    token::get_ident(label)).as_slice())
+                    }
                     Some(DlDef(def @ DefLabel(_))) => {
                         // Since this def is a label, it is never read.
                         self.record_def(expr.id, (def, LastMod(AllPublic)))
@@ -5343,8 +5363,12 @@ impl<'a> Resolver<'a> {
             // times, so here is a sanity check it at least comes to
             // the same conclusion! - nmatsakis
             if def != *old_value {
-                self.session.bug(format!("node_id {:?} resolved first to {:?} \
-                                      and then {:?}", node_id, *old_value, def));
+                self.session
+                    .bug(format!("node_id {:?} resolved first to {:?} and \
+                                  then {:?}",
+                                 node_id,
+                                 *old_value,
+                                 def).as_slice());
             }
         });
     }
@@ -5356,10 +5380,10 @@ impl<'a> Resolver<'a> {
         match pat_binding_mode {
             BindByValue(_) => {}
             BindByRef(..) => {
-                self.resolve_error(
-                    pat.span,
-                    format!("cannot use `ref` binding mode with {}",
-                         descr));
+                self.resolve_error(pat.span,
+                                   format!("cannot use `ref` binding mode \
+                                            with {}",
+                                           descr).as_slice());
             }
         }
     }

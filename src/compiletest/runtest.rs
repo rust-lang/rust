@@ -538,7 +538,8 @@ fn run_debuginfo_lldb_test(config: &Config, props: &TestProps, testfile: &Path) 
 
     // Set breakpoints on every line that contains the string "#break"
     for line in breakpoint_lines.iter() {
-        script_str.push_str(format!("breakpoint set --line {}\n", line));
+        script_str.push_str(format!("breakpoint set --line {}\n",
+                                    line).as_slice());
     }
 
     // Append the other commands
@@ -620,18 +621,18 @@ fn parse_debugger_commands(file_path: &Path, debugger_prefix: &str)
     for line in reader.lines() {
         match line {
             Ok(line) => {
-                if line.contains("#break") {
+                if line.as_slice().contains("#break") {
                     breakpoint_lines.push(counter);
                 }
 
                 header::parse_name_value_directive(
-                        line,
+                        line.as_slice(),
                         command_directive.to_strbuf()).map(|cmd| {
                     commands.push(cmd)
                 });
 
                 header::parse_name_value_directive(
-                        line,
+                        line.as_slice(),
                         check_directive.to_strbuf()).map(|cmd| {
                     check_lines.push(cmd)
                 });

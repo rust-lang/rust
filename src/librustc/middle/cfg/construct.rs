@@ -508,7 +508,9 @@ impl<'a> CFGBuilder<'a> {
     fn add_returning_edge(&mut self,
                           _from_expr: @ast::Expr,
                           from_index: CFGIndex) {
-        let mut data = CFGEdgeData {exiting_scopes: vec!() };
+        let mut data = CFGEdgeData {
+            exiting_scopes: vec!(),
+        };
         for &LoopScope { loop_id: id, .. } in self.loop_scopes.iter().rev() {
             data.exiting_scopes.push(id);
         }
@@ -533,13 +535,15 @@ impl<'a> CFGBuilder<'a> {
                         }
                         self.tcx.sess.span_bug(
                             expr.span,
-                            format!("no loop scope for id {:?}", loop_id));
+                            format!("no loop scope for id {:?}",
+                                    loop_id).as_slice());
                     }
 
                     r => {
                         self.tcx.sess.span_bug(
                             expr.span,
-                            format!("bad entry `{:?}` in def_map for label", r));
+                            format!("bad entry `{:?}` in def_map for label",
+                                    r).as_slice());
                     }
                 }
             }

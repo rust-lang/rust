@@ -164,10 +164,10 @@ fn encode_inner(s: &str, full_url: bool) -> StrBuf {
                     out.push_char(ch);
                   }
 
-                  _ => out.push_str(format!("%{:X}", ch as uint))
+                  _ => out.push_str(format!("%{:X}", ch as uint).as_slice())
                 }
             } else {
-                out.push_str(format!("%{:X}", ch as uint));
+                out.push_str(format!("%{:X}", ch as uint).as_slice());
             }
           }
         }
@@ -292,7 +292,7 @@ fn encode_plus(s: &str) -> StrBuf {
             out.push_char(ch);
           }
           ' ' => out.push_char('+'),
-          _ => out.push_str(format!("%{:X}", ch as uint))
+          _ => out.push_str(format!("%{:X}", ch as uint).as_slice())
         }
     }
 
@@ -319,7 +319,7 @@ pub fn encode_form_urlencoded(m: &HashMap<StrBuf, Vec<StrBuf>>) -> StrBuf {
 
             out.push_str(format!("{}={}",
                                  key,
-                                 encode_plus(value.as_slice())));
+                                 encode_plus(value.as_slice())).as_slice());
         }
     }
 

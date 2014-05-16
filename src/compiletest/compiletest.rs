@@ -96,7 +96,7 @@ pub fn parse_config(args: Vec<StrBuf> ) -> Config {
     let args_ = args.tail();
     if args.get(1).as_slice() == "-h" || args.get(1).as_slice() == "--help" {
         let message = format!("Usage: {} [OPTIONS] [TESTNAME...]", argv0);
-        println!("{}", getopts::usage(message, groups.as_slice()));
+        println!("{}", getopts::usage(message.as_slice(), groups.as_slice()));
         println!("");
         fail!()
     }
@@ -109,7 +109,7 @@ pub fn parse_config(args: Vec<StrBuf> ) -> Config {
 
     if matches.opt_present("h") || matches.opt_present("help") {
         let message = format!("Usage: {} [OPTIONS]  [TESTNAME...]", argv0);
-        println!("{}", getopts::usage(message, groups.as_slice()));
+        println!("{}", getopts::usage(message.as_slice(), groups.as_slice()));
         println!("");
         fail!()
     }

@@ -39,7 +39,9 @@ impl fmt::Show for CrateId {
             Some(ref version) => version.as_slice(),
         };
         if self.path == self.name ||
-                self.path.as_slice().ends_with(format!("/{}", self.name)) {
+                self.path
+                    .as_slice()
+                    .ends_with(format!("/{}", self.name).as_slice()) {
             write!(f, "\\#{}", version)
         } else {
             write!(f, "\\#{}:{}", self.name, version)

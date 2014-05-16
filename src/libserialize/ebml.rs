@@ -663,7 +663,7 @@ pub mod writer {
             _ => Err(io::IoError {
                 kind: io::OtherIoError,
                 desc: "int too big",
-                detail: Some(format!("{}", n))
+                detail: Some(format_strbuf!("{}", n))
             })
         }
     }
@@ -676,7 +676,7 @@ pub mod writer {
         Err(io::IoError {
             kind: io::OtherIoError,
             desc: "int too big",
-            detail: Some(format!("{}", n))
+            detail: Some(format_strbuf!("{}", n))
         })
     }
 

@@ -167,7 +167,9 @@ pub mod write {
                 "dynamic-no-pic" => lib::llvm::RelocDynamicNoPic,
                 _ => {
                     sess.err(format!("{} is not a valid relocation mode",
-                             sess.opts.cg.relocation_model));
+                                     sess.opts
+                                         .cg
+                                         .relocation_model).as_slice());
                     sess.abort_if_errors();
                     return;
                 }
@@ -219,7 +221,8 @@ pub mod write {
             for pass in sess.opts.cg.passes.iter() {
                 pass.as_slice().with_c_str(|s| {
                     if !llvm::LLVMRustAddPass(mpm, s) {
-                        sess.warn(format!("unknown pass {}, ignoring", *pass));
+                        sess.warn(format!("unknown pass {}, ignoring",
+                                          *pass).as_slice());
                     }
                 })
             }
@@ -360,8 +363,10 @@ pub mod write {
         match cmd.output() {
             Ok(prog) => {
                 if !prog.status.success() {
-                    sess.err(format!("linking with `{}` failed: {}", pname, prog.status));
-                    sess.note(format!("{}", &cmd));
+                    sess.err(format!("linking with `{}` failed: {}",
+                                     pname,
+                                     prog.status).as_slice());
+                    sess.note(format!("{}", &cmd).as_slice());
                     let mut note = prog.error.clone();
                     note.push_all(prog.output.as_slice());
                     sess.note(str::from_utf8(note.as_slice()).unwrap().to_owned());
@@ -369,7 +374,9 @@ pub mod write {
                 }
             },
             Err(e) => {
-                sess.err(format!("could not exec the linker `{}`: {}", pname, e));
+                sess.err(format!("could not exec the linker `{}`: {}",
+                                 pname,
+                                 e).as_slice());
                 sess.abort_if_errors();
             }
         }
@@ -666,7 +673,7 @@ pub fn mangle<PI: Iterator<PathElem>>(mut path: PI,
 
     fn push(n: &mut StrBuf, s: &str) {
         let sani = sanitize(s);
-        n.push_str(format!("{}{}", sani.len(), sani));
+        n.push_str(format!("{}{}", sani.len(), sani).as_slice());
     }
 
     // First, connect each component with <len, name> pairs.
@@ -774,7 +781,9 @@ fn remove(sess: &Session, path: &Path) {
     match fs::unlink(path) {
         Ok(..) => {}
         Err(e) => {
-            sess.err(format!("failed to remove {}: {}", path.display(), e));
+            sess.err(format!("failed to remove {}: {}",
+                             path.display(),
+                             e).as_slice());
         }
     }
 }
@@ -815,7 +824,7 @@ pub fn filename_for_input(sess: &Session, crate_type: config::CrateType,
     let libname = output_lib_filename(id);
     match crate_type {
         config::CrateTypeRlib => {
-            out_filename.with_filename(format!("lib{}.rlib", libname))
+            out_filename.with_filename(format_strbuf!("lib{}.rlib", libname))
         }
         config::CrateTypeDylib => {
             let (prefix, suffix) = match sess.targ_cfg.os {
@@ -825,10 +834,13 @@ pub fn filename_for_input(sess: &Session, crate_type: config::CrateType,
                 abi::OsAndroid => (loader::ANDROID_DLL_PREFIX, loader::ANDROID_DLL_SUFFIX),
                 abi::OsFreebsd => (loader::FREEBSD_DLL_PREFIX, loader::FREEBSD_DLL_SUFFIX),
             };
-            out_filename.with_filename(format!("{}{}{}", prefix, libname, suffix))
+            out_filename.with_filename(format_strbuf!("{}{}{}",
+                                                      prefix,
+                                                      libname,
+                                                      suffix))
         }
         config::CrateTypeStaticlib => {
-            out_filename.with_filename(format!("lib{}.a", libname))
+            out_filename.with_filename(format_strbuf!("lib{}.a", libname))
         }
         config::CrateTypeExecutable => out_filename.clone(),
     }
@@ -855,12 +867,14 @@ fn link_binary_output(sess: &Session,
     let obj_is_writeable = is_writeable(&obj_filename);
     let out_is_writeable = is_writeable(&out_filename);
     if !out_is_writeable {
-        sess.fatal(format!("output file {} is not writeable -- check its permissions.",
-                           out_filename.display()));
+        sess.fatal(format!("output file {} is not writeable -- check its \
+                            permissions.",
+                           out_filename.display()).as_slice());
     }
     else if !obj_is_writeable {
-        sess.fatal(format!("object file {} is not writeable -- check its permissions.",
-                           obj_filename.display()));
+        sess.fatal(format!("object file {} is not writeable -- check its \
+                            permissions.",
+                           obj_filename.display()).as_slice());
     }
 
     match crate_type {
@@ -936,7 +950,8 @@ fn link_rlib<'a>(sess: &'a Session,
                 Ok(..) => {}
                 Err(e) => {
                     sess.err(format!("failed to write {}: {}",
-                                     metadata.display(), e));
+                                     metadata.display(),
+                                     e).as_slice());
                     sess.abort_if_errors();
                 }
             }
@@ -956,7 +971,9 @@ fn link_rlib<'a>(sess: &'a Session,
             }) {
                 Ok(()) => {}
                 Err(e) => {
-                    sess.err(format!("failed to write compressed bytecode: {}", e));
+                    sess.err(format!("failed to write compressed bytecode: \
+                                      {}",
+                                     e).as_slice());
                     sess.abort_if_errors()
                 }
             }
@@ -1003,7 +1020,8 @@ fn link_staticlib(sess: &Session, obj_filename: &Path, out_filename: &Path) {
         let name = sess.cstore.get_crate_data(cnum).name.clone();
         let p = match *path {
             Some(ref p) => p.clone(), None => {
-                sess.err(format!("could not find rlib for: `{}`", name));
+                sess.err(format!("could not find rlib for: `{}`",
+                                 name).as_slice());
                 continue
             }
         };
@@ -1015,7 +1033,9 @@ fn link_staticlib(sess: &Session, obj_filename: &Path, out_filename: &Path) {
                 cstore::NativeUnknown => "library",
                 cstore::NativeFramework => "framework",
             };
-            sess.warn(format!("unlinked native {}: {}", name, *lib));
+            sess.warn(format!("unlinked native {}: {}",
+                              name,
+                              *lib).as_slice());
         }
     }
 }
@@ -1049,8 +1069,10 @@ fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
     match prog {
         Ok(prog) => {
             if !prog.status.success() {
-                sess.err(format!("linking with `{}` failed: {}", pname, prog.status));
-                sess.note(format!("{}", &cmd));
+                sess.err(format!("linking with `{}` failed: {}",
+                                 pname,
+                                 prog.status).as_slice());
+                sess.note(format!("{}", &cmd).as_slice());
                 let mut output = prog.error.clone();
                 output.push_all(prog.output.as_slice());
                 sess.note(str::from_utf8(output.as_slice()).unwrap().to_owned());
@@ -1058,7 +1080,9 @@ fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
             }
         },
         Err(e) => {
-            sess.err(format!("could not exec the linker `{}`: {}", pname, e));
+            sess.err(format!("could not exec the linker `{}`: {}",
+                             pname,
+                             e).as_slice());
             sess.abort_if_errors();
         }
     }
@@ -1070,7 +1094,7 @@ fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
         match Command::new("dsymutil").arg(out_filename).status() {
             Ok(..) => {}
             Err(e) => {
-                sess.err(format!("failed to run dsymutil: {}", e));
+                sess.err(format!("failed to run dsymutil: {}", e).as_slice());
                 sess.abort_if_errors();
             }
         }
@@ -1409,7 +1433,8 @@ fn add_upstream_rust_crates(cmd: &mut Command, sess: &Session,
         // against the archive.
         if sess.lto() {
             let name = sess.cstore.get_crate_data(cnum).name.clone();
-            time(sess.time_passes(), format!("altering {}.rlib", name),
+            time(sess.time_passes(),
+                 format!("altering {}.rlib", name).as_slice(),
                  (), |()| {
                 let dst = tmpdir.join(cratepath.filename().unwrap());
                 match fs::copy(&cratepath, &dst) {
@@ -1418,12 +1443,12 @@ fn add_upstream_rust_crates(cmd: &mut Command, sess: &Session,
                         sess.err(format!("failed to copy {} to {}: {}",
                                          cratepath.display(),
                                          dst.display(),
-                                         e));
+                                         e).as_slice());
                         sess.abort_if_errors();
                     }
                 }
                 let mut archive = Archive::open(sess, dst.clone());
-                archive.remove_file(format!("{}.o", name));
+                archive.remove_file(format!("{}.o", name).as_slice());
                 let files = archive.files();
                 if files.iter().any(|s| s.as_slice().ends_with(".o")) {
                     cmd.arg(dst);

@@ -42,10 +42,11 @@ impl TempDir {
         static mut CNT: atomics::AtomicUint = atomics::INIT_ATOMIC_UINT;
 
         for _ in range(0u, 1000) {
-            let filename = format!("rs-{}-{}-{}",
-                                   unsafe { libc::getpid() },
-                                   unsafe { CNT.fetch_add(1, atomics::SeqCst) },
-                                   suffix);
+            let filename =
+                format_strbuf!("rs-{}-{}-{}",
+                               unsafe { libc::getpid() },
+                               unsafe { CNT.fetch_add(1, atomics::SeqCst) },
+                               suffix);
             let p = tmpdir.join(filename);
             match fs::mkdir(&p, io::UserRWX) {
                 Err(..) => {}

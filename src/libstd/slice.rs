@@ -1853,16 +1853,18 @@ mod tests {
             })
         )
         let empty: ~[int] = box [];
-        test_show_vec!(empty, "[]".to_owned());
-        test_show_vec!(box [1], "[1]".to_owned());
-        test_show_vec!(box [1, 2, 3], "[1, 2, 3]".to_owned());
-        test_show_vec!(box [box [], box [1u], box [1u, 1u]], "[[], [1], [1, 1]]".to_owned());
+        test_show_vec!(empty, "[]".to_strbuf());
+        test_show_vec!(box [1], "[1]".to_strbuf());
+        test_show_vec!(box [1, 2, 3], "[1, 2, 3]".to_strbuf());
+        test_show_vec!(box [box [], box [1u], box [1u, 1u]],
+                       "[[], [1], [1, 1]]".to_strbuf());
 
         let empty_mut: &mut [int] = &mut[];
-        test_show_vec!(empty_mut, "[]".to_owned());
-        test_show_vec!(&mut[1], "[1]".to_owned());
-        test_show_vec!(&mut[1, 2, 3], "[1, 2, 3]".to_owned());
-        test_show_vec!(&mut[&mut[], &mut[1u], &mut[1u, 1u]], "[[], [1], [1, 1]]".to_owned());
+        test_show_vec!(empty_mut, "[]".to_strbuf());
+        test_show_vec!(&mut[1], "[1]".to_strbuf());
+        test_show_vec!(&mut[1, 2, 3], "[1, 2, 3]".to_strbuf());
+        test_show_vec!(&mut[&mut[], &mut[1u], &mut[1u, 1u]],
+                       "[[], [1], [1, 1]]".to_strbuf());
     }
 
     #[test]

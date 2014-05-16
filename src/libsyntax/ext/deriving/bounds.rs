@@ -25,12 +25,18 @@ pub fn expand_deriving_bound(cx: &mut ExtCtxt,
                 "Copy" => "Copy",
                 "Send" => "Send",
                 "Share" => "Share",
-                ref tname => cx.span_bug(span,
-                                         format!("expected built-in trait name but found {}",
-                                                 *tname))
+                ref tname => {
+                    cx.span_bug(span,
+                                format!("expected built-in trait name but \
+                                         found {}",
+                                        *tname).as_slice())
+                }
             }
         },
-        _ => return cx.span_err(span, "unexpected value in deriving, expected a trait")
+        _ => {
+            return cx.span_err(span, "unexpected value in deriving, expected \
+                                      a trait")
+        }
     };
 
     let trait_def = TraitDef {

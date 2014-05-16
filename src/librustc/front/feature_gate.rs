@@ -109,7 +109,7 @@ impl<'a> Context<'a> {
             self.sess.span_err(span, explain);
             self.sess.span_note(span, format!("add \\#![feature({})] to the \
                                                   crate attributes to enable",
-                                                 feature));
+                                                 feature).as_slice());
         }
     }
 

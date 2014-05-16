@@ -64,6 +64,6 @@ pub fn main() {
         // because `inner`s alignment was 4.
         assert_eq!(mem::size_of::<Outer>(), m::size());
 
-        assert_eq!(y, "Outer{c8: 22u8, t: Inner{c64: 44u32}}".to_owned());
+        assert_eq!(y, "Outer{c8: 22u8, t: Inner{c64: 44u32}}".to_strbuf());
     }
 }

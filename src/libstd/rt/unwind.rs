@@ -71,6 +71,7 @@ use rt::backtrace;
 use rt::local::Local;
 use rt::task::Task;
 use str::Str;
+use strbuf::StrBuf;
 use task::TaskResult;
 
 use uw = rt::libunwind;
@@ -353,7 +354,7 @@ pub fn begin_unwind_fmt(msg: &fmt::Arguments, file: &'static str,
     // required with the current scheme, and (b) we don't handle
     // failure + OOM properly anyway (see comment in begin_unwind
     // below).
-    begin_unwind_inner(box fmt::format(msg), file, line)
+    begin_unwind_inner(box fmt::format_strbuf(msg), file, line)
 }
 
 /// This is the entry point of unwinding for fail!() and assert!().
@@ -388,7 +389,7 @@ fn begin_unwind_inner(msg: Box<Any:Send>,
     {
         let msg_s = match msg.as_ref::<&'static str>() {
             Some(s) => *s,
-            None => match msg.as_ref::<~str>() {
+            None => match msg.as_ref::<StrBuf>() {
                 Some(s) => s.as_slice(),
                 None => "Box<Any>",
             }

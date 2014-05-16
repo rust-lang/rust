@@ -317,16 +317,21 @@ pub fn create_global_var_metadata(cx: &CrateContext,
         ast_map::NodeItem(item) => {
             match item.node {
                 ast::ItemStatic(..) => (item.ident, item.span),
-                _ => cx.sess().span_bug(item.span,
-                                        format!("debuginfo::create_global_var_metadata() -
-                                                Captured var-id refers to unexpected ast_item
-                                                variant: {:?}",
-                                                var_item))
+                _ => {
+                    cx.sess()
+                      .span_bug(item.span,
+                                format!("debuginfo::\
+                                         create_global_var_metadata() -
+                                         Captured var-id refers to \
+                                         unexpected ast_item variant: {:?}",
+                                        var_item).as_slice())
+                }
             }
         },
-        _ => cx.sess().bug(format!("debuginfo::create_global_var_metadata() - Captured var-id \
-                                   refers to unexpected ast_map variant: {:?}",
-                                   var_item))
+        _ => cx.sess().bug(format!("debuginfo::create_global_var_metadata() \
+                                    - Captured var-id refers to unexpected \
+                                    ast_map variant: {:?}",
+                                   var_item).as_slice())
     };
 
     let filename = span_start(cx, span).file.name.clone();
@@ -340,7 +345,8 @@ pub fn create_global_var_metadata(cx: &CrateContext,
 
     let namespace_node = namespace_for_item(cx, ast_util::local_def(node_id));
     let var_name = token::get_ident(ident).get().to_str();
-    let linkage_name = namespace_node.mangled_name_of_contained_item(var_name);
+    let linkage_name =
+        namespace_node.mangled_name_of_contained_item(var_name.as_slice());
     let var_scope = namespace_node.scope;
 
     var_name.as_slice().with_c_str(|var_name| {
@@ -380,7 +386,7 @@ pub fn create_local_var_metadata(bcx: &Block, local: &ast::Local) {
             None => {
                 bcx.sess().span_bug(span,
                     format!("no entry in lllocals table for {:?}",
-                            node_id));
+                            node_id).as_slice());
             }
         };
 
@@ -430,13 +436,17 @@ pub fn create_captured_var_metadata(bcx: &Block,
                                 "debuginfo::create_captured_var_metadata() - \
                                  Captured var-id refers to unexpected \
                                  ast_map variant: {:?}",
-                                 ast_item));
+                                 ast_item).as_slice());
                 }
             }
         }
         _ => {
-            cx.sess().span_bug(span, format!("debuginfo::create_captured_var_metadata() - \
-                Captured var-id refers to unexpected ast_map variant: {:?}", ast_item));
+            cx.sess()
+              .span_bug(span,
+                        format!("debuginfo::create_captured_var_metadata() - \
+                                 Captured var-id refers to unexpected \
+                                 ast_map variant: {:?}",
+                                ast_item).as_slice());
         }
     };
 
@@ -519,7 +529,7 @@ pub fn create_argument_metadata(bcx: &Block, arg: &ast::Arg) {
             None => {
                 bcx.sess().span_bug(span,
                     format!("no entry in llargs table for {:?}",
-                            node_id));
+                            node_id).as_slice());
             }
         };
 
@@ -653,7 +663,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
                 ast::ExprFnBlock(fn_decl, top_level_block) |
                 ast::ExprProc(fn_decl, top_level_block) => {
                     let name = format!("fn{}", token::gensym("fn"));
-                    let name = token::str_to_ident(name);
+                    let name = token::str_to_ident(name.as_slice());
                     (name, fn_decl,
                         // This is not quite right. It should actually inherit the generics of the
                         // enclosing function.
@@ -681,7 +691,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
                     cx.sess()
                       .bug(format!("create_function_debug_context: \
                                     unexpected sort of node: {:?}",
-                                    fnitem))
+                                    fnitem).as_slice())
                 }
             }
         }
@@ -691,7 +701,8 @@ pub fn create_function_debug_context(cx: &CrateContext,
             return FunctionDebugContext { repr: FunctionWithoutDebugInfo };
         }
         _ => cx.sess().bug(format!("create_function_debug_context: \
-                                    unexpected sort of node: {:?}", fnitem))
+                                    unexpected sort of node: {:?}",
+                                   fnitem).as_slice())
     };
 
     // This can be the case for functions inlined from another crate
@@ -1124,7 +1135,8 @@ fn scope_metadata(fcx: &FunctionContext,
             let node = fcx.ccx.tcx.map.get(node_id);
 
             fcx.ccx.sess().span_bug(span,
-                format!("debuginfo: Could not find scope info for node {:?}", node));
+                format!("debuginfo: Could not find scope info for node {:?}",
+                        node).as_slice());
         }
     }
 }
@@ -1499,14 +1511,17 @@ fn describe_enum_variant(cx: &CrateContext,
     // Get the argument names from the enum variant info
     let mut arg_names: Vec<_> = match variant_info.arg_names {
         Some(ref names) => {
-            names.iter().map(|ident| token::get_ident(*ident).get().to_str()).collect()
+            names.iter()
+                 .map(|ident| {
+                     token::get_ident(*ident).get().to_str().into_strbuf()
+                 }).collect()
         }
-        None => variant_info.args.iter().map(|_| "".to_owned()).collect()
+        None => variant_info.args.iter().map(|_| "".to_strbuf()).collect()
     };
 
     // If this is not a univariant enum, there is also the (unnamed) discriminant field
     if discriminant_type_metadata.is_some() {
-        arg_names.insert(0, "".to_owned());
+        arg_names.insert(0, "".to_strbuf());
     }
 
     // Build an array of (field name, field type) pairs to be captured in the factory closure.
@@ -1861,7 +1876,7 @@ fn boxed_type_metadata(cx: &CrateContext,
                     -> DICompositeType {
     let box_type_name = match content_type_name {
         Some(content_type_name) => format!("Boxed<{}>", content_type_name),
-        None                    => "BoxedType".to_owned()
+        None                    => "BoxedType".to_strbuf()
     };
 
     let box_llvm_type = Type::at_box(cx, content_llvm_type);
@@ -1913,7 +1928,7 @@ fn boxed_type_metadata(cx: &CrateContext,
     return composite_type_metadata(
         cx,
         box_llvm_type,
-        box_type_name,
+        box_type_name.as_slice(),
         member_descriptions,
         file_metadata,
         file_metadata,
@@ -1971,7 +1986,9 @@ fn vec_metadata(cx: &CrateContext,
     let (element_size, element_align) = size_and_align_of(cx, element_llvm_type);
 
     let vec_llvm_type = Type::vec(cx, &element_llvm_type);
-    let vec_type_name: &str = format!("[{}]", ppaux::ty_to_str(cx.tcx(), element_type));
+    let vec_type_name = format!("[{}]",
+                                ppaux::ty_to_str(cx.tcx(), element_type));
+    let vec_type_name = vec_type_name.as_slice();
 
     let member_llvm_types = vec_llvm_type.field_types();
 
@@ -2254,7 +2271,11 @@ fn type_metadata(cx: &CrateContext,
                                    elements.as_slice(),
                                    usage_site_span).finalize(cx)
         }
-        _ => cx.sess().bug(format!("debuginfo: unexpected type in type_metadata: {:?}", sty))
+        _ => {
+            cx.sess().bug(format!("debuginfo: unexpected type in \
+                                   type_metadata: {:?}",
+                                  sty).as_slice())
+        }
     };
 
     debug_context(cx).created_types.borrow_mut().insert(cache_id, type_metadata);
@@ -2852,13 +2873,13 @@ impl NamespaceTreeNode {
                 None => {}
             }
             let string = token::get_name(node.name);
-            output.push_str(format!("{}", string.get().len()));
+            output.push_str(format!("{}", string.get().len()).as_slice());
             output.push_str(string.get());
         }
 
         let mut name = StrBuf::from_str("_ZN");
         fill_nested(self, &mut name);
-        name.push_str(format!("{}", item_name.len()));
+        name.push_str(format!("{}", item_name.len()).as_slice());
         name.push_str(item_name);
         name.push_char('E');
         name
@@ -2941,7 +2962,8 @@ fn namespace_for_item(cx: &CrateContext, def_id: ast::DefId) -> Rc<NamespaceTree
             Some(node) => node,
             None => {
                 cx.sess().bug(format!("debuginfo::namespace_for_item(): \
-                    path too short for {:?}", def_id));
+                                       path too short for {:?}",
+                                      def_id).as_slice());
             }
         }
     })

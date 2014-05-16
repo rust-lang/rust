@@ -222,5 +222,5 @@ fn test_order() {
     }
     assert_eq!(format!("{} {} {a} {b} {} {c}",
                        foo(), foo(), foo(), a=foo(), b=foo(), c=foo()),
-               "1 2 4 5 3 6".to_owned());
+               "1 2 4 5 3 6".to_strbuf());
 }

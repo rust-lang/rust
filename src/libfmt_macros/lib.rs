@@ -274,12 +274,13 @@ impl<'a> Parser<'a> {
                 self.cur.next();
             }
             Some((_, other)) => {
-                self.err(
-                    format!("expected `{}` but found `{}`", c, other));
+                self.err(format!("expected `{}` but found `{}`",
+                                 c,
+                                 other).as_slice());
             }
             None => {
-                self.err(
-                    format!("expected `{}` but string was terminated", c));
+                self.err(format!("expected `{}` but string was terminated",
+                                 c).as_slice());
             }
         }
     }
@@ -307,7 +308,8 @@ impl<'a> Parser<'a> {
             Some((_, c @ '#')) | Some((_, c @ '{')) |
             Some((_, c @ '\\')) | Some((_, c @ '}')) => { c }
             Some((_, c)) => {
-                self.err(format!("invalid escape character `{}`", c));
+                self.err(format!("invalid escape character `{}`",
+                                 c).as_slice());
                 c
             }
             None => {
@@ -459,7 +461,7 @@ impl<'a> Parser<'a> {
                 return None;
             }
             method => {
-                self.err(format!("unknown method: `{}`", method));
+                self.err(format!("unknown method: `{}`", method).as_slice());
                 return None;
             }
         }
@@ -526,7 +528,7 @@ impl<'a> Parser<'a> {
                         let word = self.word();
                         if word != "offset" {
                             self.err(format!("expected `offset`, found `{}`",
-                                             word));
+                                             word).as_slice());
                         } else {
                             self.must_consume(':');
                             match self.integer() {
@@ -566,7 +568,7 @@ impl<'a> Parser<'a> {
                     "many"  => Keyword(Many),
                     word    => {
                         self.err(format!("unexpected plural selector `{}`",
-                                         word));
+                                         word).as_slice());
                         if word == "" {
                             break
                         } else {
