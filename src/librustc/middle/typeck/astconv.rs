@@ -451,6 +451,53 @@ pub fn ast_ty_to_builtin_ty<AC:AstConv,
                                               supplied to `Box<T>`");
                     Some(ty::mk_err())
                 }
+                ast::DefTy(did) | ast::DefStruct(did)
+                        if Some(did) == this.tcx().lang_items.gc() => {
+                    if path.segments
+                           .iter()
+                           .flat_map(|s| s.types.iter())
+                           .len() > 1 {
+                        this.tcx()
+                            .sess
+                            .span_err(path.span,
+                                      "`Gc` has only one type parameter")
+                    }
+
+                    for inner_ast_type in path.segments
+                                              .iter()
+                                              .flat_map(|s| s.types.iter()) {
+                        let mt = ast::MutTy {
+                            ty: *inner_ast_type,
+                            mutbl: ast::MutImmutable,
+                        };
+                        return Some(mk_pointer(this,
+                                               rscope,
+                                               &mt,
+                                               Box,
+                                               |typ| {
+                            match ty::get(typ).sty {
+                                ty::ty_str => {
+                                    this.tcx()
+                                        .sess
+                                        .span_err(path.span,
+                                                  "`Gc<str>` is not a type");
+                                    ty::mk_err()
+                                }
+                                ty::ty_vec(_, None) => {
+                                    this.tcx()
+                                        .sess
+                                        .span_err(path.span,
+                                                  "`Gc<[T]>` is not a type");
+                                    ty::mk_err()
+                                }
+                                _ => ty::mk_box(this.tcx(), typ),
+                            }
+                        }))
+                    }
+                    this.tcx().sess.span_bug(path.span,
+                                             "not enough type parameters \
+                                              supplied to `Gc<T>`")
+                }
                 _ => None
             }
         }

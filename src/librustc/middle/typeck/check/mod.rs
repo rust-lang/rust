@@ -2862,52 +2862,14 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                   // places: the exchange heap and the managed heap.
                   let definition = lookup_def(fcx, path.span, place.id);
                   let def_id = definition.def_id();
-                  match tcx.lang_items
-                           .items
-                           .get(ExchangeHeapLangItem as uint) {
-                      &Some(item_def_id) if def_id == item_def_id => {
-                          fcx.write_ty(id, ty::mk_uniq(tcx,
-                                                       fcx.expr_ty(subexpr)));
-                          checked = true
-                      }
-                      &Some(_) | &None => {}
-                  }
-                  if !checked {
-                      match tcx.lang_items
-                               .items
-                               .get(ManagedHeapLangItem as uint) {
-                          &Some(item_def_id) if def_id == item_def_id => {
-                              // Assign the magic `Gc<T>` struct.
-                              let gc_struct_id =
-                                  match tcx.lang_items
-                                           .require(GcLangItem) {
-                                      Ok(id) => id,
-                                      Err(msg) => {
-                                          tcx.sess.span_err(expr.span,
-                                                            msg.as_slice());
-                                          ast::DefId {
-                                              krate: ast::CRATE_NODE_ID,
-                                              node: ast::DUMMY_NODE_ID,
-                                          }
-                                      }
-                                  };
-                              let regions =
-                                  subst::NonerasedRegions(Vec::new());
-                              let sty = ty::mk_struct(tcx,
-                                                      gc_struct_id,
-                                                      subst::Substs {
-                                                        self_ty: None,
-                                                        tps: vec!(
-                                                            fcx.expr_ty(
-                                                                subexpr)
-                                                        ),
-                                                        regions: regions,
-                                                      });
-                              fcx.write_ty(id, sty);
-                              checked = true
-                          }
-                          &Some(_) | &None => {}
-                      }
+                  if tcx.lang_items.exchange_heap() == Some(def_id) {
+                      fcx.write_ty(id, ty::mk_uniq(tcx,
+                                                   fcx.expr_ty(&**subexpr)));
+                      checked = true
+                  } else if tcx.lang_items.managed_heap() == Some(def_id) {
+                      fcx.write_ty(id, ty::mk_box(tcx,
+                                                  fcx.expr_ty(&**subexpr)));
+                      checked = true
                   }
               }
               _ => {}

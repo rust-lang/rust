@@ -129,6 +129,14 @@ fn type_is_defined_in_local_crate(tcx: &ty::ctxt, original_type: t) -> bool {
                     _ => {}
                 }
             }
+            ty_box(..) => {
+                match tcx.lang_items.gc() {
+                    Some(did) if did.krate == ast::LOCAL_CRATE => {
+                        found_nominal = true;
+                    }
+                    _ => {}
+                }
+            }
 
             _ => { }
         }

@@ -628,9 +628,6 @@ pub fn argumentuint<'a>(s: &'a uint) -> Argument<'a> {
 
 // Implementations of the core formatting traits
 
-impl<T: Show> Show for @T {
-    fn fmt(&self, f: &mut Formatter) -> Result { secret_show(&**self, f) }
-}
 impl<'a, T: Show> Show for &'a T {
     fn fmt(&self, f: &mut Formatter) -> Result { secret_show(*self, f) }
 }

@@ -39,12 +39,6 @@ pub trait Clone {
     }
 }
 
-impl<T> Clone for @T {
-    /// Return a shallow copy of the managed box.
-    #[inline]
-    fn clone(&self) -> @T { *self }
-}
-
 impl<'a, T> Clone for &'a T {
     /// Return a shallow copy of the reference.
     #[inline]

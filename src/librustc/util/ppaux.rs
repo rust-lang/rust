@@ -510,7 +510,7 @@ impl<T:Repr> Repr for Rc<T> {
     }
 }
 
-impl<T:Repr> Repr for @T {
+impl<T:Repr + 'static> Repr for Gc<T> {
     fn repr(&self, tcx: &ctxt) -> String {
         (&**self).repr(tcx)
     }
