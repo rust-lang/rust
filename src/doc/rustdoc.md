@@ -26,7 +26,7 @@ comments":
 pub struct Widget {
 	/// All widgets have a purpose (this is a doc comment, and will show up
 	/// the field's documentation).
-	purpose: ~str,
+	purpose: StrBuf,
 	/// Humans are not allowed to understand some widgets
 	understandable: bool
 }

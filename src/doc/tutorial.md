@@ -2213,7 +2213,7 @@ don't provide any methods.
 Traits may be implemented for specific types with [impls]. An impl for
 a particular trait gives an implementation of the methods that
 trait provides.  For instance, the following impls of
-`Printable` for `int` and `~str` give implementations of the `print`
+`Printable` for `int` and `StrBuf` give implementations of the `print`
 method.
 
 [impls]: #methods
@@ -2224,12 +2224,12 @@ impl Printable for int {
     fn print(&self) { println!("{:?}", *self) }
 }
 
-impl Printable for ~str {
+impl Printable for StrBuf {
     fn print(&self) { println!("{}", *self) }
 }
 
 # 1.print();
-# ("foo".to_owned()).print();
+# ("foo".to_strbuf()).print();
 ~~~~
 
 Methods defined in an impl for a trait may be called just like
@@ -2270,7 +2270,7 @@ trait Printable {
 
 impl Printable for int {}
 
-impl Printable for ~str {
+impl Printable for StrBuf {
     fn print(&self) { println!("{}", *self) }
 }
 
@@ -2279,7 +2279,7 @@ impl Printable for bool {}
 impl Printable for f32 {}
 
 # 1.print();
-# ("foo".to_owned()).print();
+# ("foo".to_strbuf()).print();
 # true.print();
 # 3.14159.print();
 ~~~~
@@ -2291,7 +2291,7 @@ provided in the trait definition.  Depending on the trait, default
 methods can save a great deal of boilerplate code from having to be
 written in impls.  Of course, individual impls can still override the
 default method for `print`, as is being done above in the impl for
-`~str`.
+`StrBuf`.
 
 ## Type-parameterized traits
 

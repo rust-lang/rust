@@ -85,7 +85,7 @@ To take as an argument a fragment of Rust code, write `$` followed by a name
   `foo`.)
 * `expr` (an expression. Examples: `2 + 2`; `if true then { 1 } else { 2 }`;
   `f(42)`.)
-* `ty` (a type. Examples: `int`, `~[(char, ~str)]`, `&T`.)
+* `ty` (a type. Examples: `int`, `~[(char, StrBuf)]`, `&T`.)
 * `pat` (a pattern, usually appearing in a `match` or on the left-hand side of
   a declaration. Examples: `Some(t)`; `(17, 'a')`; `_`.)
 * `block` (a sequence of actions. Example: `{ log(error, "hi"); return 12; }`)

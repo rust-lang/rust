@@ -54,7 +54,7 @@ static URLSAFE_CHARS: &'static[u8] = bytes!("ABCDEFGHIJKLMNOPQRSTUVWXYZ",
 pub trait ToBase64 {
     /// Converts the value of `self` to a base64 value following the specified
     /// format configuration, returning the owned string.
-    fn to_base64(&self, config: Config) -> ~str;
+    fn to_base64(&self, config: Config) -> StrBuf;
 }
 
 impl<'a> ToBase64 for &'a [u8] {
@@ -73,7 +73,7 @@ impl<'a> ToBase64 for &'a [u8] {
      * }
      * ```
      */
-    fn to_base64(&self, config: Config) -> ~str {
+    fn to_base64(&self, config: Config) -> StrBuf {
         let bytes = match config.char_set {
             Standard => STANDARD_CHARS,
             UrlSafe => URLSAFE_CHARS
@@ -146,7 +146,7 @@ impl<'a> ToBase64 for &'a [u8] {
         }
 
         unsafe {
-            str::raw::from_utf8(v.as_slice()).to_owned()
+            str::raw::from_utf8(v.as_slice()).to_strbuf()
         }
     }
 }
@@ -195,7 +195,7 @@ impl<'a> FromBase64 for &'a str {
      * fn main () {
      *     let hello_str = bytes!("Hello, World").to_base64(STANDARD);
      *     println!("base64 output: {}", hello_str);
-     *     let res = hello_str.from_base64();
+     *     let res = hello_str.as_slice().from_base64();
      *     if res.is_ok() {
      *       let opt_bytes = StrBuf::from_utf8(res.unwrap());
      *       if opt_bytes.is_ok() {
@@ -267,34 +267,35 @@ mod tests {
 
     #[test]
     fn test_to_base64_basic() {
-        assert_eq!("".as_bytes().to_base64(STANDARD), "".to_owned());
-        assert_eq!("f".as_bytes().to_base64(STANDARD), "Zg==".to_owned());
-        assert_eq!("fo".as_bytes().to_base64(STANDARD), "Zm8=".to_owned());
-        assert_eq!("foo".as_bytes().to_base64(STANDARD), "Zm9v".to_owned());
-        assert_eq!("foob".as_bytes().to_base64(STANDARD), "Zm9vYg==".to_owned());
-        assert_eq!("fooba".as_bytes().to_base64(STANDARD), "Zm9vYmE=".to_owned());
-        assert_eq!("foobar".as_bytes().to_base64(STANDARD), "Zm9vYmFy".to_owned());
+        assert_eq!("".as_bytes().to_base64(STANDARD), "".to_strbuf());
+        assert_eq!("f".as_bytes().to_base64(STANDARD), "Zg==".to_strbuf());
+        assert_eq!("fo".as_bytes().to_base64(STANDARD), "Zm8=".to_strbuf());
+        assert_eq!("foo".as_bytes().to_base64(STANDARD), "Zm9v".to_strbuf());
+        assert_eq!("foob".as_bytes().to_base64(STANDARD), "Zm9vYg==".to_strbuf());
+        assert_eq!("fooba".as_bytes().to_base64(STANDARD), "Zm9vYmE=".to_strbuf());
+        assert_eq!("foobar".as_bytes().to_base64(STANDARD), "Zm9vYmFy".to_strbuf());
     }
 
     #[test]
     fn test_to_base64_line_break() {
         assert!(![0u8, ..1000].to_base64(Config {line_length: None, ..STANDARD})
-                .contains("\r\n"));
+                              .as_slice()
+                              .contains("\r\n"));
         assert_eq!("foobar".as_bytes().to_base64(Config {line_length: Some(4),
                                                          ..STANDARD}),
-                   "Zm9v\r\nYmFy".to_owned());
+                   "Zm9v\r\nYmFy".to_strbuf());
     }
 
     #[test]
     fn test_to_base64_padding() {
-        assert_eq!("f".as_bytes().to_base64(Config {pad: false, ..STANDARD}), "Zg".to_owned());
-        assert_eq!("fo".as_bytes().to_base64(Config {pad: false, ..STANDARD}), "Zm8".to_owned());
+        assert_eq!("f".as_bytes().to_base64(Config {pad: false, ..STANDARD}), "Zg".to_strbuf());
+        assert_eq!("fo".as_bytes().to_base64(Config {pad: false, ..STANDARD}), "Zm8".to_strbuf());
     }
 
     #[test]
     fn test_to_base64_url_safe() {
-        assert_eq!([251, 255].to_base64(URL_SAFE), "-_8".to_owned());
-        assert_eq!([251, 255].to_base64(STANDARD), "+/8=".to_owned());
+        assert_eq!([251, 255].to_base64(URL_SAFE), "-_8".to_strbuf());
+        assert_eq!([251, 255].to_base64(STANDARD), "+/8=".to_strbuf());
     }
 
     #[test]
@@ -339,7 +340,12 @@ mod tests {
         for _ in range(0, 1000) {
             let times = task_rng().gen_range(1u, 100);
             let v = Vec::from_fn(times, |_| random::<u8>());
-            assert_eq!(v.as_slice().to_base64(STANDARD).from_base64().unwrap().as_slice(),
+            assert_eq!(v.as_slice()
+                        .to_base64(STANDARD)
+                        .as_slice()
+                        .from_base64()
+                        .unwrap()
+                        .as_slice(),
                        v.as_slice());
         }
     }
@@ -360,7 +366,7 @@ mod tests {
                  ウヰノオクヤマ ケフコエテ アサキユメミシ ヱヒモセスン";
         let sb = s.as_bytes().to_base64(STANDARD);
         b.iter(|| {
-            sb.from_base64().unwrap();
+            sb.as_slice().from_base64().unwrap();
         });
         b.bytes = sb.len() as u64;
     }

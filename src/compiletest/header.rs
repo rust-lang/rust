@@ -14,20 +14,20 @@ use util;
 
 pub struct TestProps {
     // Lines that should be expected, in order, on standard out
-    pub error_patterns: Vec<~str> ,
+    pub error_patterns: Vec<StrBuf> ,
     // Extra flags to pass to the compiler
-    pub compile_flags: Option<~str>,
+    pub compile_flags: Option<StrBuf>,
     // Extra flags to pass when the compiled code is run (such as --bench)
-    pub run_flags: Option<~str>,
+    pub run_flags: Option<StrBuf>,
     // If present, the name of a file that this test should match when
     // pretty-printed
     pub pp_exact: Option<Path>,
     // Modules from aux directory that should be compiled
-    pub aux_builds: Vec<~str> ,
+    pub aux_builds: Vec<StrBuf> ,
     // Environment settings to use during execution
-    pub exec_env: Vec<(~str,~str)> ,
+    pub exec_env: Vec<(StrBuf,StrBuf)> ,
     // Lines to check if they appear in the expected debugger output
-    pub check_lines: Vec<~str> ,
+    pub check_lines: Vec<StrBuf> ,
     // Flag to force a crate to be built with the host architecture
     pub force_host: bool,
     // Check stdout for error-pattern output as well as stderr
@@ -119,22 +119,30 @@ pub fn load_props(testfile: &Path) -> TestProps {
 }
 
 pub fn is_test_ignored(config: &Config, testfile: &Path) -> bool {
-    fn ignore_target(config: &Config) -> ~str {
-        "ignore-".to_owned() + util::get_os(config.target)
+    fn ignore_target(config: &Config) -> StrBuf {
+        format_strbuf!("ignore-{}", util::get_os(config.target.as_slice()))
     }
-    fn ignore_stage(config: &Config) -> ~str {
-        "ignore-".to_owned() + config.stage_id.split('-').next().unwrap()
+    fn ignore_stage(config: &Config) -> StrBuf {
+        format_strbuf!("ignore-{}",
+                       config.stage_id.as_slice().split('-').next().unwrap())
     }
 
     let val = iter_header(testfile, |ln| {
-        if parse_name_directive(ln, "ignore-test") { false }
-        else if parse_name_directive(ln, ignore_target(config)) { false }
-        else if parse_name_directive(ln, ignore_stage(config)) { false }
-        else if config.mode == common::Pretty &&
-            parse_name_directive(ln, "ignore-pretty") { false }
-        else if config.target != config.host &&
-            parse_name_directive(ln, "ignore-cross-compile") { false }
-        else { true }
+        if parse_name_directive(ln, "ignore-test") {
+            false
+        } else if parse_name_directive(ln, ignore_target(config).as_slice()) {
+            false
+        } else if parse_name_directive(ln, ignore_stage(config).as_slice()) {
+            false
+        } else if config.mode == common::Pretty &&
+                parse_name_directive(ln, "ignore-pretty") {
+            false
+        } else if config.target != config.host &&
+                parse_name_directive(ln, "ignore-cross-compile") {
+            false
+        } else {
+            true
+        }
     });
 
     !val
@@ -156,24 +164,24 @@ fn iter_header(testfile: &Path, it: |&str| -> bool) -> bool {
     return true;
 }
 
-fn parse_error_pattern(line: &str) -> Option<~str> {
-    parse_name_value_directive(line, "error-pattern".to_owned())
+fn parse_error_pattern(line: &str) -> Option<StrBuf> {
+    parse_name_value_directive(line, "error-pattern".to_strbuf())
 }
 
-fn parse_aux_build(line: &str) -> Option<~str> {
-    parse_name_value_directive(line, "aux-build".to_owned())
+fn parse_aux_build(line: &str) -> Option<StrBuf> {
+    parse_name_value_directive(line, "aux-build".to_strbuf())
 }
 
-fn parse_compile_flags(line: &str) -> Option<~str> {
-    parse_name_value_directive(line, "compile-flags".to_owned())
+fn parse_compile_flags(line: &str) -> Option<StrBuf> {
+    parse_name_value_directive(line, "compile-flags".to_strbuf())
 }
 
-fn parse_run_flags(line: &str) -> Option<~str> {
-    parse_name_value_directive(line, "run-flags".to_owned())
+fn parse_run_flags(line: &str) -> Option<StrBuf> {
+    parse_name_value_directive(line, "run-flags".to_strbuf())
 }
 
-fn parse_check_line(line: &str) -> Option<~str> {
-    parse_name_value_directive(line, "check".to_owned())
+fn parse_check_line(line: &str) -> Option<StrBuf> {
+    parse_name_value_directive(line, "check".to_strbuf())
 }
 
 fn parse_force_host(line: &str) -> bool {
@@ -192,13 +200,16 @@ fn parse_no_pretty_expanded(line: &str) -> bool {
     parse_name_directive(line, "no-pretty-expanded")
 }
 
-fn parse_exec_env(line: &str) -> Option<(~str, ~str)> {
-    parse_name_value_directive(line, "exec-env".to_owned()).map(|nv| {
+fn parse_exec_env(line: &str) -> Option<(StrBuf, StrBuf)> {
+    parse_name_value_directive(line, "exec-env".to_strbuf()).map(|nv| {
         // nv is either FOO or FOO=BAR
-        let mut strs: Vec<~str> = nv.splitn('=', 1).map(|s| s.to_owned()).collect();
+        let mut strs: Vec<StrBuf> = nv.as_slice()
+                                      .splitn('=', 1)
+                                      .map(|s| s.to_strbuf())
+                                      .collect();
 
         match strs.len() {
-          1u => (strs.pop().unwrap(), "".to_owned()),
+          1u => (strs.pop().unwrap(), "".to_strbuf()),
           2u => {
               let end = strs.pop().unwrap();
               (strs.pop().unwrap(), end)
@@ -209,7 +220,7 @@ fn parse_exec_env(line: &str) -> Option<(~str, ~str)> {
 }
 
 fn parse_pp_exact(line: &str, testfile: &Path) -> Option<Path> {
-    match parse_name_value_directive(line, "pp-exact".to_owned()) {
+    match parse_name_value_directive(line, "pp-exact".to_strbuf()) {
       Some(s) => Some(Path::new(s)),
       None => {
         if parse_name_directive(line, "pp-exact") {
@@ -225,14 +236,14 @@ fn parse_name_directive(line: &str, directive: &str) -> bool {
     line.contains(directive)
 }
 
-pub fn parse_name_value_directive(line: &str,
-                              directive: ~str) -> Option<~str> {
-    let keycolon = directive + ":";
-    match line.find_str(keycolon) {
+pub fn parse_name_value_directive(line: &str, directive: StrBuf)
+                                  -> Option<StrBuf> {
+    let keycolon = format_strbuf!("{}:", directive);
+    match line.find_str(keycolon.as_slice()) {
         Some(colon) => {
             let value = line.slice(colon + keycolon.len(),
-                                   line.len()).to_owned();
-            debug!("{}: {}", directive,  value);
+                                   line.len()).to_strbuf();
+            debug!("{}: {}", directive, value);
             Some(value)
         }
         None => None

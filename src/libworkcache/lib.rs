@@ -190,7 +190,7 @@ impl Database {
         // FIXME(pcwalton): Yuck.
         let mut new_db_cache = TreeMap::new();
         for (ref k, ref v) in self.db_cache.iter() {
-            new_db_cache.insert((*k).to_owned(), (*v).to_owned());
+            new_db_cache.insert((*k).to_strbuf(), (*v).to_strbuf());
         }
 
         new_db_cache.to_json().to_pretty_writer(&mut f)
@@ -513,10 +513,13 @@ fn test() {
         let pth = pth.clone();
 
         let contents = File::open(&pth).read_to_end().unwrap();
-        let file_content = from_utf8(contents.as_slice()).unwrap().to_owned();
+        let file_content = from_utf8(contents.as_slice()).unwrap()
+                                                         .to_strbuf();
 
         // FIXME (#9639): This needs to handle non-utf8 paths
-        prep.declare_input("file", pth.as_str().unwrap(), file_content);
+        prep.declare_input("file",
+                           pth.as_str().unwrap(),
+                           file_content.as_slice());
         prep.exec(proc(_exe) {
             let out = make_path("foo.o".to_strbuf());
             let compiler = if cfg!(windows) {"gcc"} else {"cc"};
@@ -526,7 +529,7 @@ fn test() {
             // Could run sub-rules inside here.
 
             // FIXME (#9639): This needs to handle non-utf8 paths
-            out.as_str().unwrap().to_owned()
+            out.as_str().unwrap().to_strbuf()
         })
     });
 
