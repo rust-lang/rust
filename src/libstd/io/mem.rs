@@ -23,9 +23,9 @@ use vec::Vec;
 fn combine(seek: SeekStyle, cur: uint, end: uint, offset: i64) -> IoResult<u64> {
     // compute offset as signed and clamp to prevent overflow
     let pos = match seek {
-        SeekSet => 0,
-        SeekEnd => end,
-        SeekCur => cur,
+        io::SeekSet => 0,
+        io::SeekEnd => end,
+        io::SeekCur => cur,
     } as i64;
 
     if offset + pos < 0 {

@@ -9,7 +9,8 @@
 // except according to those terms.
 
 use common::Config;
-use common::{CompileFail, Pretty, RunFail, RunPass, DebugInfoGdb, DebugInfoLldb};
+use common::{CompileFail, Pretty, RunFail, RunPass, DebugInfoGdb};
+use common::{Codegen, DebugInfoLldb};
 use errors;
 use header::TestProps;
 use header;
