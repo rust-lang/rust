@@ -21,7 +21,7 @@
 //! extern crate num;
 //!
 //! use num::bigint::BigInt;
-//! use num::rational::{Ratio, BigRational}:
+//! use num::rational::{Ratio, BigRational};
 //!
 //! fn approx_sqrt(number: u64, iterations: uint) -> BigRational {
 //!     let start: Ratio<BigInt> = Ratio::from_integer(FromPrimitive::from_u64(number).unwrap());
