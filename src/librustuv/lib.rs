@@ -379,7 +379,7 @@ impl UvError {
 
 impl fmt::Show for UvError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f.buf, "{}: {}", self.name(), self.desc())
+        write!(f, "{}: {}", self.name(), self.desc())
     }
 }
 

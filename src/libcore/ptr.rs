@@ -480,7 +480,7 @@ impl<T> Ord for *mut T {
 #[cfg(test)]
 pub mod ptr_tests {
     use super::*;
-    use realstd::prelude::*;
+    use prelude::*;
 
     use realstd::c_str::ToCStr;
     use mem;
@@ -660,9 +660,6 @@ pub mod ptr_tests {
                     let expected = expected_arr[ctr].with_ref(|buf| {
                             str::raw::from_c_str(buf)
                         });
-                    debug!(
-                        "test_ptr_array_each_with_len e: {}, a: {}",
-                        expected, actual);
                     assert_eq!(actual, expected);
                     ctr += 1;
                     iteration_count += 1;
@@ -696,9 +693,6 @@ pub mod ptr_tests {
                     let expected = expected_arr[ctr].with_ref(|buf| {
                         str::raw::from_c_str(buf)
                     });
-                    debug!(
-                        "test_ptr_array_each e: {}, a: {}",
-                        expected, actual);
                     assert_eq!(actual, expected);
                     ctr += 1;
                     iteration_count += 1;

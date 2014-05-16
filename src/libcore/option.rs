@@ -148,7 +148,7 @@ use mem;
 use slice;
 
 /// The `Option`
-#[deriving(Clone, Eq, Ord, TotalEq, TotalOrd)]
+#[deriving(Clone, Eq, Ord, TotalEq, TotalOrd, Show)]
 pub enum Option<T> {
     /// No value
     None,
@@ -595,9 +595,11 @@ pub fn collect<T, Iter: Iterator<Option<T>>, V: FromIterator<T>>(iter: Iter) -> 
 
 #[cfg(test)]
 mod tests {
-    use realstd::option::collect;
-    use realstd::prelude::*;
-    use realstd::iter::range;
+    use realstd::vec::Vec;
+    use realstd::str::StrAllocating;
+    use option::collect;
+    use prelude::*;
+    use iter::range;
 
     use str::StrSlice;
     use kinds::marker;
@@ -638,7 +640,7 @@ mod tests {
         impl ::ops::Drop for R {
            fn drop(&mut self) {
                 let ii = &*self.i;
-                let i = ii.borrow().clone();
+                let i = *ii.borrow();
                 *ii.borrow_mut() = i + 1;
             }
         }
@@ -649,9 +651,14 @@ mod tests {
             }
         }
 
+        fn realclone<T: ::realstd::clone::Clone>(t: &T) -> T {
+            use realstd::clone::Clone;
+            t.clone()
+        }
+
         let i = Rc::new(RefCell::new(0));
         {
-            let x = R(i.clone());
+            let x = R(realclone(&i));
             let opt = Some(x);
             let _y = opt.unwrap();
         }
@@ -849,21 +856,21 @@ mod tests {
     fn test_collect() {
         let v: Option<Vec<int>> = collect(range(0, 0)
                                           .map(|_| Some(0)));
-        assert_eq!(v, Some(vec![]));
+        assert!(v == Some(vec![]));
 
         let v: Option<Vec<int>> = collect(range(0, 3)
                                           .map(|x| Some(x)));
-        assert_eq!(v, Some(vec![0, 1, 2]));
+        assert!(v == Some(vec![0, 1, 2]));
 
         let v: Option<Vec<int>> = collect(range(0, 3)
                                           .map(|x| if x > 1 { None } else { Some(x) }));
-        assert_eq!(v, None);
+        assert!(v == None);
 
         // test that it does not take more elements than it needs
         let mut functions = [|| Some(()), || None, || fail!()];
 
         let v: Option<Vec<()>> = collect(functions.mut_iter().map(|f| (*f)()));
 
-        assert_eq!(v, None);
+        assert!(v == None);
     }
 }

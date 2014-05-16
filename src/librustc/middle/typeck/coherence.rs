@@ -103,10 +103,22 @@ fn type_is_defined_in_local_crate(tcx: &ty::ctxt, original_type: t) -> bool {
     ty::walk_ty(original_type, |t| {
         match get(t).sty {
             ty_enum(def_id, _) |
-            ty_trait(box ty::TyTrait { def_id, .. }) |
             ty_struct(def_id, _) => {
                 if def_id.krate == ast::LOCAL_CRATE {
                     found_nominal = true;
+                }
+            }
+            ty_trait(box ty::TyTrait { def_id, ref store, .. }) => {
+                if def_id.krate == ast::LOCAL_CRATE {
+                    found_nominal = true;
+                }
+                if *store == ty::UniqTraitStore {
+                    match tcx.lang_items.owned_box() {
+                        Some(did) if did.krate == ast::LOCAL_CRATE => {
+                            found_nominal = true;
+                        }
+                        _ => {}
+                    }
                 }
             }
             ty_uniq(..) => {

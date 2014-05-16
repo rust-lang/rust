@@ -25,7 +25,7 @@ use option::{Some, None, Option};
 use ptr::RawPtr;
 use reflect;
 use reflect::{MovePtr, align};
-use result::{Ok, Err, ResultUnwrap};
+use result::{Ok, Err};
 use str::StrSlice;
 use to_str::ToStr;
 use slice::Vector;

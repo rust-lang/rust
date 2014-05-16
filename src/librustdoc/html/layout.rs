@@ -26,7 +26,7 @@ pub struct Page<'a> {
 
 pub fn render<T: fmt::Show, S: fmt::Show>(
     dst: &mut io::Writer, layout: &Layout, page: &Page, sidebar: &S, t: &T)
-    -> fmt::Result
+    -> io::IoResult<()>
 {
     write!(dst,
 r##"<!DOCTYPE html>

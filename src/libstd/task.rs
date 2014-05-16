@@ -49,7 +49,6 @@ use str::{Str, SendStr, IntoMaybeOwned};
 
 #[cfg(test)] use any::AnyRefExt;
 #[cfg(test)] use owned::AnyOwnExt;
-#[cfg(test)] use realstd::result::ResultUnwrap;
 #[cfg(test)] use result;
 #[cfg(test)] use str::StrAllocating;
 

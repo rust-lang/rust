@@ -295,24 +295,12 @@ pub mod eabi {
     }
 }
 
-#[cold]
-#[no_mangle]
-#[cfg(not(test))]
-pub extern fn rust_fail_bounds_check(file: *u8, line: uint,
-                                     index: uint, len: uint) -> ! {
-    use str::raw::c_str_to_static_slice;
-
-    let msg = format!("index out of bounds: the len is {} but the index is {}",
-                      len as uint, index as uint);
-    begin_unwind(msg, unsafe { c_str_to_static_slice(file as *i8) }, line)
-}
-
 // Entry point of failure from the libcore crate
 #[no_mangle]
 #[cfg(not(test))]
-pub extern fn rust_begin_unwind(msg: &str, file: &'static str, line: uint) -> ! {
-    use str::StrAllocating;
-    begin_unwind(msg.to_owned(), file, line)
+pub extern fn rust_begin_unwind(msg: &fmt::Arguments,
+                                file: &'static str, line: uint) -> ! {
+    begin_unwind_fmt(msg, file, line)
 }
 
 /// The entry point for unwinding with a formatted message.
@@ -402,9 +390,9 @@ fn begin_unwind_inner(msg: Box<Any:Send>,
                 Some(mut stderr) => {
                     Local::put(task);
                     // FIXME: what to do when the task printing fails?
-                    let _err = format_args!(|args| ::fmt::writeln(stderr, args),
-                                            "task '{}' failed at '{}', {}:{}",
-                                            n, msg_s, file, line);
+                    let _err = write!(stderr,
+                                      "task '{}' failed at '{}', {}:{}\n",
+                                      n, msg_s, file, line);
                     if backtrace::log_enabled() {
                         let _err = backtrace::write(stderr);
                     }

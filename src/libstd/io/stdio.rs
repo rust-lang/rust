@@ -36,7 +36,7 @@ use mem::replace;
 use option::{Option, Some, None};
 use owned::Box;
 use prelude::drop;
-use result::{Ok, Err, ResultUnwrap};
+use result::{Ok, Err};
 use rt;
 use rt::local::Local;
 use rt::rtio::{DontClose, IoFactory, LocalIo, RtioFileStream, RtioTTY};
@@ -276,13 +276,13 @@ pub fn println(s: &str) {
 /// Similar to `print`, but takes a `fmt::Arguments` structure to be compatible
 /// with the `format_args!` macro.
 pub fn print_args(fmt: &fmt::Arguments) {
-    with_task_stdout(|io| fmt::write(io, fmt))
+    with_task_stdout(|io| write!(io, "{}", fmt))
 }
 
 /// Similar to `println`, but takes a `fmt::Arguments` structure to be
 /// compatible with the `format_args!` macro.
 pub fn println_args(fmt: &fmt::Arguments) {
-    with_task_stdout(|io| fmt::writeln(io, fmt))
+    with_task_stdout(|io| writeln!(io, "{}", fmt))
 }
 
 /// Representation of a reader of a standard input stream

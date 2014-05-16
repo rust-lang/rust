@@ -20,7 +20,7 @@
 //      1. Implement DST
 //      2. Make `Box<T>` not a language feature
 //      3. Move `Box<T>` to a separate crate, liballoc.
-//      4. Implement relevant trais in liballoc, not libcore
+//      4. Implement relevant traits in liballoc, not libcore
 //
 // Currently, no progress has been made on this list.
 

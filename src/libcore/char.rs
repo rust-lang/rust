@@ -633,9 +633,9 @@ impl Default for char {
 mod test {
     use super::{escape_unicode, escape_default};
 
-    use realcore::char::Char;
+    use char::Char;
     use slice::ImmutableVector;
-    use realstd::option::{Some, None};
+    use option::{Some, None};
     use realstd::strbuf::StrBuf;
     use realstd::str::StrAllocating;
 

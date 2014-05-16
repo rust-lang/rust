@@ -381,9 +381,9 @@ impl IoError {
 
 impl fmt::Show for IoError {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        try!(fmt.buf.write_str(self.desc));
+        try!(write!(fmt, "{}", self.desc));
         match self.detail {
-            Some(ref s) => write!(fmt.buf, " ({})", *s),
+            Some(ref s) => write!(fmt, " ({})", *s),
             None => Ok(())
         }
     }
@@ -963,6 +963,42 @@ pub trait Writer {
     /// This is by default a no-op and implementers of the `Writer` trait should
     /// decide whether their stream needs to be buffered or not.
     fn flush(&mut self) -> IoResult<()> { Ok(()) }
+
+    /// Writes a formatted string into this writer, returning any error
+    /// encountered.
+    ///
+    /// This method is primarily used to interface with the `format_args!`
+    /// macro, but it is rare that this should explicitly be called. The
+    /// `write!` macro should be favored to invoke this method instead.
+    ///
+    /// # Errors
+    ///
+    /// This function will return any I/O error reported while formatting.
+    fn write_fmt(&mut self, fmt: &fmt::Arguments) -> IoResult<()> {
+        // Create a shim which translates a Writer to a FormatWriter and saves
+        // off I/O errors. instead of discarding them
+        struct Adaptor<'a, T> {
+            inner: &'a mut T,
+            error: IoResult<()>,
+        }
+        impl<'a, T: Writer> fmt::FormatWriter for Adaptor<'a, T> {
+            fn write(&mut self, bytes: &[u8]) -> fmt::Result {
+                match self.inner.write(bytes) {
+                    Ok(()) => Ok(()),
+                    Err(e) => {
+                        self.error = Err(e);
+                        Err(fmt::WriteError)
+                    }
+                }
+            }
+        }
+
+        let mut output = Adaptor { inner: self, error: Ok(()) };
+        match fmt::write(&mut output, fmt) {
+            Ok(()) => Ok(()),
+            Err(..) => output.error
+        }
+    }
 
     /// Write a rust string into this sink.
     ///

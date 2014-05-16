@@ -26,7 +26,7 @@ struct MyWriter(ChanWriter);
 impl Logger for MyWriter {
     fn log(&mut self, record: &LogRecord) {
         let MyWriter(ref mut inner) = *self;
-        fmt::writeln(inner as &mut Writer, record.args);
+        write!(inner, "{}", record.args);
     }
 }
 
@@ -45,5 +45,7 @@ fn main() {
         debug!("debug");
         info!("info");
     });
-    assert_eq!(r.read_to_str().unwrap(), "info\n".to_owned());
+    let s = r.read_to_str().unwrap();
+    assert!(s.contains("info"));
+    assert!(!s.contains("debug"));
 }

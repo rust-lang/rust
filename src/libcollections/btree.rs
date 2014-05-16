@@ -425,8 +425,8 @@ impl<K: fmt::Show + TotalOrd, V: fmt::Show> fmt::Show for Leaf<K, V> {
     ///Returns a string representation of a Leaf.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for (i, s) in self.elts.iter().enumerate() {
-            if i != 0 { try!(write!(f.buf, " // ")) }
-            try!(write!(f.buf, "{}", *s))
+            if i != 0 { try!(write!(f, " // ")) }
+            try!(write!(f, "{}", *s))
         }
         Ok(())
     }
@@ -654,10 +654,10 @@ impl<K: fmt::Show + TotalOrd, V: fmt::Show> fmt::Show for Branch<K, V> {
     ///Returns a string representation of a Branch.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for (i, s) in self.elts.iter().enumerate() {
-            if i != 0 { try!(write!(f.buf, " // ")) }
-            try!(write!(f.buf, "{}", *s))
+            if i != 0 { try!(write!(f, " // ")) }
+            try!(write!(f, "{}", *s))
         }
-        write!(f.buf, " // rightmost child: ({}) ", *self.rightmost_child)
+        write!(f, " // rightmost child: ({}) ", *self.rightmost_child)
     }
 }
 
@@ -715,7 +715,7 @@ impl<K: TotalOrd, V: TotalEq> TotalOrd for LeafElt<K, V> {
 impl<K: fmt::Show + TotalOrd, V: fmt::Show> fmt::Show for LeafElt<K, V> {
     ///Returns a string representation of a LeafElt.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f.buf, "Key: {}, value: {};", self.key, self.value)
+        write!(f, "Key: {}, value: {};", self.key, self.value)
     }
 }
 
@@ -765,7 +765,7 @@ impl<K: fmt::Show + TotalOrd, V: fmt::Show> fmt::Show for BranchElt<K, V> {
     /// Returns string containing key, value, and child (which should recur to a
     /// leaf) Consider changing in future to be more readable.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f.buf, "Key: {}, value: {}, (child: {})",
+        write!(f, "Key: {}, value: {}, (child: {})",
                self.key, self.value, *self.left)
     }
 }

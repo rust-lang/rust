@@ -384,8 +384,6 @@ mod test {
     })
 
     pub fn socket_name(addr: SocketAddr) {
-        use result::ResultUnwrap;
-
         let server = UdpSocket::bind(addr);
 
         assert!(server.is_ok());

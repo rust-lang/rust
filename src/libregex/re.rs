@@ -117,7 +117,7 @@ pub struct Regex {
 impl fmt::Show for Regex {
     /// Shows the original regular expression.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f.buf, "{}", self.original)
+        write!(f, "{}", self.original)
     }
 }
 
