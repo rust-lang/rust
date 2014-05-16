@@ -102,6 +102,6 @@ pub fn block_query(b: ast::P<ast::Block>, p: |&ast::Expr| -> bool) -> bool {
         p: p,
         flag: false,
     };
-    visit::walk_block(&mut v, b, ());
+    visit::walk_block(&mut v, &*b, ());
     return v.flag;
 }

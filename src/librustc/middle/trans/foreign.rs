@@ -443,8 +443,8 @@ pub fn trans_native_call<'a>(
 
 pub fn trans_foreign_mod(ccx: &CrateContext, foreign_mod: &ast::ForeignMod) {
     let _icx = push_ctxt("foreign::trans_foreign_mod");
-    for &foreign_item in foreign_mod.items.iter() {
-        let lname = link_name(foreign_item);
+    for foreign_item in foreign_mod.items.iter() {
+        let lname = link_name(&**foreign_item);
 
         match foreign_item.node {
             ast::ForeignItemFn(..) => {

@@ -187,8 +187,8 @@ pub trait Folder {
                 })
             }
             TyUnboxedFn(ref f) => {
-                TyUnboxedFn(@UnboxedFnTy {
-                    decl: self.fold_fn_decl(f.decl),
+                TyUnboxedFn(box(GC) UnboxedFnTy {
+                    decl: self.fold_fn_decl(&*f.decl),
                 })
             }
             TyTup(ref tys) => TyTup(tys.iter().map(|&ty| self.fold_ty(ty)).collect()),
@@ -449,7 +449,7 @@ fn fold_ty_param_bound<T: Folder>(tpb: &TyParamBound, fld: &mut T)
         StaticRegionTyParamBound => StaticRegionTyParamBound,
         UnboxedFnTyParamBound(ref unboxed_function_type) => {
             UnboxedFnTyParamBound(UnboxedFnTy {
-                decl: fld.fold_fn_decl(unboxed_function_type.decl),
+                decl: fld.fold_fn_decl(&*unboxed_function_type.decl),
             })
         }
         OtherRegionTyParamBound(s) => OtherRegionTyParamBound(s)

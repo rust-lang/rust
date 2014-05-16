@@ -174,7 +174,7 @@ pub fn expand_expr(e: Gc<ast::Expr>, fld: &mut MacroExpander) -> Gc<ast::Expr> {
             let value_ident = token::gensym_ident("__value");
             // this is careful to use src_pat.span so that error
             // messages point exact at that.
-            let local = @ast::Local {
+            let local = box(GC) ast::Local {
                 ty: fld.cx.ty_infer(src_pat.span),
                 pat: src_pat,
                 init: Some(fld.cx.expr_ident(src_pat.span, value_ident)),
@@ -183,7 +183,8 @@ pub fn expand_expr(e: Gc<ast::Expr>, fld: &mut MacroExpander) -> Gc<ast::Expr> {
                 source: ast::LocalFor
             };
             let local = codemap::respan(src_pat.span, ast::DeclLocal(local));
-            let local = @codemap::respan(span, ast::StmtDecl(@local, ast::DUMMY_NODE_ID));
+            let local = box(GC) codemap::respan(span, ast::StmtDecl(box(GC) local,
+                                                            ast::DUMMY_NODE_ID));
 
             // { let ...; <src_loop_block> }
             let block = fld.cx.block(span, vec![local],
@@ -749,7 +750,7 @@ pub fn expand_block_elts(b: &Block, fld: &mut MacroExpander) -> P<Block> {
     })
 }
 
-pub fn expand_pat(p: @ast::Pat, fld: &mut MacroExpander) -> @ast::Pat {
+pub fn expand_pat(p: Gc<ast::Pat>, fld: &mut MacroExpander) -> Gc<ast::Pat> {
     let (pth, tts) = match p.node {
         PatMac(ref mac) => {
             match mac.node {
@@ -819,7 +820,7 @@ pub fn expand_pat(p: @ast::Pat, fld: &mut MacroExpander) -> @ast::Pat {
         fld.fold_pat(marked_after).node.clone();
     fld.cx.bt_pop();
 
-    @ast::Pat {
+    box(GC) ast::Pat {
         id: ast::DUMMY_NODE_ID,
         node: fully_expanded,
         span: p.span,
@@ -983,7 +984,7 @@ fn mark_expr(expr: Gc<ast::Expr>, m: Mrk) -> Gc<ast::Expr> {
 }
 
 // apply a given mark to the given pattern. Used following the expansion of a macro.
-fn mark_pat(pat: @ast::Pat, m: Mrk) -> @ast::Pat {
+fn mark_pat(pat: Gc<ast::Pat>, m: Mrk) -> Gc<ast::Pat> {
     new_mark_folder(m).fold_pat(pat)
 }
 

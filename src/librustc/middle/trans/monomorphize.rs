@@ -201,12 +201,12 @@ pub fn monomorphic_fn(ccx: &CrateContext,
         ast_map::NodeItem(i) => {
             match *i {
               ast::Item {
-                  node: ast::ItemFn(decl, _, _, _, body),
+                  node: ast::ItemFn(ref decl, _, _, _, ref body),
                   ..
               } => {
                   let d = mk_lldecl();
                   set_llvm_fn_attrs(i.attrs.as_slice(), d);
-                  trans_fn(ccx, decl, body, d, &psubsts, fn_id.node, []);
+                  trans_fn(ccx, &**decl, &**body, d, &psubsts, fn_id.node, []);
                   d
               }
               _ => {
@@ -215,12 +215,12 @@ pub fn monomorphic_fn(ccx: &CrateContext,
             }
         }
         ast_map::NodeForeignItem(i) => {
-            let simple = intrinsic::get_simple_intrinsic(ccx, i);
+            let simple = intrinsic::get_simple_intrinsic(ccx, &*i);
             match simple {
                 Some(decl) => decl,
                 None => {
                     let d = mk_lldecl();
-                    intrinsic::trans_intrinsic(ccx, d, i, &psubsts, ref_id);
+                    intrinsic::trans_intrinsic(ccx, d, &*i, &psubsts, ref_id);
                     d
                 }
             }
@@ -235,7 +235,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
                 ast::TupleVariantKind(ref args) => {
                     trans_enum_variant(ccx,
                                        parent,
-                                       v,
+                                       &*v,
                                        args.as_slice(),
                                        this_tv.disr_val,
                                        &psubsts,
@@ -249,7 +249,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
         ast_map::NodeMethod(mth) => {
             let d = mk_lldecl();
             set_llvm_fn_attrs(mth.attrs.as_slice(), d);
-            trans_fn(ccx, mth.decl, mth.body, d, &psubsts, mth.id, []);
+            trans_fn(ccx, &*mth.decl, &*mth.body, d, &psubsts, mth.id, []);
             d
         }
         ast_map::NodeTraitMethod(method) => {
@@ -257,7 +257,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
                 ast::Provided(mth) => {
                     let d = mk_lldecl();
                     set_llvm_fn_attrs(mth.attrs.as_slice(), d);
-                    trans_fn(ccx, mth.decl, mth.body, d, &psubsts, mth.id, []);
+                    trans_fn(ccx, &*mth.decl, &*mth.body, d, &psubsts, mth.id, []);
                     d
                 }
                 _ => {

@@ -25,7 +25,7 @@ use middle::ty;
 use middle::typeck;
 
 use std::rc::Rc;
-use std::string::String;
+use std::gc::Gc;
 use syntax::abi;
 use syntax::ast_map;
 use syntax::codemap::{Span, Pos};

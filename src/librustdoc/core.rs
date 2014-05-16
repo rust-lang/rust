@@ -95,7 +95,7 @@ fn get_ast_and_resolve(cpath: &Path, libs: HashSet<Path>, cfgs: Vec<String>)
     let mut cfg = build_configuration(&sess);
     for cfg_ in cfgs.move_iter() {
         let cfg_ = token::intern_and_get_ident(cfg_.as_slice());
-        cfg.push(@dummy_spanned(ast::MetaWord(cfg_)));
+        cfg.push(box(GC) dummy_spanned(ast::MetaWord(cfg_)));
     }
 
     let krate = phase_1_parse_input(&sess, cfg, &input);
@@ -128,11 +128,11 @@ fn get_ast_and_resolve(cpath: &Path, libs: HashSet<Path>, cfgs: Vec<String>)
 pub fn run_core(libs: HashSet<Path>, cfgs: Vec<String>, path: &Path)
                 -> (clean::Crate, CrateAnalysis) {
     let (ctxt, analysis) = get_ast_and_resolve(path, libs, cfgs);
-    let ctxt = @ctxt;
+    let ctxt = box(GC) ctxt;
     super::ctxtkey.replace(Some(ctxt));
 
     let krate = {
-        let mut v = RustdocVisitor::new(ctxt, Some(&analysis));
+        let mut v = RustdocVisitor::new(&*ctxt, Some(&analysis));
         v.visit(&ctxt.krate);
         v.clean()
     };

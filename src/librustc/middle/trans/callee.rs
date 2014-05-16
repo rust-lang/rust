@@ -53,6 +53,8 @@ use syntax::ast;
 use synabi = syntax::abi;
 use syntax::ast_map;
 
+use std::gc::Gc;
+
 pub struct MethodData {
     pub llfn: ValueRef,
     pub llself: ValueRef,
@@ -649,7 +651,7 @@ pub fn trans_call_inner<'a>(
 
         let mut llargs = Vec::new();
         let arg_tys = match args {
-            ArgExprs(a) => a.iter().map(|x| expr_ty(bcx, *x)).collect(),
+            ArgExprs(a) => a.iter().map(|x| expr_ty(bcx, &**x)).collect(),
             _ => fail!("expected arg exprs.")
         };
         bcx = trans_args(bcx, args, callee_ty, &mut llargs,
@@ -683,7 +685,7 @@ pub fn trans_call_inner<'a>(
 pub enum CallArgs<'a> {
     // Supply value of arguments as a list of expressions that must be
     // translated. This is used in the common case of `foo(bar, qux)`.
-    ArgExprs(&'a [@ast::Expr]),
+    ArgExprs(&'a [Gc<ast::Expr>]),
 
     // Supply value of arguments as a list of LLVM value refs; frequently
     // used with lang items and so forth, when the argument is an internal
@@ -715,18 +717,18 @@ fn trans_args<'a>(cx: &'a Block<'a>,
     match args {
         ArgExprs(arg_exprs) => {
             let num_formal_args = arg_tys.len();
-            for (i, &arg_expr) in arg_exprs.iter().enumerate() {
+            for (i, arg_expr) in arg_exprs.iter().enumerate() {
                 if i == 0 && ignore_self {
                     continue;
                 }
                 let arg_ty = if i >= num_formal_args {
                     assert!(variadic);
-                    expr_ty_adjusted(cx, arg_expr)
+                    expr_ty_adjusted(cx, &**arg_expr)
                 } else {
                     *arg_tys.get(i)
                 };
 
-                let arg_datum = unpack_datum!(bcx, expr::trans(bcx, arg_expr));
+                let arg_datum = unpack_datum!(bcx, expr::trans(bcx, &**arg_expr));
                 llargs.push(unpack_result!(bcx, {
                     trans_arg_datum(bcx, arg_ty, arg_datum,
                                     arg_cleanup_scope,

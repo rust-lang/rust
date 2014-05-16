@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-pretty FIXME(#14193)
+
 #![feature(managed_boxes)]
 
 // Test cyclic detector when using trait instances.

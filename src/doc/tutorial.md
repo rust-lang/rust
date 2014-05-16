@@ -1710,14 +1710,14 @@ having ownership of the box. It allows the creation of cycles, and the individua
 not have a destructor.
 
 ~~~
-use std::gc::Gc;
+use std::gc::GC;
 
 // A fixed-size array allocated in a garbage-collected box
-let x = Gc::new([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+let x = box(GC) [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 let y = x; // does not perform a move, unlike with `Rc`
 let z = x;
 
-assert!(*z.borrow() == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+assert!(*z == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
 ~~~
 
 With shared ownership, mutability cannot be inherited so the boxes are always immutable. However,

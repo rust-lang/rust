@@ -1140,7 +1140,7 @@ impl<'a> Rebuilder<'a> {
                 }
                 ref other => other.clone()
             };
-            @ast::Ty { id: from.id, node: new_node, span: from.span }
+            box(GC) ast::Ty { id: from.id, node: new_node, span: from.span }
         }
 
         let new_ty_node = match to.node {
@@ -1155,7 +1155,7 @@ impl<'a> Rebuilder<'a> {
             }
             _ => fail!("expect ast::TyRptr or ast::TyPath")
         };
-        let new_ty = @ast::Ty {
+        let new_ty = box(GC) ast::Ty {
             id: to.id,
             node: new_ty_node,
             span: to.span

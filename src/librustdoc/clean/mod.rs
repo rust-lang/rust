@@ -31,6 +31,7 @@ use rustc::middle::ty;
 
 use std::rc::Rc;
 use std::u32;
+use std::gc::Gc;
 
 use core;
 use doctree;
@@ -52,7 +53,7 @@ impl<T: Clean<U>, U> Clean<Vec<U>> for Vec<T> {
     }
 }
 
-impl<T: Clean<U>, U> Clean<U> for @T {
+impl<T: Clean<U>, U> Clean<U> for Gc<T> {
     fn clean(&self) -> U {
         (**self).clean()
     }
@@ -428,12 +429,12 @@ impl attr::AttrMetaMethods for Attribute {
             _ => None,
         }
     }
-    fn meta_item_list<'a>(&'a self) -> Option<&'a [@ast::MetaItem]> { None }
+    fn meta_item_list<'a>(&'a self) -> Option<&'a [Gc<ast::MetaItem>]> { None }
 }
 impl<'a> attr::AttrMetaMethods for &'a Attribute {
     fn name(&self) -> InternedString { (**self).name() }
     fn value_str(&self) -> Option<InternedString> { (**self).value_str() }
-    fn meta_item_list<'a>(&'a self) -> Option<&'a [@ast::MetaItem]> { None }
+    fn meta_item_list<'a>(&'a self) -> Option<&'a [Gc<ast::MetaItem>]> { None }
 }
 
 #[deriving(Clone, Encodable, Decodable)]
@@ -864,7 +865,7 @@ pub struct Argument {
 impl Clean<Argument> for ast::Arg {
     fn clean(&self) -> Argument {
         Argument {
-            name: name_from_pat(self.pat),
+            name: name_from_pat(&*self.pat),
             type_: (self.ty.clean()),
             id: self.id
         }
@@ -1745,7 +1746,7 @@ impl Clean<Vec<Item>> for ast::ViewItem {
                                                          remaining,
                                                          b.clone());
                             let path = syntax::codemap::dummy_spanned(path);
-                            ret.push(convert(&ast::ViewItemUse(@path)));
+                            ret.push(convert(&ast::ViewItemUse(box(GC) path)));
                         }
                     }
                     ast::ViewPathSimple(_, _, id) => {
@@ -1913,8 +1914,8 @@ fn name_from_pat(p: &ast::Pat) -> String {
         PatStruct(..) => fail!("tried to get argument name from pat_struct, \
                                 which is not allowed in function arguments"),
         PatTup(..) => "(tuple arg NYI)".to_string(),
-        PatBox(p) => name_from_pat(p),
-        PatRegion(p) => name_from_pat(p),
+        PatBox(p) => name_from_pat(&*p),
+        PatRegion(p) => name_from_pat(&*p),
         PatLit(..) => {
             warn!("tried to get argument name from PatLit, \
                   which is silly in function arguments");

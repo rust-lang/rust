@@ -18,6 +18,8 @@ use syntax::ast_map;
 use syntax::attr::AttrMetaMethods;
 use syntax::codemap::Span;
 
+use std::gc::Gc;
+
 use core;
 use doctree::*;
 
@@ -54,10 +56,10 @@ impl<'a> RustdocVisitor<'a> {
         self.module.is_crate = true;
     }
 
-    pub fn visit_struct_def(&mut self, item: &ast::Item, sd: @ast::StructDef,
+    pub fn visit_struct_def(&mut self, item: &ast::Item, sd: Gc<ast::StructDef>,
                             generics: &ast::Generics) -> Struct {
         debug!("Visiting struct");
-        let struct_type = struct_type_from_def(sd);
+        let struct_type = struct_type_from_def(&*sd);
         Struct {
             id: item.id,
             struct_type: struct_type,
@@ -125,7 +127,7 @@ impl<'a> RustdocVisitor<'a> {
         om.vis = vis;
         om.id = id;
         for i in m.items.iter() {
-            self.visit_item(*i, &mut om);
+            self.visit_item(&**i, &mut om);
         }
         om
     }
@@ -159,9 +161,9 @@ impl<'a> RustdocVisitor<'a> {
         om.view_items.push(item);
     }
 
-    fn visit_view_path(&mut self, path: @ast::ViewPath,
+    fn visit_view_path(&mut self, path: Gc<ast::ViewPath>,
                        om: &mut Module,
-                       please_inline: bool) -> Option<@ast::ViewPath> {
+                       please_inline: bool) -> Option<Gc<ast::ViewPath>> {
         match path.node {
             ast::ViewPathSimple(_, _, id) => {
                 if self.resolve_id(id, false, om, please_inline) { return None }
@@ -175,7 +177,7 @@ impl<'a> RustdocVisitor<'a> {
                 }
 
                 if mine.len() == 0 { return None }
-                return Some(@::syntax::codemap::Spanned {
+                return Some(box(GC) ::syntax::codemap::Spanned {
                     node: ast::ViewPathList(p.clone(), mine, b.clone()),
                     span: path.span,
                 })
@@ -213,13 +215,13 @@ impl<'a> RustdocVisitor<'a> {
                                 self.visit_view_item(vi, om);
                             }
                             for i in m.items.iter() {
-                                self.visit_item(*i, om);
+                                self.visit_item(&**i, om);
                             }
                         }
                         _ => { fail!("glob not mapped to a module"); }
                     }
                 } else {
-                    self.visit_item(it, om);
+                    self.visit_item(&*it, om);
                 }
                 true
             }
@@ -245,8 +247,8 @@ impl<'a> RustdocVisitor<'a> {
                 om.enums.push(self.visit_enum_def(item, ed, gen)),
             ast::ItemStruct(sd, ref gen) =>
                 om.structs.push(self.visit_struct_def(item, sd, gen)),
-            ast::ItemFn(fd, ref pur, ref abi, ref gen, _) =>
-                om.fns.push(self.visit_fn(item, fd, pur, abi, gen)),
+            ast::ItemFn(ref fd, ref pur, ref abi, ref gen, _) =>
+                om.fns.push(self.visit_fn(item, &**fd, pur, abi, gen)),
             ast::ItemTy(ty, ref gen) => {
                 let t = Typedef {
                     ty: ty,

@@ -31,6 +31,8 @@ use syntax::parse::token::InternedString;
 use syntax::parse::token;
 use syntax::visit::Visitor;
 
+use std::gc::Gc;
+
 pub fn trans_stmt<'a>(cx: &'a Block<'a>,
                       s: &ast::Stmt)
                       -> &'a Block<'a> {
@@ -48,18 +50,18 @@ pub fn trans_stmt<'a>(cx: &'a Block<'a>,
     fcx.push_ast_cleanup_scope(id);
 
     match s.node {
-        ast::StmtExpr(e, _) | ast::StmtSemi(e, _) => {
-            bcx = trans_stmt_semi(bcx, e);
+        ast::StmtExpr(ref e, _) | ast::StmtSemi(ref e, _) => {
+            bcx = trans_stmt_semi(bcx, &**e);
         }
         ast::StmtDecl(d, _) => {
             match d.node {
                 ast::DeclLocal(ref local) => {
-                    bcx = init_local(bcx, *local);
+                    bcx = init_local(bcx, &**local);
                     if cx.sess().opts.debuginfo == FullDebugInfo {
-                        debuginfo::create_local_var_metadata(bcx, *local);
+                        debuginfo::create_local_var_metadata(bcx, &**local);
                     }
                 }
-                ast::DeclItem(i) => trans_item(cx.fcx.ccx, i)
+                ast::DeclItem(ref i) => trans_item(cx.fcx.ccx, &**i)
             }
         }
         ast::StmtMac(..) => cx.tcx().sess.bug("unexpanded macro")
@@ -92,7 +94,7 @@ pub fn trans_block<'a>(bcx: &'a Block<'a>,
     fcx.push_ast_cleanup_scope(b.id);
 
     for s in b.stmts.iter() {
-        bcx = trans_stmt(bcx, *s);
+        bcx = trans_stmt(bcx, &**s);
     }
 
     if dest != expr::Ignore {
@@ -103,8 +105,8 @@ pub fn trans_block<'a>(bcx: &'a Block<'a>,
     }
 
     match b.expr {
-        Some(e) => {
-            bcx = expr::trans_into(bcx, e, dest);
+        Some(ref e) => {
+            bcx = expr::trans_into(bcx, &**e, dest);
         }
         None => {
             assert!(dest == expr::Ignore || bcx.unreachable.get());
@@ -120,7 +122,7 @@ pub fn trans_if<'a>(bcx: &'a Block<'a>,
                     if_id: ast::NodeId,
                     cond: &ast::Expr,
                     thn: ast::P<ast::Block>,
-                    els: Option<@ast::Expr>,
+                    els: Option<Gc<ast::Expr>>,
                     dest: expr::Dest)
                     -> &'a Block<'a> {
     debug!("trans_if(bcx={}, if_id={}, cond={}, thn={:?}, dest={})",
@@ -137,21 +139,21 @@ pub fn trans_if<'a>(bcx: &'a Block<'a>,
             match els {
                 Some(elexpr) => {
                     let mut trans = TransItemVisitor { ccx: bcx.fcx.ccx };
-                    trans.visit_expr(elexpr, ());
+                    trans.visit_expr(&*elexpr, ());
                 }
                 None => {}
             }
             // if true { .. } [else { .. }]
-            bcx = trans_block(bcx, thn, dest);
+            bcx = trans_block(bcx, &*thn, dest);
             debuginfo::clear_source_location(bcx.fcx);
         } else {
             let mut trans = TransItemVisitor { ccx: bcx.fcx.ccx } ;
-            trans.visit_block(thn, ());
+            trans.visit_block(&*thn, ());
 
             match els {
                 // if false { .. } else { .. }
                 Some(elexpr) => {
-                    bcx = expr::trans_into(bcx, elexpr, dest);
+                    bcx = expr::trans_into(bcx, &*elexpr, dest);
                     debuginfo::clear_source_location(bcx.fcx);
                 }
 
@@ -165,14 +167,14 @@ pub fn trans_if<'a>(bcx: &'a Block<'a>,
 
     let name = format!("then-block-{}-", thn.id);
     let then_bcx_in = bcx.fcx.new_id_block(name.as_slice(), thn.id);
-    let then_bcx_out = trans_block(then_bcx_in, thn, dest);
+    let then_bcx_out = trans_block(then_bcx_in, &*thn, dest);
     debuginfo::clear_source_location(bcx.fcx);
 
     let next_bcx;
     match els {
         Some(elexpr) => {
             let else_bcx_in = bcx.fcx.new_id_block("else-block", elexpr.id);
-            let else_bcx_out = expr::trans_into(else_bcx_in, elexpr, dest);
+            let else_bcx_out = expr::trans_into(else_bcx_in, &*elexpr, dest);
             next_bcx = bcx.fcx.join_blocks(if_id,
                                            [then_bcx_out, else_bcx_out]);
             CondBr(bcx, cond_val, then_bcx_in.llbb, else_bcx_in.llbb);
@@ -319,7 +321,7 @@ pub fn trans_cont<'a>(bcx: &'a Block<'a>,
 }
 
 pub fn trans_ret<'a>(bcx: &'a Block<'a>,
-                     e: Option<@ast::Expr>)
+                     e: Option<Gc<ast::Expr>>)
                      -> &'a Block<'a> {
     let _icx = push_ctxt("trans_ret");
     let fcx = bcx.fcx;
@@ -330,7 +332,7 @@ pub fn trans_ret<'a>(bcx: &'a Block<'a>,
     };
     match e {
         Some(x) => {
-            bcx = expr::trans_into(bcx, x, dest);
+            bcx = expr::trans_into(bcx, &*x, dest);
         }
         _ => {}
     }

@@ -277,8 +277,8 @@ fn maybe_append(lhs: Vec<Attribute> , rhs: Option<Vec<Attribute> >)
 struct ParsedItemsAndViewItems {
     attrs_remaining: Vec<Attribute>,
     view_items: Vec<ViewItem>,
-    items: Vec<@Item>,
-    foreign_items: Vec<@ForeignItem>
+    items: Vec<Gc<Item>>,
+    foreign_items: Vec<Gc<ForeignItem>>
 }
 
 /* ident is handled by common.rs */

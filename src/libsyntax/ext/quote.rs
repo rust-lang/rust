@@ -90,7 +90,7 @@ pub mod rt {
 
     impl ToSource for Gc<ast::Item> {
         fn to_source(&self) -> String {
-            pprust::item_to_str(*self)
+            pprust::item_to_str(&**self)
         }
     }
 
@@ -128,7 +128,7 @@ pub mod rt {
 
     impl ToSource for Gc<ast::Expr> {
         fn to_source(&self) -> String {
-            pprust::expr_to_str(*self)
+            pprust::expr_to_str(&**self)
         }
     }
 

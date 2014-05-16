@@ -106,7 +106,7 @@ fn borrowck_item(this: &mut BorrowckCtxt, item: &ast::Item) {
     // flow dependent conditions.
     match item.node {
         ast::ItemStatic(_, _, ex) => {
-            gather_loans::gather_loans_in_static_initializer(this, ex);
+            gather_loans::gather_loans_in_static_initializer(this, &*ex);
         }
         _ => {
             visit::walk_item(this, item, ());
@@ -480,7 +480,7 @@ impl<'a> BorrowckCtxt<'a> {
             move_data::MoveExpr => {
                 let (expr_ty, expr_span) = match self.tcx.map.find(move.id) {
                     Some(ast_map::NodeExpr(expr)) => {
-                        (ty::expr_ty_adjusted(self.tcx, expr), expr.span)
+                        (ty::expr_ty_adjusted(self.tcx, &*expr), expr.span)
                     }
                     r => {
                         self.tcx.sess.bug(format!("MoveExpr({:?}) maps to \
@@ -512,7 +512,7 @@ impl<'a> BorrowckCtxt<'a> {
             move_data::Captured => {
                 let (expr_ty, expr_span) = match self.tcx.map.find(move.id) {
                     Some(ast_map::NodeExpr(expr)) => {
-                        (ty::expr_ty_adjusted(self.tcx, expr), expr.span)
+                        (ty::expr_ty_adjusted(self.tcx, &*expr), expr.span)
                     }
                     r => {
                         self.tcx.sess.bug(format!("Captured({:?}) maps to \

@@ -27,11 +27,12 @@ use middle;
 use util::nodemap::{NodeMap, NodeSet};
 
 use serialize::Encodable;
-use std::mem;
 use std::cell::RefCell;
-use std::hash;
+use std::gc::Gc;
 use std::hash::Hash;
+use std::hash;
 use std::io::MemWriter;
+use std::mem;
 use std::str;
 use std::collections::HashMap;
 use syntax::abi;
@@ -475,7 +476,7 @@ fn encode_reexported_static_methods(ecx: &EncodeContext,
 /// * For enums, iterates through the node IDs of the variants.
 ///
 /// * For newtype structs, iterates through the node ID of the constructor.
-fn each_auxiliary_node_id(item: @Item, callback: |NodeId| -> bool) -> bool {
+fn each_auxiliary_node_id(item: Gc<Item>, callback: |NodeId| -> bool) -> bool {
     let mut continue_ = true;
     match item.node {
         ItemEnum(ref enum_def, _) => {
@@ -746,7 +747,7 @@ fn encode_info_for_method(ecx: &EncodeContext,
                           impl_path: PathElems,
                           is_default_impl: bool,
                           parent_id: NodeId,
-                          ast_method_opt: Option<@Method>) {
+                          ast_method_opt: Option<Gc<Method>>) {
 
     debug!("encode_info_for_method: {:?} {}", m.def_id,
            token::get_ident(m.ident));
@@ -774,7 +775,8 @@ fn encode_info_for_method(ecx: &EncodeContext,
                 is_default_impl ||
                 should_inline(ast_method.attrs.as_slice()) {
             encode_inlined_item(ecx, ebml_w,
-                                IIMethodRef(local_def(parent_id), false, ast_method));
+                                IIMethodRef(local_def(parent_id), false,
+                                            &*ast_method));
         } else {
             encode_symbol(ecx, ebml_w, m.def_id.node);
         }
@@ -1212,7 +1214,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
                     }
                     encode_method_sort(ebml_w, 'p');
                     encode_inlined_item(ecx, ebml_w,
-                                        IIMethodRef(def_id, true, m));
+                                        IIMethodRef(def_id, true, &*m));
                     encode_method_argument_names(ebml_w, &*m.decl);
                 }
             }
@@ -1408,7 +1410,7 @@ fn write_i64(writer: &mut MemWriter, &n: &i64) {
     wr.write_be_u32(n as u32);
 }
 
-fn encode_meta_item(ebml_w: &mut Encoder, mi: @MetaItem) {
+fn encode_meta_item(ebml_w: &mut Encoder, mi: Gc<MetaItem>) {
     match mi.node {
       MetaWord(ref name) => {
         ebml_w.start_tag(tag_meta_item_word);

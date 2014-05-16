@@ -51,7 +51,7 @@ pub fn maybe_instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
             ccx.external_srcs.borrow_mut().insert(item.id, fn_id);
 
             ccx.stats.n_inlines.set(ccx.stats.n_inlines.get() + 1);
-            trans_item(ccx, item);
+            trans_item(ccx, &*item);
 
             // We're bringing an external global into this crate, but we don't
             // want to create two copies of the global. If we do this, then if
@@ -107,7 +107,7 @@ pub fn maybe_instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
             _ => ccx.sess().bug("maybe_instantiate_inline: item has a \
                                  non-enum, non-struct parent")
           }
-          trans_item(ccx, item);
+          trans_item(ccx, &*item);
           local_def(my_id)
         }
         csearch::found_parent(_, _) => {
@@ -131,7 +131,7 @@ pub fn maybe_instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
 
           if num_type_params == 0 {
               let llfn = get_item_val(ccx, mth.id);
-              trans_fn(ccx, mth.decl, mth.body, llfn,
+              trans_fn(ccx, &*mth.decl, &*mth.body, llfn,
                        &param_substs::empty(), mth.id, []);
           }
           local_def(mth.id)
