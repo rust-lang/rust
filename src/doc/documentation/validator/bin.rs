@@ -71,7 +71,7 @@ impl Compiler {
         config.stderr = InheritFd(2);
 
         let mut process = Process::configure(config).unwrap();
-        let exit = process.wait();
+        let exit = process.wait().unwrap();
 
         if exit.success() {
             Ok(())
