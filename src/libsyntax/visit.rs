@@ -220,9 +220,9 @@ pub fn walk_trait_ref_helper<E: Clone, V: Visitor<E>>(visitor: &mut V,
 pub fn walk_item<E: Clone, V: Visitor<E>>(visitor: &mut V, item: &Item, env: E) {
     visitor.visit_ident(item.span, item.ident, env.clone());
     match item.node {
-        ItemStatic(typ, _, expr) => {
-            visitor.visit_ty(&*typ, env.clone());
-            visitor.visit_expr(&*expr, env);
+        ItemStatic(ref typ, _, ref expr) => {
+            visitor.visit_ty(&**typ, env.clone());
+            visitor.visit_expr(&**expr, env.clone());
         }
         ItemFn(declaration, fn_style, abi, ref generics, body) => {
             visitor.visit_fn(&FkItemFn(item.ident, generics, fn_style, abi),
@@ -243,9 +243,9 @@ pub fn walk_item<E: Clone, V: Visitor<E>>(visitor: &mut V, item: &Item, env: E) 
                 visitor.visit_foreign_item(&**foreign_item, env.clone())
             }
         }
-        ItemTy(typ, ref type_parameters) => {
-            visitor.visit_ty(&*typ, env.clone());
-            visitor.visit_generics(type_parameters, env)
+        ItemTy(ref typ, ref type_parameters) => {
+            visitor.visit_ty(&**typ, env.clone());
+            visitor.visit_generics(type_parameters, env.clone())
         }
         ItemEnum(ref enum_definition, ref type_parameters) => {
             visitor.visit_generics(type_parameters, env.clone());
@@ -387,9 +387,9 @@ pub fn walk_ty<E: Clone, V: Visitor<E>>(visitor: &mut V, typ: &Ty, env: E) {
         }
         TyUnboxedFn(ref function_declaration) => {
             for argument in function_declaration.decl.inputs.iter() {
-                visitor.visit_ty(argument.ty, env.clone())
+                visitor.visit_ty(&*argument.ty, env.clone())
             }
-            visitor.visit_ty(function_declaration.decl.output, env.clone());
+            visitor.visit_ty(&*function_declaration.decl.output, env.clone());
         }
         TyPath(ref path, ref bounds, id) => {
             visitor.visit_path(path, id, env.clone());
@@ -492,7 +492,7 @@ pub fn walk_foreign_item<E: Clone, V: Visitor<E>>(visitor: &mut V,
             walk_fn_decl(visitor, &**function_declaration, env.clone());
             visitor.visit_generics(generics, env.clone())
         }
-        ForeignItemStatic(typ, _) => visitor.visit_ty(typ, env.clone()),
+        ForeignItemStatic(ref typ, _) => visitor.visit_ty(&**typ, env.clone()),
     }
 
     for attr in foreign_item.attrs.iter() {
@@ -511,9 +511,9 @@ pub fn walk_ty_param_bounds<E: Clone, V: Visitor<E>>(visitor: &mut V,
             StaticRegionTyParamBound => {}
             UnboxedFnTyParamBound(ref function_declaration) => {
                 for argument in function_declaration.decl.inputs.iter() {
-                    visitor.visit_ty(argument.ty, env.clone())
+                    visitor.visit_ty(&*argument.ty, env.clone())
                 }
-                visitor.visit_ty(function_declaration.decl.output,
+                visitor.visit_ty(&*function_declaration.decl.output,
                                  env.clone());
             }
             OtherRegionTyParamBound(..) => {}
@@ -595,7 +595,7 @@ pub fn walk_ty_method<E: Clone, V: Visitor<E>>(visitor: &mut V,
         visitor.visit_ty(&*argument_type.ty, env.clone())
     }
     visitor.visit_generics(&method_type.generics, env.clone());
-    visitor.visit_ty(method_type.decl.output, env.clone());
+    visitor.visit_ty(&*method_type.decl.output, env.clone());
     for attr in method_type.attrs.iter() {
         visitor.visit_attribute(attr, env.clone());
     }
@@ -634,7 +634,7 @@ pub fn walk_struct_field<E: Clone, V: Visitor<E>>(visitor: &mut V,
         _ => {}
     }
 
-    visitor.visit_ty(struct_field.node.ty, env.clone());
+    visitor.visit_ty(&*struct_field.node.ty, env.clone());
 
     for attr in struct_field.node.attrs.iter() {
         visitor.visit_attribute(attr, env.clone());
@@ -826,7 +826,7 @@ pub fn walk_arm<E: Clone, V: Visitor<E>>(visitor: &mut V, arm: &Arm, env: E) {
         visitor.visit_pat(&**pattern, env.clone())
     }
     walk_expr_opt(visitor, arm.guard, env.clone());
-    visitor.visit_expr(arm.body, env.clone());
+    visitor.visit_expr(&*arm.body, env.clone());
     for attr in arm.attrs.iter() {
         visitor.visit_attribute(attr, env.clone());
     }

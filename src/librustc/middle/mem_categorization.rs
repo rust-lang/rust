@@ -440,22 +440,22 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
 
         let expr_ty = if_ok!(self.expr_ty(expr));
         match expr.node {
-          ast::ExprUnary(ast::UnDeref, e_base) => {
-            let base_cmt = if_ok!(self.cat_expr(e_base));
+          ast::ExprUnary(ast::UnDeref, ref e_base) => {
+            let base_cmt = if_ok!(self.cat_expr(&**e_base));
             Ok(self.cat_deref(expr, base_cmt, 0))
           }
 
-          ast::ExprField(base, f_name, _) => {
-            let base_cmt = if_ok!(self.cat_expr(base));
+          ast::ExprField(ref base, f_name, _) => {
+            let base_cmt = if_ok!(self.cat_expr(&**base));
             Ok(self.cat_field(expr, base_cmt, f_name, expr_ty))
           }
 
-          ast::ExprIndex(base, _) => {
+          ast::ExprIndex(ref base, _) => {
             if self.typer.is_method_call(expr.id) {
                 return Ok(self.cat_rvalue_node(expr.id(), expr.span(), expr_ty));
             }
 
-            let base_cmt = if_ok!(self.cat_expr(base));
+            let base_cmt = if_ok!(self.cat_expr(&**base));
             Ok(self.cat_index(expr, base_cmt, 0))
           }
 
@@ -464,8 +464,8 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
             self.cat_def(expr.id, expr.span, expr_ty, def)
           }
 
-          ast::ExprParen(e) => {
-            self.cat_expr(e)
+          ast::ExprParen(ref e) => {
+            self.cat_expr(&**e)
           }
 
           ast::ExprAddrOf(..) | ast::ExprCall(..) |
@@ -999,31 +999,32 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
                         }
                     };
 
-                    for (i, &subpat) in subpats.iter().enumerate() {
-                        let subpat_ty = if_ok!(self.pat_ty(subpat)); // see (*2)
+                    for (i, subpat) in subpats.iter().enumerate() {
+                        let subpat_ty = if_ok!(self.pat_ty(&**subpat)); // see (*2)
 
                         let subcmt =
                             self.cat_imm_interior(
                                 pat, downcast_cmt.clone(), subpat_ty,
                                 InteriorField(PositionalField(i)));
 
-                        if_ok!(self.cat_pattern(subcmt, subpat, |x,y,z| op(x,y,z)));
+                        if_ok!(self.cat_pattern(subcmt, &**subpat, |x,y,z| op(x,y,z)));
                     }
                 }
                 Some(&def::DefFn(..)) |
                 Some(&def::DefStruct(..)) => {
-                    for (i, &subpat) in subpats.iter().enumerate() {
-                        let subpat_ty = if_ok!(self.pat_ty(subpat)); // see (*2)
+                    for (i, subpat) in subpats.iter().enumerate() {
+                        let subpat_ty = if_ok!(self.pat_ty(&**subpat)); // see (*2)
                         let cmt_field =
                             self.cat_imm_interior(
                                 pat, cmt.clone(), subpat_ty,
                                 InteriorField(PositionalField(i)));
-                        if_ok!(self.cat_pattern(cmt_field, subpat, |x,y,z| op(x,y,z)));
+                        if_ok!(self.cat_pattern(cmt_field, &**subpat,
+                                                |x,y,z| op(x,y,z)));
                     }
                 }
                 Some(&def::DefStatic(..)) => {
-                    for &subpat in subpats.iter() {
-                        if_ok!(self.cat_pattern(cmt.clone(), subpat, |x,y,z| op(x,y,z)));
+                    for subpat in subpats.iter() {
+                        if_ok!(self.cat_pattern(cmt.clone(), &**subpat, |x,y,z| op(x,y,z)));
                     }
                 }
                 _ => {
@@ -1034,8 +1035,8 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
             }
           }
 
-          ast::PatIdent(_, _, Some(subpat)) => {
-              if_ok!(self.cat_pattern(cmt, subpat, op));
+          ast::PatIdent(_, _, Some(ref subpat)) => {
+              if_ok!(self.cat_pattern(cmt, &**subpat, op));
           }
 
           ast::PatIdent(_, _, None) => {
@@ -1045,42 +1046,43 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
           ast::PatStruct(_, ref field_pats, _) => {
             // {f1: p1, ..., fN: pN}
             for fp in field_pats.iter() {
-                let field_ty = if_ok!(self.pat_ty(fp.pat)); // see (*2)
+                let field_ty = if_ok!(self.pat_ty(&*fp.pat)); // see (*2)
                 let cmt_field = self.cat_field(pat, cmt.clone(), fp.ident, field_ty);
-                if_ok!(self.cat_pattern(cmt_field, fp.pat, |x,y,z| op(x,y,z)));
+                if_ok!(self.cat_pattern(cmt_field, &*fp.pat, |x,y,z| op(x,y,z)));
             }
           }
 
           ast::PatTup(ref subpats) => {
             // (p1, ..., pN)
-            for (i, &subpat) in subpats.iter().enumerate() {
-                let subpat_ty = if_ok!(self.pat_ty(subpat)); // see (*2)
+            for (i, subpat) in subpats.iter().enumerate() {
+                let subpat_ty = if_ok!(self.pat_ty(&**subpat)); // see (*2)
                 let subcmt =
                     self.cat_imm_interior(
                         pat, cmt.clone(), subpat_ty,
                         InteriorField(PositionalField(i)));
-                if_ok!(self.cat_pattern(subcmt, subpat, |x,y,z| op(x,y,z)));
+                if_ok!(self.cat_pattern(subcmt, &**subpat, |x,y,z| op(x,y,z)));
             }
           }
 
-          ast::PatBox(subpat) | ast::PatRegion(subpat) => {
+          ast::PatBox(ref subpat) | ast::PatRegion(ref subpat) => {
             // @p1, ~p1
             let subcmt = self.cat_deref(pat, cmt, 0);
-            if_ok!(self.cat_pattern(subcmt, subpat, op));
+            if_ok!(self.cat_pattern(subcmt, &**subpat, op));
           }
 
           ast::PatVec(ref before, slice, ref after) => {
               let elt_cmt = self.cat_index(pat, cmt, 0);
-              for &before_pat in before.iter() {
-                  if_ok!(self.cat_pattern(elt_cmt.clone(), before_pat, |x,y,z| op(x,y,z)));
+              for before_pat in before.iter() {
+                  if_ok!(self.cat_pattern(elt_cmt.clone(), &**before_pat,
+                                          |x,y,z| op(x,y,z)));
               }
-              for &slice_pat in slice.iter() {
-                  let slice_ty = if_ok!(self.pat_ty(slice_pat));
+              for slice_pat in slice.iter() {
+                  let slice_ty = if_ok!(self.pat_ty(&**slice_pat));
                   let slice_cmt = self.cat_rvalue_node(pat.id(), pat.span(), slice_ty);
-                  if_ok!(self.cat_pattern(slice_cmt, slice_pat, |x,y,z| op(x,y,z)));
+                  if_ok!(self.cat_pattern(slice_cmt, &**slice_pat, |x,y,z| op(x,y,z)));
               }
-              for &after_pat in after.iter() {
-                  if_ok!(self.cat_pattern(elt_cmt.clone(), after_pat, |x,y,z| op(x,y,z)));
+              for after_pat in after.iter() {
+                  if_ok!(self.cat_pattern(elt_cmt.clone(), &**after_pat, |x,y,z| op(x,y,z)));
               }
           }
 

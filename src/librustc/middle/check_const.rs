@@ -45,13 +45,13 @@ pub fn check_crate(krate: &Crate, tcx: &ty::ctxt) {
 fn check_item(v: &mut CheckCrateVisitor, it: &Item, _is_const: bool) {
     match it.node {
         ItemStatic(_, _, ex) => {
-            v.visit_expr(ex, true);
+            v.visit_expr(&*ex, true);
             check_item_recursion(&v.tcx.sess, &v.tcx.map, &v.tcx.def_map, it);
         }
         ItemEnum(ref enum_definition, _) => {
             for var in (*enum_definition).variants.iter() {
                 for ex in var.node.disr_expr.iter() {
-                    v.visit_expr(*ex, true);
+                    v.visit_expr(&**ex, true);
                 }
             }
         }
@@ -73,10 +73,10 @@ fn check_pat(v: &mut CheckCrateVisitor, p: &Pat, _is_const: bool) {
     }
     match p.node {
       // Let through plain ~-string literals here
-      PatLit(a) => if !is_str(a) { v.visit_expr(a, true); },
-      PatRange(a, b) => {
-        if !is_str(a) { v.visit_expr(a, true); }
-        if !is_str(b) { v.visit_expr(b, true); }
+      PatLit(ref a) => if !is_str(&**a) { v.visit_expr(&**a, true); },
+      PatRange(ref a, ref b) => {
+        if !is_str(&**a) { v.visit_expr(&**a, true); }
+        if !is_str(&**b) { v.visit_expr(&**b, true); }
       }
       _ => visit::walk_pat(v, p, false)
     }
@@ -245,7 +245,7 @@ impl<'a> Visitor<()> for CheckItemRecursionVisitor<'a> {
                 match self.def_map.borrow().find(&e.id) {
                     Some(&DefStatic(def_id, _)) if
                             ast_util::is_local(def_id) => {
-                        self.visit_item(self.ast_map.expect_item(def_id.node), ());
+                        self.visit_item(&*self.ast_map.expect_item(def_id.node), ());
                     }
                     _ => ()
                 }

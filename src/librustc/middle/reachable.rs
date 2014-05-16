@@ -70,7 +70,7 @@ fn method_might_be_inlined(tcx: &ty::ctxt, method: &ast::Method,
         {
             match tcx.map.find(impl_src.node) {
                 Some(ast_map::NodeItem(item)) => {
-                    item_might_be_inlined(item)
+                    item_might_be_inlined(&*item)
                 }
                 Some(..) | None => {
                     tcx.sess.span_bug(method.span, "impl did is not an item")
@@ -184,7 +184,7 @@ impl<'a> ReachableContext<'a> {
         match self.tcx.map.find(node_id) {
             Some(ast_map::NodeItem(item)) => {
                 match item.node {
-                    ast::ItemFn(..) => item_might_be_inlined(item),
+                    ast::ItemFn(..) => item_might_be_inlined(&*item),
                     _ => false,
                 }
             }
@@ -273,20 +273,20 @@ impl<'a> ReachableContext<'a> {
         match *node {
             ast_map::NodeItem(item) => {
                 match item.node {
-                    ast::ItemFn(_, _, _, _, search_block) => {
-                        if item_might_be_inlined(item) {
-                            visit::walk_block(self, search_block, ())
+                    ast::ItemFn(_, _, _, _, ref search_block) => {
+                        if item_might_be_inlined(&*item) {
+                            visit::walk_block(self, &**search_block, ())
                         }
                     }
 
                     // Statics with insignificant addresses are not reachable
                     // because they're inlined specially into all other crates.
-                    ast::ItemStatic(_, _, init) => {
+                    ast::ItemStatic(_, _, ref init) => {
                         if attr::contains_name(item.attrs.as_slice(),
                                                "address_insignificant") {
                             self.reachable_symbols.remove(&search_item);
                         }
-                        visit::walk_expr(self, init, ());
+                        visit::walk_expr(self, &**init, ());
                     }
 
                     // These are normal, nothing reachable about these
@@ -310,14 +310,14 @@ impl<'a> ReachableContext<'a> {
                         // Keep going, nothing to get exported
                     }
                     ast::Provided(ref method) => {
-                        visit::walk_block(self, method.body, ())
+                        visit::walk_block(self, &*method.body, ())
                     }
                 }
             }
             ast_map::NodeMethod(method) => {
                 let did = self.tcx.map.get_parent_did(search_item);
-                if method_might_be_inlined(self.tcx, method, did) {
-                    visit::walk_block(self, method.body, ())
+                if method_might_be_inlined(self.tcx, &*method, did) {
+                    visit::walk_block(self, &*method.body, ())
                 }
             }
             // Nothing to recurse on for these

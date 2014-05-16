@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-pretty FIXME(#14193)
+
 #![feature(managed_boxes)]
 
 use std::cell::RefCell;

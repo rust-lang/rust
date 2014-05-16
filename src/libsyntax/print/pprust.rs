@@ -1968,7 +1968,7 @@ impl<'a> State<'a> {
                                          &None,
                                          ast::NormalFn,
                                          ast::Many,
-                                         unboxed_function_type.decl,
+                                         &*unboxed_function_type.decl,
                                          None,
                                          &None,
                                          None,

@@ -62,7 +62,7 @@ impl<'a> EffectCheckVisitor<'a> {
         }
     }
 
-    fn check_str_index(&mut self, e: @ast::Expr) {
+    fn check_str_index(&mut self, e: &ast::Expr) {
         let base_type = match e.node {
             ast::ExprIndex(base, _) => ty::node_id_to_type(self.tcx, base.id),
             _ => return
@@ -173,11 +173,11 @@ impl<'a> Visitor<()> for EffectCheckVisitor<'a> {
                     _ => {}
                 }
             }
-            ast::ExprAssign(base, _) | ast::ExprAssignOp(_, base, _) => {
-                self.check_str_index(base);
+            ast::ExprAssign(ref base, _) | ast::ExprAssignOp(_, ref base, _) => {
+                self.check_str_index(&**base);
             }
-            ast::ExprAddrOf(ast::MutMutable, base) => {
-                self.check_str_index(base);
+            ast::ExprAddrOf(ast::MutMutable, ref base) => {
+                self.check_str_index(&**base);
             }
             ast::ExprInlineAsm(..) => {
                 self.require_unsafe(expr.span, "use of inline assembly")

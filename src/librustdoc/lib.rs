@@ -37,6 +37,7 @@ extern crate log;
 use std::io;
 use std::io::{File, MemWriter};
 use std::str;
+use std::gc::Gc;
 use serialize::{json, Decodable, Encodable};
 
 // reexported from `clean` so it can be easily updated with the mod itself
@@ -85,7 +86,7 @@ static DEFAULT_PASSES: &'static [&'static str] = &[
     "unindent-comments",
 ];
 
-local_data_key!(pub ctxtkey: @core::DocContext)
+local_data_key!(pub ctxtkey: Gc<core::DocContext>)
 local_data_key!(pub analysiskey: core::CrateAnalysis)
 
 type Output = (clean::Crate, Vec<plugins::PluginJson> );

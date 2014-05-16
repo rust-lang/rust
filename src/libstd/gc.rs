@@ -19,11 +19,10 @@ collector is task-local so `Gc<T>` is not sendable.
 #![allow(experimental)]
 
 use clone::Clone;
-use cmp::{TotalOrd, Ord, Ordering, TotalEq, Eq};
+use cmp::{Ord, PartialOrd, Ordering, Eq, PartialEq};
 use default::Default;
 use fmt;
-use hash::Hash;
-use io::Writer;
+use hash;
 use kinds::marker;
 use ops::Deref;
 use raw;
@@ -37,11 +36,11 @@ pub struct Gc<T> {
     #[cfg(stage0)]
     ptr: @T,
     #[cfg(not(stage0))]
-    ptr: *T,
+    _ptr: *T,
     marker: marker::NoSend,
 }
 
-impl<T: 'static> Clone for Gc<T> {
+impl<T> Clone for Gc<T> {
     /// Clone the pointer only
     #[inline]
     fn clone(&self) -> Gc<T> { *self }
@@ -54,13 +53,13 @@ impl<T: 'static> Clone for Gc<T> {
 #[cfg(not(test))]
 pub static GC: () = ();
 
-impl<T: Eq + 'static> Eq for Gc<T> {
+impl<T: PartialEq + 'static> PartialEq for Gc<T> {
     #[inline]
     fn eq(&self, other: &Gc<T>) -> bool { *(*self) == *(*other) }
     #[inline]
     fn ne(&self, other: &Gc<T>) -> bool { *(*self) != *(*other) }
 }
-impl<T: Ord + 'static> Ord for Gc<T> {
+impl<T: PartialOrd + 'static> PartialOrd for Gc<T> {
     #[inline]
     fn lt(&self, other: &Gc<T>) -> bool { *(*self) < *(*other) }
     #[inline]
@@ -70,11 +69,11 @@ impl<T: Ord + 'static> Ord for Gc<T> {
     #[inline]
     fn gt(&self, other: &Gc<T>) -> bool { *(*self) > *(*other) }
 }
-impl<T: TotalOrd + 'static> TotalOrd for Gc<T> {
+impl<T: Ord + 'static> Ord for Gc<T> {
     #[inline]
     fn cmp(&self, other: &Gc<T>) -> Ordering { (**self).cmp(&**other) }
 }
-impl<T: TotalEq + 'static> TotalEq for Gc<T> {}
+impl<T: Eq + 'static> Eq for Gc<T> {}
 
 impl<T: 'static> Deref<T> for Gc<T> {
     #[cfg(stage0)]
@@ -91,7 +90,7 @@ impl<T: Default + 'static> Default for Gc<T> {
 
 impl<T: 'static> raw::Repr<*raw::Box<T>> for Gc<T> {}
 
-impl<S: Writer, T: Hash<S> + 'static> Hash<S> for Gc<T> {
+impl<S: hash::Writer, T: hash::Hash<S> + 'static> hash::Hash<S> for Gc<T> {
     fn hash(&self, s: &mut S) {
         (**self).hash(s)
     }

@@ -57,6 +57,7 @@ use std::i32;
 use std::i64;
 use std::i8;
 use std::rc::Rc;
+use std::gc::Gc;
 use std::to_str::ToStr;
 use std::u16;
 use std::u32;
@@ -652,7 +653,7 @@ impl<'a> Context<'a> {
 /// Return true if that's the case. Otherwise return false.
 pub fn each_lint(sess: &session::Session,
                  attrs: &[ast::Attribute],
-                 f: |@ast::MetaItem, Level, InternedString| -> bool)
+                 f: |Gc<ast::MetaItem>, Level, InternedString| -> bool)
                  -> bool {
     let xs = [Allow, Warn, Deny, Forbid];
     for &level in xs.iter() {
@@ -745,8 +746,8 @@ impl<'a> AstConv for Context<'a>{
 fn check_unused_casts(cx: &Context, e: &ast::Expr) {
     return match e.node {
         ast::ExprCast(expr, ty) => {
-            let t_t = ast_ty_to_ty(cx, &infer::new_infer_ctxt(cx.tcx), ty);
-            if  ty::get(ty::expr_ty(cx.tcx, expr)).sty == ty::get(t_t).sty {
+            let t_t = ast_ty_to_ty(cx, &infer::new_infer_ctxt(cx.tcx), &*ty);
+            if  ty::get(ty::expr_ty(cx.tcx, &*expr)).sty == ty::get(t_t).sty {
                 cx.span_lint(UnnecessaryTypecast, ty.span,
                              "unnecessary type cast");
             }
@@ -769,7 +770,7 @@ fn check_type_limits(cx: &Context, e: &ast::Expr) {
                     }
                 },
                 _ => {
-                    let t = ty::expr_ty(cx.tcx, ex);
+                    let t = ty::expr_ty(cx.tcx, &*ex);
                     match ty::get(t).sty {
                         ty::ty_uint(_) => {
                             cx.span_lint(UnsignedNegate, e.span,
@@ -781,7 +782,7 @@ fn check_type_limits(cx: &Context, e: &ast::Expr) {
             }
         },
         ast::ExprBinary(binop, l, r) => {
-            if is_comparison(binop) && !check_limits(cx.tcx, binop, l, r) {
+            if is_comparison(binop) && !check_limits(cx.tcx, binop, &*l, &*r) {
                 cx.span_lint(TypeLimits, e.span,
                              "comparison is useless due to type limits");
             }
@@ -950,24 +951,24 @@ fn check_item_ctypes(cx: &Context, it: &ast::Item) {
                     _ => ()
                 }
             }
-            ast::TyPtr(ref mt) => { check_ty(cx, mt.ty) }
+            ast::TyPtr(ref mt) => { check_ty(cx, &*mt.ty) }
             _ => {}
         }
     }
 
     fn check_foreign_fn(cx: &Context, decl: &ast::FnDecl) {
         for input in decl.inputs.iter() {
-            check_ty(cx, input.ty);
+            check_ty(cx, &*input.ty);
         }
-        check_ty(cx, decl.output)
+        check_ty(cx, &*decl.output)
     }
 
     match it.node {
       ast::ItemForeignMod(ref nmod) if nmod.abi != abi::RustIntrinsic => {
         for ni in nmod.items.iter() {
             match ni.node {
-                ast::ForeignItemFn(decl, _) => check_foreign_fn(cx, decl),
-                ast::ForeignItemStatic(t, _) => check_ty(cx, t)
+                ast::ForeignItemFn(decl, _) => check_foreign_fn(cx, &*decl),
+                ast::ForeignItemStatic(t, _) => check_ty(cx, &*t)
             }
         }
       }
@@ -1082,7 +1083,7 @@ fn check_raw_ptr_deriving(cx: &mut Context, item: &ast::Item) {
     match item.node {
         ast::ItemStruct(..) | ast::ItemEnum(..) => {
             let mut visitor = RawPtrDerivingVisitor { cx: cx };
-            visit::walk_item(&mut visitor, item, ());
+            visit::walk_item(&mut visitor, &*item, ());
         }
         _ => {}
     }
@@ -1184,7 +1185,7 @@ fn check_unused_result(cx: &Context, s: &ast::Stmt) {
         ast::StmtSemi(expr, _) => expr,
         _ => return
     };
-    let t = ty::expr_ty(cx.tcx, expr);
+    let t = ty::expr_ty(cx.tcx, &*expr);
     match ty::get(t).sty {
         ty::ty_nil | ty::ty_bot | ty::ty_bool => return,
         _ => {}
@@ -1194,7 +1195,7 @@ fn check_unused_result(cx: &Context, s: &ast::Stmt) {
         _ => {}
     }
 
-    let t = ty::expr_ty(cx.tcx, expr);
+    let t = ty::expr_ty(cx.tcx, &*expr);
     let mut warned = false;
     match ty::get(t).sty {
         ty::ty_struct(did, _) |
@@ -1431,7 +1432,7 @@ fn check_unnecessary_parens_expr(cx: &Context, e: &ast::Expr) {
         ast::ExprAssignOp(_, _, value) => (value, "assigned value"),
         _ => return
     };
-    check_unnecessary_parens_core(cx, value, msg);
+    check_unnecessary_parens_core(cx, &*value, msg);
 }
 
 fn check_unnecessary_parens_stmt(cx: &Context, s: &ast::Stmt) {
@@ -1445,7 +1446,7 @@ fn check_unnecessary_parens_stmt(cx: &Context, s: &ast::Stmt) {
         },
         _ => return
     };
-    check_unnecessary_parens_core(cx, value, msg);
+    check_unnecessary_parens_core(cx, &*value, msg);
 }
 
 fn check_unused_unsafe(cx: &Context, e: &ast::Expr) {
@@ -1472,12 +1473,12 @@ fn check_unsafe_block(cx: &Context, e: &ast::Expr) {
     }
 }
 
-fn check_unused_mut_pat(cx: &Context, pats: &[@ast::Pat]) {
+fn check_unused_mut_pat(cx: &Context, pats: &[Gc<ast::Pat>]) {
     // collect all mutable pattern and group their NodeIDs by their Identifier to
     // avoid false warnings in match arms with multiple patterns
     let mut mutables = HashMap::new();
     for &p in pats.iter() {
-        pat_util::pat_bindings(&cx.tcx.def_map, p, |mode, id, _, path| {
+        pat_util::pat_bindings(&cx.tcx.def_map, &*p, |mode, id, _, path| {
             match mode {
                 ast::BindByValue(ast::MutMutable) => {
                     if path.segments.len() != 1 {

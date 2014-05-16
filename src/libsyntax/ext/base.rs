@@ -113,7 +113,7 @@ pub trait MacResult {
         None
     }
     /// Create a pattern.
-    fn make_pat(&self) -> Option<@ast::Pat> {
+    fn make_pat(&self) -> Option<Gc<ast::Pat>> {
         None
     }
 
@@ -143,15 +143,15 @@ impl MacResult for MacExpr {
 }
 /// A convenience type for macros that return a single pattern.
 pub struct MacPat {
-    p: @ast::Pat
+    p: Gc<ast::Pat>,
 }
 impl MacPat {
-    pub fn new(p: @ast::Pat) -> Box<MacResult> {
+    pub fn new(p: Gc<ast::Pat>) -> Box<MacResult> {
         box MacPat { p: p } as Box<MacResult>
     }
 }
 impl MacResult for MacPat {
-    fn make_pat(&self) -> Option<@ast::Pat> {
+    fn make_pat(&self) -> Option<Gc<ast::Pat>> {
         Some(self.p)
     }
 }
@@ -212,8 +212,8 @@ impl DummyResult {
     }
 
     /// A plain dummy pattern.
-    pub fn raw_pat(sp: Span) -> @ast::Pat {
-        @ast::Pat {
+    pub fn raw_pat(sp: Span) -> Gc<ast::Pat> {
+        box(GC) ast::Pat {
             id: ast::DUMMY_NODE_ID,
             node: ast::PatWild,
             span: sp,

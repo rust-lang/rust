@@ -12,6 +12,7 @@
 //! outside their scopes. This pass will also generate a set of exported items
 //! which are available for use externally when compiled as a library.
 
+use std::gc::Gc;
 use std::mem::replace;
 
 use metadata::csearch;
@@ -797,8 +798,8 @@ impl<'a> Visitor<()> for PrivacyVisitor<'a> {
 
     fn visit_expr(&mut self, expr: &ast::Expr, _: ()) {
         match expr.node {
-            ast::ExprField(base, ident, _) => {
-                match ty::get(ty::expr_ty_adjusted(self.tcx, base)).sty {
+            ast::ExprField(ref base, ident, _) => {
+                match ty::get(ty::expr_ty_adjusted(self.tcx, &**base)).sty {
                     ty::ty_struct(id, _) => {
                         self.check_field(expr.span, id, NamedField(ident));
                     }
@@ -1134,7 +1135,7 @@ impl<'a> SanePrivacyVisitor<'a> {
                 tcx.sess.span_err(sp, "visibility has no effect inside functions");
             }
         }
-        let check_struct = |def: &@ast::StructDef| {
+        let check_struct = |def: &Gc<ast::StructDef>| {
             for f in def.fields.iter() {
                match f.node.kind {
                     ast::NamedField(_, p) => check_inherited(tcx, f.span, p),
@@ -1281,7 +1282,7 @@ impl<'a> Visitor<()> for VisiblePrivateTypesVisitor<'a> {
                         at_outer_type: true,
                         outer_type_is_public_path: false,
                     };
-                    visitor.visit_ty(self_, ());
+                    visitor.visit_ty(&*self_, ());
                     self_contains_private = visitor.contains_private;
                     self_is_public_path = visitor.outer_type_is_public_path;
                 }
@@ -1318,7 +1319,7 @@ impl<'a> Visitor<()> for VisiblePrivateTypesVisitor<'a> {
                     match *trait_ref {
                         None => {
                             for method in methods.iter() {
-                                visit::walk_method_helper(self, *method, ())
+                                visit::walk_method_helper(self, &**method, ())
                             }
                         }
                         Some(ref tr) => {
@@ -1345,7 +1346,7 @@ impl<'a> Visitor<()> for VisiblePrivateTypesVisitor<'a> {
                         if method.explicit_self.node == ast::SelfStatic &&
                             self.exported_items.contains(&method.id) {
                             found_pub_static = true;
-                            visit::walk_method_helper(self, *method, ());
+                            visit::walk_method_helper(self, &**method, ());
                         }
                     }
                     if found_pub_static {

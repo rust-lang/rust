@@ -64,13 +64,13 @@ pub fn run(input: &str,
     let mut cfg = config::build_configuration(&sess);
     cfg.extend(cfgs.move_iter().map(|cfg_| {
         let cfg_ = token::intern_and_get_ident(cfg_.as_slice());
-        @dummy_spanned(ast::MetaWord(cfg_))
+        box(GC) dummy_spanned(ast::MetaWord(cfg_))
     }));
     let krate = driver::phase_1_parse_input(&sess, cfg, &input);
     let (krate, _) = driver::phase_2_configure_and_expand(&sess, krate,
                                                           &from_str("rustdoc-test").unwrap());
 
-    let ctx = @core::DocContext {
+    let ctx = box(GC) core::DocContext {
         krate: krate,
         maybe_typed: core::NotTyped(sess),
         src: input_path,
@@ -82,7 +82,7 @@ pub fn run(input: &str,
     };
     super::ctxtkey.replace(Some(ctx));
 
-    let mut v = RustdocVisitor::new(ctx, None);
+    let mut v = RustdocVisitor::new(&*ctx, None);
     v.visit(&ctx.krate);
     let krate = v.clean();
     let (krate, _) = passes::unindent_comments(krate);
