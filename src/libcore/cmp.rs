@@ -326,29 +326,6 @@ mod impls {
         fn cmp(&self, other: &&'a mut T) -> Ordering { (**self).cmp(*other) }
     }
     impl<'a, T: Eq> Eq for &'a mut T {}
-
-    // @ pointers
-    impl<T:PartialEq> PartialEq for @T {
-        #[inline]
-        fn eq(&self, other: &@T) -> bool { *(*self) == *(*other) }
-        #[inline]
-        fn ne(&self, other: &@T) -> bool { *(*self) != *(*other) }
-    }
-    impl<T:PartialOrd> PartialOrd for @T {
-        #[inline]
-        fn lt(&self, other: &@T) -> bool { *(*self) < *(*other) }
-        #[inline]
-        fn le(&self, other: &@T) -> bool { *(*self) <= *(*other) }
-        #[inline]
-        fn ge(&self, other: &@T) -> bool { *(*self) >= *(*other) }
-        #[inline]
-        fn gt(&self, other: &@T) -> bool { *(*self) > *(*other) }
-    }
-    impl<T: Ord> Ord for @T {
-        #[inline]
-        fn cmp(&self, other: &@T) -> Ordering { (**self).cmp(*other) }
-    }
-    impl<T: Eq> Eq for @T {}
 }
 
 #[cfg(test)]

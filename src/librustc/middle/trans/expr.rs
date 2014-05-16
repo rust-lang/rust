@@ -399,12 +399,20 @@ fn trans_datum_unadjusted<'a>(bcx: &'a Block<'a>,
             bcx = fcx.pop_and_trans_ast_cleanup_scope(bcx, contents.id);
             DatumBlock::new(bcx, datum)
         }
-        ast::ExprBox(_, contents) => {
-            // Special case for `box T`. (The other case, for GC, is handled
-            // in `trans_rvalue_dps_unadjusted`.)
+        ast::ExprBox(_, ref contents) => {
+            // Special case for `Box<T>` and `Gc<T>`
             let box_ty = expr_ty(bcx, expr);
-            let contents_ty = expr_ty(bcx, contents);
-            trans_uniq_expr(bcx, box_ty, contents, contents_ty)
+            let contents_ty = expr_ty(bcx, &**contents);
+            match ty::get(box_ty).sty {
+                ty::ty_uniq(..) => {
+                    trans_uniq_expr(bcx, box_ty, &**contents, contents_ty)
+                }
+                ty::ty_box(..) => {
+                    trans_managed_expr(bcx, box_ty, &**contents, contents_ty)
+                }
+                _ => bcx.sess().span_bug(expr.span,
+                                         "expected unique or managed box")
+            }
         }
         ast::ExprLit(lit) => trans_immediate_lit(bcx, expr, (*lit).clone()),
         ast::ExprBinary(op, lhs, rhs) => {
@@ -772,11 +780,6 @@ fn trans_rvalue_dps_unadjusted<'a>(bcx: &'a Block<'a>,
         }
         ast::ExprAssignOp(op, dst, src) => {
             trans_assign_op(bcx, expr, op, dst, src)
-        }
-        ast::ExprBox(_, contents) => {
-            // Special case for `Gc<T>` for now. The other case, for unique
-            // pointers, is handled in `trans_rvalue_datum_unadjusted`.
-            trans_gc(bcx, expr, contents, dest)
         }
         _ => {
             bcx.tcx().sess.span_bug(
@@ -1240,31 +1243,6 @@ fn trans_addr_of<'a>(bcx: &'a Block<'a>,
     let sub_datum = unpack_datum!(bcx, trans_to_lvalue(bcx, subexpr, "addr_of"));
     let ty = expr_ty(bcx, expr);
     return immediate_rvalue_bcx(bcx, sub_datum.val, ty).to_expr_datumblock();
-}
-
-fn trans_gc<'a>(mut bcx: &'a Block<'a>,
-                expr: &ast::Expr,
-                contents: &ast::Expr,
-                dest: Dest)
-                -> &'a Block<'a> {
-    let contents_ty = expr_ty(bcx, contents);
-    let box_ty = ty::mk_box(bcx.tcx(), contents_ty);
-
-    let contents_datum = unpack_datum!(bcx, trans_managed_expr(bcx,
-                                                               box_ty,
-                                                               contents,
-                                                               contents_ty));
-
-    match dest {
-        Ignore => bcx,
-        SaveIn(addr) => {
-            let expr_ty = expr_ty(bcx, expr);
-            let repr = adt::represent_type(bcx.ccx(), expr_ty);
-            adt::trans_start_init(bcx, &*repr, addr, 0);
-            let field_dest = adt::trans_field_ptr(bcx, &*repr, addr, 0, 0);
-            contents_datum.store_to(bcx, field_dest)
-        }
-    }
 }
 
 // Important to get types for both lhs and rhs, because one might be _|_

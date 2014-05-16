@@ -18,7 +18,7 @@ use middle::lint;
 use middle::const_eval;
 use middle::def;
 use middle::dependency_format;
-use middle::lang_items::{ExchangeHeapLangItem, OpaqueStructLangItem};
+use middle::lang_items::OpaqueStructLangItem;
 use middle::lang_items::{TyDescStructLangItem, TyVisitorTraitLangItem};
 use middle::freevars;
 use middle::resolve;
@@ -3108,17 +3108,17 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
         }
 
         ast::ExprBox(place, _) => {
-            // Special case `Box<T>` for now:
+            // Special case `Box<T>`/`Gc<T>` for now:
             let definition = match tcx.def_map.borrow().find(&place.id) {
                 Some(&def) => def,
                 None => fail!("no def for place"),
             };
             let def_id = definition.def_id();
-            match tcx.lang_items.items.get(ExchangeHeapLangItem as uint) {
-                &Some(item_def_id) if def_id == item_def_id => {
-                    RvalueDatumExpr
-                }
-                &Some(_) | &None => RvalueDpsExpr,
+            if tcx.lang_items.exchange_heap() == Some(def_id) ||
+               tcx.lang_items.managed_heap() == Some(def_id) {
+                RvalueDatumExpr
+            } else {
+                RvalueDpsExpr
             }
         }
 

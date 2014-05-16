@@ -135,6 +135,8 @@ extern crate rustrt;
 #[cfg(test)] pub use realstd::ops;
 #[cfg(test)] pub use realstd::cmp;
 #[cfg(test)] pub use realstd::ty;
+#[cfg(test)] pub use realstd::owned;
+#[cfg(test)] pub use realstd::gc;
 
 
 // NB: These reexports are in the order they should be listed in rustdoc
@@ -219,6 +221,7 @@ pub mod rand;
 
 pub mod ascii;
 
+#[cfg(not(test))]
 pub mod gc;
 
 /* Common traits */
