@@ -129,6 +129,7 @@ impl<'a, 'r, 't> Page<'a, 'r, 't> {
         for capture in iter {
             count = count + 1;
             let (start, end) = capture.pos(1).unwrap();
+            println!("\n\n{}\n\n", capture.at(1));
             let block = Block::new(self.path, capture.at(1), start, end);
             try!(block.compile());
         }

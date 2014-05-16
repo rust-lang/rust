@@ -137,7 +137,7 @@ an 'owned box',
 that you can create with the `box` operator.
 Check it out:
 
-```rust
+``` {.rust .dontcheck}
 fn dangling() -> Box<int> {
     let i = box 1234;
     return i;
@@ -156,7 +156,7 @@ creating an owned box allocates memory on the heap and places a value in it,
 giving you the sole pointer to that memory.
 You can roughly compare these two lines:
 
-```rust
+``` {.rust .dontcheck}
 // Rust
 let i = box 1234;
 ```
@@ -202,7 +202,7 @@ Rust makes it easy to create "tasks",
 otherwise known as "threads".
 Typically, tasks do not share memory but instead communicate amongst each other with 'channels', like this:
 
-```rust
+``` {.rust}
 fn main() {
     let numbers = ~[1,2,3];
 
@@ -271,19 +271,19 @@ if instead of distributing our `numbers` array to a single task we wanted to dis
 we would need to copy the array for each.
 Let's see an example that uses the `clone` method to create copies of the data:
 
-```rust
+``` {.rust}
 fn main() {
     let numbers = ~[1,2,3];
 
     for num in range(0, 3) {
         let (tx, rx)  = channel();
-        // Use `clone` to send a *copy* of the array
+        // Use "clone" to send a *copy* of the array
         tx.send(numbers.clone());
 
         spawn(proc() {
             let numbers = rx.recv();
             println!("{:d}", numbers[num as uint]);
-        })
+        });
     }
 }
 ```
@@ -302,7 +302,7 @@ an atomically reference counted box ("A.R.C." == "atomically reference counted")
 `Arc` is the most common way to *share* data between tasks.
 Here's some code:
 
-```rust
+``` {.rust}
 extern crate sync;
 use sync::Arc;
 
@@ -349,7 +349,7 @@ Rust provides mutexes but makes it impossible to use them in a way that subverts
 Let's take the same example yet again,
 and modify it to mutate the shared state:
 
-```rust
+``` {.rust}
 extern crate sync;
 use sync::{Arc, Mutex};
 
