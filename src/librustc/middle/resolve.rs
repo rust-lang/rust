@@ -283,11 +283,6 @@ enum UseLexicalScopeFlag {
     UseLexicalScope
 }
 
-enum SearchThroughModulesFlag {
-    DontSearchThroughModules,
-    SearchThroughModules
-}
-
 enum ModulePrefixResult {
     NoPrefixFound,
     PrefixFound(Rc<Module>, uint)
@@ -2849,9 +2844,7 @@ impl<'a> Resolver<'a> {
     fn resolve_item_in_lexical_scope(&mut self,
                                      module_: Rc<Module>,
                                      name: Ident,
-                                     namespace: Namespace,
-                                     search_through_modules:
-                                     SearchThroughModulesFlag)
+                                     namespace: Namespace)
                                     -> ResolveResult<(Target, bool)> {
         debug!("(resolving item in lexical scope) resolving `{}` in \
                 namespace {:?} in `{}`",
@@ -2924,26 +2917,19 @@ impl<'a> Resolver<'a> {
                     return Failed;
                 }
                 ModuleParentLink(parent_module_node, _) => {
-                    match search_through_modules {
-                        DontSearchThroughModules => {
-                            match search_module.kind.get() {
-                                NormalModuleKind => {
-                                    // We stop the search here.
-                                    debug!("(resolving item in lexical \
-                                            scope) unresolved module: not \
-                                            searching through module \
-                                            parents");
-                                    return Failed;
-                                }
-                                ExternModuleKind |
-                                TraitModuleKind |
-                                ImplModuleKind |
-                                AnonymousModuleKind => {
-                                    search_module = parent_module_node.upgrade().unwrap();
-                                }
-                            }
+                    match search_module.kind.get() {
+                        NormalModuleKind => {
+                            // We stop the search here.
+                            debug!("(resolving item in lexical \
+                                    scope) unresolved module: not \
+                                    searching through module \
+                                    parents");
+                            return Failed;
                         }
-                        SearchThroughModules => {
+                        ExternModuleKind |
+                        TraitModuleKind |
+                        ImplModuleKind |
+                        AnonymousModuleKind => {
                             search_module = parent_module_node.upgrade().unwrap();
                         }
                     }
@@ -2988,7 +2974,7 @@ impl<'a> Resolver<'a> {
         // If this module is an anonymous module, resolve the item in the
         // lexical scope. Otherwise, resolve the item from the crate root.
         let resolve_result = self.resolve_item_in_lexical_scope(
-            module_, name, TypeNS, DontSearchThroughModules);
+            module_, name, TypeNS);
         match resolve_result {
             Success((target, _)) => {
                 let bindings = &*target.bindings;
@@ -4517,8 +4503,7 @@ impl<'a> Resolver<'a> {
         let module = self.current_module.clone();
         match self.resolve_item_in_lexical_scope(module,
                                                  name,
-                                                 ValueNS,
-                                                 SearchThroughModules) {
+                                                 ValueNS) {
             Success((target, _)) => {
                 debug!("(resolve bare identifier pattern) succeeded in \
                          finding {} at {:?}",
@@ -4859,8 +4844,7 @@ impl<'a> Resolver<'a> {
         let module = self.current_module.clone();
         match self.resolve_item_in_lexical_scope(module,
                                                  ident,
-                                                 namespace,
-                                                 DontSearchThroughModules) {
+                                                 namespace) {
             Success((target, _)) => {
                 match (*target.bindings).def_for_namespace(namespace) {
                     None => {
