@@ -32,7 +32,7 @@ fn main() {
 And now I get an error:
 
 ~~~ {.notrust}
-error: mismatched types: expected `&int` but found `<VI0>` (expected &-ptr but found integral variable)
+error: mismatched types: expected `&int` but found `<generic integer #0>` (expected &-ptr but found integral variable)
 ~~~
 
 What gives? It needs a pointer! Therefore I have to use pointers!"
@@ -73,7 +73,7 @@ However.
 Here are the use-cases for pointers. I've prefixed them with the name of the
 pointer that satisfies that use-case:
 
-1. Owned: ~Trait must be a pointer, because you don't know the size of the
+1. Owned: `Box<Trait>` must be a pointer, because you don't know the size of the
 object, so indirection is mandatory.
 2. Owned: You need a recursive data structure. These can be infinite sized, so
 indirection is mandatory.
