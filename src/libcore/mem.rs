@@ -19,31 +19,36 @@ use intrinsics::{bswap16, bswap32, bswap64};
 
 /// Returns the size of a type in bytes.
 #[inline]
+#[stable]
 pub fn size_of<T>() -> uint {
     unsafe { intrinsics::size_of::<T>() }
 }
 
 /// Returns the size of the type that `_val` points to in bytes.
 #[inline]
+#[unstable = "the name of this function may change slightly before stabilizing"]
 pub fn size_of_val<T>(_val: &T) -> uint {
     size_of::<T>()
 }
 
-/// Returns the size of a type in bytes, or 1 if the actual size is zero.
-///
-/// Useful for building structures containing variable-length arrays.
+/// Deprecated, this function will be removed soon
 #[inline]
+#[deprecated = "this function will be removed soon"]
 pub fn nonzero_size_of<T>() -> uint {
     match size_of::<T>() {
         0 => 1,
-        x => x
+        n => n,
     }
 }
 
-/// Returns the size in bytes of the type of the value that `_val` points to.
+/// Deprecated, this function will be removed soon
 #[inline]
-pub fn nonzero_size_of_val<T>(_val: &T) -> uint {
-    nonzero_size_of::<T>()
+#[deprecated = "this function will be removed soon"]
+pub fn nonzero_size_of_val<T>(val: &T) -> uint {
+    match size_of_val::<T>(val) {
+        0 => 1,
+        n => n,
+    }
 }
 
 /// Returns the ABI-required minimum alignment of a type
@@ -51,6 +56,7 @@ pub fn nonzero_size_of_val<T>(_val: &T) -> uint {
 /// This is the alignment used for struct fields. It may be smaller
 /// than the preferred alignment.
 #[inline]
+#[stable]
 pub fn min_align_of<T>() -> uint {
     unsafe { intrinsics::min_align_of::<T>() }
 }
@@ -58,44 +64,100 @@ pub fn min_align_of<T>() -> uint {
 /// Returns the ABI-required minimum alignment of the type of the value that
 /// `_val` points to
 #[inline]
+#[unstable = "the name of this function may change slightly before stabilizing"]
 pub fn min_align_of_val<T>(_val: &T) -> uint {
     min_align_of::<T>()
 }
 
-/// Returns the preferred alignment of a type
+/// Returns the alignment in memory for a type.
+///
+/// This function will return the alignment, in bytes, of a type in memory. If
+/// the alignment returned is adhered to, then the type is guaranteed to
+/// function properly.
 #[inline]
-pub fn pref_align_of<T>() -> uint {
+#[stable]
+pub fn align_of<T>() -> uint {
+    // We use the preferred alignment as the default alignment for a type. This
+    // appears to be what clang migrated towards as well:
+    //
+    // http://lists.cs.uiuc.edu/pipermail/cfe-commits/Week-of-Mon-20110725/044411.html
     unsafe { intrinsics::pref_align_of::<T>() }
 }
 
-/// Returns the preferred alignment of the type of the value that
-/// `_val` points to
+/// Returns the alignment of the type of the value that `_val` points to.
+///
+/// This is similar to `align_of`, but function will properly handle types such
+/// as trait objects (in the future), returning the alignment for an arbitrary
+/// value at runtime.
 #[inline]
-pub fn pref_align_of_val<T>(_val: &T) -> uint {
-    pref_align_of::<T>()
+#[unstable = "the name of this function may change slightly before stabilizing"]
+pub fn align_of_val<T>(_val: &T) -> uint {
+    align_of::<T>()
 }
+
+/// Deprecated, this function has been renamed to align_of
+#[inline]
+#[deprecated = "use mem::align_of instead"]
+pub fn pref_align_of<T>() -> uint { align_of::<T>() }
+
+/// Deprecated, this function has been renamed to align_of_val
+#[inline]
+#[deprecated = "use mem::align_of_val instead"]
+pub fn pref_align_of_val<T>(val: &T) -> uint { align_of_val(val) }
 
 /// Create a value initialized to zero.
 ///
-/// `init` is unsafe because it returns a zeroed-out datum,
-/// which is unsafe unless T is Copy.
+/// This function is similar to allocating space for a a local variable and
+/// zeroing it out (an unsafe operation).
+///
+/// Care must be taken when using this function, if the type `T` has a
+/// destructor and the value falls out of scope (due to unwinding or returning)
+/// before being initialized, then the destructor will run on zeroed
+/// data, likely leading to crashes.
+///
+/// This is useful for FFI functions sometimes, but should generally be avoided.
 #[inline]
-pub unsafe fn init<T>() -> T {
+#[unstable = "the name of this function is subject to change"]
+pub unsafe fn zeroed<T>() -> T {
     intrinsics::init()
 }
 
-/// Create an uninitialized value.
+/// Deprecated, use zeroed() instead
 #[inline]
+#[deprecated = "this function has been renamed to zeroed()"]
+pub unsafe fn init<T>() -> T { zeroed() }
+
+/// Create an uninitialized value.
+///
+/// Care must be taken when using this function, if the type `T` has a
+/// destructor and the value falls out of scope (due to unwinding or returning)
+/// before being initialized, then the destructor will run on uninitialized
+/// data, likely leading to crashes.
+///
+/// This is useful for FFI functions sometimes, but should generally be avoided.
+#[inline]
+#[unstable = "the name of this function is subject to change"]
 pub unsafe fn uninit<T>() -> T {
     intrinsics::uninit()
 }
 
-/// Move a value to an uninitialized memory location.
+/// Unsafely overwrite a memory location with the given value without destroying
+/// the old value.
 ///
-/// Drop glue is not run on the destination.
+/// This operation is unsafe because it does not destroy the previous value
+/// contained at the location `dst`. This could leak allocations or resources,
+/// so care must be taken to previously deallocate the value at `dst`.
 #[inline]
+#[unstable = "the name of this function is subject to change"]
+pub unsafe fn overwrite<T>(dst: *mut T, src: T) {
+    intrinsics::move_val_init(&mut *dst, src)
+}
+
+/// Deprecated, use move_val_init() instead
+#[inline]
+#[deprecated = "this function has been renamed to move_val_init()"]
 pub unsafe fn move_val_init<T>(dst: &mut T, src: T) {
-    intrinsics::move_val_init(dst, src)
+    overwrite(dst, src)
 }
 
 /// Convert an u16 to little endian from the target's endianness.
@@ -106,126 +168,150 @@ pub unsafe fn move_val_init<T>(dst: &mut T, src: T) {
 /// Convert an u16 to little endian from the target's endianness.
 ///
 /// On little endian, this is a no-op.  On big endian, the bytes are swapped.
-#[cfg(target_endian = "big")]    #[inline] pub fn to_le16(x: u16) -> u16 { unsafe { bswap16(x) } }
+#[cfg(target_endian = "big")] #[inline] #[stable]
+pub fn to_le16(x: u16) -> u16 { unsafe { bswap16(x) } }
 
 /// Convert an u32 to little endian from the target's endianness.
 ///
 /// On little endian, this is a no-op.  On big endian, the bytes are swapped.
-#[cfg(target_endian = "little")] #[inline] pub fn to_le32(x: u32) -> u32 { x }
+#[cfg(target_endian = "little")] #[inline] #[stable]
+pub fn to_le32(x: u32) -> u32 { x }
 
 /// Convert an u32 to little endian from the target's endianness.
 ///
 /// On little endian, this is a no-op.  On big endian, the bytes are swapped.
-#[cfg(target_endian = "big")]    #[inline] pub fn to_le32(x: u32) -> u32 { unsafe { bswap32(x) } }
+#[cfg(target_endian = "big")] #[inline] #[stable]
+pub fn to_le32(x: u32) -> u32 { unsafe { bswap32(x) } }
 
 /// Convert an u64 to little endian from the target's endianness.
 ///
 /// On little endian, this is a no-op.  On big endian, the bytes are swapped.
-#[cfg(target_endian = "little")] #[inline] pub fn to_le64(x: u64) -> u64 { x }
+#[cfg(target_endian = "little")] #[inline] #[stable]
+pub fn to_le64(x: u64) -> u64 { x }
 
 /// Convert an u64 to little endian from the target's endianness.
 ///
 /// On little endian, this is a no-op.  On big endian, the bytes are swapped.
-#[cfg(target_endian = "big")]    #[inline] pub fn to_le64(x: u64) -> u64 { unsafe { bswap64(x) } }
+#[cfg(target_endian = "big")] #[inline] #[stable]
+pub fn to_le64(x: u64) -> u64 { unsafe { bswap64(x) } }
 
 
 /// Convert an u16 to big endian from the target's endianness.
 ///
 /// On big endian, this is a no-op.  On little endian, the bytes are swapped.
-#[cfg(target_endian = "little")] #[inline] pub fn to_be16(x: u16) -> u16 { unsafe { bswap16(x) } }
+#[cfg(target_endian = "little")] #[inline] #[stable]
+pub fn to_be16(x: u16) -> u16 { unsafe { bswap16(x) } }
 
 /// Convert an u16 to big endian from the target's endianness.
 ///
 /// On big endian, this is a no-op.  On little endian, the bytes are swapped.
-#[cfg(target_endian = "big")]    #[inline] pub fn to_be16(x: u16) -> u16 { x }
+#[cfg(target_endian = "big")] #[inline] #[stable]
+pub fn to_be16(x: u16) -> u16 { x }
 
 /// Convert an u32 to big endian from the target's endianness.
 ///
 /// On big endian, this is a no-op.  On little endian, the bytes are swapped.
-#[cfg(target_endian = "little")] #[inline] pub fn to_be32(x: u32) -> u32 { unsafe { bswap32(x) } }
+#[cfg(target_endian = "little")] #[inline] #[stable]
+pub fn to_be32(x: u32) -> u32 { unsafe { bswap32(x) } }
 
 /// Convert an u32 to big endian from the target's endianness.
 ///
 /// On big endian, this is a no-op.  On little endian, the bytes are swapped.
-#[cfg(target_endian = "big")]    #[inline] pub fn to_be32(x: u32) -> u32 { x }
+#[cfg(target_endian = "big")] #[inline] #[stable]
+pub fn to_be32(x: u32) -> u32 { x }
 
 /// Convert an u64 to big endian from the target's endianness.
 ///
 /// On big endian, this is a no-op.  On little endian, the bytes are swapped.
-#[cfg(target_endian = "little")] #[inline] pub fn to_be64(x: u64) -> u64 { unsafe { bswap64(x) } }
+#[cfg(target_endian = "little")] #[inline] #[stable]
+pub fn to_be64(x: u64) -> u64 { unsafe { bswap64(x) } }
 
 /// Convert an u64 to big endian from the target's endianness.
 ///
 /// On big endian, this is a no-op.  On little endian, the bytes are swapped.
-#[cfg(target_endian = "big")]    #[inline] pub fn to_be64(x: u64) -> u64 { x }
+#[cfg(target_endian = "big")] #[inline] #[stable]
+pub fn to_be64(x: u64) -> u64 { x }
 
 
 /// Convert an u16 from little endian to the target's endianness.
 ///
 /// On little endian, this is a no-op.  On big endian, the bytes are swapped.
-#[cfg(target_endian = "little")] #[inline] pub fn from_le16(x: u16) -> u16 { x }
+#[cfg(target_endian = "little")] #[inline] #[stable]
+pub fn from_le16(x: u16) -> u16 { x }
 
 /// Convert an u16 from little endian to the target's endianness.
 ///
 /// On little endian, this is a no-op.  On big endian, the bytes are swapped.
-#[cfg(target_endian = "big")]    #[inline] pub fn from_le16(x: u16) -> u16 { unsafe { bswap16(x) } }
+#[cfg(target_endian = "big")] #[inline] #[stable]
+pub fn from_le16(x: u16) -> u16 { unsafe { bswap16(x) } }
 
 /// Convert an u32 from little endian to the target's endianness.
 ///
 /// On little endian, this is a no-op.  On big endian, the bytes are swapped.
-#[cfg(target_endian = "little")] #[inline] pub fn from_le32(x: u32) -> u32 { x }
+#[cfg(target_endian = "little")] #[inline] #[stable]
+pub fn from_le32(x: u32) -> u32 { x }
 
 /// Convert an u32 from little endian to the target's endianness.
 ///
 /// On little endian, this is a no-op.  On big endian, the bytes are swapped.
-#[cfg(target_endian = "big")]    #[inline] pub fn from_le32(x: u32) -> u32 { unsafe { bswap32(x) } }
+#[cfg(target_endian = "big")] #[inline] #[stable]
+pub fn from_le32(x: u32) -> u32 { unsafe { bswap32(x) } }
 
 /// Convert an u64 from little endian to the target's endianness.
 ///
 /// On little endian, this is a no-op.  On big endian, the bytes are swapped.
-#[cfg(target_endian = "little")] #[inline] pub fn from_le64(x: u64) -> u64 { x }
+#[cfg(target_endian = "little")] #[inline] #[stable]
+pub fn from_le64(x: u64) -> u64 { x }
 
 /// Convert an u64 from little endian to the target's endianness.
 ///
 /// On little endian, this is a no-op.  On big endian, the bytes are swapped.
-#[cfg(target_endian = "big")]    #[inline] pub fn from_le64(x: u64) -> u64 { unsafe { bswap64(x) } }
+#[cfg(target_endian = "big")] #[inline] #[stable]
+pub fn from_le64(x: u64) -> u64 { unsafe { bswap64(x) } }
 
 
 /// Convert an u16 from big endian to the target's endianness.
 ///
 /// On big endian, this is a no-op.  On little endian, the bytes are swapped.
-#[cfg(target_endian = "little")] #[inline] pub fn from_be16(x: u16) -> u16 { unsafe { bswap16(x) } }
+#[cfg(target_endian = "little")] #[inline] #[stable]
+pub fn from_be16(x: u16) -> u16 { unsafe { bswap16(x) } }
 
 /// Convert an u16 from big endian to the target's endianness.
 ///
 /// On big endian, this is a no-op.  On little endian, the bytes are swapped.
-#[cfg(target_endian = "big")]    #[inline] pub fn from_be16(x: u16) -> u16 { x }
+#[cfg(target_endian = "big")] #[inline] #[stable]
+pub fn from_be16(x: u16) -> u16 { x }
 
 /// Convert an u32 from big endian to the target's endianness.
 ///
 /// On big endian, this is a no-op.  On little endian, the bytes are swapped.
-#[cfg(target_endian = "little")] #[inline] pub fn from_be32(x: u32) -> u32 { unsafe { bswap32(x) } }
+#[cfg(target_endian = "little")] #[inline] #[stable]
+pub fn from_be32(x: u32) -> u32 { unsafe { bswap32(x) } }
 
 /// Convert an u32 from big endian to the target's endianness.
 ///
 /// On big endian, this is a no-op.  On little endian, the bytes are swapped.
-#[cfg(target_endian = "big")]    #[inline] pub fn from_be32(x: u32) -> u32 { x }
+#[cfg(target_endian = "big")] #[inline] #[stable]
+pub fn from_be32(x: u32) -> u32 { x }
 
 /// Convert an u64 from big endian to the target's endianness.
 ///
 /// On big endian, this is a no-op.  On little endian, the bytes are swapped.
-#[cfg(target_endian = "little")] #[inline] pub fn from_be64(x: u64) -> u64 { unsafe { bswap64(x) } }
+#[cfg(target_endian = "little")] #[inline] #[stable]
+pub fn from_be64(x: u64) -> u64 { unsafe { bswap64(x) } }
 
 /// Convert an u64 from big endian to the target's endianness.
 ///
 /// On big endian, this is a no-op.  On little endian, the bytes are swapped.
-#[cfg(target_endian = "big")]    #[inline] pub fn from_be64(x: u64) -> u64 { x }
+#[cfg(target_endian = "big")] #[inline] #[stable]
+pub fn from_be64(x: u64) -> u64 { x }
 
 /**
  * Swap the values at two mutable locations of the same type, without
  * deinitialising or copying either one.
  */
 #[inline]
+#[stable]
 pub fn swap<T>(x: &mut T, y: &mut T) {
     unsafe {
         // Give ourselves some scratch space to work with
@@ -279,6 +365,7 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
  * ```
  */
 #[inline]
+#[stable]
 pub fn replace<T>(dest: &mut T, mut src: T) -> T {
     swap(dest, &mut src);
     src
@@ -304,6 +391,7 @@ pub fn replace<T>(dest: &mut T, mut src: T) -> T {
 /// println!("{}", *borrow);
 /// ```
 #[inline]
+#[stable]
 pub fn drop<T>(_x: T) { }
 
 /// Moves a thing into the void.
@@ -416,26 +504,10 @@ mod tests {
     }
 
     #[test]
-    fn nonzero_size_of_basic() {
-        type Z = [i8, ..0];
-        assert_eq!(size_of::<Z>(), 0u);
-        assert_eq!(nonzero_size_of::<Z>(), 1u);
-        assert_eq!(nonzero_size_of::<uint>(), size_of::<uint>());
-    }
-
-    #[test]
-    fn nonzero_size_of_val_basic() {
-        let z = [0u8, ..0];
-        assert_eq!(size_of_val(&z), 0u);
-        assert_eq!(nonzero_size_of_val(&z), 1u);
-        assert_eq!(nonzero_size_of_val(&1u), size_of_val(&1u));
-    }
-
-    #[test]
     fn align_of_basic() {
-        assert_eq!(pref_align_of::<u8>(), 1u);
-        assert_eq!(pref_align_of::<u16>(), 2u);
-        assert_eq!(pref_align_of::<u32>(), 4u);
+        assert_eq!(align_of::<u8>(), 1u);
+        assert_eq!(align_of::<u16>(), 2u);
+        assert_eq!(align_of::<u32>(), 4u);
     }
 
     #[test]
@@ -443,22 +515,22 @@ mod tests {
     #[cfg(target_arch = "arm")]
     #[cfg(target_arch = "mips")]
     fn align_of_32() {
-        assert_eq!(pref_align_of::<uint>(), 4u);
-        assert_eq!(pref_align_of::<*uint>(), 4u);
+        assert_eq!(align_of::<uint>(), 4u);
+        assert_eq!(align_of::<*uint>(), 4u);
     }
 
     #[test]
     #[cfg(target_arch = "x86_64")]
     fn align_of_64() {
-        assert_eq!(pref_align_of::<uint>(), 8u);
-        assert_eq!(pref_align_of::<*uint>(), 8u);
+        assert_eq!(align_of::<uint>(), 8u);
+        assert_eq!(align_of::<*uint>(), 8u);
     }
 
     #[test]
     fn align_of_val_basic() {
-        assert_eq!(pref_align_of_val(&1u8), 1u);
-        assert_eq!(pref_align_of_val(&1u16), 2u);
-        assert_eq!(pref_align_of_val(&1u32), 4u);
+        assert_eq!(align_of_val(&1u8), 1u);
+        assert_eq!(align_of_val(&1u16), 2u);
+        assert_eq!(align_of_val(&1u32), 4u);
     }
 
     #[test]

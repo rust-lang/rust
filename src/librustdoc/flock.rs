@@ -176,7 +176,7 @@ mod imp {
             if handle as uint == libc::INVALID_HANDLE_VALUE as uint {
                 fail!("create file error: {}", os::last_os_error());
             }
-            let mut overlapped: libc::OVERLAPPED = unsafe { mem::init() };
+            let mut overlapped: libc::OVERLAPPED = unsafe { mem::zeroed() };
             let ret = unsafe {
                 LockFileEx(handle, LOCKFILE_EXCLUSIVE_LOCK, 0, 100, 0,
                            &mut overlapped)
@@ -192,7 +192,7 @@ mod imp {
 
     impl Drop for Lock {
         fn drop(&mut self) {
-            let mut overlapped: libc::OVERLAPPED = unsafe { mem::init() };
+            let mut overlapped: libc::OVERLAPPED = unsafe { mem::zeroed() };
             unsafe {
                 UnlockFileEx(self.handle, 0, 100, 0, &mut overlapped);
                 libc::CloseHandle(self.handle);

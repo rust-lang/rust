@@ -10,7 +10,7 @@
 
 //! Ordered containers with integer keys, implemented as radix tries (`TrieSet` and `TrieMap` types)
 
-use std::mem::init;
+use std::mem::zeroed;
 use std::mem;
 use std::slice::{Items, MutItems};
 use std::slice;
@@ -522,7 +522,8 @@ macro_rules! iterator_impl {
                     remaining_max: 0,
                     length: 0,
                     // ick :( ... at least the compiler will tell us if we screwed up.
-                    stack: [init(), init(), init(), init(), init(), init(), init(), init()]
+                    stack: [zeroed(), zeroed(), zeroed(), zeroed(), zeroed(),
+                            zeroed(), zeroed(), zeroed()]
                 }
             }
 
@@ -532,8 +533,10 @@ macro_rules! iterator_impl {
                     remaining_min: 0,
                     remaining_max: 0,
                     length: 0,
-                    stack: [init(), init(), init(), init(), init(), init(), init(), init(),
-                            init(), init(), init(), init(), init(), init(), init(), init()]
+                    stack: [zeroed(), zeroed(), zeroed(), zeroed(),
+                            zeroed(), zeroed(), zeroed(), zeroed(),
+                            zeroed(), zeroed(), zeroed(), zeroed(),
+                            zeroed(), zeroed(), zeroed(), zeroed()]
                 }
             }
         }

@@ -86,8 +86,8 @@
 
 use libc;
 use std::c_str::CString;
-use std::intrinsics;
 use std::io;
+use std::mem;
 use std::os::win32::as_utf16_p;
 use std::os;
 use std::ptr;
@@ -345,7 +345,7 @@ impl rtio::RtioPipe for UnixStream {
         }
 
         let mut bytes_read = 0;
-        let mut overlapped: libc::OVERLAPPED = unsafe { intrinsics::init() };
+        let mut overlapped: libc::OVERLAPPED = unsafe { mem::zeroed() };
         overlapped.hEvent = self.read.get_ref().handle();
 
         // Pre-flight check to see if the reading half has been closed. This
@@ -417,7 +417,7 @@ impl rtio::RtioPipe for UnixStream {
         }
 
         let mut offset = 0;
-        let mut overlapped: libc::OVERLAPPED = unsafe { intrinsics::init() };
+        let mut overlapped: libc::OVERLAPPED = unsafe { mem::zeroed() };
         overlapped.hEvent = self.write.get_ref().handle();
 
         while offset < buf.len() {
@@ -633,7 +633,7 @@ impl UnixAcceptor {
         // someone on the other end connects. This function can "fail" if a
         // client connects after we created the pipe but before we got down
         // here. Thanks windows.
-        let mut overlapped: libc::OVERLAPPED = unsafe { intrinsics::init() };
+        let mut overlapped: libc::OVERLAPPED = unsafe { mem::zeroed() };
         overlapped.hEvent = self.event.handle();
         if unsafe { libc::ConnectNamedPipe(handle, &mut overlapped) == 0 } {
             let mut err = unsafe { libc::GetLastError() };

@@ -390,8 +390,8 @@ mod imp {
     impl Mutex {
         pub unsafe fn new() -> Mutex {
             let m = Mutex {
-                lock: Unsafe::new(mem::init()),
-                cond: Unsafe::new(mem::init()),
+                lock: Unsafe::new(mem::zeroed()),
+                cond: Unsafe::new(mem::zeroed()),
             };
 
             pthread_mutex_init(m.lock.get(), 0 as *libc::c_void);
