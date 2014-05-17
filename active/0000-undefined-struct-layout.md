@@ -5,8 +5,8 @@
 # Summary
 
 Leave structs with unspecified layout by default like enums, for
-optimisation & security purposes. Use something like `#[repr(C)]` to
-expose C compatible layout.
+optimisation purposes. Use something like `#[repr(C)]` to expose C
+compatible layout.
 
 # Motivation
 
@@ -56,12 +56,10 @@ struct B {
 then the struct is (strictly) only 18 bytes (but the alignment
 requirements of `u64` forces it to take up 24).
 
-There is also some security advantage to being able to randomise
-struct layouts, for example,
-[the Grsecurity suite](http://grsecurity.net/) of security
-enhancements to the Linux kernel provides
-[`GRKERNSEC_RANDSTRUCT`](http://en.wikibooks.org/wiki/Grsecurity/Appendix/Grsecurity_and_PaX_Configuration_Options#Randomize_layout_of_sensitive_kernel_structures)
-which randomises "sensitive kernel data structures" at compile time.
+(Having an undefined layout does allow for possible security
+improvements, like randomising struct fields, but this can trivially
+be done with a syntax extension that reorders them in the AST itself,
+and so is not part of this proposal.)
 
 Notably, Rust's `enum`s already have undefined layout, and provide the
 `#[repr]` attribute to control layout more precisely (specifically,
