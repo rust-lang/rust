@@ -18,6 +18,38 @@ use parse::token::{str_to_ident};
 
 use std::strbuf::StrBuf;
 
+pub struct ConcatIdent {
+    span: Span,
+    ident: ast::Ident,
+}
+
+impl MacResult for ConcatIdent {
+    fn make_expr(&self) -> Option<@ast::Expr> {
+        let e = @ast::Expr {
+            id: ast::DUMMY_NODE_ID,
+            node: ast::ExprPath(
+                ast::Path {
+                     span: self.span,
+                     global: false,
+                     segments: vec!(
+                        ast::PathSegment {
+                            identifier: self.ident,
+                            lifetimes: Vec::new(),
+                            types: OwnedSlice::empty(),
+                        }
+                    )
+                }
+            ),
+            span: self.span,
+        };
+        MacExpr::new(e).make_expr()
+    }
+
+    fn make_ident(&self) -> Option<ast::Ident> {
+        Some(self.ident)
+    }
+}
+
 pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                          -> Box<base::MacResult> {
     let mut res_str = StrBuf::new();
@@ -43,23 +75,5 @@ pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
         }
     }
     let res = str_to_ident(res_str.into_owned());
-
-    let e = @ast::Expr {
-        id: ast::DUMMY_NODE_ID,
-        node: ast::ExprPath(
-            ast::Path {
-                 span: sp,
-                 global: false,
-                 segments: vec!(
-                    ast::PathSegment {
-                        identifier: res,
-                        lifetimes: Vec::new(),
-                        types: OwnedSlice::empty(),
-                    }
-                )
-            }
-        ),
-        span: sp,
-    };
-    MacExpr::new(e)
+    box ConcatIdent { span: sp, ident: res } as Box<base::MacResult>
 }
