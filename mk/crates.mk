@@ -70,7 +70,7 @@ DEPS_graphviz := std
 DEPS_green := std native:context_switch
 DEPS_rustuv := std native:uv native:uv_support
 DEPS_native := std
-DEPS_syntax := std term serialize log fmt_macros debug
+DEPS_syntax := std term serialize log fmt_macros debug arena
 DEPS_rustc := syntax flate arena serialize getopts rbml \
               time log graphviz debug rustc_llvm rustc_back
 DEPS_rustc_llvm := native:rustllvm libc std
