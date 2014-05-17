@@ -60,6 +60,12 @@ impl<T:Ord> PriorityQueue<T> {
         self.data.reserve(n)
     }
 
+    /// Reserve capacity for an additional n elements in the PriorityQueue.
+    /// Do nothing if the capacity is already sufficient.
+    pub fn reserve_additional(&mut self, n: uint) {
+        self.data.reserve_additional(n)
+    }
+
     /// Pop the greatest item from the queue - fails if empty
     pub fn pop(&mut self) -> T {
         let mut item = self.data.pop().unwrap();

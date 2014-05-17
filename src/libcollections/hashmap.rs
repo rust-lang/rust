@@ -1082,6 +1082,17 @@ impl<K: TotalEq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
         }
     }
 
+    /// Reserve space for an additional `n` elements in the hash table.
+    pub fn reserve_additional(&mut self, extra: uint) {
+        let len = self.len();
+        if self.minimum_capacity - len < extra {
+            match len.checked_add(&extra) {
+                None => fail!("HashMap::reserve_additional: `uint` overflow"),
+                Some(new_cap) => self.reserve(new_cap)
+            }
+        }
+    }
+
     /// Resizes the internal vectors to a new capacity. It's your responsibility to:
     ///   1) Make sure the new capacity is enough for all the elements, accounting
     ///      for the load factor.
@@ -1552,6 +1563,11 @@ impl<T: TotalEq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// Reserve space for at least `n` elements in the hash table.
     pub fn reserve(&mut self, n: uint) {
         self.map.reserve(n)
+    }
+
+    /// Reserve space for an additional `n` elements in the hash table.
+    pub fn reserve_additional(&mut self, n: uint) {
+        self.map.reserve_additional(n)
     }
 
     /// Returns true if the hash set contains a value equivalent to the
