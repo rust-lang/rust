@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 use middle::ty::{BuiltinBounds};
 use middle::ty::RegionVid;
 use middle::ty;
@@ -25,6 +24,7 @@ use collections::HashMap;
 use syntax::ast::{Many, Once, NodeId};
 use syntax::ast::{NormalFn, UnsafeFn};
 use syntax::ast::{Onceness, FnStyle};
+use syntax::ast::{MutMutable, MutImmutable};
 use util::ppaux::mt_to_str;
 
 pub struct Lub<'f>(pub CombineFields<'f>);  // least-upper-bound: common supertype
