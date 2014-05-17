@@ -2050,7 +2050,8 @@ impl<'a> Resolver<'a> {
         while module.resolved_import_count.get() < import_count {
             let import_index = module.resolved_import_count.get();
             let import_directive = imports.get(import_index);
-            match self.resolve_import_for_module(module.clone(), import_directive) {
+            match self.resolve_import_for_module(module.clone(),
+                                                 import_directive) {
                 Failed => {
                     // We presumably emitted an error. Continue.
                     let msg = format!("failed to resolve import `{}`",
@@ -2402,6 +2403,7 @@ impl<'a> Resolver<'a> {
                 import_resolution.value_target = Some(Target::new(target_module.clone(),
                                                                   name_bindings.clone()));
                 import_resolution.value_id = directive.id;
+                import_resolution.is_public = directive.is_public;
                 value_used_public = name_bindings.defined_in_public_namespace(ValueNS);
             }
             UnboundResult => { /* Continue. */ }
@@ -2416,6 +2418,7 @@ impl<'a> Resolver<'a> {
                 import_resolution.type_target =
                     Some(Target::new(target_module.clone(), name_bindings.clone()));
                 import_resolution.type_id = directive.id;
+                import_resolution.is_public = directive.is_public;
                 type_used_public = name_bindings.defined_in_public_namespace(TypeNS);
             }
             UnboundResult => { /* Continue. */ }
