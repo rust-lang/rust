@@ -538,6 +538,14 @@ impl<'a, 'v, O: IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> {
         }
         visit::walk_trait_item(self, tm);
     }
+
+    fn visit_lifetime_ref(&mut self, lifetime: &'v Lifetime) {
+        self.operation.visit_id(lifetime.id);
+    }
+
+    fn visit_lifetime_decl(&mut self, def: &'v LifetimeDef) {
+        self.visit_lifetime_ref(&def.lifetime);
+    }
 }
 
 pub fn visit_ids_for_inlined_item<O: IdVisitingOperation>(item: &InlinedItem,

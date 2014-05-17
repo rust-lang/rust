@@ -1308,14 +1308,9 @@ pub enum UnboxedClosureKind {
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum InlinedItem {
     IIItem(P<Item>),
-    IITraitItem(DefId /* impl id */, InlinedTraitItem),
+    IITraitItem(DefId /* impl id */, TraitItem),
+    IIImplItem(DefId /* impl id */, ImplItem),
     IIForeign(P<ForeignItem>),
-}
-
-#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
-pub enum InlinedTraitItem {
-    ProvidedInlinedTraitItem(P<Method>),
-    RequiredInlinedTraitItem(P<Method>),
 }
 
 #[cfg(test)]

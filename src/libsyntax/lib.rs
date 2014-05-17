@@ -27,6 +27,7 @@
 #![feature(quote, struct_variant, unsafe_destructor, import_shadowing)]
 #![allow(deprecated)]
 
+extern crate arena;
 extern crate fmt_macros;
 extern crate debug;
 #[phase(plugin, link)] extern crate log;

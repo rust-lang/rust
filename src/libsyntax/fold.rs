@@ -469,7 +469,7 @@ pub fn noop_fold_path<T: Folder>(Path {global, segments, span}: Path, fld: &mut 
 
 pub fn noop_fold_local<T: Folder>(l: P<Local>, fld: &mut T) -> P<Local> {
     l.map(|Local {id, pat, ty, init, source, span}| Local {
-        id: fld.new_id(id), // Needs to be first, for ast_map.
+        id: fld.new_id(id),
         ty: fld.fold_ty(ty),
         pat: fld.fold_pat(pat),
         init: init.map(|e| fld.fold_expr(e)),
@@ -495,10 +495,12 @@ pub fn noop_fold_explicit_self_underscore<T: Folder>(es: ExplicitSelf_, fld: &mu
                                                      -> ExplicitSelf_ {
     match es {
         SelfStatic | SelfValue(_) => es,
-        SelfRegion(lifetime, m, id) => {
-            SelfRegion(fld.fold_opt_lifetime(lifetime), m, id)
+        SelfRegion(lifetime, m, ident) => {
+            SelfRegion(fld.fold_opt_lifetime(lifetime), m, ident)
         }
-        SelfExplicit(typ, id) => SelfExplicit(fld.fold_ty(typ), id),
+        SelfExplicit(typ, ident) => {
+            SelfExplicit(fld.fold_ty(typ), ident)
+        }
     }
 }
 
@@ -537,7 +539,7 @@ pub fn noop_fold_meta_item<T: Folder>(mi: P<MetaItem>, fld: &mut T) -> P<MetaIte
 
 pub fn noop_fold_arg<T: Folder>(Arg {id, pat, ty}: Arg, fld: &mut T) -> Arg {
     Arg {
-        id: fld.new_id(id), // Needs to be first, for ast_map.
+        id: fld.new_id(id),
         pat: fld.fold_pat(pat),
         ty: fld.fold_ty(ty)
     }
@@ -808,7 +810,7 @@ pub fn noop_fold_view_item<T: Folder>(ViewItem {node, attrs, vis, span}: ViewIte
 
 pub fn noop_fold_block<T: Folder>(b: P<Block>, folder: &mut T) -> P<Block> {
     b.map(|Block {id, view_items, stmts, expr, rules, span}| Block {
-        id: folder.new_id(id), // Needs to be first, for ast_map.
+        id: folder.new_id(id),
         view_items: view_items.move_map(|x| folder.fold_view_item(x)),
         stmts: stmts.move_iter().flat_map(|s| folder.fold_stmt(s).move_iter()).collect(),
         expr: expr.map(|x| folder.fold_expr(x)),
@@ -886,7 +888,7 @@ pub fn noop_fold_item_underscore<T: Folder>(i: Item_, folder: &mut T) -> Item_ {
 pub fn noop_fold_type_method<T: Folder>(m: TypeMethod, fld: &mut T) -> TypeMethod {
     let TypeMethod {id, ident, attrs, fn_style, abi, decl, generics, explicit_self, vis, span} = m;
     TypeMethod {
-        id: fld.new_id(id), // Needs to be first, for ast_map.
+        id: fld.new_id(id),
         ident: fld.fold_ident(ident),
         attrs: attrs.move_map(|a| fld.fold_attribute(a)),
         fn_style: fn_style,
@@ -926,7 +928,7 @@ pub fn noop_fold_item<T: Folder>(i: P<Item>, folder: &mut T) -> SmallVector<P<It
 // fold one item into exactly one item
 pub fn noop_fold_item_simple<T: Folder>(Item {id, ident, attrs, node, vis, span}: Item,
                                         folder: &mut T) -> Item {
-    let id = folder.new_id(id); // Needs to be first, for ast_map.
+    let id = folder.new_id(id);
     let node = folder.fold_item_underscore(node);
     let ident = match node {
         // The node may have changed, recompute the "pretty" impl name.
@@ -948,7 +950,7 @@ pub fn noop_fold_item_simple<T: Folder>(Item {id, ident, attrs, node, vis, span}
 
 pub fn noop_fold_foreign_item<T: Folder>(ni: P<ForeignItem>, folder: &mut T) -> P<ForeignItem> {
     ni.map(|ForeignItem {id, ident, attrs, node, span, vis}| ForeignItem {
-        id: folder.new_id(id), // Needs to be first, for ast_map.
+        id: folder.new_id(id),
         ident: folder.fold_ident(ident),
         attrs: attrs.move_map(|x| folder.fold_attribute(x)),
         node: match node {
@@ -973,7 +975,7 @@ pub fn noop_fold_foreign_item<T: Folder>(ni: P<ForeignItem>, folder: &mut T) -> 
 // Invariant: produces exactly one method.
 pub fn noop_fold_method<T: Folder>(m: P<Method>, folder: &mut T) -> SmallVector<P<Method>> {
     SmallVector::one(m.map(|Method {id, attrs, node, span}| Method {
-        id: folder.new_id(id), // Needs to be first, for ast_map.
+        id: folder.new_id(id),
         attrs: attrs.move_map(|a| folder.fold_attribute(a)),
         node: match node {
             MethDecl(ident,
