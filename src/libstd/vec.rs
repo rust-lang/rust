@@ -19,7 +19,6 @@ use fmt;
 use iter::{DoubleEndedIterator, FromIterator, Extendable, Iterator, range};
 use mem;
 use num::{CheckedMul, CheckedAdd};
-use num;
 use ops::{Add, Drop};
 use option::{None, Option, Some, Expect};
 use ptr::RawPtr;
@@ -481,8 +480,11 @@ impl<T> Vec<T> {
     /// assert!(vec.capacity() >= 10);
     /// ```
     pub fn reserve(&mut self, capacity: uint) {
-        if capacity >= self.len {
-            self.reserve_exact(num::next_power_of_two(capacity))
+        if capacity > self.cap {
+            let new_cap = max(
+                    self.cap.checked_mul(&2).unwrap_or(::uint::MAX),
+                    capacity);
+            self.reserve_exact(new_cap);
         }
     }
 
