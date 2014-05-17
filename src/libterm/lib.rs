@@ -23,10 +23,13 @@
 //!
 //! fn main() {
 //!     let mut t = term::stdout().unwrap();
+//!
 //!     t.fg(term::color::GREEN).unwrap();
-//!     println!("hello, ");
+//!     (write!(t, "hello, ")).unwrap();
+//!
 //!     t.fg(term::color::RED).unwrap();
-//!     println!("world!");
+//!     (writeln!(t, "world!")).unwrap();
+//!
 //!     t.reset().unwrap();
 //! }
 //! ```
