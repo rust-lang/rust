@@ -479,6 +479,35 @@ impl<'a> Parser<'a> {
         self.commit_stmt(s, &[edible], &[])
     }
 
+    pub fn parse_ident_or_macro(&mut self) -> ast::Ident {
+        self.check_strict_keywords();
+        self.check_reserved_keywords();
+        match self.token {
+            token::IDENT(_, _) if self.look_ahead(1, |t| *t == token::NOT) => {
+                // we have a macro identifier
+                let pth = self.parse_path(NoTypesAllowed).path;
+                self.expect(&token::NOT);
+
+                // eat a matched-delimiter token tree:
+                let tts = match token::close_delimiter_for(&self.token) {
+                    Some(ket) => {
+                        self.bump();
+                        self.parse_seq_to_end(&ket,
+                                              seq_sep_none(),
+                                              |p| p.parse_token_tree())
+                    }
+                    None => self.fatal("expected open delimiter")
+                };
+                let m = ast::MacInvocTT(pth, tts, EMPTY_CTXT);
+                let m: ast::Mac = codemap::Spanned { node: m,
+                                                 span: mk_sp(self.span.lo,
+                                                             self.span.hi) };
+                ast::Ident::new_macro_ident(m)
+            }
+            _ => self.parse_ident()
+        }
+    }
+
     pub fn parse_ident(&mut self) -> ast::Ident {
         self.check_strict_keywords();
         self.check_reserved_keywords();
@@ -1125,7 +1154,7 @@ impl<'a> Parser<'a> {
             let style = p.parse_fn_style();
             // NB: at the moment, trait methods are public by default; this
             // could change.
-            let ident = p.parse_ident();
+            let ident = p.parse_ident_or_macro();
 
             let generics = p.parse_generics();
 
@@ -1196,7 +1225,7 @@ impl<'a> Parser<'a> {
     pub fn parse_ty_field(&mut self) -> TypeField {
         let lo = self.span.lo;
         let mutbl = self.parse_mutability();
-        let id = self.parse_ident();
+        let id = self.parse_ident_or_macro();
         self.expect(&token::COLON);
         let ty = self.parse_ty(false);
         let hi = ty.span.hi;
@@ -1684,7 +1713,7 @@ impl<'a> Parser<'a> {
     // parse ident COLON expr
     pub fn parse_field(&mut self) -> Field {
         let lo = self.span.lo;
-        let i = self.parse_ident();
+        let i = self.parse_ident_or_macro();
         let hi = self.last_span.hi;
         self.expect(&token::COLON);
         let e = self.parse_expr();
@@ -2778,7 +2807,7 @@ impl<'a> Parser<'a> {
                 BindByValue(MutImmutable)
             };
 
-            let fieldname = self.parse_ident();
+            let fieldname = self.parse_ident_or_macro();
 
             let subpat = if self.token == token::COLON {
                 match bind_type {
@@ -3120,7 +3149,7 @@ impl<'a> Parser<'a> {
         if !is_plain_ident(&self.token) {
             self.fatal("expected ident");
         }
-        let name = self.parse_ident();
+        let name = self.parse_ident_or_macro();
         self.expect(&token::COLON);
         let ty = self.parse_ty(false);
         spanned(lo, self.last_span.hi, ast::StructField_ {
@@ -3175,7 +3204,7 @@ impl<'a> Parser<'a> {
             let id = if token::close_delimiter_for(&self.token).is_some() {
                 token::special_idents::invalid // no special identifier
             } else {
-                self.parse_ident()
+                self.parse_ident_or_macro()
             };
 
             // check that we're pointing at delimiters (need to check
@@ -3473,7 +3502,7 @@ impl<'a> Parser<'a> {
     fn parse_ty_param(&mut self) -> TyParam {
         let sized = self.parse_sized();
         let span = self.span;
-        let ident = self.parse_ident();
+        let ident = self.parse_ident_or_macro();
         let (_, opt_bounds) = self.parse_optional_ty_param_bounds(false);
         // For typarams we don't care about the difference b/w "<T>" and "<T:>".
         let bounds = opt_bounds.unwrap_or_default();
@@ -3813,7 +3842,7 @@ impl<'a> Parser<'a> {
 
     // parse the name and optional generic types of a function header.
     fn parse_fn_header(&mut self) -> (Ident, ast::Generics) {
-        let id = self.parse_ident();
+        let id = self.parse_ident_or_macro();
         let generics = self.parse_generics();
         (id, generics)
     }
@@ -3851,7 +3880,7 @@ impl<'a> Parser<'a> {
 
         let visa = self.parse_visibility();
         let fn_style = self.parse_fn_style();
-        let ident = self.parse_ident();
+        let ident = self.parse_ident_or_macro();
         let generics = self.parse_generics();
         let (explicit_self, decl) = self.parse_fn_decl_with_self(|p| {
             p.parse_arg()
@@ -3876,7 +3905,7 @@ impl<'a> Parser<'a> {
 
     // parse trait Foo { ... }
     fn parse_item_trait(&mut self) -> ItemInfo {
-        let ident = self.parse_ident();
+        let ident = self.parse_ident_or_macro();
         let tps = self.parse_generics();
         let sized = self.parse_for_sized();
 
@@ -3967,7 +3996,7 @@ impl<'a> Parser<'a> {
 
     // parse struct Foo { ... }
     fn parse_item_struct(&mut self, is_virtual: bool) -> ItemInfo {
-        let class_name = self.parse_ident();
+        let class_name = self.parse_ident_or_macro();
         let generics = self.parse_generics();
 
         let super_struct = if self.eat(&token::COLON) {
@@ -4157,7 +4186,7 @@ impl<'a> Parser<'a> {
 
     fn parse_item_const(&mut self) -> ItemInfo {
         let m = if self.eat_keyword(keywords::Mut) {MutMutable} else {MutImmutable};
-        let id = self.parse_ident();
+        let id = self.parse_ident_or_macro();
         self.expect(&token::COLON);
         let ty = self.parse_ty(false);
         self.expect(&token::EQ);
@@ -4305,7 +4334,7 @@ impl<'a> Parser<'a> {
         self.expect_keyword(keywords::Static);
         let mutbl = self.eat_keyword(keywords::Mut);
 
-        let ident = self.parse_ident();
+        let ident = self.parse_ident_or_macro();
         self.expect(&token::COLON);
         let ty = self.parse_ty(false);
         let hi = self.span.hi;
@@ -4429,7 +4458,7 @@ impl<'a> Parser<'a> {
 
     // parse type Foo = Bar;
     fn parse_item_type(&mut self) -> ItemInfo {
-        let ident = self.parse_ident();
+        let ident = self.parse_ident_or_macro();
         let tps = self.parse_generics();
         self.expect(&token::EQ);
         let ty = self.parse_ty(false);
@@ -4469,7 +4498,7 @@ impl<'a> Parser<'a> {
             let kind;
             let mut args = Vec::new();
             let mut disr_expr = None;
-            ident = self.parse_ident();
+            ident = self.parse_ident_or_macro();
             if self.eat(&token::LBRACE) {
                 // Parse a struct variant.
                 all_nullary = false;
@@ -4520,7 +4549,7 @@ impl<'a> Parser<'a> {
 
     // parse an "enum" declaration
     fn parse_item_enum(&mut self) -> ItemInfo {
-        let id = self.parse_ident();
+        let id = self.parse_ident_or_macro();
         let generics = self.parse_generics();
         self.expect(&token::LBRACE);
 
