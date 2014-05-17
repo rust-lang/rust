@@ -13,7 +13,7 @@
 //! This module contains `Writer`s for escaping/unescaping HTML.
 
 use std::io::{Writer, IoResult};
-use std::{char, str};
+use std::char;
 use entity::ENTITIES;
 
 /// A `Writer` adaptor that escapes any HTML characters written to it.
@@ -32,9 +32,7 @@ pub enum EscapeMode {
     /// Escapes characters for double-quoted attribute values. Escapes `&"`.
     EscapeAttr,
     /// Escapes characters for single-quoted attribute values. Escapes `&'`.
-    EscapeSingleQuoteAttr,
-    /// Escapes all non-printable or non-ASCII characters, with the exception of U+0000.
-    EscapeAll
+    EscapeSingleQuoteAttr
 }
 
 impl<W: Writer> EscapeWriter<W> {
@@ -64,63 +62,24 @@ impl<W: Writer> EscapeWriter<W> {
 
 impl<W: Writer> Writer for EscapeWriter<W> {
     fn write(&mut self, bytes: &[u8]) -> IoResult<()> {
-        if self.mode == EscapeAll {
-            // This mode needs to operate on chars. Everything else is handled below.
-            let s = str::from_utf8_lossy(bytes);
-            let s = s.as_slice();
-            let mut last = 0u;
-            for (i, c) in s.char_indices() {
-                match c {
-                    '&'|'<'|'>'|'"'|'\'' => (),
-                    '\0' | '\x20'..'\x7E' => continue,
-                    _ => ()
-                }
-                if last < i {
-                    try!(self.inner.write_str(s.slice(last, i)));
-                }
-                match c {
-                    '&'|'<'|'>'|'"'|'\'' => {
-                        let ent = match c {
-                            '&' => "&amp;",
-                            '<' => "&lt;",
-                            '>' => "&gt;",
-                            '"' => "&quot;",
-                            '\'' => "&apos;",
-                            _ => unreachable!()
-                        };
-                        try!(self.inner.write_str(ent));
-                    }
-                    _ => {
-                        let c = c as u32;
-                        try!(write!(&mut self.inner as &mut ::std::io::Writer, r"&\#x{:x};", c));
-                    }
-                }
-                last = i + char::len_utf8_bytes(c);
+        let mut last = 0;
+        for (i, b) in bytes.iter().enumerate() {
+            let ent = match (self.mode, *b as char) {
+                (_,'&') => "&amp;",
+                (EscapeDefault,'<') |(EscapeText,'<')             => "&lt;",
+                (EscapeDefault,'>') |(EscapeText,'>')             => "&gt;",
+                (EscapeDefault,'\'')|(EscapeSingleQuoteAttr,'\'') => "&#39;",
+                (EscapeDefault,'"') |(EscapeAttr,'"')             => "&quot;",
+                _ => continue
+            };
+            if last < i {
+                try!(self.inner.write(bytes.slice(last, i)));
             }
-            if last < s.as_slice().len() {
-                try!(self.inner.write_str(s.slice_from(last)));
-            }
-        } else {
-            // We only want to escape ASCII values, so we can safely operate on bytes
-            let mut last = 0;
-            for (i, b) in bytes.iter().enumerate() {
-                let ent = match (self.mode, *b as char) {
-                    (_,'&') => "&amp;",
-                    (EscapeDefault,'<') |(EscapeText,'<')             => "&lt;",
-                    (EscapeDefault,'>') |(EscapeText,'>')             => "&gt;",
-                    (EscapeDefault,'\'')|(EscapeSingleQuoteAttr,'\'') => "&apos;",
-                    (EscapeDefault,'"') |(EscapeAttr,'"')             => "&quot;",
-                    _ => continue
-                };
-                if last < i {
-                    try!(self.inner.write(bytes.slice(last, i)));
-                }
-                try!(self.inner.write_str(ent));
-                last = i + 1;
-            }
-            if last < bytes.len() {
-                try!(self.inner.write(bytes.slice_from(last)));
-            }
+            try!(self.inner.write_str(ent));
+            last = i + 1;
+        }
+        if last < bytes.len() {
+            try!(self.inner.write(bytes.slice_from(last)));
         }
         Ok(())
     }

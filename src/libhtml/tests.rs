@@ -35,7 +35,7 @@ impl fmt::Show for UnTest {
 fn test_escape() {
     let s = r#"<script src="evil.domain?foo&" type='baz'>"#;
     assert_eq!(escape(s).as_slice(), "&lt;script src=&quot;evil.domain?foo&amp;&quot; \
-                                        type=&apos;baz&apos;&gt;");
+                                        type=&#39;baz&#39;&gt;");
 
     let t = Test("foo".to_strbuf());
     assert_eq!(escape(t), "&lt;Test&gt;foo&lt;/Test&gt;".to_owned());
@@ -71,9 +71,9 @@ mod python {
 
     #[test]
     fn test_escape() {
-        // python converts ' to &#x27; but we go to &apos;
+        // python converts ' to &#x27; but we go to &#39;
         assert_eq!(escape(r#"'<script>"&foo;"</script>'"#).as_slice(),
-                   "&apos;&lt;script&gt;&quot;&amp;foo;&quot;&lt;/script&gt;&apos;");
+                   "&#39;&lt;script&gt;&quot;&amp;foo;&quot;&lt;/script&gt;&#39;");
         let mut w = EscapeWriter::new(MemWriter::new(), EscapeText);
         assert!(w.write_str(r#"'<script>"&foo;"</script>'"#).is_ok());
         assert_eq!(w.unwrap().unwrap().as_slice(),
