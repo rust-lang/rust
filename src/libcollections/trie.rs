@@ -634,7 +634,7 @@ impl<'a> Iterator<uint> for SetItems<'a> {
 
 #[cfg(test)]
 mod test_map {
-    use super::{TrieMap, TrieNode, Internal, External};
+    use super::{TrieMap, TrieNode, Internal, External, Nothing};
     use std::iter::range_step;
     use std::uint;
 
