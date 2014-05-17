@@ -18,7 +18,7 @@
 //!
 //! ## Example
 //!
-//! ```rust
+//! ```no_run
 //! extern crate term;
 //!
 //! fn main() {
