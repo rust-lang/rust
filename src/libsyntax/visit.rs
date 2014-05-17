@@ -209,7 +209,10 @@ pub fn walk_trait_ref_helper<E: Clone, V: Visitor<E>>(visitor: &mut V,
 }
 
 pub fn walk_item<E: Clone, V: Visitor<E>>(visitor: &mut V, item: &Item, env: E) {
-    visitor.visit_ident(item.span, item.ident, env.clone());
+    match item.ident.get_macro_ident() {
+        Some(mac) => visitor.visit_mac(&mac, env.clone()),
+        None      => visitor.visit_ident(item.span, item.ident, env.clone()),
+    }
     match item.node {
         ItemStatic(typ, _, expr) => {
             visitor.visit_ty(typ, env.clone());

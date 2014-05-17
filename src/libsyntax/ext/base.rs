@@ -114,6 +114,10 @@ pub trait MacResult {
     fn make_items(&self) -> Option<SmallVector<@ast::Item>> {
         None
     }
+    /// Create an identifier
+    fn make_ident(&self) -> Option<ast::Ident> {
+        None
+    }
 
     /// Create a statement.
     ///

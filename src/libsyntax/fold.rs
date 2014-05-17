@@ -678,7 +678,10 @@ pub fn noop_fold_item<T: Folder>(i: &Item, folder: &mut T) -> SmallVector<@Item>
         ItemImpl(_, ref maybe_trait, ty, _) => {
             ast_util::impl_pretty_name(maybe_trait, ty)
         }
-        _ => i.ident
+        _ => match i.ident.get_macro_ident() {
+            Some(mac) => ast::Ident::new_macro_ident(folder.fold_mac(&mac)),
+            None      => i.ident,
+        }
     };
 
     SmallVector::one(@Item {
