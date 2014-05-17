@@ -101,6 +101,27 @@ struct Foo {
 This will force a struct to be laid out like the equivalent definition
 in C.
 
+There would be a lint for the use of non-`repr(C)` structs in related
+FFI definitions, for example:
+
+```rust
+struct UnspecifiedLayout {
+   // ...
+}
+
+#[repr(C)]
+struct CLayout {
+   // ...
+}
+
+extern {
+    fn foo(x: UnspecifiedLayout); // warning: use of non-FFI-safe struct in extern declaration
+
+    fn bar(x: CLayout); // no warning
+}
+```
+
+
 # Alternatives
 
 - Have non-C layouts opt-in, via `#[repr(smallest)]` and
@@ -113,3 +134,6 @@ in C.
 # Unresolved questions
 
 - How does this interact with binary compatibility of dynamic libraries?
+- Should the lint apply to C-compatible functions defined in Rust like
+  `extern "C" fn foo(x: UnspecifiedLayout)`? (The equivalent lint for
+  enums does not pick up this case.)
