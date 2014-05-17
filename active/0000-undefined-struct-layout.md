@@ -72,6 +72,31 @@ cause surprising bugs and crashes. There is already a lint for FFI use
 of `enum`s without a `#[repr(...)]` attribute, so this can be extended
 to include structs.
 
+Having an unspecified (or otherwise non-C-compatible) layout by
+default makes interfacing with C slightly harder. A particularly bad
+case is passing to C a struct from an upstream library that doesn't
+have a `repr(C)` attribute. This situation seems relatively similar to
+one where an upstream library type is missing an implementation of a
+core trait e.g. `Hash` if one wishes to use it as a hashmap key.
+
+It is slightly better if structs had a specified-but-C-incompatible
+layout, *and* one has control over the C interface, because then one
+can manually arrange the fields in the C definition to match the Rust
+order.
+
+That said, this scenario requires:
+
+- Needing to pass a Rust struct into C/FFI code, where that FFI code
+  actually needs to use things from the struct, rather than just pass
+  it through, e.g., back into a Rust callback.
+- The Rust struct is defined upstream & out of your control, and not
+  intended for use with C code.
+- The C/FFI code is designed by someone other than that vendor, or
+  otherwise not designed for use with the Rust struct (or else it is a
+  bug in the vendor's library that the Rust struct can't be sanely
+  passed to C).
+
+
 # Detailed design
 
 A struct declaration like
