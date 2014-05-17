@@ -59,6 +59,10 @@ pub trait AnyRefExt<'a> {
     /// Returns some reference to the boxed value if it is of type `T`, or
     /// `None` if it isn't.
     fn as_ref<T: 'static>(self) -> Option<&'a T>;
+
+    /// Returns a reference to the boxed value which must be of type `T`.
+    /// This is as dangerous as `transmute`; you should almost always use `as_ref` instead.
+    unsafe fn as_ref_unchecked<T: 'static>(self) -> &'a T;
 }
 
 impl<'a> AnyRefExt<'a> for &'a Any {
@@ -77,16 +81,19 @@ impl<'a> AnyRefExt<'a> for &'a Any {
     #[inline]
     fn as_ref<T: 'static>(self) -> Option<&'a T> {
         if self.is::<T>() {
-            unsafe {
-                // Get the raw representation of the trait object
-                let to: TraitObject = transmute_copy(&self);
-
-                // Extract the data pointer
-                Some(transmute(to.data))
-            }
+            Some(unsafe { self.as_ref_unchecked() })
         } else {
             None
         }
+    }
+
+    #[inline]
+    unsafe fn as_ref_unchecked<T: 'static>(self) -> &'a T {
+        // Get the raw representation of the trait object
+        let to: TraitObject = transmute_copy(&self);
+
+        // Extract the data pointer
+        transmute(to.data)
     }
 }
 
@@ -94,23 +101,31 @@ impl<'a> AnyRefExt<'a> for &'a Any {
 pub trait AnyMutRefExt<'a> {
     /// Returns some mutable reference to the boxed value if it is of type `T`, or
     /// `None` if it isn't.
+    #[inline]
     fn as_mut<T: 'static>(self) -> Option<&'a mut T>;
+
+    /// Returns a mutable reference to the boxed value which must be of type `T`.
+    /// This is as dangerous as `transmute`; you should almost always use `as_mut` instead.
+    unsafe fn as_mut_unchecked<T: 'static>(self) -> &'a mut T;
 }
 
 impl<'a> AnyMutRefExt<'a> for &'a mut Any {
     #[inline]
     fn as_mut<T: 'static>(self) -> Option<&'a mut T> {
         if self.is::<T>() {
-            unsafe {
-                // Get the raw representation of the trait object
-                let to: TraitObject = transmute_copy(&self);
-
-                // Extract the data pointer
-                Some(transmute(to.data))
-            }
+            Some(unsafe { self.as_mut_unchecked() })
         } else {
             None
         }
+    }
+
+    #[inline]
+    unsafe fn as_mut_unchecked<T: 'static>(self) -> &'a mut T {
+        // Get the raw representation of the trait object
+        let to: TraitObject = transmute_copy(&self);
+
+        // Extract the data pointer
+        transmute(to.data)
     }
 }
 
