@@ -10,7 +10,10 @@
 
 extern crate test;
 use std::fmt;
+use std::io::MemWriter;
 use super::{escape, unescape};
+use super::escape::{EscapeWriter, UnescapeWriter};
+use super::escape::{EscapeDefault, EscapeText, EscapeAttr, EscapeSingleQuoteAttr};
 
 struct Test(StrBuf);
 
@@ -60,6 +63,72 @@ fn test_unescape() {
     assert_eq!(unescape("&#X2022; &#XYZ;"), "\u2022 &#XYZ;".to_owned());
     // this next escape overflows a u64. WebKit incorrectly treats this as &#x2022;
     assert_eq!(unescape("&#x100000000000000002022;"), "\uFFFD".to_owned());
+    assert_eq!(unescape("&#x80;&#x81;&#x9F;&#0;"), "\u20AC\x81\u0178\uFFFD".to_owned());
+}
+
+macro_rules! escape_test{
+    ($mode:ident, $input:expr, $result:expr) => {{
+        use std::path::BytesContainer;
+        let mode = concat_idents!(Escape, $mode);
+        let mut w = EscapeWriter::new(MemWriter::new(), mode);
+        w.write($input.container_as_bytes()).unwrap();
+        let v = w.unwrap().unwrap();
+        // provide better errors by comparing strings when possible
+        let result = $result;
+        match (StrBuf::from_utf8(v), result.container_as_str()) {
+            (Ok(s), Some(res)) => assert_eq!(s.as_slice(), res),
+            (Ok(s), None) => assert_eq!(s.as_bytes(), result.container_as_bytes()),
+            (Err(v), _) => assert_eq!(v.as_slice(), result.container_as_bytes())
+        }
+    }}
+}
+
+#[test]
+fn test_escapewriter_default() {
+    escape_test!(Default, "<>&\"'abc()\u2022", "&lt;&gt;&amp;&quot;&#39;abc()\u2022");
+    escape_test!(Default, "", "");
+    escape_test!(Default, bytes!(0, 1, 0x80, "\x80"), bytes!(0, 1, 0x80, "\x80"));
+}
+
+#[test]
+fn test_escapewriter_text() {
+    escape_test!(Text, "<>&\"'abc()\u2022", "&lt;&gt;&amp;\"'abc()\u2022");
+    escape_test!(Text, "", "");
+    escape_test!(Text, bytes!(0, 1, 0x80, "\x80"), bytes!(0, 1, 0x80, "\x80"));
+}
+
+#[test]
+fn test_escapewriter_attr() {
+    escape_test!(Attr, "<>&\"'abc()\u2022", "<>&amp;&quot;'abc()\u2022");
+    escape_test!(Attr, "", "");
+    escape_test!(Attr, bytes!(0, 1, 0x80, "\x80"), bytes!(0, 1, 0x80, "\x80"));
+}
+
+#[test]
+fn test_escapewriter_singlequote_attr() {
+    escape_test!(SingleQuoteAttr, "<>&\"'abc()\u2022", "<>&amp;\"&#39;abc()\u2022");
+    escape_test!(SingleQuoteAttr, "", "");
+    escape_test!(SingleQuoteAttr, bytes!(0, 1, 0x80, "\x80"), bytes!(0, 1, 0x80, "\x80"));
+}
+
+#[test]
+fn test_roundtrip_writer() {
+    let mut w = EscapeWriter::new(MemWriter::new(), EscapeDefault);
+    w.write_str("<>&\"'abc()\u2022").unwrap();
+    w.write(bytes!(0, 1, 0x80, "\x80")).unwrap();
+    let v = w.unwrap().unwrap();
+    let mut w = UnescapeWriter::new(MemWriter::new());
+    w.write(v.as_slice()).unwrap();
+    let v = w.unwrap().unwrap();
+    assert_eq!(v.as_slice(), bytes!("<>&\"'abc()\u2022", 0, 1, 0x80, "\x80"));
+}
+
+#[test]
+fn test_unescapewriter_with_allowed_char() {
+    let mut w = UnescapeWriter::with_allowed_char(MemWriter::new(), 'q');
+    w.write_str("&lt;&gt;&quot;").unwrap();
+    let v = w.unwrap().unwrap();
+    assert_eq!(v.as_slice(), "<>&quot;".as_bytes());
 }
 
 // Tests from python's html module
