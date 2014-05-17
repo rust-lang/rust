@@ -61,7 +61,7 @@ struct layouts, for example,
 [the Grsecurity suite](http://grsecurity.net/) of security
 enhancements to the Linux kernel provides
 [`GRKERNSEC_RANDSTRUCT`](http://en.wikibooks.org/wiki/Grsecurity/Appendix/Grsecurity_and_PaX_Configuration_Options#Randomize_layout_of_sensitive_kernel_structures)
-which randomises "sensitive kernel datastructures" at compile time.
+which randomises "sensitive kernel data structures" at compile time.
 
 Notably, Rust's `enum`s already have undefined layout, and provide the
 `#[repr]` attribute to control layout more precisely (specifically,
@@ -80,11 +80,13 @@ A struct declaration like
 
 ```rust
 struct Foo {
+    x: T,
+    y: U,
     ...
 }
 ```
 
-has no fixed layout, that is, a compiler can chose whichever order of
+has no fixed layout, that is, a compiler can choose whichever order of
 fields it prefers.
 
 A fixed layout can be selected with the `#[repr]` attribute
@@ -92,6 +94,8 @@ A fixed layout can be selected with the `#[repr]` attribute
 ```rust
 #[repr(C)]
 struct Foo {
+    x: T,
+    y: U,
     ...
 }
 ```
@@ -102,7 +106,7 @@ in C.
 # Alternatives
 
 - Have non-C layouts opt-in, via `#[repr(smallest)]` and
-  `#[repr(random)]` (or similar similar).
+  `#[repr(random)]` (or similar).
 - Have layout defined, but not declaration order (like Java(?)), for
   example, from largest field to smallest, so `u8` fields get placed
   last, and `[u8, .. 1000000]` fields get placed first. The `#[repr]`
