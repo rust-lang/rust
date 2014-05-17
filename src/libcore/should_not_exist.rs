@@ -171,15 +171,17 @@ impl<A: Clone> Clone for ~[A] {
         unsafe {
             let ret = alloc(size) as *mut Vec<A>;
 
-            (*ret).fill = len * mem::nonzero_size_of::<A>();
-            (*ret).alloc = len * mem::nonzero_size_of::<A>();
+            let a_size = mem::size_of::<A>();
+            let a_size = if a_size == 0 {1} else {a_size};
+            (*ret).fill = len * a_size;
+            (*ret).alloc = len * a_size;
 
             let mut i = 0;
             let p = &mut (*ret).data as *mut _ as *mut A;
             try_finally(
                 &mut i, (),
                 |i, ()| while *i < len {
-                    mem::move_val_init(
+                    mem::overwrite(
                         &mut(*p.offset(*i as int)),
                         self.unsafe_ref(*i).clone());
                     *i += 1;

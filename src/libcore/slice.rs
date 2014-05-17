@@ -1122,7 +1122,7 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
 
     #[inline]
     unsafe fn init_elem(self, i: uint, val: T) {
-        mem::move_val_init(&mut (*self.as_mut_ptr().offset(i as int)), val);
+        mem::overwrite(&mut (*self.as_mut_ptr().offset(i as int)), val);
     }
 
     #[inline]
@@ -1306,7 +1306,8 @@ macro_rules! iterator {
             #[inline]
             fn size_hint(&self) -> (uint, Option<uint>) {
                 let diff = (self.end as uint) - (self.ptr as uint);
-                let exact = diff / mem::nonzero_size_of::<T>();
+                let size = mem::size_of::<T>();
+                let exact = diff / (if size == 0 {1} else {size});
                 (exact, Some(exact))
             }
         }

@@ -896,8 +896,8 @@ fn waitpid(pid: pid_t, deadline: u64) -> IoResult<p::ProcessExit> {
     // self-pipe plus the old handler registered (return value of sigaction).
     fn register_sigchld() -> (libc::c_int, c::sigaction) {
         unsafe {
-            let mut old: c::sigaction = mem::init();
-            let mut new: c::sigaction = mem::init();
+            let mut old: c::sigaction = mem::zeroed();
+            let mut new: c::sigaction = mem::zeroed();
             new.sa_handler = sigchld_handler;
             new.sa_flags = c::SA_NOCLDSTOP;
             assert_eq!(c::sigaction(c::SIGCHLD, &new, &mut old), 0);
@@ -916,7 +916,7 @@ fn waitpid(pid: pid_t, deadline: u64) -> IoResult<p::ProcessExit> {
                       messages: Receiver<Req>,
                       (read_fd, old): (libc::c_int, c::sigaction)) {
         util::set_nonblocking(input, true).unwrap();
-        let mut set: c::fd_set = unsafe { mem::init() };
+        let mut set: c::fd_set = unsafe { mem::zeroed() };
         let mut tv: libc::timeval;
         let mut active = Vec::<(libc::pid_t, Sender<p::ProcessExit>, u64)>::new();
         let max = cmp::max(input, read_fd) + 1;
