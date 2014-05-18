@@ -16,10 +16,10 @@
 // gdb-command:finish
 
 // gdb-command:print some
-// gdb-check:$1 = {0x12345678}
+// gdb-check:$1 = (u32 *) 0x12345678
 
 // gdb-command:print none
-// gdb-check:$2 = {0x0}
+// gdb-check:$2 = (u32 *) 0x0
 
 // gdb-command:print full
 // gdb-check:$3 = {454545, 0x87654321, 9988}
@@ -41,6 +41,8 @@
 // contains a non-nullable pointer, then this value is used as the discriminator.
 // The test cases in this file make sure that something readable is generated for
 // this kind of types.
+// If the non-empty variant contains a single non-nullable pointer than the whole
+// item is represented as just a pointer and not wrapped in a struct.
 // Unfortunately (for these test cases) the content of the non-discriminant fields
 // in the null-case is not defined. So we just read the discriminator field in
 // this case (by casting the value to a memory-equivalent struct).
