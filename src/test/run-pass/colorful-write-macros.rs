@@ -14,10 +14,20 @@
 #![feature(macro_rules)]
 
 use std::io::MemWriter;
+use std::fmt;
+use std::fmt::FormatWriter;
 
 struct Foo<'a> {
     writer: &'a mut Writer,
     other: &'a str,
+}
+
+struct Bar;
+
+impl fmt::FormatWriter for Bar {
+    fn write(&mut self, _: &[u8]) -> fmt::Result {
+        Ok(())
+    }
 }
 
 fn borrowing_writer_from_struct_and_formatting_struct_field(foo: Foo) {
@@ -29,4 +39,7 @@ fn main() {
     write!(&mut w as &mut Writer, "");
     write!(&mut w, ""); // should coerce
     println!("ok");
+
+    let mut s = Bar;
+    write!(&mut s, "test");
 }
