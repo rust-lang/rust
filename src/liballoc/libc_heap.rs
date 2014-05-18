@@ -12,8 +12,8 @@
 //! The global (exchange) heap.
 
 use libc::{c_void, size_t, free, malloc, realloc};
-use ptr::{RawPtr, mut_null};
-use intrinsics::abort;
+use core::ptr::{RawPtr, mut_null};
+use core::intrinsics::abort;
 
 /// A wrapper around libc::malloc, aborting on out-of-memory
 #[inline]

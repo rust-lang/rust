@@ -8,17 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Operations on unique pointer types
+//! A unique pointer type
 
-use any::{Any, AnyRefExt};
-use clone::Clone;
-use cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering};
-use default::Default;
-use fmt;
-use intrinsics;
-use mem;
-use raw::TraitObject;
-use result::{Ok, Err, Result};
+use core::any::{Any, AnyRefExt};
+use core::clone::Clone;
+use core::cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering};
+use core::default::Default;
+use core::fmt;
+use core::intrinsics;
+use core::mem;
+use core::raw::TraitObject;
+use core::result::{Ok, Err, Result};
 
 /// A value that represents the global exchange heap. This is the default
 /// place that the `box` keyword allocates into when no place is supplied.
@@ -107,7 +107,6 @@ impl<T: fmt::Show> fmt::Show for Box<T> {
     }
 }
 
-#[cfg(not(stage0))]
 impl fmt::Show for Box<Any> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("Box<Any>")

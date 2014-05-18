@@ -74,6 +74,8 @@ pub use self::unwind::{begin_unwind, begin_unwind_fmt};
 
 pub use self::util::{Stdio, Stdout, Stderr};
 
+pub use alloc::{heap, libc_heap};
+
 // FIXME: these probably shouldn't be public...
 #[doc(hidden)]
 pub mod shouldnt_be_public {
@@ -85,12 +87,6 @@ pub mod shouldnt_be_public {
 
 // Internal macros used by the runtime.
 mod macros;
-
-/// Wrappers around malloc / realloc aborting on out-of-memory.
-pub mod libc_heap;
-
-/// The low-level memory allocation API.
-pub mod heap;
 
 /// Implementations of language-critical runtime features like @.
 pub mod task;
