@@ -11,10 +11,13 @@
 // FIXME: #13994: port to the sized deallocation API when available
 // FIXME: #13996: need a way to mark the `allocate` and `reallocate` return values as `noalias`
 
-use intrinsics::{abort, cttz32};
+use core::intrinsics::{abort, cttz32};
+use core::option::{None, Option};
+use core::ptr::{RawPtr, mut_null, null};
 use libc::{c_char, c_int, c_void, size_t};
-use ptr::{RawPtr, mut_null, null};
-use option::{None, Option};
+
+#[cfg(not(test))] use core::raw;
+#[cfg(not(test))] use util;
 
 #[link(name = "jemalloc", kind = "static")]
 extern {
@@ -148,11 +151,12 @@ unsafe fn exchange_free(ptr: *mut u8) {
 #[cfg(not(test))]
 #[lang="closure_exchange_malloc"]
 #[inline]
+#[allow(deprecated)]
 unsafe fn closure_exchange_malloc(drop_glue: fn(*mut u8), size: uint, align: uint) -> *mut u8 {
-    let total_size = ::rt::util::get_box_size(size, align);
+    let total_size = util::get_box_size(size, align);
     let p = allocate(total_size, 8);
 
-    let alloc = p as *mut ::raw::Box<()>;
+    let alloc = p as *mut raw::Box<()>;
     (*alloc).drop_glue = drop_glue;
 
     alloc as *mut u8

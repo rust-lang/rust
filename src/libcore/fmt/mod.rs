@@ -70,10 +70,6 @@ pub struct Formatter<'a> {
     /// Optionally specified precision for numeric types
     pub precision: Option<uint>,
 
-    #[allow(missing_doc)]
-    #[cfg(stage0)]
-    pub buf: &'a mut FormatWriter,
-    #[cfg(not(stage0))]
     buf: &'a mut FormatWriter,
     curarg: slice::Items<'a, Argument<'a>>,
     args: &'a [Argument<'a>],
