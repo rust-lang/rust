@@ -2416,8 +2416,8 @@ mod tests {
     use uint;
 
     impl<T> FromIterator<T> for Vec<T> {
-        fn from_iter_with_capacity<I: Iterator<T>>(mut iterator: I, _cap: uint) -> Vec<T> {
-            let mut v = Vec::new();
+        fn from_iter_with_capacity<I: Iterator<T>>(mut iterator: I, cap: uint) -> Vec<T> {
+            let mut v = Vec::with_capacity(cap);
             for e in iterator {
                 v.push(e);
             }
