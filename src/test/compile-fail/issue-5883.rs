@@ -11,15 +11,15 @@
 trait A {}
 
 struct Struct {
-    r: A //~ ERROR reference to trait `A` where a type is expected; try `~A` or `&A`
+    r: A //~ ERROR reference to trait `A` where a type is expected; try `Box<A>` or `&A`
 }
 
 fn new_struct(r: A) -> Struct {
-    //~^ ERROR reference to trait `A` where a type is expected; try `~A` or `&A`
+    //~^ ERROR reference to trait `A` where a type is expected; try `Box<A>` or `&A`
     Struct { r: r }
 }
 
 trait Curve {}
 enum E {X(Curve)}
-//~^ ERROR reference to trait `Curve` where a type is expected; try `~Curve` or `&Curve`
+//~^ ERROR reference to trait `Curve` where a type is expected; try `Box<Curve>` or `&Curve`
 fn main() {}
