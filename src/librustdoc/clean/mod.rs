@@ -20,6 +20,7 @@ use syntax::attr::{AttributeMethods, AttrMetaMethods};
 use syntax::codemap::Pos;
 use syntax::parse::token::InternedString;
 use syntax::parse::token;
+use syntax::ptr::P;
 
 use rustc::back::link;
 use rustc::driver::driver;
@@ -34,7 +35,6 @@ use rustc::middle::stability;
 
 use std::rc::Rc;
 use std::u32;
-use std::gc::{Gc, GC};
 
 use core::DocContext;
 use doctree;
@@ -67,7 +67,7 @@ impl<T: Clean<U>, U> Clean<VecPerParamSpace<U>> for VecPerParamSpace<T> {
     }
 }
 
-impl<T: 'static + Clean<U>, U> Clean<U> for Gc<T> {
+impl<T: Clean<U>, U> Clean<U> for P<T> {
     fn clean(&self, cx: &DocContext) -> U {
         (**self).clean(cx)
     }
@@ -408,7 +408,7 @@ impl Clean<Attribute> for ast::MetaItem {
 
 impl Clean<Attribute> for ast::Attribute {
     fn clean(&self, cx: &DocContext) -> Attribute {
-        self.desugar_doc().node.value.clean(cx)
+        self.with_desugared_doc(|a| a.node.value.clean(cx))
     }
 }
 
@@ -430,12 +430,12 @@ impl attr::AttrMetaMethods for Attribute {
             _ => None,
         }
     }
-    fn meta_item_list<'a>(&'a self) -> Option<&'a [Gc<ast::MetaItem>]> { None }
+    fn meta_item_list<'a>(&'a self) -> Option<&'a [P<ast::MetaItem>]> { None }
 }
 impl<'a> attr::AttrMetaMethods for &'a Attribute {
     fn name(&self) -> InternedString { (**self).name() }
     fn value_str(&self) -> Option<InternedString> { (**self).value_str() }
-    fn meta_item_list<'a>(&'a self) -> Option<&'a [Gc<ast::MetaItem>]> { None }
+    fn meta_item_list<'a>(&'a self) -> Option<&'a [P<ast::MetaItem>]> { None }
 }
 
 #[deriving(Clone, Encodable, Decodable, PartialEq)]
@@ -758,10 +758,10 @@ impl Clean<SelfTy> for ast::ExplicitSelf_ {
         match *self {
             ast::SelfStatic => SelfStatic,
             ast::SelfValue(_) => SelfValue,
-            ast::SelfRegion(lt, mt, _) => {
+            ast::SelfRegion(ref lt, ref mt, _) => {
                 SelfBorrowed(lt.clean(cx), mt.clean(cx))
             }
-            ast::SelfExplicit(typ, _) => SelfExplicit(typ.clean(cx)),
+            ast::SelfExplicit(ref typ, _) => SelfExplicit(typ.clean(cx)),
         }
     }
 }
@@ -1189,11 +1189,11 @@ impl Clean<Type> for ast::Ty {
             TyRptr(ref l, ref m) =>
                 BorrowedRef {lifetime: l.clean(cx), mutability: m.mutbl.clean(cx),
                              type_: box m.ty.clean(cx)},
-            TyBox(ty) => Managed(box ty.clean(cx)),
-            TyUniq(ty) => Unique(box ty.clean(cx)),
-            TyVec(ty) => Vector(box ty.clean(cx)),
-            TyFixedLengthVec(ty, ref e) => FixedVector(box ty.clean(cx),
-                                                       e.span.to_src(cx)),
+            TyBox(ref ty) => Managed(box ty.clean(cx)),
+            TyUniq(ref ty) => Unique(box ty.clean(cx)),
+            TyVec(ref ty) => Vector(box ty.clean(cx)),
+            TyFixedLengthVec(ref ty, ref e) => FixedVector(box ty.clean(cx),
+                                                           e.span.to_src(cx)),
             TyTup(ref tys) => Tuple(tys.clean(cx)),
             TyPath(ref p, ref tpbs, id) => {
                 resolve_type(cx, p.clean(cx), tpbs.clean(cx), id)
@@ -1799,7 +1799,7 @@ impl Clean<Vec<Item>> for ast::ViewItem {
                                                          remaining,
                                                          b.clone());
                             let path = syntax::codemap::dummy_spanned(path);
-                            ret.push(convert(&ast::ViewItemUse(box(GC) path)));
+                            ret.push(convert(&ast::ViewItemUse(P(path))));
                         }
                     }
                     ast::ViewPathSimple(ident, _, id) => {
@@ -1985,8 +1985,8 @@ fn name_from_pat(p: &ast::Pat) -> String {
         },
         PatTup(ref elts) => format!("({})", elts.iter().map(|p| name_from_pat(&**p))
                                             .collect::<Vec<String>>().connect(", ")),
-        PatBox(p) => name_from_pat(&*p),
-        PatRegion(p) => name_from_pat(&*p),
+        PatBox(ref p) => name_from_pat(&**p),
+        PatRegion(ref p) => name_from_pat(&**p),
         PatLit(..) => {
             warn!("tried to get argument name from PatLit, \
                   which is silly in function arguments");

@@ -11,7 +11,6 @@
 use std::cell::RefCell;
 use std::char;
 use std::dynamic_lib::DynamicLibrary;
-use std::gc::GC;
 use std::io::{Command, TempDir};
 use std::io;
 use std::os;
@@ -28,6 +27,7 @@ use syntax::ast;
 use syntax::codemap::{CodeMap, dummy_spanned};
 use syntax::diagnostic;
 use syntax::parse::token;
+use syntax::ptr::P;
 
 use core;
 use clean;
@@ -67,15 +67,15 @@ pub fn run(input: &str,
     let mut cfg = config::build_configuration(&sess);
     cfg.extend(cfgs.move_iter().map(|cfg_| {
         let cfg_ = token::intern_and_get_ident(cfg_.as_slice());
-        box(GC) dummy_spanned(ast::MetaWord(cfg_))
+        P(dummy_spanned(ast::MetaWord(cfg_)))
     }));
     let krate = driver::phase_1_parse_input(&sess, cfg, &input);
-    let (krate, _) = driver::phase_2_configure_and_expand(&sess, krate,
-                                                          "rustdoc-test", None)
+    let krate = driver::phase_2_configure_and_expand(&sess, krate,
+                                                     "rustdoc-test", None)
         .expect("phase_2_configure_and_expand aborted in rustdoc!");
 
     let ctx = core::DocContext {
-        krate: krate,
+        krate: &krate,
         maybe_typed: core::NotTyped(sess),
         src: input_path,
         external_paths: RefCell::new(Some(HashMap::new())),
@@ -86,7 +86,7 @@ pub fn run(input: &str,
     };
 
     let mut v = RustdocVisitor::new(&ctx, None);
-    v.visit(&ctx.krate);
+    v.visit(ctx.krate);
     let mut krate = v.clean(&ctx);
     match crate_name {
         Some(name) => krate.name = name,
