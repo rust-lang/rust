@@ -394,8 +394,8 @@ fn expand_ident(ident: Ident, fld: &mut MacroExpander) -> Ident {
                     let mac_span = original_span(fld.cx);
 
                     match expandfun.expand(fld.cx,
-                                                          mac_span.call_site,
-                                                          marked_tts.as_slice()).make_ident() {
+                                           mac_span.call_site,
+                                           marked_tts.as_slice()).make_ident() {
                         Some(ident) => ident,
                         None => {
                             fld.cx.span_err(pth.span,
