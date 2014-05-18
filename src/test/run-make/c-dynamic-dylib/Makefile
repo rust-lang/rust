@@ -9,6 +9,6 @@ all: $(call DYLIB,cfoo)
 	$(RUSTC) foo.rs
 	$(RUSTC) bar.rs
 	$(call RUN,bar)
-	rm $(TMPDIR)/$(call DYLIB_GLOB,cfoo)
+	$(call REMOVE_DYLIBS,cfoo)
 	$(call FAIL,bar)
 endif

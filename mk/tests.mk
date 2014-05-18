@@ -793,8 +793,27 @@ else
 CRATEDOCTESTDEP_$(1)_$(2)_$(3)_$(4) = $$(RSINPUTS_$(4))
 endif
 
+# (Issues #13732, #13983, #14000) The doc for the regex crate includes
+# uses of the `regex!` macro from the regex_macros crate.  There is
+# normally a dependence injected that makes the target's regex depend
+# upon the host's regex_macros (see #13845), but that dependency
+# injection is currently skipped for stage1 as a special case.
+#
+# Therefore, as a further special case, this conditional skips
+# attempting to run the doc tests for the regex crate atop stage1,
+# (since there is no regex_macros crate for the stage1 rustc to load).
+#
+# (Another approach for solving this would be to inject the desired
+# dependence for stage1 as well, by setting things up to generate a
+# regex_macros crate that was compatible with the stage1 rustc and
+# thus re-enable our ability to run this test.)
+ifeq (stage$(1)-crate-$(4),stage1-crate-regex)
+check-stage$(1)-T-$(2)-H-$(3)-doc-crate-$(4)-exec:
+	@$$(call E, skipping doc-crate-$(4) as it uses macros and cannot run at stage$(1))
+else
 check-stage$(1)-T-$(2)-H-$(3)-doc-crate-$(4)-exec: \
 	$$(call TEST_OK_FILE,$(1),$(2),$(3),doc-crate-$(4))
+endif
 
 ifeq ($(2),$$(CFG_BUILD))
 $$(call TEST_OK_FILE,$(1),$(2),$(3),doc-crate-$(4)): $$(CRATEDOCTESTDEP_$(1)_$(2)_$(3)_$(4))
@@ -951,7 +970,10 @@ $(3)/test/run-make/%-$(1)-T-$(2)-H-$(3).ok: \
 	    "$$(CC_$(3)) $$(CFG_GCCISH_CFLAGS_$(3))" \
 	    $$(HBIN$(1)_H_$(3))/rustdoc$$(X_$(3)) \
 	    "$$(TESTNAME)" \
-	    "$$(RPATH_VAR$(1)_T_$(2)_H_$(3))"
+	    $$(LD_LIBRARY_PATH_ENV_NAME$(1)_T_$(2)_H_$(3)) \
+	    "$$(LD_LIBRARY_PATH_ENV_HOSTDIR$(1)_T_$(2)_H_$(3))" \
+	    "$$(LD_LIBRARY_PATH_ENV_TARGETDIR$(1)_T_$(2)_H_$(3))" \
+	    $(1)
 	@touch $$@
 else
 # FIXME #11094 - The above rule doesn't work right for multiple targets

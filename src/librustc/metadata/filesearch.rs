@@ -136,7 +136,7 @@ impl<'a> FileSearch<'a> {
 
     pub fn add_dylib_search_paths(&self) {
         self.for_each_lib_search_path(|lib_search_path| {
-            DynamicLibrary::add_search_path(lib_search_path);
+            DynamicLibrary::prepend_search_path(lib_search_path);
             FileDoesntMatch
         })
     }
