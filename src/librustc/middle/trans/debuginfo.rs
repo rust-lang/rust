@@ -1675,7 +1675,10 @@ fn prepare_enum_metadata(cx: &CrateContext,
                 }),
             }
         }
-        adt::NullablePointer { nonnull: ref struct_def, nndiscr, .. } => {
+        adt::RawNullablePointer { nnty, .. } => {
+            FinalMetadata(type_metadata(cx, nnty, span))
+        }
+        adt::StructWrappedNullablePointer { nonnull: ref struct_def, nndiscr, .. } => {
             let (metadata_stub,
                  variant_llvm_type,
                  member_description_factory) =
