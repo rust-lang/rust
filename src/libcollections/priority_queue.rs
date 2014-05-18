@@ -107,9 +107,11 @@ impl<T: TotalOrd> PriorityQueue<T> {
         }
     }
 
+    #[allow(dead_code)]
     #[deprecated="renamed to `into_vec`"]
     fn to_vec(self) -> Vec<T> { self.into_vec() }
 
+    #[allow(dead_code)]
     #[deprecated="renamed to `into_sorted_vec`"]
     fn to_sorted_vec(self) -> Vec<T> { self.into_sorted_vec() }
 
