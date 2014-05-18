@@ -359,7 +359,7 @@ impl<T> RawPtr<T> for *T {
         if self.is_null() {
             None
         } else {
-            Some(mem::transmute(*self))
+            Some(&**self)
         }
     }
 }
@@ -384,7 +384,7 @@ impl<T> RawPtr<T> for *mut T {
         if self.is_null() {
             None
         } else {
-            Some(mem::transmute(*self))
+            Some(&**self)
         }
     }
 }
