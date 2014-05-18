@@ -273,6 +273,7 @@ pub fn phase_3_run_analysis_passes(sess: Session,
 
     // Discard MTWT tables that aren't required past resolution.
     syntax::ext::mtwt::clear_tables();
+    syntax::ast::clear_macro_idents();
 
     let named_region_map = time(time_passes, "lifetime resolution", (),
                                 |_| middle::resolve_lifetime::krate(&sess, krate));

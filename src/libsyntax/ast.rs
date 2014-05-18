@@ -61,6 +61,10 @@ fn get_macro_idents() -> Ref<RefCell<Vec<Mac>>> {
     }
 }
 
+pub fn clear_macro_idents() {
+    key_macro_idents.replace(None);
+}
+
 impl Ident {
     /// Construct an identifier with the given name and an empty context:
     pub fn new(name: Name) -> Ident { Ident {name: name, ctxt: EMPTY_CTXT}}
