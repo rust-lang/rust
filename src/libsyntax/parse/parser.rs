@@ -2020,6 +2020,21 @@ impl<'a> Parser<'a> {
             // expr.f
             if self.eat(&token::DOT) {
                 match self.token {
+                  token::LPAREN => {
+                      let es = self.parse_unspanned_seq(
+                          &token::LPAREN,
+                          &token::RPAREN,
+                          seq_sep_none(),
+                          |p| p.parse_ident_or_macro()
+                      );
+                      if es.len() == 1 {
+                          let i = *es.get(0);
+                          let field = self.mk_field(e, i, Vec::new());
+                          e = self.mk_expr(self.span.lo, self.span.hi, field)
+                      } else {
+                          fail!("uh oh");
+                      }
+                  }
                   token::IDENT(i, _) => {
                     let dot = self.last_span.hi;
                     hi = self.span.hi;
