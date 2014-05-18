@@ -251,17 +251,9 @@ macro_rules! format_strbuf(
 /// write!(&mut w, "formatted {}", "arguments");
 /// ```
 #[macro_export]
-#[cfg(not(stage0))]
 macro_rules! write(
     ($dst:expr, $($arg:tt)*) => ({
         format_args_method!($dst, write_fmt, $($arg)*)
-    })
-)
-#[cfg(stage0)]
-#[macro_export]
-macro_rules! write(
-    ($dst:expr, $($arg:tt)*) => ({
-        format_args!(|args| { $dst.write_fmt(args) }, $($arg)*)
     })
 )
 

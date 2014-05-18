@@ -10,6 +10,7 @@
 
 //! The local, garbage collected heap
 
+use alloc::util;
 use iter::Iterator;
 use libc::{c_void, free};
 use mem;
@@ -58,7 +59,7 @@ impl LocalHeap {
 
     #[inline]
     pub fn alloc(&mut self, drop_glue: fn(*mut u8), size: uint, align: uint) -> *mut Box {
-        let total_size = ::rt::util::get_box_size(size, align);
+        let total_size = util::get_box_size(size, align);
         let alloc = self.memory_region.malloc(total_size);
         {
             // Make sure that we can't use `mybox` outside of this scope

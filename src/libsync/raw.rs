@@ -622,7 +622,7 @@ impl<'a> Drop for RWLockReadGuard<'a> {
 
 #[cfg(test)]
 mod tests {
-    use arc::Arc;
+    use Arc;
     use super::{Semaphore, Mutex, RWLock, Condvar};
 
     use std::mem;
