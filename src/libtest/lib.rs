@@ -921,7 +921,7 @@ fn get_concurrency() -> uint {
     use std::rt;
     match os::getenv("RUST_TEST_TASKS") {
         Some(s) => {
-            let opt_n: Option<uint> = FromStr::from_str(s);
+            let opt_n: Option<uint> = FromStr::from_str(s.as_slice());
             match opt_n {
                 Some(n) if n > 0 => n,
                 _ => fail!("RUST_TEST_TASKS is `{}`, should be a positive integer.", s)

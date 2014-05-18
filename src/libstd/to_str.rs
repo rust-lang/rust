@@ -15,21 +15,24 @@ The `ToStr` trait for converting to strings
 */
 
 use fmt;
+use strbuf::StrBuf;
 
 /// A generic trait for converting a value to a string
 pub trait ToStr {
     /// Converts the value of `self` to an owned string
-    fn to_str(&self) -> ~str;
+    fn to_str(&self) -> StrBuf;
 }
 
 /// Trait for converting a type to a string, consuming it in the process.
 pub trait IntoStr {
     /// Consume and convert to a string.
-    fn into_str(self) -> ~str;
+    fn into_str(self) -> StrBuf;
 }
 
 impl<T: fmt::Show> ToStr for T {
-    fn to_str(&self) -> ~str { format!("{}", *self) }
+    fn to_str(&self) -> StrBuf {
+        format_strbuf!("{}", *self)
+    }
 }
 
 #[cfg(test)]
@@ -39,23 +42,23 @@ mod tests {
 
     #[test]
     fn test_simple_types() {
-        assert_eq!(1i.to_str(), "1".to_owned());
-        assert_eq!((-1i).to_str(), "-1".to_owned());
-        assert_eq!(200u.to_str(), "200".to_owned());
-        assert_eq!(2u8.to_str(), "2".to_owned());
-        assert_eq!(true.to_str(), "true".to_owned());
-        assert_eq!(false.to_str(), "false".to_owned());
-        assert_eq!(().to_str(), "()".to_owned());
-        assert_eq!(("hi".to_owned()).to_str(), "hi".to_owned());
+        assert_eq!(1i.to_str(), "1".to_strbuf());
+        assert_eq!((-1i).to_str(), "-1".to_strbuf());
+        assert_eq!(200u.to_str(), "200".to_strbuf());
+        assert_eq!(2u8.to_str(), "2".to_strbuf());
+        assert_eq!(true.to_str(), "true".to_strbuf());
+        assert_eq!(false.to_str(), "false".to_strbuf());
+        assert_eq!(().to_str(), "()".to_strbuf());
+        assert_eq!(("hi".to_strbuf()).to_str(), "hi".to_strbuf());
     }
 
     #[test]
     fn test_vectors() {
         let x: ~[int] = box [];
-        assert_eq!(x.to_str(), "[]".to_owned());
-        assert_eq!((box [1]).to_str(), "[1]".to_owned());
-        assert_eq!((box [1, 2, 3]).to_str(), "[1, 2, 3]".to_owned());
+        assert_eq!(x.to_str(), "[]".to_strbuf());
+        assert_eq!((box [1]).to_str(), "[1]".to_strbuf());
+        assert_eq!((box [1, 2, 3]).to_str(), "[1, 2, 3]".to_strbuf());
         assert!((box [box [], box [1], box [1, 1]]).to_str() ==
-               "[[], [1], [1, 1]]".to_owned());
+               "[[], [1], [1, 1]]".to_strbuf());
     }
 }

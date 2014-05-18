@@ -569,7 +569,9 @@ impl<'a> IntoMaybeOwned<'a> for ~str {
 
 impl<'a> IntoMaybeOwned<'a> for StrBuf {
     #[inline]
-    fn into_maybe_owned(self) -> MaybeOwned<'a> { Owned(self.into_owned()) }
+    fn into_maybe_owned(self) -> MaybeOwned<'a> {
+        Owned(self.into_owned())
+    }
 }
 
 impl<'a> IntoMaybeOwned<'a> for &'a str {
@@ -657,7 +659,7 @@ impl<'a, H: Writer> ::hash::Hash<H> for MaybeOwned<'a> {
     fn hash(&self, hasher: &mut H) {
         match *self {
             Slice(s) => s.hash(hasher),
-            Owned(ref s) => s.hash(hasher),
+            Owned(ref s) => s.as_slice().hash(hasher),
         }
     }
 }
@@ -1085,7 +1087,7 @@ mod tests {
     #[test]
     fn test_concat() {
         fn t(v: &[~str], s: &str) {
-            assert_eq!(v.concat(), s.to_str());
+            assert_eq!(v.concat(), s.to_str().into_owned());
         }
         t(["you".to_owned(), "know".to_owned(), "I'm".to_owned(),
           "no".to_owned(), "good".to_owned()], "youknowI'mnogood");
@@ -1097,7 +1099,7 @@ mod tests {
     #[test]
     fn test_connect() {
         fn t(v: &[~str], sep: &str, s: &str) {
-            assert_eq!(v.connect(sep), s.to_str());
+            assert_eq!(v.connect(sep), s.to_str().into_owned());
         }
         t(["you".to_owned(), "know".to_owned(), "I'm".to_owned(),
            "no".to_owned(), "good".to_owned()],
@@ -1110,7 +1112,7 @@ mod tests {
     #[test]
     fn test_concat_slices() {
         fn t(v: &[&str], s: &str) {
-            assert_eq!(v.concat(), s.to_str());
+            assert_eq!(v.concat(), s.to_str().into_owned());
         }
         t(["you", "know", "I'm", "no", "good"], "youknowI'mnogood");
         let v: &[&str] = [];
@@ -1121,7 +1123,7 @@ mod tests {
     #[test]
     fn test_connect_slices() {
         fn t(v: &[&str], sep: &str, s: &str) {
-            assert_eq!(v.connect(sep), s.to_str());
+            assert_eq!(v.connect(sep), s.to_str().into_owned());
         }
         t(["you", "know", "I'm", "no", "good"],
           " ", "you know I'm no good");
@@ -2176,16 +2178,16 @@ mod tests {
         let s = Slice("abcde");
         assert_eq!(s.len(), 5);
         assert_eq!(s.as_slice(), "abcde");
-        assert_eq!(s.to_str(), "abcde".to_owned());
-        assert_eq!(format!("{}", s), "abcde".to_owned());
+        assert_eq!(s.to_str(), "abcde".to_strbuf());
+        assert_eq!(format_strbuf!("{}", s), "abcde".to_strbuf());
         assert!(s.lt(&Owned("bcdef".to_owned())));
         assert_eq!(Slice(""), Default::default());
 
         let o = Owned("abcde".to_owned());
         assert_eq!(o.len(), 5);
         assert_eq!(o.as_slice(), "abcde");
-        assert_eq!(o.to_str(), "abcde".to_owned());
-        assert_eq!(format!("{}", o), "abcde".to_owned());
+        assert_eq!(o.to_str(), "abcde".to_strbuf());
+        assert_eq!(format_strbuf!("{}", o), "abcde".to_strbuf());
         assert!(o.lt(&Slice("bcdef")));
         assert_eq!(Owned("".to_owned()), Default::default());
 

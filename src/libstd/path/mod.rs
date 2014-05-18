@@ -519,26 +519,10 @@ impl<'a> BytesContainer for &'a str {
     fn is_str(_: Option<&'a str>) -> bool { true }
 }
 
-impl BytesContainer for ~str {
-    #[inline]
-    fn container_as_bytes<'a>(&'a self) -> &'a [u8] {
-        self.as_bytes()
-    }
-    #[inline]
-    fn container_as_str<'a>(&'a self) -> Option<&'a str> {
-        Some(self.as_slice())
-    }
-    #[inline]
-    fn is_str(_: Option<~str>) -> bool { true }
-}
 impl BytesContainer for StrBuf {
     #[inline]
     fn container_as_bytes<'a>(&'a self) -> &'a [u8] {
         self.as_bytes()
-    }
-    #[inline]
-    fn container_into_owned_bytes(self) -> Vec<u8> {
-        self.into_bytes()
     }
     #[inline]
     fn container_as_str<'a>(&'a self) -> Option<&'a str> {

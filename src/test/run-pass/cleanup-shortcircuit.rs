@@ -32,7 +32,7 @@ pub fn main() {
     // expression was never evaluated, we wound up trying to clean
     // uninitialized memory.
 
-    if args.len() >= 2 && args[1] == "signal".to_owned() {
+    if args.len() >= 2 && args[1].as_slice() == "signal" {
         // Raise a segfault.
         unsafe { *(0 as *mut int) = 0; }
     }

@@ -399,7 +399,7 @@ mod tests {
             set_stdout(box w);
             println!("hello!");
         });
-        assert_eq!(r.read_to_str().unwrap(), "hello!\n".to_owned());
+        assert_eq!(r.read_to_str().unwrap(), "hello!\n".to_strbuf());
     })
 
     iotest!(fn capture_stderr() {
@@ -412,6 +412,6 @@ mod tests {
             fail!("my special message");
         });
         let s = r.read_to_str().unwrap();
-        assert!(s.contains("my special message"));
+        assert!(s.as_slice().contains("my special message"));
     })
 }

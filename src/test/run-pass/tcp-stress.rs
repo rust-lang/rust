@@ -64,7 +64,7 @@ fn main() {
         builder.spawn(proc() {
             let host = addr.ip.to_str();
             let port = addr.port;
-            match TcpStream::connect(host, port) {
+            match TcpStream::connect(host.as_slice(), port) {
                 Ok(stream) => {
                     let mut stream = stream;
                     stream.write([1]);

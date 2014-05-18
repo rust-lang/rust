@@ -327,7 +327,7 @@ fn mk_test_module(cx: &TestCtxt) -> @ast::Item {
         pub fn main() {
             #![main]
             use std::slice::Vector;
-            test::test_main_static_x(::std::os::args().as_slice(), TESTS);
+            test::test_main_static(::std::os::args().as_slice(), TESTS);
         }
     )).unwrap();
 

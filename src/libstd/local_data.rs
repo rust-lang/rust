@@ -274,12 +274,12 @@ mod tests {
 
     #[test]
     fn test_tls_multitask() {
-        static my_key: Key<~str> = &Key;
-        my_key.replace(Some("parent data".to_owned()));
+        static my_key: Key<StrBuf> = &Key;
+        my_key.replace(Some("parent data".to_strbuf()));
         task::spawn(proc() {
             // TLS shouldn't carry over.
             assert!(my_key.get().is_none());
-            my_key.replace(Some("child data".to_owned()));
+            my_key.replace(Some("child data".to_strbuf()));
             assert!(my_key.get().get_ref().as_slice() == "child data");
             // should be cleaned up for us
         });
@@ -292,17 +292,17 @@ mod tests {
 
     #[test]
     fn test_tls_overwrite() {
-        static my_key: Key<~str> = &Key;
-        my_key.replace(Some("first data".to_owned()));
-        my_key.replace(Some("next data".to_owned())); // Shouldn't leak.
+        static my_key: Key<StrBuf> = &Key;
+        my_key.replace(Some("first data".to_strbuf()));
+        my_key.replace(Some("next data".to_strbuf())); // Shouldn't leak.
         assert!(my_key.get().unwrap().as_slice() == "next data");
     }
 
     #[test]
     fn test_tls_pop() {
-        static my_key: Key<~str> = &Key;
-        my_key.replace(Some("weasel".to_owned()));
-        assert!(my_key.replace(None).unwrap() == "weasel".to_owned());
+        static my_key: Key<StrBuf> = &Key;
+        my_key.replace(Some("weasel".to_strbuf()));
+        assert!(my_key.replace(None).unwrap() == "weasel".to_strbuf());
         // Pop must remove the data from the map.
         assert!(my_key.replace(None).is_none());
     }
@@ -315,19 +315,19 @@ mod tests {
         // to get recorded as something within a rust stack segment. Then a
         // subsequent upcall (esp. for logging, think vsnprintf) would run on
         // a stack smaller than 1 MB.
-        static my_key: Key<~str> = &Key;
+        static my_key: Key<StrBuf> = &Key;
         task::spawn(proc() {
-            my_key.replace(Some("hax".to_owned()));
+            my_key.replace(Some("hax".to_strbuf()));
         });
     }
 
     #[test]
     fn test_tls_multiple_types() {
-        static str_key: Key<~str> = &Key;
+        static str_key: Key<StrBuf> = &Key;
         static box_key: Key<@()> = &Key;
         static int_key: Key<int> = &Key;
         task::spawn(proc() {
-            str_key.replace(Some("string data".to_owned()));
+            str_key.replace(Some("string data".to_strbuf()));
             box_key.replace(Some(@()));
             int_key.replace(Some(42));
         });
@@ -335,12 +335,12 @@ mod tests {
 
     #[test]
     fn test_tls_overwrite_multiple_types() {
-        static str_key: Key<~str> = &Key;
+        static str_key: Key<StrBuf> = &Key;
         static box_key: Key<@()> = &Key;
         static int_key: Key<int> = &Key;
         task::spawn(proc() {
-            str_key.replace(Some("string data".to_owned()));
-            str_key.replace(Some("string data 2".to_owned()));
+            str_key.replace(Some("string data".to_strbuf()));
+            str_key.replace(Some("string data 2".to_strbuf()));
             box_key.replace(Some(@()));
             box_key.replace(Some(@()));
             int_key.replace(Some(42));
@@ -354,13 +354,13 @@ mod tests {
     #[test]
     #[should_fail]
     fn test_tls_cleanup_on_failure() {
-        static str_key: Key<~str> = &Key;
+        static str_key: Key<StrBuf> = &Key;
         static box_key: Key<@()> = &Key;
         static int_key: Key<int> = &Key;
-        str_key.replace(Some("parent data".to_owned()));
+        str_key.replace(Some("parent data".to_strbuf()));
         box_key.replace(Some(@()));
         task::spawn(proc() {
-            str_key.replace(Some("string data".to_owned()));
+            str_key.replace(Some("string data".to_strbuf()));
             box_key.replace(Some(@()));
             int_key.replace(Some(42));
             fail!();

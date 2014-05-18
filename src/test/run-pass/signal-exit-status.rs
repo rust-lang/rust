@@ -26,7 +26,7 @@ use std::io::process::{Command, ExitSignal, ExitStatus};
 pub fn main() {
     let args = os::args();
     let args = args.as_slice();
-    if args.len() >= 2 && args[1] == "signal".to_owned() {
+    if args.len() >= 2 && args[1].as_slice() == "signal" {
         // Raise a segfault.
         unsafe { *(0 as *mut int) = 0; }
     } else {

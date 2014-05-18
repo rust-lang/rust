@@ -480,7 +480,7 @@ impl<'a, 'b> Context<'a, 'b> {
                             }).collect();
                         let (lr, selarg) = match arm.selector {
                             parse::Keyword(t) => {
-                                let p = self.rtpath(t.to_str());
+                                let p = self.rtpath(t.to_str().as_slice());
                                 let p = self.ecx.path_global(sp, p);
                                 (self.rtpath("Keyword"), self.ecx.expr_path(p))
                             }

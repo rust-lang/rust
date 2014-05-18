@@ -734,7 +734,7 @@ impl<'a> BorrowckCtxt<'a> {
                     }
                     mc::PositionalField(idx) => {
                         out.push_char('#'); // invent a notation here
-                        out.push_str(idx.to_str());
+                        out.push_str(idx.to_str().as_slice());
                     }
                 }
             }

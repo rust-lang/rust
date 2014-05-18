@@ -604,7 +604,7 @@ impl_to_biguint!(u32,  FromPrimitive::from_u32)
 impl_to_biguint!(u64,  FromPrimitive::from_u64)
 
 impl ToStrRadix for BigUint {
-    fn to_str_radix(&self, radix: uint) -> ~str {
+    fn to_str_radix(&self, radix: uint) -> StrBuf {
         assert!(1 < radix && radix <= 16);
         let (base, max_len) = get_radix_base(radix);
         if base == BigDigit::base {
@@ -627,15 +627,17 @@ impl ToStrRadix for BigUint {
             return result;
         }
 
-        fn fill_concat(v: &[BigDigit], radix: uint, l: uint) -> ~str {
-            if v.is_empty() { return "0".to_owned() }
+        fn fill_concat(v: &[BigDigit], radix: uint, l: uint) -> StrBuf {
+            if v.is_empty() {
+                return "0".to_strbuf()
+            }
             let mut s = StrBuf::with_capacity(v.len() * l);
             for n in v.iter().rev() {
                 let ss = (*n as uint).to_str_radix(radix);
                 s.push_str("0".repeat(l - ss.len()));
-                s.push_str(ss);
+                s.push_str(ss.as_slice());
             }
-            s.as_slice().trim_left_chars('0').to_owned()
+            s.as_slice().trim_left_chars('0').to_strbuf()
         }
     }
 }
@@ -1209,11 +1211,11 @@ impl_to_bigint!(u64,  FromPrimitive::from_u64)
 
 impl ToStrRadix for BigInt {
     #[inline]
-    fn to_str_radix(&self, radix: uint) -> ~str {
+    fn to_str_radix(&self, radix: uint) -> StrBuf {
         match self.sign {
             Plus  => self.data.to_str_radix(radix),
-            Zero  => "0".to_owned(),
-            Minus => "-".to_owned() + self.data.to_str_radix(radix)
+            Zero  => "0".to_strbuf(),
+            Minus => format_strbuf!("-{}", self.data.to_str_radix(radix)),
         }
     }
 }

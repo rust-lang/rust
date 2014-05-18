@@ -506,15 +506,21 @@ impl<'a> Context<'a> {
         let mut note = None;
         let msg = match src {
             Default => {
-                format!("{}, \\#[{}({})] on by default", msg,
-                    level_to_str(level), self.lint_to_str(lint))
+                format_strbuf!("{}, \\#[{}({})] on by default",
+                               msg,
+                               level_to_str(level),
+                               self.lint_to_str(lint))
             },
             CommandLine => {
-                format!("{} [-{} {}]", msg,
-                    match level {
-                        warn => 'W', deny => 'D', forbid => 'F',
-                        allow => fail!()
-                    }, self.lint_to_str(lint).replace("_", "-"))
+                format_strbuf!("{} [-{} {}]",
+                               msg,
+                               match level {
+                                warn => 'W',
+                                deny => 'D',
+                                forbid => 'F',
+                                allow => fail!()
+                               },
+                               self.lint_to_str(lint).replace("_", "-"))
             },
             Node(src) => {
                 note = Some(src);
@@ -522,8 +528,8 @@ impl<'a> Context<'a> {
             }
         };
         match level {
-            warn =>          { self.tcx.sess.span_warn(span, msg); }
-            deny | forbid => { self.tcx.sess.span_err(span, msg);  }
+            warn => self.tcx.sess.span_warn(span, msg.as_slice()),
+            deny | forbid => self.tcx.sess.span_err(span, msg.as_slice()),
             allow => fail!(),
         }
 

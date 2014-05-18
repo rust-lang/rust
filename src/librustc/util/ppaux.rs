@@ -255,7 +255,7 @@ pub fn ty_to_str(cx: &ctxt, typ: t) -> StrBuf {
         match fn_style {
             ast::NormalFn => {}
             _ => {
-                s.push_str(fn_style.to_str());
+                s.push_str(fn_style.to_str().as_slice());
                 s.push_char(' ');
             }
         };
@@ -292,7 +292,7 @@ pub fn ty_to_str(cx: &ctxt, typ: t) -> StrBuf {
         match cty.fn_style {
             ast::NormalFn => {}
             _ => {
-                s.push_str(cty.fn_style.to_str());
+                s.push_str(cty.fn_style.to_str().as_slice());
                 s.push_char(' ');
             }
         };

@@ -302,8 +302,10 @@ pub fn mod_enabled(level: u32, module: &str) -> bool {
     enabled(level, module, unsafe { (*DIRECTIVES).iter() })
 }
 
-fn enabled(level: u32, module: &str,
-           iter: slice::Items<directive::LogDirective>) -> bool {
+fn enabled(level: u32,
+           module: &str,
+           iter: slice::Items<directive::LogDirective>)
+           -> bool {
     // Search for the longest match, the vector is assumed to be pre-sorted.
     for directive in iter.rev() {
         match directive.name {
@@ -322,7 +324,7 @@ fn enabled(level: u32, module: &str,
 /// `Once` primitive (and this function is called from that primitive).
 fn init() {
     let mut directives = match os::getenv("RUST_LOG") {
-        Some(spec) => directive::parse_logging_spec(spec),
+        Some(spec) => directive::parse_logging_spec(spec.as_slice()),
         None => Vec::new(),
     };
 

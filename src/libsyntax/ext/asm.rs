@@ -208,7 +208,8 @@ pub fn expand_asm(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     // Append an input operand, with the form of ("0", expr)
     // that links to an output operand.
     for &(i, out) in read_write_operands.iter() {
-        inputs.push((token::intern_and_get_ident(i.to_str()), out));
+        inputs.push((token::intern_and_get_ident(i.to_str().as_slice()),
+                                                 out));
     }
 
     MacExpr::new(@ast::Expr {

@@ -620,18 +620,18 @@ fn parse_debugger_commands(file_path: &Path, debugger_prefix: &str)
     for line in reader.lines() {
         match line {
             Ok(line) => {
-                if line.contains("#break") {
+                if line.as_slice().contains("#break") {
                     breakpoint_lines.push(counter);
                 }
 
                 header::parse_name_value_directive(
-                        line,
+                        line.as_slice(),
                         command_directive.to_strbuf()).map(|cmd| {
                     commands.push(cmd)
                 });
 
                 header::parse_name_value_directive(
-                        line,
+                        line.as_slice(),
                         check_directive.to_strbuf()).map(|cmd| {
                     check_lines.push(cmd)
                 });
