@@ -349,17 +349,44 @@ CFGFLAG$(1)_T_$(2)_H_$(3) = stage$(1)
 endef
 
 # Same macro/variables as above, but defined in a separate loop so it can use
-# all the varibles above for all archs. The RPATH_VAR setup sometimes needs to
+# all the variables above for all archs. The RPATH_VAR setup sometimes needs to
 # reach across triples to get things in order.
+#
+# Defines (with the standard $(1)_T_$(2)_H_$(3) suffix):
+# * `LD_LIBRARY_PATH_ENV_NAME`: the name for the key to use in the OS
+#   environment to access or extend the lookup path for dynamic
+#   libraries.  Note on Windows, that key is `$PATH`, and thus not
+#   only conflates programs with dynamic libraries, but also often
+#   contains spaces which confuse make.
+# * `LD_LIBRARY_PATH_ENV_HOSTDIR`: the entry to add to lookup path for the host
+# * `LD_LIBRARY_PATH_ENV_TARGETDIR`: the entry to add to lookup path for target
+# 
+# Below that, HOST_RPATH_VAR and TARGET_RPATH_VAR are defined in terms of the
+# above settings.
+# 
 define SREQ_CMDS
 
 ifeq ($$(OSTYPE_$(3)),apple-darwin)
-  RPATH_VAR$(1)_T_$(2)_H_$(3) := \
-      DYLD_LIBRARY_PATH="$$$$DYLD_LIBRARY_PATH:$$(CURDIR)/$$(HLIB$(1)_H_$(3))"
+  LD_LIBRARY_PATH_ENV_NAME$(1)_T_$(2)_H_$(3) := DYLD_LIBRARY_PATH
 else
-  RPATH_VAR$(1)_T_$(2)_H_$(3) := \
-      LD_LIBRARY_PATH="$$$$LD_LIBRARY_PATH:$$(CURDIR)/$$(HLIB$(1)_H_$(3))"
+ifeq ($$(CFG_WINDOWSY_$(2)),1)
+  LD_LIBRARY_PATH_ENV_NAME$(1)_T_$(2)_H_$(3) := PATH
+else
+  LD_LIBRARY_PATH_ENV_NAME$(1)_T_$(2)_H_$(3) := LD_LIBRARY_PATH
 endif
+endif
+
+LD_LIBRARY_PATH_ENV_HOSTDIR$(1)_T_$(2)_H_$(3) := \
+    $$(CURDIR)/$$(HLIB$(1)_H_$(3))
+LD_LIBRARY_PATH_ENV_TARGETDIR$(1)_T_$(2)_H_$(3) := \
+    $$(CURDIR)/$$(TLIB1_T_$(2)_H_$(CFG_BUILD))
+
+HOST_RPATH_VAR$(1)_T_$(2)_H_$(3) := \
+  $$(LD_LIBRARY_PATH_ENV_NAME$(1)_T_$(2)_H_$(3))=$$$$$$(LD_LIBRARY_PATH_ENV_NAME$(1)_T_$(2)_H_$(3)):$$(LD_LIBRARY_PATH_ENV_HOSTDIR$(1)_T_$(2)_H_$(3))
+TARGET_RPATH_VAR$(1)_T_$(2)_H_$(3) := \
+  $$(LD_LIBRARY_PATH_ENV_NAME$(1)_T_$(2)_H_$(3))=$$$$$$(LD_LIBRARY_PATH_ENV_NAME$(1)_T_$(2)_H_$(3)):$$(LD_LIBRARY_PATH_ENV_TARGETDIR$(1)_T_$(2)_H_$(3))
+
+RPATH_VAR$(1)_T_$(2)_H_$(3) := $$(HOST_RPATH_VAR$(1)_T_$(2)_H_$(3))
 
 # Pass --cfg stage0 only for the build->host part of stage0;
 # if you're building a cross config, the host->* parts are
@@ -376,13 +403,7 @@ ifeq ($(1),0)
 ifneq ($(strip $(CFG_BUILD)),$(strip $(3)))
 CFGFLAG$(1)_T_$(2)_H_$(3) = stage1
 
-ifeq ($$(OSTYPE_$(3)),apple-darwin)
-  RPATH_VAR$(1)_T_$(2)_H_$(3) := \
-      DYLD_LIBRARY_PATH="$$$$DYLD_LIBRARY_PATH:$$(CURDIR)/$$(TLIB1_T_$(2)_H_$(CFG_BUILD))"
-else
-  RPATH_VAR$(1)_T_$(2)_H_$(3) := \
-      LD_LIBRARY_PATH="$$$$LD_LIBRARY_PATH:$$(CURDIR)/$$(TLIB1_T_$(2)_H_$(CFG_BUILD))"
-endif
+RPATH_VAR$(1)_T_$(2)_H_$(3) := $$(TARGET_RPATH_VAR$(1)_T_$(2)_H_$(3))
 endif
 endif
 

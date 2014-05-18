@@ -5,5 +5,5 @@ all: $(call STATICLIB,cfoo)
 	$(RUSTC) bar.rs
 	rm $(TMPDIR)/$(call STATICLIB_GLOB,cfoo)
 	$(call RUN,bar)
-	rm $(TMPDIR)/$(call DYLIB_GLOB,foo)
+	$(call REMOVE_DYLIBS,foo)
 	$(call FAIL,bar)

@@ -5,5 +5,5 @@ all:
 	$(RUSTC) dylib.rs
 	$(RUSTC) rlib.rs --crate-type=dylib
 	$(RUSTC) dylib.rs
-	rm $(call DYLIB,rlib-*)
+	$(call REMOVE_DYLIBS,rlib)
 	$(RUSTC) prog.rs && exit 1 || exit 0
