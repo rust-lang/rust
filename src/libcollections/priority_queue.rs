@@ -98,12 +98,18 @@ impl<T: TotalOrd> PriorityQueue<T> {
         item
     }
 
+    #[deprecated="renamed to `into_vec`"]
+    fn to_vec(self) -> Vec<T> { self.into_vec() }
+
+    #[deprecated="renamed to `into_sorted_vec`"]
+    fn to_sorted_vec(self) -> Vec<T> { self.into_sorted_vec() }
+
     /// Consume the PriorityQueue and return the underlying vector
-    pub fn to_vec(self) -> Vec<T> { let PriorityQueue{data: v} = self; v }
+    pub fn into_vec(self) -> Vec<T> { let PriorityQueue{data: v} = self; v }
 
     /// Consume the PriorityQueue and return a vector in sorted
     /// (ascending) order
-    pub fn to_sorted_vec(self) -> Vec<T> {
+    pub fn into_sorted_vec(self) -> Vec<T> {
         let mut q = self;
         let mut end = q.len();
         while end > 1 {
