@@ -11,7 +11,7 @@ ifneq ($(shell uname),FreeBSD)
 all:
 	$(RUSTC) foo.rs
 	ln -s $(call STATICLIB,foo-*) $(call STATICLIB,foo)
-	$(CC) bar.c -lfoo -o $(call RUN,bar) $(EXTRAFLAGS) -lstdc++
+	$(CC) bar.c -lfoo -o $(call RUN_BINFILE,bar) $(EXTRAFLAGS) -lstdc++
 	$(call RUN,bar)
 	rm $(call STATICLIB,foo*)
 	$(call RUN,bar)
