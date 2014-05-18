@@ -413,7 +413,7 @@ pub fn fold_tts<T: Folder>(tts: &[TokenTree], fld: &mut T) -> Vec<TokenTree> {
     }).collect()
 }
 
-fn fold_ident_or_macro<T: Folder>(i: Ident, folder: &mut T) -> Ident {
+pub fn fold_ident_or_macro<T: Folder>(i: Ident, folder: &mut T) -> Ident {
     match i.get_macro_ident() {
         Some(mac) => ast::Ident::new_macro_ident(folder.fold_mac(&mac)),
         None      => folder.fold_ident(i)

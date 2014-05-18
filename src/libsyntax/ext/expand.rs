@@ -229,7 +229,7 @@ fn expand_loop_block(loop_block: P<Block>,
             // and be renamed incorrectly.
             let mut rename_list = vec!(rename);
             let mut rename_fld = renames_to_fold(&mut rename_list);
-            let renamed_ident = rename_fld.fold_ident(label);
+            let renamed_ident = fold_ident_or_macro(label, &mut rename_fld);
 
             // The rename *must* be added to the enclosed syntax context for
             // `break` or `continue` to pick up because by definition they are
