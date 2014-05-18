@@ -26,7 +26,6 @@ extern crate syntax;
 extern crate rustc;
 
 use std::rc::Rc;
-use std::gc::{Gc, GC};
 
 use syntax::ast;
 use syntax::codemap;
@@ -35,6 +34,7 @@ use syntax::ext::base::{ExtCtxt, MacResult, MacExpr, DummyResult};
 use syntax::parse::token;
 use syntax::print::pprust;
 use syntax::fold::Folder;
+use syntax::ptr::P;
 
 use rustc::plugin::Registry;
 
@@ -111,7 +111,7 @@ struct NfaGen<'a> {
 }
 
 impl<'a> NfaGen<'a> {
-    fn code(&mut self) -> Gc<ast::Expr> {
+    fn code(&mut self) -> P<ast::Expr> {
         // Most or all of the following things are used in the quasiquoted
         // expression returned.
         let num_cap_locs = 2 * self.prog.num_captures();
@@ -332,7 +332,7 @@ fn exec<'t>(which: ::regex::native::MatchKind, input: &'t str,
 
     // Generates code for the `add` method, which is responsible for adding
     // zero-width states to the next queue of states to visit.
-    fn add_insts(&self) -> Gc<ast::Expr> {
+    fn add_insts(&self) -> P<ast::Expr> {
         let arms = self.prog.insts.iter().enumerate().map(|(pc, inst)| {
             let nextpc = pc + 1;
             let body = match *inst {
@@ -433,7 +433,7 @@ fn exec<'t>(which: ::regex::native::MatchKind, input: &'t str,
 
     // Generates the code for the `step` method, which processes all states
     // in the current queue that consume a single character.
-    fn step_insts(&self) -> Gc<ast::Expr> {
+    fn step_insts(&self) -> P<ast::Expr> {
         let arms = self.prog.insts.iter().enumerate().map(|(pc, inst)| {
             let nextpc = pc + 1;
             let body = match *inst {
@@ -524,9 +524,7 @@ fn exec<'t>(which: ::regex::native::MatchKind, input: &'t str,
     // Translates a character class into a match expression.
     // This avoids a binary search (and is hopefully replaced by a jump
     // table).
-    fn match_class(&self, casei: bool, ranges: &[(char, char)]) -> Gc<ast::Expr> {
-        let expr_true = quote_expr!(self.cx, true);
-
+    fn match_class(&self, casei: bool, ranges: &[(char, char)]) -> P<ast::Expr> {
         let mut arms = ranges.iter().map(|&(mut start, mut end)| {
             if casei {
                 start = start.to_uppercase();
@@ -534,7 +532,7 @@ fn exec<'t>(which: ::regex::native::MatchKind, input: &'t str,
             }
             let pat = self.cx.pat(self.sp, ast::PatRange(quote_expr!(self.cx, $start),
                                                          quote_expr!(self.cx, $end)));
-            self.cx.arm(self.sp, vec!(pat), expr_true)
+            self.cx.arm(self.sp, vec!(pat), quote_expr!(self.cx, true))
         }).collect::<Vec<ast::Arm>>();
 
         arms.push(self.wild_arm_expr(quote_expr!(self.cx, false)));
@@ -546,7 +544,7 @@ fn exec<'t>(which: ::regex::native::MatchKind, input: &'t str,
     // Generates code for checking a literal prefix of the search string.
     // The code is only generated if the regex *has* a literal prefix.
     // Otherwise, a no-op is returned.
-    fn check_prefix(&self) -> Gc<ast::Expr> {
+    fn check_prefix(&self) -> P<ast::Expr> {
         if self.prog.prefix.len() == 0 {
             self.empty_block()
         } else {
@@ -570,32 +568,32 @@ fn exec<'t>(which: ::regex::native::MatchKind, input: &'t str,
     // A wild-card arm is automatically added that executes a no-op. It will
     // never be used, but is added to satisfy the compiler complaining about
     // non-exhaustive patterns.
-    fn match_insts(&self, mut arms: Vec<ast::Arm>) -> Gc<ast::Expr> {
+    fn match_insts(&self, mut arms: Vec<ast::Arm>) -> P<ast::Expr> {
         arms.push(self.wild_arm_expr(self.empty_block()));
         self.cx.expr_match(self.sp, quote_expr!(self.cx, pc), arms)
     }
 
-    fn empty_block(&self) -> Gc<ast::Expr> {
+    fn empty_block(&self) -> P<ast::Expr> {
         quote_expr!(self.cx, {})
     }
 
     // Creates a match arm for the instruction at `pc` with the expression
     // `body`.
-    fn arm_inst(&self, pc: uint, body: Gc<ast::Expr>) -> ast::Arm {
+    fn arm_inst(&self, pc: uint, body: P<ast::Expr>) -> ast::Arm {
         let pc_pat = self.cx.pat_lit(self.sp, quote_expr!(self.cx, $pc));
 
         self.cx.arm(self.sp, vec!(pc_pat), body)
     }
 
     // Creates a wild-card match arm with the expression `body`.
-    fn wild_arm_expr(&self, body: Gc<ast::Expr>) -> ast::Arm {
+    fn wild_arm_expr(&self, body: P<ast::Expr>) -> ast::Arm {
         ast::Arm {
             attrs: vec!(),
-            pats: vec!(box(GC) ast::Pat{
+            pats: vec!(P(ast::Pat{
                 id: ast::DUMMY_NODE_ID,
                 span: self.sp,
                 node: ast::PatWild(ast::PatWildSingle),
-            }),
+            })),
             guard: None,
             body: body,
         }
@@ -605,8 +603,8 @@ fn exec<'t>(which: ::regex::native::MatchKind, input: &'t str,
     // Converts `xs` to a `[x1, x2, .., xN]` expression by calling `to_expr`
     // on each element in `xs`.
     fn vec_expr<T, It: Iterator<T>>(&self, xs: It,
-                                    to_expr: |&ExtCtxt, T| -> Gc<ast::Expr>)
-                  -> Gc<ast::Expr> {
+                                    to_expr: |&ExtCtxt, T| -> P<ast::Expr>)
+                  -> P<ast::Expr> {
         let exprs = xs.map(|x| to_expr(self.cx, x)).collect();
         self.cx.expr_vec(self.sp, exprs)
     }
@@ -618,13 +616,13 @@ fn parse(cx: &mut ExtCtxt, tts: &[ast::TokenTree]) -> Option<String> {
     let mut parser = cx.new_parser_from_tts(tts);
     let entry = cx.expander().fold_expr(parser.parse_expr());
     let regex = match entry.node {
-        ast::ExprLit(lit) => {
+        ast::ExprLit(ref lit) => {
             match lit.node {
                 ast::LitStr(ref s, _) => s.to_string(),
                 _ => {
                     cx.span_err(entry.span, format!(
                         "expected string literal but got `{}`",
-                        pprust::lit_to_string(&*lit)).as_slice());
+                        pprust::lit_to_string(&**lit)).as_slice());
                     return None
                 }
             }
