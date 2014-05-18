@@ -22,17 +22,17 @@ pub struct PriorityQueue<T> {
     data: Vec<T>,
 }
 
-impl<T:Ord> Container for PriorityQueue<T> {
+impl<T: TotalOrd> Container for PriorityQueue<T> {
     /// Returns the length of the queue
     fn len(&self) -> uint { self.data.len() }
 }
 
-impl<T:Ord> Mutable for PriorityQueue<T> {
+impl<T: TotalOrd> Mutable for PriorityQueue<T> {
     /// Drop all items from the queue
     fn clear(&mut self) { self.data.truncate(0) }
 }
 
-impl<T:Ord> PriorityQueue<T> {
+impl<T: TotalOrd> PriorityQueue<T> {
     /// An iterator visiting all values in underlying vector, in
     /// arbitrary order.
     pub fn iter<'a>(&'a self) -> Items<'a, T> {
@@ -197,7 +197,7 @@ impl<'a, T> Iterator<&'a T> for Items<'a, T> {
     fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
 }
 
-impl<T: Ord> FromIterator<T> for PriorityQueue<T> {
+impl<T: TotalOrd> FromIterator<T> for PriorityQueue<T> {
     fn from_iter<Iter: Iterator<T>>(iter: Iter) -> PriorityQueue<T> {
         let mut q = PriorityQueue::new();
         q.extend(iter);
@@ -205,7 +205,7 @@ impl<T: Ord> FromIterator<T> for PriorityQueue<T> {
     }
 }
 
-impl<T: Ord> Extendable<T> for PriorityQueue<T> {
+impl<T: TotalOrd> Extendable<T> for PriorityQueue<T> {
     fn extend<Iter: Iterator<T>>(&mut self, mut iter: Iter) {
         let (lower, _) = iter.size_hint();
 
