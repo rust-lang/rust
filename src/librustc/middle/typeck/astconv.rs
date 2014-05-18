@@ -653,7 +653,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                         tcx.sess.span_err(
                             ast_ty.span,
                             format!("reference to trait `{name}` where a type is expected; \
-                                    try `~{name}` or `&{name}`", name=path_str));
+                                    try `Box<{name}>` or `&{name}`", name=path_str));
                         ty::mk_err()
                     }
                     ast::DefTy(did) | ast::DefStruct(did) => {
