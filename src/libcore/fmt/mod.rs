@@ -43,16 +43,44 @@ pub mod rt;
 
 pub type Result = result::Result<(), FormatError>;
 
-/// dox
+/// The error type which is returned from formatting a message into a stream.
+///
+/// This type does not support transmission of an error other than that an error
+/// occurred. Any extra information must be arranged to be transmitted through
+/// some other means.
 pub enum FormatError {
-    /// dox
+    /// A generic write error occurred during formatting, no other information
+    /// is transmitted via this variant.
     WriteError,
 }
 
-/// dox
+/// A collection of methods that are required to format a message into a stream.
+///
+/// This trait is the type which this modules requires when formatting
+/// information. This is similar to the standard library's `io::Writer` trait,
+/// but it is only intended for use in libcore.
+///
+/// This trait should generally not be implemented by consumers of the standard
+/// library. The `write!` macro accepts an instance of `io::Writer`, and the
+/// `io::Writer` trait is favored over implementing this trait.
 pub trait FormatWriter {
-    /// dox
+    /// Writes a slice of bytes into this writer, returning whether the write
+    /// succeeded.
+    ///
+    /// This method can only succeed if the entire byte slice was successfully
+    /// written, and this method will not return until all data has been
+    /// written or an error occurs.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an instance of `FormatError` on error.
     fn write(&mut self, bytes: &[u8]) -> Result;
+
+    /// Glue for usage of the `write!` macro with implementors of this trait.
+    ///
+    /// This method should generally not be invoked manually, but rather through
+    /// the `write!` macro itself.
+    fn write_fmt(&mut self, args: &Arguments) -> Result { write(self, args) }
 }
 
 /// A struct to represent both where to emit formatting strings to and how they
