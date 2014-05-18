@@ -354,9 +354,8 @@ impl<T:Clone> Clone for Vec<T> {
 }
 
 impl<T> FromIterator<T> for Vec<T> {
-    fn from_iter<I:Iterator<T>>(mut iterator: I) -> Vec<T> {
-        let (lower, _) = iterator.size_hint();
-        let mut vector = Vec::with_capacity(lower);
+    fn from_iter_with_capacity<I:Iterator<T>>(mut iterator: I, cap: uint) -> Vec<T> {
+        let mut vector = Vec::with_capacity(cap);
         for element in iterator {
             vector.push(element)
         }
@@ -365,9 +364,8 @@ impl<T> FromIterator<T> for Vec<T> {
 }
 
 impl<T> Extendable<T> for Vec<T> {
-    fn extend<I: Iterator<T>>(&mut self, mut iterator: I) {
-        let (lower, _) = iterator.size_hint();
-        self.reserve_additional(lower);
+    fn extend_with_capacity<I: Iterator<T>>(&mut self, mut iterator: I, extra: uint) {
+        self.reserve_additional(extra);
         for element in iterator {
             self.push(element)
         }

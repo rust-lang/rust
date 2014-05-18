@@ -1465,16 +1465,16 @@ pub type Values<'a, K, V> =
     iter::Map<'static, (&'a K, &'a V), &'a V, Entries<'a, K, V>>;
 
 impl<K: TotalEq + Hash<S>, V, S, H: Hasher<S> + Default> FromIterator<(K, V)> for HashMap<K, V, H> {
-    fn from_iter<T: Iterator<(K, V)>>(iter: T) -> HashMap<K, V, H> {
-        let (lower, _) = iter.size_hint();
-        let mut map = HashMap::with_capacity_and_hasher(lower, Default::default());
+    fn from_iter_with_capacity<T: Iterator<(K, V)>>(iter: T, cap: uint) -> HashMap<K, V, H> {
+        let mut map = HashMap::with_capacity_and_hasher(cap, Default::default());
         map.extend(iter);
         map
     }
 }
 
 impl<K: TotalEq + Hash<S>, V, S, H: Hasher<S> + Default> Extendable<(K, V)> for HashMap<K, V, H> {
-    fn extend<T: Iterator<(K, V)>>(&mut self, mut iter: T) {
+    fn extend_with_capacity<T: Iterator<(K, V)>>(&mut self, mut iter: T, extra: uint) {
+        self.reserve_additional(extra);
         for (k, v) in iter {
             self.insert(k, v);
         }
@@ -1633,16 +1633,16 @@ impl<T: TotalEq + Hash<S> + fmt::Show, S, H: Hasher<S>> fmt::Show for HashSet<T,
 }
 
 impl<T: TotalEq + Hash<S>, S, H: Hasher<S> + Default> FromIterator<T> for HashSet<T, H> {
-    fn from_iter<I: Iterator<T>>(iter: I) -> HashSet<T, H> {
-        let (lower, _) = iter.size_hint();
-        let mut set = HashSet::with_capacity_and_hasher(lower, Default::default());
+    fn from_iter_with_capacity<I: Iterator<T>>(iter: I, cap: uint) -> HashSet<T, H> {
+        let mut set = HashSet::with_capacity_and_hasher(cap, Default::default());
         set.extend(iter);
         set
     }
 }
 
 impl<T: TotalEq + Hash<S>, S, H: Hasher<S> + Default> Extendable<T> for HashSet<T, H> {
-    fn extend<I: Iterator<T>>(&mut self, mut iter: I) {
+    fn extend_with_capacity<I: Iterator<T>>(&mut self, mut iter: I, extra: uint) {
+        self.reserve_additional(extra);
         for k in iter {
             self.insert(k);
         }

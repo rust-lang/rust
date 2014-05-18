@@ -399,16 +399,16 @@ impl<A: Eq> Eq for RingBuf<A> {
 }
 
 impl<A> FromIterator<A> for RingBuf<A> {
-    fn from_iter<T: Iterator<A>>(iterator: T) -> RingBuf<A> {
-        let (lower, _) = iterator.size_hint();
-        let mut deq = RingBuf::with_capacity(lower);
+    fn from_iter_with_capacity<T: Iterator<A>>(iterator: T, cap: uint) -> RingBuf<A> {
+        let mut deq = RingBuf::with_capacity(cap);
         deq.extend(iterator);
         deq
     }
 }
 
 impl<A> Extendable<A> for RingBuf<A> {
-    fn extend<T: Iterator<A>>(&mut self, mut iterator: T) {
+    fn extend_with_capacity<T: Iterator<A>>(&mut self, mut iterator: T, extra: uint) {
+        self.reserve_additional(extra);
         for elt in iterator {
             self.push_back(elt);
         }

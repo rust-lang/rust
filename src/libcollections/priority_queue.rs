@@ -204,20 +204,16 @@ impl<'a, T> Iterator<&'a T> for Items<'a, T> {
 }
 
 impl<T: Ord> FromIterator<T> for PriorityQueue<T> {
-    fn from_iter<Iter: Iterator<T>>(iter: Iter) -> PriorityQueue<T> {
-        let mut q = PriorityQueue::new();
+    fn from_iter_with_capacity<Iter: Iterator<T>>(iter: Iter, cap: uint) -> PriorityQueue<T> {
+        let mut q = PriorityQueue::with_capacity(cap);
         q.extend(iter);
         q
     }
 }
 
 impl<T: Ord> Extendable<T> for PriorityQueue<T> {
-    fn extend<Iter: Iterator<T>>(&mut self, mut iter: Iter) {
-        let (lower, _) = iter.size_hint();
-
-        let len = self.capacity();
-        self.reserve(len + lower);
-
+    fn extend_with_capacity<Iter: Iterator<T>>(&mut self, mut iter: Iter, extra: uint) {
+        self.reserve_additional(extra);
         for elem in iter {
             self.push(elem);
         }
