@@ -31,8 +31,14 @@ impl<T: 'static> P<T> {
         f(*self.ptr)
     }
 
-    pub fn map(self, f: |T| -> T) -> P<T> {
-        self.and_then(|x| P(f(x)))
+    pub fn map(mut self, f: |T| -> T) -> P<T> {
+        use std::{mem, ptr};
+        unsafe {
+            let p = &mut *self.ptr;
+            // FIXME(#5016) this shouldn't need to zero to be safe.
+            mem::move_val_init(p, f(ptr::read_and_zero(p)));
+        }
+        self
     }
 }
 

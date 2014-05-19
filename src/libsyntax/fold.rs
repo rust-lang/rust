@@ -35,8 +35,15 @@ pub trait MoveMap<T> {
 }
 
 impl<T> MoveMap<T> for Vec<T> {
-    fn move_map(self, f: |T| -> T) -> Vec<T> {
-        self.move_iter().map(f).collect()
+    fn move_map(mut self, f: |T| -> T) -> Vec<T> {
+        use std::{mem, ptr};
+        for p in self.mut_iter() {
+            unsafe {
+                // FIXME(#5016) this shouldn't need to zero to be safe.
+                mem::move_val_init(p, f(ptr::read_and_zero(p)));
+            }
+        }
+        self
     }
 }
 
