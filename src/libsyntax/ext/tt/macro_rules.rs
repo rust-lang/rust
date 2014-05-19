@@ -63,6 +63,11 @@ impl<'a> MacResult for ParserAnyMacro<'a> {
         self.ensure_complete_parse(true);
         Some(ret)
     }
+    fn make_pat(&self) -> Option<@ast::Pat> {
+        let ret = self.parser.borrow_mut().parse_pat();
+        self.ensure_complete_parse(false);
+        Some(ret)
+    }
     fn make_items(&self) -> Option<SmallVector<@ast::Item>> {
         let mut ret = SmallVector::zero();
         loop {
