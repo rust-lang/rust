@@ -1,0 +1,21 @@
+#!/usr/bin/env ruby
+
+compile '/static/*' do
+end
+
+compile '*' do
+  filter :erb
+  filter :pandoc
+  filter :colorize_syntax, :default_colorizer => :pygmentsrb
+  layout item[:layout] || 'default'
+end
+
+route '/static/*' do
+  item.identifier[7..-2]
+end
+
+route '*' do
+  item.identifier + 'index.html'
+end
+
+layout '*', :erb

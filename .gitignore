@@ -89,3 +89,8 @@ build/
 i686-pc-mingw32/
 src/librustc/lib/llvmdeps.rs
 *.pot
+src/doc/documentation/tmp
+src/doc/documentation/output
+src/doc/documentation/public
+src/doc/documentation/*.log
+src/doc/documentation/target
