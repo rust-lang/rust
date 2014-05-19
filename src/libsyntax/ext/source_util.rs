@@ -95,6 +95,8 @@ pub fn expand_include(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                                         &res_rel_file(cx,
                                                       sp,
                                                       &Path::new(file)),
+                                        true,
+                                        None,
                                         sp);
     base::MacExpr::new(p.parse_expr())
 }

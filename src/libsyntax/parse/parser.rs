@@ -313,6 +313,8 @@ pub fn Parser<'a>(
         obsolete_set: HashSet::new(),
         mod_path_stack: Vec::new(),
         open_braces: Vec::new(),
+        owns_directory: true,
+        root_module_name: None,
     }
 }
 
@@ -342,6 +344,13 @@ pub struct Parser<'a> {
     pub mod_path_stack: Vec<InternedString>,
     /// Stack of spans of open delimiters. Used for error message.
     pub open_braces: Vec<Span>,
+    /// Flag if this parser "owns" the directory that it is currently parsing
+    /// in. This will affect how nested files are looked up.
+    pub owns_directory: bool,
+    /// Name of the root module this parser originated from. If `None`, then the
+    /// name is not known. This does not change while the parser is descending
+    /// into modules, and sub-parsers have new values for this name.
+    pub root_module_name: Option<StrBuf>,
 }
 
 fn is_plain_ident_or_underscore(t: &token::Token) -> bool {
@@ -4179,9 +4188,12 @@ impl<'a> Parser<'a> {
             self.push_mod_path(id, outer_attrs);
             self.expect(&token::LBRACE);
             let mod_inner_lo = self.span.lo;
+            let old_owns_directory = self.owns_directory;
+            self.owns_directory = true;
             let (inner, next) = self.parse_inner_attrs_and_next();
             let m = self.parse_mod_items(token::RBRACE, next, mod_inner_lo);
             self.expect(&token::RBRACE);
+            self.owns_directory = old_owns_directory;
             self.pop_mod_path();
             (id, ItemMod(m), Some(inner))
         }
@@ -4211,11 +4223,11 @@ impl<'a> Parser<'a> {
         prefix.pop();
         let mod_path = Path::new(".").join_many(self.mod_path_stack.as_slice());
         let dir_path = prefix.join(&mod_path);
-        let file_path = match ::attr::first_attr_value_str_by_name(
+        let mod_string = token::get_ident(id);
+        let (file_path, owns_directory) = match ::attr::first_attr_value_str_by_name(
                 outer_attrs, "path") {
-            Some(d) => dir_path.join(d),
+            Some(d) => (dir_path.join(d), true),
             None => {
-                let mod_string = token::get_ident(id);
                 let mod_name = mod_string.get().to_owned();
                 let default_path_str = mod_name + ".rs";
                 let secondary_path_str = mod_name + "/mod.rs";
@@ -4223,9 +4235,30 @@ impl<'a> Parser<'a> {
                 let secondary_path = dir_path.join(secondary_path_str.as_slice());
                 let default_exists = default_path.exists();
                 let secondary_exists = secondary_path.exists();
+
+                if !self.owns_directory {
+                    self.span_err(id_sp,
+                                  "cannot declare a new module at this location");
+                    let this_module = match self.mod_path_stack.last() {
+                        Some(name) => name.get().to_strbuf(),
+                        None => self.root_module_name.get_ref().clone(),
+                    };
+                    self.span_note(id_sp,
+                                   format!("maybe move this module `{0}` \
+                                            to its own directory via \
+                                            `{0}/mod.rs`", this_module));
+                    if default_exists || secondary_exists {
+                        self.span_note(id_sp,
+                                       format!("... or maybe `use` the module \
+                                                `{}` instead of possibly \
+                                                redeclaring it", mod_name));
+                    }
+                    self.abort_if_errors();
+                }
+
                 match (default_exists, secondary_exists) {
-                    (true, false) => default_path,
-                    (false, true) => secondary_path,
+                    (true, false) => (default_path, false),
+                    (false, true) => (secondary_path, true),
                     (false, false) => {
                         self.span_fatal(id_sp, format!("file not found for module `{}`", mod_name));
                     }
@@ -4238,11 +4271,14 @@ impl<'a> Parser<'a> {
             }
         };
 
-        self.eval_src_mod_from_path(file_path, id_sp)
+        self.eval_src_mod_from_path(file_path, owns_directory,
+                                    mod_string.get().to_strbuf(), id_sp)
     }
 
     fn eval_src_mod_from_path(&mut self,
                               path: Path,
+                              owns_directory: bool,
+                              name: StrBuf,
                               id_sp: Span) -> (ast::Item_, Vec<ast::Attribute> ) {
         let mut included_mod_stack = self.sess.included_mod_stack.borrow_mut();
         match included_mod_stack.iter().position(|p| *p == path) {
@@ -4265,6 +4301,8 @@ impl<'a> Parser<'a> {
             new_sub_parser_from_file(self.sess,
                                      self.cfg.clone(),
                                      &path,
+                                     owns_directory,
+                                     Some(name),
                                      id_sp);
         let mod_inner_lo = p0.span.lo;
         let (mod_attrs, next) = p0.parse_inner_attrs_and_next();
