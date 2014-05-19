@@ -8,6 +8,32 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! The AST pointer
+//!
+//! Provides `P<T>`, a frozen owned smart pointer, as a replacement for `@T` in the AST.
+//!
+//! # Motivations and benefits
+//!
+//! * **Identity**: sharing AST nodes is problematic for the various analysis passes
+//!   (e.g. one may be able to bypass the borrow checker with a shared `ExprAddrOf`
+//!   node taking a mutable borrow). The only reason `@T` in the AST hasn't caused
+//!   issues is because of inefficient folding passes which would always deduplicate
+//!   any such shared nodes. Even if the AST were to switch to an arena, this would
+//!   still hold, i.e. it couldn't use `&'a T`, but rather a wrapper like `P<'a, T>`.
+//!
+//! * **Immutability**: `P<T>` disallows mutating its inner `T`, unlike `Box<T>`
+//!   (unless it contains an `Unsafe` interior, but that may be denied later).
+//!   This mainly prevents mistakes, but can also enforces a kind of "purity".
+//!
+//! * **Efficiency**: folding can reuse allocation space for `P<T>` and `Vec<T>`,
+//!   the latter even when the input and output types differ (as it would be the
+//!   case with arenas or a GADT AST using type parameters to toggle features).
+//!
+//! * **Maintainability**: `P<T>` provides a fixed interface - `Deref`,
+//!   `and_then` and `map` - which can remain fully functional even if the
+//!   implementation changes (using a special thread-local heap, for example).
+//!   Moreover, a switch to, e.g. `P<'a, T>` would be easy and mostly automated.
+
 use std::fmt;
 use std::fmt::Show;
 use std::hash::Hash;
@@ -19,7 +45,7 @@ pub struct P<T> {
 }
 
 #[allow(non_snake_case)]
-/// Construct a P<T> from a T value.
+/// Construct a `P<T>` from a `T` value.
 pub fn P<T: 'static>(value: T) -> P<T> {
     P {
         ptr: box value
@@ -27,10 +53,13 @@ pub fn P<T: 'static>(value: T) -> P<T> {
 }
 
 impl<T: 'static> P<T> {
+    /// Move out of the pointer.
+    /// Intended for chaining transformations not covered by `map`.
     pub fn and_then<U>(self, f: |T| -> U) -> U {
         f(*self.ptr)
     }
 
+    /// Transform the inner value, consuming `self` and producing a new `P<T>`.
     pub fn map(mut self, f: |T| -> T) -> P<T> {
         use std::{mem, ptr};
         unsafe {
