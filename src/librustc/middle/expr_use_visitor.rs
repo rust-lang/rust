@@ -57,8 +57,8 @@ pub trait Delegate {
 
     // The local variable `id` is declared but not initialized.
     fn decl_without_init(&mut self,
-                         _id: ast::NodeId,
-                         _span: Span);
+                         id: ast::NodeId,
+                         span: Span);
 
     // The path at `cmt` is being assigned to.
     fn mutate(&mut self,
