@@ -2282,6 +2282,9 @@ fn bind_irrefutable_pat<'a>(
             bcx.sess().span_bug(pat.span,
                                 "vector patterns are never irrefutable!");
         }
+        ast::PatMac(..) => {
+            bcx.sess().span_bug(pat.span, "unexpanded macro");
+        }
         ast::PatWild | ast::PatWildMulti | ast::PatLit(_) | ast::PatRange(_, _) => ()
     }
     return bcx;

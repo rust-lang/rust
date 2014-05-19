@@ -2664,6 +2664,11 @@ fn populate_scope_map(cx: &CrateContext,
                     walk_pattern(cx, sub_pat, scope_stack, scope_map);
                 }
             }
+
+            ast::PatMac(_) => {
+                cx.sess().span_bug(pat.span, "debuginfo::populate_scope_map() - \
+                                              Found unexpanded macro.");
+            }
         }
     }
 

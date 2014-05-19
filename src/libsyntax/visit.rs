@@ -457,6 +457,7 @@ pub fn walk_pat<E: Clone, V: Visitor<E>>(visitor: &mut V, pattern: &Pat, env: E)
                 visitor.visit_pat(*postpattern, env.clone())
             }
         }
+        PatMac(ref macro) => visitor.visit_mac(macro, env),
     }
 }
 
