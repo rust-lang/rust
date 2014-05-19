@@ -8,13 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// aux-build:weak-lang-items.rs
+// error-pattern: language item required, but not found: `begin_unwind`
+// error-pattern: language item required, but not found: `stack_exhausted`
+// error-pattern: language item required, but not found: `eh_personality`
+
 #![no_std]
 
-#[lang="fail_"]
-fn fail(_: *i8, _: *i8, _: uint) -> ! { loop {} }
-
-#[lang = "stack_exhausted"]
-extern fn stack_exhausted() {}
-
-#[lang = "eh_personality"]
-extern fn eh_personality() {}
+extern crate core;
+extern crate other = "weak-lang-items";

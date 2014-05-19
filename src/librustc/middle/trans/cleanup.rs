@@ -14,7 +14,6 @@
  */
 
 use lib::llvm::{BasicBlockRef, ValueRef};
-use middle::lang_items::{EhPersonalityLangItem};
 use middle::trans::base;
 use middle::trans::build;
 use middle::trans::callee;
@@ -665,8 +664,31 @@ impl<'a> CleanupHelperMethods<'a> for FunctionContext<'a> {
                                     false);
 
         // The exception handling personality function.
-        let def_id = common::langcall(pad_bcx, None, "", EhPersonalityLangItem);
-        let llpersonality = callee::trans_fn_ref(pad_bcx, def_id, ExprId(0));
+        //
+        // If our compilation unit has the `eh_personality` lang item somewhere
+        // within it, then we just need to translate that. Otherwise, we're
+        // building an rlib which will depend on some upstream implementation of
+        // this function, so we just codegen a generic reference to it. We don't
+        // specify any of the types for the function, we just make it a symbol
+        // that LLVM can later use.
+        let llpersonality = match pad_bcx.tcx().lang_items.eh_personality() {
+            Some(def_id) => callee::trans_fn_ref(pad_bcx, def_id, ExprId(0)),
+            None => {
+                let mut personality = self.ccx.eh_personality.borrow_mut();
+                match *personality {
+                    Some(llpersonality) => llpersonality,
+                    None => {
+                        let fty = Type::variadic_func(&[], &Type::i32(self.ccx));
+                        let f = base::decl_cdecl_fn(self.ccx.llmod,
+                                                    "rust_eh_personality",
+                                                    fty,
+                                                    ty::mk_i32());
+                        *personality = Some(f);
+                        f
+                    }
+                }
+            }
+        };
 
         // The only landing pad clause will be 'cleanup'
         let llretval = build::LandingPad(pad_bcx, llretty, llpersonality, 1u);
