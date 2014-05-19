@@ -1731,7 +1731,12 @@ fn name_from_pat(p: &ast::Pat) -> String {
         PatRange(..) => fail!("tried to get argument name from PatRange, \
                               which is not allowed in function arguments"),
         PatVec(..) => fail!("tried to get argument name from pat_vec, \
-                             which is not allowed in function arguments")
+                             which is not allowed in function arguments"),
+        PatMac(..) => {
+            warn!("can't document the name of a function argument \
+                   produced by a pattern macro");
+            "(argument produced by macro)".to_string()
+        }
     }
 }
 
