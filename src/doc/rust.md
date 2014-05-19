@@ -2943,7 +2943,7 @@ See [Break expressions](#break-expressions) and [Continue expressions](#continue
 break_expr : "break" [ lifetime ];
 ~~~~
 
-A `break` expression has an optional `label`.
+A `break` expression has an optional _label_.
 If the label is absent, then executing a `break` expression immediately terminates the innermost loop enclosing it.
 It is only permitted in the body of a loop.
 If the label is present, then `break foo` terminates the loop with label `foo`,
@@ -2956,7 +2956,7 @@ but must enclose it.
 continue_expr : "continue" [ lifetime ];
 ~~~~
 
-A `continue` expression has an optional `label`.
+A `continue` expression has an optional _label_.
 If the label is absent,
 then executing a `continue` expression immediately terminates the current iteration of the innermost loop enclosing it,
 returning control to the loop *head*.
@@ -3115,7 +3115,7 @@ let x: List<int> = Cons(10, box Cons(11, box Nil));
 
 match x {
     Cons(a, box Cons(b, _)) => {
-        process_pair(a,b);
+        process_pair(a, b);
     }
     Cons(10, _) => {
         process_ten();
@@ -3329,8 +3329,8 @@ order specified by the tuple type.
 An example of a tuple type and its use:
 
 ~~~~
-type Pair<'a> = (int,&'a str);
-let p: Pair<'static> = (10,"hello");
+type Pair<'a> = (int, &'a str);
+let p: Pair<'static> = (10, "hello");
 let (a, b) = p;
 assert!(b != "world");
 ~~~~
