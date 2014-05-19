@@ -22,30 +22,30 @@ pub struct PriorityQueue<T> {
     data: Vec<T>,
 }
 
-impl<T:Ord> Container for PriorityQueue<T> {
+impl<T: TotalOrd> Container for PriorityQueue<T> {
     /// Returns the length of the queue
     fn len(&self) -> uint { self.data.len() }
 }
 
-impl<T:Ord> Mutable for PriorityQueue<T> {
+impl<T: TotalOrd> Mutable for PriorityQueue<T> {
     /// Drop all items from the queue
     fn clear(&mut self) { self.data.truncate(0) }
 }
 
-impl<T:Ord> PriorityQueue<T> {
+impl<T: TotalOrd> PriorityQueue<T> {
     /// An iterator visiting all values in underlying vector, in
     /// arbitrary order.
     pub fn iter<'a>(&'a self) -> Items<'a, T> {
         Items { iter: self.data.iter() }
     }
 
-    /// Returns the greatest item in the queue - fails if empty
-    pub fn top<'a>(&'a self) -> &'a T { self.data.get(0) }
-
-    /// Returns the greatest item in the queue - None if empty
-    pub fn maybe_top<'a>(&'a self) -> Option<&'a T> {
-        if self.is_empty() { None } else { Some(self.top()) }
+    /// Returns the greatest item in a queue or None if it is empty
+    pub fn top<'a>(&'a self) -> Option<&'a T> {
+        if self.is_empty() { None } else { Some(self.data.get(0)) }
     }
+
+    #[deprecated="renamed to `top`"]
+    pub fn maybe_top<'a>(&'a self) -> Option<&'a T> { self.top() }
 
     /// Returns the number of elements the queue can hold without reallocating
     pub fn capacity(&self) -> uint { self.data.capacity() }
@@ -60,20 +60,23 @@ impl<T:Ord> PriorityQueue<T> {
         self.data.reserve(n)
     }
 
-    /// Pop the greatest item from the queue - fails if empty
-    pub fn pop(&mut self) -> T {
-        let mut item = self.data.pop().unwrap();
-        if !self.is_empty() {
-            swap(&mut item, self.data.get_mut(0));
-            self.siftdown(0);
+    /// Remove the greatest item from a queue and return it, or `None` if it is
+    /// empty.
+    pub fn pop(&mut self) -> Option<T> {
+        match self.data.pop() {
+            None           => { None }
+            Some(mut item) => {
+                if !self.is_empty() {
+                    swap(&mut item, self.data.get_mut(0));
+                    self.siftdown(0);
+                }
+                Some(item)
+            }
         }
-        item
     }
 
-    /// Pop the greatest item from the queue - None if empty
-    pub fn maybe_pop(&mut self) -> Option<T> {
-        if self.is_empty() { None } else { Some(self.pop()) }
-    }
+    #[deprecated="renamed to `pop`"]
+    pub fn maybe_pop(&mut self) -> Option<T> { self.pop() }
 
     /// Push an item onto the queue
     pub fn push(&mut self, item: T) {
@@ -84,26 +87,40 @@ impl<T:Ord> PriorityQueue<T> {
 
     /// Optimized version of a push followed by a pop
     pub fn push_pop(&mut self, mut item: T) -> T {
-        if !self.is_empty() && *self.top() > item {
+        if !self.is_empty() && *self.top().unwrap() > item {
             swap(&mut item, self.data.get_mut(0));
             self.siftdown(0);
         }
         item
     }
 
-    /// Optimized version of a pop followed by a push - fails if empty
-    pub fn replace(&mut self, mut item: T) -> T {
-        swap(&mut item, self.data.get_mut(0));
-        self.siftdown(0);
-        item
+    /// Optimized version of a pop followed by a push. The push is done
+    /// regardless of whether the queue is empty.
+    pub fn replace(&mut self, mut item: T) -> Option<T> {
+        if !self.is_empty() {
+            swap(&mut item, self.data.get_mut(0));
+            self.siftdown(0);
+            Some(item)
+        } else {
+            self.push(item);
+            None
+        }
     }
 
+    #[allow(dead_code)]
+    #[deprecated="renamed to `into_vec`"]
+    fn to_vec(self) -> Vec<T> { self.into_vec() }
+
+    #[allow(dead_code)]
+    #[deprecated="renamed to `into_sorted_vec`"]
+    fn to_sorted_vec(self) -> Vec<T> { self.into_sorted_vec() }
+
     /// Consume the PriorityQueue and return the underlying vector
-    pub fn to_vec(self) -> Vec<T> { let PriorityQueue{data: v} = self; v }
+    pub fn into_vec(self) -> Vec<T> { let PriorityQueue{data: v} = self; v }
 
     /// Consume the PriorityQueue and return a vector in sorted
     /// (ascending) order
-    pub fn to_sorted_vec(self) -> Vec<T> {
+    pub fn into_sorted_vec(self) -> Vec<T> {
         let mut q = self;
         let mut end = q.len();
         while end > 1 {
@@ -111,7 +128,7 @@ impl<T:Ord> PriorityQueue<T> {
             q.data.as_mut_slice().swap(0, end);
             q.siftdown_range(0, end)
         }
-        q.to_vec()
+        q.into_vec()
     }
 
     /// Create an empty PriorityQueue
@@ -197,7 +214,7 @@ impl<'a, T> Iterator<&'a T> for Items<'a, T> {
     fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
 }
 
-impl<T: Ord> FromIterator<T> for PriorityQueue<T> {
+impl<T: TotalOrd> FromIterator<T> for PriorityQueue<T> {
     fn from_iter<Iter: Iterator<T>>(iter: Iter) -> PriorityQueue<T> {
         let mut q = PriorityQueue::new();
         q.extend(iter);
@@ -205,7 +222,7 @@ impl<T: Ord> FromIterator<T> for PriorityQueue<T> {
     }
 }
 
-impl<T: Ord> Extendable<T> for PriorityQueue<T> {
+impl<T: TotalOrd> Extendable<T> for PriorityQueue<T> {
     fn extend<Iter: Iterator<T>>(&mut self, mut iter: Iter) {
         let (lower, _) = iter.size_hint();
 
@@ -241,8 +258,8 @@ mod tests {
         sorted.sort();
         let mut heap = PriorityQueue::from_vec(data);
         while !heap.is_empty() {
-            assert_eq!(heap.top(), sorted.last().unwrap());
-            assert_eq!(heap.pop(), sorted.pop().unwrap());
+            assert_eq!(heap.top().unwrap(), sorted.last().unwrap());
+            assert_eq!(heap.pop().unwrap(), sorted.pop().unwrap());
         }
     }
 
@@ -250,44 +267,44 @@ mod tests {
     fn test_push() {
         let mut heap = PriorityQueue::from_vec(vec!(2, 4, 9));
         assert_eq!(heap.len(), 3);
-        assert!(*heap.top() == 9);
+        assert!(*heap.top().unwrap() == 9);
         heap.push(11);
         assert_eq!(heap.len(), 4);
-        assert!(*heap.top() == 11);
+        assert!(*heap.top().unwrap() == 11);
         heap.push(5);
         assert_eq!(heap.len(), 5);
-        assert!(*heap.top() == 11);
+        assert!(*heap.top().unwrap() == 11);
         heap.push(27);
         assert_eq!(heap.len(), 6);
-        assert!(*heap.top() == 27);
+        assert!(*heap.top().unwrap() == 27);
         heap.push(3);
         assert_eq!(heap.len(), 7);
-        assert!(*heap.top() == 27);
+        assert!(*heap.top().unwrap() == 27);
         heap.push(103);
         assert_eq!(heap.len(), 8);
-        assert!(*heap.top() == 103);
+        assert!(*heap.top().unwrap() == 103);
     }
 
     #[test]
     fn test_push_unique() {
         let mut heap = PriorityQueue::from_vec(vec!(box 2, box 4, box 9));
         assert_eq!(heap.len(), 3);
-        assert!(*heap.top() == box 9);
+        assert!(*heap.top().unwrap() == box 9);
         heap.push(box 11);
         assert_eq!(heap.len(), 4);
-        assert!(*heap.top() == box 11);
+        assert!(*heap.top().unwrap() == box 11);
         heap.push(box 5);
         assert_eq!(heap.len(), 5);
-        assert!(*heap.top() == box 11);
+        assert!(*heap.top().unwrap() == box 11);
         heap.push(box 27);
         assert_eq!(heap.len(), 6);
-        assert!(*heap.top() == box 27);
+        assert!(*heap.top().unwrap() == box 27);
         heap.push(box 3);
         assert_eq!(heap.len(), 7);
-        assert!(*heap.top() == box 27);
+        assert!(*heap.top().unwrap() == box 27);
         heap.push(box 103);
         assert_eq!(heap.len(), 8);
-        assert!(*heap.top() == box 103);
+        assert!(*heap.top().unwrap() == box 103);
     }
 
     #[test]
@@ -308,24 +325,24 @@ mod tests {
     fn test_replace() {
         let mut heap = PriorityQueue::from_vec(vec!(5, 5, 2, 1, 3));
         assert_eq!(heap.len(), 5);
-        assert_eq!(heap.replace(6), 5);
+        assert_eq!(heap.replace(6).unwrap(), 5);
         assert_eq!(heap.len(), 5);
-        assert_eq!(heap.replace(0), 6);
+        assert_eq!(heap.replace(0).unwrap(), 6);
         assert_eq!(heap.len(), 5);
-        assert_eq!(heap.replace(4), 5);
+        assert_eq!(heap.replace(4).unwrap(), 5);
         assert_eq!(heap.len(), 5);
-        assert_eq!(heap.replace(1), 4);
+        assert_eq!(heap.replace(1).unwrap(), 4);
         assert_eq!(heap.len(), 5);
     }
 
     fn check_to_vec(mut data: Vec<int>) {
         let heap = PriorityQueue::from_vec(data.clone());
-        let mut v = heap.clone().to_vec();
+        let mut v = heap.clone().into_vec();
         v.sort();
         data.sort();
 
         assert_eq!(v, data);
-        assert_eq!(heap.to_sorted_vec(), data);
+        assert_eq!(heap.into_sorted_vec(), data);
     }
 
     #[test]
@@ -346,36 +363,21 @@ mod tests {
     }
 
     #[test]
-    #[should_fail]
     fn test_empty_pop() {
         let mut heap: PriorityQueue<int> = PriorityQueue::new();
-        heap.pop();
+        assert!(heap.pop().is_none());
     }
 
     #[test]
-    fn test_empty_maybe_pop() {
-        let mut heap: PriorityQueue<int> = PriorityQueue::new();
-        assert!(heap.maybe_pop().is_none());
-    }
-
-    #[test]
-    #[should_fail]
     fn test_empty_top() {
         let empty: PriorityQueue<int> = PriorityQueue::new();
-        empty.top();
+        assert!(empty.top().is_none());
     }
 
     #[test]
-    fn test_empty_maybe_top() {
-        let empty: PriorityQueue<int> = PriorityQueue::new();
-        assert!(empty.maybe_top().is_none());
-    }
-
-    #[test]
-    #[should_fail]
     fn test_empty_replace() {
         let mut heap: PriorityQueue<int> = PriorityQueue::new();
-        heap.replace(5);
+        heap.replace(5).is_none();
     }
 
     #[test]
@@ -385,7 +387,7 @@ mod tests {
         let mut q: PriorityQueue<uint> = xs.as_slice().iter().rev().map(|&x| x).collect();
 
         for &x in xs.iter() {
-            assert_eq!(q.pop(), x);
+            assert_eq!(q.pop().unwrap(), x);
         }
     }
 }
