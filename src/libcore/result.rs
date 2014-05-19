@@ -391,11 +391,18 @@ impl<T, E> Result<T, E> {
 
     /// Convert from `Result<T, E>` to `Result<&mut T, &mut E>`
     #[inline]
-    pub fn as_mut<'r>(&'r mut self) -> Result<&'r mut T, &'r mut E> {
+    pub fn as_mut_ref<'r>(&'r mut self) -> Result<&'r mut T, &'r mut E> {
         match *self {
             Ok(ref mut x) => Ok(x),
             Err(ref mut x) => Err(x),
         }
+    }
+
+    /// Deprecated name for `as_mut_ref()`.
+    #[deprecated = "replaced by .as_mut_ref()"]
+    #[inline]
+    pub fn as_mut<'r>(&'r mut self) -> Result<&'r mut T, &'r mut E> {
+        self.as_mut_ref()
     }
 
     /////////////////////////////////////////////////////////////////////////

@@ -207,8 +207,15 @@ impl<T> Option<T> {
 
     /// Convert from `Option<T>` to `Option<&mut T>`
     #[inline]
-    pub fn as_mut<'r>(&'r mut self) -> Option<&'r mut T> {
+    pub fn as_mut_ref<'r>(&'r mut self) -> Option<&'r mut T> {
         match *self { Some(ref mut x) => Some(x), None => None }
+    }
+
+    /// Deprecated name for `as_mut_ref()`.
+    #[deprecated = "replaced by .as_mut_ref()"]
+    #[inline]
+    pub fn as_mut<'r>(&'r mut self) -> Option<&'r mut T> {
+        self.as_mut_ref()
     }
 
     /// Convert from `Option<T>` to `&[T]` (without copying)
@@ -330,7 +337,7 @@ impl<T> Option<T> {
     /// Returns a mutable iterator over the possibly contained value.
     #[inline]
     pub fn mut_iter<'r>(&'r mut self) -> Item<&'r mut T> {
-        Item{opt: self.as_mut()}
+        Item{opt: self.as_mut_ref()}
     }
 
     /// Returns a consuming iterator over the possibly contained value.

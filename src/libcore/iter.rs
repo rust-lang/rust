@@ -1703,7 +1703,7 @@ impl<'a, A, T: Iterator<A>, B, U: Iterator<B>> Iterator<B> for FlatMap<'a, A, T,
                 }
             }
             match self.iter.next().map(|x| (self.f)(x)) {
-                None => return self.backiter.as_mut().and_then(|it| it.next()),
+                None => return self.backiter.as_mut_ref().and_then(|it| it.next()),
                 next => self.frontiter = next,
             }
         }
@@ -1735,7 +1735,7 @@ impl<'a,
                 }
             }
             match self.iter.next_back().map(|x| (self.f)(x)) {
-                None => return self.frontiter.as_mut().and_then(|it| it.next_back()),
+                None => return self.frontiter.as_mut_ref().and_then(|it| it.next_back()),
                 next => self.backiter = next,
             }
         }

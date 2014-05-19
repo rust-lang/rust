@@ -13,12 +13,14 @@
 //! This module implements the `Any` trait, which enables dynamic typing
 //! of any type, through runtime reflection.
 //!
-//! `Any` itself can be used to get a `TypeId`, and has more features when used as a trait object.
-//! As `&Any` (a borrowed trait object), it has the `is` and `as_ref` methods, to test if the
-//! contained value is of a given type, and to get a reference to the inner value as a type. As
-//! `&mut Any`, there is also the `as_mut` method, for getting a mutable reference to the inner
-//! value. `Box<Any>` adds the `move` method, which will unwrap a `Box<T>` from the object.  See
-//! the extension traits (`*Ext`) for the full details.
+//! `Any` itself can be used to get a `TypeId`, and has more features when used
+//! as a trait object. As `&Any` (a borrowed trait object), it has the `is` and
+//! `as_ref` methods, to test if the contained value is of a given type,
+//! and to get a reference to the inner value as a type. As `&mut Any`, there
+//! is also the `as_mut_ref` method, for getting a mutable reference to the
+//! inner value. `Box<Any>` adds the `move` method, which will unwrap a
+//! `Box<T>` from the object. See the extension traits (`*Ext`) for the full
+//! details.
 
 use mem::{transmute, transmute_copy};
 use option::{Option, Some, None};
@@ -94,12 +96,17 @@ impl<'a> AnyRefExt<'a> for &'a Any {
 pub trait AnyMutRefExt<'a> {
     /// Returns some mutable reference to the boxed value if it is of type `T`, or
     /// `None` if it isn't.
-    fn as_mut<T: 'static>(self) -> Option<&'a mut T>;
+    fn as_mut_ref<T: 'static>(self) -> Option<&'a mut T>;
+
+    /// Deprecated name for `as_mut_ref()`.
+    #[deprecated = "replaced by .as_mut_ref()"]
+    #[inline]
+    fn as_mut<T: 'static>(self) -> Option<&'a mut T> { self.as_mut_ref() }
 }
 
 impl<'a> AnyMutRefExt<'a> for &'a mut Any {
     #[inline]
-    fn as_mut<T: 'static>(self) -> Option<&'a mut T> {
+    fn as_mut_ref<T: 'static>(self) -> Option<&'a mut T> {
         if self.is::<T>() {
             unsafe {
                 // Get the raw representation of the trait object
@@ -184,7 +191,7 @@ mod tests {
         let tmp: &mut uint = b;
         let b_r = tmp as &mut Any;
 
-        match a_r.as_mut::<uint>() {
+        match a_r.as_mut_ref::<uint>() {
             Some(x) => {
                 assert_eq!(*x, 5u);
                 *x = 612;
@@ -192,7 +199,7 @@ mod tests {
             x => fail!("Unexpected value {}", x)
         }
 
-        match b_r.as_mut::<uint>() {
+        match b_r.as_mut_ref::<uint>() {
             Some(x) => {
                 assert_eq!(*x, 7u);
                 *x = 413;
@@ -200,22 +207,22 @@ mod tests {
             x => fail!("Unexpected value {}", x)
         }
 
-        match a_r.as_mut::<Test>() {
+        match a_r.as_mut_ref::<Test>() {
             None => (),
             x => fail!("Unexpected value {}", x)
         }
 
-        match b_r.as_mut::<Test>() {
+        match b_r.as_mut_ref::<Test>() {
             None => (),
             x => fail!("Unexpected value {}", x)
         }
 
-        match a_r.as_mut::<uint>() {
+        match a_r.as_mut_ref::<uint>() {
             Some(&612) => {}
             x => fail!("Unexpected value {}", x)
         }
 
-        match b_r.as_mut::<uint>() {
+        match b_r.as_mut_ref::<uint>() {
             Some(&413) => {}
             x => fail!("Unexpected value {}", x)
         }

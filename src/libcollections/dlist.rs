@@ -215,7 +215,7 @@ impl<T> Deque<T> for DList<T> {
     /// Provide a mutable reference to the front element, or None if the list is empty
     #[inline]
     fn front_mut<'a>(&'a mut self) -> Option<&'a mut T> {
-        self.list_head.as_mut().map(|head| &mut head.value)
+        self.list_head.as_mut_ref().map(|head| &mut head.value)
     }
 
     /// Provide a reference to the back element, or None if the list is empty
