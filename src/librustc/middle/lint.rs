@@ -437,29 +437,29 @@ pub fn get_lint_dict() -> LintDict {
 }
 
 struct Context<'a> {
-    // All known lint modes (string versions)
+    /// All known lint modes (string versions)
     dict: LintDict,
-    // Current levels of each lint warning
+    /// Current levels of each lint warning
     cur: SmallIntMap<(Level, LintSource)>,
-    // context we're checking in (used to access fields like sess)
+    /// Context we're checking in (used to access fields like sess)
     tcx: &'a ty::ctxt,
-    // Items exported by the crate; used by the missing_doc lint.
+    /// Items exported by the crate; used by the missing_doc lint.
     exported_items: &'a privacy::ExportedItems,
-    // The id of the current `ast::StructDef` being walked.
+    /// The id of the current `ast::StructDef` being walked.
     cur_struct_def_id: ast::NodeId,
-    // Whether some ancestor of the current node was marked
-    // #[doc(hidden)].
+    /// Whether some ancestor of the current node was marked
+    /// #[doc(hidden)].
     is_doc_hidden: bool,
 
-    // When recursing into an attributed node of the ast which modifies lint
-    // levels, this stack keeps track of the previous lint levels of whatever
-    // was modified.
+    /// When recursing into an attributed node of the ast which modifies lint
+    /// levels, this stack keeps track of the previous lint levels of whatever
+    /// was modified.
     lint_stack: Vec<(Lint, Level, LintSource)>,
 
-    // id of the last visited negated expression
+    /// Id of the last visited negated expression
     negated_expr_id: ast::NodeId,
 
-    // ids of structs/enums which have been checked for raw_pointer_deriving
+    /// Ids of structs/enums which have been checked for raw_pointer_deriving
     checked_raw_pointers: NodeSet,
 }
 
@@ -610,8 +610,8 @@ impl<'a> Context<'a> {
     }
 }
 
-// Check that every lint from the list of attributes satisfies `f`.
-// Return true if that's the case. Otherwise return false.
+/// Check that every lint from the list of attributes satisfies `f`.
+/// Return true if that's the case. Otherwise return false.
 pub fn each_lint(sess: &session::Session,
                  attrs: &[ast::Attribute],
                  f: |@ast::MetaItem, Level, InternedString| -> bool)
@@ -645,8 +645,8 @@ pub fn each_lint(sess: &session::Session,
     true
 }
 
-// Check from a list of attributes if it contains the appropriate
-// `#[level(lintname)]` attribute (e.g. `#[allow(dead_code)]).
+/// Check from a list of attributes if it contains the appropriate
+/// `#[level(lintname)]` attribute (e.g. `#[allow(dead_code)]).
 pub fn contains_lint(attrs: &[ast::Attribute],
                      level: Level,
                      lintname: &'static str)
