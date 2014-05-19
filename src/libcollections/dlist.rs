@@ -410,7 +410,7 @@ impl<T> DList<T> {
     }
 }
 
-impl<T: Ord> DList<T> {
+impl<T: TotalOrd> DList<T> {
     /// Insert `elt` sorted in ascending order
     ///
     /// O(N)
