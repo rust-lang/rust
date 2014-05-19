@@ -15,11 +15,14 @@
 //! Implementations of the following traits:
 //!
 //! * `Not`
+//! * `BitAnd`
+//! * `BitOr`
+//! * `BitXor`
 //! * `Ord`
 //! * `TotalOrd`
 //! * `Eq`
+//! * `TotalEq`
 //! * `Default`
-//! * `Zero`
 //!
 //! A `to_bit` conversion function.
 
