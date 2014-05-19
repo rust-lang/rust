@@ -32,7 +32,7 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://static.rust-lang.org/doc/master")]
 
-#![feature(asm, macro_rules)]
+#![feature(asm, macro_rules, phase)]
 #![deny(deprecated_owned_vector)]
 
 extern crate collections;
@@ -83,7 +83,7 @@ pub mod stats;
 // colons. This way if some test runner wants to arrange the tests
 // hierarchically it may.
 
-#[deriving(Clone)]
+#[deriving(Clone, Eq, TotalEq, Hash)]
 pub enum TestName {
     StaticTestName(&'static str),
     DynTestName(StrBuf)
@@ -156,6 +156,19 @@ impl TestFn {
     }
 }
 
+impl fmt::Show for TestFn {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write(match *self {
+            StaticTestFn(..) => "StaticTestFn(..)",
+            StaticBenchFn(..) => "StaticBenchFn(..)",
+            StaticMetricFn(..) => "StaticMetricFn(..)",
+            DynTestFn(..) => "DynTestFn(..)",
+            DynMetricFn(..) => "DynMetricFn(..)",
+            DynBenchFn(..) => "DynBenchFn(..)"
+        }.as_bytes())
+    }
+}
+
 /// Manager of the benchmarking runs.
 ///
 /// This is feed into functions marked with `#[bench]` to allow for
@@ -170,13 +183,14 @@ pub struct Bencher {
 
 // The definition of a single test. A test runner will run a list of
 // these.
-#[deriving(Clone)]
+#[deriving(Clone, Show, Eq, TotalEq, Hash)]
 pub struct TestDesc {
     pub name: TestName,
     pub ignore: bool,
     pub should_fail: bool,
 }
 
+#[deriving(Show)]
 pub struct TestDescAndFn {
     pub desc: TestDesc,
     pub testfn: TestFn,
@@ -242,15 +256,9 @@ pub fn test_main(args: &[StrBuf], tests: Vec<TestDescAndFn> ) {
 pub fn test_main_static(args: &[StrBuf], tests: &[TestDescAndFn]) {
     let owned_tests = tests.iter().map(|t| {
         match t.testfn {
-            StaticTestFn(f) =>
-            TestDescAndFn { testfn: StaticTestFn(f), desc: t.desc.clone() },
-
-            StaticBenchFn(f) =>
-            TestDescAndFn { testfn: StaticBenchFn(f), desc: t.desc.clone() },
-
-            _ => {
-                fail!("non-static tests passed to test::test_main_static");
-            }
+            StaticTestFn(f) => TestDescAndFn { testfn: StaticTestFn(f), desc: t.desc.clone() },
+            StaticBenchFn(f) => TestDescAndFn { testfn: StaticBenchFn(f), desc: t.desc.clone() },
+            _ => fail!("non-static tests passed to test::test_main_static")
         }
     }).collect();
     test_main(args, owned_tests)
@@ -419,8 +427,15 @@ pub fn opt_shard(maybestr: Option<StrBuf>) -> Option<(uint,uint)> {
         None => None,
         Some(s) => {
             let mut it = s.as_slice().split('.');
-            match (it.next().and_then(from_str), it.next().and_then(from_str), it.next()) {
-                (Some(a), Some(b), None) => Some((a, b)),
+            match (it.next().and_then(from_str::<uint>), it.next().and_then(from_str::<uint>),
+                   it.next()) {
+                (Some(a), Some(b), None) => {
+                    if a <= 0 || a > b {
+                        fail!("tried to run shard {a}.{b}, but {a} is out of bounds \
+                              (should be between 1 and {b}", a=a, b=b)
+                    }
+                    Some((a, b))
+                }
                 _ => None,
             }
         }
@@ -739,10 +754,9 @@ pub fn fmt_bench_samples(bs: &BenchSamples) -> StrBuf {
 }
 
 // A simple console test runner
-pub fn run_tests_console(opts: &TestOpts,
-                         tests: Vec<TestDescAndFn> ) -> io::IoResult<bool> {
-    fn callback<T: Writer>(event: &TestEvent,
-                           st: &mut ConsoleTestState<T>) -> io::IoResult<()> {
+pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn> ) -> io::IoResult<bool> {
+
+    fn callback<T: Writer>(event: &TestEvent, st: &mut ConsoleTestState<T>) -> io::IoResult<()> {
         match (*event).clone() {
             TeFiltered(ref filtered_tests) => st.write_run_start(filtered_tests.len()),
             TeWait(ref test, padding) => st.write_test_start(test, padding),
@@ -778,6 +792,7 @@ pub fn run_tests_console(opts: &TestOpts,
             }
         }
     }
+
     let mut st = try!(ConsoleTestState::new(opts, None::<StdWriter>));
     fn len_if_padded(t: &TestDescAndFn) -> uint {
         match t.testfn.padding() {
@@ -933,9 +948,7 @@ fn get_concurrency() -> uint {
     }
 }
 
-pub fn filter_tests(
-    opts: &TestOpts,
-    tests: Vec<TestDescAndFn> ) -> Vec<TestDescAndFn> {
+pub fn filter_tests(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> Vec<TestDescAndFn> {
     let mut filtered = tests;
 
     // Remove tests that don't match the test filter
@@ -973,7 +986,9 @@ pub fn filter_tests(
         None => filtered,
         Some((a,b)) => {
             filtered.move_iter().enumerate()
-            .filter(|&(i,_)| i % b == a)
+            // note: using a - 1 so that the valid shards, for example, are
+            // 1.2 and 2.2 instead of 0.2 and 1.2
+            .filter(|&(i,_)| i % b == (a - 1))
             .map(|(_,t)| t)
             .collect()
         }
