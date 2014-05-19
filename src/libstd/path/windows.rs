@@ -14,7 +14,7 @@ use ascii::AsciiCast;
 use c_str::{CString, ToCStr};
 use clone::Clone;
 use cmp::{PartialEq, Eq};
-use container::Container;
+use collections::Collection;
 use from_str::FromStr;
 use hash;
 use io::Writer;

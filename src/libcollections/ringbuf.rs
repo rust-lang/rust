@@ -33,7 +33,7 @@ pub struct RingBuf<T> {
     elts: Vec<Option<T>>
 }
 
-impl<T> Container for RingBuf<T> {
+impl<T> Collection for RingBuf<T> {
     /// Return the number of elements in the RingBuf
     fn len(&self) -> uint { self.nelts }
 }

@@ -857,7 +857,7 @@ impl<S: hash::Writer> hash::Hash<S> for BitvSet {
     }
 }
 
-impl Container for BitvSet {
+impl Collection for BitvSet {
     #[inline]
     fn len(&self) -> uint { self.size }
 }

@@ -393,7 +393,7 @@ impl<T: Ord> Ord for Vec<T> {
     }
 }
 
-impl<T> Container for Vec<T> {
+impl<T> Collection for Vec<T> {
     #[inline]
     fn len(&self) -> uint {
         self.len

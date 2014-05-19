@@ -45,7 +45,6 @@
 
 #![allow(unsigned_negate)]
 
-use std::container::Map;
 use libc::c_ulonglong;
 use std::num::{Bitwise};
 use std::rc::Rc;

@@ -125,7 +125,7 @@ fn link_with_prev<T>(mut next: Box<Node<T>>, prev: Rawlink<Node<T>>)
     Some(next)
 }
 
-impl<T> Container for DList<T> {
+impl<T> Collection for DList<T> {
     /// O(1)
     #[inline]
     fn is_empty(&self) -> bool {

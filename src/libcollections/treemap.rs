@@ -86,7 +86,7 @@ impl<K: Ord + Show, V: Show> Show for TreeMap<K, V> {
     }
 }
 
-impl<K: Ord, V> Container for TreeMap<K, V> {
+impl<K: Ord, V> Collection for TreeMap<K, V> {
     fn len(&self) -> uint { self.length }
 }
 
@@ -579,7 +579,7 @@ impl<T: Ord + Show> Show for TreeSet<T> {
     }
 }
 
-impl<T: Ord> Container for TreeSet<T> {
+impl<T: Ord> Collection for TreeSet<T> {
     #[inline]
     fn len(&self) -> uint { self.map.len() }
 }

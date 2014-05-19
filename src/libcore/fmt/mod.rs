@@ -15,7 +15,7 @@
 use any;
 use cell::Cell;
 use char::Char;
-use container::Container;
+use collections::Collection;
 use iter::{Iterator, range};
 use kinds::Copy;
 use mem;

@@ -13,7 +13,7 @@
 #![allow(non_camel_case_types)]
 
 use char::Char;
-use container::Container;
+use collections::Collection;
 use from_str::from_str;
 use io::{IoResult, Writer};
 use iter::Iterator;
@@ -348,7 +348,7 @@ mod imp {
 
     #[cfg(not(target_os = "macos"))]
     fn print(w: &mut Writer, idx: int, addr: *libc::c_void) -> IoResult<()> {
-        use container::Container;
+        use collections::Collection;
         use iter::Iterator;
         use os;
         use path::GenericPath;
