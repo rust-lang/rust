@@ -76,13 +76,30 @@ use mem;
 /// Conversion from an `Iterator`
 pub trait FromIterator<A> {
     /// Build a container with elements from an external iterator.
-    fn from_iter<T: Iterator<A>>(iterator: T) -> Self;
+    #[inline]
+    fn from_iter<T: Iterator<A>>(iterator: T) -> Self {
+        // Use the lower bound of the size as a hint by default.
+        let (lower, _) = iterator.size_hint();
+        FromIterator::from_iter_with_capacity(iterator, lower)
+    }
+
+    /// Build a container with elements from an external iterator with an
+    /// explicit capacity hint.
+    fn from_iter_with_capacity<T: Iterator<A>>(iterator: T, capacity: uint) -> Self;
 }
 
 /// A type growable from an `Iterator` implementation
 pub trait Extendable<A>: FromIterator<A> {
     /// Extend a container with the elements yielded by an iterator
-    fn extend<T: Iterator<A>>(&mut self, iterator: T);
+    fn extend<T: Iterator<A>>(&mut self, iterator: T) {
+        // Use the lower bound of the size as a hint by default.
+        let (lower, _) = iterator.size_hint();
+        self.extend_with_capacity(iterator, lower)
+    }
+
+    /// Extend a container with the elements yielded by an iterator with an
+    /// explicit capacity hint.
+    fn extend_with_capacity<T: Iterator<A>>(&mut self, iterator: T, extra: uint);
 }
 
 /// An interface for dealing with "external iterators". These types of iterators
@@ -356,6 +373,30 @@ pub trait Iterator<A> {
         FlatMap{iter: self, f: f, frontiter: None, backiter: None }
     }
 
+    /// Creates an iterator that allows a closure to consume more than one
+    /// element at a time from the iterator.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use std::iter::count;
+    ///
+    /// let mut it = count(0, 1).batch(|iter| {
+    ///     Some(iter.by_ref().take(3).collect::<Vec<int>>())
+    /// }).take(3);
+    /// assert_eq!(it.next().unwrap(), vec!(0, 1, 2));
+    /// assert_eq!(it.next().unwrap(), vec!(3, 4, 5));
+    /// assert_eq!(it.next().unwrap(), vec!(6, 7, 8));
+    /// assert!(it.next().is_none());
+    /// ```
+    #[inline]
+    fn batch<'r, B>(self, f: |&mut Self|: 'r -> Option<B>) -> Batch<'r, A, B, Self> {
+        Batch {
+            iter: self,
+            f: f,
+        }
+    }
+
     /// Creates an iterator that yields `None` forever after the underlying
     /// iterator yields `None`. Random-access iterator behavior is not
     /// affected, only single and double-ended iterator behavior.
@@ -461,6 +502,22 @@ pub trait Iterator<A> {
     #[inline]
     fn collect<B: FromIterator<A>>(&mut self) -> B {
         FromIterator::from_iter(self.by_ref())
+    }
+
+    /// Loops through the entire iterator, collecting all of the elements into
+    /// a container implementing `FromIterator` with an explicit capacity hint.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let a = [1, 2, 3, 4, 5];
+    /// let b: Vec<int> = a.iter().map(|&x| x).collect_with_capacity(10);
+    /// assert!(a.as_slice() == b.as_slice());
+    /// assert!(a.capacity() == 10);
+    /// ```
+    #[inline]
+    fn collect_with_capacity<B: FromIterator<A>>(&mut self, capacity: uint) -> B {
+        FromIterator::from_iter_with_capacity(self.by_ref(), capacity)
     }
 
     /// Loops through `n` iterations, returning the `n`th element of the
@@ -1742,6 +1799,25 @@ impl<'a,
     }
 }
 
+/// An iterator that batches elements of `iter` with `predicate`.
+pub struct Batch<'r, A, B, T> {
+    iter: T,
+    f: |&mut T|: 'r -> Option<B>,
+}
+
+impl<'r, A, B, T: Iterator<A>> Iterator<B> for Batch<'r, A, B, T> {
+    #[inline]
+    fn next(&mut self) -> Option<B> {
+        (self.f)(&mut self.iter)
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        let (_, upper) = self.iter.size_hint();
+        (0, upper) // can't know a lower bound, due to the predicate
+    }
+}
+
 /// An iterator that yields `None` forever after the underlying iterator
 /// yields `None` once.
 #[deriving(Clone)]
@@ -2340,8 +2416,8 @@ mod tests {
     use uint;
 
     impl<T> FromIterator<T> for Vec<T> {
-        fn from_iter<I: Iterator<T>>(mut iterator: I) -> Vec<T> {
-            let mut v = Vec::new();
+        fn from_iter_with_capacity<I: Iterator<T>>(mut iterator: I, cap: uint) -> Vec<T> {
+            let mut v = Vec::with_capacity(cap);
             for e in iterator {
                 v.push(e);
             }
@@ -2401,6 +2477,26 @@ mod tests {
         let mut it = count(0u, 1u).take(10)
             .filter_map(|x| if x % 2 == 0 { Some(x*x) } else { None });
         assert!(it.collect::<Vec<uint>>() == vec![0*0, 2*2, 4*4, 6*6, 8*8]);
+    }
+
+    #[test]
+    fn test_iterator_batch() {
+        let mut it = count(0u, 1u).batch(|it| {
+            Some(it.by_ref().take(3).collect::<Vec<uint>>())
+        }).take(3);
+
+        assert!(it.next() == Some(vec!(0, 1, 2)));
+        assert!(it.next() == Some(vec!(3, 4, 5)));
+        assert!(it.next() == Some(vec!(6, 7, 8)));
+        assert!(it.next().is_none());
+
+        let mut it = count(0u, 1u).take(10).batch(|it| {
+            match it.next() {
+                Some(x) if x < 5 => Some(x),
+                _ => None
+            }
+        });
+        assert!(it.collect::<Vec<uint>>() == vec!(0, 1, 2, 3, 4));
     }
 
     #[test]

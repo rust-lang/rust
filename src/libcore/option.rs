@@ -569,6 +569,18 @@ impl<A> ExactSize<A> for Item<A> {}
 ///     assert!(res == Some(~[2u, 3, 4]));
 #[inline]
 pub fn collect<T, Iter: Iterator<Option<T>>, V: FromIterator<T>>(iter: Iter) -> Option<V> {
+    let (lower, _) = iter.size_hint();
+    collect_with_capacity(iter, lower)
+}
+
+/// `collect_with_capacity` is identical to `collect`, but it allows for an
+/// explicit size hint.
+#[inline]
+pub fn collect_with_capacity<
+    T,
+    Iter: Iterator<Option<T>>,
+    V: FromIterator<T>
+>(iter: Iter, capacity: uint) -> Option<V> {
     // FIXME(#11084): This should be twice as fast once this bug is closed.
     let mut iter = iter.scan(false, |state, x| {
         match x {
@@ -580,7 +592,7 @@ pub fn collect<T, Iter: Iterator<Option<T>>, V: FromIterator<T>>(iter: Iter) -> 
         }
     });
 
-    let v: V = FromIterator::from_iter(iter.by_ref());
+    let v: V = FromIterator::from_iter_with_capacity(iter.by_ref(), capacity);
 
     if iter.state {
         None
@@ -597,7 +609,7 @@ pub fn collect<T, Iter: Iterator<Option<T>>, V: FromIterator<T>>(iter: Iter) -> 
 mod tests {
     use realstd::vec::Vec;
     use realstd::str::StrAllocating;
-    use option::collect;
+    use option::{collect, collect_with_capacity};
     use prelude::*;
     use iter::range;
 
@@ -854,23 +866,47 @@ mod tests {
 
     #[test]
     fn test_collect() {
-        let v: Option<Vec<int>> = collect(range(0, 0)
-                                          .map(|_| Some(0)));
+        let it = range(0, 0).map(|_| Some(0));
+        let v: Option<Vec<int>> = collect(it);
         assert!(v == Some(vec![]));
 
-        let v: Option<Vec<int>> = collect(range(0, 3)
-                                          .map(|x| Some(x)));
+        let it = range(0, 3).map(|x| Some(x));
+        let v: Option<Vec<int>> = collect(it);
         assert!(v == Some(vec![0, 1, 2]));
 
-        let v: Option<Vec<int>> = collect(range(0, 3)
-                                          .map(|x| if x > 1 { None } else { Some(x) }));
+        let it = range(0, 3).map(|x| if x > 1 { None } else { Some(x) });
+        let v: Option<Vec<int>> = collect(it);
         assert!(v == None);
 
         // test that it does not take more elements than it needs
         let mut functions = [|| Some(()), || None, || fail!()];
 
-        let v: Option<Vec<()>> = collect(functions.mut_iter().map(|f| (*f)()));
+        let it = functions.mut_iter().map(|f| (*f)());
+        let v: Option<Vec<()>> = collect(it);
+        assert!(v == None);
+    }
 
+    #[test]
+    fn test_collect_with_capacity() {
+        let it = range(0, 0).map(|_| Some(0));
+        let v: Vec<int> = collect_with_capacity(it, 10).unwrap();
+        assert!(v == vec![]);
+        assert_eq!(v.capacity(), 10);
+
+        let it = range(0, 3).map(|x| Some(x));
+        let v: Vec<int> = collect_with_capacity(it, 10).unwrap();
+        assert!(v == vec![0, 1, 2]);
+        assert_eq!(v.capacity(), 10);
+
+        let it = range(0, 3).map(|x| if x > 1 { None } else { Some(x) });
+        let v: Option<Vec<int>> = collect_with_capacity(it, 10);
+        assert!(v == None);
+
+        // test that it does not take more elements than it needs
+        let mut functions = [|| Some(()), || None, || fail!()];
+
+        let it = functions.mut_iter().map(|f| (*f)());
+        let v: Option<Vec<()>> = collect_with_capacity(it, 10);
         assert!(v == None);
     }
 }

@@ -97,9 +97,8 @@ impl Clone for ~str {
 
 impl FromIterator<char> for ~str {
     #[inline]
-    fn from_iter<T: Iterator<char>>(mut iterator: T) -> ~str {
-        let (lower, _) = iterator.size_hint();
-        let mut cap = if lower == 0 {16} else {lower};
+    fn from_iter_with_capacity<T: Iterator<char>>(mut iterator: T, cap: uint) -> ~str {
+        let mut cap = if cap == 0 {16} else {cap};
         let mut len = 0;
         let mut tmp = [0u8, ..4];
 

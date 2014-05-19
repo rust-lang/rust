@@ -34,7 +34,7 @@ impl<T> Container for SmallVector<T> {
 }
 
 impl<T> FromIterator<T> for SmallVector<T> {
-    fn from_iter<I: Iterator<T>>(iter: I) -> SmallVector<T> {
+    fn from_iter_with_capacity<I: Iterator<T>>(iter: I, _cap: uint) -> SmallVector<T> {
         let mut v = SmallVector::zero();
         v.extend(iter);
         v
@@ -42,7 +42,7 @@ impl<T> FromIterator<T> for SmallVector<T> {
 }
 
 impl<T> Extendable<T> for SmallVector<T> {
-    fn extend<I: Iterator<T>>(&mut self, mut iter: I) {
+    fn extend_with_capacity<I: Iterator<T>>(&mut self, mut iter: I, _extra: uint) {
         for val in iter {
             self.push(val);
         }

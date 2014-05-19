@@ -564,6 +564,19 @@ impl<T: Show, E> Result<T, E> {
 ///     assert!(res == Ok(~[2u, 3, 4]));
 #[inline]
 pub fn collect<T, E, Iter: Iterator<Result<T, E>>, V: FromIterator<T>>(iter: Iter) -> Result<V, E> {
+    let (lower, _) = iter.size_hint();
+    collect_with_capacity(iter, lower)
+}
+
+/// `collect_with_capacity` is identical to `collect`, but it allows for an
+/// explicit size hint.
+#[inline]
+pub fn collect_with_capacity<
+    T,
+    E,
+    Iter: Iterator<Result<T, E>>,
+    V: FromIterator<T>
+>(iter: Iter, capacity: uint) -> Result<V, E> {
     // FIXME(#11084): This should be twice as fast once this bug is closed.
     let mut iter = iter.scan(None, |state, x| {
         match x {
@@ -575,7 +588,7 @@ pub fn collect<T, E, Iter: Iterator<Result<T, E>>, V: FromIterator<T>>(iter: Ite
         }
     });
 
-    let v: V = FromIterator::from_iter(iter.by_ref());
+    let v: V = FromIterator::from_iter_with_capacity(iter.by_ref(), capacity);
 
     match iter.state {
         Some(err) => Err(err),
@@ -624,7 +637,7 @@ mod tests {
     use realstd::vec::Vec;
     use realstd::str::StrAllocating;
 
-    use result::{collect, fold, fold_};
+    use result::{collect, collect_with_capacity, fold, fold_};
     use prelude::*;
     use iter::range;
 
@@ -689,20 +702,47 @@ mod tests {
 
     #[test]
     fn test_collect() {
-        let v: Result<Vec<int>, ()> = collect(range(0, 0).map(|_| Ok::<int, ()>(0)));
+        let it = range(0, 0).map(|_| Ok::<int, ()>(0));
+        let v: Result<Vec<int>, ()> = collect(it);
         assert!(v == Ok(vec![]));
 
-        let v: Result<Vec<int>, ()> = collect(range(0, 3).map(|x| Ok::<int, ()>(x)));
+        let it = range(0, 3).map(|x| Ok::<int, ()>(x));
+        let v: Result<Vec<int>, ()> = collect(it);
         assert!(v == Ok(vec![0, 1, 2]));
 
-        let v: Result<Vec<int>, int> = collect(range(0, 3)
-                                               .map(|x| if x > 1 { Err(x) } else { Ok(x) }));
+        let it = range(0, 3).map(|x| if x > 1 { Err(x) } else { Ok(x) });
+        let v: Result<Vec<int>, int> = collect(it);
         assert!(v == Err(2));
 
         // test that it does not take more elements than it needs
         let mut functions = [|| Ok(()), || Err(1), || fail!()];
 
-        let v: Result<Vec<()>, int> = collect(functions.mut_iter().map(|f| (*f)()));
+        let it = functions.mut_iter().map(|f| (*f)());
+        let v: Result<Vec<()>, int> = collect(it);
+        assert!(v == Err(1));
+    }
+
+    #[test]
+    fn test_collect_with_capacity() {
+        let it = range(0, 0).map(|_| Ok::<int, ()>(0));
+        let v: Vec<int> = collect_with_capacity(it, 10).unwrap();
+        assert!(v == vec![]);
+        assert_eq!(v.capacity(), 10);
+
+        let it = range(0, 3).map(|x| Ok::<int, ()>(x));
+        let v: Vec<int> = collect_with_capacity(it, 10).unwrap();
+        assert!(v == vec![0, 1, 2]);
+        assert_eq!(v.capacity(), 10);
+
+        let it = range(0, 3).map(|x| if x > 1 { Err(x) } else { Ok(x) });
+        let v: Result<Vec<int>, int> = collect_with_capacity(it, 10);
+        assert!(v == Err(2));
+
+        // test that it does not take more elements than it needs
+        let mut functions = [|| Ok(()), || Err(1), || fail!()];
+
+        let it = functions.mut_iter().map(|f| (*f)());
+        let v: Result<Vec<()>, int> = collect_with_capacity(it, 10);
         assert!(v == Err(1));
     }
 

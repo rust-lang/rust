@@ -91,10 +91,10 @@ impl<'b,T> slice::Vector<T> for MaybeOwnedVector<'b,T> {
 }
 
 impl<'a,T> FromIterator<T> for MaybeOwnedVector<'a,T> {
-    fn from_iter<I:Iterator<T>>(iterator: I) -> MaybeOwnedVector<T> {
+    fn from_iter_with_capacity<I:Iterator<T>>(iterator: I, cap: uint) -> MaybeOwnedVector<T> {
         // If we are building from scratch, might as well build the
         // most flexible variant.
-        Growable(FromIterator::from_iter(iterator))
+        Growable(FromIterator::from_iter_with_capacity(iterator, cap))
     }
 }
 

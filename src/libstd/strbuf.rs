@@ -288,15 +288,16 @@ impl Mutable for StrBuf {
 }
 
 impl FromIterator<char> for StrBuf {
-    fn from_iter<I:Iterator<char>>(iterator: I) -> StrBuf {
-        let mut buf = StrBuf::new();
+    fn from_iter_with_capacity<I:Iterator<char>>(iterator: I, cap: uint) -> StrBuf {
+        let mut buf = StrBuf::with_capacity(cap);
         buf.extend(iterator);
         buf
     }
 }
 
 impl Extendable<char> for StrBuf {
-    fn extend<I:Iterator<char>>(&mut self, mut iterator: I) {
+    fn extend_with_capacity<I:Iterator<char>>(&mut self, mut iterator: I, extra: uint) {
+        self.reserve_additional(extra);
         for ch in iterator {
             self.push_char(ch)
         }

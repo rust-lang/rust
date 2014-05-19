@@ -582,7 +582,7 @@ impl<A> DoubleEndedIterator<A> for MoveItems<A> {
 }
 
 impl<A> FromIterator<A> for DList<A> {
-    fn from_iter<T: Iterator<A>>(iterator: T) -> DList<A> {
+    fn from_iter_with_capacity<T: Iterator<A>>(iterator: T, _cap: uint) -> DList<A> {
         let mut ret = DList::new();
         ret.extend(iterator);
         ret
@@ -590,7 +590,7 @@ impl<A> FromIterator<A> for DList<A> {
 }
 
 impl<A> Extendable<A> for DList<A> {
-    fn extend<T: Iterator<A>>(&mut self, mut iterator: T) {
+    fn extend_with_capacity<T: Iterator<A>>(&mut self, mut iterator: T, _extra: uint) {
         for elt in iterator { self.push_back(elt); }
     }
 }

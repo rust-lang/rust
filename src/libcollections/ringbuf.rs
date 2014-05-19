@@ -185,6 +185,20 @@ impl<T> RingBuf<T> {
         self.elts.reserve(n);
     }
 
+    /// Reserve capacity for an additional `n` elements in the given RingBuf,
+    /// over-allocating in case the caller needs to reserve additional
+    /// space.
+    ///
+    /// Do nothing if `self`'s capacity is already equal to or greater
+    /// than the requested capacity.
+    ///
+    /// # Arguments
+    ///
+    /// * n - The number of elements to reserve space for
+    pub fn reserve_additional(&mut self, n: uint) {
+        self.elts.reserve_additional(n);
+    }
+
     /// Front-to-back iterator.
     pub fn iter<'a>(&'a self) -> Items<'a, T> {
         Items{index: 0, rindex: self.nelts, lo: self.lo, elts: self.elts.as_slice()}
@@ -385,16 +399,16 @@ impl<A: Eq> Eq for RingBuf<A> {
 }
 
 impl<A> FromIterator<A> for RingBuf<A> {
-    fn from_iter<T: Iterator<A>>(iterator: T) -> RingBuf<A> {
-        let (lower, _) = iterator.size_hint();
-        let mut deq = RingBuf::with_capacity(lower);
+    fn from_iter_with_capacity<T: Iterator<A>>(iterator: T, cap: uint) -> RingBuf<A> {
+        let mut deq = RingBuf::with_capacity(cap);
         deq.extend(iterator);
         deq
     }
 }
 
 impl<A> Extendable<A> for RingBuf<A> {
-    fn extend<T: Iterator<A>>(&mut self, mut iterator: T) {
+    fn extend_with_capacity<T: Iterator<A>>(&mut self, mut iterator: T, extra: uint) {
+        self.reserve_additional(extra);
         for elt in iterator {
             self.push_back(elt);
         }
