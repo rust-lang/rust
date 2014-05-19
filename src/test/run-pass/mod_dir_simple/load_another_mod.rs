@@ -8,4 +8,5 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[path = "test.rs"]
 pub mod test;
