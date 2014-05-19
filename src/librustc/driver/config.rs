@@ -544,7 +544,7 @@ pub fn optgroups() -> Vec<getopts::OptGroup> {
         optmulti("F", "forbid", "Set lint forbidden", "OPT"),
         optmulti("C", "codegen", "Set a codegen option", "OPT[=VALUE]"),
         optmulti("Z", "", "Set internal debugging options", "FLAG"),
-        optflag("v", "version", "Print version info and exit"),
+        optflagopt("v", "version", "Print version info and exit", "verbose"),
         optopt("", "color", "Configure coloring of output:
             auto   = colorize, if output goes to a tty (default);
             always = always colorize output;
