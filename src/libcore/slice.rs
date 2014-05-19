@@ -16,7 +16,7 @@
 
 use mem::transmute;
 use clone::Clone;
-use container::Container;
+use collections::Collection;
 use cmp::{PartialEq, Ord, Ordering, Less, Equal, Greater};
 use cmp;
 use default::Default;
@@ -253,7 +253,7 @@ pub mod traits {
 
     use cmp::{PartialEq, PartialOrd, Eq, Ord, Ordering, Equiv};
     use iter::order;
-    use container::Container;
+    use collections::Collection;
 
     impl<'a,T:PartialEq> PartialEq for &'a [T] {
         fn eq(&self, other: & &'a [T]) -> bool {
@@ -347,7 +347,7 @@ impl<T> Vector<T> for ~[T] {
     fn as_slice<'a>(&'a self) -> &'a [T] { let v: &'a [T] = *self; v }
 }
 
-impl<'a, T> Container for &'a [T] {
+impl<'a, T> Collection for &'a [T] {
     /// Returns the length of a vector
     #[inline]
     fn len(&self) -> uint {
@@ -355,7 +355,7 @@ impl<'a, T> Container for &'a [T] {
     }
 }
 
-impl<T> Container for ~[T] {
+impl<T> Collection for ~[T] {
     /// Returns the length of a vector
     #[inline]
     fn len(&self) -> uint {
@@ -1205,7 +1205,7 @@ pub mod raw {
 
 /// Operations on `[u8]`.
 pub mod bytes {
-    use container::Container;
+    use collections::Collection;
     use ptr;
     use slice::MutableVector;
 

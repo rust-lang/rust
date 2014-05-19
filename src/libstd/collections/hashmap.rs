@@ -1504,7 +1504,7 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> PartialEq for HashSet<T, H> {
 
 impl<T: Eq + Hash<S>, S, H: Hasher<S>> Eq for HashSet<T, H> {}
 
-impl<T: Eq + Hash<S>, S, H: Hasher<S>> Container for HashSet<T, H> {
+impl<T: Eq + Hash<S>, S, H: Hasher<S>> Collection for HashSet<T, H> {
     fn len(&self) -> uint { self.map.len() }
 }
 
@@ -2159,8 +2159,8 @@ mod test_set {
     use prelude::*;
 
     use super::HashSet;
-    use container::Container;
     use slice::ImmutableEqVector;
+    use std::collections::Collection;
 
     #[test]
     fn test_disjoint() {

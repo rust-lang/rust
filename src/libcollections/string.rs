@@ -279,7 +279,7 @@ impl String {
     }
 }
 
-impl Container for String {
+impl Collection for String {
     #[inline]
     fn len(&self) -> uint {
         self.vec.len()

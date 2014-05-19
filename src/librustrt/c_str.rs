@@ -229,7 +229,7 @@ impl Drop for CString {
     }
 }
 
-impl Container for CString {
+impl Collection for CString {
     /// Return the number of bytes in the CString (not including the NUL terminator).
     ///
     /// # Failure

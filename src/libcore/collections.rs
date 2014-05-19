@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Traits for generic containers (including `Map` and `Set`)
+//! Traits for generic collections (including `Map` and `Set`)
 
 use option::Option;
 
 /// A trait to represent the abstract idea of a container. The only concrete
 /// knowledge known is the number of elements contained within.
-pub trait Container {
+pub trait Collection {
     /// Return the number of elements in the container
     fn len(&self) -> uint;
 
@@ -26,14 +26,14 @@ pub trait Container {
 }
 
 /// A trait to represent mutable containers
-pub trait Mutable: Container {
+pub trait Mutable: Collection {
     /// Clear the container, removing all values.
     fn clear(&mut self);
 }
 
 /// A map is a key-value store where values may be looked up by their keys. This
 /// trait provides basic operations to operate on these stores.
-pub trait Map<K, V>: Container {
+pub trait Map<K, V>: Collection {
     /// Return a reference to the value corresponding to the key
     fn find<'a>(&'a self, key: &K) -> Option<&'a V>;
 
@@ -76,7 +76,7 @@ pub trait MutableMap<K, V>: Map<K, V> + Mutable {
 /// A set is a group of objects which are each distinct from one another. This
 /// trait represents actions which can be performed on sets to iterate over
 /// them.
-pub trait Set<T>: Container {
+pub trait Set<T>: Collection {
     /// Return true if the set contains a value
     fn contains(&self, value: &T) -> bool;
 

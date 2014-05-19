@@ -227,7 +227,7 @@ impl<A: fmt::Show + Hash + Eq, B: fmt::Show> fmt::Show for LruCache<A, B> {
     }
 }
 
-impl<K: Hash + Eq, V> Container for LruCache<K, V> {
+impl<K: Hash + Eq, V> Collection for LruCache<K, V> {
     /// Return the number of key-value pairs in the cache.
     fn len(&self) -> uint {
         self.map.len()
