@@ -8,13 +8,30 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// no-prefer-dynamic
+
+// This aux-file will require the eh_personality function to be codegen'd, but
+// it hasn't been defined just yet. Make sure we don't explode.
+
 #![no_std]
+#![feature(phase)]
+#![crate_type = "rlib"]
 
-#[lang="fail_"]
-fn fail(_: *i8, _: *i8, _: uint) -> ! { loop {} }
+#[phase(syntax, link)]
+extern crate core;
 
-#[lang = "stack_exhausted"]
-extern fn stack_exhausted() {}
+struct A;
 
-#[lang = "eh_personality"]
-extern fn eh_personality() {}
+impl core::ops::Drop for A {
+    fn drop(&mut self) {}
+}
+
+pub fn foo() {
+    let _a = A;
+    fail!("wut");
+}
+
+mod std {
+    pub use core::{option, fmt};
+}
+
