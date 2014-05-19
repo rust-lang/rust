@@ -384,7 +384,7 @@ while read p; do
     need_ok "failed to update manifest"
 
 # The manifest lists all files to install
-done < "${CFG_SRC_DIR}/lib/rustlib/manifest.in"
+done < "${CFG_SRC_DIR}/${CFG_LIBDIR#$CFG_PREFIX}/rustlib/manifest.in"
 
 # Sanity check: can we run the installed binaries?
 if [ -z "${CFG_DISABLE_VERIFY}" ]
