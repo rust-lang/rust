@@ -108,7 +108,7 @@ pub mod ptr;
 #[cfg(not(test))] pub mod cmp;
 pub mod clone;
 pub mod default;
-pub mod container;
+pub mod collections;
 
 /* Core types and methods on primitives */
 

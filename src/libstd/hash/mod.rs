@@ -63,7 +63,7 @@
 
 #![allow(unused_must_use)]
 
-use container::Container;
+use collections::Collection;
 use intrinsics::TypeId;
 use io::Writer;
 use iter::Iterator;

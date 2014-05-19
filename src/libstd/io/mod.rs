@@ -214,7 +214,7 @@ responding to errors that may occur while attempting to read the numbers.
 #![deny(unused_must_use)]
 
 use char::Char;
-use container::Container;
+use collections::Collection;
 use fmt;
 use int;
 use iter::Iterator;

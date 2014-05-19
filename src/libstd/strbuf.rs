@@ -12,7 +12,7 @@
 
 use c_vec::CVec;
 use char::Char;
-use container::{Container, Mutable};
+use collections::{Collection, Mutable};
 use fmt;
 use io::Writer;
 use iter::{Extendable, FromIterator, Iterator, range};
@@ -273,7 +273,7 @@ impl StrBuf {
     }
 }
 
-impl Container for StrBuf {
+impl Collection for StrBuf {
     #[inline]
     fn len(&self) -> uint {
         self.vec.len()
@@ -340,7 +340,7 @@ impl<H:Writer> ::hash::Hash<H> for StrBuf {
 #[cfg(test)]
 mod tests {
     extern crate test;
-    use container::{Container, Mutable};
+    use collections::{Collection, Mutable};
     use self::test::Bencher;
     use str::{Str, StrSlice};
     use super::StrBuf;

@@ -14,7 +14,7 @@
 
 #![allow(unsigned_negate)]
 
-use container::Container;
+use collections::Collection;
 use fmt;
 use iter::{Iterator, DoubleEndedIterator};
 use num::{Int, cast, zero};

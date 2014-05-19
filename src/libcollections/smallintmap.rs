@@ -24,7 +24,7 @@ pub struct SmallIntMap<T> {
     v: Vec<Option<T>>,
 }
 
-impl<V> Container for SmallIntMap<V> {
+impl<V> Collection for SmallIntMap<V> {
     /// Return the number of elements in the map
     fn len(&self) -> uint {
         self.v.iter().count(|elt| elt.is_some())

@@ -26,7 +26,7 @@
 
 use char::Char;
 use clone::Clone;
-use container::Container;
+use collections::Collection;
 use default::Default;
 use finally::try_finally;
 use intrinsics;

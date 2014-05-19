@@ -11,7 +11,7 @@
 #![allow(missing_doc)]
 
 use char;
-use container::Container;
+use collections::Collection;
 use fmt;
 use iter::{Iterator, range, DoubleEndedIterator};
 use num::{Float, FPNaN, FPInfinite, ToPrimitive, Primitive};

@@ -10,7 +10,6 @@
 
 //! Unordered containers, implemented as hash-tables (`HashSet` and `HashMap` types)
 
-use std::container::{Container, Mutable, Map, MutableMap, Set, MutableSet};
 use std::clone::Clone;
 use std::cmp::{Eq, TotalEq, Equiv, max};
 use std::default::Default;
@@ -925,7 +924,7 @@ impl<K: TotalEq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     }
 }
 
-impl<K: TotalEq + Hash<S>, V, S, H: Hasher<S>> Container for HashMap<K, V, H> {
+impl<K: TotalEq + Hash<S>, V, S, H: Hasher<S>> Collection for HashMap<K, V, H> {
     /// Return the number of elements in the map
     fn len(&self) -> uint { self.table.size() }
 }
@@ -1494,7 +1493,7 @@ impl<T: TotalEq + Hash<S>, S, H: Hasher<S>> Eq for HashSet<T, H> {
     }
 }
 
-impl<T: TotalEq + Hash<S>, S, H: Hasher<S>> Container for HashSet<T, H> {
+impl<T: TotalEq + Hash<S>, S, H: Hasher<S>> Collection for HashSet<T, H> {
     fn len(&self) -> uint { self.map.len() }
 }
 
@@ -2079,7 +2078,7 @@ mod test_map {
 #[cfg(test)]
 mod test_set {
     use super::HashSet;
-    use std::container::Container;
+    use std::collections::Collection;
     use std::slice::ImmutableEqVector;
 
     #[test]

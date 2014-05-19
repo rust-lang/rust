@@ -33,7 +33,7 @@
 /// of a synchronous channel. There are a few branches for the unbuffered case,
 /// but they're mostly just relevant to blocking senders.
 
-use container::Container;
+use collections::Collection;
 use iter::Iterator;
 use kinds::Send;
 use mem;

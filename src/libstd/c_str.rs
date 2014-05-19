@@ -67,7 +67,7 @@ fn main() {
 
 use clone::Clone;
 use cmp::Eq;
-use container::Container;
+use collections::Collection;
 use iter::{Iterator, range};
 use kinds::marker;
 use libc;
@@ -236,7 +236,7 @@ impl Drop for CString {
     }
 }
 
-impl Container for CString {
+impl Collection for CString {
     /// Return the number of bytes in the CString (not including the NUL terminator).
     ///
     /// # Failure

@@ -17,7 +17,7 @@ use char;
 use clone::Clone;
 use cmp;
 use cmp::{Eq, TotalEq};
-use container::Container;
+use collections::Collection;
 use default::Default;
 use iter::{Filter, Map, Iterator};
 use iter::{Rev, DoubleEndedIterator, ExactSize};
@@ -890,7 +890,7 @@ static TAG_CONT_U8: u8 = 128u8;
 /// Unsafe operations
 pub mod raw {
     use mem;
-    use container::Container;
+    use collections::Collection;
     use iter::Iterator;
     use ptr::RawPtr;
     use raw::Slice;
@@ -955,7 +955,7 @@ Section: Trait implementations
 #[cfg(not(test))]
 #[allow(missing_doc)]
 pub mod traits {
-    use container::Container;
+    use collections::Collection;
     use cmp::{TotalOrd, Ordering, Less, Equal, Greater, Eq, Ord, Equiv, TotalEq};
     use iter::Iterator;
     use option::{Some, None};
@@ -1041,14 +1041,14 @@ impl<'a> Str for ~str {
     fn as_slice<'a>(&'a self) -> &'a str { let s: &'a str = *self; s }
 }
 
-impl<'a> Container for &'a str {
+impl<'a> Collection for &'a str {
     #[inline]
     fn len(&self) -> uint {
         self.repr().len
     }
 }
 
-impl Container for ~str {
+impl Collection for ~str {
     #[inline]
     fn len(&self) -> uint { self.as_slice().len() }
 }

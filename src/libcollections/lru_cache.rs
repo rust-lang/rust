@@ -37,7 +37,6 @@
 //! assert!(cache.get(&2).is_none());
 //! ```
 
-use std::container::Container;
 use std::hash::Hash;
 use std::fmt;
 use std::mem;
@@ -222,7 +221,7 @@ impl<A: fmt::Show + Hash + TotalEq, B: fmt::Show> fmt::Show for LruCache<A, B> {
     }
 }
 
-impl<K: Hash + TotalEq, V> Container for LruCache<K, V> {
+impl<K: Hash + TotalEq, V> Collection for LruCache<K, V> {
     /// Return the number of key-value pairs in the cache.
     fn len(&self) -> uint {
         self.map.len()

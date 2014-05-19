@@ -101,7 +101,7 @@ use mem::transmute;
 use clone::Clone;
 use cmp::{TotalOrd, Ordering, Less, Greater};
 use cmp;
-use container::Container;
+use collections::Collection;
 use iter::*;
 use mem::size_of;
 use mem;

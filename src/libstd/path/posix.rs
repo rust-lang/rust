@@ -10,7 +10,7 @@
 
 //! POSIX file path handling
 
-use container::Container;
+use collections::Collection;
 use c_str::{CString, ToCStr};
 use clone::Clone;
 use cmp::{Eq, TotalEq};

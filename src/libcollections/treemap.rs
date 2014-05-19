@@ -67,7 +67,7 @@ impl<K: Ord + TotalOrd, V: Ord> Ord for TreeMap<K, V> {
     fn lt(&self, other: &TreeMap<K, V>) -> bool { lt(self, other) }
 }
 
-impl<K: TotalOrd, V> Container for TreeMap<K, V> {
+impl<K: TotalOrd, V> Collection for TreeMap<K, V> {
     fn len(&self) -> uint { self.length }
 }
 
@@ -547,7 +547,7 @@ impl<T: Ord + TotalOrd> Ord for TreeSet<T> {
     fn lt(&self, other: &TreeSet<T>) -> bool { self.map < other.map }
 }
 
-impl<T: TotalOrd> Container for TreeSet<T> {
+impl<T: TotalOrd> Collection for TreeSet<T> {
     #[inline]
     fn len(&self) -> uint { self.map.len() }
 }

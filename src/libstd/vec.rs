@@ -13,7 +13,7 @@
 use RawVec = raw::Vec;
 use clone::Clone;
 use cmp::{Ord, Eq, Ordering, TotalEq, TotalOrd, max};
-use container::{Container, Mutable};
+use collections::{Collection, Mutable};
 use default::Default;
 use fmt;
 use iter::{DoubleEndedIterator, FromIterator, Extendable, Iterator, range};
@@ -397,7 +397,7 @@ impl<T: TotalOrd> TotalOrd for Vec<T> {
     }
 }
 
-impl<T> Container for Vec<T> {
+impl<T> Collection for Vec<T> {
     #[inline]
     fn len(&self) -> uint {
         self.len

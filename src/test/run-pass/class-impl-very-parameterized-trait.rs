@@ -48,7 +48,7 @@ impl<T> cat<T> {
     }
 }
 
-impl<T> Container for cat<T> {
+impl<T> Collection for cat<T> {
     fn len(&self) -> uint { self.meows as uint }
     fn is_empty(&self) -> bool { self.meows == 0 }
 }

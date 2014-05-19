@@ -143,7 +143,7 @@ pub use core::cell;
 pub use core::char;
 pub use core::clone;
 #[cfg(not(test))] pub use core::cmp;
-pub use core::container;
+pub use core::collections;
 pub use core::default;
 pub use core::intrinsics;
 pub use core::iter;

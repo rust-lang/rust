@@ -78,7 +78,7 @@ use char::Char;
 use char;
 use clone::Clone;
 use cmp::{Eq, TotalEq, Ord, TotalOrd, Equiv, Ordering};
-use container::Container;
+use collections::Collection;
 use default::Default;
 use fmt;
 use from_str::FromStr;
@@ -632,7 +632,7 @@ impl<'a> StrAllocating for MaybeOwned<'a> {
     }
 }
 
-impl<'a> Container for MaybeOwned<'a> {
+impl<'a> Collection for MaybeOwned<'a> {
     #[inline]
     fn len(&self) -> uint { self.as_slice().len() }
 }
@@ -2098,7 +2098,7 @@ mod tests {
 
     #[test]
     fn test_str_container() {
-        fn sum_len<S: Container>(v: &[S]) -> uint {
+        fn sum_len<S: Collection>(v: &[S]) -> uint {
             v.iter().map(|x| x.len()).sum()
         }
 

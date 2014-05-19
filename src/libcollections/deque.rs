@@ -10,8 +10,6 @@
 
 //! Container traits for collections
 
-use std::container::Mutable;
-
 /// A double-ended sequence that allows querying, insertion and deletion at both ends.
 pub trait Deque<T> : Mutable {
     /// Provide a reference to the front element, or None if the sequence is empty
@@ -43,7 +41,7 @@ pub trait Deque<T> : Mutable {
 pub mod bench {
     extern crate test;
     use self::test::Bencher;
-    use std::container::MutableMap;
+    use std::collections::MutableMap;
     use rand;
     use rand::Rng;
 

@@ -18,7 +18,7 @@ More runtime type reflection
 
 use mem::transmute;
 use char;
-use container::Container;
+use collections::Collection;
 use io;
 use iter::Iterator;
 use option::{Some, None, Option};

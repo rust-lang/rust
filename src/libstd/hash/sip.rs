@@ -25,7 +25,7 @@
  */
 
 use clone::Clone;
-use container::Container;
+use collections::Collection;
 use default::Default;
 use int;
 use io::{IoResult, Writer};
