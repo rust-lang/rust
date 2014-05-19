@@ -508,11 +508,18 @@ impl<T, E> Result<T, E> {
     /// Unwraps a result, yielding the content of an `Ok`.
     /// If the value is an `Err` then it calls `op` with its value.
     #[inline]
-    pub fn unwrap_or_handle(self, op: |E| -> T) -> T {
+    pub fn unwrap_or_else(self, op: |E| -> T) -> T {
         match self {
             Ok(t) => t,
             Err(e) => op(e)
         }
+    }
+
+    /// Deprecated name for `unwrap_or_else()`.
+    #[deprecated = "replaced by .unwrap_or_else()"]
+    #[inline]
+    pub fn unwrap_or_handle(self, op: |E| -> T) -> T {
+        self.unwrap_or_else(op)
     }
 }
 
@@ -758,8 +765,8 @@ mod tests {
         let ok: Result<int, ~str> = Ok(100);
         let ok_err: Result<int, ~str> = Err("I got this.".to_owned());
 
-        assert_eq!(ok.unwrap_or_handle(handler), 100);
-        assert_eq!(ok_err.unwrap_or_handle(handler), 50);
+        assert_eq!(ok.unwrap_or_else(handler), 100);
+        assert_eq!(ok_err.unwrap_or_else(handler), 50);
     }
 
     #[test]
@@ -774,6 +781,6 @@ mod tests {
         }
 
         let bad_err: Result<int, ~str> = Err("Unrecoverable mess.".to_owned());
-        let _ : int = bad_err.unwrap_or_handle(handler);
+        let _ : int = bad_err.unwrap_or_else(handler);
     }
 }
