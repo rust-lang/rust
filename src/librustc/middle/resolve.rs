@@ -4891,6 +4891,25 @@ impl<'a> Resolver<'a> {
     }
 
     fn find_fallback_in_self_type(&mut self, name: Name) -> FallbackSuggestion {
+        #[deriving(Eq)]
+        enum FallbackChecks {
+            Everything,
+            OnlyTraitAndStatics
+        }
+
+        fn extract_path_and_node_id(t: &Ty, allow: FallbackChecks)
+                                                    -> Option<(Path, NodeId, FallbackChecks)> {
+            match t.node {
+                TyPath(ref path, _, node_id) => Some((path.clone(), node_id, allow)),
+                TyPtr(mut_ty) => extract_path_and_node_id(mut_ty.ty, OnlyTraitAndStatics),
+                TyRptr(_, mut_ty) => extract_path_and_node_id(mut_ty.ty, allow),
+                // This doesn't handle the remaining `Ty` variants as they are not
+                // that commonly the self_type, it might be interesting to provide
+                // support for those in future.
+                _ => None,
+            }
+        }
+
         fn get_module(this: &mut Resolver, span: Span, ident_path: &[ast::Ident])
                             -> Option<Rc<Module>> {
             let root = this.current_module.clone();
@@ -4918,27 +4937,29 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        let (path, node_id) = match self.current_self_type {
-            Some(ref ty) => match ty.node {
-                TyPath(ref path, _, node_id) => (path.clone(), node_id),
-                _ => unreachable!(),
+        let (path, node_id, allowed) = match self.current_self_type {
+            Some(ref ty) => match extract_path_and_node_id(ty, Everything) {
+                Some(x) => x,
+                None => return NoSuggestion,
             },
             None => return NoSuggestion,
         };
 
-        // Look for a field with the same name in the current self_type.
-        match self.def_map.borrow().find(&node_id) {
-             Some(&DefTy(did))
-            | Some(&DefStruct(did))
-            | Some(&DefVariant(_, did, _)) => match self.structs.find(&did) {
-                None => {}
-                Some(fields) => {
-                    if fields.iter().any(|&field_name| name == field_name) {
-                        return Field;
+        if allowed == Everything {
+            // Look for a field with the same name in the current self_type.
+            match self.def_map.borrow().find(&node_id) {
+                 Some(&DefTy(did))
+                | Some(&DefStruct(did))
+                | Some(&DefVariant(_, did, _)) => match self.structs.find(&did) {
+                    None => {}
+                    Some(fields) => {
+                        if fields.iter().any(|&field_name| name == field_name) {
+                            return Field;
+                        }
                     }
-                }
-            },
-            _ => {} // Self type didn't resolve properly
+                },
+                _ => {} // Self type didn't resolve properly
+            }
         }
 
         let ident_path = path.segments.iter().map(|seg| seg.identifier).collect::<Vec<_>>();
@@ -4955,8 +4976,8 @@ impl<'a> Resolver<'a> {
                                 FromTrait(_) => unreachable!()
                             }
                         }
-                        Some(DefMethod(_, None)) => return Method,
-                        Some(DefMethod(_, _)) => return TraitMethod,
+                        Some(DefMethod(_, None)) if allowed == Everything => return Method,
+                        Some(DefMethod(_, Some(_))) => return TraitMethod,
                         _ => ()
                     }
                 }
