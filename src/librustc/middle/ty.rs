@@ -14,6 +14,7 @@ use back::svh::Svh;
 use driver::session::Session;
 use metadata::csearch;
 use mc = middle::mem_categorization;
+use middle::lint;
 use middle::const_eval;
 use middle::dependency_format;
 use middle::lang_items::{ExchangeHeapLangItem, OpaqueStructLangItem};
@@ -352,6 +353,8 @@ pub struct ctxt {
     pub vtable_map: typeck::vtable_map,
 
     pub dependency_formats: RefCell<dependency_format::Dependencies>,
+
+    pub enum_lint_levels: RefCell<HashMap<ast::NodeId, (lint::Level, lint::LintSource)>>,
 }
 
 pub enum tbox_flag {
@@ -1134,6 +1137,7 @@ pub fn mk_ctxt(s: Session,
         method_map: RefCell::new(FnvHashMap::new()),
         vtable_map: RefCell::new(FnvHashMap::new()),
         dependency_formats: RefCell::new(HashMap::new()),
+        enum_lint_levels: RefCell::new(HashMap::new()),
     }
 }
 
