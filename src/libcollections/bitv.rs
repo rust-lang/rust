@@ -486,17 +486,13 @@ impl Bitv {
         !self.none()
     }
 
-    pub fn init_to_vec(&self, i: uint) -> uint {
-      return if self.get(i) { 1 } else { 0 };
-    }
-
     /**
      * Converts `self` to a vector of `uint` with the same length.
      *
      * Each `uint` in the resulting vector has either value `0u` or `1u`.
      */
     pub fn to_vec(&self) -> Vec<uint> {
-        Vec::from_fn(self.nbits, |x| self.init_to_vec(x))
+        Vec::from_fn(self.nbits, |i| if self.get(i) { 1 } else { 0 })
     }
 
     /**
