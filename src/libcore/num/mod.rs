@@ -11,7 +11,7 @@
 //! Numeric traits and functions for generic mathematics
 //!
 //! These are implemented for the primitive numeric types in `std::{u8, u16,
-//! u32, u64, uint, i8, i16, i32, i64, int, f32, f64, float}`.
+//! u32, u64, uint, i8, i16, i32, i64, int, f32, f64}`.
 
 #![allow(missing_doc)]
 
@@ -97,7 +97,7 @@ pub trait One: Mul<Self, Self> {
 pub trait Signed: Num + Neg<Self> {
     /// Computes the absolute value.
     ///
-    /// For float, f32, and f64, `NaN` will be returned if the number is `NaN`.
+    /// For `f32` and `f64`, `NaN` will be returned if the number is `NaN`.
     fn abs(&self) -> Self;
 
     /// The positive difference of two numbers.
@@ -108,15 +108,17 @@ pub trait Signed: Num + Neg<Self> {
 
     /// Returns the sign of the number.
     ///
-    /// For `float`, `f32`, `f64`:
-    ///   * `1.0` if the number is positive, `+0.0` or `INFINITY`
-    ///   * `-1.0` if the number is negative, `-0.0` or `NEG_INFINITY`
-    ///   * `NaN` if the number is `NaN`
+    /// For `f32` and `f64`:
+    ///
+    /// * `1.0` if the number is positive, `+0.0` or `INFINITY`
+    /// * `-1.0` if the number is negative, `-0.0` or `NEG_INFINITY`
+    /// * `NaN` if the number is `NaN`
     ///
     /// For `int`:
-    ///   * `0` if the number is zero
-    ///   * `1` if the number is positive
-    ///   * `-1` if the number is negative
+    ///
+    /// * `0` if the number is zero
+    /// * `1` if the number is positive
+    /// * `-1` if the number is negative
     fn signum(&self) -> Self;
 
     /// Returns true if the number is positive and false if the number is zero or negative.
@@ -128,7 +130,7 @@ pub trait Signed: Num + Neg<Self> {
 
 /// Computes the absolute value.
 ///
-/// For float, f32, and f64, `NaN` will be returned if the number is `NaN`
+/// For `f32` and `f64`, `NaN` will be returned if the number is `NaN`
 #[inline(always)]
 pub fn abs<T: Signed>(value: T) -> T {
     value.abs()
@@ -145,15 +147,17 @@ pub fn abs_sub<T: Signed>(x: T, y: T) -> T {
 
 /// Returns the sign of the number.
 ///
-/// For float, f32, f64:
-/// - `1.0` if the number is positive, `+0.0` or `INFINITY`
-/// - `-1.0` if the number is negative, `-0.0` or `NEG_INFINITY`
-/// - `NAN` if the number is `NAN`
+/// For `f32` and `f64`:
+///
+/// * `1.0` if the number is positive, `+0.0` or `INFINITY`
+/// * `-1.0` if the number is negative, `-0.0` or `NEG_INFINITY`
+/// * `NaN` if the number is `NaN`
 ///
 /// For int:
-/// - `0` if the number is zero
-/// - `1` if the number is positive
-/// - `-1` if the number is negative
+///
+/// * `0` if the number is zero
+/// * `1` if the number is positive
+/// * `-1` if the number is negative
 #[inline(always)] pub fn signum<T: Signed>(value: T) -> T { value.signum() }
 
 /// A trait for values which cannot be negative
