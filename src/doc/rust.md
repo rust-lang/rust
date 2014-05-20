@@ -848,11 +848,11 @@ extern crate foo = "some/where/rust-foo#foo:1.0"; // a full crate ID for externa
 ##### Use declarations
 
 ~~~~ {.notrust .ebnf .gram}
-use_decl : "pub" ? "use" ident [ '=' path
-                          | "::" path_glob ] ;
+use_decl : "pub" ? "use" [ ident '=' path
+                          | path_glob ] ;
 
-path_glob : ident [ "::" path_glob ] ?
-          | '*'
+path_glob : ident [ "::" [ path_glob
+                          | '*' ] ] ?
           | '{' ident [ ',' ident ] * '}' ;
 ~~~~
 
@@ -1743,7 +1743,7 @@ import public items from their destination, not private items.
 attribute : '#' '!' ? '[' meta_item ']' ;
 meta_item : ident [ '=' literal
                   | '(' meta_seq ')' ] ? ;
-meta_seq : meta_item [ ',' meta_seq ]* ;
+meta_seq : meta_item [ ',' meta_seq ] ? ;
 ~~~~
 
 Static entities in Rust &mdash; crates, modules and items &mdash; may have _attributes_
@@ -3027,11 +3027,11 @@ then any `else` block is executed.
 ### Match expressions
 
 ~~~~ {.notrust .ebnf .gram}
-match_expr : "match" expr '{' match_arm [ '|' match_arm ] * '}' ;
+match_expr : "match" expr '{' match_arm * '}' ;
 
-match_arm : match_pat "=>" [ expr "," | '{' block '}' ] ;
+match_arm : attribute * match_pat "=>" [ expr "," | '{' block '}' ] ;
 
-match_pat : pat [ ".." pat ] ? [ "if" expr ] ;
+match_pat : pat [ '|' pat ] * [ "if" expr ] ? ;
 ~~~~
 
 A `match` expression branches on a *pattern*. The exact form of matching that
@@ -3137,7 +3137,7 @@ using the `ref` keyword,
 or to a mutable reference using `ref mut`.
 
 Subpatterns can also be bound to variables by the use of the syntax
-`variable @ pattern`.
+`variable @ subpattern`.
 For example:
 
 ~~~~
