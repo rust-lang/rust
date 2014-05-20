@@ -28,7 +28,7 @@
 //!
 //! # How to use the core library
 //!
-// TODO: Fill me in with more detail when the interface settles
+// FIXME: Fill me in with more detail when the interface settles
 //! This library is built on the assumption of a few existing symbols:
 //!
 //! * `memcpy`, `memcmp`, `memset` - These are core memory routines which are
