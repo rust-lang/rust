@@ -2184,7 +2184,7 @@ pub mod order {
     use super::Iterator;
 
     /// Compare `a` and `b` for equality using `TotalEq`
-    pub fn equals<A: TotalEq, T: Iterator<A>>(mut a: T, mut b: T) -> bool {
+    pub fn equals<A: TotalEq, T: Iterator<A>, S: Iterator<A>>(mut a: T, mut b: S) -> bool {
         loop {
             match (a.next(), b.next()) {
                 (None, None) => return true,
@@ -2195,7 +2195,7 @@ pub mod order {
     }
 
     /// Order `a` and `b` lexicographically using `TotalOrd`
-    pub fn cmp<A: TotalOrd, T: Iterator<A>>(mut a: T, mut b: T) -> cmp::Ordering {
+    pub fn cmp<A: TotalOrd, T: Iterator<A>, S: Iterator<A>>(mut a: T, mut b: S) -> cmp::Ordering {
         loop {
             match (a.next(), b.next()) {
                 (None, None) => return cmp::Equal,
@@ -2210,7 +2210,7 @@ pub mod order {
     }
 
     /// Compare `a` and `b` for equality (Using partial equality, `Eq`)
-    pub fn eq<A: Eq, T: Iterator<A>>(mut a: T, mut b: T) -> bool {
+    pub fn eq<A: Eq, T: Iterator<A>, S: Iterator<A>>(mut a: T, mut b: S) -> bool {
         loop {
             match (a.next(), b.next()) {
                 (None, None) => return true,
@@ -2221,7 +2221,7 @@ pub mod order {
     }
 
     /// Compare `a` and `b` for nonequality (Using partial equality, `Eq`)
-    pub fn ne<A: Eq, T: Iterator<A>>(mut a: T, mut b: T) -> bool {
+    pub fn ne<A: Eq, T: Iterator<A>, S: Iterator<A>>(mut a: T, mut b: S) -> bool {
         loop {
             match (a.next(), b.next()) {
                 (None, None) => return false,
@@ -2232,7 +2232,7 @@ pub mod order {
     }
 
     /// Return `a` < `b` lexicographically (Using partial order, `Ord`)
-    pub fn lt<A: Ord, T: Iterator<A>>(mut a: T, mut b: T) -> bool {
+    pub fn lt<A: Ord, T: Iterator<A>, S: Iterator<A>>(mut a: T, mut b: S) -> bool {
         loop {
             match (a.next(), b.next()) {
                 (None, None) => return false,
@@ -2244,7 +2244,7 @@ pub mod order {
     }
 
     /// Return `a` <= `b` lexicographically (Using partial order, `Ord`)
-    pub fn le<A: Ord, T: Iterator<A>>(mut a: T, mut b: T) -> bool {
+    pub fn le<A: Ord, T: Iterator<A>, S: Iterator<A>>(mut a: T, mut b: S) -> bool {
         loop {
             match (a.next(), b.next()) {
                 (None, None) => return true,
@@ -2256,7 +2256,7 @@ pub mod order {
     }
 
     /// Return `a` > `b` lexicographically (Using partial order, `Ord`)
-    pub fn gt<A: Ord, T: Iterator<A>>(mut a: T, mut b: T) -> bool {
+    pub fn gt<A: Ord, T: Iterator<A>, S: Iterator<A>>(mut a: T, mut b: S) -> bool {
         loop {
             match (a.next(), b.next()) {
                 (None, None) => return false,
@@ -2268,7 +2268,7 @@ pub mod order {
     }
 
     /// Return `a` >= `b` lexicographically (Using partial order, `Ord`)
-    pub fn ge<A: Ord, T: Iterator<A>>(mut a: T, mut b: T) -> bool {
+    pub fn ge<A: Ord, T: Iterator<A>, S: Iterator<A>>(mut a: T, mut b: S) -> bool {
         loop {
             match (a.next(), b.next()) {
                 (None, None) => return true,
@@ -2324,6 +2324,16 @@ pub mod order {
         assert!(le(c.iter(), b.iter()) == (c[0] <= b[0]));
         assert!(gt(c.iter(), b.iter()) == (c[0] >  b[0]));
         assert!(ge(c.iter(), b.iter()) == (c[0] >= b[0]));
+    }
+
+    #[test]
+    fn test_multi_iter() {
+        use slice::ImmutableVector;
+        use iter::DoubleEndedIterator;
+        let xs = [1i,2,3,4];
+        let ys = [4i,3,2,1];
+        assert!(eq(xs.iter(), ys.iter().rev()));
+        assert!(lt(xs.iter(), xs.iter().skip(2)));
     }
 }
 
