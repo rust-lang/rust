@@ -354,7 +354,8 @@ pub struct ctxt {
 
     pub dependency_formats: RefCell<dependency_format::Dependencies>,
 
-    pub enum_lint_levels: RefCell<HashMap<ast::NodeId, (lint::Level, lint::LintSource)>>,
+    pub node_lint_levels: RefCell<HashMap<(ast::NodeId, lint::Lint),
+                                          (lint::Level, lint::LintSource)>>,
 }
 
 pub enum tbox_flag {
@@ -1137,7 +1138,7 @@ pub fn mk_ctxt(s: Session,
         method_map: RefCell::new(FnvHashMap::new()),
         vtable_map: RefCell::new(FnvHashMap::new()),
         dependency_formats: RefCell::new(HashMap::new()),
-        enum_lint_levels: RefCell::new(HashMap::new()),
+        node_lint_levels: RefCell::new(HashMap::new()),
     }
 }
 
