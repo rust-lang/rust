@@ -142,11 +142,14 @@ struct CLayout {
    // ...
 }
 
+
 extern {
     fn foo(x: UnspecifiedLayout); // warning: use of non-FFI-safe struct in extern declaration
 
     fn bar(x: CLayout); // no warning
 }
+
+extern "C" fn foo(x: UnspecifiedLayout) { } // warning: use of non-FFI-safe struct in function with C abi.
 ```
 
 
@@ -166,6 +169,3 @@ extern {
   end of a struct? (Just always lay-out unsized fields last?
   (i.e. after monomorphisation if a field was originally marked
   `Sized?` then it needs to be last).)
-- Should the lint apply to C-compatible functions defined in Rust like
-  `extern "C" fn foo(x: UnspecifiedLayout)`? (The equivalent lint for
-  enums does not pick up this case.)
