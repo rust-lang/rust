@@ -8,7 +8,157 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Types that provide interior mutability.
+//! Sharable mutable containers.
+//!
+//! Values of the `Cell` and `RefCell` types may be mutated through
+//! shared references (i.e. the common `&T` type), whereas most Rust
+//! types can only be mutated through unique (`&mut T`) references. We
+//! say that `Cell` and `RefCell` provide *interior mutability*, in
+//! contrast with typical Rust types that exhibit *inherited
+//! mutability*.
+//!
+//! Cell types come in two flavors: `Cell` and `RefCell`. `Cell`
+//! provides `get` and `set` methods that change the
+//! interior value with a single method call. `Cell` though is only
+//! compatible with types that implement `Copy`. For other types,
+//! one must use the `RefCell` type, acquiring a write lock before
+//! mutating.
+//!
+//! `RefCell` uses Rust's lifetimes to implement *dynamic borrowing*,
+//! a process whereby one can claim temporary, exclusive, mutable
+//! access to the inner value. Borrows for `RefCell`s are tracked *at
+//! runtime*, unlike Rust's native reference types which are entirely
+//! tracked statically, at compile time. Because `RefCell` borrows are
+//! dynamic it is possible to attempt to borrow a value that is
+//! already mutably borrowed; when this happens it results in task
+//! failure.
+//!
+//! # When to choose interior mutability
+//!
+//! The more common inherited mutability, where one must have unique
+//! access to mutate a value, is one of the key language elements that
+//! enables Rust to reason strongly about pointer aliasing, statically
+//! preventing crash bugs. Because of that, inherited mutability is
+//! preferred, and interior mutability is something of a last
+//! resort. Since cell types enable mutation where it would otherwise
+//! be disallowed though, there are occassions when interior
+//! mutability might be appropriate, or even *must* be used, e.g.
+//!
+//! * Introducing inherited mutability roots to shared types.
+//! * Implementation details of logically-immutable methods.
+//! * Mutating implementations of `clone`.
+//!
+//! ## Introducing inherited mutability roots to shared types
+//!
+//! Shared smart pointer types, including `Rc` and `Arc`, provide
+//! containers that can be cloned and shared between multiple parties.
+//! Because the contained values may be multiply-aliased, they can
+//! only be borrowed as shared references, not mutable references.
+//! Without cells it would be impossible to mutate data inside of
+//! shared boxes at all!
+//!
+//! It's very common then to put a `RefCell` inside shared pointer
+//! types to reintroduce mutability:
+//!
+//! ```
+//! extern crate collections;
+//!
+//! use collections::HashMap;
+//! use std::cell::RefCell;
+//! use std::rc::Rc;
+//!
+//! fn main() {
+//!     let shared_map: Rc<RefCell<_>> = Rc::new(RefCell::new(HashMap::new()));
+//!     shared_map.borrow_mut().insert("africa", 92388);
+//!     shared_map.borrow_mut().insert("kyoto", 11837);
+//!     shared_map.borrow_mut().insert("piccadilly", 11826);
+//!     shared_map.borrow_mut().insert("marbles", 38);
+//! }
+//! ```
+//!
+//! ## Implementation details of logically-immutable methods
+//!
+//! Occasionally it may be desirable not to expose in an API that
+//! there is mutation happening "under the hood". This may be because
+//! logically the operation is immutable, but e.g. caching forces the
+//! implementation to perform mutation; or because you must employ
+//! mutation to implement a trait method that was originally defined
+//! to take `&self`.
+//!
+//! ```
+//! extern crate collections;
+//!
+//! use collections::HashMap;
+//! use std::cell::RefCell;
+//!
+//! struct Graph {
+//!     edges: HashMap<uint, uint>,
+//!     span_tree_cache: RefCell<Option<Vec<(uint, uint)>>>
+//! }
+//!
+//! impl Graph {
+//!     fn minimum_spanning_tree(&self) -> Vec<(uint, uint)> {
+//!         // Create a new scope to contain the lifetime of the
+//!         // dynamic borrow
+//!         {
+//!             // Take a reference to the inside of cache cell
+//!             let mut cache = self.span_tree_cache.borrow_mut();
+//!             if cache.is_some() {
+//!                 return cache.get_ref().clone();
+//!             }
+//!
+//!             let span_tree = self.calc_span_tree();
+//!             *cache = Some(span_tree);
+//!         }
+//!
+//!         // Recursive call to return the just-cached value.
+//!         // Note that if we had not let the previous borrow
+//!         // of the cache fall out of scope then the subsequent
+//!         // recursive borrow would cause a dynamic task failure.
+//!         // This is the major hazard of using `RefCell`.
+//!         self.minimum_spanning_tree()
+//!     }
+//! #   fn calc_span_tree(&self) -> Vec<(uint, uint)> { vec![] }
+//! }
+//! # fn main() { }
+//! ```
+//!
+//! ## Mutating implementations of `clone`
+//!
+//! This is simply a special - but common - case of the previous:
+//! hiding mutability for operations that appear to be immutable.
+//! The `clone` method is expected to not change the source value, and
+//! is declared to take `&self`, not `&mut self`. Therefore any
+//! mutation that happens in the `clone` method must use cell
+//! types. For example, `Rc` maintains its reference counts within a
+//! `Cell`.
+//!
+//! ```
+//! use std::cell::Cell;
+//!
+//! struct Rc<T> {
+//!     ptr: *mut RcBox<T>
+//! }
+//!
+//! struct RcBox<T> {
+//!     value: T,
+//!     refcount: Cell<uint>
+//! }
+//!
+//! impl<T> Clone for Rc<T> {
+//!     fn clone(&self) -> Rc<T> {
+//!         unsafe {
+//!             (*self.ptr).refcount.set((*self.ptr).refcount.get() + 1);
+//!             Rc { ptr: self.ptr }
+//!         }
+//!     }
+//! }
+//! ```
+//!
+// FIXME: Explain difference between Cell and RefCell
+// FIXME: Downsides to interior mutability
+// FIXME: Can't be shared between threads. Dynamic borrows
+// FIXME: Relationship to Atomic types and RWLock
 
 use clone::Clone;
 use cmp::Eq;
