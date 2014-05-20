@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -33,6 +33,7 @@ use getopts::{optopt, optflag, reqopt};
 use common::Config;
 use common::{Pretty, DebugInfoGdb, Codegen};
 use util::logv;
+use regex::Regex;
 
 pub mod procsrv;
 pub mod util;
@@ -147,6 +148,7 @@ pub fn parse_config(args: Vec<StrBuf> ) -> Config {
                                        .as_slice()).expect("invalid mode"),
         run_ignored: matches.opt_present("ignored"),
         filter: filter,
+        cfail_regex: Regex::new(errors::EXPECTED_PATTERN).unwrap(),
         logfile: matches.opt_str("logfile").map(|s| Path::new(s)),
         save_metrics: matches.opt_str("save-metrics").map(|s| Path::new(s)),
         ratchet_metrics:
