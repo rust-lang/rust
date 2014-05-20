@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -79,7 +79,7 @@ fn run_cfail_test(config: &Config, props: &TestProps, testfile: &Path) {
 
     check_correct_failure_status(&proc_res);
 
-    let expected_errors = errors::load_errors(testfile);
+    let expected_errors = errors::load_errors(&config.cfail_regex, testfile);
     if !expected_errors.is_empty() {
         if !props.error_patterns.is_empty() {
             fatal("both error pattern and expected errors \
