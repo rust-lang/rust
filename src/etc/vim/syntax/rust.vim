@@ -18,26 +18,37 @@ syn keyword   rustOperator    as
 
 syn match     rustAssert      "\<assert\(\w\)*!" contained
 syn match     rustFail        "\<fail\(\w\)*!" contained
-syn keyword   rustKeyword     break box continue
-syn keyword   rustKeyword     extern nextgroup=rustExternCrate,rustObsoleteExternMod skipwhite
+syn keyword   rustKeyword     break
+syn keyword   rustKeyword     box nextgroup=rustBoxPlacement skipwhite skipempty
+syn keyword   rustKeyword     continue
+syn keyword   rustKeyword     extern nextgroup=rustExternCrate,rustObsoleteExternMod skipwhite skipempty
+syn keyword   rustKeyword     fn nextgroup=rustFuncName skipwhite skipempty
 syn keyword   rustKeyword     for in if impl let
 syn keyword   rustKeyword     loop once proc pub
 syn keyword   rustKeyword     return super
 syn keyword   rustKeyword     unsafe virtual while
-syn keyword   rustKeyword     use nextgroup=rustModPath skipwhite
+syn keyword   rustKeyword     use nextgroup=rustModPath skipwhite skipempty
 " FIXME: Scoped impl's name is also fallen in this category
-syn keyword   rustKeyword     mod trait struct enum type nextgroup=rustIdentifier skipwhite
-syn keyword   rustKeyword     fn nextgroup=rustFuncName skipwhite
+syn keyword   rustKeyword     mod trait struct enum type nextgroup=rustIdentifier skipwhite skipempty
 syn keyword   rustStorage     mut ref static
 syn keyword   rustObsoleteStorage const
 
 syn keyword   rustInvalidBareKeyword crate
 
-syn keyword   rustExternCrate crate contained nextgroup=rustIdentifier skipwhite
-syn keyword   rustObsoleteExternMod mod contained nextgroup=rustIdentifier skipwhite
+syn keyword   rustExternCrate crate contained nextgroup=rustIdentifier skipwhite skipempty
+syn keyword   rustObsoleteExternMod mod contained nextgroup=rustIdentifier skipwhite skipempty
 
 syn match     rustIdentifier  contains=rustIdentifierPrime "\%([^[:cntrl:][:space:][:punct:][:digit:]]\|_\)\%([^[:cntrl:][:punct:][:space:]]\|_\)*" display contained
 syn match     rustFuncName    "\%([^[:cntrl:][:space:][:punct:][:digit:]]\|_\)\%([^[:cntrl:][:punct:][:space:]]\|_\)*" display contained
+
+syn region    rustBoxPlacement matchgroup=rustBoxPlacementParens start="(" end=")" contains=TOP contained
+syn keyword   rustBoxPlacementExpr GC containedin=rustBoxPlacement
+" Ideally we'd have syntax rules set up to match arbitrary expressions. Since
+" we don't, we'll just define temporary contained rules to handle balancing
+" delimiters.
+syn region    rustBoxPlacementBalance start="(" end=")" containedin=rustBoxPlacement transparent
+syn region    rustBoxPlacementBalance start="\[" end="\]" containedin=rustBoxPlacement transparent
+" {} are handled by rustFoldBraces
 
 " Reserved (but not yet used) keywords {{{2
 syn keyword   rustReservedKeyword alignof be do offsetof priv pure sizeof typeof unsized yield
@@ -244,6 +255,8 @@ hi def link rustLifetime      Special
 hi def link rustInvalidBareKeyword Error
 hi def link rustExternCrate   rustKeyword
 hi def link rustObsoleteExternMod Error
+hi def link rustBoxPlacementParens Delimiter
+hi def link rustBoxPlacementExpr rustKeyword
 
 " Other Suggestions:
 " hi rustAttribute ctermfg=cyan
