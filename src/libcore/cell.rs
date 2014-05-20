@@ -155,10 +155,10 @@
 //! }
 //! ```
 //!
-// TODO: Explain difference between Cell and RefCell
-// TODO: Downsides to interior mutability
-// TODO: Can't be shared between threads. Dynamic borrows
-// TODO: Relationship to Atomic types and RWLock
+// FIXME: Explain difference between Cell and RefCell
+// FIXME: Downsides to interior mutability
+// FIXME: Can't be shared between threads. Dynamic borrows
+// FIXME: Relationship to Atomic types and RWLock
 
 use clone::Clone;
 use cmp::Eq;
