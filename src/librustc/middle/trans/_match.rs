@@ -810,6 +810,9 @@ fn enter_tuple_struct<'a, 'b>(
             ast::PatEnum(_, Some(ref elts)) => {
                 Some(elts.iter().map(|x| (*x)).collect())
             }
+            ast::PatEnum(_, None) => {
+                Some(Vec::from_elem(n_elts, dummy))
+            }
             _ => {
                 assert_is_binding_or_wild(bcx, p);
                 Some(Vec::from_elem(n_elts, dummy))
