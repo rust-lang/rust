@@ -134,24 +134,26 @@ extern crate libc;
 #[cfg(test)] pub use realstd::cmp;
 #[cfg(test)] pub use realstd::ty;
 
-#[cfg(not(test))] pub use core::cmp;
-#[cfg(not(test))] pub use core::kinds;
-#[cfg(not(test))] pub use core::ops;
-#[cfg(not(test))] pub use core::ty;
+
+// NB: These reexports are in the order they should be listed in rustdoc
 
 pub use core::any;
 pub use core::bool;
 pub use core::cell;
 pub use core::char;
 pub use core::clone;
+#[cfg(not(test))] pub use core::cmp;
 pub use core::container;
 pub use core::default;
 pub use core::intrinsics;
 pub use core::iter;
+#[cfg(not(test))] pub use core::kinds;
 pub use core::mem;
+#[cfg(not(test))] pub use core::ops;
 pub use core::ptr;
 pub use core::raw;
 pub use core::tuple;
+#[cfg(not(test))] pub use core::ty;
 pub use core::result;
 
 pub use alloc::owned;
