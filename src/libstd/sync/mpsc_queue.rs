@@ -45,6 +45,7 @@ use option::{Option, None, Some};
 use owned::Box;
 use ptr::RawPtr;
 use sync::atomics::{AtomicPtr, Release, Acquire, AcqRel, Relaxed};
+use ty::Unsafe;
 
 /// A result of the `pop` function.
 pub enum PopResult<T> {
@@ -69,7 +70,7 @@ struct Node<T> {
 /// popper at a time (many pushers are allowed).
 pub struct Queue<T> {
     head: AtomicPtr<Node<T>>,
-    tail: *mut Node<T>,
+    tail: Unsafe<*mut Node<T>>,
 }
 
 impl<T> Node<T> {
@@ -88,12 +89,12 @@ impl<T: Send> Queue<T> {
         let stub = unsafe { Node::new(None) };
         Queue {
             head: AtomicPtr::new(stub),
-            tail: stub,
+            tail: Unsafe::new(stub),
         }
     }
 
     /// Pushes a new value onto this queue.
-    pub fn push(&mut self, t: T) {
+    pub fn push(&self, t: T) {
         unsafe {
             let n = Node::new(Some(t));
             let prev = self.head.swap(n, AcqRel);
@@ -111,13 +112,13 @@ impl<T: Send> Queue<T> {
     ///
     /// This inconsistent state means that this queue does indeed have data, but
     /// it does not currently have access to it at this time.
-    pub fn pop(&mut self) -> PopResult<T> {
+    pub fn pop(&self) -> PopResult<T> {
         unsafe {
-            let tail = self.tail;
+            let tail = *self.tail.get();
             let next = (*tail).next.load(Acquire);
 
             if !next.is_null() {
-                self.tail = next;
+                *self.tail.get() = next;
                 assert!((*tail).value.is_none());
                 assert!((*next).value.is_some());
                 let ret = (*next).value.take_unwrap();
@@ -131,7 +132,7 @@ impl<T: Send> Queue<T> {
 
     /// Attempts to pop data from this queue, but doesn't attempt too hard. This
     /// will canonicalize inconsistent states to a `None` value.
-    pub fn casual_pop(&mut self) -> Option<T> {
+    pub fn casual_pop(&self) -> Option<T> {
         match self.pop() {
             Data(t) => Some(t),
             Empty | Inconsistent => None,
@@ -143,7 +144,7 @@ impl<T: Send> Queue<T> {
 impl<T: Send> Drop for Queue<T> {
     fn drop(&mut self) {
         unsafe {
-            let mut cur = self.tail;
+            let mut cur = *self.tail.get();
             while !cur.is_null() {
                 let next = (*cur).next.load(Relaxed);
                 let _: Box<Node<T>> = mem::transmute(cur);
