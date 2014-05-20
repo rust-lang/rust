@@ -173,7 +173,7 @@ mod tests {
     fn test() {
         let nthreads = 8u;
         let nmsgs = 1000u;
-        let mut q = Queue::with_capacity(nthreads*nmsgs);
+        let q = Queue::with_capacity(nthreads*nmsgs);
         assert_eq!(None, q.pop());
         let (tx, rx) = channel();
 
@@ -181,7 +181,7 @@ mod tests {
             let q = q.clone();
             let tx = tx.clone();
             native::task::spawn(proc() {
-                let mut q = q;
+                let q = q;
                 for i in range(0, nmsgs) {
                     assert!(q.push(i));
                 }
@@ -195,7 +195,7 @@ mod tests {
             completion_rxs.push(rx);
             let q = q.clone();
             native::task::spawn(proc() {
-                let mut q = q;
+                let q = q;
                 let mut i = 0u;
                 loop {
                     match q.pop() {
