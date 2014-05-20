@@ -8,9 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use alloc::arc::Arc;
+
 use clone::Clone;
 use kinds::Send;
-use sync::arc::UnsafeArc;
+use ty::Unsafe;
 use unstable::mutex::NativeMutex;
 
 struct ExData<T> {
@@ -30,7 +32,7 @@ struct ExData<T> {
  * need to block or deschedule while accessing shared state, use extra::sync::RWArc.
  */
 pub struct Exclusive<T> {
-    x: UnsafeArc<ExData<T>>
+    x: Arc<Unsafe<ExData<T>>>
 }
 
 impl<T:Send> Clone for Exclusive<T> {
@@ -48,7 +50,7 @@ impl<T:Send> Exclusive<T> {
             data: user_data
         };
         Exclusive {
-            x: UnsafeArc::new(data)
+            x: Arc::new(Unsafe::new(data))
         }
     }
 
