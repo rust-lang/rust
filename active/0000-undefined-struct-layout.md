@@ -56,10 +56,13 @@ struct B {
 then the struct is (strictly) only 18 bytes (but the alignment
 requirements of `u64` forces it to take up 24).
 
-(Having an undefined layout does allow for possible security
+Having an undefined layout does allow for possible security
 improvements, like randomising struct fields, but this can trivially
-be done with a syntax extension that reorders them in the AST itself,
-and so is not part of this proposal.)
+be done with a syntax extension that can be attached to a struct to
+reorder the fields in the AST itself. That said, there may be benefits
+from being able to randomise all structs in a program
+automatically/for testing, effectively fuzzing code (especially
+`unsafe` code).
 
 Notably, Rust's `enum`s already have undefined layout, and provide the
 `#[repr]` attribute to control layout more precisely (specifically,
