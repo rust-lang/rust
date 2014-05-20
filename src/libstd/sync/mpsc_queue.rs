@@ -158,9 +158,10 @@ impl<T: Send> Drop for Queue<T> {
 mod tests {
     use prelude::*;
 
+    use alloc::arc::Arc;
+
     use native;
     use super::{Queue, Data, Empty, Inconsistent};
-    use sync::arc::UnsafeArc;
 
     #[test]
     fn test_full() {
@@ -179,14 +180,14 @@ mod tests {
             Inconsistent | Data(..) => fail!()
         }
         let (tx, rx) = channel();
-        let q = UnsafeArc::new(q);
+        let q = Arc::new(q);
 
         for _ in range(0, nthreads) {
             let tx = tx.clone();
             let q = q.clone();
             native::task::spawn(proc() {
                 for i in range(0, nmsgs) {
-                    unsafe { (*q.get()).push(i); }
+                    q.push(i);
                 }
                 tx.send(());
             });
@@ -194,7 +195,7 @@ mod tests {
 
         let mut i = 0u;
         while i < nthreads * nmsgs {
-            match unsafe { (*q.get()).pop() } {
+            match q.pop() {
                 Empty | Inconsistent => {},
                 Data(_) => { i += 1 }
             }
