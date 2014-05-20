@@ -76,7 +76,9 @@ pub fn expand_mod(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                    .map(|x| token::get_ident(*x).get().to_strbuf())
                    .collect::<Vec<StrBuf>>()
                    .connect("::");
-    base::MacExpr::new(cx.expr_str(sp, token::intern_and_get_ident(string)))
+    base::MacExpr::new(cx.expr_str(
+            sp,
+            token::intern_and_get_ident(string.as_slice())))
 }
 
 // include! : parse the given file as an expr

@@ -327,7 +327,7 @@ pub fn ty_to_str(cx: &ctxt, typ: t) -> StrBuf {
                        sig: &ty::FnSig) {
         s.push_char(bra);
         let strs: Vec<StrBuf> = sig.inputs.iter().map(|a| fn_input_to_str(cx, *a)).collect();
-        s.push_str(strs.connect(", "));
+        s.push_str(strs.connect(", ").as_slice());
         if sig.variadic {
             s.push_str(", ...");
         }

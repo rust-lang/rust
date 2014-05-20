@@ -369,7 +369,8 @@ pub mod write {
                     sess.note(format!("{}", &cmd).as_slice());
                     let mut note = prog.error.clone();
                     note.push_all(prog.output.as_slice());
-                    sess.note(str::from_utf8(note.as_slice()).unwrap().to_owned());
+                    sess.note(str::from_utf8(note.as_slice()).unwrap()
+                                                             .as_slice());
                     sess.abort_if_errors();
                 }
             },
@@ -538,8 +539,8 @@ pub fn find_crate_id(attrs: &[ast::Attribute], out_filestem: &str) -> CrateId {
     match attr::find_crateid(attrs) {
         None => from_str(out_filestem).unwrap_or_else(|| {
             let mut s = out_filestem.chars().filter(|c| c.is_XID_continue());
-            from_str(s.collect::<StrBuf>()
-                      .to_owned()).or(from_str("rust-out")).unwrap()
+            from_str(s.collect::<StrBuf>().as_slice())
+                .or(from_str("rust-out")).unwrap()
         }),
         Some(s) => s,
     }
@@ -698,7 +699,7 @@ pub fn exported_name(path: PathElems, hash: &str, vers: &str) -> StrBuf {
     // The version will get mangled to have a leading '_', but it makes more
     // sense to lead with a 'v' b/c this is a version...
     let vers = if vers.len() > 0 && !char::is_XID_start(vers.char_at(0)) {
-        "v" + vers
+        format!("v{}", vers)
     } else {
         vers.to_owned()
     };
@@ -1075,7 +1076,8 @@ fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
                 sess.note(format!("{}", &cmd).as_slice());
                 let mut output = prog.error.clone();
                 output.push_all(prog.output.as_slice());
-                sess.note(str::from_utf8(output.as_slice()).unwrap().to_owned());
+                sess.note(str::from_utf8(output.as_slice()).unwrap()
+                                                           .as_slice());
                 sess.abort_if_errors();
             }
         },

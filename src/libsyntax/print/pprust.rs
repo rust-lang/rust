@@ -141,7 +141,8 @@ pub fn to_str(f: |&mut State| -> IoResult<()>) -> StrBuf {
         // that we "know" to be a `MemWriter` that works around the lack of checked
         // downcasts.
         let (_, wr): (uint, Box<MemWriter>) = mem::transmute_copy(&s.s.out);
-        let result = str::from_utf8_owned(wr.get_ref().to_owned()).unwrap();
+        let result =
+            str::from_utf8_owned(Vec::from_slice(wr.get_ref())).unwrap();
         mem::forget(wr);
         result.to_strbuf()
     }
@@ -2234,7 +2235,7 @@ impl<'a> State<'a> {
                 let mut res = StrBuf::from_str("'");
                 ch.escape_default(|c| res.push_char(c));
                 res.push_char('\'');
-                word(&mut self.s, res.into_owned())
+                word(&mut self.s, res.as_slice())
             }
             ast::LitInt(i, t) => {
                 word(&mut self.s,

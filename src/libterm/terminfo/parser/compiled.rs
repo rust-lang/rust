@@ -221,7 +221,8 @@ pub fn parse(file: &mut io::Reader, longnames: bool)
         None => return Err("input not utf-8".to_strbuf()),
     };
 
-    let term_names: Vec<StrBuf> = names_str.split('|')
+    let term_names: Vec<StrBuf> = names_str.as_slice()
+                                           .split('|')
                                            .map(|s| s.to_strbuf())
                                            .collect();
 

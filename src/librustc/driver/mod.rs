@@ -143,8 +143,8 @@ Available lint options:
     for &(_, name) in lint_dict.iter() {
         max_key = cmp::max(name.len(), max_key);
     }
-    fn padded(max: uint, s: &str) -> ~str {
-        " ".repeat(max - s.len()) + s
+    fn padded(max: uint, s: &str) -> StrBuf {
+        format!("{}{}", " ".repeat(max - s.len()), s)
     }
     println!("\nAvailable lint checks:\n");
     println!("    {}  {:7.7s}  {}",
@@ -154,7 +154,7 @@ Available lint options:
     for (spec, name) in lint_dict.move_iter() {
         let name = name.replace("_", "-");
         println!("    {}  {:7.7s}  {}",
-                 padded(max_key, name),
+                 padded(max_key, name.as_slice()),
                  lint::level_to_str(spec.default),
                  spec.desc);
     }
@@ -400,11 +400,12 @@ fn monitor(f: proc():Send) {
 
                 let xs = [
                     "the compiler hit an unexpected failure path. this is a bug.".to_owned(),
-                    "we would appreciate a bug report: " + BUG_REPORT_URL,
+                    format!("we would appreciate a bug report: {}",
+                            BUG_REPORT_URL),
                     "run with `RUST_BACKTRACE=1` for a backtrace".to_owned(),
                 ];
                 for note in xs.iter() {
-                    emitter.emit(None, *note, diagnostic::Note)
+                    emitter.emit(None, note.as_slice(), diagnostic::Note)
                 }
 
                 match r.read_to_str() {

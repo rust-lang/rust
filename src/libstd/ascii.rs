@@ -419,8 +419,8 @@ unsafe fn str_map_bytes(string: StrBuf, map: &'static [u8]) -> StrBuf {
 
 #[inline]
 unsafe fn str_copy_map_bytes(string: &str, map: &'static [u8]) -> StrBuf {
-    let mut s = string.to_owned();
-    for b in str::raw::as_owned_vec(&mut s).mut_iter() {
+    let mut s = string.to_strbuf();
+    for b in s.as_mut_bytes().mut_iter() {
         *b = map[*b as uint];
     }
     s.into_strbuf()

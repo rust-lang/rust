@@ -17,37 +17,29 @@ Unicode string manipulation (`str` type)
 Rust's string type is one of the core primitive types of the language. While
 represented by the name `str`, the name `str` is not actually a valid type in
 Rust. Each string must also be decorated with its ownership. This means that
-there are two common kinds of strings in Rust:
-
-* `~str` - This is an owned string. This type obeys all of the normal semantics
-           of the `Box<T>` types, meaning that it has one, and only one,
-           owner. This type cannot be implicitly copied, and is moved out of
-           when passed to other functions.
+there is one common kind of string in Rust:
 
 * `&str` - This is the borrowed string type. This type of string can only be
            created from the other kind of string. As the name "borrowed"
            implies, this type of string is owned elsewhere, and this string
            cannot be moved out of.
 
-As an example, here's a few different kinds of strings.
+As an example, here's the one kind of string.
 
 ```rust
 fn main() {
-    let owned_string = "I am an owned string".to_owned();
-    let borrowed_string1 = "This string is borrowed with the 'static lifetime";
-    let borrowed_string2: &str = owned_string;   // owned strings can be borrowed
+    let borrowed_string = "This string is borrowed with the 'static lifetime";
 }
 ```
 
-From the example above, you can see that Rust has 2 different kinds of string
-literals. The owned literals correspond to the owned string types, but the
-"borrowed literal" is actually more akin to C's concept of a static string.
+From the example above, you can see that Rust has 1 different kind of string
+literal. The "borrowed literal" is akin to C's concept of a static string.
 
-When a string is declared without a `~` sigil, then the string is allocated
-statically in the rodata of the executable/library. The string then has the
-type `&'static str` meaning that the string is valid for the `'static`
-lifetime, otherwise known as the lifetime of the entire program. As can be
-inferred from the type, these static strings are not mutable.
+String literals are allocated statically in the rodata of the
+executable/library. The string then has the type `&'static str` meaning that
+the string is valid for the `'static` lifetime, otherwise known as the
+lifetime of the entire program. As can be inferred from the type, these static
+strings are not mutable.
 
 # Mutability
 
@@ -67,10 +59,8 @@ stream of UTF-8 bytes. All safely-created strings are guaranteed to be validly
 encoded UTF-8 sequences. Additionally, strings are not null-terminated
 and can contain null codepoints.
 
-The actual representation of strings have direct mappings to vectors:
-
-* `~str` is the same as `~[u8]`
-* `&str` is the same as `&[u8]`
+The actual representation of strings have direct mappings to vectors: `&str`
+is the same as `&[u8]`.
 
 */
 
@@ -81,13 +71,12 @@ use cmp::{Eq, TotalEq, Ord, TotalOrd, Equiv, Ordering};
 use container::Container;
 use default::Default;
 use fmt;
-use from_str::FromStr;
 use io::Writer;
 use iter::{Iterator, range, AdditiveIterator};
 use mem::transmute;
 use mem;
 use option::{None, Option, Some};
-use result::{Result, Ok, Err};
+use result::Result;
 use slice::Vector;
 use slice::{ImmutableVector, MutableVector, CloneableVector};
 use strbuf::StrBuf;
@@ -109,17 +98,8 @@ Section: Creating a string
 ///
 /// Returns `Err` with the original vector if the vector contains invalid
 /// UTF-8.
-pub fn from_utf8_owned(vv: ~[u8]) -> Result<~str, ~[u8]> {
-    if is_utf8(vv) {
-        Ok(unsafe { raw::from_utf8_owned(vv) })
-    } else {
-        Err(vv)
-    }
-}
-
-impl FromStr for ~str {
-    #[inline]
-    fn from_str(s: &str) -> Option<~str> { Some(s.to_owned()) }
+pub fn from_utf8_owned(vv: Vec<u8>) -> Result<StrBuf, Vec<u8>> {
+    StrBuf::from_utf8(vv)
 }
 
 /// Convert a byte to a UTF-8 string
@@ -127,35 +107,37 @@ impl FromStr for ~str {
 /// # Failure
 ///
 /// Fails if invalid UTF-8
-pub fn from_byte(b: u8) -> ~str {
+pub fn from_byte(b: u8) -> StrBuf {
     assert!(b < 128u8);
-    unsafe { ::mem::transmute(box [b]) }
+    StrBuf::from_char(1, b as char)
 }
 
 /// Convert a char to a string
-pub fn from_char(ch: char) -> ~str {
+pub fn from_char(ch: char) -> StrBuf {
     let mut buf = StrBuf::new();
     buf.push_char(ch);
-    buf.into_owned()
+    buf
 }
 
 /// Convert a vector of chars to a string
-pub fn from_chars(chs: &[char]) -> ~str {
+pub fn from_chars(chs: &[char]) -> StrBuf {
     chs.iter().map(|c| *c).collect()
 }
 
 /// Methods for vectors of strings
 pub trait StrVector {
     /// Concatenate a vector of strings.
-    fn concat(&self) -> ~str;
+    fn concat(&self) -> StrBuf;
 
     /// Concatenate a vector of strings, placing a given separator between each.
-    fn connect(&self, sep: &str) -> ~str;
+    fn connect(&self, sep: &str) -> StrBuf;
 }
 
 impl<'a, S: Str> StrVector for &'a [S] {
-    fn concat(&self) -> ~str {
-        if self.is_empty() { return "".to_owned(); }
+    fn concat(&self) -> StrBuf {
+        if self.is_empty() {
+            return StrBuf::new();
+        }
 
         // `len` calculation may overflow but push_str but will check boundaries
         let len = self.iter().map(|s| s.as_slice().len()).sum();
@@ -166,14 +148,18 @@ impl<'a, S: Str> StrVector for &'a [S] {
             result.push_str(s.as_slice())
         }
 
-        result.into_owned()
+        result
     }
 
-    fn connect(&self, sep: &str) -> ~str {
-        if self.is_empty() { return "".to_owned(); }
+    fn connect(&self, sep: &str) -> StrBuf {
+        if self.is_empty() {
+            return StrBuf::new();
+        }
 
         // concat is faster
-        if sep.is_empty() { return self.concat(); }
+        if sep.is_empty() {
+            return self.concat();
+        }
 
         // this is wrong without the guarantee that `self` is non-empty
         // `len` calculation may overflow but push_str but will check boundaries
@@ -190,18 +176,18 @@ impl<'a, S: Str> StrVector for &'a [S] {
             }
             result.push_str(s.as_slice());
         }
-        result.into_owned()
+        result
     }
 }
 
 impl<'a, S: Str> StrVector for Vec<S> {
     #[inline]
-    fn concat(&self) -> ~str {
+    fn concat(&self) -> StrBuf {
         self.as_slice().concat()
     }
 
     #[inline]
-    fn connect(&self, sep: &str) -> ~str {
+    fn connect(&self, sep: &str) -> StrBuf {
         self.as_slice().connect(sep)
     }
 }
@@ -317,7 +303,7 @@ impl<'a> Iterator<char> for Decompositions<'a> {
 /// # Return value
 ///
 /// The original string with all occurrences of `from` replaced with `to`
-pub fn replace(s: &str, from: &str, to: &str) -> ~str {
+pub fn replace(s: &str, from: &str, to: &str) -> StrBuf {
     let mut result = StrBuf::new();
     let mut last_end = 0;
     for (start, end) in s.match_indices(from) {
@@ -326,7 +312,7 @@ pub fn replace(s: &str, from: &str, to: &str) -> ~str {
         last_end = end;
     }
     result.push_str(unsafe{raw::slice_bytes(s, last_end, s.len())});
-    result.into_owned()
+    result
 }
 
 /*
@@ -350,7 +336,7 @@ Section: Misc
 /// v[4] = 0xD800;
 /// assert_eq!(str::from_utf16(v), None);
 /// ```
-pub fn from_utf16(v: &[u16]) -> Option<~str> {
+pub fn from_utf16(v: &[u16]) -> Option<StrBuf> {
     let mut s = StrBuf::with_capacity(v.len() / 2);
     for c in utf16_items(v) {
         match c {
@@ -358,7 +344,7 @@ pub fn from_utf16(v: &[u16]) -> Option<~str> {
             LoneSurrogate(_) => return None
         }
     }
-    Some(s.into_owned())
+    Some(s)
 }
 
 /// Decode a UTF-16 encoded vector `v` into a string, replacing
@@ -376,7 +362,7 @@ pub fn from_utf16(v: &[u16]) -> Option<~str> {
 /// assert_eq!(str::from_utf16_lossy(v),
 ///            "𝄞mus\uFFFDic\uFFFD".to_owned());
 /// ```
-pub fn from_utf16_lossy(v: &[u16]) -> ~str {
+pub fn from_utf16_lossy(v: &[u16]) -> StrBuf {
     utf16_items(v).map(|c| c.to_char_lossy()).collect()
 }
 
@@ -523,14 +509,14 @@ pub fn from_utf8_lossy<'a>(v: &'a [u8]) -> MaybeOwned<'a> {
 Section: MaybeOwned
 */
 
-/// A MaybeOwned is a string that can hold either a ~str or a &str.
+/// A MaybeOwned is a string that can hold either a StrBuf or a &str.
 /// This can be useful as an optimization when an allocation is sometimes
 /// needed but not always.
 pub enum MaybeOwned<'a> {
     /// A borrowed string
     Slice(&'a str),
     /// An owned string
-    Owned(~str)
+    Owned(StrBuf)
 }
 
 /// SendStr is a specialization of `MaybeOwned` to be sendable
@@ -562,15 +548,10 @@ pub trait IntoMaybeOwned<'a> {
     fn into_maybe_owned(self) -> MaybeOwned<'a>;
 }
 
-impl<'a> IntoMaybeOwned<'a> for ~str {
-    #[inline]
-    fn into_maybe_owned(self) -> MaybeOwned<'a> { Owned(self) }
-}
-
 impl<'a> IntoMaybeOwned<'a> for StrBuf {
     #[inline]
     fn into_maybe_owned(self) -> MaybeOwned<'a> {
-        Owned(self.into_owned())
+        Owned(self)
     }
 }
 
@@ -626,7 +607,7 @@ impl<'a> Str for MaybeOwned<'a> {
 
 impl<'a> StrAllocating for MaybeOwned<'a> {
     #[inline]
-    fn into_owned(self) -> ~str {
+    fn into_owned(self) -> StrBuf {
         match self {
             Slice(s) => s.to_owned(),
             Owned(s) => s
@@ -676,58 +657,37 @@ impl<'a> fmt::Show for MaybeOwned<'a> {
 
 /// Unsafe operations
 pub mod raw {
+    use c_str::CString;
     use libc;
     use mem;
-    use ptr::RawPtr;
-    use raw::Slice;
-    use slice::CloneableVector;
-    use str::{is_utf8, StrAllocating};
+    use strbuf::StrBuf;
+    use vec::Vec;
 
     pub use core::str::raw::{from_utf8, c_str_to_static_slice, slice_bytes};
     pub use core::str::raw::{slice_unchecked};
 
     /// Create a Rust string from a *u8 buffer of the given length
-    pub unsafe fn from_buf_len(buf: *u8, len: uint) -> ~str {
-        let v = Slice { data: buf, len: len };
-        let bytes: &[u8] = ::mem::transmute(v);
-        assert!(is_utf8(bytes));
-        let s: &str = ::mem::transmute(bytes);
-        s.to_owned()
-    }
-
-    #[lang="strdup_uniq"]
-    #[cfg(not(test))]
-    #[inline]
-    unsafe fn strdup_uniq(ptr: *u8, len: uint) -> ~str {
-        from_buf_len(ptr, len)
+    pub unsafe fn from_buf_len(buf: *u8, len: uint) -> StrBuf {
+        StrBuf::from_raw_parts(len, len, mem::transmute(buf))
     }
 
     /// Create a Rust string from a null-terminated C string
-    pub unsafe fn from_c_str(buf: *libc::c_char) -> ~str {
-        let mut curr = buf;
-        let mut i = 0;
-        while *curr != 0 {
-            i += 1;
-            curr = buf.offset(i);
-        }
-        from_buf_len(buf as *u8, i as uint)
+    pub unsafe fn from_c_str(c_string: *libc::c_char) -> StrBuf {
+        let mut buf = StrBuf::new();
+        buf.push_bytes(CString::new(c_string, false).as_bytes_no_nul());
+        buf
     }
 
     /// Converts an owned vector of bytes to a new owned string. This assumes
     /// that the utf-8-ness of the vector has already been validated
     #[inline]
-    pub unsafe fn from_utf8_owned(v: ~[u8]) -> ~str {
+    pub unsafe fn from_utf8_owned(v: Vec<u8>) -> StrBuf {
         mem::transmute(v)
     }
 
     /// Converts a byte to a string.
-    pub unsafe fn from_byte(u: u8) -> ~str { from_utf8_owned(box [u]) }
-
-    /// Access the str in its vector representation.
-    /// The caller must preserve the valid UTF-8 property when modifying.
-    #[inline]
-    pub unsafe fn as_owned_vec<'a>(s: &'a mut ~str) -> &'a mut ~[u8] {
-        mem::transmute(s)
+    pub unsafe fn from_byte(u: u8) -> StrBuf {
+        from_utf8_owned(vec![u])
     }
 
     /// Sets the length of a string
@@ -755,8 +715,8 @@ Section: Trait implementations
 
 /// Any string that can be represented as a slice
 pub trait StrAllocating: Str {
-    /// Convert `self` into a ~str, not making a copy if possible.
-    fn into_owned(self) -> ~str;
+    /// Convert `self` into a `StrBuf`, not making a copy if possible.
+    fn into_owned(self) -> StrBuf;
 
     /// Convert `self` into a `StrBuf`.
     #[inline]
@@ -767,27 +727,27 @@ pub trait StrAllocating: Str {
     /// Convert `self` into a `StrBuf`, not making a copy if possible.
     #[inline]
     fn into_strbuf(self) -> StrBuf {
-        StrBuf::from_owned_str(self.into_owned())
+        self.into_owned()
     }
 
     /// Escape each char in `s` with `char::escape_default`.
-    fn escape_default(&self) -> ~str {
+    fn escape_default(&self) -> StrBuf {
         let me = self.as_slice();
         let mut out = StrBuf::with_capacity(me.len());
         for c in me.chars() {
             c.escape_default(|c| out.push_char(c));
         }
-        out.into_owned()
+        out
     }
 
     /// Escape each char in `s` with `char::escape_unicode`.
-    fn escape_unicode(&self) -> ~str {
+    fn escape_unicode(&self) -> StrBuf {
         let me = self.as_slice();
         let mut out = StrBuf::with_capacity(me.len());
         for c in me.chars() {
             c.escape_unicode(|c| out.push_char(c));
         }
-        out.into_owned()
+        out
     }
 
     /// Replace all occurrences of one string with another.
@@ -814,7 +774,7 @@ pub trait StrAllocating: Str {
     /// // not found, so no change.
     /// assert_eq!(s.replace("cookie monster", "little lamb"), s);
     /// ```
-    fn replace(&self, from: &str, to: &str) -> ~str {
+    fn replace(&self, from: &str, to: &str) -> StrBuf {
         let me = self.as_slice();
         let mut result = StrBuf::new();
         let mut last_end = 0;
@@ -824,16 +784,16 @@ pub trait StrAllocating: Str {
             last_end = end;
         }
         result.push_str(unsafe{raw::slice_bytes(me, last_end, me.len())});
-        result.into_owned()
+        result
     }
 
-    /// Copy a slice into a new owned str.
+    /// Copy a slice into a new `StrBuf`.
     #[inline]
-    fn to_owned(&self) -> ~str {
+    fn to_owned(&self) -> StrBuf {
         use slice::Vector;
 
         unsafe {
-            ::mem::transmute(self.as_slice().as_bytes().to_owned())
+            ::mem::transmute(Vec::from_slice(self.as_slice().as_bytes()))
         }
     }
 
@@ -850,13 +810,13 @@ pub trait StrAllocating: Str {
     }
 
     /// Given a string, make a new string with repeated copies of it.
-    fn repeat(&self, nn: uint) -> ~str {
+    fn repeat(&self, nn: uint) -> StrBuf {
         let me = self.as_slice();
         let mut ret = StrBuf::with_capacity(nn * me.len());
         for _ in range(0, nn) {
             ret.push_str(me);
         }
-        ret.into_owned()
+        ret
     }
 
     /// Levenshtein Distance between two strings.
@@ -921,12 +881,9 @@ pub trait StrAllocating: Str {
 
 impl<'a> StrAllocating for &'a str {
     #[inline]
-    fn into_owned(self) -> ~str { self.to_owned() }
-}
-
-impl<'a> StrAllocating for ~str {
-    #[inline]
-    fn into_owned(self) -> ~str { self }
+    fn into_owned(self) -> StrBuf {
+        self.to_owned()
+    }
 }
 
 /// Methods for owned strings
@@ -934,23 +891,23 @@ pub trait OwnedStr {
     /// Consumes the string, returning the underlying byte buffer.
     ///
     /// The buffer does not have a null terminator.
-    fn into_bytes(self) -> ~[u8];
+    fn into_bytes(self) -> Vec<u8>;
 
     /// Pushes the given string onto this string, returning the concatenation of the two strings.
-    fn append(self, rhs: &str) -> ~str;
+    fn append(self, rhs: &str) -> StrBuf;
 }
 
-impl OwnedStr for ~str {
+impl OwnedStr for StrBuf {
     #[inline]
-    fn into_bytes(self) -> ~[u8] {
+    fn into_bytes(self) -> Vec<u8> {
         unsafe { mem::transmute(self) }
     }
 
     #[inline]
-    fn append(self, rhs: &str) -> ~str {
+    fn append(self, rhs: &str) -> StrBuf {
         let mut new_str = StrBuf::from_owned_str(self);
         new_str.push_str(rhs);
-        new_str.into_owned()
+        new_str
     }
 }
 
@@ -1027,10 +984,10 @@ mod tests {
     #[test]
     fn test_collect() {
         let empty = "".to_owned();
-        let s: ~str = empty.chars().collect();
+        let s: StrBuf = empty.chars().collect();
         assert_eq!(empty, s);
         let data = "ประเทศไทย中".to_owned();
-        let s: ~str = data.chars().collect();
+        let s: StrBuf = data.chars().collect();
         assert_eq!(data, s);
     }
 
@@ -1086,25 +1043,25 @@ mod tests {
 
     #[test]
     fn test_concat() {
-        fn t(v: &[~str], s: &str) {
+        fn t(v: &[StrBuf], s: &str) {
             assert_eq!(v.concat(), s.to_str().into_owned());
         }
         t(["you".to_owned(), "know".to_owned(), "I'm".to_owned(),
           "no".to_owned(), "good".to_owned()], "youknowI'mnogood");
-        let v: &[~str] = [];
+        let v: &[StrBuf] = [];
         t(v, "");
         t(["hi".to_owned()], "hi");
     }
 
     #[test]
     fn test_connect() {
-        fn t(v: &[~str], sep: &str, s: &str) {
+        fn t(v: &[StrBuf], sep: &str, s: &str) {
             assert_eq!(v.connect(sep), s.to_str().into_owned());
         }
         t(["you".to_owned(), "know".to_owned(), "I'm".to_owned(),
            "no".to_owned(), "good".to_owned()],
           " ", "you know I'm no good");
-        let v: &[~str] = [];
+        let v: &[StrBuf] = [];
         t(v, " ", "");
         t(["hi".to_owned()], " ", "hi");
     }
@@ -1145,23 +1102,23 @@ mod tests {
         assert_eq!("ab", unsafe {raw::slice_bytes("abc", 0, 2)});
         assert_eq!("bc", unsafe {raw::slice_bytes("abc", 1, 3)});
         assert_eq!("", unsafe {raw::slice_bytes("abc", 1, 1)});
-        fn a_million_letter_a() -> ~str {
+        fn a_million_letter_a() -> StrBuf {
             let mut i = 0;
             let mut rs = StrBuf::new();
             while i < 100000 {
                 rs.push_str("aaaaaaaaaa");
                 i += 1;
             }
-            rs.into_owned()
+            rs
         }
-        fn half_a_million_letter_a() -> ~str {
+        fn half_a_million_letter_a() -> StrBuf {
             let mut i = 0;
             let mut rs = StrBuf::new();
             while i < 100000 {
                 rs.push_str("aaaaa");
                 i += 1;
             }
-            rs.into_owned()
+            rs
         }
         let letters = a_million_letter_a();
         assert!(half_a_million_letter_a() ==
@@ -1260,23 +1217,23 @@ mod tests {
         assert_eq!("", data.slice(3, 3));
         assert_eq!("华", data.slice(30, 33));
 
-        fn a_million_letter_X() -> ~str {
+        fn a_million_letter_X() -> StrBuf {
             let mut i = 0;
             let mut rs = StrBuf::new();
             while i < 100000 {
                 rs.push_str("华华华华华华华华华华");
                 i += 1;
             }
-            rs.into_owned()
+            rs
         }
-        fn half_a_million_letter_X() -> ~str {
+        fn half_a_million_letter_X() -> StrBuf {
             let mut i = 0;
             let mut rs = StrBuf::new();
             while i < 100000 {
                 rs.push_str("华华华华华");
                 i += 1;
             }
-            rs.into_owned()
+            rs
         }
         let letters = a_million_letter_X();
         assert!(half_a_million_letter_X() ==
@@ -1573,10 +1530,10 @@ mod tests {
 
     #[test]
     fn vec_str_conversions() {
-        let s1: ~str = "All mimsy were the borogoves".to_owned();
+        let s1: StrBuf = "All mimsy were the borogoves".to_strbuf();
 
-        let v: ~[u8] = s1.as_bytes().to_owned();
-        let s2: ~str = from_utf8(v).unwrap().to_owned();
+        let v: Vec<u8> = Vec::from_slice(s1.as_bytes());
+        let s2: StrBuf = from_utf8(v).unwrap().to_strbuf();
         let mut i: uint = 0u;
         let n1: uint = s1.len();
         let n2: uint = v.len();
@@ -2027,30 +1984,30 @@ mod tests {
 
     #[test]
     fn test_nfd_chars() {
-        assert_eq!("abc".nfd_chars().collect::<~str>(), "abc".to_owned());
-        assert_eq!("\u1e0b\u01c4".nfd_chars().collect::<~str>(), "d\u0307\u01c4".to_owned());
-        assert_eq!("\u2026".nfd_chars().collect::<~str>(), "\u2026".to_owned());
-        assert_eq!("\u2126".nfd_chars().collect::<~str>(), "\u03a9".to_owned());
-        assert_eq!("\u1e0b\u0323".nfd_chars().collect::<~str>(), "d\u0323\u0307".to_owned());
-        assert_eq!("\u1e0d\u0307".nfd_chars().collect::<~str>(), "d\u0323\u0307".to_owned());
-        assert_eq!("a\u0301".nfd_chars().collect::<~str>(), "a\u0301".to_owned());
-        assert_eq!("\u0301a".nfd_chars().collect::<~str>(), "\u0301a".to_owned());
-        assert_eq!("\ud4db".nfd_chars().collect::<~str>(), "\u1111\u1171\u11b6".to_owned());
-        assert_eq!("\uac1c".nfd_chars().collect::<~str>(), "\u1100\u1162".to_owned());
+        assert_eq!("abc".nfd_chars().collect::<StrBuf>(), "abc".to_strbuf());
+        assert_eq!("\u1e0b\u01c4".nfd_chars().collect::<StrBuf>(), "d\u0307\u01c4".to_strbuf());
+        assert_eq!("\u2026".nfd_chars().collect::<StrBuf>(), "\u2026".to_strbuf());
+        assert_eq!("\u2126".nfd_chars().collect::<StrBuf>(), "\u03a9".to_strbuf());
+        assert_eq!("\u1e0b\u0323".nfd_chars().collect::<StrBuf>(), "d\u0323\u0307".to_strbuf());
+        assert_eq!("\u1e0d\u0307".nfd_chars().collect::<StrBuf>(), "d\u0323\u0307".to_strbuf());
+        assert_eq!("a\u0301".nfd_chars().collect::<StrBuf>(), "a\u0301".to_strbuf());
+        assert_eq!("\u0301a".nfd_chars().collect::<StrBuf>(), "\u0301a".to_strbuf());
+        assert_eq!("\ud4db".nfd_chars().collect::<StrBuf>(), "\u1111\u1171\u11b6".to_strbuf());
+        assert_eq!("\uac1c".nfd_chars().collect::<StrBuf>(), "\u1100\u1162".to_strbuf());
     }
 
     #[test]
     fn test_nfkd_chars() {
-        assert_eq!("abc".nfkd_chars().collect::<~str>(), "abc".to_owned());
-        assert_eq!("\u1e0b\u01c4".nfkd_chars().collect::<~str>(), "d\u0307DZ\u030c".to_owned());
-        assert_eq!("\u2026".nfkd_chars().collect::<~str>(), "...".to_owned());
-        assert_eq!("\u2126".nfkd_chars().collect::<~str>(), "\u03a9".to_owned());
-        assert_eq!("\u1e0b\u0323".nfkd_chars().collect::<~str>(), "d\u0323\u0307".to_owned());
-        assert_eq!("\u1e0d\u0307".nfkd_chars().collect::<~str>(), "d\u0323\u0307".to_owned());
-        assert_eq!("a\u0301".nfkd_chars().collect::<~str>(), "a\u0301".to_owned());
-        assert_eq!("\u0301a".nfkd_chars().collect::<~str>(), "\u0301a".to_owned());
-        assert_eq!("\ud4db".nfkd_chars().collect::<~str>(), "\u1111\u1171\u11b6".to_owned());
-        assert_eq!("\uac1c".nfkd_chars().collect::<~str>(), "\u1100\u1162".to_owned());
+        assert_eq!("abc".nfkd_chars().collect::<StrBuf>(), "abc".to_strbuf());
+        assert_eq!("\u1e0b\u01c4".nfkd_chars().collect::<StrBuf>(), "d\u0307DZ\u030c".to_strbuf());
+        assert_eq!("\u2026".nfkd_chars().collect::<StrBuf>(), "...".to_strbuf());
+        assert_eq!("\u2126".nfkd_chars().collect::<StrBuf>(), "\u03a9".to_strbuf());
+        assert_eq!("\u1e0b\u0323".nfkd_chars().collect::<StrBuf>(), "d\u0323\u0307".to_strbuf());
+        assert_eq!("\u1e0d\u0307".nfkd_chars().collect::<StrBuf>(), "d\u0323\u0307".to_strbuf());
+        assert_eq!("a\u0301".nfkd_chars().collect::<StrBuf>(), "a\u0301".to_strbuf());
+        assert_eq!("\u0301a".nfkd_chars().collect::<StrBuf>(), "\u0301a".to_strbuf());
+        assert_eq!("\ud4db".nfkd_chars().collect::<StrBuf>(), "\u1111\u1171\u11b6".to_strbuf());
+        assert_eq!("\uac1c".nfkd_chars().collect::<StrBuf>(), "\u1100\u1162".to_strbuf());
     }
 
     #[test]
@@ -2095,7 +2052,7 @@ mod tests {
         }
 
         t::<&str>();
-        t::<~str>();
+        t::<StrBuf>();
     }
 
     #[test]
@@ -2169,8 +2126,8 @@ mod tests {
 
     #[test]
     fn test_from_str() {
-      let owned: Option<~str> = from_str("string");
-      assert_eq!(owned, Some("string".to_owned()));
+      let owned: Option<StrBuf> = from_str("string");
+      assert_eq!(owned, Some("string".to_strbuf()));
     }
 
     #[test]

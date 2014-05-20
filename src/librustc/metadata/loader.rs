@@ -552,7 +552,7 @@ fn get_metadata_section_imp(os: Os, filename: &Path) -> Result<MetadataBlob, Str
             let name_len = llvm::LLVMRustGetSectionName(si.llsi, &mut name_buf);
             let name = str::raw::from_buf_len(name_buf as *u8, name_len as uint);
             debug!("get_metadata_section: name {}", name);
-            if read_meta_section_name(os) == name {
+            if read_meta_section_name(os).as_slice() == name.as_slice() {
                 let cbuf = llvm::LLVMGetSectionContents(si.llsi);
                 let csz = llvm::LLVMGetSectionSize(si.llsi) as uint;
                 let mut found =
