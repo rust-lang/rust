@@ -423,6 +423,10 @@ macro_rules! declare_special_idents_and_keywords {(
 static SELF_KEYWORD_NAME: Name = 1;
 static STATIC_KEYWORD_NAME: Name = 2;
 
+// NB: leaving holes in the ident table is bad! a different ident will get
+// interned with the id from the hole, but it will be between the min and max
+// of the reserved words, and thus tagged as "reserved".
+
 declare_special_idents_and_keywords! {
     pub mod special_idents {
         // These ones are statics
