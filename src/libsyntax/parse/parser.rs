@@ -4242,8 +4242,8 @@ impl<'a> Parser<'a> {
             Some(d) => (dir_path.join(d), true),
             None => {
                 let mod_name = mod_string.get().to_owned();
-                let default_path_str = mod_name + ".rs";
-                let secondary_path_str = mod_name + "/mod.rs";
+                let default_path_str = format!("{}.rs", mod_name);
+                let secondary_path_str = format!("{}/mod.rs", mod_name);
                 let default_path = dir_path.join(default_path_str.as_slice());
                 let secondary_path = dir_path.join(secondary_path_str.as_slice());
                 let default_exists = default_path.exists();
@@ -4310,7 +4310,7 @@ impl<'a> Parser<'a> {
                     err.push_str(" -> ");
                 }
                 err.push_str(path.display().as_maybe_owned().as_slice());
-                self.span_fatal(id_sp, err.into_owned());
+                self.span_fatal(id_sp, err.as_slice());
             }
             None => ()
         }

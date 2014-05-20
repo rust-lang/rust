@@ -455,6 +455,9 @@ pub fn parse_nt(p: &mut Parser, name: &str) -> Nonterminal {
         res
       }
       "matchers" => token::NtMatchers(p.parse_matchers()),
-      _ => p.fatal("unsupported builtin nonterminal parser: ".to_owned() + name)
+      _ => {
+          p.fatal(format!("unsupported builtin nonterminal parser: {}",
+                          name).as_slice())
+      }
     }
 }

@@ -217,7 +217,7 @@ pub fn expand_asm(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
         node: ast::ExprInlineAsm(ast::InlineAsm {
             asm: token::intern_and_get_ident(asm.get()),
             asm_str_style: asm_str_style.unwrap(),
-            clobbers: token::intern_and_get_ident(cons),
+            clobbers: token::intern_and_get_ident(cons.as_slice()),
             inputs: inputs,
             outputs: outputs,
             volatile: volatile,

@@ -42,7 +42,7 @@ pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
             }
         }
     }
-    let res = str_to_ident(res_str.into_owned());
+    let res = str_to_ident(res_str.as_slice());
 
     let e = @ast::Expr {
         id: ast::DUMMY_NODE_ID,

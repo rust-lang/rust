@@ -15,6 +15,7 @@ use char::Char;
 use cmp::Equiv;
 use container::{Container, Mutable};
 use fmt;
+use from_str::FromStr;
 use io::Writer;
 use iter::{Extendable, FromIterator, Iterator, range};
 use mem;
@@ -22,8 +23,8 @@ use option::{None, Option, Some};
 use ptr::RawPtr;
 use ptr;
 use result::{Result, Ok, Err};
-use slice::{OwnedVector, Vector, CloneableVector};
-use str::{CharRange, OwnedStr, Str, StrSlice, StrAllocating};
+use slice::Vector;
+use str::{CharRange, Str, StrSlice, StrAllocating};
 use str;
 use vec::Vec;
 
@@ -68,10 +69,8 @@ impl StrBuf {
 
     /// Creates a new string buffer from the given owned string, taking care not to copy it.
     #[inline]
-    pub fn from_owned_str(string: ~str) -> StrBuf {
-        StrBuf {
-            vec: string.into_bytes().move_iter().collect(),
-        }
+    pub fn from_owned_str(string: StrBuf) -> StrBuf {
+        string
     }
 
     /// Returns the vector as a string buffer, if possible, taking care not to
@@ -190,6 +189,13 @@ impl StrBuf {
     #[inline]
     pub fn as_bytes<'a>(&'a self) -> &'a [u8] {
         self.vec.as_slice()
+    }
+
+    /// Works with the underlying buffer as a mutable byte slice. Unsafe
+    /// because this can be used to violate the UTF-8 property.
+    #[inline]
+    pub unsafe fn as_mut_bytes<'a>(&'a mut self) -> &'a mut [u8] {
+        self.vec.as_mut_slice()
     }
 
     /// Shorten a string to the specified length (which must be <= the current length)
@@ -315,14 +321,14 @@ impl Str for StrBuf {
 
 impl StrAllocating for StrBuf {
     #[inline]
-    fn into_owned(self) -> ~str {
-        unsafe {
-            mem::transmute(self.vec.as_slice().to_owned())
-        }
+    fn into_owned(self) -> StrBuf {
+        self
     }
 
     #[inline]
-    fn into_strbuf(self) -> StrBuf { self }
+    fn into_strbuf(self) -> StrBuf {
+        self
+    }
 }
 
 impl fmt::Show for StrBuf {
@@ -342,6 +348,13 @@ impl<'a, S: Str> Equiv<S> for StrBuf {
     #[inline]
     fn equiv(&self, other: &S) -> bool {
         self.as_slice() == other.as_slice()
+    }
+}
+
+impl FromStr for StrBuf {
+    #[inline]
+    fn from_str(s: &str) -> Option<StrBuf> {
+        Some(s.to_strbuf())
     }
 }
 

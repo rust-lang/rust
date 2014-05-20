@@ -106,7 +106,7 @@ impl SpanHandler {
         fail!(ExplicitBug);
     }
     pub fn span_unimpl(&self, sp: Span, msg: &str) -> ! {
-        self.span_bug(sp, "unimplemented ".to_owned() + msg);
+        self.span_bug(sp, format!("unimplemented {}", msg).as_slice());
     }
     pub fn handler<'a>(&'a self) -> &'a Handler {
         &self.handler
@@ -162,7 +162,7 @@ impl Handler {
         fail!(ExplicitBug);
     }
     pub fn unimpl(&self, msg: &str) -> ! {
-        self.bug("unimplemented ".to_owned() + msg);
+        self.bug(format!("unimplemented {}", msg).as_slice());
     }
     pub fn emit(&self,
                 cmsp: Option<(&codemap::CodeMap, Span)>,
@@ -434,7 +434,8 @@ fn highlight_lines(err: &mut EmitterWriter,
                 s.push_char('~');
             }
         }
-        try!(print_maybe_styled(err, s.into_owned() + "\n",
+        try!(print_maybe_styled(err,
+                                format!("{}\n", s).as_slice(),
                                 term::attr::ForegroundColor(lvl.color())));
     }
     Ok(())
@@ -479,7 +480,7 @@ fn custom_highlight_lines(w: &mut EmitterWriter,
     s.push_char('^');
     s.push_char('\n');
     print_maybe_styled(w,
-                       s.into_owned(),
+                       s.as_slice(),
                        term::attr::ForegroundColor(lvl.color()))
 }
 

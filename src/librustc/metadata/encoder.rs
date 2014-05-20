@@ -602,7 +602,7 @@ fn encode_visibility(ebml_w: &mut Encoder, visibility: Visibility) {
         Public => 'y',
         Inherited => 'i',
     };
-    ebml_w.wr_str(str::from_char(ch));
+    ebml_w.wr_str(str::from_char(ch).as_slice());
     ebml_w.end_tag();
 }
 
@@ -848,7 +848,7 @@ fn encode_sized(ebml_w: &mut Encoder, sized: Sized) {
         DynSize => 'd',
         StaticSize => 's',
     };
-    ebml_w.wr_str(str::from_char(ch));
+    ebml_w.wr_str(str::from_char(ch).as_slice());
     ebml_w.end_tag();
 }
 
@@ -1885,5 +1885,5 @@ pub fn encoded_ty(tcx: &ty::ctxt, t: ty::t) -> StrBuf {
         tcx: tcx,
         abbrevs: &RefCell::new(HashMap::new())
     }, t);
-    str::from_utf8_owned(wr.get_ref().to_owned()).unwrap().to_strbuf()
+    str::from_utf8_owned(Vec::from_slice(wr.get_ref())).unwrap().to_strbuf()
 }

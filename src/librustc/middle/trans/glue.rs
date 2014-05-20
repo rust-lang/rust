@@ -454,7 +454,10 @@ pub fn declare_tydesc(ccx: &CrateContext, t: ty::t) -> tydesc_info {
 fn declare_generic_glue(ccx: &CrateContext, t: ty::t, llfnty: Type,
                         name: &str) -> ValueRef {
     let _icx = push_ctxt("declare_generic_glue");
-    let fn_nm = mangle_internal_name_by_type_and_seq(ccx, t, "glue_".to_owned() + name);
+    let fn_nm = mangle_internal_name_by_type_and_seq(
+        ccx,
+        t,
+        format!("glue_{}", name).as_slice());
     debug!("{} is for type {}", fn_nm, ppaux::ty_to_str(ccx.tcx(), t));
     let llfn = decl_cdecl_fn(ccx.llmod,
                              fn_nm.as_slice(),

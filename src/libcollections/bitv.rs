@@ -538,7 +538,7 @@ impl Bitv {
      * The resulting string has the same length as `self`, and each
      * character is either '0' or '1'.
      */
-     pub fn to_str(&self) -> ~str {
+     pub fn to_str(&self) -> StrBuf {
         let mut rs = StrBuf::new();
         for i in self.iter() {
             if i {
@@ -547,7 +547,7 @@ impl Bitv {
                 rs.push_char('0');
             }
         };
-        rs.into_owned()
+        rs
      }
 
 
