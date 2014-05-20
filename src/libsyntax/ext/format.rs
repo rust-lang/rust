@@ -10,6 +10,7 @@
 
 use ast;
 use ast::P;
+use attr;
 use codemap::{Span, respan};
 use ext::base::*;
 use ext::base;
@@ -382,7 +383,8 @@ impl<'a, 'b> Context<'a, 'b> {
                           .meta_word(self.fmtsp,
                                      InternedString::new(
                                          "address_insignificant"));
-        let unnamed = self.ecx.attribute(self.fmtsp, unnamed);
+        let unnamed = self.ecx.attribute(attr::mk_attr_id(), self.fmtsp,
+                                         unnamed);
 
         // Do not warn format string as dead code
         let dead_code = self.ecx.meta_word(self.fmtsp,
@@ -390,7 +392,8 @@ impl<'a, 'b> Context<'a, 'b> {
         let allow_dead_code = self.ecx.meta_list(self.fmtsp,
                                                  InternedString::new("allow"),
                                                  vec!(dead_code));
-        let allow_dead_code = self.ecx.attribute(self.fmtsp, allow_dead_code);
+        let allow_dead_code = self.ecx.attribute(attr::mk_attr_id(), self.fmtsp,
+                                                 allow_dead_code);
         return vec!(unnamed, allow_dead_code);
     }
 

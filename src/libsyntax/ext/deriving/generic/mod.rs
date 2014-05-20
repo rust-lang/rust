@@ -182,6 +182,7 @@ use std::cell::RefCell;
 use ast;
 use ast::{P, EnumDef, Expr, Ident, Generics, StructDef};
 use ast_util;
+use attr;
 use attr::AttrMetaMethods;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
@@ -427,6 +428,7 @@ impl<'a> TraitDef<'a> {
                         self_ty_params.into_vec()), None);
 
         let attr = cx.attribute(
+            attr::mk_attr_id(),
             self.span,
             cx.meta_word(self.span,
                          InternedString::new("automatically_derived")));

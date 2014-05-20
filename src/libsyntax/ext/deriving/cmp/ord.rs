@@ -10,6 +10,7 @@
 
 use ast;
 use ast::{MetaItem, Item, Expr};
+use attr;
 use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
@@ -24,7 +25,7 @@ pub fn expand_deriving_ord(cx: &mut ExtCtxt,
     macro_rules! md (
         ($name:expr, $op:expr, $equal:expr) => { {
             let inline = cx.meta_word(span, InternedString::new("inline"));
-            let attrs = vec!(cx.attribute(span, inline));
+            let attrs = vec!(cx.attribute(attr::mk_attr_id(), span, inline));
             MethodDef {
                 name: $name,
                 generics: LifetimeBounds::empty(),

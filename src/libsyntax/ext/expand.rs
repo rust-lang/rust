@@ -972,6 +972,7 @@ mod test {
     use super::*;
     use ast;
     use ast::{Attribute_, AttrOuter, MetaWord};
+    use attr;
     use codemap;
     use codemap::Spanned;
     use ext::base::{CrateLoader, MacroCrate};
@@ -1103,6 +1104,7 @@ mod test {
         Spanned {
             span:codemap::DUMMY_SP,
             node: Attribute_ {
+                id: attr::mk_attr_id(),
                 style: AttrOuter,
                 value: @Spanned {
                     node: MetaWord(token::intern_and_get_ident(s)),

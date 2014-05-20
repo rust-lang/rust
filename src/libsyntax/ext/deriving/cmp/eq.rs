@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use ast::{MetaItem, Item, Expr};
+use attr;
 use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
@@ -34,7 +35,7 @@ pub fn expand_deriving_eq(cx: &mut ExtCtxt,
     macro_rules! md (
         ($name:expr, $f:ident) => { {
             let inline = cx.meta_word(span, InternedString::new("inline"));
-            let attrs = vec!(cx.attribute(span, inline));
+            let attrs = vec!(cx.attribute(attr::mk_attr_id(), span, inline));
             MethodDef {
                 name: $name,
                 generics: LifetimeBounds::empty(),
