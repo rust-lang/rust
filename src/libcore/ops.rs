@@ -10,7 +10,7 @@
 
 /*!
  *
- * Traits representing built-in operators, useful for overloading
+ * Overloadable operators
  *
  * Implementing these traits allows you to get an effect similar to
  * overloading operators.
