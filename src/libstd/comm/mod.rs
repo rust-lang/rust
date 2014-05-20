@@ -271,6 +271,8 @@
 // And now that you've seen all the races that I found and attempted to fix,
 // here's the code for you to find some more!
 
+use alloc::arc::Arc;
+
 use cell::Cell;
 use clone::Clone;
 use iter::Iterator;
@@ -283,7 +285,6 @@ use owned::Box;
 use result::{Ok, Err, Result};
 use rt::local::Local;
 use rt::task::{Task, BlockedTask};
-use sync::arc::UnsafeArc;
 use ty::Unsafe;
 
 pub use comm::select::{Select, Handle};
@@ -352,7 +353,7 @@ pub struct Sender<T> {
 /// The sending-half of Rust's synchronous channel type. This half can only be
 /// owned by one task, but it can be cloned to send to other tasks.
 pub struct SyncSender<T> {
-    inner: UnsafeArc<sync::Packet<T>>,
+    inner: Arc<Unsafe<sync::Packet<T>>>,
     // can't share in an arc
     marker: marker::NoShare,
 }
@@ -386,10 +387,10 @@ pub enum TrySendError<T> {
 }
 
 enum Flavor<T> {
-    Oneshot(UnsafeArc<oneshot::Packet<T>>),
-    Stream(UnsafeArc<stream::Packet<T>>),
-    Shared(UnsafeArc<shared::Packet<T>>),
-    Sync(UnsafeArc<sync::Packet<T>>),
+    Oneshot(Arc<Unsafe<oneshot::Packet<T>>>),
+    Stream(Arc<Unsafe<stream::Packet<T>>>),
+    Shared(Arc<Unsafe<shared::Packet<T>>>),
+    Sync(Arc<Unsafe<sync::Packet<T>>>),
 }
 
 #[doc(hidden)]
@@ -435,8 +436,8 @@ impl<T> UnsafeFlavor<T> for Receiver<T> {
 /// println!("{}", rx.recv());
 /// ```
 pub fn channel<T: Send>() -> (Sender<T>, Receiver<T>) {
-    let (a, b) = UnsafeArc::new2(oneshot::Packet::new());
-    (Sender::new(Oneshot(b)), Receiver::new(Oneshot(a)))
+    let a = Arc::new(Unsafe::new(oneshot::Packet::new()));
+    (Sender::new(Oneshot(a.clone())), Receiver::new(Oneshot(a)))
 }
 
 /// Creates a new synchronous, bounded channel.
@@ -471,8 +472,8 @@ pub fn channel<T: Send>() -> (Sender<T>, Receiver<T>) {
 /// assert_eq!(rx.recv(), 2);
 /// ```
 pub fn sync_channel<T: Send>(bound: uint) -> (SyncSender<T>, Receiver<T>) {
-    let (a, b) = UnsafeArc::new2(sync::Packet::new(bound));
-    (SyncSender::new(a), Receiver::new(Sync(b)))
+    let a = Arc::new(Unsafe::new(sync::Packet::new(bound)));
+    (SyncSender::new(a.clone()), Receiver::new(Sync(a)))
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -557,13 +558,13 @@ impl<T: Send> Sender<T> {
 
         let (new_inner, ret) = match *unsafe { self.inner() } {
             Oneshot(ref p) => {
-                let p = p.get();
                 unsafe {
+                    let p = p.get();
                     if !(*p).sent() {
                         return (*p).send(t);
                     } else {
-                        let (a, b) = UnsafeArc::new2(stream::Packet::new());
-                        match (*p).upgrade(Receiver::new(Stream(b))) {
+                        let a = Arc::new(Unsafe::new(stream::Packet::new()));
+                        match (*p).upgrade(Receiver::new(Stream(a.clone()))) {
                             oneshot::UpSuccess => {
                                 let ret = (*a.get()).send(t);
                                 (a, ret)
@@ -598,17 +599,21 @@ impl<T: Send> Clone for Sender<T> {
     fn clone(&self) -> Sender<T> {
         let (packet, sleeper) = match *unsafe { self.inner() } {
             Oneshot(ref p) => {
-                let (a, b) = UnsafeArc::new2(shared::Packet::new());
-                match unsafe { (*p.get()).upgrade(Receiver::new(Shared(a))) } {
-                    oneshot::UpSuccess | oneshot::UpDisconnected => (b, None),
-                    oneshot::UpWoke(task) => (b, Some(task))
+                let a = Arc::new(Unsafe::new(shared::Packet::new()));
+                match unsafe {
+                    (*p.get()).upgrade(Receiver::new(Shared(a.clone())))
+                } {
+                    oneshot::UpSuccess | oneshot::UpDisconnected => (a, None),
+                    oneshot::UpWoke(task) => (a, Some(task))
                 }
             }
             Stream(ref p) => {
-                let (a, b) = UnsafeArc::new2(shared::Packet::new());
-                match unsafe { (*p.get()).upgrade(Receiver::new(Shared(a))) } {
-                    stream::UpSuccess | stream::UpDisconnected => (b, None),
-                    stream::UpWoke(task) => (b, Some(task)),
+                let a = Arc::new(Unsafe::new(shared::Packet::new()));
+                match unsafe {
+                    (*p.get()).upgrade(Receiver::new(Shared(a.clone())))
+                } {
+                    stream::UpSuccess | stream::UpDisconnected => (a, None),
+                    stream::UpWoke(task) => (a, Some(task)),
                 }
             }
             Shared(ref p) => {
@@ -645,7 +650,7 @@ impl<T: Send> Drop for Sender<T> {
 ////////////////////////////////////////////////////////////////////////////////
 
 impl<T: Send> SyncSender<T> {
-    fn new(inner: UnsafeArc<sync::Packet<T>>) -> SyncSender<T> {
+    fn new(inner: Arc<Unsafe<sync::Packet<T>>>) -> SyncSender<T> {
         SyncSender { inner: inner, marker: marker::NoShare }
     }
 

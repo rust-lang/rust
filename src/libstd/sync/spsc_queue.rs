@@ -52,7 +52,7 @@ struct Node<T> {
 }
 
 /// The single-producer single-consumer queue. This structure is not cloneable,
-/// but it can be safely shared in an UnsafeArc if it is guaranteed that there
+/// but it can be safely shared in an Arc if it is guaranteed that there
 /// is only one popper and one pusher touching the queue at any one point in
 /// time.
 pub struct Queue<T> {
@@ -227,9 +227,11 @@ impl<T: Send> Drop for Queue<T> {
 #[cfg(test)]
 mod test {
     use prelude::*;
+
+    use alloc::arc::Arc;
     use native;
+
     use super::Queue;
-    use sync::arc::UnsafeArc;
 
     #[test]
     fn smoke() {
@@ -274,7 +276,8 @@ mod test {
         stress_bound(1);
 
         fn stress_bound(bound: uint) {
-            let (a, b) = UnsafeArc::new2(Queue::new(bound));
+            let a = Arc::new(Queue::new(bound));
+            let b = a.clone();
             let (tx, rx) = channel();
             native::task::spawn(proc() {
                 for _ in range(0, 100000) {
