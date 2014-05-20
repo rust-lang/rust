@@ -299,6 +299,9 @@ impl<'a> RegionVarBindings<'a> {
                         sub.repr(self.tcx),
                         sup.repr(self.tcx)));
           }
+          (_, ReStatic) => {
+            // all regions are subregions of static, so we can ignore this
+          }
           (ReInfer(ReVar(sub_id)), ReInfer(ReVar(sup_id))) => {
             self.add_constraint(ConstrainVarSubVar(sub_id, sup_id), origin);
           }
