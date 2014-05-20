@@ -54,7 +54,7 @@
 //! containers that can be cloned and shared between multiple parties.
 //! Because the contained values may be multiply-aliased, they can
 //! only be borrowed as shared references, not mutable references.
-//! Without cells then it would be impossible to mutate data inside of
+//! Without cells it would be impossible to mutate data inside of
 //! shared boxes at all!
 //!
 //! It's very common then to put a `RefCell` inside shared pointer
@@ -104,7 +104,7 @@
 //!             // Take a reference to the inside of cache cell
 //!             let mut cache = self.span_tree_cache.borrow_mut();
 //!             if cache.is_some() {
-//!                 return cache.take_unwrap().clone();
+//!                 return cache.get_ref().clone();
 //!             }
 //!
 //!             let span_tree = self.calc_span_tree();
@@ -118,14 +118,14 @@
 //!         // This is the major hazard of using `RefCell`.
 //!         self.minimum_spanning_tree()
 //!     }
-//! #   fn calc_span_tree(&self) -> Vec<(uint, uint)> { vec!() }
+//! #   fn calc_span_tree(&self) -> Vec<(uint, uint)> { vec![] }
 //! }
 //! # fn main() { }
 //! ```
 //!
 //! ## Mutating implementations of `clone`
 //!
-//! This is simply a special - bot common - case of the previous:
+//! This is simply a special - but common - case of the previous:
 //! hiding mutability for operations that appear to be immutable.
 //! The `clone` method is expected to not change the source value, and
 //! is declared to take `&self`, not `&mut self`. Therefore any

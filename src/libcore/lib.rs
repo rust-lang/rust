@@ -14,11 +14,11 @@
 //! Rust Standard Library](../std/index.html). It is the portable glue
 //! between the language and its libraries, defining the intrinsic and
 //! primitive building blocks of all Rust code. It links to no
-//! upstream libraries, no system libraries, no libc.
+//! upstream libraries, no system libraries, and no libc.
 //!
 //! The core library is *minimal*: it isn't even aware of heap allocation,
 //! nor does it provide concurrency or I/O. These things require
-//! platform integration, and this library is platform-oblivious.
+//! platform integration, and this library is platform-agnostic.
 //!
 //! *It is not recommended to use the core library*. The stable
 //! functionality of libcore is reexported from the
