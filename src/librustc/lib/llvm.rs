@@ -716,6 +716,9 @@ pub mod llvm {
 
         pub fn LLVMAddColdAttribute(Fn: ValueRef);
 
+        pub fn LLVMAddNonNullAttribute(Arg: ValueRef);
+        pub fn LLVMAddNonNullReturnAttribute(Fn: ValueRef);
+
         pub fn LLVMRemoveFunctionAttr(Fn: ValueRef,
                                       PA: c_ulonglong,
                                       HighPA: c_ulonglong);

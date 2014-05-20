@@ -259,12 +259,14 @@ pub fn decl_rust_fn(ccx: &CrateContext, has_env: bool,
             ty::ty_uniq(..) => {
                 unsafe {
                     llvm::LLVMAddAttribute(llarg, lib::llvm::NoAliasAttribute as c_uint);
+                    llvm::LLVMAddNonNullAttribute(llarg);
                 }
             }
             // `&mut` pointer parameters never alias other parameters, or mutable global data
             ty::ty_rptr(_, mt) if mt.mutbl == ast::MutMutable => {
                 unsafe {
                     llvm::LLVMAddAttribute(llarg, lib::llvm::NoAliasAttribute as c_uint);
+                    llvm::LLVMAddNonNullAttribute(llarg);
                 }
             }
             // When a reference in an argument has no named lifetime, it's impossible for that
@@ -273,6 +275,13 @@ pub fn decl_rust_fn(ccx: &CrateContext, has_env: bool,
                 debug!("marking argument of {} as nocapture because of anonymous lifetime", name);
                 unsafe {
                     llvm::LLVMAddAttribute(llarg, lib::llvm::NoCaptureAttribute as c_uint);
+                    llvm::LLVMAddNonNullAttribute(llarg);
+                }
+            }
+            // `&` pointer parameters are never null
+            ty::ty_rptr(..) => {
+                unsafe {
+                    llvm::LLVMAddNonNullAttribute(llarg);
                 }
             }
             _ => {
@@ -290,12 +299,23 @@ pub fn decl_rust_fn(ccx: &CrateContext, has_env: bool,
 
     // The out pointer will never alias with any other pointers, as the object only exists at a
     // language level after the call. It can also be tagged with SRet to indicate that it is
-    // guaranteed to point to a usable block of memory for the type.
+    // guaranteed to point to a usable block of memory for the type. We also know that it's
+    // never null
     if uses_outptr {
         unsafe {
             let outptr = llvm::LLVMGetParam(llfn, 0);
             llvm::LLVMAddAttribute(outptr, lib::llvm::StructRetAttribute as c_uint);
             llvm::LLVMAddAttribute(outptr, lib::llvm::NoAliasAttribute as c_uint);
+            llvm::LLVMAddNonNullAttribute(outptr);
+        }
+    } else {
+        match ty::get(output).sty {
+            ty::ty_uniq(..) | ty::ty_rptr(..) => {
+                unsafe {
+                    llvm::LLVMAddNonNullReturnAttribute(llfn);
+                }
+            }
+            _ => {}
         }
     }
 

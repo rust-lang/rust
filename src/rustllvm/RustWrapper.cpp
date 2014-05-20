@@ -119,8 +119,20 @@ extern "C" void LLVMAddColdAttribute(LLVMValueRef Fn) {
   Function *A = unwrap<Function>(Fn);
   A->addAttribute(AttributeSet::FunctionIndex, Attribute::Cold);
 }
+
+extern "C" void LLVMAddNonNullAttribute(LLVMValueRef Arg) {
+  Argument *A = unwrap<Argument>(Arg);
+  A->addAttr(AttributeSet::get(A->getContext(), A->getArgNo() + 1, Attribute::NonNull));
+}
+
+extern "C" void LLVMAddNonNullReturnAttribute(LLVMValueRef Fn) {
+  Function *A = unwrap<Function>(Fn);
+  A->addAttribute(AttributeSet::ReturnIndex, Attribute::NonNull);
+}
 #else
 extern "C" void LLVMAddColdAttribute(LLVMValueRef Fn) {}
+extern "C" void LLVMAddNonNullAttribute(LLVMValueRef Arg) {}
+extern "C" void LLVMAddNonNullReturnAttribute(LLVMValueRef Fn) {}
 #endif
 
 extern "C" LLVMValueRef LLVMBuildAtomicLoad(LLVMBuilderRef B,
