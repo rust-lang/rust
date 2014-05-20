@@ -21,14 +21,13 @@ syn match     rustFail        "\<fail\(\w\)*!" contained
 syn keyword   rustKeyword     break box continue
 syn keyword   rustKeyword     extern nextgroup=rustExternCrate,rustObsoleteExternMod skipwhite
 syn keyword   rustKeyword     for in if impl let
-syn keyword   rustKeyword     loop once priv pub
-syn keyword   rustKeyword     return
-syn keyword   rustKeyword     unsafe while
+syn keyword   rustKeyword     loop once proc pub
+syn keyword   rustKeyword     return super
+syn keyword   rustKeyword     unsafe virtual while
 syn keyword   rustKeyword     use nextgroup=rustModPath skipwhite
 " FIXME: Scoped impl's name is also fallen in this category
 syn keyword   rustKeyword     mod trait struct enum type nextgroup=rustIdentifier skipwhite
 syn keyword   rustKeyword     fn nextgroup=rustFuncName skipwhite
-syn keyword   rustKeyword     proc
 syn keyword   rustStorage     mut ref static
 syn keyword   rustObsoleteStorage const
 
@@ -41,7 +40,7 @@ syn match     rustIdentifier  contains=rustIdentifierPrime "\%([^[:cntrl:][:spac
 syn match     rustFuncName    "\%([^[:cntrl:][:space:][:punct:][:digit:]]\|_\)\%([^[:cntrl:][:punct:][:space:]]\|_\)*" display contained
 
 " Reserved (but not yet used) keywords {{{2
-syn keyword   rustReservedKeyword alignof be do offsetof pure sizeof typeof yield
+syn keyword   rustReservedKeyword alignof be do offsetof priv pure sizeof typeof unsized yield
 
 " Built-in types {{{2
 syn keyword   rustType        int uint float char bool u8 u16 u32 u64 f32
@@ -52,10 +51,10 @@ syn keyword   rustType        f64 i8 i16 i32 i64 str Self
 " to make it easy to update.
 
 " Core operators {{{3
-syn keyword   rustTrait       Share Copy Send Sized
+syn keyword   rustTrait       Copy Send Sized Share
 syn keyword   rustTrait       Add Sub Mul Div Rem Neg Not
 syn keyword   rustTrait       BitAnd BitOr BitXor
-syn keyword   rustTrait       Drop
+syn keyword   rustTrait       Drop Deref DerefMut
 syn keyword   rustTrait       Shl Shr Index
 syn keyword   rustEnum        Option
 syn keyword   rustEnumVariant Some None
@@ -68,7 +67,6 @@ syn keyword   rustEnumVariant Ok Err
 "syn keyword rustFunction drop
 
 " Types and traits {{{3
-syn keyword rustTrait Any AnyOwnExt AnyRefExt AnyMutRefExt
 syn keyword rustTrait Ascii AsciiCast OwnedAsciiCast AsciiStr IntoBytes
 syn keyword rustTrait ToCStr
 syn keyword rustTrait Char
@@ -80,24 +78,31 @@ syn keyword rustTrait FromIterator Extendable
 syn keyword rustTrait Iterator DoubleEndedIterator RandomAccessIterator CloneableIterator
 syn keyword rustTrait OrdIterator MutableDoubleEndedIterator ExactSize
 syn keyword rustTrait Num NumCast CheckedAdd CheckedSub CheckedMul
-syn keyword rustTrait Signed Unsigned Round
-syn keyword rustTrait Primitive Int Float ToPrimitive FromPrimitive
+syn keyword rustTrait Signed Unsigned
+syn keyword rustTrait Primitive Int Float FloatMath ToPrimitive FromPrimitive
+"syn keyword rustTrait Expect
+syn keyword rustTrait Box
 syn keyword rustTrait GenericPath Path PosixPath WindowsPath
 syn keyword rustTrait RawPtr
 syn keyword rustTrait Buffer Writer Reader Seek
-syn keyword rustTrait Str StrVector StrSlice OwnedStr IntoMaybeOwned StrBuf
+syn keyword rustTrait Str StrVector StrSlice OwnedStr IntoMaybeOwned
+syn keyword rustTrait StrAllocating
 syn keyword rustTrait ToStr IntoStr
 syn keyword rustTrait Tuple1 Tuple2 Tuple3 Tuple4
 syn keyword rustTrait Tuple5 Tuple6 Tuple7 Tuple8
 syn keyword rustTrait Tuple9 Tuple10 Tuple11 Tuple12
-syn keyword rustTrait ImmutableEqVector ImmutableTotalOrdVector ImmutableCloneableVector
-syn keyword rustTrait OwnedVector OwnedCloneableVector OwnedEqVector
-syn keyword rustTrait MutableVector MutableTotalOrdVector
-syn keyword rustTrait Vector VectorVector CloneableVector ImmutableVector
+syn keyword rustTrait CloneableVector ImmutableCloneableVector MutableCloneableVector
+syn keyword rustTrait ImmutableVector MutableVector
+syn keyword rustTrait ImmutableEqVector ImmutableTotalOrdVector MutableTotalOrdVector
+syn keyword rustTrait Vector VectorVector OwnedVector MutableVectorAllocating
+syn keyword rustTrait StrBuf
+syn keyword rustTrait Vec
 
-"syn keyword rustFunction stream
-syn keyword rustTrait Sender Receiver
+"syn keyword rustFunction sync_channel channel
+syn keyword rustTrait SyncSender Sender Receiver
 "syn keyword rustFunction spawn
+
+"syn keyword rustConstant GC
 
 syn keyword   rustSelf        self
 syn keyword   rustBoolean     true false
