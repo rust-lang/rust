@@ -72,7 +72,7 @@ use syntax::parse::token;
 use syntax::visit::Visitor;
 use syntax::{ast, ast_util, visit};
 
-#[deriving(Clone, Show, Eq, Ord, TotalEq, TotalOrd)]
+#[deriving(Clone, Show, Eq, Ord, TotalEq, TotalOrd, Hash)]
 pub enum Lint {
     CTypes,
     UnusedImports,
@@ -471,9 +471,9 @@ struct Context<'a> {
     /// Ids of structs/enums which have been checked for raw_pointer_deriving
     checked_raw_pointers: NodeSet,
 
-    /// Level of EnumSizeVariance lint for each enum, stored here because the
-    /// body of the lint needs to run in trans.
-    enum_levels: HashMap<ast::NodeId, (Level, LintSource)>,
+    /// Level of lints for certain NodeIds, stored here because the body of
+    /// the lint needs to run in trans.
+    node_levels: HashMap<(ast::NodeId, Lint), (Level, LintSource)>,
 }
 
 pub fn emit_lint(level: Level, src: LintSource, msg: &str, span: Span,
@@ -1921,7 +1921,7 @@ pub fn check_crate(tcx: &ty::ctxt,
         lint_stack: Vec::new(),
         negated_expr_id: -1,
         checked_raw_pointers: NodeSet::new(),
-        enum_levels: HashMap::new(),
+        node_levels: HashMap::new(),
     };
 
     // Install default lint levels, followed by the command line levels, and
@@ -1963,5 +1963,5 @@ pub fn check_crate(tcx: &ty::ctxt,
     }
 
     tcx.sess.abort_if_errors();
-    *tcx.enum_lint_levels.borrow_mut() = cx.enum_levels;
+    *tcx.node_lint_levels.borrow_mut() = cx.node_levels;
 }
