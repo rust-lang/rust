@@ -10,6 +10,7 @@
 
 use ast;
 use ast::{MetaItem, Item, Expr, MutMutable};
+use attr;
 use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
@@ -37,7 +38,7 @@ pub fn expand_deriving_hash(cx: &mut ExtCtxt,
          Path::new(vec!("std", "hash", "sip", "SipState")))
     };
     let inline = cx.meta_word(span, InternedString::new("inline"));
-    let attrs = vec!(cx.attribute(span, inline));
+    let attrs = vec!(cx.attribute(attr::mk_attr_id(), span, inline));
     let hash_trait_def = TraitDef {
         span: span,
         attributes: Vec::new(),

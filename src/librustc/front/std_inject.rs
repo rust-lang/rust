@@ -78,7 +78,7 @@ impl<'a> fold::Folder for StandardLibraryInjector<'a> {
                                          with_version("std"),
                                          ast::DUMMY_NODE_ID),
             attrs: vec!(
-                attr::mk_attr_outer(attr::mk_list_item(
+                attr::mk_attr_outer(attr::mk_attr_id(), attr::mk_list_item(
                         InternedString::new("phase"),
                         vec!(
                             attr::mk_word_item(InternedString::new("syntax")),
@@ -110,7 +110,8 @@ impl<'a> fold::Folder for StandardLibraryInjector<'a> {
         // Add it during the prelude injection instead.
 
         // Add #![feature(phase)] here, because we use #[phase] on extern crate std.
-        let feat_phase_attr = attr::mk_attr_inner(attr::mk_list_item(
+        let feat_phase_attr = attr::mk_attr_inner(attr::mk_attr_id(),
+                                                  attr::mk_list_item(
                                   InternedString::new("feature"),
                                   vec![attr::mk_word_item(InternedString::new("phase"))],
                               ));
@@ -138,7 +139,8 @@ impl<'a> fold::Folder for PreludeInjector<'a> {
         // This must happen here and not in StandardLibraryInjector because this
         // fold happens second.
 
-        let no_std_attr = attr::mk_attr_inner(attr::mk_word_item(InternedString::new("no_std")));
+        let no_std_attr = attr::mk_attr_inner(attr::mk_attr_id(),
+                                              attr::mk_word_item(InternedString::new("no_std")));
         krate.attrs.push(no_std_attr);
 
         if !no_prelude(krate.attrs.as_slice()) {
@@ -146,7 +148,8 @@ impl<'a> fold::Folder for PreludeInjector<'a> {
             // `#![no_implicit_prelude]` at the crate level.
 
             // fold_mod() will insert glob path.
-            let globs_attr = attr::mk_attr_inner(attr::mk_list_item(
+            let globs_attr = attr::mk_attr_inner(attr::mk_attr_id(),
+                                                 attr::mk_list_item(
                 InternedString::new("feature"),
                 vec!(
                     attr::mk_word_item(InternedString::new("globs")),

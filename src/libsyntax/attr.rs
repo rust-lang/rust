@@ -11,7 +11,7 @@
 // Functions dealing with attributes and meta items
 
 use ast;
-use ast::{Attribute, Attribute_, MetaItem, MetaWord, MetaNameValue, MetaList};
+use ast::{AttrId, Attribute, Attribute_, MetaItem, MetaWord, MetaNameValue, MetaList};
 use codemap::{Span, Spanned, spanned, dummy_spanned};
 use codemap::BytePos;
 use diagnostic::SpanHandler;
@@ -21,6 +21,18 @@ use parse::token;
 use crateid::CrateId;
 
 use collections::HashSet;
+
+local_data_key!(used_attrs: HashSet<AttrId>)
+
+pub fn mark_used(attr: &Attribute) {
+    let mut used = used_attrs.replace(None).unwrap_or_else(|| HashSet::new());
+    used.insert(attr.node.id);
+    used_attrs.replace(Some(used));
+}
+
+pub fn is_used(attr: &Attribute) -> bool {
+    used_attrs.get().map_or(false, |used| used.contains(&attr.node.id))
+}
 
 pub trait AttrMetaMethods {
     // This could be changed to `fn check_name(&self, name: InternedString) ->
@@ -127,9 +139,9 @@ impl AttributeMethods for Attribute {
                 token::intern_and_get_ident(strip_doc_comment_decoration(
                         comment.get()).as_slice()));
             if self.node.style == ast::AttrOuter {
-                mk_attr_outer(meta)
+                mk_attr_outer(self.node.id, meta)
             } else {
-                mk_attr_inner(meta)
+                mk_attr_inner(self.node.id, meta)
             }
         } else {
             *self
@@ -158,9 +170,18 @@ pub fn mk_word_item(name: InternedString) -> @MetaItem {
     @dummy_spanned(MetaWord(name))
 }
 
+local_data_key!(next_attr_id: uint)
+
+pub fn mk_attr_id() -> AttrId {
+    let id = next_attr_id.replace(None).unwrap_or(0);
+    next_attr_id.replace(Some(id + 1));
+    AttrId(id)
+}
+
 /// Returns an inner attribute with the given value.
-pub fn mk_attr_inner(item: @MetaItem) -> Attribute {
+pub fn mk_attr_inner(id: AttrId, item: @MetaItem) -> Attribute {
     dummy_spanned(Attribute_ {
+        id: id,
         style: ast::AttrInner,
         value: item,
         is_sugared_doc: false,
@@ -168,19 +189,22 @@ pub fn mk_attr_inner(item: @MetaItem) -> Attribute {
 }
 
 /// Returns an outer attribute with the given value.
-pub fn mk_attr_outer(item: @MetaItem) -> Attribute {
+pub fn mk_attr_outer(id: AttrId, item: @MetaItem) -> Attribute {
     dummy_spanned(Attribute_ {
+        id: id,
         style: ast::AttrOuter,
         value: item,
         is_sugared_doc: false,
     })
 }
 
-pub fn mk_sugared_doc_attr(text: InternedString, lo: BytePos, hi: BytePos)
+pub fn mk_sugared_doc_attr(id: AttrId, text: InternedString, lo: BytePos,
+                           hi: BytePos)
                            -> Attribute {
     let style = doc_comment_style(text.get());
     let lit = spanned(lo, hi, ast::LitStr(text, ast::CookedStr));
     let attr = Attribute_ {
+        id: id,
         style: style,
         value: @spanned(lo, hi, MetaNameValue(InternedString::new("doc"),
                                               lit)),

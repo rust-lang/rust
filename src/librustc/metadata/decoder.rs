@@ -1056,6 +1056,7 @@ fn get_attributes(md: ebml::Doc) -> Vec<ast::Attribute> {
             attrs.push(
                 codemap::Spanned {
                     node: ast::Attribute_ {
+                        id: attr::mk_attr_id(),
                         style: ast::AttrOuter,
                         value: meta_item,
                         is_sugared_doc: false,
