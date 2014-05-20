@@ -17,8 +17,7 @@
 //! ## Intrinsic types and operations
 //!
 //! The [`ptr`](../core/ptr/index.html), [`mem`](../core/mem/index.html),
-//! and [`cast`](../core/cast/index.html) modules deal with unsafe pointers,
-//! memory manipulation, and coercion.
+//! modules deal with unsafe pointers and memory manipulation.
 //! [`kinds`](../core/kinds/index.html) defines the special built-in traits,
 //! and [`raw`](../core/raw/index.html) the runtime representation of Rust types.
 //! These are some of the lowest-level building blocks of Rust
