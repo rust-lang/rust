@@ -162,6 +162,10 @@ extern {
 # Unresolved questions
 
 - How does this interact with binary compatibility of dynamic libraries?
+- How does this interact with DST, where some fields have to be at the
+  end of a struct? (Just always lay-out unsized fields last?
+  (i.e. after monomorphisation if a field was originally marked
+  `Sized?` then it needs to be last).)
 - Should the lint apply to C-compatible functions defined in Rust like
   `extern "C" fn foo(x: UnspecifiedLayout)`? (The equivalent lint for
   enums does not pick up this case.)
