@@ -351,7 +351,10 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
                               cmds,
                               "quit".to_strbuf()].connect("\n");
             debug!("script_str = {}", script_str);
-            dump_output_file(config, testfile, script_str, "debugger.script");
+            dump_output_file(config,
+                             testfile,
+                             script_str.as_slice(),
+                             "debugger.script");
 
 
             procsrv::run("",
@@ -459,7 +462,10 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
                 "quit\n".to_strbuf()
             ].connect("\n");
             debug!("script_str = {}", script_str);
-            dump_output_file(config, testfile, script_str, "debugger.script");
+            dump_output_file(config,
+                             testfile,
+                             script_str.as_slice(),
+                             "debugger.script");
 
             // run debugger script with gdb
             #[cfg(windows)]
@@ -553,7 +559,10 @@ fn run_debuginfo_lldb_test(config: &Config, props: &TestProps, testfile: &Path) 
 
     // Write the script into a file
     debug!("script_str = {}", script_str);
-    dump_output_file(config, testfile, script_str.into_owned(), "debugger.script");
+    dump_output_file(config,
+                     testfile,
+                     script_str.as_slice(),
+                     "debugger.script");
     let debugger_script = make_out_name(config, testfile, "debugger.script");
 
     // Let LLDB execute the script via lldb_batchmode.py
@@ -610,8 +619,8 @@ fn parse_debugger_commands(file_path: &Path, debugger_prefix: &str)
                            -> DebuggerCommands {
     use std::io::{BufferedReader, File};
 
-    let command_directive = debugger_prefix + "-command";
-    let check_directive = debugger_prefix + "-check";
+    let command_directive = format!("{}-command", debugger_prefix);
+    let check_directive = format!("{}-check", debugger_prefix);
 
     let mut breakpoint_lines = vec!();
     let mut commands = vec!();

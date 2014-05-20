@@ -206,7 +206,7 @@ fn path(w: &mut fmt::Formatter, path: &clean::Path, print_all: bool,
         let amt = path.segments.len() - 1;
         match rel_root {
             Some(root) => {
-                let mut root = StrBuf::from_str(root);
+                let mut root = StrBuf::from_str(root.as_slice());
                 for seg in path.segments.slice_to(amt).iter() {
                     if "super" == seg.name.as_slice() ||
                             "self" == seg.name.as_slice() {

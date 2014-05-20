@@ -15,7 +15,8 @@ use std::unstable::dynamic_lib::DynamicLibrary;
 
 fn target_env(lib_path: &str, prog: &str) -> Vec<(StrBuf, StrBuf)> {
     let prog = if cfg!(windows) {prog.slice_to(prog.len() - 4)} else {prog};
-    let aux_path = prog + ".libaux";
+    let mut aux_path = prog.to_strbuf();
+    aux_path.push_str(".libaux");
 
     // Need to be sure to put both the lib_path and the aux path in the dylib
     // search path for the child.

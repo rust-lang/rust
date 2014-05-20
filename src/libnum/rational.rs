@@ -584,7 +584,7 @@ mod test {
     #[test]
     fn test_to_from_str_radix() {
         fn test(r: Rational, s: StrBuf, n: uint) {
-            assert_eq!(FromStrRadix::from_str_radix(s.to_owned(), n),
+            assert_eq!(FromStrRadix::from_str_radix(s.as_slice(), n),
                        Some(r));
             assert_eq!(r.to_str_radix(n).to_strbuf(), s);
         }

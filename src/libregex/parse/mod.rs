@@ -513,11 +513,11 @@ impl<'a> Parser<'a> {
 
         // Parse the min and max values from the regex.
         let (mut min, mut max): (uint, Option<uint>);
-        if !inner.contains(",") {
-            min = try!(self.parse_uint(inner));
+        if !inner.as_slice().contains(",") {
+            min = try!(self.parse_uint(inner.as_slice()));
             max = Some(min);
         } else {
-            let pieces: Vec<&str> = inner.splitn(',', 1).collect();
+            let pieces: Vec<&str> = inner.as_slice().splitn(',', 1).collect();
             let (smin, smax) = (*pieces.get(0), *pieces.get(1));
             if smin.len() == 0 {
                 return self.err("Max repetitions cannot be specified \

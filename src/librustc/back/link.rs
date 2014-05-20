@@ -62,7 +62,9 @@ pub fn llvm_err(sess: &Session, msg: StrBuf) -> ! {
         } else {
             let err = CString::new(cstr, true);
             let err = str::from_utf8_lossy(err.as_bytes());
-            sess.fatal((msg.as_slice() + ": " + err.as_slice()));
+            sess.fatal(format!("{}: {}",
+                               msg.as_slice(),
+                               err.as_slice()).as_slice());
         }
     }
 }
@@ -647,7 +649,7 @@ pub fn sanitize(s: &str) -> StrBuf {
     if result.len() > 0u &&
         result.as_slice()[0] != '_' as u8 &&
         ! char::is_XID_start(result.as_slice()[0] as char) {
-        return ("_" + result.as_slice()).to_strbuf();
+        return format!("_{}", result.as_slice()).to_strbuf();
     }
 
     return result;

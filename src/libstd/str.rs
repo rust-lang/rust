@@ -85,7 +85,7 @@ use vec::Vec;
 pub use core::str::{from_utf8, CharEq, Chars, CharOffsets, RevChars};
 pub use core::str::{RevCharOffsets, Bytes, RevBytes, CharSplits, RevCharSplits};
 pub use core::str::{CharSplitsN, Words, AnyLines, MatchIndices, StrSplits};
-pub use core::str::{eq_slice, eq, is_utf8, is_utf16, UTF16Items};
+pub use core::str::{eq_slice, is_utf8, is_utf16, UTF16Items};
 pub use core::str::{UTF16Item, ScalarValue, LoneSurrogate, utf16_items};
 pub use core::str::{truncate_utf16_at_nul, utf8_char_width, CharRange};
 pub use core::str::{Str, StrSlice};
@@ -660,6 +660,7 @@ pub mod raw {
     use c_str::CString;
     use libc;
     use mem;
+    use raw::Slice;
     use strbuf::StrBuf;
     use vec::Vec;
 
@@ -668,7 +669,12 @@ pub mod raw {
 
     /// Create a Rust string from a *u8 buffer of the given length
     pub unsafe fn from_buf_len(buf: *u8, len: uint) -> StrBuf {
-        StrBuf::from_raw_parts(len, len, mem::transmute(buf))
+        let mut result = StrBuf::new();
+        result.push_bytes(mem::transmute(Slice {
+            data: buf,
+            len: len,
+        }));
+        result
     }
 
     /// Create a Rust string from a null-terminated C string
@@ -920,13 +926,6 @@ mod tests {
     use strbuf::StrBuf;
 
     #[test]
-    fn test_eq() {
-        assert!((eq(&"".to_owned(), &"".to_owned())));
-        assert!((eq(&"foo".to_owned(), &"foo".to_owned())));
-        assert!((!eq(&"foo".to_owned(), &"bar".to_owned())));
-    }
-
-    #[test]
     fn test_eq_slice() {
         assert!((eq_slice("foobar".slice(0, 3), "foo")));
         assert!((eq_slice("barfoo".slice(3, 6), "foo")));
@@ -984,10 +983,10 @@ mod tests {
     #[test]
     fn test_collect() {
         let empty = "".to_owned();
-        let s: StrBuf = empty.chars().collect();
+        let s: StrBuf = empty.as_slice().chars().collect();
         assert_eq!(empty, s);
         let data = "ประเทศไทย中".to_owned();
-        let s: StrBuf = data.chars().collect();
+        let s: StrBuf = data.as_slice().chars().collect();
         assert_eq!(data, s);
     }
 
@@ -1009,23 +1008,24 @@ mod tests {
         assert_eq!(data.slice(2u, 6u).find_str("ab"), Some(3u - 2u));
         assert!(data.slice(2u, 4u).find_str("ab").is_none());
 
-        let mut data = "ประเทศไทย中华Việt Nam".to_owned();
-        data = data + data;
-        assert!(data.find_str("ไท华").is_none());
-        assert_eq!(data.slice(0u, 43u).find_str(""), Some(0u));
-        assert_eq!(data.slice(6u, 43u).find_str(""), Some(6u - 6u));
+        let string = "ประเทศไทย中华Việt Nam";
+        let mut data = string.to_strbuf();
+        data.push_str(string);
+        assert!(data.as_slice().find_str("ไท华").is_none());
+        assert_eq!(data.as_slice().slice(0u, 43u).find_str(""), Some(0u));
+        assert_eq!(data.as_slice().slice(6u, 43u).find_str(""), Some(6u - 6u));
 
-        assert_eq!(data.slice(0u, 43u).find_str("ประ"), Some( 0u));
-        assert_eq!(data.slice(0u, 43u).find_str("ทศไ"), Some(12u));
-        assert_eq!(data.slice(0u, 43u).find_str("ย中"), Some(24u));
-        assert_eq!(data.slice(0u, 43u).find_str("iệt"), Some(34u));
-        assert_eq!(data.slice(0u, 43u).find_str("Nam"), Some(40u));
+        assert_eq!(data.as_slice().slice(0u, 43u).find_str("ประ"), Some( 0u));
+        assert_eq!(data.as_slice().slice(0u, 43u).find_str("ทศไ"), Some(12u));
+        assert_eq!(data.as_slice().slice(0u, 43u).find_str("ย中"), Some(24u));
+        assert_eq!(data.as_slice().slice(0u, 43u).find_str("iệt"), Some(34u));
+        assert_eq!(data.as_slice().slice(0u, 43u).find_str("Nam"), Some(40u));
 
-        assert_eq!(data.slice(43u, 86u).find_str("ประ"), Some(43u - 43u));
-        assert_eq!(data.slice(43u, 86u).find_str("ทศไ"), Some(55u - 43u));
-        assert_eq!(data.slice(43u, 86u).find_str("ย中"), Some(67u - 43u));
-        assert_eq!(data.slice(43u, 86u).find_str("iệt"), Some(77u - 43u));
-        assert_eq!(data.slice(43u, 86u).find_str("Nam"), Some(83u - 43u));
+        assert_eq!(data.as_slice().slice(43u, 86u).find_str("ประ"), Some(43u - 43u));
+        assert_eq!(data.as_slice().slice(43u, 86u).find_str("ทศไ"), Some(55u - 43u));
+        assert_eq!(data.as_slice().slice(43u, 86u).find_str("ย中"), Some(67u - 43u));
+        assert_eq!(data.as_slice().slice(43u, 86u).find_str("iệt"), Some(77u - 43u));
+        assert_eq!(data.as_slice().slice(43u, 86u).find_str("Nam"), Some(83u - 43u));
     }
 
     #[test]
@@ -1122,7 +1122,9 @@ mod tests {
         }
         let letters = a_million_letter_a();
         assert!(half_a_million_letter_a() ==
-            unsafe {raw::slice_bytes(letters, 0u, 500000)}.to_owned());
+            unsafe {raw::slice_bytes(letters.as_slice(),
+                                     0u,
+                                     500000)}.to_owned());
     }
 
     #[test]
@@ -1167,41 +1169,41 @@ mod tests {
 
     #[test]
     fn test_replace_2a() {
-        let data = "ประเทศไทย中华".to_owned();
-        let repl = "دولة الكويت".to_owned();
+        let data = "ประเทศไทย中华";
+        let repl = "دولة الكويت";
 
-        let a = "ประเ".to_owned();
-        let a2 = "دولة الكويتทศไทย中华".to_owned();
-        assert_eq!(data.replace(a, repl), a2);
+        let a = "ประเ";
+        let a2 = "دولة الكويتทศไทย中华";
+        assert_eq!(data.replace(a, repl).as_slice(), a2);
     }
 
     #[test]
     fn test_replace_2b() {
-        let data = "ประเทศไทย中华".to_owned();
-        let repl = "دولة الكويت".to_owned();
+        let data = "ประเทศไทย中华";
+        let repl = "دولة الكويت";
 
-        let b = "ะเ".to_owned();
-        let b2 = "ปรدولة الكويتทศไทย中华".to_owned();
-        assert_eq!(data.replace(b, repl), b2);
+        let b = "ะเ";
+        let b2 = "ปรدولة الكويتทศไทย中华";
+        assert_eq!(data.replace(b, repl).as_slice(), b2);
     }
 
     #[test]
     fn test_replace_2c() {
-        let data = "ประเทศไทย中华".to_owned();
-        let repl = "دولة الكويت".to_owned();
+        let data = "ประเทศไทย中华";
+        let repl = "دولة الكويت";
 
-        let c = "中华".to_owned();
-        let c2 = "ประเทศไทยدولة الكويت".to_owned();
-        assert_eq!(data.replace(c, repl), c2);
+        let c = "中华";
+        let c2 = "ประเทศไทยدولة الكويت";
+        assert_eq!(data.replace(c, repl).as_slice(), c2);
     }
 
     #[test]
     fn test_replace_2d() {
-        let data = "ประเทศไทย中华".to_owned();
-        let repl = "دولة الكويت".to_owned();
+        let data = "ประเทศไทย中华";
+        let repl = "دولة الكويت";
 
-        let d = "ไท华".to_owned();
-        assert_eq!(data.replace(d, repl), data);
+        let d = "ไท华";
+        assert_eq!(data.replace(d, repl).as_slice(), data);
     }
 
     #[test]
@@ -1237,7 +1239,7 @@ mod tests {
         }
         let letters = a_million_letter_X();
         assert!(half_a_million_letter_X() ==
-            letters.slice(0u, 3u * 500000u).to_owned());
+            letters.as_slice().slice(0u, 3u * 500000u).to_owned());
     }
 
     #[test]
@@ -1533,14 +1535,14 @@ mod tests {
         let s1: StrBuf = "All mimsy were the borogoves".to_strbuf();
 
         let v: Vec<u8> = Vec::from_slice(s1.as_bytes());
-        let s2: StrBuf = from_utf8(v).unwrap().to_strbuf();
+        let s2: StrBuf = from_utf8(v.as_slice()).unwrap().to_strbuf();
         let mut i: uint = 0u;
         let n1: uint = s1.len();
         let n2: uint = v.len();
         assert_eq!(n1, n2);
         while i < n1 {
-            let a: u8 = s1[i];
-            let b: u8 = s2[i];
+            let a: u8 = s1.as_slice()[i];
+            let b: u8 = s2.as_slice()[i];
             debug!("{}", a);
             debug!("{}", b);
             assert_eq!(a, b);
@@ -1558,7 +1560,7 @@ mod tests {
         assert!(!"abcde".contains("def"));
         assert!(!"".contains("a"));
 
-        let data = "ประเทศไทย中华Việt Nam".to_owned();
+        let data = "ประเทศไทย中华Việt Nam";
         assert!(data.contains("ประเ"));
         assert!(data.contains("ะเ"));
         assert!(data.contains("中华"));
@@ -1678,7 +1680,7 @@ mod tests {
 
     #[test]
     fn test_char_at() {
-        let s = "ศไทย中华Việt Nam".to_owned();
+        let s = "ศไทย中华Việt Nam";
         let v = box ['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a','m'];
         let mut pos = 0;
         for ch in v.iter() {
@@ -1689,7 +1691,7 @@ mod tests {
 
     #[test]
     fn test_char_at_reverse() {
-        let s = "ศไทย中华Việt Nam".to_owned();
+        let s = "ศไทย中华Việt Nam";
         let v = box ['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a','m'];
         let mut pos = s.len();
         for ch in v.iter().rev() {
@@ -1734,7 +1736,7 @@ mod tests {
 
     #[test]
     fn test_char_range_at() {
-        let data = "b¢€𤭢𤭢€¢b".to_owned();
+        let data = "b¢€𤭢𤭢€¢b";
         assert_eq!('b', data.char_range_at(0).ch);
         assert_eq!('¢', data.char_range_at(1).ch);
         assert_eq!('€', data.char_range_at(3).ch);
@@ -1751,28 +1753,9 @@ mod tests {
     }
 
     #[test]
-    fn test_add() {
-        #![allow(unnecessary_allocation)]
-        macro_rules! t (
-            ($s1:expr, $s2:expr, $e:expr) => { {
-                let s1 = $s1;
-                let s2 = $s2;
-                let e = $e;
-                assert_eq!(s1 + s2, e.to_owned());
-                assert_eq!(s1.to_owned() + s2, e.to_owned());
-            } }
-        );
-
-        t!("foo",  "bar", "foobar");
-        t!("foo", "bar".to_owned(), "foobar");
-        t!("ศไทย中",  "华Việt Nam", "ศไทย中华Việt Nam");
-        t!("ศไทย中", "华Việt Nam".to_owned(), "ศไทย中华Việt Nam");
-    }
-
-    #[test]
     fn test_iterator() {
         use iter::*;
-        let s = "ศไทย中华Việt Nam".to_owned();
+        let s = "ศไทย中华Việt Nam";
         let v = box ['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a','m'];
 
         let mut pos = 0;
@@ -1788,7 +1771,7 @@ mod tests {
     #[test]
     fn test_rev_iterator() {
         use iter::*;
-        let s = "ศไทย中华Việt Nam".to_owned();
+        let s = "ศไทย中华Việt Nam";
         let v = box ['m', 'a', 'N', ' ', 't', 'ệ','i','V','华','中','ย','ท','ไ','ศ'];
 
         let mut pos = 0;
@@ -1811,7 +1794,7 @@ mod tests {
 
     #[test]
     fn test_bytesator() {
-        let s = "ศไทย中华Việt Nam".to_owned();
+        let s = "ศไทย中华Việt Nam";
         let v = [
             224, 184, 168, 224, 185, 132, 224, 184, 151, 224, 184, 162, 228,
             184, 173, 229, 141, 142, 86, 105, 225, 187, 135, 116, 32, 78, 97,
@@ -1827,7 +1810,7 @@ mod tests {
 
     #[test]
     fn test_bytes_revator() {
-        let s = "ศไทย中华Việt Nam".to_owned();
+        let s = "ศไทย中华Việt Nam";
         let v = [
             224, 184, 168, 224, 185, 132, 224, 184, 151, 224, 184, 162, 228,
             184, 173, 229, 141, 142, 86, 105, 225, 187, 135, 116, 32, 78, 97,
@@ -2081,14 +2064,15 @@ mod tests {
 
     #[test]
     fn test_str_from_utf8_owned() {
-        let xs = bytes!("hello").to_owned();
+        let xs = Vec::from_slice(bytes!("hello"));
         assert_eq!(from_utf8_owned(xs), Ok("hello".to_owned()));
 
-        let xs = bytes!("ศไทย中华Việt Nam").to_owned();
+        let xs = Vec::from_slice(bytes!("ศไทย中华Việt Nam"));
         assert_eq!(from_utf8_owned(xs), Ok("ศไทย中华Việt Nam".to_owned()));
 
-        let xs = bytes!("hello", 0xff).to_owned();
-        assert_eq!(from_utf8_owned(xs), Err(bytes!("hello", 0xff).to_owned()));
+        let xs = Vec::from_slice(bytes!("hello", 0xff));
+        assert_eq!(from_utf8_owned(xs),
+                   Err(Vec::from_slice(bytes!("hello", 0xff))));
     }
 
     #[test]

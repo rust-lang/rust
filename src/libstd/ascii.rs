@@ -656,7 +656,7 @@ mod tests {
         while i <= 500 {
             let upper = if 'a' as u32 <= i && i <= 'z' as u32 { i + 'A' as u32 - 'a' as u32 }
                         else { i };
-            assert_eq!(from_char(from_u32(i).unwrap()).to_ascii_upper(),
+            assert_eq!(from_char(from_u32(i).unwrap()).as_slice().to_ascii_upper(),
                        from_char(from_u32(upper).unwrap()).to_strbuf())
             i += 1;
         }
@@ -672,7 +672,7 @@ mod tests {
         while i <= 500 {
             let lower = if 'A' as u32 <= i && i <= 'Z' as u32 { i + 'a' as u32 - 'A' as u32 }
                         else { i };
-            assert_eq!(from_char(from_u32(i).unwrap()).to_ascii_lower(),
+            assert_eq!(from_char(from_u32(i).unwrap()).as_slice().to_ascii_lower(),
                        from_char(from_u32(lower).unwrap()).to_strbuf())
             i += 1;
         }
@@ -730,7 +730,7 @@ mod tests {
                                                    .eq_ignore_ascii_case(
                                                        from_char(
                                                            from_u32(lower)
-                                                            .unwrap())));
+                                                            .unwrap()).as_slice()));
             i += 1;
         }
     }

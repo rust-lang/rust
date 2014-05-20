@@ -194,7 +194,7 @@ mod tests {
     use fmt::radix;
     use super::{Binary, Octal, Decimal, LowerHex, UpperHex};
     use super::{GenericRadix, Radix};
-    use realstd::str::StrAllocating;
+    use realstd::str::{Str, StrAllocating};
 
     #[test]
     fn test_radix_base() {
@@ -246,143 +246,143 @@ mod tests {
         // Formatting integers should select the right implementation based off
         // the type of the argument. Also, hex/octal/binary should be defined
         // for integers, but they shouldn't emit the negative sign.
-        assert_eq!(format!("{}", 1i), "1".to_owned());
-        assert_eq!(format!("{}", 1i8), "1".to_owned());
-        assert_eq!(format!("{}", 1i16), "1".to_owned());
-        assert_eq!(format!("{}", 1i32), "1".to_owned());
-        assert_eq!(format!("{}", 1i64), "1".to_owned());
-        assert_eq!(format!("{:d}", -1i), "-1".to_owned());
-        assert_eq!(format!("{:d}", -1i8), "-1".to_owned());
-        assert_eq!(format!("{:d}", -1i16), "-1".to_owned());
-        assert_eq!(format!("{:d}", -1i32), "-1".to_owned());
-        assert_eq!(format!("{:d}", -1i64), "-1".to_owned());
-        assert_eq!(format!("{:t}", 1i), "1".to_owned());
-        assert_eq!(format!("{:t}", 1i8), "1".to_owned());
-        assert_eq!(format!("{:t}", 1i16), "1".to_owned());
-        assert_eq!(format!("{:t}", 1i32), "1".to_owned());
-        assert_eq!(format!("{:t}", 1i64), "1".to_owned());
-        assert_eq!(format!("{:x}", 1i), "1".to_owned());
-        assert_eq!(format!("{:x}", 1i8), "1".to_owned());
-        assert_eq!(format!("{:x}", 1i16), "1".to_owned());
-        assert_eq!(format!("{:x}", 1i32), "1".to_owned());
-        assert_eq!(format!("{:x}", 1i64), "1".to_owned());
-        assert_eq!(format!("{:X}", 1i), "1".to_owned());
-        assert_eq!(format!("{:X}", 1i8), "1".to_owned());
-        assert_eq!(format!("{:X}", 1i16), "1".to_owned());
-        assert_eq!(format!("{:X}", 1i32), "1".to_owned());
-        assert_eq!(format!("{:X}", 1i64), "1".to_owned());
-        assert_eq!(format!("{:o}", 1i), "1".to_owned());
-        assert_eq!(format!("{:o}", 1i8), "1".to_owned());
-        assert_eq!(format!("{:o}", 1i16), "1".to_owned());
-        assert_eq!(format!("{:o}", 1i32), "1".to_owned());
-        assert_eq!(format!("{:o}", 1i64), "1".to_owned());
+        assert!(format!("{}", 1i).as_slice() == "1");
+        assert!(format!("{}", 1i8).as_slice() == "1");
+        assert!(format!("{}", 1i16).as_slice() == "1");
+        assert!(format!("{}", 1i32).as_slice() == "1");
+        assert!(format!("{}", 1i64).as_slice() == "1");
+        assert!(format!("{:d}", -1i).as_slice() == "-1");
+        assert!(format!("{:d}", -1i8).as_slice() == "-1");
+        assert!(format!("{:d}", -1i16).as_slice() == "-1");
+        assert!(format!("{:d}", -1i32).as_slice() == "-1");
+        assert!(format!("{:d}", -1i64).as_slice() == "-1");
+        assert!(format!("{:t}", 1i).as_slice() == "1");
+        assert!(format!("{:t}", 1i8).as_slice() == "1");
+        assert!(format!("{:t}", 1i16).as_slice() == "1");
+        assert!(format!("{:t}", 1i32).as_slice() == "1");
+        assert!(format!("{:t}", 1i64).as_slice() == "1");
+        assert!(format!("{:x}", 1i).as_slice() == "1");
+        assert!(format!("{:x}", 1i8).as_slice() == "1");
+        assert!(format!("{:x}", 1i16).as_slice() == "1");
+        assert!(format!("{:x}", 1i32).as_slice() == "1");
+        assert!(format!("{:x}", 1i64).as_slice() == "1");
+        assert!(format!("{:X}", 1i).as_slice() == "1");
+        assert!(format!("{:X}", 1i8).as_slice() == "1");
+        assert!(format!("{:X}", 1i16).as_slice() == "1");
+        assert!(format!("{:X}", 1i32).as_slice() == "1");
+        assert!(format!("{:X}", 1i64).as_slice() == "1");
+        assert!(format!("{:o}", 1i).as_slice() == "1");
+        assert!(format!("{:o}", 1i8).as_slice() == "1");
+        assert!(format!("{:o}", 1i16).as_slice() == "1");
+        assert!(format!("{:o}", 1i32).as_slice() == "1");
+        assert!(format!("{:o}", 1i64).as_slice() == "1");
 
-        assert_eq!(format!("{}", 1u), "1".to_owned());
-        assert_eq!(format!("{}", 1u8), "1".to_owned());
-        assert_eq!(format!("{}", 1u16), "1".to_owned());
-        assert_eq!(format!("{}", 1u32), "1".to_owned());
-        assert_eq!(format!("{}", 1u64), "1".to_owned());
-        assert_eq!(format!("{:u}", 1u), "1".to_owned());
-        assert_eq!(format!("{:u}", 1u8), "1".to_owned());
-        assert_eq!(format!("{:u}", 1u16), "1".to_owned());
-        assert_eq!(format!("{:u}", 1u32), "1".to_owned());
-        assert_eq!(format!("{:u}", 1u64), "1".to_owned());
-        assert_eq!(format!("{:t}", 1u), "1".to_owned());
-        assert_eq!(format!("{:t}", 1u8), "1".to_owned());
-        assert_eq!(format!("{:t}", 1u16), "1".to_owned());
-        assert_eq!(format!("{:t}", 1u32), "1".to_owned());
-        assert_eq!(format!("{:t}", 1u64), "1".to_owned());
-        assert_eq!(format!("{:x}", 1u), "1".to_owned());
-        assert_eq!(format!("{:x}", 1u8), "1".to_owned());
-        assert_eq!(format!("{:x}", 1u16), "1".to_owned());
-        assert_eq!(format!("{:x}", 1u32), "1".to_owned());
-        assert_eq!(format!("{:x}", 1u64), "1".to_owned());
-        assert_eq!(format!("{:X}", 1u), "1".to_owned());
-        assert_eq!(format!("{:X}", 1u8), "1".to_owned());
-        assert_eq!(format!("{:X}", 1u16), "1".to_owned());
-        assert_eq!(format!("{:X}", 1u32), "1".to_owned());
-        assert_eq!(format!("{:X}", 1u64), "1".to_owned());
-        assert_eq!(format!("{:o}", 1u), "1".to_owned());
-        assert_eq!(format!("{:o}", 1u8), "1".to_owned());
-        assert_eq!(format!("{:o}", 1u16), "1".to_owned());
-        assert_eq!(format!("{:o}", 1u32), "1".to_owned());
-        assert_eq!(format!("{:o}", 1u64), "1".to_owned());
+        assert!(format!("{}", 1u).as_slice() == "1");
+        assert!(format!("{}", 1u8).as_slice() == "1");
+        assert!(format!("{}", 1u16).as_slice() == "1");
+        assert!(format!("{}", 1u32).as_slice() == "1");
+        assert!(format!("{}", 1u64).as_slice() == "1");
+        assert!(format!("{:u}", 1u).as_slice() == "1");
+        assert!(format!("{:u}", 1u8).as_slice() == "1");
+        assert!(format!("{:u}", 1u16).as_slice() == "1");
+        assert!(format!("{:u}", 1u32).as_slice() == "1");
+        assert!(format!("{:u}", 1u64).as_slice() == "1");
+        assert!(format!("{:t}", 1u).as_slice() == "1");
+        assert!(format!("{:t}", 1u8).as_slice() == "1");
+        assert!(format!("{:t}", 1u16).as_slice() == "1");
+        assert!(format!("{:t}", 1u32).as_slice() == "1");
+        assert!(format!("{:t}", 1u64).as_slice() == "1");
+        assert!(format!("{:x}", 1u).as_slice() == "1");
+        assert!(format!("{:x}", 1u8).as_slice() == "1");
+        assert!(format!("{:x}", 1u16).as_slice() == "1");
+        assert!(format!("{:x}", 1u32).as_slice() == "1");
+        assert!(format!("{:x}", 1u64).as_slice() == "1");
+        assert!(format!("{:X}", 1u).as_slice() == "1");
+        assert!(format!("{:X}", 1u8).as_slice() == "1");
+        assert!(format!("{:X}", 1u16).as_slice() == "1");
+        assert!(format!("{:X}", 1u32).as_slice() == "1");
+        assert!(format!("{:X}", 1u64).as_slice() == "1");
+        assert!(format!("{:o}", 1u).as_slice() == "1");
+        assert!(format!("{:o}", 1u8).as_slice() == "1");
+        assert!(format!("{:o}", 1u16).as_slice() == "1");
+        assert!(format!("{:o}", 1u32).as_slice() == "1");
+        assert!(format!("{:o}", 1u64).as_slice() == "1");
 
         // Test a larger number
-        assert_eq!(format!("{:t}", 55), "110111".to_owned());
-        assert_eq!(format!("{:o}", 55), "67".to_owned());
-        assert_eq!(format!("{:d}", 55), "55".to_owned());
-        assert_eq!(format!("{:x}", 55), "37".to_owned());
-        assert_eq!(format!("{:X}", 55), "37".to_owned());
+        assert!(format!("{:t}", 55).as_slice() == "110111");
+        assert!(format!("{:o}", 55).as_slice() == "67");
+        assert!(format!("{:d}", 55).as_slice() == "55");
+        assert!(format!("{:x}", 55).as_slice() == "37");
+        assert!(format!("{:X}", 55).as_slice() == "37");
     }
 
     #[test]
     fn test_format_int_zero() {
-        assert_eq!(format!("{}", 0i), "0".to_owned());
-        assert_eq!(format!("{:d}", 0i), "0".to_owned());
-        assert_eq!(format!("{:t}", 0i), "0".to_owned());
-        assert_eq!(format!("{:o}", 0i), "0".to_owned());
-        assert_eq!(format!("{:x}", 0i), "0".to_owned());
-        assert_eq!(format!("{:X}", 0i), "0".to_owned());
+        assert!(format!("{}", 0i).as_slice() == "0");
+        assert!(format!("{:d}", 0i).as_slice() == "0");
+        assert!(format!("{:t}", 0i).as_slice() == "0");
+        assert!(format!("{:o}", 0i).as_slice() == "0");
+        assert!(format!("{:x}", 0i).as_slice() == "0");
+        assert!(format!("{:X}", 0i).as_slice() == "0");
 
-        assert_eq!(format!("{}", 0u), "0".to_owned());
-        assert_eq!(format!("{:u}", 0u), "0".to_owned());
-        assert_eq!(format!("{:t}", 0u), "0".to_owned());
-        assert_eq!(format!("{:o}", 0u), "0".to_owned());
-        assert_eq!(format!("{:x}", 0u), "0".to_owned());
-        assert_eq!(format!("{:X}", 0u), "0".to_owned());
+        assert!(format!("{}", 0u).as_slice() == "0");
+        assert!(format!("{:u}", 0u).as_slice() == "0");
+        assert!(format!("{:t}", 0u).as_slice() == "0");
+        assert!(format!("{:o}", 0u).as_slice() == "0");
+        assert!(format!("{:x}", 0u).as_slice() == "0");
+        assert!(format!("{:X}", 0u).as_slice() == "0");
     }
 
     #[test]
     fn test_format_int_flags() {
-        assert_eq!(format!("{:3d}", 1), "  1".to_owned());
-        assert_eq!(format!("{:>3d}", 1), "  1".to_owned());
-        assert_eq!(format!("{:>+3d}", 1), " +1".to_owned());
-        assert_eq!(format!("{:<3d}", 1), "1  ".to_owned());
-        assert_eq!(format!("{:#d}", 1), "1".to_owned());
-        assert_eq!(format!("{:#x}", 10), "0xa".to_owned());
-        assert_eq!(format!("{:#X}", 10), "0xA".to_owned());
-        assert_eq!(format!("{:#5x}", 10), "  0xa".to_owned());
-        assert_eq!(format!("{:#o}", 10), "0o12".to_owned());
-        assert_eq!(format!("{:08x}", 10), "0000000a".to_owned());
-        assert_eq!(format!("{:8x}", 10), "       a".to_owned());
-        assert_eq!(format!("{:<8x}", 10), "a       ".to_owned());
-        assert_eq!(format!("{:>8x}", 10), "       a".to_owned());
-        assert_eq!(format!("{:#08x}", 10), "0x00000a".to_owned());
-        assert_eq!(format!("{:08d}", -10), "-0000010".to_owned());
-        assert_eq!(format!("{:x}", -1u8), "ff".to_owned());
-        assert_eq!(format!("{:X}", -1u8), "FF".to_owned());
-        assert_eq!(format!("{:t}", -1u8), "11111111".to_owned());
-        assert_eq!(format!("{:o}", -1u8), "377".to_owned());
-        assert_eq!(format!("{:#x}", -1u8), "0xff".to_owned());
-        assert_eq!(format!("{:#X}", -1u8), "0xFF".to_owned());
-        assert_eq!(format!("{:#t}", -1u8), "0b11111111".to_owned());
-        assert_eq!(format!("{:#o}", -1u8), "0o377".to_owned());
+        assert!(format!("{:3d}", 1).as_slice() == "  1");
+        assert!(format!("{:>3d}", 1).as_slice() == "  1");
+        assert!(format!("{:>+3d}", 1).as_slice() == " +1");
+        assert!(format!("{:<3d}", 1).as_slice() == "1  ");
+        assert!(format!("{:#d}", 1).as_slice() == "1");
+        assert!(format!("{:#x}", 10).as_slice() == "0xa");
+        assert!(format!("{:#X}", 10).as_slice() == "0xA");
+        assert!(format!("{:#5x}", 10).as_slice() == "  0xa");
+        assert!(format!("{:#o}", 10).as_slice() == "0o12");
+        assert!(format!("{:08x}", 10).as_slice() == "0000000a");
+        assert!(format!("{:8x}", 10).as_slice() == "       a");
+        assert!(format!("{:<8x}", 10).as_slice() == "a       ");
+        assert!(format!("{:>8x}", 10).as_slice() == "       a");
+        assert!(format!("{:#08x}", 10).as_slice() == "0x00000a");
+        assert!(format!("{:08d}", -10).as_slice() == "-0000010");
+        assert!(format!("{:x}", -1u8).as_slice() == "ff");
+        assert!(format!("{:X}", -1u8).as_slice() == "FF");
+        assert!(format!("{:t}", -1u8).as_slice() == "11111111");
+        assert!(format!("{:o}", -1u8).as_slice() == "377");
+        assert!(format!("{:#x}", -1u8).as_slice() == "0xff");
+        assert!(format!("{:#X}", -1u8).as_slice() == "0xFF");
+        assert!(format!("{:#t}", -1u8).as_slice() == "0b11111111");
+        assert!(format!("{:#o}", -1u8).as_slice() == "0o377");
     }
 
     #[test]
     fn test_format_int_sign_padding() {
-        assert_eq!(format!("{:+5d}", 1), "   +1".to_owned());
-        assert_eq!(format!("{:+5d}", -1), "   -1".to_owned());
-        assert_eq!(format!("{:05d}", 1), "00001".to_owned());
-        assert_eq!(format!("{:05d}", -1), "-0001".to_owned());
-        assert_eq!(format!("{:+05d}", 1), "+0001".to_owned());
-        assert_eq!(format!("{:+05d}", -1), "-0001".to_owned());
+        assert!(format!("{:+5d}", 1).as_slice() == "   +1");
+        assert!(format!("{:+5d}", -1).as_slice() == "   -1");
+        assert!(format!("{:05d}", 1).as_slice() == "00001");
+        assert!(format!("{:05d}", -1).as_slice() == "-0001");
+        assert!(format!("{:+05d}", 1).as_slice() == "+0001");
+        assert!(format!("{:+05d}", -1).as_slice() == "-0001");
     }
 
     #[test]
     fn test_format_int_twos_complement() {
         use {i8, i16, i32, i64};
-        assert_eq!(format!("{}", i8::MIN), "-128".to_owned());
-        assert_eq!(format!("{}", i16::MIN), "-32768".to_owned());
-        assert_eq!(format!("{}", i32::MIN), "-2147483648".to_owned());
-        assert_eq!(format!("{}", i64::MIN), "-9223372036854775808".to_owned());
+        assert!(format!("{}", i8::MIN).as_slice() == "-128");
+        assert!(format!("{}", i16::MIN).as_slice() == "-32768");
+        assert!(format!("{}", i32::MIN).as_slice() == "-2147483648");
+        assert!(format!("{}", i64::MIN).as_slice() == "-9223372036854775808");
     }
 
     #[test]
     fn test_format_radix() {
-        assert_eq!(format!("{:04}", radix(3, 2)), "0011".to_owned());
-        assert_eq!(format!("{}", radix(55, 36)), "1j".to_owned());
+        assert!(format!("{:04}", radix(3, 2)).as_slice() == "0011");
+        assert!(format!("{}", radix(55, 36)).as_slice() == "1j");
     }
 
     #[test]

@@ -59,7 +59,7 @@ pub fn get_rpath_flags(sess: &Session, out_filename: &Path) -> Vec<StrBuf> {
 pub fn rpaths_to_flags(rpaths: &[StrBuf]) -> Vec<StrBuf> {
     let mut ret = Vec::new();
     for rpath in rpaths.iter() {
-        ret.push(("-Wl,-rpath," + (*rpath).as_slice()).to_strbuf());
+        ret.push(format!("-Wl,-rpath,{}", (*rpath).as_slice()));
     }
     return ret;
 }
@@ -132,8 +132,9 @@ pub fn get_rpath_relative_to_output(os: abi::Os,
     let relative = lib.path_relative_from(&output);
     let relative = relative.expect("could not create rpath relative to output");
     // FIXME (#9639): This needs to handle non-utf8 paths
-    (prefix + "/" + relative.as_str()
-                            .expect("non-utf8 component in path")).to_strbuf()
+    format!("{}/{}",
+            prefix,
+            relative.as_str().expect("non-utf8 component in path"))
 }
 
 pub fn get_install_prefix_rpath(sysroot: &Path, target_triple: &str) -> StrBuf {

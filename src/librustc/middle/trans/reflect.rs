@@ -117,9 +117,9 @@ impl<'a, 'b> Reflector<'a, 'b> {
                      bracket_name: &str,
                      extra: &[ValueRef],
                      inner: |&mut Reflector|) {
-        self.visit("enter_" + bracket_name, extra);
+        self.visit(format!("enter_{}", bracket_name).as_slice(), extra);
         inner(self);
-        self.visit("leave_" + bracket_name, extra);
+        self.visit(format!("leave_{}", bracket_name).as_slice(), extra);
     }
 
     pub fn leaf(&mut self, name: &str) {

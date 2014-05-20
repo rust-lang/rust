@@ -163,7 +163,8 @@ pub fn register_static(ccx: &CrateContext,
                 });
                 lib::llvm::SetLinkage(g1, linkage);
 
-                let real_name = "_rust_extern_with_linkage_" + ident.get();
+                let mut real_name = "_rust_extern_with_linkage_".to_strbuf();
+                real_name.push_str(ident.get());
                 let g2 = real_name.with_c_str(|buf| {
                     llvm::LLVMAddGlobal(ccx.llmod, llty.to_ref(), buf)
                 });

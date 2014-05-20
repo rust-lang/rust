@@ -10,9 +10,9 @@
 
 // As noted by this file name, this file should not exist. This file should not
 // exist because it performs allocations which libcore is not allowed to do. The
-// reason for this file's existence is that the `~[T]` and `~str` types are
-// language-defined types. Traits are defined in libcore, such as `Clone`, which
-// these types need to implement, but the implementation can only be found in
+// reason for this file's existence is that the `~[T]` type is a language-
+// defined type. Traits are defined in libcore, such as `Clone`, which these
+// types need to implement, but the implementation can only be found in
 // libcore.
 //
 // Plan of attack for solving this problem:
@@ -24,13 +24,11 @@
 //
 // Currently, no progress has been made on this list.
 
-use char::Char;
 use clone::Clone;
 use container::Container;
-use default::Default;
 use finally::try_finally;
 use intrinsics;
-use iter::{range, Iterator, FromIterator};
+use iter::{range, Iterator};
 use mem;
 use num::{CheckedMul, CheckedAdd};
 use option::{Some, None};
@@ -38,9 +36,6 @@ use ptr::RawPtr;
 use ptr;
 use raw::Vec;
 use slice::ImmutableVector;
-use str::StrSlice;
-
-#[cfg(not(test))] use ops::Add;
 
 #[allow(ctypes)]
 extern {
@@ -58,105 +53,6 @@ unsafe fn alloc(cap: uint) -> *mut Vec<()> {
     (*ret).fill = 0;
     (*ret).alloc = cap;
     ret
-}
-
-// Strings
-
-impl Default for ~str {
-    fn default() -> ~str {
-        unsafe {
-            // Get some memory
-            let ptr = alloc(0);
-
-            // Initialize the memory
-            (*ptr).fill = 0;
-            (*ptr).alloc = 0;
-
-            mem::transmute(ptr)
-        }
-    }
-}
-
-impl Clone for ~str {
-    fn clone(&self) -> ~str {
-        // Don't use the clone() implementation above because it'll start
-        // requiring the eh_personality lang item (no fun)
-        unsafe {
-            let bytes = self.as_bytes().as_ptr();
-            let len = self.len();
-
-            let ptr = alloc(len) as *mut Vec<u8>;
-            ptr::copy_nonoverlapping_memory(&mut (*ptr).data, bytes, len);
-            (*ptr).fill = len;
-            (*ptr).alloc = len;
-
-            mem::transmute(ptr)
-        }
-    }
-}
-
-impl FromIterator<char> for ~str {
-    #[inline]
-    fn from_iter<T: Iterator<char>>(mut iterator: T) -> ~str {
-        let (lower, _) = iterator.size_hint();
-        let mut cap = if lower == 0 {16} else {lower};
-        let mut len = 0;
-        let mut tmp = [0u8, ..4];
-
-        unsafe {
-            let mut ptr = alloc(cap) as *mut Vec<u8>;
-            let mut ret = mem::transmute(ptr);
-            for ch in iterator {
-                let amt = ch.encode_utf8(tmp);
-
-                if len + amt > cap {
-                    cap = cap.checked_mul(&2).unwrap();
-                    if cap < len + amt {
-                        cap = len + amt;
-                    }
-                    let ptr2 = alloc(cap) as *mut Vec<u8>;
-                    ptr::copy_nonoverlapping_memory(&mut (*ptr2).data,
-                                                    &(*ptr).data,
-                                                    len);
-                    // FIXME: #13994: port to the sized deallocation API when available
-                    rust_deallocate(ptr as *u8, 0, 8);
-                    mem::forget(ret);
-                    ret = mem::transmute(ptr2);
-                    ptr = ptr2;
-                }
-
-                let base = &mut (*ptr).data as *mut u8;
-                for byte in tmp.slice_to(amt).iter() {
-                    *base.offset(len as int) = *byte;
-                    len += 1;
-                }
-                (*ptr).fill = len;
-            }
-            ret
-        }
-    }
-}
-
-#[cfg(not(test))]
-impl<'a> Add<&'a str,~str> for &'a str {
-    #[inline]
-    fn add(&self, rhs: & &'a str) -> ~str {
-        let amt = self.len().checked_add(&rhs.len()).unwrap();
-        unsafe {
-            let ptr = alloc(amt) as *mut Vec<u8>;
-            let base = &mut (*ptr).data as *mut _;
-            ptr::copy_nonoverlapping_memory(base,
-                                            self.as_bytes().as_ptr(),
-                                            self.len());
-            let base = base.offset(self.len() as int);
-            ptr::copy_nonoverlapping_memory(base,
-                                            rhs.as_bytes().as_ptr(),
-                                            rhs.len());
-            (*ptr).fill = amt;
-            (*ptr).alloc = amt;
-            mem::transmute(ptr)
-        }
-    }
 }
 
 // Arrays

@@ -404,12 +404,13 @@ mod test {
     #[test]
     fn cell_has_sensible_show() {
         use str::StrSlice;
+        use realstd::str::Str;
 
         let x = Cell::new("foo bar");
-        assert!(format!("{}", x).contains(x.get()));
+        assert!(format!("{}", x).as_slice().contains(x.get()));
 
         x.set("baz qux");
-        assert!(format!("{}", x).contains(x.get()));
+        assert!(format!("{}", x).as_slice().contains(x.get()));
     }
 
     #[test]

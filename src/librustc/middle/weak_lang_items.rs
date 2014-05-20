@@ -85,7 +85,7 @@ fn verify(sess: &Session, items: &lang_items::LanguageItems) {
     $(
         if missing.contains(&lang_items::$item) && items.$name().is_none() {
             sess.err(format!("language item required, but not found: `{}`",
-                             stringify!($name)));
+                             stringify!($name)).as_slice());
 
         }
     )*
@@ -100,7 +100,7 @@ impl<'a> Context<'a> {
         } else)* {
             self.sess.span_err(span,
                                format!("unknown external lang item: `{}`",
-                                       name));
+                                       name).as_slice());
         }
     }
 }

@@ -119,7 +119,9 @@ impl DynamicLibrary {
         let mut ret = Vec::new();
         match os::getenv_as_bytes(DynamicLibrary::envvar()) {
             Some(env) => {
-                for portion in env.split(|a| *a == DynamicLibrary::separator()) {
+                for portion in
+                        env.as_slice()
+                           .split(|a| *a == DynamicLibrary::separator()) {
                     ret.push(Path::new(portion));
                 }
             }
@@ -274,6 +276,7 @@ pub mod dl {
     use os;
     use ptr;
     use result::{Ok, Err, Result};
+    use strbuf::StrBuf;
     use str;
     use c_str::ToCStr;
 

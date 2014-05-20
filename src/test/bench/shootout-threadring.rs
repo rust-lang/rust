@@ -39,9 +39,11 @@ fn main() {
     let token = if std::os::getenv("RUST_BENCH").is_some() {
         2000000
     } else {
-        args.get(1).and_then(|arg| from_str(*arg)).unwrap_or(1000)
+        args.get(1).and_then(|arg| from_str(arg.as_slice())).unwrap_or(1000)
     };
-    let n_tasks = args.get(2).and_then(|arg| from_str(*arg)).unwrap_or(503);
+    let n_tasks = args.get(2)
+                      .and_then(|arg| from_str(arg.as_slice()))
+                      .unwrap_or(503);
 
     start(n_tasks, token);
 }

@@ -855,7 +855,7 @@ mod test {
         }
         check!(unlink(filename));
         let read_str = str::from_utf8(read_mem).unwrap();
-        assert!(read_str == final_msg.to_owned());
+        assert!(read_str.as_slice() == final_msg.as_slice());
     })
 
     iotest!(fn file_test_io_seek_shakedown() {
@@ -955,9 +955,8 @@ mod test {
         for n in range(0,3) {
             let f = dir.join(format_strbuf!("{}.txt", n));
             let mut w = check!(File::create(&f));
-            let msg_str =
-                (prefix + n.to_str().into_owned()).to_owned();
-            let msg = msg_str.as_bytes();
+            let msg_str = format!("{}{}", prefix, n.to_str());
+            let msg = msg_str.as_slice().as_bytes();
             check!(w.write(msg));
         }
         let files = check!(readdir(dir));
@@ -969,7 +968,7 @@ mod test {
                 let read_str = str::from_utf8(mem).unwrap();
                 let expected = match n {
                     None|Some("") => fail!("really shouldn't happen.."),
-                    Some(n) => prefix+n
+                    Some(n) => format!("{}{}", prefix, n),
                 };
                 assert_eq!(expected.as_slice(), read_str);
             }

@@ -41,7 +41,7 @@ use path::{Path, GenericPath};
 use ptr::RawPtr;
 use ptr;
 use result::{Err, Ok, Result};
-use slice::{Vector, CloneableVector, ImmutableVector, MutableVector, OwnedVector};
+use slice::{Vector, ImmutableVector, MutableVector, OwnedVector};
 use str::{Str, StrSlice, StrAllocating};
 use str;
 use strbuf::StrBuf;
@@ -104,6 +104,7 @@ pub mod win32 {
     use option;
     use os::TMPBUF_SZ;
     use slice::{MutableVector, ImmutableVector};
+    use strbuf::StrBuf;
     use str::{StrSlice, StrAllocating};
     use str;
     use vec::Vec;
@@ -177,18 +178,18 @@ fn with_env_lock<T>(f: || -> T) -> T {
 /// for details.
 pub fn env() -> Vec<(StrBuf,StrBuf)> {
     env_as_bytes().move_iter().map(|(k,v)| {
-        let k = str::from_utf8_lossy(k).to_strbuf();
-        let v = str::from_utf8_lossy(v).to_strbuf();
+        let k = str::from_utf8_lossy(k.as_slice()).to_strbuf();
+        let v = str::from_utf8_lossy(v.as_slice()).to_strbuf();
         (k,v)
     }).collect()
 }
 
 /// Returns a vector of (variable, value) byte-vector pairs for all the
 /// environment variables of the current process.
-pub fn env_as_bytes() -> Vec<(~[u8],~[u8])> {
+pub fn env_as_bytes() -> Vec<(Vec<u8>,Vec<u8>)> {
     unsafe {
         #[cfg(windows)]
-        unsafe fn get_env_pairs() -> Vec<~[u8]> {
+        unsafe fn get_env_pairs() -> Vec<Vec<u8>> {
             use slice::raw;
 
             use libc::funcs::extra::kernel32::{
@@ -228,7 +229,7 @@ pub fn env_as_bytes() -> Vec<(~[u8],~[u8])> {
             result
         }
         #[cfg(unix)]
-        unsafe fn get_env_pairs() -> Vec<~[u8]> {
+        unsafe fn get_env_pairs() -> Vec<Vec<u8>> {
             use c_str::CString;
 
             extern {
@@ -241,18 +242,19 @@ pub fn env_as_bytes() -> Vec<(~[u8],~[u8])> {
             }
             let mut result = Vec::new();
             ptr::array_each(environ, |e| {
-                let env_pair = CString::new(e, false).as_bytes_no_nul().to_owned();
+                let env_pair =
+                    Vec::from_slice(CString::new(e, false).as_bytes_no_nul());
                 result.push(env_pair);
             });
             result
         }
 
-        fn env_convert(input: Vec<~[u8]>) -> Vec<(~[u8], ~[u8])> {
+        fn env_convert(input: Vec<Vec<u8>>) -> Vec<(Vec<u8>, Vec<u8>)> {
             let mut pairs = Vec::new();
             for p in input.iter() {
-                let mut it = p.splitn(1, |b| *b == '=' as u8);
-                let key = it.next().unwrap().to_owned();
-                let val = it.next().unwrap_or(&[]).to_owned();
+                let mut it = p.as_slice().splitn(1, |b| *b == '=' as u8);
+                let key = Vec::from_slice(it.next().unwrap());
+                let val = Vec::from_slice(it.next().unwrap_or(&[]));
                 pairs.push((key, val));
             }
             pairs
@@ -275,7 +277,7 @@ pub fn env_as_bytes() -> Vec<(~[u8],~[u8])> {
 ///
 /// Fails if `n` has any interior NULs.
 pub fn getenv(n: &str) -> Option<StrBuf> {
-    getenv_as_bytes(n).map(|v| str::from_utf8_lossy(v).to_strbuf())
+    getenv_as_bytes(n).map(|v| str::from_utf8_lossy(v.as_slice()).to_strbuf())
 }
 
 #[cfg(unix)]
@@ -285,7 +287,7 @@ pub fn getenv(n: &str) -> Option<StrBuf> {
 /// # Failure
 ///
 /// Fails if `n` has any interior NULs.
-pub fn getenv_as_bytes(n: &str) -> Option<~[u8]> {
+pub fn getenv_as_bytes(n: &str) -> Option<Vec<u8>> {
     use c_str::CString;
 
     unsafe {
@@ -294,7 +296,8 @@ pub fn getenv_as_bytes(n: &str) -> Option<~[u8]> {
             if s.is_null() {
                 None
             } else {
-                Some(CString::new(s, false).as_bytes_no_nul().to_owned())
+                Some(Vec::from_slice(CString::new(s,
+                                                  false).as_bytes_no_nul()))
             }
         })
     }
@@ -319,7 +322,7 @@ pub fn getenv(n: &str) -> Option<StrBuf> {
 #[cfg(windows)]
 /// Fetches the environment variable `n` byte vector from the current process,
 /// returning None if the variable isn't set.
-pub fn getenv_as_bytes(n: &str) -> Option<~[u8]> {
+pub fn getenv_as_bytes(n: &str) -> Option<Vec<u8>> {
     getenv(n).map(|s| s.into_bytes())
 }
 
@@ -528,7 +531,7 @@ pub fn self_exe_path() -> Option<Path> {
  * Otherwise, homedir returns option::none.
  */
 pub fn homedir() -> Option<Path> {
-    // FIXME (#7188): getenv needs a ~[u8] variant
+    // FIXME (#7188): getenv needs a Vec<u8> variant
     return match getenv("HOME") {
         Some(ref p) if !p.is_empty() => Path::new_opt(p.as_slice()),
         _ => secondary()
@@ -817,11 +820,12 @@ pub fn get_exit_status() -> int {
 }
 
 #[cfg(target_os = "macos")]
-unsafe fn load_argc_and_argv(argc: int, argv: **c_char) -> Vec<~[u8]> {
+unsafe fn load_argc_and_argv(argc: int, argv: **c_char) -> Vec<Vec<u8>> {
     use c_str::CString;
 
     Vec::from_fn(argc as uint, |i| {
-        CString::new(*argv.offset(i as int), false).as_bytes_no_nul().to_owned()
+        Vec::from_slice(CString::new(*argv.offset(i as int),
+                                     false).as_bytes_no_nul())
     })
 }
 
@@ -831,7 +835,7 @@ unsafe fn load_argc_and_argv(argc: int, argv: **c_char) -> Vec<~[u8]> {
  * Returns a list of the command line arguments.
  */
 #[cfg(target_os = "macos")]
-fn real_args_as_bytes() -> Vec<~[u8]> {
+fn real_args_as_bytes() -> Vec<Vec<u8>> {
     unsafe {
         let (argc, argv) = (*_NSGetArgc() as int,
                             *_NSGetArgv() as **c_char);
@@ -842,7 +846,7 @@ fn real_args_as_bytes() -> Vec<~[u8]> {
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "android")]
 #[cfg(target_os = "freebsd")]
-fn real_args_as_bytes() -> Vec<~[u8]> {
+fn real_args_as_bytes() -> Vec<Vec<u8>> {
     use rt;
 
     match rt::args::clone() {
@@ -854,8 +858,9 @@ fn real_args_as_bytes() -> Vec<~[u8]> {
 #[cfg(not(windows))]
 fn real_args() -> Vec<StrBuf> {
     real_args_as_bytes().move_iter()
-                        .map(|v| str::from_utf8_lossy(v).into_strbuf())
-                        .collect()
+                        .map(|v| {
+                            str::from_utf8_lossy(v.as_slice()).into_strbuf()
+                        }).collect()
 }
 
 #[cfg(windows)]
@@ -889,7 +894,7 @@ fn real_args() -> Vec<StrBuf> {
 }
 
 #[cfg(windows)]
-fn real_args_as_bytes() -> Vec<~[u8]> {
+fn real_args_as_bytes() -> Vec<Vec<u8>> {
     real_args().move_iter().map(|s| s.into_bytes()).collect()
 }
 
@@ -926,7 +931,7 @@ pub fn args() -> ::realstd::vec::Vec<::realstd::strbuf::StrBuf> {
 
 /// Returns the arguments which this program was started with (normally passed
 /// via the command line) as byte vectors.
-pub fn args_as_bytes() -> Vec<~[u8]> {
+pub fn args_as_bytes() -> Vec<Vec<u8>> {
     real_args_as_bytes()
 }
 
@@ -1680,8 +1685,12 @@ mod tests {
         setenv("USERPROFILE", "/home/PaloAlto");
         assert!(os::homedir() == Some(Path::new("/home/MountainView")));
 
-        for s in oldhome.iter() { setenv("HOME", *s) }
-        for s in olduserprofile.iter() { setenv("USERPROFILE", *s) }
+        for s in oldhome.iter() {
+            setenv("HOME", s.as_slice())
+        }
+        for s in olduserprofile.iter() {
+            setenv("USERPROFILE", s.as_slice())
+        }
     }
 
     #[test]

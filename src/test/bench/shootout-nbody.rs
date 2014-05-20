@@ -141,7 +141,7 @@ fn main() {
         5000000
     } else {
         std::os::args().as_slice().get(1)
-            .and_then(|arg| from_str(*arg))
+            .and_then(|arg| from_str(arg.as_slice()))
             .unwrap_or(1000)
     };
     let mut bodies = BODIES;

@@ -158,7 +158,7 @@ fn main() {
     let args = args.as_slice();
     let num_keys = {
         if args.len() == 2 {
-            from_str::<uint>(args[1]).unwrap()
+            from_str::<uint>(args[1].as_slice()).unwrap()
         } else {
             100 // woefully inadequate for any real measurement
         }

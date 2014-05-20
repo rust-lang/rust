@@ -1015,7 +1015,10 @@ impl Clean<Type> for ty::t {
                 let fqn: Vec<StrBuf> = fqn.move_iter().map(|i| {
                     i.to_str().to_strbuf()
                 }).collect();
-                let mut path = external_path(fqn.last().unwrap().to_str());
+                let mut path = external_path(fqn.last()
+                                                .unwrap()
+                                                .to_str()
+                                                .as_slice());
                 let kind = match ty::get(*self).sty {
                     ty::ty_struct(..) => TypeStruct,
                     ty::ty_trait(..) => TypeTrait,

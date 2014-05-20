@@ -827,10 +827,12 @@ mod tests {
         for &(ref k, ref v) in r.iter() {
             // don't check android RANDOM variables
             if *k != "RANDOM".to_strbuf() {
-                assert!(output.contains(format!("{}={}",
+                assert!(output.as_slice()
+                              .contains(format!("{}={}",
                                                 *k,
                                                 *v).as_slice()) ||
-                        output.contains(format!("{}=\'{}\'",
+                        output.as_slice()
+                              .contains(format!("{}=\'{}\'",
                                                 *k,
                                                 *v).as_slice()));
             }

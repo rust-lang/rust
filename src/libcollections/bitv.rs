@@ -1330,7 +1330,7 @@ mod tests {
     #[test]
     fn test_from_bytes() {
         let bitv = from_bytes([0b10110110, 0b00000000, 0b11111111]);
-        let str = "10110110".to_owned() + "00000000" + "11111111";
+        let str = format!("{}{}{}", "10110110", "00000000", "11111111");
         assert_eq!(bitv.to_str(), str);
     }
 
