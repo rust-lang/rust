@@ -165,7 +165,7 @@ mod tests {
 
     #[test]
     fn test_full() {
-        let mut q = Queue::new();
+        let q = Queue::new();
         q.push(box 1);
         q.push(box 2);
     }
@@ -174,7 +174,7 @@ mod tests {
     fn test() {
         let nthreads = 8u;
         let nmsgs = 1000u;
-        let mut q = Queue::new();
+        let q = Queue::new();
         match q.pop() {
             Empty => {}
             Inconsistent | Data(..) => fail!()

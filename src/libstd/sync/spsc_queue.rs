@@ -235,7 +235,7 @@ mod test {
 
     #[test]
     fn smoke() {
-        let mut q = Queue::new(0);
+        let q = Queue::new(0);
         q.push(1);
         q.push(2);
         assert_eq!(q.pop(), Some(1));
@@ -250,14 +250,14 @@ mod test {
 
     #[test]
     fn drop_full() {
-        let mut q = Queue::new(0);
+        let q = Queue::new(0);
         q.push(box 1);
         q.push(box 2);
     }
 
     #[test]
     fn smoke_bound() {
-        let mut q = Queue::new(1);
+        let q = Queue::new(1);
         q.push(1);
         q.push(2);
         assert_eq!(q.pop(), Some(1));
@@ -282,7 +282,7 @@ mod test {
             native::task::spawn(proc() {
                 for _ in range(0, 100000) {
                     loop {
-                        match unsafe { (*b.get()).pop() } {
+                        match b.pop() {
                             Some(1) => break,
                             Some(_) => fail!(),
                             None => {}
@@ -292,7 +292,7 @@ mod test {
                 tx.send(());
             });
             for _ in range(0, 100000) {
-                unsafe { (*a.get()).push(1); }
+                a.push(1);
             }
             rx.recv();
         }

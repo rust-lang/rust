@@ -417,8 +417,8 @@ mod tests {
 
     #[test]
     fn smoke() {
-        let mut pool = BufferPool::new();
-        let (mut w, mut s) = pool.deque();
+        let pool = BufferPool::new();
+        let (w, s) = pool.deque();
         assert_eq!(w.pop(), None);
         assert_eq!(s.steal(), Empty);
         w.push(1);
@@ -432,10 +432,9 @@ mod tests {
     #[test]
     fn stealpush() {
         static AMT: int = 100000;
-        let mut pool = BufferPool::<int>::new();
-        let (mut w, s) = pool.deque();
+        let pool = BufferPool::<int>::new();
+        let (w, s) = pool.deque();
         let t = Thread::start(proc() {
-            let mut s = s;
             let mut left = AMT;
             while left > 0 {
                 match s.steal() {
@@ -458,10 +457,9 @@ mod tests {
     #[test]
     fn stealpush_large() {
         static AMT: int = 100000;
-        let mut pool = BufferPool::<(int, int)>::new();
-        let (mut w, s) = pool.deque();
+        let pool = BufferPool::<(int, int)>::new();
+        let (w, s) = pool.deque();
         let t = Thread::start(proc() {
-            let mut s = s;
             let mut left = AMT;
             while left > 0 {
                 match s.steal() {
@@ -479,7 +477,7 @@ mod tests {
         t.join();
     }
 
-    fn stampede(mut w: Worker<Box<int>>, s: Stealer<Box<int>>,
+    fn stampede(w: Worker<Box<int>>, s: Stealer<Box<int>>,
                 nthreads: int, amt: uint) {
         for _ in range(0, amt) {
             w.push(box 20);
@@ -491,7 +489,6 @@ mod tests {
             let s = s.clone();
             Thread::start(proc() {
                 unsafe {
-                    let mut s = s;
                     while (*unsafe_remaining).load(SeqCst) > 0 {
                         match s.steal() {
                             Data(box 20) => {
@@ -520,7 +517,7 @@ mod tests {
 
     #[test]
     fn run_stampede() {
-        let mut pool = BufferPool::<Box<int>>::new();
+        let pool = BufferPool::<Box<int>>::new();
         let (w, s) = pool.deque();
         stampede(w, s, 8, 10000);
     }
@@ -528,7 +525,7 @@ mod tests {
     #[test]
     fn many_stampede() {
         static AMT: uint = 4;
-        let mut pool = BufferPool::<Box<int>>::new();
+        let pool = BufferPool::<Box<int>>::new();
         let threads = range(0, AMT).map(|_| {
             let (w, s) = pool.deque();
             Thread::start(proc() {
@@ -547,14 +544,13 @@ mod tests {
         static NTHREADS: int = 8;
         static mut DONE: AtomicBool = INIT_ATOMIC_BOOL;
         static mut HITS: AtomicUint = INIT_ATOMIC_UINT;
-        let mut pool = BufferPool::<int>::new();
-        let (mut w, s) = pool.deque();
+        let pool = BufferPool::<int>::new();
+        let (w, s) = pool.deque();
 
         let threads = range(0, NTHREADS).map(|_| {
             let s = s.clone();
             Thread::start(proc() {
                 unsafe {
-                    let mut s = s;
                     loop {
                         match s.steal() {
                             Data(2) => { HITS.fetch_add(1, SeqCst); }
@@ -606,8 +602,8 @@ mod tests {
         static AMT: int = 10000;
         static NTHREADS: int = 4;
         static mut DONE: AtomicBool = INIT_ATOMIC_BOOL;
-        let mut pool = BufferPool::<(int, uint)>::new();
-        let (mut w, s) = pool.deque();
+        let pool = BufferPool::<(int, uint)>::new();
+        let (w, s) = pool.deque();
 
         let (threads, hits) = vec::unzip(range(0, NTHREADS).map(|_| {
             let s = s.clone();
@@ -617,7 +613,6 @@ mod tests {
             };
             (Thread::start(proc() {
                 unsafe {
-                    let mut s = s;
                     loop {
                         match s.steal() {
                             Data((1, 2)) => {
