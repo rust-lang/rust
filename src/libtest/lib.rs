@@ -623,7 +623,9 @@ impl<T: Writer> ConsoleTestState<T> {
                 fail_out.push_str(format!("---- {} stdout ----\n\t",
                                           f.name.as_slice()).as_slice());
                 let output = str::from_utf8_lossy(stdout.as_slice());
-                fail_out.push_str(output.as_slice().replace("\n", "\n\t"));
+                fail_out.push_str(output.as_slice()
+                                        .replace("\n", "\n\t")
+                                        .as_slice());
                 fail_out.push_str("\n");
             }
         }
@@ -776,7 +778,9 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn> ) -> io::IoR
                         let MetricMap(mm) = mm;
                         for (k,v) in mm.iter() {
                             st.metrics
-                              .insert_metric(tname + "." + k.as_slice(),
+                              .insert_metric(format!("{}.{}",
+                                                     tname,
+                                                     k).as_slice(),
                                              v.value,
                                              v.noise);
                         }

@@ -1432,13 +1432,6 @@ mod tests {
         assert_eq!(local.strftime("%z"), "-0800".to_strbuf());
         assert_eq!(local.strftime("%%"), "%".to_strbuf());
 
-        // FIXME (#2350): We should probably standardize on the timezone
-        // abbreviation.
-        let rfc822 = local.rfc822();
-        let prefix = "Fri, 13 Feb 2009 15:31:30 ".to_strbuf();
-        assert!(rfc822 == format_strbuf!("{}PST", prefix) ||
-                rfc822 == format_strbuf!("{}Pacific Standard Time", prefix));
-
         assert_eq!(local.ctime(), "Fri Feb 13 15:31:30 2009".to_strbuf());
         assert_eq!(local.rfc822z(), "Fri, 13 Feb 2009 15:31:30 -0800".to_strbuf());
         assert_eq!(local.rfc3339(), "2009-02-13T15:31:30-08:00".to_strbuf());

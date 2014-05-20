@@ -64,7 +64,7 @@ fn sort_and_fmt(mm: &HashMap<Vec<u8> , uint>, total: uint) -> StrBuf {
                                k.as_slice()
                                .to_ascii()
                                .to_upper()
-                               .into_str(), v));
+                               .into_str(), v).as_slice());
    }
 
    return buffer
@@ -179,15 +179,15 @@ fn main() {
    let mut proc_mode = false;
 
    for line in rdr.lines() {
-       let line = line.unwrap().trim().to_owned();
+       let line = line.unwrap().as_slice().trim().to_owned();
 
        if line.len() == 0u { continue; }
 
-       match (line[0] as char, proc_mode) {
+       match (line.as_slice()[0] as char, proc_mode) {
 
            // start processing if this is the one
            ('>', false) => {
-               match line.slice_from(1).find_str("THREE") {
+               match line.as_slice().slice_from(1).find_str("THREE") {
                    option::Some(_) => { proc_mode = true; }
                    option::None    => { }
                }

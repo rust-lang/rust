@@ -60,8 +60,8 @@ To return an Owned String (StrBuf) use the str helper function [`from_utf8_owned
 ~~~
 use std::str;
 
-let x: Result<StrBuf,~[u8]> =
-    str::from_utf8_owned(~[104u8,105u8]).map(|x| x.to_strbuf());
+let x: Option<StrBuf> =
+    str::from_utf8([ 104u8, 105u8 ]).map(|x| x.to_strbuf());
 let y: StrBuf = x.unwrap();
 ~~~
 

@@ -2252,7 +2252,10 @@ impl<'a> State<'a> {
             }
             ast::LitFloat(ref f, t) => {
                 word(&mut self.s,
-                     f.get() + ast_util::float_ty_to_str(t).as_slice())
+                     format!(
+                         "{}{}",
+                         f.get(),
+                         ast_util::float_ty_to_str(t).as_slice()).as_slice())
             }
             ast::LitFloatUnsuffixed(ref f) => word(&mut self.s, f.get()),
             ast::LitNil => word(&mut self.s, "()"),

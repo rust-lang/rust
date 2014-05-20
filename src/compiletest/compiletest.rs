@@ -323,11 +323,15 @@ pub fn is_test(config: &Config, testfile: &Path) -> bool {
     let mut valid = false;
 
     for ext in valid_extensions.iter() {
-        if name.ends_with(*ext) { valid = true; }
+        if name.ends_with(ext.as_slice()) {
+            valid = true;
+        }
     }
 
     for pre in invalid_prefixes.iter() {
-        if name.starts_with(*pre) { valid = false; }
+        if name.starts_with(pre.as_slice()) {
+            valid = false;
+        }
     }
 
     return valid;

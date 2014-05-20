@@ -2483,7 +2483,7 @@ mod tests {
 
         // We can't compare the strings directly because the object fields be
         // printed in a different order.
-        assert_eq!(a.clone(), from_str(a.to_str()).unwrap());
+        assert_eq!(a.clone(), from_str(a.to_str().as_slice()).unwrap());
         assert_eq!(a.clone(),
                    from_str(a.to_pretty_str().as_slice()).unwrap());
     }

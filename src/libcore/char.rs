@@ -637,7 +637,7 @@ mod test {
     use slice::ImmutableVector;
     use option::{Some, None};
     use realstd::strbuf::StrBuf;
-    use realstd::str::StrAllocating;
+    use realstd::str::{Str, StrAllocating};
 
     #[test]
     fn test_is_lowercase() {
@@ -742,46 +742,65 @@ mod test {
 
     #[test]
     fn test_escape_default() {
-        fn string(c: char) -> ~str {
+        fn string(c: char) -> StrBuf {
             let mut result = StrBuf::new();
             escape_default(c, |c| { result.push_char(c); });
-            return result.into_owned();
+            return result;
         }
-        assert_eq!(string('\n'), "\\n".to_owned());
-        assert_eq!(string('\r'), "\\r".to_owned());
-        assert_eq!(string('\''), "\\'".to_owned());
-        assert_eq!(string('"'), "\\\"".to_owned());
-        assert_eq!(string(' '), " ".to_owned());
-        assert_eq!(string('a'), "a".to_owned());
-        assert_eq!(string('~'), "~".to_owned());
-        assert_eq!(string('\x00'), "\\x00".to_owned());
-        assert_eq!(string('\x1f'), "\\x1f".to_owned());
-        assert_eq!(string('\x7f'), "\\x7f".to_owned());
-        assert_eq!(string('\xff'), "\\xff".to_owned());
-        assert_eq!(string('\u011b'), "\\u011b".to_owned());
-        assert_eq!(string('\U0001d4b6'), "\\U0001d4b6".to_owned());
+        let s = string('\n');
+        assert_eq!(s.as_slice(), "\\n");
+        let s = string('\r');
+        assert_eq!(s.as_slice(), "\\r");
+        let s = string('\'');
+        assert_eq!(s.as_slice(), "\\'");
+        let s = string('"');
+        assert_eq!(s.as_slice(), "\\\"");
+        let s = string(' ');
+        assert_eq!(s.as_slice(), " ");
+        let s = string('a');
+        assert_eq!(s.as_slice(), "a");
+        let s = string('~');
+        assert_eq!(s.as_slice(), "~");
+        let s = string('\x00');
+        assert_eq!(s.as_slice(), "\\x00");
+        let s = string('\x1f');
+        assert_eq!(s.as_slice(), "\\x1f");
+        let s = string('\x7f');
+        assert_eq!(s.as_slice(), "\\x7f");
+        let s = string('\xff');
+        assert_eq!(s.as_slice(), "\\xff");
+        let s = string('\u011b');
+        assert_eq!(s.as_slice(), "\\u011b");
+        let s = string('\U0001d4b6');
+        assert_eq!(s.as_slice(), "\\U0001d4b6");
     }
 
     #[test]
     fn test_escape_unicode() {
-        fn string(c: char) -> ~str {
+        fn string(c: char) -> StrBuf {
             let mut result = StrBuf::new();
             escape_unicode(c, |c| { result.push_char(c); });
-            return result.into_owned();
+            return result;
         }
-        assert_eq!(string('\x00'), "\\x00".to_owned());
-        assert_eq!(string('\n'), "\\x0a".to_owned());
-        assert_eq!(string(' '), "\\x20".to_owned());
-        assert_eq!(string('a'), "\\x61".to_owned());
-        assert_eq!(string('\u011b'), "\\u011b".to_owned());
-        assert_eq!(string('\U0001d4b6'), "\\U0001d4b6".to_owned());
+        let s = string('\x00');
+        assert_eq!(s.as_slice(), "\\x00");
+        let s = string('\n');
+        assert_eq!(s.as_slice(), "\\x0a");
+        let s = string(' ');
+        assert_eq!(s.as_slice(), "\\x20");
+        let s = string('a');
+        assert_eq!(s.as_slice(), "\\x61");
+        let s = string('\u011b');
+        assert_eq!(s.as_slice(), "\\u011b");
+        let s = string('\U0001d4b6');
+        assert_eq!(s.as_slice(), "\\U0001d4b6");
     }
 
     #[test]
     fn test_to_str() {
         use realstd::to_str::ToStr;
         let s = 't'.to_str();
-        assert_eq!(s, "t".to_owned());
+        assert_eq!(s.as_slice(), "t");
     }
 
     #[test]

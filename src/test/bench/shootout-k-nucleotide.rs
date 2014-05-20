@@ -252,9 +252,9 @@ fn print_occurrences(frequencies: &mut Table, occurrence: &'static str) {
 fn get_sequence<R: Buffer>(r: &mut R, key: &str) -> Vec<u8> {
     let mut res = Vec::new();
     for l in r.lines().map(|l| l.ok().unwrap())
-        .skip_while(|l| key != l.slice_to(key.len())).skip(1)
+        .skip_while(|l| key != l.as_slice().slice_to(key.len())).skip(1)
     {
-        res.push_all(l.trim().as_bytes());
+        res.push_all(l.as_slice().trim().as_bytes());
     }
     for b in res.mut_iter() {
         *b = b.to_ascii().to_upper().to_byte();

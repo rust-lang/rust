@@ -14,6 +14,7 @@ use c_vec::CVec;
 use char::Char;
 use cmp::Equiv;
 use container::{Container, Mutable};
+use default::Default;
 use fmt;
 use from_str::FromStr;
 use io::Writer;
@@ -328,6 +329,12 @@ impl StrAllocating for StrBuf {
     #[inline]
     fn into_strbuf(self) -> StrBuf {
         self
+    }
+}
+
+impl Default for StrBuf {
+    fn default() -> StrBuf {
+        StrBuf::new()
     }
 }
 

@@ -259,7 +259,9 @@ impl<'a> Visitor<()> for Context<'a> {
         else {
             for &quote in quotes.iter() {
                 if id == token::str_to_ident(quote) {
-                  self.gate_feature("quote", path.span, quote + msg);
+                  self.gate_feature("quote",
+                                    path.span,
+                                    format!("{}{}", quote, msg).as_slice());
                 }
             }
         }

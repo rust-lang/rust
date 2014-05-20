@@ -46,7 +46,7 @@ fn main() {
     } else if args.len() <= 1u {
         8
     } else {
-        from_str(args[1]).unwrap()
+        from_str(args[1].as_slice()).unwrap()
     };
     let min_depth = 4;
     let max_depth = if min_depth + 2 > n {min_depth + 2} else {n};

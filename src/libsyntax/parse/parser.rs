@@ -4259,12 +4259,14 @@ impl<'a> Parser<'a> {
                     self.span_note(id_sp,
                                    format!("maybe move this module `{0}` \
                                             to its own directory via \
-                                            `{0}/mod.rs`", this_module));
+                                            `{0}/mod.rs`",
+                                           this_module).as_slice());
                     if default_exists || secondary_exists {
                         self.span_note(id_sp,
                                        format!("... or maybe `use` the module \
                                                 `{}` instead of possibly \
-                                                redeclaring it", mod_name));
+                                                redeclaring it",
+                                               mod_name).as_slice());
                     }
                     self.abort_if_errors();
                 }

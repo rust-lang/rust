@@ -469,8 +469,8 @@ pub fn build_target_config(sopts: &Options) -> Config {
     let arch = match get_arch(sopts.target_triple.as_slice()) {
       Some(arch) => arch,
       None => {
-          early_error("unknown architecture: " +
-                      sopts.target_triple.as_slice())
+          early_error(format!("unknown architecture: {}",
+                              sopts.target_triple.as_slice()).as_slice())
       }
     };
     let (int_type, uint_type) = match arch {

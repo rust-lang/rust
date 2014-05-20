@@ -145,6 +145,7 @@ which at the time convulsed us with joy, yet which are now partly lost to my
 memory and partly incapable of presentation to others.",
         _ => "You've met with a terrible fate, haven't you?"
     };
+    ::alloc::util::make_stdlib_link_work(); // see comments in liballoc
     rterrln!("{}", "");
     rterrln!("{}", quote);
     rterrln!("{}", "");

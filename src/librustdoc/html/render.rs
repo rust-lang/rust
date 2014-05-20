@@ -971,7 +971,7 @@ impl Context {
             // does make formatting *a lot* nicer.
             current_location_key.replace(Some(cx.current.clone()));
 
-            let mut title = StrBuf::from_str(cx.current.connect("::"));
+            let mut title = cx.current.connect("::");
             if pushname {
                 if title.len() > 0 {
                     title.push_str("::");
@@ -1141,7 +1141,7 @@ fn item_path(item: &clean::Item) -> StrBuf {
 }
 
 fn full_path(cx: &Context, item: &clean::Item) -> StrBuf {
-    let mut s = StrBuf::from_str(cx.current.connect("::"));
+    let mut s = cx.current.connect("::");
     s.push_str("::");
     s.push_str(item.name.get_ref().as_slice());
     return s

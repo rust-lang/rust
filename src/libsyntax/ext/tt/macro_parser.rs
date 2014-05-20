@@ -188,7 +188,9 @@ pub fn nameize(p_s: &ParseSess, ms: &[Matcher], res: &[Rc<NamedMatch>])
             if ret_val.contains_key(&bind_name) {
                 let string = token::get_ident(bind_name);
                 p_s.span_diagnostic
-                   .span_fatal(span, "duplicated bind name: " + string.get())
+                   .span_fatal(span,
+                               format!("duplicated bind name: {}",
+                                       string.get()).as_slice())
             }
             ret_val.insert(bind_name, res[idx].clone());
           }

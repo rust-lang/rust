@@ -100,7 +100,7 @@ fn main() {
     } else if args.len() < 2 {
         2000
     } else {
-        FromStr::from_str(args[1]).unwrap()
+        FromStr::from_str(args[1].as_slice()).unwrap()
     };
     let u = Arc::new(RWLock::new(Vec::from_elem(n, 1.)));
     let v = Arc::new(RWLock::new(Vec::from_elem(n, 1.)));
