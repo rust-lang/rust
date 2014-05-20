@@ -84,6 +84,7 @@
 //! the test suite passing (the suite is in libstd), and that's good enough for
 //! me!
 
+use alloc::arc::Arc;
 use libc;
 use std::c_str::CString;
 use std::intrinsics;
@@ -92,7 +93,6 @@ use std::os::win32::as_utf16_p;
 use std::os;
 use std::ptr;
 use std::rt::rtio;
-use std::sync::arc::UnsafeArc;
 use std::sync::atomics;
 use std::unstable::mutex;
 
@@ -195,7 +195,7 @@ pub fn await(handle: libc::HANDLE, deadline: u64,
 ////////////////////////////////////////////////////////////////////////////////
 
 pub struct UnixStream {
-    inner: UnsafeArc<Inner>,
+    inner: Arc<Inner>,
     write: Option<Event>,
     read: Option<Event>,
     read_deadline: u64,
@@ -273,7 +273,7 @@ impl UnixStream {
                             Err(super::last_error())
                         } else {
                             Ok(UnixStream {
-                                inner: UnsafeArc::new(inner),
+                                inner: Arc::new(inner),
                                 read: None,
                                 write: None,
                                 read_deadline: 0,
@@ -317,7 +317,7 @@ impl UnixStream {
         })
     }
 
-    fn handle(&self) -> libc::HANDLE { unsafe { (*self.inner.get()).handle } }
+    fn handle(&self) -> libc::HANDLE { self.inner.handle }
 
     fn read_closed(&self) -> bool {
         unsafe { (*self.inner.get()).read_closed.load(atomics::SeqCst) }
@@ -683,7 +683,7 @@ impl UnixAcceptor {
 
         // Transfer ownership of our handle into this stream
         Ok(UnixStream {
-            inner: UnsafeArc::new(Inner::new(handle)),
+            inner: Arc::new(Inner::new(handle)),
             read: None,
             write: None,
             read_deadline: 0,
