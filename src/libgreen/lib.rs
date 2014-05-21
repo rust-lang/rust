@@ -435,7 +435,6 @@ impl SchedPool {
                                             pool.sleepers.clone(),
                                             pool.task_state.clone());
             pool.handles.push(sched.make_handle());
-            let sched = sched;
             pool.threads.push(Thread::start(proc() { sched.bootstrap(); }));
         }
 
@@ -497,7 +496,6 @@ impl SchedPool {
                                         self.task_state.clone());
         let ret = sched.make_handle();
         self.handles.push(sched.make_handle());
-        let sched = sched;
         self.threads.push(Thread::start(proc() { sched.bootstrap() }));
 
         return ret;
