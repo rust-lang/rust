@@ -10,15 +10,15 @@ One para explanation of the feature.
 
 Why are we doing this? What use cases does it support? What is the expected outcome?
 
-# Drawbacks
-
-Why should we *not* do this?
-
 # Detailed design
 
 This is the bulk of the RFC. Explain the design in enough detail for somebody familiar
 with the language to understand, and for somebody familiar with the compiler to implement.
 This should get into specifics and corner-cases, and include examples of how the feature is used.
+
+# Drawbacks
+
+Why should we *not* do this?
 
 # Alternatives
 
