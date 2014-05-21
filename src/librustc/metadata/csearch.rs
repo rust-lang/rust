@@ -176,7 +176,7 @@ pub fn get_static_methods_if_impl(cstore: &cstore::CStore,
 
 pub fn get_item_attrs(cstore: &cstore::CStore,
                       def_id: ast::DefId,
-                      f: |Vec<@ast::MetaItem> |) {
+                      f: |Vec<ast::Attribute> |) {
     let cdata = cstore.get_crate_data(def_id.krate);
     decoder::get_item_attrs(&*cdata, def_id.node, f)
 }

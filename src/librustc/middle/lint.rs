@@ -64,7 +64,7 @@ use collections::SmallIntMap;
 use syntax::abi;
 use syntax::ast_map;
 use syntax::ast_util::IdVisitingOperation;
-use syntax::attr::{AttrMetaMethods, AttributeMethods};
+use syntax::attr::AttrMetaMethods;
 use syntax::attr;
 use syntax::codemap::Span;
 use syntax::parse::token::InternedString;
@@ -1148,8 +1148,7 @@ fn check_attrs_usage(cx: &Context, attrs: &[ast::Attribute]) {
 fn check_unused_attribute(cx: &Context, attrs: &[ast::Attribute]) {
     for attr in attrs.iter() {
         if !attr::is_used(attr) {
-            cx.span_lint(UnusedAttribute, attr.span,
-                         format!("unused attribute {}", attr.name()).as_slice());
+            cx.span_lint(UnusedAttribute, attr.span, "unused attribute");
         }
     }
 }
@@ -1654,9 +1653,7 @@ fn check_stability(cx: &Context, e: &ast::Expr) {
     let stability = if ast_util::is_local(id) {
         // this crate
         let s = cx.tcx.map.with_attrs(id.node, |attrs| {
-            attrs.map(|a| {
-                attr::find_stability(a.iter().map(|a| a.meta()))
-            })
+            attrs.map(|a| attr::find_stability(a.as_slice()))
         });
         match s {
             Some(s) => s,
@@ -1672,9 +1669,9 @@ fn check_stability(cx: &Context, e: &ast::Expr) {
         let mut s = None;
         // run through all the attributes and take the first
         // stability one.
-        csearch::get_item_attrs(&cx.tcx.sess.cstore, id, |meta_items| {
+        csearch::get_item_attrs(&cx.tcx.sess.cstore, id, |attrs| {
             if s.is_none() {
-                s = attr::find_stability(meta_items.move_iter())
+                s = attr::find_stability(attrs.as_slice())
             }
         });
         s

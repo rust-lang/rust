@@ -238,14 +238,14 @@ pub fn contains_name<AM: AttrMetaMethods>(metas: &[AM], name: &str) -> bool {
     debug!("attr::contains_name (name={})", name);
     metas.iter().any(|item| {
         debug!("  testing: {}", item.name());
-        item.name().equiv(&name)
+        item.check_name(name)
     })
 }
 
 pub fn first_attr_value_str_by_name(attrs: &[Attribute], name: &str)
                                  -> Option<InternedString> {
     attrs.iter()
-        .find(|at| at.name().equiv(&name))
+        .find(|at| at.check_name(name))
         .and_then(|at| at.value_str())
 }
 
@@ -253,7 +253,7 @@ pub fn last_meta_item_value_str_by_name(items: &[@MetaItem], name: &str)
                                      -> Option<InternedString> {
     items.iter()
          .rev()
-         .find(|mi| mi.name().equiv(&name))
+         .find(|mi| mi.check_name(name))
          .and_then(|i| i.value_str())
 }
 
@@ -289,7 +289,7 @@ pub fn sort_meta_items(items: &[@MetaItem]) -> Vec<@MetaItem> {
  */
 pub fn find_linkage_metas(attrs: &[Attribute]) -> Vec<@MetaItem> {
     let mut result = Vec::new();
-    for attr in attrs.iter().filter(|at| at.name().equiv(&("link"))) {
+    for attr in attrs.iter().filter(|at| at.check_name("link")) {
         match attr.meta().node {
             MetaList(_, ref items) => result.push_all(items.as_slice()),
             _ => ()
@@ -318,17 +318,21 @@ pub fn find_inline_attr(attrs: &[Attribute]) -> InlineAttr {
     // FIXME (#2809)---validate the usage of #[inline] and #[inline]
     attrs.iter().fold(InlineNone, |ia,attr| {
         match attr.node.value.node {
-          MetaWord(ref n) if n.equiv(&("inline")) => InlineHint,
-          MetaList(ref n, ref items) if n.equiv(&("inline")) => {
-            if contains_name(items.as_slice(), "always") {
-                InlineAlways
-            } else if contains_name(items.as_slice(), "never") {
-                InlineNever
-            } else {
+            MetaWord(ref n) if n.equiv(&("inline")) => {
+                mark_used(attr);
                 InlineHint
             }
-          }
-          _ => ia
+            MetaList(ref n, ref items) if n.equiv(&("inline")) => {
+                mark_used(attr);
+                if contains_name(items.as_slice(), "always") {
+                    InlineAlways
+                } else if contains_name(items.as_slice(), "never") {
+                    InlineNever
+                } else {
+                    InlineHint
+                }
+            }
+            _ => ia
         }
     })
 }
@@ -348,7 +352,7 @@ pub fn test_cfg<AM: AttrMetaMethods, It: Iterator<AM>>
     // this doesn't work.
     let some_cfg_matches = metas.any(|mi| {
         debug!("testing name: {}", mi.name());
-        if mi.name().equiv(&("cfg")) { // it is a #[cfg()] attribute
+        if mi.check_name("cfg") { // it is a #[cfg()] attribute
             debug!("is cfg");
             no_cfgs = false;
              // only #[cfg(...)] ones are understood.
@@ -399,11 +403,13 @@ pub enum StabilityLevel {
     Locked
 }
 
-/// Find the first stability attribute. `None` if none exists.
-pub fn find_stability<AM: AttrMetaMethods, It: Iterator<AM>>(mut metas: It)
-                      -> Option<Stability> {
-    for m in metas {
-        let level = match m.name().get() {
+pub fn find_stability_generic<'a,
+                              AM: AttrMetaMethods,
+                              I: Iterator<&'a AM>>
+                             (mut attrs: I)
+                             -> Option<(Stability, &'a AM)> {
+    for attr in attrs {
+        let level = match attr.name().get() {
             "deprecated" => Deprecated,
             "experimental" => Experimental,
             "unstable" => Unstable,
@@ -413,12 +419,20 @@ pub fn find_stability<AM: AttrMetaMethods, It: Iterator<AM>>(mut metas: It)
             _ => continue // not a stability level
         };
 
-        return Some(Stability {
+        return Some((Stability {
                 level: level,
-                text: m.value_str()
-            });
+                text: attr.value_str()
+            }, attr));
     }
     None
+}
+
+/// Find the first stability attribute. `None` if none exists.
+pub fn find_stability(attrs: &[Attribute]) -> Option<Stability> {
+    find_stability_generic(attrs.iter()).map(|(s, attr)| {
+        mark_used(attr);
+        s
+    })
 }
 
 pub fn require_unique_names(diagnostic: &SpanHandler, metas: &[@MetaItem]) {
@@ -447,11 +461,13 @@ pub fn require_unique_names(diagnostic: &SpanHandler, metas: &[@MetaItem]) {
  * present (before fields, if any) with that type; reprensentation
  * optimizations which would remove it will not be done.
  */
-pub fn find_repr_attr(diagnostic: &SpanHandler, attr: @ast::MetaItem, acc: ReprAttr)
+pub fn find_repr_attr(diagnostic: &SpanHandler, attr: &Attribute, acc: ReprAttr)
     -> ReprAttr {
     let mut acc = acc;
-    match attr.node {
+    info!("{}", ::print::pprust::attribute_to_str(attr));
+    match attr.node.value.node {
         ast::MetaList(ref s, ref items) if s.equiv(&("repr")) => {
+            mark_used(attr);
             for item in items.iter() {
                 match item.node {
                     ast::MetaWord(ref word) => {
