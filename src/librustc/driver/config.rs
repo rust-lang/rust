@@ -32,7 +32,7 @@ use syntax::parse;
 use syntax::parse::token::InternedString;
 
 use collections::HashSet;
-use getopts::{optopt, optmulti, optflag, optflagopt};
+use getopts::{opt, optopt, optmulti, optflag, optflagopt};
 use getopts;
 use lib::llvm::llvm;
 use std::cell::{RefCell};
@@ -511,9 +511,9 @@ pub fn optgroups() -> Vec<getopts::OptGroup> {
         optflag("", "no-trans", "Run all passes except translation; no output"),
         optflag("", "no-analysis",
               "Parse and expand the source, but run no analysis and produce no output"),
-        optflag("O", "", "Equivalent to --opt-level=2"),
+        opt("O", "opt-level", "Optimize with possible levels 0-3", "LEVEL", getopts::Maybe,
+              getopts::Multi),
         optopt("o", "", "Write output to <filename>", "FILENAME"),
-        optopt("", "opt-level", "Optimize with possible levels 0-3", "LEVEL"),
         optopt( "",  "out-dir", "Write output to compiler-chosen filename in <dir>", "DIR"),
         optflag("", "parse-only", "Parse only; do not compile, assemble, or link"),
         optflagopt("", "pretty",
@@ -653,13 +653,13 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     let opt_level = {
         if debugging_opts != 0 {
             No
-        } else if matches.opt_present("O") {
-            if matches.opt_present("opt-level") {
-                early_error("-O and --opt-level both provided");
-            }
+        } else if (matches.opt_count("O") == 1) && (matches.opt_strs("O").len() == 0) {
+            // FIXME: This is hack to support -O defaulting to -O2 if it is the only -O or
+            // --opt-level arg. Consider removing -O or moving it to another flag. If this
+            // is done then change type of -O flag to optmulti.
             Default
-        } else if matches.opt_present("opt-level") {
-            match matches.opt_str("opt-level").as_ref().map(|s| s.as_slice()) {
+        } else if matches.opt_present("O") {
+            match matches.opt_strs("O").last().as_ref().map(|s| s.as_slice()) {
                 None      |
                 Some("0") => No,
                 Some("1") => Less,
