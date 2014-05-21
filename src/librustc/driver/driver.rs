@@ -226,7 +226,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
     krate = time(time_passes, "prelude injection", krate, |krate|
                  front::std_inject::maybe_inject_prelude(sess, krate));
 
-    let (krate, map) = time(time_passes, "assinging node ids and indexing ast", krate, |krate|
+    let (krate, map) = time(time_passes, "assigning node ids and indexing ast", krate, |krate|
          front::assign_node_ids_and_map::assign_node_ids_and_map(sess, krate));
 
     if sess.opts.debugging_opts & config::AST_JSON != 0 {
@@ -846,4 +846,3 @@ pub fn build_output_filenames(input: &Input,
         }
     }
 }
-
