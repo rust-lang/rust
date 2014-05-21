@@ -10,7 +10,7 @@
 
 #![deny(experimental)]
 
-use std::unstable::simd;
+use std::simd;
 
 fn main() {
     let _ = simd::i64x2(0, 0); //~ ERROR: experimental

@@ -13,5 +13,5 @@
 #![feature(simd)]
 
 pub fn main() {
-    let _o = None::<std::unstable::simd::i32x4>;
+    let _o = None::<std::simd::i32x4>;
 }
