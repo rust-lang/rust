@@ -29,7 +29,7 @@
 use num::{Int, one, zero};
 
 #[cfg(not(test))] use cmp::{Eq, Ord, TotalOrd, Ordering, TotalEq};
-#[cfg(not(test))] use ops::{Not, BitAnd, BitOr, BitXor};
+#[cfg(not(test))] use ops::{Not};
 #[cfg(not(test))] use default::Default;
 
 /////////////////////////////////////////////////////////////////////////////
@@ -67,71 +67,6 @@ impl Not<bool> for bool {
     /// ```
     #[inline]
     fn not(&self) -> bool { !*self }
-}
-
-#[cfg(not(test))]
-impl BitAnd<bool, bool> for bool {
-    /// Conjunction of two boolean values.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// assert_eq!(false.bitand(&false), false);
-    /// assert_eq!(true.bitand(&false), false);
-    /// assert_eq!(false.bitand(&true), false);
-    /// assert_eq!(true.bitand(&true), true);
-    ///
-    /// assert_eq!(false & false, false);
-    /// assert_eq!(true & false, false);
-    /// assert_eq!(false & true, false);
-    /// assert_eq!(true & true, true);
-    /// ```
-    #[inline]
-    fn bitand(&self, b: &bool) -> bool { *self & *b }
-}
-
-#[cfg(not(test))]
-impl BitOr<bool, bool> for bool {
-    /// Disjunction of two boolean values.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// assert_eq!(false.bitor(&false), false);
-    /// assert_eq!(true.bitor(&false), true);
-    /// assert_eq!(false.bitor(&true), true);
-    /// assert_eq!(true.bitor(&true), true);
-    ///
-    /// assert_eq!(false | false, false);
-    /// assert_eq!(true | false, true);
-    /// assert_eq!(false | true, true);
-    /// assert_eq!(true | true, true);
-    /// ```
-    #[inline]
-    fn bitor(&self, b: &bool) -> bool { *self | *b }
-}
-
-#[cfg(not(test))]
-impl BitXor<bool, bool> for bool {
-    /// An 'exclusive or' of two boolean values.
-    ///
-    /// 'exclusive or' is identical to `or(and(a, not(b)), and(not(a), b))`.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// assert_eq!(false.bitxor(&false), false);
-    /// assert_eq!(true.bitxor(&false), true);
-    /// assert_eq!(false.bitxor(&true), true);
-    /// assert_eq!(true.bitxor(&true), false);
-    ///
-    /// assert_eq!(false ^ false, false);
-    /// assert_eq!(true ^ false, true);
-    /// assert_eq!(false ^ true, true);
-    /// assert_eq!(true ^ true, false);
-    /// ```
-    #[inline]
-    fn bitxor(&self, b: &bool) -> bool { *self ^ *b }
 }
 
 #[cfg(not(test))]
