@@ -12,26 +12,26 @@
 
 #![allow(experimental)]
 
-use std::unstable::simd::f32x4;
+use std::simd::f32x4;
 
 fn main() {
 
     let _ = f32x4(0.0, 0.0, 0.0, 0.0) == f32x4(0.0, 0.0, 0.0, 0.0);
-    //~^ ERROR binary comparison operation `==` not supported for floating point SIMD vector `std::unstable::simd::f32x4`
+    //~^ ERROR binary comparison operation `==` not supported for floating point SIMD vector `core::simd::f32x4`
 
     let _ = f32x4(0.0, 0.0, 0.0, 0.0) != f32x4(0.0, 0.0, 0.0, 0.0);
-    //~^ ERROR binary comparison operation `!=` not supported for floating point SIMD vector `std::unstable::simd::f32x4`
+    //~^ ERROR binary comparison operation `!=` not supported for floating point SIMD vector `core::simd::f32x4`
 
     let _ = f32x4(0.0, 0.0, 0.0, 0.0) < f32x4(0.0, 0.0, 0.0, 0.0);
-    //~^ ERROR binary comparison operation `<` not supported for floating point SIMD vector `std::unstable::simd::f32x4`
+    //~^ ERROR binary comparison operation `<` not supported for floating point SIMD vector `core::simd::f32x4`
 
     let _ = f32x4(0.0, 0.0, 0.0, 0.0) <= f32x4(0.0, 0.0, 0.0, 0.0);
-    //~^ ERROR binary comparison operation `<=` not supported for floating point SIMD vector `std::unstable::simd::f32x4`
+    //~^ ERROR binary comparison operation `<=` not supported for floating point SIMD vector `core::simd::f32x4`
 
     let _ = f32x4(0.0, 0.0, 0.0, 0.0) >= f32x4(0.0, 0.0, 0.0, 0.0);
-    //~^ ERROR binary comparison operation `>=` not supported for floating point SIMD vector `std::unstable::simd::f32x4`
+    //~^ ERROR binary comparison operation `>=` not supported for floating point SIMD vector `core::simd::f32x4`
 
     let _ = f32x4(0.0, 0.0, 0.0, 0.0) > f32x4(0.0, 0.0, 0.0, 0.0);
-    //~^ ERROR binary comparison operation `>` not supported for floating point SIMD vector `std::unstable::simd::f32x4`
+    //~^ ERROR binary comparison operation `>` not supported for floating point SIMD vector `core::simd::f32x4`
 
 }
