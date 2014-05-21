@@ -15,11 +15,11 @@ use io::IoResult;
 use io;
 use iter::Iterator;
 use libc;
+use libc::uintptr_t;
 use option::{Some, None, Option};
 use os;
 use result::Ok;
 use str::{Str, StrSlice};
-use unstable::running_on_valgrind;
 use slice::ImmutableVector;
 
 // Indicates whether we should perform expensive sanity checks, including rtassert!
@@ -161,4 +161,16 @@ memory and partly incapable of presentation to others.",
         use intrinsics;
         unsafe { intrinsics::abort() }
     }
+}
+
+/// Dynamically inquire about whether we're running under V.
+/// You should usually not use this unless your test definitely
+/// can't run correctly un-altered. Valgrind is there to help
+/// you notice weirdness in normal, un-doctored code paths!
+pub fn running_on_valgrind() -> bool {
+    unsafe { rust_running_on_valgrind() != 0 }
+}
+
+extern {
+    fn rust_running_on_valgrind() -> uintptr_t;
 }

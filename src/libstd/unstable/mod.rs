@@ -10,8 +10,6 @@
 
 #![doc(hidden)]
 
-use libc::uintptr_t;
-
 pub use core::finally;
 
 pub mod dynamic_lib;
@@ -20,14 +18,3 @@ pub mod simd;
 pub mod sync;
 pub mod mutex;
 
-/// Dynamically inquire about whether we're running under V.
-/// You should usually not use this unless your test definitely
-/// can't run correctly un-altered. Valgrind is there to help
-/// you notice weirdness in normal, un-doctored code paths!
-pub fn running_on_valgrind() -> bool {
-    unsafe { rust_running_on_valgrind() != 0 }
-}
-
-extern {
-    fn rust_running_on_valgrind() -> uintptr_t;
-}
