@@ -90,6 +90,7 @@ pub enum Lint {
     UnusedUnsafe,
     UnsafeBlock,
     AttributeUsage,
+    UnusedAttribute,
     UnknownFeatures,
     UnknownCrateType,
     UnsignedNegate,
@@ -286,6 +287,13 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
         lint: AttributeUsage,
         desc: "detects bad use of attributes",
         default: Warn
+    }),
+
+    ("unused_attribute",
+     LintSpec {
+         lint: UnusedAttribute,
+         desc: "detects attributes that were not used by the compiler",
+         default: Allow
     }),
 
     ("unused_variable",
@@ -619,7 +627,7 @@ pub fn each_lint(sess: &session::Session,
     let xs = [Allow, Warn, Deny, Forbid];
     for &level in xs.iter() {
         let level_name = level_to_str(level);
-        for attr in attrs.iter().filter(|m| m.name().equiv(&level_name)) {
+        for attr in attrs.iter().filter(|m| m.check_name(level_name)) {
             let meta = attr.node.value;
             let metas = match meta.node {
                 ast::MetaList(_, ref metas) => metas,
@@ -1133,6 +1141,15 @@ fn check_attrs_usage(cx: &Context, attrs: &[ast::Attribute]) {
 
         if !other_attrs.iter().any(|other_attr| { name.equiv(other_attr) }) {
             cx.span_lint(AttributeUsage, attr.span, "unknown attribute");
+        }
+    }
+}
+
+fn check_unused_attribute(cx: &Context, attrs: &[ast::Attribute]) {
+    for attr in attrs.iter() {
+        if !attr::is_used(attr) {
+            cx.span_lint(UnusedAttribute, attr.span,
+                         format!("unused attribute {}", attr.name()).as_slice());
         }
     }
 }
@@ -1694,6 +1711,7 @@ impl<'a> Visitor<()> for Context<'a> {
             check_heap_item(cx, it);
             check_missing_doc_item(cx, it);
             check_attrs_usage(cx, it.attrs.as_slice());
+            check_unused_attribute(cx, it.attrs.as_slice());
             check_raw_ptr_deriving(cx, it);
 
             cx.visit_ids(|v| v.visit_item(it, ()));
@@ -1900,6 +1918,7 @@ pub fn check_crate(tcx: &ty::ctxt,
         check_crate_attrs_usage(cx, krate.attrs.as_slice());
         // since the root module isn't visited as an item (because it isn't an item), warn for it
         // here.
+        check_unused_attribute(cx, krate.attrs.as_slice());
         check_missing_doc_attrs(cx,
                                 None,
                                 krate.attrs.as_slice(),
