@@ -2767,7 +2767,8 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
           if !checked {
               tcx.sess.span_err(expr.span,
                                 "only the managed heap and exchange heap are \
-                                 currently supported")
+                                 currently supported");
+              fcx.write_ty(id, ty::mk_err());
           }
       }
 
