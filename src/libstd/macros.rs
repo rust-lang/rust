@@ -471,8 +471,9 @@ pub mod builtin {
     /// # Example
     ///
     /// ```
-    /// let rust = bytes!("r", 'u', "st");
+    /// let rust = bytes!("r", 'u', "st", 255);
     /// assert_eq!(rust[1], 'u' as u8);
+    /// assert_eq!(rust[5], 255);
     /// ```
     #[macro_export]
     macro_rules! bytes( ($($e:expr),*) => ({ /* compiler built-in */ }) )
