@@ -17,7 +17,7 @@ match x {
 
 This is consistent with allowing macros in expressions etc.  It's also a year-old [open issue](https://github.com/mozilla/rust/issues/6830).
 
-I have [implemented](https://github.com/mozilla/rust/pull/14298) this feature already (with some bugs) and I'm [using it](https://github.com/kmcallister/html5/blob/937684f107090741c8e87135efc6e5476489857b/src/tree_builder/mod.rs#L111-L117) to [condense](https://github.com/kmcallister/html5/blob/937684f107090741c8e87135efc6e5476489857b/src/tree_builder/mod.rs#L261-L269) some ubiquitous patterns in the [HTML parser](https://github.com/kmcallister/html5) I'm writing.  This makes the code more concise and easier to cross-reference with the spec.
+I have [implemented](https://github.com/mozilla/rust/pull/14298) this feature already and I'm [using it](https://github.com/kmcallister/html5/blob/937684f107090741c8e87135efc6e5476489857b/src/tree_builder/mod.rs#L111-L117) to [condense](https://github.com/kmcallister/html5/blob/937684f107090741c8e87135efc6e5476489857b/src/tree_builder/mod.rs#L261-L269) some ubiquitous patterns in the [HTML parser](https://github.com/kmcallister/html5) I'm writing.  This makes the code more concise and easier to cross-reference with the spec.
 
 # Drawbacks / alternatives
 
@@ -51,4 +51,4 @@ The `my_match!` approach is also not very composable.
 
 # Unresolved questions
 
-I need to fix the ICE described in [the pull request](https://github.com/mozilla/rust/pull/14298).  I don't expect this to have any design impact, but I can't be sure.
+None, as far as I know.
