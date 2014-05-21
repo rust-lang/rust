@@ -118,7 +118,7 @@ impl rtio::RtioFileStream for FileDesc {
 
     fn pread(&mut self, buf: &mut [u8], offset: u64) -> Result<int, IoError> {
         let mut read = 0;
-        let mut overlap: libc::OVERLAPPED = unsafe { mem::init() };
+        let mut overlap: libc::OVERLAPPED = unsafe { mem::zeroed() };
         overlap.Offset = offset as libc::DWORD;
         overlap.OffsetHigh = (offset >> 32) as libc::DWORD;
         let ret = unsafe {
@@ -135,7 +135,7 @@ impl rtio::RtioFileStream for FileDesc {
     fn pwrite(&mut self, buf: &[u8], mut offset: u64) -> Result<(), IoError> {
         let mut cur = buf.as_ptr();
         let mut remaining = buf.len();
-        let mut overlap: libc::OVERLAPPED = unsafe { mem::init() };
+        let mut overlap: libc::OVERLAPPED = unsafe { mem::zeroed() };
         while remaining > 0 {
             overlap.Offset = offset as libc::DWORD;
             overlap.OffsetHigh = (offset >> 32) as libc::DWORD;

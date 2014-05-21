@@ -13,7 +13,7 @@
 #![allow(missing_doc)]
 
 use std::clone::Clone;
-use std::mem::{move_val_init, init, replace, swap};
+use std::mem::{overwrite, zeroed, replace, swap};
 use std::slice;
 
 /// A priority queue implemented with a binary heap
@@ -157,26 +157,26 @@ impl<T: TotalOrd> PriorityQueue<T> {
     // compared to using swaps, which involves twice as many moves.
     fn siftup(&mut self, start: uint, mut pos: uint) {
         unsafe {
-            let new = replace(self.data.get_mut(pos), init());
+            let new = replace(self.data.get_mut(pos), zeroed());
 
             while pos > start {
                 let parent = (pos - 1) >> 1;
                 if new > *self.data.get(parent) {
-                    let x = replace(self.data.get_mut(parent), init());
-                    move_val_init(self.data.get_mut(pos), x);
+                    let x = replace(self.data.get_mut(parent), zeroed());
+                    overwrite(self.data.get_mut(pos), x);
                     pos = parent;
                     continue
                 }
                 break
             }
-            move_val_init(self.data.get_mut(pos), new);
+            overwrite(self.data.get_mut(pos), new);
         }
     }
 
     fn siftdown_range(&mut self, mut pos: uint, end: uint) {
         unsafe {
             let start = pos;
-            let new = replace(self.data.get_mut(pos), init());
+            let new = replace(self.data.get_mut(pos), zeroed());
 
             let mut child = 2 * pos + 1;
             while child < end {
@@ -184,13 +184,13 @@ impl<T: TotalOrd> PriorityQueue<T> {
                 if right < end && !(*self.data.get(child) > *self.data.get(right)) {
                     child = right;
                 }
-                let x = replace(self.data.get_mut(child), init());
-                move_val_init(self.data.get_mut(pos), x);
+                let x = replace(self.data.get_mut(child), zeroed());
+                overwrite(self.data.get_mut(pos), x);
                 pos = child;
                 child = 2 * pos + 1;
             }
 
-            move_val_init(self.data.get_mut(pos), new);
+            overwrite(self.data.get_mut(pos), new);
             self.siftup(start, pos);
         }
     }

@@ -306,8 +306,10 @@ impl<'a, T: Clone> CloneableVector<T> for &'a [T] {
             // this should pass the real required alignment
             let ret = exchange_malloc(size, 8) as *mut RawVec<()>;
 
-            (*ret).fill = len * mem::nonzero_size_of::<T>();
-            (*ret).alloc = len * mem::nonzero_size_of::<T>();
+            let a_size = mem::size_of::<T>();
+            let a_size = if a_size == 0 {1} else {a_size};
+            (*ret).fill = len * a_size;
+            (*ret).alloc = len * a_size;
 
             // Be careful with the following loop. We want it to be optimized
             // to a memcpy (or something similarly fast) when T is Copy. LLVM
@@ -318,7 +320,7 @@ impl<'a, T: Clone> CloneableVector<T> for &'a [T] {
             try_finally(
                 &mut i, (),
                 |i, ()| while *i < len {
-                    mem::move_val_init(
+                    mem::overwrite(
                         &mut(*p.offset(*i as int)),
                         self.unsafe_ref(*i).clone());
                     *i += 1;

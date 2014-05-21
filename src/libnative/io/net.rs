@@ -68,7 +68,7 @@ fn ip_to_inaddr(ip: ip::IpAddr) -> InAddr {
 
 fn addr_to_sockaddr(addr: ip::SocketAddr) -> (libc::sockaddr_storage, uint) {
     unsafe {
-        let storage: libc::sockaddr_storage = mem::init();
+        let storage: libc::sockaddr_storage = mem::zeroed();
         let len = match ip_to_inaddr(addr.ip) {
             InAddr(inaddr) => {
                 let storage: *mut libc::sockaddr_in = mem::transmute(&storage);
@@ -120,7 +120,7 @@ fn setsockopt<T>(fd: sock_t, opt: libc::c_int, val: libc::c_int,
 pub fn getsockopt<T: Copy>(fd: sock_t, opt: libc::c_int,
                            val: libc::c_int) -> IoResult<T> {
     unsafe {
-        let mut slot: T = mem::init();
+        let mut slot: T = mem::zeroed();
         let mut len = mem::size_of::<T>() as libc::socklen_t;
         let ret = c::getsockopt(fd, opt, val,
                                 &mut slot as *mut _ as *mut _,
@@ -152,7 +152,7 @@ fn sockname(fd: sock_t,
                                          *mut libc::socklen_t) -> libc::c_int)
     -> IoResult<ip::SocketAddr>
 {
-    let mut storage: libc::sockaddr_storage = unsafe { mem::init() };
+    let mut storage: libc::sockaddr_storage = unsafe { mem::zeroed() };
     let mut len = mem::size_of::<libc::sockaddr_storage>() as libc::socklen_t;
     unsafe {
         let storage = &mut storage as *mut libc::sockaddr_storage;
@@ -221,7 +221,7 @@ pub fn init() {
 
         let _guard = LOCK.lock();
         if !INITIALIZED {
-            let mut data: c::WSADATA = mem::init();
+            let mut data: c::WSADATA = mem::zeroed();
             let ret = c::WSAStartup(0x202,      // version 2.2
                                     &mut data);
             assert_eq!(ret, 0);
@@ -497,7 +497,7 @@ impl TcpAcceptor {
             try!(util::await(self.fd(), Some(self.deadline), util::Readable));
         }
         unsafe {
-            let mut storage: libc::sockaddr_storage = mem::init();
+            let mut storage: libc::sockaddr_storage = mem::zeroed();
             let storagep = &mut storage as *mut libc::sockaddr_storage;
             let size = mem::size_of::<libc::sockaddr_storage>();
             let mut size = size as libc::socklen_t;
@@ -622,7 +622,7 @@ impl rtio::RtioSocket for UdpSocket {
 impl rtio::RtioUdpSocket for UdpSocket {
     fn recvfrom(&mut self, buf: &mut [u8]) -> IoResult<(uint, ip::SocketAddr)> {
         let fd = self.fd();
-        let mut storage: libc::sockaddr_storage = unsafe { mem::init() };
+        let mut storage: libc::sockaddr_storage = unsafe { mem::zeroed() };
         let storagep = &mut storage as *mut _ as *mut libc::sockaddr;
         let mut addrlen: libc::socklen_t =
                 mem::size_of::<libc::sockaddr_storage>() as libc::socklen_t;
