@@ -923,7 +923,7 @@ fn combine_ranges(unordered: Vec<(char, char)>) -> Vec<(char, char)> {
     // Returns true iff the two character classes overlap or share a boundary.
     // e.g., ('a', 'g') and ('h', 'm') would return true.
     fn should_merge((a, b): (char, char), (x, y): (char, char)) -> bool {
-        cmp::max(a, x) as u32 <= cmp::min(b, y) as u32 + 1
+        cmp::max(a, x) as u32 <= (cmp::min(b, y) as u32) + 1
     }
 
     // This is currently O(n^2), but I think with sufficient cleverness,

@@ -299,5 +299,5 @@ fn align_down(sp: *mut uint) -> *mut uint {
 #[inline]
 pub fn mut_offset<T>(ptr: *mut T, count: int) -> *mut T {
     use std::mem::size_of;
-    (ptr as int + count * (size_of::<T>() as int)) as *mut T
+    ((ptr as int) + count * (size_of::<T>() as int)) as *mut T
 }

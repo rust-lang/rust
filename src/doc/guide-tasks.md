@@ -298,7 +298,7 @@ be distributed on the available cores.
 fn partial_sum(start: uint) -> f64 {
     let mut local_sum = 0f64;
     for num in range(start*100000, (start+1)*100000) {
-        local_sum += (num as f64 + 1.0).powf(-2.0);
+        local_sum += ((num as f64) + 1.0).powf(-2.0);
     }
     local_sum
 }

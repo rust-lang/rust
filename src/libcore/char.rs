@@ -220,8 +220,8 @@ pub fn to_digit(c: char, radix: uint) -> Option<uint> {
     }
     let val = match c {
       '0' .. '9' => c as uint - ('0' as uint),
-      'a' .. 'z' => c as uint + 10u - ('a' as uint),
-      'A' .. 'Z' => c as uint + 10u - ('A' as uint),
+      'a' .. 'z' => (c as uint) + 10u - ('a' as uint),
+      'A' .. 'Z' => (c as uint) + 10u - ('A' as uint),
       _ => return None,
     };
     if val < radix { Some(val) }
@@ -280,9 +280,9 @@ pub fn from_digit(num: uint, radix: uint) -> Option<char> {
     if num < radix {
         unsafe {
             if num < 10 {
-                Some(transmute(('0' as uint + num) as u32))
+                Some(transmute((('0' as uint) + num) as u32))
             } else {
-                Some(transmute(('a' as uint + num - 10u) as u32))
+                Some(transmute((('a' as uint) + num - 10u) as u32))
             }
         }
     } else {
@@ -311,8 +311,8 @@ pub fn escape_unicode(c: char, f: |char|) {
     for offset in range_step::<i32>(4 * (pad - 1), -1, -4) {
         unsafe {
             match ((c as i32) >> offset) & 0xf {
-                i @ 0 .. 9 => { f(transmute('0' as i32 + i)); }
-                i => { f(transmute('a' as i32 + (i - 10))); }
+                i @ 0 .. 9 => { f(transmute(('0' as i32) + i)); }
+                i => { f(transmute(('a' as i32) + (i - 10))); }
             }
         }
     }

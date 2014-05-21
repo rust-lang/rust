@@ -294,7 +294,7 @@ pub fn parse(file: &mut io::Reader, longnames: bool)
                     string_map.insert(name.to_strbuf(),
                                       Vec::from_slice(
                                           string_table.slice(offset as uint,
-                                          offset as uint + len)))
+                                          (offset as uint) + len)))
                 },
                 None => {
                     return Err("invalid file: missing NUL in \

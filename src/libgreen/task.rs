@@ -476,7 +476,7 @@ impl Runtime for GreenTask {
 
         // Don't return the red zone as part of the usable stack of this task,
         // it's essentially an implementation detail.
-        (c.current_stack_segment.start() as uint + stack::RED_ZONE,
+        ((c.current_stack_segment.start() as uint) + stack::RED_ZONE,
          c.current_stack_segment.end() as uint)
     }
 

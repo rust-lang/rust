@@ -157,7 +157,7 @@ pub fn await(fd: net::sock_t, deadline: Option<u64>,
                 &tv as *_
             }
         };
-        let n = if cfg!(windows) {1} else {fd as libc::c_int + 1};
+        let n = if cfg!(windows) {1} else {(fd as libc::c_int) + 1};
         let r = unsafe { c::select(n, read, write, ptr::null(), tvp) };
         r
     }) {

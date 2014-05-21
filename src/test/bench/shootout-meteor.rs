@@ -188,7 +188,7 @@ fn get_id(m: u64) -> u8 {
 fn to_vec(raw_sol: &List<u64>) -> Vec<u8> {
     let mut sol = Vec::from_elem(50, '.' as u8);
     for &m in raw_sol.iter() {
-        let id = '0' as u8 + get_id(m);
+        let id = ('0' as u8) + get_id(m);
         for i in range(0u, 50) {
             if m & 1 << i != 0 {
                 *sol.get_mut(i) = id;
