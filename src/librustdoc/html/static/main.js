@@ -653,4 +653,26 @@
     }
 
     window.initSearch = initSearch;
+
+    window.register_implementors = function(imp) {
+        var list = $('#implementors-list');
+        var libs = Object.getOwnPropertyNames(imp);
+        for (var i = 0; i < libs.length; i++) {
+            var structs = Object.getOwnPropertyNames(imp[libs[i]]);
+            for (var j = 0; j < structs.length; j++) {
+                console.log(i, structs[j]);
+                var path = rootPath + imp[libs[i]][structs[j]];
+                var klass = path.contains("type.") ? "type" : "struct";
+                var link = $('<a>').text(structs[j])
+                                   .attr('href', path)
+                                   .attr('class', klass);
+                var code = $('<code>').append(link);
+                var li = $('<li>').append(code);
+                list.append(li);
+            }
+        }
+    };
+    if (window.pending_implementors) {
+        window.register_implementors(window.pending_implementors);
+    }
 }());
