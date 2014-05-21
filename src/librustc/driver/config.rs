@@ -653,14 +653,9 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     let opt_level = {
         if debugging_opts != 0 {
             No
-        } else if (matches.opt_count("O") == 1) && (matches.opt_strs("O").len() == 0) {
-            // FIXME: This is hack to support -O defaulting to -O2 if it is the only -O or
-            // --opt-level arg. Consider removing -O or moving it to another flag. If this
-            // is done then change type of -O flag to optmulti.
-            Default
         } else if matches.opt_present("O") {
             match matches.opt_strs("O").last().as_ref().map(|s| s.as_slice()) {
-                None      |
+                None => Default, // This provides support for -O defaulting to -O2.
                 Some("0") => No,
                 Some("1") => Less,
                 Some("2") => Default,
