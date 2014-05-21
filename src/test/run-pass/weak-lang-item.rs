@@ -8,13 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![no_std]
+// aux-build:weak-lang-items.rs
 
-#[lang="fail_"]
-fn fail(_: *i8, _: *i8, _: uint) -> ! { loop {} }
+extern crate other = "weak-lang-items";
 
-#[lang = "stack_exhausted"]
-extern fn stack_exhausted() {}
+use std::task;
 
-#[lang = "eh_personality"]
-extern fn eh_personality() {}
+fn main() {
+    let _ = task::try(proc() {
+        other::foo()
+    });
+}

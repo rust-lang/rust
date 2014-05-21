@@ -60,10 +60,19 @@ fn fail_bounds_check(file: *u8, line: uint, index: uint, len: uint) -> ! {
 
 #[cold]
 pub fn begin_unwind(fmt: &fmt::Arguments, file: &'static str, line: uint) -> ! {
-    // FIXME: this should be a proper lang item, it should not just be some
-    //        undefined symbol sitting in the middle of nowhere.
     #[allow(ctypes)]
-    extern { fn rust_begin_unwind(fmt: &fmt::Arguments, file: &'static str,
-                                  line: uint) -> !; }
-    unsafe { rust_begin_unwind(fmt, file, line) }
+    #[cfg(stage0)]
+    extern {
+        #[link_name = "rust_begin_unwind"]
+        fn begin_unwind(fmt: &fmt::Arguments, file: &'static str,
+                        line: uint) -> !;
+    }
+    #[allow(ctypes)]
+    #[cfg(not(stage0))]
+    extern {
+        #[lang = "begin_unwind"]
+        fn begin_unwind(fmt: &fmt::Arguments, file: &'static str,
+                        line: uint) -> !;
+    }
+    unsafe { begin_unwind(fmt, file, line) }
 }

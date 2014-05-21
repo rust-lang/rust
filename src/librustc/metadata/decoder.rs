@@ -21,6 +21,7 @@ use metadata::cstore;
 use metadata::tydecode::{parse_ty_data, parse_def_id,
                          parse_type_param_def_data,
                          parse_bare_fn_ty_data, parse_trait_ref_data};
+use middle::lang_items;
 use middle::ty::{ImplContainer, TraitContainer};
 use middle::ty;
 use middle::typeck;
@@ -1297,5 +1298,19 @@ pub fn get_dylib_dependency_formats(cdata: Cmd)
             cstore::RequireStatic
         }));
     }
+    return result;
+}
+
+pub fn get_missing_lang_items(cdata: Cmd)
+    -> Vec<lang_items::LangItem>
+{
+    let items = reader::get_doc(reader::Doc(cdata.data()), tag_lang_items);
+    let mut result = Vec::new();
+    reader::tagged_docs(items, tag_lang_items_missing, |missing_doc| {
+        let item: lang_items::LangItem =
+            FromPrimitive::from_u32(reader::doc_as_u32(missing_doc)).unwrap();
+        result.push(item);
+        true
+    });
     return result;
 }

@@ -15,6 +15,7 @@
 use metadata::common::*;
 use metadata::cstore;
 use metadata::decoder;
+use middle::lang_items;
 use middle::ty;
 use middle::typeck;
 
@@ -297,4 +298,11 @@ pub fn get_dylib_dependency_formats(cstore: &cstore::CStore,
 {
     let cdata = cstore.get_crate_data(cnum);
     decoder::get_dylib_dependency_formats(&*cdata)
+}
+
+pub fn get_missing_lang_items(cstore: &cstore::CStore, cnum: ast::CrateNum)
+    -> Vec<lang_items::LangItem>
+{
+    let cdata = cstore.get_crate_data(cnum);
+    decoder::get_missing_lang_items(&*cdata)
 }
