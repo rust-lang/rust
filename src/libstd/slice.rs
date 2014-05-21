@@ -110,7 +110,7 @@ use option::{None, Option, Some};
 use ptr::RawPtr;
 use ptr;
 use rt::heap::{allocate, deallocate};
-use unstable::finally::try_finally;
+use finally::try_finally;
 use vec::Vec;
 
 pub use core::slice::{ref_slice, mut_ref_slice, Splits, Windows};
