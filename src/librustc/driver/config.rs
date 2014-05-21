@@ -70,7 +70,7 @@ pub struct Options {
     pub gc: bool,
     pub optimize: OptLevel,
     pub debuginfo: DebugInfoLevel,
-    pub lint_opts: Vec<(lint::Lint, lint::level)> ,
+    pub lint_opts: Vec<(lint::Lint, lint::Level)> ,
     pub output_types: Vec<back::link::OutputType> ,
     // This was mutable for rustpkg, which updates search paths based on the
     // parsed code. It remains mutable in case its replacements wants to use
@@ -580,8 +580,8 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     let no_trans = matches.opt_present("no-trans");
     let no_analysis = matches.opt_present("no-analysis");
 
-    let lint_levels = [lint::allow, lint::warn,
-                       lint::deny, lint::forbid];
+    let lint_levels = [lint::Allow, lint::Warn,
+                       lint::Deny, lint::Forbid];
     let mut lint_opts = Vec::new();
     let lint_dict = lint::get_lint_dict();
     for level in lint_levels.iter() {
