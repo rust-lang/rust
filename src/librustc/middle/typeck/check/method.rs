@@ -555,17 +555,13 @@ impl<'a> LookupContext<'a> {
                                            param_ty: param_ty) {
         debug!("push_inherent_candidates_from_param(param_ty={:?})",
                param_ty);
-        self.push_inherent_candidates_from_bounds(
-            rcvr_ty,
-            self.fcx
-                .inh
-                .param_env
-                .type_param_bounds
-                .get(param_ty.idx)
-                .trait_bounds
-                .as_slice(),
-            restrict_to,
-            param_numbered(param_ty.idx));
+        let i = param_ty.idx;
+        match self.fcx.inh.param_env.type_param_bounds.as_slice().get(i) {
+            Some(b) => self.push_inherent_candidates_from_bounds(
+                            rcvr_ty, b.trait_bounds.as_slice(), restrict_to,
+                            param_numbered(param_ty.idx)),
+            None => {}
+        }
     }
 
 
