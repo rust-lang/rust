@@ -14,6 +14,6 @@ pub fn main() {
     unsafe {
         let mut x: bool = false;
         // this line breaks it
-        mem::move_val_init(&mut x, false);
+        mem::overwrite(&mut x, false);
     }
 }

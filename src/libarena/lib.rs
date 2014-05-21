@@ -35,7 +35,6 @@ use std::cmp;
 use std::intrinsics::{TyDesc, get_tydesc};
 use std::intrinsics;
 use std::mem;
-use std::mem::min_align_of;
 use std::num;
 use std::ptr::read;
 use std::rc::Rc;
@@ -155,7 +154,7 @@ unsafe fn destroy_chunk(chunk: &Chunk) {
         }
 
         // Find where the next tydesc lives
-        idx = round_up(start + size, mem::pref_align_of::<*TyDesc>());
+        idx = round_up(start + size, mem::align_of::<*TyDesc>());
     }
 }
 
@@ -207,9 +206,10 @@ impl Arena {
     #[inline]
     fn alloc_copy<'a, T>(&'a mut self, op: || -> T) -> &'a T {
         unsafe {
-            let ptr = self.alloc_copy_inner(mem::size_of::<T>(), min_align_of::<T>());
+            let ptr = self.alloc_copy_inner(mem::size_of::<T>(),
+                                            mem::min_align_of::<T>());
             let ptr = ptr as *mut T;
-            mem::move_val_init(&mut (*ptr), op());
+            mem::overwrite(&mut (*ptr), op());
             return &*ptr;
         }
     }
@@ -239,7 +239,7 @@ impl Arena {
                 return self.alloc_noncopy_grow(n_bytes, align);
             }
 
-            self.head.fill.set(round_up(end, mem::pref_align_of::<*TyDesc>()));
+            self.head.fill.set(round_up(end, mem::align_of::<*TyDesc>()));
 
             //debug!("idx = {}, size = {}, align = {}, fill = {}",
             //       start, n_bytes, align, head.fill);
@@ -254,14 +254,15 @@ impl Arena {
         unsafe {
             let tydesc = get_tydesc::<T>();
             let (ty_ptr, ptr) =
-                self.alloc_noncopy_inner(mem::size_of::<T>(), min_align_of::<T>());
+                self.alloc_noncopy_inner(mem::size_of::<T>(),
+                                         mem::min_align_of::<T>());
             let ty_ptr = ty_ptr as *mut uint;
             let ptr = ptr as *mut T;
             // Write in our tydesc along with a bit indicating that it
             // has *not* been initialized yet.
             *ty_ptr = mem::transmute(tydesc);
             // Actually initialize it
-            mem::move_val_init(&mut(*ptr), op());
+            mem::overwrite(&mut(*ptr), op());
             // Now that we are done, update the tydesc to indicate that
             // the object is there.
             *ty_ptr = bitpack_tydesc_ptr(tydesc, true);
@@ -357,9 +358,10 @@ impl<T> TypedArenaChunk<T> {
         size = size.checked_add(&elems_size).unwrap();
 
         let mut chunk = unsafe {
-            let chunk = exchange_malloc(size, min_align_of::<TypedArenaChunk<T>>());
+            let chunk = exchange_malloc(size,
+                                        mem::min_align_of::<TypedArenaChunk<T>>());
             let mut chunk: Box<TypedArenaChunk<T>> = mem::transmute(chunk);
-            mem::move_val_init(&mut chunk.next, next);
+            mem::overwrite(&mut chunk.next, next);
             chunk
         };
 
@@ -396,7 +398,8 @@ impl<T> TypedArenaChunk<T> {
     fn start(&self) -> *u8 {
         let this: *TypedArenaChunk<T> = self;
         unsafe {
-            mem::transmute(round_up(this.offset(1) as uint, min_align_of::<T>()))
+            mem::transmute(round_up(this.offset(1) as uint,
+                                    mem::min_align_of::<T>()))
         }
     }
 
@@ -440,7 +443,7 @@ impl<T> TypedArena<T> {
             }
 
             let ptr: &'a mut T = mem::transmute(this.ptr);
-            mem::move_val_init(ptr, object);
+            mem::overwrite(ptr, object);
             this.ptr = this.ptr.offset(1);
             let ptr: &'a T = ptr;
             ptr

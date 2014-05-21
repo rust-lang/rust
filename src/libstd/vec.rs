@@ -117,7 +117,7 @@ impl<T> Vec<T> {
         unsafe {
             let mut xs = Vec::with_capacity(length);
             while xs.len < length {
-                mem::move_val_init(xs.as_mut_slice().unsafe_mut_ref(xs.len),
+                mem::overwrite(xs.as_mut_slice().unsafe_mut_ref(xs.len),
                                    op(xs.len));
                 xs.len += 1;
             }
@@ -214,7 +214,7 @@ impl<T: Clone> Vec<T> {
         unsafe {
             let mut xs = Vec::with_capacity(length);
             while xs.len < length {
-                mem::move_val_init(xs.as_mut_slice().unsafe_mut_ref(xs.len),
+                mem::overwrite(xs.as_mut_slice().unsafe_mut_ref(xs.len),
                                    value.clone());
                 xs.len += 1;
             }
@@ -325,7 +325,7 @@ impl<T:Clone> Clone for Vec<T> {
             let this_slice = self.as_slice();
             while vector.len < len {
                 unsafe {
-                    mem::move_val_init(
+                    mem::overwrite(
                         vector.as_mut_slice().unsafe_mut_ref(vector.len),
                         this_slice.unsafe_ref(vector.len).clone());
                 }
@@ -600,7 +600,7 @@ impl<T> Vec<T> {
 
         unsafe {
             let end = (self.ptr as *T).offset(self.len as int) as *mut T;
-            mem::move_val_init(&mut *end, value);
+            mem::overwrite(&mut *end, value);
             self.len += 1;
         }
     }
@@ -963,7 +963,7 @@ impl<T> Vec<T> {
                 ptr::copy_memory(p.offset(1), &*p, len - index);
                 // Write it in, overwriting the first copy of the `index`th
                 // element.
-                mem::move_val_init(&mut *p, element);
+                mem::overwrite(&mut *p, element);
             }
             self.set_len(len + 1);
         }
@@ -1542,8 +1542,10 @@ impl<T> FromVec<T> for ~[T] {
         unsafe {
             let ret = allocate(size, 8) as *mut RawVec<()>;
 
-            (*ret).fill = len * mem::nonzero_size_of::<T>();
-            (*ret).alloc = len * mem::nonzero_size_of::<T>();
+            let a_size = mem::size_of::<T>();
+            let a_size = if a_size == 0 {1} else {a_size};
+            (*ret).fill = len * a_size;
+            (*ret).alloc = len * a_size;
 
             ptr::copy_nonoverlapping_memory(&mut (*ret).data as *mut _ as *mut u8,
                                             vp as *u8, data_size);

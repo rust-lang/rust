@@ -216,9 +216,9 @@ impl<T: Send> Unique<T> {
             // we *need* valid pointer.
             assert!(!ptr.is_null());
             // `*ptr` is uninitialized, and `*ptr = value` would attempt to destroy it
-            // move_val_init moves a value into this memory without
+            // `overwrite` moves a value into this memory without
             // attempting to drop the original value.
-            mem::move_val_init(&mut *ptr, value);
+            mem::overwrite(&mut *ptr, value);
             Unique{ptr: ptr}
         }
     }
