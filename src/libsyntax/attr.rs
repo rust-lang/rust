@@ -15,7 +15,7 @@ use ast::{AttrId, Attribute, Attribute_, MetaItem, MetaWord, MetaNameValue, Meta
 use codemap::{Span, Spanned, spanned, dummy_spanned};
 use codemap::BytePos;
 use diagnostic::SpanHandler;
-use parse::comments::{doc_comment_style, strip_doc_comment_decoration};
+use parse::lexer::comments::{doc_comment_style, strip_doc_comment_decoration};
 use parse::token::InternedString;
 use parse::token;
 use crateid::CrateId;
