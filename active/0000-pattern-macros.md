@@ -49,6 +49,8 @@ This doesn't involve any language changes, but requires writing a complicated pr
 
 The `my_match!` approach is also not very composable.
 
+Another small drawback: `rustdoc` [can't document](https://github.com/kmcallister/rust/blob/af65e3e9824087a472de3fea3c7cb1efcec4550b/src/librustdoc/clean.rs#L1287-L1291) the name of a function argument which is produced by a pattern macro.
+
 # Unresolved questions
 
 None, as far as I know.
