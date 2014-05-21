@@ -302,11 +302,12 @@ pub fn parse_pretty(sess: &Session, name: &str) -> PpMode {
         (None, "typed")        => PpmTyped,
         (None, "expanded,identified") => PpmExpandedIdentified,
         (None, "identified")   => PpmIdentified,
-        (Some(s), "flowgraph") => {
-             match from_str(s) {
+        (arg, "flowgraph") => {
+             match arg.and_then(from_str) {
                  Some(id) => PpmFlowGraph(id),
-                 None => sess.fatal(format!("`pretty flowgraph=<nodeid>` needs \
-                                             an integer <nodeid>; got {}", s))
+                 None => sess.fatal(format_strbuf!("`pretty flowgraph=<nodeid>` needs \
+                                                     an integer <nodeid>; got {}",
+                                                   arg.unwrap_or("nothing")).as_slice())
              }
         }
         _ => {
