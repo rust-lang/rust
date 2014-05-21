@@ -122,6 +122,8 @@ pub struct CrateContext {
     pub uses_gc: bool,
     pub dbg_cx: Option<debuginfo::CrateDebugContext>,
 
+    pub eh_personality: RefCell<Option<ValueRef>>,
+
     intrinsics: RefCell<HashMap<&'static str, ValueRef>>,
 }
 
@@ -224,6 +226,7 @@ impl CrateContext {
                 builder: BuilderRef_res(llvm::LLVMCreateBuilderInContext(llcx)),
                 uses_gc: false,
                 dbg_cx: dbg_cx,
+                eh_personality: RefCell::new(None),
                 intrinsics: RefCell::new(HashMap::new()),
             };
 

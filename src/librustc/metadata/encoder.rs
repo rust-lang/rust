@@ -1518,6 +1518,10 @@ fn encode_lang_items(ecx: &EncodeContext, ebml_w: &mut Encoder) {
         }
     }
 
+    for i in ecx.tcx.lang_items.missing.iter() {
+        ebml_w.wr_tagged_u32(tag_lang_items_missing, *i as u32);
+    }
+
     ebml_w.end_tag();   // tag_lang_items
 }
 
