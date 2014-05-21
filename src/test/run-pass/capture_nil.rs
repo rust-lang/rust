@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags:-Z no-opt
+// compile-flags:-O0
 
 // This test has to be setup just so to trigger
 // the condition which was causing us a crash.
