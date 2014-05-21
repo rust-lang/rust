@@ -19,6 +19,8 @@ use parse::token;
 
 use std::fmt;
 use std::fmt::Show;
+use std::cell::RefCell;
+use std::local_data::Ref;
 use std::option::Option;
 use std::rc::Rc;
 use serialize::{Encodable, Decodable, Encoder, Decoder};
@@ -44,9 +46,52 @@ pub struct Ident {
     pub ctxt: SyntaxContext
 }
 
+pub static MACRO_CTXT: SyntaxContext = 0xffffffffu32;
+
+local_data_key!(key_macro_idents: RefCell<Vec<Mac>>)
+
+fn get_macro_idents() -> Ref<RefCell<Vec<Mac>>> {
+    match key_macro_idents.get() {
+        Some(x) => x,
+        None => {
+            let x = RefCell::new(Vec::new());
+            key_macro_idents.replace(Some(x));
+            get_macro_idents()
+        }
+    }
+}
+
+pub fn clear_macro_idents() {
+    key_macro_idents.replace(None);
+}
+
 impl Ident {
     /// Construct an identifier with the given name and an empty context:
     pub fn new(name: Name) -> Ident { Ident {name: name, ctxt: EMPTY_CTXT}}
+
+    pub fn new_macro_ident(a: Mac) -> Ident {
+        let r = get_macro_idents();
+        let mut macro_idents = r.borrow_mut();
+        macro_idents.push(a);
+        let idx: Name = macro_idents.len() as u32 - 1;
+        Ident {name: idx, ctxt: MACRO_CTXT}
+    }
+
+    pub fn get_macro_ident(&self) -> Option<Mac> {
+        match self.ctxt {
+            MACRO_CTXT => {
+                let r = get_macro_idents();
+                let mut macro_idents = r.borrow_mut();
+                let i = self.name as uint;
+                if i < macro_idents.len() {
+                    Some(macro_idents.get(i).clone())
+                } else {
+                    None
+                }
+            },
+            _ => None
+        }
+    }
 }
 
 impl Eq for Ident {

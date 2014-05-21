@@ -229,7 +229,7 @@ fn expand_loop_block(loop_block: P<Block>,
             // and be renamed incorrectly.
             let mut rename_list = vec!(rename);
             let mut rename_fld = renames_to_fold(&mut rename_list);
-            let renamed_ident = rename_fld.fold_ident(label);
+            let renamed_ident = fold_ident_or_macro(label, &mut rename_fld);
 
             // The rename *must* be added to the enclosed syntax context for
             // `break` or `continue` to pick up because by definition they are
@@ -361,6 +361,57 @@ fn expand_item_modifiers(mut it: @ast::Item, fld: &mut MacroExpander)
 // does this attribute list contain "macro_escape" ?
 pub fn contains_macro_escape(attrs: &[ast::Attribute]) -> bool {
     attr::contains_name(attrs, "macro_escape")
+}
+
+fn expand_ident(ident: Ident, fld: &mut MacroExpander) -> Ident {
+    match ident.get_macro_ident() {
+        None => ident,
+        Some(mac) => {
+            let MacInvocTT(ref pth, ref tts, _) = mac.node;
+            let extname = pth.segments.get(0).identifier;
+            let extnamestr = token::get_ident(extname);
+            match fld.extsbox.find(&extname.name) {
+                None => {
+                    fld.cx.span_err(pth.span, format!("macro undefined: '{}'", extnamestr));
+                    parse::token::special_idents::invalid
+                }
+
+                Some(&NormalTT(ref expandfun, exp_span)) => {
+                    fld.cx.bt_push(ExpnInfo {
+                        call_site: mac.span,
+                        callee: NameAndSpan {
+                            name: extnamestr.get().to_strbuf(),
+                            format: MacroBang,
+                            span: exp_span,
+                        }
+                    });
+                    let fm = fresh_mark();
+                    // mark before expansion:
+                    let marked_tts = mark_tts(tts.as_slice(), fm);
+
+                    // TODO: Read expand_expr to see whether we want
+                    // original_span(fld.cx) or mac.span
+                    let mac_span = original_span(fld.cx);
+
+                    match expandfun.expand(fld.cx,
+                                           mac_span.call_site,
+                                           marked_tts.as_slice()).make_ident() {
+                        Some(ident) => ident,
+                        None => {
+                            fld.cx.span_err(pth.span,
+                                            format!("non-ident macro in ident pos: {}",
+                                                    extnamestr));
+                            parse::token::special_idents::invalid
+                        }
+                    }
+                }
+                _ => {
+                    debug!("FIXME");
+                    parse::token::special_idents::invalid
+                }
+            }
+        }
+    }
 }
 
 // Support for item-position macro invocations, exactly the same
@@ -815,12 +866,17 @@ pub struct IdentRenamer<'a> {
 
 impl<'a> Folder for IdentRenamer<'a> {
     fn fold_ident(&mut self, id: Ident) -> Ident {
-        let new_ctxt = self.renames.iter().fold(id.ctxt, |ctxt, &(from, to)| {
-            mtwt::new_rename(from, to, ctxt)
-        });
-        Ident {
-            name: id.name,
-            ctxt: new_ctxt,
+        match id.get_macro_ident() {
+            Some(_mac) => id,
+            None => {
+                let new_ctxt = self.renames.iter().fold(id.ctxt, |ctxt, &(from, to)| {
+                    mtwt::new_rename(from, to, ctxt)
+                });
+                Ident {
+                    name: id.name,
+                    ctxt: new_ctxt,
+                }
+            }
         }
     }
 }
@@ -850,6 +906,10 @@ pub struct MacroExpander<'a, 'b> {
 impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
     fn fold_expr(&mut self, expr: @ast::Expr) -> @ast::Expr {
         expand_expr(expr, self)
+    }
+
+    fn fold_ident(&mut self, ident: ast::Ident) -> ast::Ident {
+        expand_ident(ident, self)
     }
 
     fn fold_item(&mut self, item: @ast::Item) -> SmallVector<@ast::Item> {
@@ -906,9 +966,13 @@ struct Marker { mark: Mrk }
 
 impl Folder for Marker {
     fn fold_ident(&mut self, id: Ident) -> Ident {
-        ast::Ident {
-            name: id.name,
-            ctxt: mtwt::new_mark(self.mark, id.ctxt)
+        match id.get_macro_ident() {
+            Some(_mac) => id,
+            None =>
+                ast::Ident {
+                    name: id.name,
+                    ctxt: mtwt::new_mark(self.mark, id.ctxt)
+                }
         }
     }
     fn fold_mac(&mut self, m: &ast::Mac) -> ast::Mac {
