@@ -24,32 +24,10 @@
 //! * `TotalEq`
 //! * `Default`
 //!
-//! A `to_bit` conversion function.
 
-use num::{Int, one, zero};
-
-#[cfg(not(test))] use cmp::{Eq, Ord, TotalOrd, Ordering, TotalEq};
+#[cfg(not(test))] use cmp::{Eq, Ord, TotalOrd, Ordering, TotalEq, Less, Equal, Greater};
 #[cfg(not(test))] use ops::{Not};
 #[cfg(not(test))] use default::Default;
-
-/////////////////////////////////////////////////////////////////////////////
-// Freestanding functions
-/////////////////////////////////////////////////////////////////////////////
-
-/// Convert a `bool` to an integer.
-///
-/// # Examples
-///
-/// ```rust
-/// use std::bool;
-///
-/// assert_eq!(bool::to_bit::<u8>(true), 1u8);
-/// assert_eq!(bool::to_bit::<u8>(false), 0u8);
-/// ```
-#[inline]
-pub fn to_bit<N: Int>(p: bool) -> N {
-    if p { one() } else { zero() }
-}
 
 /////////////////////////////////////////////////////////////////////////////
 // Trait impls on `bool`
@@ -73,7 +51,7 @@ impl Not<bool> for bool {
 impl Ord for bool {
     #[inline]
     fn lt(&self, other: &bool) -> bool {
-        to_bit::<u8>(*self) < to_bit(*other)
+        *self == false && *other != false
     }
 }
 
@@ -81,7 +59,13 @@ impl Ord for bool {
 impl TotalOrd for bool {
     #[inline]
     fn cmp(&self, other: &bool) -> Ordering {
-        to_bit::<u8>(*self).cmp(&to_bit(*other))
+        if *self == *other {
+            Equal
+        } else if *self == false {
+            Less
+        } else {
+            Greater
+        }
     }
 }
 
@@ -114,13 +98,6 @@ impl Default for bool {
 #[cfg(test)]
 mod tests {
     use realstd::prelude::*;
-    use super::to_bit;
-
-    #[test]
-    fn test_to_bit() {
-        assert_eq!(to_bit::<u8>(true), 1u8);
-        assert_eq!(to_bit::<u8>(false), 0u8);
-    }
 
     #[test]
     fn test_eq() {
