@@ -12,7 +12,7 @@
 // closely. The idea is that all reachable symbols are live, codes called
 // from live codes are live, and everything else is dead.
 
-use middle::lint::{allow, contains_lint, DeadCode};
+use middle::lint::{Allow, contains_lint, DeadCode};
 use middle::privacy;
 use middle::ty;
 use middle::typeck;
@@ -195,7 +195,7 @@ impl<'a> Visitor<()> for MarkSymbolVisitor<'a> {
 }
 
 fn has_allow_dead_code_or_lang_attr(attrs: &[ast::Attribute]) -> bool {
-    contains_lint(attrs, allow, DEAD_CODE_LINT_STR)
+    contains_lint(attrs, Allow, DEAD_CODE_LINT_STR)
     || attr::contains_name(attrs.as_slice(), "lang")
 }
 

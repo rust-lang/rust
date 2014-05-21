@@ -388,8 +388,8 @@ impl Map {
         f(attrs)
     }
 
-    pub fn span(&self, id: NodeId) -> Span {
-        match self.find(id) {
+    pub fn opt_span(&self, id: NodeId) -> Option<Span> {
+        let sp = match self.find(id) {
             Some(NodeItem(item)) => item.span,
             Some(NodeForeignItem(foreign_item)) => foreign_item.span,
             Some(NodeTraitMethod(trait_method)) => {
@@ -406,8 +406,14 @@ impl Map {
             Some(NodePat(pat)) => pat.span,
             Some(NodeBlock(block)) => block.span,
             Some(NodeStructCtor(_)) => self.expect_item(self.get_parent(id)).span,
-            _ => fail!("node_span: could not find span for id {}", id),
-        }
+            _ => return None,
+        };
+        Some(sp)
+    }
+
+    pub fn span(&self, id: NodeId) -> Span {
+        self.opt_span(id)
+            .unwrap_or_else(|| fail!("AstMap.span: could not find span for id {}", id))
     }
 
     pub fn node_to_str(&self, id: NodeId) -> StrBuf {

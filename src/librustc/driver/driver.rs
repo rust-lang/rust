@@ -226,7 +226,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
     krate = time(time_passes, "prelude injection", krate, |krate|
                  front::std_inject::maybe_inject_prelude(sess, krate));
 
-    let (krate, map) = time(time_passes, "assinging node ids and indexing ast", krate, |krate|
+    let (krate, map) = time(time_passes, "assigning node ids and indexing ast", krate, |krate|
          front::assign_node_ids_and_map::assign_node_ids_and_map(sess, krate));
 
     if sess.opts.debugging_opts & config::AST_JSON != 0 {
@@ -653,11 +653,22 @@ pub fn pretty_print_input(sess: Session,
         PpmFlowGraph(nodeid) => {
             let ast_map = ast_map.expect("--pretty flowgraph missing ast_map");
             let node = ast_map.find(nodeid).unwrap_or_else(|| {
-                fail!("--pretty flowgraph=id couldn't find id: {}", id)
+                sess.fatal(format_strbuf!("--pretty flowgraph couldn't find id: {}",
+                                          nodeid).as_slice())
             });
             let block = match node {
                 syntax::ast_map::NodeBlock(block) => block,
-                _ => fail!("--pretty=flowgraph needs block, got {:?}", node)
+                _ => {
+                    let message = format_strbuf!("--pretty=flowgraph needs block, got {:?}",
+                                                 node);
+
+                    // point to what was found, if there's an
+                    // accessible span.
+                    match ast_map.opt_span(nodeid) {
+                        Some(sp) => sess.span_fatal(sp, message.as_slice()),
+                        None => sess.fatal(message.as_slice())
+                    }
+                }
             };
             let analysis = phase_3_run_analysis_passes(sess, &krate, ast_map);
             print_flowgraph(analysis, block, out)
@@ -846,4 +857,3 @@ pub fn build_output_filenames(input: &Input,
         }
     }
 }
-
