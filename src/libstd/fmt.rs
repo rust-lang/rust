@@ -196,10 +196,10 @@ struct Vector2D {
 
 impl fmt::Show for Vector2D {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        // The `f` value implements the `Writer` trait, which is what the
+        // The `f.buf` value implements the `Writer` trait, which is what the
         // write! macro is expecting. Note that this formatting ignores the
         // various flags provided to format strings.
-        write!(f, "({}, {})", self.x, self.y)
+        write!(f.buf, "({}, {})", self.x, self.y)
     }
 }
 
