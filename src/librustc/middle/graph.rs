@@ -55,7 +55,7 @@ pub struct Edge<E> {
     pub data: E,
 }
 
-#[deriving(PartialEq, Show)]
+#[deriving(Clone, PartialEq, Show)]
 pub struct NodeIndex(pub uint);
 pub static InvalidNodeIndex: NodeIndex = NodeIndex(uint::MAX);
 

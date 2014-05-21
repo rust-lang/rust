@@ -12,7 +12,9 @@
 
 #![allow(non_camel_case_types)]
 
+use middle::cfg;
 use middle::dataflow::DataFlowContext;
+use middle::dataflow::BitwiseOperator;
 use middle::dataflow::DataFlowOperator;
 use middle::def;
 use euv = middle::expr_use_visitor;
@@ -126,8 +128,13 @@ fn borrowck_fn(this: &mut BorrowckCtxt,
     let id_range = ast_util::compute_id_range_for_fn_body(fk, decl, body, sp, id);
     let (all_loans, move_data) =
         gather_loans::gather_loans_in_fn(this, decl, body);
+    let cfg = cfg::CFG::new(this.tcx, body);
+
     let mut loan_dfcx =
         DataFlowContext::new(this.tcx,
+                             "borrowck",
+                             Some(decl),
+                             &cfg,
                              LoanDataFlowOperator,
                              id_range,
                              all_loans.len());
@@ -135,11 +142,14 @@ fn borrowck_fn(this: &mut BorrowckCtxt,
         loan_dfcx.add_gen(loan.gen_scope, loan_idx);
         loan_dfcx.add_kill(loan.kill_scope, loan_idx);
     }
-    loan_dfcx.propagate(body);
+    loan_dfcx.add_kills_from_flow_exits(&cfg);
+    loan_dfcx.propagate(&cfg, body);
 
     let flowed_moves = move_data::FlowedMoveData::new(move_data,
                                                       this.tcx,
+                                                      &cfg,
                                                       id_range,
+                                                      decl,
                                                       body);
 
     check_loans::check_loans(this, &loan_dfcx, flowed_moves,
@@ -753,15 +763,17 @@ fn is_statement_scope(tcx: &ty::ctxt, region: ty::Region) -> bool {
      }
 }
 
+impl BitwiseOperator for LoanDataFlowOperator {
+    #[inline]
+    fn join(&self, succ: uint, pred: uint) -> uint {
+        succ | pred // loans from both preds are in scope
+    }
+}
+
 impl DataFlowOperator for LoanDataFlowOperator {
     #[inline]
     fn initial_value(&self) -> bool {
         false // no loans in scope by default
-    }
-
-    #[inline]
-    fn join(&self, succ: uint, pred: uint) -> uint {
-        succ | pred // loans from both preds are in scope
     }
 }
 
