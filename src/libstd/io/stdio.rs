@@ -290,6 +290,16 @@ pub struct StdReader {
     inner: StdSource
 }
 
+impl StdReader {
+    /// Returns whether this stream is attached to a TTY instance or not.
+    pub fn isatty(&self) -> bool {
+        match self.inner {
+            TTY(..) => true,
+            File(..) => false,
+        }
+    }
+}
+
 impl Reader for StdReader {
     fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
         let ret = match self.inner {
