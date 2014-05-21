@@ -247,6 +247,7 @@ fn is_useful(cx: &MatchCheckCtxt, m: &matrix, v: &[@Pat]) -> useful {
                 _ => *r.get(0)
             }
         }
+        None if v.len() == 0 => return not_useful,
         None => v[0]
     };
     let left_ty = if real_pat.id == 0 { ty::mk_nil() }
