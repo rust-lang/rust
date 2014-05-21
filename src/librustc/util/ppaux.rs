@@ -145,7 +145,7 @@ pub fn explain_region_and_span(cx: &ctxt, region: ty::Region)
 }
 
 pub fn bound_region_ptr_to_str(cx: &ctxt, br: BoundRegion) -> StrBuf {
-    bound_region_to_str(cx, "&", true, br)
+    bound_region_to_str(cx, "", false, br)
 }
 
 pub fn bound_region_to_str(cx: &ctxt,
