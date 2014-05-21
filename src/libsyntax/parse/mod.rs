@@ -25,7 +25,6 @@ use std::str;
 pub mod lexer;
 pub mod parser;
 pub mod token;
-pub mod comments;
 pub mod attr;
 
 pub mod common;
@@ -255,7 +254,7 @@ pub fn filemap_to_tts(sess: &ParseSess, filemap: Rc<FileMap>)
     // it appears to me that the cfg doesn't matter here... indeed,
     // parsing tt's probably shouldn't require a parser at all.
     let cfg = Vec::new();
-    let srdr = lexer::new_string_reader(&sess.span_diagnostic, filemap);
+    let srdr = lexer::StringReader::new(&sess.span_diagnostic, filemap);
     let mut p1 = Parser::new(sess, cfg, box srdr);
     p1.parse_all_token_trees()
 }

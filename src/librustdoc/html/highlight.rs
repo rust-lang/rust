@@ -34,7 +34,7 @@ pub fn highlight(src: &str, class: Option<&str>) -> String {
 
     let mut out = io::MemWriter::new();
     doit(&sess,
-         lexer::new_string_reader(&sess.span_diagnostic, fm),
+         lexer::StringReader::new(&sess.span_diagnostic, fm),
          class,
          &mut out).unwrap();
     str::from_utf8_lossy(out.unwrap().as_slice()).to_string()

@@ -166,7 +166,7 @@ pub fn to_str(t: &Token) -> String {
       ANDAND => "&&".to_string(),
       BINOP(op) => binop_to_str(op).to_string(),
       BINOPEQ(op) => {
-          let mut s = binop_to_str(op).to_strbuf();
+          let mut s = binop_to_str(op).to_string();
           s.push_str("=");
           s
       }
