@@ -89,7 +89,7 @@ pub fn connect_timeout(fd: net::sock_t,
         // to use select() with a timeout.
         -1 if os::errno() as int == INPROGRESS as int ||
               os::errno() as int == WOULDBLOCK as int => {
-            let mut set: c::fd_set = unsafe { mem::init() };
+            let mut set: c::fd_set = unsafe { mem::zeroed() };
             c::fd_set(&mut set, fd);
             match await(fd, &mut set, timeout_ms) {
                 0 => Err(timeout("connection timed out")),
@@ -137,13 +137,13 @@ pub fn connect_timeout(fd: net::sock_t,
 
 pub fn await(fd: net::sock_t, deadline: Option<u64>,
              status: SocketStatus) -> IoResult<()> {
-    let mut set: c::fd_set = unsafe { mem::init() };
+    let mut set: c::fd_set = unsafe { mem::zeroed() };
     c::fd_set(&mut set, fd);
     let (read, write) = match status {
         Readable => (&set as *_, ptr::null()),
         Writable => (ptr::null(), &set as *_),
     };
-    let mut tv: libc::timeval = unsafe { mem::init() };
+    let mut tv: libc::timeval = unsafe { mem::zeroed() };
 
     match retry(|| {
         let now = ::io::timer::now();

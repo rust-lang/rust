@@ -87,17 +87,17 @@ pub enum Req {
 // returns the current time (in milliseconds)
 pub fn now() -> u64 {
     unsafe {
-        let mut now: libc::timeval = mem::init();
+        let mut now: libc::timeval = mem::zeroed();
         assert_eq!(c::gettimeofday(&mut now, ptr::null()), 0);
         return (now.tv_sec as u64) * 1000 + (now.tv_usec as u64) / 1000;
     }
 }
 
 fn helper(input: libc::c_int, messages: Receiver<Req>, _: ()) {
-    let mut set: c::fd_set = unsafe { mem::init() };
+    let mut set: c::fd_set = unsafe { mem::zeroed() };
 
     let mut fd = FileDesc::new(input, true);
-    let mut timeout: libc::timeval = unsafe { mem::init() };
+    let mut timeout: libc::timeval = unsafe { mem::zeroed() };
 
     // active timers are those which are able to be selected upon (and it's a
     // sorted list, and dead timers are those which have expired, but ownership
