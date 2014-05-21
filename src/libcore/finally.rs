@@ -20,7 +20,7 @@ also be used. See that function for more details.
 # Example
 
 ```
-use std::unstable::finally::Finally;
+use std::finally::Finally;
 
 (|| {
     // ...
@@ -75,7 +75,7 @@ impl<T> Finally<T> for fn() -> T {
  * # Example
  *
  * ```
- * use std::unstable::finally::try_finally;
+ * use std::finally::try_finally;
  *
  * struct State<'a> { buffer: &'a mut [u8], len: uint }
  * # let mut buf = [];

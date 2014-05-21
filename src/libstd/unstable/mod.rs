@@ -10,8 +10,6 @@
 
 #![doc(hidden)]
 
-pub use core::finally;
-
 pub mod dynamic_lib;
 
 pub mod sync;

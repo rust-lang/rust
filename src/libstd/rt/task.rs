@@ -36,7 +36,7 @@ use rt::unwind::Unwinder;
 use str::SendStr;
 use sync::atomics::{AtomicUint, SeqCst};
 use task::{TaskResult, TaskOpts};
-use unstable::finally::Finally;
+use finally::Finally;
 
 /// The Task struct represents all state associated with a rust
 /// task. There are at this point two primary "subtypes" of task,

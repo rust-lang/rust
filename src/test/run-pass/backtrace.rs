@@ -15,7 +15,7 @@ extern crate native;
 
 use std::os;
 use std::io::process::Command;
-use std::unstable::finally::Finally;
+use std::finally::Finally;
 use std::str;
 
 #[start]
