@@ -327,7 +327,7 @@ pub fn check_crate(sess: &Session, krate: &ast::Crate) {
     };
 
     for attr in krate.attrs.iter() {
-        if !attr.name().equiv(&("feature")) {
+        if !attr.check_name("feature") {
             continue
         }
 

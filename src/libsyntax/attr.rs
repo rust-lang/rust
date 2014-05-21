@@ -35,9 +35,9 @@ pub fn is_used(attr: &Attribute) -> bool {
 }
 
 pub trait AttrMetaMethods {
-    // This could be changed to `fn check_name(&self, name: InternedString) ->
-    // bool` which would facilitate a side table recording which
-    // attributes/meta items are used/unused.
+    fn check_name(&self, name: &str) -> bool {
+        name == self.name().get()
+    }
 
     /// Retrieve the name of the meta item, e.g. foo in #[foo],
     /// #[foo="bar"] and #[foo(bar)]
@@ -59,6 +59,14 @@ pub trait AttrMetaMethods {
 }
 
 impl AttrMetaMethods for Attribute {
+    fn check_name(&self, name: &str) -> bool {
+        if name == self.name().get() {
+            mark_used(self);
+            true
+        } else {
+            false
+        }
+    }
     fn name(&self) -> InternedString { self.meta().name() }
     fn value_str(&self) -> Option<InternedString> {
         self.meta().value_str()

@@ -474,7 +474,7 @@ pub fn expand_view_item(vi: &ast::ViewItem,
     match vi.node {
         ast::ViewItemExternCrate(..) => {
             let should_load = vi.attrs.iter().any(|attr| {
-                attr.name().get() == "phase" &&
+                attr.check_name("phase") &&
                     attr.meta_item_list().map_or(false, |phases| {
                         attr::contains_name(phases, "syntax")
                     })

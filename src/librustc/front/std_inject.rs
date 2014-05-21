@@ -115,6 +115,8 @@ impl<'a> fold::Folder for StandardLibraryInjector<'a> {
                                   InternedString::new("feature"),
                                   vec![attr::mk_word_item(InternedString::new("phase"))],
                               ));
+        // std_inject runs after feature checking so manually mark this attr
+        attr::mark_used(&feat_phase_attr);
         krate.attrs.push(feat_phase_attr);
 
         krate
@@ -141,6 +143,8 @@ impl<'a> fold::Folder for PreludeInjector<'a> {
 
         let no_std_attr = attr::mk_attr_inner(attr::mk_attr_id(),
                                               attr::mk_word_item(InternedString::new("no_std")));
+        // std_inject runs after feature checking so manually mark this attr
+        attr::mark_used(&no_std_attr);
         krate.attrs.push(no_std_attr);
 
         if !no_prelude(krate.attrs.as_slice()) {
@@ -154,6 +158,8 @@ impl<'a> fold::Folder for PreludeInjector<'a> {
                 vec!(
                     attr::mk_word_item(InternedString::new("globs")),
                 )));
+            // std_inject runs after feature checking so manually mark this attr
+            attr::mark_used(&globs_attr);
             krate.attrs.push(globs_attr);
 
             krate.module = self.fold_mod(&krate.module);
