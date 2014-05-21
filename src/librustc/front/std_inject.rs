@@ -22,6 +22,8 @@ use syntax::parse::token::InternedString;
 use syntax::parse::token;
 use syntax::util::small_vector::SmallVector;
 
+use std::mem;
+
 pub static VERSION: &'static str = "0.11.0-pre";
 
 pub fn maybe_inject_crates_ref(sess: &Session, krate: ast::Crate)
@@ -70,13 +72,13 @@ pub fn with_version(krate: &str) -> Option<(InternedString, ast::StrStyle)> {
 }
 
 impl<'a> fold::Folder for StandardLibraryInjector<'a> {
-    fn fold_crate(&mut self, krate: ast::Crate) -> ast::Crate {
+    fn fold_crate(&mut self, mut krate: ast::Crate) -> ast::Crate {
         let mut vis = vec!(ast::ViewItem {
             node: ast::ViewItemExternCrate(token::str_to_ident("std"),
                                          with_version("std"),
                                          ast::DUMMY_NODE_ID),
             attrs: vec!(
-                attr::mk_attr(attr::mk_list_item(
+                attr::mk_attr_outer(attr::mk_list_item(
                         InternedString::new("phase"),
                         vec!(
                             attr::mk_word_item(InternedString::new("syntax")),
@@ -101,16 +103,20 @@ impl<'a> fold::Folder for StandardLibraryInjector<'a> {
         }
 
         // `extern crate` must be precede `use` items
-        vis.push_all_move(krate.module.view_items.clone());
-        let new_module = ast::Mod {
-            view_items: vis,
-            ..krate.module.clone()
-        };
+        mem::swap(&mut vis, &mut krate.module.view_items);
+        krate.module.view_items.push_all_move(vis);
 
-        ast::Crate {
-            module: new_module,
-            ..krate
-        }
+        // don't add #![no_std] here, that will block the prelude injection later.
+        // Add it during the prelude injection instead.
+
+        // Add #![feature(phase)] here, because we use #[phase] on extern crate std.
+        let feat_phase_attr = attr::mk_attr_inner(attr::mk_list_item(
+                                  InternedString::new("feature"),
+                                  vec![attr::mk_word_item(InternedString::new("phase"))],
+                              ));
+        krate.attrs.push(feat_phase_attr);
+
+        krate
     }
 }
 
@@ -127,29 +133,29 @@ struct PreludeInjector<'a> {
 
 
 impl<'a> fold::Folder for PreludeInjector<'a> {
-    fn fold_crate(&mut self, krate: ast::Crate) -> ast::Crate {
+    fn fold_crate(&mut self, mut krate: ast::Crate) -> ast::Crate {
+        // Add #![no_std] here, so we don't re-inject when compiling pretty-printed source.
+        // This must happen here and not in StandardLibraryInjector because this
+        // fold happens second.
+
+        let no_std_attr = attr::mk_attr_inner(attr::mk_word_item(InternedString::new("no_std")));
+        krate.attrs.push(no_std_attr);
+
         if !no_prelude(krate.attrs.as_slice()) {
             // only add `use std::prelude::*;` if there wasn't a
             // `#![no_implicit_prelude]` at the crate level.
 
-            let mut attrs = krate.attrs.clone();
-
             // fold_mod() will insert glob path.
-            let globs_attr = attr::mk_attr(attr::mk_list_item(
+            let globs_attr = attr::mk_attr_inner(attr::mk_list_item(
                 InternedString::new("feature"),
                 vec!(
                     attr::mk_word_item(InternedString::new("globs")),
                 )));
-            attrs.push(globs_attr);
+            krate.attrs.push(globs_attr);
 
-            ast::Crate {
-                module: self.fold_mod(&krate.module),
-                attrs: attrs,
-                ..krate
-            }
-        } else {
-            krate
+            krate.module = self.fold_mod(&krate.module);
         }
+        krate
     }
 
     fn fold_item(&mut self, item: @ast::Item) -> SmallVector<@ast::Item> {
