@@ -53,16 +53,17 @@ use alloc::arc::Arc;
 use clone::Clone;
 use iter::{range, Iterator};
 use kinds::Send;
+use kinds::marker;
 use mem::{forget, min_align_of, size_of, transmute};
 use ops::Drop;
 use option::{Option, Some, None};
 use owned::Box;
 use ptr::RawPtr;
 use ptr;
+use rt::heap::{allocate, deallocate};
 use slice::ImmutableVector;
 use sync::atomics::{AtomicInt, AtomicPtr, SeqCst};
 use unstable::sync::Exclusive;
-use rt::heap::{allocate, deallocate};
 use vec::Vec;
 
 // Once the queue is less than 1/K full, then it will be downsized. Note that
@@ -89,6 +90,7 @@ struct Deque<T> {
 /// There may only be one worker per deque.
 pub struct Worker<T> {
     deque: Arc<Deque<T>>,
+    noshare: marker::NoShare,
 }
 
 /// The stealing half of the work-stealing deque. Stealers have access to the
@@ -96,6 +98,7 @@ pub struct Worker<T> {
 /// `steal` method.
 pub struct Stealer<T> {
     deque: Arc<Deque<T>>,
+    noshare: marker::NoShare,
 }
 
 /// When stealing some data, this is an enumeration of the possible outcomes.
@@ -153,7 +156,8 @@ impl<T: Send> BufferPool<T> {
     pub fn deque(&self) -> (Worker<T>, Stealer<T>) {
         let a = Arc::new(Deque::new(self.clone()));
         let b = a.clone();
-        (Worker { deque: a }, Stealer { deque: b })
+        (Worker { deque: a, noshare: marker::NoShare },
+         Stealer { deque: b, noshare: marker::NoShare })
     }
 
     fn alloc(&self, bits: int) -> Box<Buffer<T>> {
@@ -219,7 +223,9 @@ impl<T: Send> Stealer<T> {
 }
 
 impl<T: Send> Clone for Stealer<T> {
-    fn clone(&self) -> Stealer<T> { Stealer { deque: self.deque.clone() } }
+    fn clone(&self) -> Stealer<T> {
+        Stealer { deque: self.deque.clone(), noshare: marker::NoShare }
+    }
 }
 
 // Almost all of this code can be found directly in the paper so I'm not

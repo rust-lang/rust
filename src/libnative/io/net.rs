@@ -326,7 +326,7 @@ impl TcpStream {
     fn lock_nonblocking<'a>(&'a self) -> Guard<'a> {
         let ret = Guard {
             fd: self.fd(),
-            guard: unsafe { (*self.inner.get()).lock.lock() },
+            guard: unsafe { self.inner.lock.lock() },
         };
         assert!(util::set_nonblocking(self.fd(), true).is_ok());
         ret
@@ -597,7 +597,7 @@ impl UdpSocket {
     fn lock_nonblocking<'a>(&'a self) -> Guard<'a> {
         let ret = Guard {
             fd: self.fd(),
-            guard: unsafe { (*self.inner.get()).lock.lock() },
+            guard: unsafe { self.inner.lock.lock() },
         };
         assert!(util::set_nonblocking(self.fd(), true).is_ok());
         ret
