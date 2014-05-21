@@ -266,35 +266,37 @@ pub trait Rng {
                                                              0123456789");
         let mut s = StrBuf::with_capacity(len);
         for _ in range(0, len) {
-            s.push_char(self.choose(GEN_ASCII_STR_CHARSET) as char)
+            s.push_char(*self.choose(GEN_ASCII_STR_CHARSET).unwrap() as char)
         }
         s
     }
 
-    /// Choose an item randomly, failing if `values` is empty.
-    fn choose<T: Clone>(&mut self, values: &[T]) -> T {
-        self.choose_option(values).expect("Rng.choose: `values` is empty").clone()
-    }
-
-    /// Choose `Some(&item)` randomly, returning `None` if values is
-    /// empty.
+    /// Return a random element from `values`.
+    ///
+    /// Return `None` if `values` is empty.
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```
     /// use rand::{task_rng, Rng};
     ///
     /// let choices = [1, 2, 4, 8, 16, 32];
     /// let mut rng = task_rng();
-    /// println!("{:?}", rng.choose_option(choices));
-    /// println!("{:?}", rng.choose_option(choices.slice_to(0)));
+    /// println!("{}", rng.choose(choices));
+    /// assert_eq!(rng.choose(choices.slice_to(0)), None);
     /// ```
-    fn choose_option<'a, T>(&mut self, values: &'a [T]) -> Option<&'a T> {
+    fn choose<'a, T>(&mut self, values: &'a [T]) -> Option<&'a T> {
         if values.is_empty() {
             None
         } else {
             Some(&values[self.gen_range(0u, values.len())])
         }
+    }
+
+    /// Deprecated name for `choose()`.
+    #[deprecated = "replaced by .choose()"]
+    fn choose_option<'a, T>(&mut self, values: &'a [T]) -> Option<&'a T> {
+        self.choose(values)
     }
 
     /// Shuffle a mutable slice in place.
@@ -793,18 +795,10 @@ mod test {
     #[test]
     fn test_choose() {
         let mut r = task_rng();
-        assert_eq!(r.choose([1, 1, 1]), 1);
-    }
+        assert_eq!(r.choose([1, 1, 1]).map(|&x|x), Some(1));
 
-    #[test]
-    fn test_choose_option() {
-        let mut r = task_rng();
         let v: &[int] = &[];
-        assert!(r.choose_option(v).is_none());
-
-        let i = 1;
-        let v = [1,1,1];
-        assert_eq!(r.choose_option(v), Some(&i));
+        assert_eq!(r.choose(v), None);
     }
 
     #[test]

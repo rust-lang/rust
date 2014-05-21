@@ -125,7 +125,7 @@ mod tests {
         for _ in range(0, 20) {
             let mut input = vec![];
             for _ in range(0, 2000) {
-                input.push_all(r.choose(words.as_slice()).as_slice());
+                input.push_all(r.choose(words.as_slice()).unwrap().as_slice());
             }
             debug!("de/inflate of {} bytes of random word-sequences",
                    input.len());
