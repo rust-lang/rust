@@ -72,7 +72,7 @@ fn get_ast_and_resolve(cpath: &Path, libs: HashSet<Path>, cfgs: Vec<StrBuf>)
         maybe_sysroot: Some(os::self_exe_path().unwrap().dir_path()),
         addl_lib_search_paths: RefCell::new(libs),
         crate_types: vec!(driver::config::CrateTypeRlib),
-        lint_opts: vec!((lint::Warnings, lint::allow)),
+        lint_opts: vec!((lint::Warnings, lint::Allow)),
         ..rustc::driver::config::basic_options().clone()
     };
 
