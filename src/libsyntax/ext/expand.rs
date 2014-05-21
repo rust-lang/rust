@@ -265,6 +265,8 @@ pub fn expand_item(it: @ast::Item, fld: &mut MacroExpander)
 
         match fld.extsbox.find(&intern(mname.get())) {
             Some(&ItemDecorator(dec_fn)) => {
+                attr::mark_used(attr);
+
                 fld.cx.bt_push(ExpnInfo {
                     call_site: attr.span,
                     callee: NameAndSpan {
@@ -336,6 +338,7 @@ fn expand_item_modifiers(mut it: @ast::Item, fld: &mut MacroExpander)
 
         match fld.extsbox.find(&intern(mname.get())) {
             Some(&ItemModifier(dec_fn)) => {
+                attr::mark_used(attr);
                 fld.cx.bt_push(ExpnInfo {
                     call_site: attr.span,
                     callee: NameAndSpan {
