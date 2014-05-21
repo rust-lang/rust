@@ -341,7 +341,7 @@ fn mk_test_module(cx: &TestCtxt) -> @ast::Item {
     // This attribute tells resolve to let us call unexported functions
     let resolve_unexported_str = InternedString::new("!resolve_unexported");
     let resolve_unexported_attr =
-        attr::mk_attr(attr::mk_word_item(resolve_unexported_str));
+        attr::mk_attr_inner(attr::mk_word_item(resolve_unexported_str));
 
     let item = ast::Item {
         ident: token::str_to_ident("__test"),

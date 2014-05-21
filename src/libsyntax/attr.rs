@@ -126,7 +126,11 @@ impl AttributeMethods for Attribute {
                 InternedString::new("doc"),
                 token::intern_and_get_ident(strip_doc_comment_decoration(
                         comment.get()).as_slice()));
-            mk_attr(meta)
+            if self.node.style == ast::AttrOuter {
+                mk_attr_outer(meta)
+            } else {
+                mk_attr_inner(meta)
+            }
         } else {
             *self
         }
@@ -154,9 +158,19 @@ pub fn mk_word_item(name: InternedString) -> @MetaItem {
     @dummy_spanned(MetaWord(name))
 }
 
-pub fn mk_attr(item: @MetaItem) -> Attribute {
+/// Returns an inner attribute with the given value.
+pub fn mk_attr_inner(item: @MetaItem) -> Attribute {
     dummy_spanned(Attribute_ {
         style: ast::AttrInner,
+        value: item,
+        is_sugared_doc: false,
+    })
+}
+
+/// Returns an outer attribute with the given value.
+pub fn mk_attr_outer(item: @MetaItem) -> Attribute {
+    dummy_spanned(Attribute_ {
+        style: ast::AttrOuter,
         value: item,
         is_sugared_doc: false,
     })

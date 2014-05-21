@@ -232,7 +232,7 @@ fn get_extern_rust_fn(ccx: &CrateContext, inputs: &[ty::t], output: ty::t,
 
     let f = decl_rust_fn(ccx, false, inputs, output, name);
     csearch::get_item_attrs(&ccx.sess().cstore, did, |meta_items| {
-        set_llvm_fn_attrs(meta_items.iter().map(|&x| attr::mk_attr(x))
+        set_llvm_fn_attrs(meta_items.iter().map(|&x| attr::mk_attr_outer(x))
                                     .collect::<Vec<_>>().as_slice(), f)
     });
 
