@@ -433,9 +433,10 @@ pub fn ast_ty_to_builtin_ty<AC:AstConv,
                             }
                         }))
                     }
-                    this.tcx().sess.span_bug(path.span,
+                    this.tcx().sess.span_err(path.span,
                                              "not enough type parameters \
-                                              supplied to `Box<T>`")
+                                              supplied to `Box<T>`");
+                    Some(ty::mk_err())
                 }
                 _ => None
             }
