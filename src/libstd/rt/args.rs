@@ -144,7 +144,7 @@ mod imp {
     mod tests {
         use prelude::*;
         use super::*;
-        use unstable::finally::Finally;
+        use finally::Finally;
 
         #[test]
         fn smoke_test() {

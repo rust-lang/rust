@@ -18,7 +18,7 @@
 use std::kinds::marker;
 use std::mem;
 use std::sync::atomics;
-use std::unstable::finally::Finally;
+use std::finally::Finally;
 
 use mutex;
 

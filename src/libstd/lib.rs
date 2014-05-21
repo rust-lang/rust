@@ -144,6 +144,7 @@ pub use core::clone;
 #[cfg(not(test))] pub use core::cmp;
 pub use core::container;
 pub use core::default;
+pub use core::finally;
 pub use core::intrinsics;
 pub use core::iter;
 #[cfg(not(test))] pub use core::kinds;
