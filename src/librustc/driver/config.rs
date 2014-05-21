@@ -165,7 +165,6 @@ debugging_opts!(
         SHOW_SPAN,
         COUNT_TYPE_SIZES,
         META_STATS,
-        NO_OPT,
         GC,
         PRINT_LINK_ARGS,
         PRINT_LLVM_PASSES,
@@ -196,7 +195,6 @@ pub fn debugging_opts_map() -> Vec<(&'static str, &'static str, u64)> {
      ("count-type-sizes", "count the sizes of aggregate types",
       COUNT_TYPE_SIZES),
      ("meta-stats", "gather metadata statistics", META_STATS),
-     ("no-opt", "do not optimize, even if -O is passed", NO_OPT),
      ("print-link-args", "Print the arguments passed to the linker",
       PRINT_LINK_ARGS),
      ("gc", "Garbage collect shared data (experimental)", GC),
@@ -653,7 +651,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         None => driver::host_triple().to_strbuf(),
     };
     let opt_level = {
-        if (debugging_opts & NO_OPT) != 0 {
+        if debugging_opts != 0 {
             No
         } else if matches.opt_present("O") {
             if matches.opt_present("opt-level") {
