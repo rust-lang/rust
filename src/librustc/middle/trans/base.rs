@@ -38,6 +38,7 @@ use lib;
 use metadata::{csearch, encoder};
 use middle::astencode;
 use middle::lang_items::{LangItem, ExchangeMallocFnLangItem, StartFnLangItem};
+use middle::weak_lang_items;
 use middle::trans::_match;
 use middle::trans::adt;
 use middle::trans::build::*;
@@ -1679,6 +1680,19 @@ fn finish_register_fn(ccx: &CrateContext, sp: Span, sym: StrBuf, node_id: ast::N
         lib::llvm::SetLinkage(llfn, lib::llvm::InternalLinkage);
     }
 
+    // The stack exhaustion lang item shouldn't have a split stack because
+    // otherwise it would continue to be exhausted (bad), and both it and the
+    // eh_personality functions need to be externally linkable.
+    let def = ast_util::local_def(node_id);
+    if ccx.tcx.lang_items.stack_exhausted() == Some(def) {
+        unset_split_stack(llfn);
+        lib::llvm::SetLinkage(llfn, lib::llvm::ExternalLinkage);
+    }
+    if ccx.tcx.lang_items.eh_personality() == Some(def) {
+        lib::llvm::SetLinkage(llfn, lib::llvm::ExternalLinkage);
+    }
+
+
     if is_entry_fn(ccx.sess(), node_id) {
         create_entry_wrapper(ccx, sp, llfn);
     }
@@ -1816,8 +1830,13 @@ fn exported_name(ccx: &CrateContext, id: ast::NodeId,
                 // Don't mangle
                 path.last().unwrap().to_str().to_strbuf()
             } else {
-                // Usual name mangling
-                mangle_exported_name(ccx, path, ty, id)
+                match weak_lang_items::link_name(attrs) {
+                    Some(name) => name.get().to_strbuf(),
+                    None => {
+                        // Usual name mangling
+                        mangle_exported_name(ccx, path, ty, id)
+                    }
+                }
             }
         })
     }

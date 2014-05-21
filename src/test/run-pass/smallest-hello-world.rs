@@ -19,8 +19,8 @@ extern crate libc;
 extern { fn puts(s: *u8); }
 extern "rust-intrinsic" { fn transmute<T, U>(t: T) -> U; }
 
-#[no_mangle]
-pub extern fn rust_stack_exhausted() {}
+#[lang = "stack_exhausted"] extern fn stack_exhausted() {}
+#[lang = "eh_personality"] extern fn eh_personality() {}
 
 #[start]
 #[no_split_stack]

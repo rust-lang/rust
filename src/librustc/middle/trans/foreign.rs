@@ -13,6 +13,7 @@ use back::{link};
 use lib::llvm::llvm;
 use lib::llvm::{ValueRef, CallConv, StructRetAttribute, Linkage};
 use lib;
+use middle::weak_lang_items;
 use middle::trans::base::push_ctxt;
 use middle::trans::base;
 use middle::trans::build::*;
@@ -815,10 +816,12 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: &CrateContext,
 // the massive simplifications that have occurred.
 
 pub fn link_name(i: &ast::ForeignItem) -> InternedString {
-     match attr::first_attr_value_str_by_name(i.attrs.as_slice(),
-                                              "link_name") {
-        None => token::get_ident(i.ident),
+    match attr::first_attr_value_str_by_name(i.attrs.as_slice(), "link_name") {
         Some(ln) => ln.clone(),
+        None => match weak_lang_items::link_name(i.attrs.as_slice()) {
+            Some(name) => name,
+            None => token::get_ident(i.ident),
+        }
     }
 }
 

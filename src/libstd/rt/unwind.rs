@@ -212,7 +212,23 @@ pub mod eabi {
     }
 
     #[lang="eh_personality"]
+    #[cfg(not(stage0))]
+    extern fn eh_personality(
+        version: c_int,
+        actions: uw::_Unwind_Action,
+        exception_class: uw::_Unwind_Exception_Class,
+        ue_header: *uw::_Unwind_Exception,
+        context: *uw::_Unwind_Context
+    ) -> uw::_Unwind_Reason_Code
+    {
+        unsafe {
+            __gcc_personality_v0(version, actions, exception_class, ue_header,
+                                 context)
+        }
+    }
+    #[lang="eh_personality"]
     #[no_mangle] // so we can reference it by name from middle/trans/base.rs
+    #[cfg(stage0)]
     pub extern "C" fn rust_eh_personality(
         version: c_int,
         actions: uw::_Unwind_Action,
@@ -264,7 +280,21 @@ pub mod eabi {
     }
 
     #[lang="eh_personality"]
+    #[cfg(not(stage0))]
+    extern "C" fn eh_personality(
+        state: uw::_Unwind_State,
+        ue_header: *uw::_Unwind_Exception,
+        context: *uw::_Unwind_Context
+    ) -> uw::_Unwind_Reason_Code
+    {
+        unsafe {
+            __gcc_personality_v0(state, ue_header, context)
+        }
+    }
+
+    #[lang="eh_personality"]
     #[no_mangle] // so we can reference it by name from middle/trans/base.rs
+    #[cfg(stage0)]
     pub extern "C" fn rust_eh_personality(
         state: uw::_Unwind_State,
         ue_header: *uw::_Unwind_Exception,
@@ -296,8 +326,15 @@ pub mod eabi {
 }
 
 // Entry point of failure from the libcore crate
+#[cfg(not(test), not(stage0))]
+#[lang = "begin_unwind"]
+pub extern fn rust_begin_unwind(msg: &fmt::Arguments,
+                                file: &'static str, line: uint) -> ! {
+    begin_unwind_fmt(msg, file, line)
+}
+
 #[no_mangle]
-#[cfg(not(test))]
+#[cfg(not(test), stage0)]
 pub extern fn rust_begin_unwind(msg: &fmt::Arguments,
                                 file: &'static str, line: uint) -> ! {
     begin_unwind_fmt(msg, file, line)
@@ -310,7 +347,8 @@ pub extern fn rust_begin_unwind(msg: &fmt::Arguments,
 /// on (e.g.) the inlining of other functions as possible), by moving
 /// the actual formatting into this shared place.
 #[inline(never)] #[cold]
-pub fn begin_unwind_fmt(msg: &fmt::Arguments, file: &'static str, line: uint) -> ! {
+pub fn begin_unwind_fmt(msg: &fmt::Arguments, file: &'static str,
+                        line: uint) -> ! {
     // We do two allocations here, unfortunately. But (a) they're
     // required with the current scheme, and (b) we don't handle
     // failure + OOM properly anyway (see comment in begin_unwind
