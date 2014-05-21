@@ -372,7 +372,7 @@ $(3)/stage$(1)/test/$(4)test-$(2)$$(X_$(2)): CFG_COMPILER_HOST_TRIPLE = $(2)
 $(3)/stage$(1)/test/$(4)test-$(2)$$(X_$(2)):				\
 		$$(CRATEFILE_$(4)) \
 		$$(TESTDEP_$(1)_$(2)_$(3)_$(4))
-	@$$(call E, oxidize: $$@)
+	@$$(call E, rustc: $$@)
 	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test	\
 		-L "$$(RT_OUTPUT_DIR_$(2))"		\
 		-L "$$(LLVM_LIBDIR_$(2))"
