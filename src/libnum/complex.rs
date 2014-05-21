@@ -17,10 +17,6 @@ use std::num::{Zero,One,ToStrRadix};
 // FIXME #1284: handle complex NaN & infinity etc. This
 // probably doesn't map to C's _Complex correctly.
 
-// FIXME #5734:: Need generic sin/cos for .to/from_polar().
-// FIXME #5735: Need generic sqrt to implement .norm().
-
-
 /// A complex number in Cartesian form.
 #[deriving(Eq,Clone)]
 pub struct Complex<T> {
