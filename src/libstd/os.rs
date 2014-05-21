@@ -53,6 +53,8 @@ use c_str::ToCStr;
 use libc::c_char;
 #[cfg(windows)]
 use str::OwnedStr;
+#[cfg(windows)]
+use c_str::ToCU16Str;
 
 /// Delegates to the libc close() function, returning the same return value.
 pub fn close(fd: int) -> int {
@@ -134,23 +136,13 @@ pub mod win32 {
                     // closure returned invalid UTF-16, rather than
                     // set `res` to None and continue.
                     let s = str::from_utf16(sub)
-                        .expect("fill_utf16_buf_and_decode: closure created invalid UTF-16");
+                        .expect("fill_utf16_buf_and_decode: closure created invalid UTF-16")
+                        .into_owned();
                     res = option::Some(s)
                 }
             }
             return res;
         }
-    }
-
-    pub fn as_utf16_p<T>(s: &str, f: |*u16| -> T) -> T {
-        as_mut_utf16_p(s, |t| { f(t as *u16) })
-    }
-
-    pub fn as_mut_utf16_p<T>(s: &str, f: |*mut u16| -> T) -> T {
-        let mut t = s.to_utf16();
-        // Null terminate before passing on.
-        t.push(0u16);
-        f(t.as_mut_ptr())
     }
 }
 
@@ -219,7 +211,7 @@ pub fn env_as_bytes() -> Vec<(~[u8],~[u8])> {
                 let p = &*ch.offset(i);
                 let len = ptr::position(p, |c| *c == 0);
                 raw::buf_as_slice(p, len, |s| {
-                    result.push(str::from_utf16_lossy(s).into_bytes());
+                    result.push(str::from_utf16_lossy(s).into_owned().into_bytes());
                 });
                 i += len as int + 1;
             }
@@ -305,8 +297,8 @@ pub fn getenv_as_bytes(n: &str) -> Option<~[u8]> {
 pub fn getenv(n: &str) -> Option<~str> {
     unsafe {
         with_env_lock(|| {
-            use os::win32::{as_utf16_p, fill_utf16_buf_and_decode};
-            as_utf16_p(n, |u| {
+            use os::win32::fill_utf16_buf_and_decode;
+            n.with_c_u16_str(|u| {
                 fill_utf16_buf_and_decode(|buf, sz| {
                     libc::GetEnvironmentVariableW(u, buf, sz)
                 })
@@ -349,9 +341,8 @@ pub fn setenv(n: &str, v: &str) {
 pub fn setenv(n: &str, v: &str) {
     unsafe {
         with_env_lock(|| {
-            use os::win32::as_utf16_p;
-            as_utf16_p(n, |nbuf| {
-                as_utf16_p(v, |vbuf| {
+            n.with_c_u16_str(|nbuf| {
+                v.with_c_u16_str(|vbuf| {
                     libc::SetEnvironmentVariableW(nbuf, vbuf);
                 })
             })
@@ -379,8 +370,7 @@ pub fn unsetenv(n: &str) {
     fn _unsetenv(n: &str) {
         unsafe {
             with_env_lock(|| {
-                use os::win32::as_utf16_p;
-                as_utf16_p(n, |nbuf| {
+                n.with_c_u16_str(|nbuf| {
                     libc::SetEnvironmentVariableW(nbuf, ptr::null());
                 })
             })
@@ -625,8 +615,7 @@ pub fn change_dir(p: &Path) -> bool {
     #[cfg(windows)]
     fn chdir(p: &Path) -> bool {
         unsafe {
-            use os::win32::as_utf16_p;
-            return as_utf16_p(p.as_str().unwrap(), |buf| {
+            return p.as_str().unwrap().with_c_u16_str(|buf| {
                 libc::SetCurrentDirectoryW(buf) != (0 as libc::BOOL)
             });
         }
@@ -875,7 +864,7 @@ fn real_args() -> Vec<~str> {
         let opt_s = slice::raw::buf_as_slice(ptr, len, |buf| {
             str::from_utf16(str::truncate_utf16_at_nul(buf))
         });
-        opt_s.expect("CommandLineToArgvW returned invalid UTF-16")
+        opt_s.expect("CommandLineToArgvW returned invalid UTF-16").into_owned()
     });
 
     unsafe {

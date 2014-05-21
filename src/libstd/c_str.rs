@@ -80,9 +80,10 @@ use raw::Slice;
 use rt::libc_heap::malloc_raw;
 use slice::{ImmutableVector, MutableVector};
 use slice;
-use str::StrSlice;
+use str::{StrSlice, StrAllocating};
 use str;
 use strbuf::StrBuf;
+use vec::Vec;
 
 /// The representation of a C String.
 ///
@@ -475,6 +476,51 @@ pub unsafe fn from_c_multistring(buf: *libc::c_char,
     return ctr;
 }
 
+/// A generic trait for converting a value to a vector of null-terminated UTF-16 string.
+pub trait ToCU16Str {
+    /// Convert the receiver into a vector of null-terminated UTF-16 string.
+    fn to_c_u16_str(&self) -> Vec<u16>;
+
+    /// Temporarily convert the receiver into null-terminated UTF-16 string and
+    /// pass it to the closure.
+    fn with_c_u16_str<T>(&self, f: |*u16| -> T) -> T {
+        let t = self.to_c_u16_str();
+        f(t.as_ptr())
+    }
+}
+
+impl<'a> ToCU16Str for &'a str {
+    fn to_c_u16_str(&self) -> Vec<u16> {
+        let mut t = self.to_utf16();
+        t.push(0u16);
+        t
+    }
+}
+
+/// Parses a C UTF-16 "multistring", eg windows env values.
+///
+/// Optionally, a `count` can be passed in, limiting the
+/// parsing to only being done `count`-times.
+///
+/// The specified closure is invoked with each string that
+/// is found, and the number of strings found is returned.
+pub unsafe fn from_c_u16_multistring(buf: *u16, count: Option<uint>, f: |&[u16]|) -> uint {
+    let mut curr_ptr: uint = buf as uint;
+    let mut ctr = 0;
+    let (limited_count, limit) = match count {
+        Some(limit) => (true, limit),
+        None => (false, 0)
+    };
+    while ((limited_count && ctr < limit) || !limited_count) && *(curr_ptr as *u16) != 0 as u16 {
+        let len = ptr::position(curr_ptr as *u16, |c| *c == 0);
+        let slice: &[u16] = mem::transmute((curr_ptr, len));
+        f(slice);
+        curr_ptr += (len + 1) * 2;
+        ctr += 1;
+    }
+    return ctr;
+}
+
 #[cfg(test)]
 mod tests {
     use prelude::*;
@@ -482,6 +528,7 @@ mod tests {
     use libc;
     use ptr;
     use str::StrSlice;
+    use str::from_utf16;
 
     #[test]
     fn test_str_multistring_parsing() {
@@ -718,6 +765,34 @@ mod tests {
         let x = unsafe { CString::new(ptr::null(), false) };
         let y = x.clone();
         assert!(x == y);
+    }
+
+    #[test]
+    fn test_from_c_u16_multistring() {
+        unsafe {
+            let input: &[u16] = &[
+                0xac00, 0x00,
+                0xac00, 0xac00, 0x00,
+                0xac00, 0xac00, 0xac00, 0x00,
+                0x00,
+            ];
+            let ptr = input.as_ptr() as *u16;
+            let expected = ["가", "가가", "가가가"];
+            let mut it = expected.iter();
+            let result = from_c_u16_multistring(ptr, None, |c| {
+                let cbytes = from_utf16(c).expect("failed to decode utf-16 string?");
+                println!("cbytes: {}", cbytes);
+                assert_eq!(cbytes.as_slice(), *it.next().unwrap());
+            });
+            assert_eq!(result, 3);
+            assert!(it.next().is_none());
+        }
+    }
+
+    #[test]
+    fn test_str_to_c_u16_str() {
+        assert_eq!("".to_c_u16_str(), vec!(0u16));
+        assert_eq!("ab".to_c_u16_str(), vec!('a' as u16, 'b' as u16, 0u16));
     }
 }
 

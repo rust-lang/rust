@@ -69,7 +69,7 @@ extern "system" {
 pub mod compat {
     use std::intrinsics::{atomic_store_relaxed, transmute};
     use libc::types::os::arch::extra::{LPCWSTR, HMODULE, LPCSTR, LPVOID};
-    use std::os::win32::as_utf16_p;
+    use std::c_str::ToCU16Str;
 
     extern "system" {
         fn GetModuleHandleW(lpModuleName: LPCWSTR) -> HMODULE;
@@ -80,7 +80,7 @@ pub mod compat {
     // This way, calling a function in this compatibility layer (after it's loaded) shouldn't
     // be any slower than a regular DLL call.
     unsafe fn store_func<T: Copy>(ptr: *mut T, module: &str, symbol: &str, fallback: T) {
-        as_utf16_p(module, |module| {
+        module.with_c_u16_str(|module| {
             symbol.with_c_str(|symbol| {
                 let handle = GetModuleHandleW(module);
                 let func: Option<T> = transmute(GetProcAddress(handle, symbol));
