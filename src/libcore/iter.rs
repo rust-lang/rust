@@ -2016,7 +2016,7 @@ pub struct RangeInclusive<A> {
 
 /// Return an iterator over the range [start, stop]
 #[inline]
-pub fn range_inclusive<A: Add<A, A> + Ord + Clone + One + ToPrimitive>(start: A, stop: A)
+pub fn range_inclusive<A: Add<A, A> + Ord + Clone + One>(start: A, stop: A)
     -> RangeInclusive<A> {
     RangeInclusive{range: range(start, stop), done: false}
 }
