@@ -29,13 +29,15 @@
 
 // http://www.1024cores.net/home/lock-free-algorithms/queues/bounded-mpmc-queue
 
+use alloc::arc::Arc;
+
 use clone::Clone;
 use kinds::Send;
 use num::next_power_of_two;
 use option::{Option, Some, None};
-use sync::arc::UnsafeArc;
 use sync::atomics::{AtomicUint,Relaxed,Release,Acquire};
 use vec::Vec;
+use ty::Unsafe;
 
 struct Node<T> {
     sequence: AtomicUint,
@@ -44,7 +46,7 @@ struct Node<T> {
 
 struct State<T> {
     pad0: [u8, ..64],
-    buffer: Vec<Node<T>>,
+    buffer: Vec<Unsafe<Node<T>>>,
     mask: uint,
     pad1: [u8, ..64],
     enqueue_pos: AtomicUint,
@@ -54,7 +56,7 @@ struct State<T> {
 }
 
 pub struct Queue<T> {
-    state: UnsafeArc<State<T>>,
+    state: Arc<State<T>>,
 }
 
 impl<T: Send> State<T> {
@@ -70,7 +72,7 @@ impl<T: Send> State<T> {
             capacity
         };
         let buffer = Vec::from_fn(capacity, |i| {
-            Node { sequence:AtomicUint::new(i), value: None }
+            Unsafe::new(Node { sequence:AtomicUint::new(i), value: None })
         });
         State{
             pad0: [0, ..64],
@@ -84,19 +86,21 @@ impl<T: Send> State<T> {
         }
     }
 
-    fn push(&mut self, value: T) -> bool {
+    fn push(&self, value: T) -> bool {
         let mask = self.mask;
         let mut pos = self.enqueue_pos.load(Relaxed);
         loop {
-            let node = self.buffer.get_mut(pos & mask);
-            let seq = node.sequence.load(Acquire);
+            let node = self.buffer.get(pos & mask);
+            let seq = unsafe { (*node.get()).sequence.load(Acquire) };
             let diff: int = seq as int - pos as int;
 
             if diff == 0 {
                 let enqueue_pos = self.enqueue_pos.compare_and_swap(pos, pos+1, Relaxed);
                 if enqueue_pos == pos {
-                    node.value = Some(value);
-                    node.sequence.store(pos+1, Release);
+                    unsafe {
+                        (*node.get()).value = Some(value);
+                        (*node.get()).sequence.store(pos+1, Release);
+                    }
                     break
                 } else {
                     pos = enqueue_pos;
@@ -110,19 +114,21 @@ impl<T: Send> State<T> {
         true
     }
 
-    fn pop(&mut self) -> Option<T> {
+    fn pop(&self) -> Option<T> {
         let mask = self.mask;
         let mut pos = self.dequeue_pos.load(Relaxed);
         loop {
-            let node = self.buffer.get_mut(pos & mask);
-            let seq = node.sequence.load(Acquire);
+            let node = self.buffer.get(pos & mask);
+            let seq = unsafe { (*node.get()).sequence.load(Acquire) };
             let diff: int = seq as int - (pos + 1) as int;
             if diff == 0 {
                 let dequeue_pos = self.dequeue_pos.compare_and_swap(pos, pos+1, Relaxed);
                 if dequeue_pos == pos {
-                    let value = node.value.take();
-                    node.sequence.store(pos + mask + 1, Release);
-                    return value
+                    unsafe {
+                        let value = (*node.get()).value.take();
+                        (*node.get()).sequence.store(pos + mask + 1, Release);
+                        return value
+                    }
                 } else {
                     pos = dequeue_pos;
                 }
@@ -138,24 +144,22 @@ impl<T: Send> State<T> {
 impl<T: Send> Queue<T> {
     pub fn with_capacity(capacity: uint) -> Queue<T> {
         Queue{
-            state: UnsafeArc::new(State::with_capacity(capacity))
+            state: Arc::new(State::with_capacity(capacity))
         }
     }
 
-    pub fn push(&mut self, value: T) -> bool {
-        unsafe { (*self.state.get()).push(value) }
+    pub fn push(&self, value: T) -> bool {
+        self.state.push(value)
     }
 
-    pub fn pop(&mut self) -> Option<T> {
-        unsafe { (*self.state.get()).pop() }
+    pub fn pop(&self) -> Option<T> {
+        self.state.pop()
     }
 }
 
 impl<T: Send> Clone for Queue<T> {
     fn clone(&self) -> Queue<T> {
-        Queue {
-            state: self.state.clone()
-        }
+        Queue { state: self.state.clone() }
     }
 }
 
@@ -169,7 +173,7 @@ mod tests {
     fn test() {
         let nthreads = 8u;
         let nmsgs = 1000u;
-        let mut q = Queue::with_capacity(nthreads*nmsgs);
+        let q = Queue::with_capacity(nthreads*nmsgs);
         assert_eq!(None, q.pop());
         let (tx, rx) = channel();
 
@@ -177,7 +181,7 @@ mod tests {
             let q = q.clone();
             let tx = tx.clone();
             native::task::spawn(proc() {
-                let mut q = q;
+                let q = q;
                 for i in range(0, nmsgs) {
                     assert!(q.push(i));
                 }
@@ -191,7 +195,7 @@ mod tests {
             completion_rxs.push(rx);
             let q = q.clone();
             native::task::spawn(proc() {
-                let mut q = q;
+                let q = q;
                 let mut i = 0u;
                 loop {
                     match q.pop() {

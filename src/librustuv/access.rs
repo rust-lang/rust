@@ -14,15 +14,16 @@
 /// It is assumed that all invocations of this struct happen on the same thread
 /// (the uv event loop).
 
+use alloc::arc::Arc;
 use std::mem;
 use std::rt::local::Local;
 use std::rt::task::{BlockedTask, Task};
-use std::sync::arc::UnsafeArc;
+use std::ty::Unsafe;
 
 use homing::HomingMissile;
 
 pub struct Access {
-    inner: UnsafeArc<Inner>,
+    inner: Arc<Unsafe<Inner>>,
 }
 
 pub struct Guard<'a> {
@@ -39,11 +40,11 @@ struct Inner {
 impl Access {
     pub fn new() -> Access {
         Access {
-            inner: UnsafeArc::new(Inner {
+            inner: Arc::new(Unsafe::new(Inner {
                 queue: vec![],
                 held: false,
                 closed: false,
-            })
+            }))
         }
     }
 

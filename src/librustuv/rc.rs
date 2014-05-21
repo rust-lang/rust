@@ -16,16 +16,17 @@
 /// the same underlying uv object, hence Rc is not used and this simple counter
 /// should suffice.
 
-use std::sync::arc::UnsafeArc;
+use alloc::arc::Arc;
+use std::ty::Unsafe;
 
 pub struct Refcount {
-    rc: UnsafeArc<uint>,
+    rc: Arc<Unsafe<uint>>,
 }
 
 impl Refcount {
     /// Creates a new refcount of 1
     pub fn new() -> Refcount {
-        Refcount { rc: UnsafeArc::new(1) }
+        Refcount { rc: Arc::new(Unsafe::new(1)) }
     }
 
     fn increment(&self) {

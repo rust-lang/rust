@@ -1142,7 +1142,7 @@ mod test {
 
         Thread::start(proc() {
             let sleepers = SleeperList::new();
-            let mut pool = BufferPool::new();
+            let pool = BufferPool::new();
             let (normal_worker, normal_stealer) = pool.deque();
             let (special_worker, special_stealer) = pool.deque();
             let queues = vec![normal_stealer, special_stealer];

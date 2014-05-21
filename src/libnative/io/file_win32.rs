@@ -10,17 +10,17 @@
 
 //! Blocking win32-based file I/O
 
+use alloc::arc::Arc;
+use libc::{c_int, c_void};
+use libc;
 use std::c_str::CString;
 use std::io::IoError;
 use std::io;
-use libc::{c_int, c_void};
-use libc;
 use std::mem;
 use std::os::win32::{as_utf16_p, fill_utf16_buf_and_decode};
 use std::ptr;
 use std::rt::rtio;
 use std::str;
-use std::sync::arc::UnsafeArc;
 use std::vec;
 
 use io::IoResult;
@@ -33,7 +33,7 @@ struct Inner {
 }
 
 pub struct FileDesc {
-    inner: UnsafeArc<Inner>
+    inner: Arc<Inner>
 }
 
 impl FileDesc {
@@ -46,7 +46,7 @@ impl FileDesc {
     /// Note that all I/O operations done on this object will be *blocking*, but
     /// they do not require the runtime to be active.
     pub fn new(fd: fd_t, close_on_drop: bool) -> FileDesc {
-        FileDesc { inner: UnsafeArc::new(Inner {
+        FileDesc { inner: Arc::new(Inner {
             fd: fd,
             close_on_drop: close_on_drop
         }) }
@@ -85,11 +85,7 @@ impl FileDesc {
         Ok(())
     }
 
-    pub fn fd(&self) -> fd_t {
-        // This unsafety is fine because we're just reading off the file
-        // descriptor, no one is modifying this.
-        unsafe { (*self.inner.get()).fd }
-    }
+    pub fn fd(&self) -> fd_t { self.inner.fd }
 
     pub fn handle(&self) -> libc::HANDLE {
         unsafe { libc::get_osfhandle(self.fd()) as libc::HANDLE }

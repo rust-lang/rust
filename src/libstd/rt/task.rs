@@ -13,6 +13,8 @@
 //! local storage, and logging. Even a 'freestanding' Rust would likely want
 //! to implement this.
 
+use alloc::arc::Arc;
+
 use cleanup;
 use clone::Clone;
 use comm::Sender;
@@ -32,7 +34,6 @@ use rt::local_heap::LocalHeap;
 use rt::rtio::LocalIo;
 use rt::unwind::Unwinder;
 use str::SendStr;
-use sync::arc::UnsafeArc;
 use sync::atomics::{AtomicUint, SeqCst};
 use task::{TaskResult, TaskOpts};
 use unstable::finally::Finally;
@@ -65,7 +66,7 @@ pub struct LocalStorage(pub Option<local_data::Map>);
 /// at any time.
 pub enum BlockedTask {
     Owned(Box<Task>),
-    Shared(UnsafeArc<AtomicUint>),
+    Shared(Arc<AtomicUint>),
 }
 
 pub enum DeathAction {
@@ -82,7 +83,7 @@ pub struct Death {
 }
 
 pub struct BlockedTasks {
-    inner: UnsafeArc<AtomicUint>,
+    inner: Arc<AtomicUint>,
 }
 
 impl Task {
@@ -313,10 +314,10 @@ impl BlockedTask {
     pub fn wake(self) -> Option<Box<Task>> {
         match self {
             Owned(task) => Some(task),
-            Shared(arc) => unsafe {
-                match (*arc.get()).swap(0, SeqCst) {
+            Shared(arc) => {
+                match arc.swap(0, SeqCst) {
                     0 => None,
-                    n => Some(mem::transmute(n)),
+                    n => Some(unsafe { mem::transmute(n) }),
                 }
             }
         }
@@ -343,7 +344,7 @@ impl BlockedTask {
         let arc = match self {
             Owned(task) => {
                 let flag = unsafe { AtomicUint::new(mem::transmute(task)) };
-                UnsafeArc::new(flag)
+                Arc::new(flag)
             }
             Shared(arc) => arc.clone(),
         };
@@ -375,7 +376,7 @@ impl BlockedTask {
         if blocked_task_ptr & 0x1 == 0 {
             Owned(mem::transmute(blocked_task_ptr))
         } else {
-            let ptr: Box<UnsafeArc<AtomicUint>> =
+            let ptr: Box<Arc<AtomicUint>> =
                 mem::transmute(blocked_task_ptr & !1);
             Shared(*ptr)
         }
