@@ -172,14 +172,6 @@ pub fn monomorphic_fn(ccx: &CrateContext,
         }
     };
 
-    let f = match ty::get(mono_ty).sty {
-        ty::ty_bare_fn(ref f) => {
-            assert!(f.abi == abi::Rust || f.abi == abi::RustIntrinsic);
-            f
-        }
-        _ => fail!("expected bare rust fn or an intrinsic")
-    };
-
     ccx.stats.n_monos.set(ccx.stats.n_monos.get() + 1);
 
     let depth;
@@ -214,11 +206,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
     // This shouldn't need to option dance.
     let mut hash_id = Some(hash_id);
     let mk_lldecl = || {
-        let lldecl = decl_internal_rust_fn(ccx,
-                                           false,
-                                           f.sig.inputs.as_slice(),
-                                           f.sig.output,
-                                           s.as_slice());
+        let lldecl = decl_internal_rust_fn(ccx, mono_ty, s.as_slice());
         ccx.monomorphized.borrow_mut().insert(hash_id.take_unwrap(), lldecl);
         lldecl
     };

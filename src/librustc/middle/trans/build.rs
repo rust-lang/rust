@@ -113,7 +113,7 @@ pub fn Invoke(cx: &Block,
               args: &[ValueRef],
               then: BasicBlockRef,
               catch: BasicBlockRef,
-              attributes: &[(uint, lib::llvm::Attribute)])
+              attributes: &[(uint, u64)])
               -> ValueRef {
     if cx.unreachable.get() {
         return C_null(Type::i8(cx.ccx()));
@@ -679,13 +679,13 @@ pub fn InlineAsmCall(cx: &Block, asm: *c_char, cons: *c_char,
 }
 
 pub fn Call(cx: &Block, fn_: ValueRef, args: &[ValueRef],
-            attributes: &[(uint, lib::llvm::Attribute)]) -> ValueRef {
+            attributes: &[(uint, u64)]) -> ValueRef {
     if cx.unreachable.get() { return _UndefReturn(cx, fn_); }
     B(cx).call(fn_, args, attributes)
 }
 
 pub fn CallWithConv(cx: &Block, fn_: ValueRef, args: &[ValueRef], conv: CallConv,
-                    attributes: &[(uint, lib::llvm::Attribute)]) -> ValueRef {
+                    attributes: &[(uint, u64)]) -> ValueRef {
     if cx.unreachable.get() { return _UndefReturn(cx, fn_); }
     B(cx).call_with_conv(fn_, args, conv, attributes)
 }
