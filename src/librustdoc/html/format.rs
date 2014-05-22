@@ -284,11 +284,15 @@ fn tybounds(w: &mut fmt::Formatter,
 impl fmt::Show for clean::Type {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            clean::TyParamBinder(id) | clean::Generic(id) => {
+            clean::TyParamBinder(id) => {
                 let m = cache_key.get().unwrap();
-                f.write(m.typarams.get(&id).as_bytes())
+                f.write(m.typarams.get(&ast_util::local_def(id)).as_bytes())
             }
-            clean::ResolvedPath{ did, ref typarams, ref path} => {
+            clean::Generic(did) => {
+                let m = cache_key.get().unwrap();
+                f.write(m.typarams.get(&did).as_bytes())
+            }
+            clean::ResolvedPath{ did, ref typarams, ref path } => {
                 try!(resolved_path(f, did, path, false));
                 tybounds(f, typarams)
             }
