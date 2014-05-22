@@ -126,14 +126,14 @@ impl RcStr {
     }
 }
 
-// A StrInterner differs from Interner<String> in that it accepts
-// &str rather than RcStr, resulting in less allocation.
+/// A StrInterner differs from Interner<String> in that it accepts
+/// &str rather than RcStr, resulting in less allocation.
 pub struct StrInterner {
     map: RefCell<HashMap<RcStr, Name>>,
     vect: RefCell<Vec<RcStr> >,
 }
 
-// when traits can extend traits, we should extend index<Name,T> to get []
+/// When traits can extend traits, we should extend index<Name,T> to get []
 impl StrInterner {
     pub fn new() -> StrInterner {
         StrInterner {
@@ -177,8 +177,8 @@ impl StrInterner {
     // lightweight way to get what I want, though not
     // necessarily the cleanest.
 
-    // create a gensym with the same name as an existing
-    // entry.
+    /// Create a gensym with the same name as an existing
+    /// entry.
     pub fn gensym_copy(&self, idx : Name) -> Name {
         let new_idx = self.len() as Name;
         // leave out of map to avoid colliding
