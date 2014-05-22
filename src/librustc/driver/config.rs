@@ -32,7 +32,7 @@ use syntax::parse;
 use syntax::parse::token::InternedString;
 
 use collections::HashSet;
-use getopts::{optopt, optmulti, optflag, optflagopt};
+use getopts::{opt, optopt, optmulti, optflag, optflagopt};
 use getopts;
 use lib::llvm::llvm;
 use std::cell::{RefCell};
@@ -165,7 +165,6 @@ debugging_opts!(
         SHOW_SPAN,
         COUNT_TYPE_SIZES,
         META_STATS,
-        NO_OPT,
         GC,
         PRINT_LINK_ARGS,
         PRINT_LLVM_PASSES,
@@ -196,7 +195,6 @@ pub fn debugging_opts_map() -> Vec<(&'static str, &'static str, u64)> {
      ("count-type-sizes", "count the sizes of aggregate types",
       COUNT_TYPE_SIZES),
      ("meta-stats", "gather metadata statistics", META_STATS),
-     ("no-opt", "do not optimize, even if -O is passed", NO_OPT),
      ("print-link-args", "Print the arguments passed to the linker",
       PRINT_LINK_ARGS),
      ("gc", "Garbage collect shared data (experimental)", GC),
@@ -513,9 +511,9 @@ pub fn optgroups() -> Vec<getopts::OptGroup> {
         optflag("", "no-trans", "Run all passes except translation; no output"),
         optflag("", "no-analysis",
               "Parse and expand the source, but run no analysis and produce no output"),
-        optflag("O", "", "Equivalent to --opt-level=2"),
+        opt("O", "opt-level", "Optimize with possible levels 0-3", "LEVEL", getopts::Maybe,
+              getopts::Multi),
         optopt("o", "", "Write output to <filename>", "FILENAME"),
-        optopt("", "opt-level", "Optimize with possible levels 0-3", "LEVEL"),
         optopt( "",  "out-dir", "Write output to compiler-chosen filename in <dir>", "DIR"),
         optflag("", "parse-only", "Parse only; do not compile, assemble, or link"),
         optflagopt("", "pretty",
@@ -656,16 +654,11 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         None => driver::host_triple().to_strbuf(),
     };
     let opt_level = {
-        if (debugging_opts & NO_OPT) != 0 {
+        if debugging_opts != 0 {
             No
         } else if matches.opt_present("O") {
-            if matches.opt_present("opt-level") {
-                early_error("-O and --opt-level both provided");
-            }
-            Default
-        } else if matches.opt_present("opt-level") {
-            match matches.opt_str("opt-level").as_ref().map(|s| s.as_slice()) {
-                None      |
+            match matches.opt_strs("O").last().as_ref().map(|s| s.as_slice()) {
+                None => Default, // This provides support for -O defaulting to -O2.
                 Some("0") => No,
                 Some("1") => Less,
                 Some("2") => Default,
