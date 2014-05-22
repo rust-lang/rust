@@ -247,6 +247,7 @@ fn is_useful(cx: &MatchCheckCtxt, m: &matrix, v: &[@Pat]) -> useful {
                 _ => *r.get(0)
             }
         }
+        None if v.len() == 0 => return not_useful,
         None => v[0]
     };
     let left_ty = if real_pat.id == 0 { ty::mk_nil() }
@@ -341,8 +342,10 @@ fn is_useful_specialized(cx: &MatchCheckCtxt,
     let ms = m.iter().filter_map(|r| {
         specialize(cx, r.as_slice(), &ctor, arity, lty)
     }).collect::<matrix>();
-    let could_be_useful = is_useful(
-        cx, &ms, specialize(cx, v, &ctor, arity, lty).unwrap().as_slice());
+    let could_be_useful = match specialize(cx, v, &ctor, arity, lty) {
+        Some(v) => is_useful(cx, &ms, v.as_slice()),
+        None => return not_useful,
+    };
     match could_be_useful {
       useful_ => useful(lty, ctor),
       u => u,
