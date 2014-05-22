@@ -493,6 +493,7 @@ are:
 * `rust-intrinsic`
 * `system`
 * `C`
+* `win64`
 
 Most of the abis in this list are self-explanatory, but the `system` abi may
 seem a little odd. This constraint selects whatever the appropriate ABI is for
