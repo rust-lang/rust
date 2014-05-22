@@ -26,8 +26,8 @@ fn blah() {
 }
 
 struct S {
-    f: StrBuf,
-    g: StrBuf
+    f: String,
+    g: String
 }
 impl Drop for S {
     fn drop(&mut self) { println!("{}", self.f); }

@@ -10,7 +10,7 @@
 
 enum what { }
 
-fn what_to_str(x: what) -> StrBuf
+fn what_to_str(x: what) -> String
 {
     match x {
     }

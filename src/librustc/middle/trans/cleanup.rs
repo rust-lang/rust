@@ -756,7 +756,7 @@ impl<'a> CleanupScope<'a> {
             self.cleanups.iter().any(|c| c.clean_on_unwind())
     }
 
-    fn block_name(&self, prefix: &str) -> StrBuf {
+    fn block_name(&self, prefix: &str) -> String {
         /*!
          * Returns a suitable name to use for the basic block that
          * handles this cleanup scope

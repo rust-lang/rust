@@ -48,7 +48,7 @@ pub mod testtypes {
     // Tests ty_float (does not test all variants of FloatTy)
     pub type FooFloat = f64;
 
-    // For ty_str, what kind of string should I use? &'static str? StrBuf? Raw str?
+    // For ty_str, what kind of string should I use? &'static str? String? Raw str?
 
     // Tests ty_enum
     pub enum FooEnum {

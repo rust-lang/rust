@@ -11,7 +11,7 @@
 #![allow(dead_assignment)]
 
 pub fn main() {
-    let s: StrBuf = "foobar".to_strbuf();
+    let s: String = "foobar".to_strbuf();
     let mut t: &str = s.as_slice();
     t = t.slice(0, 3); // for master: str::view(t, 0, 3) maybe
 }

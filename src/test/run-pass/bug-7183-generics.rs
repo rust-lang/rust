@@ -9,22 +9,22 @@
 // except according to those terms.
 
 trait Speak {
-    fn say(&self, s:&str) -> StrBuf;
-    fn hi(&self) -> StrBuf { hello(self) }
+    fn say(&self, s:&str) -> String;
+    fn hi(&self) -> String { hello(self) }
 }
 
-fn hello<S:Speak>(s:&S) -> StrBuf{
+fn hello<S:Speak>(s:&S) -> String{
     s.say("hello")
 }
 
 impl Speak for int {
-    fn say(&self, s:&str) -> StrBuf {
+    fn say(&self, s:&str) -> String {
         format_strbuf!("{}: {}", s, *self)
     }
 }
 
 impl<T: Speak> Speak for Option<T> {
-    fn say(&self, s:&str) -> StrBuf {
+    fn say(&self, s:&str) -> String {
         match *self {
             None => format_strbuf!("{} - none", s),
             Some(ref x) => { format_strbuf!("something!{}", x.say(s)) }

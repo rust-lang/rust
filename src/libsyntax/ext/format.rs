@@ -23,14 +23,14 @@ use collections::{HashMap, HashSet};
 
 #[deriving(Eq)]
 enum ArgumentType {
-    Known(StrBuf),
+    Known(String),
     Unsigned,
     String,
 }
 
 enum Position {
     Exact(uint),
-    Named(StrBuf),
+    Named(String),
 }
 
 struct Context<'a, 'b> {
@@ -45,13 +45,13 @@ struct Context<'a, 'b> {
     // Note that we keep a side-array of the ordering of the named arguments
     // found to be sure that we can translate them in the same order that they
     // were declared in.
-    names: HashMap<StrBuf, @ast::Expr>,
-    name_types: HashMap<StrBuf, ArgumentType>,
-    name_ordering: Vec<StrBuf>,
+    names: HashMap<String, @ast::Expr>,
+    name_types: HashMap<String, ArgumentType>,
+    name_ordering: Vec<String>,
 
     // Collection of the compiled `rt::Piece` structures
     pieces: Vec<@ast::Expr> ,
-    name_positions: HashMap<StrBuf, uint>,
+    name_positions: HashMap<String, uint>,
     method_statics: Vec<@ast::Item> ,
 
     // Updated as arguments are consumed or methods are entered
@@ -74,10 +74,10 @@ pub enum Invocation {
 ///           named arguments))
 fn parse_args(ecx: &mut ExtCtxt, sp: Span, allow_method: bool,
               tts: &[ast::TokenTree])
-    -> (Invocation, Option<(@ast::Expr, Vec<@ast::Expr>, Vec<StrBuf>,
-                            HashMap<StrBuf, @ast::Expr>)>) {
+    -> (Invocation, Option<(@ast::Expr, Vec<@ast::Expr>, Vec<String>,
+                            HashMap<String, @ast::Expr>)>) {
     let mut args = Vec::new();
-    let mut names = HashMap::<StrBuf, @ast::Expr>::new();
+    let mut names = HashMap::<String, @ast::Expr>::new();
     let mut order = Vec::new();
 
     let mut p = rsparse::new_parser_from_tts(ecx.parse_sess(),
@@ -855,8 +855,8 @@ pub fn expand_format_args_method(ecx: &mut ExtCtxt, sp: Span,
 pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt, sp: Span,
                                     invocation: Invocation,
                                     efmt: @ast::Expr, args: Vec<@ast::Expr>,
-                                    name_ordering: Vec<StrBuf>,
-                                    names: HashMap<StrBuf, @ast::Expr>) -> @ast::Expr {
+                                    name_ordering: Vec<String>,
+                                    names: HashMap<String, @ast::Expr>) -> @ast::Expr {
     let arg_types = Vec::from_fn(args.len(), |_| None);
     let mut cx = Context {
         ecx: ecx,

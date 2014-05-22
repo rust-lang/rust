@@ -9,6 +9,6 @@
 // except according to those terms.
 
 pub fn main() {
-    fn as_buf<T>(s: StrBuf, f: |StrBuf| -> T) -> T { f(s) }
-    as_buf("foo".to_strbuf(), |foo: StrBuf| -> () println!("{}", foo) );
+    fn as_buf<T>(s: String, f: |String| -> T) -> T { f(s) }
+    as_buf("foo".to_strbuf(), |foo: String| -> () println!("{}", foo) );
 }

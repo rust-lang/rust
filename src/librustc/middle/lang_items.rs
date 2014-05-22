@@ -74,7 +74,7 @@ impl LanguageItems {
         }
     }
 
-    pub fn require(&self, it: LangItem) -> Result<ast::DefId, StrBuf> {
+    pub fn require(&self, it: LangItem) -> Result<ast::DefId, String> {
         match self.items.get(it as uint) {
             &Some(id) => Ok(id),
             &None => {

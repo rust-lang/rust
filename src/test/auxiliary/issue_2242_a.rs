@@ -12,9 +12,9 @@
 #![crate_type = "lib"]
 
 trait to_strz {
-    fn to_strz() -> StrBuf;
+    fn to_strz() -> String;
 }
 
-impl to_strz for StrBuf {
-    fn to_strz() -> StrBuf { self.clone() }
+impl to_strz for String {
+    fn to_strz() -> String { self.clone() }
 }

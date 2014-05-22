@@ -10,7 +10,7 @@
 
 
 struct Foo {
-    string: StrBuf
+    string: String
 }
 
 pub fn main() {

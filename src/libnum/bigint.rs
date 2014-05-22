@@ -26,7 +26,7 @@ use std::num::CheckedDiv;
 use std::num::{Bitwise, ToPrimitive, FromPrimitive};
 use std::num::{Zero, One, ToStrRadix, FromStrRadix};
 use rand::Rng;
-use std::strbuf::StrBuf;
+use std::string::String;
 use std::uint;
 use std::{i64, u64};
 
@@ -604,7 +604,7 @@ impl_to_biguint!(u32,  FromPrimitive::from_u32)
 impl_to_biguint!(u64,  FromPrimitive::from_u64)
 
 impl ToStrRadix for BigUint {
-    fn to_str_radix(&self, radix: uint) -> StrBuf {
+    fn to_str_radix(&self, radix: uint) -> String {
         assert!(1 < radix && radix <= 16);
         let (base, max_len) = get_radix_base(radix);
         if base == BigDigit::base {
@@ -627,11 +627,11 @@ impl ToStrRadix for BigUint {
             return result;
         }
 
-        fn fill_concat(v: &[BigDigit], radix: uint, l: uint) -> StrBuf {
+        fn fill_concat(v: &[BigDigit], radix: uint, l: uint) -> String {
             if v.is_empty() {
                 return "0".to_strbuf()
             }
-            let mut s = StrBuf::with_capacity(v.len() * l);
+            let mut s = String::with_capacity(v.len() * l);
             for n in v.iter().rev() {
                 let ss = (*n as uint).to_str_radix(radix);
                 s.push_str("0".repeat(l - ss.len()).as_slice());
@@ -1211,7 +1211,7 @@ impl_to_bigint!(u64,  FromPrimitive::from_u64)
 
 impl ToStrRadix for BigInt {
     #[inline]
-    fn to_str_radix(&self, radix: uint) -> StrBuf {
+    fn to_str_radix(&self, radix: uint) -> String {
         match self.sign {
             Plus  => self.data.to_str_radix(radix),
             Zero  => "0".to_strbuf(),
@@ -2029,7 +2029,7 @@ mod biguint_tests {
         assert!(((one << 64) + one).is_odd());
     }
 
-    fn to_str_pairs() -> Vec<(BigUint, Vec<(uint, StrBuf)>)> {
+    fn to_str_pairs() -> Vec<(BigUint, Vec<(uint, String)>)> {
         let bits = BigDigit::bits;
         vec!(( Zero::zero(), vec!(
             (2, "0".to_strbuf()), (3, "0".to_strbuf())

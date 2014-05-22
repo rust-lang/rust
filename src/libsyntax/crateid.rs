@@ -24,11 +24,11 @@ use std::from_str::FromStr;
 pub struct CrateId {
     /// A path which represents the codes origin. By convention this is the
     /// URL, without `http://` or `https://` prefix, to the crate's repository
-    pub path: StrBuf,
+    pub path: String,
     /// The name of the crate.
-    pub name: StrBuf,
+    pub name: String,
     /// The version of the crate.
-    pub version: Option<StrBuf>,
+    pub version: Option<String>,
 }
 
 impl fmt::Show for CrateId {
@@ -111,7 +111,7 @@ impl CrateId {
         }
     }
 
-    pub fn short_name_with_version(&self) -> StrBuf {
+    pub fn short_name_with_version(&self) -> String {
         (format!("{}-{}", self.name, self.version_or_default())).to_strbuf()
     }
 

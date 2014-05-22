@@ -400,7 +400,7 @@ struct Match<'a, 'b> {
 }
 
 impl<'a, 'b> Repr for Match<'a, 'b> {
-    fn repr(&self, tcx: &ty::ctxt) -> StrBuf {
+    fn repr(&self, tcx: &ty::ctxt) -> String {
         if tcx.sess.verbose() {
             // for many programs, this just take too long to serialize
             self.pats.repr(tcx)

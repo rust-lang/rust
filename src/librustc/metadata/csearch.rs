@@ -33,7 +33,7 @@ pub struct StaticMethodInfo {
     pub vis: ast::Visibility,
 }
 
-pub fn get_symbol(cstore: &cstore::CStore, def: ast::DefId) -> StrBuf {
+pub fn get_symbol(cstore: &cstore::CStore, def: ast::DefId) -> String {
     let cdata = cstore.get_crate_data(def.krate);
     decoder::get_symbol(cdata.data(), def.node)
 }
@@ -247,7 +247,7 @@ pub fn get_impl_vtables(tcx: &ty::ctxt,
 
 pub fn get_native_libraries(cstore: &cstore::CStore,
                             crate_num: ast::CrateNum)
-                                -> Vec<(cstore::NativeLibaryKind, StrBuf)> {
+                                -> Vec<(cstore::NativeLibaryKind, String)> {
     let cdata = cstore.get_crate_data(crate_num);
     decoder::get_native_libraries(&*cdata)
 }

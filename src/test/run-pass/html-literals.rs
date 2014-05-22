@@ -98,6 +98,6 @@ pub fn main() {
 }
 
 enum HTMLFragment {
-    tag(StrBuf, Vec<HTMLFragment> ),
-    text(StrBuf),
+    tag(String, Vec<HTMLFragment> ),
+    text(String),
 }

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 pub struct UninterpretedOption_NamePart {
-    name_part: Option<StrBuf>,
+    name_part: Option<String>,
 }
 
 impl<'a> UninterpretedOption_NamePart {

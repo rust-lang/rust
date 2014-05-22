@@ -153,7 +153,7 @@ fn medium() -> Regex { regex!("[XYZ]ABCDEFGHIJKLMNOPQRSTUVWXYZ$") }
 fn hard() -> Regex { regex!("[ -~]*ABCDEFGHIJKLMNOPQRSTUVWXYZ$") }
 
 #[allow(deprecated_owned_vector)]
-fn gen_text(n: uint) -> StrBuf {
+fn gen_text(n: uint) -> String {
     let mut rng = task_rng();
     let mut bytes = rng.gen_ascii_str(n).into_bytes();
     for (i, b) in bytes.mut_iter().enumerate() {

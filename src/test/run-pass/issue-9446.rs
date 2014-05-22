@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Wrapper(StrBuf);
+struct Wrapper(String);
 
 impl Wrapper {
-    pub fn new(wrapped: StrBuf) -> Wrapper {
+    pub fn new(wrapped: String) -> Wrapper {
         Wrapper(wrapped)
     }
 

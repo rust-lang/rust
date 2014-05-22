@@ -203,8 +203,8 @@ pub fn nameize(p_s: &ParseSess, ms: &[Matcher], res: &[Rc<NamedMatch>])
 
 pub enum ParseResult {
     Success(HashMap<Ident, Rc<NamedMatch>>),
-    Failure(codemap::Span, StrBuf),
-    Error(codemap::Span, StrBuf)
+    Failure(codemap::Span, String),
+    Error(codemap::Span, String)
 }
 
 pub fn parse_or_else(sess: &ParseSess,
@@ -387,7 +387,7 @@ pub fn parse(sess: &ParseSess,
                                 token::get_ident(bind))).to_strbuf()
                       }
                       _ => fail!()
-                    } }).collect::<Vec<StrBuf>>().connect(" or ");
+                    } }).collect::<Vec<String>>().connect(" or ");
                 return Error(sp, format!(
                     "local ambiguity: multiple parsing options: \
                      built-in NTs {} or {} other options.",

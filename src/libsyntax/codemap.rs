@@ -24,7 +24,7 @@ source code snippets, etc.
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::strbuf::StrBuf;
+use std::string::String;
 
 pub trait Pos {
     fn from_uint(n: uint) -> Self;
@@ -189,7 +189,7 @@ pub enum MacroFormat {
 pub struct NameAndSpan {
     /// The name of the macro that was invoked to create the thing
     /// with this Span.
-    pub name: StrBuf,
+    pub name: String,
     /// The format with which the macro was invoked.
     pub format: MacroFormat,
     /// The span of the macro definition itself. The macro may not
@@ -220,7 +220,7 @@ pub struct ExpnInfo {
     pub callee: NameAndSpan
 }
 
-pub type FileName = StrBuf;
+pub type FileName = String;
 
 pub struct FileLines {
     pub file: Rc<FileMap>,
@@ -242,7 +242,7 @@ pub struct FileMap {
     /// e.g. `<anon>`
     pub name: FileName,
     /// The complete source code
-    pub src: StrBuf,
+    pub src: String,
     /// The start position of this source in the CodeMap
     pub start_pos: BytePos,
     /// Locations of lines beginnings in the source code
@@ -270,7 +270,7 @@ impl FileMap {
     }
 
     // get a line from the list of pre-computed line-beginnings
-    pub fn get_line(&self, line: int) -> StrBuf {
+    pub fn get_line(&self, line: int) -> String {
         let mut lines = self.lines.borrow_mut();
         let begin: BytePos = *lines.get(line as uint) - self.start_pos;
         let begin = begin.to_uint();
@@ -307,7 +307,7 @@ impl CodeMap {
         }
     }
 
-    pub fn new_filemap(&self, filename: FileName, src: StrBuf) -> Rc<FileMap> {
+    pub fn new_filemap(&self, filename: FileName, src: String) -> Rc<FileMap> {
         let mut files = self.files.borrow_mut();
         let start_pos = match files.last() {
             None => 0,
@@ -318,9 +318,9 @@ impl CodeMap {
         // FIXME #12884: no efficient/safe way to remove from the start of a string
         // and reuse the allocation.
         let mut src = if src.as_slice().starts_with("\ufeff") {
-            StrBuf::from_str(src.as_slice().slice_from(3))
+            String::from_str(src.as_slice().slice_from(3))
         } else {
-            StrBuf::from_str(src.as_slice())
+            String::from_str(src.as_slice())
         };
 
         // Append '\n' in case it's not already there.
@@ -344,7 +344,7 @@ impl CodeMap {
         filemap
     }
 
-    pub fn mk_substr_filename(&self, sp: Span) -> StrBuf {
+    pub fn mk_substr_filename(&self, sp: Span) -> String {
         let pos = self.lookup_char_pos(sp.lo);
         (format!("<{}:{}:{}>",
                  pos.file.name,
@@ -367,7 +367,7 @@ impl CodeMap {
         }
     }
 
-    pub fn span_to_str(&self, sp: Span) -> StrBuf {
+    pub fn span_to_str(&self, sp: Span) -> String {
         if self.files.borrow().len() == 0 && sp == DUMMY_SP {
             return "no-location".to_strbuf();
         }
@@ -396,7 +396,7 @@ impl CodeMap {
         FileLines {file: lo.file, lines: lines}
     }
 
-    pub fn span_to_snippet(&self, sp: Span) -> Option<StrBuf> {
+    pub fn span_to_snippet(&self, sp: Span) -> Option<String> {
         let begin = self.lookup_byte_offset(sp.lo);
         let end = self.lookup_byte_offset(sp.hi);
 

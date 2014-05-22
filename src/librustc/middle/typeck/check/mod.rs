@@ -468,7 +468,7 @@ fn check_fn<'a>(ccx: &'a CrateCtxt<'a>,
     let ret_ty = fn_sig.output;
 
     debug!("check_fn(arg_tys={:?}, ret_ty={:?})",
-           arg_tys.iter().map(|&a| ppaux::ty_to_str(tcx, a)).collect::<Vec<StrBuf>>(),
+           arg_tys.iter().map(|&a| ppaux::ty_to_str(tcx, a)).collect::<Vec<String>>(),
            ppaux::ty_to_str(tcx, ret_ty));
 
     // Create the function context.  This is either derived from scratch or,
@@ -1100,7 +1100,7 @@ impl<'a> RegionScope for infer::InferCtxt<'a> {
 }
 
 impl<'a> FnCtxt<'a> {
-    pub fn tag(&self) -> StrBuf {
+    pub fn tag(&self) -> String {
         format_strbuf!("{}", self as *FnCtxt)
     }
 
@@ -1176,7 +1176,7 @@ impl<'a> FnCtxt<'a> {
         ast_ty_to_ty(self, self.infcx(), ast_t)
     }
 
-    pub fn pat_to_str(&self, pat: &ast::Pat) -> StrBuf {
+    pub fn pat_to_str(&self, pat: &ast::Pat) -> String {
         pat.repr(self.tcx())
     }
 
@@ -1283,7 +1283,7 @@ impl<'a> FnCtxt<'a> {
 
     pub fn type_error_message(&self,
                               sp: Span,
-                              mk_msg: |StrBuf| -> StrBuf,
+                              mk_msg: |String| -> String,
                               actual_ty: ty::t,
                               err: Option<&ty::type_err>) {
         self.infcx().type_error_message(sp, mk_msg, actual_ty, err);
@@ -1800,7 +1800,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         };
 
         debug!("check_argument_types: formal_tys={:?}",
-               formal_tys.iter().map(|t| fcx.infcx().ty_to_str(*t)).collect::<Vec<StrBuf>>());
+               formal_tys.iter().map(|t| fcx.infcx().ty_to_str(*t)).collect::<Vec<String>>());
 
         // Check the arguments.
         // We do this in a pretty awful way: first we typecheck any arguments

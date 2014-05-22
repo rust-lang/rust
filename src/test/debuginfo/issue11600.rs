@@ -13,7 +13,7 @@
 // ignore-test
 
 fn main() {
-    let args : ~[StrBuf] = ::std::os::args();
+    let args : ~[String] = ::std::os::args();
     ::std::io::println(args[0]);
 }
 
@@ -25,6 +25,6 @@ fn main() {
 // compile-flags:-g
 // gdb-command:list
 // gdb-check:1[...]fn main() {
-// gdb-check:2[...]let args : ~[StrBuf] = ::std::os::args();
+// gdb-check:2[...]let args : ~[String] = ::std::os::args();
 // gdb-check:3[...]::std::io::println(args[0]);
 // gdb-check:4[...]}

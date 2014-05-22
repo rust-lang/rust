@@ -583,11 +583,11 @@ mod tests {
         }
     })
 
-    pub fn read_all(input: &mut Reader) -> StrBuf {
+    pub fn read_all(input: &mut Reader) -> String {
         input.read_to_str().unwrap()
     }
 
-    pub fn run_output(cmd: Command) -> StrBuf {
+    pub fn run_output(cmd: Command) -> String {
         let p = cmd.spawn();
         assert!(p.is_ok());
         let mut p = p.unwrap();

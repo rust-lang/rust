@@ -9,8 +9,8 @@
 // except according to those terms.
 
 struct S {
-    f0: StrBuf,
-    f1: StrBuf,
+    f0: String,
+    f1: String,
 }
 
 pub fn main() {

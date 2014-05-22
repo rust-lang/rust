@@ -105,11 +105,11 @@ pub fn compile_input(sess: Session,
  * The name used for source code that doesn't originate in a file
  * (e.g. source from stdin or a string)
  */
-pub fn anon_src() -> StrBuf {
+pub fn anon_src() -> String {
     "<anon>".to_strbuf()
 }
 
-pub fn source_name(input: &Input) -> StrBuf {
+pub fn source_name(input: &Input) -> String {
     match *input {
         // FIXME (#9639): This needs to handle non-utf8 paths
         FileInput(ref ifile) => ifile.as_str().unwrap().to_strbuf(),
@@ -121,11 +121,11 @@ pub enum Input {
     /// Load source from file
     FileInput(Path),
     /// The string is the source
-    StrInput(StrBuf)
+    StrInput(String)
 }
 
 impl Input {
-    fn filestem(&self) -> StrBuf {
+    fn filestem(&self) -> String {
         match *self {
             FileInput(ref ifile) => ifile.filestem_str().unwrap().to_strbuf(),
             StrInput(_) => "rust_out".to_strbuf(),
@@ -360,7 +360,7 @@ pub struct CrateTranslation {
     pub metadata_module: ModuleRef,
     pub link: LinkMeta,
     pub metadata: Vec<u8>,
-    pub reachable: Vec<StrBuf>,
+    pub reachable: Vec<String>,
     pub crate_formats: dependency_format::Dependencies,
     pub no_builtins: bool,
 }
@@ -495,7 +495,7 @@ fn write_out_deps(sess: &Session,
     let result = (|| {
         // Build a list of files used to compile the output and
         // write Makefile-compatible dependency rules
-        let files: Vec<StrBuf> = sess.codemap().files.borrow()
+        let files: Vec<String> = sess.codemap().files.borrow()
                                    .iter().filter(|fmap| fmap.is_real_file())
                                    .map(|fmap| fmap.name.to_strbuf())
                                    .collect();
@@ -780,7 +780,7 @@ pub fn collect_crate_types(session: &Session,
 
 pub struct OutputFilenames {
     pub out_directory: Path,
-    pub out_filestem: StrBuf,
+    pub out_filestem: String,
     pub single_output_file: Option<Path>,
 }
 

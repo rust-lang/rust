@@ -13,9 +13,9 @@ use std::io;
 
 #[deriving(Clone)]
 pub struct Layout {
-    pub logo: StrBuf,
-    pub favicon: StrBuf,
-    pub krate: StrBuf,
+    pub logo: String,
+    pub favicon: String,
+    pub krate: String,
 }
 
 pub struct Page<'a> {

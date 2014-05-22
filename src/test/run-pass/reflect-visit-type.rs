@@ -13,7 +13,7 @@
 use std::intrinsics::{TyDesc, get_tydesc, visit_tydesc, TyVisitor, Disr, Opaque};
 
 struct MyVisitor {
-    types: Vec<StrBuf> ,
+    types: Vec<String> ,
 }
 
 impl TyVisitor for MyVisitor {
@@ -155,7 +155,7 @@ pub fn main() {
         println!("type: {}", (*s).clone());
     }
 
-    let vec_types: Vec<StrBuf> = v.types.clone().move_iter().collect();
+    let vec_types: Vec<String> = v.types.clone().move_iter().collect();
     assert_eq!(vec_types, vec!("bool".to_strbuf(), "int".to_strbuf(),
                                "i8".to_strbuf(), "i16".to_strbuf()));
 }

@@ -10,14 +10,14 @@
 
 enum E {
     Foo,
-    Bar(StrBuf)
+    Bar(String)
 }
 
 struct S {
     x: E
 }
 
-fn f(x: StrBuf) {}
+fn f(x: String) {}
 
 fn main() {
     let s = S { x: Bar("hello".to_strbuf()) };

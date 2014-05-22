@@ -463,7 +463,7 @@ Here is the function that implements the child task:
 ~~~
 extern crate sync;
 # fn main() {
-fn stringifier(channel: &sync::DuplexStream<StrBuf, uint>) {
+fn stringifier(channel: &sync::DuplexStream<String, uint>) {
     let mut value: uint;
     loop {
         value = channel.recv();
@@ -488,7 +488,7 @@ Here is the code for the parent task:
 extern crate sync;
 # use std::task::spawn;
 # use sync::DuplexStream;
-# fn stringifier(channel: &sync::DuplexStream<StrBuf, uint>) {
+# fn stringifier(channel: &sync::DuplexStream<String, uint>) {
 #     let mut value: uint;
 #     loop {
 #         value = channel.recv();

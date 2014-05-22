@@ -16,7 +16,7 @@
 //! them in the future to instead emit any format desired.
 
 use std::fmt;
-use std::strbuf::StrBuf;
+use std::string::String;
 
 use syntax::ast;
 use syntax::ast_util;
@@ -171,12 +171,12 @@ fn resolved_path(w: &mut fmt::Formatter, did: ast::DefId, p: &clean::Path,
 }
 
 fn path(w: &mut fmt::Formatter, path: &clean::Path, print_all: bool,
-        root: |&render::Cache, &[StrBuf]| -> Option<StrBuf>,
-        info: |&render::Cache| -> Option<(Vec<StrBuf> , ItemType)>)
+        root: |&render::Cache, &[String]| -> Option<String>,
+        info: |&render::Cache| -> Option<(Vec<String> , ItemType)>)
     -> fmt::Result
 {
     // The generics will get written to both the title and link
-    let mut generics = StrBuf::new();
+    let mut generics = String::new();
     let last = path.segments.last().unwrap();
     if last.lifetimes.len() > 0 || last.types.len() > 0 {
         let mut counter = 0;
@@ -206,7 +206,7 @@ fn path(w: &mut fmt::Formatter, path: &clean::Path, print_all: bool,
         let amt = path.segments.len() - 1;
         match rel_root {
             Some(root) => {
-                let mut root = StrBuf::from_str(root.as_slice());
+                let mut root = String::from_str(root.as_slice());
                 for seg in path.segments.slice_to(amt).iter() {
                     if "super" == seg.name.as_slice() ||
                             "self" == seg.name.as_slice() {
@@ -232,7 +232,7 @@ fn path(w: &mut fmt::Formatter, path: &clean::Path, print_all: bool,
     match info(&**cache) {
         // This is a documented path, link to it!
         Some((ref fqp, shortty)) if abs_root.is_some() => {
-            let mut url = StrBuf::from_str(abs_root.unwrap().as_slice());
+            let mut url = String::from_str(abs_root.unwrap().as_slice());
             let to_link = fqp.slice_to(fqp.len() - 1);
             for component in to_link.iter() {
                 url.push_str(component.as_slice());
@@ -334,7 +334,7 @@ impl fmt::Show for clean::Type {
                        },
                        ret = decl.decl.output,
                        bounds = {
-                           let mut ret = StrBuf::new();
+                           let mut ret = String::new();
                            match *region {
                                Some(ref lt) => {
                                    ret.push_str(format!(": {}",
@@ -377,7 +377,7 @@ impl fmt::Show for clean::Type {
                                            .map(|s| s.to_str().to_strbuf());
                            format_strbuf!(
                                ": {}",
-                               m.collect::<Vec<StrBuf>>().connect(" + "))
+                               m.collect::<Vec<String>>().connect(" + "))
                        },
                        arrow = match decl.decl.output { clean::Unit => "no", _ => "yes" },
                        ret = decl.decl.output)
@@ -462,7 +462,7 @@ impl fmt::Show for clean::FnDecl {
 impl<'a> fmt::Show for Method<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let Method(selfty, d) = *self;
-        let mut args = StrBuf::new();
+        let mut args = String::new();
         match *selfty {
             clean::SelfStatic => {},
             clean::SelfValue => args.push_str("self"),

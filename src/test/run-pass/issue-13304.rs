@@ -47,7 +47,7 @@ fn main() {
     }
 }
 
-fn parent(flavor: StrBuf) {
+fn parent(flavor: String) {
     let args = os::args();
     let args = args.as_slice();
     let mut p = io::process::Command::new(args[0].as_slice())

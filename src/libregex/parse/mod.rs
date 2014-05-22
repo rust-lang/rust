@@ -32,7 +32,7 @@ pub struct Error {
     /// The *approximate* character index of where the error occurred.
     pub pos: uint,
     /// A message describing the error.
-    pub msg: StrBuf,
+    pub msg: String,
 }
 
 impl fmt::Show for Error {
@@ -59,7 +59,7 @@ pub enum Ast {
     Begin(Flags),
     End(Flags),
     WordBoundary(Flags),
-    Capture(uint, Option<StrBuf>, Box<Ast>),
+    Capture(uint, Option<String>, Box<Ast>),
     // Represent concatenation as a flat vector to avoid blowing the
     // stack in the compiler.
     Cat(Vec<Ast>),
@@ -104,7 +104,7 @@ impl Greed {
 #[deriving(Show)]
 enum BuildAst {
     Ast(Ast),
-    Paren(Flags, uint, StrBuf), // '('
+    Paren(Flags, uint, String), // '('
     Bar, // '|'
 }
 
@@ -131,7 +131,7 @@ impl BuildAst {
         }
     }
 
-    fn capture_name(&self) -> Option<StrBuf> {
+    fn capture_name(&self) -> Option<String> {
         match *self {
             Paren(_, 0, _) => None,
             Paren(_, _, ref name) => {
@@ -185,7 +185,7 @@ struct Parser<'a> {
     // opening a capture group).
     caps: uint,
     // A set of all capture group names used only to detect duplicates.
-    names: Vec<StrBuf>,
+    names: Vec<String>,
 }
 
 pub fn parse(s: &str) -> Result<Ast, Error> {
@@ -625,7 +625,7 @@ impl<'a> Parser<'a> {
     // character).
     fn parse_unicode_name(&mut self) -> Result<Ast, Error> {
         let negated = if self.cur() == 'P' { FLAG_NEGATED } else { FLAG_EMPTY };
-        let mut name: StrBuf;
+        let mut name: String;
         if self.peek_is(1, '{') {
             try!(self.expect('{'))
             let closer =
@@ -941,7 +941,7 @@ impl<'a> Parser<'a> {
         *self.chars.get(self.chari)
     }
 
-    fn slice(&self, start: uint, end: uint) -> StrBuf {
+    fn slice(&self, start: uint, end: uint) -> String {
         str::from_chars(self.chars.as_slice().slice(start, end)).to_strbuf()
     }
 }

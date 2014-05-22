@@ -496,7 +496,7 @@ pub fn trans_foreign_mod(ccx: &CrateContext, foreign_mod: &ast::ForeignMod) {
 
 pub fn register_rust_fn_with_foreign_abi(ccx: &CrateContext,
                                          sp: Span,
-                                         sym: StrBuf,
+                                         sym: String,
                                          node_id: ast::NodeId)
                                          -> ValueRef {
     let _icx = push_ctxt("foreign::register_foreign_fn");

@@ -16,11 +16,11 @@ use owned_slice::OwnedSlice;
 use parse::token;
 use parse::token::{str_to_ident};
 
-use std::strbuf::StrBuf;
+use std::string::String;
 
 pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                          -> Box<base::MacResult> {
-    let mut res_str = StrBuf::new();
+    let mut res_str = String::new();
     for (i, e) in tts.iter().enumerate() {
         if i & 1 == 1 {
             match *e {

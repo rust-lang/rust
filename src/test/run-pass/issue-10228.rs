@@ -13,7 +13,7 @@ enum StdioContainer {
 }
 
 struct Test<'a> {
-    args: &'a [StrBuf],
+    args: &'a [String],
     io: &'a [StdioContainer]
 }
 

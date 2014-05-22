@@ -22,7 +22,7 @@ use util::ppaux::{note_and_explain_region, Repr, UserString};
 use std::cell::{Cell};
 use std::ops::{BitOr, BitAnd};
 use std::rc::Rc;
-use std::strbuf::StrBuf;
+use std::string::String;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util;
@@ -91,7 +91,7 @@ pub fn check_crate(tcx: &ty::ctxt,
                  make_stat(&bccx, bccx.stats.stable_paths.get()));
     }
 
-    fn make_stat(bccx: &BorrowckCtxt, stat: uint) -> StrBuf {
+    fn make_stat(bccx: &BorrowckCtxt, stat: uint) -> String {
         let stat_f = stat as f64;
         let total = bccx.stats.guaranteed_paths.get() as f64;
         format_strbuf!("{} ({:.0f}%)", stat  , stat_f * 100.0 / total)
@@ -296,7 +296,7 @@ impl BitAnd<RestrictionSet,RestrictionSet> for RestrictionSet {
 }
 
 impl Repr for RestrictionSet {
-    fn repr(&self, _tcx: &ty::ctxt) -> StrBuf {
+    fn repr(&self, _tcx: &ty::ctxt) -> String {
         format_strbuf!("RestrictionSet(0x{:x})", self.bits as uint)
     }
 }
@@ -574,7 +574,7 @@ impl<'a> BorrowckCtxt<'a> {
         self.tcx.sess.span_end_note(s, m);
     }
 
-    pub fn bckerr_to_str(&self, err: &BckError) -> StrBuf {
+    pub fn bckerr_to_str(&self, err: &BckError) -> String {
         match err.code {
             err_mutbl => {
                 let descr = match opt_loan_path(&err.cmt) {
@@ -734,7 +734,7 @@ impl<'a> BorrowckCtxt<'a> {
 
     pub fn append_loan_path_to_str(&self,
                                    loan_path: &LoanPath,
-                                   out: &mut StrBuf) {
+                                   out: &mut String) {
         match *loan_path {
             LpVar(id) => {
                 out.push_str(ty::local_var_name_str(self.tcx, id).get());
@@ -768,7 +768,7 @@ impl<'a> BorrowckCtxt<'a> {
 
     pub fn append_autoderefd_loan_path_to_str(&self,
                                               loan_path: &LoanPath,
-                                              out: &mut StrBuf) {
+                                              out: &mut String) {
         match *loan_path {
             LpExtend(ref lp_base, _, LpDeref(_)) => {
                 // For a path like `(*x).f` or `(*x)[3]`, autoderef
@@ -783,13 +783,13 @@ impl<'a> BorrowckCtxt<'a> {
         }
     }
 
-    pub fn loan_path_to_str(&self, loan_path: &LoanPath) -> StrBuf {
-        let mut result = StrBuf::new();
+    pub fn loan_path_to_str(&self, loan_path: &LoanPath) -> String {
+        let mut result = String::new();
         self.append_loan_path_to_str(loan_path, &mut result);
         result
     }
 
-    pub fn cmt_to_str(&self, cmt: &mc::cmt_) -> StrBuf {
+    pub fn cmt_to_str(&self, cmt: &mc::cmt_) -> String {
         self.mc().cmt_to_str(cmt)
     }
 }
@@ -819,7 +819,7 @@ impl DataFlowOperator for LoanDataFlowOperator {
 }
 
 impl Repr for Loan {
-    fn repr(&self, tcx: &ty::ctxt) -> StrBuf {
+    fn repr(&self, tcx: &ty::ctxt) -> String {
         (format!("Loan_{:?}({}, {:?}, {:?}-{:?}, {})",
                  self.index,
                  self.loan_path.repr(tcx),
@@ -831,7 +831,7 @@ impl Repr for Loan {
 }
 
 impl Repr for Restriction {
-    fn repr(&self, tcx: &ty::ctxt) -> StrBuf {
+    fn repr(&self, tcx: &ty::ctxt) -> String {
         (format!("Restriction({}, {:x})",
                  self.loan_path.repr(tcx),
                  self.set.bits as uint)).to_strbuf()
@@ -839,7 +839,7 @@ impl Repr for Restriction {
 }
 
 impl Repr for LoanPath {
-    fn repr(&self, tcx: &ty::ctxt) -> StrBuf {
+    fn repr(&self, tcx: &ty::ctxt) -> String {
         match self {
             &LpVar(id) => {
                 (format!("$({})", tcx.map.node_to_str(id))).to_strbuf()

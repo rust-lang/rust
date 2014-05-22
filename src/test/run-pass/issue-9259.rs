@@ -9,8 +9,8 @@
 // except according to those terms.
 
 struct A<'a> {
-    a: &'a [StrBuf],
-    b: Option<&'a [StrBuf]>,
+    a: &'a [String],
+    b: Option<&'a [String]>,
 }
 
 pub fn main() {

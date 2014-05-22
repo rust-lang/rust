@@ -10,7 +10,7 @@
 
 #![feature(managed_boxes)]
 
-fn assert_repr_eq<T>(obj : T, expected : StrBuf) {
+fn assert_repr_eq<T>(obj : T, expected : String) {
     assert_eq!(expected, format_strbuf!("{:?}", obj));
 }
 

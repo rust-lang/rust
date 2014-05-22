@@ -14,6 +14,6 @@ pub fn main() {
     task::spawn(proc() child("Hello".to_strbuf()) );
 }
 
-fn child(_s: StrBuf) {
+fn child(_s: String) {
 
 }

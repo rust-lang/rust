@@ -83,12 +83,12 @@ pub struct Program {
     /// If the regular expression requires a literal prefix in order to have a
     /// match, that prefix is stored here. (It's used in the VM to implement
     /// an optimization.)
-    pub prefix: StrBuf,
+    pub prefix: String,
 }
 
 impl Program {
     /// Compiles a Regex given its AST.
-    pub fn new(ast: parse::Ast) -> (Program, Vec<Option<StrBuf>>) {
+    pub fn new(ast: parse::Ast) -> (Program, Vec<Option<String>>) {
         let mut c = Compiler {
             insts: Vec::with_capacity(100),
             names: Vec::with_capacity(10),
@@ -102,7 +102,7 @@ impl Program {
         // Try to discover a literal string prefix.
         // This is a bit hacky since we have to skip over the initial
         // 'Save' instruction.
-        let mut pre = StrBuf::with_capacity(5);
+        let mut pre = String::with_capacity(5);
         for inst in c.insts.slice_from(1).iter() {
             match *inst {
                 OneChar(c, FLAG_EMPTY) => pre.push_char(c),
@@ -135,7 +135,7 @@ impl Program {
 
 struct Compiler<'r> {
     insts: Vec<Inst>,
-    names: Vec<Option<StrBuf>>,
+    names: Vec<Option<String>>,
 }
 
 // The compiler implemented here is extremely simple. Most of the complexity

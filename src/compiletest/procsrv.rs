@@ -13,7 +13,7 @@ use std::str;
 use std::io::process::{ProcessExit, Command, Process, ProcessOutput};
 use std::unstable::dynamic_lib::DynamicLibrary;
 
-fn target_env(lib_path: &str, prog: &str) -> Vec<(StrBuf, StrBuf)> {
+fn target_env(lib_path: &str, prog: &str) -> Vec<(String, String)> {
     let prog = if cfg!(windows) {prog.slice_to(prog.len() - 4)} else {prog};
     let mut aux_path = prog.to_strbuf();
     aux_path.push_str(".libaux");
@@ -26,7 +26,7 @@ fn target_env(lib_path: &str, prog: &str) -> Vec<(StrBuf, StrBuf)> {
 
     // Remove the previous dylib search path var
     let var = DynamicLibrary::envvar();
-    let mut env: Vec<(StrBuf,StrBuf)> =
+    let mut env: Vec<(String,String)> =
         os::env().move_iter().map(|(a,b)|(a.to_strbuf(), b.to_strbuf())).collect();
     match env.iter().position(|&(ref k, _)| k.as_slice() == var) {
         Some(i) => { env.remove(i); }
@@ -40,13 +40,13 @@ fn target_env(lib_path: &str, prog: &str) -> Vec<(StrBuf, StrBuf)> {
     return env;
 }
 
-pub struct Result {pub status: ProcessExit, pub out: StrBuf, pub err: StrBuf}
+pub struct Result {pub status: ProcessExit, pub out: String, pub err: String}
 
 pub fn run(lib_path: &str,
            prog: &str,
-           args: &[StrBuf],
-           env: Vec<(StrBuf, StrBuf)> ,
-           input: Option<StrBuf>) -> Option<Result> {
+           args: &[String],
+           env: Vec<(String, String)> ,
+           input: Option<String>) -> Option<Result> {
 
     let env = env.clone().append(target_env(lib_path, prog).as_slice());
     match Command::new(prog).args(args).env(env.as_slice()).spawn() {
@@ -69,9 +69,9 @@ pub fn run(lib_path: &str,
 
 pub fn run_background(lib_path: &str,
            prog: &str,
-           args: &[StrBuf],
-           env: Vec<(StrBuf, StrBuf)> ,
-           input: Option<StrBuf>) -> Option<Process> {
+           args: &[String],
+           env: Vec<(String, String)> ,
+           input: Option<String>) -> Option<Process> {
 
     let env = env.clone().append(target_env(lib_path, prog).as_slice());
     match Command::new(prog).args(args).env(env.as_slice()).spawn() {

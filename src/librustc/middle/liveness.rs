@@ -150,7 +150,7 @@ enum LiveNodeKind {
     ExitNode
 }
 
-fn live_node_kind_to_str(lnk: LiveNodeKind, cx: &ty::ctxt) -> StrBuf {
+fn live_node_kind_to_str(lnk: LiveNodeKind, cx: &ty::ctxt) -> String {
     let cm = cx.sess.codemap();
     match lnk {
         FreeVarNode(s) => {
@@ -322,7 +322,7 @@ impl<'a> IrMaps<'a> {
         }
     }
 
-    fn variable_name(&self, var: Variable) -> StrBuf {
+    fn variable_name(&self, var: Variable) -> String {
         match self.var_kinds.get(var.get()) {
             &Local(LocalInfo { ident: nm, .. }) | &Arg(_, nm) => {
                 token::get_ident(nm).get().to_str().to_strbuf()
@@ -750,7 +750,7 @@ impl<'a> Liveness<'a> {
     }
 
     #[allow(unused_must_use)]
-    fn ln_str(&self, ln: LiveNode) -> StrBuf {
+    fn ln_str(&self, ln: LiveNode) -> String {
         let mut wr = io::MemWriter::new();
         {
             let wr = &mut wr as &mut io::Writer;
@@ -1541,7 +1541,7 @@ impl<'a> Liveness<'a> {
        }
     }
 
-    fn should_warn(&self, var: Variable) -> Option<StrBuf> {
+    fn should_warn(&self, var: Variable) -> Option<String> {
         let name = self.ir.variable_name(var);
         if name.len() == 0 || name.as_slice()[0] == ('_' as u8) {
             None

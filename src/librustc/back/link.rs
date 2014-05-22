@@ -33,7 +33,7 @@ use std::io::{fs, TempDir, Command};
 use std::io;
 use std::ptr;
 use std::str;
-use std::strbuf::StrBuf;
+use std::string::String;
 use flate;
 use serialize::hex::ToHex;
 use syntax::abi;
@@ -54,7 +54,7 @@ pub enum OutputType {
     OutputTypeExe,
 }
 
-pub fn llvm_err(sess: &Session, msg: StrBuf) -> ! {
+pub fn llvm_err(sess: &Session, msg: String) -> ! {
     unsafe {
         let cstr = llvm::LLVMRustGetLastError();
         if cstr == ptr::null() {
@@ -541,14 +541,14 @@ pub fn find_crate_id(attrs: &[ast::Attribute], out_filestem: &str) -> CrateId {
     match attr::find_crateid(attrs) {
         None => from_str(out_filestem).unwrap_or_else(|| {
             let mut s = out_filestem.chars().filter(|c| c.is_XID_continue());
-            from_str(s.collect::<StrBuf>().as_slice())
+            from_str(s.collect::<String>().as_slice())
                 .or(from_str("rust-out")).unwrap()
         }),
         Some(s) => s,
     }
 }
 
-pub fn crate_id_hash(crate_id: &CrateId) -> StrBuf {
+pub fn crate_id_hash(crate_id: &CrateId) -> String {
     // This calculates CMH as defined above. Note that we don't use the path of
     // the crate id in the hash because lookups are only done by (name/vers),
     // not by path.
@@ -567,7 +567,7 @@ pub fn build_link_meta(krate: &ast::Crate, out_filestem: &str) -> LinkMeta {
     return r;
 }
 
-fn truncated_hash_result(symbol_hasher: &mut Sha256) -> StrBuf {
+fn truncated_hash_result(symbol_hasher: &mut Sha256) -> String {
     let output = symbol_hasher.result_bytes();
     // 64 bits should be enough to avoid collisions.
     output.slice_to(8).to_hex().to_strbuf()
@@ -579,7 +579,7 @@ fn symbol_hash(tcx: &ty::ctxt,
                symbol_hasher: &mut Sha256,
                t: ty::t,
                link_meta: &LinkMeta)
-               -> StrBuf {
+               -> String {
     // NB: do *not* use abbrevs here as we want the symbol names
     // to be independent of one another in the crate.
 
@@ -590,12 +590,12 @@ fn symbol_hash(tcx: &ty::ctxt,
     symbol_hasher.input_str("-");
     symbol_hasher.input_str(encoder::encoded_ty(tcx, t).as_slice());
     // Prefix with 'h' so that it never blends into adjacent digits
-    let mut hash = StrBuf::from_str("h");
+    let mut hash = String::from_str("h");
     hash.push_str(truncated_hash_result(symbol_hasher).as_slice());
     hash
 }
 
-fn get_symbol_hash(ccx: &CrateContext, t: ty::t) -> StrBuf {
+fn get_symbol_hash(ccx: &CrateContext, t: ty::t) -> String {
     match ccx.type_hashcodes.borrow().find(&t) {
         Some(h) => return h.to_strbuf(),
         None => {}
@@ -611,8 +611,8 @@ fn get_symbol_hash(ccx: &CrateContext, t: ty::t) -> StrBuf {
 // Name sanitation. LLVM will happily accept identifiers with weird names, but
 // gas doesn't!
 // gas accepts the following characters in symbols: a-z, A-Z, 0-9, ., _, $
-pub fn sanitize(s: &str) -> StrBuf {
-    let mut result = StrBuf::new();
+pub fn sanitize(s: &str) -> String {
+    let mut result = String::new();
     for c in s.chars() {
         match c {
             // Escape these with $ sequences
@@ -637,7 +637,7 @@ pub fn sanitize(s: &str) -> StrBuf {
             | '_' | '.' | '$' => result.push_char(c),
 
             _ => {
-                let mut tstr = StrBuf::new();
+                let mut tstr = String::new();
                 char::escape_unicode(c, |c| tstr.push_char(c));
                 result.push_char('$');
                 result.push_str(tstr.as_slice().slice_from(1));
@@ -657,7 +657,7 @@ pub fn sanitize(s: &str) -> StrBuf {
 
 pub fn mangle<PI: Iterator<PathElem>>(mut path: PI,
                                       hash: Option<&str>,
-                                      vers: Option<&str>) -> StrBuf {
+                                      vers: Option<&str>) -> String {
     // Follow C++ namespace-mangling style, see
     // http://en.wikipedia.org/wiki/Name_mangling for more info.
     //
@@ -672,9 +672,9 @@ pub fn mangle<PI: Iterator<PathElem>>(mut path: PI,
     // To be able to work on all platforms and get *some* reasonable output, we
     // use C++ name-mangling.
 
-    let mut n = StrBuf::from_str("_ZN"); // _Z == Begin name-sequence, N == nested
+    let mut n = String::from_str("_ZN"); // _Z == Begin name-sequence, N == nested
 
-    fn push(n: &mut StrBuf, s: &str) {
+    fn push(n: &mut String, s: &str) {
         let sani = sanitize(s);
         n.push_str(format!("{}{}", sani.len(), sani).as_slice());
     }
@@ -697,7 +697,7 @@ pub fn mangle<PI: Iterator<PathElem>>(mut path: PI,
     n
 }
 
-pub fn exported_name(path: PathElems, hash: &str, vers: &str) -> StrBuf {
+pub fn exported_name(path: PathElems, hash: &str, vers: &str) -> String {
     // The version will get mangled to have a leading '_', but it makes more
     // sense to lead with a 'v' b/c this is a version...
     let vers = if vers.len() > 0 && !char::is_XID_start(vers.char_at(0)) {
@@ -710,7 +710,7 @@ pub fn exported_name(path: PathElems, hash: &str, vers: &str) -> StrBuf {
 }
 
 pub fn mangle_exported_name(ccx: &CrateContext, path: PathElems,
-                            t: ty::t, id: ast::NodeId) -> StrBuf {
+                            t: ty::t, id: ast::NodeId) -> String {
     let mut hash = get_symbol_hash(ccx, t);
 
     // Paths can be completely identical for different nodes,
@@ -738,7 +738,7 @@ pub fn mangle_exported_name(ccx: &CrateContext, path: PathElems,
 
 pub fn mangle_internal_name_by_type_and_seq(ccx: &CrateContext,
                                             t: ty::t,
-                                            name: &str) -> StrBuf {
+                                            name: &str) -> String {
     let s = ppaux::ty_to_str(ccx.tcx(), t);
     let path = [PathName(token::intern(s.as_slice())),
                 gensym_name(name)];
@@ -746,18 +746,18 @@ pub fn mangle_internal_name_by_type_and_seq(ccx: &CrateContext,
     mangle(ast_map::Values(path.iter()), Some(hash.as_slice()), None)
 }
 
-pub fn mangle_internal_name_by_path_and_seq(path: PathElems, flav: &str) -> StrBuf {
+pub fn mangle_internal_name_by_path_and_seq(path: PathElems, flav: &str) -> String {
     mangle(path.chain(Some(gensym_name(flav)).move_iter()), None, None)
 }
 
-pub fn output_lib_filename(id: &CrateId) -> StrBuf {
+pub fn output_lib_filename(id: &CrateId) -> String {
     format_strbuf!("{}-{}-{}",
                    id.name,
                    crate_id_hash(id),
                    id.version_or_default())
 }
 
-pub fn get_cc_prog(sess: &Session) -> StrBuf {
+pub fn get_cc_prog(sess: &Session) -> String {
     match sess.opts.cg.linker {
         Some(ref linker) => return linker.to_strbuf(),
         None => {}
@@ -773,7 +773,7 @@ pub fn get_cc_prog(sess: &Session) -> StrBuf {
     }.to_strbuf()
 }
 
-pub fn get_ar_prog(sess: &Session) -> StrBuf {
+pub fn get_ar_prog(sess: &Session) -> String {
     match sess.opts.cg.ar {
         Some(ref ar) => (*ar).clone(),
         None => "ar".to_strbuf()

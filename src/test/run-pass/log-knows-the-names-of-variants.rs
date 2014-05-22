@@ -10,7 +10,7 @@
 
 enum foo {
   a(uint),
-  b(StrBuf),
+  b(String),
   c,
 }
 

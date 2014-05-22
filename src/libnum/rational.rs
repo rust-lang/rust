@@ -281,7 +281,7 @@ impl<T: fmt::Show> fmt::Show for Ratio<T> {
 }
 impl<T: ToStrRadix> ToStrRadix for Ratio<T> {
     /// Renders as `numer/denom` where the numbers are in base `radix`.
-    fn to_str_radix(&self, radix: uint) -> StrBuf {
+    fn to_str_radix(&self, radix: uint) -> String {
         format_strbuf!("{}/{}",
                        self.numer.to_str_radix(radix),
                        self.denom.to_str_radix(radix))
@@ -557,7 +557,7 @@ mod test {
 
     #[test]
     fn test_to_from_str() {
-        fn test(r: Rational, s: StrBuf) {
+        fn test(r: Rational, s: String) {
             assert_eq!(FromStr::from_str(s.as_slice()), Some(r));
             assert_eq!(r.to_str().to_strbuf(), s);
         }
@@ -583,13 +583,13 @@ mod test {
 
     #[test]
     fn test_to_from_str_radix() {
-        fn test(r: Rational, s: StrBuf, n: uint) {
+        fn test(r: Rational, s: String, n: uint) {
             assert_eq!(FromStrRadix::from_str_radix(s.as_slice(), n),
                        Some(r));
             assert_eq!(r.to_str_radix(n).to_strbuf(), s);
         }
-        fn test3(r: Rational, s: StrBuf) { test(r, s, 3) }
-        fn test16(r: Rational, s: StrBuf) { test(r, s, 16) }
+        fn test3(r: Rational, s: String) { test(r, s, 3) }
+        fn test16(r: Rational, s: String) { test(r, s, 16) }
 
         test3(_1, "1/1".to_strbuf());
         test3(_0, "0/1".to_strbuf());

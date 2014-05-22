@@ -322,7 +322,7 @@ impl Uuid {
     /// Returns the UUID as a string of 16 hexadecimal digits
     ///
     /// Example: `936DA01F9ABD4d9d80C702AF85C822A8`
-    pub fn to_simple_str(&self) -> StrBuf {
+    pub fn to_simple_str(&self) -> String {
         let mut s: Vec<u8> = Vec::from_elem(32, 0u8);
         for i in range(0u, 16u) {
             let digit = format!("{:02x}", self.bytes[i] as uint);
@@ -335,7 +335,7 @@ impl Uuid {
     /// Returns a string of hexadecimal digits, separated into groups with a hyphen.
     ///
     /// Example: `550e8400-e29b-41d4-a716-446655440000`
-    pub fn to_hyphenated_str(&self) -> StrBuf {
+    pub fn to_hyphenated_str(&self) -> String {
         use std::mem::{to_be16, to_be32};
         // Convert to field-based struct as it matches groups in output.
         // Ensure fields are in network byte order, as per RFC.
@@ -361,7 +361,7 @@ impl Uuid {
     /// This is the same as the hyphenated format, but with the "urn:uuid:" prefix.
     ///
     /// Example: `urn:uuid:F9168C5E-CEB2-4faa-B6BF-329BF39FA1E4`
-    pub fn to_urn_str(&self) -> StrBuf {
+    pub fn to_urn_str(&self) -> String {
         format_strbuf!("urn:uuid:{}", self.to_hyphenated_str())
     }
 
