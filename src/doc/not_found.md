@@ -13,8 +13,7 @@ Some things that might be helpful to you though:
 
 ## Reference
 * [The Rust official site](http://rust-lang.org)
-* [The Rust reference manual](http://static.rust-lang.org/doc/master/rust.html) (* [PDF](http://static.rust-lang.org/doc/master/rust.pdf))
+* [The Rust reference manual](http://doc.rust-lang.org/rust.html) (* [PDF](http://doc.rust-lang.org/rust.pdf))
 
 ## Docs
-* [The standard library (stable)](http://doc.rust-lang.org/doc/0.10/std/index.html)
-* [The standard library (master)](http://doc.rust-lang.org/doc/master/std/index.html)
+* [The standard library](http://doc.rust-lang.org/std/)

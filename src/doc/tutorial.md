@@ -382,7 +382,7 @@ let y: uint = x as uint;
 assert!(y == 4u);
 ~~~~
 
-[transmute]: http://static.rust-lang.org/doc/master/std/cast/fn.transmute.html
+[transmute]: http://doc.rust-lang.org/std/mem/fn.transmute.html
 
 ## Syntax extensions
 
@@ -409,7 +409,7 @@ println!("what is this thing: {:?}", mystery_object);
 ~~~~
 
 [pf]: http://en.cppreference.com/w/cpp/io/c/fprintf
-[fmt]: http://static.rust-lang.org/doc/master/std/fmt/index.html
+[fmt]: http://doc.rust-lang.org/std/fmt/
 
 You can define your own syntax extensions with the macro system. For details,
 see the [macro tutorial][macros]. Note that macro definition is currently
@@ -959,8 +959,8 @@ that are `Send`, but non-`Send` types can still *contain* types with custom
 destructors. Example of types which are not `Send` are [`Gc<T>`][gc] and
 [`Rc<T>`][rc], the shared-ownership types.
 
-[gc]: http://static.rust-lang.org/doc/master/std/gc/struct.Gc.html
-[rc]: http://static.rust-lang.org/doc/master/std/rc/struct.Rc.html
+[gc]: http://doc.rust-lang.org/std/gc/struct.Gc.html
+[rc]: http://doc.rust-lang.org/std/rc/struct.Rc.html
 
 # Implementing a linked list
 
@@ -1486,7 +1486,7 @@ let mut x = 5;
 # x = 3;
 ~~~~
 
-[refcell]: http://static.rust-lang.org/doc/master/std/cell/struct.RefCell.html
+[refcell]: http://doc.rust-lang.org/std/cell/struct.RefCell.html
 
 # Dereferencing pointers
 

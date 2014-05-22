@@ -2,7 +2,7 @@
 
 If you're just reporting a bug, please see:
 
-http://static.rust-lang.org/doc/master/complement-bugreport.html
+http://doc.rust-lang.org/complement-bugreport.html
 
 ## Pull request procedure
 

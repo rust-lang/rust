@@ -42,7 +42,7 @@ pub fn main_args(args: &[StrBuf]) -> int {
 }
 
 static BUG_REPORT_URL: &'static str =
-    "http://static.rust-lang.org/doc/master/complement-bugreport.html";
+    "http://doc.rust-lang.org/complement-bugreport.html";
 
 fn run_compiler(args: &[StrBuf]) {
     let matches = match handle_options(Vec::from_slice(args)) {
