@@ -44,14 +44,14 @@ use str::StrSlice;
 
 #[allow(ctypes)]
 extern {
-    fn rust_malloc(size: uint, align: uint) -> *u8;
-    fn rust_free(ptr: *u8, size: uint, align: uint);
+    fn rust_allocate(size: uint, align: uint) -> *u8;
+    fn rust_deallocate(ptr: *u8, size: uint, align: uint);
 }
 
 unsafe fn alloc(cap: uint) -> *mut Vec<()> {
     let cap = cap.checked_add(&mem::size_of::<Vec<()>>()).unwrap();
     // this should use the real alignment, but the new representation will take care of that
-    let ret = rust_malloc(cap, 8) as *mut Vec<()>;
+    let ret = rust_allocate(cap, 8) as *mut Vec<()>;
     if ret.is_null() {
         intrinsics::abort();
     }
@@ -119,7 +119,7 @@ impl FromIterator<char> for ~str {
                                                     &(*ptr).data,
                                                     len);
                     // FIXME: #13994: port to the sized deallocation API when available
-                    rust_free(ptr as *u8, 0, 8);
+                    rust_deallocate(ptr as *u8, 0, 8);
                     mem::forget(ret);
                     ret = mem::transmute(ptr2);
                     ptr = ptr2;
@@ -191,7 +191,7 @@ impl<A: Clone> Clone for ~[A] {
                     for j in range(0, *i as int) {
                         ptr::read(&*p.offset(j));
                     }
-                    rust_free(ret as *u8, 0, 8);
+                    rust_deallocate(ret as *u8, 0, 8);
                 });
             mem::transmute(ret)
         }

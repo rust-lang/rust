@@ -109,7 +109,7 @@ use ops::Drop;
 use option::{None, Option, Some};
 use ptr::RawPtr;
 use ptr;
-use rt::heap::{exchange_malloc, deallocate};
+use rt::heap::{allocate, deallocate};
 use unstable::finally::try_finally;
 use vec::Vec;
 
@@ -304,7 +304,7 @@ impl<'a, T: Clone> CloneableVector<T> for &'a [T] {
 
         unsafe {
             // this should pass the real required alignment
-            let ret = exchange_malloc(size, 8) as *mut RawVec<()>;
+            let ret = allocate(size, 8) as *mut RawVec<()>;
 
             let a_size = mem::size_of::<T>();
             let a_size = if a_size == 0 {1} else {a_size};
@@ -968,7 +968,7 @@ mod tests {
         assert_eq!(v_b[0], 2);
         assert_eq!(v_b[1], 3);
 
-        // Test on exchange heap.
+        // Test `Box<[T]>`
         let vec_unique = box [1, 2, 3, 4, 5, 6];
         let v_d = vec_unique.slice(1u, 6u).to_owned();
         assert_eq!(v_d.len(), 5u);

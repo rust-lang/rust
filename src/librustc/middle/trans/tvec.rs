@@ -287,8 +287,11 @@ pub fn trans_uniq_vstore<'a>(bcx: &'a Block<'a>,
     // Create a temporary scope lest execution should fail while
     // constructing the vector.
     let temp_scope = fcx.push_custom_cleanup_scope();
+
+    // FIXME: #13994: the old `Box<[T]> will not support sized deallocation, this is a placeholder
+    let content_ty = vt.unit_ty;
     fcx.schedule_free_value(cleanup::CustomScope(temp_scope),
-                            val, cleanup::HeapExchange);
+                            val, cleanup::HeapExchange, content_ty);
 
     let dataptr = get_dataptr(bcx, val);
 

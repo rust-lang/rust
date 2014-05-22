@@ -1183,7 +1183,7 @@ fn trans_uniq_expr<'a>(bcx: &'a Block<'a>,
     } else {
         let custom_cleanup_scope = fcx.push_custom_cleanup_scope();
         fcx.schedule_free_value(cleanup::CustomScope(custom_cleanup_scope),
-                                val, cleanup::HeapExchange);
+                                val, cleanup::HeapExchange, contents_ty);
         let bcx = trans_into(bcx, contents, SaveIn(val));
         fcx.pop_custom_cleanup_scope(custom_cleanup_scope);
         bcx
@@ -1205,7 +1205,7 @@ fn trans_managed_expr<'a>(bcx: &'a Block<'a>,
 
     let custom_cleanup_scope = fcx.push_custom_cleanup_scope();
     fcx.schedule_free_value(cleanup::CustomScope(custom_cleanup_scope),
-                            bx, cleanup::HeapManaged);
+                            bx, cleanup::HeapManaged, contents_ty);
     let bcx = trans_into(bcx, contents, SaveIn(body));
     fcx.pop_custom_cleanup_scope(custom_cleanup_scope);
     immediate_rvalue_bcx(bcx, bx, box_ty).to_expr_datumblock()
@@ -1789,13 +1789,14 @@ fn deref_once<'a>(bcx: &'a Block<'a>,
                 let scope = cleanup::temporary_scope(bcx.tcx(), expr.id);
                 let ptr = Load(bcx, datum.val);
                 if !type_is_zero_size(bcx.ccx(), content_ty) {
-                    bcx.fcx.schedule_free_value(scope, ptr, cleanup::HeapExchange);
+                    bcx.fcx.schedule_free_value(scope, ptr, cleanup::HeapExchange, content_ty);
                 }
             }
             RvalueExpr(Rvalue { mode: ByValue }) => {
                 let scope = cleanup::temporary_scope(bcx.tcx(), expr.id);
                 if !type_is_zero_size(bcx.ccx(), content_ty) {
-                    bcx.fcx.schedule_free_value(scope, datum.val, cleanup::HeapExchange);
+                    bcx.fcx.schedule_free_value(scope, datum.val, cleanup::HeapExchange,
+                                                content_ty);
                 }
             }
             LvalueExpr => { }
