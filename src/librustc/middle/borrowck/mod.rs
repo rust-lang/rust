@@ -689,11 +689,16 @@ impl<'a> BorrowckCtxt<'a> {
                     "reference must be valid for ",
                     sub_scope,
                     "...");
+                let suggestion = if is_statement_scope(self.tcx, super_scope) {
+                    "; consider using a `let` binding to increase its lifetime"
+                } else {
+                    ""
+                };
                 note_and_explain_region(
                     self.tcx,
                     "...but borrowed value is only valid for ",
                     super_scope,
-                    "");
+                    suggestion);
             }
 
             err_borrowed_pointer_too_short(loan_scope, ptr_scope, _) => {
@@ -777,6 +782,18 @@ impl<'a> BorrowckCtxt<'a> {
     pub fn cmt_to_str(&self, cmt: &mc::cmt_) -> StrBuf {
         self.mc().cmt_to_str(cmt)
     }
+}
+
+fn is_statement_scope(tcx: &ty::ctxt, region: ty::Region) -> bool {
+     match region {
+         ty::ReScope(node_id) => {
+             match tcx.map.find(node_id) {
+                 Some(ast_map::NodeStmt(_)) => true,
+                 _ => false
+             }
+         }
+         _ => false
+     }
 }
 
 impl DataFlowOperator for LoanDataFlowOperator {
