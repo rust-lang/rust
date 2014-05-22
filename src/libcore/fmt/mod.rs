@@ -594,7 +594,7 @@ pub fn argument<'a, T>(f: extern "Rust" fn(&T, &mut Formatter) -> Result,
 }
 
 #[cfg(test)]
-pub fn format(args: &Arguments) -> ~str {
+pub fn format(args: &Arguments) -> ::realstd::strbuf::StrBuf {
     use str;
     use realstd::str::StrAllocating;
     use realstd::io::MemWriter;
@@ -613,7 +613,10 @@ pub fn format(args: &Arguments) -> ~str {
 
     let mut i = MemWriter::new();
     let _ = write(&mut i, args);
-    str::from_utf8(i.get_ref()).unwrap().to_owned()
+
+    let mut result = ::realstd::strbuf::StrBuf::new();
+    result.push_str(str::from_utf8(i.get_ref()).unwrap());
+    result
 }
 
 /// When the compiler determines that the type of an argument *must* be a string
@@ -761,7 +764,6 @@ macro_rules! delegate(($ty:ty to $other:ident) => {
         }
     }
 })
-delegate!(~str to string)
 delegate!(&'a str to string)
 delegate!(bool to bool)
 delegate!(char to char)

@@ -39,10 +39,10 @@ fn test_str() {
     let s0 = "test".to_owned();
     tx.send(s0);
     let s1 = rx.recv();
-    assert_eq!(s1[0], 't' as u8);
-    assert_eq!(s1[1], 'e' as u8);
-    assert_eq!(s1[2], 's' as u8);
-    assert_eq!(s1[3], 't' as u8);
+    assert_eq!(s1.as_slice()[0], 't' as u8);
+    assert_eq!(s1.as_slice()[1], 'e' as u8);
+    assert_eq!(s1.as_slice()[2], 's' as u8);
+    assert_eq!(s1.as_slice()[3], 't' as u8);
 }
 
 #[deriving(Show)]

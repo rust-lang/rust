@@ -20,38 +20,40 @@ fn bench_assert_match(b: &mut Bencher, re: Regex, text: &str) {
 #[bench]
 fn no_exponential(b: &mut Bencher) {
     let n = 100;
-    let re = Regex::new("a?".repeat(n) + "a".repeat(n)).unwrap();
+    let re = Regex::new(format!("{}{}",
+                                "a?".repeat(n),
+                                "a".repeat(n)).as_slice()).unwrap();
     let text = "a".repeat(n);
-    bench_assert_match(b, re, text);
+    bench_assert_match(b, re, text.as_slice());
 }
 
 #[bench]
 fn literal(b: &mut Bencher) {
     let re = regex!("y");
-    let text = "x".repeat(50) + "y";
-    bench_assert_match(b, re, text);
+    let text = format!("{}y", "x".repeat(50));
+    bench_assert_match(b, re, text.as_slice());
 }
 
 #[bench]
 fn not_literal(b: &mut Bencher) {
     let re = regex!(".y");
-    let text = "x".repeat(50) + "y";
-    bench_assert_match(b, re, text);
+    let text = format!("{}y", "x".repeat(50));
+    bench_assert_match(b, re, text.as_slice());
 }
 
 #[bench]
 fn match_class(b: &mut Bencher) {
     let re = regex!("[abcdw]");
-    let text = "xxxx".repeat(20) + "w";
-    bench_assert_match(b, re, text);
+    let text = format!("{}w", "xxxx".repeat(20));
+    bench_assert_match(b, re, text.as_slice());
 }
 
 #[bench]
 fn match_class_in_range(b: &mut Bencher) {
     // 'b' is between 'a' and 'c', so the class range checking doesn't help.
     let re = regex!("[ac]");
-    let text = "bbbb".repeat(20) + "c";
-    bench_assert_match(b, re, text);
+    let text = format!("{}c", "bbbb".repeat(20));
+    bench_assert_match(b, re, text.as_slice());
 }
 
 #[bench]
@@ -75,7 +77,7 @@ fn anchored_literal_short_non_match(b: &mut Bencher) {
 fn anchored_literal_long_non_match(b: &mut Bencher) {
     let re = regex!("^zbc(d|e)");
     let text = "abcdefghijklmnopqrstuvwxyz".repeat(15);
-    b.iter(|| re.is_match(text));
+    b.iter(|| re.is_match(text.as_slice()));
 }
 
 #[bench]
@@ -89,7 +91,7 @@ fn anchored_literal_short_match(b: &mut Bencher) {
 fn anchored_literal_long_match(b: &mut Bencher) {
     let re = regex!("^.bc(d|e)");
     let text = "abcdefghijklmnopqrstuvwxyz".repeat(15);
-    b.iter(|| re.is_match(text));
+    b.iter(|| re.is_match(text.as_slice()));
 }
 
 #[bench]

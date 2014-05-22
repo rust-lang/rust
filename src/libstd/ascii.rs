@@ -16,10 +16,9 @@ use iter::Iterator;
 use mem;
 use option::{Option, Some, None};
 use slice::{ImmutableVector, MutableVector, Vector};
-use str::OwnedStr;
-use str::Str;
-use str::{StrAllocating, StrSlice};
+use str::{OwnedStr, Str, StrAllocating, StrSlice};
 use str;
+use strbuf::StrBuf;
 use to_str::{IntoStr};
 use vec::Vec;
 
@@ -249,7 +248,7 @@ impl OwnedAsciiCast for ~[u8] {
     }
 }
 
-impl OwnedAsciiCast for ~str {
+impl OwnedAsciiCast for StrBuf {
     #[inline]
     fn is_ascii(&self) -> bool {
         self.as_slice().is_ascii()
@@ -257,7 +256,7 @@ impl OwnedAsciiCast for ~str {
 
     #[inline]
     unsafe fn into_ascii_nocheck(self) -> Vec<Ascii> {
-        let v: ~[u8] = mem::transmute(self);
+        let v: Vec<u8> = mem::transmute(self);
         v.into_ascii_nocheck()
     }
 }
@@ -314,17 +313,18 @@ impl<'a> AsciiStr for &'a [Ascii] {
 
 impl IntoStr for ~[Ascii] {
     #[inline]
-    fn into_str(self) -> ~str {
-        unsafe { mem::transmute(self) }
+    fn into_str(self) -> StrBuf {
+        let vector: Vec<Ascii> = self.as_slice().iter().map(|x| *x).collect();
+        vector.into_str()
     }
 }
 
 impl IntoStr for Vec<Ascii> {
     #[inline]
-    fn into_str(self) -> ~str {
+    fn into_str(self) -> StrBuf {
         unsafe {
             let s: &str = mem::transmute(self.as_slice());
-            s.to_owned()
+            s.to_strbuf()
         }
     }
 }
@@ -346,12 +346,12 @@ pub trait OwnedStrAsciiExt {
     /// Convert the string to ASCII upper case:
     /// ASCII letters 'a' to 'z' are mapped to 'A' to 'Z',
     /// but non-ASCII letters are unchanged.
-    fn into_ascii_upper(self) -> ~str;
+    fn into_ascii_upper(self) -> StrBuf;
 
     /// Convert the string to ASCII lower case:
     /// ASCII letters 'A' to 'Z' are mapped to 'a' to 'z',
     /// but non-ASCII letters are unchanged.
-    fn into_ascii_lower(self) -> ~str;
+    fn into_ascii_lower(self) -> StrBuf;
 }
 
 /// Extension methods for ASCII-subset only operations on string slices
@@ -359,12 +359,12 @@ pub trait StrAsciiExt {
     /// Makes a copy of the string in ASCII upper case:
     /// ASCII letters 'a' to 'z' are mapped to 'A' to 'Z',
     /// but non-ASCII letters are unchanged.
-    fn to_ascii_upper(&self) -> ~str;
+    fn to_ascii_upper(&self) -> StrBuf;
 
     /// Makes a copy of the string in ASCII lower case:
     /// ASCII letters 'A' to 'Z' are mapped to 'a' to 'z',
     /// but non-ASCII letters are unchanged.
-    fn to_ascii_lower(&self) -> ~str;
+    fn to_ascii_lower(&self) -> StrBuf;
 
     /// Check that two strings are an ASCII case-insensitive match.
     /// Same as `to_ascii_lower(a) == to_ascii_lower(b)`,
@@ -374,12 +374,12 @@ pub trait StrAsciiExt {
 
 impl<'a> StrAsciiExt for &'a str {
     #[inline]
-    fn to_ascii_upper(&self) -> ~str {
+    fn to_ascii_upper(&self) -> StrBuf {
         unsafe { str_copy_map_bytes(*self, ASCII_UPPER_MAP) }
     }
 
     #[inline]
-    fn to_ascii_lower(&self) -> ~str {
+    fn to_ascii_lower(&self) -> StrBuf {
         unsafe { str_copy_map_bytes(*self, ASCII_LOWER_MAP) }
     }
 
@@ -394,36 +394,36 @@ impl<'a> StrAsciiExt for &'a str {
     }
 }
 
-impl OwnedStrAsciiExt for ~str {
+impl OwnedStrAsciiExt for StrBuf {
     #[inline]
-    fn into_ascii_upper(self) -> ~str {
+    fn into_ascii_upper(self) -> StrBuf {
         unsafe { str_map_bytes(self, ASCII_UPPER_MAP) }
     }
 
     #[inline]
-    fn into_ascii_lower(self) -> ~str {
+    fn into_ascii_lower(self) -> StrBuf {
         unsafe { str_map_bytes(self, ASCII_LOWER_MAP) }
     }
 }
 
 #[inline]
-unsafe fn str_map_bytes(string: ~str, map: &'static [u8]) -> ~str {
+unsafe fn str_map_bytes(string: StrBuf, map: &'static [u8]) -> StrBuf {
     let mut bytes = string.into_bytes();
 
     for b in bytes.mut_iter() {
         *b = map[*b as uint];
     }
 
-    str::raw::from_utf8_owned(bytes)
+    str::from_utf8(bytes.as_slice()).unwrap().to_strbuf()
 }
 
 #[inline]
-unsafe fn str_copy_map_bytes(string: &str, map: &'static [u8]) -> ~str {
-    let mut s = string.to_owned();
-    for b in str::raw::as_owned_vec(&mut s).mut_iter() {
+unsafe fn str_copy_map_bytes(string: &str, map: &'static [u8]) -> StrBuf {
+    let mut s = string.to_strbuf();
+    for b in s.as_mut_bytes().mut_iter() {
         *b = map[*b as uint];
     }
-    s
+    s.into_strbuf()
 }
 
 static ASCII_LOWER_MAP: &'static [u8] = &[
@@ -552,15 +552,17 @@ mod tests {
         assert_eq!("( ;".to_ascii(),                 v2ascii!([40, 32, 59]));
         // FIXME: #5475 borrowchk error, owned vectors do not live long enough
         // if chained-from directly
-        let v = box [40u8, 32u8, 59u8]; assert_eq!(v.to_ascii(), v2ascii!([40, 32, 59]));
-        let v = "( ;".to_owned();              assert_eq!(v.to_ascii(), v2ascii!([40, 32, 59]));
+        let v = box [40u8, 32u8, 59u8];
+        assert_eq!(v.to_ascii(), v2ascii!([40, 32, 59]));
+        let v = "( ;".to_strbuf();
+        assert_eq!(v.as_slice().to_ascii(), v2ascii!([40, 32, 59]));
 
-        assert_eq!("abCDef&?#".to_ascii().to_lower().into_str(), "abcdef&?#".to_owned());
-        assert_eq!("abCDef&?#".to_ascii().to_upper().into_str(), "ABCDEF&?#".to_owned());
+        assert_eq!("abCDef&?#".to_ascii().to_lower().into_str(), "abcdef&?#".to_strbuf());
+        assert_eq!("abCDef&?#".to_ascii().to_upper().into_str(), "ABCDEF&?#".to_strbuf());
 
-        assert_eq!("".to_ascii().to_lower().into_str(), "".to_owned());
-        assert_eq!("YMCA".to_ascii().to_lower().into_str(), "ymca".to_owned());
-        assert_eq!("abcDEFxyz:.;".to_ascii().to_upper().into_str(), "ABCDEFXYZ:.;".to_owned());
+        assert_eq!("".to_ascii().to_lower().into_str(), "".to_strbuf());
+        assert_eq!("YMCA".to_ascii().to_lower().into_str(), "ymca".to_strbuf());
+        assert_eq!("abcDEFxyz:.;".to_ascii().to_upper().into_str(), "ABCDEFXYZ:.;".to_strbuf());
 
         assert!("aBcDeF&?#".to_ascii().eq_ignore_case("AbCdEf&?#".to_ascii()));
 
@@ -572,16 +574,16 @@ mod tests {
 
     #[test]
     fn test_ascii_vec_ng() {
-        assert_eq!("abCDef&?#".to_ascii().to_lower().into_str(), "abcdef&?#".to_owned());
-        assert_eq!("abCDef&?#".to_ascii().to_upper().into_str(), "ABCDEF&?#".to_owned());
-        assert_eq!("".to_ascii().to_lower().into_str(), "".to_owned());
-        assert_eq!("YMCA".to_ascii().to_lower().into_str(), "ymca".to_owned());
-        assert_eq!("abcDEFxyz:.;".to_ascii().to_upper().into_str(), "ABCDEFXYZ:.;".to_owned());
+        assert_eq!("abCDef&?#".to_ascii().to_lower().into_str(), "abcdef&?#".to_strbuf());
+        assert_eq!("abCDef&?#".to_ascii().to_upper().into_str(), "ABCDEF&?#".to_strbuf());
+        assert_eq!("".to_ascii().to_lower().into_str(), "".to_strbuf());
+        assert_eq!("YMCA".to_ascii().to_lower().into_str(), "ymca".to_strbuf());
+        assert_eq!("abcDEFxyz:.;".to_ascii().to_upper().into_str(), "ABCDEFXYZ:.;".to_strbuf());
     }
 
     #[test]
     fn test_owned_ascii_vec() {
-        assert_eq!(("( ;".to_owned()).into_ascii(), vec2ascii![40, 32, 59]);
+        assert_eq!(("( ;".to_strbuf()).into_ascii(), vec2ascii![40, 32, 59]);
         assert_eq!((box [40u8, 32u8, 59u8]).into_ascii(), vec2ascii![40, 32, 59]);
     }
 
@@ -593,8 +595,8 @@ mod tests {
 
     #[test]
     fn test_ascii_into_str() {
-        assert_eq!(vec2ascii![40, 32, 59].into_str(), "( ;".to_owned());
-        assert_eq!(vec2ascii!(40, 32, 59).into_str(), "( ;".to_owned());
+        assert_eq!(vec2ascii![40, 32, 59].into_str(), "( ;".to_strbuf());
+        assert_eq!(vec2ascii!(40, 32, 59).into_str(), "( ;".to_strbuf());
     }
 
     #[test]
@@ -641,70 +643,70 @@ mod tests {
         assert_eq!((vec![40u8, 32u8, 59u8]).into_ascii_opt(), Some(vec2ascii![40, 32, 59]));
         assert_eq!((vec![127u8, 128u8, 255u8]).into_ascii_opt(), None);
 
-        assert_eq!(("( ;".to_owned()).into_ascii_opt(), Some(vec2ascii![40, 32, 59]));
-        assert_eq!(("zoä华".to_owned()).into_ascii_opt(), None);
+        assert_eq!(("( ;".to_strbuf()).into_ascii_opt(), Some(vec2ascii![40, 32, 59]));
+        assert_eq!(("zoä华".to_strbuf()).into_ascii_opt(), None);
     }
 
     #[test]
     fn test_to_ascii_upper() {
-        assert_eq!("url()URL()uRl()ürl".to_ascii_upper(), "URL()URL()URL()üRL".to_owned());
-        assert_eq!("hıKß".to_ascii_upper(), "HıKß".to_owned());
+        assert_eq!("url()URL()uRl()ürl".to_ascii_upper(), "URL()URL()URL()üRL".to_strbuf());
+        assert_eq!("hıKß".to_ascii_upper(), "HıKß".to_strbuf());
 
         let mut i = 0;
         while i <= 500 {
             let upper = if 'a' as u32 <= i && i <= 'z' as u32 { i + 'A' as u32 - 'a' as u32 }
                         else { i };
-            assert_eq!(from_char(from_u32(i).unwrap()).to_ascii_upper(),
-                       from_char(from_u32(upper).unwrap()))
+            assert_eq!(from_char(from_u32(i).unwrap()).as_slice().to_ascii_upper(),
+                       from_char(from_u32(upper).unwrap()).to_strbuf())
             i += 1;
         }
     }
 
     #[test]
     fn test_to_ascii_lower() {
-        assert_eq!("url()URL()uRl()Ürl".to_ascii_lower(), "url()url()url()Ürl".to_owned());
+        assert_eq!("url()URL()uRl()Ürl".to_ascii_lower(), "url()url()url()Ürl".to_strbuf());
         // Dotted capital I, Kelvin sign, Sharp S.
-        assert_eq!("HİKß".to_ascii_lower(), "hİKß".to_owned());
+        assert_eq!("HİKß".to_ascii_lower(), "hİKß".to_strbuf());
 
         let mut i = 0;
         while i <= 500 {
             let lower = if 'A' as u32 <= i && i <= 'Z' as u32 { i + 'a' as u32 - 'A' as u32 }
                         else { i };
-            assert_eq!(from_char(from_u32(i).unwrap()).to_ascii_lower(),
-                       from_char(from_u32(lower).unwrap()))
+            assert_eq!(from_char(from_u32(i).unwrap()).as_slice().to_ascii_lower(),
+                       from_char(from_u32(lower).unwrap()).to_strbuf())
             i += 1;
         }
     }
 
     #[test]
     fn test_into_ascii_upper() {
-        assert_eq!(("url()URL()uRl()ürl".to_owned()).into_ascii_upper(),
-                   "URL()URL()URL()üRL".to_owned());
-        assert_eq!(("hıKß".to_owned()).into_ascii_upper(), "HıKß".to_owned());
+        assert_eq!(("url()URL()uRl()ürl".to_strbuf()).into_ascii_upper(),
+                   "URL()URL()URL()üRL".to_strbuf());
+        assert_eq!(("hıKß".to_strbuf()).into_ascii_upper(), "HıKß".to_strbuf());
 
         let mut i = 0;
         while i <= 500 {
             let upper = if 'a' as u32 <= i && i <= 'z' as u32 { i + 'A' as u32 - 'a' as u32 }
                         else { i };
-            assert_eq!(from_char(from_u32(i).unwrap()).into_ascii_upper(),
-                       from_char(from_u32(upper).unwrap()))
+            assert_eq!(from_char(from_u32(i).unwrap()).to_strbuf().into_ascii_upper(),
+                       from_char(from_u32(upper).unwrap()).to_strbuf())
             i += 1;
         }
     }
 
     #[test]
     fn test_into_ascii_lower() {
-        assert_eq!(("url()URL()uRl()Ürl".to_owned()).into_ascii_lower(),
-                   "url()url()url()Ürl".to_owned());
+        assert_eq!(("url()URL()uRl()Ürl".to_strbuf()).into_ascii_lower(),
+                   "url()url()url()Ürl".to_strbuf());
         // Dotted capital I, Kelvin sign, Sharp S.
-        assert_eq!(("HİKß".to_owned()).into_ascii_lower(), "hİKß".to_owned());
+        assert_eq!(("HİKß".to_strbuf()).into_ascii_lower(), "hİKß".to_strbuf());
 
         let mut i = 0;
         while i <= 500 {
             let lower = if 'A' as u32 <= i && i <= 'Z' as u32 { i + 'a' as u32 - 'A' as u32 }
                         else { i };
-            assert_eq!(from_char(from_u32(i).unwrap()).into_ascii_lower(),
-                       from_char(from_u32(lower).unwrap()))
+            assert_eq!(from_char(from_u32(i).unwrap()).to_strbuf().into_ascii_lower(),
+                       from_char(from_u32(lower).unwrap()).to_strbuf())
             i += 1;
         }
     }
@@ -724,8 +726,11 @@ mod tests {
             let c = i;
             let lower = if 'A' as u32 <= c && c <= 'Z' as u32 { c + 'a' as u32 - 'A' as u32 }
                         else { c };
-            assert!(from_char(from_u32(i).unwrap()).
-                eq_ignore_ascii_case(from_char(from_u32(lower).unwrap())));
+            assert!(from_char(from_u32(i).unwrap()).as_slice()
+                                                   .eq_ignore_ascii_case(
+                                                       from_char(
+                                                           from_u32(lower)
+                                                            .unwrap()).as_slice()));
             i += 1;
         }
     }
@@ -733,12 +738,12 @@ mod tests {
     #[test]
     fn test_to_str() {
         let s = Ascii{ chr: 't' as u8 }.to_str();
-        assert_eq!(s, "t".to_owned());
+        assert_eq!(s, "t".to_strbuf());
     }
 
     #[test]
     fn test_show() {
         let c = Ascii { chr: 't' as u8 };
-        assert_eq!(format!("{}", c), "t".to_owned());
+        assert_eq!(format_strbuf!("{}", c), "t".to_strbuf());
     }
 }

@@ -425,7 +425,9 @@ impl<'a> ::Encoder<io::IoError> for Encoder<'a> {
     }
     fn emit_f32(&mut self, v: f32) -> EncodeResult { self.emit_f64(v as f64) }
 
-    fn emit_char(&mut self, v: char) -> EncodeResult { self.emit_str(str::from_char(v)) }
+    fn emit_char(&mut self, v: char) -> EncodeResult {
+        self.emit_str(str::from_char(v).as_slice())
+    }
     fn emit_str(&mut self, v: &str) -> EncodeResult {
         write!(self.wr, "{}", escape_str(v))
     }
@@ -614,9 +616,13 @@ impl<'a> ::Encoder<io::IoError> for PrettyEncoder<'a> {
     fn emit_f64(&mut self, v: f64) -> EncodeResult {
         write!(self.wr, "{}", f64::to_str_digits(v, 6u))
     }
-    fn emit_f32(&mut self, v: f32) -> EncodeResult { self.emit_f64(v as f64) }
+    fn emit_f32(&mut self, v: f32) -> EncodeResult {
+        self.emit_f64(v as f64)
+    }
 
-    fn emit_char(&mut self, v: char) -> EncodeResult { self.emit_str(str::from_char(v)) }
+    fn emit_char(&mut self, v: char) -> EncodeResult {
+        self.emit_str(str::from_char(v).as_slice())
+    }
     fn emit_str(&mut self, v: &str) -> EncodeResult {
         write!(self.wr, "{}", escape_str(v))
     }
@@ -2477,7 +2483,7 @@ mod tests {
 
         // We can't compare the strings directly because the object fields be
         // printed in a different order.
-        assert_eq!(a.clone(), from_str(a.to_str()).unwrap());
+        assert_eq!(a.clone(), from_str(a.to_str().as_slice()).unwrap());
         assert_eq!(a.clone(),
                    from_str(a.to_pretty_str().as_slice()).unwrap());
     }

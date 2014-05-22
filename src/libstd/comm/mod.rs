@@ -990,7 +990,7 @@ mod test {
 
     pub fn stress_factor() -> uint {
         match os::getenv("RUST_TEST_STRESS") {
-            Some(val) => from_str::<uint>(val).unwrap(),
+            Some(val) => from_str::<uint>(val.as_slice()).unwrap(),
             None => 1,
         }
     }
@@ -1523,7 +1523,7 @@ mod sync_tests {
 
     pub fn stress_factor() -> uint {
         match os::getenv("RUST_TEST_STRESS") {
-            Some(val) => from_str::<uint>(val).unwrap(),
+            Some(val) => from_str::<uint>(val.as_slice()).unwrap(),
             None => 1,
         }
     }

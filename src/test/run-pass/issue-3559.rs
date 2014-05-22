@@ -22,8 +22,8 @@ fn check_strs(actual: &str, expected: &str) -> bool {
 
 pub fn main() {
     let mut table = HashMap::new();
-    table.insert("one".to_owned(), 1);
-    table.insert("two".to_owned(), 2);
-    assert!(check_strs(table.to_str(), "{one: 1, two: 2}") ||
-            check_strs(table.to_str(), "{two: 2, one: 1}"));
+    table.insert("one".to_strbuf(), 1);
+    table.insert("two".to_strbuf(), 2);
+    assert!(check_strs(table.to_str().as_slice(), "{one: 1, two: 2}") ||
+            check_strs(table.to_str().as_slice(), "{two: 2, one: 1}"));
 }

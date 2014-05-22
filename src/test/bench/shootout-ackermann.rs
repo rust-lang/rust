@@ -31,6 +31,6 @@ fn main() {
     } else {
         args.move_iter().collect()
     };
-    let n = from_str::<int>(*args.get(1)).unwrap();
+    let n = from_str::<int>(args.get(1).as_slice()).unwrap();
     println!("Ack(3,{}): {}\n", n, ack(3, n));
 }

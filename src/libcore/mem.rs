@@ -469,6 +469,7 @@ mod tests {
     use option::{Some,None};
     use realstd::str::StrAllocating;
     use realstd::owned::Box;
+    use realstd::vec::Vec;
     use raw;
 
     #[test]
@@ -568,7 +569,7 @@ mod tests {
         }
 
         unsafe {
-            assert_eq!(box [76u8], transmute("L".to_owned()));
+            assert!(Vec::from_slice([76u8]) == transmute("L".to_owned()));
         }
     }
 }

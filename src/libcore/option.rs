@@ -188,14 +188,14 @@ impl<T> Option<T> {
     ///
     /// # Example
     ///
-    /// Convert an `Option<~str>` into an `Option<int>`, preserving the original.
+    /// Convert an `Option<StrBuf>` into an `Option<int>`, preserving the original.
     /// The `map` method takes the `self` argument by value, consuming the original,
     /// so this technique uses `as_ref` to first take an `Option` to a reference
     /// to the value inside the original.
     ///
     /// ```
-    /// let num_as_str: Option<~str> = Some("10".to_owned());
-    /// // First, cast `Option<~str>` to `Option<&~str>` with `as_ref`,
+    /// let num_as_str: Option<StrBuf> = Some("10".to_strbuf());
+    /// // First, cast `Option<StrBuf>` to `Option<&StrBuf>` with `as_ref`,
     /// // then consume *that* with `map`, leaving `num_as_str` on the stack.
     /// let num_as_int: Option<uint> = num_as_str.as_ref().map(|n| n.len());
     /// println!("still can print num_as_str: {}", num_as_str);
@@ -278,10 +278,10 @@ impl<T> Option<T> {
     ///
     /// # Example
     ///
-    /// Convert an `Option<~str>` into an `Option<uint>`, consuming the original:
+    /// Convert an `Option<StrBuf>` into an `Option<uint>`, consuming the original:
     ///
     /// ```
-    /// let num_as_str: Option<~str> = Some("10".to_owned());
+    /// let num_as_str: Option<StrBuf> = Some("10".to_strbuf());
     /// // `Option::map` takes self *by value*, consuming `num_as_str`
     /// let num_as_int: Option<uint> = num_as_str.map(|n| n.len());
     /// ```
@@ -596,9 +596,10 @@ pub fn collect<T, Iter: Iterator<Option<T>>, V: FromIterator<T>>(iter: Iter) -> 
 #[cfg(test)]
 mod tests {
     use realstd::vec::Vec;
-    use realstd::str::StrAllocating;
+    use realstd::strbuf::StrBuf;
     use option::collect;
     use prelude::*;
+    use realstd::str::{Str, StrAllocating};
     use iter::range;
 
     use str::StrSlice;
@@ -619,11 +620,11 @@ mod tests {
 
     #[test]
     fn test_get_str() {
-        let x = "test".to_owned();
-        let addr_x = x.as_ptr();
+        let x = "test".to_strbuf();
+        let addr_x = x.as_slice().as_ptr();
         let opt = Some(x);
         let y = opt.unwrap();
-        let addr_y = y.as_ptr();
+        let addr_y = y.as_slice().as_ptr();
         assert_eq!(addr_x, addr_y);
     }
 
@@ -745,7 +746,8 @@ mod tests {
     #[test]
     fn test_unwrap() {
         assert_eq!(Some(1).unwrap(), 1);
-        assert_eq!(Some("hello".to_owned()).unwrap(), "hello".to_owned());
+        let s = Some("hello".to_strbuf()).unwrap();
+        assert_eq!(s.as_slice(), "hello");
     }
 
     #[test]
@@ -758,7 +760,7 @@ mod tests {
     #[test]
     #[should_fail]
     fn test_unwrap_fail2() {
-        let x: Option<~str> = None;
+        let x: Option<StrBuf> = None;
         x.unwrap();
     }
 

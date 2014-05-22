@@ -371,12 +371,12 @@ impl<'a> Parser<'a> {
     pub fn unexpected_last(&mut self, t: &token::Token) -> ! {
         let token_str = Parser::token_to_str(t);
         self.span_fatal(self.last_span, format!("unexpected token: `{}`",
-                                                token_str));
+                                                token_str).as_slice());
     }
 
     pub fn unexpected(&mut self) -> ! {
         let this_token = self.this_token_to_str();
-        self.fatal(format!("unexpected token: `{}`", this_token));
+        self.fatal(format!("unexpected token: `{}`", this_token).as_slice());
     }
 
     // expect and consume the token t. Signal an error if
@@ -389,7 +389,7 @@ impl<'a> Parser<'a> {
             let this_token_str = self.this_token_to_str();
             self.fatal(format!("expected `{}` but found `{}`",
                                token_str,
-                               this_token_str))
+                               this_token_str).as_slice())
         }
     }
 
@@ -420,11 +420,15 @@ impl<'a> Parser<'a> {
             let expect = tokens_to_str(expected.as_slice());
             let actual = self.this_token_to_str();
             self.fatal(
-                if expected.len() != 1 {
-                    format!("expected one of `{}` but found `{}`", expect, actual)
+                (if expected.len() != 1 {
+                    (format!("expected one of `{}` but found `{}`",
+                             expect,
+                             actual))
                 } else {
-                    format!("expected `{}` but found `{}`", expect, actual)
-                }
+                    (format!("expected `{}` but found `{}`",
+                             expect,
+                             actual))
+                }).as_slice()
             )
         }
     }
@@ -501,7 +505,8 @@ impl<'a> Parser<'a> {
             }
             _ => {
                 let token_str = self.this_token_to_str();
-                self.fatal(format!( "expected ident, found `{}`", token_str))
+                self.fatal((format!("expected ident, found `{}`",
+                                    token_str)).as_slice())
             }
         }
     }
@@ -545,7 +550,7 @@ impl<'a> Parser<'a> {
             let id_interned_str = token::get_ident(kw.to_ident());
             let token_str = self.this_token_to_str();
             self.fatal(format!("expected `{}`, found `{}`",
-                               id_interned_str, token_str))
+                               id_interned_str, token_str).as_slice())
         }
     }
 
@@ -554,7 +559,8 @@ impl<'a> Parser<'a> {
         if token::is_strict_keyword(&self.token) {
             let token_str = self.this_token_to_str();
             self.span_err(self.span,
-                          format!("found `{}` in ident position", token_str));
+                          format!("found `{}` in ident position",
+                                  token_str).as_slice());
         }
     }
 
@@ -562,7 +568,8 @@ impl<'a> Parser<'a> {
     pub fn check_reserved_keywords(&mut self) {
         if token::is_reserved_keyword(&self.token) {
             let token_str = self.this_token_to_str();
-            self.fatal(format!("`{}` is a reserved keyword", token_str))
+            self.fatal(format!("`{}` is a reserved keyword",
+                               token_str).as_slice())
         }
     }
 
@@ -581,7 +588,7 @@ impl<'a> Parser<'a> {
                     Parser::token_to_str(&token::BINOP(token::AND));
                 self.fatal(format!("expected `{}`, found `{}`",
                                    found_token,
-                                   token_str))
+                                   token_str).as_slice())
             }
         }
     }
@@ -600,7 +607,8 @@ impl<'a> Parser<'a> {
                 let token_str =
                     Parser::token_to_str(&token::BINOP(token::OR));
                 self.fatal(format!("expected `{}`, found `{}`",
-                                   token_str, found_token))
+                                   token_str,
+                                   found_token).as_slice())
             }
         }
     }
@@ -650,7 +658,8 @@ impl<'a> Parser<'a> {
             let found_token = self.this_token_to_str();
             let token_str = Parser::token_to_str(&token::LT);
             self.fatal(format!("expected `{}`, found `{}`",
-                               token_str, found_token))
+                               token_str,
+                               found_token).as_slice())
         }
     }
 
@@ -690,7 +699,7 @@ impl<'a> Parser<'a> {
                 let this_token_str = self.this_token_to_str();
                 self.fatal(format!("expected `{}`, found `{}`",
                                    gt_str,
-                                   this_token_str))
+                                   this_token_str).as_slice())
             }
         }
     }
@@ -1186,8 +1195,8 @@ impl<'a> Parser<'a> {
 
               _ => {
                   let token_str = p.this_token_to_str();
-                  p.fatal(format!("expected `;` or `\\{` but found `{}`",
-                                  token_str))
+                  p.fatal((format!("expected `;` or `\\{` but found `{}`",
+                                   token_str)).as_slice())
               }
             }
         })
@@ -1359,7 +1368,7 @@ impl<'a> Parser<'a> {
             TyInfer
         } else {
             let msg = format!("expected type, found token {:?}", self.token);
-            self.fatal(msg);
+            self.fatal(msg.as_slice());
         };
 
         let sp = mk_sp(lo, self.last_span.hi);
@@ -1631,7 +1640,7 @@ impl<'a> Parser<'a> {
                 };
             }
             _ => {
-                self.fatal(format!("expected a lifetime name"));
+                self.fatal(format!("expected a lifetime name").as_slice());
             }
         }
     }
@@ -1667,7 +1676,7 @@ impl<'a> Parser<'a> {
                     let msg = format!("expected `,` or `>` after lifetime \
                                       name, got: {:?}",
                                       self.token);
-                    self.fatal(msg);
+                    self.fatal(msg.as_slice());
                 }
             }
         }
@@ -2122,7 +2131,7 @@ impl<'a> Parser<'a> {
                   };
                   let token_str = p.this_token_to_str();
                   p.fatal(format!("incorrect close delimiter: `{}`",
-                                  token_str))
+                                  token_str).as_slice())
               },
               /* we ought to allow different depths of unquotation */
               token::DOLLAR if p.quote_depth > 0u => {
@@ -2773,7 +2782,7 @@ impl<'a> Parser<'a> {
                 if self.token != token::RBRACE {
                     let token_str = self.this_token_to_str();
                     self.fatal(format!("expected `\\}`, found `{}`",
-                                       token_str))
+                                       token_str).as_slice())
                 }
                 etc = true;
                 break;
@@ -2793,7 +2802,8 @@ impl<'a> Parser<'a> {
                 match bind_type {
                     BindByRef(..) | BindByValue(MutMutable) => {
                         let token_str = self.this_token_to_str();
-                        self.fatal(format!("unexpected `{}`", token_str))
+                        self.fatal(format!("unexpected `{}`",
+                                           token_str).as_slice())
                     }
                     _ => {}
                 }
@@ -3202,7 +3212,8 @@ impl<'a> Parser<'a> {
                     };
                     let tok_str = self.this_token_to_str();
                     self.fatal(format!("expected {}`(` or `\\{`, but found `{}`",
-                                       ident_str, tok_str))
+                                       ident_str,
+                                       tok_str).as_slice())
                 }
             };
 
@@ -3606,7 +3617,8 @@ impl<'a> Parser<'a> {
     fn expect_self_ident(&mut self) {
         if !self.is_self_ident() {
             let token_str = self.this_token_to_str();
-            self.fatal(format!("expected `self` but found `{}`", token_str))
+            self.fatal(format!("expected `self` but found `{}`",
+                               token_str).as_slice())
         }
         self.bump();
     }
@@ -3738,7 +3750,7 @@ impl<'a> Parser<'a> {
                 _ => {
                     let token_str = self.this_token_to_str();
                     self.fatal(format!("expected `,` or `)`, found `{}`",
-                                       token_str))
+                                       token_str).as_slice())
                 }
             }
         } else {
@@ -4005,8 +4017,9 @@ impl<'a> Parser<'a> {
                 fields.push(self.parse_struct_decl_field());
             }
             if fields.len() == 0 {
-                self.fatal(format!("unit-like struct definition should be written as `struct {};`",
-                                   token::get_ident(class_name)));
+                self.fatal(format!("unit-like struct definition should be \
+                                    written as `struct {};`",
+                                   token::get_ident(class_name)).as_slice());
             }
             self.bump();
         } else if self.token == token::LPAREN {
@@ -4036,7 +4049,7 @@ impl<'a> Parser<'a> {
             let token_str = self.this_token_to_str();
             self.fatal(format!("expected `\\{`, `(`, or `;` after struct \
                                 name but found `{}`",
-                               token_str))
+                               token_str).as_slice())
         }
 
         let _ = ast::DUMMY_NODE_ID;  // FIXME: Workaround for crazy bug.
@@ -4066,7 +4079,7 @@ impl<'a> Parser<'a> {
                 let token_str = self.this_token_to_str();
                 self.span_fatal(self.span,
                                 format!("expected `,`, or `\\}` but found `{}`",
-                                        token_str))
+                                        token_str).as_slice())
             }
         }
         a_var
@@ -4147,7 +4160,7 @@ impl<'a> Parser<'a> {
               _ => {
                   let token_str = self.this_token_to_str();
                   self.fatal(format!("expected item but found `{}`",
-                                     token_str))
+                                     token_str).as_slice())
               }
             }
         }
@@ -4229,8 +4242,8 @@ impl<'a> Parser<'a> {
             Some(d) => (dir_path.join(d), true),
             None => {
                 let mod_name = mod_string.get().to_owned();
-                let default_path_str = mod_name + ".rs";
-                let secondary_path_str = mod_name + "/mod.rs";
+                let default_path_str = format!("{}.rs", mod_name);
+                let secondary_path_str = format!("{}/mod.rs", mod_name);
                 let default_path = dir_path.join(default_path_str.as_slice());
                 let secondary_path = dir_path.join(secondary_path_str.as_slice());
                 let default_exists = default_path.exists();
@@ -4246,12 +4259,14 @@ impl<'a> Parser<'a> {
                     self.span_note(id_sp,
                                    format!("maybe move this module `{0}` \
                                             to its own directory via \
-                                            `{0}/mod.rs`", this_module));
+                                            `{0}/mod.rs`",
+                                           this_module).as_slice());
                     if default_exists || secondary_exists {
                         self.span_note(id_sp,
                                        format!("... or maybe `use` the module \
                                                 `{}` instead of possibly \
-                                                redeclaring it", mod_name));
+                                                redeclaring it",
+                                               mod_name).as_slice());
                     }
                     self.abort_if_errors();
                 }
@@ -4260,12 +4275,19 @@ impl<'a> Parser<'a> {
                     (true, false) => (default_path, false),
                     (false, true) => (secondary_path, true),
                     (false, false) => {
-                        self.span_fatal(id_sp, format!("file not found for module `{}`", mod_name));
+                        self.span_fatal(id_sp,
+                                        format!("file not found for module \
+                                                 `{}`",
+                                                 mod_name).as_slice());
                     }
                     (true, true) => {
-                        self.span_fatal(id_sp,
-                                        format!("file for module `{}` found at both {} and {}",
-                                             mod_name, default_path_str, secondary_path_str));
+                        self.span_fatal(
+                            id_sp,
+                            format!("file for module `{}` found at both {} \
+                                     and {}",
+                                    mod_name,
+                                    default_path_str,
+                                    secondary_path_str).as_slice());
                     }
                 }
             }
@@ -4290,7 +4312,7 @@ impl<'a> Parser<'a> {
                     err.push_str(" -> ");
                 }
                 err.push_str(path.display().as_maybe_owned().as_slice());
-                self.span_fatal(id_sp, err.into_owned());
+                self.span_fatal(id_sp, err.as_slice());
             }
             None => ()
         }
@@ -4348,12 +4370,14 @@ impl<'a> Parser<'a> {
         let ty = self.parse_ty(false);
         let hi = self.span.hi;
         self.expect(&token::SEMI);
-        @ast::ForeignItem { ident: ident,
-                            attrs: attrs,
-                            node: ForeignItemStatic(ty, mutbl),
-                            id: ast::DUMMY_NODE_ID,
-                            span: mk_sp(lo, hi),
-                            vis: vis }
+        @ast::ForeignItem {
+            ident: ident,
+            attrs: attrs,
+            node: ForeignItemStatic(ty, mutbl),
+            id: ast::DUMMY_NODE_ID,
+            span: mk_sp(lo, hi),
+            vis: vis,
+        }
     }
 
     // parse safe/unsafe and fn
@@ -4418,8 +4442,9 @@ impl<'a> Parser<'a> {
             _ => {
                 let token_str = self.this_token_to_str();
                 self.span_fatal(self.span,
-                                format!("expected extern crate name but found `{}`",
-                                        token_str));
+                                format!("expected extern crate name but \
+                                         found `{}`",
+                                        token_str).as_slice());
             }
         };
 
@@ -4586,11 +4611,10 @@ impl<'a> Parser<'a> {
                     None => {
                         self.span_err(
                             self.span,
-                            format!("illegal ABI: \
-                                  expected one of [{}], \
-                                  found `{}`",
-                                 abi::all_names().connect(", "),
-                                 the_string));
+                            format!("illegal ABI: expected one of [{}], \
+                                     found `{}`",
+                                    abi::all_names().connect(", "),
+                                    the_string).as_slice());
                         None
                     }
                 }
@@ -4645,7 +4669,8 @@ impl<'a> Parser<'a> {
                    self.span_err(mk_sp(lo, self.last_span.hi),
                                  format!("`extern mod` is obsolete, use \
                                           `extern crate` instead \
-                                          to refer to external crates."))
+                                          to refer to external \
+                                          crates.").as_slice())
                 }
                 return self.parse_item_extern_crate(lo, visibility, attrs);
             }
@@ -4670,7 +4695,8 @@ impl<'a> Parser<'a> {
 
             let token_str = self.this_token_to_str();
             self.span_fatal(self.span,
-                            format!("expected `\\{` or `fn` but found `{}`", token_str));
+                            format!("expected `\\{` or `fn` but found `{}`",
+                                    token_str).as_slice());
         }
 
         let is_virtual = self.eat_keyword(keywords::Virtual);
@@ -5076,7 +5102,8 @@ impl<'a> Parser<'a> {
                         }
                         ViewItemExternCrate(..) if !extern_mod_allowed => {
                             self.span_err(view_item.span,
-                                          "\"extern crate\" declarations are not allowed here");
+                                          "\"extern crate\" declarations are \
+                                           not allowed here");
                         }
                         ViewItemExternCrate(..) => {}
                     }

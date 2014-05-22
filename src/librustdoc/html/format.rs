@@ -184,12 +184,12 @@ fn path(w: &mut fmt::Formatter, path: &clean::Path, print_all: bool,
         for lifetime in last.lifetimes.iter() {
             if counter > 0 { generics.push_str(", "); }
             counter += 1;
-            generics.push_str(format!("{}", *lifetime));
+            generics.push_str(format!("{}", *lifetime).as_slice());
         }
         for ty in last.types.iter() {
             if counter > 0 { generics.push_str(", "); }
             counter += 1;
-            generics.push_str(format!("{}", *ty));
+            generics.push_str(format!("{}", *ty).as_slice());
         }
         generics.push_str("&gt;");
     }
@@ -206,7 +206,7 @@ fn path(w: &mut fmt::Formatter, path: &clean::Path, print_all: bool,
         let amt = path.segments.len() - 1;
         match rel_root {
             Some(root) => {
-                let mut root = StrBuf::from_str(root);
+                let mut root = StrBuf::from_str(root.as_slice());
                 for seg in path.segments.slice_to(amt).iter() {
                     if "super" == seg.name.as_slice() ||
                             "self" == seg.name.as_slice() {
@@ -323,18 +323,22 @@ impl fmt::Show for clean::Type {
                            {arrow, select, yes{ -&gt; {ret}} other{}}",
                        style = FnStyleSpace(decl.fn_style),
                        lifetimes = if decl.lifetimes.len() == 0 {
-                           "".to_owned()
+                           "".to_strbuf()
                        } else {
                            format!("&lt;{:#}&gt;", decl.lifetimes)
                        },
                        args = decl.decl.inputs,
-                       arrow = match decl.decl.output { clean::Unit => "no", _ => "yes" },
+                       arrow = match decl.decl.output {
+                           clean::Unit => "no",
+                           _ => "yes",
+                       },
                        ret = decl.decl.output,
                        bounds = {
                            let mut ret = StrBuf::new();
                            match *region {
                                Some(ref lt) => {
-                                   ret.push_str(format!(": {}", *lt));
+                                   ret.push_str(format!(": {}",
+                                                        *lt).as_slice());
                                }
                                None => {}
                            }
@@ -347,7 +351,8 @@ impl fmt::Show for clean::Type {
                                         } else {
                                             ret.push_str(" + ");
                                         }
-                                        ret.push_str(format!("{}", *t));
+                                        ret.push_str(format!("{}",
+                                                             *t).as_slice());
                                     }
                                 }
                            }
@@ -416,7 +421,10 @@ impl fmt::Show for clean::Type {
                        }, **t)
             }
             clean::BorrowedRef{ lifetime: ref l, mutability, type_: ref ty} => {
-                let lt = match *l { Some(ref l) => format!("{} ", *l), _ => "".to_owned() };
+                let lt = match *l {
+                    Some(ref l) => format!("{} ", *l),
+                    _ => "".to_strbuf(),
+                };
                 write!(f, "&amp;{}{}{}",
                        lt,
                        match mutability {
@@ -460,10 +468,10 @@ impl<'a> fmt::Show for Method<'a> {
             clean::SelfValue => args.push_str("self"),
             clean::SelfOwned => args.push_str("~self"),
             clean::SelfBorrowed(Some(ref lt), clean::Immutable) => {
-                args.push_str(format!("&amp;{} self", *lt));
+                args.push_str(format!("&amp;{} self", *lt).as_slice());
             }
             clean::SelfBorrowed(Some(ref lt), clean::Mutable) => {
-                args.push_str(format!("&amp;{} mut self", *lt));
+                args.push_str(format!("&amp;{} mut self", *lt).as_slice());
             }
             clean::SelfBorrowed(None, clean::Mutable) => {
                 args.push_str("&amp;mut self");
@@ -475,9 +483,9 @@ impl<'a> fmt::Show for Method<'a> {
         for (i, input) in d.inputs.values.iter().enumerate() {
             if i > 0 || args.len() > 0 { args.push_str(", "); }
             if input.name.len() > 0 {
-                args.push_str(format!("{}: ", input.name));
+                args.push_str(format!("{}: ", input.name).as_slice());
             }
-            args.push_str(format!("{}", input.type_));
+            args.push_str(format!("{}", input.type_).as_slice());
         }
         write!(f,
                "({args}){arrow, select, yes{ -&gt; {ret}} other{}}",

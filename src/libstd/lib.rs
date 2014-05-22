@@ -47,9 +47,9 @@
 //! for which the [`slice`](slice/index.html) module defines many
 //! methods.
 //!
-//! UTF-8 strings, `~str` and `&str`, are built-in types, and the
-//! standard library defines methods for them on a variety of traits
-//! in the [`str`](str/index.html) module. Rust strings are immutable;
+//! `&str`, a UTF-8 string, is a built-in type, and the standard library
+//! defines methods for it on a variety of traits in the
+//! [`str`](str/index.html) module. Rust strings are immutable;
 //! use the `StrBuf` type defined in [`strbuf`](strbuf/index.html)
 //! for a mutable string builder.
 //!
@@ -284,4 +284,5 @@ mod std {
 
     // The test runner requires std::slice::Vector, so re-export std::slice just for it.
     #[cfg(test)] pub use slice;
+    #[cfg(test)] pub use strbuf;
 }

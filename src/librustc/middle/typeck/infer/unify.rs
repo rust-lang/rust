@@ -87,7 +87,7 @@ impl<'a> UnifyInferCtxtMethods for InferCtxt<'a> {
                 Some(&ref var_val) => (*var_val).clone(),
                 None => {
                     tcx.sess.bug(format!(
-                        "failed lookup of vid `{}`", vid_u));
+                        "failed lookup of vid `{}`", vid_u).as_slice());
                 }
             };
             match var_val {

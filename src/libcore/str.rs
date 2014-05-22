@@ -25,7 +25,7 @@ use iter::range;
 use num::Saturating;
 use option::{None, Option, Some};
 use raw::Repr;
-use slice::{ImmutableVector, Vector};
+use slice::ImmutableVector;
 use slice;
 use uint;
 
@@ -596,20 +596,6 @@ pub fn eq_slice(a: &str, b: &str) -> bool {
     eq_slice_(a, b)
 }
 
-/// Bytewise string equality
-#[cfg(not(test))]
-#[lang="uniq_str_eq"]
-#[inline]
-pub fn eq(a: &~str, b: &~str) -> bool {
-    eq_slice(*a, *b)
-}
-
-#[cfg(test)]
-#[inline]
-pub fn eq(a: &~str, b: &~str) -> bool {
-    eq_slice(*a, *b)
-}
-
 /*
 Section: Misc
 */
@@ -976,11 +962,6 @@ pub mod traits {
         }
     }
 
-    impl TotalOrd for ~str {
-        #[inline]
-        fn cmp(&self, other: &~str) -> Ordering { self.as_slice().cmp(&other.as_slice()) }
-    }
-
     impl<'a> Eq for &'a str {
         #[inline]
         fn eq(&self, other: & &'a str) -> bool {
@@ -990,33 +971,14 @@ pub mod traits {
         fn ne(&self, other: & &'a str) -> bool { !(*self).eq(other) }
     }
 
-    impl Eq for ~str {
-        #[inline]
-        fn eq(&self, other: &~str) -> bool {
-            eq_slice((*self), (*other))
-        }
-    }
-
     impl<'a> TotalEq for &'a str {}
-
-    impl TotalEq for ~str {}
 
     impl<'a> Ord for &'a str {
         #[inline]
         fn lt(&self, other: & &'a str) -> bool { self.cmp(other) == Less }
     }
 
-    impl Ord for ~str {
-        #[inline]
-        fn lt(&self, other: &~str) -> bool { self.cmp(other) == Less }
-    }
-
     impl<'a, S: Str> Equiv<S> for &'a str {
-        #[inline]
-        fn equiv(&self, other: &S) -> bool { eq_slice(*self, other.as_slice()) }
-    }
-
-    impl<'a, S: Str> Equiv<S> for ~str {
         #[inline]
         fn equiv(&self, other: &S) -> bool { eq_slice(*self, other.as_slice()) }
     }
@@ -1036,21 +998,11 @@ impl<'a> Str for &'a str {
     fn as_slice<'a>(&'a self) -> &'a str { *self }
 }
 
-impl<'a> Str for ~str {
-    #[inline]
-    fn as_slice<'a>(&'a self) -> &'a str { let s: &'a str = *self; s }
-}
-
 impl<'a> Container for &'a str {
     #[inline]
     fn len(&self) -> uint {
         self.repr().len
     }
-}
-
-impl Container for ~str {
-    #[inline]
-    fn len(&self) -> uint { self.as_slice().len() }
 }
 
 /// Methods for string slices

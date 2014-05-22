@@ -52,13 +52,17 @@ fn main() {
         // rustc is passed to us with --out-dir and -L etc., so we
         // can't exec it directly
         let result = Command::new("sh")
-                             .arg("-c").arg(rustc + " " + main_file.as_str().unwrap())
+                             .arg("-c")
+                             .arg(format!("{} {}",
+                                          rustc,
+                                          main_file.as_str()
+                                                   .unwrap()).as_slice())
                              .output().unwrap();
 
         let err = str::from_utf8_lossy(result.error.as_slice());
 
         // the span should end the line (e.g no extra ~'s)
-        let expected_span = "^" + "~".repeat(n - 1) + "\n";
-        assert!(err.as_slice().contains(expected_span));
+        let expected_span = format!("^{}\n", "~".repeat(n - 1));
+        assert!(err.as_slice().contains(expected_span.as_slice()));
     }
 }

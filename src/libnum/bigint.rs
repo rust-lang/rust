@@ -604,7 +604,7 @@ impl_to_biguint!(u32,  FromPrimitive::from_u32)
 impl_to_biguint!(u64,  FromPrimitive::from_u64)
 
 impl ToStrRadix for BigUint {
-    fn to_str_radix(&self, radix: uint) -> ~str {
+    fn to_str_radix(&self, radix: uint) -> StrBuf {
         assert!(1 < radix && radix <= 16);
         let (base, max_len) = get_radix_base(radix);
         if base == BigDigit::base {
@@ -627,15 +627,17 @@ impl ToStrRadix for BigUint {
             return result;
         }
 
-        fn fill_concat(v: &[BigDigit], radix: uint, l: uint) -> ~str {
-            if v.is_empty() { return "0".to_owned() }
+        fn fill_concat(v: &[BigDigit], radix: uint, l: uint) -> StrBuf {
+            if v.is_empty() {
+                return "0".to_strbuf()
+            }
             let mut s = StrBuf::with_capacity(v.len() * l);
             for n in v.iter().rev() {
                 let ss = (*n as uint).to_str_radix(radix);
-                s.push_str("0".repeat(l - ss.len()));
-                s.push_str(ss);
+                s.push_str("0".repeat(l - ss.len()).as_slice());
+                s.push_str(ss.as_slice());
             }
-            s.as_slice().trim_left_chars('0').to_owned()
+            s.as_slice().trim_left_chars('0').to_strbuf()
         }
     }
 }
@@ -1209,11 +1211,11 @@ impl_to_bigint!(u64,  FromPrimitive::from_u64)
 
 impl ToStrRadix for BigInt {
     #[inline]
-    fn to_str_radix(&self, radix: uint) -> ~str {
+    fn to_str_radix(&self, radix: uint) -> StrBuf {
         match self.sign {
             Plus  => self.data.to_str_radix(radix),
-            Zero  => "0".to_owned(),
-            Minus => "-".to_owned() + self.data.to_str_radix(radix)
+            Zero  => "0".to_strbuf(),
+            Minus => format_strbuf!("-{}", self.data.to_str_radix(radix)),
         }
     }
 }
@@ -1476,29 +1478,112 @@ mod biguint_tests {
         check("0", 3, "0");
         check("1", 3, "8");
 
-        check("1" + "0000" + "0000" + "0000" + "0001" + "0000" + "0000" + "0000" + "0001", 3,
-              "8" + "0000" + "0000" + "0000" + "0008" + "0000" + "0000" + "0000" + "0008");
-        check("1" + "0000" + "0001" + "0000" + "0001", 2,
-              "4" + "0000" + "0004" + "0000" + "0004");
-        check("1" + "0001" + "0001", 1,
-              "2" + "0002" + "0002");
+        check("1\
+               0000\
+               0000\
+               0000\
+               0001\
+               0000\
+               0000\
+               0000\
+               0001",
+              3,
+              "8\
+               0000\
+               0000\
+               0000\
+               0008\
+               0000\
+               0000\
+               0000\
+               0008");
+        check("1\
+               0000\
+               0001\
+               0000\
+               0001",
+              2,
+              "4\
+               0000\
+               0004\
+               0000\
+               0004");
+        check("1\
+               0001\
+               0001",
+              1,
+              "2\
+               0002\
+               0002");
 
-        check(""  + "4000" + "0000" + "0000" + "0000", 3,
-              "2" + "0000" + "0000" + "0000" + "0000");
-        check(""  + "4000" + "0000", 2,
-              "1" + "0000" + "0000");
-        check(""  + "4000", 2,
-              "1" + "0000");
+        check("\
+              4000\
+              0000\
+              0000\
+              0000",
+              3,
+              "2\
+              0000\
+              0000\
+              0000\
+              0000");
+        check("4000\
+              0000",
+              2,
+              "1\
+              0000\
+              0000");
+        check("4000",
+              2,
+              "1\
+              0000");
 
-        check(""  + "4000" + "0000" + "0000" + "0000", 67,
-              "2" + "0000" + "0000" + "0000" + "0000" + "0000" + "0000" + "0000" + "0000");
-        check(""  + "4000" + "0000", 35,
-              "2" + "0000" + "0000" + "0000" + "0000");
-        check(""  + "4000", 19,
-              "2" + "0000" + "0000");
+        check("4000\
+              0000\
+              0000\
+              0000",
+              67,
+              "2\
+              0000\
+              0000\
+              0000\
+              0000\
+              0000\
+              0000\
+              0000\
+              0000");
+        check("4000\
+              0000",
+              35,
+              "2\
+              0000\
+              0000\
+              0000\
+              0000");
+        check("4000",
+              19,
+              "2\
+              0000\
+              0000");
 
-        check(""  + "fedc" + "ba98" + "7654" + "3210" + "fedc" + "ba98" + "7654" + "3210", 4,
-              "f" + "edcb" + "a987" + "6543" + "210f" + "edcb" + "a987" + "6543" + "2100");
+        check("fedc\
+              ba98\
+              7654\
+              3210\
+              fedc\
+              ba98\
+              7654\
+              3210",
+              4,
+              "f\
+              edcb\
+              a987\
+              6543\
+              210f\
+              edcb\
+              a987\
+              6543\
+              2100");
         check("88887777666655554444333322221111", 16,
               "888877776666555544443333222211110000");
     }
@@ -1515,28 +1600,107 @@ mod biguint_tests {
         check("0", 3, "0");
         check("f", 3, "1");
 
-        check("1" + "0000" + "0000" + "0000" + "0001" + "0000" + "0000" + "0000" + "0001", 3,
-              ""  + "2000" + "0000" + "0000" + "0000" + "2000" + "0000" + "0000" + "0000");
-        check("1" + "0000" + "0001" + "0000" + "0001", 2,
-              ""  + "4000" + "0000" + "4000" + "0000");
-        check("1" + "0001" + "0001", 1,
-              ""  + "8000" + "8000");
+        check("1\
+              0000\
+              0000\
+              0000\
+              0001\
+              0000\
+              0000\
+              0000\
+              0001",
+              3,
+              "2000\
+              0000\
+              0000\
+              0000\
+              2000\
+              0000\
+              0000\
+              0000");
+        check("1\
+              0000\
+              0001\
+              0000\
+              0001",
+              2,
+              "4000\
+              0000\
+              4000\
+              0000");
+        check("1\
+              0001\
+              0001",
+              1,
+              "8000\
+              8000");
 
-        check("2" + "0000" + "0000" + "0000" + "0001" + "0000" + "0000" + "0000" + "0001", 67,
-              ""  + "4000" + "0000" + "0000" + "0000");
-        check("2" + "0000" + "0001" + "0000" + "0001", 35,
-              ""  + "4000" + "0000");
-        check("2" + "0001" + "0001", 19,
-              ""  + "4000");
+        check("2\
+              0000\
+              0000\
+              0000\
+              0001\
+              0000\
+              0000\
+              0000\
+              0001",
+              67,
+              "4000\
+              0000\
+              0000\
+              0000");
+        check("2\
+              0000\
+              0001\
+              0000\
+              0001",
+              35,
+              "4000\
+              0000");
+        check("2\
+              0001\
+              0001",
+              19,
+              "4000");
 
-        check("1" + "0000" + "0000" + "0000" + "0000", 1,
-              ""  + "8000" + "0000" + "0000" + "0000");
-        check("1" + "0000" + "0000", 1,
-              ""  + "8000" + "0000");
-        check("1" + "0000", 1,
-              ""  + "8000");
-        check("f" + "edcb" + "a987" + "6543" + "210f" + "edcb" + "a987" + "6543" + "2100", 4,
-              ""  + "fedc" + "ba98" + "7654" + "3210" + "fedc" + "ba98" + "7654" + "3210");
+        check("1\
+              0000\
+              0000\
+              0000\
+              0000",
+              1,
+              "8000\
+              0000\
+              0000\
+              0000");
+        check("1\
+              0000\
+              0000",
+              1,
+              "8000\
+              0000");
+        check("1\
+              0000",
+              1,
+              "8000");
+        check("f\
+              edcb\
+              a987\
+              6543\
+              210f\
+              edcb\
+              a987\
+              6543\
+              2100",
+              4,
+              "fedc\
+              ba98\
+              7654\
+              3210\
+              fedc\
+              ba98\
+              7654\
+              3210");
 
         check("888877776666555544443333222211110000", 16,
               "88887777666655554444333322221111");
@@ -2543,7 +2707,7 @@ mod bigint_tests {
     fn test_to_str_radix() {
         fn check(n: int, ans: &str) {
             let n: BigInt = FromPrimitive::from_int(n).unwrap();
-            assert!(ans == n.to_str_radix(10));
+            assert!(ans == n.to_str_radix(10).as_slice());
         }
         check(10, "10");
         check(1, "1");
@@ -2572,7 +2736,8 @@ mod bigint_tests {
 
         // issue 10522, this hit an edge case that caused it to
         // attempt to allocate a vector of size (-1u) == huge.
-        let x: BigInt = from_str("1" + "0".repeat(36)).unwrap();
+        let x: BigInt =
+            from_str(format!("1{}", "0".repeat(36)).as_slice()).unwrap();
         let _y = x.to_str();
     }
 

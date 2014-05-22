@@ -328,18 +328,23 @@ pub fn build_codegen_options(matches: &getopts::Matches) -> CodegenOptions
             if option_to_lookup.as_slice() != candidate { continue }
             if !setter(&mut cg, value) {
                 match value {
-                    Some(..) => early_error(format!("codegen option `{}` takes \
-                                                     no value", key)),
-                    None => early_error(format!("codegen option `{0}` requires \
-                                                 a value (-C {0}=<value>)",
-                                                key))
+                    Some(..) => {
+                        early_error(format!("codegen option `{}` takes no \
+                                             value", key).as_slice())
+                    }
+                    None => {
+                        early_error(format!("codegen option `{0}` requires \
+                                             a value (-C {0}=<value>)",
+                                            key).as_slice())
+                    }
                 }
             }
             found = true;
             break;
         }
         if !found {
-            early_error(format!("unknown codegen option: `{}`", key));
+            early_error(format!("unknown codegen option: `{}`",
+                                key).as_slice());
         }
     }
     return cg;
@@ -464,8 +469,8 @@ pub fn build_target_config(sopts: &Options) -> Config {
     let arch = match get_arch(sopts.target_triple.as_slice()) {
       Some(arch) => arch,
       None => {
-          early_error("unknown architecture: " +
-                      sopts.target_triple.as_slice())
+          early_error(format!("unknown architecture: {}",
+                              sopts.target_triple.as_slice()).as_slice())
       }
     };
     let (int_type, uint_type) = match arch {
@@ -570,7 +575,10 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
                 "staticlib" => CrateTypeStaticlib,
                 "dylib"     => CrateTypeDylib,
                 "bin"       => CrateTypeExecutable,
-                _ => early_error(format!("unknown crate type: `{}`", part))
+                _ => {
+                    early_error(format!("unknown crate type: `{}`",
+                                        part).as_slice())
+                }
             };
             crate_types.push(new_part)
         }
@@ -589,14 +597,17 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
 
         let level_short = level_name.slice_chars(0, 1);
         let level_short = level_short.to_ascii().to_upper().into_str();
-        let flags = matches.opt_strs(level_short).move_iter().collect::<Vec<_>>().append(
-                                   matches.opt_strs(level_name).as_slice());
+        let flags = matches.opt_strs(level_short.as_slice())
+                           .move_iter()
+                           .collect::<Vec<_>>()
+                           .append(matches.opt_strs(level_name).as_slice());
         for lint_name in flags.iter() {
-            let lint_name = lint_name.replace("-", "_");
+            let lint_name = lint_name.replace("-", "_").into_strbuf();
             match lint_dict.find_equiv(&lint_name) {
               None => {
                 early_error(format!("unknown {} flag: {}",
-                                    level_name, lint_name));
+                                    level_name,
+                                    lint_name).as_slice());
               }
               Some(lint) => {
                 lint_opts.push((lint.lint, *level));
@@ -618,7 +629,8 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
             }
         }
         if this_bit == 0 {
-            early_error(format!("unknown debug flag: {}", *debug_flag))
+            early_error(format!("unknown debug flag: {}",
+                                *debug_flag).as_slice())
         }
         debugging_opts |= this_bit;
     }
@@ -638,7 +650,10 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
                     "bc"   => link::OutputTypeBitcode,
                     "obj"  => link::OutputTypeObject,
                     "link" => link::OutputTypeExe,
-                    _ => early_error(format!("unknown emission type: `{}`", part))
+                    _ => {
+                        early_error(format!("unknown emission type: `{}`",
+                                            part).as_slice())
+                    }
                 };
                 output_types.push(output_type)
             }
@@ -671,8 +686,9 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
                 Some("2") => Default,
                 Some("3") => Aggressive,
                 Some(arg) => {
-                    early_error(format!("optimization level needs to be between 0-3 \
-                                        (instead was `{}`)", arg));
+                    early_error(format!("optimization level needs to be \
+                                         between 0-3 (instead was `{}`)",
+                                        arg).as_slice());
                 }
             }
         } else {
@@ -692,8 +708,9 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
             None      |
             Some("2") => FullDebugInfo,
             Some(arg) => {
-                early_error(format!("optimization level needs to be between 0-3 \
-                                    (instead was `{}`)", arg));
+                early_error(format!("optimization level needs to be between \
+                                     0-3 (instead was `{}`)",
+                                    arg).as_slice());
             }
         }
     } else {
@@ -725,9 +742,11 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
 
         None => Auto,
 
-        Some(arg) => early_error(format!(
-            "argument for --color must be auto, always or never (instead was `{}`)",
-            arg))
+        Some(arg) => {
+            early_error(format!("argument for --color must be auto, always \
+                                 or never (instead was `{}`)",
+                                arg).as_slice())
+        }
     };
 
     Options {

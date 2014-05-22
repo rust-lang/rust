@@ -81,13 +81,12 @@ pub fn llvm_calling_convention(ccx: &CrateContext,
         match abi {
             RustIntrinsic => {
                 // Intrinsics are emitted by monomorphic fn
-                ccx.sess().bug(format!("asked to register intrinsic fn"));
+                ccx.sess().bug("asked to register intrinsic fn");
             }
 
             Rust => {
                 // FIXME(#3678) Implement linking to foreign fns with Rust ABI
-                ccx.sess().unimpl(
-                    format!("foreign functions with Rust ABI"));
+                ccx.sess().unimpl("foreign functions with Rust ABI");
             }
 
             // It's the ABI's job to select this, not us.
@@ -164,7 +163,8 @@ pub fn register_static(ccx: &CrateContext,
                 });
                 lib::llvm::SetLinkage(g1, linkage);
 
-                let real_name = "_rust_extern_with_linkage_" + ident.get();
+                let mut real_name = "_rust_extern_with_linkage_".to_strbuf();
+                real_name.push_str(ident.get());
                 let g2 = real_name.with_c_str(|buf| {
                     llvm::LLVMAddGlobal(ccx.llmod, llty.to_ref(), buf)
                 });
@@ -202,14 +202,14 @@ pub fn register_foreign_item_fn(ccx: &CrateContext, abi: Abi, fty: ty::t,
                 Some(s) => {
                     ccx.sess().span_fatal(s,
                         format!("ABI `{}` has no suitable calling convention \
-                              for target architecture",
-                              abi.user_string(ccx.tcx())))
+                                 for target architecture",
+                                abi.user_string(ccx.tcx())).as_slice())
                 }
                 None => {
                     ccx.sess().fatal(
                         format!("ABI `{}` has no suitable calling convention \
-                              for target architecture",
-                              abi.user_string(ccx.tcx())))
+                                 for target architecture",
+                                abi.user_string(ccx.tcx())).as_slice())
                 }
             }
         }
@@ -370,8 +370,8 @@ pub fn trans_native_call<'a>(
             // FIXME(#8357) We really ought to report a span here
             ccx.sess().fatal(
                 format!("ABI string `{}` has no suitable ABI \
-                        for target architecture",
-                        fn_abi.user_string(ccx.tcx())));
+                         for target architecture",
+                         fn_abi.user_string(ccx.tcx())).as_slice());
         }
     };
 
@@ -555,9 +555,9 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: &CrateContext,
             }
             _ => {
                 ccx.sess().bug(format!("build_rust_fn: extern fn {} has ty {}, \
-                                       expected a bare fn ty",
+                                        expected a bare fn ty",
                                        ccx.tcx.map.path_to_str(id),
-                                       t.repr(tcx)));
+                                       t.repr(tcx)).as_slice());
             }
         };
 

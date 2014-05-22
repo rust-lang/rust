@@ -246,11 +246,11 @@ mod tests {
     use super::*;
     use clone::Clone;
     use cmp::*;
-    use realstd::str::StrAllocating;
+    use realstd::str::{Str, StrAllocating};
 
     #[test]
     fn test_clone() {
-        let a = (1, "2".to_owned());
+        let a = (1, "2");
         let b = a.clone();
         assert_eq!(a, b);
     }
@@ -323,8 +323,11 @@ mod tests {
 
     #[test]
     fn test_show() {
-        assert_eq!(format!("{}", (1,)), "(1,)".to_owned());
-        assert_eq!(format!("{}", (1, true)), "(1, true)".to_owned());
-        assert_eq!(format!("{}", (1, "hi".to_owned(), true)), "(1, hi, true)".to_owned());
+        let s = format!("{}", (1,));
+        assert_eq!(s.as_slice(), "(1,)");
+        let s = format!("{}", (1, true));
+        assert_eq!(s.as_slice(), "(1, true)");
+        let s = format!("{}", (1, "hi", true));
+        assert_eq!(s.as_slice(), "(1, hi, true)");
     }
 }

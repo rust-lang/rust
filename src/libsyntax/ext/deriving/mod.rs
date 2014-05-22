@@ -96,8 +96,10 @@ pub fn expand_meta_deriving(cx: &mut ExtCtxt,
                             "Copy" => expand!(bounds::expand_deriving_bound),
 
                             ref tname => {
-                                cx.span_err(titem.span, format!("unknown \
-                                    `deriving` trait: `{}`", *tname));
+                                cx.span_err(titem.span,
+                                            format!("unknown `deriving` \
+                                                     trait: `{}`",
+                                                    *tname).as_slice());
                             }
                         };
                     }

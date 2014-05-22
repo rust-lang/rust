@@ -355,7 +355,7 @@ impl<'a> ErrorReporting for InferCtxt<'a> {
             format!("{}: {} ({})",
                  message_root_str,
                  expected_found_str,
-                 ty::type_err_to_str(self.tcx, terr)));
+                 ty::type_err_to_str(self.tcx, terr)).as_slice());
     }
 
     fn report_and_explain_type_error(&self,
@@ -430,7 +430,10 @@ impl<'a> ErrorReporting for InferCtxt<'a> {
                     span,
                     format!("lifetime of borrowed pointer outlives \
                             lifetime of captured variable `{}`...",
-                            ty::local_var_name_str(self.tcx, upvar_id.var_id).get().to_str()));
+                            ty::local_var_name_str(self.tcx,
+                                                   upvar_id.var_id)
+                                .get()
+                                .to_str()).as_slice());
                 note_and_explain_region(
                     self.tcx,
                     "...the borrowed pointer is valid for ",
@@ -439,7 +442,10 @@ impl<'a> ErrorReporting for InferCtxt<'a> {
                 note_and_explain_region(
                     self.tcx,
                     format!("...but `{}` is only valid for ",
-                            ty::local_var_name_str(self.tcx, upvar_id.var_id).get().to_str()),
+                            ty::local_var_name_str(self.tcx,
+                                                   upvar_id.var_id)
+                                .get()
+                                .to_str()).as_slice(),
                     sup,
                     "");
             }
@@ -483,7 +489,9 @@ impl<'a> ErrorReporting for InferCtxt<'a> {
                     span,
                     format!("captured variable `{}` does not \
                             outlive the enclosing closure",
-                            ty::local_var_name_str(self.tcx, id).get().to_str()));
+                            ty::local_var_name_str(self.tcx,
+                                                   id).get()
+                                                      .to_str()).as_slice());
                 note_and_explain_region(
                     self.tcx,
                     "captured variable is valid for ",
@@ -496,9 +504,8 @@ impl<'a> ErrorReporting for InferCtxt<'a> {
                     "");
             }
             infer::IndexSlice(span) => {
-                self.tcx.sess.span_err(
-                    span,
-                    format!("index of slice outside its lifetime"));
+                self.tcx.sess.span_err(span,
+                                       "index of slice outside its lifetime");
                 note_and_explain_region(
                     self.tcx,
                     "the slice is only valid for ",
@@ -591,7 +598,7 @@ impl<'a> ErrorReporting for InferCtxt<'a> {
                     span,
                     format!("in type `{}`, pointer has a longer lifetime than \
                           the data it references",
-                         ty.user_string(self.tcx)));
+                         ty.user_string(self.tcx)).as_slice());
                 note_and_explain_region(
                     self.tcx,
                     "the pointer is valid for ",
@@ -1022,8 +1029,13 @@ impl<'a> Rebuilder<'a> {
                 }
                 ast::TyPath(ref path, _, id) => {
                     let a_def = match self.tcx.def_map.borrow().find(&id) {
-                        None => self.tcx.sess.fatal(format!("unbound path {}",
-                                                    pprust::path_to_str(path))),
+                        None => {
+                            self.tcx
+                                .sess
+                                .fatal(format!(
+                                        "unbound path {}",
+                                        pprust::path_to_str(path)).as_slice())
+                        }
                         Some(&d) => d
                     };
                     match a_def {
@@ -1209,18 +1221,18 @@ impl<'a> ErrorReportingHelpers for InferCtxt<'a> {
                                               opt_explicit_self, generics);
         let msg = format!("consider using an explicit lifetime \
                            parameter as shown: {}", suggested_fn);
-        self.tcx.sess.span_note(span, msg);
+        self.tcx.sess.span_note(span, msg.as_slice());
     }
 
     fn report_inference_failure(&self,
                                 var_origin: RegionVariableOrigin) {
         let var_description = match var_origin {
-            infer::MiscVariable(_) => "".to_owned(),
-            infer::PatternRegion(_) => " for pattern".to_owned(),
-            infer::AddrOfRegion(_) => " for borrow expression".to_owned(),
-            infer::AddrOfSlice(_) => " for slice expression".to_owned(),
-            infer::Autoref(_) => " for autoref".to_owned(),
-            infer::Coercion(_) => " for automatic coercion".to_owned(),
+            infer::MiscVariable(_) => "".to_strbuf(),
+            infer::PatternRegion(_) => " for pattern".to_strbuf(),
+            infer::AddrOfRegion(_) => " for borrow expression".to_strbuf(),
+            infer::AddrOfSlice(_) => " for slice expression".to_strbuf(),
+            infer::Autoref(_) => " for autoref".to_strbuf(),
+            infer::Coercion(_) => " for automatic coercion".to_strbuf(),
             infer::LateBoundRegion(_, br) => {
                 format!(" for {}in function call",
                         bound_region_to_str(self.tcx, "lifetime parameter ", true, br))
@@ -1247,7 +1259,7 @@ impl<'a> ErrorReportingHelpers for InferCtxt<'a> {
             var_origin.span(),
             format!("cannot infer an appropriate lifetime{} \
                     due to conflicting requirements",
-                    var_description));
+                    var_description).as_slice());
     }
 
     fn note_region_origin(&self, origin: SubregionOrigin) {
@@ -1282,7 +1294,7 @@ impl<'a> ErrorReportingHelpers for InferCtxt<'a> {
                         self.tcx.sess.span_note(
                             trace.origin.span(),
                             format!("...so that {} ({})",
-                                    desc, values_str));
+                                    desc, values_str).as_slice());
                     }
                     None => {
                         // Really should avoid printing this error at
@@ -1291,7 +1303,7 @@ impl<'a> ErrorReportingHelpers for InferCtxt<'a> {
                         // doing right now. - nmatsakis
                         self.tcx.sess.span_note(
                             trace.origin.span(),
-                            format!("...so that {}", desc));
+                            format!("...so that {}", desc).as_slice());
                     }
                 }
             }
@@ -1304,8 +1316,11 @@ impl<'a> ErrorReportingHelpers for InferCtxt<'a> {
             infer::ReborrowUpvar(span, ref upvar_id) => {
                 self.tcx.sess.span_note(
                     span,
-                    format!("...so that closure can access `{}`",
-                            ty::local_var_name_str(self.tcx, upvar_id.var_id).get().to_str()))
+                    format!(
+                        "...so that closure can access `{}`",
+                        ty::local_var_name_str(self.tcx, upvar_id.var_id)
+                            .get()
+                            .to_str()).as_slice())
             }
             infer::InfStackClosure(span) => {
                 self.tcx.sess.span_note(
@@ -1328,7 +1343,9 @@ impl<'a> ErrorReportingHelpers for InferCtxt<'a> {
                     span,
                     format!("...so that captured variable `{}` \
                             does not outlive the enclosing closure",
-                            ty::local_var_name_str(self.tcx, id).get().to_str()));
+                            ty::local_var_name_str(
+                                self.tcx,
+                                id).get().to_str()).as_slice());
             }
             infer::IndexSlice(span) => {
                 self.tcx.sess.span_note(

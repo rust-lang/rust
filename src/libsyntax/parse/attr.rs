@@ -88,7 +88,7 @@ impl<'a> ParserAttr for Parser<'a> {
             _ => {
                 let token_str = self.this_token_to_str();
                 self.fatal(format!("expected `\\#` but found `{}`",
-                                   token_str));
+                                   token_str).as_slice());
             }
         };
 

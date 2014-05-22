@@ -102,14 +102,14 @@ impl<'a, O:DataFlowOperator> pprust::PpAnn for DataFlowContext<'a, O> {
             let gens_str = if gens.iter().any(|&u| u != 0) {
                 format!(" gen: {}", bits_to_str(gens))
             } else {
-                "".to_owned()
+                "".to_strbuf()
             };
 
             let kills = self.kills.slice(start, end);
             let kills_str = if kills.iter().any(|&u| u != 0) {
                 format!(" kill: {}", bits_to_str(kills))
             } else {
-                "".to_owned()
+                "".to_strbuf()
             };
 
             try!(ps.synth_comment(format_strbuf!("id {}: {}{}{}",
@@ -652,8 +652,9 @@ impl<'a, 'b, O:DataFlowOperator> PropagationContext<'a, 'b, O> {
                     tcx.sess.span_bug(
                         from_expr.span,
                         format!("pop_scopes(from_expr={}, to_scope={:?}) \
-                              to_scope does not enclose from_expr",
-                             from_expr.repr(tcx), to_scope.loop_id));
+                                 to_scope does not enclose from_expr",
+                                from_expr.repr(tcx),
+                                to_scope.loop_id).as_slice());
                 }
             }
         }
@@ -765,7 +766,8 @@ impl<'a, 'b, O:DataFlowOperator> PropagationContext<'a, 'b, O> {
                             None => {
                                 self.tcx().sess.span_bug(
                                     expr.span,
-                                    format!("no loop scope for id {:?}", loop_id));
+                                    format!("no loop scope for id {:?}",
+                                            loop_id).as_slice());
                             }
                         }
                     }
@@ -773,7 +775,8 @@ impl<'a, 'b, O:DataFlowOperator> PropagationContext<'a, 'b, O> {
                     r => {
                         self.tcx().sess.span_bug(
                             expr.span,
-                            format!("bad entry `{:?}` in def_map for label", r));
+                            format!("bad entry `{:?}` in def_map for label",
+                                    r).as_slice());
                     }
                 }
             }
@@ -789,7 +792,9 @@ impl<'a, 'b, O:DataFlowOperator> PropagationContext<'a, 'b, O> {
 
     fn reset(&mut self, bits: &mut [uint]) {
         let e = if self.dfcx.oper.initial_value() {uint::MAX} else {0};
-        for b in bits.mut_iter() { *b = e; }
+        for b in bits.mut_iter() {
+            *b = e;
+        }
     }
 
     fn add_to_entry_set(&mut self, id: ast::NodeId, pred_bits: &[uint]) {
@@ -841,7 +846,7 @@ fn bits_to_str(words: &[uint]) -> StrBuf {
         let mut v = word;
         for _ in range(0u, uint::BYTES) {
             result.push_char(sep);
-            result.push_str(format!("{:02x}", v & 0xFF));
+            result.push_str(format!("{:02x}", v & 0xFF).as_slice());
             v >>= 8;
             sep = '-';
         }

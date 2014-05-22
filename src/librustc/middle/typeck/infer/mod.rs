@@ -693,9 +693,9 @@ impl<'a> InferCtxt<'a> {
             _ => {
                 self.tcx.sess.bug(
                     format!("resolve_type_vars_if_possible() yielded {} \
-                          when supplied with {}",
-                         self.ty_to_str(dummy0),
-                         self.ty_to_str(dummy1)));
+                             when supplied with {}",
+                            self.ty_to_str(dummy0),
+                            self.ty_to_str(dummy1)).as_slice());
             }
         }
     }
@@ -729,7 +729,7 @@ impl<'a> InferCtxt<'a> {
                                                 err: Option<&ty::type_err>) {
         debug!("hi! expected_ty = {:?}, actual_ty = {}", expected_ty, actual_ty);
 
-        let error_str = err.map_or("".to_owned(), |t_err| {
+        let error_str = err.map_or("".to_strbuf(), |t_err| {
             format!(" ({})", ty::type_err_to_str(self.tcx, t_err))
         });
         let resolved_expected = expected_ty.map(|e_ty| {
@@ -737,11 +737,19 @@ impl<'a> InferCtxt<'a> {
         });
         if !resolved_expected.map_or(false, |e| { ty::type_is_error(e) }) {
             match resolved_expected {
-                None => self.tcx.sess.span_err(sp,
-                            format!("{}{}", mk_msg(None, actual_ty), error_str)),
+                None => {
+                    self.tcx
+                        .sess
+                        .span_err(sp,
+                                  format!("{}{}",
+                                          mk_msg(None, actual_ty),
+                                          error_str).as_slice())
+                }
                 Some(e) => {
                     self.tcx.sess.span_err(sp,
-                        format!("{}{}", mk_msg(Some(self.ty_to_str(e)), actual_ty), error_str));
+                        format!("{}{}",
+                                mk_msg(Some(self.ty_to_str(e)), actual_ty),
+                                error_str).as_slice());
                 }
             }
             for err in err.iter() {

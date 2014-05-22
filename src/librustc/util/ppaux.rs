@@ -50,11 +50,11 @@ pub fn note_and_explain_region(cx: &ctxt,
       (ref str, Some(span)) => {
         cx.sess.span_note(
             span,
-            format!("{}{}{}", prefix, *str, suffix));
+            format!("{}{}{}", prefix, *str, suffix).as_slice());
       }
       (ref str, None) => {
         cx.sess.note(
-            format!("{}{}{}", prefix, *str, suffix));
+            format!("{}{}{}", prefix, *str, suffix).as_slice());
       }
     }
 }
@@ -255,13 +255,13 @@ pub fn ty_to_str(cx: &ctxt, typ: t) -> StrBuf {
         match fn_style {
             ast::NormalFn => {}
             _ => {
-                s.push_str(fn_style.to_str());
+                s.push_str(fn_style.to_str().as_slice());
                 s.push_char(' ');
             }
         };
 
         if abi != abi::Rust {
-            s.push_str(format!("extern {} ", abi.to_str()));
+            s.push_str(format!("extern {} ", abi.to_str()).as_slice());
         };
 
         s.push_str("fn");
@@ -292,7 +292,7 @@ pub fn ty_to_str(cx: &ctxt, typ: t) -> StrBuf {
         match cty.fn_style {
             ast::NormalFn => {}
             _ => {
-                s.push_str(cty.fn_style.to_str());
+                s.push_str(cty.fn_style.to_str().as_slice());
                 s.push_char(' ');
             }
         };
@@ -327,7 +327,7 @@ pub fn ty_to_str(cx: &ctxt, typ: t) -> StrBuf {
                        sig: &ty::FnSig) {
         s.push_char(bra);
         let strs: Vec<StrBuf> = sig.inputs.iter().map(|a| fn_input_to_str(cx, *a)).collect();
-        s.push_str(strs.connect(", "));
+        s.push_str(strs.connect(", ").as_slice());
         if sig.variadic {
             s.push_str(", ...");
         }

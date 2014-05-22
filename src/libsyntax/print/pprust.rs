@@ -141,7 +141,8 @@ pub fn to_str(f: |&mut State| -> IoResult<()>) -> StrBuf {
         // that we "know" to be a `MemWriter` that works around the lack of checked
         // downcasts.
         let (_, wr): (uint, Box<MemWriter>) = mem::transmute_copy(&s.s.out);
-        let result = str::from_utf8_owned(wr.get_ref().to_owned()).unwrap();
+        let result =
+            str::from_utf8_owned(Vec::from_slice(wr.get_ref())).unwrap();
         mem::forget(wr);
         result.to_strbuf()
     }
@@ -623,7 +624,7 @@ impl<'a> State<'a> {
             }
             ast::ItemForeignMod(ref nmod) => {
                 try!(self.head("extern"));
-                try!(self.word_nbsp(nmod.abi.to_str()));
+                try!(self.word_nbsp(nmod.abi.to_str().as_slice()));
                 try!(self.bopen());
                 try!(self.print_foreign_mod(nmod, item.attrs.as_slice()));
                 try!(self.bclose(item.span));
@@ -2234,7 +2235,7 @@ impl<'a> State<'a> {
                 let mut res = StrBuf::from_str("'");
                 ch.escape_default(|c| res.push_char(c));
                 res.push_char('\'');
-                word(&mut self.s, res.into_owned())
+                word(&mut self.s, res.as_slice())
             }
             ast::LitInt(i, t) => {
                 word(&mut self.s,
@@ -2247,11 +2248,14 @@ impl<'a> State<'a> {
                                               ast_util::ForceSuffix).as_slice())
             }
             ast::LitIntUnsuffixed(i) => {
-                word(&mut self.s, format!("{}", i))
+                word(&mut self.s, format!("{}", i).as_slice())
             }
             ast::LitFloat(ref f, t) => {
                 word(&mut self.s,
-                     f.get() + ast_util::float_ty_to_str(t).as_slice())
+                     format!(
+                         "{}{}",
+                         f.get(),
+                         ast_util::float_ty_to_str(t).as_slice()).as_slice())
             }
             ast::LitFloatUnsuffixed(ref f) => word(&mut self.s, f.get()),
             ast::LitNil => word(&mut self.s, "()"),
@@ -2261,8 +2265,13 @@ impl<'a> State<'a> {
             ast::LitBinary(ref arr) => {
                 try!(self.ibox(indent_unit));
                 try!(word(&mut self.s, "["));
-                try!(self.commasep_cmnt(Inconsistent, arr.as_slice(),
-                                        |s, u| word(&mut s.s, format!("{}", *u)),
+                try!(self.commasep_cmnt(Inconsistent,
+                                        arr.as_slice(),
+                                        |s, u| {
+                                            word(&mut s.s,
+                                                 format!("{}",
+                                                         *u).as_slice())
+                                        },
                                         |_| lit.span));
                 try!(word(&mut self.s, "]"));
                 self.end()
@@ -2354,11 +2363,16 @@ impl<'a> State<'a> {
     pub fn print_string(&mut self, st: &str,
                         style: ast::StrStyle) -> IoResult<()> {
         let st = match style {
-            ast::CookedStr => format!("\"{}\"", st.escape_default()),
-            ast::RawStr(n) => format!("r{delim}\"{string}\"{delim}",
-                                      delim="#".repeat(n), string=st)
+            ast::CookedStr => {
+                (format!("\"{}\"", st.escape_default()))
+            }
+            ast::RawStr(n) => {
+                (format!("r{delim}\"{string}\"{delim}",
+                         delim="#".repeat(n),
+                         string=st))
+            }
         };
-        word(&mut self.s, st)
+        word(&mut self.s, st.as_slice())
     }
 
     pub fn next_comment(&mut self) -> Option<comments::Comment> {
@@ -2389,7 +2403,7 @@ impl<'a> State<'a> {
             Some(abi::Rust) => Ok(()),
             Some(abi) => {
                 try!(self.word_nbsp("extern"));
-                self.word_nbsp(abi.to_str())
+                self.word_nbsp(abi.to_str().as_slice())
             }
             None => Ok(())
         }
@@ -2400,7 +2414,7 @@ impl<'a> State<'a> {
         match opt_abi {
             Some(abi) => {
                 try!(self.word_nbsp("extern"));
-                self.word_nbsp(abi.to_str())
+                self.word_nbsp(abi.to_str().as_slice())
             }
             None => Ok(())
         }
@@ -2416,7 +2430,7 @@ impl<'a> State<'a> {
 
         if abi != abi::Rust {
             try!(self.word_nbsp("extern"));
-            try!(self.word_nbsp(abi.to_str()));
+            try!(self.word_nbsp(abi.to_str().as_slice()));
         }
 
         word(&mut self.s, "fn")

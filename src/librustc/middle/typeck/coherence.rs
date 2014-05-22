@@ -431,8 +431,9 @@ impl<'a> CoherenceChecker<'a> {
                         session.span_err(
                             self.span_of_impl(impl_a),
                             format!("conflicting implementations for trait `{}`",
-                                 ty::item_path_str(self.crate_context.tcx,
-                                                   trait_def_id)));
+                                    ty::item_path_str(
+                                        self.crate_context.tcx,
+                                        trait_def_id)).as_slice());
                         if impl_b.krate == LOCAL_CRATE {
                             session.span_note(self.span_of_impl(impl_b),
                                               "note conflicting implementation here");
@@ -442,7 +443,7 @@ impl<'a> CoherenceChecker<'a> {
                             session.note(
                                 format!("conflicting implementation in crate \
                                          `{}`",
-                                        cdata.name));
+                                        cdata.name).as_slice());
                         }
                     }
                 }

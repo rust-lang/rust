@@ -323,29 +323,6 @@ impl<'a> ToCStr for &'a str {
     }
 }
 
-impl ToCStr for ~str {
-    #[inline]
-    fn to_c_str(&self) -> CString {
-        self.as_bytes().to_c_str()
-    }
-
-    #[inline]
-    unsafe fn to_c_str_unchecked(&self) -> CString {
-        self.as_bytes().to_c_str_unchecked()
-    }
-
-    #[inline]
-    fn with_c_str<T>(&self, f: |*libc::c_char| -> T) -> T {
-        self.as_bytes().with_c_str(f)
-    }
-
-    #[inline]
-    unsafe fn with_c_str_unchecked<T>(&self, f: |*libc::c_char| -> T) -> T {
-        self.as_bytes().with_c_str_unchecked(f)
-    }
-}
-
-
 impl ToCStr for StrBuf {
     #[inline]
     fn to_c_str(&self) -> CString {

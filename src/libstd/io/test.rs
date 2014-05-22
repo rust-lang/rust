@@ -67,14 +67,14 @@ pub fn next_test_unix() -> Path {
     // base port and pid are an attempt to be unique between multiple
     // test-runners of different configurations running on one
     // buildbot, the count is to be unique within this executable.
-    let string = format!("rust-test-unix-path-{}-{}-{}",
-                         base_port(),
-                         unsafe {libc::getpid()},
-                         unsafe {COUNT.fetch_add(1, Relaxed)});
+    let string = format_strbuf!("rust-test-unix-path-{}-{}-{}",
+                                base_port(),
+                                unsafe {libc::getpid()},
+                                unsafe {COUNT.fetch_add(1, Relaxed)});
     if cfg!(unix) {
         os::tmpdir().join(string)
     } else {
-        Path::new(r"\\.\pipe\" + string)
+        Path::new(format_strbuf!("{}{}", r"\\.\pipe\", string))
     }
 }
 

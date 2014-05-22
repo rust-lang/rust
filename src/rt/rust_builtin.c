@@ -127,15 +127,6 @@ rust_list_dir_wfd_fp_buf(void* wfd) {
 }
 #endif
 
-typedef struct
-{
-    size_t fill;    // in bytes; if zero, heapified
-    size_t alloc;   // in bytes
-    uint8_t data[0];
-} rust_vec;
-
-typedef rust_vec rust_str;
-
 typedef struct {
     int32_t tm_sec;
     int32_t tm_min;
@@ -147,7 +138,6 @@ typedef struct {
     int32_t tm_yday;
     int32_t tm_isdst;
     int32_t tm_gmtoff;
-    rust_str *tm_zone;
     int32_t tm_nsec;
 } rust_tm;
 
@@ -164,8 +154,10 @@ void rust_tm_to_tm(rust_tm* in_tm, struct tm* out_tm) {
     out_tm->tm_isdst = in_tm->tm_isdst;
 }
 
-void tm_to_rust_tm(struct tm* in_tm, rust_tm* out_tm, int32_t gmtoff,
-                   const char *zone, int32_t nsec) {
+void tm_to_rust_tm(struct tm* in_tm,
+                   rust_tm* out_tm,
+                   int32_t gmtoff,
+                   int32_t nsec) {
     out_tm->tm_sec = in_tm->tm_sec;
     out_tm->tm_min = in_tm->tm_min;
     out_tm->tm_hour = in_tm->tm_hour;
@@ -177,13 +169,6 @@ void tm_to_rust_tm(struct tm* in_tm, rust_tm* out_tm, int32_t gmtoff,
     out_tm->tm_isdst = in_tm->tm_isdst;
     out_tm->tm_gmtoff = gmtoff;
     out_tm->tm_nsec = nsec;
-
-    if (zone != NULL) {
-        size_t size = strlen(zone);
-        assert(out_tm->tm_zone->alloc >= size);
-        memcpy(out_tm->tm_zone->data, zone, size);
-        out_tm->tm_zone->fill = size;
-    }
 }
 
 #if defined(__WIN32__)
@@ -225,7 +210,7 @@ rust_gmtime(int64_t sec, int32_t nsec, rust_tm *timeptr) {
     time_t s = sec;
     GMTIME(&s, &tm);
 
-    tm_to_rust_tm(&tm, timeptr, 0, "UTC", nsec);
+    tm_to_rust_tm(&tm, timeptr, 0, nsec);
 }
 
 void
@@ -234,28 +219,13 @@ rust_localtime(int64_t sec, int32_t nsec, rust_tm *timeptr) {
     time_t s = sec;
     LOCALTIME(&s, &tm);
 
-    const char* zone = NULL;
 #if defined(__WIN32__)
     int32_t gmtoff = -timezone;
-    wchar_t wbuffer[64] = {0};
-    char buffer[256] = {0};
-    // strftime("%Z") can contain non-UTF-8 characters on non-English locale (issue #9418),
-    // so time zone should be converted from UTF-16 string.
-    // Since wcsftime depends on setlocale() result,
-    // instead we convert it using MultiByteToWideChar.
-    if (strftime(buffer, sizeof(buffer) / sizeof(char), "%Z", &tm) > 0) {
-        // ANSI -> UTF-16
-        MultiByteToWideChar(CP_ACP, 0, buffer, -1, wbuffer, sizeof(wbuffer) / sizeof(wchar_t));
-        // UTF-16 -> UTF-8
-        WideCharToMultiByte(CP_UTF8, 0, wbuffer, -1, buffer, sizeof(buffer), NULL, NULL);
-        zone = buffer;
-    }
 #else
     int32_t gmtoff = tm.tm_gmtoff;
-    zone = tm.tm_zone;
 #endif
 
-    tm_to_rust_tm(&tm, timeptr, gmtoff, zone, nsec);
+    tm_to_rust_tm(&tm, timeptr, gmtoff, nsec);
 }
 
 int64_t

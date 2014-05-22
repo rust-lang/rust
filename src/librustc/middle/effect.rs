@@ -48,8 +48,9 @@ impl<'a> EffectCheckVisitor<'a> {
             SafeContext => {
                 // Report an error.
                 self.tcx.sess.span_err(span,
-                                  format!("{} requires unsafe function or block",
-                                       description))
+                                  format!("{} requires unsafe function or \
+                                           block",
+                                          description).as_slice())
             }
             UnsafeBlock(block_id) => {
                 // OK, but record this.
