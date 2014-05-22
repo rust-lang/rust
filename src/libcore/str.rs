@@ -1112,6 +1112,9 @@ pub trait StrSlice<'a> {
     ///
     /// let v: Vec<&str> = "lionXXtigerXleopard".split('X').collect();
     /// assert_eq!(v, vec!["lion", "", "tiger", "leopard"]);
+    ///
+    /// let v: Vec<&str> = "".split('X').collect();
+    /// assert_eq!(v, vec![""]);
     /// ```
     fn split<Sep: CharEq>(&self, sep: Sep) -> CharSplits<'a, Sep>;
 
@@ -1130,6 +1133,12 @@ pub trait StrSlice<'a> {
     ///
     /// let v: Vec<&str> = "lionXXtigerXleopard".splitn('X', 2).collect();
     /// assert_eq!(v, vec!["lion", "", "tigerXleopard"]);
+    ///
+    /// let v: Vec<&str> = "abcXdef".splitn('X', 0).collect();
+    /// assert_eq!(v, vec!["abcXdef"]);
+    ///
+    /// let v: Vec<&str> = "".splitn('X', 1).collect();
+    /// assert_eq!(v, vec![""]);
     /// ```
     fn splitn<Sep: CharEq>(&self, sep: Sep, count: uint) -> CharSplitsN<'a, Sep>;
 
