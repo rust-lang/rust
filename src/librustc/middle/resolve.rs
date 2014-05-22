@@ -2040,7 +2040,7 @@ impl<'a> Resolver<'a> {
             return;
         }
 
-        let mut imports = module.imports.borrow_mut();
+        let imports = module.imports.borrow();
         let import_count = imports.len();
         while module.resolved_import_count.get() < import_count {
             let import_index = module.resolved_import_count.get();

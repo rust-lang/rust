@@ -2920,7 +2920,7 @@ impl<'a> Parser<'a> {
           _ => {}
         }
 
-        if !is_ident_or_path(&self.token)
+        if (!is_ident_or_path(&self.token) && self.token != token::MOD_SEP)
                 || self.is_keyword(keywords::True)
                 || self.is_keyword(keywords::False) {
             // Parse an expression pattern or exp .. exp.
