@@ -1147,6 +1147,9 @@ fn check_attrs_usage(cx: &Context, attrs: &[ast::Attribute]) {
 
 fn check_unused_attribute(cx: &Context, attrs: &[ast::Attribute]) {
     for attr in attrs.iter() {
+        // whitelist docs since rustdoc looks at them
+        attr.check_name("doc");
+
         if !attr::is_used(attr) {
             cx.span_lint(UnusedAttribute, attr.span, "unused attribute");
         }
