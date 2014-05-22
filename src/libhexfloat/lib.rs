@@ -42,7 +42,7 @@ fn main() {
 #![license = "MIT/ASL2"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
-       html_root_url = "http://static.rust-lang.org/doc/master")]
+       html_root_url = "http://doc.rust-lang.org/")]
 
 #![deny(deprecated_owned_vector)]
 #![feature(macro_registrar, managed_boxes)]
