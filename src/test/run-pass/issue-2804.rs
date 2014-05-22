@@ -11,6 +11,7 @@
 
 extern crate collections;
 extern crate serialize;
+extern crate debug;
 
 use collections::HashMap;
 use serialize::json;

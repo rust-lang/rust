@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+extern crate debug;
+
 use std::mem::swap;
 
 struct Ints {sum: Box<int>, values: Vec<int> }

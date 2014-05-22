@@ -280,7 +280,7 @@ fn fib(n: u64) -> u64 {
 
 let mut delayed_fib = sync::Future::spawn(proc() fib(50));
 make_a_sandwich();
-println!("fib(50) = {:?}", delayed_fib.get())
+println!("fib(50) = {}", delayed_fib.get())
 # }
 ~~~
 

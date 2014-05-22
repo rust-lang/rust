@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+extern crate debug;
+
 fn main() {
     let x: int = 3;
     let y: &mut int = &mut x; //~ ERROR cannot borrow

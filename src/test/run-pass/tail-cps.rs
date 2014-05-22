@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
+extern crate debug;
 
 fn checktrue(rs: bool) -> bool { assert!((rs)); return true; }
 

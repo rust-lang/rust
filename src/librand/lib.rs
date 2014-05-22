@@ -65,7 +65,7 @@ if rng.gen() { // bool
 
 ```rust
 let tuple_ptr = rand::random::<Box<(f64, char)>>();
-println!("{:?}", tuple_ptr)
+println!("{}", tuple_ptr)
 ```
 */
 
@@ -80,8 +80,8 @@ println!("{:?}", tuple_ptr)
 #![feature(macro_rules, managed_boxes, phase)]
 #![deny(deprecated_owned_vector)]
 
-#[cfg(test)]
-#[phase(syntax, link)] extern crate log;
+#[cfg(test)] extern crate debug;
+#[cfg(test)] #[phase(syntax, link)] extern crate log;
 
 use std::io::IoResult;
 use std::kinds::marker;
@@ -152,7 +152,7 @@ pub trait Rng {
     ///
     /// let mut v = [0u8, .. 13579];
     /// task_rng().fill_bytes(v);
-    /// println!("{:?}", v);
+    /// println!("{}", v.as_slice());
     /// ```
     fn fill_bytes(&mut self, dest: &mut [u8]) {
         // this could, in theory, be done by transmuting dest to a
@@ -188,7 +188,7 @@ pub trait Rng {
     /// let mut rng = task_rng();
     /// let x: uint = rng.gen();
     /// println!("{}", x);
-    /// println!("{:?}", rng.gen::<(f64, bool)>());
+    /// println!("{}", rng.gen::<(f64, bool)>());
     /// ```
     #[inline(always)]
     fn gen<T: Rand>(&mut self) -> T {

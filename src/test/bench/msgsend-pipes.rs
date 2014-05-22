@@ -15,6 +15,7 @@
 // I *think* it's the same, more or less.
 
 extern crate time;
+extern crate debug;
 
 use std::os;
 use std::task;

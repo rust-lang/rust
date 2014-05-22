@@ -773,30 +773,30 @@ impl<'a, 'b> Context<'a, 'b> {
             Named(ref s) => self.name_types.get(s)
         };
 
-        let fmt_fn = match *ty {
+        let (krate, fmt_fn) = match *ty {
             Known(ref tyname) => {
                 match tyname.as_slice() {
-                    ""  => "secret_show",
-                    "?" => "secret_poly",
-                    "b" => "secret_bool",
-                    "c" => "secret_char",
-                    "d" | "i" => "secret_signed",
-                    "e" => "secret_lower_exp",
-                    "E" => "secret_upper_exp",
-                    "f" => "secret_float",
-                    "o" => "secret_octal",
-                    "p" => "secret_pointer",
-                    "s" => "secret_string",
-                    "t" => "secret_binary",
-                    "u" => "secret_unsigned",
-                    "x" => "secret_lower_hex",
-                    "X" => "secret_upper_hex",
+                    ""  => ("std", "secret_show"),
+                    "?" => ("debug", "secret_poly"),
+                    "b" => ("std", "secret_bool"),
+                    "c" => ("std", "secret_char"),
+                    "d" | "i" => ("std", "secret_signed"),
+                    "e" => ("std", "secret_lower_exp"),
+                    "E" => ("std", "secret_upper_exp"),
+                    "f" => ("std", "secret_float"),
+                    "o" => ("std", "secret_octal"),
+                    "p" => ("std", "secret_pointer"),
+                    "s" => ("std", "secret_string"),
+                    "t" => ("std", "secret_binary"),
+                    "u" => ("std", "secret_unsigned"),
+                    "x" => ("std", "secret_lower_hex"),
+                    "X" => ("std", "secret_upper_hex"),
                     _ => {
                         self.ecx
                             .span_err(sp,
                                       format!("unknown format trait `{}`",
                                               *tyname).as_slice());
-                        "dummy"
+                        ("std", "dummy")
                     }
                 }
             }
@@ -815,7 +815,7 @@ impl<'a, 'b> Context<'a, 'b> {
         };
 
         let format_fn = self.ecx.path_global(sp, vec!(
-                self.ecx.ident_of("std"),
+                self.ecx.ident_of(krate),
                 self.ecx.ident_of("fmt"),
                 self.ecx.ident_of(fmt_fn)));
         self.ecx.expr_call_global(sp, vec!(

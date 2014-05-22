@@ -34,12 +34,15 @@ format arguments directly while performing minimal allocations.
 Some examples of the `format!` extension are:
 
 ```rust
-format!("Hello");                 // => "Hello".to_string()
-format!("Hello, {:s}!", "world"); // => "Hello, world!".to_string()
-format!("The number is {:d}", 1); // => "The number is 1".to_string()
-format!("{:?}", ~[3, 4]);         // => "~[3, 4]".to_string()
-format!("{value}", value=4);      // => "4".to_string()
-format!("{} {}", 1, 2);           // => "1 2".to_string()
+# extern crate debug;
+# fn main() {
+format!("Hello");                 // => "Hello"
+format!("Hello, {:s}!", "world"); // => "Hello, world!"
+format!("The number is {:d}", 1); // => "The number is 1"
+format!("{:?}", (3, 4));          // => "(3, 4)"
+format!("{value}", value=4);      // => "4"
+format!("{} {}", 1, 2);           // => "1 2"
+# }
 ```
 
 From these, you can see that the first argument is a format string. It is
@@ -62,7 +65,7 @@ iterator over the argument. Each time a "next argument" specifier is seen, the
 iterator advances. This leads to behavior like this:
 
 ```rust
-format!("{1} {} {0} {}", 1, 2); // => "2 1 1 2".to_string()
+format!("{1} {} {0} {}", 1, 2); // => "2 1 1 2"
 ```
 
 The internal iterator over the argument has not been advanced by the time the
@@ -89,9 +92,12 @@ identifier '=' expression
 For example, the following `format!` expressions all use named argument:
 
 ```rust
-format!("{argument}", argument = "test");       // => "test".to_string()
-format!("{name} {}", 1, name = 2);              // => "2 1".to_string()
-format!("{a:s} {c:d} {b:?}", a="a", b=(), c=3); // => "a 3 ()".to_string()
+# extern crate debug;
+# fn main() {
+format!("{argument}", argument = "test");       // => "test"
+format!("{name} {}", 1, name = 2);              // => "2 1"
+format!("{a:s} {c:d} {b:?}", a="a", b=(), c=3); // => "a 3 ()"
+# }
 ```
 
 It is illegal to put positional parameters (those without names) after arguments
@@ -101,18 +107,15 @@ parameters that are unused by the format string.
 ### Argument types
 
 Each argument's type is dictated by the format string. It is a requirement that
-every argument is only ever referred to by one type. When specifying the format
-of an argument, however, a string like `{}` indicates no type. This is allowed,
-and if all references to one argument do not provide a type, then the format `?`
-is used (the type's rust-representation is printed). For example, this is an
+every argument is only ever referred to by one type. For example, this is an
 invalid format string:
 
 ```notrust
 {0:d} {0:s}
 ```
 
-Because the first argument is both referred to as an integer as well as a
-string.
+This is invalid because the first argument is both referred to as an integer as
+well as a string.
 
 Because formatting is done via traits, there is no requirement that the
 `d` format actually takes an `int`, but rather it simply requires a type which
@@ -134,7 +137,7 @@ actually requesting that an argument ascribes to a particular trait. This allows
 multiple actual types to be formatted via `{:d}` (like `i8` as well as `int`).
 The current mapping of types to traits is:
 
-* `?` ⇒ `Poly`
+* *nothing* ⇒ `Show`
 * `d` ⇒ `Signed`
 * `i` ⇒ `Signed`
 * `u` ⇒ `Unsigned`
@@ -149,7 +152,11 @@ The current mapping of types to traits is:
 * `f` ⇒ `Float`
 * `e` ⇒ `LowerExp`
 * `E` ⇒ `UpperExp`
-* *nothing* ⇒ `Show`
+* `?` ⇒ `Poly`
+
+> **Note**: The `Poly` formatting trait is provided by [libdebug](../../debug/)
+> and is an experimental implementation that should not be relied upon. In order
+> to use the `?` modifier, the libdebug crate must be linked against.
 
 What this means is that any type of argument which implements the
 `std::fmt::Binary` trait can then be formatted with `{:t}`. Implementations are
@@ -330,7 +337,7 @@ to reference the string value of the argument which was selected upon. As an
 example:
 
 ```rust
-format!("{0, select, other{#}}", "hello"); // => "hello".to_string()
+format!("{0, select, other{#}}", "hello"); // => "hello"
 ```
 
 This example is the equivalent of `{0:s}` essentially.
@@ -485,7 +492,9 @@ will look like `"\\{"`.
 
 use io::Writer;
 use io;
+#[cfg(stage0)]
 use option::None;
+#[cfg(stage0)]
 use repr;
 use result::{Ok, Err};
 use str::{Str, StrAllocating};
@@ -516,6 +525,7 @@ pub use core::fmt::{secret_float, secret_upper_exp, secret_lower_exp};
 pub use core::fmt::{secret_pointer};
 
 #[doc(hidden)]
+#[cfg(stage0)]
 pub fn secret_poly<T: Poly>(x: &T, fmt: &mut Formatter) -> Result {
     // FIXME #11938 - UFCS would make us able call the this method
     //                directly Poly::fmt(x, fmt).
@@ -523,6 +533,7 @@ pub fn secret_poly<T: Poly>(x: &T, fmt: &mut Formatter) -> Result {
 }
 
 /// Format trait for the `?` character
+#[cfg(stage0)]
 pub trait Poly {
     /// Formats the value using the given formatter.
     fn fmt(&self, &mut Formatter) -> Result;
@@ -558,6 +569,7 @@ pub fn format_strbuf(args: &Arguments) -> string::String {
     str::from_utf8(output.unwrap().as_slice()).unwrap().into_string()
 }
 
+#[cfg(stage0)]
 impl<T> Poly for T {
     fn fmt(&self, f: &mut Formatter) -> Result {
         match (f.width, f.precision) {

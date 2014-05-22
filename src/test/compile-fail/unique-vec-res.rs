@@ -10,6 +10,7 @@
 
 #![feature(managed_boxes)]
 
+extern crate debug;
 use std::cell::Cell;
 
 struct r {
