@@ -22,7 +22,7 @@ pub struct PriorityQueue<T> {
     data: Vec<T>,
 }
 
-impl<T: TotalOrd> Container for PriorityQueue<T> {
+impl<T: TotalOrd> Collection for PriorityQueue<T> {
     /// Returns the length of the queue
     fn len(&self) -> uint { self.data.len() }
 }

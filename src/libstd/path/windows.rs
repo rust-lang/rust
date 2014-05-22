@@ -14,7 +14,7 @@ use ascii::AsciiCast;
 use c_str::{CString, ToCStr};
 use clone::Clone;
 use cmp::{Eq, TotalEq};
-use container::Container;
+use collections::Collection;
 use from_str::FromStr;
 use io::Writer;
 use iter::{AdditiveIterator, DoubleEndedIterator, Extendable, Rev, Iterator, Map};

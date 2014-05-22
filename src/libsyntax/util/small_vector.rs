@@ -23,7 +23,7 @@ enum SmallVectorRepr<T> {
     Many(Vec<T> ),
 }
 
-impl<T> Container for SmallVector<T> {
+impl<T> Collection for SmallVector<T> {
     fn len(&self) -> uint {
         match self.repr {
             Zero => 0,

@@ -29,7 +29,7 @@
 #![allow(missing_doc)]
 
 use clone::Clone;
-use container::Container;
+use collections::Collection;
 use libc;
 use libc::{c_void, c_int};
 use option::{Some, None, Option};

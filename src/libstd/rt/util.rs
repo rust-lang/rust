@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use container::Container;
+use collections::Collection;
 use fmt;
 use from_str::FromStr;
 use io::IoResult;

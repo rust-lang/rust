@@ -10,7 +10,7 @@
 
 //! Operations on ASCII strings and characters
 
-use container::Container;
+use collections::Collection;
 use fmt;
 use iter::Iterator;
 use mem;

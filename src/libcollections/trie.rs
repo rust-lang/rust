@@ -34,7 +34,7 @@ pub struct TrieMap<T> {
     length: uint
 }
 
-impl<T> Container for TrieMap<T> {
+impl<T> Collection for TrieMap<T> {
     /// Return the number of elements in the map
     #[inline]
     fn len(&self) -> uint { self.length }
@@ -281,7 +281,7 @@ pub struct TrieSet {
     map: TrieMap<()>
 }
 
-impl Container for TrieSet {
+impl Collection for TrieSet {
     /// Return the number of elements in the set
     #[inline]
     fn len(&self) -> uint { self.map.len() }

@@ -833,7 +833,7 @@ impl cmp::Eq for BitvSet {
     fn ne(&self, other: &BitvSet) -> bool { !self.eq(other) }
 }
 
-impl Container for BitvSet {
+impl Collection for BitvSet {
     #[inline]
     fn len(&self) -> uint { self.size }
 }

@@ -11,7 +11,7 @@
 //! Buffering wrappers for I/O traits
 
 use cmp;
-use container::Container;
+use collections::Collection;
 use io::{Reader, Writer, Stream, Buffer, DEFAULT_BUF_SIZE, IoResult};
 use iter::ExactSize;
 use ops::Drop;
