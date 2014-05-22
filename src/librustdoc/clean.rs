@@ -25,6 +25,7 @@ use rustc::driver::driver;
 use rustc::metadata::cstore;
 use rustc::metadata::csearch;
 use rustc::metadata::decoder;
+use rustc::middle::ty;
 
 use std::strbuf::StrBuf;
 
@@ -128,7 +129,7 @@ pub struct Item {
     pub attrs: Vec<Attribute> ,
     pub inner: ItemEnum,
     pub visibility: Option<Visibility>,
-    pub id: ast::NodeId,
+    pub def_id: ast::DefId,
 }
 
 impl Item {
@@ -274,7 +275,7 @@ impl Clean<Item> for doctree::Module {
             attrs: self.attrs.clean(),
             source: where.clean(),
             visibility: self.vis.clean(),
-            id: self.id,
+            def_id: ast_util::local_def(self.id),
             inner: ModuleItem(Module {
                is_crate: self.is_crate,
                items: items.iter()
@@ -339,7 +340,7 @@ impl<'a> attr::AttrMetaMethods for &'a Attribute {
 #[deriving(Clone, Encodable, Decodable)]
 pub struct TyParam {
     pub name: StrBuf,
-    pub id: ast::NodeId,
+    pub did: ast::DefId,
     pub bounds: Vec<TyParamBound>,
 }
 
@@ -347,8 +348,21 @@ impl Clean<TyParam> for ast::TyParam {
     fn clean(&self) -> TyParam {
         TyParam {
             name: self.ident.clean(),
-            id: self.id,
+            did: ast::DefId { krate: ast::LOCAL_CRATE, node: self.id },
             bounds: self.bounds.clean().move_iter().collect(),
+        }
+    }
+}
+
+impl Clean<TyParam> for ty::TypeParameterDef {
+    fn clean(&self) -> TyParam {
+        let cx = super::ctxtkey.get().unwrap();
+        cx.external_typarams.borrow_mut().get_mut_ref().insert(self.def_id,
+                                                               self.ident.clean());
+        TyParam {
+            name: self.ident.clean(),
+            did: self.def_id,
+            bounds: self.bounds.clean(),
         }
     }
 }
@@ -369,6 +383,96 @@ impl Clean<TyParamBound> for ast::TyParamBound {
     }
 }
 
+fn external_path(name: &str) -> Path {
+    Path {
+        global: false,
+        segments: vec![PathSegment {
+            name: name.to_strbuf(),
+            lifetimes: Vec::new(),
+            types: Vec::new(),
+        }]
+    }
+}
+
+impl Clean<TyParamBound> for ty::BuiltinBound {
+    fn clean(&self) -> TyParamBound {
+        let cx = super::ctxtkey.get().unwrap();
+        let tcx = match cx.maybe_typed {
+            core::Typed(ref tcx) => tcx,
+            core::NotTyped(_) => return RegionBound,
+        };
+        let (did, path) = match *self {
+            ty::BoundStatic => return RegionBound,
+            ty::BoundSend =>
+                (tcx.lang_items.send_trait().unwrap(), external_path("Send")),
+            ty::BoundSized =>
+                (tcx.lang_items.sized_trait().unwrap(), external_path("Sized")),
+            ty::BoundCopy =>
+                (tcx.lang_items.copy_trait().unwrap(), external_path("Copy")),
+            ty::BoundShare =>
+                (tcx.lang_items.share_trait().unwrap(), external_path("Share")),
+        };
+        let fqn = csearch::get_item_path(tcx, did);
+        let fqn = fqn.move_iter().map(|i| i.to_str().to_strbuf()).collect();
+        cx.external_paths.borrow_mut().get_mut_ref().insert(did,
+                                                            (fqn, TypeTrait));
+        TraitBound(ResolvedPath {
+            path: path,
+            typarams: None,
+            did: did,
+        })
+    }
+}
+
+impl Clean<TyParamBound> for ty::TraitRef {
+    fn clean(&self) -> TyParamBound {
+        let cx = super::ctxtkey.get().unwrap();
+        let tcx = match cx.maybe_typed {
+            core::Typed(ref tcx) => tcx,
+            core::NotTyped(_) => return RegionBound,
+        };
+        let fqn = csearch::get_item_path(tcx, self.def_id);
+        let fqn = fqn.move_iter().map(|i| i.to_str().to_strbuf())
+                     .collect::<Vec<StrBuf>>();
+        let path = external_path(fqn.last().unwrap().as_slice());
+        cx.external_paths.borrow_mut().get_mut_ref().insert(self.def_id,
+                                                            (fqn, TypeTrait));
+        TraitBound(ResolvedPath {
+            path: path,
+            typarams: None,
+            did: self.def_id,
+        })
+    }
+}
+
+impl Clean<Vec<TyParamBound>> for ty::ParamBounds {
+    fn clean(&self) -> Vec<TyParamBound> {
+        let mut v = Vec::new();
+        for b in self.builtin_bounds.iter() {
+            if b != ty::BoundSized {
+                v.push(b.clean());
+            }
+        }
+        for t in self.trait_bounds.iter() {
+            v.push(t.clean());
+        }
+        return v;
+    }
+}
+
+impl Clean<Option<Vec<TyParamBound>>> for ty::substs {
+    fn clean(&self) -> Option<Vec<TyParamBound>> {
+        let mut v = Vec::new();
+        match self.regions {
+            ty::NonerasedRegions(..) => v.push(RegionBound),
+            ty::ErasedRegions => {}
+        }
+        v.extend(self.tps.iter().map(|t| TraitBound(t.clean())));
+
+        if v.len() > 0 {Some(v)} else {None}
+    }
+}
+
 #[deriving(Clone, Encodable, Decodable)]
 pub struct Lifetime(StrBuf);
 
@@ -386,6 +490,29 @@ impl Clean<Lifetime> for ast::Lifetime {
     }
 }
 
+impl Clean<Lifetime> for ty::RegionParameterDef {
+    fn clean(&self) -> Lifetime {
+        Lifetime(token::get_name(self.name).get().to_strbuf())
+    }
+}
+
+impl Clean<Option<Lifetime>> for ty::Region {
+    fn clean(&self) -> Option<Lifetime> {
+        match *self {
+            ty::ReStatic => Some(Lifetime("static".to_strbuf())),
+            ty::ReLateBound(_, ty::BrNamed(_, name)) =>
+                Some(Lifetime(token::get_name(name).get().to_strbuf())),
+
+            ty::ReLateBound(..) |
+            ty::ReEarlyBound(..) |
+            ty::ReFree(..) |
+            ty::ReScope(..) |
+            ty::ReInfer(..) |
+            ty::ReEmpty(..) => None
+        }
+    }
+}
+
 // maybe use a Generic enum and use ~[Generic]?
 #[deriving(Clone, Encodable, Decodable)]
 pub struct Generics {
@@ -398,6 +525,15 @@ impl Clean<Generics> for ast::Generics {
         Generics {
             lifetimes: self.lifetimes.clean().move_iter().collect(),
             type_params: self.ty_params.clean().move_iter().collect(),
+        }
+    }
+}
+
+impl Clean<Generics> for ty::Generics {
+    fn clean(&self) -> Generics {
+        Generics {
+            lifetimes: self.region_param_defs.clean(),
+            type_params: self.type_param_defs.clean(),
         }
     }
 }
@@ -428,11 +564,11 @@ impl Clean<Item> for ast::Method {
             name: Some(self.ident.clean()),
             attrs: self.attrs.clean().move_iter().collect(),
             source: self.span.clean(),
-            id: self.id.clone(),
+            def_id: ast_util::local_def(self.id.clone()),
             visibility: self.vis.clean(),
             inner: MethodItem(Method {
                 generics: self.generics.clean(),
-                self_: self.explicit_self.clean(),
+                self_: self.explicit_self.node.clean(),
                 fn_style: self.fn_style.clone(),
                 decl: decl,
             }),
@@ -466,12 +602,12 @@ impl Clean<Item> for ast::TypeMethod {
             name: Some(self.ident.clean()),
             attrs: self.attrs.clean().move_iter().collect(),
             source: self.span.clean(),
-            id: self.id,
+            def_id: ast_util::local_def(self.id),
             visibility: None,
             inner: TyMethodItem(TyMethod {
                 fn_style: self.fn_style.clone(),
                 decl: decl,
-                self_: self.explicit_self.clean(),
+                self_: self.explicit_self.node.clean(),
                 generics: self.generics.clean(),
             }),
         }
@@ -486,9 +622,9 @@ pub enum SelfTy {
     SelfOwned,
 }
 
-impl Clean<SelfTy> for ast::ExplicitSelf {
+impl Clean<SelfTy> for ast::ExplicitSelf_ {
     fn clean(&self) -> SelfTy {
-        match self.node {
+        match *self {
             ast::SelfStatic => SelfStatic,
             ast::SelfValue => SelfValue,
             ast::SelfUniq => SelfOwned,
@@ -511,7 +647,7 @@ impl Clean<Item> for doctree::Function {
             attrs: self.attrs.clean(),
             source: self.where.clean(),
             visibility: self.vis.clean(),
-            id: self.id,
+            def_id: ast_util::local_def(self.id),
             inner: FunctionItem(Function {
                 decl: self.decl.clean(),
                 generics: self.generics.clean(),
@@ -533,7 +669,7 @@ pub struct ClosureDecl {
 impl Clean<ClosureDecl> for ast::ClosureTy {
     fn clean(&self) -> ClosureDecl {
         ClosureDecl {
-            lifetimes: self.lifetimes.clean().move_iter().collect(),
+            lifetimes: self.lifetimes.clean(),
             decl: self.decl.clean(),
             onceness: self.onceness,
             fn_style: self.fn_style,
@@ -567,6 +703,25 @@ impl Clean<FnDecl> for ast::FnDecl {
             output: (self.output.clean()),
             cf: self.cf.clean(),
             attrs: Vec::new()
+        }
+    }
+}
+
+impl Clean<FnDecl> for ty::FnSig {
+    fn clean(&self) -> FnDecl {
+        FnDecl {
+            output: self.output.clean(),
+            cf: Return,
+            attrs: Vec::new(), // FIXME: this is likely wrong
+            inputs: Arguments {
+                values: self.inputs.iter().map(|t| {
+                    Argument {
+                        type_: t.clean(),
+                        id: 0,
+                        name: "".to_strbuf(), // FIXME: where are the names?
+                    }
+                }).collect(),
+            },
         }
     }
 }
@@ -616,7 +771,7 @@ impl Clean<Item> for doctree::Trait {
             name: Some(self.name.clean()),
             attrs: self.attrs.clean(),
             source: self.where.clean(),
-            id: self.id,
+            def_id: ast_util::local_def(self.id),
             visibility: self.vis.clean(),
             inner: TraitItem(Trait {
                 methods: self.methods.clean(),
@@ -669,6 +824,58 @@ impl Clean<TraitMethod> for ast::TraitMethod {
     }
 }
 
+impl Clean<TraitMethod> for ty::Method {
+    fn clean(&self) -> TraitMethod {
+        let m = if self.provided_source.is_some() {Provided} else {Required};
+        let cx = super::ctxtkey.get().unwrap();
+        let tcx = match cx.maybe_typed {
+            core::Typed(ref tcx) => tcx,
+            core::NotTyped(_) => fail!(),
+        };
+        let mut attrs = Vec::new();
+        csearch::get_item_attrs(&tcx.sess.cstore, self.def_id, |v| {
+            attrs.extend(v.move_iter().map(|i| i.clean()));
+        });
+        let (self_, sig) = match self.explicit_self {
+            ast::SelfStatic => (ast::SelfStatic.clean(), self.fty.sig.clone()),
+            s => {
+                let sig = ty::FnSig {
+                    inputs: Vec::from_slice(self.fty.sig.inputs.slice_from(1)),
+                    ..self.fty.sig.clone()
+                };
+                let s = match s {
+                    ast::SelfRegion(..) => {
+                        match ty::get(*self.fty.sig.inputs.get(0)).sty {
+                            ty::ty_rptr(r, mt) => {
+                                SelfBorrowed(r.clean(), mt.mutbl.clean())
+                            }
+                            _ => s.clean(),
+                        }
+                    }
+                    s => s.clean(),
+                };
+                (s, sig)
+            }
+        };
+        m(Item {
+            name: Some(self.ident.clean()),
+            visibility: Some(ast::Inherited),
+            def_id: self.def_id,
+            attrs: attrs,
+            source: Span {
+                filename: "".to_strbuf(),
+                loline: 0, locol: 0, hiline: 0, hicol: 0,
+            },
+            inner: TyMethodItem(TyMethod {
+                fn_style: self.fty.fn_style,
+                generics: self.generics.clean(),
+                self_: self_,
+                decl: sig.clean(),
+            })
+        })
+    }
+}
+
 /// A representation of a Type suitable for hyperlinking purposes. Ideally one can get the original
 /// type out of the AST/ty::ctxt given one of these, if more information is needed. Most importantly
 /// it does not preserve mutability or boxes.
@@ -684,9 +891,9 @@ pub enum Type {
     TyParamBinder(ast::NodeId),
     /// For parameterized types, so the consumer of the JSON don't go looking
     /// for types which don't exist anywhere.
-    Generic(ast::NodeId),
+    Generic(ast::DefId),
     /// For references to self
-    Self(ast::NodeId),
+    Self(ast::DefId),
     /// Primitives are just the fixed-size numeric types (plus int/uint/float), and char.
     Primitive(ast::PrimTy),
     Closure(Box<ClosureDecl>, Option<Lifetime>),
@@ -753,6 +960,93 @@ impl Clean<Type> for ast::Ty {
     }
 }
 
+impl Clean<Type> for ty::t {
+    fn clean(&self) -> Type {
+        match ty::get(*self).sty {
+            ty::ty_nil => Unit,
+            ty::ty_bot => Bottom,
+            ty::ty_bool => Bool,
+            ty::ty_char => Primitive(ast::TyChar),
+            ty::ty_int(t) => Primitive(ast::TyInt(t)),
+            ty::ty_uint(u) => Primitive(ast::TyUint(u)),
+            ty::ty_float(f) => Primitive(ast::TyFloat(f)),
+            ty::ty_box(t) => Managed(box t.clean()),
+            ty::ty_uniq(t) => Unique(box t.clean()),
+            ty::ty_str => String,
+            ty::ty_vec(mt, None) => Vector(box mt.ty.clean()),
+            ty::ty_vec(mt, Some(i)) => FixedVector(box mt.ty.clean(),
+                                                   format_strbuf!("{}", i)),
+            ty::ty_ptr(mt) => RawPointer(mt.mutbl.clean(), box mt.ty.clean()),
+            ty::ty_rptr(r, mt) => BorrowedRef {
+                lifetime: r.clean(),
+                mutability: mt.mutbl.clean(),
+                type_: box mt.ty.clean(),
+            },
+            ty::ty_bare_fn(ref fty) => BareFunction(box BareFunctionDecl {
+                fn_style: fty.fn_style,
+                generics: Generics {
+                    lifetimes: Vec::new(), type_params: Vec::new()
+                },
+                decl: fty.sig.clean(),
+                abi: fty.abi.to_str().to_strbuf(),
+            }),
+            ty::ty_closure(ref fty) => {
+                let decl = box ClosureDecl {
+                    lifetimes: Vec::new(), // FIXME: this looks wrong...
+                    decl: fty.sig.clean(),
+                    onceness: fty.onceness,
+                    fn_style: fty.fn_style,
+                    bounds: fty.bounds.iter().map(|i| i.clean()).collect(),
+                };
+                match fty.store {
+                    ty::UniqTraitStore => Proc(decl),
+                    ty::RegionTraitStore(ref r, _) => Closure(decl, r.clean()),
+                }
+            }
+            ty::ty_struct(did, ref substs) |
+            ty::ty_enum(did, ref substs) |
+            ty::ty_trait(box ty::TyTrait { def_id: did, ref substs, .. }) => {
+                let cx = super::ctxtkey.get().unwrap();
+                let tcx = match cx.maybe_typed {
+                    core::Typed(ref tycx) => tycx,
+                    core::NotTyped(_) => fail!(),
+                };
+                let fqn = csearch::get_item_path(tcx, did);
+                let fqn: Vec<StrBuf> = fqn.move_iter().map(|i| {
+                    i.to_str().to_strbuf()
+                }).collect();
+                let mut path = external_path(fqn.last().unwrap().to_str());
+                let kind = match ty::get(*self).sty {
+                    ty::ty_struct(..) => TypeStruct,
+                    ty::ty_trait(..) => TypeTrait,
+                    _ => TypeEnum,
+                };
+                path.segments.get_mut(0).lifetimes = match substs.regions {
+                    ty::ErasedRegions => Vec::new(),
+                    ty::NonerasedRegions(ref v) => {
+                        v.iter().filter_map(|v| v.clean()).collect()
+                    }
+                };
+                path.segments.get_mut(0).types = substs.tps.clean();
+                cx.external_paths.borrow_mut().get_mut_ref().insert(did,
+                                                                    (fqn, kind));
+                ResolvedPath {
+                    path: path,
+                    typarams: None,
+                    did: did,
+                }
+            }
+            ty::ty_tup(ref t) => Tuple(t.iter().map(|t| t.clean()).collect()),
+
+            ty::ty_param(ref p) => Generic(p.def_id),
+            ty::ty_self(did) => Self(did),
+
+            ty::ty_infer(..) => fail!("ty_infer"),
+            ty::ty_err => fail!("ty_err"),
+        }
+    }
+}
+
 #[deriving(Clone, Encodable, Decodable)]
 pub enum StructField {
     HiddenStructField, // inserted later by strip passes
@@ -770,7 +1064,7 @@ impl Clean<Item> for ast::StructField {
             attrs: self.node.attrs.clean().move_iter().collect(),
             source: self.span.clean(),
             visibility: Some(vis),
-            id: self.node.id,
+            def_id: ast_util::local_def(self.node.id),
             inner: StructFieldItem(TypedStructField(self.node.ty.clean())),
         }
     }
@@ -798,7 +1092,7 @@ impl Clean<Item> for doctree::Struct {
             name: Some(self.name.clean()),
             attrs: self.attrs.clean(),
             source: self.where.clean(),
-            id: self.id,
+            def_id: ast_util::local_def(self.id),
             visibility: self.vis.clean(),
             inner: StructItem(Struct {
                 struct_type: self.struct_type,
@@ -843,7 +1137,7 @@ impl Clean<Item> for doctree::Enum {
             name: Some(self.name.clean()),
             attrs: self.attrs.clean(),
             source: self.where.clean(),
-            id: self.id,
+            def_id: ast_util::local_def(self.id),
             visibility: self.vis.clean(),
             inner: EnumItem(Enum {
                 variants: self.variants.clean(),
@@ -866,7 +1160,7 @@ impl Clean<Item> for doctree::Variant {
             attrs: self.attrs.clean(),
             source: self.where.clean(),
             visibility: self.vis.clean(),
-            id: self.id,
+            def_id: ast_util::local_def(self.id),
             inner: VariantItem(Variant {
                 kind: self.kind.clean(),
             }),
@@ -988,7 +1282,7 @@ impl Clean<Item> for doctree::Typedef {
             name: Some(self.name.clean()),
             attrs: self.attrs.clean(),
             source: self.where.clean(),
-            id: self.id.clone(),
+            def_id: ast_util::local_def(self.id.clone()),
             visibility: self.vis.clean(),
             inner: TypedefItem(Typedef {
                 type_: self.ty.clean(),
@@ -1037,7 +1331,7 @@ impl Clean<Item> for doctree::Static {
             name: Some(self.name.clean()),
             attrs: self.attrs.clean(),
             source: self.where.clean(),
-            id: self.id,
+            def_id: ast_util::local_def(self.id),
             visibility: self.vis.clean(),
             inner: StaticItem(Static {
                 type_: self.type_.clean(),
@@ -1089,7 +1383,7 @@ impl Clean<Item> for doctree::Impl {
             name: None,
             attrs: self.attrs.clean(),
             source: self.where.clean(),
-            id: self.id,
+            def_id: ast_util::local_def(self.id),
             visibility: self.vis.clean(),
             inner: ImplItem(Impl {
                 generics: self.generics.clean(),
@@ -1113,7 +1407,7 @@ impl Clean<Item> for ast::ViewItem {
             name: None,
             attrs: self.attrs.clean().move_iter().collect(),
             source: self.span.clean(),
-            id: 0,
+            def_id: ast_util::local_def(0),
             visibility: self.vis.clean(),
             inner: ViewItemItem(ViewItem {
                 inner: self.node.clean()
@@ -1219,7 +1513,7 @@ impl Clean<Item> for ast::ForeignItem {
             name: Some(self.ident.clean()),
             attrs: self.attrs.clean().move_iter().collect(),
             source: self.span.clean(),
-            id: self.id,
+            def_id: ast_util::local_def(self.id),
             visibility: self.vis.clean(),
             inner: inner,
         }
@@ -1288,7 +1582,7 @@ fn name_from_pat(p: &ast::Pat) -> StrBuf {
 }
 
 /// Given a Type, resolve it using the def_map
-fn resolve_type(path: Path, tpbs: Option<Vec<TyParamBound> >,
+fn resolve_type(path: Path, tpbs: Option<Vec<TyParamBound>>,
                 id: ast::NodeId) -> Type {
     let cx = super::ctxtkey.get().unwrap();
     let tycx = match cx.maybe_typed {
@@ -1303,13 +1597,13 @@ fn resolve_type(path: Path, tpbs: Option<Vec<TyParamBound> >,
     };
 
     match def {
-        ast::DefSelfTy(i) => return Self(i),
+        ast::DefSelfTy(i) => return Self(ast_util::local_def(i)),
         ast::DefPrimTy(p) => match p {
             ast::TyStr => return String,
             ast::TyBool => return Bool,
             _ => return Primitive(p)
         },
-        ast::DefTyParam(i, _) => return Generic(i.node),
+        ast::DefTyParam(i, _) => return Generic(i),
         ast::DefTyParamBinder(i) => return TyParamBinder(i),
         _ => {}
     };
@@ -1337,7 +1631,24 @@ fn register_def(cx: &core::DocContext, def: ast::Def) -> ast::DefId {
     let fqn = fqn.move_iter().map(|i| i.to_str().to_strbuf()).collect();
     debug!("recording {} => {}", did, fqn);
     cx.external_paths.borrow_mut().get_mut_ref().insert(did, (fqn, kind));
+    match kind {
+        TypeTrait => {
+            let t = build_external_trait(tcx, did);
+            cx.external_traits.borrow_mut().get_mut_ref().insert(did, t);
+        }
+        _ => {}
+    }
     return did;
+}
+
+fn build_external_trait(tcx: &ty::ctxt, did: ast::DefId) -> Trait {
+    let def = csearch::get_trait_def(tcx, did);
+    let methods = ty::trait_methods(tcx, did);
+    Trait {
+        generics: def.generics.clean(),
+        methods: methods.iter().map(|i| i.clean()).collect(),
+        parents: Vec::new(), // FIXME: this is likely wrong
+    }
 }
 
 fn resolve_use_source(path: Path, id: ast::NodeId) -> ImportSource {
@@ -1369,7 +1680,7 @@ impl Clean<Item> for doctree::Macro {
             attrs: self.attrs.clean(),
             source: self.where.clean(),
             visibility: ast::Public.clean(),
-            id: self.id,
+            def_id: ast_util::local_def(self.id),
             inner: MacroItem(Macro {
                 source: self.where.to_src(),
             }),
