@@ -32,7 +32,7 @@
 //!
 //! ## Pervasive types
 //!
-//! The [`option`](option/index.html) and [`result`](result/index.html)
+//! The [`option`](option/index.html) and [`result`](../core/result/index.html)
 //! modules define optional and error-handling types, `Option` and `Result`.
 //! [`iter`](../core/iter/index.html) defines Rust's iterator protocol
 //! along with a wide variety of iterators.
@@ -102,7 +102,7 @@
 #![crate_type = "dylib"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
-       html_root_url = "http://static.rust-lang.org/doc/master")]
+       html_root_url = "http://doc.rust-lang.org/")]
 #![feature(macro_rules, globs, asm, managed_boxes, thread_local, link_args,
            simd, linkage, default_type_params, phase, concat_idents, quad_precision_float)]
 

@@ -59,7 +59,7 @@ This `for` loop syntax can be applied to any iterator over any type.
 ## Iteration protocol and more
 
 More detailed information about iterators can be found in the [container
-guide](http://static.rust-lang.org/doc/master/guide-container.html) with
+guide](http://doc.rust-lang.org/guide-container.html) with
 the rest of the rust manuals.
 
 */
