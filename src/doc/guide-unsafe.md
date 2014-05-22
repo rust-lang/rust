@@ -89,11 +89,11 @@ Raw pointers have much fewer guarantees than other pointer types
 offered by the Rust language and libraries. For example, they
 
 - are not guaranteed to point to valid memory and are not even
-  guaranteed to be non-null (unlike both `~` and `&`);
-- do not have any automatic clean-up, unlike `~`, and so require
+  guaranteed to be non-null (unlike both `Box` and `&`);
+- do not have any automatic clean-up, unlike `Box`, and so require
   manual resource management;
 - are plain-old-data, that is, they don't move ownership, again unlike
-  `~`, hence the Rust compiler cannot protect against bugs like
+  `Box`, hence the Rust compiler cannot protect against bugs like
   use-after-free;
 - are considered sendable (if their contents is considered sendable),
   so the compiler offers no assistance with ensuring their use is
@@ -189,7 +189,7 @@ code:
 
 As an example, we give a reimplementation of owned boxes by wrapping
 `malloc` and `free`. Rust's move semantics and lifetimes mean this
-reimplementation is as safe as the built-in `~` type.
+reimplementation is as safe as the `Box` type.
 
 ```
 extern crate libc;
@@ -198,13 +198,14 @@ use std::mem;
 use std::ptr;
 
 // Define a wrapper around the handle returned by the foreign code.
-// Unique<T> has the same semantics as ~T
+// Unique<T> has the same semantics as Box<T>
 pub struct Unique<T> {
     // It contains a single raw, mutable pointer to the object in question.
     ptr: *mut T
 }
 
 // Implement methods for creating and using the values in the box.
+
 // NB: For simplicity and correctness, we require that T has kind Send
 // (owned boxes relax this restriction, and can contain managed (GC) boxes).
 // This is because, as implemented, the garbage collector would not know
@@ -215,23 +216,26 @@ impl<T: Send> Unique<T> {
             let ptr = malloc(std::mem::size_of::<T>() as size_t) as *mut T;
             // we *need* valid pointer.
             assert!(!ptr.is_null());
-            // `*ptr` is uninitialized, and `*ptr = value` would attempt to destroy it
-            // `overwrite` moves a value into this memory without
-            // attempting to drop the original value.
+            // `*ptr` is uninitialized, and `*ptr = value` would
+            // attempt to destroy it `overwrite` moves a value into
+            // this memory without attempting to drop the original
+            // value.
             mem::overwrite(&mut *ptr, value);
             Unique{ptr: ptr}
         }
     }
 
-    // the 'r lifetime results in the same semantics as `&*x` with ~T
+    // the 'r lifetime results in the same semantics as `&*x` with
+    // Box<T>
     pub fn borrow<'r>(&'r self) -> &'r T {
         // By construction, self.ptr is valid
         unsafe { &*self.ptr }
     }
 
-    // the 'r lifetime results in the same semantics as `&mut *x` with ~T
+    // the 'r lifetime results in the same semantics as `&mut *x` with
+    // Box<T>
     pub fn borrow_mut<'r>(&'r mut self) -> &'r mut T {
-        unsafe { &mut*self.ptr }
+        unsafe { &mut *self.ptr }
     }
 }
 
@@ -246,7 +250,6 @@ impl<T: Send> Unique<T> {
 impl<T: Send> Drop for Unique<T> {
     fn drop(&mut self) {
         unsafe {
-
             // Copy the object out from the pointer onto the stack,
             // where it is covered by normal Rust destructor semantics
             // and cleans itself up, if necessary
@@ -428,11 +431,9 @@ this is undesirable, and can be avoided with the `#![no_std]`
 attribute attached to the crate.
 
 ```ignore
-# // FIXME #12903: linking failures due to no_std
-// the minimal library
+// a minimal library
 #![crate_type="lib"]
 #![no_std]
-
 # // fn main() {} tricked you, rustdoc!
 ```
 
@@ -444,20 +445,23 @@ default shim for the C `main` function with your own.
 The function marked `#[start]` is passed the command line parameters
 in the same format as a C:
 
-```ignore
-# // FIXME #12903: linking failures due to no_std
+```
 #![no_std]
 
-extern "rust-intrinsic" { fn abort() -> !; }
-#[no_mangle] pub extern fn rust_stack_exhausted() {
-    unsafe { abort() }
-}
+// Pull in the system libc library for what crt0.o likely requires
+extern crate libc;
 
+// Entry point for this program
 #[start]
 fn start(_argc: int, _argv: **u8) -> int {
     0
 }
 
+// These functions are invoked by the compiler, but not
+// for a bare-bones hello world. These are normally
+// provided by libstd.
+#[lang = "stack_exhausted"] extern fn stack_exhausted() {}
+#[lang = "eh_personality"] extern fn eh_personality() {}
 # // fn main() {} tricked you, rustdoc!
 ```
 
@@ -467,29 +471,115 @@ correct ABI and the correct name, which requires overriding the
 compiler's name mangling too:
 
 ```ignore
-# // FIXME #12903: linking failures due to no_std
 #![no_std]
 #![no_main]
 
-extern "rust-intrinsic" { fn abort() -> !; }
-#[no_mangle] pub extern fn rust_stack_exhausted() {
-    unsafe { abort() }
-}
+extern crate libc;
 
 #[no_mangle] // ensure that this symbol is called `main` in the output
-extern "C" fn main(_argc: int, _argv: **u8) -> int {
+pub extern fn main(argc: int, argv: **u8) -> int {
     0
 }
 
+#[lang = "stack_exhausted"] extern fn stack_exhausted() {}
+#[lang = "eh_personality"] extern fn eh_personality() {}
 # // fn main() {} tricked you, rustdoc!
 ```
 
 
-Unfortunately the Rust compiler assumes that symbols with certain
-names exist; and these have to be defined (or linked in). This is the
-purpose of the `rust_stack_exhausted`: it is called when a function
-detects that it will overflow its stack. The example above uses the
-`abort` intrinsic which ensures that execution halts.
+The compiler currently makes a few assumptions about symbols which are available
+in the executable to call. Normally these functions are provided by the standard
+library, but without it you must define your own.
+
+The first of these two functions, `stack_exhausted`, is invoked whenever stack
+overflow is detected.  This function has a number of restrictions about how it
+can be called and what it must do, but if the stack limit register is not being
+maintained then a task always has an "infinite stack" and this function
+shouldn't get triggered.
+
+The second of these two functions, `eh_personality`, is used by the failure
+mechanisms of the compiler. This is often mapped to GCC's personality function
+(see the [libstd implementation](../std/rt/unwind/) for more information), but
+crates which do not trigger failure can be assured that this function is never
+called.
+
+## Using libcore
+
+> **Note**: the core library's structure is unstable, and it is recommended to
+> use the standard library instead wherever possible.
+
+With the above techniques, we've got a bare-metal executable running some Rust
+code. There is a good deal of functionality provided by the standard library,
+however, that is necessary to be productive in Rust. If the standard library is
+not sufficient, then [libcore](../core/) is designed to be used instead.
+
+The core library has very few dependencies and is much more portable than the
+standard library itself. Additionally, the core library has most of the
+necessary functionality for writing idiomatic and effective Rust code.
+
+As an example, here is a program that will calculate the dot product of two
+vectors provided from C, using idiomatic Rust practices.
+
+```
+#![no_std]
+
+# extern crate libc;
+extern crate core;
+
+use core::prelude::*;
+
+use core::mem;
+use core::raw::Slice;
+
+#[no_mangle]
+pub extern fn dot_product(a: *u32, a_len: u32,
+                          b: *u32, b_len: u32) -> u32 {
+    // Convert the provided arrays into Rust slices.
+    // The core::raw module guarantees that the Slice
+    // structure has the same memory layout as a &[T]
+    // slice.
+    //
+    // This is an unsafe operation because the compiler
+    // cannot tell the pointers are valid.
+    let (a_slice, b_slice): (&[u32], &[u32]) = unsafe {
+        mem::transmute((
+            Slice { data: a, len: a_len as uint },
+            Slice { data: b, len: b_len as uint },
+        ))
+    };
+
+    // Iterate over the slices, collecting the result
+    let mut ret = 0;
+    for (i, j) in a_slice.iter().zip(b_slice.iter()) {
+        ret += (*i) * (*j);
+    }
+    return ret;
+}
+
+#[lang = "begin_unwind"]
+extern fn begin_unwind(args: &core::fmt::Arguments,
+                       file: &str,
+                       line: uint) -> ! {
+    loop {}
+}
+
+#[lang = "stack_exhausted"] extern fn stack_exhausted() {}
+#[lang = "eh_personality"] extern fn eh_personality() {}
+# #[start] fn start(argc: int, argv: **u8) -> int { 0 }
+# fn main() {}
+```
+
+Note that there is one extra lang item here which differs from the examples
+above, `begin_unwind`. This must be defined by consumers of libcore because the
+core library declares failure, but it does not define it. The `begin_unwind`
+lang item is this crate's definition of failure, and it must be guaranteed to
+never return.
+
+As can be seen in this example, the core library is intended to provide the
+power of Rust in all circumstances, regardless of platform requirements. Further
+libraries, such as liballoc, add functionality to libcore which make other
+platform-specific assumptions, but continue to be more portable than the
+standard library itself.
 
 # Interacting with the compiler internals
 
@@ -512,6 +602,10 @@ libraries to interact directly with the compiler and vice versa:
 
 ## Intrinsics
 
+> **Note**: intrinsics will forever have an unstable interface, it is
+> recommended to use the stable interfaces of libcore rather than intrinsics
+> directly.
+
 These are imported as if they were FFI functions, with the special
 `rust-intrinsic` ABI. For example, if one was in a freestanding
 context, but wished to be able to `transmute` between types, and
@@ -530,6 +624,10 @@ As with any other FFI functions, these are always `unsafe` to call.
 
 ## Lang items
 
+> **Note**: lang items are often provided by crates in the Rust distribution,
+> and lang items themselves have an unstable interface. It is recommended to use
+> officially distributed crates instead of defining your own lang items.
+
 The `rustc` compiler has certain pluggable operations, that is,
 functionality that isn't hard-coded into the language, but is
 implemented in libraries, with a special marker to tell the compiler
@@ -537,29 +635,22 @@ it exists. The marker is the attribute `#[lang="..."]` and there are
 various different values of `...`, i.e. various different "lang
 items".
 
-For example, `~` pointers require two lang items, one for allocation
-and one for deallocation. A freestanding program that uses the `~`
+For example, `Box` pointers require two lang items, one for allocation
+and one for deallocation. A freestanding program that uses the `Box`
 sugar for dynamic allocations via `malloc` and `free`:
 
-```ignore
-# // FIXME #12903: linking failures due to no_std
+```
 #![no_std]
 
-#[allow(ctypes)] // `uint` == `size_t` on Rust's platforms
-extern {
-    fn malloc(size: uint) -> *mut u8;
-    fn free(ptr: *mut u8);
+extern crate libc;
 
+extern {
     fn abort() -> !;
 }
 
-#[no_mangle] pub extern fn rust_stack_exhausted() {
-    unsafe { abort() }
-}
-
 #[lang="exchange_malloc"]
-unsafe fn allocate(size: uint) -> *mut u8 {
-    let p = malloc(size);
+unsafe fn allocate(size: uint, _align: uint) -> *mut u8 {
+    let p = libc::malloc(size as libc::size_t) as *mut u8;
 
     // malloc failed
     if p as uint == 0 {
@@ -569,18 +660,19 @@ unsafe fn allocate(size: uint) -> *mut u8 {
     p
 }
 #[lang="exchange_free"]
-unsafe fn deallocate(ptr: *mut u8) {
-    free(ptr)
+unsafe fn deallocate(ptr: *mut u8, _size: uint, _align: uint) {
+    libc::free(ptr as *mut libc::c_void)
 }
 
 #[start]
-fn main(_argc: int, _argv: **u8) -> int {
-    let _x = ~1;
+fn main(argc: int, argv: **u8) -> int {
+    let x = box 1;
 
     0
 }
 
-# // fn main() {} tricked you, rustdoc!
+#[lang = "stack_exhausted"] extern fn stack_exhausted() {}
+#[lang = "eh_personality"] extern fn eh_personality() {}
 ```
 
 Note the use of `abort`: the `exchange_malloc` lang item is assumed to
@@ -602,6 +694,6 @@ Other features provided by lang items include:
   `contravariant_lifetime`, `no_share_bound`, etc.
 
 Lang items are loaded lazily by the compiler; e.g. if one never uses
-`~` then there is no need to define functions for `exchange_malloc`
+`Box` then there is no need to define functions for `exchange_malloc`
 and `exchange_free`. `rustc` will emit an error when an item is needed
 but not found in the current crate or any that it depends on.

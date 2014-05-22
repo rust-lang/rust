@@ -156,7 +156,7 @@ doc/footer.tex: $(D)/footer.inc | doc/
 # HTML (rustdoc)
 DOC_TARGETS += doc/not_found.html
 doc/not_found.html: $(D)/not_found.md $(HTML_DEPS) | doc/
-	$(RUSTDOC) $(RUSTDOC_HTML_OPTS_NO_CSS) --markdown-css http://static.rust-lang.org/doc/master/rust.css $<
+	$(RUSTDOC) $(RUSTDOC_HTML_OPTS_NO_CSS) --markdown-css http://doc.rust-lang.org/rust.css $<
 
 define DEF_DOC
 

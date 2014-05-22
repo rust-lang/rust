@@ -13,7 +13,7 @@ documentation.
 > [getting started][wiki-start] notes on the wiki.
 
 [installer]: http://www.rust-lang.org/install.html
-[tutorial]: http://static.rust-lang.org/doc/tutorial.html
+[tutorial]: http://doc.rust-lang.org/tutorial.html
 [wiki-start]: https://github.com/mozilla/rust/wiki/Note-getting-started-developing-Rust
 [win-wiki]: https://github.com/mozilla/rust/wiki/Using-Rust-on-Windows
 
@@ -60,7 +60,7 @@ documentation.
 
 [repo]: https://github.com/mozilla/rust
 [tarball]: http://static.rust-lang.org/dist/rust-nightly.tar.gz
-[tutorial]: http://static.rust-lang.org/doc/master/tutorial.html
+[tutorial]: http://doc.rust-lang.org/tutorial.html
 
 ## Notes
 
