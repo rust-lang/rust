@@ -16,7 +16,6 @@ pub use core::finally;
 
 pub mod dynamic_lib;
 
-pub mod simd;
 pub mod sync;
 pub mod mutex;
 
