@@ -648,6 +648,7 @@ pub fn noop_fold_type_method<T: Folder>(m: &TypeMethod, fld: &mut T) -> TypeMeth
         generics: fold_generics(&m.generics, fld),
         explicit_self: fld.fold_explicit_self(&m.explicit_self),
         span: fld.new_span(m.span),
+        vis: m.vis,
     }
 }
 
