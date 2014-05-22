@@ -13,7 +13,7 @@
 
 use std::cmp;
 use std::iter::RandomAccessIterator;
-use std::iter::{Rev, Enumerate, Repeat, Map, Zip};
+use std::iter::{Enumerate, Repeat, Map, Zip};
 use std::ops;
 use std::slice;
 use std::strbuf::StrBuf;
@@ -464,12 +464,6 @@ impl Bitv {
     #[inline]
     pub fn iter<'a>(&'a self) -> Bits<'a> {
         Bits {bitv: self, next_idx: 0, end_idx: self.nbits}
-    }
-
-    #[inline]
-    #[deprecated = "replaced by .iter().rev()"]
-    pub fn rev_iter<'a>(&'a self) -> Rev<Bits<'a>> {
-        self.iter().rev()
     }
 
     /// Returns `true` if all bits are 0
