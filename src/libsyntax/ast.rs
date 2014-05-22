@@ -689,6 +689,7 @@ pub struct TypeMethod {
     pub explicit_self: ExplicitSelf,
     pub id: NodeId,
     pub span: Span,
+    pub vis: Visibility,
 }
 
 // A trait method is either required (meaning it doesn't have an

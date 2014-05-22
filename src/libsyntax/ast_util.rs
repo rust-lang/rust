@@ -305,6 +305,7 @@ pub fn trait_method_to_ty_method(method: &TraitMethod) -> TypeMethod {
                 explicit_self: m.explicit_self,
                 id: m.id,
                 span: m.span,
+                vis: m.vis,
             }
         }
     }

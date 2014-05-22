@@ -543,7 +543,6 @@ fn mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> @ast::Expr {
         MOD_SEP => "MOD_SEP",
         RARROW => "RARROW",
         LARROW => "LARROW",
-        DARROW => "DARROW",
         FAT_ARROW => "FAT_ARROW",
         LPAREN => "LPAREN",
         RPAREN => "RPAREN",
