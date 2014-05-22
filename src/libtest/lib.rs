@@ -1007,7 +1007,6 @@ pub fn run_test(opts: &TestOpts,
         return;
     }
 
-    #[allow(deprecated_owned_vector)]
     fn run_test_inner(desc: TestDesc,
                       monitor_ch: Sender<MonitorMsg>,
                       nocapture: bool,
