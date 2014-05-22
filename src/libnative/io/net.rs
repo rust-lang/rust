@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use alloc::arc::Arc;
 use libc;
 use std::io::net::ip;
 use std::io;
 use std::mem;
 use std::rt::rtio;
-use std::sync::arc::UnsafeArc;
 use std::unstable::mutex;
 
 use super::{IoResult, retry, keep_going};
@@ -235,7 +235,7 @@ pub fn init() {
 ////////////////////////////////////////////////////////////////////////////////
 
 pub struct TcpStream {
-    inner: UnsafeArc<Inner>,
+    inner: Arc<Inner>,
     read_deadline: u64,
     write_deadline: u64,
 }
@@ -282,16 +282,13 @@ impl TcpStream {
 
     fn new(inner: Inner) -> TcpStream {
         TcpStream {
-            inner: UnsafeArc::new(inner),
+            inner: Arc::new(inner),
             read_deadline: 0,
             write_deadline: 0,
         }
     }
 
-    pub fn fd(&self) -> sock_t {
-        // This unsafety is fine because it's just a read-only arc
-        unsafe { (*self.inner.get()).fd }
-    }
+    pub fn fd(&self) -> sock_t { self.inner.fd }
 
     fn set_nodelay(&mut self, nodelay: bool) -> IoResult<()> {
         setsockopt(self.fd(), libc::IPPROTO_TCP, libc::TCP_NODELAY,
@@ -329,7 +326,7 @@ impl TcpStream {
     fn lock_nonblocking<'a>(&'a self) -> Guard<'a> {
         let ret = Guard {
             fd: self.fd(),
-            guard: unsafe { (*self.inner.get()).lock.lock() },
+            guard: unsafe { self.inner.lock.lock() },
         };
         assert!(util::set_nonblocking(self.fd(), true).is_ok());
         ret
@@ -536,7 +533,7 @@ impl rtio::RtioTcpAcceptor for TcpAcceptor {
 ////////////////////////////////////////////////////////////////////////////////
 
 pub struct UdpSocket {
-    inner: UnsafeArc<Inner>,
+    inner: Arc<Inner>,
     read_deadline: u64,
     write_deadline: u64,
 }
@@ -545,7 +542,7 @@ impl UdpSocket {
     pub fn bind(addr: ip::SocketAddr) -> IoResult<UdpSocket> {
         let fd = try!(socket(addr, libc::SOCK_DGRAM));
         let ret = UdpSocket {
-            inner: UnsafeArc::new(Inner::new(fd)),
+            inner: Arc::new(Inner::new(fd)),
             read_deadline: 0,
             write_deadline: 0,
         };
@@ -560,10 +557,7 @@ impl UdpSocket {
         }
     }
 
-    pub fn fd(&self) -> sock_t {
-        // unsafety is fine because it's just a read-only arc
-        unsafe { (*self.inner.get()).fd }
-    }
+    pub fn fd(&self) -> sock_t { self.inner.fd }
 
     pub fn set_broadcast(&mut self, on: bool) -> IoResult<()> {
         setsockopt(self.fd(), libc::SOL_SOCKET, libc::SO_BROADCAST,
@@ -603,7 +597,7 @@ impl UdpSocket {
     fn lock_nonblocking<'a>(&'a self) -> Guard<'a> {
         let ret = Guard {
             fd: self.fd(),
-            guard: unsafe { (*self.inner.get()).lock.lock() },
+            guard: unsafe { self.inner.lock.lock() },
         };
         assert!(util::set_nonblocking(self.fd(), true).is_ok());
         ret

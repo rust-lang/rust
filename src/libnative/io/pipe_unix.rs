@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use alloc::arc::Arc;
 use libc;
 use std::c_str::CString;
 use std::intrinsics;
 use std::io;
 use std::mem;
 use std::rt::rtio;
-use std::sync::arc::UnsafeArc;
 use std::unstable::mutex;
 
 use super::{IoResult, retry};
@@ -108,7 +108,7 @@ fn bind(addr: &CString, ty: libc::c_int) -> IoResult<Inner> {
 ////////////////////////////////////////////////////////////////////////////////
 
 pub struct UnixStream {
-    inner: UnsafeArc<Inner>,
+    inner: Arc<Inner>,
     read_deadline: u64,
     write_deadline: u64,
 }
@@ -117,11 +117,11 @@ impl UnixStream {
     pub fn connect(addr: &CString,
                    timeout: Option<u64>) -> IoResult<UnixStream> {
         connect(addr, libc::SOCK_STREAM, timeout).map(|inner| {
-            UnixStream::new(UnsafeArc::new(inner))
+            UnixStream::new(Arc::new(inner))
         })
     }
 
-    fn new(inner: UnsafeArc<Inner>) -> UnixStream {
+    fn new(inner: Arc<Inner>) -> UnixStream {
         UnixStream {
             inner: inner,
             read_deadline: 0,
@@ -129,7 +129,7 @@ impl UnixStream {
         }
     }
 
-    fn fd(&self) -> fd_t { unsafe { (*self.inner.get()).fd } }
+    fn fd(&self) -> fd_t { self.inner.fd }
 
     #[cfg(target_os = "linux")]
     fn lock_nonblocking(&self) {}
@@ -138,7 +138,7 @@ impl UnixStream {
     fn lock_nonblocking<'a>(&'a self) -> net::Guard<'a> {
         let ret = net::Guard {
             fd: self.fd(),
-            guard: unsafe { (*self.inner.get()).lock.lock() },
+            guard: unsafe { self.inner.lock.lock() },
         };
         assert!(util::set_nonblocking(self.fd(), true).is_ok());
         ret
@@ -254,7 +254,7 @@ impl UnixAcceptor {
                          &mut size as *mut libc::socklen_t) as libc::c_int
         }) {
             -1 => Err(super::last_error()),
-            fd => Ok(UnixStream::new(UnsafeArc::new(Inner::new(fd))))
+            fd => Ok(UnixStream::new(Arc::new(Inner::new(fd))))
         }
     }
 }

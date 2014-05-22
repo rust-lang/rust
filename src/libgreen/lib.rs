@@ -214,7 +214,9 @@
 #[cfg(test)] extern crate rustuv;
 extern crate rand;
 extern crate libc;
+extern crate alloc;
 
+use alloc::arc::Arc;
 use std::mem::replace;
 use std::os;
 use std::rt::rtio;
@@ -223,7 +225,6 @@ use std::rt;
 use std::sync::atomics::{SeqCst, AtomicUint, INIT_ATOMIC_UINT};
 use std::sync::deque;
 use std::task::TaskOpts;
-use std::sync::arc::UnsafeArc;
 
 use sched::{Shutdown, Scheduler, SchedHandle, TaskFromFriend, NewNeighbor};
 use sleeper_list::SleeperList;
@@ -375,7 +376,7 @@ pub struct SchedPool {
 /// sending on a channel once the entire pool has been drained of all tasks.
 #[deriving(Clone)]
 struct TaskState {
-    cnt: UnsafeArc<AtomicUint>,
+    cnt: Arc<AtomicUint>,
     done: Sender<()>,
 }
 
@@ -434,7 +435,6 @@ impl SchedPool {
                                             pool.sleepers.clone(),
                                             pool.task_state.clone());
             pool.handles.push(sched.make_handle());
-            let sched = sched;
             pool.threads.push(Thread::start(proc() { sched.bootstrap(); }));
         }
 
@@ -496,7 +496,6 @@ impl SchedPool {
                                         self.task_state.clone());
         let ret = sched.make_handle();
         self.handles.push(sched.make_handle());
-        let sched = sched;
         self.threads.push(Thread::start(proc() { sched.bootstrap() }));
 
         return ret;
@@ -537,21 +536,21 @@ impl TaskState {
     fn new() -> (Receiver<()>, TaskState) {
         let (tx, rx) = channel();
         (rx, TaskState {
-            cnt: UnsafeArc::new(AtomicUint::new(0)),
+            cnt: Arc::new(AtomicUint::new(0)),
             done: tx,
         })
     }
 
     fn increment(&mut self) {
-        unsafe { (*self.cnt.get()).fetch_add(1, SeqCst); }
+        self.cnt.fetch_add(1, SeqCst);
     }
 
     fn active(&self) -> bool {
-        unsafe { (*self.cnt.get()).load(SeqCst) != 0 }
+        self.cnt.load(SeqCst) != 0
     }
 
     fn decrement(&mut self) {
-        let prev = unsafe { (*self.cnt.get()).fetch_sub(1, SeqCst) };
+        let prev = self.cnt.fetch_sub(1, SeqCst);
         if prev == 1 {
             self.done.send(());
         }

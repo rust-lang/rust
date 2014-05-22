@@ -15,7 +15,6 @@
 //! and/or blocking at all, but rather provide the necessary tools to build
 //! other types of concurrent primitives.
 
-pub mod arc;
 pub mod atomics;
 pub mod deque;
 pub mod mpmc_bounded_queue;

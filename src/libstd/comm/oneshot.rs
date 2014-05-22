@@ -15,7 +15,7 @@
 /// this type is to have one and exactly one allocation when the chan/port pair
 /// is created.
 ///
-/// Another possible optimization would be to not use an UnsafeArc box because
+/// Another possible optimization would be to not use an Arc box because
 /// in theory we know when the shared packet can be deallocated (no real need
 /// for the atomic reference counting), but I was having trouble how to destroy
 /// the data early in a drop of a Port.

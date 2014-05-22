@@ -8,8 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use alloc::arc::Arc;
 use mpsc = std::sync::mpsc_queue;
-use std::sync::arc::UnsafeArc;
+use std::kinds::marker;
 
 pub enum PopResult<T> {
     Inconsistent,
@@ -18,29 +19,32 @@ pub enum PopResult<T> {
 }
 
 pub fn queue<T: Send>() -> (Consumer<T>, Producer<T>) {
-    let (a, b) = UnsafeArc::new2(mpsc::Queue::new());
-    (Consumer { inner: a }, Producer { inner: b })
+    let a = Arc::new(mpsc::Queue::new());
+    (Consumer { inner: a.clone(), noshare: marker::NoShare },
+     Producer { inner: a, noshare: marker::NoShare })
 }
 
 pub struct Producer<T> {
-    inner: UnsafeArc<mpsc::Queue<T>>,
+    inner: Arc<mpsc::Queue<T>>,
+    noshare: marker::NoShare,
 }
 
 pub struct Consumer<T> {
-    inner: UnsafeArc<mpsc::Queue<T>>,
+    inner: Arc<mpsc::Queue<T>>,
+    noshare: marker::NoShare,
 }
 
 impl<T: Send> Consumer<T> {
-    pub fn pop(&mut self) -> PopResult<T> {
-        match unsafe { (*self.inner.get()).pop() } {
+    pub fn pop(&self) -> PopResult<T> {
+        match self.inner.pop() {
             mpsc::Inconsistent => Inconsistent,
             mpsc::Empty => Empty,
             mpsc::Data(t) => Data(t),
         }
     }
 
-    pub fn casual_pop(&mut self) -> Option<T> {
-        match unsafe { (*self.inner.get()).pop() } {
+    pub fn casual_pop(&self) -> Option<T> {
+        match self.inner.pop() {
             mpsc::Inconsistent => None,
             mpsc::Empty => None,
             mpsc::Data(t) => Some(t),
@@ -49,13 +53,13 @@ impl<T: Send> Consumer<T> {
 }
 
 impl<T: Send> Producer<T> {
-    pub fn push(&mut self, t: T) {
-        unsafe { (*self.inner.get()).push(t); }
+    pub fn push(&self, t: T) {
+        self.inner.push(t);
     }
 }
 
 impl<T: Send> Clone for Producer<T> {
     fn clone(&self) -> Producer<T> {
-        Producer { inner: self.inner.clone() }
+        Producer { inner: self.inner.clone(), noshare: marker::NoShare }
     }
 }

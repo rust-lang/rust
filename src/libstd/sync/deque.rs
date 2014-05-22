@@ -48,20 +48,22 @@
 // FIXME: all atomic operations in this module use a SeqCst ordering. That is
 //      probably overkill
 
+use alloc::arc::Arc;
+
 use clone::Clone;
 use iter::{range, Iterator};
 use kinds::Send;
+use kinds::marker;
 use mem::{forget, min_align_of, size_of, transmute};
 use ops::Drop;
 use option::{Option, Some, None};
 use owned::Box;
 use ptr::RawPtr;
 use ptr;
+use rt::heap::{allocate, deallocate};
 use slice::ImmutableVector;
-use sync::arc::UnsafeArc;
 use sync::atomics::{AtomicInt, AtomicPtr, SeqCst};
 use unstable::sync::Exclusive;
-use rt::heap::{allocate, deallocate};
 use vec::Vec;
 
 // Once the queue is less than 1/K full, then it will be downsized. Note that
@@ -87,14 +89,16 @@ struct Deque<T> {
 ///
 /// There may only be one worker per deque.
 pub struct Worker<T> {
-    deque: UnsafeArc<Deque<T>>,
+    deque: Arc<Deque<T>>,
+    noshare: marker::NoShare,
 }
 
 /// The stealing half of the work-stealing deque. Stealers have access to the
 /// opposite end of the deque from the worker, and they only have access to the
 /// `steal` method.
 pub struct Stealer<T> {
-    deque: UnsafeArc<Deque<T>>,
+    deque: Arc<Deque<T>>,
+    noshare: marker::NoShare,
 }
 
 /// When stealing some data, this is an enumeration of the possible outcomes.
@@ -149,12 +153,14 @@ impl<T: Send> BufferPool<T> {
 
     /// Allocates a new work-stealing deque which will send/receiving memory to
     /// and from this buffer pool.
-    pub fn deque(&mut self) -> (Worker<T>, Stealer<T>) {
-        let (a, b) = UnsafeArc::new2(Deque::new(self.clone()));
-        (Worker { deque: a }, Stealer { deque: b })
+    pub fn deque(&self) -> (Worker<T>, Stealer<T>) {
+        let a = Arc::new(Deque::new(self.clone()));
+        let b = a.clone();
+        (Worker { deque: a, noshare: marker::NoShare },
+         Stealer { deque: b, noshare: marker::NoShare })
     }
 
-    fn alloc(&mut self, bits: int) -> Box<Buffer<T>> {
+    fn alloc(&self, bits: int) -> Box<Buffer<T>> {
         unsafe {
             self.pool.with(|pool| {
                 match pool.iter().position(|x| x.size() >= (1 << bits)) {
@@ -165,7 +171,7 @@ impl<T: Send> BufferPool<T> {
         }
     }
 
-    fn free(&mut self, buf: Box<Buffer<T>>) {
+    fn free(&self, buf: Box<Buffer<T>>) {
         unsafe {
             let mut buf = Some(buf);
             self.pool.with(|pool| {
@@ -185,46 +191,48 @@ impl<T: Send> Clone for BufferPool<T> {
 
 impl<T: Send> Worker<T> {
     /// Pushes data onto the front of this work queue.
-    pub fn push(&mut self, t: T) {
-        unsafe { (*self.deque.get()).push(t) }
+    pub fn push(&self, t: T) {
+        unsafe { self.deque.push(t) }
     }
     /// Pops data off the front of the work queue, returning `None` on an empty
     /// queue.
-    pub fn pop(&mut self) -> Option<T> {
-        unsafe { (*self.deque.get()).pop() }
+    pub fn pop(&self) -> Option<T> {
+        unsafe { self.deque.pop() }
     }
 
     /// Gets access to the buffer pool that this worker is attached to. This can
     /// be used to create more deques which share the same buffer pool as this
     /// deque.
-    pub fn pool<'a>(&'a mut self) -> &'a mut BufferPool<T> {
-        unsafe { &mut (*self.deque.get()).pool }
+    pub fn pool<'a>(&'a self) -> &'a BufferPool<T> {
+        &self.deque.pool
     }
 }
 
 impl<T: Send> Stealer<T> {
     /// Steals work off the end of the queue (opposite of the worker's end)
-    pub fn steal(&mut self) -> Stolen<T> {
-        unsafe { (*self.deque.get()).steal() }
+    pub fn steal(&self) -> Stolen<T> {
+        unsafe { self.deque.steal() }
     }
 
     /// Gets access to the buffer pool that this stealer is attached to. This
     /// can be used to create more deques which share the same buffer pool as
     /// this deque.
-    pub fn pool<'a>(&'a mut self) -> &'a mut BufferPool<T> {
-        unsafe { &mut (*self.deque.get()).pool }
+    pub fn pool<'a>(&'a self) -> &'a BufferPool<T> {
+        &self.deque.pool
     }
 }
 
 impl<T: Send> Clone for Stealer<T> {
-    fn clone(&self) -> Stealer<T> { Stealer { deque: self.deque.clone() } }
+    fn clone(&self) -> Stealer<T> {
+        Stealer { deque: self.deque.clone(), noshare: marker::NoShare }
+    }
 }
 
 // Almost all of this code can be found directly in the paper so I'm not
 // personally going to heavily comment what's going on here.
 
 impl<T: Send> Deque<T> {
-    fn new(mut pool: BufferPool<T>) -> Deque<T> {
+    fn new(pool: BufferPool<T>) -> Deque<T> {
         let buf = pool.alloc(MIN_BITS);
         Deque {
             bottom: AtomicInt::new(0),
@@ -234,7 +242,7 @@ impl<T: Send> Deque<T> {
         }
     }
 
-    unsafe fn push(&mut self, data: T) {
+    unsafe fn push(&self, data: T) {
         let mut b = self.bottom.load(SeqCst);
         let t = self.top.load(SeqCst);
         let mut a = self.array.load(SeqCst);
@@ -250,7 +258,7 @@ impl<T: Send> Deque<T> {
         self.bottom.store(b + 1, SeqCst);
     }
 
-    unsafe fn pop(&mut self) -> Option<T> {
+    unsafe fn pop(&self) -> Option<T> {
         let b = self.bottom.load(SeqCst);
         let a = self.array.load(SeqCst);
         let b = b - 1;
@@ -276,7 +284,7 @@ impl<T: Send> Deque<T> {
         }
     }
 
-    unsafe fn steal(&mut self) -> Stolen<T> {
+    unsafe fn steal(&self) -> Stolen<T> {
         let t = self.top.load(SeqCst);
         let old = self.array.load(SeqCst);
         let b = self.bottom.load(SeqCst);
@@ -298,7 +306,7 @@ impl<T: Send> Deque<T> {
         }
     }
 
-    unsafe fn maybe_shrink(&mut self, b: int, t: int) {
+    unsafe fn maybe_shrink(&self, b: int, t: int) {
         let a = self.array.load(SeqCst);
         if b - t < (*a).size() / K && b - t > (1 << MIN_BITS) {
             self.swap_buffer(b, a, (*a).resize(b, t, -1));
@@ -312,7 +320,7 @@ impl<T: Send> Deque<T> {
     // after this method has called 'free' on it. The continued usage is simply
     // a read followed by a forget, but we must make sure that the memory can
     // continue to be read after we flag this buffer for reclamation.
-    unsafe fn swap_buffer(&mut self, b: int, old: *mut Buffer<T>,
+    unsafe fn swap_buffer(&self, b: int, old: *mut Buffer<T>,
                           buf: Buffer<T>) -> *mut Buffer<T> {
         let newbuf: *mut Buffer<T> = transmute(box buf);
         self.array.store(newbuf, SeqCst);
@@ -373,7 +381,7 @@ impl<T: Send> Buffer<T> {
 
     // Unsafe because this unsafely overwrites possibly uninitialized or
     // initialized data.
-    unsafe fn put(&mut self, i: int, t: T) {
+    unsafe fn put(&self, i: int, t: T) {
         let ptr = self.storage.offset(i & self.mask());
         ptr::copy_nonoverlapping_memory(ptr as *mut T, &t as *T, 1);
         forget(t);
@@ -382,7 +390,7 @@ impl<T: Send> Buffer<T> {
     // Again, unsafe because this has incredibly dubious ownership violations.
     // It is assumed that this buffer is immediately dropped.
     unsafe fn resize(&self, b: int, t: int, delta: int) -> Buffer<T> {
-        let mut buf = Buffer::new(self.log_size + delta);
+        let buf = Buffer::new(self.log_size + delta);
         for i in range(t, b) {
             buf.put(i, self.get(i));
         }
@@ -415,8 +423,8 @@ mod tests {
 
     #[test]
     fn smoke() {
-        let mut pool = BufferPool::new();
-        let (mut w, mut s) = pool.deque();
+        let pool = BufferPool::new();
+        let (w, s) = pool.deque();
         assert_eq!(w.pop(), None);
         assert_eq!(s.steal(), Empty);
         w.push(1);
@@ -430,10 +438,9 @@ mod tests {
     #[test]
     fn stealpush() {
         static AMT: int = 100000;
-        let mut pool = BufferPool::<int>::new();
-        let (mut w, s) = pool.deque();
+        let pool = BufferPool::<int>::new();
+        let (w, s) = pool.deque();
         let t = Thread::start(proc() {
-            let mut s = s;
             let mut left = AMT;
             while left > 0 {
                 match s.steal() {
@@ -456,10 +463,9 @@ mod tests {
     #[test]
     fn stealpush_large() {
         static AMT: int = 100000;
-        let mut pool = BufferPool::<(int, int)>::new();
-        let (mut w, s) = pool.deque();
+        let pool = BufferPool::<(int, int)>::new();
+        let (w, s) = pool.deque();
         let t = Thread::start(proc() {
-            let mut s = s;
             let mut left = AMT;
             while left > 0 {
                 match s.steal() {
@@ -477,7 +483,7 @@ mod tests {
         t.join();
     }
 
-    fn stampede(mut w: Worker<Box<int>>, s: Stealer<Box<int>>,
+    fn stampede(w: Worker<Box<int>>, s: Stealer<Box<int>>,
                 nthreads: int, amt: uint) {
         for _ in range(0, amt) {
             w.push(box 20);
@@ -489,7 +495,6 @@ mod tests {
             let s = s.clone();
             Thread::start(proc() {
                 unsafe {
-                    let mut s = s;
                     while (*unsafe_remaining).load(SeqCst) > 0 {
                         match s.steal() {
                             Data(box 20) => {
@@ -518,7 +523,7 @@ mod tests {
 
     #[test]
     fn run_stampede() {
-        let mut pool = BufferPool::<Box<int>>::new();
+        let pool = BufferPool::<Box<int>>::new();
         let (w, s) = pool.deque();
         stampede(w, s, 8, 10000);
     }
@@ -526,7 +531,7 @@ mod tests {
     #[test]
     fn many_stampede() {
         static AMT: uint = 4;
-        let mut pool = BufferPool::<Box<int>>::new();
+        let pool = BufferPool::<Box<int>>::new();
         let threads = range(0, AMT).map(|_| {
             let (w, s) = pool.deque();
             Thread::start(proc() {
@@ -545,14 +550,13 @@ mod tests {
         static NTHREADS: int = 8;
         static mut DONE: AtomicBool = INIT_ATOMIC_BOOL;
         static mut HITS: AtomicUint = INIT_ATOMIC_UINT;
-        let mut pool = BufferPool::<int>::new();
-        let (mut w, s) = pool.deque();
+        let pool = BufferPool::<int>::new();
+        let (w, s) = pool.deque();
 
         let threads = range(0, NTHREADS).map(|_| {
             let s = s.clone();
             Thread::start(proc() {
                 unsafe {
-                    let mut s = s;
                     loop {
                         match s.steal() {
                             Data(2) => { HITS.fetch_add(1, SeqCst); }
@@ -604,8 +608,8 @@ mod tests {
         static AMT: int = 10000;
         static NTHREADS: int = 4;
         static mut DONE: AtomicBool = INIT_ATOMIC_BOOL;
-        let mut pool = BufferPool::<(int, uint)>::new();
-        let (mut w, s) = pool.deque();
+        let pool = BufferPool::<(int, uint)>::new();
+        let (w, s) = pool.deque();
 
         let (threads, hits) = vec::unzip(range(0, NTHREADS).map(|_| {
             let s = s.clone();
@@ -615,7 +619,6 @@ mod tests {
             };
             (Thread::start(proc() {
                 unsafe {
-                    let mut s = s;
                     loop {
                         match s.steal() {
                             Data((1, 2)) => {
