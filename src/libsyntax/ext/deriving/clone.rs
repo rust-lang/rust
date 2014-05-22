@@ -66,12 +66,17 @@ fn cs_clone(
             ctor_ident = variant.node.name;
             all_fields = af;
         },
-        EnumNonMatching(..) => cx.span_bug(trait_span,
-                                           format!("non-matching enum variants in `deriving({})`",
-                                                  name)),
-        StaticEnum(..) | StaticStruct(..) => cx.span_bug(trait_span,
-                                                         format!("static method in `deriving({})`",
-                                                                 name))
+        EnumNonMatching(..) => {
+            cx.span_bug(trait_span,
+                        format!("non-matching enum variants in \
+                                 `deriving({})`",
+                                name).as_slice())
+        }
+        StaticEnum(..) | StaticStruct(..) => {
+            cx.span_bug(trait_span,
+                        format!("static method in `deriving({})`",
+                                name).as_slice())
+        }
     }
 
     if all_fields.len() >= 1 && all_fields.get(0).name.is_none() {
@@ -83,9 +88,12 @@ fn cs_clone(
         let fields = all_fields.iter().map(|field| {
             let ident = match field.name {
                 Some(i) => i,
-                None => cx.span_bug(trait_span,
-                                    format!("unnamed field in normal struct in `deriving({})`",
-                                            name))
+                None => {
+                    cx.span_bug(trait_span,
+                                format!("unnamed field in normal struct in \
+                                         `deriving({})`",
+                                        name).as_slice())
+                }
             };
             cx.field_imm(field.span, ident, subcall(field))
         }).collect::<Vec<_>>();

@@ -192,7 +192,8 @@ fn represent_type_uncached(cx: &CrateContext, t: ty::t) -> Repr {
             if !cases.iter().enumerate().all(|(i,c)| c.discr == (i as Disr)) {
                 cx.sess().bug(format!("non-C-like enum {} with specified \
                                       discriminants",
-                                      ty::item_path_str(cx.tcx(), def_id)))
+                                      ty::item_path_str(cx.tcx(),
+                                                        def_id)).as_slice())
             }
 
             if cases.len() == 1 {

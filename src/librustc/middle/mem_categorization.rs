@@ -224,7 +224,7 @@ pub fn deref_kind(tcx: &ty::ctxt, t: ty::t) -> deref_kind {
       None => {
         tcx.sess.bug(
             format!("deref_cat() invoked on non-derefable type {}",
-                 ty_to_str(tcx, t)));
+                    ty_to_str(tcx, t)).as_slice());
       }
     }
 }
@@ -578,7 +578,8 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
                       self.tcx().sess.span_bug(
                           span,
                           format!("Upvar of non-closure {} - {}",
-                                  fn_node_id, ty.repr(self.tcx())));
+                                  fn_node_id,
+                                  ty.repr(self.tcx())).as_slice());
                   }
               }
           }
@@ -727,7 +728,7 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
                 self.tcx().sess.span_bug(
                     node.span(),
                     format!("Explicit deref of non-derefable type: {}",
-                            base_cmt.ty.repr(self.tcx())));
+                            base_cmt.ty.repr(self.tcx())).as_slice());
             }
         }
     }
@@ -800,7 +801,7 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
             self.tcx().sess.span_bug(
                 elt.span(),
                 format!("Explicit index of non-index type `{}`",
-                     base_cmt.ty.repr(self.tcx())));
+                        base_cmt.ty.repr(self.tcx())).as_slice());
           }
         };
 
@@ -884,9 +885,8 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
                 },
 
                 _ => {
-                    tcx.sess.span_bug(
-                        pat.span,
-                        format!("Type of slice pattern is not a slice"));
+                    tcx.sess.span_bug(pat.span,
+                                      "type of slice pattern is not a slice");
                 }
             }
         }

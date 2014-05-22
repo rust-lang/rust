@@ -690,13 +690,13 @@ mod test {
 
         let pat = Pattern::new("a[0-9]b");
         for i in range(0, 10) {
-            assert!(pat.matches(format!("a{}b", i)));
+            assert!(pat.matches(format!("a{}b", i).as_slice()));
         }
         assert!(!pat.matches("a_b"));
 
         let pat = Pattern::new("a[!0-9]b");
         for i in range(0, 10) {
-            assert!(!pat.matches(format!("a{}b", i)));
+            assert!(!pat.matches(format!("a{}b", i).as_slice()));
         }
         assert!(pat.matches("a_b"));
 
@@ -704,11 +704,11 @@ mod test {
         for &p in pats.iter() {
             let pat = Pattern::new(p);
             for c in "abcdefghijklmnopqrstuvwxyz".chars() {
-                assert!(pat.matches(c.to_str()));
+                assert!(pat.matches(c.to_str().as_slice()));
             }
             for c in "ABCDEFGHIJKLMNOPQRSTUVWXYZ".chars() {
                 let options = MatchOptions {case_sensitive: false, .. MatchOptions::new()};
-                assert!(pat.matches_with(c.to_str(), options));
+                assert!(pat.matches_with(c.to_str().as_slice(), options));
             }
             assert!(pat.matches("1"));
             assert!(pat.matches("2"));

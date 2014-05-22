@@ -92,6 +92,6 @@ fn main() {
     } else if args.len() >= 2 && args[1].as_slice() == "double-fail" {
         double();
     } else {
-        runtest(args[0]);
+        runtest(args[0].as_slice());
     }
 }

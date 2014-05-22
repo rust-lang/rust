@@ -152,7 +152,8 @@ impl<'a> LanguageItemCollector<'a> {
         match self.items.items.get(item_index) {
             &Some(original_def_id) if original_def_id != item_def_id => {
                 self.session.err(format!("duplicate entry for `{}`",
-                                      LanguageItems::item_name(item_index)));
+                                         LanguageItems::item_name(
+                                             item_index)).as_slice());
             }
             &Some(_) | &None => {
                 // OK.

@@ -15,5 +15,5 @@
 fn main() {
     let mut a = 1;
     if 1 == 1 { a = 2; }
-    fail!("woooo".to_owned() + "o");
+    fail!(format_strbuf!("woooo{}", "o"));
 }

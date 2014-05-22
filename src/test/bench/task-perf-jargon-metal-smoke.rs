@@ -49,7 +49,7 @@ fn main() {
     };
 
     let (tx, rx) = channel();
-    child_generation(from_str::<uint>(*args.get(1)).unwrap(), tx);
+    child_generation(from_str::<uint>(args.get(1).as_slice()).unwrap(), tx);
     if rx.recv_opt().is_err() {
         fail!("it happened when we slumbered");
     }

@@ -107,7 +107,7 @@ fn check_expr(v: &mut CheckCrateVisitor, e: &Expr, is_const: bool) {
                  .span_err(e.span,
                            format!("can not cast to `{}` in a constant \
                                     expression",
-                                   ppaux::ty_to_str(v.tcx, ety).as_slice()))
+                                   ppaux::ty_to_str(v.tcx, ety)).as_slice())
             }
           }
           ExprPath(ref pth) => {

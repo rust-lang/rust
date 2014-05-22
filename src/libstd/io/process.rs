@@ -583,11 +583,11 @@ mod tests {
         }
     })
 
-    pub fn read_all(input: &mut Reader) -> ~str {
+    pub fn read_all(input: &mut Reader) -> StrBuf {
         input.read_to_str().unwrap()
     }
 
-    pub fn run_output(cmd: Command) -> ~str {
+    pub fn run_output(cmd: Command) -> StrBuf {
         let p = cmd.spawn();
         assert!(p.is_ok());
         let mut p = p.unwrap();
@@ -601,7 +601,7 @@ mod tests {
     iotest!(fn stdout_works() {
         let mut cmd = Command::new("echo");
         cmd.arg("foobar").stdout(CreatePipe(false, true));
-        assert_eq!(run_output(cmd), "foobar\n".to_owned());
+        assert_eq!(run_output(cmd), "foobar\n".to_strbuf());
     })
 
     #[cfg(unix, not(target_os="android"))]
@@ -610,7 +610,7 @@ mod tests {
         cmd.arg("-c").arg("pwd")
            .cwd(&Path::new("/"))
            .stdout(CreatePipe(false, true));
-        assert_eq!(run_output(cmd), "/\n".to_owned());
+        assert_eq!(run_output(cmd), "/\n".to_strbuf());
     })
 
     #[cfg(unix, not(target_os="android"))]
@@ -624,7 +624,7 @@ mod tests {
         drop(p.stdin.take());
         let out = read_all(p.stdout.get_mut_ref() as &mut Reader);
         assert!(p.wait().unwrap().success());
-        assert_eq!(out, "foobar\n".to_owned());
+        assert_eq!(out, "foobar\n".to_strbuf());
     })
 
     #[cfg(not(target_os="android"))]
@@ -682,7 +682,7 @@ mod tests {
         let output_str = str::from_utf8(output.as_slice()).unwrap();
 
         assert!(status.success());
-        assert_eq!(output_str.trim().to_owned(), "hello".to_owned());
+        assert_eq!(output_str.trim().to_strbuf(), "hello".to_strbuf());
         // FIXME #7224
         if !running_on_valgrind() {
             assert_eq!(error, Vec::new());
@@ -719,7 +719,7 @@ mod tests {
         let output_str = str::from_utf8(output.as_slice()).unwrap();
 
         assert!(status.success());
-        assert_eq!(output_str.trim().to_owned(), "hello".to_owned());
+        assert_eq!(output_str.trim().to_strbuf(), "hello".to_strbuf());
         // FIXME #7224
         if !running_on_valgrind() {
             assert_eq!(error, Vec::new());
@@ -749,9 +749,9 @@ mod tests {
         let prog = pwd_cmd().spawn().unwrap();
 
         let output = str::from_utf8(prog.wait_with_output().unwrap()
-                                        .output.as_slice()).unwrap().to_owned();
+                                        .output.as_slice()).unwrap().to_strbuf();
         let parent_dir = os::getcwd();
-        let child_dir = Path::new(output.trim());
+        let child_dir = Path::new(output.as_slice().trim());
 
         let parent_stat = parent_dir.stat().unwrap();
         let child_stat = child_dir.stat().unwrap();
@@ -768,8 +768,8 @@ mod tests {
         let prog = pwd_cmd().cwd(&parent_dir).spawn().unwrap();
 
         let output = str::from_utf8(prog.wait_with_output().unwrap()
-                                        .output.as_slice()).unwrap().to_owned();
-        let child_dir = Path::new(output.trim());
+                                        .output.as_slice()).unwrap().to_strbuf();
+        let child_dir = Path::new(output.as_slice().trim().into_strbuf());
 
         let parent_stat = parent_dir.stat().unwrap();
         let child_stat = child_dir.stat().unwrap();
@@ -803,12 +803,14 @@ mod tests {
 
         let prog = env_cmd().spawn().unwrap();
         let output = str::from_utf8(prog.wait_with_output().unwrap()
-                                        .output.as_slice()).unwrap().to_owned();
+                                        .output.as_slice()).unwrap().to_strbuf();
 
         let r = os::env();
         for &(ref k, ref v) in r.iter() {
             // don't check windows magical empty-named variables
-            assert!(k.is_empty() || output.contains(format!("{}={}", *k, *v)));
+            assert!(k.is_empty() ||
+                    output.as_slice()
+                          .contains(format!("{}={}", *k, *v).as_slice()));
         }
     })
     #[cfg(target_os="android")]
@@ -819,14 +821,20 @@ mod tests {
         let mut prog = env_cmd().spawn().unwrap();
         let output = str::from_utf8(prog.wait_with_output()
                                         .unwrap().output.as_slice())
-                                   .unwrap().to_owned();
+                                   .unwrap().to_strbuf();
 
         let r = os::env();
         for &(ref k, ref v) in r.iter() {
             // don't check android RANDOM variables
-            if *k != "RANDOM".to_owned() {
-                assert!(output.contains(format!("{}={}", *k, *v)) ||
-                        output.contains(format!("{}=\'{}\'", *k, *v)));
+            if *k != "RANDOM".to_strbuf() {
+                assert!(output.as_slice()
+                              .contains(format!("{}={}",
+                                                *k,
+                                                *v).as_slice()) ||
+                        output.as_slice()
+                              .contains(format!("{}=\'{}\'",
+                                                *k,
+                                                *v).as_slice()));
             }
         }
     })
@@ -835,9 +843,9 @@ mod tests {
         let new_env = box [("RUN_TEST_NEW_ENV", "123")];
         let prog = env_cmd().env(new_env).spawn().unwrap();
         let result = prog.wait_with_output().unwrap();
-        let output = str::from_utf8_lossy(result.output.as_slice()).into_owned();
+        let output = str::from_utf8_lossy(result.output.as_slice()).into_strbuf();
 
-        assert!(output.contains("RUN_TEST_NEW_ENV=123"),
+        assert!(output.as_slice().contains("RUN_TEST_NEW_ENV=123"),
                 "didn't find RUN_TEST_NEW_ENV inside of:\n\n{}", output);
     })
 

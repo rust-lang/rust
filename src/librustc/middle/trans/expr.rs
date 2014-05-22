@@ -421,8 +421,8 @@ fn trans_datum_unadjusted<'a>(bcx: &'a Block<'a>,
             bcx.tcx().sess.span_bug(
                 expr.span,
                 format!("trans_rvalue_datum_unadjusted reached \
-                      fall-through case: {:?}",
-                     expr.node));
+                         fall-through case: {:?}",
+                        expr.node).as_slice());
         }
     }
 }
@@ -635,8 +635,8 @@ fn trans_rvalue_stmt_unadjusted<'a>(bcx: &'a Block<'a>,
             bcx.tcx().sess.span_bug(
                 expr.span,
                 format!("trans_rvalue_stmt_unadjusted reached \
-                      fall-through case: {:?}",
-                     expr.node));
+                         fall-through case: {:?}",
+                        expr.node).as_slice());
         }
     }
 }
@@ -765,8 +765,9 @@ fn trans_rvalue_dps_unadjusted<'a>(bcx: &'a Block<'a>,
         _ => {
             bcx.tcx().sess.span_bug(
                 expr.span,
-                format!("trans_rvalue_dps_unadjusted reached fall-through case: {:?}",
-                     expr.node));
+                format!("trans_rvalue_dps_unadjusted reached fall-through \
+                         case: {:?}",
+                        expr.node).as_slice());
         }
     }
 }
@@ -815,7 +816,7 @@ fn trans_def_dps_unadjusted<'a>(
         _ => {
             bcx.tcx().sess.span_bug(ref_expr.span, format!(
                 "Non-DPS def {:?} referened by {}",
-                def, bcx.node_id_to_str(ref_expr.id)));
+                def, bcx.node_id_to_str(ref_expr.id)).as_slice());
         }
     }
 }
@@ -839,7 +840,7 @@ fn trans_def_fn_unadjusted<'a>(bcx: &'a Block<'a>,
             bcx.tcx().sess.span_bug(ref_expr.span, format!(
                     "trans_def_fn_unadjusted invoked on: {:?} for {}",
                     def,
-                    ref_expr.repr(bcx.tcx())));
+                    ref_expr.repr(bcx.tcx())).as_slice());
         }
     };
 
@@ -865,7 +866,8 @@ pub fn trans_local_var<'a>(bcx: &'a Block<'a>,
                 Some(&val) => Datum(val, local_ty, Lvalue),
                 None => {
                     bcx.sess().bug(format!(
-                        "trans_local_var: no llval for upvar {:?} found", nid));
+                        "trans_local_var: no llval for upvar {:?} found",
+                        nid).as_slice());
                 }
             }
         }
@@ -877,7 +879,8 @@ pub fn trans_local_var<'a>(bcx: &'a Block<'a>,
         }
         _ => {
             bcx.sess().unimpl(format!(
-                "unsupported def type in trans_local_var: {:?}", def));
+                "unsupported def type in trans_local_var: {:?}",
+                def).as_slice());
         }
     };
 
@@ -889,7 +892,8 @@ pub fn trans_local_var<'a>(bcx: &'a Block<'a>,
             Some(&v) => v,
             None => {
                 bcx.sess().bug(format!(
-                    "trans_local_var: no datum for local/arg {:?} found", nid));
+                    "trans_local_var: no datum for local/arg {:?} found",
+                    nid).as_slice());
             }
         };
         debug!("take_local(nid={:?}, v={}, ty={})",
@@ -922,7 +926,7 @@ pub fn with_field_tys<R>(tcx: &ty::ctxt,
                     tcx.sess.bug(format!(
                         "cannot get field types from the enum type {} \
                          without a node ID",
-                        ty.repr(tcx)));
+                        ty.repr(tcx)).as_slice());
                 }
                 Some(node_id) => {
                     let def = tcx.def_map.borrow().get_copy(&node_id);
@@ -947,7 +951,7 @@ pub fn with_field_tys<R>(tcx: &ty::ctxt,
         _ => {
             tcx.sess.bug(format!(
                 "cannot get field types from the type {}",
-                ty.repr(tcx)));
+                ty.repr(tcx)).as_slice());
         }
     }
 }
@@ -1586,16 +1590,22 @@ fn trans_imm_cast<'a>(bcx: &'a Block<'a>,
                                           val_ty(lldiscrim_a),
                                           lldiscrim_a, true),
                 cast_float => SIToFP(bcx, lldiscrim_a, ll_t_out),
-                _ => ccx.sess().bug(format!("translating unsupported cast: \
+                _ => {
+                    ccx.sess().bug(format!("translating unsupported cast: \
                                             {} ({:?}) -> {} ({:?})",
-                                            t_in.repr(bcx.tcx()), k_in,
-                                            t_out.repr(bcx.tcx()), k_out))
+                                            t_in.repr(bcx.tcx()),
+                                            k_in,
+                                            t_out.repr(bcx.tcx()),
+                                            k_out).as_slice())
+                }
             }
         }
         _ => ccx.sess().bug(format!("translating unsupported cast: \
                                     {} ({:?}) -> {} ({:?})",
-                                    t_in.repr(bcx.tcx()), k_in,
-                                    t_out.repr(bcx.tcx()), k_out))
+                                    t_in.repr(bcx.tcx()),
+                                    k_in,
+                                    t_out.repr(bcx.tcx()),
+                                    k_out).as_slice())
     };
     return immediate_rvalue_bcx(bcx, newval, t_out).to_expr_datumblock();
 }
@@ -1757,7 +1767,7 @@ fn deref_once<'a>(bcx: &'a Block<'a>,
             bcx.tcx().sess.span_bug(
                 expr.span,
                 format!("deref invoked on expr of illegal type {}",
-                        datum.ty.repr(bcx.tcx())));
+                        datum.ty.repr(bcx.tcx())).as_slice());
         }
     };
 

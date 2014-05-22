@@ -80,7 +80,7 @@ pub fn render(input: &str, mut output: Path, matches: &getopts::Matches) -> int 
     let mut css = StrBuf::new();
     for name in matches.opt_strs("markdown-css").iter() {
         let s = format!("<link rel=\"stylesheet\" type=\"text/css\" href=\"{}\">\n", name);
-        css.push_str(s)
+        css.push_str(s.as_slice())
     }
 
     let input_str = load_or_return!(input, 1, 2);

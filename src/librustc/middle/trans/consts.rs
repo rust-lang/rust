@@ -55,8 +55,9 @@ pub fn const_lit(cx: &CrateContext, e: &ast::Expr, lit: ast::Lit)
                     C_integral(Type::uint_from_ty(cx, t), i as u64, false)
                 }
                 _ => cx.sess().span_bug(lit.span,
-                        format!("integer literal has type {} (expected int or uint)",
-                                ty_to_str(cx.tcx(), lit_int_ty)))
+                        format!("integer literal has type {} (expected int \
+                                 or uint)",
+                                ty_to_str(cx.tcx(), lit_int_ty)).as_slice())
             }
         }
         ast::LitFloat(ref fs, t) => {
@@ -150,14 +151,14 @@ fn const_deref(cx: &CrateContext, v: ValueRef, t: ty::t, explicit: bool)
                 }
                 _ => {
                     cx.sess().bug(format!("unexpected dereferenceable type {}",
-                                          ty_to_str(cx.tcx(), t)))
+                                          ty_to_str(cx.tcx(), t)).as_slice())
                 }
             };
             (dv, mt.ty)
         }
         None => {
             cx.sess().bug(format!("can't dereference const of type {}",
-                                  ty_to_str(cx.tcx(), t)))
+                                  ty_to_str(cx.tcx(), t)).as_slice())
         }
     }
 }
@@ -206,7 +207,7 @@ pub fn const_expr(cx: &CrateContext, e: &ast::Expr, is_local: bool) -> (ValueRef
                     cx.sess()
                       .span_bug(e.span,
                                 format!("unexpected static function: {:?}",
-                                        store))
+                                        store).as_slice())
                 }
                 ty::AutoObject(..) => {
                     cx.sess()
@@ -256,11 +257,11 @@ pub fn const_expr(cx: &CrateContext, e: &ast::Expr, is_local: bool) -> (ValueRef
                                     }
                                 }
                                 _ => {
-                                    cx.sess().span_bug(e.span,
-                                                       format!("unimplemented \
-                                                                const autoref \
-                                                                {:?}",
-                                                               autoref))
+                                    cx.sess()
+                                      .span_bug(e.span,
+                                                format!("unimplemented const \
+                                                         autoref {:?}",
+                                                        autoref).as_slice())
                                 }
                             }
                         }
@@ -281,7 +282,7 @@ pub fn const_expr(cx: &CrateContext, e: &ast::Expr, is_local: bool) -> (ValueRef
         }
         cx.sess().bug(format!("const {} of type {} has size {} instead of {}",
                          e.repr(cx.tcx()), ty_to_str(cx.tcx(), ety),
-                         csize, tsize));
+                         csize, tsize).as_slice());
     }
     (llconst, inlineable)
 }

@@ -13,7 +13,7 @@
 use s = std::num::strconv;
 use to_str = std::num::strconv::float_to_str_common;
 
-macro_rules! t(($a:expr, $b:expr) => { { let (r, _) = $a; assert_eq!(r, $b.to_owned()) } })
+macro_rules! t(($a:expr, $b:expr) => { { let (r, _) = $a; assert_eq!(r, $b.to_strbuf()) } })
 
 pub fn main() {
     // Basic usage

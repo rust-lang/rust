@@ -54,18 +54,8 @@ pub fn main() {
     assert_eq!(map.find_equiv(&("cde")), Some(&c));
     assert_eq!(map.find_equiv(&("def")), Some(&d));
 
-    assert_eq!(map.find_equiv(&("abc".to_owned())), Some(&a));
-    assert_eq!(map.find_equiv(&("bcd".to_owned())), Some(&b));
-    assert_eq!(map.find_equiv(&("cde".to_owned())), Some(&c));
-    assert_eq!(map.find_equiv(&("def".to_owned())), Some(&d));
-
     assert_eq!(map.find_equiv(&Slice("abc")), Some(&a));
     assert_eq!(map.find_equiv(&Slice("bcd")), Some(&b));
     assert_eq!(map.find_equiv(&Slice("cde")), Some(&c));
     assert_eq!(map.find_equiv(&Slice("def")), Some(&d));
-
-    assert_eq!(map.find_equiv(&Owned("abc".to_owned())), Some(&a));
-    assert_eq!(map.find_equiv(&Owned("bcd".to_owned())), Some(&b));
-    assert_eq!(map.find_equiv(&Owned("cde".to_owned())), Some(&c));
-    assert_eq!(map.find_equiv(&Owned("def".to_owned())), Some(&d));
 }

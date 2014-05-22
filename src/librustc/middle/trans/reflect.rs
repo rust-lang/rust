@@ -87,7 +87,8 @@ impl<'a, 'b> Reflector<'a, 'b> {
     pub fn visit(&mut self, ty_name: &str, args: &[ValueRef]) {
         let fcx = self.bcx.fcx;
         let tcx = self.bcx.tcx();
-        let mth_idx = ty::method_idx(token::str_to_ident("visit_".to_owned() + ty_name),
+        let mth_idx = ty::method_idx(token::str_to_ident(format!(
+                        "visit_{}", ty_name).as_slice()),
                                      self.visitor_methods.as_slice()).expect(
                 format!("couldn't find visit method for {}", ty_name));
         let mth_ty =
@@ -116,9 +117,9 @@ impl<'a, 'b> Reflector<'a, 'b> {
                      bracket_name: &str,
                      extra: &[ValueRef],
                      inner: |&mut Reflector|) {
-        self.visit("enter_" + bracket_name, extra);
+        self.visit(format!("enter_{}", bracket_name).as_slice(), extra);
         inner(self);
-        self.visit("leave_" + bracket_name, extra);
+        self.visit(format!("leave_{}", bracket_name).as_slice(), extra);
     }
 
     pub fn leaf(&mut self, name: &str) {
@@ -154,7 +155,7 @@ impl<'a, 'b> Reflector<'a, 'b> {
           ty::ty_vec(ref mt, Some(sz)) => {
               let extra = (vec!(self.c_uint(sz))).append(self.c_size_and_align(t).as_slice());
               let extra = extra.append(self.c_mt(mt).as_slice());
-              self.visit("evec_fixed".to_owned(), extra.as_slice())
+              self.visit("evec_fixed", extra.as_slice())
           }
           ty::ty_vec(..) | ty::ty_str => fail!("unexpected unsized type"),
           // Should remove mt from box and uniq.
@@ -170,9 +171,9 @@ impl<'a, 'b> Reflector<'a, 'b> {
                   ty::ty_vec(ref mt, None) => {
                       let extra = Vec::new();
                       let extra = extra.append(self.c_mt(mt).as_slice());
-                      self.visit("evec_uniq".to_owned(), extra.as_slice())
+                      self.visit("evec_uniq", extra.as_slice())
                   }
-                  ty::ty_str => self.visit("estr_uniq".to_owned(), &[]),
+                  ty::ty_str => self.visit("estr_uniq", &[]),
                   _ => {
                       let extra = self.c_mt(&ty::mt {
                           ty: typ,
@@ -191,9 +192,10 @@ impl<'a, 'b> Reflector<'a, 'b> {
                   ty::ty_vec(ref mt, None) => {
                       let (name, extra) = ("slice".to_owned(), Vec::new());
                       let extra = extra.append(self.c_mt(mt).as_slice());
-                      self.visit("evec_".to_owned() + name, extra.as_slice())
+                      self.visit(format!("evec_{}", name).as_slice(),
+                                 extra.as_slice())
                   }
-                  ty::ty_str => self.visit("estr_slice".to_owned(), &[]),
+                  ty::ty_str => self.visit("estr_slice", &[]),
                   _ => {
                       let extra = self.c_mt(mt);
                       self.visit("rptr", extra.as_slice())

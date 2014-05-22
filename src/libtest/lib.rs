@@ -355,7 +355,8 @@ Test Attributes:
                      normal test runs. Running with --ignored will run these
                      tests. This may also be written as \#[ignore(cfg(...))] to
                      ignore the test on certain configurations.",
-             usage = getopts::usage(message, optgroups().as_slice()));
+             usage = getopts::usage(message.as_slice(),
+                                    optgroups().as_slice()));
 }
 
 // Parses command line arguments into test options
@@ -568,13 +569,13 @@ impl<T: Writer> ConsoleTestState<T> {
     pub fn write_run_start(&mut self, len: uint) -> io::IoResult<()> {
         self.total = len;
         let noun = if len != 1 { "tests" } else { "test" };
-        self.write_plain(format!("\nrunning {} {}\n", len, noun))
+        self.write_plain(format!("\nrunning {} {}\n", len, noun).as_slice())
     }
 
     pub fn write_test_start(&mut self, test: &TestDesc,
                             align: NamePadding) -> io::IoResult<()> {
         let name = test.padded_name(self.max_name_len, align);
-        self.write_plain(format!("test {} ... ", name))
+        self.write_plain(format!("test {} ... ", name).as_slice())
     }
 
     pub fn write_result(&mut self, result: &TestResult) -> io::IoResult<()> {
@@ -584,11 +585,12 @@ impl<T: Writer> ConsoleTestState<T> {
             TrIgnored => self.write_ignored(),
             TrMetrics(ref mm) => {
                 try!(self.write_metric());
-                self.write_plain(format!(": {}", fmt_metrics(mm)))
+                self.write_plain(format!(": {}", fmt_metrics(mm)).as_slice())
             }
             TrBench(ref bs) => {
                 try!(self.write_bench());
-                self.write_plain(format!(": {}", fmt_bench_samples(bs)))
+                self.write_plain(format!(": {}",
+                                         fmt_bench_samples(bs)).as_slice())
             }
         });
         self.write_plain("\n")
@@ -619,9 +621,11 @@ impl<T: Writer> ConsoleTestState<T> {
             failures.push(f.name.to_str());
             if stdout.len() > 0 {
                 fail_out.push_str(format!("---- {} stdout ----\n\t",
-                                  f.name.as_slice()));
+                                          f.name.as_slice()).as_slice());
                 let output = str::from_utf8_lossy(stdout.as_slice());
-                fail_out.push_str(output.as_slice().replace("\n", "\n\t"));
+                fail_out.push_str(output.as_slice()
+                                        .replace("\n", "\n\t")
+                                        .as_slice());
                 fail_out.push_str("\n");
             }
         }
@@ -633,7 +637,8 @@ impl<T: Writer> ConsoleTestState<T> {
         try!(self.write_plain("\nfailures:\n"));
         failures.as_mut_slice().sort();
         for name in failures.iter() {
-            try!(self.write_plain(format!("    {}\n", name.as_slice())));
+            try!(self.write_plain(format!("    {}\n",
+                                          name.as_slice()).as_slice()));
         }
         Ok(())
     }
@@ -651,24 +656,26 @@ impl<T: Writer> ConsoleTestState<T> {
                 MetricAdded => {
                     added += 1;
                     try!(self.write_added());
-                    try!(self.write_plain(format!(": {}\n", *k)));
+                    try!(self.write_plain(format!(": {}\n", *k).as_slice()));
                 }
                 MetricRemoved => {
                     removed += 1;
                     try!(self.write_removed());
-                    try!(self.write_plain(format!(": {}\n", *k)));
+                    try!(self.write_plain(format!(": {}\n", *k).as_slice()));
                 }
                 Improvement(pct) => {
                     improved += 1;
-                    try!(self.write_plain(format!(": {}", *k)));
+                    try!(self.write_plain(format!(": {}", *k).as_slice()));
                     try!(self.write_improved());
-                    try!(self.write_plain(format!(" by {:.2f}%\n", pct as f64)));
+                    try!(self.write_plain(format!(" by {:.2f}%\n",
+                                                  pct as f64).as_slice()));
                 }
                 Regression(pct) => {
                     regressed += 1;
-                    try!(self.write_plain(format!(": {}", *k)));
+                    try!(self.write_plain(format!(": {}", *k).as_slice()));
                     try!(self.write_regressed());
-                    try!(self.write_plain(format!(" by {:.2f}%\n", pct as f64)));
+                    try!(self.write_plain(format!(" by {:.2f}%\n",
+                                                  pct as f64).as_slice()));
                 }
             }
         }
@@ -676,7 +683,7 @@ impl<T: Writer> ConsoleTestState<T> {
                                         {} removed, {} improved, {} regressed, \
                                         {} noise\n",
                                        added, removed, improved, regressed,
-                                       noise)));
+                                       noise).as_slice()));
         if regressed == 0 {
             try!(self.write_plain("updated ratchet file\n"));
         } else {
@@ -694,13 +701,13 @@ impl<T: Writer> ConsoleTestState<T> {
             None => true,
             Some(ref pth) => {
                 try!(self.write_plain(format!("\nusing metrics ratchet: {}\n",
-                                        pth.display())));
+                                              pth.display()).as_slice()));
                 match ratchet_pct {
                     None => (),
                     Some(pct) =>
                         try!(self.write_plain(format!("with noise-tolerance \
                                                          forced to: {}%\n",
-                                                        pct)))
+                                                        pct).as_slice()))
                 }
                 let (diff, ok) = self.metrics.ratchet(pth, ratchet_pct);
                 try!(self.write_metric_diff(&diff));
@@ -724,7 +731,7 @@ impl<T: Writer> ConsoleTestState<T> {
         }
         let s = format!(". {} passed; {} failed; {} ignored; {} measured\n\n",
                         self.passed, self.failed, self.ignored, self.measured);
-        try!(self.write_plain(s));
+        try!(self.write_plain(s.as_slice()));
         return Ok(success);
     }
 }
@@ -771,7 +778,9 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn> ) -> io::IoR
                         let MetricMap(mm) = mm;
                         for (k,v) in mm.iter() {
                             st.metrics
-                              .insert_metric(tname + "." + k.as_slice(),
+                              .insert_metric(format!("{}.{}",
+                                                     tname,
+                                                     k).as_slice(),
                                              v.value,
                                              v.noise);
                         }
@@ -813,7 +822,7 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn> ) -> io::IoR
         Some(ref pth) => {
             try!(st.metrics.save(pth));
             try!(st.write_plain(format!("\nmetrics saved to: {}",
-                                          pth.display())));
+                                          pth.display()).as_slice()));
         }
     }
     return st.write_run_finish(&opts.ratchet_metrics, opts.ratchet_noise_percent);
@@ -936,7 +945,7 @@ fn get_concurrency() -> uint {
     use std::rt;
     match os::getenv("RUST_TEST_TASKS") {
         Some(s) => {
-            let opt_n: Option<uint> = FromStr::from_str(s);
+            let opt_n: Option<uint> = FromStr::from_str(s.as_slice());
             match opt_n {
                 Some(n) if n > 0 => n,
                 _ => fail!("RUST_TEST_TASKS is `{}`, should be a positive integer.", s)

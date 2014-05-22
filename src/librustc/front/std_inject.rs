@@ -65,7 +65,7 @@ pub fn with_version(krate: &str) -> Option<(InternedString, ast::StrStyle)> {
         _ => {
             Some((token::intern_and_get_ident(format!("{}\\#{}",
                                                       krate,
-                                                      VERSION)),
+                                                      VERSION).as_slice()),
                   ast::CookedStr))
         }
     }

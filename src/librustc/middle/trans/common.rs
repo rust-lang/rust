@@ -108,7 +108,7 @@ pub fn gensym_name(name: &str) -> PathElem {
     let num = token::gensym(name);
     // use one colon which will get translated to a period by the mangler, and
     // we're guaranteed that `num` is globally unique for this crate.
-    PathName(token::gensym(format!("{}:{}", name, num)))
+    PathName(token::gensym(format!("{}:{}", name, num).as_slice()))
 }
 
 pub struct tydesc_info {
@@ -459,7 +459,7 @@ impl<'a> Block<'a> {
             Some(&v) => v,
             None => {
                 self.tcx().sess.bug(format!(
-                    "no def associated with node id {:?}", nid));
+                    "no def associated with node id {:?}", nid).as_slice());
             }
         }
     }
@@ -747,9 +747,10 @@ pub fn node_id_substs(bcx: &Block,
 
     if !substs.tps.iter().all(|t| !ty::type_needs_infer(*t)) {
         bcx.sess().bug(
-            format!("type parameters for node {:?} include inference types: {}",
+            format!("type parameters for node {:?} include inference types: \
+                     {}",
                     node,
-                    substs.repr(bcx.tcx())));
+                    substs.repr(bcx.tcx())).as_slice());
     }
 
     substs.substp(tcx, bcx.fcx.param_substs)
@@ -816,7 +817,7 @@ pub fn resolve_vtable_under_param_substs(tcx: &ty::ctxt,
                 _ => {
                     tcx.sess.bug(format!(
                         "resolve_vtable_under_param_substs: asked to lookup \
-                         but no vtables in the fn_ctxt!"))
+                         but no vtables in the fn_ctxt!").as_slice())
                 }
             }
         }
@@ -870,8 +871,8 @@ pub fn langcall(bcx: &Block,
         Err(s) => {
             let msg = format!("{} {}", msg, s);
             match span {
-                Some(span) => { bcx.tcx().sess.span_fatal(span, msg); }
-                None => { bcx.tcx().sess.fatal(msg); }
+                Some(span) => bcx.tcx().sess.span_fatal(span, msg.as_slice()),
+                None => bcx.tcx().sess.fatal(msg.as_slice()),
             }
         }
     }

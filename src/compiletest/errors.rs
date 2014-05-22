@@ -24,7 +24,7 @@ pub fn load_errors(re: &Regex, testfile: &Path) -> Vec<ExpectedError> {
     let mut rdr = BufferedReader::new(File::open(testfile).unwrap());
 
     rdr.lines().enumerate().filter_map(|(line_no, ln)| {
-        parse_expected(line_no + 1, ln.unwrap(), re)
+        parse_expected(line_no + 1, ln.unwrap().as_slice(), re)
     }).collect()
 }
 

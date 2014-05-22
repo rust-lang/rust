@@ -38,14 +38,14 @@ pub fn expand_syntax_ext(cx: &mut base::ExtCtxt,
                         accumulator.push_char(c);
                     }
                     ast::LitInt(i, _) | ast::LitIntUnsuffixed(i) => {
-                        accumulator.push_str(format!("{}", i));
+                        accumulator.push_str(format!("{}", i).as_slice());
                     }
                     ast::LitUint(u, _) => {
-                        accumulator.push_str(format!("{}", u));
+                        accumulator.push_str(format!("{}", u).as_slice());
                     }
                     ast::LitNil => {}
                     ast::LitBool(b) => {
-                        accumulator.push_str(format!("{}", b));
+                        accumulator.push_str(format!("{}", b).as_slice());
                     }
                     ast::LitBinary(..) => {
                         cx.span_err(e.span, "cannot concatenate a binary literal");
@@ -59,5 +59,5 @@ pub fn expand_syntax_ext(cx: &mut base::ExtCtxt,
     }
     base::MacExpr::new(cx.expr_str(
             sp,
-            token::intern_and_get_ident(accumulator.into_owned())))
+            token::intern_and_get_ident(accumulator.as_slice())))
 }

@@ -155,7 +155,7 @@ pub fn sizing_type_of(cx: &CrateContext, t: ty::t) -> Type {
         ty::ty_self(_) | ty::ty_infer(..) | ty::ty_param(..) |
         ty::ty_err(..) | ty::ty_vec(_, None) | ty::ty_str => {
             cx.sess().bug(format!("fictitious type {:?} in sizing_type_of()",
-                                  ty::get(t).sty))
+                                  ty::get(t).sty).as_slice())
         }
     };
 

@@ -462,7 +462,7 @@ fn assert_is_binding_or_wild(bcx: &Block, p: @ast::Pat) {
         bcx.sess().span_bug(
             p.span,
             format!("expected an identifier pattern but found p: {}",
-                 p.repr(bcx.tcx())));
+                    p.repr(bcx.tcx())).as_slice());
     }
 }
 
@@ -1229,8 +1229,10 @@ fn compare_values<'a>(
                        rhs: ValueRef,
                        rhs_t: ty::t)
                        -> Result<'a> {
-        let did = langcall(cx, None,
-                           format!("comparison of `{}`", cx.ty_to_str(rhs_t)),
+        let did = langcall(cx,
+                           None,
+                           format!("comparison of `{}`",
+                                   cx.ty_to_str(rhs_t)).as_slice(),
                            StrEqFnLangItem);
         let result = callee::trans_lang_call(cx, did, [lhs, rhs], None);
         Result {
@@ -1252,8 +1254,10 @@ fn compare_values<'a>(
                 Store(cx, lhs, scratch_lhs);
                 let scratch_rhs = alloca(cx, val_ty(rhs), "__rhs");
                 Store(cx, rhs, scratch_rhs);
-                let did = langcall(cx, None,
-                                   format!("comparison of `{}`", cx.ty_to_str(rhs_t)),
+                let did = langcall(cx,
+                                   None,
+                                   format!("comparison of `{}`",
+                                           cx.ty_to_str(rhs_t)).as_slice(),
                                    UniqStrEqFnLangItem);
                 let result = callee::trans_lang_call(cx, did, [scratch_lhs, scratch_rhs], None);
                 Result {
@@ -2154,7 +2158,7 @@ fn bind_irrefutable_pat<'a>(
 
     if bcx.sess().asm_comments() {
         add_comment(bcx, format!("bind_irrefutable_pat(pat={})",
-                              pat.repr(bcx.tcx())));
+                                 pat.repr(bcx.tcx())).as_slice());
     }
 
     let _indenter = indenter();
@@ -2273,7 +2277,7 @@ fn bind_irrefutable_pat<'a>(
         }
         ast::PatVec(..) => {
             bcx.sess().span_bug(pat.span,
-                format!("vector patterns are never irrefutable!"));
+                                "vector patterns are never irrefutable!");
         }
         ast::PatWild | ast::PatWildMulti | ast::PatLit(_) | ast::PatRange(_, _) => ()
     }

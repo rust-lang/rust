@@ -9,8 +9,8 @@
 // except according to those terms.
 
 fn f() {
-    let a = "hello".to_owned();
-    let b: &str = a;
+    let a = box 1;
+    let b: &int = a;
     println!("{}", b);
 }
 

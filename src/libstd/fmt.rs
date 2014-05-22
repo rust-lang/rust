@@ -27,9 +27,9 @@ general case.
 
 The `format!` macro is intended to be familiar to those coming from C's
 printf/fprintf functions or Python's `str.format` function. In its current
-revision, the `format!` macro returns a `~str` type which is the result of the
-formatting. In the future it will also be able to pass in a stream to format
-arguments directly while performing minimal allocations.
+revision, the `format!` macro returns a `StrBuf` type which is the result of
+the formatting. In the future it will also be able to pass in a stream to
+format arguments directly while performing minimal allocations.
 
 Some examples of the `format!` extension are:
 
@@ -282,7 +282,7 @@ use std::io;
 
 # #[allow(unused_must_use)]
 # fn main() {
-format_args!(fmt::format, "this returns {}", "~str");
+format_args!(fmt::format, "this returns {}", "StrBuf");
 
 let some_writer: &mut io::Writer = &mut io::stdout();
 format_args!(|args| { write!(some_writer, "{}", args) }, "print with a {}", "closure");
@@ -488,7 +488,7 @@ use io;
 use option::None;
 use repr;
 use result::{Ok, Err};
-use str::{StrAllocating};
+use str::{Str, StrAllocating};
 use str;
 use strbuf::StrBuf;
 use slice::Vector;
@@ -545,10 +545,10 @@ pub trait Poly {
 /// let s = format_args!(fmt::format, "Hello, {}!", "world");
 /// assert_eq!(s, "Hello, world!".to_owned());
 /// ```
-pub fn format(args: &Arguments) -> ~str {
+pub fn format(args: &Arguments) -> StrBuf{
     let mut output = io::MemWriter::new();
     let _ = write!(&mut output, "{}", args);
-    str::from_utf8(output.unwrap().as_slice()).unwrap().to_owned()
+    str::from_utf8(output.unwrap().as_slice()).unwrap().into_strbuf()
 }
 
 /// Temporary transition utility
@@ -572,7 +572,7 @@ impl<T> Poly for T {
             // this allocation of a new string
             _ => {
                 let s = repr::repr_to_str(self);
-                f.pad(s)
+                f.pad(s.as_slice())
             }
         }
     }

@@ -27,6 +27,5 @@ fn main() {
 
     box 2; //~ ERROR type uses owned
     fn g(_: Box<Clone>) {} //~ ERROR type uses owned
-    "".to_owned(); //~ ERROR type uses owned
     proc() {}; //~ ERROR type uses owned
 }

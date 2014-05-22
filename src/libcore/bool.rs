@@ -242,8 +242,10 @@ mod tests {
 
     #[test]
     fn test_to_str() {
-        assert_eq!(false.to_str(), "false".to_owned());
-        assert_eq!(true.to_str(), "true".to_owned());
+        let s = false.to_str();
+        assert_eq!(s.as_slice(), "false");
+        let s = true.to_str();
+        assert_eq!(s.as_slice(), "true");
     }
 
     #[test]

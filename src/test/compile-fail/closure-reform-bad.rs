@@ -17,7 +17,7 @@ fn call_bare(f: fn(&str)) {
 
 fn main() {
     let string = "world!";
-    let f: |&str| = |s| println!("{}", s + string);
+    let f: |&str| = |s| println!("{}{}", s, string);
     call_bare(f)    //~ ERROR mismatched types
 }
 

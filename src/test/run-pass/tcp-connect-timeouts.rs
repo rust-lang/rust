@@ -63,7 +63,7 @@ iotest!(fn eventual_timeout() {
     let (tx1, rx1) = channel();
     let (_tx2, rx2) = channel::<()>();
     native::task::spawn(proc() {
-        let _l = TcpListener::bind(host, port).unwrap().listen();
+        let _l = TcpListener::bind(host.as_slice(), port).unwrap().listen();
         tx1.send(());
         let _ = rx2.recv_opt();
     });
@@ -84,7 +84,7 @@ iotest!(fn timeout_success() {
     let addr = next_test_ip4();
     let host = addr.ip.to_str();
     let port = addr.port;
-    let _l = TcpListener::bind(host, port).unwrap().listen();
+    let _l = TcpListener::bind(host.as_slice(), port).unwrap().listen();
 
     assert!(TcpStream::connect_timeout(addr, 1000).is_ok());
 })

@@ -132,7 +132,7 @@ pub fn opts() -> Vec<getopts::OptGroup> {
 
 pub fn usage(argv0: &str) {
     println!("{}",
-             getopts::usage(format!("{} [options] <input>", argv0),
+             getopts::usage(format!("{} [options] <input>", argv0).as_slice(),
                             opts().as_slice()));
 }
 

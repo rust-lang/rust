@@ -119,7 +119,7 @@ mod tests {
     use prelude::*;
     use super::*;
     use realstd::owned::{Box, AnyOwnExt};
-    use realstd::str::StrAllocating;
+    use realstd::str::{Str, StrAllocating};
 
     #[deriving(Eq, Show)]
     struct Test;
@@ -249,13 +249,17 @@ mod tests {
         use realstd::to_str::ToStr;
         let a = box 8u as Box<::realstd::any::Any>;
         let b = box Test as Box<::realstd::any::Any>;
-        assert_eq!(a.to_str(), "Box<Any>".to_owned());
-        assert_eq!(b.to_str(), "Box<Any>".to_owned());
+        let a_str = a.to_str();
+        let b_str = b.to_str();
+        assert_eq!(a_str.as_slice(), "Box<Any>");
+        assert_eq!(b_str.as_slice(), "Box<Any>");
 
         let a = &8u as &Any;
         let b = &Test as &Any;
-        assert_eq!(format!("{}", a), "&Any".to_owned());
-        assert_eq!(format!("{}", b), "&Any".to_owned());
+        let s = format!("{}", a);
+        assert_eq!(s.as_slice(), "&Any");
+        let s = format!("{}", b);
+        assert_eq!(s.as_slice(), "&Any");
     }
 }
 

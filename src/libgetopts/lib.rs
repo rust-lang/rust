@@ -661,7 +661,7 @@ pub fn getopts(args: &[StrBuf], optgrps: &[OptGroup]) -> Result {
 /// Derive a usage message from a set of long options.
 pub fn usage(brief: &str, opts: &[OptGroup]) -> StrBuf {
 
-    let desc_sep = "\n" + " ".repeat(24);
+    let desc_sep = format!("\n{}", " ".repeat(24));
 
     let mut rows = opts.iter().map(|optref| {
         let OptGroup{short_name: short_name,
@@ -713,7 +713,7 @@ pub fn usage(brief: &str, opts: &[OptGroup]) -> StrBuf {
                 row.push_char(' ');
             }
         } else {
-            row.push_str(desc_sep)
+            row.push_str(desc_sep.as_slice())
         }
 
         // Normalize desc to contain words separated by one space character
@@ -734,7 +734,7 @@ pub fn usage(brief: &str, opts: &[OptGroup]) -> StrBuf {
 
         // FIXME: #5516 should be graphemes not codepoints
         // wrapped description
-        row.push_str(desc_rows.connect(desc_sep));
+        row.push_str(desc_rows.connect(desc_sep.as_slice()).as_slice());
 
         row
     });
@@ -784,7 +784,11 @@ fn format_option(opt: &OptGroup) -> StrBuf {
 /// Derive a short one-line usage summary from a set of long options.
 pub fn short_usage(program_name: &str, opts: &[OptGroup]) -> StrBuf {
     let mut line = format_strbuf!("Usage: {} ", program_name);
-    line.push_str(opts.iter().map(format_option).collect::<Vec<StrBuf>>().connect(" "));
+    line.push_str(opts.iter()
+                      .map(format_option)
+                      .collect::<Vec<StrBuf>>()
+                      .connect(" ")
+                      .as_slice());
     line
 }
 

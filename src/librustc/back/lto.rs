@@ -47,29 +47,46 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
         let path = match path {
             Some(p) => p,
             None => {
-                sess.fatal(format!("could not find rlib for: `{}`", name));
+                sess.fatal(format!("could not find rlib for: `{}`",
+                                   name).as_slice());
             }
         };
 
         let archive = ArchiveRO::open(&path).expect("wanted an rlib");
         debug!("reading {}", name);
-        let bc = time(sess.time_passes(), format!("read {}.bc.deflate", name), (), |_|
-                      archive.read(format!("{}.bc.deflate", name)));
+        let bc = time(sess.time_passes(),
+                      format!("read {}.bc.deflate", name).as_slice(),
+                      (),
+                      |_| {
+                          archive.read(format!("{}.bc.deflate",
+                                               name).as_slice())
+                      });
         let bc = bc.expect("missing compressed bytecode in archive!");
-        let bc = time(sess.time_passes(), format!("inflate {}.bc", name), (), |_|
-                      match flate::inflate_bytes(bc) {
-                          Some(bc) => bc,
-                          None => sess.fatal(format!("failed to decompress bc of `{}`", name))
+        let bc = time(sess.time_passes(),
+                      format!("inflate {}.bc", name).as_slice(),
+                      (),
+                      |_| {
+                          match flate::inflate_bytes(bc) {
+                              Some(bc) => bc,
+                              None => {
+                                  sess.fatal(format!("failed to decompress \
+                                                      bc of `{}`",
+                                                     name).as_slice())
+                              }
+                          }
                       });
         let ptr = bc.as_slice().as_ptr();
         debug!("linking {}", name);
-        time(sess.time_passes(), format!("ll link {}", name), (), |()| unsafe {
+        time(sess.time_passes(),
+             format!("ll link {}", name).as_slice(),
+             (),
+             |()| unsafe {
             if !llvm::LLVMRustLinkInExternalBitcode(llmod,
                                                     ptr as *libc::c_char,
                                                     bc.len() as libc::size_t) {
                 link::llvm_err(sess,
-                               (format_strbuf!("failed to load bc of `{}`",
-                                               name)));
+                               format_strbuf!("failed to load bc of `{}`",
+                                               name.as_slice()));
             }
         });
     }

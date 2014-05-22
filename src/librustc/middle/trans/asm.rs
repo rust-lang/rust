@@ -67,7 +67,8 @@ pub fn trans_inline_asm<'a>(bcx: &'a Block<'a>, ia: &ast::InlineAsm)
         StrBuf::from_str(constraints.iter()
                                     .map(|s| s.get().to_strbuf())
                                     .collect::<Vec<StrBuf>>()
-                                    .connect(","));
+                                    .connect(",")
+                                    .as_slice());
 
     let mut clobbers = getClobbers();
     if !ia.clobbers.get().is_empty() && !clobbers.is_empty() {

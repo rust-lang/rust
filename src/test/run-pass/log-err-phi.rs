@@ -10,4 +10,8 @@
 
 
 
-pub fn main() { if false { println!("{}", "foo".to_owned() + "bar"); } }
+pub fn main() {
+    if false {
+        println!("{}", "foobar");
+    }
+}
