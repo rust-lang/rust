@@ -80,7 +80,7 @@ pub use slice::{CloneableVector, ImmutableCloneableVector, MutableCloneableVecto
 pub use slice::{ImmutableVector, MutableVector};
 pub use slice::{ImmutableEqVector, ImmutableTotalOrdVector, MutableTotalOrdVector};
 pub use slice::{Vector, VectorVector, OwnedVector, MutableVectorAllocating};
-pub use strbuf::StrBuf;
+pub use string::String;
 pub use vec::Vec;
 
 // Reexported runtime types

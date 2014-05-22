@@ -13,7 +13,7 @@
 #![feature(phase)]
 #[phase(syntax)] extern crate green;
 
-use std::strbuf::StrBuf;
+use std::string::String;
 use std::fmt;
 
 green_start!(main)
@@ -44,8 +44,8 @@ struct CreatureInfo {
     color: Color
 }
 
-fn show_color_list(set: Vec<Color>) -> StrBuf {
-    let mut out = StrBuf::new();
+fn show_color_list(set: Vec<Color>) -> String {
+    let mut out = String::new();
     for col in set.iter() {
         out.push_char(' ');
         out.push_str(col.to_str().as_slice());
@@ -109,7 +109,7 @@ fn creature(
     mut color: Color,
     from_rendezvous: Receiver<CreatureInfo>,
     to_rendezvous: Sender<CreatureInfo>,
-    to_rendezvous_log: Sender<StrBuf>
+    to_rendezvous_log: Sender<String>
 ) {
     let mut creatures_met = 0;
     let mut evil_clones_met = 0;
@@ -145,7 +145,7 @@ fn rendezvous(nn: uint, set: Vec<Color>) {
     let (to_rendezvous, from_creatures) = channel::<CreatureInfo>();
 
     // these channels will be passed to the creatures so they can talk to us
-    let (to_rendezvous_log, from_creatures_log) = channel::<StrBuf>();
+    let (to_rendezvous_log, from_creatures_log) = channel::<String>();
 
     // these channels will allow us to talk to each creature by 'name'/index
     let mut to_creature: Vec<Sender<CreatureInfo>> =

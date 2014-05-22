@@ -138,7 +138,7 @@ fn stripped_filtered_line<'a>(s: &'a str) -> Option<&'a str> {
     }
 }
 
-local_data_key!(used_header_map: RefCell<HashMap<StrBuf, uint>>)
+local_data_key!(used_header_map: RefCell<HashMap<String, uint>>)
 
 pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
     extern fn block(ob: *mut hoedown_buffer, text: *hoedown_buffer,
@@ -208,7 +208,7 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
                 Some(s) => s.to_lower().into_str().to_strbuf(),
                 None => s.to_strbuf()
             }
-        }).collect::<Vec<StrBuf>>().connect("-")).to_strbuf();
+        }).collect::<Vec<String>>().connect("-")).to_strbuf();
 
         // This is a terrible hack working around how hoedown gives us rendered
         // html for text rather than the raw text.

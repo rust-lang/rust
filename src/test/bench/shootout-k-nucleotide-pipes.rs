@@ -19,7 +19,7 @@ use collections::HashMap;
 use std::mem::replace;
 use std::option;
 use std::os;
-use std::strbuf::StrBuf;
+use std::string::String;
 
 fn f64_cmp(x: f64, y: f64) -> Ordering {
     // arbitrarily decide that NaNs are larger than everything.
@@ -37,7 +37,7 @@ fn f64_cmp(x: f64, y: f64) -> Ordering {
 }
 
 // given a map, print a sorted version of it
-fn sort_and_fmt(mm: &HashMap<Vec<u8> , uint>, total: uint) -> StrBuf {
+fn sort_and_fmt(mm: &HashMap<Vec<u8> , uint>, total: uint) -> String {
    fn pct(xx: uint, yy: uint) -> f64 {
       return (xx as f64) * 100.0 / (yy as f64);
    }
@@ -58,7 +58,7 @@ fn sort_and_fmt(mm: &HashMap<Vec<u8> , uint>, total: uint) -> StrBuf {
 
    let pairs_sorted = sortKV(pairs);
 
-   let mut buffer = StrBuf::new();
+   let mut buffer = String::new();
    for &(ref k, v) in pairs_sorted.iter() {
        buffer.push_str(format!("{} {:0.3f}\n",
                                k.as_slice()
@@ -71,7 +71,7 @@ fn sort_and_fmt(mm: &HashMap<Vec<u8> , uint>, total: uint) -> StrBuf {
 }
 
 // given a map, search for the frequency of a pattern
-fn find(mm: &HashMap<Vec<u8> , uint>, key: StrBuf) -> uint {
+fn find(mm: &HashMap<Vec<u8> , uint>, key: String) -> uint {
    let key = key.to_owned().into_ascii().as_slice().to_lower().into_str();
    match mm.find_equiv(&key.as_bytes()) {
       option::None      => { return 0u; }
@@ -106,7 +106,7 @@ fn windows_with_carry(bb: &[u8], nn: uint, it: |window: &[u8]|) -> Vec<u8> {
 
 fn make_sequence_processor(sz: uint,
                            from_parent: &Receiver<Vec<u8>>,
-                           to_parent: &Sender<StrBuf>) {
+                           to_parent: &Sender<String>) {
    let mut freqs: HashMap<Vec<u8>, uint> = HashMap::new();
    let mut carry = Vec::new();
    let mut total: uint = 0u;
@@ -155,7 +155,7 @@ fn main() {
 
     // initialize each sequence sorter
     let sizes = vec!(1u,2,3,4,6,12,18);
-    let mut streams = Vec::from_fn(sizes.len(), |_| Some(channel::<StrBuf>()));
+    let mut streams = Vec::from_fn(sizes.len(), |_| Some(channel::<String>()));
     let mut from_child = Vec::new();
     let to_child  = sizes.iter().zip(streams.mut_iter()).map(|(sz, stream_ref)| {
         let sz = *sz;

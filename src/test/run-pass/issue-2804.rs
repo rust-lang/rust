@@ -21,7 +21,7 @@ enum object {
     int_value(i64),
 }
 
-fn lookup(table: Box<json::Object>, key: StrBuf, default: StrBuf) -> StrBuf
+fn lookup(table: Box<json::Object>, key: String, default: String) -> String
 {
     match table.find(&key.to_strbuf()) {
         option::Some(&json::String(ref s)) => {
@@ -37,7 +37,7 @@ fn lookup(table: Box<json::Object>, key: StrBuf, default: StrBuf) -> StrBuf
     }
 }
 
-fn add_interface(_store: int, managed_ip: StrBuf, data: json::Json) -> (StrBuf, object)
+fn add_interface(_store: int, managed_ip: String, data: json::Json) -> (String, object)
 {
     match &data {
         &json::Object(ref interface) => {
@@ -55,8 +55,8 @@ fn add_interface(_store: int, managed_ip: StrBuf, data: json::Json) -> (StrBuf, 
     }
 }
 
-fn add_interfaces(store: int, managed_ip: StrBuf, device: HashMap<StrBuf, json::Json>)
--> Vec<(StrBuf, object)> {
+fn add_interfaces(store: int, managed_ip: String, device: HashMap<String, json::Json>)
+-> Vec<(String, object)> {
     match device.get(&"interfaces".to_strbuf())
     {
         &json::List(ref interfaces) =>

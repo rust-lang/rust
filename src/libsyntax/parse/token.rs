@@ -21,7 +21,7 @@ use std::fmt;
 use std::path::BytesContainer;
 use std::mem;
 use std::rc::Rc;
-use std::strbuf::StrBuf;
+use std::string::String;
 
 #[allow(non_camel_case_types)]
 #[deriving(Clone, Encodable, Decodable, Eq, TotalEq, Hash, Show)]
@@ -136,7 +136,7 @@ impl fmt::Show for Nonterminal {
     }
 }
 
-pub fn binop_to_str(o: BinOp) -> StrBuf {
+pub fn binop_to_str(o: BinOp) -> String {
     match o {
       PLUS => "+".to_strbuf(),
       MINUS => "-".to_strbuf(),
@@ -151,7 +151,7 @@ pub fn binop_to_str(o: BinOp) -> StrBuf {
     }
 }
 
-pub fn to_str(t: &Token) -> StrBuf {
+pub fn to_str(t: &Token) -> String {
     match *t {
       EQ => "=".to_strbuf(),
       LT => "<".to_strbuf(),
@@ -194,7 +194,7 @@ pub fn to_str(t: &Token) -> StrBuf {
 
       /* Literals */
       LIT_CHAR(c) => {
-          let mut res = StrBuf::from_str("'");
+          let mut res = String::from_str("'");
           c.escape_default(|c| {
               res.push_char(c);
           });
@@ -207,7 +207,7 @@ pub fn to_str(t: &Token) -> StrBuf {
                                                  ast_util::ForceSuffix),
       LIT_INT_UNSUFFIXED(i) => { (i as u64).to_str().to_strbuf() }
       LIT_FLOAT(s, t) => {
-        let mut body = StrBuf::from_str(get_ident(s).get());
+        let mut body = String::from_str(get_ident(s).get());
         if body.as_slice().ends_with(".") {
             body.push_char('0');  // `10.f` is not a float literal
         }
@@ -215,7 +215,7 @@ pub fn to_str(t: &Token) -> StrBuf {
         body
       }
       LIT_FLOAT_UNSUFFIXED(s) => {
-        let mut body = StrBuf::from_str(get_ident(s).get());
+        let mut body = String::from_str(get_ident(s).get());
         if body.as_slice().ends_with(".") {
             body.push_char('0');  // `10.f` is not a float literal
         }

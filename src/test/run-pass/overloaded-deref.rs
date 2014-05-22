@@ -10,7 +10,7 @@
 
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::strbuf::StrBuf;
+use std::string::String;
 
 #[deriving(Eq, Show)]
 struct Point {
@@ -32,7 +32,7 @@ pub fn main() {
     assert_eq!(*s, "foo".to_owned());
     assert_eq!((*s).as_slice(), "foo");
 
-    let mut_s = Rc::new(RefCell::new(StrBuf::from_str("foo")));
+    let mut_s = Rc::new(RefCell::new(String::from_str("foo")));
     (*(*mut_s).borrow_mut()).push_str("bar");
     // assert_eq! would fail here because it stores the LHS and RHS in two locals.
     assert!((*(*mut_s).borrow()).as_slice() == "foobar");

@@ -10,7 +10,7 @@
 
 #[deriving(Eq)]
 struct Bike {
-    name: StrBuf,
+    name: String,
 }
 
 pub fn main() {

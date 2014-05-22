@@ -56,7 +56,7 @@ pub fn main() {
     run_tests(&config);
 }
 
-pub fn parse_config(args: Vec<StrBuf> ) -> Config {
+pub fn parse_config(args: Vec<String> ) -> Config {
 
     let groups : Vec<getopts::OptGroup> =
         vec!(reqopt("", "compile-lib-path", "path to host shared libraries", "PATH"),
@@ -225,14 +225,14 @@ pub fn log_config(config: &Config) {
     logv(c, format_strbuf!("\n"));
 }
 
-pub fn opt_str<'a>(maybestr: &'a Option<StrBuf>) -> &'a str {
+pub fn opt_str<'a>(maybestr: &'a Option<String>) -> &'a str {
     match *maybestr {
         None => "(none)",
         Some(ref s) => s.as_slice(),
     }
 }
 
-pub fn opt_str2(maybestr: Option<StrBuf>) -> StrBuf {
+pub fn opt_str2(maybestr: Option<String>) -> String {
     match maybestr {
         None => "(none)".to_strbuf(),
         Some(s) => s,
@@ -352,7 +352,7 @@ pub fn make_test(config: &Config, testfile: &Path, f: || -> test::TestFn)
 pub fn make_test_name(config: &Config, testfile: &Path) -> test::TestName {
 
     // Try to elide redundant long paths
-    fn shorten(path: &Path) -> StrBuf {
+    fn shorten(path: &Path) -> String {
         let filename = path.filename_str();
         let p = path.dir_path();
         let dir = p.filename_str();

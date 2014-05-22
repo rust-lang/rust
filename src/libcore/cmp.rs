@@ -171,7 +171,7 @@ pub trait Ord: Eq {
 /// The equivalence relation. Two values may be equivalent even if they are
 /// of different types. The most common use case for this relation is
 /// container types; e.g. it is often desirable to be able to use `&str`
-/// values to look up entries in a container with `StrBuf` keys.
+/// values to look up entries in a container with `String` keys.
 pub trait Equiv<T> {
     /// Implement this function to decide equivalent values.
     fn equiv(&self, other: &T) -> bool;

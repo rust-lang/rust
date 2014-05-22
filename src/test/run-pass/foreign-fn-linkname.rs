@@ -22,7 +22,7 @@ mod mlibc {
     }
 }
 
-fn strlen(str: StrBuf) -> uint {
+fn strlen(str: String) -> uint {
     // C string is terminated with a zero
     str.as_slice().with_c_str(|buf| {
         unsafe {

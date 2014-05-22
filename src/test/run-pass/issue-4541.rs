@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn parse_args() -> StrBuf {
+fn parse_args() -> String {
     let args = ::std::os::args();
     let args = args.as_slice();
     let mut n = 0;

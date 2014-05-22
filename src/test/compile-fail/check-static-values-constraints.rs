@@ -27,7 +27,7 @@ enum SafeEnum {
     Variant1,
     Variant2(int),
     Variant3(WithDtor),
-    Variant4(StrBuf)
+    Variant4(String)
 }
 
 // These should be ok

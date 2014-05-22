@@ -8,24 +8,24 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::strbuf::StrBuf;
+use std::string::String;
 
 fn test_stack_assign() {
-    let s: StrBuf = "a".to_strbuf();
+    let s: String = "a".to_strbuf();
     println!("{}", s.clone());
-    let t: StrBuf = "a".to_strbuf();
+    let t: String = "a".to_strbuf();
     assert!(s == t);
-    let u: StrBuf = "b".to_strbuf();
+    let u: String = "b".to_strbuf();
     assert!((s != u));
 }
 
 fn test_heap_lit() { "a big string".to_strbuf(); }
 
 fn test_heap_assign() {
-    let s: StrBuf = "a big ol' string".to_strbuf();
-    let t: StrBuf = "a big ol' string".to_strbuf();
+    let s: String = "a big ol' string".to_strbuf();
+    let t: String = "a big ol' string".to_strbuf();
     assert!(s == t);
-    let u: StrBuf = "a bad ol' string".to_strbuf();
+    let u: String = "a bad ol' string".to_strbuf();
     assert!((s != u));
 }
 
@@ -35,16 +35,16 @@ fn test_heap_log() {
 }
 
 fn test_append() {
-    let mut s = StrBuf::new();
+    let mut s = String::new();
     s.push_str("a");
     assert_eq!(s.as_slice(), "a");
 
-    let mut s = StrBuf::from_str("a");
+    let mut s = String::from_str("a");
     s.push_str("b");
     println!("{}", s.clone());
     assert_eq!(s.as_slice(), "ab");
 
-    let mut s = StrBuf::from_str("c");
+    let mut s = String::from_str("c");
     s.push_str("offee");
     assert!(s.as_slice() == "coffee");
 

@@ -21,7 +21,7 @@ use middle::trans::machine::llalign_of_pref;
 use middle::trans::type_::Type;
 use collections::HashMap;
 use libc::{c_uint, c_ulonglong, c_char};
-use std::strbuf::StrBuf;
+use std::string::String;
 use syntax::codemap::Span;
 
 pub struct Builder<'a> {
@@ -69,7 +69,7 @@ impl<'a> Builder<'a> {
                 // Pass 2: concat strings for each elt, skipping
                 // forwards over any cycles by advancing to rightmost
                 // occurrence of each element in path.
-                let mut s = StrBuf::from_str(".");
+                let mut s = String::from_str(".");
                 i = 0u;
                 while i < len {
                     i = *mm.get(&v[i]);
@@ -806,7 +806,7 @@ impl<'a> Builder<'a> {
                self.ccx.tn.val_to_str(llfn),
                args.iter()
                    .map(|&v| self.ccx.tn.val_to_str(v))
-                   .collect::<Vec<StrBuf>>()
+                   .collect::<Vec<String>>()
                    .connect(", "));
 
         unsafe {

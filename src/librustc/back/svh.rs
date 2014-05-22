@@ -55,7 +55,7 @@ use syntax::visit;
 
 #[deriving(Clone, Eq)]
 pub struct Svh {
-    hash: StrBuf,
+    hash: String,
 }
 
 impl Svh {

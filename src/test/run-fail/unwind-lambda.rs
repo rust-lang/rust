@@ -16,7 +16,7 @@ fn main() {
     let cheese = "roquefort".to_strbuf();
     let carrots = @"crunchy".to_strbuf();
 
-    let result: |@StrBuf, |StrBuf||: 'static = (|tasties, macerate| {
+    let result: |@String, |String||: 'static = (|tasties, macerate| {
         macerate((*tasties).clone());
     });
     result(carrots, |food| {

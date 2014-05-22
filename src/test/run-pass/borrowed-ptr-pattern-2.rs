@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo(s: &StrBuf) -> bool {
+fn foo(s: &String) -> bool {
     match s.as_slice() {
         "kitty" => true,
         _ => false

@@ -160,7 +160,7 @@ pub static stringnames: &'static[&'static str] = &'static[ "cbt", "_", "cr", "cs
 
 /// Parse a compiled terminfo entry, using long capability names if `longnames` is true
 pub fn parse(file: &mut io::Reader, longnames: bool)
-             -> Result<Box<TermInfo>, StrBuf> {
+             -> Result<Box<TermInfo>, String> {
     macro_rules! try( ($e:expr) => (
         match $e {
             Ok(e) => e,
@@ -221,7 +221,7 @@ pub fn parse(file: &mut io::Reader, longnames: bool)
         None => return Err("input not utf-8".to_strbuf()),
     };
 
-    let term_names: Vec<StrBuf> = names_str.as_slice()
+    let term_names: Vec<String> = names_str.as_slice()
                                            .split('|')
                                            .map(|s| s.to_strbuf())
                                            .collect();

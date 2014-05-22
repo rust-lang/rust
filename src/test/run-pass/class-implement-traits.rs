@@ -18,7 +18,7 @@ struct cat {
     meows : uint,
 
     how_hungry : int,
-    name : StrBuf,
+    name : String,
 }
 
 impl cat {
@@ -48,7 +48,7 @@ impl noisy for cat {
     fn speak(&mut self) { self.meow(); }
 }
 
-fn cat(in_x : uint, in_y : int, in_name: StrBuf) -> cat {
+fn cat(in_x : uint, in_y : int, in_name: String) -> cat {
     cat {
         meows: in_x,
         how_hungry: in_y,

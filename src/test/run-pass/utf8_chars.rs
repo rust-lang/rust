@@ -13,7 +13,7 @@ use std::str;
 pub fn main() {
     // Chars of 1, 2, 3, and 4 bytes
     let chs: Vec<char> = vec!('e', 'é', '€', '\U00010000');
-    let s: StrBuf = str::from_chars(chs.as_slice()).to_strbuf();
+    let s: String = str::from_chars(chs.as_slice()).to_strbuf();
     let schs: Vec<char> = s.as_slice().chars().collect();
 
     assert!(s.len() == 10u);

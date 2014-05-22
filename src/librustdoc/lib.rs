@@ -136,7 +136,7 @@ pub fn usage(argv0: &str) {
                             opts().as_slice()));
 }
 
-pub fn main_args(args: &[StrBuf]) -> int {
+pub fn main_args(args: &[String]) -> int {
     let matches = match getopts::getopts(args.tail(), opts().as_slice()) {
         Ok(m) => m,
         Err(err) => {
@@ -164,7 +164,7 @@ pub fn main_args(args: &[StrBuf]) -> int {
     let libs = matches.opt_strs("L").iter().map(|s| Path::new(s.as_slice())).collect();
 
     let test_args = matches.opt_strs("test-args");
-    let test_args: Vec<StrBuf> = test_args.iter()
+    let test_args: Vec<String> = test_args.iter()
                                           .flat_map(|s| s.as_slice().words())
                                           .map(|s| s.to_strbuf())
                                           .collect();
@@ -243,7 +243,7 @@ pub fn main_args(args: &[StrBuf]) -> int {
 /// Looks inside the command line arguments to extract the relevant input format
 /// and files and then generates the necessary rustdoc output for formatting.
 fn acquire_input(input: &str,
-                 matches: &getopts::Matches) -> Result<Output, StrBuf> {
+                 matches: &getopts::Matches) -> Result<Output, String> {
     match matches.opt_str("r").as_ref().map(|s| s.as_slice()) {
         Some("rust") => Ok(rust_input(input, matches)),
         Some("json") => json_input(input),
@@ -351,7 +351,7 @@ fn rust_input(cratefile: &str, matches: &getopts::Matches) -> Output {
 
 /// This input format purely deserializes the json output file. No passes are
 /// run over the deserialized output.
-fn json_input(input: &str) -> Result<Output, StrBuf> {
+fn json_input(input: &str) -> Result<Output, String> {
     let mut input = match File::open(&Path::new(input)) {
         Ok(f) => f,
         Err(e) => {

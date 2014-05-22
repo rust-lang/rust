@@ -16,21 +16,21 @@ use parse::parser::Parser;
 use parse::token;
 
 // map a string to tts, using a made-up filename:
-pub fn string_to_tts(source_str: StrBuf) -> Vec<ast::TokenTree> {
+pub fn string_to_tts(source_str: String) -> Vec<ast::TokenTree> {
     let ps = new_parse_sess();
     filemap_to_tts(&ps,
                    string_to_filemap(&ps, source_str, "bogofile".to_strbuf()))
 }
 
 // map string to parser (via tts)
-pub fn string_to_parser<'a>(ps: &'a ParseSess, source_str: StrBuf) -> Parser<'a> {
+pub fn string_to_parser<'a>(ps: &'a ParseSess, source_str: String) -> Parser<'a> {
     new_parser_from_source_str(ps,
                                Vec::new(),
                                "bogofile".to_strbuf(),
                                source_str)
 }
 
-fn with_error_checking_parse<T>(s: StrBuf, f: |&mut Parser| -> T) -> T {
+fn with_error_checking_parse<T>(s: String, f: |&mut Parser| -> T) -> T {
     let ps = new_parse_sess();
     let mut p = string_to_parser(&ps, s);
     let x = f(&mut p);
@@ -39,28 +39,28 @@ fn with_error_checking_parse<T>(s: StrBuf, f: |&mut Parser| -> T) -> T {
 }
 
 // parse a string, return a crate.
-pub fn string_to_crate (source_str : StrBuf) -> ast::Crate {
+pub fn string_to_crate (source_str : String) -> ast::Crate {
     with_error_checking_parse(source_str, |p| {
         p.parse_crate_mod()
     })
 }
 
 // parse a string, return an expr
-pub fn string_to_expr (source_str : StrBuf) -> @ast::Expr {
+pub fn string_to_expr (source_str : String) -> @ast::Expr {
     with_error_checking_parse(source_str, |p| {
         p.parse_expr()
     })
 }
 
 // parse a string, return an item
-pub fn string_to_item (source_str : StrBuf) -> Option<@ast::Item> {
+pub fn string_to_item (source_str : String) -> Option<@ast::Item> {
     with_error_checking_parse(source_str, |p| {
         p.parse_item(Vec::new())
     })
 }
 
 // parse a string, return a stmt
-pub fn string_to_stmt(source_str : StrBuf) -> @ast::Stmt {
+pub fn string_to_stmt(source_str : String) -> @ast::Stmt {
     with_error_checking_parse(source_str, |p| {
         p.parse_stmt(Vec::new())
     })
@@ -68,7 +68,7 @@ pub fn string_to_stmt(source_str : StrBuf) -> @ast::Stmt {
 
 // parse a string, return a pat. Uses "irrefutable"... which doesn't
 // (currently) affect parsing.
-pub fn string_to_pat(source_str: StrBuf) -> @ast::Pat {
+pub fn string_to_pat(source_str: String) -> @ast::Pat {
     string_to_parser(&new_parse_sess(), source_str).parse_pat()
 }
 

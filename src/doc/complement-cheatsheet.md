@@ -8,7 +8,7 @@ Use [`ToStr`](../std/to_str/trait.ToStr.html).
 
 ~~~
 let x: int = 42;
-let y: StrBuf = x.to_str().to_strbuf();
+let y: String = x.to_str().to_strbuf();
 ~~~
 
 **String to int**
@@ -27,10 +27,10 @@ Use the `format_strbuf!` syntax extension.
 
 ~~~
 let x: int = 42;
-let y: StrBuf = format_strbuf!("{:t}", x);   // binary
-let y: StrBuf = format_strbuf!("{:o}", x);   // octal
-let y: StrBuf = format_strbuf!("{:x}", x);   // lowercase hexadecimal
-let y: StrBuf = format_strbuf!("{:X}", x);   // uppercase hexadecimal
+let y: String = format_strbuf!("{:t}", x);   // binary
+let y: String = format_strbuf!("{:o}", x);   // octal
+let y: String = format_strbuf!("{:x}", x);   // lowercase hexadecimal
+let y: String = format_strbuf!("{:X}", x);   // uppercase hexadecimal
 ~~~
 
 **String to int, in non-base-10**
@@ -58,15 +58,15 @@ let x: Option<&str> = str::from_utf8(bytes);
 let y: &str = x.unwrap();
 ~~~
 
-To return an Owned String (StrBuf) use the str helper function
+To return an Owned String use the str helper function
 [`from_utf8_owned`](../std/str/fn.from_utf8_owned.html).
 
 ~~~
 use std::str;
 
-let x: Option<StrBuf> =
+let x: Option<String> =
     str::from_utf8([ 104u8, 105u8 ]).map(|x| x.to_strbuf());
-let y: StrBuf = x.unwrap();
+let y: String = x.unwrap();
 ~~~
 
 To return a [`MaybeOwned`](../std/str/enum.MaybeOwned.html) use the str helper
@@ -198,7 +198,7 @@ enum Closed {}
 Phantom types are useful for enforcing state at compile time. For example:
 
 ~~~
-struct Door<State>(StrBuf);
+struct Door<State>(String);
 
 struct Open;
 struct Closed;

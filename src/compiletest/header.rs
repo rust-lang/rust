@@ -14,20 +14,20 @@ use util;
 
 pub struct TestProps {
     // Lines that should be expected, in order, on standard out
-    pub error_patterns: Vec<StrBuf> ,
+    pub error_patterns: Vec<String> ,
     // Extra flags to pass to the compiler
-    pub compile_flags: Option<StrBuf>,
+    pub compile_flags: Option<String>,
     // Extra flags to pass when the compiled code is run (such as --bench)
-    pub run_flags: Option<StrBuf>,
+    pub run_flags: Option<String>,
     // If present, the name of a file that this test should match when
     // pretty-printed
     pub pp_exact: Option<Path>,
     // Modules from aux directory that should be compiled
-    pub aux_builds: Vec<StrBuf> ,
+    pub aux_builds: Vec<String> ,
     // Environment settings to use during execution
-    pub exec_env: Vec<(StrBuf,StrBuf)> ,
+    pub exec_env: Vec<(String,String)> ,
     // Lines to check if they appear in the expected debugger output
-    pub check_lines: Vec<StrBuf> ,
+    pub check_lines: Vec<String> ,
     // Flag to force a crate to be built with the host architecture
     pub force_host: bool,
     // Check stdout for error-pattern output as well as stderr
@@ -119,10 +119,10 @@ pub fn load_props(testfile: &Path) -> TestProps {
 }
 
 pub fn is_test_ignored(config: &Config, testfile: &Path) -> bool {
-    fn ignore_target(config: &Config) -> StrBuf {
+    fn ignore_target(config: &Config) -> String {
         format_strbuf!("ignore-{}", util::get_os(config.target.as_slice()))
     }
-    fn ignore_stage(config: &Config) -> StrBuf {
+    fn ignore_stage(config: &Config) -> String {
         format_strbuf!("ignore-{}",
                        config.stage_id.as_slice().split('-').next().unwrap())
     }
@@ -169,23 +169,23 @@ fn iter_header(testfile: &Path, it: |&str| -> bool) -> bool {
     return true;
 }
 
-fn parse_error_pattern(line: &str) -> Option<StrBuf> {
+fn parse_error_pattern(line: &str) -> Option<String> {
     parse_name_value_directive(line, "error-pattern".to_strbuf())
 }
 
-fn parse_aux_build(line: &str) -> Option<StrBuf> {
+fn parse_aux_build(line: &str) -> Option<String> {
     parse_name_value_directive(line, "aux-build".to_strbuf())
 }
 
-fn parse_compile_flags(line: &str) -> Option<StrBuf> {
+fn parse_compile_flags(line: &str) -> Option<String> {
     parse_name_value_directive(line, "compile-flags".to_strbuf())
 }
 
-fn parse_run_flags(line: &str) -> Option<StrBuf> {
+fn parse_run_flags(line: &str) -> Option<String> {
     parse_name_value_directive(line, "run-flags".to_strbuf())
 }
 
-fn parse_check_line(line: &str) -> Option<StrBuf> {
+fn parse_check_line(line: &str) -> Option<String> {
     parse_name_value_directive(line, "check".to_strbuf())
 }
 
@@ -205,10 +205,10 @@ fn parse_no_pretty_expanded(line: &str) -> bool {
     parse_name_directive(line, "no-pretty-expanded")
 }
 
-fn parse_exec_env(line: &str) -> Option<(StrBuf, StrBuf)> {
+fn parse_exec_env(line: &str) -> Option<(String, String)> {
     parse_name_value_directive(line, "exec-env".to_strbuf()).map(|nv| {
         // nv is either FOO or FOO=BAR
-        let mut strs: Vec<StrBuf> = nv.as_slice()
+        let mut strs: Vec<String> = nv.as_slice()
                                       .splitn('=', 1)
                                       .map(|s| s.to_strbuf())
                                       .collect();
@@ -241,8 +241,8 @@ fn parse_name_directive(line: &str, directive: &str) -> bool {
     line.contains(directive)
 }
 
-pub fn parse_name_value_directive(line: &str, directive: StrBuf)
-                                  -> Option<StrBuf> {
+pub fn parse_name_value_directive(line: &str, directive: String)
+                                  -> Option<String> {
     let keycolon = format_strbuf!("{}:", directive);
     match line.find_str(keycolon.as_slice()) {
         Some(colon) => {

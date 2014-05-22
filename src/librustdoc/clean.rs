@@ -27,7 +27,7 @@ use rustc::metadata::csearch;
 use rustc::metadata::decoder;
 use rustc::middle::ty;
 
-use std::strbuf::StrBuf;
+use std::string::String;
 
 use core;
 use doctree;
@@ -70,7 +70,7 @@ impl<T: Clean<U>, U> Clean<Vec<U>> for syntax::owned_slice::OwnedSlice<T> {
 
 #[deriving(Clone, Encodable, Decodable)]
 pub struct Crate {
-    pub name: StrBuf,
+    pub name: String,
     pub module: Option<Item>,
     pub externs: Vec<(ast::CrateNum, ExternalCrate)>,
 }
@@ -102,7 +102,7 @@ impl<'a> Clean<Crate> for visit_ast::RustdocVisitor<'a> {
 
 #[deriving(Clone, Encodable, Decodable)]
 pub struct ExternalCrate {
-    pub name: StrBuf,
+    pub name: String,
     pub attrs: Vec<Attribute>,
 }
 
@@ -125,7 +125,7 @@ pub struct Item {
     /// Stringified span
     pub source: Span,
     /// Not everything has a name. E.g., impls
-    pub name: Option<StrBuf>,
+    pub name: Option<String>,
     pub attrs: Vec<Attribute> ,
     pub inner: ItemEnum,
     pub visibility: Option<Visibility>,
@@ -288,9 +288,9 @@ impl Clean<Item> for doctree::Module {
 
 #[deriving(Clone, Encodable, Decodable)]
 pub enum Attribute {
-    Word(StrBuf),
-    List(StrBuf, Vec<Attribute> ),
-    NameValue(StrBuf, StrBuf)
+    Word(String),
+    List(String, Vec<Attribute> ),
+    NameValue(String, String)
 }
 
 impl Clean<Attribute> for ast::MetaItem {
@@ -339,7 +339,7 @@ impl attr::AttrMetaMethods for Attribute {
 
 #[deriving(Clone, Encodable, Decodable)]
 pub struct TyParam {
-    pub name: StrBuf,
+    pub name: String,
     pub did: ast::DefId,
     pub bounds: Vec<TyParamBound>,
 }
@@ -433,7 +433,7 @@ impl Clean<TyParamBound> for ty::TraitRef {
         };
         let fqn = csearch::get_item_path(tcx, self.def_id);
         let fqn = fqn.move_iter().map(|i| i.to_str().to_strbuf())
-                     .collect::<Vec<StrBuf>>();
+                     .collect::<Vec<String>>();
         let path = external_path(fqn.last().unwrap().as_slice());
         cx.external_paths.borrow_mut().get_mut_ref().insert(self.def_id,
                                                             (fqn, TypeTrait));
@@ -474,7 +474,7 @@ impl Clean<Option<Vec<TyParamBound>>> for ty::substs {
 }
 
 #[deriving(Clone, Encodable, Decodable)]
-pub struct Lifetime(StrBuf);
+pub struct Lifetime(String);
 
 impl Lifetime {
     pub fn get_ref<'a>(&'a self) -> &'a str {
@@ -729,7 +729,7 @@ impl Clean<FnDecl> for ty::FnSig {
 #[deriving(Clone, Encodable, Decodable)]
 pub struct Argument {
     pub type_: Type,
-    pub name: StrBuf,
+    pub name: String,
     pub id: ast::NodeId,
 }
 
@@ -902,7 +902,7 @@ pub enum Type {
     BareFunction(Box<BareFunctionDecl>),
     Tuple(Vec<Type>),
     Vector(Box<Type>),
-    FixedVector(Box<Type>, StrBuf),
+    FixedVector(Box<Type>, String),
     String,
     Bool,
     /// aka TyNil
@@ -1012,7 +1012,7 @@ impl Clean<Type> for ty::t {
                     core::NotTyped(_) => fail!(),
                 };
                 let fqn = csearch::get_item_path(tcx, did);
-                let fqn: Vec<StrBuf> = fqn.move_iter().map(|i| {
+                let fqn: Vec<String> = fqn.move_iter().map(|i| {
                     i.to_str().to_strbuf()
                 }).collect();
                 let mut path = external_path(fqn.last()
@@ -1195,7 +1195,7 @@ impl Clean<VariantKind> for ast::VariantKind {
 
 #[deriving(Clone, Encodable, Decodable)]
 pub struct Span {
-    pub filename: StrBuf,
+    pub filename: String,
     pub loline: uint,
     pub locol: uint,
     pub hiline: uint,
@@ -1236,7 +1236,7 @@ impl Clean<Path> for ast::Path {
 
 #[deriving(Clone, Encodable, Decodable)]
 pub struct PathSegment {
-    pub name: StrBuf,
+    pub name: String,
     pub lifetimes: Vec<Lifetime>,
     pub types: Vec<Type>,
 }
@@ -1251,10 +1251,10 @@ impl Clean<PathSegment> for ast::PathSegment {
     }
 }
 
-fn path_to_str(p: &ast::Path) -> StrBuf {
+fn path_to_str(p: &ast::Path) -> String {
     use syntax::parse::token;
 
-    let mut s = StrBuf::new();
+    let mut s = String::new();
     let mut first = true;
     for i in p.segments.iter().map(|x| token::get_ident(x.identifier)) {
         if !first || p.global {
@@ -1267,8 +1267,8 @@ fn path_to_str(p: &ast::Path) -> StrBuf {
     s
 }
 
-impl Clean<StrBuf> for ast::Ident {
-    fn clean(&self) -> StrBuf {
+impl Clean<String> for ast::Ident {
+    fn clean(&self) -> String {
         token::get_ident(*self).get().to_strbuf()
     }
 }
@@ -1300,7 +1300,7 @@ pub struct BareFunctionDecl {
     pub fn_style: ast::FnStyle,
     pub generics: Generics,
     pub decl: FnDecl,
-    pub abi: StrBuf,
+    pub abi: String,
 }
 
 impl Clean<BareFunctionDecl> for ast::BareFnTy {
@@ -1324,7 +1324,7 @@ pub struct Static {
     /// It's useful to have the value of a static documented, but I have no
     /// desire to represent expressions (that'd basically be all of the AST,
     /// which is huge!). So, have a string.
-    pub expr: StrBuf,
+    pub expr: String,
 }
 
 impl Clean<Item> for doctree::Static {
@@ -1421,7 +1421,7 @@ impl Clean<Item> for ast::ViewItem {
 
 #[deriving(Clone, Encodable, Decodable)]
 pub enum ViewItemInner {
-    ExternCrate(StrBuf, Option<StrBuf>, ast::NodeId),
+    ExternCrate(String, Option<String>, ast::NodeId),
     Import(ViewPath)
 }
 
@@ -1445,7 +1445,7 @@ impl Clean<ViewItemInner> for ast::ViewItem_ {
 #[deriving(Clone, Encodable, Decodable)]
 pub enum ViewPath {
     // use str = source;
-    SimpleImport(StrBuf, ImportSource),
+    SimpleImport(String, ImportSource),
     // use source::*;
     GlobImport(ImportSource),
     // use source::{a, b, c};
@@ -1475,7 +1475,7 @@ impl Clean<ViewPath> for ast::ViewPath {
 
 #[deriving(Clone, Encodable, Decodable)]
 pub struct ViewListIdent {
-    pub name: StrBuf,
+    pub name: String,
     pub source: Option<ast::DefId>,
 }
 
@@ -1526,11 +1526,11 @@ impl Clean<Item> for ast::ForeignItem {
 // Utilities
 
 trait ToSource {
-    fn to_src(&self) -> StrBuf;
+    fn to_src(&self) -> String;
 }
 
 impl ToSource for syntax::codemap::Span {
-    fn to_src(&self) -> StrBuf {
+    fn to_src(&self) -> String {
         debug!("converting span {:?} to snippet", self.clean());
         let ctxt = super::ctxtkey.get().unwrap();
         let cm = ctxt.sess().codemap().clone();
@@ -1543,7 +1543,7 @@ impl ToSource for syntax::codemap::Span {
     }
 }
 
-fn lit_to_str(lit: &ast::Lit) -> StrBuf {
+fn lit_to_str(lit: &ast::Lit) -> String {
     match lit.node {
         ast::LitStr(ref st, _) => st.get().to_strbuf(),
         ast::LitBinary(ref data) => format_strbuf!("{:?}", data.as_slice()),
@@ -1558,7 +1558,7 @@ fn lit_to_str(lit: &ast::Lit) -> StrBuf {
     }
 }
 
-fn name_from_pat(p: &ast::Pat) -> StrBuf {
+fn name_from_pat(p: &ast::Pat) -> String {
     use syntax::ast::*;
     debug!("Trying to get a name from pattern: {:?}", p);
 
@@ -1673,7 +1673,7 @@ fn resolve_def(id: ast::NodeId) -> Option<ast::DefId> {
 
 #[deriving(Clone, Encodable, Decodable)]
 pub struct Macro {
-    pub source: StrBuf,
+    pub source: String,
 }
 
 impl Clean<Item> for doctree::Macro {

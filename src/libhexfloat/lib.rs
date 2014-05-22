@@ -70,7 +70,7 @@ pub fn macro_registrar(register: |Name, SyntaxExtension|) {
 
 //Check if the literal is valid (as LLVM expects),
 //and return a descriptive error if not.
-fn hex_float_lit_err(s: &str) -> Option<(uint, StrBuf)> {
+fn hex_float_lit_err(s: &str) -> Option<(uint, String)> {
     let mut chars = s.chars().peekable();
     let mut i = 0;
     if chars.peek() == Some(&'-') { chars.next(); i+= 1 }

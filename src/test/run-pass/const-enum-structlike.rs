@@ -11,7 +11,7 @@
 #![feature(struct_variant)]
 
 enum E {
-    S0 { s: StrBuf },
+    S0 { s: String },
     S1 { u: uint }
 }
 

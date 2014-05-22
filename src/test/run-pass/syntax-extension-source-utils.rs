@@ -15,7 +15,7 @@
 
 pub mod m1 {
     pub mod m2 {
-        pub fn where_am_i() -> StrBuf {
+        pub fn where_am_i() -> String {
             (module_path!()).to_strbuf()
         }
     }

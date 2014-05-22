@@ -28,10 +28,10 @@ fn main() {
     //~^ ERROR mismatched types: expected `Foo<int>` but found `()`
 
     // Including cases where the default is using previous type params.
-    let _: HashMap<StrBuf, int> = ();
-    //~^ ERROR mismatched types: expected `HashMap<std::strbuf::StrBuf,int>` but found `()`
-    let _: HashMap<StrBuf, int, Hash<StrBuf>> = ();
-    //~^ ERROR mismatched types: expected `HashMap<std::strbuf::StrBuf,int>` but found `()`
+    let _: HashMap<String, int> = ();
+    //~^ ERROR mismatched types: expected `HashMap<std::string::String,int>` but found `()`
+    let _: HashMap<String, int, Hash<String>> = ();
+    //~^ ERROR mismatched types: expected `HashMap<std::string::String,int>` but found `()`
 
     // But not when there's a different type in between.
     let _: Foo<A, int, C> = ();

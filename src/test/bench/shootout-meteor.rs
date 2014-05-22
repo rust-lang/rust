@@ -184,7 +184,7 @@ fn get_id(m: u64) -> u8 {
     fail!("{:016x} does not have a valid identifier", m);
 }
 
-// Converts a list of mask to a StrBuf.
+// Converts a list of mask to a String.
 fn to_vec(raw_sol: &List<u64>) -> Vec<u8> {
     let mut sol = Vec::from_elem(50, '.' as u8);
     for &m in raw_sol.iter() {
@@ -198,7 +198,7 @@ fn to_vec(raw_sol: &List<u64>) -> Vec<u8> {
     sol
 }
 
-// Prints a solution in StrBuf form.
+// Prints a solution in String form.
 fn print_sol(sol: &Vec<u8>) {
     for (i, c) in sol.iter().enumerate() {
         if (i) % 5 == 0 { println!(""); }

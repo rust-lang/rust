@@ -20,7 +20,7 @@ use libc;
 use flate;
 
 pub fn run(sess: &session::Session, llmod: ModuleRef,
-           tm: TargetMachineRef, reachable: &[StrBuf]) {
+           tm: TargetMachineRef, reachable: &[String]) {
     if sess.opts.cg.prefer_dynamic {
         sess.err("cannot prefer dynamic linking when performing LTO");
         sess.note("only 'staticlib' and 'bin' outputs are supported with LTO");

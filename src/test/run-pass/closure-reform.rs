@@ -14,7 +14,7 @@
 use std::mem;
 use std::io::stdio::println;
 
-fn call_it(f: proc(StrBuf) -> StrBuf) {
+fn call_it(f: proc(String) -> String) {
     println!("{}", f("Fred".to_strbuf()))
 }
 
@@ -57,7 +57,7 @@ pub fn main() {
     call_it(proc(s) format_strbuf!("{}{}", greeting, s));
 
     let greeting = "How's life, ".to_strbuf();
-    call_it(proc(s: StrBuf) -> StrBuf {
+    call_it(proc(s: String) -> String {
         format_strbuf!("{}{}", greeting, s)
     });
 

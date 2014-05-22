@@ -23,7 +23,7 @@ use middle::trans::type_of;
 use middle::trans::type_::Type;
 
 use std::c_str::ToCStr;
-use std::strbuf::StrBuf;
+use std::string::String;
 use syntax::ast;
 
 // Take an inline assembly expression and splat it out via LLVM
@@ -64,9 +64,9 @@ pub fn trans_inline_asm<'a>(bcx: &'a Block<'a>, ia: &ast::InlineAsm)
     fcx.pop_custom_cleanup_scope(temp_scope);
 
     let mut constraints =
-        StrBuf::from_str(constraints.iter()
+        String::from_str(constraints.iter()
                                     .map(|s| s.get().to_strbuf())
-                                    .collect::<Vec<StrBuf>>()
+                                    .collect::<Vec<String>>()
                                     .connect(",")
                                     .as_slice());
 
@@ -135,12 +135,12 @@ pub fn trans_inline_asm<'a>(bcx: &'a Block<'a>, ia: &ast::InlineAsm)
 
 #[cfg(target_arch = "arm")]
 #[cfg(target_arch = "mips")]
-fn getClobbers() -> StrBuf {
+fn getClobbers() -> String {
     "".to_strbuf()
 }
 
 #[cfg(target_arch = "x86")]
 #[cfg(target_arch = "x86_64")]
-fn getClobbers() -> StrBuf {
+fn getClobbers() -> String {
     "~{dirflag},~{fpsr},~{flags}".to_strbuf()
 }

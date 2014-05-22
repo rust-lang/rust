@@ -10,11 +10,11 @@
 
 enum pattern { tabby, tortoiseshell, calico }
 enum breed { beagle, rottweiler, pug }
-type name = StrBuf;
+type name = String;
 enum ear_kind { lop, upright }
 enum animal { cat(pattern), dog(breed), rabbit(name, ear_kind), tiger }
 
-fn noise(a: animal) -> Option<StrBuf> {
+fn noise(a: animal) -> Option<String> {
     match a {
       cat(..)    => { Some("meow".to_strbuf()) }
       dog(..)    => { Some("woof".to_strbuf()) }

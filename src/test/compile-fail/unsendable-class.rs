@@ -15,10 +15,10 @@
 
 struct foo {
   i: int,
-  j: @StrBuf,
+  j: @String,
 }
 
-fn foo(i:int, j: @StrBuf) -> foo {
+fn foo(i:int, j: @String) -> foo {
     foo {
         i: i,
         j: j

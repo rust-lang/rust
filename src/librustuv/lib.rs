@@ -354,7 +354,7 @@ impl Loop {
 pub struct UvError(c_int);
 
 impl UvError {
-    pub fn name(&self) -> StrBuf {
+    pub fn name(&self) -> String {
         unsafe {
             let inner = match self { &UvError(a) => a };
             let name_str = uvll::uv_err_name(inner);
@@ -363,7 +363,7 @@ impl UvError {
         }
     }
 
-    pub fn desc(&self) -> StrBuf {
+    pub fn desc(&self) -> String {
         unsafe {
             let inner = match self { &UvError(a) => a };
             let desc_str = uvll::uv_strerror(inner);

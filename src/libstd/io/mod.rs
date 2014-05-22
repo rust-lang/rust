@@ -76,7 +76,7 @@ Some examples of obvious things you might want to do
 
     let path = Path::new("message.txt");
     let mut file = BufferedReader::new(File::open(&path));
-    let lines: Vec<StrBuf> = file.lines().map(|x| x.unwrap()).collect();
+    let lines: Vec<String> = file.lines().map(|x| x.unwrap()).collect();
     ```
 
 * Make a simple TCP client connection and request
@@ -228,7 +228,7 @@ use result::{Ok, Err, Result};
 use slice::{Vector, MutableVector, ImmutableVector};
 use str::{StrSlice, StrAllocating};
 use str;
-use strbuf::StrBuf;
+use string::String;
 use uint;
 use vec::Vec;
 
@@ -293,7 +293,7 @@ pub struct IoError {
     /// A human-readable description about the error
     pub desc: &'static str,
     /// Detailed information about this error, not always available
-    pub detail: Option<StrBuf>
+    pub detail: Option<String>
 }
 
 impl IoError {
@@ -632,7 +632,7 @@ pub trait Reader {
     /// This function returns all of the same errors as `read_to_end` with an
     /// additional error if the reader's contents are not a valid sequence of
     /// UTF-8 bytes.
-    fn read_to_str(&mut self) -> IoResult<StrBuf> {
+    fn read_to_str(&mut self) -> IoResult<String> {
         self.read_to_end().and_then(|s| {
             match str::from_utf8(s.as_slice()) {
                 Some(s) => Ok(s.to_strbuf()),
@@ -1244,8 +1244,8 @@ pub struct Lines<'r, T> {
     buffer: &'r mut T,
 }
 
-impl<'r, T: Buffer> Iterator<IoResult<StrBuf>> for Lines<'r, T> {
-    fn next(&mut self) -> Option<IoResult<StrBuf>> {
+impl<'r, T: Buffer> Iterator<IoResult<String>> for Lines<'r, T> {
+    fn next(&mut self) -> Option<IoResult<String>> {
         match self.buffer.read_line() {
             Ok(x) => Some(Ok(x)),
             Err(IoError { kind: EndOfFile, ..}) => None,
@@ -1330,7 +1330,7 @@ pub trait Buffer: Reader {
     ///
     /// Additionally, this function can fail if the line of input read is not a
     /// valid UTF-8 sequence of bytes.
-    fn read_line(&mut self) -> IoResult<StrBuf> {
+    fn read_line(&mut self) -> IoResult<String> {
         self.read_until('\n' as u8).and_then(|line|
             match str::from_utf8(line.as_slice()) {
                 Some(s) => Ok(s.to_strbuf()),

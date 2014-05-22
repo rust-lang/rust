@@ -15,10 +15,10 @@ type SamplesFn = proc(samples: &RingBuffer):Send;
 
 enum Msg
 {
-    GetSamples(StrBuf, SamplesFn), // sample set name, callback which receives samples
+    GetSamples(String, SamplesFn), // sample set name, callback which receives samples
 }
 
-fn foo(name: StrBuf, samples_chan: Sender<Msg>) {
+fn foo(name: String, samples_chan: Sender<Msg>) {
     task::spawn(proc() {
         let mut samples_chan = samples_chan;
         let callback: SamplesFn = proc(buffer) {

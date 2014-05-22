@@ -1093,7 +1093,7 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
         Ok(())
     }
 
-    pub fn cmt_to_str(&self, cmt: &cmt_) -> StrBuf {
+    pub fn cmt_to_str(&self, cmt: &cmt_) -> String {
         match cmt.cat {
           cat_static_item => {
               "static item".to_strbuf()
@@ -1249,7 +1249,7 @@ impl cmt_ {
 }
 
 impl Repr for cmt_ {
-    fn repr(&self, tcx: &ty::ctxt) -> StrBuf {
+    fn repr(&self, tcx: &ty::ctxt) -> String {
         format_strbuf!("\\{{} id:{} m:{:?} ty:{}\\}",
                        self.cat.repr(tcx),
                        self.id,
@@ -1259,7 +1259,7 @@ impl Repr for cmt_ {
 }
 
 impl Repr for categorization {
-    fn repr(&self, tcx: &ty::ctxt) -> StrBuf {
+    fn repr(&self, tcx: &ty::ctxt) -> String {
         match *self {
             cat_static_item |
             cat_rvalue(..) |
@@ -1300,7 +1300,7 @@ pub fn ptr_sigil(ptr: PointerKind) -> &'static str {
 }
 
 impl Repr for InteriorKind {
-    fn repr(&self, _tcx: &ty::ctxt) -> StrBuf {
+    fn repr(&self, _tcx: &ty::ctxt) -> String {
         match *self {
             InteriorField(NamedField(fld)) => {
                 token::get_name(fld).get().to_str().to_strbuf()

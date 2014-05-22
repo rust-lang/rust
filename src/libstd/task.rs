@@ -51,7 +51,7 @@ use str::{Str, SendStr, IntoMaybeOwned};
 #[cfg(test)] use owned::AnyOwnExt;
 #[cfg(test)] use result;
 #[cfg(test)] use str::StrAllocating;
-#[cfg(test)] use strbuf::StrBuf;
+#[cfg(test)] use string::String;
 
 /// Indicates the manner in which a task exited.
 ///
@@ -500,7 +500,7 @@ fn test_try_fail_message_owned_str() {
         fail!("owned string".to_strbuf());
     }) {
         Err(e) => {
-            type T = StrBuf;
+            type T = String;
             assert!(e.is::<T>());
             assert_eq!(*e.move::<T>().unwrap(), "owned string".to_strbuf());
         }

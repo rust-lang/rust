@@ -14,6 +14,6 @@ mod m1 {
     pub mod a {}
 }
 
-fn main(args: Vec<StrBuf>) {
+fn main(args: Vec<String>) {
     log(debug, m1::a);
 }
