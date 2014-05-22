@@ -141,7 +141,8 @@ impl Session {
     // This exists to help with refactoring to eliminate impossible
     // cases later on
     pub fn impossible_case(&self, sp: Span, msg: &str) -> ! {
-        self.span_bug(sp, format!("impossible case reached: {}", msg));
+        self.span_bug(sp,
+                      format!("impossible case reached: {}", msg).as_slice());
     }
     pub fn verbose(&self) -> bool { self.debugging_opt(config::VERBOSE) }
     pub fn time_passes(&self) -> bool { self.debugging_opt(config::TIME_PASSES) }

@@ -56,17 +56,24 @@ fn run_ar(sess: &Session, args: &str, cwd: Option<&Path>,
         Ok(prog) => {
             let o = prog.wait_with_output().unwrap();
             if !o.status.success() {
-                sess.err(format!("{} failed with: {}", cmd, o.status));
+                sess.err(format!("{} failed with: {}",
+                                 cmd,
+                                 o.status).as_slice());
                 sess.note(format!("stdout ---\n{}",
-                                  str::from_utf8(o.output.as_slice()).unwrap()));
+                                  str::from_utf8(o.output
+                                                  .as_slice()).unwrap())
+                          .as_slice());
                 sess.note(format!("stderr ---\n{}",
-                                  str::from_utf8(o.error.as_slice()).unwrap()));
+                                  str::from_utf8(o.error
+                                                  .as_slice()).unwrap())
+                          .as_slice());
                 sess.abort_if_errors();
             }
             o
         },
         Err(e) => {
-            sess.err(format!("could not exec `{}`: {}", ar.as_slice(), e));
+            sess.err(format!("could not exec `{}`: {}", ar.as_slice(),
+                             e).as_slice());
             sess.abort_if_errors();
             fail!("rustc::back::archive::run_ar() should not reach this point");
         }
@@ -158,7 +165,7 @@ impl<'a> Archive<'a> {
             if skip.iter().any(|s| *s == filename) { continue }
             if filename.contains(".SYMDEF") { continue }
 
-            let filename = format!("r-{}-{}", name, filename);
+            let filename = format_strbuf!("r-{}-{}", name, filename);
             let new_filename = file.with_filename(filename);
             try!(fs::rename(file, &new_filename));
             inputs.push(new_filename);
@@ -178,8 +185,8 @@ impl<'a> Archive<'a> {
         };
         // On Windows, static libraries sometimes show up as libfoo.a and other
         // times show up as foo.lib
-        let oslibname = format!("{}{}.{}", osprefix, name, osext);
-        let unixlibname = format!("lib{}.a", name);
+        let oslibname = format_strbuf!("{}{}.{}", osprefix, name, osext);
+        let unixlibname = format_strbuf!("lib{}.a", name);
 
         let mut rustpath = filesearch::rust_path();
         rustpath.push(self.sess.target_filesearch().get_lib_path());
@@ -194,7 +201,8 @@ impl<'a> Archive<'a> {
             }
         }
         self.sess.fatal(format!("could not find native static library `{}`, \
-                                 perhaps an -L flag is missing?", name));
+                                 perhaps an -L flag is missing?",
+                                name).as_slice());
     }
 }
 

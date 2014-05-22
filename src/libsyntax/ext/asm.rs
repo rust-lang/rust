@@ -107,7 +107,9 @@ pub fn expand_asm(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                         (Some('+'), operand) => {
                             // Save a reference to the output
                             read_write_operands.push((outputs.len(), out));
-                            Some(token::intern_and_get_ident("=" + operand))
+                            Some(token::intern_and_get_ident(format!(
+                                        "={}",
+                                        operand).as_slice()))
                         }
                         _ => {
                             cx.span_err(span, "output operand constraint lacks '=' or '+'");
@@ -208,7 +210,8 @@ pub fn expand_asm(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     // Append an input operand, with the form of ("0", expr)
     // that links to an output operand.
     for &(i, out) in read_write_operands.iter() {
-        inputs.push((token::intern_and_get_ident(i.to_str()), out));
+        inputs.push((token::intern_and_get_ident(i.to_str().as_slice()),
+                                                 out));
     }
 
     MacExpr::new(@ast::Expr {
@@ -216,7 +219,7 @@ pub fn expand_asm(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
         node: ast::ExprInlineAsm(ast::InlineAsm {
             asm: token::intern_and_get_ident(asm.get()),
             asm_str_style: asm_str_style.unwrap(),
-            clobbers: token::intern_and_get_ident(cons),
+            clobbers: token::intern_and_get_ident(cons.as_slice()),
             inputs: inputs,
             outputs: outputs,
             volatile: volatile,

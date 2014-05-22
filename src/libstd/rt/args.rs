@@ -37,8 +37,8 @@ pub unsafe fn init(argc: int, argv: **u8) { realargs::init(argc, argv) }
 #[cfg(test)]      pub unsafe fn cleanup() { realargs::cleanup() }
 
 /// Take the global arguments from global storage.
-#[cfg(not(test))] pub fn take() -> Option<Vec<~[u8]>> { imp::take() }
-#[cfg(test)]      pub fn take() -> Option<Vec<~[u8]>> {
+#[cfg(not(test))] pub fn take() -> Option<Vec<Vec<u8>>> { imp::take() }
+#[cfg(test)]      pub fn take() -> Option<Vec<Vec<u8>>> {
     match realargs::take() {
         realstd::option::Some(v) => Some(unsafe{ ::mem::transmute(v) }),
         realstd::option::None => None,
@@ -48,12 +48,16 @@ pub unsafe fn init(argc: int, argv: **u8) { realargs::init(argc, argv) }
 /// Give the global arguments to global storage.
 ///
 /// It is an error if the arguments already exist.
-#[cfg(not(test))] pub fn put(args: Vec<~[u8]>) { imp::put(args) }
-#[cfg(test)]      pub fn put(args: Vec<~[u8]>) { realargs::put(unsafe { ::mem::transmute(args) }) }
+#[cfg(not(test))] pub fn put(args: Vec<Vec<u8>>) { imp::put(args) }
+#[cfg(test)]      pub fn put(args: Vec<Vec<u8>>) {
+    realargs::put(unsafe {
+        ::mem::transmute(args)
+    })
+}
 
 /// Make a clone of the global arguments.
-#[cfg(not(test))] pub fn clone() -> Option<Vec<~[u8]>> { imp::clone() }
-#[cfg(test)]      pub fn clone() -> Option<Vec<~[u8]>> {
+#[cfg(not(test))] pub fn clone() -> Option<Vec<Vec<u8>>> { imp::clone() }
+#[cfg(test)]      pub fn clone() -> Option<Vec<Vec<u8>>> {
     match realargs::clone() {
         realstd::option::Some(v) => Some(unsafe { ::mem::transmute(v) }),
         realstd::option::None => None,
@@ -88,15 +92,15 @@ mod imp {
         lock.destroy();
     }
 
-    pub fn take() -> Option<Vec<~[u8]>> {
+    pub fn take() -> Option<Vec<Vec<u8>>> {
         with_lock(|| unsafe {
             let ptr = get_global_ptr();
             let val = mem::replace(&mut *ptr, None);
-            val.as_ref().map(|s: &Box<Vec<~[u8]>>| (**s).clone())
+            val.as_ref().map(|s: &Box<Vec<Vec<u8>>>| (**s).clone())
         })
     }
 
-    pub fn put(args: Vec<~[u8]>) {
+    pub fn put(args: Vec<Vec<u8>>) {
         with_lock(|| unsafe {
             let ptr = get_global_ptr();
             rtassert!((*ptr).is_none());
@@ -104,10 +108,10 @@ mod imp {
         })
     }
 
-    pub fn clone() -> Option<Vec<~[u8]>> {
+    pub fn clone() -> Option<Vec<Vec<u8>>> {
         with_lock(|| unsafe {
             let ptr = get_global_ptr();
-            (*ptr).as_ref().map(|s: &Box<Vec<~[u8]>>| (**s).clone())
+            (*ptr).as_ref().map(|s: &Box<Vec<Vec<u8>>>| (**s).clone())
         })
     }
 
@@ -118,22 +122,21 @@ mod imp {
         }
     }
 
-    fn get_global_ptr() -> *mut Option<Box<Vec<~[u8]>>> {
+    fn get_global_ptr() -> *mut Option<Box<Vec<Vec<u8>>>> {
         unsafe { mem::transmute(&global_args_ptr) }
     }
 
     // Copied from `os`.
     #[cfg(not(test))]
-    unsafe fn load_argc_and_argv(argc: int, argv: **u8) -> Vec<~[u8]> {
+    unsafe fn load_argc_and_argv(argc: int, argv: **u8) -> Vec<Vec<u8>> {
         use c_str::CString;
         use ptr::RawPtr;
         use libc;
-        use slice::CloneableVector;
         use vec::Vec;
 
         Vec::from_fn(argc as uint, |i| {
             let cs = CString::new(*(argv as **libc::c_char).offset(i as int), false);
-            cs.as_bytes_no_nul().to_owned()
+            Vec::from_slice(cs.as_bytes_no_nul())
         })
     }
 
@@ -148,7 +151,10 @@ mod imp {
             // Preserve the actual global state.
             let saved_value = take();
 
-            let expected = vec![bytes!("happy").to_owned(), bytes!("today?").to_owned()];
+            let expected = vec![
+                Vec::from_slice(bytes!("happy")),
+                Vec::from_slice(bytes!("today?")),
+            ];
 
             put(expected.clone());
             assert!(clone() == Some(expected.clone()));
@@ -179,15 +185,15 @@ mod imp {
     pub fn cleanup() {
     }
 
-    pub fn take() -> Option<Vec<~[u8]>> {
+    pub fn take() -> Option<Vec<Vec<u8>>> {
         fail!()
     }
 
-    pub fn put(_args: Vec<~[u8]>) {
+    pub fn put(_args: Vec<Vec<u8>>) {
         fail!()
     }
 
-    pub fn clone() -> Option<Vec<~[u8]>> {
+    pub fn clone() -> Option<Vec<Vec<u8>>> {
         fail!()
     }
 }

@@ -436,7 +436,7 @@ fn mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> @ast::Expr {
                 ast::TyI32 => "TyI32".to_owned(),
                 ast::TyI64 => "TyI64".to_owned()
             };
-            let e_ity = cx.expr_ident(sp, id_ext(s_ity));
+            let e_ity = cx.expr_ident(sp, id_ext(s_ity.as_slice()));
 
             let e_i64 = cx.expr_lit(sp, ast::LitInt(i, ast::TyI64));
 
@@ -453,7 +453,7 @@ fn mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> @ast::Expr {
                 ast::TyU32 => "TyU32".to_owned(),
                 ast::TyU64 => "TyU64".to_owned()
             };
-            let e_uty = cx.expr_ident(sp, id_ext(s_uty));
+            let e_uty = cx.expr_ident(sp, id_ext(s_uty.as_slice()));
 
             let e_u64 = cx.expr_lit(sp, ast::LitUint(u, ast::TyU64));
 
@@ -476,7 +476,7 @@ fn mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> @ast::Expr {
                 ast::TyF64 => "TyF64".to_owned(),
                 ast::TyF128 => "TyF128".to_owned()
             };
-            let e_fty = cx.expr_ident(sp, id_ext(s_fty));
+            let e_fty = cx.expr_ident(sp, id_ext(s_fty.as_slice()));
 
             let e_fident = mk_ident(cx, sp, fident);
 

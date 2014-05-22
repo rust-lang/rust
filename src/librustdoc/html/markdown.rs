@@ -177,8 +177,9 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
                 };
 
                 if !rendered {
-                    let output = highlight::highlight(text, None).as_slice()
-                                                                 .to_c_str();
+                    let output = highlight::highlight(text.as_slice(),
+                                                      None).as_slice()
+                                                           .to_c_str();
                     output.with_ref(|r| {
                         hoedown_buffer_puts(ob, r)
                     })
@@ -202,7 +203,7 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
         };
 
         // Transform the contents of the header into a hyphenated string
-        let id = (s.words().map(|s| {
+        let id = (s.as_slice().words().map(|s| {
             match s.to_ascii_opt() {
                 Some(s) => s.to_lower().into_str().to_strbuf(),
                 None => s.to_strbuf()

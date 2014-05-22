@@ -89,9 +89,10 @@ fn lookup_cur_matched(r: &TtReader, name: Ident) -> Rc<NamedMatch> {
     match matched_opt {
         Some(s) => lookup_cur_matched_by_matched(r, s),
         None => {
-            r.sp_diag.span_fatal(r.cur_span,
-                                 format!("unknown macro variable `{}`",
-                                         token::get_ident(name)));
+            r.sp_diag
+             .span_fatal(r.cur_span,
+                         format!("unknown macro variable `{}`",
+                                 token::get_ident(name)).as_slice());
         }
     }
 }
@@ -269,7 +270,7 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
                         r.sp_diag.span_fatal(
                             r.cur_span, /* blame the macro writer */
                             format!("variable '{}' is still repeating at this depth",
-                                    token::get_ident(ident)));
+                                    token::get_ident(ident)).as_slice());
                     }
                 }
             }

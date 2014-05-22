@@ -120,7 +120,8 @@ Additional help:
     -C help             Print codegen options
     -W help             Print 'lint' options and default settings
     -Z help             Print internal options for debugging rustc\n",
-              getopts::usage(message, config::optgroups().as_slice()));
+              getopts::usage(message.as_slice(),
+                             config::optgroups().as_slice()));
 }
 
 fn describe_warnings() {
@@ -142,8 +143,8 @@ Available lint options:
     for &(_, name) in lint_dict.iter() {
         max_key = cmp::max(name.len(), max_key);
     }
-    fn padded(max: uint, s: &str) -> ~str {
-        " ".repeat(max - s.len()) + s
+    fn padded(max: uint, s: &str) -> StrBuf {
+        format!("{}{}", " ".repeat(max - s.len()), s)
     }
     println!("\nAvailable lint checks:\n");
     println!("    {}  {:7.7s}  {}",
@@ -153,7 +154,7 @@ Available lint options:
     for (spec, name) in lint_dict.move_iter() {
         let name = name.replace("_", "-");
         println!("    {}  {:7.7s}  {}",
-                 padded(max_key, name),
+                 padded(max_key, name.as_slice()),
                  lint::level_to_str(spec.default),
                  spec.desc);
     }
@@ -305,16 +306,18 @@ pub fn parse_pretty(sess: &Session, name: &str) -> PpMode {
         (arg, "flowgraph") => {
              match arg.and_then(from_str) {
                  Some(id) => PpmFlowGraph(id),
-                 None => sess.fatal(format_strbuf!("`pretty flowgraph=<nodeid>` needs \
-                                                     an integer <nodeid>; got {}",
-                                                   arg.unwrap_or("nothing")).as_slice())
+                 None => {
+                     sess.fatal(format!("`pretty flowgraph=<nodeid>` needs \
+                                         an integer <nodeid>; got {}",
+                                        arg.unwrap_or("nothing")).as_slice())
+                 }
              }
         }
         _ => {
             sess.fatal(format!(
                 "argument to `pretty` must be one of `normal`, \
                  `expanded`, `flowgraph=<nodeid>`, `typed`, `identified`, \
-                 or `expanded,identified`; got {}", name));
+                 or `expanded,identified`; got {}", name).as_slice());
         }
     }
 }
@@ -397,18 +400,23 @@ fn monitor(f: proc():Send) {
 
                 let xs = [
                     "the compiler hit an unexpected failure path. this is a bug.".to_owned(),
-                    "we would appreciate a bug report: " + BUG_REPORT_URL,
+                    format!("we would appreciate a bug report: {}",
+                            BUG_REPORT_URL),
                     "run with `RUST_BACKTRACE=1` for a backtrace".to_owned(),
                 ];
                 for note in xs.iter() {
-                    emitter.emit(None, *note, diagnostic::Note)
+                    emitter.emit(None, note.as_slice(), diagnostic::Note)
                 }
 
                 match r.read_to_str() {
                     Ok(s) => println!("{}", s),
-                    Err(e) => emitter.emit(None,
-                                           format!("failed to read internal stderr: {}", e),
-                                           diagnostic::Error),
+                    Err(e) => {
+                        emitter.emit(None,
+                                     format!("failed to read internal \
+                                              stderr: {}",
+                                             e).as_slice(),
+                                     diagnostic::Error)
+                    }
                 }
             }
 

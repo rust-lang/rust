@@ -185,8 +185,9 @@ impl<'f> Combine for Lub<'f> {
 
             this.get_ref().infcx.tcx.sess.span_bug(
                 this.get_ref().trace.origin.span(),
-                format!("Region {:?} is not associated with \
-                        any bound region from A!", r0))
+                format!("region {:?} is not associated with \
+                         any bound region from A!",
+                        r0).as_slice())
         }
     }
 

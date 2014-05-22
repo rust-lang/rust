@@ -750,9 +750,11 @@ impl<'a> Builder<'a> {
 
     pub fn add_span_comment(&self, sp: Span, text: &str) {
         if self.ccx.sess().asm_comments() {
-            let s = format!("{} ({})", text, self.ccx.sess().codemap().span_to_str(sp));
-            debug!("{}", s);
-            self.add_comment(s);
+            let s = format!("{} ({})",
+                            text,
+                            self.ccx.sess().codemap().span_to_str(sp));
+            debug!("{}", s.as_slice());
+            self.add_comment(s.as_slice());
         }
     }
 
@@ -761,7 +763,7 @@ impl<'a> Builder<'a> {
             let sanitized = text.replace("$", "");
             let comment_text = format!("\\# {}", sanitized.replace("\n", "\n\t# "));
             self.count_insn("inlineasm");
-            let asm = comment_text.with_c_str(|c| {
+            let asm = comment_text.as_slice().with_c_str(|c| {
                 unsafe {
                     llvm::LLVMConstInlineAsm(Type::func([], &Type::void(self.ccx)).to_ref(),
                                              c, noname(), False, False)

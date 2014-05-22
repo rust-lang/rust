@@ -147,7 +147,10 @@ pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
             Some((err_pos, err_str)) => {
                 let pos = expr.span.lo + syntax::codemap::Pos::from_uint(err_pos + 1);
                 let span = syntax::codemap::mk_sp(pos,pos);
-                cx.span_err(span, format!("invalid hex float literal in hexfloat!: {}", err_str));
+                cx.span_err(span,
+                            format!("invalid hex float literal in hexfloat!: \
+                                     {}",
+                                    err_str).as_slice());
                 return base::DummyResult::expr(sp);
             }
             _ => ()

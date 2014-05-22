@@ -351,7 +351,10 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
                               cmds,
                               "quit".to_strbuf()].connect("\n");
             debug!("script_str = {}", script_str);
-            dump_output_file(config, testfile, script_str, "debugger.script");
+            dump_output_file(config,
+                             testfile,
+                             script_str.as_slice(),
+                             "debugger.script");
 
 
             procsrv::run("",
@@ -459,7 +462,10 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
                 "quit\n".to_strbuf()
             ].connect("\n");
             debug!("script_str = {}", script_str);
-            dump_output_file(config, testfile, script_str, "debugger.script");
+            dump_output_file(config,
+                             testfile,
+                             script_str.as_slice(),
+                             "debugger.script");
 
             // run debugger script with gdb
             #[cfg(windows)]
@@ -538,7 +544,8 @@ fn run_debuginfo_lldb_test(config: &Config, props: &TestProps, testfile: &Path) 
 
     // Set breakpoints on every line that contains the string "#break"
     for line in breakpoint_lines.iter() {
-        script_str.push_str(format!("breakpoint set --line {}\n", line));
+        script_str.push_str(format!("breakpoint set --line {}\n",
+                                    line).as_slice());
     }
 
     // Append the other commands
@@ -552,7 +559,10 @@ fn run_debuginfo_lldb_test(config: &Config, props: &TestProps, testfile: &Path) 
 
     // Write the script into a file
     debug!("script_str = {}", script_str);
-    dump_output_file(config, testfile, script_str.into_owned(), "debugger.script");
+    dump_output_file(config,
+                     testfile,
+                     script_str.as_slice(),
+                     "debugger.script");
     let debugger_script = make_out_name(config, testfile, "debugger.script");
 
     // Let LLDB execute the script via lldb_batchmode.py
@@ -609,8 +619,8 @@ fn parse_debugger_commands(file_path: &Path, debugger_prefix: &str)
                            -> DebuggerCommands {
     use std::io::{BufferedReader, File};
 
-    let command_directive = debugger_prefix + "-command";
-    let check_directive = debugger_prefix + "-check";
+    let command_directive = format!("{}-command", debugger_prefix);
+    let check_directive = format!("{}-check", debugger_prefix);
 
     let mut breakpoint_lines = vec!();
     let mut commands = vec!();
@@ -620,18 +630,18 @@ fn parse_debugger_commands(file_path: &Path, debugger_prefix: &str)
     for line in reader.lines() {
         match line {
             Ok(line) => {
-                if line.contains("#break") {
+                if line.as_slice().contains("#break") {
                     breakpoint_lines.push(counter);
                 }
 
                 header::parse_name_value_directive(
-                        line,
+                        line.as_slice(),
                         command_directive.to_strbuf()).map(|cmd| {
                     commands.push(cmd)
                 });
 
                 header::parse_name_value_directive(
-                        line,
+                        line.as_slice(),
                         check_directive.to_strbuf()).map(|cmd| {
                     check_lines.push(cmd)
                 });

@@ -175,11 +175,15 @@ impl<T: fmt::Show + Num + Ord> fmt::Show for Complex<T> {
 }
 
 impl<T: ToStrRadix + Num + Ord> ToStrRadix for Complex<T> {
-    fn to_str_radix(&self, radix: uint) -> ~str {
+    fn to_str_radix(&self, radix: uint) -> StrBuf {
         if self.im < Zero::zero() {
-            format!("{}-{}i", self.re.to_str_radix(radix), (-self.im).to_str_radix(radix))
+            format_strbuf!("{}-{}i",
+                           self.re.to_str_radix(radix),
+                           (-self.im).to_str_radix(radix))
         } else {
-            format!("{}+{}i", self.re.to_str_radix(radix), self.im.to_str_radix(radix))
+            format_strbuf!("{}+{}i",
+                           self.re.to_str_radix(radix),
+                           self.im.to_str_radix(radix))
         }
     }
 }

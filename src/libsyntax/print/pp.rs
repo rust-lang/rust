@@ -135,7 +135,9 @@ pub fn buf_str(toks: Vec<Token>,
         if i != left {
             s.push_str(", ");
         }
-        s.push_str(format!("{}={}", szs.get(i), tok_str(toks.get(i).clone())));
+        s.push_str(format!("{}={}",
+                           szs.get(i),
+                           tok_str(toks.get(i).clone())).as_slice());
         i += 1u;
         i %= n;
     }

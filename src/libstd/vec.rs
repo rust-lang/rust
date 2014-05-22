@@ -671,7 +671,7 @@ impl<T> Vec<T> {
     /// ```rust
     /// let v = vec!("a".to_owned(), "b".to_owned());
     /// for s in v.move_iter() {
-    ///     // s has type ~str, not &~str
+    ///     // s has type StrBuf, not &StrBuf
     ///     println!("{}", s);
     /// }
     /// ```
@@ -1849,9 +1849,9 @@ mod tests {
         let b: ~[u8] = FromVec::from_vec(a);
         assert_eq!(b.as_slice(), &[]);
 
-        let a = vec!["one".to_owned(), "two".to_owned()];
-        let b: ~[~str] = FromVec::from_vec(a);
-        assert_eq!(b.as_slice(), &["one".to_owned(), "two".to_owned()]);
+        let a = vec!["one".to_strbuf(), "two".to_strbuf()];
+        let b: ~[StrBuf] = FromVec::from_vec(a);
+        assert_eq!(b.as_slice(), &["one".to_strbuf(), "two".to_strbuf()]);
 
         struct Foo {
             x: uint,

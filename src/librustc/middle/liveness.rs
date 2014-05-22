@@ -317,7 +317,7 @@ impl<'a> IrMaps<'a> {
             self.tcx
                 .sess
                 .span_bug(span, format!("no variable registered for id {}",
-                                        node_id));
+                                        node_id).as_slice());
           }
         }
     }
@@ -606,8 +606,9 @@ impl<'a> Liveness<'a> {
             // code have to agree about which AST nodes are worth
             // creating liveness nodes for.
             self.ir.tcx.sess.span_bug(
-                span, format!("no live node registered for node {}",
-                           node_id));
+                span,
+                format!("no live node registered for node {}",
+                        node_id).as_slice());
           }
         }
     }

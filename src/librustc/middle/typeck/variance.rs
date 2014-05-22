@@ -538,8 +538,8 @@ impl<'a> ConstraintContext<'a> {
             Some(&index) => index,
             None => {
                 self.tcx().sess.bug(format!(
-                        "No inferred index entry for {}",
-                        self.tcx().map.node_to_str(param_id)));
+                        "no inferred index entry for {}",
+                        self.tcx().map.node_to_str(param_id)).as_slice());
             }
         }
     }
@@ -787,7 +787,7 @@ impl<'a> ConstraintContext<'a> {
                 self.tcx().sess.bug(
                     format!("unexpected type encountered in \
                             variance inference: {}",
-                            ty.repr(self.tcx())));
+                            ty.repr(self.tcx())).as_slice());
             }
         }
     }
@@ -858,9 +858,11 @@ impl<'a> ConstraintContext<'a> {
             ty::ReEmpty => {
                 // We don't expect to see anything but 'static or bound
                 // regions when visiting member types or method types.
-                self.tcx().sess.bug(format!("unexpected region encountered in \
-                                            variance inference: {}",
-                                            region.repr(self.tcx())));
+                self.tcx()
+                    .sess
+                    .bug(format!("unexpected region encountered in variance \
+                                  inference: {}",
+                                 region.repr(self.tcx())).as_slice());
             }
         }
     }

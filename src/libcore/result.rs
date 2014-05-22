@@ -169,20 +169,24 @@
 //! ~~~
 //! use std::io::{File, Open, Write, IoError};
 //!
-//! struct Info { name: ~str, age: int, rating: int }
+//! struct Info {
+//!     name: StrBuf,
+//!     age: int,
+//!     rating: int
+//! }
 //!
 //! fn write_info(info: &Info) -> Result<(), IoError> {
 //!     let mut file = File::open_mode(&Path::new("my_best_friends.txt"), Open, Write);
 //!     // Early return on error
-//!     match file.write_line(format!("name: {}", info.name)) {
+//!     match file.write_line(format!("name: {}", info.name).as_slice()) {
 //!         Ok(_) => (),
 //!         Err(e) => return Err(e)
 //!     }
-//!     match file.write_line(format!("age: {}", info.age)) {
+//!     match file.write_line(format!("age: {}", info.age).as_slice()) {
 //!         Ok(_) => (),
 //!         Err(e) => return Err(e)
 //!     }
-//!     return file.write_line(format!("rating: {}", info.rating));
+//!     return file.write_line(format!("rating: {}", info.rating).as_slice());
 //! }
 //! ~~~
 //!
@@ -191,14 +195,18 @@
 //! ~~~
 //! use std::io::{File, Open, Write, IoError};
 //!
-//! struct Info { name: ~str, age: int, rating: int }
+//! struct Info {
+//!     name: StrBuf,
+//!     age: int,
+//!     rating: int
+//! }
 //!
 //! fn write_info(info: &Info) -> Result<(), IoError> {
 //!     let mut file = File::open_mode(&Path::new("my_best_friends.txt"), Open, Write);
 //!     // Early return on error
-//!     try!(file.write_line(format!("name: {}", info.name)));
-//!     try!(file.write_line(format!("age: {}", info.age)));
-//!     try!(file.write_line(format!("rating: {}", info.rating)));
+//!     try!(file.write_line(format!("name: {}", info.name).as_slice()));
+//!     try!(file.write_line(format!("age: {}", info.age).as_slice()));
+//!     try!(file.write_line(format!("rating: {}", info.rating).as_slice()));
 //!     return Ok(());
 //! }
 //! ~~~
@@ -421,10 +429,10 @@ impl<T, E> Result<T, E> {
     /// let mut sum = 0;
     ///
     /// while !reader.eof() {
-    ///     let line: IoResult<~str> = reader.read_line();
+    ///     let line: IoResult<StrBuf> = reader.read_line();
     ///     // Convert the string line to a number using `map` and `from_str`
     ///     let val: IoResult<int> = line.map(|line| {
-    ///         from_str::<int>(line).unwrap_or(0)
+    ///         from_str::<int>(line.as_slice()).unwrap_or(0)
     ///     });
     ///     // Add the value if there were no errors, otherwise add 0
     ///     sum += val.ok().unwrap_or(0);
@@ -629,69 +637,68 @@ pub fn fold_<T,E,Iter:Iterator<Result<T,E>>>(iterator: Iter) -> Result<(),E> {
 #[cfg(test)]
 mod tests {
     use realstd::vec::Vec;
-    use realstd::str::StrAllocating;
+    use realstd::strbuf::StrBuf;
 
     use result::{collect, fold, fold_};
     use prelude::*;
+    use realstd::str::{Str, StrAllocating};
     use iter::range;
 
-    pub fn op1() -> Result<int, ~str> { Ok(666) }
-    pub fn op2() -> Result<int, ~str> { Err("sadface".to_owned()) }
+    pub fn op1() -> Result<int, &'static str> { Ok(666) }
+    pub fn op2() -> Result<int, &'static str> { Err("sadface") }
 
     #[test]
     pub fn test_and() {
         assert_eq!(op1().and(Ok(667)).unwrap(), 667);
-        assert_eq!(op1().and(Err::<(), ~str>("bad".to_owned())).unwrap_err(), "bad".to_owned());
+        assert_eq!(op1().and(Err::<(), &'static str>("bad")).unwrap_err(),
+                   "bad");
 
-        assert_eq!(op2().and(Ok(667)).unwrap_err(), "sadface".to_owned());
-        assert_eq!(op2().and(Err::<(), ~str>("bad".to_owned())).unwrap_err(), "sadface".to_owned());
+        assert_eq!(op2().and(Ok(667)).unwrap_err(), "sadface");
+        assert_eq!(op2().and(Err::<(),&'static str>("bad")).unwrap_err(),
+                   "sadface");
     }
 
     #[test]
     pub fn test_and_then() {
-        assert_eq!(op1().and_then(|i| Ok::<int, ~str>(i + 1)).unwrap(), 667);
-        assert_eq!(op1().and_then(|_| Err::<int, ~str>("bad".to_owned())).unwrap_err(),
-                   "bad".to_owned());
+        assert_eq!(op1().and_then(|i| Ok::<int, &'static str>(i + 1)).unwrap(), 667);
+        assert_eq!(op1().and_then(|_| Err::<int, &'static str>("bad")).unwrap_err(),
+                   "bad");
 
-        assert_eq!(op2().and_then(|i| Ok::<int, ~str>(i + 1)).unwrap_err(),
-                   "sadface".to_owned());
-        assert_eq!(op2().and_then(|_| Err::<int, ~str>("bad".to_owned())).unwrap_err(),
-                   "sadface".to_owned());
+        assert_eq!(op2().and_then(|i| Ok::<int, &'static str>(i + 1)).unwrap_err(),
+                   "sadface");
+        assert_eq!(op2().and_then(|_| Err::<int, &'static str>("bad")).unwrap_err(),
+                   "sadface");
     }
 
     #[test]
     pub fn test_or() {
         assert_eq!(op1().or(Ok(667)).unwrap(), 666);
-        assert_eq!(op1().or(Err("bad".to_owned())).unwrap(), 666);
+        assert_eq!(op1().or(Err("bad")).unwrap(), 666);
 
         assert_eq!(op2().or(Ok(667)).unwrap(), 667);
-        assert_eq!(op2().or(Err("bad".to_owned())).unwrap_err(), "bad".to_owned());
+        assert_eq!(op2().or(Err("bad")).unwrap_err(), "bad");
     }
 
     #[test]
     pub fn test_or_else() {
-        assert_eq!(op1().or_else(|_| Ok::<int, ~str>(667)).unwrap(), 666);
-        assert_eq!(op1().or_else(|e| Err::<int, ~str>(e + "!")).unwrap(), 666);
+        assert_eq!(op1().or_else(|_| Ok::<int, &'static str>(667)).unwrap(), 666);
+        assert_eq!(op1().or_else(|e| Err::<int, &'static str>(e)).unwrap(), 666);
 
-        assert_eq!(op2().or_else(|_| Ok::<int, ~str>(667)).unwrap(), 667);
-        assert_eq!(op2().or_else(|e| Err::<int, ~str>(e + "!")).unwrap_err(),
-                   "sadface!".to_owned());
+        assert_eq!(op2().or_else(|_| Ok::<int, &'static str>(667)).unwrap(), 667);
+        assert_eq!(op2().or_else(|e| Err::<int, &'static str>(e)).unwrap_err(),
+                   "sadface");
     }
 
     #[test]
     pub fn test_impl_map() {
-        assert_eq!(Ok::<~str, ~str>("a".to_owned()).map(|x| x + "b"),
-                   Ok("ab".to_owned()));
-        assert_eq!(Err::<~str, ~str>("a".to_owned()).map(|x| x + "b"),
-                   Err("a".to_owned()));
+        assert!(Ok::<int, int>(1).map(|x| x + 1) == Ok(2));
+        assert!(Err::<int, int>(1).map(|x| x + 1) == Err(1));
     }
 
     #[test]
     pub fn test_impl_map_err() {
-        assert_eq!(Ok::<~str, ~str>("a".to_owned()).map_err(|x| x + "b"),
-                   Ok("a".to_owned()));
-        assert_eq!(Err::<~str, ~str>("a".to_owned()).map_err(|x| x + "b"),
-                   Err("ab".to_owned()));
+        assert!(Ok::<int, int>(1).map_err(|x| x + 1) == Ok(1));
+        assert!(Err::<int, int>(1).map_err(|x| x + 1) == Err(2));
     }
 
     #[test]
@@ -736,17 +743,19 @@ mod tests {
 
     #[test]
     pub fn test_fmt_default() {
-        let ok: Result<int, ~str> = Ok(100);
-        let err: Result<int, ~str> = Err("Err".to_owned());
+        let ok: Result<int, &'static str> = Ok(100);
+        let err: Result<int, &'static str> = Err("Err");
 
-        assert_eq!(format!("{}", ok), "Ok(100)".to_owned());
-        assert_eq!(format!("{}", err), "Err(Err)".to_owned());
+        let s = format!("{}", ok);
+        assert_eq!(s.as_slice(), "Ok(100)");
+        let s = format!("{}", err);
+        assert_eq!(s.as_slice(), "Err(Err)");
     }
 
     #[test]
     pub fn test_unwrap_or() {
-        let ok: Result<int, ~str> = Ok(100);
-        let ok_err: Result<int, ~str> = Err("Err".to_owned());
+        let ok: Result<int, &'static str> = Ok(100);
+        let ok_err: Result<int, &'static str> = Err("Err");
 
         assert_eq!(ok.unwrap_or(50), 100);
         assert_eq!(ok_err.unwrap_or(50), 50);
@@ -754,16 +763,16 @@ mod tests {
 
     #[test]
     pub fn test_unwrap_or_else() {
-        fn handler(msg: ~str) -> int {
-            if msg == "I got this.".to_owned() {
+        fn handler(msg: &'static str) -> int {
+            if msg == "I got this." {
                 50
             } else {
                 fail!("BadBad")
             }
         }
 
-        let ok: Result<int, ~str> = Ok(100);
-        let ok_err: Result<int, ~str> = Err("I got this.".to_owned());
+        let ok: Result<int, &'static str> = Ok(100);
+        let ok_err: Result<int, &'static str> = Err("I got this.");
 
         assert_eq!(ok.unwrap_or_else(handler), 100);
         assert_eq!(ok_err.unwrap_or_else(handler), 50);
@@ -772,15 +781,15 @@ mod tests {
     #[test]
     #[should_fail]
     pub fn test_unwrap_or_else_failure() {
-        fn handler(msg: ~str) -> int {
-            if msg == "I got this.".to_owned() {
+        fn handler(msg: &'static str) -> int {
+            if msg == "I got this." {
                 50
             } else {
                 fail!("BadBad")
             }
         }
 
-        let bad_err: Result<int, ~str> = Err("Unrecoverable mess.".to_owned());
+        let bad_err: Result<int, &'static str> = Err("Unrecoverable mess.");
         let _ : int = bad_err.unwrap_or_else(handler);
     }
 }

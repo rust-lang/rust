@@ -486,6 +486,7 @@ pub mod ptr_tests {
     use mem;
     use libc;
     use realstd::str;
+    use realstd::str::Str;
     use slice::{ImmutableVector, MutableVector};
 
     #[test]
@@ -660,7 +661,7 @@ pub mod ptr_tests {
                     let expected = expected_arr[ctr].with_ref(|buf| {
                             str::raw::from_c_str(buf)
                         });
-                    assert_eq!(actual, expected);
+                    assert_eq!(actual.as_slice(), expected.as_slice());
                     ctr += 1;
                     iteration_count += 1;
                 });
@@ -693,7 +694,7 @@ pub mod ptr_tests {
                     let expected = expected_arr[ctr].with_ref(|buf| {
                         str::raw::from_c_str(buf)
                     });
-                    assert_eq!(actual, expected);
+                    assert_eq!(actual.as_slice(), expected.as_slice());
                     ctr += 1;
                     iteration_count += 1;
                 });

@@ -81,9 +81,11 @@ impl<T: Writer> Terminal<T> for TerminfoTerminal<T> {
             }
         };
 
-        let entry = open(term);
+        let entry = open(term.as_slice());
         if entry.is_err() {
-            if os::getenv("MSYSCON").map_or(false, |s| "mintty.exe" == s) {
+            if os::getenv("MSYSCON").map_or(false, |s| {
+                    "mintty.exe" == s.as_slice()
+                }) {
                 // msys terminal
                 return Some(TerminfoTerminal {out: out, ti: msys_terminfo(), num_colors: 8});
             }

@@ -9,12 +9,12 @@
 // except according to those terms.
 
 pub fn main() {
-    assert_eq!((vec!(0, 1)).to_str(), "[0, 1]".to_owned());
-    assert_eq!((&[1, 2]).to_str(), "[1, 2]".to_owned());
+    assert_eq!((vec!(0, 1)).to_str(), "[0, 1]".to_strbuf());
+    assert_eq!((&[1, 2]).to_str(), "[1, 2]".to_strbuf());
 
     let foo = vec!(3, 4);
     let bar = &[4, 5];
 
-    assert_eq!(foo.to_str(), "[3, 4]".to_owned());
-    assert_eq!(bar.to_str(), "[4, 5]".to_owned());
+    assert_eq!(foo.to_str(), "[3, 4]".to_strbuf());
+    assert_eq!(bar.to_str(), "[4, 5]".to_strbuf());
 }

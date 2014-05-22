@@ -39,7 +39,9 @@ impl fmt::Show for CrateId {
             Some(ref version) => version.as_slice(),
         };
         if self.path == self.name ||
-                self.path.as_slice().ends_with(format!("/{}", self.name)) {
+                self.path
+                    .as_slice()
+                    .ends_with(format!("/{}", self.name).as_slice()) {
             write!(f, "\\#{}", version)
         } else {
             write!(f, "\\#{}:{}", self.name, version)
@@ -52,12 +54,14 @@ impl FromStr for CrateId {
         let pieces: Vec<&str> = s.splitn('#', 1).collect();
         let path = pieces.get(0).to_owned();
 
-        if path.starts_with("/") || path.ends_with("/") ||
-            path.starts_with(".") || path.is_empty() {
+        if path.as_slice().starts_with("/") || path.as_slice().ends_with("/") ||
+            path.as_slice().starts_with(".") || path.is_empty() {
             return None;
         }
 
-        let path_pieces: Vec<&str> = path.rsplitn('/', 1).collect();
+        let path_pieces: Vec<&str> = path.as_slice()
+                                         .rsplitn('/', 1)
+                                         .collect();
         let inferred_name = *path_pieces.get(0);
 
         let (name, version) = if pieces.len() == 1 {

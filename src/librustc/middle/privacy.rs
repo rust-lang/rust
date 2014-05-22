@@ -632,7 +632,7 @@ impl<'a> PrivacyVisitor<'a> {
             UnnamedField(idx) => format!("field \\#{} of {} is private",
                                          idx + 1, struct_desc),
         };
-        self.tcx.sess.span_err(span, msg);
+        self.tcx.sess.span_err(span, msg.as_slice());
     }
 
     // Given the ID of a method, checks to ensure it's in scope.
@@ -647,7 +647,8 @@ impl<'a> PrivacyVisitor<'a> {
         self.report_error(self.ensure_public(span,
                                              method_id,
                                              None,
-                                             format!("method `{}`", string)));
+                                             format!("method `{}`",
+                                                     string).as_slice()));
     }
 
     // Checks that a path is in scope.
@@ -661,8 +662,12 @@ impl<'a> PrivacyVisitor<'a> {
                                                 .unwrap()
                                                 .identifier);
                 let origdid = def_id_of_def(orig_def);
-                self.ensure_public(span, def, Some(origdid),
-                                   format!("{} `{}`", tyname, name))
+                self.ensure_public(span,
+                                   def,
+                                   Some(origdid),
+                                   format!("{} `{}`",
+                                           tyname,
+                                           name).as_slice())
             };
 
             match *self.last_private_map.get(&path_id) {

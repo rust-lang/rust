@@ -511,7 +511,7 @@ fn write_out_deps(sess: &Session,
         Ok(()) => {}
         Err(e) => {
             sess.fatal(format!("error writing dependencies to `{}`: {}",
-                               deps_filename.display(), e));
+                               deps_filename.display(), e).as_slice());
         }
     }
 }
@@ -705,7 +705,8 @@ fn print_flowgraph<W:io::Writer>(analysis: CrateAnalysis,
             let m = "graphviz::render failed";
             io::IoError {
                 detail: Some(match orig_detail {
-                    None => m.into_owned(), Some(d) => format!("{}: {}", m, d)
+                    None => m.into_strbuf(),
+                    Some(d) => format_strbuf!("{}: {}", m, d)
                 }),
                 ..ioerr
             }

@@ -48,7 +48,7 @@ fn show_color_list(set: Vec<Color>) -> StrBuf {
     let mut out = StrBuf::new();
     for col in set.iter() {
         out.push_char(' ');
-        out.push_str(col.to_str());
+        out.push_str(col.to_str().as_slice());
     }
     out
 }
@@ -198,7 +198,10 @@ fn main() {
     let nn = if std::os::getenv("RUST_BENCH").is_some() {
         200000
     } else {
-        std::os::args().as_slice().get(1).and_then(|arg| from_str(*arg)).unwrap_or(600)
+        std::os::args().as_slice()
+                       .get(1)
+                       .and_then(|arg| from_str(arg.as_slice()))
+                       .unwrap_or(600)
     };
 
     print_complements();

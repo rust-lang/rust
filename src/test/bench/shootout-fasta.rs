@@ -80,7 +80,7 @@ fn run<W: Writer>(writer: &mut W) {
     } else if args.len() <= 1u {
         1000
     } else {
-        from_str(args[1]).unwrap()
+        from_str(args[1].as_slice()).unwrap()
     };
 
     let rng = &mut MyRandom::new();

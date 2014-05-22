@@ -27,6 +27,7 @@ use path::{Path,GenericPath};
 use result::*;
 use slice::{Vector,ImmutableVector};
 use str;
+use strbuf::StrBuf;
 use vec::Vec;
 
 pub struct DynamicLibrary { handle: *u8}
@@ -56,7 +57,7 @@ impl DynamicLibrary {
     /// Lazily open a dynamic library. When passed None it gives a
     /// handle to the calling process
     pub fn open<T: ToCStr>(filename: Option<T>)
-                        -> Result<DynamicLibrary, ~str> {
+                        -> Result<DynamicLibrary, StrBuf> {
         unsafe {
             let mut filename = filename;
             let maybe_library = dl::check_for_errors_in(|| {
@@ -118,7 +119,9 @@ impl DynamicLibrary {
         let mut ret = Vec::new();
         match os::getenv_as_bytes(DynamicLibrary::envvar()) {
             Some(env) => {
-                for portion in env.split(|a| *a == DynamicLibrary::separator()) {
+                for portion in
+                        env.as_slice()
+                           .split(|a| *a == DynamicLibrary::separator()) {
                     ret.push(Path::new(portion));
                 }
             }
@@ -128,7 +131,7 @@ impl DynamicLibrary {
     }
 
     /// Access the value at the symbol of the dynamic library
-    pub unsafe fn symbol<T>(&self, symbol: &str) -> Result<T, ~str> {
+    pub unsafe fn symbol<T>(&self, symbol: &str) -> Result<T, StrBuf> {
         // This function should have a lifetime constraint of 'a on
         // T but that feature is still unimplemented
 
@@ -203,10 +206,12 @@ mod test {
 pub mod dl {
     use prelude::*;
 
-    use c_str::ToCStr;
+    use c_str::{CString, ToCStr};
     use libc;
     use ptr;
-    use str;
+    use result::*;
+    use str::StrAllocating;
+    use strbuf::StrBuf;
 
     pub unsafe fn open_external<T: ToCStr>(filename: T) -> *u8 {
         filename.with_c_str(|raw_name| {
@@ -218,7 +223,7 @@ pub mod dl {
         dlopen(ptr::null(), Lazy as libc::c_int) as *u8
     }
 
-    pub fn check_for_errors_in<T>(f: || -> T) -> Result<T, ~str> {
+    pub fn check_for_errors_in<T>(f: || -> T) -> Result<T, StrBuf> {
         use unstable::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
         static mut lock: StaticNativeMutex = NATIVE_MUTEX_INIT;
         unsafe {
@@ -233,7 +238,9 @@ pub mod dl {
             let ret = if ptr::null() == last_error {
                 Ok(result)
             } else {
-                Err(str::raw::from_c_str(last_error))
+                Err(CString::new(last_error, false).as_str()
+                                                   .unwrap()
+                                                   .to_strbuf())
             };
 
             ret
@@ -269,6 +276,7 @@ pub mod dl {
     use os;
     use ptr;
     use result::{Ok, Err, Result};
+    use strbuf::StrBuf;
     use str;
     use c_str::ToCStr;
 
@@ -287,7 +295,7 @@ pub mod dl {
         handle as *u8
     }
 
-    pub fn check_for_errors_in<T>(f: || -> T) -> Result<T, ~str> {
+    pub fn check_for_errors_in<T>(f: || -> T) -> Result<T, StrBuf> {
         unsafe {
             SetLastError(0);
 

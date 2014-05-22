@@ -18,7 +18,7 @@ use libc;
 use option::{Some, None, Option};
 use os;
 use result::Ok;
-use str::StrSlice;
+use str::{Str, StrSlice};
 use unstable::running_on_valgrind;
 use slice::ImmutableVector;
 
@@ -55,7 +55,7 @@ pub fn limit_thread_creation_due_to_osx_and_valgrind() -> bool {
 pub fn default_sched_threads() -> uint {
     match os::getenv("RUST_THREADS") {
         Some(nstr) => {
-            let opt_n: Option<uint> = FromStr::from_str(nstr);
+            let opt_n: Option<uint> = FromStr::from_str(nstr.as_slice());
             match opt_n {
                 Some(n) if n > 0 => n,
                 _ => rtabort!("`RUST_THREADS` is `{}`, should be a positive integer", nstr)
@@ -145,6 +145,7 @@ which at the time convulsed us with joy, yet which are now partly lost to my
 memory and partly incapable of presentation to others.",
         _ => "You've met with a terrible fate, haven't you?"
     };
+    ::alloc::util::make_stdlib_link_work(); // see comments in liballoc
     rterrln!("{}", "");
     rterrln!("{}", quote);
     rterrln!("{}", "");

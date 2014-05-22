@@ -155,7 +155,10 @@ fn parse_trait_store(st: &mut PState, conv: conv_did) -> ty::TraitStore {
     match next(st) {
         '~' => ty::UniqTraitStore,
         '&' => ty::RegionTraitStore(parse_region(st, conv), parse_mutability(st)),
-        c => st.tcx.sess.bug(format!("parse_trait_store(): bad input '{}'", c))
+        c => {
+            st.tcx.sess.bug(format!("parse_trait_store(): bad input '{}'",
+                                    c).as_slice())
+        }
     }
 }
 
@@ -449,7 +452,7 @@ fn parse_abi_set(st: &mut PState) -> abi::Abi {
     assert_eq!(next(st), '[');
     scan(st, |c| c == ']', |bytes| {
         let abi_str = str::from_utf8(bytes).unwrap().to_owned();
-        abi::lookup(abi_str).expect(abi_str)
+        abi::lookup(abi_str.as_slice()).expect(abi_str)
     })
 }
 

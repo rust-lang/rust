@@ -52,7 +52,7 @@ impl<'a> ParserAnyMacro<'a> {
                                following",
                               token_str);
             let span = parser.span;
-            parser.span_err(span, msg);
+            parser.span_err(span, msg.as_slice());
         }
     }
 }

@@ -341,7 +341,8 @@ fn require_alloc_fn(bcx: &Block, info_ty: ty::t, it: LangItem) -> ast::DefId {
         Ok(id) => id,
         Err(s) => {
             bcx.sess().fatal(format!("allocation of `{}` {}",
-                                     bcx.ty_to_str(info_ty), s));
+                                     bcx.ty_to_str(info_ty),
+                                     s).as_slice());
         }
     }
 }
@@ -476,7 +477,7 @@ pub fn unset_split_stack(f: ValueRef) {
 // silently mangles such symbols, breaking our linkage model.
 pub fn note_unique_llvm_symbol(ccx: &CrateContext, sym: StrBuf) {
     if ccx.all_llvm_symbols.borrow().contains(&sym) {
-        ccx.sess().bug(format!("duplicate LLVM symbol: {}", sym));
+        ccx.sess().bug(format!("duplicate LLVM symbol: {}", sym).as_slice());
     }
     ccx.all_llvm_symbols.borrow_mut().insert(sym);
 }
@@ -739,8 +740,11 @@ pub fn iter_structural_ty<'r,
 
                   for variant in (*variants).iter() {
                       let variant_cx =
-                          fcx.new_temp_block("enum-iter-variant-".to_owned() +
-                                             variant.disr_val.to_str());
+                          fcx.new_temp_block(
+                              format_strbuf!("enum-iter-variant-{}",
+                                             variant.disr_val
+                                                    .to_str()
+                                                    .as_slice()).as_slice());
                       match adt::trans_case(cx, &*repr, variant.disr_val) {
                           _match::single_result(r) => {
                               AddCase(llswitch, r.val, variant_cx.llbb)
@@ -839,7 +843,7 @@ pub fn fail_if_zero<'a>(
       }
       _ => {
         cx.sess().bug(format!("fail-if-zero on unexpected type: {}",
-                              ty_to_str(cx.tcx(), rhs_t)));
+                              ty_to_str(cx.tcx(), rhs_t)).as_slice());
       }
     };
     with_cond(cx, is_zero, |bcx| {
@@ -1503,8 +1507,8 @@ fn trans_enum_variant_or_tuple_like_struct(ccx: &CrateContext,
         ty::ty_bare_fn(ref bft) => bft.sig.output,
         _ => ccx.sess().bug(
             format!("trans_enum_variant_or_tuple_like_struct: \
-                  unexpected ctor return type {}",
-                 ty_to_str(ccx.tcx(), ctor_ty)))
+                     unexpected ctor return type {}",
+                    ty_to_str(ccx.tcx(), ctor_ty)).as_slice())
     };
 
     let arena = TypedArena::new();
@@ -2052,7 +2056,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
 
         ref variant => {
             ccx.sess().bug(format!("get_item_val(): unexpected variant: {:?}",
-                           variant))
+                                   variant).as_slice())
         }
     };
 
@@ -2116,7 +2120,9 @@ pub fn write_metadata(cx: &CrateContext, krate: &ast::Crate) -> Vec<u8> {
     let compressed = Vec::from_slice(encoder::metadata_encoding_version)
                      .append(match flate::deflate_bytes(metadata.as_slice()) {
                          Some(compressed) => compressed,
-                         None => cx.sess().fatal(format!("failed to compress metadata"))
+                         None => {
+                             cx.sess().fatal("failed to compress metadata")
+                         }
                      }.as_slice());
     let llmeta = C_bytes(cx, compressed.as_slice());
     let llconst = C_struct(cx, [llmeta], false);

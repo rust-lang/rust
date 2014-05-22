@@ -326,8 +326,8 @@ impl Uuid {
         let mut s: Vec<u8> = Vec::from_elem(32, 0u8);
         for i in range(0u, 16u) {
             let digit = format!("{:02x}", self.bytes[i] as uint);
-            *s.get_mut(i*2+0) = digit[0];
-            *s.get_mut(i*2+1) = digit[1];
+            *s.get_mut(i*2+0) = digit.as_slice()[0];
+            *s.get_mut(i*2+1) = digit.as_slice()[1];
         }
         str::from_utf8(s.as_slice()).unwrap().to_strbuf()
     }
@@ -426,14 +426,16 @@ impl Uuid {
 
         // At this point, we know we have a valid hex string, without hyphens
         assert!(vs.len() == 32);
-        assert!(vs.chars().all(|c| c.is_digit_radix(16)));
+        assert!(vs.as_slice().chars().all(|c| c.is_digit_radix(16)));
 
         // Allocate output UUID buffer
         let mut ub = [0u8, ..16];
 
         // Extract each hex digit from the string
         for i in range(0u, 16u) {
-            ub[i] = FromStrRadix::from_str_radix(vs.slice(i*2, (i+1)*2), 16).unwrap();
+            ub[i] = FromStrRadix::from_str_radix(vs.as_slice()
+                                                   .slice(i*2, (i+1)*2),
+                                                 16).unwrap();
         }
 
         Ok(Uuid::from_bytes(ub).unwrap())
@@ -624,7 +626,7 @@ mod test {
         // Round-trip
         let uuid_orig = Uuid::new_v4();
         let orig_str = uuid_orig.to_str();
-        let uuid_out = Uuid::parse_string(orig_str).unwrap();
+        let uuid_out = Uuid::parse_string(orig_str.as_slice()).unwrap();
         assert!(uuid_orig == uuid_out);
 
         // Test error reporting
@@ -706,7 +708,7 @@ mod test {
         assert!(uuid_hs == uuid);
 
         let ss = uuid.to_str();
-        let uuid_ss = Uuid::parse_string(ss).unwrap();
+        let uuid_ss = Uuid::parse_string(ss.as_slice()).unwrap();
         assert!(uuid_ss == uuid);
     }
 

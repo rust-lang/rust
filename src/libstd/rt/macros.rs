@@ -43,6 +43,7 @@ macro_rules! rtassert (
 
 macro_rules! rtabort (
     ($($arg:tt)*) => ( {
-        ::rt::util::abort(format!($($arg)*));
+        use str::Str;
+        ::rt::util::abort(format!($($arg)*).as_slice());
     } )
 )
