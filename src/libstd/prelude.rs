@@ -76,10 +76,10 @@ pub use to_str::{ToStr, IntoStr};
 pub use tuple::{Tuple1, Tuple2, Tuple3, Tuple4};
 pub use tuple::{Tuple5, Tuple6, Tuple7, Tuple8};
 pub use tuple::{Tuple9, Tuple10, Tuple11, Tuple12};
-pub use slice::{ImmutableEqVector, ImmutableTotalOrdVector, ImmutableCloneableVector};
-pub use slice::{OwnedVector};
-pub use slice::{MutableVector, MutableTotalOrdVector, MutableVectorAllocating};
-pub use slice::{Vector, VectorVector, CloneableVector, ImmutableVector};
+pub use slice::{CloneableVector, ImmutableCloneableVector, MutableCloneableVector};
+pub use slice::{ImmutableVector, MutableVector};
+pub use slice::{ImmutableEqVector, ImmutableTotalOrdVector, MutableTotalOrdVector};
+pub use slice::{Vector, VectorVector, OwnedVector, MutableVectorAllocating};
 pub use strbuf::StrBuf;
 pub use vec::Vec;
 
