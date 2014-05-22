@@ -23,7 +23,7 @@
 //!
 //! Whenever the call to select() times out, then a channel receives a message.
 //! Whenever the call returns that the file descriptor has information, then the
-//! channel from timers is drained, enqueueing all incoming requests.
+//! channel from timers is drained, enqueuing all incoming requests.
 //!
 //! The actual implementation of the helper thread is a sorted array of
 //! timers in terms of target firing date. The target is the absolute time at
@@ -42,7 +42,7 @@
 //! thread. Whenever the timer is modified, it first takes ownership back from
 //! the worker thread in order to modify the same data structure. This has the
 //! side effect of "cancelling" the previous requests while allowing a
-//! re-enqueueing later on.
+//! re-enqueuing later on.
 //!
 //! Note that all time units in this file are in *milliseconds*.
 

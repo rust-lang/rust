@@ -31,7 +31,7 @@ use std::slice;
 /// Some clients will have a pre-allocated vector ready to hand off in
 /// a slice; others will want to create the set on the fly and hand
 /// off ownership, via either `Growable` or `FixedLen` depending on
-/// which kind of vector they have constucted.  (The `FixedLen`
+/// which kind of vector they have constructed.  (The `FixedLen`
 /// variant is provided for interoperability with `std::slice` methods
 /// that return `~[T]`.)
 pub enum MaybeOwnedVector<'a,T> {

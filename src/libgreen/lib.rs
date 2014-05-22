@@ -125,7 +125,7 @@
 //! }
 //! ```
 //!
-//! > **Note**: This `main` funciton in this example does *not* have I/O
+//! > **Note**: This `main` function in this example does *not* have I/O
 //! >           support. The basic event loop does not provide any support
 //!
 //! # Starting with I/O support in libgreen

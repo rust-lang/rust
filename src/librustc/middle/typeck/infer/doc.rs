@@ -244,7 +244,7 @@ yet, that's what we're trying to find!  In our code, we opt to unify
 
 # Implementation details
 
-We make use of a trait-like impementation strategy to consolidate
+We make use of a trait-like implementation strategy to consolidate
 duplicated code between subtypes, GLB, and LUB computations.  See the
 section on "Type Combining" below for details.
 

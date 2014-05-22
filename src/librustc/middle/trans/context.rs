@@ -73,7 +73,7 @@ pub struct CrateContext {
     /// came from)
     pub external_srcs: RefCell<NodeMap<ast::DefId>>,
     /// A set of static items which cannot be inlined into other crates. This
-    /// will pevent in IIItem() structures from being encoded into the metadata
+    /// will prevent in IIItem() structures from being encoded into the metadata
     /// that is generated
     pub non_inlineable_statics: RefCell<NodeSet>,
     /// Cache instances of monomorphized functions
