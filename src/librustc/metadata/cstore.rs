@@ -92,7 +92,7 @@ impl CStore {
     }
 
     pub fn next_crate_num(&self) -> ast::CrateNum {
-        self.metas.borrow().len() as ast::CrateNum + 1
+        (self.metas.borrow().len() as ast::CrateNum) + 1
     }
 
     pub fn get_crate_data(&self, cnum: ast::CrateNum) -> Rc<crate_metadata> {

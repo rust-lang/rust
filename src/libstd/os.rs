@@ -221,7 +221,7 @@ pub fn env_as_bytes() -> Vec<(~[u8],~[u8])> {
                 raw::buf_as_slice(p, len, |s| {
                     result.push(str::from_utf16_lossy(s).into_bytes());
                 });
-                i += len as int + 1;
+                i += (len as int) + 1;
             }
             FreeEnvironmentStringsW(ch);
             result

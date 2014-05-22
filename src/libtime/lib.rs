@@ -884,7 +884,7 @@ pub fn strftime(format: &str, tm: &Tm) -> StrBuf {
     }
 
     fn iso_week(ch:char, tm: &Tm) -> StrBuf {
-        let mut year: int = tm.tm_year as int + 1900;
+        let mut year: int = (tm.tm_year as int) + 1900;
         let mut days: int = iso_week_days (tm.tm_yday, tm.tm_wday);
 
         if days < 0 {
@@ -964,7 +964,7 @@ pub fn strftime(format: &str, tm: &Tm) -> StrBuf {
             11 => "Dec".to_strbuf(),
             _  => die()
           },
-          'C' => format_strbuf!("{:02d}", (tm.tm_year as int + 1900) / 100),
+          'C' => format_strbuf!("{:02d}", ((tm.tm_year as int) + 1900) / 100),
           'c' => {
             format_strbuf!("{} {} {} {} {}",
                 parse_type('a', tm),
@@ -1048,8 +1048,8 @@ pub fn strftime(format: &str, tm: &Tm) -> StrBuf {
                              (tm.tm_yday - (tm.tm_wday - 1 + 7) % 7 + 7) / 7)
           }
           'w' => (tm.tm_wday as int).to_str().to_strbuf(),
-          'Y' => (tm.tm_year as int + 1900).to_str().to_strbuf(),
-          'y' => format_strbuf!("{:02d}", (tm.tm_year as int + 1900) % 100),
+          'Y' => ((tm.tm_year as int) + 1900).to_str().to_strbuf(),
+          'y' => format_strbuf!("{:02d}", ((tm.tm_year as int) + 1900) % 100),
           'Z' => tm.tm_zone.to_strbuf(),
           'z' => {
             let sign = if tm.tm_gmtoff > 0_i32 { '+' } else { '-' };

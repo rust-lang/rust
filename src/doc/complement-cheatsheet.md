@@ -157,7 +157,7 @@ struct FooClosure<'a> {
 }
 
 fn a(a: int, b: uint) -> i32 {
-    (a as uint + b) as i32
+    ((a as uint) + b) as i32
 }
 
 fn main() {

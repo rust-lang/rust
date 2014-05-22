@@ -105,7 +105,7 @@ pub enum PathParsingMode {
     /// the type parameters; e.g. `foo::bar::<'a>::Baz::<T>`
     LifetimeAndTypesWithColons,
     /// A path with a lifetime and type parameters with bounds before the last
-    /// set of type parameters only; e.g. `foo::bar<'a>::Baz:X+Y<T>` This
+    /// set of type parameters only; e.g. `foo::bar<'a>::Baz+X+Y<T>` This
     /// form does not use extra double colons.
     LifetimeAndTypesAndBounds,
 }
@@ -1004,7 +1004,9 @@ impl<'a> Parser<'a> {
         };
 
         let (inputs, variadic) = self.parse_fn_args(false, false);
-        let (_, bounds) = self.parse_optional_ty_param_bounds(false);
+        let (_, bounds) = self.parse_optional_ty_param_bounds(
+            false,
+            [ &token::COLON ]);
         let (ret_style, ret_ty) = self.parse_ret_ty();
         let decl = P(FnDecl {
             inputs: inputs,
@@ -1060,7 +1062,9 @@ impl<'a> Parser<'a> {
             inputs
         };
 
-        let (region, bounds) = self.parse_optional_ty_param_bounds(true);
+        let (region, bounds) = self.parse_optional_ty_param_bounds(
+            true,
+            [ &token::COLON ]);
 
         let (return_style, output) = self.parse_ret_ty();
         let decl = P(FnDecl {
@@ -1585,7 +1589,9 @@ impl<'a> Parser<'a> {
 
         // Next, parse a colon and bounded type parameters, if applicable.
         let bounds = if mode == LifetimeAndTypesAndBounds {
-            let (_, bounds) = self.parse_optional_ty_param_bounds(false);
+            let (_, bounds) = self.parse_optional_ty_param_bounds(
+                false,
+                [ &token::COLON, &token::BINOP(token::PLUS) ]);
             bounds
         } else {
             None
@@ -3430,10 +3436,18 @@ impl<'a> Parser<'a> {
     // AST doesn't support arbitrary lifetimes in bounds on type parameters. In
     // the future, this flag should be removed, and the return value of this
     // function should be Option<~[TyParamBound]>
-    fn parse_optional_ty_param_bounds(&mut self, allow_any_lifetime: bool)
-        -> (Option<ast::Lifetime>, Option<OwnedSlice<TyParamBound>>)
-    {
-        if !self.eat(&token::COLON) {
+    fn parse_optional_ty_param_bounds(&mut self,
+                                      allow_any_lifetime: bool,
+                                      delimiters: &[&token::Token])
+        -> (Option<ast::Lifetime>, Option<OwnedSlice<TyParamBound>>) {
+        let mut found = false;
+        for delimiter in delimiters.iter() {
+            if self.eat(*delimiter) {
+                found = true;
+                break;
+            }
+        }
+        if !found {
             return (None, None);
         }
 
@@ -3483,7 +3497,9 @@ impl<'a> Parser<'a> {
         let sized = self.parse_sized();
         let span = self.span;
         let ident = self.parse_ident();
-        let (_, opt_bounds) = self.parse_optional_ty_param_bounds(false);
+        let (_, opt_bounds) = self.parse_optional_ty_param_bounds(
+            false,
+            [ &token::COLON ]);
         // For typarams we don't care about the difference b/w "<T>" and "<T:>".
         let bounds = opt_bounds.unwrap_or_default();
 

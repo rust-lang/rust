@@ -570,7 +570,7 @@ impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
             let p = self.as_ptr();
             if mem::size_of::<T>() == 0 {
                 Items{ptr: p,
-                      end: (p as uint + self.len()) as *T,
+                      end: ((p as uint) + self.len()) as *T,
                       marker: marker::ContravariantLifetime::<'a>}
             } else {
                 Items{ptr: p,
@@ -1026,7 +1026,7 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
             let p = self.as_mut_ptr();
             if mem::size_of::<T>() == 0 {
                 MutItems{ptr: p,
-                         end: (p as uint + self.len()) as *mut T,
+                         end: ((p as uint) + self.len()) as *mut T,
                          marker: marker::ContravariantLifetime::<'a>,
                          marker2: marker::NoCopy}
             } else {
@@ -1293,7 +1293,7 @@ macro_rules! iterator {
                             // purposefully don't use 'ptr.offset' because for
                             // vectors with 0-size elements this would return the
                             // same pointer.
-                            transmute(self.ptr as uint + 1)
+                            transmute((self.ptr as uint) + 1)
                         } else {
                             self.ptr.offset(1)
                         };

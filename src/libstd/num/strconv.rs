@@ -200,8 +200,8 @@ pub fn int_to_str_bytes_common<T: Int>(num: T, radix: uint, sign: SignFormat, f:
             current_digit_signed
         };
         buf[cur] = match current_digit.to_u8().unwrap() {
-            i @ 0..9 => '0' as u8 + i,
-            i        => 'a' as u8 + (i - 10),
+            i @ 0..9 => ('0' as u8) + i,
+            i        => ('a' as u8) + (i - 10),
         };
         cur += 1;
 

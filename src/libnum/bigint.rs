@@ -2129,7 +2129,7 @@ mod bigint_tests {
         check(i64::MAX.to_bigint().unwrap(), i64::MAX);
 
         assert_eq!(
-            (i64::MAX as u64 + 1).to_bigint().unwrap().to_i64(),
+            ((i64::MAX as u64) + 1).to_bigint().unwrap().to_i64(),
             None);
 
         assert_eq!(

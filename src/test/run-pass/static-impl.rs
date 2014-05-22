@@ -16,7 +16,7 @@ pub trait plus {
 
 mod a {
     use plus;
-    impl plus for uint { fn plus(&self) -> int { *self as int + 20 } }
+    impl plus for uint { fn plus(&self) -> int { (*self as int) + 20 } }
 }
 
 mod b {
@@ -64,7 +64,7 @@ pub fn main() {
     assert_eq!((vec!(1)).length_().str(), "1".to_strbuf());
     let vect = vec!(3, 4).map_(|a| *a + 4);
     assert_eq!(*vect.get(0), 7);
-    let vect = (vec!(3, 4)).map_::<uint>(|a| *a as uint + 4u);
+    let vect = (vec!(3, 4)).map_::<uint>(|a| (*a as uint) + 4u);
     assert_eq!(*vect.get(0), 7u);
     let mut x = 0u;
     10u.multi(|_n| x += 2u );

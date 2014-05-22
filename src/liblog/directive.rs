@@ -24,7 +24,7 @@ pub static LOG_LEVEL_NAMES: [&'static str, ..4] = ["ERROR", "WARN", "INFO",
 fn parse_log_level(level: &str) -> Option<u32> {
     from_str::<u32>(level).or_else(|| {
         let pos = LOG_LEVEL_NAMES.iter().position(|&name| name.eq_ignore_ascii_case(level));
-        pos.map(|p| p as u32 + 1)
+        pos.map(|p| (p as u32) + 1)
     }).map(|p| cmp::min(p, ::MAX_LOG_LEVEL))
 }
 
