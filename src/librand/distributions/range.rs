@@ -12,7 +12,7 @@
 
 // this is surprisingly complicated to be both generic & correct
 
-use std::num::Bounded;
+use std::cmp::Bounded;
 use Rng;
 use distributions::{Sample, IndependentSample};
 
@@ -164,7 +164,7 @@ mod tests {
     use distributions::{Sample, IndependentSample};
     use {Rng, task_rng};
     use super::Range;
-    use std::num::Bounded;
+    use std::cmp::Bounded;
 
     #[should_fail]
     #[test]

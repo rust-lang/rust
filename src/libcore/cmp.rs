@@ -129,6 +129,15 @@ impl Ord for Ordering {
     fn lt(&self, other: &Ordering) -> bool { (*self as int) < (*other as int) }
 }
 
+/// Types which have upper and lower bounds
+pub trait Bounded {
+    // FIXME (#5527): These should be associated constants
+    /// returns the smallest value this type can represent
+    fn min_value() -> Self;
+    /// returns the largest value this type can represent
+    fn max_value() -> Self;
+}
+
 /// Combine orderings, lexically.
 ///
 /// For example for a type `(int, int)`, two comparisons could be done.
@@ -192,7 +201,7 @@ pub fn max<T: TotalOrd>(v1: T, v2: T) -> T {
 // Implementation of Eq/TotalEq for some primitive types
 #[cfg(not(test))]
 mod impls {
-    use cmp::{Ord, TotalOrd, Eq, TotalEq, Ordering, Equal};
+    use cmp::{Ord, TotalOrd, Eq, TotalEq, Bounded, Ordering, Equal};
 
     impl Eq for () {
         #[inline]
@@ -208,6 +217,12 @@ mod impls {
     impl TotalOrd for () {
         #[inline]
         fn cmp(&self, _other: &()) -> Ordering { Equal }
+    }
+    impl Bounded for () {
+        #[inline]
+        fn min_value() -> () { () }
+        #[inline]
+        fn max_value() -> () { () }
     }
 
     // & pointers

@@ -16,7 +16,7 @@
 #![allow(missing_doc)]
 
 use clone::Clone;
-use cmp::{Eq, Ord};
+use cmp::{Eq, Ord, Bounded};
 use kinds::Copy;
 use mem::size_of;
 use ops::{Add, Sub, Mul, Div, Rem, Neg};
@@ -188,14 +188,6 @@ pub fn pow<T: One + Mul<T, T>>(mut base: T, mut exp: uint) -> T {
     }
 }
 
-/// Numbers which have upper and lower bounds
-pub trait Bounded {
-    // FIXME (#5527): These should be associated constants
-    /// returns the smallest finite number this type can represent
-    fn min_value() -> Self;
-    /// returns the largest finite number this type can represent
-    fn max_value() -> Self;
-}
 
 /// Numbers with a fixed binary representation.
 pub trait Bitwise: Bounded

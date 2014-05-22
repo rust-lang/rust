@@ -214,6 +214,7 @@ impl Not<$T> for $T {
     fn not(&self) -> $T { !*self }
 }
 
+#[cfg(not(test))]
 impl Bounded for $T {
     #[inline]
     fn min_value() -> $T { MIN }

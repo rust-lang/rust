@@ -12,12 +12,12 @@
 
 use default::Default;
 use intrinsics;
-use num::{Bitwise, Bounded, Zero, One, Unsigned, Num, Int, Primitive};
+use num::{Bitwise, Zero, One, Unsigned, Num, Int, Primitive};
 use num::{CheckedAdd, CheckedSub, CheckedMul, CheckedDiv};
 use option::{Some, None, Option};
 
 #[cfg(not(test))]
-use cmp::{Eq, Ord, TotalEq, TotalOrd, Less, Greater, Equal, Ordering};
+use cmp::{Eq, Ord, TotalEq, TotalOrd, Less, Greater, Equal, Ordering, Bounded};
 #[cfg(not(test))]
 use ops::{Add, Sub, Mul, Div, Rem, Neg, BitAnd, BitOr, BitXor};
 #[cfg(not(test))]

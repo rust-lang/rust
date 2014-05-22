@@ -28,7 +28,7 @@
 
 use num::{Int, one, zero};
 
-#[cfg(not(test))] use cmp::{Eq, Ord, TotalOrd, Ordering, TotalEq};
+#[cfg(not(test))] use cmp::{Eq, Ord, TotalOrd, Ordering, TotalEq, Bounded};
 #[cfg(not(test))] use ops::{Not, BitAnd, BitOr, BitXor};
 #[cfg(not(test))] use default::Default;
 
@@ -170,6 +170,14 @@ impl Eq for bool {
 
 #[cfg(not(test))]
 impl TotalEq for bool {}
+
+#[cfg(not(test))]
+impl Bounded for bool {
+    #[inline]
+    fn min_value() -> bool { false }
+    #[inline]
+    fn max_value() -> bool { true }
+}
 
 #[cfg(not(test))]
 impl Default for bool {
