@@ -123,7 +123,7 @@ impl Command {
     /// * Inherit the current process's environment
     /// * Inherit the current process's working directory
     /// * A readable pipe for stdin (file descriptor 0)
-    /// * A writeable pipe for stdour and stderr (file descriptors 1 and 2)
+    /// * A writeable pipe for stdout and stderr (file descriptors 1 and 2)
     ///
     /// Builder methods are provided to change these defaults and
     /// otherwise configure the process.

@@ -659,7 +659,7 @@ static INITIAL_LOAD_FACTOR: Fraction = (9, 10);
 /// on creation by default, this means the ordering of the keys is
 /// randomized, but makes the tables more resistant to
 /// denial-of-service attacks (Hash DoS). This behaviour can be
-/// overriden with one of the constructors.
+/// overridden with one of the constructors.
 ///
 /// It is required that the keys implement the `Eq` and `Hash` traits, although
 /// this can frequently be achieved by using `#[deriving(Eq, Hash)]`.

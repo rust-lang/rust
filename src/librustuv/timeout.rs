@@ -21,7 +21,7 @@ use uvio::UvIoFactory;
 use {Loop, UvError, uv_error_to_io_error, Request, wakeup};
 use {UvHandle, wait_until_woken_after};
 
-/// Managment of a timeout when gaining access to a portion of a duplex stream.
+/// Management of a timeout when gaining access to a portion of a duplex stream.
 pub struct AccessTimeout {
     state: TimeoutState,
     timer: Option<Box<TimerWatcher>>,

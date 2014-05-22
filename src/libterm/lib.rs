@@ -11,7 +11,7 @@
 //! Terminal formatting library.
 //!
 //! This crate provides the `Terminal` trait, which abstracts over an [ANSI
-//! Termina][ansi] to provide color printing, among other things. There are two implementations,
+//! Terminal][ansi] to provide color printing, among other things. There are two implementations,
 //! the `TerminfoTerminal`, which uses control characters from a
 //! [terminfo][ti] database, and `WinConsole`, which uses the [Win32 Console
 //! API][win].
