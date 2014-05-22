@@ -220,10 +220,10 @@ pub enum AutoRef {
     /// Convert from T to &T
     AutoPtr(Region, ast::Mutability),
 
-    /// Convert from ~[]/&[] to &[] (or str)
+    /// Convert from ~[]/&[] to &[] or str
     AutoBorrowVec(Region, ast::Mutability),
 
-    /// Convert from ~[]/&[] to &&[] (or str)
+    /// Convert from ~[]/&[] to &&[] or str
     AutoBorrowVecRef(Region, ast::Mutability),
 
     /// Convert from T to *T

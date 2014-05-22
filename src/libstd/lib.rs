@@ -32,7 +32,7 @@
 //!
 //! ## Pervasive types
 //!
-//! The [`option`](option/index.html) and [`result`](result/index.html)
+//! The [`option`](option/index.html) and [`result`](../core/result/index.html)
 //! modules define optional and error-handling types, `Option` and `Result`.
 //! [`iter`](../core/iter/index.html) defines Rust's iterator protocol
 //! along with a wide variety of iterators.
