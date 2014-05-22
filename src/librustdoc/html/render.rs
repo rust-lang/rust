@@ -150,7 +150,10 @@ pub struct Cache {
     /// When rendering traits, it's often useful to be able to list all
     /// implementors of the trait, and this mapping is exactly, that: a mapping
     /// of trait ids to the list of known implementors of the trait
-    pub implementors: HashMap<ast::NodeId, Vec<Implementor> >,
+    pub implementors: HashMap<ast::NodeId, Vec<Implementor>>,
+
+    /// Implementations of external traits, keyed by the external trait def id.
+    pub foreign_implementors: HashMap<ast::DefId, Vec<Implementor>>,
 
     /// Cache of where external crate documentation can be found.
     pub extern_locations: HashMap<ast::CrateNum, ExternalLocation>,
@@ -268,6 +271,7 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
         paths: paths,
         traits: HashMap::new(),
         implementors: HashMap::new(),
+        foreign_implementors: HashMap::new(),
         stack: Vec::new(),
         parent_stack: Vec::new(),
         search_index: Vec::new(),
@@ -396,26 +400,84 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
         try!(write(cx.dst.join("Heuristica-Bold.woff"),
                    include_bin!("static/Heuristica-Bold.woff")));
 
+        fn collect(path: &Path, krate: &str,
+                   key: &str) -> io::IoResult<Vec<StrBuf>> {
+            let mut ret = Vec::new();
+            if path.exists() {
+                for line in BufferedReader::new(File::open(path)).lines() {
+                    let line = try!(line);
+                    if !line.starts_with(key) { continue }
+                    if line.starts_with(format!("{}['{}']", key, krate)) {
+                        continue
+                    }
+                    ret.push(line.to_strbuf());
+                }
+            }
+            return Ok(ret);
+        }
+
         // Update the search index
         let dst = cx.dst.join("search-index.js");
-        let mut all_indexes = Vec::new();
-        all_indexes.push(index);
-        if dst.exists() {
-            for line in BufferedReader::new(File::open(&dst)).lines() {
-                let line = try!(line);
-                if !line.starts_with("searchIndex") { continue }
-                if line.starts_with(format!("searchIndex['{}']", krate.name)) {
-                    continue
-                }
-                all_indexes.push(line);
-            }
-        }
+        let all_indexes = try!(collect(&dst, krate.name.as_slice(),
+                                       "searchIndex"));
         let mut w = try!(File::create(&dst));
         try!(writeln!(&mut w, r"var searchIndex = \{\};"));
+        try!(writeln!(&mut w, "{}", index));
         for index in all_indexes.iter() {
             try!(writeln!(&mut w, "{}", *index));
         }
         try!(writeln!(&mut w, "initSearch(searchIndex);"));
+
+        // Update the list of all implementors for traits
+        let dst = cx.dst.join("implementors");
+        try!(mkdir(&dst));
+        for (&did, imps) in cache.foreign_implementors.iter() {
+            let &(ref remote_path, remote_item_type) = cache.paths.get(&did);
+
+            let mut mydst = dst.clone();
+            for part in remote_path.slice_to(remote_path.len() - 1).iter() {
+                mydst.push(part.as_slice());
+                try!(mkdir(&mydst));
+            }
+            mydst.push(format!("{}.{}.js",
+                               remote_item_type.to_static_str(),
+                               *remote_path.get(remote_path.len() - 1)));
+            let all_implementors = try!(collect(&mydst, krate.name.as_slice(),
+                                                "implementors"));
+
+            try!(mkdir(&mydst.dir_path()));
+            let mut f = BufferedWriter::new(try!(File::create(&mydst)));
+            try!(writeln!(&mut f, r"(function() \{var implementors = \{\};"));
+
+            for implementor in all_implementors.iter() {
+                try!(writeln!(&mut f, "{}", *implementor));
+            }
+
+            try!(write!(&mut f, r"implementors['{}'] = \{", krate.name));
+            for imp in imps.iter() {
+                let &(ref path, item_type) = match *imp {
+                    PathType(clean::ResolvedPath { did, .. }) => {
+                        cache.paths.get(&did)
+                    }
+                    PathType(..) | OtherType(..) => continue,
+                };
+                try!(write!(&mut f, r#"{}:"#, *path.get(path.len() - 1)));
+                try!(write!(&mut f, r#""{}"#,
+                            path.slice_to(path.len() - 1).connect("/")));
+                try!(write!(&mut f, r#"/{}.{}.html","#,
+                            item_type.to_static_str(),
+                            *path.get(path.len() - 1)));
+            }
+            try!(writeln!(&mut f, r"\};"));
+            try!(writeln!(&mut f, "{}", r"
+                if (window.register_implementors) {
+                    window.register_implementors(implementors);
+                } else {
+                    window.pending_implementors = implementors;
+                }
+            "));
+            try!(writeln!(&mut f, r"\})()"));
+        }
     }
 
     // Render all source files (this may turn into a giant no-op)
@@ -635,13 +697,13 @@ impl DocFolder for Cache {
                 match i.trait_ {
                     // FIXME: this is_local() check seems to be losing
                     // information
-                    Some(clean::ResolvedPath{ did, .. })
-                        if ast_util::is_local(did) =>
-                    {
-                        let id = did.node;
-                        let v = self.implementors.find_or_insert_with(id, |_|{
-                            Vec::new()
-                        });
+                    Some(clean::ResolvedPath{ did, .. }) => {
+                        let v = if ast_util::is_local(did) {
+                            self.implementors.find_or_insert(did.node, Vec::new())
+                        } else {
+                            self.foreign_implementors.find_or_insert(did,
+                                                                     Vec::new())
+                        };
                         match i.for_ {
                             clean::ResolvedPath{..} => {
                                 v.unshift(PathType(i.for_.clone()));
@@ -1050,7 +1112,7 @@ impl<'a> fmt::Show for Item<'a> {
             }
             clean::FunctionItem(ref f) | clean::ForeignFunctionItem(ref f) =>
                 item_function(fmt, self.item, f),
-            clean::TraitItem(ref t) => item_trait(fmt, self.item, t),
+            clean::TraitItem(ref t) => item_trait(fmt, self.cx, self.item, t),
             clean::StructItem(ref s) => item_struct(fmt, self.item, s),
             clean::EnumItem(ref e) => item_enum(fmt, self.item, e),
             clean::TypedefItem(ref t) => item_typedef(fmt, self.item, t),
@@ -1273,7 +1335,7 @@ fn item_function(w: &mut fmt::Formatter, it: &clean::Item,
     document(w, it)
 }
 
-fn item_trait(w: &mut fmt::Formatter, it: &clean::Item,
+fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
               t: &clean::Trait) -> fmt::Result {
     let mut parents = StrBuf::new();
     if t.parents.len() > 0 {
@@ -1353,7 +1415,7 @@ fn item_trait(w: &mut fmt::Formatter, it: &clean::Item,
         Some(implementors) => {
             try!(write!(w, "
                 <h2 id='implementors'>Implementors</h2>
-                <ul class='item-list'>
+                <ul class='item-list' id='implementors-list'>
             "));
             for i in implementors.iter() {
                 match *i {
@@ -1367,6 +1429,13 @@ fn item_trait(w: &mut fmt::Formatter, it: &clean::Item,
                 }
             }
             try!(write!(w, "</ul>"));
+            try!(write!(w, r#"<script type="text/javascript" async
+                                      src="{}/implementors/{}/{}.{}.js"></script>"#,
+                        cx.current.iter().map(|_| "..")
+                                  .collect::<Vec<&str>>().connect("/"),
+                        cx.current.connect("/"),
+                        shortty(it).to_static_str(),
+                        *it.name.get_ref()));
         }
         None => {}
     }
