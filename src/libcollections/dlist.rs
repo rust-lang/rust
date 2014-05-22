@@ -21,7 +21,6 @@
 // Backlinks over DList::prev are raw pointers that form a full chain in
 // the reverse direction.
 
-use std::iter::Rev;
 use std::iter;
 use std::mem;
 use std::ptr;
@@ -369,12 +368,6 @@ impl<T> DList<T> {
         Items{nelem: self.len(), head: &self.list_head, tail: self.list_tail}
     }
 
-    #[inline]
-    #[deprecated = "replaced by .iter().rev()"]
-    pub fn rev_iter<'a>(&'a self) -> Rev<Items<'a, T>> {
-        self.iter().rev()
-    }
-
     /// Provide a forward iterator with mutable references
     #[inline]
     pub fn mut_iter<'a>(&'a mut self) -> MutItems<'a, T> {
@@ -390,23 +383,11 @@ impl<T> DList<T> {
         }
     }
 
-    #[inline]
-    #[deprecated = "replaced by .mut_iter().rev()"]
-    pub fn mut_rev_iter<'a>(&'a mut self) -> Rev<MutItems<'a, T>> {
-        self.mut_iter().rev()
-    }
-
 
     /// Consume the list into an iterator yielding elements by value
     #[inline]
     pub fn move_iter(self) -> MoveItems<T> {
         MoveItems{list: self}
-    }
-
-    #[inline]
-    #[deprecated = "replaced by .move_iter().rev()"]
-    pub fn move_rev_iter(self) -> Rev<MoveItems<T>> {
-        self.move_iter().rev()
     }
 }
 

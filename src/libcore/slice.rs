@@ -386,9 +386,6 @@ pub trait ImmutableVector<'a, T> {
     fn slice_to(&self, end: uint) -> &'a [T];
     /// Returns an iterator over the vector
     fn iter(self) -> Items<'a, T>;
-    /// Returns a reversed iterator over a vector
-    #[deprecated = "replaced by .iter().rev()"]
-    fn rev_iter(self) -> Rev<Items<'a, T>>;
     /// Returns an iterator over the subslices of the vector which are
     /// separated by elements that match `pred`.  The matched element
     /// is not contained in the subslices.
@@ -398,12 +395,6 @@ pub trait ImmutableVector<'a, T> {
     /// at most `n` times.  The matched element is not contained in
     /// the subslices.
     fn splitn(self, n: uint, pred: |&T|: 'a -> bool) -> SplitsN<'a, T>;
-    /// Returns an iterator over the subslices of the vector which are
-    /// separated by elements that match `pred`. This starts at the
-    /// end of the vector and works backwards.  The matched element is
-    /// not contained in the subslices.
-    #[deprecated = "replaced by .split(pred).rev()"]
-    fn rsplit(self, pred: |&T|: 'a -> bool) -> Rev<Splits<'a, T>>;
     /// Returns an iterator over the subslices of the vector which are
     /// separated by elements that match `pred` limited to splitting
     /// at most `n` times. This starts at the end of the vector and
@@ -581,12 +572,6 @@ impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
     }
 
     #[inline]
-    #[deprecated = "replaced by .iter().rev()"]
-    fn rev_iter(self) -> Rev<Items<'a, T>> {
-        self.iter().rev()
-    }
-
-    #[inline]
     fn split(self, pred: |&T|: 'a -> bool) -> Splits<'a, T> {
         Splits {
             v: self,
@@ -602,12 +587,6 @@ impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
             count: n,
             invert: false
         }
-    }
-
-    #[inline]
-    #[deprecated = "replaced by .split(pred).rev()"]
-    fn rsplit(self, pred: |&T|: 'a -> bool) -> Rev<Splits<'a, T>> {
-        self.split(pred).rev()
     }
 
     #[inline]
@@ -805,10 +784,6 @@ pub trait MutableVector<'a, T> {
 
     /// Returns a mutable pointer to the last item in the vector.
     fn mut_last(self) -> Option<&'a mut T>;
-
-    /// Returns a reversed iterator that allows modifying each value
-    #[deprecated = "replaced by .mut_iter().rev()"]
-    fn mut_rev_iter(self) -> Rev<MutItems<'a, T>>;
 
     /// Returns an iterator over the mutable subslices of the vector
     /// which are separated by elements that match `pred`.  The
@@ -1043,12 +1018,6 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
         let len = self.len();
         if len == 0 { return None; }
         Some(&mut self[len - 1])
-    }
-
-    #[inline]
-    #[deprecated = "replaced by .mut_iter().rev()"]
-    fn mut_rev_iter(self) -> Rev<MutItems<'a, T>> {
-        self.mut_iter().rev()
     }
 
     #[inline]
@@ -1354,8 +1323,6 @@ impl<'a, T> RandomAccessIterator<&'a T> for Items<'a, T> {
 }
 
 iterator!{struct Items -> *T, &'a T}
-#[deprecated = "replaced by Rev<Items<'a, T>>"]
-pub type RevItems<'a, T> = Rev<Items<'a, T>>;
 
 impl<'a, T> ExactSize<&'a T> for Items<'a, T> {}
 impl<'a, T> ExactSize<&'a mut T> for MutItems<'a, T> {}
@@ -1365,8 +1332,6 @@ impl<'a, T> Clone for Items<'a, T> {
 }
 
 iterator!{struct MutItems -> *mut T, &'a mut T}
-#[deprecated = "replaced by Rev<MutItems<'a, T>>"]
-pub type RevMutItems<'a, T> = Rev<MutItems<'a, T>>;
 
 /// An iterator over the subslices of the vector which are separated
 /// by elements that match `pred`.
