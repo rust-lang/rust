@@ -46,6 +46,7 @@ via `close` and `delete` methods.
 #[cfg(test)] extern crate green;
 #[cfg(test)] extern crate realrustuv = "rustuv";
 extern crate libc;
+extern crate alloc;
 
 use libc::{c_int, c_void};
 use std::fmt;

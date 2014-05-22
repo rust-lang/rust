@@ -57,6 +57,7 @@
 //    answer is that you don't need them)
 #![feature(macro_rules)]
 
+extern crate alloc;
 extern crate libc;
 
 use std::os;
