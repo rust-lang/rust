@@ -10,6 +10,8 @@
 
 // error-pattern:called `Result::unwrap()` on an `Err` value
 
+extern crate debug;
+
 use std::result;
 
 fn main() {

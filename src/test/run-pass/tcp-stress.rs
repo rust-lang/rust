@@ -18,6 +18,7 @@ extern crate log;
 extern crate libc;
 extern crate green;
 extern crate rustuv;
+extern crate debug;
 
 use std::io::net::tcp::{TcpListener, TcpStream};
 use std::io::{Acceptor, Listener};

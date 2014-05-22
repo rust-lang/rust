@@ -102,6 +102,7 @@ you were writing this Rust code:
 
 ~~~rust
 # fn transform(p: Point) -> Point { p }
+#[deriving(Show)]
 struct Point {
     x: int,
     y: int,
@@ -110,7 +111,7 @@ struct Point {
 fn main() {
     let p0 = Point { x: 5, y: 10};
     let p1 = transform(p0);
-    println!("{:?}", p1);
+    println!("{}", p1);
 }
 
 ~~~
@@ -134,6 +135,7 @@ let p1 = transform(&p0);
 This does work, but you don't need to create those references! The better way to write this is simply:
 
 ~~~rust
+#[deriving(Show)]
 struct Point {
     x: int,
     y: int,
@@ -146,7 +148,7 @@ fn transform(p: Point) -> Point {
 fn main() {
     let p0 = Point { x: 5, y: 10};
     let p1 = transform(p0);
-    println!("{:?}", p1);
+    println!("{}", p1);
 }
 ~~~
 
@@ -182,7 +184,7 @@ trait. Therefore, unboxed traits don't make any sense, and aren't allowed.
 Sometimes, you need a recursive data structure. The simplest is known as a 'cons list':
 
 ~~~rust
-
+#[deriving(Show)]
 enum List<T> {
     Nil,
     Cons(T, Box<List<T>>),
@@ -190,7 +192,7 @@ enum List<T> {
 
 fn main() {
     let list: List<int> = Cons(1, box Cons(2, box Cons(3, box Nil)));
-    println!("{:?}", list);
+    println!("{}", list);
 }
 ~~~
 
@@ -349,7 +351,7 @@ fn main() {
     let origin =    @Point { x: 0.0, y: 0.0 };
     let p1     = box Point { x: 5.0, y: 3.0 };
 
-    println!("{:?}", compute_distance(origin, p1));
+    println!("{}", compute_distance(origin, p1));
 }
 ~~~
 
@@ -385,11 +387,11 @@ fn main() {
     let mut x = box 5;
     if *x < 10 {
         let y = &x;
-        println!("Oh no: {:?}", y);
+        println!("Oh no: {}", y);
         return;
     }
     *x -= 1;
-    println!("Oh no: {:?}", x);
+    println!("Oh no: {}", x);
 }
 ~~~
 
@@ -404,11 +406,11 @@ fn main() {
         let y = &x;
         *x -= 1;
 
-        println!("Oh no: {:?}", y);
+        println!("Oh no: {}", y);
         return;
     }
     *x -= 1;
-    println!("Oh no: {:?}", x);
+    println!("Oh no: {}", x);
 }
 ~~~
 

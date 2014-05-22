@@ -10,6 +10,8 @@
 
 #![feature(managed_boxes)]
 
+extern crate debug;
+
 fn magic(x: A) { println!("{:?}", x); }
 fn magic2(x: @int) { println!("{:?}", x); }
 

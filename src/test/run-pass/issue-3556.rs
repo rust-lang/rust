@@ -10,6 +10,8 @@
 
 #![feature(managed_boxes)]
 
+extern crate debug;
+
 enum Token {
     Text(@String),
     ETag(@Vec<String> , @String),

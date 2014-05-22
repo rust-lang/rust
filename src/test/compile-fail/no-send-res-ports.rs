@@ -10,6 +10,8 @@
 
 #![feature(managed_boxes)]
 
+extern crate debug;
+
 use std::task;
 
 struct Port<T>(@T);

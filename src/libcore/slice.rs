@@ -419,7 +419,7 @@ pub trait ImmutableVector<'a, T> {
      * ```rust
      * let v = &[1,2,3,4];
      * for win in v.windows(2) {
-     *     println!("{:?}", win);
+     *     println!("{}", win);
      * }
      * ```
      *
@@ -444,7 +444,7 @@ pub trait ImmutableVector<'a, T> {
      * ```rust
      * let v = &[1,2,3,4,5];
      * for win in v.chunks(2) {
-     *     println!("{:?}", win);
+     *     println!("{}", win);
      * }
      * ```
      *

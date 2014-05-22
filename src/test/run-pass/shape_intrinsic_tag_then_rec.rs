@@ -10,6 +10,8 @@
 
 #![feature(managed_boxes)]
 
+extern crate debug;
+
 // Exercises a bug in the shape code that was exposed
 // on x86_64: when there is an enum embedded in an
 // interior record which is then itself interior to

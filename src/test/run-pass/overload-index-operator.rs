@@ -11,6 +11,8 @@
 // Test overloading of the `[]` operator.  In particular test that it
 // takes its argument *by reference*.
 
+extern crate debug;
+
 use std::ops::Index;
 
 struct AssociationList<K,V> {

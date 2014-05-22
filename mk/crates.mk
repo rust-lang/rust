@@ -51,7 +51,7 @@
 
 TARGET_CRATES := libc std green rustuv native flate arena glob term semver \
                  uuid serialize sync getopts collections num test time rand \
-		 workcache url log regex graphviz core rlibc alloc
+		 workcache url log regex graphviz core rlibc alloc debug
 HOST_CRATES := syntax rustc rustdoc fourcc hexfloat regex_macros fmt_macros
 CRATES := $(TARGET_CRATES) $(HOST_CRATES)
 TOOLS := compiletest rustdoc rustc
@@ -59,16 +59,17 @@ TOOLS := compiletest rustdoc rustc
 DEPS_core :=
 DEPS_rlibc :=
 DEPS_alloc := core libc native:jemalloc
+DEPS_debug := std
 DEPS_std := core libc alloc native:rustrt native:backtrace
 DEPS_graphviz := std
 DEPS_green := std rand native:context_switch
 DEPS_rustuv := std native:uv native:uv_support
 DEPS_native := std
-DEPS_syntax := std term serialize collections log fmt_macros
+DEPS_syntax := std term serialize collections log fmt_macros debug
 DEPS_rustc := syntax native:rustllvm flate arena serialize sync getopts \
-              collections time log graphviz
+              collections time log graphviz debug
 DEPS_rustdoc := rustc native:hoedown serialize sync getopts collections \
-                test time
+                test time debug
 DEPS_flate := std native:miniz
 DEPS_arena := std collections
 DEPS_graphviz := std
@@ -79,7 +80,7 @@ DEPS_semver := std
 DEPS_uuid := std serialize rand
 DEPS_sync := std alloc
 DEPS_getopts := std
-DEPS_collections := std rand
+DEPS_collections := std rand debug
 DEPS_fourcc := syntax std
 DEPS_hexfloat := syntax std
 DEPS_num := std rand

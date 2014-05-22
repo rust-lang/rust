@@ -51,8 +51,8 @@ impl Stack {
         // page. It isn't guaranteed, but that's why FFI is unsafe. buf.data is
         // guaranteed to be aligned properly.
         if !protect_last_page(&stack) {
-            fail!("Could not memory-protect guard page. stack={:?}, errno={}",
-                  stack, errno());
+            fail!("Could not memory-protect guard page. stack={}, errno={}",
+                  stack.data, errno());
         }
 
         let mut stk = Stack {

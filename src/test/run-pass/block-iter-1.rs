@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
+extern crate debug;
 
 fn iter_vec<T>(v: Vec<T> , f: |&T|) { for x in v.iter() { f(x); } }
 

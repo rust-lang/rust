@@ -11,6 +11,8 @@
 
 #![feature(managed_boxes)]
 
+extern crate debug;
+
 /// Map representation
 
 use std::io;

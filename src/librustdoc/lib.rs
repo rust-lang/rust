@@ -16,17 +16,18 @@
 
 #![feature(globs, struct_variant, managed_boxes, macro_rules, phase)]
 
-extern crate syntax;
+extern crate collections;
+extern crate debug;
+extern crate getopts;
+extern crate libc;
+#[phase(syntax, link)]
+extern crate log;
 extern crate rustc;
 extern crate serialize;
 extern crate sync;
-extern crate getopts;
-extern crate collections;
+extern crate syntax;
 extern crate testing = "test";
 extern crate time;
-#[phase(syntax, link)]
-extern crate log;
-extern crate libc;
 
 use std::io;
 use std::io::{File, MemWriter};

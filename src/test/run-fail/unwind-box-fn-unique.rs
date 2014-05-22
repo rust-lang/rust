@@ -12,6 +12,8 @@
 
 // error-pattern:fail
 
+extern crate debug;
+
 fn failfn() {
     fail!();
 }

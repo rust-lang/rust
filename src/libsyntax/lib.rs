@@ -36,6 +36,7 @@ extern crate collections;
 #[phase(syntax, link)]
 extern crate log;
 extern crate fmt_macros;
+extern crate debug;
 
 pub mod util {
     pub mod interner;

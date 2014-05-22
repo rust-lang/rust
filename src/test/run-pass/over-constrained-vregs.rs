@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
+extern crate debug;
 
 // Regression test for issue #152.
 pub fn main() {

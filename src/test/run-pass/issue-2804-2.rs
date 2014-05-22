@@ -13,6 +13,7 @@
 // clobber the previous node ID in a macro expr
 
 extern crate collections;
+extern crate debug;
 
 use collections::HashMap;
 
