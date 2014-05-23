@@ -1571,6 +1571,9 @@ fn try_inline(id: ast::NodeId) -> Option<Vec<Item>> {
             ret.extend(build_impls(tcx, did).move_iter());
             build_type(tcx, did)
         }
+        // Assume that the enum type is reexported next to the variant, and
+        // variants don't show up in documentation specially.
+        ast::DefVariant(..) => return Some(Vec::new()),
         _ => return None,
     };
     let fqn = csearch::get_item_path(tcx, did);
