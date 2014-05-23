@@ -76,7 +76,7 @@ pub trait FormatWriter {
     /// This function will return an instance of `FormatError` on error.
     fn write(&mut self, bytes: &[u8]) -> Result;
 
-    /// Glue for usage of the `write!` macro with implementors of this trait.
+    /// Glue for usage of the `write!` macro with implementers of this trait.
     ///
     /// This method should generally not be invoked manually, but rather through
     /// the `write!` macro itself.

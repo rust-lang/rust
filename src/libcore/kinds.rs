@@ -266,7 +266,7 @@ pub mod marker {
     #[deriving(Eq,Clone)]
     pub struct NoCopy;
 
-    /// A type which is considered "not sharable", meaning that
+    /// A type which is considered "not shareable", meaning that
     /// its contents are not threadsafe, hence they cannot be
     /// shared between tasks.
     #[lang="no_share_bound"]

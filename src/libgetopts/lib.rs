@@ -190,7 +190,7 @@ pub enum Fail_ {
     UnrecognizedOption(StrBuf),
     /// A required option is not present.
     OptionMissing(StrBuf),
-    /// A single occurence option is being used multiple times.
+    /// A single occurrence option is being used multiple times.
     OptionDuplicated(StrBuf),
     /// There's an argument being passed to a non-argument option.
     UnexpectedArgument(StrBuf),
