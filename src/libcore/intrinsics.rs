@@ -360,110 +360,189 @@ extern "rust-intrinsic" {
     /// Perform a volatile store to the `dst` pointer.
     pub fn volatile_store<T>(dst: *mut T, val: T);
 
+    /// Returns the square root of an `f32`
     pub fn sqrtf32(x: f32) -> f32;
+    /// Returns the square root of an `f64`
     pub fn sqrtf64(x: f64) -> f64;
 
+    /// Raises an `f32` to an integer power.
     pub fn powif32(a: f32, x: i32) -> f32;
+    /// Raises an `f64` to an integer power.
     pub fn powif64(a: f64, x: i32) -> f64;
 
+    /// Returns the sine of an `f32`.
     pub fn sinf32(x: f32) -> f32;
+    /// Returns the sine of an `f64`.
     pub fn sinf64(x: f64) -> f64;
 
+    /// Returns the cosine of an `f32`.
     pub fn cosf32(x: f32) -> f32;
+    /// Returns the cosine of an `f64`.
     pub fn cosf64(x: f64) -> f64;
 
+    /// Raises an `f32` to an `f32` power.
     pub fn powf32(a: f32, x: f32) -> f32;
+    /// Raises an `f64` to an `f64` power.
     pub fn powf64(a: f64, x: f64) -> f64;
 
+    /// Returns the exponential of an `f32`.
     pub fn expf32(x: f32) -> f32;
+    /// Returns the exponential of an `f64`.
     pub fn expf64(x: f64) -> f64;
 
+    /// Returns 2 raised to the power of an `f32`.
     pub fn exp2f32(x: f32) -> f32;
+    /// Returns 2 raised to the power of an `f64`.
     pub fn exp2f64(x: f64) -> f64;
 
+    /// Returns the natural logarithm of an `f32`.
     pub fn logf32(x: f32) -> f32;
+    /// Returns the natural logarithm of an `f64`.
     pub fn logf64(x: f64) -> f64;
 
+    /// Returns the base 10 logarithm of an `f32`.
     pub fn log10f32(x: f32) -> f32;
+    /// Returns the base 10 logarithm of an `f64`.
     pub fn log10f64(x: f64) -> f64;
 
+    /// Returns the base 2 logarithm of an `f32`.
     pub fn log2f32(x: f32) -> f32;
+    /// Returns the base 2 logarithm of an `f64`.
     pub fn log2f64(x: f64) -> f64;
 
+    /// Returns `a * b + c` for `f32` values.
     pub fn fmaf32(a: f32, b: f32, c: f32) -> f32;
+    /// Returns `a * b + c` for `f64` values.
     pub fn fmaf64(a: f64, b: f64, c: f64) -> f64;
 
+    /// Returns the absolute value of an `f32`.
     pub fn fabsf32(x: f32) -> f32;
+    /// Returns the absolute value of an `f64`.
     pub fn fabsf64(x: f64) -> f64;
 
+    /// Copies the sign from `y` to `x` for `f32` values.
     pub fn copysignf32(x: f32, y: f32) -> f32;
+    /// Copies the sign from `y` to `x` for `f64` values.
     pub fn copysignf64(x: f64, y: f64) -> f64;
 
+    /// Returns the largest integer less than or equal to an `f32`.
     pub fn floorf32(x: f32) -> f32;
+    /// Returns the largest integer less than or equal to an `f64`.
     pub fn floorf64(x: f64) -> f64;
 
+    /// Returns the smallest integer greater than or equal to an `f32`.
     pub fn ceilf32(x: f32) -> f32;
+    /// Returns the smallest integer greater than or equal to an `f64`.
     pub fn ceilf64(x: f64) -> f64;
 
+    /// Returns the integer part of an `f32`.
     pub fn truncf32(x: f32) -> f32;
+    /// Returns the integer part of an `f64`.
     pub fn truncf64(x: f64) -> f64;
 
+    /// Returns the nearest integer to an `f32`. May raise an inexact floating-point exception
+    /// if the argument is not an integer.
     pub fn rintf32(x: f32) -> f32;
+    /// Returns the nearest integer to an `f64`. May raise an inexact floating-point exception
+    /// if the argument is not an integer.
     pub fn rintf64(x: f64) -> f64;
 
+    /// Returns the nearest integer to an `f32`.
     pub fn nearbyintf32(x: f32) -> f32;
+    /// Returns the nearest integer to an `f64`.
     pub fn nearbyintf64(x: f64) -> f64;
 
+    /// Returns the nearest integer to an `f32`. Rounds half-way cases away from zero.
     pub fn roundf32(x: f32) -> f32;
+    /// Returns the nearest integer to an `f64`. Rounds half-way cases away from zero.
     pub fn roundf64(x: f64) -> f64;
 
+    /// Returns the number of bits set in a `u8`.
     pub fn ctpop8(x: u8) -> u8;
+    /// Returns the number of bits set in a `u16`.
     pub fn ctpop16(x: u16) -> u16;
+    /// Returns the number of bits set in a `u32`.
     pub fn ctpop32(x: u32) -> u32;
+    /// Returns the number of bits set in a `u64`.
     pub fn ctpop64(x: u64) -> u64;
 
+    /// Returns the number of leading bits unset in a `u8`.
     pub fn ctlz8(x: u8) -> u8;
+    /// Returns the number of leading bits unset in a `u16`.
     pub fn ctlz16(x: u16) -> u16;
+    /// Returns the number of leading bits unset in a `u32`.
     pub fn ctlz32(x: u32) -> u32;
+    /// Returns the number of leading bits unset in a `u64`.
     pub fn ctlz64(x: u64) -> u64;
 
+    /// Returns the number of trailing bits unset in a `u8`.
     pub fn cttz8(x: u8) -> u8;
+    /// Returns the number of trailing bits unset in a `u16`.
     pub fn cttz16(x: u16) -> u16;
+    /// Returns the number of trailing bits unset in a `u32`.
     pub fn cttz32(x: u32) -> u32;
+    /// Returns the number of trailing bits unset in a `u64`.
     pub fn cttz64(x: u64) -> u64;
 
+    /// Reverses the bytes in a `u16`.
     pub fn bswap16(x: u16) -> u16;
+    /// Reverses the bytes in a `u32`.
     pub fn bswap32(x: u32) -> u32;
+    /// Reverses the bytes in a `u64`.
     pub fn bswap64(x: u64) -> u64;
 
+    /// Performs checked `i8` addition.
     pub fn i8_add_with_overflow(x: i8, y: i8) -> (i8, bool);
+    /// Performs checked `i16` addition.
     pub fn i16_add_with_overflow(x: i16, y: i16) -> (i16, bool);
+    /// Performs checked `i32` addition.
     pub fn i32_add_with_overflow(x: i32, y: i32) -> (i32, bool);
+    /// Performs checked `i64` addition.
     pub fn i64_add_with_overflow(x: i64, y: i64) -> (i64, bool);
 
+    /// Performs checked `u8` addition.
     pub fn u8_add_with_overflow(x: u8, y: u8) -> (u8, bool);
+    /// Performs checked `u16` addition.
     pub fn u16_add_with_overflow(x: u16, y: u16) -> (u16, bool);
+    /// Performs checked `u32` addition.
     pub fn u32_add_with_overflow(x: u32, y: u32) -> (u32, bool);
+    /// Performs checked `u64` addition.
     pub fn u64_add_with_overflow(x: u64, y: u64) -> (u64, bool);
 
+    /// Performs checked `i8` subtraction.
     pub fn i8_sub_with_overflow(x: i8, y: i8) -> (i8, bool);
+    /// Performs checked `i16` subtraction.
     pub fn i16_sub_with_overflow(x: i16, y: i16) -> (i16, bool);
+    /// Performs checked `i32` subtraction.
     pub fn i32_sub_with_overflow(x: i32, y: i32) -> (i32, bool);
+    /// Performs checked `i64` subtraction.
     pub fn i64_sub_with_overflow(x: i64, y: i64) -> (i64, bool);
 
+    /// Performs checked `u8` subtraction.
     pub fn u8_sub_with_overflow(x: u8, y: u8) -> (u8, bool);
+    /// Performs checked `u16` subtraction.
     pub fn u16_sub_with_overflow(x: u16, y: u16) -> (u16, bool);
+    /// Performs checked `u32` subtraction.
     pub fn u32_sub_with_overflow(x: u32, y: u32) -> (u32, bool);
+    /// Performs checked `u64` subtraction.
     pub fn u64_sub_with_overflow(x: u64, y: u64) -> (u64, bool);
 
+    /// Performs checked `i8` multiplication.
     pub fn i8_mul_with_overflow(x: i8, y: i8) -> (i8, bool);
+    /// Performs checked `i16` multiplication.
     pub fn i16_mul_with_overflow(x: i16, y: i16) -> (i16, bool);
+    /// Performs checked `i32` multiplication.
     pub fn i32_mul_with_overflow(x: i32, y: i32) -> (i32, bool);
+    /// Performs checked `i64` multiplication.
     pub fn i64_mul_with_overflow(x: i64, y: i64) -> (i64, bool);
 
+    /// Performs checked `u8` multiplication.
     pub fn u8_mul_with_overflow(x: u8, y: u8) -> (u8, bool);
+    /// Performs checked `u16` multiplication.
     pub fn u16_mul_with_overflow(x: u16, y: u16) -> (u16, bool);
+    /// Performs checked `u32` multiplication.
     pub fn u32_mul_with_overflow(x: u32, y: u32) -> (u32, bool);
+    /// Performs checked `u64` multiplication.
     pub fn u64_mul_with_overflow(x: u64, y: u64) -> (u64, bool);
 }
 
