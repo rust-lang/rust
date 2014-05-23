@@ -424,7 +424,7 @@ the pointer itself `LV` goes out of scope:
 ```
 
 The scope of a managed referent is also the scope of the pointer.  This
-is a conservative approximation, since there may be other aliases fo
+is a conservative approximation, since there may be other aliases for
 that same managed box that would cause it to live longer:
 
 ```notrust
@@ -536,7 +536,7 @@ The final rules govern the computation of *restrictions*, meaning that
 we compute the set of actions that will be illegal for the life of the
 loan. The predicate is written `RESTRICTIONS(LV, LT, ACTIONS) =
 RESTRICTION*`, which can be read "in order to prevent `ACTIONS` from
-occuring on `LV`, the restrictions `RESTRICTION*` must be respected
+occurring on `LV`, the restrictions `RESTRICTION*` must be respected
 for the lifetime of the loan".
 
 Note that there is an initial set of restrictions: these restrictions
@@ -551,7 +551,7 @@ are computed based on the kind of borrow:
 The reasoning here is that a mutable borrow must be the only writer,
 therefore it prevents other writes (`MUTATE`), mutable borrows
 (`CLAIM`), and immutable borrows (`FREEZE`). An immutable borrow
-permits other immutable borows but forbids writes and mutable borows.
+permits other immutable borrows but forbids writes and mutable borows.
 Finally, a const borrow just wants to be sure that the value is not
 moved out from under it, so no actions are forbidden.
 

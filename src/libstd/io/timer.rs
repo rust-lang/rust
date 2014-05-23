@@ -52,7 +52,7 @@ use rt::rtio::{IoFactory, LocalIo, RtioTimer};
 /// # }
 /// ```
 ///
-/// If only sleeping is necessary, then a convenience api is provided through
+/// If only sleeping is necessary, then a convenience API is provided through
 /// the `io::timer` module.
 ///
 /// ```

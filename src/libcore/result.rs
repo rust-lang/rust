@@ -260,7 +260,7 @@
 //! The suitability of `fail!` as an error handling mechanism is
 //! limited by Rust's lack of any way to "catch" and resume execution
 //! from a thrown exception. Therefore using failure for error
-//! handling requires encapsulating fallable code in a task. Calling
+//! handling requires encapsulating fallible code in a task. Calling
 //! the `fail!` macro, or invoking `fail!` indirectly should be
 //! avoided as an error reporting strategy. Failure is only for
 //! unrecoverable errors and a failing task is typically the sign of
