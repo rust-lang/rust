@@ -789,10 +789,7 @@ fn next_token_inner(rdr: &mut StringReader) -> token::Token {
           '<' => { return binop(rdr, token::SHL); }
           '-' => {
             bump(rdr);
-            match rdr.curr.unwrap_or('\x00') {
-              '>' => { bump(rdr); return token::DARROW; }
-              _ => { return token::LARROW; }
-            }
+            return token::LARROW;
           }
           _ => { return token::LT; }
         }

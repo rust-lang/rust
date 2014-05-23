@@ -16,7 +16,7 @@ use clone::Clone;
 use cmp::{Eq, TotalEq};
 use from_str::FromStr;
 use io::Writer;
-use iter::{DoubleEndedIterator, Rev, AdditiveIterator, Extendable, Iterator, Map};
+use iter::{DoubleEndedIterator, AdditiveIterator, Extendable, Iterator, Map};
 use option::{Option, None, Some};
 use str;
 use str::Str;
@@ -28,16 +28,10 @@ use super::{BytesContainer, GenericPath, GenericPathUnsafe};
 
 /// Iterator that yields successive components of a Path as &[u8]
 pub type Components<'a> = Splits<'a, u8>;
-/// Iterator that yields components of a Path in reverse as &[u8]
-#[deprecated = "replaced by Rev<Components<'a>>"]
-pub type RevComponents<'a> = Rev<Components<'a>>;
 
 /// Iterator that yields successive components of a Path as Option<&str>
 pub type StrComponents<'a> = Map<'a, &'a [u8], Option<&'a str>,
                                        Components<'a>>;
-/// Iterator that yields components of a Path in reverse as Option<&str>
-#[deprecated = "replaced by Rev<StrComponents<'a>>"]
-pub type RevStrComponents<'a> = Rev<StrComponents<'a>>;
 
 /// Represents a POSIX file path
 #[deriving(Clone)]
@@ -414,24 +408,10 @@ impl Path {
         ret
     }
 
-    /// Returns an iterator that yields each component of the path in reverse.
-    /// See components() for details.
-    #[deprecated = "replaced by .components().rev()"]
-    pub fn rev_components<'a>(&'a self) -> Rev<Components<'a>> {
-        self.components().rev()
-    }
-
     /// Returns an iterator that yields each component of the path as Option<&str>.
     /// See components() for details.
     pub fn str_components<'a>(&'a self) -> StrComponents<'a> {
         self.components().map(str::from_utf8)
-    }
-
-    /// Returns an iterator that yields each component of the path in reverse as Option<&str>.
-    /// See components() for details.
-    #[deprecated = "replaced by .str_components().rev()"]
-    pub fn rev_str_components<'a>(&'a self) -> Rev<StrComponents<'a>> {
-        self.str_components().rev()
     }
 }
 

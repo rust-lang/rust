@@ -14,7 +14,7 @@
 //! collections::deque::Deque`.
 
 use std::cmp;
-use std::iter::{Rev, RandomAccessIterator};
+use std::iter::RandomAccessIterator;
 
 use deque::Deque;
 
@@ -190,11 +190,6 @@ impl<T> RingBuf<T> {
         Items{index: 0, rindex: self.nelts, lo: self.lo, elts: self.elts.as_slice()}
     }
 
-    #[deprecated = "replaced by .iter().rev()"]
-    pub fn rev_iter<'a>(&'a self) -> Rev<Items<'a, T>> {
-        self.iter().rev()
-    }
-
     /// Front-to-back iterator which returns mutable values.
     pub fn mut_iter<'a>(&'a mut self) -> MutItems<'a, T> {
         let start_index = raw_index(self.lo, self.elts.len(), 0);
@@ -219,11 +214,6 @@ impl<T> RingBuf<T> {
                                  remaining2: empty,
                                  nelts: self.nelts }
         }
-    }
-
-    #[deprecated = "replaced by .mut_iter().rev()"]
-    pub fn mut_rev_iter<'a>(&'a mut self) -> Rev<MutItems<'a, T>> {
-        self.mut_iter().rev()
     }
 }
 
