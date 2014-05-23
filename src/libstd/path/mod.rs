@@ -96,28 +96,16 @@ pub use Path = self::windows::Path;
 /// Typedef for the platform-native component iterator
 #[cfg(unix)]
 pub use Components = self::posix::Components;
-/// Typedef for the platform-native reverse component iterator
-#[cfg(unix)]
-pub use RevComponents = self::posix::RevComponents;
 /// Typedef for the platform-native component iterator
 #[cfg(windows)]
 pub use Components = self::windows::Components;
-/// Typedef for the platform-native reverse component iterator
-#[cfg(windows)]
-pub use RevComponents = self::windows::RevComponents;
 
 /// Typedef for the platform-native str component iterator
 #[cfg(unix)]
 pub use StrComponents = self::posix::StrComponents;
-/// Typedef for the platform-native reverse str component iterator
-#[cfg(unix)]
-pub use RevStrComponents = self::posix::RevStrComponents;
 /// Typedef for the platform-native str component iterator
 #[cfg(windows)]
 pub use StrComponents = self::windows::StrComponents;
-/// Typedef for the platform-native reverse str component iterator
-#[cfg(windows)]
-pub use RevStrComponents = self::windows::RevStrComponents;
 
 /// Alias for the platform-native separator character.
 #[cfg(unix)]

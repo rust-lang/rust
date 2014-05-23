@@ -9,6 +9,8 @@
 // except according to those terms.
 
 pub trait E {
-    pub fn foo();               //~ ERROR: obsolete syntax
+    pub fn foo();               //~ ERROR: unnecessary visibility
 }
-trait F { pub fn foo(); }       //~ ERROR: obsolete syntax
+trait F { pub fn foo(); }       //~ ERROR: unnecessary visibility
+
+fn main() {}

@@ -17,7 +17,7 @@ use cmp::{Eq, TotalEq};
 use container::Container;
 use from_str::FromStr;
 use io::Writer;
-use iter::{AdditiveIterator, DoubleEndedIterator, Extendable, Rev, Iterator, Map};
+use iter::{AdditiveIterator, DoubleEndedIterator, Extendable, Iterator, Map};
 use mem;
 use option::{Option, Some, None};
 use slice::{Vector, OwnedVector, ImmutableVector};
@@ -33,19 +33,10 @@ use super::{contains_nul, BytesContainer, GenericPath, GenericPathUnsafe};
 /// every component in WindowsPath is guaranteed to be Some.
 pub type StrComponents<'a> = Map<'a, &'a str, Option<&'a str>,
                                        CharSplits<'a, char>>;
-/// Iterator that yields components of a Path in reverse as &str
-///
-/// Each component is yielded as Option<&str> for compatibility with PosixPath, but
-/// every component in WindowsPath is guaranteed to be Some.
-#[deprecated = "replaced by Rev<StrComponents<'a>>"]
-pub type RevStrComponents<'a> = Rev<StrComponents<'a>>;
 
 /// Iterator that yields successive components of a Path as &[u8]
 pub type Components<'a> = Map<'a, Option<&'a str>, &'a [u8],
                                     StrComponents<'a>>;
-/// Iterator that yields components of a Path in reverse as &[u8]
-#[deprecated = "replaced by Rev<Components<'a>>"]
-pub type RevComponents<'a> = Rev<Components<'a>>;
 
 /// Represents a Windows path
 // Notes for Windows path impl:
@@ -657,13 +648,6 @@ impl Path {
         ret
     }
 
-    /// Returns an iterator that yields each component of the path in reverse as an Option<&str>
-    /// See str_components() for details.
-    #[deprecated = "replaced by .str_components().rev()"]
-    pub fn rev_str_components<'a>(&'a self) -> Rev<StrComponents<'a>> {
-        self.str_components().rev()
-    }
-
     /// Returns an iterator that yields each component of the path in turn as a &[u8].
     /// See str_components() for details.
     pub fn components<'a>(&'a self) -> Components<'a> {
@@ -672,13 +656,6 @@ impl Path {
             x.unwrap().as_bytes()
         }
         self.str_components().map(convert)
-    }
-
-    /// Returns an iterator that yields each component of the path in reverse as a &[u8].
-    /// See str_components() for details.
-    #[deprecated = "replaced by .components().rev()"]
-    pub fn rev_components<'a>(&'a self) -> Rev<Components<'a>> {
-        self.components().rev()
     }
 
     fn equiv_prefix(&self, other: &Path) -> bool {

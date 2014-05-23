@@ -52,7 +52,7 @@ impl Noise2DContext {
         for (i, x) in permutations.mut_iter().enumerate() {
             *x = i as i32;
         }
-        rng.shuffle_mut(permutations);
+        rng.shuffle(permutations);
 
         Noise2DContext { rgradients: rgradients, permutations: permutations }
     }
