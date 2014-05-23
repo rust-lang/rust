@@ -97,13 +97,6 @@ endef
 $(foreach cvar,CC CXX CPP CFLAGS CXXFLAGS CPPFLAGS,\
   $(eval $(call SET_FROM_CFG,$(cvar))))
 
-ifeq ($(CFG_USING_CLANG),1)
-  # The -Qunused-arguments sidesteps spurious warnings from clang
-  CFLAGS += -Qunused-arguments
-  CXXFLAGS += -Qunused-arguments
-  CPPFLAGS += -Qunused-arguments
-endif
-
 CFG_RLIB_GLOB=lib$(1)-*.rlib
 
 # x86_64-unknown-linux-gnu configuration
@@ -515,6 +508,21 @@ CFG_PATH_MUNGE_x86_64-unknown-freebsd :=
 CFG_LDPATH_x86_64-unknown-freebsd :=
 CFG_RUN_x86_64-unknown-freebsd=$(2)
 CFG_RUN_TARG_x86_64-unknown-freebsd=$(call CFG_RUN_x86_64-unknown-freebsd,,$(2))
+
+
+# The -Qunused-arguments sidesteps spurious warnings from clang
+define FILTER_FLAGS
+  ifeq ($$(CFG_USING_CLANG),1)
+    ifneq ($(findstring clang,$$(shell $(CC_$(1)) -v)),)
+      CFG_GCCISH_CFLAGS_$(1) += -Qunused-arguments
+      CFG_GCCISH_CXXFLAGS_$(1) += -Qunused-arguments
+    endif
+  endif
+endef
+
+$(foreach target,$(CFG_TARGET),\
+  $(eval $(call FILTER_FLAGS,$(target))))
+
 
 ifeq ($(CFG_CCACHE_CPP2),1)
   CCACHE_CPP2=1
