@@ -645,7 +645,7 @@ officia deserunt mollit anim id est laborum.";
             y: 2,
         };
         b.iter(|| {
-            assert_eq!(hash(&compound), 15783192367317361799);
+            assert_eq!(hash(&compound), 12506681940457338191);
         })
     }
 }
