@@ -116,7 +116,7 @@ use vec::Vec;
 pub use core::slice::{ref_slice, mut_ref_slice, Splits, Windows};
 pub use core::slice::{Chunks, Vector, ImmutableVector, ImmutableEqVector};
 pub use core::slice::{ImmutableTotalOrdVector, MutableVector, Items, MutItems};
-pub use core::slice::{RevItems, RevMutItems, MutSplits, MutChunks};
+pub use core::slice::{MutSplits, MutChunks};
 pub use core::slice::{bytes, MutableCloneableVector};
 
 // Functional utilities
@@ -403,10 +403,6 @@ pub trait OwnedVector<T> {
     /// }
     /// ```
     fn move_iter(self) -> MoveItems<T>;
-    /// Creates a consuming iterator that moves out of the vector in
-    /// reverse order.
-    #[deprecated = "replaced by .move_iter().rev()"]
-    fn move_rev_iter(self) -> Rev<MoveItems<T>>;
 
     /**
      * Partitions the vector into two vectors `(A,B)`, where all
@@ -423,12 +419,6 @@ impl<T> OwnedVector<T> for ~[T] {
             let ptr = transmute(self);
             MoveItems { allocation: ptr, iter: iter }
         }
-    }
-
-    #[inline]
-    #[deprecated = "replaced by .move_iter().rev()"]
-    fn move_rev_iter(self) -> Rev<MoveItems<T>> {
-        self.move_iter().rev()
     }
 
     #[inline]
@@ -775,10 +765,6 @@ impl<T> Drop for MoveItems<T> {
         }
     }
 }
-
-/// An iterator that moves out of a vector in reverse order.
-#[deprecated = "replaced by Rev<MoveItems<'a, T>>"]
-pub type RevMoveItems<T> = Rev<MoveItems<T>>;
 
 #[cfg(test)]
 mod tests {

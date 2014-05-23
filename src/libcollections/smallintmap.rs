@@ -15,7 +15,7 @@
 
 #![allow(missing_doc)]
 
-use std::iter::{Enumerate, FilterMap, Rev};
+use std::iter::{Enumerate, FilterMap};
 use std::mem::replace;
 use std::{vec, slice};
 
@@ -142,16 +142,6 @@ impl<V> SmallIntMap<V> {
         }
     }
 
-    #[deprecated = "replaced by .iter().rev()"]
-    pub fn rev_iter<'r>(&'r self) -> Rev<Entries<'r, V>> {
-        self.iter().rev()
-    }
-
-    #[deprecated = "replaced by .mut_iter().rev()"]
-    pub fn mut_rev_iter<'r>(&'r mut self) -> Rev<MutEntries<'r, V>> {
-        self.mut_iter().rev()
-    }
-
     /// Empties the hash map, moving all values into the specified closure
     pub fn move_iter(&mut self)
         -> FilterMap<(uint, Option<V>), (uint, V),
@@ -243,8 +233,6 @@ pub struct Entries<'a, T> {
 
 iterator!(impl Entries -> (uint, &'a T), get_ref)
 double_ended_iterator!(impl Entries -> (uint, &'a T), get_ref)
-#[deprecated = "replaced by Rev<Entries<'a, T>>"]
-pub type RevEntries<'a, T> = Rev<Entries<'a, T>>;
 
 pub struct MutEntries<'a, T> {
     front: uint,
@@ -254,8 +242,6 @@ pub struct MutEntries<'a, T> {
 
 iterator!(impl MutEntries -> (uint, &'a mut T), get_mut_ref)
 double_ended_iterator!(impl MutEntries -> (uint, &'a mut T), get_mut_ref)
-#[deprecated = "replaced by Rev<MutEntries<'a, T>"]
-pub type RevMutEntries<'a, T> = Rev<MutEntries<'a, T>>;
 
 #[cfg(test)]
 mod test_map {

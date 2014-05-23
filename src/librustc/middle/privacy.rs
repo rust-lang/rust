@@ -1099,7 +1099,10 @@ impl<'a> SanePrivacyVisitor<'a> {
                             check_inherited(m.span, m.vis,
                                             "unnecessary visibility");
                         }
-                        ast::Required(..) => {}
+                        ast::Required(ref m) => {
+                            check_inherited(m.span, m.vis,
+                                            "unnecessary visibility");
+                        }
                     }
                 }
             }

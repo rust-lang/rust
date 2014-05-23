@@ -20,7 +20,7 @@ use cmp::{Eq, TotalEq};
 use container::Container;
 use default::Default;
 use iter::{Filter, Map, Iterator};
-use iter::{Rev, DoubleEndedIterator, ExactSize};
+use iter::{DoubleEndedIterator, ExactSize};
 use iter::range;
 use num::Saturating;
 use option::{None, Option, Some};
@@ -174,19 +174,10 @@ impl<'a> DoubleEndedIterator<(uint, char)> for CharOffsets<'a> {
     }
 }
 
-#[deprecated = "replaced by Rev<Chars<'a>>"]
-pub type RevChars<'a> = Rev<Chars<'a>>;
-
-#[deprecated = "replaced by Rev<CharOffsets<'a>>"]
-pub type RevCharOffsets<'a> = Rev<CharOffsets<'a>>;
-
 /// External iterator for a string's bytes.
 /// Use with the `std::iter` module.
 pub type Bytes<'a> =
     Map<'a, &'a u8, u8, slice::Items<'a, u8>>;
-
-#[deprecated = "replaced by Rev<Bytes<'a>>"]
-pub type RevBytes<'a> = Rev<Bytes<'a>>;
 
 /// An iterator over the substrings of a string, separated by `sep`.
 #[deriving(Clone)]
@@ -199,9 +190,6 @@ pub struct CharSplits<'a, Sep> {
     only_ascii: bool,
     finished: bool,
 }
-
-#[deprecated = "replaced by Rev<CharSplits<'a, Sep>>"]
-pub type RevCharSplits<'a, Sep> = Rev<CharSplits<'a, Sep>>;
 
 /// An iterator over the substrings of a string, separated by `sep`,
 /// splitting at most `count` times.
@@ -1032,23 +1020,11 @@ pub trait StrSlice<'a> {
     /// ```
     fn chars(&self) -> Chars<'a>;
 
-    /// Do not use this - it is deprecated.
-    #[deprecated = "replaced by .chars().rev()"]
-    fn chars_rev(&self) -> Rev<Chars<'a>>;
-
     /// An iterator over the bytes of `self`
     fn bytes(&self) -> Bytes<'a>;
 
-    /// Do not use this - it is deprecated.
-    #[deprecated = "replaced by .bytes().rev()"]
-    fn bytes_rev(&self) -> Rev<Bytes<'a>>;
-
     /// An iterator over the characters of `self` and their byte offsets.
     fn char_indices(&self) -> CharOffsets<'a>;
-
-    /// Do not use this - it is deprecated.
-    #[deprecated = "replaced by .char_indices().rev()"]
-    fn char_indices_rev(&self) -> Rev<CharOffsets<'a>>;
 
     /// An iterator over substrings of `self`, separated by characters
     /// matched by `sep`.
@@ -1119,10 +1095,6 @@ pub trait StrSlice<'a> {
     /// assert_eq!(v, vec!["leopard", "tiger", "", "lion"]);
     /// ```
     fn split_terminator<Sep: CharEq>(&self, sep: Sep) -> CharSplits<'a, Sep>;
-
-    /// Do not use this - it is deprecated.
-    #[deprecated = "replaced by .split(sep).rev()"]
-    fn rsplit<Sep: CharEq>(&self, sep: Sep) -> Rev<CharSplits<'a, Sep>>;
 
     /// An iterator over substrings of `self`, separated by characters
     /// matched by `sep`, starting from the end of the string.
@@ -1643,31 +1615,13 @@ impl<'a> StrSlice<'a> for &'a str {
     }
 
     #[inline]
-    #[deprecated = "replaced by .chars().rev()"]
-    fn chars_rev(&self) -> RevChars<'a> {
-        self.chars().rev()
-    }
-
-    #[inline]
     fn bytes(&self) -> Bytes<'a> {
         self.as_bytes().iter().map(|&b| b)
     }
 
     #[inline]
-    #[deprecated = "replaced by .bytes().rev()"]
-    fn bytes_rev(&self) -> RevBytes<'a> {
-        self.bytes().rev()
-    }
-
-    #[inline]
     fn char_indices(&self) -> CharOffsets<'a> {
         CharOffsets{string: *self, iter: self.chars()}
-    }
-
-    #[inline]
-    #[deprecated = "replaced by .char_indices().rev()"]
-    fn char_indices_rev(&self) -> RevCharOffsets<'a> {
-        self.char_indices().rev()
     }
 
     #[inline]
@@ -1698,12 +1652,6 @@ impl<'a> StrSlice<'a> for &'a str {
             allow_trailing_empty: false,
             ..self.split(sep)
         }
-    }
-
-    #[inline]
-    #[deprecated = "replaced by .split(sep).rev()"]
-    fn rsplit<Sep: CharEq>(&self, sep: Sep) -> RevCharSplits<'a, Sep> {
-        self.split(sep).rev()
     }
 
     #[inline]

@@ -1138,11 +1138,10 @@ impl<'a> Parser<'a> {
             let attrs = p.parse_outer_attributes();
             let lo = p.span.lo;
 
-            let vis_span = p.span;
-            let vis = p.parse_visibility();
-            let style = p.parse_fn_style();
             // NB: at the moment, trait methods are public by default; this
             // could change.
+            let vis = p.parse_visibility();
+            let style = p.parse_fn_style();
             let ident = p.parse_ident();
 
             let generics = p.parse_generics();
@@ -1158,11 +1157,6 @@ impl<'a> Parser<'a> {
               token::SEMI => {
                 p.bump();
                 debug!("parse_trait_methods(): parsing required method");
-                // NB: at the moment, visibility annotations on required
-                // methods are ignored; this could change.
-                if vis != ast::Inherited {
-                    p.obsolete(vis_span, ObsoleteTraitFuncVisibility);
-                }
                 Required(TypeMethod {
                     ident: ident,
                     attrs: attrs,
@@ -1171,7 +1165,8 @@ impl<'a> Parser<'a> {
                     generics: generics,
                     explicit_self: explicit_self,
                     id: ast::DUMMY_NODE_ID,
-                    span: mk_sp(lo, hi)
+                    span: mk_sp(lo, hi),
+                    vis: vis,
                 })
               }
               token::LBRACE => {
@@ -1691,9 +1686,6 @@ impl<'a> Parser<'a> {
     pub fn parse_mutability(&mut self) -> Mutability {
         if self.eat_keyword(keywords::Mut) {
             MutMutable
-        } else if self.eat_keyword(keywords::Const) {
-            self.obsolete(self.last_span, ObsoleteConstPointer);
-            MutImmutable
         } else {
             MutImmutable
         }
@@ -2318,20 +2310,7 @@ impl<'a> Parser<'a> {
             let e = self.parse_prefix_expr();
             hi = e.span.hi;
             // HACK: pretending @[] is a (removed) @-vec
-            ex = match e.node {
-              ExprVec(..) |
-              ExprRepeat(..) => {
-                  self.obsolete(e.span, ObsoleteManagedVec);
-                  // the above error means that no-one will know we're
-                  // lying... hopefully.
-                  ExprVstore(e, ExprVstoreUniq)
-              }
-              ExprLit(lit) if lit_is_str(lit) => {
-                  self.obsolete(self.last_span, ObsoleteManagedString);
-                  ExprVstore(e, ExprVstoreUniq)
-              }
-              _ => self.mk_unary(UnBox, e)
-            };
+            ex = self.mk_unary(UnBox, e);
           }
           token::TILDE => {
             self.bump();
@@ -2469,13 +2448,6 @@ impl<'a> Parser<'a> {
               let assign_op = self.mk_assign_op(aop, lhs, rhs);
               self.mk_expr(lo, rhs.span.hi, assign_op)
           }
-          token::DARROW => {
-            self.obsolete(self.span, ObsoleteSwap);
-            self.bump();
-            // Ignore what we get, this is an error anyway
-            self.parse_expr();
-            self.mk_expr(lo, self.span.hi, ExprBreak(None))
-          }
           _ => {
               lhs
           }
@@ -2586,37 +2558,10 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse_loop_expr(&mut self, opt_ident: Option<ast::Ident>) -> @Expr {
-        // loop headers look like 'loop {' or 'loop unsafe {'
-        let is_loop_header =
-            self.token == token::LBRACE
-            || (is_ident(&self.token)
-                && self.look_ahead(1, |t| *t == token::LBRACE));
-
-        if is_loop_header {
-            // This is a loop body
-            let lo = self.last_span.lo;
-            let body = self.parse_block();
-            let hi = body.span.hi;
-            return self.mk_expr(lo, hi, ExprLoop(body, opt_ident));
-        } else {
-            // This is an obsolete 'continue' expression
-            if opt_ident.is_some() {
-                self.span_err(self.last_span,
-                              "a label may not be used with a `loop` expression");
-            }
-
-            self.obsolete(self.last_span, ObsoleteLoopAsContinue);
-            let lo = self.span.lo;
-            let ex = if Parser::token_is_lifetime(&self.token) {
-                let lifetime = self.get_lifetime();
-                self.bump();
-                ExprAgain(Some(lifetime))
-            } else {
-                ExprAgain(None)
-            };
-            let hi = self.span.hi;
-            return self.mk_expr(lo, hi, ex);
-        }
+        let lo = self.last_span.lo;
+        let body = self.parse_block();
+        let hi = body.span.hi;
+        self.mk_expr(lo, hi, ExprLoop(body, opt_ident))
     }
 
     // For distingishing between struct literals and blocks
@@ -2730,14 +2675,6 @@ impl<'a> Parser<'a> {
                 } else {
                     let subpat = self.parse_pat();
                     match *subpat {
-                        ast::Pat { id, node: PatWild, span } => {
-                            self.obsolete(self.span, ObsoleteVecDotDotWildcard);
-                            slice = Some(@ast::Pat {
-                                id: id,
-                                node: PatWildMulti,
-                                span: span
-                            })
-                        },
                         ast::Pat { node: PatIdent(_, _, _), .. } => {
                             slice = Some(subpat);
                         }
@@ -2773,11 +2710,7 @@ impl<'a> Parser<'a> {
                 if self.token == token::RBRACE { break }
             }
 
-            etc = self.token == token::UNDERSCORE || self.token == token::DOTDOT;
-            if self.token == token::UNDERSCORE {
-                self.obsolete(self.span, ObsoleteStructWildcard);
-            }
-            if etc {
+            if self.token == token::DOTDOT {
                 self.bump();
                 if self.token != token::RBRACE {
                     let token_str = self.this_token_to_str();
@@ -2840,18 +2773,6 @@ impl<'a> Parser<'a> {
             return @ast::Pat {
                 id: ast::DUMMY_NODE_ID,
                 node: pat,
-                span: mk_sp(lo, hi)
-            }
-          }
-          // parse @pat
-          token::AT => {
-            self.bump();
-            let sub = self.parse_pat();
-            self.obsolete(self.span, ObsoleteManagedPattern);
-            let hi = self.last_span.hi;
-            return @ast::Pat {
-                id: ast::DUMMY_NODE_ID,
-                node: PatUniq(sub),
                 span: mk_sp(lo, hi)
             }
           }
@@ -3011,24 +2932,15 @@ impl<'a> Parser<'a> {
                         let mut args: Vec<@Pat> = Vec::new();
                         match self.token {
                           token::LPAREN => {
-                            let is_star = self.look_ahead(1, |t| {
-                                match *t {
-                                    token::BINOP(token::STAR) => true,
-                                    _ => false,
-                                }
-                            });
                             let is_dotdot = self.look_ahead(1, |t| {
                                 match *t {
                                     token::DOTDOT => true,
                                     _ => false,
                                 }
                             });
-                            if is_star | is_dotdot {
+                            if is_dotdot {
                                 // This is a "top constructor only" pat
                                 self.bump();
-                                if is_star {
-                                    self.obsolete(self.span, ObsoleteEnumWildcard);
-                                }
                                 self.bump();
                                 self.expect(&token::RPAREN);
                                 pat = PatEnum(enum_path, None);
@@ -3125,10 +3037,6 @@ impl<'a> Parser<'a> {
     fn parse_let(&mut self) -> @Decl {
         let lo = self.span.lo;
         let local = self.parse_local();
-        while self.eat(&token::COMMA) {
-            let _ = self.parse_local();
-            self.obsolete(self.span, ObsoleteMultipleLocalDecl);
-        }
         return @spanned(lo, self.last_span.hi, DeclLocal(local));
     }
 
@@ -3276,9 +3184,6 @@ impl<'a> Parser<'a> {
         maybe_whole!(no_clone self, NtBlock);
 
         let lo = self.span.lo;
-        if self.eat_keyword(keywords::Unsafe) {
-            self.obsolete(self.span, ObsoleteUnsafeBlock);
-        }
         self.expect(&token::LBRACE);
 
         return self.parse_block_tail_(lo, DefaultBlock, Vec::new());
@@ -3291,9 +3196,6 @@ impl<'a> Parser<'a> {
         maybe_whole!(pair_empty self, NtBlock);
 
         let lo = self.span.lo;
-        if self.eat_keyword(keywords::Unsafe) {
-            self.obsolete(self.span, ObsoleteUnsafeBlock);
-        }
         self.expect(&token::LBRACE);
         let (inner, next) = self.parse_inner_attrs_and_next();
 
@@ -4338,12 +4240,7 @@ impl<'a> Parser<'a> {
     fn parse_item_foreign_fn(&mut self, vis: ast::Visibility,
                              attrs: Vec<Attribute> ) -> @ForeignItem {
         let lo = self.span.lo;
-
-        // Parse obsolete purity.
-        let fn_style = self.parse_fn_style();
-        if fn_style != NormalFn {
-            self.obsolete(self.last_span, ObsoleteUnsafeExternFn);
-        }
+        self.expect_keyword(keywords::Fn);
 
         let (ident, generics) = self.parse_fn_header();
         let decl = self.parse_fn_decl(true);
@@ -4924,7 +4821,7 @@ impl<'a> Parser<'a> {
 
     // parse, e.g., "use a::b::{z,y}"
     fn parse_use(&mut self) -> ViewItem_ {
-        return ViewItemUse(self.parse_view_paths());
+        return ViewItemUse(self.parse_view_path());
     }
 
 
@@ -5053,17 +4950,6 @@ impl<'a> Parser<'a> {
         return @spanned(lo,
                         self.last_span.hi,
                         ViewPathSimple(last, path, ast::DUMMY_NODE_ID));
-    }
-
-    // matches view_paths = view_path | view_path , view_paths
-    fn parse_view_paths(&mut self) -> @ViewPath {
-        let vp = self.parse_view_path();
-        while self.token == token::COMMA {
-            self.bump();
-            self.obsolete(self.last_span, ObsoleteMultipleImport);
-            let _ = self.parse_view_path();
-        }
-        return vp;
     }
 
     // Parses a sequence of items. Stops when it finds program

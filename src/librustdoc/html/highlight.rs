@@ -102,7 +102,7 @@ fn doit(sess: &parse::ParseSess, mut lexer: lexer::StringReader, class: Option<&
 
             // miscellaneous, no highlighting
             t::DOT | t::DOTDOT | t::DOTDOTDOT | t::COMMA | t::SEMI |
-                t::COLON | t::MOD_SEP | t::LARROW | t::DARROW | t::LPAREN |
+                t::COLON | t::MOD_SEP | t::LARROW | t::LPAREN |
                 t::RPAREN | t::LBRACKET | t::LBRACE | t::RBRACE => "",
             t::DOLLAR => {
                 if t::is_ident(&lexer.peek().tok) {
