@@ -10,23 +10,18 @@
 
 // FIXME: talk about offset, copy_memory, copy_nonoverlapping_memory
 
-//! Conveniences for working with unsafe pointers, the `*T`, and `*mut T` types.
+//! Operations on unsafe pointers, `*T`, and `*mut T`.
 //!
-//! Working with unsafe pointers in Rust is fairly uncommon,
-//! and often limited to some narrow use cases: holding
-//! an unsafe pointer when safe pointers are unsuitable;
-//! checking for null; and converting back to safe pointers.
-//! As a result, there is not yet an abundance of library code
-//! for working with unsafe pointers, and in particular,
-//! since pointer math is fairly uncommon in Rust, it is not
-//! all that convenient.
+//! Working with unsafe pointers in Rust is uncommon,
+//! typically limited to a few patterns.
 //!
 //! Use the [`null` function](fn.null.html) to create null pointers,
 //! the [`is_null`](trait.RawPtr.html#tymethod.is_null)
 //! and [`is_not_null`](trait.RawPtr.html#method.is_not_null)
 //! methods of the [`RawPtr` trait](trait.RawPtr.html) to check for null.
 //! The `RawPtr` trait is imported by the prelude, so `is_null` etc.
-//! work everywhere.
+//! work everywhere. The `RawPtr` also defines the `offset` method,
+//! for pointer math.
 //!
 //! # Common ways to create unsafe pointers
 //!
@@ -316,7 +311,7 @@ pub unsafe fn array_each<T>(arr: **T, cb: |*T|) {
     array_each_with_len(arr, len, cb);
 }
 
-/// Extension methods for raw pointers.
+/// Methods on raw pointers
 pub trait RawPtr<T> {
     /// Returns the null pointer.
     fn null() -> Self;
