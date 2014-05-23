@@ -15,7 +15,7 @@ use syntax;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::attr;
-use syntax::attr::AttributeMethods;
+use syntax::attr::{AttributeMethods, AttrMetaMethods};
 use syntax::codemap::Pos;
 use syntax::parse::token::InternedString;
 use syntax::parse::token;
@@ -250,7 +250,8 @@ impl Clean<Item> for doctree::Module {
             self.statics.clean().move_iter().collect(),
             self.traits.clean().move_iter().collect(),
             self.impls.clean().move_iter().collect(),
-            self.view_items.clean().move_iter().collect(),
+            self.view_items.clean().move_iter()
+                           .flat_map(|s| s.move_iter()).collect(),
             self.macros.clean().move_iter().collect()
         );
 
@@ -832,10 +833,6 @@ impl Clean<TraitMethod> for ty::Method {
             core::Typed(ref tcx) => tcx,
             core::NotTyped(_) => fail!(),
         };
-        let mut attrs = Vec::new();
-        csearch::get_item_attrs(&tcx.sess.cstore, self.def_id, |v| {
-            attrs.extend(v.move_iter().map(|i| i.clean()));
-        });
         let (self_, sig) = match self.explicit_self {
             ast::SelfStatic => (ast::SelfStatic.clean(), self.fty.sig.clone()),
             s => {
@@ -861,7 +858,7 @@ impl Clean<TraitMethod> for ty::Method {
             name: Some(self.ident.clean()),
             visibility: Some(ast::Inherited),
             def_id: self.def_id,
-            attrs: attrs,
+            attrs: load_attrs(tcx, self.def_id),
             source: Span {
                 filename: "".to_strbuf(),
                 loline: 0, locol: 0, hiline: 0, hicol: 0,
@@ -1404,19 +1401,103 @@ pub struct ViewItem {
     pub inner: ViewItemInner,
 }
 
-impl Clean<Item> for ast::ViewItem {
-    fn clean(&self) -> Item {
-        Item {
-            name: None,
-            attrs: self.attrs.clean().move_iter().collect(),
-            source: self.span.clean(),
-            def_id: ast_util::local_def(0),
-            visibility: self.vis.clean(),
-            inner: ViewItemItem(ViewItem {
-                inner: self.node.clean()
-            }),
+impl Clean<Vec<Item>> for ast::ViewItem {
+    fn clean(&self) -> Vec<Item> {
+        let denied = self.vis != ast::Public || self.attrs.iter().any(|a| {
+            a.name().get() == "doc" && match a.meta_item_list() {
+                Some(l) => attr::contains_name(l, "noinline"),
+                None => false,
+            }
+        });
+        let convert = |node: &ast::ViewItem_| {
+            Item {
+                name: None,
+                attrs: self.attrs.clean().move_iter().collect(),
+                source: self.span.clean(),
+                def_id: ast_util::local_def(0),
+                visibility: self.vis.clean(),
+                inner: ViewItemItem(ViewItem { inner: node.clean() }),
+            }
+        };
+        let mut ret = Vec::new();
+        match self.node {
+            ast::ViewItemUse(ref path) if !denied => {
+                match path.node {
+                    ast::ViewPathGlob(..) => ret.push(convert(&self.node)),
+                    ast::ViewPathList(ref a, ref list, ref b) => {
+                        let remaining = list.iter().filter(|path| {
+                            match try_inline(path.node.id) {
+                                Some(item) => { ret.push(item); false }
+                                None => true,
+                            }
+                        }).map(|a| a.clone()).collect::<Vec<ast::PathListIdent>>();
+                        if remaining.len() > 0 {
+                            let path = ast::ViewPathList(a.clone(),
+                                                         remaining,
+                                                         b.clone());
+                            let path = syntax::codemap::dummy_spanned(path);
+                            ret.push(convert(&ast::ViewItemUse(@path)));
+                        }
+                    }
+                    ast::ViewPathSimple(_, _, id) => {
+                        match try_inline(id) {
+                            Some(item) => ret.push(item),
+                            None => ret.push(convert(&self.node)),
+                        }
+                    }
+                }
+            }
+            ref n => ret.push(convert(n)),
         }
+        return ret;
     }
+}
+
+fn try_inline(id: ast::NodeId) -> Option<Item> {
+    let cx = super::ctxtkey.get().unwrap();
+    let tcx = match cx.maybe_typed {
+        core::Typed(ref tycx) => tycx,
+        core::NotTyped(_) => return None,
+    };
+    let def = match tcx.def_map.borrow().find(&id) {
+        Some(def) => *def,
+        None => return None,
+    };
+    let did = ast_util::def_id_of_def(def);
+    if ast_util::is_local(did) { return None }
+    let inner = match def {
+        ast::DefTrait(did) => TraitItem(build_external_trait(tcx, did)),
+        ast::DefFn(did, style) =>
+            FunctionItem(build_external_function(tcx, did, style)),
+        _ => return None,
+    };
+    let fqn = csearch::get_item_path(tcx, did);
+    Some(Item {
+        source: Span {
+            filename: "".to_strbuf(), loline: 0, locol: 0, hiline: 0, hicol: 0,
+        },
+        name: Some(fqn.last().unwrap().to_str().to_strbuf()),
+        attrs: load_attrs(tcx, did),
+        inner: inner,
+        visibility: Some(ast::Public),
+        def_id: did,
+    })
+}
+
+fn load_attrs(tcx: &ty::ctxt, did: ast::DefId) -> Vec<Attribute> {
+    let mut attrs = Vec::new();
+    csearch::get_item_attrs(&tcx.sess.cstore, did, |v| {
+        attrs.extend(v.move_iter().map(|item| {
+            let mut a = attr::mk_attr_outer(item);
+            // FIXME this isn't quite always true, it's just true about 99% of
+            //       the time when dealing with documentation
+            if a.name().get() == "doc" && a.value_str().is_some() {
+                a.node.is_sugared_doc = true;
+            }
+            a.clean()
+        }));
+    });
+    attrs
 }
 
 #[deriving(Clone, Encodable, Decodable)]
@@ -1651,6 +1732,20 @@ fn build_external_trait(tcx: &ty::ctxt, did: ast::DefId) -> Trait {
         generics: def.generics.clean(),
         methods: methods.iter().map(|i| i.clean()).collect(),
         parents: Vec::new(), // FIXME: this is likely wrong
+    }
+}
+
+fn build_external_function(tcx: &ty::ctxt,
+                           did: ast::DefId,
+                           style: ast::FnStyle) -> Function {
+    let t = csearch::get_type(tcx, did);
+    Function {
+        decl: match ty::get(t.ty).sty {
+            ty::ty_bare_fn(ref f) => f.sig.clean(),
+            _ => fail!("bad function"),
+        },
+        generics: t.generics.clean(),
+        fn_style: style,
     }
 }
 

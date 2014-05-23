@@ -157,9 +157,9 @@ pub struct Cache {
 
     // Private fields only used when initially crawling a crate to build a cache
 
-    stack: Vec<String> ,
-    parent_stack: Vec<ast::NodeId> ,
-    search_index: Vec<IndexItem> ,
+    stack: Vec<String>,
+    parent_stack: Vec<ast::DefId>,
+    search_index: Vec<IndexItem>,
     privmod: bool,
     public_items: NodeSet,
 
@@ -198,7 +198,7 @@ struct IndexItem {
     name: String,
     path: String,
     desc: String,
-    parent: Option<ast::NodeId>,
+    parent: Option<ast::DefId>,
 }
 
 // TLS keys used to carry information around during rendering.
@@ -302,7 +302,7 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
                         path: fqp.slice_to(fqp.len() - 1).connect("::")
                                                          .to_strbuf(),
                         desc: shorter(item.doc_value()).to_strbuf(),
-                        parent: Some(pid),
+                        parent: Some(did),
                     });
                 },
                 None => {}
@@ -360,9 +360,8 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
 
         try!(write!(&mut w, r#"],"paths":["#));
 
-        for (i, &nodeid) in pathid_to_nodeid.iter().enumerate() {
-            let def = ast_util::local_def(nodeid);
-            let &(ref fqp, short) = cache.paths.find(&def).unwrap();
+        for (i, &did) in pathid_to_nodeid.iter().enumerate() {
+            let &(ref fqp, short) = cache.paths.find(&did).unwrap();
             if i > 0 {
                 try!(write!(&mut w, ","));
             }
@@ -730,14 +729,13 @@ impl DocFolder for Cache {
                     clean::VariantItem(..) => {
                         (Some(*self.parent_stack.last().unwrap()),
                          Some(self.stack.slice_to(self.stack.len() - 1)))
-
                     }
                     clean::MethodItem(..) => {
                         if self.parent_stack.len() == 0 {
                             (None, None)
                         } else {
                             let last = self.parent_stack.last().unwrap();
-                            let did = ast_util::local_def(*last);
+                            let did = *last;
                             let path = match self.paths.find(&did) {
                                 Some(&(_, item_type::Trait)) =>
                                     Some(self.stack.slice_to(self.stack.len() - 1)),
@@ -766,9 +764,11 @@ impl DocFolder for Cache {
                         });
                     }
                     (Some(parent), None) if !self.privmod => {
-                        // We have a parent, but we don't know where they're
-                        // defined yet. Wait for later to index this item.
-                        self.orphan_methods.push((parent, item.clone()))
+                        if ast_util::is_local(parent) {
+                            // We have a parent, but we don't know where they're
+                            // defined yet. Wait for later to index this item.
+                            self.orphan_methods.push((parent.node, item.clone()))
+                        }
                     }
                     _ => {}
                 }
@@ -789,19 +789,17 @@ impl DocFolder for Cache {
             clean::TypedefItem(..) | clean::TraitItem(..) |
             clean::FunctionItem(..) | clean::ModuleItem(..) |
             clean::ForeignFunctionItem(..) => {
-                if ast_util::is_local(item.def_id) {
-                    // Reexported items mean that the same id can show up twice
-                    // in the rustdoc ast that we're looking at. We know,
-                    // however, that a reexported item doesn't show up in the
-                    // `public_items` map, so we can skip inserting into the
-                    // paths map if there was already an entry present and we're
-                    // not a public item.
-                    let id = item.def_id.node;
-                    if !self.paths.contains_key(&item.def_id) ||
-                       self.public_items.contains(&id) {
-                        self.paths.insert(item.def_id,
-                                          (self.stack.clone(), shortty(&item)));
-                    }
+                // Reexported items mean that the same id can show up twice
+                // in the rustdoc ast that we're looking at. We know,
+                // however, that a reexported item doesn't show up in the
+                // `public_items` map, so we can skip inserting into the
+                // paths map if there was already an entry present and we're
+                // not a public item.
+                let id = item.def_id.node;
+                if !self.paths.contains_key(&item.def_id) ||
+                   self.public_items.contains(&id) {
+                    self.paths.insert(item.def_id,
+                                      (self.stack.clone(), shortty(&item)));
                 }
             }
             // link variants to their parent enum because pages aren't emitted
@@ -817,20 +815,14 @@ impl DocFolder for Cache {
         // Maintain the parent stack
         let parent_pushed = match item.inner {
             clean::TraitItem(..) | clean::EnumItem(..) | clean::StructItem(..) => {
-                if ast_util::is_local(item.def_id) {
-                    self.parent_stack.push(item.def_id.node);
-                }
+                self.parent_stack.push(item.def_id);
                 true
             }
             clean::ImplItem(ref i) => {
                 match i.for_ {
                     clean::ResolvedPath{ did, .. } => {
-                        if ast_util::is_local(did) {
-                            self.parent_stack.push(did.node);
-                            true
-                        } else {
-                            false
-                        }
+                        self.parent_stack.push(did);
+                        true
                     }
                     _ => false
                 }
