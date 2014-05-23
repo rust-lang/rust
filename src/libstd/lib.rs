@@ -20,8 +20,7 @@
 //! modules deal with unsafe pointers and memory manipulation.
 //! [`kinds`](../core/kinds/index.html) defines the special built-in traits,
 //! and [`raw`](../core/raw/index.html) the runtime representation of Rust types.
-//! These are some of the lowest-level building blocks of Rust
-//! abstractions.
+//! These are some of the lowest-level building blocks in Rust.
 //!
 //! ## Math on primitive types and math traits
 //!
