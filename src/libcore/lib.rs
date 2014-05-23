@@ -53,7 +53,7 @@
        html_root_url = "http://doc.rust-lang.org/")]
 
 #![no_std]
-#![feature(globs, macro_rules, managed_boxes, phase)]
+#![feature(globs, macro_rules, managed_boxes, phase, simd)]
 #![deny(missing_doc)]
 
 #[cfg(test)] extern crate realcore = "core";
@@ -124,6 +124,7 @@ pub mod iter;
 pub mod option;
 pub mod raw;
 pub mod result;
+pub mod simd;
 pub mod slice;
 pub mod str;
 pub mod tuple;
