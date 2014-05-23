@@ -1204,6 +1204,49 @@ impl Clean<Item> for doctree::Variant {
     }
 }
 
+impl Clean<Item> for ty::VariantInfo {
+    fn clean(&self) -> Item {
+        // use syntax::parse::token::special_idents::unnamed_field;
+        let cx = super::ctxtkey.get().unwrap();
+        let tcx = match cx.maybe_typed {
+            core::Typed(ref tycx) => tycx,
+            core::NotTyped(_) => fail!("tcx not present"),
+        };
+        let kind = match self.arg_names.as_ref().map(|s| s.as_slice()) {
+            None | Some([]) if self.args.len() == 0 => CLikeVariant,
+            None | Some([]) => {
+                TupleVariant(self.args.iter().map(|t| t.clean()).collect())
+            }
+            Some(s) => {
+                StructVariant(VariantStruct {
+                    struct_type: doctree::Plain,
+                    fields_stripped: false,
+                    fields: s.iter().zip(self.args.iter()).map(|(name, ty)| {
+                        Item {
+                            source: Span::empty(),
+                            name: Some(name.clean()),
+                            attrs: Vec::new(),
+                            visibility: Some(ast::Public),
+                            def_id: self.id, // FIXME: this is not accurate
+                            inner: StructFieldItem(
+                                TypedStructField(ty.clean())
+                            )
+                        }
+                    }).collect()
+                })
+            }
+        };
+        Item {
+            name: Some(self.name.clean()),
+            attrs: load_attrs(tcx, self.id),
+            source: Span::empty(),
+            visibility: Some(ast::Public),
+            def_id: self.id,
+            inner: VariantItem(Variant { kind: kind }),
+        }
+    }
+}
+
 #[deriving(Clone, Encodable, Decodable)]
 pub enum VariantKind {
     CLikeVariant,
@@ -1524,6 +1567,10 @@ fn try_inline(id: ast::NodeId) -> Option<Vec<Item>> {
             ret.extend(build_impls(tcx, did).move_iter());
             StructItem(build_struct(tcx, did))
         }
+        ast::DefTy(did) => {
+            ret.extend(build_impls(tcx, did).move_iter());
+            build_type(tcx, did)
+        }
         _ => return None,
     };
     let fqn = csearch::get_item_path(tcx, did);
@@ -1820,6 +1867,25 @@ fn build_struct(tcx: &ty::ctxt, did: ast::DefId) -> Struct {
         fields: fields.iter().map(|f| f.clean()).collect(),
         fields_stripped: false,
     }
+}
+
+fn build_type(tcx: &ty::ctxt, did: ast::DefId) -> ItemEnum {
+    let t = ty::lookup_item_type(tcx, did);
+    match ty::get(t.ty).sty {
+        ty::ty_enum(edid, _) => {
+            return EnumItem(Enum {
+                generics: t.generics.clean(),
+                variants_stripped: false,
+                variants: ty::enum_variants(tcx, edid).clean(),
+            })
+        }
+        _ => {}
+    }
+
+    TypedefItem(Typedef {
+        type_: t.ty.clean(),
+        generics: t.generics.clean(),
+    })
 }
 
 fn build_impls(tcx: &ty::ctxt,
