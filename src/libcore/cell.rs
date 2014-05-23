@@ -88,11 +88,10 @@
 //! ```
 //! extern crate collections;
 //!
-//! use collections::HashMap;
 //! use std::cell::RefCell;
 //!
 //! struct Graph {
-//!     edges: HashMap<uint, uint>,
+//!     edges: Vec<(uint, uint)>,
 //!     span_tree_cache: RefCell<Option<Vec<(uint, uint)>>>
 //! }
 //!
