@@ -1710,7 +1710,7 @@ it's possible to use *dynamic* mutability via types like `std::cell::Cell` where
 via dynamic checks and can fail at runtime.
 
 The `Rc` and `Gc` types are not sendable, so they cannot be used to share memory between tasks. Safe
-immutable and mutable shared memory is provided by the `extra::arc` module.
+immutable and mutable shared memory is provided by the `sync::arc` module.
 
 # Closures
 
