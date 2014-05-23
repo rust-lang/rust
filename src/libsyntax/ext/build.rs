@@ -12,6 +12,7 @@ use abi;
 use ast::{P, Ident};
 use ast;
 use ast_util;
+use attr;
 use codemap::{Span, respan, Spanned, DUMMY_SP};
 use ext::base::ExtCtxt;
 use ext::quote::rt::*;
@@ -231,7 +232,7 @@ pub trait AstBuilder {
                     generics: Generics) -> @ast::Item;
     fn item_ty(&self, span: Span, name: Ident, ty: P<ast::Ty>) -> @ast::Item;
 
-    fn attribute(&self, id: AttrId, sp: Span, mi: @ast::MetaItem) -> ast::Attribute;
+    fn attribute(&self, sp: Span, mi: @ast::MetaItem) -> ast::Attribute;
 
     fn meta_word(&self, sp: Span, w: InternedString) -> @ast::MetaItem;
     fn meta_list(&self,
@@ -925,10 +926,9 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         self.item_ty_poly(span, name, ty, ast_util::empty_generics())
     }
 
-    fn attribute(&self, id: ast::AttrId, sp: Span, mi: @ast::MetaItem)
-                 -> ast::Attribute {
+    fn attribute(&self, sp: Span, mi: @ast::MetaItem) -> ast::Attribute {
         respan(sp, ast::Attribute_ {
-            id: id,
+            id: attr::mk_attr_id(),
             style: ast::AttrOuter,
             value: mi,
             is_sugared_doc: false,

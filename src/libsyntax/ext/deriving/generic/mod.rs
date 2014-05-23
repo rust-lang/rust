@@ -428,10 +428,11 @@ impl<'a> TraitDef<'a> {
                         self_ty_params.into_vec()), None);
 
         let attr = cx.attribute(
-            attr::mk_attr_id(),
             self.span,
             cx.meta_word(self.span,
                          InternedString::new("automatically_derived")));
+        // Just mark it now since we know that it'll end up used downstream
+        attr::mark_used(&attr);
         let opt_trait_ref = Some(trait_ref);
         let ident = ast_util::impl_pretty_name(&opt_trait_ref, self_type);
         cx.item(

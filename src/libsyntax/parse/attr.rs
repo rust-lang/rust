@@ -135,10 +135,10 @@ impl<'a> ParserAttr for Parser<'a> {
                     // we need to get the position of this token before we bump.
                     let Span { lo, hi, .. } = self.span;
                     self.bump();
-                    ::attr::mk_sugared_doc_attr(attr::mk_attr_id(),
-                                                self.id_to_interned_str(s),
-                                                lo,
-                                                hi)
+                    attr::mk_sugared_doc_attr(attr::mk_attr_id(),
+                                              self.id_to_interned_str(s),
+                                              lo,
+                                              hi)
                 }
                 _ => {
                     break;

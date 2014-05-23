@@ -1146,39 +1146,46 @@ fn check_attrs_usage(cx: &Context, attrs: &[ast::Attribute]) {
 }
 
 fn check_unused_attribute(cx: &Context, attrs: &[ast::Attribute]) {
-    for attr in attrs.iter() {
-        // whitelist docs since rustdoc looks at them
-        attr.check_name("automatically_derived");
-        attr.check_name("doc");
+    static ATTRIBUTE_WHITELIST: &'static [&'static str] = &'static [
+        // FIXME: #14408 whitelist docs since rustdoc looks at them
+        "doc",
 
-        // these are processed in trans, which happens after the lint pass
-        attr.check_name("address_insignificant");
-        attr.check_name("cold");
-        attr.check_name("inline");
-        attr.check_name("link");
-        attr.check_name("link_name");
-        attr.check_name("link_section");
-        attr.check_name("no_builtins");
-        attr.check_name("no_mangle");
-        attr.check_name("no_split_stack");
-        attr.check_name("packed");
-        attr.check_name("static_assert");
-        attr.check_name("thread_local");
+        // FIXME: #14406 these are processed in trans, which happens after the
+        // lint pass
+        "address_insignificant",
+        "cold",
+        "inline",
+        "link",
+        "link_name",
+        "link_section",
+        "no_builtins",
+        "no_mangle",
+        "no_split_stack",
+        "packed",
+        "static_assert",
+        "thread_local",
 
         // not used anywhere (!?) but apparently we want to keep them around
-        attr.check_name("comment");
-        attr.check_name("desc");
-        attr.check_name("license");
+        "comment",
+        "desc",
+        "license",
 
-        // these are only looked at on-demand so we can't guarantee they'll have
-        // already been checked
-        attr.check_name("deprecated");
-        attr.check_name("experimental");
-        attr.check_name("frozen");
-        attr.check_name("locked");
-        attr.check_name("must_use");
-        attr.check_name("stable");
-        attr.check_name("unstable");
+        // FIXME: #14407 these are only looked at on-demand so we can't
+        // guarantee they'll have already been checked
+        "deprecated",
+        "experimental",
+        "frozen",
+        "locked",
+        "must_use",
+        "stable",
+        "unstable",
+    ];
+    for attr in attrs.iter() {
+        for &name in ATTRIBUTE_WHITELIST.iter() {
+            if attr.check_name(name) {
+                break;
+            }
+        }
 
         if !attr::is_used(attr) {
             cx.span_lint(UnusedAttribute, attr.span, "unused attribute");
