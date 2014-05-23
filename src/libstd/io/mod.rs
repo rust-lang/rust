@@ -407,7 +407,7 @@ pub enum IoErrorKind {
     PermissionDenied,
     /// A network connection failed for some reason not specified in this list.
     ConnectionFailed,
-    /// The network operation failed because the network connection was cloesd.
+    /// The network operation failed because the network connection was closed.
     Closed,
     /// The connection was refused by the remote server.
     ConnectionRefused,
@@ -474,7 +474,7 @@ pub trait Reader {
     /// inspected for in the error's `kind` field. Also note that reading 0
     /// bytes is not considered an error in all circumstances
     ///
-    /// # Implementaton Note
+    /// # Implementation Note
     ///
     /// When implementing this method on a new Reader, you are strongly encouraged
     /// not to return 0 if you can avoid it.
@@ -947,9 +947,9 @@ fn extend_sign(val: u64, nbytes: uint) -> i64 {
 
 /// A trait for objects which are byte-oriented streams. Writers are defined by
 /// one method, `write`. This function will block until the provided buffer of
-/// bytes has been entirely written, and it will return any failurs which occur.
+/// bytes has been entirely written, and it will return any failures which occur.
 ///
-/// Another commonly overriden method is the `flush` method for writers such as
+/// Another commonly overridden method is the `flush` method for writers such as
 /// buffered writers.
 ///
 /// Writers are intended to be composable with one another. Many objects
