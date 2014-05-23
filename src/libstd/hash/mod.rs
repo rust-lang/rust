@@ -65,7 +65,6 @@
 
 use container::Container;
 use intrinsics::TypeId;
-use io::Writer;
 use iter::Iterator;
 use option::{Option, Some, None};
 use owned::Box;
@@ -77,6 +76,8 @@ use vec::Vec;
 
 /// Reexport the `sip::hash` function as our default hasher.
 pub use hash = self::sip::hash;
+
+pub use Writer = io::Writer;
 
 pub mod sip;
 
