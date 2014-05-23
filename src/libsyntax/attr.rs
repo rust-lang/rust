@@ -21,17 +21,20 @@ use parse::token;
 use crateid::CrateId;
 
 use collections::HashSet;
+use collections::bitv::BitvSet;
 
-local_data_key!(used_attrs: HashSet<AttrId>)
+local_data_key!(used_attrs: BitvSet)
 
 pub fn mark_used(attr: &Attribute) {
-    let mut used = used_attrs.replace(None).unwrap_or_else(|| HashSet::new());
-    used.insert(attr.node.id);
+    let mut used = used_attrs.replace(None).unwrap_or_else(|| BitvSet::new());
+    let AttrId(id) = attr.node.id;
+    used.insert(id);
     used_attrs.replace(Some(used));
 }
 
 pub fn is_used(attr: &Attribute) -> bool {
-    used_attrs.get().map_or(false, |used| used.contains(&attr.node.id))
+    let AttrId(id) = attr.node.id;
+    used_attrs.get().map_or(false, |used| used.contains(&id))
 }
 
 pub trait AttrMetaMethods {
@@ -60,12 +63,11 @@ pub trait AttrMetaMethods {
 
 impl AttrMetaMethods for Attribute {
     fn check_name(&self, name: &str) -> bool {
-        if name == self.name().get() {
+        let matches = name == self.name().get();
+        if matches {
             mark_used(self);
-            true
-        } else {
-            false
         }
+        matches
     }
     fn name(&self) -> InternedString { self.meta().name() }
     fn value_str(&self) -> Option<InternedString> {
@@ -465,7 +467,6 @@ pub fn require_unique_names(diagnostic: &SpanHandler, metas: &[@MetaItem]) {
 pub fn find_repr_attr(diagnostic: &SpanHandler, attr: &Attribute, acc: ReprAttr)
     -> ReprAttr {
     let mut acc = acc;
-    info!("{}", ::print::pprust::attribute_to_str(attr));
     match attr.node.value.node {
         ast::MetaList(ref s, ref items) if s.equiv(&("repr")) => {
             mark_used(attr);

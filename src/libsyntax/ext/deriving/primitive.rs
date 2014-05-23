@@ -10,7 +10,6 @@
 
 use ast::{MetaItem, Item, Expr};
 use ast;
-use attr;
 use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
@@ -23,7 +22,7 @@ pub fn expand_deriving_from_primitive(cx: &mut ExtCtxt,
                                       item: @Item,
                                       push: |@Item|) {
     let inline = cx.meta_word(span, InternedString::new("inline"));
-    let attrs = vec!(cx.attribute(attr::mk_attr_id(), span, inline));
+    let attrs = vec!(cx.attribute(span, inline));
     let trait_def = TraitDef {
         span: span,
         attributes: Vec::new(),
