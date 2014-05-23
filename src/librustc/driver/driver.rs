@@ -716,6 +716,45 @@ fn print_flowgraph<W:io::Writer>(analysis: CrateAnalysis,
 
 pub fn collect_crate_types(session: &Session,
                            attrs: &[ast::Attribute]) -> Vec<config::CrateType> {
+    // Unconditionally collect crate types from attributes to make them used
+    let attr_types: Vec<config::CrateType> = attrs.iter().filter_map(|a| {
+        if a.check_name("crate_type") {
+            match a.value_str() {
+                Some(ref n) if n.equiv(&("rlib")) => {
+                    Some(config::CrateTypeRlib)
+                }
+                Some(ref n) if n.equiv(&("dylib")) => {
+                    Some(config::CrateTypeDylib)
+                }
+                Some(ref n) if n.equiv(&("lib")) => {
+                    Some(config::default_lib_output())
+                }
+                Some(ref n) if n.equiv(&("staticlib")) => {
+                    Some(config::CrateTypeStaticlib)
+                }
+                Some(ref n) if n.equiv(&("bin")) => Some(config::CrateTypeExecutable),
+                Some(_) => {
+                    session.add_lint(lint::UnknownCrateType,
+                                     ast::CRATE_NODE_ID,
+                                     a.span,
+                                     "invalid `crate_type` \
+                                      value".to_strbuf());
+                    None
+                }
+                _ => {
+                    session.add_lint(lint::UnknownCrateType,
+                                     ast::CRATE_NODE_ID,
+                                     a.span,
+                                     "`crate_type` requires a \
+                                      value".to_strbuf());
+                    None
+                }
+            }
+        } else {
+            None
+        }
+    }).collect();
+
     // If we're generating a test executable, then ignore all other output
     // styles at all other locations
     if session.opts.test {
@@ -729,44 +768,7 @@ pub fn collect_crate_types(session: &Session,
     if base.len() > 0 {
         return base
     } else {
-        let iter = attrs.iter().filter_map(|a| {
-            if a.name().equiv(&("crate_type")) {
-                match a.value_str() {
-                    Some(ref n) if n.equiv(&("rlib")) => {
-                        Some(config::CrateTypeRlib)
-                    }
-                    Some(ref n) if n.equiv(&("dylib")) => {
-                        Some(config::CrateTypeDylib)
-                    }
-                    Some(ref n) if n.equiv(&("lib")) => {
-                        Some(config::default_lib_output())
-                    }
-                    Some(ref n) if n.equiv(&("staticlib")) => {
-                        Some(config::CrateTypeStaticlib)
-                    }
-                    Some(ref n) if n.equiv(&("bin")) => Some(config::CrateTypeExecutable),
-                    Some(_) => {
-                        session.add_lint(lint::UnknownCrateType,
-                                         ast::CRATE_NODE_ID,
-                                         a.span,
-                                         "invalid `crate_type` \
-                                          value".to_strbuf());
-                        None
-                    }
-                    _ => {
-                        session.add_lint(lint::UnknownCrateType,
-                                         ast::CRATE_NODE_ID,
-                                         a.span,
-                                         "`crate_type` requires a \
-                                          value".to_strbuf());
-                        None
-                    }
-                }
-            } else {
-                None
-            }
-        });
-        base.extend(iter);
+        base.extend(attr_types.move_iter());
         if base.len() == 0 {
             base.push(config::CrateTypeExecutable);
         }

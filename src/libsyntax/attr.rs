@@ -350,9 +350,9 @@ pub fn test_cfg<AM: AttrMetaMethods, It: Iterator<AM>>
 
     // this would be much nicer as a chain of iterator adaptors, but
     // this doesn't work.
-    let some_cfg_matches = metas.any(|mi| {
+    let some_cfg_matches = metas.fold(false, |matches, mi| {
         debug!("testing name: {}", mi.name());
-        if mi.check_name("cfg") { // it is a #[cfg()] attribute
+        let this_matches = if mi.check_name("cfg") { // it is a #[cfg()] attribute
             debug!("is cfg");
             no_cfgs = false;
              // only #[cfg(...)] ones are understood.
@@ -380,7 +380,8 @@ pub fn test_cfg<AM: AttrMetaMethods, It: Iterator<AM>>
             }
         } else {
             false
-        }
+        };
+        matches || this_matches
     });
     debug!("test_cfg (no_cfgs={}, some_cfg_matches={})", no_cfgs, some_cfg_matches);
     no_cfgs || some_cfg_matches

@@ -9,8 +9,6 @@
 // except according to those terms.
 
 // ignore-win32 FIXME #13259
-#![no_uv]
-
 extern crate native;
 
 use std::os;

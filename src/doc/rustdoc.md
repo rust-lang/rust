@@ -11,6 +11,7 @@ Documenting Rust APIs is quite simple. To document a given item, we have "doc
 comments":
 
 ~~~
+# #![allow(unused_attribute)]
 // the "link" crate attribute is currently required for rustdoc, but normally
 // isn't needed.
 #![crate_id = "universe"]

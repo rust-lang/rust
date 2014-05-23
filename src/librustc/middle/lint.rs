@@ -293,7 +293,7 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
      LintSpec {
          lint: UnusedAttribute,
          desc: "detects attributes that were not used by the compiler",
-         default: Allow
+         default: Warn
     }),
 
     ("unused_variable",
@@ -1148,7 +1148,37 @@ fn check_attrs_usage(cx: &Context, attrs: &[ast::Attribute]) {
 fn check_unused_attribute(cx: &Context, attrs: &[ast::Attribute]) {
     for attr in attrs.iter() {
         // whitelist docs since rustdoc looks at them
+        attr.check_name("automatically_derived");
         attr.check_name("doc");
+
+        // these are processed in trans, which happens after the lint pass
+        attr.check_name("address_insignificant");
+        attr.check_name("cold");
+        attr.check_name("inline");
+        attr.check_name("link");
+        attr.check_name("link_name");
+        attr.check_name("link_section");
+        attr.check_name("no_builtins");
+        attr.check_name("no_mangle");
+        attr.check_name("no_split_stack");
+        attr.check_name("packed");
+        attr.check_name("static_assert");
+        attr.check_name("thread_local");
+
+        // not used anywhere (!?) but apparently we want to keep them around
+        attr.check_name("comment");
+        attr.check_name("desc");
+        attr.check_name("license");
+
+        // these are only looked at on-demand so we can't guarantee they'll have
+        // already been checked
+        attr.check_name("deprecated");
+        attr.check_name("experimental");
+        attr.check_name("frozen");
+        attr.check_name("locked");
+        attr.check_name("must_use");
+        attr.check_name("stable");
+        attr.check_name("unstable");
 
         if !attr::is_used(attr) {
             cx.span_lint(UnusedAttribute, attr.span, "unused attribute");
