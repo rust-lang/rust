@@ -1447,7 +1447,7 @@ fn synthesize_crate_attrs(ecx: &EncodeContext,
 
     let mut attrs = Vec::new();
     for attr in krate.attrs.iter() {
-        if !attr.name().equiv(&("crate_id")) {
+        if !attr.check_name("crate_id") {
             attrs.push(*attr);
         }
     }

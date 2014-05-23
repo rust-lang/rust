@@ -253,7 +253,7 @@ fn is_bench_fn(cx: &TestCtxt, i: @ast::Item) -> bool {
 fn is_ignored(cx: &TestCtxt, i: @ast::Item) -> bool {
     i.attrs.iter().any(|attr| {
         // check ignore(cfg(foo, bar))
-        attr.name().equiv(&("ignore")) && match attr.meta_item_list() {
+        attr.check_name("ignore") && match attr.meta_item_list() {
             Some(ref cfgs) => {
                 attr::test_cfg(cx.config.as_slice(), cfgs.iter().map(|x| *x))
             }

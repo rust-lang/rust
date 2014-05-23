@@ -12,9 +12,12 @@
 // injected intrinsics by the compiler.
 
 #![deny(attribute_usage)]
+#![deny(unused_attribute)]
 
 mod a {
     #![crate_type = "bin"] //~ ERROR: crate-level attribute
+                           //~^ ERROR: unused attribute
 }
 
 #[crate_type = "bin"] fn main() {} //~ ERROR: crate-level attribute
+                                   //~^ ERROR: unused attribute
