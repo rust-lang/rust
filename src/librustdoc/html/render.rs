@@ -132,7 +132,7 @@ pub struct Cache {
     ///
     /// The values of the map are a list of implementations and documentation
     /// found on that implementation.
-    pub impls: HashMap<ast::NodeId, Vec<(clean::Impl, Option<String>)>>,
+    pub impls: HashMap<ast::DefId, Vec<(clean::Impl, Option<String>)>>,
 
     /// Maintains a mapping of local crate node ids to the fully qualified name
     /// and "short type description" of that node. This is used when generating
@@ -837,10 +837,8 @@ impl DocFolder for Cache {
                 match item {
                     clean::Item{ attrs, inner: clean::ImplItem(i), .. } => {
                         match i.for_ {
-                            clean::ResolvedPath { did, .. }
-                                if ast_util::is_local(did) =>
-                            {
-                                let v = self.impls.find_or_insert_with(did.node, |_| {
+                            clean::ResolvedPath { did, .. } => {
+                                let v = self.impls.find_or_insert_with(did, |_| {
                                     Vec::new()
                                 });
                                 // extract relevant documentation for this impl
@@ -1664,7 +1662,7 @@ fn render_struct(w: &mut fmt::Formatter, it: &clean::Item,
 }
 
 fn render_methods(w: &mut fmt::Formatter, it: &clean::Item) -> fmt::Result {
-    match cache_key.get().unwrap().impls.find(&it.def_id.node) {
+    match cache_key.get().unwrap().impls.find(&it.def_id) {
         Some(v) => {
             let mut non_trait = v.iter().filter(|p| {
                 p.ref0().trait_.is_none()
