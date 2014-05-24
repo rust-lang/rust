@@ -377,7 +377,7 @@ impl<'a> ToCStr for &'a [u8] {
 // Unsafe function that handles possibly copying the &[u8] into a stack array.
 unsafe fn with_c_str<T>(v: &[u8], checked: bool, f: |*libc::c_char| -> T) -> T {
     if v.len() < BUF_LEN {
-        let mut buf: [u8, .. BUF_LEN] = mem::uninit();
+        let mut buf: [u8, .. BUF_LEN] = mem::uninitialized();
         slice::bytes::copy_memory(buf, v);
         buf[v.len()] = 0;
 

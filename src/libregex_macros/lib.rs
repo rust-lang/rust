@@ -254,8 +254,8 @@ fn exec<'t>(which: ::regex::native::MatchKind, input: &'t str,
                 // The idea here is to avoid initializing threads that never
                 // need to be initialized, particularly for larger regexs with
                 // a lot of instructions.
-                queue: unsafe { ::std::mem::uninit() },
-                sparse: unsafe { ::std::mem::uninit() },
+                queue: unsafe { ::std::mem::uninitialized() },
+                sparse: unsafe { ::std::mem::uninitialized() },
                 size: 0,
             }
         }

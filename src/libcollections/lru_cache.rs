@@ -92,7 +92,7 @@ impl<K: Hash + TotalEq, V> LruCache<K, V> {
         let cache = LruCache {
             map: HashMap::new(),
             max_size: capacity,
-            head: unsafe{ mem::transmute(box mem::uninit::<LruEntry<K, V>>()) },
+            head: unsafe{ mem::transmute(box mem::uninitialized::<LruEntry<K, V>>()) },
         };
         unsafe {
             (*cache.head).next = cache.head;
