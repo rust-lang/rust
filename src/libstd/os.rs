@@ -969,7 +969,7 @@ pub fn page_size() -> uint {
 pub fn page_size() -> uint {
     use mem;
     unsafe {
-        let mut info = mem::uninit();
+        let mut info = mem::zeroed();
         libc::GetSystemInfo(&mut info);
 
         return info.dwPageSize as uint;
@@ -1288,7 +1288,7 @@ impl MemoryMap {
     pub fn granularity() -> uint {
         use mem;
         unsafe {
-            let mut info = mem::uninit();
+            let mut info = mem::zeroed();
             libc::GetSystemInfo(&mut info);
 
             return info.dwAllocationGranularity as uint;
