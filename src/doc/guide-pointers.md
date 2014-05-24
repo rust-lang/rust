@@ -37,7 +37,7 @@ error: mismatched types: expected `&int` but found `<generic integer #0>` (expec
 
 What gives? It needs a pointer! Therefore I have to use pointers!"
 
-Turns out, you don't. __All you need is a reference__. Try this on for size:
+Turns out, you don't. All you need is a reference. Try this on for size:
 
 ~~~rust
 # fn succ(x: &int) -> int { *x + 1 }
@@ -74,8 +74,7 @@ Here are the use-cases for pointers. I've prefixed them with the name of the
 pointer that satisfies that use-case:
 
 1. Owned: `Box<Trait>` must be a pointer, because you don't know the size of the
-object, so indirection is mandatory. Notation might change once Rust
-support DST fully so we recommend you stay tuned.
+object, so indirection is mandatory.
 
 2. Owned: You need a recursive data structure. These can be infinite sized, so
 indirection is mandatory.
@@ -89,7 +88,10 @@ common, such as C++, please read "A note..." below.
 care about its ownership. If you make the argument a reference, callers
 can send in whatever kind they want.
 
-Four exceptions. That's it. Otherwise, you shouldn't need them. Be sceptical
+5. Shared: You need to share data among tasks. You can achieve that via the
+`Rc` and `Arc` types.
+
+Five exceptions. That's it. Otherwise, you shouldn't need them. Be sceptical
 of pointers in Rust: use them for a deliberate purpose, not just to make the
 compiler happy.
 
@@ -205,10 +207,6 @@ The inner lists _must_ be an owned pointer, because we can't know how many
 elements are in the list. Without knowing the length, we don't know the size,
 and therefore require the indirection that pointers offer.
 
-> Note: Nil is just part of the List enum and even though is being used
-> to represent the concept of "nothing", you shouldn't think of it as
-> NULL. Rust doesn't have NULL.
-
 ## Efficiency
 
 This should almost never be a concern, but because creating an owned pointer
@@ -284,8 +282,8 @@ fn main() {
 ~~~
 
 This prints `5.83095189`. You can see that the `compute_distance` function
-takes in two references, but we give it a stack allocated reference and an
-owned box reference.
+takes in two references, a reference to a value on the stack, and a reference
+to a value in a box.
 Of course, if this were a real program, we wouldn't have any of these pointers,
 they're just there to demonstrate the concepts.
 
@@ -361,6 +359,51 @@ hard for a computer, too! There is an entire [guide devoted to references
 and lifetimes](guide-lifetimes.html) that goes into lifetimes in
 great detail, so if you want the full details, check that out.
 
+# Returning Pointers
+
+We've talked a lot about functions that accept various kinds of pointers, but
+what about returning them? In general, it is better to let the caller decide
+how to use a function's output, instead of assuming a certain type of pointer
+is best.
+
+What does that mean? Don't do this:
+
+~~~rust
+fn foo(x: Box<int>) -> Box<int> {
+    return box *x;
+}
+
+fn main() {
+    let x = box 5;
+    let y = foo(x);
+}
+~~~
+
+Do this:
+
+~~~rust
+fn foo(x: Box<int>) -> int {
+    return *x;
+}
+
+fn main() {
+    let x = box 5;
+    let y = box foo(x);
+}
+~~~
+
+This gives you flexibility, without sacrificing performance.
+
+You may think that this gives us terrible performance: return a value and then
+immediately box it up ?! Isn't that the worst of both worlds? Rust is smarter
+than that. There is no copy in this code. `main` allocates enough room for the
+`box int`, passes a pointer to that memory into `foo` as `x`, and then `foo` writes
+the value straight into that pointer. This writes the return value directly into
+the allocated box.
+
+This is important enough that it bears repeating: pointers are not for optimizing
+returning values from your code. Allow the caller to choose how they want to
+use your output.
 
 # Related Resources
 
