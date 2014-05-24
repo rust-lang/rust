@@ -99,7 +99,7 @@ impl fmt::Show for clean::TyParamBound {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             clean::RegionBound => {
-                f.write("::".as_bytes())
+                f.write("'static".as_bytes())
             }
             clean::TraitBound(ref ty) => {
                 write!(f, "{}", *ty)
