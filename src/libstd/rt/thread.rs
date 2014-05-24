@@ -227,8 +227,8 @@ mod imp {
     pub type rust_thread_return = *u8;
 
     pub unsafe fn create(stack: uint, p: Box<proc():Send>) -> rust_thread {
-        let mut native: libc::pthread_t = mem::uninit();
-        let mut attr: libc::pthread_attr_t = mem::uninit();
+        let mut native: libc::pthread_t = mem::zeroed();
+        let mut attr: libc::pthread_attr_t = mem::zeroed();
         assert_eq!(pthread_attr_init(&mut attr), 0);
         assert_eq!(pthread_attr_setdetachstate(&mut attr,
                                                PTHREAD_CREATE_JOINABLE), 0);

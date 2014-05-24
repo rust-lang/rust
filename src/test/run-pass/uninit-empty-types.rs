@@ -17,7 +17,7 @@ struct Foo;
 
 pub fn main() {
     unsafe {
-        let _x: Foo = mem::uninit();
-        let _x: [Foo, ..2] = mem::uninit();
+        let _x: Foo = mem::uninitialized();
+        let _x: [Foo, ..2] = mem::uninitialized();
     }
 }

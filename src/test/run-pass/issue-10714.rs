@@ -10,5 +10,5 @@
 
 enum v {}
 pub fn main() {
-    let y: v = unsafe { ::std::mem::uninit() };
+    let y: v = unsafe { ::std::mem::uninitialized() };
 }

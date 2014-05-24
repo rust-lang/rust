@@ -196,7 +196,7 @@ pub unsafe fn copy_memory<T>(dst: *mut T, src: *T, count: uint) {
 /// fn swap<T>(x: &mut T, y: &mut T) {
 ///     unsafe {
 ///         // Give ourselves some scratch space to work with
-///         let mut t: T = mem::uninit();
+///         let mut t: T = mem::uninitialized();
 ///
 ///         // Perform the swap, `&mut` pointers never alias
 ///         ptr::copy_nonoverlapping_memory(&mut t, &*x, 1);
@@ -239,7 +239,7 @@ pub unsafe fn zero_memory<T>(dst: *mut T, count: uint) {
 #[inline]
 pub unsafe fn swap<T>(x: *mut T, y: *mut T) {
     // Give ourselves some scratch space to work with
-    let mut tmp: T = mem::uninit();
+    let mut tmp: T = mem::uninitialized();
     let t: *mut T = &mut tmp;
 
     // Perform the swap
@@ -263,7 +263,7 @@ pub unsafe fn replace<T>(dest: *mut T, mut src: T) -> T {
 /// Reads the value from `*src` and returns it.
 #[inline(always)]
 pub unsafe fn read<T>(src: *T) -> T {
-    let mut tmp: T = mem::uninit();
+    let mut tmp: T = mem::uninitialized();
     copy_nonoverlapping_memory(&mut tmp, src, 1);
     tmp
 }
