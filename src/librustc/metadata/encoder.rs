@@ -536,6 +536,7 @@ fn encode_reexports(ecx: &EncodeContext,
 fn encode_info_for_mod(ecx: &EncodeContext,
                        ebml_w: &mut Encoder,
                        md: &Mod,
+                       attrs: &[Attribute],
                        id: NodeId,
                        path: PathElems,
                        name: Ident,
@@ -584,6 +585,7 @@ fn encode_info_for_mod(ecx: &EncodeContext,
         debug!("(encoding info for module) encoding reexports for {}", id);
         encode_reexports(ecx, ebml_w, id, path);
     }
+    encode_attributes(ebml_w, attrs);
 
     ebml_w.end_tag();
 }
@@ -938,6 +940,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_info_for_mod(ecx,
                             ebml_w,
                             m,
+                            item.attrs.as_slice(),
                             item.id,
                             path,
                             item.ident,
@@ -1337,6 +1340,7 @@ fn encode_info_for_items(ecx: &EncodeContext,
     encode_info_for_mod(ecx,
                         ebml_w,
                         &krate.module,
+                        &[],
                         CRATE_NODE_ID,
                         ast_map::Values([].iter()).chain(None),
                         syntax::parse::token::special_idents::invalid,
