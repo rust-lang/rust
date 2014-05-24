@@ -488,7 +488,7 @@ impl Clean<Option<Vec<TyParamBound>>> for ty::substs {
     }
 }
 
-#[deriving(Clone, Encodable, Decodable)]
+#[deriving(Clone, Encodable, Decodable, Eq)]
 pub struct Lifetime(String);
 
 impl Lifetime {
@@ -629,7 +629,7 @@ impl Clean<Item> for ast::TypeMethod {
     }
 }
 
-#[deriving(Clone, Encodable, Decodable)]
+#[deriving(Clone, Encodable, Decodable, Eq)]
 pub enum SelfTy {
     SelfStatic,
     SelfValue,
@@ -868,6 +868,16 @@ impl Clean<TraitMethod> for ty::Method {
                 (s, sig)
             }
         };
+        let mut names = csearch::get_method_arg_names(&tcx.sess.cstore,
+                                                      self.def_id).move_iter();
+        if self_ != SelfStatic {
+            names.next();
+        }
+        let mut decl = sig.clean();
+        for (name, slot) in names.zip(decl.inputs.values.mut_iter()) {
+            slot.name = name;
+        }
+
         m(Item {
             name: Some(self.ident.clean()),
             visibility: Some(ast::Inherited),
@@ -878,7 +888,7 @@ impl Clean<TraitMethod> for ty::Method {
                 fn_style: self.fty.fn_style,
                 generics: self.generics.clean(),
                 self_: self_,
-                decl: sig.clean(),
+                decl: decl,
             })
         })
     }
@@ -1437,7 +1447,7 @@ impl Clean<Item> for doctree::Static {
     }
 }
 
-#[deriving(Show, Clone, Encodable, Decodable)]
+#[deriving(Show, Clone, Encodable, Decodable, Eq)]
 pub enum Mutability {
     Mutable,
     Immutable,
