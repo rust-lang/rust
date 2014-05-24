@@ -54,7 +54,9 @@ use heap::deallocate;
 /// ```
 #[unsafe_no_drop_flag]
 pub struct Arc<T> {
-    x: *mut ArcInner<T>,
+    // FIXME #12808: strange name to try to avoid interfering with
+    // field accesses of the contained type via Deref
+    _ptr: *mut ArcInner<T>,
 }
 
 /// A weak pointer to an `Arc`.
@@ -63,7 +65,9 @@ pub struct Arc<T> {
 /// used to break cycles between `Arc` pointers.
 #[unsafe_no_drop_flag]
 pub struct Weak<T> {
-    x: *mut ArcInner<T>,
+    // FIXME #12808: strange name to try to avoid interfering with
+    // field accesses of the contained type via Deref
+    _ptr: *mut ArcInner<T>,
 }
 
 struct ArcInner<T> {
@@ -83,7 +87,7 @@ impl<T: Share + Send> Arc<T> {
             weak: atomics::AtomicUint::new(1),
             data: data,
         };
-        Arc { x: unsafe { mem::transmute(x) } }
+        Arc { _ptr: unsafe { mem::transmute(x) } }
     }
 
     #[inline]
@@ -93,7 +97,7 @@ impl<T: Share + Send> Arc<T> {
         // `ArcInner` structure itself is `Share` because the inner data is
         // `Share` as well, so we're ok loaning out an immutable pointer to
         // these contents.
-        unsafe { &*self.x }
+        unsafe { &*self._ptr }
     }
 
     /// Downgrades a strong pointer to a weak pointer
@@ -104,7 +108,7 @@ impl<T: Share + Send> Arc<T> {
     pub fn downgrade(&self) -> Weak<T> {
         // See the clone() impl for why this is relaxed
         self.inner().weak.fetch_add(1, atomics::Relaxed);
-        Weak { x: self.x }
+        Weak { _ptr: self._ptr }
     }
 }
 
@@ -128,7 +132,7 @@ impl<T: Share + Send> Clone for Arc<T> {
         //
         // [1]: (www.boost.org/doc/libs/1_55_0/doc/html/atomic/usage_examples.html)
         self.inner().strong.fetch_add(1, atomics::Relaxed);
-        Arc { x: self.x }
+        Arc { _ptr: self._ptr }
     }
 }
 
@@ -166,7 +170,7 @@ impl<T: Share + Send> Drop for Arc<T> {
         // This structure has #[unsafe_no_drop_flag], so this drop glue may run
         // more than once (but it is guaranteed to be zeroed after the first if
         // it's run more than once)
-        if self.x.is_null() { return }
+        if self._ptr.is_null() { return }
 
         // Because `fetch_sub` is already atomic, we do not need to synchronize
         // with other threads unless we are going to delete the object. This
@@ -198,7 +202,7 @@ impl<T: Share + Send> Drop for Arc<T> {
 
         if self.inner().weak.fetch_sub(1, atomics::Release) == 1 {
             atomics::fence(atomics::Acquire);
-            unsafe { deallocate(self.x as *mut u8, size_of::<ArcInner<T>>(),
+            unsafe { deallocate(self._ptr as *mut u8, size_of::<ArcInner<T>>(),
                                 min_align_of::<ArcInner<T>>()) }
         }
     }
@@ -218,14 +222,14 @@ impl<T: Share + Send> Weak<T> {
             let n = inner.strong.load(atomics::SeqCst);
             if n == 0 { return None }
             let old = inner.strong.compare_and_swap(n, n + 1, atomics::SeqCst);
-            if old == n { return Some(Arc { x: self.x }) }
+            if old == n { return Some(Arc { _ptr: self._ptr }) }
         }
     }
 
     #[inline]
     fn inner<'a>(&'a self) -> &'a ArcInner<T> {
         // See comments above for why this is "safe"
-        unsafe { &*self.x }
+        unsafe { &*self._ptr }
     }
 }
 
@@ -234,7 +238,7 @@ impl<T: Share + Send> Clone for Weak<T> {
     fn clone(&self) -> Weak<T> {
         // See comments in Arc::clone() for why this is relaxed
         self.inner().weak.fetch_add(1, atomics::Relaxed);
-        Weak { x: self.x }
+        Weak { _ptr: self._ptr }
     }
 }
 
@@ -242,14 +246,14 @@ impl<T: Share + Send> Clone for Weak<T> {
 impl<T: Share + Send> Drop for Weak<T> {
     fn drop(&mut self) {
         // see comments above for why this check is here
-        if self.x.is_null() { return }
+        if self._ptr.is_null() { return }
 
         // If we find out that we were the last weak pointer, then its time to
         // deallocate the data entirely. See the discussion in Arc::drop() about
         // the memory orderings
         if self.inner().weak.fetch_sub(1, atomics::Release) == 1 {
             atomics::fence(atomics::Acquire);
-            unsafe { deallocate(self.x as *mut u8, size_of::<ArcInner<T>>(),
+            unsafe { deallocate(self._ptr as *mut u8, size_of::<ArcInner<T>>(),
                                 min_align_of::<ArcInner<T>>()) }
         }
     }
@@ -261,7 +265,7 @@ mod tests {
     use std::clone::Clone;
     use std::comm::channel;
     use std::mem::drop;
-    use std::ops::{Drop, Deref, DerefMut};
+    use std::ops::Drop;
     use std::option::{Option, Some, None};
     use std::sync::atomics;
     use std::task;
@@ -374,7 +378,7 @@ mod tests {
 
         let a = Arc::new(Cycle { x: Mutex::new(None) });
         let b = a.clone().downgrade();
-        *a.deref().x.lock().deref_mut() = Some(b);
+        *a.x.lock() = Some(b);
 
         // hopefully we don't double-free (or leak)...
     }

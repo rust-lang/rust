@@ -174,7 +174,9 @@ pub struct Mutex<T> {
 /// An guard which is created by locking a mutex. Through this guard the
 /// underlying data can be accessed.
 pub struct MutexGuard<'a, T> {
-    data: &'a mut T,
+    // FIXME #12808: strange name to try to avoid interfering with
+    // field accesses of the contained type via Deref
+    _data: &'a mut T,
     /// Inner condition variable connected to the locked mutex that this guard
     /// was created from. This can be used for atomic-unlock-and-deschedule.
     pub cond: Condvar<'a>,
@@ -221,7 +223,7 @@ impl<T: Send> Mutex<T> {
         let data = unsafe { &mut *self.data.get() };
 
         MutexGuard {
-            data: data,
+            _data: data,
             cond: Condvar {
                 name: "Mutex",
                 poison: PoisonOnFail::new(poison, "Mutex"),
@@ -232,10 +234,10 @@ impl<T: Send> Mutex<T> {
 }
 
 impl<'a, T: Send> Deref<T> for MutexGuard<'a, T> {
-    fn deref<'a>(&'a self) -> &'a T { &*self.data }
+    fn deref<'a>(&'a self) -> &'a T { &*self._data }
 }
 impl<'a, T: Send> DerefMut<T> for MutexGuard<'a, T> {
-    fn deref_mut<'a>(&'a mut self) -> &'a mut T { &mut *self.data }
+    fn deref_mut<'a>(&'a mut self) -> &'a mut T { &mut *self._data }
 }
 
 /****************************************************************************
@@ -272,7 +274,9 @@ pub struct RWLock<T> {
 /// A guard which is created by locking an rwlock in write mode. Through this
 /// guard the underlying data can be accessed.
 pub struct RWLockWriteGuard<'a, T> {
-    data: &'a mut T,
+    // FIXME #12808: strange name to try to avoid interfering with
+    // field accesses of the contained type via Deref
+    _data: &'a mut T,
     /// Inner condition variable that can be used to sleep on the write mode of
     /// this rwlock.
     pub cond: Condvar<'a>,
@@ -281,8 +285,10 @@ pub struct RWLockWriteGuard<'a, T> {
 /// A guard which is created by locking an rwlock in read mode. Through this
 /// guard the underlying data can be accessed.
 pub struct RWLockReadGuard<'a, T> {
-    data: &'a T,
-    guard: raw::RWLockReadGuard<'a>,
+    // FIXME #12808: strange names to try to avoid interfering with
+    // field accesses of the contained type via Deref
+    _data: &'a T,
+    _guard: raw::RWLockReadGuard<'a>,
 }
 
 impl<T: Send + Share> RWLock<T> {
@@ -320,7 +326,7 @@ impl<T: Send + Share> RWLock<T> {
         let data = unsafe { &mut *self.data.get() };
 
         RWLockWriteGuard {
-            data: data,
+            _data: data,
             cond: Condvar {
                 name: "RWLock",
                 poison: PoisonOnFail::new(poison, "RWLock"),
@@ -340,8 +346,8 @@ impl<T: Send + Share> RWLock<T> {
         let guard = self.lock.read();
         PoisonOnFail::check(unsafe { *self.failed.get() }, "RWLock");
         RWLockReadGuard {
-            guard: guard,
-            data: unsafe { &*self.data.get() },
+            _guard: guard,
+            _data: unsafe { &*self.data.get() },
         }
     }
 }
@@ -351,25 +357,25 @@ impl<'a, T: Send + Share> RWLockWriteGuard<'a, T> {
     ///
     /// This will allow pending readers to come into the lock.
     pub fn downgrade(self) -> RWLockReadGuard<'a, T> {
-        let RWLockWriteGuard { data, cond } = self;
+        let RWLockWriteGuard { _data, cond } = self;
         // convert the data to read-only explicitly
-        let data = &*data;
+        let data = &*_data;
         let guard = match cond.inner {
             InnerMutex(..) => unreachable!(),
             InnerRWLock(guard) => guard.downgrade()
         };
-        RWLockReadGuard { guard: guard, data: data }
+        RWLockReadGuard { _guard: guard, _data: data }
     }
 }
 
 impl<'a, T: Send + Share> Deref<T> for RWLockReadGuard<'a, T> {
-    fn deref<'a>(&'a self) -> &'a T { self.data }
+    fn deref<'a>(&'a self) -> &'a T { self._data }
 }
 impl<'a, T: Send + Share> Deref<T> for RWLockWriteGuard<'a, T> {
-    fn deref<'a>(&'a self) -> &'a T { &*self.data }
+    fn deref<'a>(&'a self) -> &'a T { &*self._data }
 }
 impl<'a, T: Send + Share> DerefMut<T> for RWLockWriteGuard<'a, T> {
-    fn deref_mut<'a>(&'a mut self) -> &'a mut T { &mut *self.data }
+    fn deref_mut<'a>(&'a mut self) -> &'a mut T { &mut *self._data }
 }
 
 /****************************************************************************
@@ -812,4 +818,3 @@ mod tests {
         }
     }
 }
-
