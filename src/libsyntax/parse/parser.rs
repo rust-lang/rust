@@ -3425,6 +3425,7 @@ impl<'a> Parser<'a> {
             let lifetimes = self.parse_lifetimes();
             let mut seen_default = false;
             let ty_params = self.parse_seq_to_gt(Some(token::COMMA), |p| {
+                p.forbid_lifetime();
                 let ty_param = p.parse_ty_param();
                 if ty_param.default.is_some() {
                     seen_default = true;
@@ -3444,8 +3445,19 @@ impl<'a> Parser<'a> {
         let lifetimes = self.parse_lifetimes();
         let result = self.parse_seq_to_gt(
             Some(token::COMMA),
-            |p| p.parse_ty(false));
+            |p| {
+                p.forbid_lifetime();
+                p.parse_ty(false)
+            }
+        );
         (lifetimes, result.into_vec())
+    }
+
+    fn forbid_lifetime(&mut self) {
+        if Parser::token_is_lifetime(&self.token) {
+            self.span_fatal(self.span, "lifetime parameters must be declared \
+                                        prior to type parameters");
+        }
     }
 
     fn parse_fn_args(&mut self, named_args: bool, allow_variadic: bool)
