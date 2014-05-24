@@ -225,6 +225,47 @@ impl<'a> StringReader<'a> {
                 self.byte_offset(end).to_uint()))
     }
 
+    /// Converts CRLF to LF in the given string, raising an error on bare CR.
+    fn translate_crlf<'a>(&self, start: BytePos,
+                          s: &'a str, errmsg: &'a str) -> str::MaybeOwned<'a> {
+        let mut i = 0u;
+        while i < s.len() {
+            let str::CharRange { ch, next } = s.char_range_at(i);
+            if ch == '\r' {
+                if next < s.len() && s.char_at(next) == '\n' {
+                    return translate_crlf_(self, start, s, errmsg, i).into_maybe_owned();
+                }
+                let pos = start + BytePos(i as u32);
+                let end_pos = start + BytePos(next as u32);
+                self.err_span_(pos, end_pos, errmsg);
+            }
+            i = next;
+        }
+        return s.into_maybe_owned();
+
+        fn translate_crlf_(rdr: &StringReader, start: BytePos,
+                        s: &str, errmsg: &str, mut i: uint) -> String {
+            let mut buf = String::with_capacity(s.len());
+            let mut j = 0;
+            while i < s.len() {
+                let str::CharRange { ch, next } = s.char_range_at(i);
+                if ch == '\r' {
+                    if j < i { buf.push_str(s.slice(j, i)); }
+                    j = next;
+                    if next >= s.len() || s.char_at(next) != '\n' {
+                        let pos = start + BytePos(i as u32);
+                        let end_pos = start + BytePos(next as u32);
+                        rdr.err_span_(pos, end_pos, errmsg);
+                    }
+                }
+                i = next;
+            }
+            if j < s.len() { buf.push_str(s.slice_from(j)); }
+            buf
+        }
+    }
+
+
     /// Advance the StringReader by one character. If a newline is
     /// discovered, add it to the FileMap's list of line start offsets.
     pub fn bump(&mut self) {
@@ -305,7 +346,20 @@ impl<'a> StringReader<'a> {
                     // line comments starting with "///" or "//!" are doc-comments
                     if self.curr_is('/') || self.curr_is('!') {
                         let start_bpos = self.pos - BytePos(3);
-                        while !self.curr_is('\n') && !self.is_eof() {
+                        while !self.is_eof() {
+                            match self.curr.unwrap() {
+                                '\n' => break,
+                                '\r' => {
+                                    if self.nextch_is('\n') {
+                                        // CRLF
+                                        break
+                                    } else {
+                                        self.err_span_(self.last_pos, self.pos,
+                                                       "bare CR not allowed in doc-comment");
+                                    }
+                                }
+                                _ => ()
+                            }
                             self.bump();
                         }
                         let ret = self.with_str_from(start_bpos, |string| {
@@ -370,6 +424,7 @@ impl<'a> StringReader<'a> {
         let start_bpos = self.last_pos - BytePos(2);
 
         let mut level: int = 1;
+        let mut has_cr = false;
         while level > 0 {
             if self.is_eof() {
                 let msg = if is_doc_comment {
@@ -379,25 +434,35 @@ impl<'a> StringReader<'a> {
                 };
                 let last_bpos = self.last_pos;
                 self.fatal_span_(start_bpos, last_bpos, msg);
-            } else if self.curr_is('/') && self.nextch_is('*') {
-                level += 1;
-                self.bump();
-                self.bump();
-            } else if self.curr_is('*') && self.nextch_is('/') {
-                level -= 1;
-                self.bump();
-                self.bump();
-            } else {
-                self.bump();
             }
+            let n = self.curr.unwrap();
+            match n {
+                '/' if self.nextch_is('*') => {
+                    level += 1;
+                    self.bump();
+                }
+                '*' if self.nextch_is('/') => {
+                    level -= 1;
+                    self.bump();
+                }
+                '\r' => {
+                    has_cr = true;
+                }
+                _ => ()
+            }
+            self.bump();
         }
 
         let res = if is_doc_comment {
             self.with_str_from(start_bpos, |string| {
                 // but comments with only "*"s between two "/"s are not
                 if !is_block_non_doc_comment(string) {
+                    let string = if has_cr {
+                        self.translate_crlf(start_bpos, string,
+                                            "bare CR not allowed in block doc-comment")
+                    } else { string.into_maybe_owned() };
                     Some(TokenAndSpan{
-                            tok: token::DOC_COMMENT(str_to_ident(string)),
+                            tok: token::DOC_COMMENT(str_to_ident(string.as_slice())),
                             sp: codemap::mk_sp(start_bpos, self.last_pos)
                         })
                 } else {
@@ -675,6 +740,10 @@ impl<'a> StringReader<'a> {
                                 self.consume_whitespace();
                                 return None
                             },
+                            '\r' if delim == '"' && self.curr_is('\n') => {
+                                self.consume_whitespace();
+                                return None
+                            }
                             c => {
                                 let last_pos = self.last_pos;
                                 self.err_span_char(
@@ -695,6 +764,15 @@ impl<'a> StringReader<'a> {
                     if ascii_only { "byte constant must be escaped" }
                     else { "character constant must be escaped" },
                     first_source_char);
+            }
+            '\r' => {
+                if self.curr_is('\n') {
+                    self.bump();
+                    return Some('\n');
+                } else {
+                    self.err_span_(start, self.last_pos,
+                                   "bare CR not allowed in string, use \\r instead");
+                }
             }
             _ => if ascii_only && first_source_char > '\x7F' {
                 let last_pos = self.last_pos;
@@ -1042,28 +1120,45 @@ impl<'a> StringReader<'a> {
             self.bump();
             let content_start_bpos = self.last_pos;
             let mut content_end_bpos;
+            let mut has_cr = false;
             'outer: loop {
                 if self.is_eof() {
                     let last_bpos = self.last_pos;
                     self.fatal_span_(start_bpos, last_bpos, "unterminated raw string");
                 }
-                if self.curr_is('"') {
-                    content_end_bpos = self.last_pos;
-                    for _ in range(0, hash_count) {
-                        self.bump();
-                        if !self.curr_is('#') {
-                            continue 'outer;
+                //if self.curr_is('"') {
+                    //content_end_bpos = self.last_pos;
+                    //for _ in range(0, hash_count) {
+                        //self.bump();
+                        //if !self.curr_is('#') {
+                            //continue 'outer;
+                let c = self.curr.unwrap();
+                match c {
+                    '"' => {
+                        content_end_bpos = self.last_pos;
+                        for _ in range(0, hash_count) {
+                            self.bump();
+                            if !self.curr_is('#') {
+                                continue 'outer;
+                            }
                         }
+                        break;
                     }
-                    break;
+                    '\r' => {
+                        has_cr = true;
+                    }
+                    _ => ()
                 }
                 self.bump();
             }
             self.bump();
-            let str_content = self.with_str_from_to(
-                                               content_start_bpos,
-                                               content_end_bpos,
-                                               str_to_ident);
+            let str_content = self.with_str_from_to(content_start_bpos, content_end_bpos, |string| {
+                let string = if has_cr {
+                    self.translate_crlf(content_start_bpos, string,
+                                        "bare CR not allowed in raw string")
+                } else { string.into_maybe_owned() };
+                str_to_ident(string.as_slice())
+            });
             return token::LIT_STR_RAW(str_content, hash_count);
           }
           '-' => {
