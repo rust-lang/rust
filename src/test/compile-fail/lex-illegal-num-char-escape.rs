@@ -11,3 +11,25 @@
 static c: char =
     '\u539_' //~ ERROR: illegal character in numeric character escape
 ;
+
+static c2: char =
+    '\Uffffffff' //~ ERROR: illegal numeric character escape
+;
+
+static c3: char =
+    '\x1' //~ ERROR: numeric character escape is too short
+;
+
+static c4: char =
+    '\u23q' //~  ERROR: illegal character in numeric character escape
+;
+//~^^ ERROR: numeric character escape is too short
+
+static s: &'static str =
+    "\x1" //~ ERROR: numeric character escape is too short
+;
+
+static s2: &'static str =
+    "\u23q" //~ ERROR: illegal character in numeric character escape
+;
+//~^^ ERROR: numeric character escape is too short

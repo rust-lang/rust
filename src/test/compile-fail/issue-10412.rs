@@ -9,16 +9,17 @@
 // except according to those terms.
 
 
-trait Serializable<'self, T> { //~ ERROR: no longer a special lifetime
-    fn serialize(val : &'self T) -> Vec<u8> ;
-    fn deserialize(repr : &[u8]) -> &'self T;
+trait Serializable<'self, T> { //~ ERROR no longer a special lifetime
+    fn serialize(val : &'self T) -> Vec<u8> ; //~ ERROR no longer a special lifetime
+    fn deserialize(repr : &[u8]) -> &'self T; //~ ERROR no longer a special lifetime
 }
 
-impl<'self> Serializable<str> for &'self str {
-    fn serialize(val : &'self str) -> Vec<u8> {
+impl<'self> Serializable<str> for &'self str { //~ ERROR no longer a special lifetime
+    //~^ ERROR no longer a special lifetime
+    fn serialize(val : &'self str) -> Vec<u8> { //~ ERROR no longer a special lifetime
         vec!(1)
     }
-    fn deserialize(repr: &[u8]) -> &'self str {
+    fn deserialize(repr: &[u8]) -> &'self str { //~ ERROR no longer a special lifetime
         "hi"
     }
 }
