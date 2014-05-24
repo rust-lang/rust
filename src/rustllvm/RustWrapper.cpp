@@ -12,6 +12,12 @@
 #include "llvm/Object/Archive.h"
 #include "llvm/Object/ObjectFile.h"
 
+#if LLVM_VERSION_MINOR >= 5
+#include "llvm/IR/CallSite.h"
+#else
+#include "llvm/Support/CallSite.h"
+#endif
+
 //===----------------------------------------------------------------------===
 //
 // This file defines alternate interfaces to core functions that are more
@@ -83,45 +89,42 @@ extern "C" LLVMTypeRef LLVMMetadataTypeInContext(LLVMContextRef C) {
   return wrap(Type::getMetadataTy(*unwrap(C)));
 }
 
-extern "C" void LLVMAddFunctionAttrString(LLVMValueRef fn, const char *Name) {
-  unwrap<Function>(fn)->addFnAttr(Name);
+extern "C" void LLVMAddCallSiteAttribute(LLVMValueRef Instr, unsigned index, uint64_t Val) {
+  CallSite Call = CallSite(unwrap<Instruction>(Instr));
+  AttrBuilder B;
+  B.addRawValue(Val);
+  Call.setAttributes(
+    Call.getAttributes().addAttributes(Call->getContext(), index,
+                                       AttributeSet::get(Call->getContext(),
+                                                         index, B)));
 }
 
-extern "C" void LLVMRemoveFunctionAttrString(LLVMValueRef fn, const char *Name) {
+extern "C" void LLVMAddFunctionAttribute(LLVMValueRef Fn, unsigned index, uint64_t Val) {
+  Function *A = unwrap<Function>(Fn);
+  AttrBuilder B;
+  B.addRawValue(Val);
+  A->addAttributes(index, AttributeSet::get(A->getContext(), index, B));
+}
+
+extern "C" void LLVMAddFunctionAttrString(LLVMValueRef Fn, unsigned index, const char *Name) {
+  Function *F = unwrap<Function>(Fn);
+  AttrBuilder B;
+  B.addAttribute(Name);
+  F->addAttributes(index, AttributeSet::get(F->getContext(), index, B));
+}
+
+extern "C" void LLVMRemoveFunctionAttrString(LLVMValueRef fn, unsigned index, const char *Name) {
   Function *f = unwrap<Function>(fn);
   LLVMContext &C = f->getContext();
   AttrBuilder B;
   B.addAttribute(Name);
-  AttributeSet to_remove = AttributeSet::get(C, AttributeSet::FunctionIndex, B);
+  AttributeSet to_remove = AttributeSet::get(C, index, B);
 
   AttributeSet attrs = f->getAttributes();
   f->setAttributes(attrs.removeAttributes(f->getContext(),
-                                          AttributeSet::FunctionIndex,
+                                          index,
                                           to_remove));
 }
-
-extern "C" void LLVMAddReturnAttribute(LLVMValueRef Fn, LLVMAttribute PA) {
-  Function *A = unwrap<Function>(Fn);
-  AttrBuilder B(PA);
-  A->addAttributes(AttributeSet::ReturnIndex,
-                   AttributeSet::get(A->getContext(), AttributeSet::ReturnIndex,  B));
-}
-
-extern "C" void LLVMRemoveReturnAttribute(LLVMValueRef Fn, LLVMAttribute PA) {
-  Function *A = unwrap<Function>(Fn);
-  AttrBuilder B(PA);
-  A->removeAttributes(AttributeSet::ReturnIndex,
-                      AttributeSet::get(A->getContext(), AttributeSet::ReturnIndex,  B));
-}
-
-#if LLVM_VERSION_MINOR >= 5
-extern "C" void LLVMAddColdAttribute(LLVMValueRef Fn) {
-  Function *A = unwrap<Function>(Fn);
-  A->addAttribute(AttributeSet::FunctionIndex, Attribute::Cold);
-}
-#else
-extern "C" void LLVMAddColdAttribute(LLVMValueRef Fn) {}
-#endif
 
 extern "C" LLVMValueRef LLVMBuildAtomicLoad(LLVMBuilderRef B,
                                             LLVMValueRef source,
