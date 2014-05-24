@@ -41,7 +41,9 @@ pub fn recalibrate() {
 # }
 ~~~
 
-Documentation can also be controlled via the `doc` attribute on items.
+Documentation can also be controlled via the `doc` attribute on items. This is
+implicitly done by the compiler when using the above form of doc comments
+(converting the slash-based comments to `#[doc]` attributes).
 
 ~~~
 #[doc = "
@@ -50,6 +52,7 @@ Calculates the factorial of a number.
 Given the input integer `n`, this function will calculate `n!` and return it.
 "]
 pub fn factorial(n: int) -> int { if n < 2 {1} else {n * factorial(n)} }
+# fn main() {}
 ~~~
 
 The `doc` attribute can also be used to control how rustdoc emits documentation
@@ -60,6 +63,7 @@ in some cases.
 // `pub use` reaches across crates, but this behavior can also be disabled.
 #[doc(no_inline)]
 pub use std::option::Option;
+# fn main() {}
 ```
 
 Doc comments are markdown, and are currently parsed with the

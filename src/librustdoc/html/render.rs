@@ -143,7 +143,7 @@ pub struct Cache {
 
     /// Similar to `paths`, but only holds external paths. This is only used for
     /// generating explicit hyperlinks to other crates.
-    pub external_paths: HashMap<ast::DefId, Vec<StrBuf>>,
+    pub external_paths: HashMap<ast::DefId, Vec<String>>,
 
     /// This map contains information about all known traits of this crate.
     /// Implementations of a crate should inherit the documentation of the
@@ -253,7 +253,7 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
     let analysis = ::analysiskey.get();
     let public_items = analysis.as_ref().map(|a| a.public_items.clone());
     let public_items = public_items.unwrap_or(NodeSet::new());
-    let paths: HashMap<ast::DefId, (Vec<StrBuf>, ItemType)> =
+    let paths: HashMap<ast::DefId, (Vec<String>, ItemType)> =
       analysis.as_ref().map(|a| {
         let paths = a.external_paths.borrow_mut().take_unwrap();
         paths.move_iter().map(|(k, (v, t))| {
@@ -1041,7 +1041,19 @@ impl<'a> Item<'a> {
         }
     }
 
-    fn link(&self) -> Option<String> {
+    /// Generate a url appropriate for an `href` attribute back to the source of
+    /// this item.
+    ///
+    /// The url generated, when clicked, will redirect the browser back to the
+    /// original source code.
+    ///
+    /// If `None` is returned, then a source link couldn't be generated. This
+    /// may happen, for example, with externally inlined items where the source
+    /// of their crate documentation isn't known.
+    fn href(&self) -> Option<String> {
+        // If this item is part of the local crate, then we're guaranteed to
+        // know the span, so we plow forward and generate a proper url. The url
+        // has anchors for the line numbers that we're linking to.
         if ast_util::is_local(self.item.def_id) {
             let mut path = Vec::new();
             clean_srcpath(self.item.source.filename.as_bytes(), |component| {
@@ -1059,6 +1071,18 @@ impl<'a> Item<'a> {
                          krate = self.cx.layout.krate,
                          path = path.connect("/"),
                          href = href))
+
+        // If this item is not part of the local crate, then things get a little
+        // trickier. We don't actually know the span of the external item, but
+        // we know that the documentation on the other end knows the span!
+        //
+        // In this case, we generate a link to the *documentation* for this type
+        // in the original crate. There's an extra URL parameter which says that
+        // we want to go somewhere else, and the JS on the destination page will
+        // pick it up and instantly redirect the browser to the source code.
+        //
+        // If we don't know where the external documentation for this crate is
+        // located, then we return `None`.
         } else {
             let cache = cache_key.get().unwrap();
             let path = cache.external_paths.get(&self.item.def_id);
@@ -1120,8 +1144,13 @@ impl<'a> fmt::Show for Item<'a> {
         }
 
         // Write `src` tag
+        //
+        // When this item is part of a `pub use` in a downstream crate, the
+        // [src] link in the downstream documentation will actually come back to
+        // this page, and this link will be auto-clicked. The `id` attribute is
+        // used to find the link to auto-click.
         if self.cx.include_sources {
-            match self.link() {
+            match self.href() {
                 Some(l) => {
                     try!(write!(fmt,
                                 "<a class='source' id='src-{}' \
@@ -1288,7 +1317,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                         try!(write!(f, "<code> = </code>"));
                         if s.contains("\n") {
                             write!(f, "<a href='{}'>[definition]</a>",
-                                   item.link())
+                                   item.href())
                         } else {
                             write!(f, "<code>{}</code>", s.as_slice())
                         }

@@ -1310,7 +1310,7 @@ pub fn get_missing_lang_items(cdata: Cmd)
     return result;
 }
 
-pub fn get_method_arg_names(cdata: Cmd, id: ast::NodeId) -> Vec<StrBuf> {
+pub fn get_method_arg_names(cdata: Cmd, id: ast::NodeId) -> Vec<String> {
     let mut ret = Vec::new();
     let method_doc = lookup_item(id, cdata.data());
     match reader::maybe_get_doc(method_doc, tag_method_argument_names) {
