@@ -98,6 +98,7 @@ impl StaticNativeMutex {
     ///
     /// Note that a mutex created in this way needs to be explicit
     /// freed with a call to `destroy` or it will leak.
+    /// Also it is important to avoid locking until mutex has stopped moving
     pub unsafe fn new() -> StaticNativeMutex {
         StaticNativeMutex { inner: imp::Mutex::new() }
     }
@@ -172,6 +173,7 @@ impl NativeMutex {
     ///
     /// The user must be careful to ensure the mutex is not locked when its is
     /// being destroyed.
+    /// Also it is important to avoid locking until mutex has stopped moving
     pub unsafe fn new() -> NativeMutex {
         NativeMutex { inner: StaticNativeMutex::new() }
     }
@@ -262,7 +264,6 @@ mod imp {
     use libc;
     use self::os::{PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER,
                    pthread_mutex_t, pthread_cond_t};
-    use mem;
     use ty::Unsafe;
     use kinds::marker;
 
@@ -294,6 +295,7 @@ mod imp {
         static __PTHREAD_MUTEX_SIZE__: uint = 40;
         #[cfg(target_arch = "x86")]
         static __PTHREAD_COND_SIZE__: uint = 24;
+
         static _PTHREAD_MUTEX_SIG_init: libc::c_long = 0x32AAABA7;
         static _PTHREAD_COND_SIG_init: libc::c_long = 0x3CB0B1BB;
 
@@ -389,13 +391,13 @@ mod imp {
 
     impl Mutex {
         pub unsafe fn new() -> Mutex {
+            // As mutex might be moved and address is changing it
+            // is better to avoid initialization of potentially
+            // opaque OS data before it landed
             let m = Mutex {
-                lock: Unsafe::new(mem::zeroed()),
-                cond: Unsafe::new(mem::zeroed()),
+                lock: Unsafe::new(PTHREAD_MUTEX_INITIALIZER),
+                cond: Unsafe::new(PTHREAD_COND_INITIALIZER),
             };
-
-            pthread_mutex_init(m.lock.get(), 0 as *libc::c_void);
-            pthread_cond_init(m.cond.get(), 0 as *libc::c_void);
 
             return m;
         }
@@ -416,11 +418,7 @@ mod imp {
     }
 
     extern {
-        fn pthread_mutex_init(lock: *mut pthread_mutex_t,
-                              attr: *pthread_mutexattr_t) -> libc::c_int;
         fn pthread_mutex_destroy(lock: *mut pthread_mutex_t) -> libc::c_int;
-        fn pthread_cond_init(cond: *mut pthread_cond_t,
-                              attr: *pthread_condattr_t) -> libc::c_int;
         fn pthread_cond_destroy(cond: *mut pthread_cond_t) -> libc::c_int;
         fn pthread_mutex_lock(lock: *mut pthread_mutex_t) -> libc::c_int;
         fn pthread_mutex_trylock(lock: *mut pthread_mutex_t) -> libc::c_int;
