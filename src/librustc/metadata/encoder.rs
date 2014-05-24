@@ -774,23 +774,27 @@ fn encode_info_for_method(ecx: &EncodeContext,
         } else {
             encode_symbol(ecx, ebml_w, m.def_id.node);
         }
+        encode_method_argument_names(ebml_w, &*ast_method.decl);
+    }
 
-        ebml_w.start_tag(tag_method_argument_names);
-        for arg in ast_method.decl.inputs.iter() {
-            ebml_w.start_tag(tag_method_argument_name);
-            match arg.pat.node {
-                ast::PatIdent(_, ref name, _) => {
-                    let name = name.segments.last().unwrap().identifier;
-                    let name = token::get_ident(name);
-                    ebml_w.writer.write(name.get().as_bytes());
-                }
-                _ => {}
+    ebml_w.end_tag();
+}
+
+fn encode_method_argument_names(ebml_w: &mut Encoder,
+                                decl: &ast::FnDecl) {
+    ebml_w.start_tag(tag_method_argument_names);
+    for arg in decl.inputs.iter() {
+        ebml_w.start_tag(tag_method_argument_name);
+        match arg.pat.node {
+            ast::PatIdent(_, ref name, _) => {
+                let name = name.segments.last().unwrap().identifier;
+                let name = token::get_ident(name);
+                ebml_w.writer.write(name.get().as_bytes());
             }
-            ebml_w.end_tag();
+            _ => {}
         }
         ebml_w.end_tag();
     }
-
     ebml_w.end_tag();
 }
 
@@ -910,7 +914,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_visibility(ebml_w, vis);
         ebml_w.end_tag();
       }
-      ItemFn(_, fn_style, _, ref generics, _) => {
+      ItemFn(ref decl, fn_style, _, ref generics, _) => {
         add_to_index(item, ebml_w, index);
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, def_id);
@@ -926,6 +930,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
             encode_symbol(ecx, ebml_w, item.id);
         }
         encode_visibility(ebml_w, vis);
+        encode_method_argument_names(ebml_w, &**decl);
         ebml_w.end_tag();
       }
       ItemMod(ref m) => {

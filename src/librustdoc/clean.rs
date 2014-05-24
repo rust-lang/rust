@@ -722,18 +722,35 @@ impl Clean<FnDecl> for ast::FnDecl {
     }
 }
 
-impl Clean<FnDecl> for ty::FnSig {
+impl<'a> Clean<FnDecl> for (ast::DefId, &'a ty::FnSig) {
     fn clean(&self) -> FnDecl {
+        let cx = super::ctxtkey.get().unwrap();
+        let tcx = match cx.maybe_typed {
+            core::Typed(ref tcx) => tcx,
+            core::NotTyped(_) => fail!(),
+        };
+        let (did, sig) = *self;
+        let mut names = if did.node != 0 {
+            csearch::get_method_arg_names(&tcx.sess.cstore, did).move_iter()
+        } else {
+            Vec::new().move_iter()
+        }.peekable();
+        if names.peek().map(|s| s.as_slice()) == Some("self") {
+            let _ = names.next();
+        }
+        if did.node == 0 {
+            let _ = names.len();
+        }
         FnDecl {
-            output: self.output.clean(),
+            output: sig.output.clean(),
             cf: Return,
-            attrs: Vec::new(), // FIXME: this is likely wrong
+            attrs: Vec::new(),
             inputs: Arguments {
-                values: self.inputs.iter().map(|t| {
+                values: sig.inputs.iter().map(|t| {
                     Argument {
                         type_: t.clean(),
                         id: 0,
-                        name: "".to_strbuf(), // FIXME: where are the names?
+                        name: names.next().unwrap_or("".to_strbuf()),
                     }
                 }).collect(),
             },
@@ -868,15 +885,6 @@ impl Clean<TraitMethod> for ty::Method {
                 (s, sig)
             }
         };
-        let mut names = csearch::get_method_arg_names(&tcx.sess.cstore,
-                                                      self.def_id).move_iter();
-        if self_ != SelfStatic {
-            names.next();
-        }
-        let mut decl = sig.clean();
-        for (name, slot) in names.zip(decl.inputs.values.mut_iter()) {
-            slot.name = name;
-        }
 
         m(Item {
             name: Some(self.ident.clean()),
@@ -888,7 +896,7 @@ impl Clean<TraitMethod> for ty::Method {
                 fn_style: self.fty.fn_style,
                 generics: self.generics.clean(),
                 self_: self_,
-                decl: decl,
+                decl: (self.def_id, &sig).clean(),
             })
         })
     }
@@ -1005,13 +1013,13 @@ impl Clean<Type> for ty::t {
                 generics: Generics {
                     lifetimes: Vec::new(), type_params: Vec::new()
                 },
-                decl: fty.sig.clean(),
+                decl: (ast_util::local_def(0), &fty.sig).clean(),
                 abi: fty.abi.to_str().to_strbuf(),
             }),
             ty::ty_closure(ref fty) => {
                 let decl = box ClosureDecl {
                     lifetimes: Vec::new(), // FIXME: this looks wrong...
-                    decl: fty.sig.clean(),
+                    decl: (ast_util::local_def(0), &fty.sig).clean(),
                     onceness: fty.onceness,
                     fn_style: fty.fn_style,
                     bounds: fty.bounds.iter().map(|i| i.clean()).collect(),
@@ -1855,7 +1863,7 @@ fn build_external_function(tcx: &ty::ctxt,
     let t = ty::lookup_item_type(tcx, did);
     Function {
         decl: match ty::get(t.ty).sty {
-            ty::ty_bare_fn(ref f) => f.sig.clean(),
+            ty::ty_bare_fn(ref f) => (did, &f.sig).clean(),
             _ => fail!("bad function"),
         },
         generics: t.generics.clean(),
