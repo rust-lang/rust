@@ -17,7 +17,7 @@ extern crate sync;
 
 use std::io;
 use std::os;
-use std::unstable::simd::f64x2;
+use std::simd::f64x2;
 use sync::Future;
 use sync::Arc;
 
