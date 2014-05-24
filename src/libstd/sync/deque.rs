@@ -54,7 +54,7 @@ use clone::Clone;
 use iter::{range, Iterator};
 use kinds::Send;
 use kinds::marker;
-use mem::{forget, min_align_of, size_of, transmute};
+use mem::{forget, min_align_of, size_of, transmute, overwrite};
 use ops::Drop;
 use option::{Option, Some, None};
 use owned::Box;
@@ -371,20 +371,20 @@ impl<T: Send> Buffer<T> {
     // Apparently LLVM cannot optimize (foo % (1 << bar)) into this implicitly
     fn mask(&self) -> int { (1 << self.log_size) - 1 }
 
+    unsafe fn elem(&self, i: int) -> *T { self.storage.offset(i & self.mask()) }
+
     // This does not protect against loading duplicate values of the same cell,
     // nor does this clear out the contents contained within. Hence, this is a
     // very unsafe method which the caller needs to treat specially in case a
     // race is lost.
     unsafe fn get(&self, i: int) -> T {
-        ptr::read(self.storage.offset(i & self.mask()))
+        ptr::read(self.elem(i))
     }
 
     // Unsafe because this unsafely overwrites possibly uninitialized or
     // initialized data.
     unsafe fn put(&self, i: int, t: T) {
-        let ptr = self.storage.offset(i & self.mask());
-        ptr::copy_nonoverlapping_memory(ptr as *mut T, &t as *T, 1);
-        forget(t);
+        overwrite(self.elem(i) as *mut T, t);
     }
 
     // Again, unsafe because this has incredibly dubious ownership violations.
