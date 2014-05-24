@@ -41,6 +41,27 @@ pub fn recalibrate() {
 # }
 ~~~
 
+Documentation can also be controlled via the `doc` attribute on items.
+
+~~~
+#[doc = "
+Calculates the factorial of a number.
+
+Given the input integer `n`, this function will calculate `n!` and return it.
+"]
+pub fn factorial(n: int) -> int { if n < 2 {1} else {n * factorial(n)} }
+~~~
+
+The `doc` attribute can also be used to control how rustdoc emits documentation
+in some cases.
+
+```
+// Rustdoc will inline documentation of a `pub use` into this crate when the
+// `pub use` reaches across crates, but this behavior can also be disabled.
+#[doc(no_inline)]
+pub use std::option::Option;
+```
+
 Doc comments are markdown, and are currently parsed with the
 [sundown][sundown] library. rustdoc does not yet do any fanciness such as
 referencing other items inline, like javadoc's `@see`. One exception to this
