@@ -1575,28 +1575,40 @@ fn try_inline(id: ast::NodeId) -> Option<Vec<Item>> {
     };
     let did = ast_util::def_id_of_def(def);
     if ast_util::is_local(did) { return None }
-    try_inline_def(tcx, def)
+    try_inline_def(&**cx, tcx, def)
 }
 
-fn try_inline_def(tcx: &ty::ctxt, def: ast::Def) -> Option<Vec<Item>> {
+fn try_inline_def(cx: &core::DocContext,
+                  tcx: &ty::ctxt,
+                  def: ast::Def) -> Option<Vec<Item>> {
     let mut ret = Vec::new();
     let did = ast_util::def_id_of_def(def);
     let inner = match def {
-        ast::DefTrait(did) => TraitItem(build_external_trait(tcx, did)),
-        ast::DefFn(did, style) =>
-            FunctionItem(build_external_function(tcx, did, style)),
+        ast::DefTrait(did) => {
+            record_extern_fqn(cx, did, TypeTrait);
+            TraitItem(build_external_trait(tcx, did))
+        }
+        ast::DefFn(did, style) => {
+            record_extern_fqn(cx, did, TypeFunction);
+            FunctionItem(build_external_function(tcx, did, style))
+        }
         ast::DefStruct(did) => {
+            record_extern_fqn(cx, did, TypeStruct);
             ret.extend(build_impls(tcx, did).move_iter());
             StructItem(build_struct(tcx, did))
         }
         ast::DefTy(did) => {
+            record_extern_fqn(cx, did, TypeEnum);
             ret.extend(build_impls(tcx, did).move_iter());
             build_type(tcx, did)
         }
         // Assume that the enum type is reexported next to the variant, and
         // variants don't show up in documentation specially.
         ast::DefVariant(..) => return Some(Vec::new()),
-        ast::DefMod(did) => ModuleItem(build_module(tcx, did)),
+        ast::DefMod(did) => {
+            record_extern_fqn(cx, did, TypeModule);
+            ModuleItem(build_module(cx, tcx, did))
+        }
         _ => return None,
     };
     let fqn = csearch::get_item_path(tcx, did);
@@ -1838,10 +1850,7 @@ fn register_def(cx: &core::DocContext, def: ast::Def) -> ast::DefId {
         core::Typed(ref t) => t,
         core::NotTyped(_) => return did
     };
-    let fqn = csearch::get_item_path(tcx, did);
-    let fqn = fqn.move_iter().map(|i| i.to_str().to_strbuf()).collect();
-    debug!("recording {} => {}", did, fqn);
-    cx.external_paths.borrow_mut().get_mut_ref().insert(did, (fqn, kind));
+    record_extern_fqn(cx, did, kind);
     match kind {
         TypeTrait => {
             let t = build_external_trait(tcx, did);
@@ -1850,6 +1859,19 @@ fn register_def(cx: &core::DocContext, def: ast::Def) -> ast::DefId {
         _ => {}
     }
     return did;
+}
+
+fn record_extern_fqn(cx: &core::DocContext,
+                     did: ast::DefId,
+                     kind: TypeKind) {
+    match cx.maybe_typed {
+        core::Typed(ref tcx) => {
+            let fqn = csearch::get_item_path(tcx, did);
+            let fqn = fqn.move_iter().map(|i| i.to_str().to_strbuf()).collect();
+            cx.external_paths.borrow_mut().get_mut_ref().insert(did, (fqn, kind));
+        }
+        core::NotTyped(..) => {}
+    }
 }
 
 fn build_external_trait(tcx: &ty::ctxt, did: ast::DefId) -> Trait {
@@ -2000,13 +2022,14 @@ fn build_impl(tcx: &ty::ctxt, did: ast::DefId) -> Item {
     }
 }
 
-fn build_module(tcx: &ty::ctxt, did: ast::DefId) -> Module {
+fn build_module(cx: &core::DocContext, tcx: &ty::ctxt,
+                did: ast::DefId) -> Module {
     let mut items = Vec::new();
 
     csearch::each_child_of_item(&tcx.sess.cstore, did, |def, _, _| {
         match def {
             decoder::DlDef(def) => {
-                match try_inline_def(tcx, def) {
+                match try_inline_def(cx, tcx, def) {
                     Some(i) => items.extend(i.move_iter()),
                     None => {}
                 }
