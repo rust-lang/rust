@@ -600,20 +600,22 @@ impl<T: Send> Clone for Sender<T> {
         let (packet, sleeper) = match *unsafe { self.inner() } {
             Oneshot(ref p) => {
                 let a = Arc::new(Unsafe::new(shared::Packet::new()));
-                match unsafe {
-                    (*p.get()).upgrade(Receiver::new(Shared(a.clone())))
-                } {
-                    oneshot::UpSuccess | oneshot::UpDisconnected => (a, None),
-                    oneshot::UpWoke(task) => (a, Some(task))
+                unsafe {
+                    (*a.get()).postinit_lock();
+                    match (*p.get()).upgrade(Receiver::new(Shared(a.clone()))) {
+                        oneshot::UpSuccess | oneshot::UpDisconnected => (a, None),
+                        oneshot::UpWoke(task) => (a, Some(task))
+                    }
                 }
             }
             Stream(ref p) => {
                 let a = Arc::new(Unsafe::new(shared::Packet::new()));
-                match unsafe {
-                    (*p.get()).upgrade(Receiver::new(Shared(a.clone())))
-                } {
-                    stream::UpSuccess | stream::UpDisconnected => (a, None),
-                    stream::UpWoke(task) => (a, Some(task)),
+                unsafe {
+                    (*a.get()).postinit_lock();
+                    match (*p.get()).upgrade(Receiver::new(Shared(a.clone()))) {
+                        stream::UpSuccess | stream::UpDisconnected => (a, None),
+                        stream::UpWoke(task) => (a, Some(task)),
+                    }
                 }
             }
             Shared(ref p) => {
