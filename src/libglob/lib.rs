@@ -553,18 +553,18 @@ fn in_char_specifiers(specifiers: &[CharSpecifier], c: char, options: MatchOptio
                 // FIXME: work with non-ascii chars properly (issue #1347)
                 if !options.case_sensitive && c.is_ascii() && start.is_ascii() && end.is_ascii() {
 
-                    let start = start.to_ascii().to_lower();
-                    let end = end.to_ascii().to_lower();
+                    let start = start.to_ascii().to_lowercase();
+                    let end = end.to_ascii().to_lowercase();
 
-                    let start_up = start.to_upper();
-                    let end_up = end.to_upper();
+                    let start_up = start.to_uppercase();
+                    let end_up = end.to_uppercase();
 
                     // only allow case insensitive matching when
                     // both start and end are within a-z or A-Z
                     if start != start_up && end != end_up {
                         let start = start.to_char();
                         let end = end.to_char();
-                        let c = c.to_ascii().to_lower().to_char();
+                        let c = c.to_ascii().to_lowercase().to_char();
                         if c >= start && c <= end {
                             return true;
                         }

@@ -39,15 +39,29 @@ impl Ascii {
         self.chr as char
     }
 
+    #[inline]
+    #[allow(missing_doc)]
+    #[deprecated="renamed to `to_lowercase`"]
+    pub fn to_lower(self) -> Ascii {
+        self.to_lowercase()
+    }
+
     /// Convert to lowercase.
     #[inline]
-    pub fn to_lower(self) -> Ascii {
+    pub fn to_lowercase(self) -> Ascii {
         Ascii{chr: ASCII_LOWER_MAP[self.chr as uint]}
+    }
+
+    #[inline]
+    #[allow(missing_doc)]
+    #[deprecated="renamed to `to_uppercase`"]
+    pub fn to_upper(self) -> Ascii {
+        self.to_uppercase()
     }
 
     /// Convert to uppercase.
     #[inline]
-    pub fn to_upper(self) -> Ascii {
+    pub fn to_uppercase(self) -> Ascii {
         Ascii{chr: ASCII_UPPER_MAP[self.chr as uint]}
     }
 
@@ -59,9 +73,16 @@ impl Ascii {
 
     // the following methods are like ctype, and the implementation is inspired by musl
 
+    #[inline]
+    #[allow(missing_doc)]
+    #[deprecated="renamed to `is_alphabetic`"]
+    pub fn is_alpha(&self) -> bool {
+        self.is_alphabetic()
+    }
+
     /// Check if the character is a letter (a-z, A-Z)
     #[inline]
-    pub fn is_alpha(&self) -> bool {
+    pub fn is_alphabetic(&self) -> bool {
         (self.chr >= 0x41 && self.chr <= 0x5A) || (self.chr >= 0x61 && self.chr <= 0x7A)
     }
 
@@ -71,9 +92,16 @@ impl Ascii {
         self.chr >= 0x30 && self.chr <= 0x39
     }
 
+    #[inline]
+    #[allow(missing_doc)]
+    #[deprecated="renamed to `is_alphanumeric`"]
+    pub fn is_alnum(&self) -> bool {
+        self.is_alphanumeric()
+    }
+
     /// Check if the character is a letter or number
     #[inline]
-    pub fn is_alnum(&self) -> bool {
+    pub fn is_alphanumeric(&self) -> bool {
         self.is_alpha() || self.is_digit()
     }
 
@@ -101,15 +129,29 @@ impl Ascii {
         (self.chr - 0x20) < 0x5F
     }
 
+    #[inline]
+    #[allow(missing_doc)]
+    #[deprecated="renamed to `is_lowercase`"]
+    pub fn is_lower(&self) -> bool {
+        self.is_lowercase()
+    }
+
     /// Checks if the character is lowercase
     #[inline]
-    pub fn is_lower(&self) -> bool {
+    pub fn is_lowercase(&self) -> bool {
         (self.chr - 'a' as u8) < 26
+    }
+
+    #[inline]
+    #[allow(missing_doc)]
+    #[deprecated="renamed to `is_uppercase`"]
+    pub fn is_upper(&self) -> bool {
+        self.is_uppercase()
     }
 
     /// Checks if the character is uppercase
     #[inline]
-    pub fn is_upper(&self) -> bool {
+    pub fn is_uppercase(&self) -> bool {
         (self.chr - 'A' as u8) < 26
     }
 
