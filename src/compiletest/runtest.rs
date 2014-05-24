@@ -819,7 +819,7 @@ fn check_expected_errors(expected_errors: Vec<errors::ExpectedError> ,
         let i = s.chars();
         let c : Vec<char> = i.map( |c| {
             if c.is_ascii() {
-                c.to_ascii().to_lower().to_char()
+                c.to_ascii().to_lowercase().to_char()
             } else {
                 c
             }
