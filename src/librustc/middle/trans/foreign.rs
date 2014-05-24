@@ -227,12 +227,12 @@ pub fn register_foreign_item_fn(ccx: &CrateContext, abi: Abi, fty: ty::t,
     // Create the LLVM value for the C extern fn
     let llfn_ty = lltype_for_fn_from_foreign_types(ccx, &tys);
 
-    let llfn = base::get_extern_fn(&mut *ccx.externs.borrow_mut(),
-                                   ccx.llmod,
+    let llfn = base::get_extern_fn(ccx,
+                                   &mut *ccx.externs.borrow_mut(),
                                    name,
                                    cc,
                                    llfn_ty,
-                                   tys.fn_sig.output);
+                                   fty);
     add_argument_attributes(&tys, llfn);
 
     llfn
@@ -378,17 +378,21 @@ pub fn trans_native_call<'a>(
     // A function pointer is called without the declaration available, so we have to apply
     // any attributes with ABI implications directly to the call instruction. Right now, the
     // only attribute we need to worry about is `sret`.
-    let sret_attr = if fn_type.ret_ty.is_indirect() {
-        Some((1, StructRetAttribute))
-    } else {
-        None
+    let mut attrs = Vec::new();
+    if fn_type.ret_ty.is_indirect() {
+        attrs.push((1, lib::llvm::StructRetAttribute as u64));
+
+        // The outptr can be noalias and nocapture because it's entirely
+        // invisible to the program. We can also mark it as nonnull
+        attrs.push((1, lib::llvm::NoAliasAttribute as u64));
+        attrs.push((1, lib::llvm::NoCaptureAttribute as u64));
+        attrs.push((1, lib::llvm::NonNullAttribute as u64));
     };
-    let attrs = sret_attr.as_slice();
     let llforeign_retval = CallWithConv(bcx,
                                         llfn,
                                         llargs_foreign.as_slice(),
                                         cc,
-                                        attrs);
+                                        attrs.as_slice());
 
     // If the function we just called does not use an outpointer,
     // store the result into the rust outpointer. Cast the outpointer
@@ -500,14 +504,14 @@ pub fn register_rust_fn_with_foreign_abi(ccx: &CrateContext,
     let tys = foreign_types_for_id(ccx, node_id);
     let llfn_ty = lltype_for_fn_from_foreign_types(ccx, &tys);
     let t = ty::node_id_to_type(ccx.tcx(), node_id);
-    let (cconv, output) = match ty::get(t).sty {
+    let cconv = match ty::get(t).sty {
         ty::ty_bare_fn(ref fn_ty) => {
             let c = llvm_calling_convention(ccx, fn_ty.abi);
-            (c.unwrap_or(lib::llvm::CCallConv), fn_ty.sig.output)
+            c.unwrap_or(lib::llvm::CCallConv)
         }
         _ => fail!("expected bare fn in register_rust_fn_with_foreign_abi")
     };
-    let llfn = base::register_fn_llvmty(ccx, sp, sym, node_id, cconv, llfn_ty, output);
+    let llfn = base::register_fn_llvmty(ccx, sp, sym, node_id, cconv, llfn_ty);
     add_argument_attributes(&tys, llfn);
     debug!("register_rust_fn_with_foreign_abi(node_id={:?}, llfn_ty={}, llfn={})",
            node_id, ccx.tn.type_to_str(llfn_ty), ccx.tn.val_to_str(llfn));
@@ -528,7 +532,7 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: &CrateContext,
         let llrustfn = build_rust_fn(ccx, decl, body, attrs, id);
 
         // Build up the foreign wrapper (`foo` above).
-        return build_wrap_fn(ccx, llrustfn, llwrapfn, &tys);
+        return build_wrap_fn(ccx, llrustfn, llwrapfn, &tys, id);
     }
 
     fn build_rust_fn(ccx: &CrateContext,
@@ -548,10 +552,9 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: &CrateContext,
 
         // Compute the type that the function would have if it were just a
         // normal Rust function. This will be the type of the wrappee fn.
-        let f = match ty::get(t).sty {
+        match ty::get(t).sty {
             ty::ty_bare_fn(ref f) => {
                 assert!(f.abi != Rust && f.abi != RustIntrinsic);
-                f
             }
             _ => {
                 ccx.sess().bug(format!("build_rust_fn: extern fn {} has ty {}, \
@@ -565,11 +568,7 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: &CrateContext,
                ccx.tcx.map.path_to_str(id),
                id, t.repr(tcx));
 
-        let llfn = base::decl_internal_rust_fn(ccx,
-                                               false,
-                                               f.sig.inputs.as_slice(),
-                                               f.sig.output,
-                                               ps.as_slice());
+        let llfn = base::decl_internal_rust_fn(ccx, t, ps.as_slice());
         base::set_llvm_fn_attrs(attrs, llfn);
         base::trans_fn(ccx, decl, body, llfn, None, id, []);
         llfn
@@ -578,14 +577,18 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: &CrateContext,
     unsafe fn build_wrap_fn(ccx: &CrateContext,
                             llrustfn: ValueRef,
                             llwrapfn: ValueRef,
-                            tys: &ForeignTypes) {
+                            tys: &ForeignTypes,
+                            id: ast::NodeId) {
         let _icx = push_ctxt(
             "foreign::trans_rust_fn_with_foreign_abi::build_wrap_fn");
         let tcx = ccx.tcx();
 
-        debug!("build_wrap_fn(llrustfn={}, llwrapfn={})",
+        let t = ty::node_id_to_type(tcx, id);
+
+        debug!("build_wrap_fn(llrustfn={}, llwrapfn={}, t={})",
                ccx.tn.val_to_str(llrustfn),
-               ccx.tn.val_to_str(llwrapfn));
+               ccx.tn.val_to_str(llwrapfn),
+               t.repr(ccx.tcx()));
 
         // Avoid all the Rust generation stuff and just generate raw
         // LLVM here.
@@ -731,9 +734,14 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: &CrateContext,
         }
 
         // Perform the call itself
-        debug!("calling llrustfn = {}", ccx.tn.val_to_str(llrustfn));
+        debug!("calling llrustfn = {}, t = {}", ccx.tn.val_to_str(llrustfn), t.repr(ccx.tcx()));
         let llrust_ret_val = llvm::LLVMBuildCall(builder, llrustfn, llrust_args.as_ptr(),
                                                  llrust_args.len() as c_uint, noname());
+
+        let attributes = base::get_fn_llvm_attributes(ccx, t);
+        for &(idx, attr) in attributes.iter() {
+            llvm::LLVMAddCallSiteAttribute(llrust_ret_val, idx as c_uint, attr);
+        }
 
         // Get the return value where the foreign fn expects it.
         let llforeign_ret_ty = match tys.fn_ty.ret_ty.cast {

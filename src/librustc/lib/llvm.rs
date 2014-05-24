@@ -15,7 +15,7 @@
 use std::c_str::ToCStr;
 use std::cell::RefCell;
 use collections::HashMap;
-use libc::{c_uint, c_ushort, c_void, free};
+use libc::{c_uint, c_ushort, c_void, free, uint64_t};
 use std::str::raw::from_c_str;
 
 use middle::trans::type_::Type;
@@ -90,6 +90,33 @@ pub enum Attribute {
     ReturnsTwiceAttribute = 1 << 29,
     UWTableAttribute = 1 << 30,
     NonLazyBindAttribute = 1 << 31,
+}
+
+#[repr(u64)]
+pub enum OtherAttribute {
+    // The following are not really exposed in
+    // the LLVM c api so instead to add these
+    // we call a wrapper function in RustWrapper
+    // that uses the C++ api.
+    SanitizeAddressAttribute = 1 << 32,
+    MinSizeAttribute = 1 << 33,
+    NoDuplicateAttribute = 1 << 34,
+    StackProtectStrongAttribute = 1 << 35,
+    SanitizeThreadAttribute = 1 << 36,
+    SanitizeMemoryAttribute = 1 << 37,
+    NoBuiltinAttribute = 1 << 38,
+    ReturnedAttribute = 1 << 39,
+    ColdAttribute = 1 << 40,
+    BuiltinAttribute = 1 << 41,
+    OptimizeNoneAttribute = 1 << 42,
+    InAllocaAttribute = 1 << 43,
+    NonNullAttribute = 1 << 44,
+}
+
+#[repr(C)]
+pub enum AttributeSet {
+    ReturnIndex = 0,
+    FunctionIndex = !0
 }
 
 // enum for the LLVM IntPredicate type
@@ -308,7 +335,7 @@ pub mod llvm {
     use super::{CodeGenModel, RelocMode, CodeGenOptLevel};
     use super::debuginfo::*;
     use libc::{c_char, c_int, c_longlong, c_ushort, c_uint, c_ulonglong,
-                    size_t};
+               size_t, uint64_t};
 
     // Link to our native llvm bindings (things that we need to use the C++ api
     // for) and because llvm is written in C++ we need to link against libstdc++
@@ -706,19 +733,10 @@ pub mod llvm {
         pub fn LLVMSetFunctionCallConv(Fn: ValueRef, CC: c_uint);
         pub fn LLVMGetGC(Fn: ValueRef) -> *c_char;
         pub fn LLVMSetGC(Fn: ValueRef, Name: *c_char);
-        pub fn LLVMAddFunctionAttr(Fn: ValueRef, PA: c_uint);
-        pub fn LLVMAddFunctionAttrString(Fn: ValueRef, Name: *c_char);
-        pub fn LLVMRemoveFunctionAttrString(Fn: ValueRef, Name: *c_char);
+        pub fn LLVMAddFunctionAttribute(Fn: ValueRef, index: c_uint, PA: uint64_t);
+        pub fn LLVMAddFunctionAttrString(Fn: ValueRef, index: c_uint, Name: *c_char);
+        pub fn LLVMRemoveFunctionAttrString(Fn: ValueRef, index: c_uint, Name: *c_char);
         pub fn LLVMGetFunctionAttr(Fn: ValueRef) -> c_ulonglong;
-
-        pub fn LLVMAddReturnAttribute(Fn: ValueRef, PA: c_uint);
-        pub fn LLVMRemoveReturnAttribute(Fn: ValueRef, PA: c_uint);
-
-        pub fn LLVMAddColdAttribute(Fn: ValueRef);
-
-        pub fn LLVMRemoveFunctionAttr(Fn: ValueRef,
-                                      PA: c_ulonglong,
-                                      HighPA: c_ulonglong);
 
         /* Operations on parameters */
         pub fn LLVMCountParams(Fn: ValueRef) -> c_uint;
@@ -783,6 +801,9 @@ pub mod llvm {
         pub fn LLVMSetInstrParamAlignment(Instr: ValueRef,
                                           index: c_uint,
                                           align: c_uint);
+        pub fn LLVMAddCallSiteAttribute(Instr: ValueRef,
+                                        index: c_uint,
+                                        Val: uint64_t);
 
         /* Operations on call instructions (only) */
         pub fn LLVMIsTailCall(CallInst: ValueRef) -> Bool;
@@ -1835,7 +1856,7 @@ pub fn ConstFCmp(pred: RealPredicate, v1: ValueRef, v2: ValueRef) -> ValueRef {
 
 pub fn SetFunctionAttribute(fn_: ValueRef, attr: Attribute) {
     unsafe {
-        llvm::LLVMAddFunctionAttr(fn_, attr as c_uint)
+        llvm::LLVMAddFunctionAttribute(fn_, FunctionIndex as c_uint, attr as uint64_t)
     }
 }
 /* Memory-managed object interface to type handles. */

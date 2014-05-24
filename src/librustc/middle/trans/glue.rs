@@ -88,7 +88,7 @@ pub fn take_ty<'a>(bcx: &'a Block<'a>, v: ValueRef, t: ty::t)
     }
 }
 
-fn get_drop_glue_type(ccx: &CrateContext, t: ty::t) -> ty::t {
+pub fn get_drop_glue_type(ccx: &CrateContext, t: ty::t) -> ty::t {
     let tcx = ccx.tcx();
     if !ty::type_needs_drop(tcx, t) {
         return ty::mk_i8();
@@ -248,7 +248,7 @@ fn trans_struct_drop<'a>(bcx: &'a Block<'a>,
     let repr = adt::represent_type(bcx.ccx(), t);
 
     // Find and call the actual destructor
-    let dtor_addr = get_res_dtor(bcx.ccx(), dtor_did,
+    let dtor_addr = get_res_dtor(bcx.ccx(), dtor_did, t,
                                  class_did, substs);
 
     // The second argument is the "self" argument for drop
@@ -279,7 +279,9 @@ fn trans_struct_drop<'a>(bcx: &'a Block<'a>,
                                   fld.mt.ty);
     }
 
-    let (_, bcx) = invoke(bcx, dtor_addr, args, [], None);
+    let dtor_ty = ty::mk_ctor_fn(bcx.tcx(), ast::DUMMY_NODE_ID,
+                                 [get_drop_glue_type(bcx.ccx(), t)], ty::mk_nil());
+    let (_, bcx) = invoke(bcx, dtor_addr, args, dtor_ty, None);
 
     bcx.fcx.pop_and_trans_custom_cleanup_scope(bcx, field_scope)
 }
@@ -459,10 +461,7 @@ fn declare_generic_glue(ccx: &CrateContext, t: ty::t, llfnty: Type,
         t,
         format!("glue_{}", name).as_slice());
     debug!("{} is for type {}", fn_nm, ppaux::ty_to_str(ccx.tcx(), t));
-    let llfn = decl_cdecl_fn(ccx.llmod,
-                             fn_nm.as_slice(),
-                             llfnty,
-                             ty::mk_nil());
+    let llfn = decl_cdecl_fn(ccx.llmod, fn_nm.as_slice(), llfnty, ty::mk_nil());
     note_unique_llvm_symbol(ccx, fn_nm);
     return llfn;
 }

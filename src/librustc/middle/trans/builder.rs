@@ -156,7 +156,7 @@ impl<'a> Builder<'a> {
                   args: &[ValueRef],
                   then: BasicBlockRef,
                   catch: BasicBlockRef,
-                  attributes: &[(uint, lib::llvm::Attribute)])
+                  attributes: &[(uint, u64)])
                   -> ValueRef {
         self.count_insn("invoke");
         unsafe {
@@ -168,7 +168,7 @@ impl<'a> Builder<'a> {
                                           catch,
                                           noname());
             for &(idx, attr) in attributes.iter() {
-                llvm::LLVMAddInstrAttribute(v, idx as c_uint, attr as c_uint);
+                llvm::LLVMAddCallSiteAttribute(v, idx as c_uint, attr);
             }
             v
         }
@@ -799,7 +799,7 @@ impl<'a> Builder<'a> {
     }
 
     pub fn call(&self, llfn: ValueRef, args: &[ValueRef],
-                attributes: &[(uint, lib::llvm::Attribute)]) -> ValueRef {
+                attributes: &[(uint, u64)]) -> ValueRef {
         self.count_insn("call");
 
         debug!("Call {} with args ({})",
@@ -813,14 +813,14 @@ impl<'a> Builder<'a> {
             let v = llvm::LLVMBuildCall(self.llbuilder, llfn, args.as_ptr(),
                                         args.len() as c_uint, noname());
             for &(idx, attr) in attributes.iter() {
-                llvm::LLVMAddInstrAttribute(v, idx as c_uint, attr as c_uint);
+                llvm::LLVMAddCallSiteAttribute(v, idx as c_uint, attr);
             }
             v
         }
     }
 
     pub fn call_with_conv(&self, llfn: ValueRef, args: &[ValueRef],
-                          conv: CallConv, attributes: &[(uint, lib::llvm::Attribute)]) -> ValueRef {
+                          conv: CallConv, attributes: &[(uint, u64)]) -> ValueRef {
         self.count_insn("callwithconv");
         let v = self.call(llfn, args, attributes);
         lib::llvm::SetInstructionCallConv(v, conv);
