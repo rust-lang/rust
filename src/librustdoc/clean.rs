@@ -1961,7 +1961,7 @@ fn build_impl(tcx: &ty::ctxt, did: ast::DefId) -> Item {
     let associated_trait = csearch::get_impl_trait(tcx, did);
     let attrs = load_attrs(tcx, did);
     let ty = ty::lookup_item_type(tcx, did);
-    let methods = tcx.impl_methods.borrow().get(&did).iter().map(|did| {
+    let methods = csearch::get_impl_methods(&tcx.sess.cstore, did).iter().map(|did| {
         let mut item = match ty::method(tcx, *did).clean() {
             Provided(item) => item,
             Required(item) => item,
