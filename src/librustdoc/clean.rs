@@ -1575,8 +1575,12 @@ fn try_inline(id: ast::NodeId) -> Option<Vec<Item>> {
     };
     let did = ast_util::def_id_of_def(def);
     if ast_util::is_local(did) { return None }
+    try_inline_def(tcx, def)
+}
 
+fn try_inline_def(tcx: &ty::ctxt, def: ast::Def) -> Option<Vec<Item>> {
     let mut ret = Vec::new();
+    let did = ast_util::def_id_of_def(def);
     let inner = match def {
         ast::DefTrait(did) => TraitItem(build_external_trait(tcx, did)),
         ast::DefFn(did, style) =>
@@ -1592,6 +1596,7 @@ fn try_inline(id: ast::NodeId) -> Option<Vec<Item>> {
         // Assume that the enum type is reexported next to the variant, and
         // variants don't show up in documentation specially.
         ast::DefVariant(..) => return Some(Vec::new()),
+        ast::DefMod(did) => ModuleItem(build_module(tcx, did)),
         _ => return None,
     };
     let fqn = csearch::get_item_path(tcx, did);
@@ -1992,6 +1997,28 @@ fn build_impl(tcx: &ty::ctxt, did: ast::DefId) -> Item {
         attrs: attrs,
         visibility: Some(ast::Inherited),
         def_id: did,
+    }
+}
+
+fn build_module(tcx: &ty::ctxt, did: ast::DefId) -> Module {
+    let mut items = Vec::new();
+
+    csearch::each_child_of_item(&tcx.sess.cstore, did, |def, _, _| {
+        match def {
+            decoder::DlDef(def) => {
+                match try_inline_def(tcx, def) {
+                    Some(i) => items.extend(i.move_iter()),
+                    None => {}
+                }
+            }
+            decoder::DlImpl(did) => items.push(build_impl(tcx, did)),
+            decoder::DlField => fail!("unimplemented field"),
+        }
+    });
+
+    Module {
+        items: items,
+        is_crate: false,
     }
 }
 
