@@ -304,7 +304,7 @@ impl<'a> StringReader<'a> {
                             if !is_line_non_doc_comment(string) {
                                 Some(TokenAndSpan{
                                     tok: token::DOC_COMMENT(str_to_ident(string)),
-                                    sp: codemap::mk_sp(start_bpos, self.pos)
+                                    sp: codemap::mk_sp(start_bpos, self.last_pos)
                                 })
                             } else {
                                 None
@@ -358,7 +358,7 @@ impl<'a> StringReader<'a> {
     fn consume_block_comment(&mut self) -> Option<TokenAndSpan> {
         // block comments starting with "/**" or "/*!" are doc-comments
         let is_doc_comment = self.curr_is('*') || self.curr_is('!');
-        let start_bpos = self.pos - BytePos(if is_doc_comment {3} else {2});
+        let start_bpos = self.last_pos - BytePos(2);
 
         let mut level: int = 1;
         while level > 0 {
@@ -389,7 +389,7 @@ impl<'a> StringReader<'a> {
                 if !is_block_non_doc_comment(string) {
                     Some(TokenAndSpan{
                             tok: token::DOC_COMMENT(str_to_ident(string)),
-                            sp: codemap::mk_sp(start_bpos, self.pos)
+                            sp: codemap::mk_sp(start_bpos, self.last_pos)
                         })
                 } else {
                     None
