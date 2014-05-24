@@ -10,7 +10,7 @@
 
 #![allow(experimental)]
 
-use std::unstable::simd::{i32x4, f32x4, u32x4};
+use std::simd::{i32x4, f32x4, u32x4};
 
 fn eq_u32x4(u32x4(x0, x1, x2, x3): u32x4, u32x4(y0, y1, y2, y3): u32x4) -> bool {
     (x0 == y0) && (x1 == y1) && (x2 == y2) && (x3 == y3)

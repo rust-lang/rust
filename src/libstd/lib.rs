@@ -103,7 +103,7 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/")]
 #![feature(macro_rules, globs, asm, managed_boxes, thread_local, link_args,
-           simd, linkage, default_type_params, phase, concat_idents, quad_precision_float)]
+           linkage, default_type_params, phase, concat_idents, quad_precision_float)]
 
 // Don't link to std. We are std.
 #![no_std]
@@ -144,6 +144,7 @@ pub use core::clone;
 #[cfg(not(test))] pub use core::cmp;
 pub use core::container;
 pub use core::default;
+pub use core::finally;
 pub use core::intrinsics;
 pub use core::iter;
 #[cfg(not(test))] pub use core::kinds;
@@ -151,6 +152,7 @@ pub use core::mem;
 #[cfg(not(test))] pub use core::ops;
 pub use core::ptr;
 pub use core::raw;
+pub use core::simd;
 pub use core::tuple;
 #[cfg(not(test))] pub use core::ty;
 pub use core::result;

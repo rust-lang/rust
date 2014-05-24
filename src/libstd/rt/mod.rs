@@ -76,6 +76,10 @@ pub use self::util::{Stdio, Stdout, Stderr};
 
 pub use alloc::{heap, libc_heap};
 
+// Used by I/O tests
+#[experimental]
+pub use self::util::running_on_valgrind;
+
 // FIXME: these probably shouldn't be public...
 #[doc(hidden)]
 pub mod shouldnt_be_public {
