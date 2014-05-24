@@ -26,7 +26,7 @@ pub fn size_of<T>() -> uint {
 
 /// Returns the size of the type that `_val` points to in bytes.
 #[inline]
-#[unstable = "the name of this function may change slightly before stabilizing"]
+#[stable]
 pub fn size_of_val<T>(_val: &T) -> uint {
     size_of::<T>()
 }
@@ -64,7 +64,7 @@ pub fn min_align_of<T>() -> uint {
 /// Returns the ABI-required minimum alignment of the type of the value that
 /// `_val` points to
 #[inline]
-#[unstable = "the name of this function may change slightly before stabilizing"]
+#[stable]
 pub fn min_align_of_val<T>(_val: &T) -> uint {
     min_align_of::<T>()
 }
@@ -90,7 +90,7 @@ pub fn align_of<T>() -> uint {
 /// as trait objects (in the future), returning the alignment for an arbitrary
 /// value at runtime.
 #[inline]
-#[unstable = "the name of this function may change slightly before stabilizing"]
+#[stable]
 pub fn align_of_val<T>(_val: &T) -> uint {
     align_of::<T>()
 }
@@ -117,7 +117,7 @@ pub fn pref_align_of_val<T>(val: &T) -> uint { align_of_val(val) }
 ///
 /// This is useful for FFI functions sometimes, but should generally be avoided.
 #[inline]
-#[unstable = "the name of this function is subject to change"]
+#[stable]
 pub unsafe fn zeroed<T>() -> T {
     intrinsics::init()
 }
@@ -136,7 +136,14 @@ pub unsafe fn init<T>() -> T { zeroed() }
 ///
 /// This is useful for FFI functions sometimes, but should generally be avoided.
 #[inline]
-#[unstable = "the name of this function is subject to change"]
+#[stable]
+pub unsafe fn uninitialized<T>() -> T {
+    intrinsics::uninit()
+}
+
+/// Deprecated, use `uninitialized` instead.
+#[inline]
+#[deprecated = "this function has been renamed to `uninitialized`"]
 pub unsafe fn uninit<T>() -> T {
     intrinsics::uninit()
 }
@@ -148,7 +155,7 @@ pub unsafe fn uninit<T>() -> T {
 /// contained at the location `dst`. This could leak allocations or resources,
 /// so care must be taken to previously deallocate the value at `dst`.
 #[inline]
-#[unstable = "the name of this function is subject to change"]
+#[stable]
 pub unsafe fn overwrite<T>(dst: *mut T, src: T) {
     intrinsics::move_val_init(&mut *dst, src)
 }
@@ -315,7 +322,7 @@ pub fn from_be64(x: u64) -> u64 { x }
 pub fn swap<T>(x: &mut T, y: &mut T) {
     unsafe {
         // Give ourselves some scratch space to work with
-        let mut t: T = uninit();
+        let mut t: T = uninitialized();
 
         // Perform the swap, `&mut` pointers never alias
         ptr::copy_nonoverlapping_memory(&mut t, &*x, 1);
