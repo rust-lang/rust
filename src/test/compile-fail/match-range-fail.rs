@@ -9,7 +9,7 @@
 // except according to those terms.
 
 //error-pattern: lower range bound
-//error-pattern: non-numeric
+//error-pattern: only char and numeric types
 //error-pattern: mismatched types
 
 fn main() {
