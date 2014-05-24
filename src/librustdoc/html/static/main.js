@@ -676,13 +676,9 @@
         window.register_implementors(window.pending_implementors);
     }
 
-
-    var query = window.location.search.substring(1);
-    var vars = query.split('&');
-    for (var i = 0; i < vars.length; i++) {
-        var pair = vars[i].split('=');
-        if (pair[0] == 'gotosrc') {
-            window.location = $('#src-' + pair[1]).attr('href');
-        }
+    // See documentaiton in html/render.rs for what this is doing.
+    var query = getQueryStringParams();
+    if (query['gotosrc']) {
+        window.location = $('#src-' + query['gotosrc']).attr('href');
     }
 }());

@@ -308,7 +308,7 @@ pub fn get_missing_lang_items(cstore: &cstore::CStore, cnum: ast::CrateNum)
 }
 
 pub fn get_method_arg_names(cstore: &cstore::CStore, did: ast::DefId)
-    -> Vec<StrBuf>
+    -> Vec<String>
 {
     let cdata = cstore.get_crate_data(did.krate);
     decoder::get_method_arg_names(&*cdata, did.node)
