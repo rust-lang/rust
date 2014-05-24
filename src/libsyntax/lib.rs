@@ -74,7 +74,6 @@ pub mod ext {
     pub mod asm;
     pub mod base;
     pub mod expand;
-    pub mod registrar;
 
     pub mod quote;
 

@@ -1582,9 +1582,9 @@ fn encode_native_libraries(ecx: &EncodeContext, ebml_w: &mut Encoder) {
     ebml_w.end_tag();
 }
 
-fn encode_macro_registrar_fn(ecx: &EncodeContext, ebml_w: &mut Encoder) {
-    match ecx.tcx.sess.macro_registrar_fn.get() {
-        Some(id) => { ebml_w.wr_tagged_u32(tag_macro_registrar_fn, id); }
+fn encode_plugin_registrar_fn(ecx: &EncodeContext, ebml_w: &mut Encoder) {
+    match ecx.tcx.sess.plugin_registrar_fn.get() {
+        Some(id) => { ebml_w.wr_tagged_u32(tag_plugin_registrar_fn, id); }
         None => {}
     }
 }
@@ -1791,7 +1791,7 @@ fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, krate: &Crate)
         dep_bytes: u64,
         lang_item_bytes: u64,
         native_lib_bytes: u64,
-        macro_registrar_fn_bytes: u64,
+        plugin_registrar_fn_bytes: u64,
         macro_defs_bytes: u64,
         impl_bytes: u64,
         misc_bytes: u64,
@@ -1805,7 +1805,7 @@ fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, krate: &Crate)
         dep_bytes: 0,
         lang_item_bytes: 0,
         native_lib_bytes: 0,
-        macro_registrar_fn_bytes: 0,
+        plugin_registrar_fn_bytes: 0,
         macro_defs_bytes: 0,
         impl_bytes: 0,
         misc_bytes: 0,
@@ -1870,10 +1870,10 @@ fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, krate: &Crate)
     encode_native_libraries(&ecx, &mut ebml_w);
     stats.native_lib_bytes = ebml_w.writer.tell().unwrap() - i;
 
-    // Encode the macro registrar function
+    // Encode the plugin registrar function
     i = ebml_w.writer.tell().unwrap();
-    encode_macro_registrar_fn(&ecx, &mut ebml_w);
-    stats.macro_registrar_fn_bytes = ebml_w.writer.tell().unwrap() - i;
+    encode_plugin_registrar_fn(&ecx, &mut ebml_w);
+    stats.plugin_registrar_fn_bytes = ebml_w.writer.tell().unwrap() - i;
 
     // Encode macro definitions
     i = ebml_w.writer.tell().unwrap();
@@ -1912,18 +1912,18 @@ fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, krate: &Crate)
         }
 
         println!("metadata stats:");
-        println!("      attribute bytes: {}", stats.attr_bytes);
-        println!("            dep bytes: {}", stats.dep_bytes);
-        println!("      lang item bytes: {}", stats.lang_item_bytes);
-        println!("         native bytes: {}", stats.native_lib_bytes);
-        println!("macro registrar bytes: {}", stats.macro_registrar_fn_bytes);
-        println!("      macro def bytes: {}", stats.macro_defs_bytes);
-        println!("           impl bytes: {}", stats.impl_bytes);
-        println!("           misc bytes: {}", stats.misc_bytes);
-        println!("           item bytes: {}", stats.item_bytes);
-        println!("          index bytes: {}", stats.index_bytes);
-        println!("           zero bytes: {}", stats.zero_bytes);
-        println!("          total bytes: {}", stats.total_bytes);
+        println!("       attribute bytes: {}", stats.attr_bytes);
+        println!("             dep bytes: {}", stats.dep_bytes);
+        println!("       lang item bytes: {}", stats.lang_item_bytes);
+        println!("          native bytes: {}", stats.native_lib_bytes);
+        println!("plugin registrar bytes: {}", stats.plugin_registrar_fn_bytes);
+        println!("       macro def bytes: {}", stats.macro_defs_bytes);
+        println!("            impl bytes: {}", stats.impl_bytes);
+        println!("            misc bytes: {}", stats.misc_bytes);
+        println!("            item bytes: {}", stats.item_bytes);
+        println!("           index bytes: {}", stats.index_bytes);
+        println!("            zero bytes: {}", stats.zero_bytes);
+        println!("           total bytes: {}", stats.total_bytes);
     }
 }
 

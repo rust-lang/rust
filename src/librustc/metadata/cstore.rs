@@ -139,9 +139,6 @@ impl CStore {
             .map(|source| source.clone())
     }
 
-    pub fn dump_phase_syntax_crates(&self) {
-    }
-
     pub fn reset(&self) {
         self.metas.borrow_mut().clear();
         self.extern_mod_crate_map.borrow_mut().clear();
