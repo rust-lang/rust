@@ -45,9 +45,11 @@ struct RcBox<T> {
 /// Immutable reference counted pointer type
 #[unsafe_no_drop_flag]
 pub struct Rc<T> {
-    ptr: *mut RcBox<T>,
-    nosend: marker::NoSend,
-    noshare: marker::NoShare
+    // FIXME #12808: strange names to try to avoid interfering with
+    // field accesses of the contained type via Deref
+    _ptr: *mut RcBox<T>,
+    _nosend: marker::NoSend,
+    _noshare: marker::NoShare
 }
 
 impl<T> Rc<T> {
@@ -60,13 +62,13 @@ impl<T> Rc<T> {
                 // destructor never frees the allocation while the
                 // strong destructor is running, even if the weak
                 // pointer is stored inside the strong one.
-                ptr: transmute(box RcBox {
+                _ptr: transmute(box RcBox {
                     value: value,
                     strong: Cell::new(1),
                     weak: Cell::new(1)
                 }),
-                nosend: marker::NoSend,
-                noshare: marker::NoShare
+                _nosend: marker::NoSend,
+                _noshare: marker::NoShare
             }
         }
     }
@@ -77,9 +79,9 @@ impl<T> Rc<T> {
     pub fn downgrade(&self) -> Weak<T> {
         self.inc_weak();
         Weak {
-            ptr: self.ptr,
-            nosend: marker::NoSend,
-            noshare: marker::NoShare
+            _ptr: self._ptr,
+            _nosend: marker::NoSend,
+            _noshare: marker::NoShare
         }
     }
 }
@@ -96,7 +98,7 @@ impl<T> Deref<T> for Rc<T> {
 impl<T> Drop for Rc<T> {
     fn drop(&mut self) {
         unsafe {
-            if !self.ptr.is_null() {
+            if !self._ptr.is_null() {
                 self.dec_strong();
                 if self.strong() == 0 {
                     ptr::read(self.deref()); // destroy the contained object
@@ -106,7 +108,7 @@ impl<T> Drop for Rc<T> {
                     self.dec_weak();
 
                     if self.weak() == 0 {
-                        deallocate(self.ptr as *mut u8, size_of::<RcBox<T>>(),
+                        deallocate(self._ptr as *mut u8, size_of::<RcBox<T>>(),
                                    min_align_of::<RcBox<T>>())
                     }
                 }
@@ -119,7 +121,7 @@ impl<T> Clone for Rc<T> {
     #[inline]
     fn clone(&self) -> Rc<T> {
         self.inc_strong();
-        Rc { ptr: self.ptr, nosend: marker::NoSend, noshare: marker::NoShare }
+        Rc { _ptr: self._ptr, _nosend: marker::NoSend, _noshare: marker::NoShare }
     }
 }
 
@@ -154,9 +156,11 @@ impl<T: TotalOrd> TotalOrd for Rc<T> {
 /// Weak reference to a reference-counted box
 #[unsafe_no_drop_flag]
 pub struct Weak<T> {
-    ptr: *mut RcBox<T>,
-    nosend: marker::NoSend,
-    noshare: marker::NoShare
+    // FIXME #12808: strange names to try to avoid interfering with
+    // field accesses of the contained type via Deref
+    _ptr: *mut RcBox<T>,
+    _nosend: marker::NoSend,
+    _noshare: marker::NoShare
 }
 
 impl<T> Weak<T> {
@@ -166,7 +170,7 @@ impl<T> Weak<T> {
             None
         } else {
             self.inc_strong();
-            Some(Rc { ptr: self.ptr, nosend: marker::NoSend, noshare: marker::NoShare })
+            Some(Rc { _ptr: self._ptr, _nosend: marker::NoSend, _noshare: marker::NoShare })
         }
     }
 }
@@ -175,12 +179,12 @@ impl<T> Weak<T> {
 impl<T> Drop for Weak<T> {
     fn drop(&mut self) {
         unsafe {
-            if !self.ptr.is_null() {
+            if !self._ptr.is_null() {
                 self.dec_weak();
                 // the weak count starts at 1, and will only go to
                 // zero if all the strong pointers have disappeared.
                 if self.weak() == 0 {
-                    deallocate(self.ptr as *mut u8, size_of::<RcBox<T>>(),
+                    deallocate(self._ptr as *mut u8, size_of::<RcBox<T>>(),
                                min_align_of::<RcBox<T>>())
                 }
             }
@@ -192,7 +196,7 @@ impl<T> Clone for Weak<T> {
     #[inline]
     fn clone(&self) -> Weak<T> {
         self.inc_weak();
-        Weak { ptr: self.ptr, nosend: marker::NoSend, noshare: marker::NoShare }
+        Weak { _ptr: self._ptr, _nosend: marker::NoSend, _noshare: marker::NoShare }
     }
 }
 
@@ -221,12 +225,12 @@ trait RcBoxPtr<T> {
 
 impl<T> RcBoxPtr<T> for Rc<T> {
     #[inline(always)]
-    fn inner<'a>(&'a self) -> &'a RcBox<T> { unsafe { &(*self.ptr) } }
+    fn inner<'a>(&'a self) -> &'a RcBox<T> { unsafe { &(*self._ptr) } }
 }
 
 impl<T> RcBoxPtr<T> for Weak<T> {
     #[inline(always)]
-    fn inner<'a>(&'a self) -> &'a RcBox<T> { unsafe { &(*self.ptr) } }
+    fn inner<'a>(&'a self) -> &'a RcBox<T> { unsafe { &(*self._ptr) } }
 }
 
 #[cfg(test)]
