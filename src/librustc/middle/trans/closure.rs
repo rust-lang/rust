@@ -340,21 +340,12 @@ pub fn trans_expr_fn<'a>(
     };
 
     let ccx = bcx.ccx();
-    let fty = node_id_type(bcx, id);
-    let f = match ty::get(fty).sty {
-        ty::ty_closure(ref f) => f,
-        _ => fail!("expected closure")
-    };
-
     let tcx = bcx.tcx();
+    let fty = node_id_type(bcx, id);
     let s = tcx.map.with_path(id, |path| {
         mangle_internal_name_by_path_and_seq(path, "closure")
     });
-    let llfn = decl_internal_rust_fn(ccx,
-                                     true,
-                                     f.sig.inputs.as_slice(),
-                                     f.sig.output,
-                                     s.as_slice());
+    let llfn = decl_internal_rust_fn(ccx, fty, s.as_slice());
 
     // set an inline hint for all closures
     set_inline_hint(llfn);
@@ -414,17 +405,9 @@ pub fn get_wrapper_for_bare_fn(ccx: &CrateContext,
         mangle_internal_name_by_path_and_seq(path, "as_closure")
     });
     let llfn = if is_local {
-        decl_internal_rust_fn(ccx,
-                              true,
-                              f.sig.inputs.as_slice(),
-                              f.sig.output,
-                              name.as_slice())
+        decl_internal_rust_fn(ccx, closure_ty, name.as_slice())
     } else {
-        decl_rust_fn(ccx,
-                     true,
-                     f.sig.inputs.as_slice(),
-                     f.sig.output,
-                     name.as_slice())
+        decl_rust_fn(ccx, closure_ty, name.as_slice())
     };
 
     ccx.closure_bare_wrapper_cache.borrow_mut().insert(fn_ptr, llfn);

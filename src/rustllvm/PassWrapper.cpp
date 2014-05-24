@@ -13,6 +13,7 @@
 #include "rustllvm.h"
 
 #include "llvm/Support/CBindingWrapping.h"
+#include "llvm/Support/FileSystem.h"
 #include "llvm/Target/TargetLibraryInfo.h"
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
 
