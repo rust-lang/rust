@@ -313,6 +313,8 @@ cgoptions!(
         "use an external assembler rather than LLVM's integrated one"),
     relocation_model: StrBuf = ("pic".to_strbuf(), parse_string,
          "choose the relocation model to use (llc -relocation-model for details)"),
+    no_split_stack: bool = (false, parse_bool,
+        "disable segmented stack support"),
 )
 
 pub fn build_codegen_options(matches: &getopts::Matches) -> CodegenOptions

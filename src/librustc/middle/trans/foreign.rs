@@ -228,7 +228,7 @@ pub fn register_foreign_item_fn(ccx: &CrateContext, abi: Abi, fty: ty::t,
     let llfn_ty = lltype_for_fn_from_foreign_types(ccx, &tys);
 
     let llfn = base::get_extern_fn(&mut *ccx.externs.borrow_mut(),
-                                   ccx.llmod,
+                                   ccx,
                                    name,
                                    cc,
                                    llfn_ty,
