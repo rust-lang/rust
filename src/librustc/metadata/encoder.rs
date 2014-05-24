@@ -774,6 +774,21 @@ fn encode_info_for_method(ecx: &EncodeContext,
         } else {
             encode_symbol(ecx, ebml_w, m.def_id.node);
         }
+
+        ebml_w.start_tag(tag_method_argument_names);
+        for arg in ast_method.decl.inputs.iter() {
+            ebml_w.start_tag(tag_method_argument_name);
+            match arg.pat.node {
+                ast::PatIdent(_, ref name, _) => {
+                    let name = name.segments.last().unwrap().identifier;
+                    let name = token::get_ident(name);
+                    ebml_w.writer.write(name.get().as_bytes());
+                }
+                _ => {}
+            }
+            ebml_w.end_tag();
+        }
+        ebml_w.end_tag();
     }
 
     ebml_w.end_tag();
