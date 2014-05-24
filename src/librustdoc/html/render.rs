@@ -141,6 +141,10 @@ pub struct Cache {
     /// necessary.
     pub paths: HashMap<ast::DefId, (Vec<String>, ItemType)>,
 
+    /// Similar to `paths`, but only holds external paths. This is only used for
+    /// generating explicit hyperlinks to other crates.
+    pub external_paths: HashMap<ast::DefId, Vec<StrBuf>>,
+
     /// This map contains information about all known traits of this crate.
     /// Implementations of a crate should inherit the documentation of the
     /// parent trait if no extra documentation is specified, and default methods
@@ -249,7 +253,8 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
     let analysis = ::analysiskey.get();
     let public_items = analysis.as_ref().map(|a| a.public_items.clone());
     let public_items = public_items.unwrap_or(NodeSet::new());
-    let paths = analysis.as_ref().map(|a| {
+    let paths: HashMap<ast::DefId, (Vec<StrBuf>, ItemType)> =
+      analysis.as_ref().map(|a| {
         let paths = a.external_paths.borrow_mut().take_unwrap();
         paths.move_iter().map(|(k, (v, t))| {
             (k, (v, match t {
@@ -265,6 +270,8 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
     }).unwrap_or(HashMap::new());
     let mut cache = Cache {
         impls: HashMap::new(),
+        external_paths: paths.iter().map(|(&k, &(ref v, _))| (k, v.clone()))
+                             .collect(),
         paths: paths,
         implementors: HashMap::new(),
         stack: Vec::new(),
@@ -496,13 +503,15 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
             seen: HashSet::new(),
             cx: &mut cx,
         };
+        // skip all invalid spans
+        folder.seen.insert("".to_strbuf());
         krate = folder.fold_crate(krate);
     }
 
     for &(n, ref e) in krate.externs.iter() {
         cache.extern_locations.insert(n, extern_location(e, &cx.dst));
         let did = ast::DefId { krate: n, node: ast::CRATE_NODE_ID };
-        cache.paths.insert(did, (Vec::new(), item_type::Module));
+        cache.paths.insert(did, (vec![e.name.to_strbuf()], item_type::Module));
     }
 
     // And finally render the whole crate's documentation
@@ -1032,23 +1041,38 @@ impl<'a> Item<'a> {
         }
     }
 
-    fn link(&self) -> String {
-        let mut path = Vec::new();
-        clean_srcpath(self.item.source.filename.as_bytes(), |component| {
-            path.push(component.to_owned());
-        });
-        let href = if self.item.source.loline == self.item.source.hiline {
-            format_strbuf!("{}", self.item.source.loline)
+    fn link(&self) -> Option<String> {
+        if ast_util::is_local(self.item.def_id) {
+            let mut path = Vec::new();
+            clean_srcpath(self.item.source.filename.as_bytes(), |component| {
+                path.push(component.to_owned());
+            });
+            let href = if self.item.source.loline == self.item.source.hiline {
+                format!("{}", self.item.source.loline)
+            } else {
+                format!("{}-{}",
+                        self.item.source.loline,
+                        self.item.source.hiline)
+            };
+            Some(format!("{root}src/{krate}/{path}.html\\#{href}",
+                         root = self.cx.root_path,
+                         krate = self.cx.layout.krate,
+                         path = path.connect("/"),
+                         href = href))
         } else {
-            format_strbuf!("{}-{}",
-                           self.item.source.loline,
-                           self.item.source.hiline)
-        };
-        format_strbuf!("{root}src/{krate}/{path}.html\\#{href}",
-                       root = self.cx.root_path,
-                       krate = self.cx.layout.krate,
-                       path = path.connect("/"),
-                       href = href)
+            let cache = cache_key.get().unwrap();
+            let path = cache.external_paths.get(&self.item.def_id);
+            let root = match *cache.extern_locations.get(&self.item.def_id.krate) {
+                Remote(ref s) => s.to_strbuf(),
+                Local => format!("{}/..", self.cx.root_path),
+                Unknown => return None,
+            };
+            Some(format!("{root}/{path}/{file}?gotosrc={goto}",
+                         root = root,
+                         path = path.slice_to(path.len() - 1).connect("/"),
+                         file = item_path(self.item),
+                         goto = self.item.def_id.node))
+        }
     }
 }
 
@@ -1097,8 +1121,15 @@ impl<'a> fmt::Show for Item<'a> {
 
         // Write `src` tag
         if self.cx.include_sources {
-            try!(write!(fmt, "<a class='source' href='{}'>[src]</a>",
-                        self.link()));
+            match self.link() {
+                Some(l) => {
+                    try!(write!(fmt,
+                                "<a class='source' id='src-{}' \
+                                    href='{}'>[src]</a>",
+                                self.item.def_id.node, l));
+                }
+                None => {}
+            }
         }
         try!(write!(fmt, "</h1>\n"));
 
