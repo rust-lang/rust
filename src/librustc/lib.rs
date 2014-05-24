@@ -109,6 +109,14 @@ pub mod metadata;
 
 pub mod driver;
 
+pub mod plugin {
+    pub use self::registry::Registry;
+
+    pub mod registry;
+    pub mod load;
+    pub mod build;
+}
+
 pub mod util {
     pub mod common;
     pub mod ppaux;

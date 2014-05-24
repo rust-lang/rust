@@ -95,9 +95,6 @@ impl IdentMacroExpander for BasicIdentMacroExpander {
 pub type IdentMacroExpanderFn =
     fn(&mut ExtCtxt, Span, ast::Ident, Vec<ast::TokenTree>) -> Box<MacResult>;
 
-pub type MacroCrateRegistrationFun =
-    fn(|ast::Name, SyntaxExtension|);
-
 /// The result of a macro expansion. The return values of the various
 /// methods are spliced into the AST at the callsite of the macro (or
 /// just into the compiler's internal macro table, for `make_def`).
@@ -268,6 +265,8 @@ pub enum SyntaxExtension {
     IdentTT(Box<IdentMacroExpander:'static>, Option<Span>),
 }
 
+pub type NamedSyntaxExtension = (Name, SyntaxExtension);
+
 pub struct BlockInfo {
     // should macros escape from this scope?
     pub macros_escape: bool,
@@ -392,16 +391,6 @@ pub fn syntax_expander_table() -> SyntaxEnv {
     syntax_expanders
 }
 
-pub struct MacroCrate {
-    pub lib: Option<Path>,
-    pub macros: Vec<String>,
-    pub registrar_symbol: Option<String>,
-}
-
-pub trait CrateLoader {
-    fn load_crate(&mut self, krate: &ast::ViewItem) -> MacroCrate;
-}
-
 // One of these is made during expansion and incrementally updated as we go;
 // when a macro expansion occurs, the resulting nodes have the backtrace()
 // -> expn_info of their expansion context stored into their span.
@@ -409,7 +398,7 @@ pub struct ExtCtxt<'a> {
     pub parse_sess: &'a parse::ParseSess,
     pub cfg: ast::CrateConfig,
     pub backtrace: Option<@ExpnInfo>,
-    pub ecfg: expand::ExpansionConfig<'a>,
+    pub ecfg: expand::ExpansionConfig,
 
     pub mod_path: Vec<ast::Ident> ,
     pub trace_mac: bool,
@@ -417,7 +406,7 @@ pub struct ExtCtxt<'a> {
 
 impl<'a> ExtCtxt<'a> {
     pub fn new<'a>(parse_sess: &'a parse::ParseSess, cfg: ast::CrateConfig,
-                   ecfg: expand::ExpansionConfig<'a>) -> ExtCtxt<'a> {
+                   ecfg: expand::ExpansionConfig) -> ExtCtxt<'a> {
         ExtCtxt {
             parse_sess: parse_sess,
             cfg: cfg,
