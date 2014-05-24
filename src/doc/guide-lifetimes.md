@@ -45,12 +45,11 @@ let on_the_heap  : Box<Point> = box Point {x: 7.0, y: 9.0};
 
 Suppose we wanted to write a procedure that computed the distance between any
 two points, no matter where they were stored. One option is to define a function
-that takes two arguments of type `Point`—that is, it takes the points __by value__.
-But if we define it this way, calling the function will cause the points __to be
-copied__. For points, this is probably not so bad, but often copies are
-expensive. Worse, if the data type contains mutable fields, copying can change
-the semantics of your program in unexpected ways. So we'd like to define
-a function that takes the points just as a __reference__/__borrowed pointer__.
+that takes two arguments of type `Point`—that is, it takes the points by value.
+But if we define it this way, calling the function will cause the points to be
+copied. For points, this is probably not so bad, but often copies are
+expensive. So we'd like to define a function that takes the points just as
+a reference.
 
 ~~~
 # struct Point {x: f64, y: f64}
@@ -62,27 +61,26 @@ fn compute_distance(p1: &Point, p2: &Point) -> f64 {
 }
 ~~~
 
-Now we can call `compute_distance()`
+Now we can call `compute_distance()`:
 
 ~~~
 # struct Point {x: f64, y: f64}
 # let on_the_stack :     Point  =     Point{x: 3.0, y: 4.0};
 # let on_the_heap  : Box<Point> = box Point{x: 7.0, y: 9.0};
 # fn compute_distance(p1: &Point, p2: &Point) -> f64 { 0.0 }
-compute_distance(&on_the_stack, on_the_heap);
+compute_distance(&on_the_stack, &*on_the_heap);
 ~~~
 
 Here, the `&` operator takes the address of the variable
 `on_the_stack`; this is because `on_the_stack` has the type `Point`
 (that is, a struct value) and we have to take its address to get a
 value. We also call this _borrowing_ the local variable
-`on_the_stack`, because we have created __an alias__: that is, another
+`on_the_stack`, because we have created an alias: that is, another
 name for the same data.
 
-In contrast, we can pass `on_the_heap` to `compute_distance` directly.
-The compiler automatically converts a box like `Box<Point>` to a reference like
-`&Point`. This is another form of borrowing: in this case, the caller lends
-the contents of the box to the callee.
+For the second argument, we need to grab the contents of `on_the_heap`
+by using the `*` operator, and then get a reference to that data. In
+order to convert `Box<T>` into a `&T`, we need to use `&*`.
 
 Whenever a caller lends data to a callee, there are some limitations on what
 the caller can do with the original. For example, if the contents of a
@@ -166,12 +164,12 @@ as well as from the owned box, and then compute the distance between them.
 
 # Lifetimes
 
-We’ve seen a few examples of borrowing data. Up till this point, we’ve glossed
+We’ve seen a few examples of borrowing data. To this point, we’ve glossed
 over issues of safety. As stated in the introduction, at runtime a reference
 is simply a pointer, nothing more. Therefore, avoiding C's problems with
 dangling pointers requires a compile-time safety check.
 
-The basis for the check is the notion of __lifetimes__. A lifetime is a
+The basis for the check is the notion of _lifetimes_. A lifetime is a
 static approximation of the span of execution during which the pointer
 is valid: it always corresponds to some expression or block within the
 program.
@@ -324,7 +322,7 @@ circle constant][tau] and not that dreadfully outdated notion of pi).
 
 The second match is more interesting. Here we match against a
 rectangle and extract its size: but rather than copy the `size`
-struct, we use a __by-reference binding__ to create a pointer to it. In
+struct, we use a by-reference binding to create a pointer to it. In
 other words, a pattern binding like `ref size` binds the name `size`
 to a pointer of type `&size` into the _interior of the enum_.
 
