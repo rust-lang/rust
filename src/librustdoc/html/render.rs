@@ -1091,8 +1091,8 @@ impl<'a> fmt::Show for Item<'a> {
                     shortty(self.item), self.item.name.get_ref().as_slice()));
 
         // Write stability attributes
-        match attr::find_stability(self.item.attrs.iter()) {
-            Some(ref stability) => {
+        match attr::find_stability_generic(self.item.attrs.iter()) {
+            Some((ref stability, _)) => {
                 try!(write!(fmt,
                        "<a class='stability {lvl}' title='{reason}'>{lvl}</a>",
                        lvl = stability.level.to_str(),

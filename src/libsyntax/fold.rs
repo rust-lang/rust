@@ -360,6 +360,7 @@ fn fold_attribute_<T: Folder>(at: Attribute, fld: &mut T) -> Attribute {
     Spanned {
         span: fld.new_span(at.span),
         node: ast::Attribute_ {
+            id: at.node.id,
             style: at.node.style,
             value: fold_meta_item_(at.node.value, fld),
             is_sugared_doc: at.node.is_sugared_doc

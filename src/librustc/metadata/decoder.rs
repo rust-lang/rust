@@ -953,20 +953,14 @@ pub fn get_tuple_struct_definition_if_ctor(cdata: Cmd,
 
 pub fn get_item_attrs(cdata: Cmd,
                       orig_node_id: ast::NodeId,
-                      f: |Vec<@ast::MetaItem> |) {
+                      f: |Vec<ast::Attribute>|) {
     // The attributes for a tuple struct are attached to the definition, not the ctor;
     // we assume that someone passing in a tuple struct ctor is actually wanting to
     // look at the definition
     let node_id = get_tuple_struct_definition_if_ctor(cdata, orig_node_id);
     let node_id = node_id.map(|x| x.node).unwrap_or(orig_node_id);
     let item = lookup_item(node_id, cdata.data());
-    reader::tagged_docs(item, tag_attributes, |attributes| {
-        reader::tagged_docs(attributes, tag_attribute, |attribute| {
-            f(get_meta_items(attribute));
-            true
-        });
-        true
-    });
+    f(get_attributes(item));
 }
 
 fn struct_field_family_to_visibility(family: Family) -> ast::Visibility {
@@ -1056,6 +1050,7 @@ fn get_attributes(md: ebml::Doc) -> Vec<ast::Attribute> {
             attrs.push(
                 codemap::Spanned {
                     node: ast::Attribute_ {
+                        id: attr::mk_attr_id(),
                         style: ast::AttrOuter,
                         value: meta_item,
                         is_sugared_doc: false,
