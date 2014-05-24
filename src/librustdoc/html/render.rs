@@ -797,6 +797,7 @@ impl DocFolder for Cache {
                 // not a public item.
                 let id = item.def_id.node;
                 if !self.paths.contains_key(&item.def_id) ||
+                   !ast_util::is_local(item.def_id) ||
                    self.public_items.contains(&id) {
                     self.paths.insert(item.def_id,
                                       (self.stack.clone(), shortty(&item)));
