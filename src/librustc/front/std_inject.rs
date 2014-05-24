@@ -81,7 +81,7 @@ impl<'a> fold::Folder for StandardLibraryInjector<'a> {
                 attr::mk_attr_outer(attr::mk_attr_id(), attr::mk_list_item(
                         InternedString::new("phase"),
                         vec!(
-                            attr::mk_word_item(InternedString::new("syntax")),
+                            attr::mk_word_item(InternedString::new("plugin")),
                             attr::mk_word_item(InternedString::new("link")
                         ))))),
             vis: ast::Inherited,
