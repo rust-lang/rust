@@ -171,10 +171,6 @@ pub trait Decodable<D:Decoder<E>, E> {
     fn decode(d: &mut D) -> Result<Self, E>;
 }
 
-macro_rules! try ( ($e:expr) => (
-    match $e { Ok(v) => v, Err(e) => return Err(e) }
-))
-
 impl<E, S:Encoder<E>> Encodable<S, E> for uint {
     fn encode(&self, s: &mut S) -> Result<(), E> {
         s.emit_uint(*self)
