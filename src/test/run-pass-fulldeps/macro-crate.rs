@@ -13,7 +13,7 @@
 
 #![feature(phase)]
 
-#[phase(syntax)]
+#[phase(plugin)]
 extern crate macro_crate_test;
 
 #[into_foo]

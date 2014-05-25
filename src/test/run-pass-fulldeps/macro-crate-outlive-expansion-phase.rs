@@ -13,7 +13,7 @@
 
 #![feature(phase)]
 
-#[phase(syntax)]
+#[phase(plugin)]
 extern crate macro_crate_outlive_expansion_phase;
 
 pub fn main() {}

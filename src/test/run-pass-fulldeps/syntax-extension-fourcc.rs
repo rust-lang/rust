@@ -13,7 +13,7 @@
 
 #![feature(phase)]
 
-#[phase(syntax)]
+#[phase(plugin)]
 extern crate fourcc;
 
 static static_val: u32 = fourcc!("foo ");

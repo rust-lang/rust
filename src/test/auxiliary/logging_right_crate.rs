@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #![feature(phase)]
-#[phase(syntax, link)] extern crate log;
+#[phase(plugin, link)] extern crate log;
 extern crate debug;
 
 pub fn foo<T>() {
