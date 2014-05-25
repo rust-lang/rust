@@ -110,7 +110,7 @@ impl TestDesc {
         use std::num::Saturating;
         let mut name = String::from_str(self.name.as_slice());
         let fill = column_count.saturating_sub(name.len());
-        let mut pad = String::from_owned_str(" ".repeat(fill));
+        let mut pad = " ".repeat(fill);
         match align {
             PadNone => name,
             PadOnLeft => {
