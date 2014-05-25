@@ -26,6 +26,7 @@ use serialize::{Encodable, Decodable, Encoder, Decoder};
 /// A pointer abstraction. FIXME(eddyb) #10676 use Rc<T> in the future.
 pub type P<T> = @T;
 
+#[allow(non_snake_case_functions)]
 /// Construct a P<T> from a T value.
 pub fn P<T: 'static>(value: T) -> P<T> {
     @value

@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -402,7 +402,7 @@ pub fn parse(sess: &ParseSess,
                 }
                 rdr.next_token();
             } else /* bb_eis.len() == 1 */ {
-                let mut rust_parser = Parser(sess, cfg.clone(), box rdr.clone());
+                let mut rust_parser = Parser::new(sess, cfg.clone(), box rdr.clone());
 
                 let mut ei = bb_eis.pop().unwrap();
                 match ei.elts.get(ei.idx).node {
