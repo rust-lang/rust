@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -343,7 +343,7 @@ pub fn phase_3_run_analysis_passes(sess: Session,
     });
 
     time(time_passes, "lint checking", (), |_|
-         lint::check_crate(&ty_cx, &exported_items, krate));
+         lint::check_crate(&ty_cx, &public_items, krate));
 
     CrateAnalysis {
         exp_map2: exp_map2,
