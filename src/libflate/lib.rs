@@ -28,7 +28,8 @@ Simple [DEFLATE][def]-based compression. This is a wrapper around the
 #![feature(phase)]
 #![deny(deprecated_owned_vector)]
 
-#[cfg(test)] #[phase(syntax, link)] extern crate log;
+#[cfg(test, stage0)] #[phase(syntax, link)] extern crate log;
+#[cfg(test, not(stage0))] #[phase(plugin, link)] extern crate log;
 
 extern crate libc;
 
