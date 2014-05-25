@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #[deriving(Eq, Show)]
-struct Foo(int, int, StrBuf);
+struct Foo(int, int, String);
 
 pub fn main() {
   let a1 = Foo(5, 6, "abc".to_strbuf());

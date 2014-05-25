@@ -20,8 +20,8 @@ use vm::{CaptureLocs, MatchKind, Exists, Location, Submatches};
 
 /// Escapes all regular expression meta characters in `text` so that it may be
 /// safely used in a regular expression as a literal string.
-pub fn quote(text: &str) -> StrBuf {
-    let mut quoted = StrBuf::with_capacity(text.len());
+pub fn quote(text: &str) -> String {
+    let mut quoted = String::with_capacity(text.len());
     for c in text.chars() {
         if parse::is_punct(c) {
             quoted.push_char('\\')
@@ -107,9 +107,9 @@ pub struct Regex {
     /// See the comments for the `program` module in `lib.rs` for a more
     /// detailed explanation for what `regex!` requires.
     #[doc(hidden)]
-    pub original: StrBuf,
+    pub original: String,
     #[doc(hidden)]
-    pub names: Vec<Option<StrBuf>>,
+    pub names: Vec<Option<String>>,
     #[doc(hidden)]
     pub p: MaybeNative,
 }
@@ -407,7 +407,7 @@ impl Regex {
     /// ```
     ///
     /// But anything satisfying the `Replacer` trait will work. For example,
-    /// a closure of type `|&Captures| -> StrBuf` provides direct access to the
+    /// a closure of type `|&Captures| -> String` provides direct access to the
     /// captures corresponding to a match. This allows one to access
     /// submatches easily:
     ///
@@ -456,7 +456,7 @@ impl Regex {
     /// assert_eq!(result.as_slice(), "$2 $last");
     /// # }
     /// ```
-    pub fn replace<R: Replacer>(&self, text: &str, rep: R) -> StrBuf {
+    pub fn replace<R: Replacer>(&self, text: &str, rep: R) -> String {
         self.replacen(text, 1, rep)
     }
 
@@ -466,7 +466,7 @@ impl Regex {
     ///
     /// See the documentation for `replace` for details on how to access
     /// submatches in the replacement string.
-    pub fn replace_all<R: Replacer>(&self, text: &str, rep: R) -> StrBuf {
+    pub fn replace_all<R: Replacer>(&self, text: &str, rep: R) -> String {
         self.replacen(text, 0, rep)
     }
 
@@ -477,8 +477,8 @@ impl Regex {
     /// See the documentation for `replace` for details on how to access
     /// submatches in the replacement string.
     pub fn replacen<R: Replacer>
-                   (&self, text: &str, limit: uint, mut rep: R) -> StrBuf {
-        let mut new = StrBuf::with_capacity(text.len());
+                   (&self, text: &str, limit: uint, mut rep: R) -> String {
+        let mut new = String::with_capacity(text.len());
         let mut last_match = 0u;
 
         for (i, cap) in self.captures_iter(text).enumerate() {
@@ -529,7 +529,7 @@ impl<'t> Replacer for &'t str {
     }
 }
 
-impl<'a> Replacer for |&Captures|: 'a -> StrBuf {
+impl<'a> Replacer for |&Captures|: 'a -> String {
     fn reg_replace<'r>(&'r mut self, caps: &Captures) -> MaybeOwned<'r> {
         Owned((*self)(caps).into_owned())
     }
@@ -608,7 +608,7 @@ impl<'r, 't> Iterator<&'t str> for RegexSplitsN<'r, 't> {
 pub struct Captures<'t> {
     text: &'t str,
     locs: CaptureLocs,
-    named: Option<HashMap<StrBuf, uint>>,
+    named: Option<HashMap<String, uint>>,
 }
 
 impl<'t> Captures<'t> {
@@ -706,11 +706,11 @@ impl<'t> Captures<'t> {
     /// isn't a valid index), then it is replaced with the empty string.
     ///
     /// To write a literal `$` use `$$`.
-    pub fn expand(&self, text: &str) -> StrBuf {
+    pub fn expand(&self, text: &str) -> String {
         // How evil can you get?
         // FIXME: Don't use regexes for this. It's completely unnecessary.
         let re = Regex::new(r"(^|[^$]|\b)\$(\w+)").unwrap();
-        let text = re.replace_all(text, |refs: &Captures| -> StrBuf {
+        let text = re.replace_all(text, |refs: &Captures| -> String {
             let (pre, name) = (refs.at(1), refs.at(2));
             format_strbuf!("{}{}",
                            pre,

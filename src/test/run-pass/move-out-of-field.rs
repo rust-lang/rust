@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::strbuf::StrBuf;
+use std::string::String;
 
 struct StringBuffer {
-    s: StrBuf,
+    s: String,
 }
 
 impl StringBuffer {
@@ -20,13 +20,13 @@ impl StringBuffer {
     }
 }
 
-fn to_str(sb: StringBuffer) -> StrBuf {
+fn to_str(sb: StringBuffer) -> String {
     sb.s
 }
 
 pub fn main() {
     let mut sb = StringBuffer {
-        s: StrBuf::new(),
+        s: String::new(),
     };
     sb.append("Hello, ");
     sb.append("World!");

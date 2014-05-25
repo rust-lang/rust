@@ -44,7 +44,7 @@ use result::{Err, Ok, Result};
 use slice::{Vector, ImmutableVector, MutableVector, OwnedVector};
 use str::{Str, StrSlice, StrAllocating};
 use str;
-use strbuf::StrBuf;
+use string::String;
 use sync::atomics::{AtomicInt, INIT_ATOMIC_INT, SeqCst};
 use vec::Vec;
 
@@ -104,13 +104,13 @@ pub mod win32 {
     use option;
     use os::TMPBUF_SZ;
     use slice::{MutableVector, ImmutableVector};
-    use strbuf::StrBuf;
+    use string::String;
     use str::{StrSlice, StrAllocating};
     use str;
     use vec::Vec;
 
     pub fn fill_utf16_buf_and_decode(f: |*mut u16, DWORD| -> DWORD)
-        -> Option<StrBuf> {
+        -> Option<String> {
 
         unsafe {
             let mut n = TMPBUF_SZ as DWORD;
@@ -176,7 +176,7 @@ fn with_env_lock<T>(f: || -> T) -> T {
 ///
 /// Invalid UTF-8 bytes are replaced with \uFFFD. See `str::from_utf8_lossy()`
 /// for details.
-pub fn env() -> Vec<(StrBuf,StrBuf)> {
+pub fn env() -> Vec<(String,String)> {
     env_as_bytes().move_iter().map(|(k,v)| {
         let k = str::from_utf8_lossy(k.as_slice()).to_strbuf();
         let v = str::from_utf8_lossy(v.as_slice()).to_strbuf();
@@ -276,7 +276,7 @@ pub fn env_as_bytes() -> Vec<(Vec<u8>,Vec<u8>)> {
 /// # Failure
 ///
 /// Fails if `n` has any interior NULs.
-pub fn getenv(n: &str) -> Option<StrBuf> {
+pub fn getenv(n: &str) -> Option<String> {
     getenv_as_bytes(n).map(|v| str::from_utf8_lossy(v.as_slice()).to_strbuf())
 }
 
@@ -306,7 +306,7 @@ pub fn getenv_as_bytes(n: &str) -> Option<Vec<u8>> {
 #[cfg(windows)]
 /// Fetches the environment variable `n` from the current process, returning
 /// None if the variable isn't set.
-pub fn getenv(n: &str) -> Option<StrBuf> {
+pub fn getenv(n: &str) -> Option<String> {
     unsafe {
         with_env_lock(|| {
             use os::win32::{as_utf16_p, fill_utf16_buf_and_decode};
@@ -436,7 +436,7 @@ pub fn pipe() -> Pipe {
 }
 
 /// Returns the proper dll filename for the given basename of a file.
-pub fn dll_filename(base: &str) -> StrBuf {
+pub fn dll_filename(base: &str) -> String {
     format_strbuf!("{}{}{}", consts::DLL_PREFIX, base, consts::DLL_SUFFIX)
 }
 
@@ -692,11 +692,11 @@ pub fn errno() -> uint {
 }
 
 /// Return the string corresponding to an `errno()` value of `errnum`.
-pub fn error_string(errnum: uint) -> StrBuf {
+pub fn error_string(errnum: uint) -> String {
     return strerror(errnum);
 
     #[cfg(unix)]
-    fn strerror(errnum: uint) -> StrBuf {
+    fn strerror(errnum: uint) -> String {
         #[cfg(target_os = "macos")]
         #[cfg(target_os = "android")]
         #[cfg(target_os = "freebsd")]
@@ -741,7 +741,7 @@ pub fn error_string(errnum: uint) -> StrBuf {
     }
 
     #[cfg(windows)]
-    fn strerror(errnum: uint) -> StrBuf {
+    fn strerror(errnum: uint) -> String {
         use libc::types::os::arch::extra::DWORD;
         use libc::types::os::arch::extra::LPWSTR;
         use libc::types::os::arch::extra::LPVOID;
@@ -793,7 +793,7 @@ pub fn error_string(errnum: uint) -> StrBuf {
 }
 
 /// Get a string representing the platform-dependent last error
-pub fn last_os_error() -> StrBuf {
+pub fn last_os_error() -> String {
     error_string(errno() as uint)
 }
 
@@ -856,7 +856,7 @@ fn real_args_as_bytes() -> Vec<Vec<u8>> {
 }
 
 #[cfg(not(windows))]
-fn real_args() -> Vec<StrBuf> {
+fn real_args() -> Vec<String> {
     real_args_as_bytes().move_iter()
                         .map(|v| {
                             str::from_utf8_lossy(v.as_slice()).into_strbuf()
@@ -864,7 +864,7 @@ fn real_args() -> Vec<StrBuf> {
 }
 
 #[cfg(windows)]
-fn real_args() -> Vec<StrBuf> {
+fn real_args() -> Vec<String> {
     use slice;
     use option::Expect;
 
@@ -919,13 +919,13 @@ extern "system" {
 /// The arguments are interpreted as utf-8, with invalid bytes replaced with \uFFFD.
 /// See `str::from_utf8_lossy` for details.
 #[cfg(not(test))]
-pub fn args() -> Vec<StrBuf> {
+pub fn args() -> Vec<String> {
     real_args()
 }
 
 #[cfg(test)]
 #[allow(missing_doc)]
-pub fn args() -> ::realstd::vec::Vec<::realstd::strbuf::StrBuf> {
+pub fn args() -> ::realstd::vec::Vec<::realstd::string::String> {
     ::realstd::os::args()
 }
 
@@ -1524,7 +1524,7 @@ mod tests {
         assert!(a.len() >= 1);
     }
 
-    fn make_rand_name() -> StrBuf {
+    fn make_rand_name() -> String {
         let mut rng = rand::task_rng();
         let n = format_strbuf!("TEST{}", rng.gen_ascii_str(10u).as_slice());
         assert!(getenv(n.as_slice()).is_none());

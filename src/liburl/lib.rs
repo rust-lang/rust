@@ -27,7 +27,7 @@ use std::fmt;
 use std::from_str::FromStr;
 use std::hash::Hash;
 use std::io::BufReader;
-use std::strbuf::StrBuf;
+use std::string::String;
 use std::uint;
 
 /// A Uniform Resource Locator (URL).  A URL is a form of URI (Uniform Resource
@@ -51,55 +51,55 @@ use std::uint;
 #[deriving(Clone, Eq, TotalEq)]
 pub struct Url {
     /// The scheme part of a URL, such as `https` in the above example.
-    pub scheme: StrBuf,
+    pub scheme: String,
     /// A URL subcomponent for user authentication.  `username` in the above example.
     pub user: Option<UserInfo>,
     /// A domain name or IP address.  For example, `example.com`.
-    pub host: StrBuf,
+    pub host: String,
     /// A TCP port number, for example `8080`.
-    pub port: Option<StrBuf>,
+    pub port: Option<String>,
     /// The path component of a URL, for example `/foo/bar`.
-    pub path: StrBuf,
+    pub path: String,
     /// The query component of a URL.
     /// `vec!(("baz".to_strbuf(), "qux".to_strbuf()))` represents the fragment
     /// `baz=qux` in the above example.
     pub query: Query,
     /// The fragment component, such as `quz`.  Doesn't include the leading `#` character.
-    pub fragment: Option<StrBuf>
+    pub fragment: Option<String>
 }
 
 #[deriving(Clone, Eq)]
 pub struct Path {
     /// The path component of a URL, for example `/foo/bar`.
-    pub path: StrBuf,
+    pub path: String,
     /// The query component of a URL.
     /// `vec!(("baz".to_strbuf(), "qux".to_strbuf()))` represents the fragment
     /// `baz=qux` in the above example.
     pub query: Query,
     /// The fragment component, such as `quz`.  Doesn't include the leading `#` character.
-    pub fragment: Option<StrBuf>
+    pub fragment: Option<String>
 }
 
 /// An optional subcomponent of a URI authority component.
 #[deriving(Clone, Eq, TotalEq)]
 pub struct UserInfo {
     /// The user name.
-    pub user: StrBuf,
+    pub user: String,
     /// Password or other scheme-specific authentication information.
-    pub pass: Option<StrBuf>
+    pub pass: Option<String>
 }
 
 /// Represents the query component of a URI.
-pub type Query = Vec<(StrBuf, StrBuf)>;
+pub type Query = Vec<(String, String)>;
 
 impl Url {
-    pub fn new(scheme: StrBuf,
+    pub fn new(scheme: String,
                user: Option<UserInfo>,
-               host: StrBuf,
-               port: Option<StrBuf>,
-               path: StrBuf,
+               host: String,
+               port: Option<String>,
+               path: String,
                query: Query,
-               fragment: Option<StrBuf>)
+               fragment: Option<String>)
                -> Url {
         Url {
             scheme: scheme,
@@ -114,9 +114,9 @@ impl Url {
 }
 
 impl Path {
-    pub fn new(path: StrBuf,
+    pub fn new(path: String,
                query: Query,
-               fragment: Option<StrBuf>)
+               fragment: Option<String>)
                -> Path {
         Path {
             path: path,
@@ -128,14 +128,14 @@ impl Path {
 
 impl UserInfo {
     #[inline]
-    pub fn new(user: StrBuf, pass: Option<StrBuf>) -> UserInfo {
+    pub fn new(user: String, pass: Option<String>) -> UserInfo {
         UserInfo { user: user, pass: pass }
     }
 }
 
-fn encode_inner(s: &str, full_url: bool) -> StrBuf {
+fn encode_inner(s: &str, full_url: bool) -> String {
     let mut rdr = BufReader::new(s.as_bytes());
-    let mut out = StrBuf::new();
+    let mut out = String::new();
 
     loop {
         let mut buf = [0];
@@ -191,7 +191,7 @@ fn encode_inner(s: &str, full_url: bool) -> StrBuf {
  * println!("{}", url); // https://example.com/Rust%20(programming%20language)
  * ```
  */
-pub fn encode(s: &str) -> StrBuf {
+pub fn encode(s: &str) -> String {
     encode_inner(s, true)
 }
 
@@ -202,13 +202,13 @@ pub fn encode(s: &str) -> StrBuf {
  * This function is compliant with RFC 3986.
  */
 
-pub fn encode_component(s: &str) -> StrBuf {
+pub fn encode_component(s: &str) -> String {
     encode_inner(s, false)
 }
 
-fn decode_inner(s: &str, full_url: bool) -> StrBuf {
+fn decode_inner(s: &str, full_url: bool) -> String {
     let mut rdr = BufReader::new(s.as_bytes());
-    let mut out = StrBuf::new();
+    let mut out = String::new();
 
     loop {
         let mut buf = [0];
@@ -266,20 +266,20 @@ fn decode_inner(s: &str, full_url: bool) -> StrBuf {
  * println!("{}", url); // https://example.com/Rust (programming language)
  * ```
  */
-pub fn decode(s: &str) -> StrBuf {
+pub fn decode(s: &str) -> String {
     decode_inner(s, true)
 }
 
 /**
  * Decode a string encoded with percent encoding.
  */
-pub fn decode_component(s: &str) -> StrBuf {
+pub fn decode_component(s: &str) -> String {
     decode_inner(s, false)
 }
 
-fn encode_plus(s: &str) -> StrBuf {
+fn encode_plus(s: &str) -> String {
     let mut rdr = BufReader::new(s.as_bytes());
-    let mut out = StrBuf::new();
+    let mut out = String::new();
 
     loop {
         let mut buf = [0];
@@ -302,8 +302,8 @@ fn encode_plus(s: &str) -> StrBuf {
 /**
  * Encode a hashmap to the 'application/x-www-form-urlencoded' media type.
  */
-pub fn encode_form_urlencoded(m: &HashMap<StrBuf, Vec<StrBuf>>) -> StrBuf {
-    let mut out = StrBuf::new();
+pub fn encode_form_urlencoded(m: &HashMap<String, Vec<String>>) -> String {
+    let mut out = String::new();
     let mut first = true;
 
     for (key, values) in m.iter() {
@@ -331,11 +331,11 @@ pub fn encode_form_urlencoded(m: &HashMap<StrBuf, Vec<StrBuf>>) -> StrBuf {
  * type into a hashmap.
  */
 #[allow(experimental)]
-pub fn decode_form_urlencoded(s: &[u8]) -> HashMap<StrBuf, Vec<StrBuf>> {
+pub fn decode_form_urlencoded(s: &[u8]) -> HashMap<String, Vec<String>> {
     let mut rdr = BufReader::new(s);
-    let mut m: HashMap<StrBuf,Vec<StrBuf>> = HashMap::new();
-    let mut key = StrBuf::new();
-    let mut value = StrBuf::new();
+    let mut m: HashMap<String,Vec<String>> = HashMap::new();
+    let mut key = String::new();
+    let mut value = String::new();
     let mut parsing_key = true;
 
     loop {
@@ -357,8 +357,8 @@ pub fn decode_form_urlencoded(s: &[u8]) -> HashMap<StrBuf, Vec<StrBuf>> {
                 }
 
                 parsing_key = true;
-                key = StrBuf::new();
-                value = StrBuf::new();
+                key = String::new();
+                value = String::new();
             }
             '=' => parsing_key = false,
             ch => {
@@ -398,7 +398,7 @@ pub fn decode_form_urlencoded(s: &[u8]) -> HashMap<StrBuf, Vec<StrBuf>> {
 }
 
 
-fn split_char_first(s: &str, c: char) -> (StrBuf, StrBuf) {
+fn split_char_first(s: &str, c: char) -> (String, String) {
     let len = s.len();
     let mut index = len;
     let mut mat = 0;
@@ -458,7 +458,7 @@ fn query_from_str(rawquery: &str) -> Query {
  * ```
  */
 #[allow(unused_must_use)]
-pub fn query_to_str(query: &Query) -> StrBuf {
+pub fn query_to_str(query: &Query) -> String {
     use std::io::MemWriter;
     use std::str;
 
@@ -488,7 +488,7 @@ pub fn query_to_str(query: &Query) -> StrBuf {
  * println!("Scheme in use: {}.", scheme); // Scheme in use: https.
  * ```
  */
-pub fn get_scheme(rawurl: &str) -> Result<(StrBuf, StrBuf), StrBuf> {
+pub fn get_scheme(rawurl: &str) -> Result<(String, String), String> {
     for (i,c) in rawurl.chars().enumerate() {
         match c {
           'A' .. 'Z' | 'a' .. 'z' => continue,
@@ -524,7 +524,7 @@ enum Input {
 
 // returns userinfo, host, port, and unparsed part, or an error
 fn get_authority(rawurl: &str) ->
-    Result<(Option<UserInfo>, StrBuf, Option<StrBuf>, StrBuf), StrBuf> {
+    Result<(Option<UserInfo>, String, Option<String>, String), String> {
     if !rawurl.starts_with("//") {
         // there is no authority.
         return Ok((None, "".to_strbuf(), None, rawurl.to_str().to_strbuf()));
@@ -684,7 +684,7 @@ fn get_authority(rawurl: &str) ->
 
 // returns the path and unparsed part of url, or an error
 fn get_path(rawurl: &str, authority: bool) ->
-    Result<(StrBuf, StrBuf), StrBuf> {
+    Result<(String, String), String> {
     let len = rawurl.len();
     let mut end = len;
     for (i,c) in rawurl.chars().enumerate() {
@@ -715,7 +715,7 @@ fn get_path(rawurl: &str, authority: bool) ->
 
 // returns the parsed query and the fragment, if present
 fn get_query_fragment(rawurl: &str) ->
-    Result<(Query, Option<StrBuf>), StrBuf> {
+    Result<(Query, Option<String>), String> {
     if !rawurl.starts_with("?") {
         if rawurl.starts_with("#") {
             let f = decode_component(rawurl.slice(
@@ -746,7 +746,7 @@ fn get_query_fragment(rawurl: &str) ->
  *
  * A `Url` struct type representing the URL.
  */
-pub fn from_str(rawurl: &str) -> Result<Url, StrBuf> {
+pub fn from_str(rawurl: &str) -> Result<Url, String> {
     // scheme
     let (scheme, rest) = match get_scheme(rawurl) {
         Ok(val) => val,
@@ -775,7 +775,7 @@ pub fn from_str(rawurl: &str) -> Result<Url, StrBuf> {
     Ok(Url::new(scheme, userinfo, host, port, path, query, fragment))
 }
 
-pub fn path_from_str(rawpath: &str) -> Result<Path, StrBuf> {
+pub fn path_from_str(rawpath: &str) -> Result<Path, String> {
     let (path, rest) = match get_path(rawpath, false) {
         Ok(val) => val,
         Err(e) => return Err(e)

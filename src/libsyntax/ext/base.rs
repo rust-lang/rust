@@ -30,7 +30,7 @@ use collections::HashMap;
 // ast::MacInvocTT.
 
 pub struct MacroDef {
-    pub name: StrBuf,
+    pub name: String,
     pub ext: SyntaxExtension
 }
 
@@ -364,8 +364,8 @@ pub fn syntax_expander_table() -> SyntaxEnv {
 
 pub struct MacroCrate {
     pub lib: Option<Path>,
-    pub macros: Vec<StrBuf>,
-    pub registrar_symbol: Option<StrBuf>,
+    pub macros: Vec<String>,
+    pub registrar_symbol: Option<String>,
 }
 
 pub trait CrateLoader {
@@ -543,7 +543,7 @@ pub fn get_single_str_from_tts(cx: &ExtCtxt,
                                sp: Span,
                                tts: &[ast::TokenTree],
                                name: &str)
-                               -> Option<StrBuf> {
+                               -> Option<String> {
     if tts.len() != 1 {
         cx.span_err(sp, format!("{} takes 1 argument.", name).as_slice());
     } else {

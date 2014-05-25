@@ -134,7 +134,7 @@ impl<'a> Archive<'a> {
     }
 
     /// Lists all files in an archive
-    pub fn files(&self) -> Vec<StrBuf> {
+    pub fn files(&self) -> Vec<String> {
         let output = run_ar(self.sess, "t", None, [&self.dst]);
         let output = str::from_utf8(output.output.as_slice()).unwrap();
         // use lines_any because windows delimits output with `\r\n` instead of

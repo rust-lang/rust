@@ -9,9 +9,9 @@
 // except according to those terms.
 
 pub fn main() {
-    let a: StrBuf = "this \
+    let a: String = "this \
 is a test".to_strbuf();
-    let b: StrBuf =
+    let b: String =
         "this \
               is \
               another \

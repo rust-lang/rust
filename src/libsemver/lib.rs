@@ -42,7 +42,7 @@ use std::cmp;
 use std::fmt;
 use std::fmt::Show;
 use std::option::{Option, Some, None};
-use std::strbuf::StrBuf;
+use std::string::String;
 
 /// An identifier in the pre-release or build metadata. If the identifier can
 /// be parsed as a decimal value, it will be represented with `Numeric`.
@@ -50,7 +50,7 @@ use std::strbuf::StrBuf;
 #[allow(missing_doc)]
 pub enum Identifier {
     Numeric(uint),
-    AlphaNumeric(StrBuf)
+    AlphaNumeric(String)
 }
 
 impl cmp::Ord for Identifier {
@@ -158,8 +158,8 @@ impl cmp::Ord for Version {
 }
 
 fn take_nonempty_prefix<T:Iterator<char>>(rdr: &mut T, pred: |char| -> bool)
-                        -> (StrBuf, Option<char>) {
-    let mut buf = StrBuf::new();
+                        -> (String, Option<char>) {
+    let mut buf = String::new();
     let mut ch = rdr.next();
     loop {
         match ch {

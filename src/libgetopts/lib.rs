@@ -34,7 +34,7 @@
 //! use getopts::{optopt,optflag,getopts,OptGroup};
 //! use std::os;
 //!
-//! fn do_work(inp: &str, out: Option<StrBuf>) {
+//! fn do_work(inp: &str, out: Option<String>) {
 //!     println!("{}", inp);
 //!     match out {
 //!         Some(x) => println!("{}", x),
@@ -49,7 +49,7 @@
 //! }
 //!
 //! fn main() {
-//!     let args: Vec<StrBuf> = os::args().iter()
+//!     let args: Vec<String> = os::args().iter()
 //!                                       .map(|x| x.to_strbuf())
 //!                                       .collect();
 //!
@@ -94,14 +94,14 @@
 use std::cmp::Eq;
 use std::result::{Err, Ok};
 use std::result;
-use std::strbuf::StrBuf;
+use std::string::String;
 
 /// Name of an option. Either a string or a single char.
 #[deriving(Clone, Eq)]
 pub enum Name {
     /// A string representing the long name of an option.
     /// For example: "help"
-    Long(StrBuf),
+    Long(String),
     /// A char representing the short name of an option.
     /// For example: 'h'
     Short(char),
@@ -147,13 +147,13 @@ pub struct Opt {
 #[deriving(Clone, Eq)]
 pub struct OptGroup {
     /// Short Name of the `OptGroup`
-    pub short_name: StrBuf,
+    pub short_name: String,
     /// Long Name of the `OptGroup`
-    pub long_name: StrBuf,
+    pub long_name: String,
     /// Hint
-    pub hint: StrBuf,
+    pub hint: String,
     /// Description
-    pub desc: StrBuf,
+    pub desc: String,
     /// Whether it has an argument
     pub hasarg: HasArg,
     /// How often it can occur
@@ -163,7 +163,7 @@ pub struct OptGroup {
 /// Describes wether an option is given at all or has a value.
 #[deriving(Clone, Eq)]
 enum Optval {
-    Val(StrBuf),
+    Val(String),
     Given,
 }
 
@@ -176,7 +176,7 @@ pub struct Matches {
     /// Values of the Options that matched
     vals: Vec<Vec<Optval> > ,
     /// Free string fragments
-    pub free: Vec<StrBuf>,
+    pub free: Vec<String>,
 }
 
 /// The type returned when the command line does not conform to the
@@ -185,15 +185,15 @@ pub struct Matches {
 #[deriving(Clone, Eq, Show)]
 pub enum Fail_ {
     /// The option requires an argument but none was passed.
-    ArgumentMissing(StrBuf),
+    ArgumentMissing(String),
     /// The passed option is not declared among the possible options.
-    UnrecognizedOption(StrBuf),
+    UnrecognizedOption(String),
     /// A required option is not present.
-    OptionMissing(StrBuf),
+    OptionMissing(String),
     /// A single occurrence option is being used multiple times.
-    OptionDuplicated(StrBuf),
+    OptionDuplicated(String),
     /// There's an argument being passed to a non-argument option.
-    UnexpectedArgument(StrBuf),
+    UnexpectedArgument(String),
 }
 
 /// The type of failure that occurred.
@@ -219,7 +219,7 @@ impl Name {
         }
     }
 
-    fn to_str(&self) -> StrBuf {
+    fn to_str(&self) -> String {
         match *self {
             Short(ch) => ch.to_str().to_strbuf(),
             Long(ref s) => s.to_strbuf()
@@ -299,7 +299,7 @@ impl Matches {
     }
 
     /// Returns true if any of several options were matched.
-    pub fn opts_present(&self, names: &[StrBuf]) -> bool {
+    pub fn opts_present(&self, names: &[String]) -> bool {
         for nm in names.iter() {
             match find_opt(self.opts.as_slice(),
                            Name::from_str(nm.as_slice())) {
@@ -311,7 +311,7 @@ impl Matches {
     }
 
     /// Returns the string argument supplied to one of several matching options or `None`.
-    pub fn opts_str(&self, names: &[StrBuf]) -> Option<StrBuf> {
+    pub fn opts_str(&self, names: &[String]) -> Option<String> {
         for nm in names.iter() {
             match self.opt_val(nm.as_slice()) {
                 Some(Val(ref s)) => return Some(s.clone()),
@@ -325,8 +325,8 @@ impl Matches {
     /// option.
     ///
     /// Used when an option accepts multiple values.
-    pub fn opt_strs(&self, nm: &str) -> Vec<StrBuf> {
-        let mut acc: Vec<StrBuf> = Vec::new();
+    pub fn opt_strs(&self, nm: &str) -> Vec<String> {
+        let mut acc: Vec<String> = Vec::new();
         let r = self.opt_vals(nm);
         for v in r.iter() {
             match *v {
@@ -338,10 +338,10 @@ impl Matches {
     }
 
     /// Returns the string argument supplied to a matching option or `None`.
-    pub fn opt_str(&self, nm: &str) -> Option<StrBuf> {
+    pub fn opt_str(&self, nm: &str) -> Option<String> {
         let vals = self.opt_vals(nm);
         if vals.is_empty() {
-            return None::<StrBuf>;
+            return None::<String>;
         }
         match vals.get(0) {
             &Val(ref s) => Some((*s).clone()),
@@ -355,7 +355,7 @@ impl Matches {
     /// Returns none if the option was not present, `def` if the option was
     /// present but no argument was provided, and the argument if the option was
     /// present and an argument was provided.
-    pub fn opt_default(&self, nm: &str, def: &str) -> Option<StrBuf> {
+    pub fn opt_default(&self, nm: &str, def: &str) -> Option<String> {
         let vals = self.opt_vals(nm);
         if vals.is_empty() {
             return None;
@@ -496,7 +496,7 @@ pub fn opt(short_name: &str,
 
 impl Fail_ {
     /// Convert a `Fail_` enum into an error string.
-    pub fn to_err_msg(self) -> StrBuf {
+    pub fn to_err_msg(self) -> String {
         match self {
             ArgumentMissing(ref nm) => {
                 format_strbuf!("Argument to option '{}' missing.", *nm)
@@ -522,14 +522,14 @@ impl Fail_ {
 /// On success returns `Ok(Opt)`. Use methods such as `opt_present`
 /// `opt_str`, etc. to interrogate results.  Returns `Err(Fail_)` on failure.
 /// Use `to_err_msg` to get an error message.
-pub fn getopts(args: &[StrBuf], optgrps: &[OptGroup]) -> Result {
+pub fn getopts(args: &[String], optgrps: &[OptGroup]) -> Result {
     let opts: Vec<Opt> = optgrps.iter().map(|x| x.long_to_short()).collect();
     let n_opts = opts.len();
 
     fn f(_x: uint) -> Vec<Optval> { return Vec::new(); }
 
     let mut vals = Vec::from_fn(n_opts, f);
-    let mut free: Vec<StrBuf> = Vec::new();
+    let mut free: Vec<String> = Vec::new();
     let l = args.len();
     let mut i = 0;
     while i < l {
@@ -659,7 +659,7 @@ pub fn getopts(args: &[StrBuf], optgrps: &[OptGroup]) -> Result {
 }
 
 /// Derive a usage message from a set of long options.
-pub fn usage(brief: &str, opts: &[OptGroup]) -> StrBuf {
+pub fn usage(brief: &str, opts: &[OptGroup]) -> String {
 
     let desc_sep = format!("\n{}", " ".repeat(24));
 
@@ -671,7 +671,7 @@ pub fn usage(brief: &str, opts: &[OptGroup]) -> StrBuf {
                      hasarg: hasarg,
                      ..} = (*optref).clone();
 
-        let mut row = StrBuf::from_owned_str(" ".repeat(4));
+        let mut row = String::from_owned_str(" ".repeat(4));
 
         // short option
         match short_name.len() {
@@ -717,7 +717,7 @@ pub fn usage(brief: &str, opts: &[OptGroup]) -> StrBuf {
         }
 
         // Normalize desc to contain words separated by one space character
-        let mut desc_normalized_whitespace = StrBuf::new();
+        let mut desc_normalized_whitespace = String::new();
         for word in desc.as_slice().words() {
             desc_normalized_whitespace.push_str(word);
             desc_normalized_whitespace.push_char(' ');
@@ -741,11 +741,11 @@ pub fn usage(brief: &str, opts: &[OptGroup]) -> StrBuf {
 
     format_strbuf!("{}\n\nOptions:\n{}\n",
                    brief,
-                   rows.collect::<Vec<StrBuf>>().connect("\n"))
+                   rows.collect::<Vec<String>>().connect("\n"))
 }
 
-fn format_option(opt: &OptGroup) -> StrBuf {
-    let mut line = StrBuf::new();
+fn format_option(opt: &OptGroup) -> String {
+    let mut line = String::new();
 
     if opt.occur != Req {
         line.push_char('[');
@@ -782,11 +782,11 @@ fn format_option(opt: &OptGroup) -> StrBuf {
 }
 
 /// Derive a short one-line usage summary from a set of long options.
-pub fn short_usage(program_name: &str, opts: &[OptGroup]) -> StrBuf {
+pub fn short_usage(program_name: &str, opts: &[OptGroup]) -> String {
     let mut line = format_strbuf!("Usage: {} ", program_name);
     line.push_str(opts.iter()
                       .map(format_option)
-                      .collect::<Vec<StrBuf>>()
+                      .collect::<Vec<String>>()
                       .connect(" ")
                       .as_slice());
     line
@@ -898,7 +898,7 @@ fn each_split_within<'a>(ss: &'a str, lim: uint, it: |&'a str| -> bool)
 
 #[test]
 fn test_split_within() {
-    fn t(s: &str, i: uint, u: &[StrBuf]) {
+    fn t(s: &str, i: uint, u: &[String]) {
         let mut v = Vec::new();
         each_split_within(s, i, |s| { v.push(s.to_strbuf()); true });
         assert!(v.iter().zip(u.iter()).all(|(a,b)| a == b));

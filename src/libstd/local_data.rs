@@ -276,7 +276,7 @@ mod tests {
 
     #[test]
     fn test_tls_multitask() {
-        static my_key: Key<StrBuf> = &Key;
+        static my_key: Key<String> = &Key;
         my_key.replace(Some("parent data".to_strbuf()));
         task::spawn(proc() {
             // TLS shouldn't carry over.
@@ -294,7 +294,7 @@ mod tests {
 
     #[test]
     fn test_tls_overwrite() {
-        static my_key: Key<StrBuf> = &Key;
+        static my_key: Key<String> = &Key;
         my_key.replace(Some("first data".to_strbuf()));
         my_key.replace(Some("next data".to_strbuf())); // Shouldn't leak.
         assert!(my_key.get().unwrap().as_slice() == "next data");
@@ -302,7 +302,7 @@ mod tests {
 
     #[test]
     fn test_tls_pop() {
-        static my_key: Key<StrBuf> = &Key;
+        static my_key: Key<String> = &Key;
         my_key.replace(Some("weasel".to_strbuf()));
         assert!(my_key.replace(None).unwrap() == "weasel".to_strbuf());
         // Pop must remove the data from the map.
@@ -317,7 +317,7 @@ mod tests {
         // to get recorded as something within a rust stack segment. Then a
         // subsequent upcall (esp. for logging, think vsnprintf) would run on
         // a stack smaller than 1 MB.
-        static my_key: Key<StrBuf> = &Key;
+        static my_key: Key<String> = &Key;
         task::spawn(proc() {
             my_key.replace(Some("hax".to_strbuf()));
         });
@@ -325,7 +325,7 @@ mod tests {
 
     #[test]
     fn test_tls_multiple_types() {
-        static str_key: Key<StrBuf> = &Key;
+        static str_key: Key<String> = &Key;
         static box_key: Key<@()> = &Key;
         static int_key: Key<int> = &Key;
         task::spawn(proc() {
@@ -337,7 +337,7 @@ mod tests {
 
     #[test]
     fn test_tls_overwrite_multiple_types() {
-        static str_key: Key<StrBuf> = &Key;
+        static str_key: Key<String> = &Key;
         static box_key: Key<@()> = &Key;
         static int_key: Key<int> = &Key;
         task::spawn(proc() {
@@ -356,7 +356,7 @@ mod tests {
     #[test]
     #[should_fail]
     fn test_tls_cleanup_on_failure() {
-        static str_key: Key<StrBuf> = &Key;
+        static str_key: Key<String> = &Key;
         static box_key: Key<@()> = &Key;
         static int_key: Key<int> = &Key;
         str_key.replace(Some("parent data".to_strbuf()));

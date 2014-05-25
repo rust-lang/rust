@@ -13,7 +13,7 @@
 pub fn main() {
     match "test" { "not-test" => fail!(), "test" => (), _ => fail!() }
 
-    enum t { tag1(StrBuf), tag2, }
+    enum t { tag1(String), tag2, }
 
 
     match tag1("test".to_strbuf()) {

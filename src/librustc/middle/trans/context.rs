@@ -45,9 +45,9 @@ pub struct Stats {
     pub n_inlines: Cell<uint>,
     pub n_closures: Cell<uint>,
     pub n_llvm_insns: Cell<uint>,
-    pub llvm_insns: RefCell<HashMap<StrBuf, uint>>,
+    pub llvm_insns: RefCell<HashMap<String, uint>>,
     // (ident, time-in-ms, llvm-instructions)
-    pub fn_stats: RefCell<Vec<(StrBuf, uint, uint)> >,
+    pub fn_stats: RefCell<Vec<(String, uint, uint)> >,
 }
 
 pub struct CrateContext {
@@ -60,7 +60,7 @@ pub struct CrateContext {
     pub item_vals: RefCell<NodeMap<ValueRef>>,
     pub exp_map2: resolve::ExportMap2,
     pub reachable: NodeSet,
-    pub item_symbols: RefCell<NodeMap<StrBuf>>,
+    pub item_symbols: RefCell<NodeMap<String>>,
     pub link_meta: LinkMeta,
     pub drop_glues: RefCell<HashMap<ty::t, ValueRef>>,
     pub tydescs: RefCell<HashMap<ty::t, Rc<tydesc_info>>>,
@@ -109,8 +109,8 @@ pub struct CrateContext {
     pub llsizingtypes: RefCell<HashMap<ty::t, Type>>,
     pub adt_reprs: RefCell<HashMap<ty::t, Rc<adt::Repr>>>,
     pub symbol_hasher: RefCell<Sha256>,
-    pub type_hashcodes: RefCell<HashMap<ty::t, StrBuf>>,
-    pub all_llvm_symbols: RefCell<HashSet<StrBuf>>,
+    pub type_hashcodes: RefCell<HashMap<ty::t, String>>,
+    pub all_llvm_symbols: RefCell<HashSet<String>>,
     pub tcx: ty::ctxt,
     pub stats: Stats,
     pub int_type: Type,

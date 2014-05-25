@@ -23,7 +23,7 @@ use super::IoResult;
 use super::file;
 use super::util;
 
-#[cfg(windows)] use std::strbuf::StrBuf;
+#[cfg(windows)] use std::string::String;
 #[cfg(unix)] use super::c;
 #[cfg(unix)] use super::retry;
 #[cfg(unix)] use io::helper_thread::Helper;
@@ -396,8 +396,8 @@ fn zeroed_process_information() -> libc::types::os::arch::extra::PROCESS_INFORMA
 }
 
 #[cfg(windows)]
-fn make_command_line(prog: &CString, args: &[CString]) -> StrBuf {
-    let mut cmd = StrBuf::new();
+fn make_command_line(prog: &CString, args: &[CString]) -> String {
+    let mut cmd = String::new();
     append_arg(&mut cmd, prog.as_str()
                              .expect("expected program name to be utf-8 encoded"));
     for arg in args.iter() {
@@ -407,7 +407,7 @@ fn make_command_line(prog: &CString, args: &[CString]) -> StrBuf {
     }
     return cmd;
 
-    fn append_arg(cmd: &mut StrBuf, arg: &str) {
+    fn append_arg(cmd: &mut String, arg: &str) {
         let quote = arg.chars().any(|c| c == ' ' || c == '\t');
         if quote {
             cmd.push_char('"');
@@ -421,7 +421,7 @@ fn make_command_line(prog: &CString, args: &[CString]) -> StrBuf {
         }
     }
 
-    fn append_char_at(cmd: &mut StrBuf, arg: &Vec<char>, i: uint) {
+    fn append_char_at(cmd: &mut String, arg: &Vec<char>, i: uint) {
         match *arg.get(i) {
             '"' => {
                 // Escape quotes.
@@ -1093,7 +1093,7 @@ mod tests {
         use std::c_str::CString;
         use super::make_command_line;
 
-        fn test_wrapper(prog: &str, args: &[&str]) -> StrBuf {
+        fn test_wrapper(prog: &str, args: &[&str]) -> String {
             make_command_line(&prog.to_c_str(),
                               args.iter()
                                   .map(|a| a.to_c_str())

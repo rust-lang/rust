@@ -62,7 +62,7 @@ use std::io::{File, ChanReader, ChanWriter};
 use std::io;
 use std::os;
 use std::str;
-use std::strbuf::StrBuf;
+use std::string::String;
 use std::task::TaskBuilder;
 
 // to be used by rustc to compile tests in libtest
@@ -86,7 +86,7 @@ pub mod stats;
 #[deriving(Clone, Eq, TotalEq, Hash)]
 pub enum TestName {
     StaticTestName(&'static str),
-    DynTestName(StrBuf)
+    DynTestName(String)
 }
 impl TestName {
     fn as_slice<'a>(&'a self) -> &'a str {
@@ -106,11 +106,11 @@ impl Show for TestName {
 enum NamePadding { PadNone, PadOnLeft, PadOnRight }
 
 impl TestDesc {
-    fn padded_name(&self, column_count: uint, align: NamePadding) -> StrBuf {
+    fn padded_name(&self, column_count: uint, align: NamePadding) -> String {
         use std::num::Saturating;
-        let mut name = StrBuf::from_str(self.name.as_slice());
+        let mut name = String::from_str(self.name.as_slice());
         let fill = column_count.saturating_sub(name.len());
-        let mut pad = StrBuf::from_owned_str(" ".repeat(fill));
+        let mut pad = String::from_owned_str(" ".repeat(fill));
         match align {
             PadNone => name,
             PadOnLeft => {
@@ -209,7 +209,7 @@ impl Metric {
 }
 
 #[deriving(Eq)]
-pub struct MetricMap(TreeMap<StrBuf,Metric>);
+pub struct MetricMap(TreeMap<String,Metric>);
 
 impl Clone for MetricMap {
     fn clone(&self) -> MetricMap {
@@ -228,11 +228,11 @@ pub enum MetricChange {
     Regression(f64)
 }
 
-pub type MetricDiff = TreeMap<StrBuf,MetricChange>;
+pub type MetricDiff = TreeMap<String,MetricChange>;
 
 // The default console test runner. It accepts the command line
 // arguments and a vector of test_descs.
-pub fn test_main(args: &[StrBuf], tests: Vec<TestDescAndFn> ) {
+pub fn test_main(args: &[String], tests: Vec<TestDescAndFn> ) {
     let opts =
         match parse_opts(args) {
             Some(Ok(o)) => o,
@@ -253,7 +253,7 @@ pub fn test_main(args: &[StrBuf], tests: Vec<TestDescAndFn> ) {
 // a ~[TestDescAndFn] is used in order to effect ownership-transfer
 // semantics into parallel test runners, which in turn requires a ~[]
 // rather than a &[].
-pub fn test_main_static(args: &[StrBuf], tests: &[TestDescAndFn]) {
+pub fn test_main_static(args: &[String], tests: &[TestDescAndFn]) {
     let owned_tests = tests.iter().map(|t| {
         match t.testfn {
             StaticTestFn(f) => TestDescAndFn { testfn: StaticTestFn(f), desc: t.desc.clone() },
@@ -304,7 +304,7 @@ impl TestOpts {
 }
 
 /// Result of parsing the options.
-pub type OptRes = Result<TestOpts, StrBuf>;
+pub type OptRes = Result<TestOpts, String>;
 
 fn optgroups() -> Vec<getopts::OptGroup> {
     vec!(getopts::optflag("", "ignored", "Run ignored tests"),
@@ -360,7 +360,7 @@ Test Attributes:
 }
 
 // Parses command line arguments into test options
-pub fn parse_opts(args: &[StrBuf]) -> Option<OptRes> {
+pub fn parse_opts(args: &[String]) -> Option<OptRes> {
     let args_ = args.tail();
     let matches =
         match getopts::getopts(args_.as_slice(), optgroups().as_slice()) {
@@ -423,7 +423,7 @@ pub fn parse_opts(args: &[StrBuf]) -> Option<OptRes> {
     Some(Ok(test_opts))
 }
 
-pub fn opt_shard(maybestr: Option<StrBuf>) -> Option<(uint,uint)> {
+pub fn opt_shard(maybestr: Option<String>) -> Option<(uint,uint)> {
     match maybestr {
         None => None,
         Some(s) => {
@@ -616,7 +616,7 @@ impl<T: Writer> ConsoleTestState<T> {
     pub fn write_failures(&mut self) -> io::IoResult<()> {
         try!(self.write_plain("\nfailures:\n"));
         let mut failures = Vec::new();
-        let mut fail_out = StrBuf::new();
+        let mut fail_out = String::new();
         for &(ref f, ref stdout) in self.failures.iter() {
             failures.push(f.name.to_str());
             if stdout.len() > 0 {
@@ -736,9 +736,9 @@ impl<T: Writer> ConsoleTestState<T> {
     }
 }
 
-pub fn fmt_metrics(mm: &MetricMap) -> StrBuf {
+pub fn fmt_metrics(mm: &MetricMap) -> String {
     let MetricMap(ref mm) = *mm;
-    let v : Vec<StrBuf> = mm.iter()
+    let v : Vec<String> = mm.iter()
         .map(|(k,v)| format_strbuf!("{}: {} (+/- {})",
                           *k,
                           v.value as f64,
@@ -747,7 +747,7 @@ pub fn fmt_metrics(mm: &MetricMap) -> StrBuf {
     v.connect(", ").to_strbuf()
 }
 
-pub fn fmt_bench_samples(bs: &BenchSamples) -> StrBuf {
+pub fn fmt_bench_samples(bs: &BenchSamples) -> String {
     if bs.mb_s != 0 {
         format_strbuf!("{:>9} ns/iter (+/- {}) = {} MB/s",
              bs.ns_iter_summ.median as uint,

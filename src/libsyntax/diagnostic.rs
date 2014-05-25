@@ -17,7 +17,7 @@ use std::cell::{RefCell, Cell};
 use std::fmt;
 use std::io;
 use std::iter::range;
-use std::strbuf::StrBuf;
+use std::string::String;
 use term;
 
 // maximum number of lines we will print for each error; arbitrary.
@@ -405,7 +405,7 @@ fn highlight_lines(err: &mut EmitterWriter,
 
         // indent past |name:## | and the 0-offset column location
         let left = fm.name.len() + digits + lo.col.to_uint() + 3u;
-        let mut s = StrBuf::new();
+        let mut s = String::new();
         // Skip is the number of characters we need to skip because they are
         // part of the 'filename:line ' part of the previous line.
         let skip = fm.name.len() + digits + 3u;
@@ -425,7 +425,7 @@ fn highlight_lines(err: &mut EmitterWriter,
             };
         }
         try!(write!(&mut err.dst, "{}", s));
-        let mut s = StrBuf::from_str("^");
+        let mut s = String::from_str("^");
         let hi = cm.lookup_char_pos(sp.hi);
         if hi.col != lo.col {
             // the ^ already takes up one space
@@ -473,7 +473,7 @@ fn custom_highlight_lines(w: &mut EmitterWriter,
     let hi = cm.lookup_char_pos(sp.hi);
     // Span seems to use half-opened interval, so subtract 1
     let skip = last_line_start.len() + hi.col.to_uint() - 1;
-    let mut s = StrBuf::new();
+    let mut s = String::new();
     for _ in range(0, skip) {
         s.push_char(' ');
     }
@@ -508,7 +508,7 @@ fn print_macro_backtrace(w: &mut EmitterWriter,
     Ok(())
 }
 
-pub fn expect<T:Clone>(diag: &SpanHandler, opt: Option<T>, msg: || -> StrBuf)
+pub fn expect<T:Clone>(diag: &SpanHandler, opt: Option<T>, msg: || -> String)
               -> T {
     match opt {
        Some(ref t) => (*t).clone(),

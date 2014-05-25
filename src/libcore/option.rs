@@ -188,14 +188,14 @@ impl<T> Option<T> {
     ///
     /// # Example
     ///
-    /// Convert an `Option<StrBuf>` into an `Option<int>`, preserving the original.
+    /// Convert an `Option<String>` into an `Option<int>`, preserving the original.
     /// The `map` method takes the `self` argument by value, consuming the original,
     /// so this technique uses `as_ref` to first take an `Option` to a reference
     /// to the value inside the original.
     ///
     /// ```
-    /// let num_as_str: Option<StrBuf> = Some("10".to_strbuf());
-    /// // First, cast `Option<StrBuf>` to `Option<&StrBuf>` with `as_ref`,
+    /// let num_as_str: Option<String> = Some("10".to_strbuf());
+    /// // First, cast `Option<String>` to `Option<&String>` with `as_ref`,
     /// // then consume *that* with `map`, leaving `num_as_str` on the stack.
     /// let num_as_int: Option<uint> = num_as_str.as_ref().map(|n| n.len());
     /// println!("still can print num_as_str: {}", num_as_str);
@@ -278,10 +278,10 @@ impl<T> Option<T> {
     ///
     /// # Example
     ///
-    /// Convert an `Option<StrBuf>` into an `Option<uint>`, consuming the original:
+    /// Convert an `Option<String>` into an `Option<uint>`, consuming the original:
     ///
     /// ```
-    /// let num_as_str: Option<StrBuf> = Some("10".to_strbuf());
+    /// let num_as_str: Option<String> = Some("10".to_strbuf());
     /// // `Option::map` takes self *by value*, consuming `num_as_str`
     /// let num_as_int: Option<uint> = num_as_str.map(|n| n.len());
     /// ```
@@ -596,7 +596,7 @@ pub fn collect<T, Iter: Iterator<Option<T>>, V: FromIterator<T>>(iter: Iter) -> 
 #[cfg(test)]
 mod tests {
     use realstd::vec::Vec;
-    use realstd::strbuf::StrBuf;
+    use realstd::string::String;
     use option::collect;
     use prelude::*;
     use realstd::str::{Str, StrAllocating};
@@ -760,7 +760,7 @@ mod tests {
     #[test]
     #[should_fail]
     fn test_unwrap_fail2() {
-        let x: Option<StrBuf> = None;
+        let x: Option<String> = None;
         x.unwrap();
     }
 

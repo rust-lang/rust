@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct S {f:StrBuf}
+struct S {f:String}
 impl Drop for S {
     fn drop(&mut self) { println!("{}", self.f); }
 }

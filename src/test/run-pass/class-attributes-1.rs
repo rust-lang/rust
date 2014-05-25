@@ -12,7 +12,7 @@
 #![allow(unused_attribute)]
 
 struct cat {
-    name: StrBuf,
+    name: String,
 }
 
 impl Drop for cat {
@@ -22,6 +22,6 @@ impl Drop for cat {
 
 
 #[cat_maker]
-fn cat(name: StrBuf) -> cat { cat{name: name,} }
+fn cat(name: String) -> cat { cat{name: name,} }
 
 pub fn main() { let _kitty = cat("Spotty".to_strbuf()); }

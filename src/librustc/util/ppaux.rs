@@ -23,7 +23,7 @@ use middle::ty;
 use middle::typeck;
 
 use std::rc::Rc;
-use std::strbuf::StrBuf;
+use std::string::String;
 use syntax::abi;
 use syntax::ast_map;
 use syntax::codemap::{Span, Pos};
@@ -34,12 +34,12 @@ use syntax::owned_slice::OwnedSlice;
 
 /// Produces a string suitable for debugging output.
 pub trait Repr {
-    fn repr(&self, tcx: &ctxt) -> StrBuf;
+    fn repr(&self, tcx: &ctxt) -> String;
 }
 
 /// Produces a string suitable for showing to the user.
 pub trait UserString {
-    fn user_string(&self, tcx: &ctxt) -> StrBuf;
+    fn user_string(&self, tcx: &ctxt) -> String;
 }
 
 pub fn note_and_explain_region(cx: &ctxt,
@@ -60,7 +60,7 @@ pub fn note_and_explain_region(cx: &ctxt,
 }
 
 pub fn explain_region_and_span(cx: &ctxt, region: ty::Region)
-                            -> (StrBuf, Option<Span>) {
+                            -> (String, Option<Span>) {
     return match region {
       ReScope(node_id) => {
         match cx.map.find(node_id) {
@@ -135,7 +135,7 @@ pub fn explain_region_and_span(cx: &ctxt, region: ty::Region)
     };
 
     fn explain_span(cx: &ctxt, heading: &str, span: Span)
-        -> (StrBuf, Option<Span>) {
+        -> (String, Option<Span>) {
         let lo = cx.sess.codemap().lookup_char_pos_adj(span.lo);
         (format_strbuf!("the {} at {}:{}",
                         heading,
@@ -144,13 +144,13 @@ pub fn explain_region_and_span(cx: &ctxt, region: ty::Region)
     }
 }
 
-pub fn bound_region_ptr_to_str(cx: &ctxt, br: BoundRegion) -> StrBuf {
+pub fn bound_region_ptr_to_str(cx: &ctxt, br: BoundRegion) -> String {
     bound_region_to_str(cx, "", false, br)
 }
 
 pub fn bound_region_to_str(cx: &ctxt,
                            prefix: &str, space: bool,
-                           br: BoundRegion) -> StrBuf {
+                           br: BoundRegion) -> String {
     let space_str = if space { " " } else { "" };
 
     if cx.sess.verbose() {
@@ -172,11 +172,11 @@ pub fn bound_region_to_str(cx: &ctxt,
 // In general, if you are giving a region error message,
 // you should use `explain_region()` or, better yet,
 // `note_and_explain_region()`
-pub fn region_ptr_to_str(cx: &ctxt, region: Region) -> StrBuf {
+pub fn region_ptr_to_str(cx: &ctxt, region: Region) -> String {
     region_to_str(cx, "&", true, region)
 }
 
-pub fn region_to_str(cx: &ctxt, prefix: &str, space: bool, region: Region) -> StrBuf {
+pub fn region_to_str(cx: &ctxt, prefix: &str, space: bool, region: Region) -> String {
     let space_str = if space { " " } else { "" };
 
     if cx.sess.verbose() {
@@ -203,18 +203,18 @@ pub fn region_to_str(cx: &ctxt, prefix: &str, space: bool, region: Region) -> St
     }
 }
 
-pub fn mutability_to_str(m: ast::Mutability) -> StrBuf {
+pub fn mutability_to_str(m: ast::Mutability) -> String {
     match m {
         ast::MutMutable => "mut ".to_strbuf(),
         ast::MutImmutable => "".to_strbuf(),
     }
 }
 
-pub fn mt_to_str(cx: &ctxt, m: &mt) -> StrBuf {
+pub fn mt_to_str(cx: &ctxt, m: &mt) -> String {
     format_strbuf!("{}{}", mutability_to_str(m.mutbl), ty_to_str(cx, m.ty))
 }
 
-pub fn trait_store_to_str(cx: &ctxt, s: ty::TraitStore) -> StrBuf {
+pub fn trait_store_to_str(cx: &ctxt, s: ty::TraitStore) -> String {
     match s {
         ty::UniqTraitStore => "Box ".to_strbuf(),
         ty::RegionTraitStore(r, m) => {
@@ -225,24 +225,24 @@ pub fn trait_store_to_str(cx: &ctxt, s: ty::TraitStore) -> StrBuf {
     }
 }
 
-pub fn vec_map_to_str<T>(ts: &[T], f: |t: &T| -> StrBuf) -> StrBuf {
-    let tstrs = ts.iter().map(f).collect::<Vec<StrBuf>>();
+pub fn vec_map_to_str<T>(ts: &[T], f: |t: &T| -> String) -> String {
+    let tstrs = ts.iter().map(f).collect::<Vec<String>>();
     format_strbuf!("[{}]", tstrs.connect(", "))
 }
 
-pub fn fn_sig_to_str(cx: &ctxt, typ: &ty::FnSig) -> StrBuf {
+pub fn fn_sig_to_str(cx: &ctxt, typ: &ty::FnSig) -> String {
     format_strbuf!("fn{}{} -> {}",
                    typ.binder_id,
                    typ.inputs.repr(cx),
                    typ.output.repr(cx))
 }
 
-pub fn trait_ref_to_str(cx: &ctxt, trait_ref: &ty::TraitRef) -> StrBuf {
+pub fn trait_ref_to_str(cx: &ctxt, trait_ref: &ty::TraitRef) -> String {
     trait_ref.user_string(cx).to_strbuf()
 }
 
-pub fn ty_to_str(cx: &ctxt, typ: t) -> StrBuf {
-    fn fn_input_to_str(cx: &ctxt, input: ty::t) -> StrBuf {
+pub fn ty_to_str(cx: &ctxt, typ: t) -> String {
+    fn fn_input_to_str(cx: &ctxt, input: ty::t) -> String {
         ty_to_str(cx, input).to_strbuf()
     }
     fn bare_fn_to_str(cx: &ctxt,
@@ -250,8 +250,8 @@ pub fn ty_to_str(cx: &ctxt, typ: t) -> StrBuf {
                       abi: abi::Abi,
                       ident: Option<ast::Ident>,
                       sig: &ty::FnSig)
-                      -> StrBuf {
-        let mut s = StrBuf::new();
+                      -> String {
+        let mut s = String::new();
         match fn_style {
             ast::NormalFn => {}
             _ => {
@@ -279,8 +279,8 @@ pub fn ty_to_str(cx: &ctxt, typ: t) -> StrBuf {
         s
     }
 
-    fn closure_to_str(cx: &ctxt, cty: &ty::ClosureTy) -> StrBuf {
-        let mut s = StrBuf::new();
+    fn closure_to_str(cx: &ctxt, cty: &ty::ClosureTy) -> String {
+        let mut s = String::new();
 
         match cty.store {
             ty::UniqTraitStore => {}
@@ -321,12 +321,12 @@ pub fn ty_to_str(cx: &ctxt, typ: t) -> StrBuf {
     }
 
     fn push_sig_to_str(cx: &ctxt,
-                       s: &mut StrBuf,
+                       s: &mut String,
                        bra: char,
                        ket: char,
                        sig: &ty::FnSig) {
         s.push_char(bra);
-        let strs: Vec<StrBuf> = sig.inputs.iter().map(|a| fn_input_to_str(cx, *a)).collect();
+        let strs: Vec<String> = sig.inputs.iter().map(|a| fn_input_to_str(cx, *a)).collect();
         s.push_str(strs.connect(", ").as_slice());
         if sig.variadic {
             s.push_str(", ...");
@@ -369,7 +369,7 @@ pub fn ty_to_str(cx: &ctxt, typ: t) -> StrBuf {
           buf
       }
       ty_tup(ref elems) => {
-        let strs: Vec<StrBuf> = elems.iter().map(|elem| ty_to_str(cx, *elem)).collect();
+        let strs: Vec<String> = elems.iter().map(|elem| ty_to_str(cx, *elem)).collect();
         format_strbuf!("({})", strs.connect(","))
       }
       ty_closure(ref f) => {
@@ -435,7 +435,7 @@ pub fn parameterized(cx: &ctxt,
                      tps: &[ty::t],
                      did: ast::DefId,
                      is_trait: bool)
-                     -> StrBuf {
+                     -> String {
     let mut strs = Vec::new();
     match *regions {
         ty::ErasedRegions => { }
@@ -482,7 +482,7 @@ pub fn parameterized(cx: &ctxt,
     }
 }
 
-pub fn ty_to_short_str(cx: &ctxt, typ: t) -> StrBuf {
+pub fn ty_to_short_str(cx: &ctxt, typ: t) -> String {
     let mut s = typ.repr(cx).to_strbuf();
     if s.len() >= 32u {
         s = s.as_slice().slice(0u, 32u).to_strbuf();
@@ -491,7 +491,7 @@ pub fn ty_to_short_str(cx: &ctxt, typ: t) -> StrBuf {
 }
 
 impl<T:Repr> Repr for Option<T> {
-    fn repr(&self, tcx: &ctxt) -> StrBuf {
+    fn repr(&self, tcx: &ctxt) -> String {
         match self {
             &None => "None".to_strbuf(),
             &Some(ref t) => t.repr(tcx),
@@ -500,7 +500,7 @@ impl<T:Repr> Repr for Option<T> {
 }
 
 impl<T:Repr,U:Repr> Repr for Result<T,U> {
-    fn repr(&self, tcx: &ctxt) -> StrBuf {
+    fn repr(&self, tcx: &ctxt) -> String {
         match self {
             &Ok(ref t) => t.repr(tcx),
             &Err(ref u) => format_strbuf!("Err({})", u.repr(tcx))
@@ -509,41 +509,41 @@ impl<T:Repr,U:Repr> Repr for Result<T,U> {
 }
 
 impl Repr for () {
-    fn repr(&self, _tcx: &ctxt) -> StrBuf {
+    fn repr(&self, _tcx: &ctxt) -> String {
         "()".to_strbuf()
     }
 }
 
 impl<T:Repr> Repr for Rc<T> {
-    fn repr(&self, tcx: &ctxt) -> StrBuf {
+    fn repr(&self, tcx: &ctxt) -> String {
         (&**self).repr(tcx)
     }
 }
 
 impl<T:Repr> Repr for @T {
-    fn repr(&self, tcx: &ctxt) -> StrBuf {
+    fn repr(&self, tcx: &ctxt) -> String {
         (&**self).repr(tcx)
     }
 }
 
 impl<T:Repr> Repr for Box<T> {
-    fn repr(&self, tcx: &ctxt) -> StrBuf {
+    fn repr(&self, tcx: &ctxt) -> String {
         (&**self).repr(tcx)
     }
 }
 
-fn repr_vec<T:Repr>(tcx: &ctxt, v: &[T]) -> StrBuf {
+fn repr_vec<T:Repr>(tcx: &ctxt, v: &[T]) -> String {
     vec_map_to_str(v, |t| t.repr(tcx))
 }
 
 impl<'a, T:Repr> Repr for &'a [T] {
-    fn repr(&self, tcx: &ctxt) -> StrBuf {
+    fn repr(&self, tcx: &ctxt) -> String {
         repr_vec(tcx, *self)
     }
 }
 
 impl<T:Repr> Repr for OwnedSlice<T> {
-    fn repr(&self, tcx: &ctxt) -> StrBuf {
+    fn repr(&self, tcx: &ctxt) -> String {
         repr_vec(tcx, self.as_slice())
     }
 }
@@ -551,13 +551,13 @@ impl<T:Repr> Repr for OwnedSlice<T> {
 // This is necessary to handle types like Option<~[T]>, for which
 // autoderef cannot convert the &[T] handler
 impl<T:Repr> Repr for Vec<T> {
-    fn repr(&self, tcx: &ctxt) -> StrBuf {
+    fn repr(&self, tcx: &ctxt) -> String {
         repr_vec(tcx, self.as_slice())
     }
 }
 
 impl Repr for ty::TypeParameterDef {
-    fn repr(&self, tcx: &ctxt) -> StrBuf {
+    fn repr(&self, tcx: &ctxt) -> String {
         format_strbuf!("TypeParameterDef({:?}, {})",
                        self.def_id,
                        self.bounds.repr(tcx))
@@ -565,7 +565,7 @@ impl Repr for ty::TypeParameterDef {
 }
 
 impl Repr for ty::RegionParameterDef {
-    fn repr(&self, _tcx: &ctxt) -> StrBuf {
+    fn repr(&self, _tcx: &ctxt) -> String {
         format_strbuf!("RegionParameterDef({}, {:?})",
                        token::get_name(self.name),
                        self.def_id)
@@ -573,13 +573,13 @@ impl Repr for ty::RegionParameterDef {
 }
 
 impl Repr for ty::t {
-    fn repr(&self, tcx: &ctxt) -> StrBuf {
+    fn repr(&self, tcx: &ctxt) -> String {
         ty_to_str(tcx, *self)
     }
 }
 
 impl Repr for ty::substs {
-    fn repr(&self, tcx: &ctxt) -> StrBuf {
+    fn repr(&self, tcx: &ctxt) -> String {
         format_strbuf!("substs(regions={}, self_ty={}, tps={})",
                        self.regions.repr(tcx),
                        self.self_ty.repr(tcx),
@@ -588,13 +588,13 @@ impl Repr for ty::substs {
 }
 
 impl Repr for ty::ItemSubsts {
-    fn repr(&self, tcx: &ctxt) -> StrBuf {
+    fn repr(&self, tcx: &ctxt) -> String {
         format_strbuf!("ItemSubsts({})", self.substs.repr(tcx))
     }
 }
 
 impl Repr for ty::RegionSubsts {
-    fn repr(&self, tcx: &ctxt) -> StrBuf {
+    fn repr(&self, tcx: &ctxt) -> String {
         match *self {
             ty::ErasedRegions => "erased".to_strbuf(),
             ty::NonerasedRegions(ref regions) => regions.repr(tcx)
@@ -603,7 +603,7 @@ impl Repr for ty::RegionSubsts {
 }
 
 impl Repr for ty::ParamBounds {
-    fn repr(&self, tcx: &ctxt) -> StrBuf {
+    fn repr(&self, tcx: &ctxt) -> String {
         let mut res = Vec::new();
         for b in self.builtin_bounds.iter() {
             res.push(match b {
@@ -622,25 +622,25 @@ impl Repr for ty::ParamBounds {
 }
 
 impl Repr for ty::TraitRef {
-    fn repr(&self, tcx: &ctxt) -> StrBuf {
+    fn repr(&self, tcx: &ctxt) -> String {
         trait_ref_to_str(tcx, self)
     }
 }
 
 impl Repr for ast::Expr {
-    fn repr(&self, _tcx: &ctxt) -> StrBuf {
+    fn repr(&self, _tcx: &ctxt) -> String {
         format_strbuf!("expr({}: {})", self.id, pprust::expr_to_str(self))
     }
 }
 
 impl Repr for ast::Item {
-    fn repr(&self, tcx: &ctxt) -> StrBuf {
+    fn repr(&self, tcx: &ctxt) -> String {
         format_strbuf!("item({})", tcx.map.node_to_str(self.id))
     }
 }
 
 impl Repr for ast::Stmt {
-    fn repr(&self, _tcx: &ctxt) -> StrBuf {
+    fn repr(&self, _tcx: &ctxt) -> String {
         format_strbuf!("stmt({}: {})",
                        ast_util::stmt_id(self),
                        pprust::stmt_to_str(self))
@@ -648,13 +648,13 @@ impl Repr for ast::Stmt {
 }
 
 impl Repr for ast::Pat {
-    fn repr(&self, _tcx: &ctxt) -> StrBuf {
+    fn repr(&self, _tcx: &ctxt) -> String {
         format_strbuf!("pat({}: {})", self.id, pprust::pat_to_str(self))
     }
 }
 
 impl Repr for ty::BoundRegion {
-    fn repr(&self, tcx: &ctxt) -> StrBuf {
+    fn repr(&self, tcx: &ctxt) -> String {
         match *self {
             ty::BrAnon(id) => format_strbuf!("BrAnon({})", id),
             ty::BrNamed(id, name) => {
@@ -668,7 +668,7 @@ impl Repr for ty::BoundRegion {
 }
 
 impl Repr for ty::Region {
-    fn repr(&self, tcx: &ctxt) -> StrBuf {
+    fn repr(&self, tcx: &ctxt) -> String {
         match *self {
             ty::ReEarlyBound(id, index, name) => {
                 format_strbuf!("ReEarlyBound({}, {}, {})",
@@ -715,7 +715,7 @@ impl Repr for ty::Region {
 }
 
 impl Repr for ast::DefId {
-    fn repr(&self, tcx: &ctxt) -> StrBuf {
+    fn repr(&self, tcx: &ctxt) -> String {
         // Unfortunately, there seems to be no way to attempt to print
         // a path for a def-id, so I'll just make a best effort for now
         // and otherwise fallback to just printing the crate/node pair
@@ -742,7 +742,7 @@ impl Repr for ast::DefId {
 }
 
 impl Repr for ty::ty_param_bounds_and_ty {
-    fn repr(&self, tcx: &ctxt) -> StrBuf {
+    fn repr(&self, tcx: &ctxt) -> String {
         format_strbuf!("ty_param_bounds_and_ty \\{generics: {}, ty: {}\\}",
                        self.generics.repr(tcx),
                        self.ty.repr(tcx))
@@ -750,7 +750,7 @@ impl Repr for ty::ty_param_bounds_and_ty {
 }
 
 impl Repr for ty::Generics {
-    fn repr(&self, tcx: &ctxt) -> StrBuf {
+    fn repr(&self, tcx: &ctxt) -> String {
         format_strbuf!("Generics(type_param_defs: {}, \
                            region_param_defs: {})",
                  self.type_param_defs().repr(tcx),
@@ -759,7 +759,7 @@ impl Repr for ty::Generics {
 }
 
 impl Repr for ty::ItemVariances {
-    fn repr(&self, tcx: &ctxt) -> StrBuf {
+    fn repr(&self, tcx: &ctxt) -> String {
         format_strbuf!("IterVariances(self_param={}, \
                                 type_params={}, \
                                 region_params={})",
@@ -770,13 +770,13 @@ impl Repr for ty::ItemVariances {
 }
 
 impl Repr for ty::Variance {
-    fn repr(&self, _: &ctxt) -> StrBuf {
+    fn repr(&self, _: &ctxt) -> String {
         self.to_str().to_strbuf()
     }
 }
 
 impl Repr for ty::Method {
-    fn repr(&self, tcx: &ctxt) -> StrBuf {
+    fn repr(&self, tcx: &ctxt) -> String {
         format_strbuf!("method(ident: {}, generics: {}, fty: {}, \
                         explicit_self: {}, vis: {}, def_id: {})",
                        self.ident.repr(tcx),
@@ -789,31 +789,31 @@ impl Repr for ty::Method {
 }
 
 impl Repr for ast::Name {
-    fn repr(&self, _tcx: &ctxt) -> StrBuf {
+    fn repr(&self, _tcx: &ctxt) -> String {
         token::get_name(*self).get().to_strbuf()
     }
 }
 
 impl Repr for ast::Ident {
-    fn repr(&self, _tcx: &ctxt) -> StrBuf {
+    fn repr(&self, _tcx: &ctxt) -> String {
         token::get_ident(*self).get().to_strbuf()
     }
 }
 
 impl Repr for ast::ExplicitSelf_ {
-    fn repr(&self, _tcx: &ctxt) -> StrBuf {
+    fn repr(&self, _tcx: &ctxt) -> String {
         format_strbuf!("{:?}", *self)
     }
 }
 
 impl Repr for ast::Visibility {
-    fn repr(&self, _tcx: &ctxt) -> StrBuf {
+    fn repr(&self, _tcx: &ctxt) -> String {
         format_strbuf!("{:?}", *self)
     }
 }
 
 impl Repr for ty::BareFnTy {
-    fn repr(&self, tcx: &ctxt) -> StrBuf {
+    fn repr(&self, tcx: &ctxt) -> String {
         format_strbuf!("BareFnTy \\{fn_style: {:?}, abi: {}, sig: {}\\}",
                        self.fn_style,
                        self.abi.to_str(),
@@ -822,13 +822,13 @@ impl Repr for ty::BareFnTy {
 }
 
 impl Repr for ty::FnSig {
-    fn repr(&self, tcx: &ctxt) -> StrBuf {
+    fn repr(&self, tcx: &ctxt) -> String {
         fn_sig_to_str(tcx, self)
     }
 }
 
 impl Repr for typeck::MethodCallee {
-    fn repr(&self, tcx: &ctxt) -> StrBuf {
+    fn repr(&self, tcx: &ctxt) -> String {
         format_strbuf!("MethodCallee \\{origin: {}, ty: {}, {}\\}",
                        self.origin.repr(tcx),
                        self.ty.repr(tcx),
@@ -837,7 +837,7 @@ impl Repr for typeck::MethodCallee {
 }
 
 impl Repr for typeck::MethodOrigin {
-    fn repr(&self, tcx: &ctxt) -> StrBuf {
+    fn repr(&self, tcx: &ctxt) -> String {
         match self {
             &typeck::MethodStatic(def_id) => {
                 format_strbuf!("MethodStatic({})", def_id.repr(tcx))
@@ -853,7 +853,7 @@ impl Repr for typeck::MethodOrigin {
 }
 
 impl Repr for typeck::MethodParam {
-    fn repr(&self, tcx: &ctxt) -> StrBuf {
+    fn repr(&self, tcx: &ctxt) -> String {
         format_strbuf!("MethodParam({},{:?},{:?},{:?})",
                        self.trait_id.repr(tcx),
                        self.method_num,
@@ -863,7 +863,7 @@ impl Repr for typeck::MethodParam {
 }
 
 impl Repr for typeck::MethodObject {
-    fn repr(&self, tcx: &ctxt) -> StrBuf {
+    fn repr(&self, tcx: &ctxt) -> String {
         format_strbuf!("MethodObject({},{:?},{:?})",
                        self.trait_id.repr(tcx),
                        self.method_num,
@@ -873,25 +873,25 @@ impl Repr for typeck::MethodObject {
 
 
 impl Repr for ty::RegionVid {
-    fn repr(&self, _tcx: &ctxt) -> StrBuf {
+    fn repr(&self, _tcx: &ctxt) -> String {
         format_strbuf!("{:?}", *self)
     }
 }
 
 impl Repr for ty::TraitStore {
-    fn repr(&self, tcx: &ctxt) -> StrBuf {
+    fn repr(&self, tcx: &ctxt) -> String {
         trait_store_to_str(tcx, *self)
     }
 }
 
 impl Repr for ty::BuiltinBound {
-    fn repr(&self, _tcx: &ctxt) -> StrBuf {
+    fn repr(&self, _tcx: &ctxt) -> String {
         format_strbuf!("{:?}", *self)
     }
 }
 
 impl UserString for ty::BuiltinBound {
-    fn user_string(&self, _tcx: &ctxt) -> StrBuf {
+    fn user_string(&self, _tcx: &ctxt) -> String {
         match *self {
             ty::BoundStatic => "'static".to_strbuf(),
             ty::BoundSend => "Send".to_strbuf(),
@@ -903,36 +903,36 @@ impl UserString for ty::BuiltinBound {
 }
 
 impl Repr for ty::BuiltinBounds {
-    fn repr(&self, tcx: &ctxt) -> StrBuf {
+    fn repr(&self, tcx: &ctxt) -> String {
         self.user_string(tcx)
     }
 }
 
 impl Repr for Span {
-    fn repr(&self, tcx: &ctxt) -> StrBuf {
+    fn repr(&self, tcx: &ctxt) -> String {
         tcx.sess.codemap().span_to_str(*self).to_strbuf()
     }
 }
 
 impl<A:UserString> UserString for Rc<A> {
-    fn user_string(&self, tcx: &ctxt) -> StrBuf {
+    fn user_string(&self, tcx: &ctxt) -> String {
         let this: &A = &**self;
         this.user_string(tcx)
     }
 }
 
 impl UserString for ty::BuiltinBounds {
-    fn user_string(&self, tcx: &ctxt) -> StrBuf {
+    fn user_string(&self, tcx: &ctxt) -> String {
         self.iter()
             .map(|bb| bb.user_string(tcx))
-            .collect::<Vec<StrBuf>>()
+            .collect::<Vec<String>>()
             .connect("+")
             .to_strbuf()
     }
 }
 
 impl UserString for ty::TraitRef {
-    fn user_string(&self, tcx: &ctxt) -> StrBuf {
+    fn user_string(&self, tcx: &ctxt) -> String {
         let base = ty::item_path_str(tcx, self.def_id);
         if tcx.sess.verbose() && self.substs.self_ty.is_some() {
             let mut all_tps = self.substs.tps.clone();
@@ -955,31 +955,31 @@ impl UserString for ty::TraitRef {
 }
 
 impl UserString for ty::t {
-    fn user_string(&self, tcx: &ctxt) -> StrBuf {
+    fn user_string(&self, tcx: &ctxt) -> String {
         ty_to_str(tcx, *self)
     }
 }
 
 impl UserString for ast::Ident {
-    fn user_string(&self, _tcx: &ctxt) -> StrBuf {
+    fn user_string(&self, _tcx: &ctxt) -> String {
         token::get_name(self.name).get().to_strbuf()
     }
 }
 
 impl Repr for abi::Abi {
-    fn repr(&self, _tcx: &ctxt) -> StrBuf {
+    fn repr(&self, _tcx: &ctxt) -> String {
         self.to_str().to_strbuf()
     }
 }
 
 impl UserString for abi::Abi {
-    fn user_string(&self, _tcx: &ctxt) -> StrBuf {
+    fn user_string(&self, _tcx: &ctxt) -> String {
         self.to_str().to_strbuf()
     }
 }
 
 impl Repr for ty::UpvarId {
-    fn repr(&self, tcx: &ctxt) -> StrBuf {
+    fn repr(&self, tcx: &ctxt) -> String {
         format_strbuf!("UpvarId({};`{}`;{})",
                        self.var_id,
                        ty::local_var_name_str(tcx, self.var_id),
@@ -988,19 +988,19 @@ impl Repr for ty::UpvarId {
 }
 
 impl Repr for ast::Mutability {
-    fn repr(&self, _tcx: &ctxt) -> StrBuf {
+    fn repr(&self, _tcx: &ctxt) -> String {
         format_strbuf!("{:?}", *self)
     }
 }
 
 impl Repr for ty::BorrowKind {
-    fn repr(&self, _tcx: &ctxt) -> StrBuf {
+    fn repr(&self, _tcx: &ctxt) -> String {
         format_strbuf!("{:?}", *self)
     }
 }
 
 impl Repr for ty::UpvarBorrow {
-    fn repr(&self, tcx: &ctxt) -> StrBuf {
+    fn repr(&self, tcx: &ctxt) -> String {
         format_strbuf!("UpvarBorrow({}, {})",
                        self.kind.repr(tcx),
                        self.region.repr(tcx))

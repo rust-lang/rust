@@ -20,7 +20,7 @@ use middle::ty;
 
 use std::rc::Rc;
 use std::str;
-use std::strbuf::StrBuf;
+use std::string::String;
 use std::uint;
 use syntax::abi;
 use syntax::ast;
@@ -267,8 +267,8 @@ fn parse_opt<T>(st: &mut PState, f: |&mut PState| -> T) -> Option<T> {
     }
 }
 
-fn parse_str(st: &mut PState, term: char) -> StrBuf {
-    let mut result = StrBuf::new();
+fn parse_str(st: &mut PState, term: char) -> String {
+    let mut result = String::new();
     while peek(st) != term {
         unsafe {
             result.push_bytes([next_byte(st)])

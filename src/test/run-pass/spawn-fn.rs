@@ -10,7 +10,7 @@
 
 use std::task;
 
-fn x(s: StrBuf, n: int) {
+fn x(s: String, n: int) {
     println!("{:?}", s);
     println!("{:?}", n);
 }

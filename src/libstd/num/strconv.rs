@@ -22,7 +22,7 @@ use option::{None, Option, Some};
 use slice::{ImmutableVector, MutableVector};
 use std::cmp::{Ord, Eq};
 use str::StrSlice;
-use strbuf::StrBuf;
+use string::String;
 use vec::Vec;
 
 /// A flag that specifies whether to use exponential (scientific) notation.
@@ -496,10 +496,10 @@ pub fn float_to_str_common<T:NumCast+Zero+One+Eq+Ord+NumStrConv+Float+
                              Div<T,T>+Neg<T>+Rem<T,T>+Mul<T,T>>(
         num: T, radix: uint, negative_zero: bool,
         sign: SignFormat, digits: SignificantDigits, exp_format: ExponentFormat, exp_capital: bool
-        ) -> (StrBuf, bool) {
+        ) -> (String, bool) {
     let (bytes, special) = float_to_str_bytes_common(num, radix,
                                negative_zero, sign, digits, exp_format, exp_capital);
-    (StrBuf::from_utf8(bytes).unwrap(), special)
+    (String::from_utf8(bytes).unwrap(), special)
 }
 
 // Some constants for from_str_bytes_common's input validation,

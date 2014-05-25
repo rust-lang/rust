@@ -28,11 +28,11 @@ use std::io::timer;
 use std::io;
 use std::os;
 use std::str;
-use std::strbuf::StrBuf;
+use std::string::String;
 use std::task;
 use test::MetricMap;
 
-pub fn run(config: Config, testfile: StrBuf) {
+pub fn run(config: Config, testfile: String) {
 
     match config.target.as_slice() {
 
@@ -49,7 +49,7 @@ pub fn run(config: Config, testfile: StrBuf) {
     run_metrics(config, testfile, &mut _mm);
 }
 
-pub fn run_metrics(config: Config, testfile: StrBuf, mm: &mut MetricMap) {
+pub fn run_metrics(config: Config, testfile: String, mm: &mut MetricMap) {
     if config.verbose {
         // We're going to be dumping a lot of info. Start on a new line.
         print!("\n\n");
@@ -231,7 +231,7 @@ fn run_pretty_test(config: &Config, props: &TestProps, testfile: &Path) {
     fn print_source(config: &Config,
                     props: &TestProps,
                     testfile: &Path,
-                    src: StrBuf,
+                    src: String,
                     pretty_type: &str) -> ProcRes {
         compose_and_run(config,
                         testfile,
@@ -247,7 +247,7 @@ fn run_pretty_test(config: &Config, props: &TestProps, testfile: &Path) {
     fn make_pp_args(config: &Config,
                     props: &TestProps,
                     testfile: &Path,
-                    pretty_type: StrBuf) -> ProcArgs {
+                    pretty_type: String) -> ProcArgs {
         let aux_dir = aux_output_dir_name(config, testfile);
         // FIXME (#9639): This needs to handle non-utf8 paths
         let mut args = vec!("-".to_strbuf(),
@@ -284,7 +284,7 @@ actual:\n\
     }
 
     fn typecheck_source(config: &Config, props: &TestProps,
-                        testfile: &Path, src: StrBuf) -> ProcRes {
+                        testfile: &Path, src: String) -> ProcRes {
         let args = make_typecheck_args(config, props, testfile);
         compose_and_run_compiler(config, props, testfile, args, Some(src))
     }
@@ -469,11 +469,11 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
 
             // run debugger script with gdb
             #[cfg(windows)]
-            fn debugger() -> StrBuf {
+            fn debugger() -> String {
                 "gdb.exe".to_strbuf()
             }
             #[cfg(unix)]
-            fn debugger() -> StrBuf {
+            fn debugger() -> String {
                 "gdb".to_strbuf()
             }
 
@@ -540,7 +540,7 @@ fn run_debuginfo_lldb_test(config: &Config, props: &TestProps, testfile: &Path) 
 
     // Write debugger script:
     // We don't want to hang when calling `quit` while the process is still running
-    let mut script_str = StrBuf::from_str("settings set auto-confirm true\n");
+    let mut script_str = String::from_str("settings set auto-confirm true\n");
 
     // Set breakpoints on every line that contains the string "#break"
     for line in breakpoint_lines.iter() {
@@ -610,8 +610,8 @@ fn run_debuginfo_lldb_test(config: &Config, props: &TestProps, testfile: &Path) 
 }
 
 struct DebuggerCommands {
-    commands: Vec<StrBuf>,
-    check_lines: Vec<StrBuf>,
+    commands: Vec<String>,
+    check_lines: Vec<String>,
     breakpoint_lines: Vec<uint>,
 }
 
@@ -662,7 +662,7 @@ fn parse_debugger_commands(file_path: &Path, debugger_prefix: &str)
     }
 }
 
-fn cleanup_debug_info_options(options: &Option<StrBuf>) -> Option<StrBuf> {
+fn cleanup_debug_info_options(options: &Option<String>) -> Option<String> {
     if options.is_none() {
         return None;
     }
@@ -676,18 +676,18 @@ fn cleanup_debug_info_options(options: &Option<StrBuf>) -> Option<StrBuf> {
     let new_options =
         split_maybe_args(options).move_iter()
                                  .filter(|x| !options_to_remove.contains(x))
-                                 .collect::<Vec<StrBuf>>()
+                                 .collect::<Vec<String>>()
                                  .connect(" ")
                                  .to_strbuf();
     Some(new_options)
 }
 
-fn check_debugger_output(debugger_run_result: &ProcRes, check_lines: &[StrBuf]) {
+fn check_debugger_output(debugger_run_result: &ProcRes, check_lines: &[String]) {
     let num_check_lines = check_lines.len();
     if num_check_lines > 0 {
         // Allow check lines to leave parts unspecified (e.g., uninitialized
         // bits in the wrong case of an enum) with the notation "[...]".
-        let check_fragments: Vec<Vec<StrBuf>> =
+        let check_fragments: Vec<Vec<String>> =
             check_lines.iter().map(|s| {
                 s.as_slice()
                  .trim()
@@ -812,10 +812,10 @@ fn check_expected_errors(expected_errors: Vec<errors::ExpectedError> ,
 
     let prefixes = expected_errors.iter().map(|ee| {
         format_strbuf!("{}:{}:", testfile.display(), ee.line)
-    }).collect::<Vec<StrBuf> >();
+    }).collect::<Vec<String> >();
 
     #[cfg(target_os = "win32")]
-    fn to_lower( s : &str ) -> StrBuf {
+    fn to_lower( s : &str ) -> String {
         let i = s.chars();
         let c : Vec<char> = i.map( |c| {
             if c.is_ascii() {
@@ -966,15 +966,15 @@ fn scan_string(haystack: &str, needle: &str, idx: &mut uint) -> bool {
 }
 
 struct ProcArgs {
-    prog: StrBuf,
-    args: Vec<StrBuf>,
+    prog: String,
+    args: Vec<String>,
 }
 
 struct ProcRes {
     status: ProcessExit,
-    stdout: StrBuf,
-    stderr: StrBuf,
-    cmdline: StrBuf,
+    stdout: String,
+    stderr: String,
+    cmdline: String,
 }
 
 fn compile_test(config: &Config, props: &TestProps,
@@ -987,7 +987,7 @@ fn jit_test(config: &Config, props: &TestProps, testfile: &Path) -> ProcRes {
 }
 
 fn compile_test_(config: &Config, props: &TestProps,
-                 testfile: &Path, extra_args: &[StrBuf]) -> ProcRes {
+                 testfile: &Path, extra_args: &[String]) -> ProcRes {
     let aux_dir = aux_output_dir_name(config, testfile);
     // FIXME (#9639): This needs to handle non-utf8 paths
     let link_args = vec!("-L".to_strbuf(),
@@ -1026,7 +1026,7 @@ fn compose_and_run_compiler(
     props: &TestProps,
     testfile: &Path,
     args: ProcArgs,
-    input: Option<StrBuf>) -> ProcRes {
+    input: Option<String>) -> ProcRes {
 
     if !props.aux_builds.is_empty() {
         ensure_dir(&aux_output_dir_name(config, testfile));
@@ -1093,9 +1093,9 @@ fn ensure_dir(path: &Path) {
 
 fn compose_and_run(config: &Config, testfile: &Path,
                    ProcArgs{ args, prog }: ProcArgs,
-                   procenv: Vec<(StrBuf, StrBuf)> ,
+                   procenv: Vec<(String, String)> ,
                    lib_path: &str,
-                   input: Option<StrBuf>) -> ProcRes {
+                   input: Option<String>) -> ProcRes {
     return program_output(config, testfile, lib_path,
                           prog, args, procenv, input);
 }
@@ -1107,7 +1107,7 @@ enum TargetLocation {
 
 fn make_compile_args(config: &Config,
                      props: &TestProps,
-                     extras: Vec<StrBuf> ,
+                     extras: Vec<String> ,
                      xform: |&Config, &Path| -> TargetLocation,
                      testfile: &Path)
                      -> ProcArgs {
@@ -1188,7 +1188,7 @@ fn make_run_args(config: &Config, props: &TestProps, testfile: &Path) ->
     };
 }
 
-fn split_maybe_args(argstr: &Option<StrBuf>) -> Vec<StrBuf> {
+fn split_maybe_args(argstr: &Option<String>) -> Vec<String> {
     match *argstr {
         Some(ref s) => {
             s.as_slice()
@@ -1205,9 +1205,9 @@ fn split_maybe_args(argstr: &Option<StrBuf>) -> Vec<StrBuf> {
     }
 }
 
-fn program_output(config: &Config, testfile: &Path, lib_path: &str, prog: StrBuf,
-                  args: Vec<StrBuf> , env: Vec<(StrBuf, StrBuf)> ,
-                  input: Option<StrBuf>) -> ProcRes {
+fn program_output(config: &Config, testfile: &Path, lib_path: &str, prog: String,
+                  args: Vec<String> , env: Vec<(String, String)> ,
+                  input: Option<String>) -> ProcRes {
     let cmdline =
         {
             let cmdline = make_cmdline(lib_path,
@@ -1239,12 +1239,12 @@ fn program_output(config: &Config, testfile: &Path, lib_path: &str, prog: StrBuf
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "freebsd")]
-fn make_cmdline(_libpath: &str, prog: &str, args: &[StrBuf]) -> StrBuf {
+fn make_cmdline(_libpath: &str, prog: &str, args: &[String]) -> String {
     format_strbuf!("{} {}", prog, args.connect(" "))
 }
 
 #[cfg(target_os = "win32")]
-fn make_cmdline(libpath: &str, prog: &str, args: &[StrBuf]) -> StrBuf {
+fn make_cmdline(libpath: &str, prog: &str, args: &[String]) -> String {
     format_strbuf!("{} {} {}",
                    lib_path_cmd_prefix(libpath),
                    prog,
@@ -1254,7 +1254,7 @@ fn make_cmdline(libpath: &str, prog: &str, args: &[StrBuf]) -> StrBuf {
 // Build the LD_LIBRARY_PATH variable as it would be seen on the command line
 // for diagnostic purposes
 #[cfg(target_os = "win32")]
-fn lib_path_cmd_prefix(path: &str) -> StrBuf {
+fn lib_path_cmd_prefix(path: &str) -> String {
     format_strbuf!("{}=\"{}\"",
                    util::lib_path_env_var(),
                    util::make_new_path(path))
@@ -1305,11 +1305,11 @@ fn maybe_dump_to_stdout(config: &Config, out: &str, err: &str) {
     }
 }
 
-fn error(err: StrBuf) { println!("\nerror: {}", err); }
+fn error(err: String) { println!("\nerror: {}", err); }
 
-fn fatal(err: StrBuf) -> ! { error(err); fail!(); }
+fn fatal(err: String) -> ! { error(err); fail!(); }
 
-fn fatal_ProcRes(err: StrBuf, proc_res: &ProcRes) -> ! {
+fn fatal_ProcRes(err: String, proc_res: &ProcRes) -> ! {
     print!("\n\
 error: {}\n\
 status: {}\n\
@@ -1331,7 +1331,7 @@ stderr:\n\
 fn _arm_exec_compiled_test(config: &Config,
                            props: &TestProps,
                            testfile: &Path,
-                           env: Vec<(StrBuf, StrBuf)>)
+                           env: Vec<(String, String)>)
                            -> ProcRes {
     let args = make_run_args(config, props, testfile);
     let cmdline = make_cmdline("",
@@ -1339,7 +1339,7 @@ fn _arm_exec_compiled_test(config: &Config,
                                args.args.as_slice());
 
     // get bare program string
-    let mut tvec: Vec<StrBuf> = args.prog
+    let mut tvec: Vec<String> = args.prog
                                     .as_slice()
                                     .split('/')
                                     .map(|ts| ts.to_strbuf())

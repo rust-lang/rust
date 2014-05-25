@@ -14,7 +14,7 @@ use std::io;
 use std::io::{Command, TempDir};
 use std::os;
 use std::str;
-use std::strbuf::StrBuf;
+use std::string::String;
 use std::unstable::dynamic_lib::DynamicLibrary;
 
 use collections::{HashSet, HashMap};
@@ -38,9 +38,9 @@ use passes;
 use visit_ast::RustdocVisitor;
 
 pub fn run(input: &str,
-           cfgs: Vec<StrBuf>,
+           cfgs: Vec<String>,
            libs: HashSet<Path>,
-           mut test_args: Vec<StrBuf>)
+           mut test_args: Vec<String>)
            -> int {
     let input_path = Path::new(input);
     let input = driver::FileInput(input_path.clone());
@@ -171,7 +171,7 @@ fn runtest(test: &str, cratename: &str, libs: HashSet<Path>, should_fail: bool,
 
         // Remove the previous dylib search path var
         let var = DynamicLibrary::envvar();
-        let mut env: Vec<(StrBuf,StrBuf)> = os::env().move_iter().collect();
+        let mut env: Vec<(String,String)> = os::env().move_iter().collect();
         match env.iter().position(|&(ref k, _)| k.as_slice() == var) {
             Some(i) => { env.remove(i); }
             None => {}
@@ -199,8 +199,8 @@ fn runtest(test: &str, cratename: &str, libs: HashSet<Path>, should_fail: bool,
     }
 }
 
-fn maketest(s: &str, cratename: &str, loose_feature_gating: bool) -> StrBuf {
-    let mut prog = StrBuf::from_str(r"
+fn maketest(s: &str, cratename: &str, loose_feature_gating: bool) -> String {
+    let mut prog = String::from_str(r"
 #![deny(warnings)]
 #![allow(unused_variable, dead_assignment, unused_mut, attribute_usage, dead_code)]
 ");
@@ -230,18 +230,18 @@ fn maketest(s: &str, cratename: &str, loose_feature_gating: bool) -> StrBuf {
 
 pub struct Collector {
     pub tests: Vec<testing::TestDescAndFn>,
-    names: Vec<StrBuf>,
+    names: Vec<String>,
     libs: HashSet<Path>,
     cnt: uint,
     use_headers: bool,
-    current_header: Option<StrBuf>,
-    cratename: StrBuf,
+    current_header: Option<String>,
+    cratename: String,
 
     loose_feature_gating: bool
 }
 
 impl Collector {
-    pub fn new(cratename: StrBuf, libs: HashSet<Path>,
+    pub fn new(cratename: String, libs: HashSet<Path>,
                use_headers: bool, loose_feature_gating: bool) -> Collector {
         Collector {
             tests: Vec::new(),
@@ -256,7 +256,7 @@ impl Collector {
         }
     }
 
-    pub fn add_test(&mut self, test: StrBuf, should_fail: bool, no_run: bool, should_ignore: bool) {
+    pub fn add_test(&mut self, test: String, should_fail: bool, no_run: bool, should_ignore: bool) {
         let name = if self.use_headers {
             let s = self.current_header.as_ref().map(|s| s.as_slice()).unwrap_or("");
             format_strbuf!("{}_{}", s, self.cnt)
@@ -296,7 +296,7 @@ impl Collector {
                     } else {
                         '_'
                     }
-                }).collect::<StrBuf>();
+                }).collect::<String>();
 
             // new header => reset count.
             self.cnt = 0;

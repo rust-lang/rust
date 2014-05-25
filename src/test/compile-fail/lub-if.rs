@@ -12,7 +12,7 @@
 // of the various arms, particularly in the case where regions are
 // involved.
 
-pub fn opt_str0<'a>(maybestr: &'a Option<StrBuf>) -> &'a str {
+pub fn opt_str0<'a>(maybestr: &'a Option<String>) -> &'a str {
     if maybestr.is_none() {
         "(none)"
     } else {
@@ -21,7 +21,7 @@ pub fn opt_str0<'a>(maybestr: &'a Option<StrBuf>) -> &'a str {
     }
 }
 
-pub fn opt_str1<'a>(maybestr: &'a Option<StrBuf>) -> &'a str {
+pub fn opt_str1<'a>(maybestr: &'a Option<String>) -> &'a str {
     if maybestr.is_some() {
         let s: &'a str = maybestr.get_ref().as_slice();
         s
@@ -30,7 +30,7 @@ pub fn opt_str1<'a>(maybestr: &'a Option<StrBuf>) -> &'a str {
     }
 }
 
-pub fn opt_str2<'a>(maybestr: &'a Option<StrBuf>) -> &'static str {
+pub fn opt_str2<'a>(maybestr: &'a Option<String>) -> &'static str {
     if maybestr.is_none() { //~ ERROR mismatched types
         "(none)"
     } else {
@@ -39,7 +39,7 @@ pub fn opt_str2<'a>(maybestr: &'a Option<StrBuf>) -> &'static str {
     }
 }
 
-pub fn opt_str3<'a>(maybestr: &'a Option<StrBuf>) -> &'static str {
+pub fn opt_str3<'a>(maybestr: &'a Option<String>) -> &'static str {
     if maybestr.is_some() {  //~ ERROR mismatched types
         let s: &'a str = maybestr.get_ref().as_slice();
         s

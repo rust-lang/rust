@@ -14,7 +14,7 @@ use ext::base;
 use ext::build::AstBuilder;
 use parse::token;
 
-use std::strbuf::StrBuf;
+use std::string::String;
 
 pub fn expand_syntax_ext(cx: &mut base::ExtCtxt,
                          sp: codemap::Span,
@@ -24,7 +24,7 @@ pub fn expand_syntax_ext(cx: &mut base::ExtCtxt,
         Some(e) => e,
         None => return base::DummyResult::expr(sp)
     };
-    let mut accumulator = StrBuf::new();
+    let mut accumulator = String::new();
     for e in es.move_iter() {
         match e.node {
             ast::ExprLit(lit) => {

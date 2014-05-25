@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct S { f0: StrBuf, f1: int }
+struct S { f0: String, f1: int }
 
 pub fn main() {
     let s = "Hello, world!".to_strbuf();

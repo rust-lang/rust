@@ -35,7 +35,7 @@ use collections::{HashMap, HashSet};
 use std::cell::{Cell, RefCell};
 use std::mem::replace;
 use std::rc::{Rc, Weak};
-use std::strbuf::StrBuf;
+use std::string::String;
 use std::uint;
 
 // Definition mapping
@@ -57,7 +57,7 @@ pub type TraitMap = NodeMap<Vec<DefId> >;
 pub type ExportMap2 = RefCell<NodeMap<Vec<Export2> >>;
 
 pub struct Export2 {
-    pub name: StrBuf,        // The name of the target.
+    pub name: String,        // The name of the target.
     pub def_id: DefId,     // The definition of the target.
 }
 
@@ -221,8 +221,8 @@ enum FallbackSuggestion {
     Field,
     Method,
     TraitMethod,
-    StaticMethod(StrBuf),
-    StaticTraitMethod(StrBuf),
+    StaticMethod(String),
+    StaticTraitMethod(String),
 }
 
 enum TypeParameters<'a> {
@@ -2070,9 +2070,9 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    fn idents_to_str(&self, idents: &[Ident]) -> StrBuf {
+    fn idents_to_str(&self, idents: &[Ident]) -> String {
         let mut first = true;
-        let mut result = StrBuf::new();
+        let mut result = String::new();
         for ident in idents.iter() {
             if first {
                 first = false
@@ -2084,7 +2084,7 @@ impl<'a> Resolver<'a> {
         result
     }
 
-    fn path_idents_to_str(&self, path: &Path) -> StrBuf {
+    fn path_idents_to_str(&self, path: &Path) -> String {
         let identifiers: Vec<ast::Ident> = path.segments
                                              .iter()
                                              .map(|seg| seg.identifier)
@@ -2094,7 +2094,7 @@ impl<'a> Resolver<'a> {
 
     fn import_directive_subclass_to_str(&mut self,
                                         subclass: ImportDirectiveSubclass)
-                                        -> StrBuf {
+                                        -> String {
         match subclass {
             SingleImport(_, source) => {
                 token::get_ident(source).get().to_strbuf()
@@ -2106,7 +2106,7 @@ impl<'a> Resolver<'a> {
     fn import_path_to_str(&mut self,
                           idents: &[Ident],
                           subclass: ImportDirectiveSubclass)
-                          -> StrBuf {
+                          -> String {
         if idents.is_empty() {
             self.import_directive_subclass_to_str(subclass)
         } else {
@@ -5019,7 +5019,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn find_best_match_for_name(&mut self, name: &str, max_distance: uint)
-                                -> Option<StrBuf> {
+                                -> Option<String> {
         let this = &mut *self;
 
         let mut maybes: Vec<token::InternedString> = Vec::new();
@@ -5499,7 +5499,7 @@ impl<'a> Resolver<'a> {
     //
 
     /// A somewhat inefficient routine to obtain the name of a module.
-    fn module_to_str(&mut self, module: &Module) -> StrBuf {
+    fn module_to_str(&mut self, module: &Module) -> String {
         let mut idents = Vec::new();
 
         fn collect_mod(idents: &mut Vec<ast::Ident>, module: &Module) {

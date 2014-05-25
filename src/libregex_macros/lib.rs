@@ -105,8 +105,8 @@ struct NfaGen<'a> {
     cx: &'a ExtCtxt<'a>,
     sp: codemap::Span,
     prog: Program,
-    names: Vec<Option<StrBuf>>,
-    original: StrBuf,
+    names: Vec<Option<String>>,
+    original: String,
 }
 
 impl<'a> NfaGen<'a> {
@@ -601,7 +601,7 @@ fn exec<'t>(which: ::regex::native::MatchKind, input: &'t str,
 
 /// Looks for a single string literal and returns it.
 /// Otherwise, logs an error with cx.span_err and returns None.
-fn parse(cx: &mut ExtCtxt, tts: &[ast::TokenTree]) -> Option<StrBuf> {
+fn parse(cx: &mut ExtCtxt, tts: &[ast::TokenTree]) -> Option<String> {
     let mut parser = parse::new_parser_from_tts(cx.parse_sess(), cx.cfg(),
                                                 Vec::from_slice(tts));
     let entry = cx.expand_expr(parser.parse_expr());

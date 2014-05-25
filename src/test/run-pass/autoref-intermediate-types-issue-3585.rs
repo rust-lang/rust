@@ -11,17 +11,17 @@
 #![feature(managed_boxes)]
 
 trait Foo {
-    fn foo(&self) -> StrBuf;
+    fn foo(&self) -> String;
 }
 
 impl<T:Foo> Foo for @T {
-    fn foo(&self) -> StrBuf {
+    fn foo(&self) -> String {
         format_strbuf!("@{}", (**self).foo())
     }
 }
 
 impl Foo for uint {
-    fn foo(&self) -> StrBuf {
+    fn foo(&self) -> String {
         format_strbuf!("{}", *self)
     }
 }

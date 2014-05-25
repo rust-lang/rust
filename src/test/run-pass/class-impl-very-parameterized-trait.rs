@@ -114,7 +114,7 @@ impl<T> cat<T> {
 }
 
 pub fn main() {
-    let mut nyan: cat<StrBuf> = cat::new(0, 2, "nyan".to_strbuf());
+    let mut nyan: cat<String> = cat::new(0, 2, "nyan".to_strbuf());
     for _ in range(1u, 5) { nyan.speak(); }
     assert!(*nyan.find(&1).unwrap() == "nyan".to_strbuf());
     assert_eq!(nyan.find(&10), None);

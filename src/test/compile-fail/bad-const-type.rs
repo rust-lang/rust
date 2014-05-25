@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:expected `std::strbuf::StrBuf` but found `int`
+// error-pattern:expected `std::string::String` but found `int`
 
-static i: StrBuf = 10i;
+static i: String = 10i;
 fn main() { println!("{}", i); }

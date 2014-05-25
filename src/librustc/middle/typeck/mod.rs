@@ -198,7 +198,7 @@ pub enum vtable_origin {
 }
 
 impl Repr for vtable_origin {
-    fn repr(&self, tcx: &ty::ctxt) -> StrBuf {
+    fn repr(&self, tcx: &ty::ctxt) -> String {
         match *self {
             vtable_static(def_id, ref tys, ref vtable_res) => {
                 format_strbuf!("vtable_static({:?}:{}, {}, {})",
@@ -230,7 +230,7 @@ pub struct impl_res {
 }
 
 impl Repr for impl_res {
-    fn repr(&self, tcx: &ty::ctxt) -> StrBuf {
+    fn repr(&self, tcx: &ty::ctxt) -> String {
         format_strbuf!("impl_res \\{trait_vtables={}, self_vtables={}\\}",
                        self.trait_vtables.repr(tcx),
                        self.self_vtables.repr(tcx))
@@ -293,7 +293,7 @@ pub fn require_same_types(tcx: &ty::ctxt,
                           span: Span,
                           t1: ty::t,
                           t2: ty::t,
-                          msg: || -> StrBuf)
+                          msg: || -> String)
                           -> bool {
     let result = match maybe_infcx {
         None => {

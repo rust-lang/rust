@@ -49,7 +49,7 @@
 //! `&str`, a UTF-8 string, is a built-in type, and the standard library
 //! defines methods for it on a variety of traits in the
 //! [`str`](str/index.html) module. Rust strings are immutable;
-//! use the `StrBuf` type defined in [`strbuf`](strbuf/index.html)
+//! use the `String` type defined in [`strbuf`](strbuf/index.html)
 //! for a mutable string builder.
 //!
 //! For converting to strings use the [`format!`](fmt/index.html)
@@ -206,7 +206,7 @@ pub mod prelude;
 pub mod slice;
 pub mod vec;
 pub mod str;
-pub mod strbuf;
+pub mod string;
 
 pub mod ascii;
 
@@ -285,5 +285,5 @@ mod std {
 
     // The test runner requires std::slice::Vector, so re-export std::slice just for it.
     #[cfg(test)] pub use slice;
-    #[cfg(test)] pub use strbuf;
+    #[cfg(test)] pub use string;
 }

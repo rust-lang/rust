@@ -25,18 +25,18 @@ trait Pet {
 
 struct Catte {
     num_whiskers: uint,
-    name: StrBuf,
+    name: String,
 }
 
 struct Dogge {
     bark_decibels: uint,
     tricks_known: uint,
-    name: StrBuf,
+    name: String,
 }
 
 struct Goldfyshe {
     swim_speed: uint,
-    name: StrBuf,
+    name: String,
 }
 
 impl Pet for Catte {

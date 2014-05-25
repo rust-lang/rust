@@ -51,7 +51,7 @@ trait ManyImplTrait {
     }
 }
 
-impl ManyImplTrait for StrBuf {
+impl ManyImplTrait for String {
     fn is_str() -> bool {
         true
     }

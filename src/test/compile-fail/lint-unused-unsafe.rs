@@ -51,7 +51,7 @@ fn good2() {
        sure that when purity is inherited that the source of the unsafe-ness
        is tracked correctly */
     unsafe {
-        unsafe fn what() -> Vec<StrBuf> { fail!() }
+        unsafe fn what() -> Vec<String> { fail!() }
 
         callback(|| {
             what();

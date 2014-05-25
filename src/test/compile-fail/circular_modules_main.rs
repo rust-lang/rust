@@ -11,7 +11,7 @@
 #[path = "circular_modules_hello.rs"]
 mod circular_modules_hello; //~ERROR: circular modules
 
-pub fn hi_str() -> StrBuf {
+pub fn hi_str() -> String {
   "Hi!".to_owned()
 }
 

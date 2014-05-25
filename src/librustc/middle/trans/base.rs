@@ -125,13 +125,13 @@ pub fn push_ctxt(s: &'static str) -> _InsnCtxt {
 
 pub struct StatRecorder<'a> {
     ccx: &'a CrateContext,
-    name: Option<StrBuf>,
+    name: Option<String>,
     start: u64,
     istart: uint,
 }
 
 impl<'a> StatRecorder<'a> {
-    pub fn new(ccx: &'a CrateContext, name: StrBuf) -> StatRecorder<'a> {
+    pub fn new(ccx: &'a CrateContext, name: String) -> StatRecorder<'a> {
         let start = if ccx.sess().trans_stats() {
             time::precise_time_ns()
         } else {
@@ -429,7 +429,7 @@ pub fn unset_split_stack(f: ValueRef) {
 
 // Double-check that we never ask LLVM to declare the same symbol twice. It
 // silently mangles such symbols, breaking our linkage model.
-pub fn note_unique_llvm_symbol(ccx: &CrateContext, sym: StrBuf) {
+pub fn note_unique_llvm_symbol(ccx: &CrateContext, sym: String) {
     if ccx.all_llvm_symbols.borrow().contains(&sym) {
         ccx.sess().bug(format!("duplicate LLVM symbol: {}", sym).as_slice());
     }
@@ -1626,7 +1626,7 @@ pub fn trans_mod(ccx: &CrateContext, m: &ast::Mod) {
     }
 }
 
-fn finish_register_fn(ccx: &CrateContext, sp: Span, sym: StrBuf, node_id: ast::NodeId,
+fn finish_register_fn(ccx: &CrateContext, sp: Span, sym: String, node_id: ast::NodeId,
                       llfn: ValueRef) {
     ccx.item_symbols.borrow_mut().insert(node_id, sym);
 
@@ -1654,7 +1654,7 @@ fn finish_register_fn(ccx: &CrateContext, sp: Span, sym: StrBuf, node_id: ast::N
 
 fn register_fn(ccx: &CrateContext,
                sp: Span,
-               sym: StrBuf,
+               sym: String,
                node_id: ast::NodeId,
                node_type: ty::t)
                -> ValueRef {
@@ -1777,7 +1777,7 @@ pub fn get_fn_llvm_attributes(ccx: &CrateContext, fn_ty: ty::t) -> Vec<(uint, u6
 // only use this for foreign function ABIs and glue, use `register_fn` for Rust functions
 pub fn register_fn_llvmty(ccx: &CrateContext,
                           sp: Span,
-                          sym: StrBuf,
+                          sym: String,
                           node_id: ast::NodeId,
                           cc: lib::llvm::CallConv,
                           llfty: Type) -> ValueRef {
@@ -1872,7 +1872,7 @@ pub fn create_entry_wrapper(ccx: &CrateContext,
 }
 
 fn exported_name(ccx: &CrateContext, id: ast::NodeId,
-                 ty: ty::t, attrs: &[ast::Attribute]) -> StrBuf {
+                 ty: ty::t, attrs: &[ast::Attribute]) -> String {
     match attr::first_attr_value_str_by_name(attrs, "export_name") {
         // Use provided name
         Some(name) => name.get().to_strbuf(),
@@ -2279,7 +2279,7 @@ pub fn trans_crate(krate: ast::Crate,
     let link_meta = ccx.link_meta.clone();
     let llmod = ccx.llmod;
 
-    let mut reachable: Vec<StrBuf> = ccx.reachable.iter().filter_map(|id| {
+    let mut reachable: Vec<String> = ccx.reachable.iter().filter_map(|id| {
         ccx.item_symbols.borrow().find(id).map(|s| s.to_strbuf())
     }).collect();
 

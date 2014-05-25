@@ -10,11 +10,11 @@
 
 
 struct trie_node {
-    content: Vec<StrBuf> ,
+    content: Vec<String> ,
     children: Vec<trie_node> ,
 }
 
-fn print_str_vector(vector: Vec<StrBuf> ) {
+fn print_str_vector(vector: Vec<String> ) {
     for string in vector.iter() {
         println!("{}", *string);
     }

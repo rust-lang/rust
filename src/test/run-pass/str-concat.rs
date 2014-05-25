@@ -12,9 +12,9 @@
 
 
 pub fn main() {
-    let a: StrBuf = "hello".to_strbuf();
-    let b: StrBuf = "world".to_strbuf();
-    let s: StrBuf = format_strbuf!("{}{}", a, b);
+    let a: String = "hello".to_strbuf();
+    let b: String = "world".to_strbuf();
+    let s: String = format_strbuf!("{}{}", a, b);
     println!("{}", s.clone());
     assert_eq!(s.as_slice()[9], 'd' as u8);
 }

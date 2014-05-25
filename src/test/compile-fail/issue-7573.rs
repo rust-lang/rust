@@ -10,8 +10,8 @@
 
 
 pub struct CrateId {
-    local_path: StrBuf,
-    junk: StrBuf
+    local_path: String,
+    junk: String
 }
 
 impl CrateId {

@@ -203,7 +203,7 @@ pub struct Parser<'a> {
     cur: str::CharOffsets<'a>,
     depth: uint,
     /// Error messages accumulated during parsing
-    pub errors: Vec<StrBuf>,
+    pub errors: Vec<String>,
 }
 
 impl<'a> Iterator<Piece<'a>> for Parser<'a> {
@@ -246,7 +246,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Notifies of an error. The message doesn't actually need to be of type
-    /// StrBuf, but I think it does when this eventually uses conditions so it
+    /// String, but I think it does when this eventually uses conditions so it
     /// might as well start using it now.
     fn err(&mut self, msg: &str) {
         self.errors.push(msg.to_strbuf());

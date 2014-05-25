@@ -79,7 +79,7 @@ use option::{None, Option, Some};
 use result::Result;
 use slice::Vector;
 use slice::{ImmutableVector, MutableVector, CloneableVector};
-use strbuf::StrBuf;
+use string::String;
 use vec::Vec;
 
 pub use core::str::{from_utf8, CharEq, Chars, CharOffsets};
@@ -98,8 +98,8 @@ Section: Creating a string
 ///
 /// Returns `Err` with the original vector if the vector contains invalid
 /// UTF-8.
-pub fn from_utf8_owned(vv: Vec<u8>) -> Result<StrBuf, Vec<u8>> {
-    StrBuf::from_utf8(vv)
+pub fn from_utf8_owned(vv: Vec<u8>) -> Result<String, Vec<u8>> {
+    String::from_utf8(vv)
 }
 
 /// Convert a byte to a UTF-8 string
@@ -107,42 +107,42 @@ pub fn from_utf8_owned(vv: Vec<u8>) -> Result<StrBuf, Vec<u8>> {
 /// # Failure
 ///
 /// Fails if invalid UTF-8
-pub fn from_byte(b: u8) -> StrBuf {
+pub fn from_byte(b: u8) -> String {
     assert!(b < 128u8);
-    StrBuf::from_char(1, b as char)
+    String::from_char(1, b as char)
 }
 
 /// Convert a char to a string
-pub fn from_char(ch: char) -> StrBuf {
-    let mut buf = StrBuf::new();
+pub fn from_char(ch: char) -> String {
+    let mut buf = String::new();
     buf.push_char(ch);
     buf
 }
 
 /// Convert a vector of chars to a string
-pub fn from_chars(chs: &[char]) -> StrBuf {
+pub fn from_chars(chs: &[char]) -> String {
     chs.iter().map(|c| *c).collect()
 }
 
 /// Methods for vectors of strings
 pub trait StrVector {
     /// Concatenate a vector of strings.
-    fn concat(&self) -> StrBuf;
+    fn concat(&self) -> String;
 
     /// Concatenate a vector of strings, placing a given separator between each.
-    fn connect(&self, sep: &str) -> StrBuf;
+    fn connect(&self, sep: &str) -> String;
 }
 
 impl<'a, S: Str> StrVector for &'a [S] {
-    fn concat(&self) -> StrBuf {
+    fn concat(&self) -> String {
         if self.is_empty() {
-            return StrBuf::new();
+            return String::new();
         }
 
         // `len` calculation may overflow but push_str but will check boundaries
         let len = self.iter().map(|s| s.as_slice().len()).sum();
 
-        let mut result = StrBuf::with_capacity(len);
+        let mut result = String::with_capacity(len);
 
         for s in self.iter() {
             result.push_str(s.as_slice())
@@ -151,9 +151,9 @@ impl<'a, S: Str> StrVector for &'a [S] {
         result
     }
 
-    fn connect(&self, sep: &str) -> StrBuf {
+    fn connect(&self, sep: &str) -> String {
         if self.is_empty() {
-            return StrBuf::new();
+            return String::new();
         }
 
         // concat is faster
@@ -165,7 +165,7 @@ impl<'a, S: Str> StrVector for &'a [S] {
         // `len` calculation may overflow but push_str but will check boundaries
         let len = sep.len() * (self.len() - 1)
             + self.iter().map(|s| s.as_slice().len()).sum();
-        let mut result = StrBuf::with_capacity(len);
+        let mut result = String::with_capacity(len);
         let mut first = true;
 
         for s in self.iter() {
@@ -182,12 +182,12 @@ impl<'a, S: Str> StrVector for &'a [S] {
 
 impl<'a, S: Str> StrVector for Vec<S> {
     #[inline]
-    fn concat(&self) -> StrBuf {
+    fn concat(&self) -> String {
         self.as_slice().concat()
     }
 
     #[inline]
-    fn connect(&self, sep: &str) -> StrBuf {
+    fn connect(&self, sep: &str) -> String {
         self.as_slice().connect(sep)
     }
 }
@@ -303,8 +303,8 @@ impl<'a> Iterator<char> for Decompositions<'a> {
 /// # Return value
 ///
 /// The original string with all occurrences of `from` replaced with `to`
-pub fn replace(s: &str, from: &str, to: &str) -> StrBuf {
-    let mut result = StrBuf::new();
+pub fn replace(s: &str, from: &str, to: &str) -> String {
+    let mut result = String::new();
     let mut last_end = 0;
     for (start, end) in s.match_indices(from) {
         result.push_str(unsafe{raw::slice_bytes(s, last_end, start)});
@@ -336,8 +336,8 @@ Section: Misc
 /// v[4] = 0xD800;
 /// assert_eq!(str::from_utf16(v), None);
 /// ```
-pub fn from_utf16(v: &[u16]) -> Option<StrBuf> {
-    let mut s = StrBuf::with_capacity(v.len() / 2);
+pub fn from_utf16(v: &[u16]) -> Option<String> {
+    let mut s = String::with_capacity(v.len() / 2);
     for c in utf16_items(v) {
         match c {
             ScalarValue(c) => s.push_char(c),
@@ -362,7 +362,7 @@ pub fn from_utf16(v: &[u16]) -> Option<StrBuf> {
 /// assert_eq!(str::from_utf16_lossy(v),
 ///            "𝄞mus\uFFFDic\uFFFD".to_owned());
 /// ```
-pub fn from_utf16_lossy(v: &[u16]) -> StrBuf {
+pub fn from_utf16_lossy(v: &[u16]) -> String {
     utf16_items(v).map(|c| c.to_char_lossy()).collect()
 }
 
@@ -409,7 +409,7 @@ pub fn from_utf8_lossy<'a>(v: &'a [u8]) -> MaybeOwned<'a> {
         }
     }
 
-    let mut res = StrBuf::with_capacity(total);
+    let mut res = String::with_capacity(total);
 
     if i > 0 {
         unsafe {
@@ -509,14 +509,14 @@ pub fn from_utf8_lossy<'a>(v: &'a [u8]) -> MaybeOwned<'a> {
 Section: MaybeOwned
 */
 
-/// A MaybeOwned is a string that can hold either a StrBuf or a &str.
+/// A MaybeOwned is a string that can hold either a String or a &str.
 /// This can be useful as an optimization when an allocation is sometimes
 /// needed but not always.
 pub enum MaybeOwned<'a> {
     /// A borrowed string
     Slice(&'a str),
     /// An owned string
-    Owned(StrBuf)
+    Owned(String)
 }
 
 /// SendStr is a specialization of `MaybeOwned` to be sendable
@@ -548,7 +548,7 @@ pub trait IntoMaybeOwned<'a> {
     fn into_maybe_owned(self) -> MaybeOwned<'a>;
 }
 
-impl<'a> IntoMaybeOwned<'a> for StrBuf {
+impl<'a> IntoMaybeOwned<'a> for String {
     #[inline]
     fn into_maybe_owned(self) -> MaybeOwned<'a> {
         Owned(self)
@@ -607,7 +607,7 @@ impl<'a> Str for MaybeOwned<'a> {
 
 impl<'a> StrAllocating for MaybeOwned<'a> {
     #[inline]
-    fn into_owned(self) -> StrBuf {
+    fn into_owned(self) -> String {
         match self {
             Slice(s) => s.to_owned(),
             Owned(s) => s
@@ -661,15 +661,15 @@ pub mod raw {
     use libc;
     use mem;
     use raw::Slice;
-    use strbuf::StrBuf;
+    use string::String;
     use vec::Vec;
 
     pub use core::str::raw::{from_utf8, c_str_to_static_slice, slice_bytes};
     pub use core::str::raw::{slice_unchecked};
 
     /// Create a Rust string from a *u8 buffer of the given length
-    pub unsafe fn from_buf_len(buf: *u8, len: uint) -> StrBuf {
-        let mut result = StrBuf::new();
+    pub unsafe fn from_buf_len(buf: *u8, len: uint) -> String {
+        let mut result = String::new();
         result.push_bytes(mem::transmute(Slice {
             data: buf,
             len: len,
@@ -678,8 +678,8 @@ pub mod raw {
     }
 
     /// Create a Rust string from a null-terminated C string
-    pub unsafe fn from_c_str(c_string: *libc::c_char) -> StrBuf {
-        let mut buf = StrBuf::new();
+    pub unsafe fn from_c_str(c_string: *libc::c_char) -> String {
+        let mut buf = String::new();
         buf.push_bytes(CString::new(c_string, false).as_bytes_no_nul());
         buf
     }
@@ -687,12 +687,12 @@ pub mod raw {
     /// Converts an owned vector of bytes to a new owned string. This assumes
     /// that the utf-8-ness of the vector has already been validated
     #[inline]
-    pub unsafe fn from_utf8_owned(v: Vec<u8>) -> StrBuf {
+    pub unsafe fn from_utf8_owned(v: Vec<u8>) -> String {
         mem::transmute(v)
     }
 
     /// Converts a byte to a string.
-    pub unsafe fn from_byte(u: u8) -> StrBuf {
+    pub unsafe fn from_byte(u: u8) -> String {
         from_utf8_owned(vec![u])
     }
 
@@ -721,25 +721,25 @@ Section: Trait implementations
 
 /// Any string that can be represented as a slice
 pub trait StrAllocating: Str {
-    /// Convert `self` into a `StrBuf`, not making a copy if possible.
-    fn into_owned(self) -> StrBuf;
+    /// Convert `self` into a `String`, not making a copy if possible.
+    fn into_owned(self) -> String;
 
-    /// Convert `self` into a `StrBuf`.
+    /// Convert `self` into a `String`.
     #[inline]
-    fn to_strbuf(&self) -> StrBuf {
-        StrBuf::from_str(self.as_slice())
+    fn to_strbuf(&self) -> String {
+        String::from_str(self.as_slice())
     }
 
-    /// Convert `self` into a `StrBuf`, not making a copy if possible.
+    /// Convert `self` into a `String`, not making a copy if possible.
     #[inline]
-    fn into_strbuf(self) -> StrBuf {
+    fn into_strbuf(self) -> String {
         self.into_owned()
     }
 
     /// Escape each char in `s` with `char::escape_default`.
-    fn escape_default(&self) -> StrBuf {
+    fn escape_default(&self) -> String {
         let me = self.as_slice();
-        let mut out = StrBuf::with_capacity(me.len());
+        let mut out = String::with_capacity(me.len());
         for c in me.chars() {
             c.escape_default(|c| out.push_char(c));
         }
@@ -747,9 +747,9 @@ pub trait StrAllocating: Str {
     }
 
     /// Escape each char in `s` with `char::escape_unicode`.
-    fn escape_unicode(&self) -> StrBuf {
+    fn escape_unicode(&self) -> String {
         let me = self.as_slice();
-        let mut out = StrBuf::with_capacity(me.len());
+        let mut out = String::with_capacity(me.len());
         for c in me.chars() {
             c.escape_unicode(|c| out.push_char(c));
         }
@@ -780,9 +780,9 @@ pub trait StrAllocating: Str {
     /// // not found, so no change.
     /// assert_eq!(s.replace("cookie monster", "little lamb"), s);
     /// ```
-    fn replace(&self, from: &str, to: &str) -> StrBuf {
+    fn replace(&self, from: &str, to: &str) -> String {
         let me = self.as_slice();
-        let mut result = StrBuf::new();
+        let mut result = String::new();
         let mut last_end = 0;
         for (start, end) in me.match_indices(from) {
             result.push_str(unsafe{raw::slice_bytes(me, last_end, start)});
@@ -793,9 +793,9 @@ pub trait StrAllocating: Str {
         result
     }
 
-    /// Copy a slice into a new `StrBuf`.
+    /// Copy a slice into a new `String`.
     #[inline]
-    fn to_owned(&self) -> StrBuf {
+    fn to_owned(&self) -> String {
         use slice::Vector;
 
         unsafe {
@@ -816,9 +816,9 @@ pub trait StrAllocating: Str {
     }
 
     /// Given a string, make a new string with repeated copies of it.
-    fn repeat(&self, nn: uint) -> StrBuf {
+    fn repeat(&self, nn: uint) -> String {
         let me = self.as_slice();
-        let mut ret = StrBuf::with_capacity(nn * me.len());
+        let mut ret = String::with_capacity(nn * me.len());
         for _ in range(0, nn) {
             ret.push_str(me);
         }
@@ -887,7 +887,7 @@ pub trait StrAllocating: Str {
 
 impl<'a> StrAllocating for &'a str {
     #[inline]
-    fn into_owned(self) -> StrBuf {
+    fn into_owned(self) -> String {
         self.to_owned()
     }
 }
@@ -900,18 +900,18 @@ pub trait OwnedStr {
     fn into_bytes(self) -> Vec<u8>;
 
     /// Pushes the given string onto this string, returning the concatenation of the two strings.
-    fn append(self, rhs: &str) -> StrBuf;
+    fn append(self, rhs: &str) -> String;
 }
 
-impl OwnedStr for StrBuf {
+impl OwnedStr for String {
     #[inline]
     fn into_bytes(self) -> Vec<u8> {
         unsafe { mem::transmute(self) }
     }
 
     #[inline]
-    fn append(self, rhs: &str) -> StrBuf {
-        let mut new_str = StrBuf::from_owned_str(self);
+    fn append(self, rhs: &str) -> String {
+        let mut new_str = String::from_owned_str(self);
         new_str.push_str(rhs);
         new_str
     }
@@ -923,7 +923,7 @@ mod tests {
     use default::Default;
     use prelude::*;
     use str::*;
-    use strbuf::StrBuf;
+    use string::String;
 
     #[test]
     fn test_eq_slice() {
@@ -983,10 +983,10 @@ mod tests {
     #[test]
     fn test_collect() {
         let empty = "".to_owned();
-        let s: StrBuf = empty.as_slice().chars().collect();
+        let s: String = empty.as_slice().chars().collect();
         assert_eq!(empty, s);
         let data = "ประเทศไทย中".to_owned();
-        let s: StrBuf = data.as_slice().chars().collect();
+        let s: String = data.as_slice().chars().collect();
         assert_eq!(data, s);
     }
 
@@ -1043,25 +1043,25 @@ mod tests {
 
     #[test]
     fn test_concat() {
-        fn t(v: &[StrBuf], s: &str) {
+        fn t(v: &[String], s: &str) {
             assert_eq!(v.concat(), s.to_str().into_owned());
         }
         t(["you".to_owned(), "know".to_owned(), "I'm".to_owned(),
           "no".to_owned(), "good".to_owned()], "youknowI'mnogood");
-        let v: &[StrBuf] = [];
+        let v: &[String] = [];
         t(v, "");
         t(["hi".to_owned()], "hi");
     }
 
     #[test]
     fn test_connect() {
-        fn t(v: &[StrBuf], sep: &str, s: &str) {
+        fn t(v: &[String], sep: &str, s: &str) {
             assert_eq!(v.connect(sep), s.to_str().into_owned());
         }
         t(["you".to_owned(), "know".to_owned(), "I'm".to_owned(),
            "no".to_owned(), "good".to_owned()],
           " ", "you know I'm no good");
-        let v: &[StrBuf] = [];
+        let v: &[String] = [];
         t(v, " ", "");
         t(["hi".to_owned()], " ", "hi");
     }
@@ -1102,18 +1102,18 @@ mod tests {
         assert_eq!("ab", unsafe {raw::slice_bytes("abc", 0, 2)});
         assert_eq!("bc", unsafe {raw::slice_bytes("abc", 1, 3)});
         assert_eq!("", unsafe {raw::slice_bytes("abc", 1, 1)});
-        fn a_million_letter_a() -> StrBuf {
+        fn a_million_letter_a() -> String {
             let mut i = 0;
-            let mut rs = StrBuf::new();
+            let mut rs = String::new();
             while i < 100000 {
                 rs.push_str("aaaaaaaaaa");
                 i += 1;
             }
             rs
         }
-        fn half_a_million_letter_a() -> StrBuf {
+        fn half_a_million_letter_a() -> String {
             let mut i = 0;
-            let mut rs = StrBuf::new();
+            let mut rs = String::new();
             while i < 100000 {
                 rs.push_str("aaaaa");
                 i += 1;
@@ -1219,18 +1219,18 @@ mod tests {
         assert_eq!("", data.slice(3, 3));
         assert_eq!("华", data.slice(30, 33));
 
-        fn a_million_letter_X() -> StrBuf {
+        fn a_million_letter_X() -> String {
             let mut i = 0;
-            let mut rs = StrBuf::new();
+            let mut rs = String::new();
             while i < 100000 {
                 rs.push_str("华华华华华华华华华华");
                 i += 1;
             }
             rs
         }
-        fn half_a_million_letter_X() -> StrBuf {
+        fn half_a_million_letter_X() -> String {
             let mut i = 0;
-            let mut rs = StrBuf::new();
+            let mut rs = String::new();
             while i < 100000 {
                 rs.push_str("华华华华华");
                 i += 1;
@@ -1532,10 +1532,10 @@ mod tests {
 
     #[test]
     fn vec_str_conversions() {
-        let s1: StrBuf = "All mimsy were the borogoves".to_strbuf();
+        let s1: String = "All mimsy were the borogoves".to_strbuf();
 
         let v: Vec<u8> = Vec::from_slice(s1.as_bytes());
-        let s2: StrBuf = from_utf8(v.as_slice()).unwrap().to_strbuf();
+        let s2: String = from_utf8(v.as_slice()).unwrap().to_strbuf();
         let mut i: uint = 0u;
         let n1: uint = s1.len();
         let n2: uint = v.len();
@@ -1967,30 +1967,30 @@ mod tests {
 
     #[test]
     fn test_nfd_chars() {
-        assert_eq!("abc".nfd_chars().collect::<StrBuf>(), "abc".to_strbuf());
-        assert_eq!("\u1e0b\u01c4".nfd_chars().collect::<StrBuf>(), "d\u0307\u01c4".to_strbuf());
-        assert_eq!("\u2026".nfd_chars().collect::<StrBuf>(), "\u2026".to_strbuf());
-        assert_eq!("\u2126".nfd_chars().collect::<StrBuf>(), "\u03a9".to_strbuf());
-        assert_eq!("\u1e0b\u0323".nfd_chars().collect::<StrBuf>(), "d\u0323\u0307".to_strbuf());
-        assert_eq!("\u1e0d\u0307".nfd_chars().collect::<StrBuf>(), "d\u0323\u0307".to_strbuf());
-        assert_eq!("a\u0301".nfd_chars().collect::<StrBuf>(), "a\u0301".to_strbuf());
-        assert_eq!("\u0301a".nfd_chars().collect::<StrBuf>(), "\u0301a".to_strbuf());
-        assert_eq!("\ud4db".nfd_chars().collect::<StrBuf>(), "\u1111\u1171\u11b6".to_strbuf());
-        assert_eq!("\uac1c".nfd_chars().collect::<StrBuf>(), "\u1100\u1162".to_strbuf());
+        assert_eq!("abc".nfd_chars().collect::<String>(), "abc".to_strbuf());
+        assert_eq!("\u1e0b\u01c4".nfd_chars().collect::<String>(), "d\u0307\u01c4".to_strbuf());
+        assert_eq!("\u2026".nfd_chars().collect::<String>(), "\u2026".to_strbuf());
+        assert_eq!("\u2126".nfd_chars().collect::<String>(), "\u03a9".to_strbuf());
+        assert_eq!("\u1e0b\u0323".nfd_chars().collect::<String>(), "d\u0323\u0307".to_strbuf());
+        assert_eq!("\u1e0d\u0307".nfd_chars().collect::<String>(), "d\u0323\u0307".to_strbuf());
+        assert_eq!("a\u0301".nfd_chars().collect::<String>(), "a\u0301".to_strbuf());
+        assert_eq!("\u0301a".nfd_chars().collect::<String>(), "\u0301a".to_strbuf());
+        assert_eq!("\ud4db".nfd_chars().collect::<String>(), "\u1111\u1171\u11b6".to_strbuf());
+        assert_eq!("\uac1c".nfd_chars().collect::<String>(), "\u1100\u1162".to_strbuf());
     }
 
     #[test]
     fn test_nfkd_chars() {
-        assert_eq!("abc".nfkd_chars().collect::<StrBuf>(), "abc".to_strbuf());
-        assert_eq!("\u1e0b\u01c4".nfkd_chars().collect::<StrBuf>(), "d\u0307DZ\u030c".to_strbuf());
-        assert_eq!("\u2026".nfkd_chars().collect::<StrBuf>(), "...".to_strbuf());
-        assert_eq!("\u2126".nfkd_chars().collect::<StrBuf>(), "\u03a9".to_strbuf());
-        assert_eq!("\u1e0b\u0323".nfkd_chars().collect::<StrBuf>(), "d\u0323\u0307".to_strbuf());
-        assert_eq!("\u1e0d\u0307".nfkd_chars().collect::<StrBuf>(), "d\u0323\u0307".to_strbuf());
-        assert_eq!("a\u0301".nfkd_chars().collect::<StrBuf>(), "a\u0301".to_strbuf());
-        assert_eq!("\u0301a".nfkd_chars().collect::<StrBuf>(), "\u0301a".to_strbuf());
-        assert_eq!("\ud4db".nfkd_chars().collect::<StrBuf>(), "\u1111\u1171\u11b6".to_strbuf());
-        assert_eq!("\uac1c".nfkd_chars().collect::<StrBuf>(), "\u1100\u1162".to_strbuf());
+        assert_eq!("abc".nfkd_chars().collect::<String>(), "abc".to_strbuf());
+        assert_eq!("\u1e0b\u01c4".nfkd_chars().collect::<String>(), "d\u0307DZ\u030c".to_strbuf());
+        assert_eq!("\u2026".nfkd_chars().collect::<String>(), "...".to_strbuf());
+        assert_eq!("\u2126".nfkd_chars().collect::<String>(), "\u03a9".to_strbuf());
+        assert_eq!("\u1e0b\u0323".nfkd_chars().collect::<String>(), "d\u0323\u0307".to_strbuf());
+        assert_eq!("\u1e0d\u0307".nfkd_chars().collect::<String>(), "d\u0323\u0307".to_strbuf());
+        assert_eq!("a\u0301".nfkd_chars().collect::<String>(), "a\u0301".to_strbuf());
+        assert_eq!("\u0301a".nfkd_chars().collect::<String>(), "\u0301a".to_strbuf());
+        assert_eq!("\ud4db".nfkd_chars().collect::<String>(), "\u1111\u1171\u11b6".to_strbuf());
+        assert_eq!("\uac1c".nfkd_chars().collect::<String>(), "\u1100\u1162".to_strbuf());
     }
 
     #[test]
@@ -2035,7 +2035,7 @@ mod tests {
         }
 
         t::<&str>();
-        t::<StrBuf>();
+        t::<String>();
     }
 
     #[test]
@@ -2110,7 +2110,7 @@ mod tests {
 
     #[test]
     fn test_from_str() {
-      let owned: Option<StrBuf> = from_str("string");
+      let owned: Option<String> = from_str("string");
       assert_eq!(owned, Some("string".to_strbuf()));
     }
 

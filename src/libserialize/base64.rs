@@ -54,7 +54,7 @@ static URLSAFE_CHARS: &'static[u8] = bytes!("ABCDEFGHIJKLMNOPQRSTUVWXYZ",
 pub trait ToBase64 {
     /// Converts the value of `self` to a base64 value following the specified
     /// format configuration, returning the owned string.
-    fn to_base64(&self, config: Config) -> StrBuf;
+    fn to_base64(&self, config: Config) -> String;
 }
 
 impl<'a> ToBase64 for &'a [u8] {
@@ -73,7 +73,7 @@ impl<'a> ToBase64 for &'a [u8] {
      * }
      * ```
      */
-    fn to_base64(&self, config: Config) -> StrBuf {
+    fn to_base64(&self, config: Config) -> String {
         let bytes = match config.char_set {
             Standard => STANDARD_CHARS,
             UrlSafe => URLSAFE_CHARS
@@ -181,7 +181,7 @@ impl<'a> FromBase64 for &'a str {
      * Convert any base64 encoded string (literal, `@`, `&`, or `~`)
      * to the byte values it encodes.
      *
-     * You can use the `StrBuf::from_utf8` function in `std::strbuf` to turn a
+     * You can use the `String::from_utf8` function in `std::string` to turn a
      * `Vec<u8>` into a string with characters corresponding to those values.
      *
      * # Example
@@ -197,7 +197,7 @@ impl<'a> FromBase64 for &'a str {
      *     println!("base64 output: {}", hello_str);
      *     let res = hello_str.as_slice().from_base64();
      *     if res.is_ok() {
-     *       let opt_bytes = StrBuf::from_utf8(res.unwrap());
+     *       let opt_bytes = String::from_utf8(res.unwrap());
      *       if opt_bytes.is_ok() {
      *         println!("decoded from base64: {}", opt_bytes.unwrap());
      *       }

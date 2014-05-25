@@ -22,7 +22,7 @@ use std::cell::RefCell;
 use std::fmt;
 use std::iter;
 use std::slice;
-use std::strbuf::StrBuf;
+use std::string::String;
 
 #[deriving(Clone, Eq)]
 pub enum PathElem {
@@ -79,10 +79,10 @@ impl<'a, T: Copy> Iterator<T> for Values<'a, T> {
 /// The type of the iterator used by with_path.
 pub type PathElems<'a, 'b> = iter::Chain<Values<'a, PathElem>, LinkedPath<'b>>;
 
-pub fn path_to_str<PI: Iterator<PathElem>>(mut path: PI) -> StrBuf {
+pub fn path_to_str<PI: Iterator<PathElem>>(mut path: PI) -> String {
     let itr = token::get_ident_interner();
 
-    path.fold(StrBuf::new(), |mut s, e| {
+    path.fold(String::new(), |mut s, e| {
         let e = itr.get(e.name());
         if !s.is_empty() {
             s.push_str("::");
@@ -326,11 +326,11 @@ impl Map {
         self.with_path_next(id, None, f)
     }
 
-    pub fn path_to_str(&self, id: NodeId) -> StrBuf {
+    pub fn path_to_str(&self, id: NodeId) -> String {
         self.with_path(id, |path| path_to_str(path))
     }
 
-    fn path_to_str_with_ident(&self, id: NodeId, i: Ident) -> StrBuf {
+    fn path_to_str_with_ident(&self, id: NodeId, i: Ident) -> String {
         self.with_path(id, |path| {
             path_to_str(path.chain(Some(PathName(i.name)).move_iter()))
         })
@@ -416,7 +416,7 @@ impl Map {
             .unwrap_or_else(|| fail!("AstMap.span: could not find span for id {}", id))
     }
 
-    pub fn node_to_str(&self, id: NodeId) -> StrBuf {
+    pub fn node_to_str(&self, id: NodeId) -> String {
         node_id_to_str(self, id)
     }
 }
@@ -663,7 +663,7 @@ pub fn map_decoded_item<F: FoldOps>(map: &Map,
     ii
 }
 
-fn node_id_to_str(map: &Map, id: NodeId) -> StrBuf {
+fn node_id_to_str(map: &Map, id: NodeId) -> String {
     match map.find(id) {
         Some(NodeItem(item)) => {
             let path_str = map.path_to_str_with_ident(id, item.ident);

@@ -10,7 +10,7 @@
 
 
 trait Foo {
-    fn bar(&self) -> StrBuf {
+    fn bar(&self) -> String {
         format_strbuf!("test")
     }
 }

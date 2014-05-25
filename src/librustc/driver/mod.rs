@@ -35,7 +35,7 @@ pub mod session;
 pub mod config;
 
 
-pub fn main_args(args: &[StrBuf]) -> int {
+pub fn main_args(args: &[String]) -> int {
     let owned_args = args.to_owned();
     monitor(proc() run_compiler(owned_args));
     0
@@ -44,7 +44,7 @@ pub fn main_args(args: &[StrBuf]) -> int {
 static BUG_REPORT_URL: &'static str =
     "http://doc.rust-lang.org/complement-bugreport.html";
 
-fn run_compiler(args: &[StrBuf]) {
+fn run_compiler(args: &[String]) {
     let matches = match handle_options(Vec::from_slice(args)) {
         Some(matches) => matches,
         None => return
@@ -143,7 +143,7 @@ Available lint options:
     for &(_, name) in lint_dict.iter() {
         max_key = cmp::max(name.len(), max_key);
     }
-    fn padded(max: uint, s: &str) -> StrBuf {
+    fn padded(max: uint, s: &str) -> String {
         format!("{}{}", " ".repeat(max - s.len()), s)
     }
     println!("\nAvailable lint checks:\n");
@@ -192,7 +192,7 @@ fn describe_codegen_flags() {
 /// Process command line options. Emits messages as appropirate.If compilation
 /// should continue, returns a getopts::Matches object parsed from args, otherwise
 /// returns None.
-pub fn handle_options(mut args: Vec<StrBuf>) -> Option<getopts::Matches> {
+pub fn handle_options(mut args: Vec<String>) -> Option<getopts::Matches> {
     // Throw away the first argument, the name of the binary
     let _binary = args.shift().unwrap();
 

@@ -34,7 +34,7 @@ impl<'doc> Doc<'doc> {
         str::from_utf8(self.data.slice(self.start, self.end)).unwrap()
     }
 
-    pub fn as_str(&self) -> StrBuf {
+    pub fn as_str(&self) -> String {
         self.as_str_slice().to_strbuf()
     }
 }
@@ -80,7 +80,7 @@ pub enum EbmlEncoderTag {
 #[deriving(Show)]
 pub enum Error {
     IntTooBig(uint),
-    Expected(StrBuf),
+    Expected(String),
     IoError(io::IoError)
 }
 // --------------------------------------
@@ -443,7 +443,7 @@ pub mod reader {
         fn read_char(&mut self) -> DecodeResult<char> {
             Ok(char::from_u32(doc_as_u32(try!(self.next_doc(EsChar)))).unwrap())
         }
-        fn read_str(&mut self) -> DecodeResult<StrBuf> {
+        fn read_str(&mut self) -> DecodeResult<String> {
             Ok(try!(self.next_doc(EsStr)).as_str())
         }
 

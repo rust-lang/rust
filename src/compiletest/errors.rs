@@ -13,8 +13,8 @@ use regex::Regex;
 
 pub struct ExpectedError {
     pub line: uint,
-    pub kind: StrBuf,
-    pub msg: StrBuf,
+    pub kind: String,
+    pub msg: String,
 }
 
 pub static EXPECTED_PATTERN : &'static str = r"//~(?P<adjusts>\^*)\s*(?P<kind>\S*)\s*(?P<msg>.*)";

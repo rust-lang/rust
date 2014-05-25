@@ -92,7 +92,7 @@ impl<T: TotalEq + Hash + Clone + 'static> Interner<T> {
 
 #[deriving(Clone, Eq, Hash, Ord)]
 pub struct RcStr {
-    string: Rc<StrBuf>,
+    string: Rc<String>,
 }
 
 impl TotalEq for RcStr {}

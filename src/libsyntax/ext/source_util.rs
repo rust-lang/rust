@@ -74,7 +74,7 @@ pub fn expand_mod(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     let string = cx.mod_path()
                    .iter()
                    .map(|x| token::get_ident(*x).get().to_strbuf())
-                   .collect::<Vec<StrBuf>>()
+                   .collect::<Vec<String>>()
                    .connect("::");
     base::MacExpr::new(cx.expr_str(
             sp,

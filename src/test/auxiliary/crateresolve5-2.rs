@@ -12,7 +12,7 @@
 
 #![crate_type = "lib"]
 
-pub struct NameVal { pub name: StrBuf, pub val: int }
+pub struct NameVal { pub name: String, pub val: int }
 pub fn struct_nameval() -> NameVal {
     NameVal { name: "crateresolve5".to_strbuf(), val: 10 }
 }

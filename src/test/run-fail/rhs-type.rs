@@ -15,7 +15,7 @@
 #![allow(unreachable_code)]
 #![allow(unused_variable)]
 
-struct T { t: StrBuf }
+struct T { t: String }
 
 fn main() {
     let pth = fail!("bye");

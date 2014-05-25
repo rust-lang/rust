@@ -38,7 +38,7 @@ use std::io::Seek;
 use std::io::MemWriter;
 use std::mem;
 use std::rc::Rc;
-use std::strbuf::StrBuf;
+use std::string::String;
 
 use serialize::ebml::reader;
 use serialize::ebml;
@@ -1152,8 +1152,8 @@ impl<'a> ebml_decoder_decoder_helpers for reader::Decoder<'a> {
             Ok(ty)
         }).unwrap();
 
-        fn type_string(doc: ebml::Doc) -> StrBuf {
-            let mut str = StrBuf::new();
+        fn type_string(doc: ebml::Doc) -> String {
+            let mut str = String::new();
             for i in range(doc.start, doc.end) {
                 str.push_char(doc.data[i] as char);
             }

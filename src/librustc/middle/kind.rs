@@ -574,7 +574,7 @@ pub fn check_cast_for_escaping_regions(
 }
 
 // Ensure that `ty` has a statically known size (i.e., it has the `Sized` bound).
-fn check_sized(tcx: &ty::ctxt, ty: ty::t, name: StrBuf, sp: Span) {
+fn check_sized(tcx: &ty::ctxt, ty: ty::t, name: String, sp: Span) {
     if !ty::type_is_sized(tcx, ty) {
         tcx.sess.span_err(sp,
                           format!("variable `{}` has dynamically sized type \

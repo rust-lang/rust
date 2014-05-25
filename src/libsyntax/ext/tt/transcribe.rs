@@ -101,7 +101,7 @@ fn lookup_cur_matched(r: &TtReader, name: Ident) -> Rc<NamedMatch> {
 enum LockstepIterSize {
     LisUnconstrained,
     LisConstraint(uint, Ident),
-    LisContradiction(StrBuf),
+    LisContradiction(String),
 }
 
 fn lis_merge(lhs: LockstepIterSize, rhs: LockstepIterSize) -> LockstepIterSize {

@@ -22,7 +22,7 @@ fn not_win32(os: abi::Os) -> bool {
   os != abi::OsWin32
 }
 
-pub fn get_rpath_flags(sess: &Session, out_filename: &Path) -> Vec<StrBuf> {
+pub fn get_rpath_flags(sess: &Session, out_filename: &Path) -> Vec<String> {
     let os = sess.targ_cfg.os;
 
     // No rpath on windows
@@ -56,7 +56,7 @@ pub fn get_rpath_flags(sess: &Session, out_filename: &Path) -> Vec<StrBuf> {
     flags
 }
 
-pub fn rpaths_to_flags(rpaths: &[StrBuf]) -> Vec<StrBuf> {
+pub fn rpaths_to_flags(rpaths: &[String]) -> Vec<String> {
     let mut ret = Vec::new();
     for rpath in rpaths.iter() {
         ret.push(format!("-Wl,-rpath,{}", (*rpath).as_slice()));
@@ -68,7 +68,7 @@ fn get_rpaths(os: abi::Os,
               sysroot: &Path,
               output: &Path,
               libs: &[Path],
-              target_triple: &str) -> Vec<StrBuf> {
+              target_triple: &str) -> Vec<String> {
     debug!("sysroot: {}", sysroot.display());
     debug!("output: {}", output.display());
     debug!("libs:");
@@ -85,7 +85,7 @@ fn get_rpaths(os: abi::Os,
     // And a final backup rpath to the global library location.
     let fallback_rpaths = vec!(get_install_prefix_rpath(sysroot, target_triple));
 
-    fn log_rpaths(desc: &str, rpaths: &[StrBuf]) {
+    fn log_rpaths(desc: &str, rpaths: &[String]) {
         debug!("{} rpaths:", desc);
         for rpath in rpaths.iter() {
             debug!("    {}", *rpath);
@@ -105,14 +105,14 @@ fn get_rpaths(os: abi::Os,
 
 fn get_rpaths_relative_to_output(os: abi::Os,
                                  output: &Path,
-                                 libs: &[Path]) -> Vec<StrBuf> {
+                                 libs: &[Path]) -> Vec<String> {
     libs.iter().map(|a| get_rpath_relative_to_output(os, output, a)).collect()
 }
 
 pub fn get_rpath_relative_to_output(os: abi::Os,
                                     output: &Path,
                                     lib: &Path)
-                                 -> StrBuf {
+                                 -> String {
     use std::os;
 
     assert!(not_win32(os));
@@ -137,7 +137,7 @@ pub fn get_rpath_relative_to_output(os: abi::Os,
             relative.as_str().expect("non-utf8 component in path"))
 }
 
-pub fn get_install_prefix_rpath(sysroot: &Path, target_triple: &str) -> StrBuf {
+pub fn get_install_prefix_rpath(sysroot: &Path, target_triple: &str) -> String {
     let install_prefix = option_env!("CFG_PREFIX").expect("CFG_PREFIX");
 
     let tlib = filesearch::relative_target_lib_path(sysroot, target_triple);
@@ -148,7 +148,7 @@ pub fn get_install_prefix_rpath(sysroot: &Path, target_triple: &str) -> StrBuf {
     path.as_str().expect("non-utf8 component in rpath").to_strbuf()
 }
 
-pub fn minimize_rpaths(rpaths: &[StrBuf]) -> Vec<StrBuf> {
+pub fn minimize_rpaths(rpaths: &[String]) -> Vec<String> {
     let mut set = HashSet::new();
     let mut minimized = Vec::new();
     for rpath in rpaths.iter() {

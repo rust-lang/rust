@@ -18,7 +18,7 @@ use option::{Option, Some, None};
 use slice::{ImmutableVector, MutableVector, Vector};
 use str::{OwnedStr, Str, StrAllocating, StrSlice};
 use str;
-use strbuf::StrBuf;
+use string::String;
 use to_str::{IntoStr};
 use vec::Vec;
 
@@ -290,7 +290,7 @@ impl OwnedAsciiCast for ~[u8] {
     }
 }
 
-impl OwnedAsciiCast for StrBuf {
+impl OwnedAsciiCast for String {
     #[inline]
     fn is_ascii(&self) -> bool {
         self.as_slice().is_ascii()
@@ -355,7 +355,7 @@ impl<'a> AsciiStr for &'a [Ascii] {
 
 impl IntoStr for ~[Ascii] {
     #[inline]
-    fn into_str(self) -> StrBuf {
+    fn into_str(self) -> String {
         let vector: Vec<Ascii> = self.as_slice().iter().map(|x| *x).collect();
         vector.into_str()
     }
@@ -363,7 +363,7 @@ impl IntoStr for ~[Ascii] {
 
 impl IntoStr for Vec<Ascii> {
     #[inline]
-    fn into_str(self) -> StrBuf {
+    fn into_str(self) -> String {
         unsafe {
             let s: &str = mem::transmute(self.as_slice());
             s.to_strbuf()
@@ -388,12 +388,12 @@ pub trait OwnedStrAsciiExt {
     /// Convert the string to ASCII upper case:
     /// ASCII letters 'a' to 'z' are mapped to 'A' to 'Z',
     /// but non-ASCII letters are unchanged.
-    fn into_ascii_upper(self) -> StrBuf;
+    fn into_ascii_upper(self) -> String;
 
     /// Convert the string to ASCII lower case:
     /// ASCII letters 'A' to 'Z' are mapped to 'a' to 'z',
     /// but non-ASCII letters are unchanged.
-    fn into_ascii_lower(self) -> StrBuf;
+    fn into_ascii_lower(self) -> String;
 }
 
 /// Extension methods for ASCII-subset only operations on string slices
@@ -401,12 +401,12 @@ pub trait StrAsciiExt {
     /// Makes a copy of the string in ASCII upper case:
     /// ASCII letters 'a' to 'z' are mapped to 'A' to 'Z',
     /// but non-ASCII letters are unchanged.
-    fn to_ascii_upper(&self) -> StrBuf;
+    fn to_ascii_upper(&self) -> String;
 
     /// Makes a copy of the string in ASCII lower case:
     /// ASCII letters 'A' to 'Z' are mapped to 'a' to 'z',
     /// but non-ASCII letters are unchanged.
-    fn to_ascii_lower(&self) -> StrBuf;
+    fn to_ascii_lower(&self) -> String;
 
     /// Check that two strings are an ASCII case-insensitive match.
     /// Same as `to_ascii_lower(a) == to_ascii_lower(b)`,
@@ -416,12 +416,12 @@ pub trait StrAsciiExt {
 
 impl<'a> StrAsciiExt for &'a str {
     #[inline]
-    fn to_ascii_upper(&self) -> StrBuf {
+    fn to_ascii_upper(&self) -> String {
         unsafe { str_copy_map_bytes(*self, ASCII_UPPER_MAP) }
     }
 
     #[inline]
-    fn to_ascii_lower(&self) -> StrBuf {
+    fn to_ascii_lower(&self) -> String {
         unsafe { str_copy_map_bytes(*self, ASCII_LOWER_MAP) }
     }
 
@@ -436,20 +436,20 @@ impl<'a> StrAsciiExt for &'a str {
     }
 }
 
-impl OwnedStrAsciiExt for StrBuf {
+impl OwnedStrAsciiExt for String {
     #[inline]
-    fn into_ascii_upper(self) -> StrBuf {
+    fn into_ascii_upper(self) -> String {
         unsafe { str_map_bytes(self, ASCII_UPPER_MAP) }
     }
 
     #[inline]
-    fn into_ascii_lower(self) -> StrBuf {
+    fn into_ascii_lower(self) -> String {
         unsafe { str_map_bytes(self, ASCII_LOWER_MAP) }
     }
 }
 
 #[inline]
-unsafe fn str_map_bytes(string: StrBuf, map: &'static [u8]) -> StrBuf {
+unsafe fn str_map_bytes(string: String, map: &'static [u8]) -> String {
     let mut bytes = string.into_bytes();
 
     for b in bytes.mut_iter() {
@@ -460,7 +460,7 @@ unsafe fn str_map_bytes(string: StrBuf, map: &'static [u8]) -> StrBuf {
 }
 
 #[inline]
-unsafe fn str_copy_map_bytes(string: &str, map: &'static [u8]) -> StrBuf {
+unsafe fn str_copy_map_bytes(string: &str, map: &'static [u8]) -> String {
     let mut s = string.to_strbuf();
     for b in s.as_mut_bytes().mut_iter() {
         *b = map[*b as uint];

@@ -185,7 +185,7 @@ fn item_method_sort(item: ebml::Doc) -> char {
     ret
 }
 
-fn item_symbol(item: ebml::Doc) -> StrBuf {
+fn item_symbol(item: ebml::Doc) -> String {
     reader::get_doc(item, tag_items_data_item_symbol).as_str().to_strbuf()
 }
 
@@ -452,7 +452,7 @@ pub fn get_impl_vtables(cdata: Cmd,
 }
 
 
-pub fn get_symbol(data: &[u8], id: ast::NodeId) -> StrBuf {
+pub fn get_symbol(data: &[u8], id: ast::NodeId) -> String {
     return item_symbol(lookup_item(id, data));
 }
 
@@ -1093,7 +1093,7 @@ pub fn get_crate_deps(data: &[u8]) -> Vec<CrateDep> {
     let cratedoc = reader::Doc(data);
     let depsdoc = reader::get_doc(cratedoc, tag_crate_deps);
     let mut crate_num = 1;
-    fn docstr(doc: ebml::Doc, tag_: uint) -> StrBuf {
+    fn docstr(doc: ebml::Doc, tag_: uint) -> String {
         let d = reader::get_doc(doc, tag_);
         d.as_str_slice().to_strbuf()
     }
@@ -1142,7 +1142,7 @@ pub fn maybe_get_crate_id(data: &[u8]) -> Option<CrateId> {
     })
 }
 
-pub fn get_crate_triple(data: &[u8]) -> StrBuf {
+pub fn get_crate_triple(data: &[u8]) -> String {
     let cratedoc = reader::Doc(data);
     let triple_doc = reader::maybe_get_doc(cratedoc, tag_crate_triple);
     triple_doc.expect("No triple in crate").as_str().to_strbuf()
@@ -1238,7 +1238,7 @@ pub fn get_trait_of_method(cdata: Cmd, id: ast::NodeId, tcx: &ty::ctxt)
 
 
 pub fn get_native_libraries(cdata: Cmd)
-                            -> Vec<(cstore::NativeLibaryKind, StrBuf)> {
+                            -> Vec<(cstore::NativeLibaryKind, String)> {
     let libraries = reader::get_doc(reader::Doc(cdata.data()),
                                     tag_native_libraries);
     let mut result = Vec::new();
@@ -1259,7 +1259,7 @@ pub fn get_macro_registrar_fn(data: &[u8]) -> Option<ast::NodeId> {
         .map(|doc| FromPrimitive::from_u32(reader::doc_as_u32(doc)).unwrap())
 }
 
-pub fn get_exported_macros(data: &[u8]) -> Vec<StrBuf> {
+pub fn get_exported_macros(data: &[u8]) -> Vec<String> {
     let macros = reader::get_doc(reader::Doc(data),
                                  tag_exported_macros);
     let mut result = Vec::new();

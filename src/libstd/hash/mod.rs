@@ -23,7 +23,7 @@
  * #[deriving(Hash)]
  * struct Person {
  *     id: uint,
- *     name: StrBuf,
+ *     name: String,
  *     phone: u64,
  * }
  *
@@ -43,7 +43,7 @@
  *
  * struct Person {
  *     id: uint,
- *     name: StrBuf,
+ *     name: String,
  *     phone: u64,
  * }
  *

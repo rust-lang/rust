@@ -104,7 +104,7 @@ pub struct EnvValue {
 }
 
 impl EnvValue {
-    pub fn to_str(&self, ccx: &CrateContext) -> StrBuf {
+    pub fn to_str(&self, ccx: &CrateContext) -> String {
         format_strbuf!("{}({})", self.action, self.datum.to_str(ccx))
     }
 }
