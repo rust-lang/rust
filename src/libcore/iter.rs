@@ -309,7 +309,7 @@ pub trait Iterator<A> {
     /// Creates a new iterator which behaves in a similar fashion to fold.
     /// There is a state which is passed between each iteration and can be
     /// mutated as necessary. The yielded values from the closure are yielded
-    /// from the Scan instance when not None.
+    /// from the Scan instance.
     ///
     /// # Example
     ///
@@ -330,6 +330,35 @@ pub trait Iterator<A> {
     fn scan<'r, St, B>(self, initial_state: St, f: |&mut St, A|: 'r -> Option<B>)
         -> Scan<'r, A, B, Self, St> {
         Scan{iter: self, f: f, state: initial_state}
+    }
+
+    /// Creates a new iterator which behaves like `scan`, but skips None
+    /// results.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let s = "this is a sentence";
+    /// let mut it = s.char_indices().filter_scan(None, |s_idx, (idx, c)| {
+    ///     if c.is_whitespace() {
+    ///         s_idx.take().map(|i| s.slice(i, idx))
+    ///     } else {
+    ///         if s_idx.is_none() {
+    ///             *s_idx = Some(idx);
+    ///         }
+    ///         None
+    ///     }
+    /// }).chain_state(|idx| idx.map(|i| s.slice_from(i)));
+    /// assert_eq!(it.next(), Some("this"));
+    /// assert_eq!(it.next(), Some("is"));
+    /// assert_eq!(it.next(), Some("a"));
+    /// assert_eq!(it.next(), Some("sentence"));
+    /// assert_eq!(it.next(), None);
+    /// ```
+    #[inline]
+    fn filter_scan<'r, St, B>(self, initial_state: St, f: |&mut St, A|: 'r -> Option<B>)
+                             -> FilterScan<'r, A, B, Self, St> {
+        FilterScan { iter: self, f: f, state: initial_state, state_f: None }
     }
 
     /// Creates an iterator that maps each element to an iterator,
@@ -1682,6 +1711,45 @@ impl<'a, A, B, T: Iterator<A>, St> Iterator<B> for Scan<'a, A, B, T, St> {
     fn size_hint(&self) -> (uint, Option<uint>) {
         let (_, upper) = self.iter.size_hint();
         (0, upper) // can't know a lower bound, due to the scan function
+    }
+}
+
+/// An iterator to maintain state while iterating another iterator, with filtering.
+pub struct FilterScan<'a, A, B, T, St> {
+    iter: T,
+    f: |&mut St, A|: 'a -> Option<B>,
+    state_f: Option<|&mut St|: 'a -> Option<B>>,
+
+    /// The current internal state to be passed to the closure next.
+    pub state: St
+}
+
+impl<'a, A, B, T, St> FilterScan<'a, A, B, T, St> {
+    /// Yields one more iteration value by mapping the state after the iterator is done.
+    ///
+    /// Calling this a second time will replace the previous state mapping function.
+    #[inline]
+    pub fn chain_state(self, state_f: |&mut St|: 'a -> Option<B>) -> FilterScan<'a, A, B, T, St> {
+        FilterScan { state_f: Some(state_f), ..self }
+    }
+}
+
+impl<'a, A, B, T: Iterator<A>, St> Iterator<B> for FilterScan<'a, A, B, T, St> {
+    #[inline]
+    fn next(&mut self) -> Option<B> {
+        for x in self.iter {
+            match (self.f)(&mut self.state, x) {
+                a@Some(_) => return a,
+                None => ()
+            }
+        }
+        self.state_f.take().and_then(|f| f(&mut self.state))
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        let (_, upper) = self.iter.size_hint();
+        (0, upper.map(|u| u + self.state_f.as_ref().map_or(0, |_| 1)))
     }
 }
 
