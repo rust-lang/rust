@@ -16,7 +16,7 @@ Utilities for program-wide and customizable logging
 
 ```
 #![feature(phase)]
-#[phase(syntax, link)] extern crate log;
+#[phase(plugin, link)] extern crate log;
 
 fn main() {
     debug!("this is a debug {}", "message");

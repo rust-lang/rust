@@ -87,7 +87,7 @@ pub fn is_match(regex: &str, text: &str) -> Result<bool, parse::Error> {
 /// ```rust
 /// #![feature(phase)]
 /// extern crate regex;
-/// #[phase(syntax)] extern crate regex_macros;
+/// #[phase(plugin)] extern crate regex_macros;
 ///
 /// fn main() {
 ///     let re = regex!(r"\d+");
@@ -172,7 +172,7 @@ impl Regex {
     ///
     /// ```rust
     /// # #![feature(phase)]
-    /// # extern crate regex; #[phase(syntax)] extern crate regex_macros;
+    /// # extern crate regex; #[phase(plugin)] extern crate regex_macros;
     /// # fn main() {
     /// let text = "I categorically deny having triskaidekaphobia.";
     /// let matched = regex!(r"\b\w{13}\b").is_match(text);
@@ -197,7 +197,7 @@ impl Regex {
     ///
     /// ```rust
     /// # #![feature(phase)]
-    /// # extern crate regex; #[phase(syntax)] extern crate regex_macros;
+    /// # extern crate regex; #[phase(plugin)] extern crate regex_macros;
     /// # fn main() {
     /// let text = "I categorically deny having triskaidekaphobia.";
     /// let pos = regex!(r"\b\w{13}\b").find(text);
@@ -224,7 +224,7 @@ impl Regex {
     ///
     /// ```rust
     /// # #![feature(phase)]
-    /// # extern crate regex; #[phase(syntax)] extern crate regex_macros;
+    /// # extern crate regex; #[phase(plugin)] extern crate regex_macros;
     /// # fn main() {
     /// let text = "Retroactively relinquishing remunerations is reprehensible.";
     /// for pos in regex!(r"\b\w{13}\b").find_iter(text) {
@@ -263,7 +263,7 @@ impl Regex {
     ///
     /// ```rust
     /// # #![feature(phase)]
-    /// # extern crate regex; #[phase(syntax)] extern crate regex_macros;
+    /// # extern crate regex; #[phase(plugin)] extern crate regex_macros;
     /// # fn main() {
     /// let re = regex!(r"'([^']+)'\s+\((\d{4})\)");
     /// let text = "Not my favorite movie: 'Citizen Kane' (1941).";
@@ -281,7 +281,7 @@ impl Regex {
     ///
     /// ```rust
     /// # #![feature(phase)]
-    /// # extern crate regex; #[phase(syntax)] extern crate regex_macros;
+    /// # extern crate regex; #[phase(plugin)] extern crate regex_macros;
     /// # fn main() {
     /// let re = regex!(r"'(?P<title>[^']+)'\s+\((?P<year>\d{4})\)");
     /// let text = "Not my favorite movie: 'Citizen Kane' (1941).";
@@ -314,7 +314,7 @@ impl Regex {
     ///
     /// ```rust
     /// # #![feature(phase)]
-    /// # extern crate regex; #[phase(syntax)] extern crate regex_macros;
+    /// # extern crate regex; #[phase(plugin)] extern crate regex_macros;
     /// # fn main() {
     /// let re = regex!(r"'(?P<title>[^']+)'\s+\((?P<year>\d{4})\)");
     /// let text = "'Citizen Kane' (1941), 'The Wizard of Oz' (1939), 'M' (1931).";
@@ -350,7 +350,7 @@ impl Regex {
     ///
     /// ```rust
     /// # #![feature(phase)]
-    /// # extern crate regex; #[phase(syntax)] extern crate regex_macros;
+    /// # extern crate regex; #[phase(plugin)] extern crate regex_macros;
     /// # fn main() {
     /// let re = regex!(r"[ \t]+");
     /// let fields: Vec<&str> = re.split("a b \t  c\td    e").collect();
@@ -380,7 +380,7 @@ impl Regex {
     ///
     /// ```rust
     /// # #![feature(phase)]
-    /// # extern crate regex; #[phase(syntax)] extern crate regex_macros;
+    /// # extern crate regex; #[phase(plugin)] extern crate regex_macros;
     /// # fn main() {
     /// let re = regex!(r"\W+");
     /// let fields: Vec<&str> = re.splitn("Hey! How are you?", 3).collect();
@@ -410,7 +410,7 @@ impl Regex {
     ///
     /// ```rust
     /// # #![feature(phase)]
-    /// # extern crate regex; #[phase(syntax)] extern crate regex_macros;
+    /// # extern crate regex; #[phase(plugin)] extern crate regex_macros;
     /// # fn main() {
     /// let re = regex!("[^01]+");
     /// assert_eq!(re.replace("1078910", "").as_slice(), "1010");
@@ -424,7 +424,7 @@ impl Regex {
     ///
     /// ```rust
     /// # #![feature(phase)]
-    /// # extern crate regex; #[phase(syntax)] extern crate regex_macros;
+    /// # extern crate regex; #[phase(plugin)] extern crate regex_macros;
     /// # use regex::Captures; fn main() {
     /// let re = regex!(r"([^,\s]+),\s+(\S+)");
     /// let result = re.replace("Springsteen, Bruce", |caps: &Captures| {
@@ -441,7 +441,7 @@ impl Regex {
     ///
     /// ```rust
     /// # #![feature(phase)]
-    /// # extern crate regex; #[phase(syntax)] extern crate regex_macros;
+    /// # extern crate regex; #[phase(plugin)] extern crate regex_macros;
     /// # fn main() {
     /// let re = regex!(r"(?P<last>[^,\s]+),\s+(?P<first>\S+)");
     /// let result = re.replace("Springsteen, Bruce", "$first $last");
@@ -458,7 +458,7 @@ impl Regex {
     ///
     /// ```rust
     /// # #![feature(phase)]
-    /// # extern crate regex; #[phase(syntax)] extern crate regex_macros;
+    /// # extern crate regex; #[phase(plugin)] extern crate regex_macros;
     /// # fn main() {
     /// use regex::NoExpand;
     ///
