@@ -12,7 +12,7 @@
 
 #![feature(phase)]
 
-#[phase(syntax)]
+#[phase(plugin)]
 extern crate macro_crate_def_only;
 
 pub fn main() {

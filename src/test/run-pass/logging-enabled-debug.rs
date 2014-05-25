@@ -12,7 +12,7 @@
 // exec-env:RUST_LOG=logging-enabled-debug=debug
 
 #![feature(phase)]
-#[phase(syntax, link)]
+#[phase(plugin, link)]
 extern crate log;
 
 pub fn main() {

@@ -13,7 +13,7 @@
 
 #![feature(phase)]
 
-#[phase(syntax)]
+#[phase(plugin)]
 extern crate hexfloat;
 
 fn main() {

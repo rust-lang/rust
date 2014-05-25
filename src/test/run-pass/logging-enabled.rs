@@ -11,7 +11,7 @@
 // exec-env:RUST_LOG=logging-enabled=info
 
 #![feature(phase)]
-#[phase(syntax, link)]
+#[phase(plugin, link)]
 extern crate log;
 
 pub fn main() {

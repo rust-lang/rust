@@ -10,7 +10,7 @@
 
 #![feature(phase)]
 #![allow(non_snake_case_functions)]
-#[phase(syntax)] extern crate green;
+#[phase(plugin)] extern crate green;
 extern crate sync;
 
 use std::from_str::FromStr;

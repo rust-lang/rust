@@ -11,7 +11,7 @@
 // aux-build:macro_crate_test.rs
 // ignore-stage1
 
-#[phase(syntax)]
+#[phase(plugin)]
 //~^ ERROR compile time crate loading is experimental and possibly buggy
 extern crate macro_crate_test;
 
