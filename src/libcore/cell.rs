@@ -250,7 +250,7 @@ impl<T> RefCell<T> {
             WRITING => None,
             borrow => {
                 self.borrow.set(borrow + 1);
-                Some(Ref { parent: self })
+                Some(Ref { _parent: self })
             }
         }
     }
@@ -280,7 +280,7 @@ impl<T> RefCell<T> {
         match self.borrow.get() {
             UNUSED => {
                 self.borrow.set(WRITING);
-                Some(RefMut { parent: self })
+                Some(RefMut { _parent: self })
             },
             _ => None
         }
@@ -316,22 +316,24 @@ impl<T: Eq> Eq for RefCell<T> {
 
 /// Wraps a borrowed reference to a value in a `RefCell` box.
 pub struct Ref<'b, T> {
-    parent: &'b RefCell<T>
+    // FIXME #12808: strange name to try to avoid interfering with
+    // field accesses of the contained type via Deref
+    _parent: &'b RefCell<T>
 }
 
 #[unsafe_destructor]
 impl<'b, T> Drop for Ref<'b, T> {
     fn drop(&mut self) {
-        let borrow = self.parent.borrow.get();
+        let borrow = self._parent.borrow.get();
         debug_assert!(borrow != WRITING && borrow != UNUSED);
-        self.parent.borrow.set(borrow - 1);
+        self._parent.borrow.set(borrow - 1);
     }
 }
 
 impl<'b, T> Deref<T> for Ref<'b, T> {
     #[inline]
     fn deref<'a>(&'a self) -> &'a T {
-        unsafe { &*self.parent.value.get() }
+        unsafe { &*self._parent.value.get() }
     }
 }
 
@@ -345,40 +347,42 @@ impl<'b, T> Deref<T> for Ref<'b, T> {
 pub fn clone_ref<'b, T>(orig: &Ref<'b, T>) -> Ref<'b, T> {
     // Since this Ref exists, we know the borrow flag
     // is not set to WRITING.
-    let borrow = orig.parent.borrow.get();
+    let borrow = orig._parent.borrow.get();
     debug_assert!(borrow != WRITING && borrow != UNUSED);
-    orig.parent.borrow.set(borrow + 1);
+    orig._parent.borrow.set(borrow + 1);
 
     Ref {
-        parent: orig.parent,
+        _parent: orig._parent,
     }
 }
 
 /// Wraps a mutable borrowed reference to a value in a `RefCell` box.
 pub struct RefMut<'b, T> {
-    parent: &'b RefCell<T>
+    // FIXME #12808: strange name to try to avoid interfering with
+    // field accesses of the contained type via Deref
+    _parent: &'b RefCell<T>
 }
 
 #[unsafe_destructor]
 impl<'b, T> Drop for RefMut<'b, T> {
     fn drop(&mut self) {
-        let borrow = self.parent.borrow.get();
+        let borrow = self._parent.borrow.get();
         debug_assert!(borrow == WRITING);
-        self.parent.borrow.set(UNUSED);
+        self._parent.borrow.set(UNUSED);
     }
 }
 
 impl<'b, T> Deref<T> for RefMut<'b, T> {
     #[inline]
     fn deref<'a>(&'a self) -> &'a T {
-        unsafe { &*self.parent.value.get() }
+        unsafe { &*self._parent.value.get() }
     }
 }
 
 impl<'b, T> DerefMut<T> for RefMut<'b, T> {
     #[inline]
     fn deref_mut<'a>(&'a mut self) -> &'a mut T {
-        unsafe { &mut *self.parent.value.get() }
+        unsafe { &mut *self._parent.value.get() }
     }
 }
 
