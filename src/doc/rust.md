@@ -4098,7 +4098,7 @@ that demonstrates all four of them:
 
 ~~~~
 #![feature(phase)]
-#[phase(syntax, link)] extern crate log;
+#[phase(plugin, link)] extern crate log;
 
 fn main() {
     error!("This is an error log")
