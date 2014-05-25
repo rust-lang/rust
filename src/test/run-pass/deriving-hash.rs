@@ -15,7 +15,7 @@ use std::hash::Hash;
 #[deriving(Hash)]
 struct Person {
     id: uint,
-    name: StrBuf,
+    name: String,
     phone: uint,
 }
 

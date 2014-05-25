@@ -37,7 +37,7 @@ use std::cell::Cell;
 use std::{cmp, os, path};
 use std::io::fs;
 use std::path::is_sep;
-use std::strbuf::StrBuf;
+use std::string::String;
 
 /**
  * An iterator that yields Paths from the filesystem that match a particular
@@ -310,8 +310,8 @@ impl Pattern {
      * brackets. The resulting string will, when compiled into a `Pattern`,
      * match the input string and nothing else.
      */
-    pub fn escape(s: &str) -> StrBuf {
-        let mut escaped = StrBuf::new();
+    pub fn escape(s: &str) -> String {
+        let mut escaped = String::new();
         for c in s.chars() {
             match c {
                 // note that ! does not need escaping because it is only special inside brackets
@@ -464,8 +464,8 @@ impl Pattern {
 fn fill_todo(todo: &mut Vec<(Path, uint)>, patterns: &[Pattern], idx: uint, path: &Path,
              options: MatchOptions) {
     // convert a pattern that's just many Char(_) to a string
-    fn pattern_as_str(pattern: &Pattern) -> Option<StrBuf> {
-        let mut s = StrBuf::new();
+    fn pattern_as_str(pattern: &Pattern) -> Option<String> {
+        let mut s = String::new();
         for token in pattern.tokens.iter() {
             match *token {
                 Char(c) => s.push_char(c),

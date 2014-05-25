@@ -30,7 +30,7 @@ use reflect;
 use result::{Ok, Err};
 use slice::Vector;
 use str::{Str, StrSlice};
-use strbuf::StrBuf;
+use string::String;
 use to_str::ToStr;
 use vec::Vec;
 
@@ -602,7 +602,7 @@ pub fn write_repr<T>(writer: &mut io::Writer, object: &T) -> io::IoResult<()> {
     }
 }
 
-pub fn repr_to_str<T>(t: &T) -> StrBuf {
+pub fn repr_to_str<T>(t: &T) -> String {
     use str;
     use str::StrAllocating;
     use io;

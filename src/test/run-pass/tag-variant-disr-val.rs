@@ -37,7 +37,7 @@ pub fn main() {
     test_color(orange, 4, "orange".to_strbuf());
 }
 
-fn test_color(color: color, val: int, name: StrBuf) {
+fn test_color(color: color, val: int, name: String) {
     //assert!(unsafe::transmute(color) == val);
     assert_eq!(color as int, val);
     assert_eq!(color as f64, val as f64);
@@ -45,7 +45,7 @@ fn test_color(color: color, val: int, name: StrBuf) {
     assert!(get_color_if(color) == name);
 }
 
-fn get_color_alt(color: color) -> StrBuf {
+fn get_color_alt(color: color) -> String {
     match color {
       red => {"red".to_strbuf()}
       green => {"green".to_strbuf()}
@@ -58,7 +58,7 @@ fn get_color_alt(color: color) -> StrBuf {
     }
 }
 
-fn get_color_if(color: color) -> StrBuf {
+fn get_color_if(color: color) -> String {
     if color == red {"red".to_strbuf()}
     else if color == green {"green".to_strbuf()}
     else if color == blue {"blue".to_strbuf()}

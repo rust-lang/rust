@@ -61,7 +61,7 @@ pub enum Os {
 
 pub struct CrateMismatch {
     path: Path,
-    got: StrBuf,
+    got: String,
 }
 
 pub struct Context<'a> {
@@ -92,7 +92,7 @@ pub struct ArchiveMetadata {
 }
 
 pub struct CratePaths {
-    pub ident: StrBuf,
+    pub ident: String,
     pub dylib: Option<Path>,
     pub rlib: Option<Path>
 }
@@ -313,7 +313,7 @@ impl<'a> Context<'a> {
     //
     // If everything checks out, then `Some(hash)` is returned where `hash` is
     // the listed hash in the filename itself.
-    fn try_match(&self, file: &str, prefix: &str, suffix: &str) -> Option<StrBuf>{
+    fn try_match(&self, file: &str, prefix: &str, suffix: &str) -> Option<String>{
         let middle = file.slice(prefix.len(), file.len() - suffix.len());
         debug!("matching -- {}, middle: {}", file, middle);
         let mut parts = middle.splitn('-', 1);
@@ -496,7 +496,7 @@ impl ArchiveMetadata {
 }
 
 // Just a small wrapper to time how long reading metadata takes.
-fn get_metadata_section(os: Os, filename: &Path) -> Result<MetadataBlob, StrBuf> {
+fn get_metadata_section(os: Os, filename: &Path) -> Result<MetadataBlob, String> {
     let start = time::precise_time_ns();
     let ret = get_metadata_section_imp(os, filename);
     info!("reading {} => {}ms", filename.filename_display(),
@@ -504,7 +504,7 @@ fn get_metadata_section(os: Os, filename: &Path) -> Result<MetadataBlob, StrBuf>
     return ret;
 }
 
-fn get_metadata_section_imp(os: Os, filename: &Path) -> Result<MetadataBlob, StrBuf> {
+fn get_metadata_section_imp(os: Os, filename: &Path) -> Result<MetadataBlob, String> {
     if !filename.exists() {
         return Err(format_strbuf!("no such file: '{}'", filename.display()));
     }

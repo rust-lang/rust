@@ -21,16 +21,16 @@ mod a {
 
 mod b {
     use plus;
-    impl plus for StrBuf { fn plus(&self) -> int { 200 } }
+    impl plus for String { fn plus(&self) -> int { 200 } }
 }
 
 trait uint_utils {
-    fn str(&self) -> StrBuf;
+    fn str(&self) -> String;
     fn multi(&self, f: |uint|);
 }
 
 impl uint_utils for uint {
-    fn str(&self) -> StrBuf {
+    fn str(&self) -> String {
         self.to_str().to_strbuf()
     }
     fn multi(&self, f: |uint|) {

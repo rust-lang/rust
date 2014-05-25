@@ -106,7 +106,7 @@ syn keyword rustTrait CloneableVector ImmutableCloneableVector MutableCloneableV
 syn keyword rustTrait ImmutableVector MutableVector
 syn keyword rustTrait ImmutableEqVector ImmutableTotalOrdVector MutableTotalOrdVector
 syn keyword rustTrait Vector VectorVector OwnedVector MutableVectorAllocating
-syn keyword rustTrait StrBuf
+syn keyword rustTrait String
 syn keyword rustTrait Vec
 
 "syn keyword rustFunction sync_channel channel

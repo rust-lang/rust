@@ -10,7 +10,7 @@
 
 
 struct HTMLImageData {
-    image: Option<StrBuf>
+    image: Option<String>
 }
 
 struct ElementData {

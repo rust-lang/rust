@@ -278,7 +278,7 @@ pub struct ctxt {
     pub freevars: RefCell<freevars::freevar_map>,
     pub tcache: type_cache,
     pub rcache: creader_cache,
-    pub short_names_cache: RefCell<HashMap<t, StrBuf>>,
+    pub short_names_cache: RefCell<HashMap<t, String>>,
     pub needs_unwind_cleanup_cache: RefCell<HashMap<t, bool>>,
     pub tc_cache: RefCell<HashMap<uint, TypeContents>>,
     pub ast_ty_to_ty_cache: RefCell<NodeMap<ast_ty_to_ty_cache_entry>>,
@@ -1540,7 +1540,7 @@ pub fn substs_is_noop(substs: &substs) -> bool {
         substs.self_ty.is_none()
 }
 
-pub fn substs_to_str(cx: &ctxt, substs: &substs) -> StrBuf {
+pub fn substs_to_str(cx: &ctxt, substs: &substs) -> String {
     substs.repr(cx)
 }
 
@@ -3201,7 +3201,7 @@ pub fn field_idx_strict(tcx: &ctxt, name: ast::Name, fields: &[field])
         token::get_name(name),
         fields.iter()
               .map(|f| token::get_ident(f.ident).get().to_strbuf())
-              .collect::<Vec<StrBuf>>()).as_slice());
+              .collect::<Vec<String>>()).as_slice());
 }
 
 pub fn method_idx(id: ast::Ident, meths: &[Rc<Method>]) -> Option<uint> {
@@ -3224,7 +3224,7 @@ pub fn param_tys_in_type(ty: t) -> Vec<param_ty> {
     rslt
 }
 
-pub fn ty_sort_str(cx: &ctxt, t: t) -> StrBuf {
+pub fn ty_sort_str(cx: &ctxt, t: t) -> String {
     match get(t).sty {
         ty_nil | ty_bot | ty_bool | ty_char | ty_int(_) |
         ty_uint(_) | ty_float(_) | ty_str => {
@@ -3255,7 +3255,7 @@ pub fn ty_sort_str(cx: &ctxt, t: t) -> StrBuf {
     }
 }
 
-pub fn type_err_to_str(cx: &ctxt, err: &type_err) -> StrBuf {
+pub fn type_err_to_str(cx: &ctxt, err: &type_err) -> String {
     /*!
      *
      * Explains the source of a type err in a short,
@@ -3265,7 +3265,7 @@ pub fn type_err_to_str(cx: &ctxt, err: &type_err) -> StrBuf {
      * to present additional details, particularly when
      * it comes to lifetime-related errors. */
 
-    fn tstore_to_closure(s: &TraitStore) -> StrBuf {
+    fn tstore_to_closure(s: &TraitStore) -> String {
         match s {
             &UniqTraitStore => "proc".to_strbuf(),
             &RegionTraitStore(..) => "closure".to_strbuf()
@@ -3708,7 +3708,7 @@ pub fn substd_enum_variants(cx: &ctxt,
     }).collect()
 }
 
-pub fn item_path_str(cx: &ctxt, id: ast::DefId) -> StrBuf {
+pub fn item_path_str(cx: &ctxt, id: ast::DefId) -> String {
     with_path(cx, id, |path| ast_map::path_to_str(path)).to_strbuf()
 }
 
@@ -4276,14 +4276,14 @@ pub fn each_bound_trait_and_supertraits(tcx: &ctxt,
     return true;
 }
 
-pub fn get_tydesc_ty(tcx: &ctxt) -> Result<t, StrBuf> {
+pub fn get_tydesc_ty(tcx: &ctxt) -> Result<t, String> {
     tcx.lang_items.require(TyDescStructLangItem).map(|tydesc_lang_item| {
         tcx.intrinsic_defs.borrow().find_copy(&tydesc_lang_item)
             .expect("Failed to resolve TyDesc")
     })
 }
 
-pub fn get_opaque_ty(tcx: &ctxt) -> Result<t, StrBuf> {
+pub fn get_opaque_ty(tcx: &ctxt) -> Result<t, String> {
     tcx.lang_items.require(OpaqueStructLangItem).map(|opaque_lang_item| {
         tcx.intrinsic_defs.borrow().find_copy(&opaque_lang_item)
             .expect("Failed to resolve Opaque")
@@ -4291,7 +4291,7 @@ pub fn get_opaque_ty(tcx: &ctxt) -> Result<t, StrBuf> {
 }
 
 pub fn visitor_object_ty(tcx: &ctxt,
-                         region: ty::Region) -> Result<(Rc<TraitRef>, t), StrBuf> {
+                         region: ty::Region) -> Result<(Rc<TraitRef>, t), String> {
     let trait_lang_item = match tcx.lang_items.require(TyVisitorTraitLangItem) {
         Ok(id) => id,
         Err(s) => { return Err(s); }

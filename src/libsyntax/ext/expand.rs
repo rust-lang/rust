@@ -1118,7 +1118,7 @@ mod test {
         }
     }
 
-    fn expand_crate_str(crate_str: StrBuf) -> ast::Crate {
+    fn expand_crate_str(crate_str: String) -> ast::Crate {
         let ps = parse::new_parse_sess();
         let crate_ast = string_to_parser(&ps, crate_str).parse_crate_mod();
         // the cfg argument actually does matter, here...
@@ -1136,7 +1136,7 @@ mod test {
         // println!("expanded: {:?}\n",expanded_ast);
         //mtwt_resolve_crate(expanded_ast)
     //}
-    //fn expand_and_resolve_and_pretty_print (crate_str: @str) -> StrBuf {
+    //fn expand_and_resolve_and_pretty_print (crate_str: @str) -> String {
         //let resolved_ast = expand_and_resolve(crate_str);
         //pprust::to_str(&resolved_ast,fake_print_crate,get_ident_interner())
     //}

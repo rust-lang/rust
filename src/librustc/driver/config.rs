@@ -77,7 +77,7 @@ pub struct Options {
     // this.
     pub addl_lib_search_paths: RefCell<HashSet<Path>>,
     pub maybe_sysroot: Option<Path>,
-    pub target_triple: StrBuf,
+    pub target_triple: String,
     // User-specified cfg meta items. The compiler itself will add additional
     // items to the crate config, and during parsing the entire crate config
     // will be added to the crate AST node.  This should not be used for
@@ -250,21 +250,21 @@ macro_rules! cgoptions(
             }
         }
 
-        fn parse_opt_string(slot: &mut Option<StrBuf>, v: Option<&str>) -> bool {
+        fn parse_opt_string(slot: &mut Option<String>, v: Option<&str>) -> bool {
             match v {
                 Some(s) => { *slot = Some(s.to_strbuf()); true },
                 None => false,
             }
         }
 
-        fn parse_string(slot: &mut StrBuf, v: Option<&str>) -> bool {
+        fn parse_string(slot: &mut String, v: Option<&str>) -> bool {
             match v {
                 Some(s) => { *slot = s.to_strbuf(); true },
                 None => false,
             }
         }
 
-        fn parse_list(slot: &mut Vec<StrBuf>, v: Option<&str>)
+        fn parse_list(slot: &mut Vec<String>, v: Option<&str>)
                       -> bool {
             match v {
                 Some(s) => {
@@ -281,19 +281,19 @@ macro_rules! cgoptions(
 ) )
 
 cgoptions!(
-    ar: Option<StrBuf> = (None, parse_opt_string,
+    ar: Option<String> = (None, parse_opt_string,
         "tool to assemble archives with"),
-    linker: Option<StrBuf> = (None, parse_opt_string,
+    linker: Option<String> = (None, parse_opt_string,
         "system linker to link outputs with"),
-    link_args: Vec<StrBuf> = (Vec::new(), parse_list,
+    link_args: Vec<String> = (Vec::new(), parse_list,
         "extra arguments to pass to the linker (space separated)"),
-    target_cpu: StrBuf = ("generic".to_strbuf(), parse_string,
+    target_cpu: String = ("generic".to_strbuf(), parse_string,
         "select target processor (llc -mcpu=help for details)"),
-    target_feature: StrBuf = ("".to_strbuf(), parse_string,
+    target_feature: String = ("".to_strbuf(), parse_string,
         "target specific attributes (llc -mattr=help for details)"),
-    passes: Vec<StrBuf> = (Vec::new(), parse_list,
+    passes: Vec<String> = (Vec::new(), parse_list,
         "a list of extra LLVM passes to run (space separated)"),
-    llvm_args: Vec<StrBuf> = (Vec::new(), parse_list,
+    llvm_args: Vec<String> = (Vec::new(), parse_list,
         "a list of arguments to pass to llvm (space separated)"),
     save_temps: bool = (false, parse_bool,
         "save all temporary output files during compilation"),
@@ -311,7 +311,7 @@ cgoptions!(
         "prefer dynamic linking to static linking"),
     no_integrated_as: bool = (false, parse_bool,
         "use an external assembler rather than LLVM's integrated one"),
-    relocation_model: StrBuf = ("pic".to_strbuf(), parse_string,
+    relocation_model: String = ("pic".to_strbuf(), parse_string,
          "choose the relocation model to use (llc -relocation-model for details)"),
 )
 
@@ -555,7 +555,7 @@ pub fn optgroups() -> Vec<getopts::OptGroup> {
 
 
 // Convert strings provided as --cfg [cfgspec] into a crate_cfg
-fn parse_cfgspecs(cfgspecs: Vec<StrBuf> ) -> ast::CrateConfig {
+fn parse_cfgspecs(cfgspecs: Vec<String> ) -> ast::CrateConfig {
     cfgspecs.move_iter().map(|s| {
         parse::parse_meta_from_source_str("cfgspec".to_strbuf(),
                                           s.to_strbuf(),

@@ -77,7 +77,7 @@ use middle::typeck::infer::region_inference::SameRegions;
 use std::cell::{Cell, RefCell};
 use std::char::from_u32;
 use std::rc::Rc;
-use std::strbuf::StrBuf;
+use std::string::String;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util;
@@ -103,12 +103,12 @@ pub trait ErrorReporting {
                                      trace: TypeTrace,
                                      terr: &ty::type_err);
 
-    fn values_str(&self, values: &ValuePairs) -> Option<StrBuf>;
+    fn values_str(&self, values: &ValuePairs) -> Option<String>;
 
     fn expected_found_str<T:UserString+Resolvable>(
         &self,
         exp_found: &ty::expected_found<T>)
-        -> Option<StrBuf>;
+        -> Option<String>;
 
     fn report_concrete_failure(&self,
                                origin: SubregionOrigin,
@@ -365,7 +365,7 @@ impl<'a> ErrorReporting for InferCtxt<'a> {
         ty::note_and_explain_type_err(self.tcx, terr);
     }
 
-    fn values_str(&self, values: &ValuePairs) -> Option<StrBuf> {
+    fn values_str(&self, values: &ValuePairs) -> Option<String> {
         /*!
          * Returns a string of the form "expected `{}` but found `{}`",
          * or None if this is a derived error.
@@ -383,7 +383,7 @@ impl<'a> ErrorReporting for InferCtxt<'a> {
     fn expected_found_str<T:UserString+Resolvable>(
         &self,
         exp_found: &ty::expected_found<T>)
-        -> Option<StrBuf>
+        -> Option<String>
     {
         let expected = exp_found.expected.resolve(self);
         if expected.contains_error() {
@@ -1466,7 +1466,7 @@ fn lifetimes_in_scope(tcx: &ty::ctxt,
 
 // LifeGiver is responsible for generating fresh lifetime names
 struct LifeGiver {
-    taken: HashSet<StrBuf>,
+    taken: HashSet<String>,
     counter: Cell<uint>,
     generated: RefCell<Vec<ast::Lifetime>>,
 }
@@ -1506,8 +1506,8 @@ impl LifeGiver {
         return lifetime;
 
         // 0 .. 25 generates a .. z, 26 .. 51 generates aa .. zz, and so on
-        fn num_to_str(counter: uint) -> StrBuf {
-            let mut s = StrBuf::new();
+        fn num_to_str(counter: uint) -> String {
+            let mut s = String::new();
             let (n, r) = (counter/26 + 1, counter % 26);
             let letter: char = from_u32((r+97) as u32).unwrap();
             for _ in range(0, n) {

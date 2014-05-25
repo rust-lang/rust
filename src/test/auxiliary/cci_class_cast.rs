@@ -14,7 +14,7 @@ pub mod kitty {
     pub struct cat {
       meows : uint,
       pub how_hungry : int,
-      pub name : StrBuf,
+      pub name : String,
     }
 
     impl fmt::Show for cat {
@@ -50,7 +50,7 @@ pub mod kitty {
         }
     }
 
-    pub fn cat(in_x : uint, in_y : int, in_name: StrBuf) -> cat {
+    pub fn cat(in_x : uint, in_y : int, in_name: String) -> cat {
         cat {
             meows: in_x,
             how_hungry: in_y,

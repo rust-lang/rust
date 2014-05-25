@@ -41,7 +41,7 @@ enum FormatState {
 #[allow(missing_doc)]
 #[deriving(Clone)]
 pub enum Param {
-    String(StrBuf),
+    String(String),
     Number(int)
 }
 
@@ -89,7 +89,7 @@ impl Variables {
   multiple capabilities for the same terminal.
   */
 pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
-    -> Result<Vec<u8> , StrBuf> {
+    -> Result<Vec<u8> , String> {
     let mut state = Nothing;
 
     // expanded cap will only rarely be larger than the cap itself
@@ -483,7 +483,7 @@ impl FormatOp {
     }
 }
 
-fn format(val: Param, op: FormatOp, flags: Flags) -> Result<Vec<u8> ,StrBuf> {
+fn format(val: Param, op: FormatOp, flags: Flags) -> Result<Vec<u8> ,String> {
     let mut s = match val {
         Number(d) => {
             let s = match (op, flags.sign) {

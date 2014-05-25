@@ -1495,11 +1495,11 @@ impl<'a> LookupContext<'a> {
         self.fcx.tcx()
     }
 
-    fn ty_to_str(&self, t: ty::t) -> StrBuf {
+    fn ty_to_str(&self, t: ty::t) -> String {
         self.fcx.infcx().ty_to_str(t)
     }
 
-    fn did_to_str(&self, did: DefId) -> StrBuf {
+    fn did_to_str(&self, did: DefId) -> String {
         ty::item_path_str(self.tcx(), did)
     }
 
@@ -1509,7 +1509,7 @@ impl<'a> LookupContext<'a> {
 }
 
 impl Repr for Candidate {
-    fn repr(&self, tcx: &ty::ctxt) -> StrBuf {
+    fn repr(&self, tcx: &ty::ctxt) -> String {
         format_strbuf!("Candidate(rcvr_ty={}, rcvr_substs={}, method_ty={}, \
                         origin={:?})",
                        self.rcvr_match_condition.repr(tcx),
@@ -1520,7 +1520,7 @@ impl Repr for Candidate {
 }
 
 impl Repr for RcvrMatchCondition {
-    fn repr(&self, tcx: &ty::ctxt) -> StrBuf {
+    fn repr(&self, tcx: &ty::ctxt) -> String {
         match *self {
             RcvrMatchesIfObject(d) => {
                 format_strbuf!("RcvrMatchesIfObject({})", d.repr(tcx))

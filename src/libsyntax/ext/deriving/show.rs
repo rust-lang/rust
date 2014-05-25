@@ -18,7 +18,7 @@ use ext::deriving::generic::*;
 use parse::token;
 
 use collections::HashMap;
-use std::strbuf::StrBuf;
+use std::string::String;
 
 pub fn expand_deriving_show(cx: &mut ExtCtxt,
                             span: Span,
@@ -70,7 +70,7 @@ fn show_substructure(cx: &mut ExtCtxt, span: Span,
         }
     };
 
-    let mut format_string = StrBuf::from_str(token::get_ident(name).get());
+    let mut format_string = String::from_str(token::get_ident(name).get());
     // the internal fields we're actually formatting
     let mut exprs = Vec::new();
 

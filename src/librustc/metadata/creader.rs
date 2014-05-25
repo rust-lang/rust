@@ -139,7 +139,7 @@ fn visit_view_item(e: &mut Env, i: &ast::ViewItem) {
 }
 
 struct CrateInfo {
-    ident: StrBuf,
+    ident: String,
     crate_id: CrateId,
     id: ast::NodeId,
     should_link: bool,

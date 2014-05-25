@@ -27,7 +27,7 @@ use path::{Path,GenericPath};
 use result::*;
 use slice::{Vector,ImmutableVector};
 use str;
-use strbuf::StrBuf;
+use string::String;
 use vec::Vec;
 
 pub struct DynamicLibrary { handle: *u8}
@@ -57,7 +57,7 @@ impl DynamicLibrary {
     /// Lazily open a dynamic library. When passed None it gives a
     /// handle to the calling process
     pub fn open<T: ToCStr>(filename: Option<T>)
-                        -> Result<DynamicLibrary, StrBuf> {
+                        -> Result<DynamicLibrary, String> {
         unsafe {
             let mut filename = filename;
             let maybe_library = dl::check_for_errors_in(|| {
@@ -131,7 +131,7 @@ impl DynamicLibrary {
     }
 
     /// Access the value at the symbol of the dynamic library
-    pub unsafe fn symbol<T>(&self, symbol: &str) -> Result<T, StrBuf> {
+    pub unsafe fn symbol<T>(&self, symbol: &str) -> Result<T, String> {
         // This function should have a lifetime constraint of 'a on
         // T but that feature is still unimplemented
 
@@ -211,7 +211,7 @@ pub mod dl {
     use ptr;
     use result::*;
     use str::StrAllocating;
-    use strbuf::StrBuf;
+    use string::String;
 
     pub unsafe fn open_external<T: ToCStr>(filename: T) -> *u8 {
         filename.with_c_str(|raw_name| {
@@ -223,7 +223,7 @@ pub mod dl {
         dlopen(ptr::null(), Lazy as libc::c_int) as *u8
     }
 
-    pub fn check_for_errors_in<T>(f: || -> T) -> Result<T, StrBuf> {
+    pub fn check_for_errors_in<T>(f: || -> T) -> Result<T, String> {
         use unstable::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
         static mut lock: StaticNativeMutex = NATIVE_MUTEX_INIT;
         unsafe {
@@ -276,7 +276,7 @@ pub mod dl {
     use os;
     use ptr;
     use result::{Ok, Err, Result};
-    use strbuf::StrBuf;
+    use string::String;
     use str;
     use c_str::ToCStr;
 
@@ -295,7 +295,7 @@ pub mod dl {
         handle as *u8
     }
 
-    pub fn check_for_errors_in<T>(f: || -> T) -> Result<T, StrBuf> {
+    pub fn check_for_errors_in<T>(f: || -> T) -> Result<T, String> {
         unsafe {
             SetLastError(0);
 

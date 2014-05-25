@@ -77,8 +77,8 @@ pub fn parse_crate_attrs_from_file(
     inner
 }
 
-pub fn parse_crate_from_source_str(name: StrBuf,
-                                   source: StrBuf,
+pub fn parse_crate_from_source_str(name: String,
+                                   source: String,
                                    cfg: ast::CrateConfig,
                                    sess: &ParseSess)
                                    -> ast::Crate {
@@ -89,8 +89,8 @@ pub fn parse_crate_from_source_str(name: StrBuf,
     maybe_aborted(p.parse_crate_mod(),p)
 }
 
-pub fn parse_crate_attrs_from_source_str(name: StrBuf,
-                                         source: StrBuf,
+pub fn parse_crate_attrs_from_source_str(name: String,
+                                         source: String,
                                          cfg: ast::CrateConfig,
                                          sess: &ParseSess)
                                          -> Vec<ast::Attribute> {
@@ -102,8 +102,8 @@ pub fn parse_crate_attrs_from_source_str(name: StrBuf,
     inner
 }
 
-pub fn parse_expr_from_source_str(name: StrBuf,
-                                  source: StrBuf,
+pub fn parse_expr_from_source_str(name: String,
+                                  source: String,
                                   cfg: ast::CrateConfig,
                                   sess: &ParseSess)
                                   -> @ast::Expr {
@@ -111,8 +111,8 @@ pub fn parse_expr_from_source_str(name: StrBuf,
     maybe_aborted(p.parse_expr(), p)
 }
 
-pub fn parse_item_from_source_str(name: StrBuf,
-                                  source: StrBuf,
+pub fn parse_item_from_source_str(name: String,
+                                  source: String,
                                   cfg: ast::CrateConfig,
                                   sess: &ParseSess)
                                   -> Option<@ast::Item> {
@@ -121,8 +121,8 @@ pub fn parse_item_from_source_str(name: StrBuf,
     maybe_aborted(p.parse_item(attrs),p)
 }
 
-pub fn parse_meta_from_source_str(name: StrBuf,
-                                  source: StrBuf,
+pub fn parse_meta_from_source_str(name: String,
+                                  source: String,
                                   cfg: ast::CrateConfig,
                                   sess: &ParseSess)
                                   -> @ast::MetaItem {
@@ -130,8 +130,8 @@ pub fn parse_meta_from_source_str(name: StrBuf,
     maybe_aborted(p.parse_meta_item(),p)
 }
 
-pub fn parse_stmt_from_source_str(name: StrBuf,
-                                  source: StrBuf,
+pub fn parse_stmt_from_source_str(name: String,
+                                  source: String,
                                   cfg: ast::CrateConfig,
                                   attrs: Vec<ast::Attribute> ,
                                   sess: &ParseSess)
@@ -145,8 +145,8 @@ pub fn parse_stmt_from_source_str(name: StrBuf,
     maybe_aborted(p.parse_stmt(attrs),p)
 }
 
-pub fn parse_tts_from_source_str(name: StrBuf,
-                                 source: StrBuf,
+pub fn parse_tts_from_source_str(name: String,
+                                 source: String,
                                  cfg: ast::CrateConfig,
                                  sess: &ParseSess)
                                  -> Vec<ast::TokenTree> {
@@ -164,8 +164,8 @@ pub fn parse_tts_from_source_str(name: StrBuf,
 // Create a new parser from a source string
 pub fn new_parser_from_source_str<'a>(sess: &'a ParseSess,
                                       cfg: ast::CrateConfig,
-                                      name: StrBuf,
-                                      source: StrBuf)
+                                      name: String,
+                                      source: String)
                                       -> Parser<'a> {
     filemap_to_parser(sess, string_to_filemap(sess, source, name), cfg)
 }
@@ -185,7 +185,7 @@ pub fn new_sub_parser_from_file<'a>(sess: &'a ParseSess,
                                     cfg: ast::CrateConfig,
                                     path: &Path,
                                     owns_directory: bool,
-                                    module_name: Option<StrBuf>,
+                                    module_name: Option<String>,
                                     sp: Span) -> Parser<'a> {
     let mut p = filemap_to_parser(sess, file_to_filemap(sess, path, Some(sp)), cfg);
     p.owns_directory = owns_directory;
@@ -244,7 +244,7 @@ pub fn file_to_filemap(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
 
 // given a session and a string, add the string to
 // the session's codemap and return the new filemap
-pub fn string_to_filemap(sess: &ParseSess, source: StrBuf, path: StrBuf)
+pub fn string_to_filemap(sess: &ParseSess, source: String, path: String)
                          -> Rc<FileMap> {
     sess.span_diagnostic.cm.new_filemap(path, source)
 }
@@ -293,7 +293,7 @@ mod test {
     use util::parser_testing::{string_to_expr, string_to_item};
     use util::parser_testing::string_to_stmt;
 
-    fn to_json_str<'a, E: Encodable<json::Encoder<'a>, io::IoError>>(val: &E) -> StrBuf {
+    fn to_json_str<'a, E: Encodable<json::Encoder<'a>, io::IoError>>(val: &E) -> String {
         let mut writer = MemWriter::new();
         let mut encoder = json::Encoder::new(&mut writer as &mut io::Writer);
         let _ = val.encode(&mut encoder);
@@ -709,7 +709,7 @@ mod test {
 
     #[test] fn attrs_fix_bug () {
         string_to_item("pub fn mk_file_writer(path: &Path, flags: &[FileFlag])
-                   -> Result<@Writer, StrBuf> {
+                   -> Result<@Writer, String> {
     #[cfg(windows)]
     fn wb() -> c_int {
       (O_WRONLY | libc::consts::os::extra::O_BINARY) as c_int

@@ -15,7 +15,7 @@ type t = int;
 
 fn nothing() { }
 
-fn putstr(_s: StrBuf) { }
+fn putstr(_s: String) { }
 
 fn putint(_i: int) {
     let mut i: int = 33;

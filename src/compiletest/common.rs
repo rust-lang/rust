@@ -56,10 +56,10 @@ impl fmt::Show for Mode {
 #[deriving(Clone)]
 pub struct Config {
     // The library paths required for running the compiler
-    pub compile_lib_path: StrBuf,
+    pub compile_lib_path: String,
 
     // The library paths required for running compiled programs
-    pub run_lib_path: StrBuf,
+    pub run_lib_path: String,
 
     // The rustc executable
     pub rustc_path: Path,
@@ -80,7 +80,7 @@ pub struct Config {
     pub aux_base: Path,
 
     // The name of the stage being built (stage1, etc)
-    pub stage_id: StrBuf,
+    pub stage_id: String,
 
     // The test mode, compile-fail, run-fail, run-pass
     pub mode: Mode,
@@ -113,37 +113,37 @@ pub struct Config {
 
     // A command line to prefix program execution with,
     // for running under valgrind
-    pub runtool: Option<StrBuf>,
+    pub runtool: Option<String>,
 
     // Flags to pass to the compiler when building for the host
-    pub host_rustcflags: Option<StrBuf>,
+    pub host_rustcflags: Option<String>,
 
     // Flags to pass to the compiler when building for the target
-    pub target_rustcflags: Option<StrBuf>,
+    pub target_rustcflags: Option<String>,
 
     // Run tests using the JIT
     pub jit: bool,
 
     // Target system to be tested
-    pub target: StrBuf,
+    pub target: String,
 
     // Host triple for the compiler being invoked
-    pub host: StrBuf,
+    pub host: String,
 
     // Path to the android tools
     pub android_cross_path: Path,
 
     // Extra parameter to run adb on arm-linux-androideabi
-    pub adb_path: StrBuf,
+    pub adb_path: String,
 
     // Extra parameter to run test sute on arm-linux-androideabi
-    pub adb_test_dir: StrBuf,
+    pub adb_test_dir: String,
 
     // status whether android device available or not
     pub adb_device_status: bool,
 
     // the path containing LLDB's Python module
-    pub lldb_python_dir: Option<StrBuf>,
+    pub lldb_python_dir: Option<String>,
 
     // Explain what's going on
     pub verbose: bool

@@ -11,8 +11,8 @@
 #![allow(dead_assignment)]
 
 pub fn main() {
-    let x : StrBuf = "hello".to_strbuf();
-    let _y : StrBuf = "there".to_strbuf();
+    let x : String = "hello".to_strbuf();
+    let _y : String = "there".to_strbuf();
     let mut z = "thing".to_strbuf();
     z = x;
     assert_eq!(z.as_slice()[0], ('h' as u8));

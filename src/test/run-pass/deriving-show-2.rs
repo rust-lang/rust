@@ -17,7 +17,7 @@ enum A {}
 #[deriving(Show)]
 enum B { B1, B2, B3 }
 #[deriving(Show)]
-enum C { C1(int), C2(B), C3(StrBuf) }
+enum C { C1(int), C2(B), C3(String) }
 #[deriving(Show)]
 enum D { D1{ a: int } }
 #[deriving(Show)]

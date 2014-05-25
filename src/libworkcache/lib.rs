@@ -101,8 +101,8 @@ use std::io::{File, MemWriter};
 
 #[deriving(Clone, Eq, Encodable, Decodable, Ord, TotalOrd, TotalEq)]
 struct WorkKey {
-    kind: StrBuf,
-    name: StrBuf
+    kind: String,
+    name: String
 }
 
 impl WorkKey {
@@ -114,18 +114,18 @@ impl WorkKey {
     }
 }
 
-// FIXME #8883: The key should be a WorkKey and not a StrBuf.
+// FIXME #8883: The key should be a WorkKey and not a String.
 // This is working around some JSON weirdness.
 #[deriving(Clone, Eq, Encodable, Decodable)]
-struct WorkMap(TreeMap<StrBuf, KindMap>);
+struct WorkMap(TreeMap<String, KindMap>);
 
 #[deriving(Clone, Eq, Encodable, Decodable)]
-struct KindMap(TreeMap<StrBuf, StrBuf>);
+struct KindMap(TreeMap<String, String>);
 
 impl WorkMap {
     fn new() -> WorkMap { WorkMap(TreeMap::new()) }
 
-    fn insert_work_key(&mut self, k: WorkKey, val: StrBuf) {
+    fn insert_work_key(&mut self, k: WorkKey, val: String) {
         let WorkKey { kind, name } = k;
         let WorkMap(ref mut map) = *self;
         match map.find_mut(&name) {
@@ -140,7 +140,7 @@ impl WorkMap {
 
 pub struct Database {
     db_filename: Path,
-    db_cache: TreeMap<StrBuf, StrBuf>,
+    db_cache: TreeMap<String, String>,
     pub db_dirty: bool,
 }
 
@@ -161,7 +161,7 @@ impl Database {
     pub fn prepare(&self,
                    fn_name: &str,
                    declared_inputs: &WorkMap)
-                   -> Option<(WorkMap, WorkMap, StrBuf)> {
+                   -> Option<(WorkMap, WorkMap, String)> {
         let k = json_encode(&(fn_name, declared_inputs));
         match self.db_cache.find(&k) {
             None => None,
@@ -227,7 +227,7 @@ impl Drop for Database {
     }
 }
 
-pub type FreshnessMap = TreeMap<StrBuf,extern fn(&str,&str)->bool>;
+pub type FreshnessMap = TreeMap<String,extern fn(&str,&str)->bool>;
 
 #[deriving(Clone)]
 pub struct Context {
@@ -258,7 +258,7 @@ enum Work<'a, T> {
     WorkFromTask(&'a Prep<'a>, Receiver<(Exec, T)>),
 }
 
-fn json_encode<'a, T:Encodable<json::Encoder<'a>, io::IoError>>(t: &T) -> StrBuf {
+fn json_encode<'a, T:Encodable<json::Encoder<'a>, io::IoError>>(t: &T) -> String {
     let mut writer = MemWriter::new();
     let mut encoder = json::Encoder::new(&mut writer as &mut io::Writer);
     let _ = t.encode(&mut encoder);
@@ -325,7 +325,7 @@ impl Exec {
     }
 
     // returns pairs of (kind, name)
-    pub fn lookup_discovered_inputs(&self) -> Vec<(StrBuf, StrBuf)> {
+    pub fn lookup_discovered_inputs(&self) -> Vec<(String, String)> {
         let mut rs = vec![];
         let WorkMap(ref discovered_inputs) = self.discovered_inputs;
         for (k, v) in discovered_inputs.iter() {
@@ -347,7 +347,7 @@ impl<'a> Prep<'a> {
         }
     }
 
-    pub fn lookup_declared_inputs(&self) -> Vec<StrBuf> {
+    pub fn lookup_declared_inputs(&self) -> Vec<String> {
         let mut rs = vec![];
         let WorkMap(ref declared_inputs) = self.declared_inputs;
         for (_, v) in declared_inputs.iter() {
@@ -491,7 +491,7 @@ fn test() {
 
     // Create a path to a new file 'filename' in the directory in which
     // this test is running.
-    fn make_path(filename: StrBuf) -> Path {
+    fn make_path(filename: String) -> Path {
         let pth = os::self_exe_path().expect("workcache::test failed").with_filename(filename);
         if pth.exists() {
             fs::unlink(&pth).unwrap();

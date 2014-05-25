@@ -12,10 +12,10 @@
 #[deriving(Clone)]
 enum foo {
   a(uint),
-  b(StrBuf),
+  b(String),
 }
 
-fn check_log<T>(exp: StrBuf, v: T) {
+fn check_log<T>(exp: String, v: T) {
     assert_eq!(exp, format_strbuf!("{:?}", v));
 }
 

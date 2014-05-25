@@ -22,11 +22,11 @@ struct TreeR {
 }
 
 trait to_str {
-    fn to_str_(&self) -> StrBuf;
+    fn to_str_(&self) -> String;
 }
 
 impl<T:to_str> to_str for Option<T> {
-    fn to_str_(&self) -> StrBuf {
+    fn to_str_(&self) -> String {
         match *self {
           None => { "none".to_strbuf() }
           Some(ref t) => format_strbuf!("some({})", t.to_str_()),
@@ -35,13 +35,13 @@ impl<T:to_str> to_str for Option<T> {
 }
 
 impl to_str for int {
-    fn to_str_(&self) -> StrBuf {
+    fn to_str_(&self) -> String {
         self.to_str().to_strbuf()
     }
 }
 
 impl to_str for Tree {
-    fn to_str_(&self) -> StrBuf {
+    fn to_str_(&self) -> String {
         let Tree(t) = *self;
         let this = t.borrow();
         let (l, r) = (this.left, this.right);
@@ -53,7 +53,7 @@ impl to_str for Tree {
     }
 }
 
-fn foo<T:to_str>(x: T) -> StrBuf { x.to_str_() }
+fn foo<T:to_str>(x: T) -> String { x.to_str_() }
 
 pub fn main() {
     let t1 = Tree(@RefCell::new(TreeR{left: None,

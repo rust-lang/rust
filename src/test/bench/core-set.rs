@@ -80,7 +80,7 @@ impl Results {
         }
     }
 
-    pub fn bench_str<T:MutableSet<StrBuf>,
+    pub fn bench_str<T:MutableSet<String>,
                      R:rand::Rng>(
                      &mut self,
                      rng: &mut R,
@@ -175,7 +175,7 @@ fn main() {
             s
         });
         results.bench_str(&mut rng, num_keys, || {
-            let s: HashSet<StrBuf> = HashSet::new();
+            let s: HashSet<String> = HashSet::new();
             s
         });
         write_results("collections::HashSet", &results);
@@ -189,7 +189,7 @@ fn main() {
             s
         });
         results.bench_str(&mut rng, num_keys, || {
-            let s: TreeSet<StrBuf> = TreeSet::new();
+            let s: TreeSet<String> = TreeSet::new();
             s
         });
         write_results("collections::TreeSet", &results);

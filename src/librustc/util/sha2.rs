@@ -257,8 +257,8 @@ pub trait Digest {
     }
 
     /// Convenience function that retrieves the result of a digest as a
-    /// StrBuf in hexadecimal format.
-    fn result_str(&mut self) -> StrBuf {
+    /// String in hexadecimal format.
+    fn result_str(&mut self) -> String {
         self.result_bytes().as_slice().to_hex().to_strbuf()
     }
 }
@@ -543,8 +543,8 @@ mod tests {
     }
 
     struct Test {
-        input: StrBuf,
-        output_str: StrBuf,
+        input: String,
+        output_str: String,
     }
 
     fn test_hash<D: Digest>(sh: &mut D, tests: &[Test]) {

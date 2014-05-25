@@ -30,7 +30,7 @@ fn do_swap(test: &mut TestDescAndFn) {
 }
 
 pub enum TestName {
-    DynTestName(StrBuf)
+    DynTestName(String)
 }
 
 pub enum TestFn {

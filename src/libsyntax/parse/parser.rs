@@ -79,7 +79,7 @@ use owned_slice::OwnedSlice;
 use collections::HashSet;
 use std::mem::replace;
 use std::rc::Rc;
-use std::strbuf::StrBuf;
+use std::string::String;
 
 #[allow(non_camel_case_types)]
 #[deriving(Eq)]
@@ -350,7 +350,7 @@ pub struct Parser<'a> {
     /// Name of the root module this parser originated from. If `None`, then the
     /// name is not known. This does not change while the parser is descending
     /// into modules, and sub-parsers have new values for this name.
-    pub root_module_name: Option<StrBuf>,
+    pub root_module_name: Option<String>,
 }
 
 fn is_plain_ident_or_underscore(t: &token::Token) -> bool {
@@ -359,12 +359,12 @@ fn is_plain_ident_or_underscore(t: &token::Token) -> bool {
 
 impl<'a> Parser<'a> {
     // convert a token to a string using self's reader
-    pub fn token_to_str(token: &token::Token) -> StrBuf {
+    pub fn token_to_str(token: &token::Token) -> String {
         token::to_str(token)
     }
 
     // convert the current token to a string using self's reader
-    pub fn this_token_to_str(&mut self) -> StrBuf {
+    pub fn this_token_to_str(&mut self) -> String {
         Parser::token_to_str(&self.token)
     }
 
@@ -399,7 +399,7 @@ impl<'a> Parser<'a> {
     pub fn expect_one_of(&mut self,
                          edible: &[token::Token],
                          inedible: &[token::Token]) {
-        fn tokens_to_str(tokens: &[token::Token]) -> StrBuf {
+        fn tokens_to_str(tokens: &[token::Token]) -> String {
             let mut i = tokens.iter();
             // This might be a sign we need a connect method on Iterator.
             let b = i.next()
@@ -3883,7 +3883,7 @@ impl<'a> Parser<'a> {
         (ident, ItemImpl(generics, opt_trait, ty, meths), Some(inner_attrs))
     }
 
-    // parse a::B<StrBuf,int>
+    // parse a::B<String,int>
     fn parse_trait_ref(&mut self) -> TraitRef {
         ast::TraitRef {
             path: self.parse_path(LifetimeAndTypesWithoutColons).path,
@@ -3891,7 +3891,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    // parse B + C<StrBuf,int> + D
+    // parse B + C<String,int> + D
     fn parse_trait_ref_list(&mut self, ket: &token::Token) -> Vec<TraitRef> {
         self.parse_seq_to_before_end(
             ket,
@@ -4214,12 +4214,12 @@ impl<'a> Parser<'a> {
     fn eval_src_mod_from_path(&mut self,
                               path: Path,
                               owns_directory: bool,
-                              name: StrBuf,
+                              name: String,
                               id_sp: Span) -> (ast::Item_, Vec<ast::Attribute> ) {
         let mut included_mod_stack = self.sess.included_mod_stack.borrow_mut();
         match included_mod_stack.iter().position(|p| *p == path) {
             Some(i) => {
-                let mut err = StrBuf::from_str("circular modules: ");
+                let mut err = String::from_str("circular modules: ");
                 let len = included_mod_stack.len();
                 for p in included_mod_stack.slice(i, len).iter() {
                     err.push_str(p.display().as_maybe_owned().as_slice());
@@ -4808,7 +4808,7 @@ impl<'a> Parser<'a> {
 
         // FAILURE TO PARSE ITEM
         if visibility != Inherited {
-            let mut s = StrBuf::from_str("unmatched visibility `");
+            let mut s = String::from_str("unmatched visibility `");
             if visibility == Public {
                 s.push_str("pub")
             } else {

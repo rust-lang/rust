@@ -306,8 +306,8 @@ pub fn eval_const_expr(tcx: &ty::ctxt, e: &Expr) -> const_val {
 }
 
 pub fn eval_const_expr_partial<T: ty::ExprTyProvider>(tcx: &T, e: &Expr)
-                            -> Result<const_val, StrBuf> {
-    fn fromb(b: bool) -> Result<const_val, StrBuf> { Ok(const_int(b as i64)) }
+                            -> Result<const_val, String> {
+    fn fromb(b: bool) -> Result<const_val, String> { Ok(const_int(b as i64)) }
     match e.node {
       ExprUnary(UnNeg, inner) => {
         match eval_const_expr_partial(tcx, inner) {

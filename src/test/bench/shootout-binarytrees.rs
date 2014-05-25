@@ -77,7 +77,7 @@ fn main() {
                 format_strbuf!("{}\t trees of depth {}\t check: {}",
                                iterations * 2, depth, chk)
             })
-        }).collect::<Vec<Future<StrBuf>>>();
+        }).collect::<Vec<Future<String>>>();
 
     for message in messages.mut_iter() {
         println!("{}", *message.get_ref());

@@ -21,14 +21,14 @@ use visit;
 
 use std::cell::Cell;
 use std::cmp;
-use std::strbuf::StrBuf;
+use std::string::String;
 use std::u32;
 
-pub fn path_name_i(idents: &[Ident]) -> StrBuf {
+pub fn path_name_i(idents: &[Ident]) -> String {
     // FIXME: Bad copies (#2543 -- same for everything else that says "bad")
     idents.iter().map(|i| {
         token::get_ident(*i).get().to_strbuf()
-    }).collect::<Vec<StrBuf>>().connect("::").to_strbuf()
+    }).collect::<Vec<String>>().connect("::").to_strbuf()
 }
 
 // totally scary function: ignores all but the last element, should have
@@ -139,7 +139,7 @@ pub enum SuffixMode {
 
 // Get a string representation of a signed int type, with its value.
 // We want to avoid "45int" and "-3int" in favor of "45" and "-3"
-pub fn int_ty_to_str(t: IntTy, val: Option<i64>, mode: SuffixMode) -> StrBuf {
+pub fn int_ty_to_str(t: IntTy, val: Option<i64>, mode: SuffixMode) -> String {
     let s = match t {
         TyI if val.is_some() => match mode {
             AutoSuffix => "",
@@ -172,7 +172,7 @@ pub fn int_ty_max(t: IntTy) -> u64 {
 
 // Get a string representation of an unsigned int type, with its value.
 // We want to avoid "42uint" in favor of "42u"
-pub fn uint_ty_to_str(t: UintTy, val: Option<u64>, mode: SuffixMode) -> StrBuf {
+pub fn uint_ty_to_str(t: UintTy, val: Option<u64>, mode: SuffixMode) -> String {
     let s = match t {
         TyU if val.is_some() => match mode {
             AutoSuffix => "",
@@ -200,7 +200,7 @@ pub fn uint_ty_max(t: UintTy) -> u64 {
     }
 }
 
-pub fn float_ty_to_str(t: FloatTy) -> StrBuf {
+pub fn float_ty_to_str(t: FloatTy) -> String {
     match t {
         TyF32 => "f32".to_strbuf(),
         TyF64 => "f64".to_strbuf(),

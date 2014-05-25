@@ -62,7 +62,7 @@
  */
 
 use std::io;
-use std::strbuf::StrBuf;
+use std::string::String;
 
 #[deriving(Clone, Eq)]
 pub enum Breaks {
@@ -84,7 +84,7 @@ pub struct BeginToken {
 
 #[deriving(Clone)]
 pub enum Token {
-    String(StrBuf, int),
+    String(String, int),
     Break(BreakToken),
     Begin(BeginToken),
     End,
@@ -109,7 +109,7 @@ impl Token {
     }
 }
 
-pub fn tok_str(t: Token) -> StrBuf {
+pub fn tok_str(t: Token) -> String {
     match t {
         String(s, len) => return format!("STR({},{})", s, len).to_strbuf(),
         Break(_) => return "BREAK".to_strbuf(),
@@ -124,12 +124,12 @@ pub fn buf_str(toks: Vec<Token>,
                left: uint,
                right: uint,
                lim: uint)
-               -> StrBuf {
+               -> String {
     let n = toks.len();
     assert_eq!(n, szs.len());
     let mut i = left;
     let mut l = lim;
-    let mut s = StrBuf::from_str("[");
+    let mut s = String::from_str("[");
     while i != right && l != 0u {
         l -= 1u;
         if i != left {

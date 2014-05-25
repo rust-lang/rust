@@ -46,7 +46,7 @@ fn main() {
             let _ = write!(&mut File::create(&main_file).unwrap(),
                            r"\#![feature(non_ascii_idents)] fn main() \{ {} \}",
                            // random string of length n
-                           range(0, n).map(|_| random_char()).collect::<StrBuf>());
+                           range(0, n).map(|_| random_char()).collect::<String>());
         }
 
         // rustc is passed to us with --out-dir and -L etc., so we

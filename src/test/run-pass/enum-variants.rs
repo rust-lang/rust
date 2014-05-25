@@ -13,8 +13,8 @@
 #![feature(struct_variant)]
 
 enum Animal {
-    Dog (StrBuf, f64),
-    Cat { name: StrBuf, weight: f64 }
+    Dog (String, f64),
+    Cat { name: String, weight: f64 }
 }
 
 pub fn main() {

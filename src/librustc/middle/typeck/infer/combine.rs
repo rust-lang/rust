@@ -71,7 +71,7 @@ use syntax::abi;
 
 pub trait Combine {
     fn infcx<'a>(&'a self) -> &'a InferCtxt<'a>;
-    fn tag(&self) -> StrBuf;
+    fn tag(&self) -> String;
     fn a_is_expected(&self) -> bool;
     fn trace(&self) -> TypeTrace;
 

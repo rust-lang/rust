@@ -42,7 +42,7 @@ pub struct Session {
     // expected to be absolute. `None` means that there is no source file.
     pub local_crate_source_file: Option<Path>,
     pub working_dir: Path,
-    pub lints: RefCell<NodeMap<Vec<(lint::Lint, codemap::Span, StrBuf)>>>,
+    pub lints: RefCell<NodeMap<Vec<(lint::Lint, codemap::Span, String)>>>,
     pub node_id: Cell<ast::NodeId>,
     pub crate_types: RefCell<Vec<config::CrateType>>,
     pub features: front::feature_gate::Features,
@@ -108,7 +108,7 @@ impl Session {
                     lint: lint::Lint,
                     id: ast::NodeId,
                     sp: Span,
-                    msg: StrBuf) {
+                    msg: String) {
         let mut lints = self.lints.borrow_mut();
         match lints.find_mut(&id) {
             Some(arr) => { arr.push((lint, sp, msg)); return; }
@@ -245,7 +245,7 @@ pub fn build_session_(sopts: config::Options,
 }
 
 // Seems out of place, but it uses session, so I'm putting it here
-pub fn expect<T:Clone>(sess: &Session, opt: Option<T>, msg: || -> StrBuf)
+pub fn expect<T:Clone>(sess: &Session, opt: Option<T>, msg: || -> String)
               -> T {
     diagnostic::expect(sess.diagnostic(), opt, msg)
 }

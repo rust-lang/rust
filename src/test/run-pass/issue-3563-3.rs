@@ -103,7 +103,7 @@ impl fmt::Show for AsciiArt {
                               .map(|line| {
                                   str::from_chars(line.as_slice()).to_strbuf()
                               })
-                              .collect::<Vec<StrBuf>>();
+                              .collect::<Vec<String>>();
 
         // Concatenate the lines together using a new-line.
         write!(f, "{}", lines.connect("\n"))

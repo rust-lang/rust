@@ -11,7 +11,7 @@
 static INVALID_ENUM : u32 = 0;
 static INVALID_VALUE : u32 = 1;
 
-fn gl_err_str(err: u32) -> StrBuf
+fn gl_err_str(err: u32) -> String
 {
   match err
   {

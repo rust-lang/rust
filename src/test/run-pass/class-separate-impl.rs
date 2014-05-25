@@ -14,7 +14,7 @@ struct cat {
     meows : uint,
 
     how_hungry : int,
-    name : StrBuf,
+    name : String,
 }
 
 impl cat {
@@ -43,7 +43,7 @@ impl cat {
     }
 }
 
-fn cat(in_x : uint, in_y : int, in_name: StrBuf) -> cat {
+fn cat(in_x : uint, in_y : int, in_name: String) -> cat {
     cat {
         meows: in_x,
         how_hungry: in_y,
@@ -57,7 +57,7 @@ impl fmt::Show for cat {
     }
 }
 
-fn print_out(thing: Box<ToStr>, expected: StrBuf) {
+fn print_out(thing: Box<ToStr>, expected: String) {
   let actual = thing.to_str();
   println!("{}", actual);
   assert_eq!(actual.to_strbuf(), expected);

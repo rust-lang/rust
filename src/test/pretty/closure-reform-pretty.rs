@@ -13,7 +13,7 @@
 
 // pp-exact
 
-fn call_it(f: proc(StrBuf) -> StrBuf) { }
+fn call_it(f: proc(String) -> String) { }
 
 fn call_this(f: |&str|: Send) { }
 

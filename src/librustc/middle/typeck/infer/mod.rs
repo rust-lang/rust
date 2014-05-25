@@ -245,7 +245,7 @@ pub enum fixup_err {
     region_var_bound_by_region_var(RegionVid, RegionVid)
 }
 
-pub fn fixup_err_to_str(f: fixup_err) -> StrBuf {
+pub fn fixup_err_to_str(f: fixup_err) -> String {
     match f {
       unresolved_int_ty(_) => "unconstrained integral type".to_strbuf(),
       unresolved_ty(_) => "unconstrained type".to_strbuf(),
@@ -650,17 +650,17 @@ impl<'a> InferCtxt<'a> {
         self.report_region_errors(&errors); // see error_reporting.rs
     }
 
-    pub fn ty_to_str(&self, t: ty::t) -> StrBuf {
+    pub fn ty_to_str(&self, t: ty::t) -> String {
         ty_to_str(self.tcx,
                   self.resolve_type_vars_if_possible(t))
     }
 
-    pub fn tys_to_str(&self, ts: &[ty::t]) -> StrBuf {
-        let tstrs: Vec<StrBuf> = ts.iter().map(|t| self.ty_to_str(*t)).collect();
+    pub fn tys_to_str(&self, ts: &[ty::t]) -> String {
+        let tstrs: Vec<String> = ts.iter().map(|t| self.ty_to_str(*t)).collect();
         format_strbuf!("({})", tstrs.connect(", "))
     }
 
-    pub fn trait_ref_to_str(&self, t: &ty::TraitRef) -> StrBuf {
+    pub fn trait_ref_to_str(&self, t: &ty::TraitRef) -> String {
         let t = self.resolve_type_vars_in_trait_ref_if_possible(t);
         trait_ref_to_str(self.tcx, &t)
     }
@@ -713,19 +713,19 @@ impl<'a> InferCtxt<'a> {
     // errors.
     pub fn type_error_message_str(&self,
                                   sp: Span,
-                                  mk_msg: |Option<StrBuf>, StrBuf| -> StrBuf,
-                                  actual_ty: StrBuf,
+                                  mk_msg: |Option<String>, String| -> String,
+                                  actual_ty: String,
                                   err: Option<&ty::type_err>) {
         self.type_error_message_str_with_expected(sp, mk_msg, None, actual_ty, err)
     }
 
     pub fn type_error_message_str_with_expected(&self,
                                                 sp: Span,
-                                                mk_msg: |Option<StrBuf>,
-                                                         StrBuf|
-                                                         -> StrBuf,
+                                                mk_msg: |Option<String>,
+                                                         String|
+                                                         -> String,
                                                 expected_ty: Option<ty::t>,
-                                                actual_ty: StrBuf,
+                                                actual_ty: String,
                                                 err: Option<&ty::type_err>) {
         debug!("hi! expected_ty = {:?}, actual_ty = {}", expected_ty, actual_ty);
 
@@ -760,7 +760,7 @@ impl<'a> InferCtxt<'a> {
 
     pub fn type_error_message(&self,
                               sp: Span,
-                              mk_msg: |StrBuf| -> StrBuf,
+                              mk_msg: |String| -> String,
                               actual_ty: ty::t,
                               err: Option<&ty::type_err>) {
         let actual_ty = self.resolve_type_vars_if_possible(actual_ty);
@@ -784,8 +784,8 @@ impl<'a> InferCtxt<'a> {
             // Don't report an error if expected is ty_err
             ty::ty_err => return,
             _ => {
-                // if I leave out : StrBuf, it infers &str and complains
-                |actual: StrBuf| {
+                // if I leave out : String, it infers &str and complains
+                |actual: String| {
                     format_strbuf!("mismatched types: expected `{}` but \
                                     found `{}`",
                                    self.ty_to_str(resolved_expected),
@@ -829,7 +829,7 @@ impl TypeTrace {
 }
 
 impl Repr for TypeTrace {
-    fn repr(&self, tcx: &ty::ctxt) -> StrBuf {
+    fn repr(&self, tcx: &ty::ctxt) -> String {
         format_strbuf!("TypeTrace({})", self.origin.repr(tcx))
     }
 }
@@ -849,7 +849,7 @@ impl TypeOrigin {
 }
 
 impl Repr for TypeOrigin {
-    fn repr(&self, tcx: &ty::ctxt) -> StrBuf {
+    fn repr(&self, tcx: &ty::ctxt) -> String {
         match *self {
             MethodCompatCheck(a) => {
                 format_strbuf!("MethodCompatCheck({})", a.repr(tcx))
@@ -898,7 +898,7 @@ impl SubregionOrigin {
 }
 
 impl Repr for SubregionOrigin {
-    fn repr(&self, tcx: &ty::ctxt) -> StrBuf {
+    fn repr(&self, tcx: &ty::ctxt) -> String {
         match *self {
             Subtype(ref a) => {
                 format_strbuf!("Subtype({})", a.repr(tcx))
@@ -959,7 +959,7 @@ impl RegionVariableOrigin {
 }
 
 impl Repr for RegionVariableOrigin {
-    fn repr(&self, tcx: &ty::ctxt) -> StrBuf {
+    fn repr(&self, tcx: &ty::ctxt) -> String {
         match *self {
             MiscVariable(a) => {
                 format_strbuf!("MiscVariable({})", a.repr(tcx))

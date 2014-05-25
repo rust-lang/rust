@@ -14,7 +14,7 @@
 #![feature(managed_boxes)]
 
 struct Foo<A> { f: A }
-fn guard(_s: StrBuf) -> bool {fail!()}
+fn guard(_s: String) -> bool {fail!()}
 fn touch<A>(_a: &A) {}
 
 fn f10() {

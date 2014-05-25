@@ -18,7 +18,7 @@ use std::task;
 
 type ctx = Sender<int>;
 
-fn iotask(_tx: &ctx, ip: StrBuf) {
+fn iotask(_tx: &ctx, ip: String) {
     assert_eq!(ip, "localhost".to_strbuf());
 }
 

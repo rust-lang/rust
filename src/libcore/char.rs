@@ -636,7 +636,7 @@ mod test {
     use char::Char;
     use slice::ImmutableVector;
     use option::{Some, None};
-    use realstd::strbuf::StrBuf;
+    use realstd::string::String;
     use realstd::str::{Str, StrAllocating};
 
     #[test]
@@ -742,8 +742,8 @@ mod test {
 
     #[test]
     fn test_escape_default() {
-        fn string(c: char) -> StrBuf {
-            let mut result = StrBuf::new();
+        fn string(c: char) -> String {
+            let mut result = String::new();
             escape_default(c, |c| { result.push_char(c); });
             return result;
         }
@@ -777,8 +777,8 @@ mod test {
 
     #[test]
     fn test_escape_unicode() {
-        fn string(c: char) -> StrBuf {
-            let mut result = StrBuf::new();
+        fn string(c: char) -> String {
+            let mut result = String::new();
             escape_unicode(c, |c| { result.push_char(c); });
             return result;
         }
