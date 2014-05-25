@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // the registration function isn't typechecked yet
-#[macro_registrar]
-pub fn registrar() {} //~ ERROR cross-crate macro exports are experimental
+#[plugin_registrar]
+pub fn registrar() {} //~ ERROR compiler plugins are experimental
 
 fn main() {}

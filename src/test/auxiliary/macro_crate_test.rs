@@ -10,29 +10,28 @@
 
 // force-host
 
-#![feature(globs, macro_registrar, macro_rules, quote, managed_boxes)]
+#![feature(globs, plugin_registrar, macro_rules, quote, managed_boxes)]
 
 extern crate syntax;
+extern crate rustc;
 
-use syntax::ast::{Name, TokenTree, Item, MetaItem};
+use syntax::ast::{TokenTree, Item, MetaItem};
 use syntax::codemap::Span;
 use syntax::ext::base::*;
 use syntax::parse::token;
+use rustc::plugin::Registry;
 
 #[macro_export]
 macro_rules! exported_macro (() => (2))
 
 macro_rules! unexported_macro (() => (3))
 
-#[macro_registrar]
-pub fn macro_registrar(register: |Name, SyntaxExtension|) {
-    register(token::intern("make_a_1"),
-        NormalTT(box BasicMacroExpander {
-            expander: expand_make_a_1,
-            span: None,
-        },
-        None));
-    register(token::intern("into_foo"), ItemModifier(expand_into_foo));
+#[plugin_registrar]
+pub fn plugin_registrar(reg: &mut Registry) {
+    reg.register_macro("make_a_1", expand_make_a_1);
+    reg.register_syntax_extension(
+        token::intern("into_foo"),
+        ItemModifier(expand_into_foo));
 }
 
 fn expand_make_a_1(cx: &mut ExtCtxt, sp: Span, tts: &[TokenTree])
