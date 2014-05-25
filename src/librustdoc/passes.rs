@@ -152,7 +152,8 @@ impl<'a> fold::DocFolder for Stripper<'a> {
             clean::ImplItem(clean::Impl{
                 for_: clean::ResolvedPath{ did, .. }, ..
             }) => {
-                if !self.exported_items.contains(&did.node) {
+                if ast_util::is_local(did) &&
+                   !self.exported_items.contains(&did.node) {
                     return None;
                 }
             }

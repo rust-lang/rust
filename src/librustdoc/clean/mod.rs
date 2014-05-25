@@ -15,7 +15,7 @@ use syntax;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::attr;
-use syntax::attr::AttributeMethods;
+use syntax::attr::{AttributeMethods, AttrMetaMethods};
 use syntax::codemap::Pos;
 use syntax::parse::token::InternedString;
 use syntax::parse::token;
@@ -27,7 +27,7 @@ use rustc::metadata::csearch;
 use rustc::metadata::decoder;
 use rustc::middle::ty;
 
-use std::string::String;
+use std::rc::Rc;
 
 use core;
 use doctree;
@@ -36,6 +36,8 @@ use visit_ast;
 /// A stable identifier to the particular version of JSON output.
 /// Increment this when the `Crate` and related structures change.
 pub static SCHEMA_VERSION: &'static str = "0.8.2";
+
+mod inline;
 
 pub trait Clean<T> {
     fn clean(&self) -> T;
@@ -48,6 +50,12 @@ impl<T: Clean<U>, U> Clean<Vec<U>> for Vec<T> {
 }
 
 impl<T: Clean<U>, U> Clean<U> for @T {
+    fn clean(&self) -> U {
+        (**self).clean()
+    }
+}
+
+impl<T: Clean<U>, U> Clean<U> for Rc<T> {
     fn clean(&self) -> U {
         (**self).clean()
     }
@@ -250,7 +258,8 @@ impl Clean<Item> for doctree::Module {
             self.statics.clean().move_iter().collect(),
             self.traits.clean().move_iter().collect(),
             self.impls.clean().move_iter().collect(),
-            self.view_items.clean().move_iter().collect(),
+            self.view_items.clean().move_iter()
+                           .flat_map(|s| s.move_iter()).collect(),
             self.macros.clean().move_iter().collect()
         );
 
@@ -331,6 +340,14 @@ impl attr::AttrMetaMethods for Attribute {
             _ => None,
         }
     }
+    fn meta_item_list<'a>(&'a self) -> Option<&'a [@ast::MetaItem]> { None }
+    fn name_str_pair(&self) -> Option<(InternedString, InternedString)> {
+        None
+    }
+}
+impl<'a> attr::AttrMetaMethods for &'a Attribute {
+    fn name(&self) -> InternedString { (**self).name() }
+    fn value_str(&self) -> Option<InternedString> { (**self).value_str() }
     fn meta_item_list<'a>(&'a self) -> Option<&'a [@ast::MetaItem]> { None }
     fn name_str_pair(&self) -> Option<(InternedString, InternedString)> {
         None
@@ -473,7 +490,7 @@ impl Clean<Option<Vec<TyParamBound>>> for ty::substs {
     }
 }
 
-#[deriving(Clone, Encodable, Decodable)]
+#[deriving(Clone, Encodable, Decodable, Eq)]
 pub struct Lifetime(String);
 
 impl Lifetime {
@@ -614,7 +631,7 @@ impl Clean<Item> for ast::TypeMethod {
     }
 }
 
-#[deriving(Clone, Encodable, Decodable)]
+#[deriving(Clone, Encodable, Decodable, Eq)]
 pub enum SelfTy {
     SelfStatic,
     SelfValue,
@@ -707,18 +724,32 @@ impl Clean<FnDecl> for ast::FnDecl {
     }
 }
 
-impl Clean<FnDecl> for ty::FnSig {
+impl<'a> Clean<FnDecl> for (ast::DefId, &'a ty::FnSig) {
     fn clean(&self) -> FnDecl {
+        let cx = super::ctxtkey.get().unwrap();
+        let tcx = match cx.maybe_typed {
+            core::Typed(ref tcx) => tcx,
+            core::NotTyped(_) => unreachable!(),
+        };
+        let (did, sig) = *self;
+        let mut names = if did.node != 0 {
+            csearch::get_method_arg_names(&tcx.sess.cstore, did).move_iter()
+        } else {
+            Vec::new().move_iter()
+        }.peekable();
+        if names.peek().map(|s| s.as_slice()) == Some("self") {
+            let _ = names.next();
+        }
         FnDecl {
-            output: self.output.clean(),
+            output: sig.output.clean(),
             cf: Return,
-            attrs: Vec::new(), // FIXME: this is likely wrong
+            attrs: Vec::new(),
             inputs: Arguments {
-                values: self.inputs.iter().map(|t| {
+                values: sig.inputs.iter().map(|t| {
                     Argument {
                         type_: t.clean(),
                         id: 0,
-                        name: "".to_strbuf(), // FIXME: where are the names?
+                        name: names.next().unwrap_or("".to_strbuf()),
                     }
                 }).collect(),
             },
@@ -830,12 +861,8 @@ impl Clean<TraitMethod> for ty::Method {
         let cx = super::ctxtkey.get().unwrap();
         let tcx = match cx.maybe_typed {
             core::Typed(ref tcx) => tcx,
-            core::NotTyped(_) => fail!(),
+            core::NotTyped(_) => unreachable!(),
         };
-        let mut attrs = Vec::new();
-        csearch::get_item_attrs(&tcx.sess.cstore, self.def_id, |v| {
-            attrs.extend(v.move_iter().map(|i| i.clean()));
-        });
         let (self_, sig) = match self.explicit_self {
             ast::SelfStatic => (ast::SelfStatic.clean(), self.fty.sig.clone()),
             s => {
@@ -857,20 +884,18 @@ impl Clean<TraitMethod> for ty::Method {
                 (s, sig)
             }
         };
+
         m(Item {
             name: Some(self.ident.clean()),
             visibility: Some(ast::Inherited),
             def_id: self.def_id,
-            attrs: attrs,
-            source: Span {
-                filename: "".to_strbuf(),
-                loline: 0, locol: 0, hiline: 0, hicol: 0,
-            },
+            attrs: inline::load_attrs(tcx, self.def_id),
+            source: Span::empty(),
             inner: TyMethodItem(TyMethod {
                 fn_style: self.fty.fn_style,
                 generics: self.generics.clean(),
                 self_: self_,
-                decl: sig.clean(),
+                decl: (self.def_id, &sig).clean(),
             })
         })
     }
@@ -987,13 +1012,13 @@ impl Clean<Type> for ty::t {
                 generics: Generics {
                     lifetimes: Vec::new(), type_params: Vec::new()
                 },
-                decl: fty.sig.clean(),
+                decl: (ast_util::local_def(0), &fty.sig).clean(),
                 abi: fty.abi.to_str().to_strbuf(),
             }),
             ty::ty_closure(ref fty) => {
                 let decl = box ClosureDecl {
                     lifetimes: Vec::new(), // FIXME: this looks wrong...
-                    decl: fty.sig.clean(),
+                    decl: (ast_util::local_def(0), &fty.sig).clean(),
                     onceness: fty.onceness,
                     fn_style: fty.fn_style,
                     bounds: fty.bounds.iter().map(|i| i.clean()).collect(),
@@ -1009,7 +1034,7 @@ impl Clean<Type> for ty::t {
                 let cx = super::ctxtkey.get().unwrap();
                 let tcx = match cx.maybe_typed {
                     core::Typed(ref tycx) => tycx,
-                    core::NotTyped(_) => fail!(),
+                    core::NotTyped(_) => unreachable!(),
                 };
                 let fqn = csearch::get_item_path(tcx, did);
                 let fqn: Vec<String> = fqn.move_iter().map(|i| {
@@ -1069,6 +1094,31 @@ impl Clean<Item> for ast::StructField {
             visibility: Some(vis),
             def_id: ast_util::local_def(self.node.id),
             inner: StructFieldItem(TypedStructField(self.node.ty.clean())),
+        }
+    }
+}
+
+impl Clean<Item> for ty::field_ty {
+    fn clean(&self) -> Item {
+        use syntax::parse::token::special_idents::unnamed_field;
+        let name = if self.name == unnamed_field.name {
+            None
+        } else {
+            Some(self.name)
+        };
+        let cx = super::ctxtkey.get().unwrap();
+        let tcx = match cx.maybe_typed {
+            core::Typed(ref tycx) => tycx,
+            core::NotTyped(_) => unreachable!(),
+        };
+        let ty = ty::lookup_item_type(tcx, self.id);
+        Item {
+            name: name.clean(),
+            attrs: inline::load_attrs(tcx, self.id),
+            source: Span::empty(),
+            visibility: Some(self.vis),
+            def_id: self.id,
+            inner: StructFieldItem(TypedStructField(ty.ty.clean())),
         }
     }
 }
@@ -1171,6 +1221,53 @@ impl Clean<Item> for doctree::Variant {
     }
 }
 
+impl Clean<Item> for ty::VariantInfo {
+    fn clean(&self) -> Item {
+        // use syntax::parse::token::special_idents::unnamed_field;
+        let cx = super::ctxtkey.get().unwrap();
+        let tcx = match cx.maybe_typed {
+            core::Typed(ref tycx) => tycx,
+            core::NotTyped(_) => fail!("tcx not present"),
+        };
+        let kind = match self.arg_names.as_ref().map(|s| s.as_slice()) {
+            None | Some([]) if self.args.len() == 0 => CLikeVariant,
+            None | Some([]) => {
+                TupleVariant(self.args.iter().map(|t| t.clean()).collect())
+            }
+            Some(s) => {
+                StructVariant(VariantStruct {
+                    struct_type: doctree::Plain,
+                    fields_stripped: false,
+                    fields: s.iter().zip(self.args.iter()).map(|(name, ty)| {
+                        Item {
+                            source: Span::empty(),
+                            name: Some(name.clean()),
+                            attrs: Vec::new(),
+                            visibility: Some(ast::Public),
+                            // FIXME: this is not accurate, we need an id for
+                            //        the specific field but we're using the id
+                            //        for the whole variant. Nothing currently
+                            //        uses this so we should be good for now.
+                            def_id: self.id,
+                            inner: StructFieldItem(
+                                TypedStructField(ty.clean())
+                            )
+                        }
+                    }).collect()
+                })
+            }
+        };
+        Item {
+            name: Some(self.name.clean()),
+            attrs: inline::load_attrs(tcx, self.id),
+            source: Span::empty(),
+            visibility: Some(ast::Public),
+            def_id: self.id,
+            inner: VariantItem(Variant { kind: kind }),
+        }
+    }
+}
+
 #[deriving(Clone, Encodable, Decodable)]
 pub enum VariantKind {
     CLikeVariant,
@@ -1200,6 +1297,16 @@ pub struct Span {
     pub locol: uint,
     pub hiline: uint,
     pub hicol: uint,
+}
+
+impl Span {
+    fn empty() -> Span {
+        Span {
+            filename: "".to_strbuf(),
+            loline: 0, locol: 0,
+            hiline: 0, hicol: 0,
+        }
+    }
 }
 
 impl Clean<Span> for syntax::codemap::Span {
@@ -1270,6 +1377,12 @@ fn path_to_str(p: &ast::Path) -> String {
 impl Clean<String> for ast::Ident {
     fn clean(&self) -> String {
         token::get_ident(*self).get().to_strbuf()
+    }
+}
+
+impl Clean<String> for ast::Name {
+    fn clean(&self) -> String {
+        token::get_name(*self).get().to_strbuf()
     }
 }
 
@@ -1345,7 +1458,7 @@ impl Clean<Item> for doctree::Static {
     }
 }
 
-#[deriving(Show, Clone, Encodable, Decodable)]
+#[deriving(Show, Clone, Encodable, Decodable, Eq)]
 pub enum Mutability {
     Mutable,
     Immutable,
@@ -1369,19 +1482,12 @@ pub struct Impl {
     pub derived: bool,
 }
 
+fn detect_derived<M: AttrMetaMethods>(attrs: &[M]) -> bool {
+    attr::contains_name(attrs, "automatically_derived")
+}
+
 impl Clean<Item> for doctree::Impl {
     fn clean(&self) -> Item {
-        let mut derived = false;
-        for attr in self.attrs.iter() {
-            match attr.node.value.node {
-                ast::MetaWord(ref s) => {
-                    if s.get() == "automatically_derived" {
-                        derived = true;
-                    }
-                }
-                _ => {}
-            }
-        }
         Item {
             name: None,
             attrs: self.attrs.clean(),
@@ -1393,7 +1499,7 @@ impl Clean<Item> for doctree::Impl {
                 trait_: self.trait_.clean(),
                 for_: self.for_.clean(),
                 methods: self.methods.clean(),
-                derived: derived,
+                derived: detect_derived(self.attrs.as_slice()),
             }),
         }
     }
@@ -1404,18 +1510,63 @@ pub struct ViewItem {
     pub inner: ViewItemInner,
 }
 
-impl Clean<Item> for ast::ViewItem {
-    fn clean(&self) -> Item {
-        Item {
-            name: None,
-            attrs: self.attrs.clean().move_iter().collect(),
-            source: self.span.clean(),
-            def_id: ast_util::local_def(0),
-            visibility: self.vis.clean(),
-            inner: ViewItemItem(ViewItem {
-                inner: self.node.clean()
-            }),
+impl Clean<Vec<Item>> for ast::ViewItem {
+    fn clean(&self) -> Vec<Item> {
+        // We consider inlining the documentation of `pub use` statments, but we
+        // forcefully don't inline if this is not public or if the
+        // #[doc(no_inline)] attribute is present.
+        let denied = self.vis != ast::Public || self.attrs.iter().any(|a| {
+            a.name().get() == "doc" && match a.meta_item_list() {
+                Some(l) => attr::contains_name(l, "no_inline"),
+                None => false,
+            }
+        });
+        let convert = |node: &ast::ViewItem_| {
+            Item {
+                name: None,
+                attrs: self.attrs.clean().move_iter().collect(),
+                source: self.span.clean(),
+                def_id: ast_util::local_def(0),
+                visibility: self.vis.clean(),
+                inner: ViewItemItem(ViewItem { inner: node.clean() }),
+            }
+        };
+        let mut ret = Vec::new();
+        match self.node {
+            ast::ViewItemUse(ref path) if !denied => {
+                match path.node {
+                    ast::ViewPathGlob(..) => ret.push(convert(&self.node)),
+                    ast::ViewPathList(ref a, ref list, ref b) => {
+                        // Attempt to inline all reexported items, but be sure
+                        // to keep any non-inlineable reexports so they can be
+                        // listed in the documentation.
+                        let remaining = list.iter().filter(|path| {
+                            match inline::try_inline(path.node.id) {
+                                Some(items) => {
+                                    ret.extend(items.move_iter()); false
+                                }
+                                None => true,
+                            }
+                        }).map(|a| a.clone()).collect::<Vec<ast::PathListIdent>>();
+                        if remaining.len() > 0 {
+                            let path = ast::ViewPathList(a.clone(),
+                                                         remaining,
+                                                         b.clone());
+                            let path = syntax::codemap::dummy_spanned(path);
+                            ret.push(convert(&ast::ViewItemUse(@path)));
+                        }
+                    }
+                    ast::ViewPathSimple(_, _, id) => {
+                        match inline::try_inline(id) {
+                            Some(items) => ret.extend(items.move_iter()),
+                            None => ret.push(convert(&self.node)),
+                        }
+                    }
+                }
+            }
+            ref n => ret.push(convert(n)),
         }
+        return ret;
     }
 }
 
@@ -1630,28 +1781,15 @@ fn register_def(cx: &core::DocContext, def: ast::Def) -> ast::DefId {
         core::Typed(ref t) => t,
         core::NotTyped(_) => return did
     };
-    let fqn = csearch::get_item_path(tcx, did);
-    let fqn = fqn.move_iter().map(|i| i.to_str().to_strbuf()).collect();
-    debug!("recording {} => {}", did, fqn);
-    cx.external_paths.borrow_mut().get_mut_ref().insert(did, (fqn, kind));
+    inline::record_extern_fqn(cx, did, kind);
     match kind {
         TypeTrait => {
-            let t = build_external_trait(tcx, did);
+            let t = inline::build_external_trait(tcx, did);
             cx.external_traits.borrow_mut().get_mut_ref().insert(did, t);
         }
         _ => {}
     }
     return did;
-}
-
-fn build_external_trait(tcx: &ty::ctxt, did: ast::DefId) -> Trait {
-    let def = csearch::get_trait_def(tcx, did);
-    let methods = ty::trait_methods(tcx, did);
-    Trait {
-        generics: def.generics.clean(),
-        methods: methods.iter().map(|i| i.clean()).collect(),
-        parents: Vec::new(), // FIXME: this is likely wrong
-    }
 }
 
 fn resolve_use_source(path: Path, id: ast::NodeId) -> ImportSource {

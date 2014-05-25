@@ -144,6 +144,8 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
     extern fn block(ob: *mut hoedown_buffer, text: *hoedown_buffer,
                     lang: *hoedown_buffer, opaque: *mut libc::c_void) {
         unsafe {
+            if text.is_null() { return }
+
             let opaque = opaque as *mut hoedown_html_renderer_state;
             let my_opaque: &MyOpaque = &*((*opaque).opaque as *MyOpaque);
             slice::raw::buf_as_slice((*text).data, (*text).size as uint, |text| {
