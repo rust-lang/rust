@@ -1309,3 +1309,18 @@ pub fn get_missing_lang_items(cdata: Cmd)
     });
     return result;
 }
+
+pub fn get_method_arg_names(cdata: Cmd, id: ast::NodeId) -> Vec<String> {
+    let mut ret = Vec::new();
+    let method_doc = lookup_item(id, cdata.data());
+    match reader::maybe_get_doc(method_doc, tag_method_argument_names) {
+        Some(args_doc) => {
+            reader::tagged_docs(args_doc, tag_method_argument_name, |name_doc| {
+                ret.push(name_doc.as_str_slice().to_strbuf());
+                true
+            });
+        }
+        None => {}
+    }
+    return ret;
+}

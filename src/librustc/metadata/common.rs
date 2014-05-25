@@ -206,6 +206,9 @@ pub static tag_crate_triple: uint = 0x66;
 
 pub static tag_dylib_dependency_formats: uint = 0x67;
 
+pub static tag_method_argument_names: uint = 0x8e;
+pub static tag_method_argument_name: uint = 0x8f;
+
 #[deriving(Clone, Show)]
 pub struct LinkMeta {
     pub crateid: CrateId,

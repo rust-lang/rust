@@ -99,7 +99,7 @@ impl fmt::Show for clean::TyParamBound {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             clean::RegionBound => {
-                f.write("::".as_bytes())
+                f.write("'static".as_bytes())
             }
             clean::TraitBound(ref ty) => {
                 write!(f, "{}", *ty)
@@ -150,7 +150,7 @@ fn resolved_path(w: &mut fmt::Formatter, did: ast::DefId, p: &clean::Path,
                  print_all: bool) -> fmt::Result {
     path(w, p, print_all,
         |cache, loc| {
-            if ast_util::is_local(did) {
+            if ast_util::is_local(did) || cache.paths.contains_key(&did) {
                 Some(("../".repeat(loc.len())).to_strbuf())
             } else {
                 match *cache.extern_locations.get(&did.krate) {

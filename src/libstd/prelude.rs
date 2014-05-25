@@ -38,55 +38,62 @@
 //! `drop`, `spawn`, and `channel`.
 
 // Reexported core operators
-pub use kinds::{Copy, Send, Sized, Share};
-pub use ops::{Add, Sub, Mul, Div, Rem, Neg, Not};
-pub use ops::{BitAnd, BitOr, BitXor};
-pub use ops::{Drop, Deref, DerefMut};
-pub use ops::{Shl, Shr, Index};
-pub use option::{Option, Some, None};
-pub use result::{Result, Ok, Err};
+#[doc(no_inline)] pub use kinds::{Copy, Send, Sized, Share};
+#[doc(no_inline)] pub use ops::{Add, Sub, Mul, Div, Rem, Neg, Not};
+#[doc(no_inline)] pub use ops::{BitAnd, BitOr, BitXor};
+#[doc(no_inline)] pub use ops::{Drop, Deref, DerefMut};
+#[doc(no_inline)] pub use ops::{Shl, Shr, Index};
+#[doc(no_inline)] pub use option::{Option, Some, None};
+#[doc(no_inline)] pub use result::{Result, Ok, Err};
 
 // Reexported functions
-pub use from_str::from_str;
-pub use iter::range;
-pub use mem::drop;
+#[doc(no_inline)] pub use from_str::from_str;
+#[doc(no_inline)] pub use iter::range;
+#[doc(no_inline)] pub use mem::drop;
 
 // Reexported types and traits
 
-pub use ascii::{Ascii, AsciiCast, OwnedAsciiCast, AsciiStr, IntoBytes};
-pub use c_str::ToCStr;
-pub use char::Char;
-pub use clone::Clone;
-pub use cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater, Equiv};
-pub use container::{Container, Mutable, Map, MutableMap, Set, MutableSet};
-pub use iter::{FromIterator, Extendable};
-pub use iter::{Iterator, DoubleEndedIterator, RandomAccessIterator, CloneableIterator};
-pub use iter::{OrdIterator, MutableDoubleEndedIterator, ExactSize};
-pub use num::{Num, NumCast, CheckedAdd, CheckedSub, CheckedMul};
-pub use num::{Signed, Unsigned};
-pub use num::{Primitive, Int, Float, FloatMath, ToPrimitive, FromPrimitive};
-pub use option::Expect;
-pub use owned::Box;
-pub use path::{GenericPath, Path, PosixPath, WindowsPath};
-pub use ptr::RawPtr;
-pub use io::{Buffer, Writer, Reader, Seek};
-pub use str::{Str, StrVector, StrSlice, OwnedStr, IntoMaybeOwned};
-pub use str::{StrAllocating};
-pub use to_str::{ToStr, IntoStr};
-pub use tuple::{Tuple1, Tuple2, Tuple3, Tuple4};
-pub use tuple::{Tuple5, Tuple6, Tuple7, Tuple8};
-pub use tuple::{Tuple9, Tuple10, Tuple11, Tuple12};
-pub use slice::{CloneableVector, ImmutableCloneableVector, MutableCloneableVector};
-pub use slice::{ImmutableVector, MutableVector};
-pub use slice::{ImmutableEqVector, ImmutableTotalOrdVector, MutableTotalOrdVector};
-pub use slice::{Vector, VectorVector, OwnedVector, MutableVectorAllocating};
-pub use string::String;
-pub use vec::Vec;
+#[doc(no_inline)] pub use ascii::{Ascii, AsciiCast, OwnedAsciiCast, AsciiStr};
+#[doc(no_inline)] pub use ascii::IntoBytes;
+#[doc(no_inline)] pub use c_str::ToCStr;
+#[doc(no_inline)] pub use char::Char;
+#[doc(no_inline)] pub use clone::Clone;
+#[doc(no_inline)] pub use cmp::{Eq, Ord, TotalEq, TotalOrd};
+#[doc(no_inline)] pub use cmp::{Ordering, Less, Equal, Greater, Equiv};
+#[doc(no_inline)] pub use container::{Container, Mutable, Map, MutableMap};
+#[doc(no_inline)] pub use container::{Set, MutableSet};
+#[doc(no_inline)] pub use iter::{FromIterator, Extendable, ExactSize};
+#[doc(no_inline)] pub use iter::{Iterator, DoubleEndedIterator};
+#[doc(no_inline)] pub use iter::{RandomAccessIterator, CloneableIterator};
+#[doc(no_inline)] pub use iter::{OrdIterator, MutableDoubleEndedIterator};
+#[doc(no_inline)] pub use num::{Num, NumCast, CheckedAdd, CheckedSub, CheckedMul};
+#[doc(no_inline)] pub use num::{Signed, Unsigned, Primitive, Int, Float};
+#[doc(no_inline)] pub use num::{FloatMath, ToPrimitive, FromPrimitive};
+#[doc(no_inline)] pub use option::Expect;
+#[doc(no_inline)] pub use owned::Box;
+#[doc(no_inline)] pub use path::{GenericPath, Path, PosixPath, WindowsPath};
+#[doc(no_inline)] pub use ptr::RawPtr;
+#[doc(no_inline)] pub use io::{Buffer, Writer, Reader, Seek};
+#[doc(no_inline)] pub use str::{Str, StrVector, StrSlice, OwnedStr};
+#[doc(no_inline)] pub use str::{IntoMaybeOwned, StrAllocating};
+#[doc(no_inline)] pub use to_str::{ToStr, IntoStr};
+#[doc(no_inline)] pub use tuple::{Tuple1, Tuple2, Tuple3, Tuple4};
+#[doc(no_inline)] pub use tuple::{Tuple5, Tuple6, Tuple7, Tuple8};
+#[doc(no_inline)] pub use tuple::{Tuple9, Tuple10, Tuple11, Tuple12};
+#[doc(no_inline)] pub use slice::{CloneableVector, ImmutableCloneableVector};
+#[doc(no_inline)] pub use slice::{MutableCloneableVector, MutableTotalOrdVector};
+#[doc(no_inline)] pub use slice::{ImmutableVector, MutableVector};
+#[doc(no_inline)] pub use slice::{ImmutableEqVector, ImmutableTotalOrdVector};
+#[doc(no_inline)] pub use slice::{Vector, VectorVector, OwnedVector};
+#[doc(no_inline)] pub use slice::MutableVectorAllocating;
+#[doc(no_inline)] pub use string::String;
+#[doc(no_inline)] pub use vec::Vec;
 
 // Reexported runtime types
-pub use comm::{sync_channel, channel, SyncSender, Sender, Receiver};
-pub use task::spawn;
+#[doc(no_inline)] pub use comm::{sync_channel, channel};
+#[doc(no_inline)] pub use comm::{SyncSender, Sender, Receiver};
+#[doc(no_inline)] pub use task::spawn;
 
 // Reexported statics
 #[cfg(not(test))]
-pub use gc::GC;
+#[doc(no_inline)] pub use gc::GC;

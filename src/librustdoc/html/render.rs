@@ -132,7 +132,7 @@ pub struct Cache {
     ///
     /// The values of the map are a list of implementations and documentation
     /// found on that implementation.
-    pub impls: HashMap<ast::NodeId, Vec<(clean::Impl, Option<String>)>>,
+    pub impls: HashMap<ast::DefId, Vec<(clean::Impl, Option<String>)>>,
 
     /// Maintains a mapping of local crate node ids to the fully qualified name
     /// and "short type description" of that node. This is used when generating
@@ -140,6 +140,10 @@ pub struct Cache {
     /// this map because the `External` type itself has all the information
     /// necessary.
     pub paths: HashMap<ast::DefId, (Vec<String>, ItemType)>,
+
+    /// Similar to `paths`, but only holds external paths. This is only used for
+    /// generating explicit hyperlinks to other crates.
+    pub external_paths: HashMap<ast::DefId, Vec<String>>,
 
     /// This map contains information about all known traits of this crate.
     /// Implementations of a crate should inherit the documentation of the
@@ -157,9 +161,9 @@ pub struct Cache {
 
     // Private fields only used when initially crawling a crate to build a cache
 
-    stack: Vec<String> ,
-    parent_stack: Vec<ast::NodeId> ,
-    search_index: Vec<IndexItem> ,
+    stack: Vec<String>,
+    parent_stack: Vec<ast::DefId>,
+    search_index: Vec<IndexItem>,
     privmod: bool,
     public_items: NodeSet,
 
@@ -198,7 +202,7 @@ struct IndexItem {
     name: String,
     path: String,
     desc: String,
-    parent: Option<ast::NodeId>,
+    parent: Option<ast::DefId>,
 }
 
 // TLS keys used to carry information around during rendering.
@@ -249,7 +253,8 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
     let analysis = ::analysiskey.get();
     let public_items = analysis.as_ref().map(|a| a.public_items.clone());
     let public_items = public_items.unwrap_or(NodeSet::new());
-    let paths = analysis.as_ref().map(|a| {
+    let paths: HashMap<ast::DefId, (Vec<String>, ItemType)> =
+      analysis.as_ref().map(|a| {
         let paths = a.external_paths.borrow_mut().take_unwrap();
         paths.move_iter().map(|(k, (v, t))| {
             (k, (v, match t {
@@ -265,6 +270,8 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
     }).unwrap_or(HashMap::new());
     let mut cache = Cache {
         impls: HashMap::new(),
+        external_paths: paths.iter().map(|(&k, &(ref v, _))| (k, v.clone()))
+                             .collect(),
         paths: paths,
         implementors: HashMap::new(),
         stack: Vec::new(),
@@ -302,7 +309,7 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
                         path: fqp.slice_to(fqp.len() - 1).connect("::")
                                                          .to_strbuf(),
                         desc: shorter(item.doc_value()).to_strbuf(),
-                        parent: Some(pid),
+                        parent: Some(did),
                     });
                 },
                 None => {}
@@ -360,9 +367,8 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
 
         try!(write!(&mut w, r#"],"paths":["#));
 
-        for (i, &nodeid) in pathid_to_nodeid.iter().enumerate() {
-            let def = ast_util::local_def(nodeid);
-            let &(ref fqp, short) = cache.paths.find(&def).unwrap();
+        for (i, &did) in pathid_to_nodeid.iter().enumerate() {
+            let &(ref fqp, short) = cache.paths.find(&did).unwrap();
             if i > 0 {
                 try!(write!(&mut w, ","));
             }
@@ -497,13 +503,15 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
             seen: HashSet::new(),
             cx: &mut cx,
         };
+        // skip all invalid spans
+        folder.seen.insert("".to_strbuf());
         krate = folder.fold_crate(krate);
     }
 
     for &(n, ref e) in krate.externs.iter() {
         cache.extern_locations.insert(n, extern_location(e, &cx.dst));
         let did = ast::DefId { krate: n, node: ast::CRATE_NODE_ID };
-        cache.paths.insert(did, (Vec::new(), item_type::Module));
+        cache.paths.insert(did, (vec![e.name.to_strbuf()], item_type::Module));
     }
 
     // And finally render the whole crate's documentation
@@ -730,14 +738,13 @@ impl DocFolder for Cache {
                     clean::VariantItem(..) => {
                         (Some(*self.parent_stack.last().unwrap()),
                          Some(self.stack.slice_to(self.stack.len() - 1)))
-
                     }
                     clean::MethodItem(..) => {
                         if self.parent_stack.len() == 0 {
                             (None, None)
                         } else {
                             let last = self.parent_stack.last().unwrap();
-                            let did = ast_util::local_def(*last);
+                            let did = *last;
                             let path = match self.paths.find(&did) {
                                 Some(&(_, item_type::Trait)) =>
                                     Some(self.stack.slice_to(self.stack.len() - 1)),
@@ -766,9 +773,11 @@ impl DocFolder for Cache {
                         });
                     }
                     (Some(parent), None) if !self.privmod => {
-                        // We have a parent, but we don't know where they're
-                        // defined yet. Wait for later to index this item.
-                        self.orphan_methods.push((parent, item.clone()))
+                        if ast_util::is_local(parent) {
+                            // We have a parent, but we don't know where they're
+                            // defined yet. Wait for later to index this item.
+                            self.orphan_methods.push((parent.node, item.clone()))
+                        }
                     }
                     _ => {}
                 }
@@ -789,19 +798,18 @@ impl DocFolder for Cache {
             clean::TypedefItem(..) | clean::TraitItem(..) |
             clean::FunctionItem(..) | clean::ModuleItem(..) |
             clean::ForeignFunctionItem(..) => {
-                if ast_util::is_local(item.def_id) {
-                    // Reexported items mean that the same id can show up twice
-                    // in the rustdoc ast that we're looking at. We know,
-                    // however, that a reexported item doesn't show up in the
-                    // `public_items` map, so we can skip inserting into the
-                    // paths map if there was already an entry present and we're
-                    // not a public item.
-                    let id = item.def_id.node;
-                    if !self.paths.contains_key(&item.def_id) ||
-                       self.public_items.contains(&id) {
-                        self.paths.insert(item.def_id,
-                                          (self.stack.clone(), shortty(&item)));
-                    }
+                // Reexported items mean that the same id can show up twice
+                // in the rustdoc ast that we're looking at. We know,
+                // however, that a reexported item doesn't show up in the
+                // `public_items` map, so we can skip inserting into the
+                // paths map if there was already an entry present and we're
+                // not a public item.
+                let id = item.def_id.node;
+                if !self.paths.contains_key(&item.def_id) ||
+                   !ast_util::is_local(item.def_id) ||
+                   self.public_items.contains(&id) {
+                    self.paths.insert(item.def_id,
+                                      (self.stack.clone(), shortty(&item)));
                 }
             }
             // link variants to their parent enum because pages aren't emitted
@@ -817,20 +825,14 @@ impl DocFolder for Cache {
         // Maintain the parent stack
         let parent_pushed = match item.inner {
             clean::TraitItem(..) | clean::EnumItem(..) | clean::StructItem(..) => {
-                if ast_util::is_local(item.def_id) {
-                    self.parent_stack.push(item.def_id.node);
-                }
+                self.parent_stack.push(item.def_id);
                 true
             }
             clean::ImplItem(ref i) => {
                 match i.for_ {
                     clean::ResolvedPath{ did, .. } => {
-                        if ast_util::is_local(did) {
-                            self.parent_stack.push(did.node);
-                            true
-                        } else {
-                            false
-                        }
+                        self.parent_stack.push(did);
+                        true
                     }
                     _ => false
                 }
@@ -845,10 +847,8 @@ impl DocFolder for Cache {
                 match item {
                     clean::Item{ attrs, inner: clean::ImplItem(i), .. } => {
                         match i.for_ {
-                            clean::ResolvedPath { did, .. }
-                                if ast_util::is_local(did) =>
-                            {
-                                let v = self.impls.find_or_insert_with(did.node, |_| {
+                            clean::ResolvedPath { did, .. } => {
+                                let v = self.impls.find_or_insert_with(did, |_| {
                                     Vec::new()
                                 });
                                 // extract relevant documentation for this impl
@@ -1041,23 +1041,62 @@ impl<'a> Item<'a> {
         }
     }
 
-    fn link(&self) -> String {
-        let mut path = Vec::new();
-        clean_srcpath(self.item.source.filename.as_bytes(), |component| {
-            path.push(component.to_owned());
-        });
-        let href = if self.item.source.loline == self.item.source.hiline {
-            format_strbuf!("{}", self.item.source.loline)
+    /// Generate a url appropriate for an `href` attribute back to the source of
+    /// this item.
+    ///
+    /// The url generated, when clicked, will redirect the browser back to the
+    /// original source code.
+    ///
+    /// If `None` is returned, then a source link couldn't be generated. This
+    /// may happen, for example, with externally inlined items where the source
+    /// of their crate documentation isn't known.
+    fn href(&self) -> Option<String> {
+        // If this item is part of the local crate, then we're guaranteed to
+        // know the span, so we plow forward and generate a proper url. The url
+        // has anchors for the line numbers that we're linking to.
+        if ast_util::is_local(self.item.def_id) {
+            let mut path = Vec::new();
+            clean_srcpath(self.item.source.filename.as_bytes(), |component| {
+                path.push(component.to_owned());
+            });
+            let href = if self.item.source.loline == self.item.source.hiline {
+                format!("{}", self.item.source.loline)
+            } else {
+                format!("{}-{}",
+                        self.item.source.loline,
+                        self.item.source.hiline)
+            };
+            Some(format!("{root}src/{krate}/{path}.html\\#{href}",
+                         root = self.cx.root_path,
+                         krate = self.cx.layout.krate,
+                         path = path.connect("/"),
+                         href = href))
+
+        // If this item is not part of the local crate, then things get a little
+        // trickier. We don't actually know the span of the external item, but
+        // we know that the documentation on the other end knows the span!
+        //
+        // In this case, we generate a link to the *documentation* for this type
+        // in the original crate. There's an extra URL parameter which says that
+        // we want to go somewhere else, and the JS on the destination page will
+        // pick it up and instantly redirect the browser to the source code.
+        //
+        // If we don't know where the external documentation for this crate is
+        // located, then we return `None`.
         } else {
-            format_strbuf!("{}-{}",
-                           self.item.source.loline,
-                           self.item.source.hiline)
-        };
-        format_strbuf!("{root}src/{krate}/{path}.html\\#{href}",
-                       root = self.cx.root_path,
-                       krate = self.cx.layout.krate,
-                       path = path.connect("/"),
-                       href = href)
+            let cache = cache_key.get().unwrap();
+            let path = cache.external_paths.get(&self.item.def_id);
+            let root = match *cache.extern_locations.get(&self.item.def_id.krate) {
+                Remote(ref s) => s.to_strbuf(),
+                Local => format!("{}/..", self.cx.root_path),
+                Unknown => return None,
+            };
+            Some(format!("{root}/{path}/{file}?gotosrc={goto}",
+                         root = root,
+                         path = path.slice_to(path.len() - 1).connect("/"),
+                         file = item_path(self.item),
+                         goto = self.item.def_id.node))
+        }
     }
 }
 
@@ -1105,9 +1144,21 @@ impl<'a> fmt::Show for Item<'a> {
         }
 
         // Write `src` tag
+        //
+        // When this item is part of a `pub use` in a downstream crate, the
+        // [src] link in the downstream documentation will actually come back to
+        // this page, and this link will be auto-clicked. The `id` attribute is
+        // used to find the link to auto-click.
         if self.cx.include_sources {
-            try!(write!(fmt, "<a class='source' href='{}'>[src]</a>",
-                        self.link()));
+            match self.href() {
+                Some(l) => {
+                    try!(write!(fmt,
+                                "<a class='source' id='src-{}' \
+                                    href='{}'>[src]</a>",
+                                self.item.def_id.node, l));
+                }
+                None => {}
+            }
         }
         try!(write!(fmt, "</h1>\n"));
 
@@ -1266,7 +1317,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                         try!(write!(f, "<code> = </code>"));
                         if s.contains("\n") {
                             write!(f, "<a href='{}'>[definition]</a>",
-                                   item.link())
+                                   item.href())
                         } else {
                             write!(f, "<code>{}</code>", s.as_slice())
                         }
@@ -1672,7 +1723,7 @@ fn render_struct(w: &mut fmt::Formatter, it: &clean::Item,
 }
 
 fn render_methods(w: &mut fmt::Formatter, it: &clean::Item) -> fmt::Result {
-    match cache_key.get().unwrap().impls.find(&it.def_id.node) {
+    match cache_key.get().unwrap().impls.find(&it.def_id) {
         Some(v) => {
             let mut non_trait = v.iter().filter(|p| {
                 p.ref0().trait_.is_none()
