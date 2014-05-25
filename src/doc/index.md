@@ -23,6 +23,14 @@ li {list-style-type: none; }
 * [Testing](guide-testing.html)
 * [Rust's Runtime](guide-runtime.html)
 
+# FAQs
+
+* [Language Design FAQ](complement-design-faq.html)
+* [Language FAQ](complement-lang-faq.html)
+* [Project FAQ](complement-project-faq.html)
+* [Code cheatsheet](complement-cheatsheet.html) - "How do I do X?"
+* [How to submit a bug report](complement-bugreport.html)
+
 # Libraries
 
 * [The standard library, `std`](std/index.html)
@@ -59,13 +67,6 @@ li {list-style-type: none; }
 # Tooling
 
 * [The `rustdoc` manual](rustdoc.html)
-
-# FAQs
-
-* [Language FAQ](complement-lang-faq.html)
-* [Project FAQ](complement-project-faq.html)
-* [Code cheatsheet](complement-cheatsheet.html) - "How do I do X?"
-* [How to submit a bug report](complement-bugreport.html)
 
 # External resources
 
