@@ -363,7 +363,7 @@ mod tests {
     use num::ToStrRadix;
     use option::{Some, None};
     use str::Str;
-    use strbuf::StrBuf;
+    use string::String;
     use slice::{Vector, ImmutableVector};
     use self::test::Bencher;
 
@@ -458,8 +458,8 @@ mod tests {
         let mut state_inc = SipState::new_with_keys(k0, k1);
         let mut state_full = SipState::new_with_keys(k0, k1);
 
-        fn to_hex_str(r: &[u8, ..8]) -> StrBuf {
-            let mut s = StrBuf::new();
+        fn to_hex_str(r: &[u8, ..8]) -> String {
+            let mut s = String::new();
             for b in r.iter() {
                 s.push_str((*b as uint).to_str_radix(16u).as_slice());
             }
@@ -478,9 +478,9 @@ mod tests {
             ]
         }
 
-        fn result_str(h: u64) -> StrBuf {
+        fn result_str(h: u64) -> String {
             let r = result_bytes(h);
-            let mut s = StrBuf::new();
+            let mut s = String::new();
             for b in r.iter() {
                 s.push_str((*b as uint).to_str_radix(16u).as_slice());
             }

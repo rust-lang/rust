@@ -13,5 +13,5 @@
 use std::result;
 
 fn main() {
-    println!("{:?}", result::Err::<int,StrBuf>("kitty".to_strbuf()).unwrap());
+    println!("{:?}", result::Err::<int,String>("kitty".to_strbuf()).unwrap());
 }

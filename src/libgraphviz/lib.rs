@@ -424,8 +424,8 @@ impl<'a> LabelText<'a> {
             _ => c.escape_default(f)
         }
     }
-    fn escape_str(s: &str) -> StrBuf {
-        let mut out = StrBuf::with_capacity(s.len());
+    fn escape_str(s: &str) -> String {
+        let mut out = String::with_capacity(s.len());
         for c in s.chars() {
             LabelText::escape_char(c, |c| out.push_char(c));
         }
@@ -433,7 +433,7 @@ impl<'a> LabelText<'a> {
     }
 
     /// Renders text as string suitable for a label in a .dot file.
-    pub fn escape(&self) -> StrBuf {
+    pub fn escape(&self) -> String {
         match self {
             &LabelStr(ref s) => s.as_slice().escape_default().to_strbuf(),
             &EscStr(ref s) => LabelText::escape_str(s.as_slice()).to_strbuf(),
@@ -661,7 +661,7 @@ mod tests {
         }
     }
 
-    fn test_input(g: LabelledGraph) -> IoResult<StrBuf> {
+    fn test_input(g: LabelledGraph) -> IoResult<String> {
         let mut writer = MemWriter::new();
         render(&g, &mut writer).unwrap();
         let mut r = BufReader::new(writer.get_ref());

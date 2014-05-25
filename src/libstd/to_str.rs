@@ -15,22 +15,22 @@ The `ToStr` trait for converting to strings
 */
 
 use fmt;
-use strbuf::StrBuf;
+use string::String;
 
 /// A generic trait for converting a value to a string
 pub trait ToStr {
     /// Converts the value of `self` to an owned string
-    fn to_str(&self) -> StrBuf;
+    fn to_str(&self) -> String;
 }
 
 /// Trait for converting a type to a string, consuming it in the process.
 pub trait IntoStr {
     /// Consume and convert to a string.
-    fn into_str(self) -> StrBuf;
+    fn into_str(self) -> String;
 }
 
 impl<T: fmt::Show> ToStr for T {
-    fn to_str(&self) -> StrBuf {
+    fn to_str(&self) -> String {
         format_strbuf!("{}", *self)
     }
 }

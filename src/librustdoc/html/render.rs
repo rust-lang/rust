@@ -38,7 +38,7 @@ use std::fmt;
 use std::io::{fs, File, BufferedWriter, MemWriter, BufferedReader};
 use std::io;
 use std::str;
-use std::strbuf::StrBuf;
+use std::string::String;
 
 use sync::Arc;
 use serialize::json::ToJson;
@@ -70,10 +70,10 @@ use html::markdown;
 pub struct Context {
     /// Current hierarchy of components leading down to what's currently being
     /// rendered
-    pub current: Vec<StrBuf> ,
+    pub current: Vec<String> ,
     /// String representation of how to get back to the root path of the 'doc/'
     /// folder in terms of a relative URL.
-    pub root_path: StrBuf,
+    pub root_path: String,
     /// The current destination folder of where HTML artifacts should be placed.
     /// This changes as the context descends into the module hierarchy.
     pub dst: Path,
@@ -85,7 +85,7 @@ pub struct Context {
     /// functions), and the value is the list of containers belonging to this
     /// header. This map will change depending on the surrounding context of the
     /// page.
-    pub sidebar: HashMap<StrBuf, Vec<StrBuf>>,
+    pub sidebar: HashMap<String, Vec<String>>,
     /// This flag indicates whether [src] links should be generated or not. If
     /// the source files are present in the html rendering, then this will be
     /// `true`.
@@ -95,7 +95,7 @@ pub struct Context {
 /// Indicates where an external crate can be found.
 pub enum ExternalLocation {
     /// Remote URL root of the external crate
-    Remote(StrBuf),
+    Remote(String),
     /// This external crate can be found in the local doc/ folder
     Local,
     /// The external crate could not be found.
@@ -124,7 +124,7 @@ pub struct Cache {
     /// Mapping of typaram ids to the name of the type parameter. This is used
     /// when pretty-printing a type (so pretty printing doesn't have to
     /// painfully maintain a context like this)
-    pub typarams: HashMap<ast::DefId, StrBuf>,
+    pub typarams: HashMap<ast::DefId, String>,
 
     /// Maps a type id to all known implementations for that type. This is only
     /// recognized for intra-crate `ResolvedPath` types, and is used to print
@@ -132,14 +132,14 @@ pub struct Cache {
     ///
     /// The values of the map are a list of implementations and documentation
     /// found on that implementation.
-    pub impls: HashMap<ast::NodeId, Vec<(clean::Impl, Option<StrBuf>)>>,
+    pub impls: HashMap<ast::NodeId, Vec<(clean::Impl, Option<String>)>>,
 
     /// Maintains a mapping of local crate node ids to the fully qualified name
     /// and "short type description" of that node. This is used when generating
     /// URLs when a type is being linked to. External paths are not located in
     /// this map because the `External` type itself has all the information
     /// necessary.
-    pub paths: HashMap<ast::DefId, (Vec<StrBuf>, ItemType)>,
+    pub paths: HashMap<ast::DefId, (Vec<String>, ItemType)>,
 
     /// This map contains information about all known traits of this crate.
     /// Implementations of a crate should inherit the documentation of the
@@ -157,7 +157,7 @@ pub struct Cache {
 
     // Private fields only used when initially crawling a crate to build a cache
 
-    stack: Vec<StrBuf> ,
+    stack: Vec<String> ,
     parent_stack: Vec<ast::NodeId> ,
     search_index: Vec<IndexItem> ,
     privmod: bool,
@@ -176,7 +176,7 @@ struct SourceCollector<'a> {
     cx: &'a mut Context,
 
     /// Processed source-file paths
-    seen: HashSet<StrBuf>,
+    seen: HashSet<String>,
     /// Root destination to place all HTML output into
     dst: Path,
 }
@@ -195,23 +195,23 @@ struct Sidebar<'a> { cx: &'a Context, item: &'a clean::Item, }
 /// by hand to a large JS file at the end of cache-creation.
 struct IndexItem {
     ty: ItemType,
-    name: StrBuf,
-    path: StrBuf,
-    desc: StrBuf,
+    name: String,
+    path: String,
+    desc: String,
     parent: Option<ast::NodeId>,
 }
 
 // TLS keys used to carry information around during rendering.
 
 local_data_key!(pub cache_key: Arc<Cache>)
-local_data_key!(pub current_location_key: Vec<StrBuf> )
+local_data_key!(pub current_location_key: Vec<String> )
 
 /// Generates the documentation for `crate` into the directory `dst`
 pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
     let mut cx = Context {
         dst: dst,
         current: Vec::new(),
-        root_path: StrBuf::new(),
+        root_path: String::new(),
         sidebar: HashMap::new(),
         layout: layout::Layout {
             logo: "".to_strbuf(),
@@ -402,7 +402,7 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
                    include_bin!("static/Heuristica-Bold.woff")));
 
         fn collect(path: &Path, krate: &str,
-                   key: &str) -> io::IoResult<Vec<StrBuf>> {
+                   key: &str) -> io::IoResult<Vec<String>> {
             let mut ret = Vec::new();
             if path.exists() {
                 for line in BufferedReader::new(File::open(path)).lines() {
@@ -636,7 +636,7 @@ impl<'a> SourceCollector<'a> {
 
         // Create the intermediate directories
         let mut cur = self.dst.clone();
-        let mut root_path = StrBuf::from_str("../../");
+        let mut root_path = String::from_str("../../");
         clean_srcpath(p.dirname(), |component| {
             cur.push(component);
             mkdir(&cur).unwrap();
@@ -906,7 +906,7 @@ impl<'a> Cache {
 impl Context {
     /// Recurse in the directory structure and change the "root path" to make
     /// sure it always points to the top (relatively)
-    fn recurse<T>(&mut self, s: StrBuf, f: |&mut Context| -> T) -> T {
+    fn recurse<T>(&mut self, s: String, f: |&mut Context| -> T) -> T {
         if s.len() == 0 {
             fail!("what {:?}", self);
         }
@@ -1041,7 +1041,7 @@ impl<'a> Item<'a> {
         }
     }
 
-    fn link(&self) -> StrBuf {
+    fn link(&self) -> String {
         let mut path = Vec::new();
         clean_srcpath(self.item.source.filename.as_bytes(), |component| {
             path.push(component.to_owned());
@@ -1080,7 +1080,7 @@ impl<'a> fmt::Show for Item<'a> {
         let cur = self.cx.current.as_slice();
         let amt = if self.ismodule() { cur.len() - 1 } else { cur.len() };
         for (i, component) in cur.iter().enumerate().take(amt) {
-            let mut trail = StrBuf::new();
+            let mut trail = String::new();
             for _ in range(0, cur.len() - i - 1) {
                 trail.push_str("../");
             }
@@ -1127,7 +1127,7 @@ impl<'a> fmt::Show for Item<'a> {
     }
 }
 
-fn item_path(item: &clean::Item) -> StrBuf {
+fn item_path(item: &clean::Item) -> String {
     match item.inner {
         clean::ModuleItem(..) => {
             format_strbuf!("{}/index.html", item.name.get_ref())
@@ -1140,7 +1140,7 @@ fn item_path(item: &clean::Item) -> StrBuf {
     }
 }
 
-fn full_path(cx: &Context, item: &clean::Item) -> StrBuf {
+fn full_path(cx: &Context, item: &clean::Item) -> String {
     let mut s = cx.current.connect("::");
     s.push_str("::");
     s.push_str(item.name.get_ref().as_slice());
@@ -1342,7 +1342,7 @@ fn item_function(w: &mut fmt::Formatter, it: &clean::Item,
 
 fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
               t: &clean::Trait) -> fmt::Result {
-    let mut parents = StrBuf::new();
+    let mut parents = String::new();
     if t.parents.len() > 0 {
         parents.push_str(": ");
         for (i, p) in t.parents.iter().enumerate() {
@@ -1677,11 +1677,11 @@ fn render_methods(w: &mut fmt::Formatter, it: &clean::Item) -> fmt::Result {
             let mut non_trait = v.iter().filter(|p| {
                 p.ref0().trait_.is_none()
             });
-            let non_trait = non_trait.collect::<Vec<&(clean::Impl, Option<StrBuf>)>>();
+            let non_trait = non_trait.collect::<Vec<&(clean::Impl, Option<String>)>>();
             let mut traits = v.iter().filter(|p| {
                 p.ref0().trait_.is_some()
             });
-            let traits = traits.collect::<Vec<&(clean::Impl, Option<StrBuf>)>>();
+            let traits = traits.collect::<Vec<&(clean::Impl, Option<String>)>>();
 
             if non_trait.len() > 0 {
                 try!(write!(w, "<h2 id='methods'>Methods</h2>"));
@@ -1717,7 +1717,7 @@ fn render_methods(w: &mut fmt::Formatter, it: &clean::Item) -> fmt::Result {
 }
 
 fn render_impl(w: &mut fmt::Formatter, i: &clean::Impl,
-               dox: &Option<StrBuf>) -> fmt::Result {
+               dox: &Option<String>) -> fmt::Result {
     try!(write!(w, "<h3 class='impl'><code>impl{} ", i.generics));
     match i.trait_ {
         Some(ref ty) => try!(write!(w, "{} for ", *ty)),
@@ -1851,7 +1851,7 @@ impl<'a> fmt::Show for Sidebar<'a> {
     }
 }
 
-fn build_sidebar(m: &clean::Module) -> HashMap<StrBuf, Vec<StrBuf>> {
+fn build_sidebar(m: &clean::Module) -> HashMap<String, Vec<String>> {
     let mut map = HashMap::new();
     for item in m.items.iter() {
         let short = shortty(item).to_static_str();

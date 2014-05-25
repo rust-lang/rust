@@ -12,7 +12,7 @@
 
 extern crate sync;
 
-use std::strbuf::StrBuf;
+use std::string::String;
 use std::slice;
 use sync::Arc;
 use sync::Future;
@@ -51,7 +51,7 @@ impl Code {
         string.bytes().fold(Code(0u64), |a, b| a.push_char(b))
     }
 
-    fn unpack(&self, frame: uint) -> StrBuf {
+    fn unpack(&self, frame: uint) -> String {
         let mut key = self.hash();
         let mut result = Vec::new();
         for _ in range(0, frame) {
@@ -60,7 +60,7 @@ impl Code {
         }
 
         result.reverse();
-        StrBuf::from_utf8(result).unwrap()
+        String::from_utf8(result).unwrap()
     }
 }
 

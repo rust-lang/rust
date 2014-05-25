@@ -86,7 +86,7 @@ pub enum Dest {
 }
 
 impl Dest {
-    pub fn to_str(&self, ccx: &CrateContext) -> StrBuf {
+    pub fn to_str(&self, ccx: &CrateContext) -> String {
         match *self {
             SaveIn(v) => format_strbuf!("SaveIn({})", ccx.tn.val_to_str(v)),
             Ignore => "Ignore".to_strbuf()

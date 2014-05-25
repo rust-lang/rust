@@ -25,7 +25,7 @@ use html::escape::Escape;
 use t = syntax::parse::token;
 
 /// Highlights some source code, returning the HTML output.
-pub fn highlight(src: &str, class: Option<&str>) -> StrBuf {
+pub fn highlight(src: &str, class: Option<&str>) -> String {
     debug!("highlighting: ================\n{}\n==============", src);
     let sess = parse::new_parse_sess();
     let fm = parse::string_to_filemap(&sess,

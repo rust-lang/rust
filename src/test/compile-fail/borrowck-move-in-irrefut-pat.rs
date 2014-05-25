@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn with(f: |&StrBuf|) {}
+fn with(f: |&String|) {}
 
-fn arg_item(&_x: &StrBuf) {}
+fn arg_item(&_x: &String) {}
     //~^ ERROR cannot move out of dereference of `&`-pointer
 
 fn arg_closure() {

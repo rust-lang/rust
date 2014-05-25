@@ -424,10 +424,10 @@ fn consume_block_comment(rdr: &mut StringReader) -> Option<TokenAndSpan> {
     if res.is_some() { res } else { consume_whitespace_and_comments(rdr) }
 }
 
-fn scan_exponent(rdr: &mut StringReader, start_bpos: BytePos) -> Option<StrBuf> {
+fn scan_exponent(rdr: &mut StringReader, start_bpos: BytePos) -> Option<String> {
     // \x00 hits the `return None` case immediately, so this is fine.
     let mut c = rdr.curr.unwrap_or('\x00');
-    let mut rslt = StrBuf::new();
+    let mut rslt = String::new();
     if c == 'e' || c == 'E' {
         rslt.push_char(c);
         bump(rdr);
@@ -449,8 +449,8 @@ fn scan_exponent(rdr: &mut StringReader, start_bpos: BytePos) -> Option<StrBuf> 
     }
 }
 
-fn scan_digits(rdr: &mut StringReader, radix: uint) -> StrBuf {
-    let mut rslt = StrBuf::new();
+fn scan_digits(rdr: &mut StringReader, radix: uint) -> String {
+    let mut rslt = String::new();
     loop {
         let c = rdr.curr;
         if c == Some('_') { bump(rdr); continue; }
@@ -858,7 +858,7 @@ fn next_token_inner(rdr: &mut StringReader) -> token::Token {
         return token::LIT_CHAR(c2);
       }
       '"' => {
-        let mut accum_str = StrBuf::new();
+        let mut accum_str = String::new();
         let start_bpos = rdr.last_pos;
         bump(rdr);
         while !rdr.curr_is('"') {
@@ -1002,7 +1002,7 @@ mod test {
 
     // open a string reader for the given string
     fn setup<'a>(span_handler: &'a diagnostic::SpanHandler,
-                 teststr: StrBuf) -> StringReader<'a> {
+                 teststr: String) -> StringReader<'a> {
         let fm = span_handler.cm.new_filemap("zebra.rs".to_strbuf(), teststr);
         new_string_reader(span_handler, fm)
     }

@@ -41,7 +41,7 @@ type ty_ = uint;
 #[deriving(Clone)]
 struct Path_ {
     global: bool,
-    idents: Vec<StrBuf> ,
+    idents: Vec<String> ,
     types: Vec<@ty>,
 }
 

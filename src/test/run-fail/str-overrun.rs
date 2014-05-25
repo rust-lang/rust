@@ -11,7 +11,7 @@
 
 // error-pattern:index out of bounds: the len is 5 but the index is 5
 fn main() {
-    let s: StrBuf = "hello".to_strbuf();
+    let s: String = "hello".to_strbuf();
 
     // Bounds-check failure.
     assert_eq!(s.as_slice()[5], 0x0 as u8);

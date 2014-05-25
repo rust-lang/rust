@@ -14,7 +14,7 @@ extern crate cci_class_cast;
 use std::to_str::ToStr;
 use cci_class_cast::kitty::cat;
 
-fn print_out(thing: Box<ToStr>, expected: StrBuf) {
+fn print_out(thing: Box<ToStr>, expected: String) {
   let actual = thing.to_str();
   println!("{}", actual);
   assert_eq!(actual.to_strbuf(), expected);

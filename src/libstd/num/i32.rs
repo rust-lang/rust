@@ -15,7 +15,7 @@ use num::{ToStrRadix, FromStrRadix};
 use num::strconv;
 use option::Option;
 use slice::ImmutableVector;
-use strbuf::StrBuf;
+use string::String;
 
 pub use core::i32::{BITS, BYTES, MIN, MAX};
 

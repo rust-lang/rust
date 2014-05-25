@@ -52,7 +52,7 @@ fn server(requests: &Receiver<request>, responses: &Sender<uint>) {
     //println!("server exiting");
 }
 
-fn run(args: &[StrBuf]) {
+fn run(args: &[String]) {
     let (to_parent, from_child) = channel();
     let (to_child, from_parent) = channel();
 

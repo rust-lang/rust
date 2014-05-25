@@ -11,7 +11,7 @@
 
 use std::task;
 
-fn start(tx: &Sender<Sender<StrBuf>>) {
+fn start(tx: &Sender<Sender<String>>) {
     let (tx2, rx) = channel();
     tx.send(tx2);
 

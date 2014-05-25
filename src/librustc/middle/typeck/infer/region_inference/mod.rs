@@ -1339,7 +1339,7 @@ impl<'a> RegionVarBindings<'a> {
 }
 
 impl Repr for Constraint {
-    fn repr(&self, tcx: &ty::ctxt) -> StrBuf {
+    fn repr(&self, tcx: &ty::ctxt) -> String {
         match *self {
             ConstrainVarSubVar(a, b) => {
                 format_strbuf!("ConstrainVarSubVar({}, {})",

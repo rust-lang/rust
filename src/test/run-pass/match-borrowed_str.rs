@@ -10,7 +10,7 @@
 
 #![allow(unnecessary_allocation)]
 
-fn f1(ref_string: &str) -> StrBuf {
+fn f1(ref_string: &str) -> String {
     match ref_string {
         "a" => "found a".to_strbuf(),
         "b" => "found b".to_strbuf(),
@@ -18,7 +18,7 @@ fn f1(ref_string: &str) -> StrBuf {
     }
 }
 
-fn f2(ref_string: &str) -> StrBuf {
+fn f2(ref_string: &str) -> String {
     match ref_string {
         "a" => "found a".to_strbuf(),
         "b" => "found b".to_strbuf(),
@@ -26,7 +26,7 @@ fn f2(ref_string: &str) -> StrBuf {
     }
 }
 
-fn g1(ref_1: &str, ref_2: &str) -> StrBuf {
+fn g1(ref_1: &str, ref_2: &str) -> String {
     match (ref_1, ref_2) {
         ("a", "b") => "found a,b".to_strbuf(),
         ("b", "c") => "found b,c".to_strbuf(),
@@ -34,7 +34,7 @@ fn g1(ref_1: &str, ref_2: &str) -> StrBuf {
     }
 }
 
-fn g2(ref_1: &str, ref_2: &str) -> StrBuf {
+fn g2(ref_1: &str, ref_2: &str) -> String {
     match (ref_1, ref_2) {
         ("a", "b") => "found a,b".to_strbuf(),
         ("b", "c") => "found b,c".to_strbuf(),

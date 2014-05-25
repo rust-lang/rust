@@ -11,12 +11,12 @@
 #![feature(managed_boxes)]
 
 enum Token {
-    Text(@StrBuf),
-    ETag(@Vec<StrBuf> , @StrBuf),
-    UTag(@Vec<StrBuf> , @StrBuf),
-    Section(@Vec<StrBuf> , bool, @Vec<Token> , @StrBuf, @StrBuf, @StrBuf, @StrBuf, @StrBuf),
-    IncompleteSection(@Vec<StrBuf> , bool, @StrBuf, bool),
-    Partial(@StrBuf, @StrBuf, @StrBuf),
+    Text(@String),
+    ETag(@Vec<String> , @String),
+    UTag(@Vec<String> , @String),
+    Section(@Vec<String> , bool, @Vec<Token> , @String, @String, @String, @String, @String),
+    IncompleteSection(@Vec<String> , bool, @String, bool),
+    Partial(@String, @String, @String),
 }
 
 fn check_strs(actual: &str, expected: &str) -> bool

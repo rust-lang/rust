@@ -170,7 +170,7 @@
 //! use std::io::{File, Open, Write, IoError};
 //!
 //! struct Info {
-//!     name: StrBuf,
+//!     name: String,
 //!     age: int,
 //!     rating: int
 //! }
@@ -196,7 +196,7 @@
 //! use std::io::{File, Open, Write, IoError};
 //!
 //! struct Info {
-//!     name: StrBuf,
+//!     name: String,
 //!     age: int,
 //!     rating: int
 //! }
@@ -429,7 +429,7 @@ impl<T, E> Result<T, E> {
     /// let mut sum = 0;
     ///
     /// while !reader.eof() {
-    ///     let line: IoResult<StrBuf> = reader.read_line();
+    ///     let line: IoResult<String> = reader.read_line();
     ///     // Convert the string line to a number using `map` and `from_str`
     ///     let val: IoResult<int> = line.map(|line| {
     ///         from_str::<int>(line.as_slice()).unwrap_or(0)
@@ -637,7 +637,7 @@ pub fn fold_<T,E,Iter:Iterator<Result<T,E>>>(iterator: Iter) -> Result<(),E> {
 #[cfg(test)]
 mod tests {
     use realstd::vec::Vec;
-    use realstd::strbuf::StrBuf;
+    use realstd::string::String;
 
     use result::{collect, fold, fold_};
     use prelude::*;

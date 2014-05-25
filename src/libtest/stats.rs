@@ -1028,7 +1028,7 @@ mod tests {
     #[test]
     fn test_boxplot_nonpositive() {
         #[allow(deprecated_owned_vector)]
-        fn t(s: &Summary<f64>, expected: StrBuf) {
+        fn t(s: &Summary<f64>, expected: String) {
             use std::io::MemWriter;
             let mut m = MemWriter::new();
             write_boxplot(&mut m as &mut io::Writer, s, 30).unwrap();

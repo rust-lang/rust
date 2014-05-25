@@ -31,46 +31,46 @@ use vec::Vec;
 
 /// A growable string stored as a UTF-8 encoded buffer.
 #[deriving(Clone, Eq, Ord, TotalEq, TotalOrd)]
-pub struct StrBuf {
+pub struct String {
     vec: Vec<u8>,
 }
 
-impl StrBuf {
+impl String {
     /// Creates a new string buffer initialized with the empty string.
     #[inline]
-    pub fn new() -> StrBuf {
-        StrBuf {
+    pub fn new() -> String {
+        String {
             vec: Vec::new(),
         }
     }
 
     /// Creates a new string buffer with the given capacity.
     #[inline]
-    pub fn with_capacity(capacity: uint) -> StrBuf {
-        StrBuf {
+    pub fn with_capacity(capacity: uint) -> String {
+        String {
             vec: Vec::with_capacity(capacity),
         }
     }
 
     /// Creates a new string buffer from length, capacity, and a pointer.
     #[inline]
-    pub unsafe fn from_raw_parts(length: uint, capacity: uint, ptr: *mut u8) -> StrBuf {
-        StrBuf {
+    pub unsafe fn from_raw_parts(length: uint, capacity: uint, ptr: *mut u8) -> String {
+        String {
             vec: Vec::from_raw_parts(length, capacity, ptr),
         }
     }
 
     /// Creates a new string buffer from the given string.
     #[inline]
-    pub fn from_str(string: &str) -> StrBuf {
-        StrBuf {
+    pub fn from_str(string: &str) -> String {
+        String {
             vec: Vec::from_slice(string.as_bytes())
         }
     }
 
     /// Creates a new string buffer from the given owned string, taking care not to copy it.
     #[inline]
-    pub fn from_owned_str(string: StrBuf) -> StrBuf {
+    pub fn from_owned_str(string: String) -> String {
         string
     }
 
@@ -80,9 +80,9 @@ impl StrBuf {
     /// Returns `Err` with the original vector if the vector contains invalid
     /// UTF-8.
     #[inline]
-    pub fn from_utf8(vec: Vec<u8>) -> Result<StrBuf, Vec<u8>> {
+    pub fn from_utf8(vec: Vec<u8>) -> Result<String, Vec<u8>> {
         if str::is_utf8(vec.as_slice()) {
-            Ok(StrBuf { vec: vec })
+            Ok(String { vec: vec })
         } else {
             Err(vec)
         }
@@ -97,19 +97,19 @@ impl StrBuf {
     /// Pushes the given string onto this buffer; then, returns `self` so that it can be used
     /// again.
     #[inline]
-    pub fn append(mut self, second: &str) -> StrBuf {
+    pub fn append(mut self, second: &str) -> String {
         self.push_str(second);
         self
     }
 
     /// Creates a string buffer by repeating a character `length` times.
     #[inline]
-    pub fn from_char(length: uint, ch: char) -> StrBuf {
+    pub fn from_char(length: uint, ch: char) -> String {
         if length == 0 {
-            return StrBuf::new()
+            return String::new()
         }
 
-        let mut buf = StrBuf::new();
+        let mut buf = String::new();
         buf.push_char(ch);
         let size = buf.len() * length;
         buf.reserve(size);
@@ -281,29 +281,29 @@ impl StrBuf {
     }
 }
 
-impl Container for StrBuf {
+impl Container for String {
     #[inline]
     fn len(&self) -> uint {
         self.vec.len()
     }
 }
 
-impl Mutable for StrBuf {
+impl Mutable for String {
     #[inline]
     fn clear(&mut self) {
         self.vec.clear()
     }
 }
 
-impl FromIterator<char> for StrBuf {
-    fn from_iter<I:Iterator<char>>(iterator: I) -> StrBuf {
-        let mut buf = StrBuf::new();
+impl FromIterator<char> for String {
+    fn from_iter<I:Iterator<char>>(iterator: I) -> String {
+        let mut buf = String::new();
         buf.extend(iterator);
         buf
     }
 }
 
-impl Extendable<char> for StrBuf {
+impl Extendable<char> for String {
     fn extend<I:Iterator<char>>(&mut self, mut iterator: I) {
         for ch in iterator {
             self.push_char(ch)
@@ -311,7 +311,7 @@ impl Extendable<char> for StrBuf {
     }
 }
 
-impl Str for StrBuf {
+impl Str for String {
     #[inline]
     fn as_slice<'a>(&'a self) -> &'a str {
         unsafe {
@@ -320,47 +320,47 @@ impl Str for StrBuf {
     }
 }
 
-impl StrAllocating for StrBuf {
+impl StrAllocating for String {
     #[inline]
-    fn into_owned(self) -> StrBuf {
+    fn into_owned(self) -> String {
         self
     }
 
     #[inline]
-    fn into_strbuf(self) -> StrBuf {
+    fn into_strbuf(self) -> String {
         self
     }
 }
 
-impl Default for StrBuf {
-    fn default() -> StrBuf {
-        StrBuf::new()
+impl Default for String {
+    fn default() -> String {
+        String::new()
     }
 }
 
-impl fmt::Show for StrBuf {
+impl fmt::Show for String {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.as_slice().fmt(f)
     }
 }
 
-impl<H:Writer> ::hash::Hash<H> for StrBuf {
+impl<H:Writer> ::hash::Hash<H> for String {
     #[inline]
     fn hash(&self, hasher: &mut H) {
         self.as_slice().hash(hasher)
     }
 }
 
-impl<'a, S: Str> Equiv<S> for StrBuf {
+impl<'a, S: Str> Equiv<S> for String {
     #[inline]
     fn equiv(&self, other: &S) -> bool {
         self.as_slice() == other.as_slice()
     }
 }
 
-impl FromStr for StrBuf {
+impl FromStr for String {
     #[inline]
-    fn from_str(s: &str) -> Option<StrBuf> {
+    fn from_str(s: &str) -> Option<String> {
         Some(s.to_strbuf())
     }
 }
@@ -371,12 +371,12 @@ mod tests {
     use container::{Container, Mutable};
     use self::test::Bencher;
     use str::{Str, StrSlice};
-    use super::StrBuf;
+    use super::String;
 
     #[bench]
     fn bench_with_capacity(b: &mut Bencher) {
         b.iter(|| {
-            StrBuf::with_capacity(100)
+            String::with_capacity(100)
         });
     }
 
@@ -384,14 +384,14 @@ mod tests {
     fn bench_push_str(b: &mut Bencher) {
         let s = "ศไทย中华Việt Nam; Mary had a little lamb, Little lamb";
         b.iter(|| {
-            let mut r = StrBuf::new();
+            let mut r = String::new();
             r.push_str(s);
         });
     }
 
     #[test]
     fn test_push_bytes() {
-        let mut s = StrBuf::from_str("ABC");
+        let mut s = String::from_str("ABC");
         unsafe {
             s.push_bytes([ 'D' as u8 ]);
         }
@@ -400,7 +400,7 @@ mod tests {
 
     #[test]
     fn test_push_str() {
-        let mut s = StrBuf::new();
+        let mut s = String::new();
         s.push_str("");
         assert_eq!(s.as_slice().slice_from(0), "");
         s.push_str("abc");
@@ -411,7 +411,7 @@ mod tests {
 
     #[test]
     fn test_push_char() {
-        let mut data = StrBuf::from_str("ประเทศไทย中");
+        let mut data = String::from_str("ประเทศไทย中");
         data.push_char('华');
         data.push_char('b'); // 1 byte
         data.push_char('¢'); // 2 byte
@@ -422,7 +422,7 @@ mod tests {
 
     #[test]
     fn test_pop_char() {
-        let mut data = StrBuf::from_str("ประเทศไทย中华b¢€𤭢");
+        let mut data = String::from_str("ประเทศไทย中华b¢€𤭢");
         assert_eq!(data.pop_char().unwrap(), '𤭢'); // 4 bytes
         assert_eq!(data.pop_char().unwrap(), '€'); // 3 bytes
         assert_eq!(data.pop_char().unwrap(), '¢'); // 2 bytes
@@ -433,7 +433,7 @@ mod tests {
 
     #[test]
     fn test_shift_char() {
-        let mut data = StrBuf::from_str("𤭢€¢b华ประเทศไทย中");
+        let mut data = String::from_str("𤭢€¢b华ประเทศไทย中");
         assert_eq!(data.shift_char().unwrap(), '𤭢'); // 4 bytes
         assert_eq!(data.shift_char().unwrap(), '€'); // 3 bytes
         assert_eq!(data.shift_char().unwrap(), '¢'); // 2 bytes
@@ -444,7 +444,7 @@ mod tests {
 
     #[test]
     fn test_str_truncate() {
-        let mut s = StrBuf::from_str("12345");
+        let mut s = String::from_str("12345");
         s.truncate(5);
         assert_eq!(s.as_slice(), "12345");
         s.truncate(3);
@@ -452,7 +452,7 @@ mod tests {
         s.truncate(0);
         assert_eq!(s.as_slice(), "");
 
-        let mut s = StrBuf::from_str("12345");
+        let mut s = String::from_str("12345");
         let p = s.as_slice().as_ptr();
         s.truncate(3);
         s.push_str("6");
@@ -463,20 +463,20 @@ mod tests {
     #[test]
     #[should_fail]
     fn test_str_truncate_invalid_len() {
-        let mut s = StrBuf::from_str("12345");
+        let mut s = String::from_str("12345");
         s.truncate(6);
     }
 
     #[test]
     #[should_fail]
     fn test_str_truncate_split_codepoint() {
-        let mut s = StrBuf::from_str("\u00FC"); // ü
+        let mut s = String::from_str("\u00FC"); // ü
         s.truncate(1);
     }
 
     #[test]
     fn test_str_clear() {
-        let mut s = StrBuf::from_str("12345");
+        let mut s = String::from_str("12345");
         s.clear();
         assert_eq!(s.len(), 0);
         assert_eq!(s.as_slice(), "");

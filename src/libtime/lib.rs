@@ -29,7 +29,7 @@ extern crate sync;
 
 use std::io::BufReader;
 use std::num;
-use std::strbuf::StrBuf;
+use std::string::String;
 use std::str;
 
 static NSEC_PER_SEC: i32 = 1_000_000_000_i32;
@@ -315,10 +315,10 @@ impl Tm {
      * Return a string of the current time in the form
      * "Thu Jan  1 00:00:00 1970".
      */
-    pub fn ctime(&self) -> StrBuf { self.strftime("%c") }
+    pub fn ctime(&self) -> String { self.strftime("%c") }
 
     /// Formats the time according to the format string.
-    pub fn strftime(&self, format: &str) -> StrBuf {
+    pub fn strftime(&self, format: &str) -> String {
         strftime(format, self)
     }
 
@@ -328,7 +328,7 @@ impl Tm {
      * local: "Thu, 22 Mar 2012 07:53:18 PST"
      * utc:   "Thu, 22 Mar 2012 14:53:18 UTC"
      */
-    pub fn rfc822(&self) -> StrBuf {
+    pub fn rfc822(&self) -> String {
         if self.tm_gmtoff == 0_i32 {
             self.strftime("%a, %d %b %Y %T GMT")
         } else {
@@ -342,7 +342,7 @@ impl Tm {
      * local: "Thu, 22 Mar 2012 07:53:18 -0700"
      * utc:   "Thu, 22 Mar 2012 14:53:18 -0000"
      */
-    pub fn rfc822z(&self) -> StrBuf {
+    pub fn rfc822z(&self) -> String {
         self.strftime("%a, %d %b %Y %T %z")
     }
 
@@ -352,7 +352,7 @@ impl Tm {
      * local: "2012-02-22T07:53:18-07:00"
      * utc:   "2012-02-22T14:53:18Z"
      */
-    pub fn rfc3339(&self) -> StrBuf {
+    pub fn rfc3339(&self) -> String {
         if self.tm_gmtoff == 0_i32 {
             self.strftime("%Y-%m-%dT%H:%M:%SZ")
         } else {
@@ -367,7 +367,7 @@ impl Tm {
 }
 
 /// Parses the time from the string according to the format string.
-pub fn strptime(s: &str, format: &str) -> Result<Tm, StrBuf> {
+pub fn strptime(s: &str, format: &str) -> Result<Tm, String> {
     fn match_str(s: &str, pos: uint, needle: &str) -> bool {
         let mut i = pos;
         for ch in needle.bytes() {
@@ -379,7 +379,7 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, StrBuf> {
         return true;
     }
 
-    fn match_strs(ss: &str, pos: uint, strs: &[(StrBuf, i32)])
+    fn match_strs(ss: &str, pos: uint, strs: &[(String, i32)])
       -> Option<(i32, uint)> {
         let mut i = 0u;
         let len = strs.len();
@@ -461,7 +461,7 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, StrBuf> {
         }
     }
 
-    fn parse_char(s: &str, pos: uint, c: char) -> Result<uint, StrBuf> {
+    fn parse_char(s: &str, pos: uint, c: char) -> Result<uint, String> {
         let range = s.char_range_at(pos);
 
         if c == range.ch {
@@ -474,7 +474,7 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, StrBuf> {
     }
 
     fn parse_type(s: &str, pos: uint, ch: char, tm: &mut Tm)
-      -> Result<uint, StrBuf> {
+      -> Result<uint, String> {
         match ch {
           'A' => match match_strs(s, pos, [
               ("Sunday".to_strbuf(), 0_i32),
@@ -840,7 +840,7 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, StrBuf> {
 }
 
 /// Formats the time according to the format string.
-pub fn strftime(format: &str, tm: &Tm) -> StrBuf {
+pub fn strftime(format: &str, tm: &Tm) -> String {
     fn days_in_year(year: int) -> i32 {
         if (year % 4 == 0) && ((year % 100 != 0) || (year % 400 == 0)) {
             366    /* Days in a leap year */
@@ -868,7 +868,7 @@ pub fn strftime(format: &str, tm: &Tm) -> StrBuf {
             + iso_week1_wday - iso_week_start_wday
     }
 
-    fn iso_week(ch:char, tm: &Tm) -> StrBuf {
+    fn iso_week(ch:char, tm: &Tm) -> String {
         let mut year: int = tm.tm_year as int + 1900;
         let mut days: int = iso_week_days (tm.tm_yday, tm.tm_wday);
 
@@ -894,7 +894,7 @@ pub fn strftime(format: &str, tm: &Tm) -> StrBuf {
         }
     }
 
-    fn parse_type(ch: char, tm: &Tm) -> StrBuf {
+    fn parse_type(ch: char, tm: &Tm) -> String {
       let die = || {
           format_strbuf!("strftime: can't understand this format {} ", ch)
       };

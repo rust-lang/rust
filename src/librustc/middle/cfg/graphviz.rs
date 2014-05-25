@@ -25,10 +25,10 @@ pub type Edge<'a> = &'a cfg::CFGEdge;
 pub struct LabelledCFG<'a>{
     pub ast_map: &'a ast_map::Map,
     pub cfg: &'a cfg::CFG,
-    pub name: StrBuf,
+    pub name: String,
 }
 
-fn replace_newline_with_backslash_l(s: StrBuf) -> StrBuf {
+fn replace_newline_with_backslash_l(s: String) -> String {
     // Replacing newlines with \\l causes each line to be left-aligned,
     // improving presentation of (long) pretty-printed expressions.
     if s.as_slice().contains("\n") {
@@ -72,7 +72,7 @@ impl<'a> dot::Labeller<'a, Node<'a>, Edge<'a>> for LabelledCFG<'a> {
     }
 
     fn edge_label(&self, e: &Edge<'a>) -> dot::LabelText<'a> {
-        let mut label = StrBuf::new();
+        let mut label = String::new();
         let mut put_one = false;
         for (i, &node_id) in e.data.exiting_scopes.iter().enumerate() {
             if put_one {

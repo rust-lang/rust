@@ -86,7 +86,7 @@ println!("{:?}", tuple_ptr)
 use std::io::IoResult;
 use std::kinds::marker;
 use std::mem;
-use std::strbuf::StrBuf;
+use std::string::String;
 
 pub use isaac::{IsaacRng, Isaac64Rng};
 pub use os::OSRng;
@@ -260,11 +260,11 @@ pub trait Rng {
     ///
     /// println!("{}", task_rng().gen_ascii_str(10));
     /// ```
-    fn gen_ascii_str(&mut self, len: uint) -> StrBuf {
+    fn gen_ascii_str(&mut self, len: uint) -> String {
         static GEN_ASCII_STR_CHARSET: &'static [u8] = bytes!("ABCDEFGHIJKLMNOPQRSTUVWXYZ\
                                                              abcdefghijklmnopqrstuvwxyz\
                                                              0123456789");
-        let mut s = StrBuf::with_capacity(len);
+        let mut s = String::with_capacity(len);
         for _ in range(0, len) {
             s.push_char(*self.choose(GEN_ASCII_STR_CHARSET).unwrap() as char)
         }

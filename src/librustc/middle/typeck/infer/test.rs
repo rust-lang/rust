@@ -34,7 +34,7 @@ struct Env {
     krate: @ast::Crate,
     tcx: ty::ctxt,
     infcx: infer::infer_ctxt,
-    err_messages: @DVec<StrBuf>
+    err_messages: @DVec<String>
 }
 
 struct RH {
@@ -93,7 +93,7 @@ impl Env {
                             sub: &[]}]});
     }
 
-    pub fn lookup_item(&self, names: &[StrBuf]) -> ast::node_id {
+    pub fn lookup_item(&self, names: &[String]) -> ast::node_id {
         return match search_mod(self, &self.krate.node.module, 0, names) {
             Some(id) => id,
             None => {
@@ -104,7 +104,7 @@ impl Env {
         fn search_mod(self: &Env,
                       m: &ast::Mod,
                       idx: uint,
-                      names: &[StrBuf]) -> Option<ast::node_id> {
+                      names: &[String]) -> Option<ast::node_id> {
             assert!(idx < names.len());
             for item in m.items.iter() {
                 if self.tcx.sess.str_of(item.ident) == names[idx] {
@@ -117,7 +117,7 @@ impl Env {
         fn search(self: &Env,
                   it: @ast::Item,
                   idx: uint,
-                  names: &[StrBuf]) -> Option<ast::node_id> {
+                  names: &[String]) -> Option<ast::node_id> {
             if idx == names.len() {
                 return Some(it.id);
             }
@@ -174,7 +174,7 @@ impl Env {
         self.assert_subtype(b, a);
     }
 
-    pub fn ty_to_str(&self, a: ty::t) -> StrBuf {
+    pub fn ty_to_str(&self, a: ty::t) -> String {
         ty_to_str(self.tcx, a)
     }
 

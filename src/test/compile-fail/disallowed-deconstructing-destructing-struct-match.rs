@@ -9,7 +9,7 @@
 // except according to those terms.
 
 struct X {
-    x: StrBuf,
+    x: String,
 }
 
 impl Drop for X {

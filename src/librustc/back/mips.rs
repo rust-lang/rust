@@ -13,7 +13,7 @@ use driver::config::cfg_os_to_meta_os;
 use metadata::loader::meta_section_name;
 use syntax::abi;
 
-pub fn get_target_strs(target_triple: StrBuf, target_os: abi::Os) -> target_strs::t {
+pub fn get_target_strs(target_triple: String, target_os: abi::Os) -> target_strs::t {
     return target_strs::t {
         module_asm: "".to_strbuf(),
 

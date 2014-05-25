@@ -13,7 +13,7 @@ use std::cmp;
 
 #[deriving(Show, Clone)]
 pub struct LogDirective {
-    pub name: Option<StrBuf>,
+    pub name: Option<String>,
     pub level: u32,
 }
 

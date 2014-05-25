@@ -594,7 +594,7 @@ pub fn argument<'a, T>(f: extern "Rust" fn(&T, &mut Formatter) -> Result,
 }
 
 #[cfg(test)]
-pub fn format(args: &Arguments) -> ::realstd::strbuf::StrBuf {
+pub fn format(args: &Arguments) -> ::realstd::string::String {
     use str;
     use realstd::str::StrAllocating;
     use realstd::io::MemWriter;
@@ -614,7 +614,7 @@ pub fn format(args: &Arguments) -> ::realstd::strbuf::StrBuf {
     let mut i = MemWriter::new();
     let _ = write(&mut i, args);
 
-    let mut result = ::realstd::strbuf::StrBuf::new();
+    let mut result = ::realstd::string::String::new();
     result.push_str(str::from_utf8(i.get_ref()).unwrap());
     result
 }

@@ -16,7 +16,7 @@ use std::fmt;
 pub trait ToHex {
     /// Converts the value of `self` to a hex value, returning the owned
     /// string.
-    fn to_hex(&self) -> StrBuf;
+    fn to_hex(&self) -> String;
 }
 
 static CHARS: &'static[u8] = bytes!("0123456789abcdef");
@@ -37,7 +37,7 @@ impl<'a> ToHex for &'a [u8] {
      * }
      * ```
      */
-    fn to_hex(&self) -> StrBuf {
+    fn to_hex(&self) -> String {
         let mut v = Vec::with_capacity(self.len() * 2);
         for &byte in self.iter() {
             v.push(CHARS[(byte >> 4) as uint]);
@@ -80,7 +80,7 @@ impl<'a> FromHex for &'a str {
      * Convert any hexadecimal encoded string (literal, `@`, `&`, or `~`)
      * to the byte values it encodes.
      *
-     * You can use the `StrBuf::from_utf8` function in `std::strbuf` to turn a
+     * You can use the `String::from_utf8` function in `std::string` to turn a
      * `Vec<u8>` into a string with characters corresponding to those values.
      *
      * # Example
@@ -96,7 +96,7 @@ impl<'a> FromHex for &'a str {
      *     println!("{}", hello_str);
      *     let bytes = hello_str.as_slice().from_hex().unwrap();
      *     println!("{:?}", bytes);
-     *     let result_str = StrBuf::from_utf8(bytes).unwrap();
+     *     let result_str = String::from_utf8(bytes).unwrap();
      *     println!("{}", result_str);
      * }
      * ```

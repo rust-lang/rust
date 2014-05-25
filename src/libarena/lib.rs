@@ -538,7 +538,7 @@ mod tests {
     }
 
     struct Noncopy {
-        string: StrBuf,
+        string: String,
         array: Vec<int> ,
     }
 

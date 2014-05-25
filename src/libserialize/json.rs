@@ -64,7 +64,7 @@ use serialize::{json, Encodable};
 
  #[deriving(Encodable)]
  pub struct TestStruct   {
-    data_str: StrBuf,
+    data_str: String,
  }
 
 fn main() {
@@ -81,12 +81,12 @@ fn main() {
 ```
 
 Two wrapper functions are provided to encode a Encodable object
-into a string (StrBuf) or buffer (~[u8]): `str_encode(&m)` and `buffer_encode(&m)`.
+into a string (String) or buffer (~[u8]): `str_encode(&m)` and `buffer_encode(&m)`.
 
 ```rust
 use serialize::json;
 let to_encode_object = "example of string to encode".to_strbuf();
-let encoded_str: StrBuf = json::Encoder::str_encode(&to_encode_object);
+let encoded_str: String = json::Encoder::str_encode(&to_encode_object);
 ```
 
 JSON API provide an enum `json::Json` and a trait `ToJson` to encode object.
@@ -108,7 +108,7 @@ use collections::TreeMap;
 
 pub struct MyStruct  {
     attr1: u8,
-    attr2: StrBuf,
+    attr2: String,
 }
 
 impl ToJson for MyStruct {
@@ -123,7 +123,7 @@ impl ToJson for MyStruct {
 fn main() {
     let test2: MyStruct = MyStruct {attr1: 1, attr2:"test".to_strbuf()};
     let tjson: json::Json = test2.to_json();
-    let json_str: StrBuf = tjson.to_str().into_strbuf();
+    let json_str: String = tjson.to_str().into_strbuf();
 }
 ```
 
@@ -136,11 +136,11 @@ use serialize::{json, Decodable};
 #[deriving(Decodable)]
 pub struct MyStruct  {
      attr1: u8,
-     attr2: StrBuf,
+     attr2: String,
 }
 
 fn main() {
-    let json_str_to_decode: StrBuf =
+    let json_str_to_decode: String =
             "{\"attr1\":1,\"attr2\":\"toto\"}".to_strbuf();
     let json_object = json::from_str(json_str_to_decode.as_slice());
     let mut decoder = json::Decoder::new(json_object.unwrap());
@@ -165,7 +165,7 @@ use serialize::{json, Encodable, Decodable};
  #[deriving(Decodable, Encodable)] //generate Decodable, Encodable impl.
  pub struct TestStruct1  {
     data_int: u8,
-    data_str: StrBuf,
+    data_str: String,
     data_vector: Vec<u8>,
  }
 
@@ -174,7 +174,7 @@ use serialize::{json, Encodable, Decodable};
 fn main() {
     let to_encode_object = TestStruct1
          {data_int: 1, data_str:"toto".to_strbuf(), data_vector:vec![2,3,4,5]};
-    let encoded_str: StrBuf = json::Encoder::str_encode(&to_encode_object);
+    let encoded_str: String = json::Encoder::str_encode(&to_encode_object);
 
     // To deserialize use the `json::from_str` and `json::Decoder`
 
@@ -200,7 +200,7 @@ use collections::TreeMap;
 #[deriving(Decodable, Encodable)] // generate Decodable, Encodable impl.
 pub struct TestStruct1  {
     data_int: u8,
-    data_str: StrBuf,
+    data_str: String,
     data_vector: Vec<u8>,
 }
 
@@ -220,7 +220,7 @@ fn main() {
     let test2: TestStruct1 = TestStruct1 {data_int: 1, data_str:"toto".to_strbuf(),
                                           data_vector:vec![2,3,4,5]};
     let tjson: json::Json = test2.to_json();
-    let json_str: StrBuf = tjson.to_str().into_strbuf();
+    let json_str: String = tjson.to_str().into_strbuf();
 
     // Deserialize like before.
 
@@ -242,7 +242,7 @@ use std::mem::swap;
 use std::num;
 use std::str::ScalarValue;
 use std::str;
-use std::strbuf::StrBuf;
+use std::string::String;
 use std::vec::Vec;
 
 use Encodable;
@@ -252,7 +252,7 @@ use collections::{HashMap, TreeMap};
 #[deriving(Clone, Eq)]
 pub enum Json {
     Number(f64),
-    String(StrBuf),
+    String(String),
     Boolean(bool),
     List(List),
     Object(Box<Object>),
@@ -260,7 +260,7 @@ pub enum Json {
 }
 
 pub type List = Vec<Json>;
-pub type Object = TreeMap<StrBuf, Json>;
+pub type Object = TreeMap<String, Json>;
 
 /// The errors that can arise while parsing a JSON stream.
 #[deriving(Clone, Eq)]
@@ -296,9 +296,9 @@ pub type BuilderError = ParserError;
 #[deriving(Clone, Eq, Show)]
 pub enum DecoderError {
     ParseError(ParserError),
-    ExpectedError(StrBuf, StrBuf),
-    MissingFieldError(StrBuf),
-    UnknownVariantError(StrBuf),
+    ExpectedError(String, String),
+    MissingFieldError(String),
+    UnknownVariantError(String),
 }
 
 /// Returns a readable error string for a given error code.
@@ -337,8 +337,8 @@ fn io_error_to_error(io: io::IoError) -> ParserError {
 pub type EncodeResult = io::IoResult<()>;
 pub type DecodeResult<T> = Result<T, DecoderError>;
 
-fn escape_str(s: &str) -> StrBuf {
-    let mut escaped = StrBuf::from_str("\"");
+fn escape_str(s: &str) -> String {
+    let mut escaped = String::from_str("\"");
     for c in s.chars() {
         match c {
             '"' => escaped.push_str("\\\""),
@@ -355,8 +355,8 @@ fn escape_str(s: &str) -> StrBuf {
     escaped
 }
 
-fn spaces(n: uint) -> StrBuf {
-    let mut ss = StrBuf::new();
+fn spaces(n: uint) -> String {
+    let mut ss = String::new();
     for _ in range(0, n) {
         ss.push_str(" ");
     }
@@ -391,7 +391,7 @@ impl<'a> Encoder<'a> {
     pub fn str_encode<T:Encodable<Encoder<'a>,
                         io::IoError>>(
                       to_encode_object: &T)
-                      -> StrBuf {
+                      -> String {
         let buff = Encoder::buffer_encode(to_encode_object);
         str::from_utf8(buff.as_slice()).unwrap().to_strbuf()
     }
@@ -836,7 +836,7 @@ impl Json {
     }
 
     /// Encodes a json value into a string
-    pub fn to_pretty_str(&self) -> StrBuf {
+    pub fn to_pretty_str(&self) -> String {
         let mut s = MemWriter::new();
         self.to_pretty_writer(&mut s as &mut io::Writer).unwrap();
         str::from_utf8(s.unwrap().as_slice()).unwrap().to_strbuf()
@@ -844,7 +844,7 @@ impl Json {
 
      /// If the Json value is an Object, returns the value associated with the provided key.
     /// Otherwise, returns None.
-    pub fn find<'a>(&'a self, key: &StrBuf) -> Option<&'a Json>{
+    pub fn find<'a>(&'a self, key: &String) -> Option<&'a Json>{
         match self {
             &Object(ref map) => map.find(key),
             _ => None
@@ -854,7 +854,7 @@ impl Json {
     /// Attempts to get a nested Json Object for each key in `keys`.
     /// If any key is found not to exist, find_path will return None.
     /// Otherwise, it will return the Json value associated with the final key.
-    pub fn find_path<'a>(&'a self, keys: &[&StrBuf]) -> Option<&'a Json>{
+    pub fn find_path<'a>(&'a self, keys: &[&String]) -> Option<&'a Json>{
         let mut target = self;
         for key in keys.iter() {
             match target.find(*key) {
@@ -868,7 +868,7 @@ impl Json {
     /// If the Json value is an Object, performs a depth-first search until
     /// a value associated with the provided key is found. If no value is found
     /// or the Json value is not an Object, returns None.
-    pub fn search<'a>(&'a self, key: &StrBuf) -> Option<&'a Json> {
+    pub fn search<'a>(&'a self, key: &String) -> Option<&'a Json> {
         match self {
             &Object(ref map) => {
                 match map.find(key) {
@@ -983,7 +983,7 @@ pub enum JsonEvent {
     ListEnd,
     BooleanValue(bool),
     NumberValue(f64),
-    StringValue(StrBuf),
+    StringValue(String),
     NullValue,
     Error(ParserError),
 }
@@ -1101,7 +1101,7 @@ impl Stack {
     }
 
     // Used by Parser to insert Key elements at the top of the stack.
-    fn push_key(&mut self, key: StrBuf) {
+    fn push_key(&mut self, key: String) {
         self.stack.push(InternalKey(self.str_buffer.len() as u16, key.len() as u16));
         for c in key.as_bytes().iter() {
             self.str_buffer.push(*c);
@@ -1388,9 +1388,9 @@ impl<T: Iterator<char>> Parser<T> {
         Ok(n)
     }
 
-    fn parse_str(&mut self) -> Result<StrBuf, ParserError> {
+    fn parse_str(&mut self) -> Result<String, ParserError> {
         let mut escape = false;
-        let mut res = StrBuf::new();
+        let mut res = String::new();
 
         loop {
             self.bump();
@@ -1748,7 +1748,7 @@ impl<T: Iterator<char>> Builder<T> {
             Some(NumberValue(n)) => { Ok(Number(n)) }
             Some(BooleanValue(b)) => { Ok(Boolean(b)) }
             Some(StringValue(ref mut s)) => {
-                let mut temp = StrBuf::new();
+                let mut temp = String::new();
                 swap(s, &mut temp);
                 Ok(String(temp))
             }
@@ -1920,7 +1920,7 @@ impl ::Decoder<DecoderError> for Decoder {
                           format_strbuf!("{}", s)))
     }
 
-    fn read_str(&mut self) -> DecodeResult<StrBuf> {
+    fn read_str(&mut self) -> DecodeResult<String> {
         debug!("read_str");
         Ok(try!(expect!(self.pop(), String)))
     }
@@ -2233,7 +2233,7 @@ impl ToJson for bool {
     fn to_json(&self) -> Json { Boolean(*self) }
 }
 
-impl ToJson for StrBuf {
+impl ToJson for String {
     fn to_json(&self) -> Json { String((*self).clone()) }
 }
 
@@ -2265,7 +2265,7 @@ impl<A:ToJson> ToJson for Vec<A> {
     fn to_json(&self) -> Json { List(self.iter().map(|elt| elt.to_json()).collect()) }
 }
 
-impl<A:ToJson> ToJson for TreeMap<StrBuf, A> {
+impl<A:ToJson> ToJson for TreeMap<String, A> {
     fn to_json(&self) -> Json {
         let mut d = TreeMap::new();
         for (key, value) in self.iter() {
@@ -2275,7 +2275,7 @@ impl<A:ToJson> ToJson for TreeMap<StrBuf, A> {
     }
 }
 
-impl<A:ToJson> ToJson for HashMap<StrBuf, A> {
+impl<A:ToJson> ToJson for HashMap<String, A> {
     fn to_json(&self) -> Json {
         let mut d = TreeMap::new();
         for (key, value) in self.iter() {
@@ -2321,14 +2321,14 @@ mod tests {
     #[deriving(Eq, Encodable, Decodable, Show)]
     enum Animal {
         Dog,
-        Frog(StrBuf, int)
+        Frog(String, int)
     }
 
     #[deriving(Eq, Encodable, Decodable, Show)]
     struct Inner {
         a: (),
         b: uint,
-        c: Vec<StrBuf>,
+        c: Vec<String>,
     }
 
     #[deriving(Eq, Encodable, Decodable, Show)]
@@ -2336,7 +2336,7 @@ mod tests {
         inner: Vec<Inner>,
     }
 
-    fn mk_object(items: &[(StrBuf, Json)]) -> Json {
+    fn mk_object(items: &[(String, Json)]) -> Json {
         let mut d = box TreeMap::new();
 
         for item in items.iter() {
@@ -2488,7 +2488,7 @@ mod tests {
                    from_str(a.to_pretty_str().as_slice()).unwrap());
     }
 
-    fn with_str_writer(f: |&mut io::Writer|) -> StrBuf {
+    fn with_str_writer(f: |&mut io::Writer|) -> String {
         use std::io::MemWriter;
         use std::str;
 
@@ -2556,7 +2556,7 @@ mod tests {
 
     #[test]
     fn test_write_none() {
-        let value: Option<StrBuf> = None;
+        let value: Option<String> = None;
         let s = with_str_writer(|wr| {
             let mut encoder = Encoder::new(wr);
             value.encode(&mut encoder).unwrap();
@@ -2694,11 +2694,11 @@ mod tests {
 
         for &(i, o) in s.iter() {
             let mut decoder = Decoder::new(from_str(i).unwrap());
-            let v: StrBuf = Decodable::decode(&mut decoder).unwrap();
+            let v: String = Decodable::decode(&mut decoder).unwrap();
             assert_eq!(v.as_slice(), o);
 
             let mut decoder = Decoder::new(from_str(i).unwrap());
-            let v: StrBuf = Decodable::decode(&mut decoder).unwrap();
+            let v: String = Decodable::decode(&mut decoder).unwrap();
             assert_eq!(v, o.to_strbuf());
         }
     }
@@ -2828,11 +2828,11 @@ mod tests {
     #[test]
     fn test_decode_option() {
         let mut decoder = Decoder::new(from_str("null").unwrap());
-        let value: Option<StrBuf> = Decodable::decode(&mut decoder).unwrap();
+        let value: Option<String> = Decodable::decode(&mut decoder).unwrap();
         assert_eq!(value, None);
 
         let mut decoder = Decoder::new(from_str("\"jodhpurs\"").unwrap());
-        let value: Option<StrBuf> = Decodable::decode(&mut decoder).unwrap();
+        let value: Option<String> = Decodable::decode(&mut decoder).unwrap();
         assert_eq!(value, Some("jodhpurs".to_strbuf()));
     }
 
@@ -2853,7 +2853,7 @@ mod tests {
         let s = "{\"a\": \"Dog\", \"b\": {\"variant\":\"Frog\",\
                   \"fields\":[\"Henry\", 349]}}";
         let mut decoder = Decoder::new(from_str(s).unwrap());
-        let mut map: TreeMap<StrBuf, Animal> = Decodable::decode(&mut decoder).unwrap();
+        let mut map: TreeMap<String, Animal> = Decodable::decode(&mut decoder).unwrap();
 
         assert_eq!(map.pop(&"a".to_strbuf()), Some(Dog));
         assert_eq!(map.pop(&"b".to_strbuf()), Some(Frog("Henry".to_strbuf(), 349)));
@@ -2869,13 +2869,13 @@ mod tests {
     struct DecodeStruct {
         x: f64,
         y: bool,
-        z: StrBuf,
+        z: String,
         w: Vec<DecodeStruct>
     }
     #[deriving(Decodable)]
     enum DecodeEnum {
         A(f64),
-        B(StrBuf)
+        B(String)
     }
     fn check_err<T: Decodable<Decoder, DecoderError>>(to_parse: &'static str,
                                                       expected: DecoderError) {
@@ -3399,7 +3399,7 @@ mod tests {
         });
     }
 
-    fn big_json() -> StrBuf {
+    fn big_json() -> String {
         let mut src = "[\n".to_strbuf();
         for _ in range(0, 500) {
             src.push_str(r#"{ "a": true, "b": null, "c":3.1415, "d": "Hello world", "e": \

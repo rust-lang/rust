@@ -11,7 +11,7 @@
 //! Table-of-contents creation.
 
 use std::fmt;
-use std::strbuf::StrBuf;
+use std::string::String;
 
 /// A (recursive) table of contents
 #[deriving(Eq)]
@@ -39,9 +39,9 @@ impl Toc {
 #[deriving(Eq)]
 pub struct TocEntry {
     level: u32,
-    sec_number: StrBuf,
-    name: StrBuf,
-    id: StrBuf,
+    sec_number: String,
+    name: String,
+    id: String,
     children: Toc,
 }
 
@@ -125,7 +125,7 @@ impl TocBuilder {
     /// Push a level `level` heading into the appropriate place in the
     /// heirarchy, returning a string containing the section number in
     /// `<num>.<num>.<num>` format.
-    pub fn push<'a>(&'a mut self, level: u32, name: StrBuf, id: StrBuf) -> &'a str {
+    pub fn push<'a>(&'a mut self, level: u32, name: String, id: String) -> &'a str {
         assert!(level >= 1);
 
         // collapse all previous sections into their parents until we
@@ -137,11 +137,11 @@ impl TocBuilder {
         {
             let (toc_level, toc) = match self.chain.last() {
                 None => {
-                    sec_number = StrBuf::new();
+                    sec_number = String::new();
                     (0, &self.top_level)
                 }
                 Some(entry) => {
-                    sec_number = StrBuf::from_str(entry.sec_number
+                    sec_number = String::from_str(entry.sec_number
                                                        .as_slice());
                     sec_number.push_str(".");
                     (entry.level, &entry.children)

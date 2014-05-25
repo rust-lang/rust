@@ -55,7 +55,7 @@ pub mod rt {
 
     trait ToSource : ToTokens {
         // Takes a thing and generates a string containing rust code for it.
-        pub fn to_source() -> StrBuf;
+        pub fn to_source() -> String;
 
         // If you can make source, you can definitely make tokens.
         pub fn to_tokens(cx: &ExtCtxt) -> ~[TokenTree] {
@@ -67,67 +67,67 @@ pub mod rt {
 
     pub trait ToSource {
         // Takes a thing and generates a string containing rust code for it.
-        fn to_source(&self) -> StrBuf;
+        fn to_source(&self) -> String;
     }
 
     impl ToSource for ast::Ident {
-        fn to_source(&self) -> StrBuf {
+        fn to_source(&self) -> String {
             get_ident(*self).get().to_strbuf()
         }
     }
 
     impl ToSource for @ast::Item {
-        fn to_source(&self) -> StrBuf {
+        fn to_source(&self) -> String {
             pprust::item_to_str(*self)
         }
     }
 
     impl<'a> ToSource for &'a [@ast::Item] {
-        fn to_source(&self) -> StrBuf {
+        fn to_source(&self) -> String {
             self.iter()
                 .map(|i| i.to_source())
-                .collect::<Vec<StrBuf>>()
+                .collect::<Vec<String>>()
                 .connect("\n\n")
                 .to_strbuf()
         }
     }
 
     impl ToSource for ast::Ty {
-        fn to_source(&self) -> StrBuf {
+        fn to_source(&self) -> String {
             pprust::ty_to_str(self)
         }
     }
 
     impl<'a> ToSource for &'a [ast::Ty] {
-        fn to_source(&self) -> StrBuf {
+        fn to_source(&self) -> String {
             self.iter()
                 .map(|i| i.to_source())
-                .collect::<Vec<StrBuf>>()
+                .collect::<Vec<String>>()
                 .connect(", ")
                 .to_strbuf()
         }
     }
 
     impl ToSource for Generics {
-        fn to_source(&self) -> StrBuf {
+        fn to_source(&self) -> String {
             pprust::generics_to_str(self)
         }
     }
 
     impl ToSource for @ast::Expr {
-        fn to_source(&self) -> StrBuf {
+        fn to_source(&self) -> String {
             pprust::expr_to_str(*self)
         }
     }
 
     impl ToSource for ast::Block {
-        fn to_source(&self) -> StrBuf {
+        fn to_source(&self) -> String {
             pprust::block_to_str(self)
         }
     }
 
     impl<'a> ToSource for &'a str {
-        fn to_source(&self) -> StrBuf {
+        fn to_source(&self) -> String {
             let lit = dummy_spanned(ast::LitStr(
                     token::intern_and_get_ident(*self), ast::CookedStr));
             pprust::lit_to_str(&lit)
@@ -135,41 +135,41 @@ pub mod rt {
     }
 
     impl ToSource for () {
-        fn to_source(&self) -> StrBuf {
+        fn to_source(&self) -> String {
             "()".to_strbuf()
         }
     }
 
     impl ToSource for bool {
-        fn to_source(&self) -> StrBuf {
+        fn to_source(&self) -> String {
             let lit = dummy_spanned(ast::LitBool(*self));
             pprust::lit_to_str(&lit)
         }
     }
 
     impl ToSource for char {
-        fn to_source(&self) -> StrBuf {
+        fn to_source(&self) -> String {
             let lit = dummy_spanned(ast::LitChar(*self));
             pprust::lit_to_str(&lit)
         }
     }
 
     impl ToSource for int {
-        fn to_source(&self) -> StrBuf {
+        fn to_source(&self) -> String {
             let lit = dummy_spanned(ast::LitInt(*self as i64, ast::TyI));
             pprust::lit_to_str(&lit)
         }
     }
 
     impl ToSource for i8 {
-        fn to_source(&self) -> StrBuf {
+        fn to_source(&self) -> String {
             let lit = dummy_spanned(ast::LitInt(*self as i64, ast::TyI8));
             pprust::lit_to_str(&lit)
         }
     }
 
     impl ToSource for i16 {
-        fn to_source(&self) -> StrBuf {
+        fn to_source(&self) -> String {
             let lit = dummy_spanned(ast::LitInt(*self as i64, ast::TyI16));
             pprust::lit_to_str(&lit)
         }
@@ -177,49 +177,49 @@ pub mod rt {
 
 
     impl ToSource for i32 {
-        fn to_source(&self) -> StrBuf {
+        fn to_source(&self) -> String {
             let lit = dummy_spanned(ast::LitInt(*self as i64, ast::TyI32));
             pprust::lit_to_str(&lit)
         }
     }
 
     impl ToSource for i64 {
-        fn to_source(&self) -> StrBuf {
+        fn to_source(&self) -> String {
             let lit = dummy_spanned(ast::LitInt(*self as i64, ast::TyI64));
             pprust::lit_to_str(&lit)
         }
     }
 
     impl ToSource for uint {
-        fn to_source(&self) -> StrBuf {
+        fn to_source(&self) -> String {
             let lit = dummy_spanned(ast::LitUint(*self as u64, ast::TyU));
             pprust::lit_to_str(&lit)
         }
     }
 
     impl ToSource for u8 {
-        fn to_source(&self) -> StrBuf {
+        fn to_source(&self) -> String {
             let lit = dummy_spanned(ast::LitUint(*self as u64, ast::TyU8));
             pprust::lit_to_str(&lit)
         }
     }
 
     impl ToSource for u16 {
-        fn to_source(&self) -> StrBuf {
+        fn to_source(&self) -> String {
             let lit = dummy_spanned(ast::LitUint(*self as u64, ast::TyU16));
             pprust::lit_to_str(&lit)
         }
     }
 
     impl ToSource for u32 {
-        fn to_source(&self) -> StrBuf {
+        fn to_source(&self) -> String {
             let lit = dummy_spanned(ast::LitUint(*self as u64, ast::TyU32));
             pprust::lit_to_str(&lit)
         }
     }
 
     impl ToSource for u64 {
-        fn to_source(&self) -> StrBuf {
+        fn to_source(&self) -> String {
             let lit = dummy_spanned(ast::LitUint(*self as u64, ast::TyU64));
             pprust::lit_to_str(&lit)
         }
@@ -271,15 +271,15 @@ pub mod rt {
     impl_to_tokens!(u64)
 
     pub trait ExtParseUtils {
-        fn parse_item(&self, s: StrBuf) -> @ast::Item;
-        fn parse_expr(&self, s: StrBuf) -> @ast::Expr;
-        fn parse_stmt(&self, s: StrBuf) -> @ast::Stmt;
-        fn parse_tts(&self, s: StrBuf) -> Vec<ast::TokenTree> ;
+        fn parse_item(&self, s: String) -> @ast::Item;
+        fn parse_expr(&self, s: String) -> @ast::Expr;
+        fn parse_stmt(&self, s: String) -> @ast::Stmt;
+        fn parse_tts(&self, s: String) -> Vec<ast::TokenTree> ;
     }
 
     impl<'a> ExtParseUtils for ExtCtxt<'a> {
 
-        fn parse_item(&self, s: StrBuf) -> @ast::Item {
+        fn parse_item(&self, s: String) -> @ast::Item {
             let res = parse::parse_item_from_source_str(
                 "<quote expansion>".to_strbuf(),
                 s,
@@ -294,7 +294,7 @@ pub mod rt {
             }
         }
 
-        fn parse_stmt(&self, s: StrBuf) -> @ast::Stmt {
+        fn parse_stmt(&self, s: String) -> @ast::Stmt {
             parse::parse_stmt_from_source_str("<quote expansion>".to_strbuf(),
                                               s,
                                               self.cfg(),
@@ -302,14 +302,14 @@ pub mod rt {
                                               self.parse_sess())
         }
 
-        fn parse_expr(&self, s: StrBuf) -> @ast::Expr {
+        fn parse_expr(&self, s: String) -> @ast::Expr {
             parse::parse_expr_from_source_str("<quote expansion>".to_strbuf(),
                                               s,
                                               self.cfg(),
                                               self.parse_sess())
         }
 
-        fn parse_tts(&self, s: StrBuf) -> Vec<ast::TokenTree> {
+        fn parse_tts(&self, s: String) -> Vec<ast::TokenTree> {
             parse::parse_tts_from_source_str("<quote expansion>".to_strbuf(),
                                              s,
                                              self.cfg(),
@@ -375,7 +375,7 @@ pub fn expand_quote_stmt(cx: &mut ExtCtxt,
     base::MacExpr::new(expanded)
 }
 
-fn ids_ext(strs: Vec<StrBuf> ) -> Vec<ast::Ident> {
+fn ids_ext(strs: Vec<String> ) -> Vec<ast::Ident> {
     strs.iter().map(|str| str_to_ident((*str).as_slice())).collect()
 }
 

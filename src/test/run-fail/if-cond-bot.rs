@@ -9,5 +9,5 @@
 // except according to those terms.
 
 // error-pattern:quux
-fn my_err(s: StrBuf) -> ! { println!("{}", s); fail!("quux"); }
+fn my_err(s: String) -> ! { println!("{}", s); fail!("quux"); }
 fn main() { if my_err("bye".to_strbuf()) { } }

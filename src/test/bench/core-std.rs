@@ -30,7 +30,7 @@ macro_rules! bench (
 )
 
 fn main() {
-    let argv = os::args().move_iter().map(|x| x.to_strbuf()).collect::<Vec<StrBuf>>();
+    let argv = os::args().move_iter().map(|x| x.to_strbuf()).collect::<Vec<String>>();
     let _tests = argv.slice(1, argv.len());
 
     bench!(argv, shift_push);
@@ -42,7 +42,7 @@ fn main() {
     bench!(argv, is_utf8_multibyte);
 }
 
-fn maybe_run_test(argv: &[StrBuf], name: StrBuf, test: ||) {
+fn maybe_run_test(argv: &[String], name: String, test: ||) {
     let mut run_test = false;
 
     if os::getenv("RUST_BENCH").is_some() {

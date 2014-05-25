@@ -173,7 +173,7 @@ pub fn BuilderRef_res(b: BuilderRef) -> BuilderRef_res {
     }
 }
 
-pub type ExternMap = HashMap<StrBuf, ValueRef>;
+pub type ExternMap = HashMap<String, ValueRef>;
 
 // Here `self_ty` is the real type of the self parameter to this method. It
 // will only be set in the case of default methods.
@@ -194,12 +194,12 @@ impl param_substs {
     }
 }
 
-fn param_substs_to_str(this: &param_substs, tcx: &ty::ctxt) -> StrBuf {
+fn param_substs_to_str(this: &param_substs, tcx: &ty::ctxt) -> String {
     format_strbuf!("param_substs({})", this.substs.repr(tcx))
 }
 
 impl Repr for param_substs {
-    fn repr(&self, tcx: &ty::ctxt) -> StrBuf {
+    fn repr(&self, tcx: &ty::ctxt) -> String {
         param_substs_to_str(self, tcx)
     }
 }
@@ -442,15 +442,15 @@ impl<'a> Block<'a> {
     }
     pub fn sess(&self) -> &'a Session { self.fcx.ccx.sess() }
 
-    pub fn ident(&self, ident: Ident) -> StrBuf {
+    pub fn ident(&self, ident: Ident) -> String {
         token::get_ident(ident).get().to_strbuf()
     }
 
-    pub fn node_id_to_str(&self, id: ast::NodeId) -> StrBuf {
+    pub fn node_id_to_str(&self, id: ast::NodeId) -> String {
         self.tcx().map.node_to_str(id).to_strbuf()
     }
 
-    pub fn expr_to_str(&self, e: &ast::Expr) -> StrBuf {
+    pub fn expr_to_str(&self, e: &ast::Expr) -> String {
         e.repr(self.tcx())
     }
 
@@ -464,19 +464,19 @@ impl<'a> Block<'a> {
         }
     }
 
-    pub fn val_to_str(&self, val: ValueRef) -> StrBuf {
+    pub fn val_to_str(&self, val: ValueRef) -> String {
         self.ccx().tn.val_to_str(val)
     }
 
-    pub fn llty_str(&self, ty: Type) -> StrBuf {
+    pub fn llty_str(&self, ty: Type) -> String {
         self.ccx().tn.type_to_str(ty)
     }
 
-    pub fn ty_to_str(&self, t: ty::t) -> StrBuf {
+    pub fn ty_to_str(&self, t: ty::t) -> String {
         t.repr(self.tcx())
     }
 
-    pub fn to_str(&self) -> StrBuf {
+    pub fn to_str(&self) -> String {
         let blk: *Block = self;
         format_strbuf!("[block {}]", blk)
     }

@@ -16,4 +16,4 @@ use zed::baz;
 mod zed {
     pub fn bar() { println!("bar"); }
 }
-fn main(args: Vec<StrBuf>) { bar(); }
+fn main(args: Vec<String>) { bar(); }

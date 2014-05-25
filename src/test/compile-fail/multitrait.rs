@@ -14,5 +14,5 @@ struct S {
 
 impl Cmp, ToStr for S { //~ ERROR: expected `{` but found `,`
   fn eq(&&other: S) { false }
-  fn to_str(&self) -> StrBuf { "hi".to_owned() }
+  fn to_str(&self) -> String { "hi".to_owned() }
 }

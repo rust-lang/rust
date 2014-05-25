@@ -52,7 +52,7 @@ struct Config {
     stress: bool
 }
 
-fn parse_opts(argv: Vec<StrBuf> ) -> Config {
+fn parse_opts(argv: Vec<String> ) -> Config {
     let opts = vec!(getopts::optflag("", "stress", ""));
 
     let argv = argv.iter().map(|x| x.to_strbuf()).collect::<Vec<_>>();

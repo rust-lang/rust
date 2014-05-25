@@ -149,7 +149,7 @@ use collections::HashMap;
 use collections::HashSet;
 use libc::{c_uint, c_ulonglong, c_longlong};
 use std::ptr;
-use std::strbuf::StrBuf;
+use std::string::String;
 use std::sync::atomics;
 use syntax::codemap::{Span, Pos};
 use syntax::{abi, ast, codemap, ast_util, ast_map};
@@ -178,7 +178,7 @@ pub struct CrateDebugContext {
     llcontext: ContextRef,
     builder: DIBuilderRef,
     current_debug_location: Cell<DebugLocation>,
-    created_files: RefCell<HashMap<StrBuf, DIFile>>,
+    created_files: RefCell<HashMap<String, DIFile>>,
     created_types: RefCell<HashMap<uint, DIType>>,
     created_enum_disr_types: RefCell<HashMap<ast::DefId, DIType>>,
     namespace_map: RefCell<HashMap<Vec<ast::Name>, Rc<NamespaceTreeNode>>>,
@@ -719,7 +719,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
     };
 
     // get_template_parameters() will append a `<...>` clause to the function name if necessary.
-    let mut function_name = StrBuf::from_str(token::get_ident(ident).get());
+    let mut function_name = String::from_str(token::get_ident(ident).get());
     let template_parameters = get_template_parameters(cx,
                                                       generics,
                                                       param_substs,
@@ -824,7 +824,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
                                generics: &ast::Generics,
                                param_substs: Option<&param_substs>,
                                file_metadata: DIFile,
-                               name_to_append_suffix_to: &mut StrBuf)
+                               name_to_append_suffix_to: &mut String)
                                -> DIArray {
         let self_type = match param_substs {
             Some(param_substs) => param_substs.substs.self_ty,
@@ -1454,7 +1454,7 @@ impl GeneralMemberDescriptionFactory {
 }
 
 struct EnumVariantMemberDescriptionFactory {
-    args: Vec<(StrBuf, ty::t)> ,
+    args: Vec<(String, ty::t)> ,
     discriminant_type_metadata: Option<DIType>,
     span: Span,
 }
@@ -1525,7 +1525,7 @@ fn describe_enum_variant(cx: &CrateContext,
     }
 
     // Build an array of (field name, field type) pairs to be captured in the factory closure.
-    let args: Vec<(StrBuf, ty::t)> = arg_names.iter()
+    let args: Vec<(String, ty::t)> = arg_names.iter()
         .zip(struct_def.fields.iter())
         .map(|(s, &t)| (s.to_strbuf(), t))
         .collect();
@@ -1732,7 +1732,7 @@ enum MemberOffset {
 }
 
 struct MemberDescription {
-    name: StrBuf,
+    name: String,
     llvm_type: Type,
     type_metadata: DIType,
     offset: MemberOffset,
@@ -2339,7 +2339,7 @@ fn cache_id_for_type(t: ty::t) -> uint {
 
 // Used to avoid LLVM metadata uniquing problems. See `create_struct_stub()` and
 // `prepare_enum_metadata()`.
-fn generate_unique_type_id(prefix: &'static str) -> StrBuf {
+fn generate_unique_type_id(prefix: &'static str) -> String {
     unsafe {
         static mut unique_id_counter: atomics::AtomicUint = atomics::INIT_ATOMIC_UINT;
         format_strbuf!("{}{}",
@@ -2841,7 +2841,7 @@ fn populate_scope_map(cx: &CrateContext,
             ast::ExprInlineAsm(ast::InlineAsm { inputs: ref inputs,
                                                 outputs: ref outputs,
                                                 .. }) => {
-                // inputs, outputs: ~[(StrBuf, @expr)]
+                // inputs, outputs: ~[(String, @expr)]
                 for &(_, exp) in inputs.iter() {
                     walk_expr(cx, exp, scope_stack, scope_map);
                 }
@@ -2866,8 +2866,8 @@ struct NamespaceTreeNode {
 }
 
 impl NamespaceTreeNode {
-    fn mangled_name_of_contained_item(&self, item_name: &str) -> StrBuf {
-        fn fill_nested(node: &NamespaceTreeNode, output: &mut StrBuf) {
+    fn mangled_name_of_contained_item(&self, item_name: &str) -> String {
+        fn fill_nested(node: &NamespaceTreeNode, output: &mut String) {
             match node.parent {
                 Some(ref parent) => fill_nested(&*parent.upgrade().unwrap(), output),
                 None => {}
@@ -2877,7 +2877,7 @@ impl NamespaceTreeNode {
             output.push_str(string.get());
         }
 
-        let mut name = StrBuf::from_str("_ZN");
+        let mut name = String::from_str("_ZN");
         fill_nested(self, &mut name);
         name.push_str(format!("{}", item_name.len()).as_slice());
         name.push_str(item_name);

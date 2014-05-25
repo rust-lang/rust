@@ -10,7 +10,7 @@
 
 // Issue #1818
 
-fn lp<T>(s: StrBuf, f: |StrBuf| -> T) -> T {
+fn lp<T>(s: String, f: |String| -> T) -> T {
     while false {
         let r = f(s);
         return (r);
@@ -18,8 +18,8 @@ fn lp<T>(s: StrBuf, f: |StrBuf| -> T) -> T {
     fail!();
 }
 
-fn apply<T>(s: StrBuf, f: |StrBuf| -> T) -> T {
-    fn g<T>(s: StrBuf, f: |StrBuf| -> T) -> T {f(s)}
+fn apply<T>(s: String, f: |String| -> T) -> T {
+    fn g<T>(s: String, f: |String| -> T) -> T {f(s)}
     g(s, |v| { let r = f(v); r })
 }
 

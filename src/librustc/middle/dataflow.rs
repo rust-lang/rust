@@ -18,7 +18,7 @@
 
 
 use std::io;
-use std::strbuf::StrBuf;
+use std::string::String;
 use std::uint;
 use syntax::ast;
 use syntax::ast_util;
@@ -832,12 +832,12 @@ impl<'a, 'b, O:DataFlowOperator> PropagationContext<'a, 'b, O> {
     }
 }
 
-fn mut_bits_to_str(words: &mut [uint]) -> StrBuf {
+fn mut_bits_to_str(words: &mut [uint]) -> String {
     bits_to_str(words)
 }
 
-fn bits_to_str(words: &[uint]) -> StrBuf {
-    let mut result = StrBuf::new();
+fn bits_to_str(words: &[uint]) -> String {
+    let mut result = String::new();
     let mut sep = '[';
 
     // Note: this is a little endian printout of bytes.
@@ -892,7 +892,7 @@ fn set_bit(words: &mut [uint], bit: uint) -> bool {
     oldv != newv
 }
 
-fn bit_str(bit: uint) -> StrBuf {
+fn bit_str(bit: uint) -> String {
     let byte = bit >> 8;
     let lobits = 1 << (bit & 0xFF);
     format_strbuf!("[{}:{}-{:02x}]", bit, byte, lobits)

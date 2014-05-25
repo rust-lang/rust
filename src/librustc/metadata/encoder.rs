@@ -70,7 +70,7 @@ pub struct EncodeParams<'a> {
     pub diag: &'a SpanHandler,
     pub tcx: &'a ty::ctxt,
     pub reexports2: &'a middle::resolve::ExportMap2,
-    pub item_symbols: &'a RefCell<NodeMap<StrBuf>>,
+    pub item_symbols: &'a RefCell<NodeMap<String>>,
     pub non_inlineable_statics: &'a RefCell<NodeSet>,
     pub link_meta: &'a LinkMeta,
     pub cstore: &'a cstore::CStore,
@@ -81,7 +81,7 @@ pub struct EncodeContext<'a> {
     pub diag: &'a SpanHandler,
     pub tcx: &'a ty::ctxt,
     pub reexports2: &'a middle::resolve::ExportMap2,
-    pub item_symbols: &'a RefCell<NodeMap<StrBuf>>,
+    pub item_symbols: &'a RefCell<NodeMap<String>>,
     pub non_inlineable_statics: &'a RefCell<NodeSet>,
     pub link_meta: &'a LinkMeta,
     pub cstore: &'a cstore::CStore,
@@ -139,7 +139,7 @@ fn encode_family(ebml_w: &mut Encoder, c: char) {
     ebml_w.end_tag();
 }
 
-pub fn def_to_str(did: DefId) -> StrBuf {
+pub fn def_to_str(did: DefId) -> String {
     format_strbuf!("{}:{}", did.krate, did.node)
 }
 
@@ -1715,7 +1715,7 @@ fn encode_dylib_dependency_formats(ebml_w: &mut Encoder, ecx: &EncodeContext) {
                     cstore::RequireDynamic => "d",
                     cstore::RequireStatic => "s",
                 })).to_strbuf())
-            }).collect::<Vec<StrBuf>>();
+            }).collect::<Vec<String>>();
             ebml_w.writer.write(s.connect(",").as_bytes());
         }
         None => {}
@@ -1877,7 +1877,7 @@ fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, krate: &Crate)
 }
 
 // Get the encoded string for a type
-pub fn encoded_ty(tcx: &ty::ctxt, t: ty::t) -> StrBuf {
+pub fn encoded_ty(tcx: &ty::ctxt, t: ty::t) -> String {
     let mut wr = MemWriter::new();
     tyencode::enc_ty(&mut wr, &tyencode::ctxt {
         diag: tcx.sess.diagnostic(),

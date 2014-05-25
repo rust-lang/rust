@@ -473,7 +473,7 @@ Two examples of paths with type arguments:
 # struct HashMap<K, V>;
 # fn f() {
 # fn id<T>(t: T) -> T { t }
-type T = HashMap<int,StrBuf>;  // Type arguments used in a type expression
+type T = HashMap<int,String>;  // Type arguments used in a type expression
 let x = id::<int>(10);       // Type arguments used in a call expression
 # }
 ~~~~
@@ -1260,8 +1260,8 @@ Enumeration constructors can have either named or unnamed fields:
 
 ~~~~
 enum Animal {
-    Dog (StrBuf, f64),
-    Cat { name: StrBuf, weight: f64 }
+    Dog (String, f64),
+    Cat { name: String, weight: f64 }
 }
 
 let mut a: Animal = Dog("Cocoa".to_strbuf(), 37.2);
@@ -2082,7 +2082,7 @@ These are functions:
 * `str_eq`
   : Compare two strings (`&str`) for equality.
 * `uniq_str_eq`
-  : Compare two owned strings (`StrBuf`) for equality.
+  : Compare two owned strings (`String`) for equality.
 * `strdup_uniq`
   : Return a new unique string
     containing a copy of the contents of a unique string.
@@ -3310,7 +3310,7 @@ A value of type `str` is a Unicode string,
 represented as a vector of 8-bit unsigned bytes holding a sequence of UTF-8 codepoints.
 Since `str` is of unknown size, it is not a _first class_ type,
 but can only be instantiated through a pointer type,
-such as `&str` or `StrBuf`.
+such as `&str` or `String`.
 
 ### Tuple types
 
@@ -3574,11 +3574,11 @@ An example of an object type:
 
 ~~~~
 trait Printable {
-  fn to_string(&self) -> StrBuf;
+  fn to_string(&self) -> String;
 }
 
 impl Printable for int {
-  fn to_string(&self) -> StrBuf { self.to_str().to_strbuf() }
+  fn to_string(&self) -> String { self.to_str().to_strbuf() }
 }
 
 fn print(a: Box<Printable>) {
@@ -3619,17 +3619,17 @@ example, in:
 
 ~~~~
 trait Printable {
-  fn make_string(&self) -> StrBuf;
+  fn make_string(&self) -> String;
 }
 
-impl Printable for StrBuf {
-    fn make_string(&self) -> StrBuf {
+impl Printable for String {
+    fn make_string(&self) -> String {
         (*self).clone()
     }
 }
 ~~~~
 
-`self` refers to the value of type `StrBuf` that is the receiver for a
+`self` refers to the value of type `String` that is the receiver for a
 call to the method `make_string`.
 
 ## Type kinds

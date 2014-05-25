@@ -71,7 +71,7 @@ use rt::backtrace;
 use rt::local::Local;
 use rt::task::Task;
 use str::Str;
-use strbuf::StrBuf;
+use string::String;
 use task::TaskResult;
 
 use uw = rt::libunwind;
@@ -389,7 +389,7 @@ fn begin_unwind_inner(msg: Box<Any:Send>,
     {
         let msg_s = match msg.as_ref::<&'static str>() {
             Some(s) => *s,
-            None => match msg.as_ref::<StrBuf>() {
+            None => match msg.as_ref::<String>() {
                 Some(s) => s.as_slice(),
                 None => "Box<Any>",
             }

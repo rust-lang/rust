@@ -78,7 +78,7 @@ pub fn to_str_bytes<U>(n: $T, radix: uint, f: |v: &[u8]| -> U) -> U {
 impl ToStrRadix for $T {
     /// Convert to a string in a given base.
     #[inline]
-    fn to_str_radix(&self, radix: uint) -> StrBuf {
+    fn to_str_radix(&self, radix: uint) -> String {
         format_strbuf!("{}", ::fmt::radix(*self, radix as u8))
     }
 }

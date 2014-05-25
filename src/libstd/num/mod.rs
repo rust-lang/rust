@@ -16,7 +16,7 @@
 #![allow(missing_doc)]
 
 use option::Option;
-use strbuf::StrBuf;
+use string::String;
 
 #[cfg(test)] use fmt::Show;
 
@@ -112,7 +112,7 @@ pub trait FloatMath: Float {
 
 /// A generic trait for converting a value to a string with a radix (base)
 pub trait ToStrRadix {
-    fn to_str_radix(&self, radix: uint) -> StrBuf;
+    fn to_str_radix(&self, radix: uint) -> String;
 }
 
 /// A generic trait for converting a string with a radix (base) to a value

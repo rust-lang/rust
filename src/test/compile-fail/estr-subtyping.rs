@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn wants_uniq(x: StrBuf) { }
+fn wants_uniq(x: String) { }
 fn wants_slice(x: &str) { }
 
-fn has_uniq(x: StrBuf) {
+fn has_uniq(x: String) {
    wants_uniq(x);
    wants_slice(x.as_slice());
 }

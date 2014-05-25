@@ -270,7 +270,7 @@ mod tests {
 
     #[test]
     fn test_put_update() {
-        let mut cache: LruCache<StrBuf, Vec<u8>> = LruCache::new(1);
+        let mut cache: LruCache<String, Vec<u8>> = LruCache::new(1);
         cache.put("1".to_strbuf(), vec![10, 10]);
         cache.put("1".to_strbuf(), vec![10, 19]);
         assert_opt_eq(cache.get(&"1".to_strbuf()), vec![10, 19]);
@@ -279,7 +279,7 @@ mod tests {
 
     #[test]
     fn test_expire_lru() {
-        let mut cache: LruCache<StrBuf, StrBuf> = LruCache::new(2);
+        let mut cache: LruCache<String, String> = LruCache::new(2);
         cache.put("foo1".to_strbuf(), "bar1".to_strbuf());
         cache.put("foo2".to_strbuf(), "bar2".to_strbuf());
         cache.put("foo3".to_strbuf(), "bar3".to_strbuf());
