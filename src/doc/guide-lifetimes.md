@@ -14,20 +14,19 @@ Despite their complete safety, a reference's representation at runtime
 is the same as that of an ordinary pointer in a C program. They introduce zero
 overhead. The compiler does all safety checks at compile time.
 
-Although references have rather elaborate theoretical
-underpinnings (region pointers), the core concepts will be familiar to
-anyone who has worked with C or C++. Therefore, the best way to explain
-how they are used—and their limitations—is probably just to work
-through several examples.
+Although references have rather elaborate theoretical underpinnings usually
+introduced as (e.g. region pointers), the core concepts will be familiar to
+anyone who has worked with C or C++. The best way to explain how they are
+used—and their limitations—is probably just to work through several examples.
 
 # By example
 
 References, sometimes known as *borrowed pointers*, are only valid for
 a limited duration. References never claim any kind of ownership
-over the data that they point to, instead, they are used for cases
+over the data that they point to. Instead, they are used for cases
 where you would like to use data for a short time.
 
-As an example, consider a simple struct type `Point`:
+Consider a simple struct type `Point`:
 
 ~~~
 struct Point {x: f64, y: f64}
@@ -78,9 +77,9 @@ value. We also call this _borrowing_ the local variable
 `on_the_stack`, because we have created an alias: that is, another
 name for the same data.
 
-For the second argument, we need to grab the contents of `on_the_heap`
-by using the `*` operator, and then get a reference to that data. In
-order to convert `Box<T>` into a `&T`, we need to use `&*`.
+For the second argument, we need to extract the contents of `on_the_heap`
+by derefercing with the `*` symbol. Now that we have the data, we need
+to create a reference with the `&` symbol.
 
 Whenever a caller lends data to a callee, there are some limitations on what
 the caller can do with the original. For example, if the contents of a
@@ -194,7 +193,7 @@ fn example3() -> int {
 }
 ~~~
 
-Here, as before, the interior of the variable `x` is being borrowed
+Here, the interior of the variable `x` is being borrowed
 and `x` is declared as mutable. However, the compiler can prove that
 `x` is not assigned anywhere in the lifetime L of the variable
 `y`. Therefore, it accepts the function, even though `x` is mutable
@@ -281,8 +280,8 @@ prevents pointers from pointing into freed memory. There is one other
 case where the compiler must be very careful to ensure that pointers
 remain valid: pointers into the interior of an `enum`.
 
-As an example, let’s look at the following `shape` type that can
-represent both rectangles and circles:
+Let’s look at the following `shape` type that can represent both rectangles
+and circles:
 
 ~~~
 struct Point {x: f64, y: f64}; // as before
@@ -391,7 +390,7 @@ reference, then uses it within the same scope. It is also
 possible to return references as the result of a function, but
 as we'll see, doing so requires some explicit annotation.
 
-For example, we could write a subroutine like this:
+We could write a subroutine like this:
 
 ~~~
 struct Point {x: f64, y: f64}
@@ -412,11 +411,10 @@ pointer result will always have the same lifetime as one of the
 parameters; named lifetimes indicate which parameter that
 is.
 
-In the previous examples, function parameter types did not include a
-lifetime name. In those examples, the compiler simply creates a fresh
-name for the lifetime automatically: that is, the lifetime name is
-guaranteed to refer to a distinct lifetime from the lifetimes of all
-other parameters.
+In the previous code samples, function parameter types did not include a
+lifetime name. The compiler simply creates a fresh name for the lifetime
+automatically: that is, the lifetime name is guaranteed to refer to a distinct
+lifetime from the lifetimes of all other parameters.
 
 Named lifetimes that appear in function signatures are conceptually
 the same as the other lifetimes we have seen before, but they are a bit
@@ -461,7 +459,7 @@ guarantees; in fact, it cannot guarantee that the pointer will remain
 valid at all once it returns, as the parameter `p` may or may not be
 live in the caller. Therefore, the compiler will report an error here.
 
-In general, if you borrow a structs or boxes to create a
+In general, if you borrow a struct or box to create a
 reference, it will only be valid within the function
 and cannot be returned. This is why the typical way to return references
 is to take references as input (the only other case in
