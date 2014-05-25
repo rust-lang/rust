@@ -19,14 +19,20 @@
 extern crate debug;
 extern crate getopts;
 extern crate libc;
-#[phase(syntax, link)]
-extern crate log;
 extern crate rustc;
 extern crate serialize;
 extern crate sync;
 extern crate syntax;
 extern crate testing = "test";
 extern crate time;
+
+#[cfg(stage0)]
+#[phase(syntax, link)]
+extern crate log;
+
+#[cfg(not(stage0))]
+#[phase(plugin, link)]
+extern crate log;
 
 use std::io;
 use std::io::{File, MemWriter};

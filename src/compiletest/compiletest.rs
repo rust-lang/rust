@@ -18,10 +18,16 @@
 
 extern crate test;
 extern crate getopts;
-#[phase(link, syntax)]
-extern crate log;
 extern crate green;
 extern crate rustuv;
+
+#[cfg(stage0)]
+#[phase(syntax, link)]
+extern crate log;
+
+#[cfg(not(stage0))]
+#[phase(plugin, link)]
+extern crate log;
 
 extern crate regex;
 
