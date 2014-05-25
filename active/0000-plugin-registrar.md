@@ -61,6 +61,10 @@ pub fn plugin_registrar(reg: &mut Registry) {
 }
 ~~~
 
+I will also change `phase(syntax)` to `phase(plugin)`.  I'll keep `phase(syntax)` as a deprecated synonym with a warning, to avoid silent breakage.
+
+We only need one phase of loading plugin crates, even though the plugins we load may be used at different points (or not at all).
+
 # Drawbacks
 
 Breaking change for existing procedural macros.
