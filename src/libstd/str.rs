@@ -910,10 +910,9 @@ impl OwnedStr for String {
     }
 
     #[inline]
-    fn append(self, rhs: &str) -> String {
-        let mut new_str = String::from_owned_str(self);
-        new_str.push_str(rhs);
-        new_str
+    fn append(mut self, rhs: &str) -> String {
+        self.push_str(rhs);
+        self
     }
 }
 

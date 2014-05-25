@@ -671,7 +671,7 @@ pub fn usage(brief: &str, opts: &[OptGroup]) -> String {
                      hasarg: hasarg,
                      ..} = (*optref).clone();
 
-        let mut row = String::from_owned_str(" ".repeat(4));
+        let mut row = " ".repeat(4);
 
         // short option
         match short_name.len() {

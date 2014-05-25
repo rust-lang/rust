@@ -68,7 +68,8 @@ impl String {
         }
     }
 
-    /// Creates a new string buffer from the given owned string, taking care not to copy it.
+    #[allow(missing_doc)]
+    #[deprecated = "obsoleted by the removal of ~str"]
     #[inline]
     pub fn from_owned_str(string: String) -> String {
         string
