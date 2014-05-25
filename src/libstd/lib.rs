@@ -119,7 +119,8 @@
 #[cfg(test)] extern crate native;
 #[cfg(test)] extern crate green;
 #[cfg(test)] extern crate debug;
-#[cfg(test)] #[phase(syntax, link)] extern crate log;
+#[cfg(test, stage0)] #[phase(syntax, link)] extern crate log;
+#[cfg(test, not(stage0))] #[phase(plugin, link)] extern crate log;
 
 extern crate alloc;
 extern crate core;

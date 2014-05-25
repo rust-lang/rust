@@ -91,7 +91,8 @@
 #![deny(deprecated_owned_vector)]
 
 #[cfg(test)] extern crate debug;
-#[cfg(test)] #[phase(syntax, link)] extern crate log;
+#[cfg(test, stage0)] #[phase(syntax, link)] extern crate log;
+#[cfg(test, not(stage0))] #[phase(plugin, link)] extern crate log;
 
 use std::cmp::PartialEq;
 use std::result::{Err, Ok};
