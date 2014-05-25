@@ -24,7 +24,7 @@ use ops::{Not, BitAnd, BitOr, BitXor, Shl, Shr};
 use option::{Option, Some, None};
 
 /// The base trait for numeric types
-pub trait Num: Eq + Zero + One
+pub trait Num: Eq + Zero + One + Clone
              + Neg<Self>
              + Add<Self,Self>
              + Sub<Self,Self>
