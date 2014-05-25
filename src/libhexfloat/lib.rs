@@ -21,7 +21,7 @@ literal.
 To load the extension and use it:
 
 ```rust,ignore
-#[phase(syntax)]
+#[phase(plugin)]
 extern crate hexfloat;
 
 fn main() {

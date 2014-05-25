@@ -22,7 +22,7 @@ to be `big`, i.e. left-to-right order. It returns a u32.
 To load the extension and use it:
 
 ```rust,ignore
-#[phase(syntax)]
+#[phase(plugin)]
 extern crate fourcc;
 
 fn main() {

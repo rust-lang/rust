@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #[cfg(not(stage1))]
-#[phase(syntax)]
+#[phase(plugin)]
 extern crate regex_macros;
 
 #[cfg(not(stage1))]
