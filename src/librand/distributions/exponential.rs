@@ -10,7 +10,8 @@
 
 //! The exponential distribution.
 
-use std::num::Float;
+use core::num::Float;
+
 use {Rng, Rand};
 use distributions::{ziggurat, ziggurat_tables, Sample, IndependentSample};
 
@@ -58,7 +59,8 @@ impl Rand for Exp1 {
 /// # Example
 ///
 /// ```rust
-/// use rand::distributions::{Exp, IndependentSample};
+/// use std::rand;
+/// use std::rand::distributions::{Exp, IndependentSample};
 ///
 /// let exp = Exp::new(2.0);
 /// let v = exp.ind_sample(&mut rand::task_rng());
@@ -90,14 +92,15 @@ impl IndependentSample<f64> for Exp {
 
 #[cfg(test)]
 mod test {
+    use std::prelude::*;
+
     use distributions::{Sample, IndependentSample};
-    use {Rng, task_rng};
     use super::Exp;
 
     #[test]
     fn test_exp() {
         let mut exp = Exp::new(10.0);
-        let mut rng = task_rng();
+        let mut rng = ::test::rng();
         for _ in range(0, 1000) {
             assert!(exp.sample(&mut rng) >= 0.0);
             assert!(exp.ind_sample(&mut rng) >= 0.0);
@@ -118,22 +121,24 @@ mod test {
 #[cfg(test)]
 mod bench {
     extern crate test;
+
+    use std::prelude::*;
+
     use self::test::Bencher;
     use std::mem::size_of;
-    use {XorShiftRng, RAND_BENCH_N};
     use super::Exp;
     use distributions::Sample;
 
     #[bench]
     fn rand_exp(b: &mut Bencher) {
-        let mut rng = XorShiftRng::new().unwrap();
+        let mut rng = ::test::weak_rng();
         let mut exp = Exp::new(2.71828 * 3.14159);
 
         b.iter(|| {
-            for _ in range(0, RAND_BENCH_N) {
+            for _ in range(0, ::RAND_BENCH_N) {
                 exp.sample(&mut rng);
             }
         });
-        b.bytes = size_of::<f64>() as u64 * RAND_BENCH_N;
+        b.bytes = size_of::<f64>() as u64 * ::RAND_BENCH_N;
     }
 }

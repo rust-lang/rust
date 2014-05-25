@@ -108,10 +108,9 @@ pub fn inflate_bytes_zlib(bytes: &[u8]) -> Option<CVec<u8>> {
 
 #[cfg(test)]
 mod tests {
-    extern crate rand;
-
     use super::{inflate_bytes, deflate_bytes};
-    use self::rand::Rng;
+    use std::rand;
+    use std::rand::Rng;
 
     #[test]
     #[allow(deprecated_owned_vector)]
@@ -120,7 +119,8 @@ mod tests {
         let mut words = vec!();
         for _ in range(0, 20) {
             let range = r.gen_range(1u, 10);
-            words.push(r.gen_vec::<u8>(range));
+            let v = r.gen_iter::<u8>().take(range).collect::<Vec<u8>>();
+            words.push(v);
         }
         for _ in range(0, 20) {
             let mut input = vec![];

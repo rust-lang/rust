@@ -24,8 +24,8 @@ use std::iter::{range, range_inclusive};
 use std::mem::replace;
 use std::num;
 use std::option::{Option, Some, None};
-use rand;
-use rand::Rng;
+use std::rand;
+use std::rand::Rng;
 use std::result::{Ok, Err};
 use std::slice::ImmutableVector;
 

@@ -67,21 +67,19 @@ Examples of string representations:
 // test harness access
 #[cfg(test)]
 extern crate test;
-
-extern crate rand;
 extern crate serialize;
 
-use std::mem::{transmute,transmute_copy};
 use std::char::Char;
 use std::default::Default;
 use std::fmt;
 use std::from_str::FromStr;
 use std::hash::Hash;
+use std::mem::{transmute,transmute_copy};
 use std::num::FromStrRadix;
-use std::str;
+use std::rand;
+use std::rand::Rng;
 use std::slice;
-
-use rand::Rng;
+use std::str;
 
 use serialize::{Encoder, Encodable, Decoder, Decodable};
 
@@ -194,7 +192,7 @@ impl Uuid {
     /// of random numbers. Use the rand::Rand trait to supply
     /// a custom generator if required.
     pub fn new_v4() -> Uuid {
-        let ub = rand::task_rng().gen_vec(16);
+        let ub = rand::task_rng().gen_iter::<u8>().take(16).collect::<Vec<_>>();
         let mut uuid = Uuid{ bytes: [0, .. 16] };
         slice::bytes::copy_memory(uuid.bytes, ub.as_slice());
         uuid.set_variant(VariantRFC4122);
@@ -510,7 +508,7 @@ impl<T: Decoder<E>, E> Decodable<T, E> for Uuid {
 impl rand::Rand for Uuid {
     #[inline]
     fn rand<R: rand::Rng>(rng: &mut R) -> Uuid {
-        let ub = rng.gen_vec(16);
+        let ub = rng.gen_iter::<u8>().take(16).collect::<Vec<_>>();
         let mut uuid = Uuid{ bytes: [0, .. 16] };
         slice::bytes::copy_memory(uuid.bytes, ub.as_slice());
         uuid.set_variant(VariantRFC4122);
@@ -522,13 +520,13 @@ impl rand::Rand for Uuid {
 #[cfg(test)]
 mod test {
     extern crate collections;
-    extern crate rand;
 
     use super::{Uuid, VariantMicrosoft, VariantNCS, VariantRFC4122,
                 Version1Mac, Version2Dce, Version3Md5, Version4Random,
                 Version5Sha1};
     use std::str;
     use std::io::MemWriter;
+    use std::rand;
 
     #[test]
     fn test_nil() {
@@ -788,7 +786,7 @@ mod test {
     #[test]
     fn test_rand_rand() {
         let mut rng = rand::task_rng();
-        let u: Box<Uuid> = rand::Rand::rand(&mut rng);
+        let u: Uuid = rand::Rand::rand(&mut rng);
         let ub = u.as_bytes();
 
         assert!(ub.len() == 16);

@@ -8,10 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 #![feature(struct_variant)]
 
-extern crate rand;
+use std::rand;
 
 #[deriving(Rand)]
 struct A;
