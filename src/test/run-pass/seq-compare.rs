@@ -10,9 +10,9 @@
 
 
 pub fn main() {
-    assert!(("hello".to_owned() < "hellr".to_owned()));
-    assert!(("hello ".to_owned() > "hello".to_owned()));
-    assert!(("hello".to_owned() != "there".to_owned()));
+    assert!(("hello".to_string() < "hellr".to_string()));
+    assert!(("hello ".to_string() > "hello".to_string()));
+    assert!(("hello".to_string() != "there".to_string()));
     assert!((vec!(1, 2, 3, 4) > vec!(1, 2, 3)));
     assert!((vec!(1, 2, 3) < vec!(1, 2, 3, 4)));
     assert!((vec!(1, 2, 4, 4) > vec!(1, 2, 3, 4)));

@@ -1106,9 +1106,9 @@ pub fn new_fn_ctxt<'a>(ccx: &'a CrateContext,
 
     debug!("new_fn_ctxt(path={}, id={}, param_substs={})",
            if id == -1 {
-               "".to_owned()
+               "".to_string()
            } else {
-               ccx.tcx.map.path_to_str(id).to_owned()
+               ccx.tcx.map.path_to_str(id).to_string()
            },
            id, param_substs.map(|s| s.repr(ccx.tcx())));
 

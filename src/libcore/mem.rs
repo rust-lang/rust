@@ -552,7 +552,7 @@ mod tests {
 
     #[test]
     fn test_replace() {
-        let mut x = Some("test".to_owned());
+        let mut x = Some("test".to_string());
         let y = replace(&mut x, None);
         assert!(x.is_none());
         assert!(y.is_some());
@@ -576,7 +576,7 @@ mod tests {
         }
 
         unsafe {
-            assert!(Vec::from_slice([76u8]) == transmute("L".to_owned()));
+            assert!(Vec::from_slice([76u8]) == transmute("L".to_string()));
         }
     }
 }

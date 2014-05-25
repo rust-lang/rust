@@ -1315,7 +1315,7 @@ pub trait Buffer: Reader {
     /// use std::io;
     ///
     /// let mut reader = io::stdin();
-    /// let input = reader.read_line().ok().unwrap_or("nothing".to_owned());
+    /// let input = reader.read_line().ok().unwrap_or("nothing".to_string());
     /// ```
     ///
     /// # Error

@@ -15,37 +15,37 @@ struct Foo<A> { f: A }
 fn touch<A>(_a: &A) {}
 
 fn f00() {
-    let x = "hi".to_owned();
+    let x = "hi".to_string();
     let _y = Foo { f:x }; //~ NOTE `x` moved here
     touch(&x); //~ ERROR use of moved value: `x`
 }
 
 fn f05() {
-    let x = "hi".to_owned();
+    let x = "hi".to_string();
     let _y = Foo { f:(((x))) }; //~ NOTE `x` moved here
     touch(&x); //~ ERROR use of moved value: `x`
 }
 
 fn f10() {
-    let x = "hi".to_owned();
+    let x = "hi".to_string();
     let _y = Foo { f:x.clone() };
     touch(&x);
 }
 
 fn f20() {
-    let x = "hi".to_owned();
+    let x = "hi".to_string();
     let _y = Foo { f:(x).clone() };
     touch(&x);
 }
 
 fn f30() {
-    let x = "hi".to_owned();
+    let x = "hi".to_string();
     let _y = Foo { f:((x)).clone() };
     touch(&x);
 }
 
 fn f40() {
-    let x = "hi".to_owned();
+    let x = "hi".to_string();
     let _y = Foo { f:(((((((x)).clone()))))) };
     touch(&x);
 }

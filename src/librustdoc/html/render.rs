@@ -378,7 +378,7 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
 
         try!(write!(&mut w, r"]\};"));
 
-        str::from_utf8(w.unwrap().as_slice()).unwrap().to_owned()
+        str::from_utf8(w.unwrap().as_slice()).unwrap().to_string()
     };
 
     // Write out the shared files. Note that these are shared among all rustdoc
@@ -1057,7 +1057,7 @@ impl<'a> Item<'a> {
         if ast_util::is_local(self.item.def_id) {
             let mut path = Vec::new();
             clean_srcpath(self.item.source.filename.as_bytes(), |component| {
-                path.push(component.to_owned());
+                path.push(component.to_string());
             });
             let href = if self.item.source.loline == self.item.source.hiline {
                 format!("{}", self.item.source.loline)
@@ -1087,7 +1087,7 @@ impl<'a> Item<'a> {
             let cache = cache_key.get().unwrap();
             let path = cache.external_paths.get(&self.item.def_id);
             let root = match *cache.extern_locations.get(&self.item.def_id.krate) {
-                Remote(ref s) => s.to_strbuf(),
+                Remote(ref s) => s.to_string(),
                 Local => format!("{}/..", self.cx.root_path),
                 Unknown => return None,
             };

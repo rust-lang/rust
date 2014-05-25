@@ -41,9 +41,9 @@ fn child_generation(gens_left: uint, tx: comm::Sender<()>) {
 fn main() {
     let args = os::args();
     let args = if os::getenv("RUST_BENCH").is_some() {
-        vec!("".to_owned(), "100000".to_owned())
+        vec!("".to_string(), "100000".to_string())
     } else if args.len() <= 1 {
-        vec!("".to_owned(), "100".to_owned())
+        vec!("".to_string(), "100".to_string())
     } else {
         args.clone().move_iter().collect()
     };

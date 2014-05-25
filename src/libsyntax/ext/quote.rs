@@ -430,11 +430,11 @@ fn mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> @ast::Expr {
 
         LIT_INT(i, ity) => {
             let s_ity = match ity {
-                ast::TyI => "TyI".to_owned(),
-                ast::TyI8 => "TyI8".to_owned(),
-                ast::TyI16 => "TyI16".to_owned(),
-                ast::TyI32 => "TyI32".to_owned(),
-                ast::TyI64 => "TyI64".to_owned()
+                ast::TyI => "TyI".to_string(),
+                ast::TyI8 => "TyI8".to_string(),
+                ast::TyI16 => "TyI16".to_string(),
+                ast::TyI32 => "TyI32".to_string(),
+                ast::TyI64 => "TyI64".to_string()
             };
             let e_ity = cx.expr_ident(sp, id_ext(s_ity.as_slice()));
 
@@ -447,11 +447,11 @@ fn mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> @ast::Expr {
 
         LIT_UINT(u, uty) => {
             let s_uty = match uty {
-                ast::TyU => "TyU".to_owned(),
-                ast::TyU8 => "TyU8".to_owned(),
-                ast::TyU16 => "TyU16".to_owned(),
-                ast::TyU32 => "TyU32".to_owned(),
-                ast::TyU64 => "TyU64".to_owned()
+                ast::TyU => "TyU".to_string(),
+                ast::TyU8 => "TyU8".to_string(),
+                ast::TyU16 => "TyU16".to_string(),
+                ast::TyU32 => "TyU32".to_string(),
+                ast::TyU64 => "TyU64".to_string()
             };
             let e_uty = cx.expr_ident(sp, id_ext(s_uty.as_slice()));
 
@@ -472,9 +472,9 @@ fn mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> @ast::Expr {
 
         LIT_FLOAT(fident, fty) => {
             let s_fty = match fty {
-                ast::TyF32 => "TyF32".to_owned(),
-                ast::TyF64 => "TyF64".to_owned(),
-                ast::TyF128 => "TyF128".to_owned()
+                ast::TyF32 => "TyF32".to_string(),
+                ast::TyF64 => "TyF64".to_string(),
+                ast::TyF128 => "TyF128".to_string()
             };
             let e_fty = cx.expr_ident(sp, id_ext(s_fty.as_slice()));
 

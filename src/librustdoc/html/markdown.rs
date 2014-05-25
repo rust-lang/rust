@@ -197,7 +197,7 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
 
         // Extract the text provided
         let s = if text.is_null() {
-            "".to_owned()
+            "".to_string()
         } else {
             unsafe {
                 str::raw::from_buf_len((*text).data, (*text).size as uint)

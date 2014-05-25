@@ -30,14 +30,14 @@ enum square {
 impl fmt::Show for square {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", match *self {
-          bot => { "R".to_owned() }
-          wall => { "#".to_owned() }
-          rock => { "*".to_owned() }
-          lambda => { "\\".to_owned() }
-          closed_lift => { "L".to_owned() }
-          open_lift => { "O".to_owned() }
-          earth => { ".".to_owned() }
-          empty => { " ".to_owned() }
+          bot => { "R".to_string() }
+          wall => { "#".to_string() }
+          rock => { "*".to_string() }
+          lambda => { "\\".to_string() }
+          closed_lift => { "L".to_string() }
+          open_lift => { "O".to_string() }
+          earth => { ".".to_string() }
+          empty => { " ".to_string() }
         })
     }
 }

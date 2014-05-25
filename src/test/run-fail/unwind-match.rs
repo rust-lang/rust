@@ -16,9 +16,9 @@ fn test_box() {
     @0;
 }
 fn test_str() {
-  let res = match false { true => { "happy".to_owned() },
+  let res = match false { true => { "happy".to_string() },
      _ => fail!("non-exhaustive match failure") };
-  assert_eq!(res, "happy".to_owned());
+  assert_eq!(res, "happy".to_string());
 }
 fn main() {
     test_box();

@@ -5540,18 +5540,18 @@ impl<'a> Resolver<'a> {
         for (&name, import_resolution) in import_resolutions.iter() {
             let value_repr;
             match import_resolution.target_for_namespace(ValueNS) {
-                None => { value_repr = "".to_owned(); }
+                None => { value_repr = "".to_string(); }
                 Some(_) => {
-                    value_repr = " value:?".to_owned();
+                    value_repr = " value:?".to_string();
                     // FIXME #4954
                 }
             }
 
             let type_repr;
             match import_resolution.target_for_namespace(TypeNS) {
-                None => { type_repr = "".to_owned(); }
+                None => { type_repr = "".to_string(); }
                 Some(_) => {
-                    type_repr = " type:?".to_owned();
+                    type_repr = " type:?".to_string();
                     // FIXME #4954
                 }
             }

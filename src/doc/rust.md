@@ -3538,7 +3538,7 @@ allocated on the heap (unlike closures). An example of creating and calling a
 procedure:
 
 ```rust
-let string = "Hello".to_owned();
+let string = "Hello".to_string();
 
 // Creates a new procedure, passing it to the `spawn` function.
 spawn(proc() {

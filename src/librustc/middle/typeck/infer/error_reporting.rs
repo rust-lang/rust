@@ -808,7 +808,7 @@ impl<'a> Rebuilder<'a> {
             // choice of lifetime name deterministic and thus easier to test.
             let mut names = Vec::new();
             for rn in region_names.iter() {
-                let lt_name = token::get_name(*rn).get().to_owned();
+                let lt_name = token::get_name(*rn).get().to_string();
                 names.push(lt_name);
             }
             names.sort();
