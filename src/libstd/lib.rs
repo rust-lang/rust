@@ -16,10 +16,10 @@
 //!
 //! ## Intrinsic types and operations
 //!
-//! The [`ptr`](../core/ptr/index.html) and [`mem`](../core/mem/index.html)
+//! The [`ptr`](ptr/index.html) and [`mem`](mem/index.html)
 //! modules deal with unsafe pointers and memory manipulation.
-//! [`kinds`](../core/kinds/index.html) defines the special built-in traits,
-//! and [`raw`](../core/raw/index.html) the runtime representation of Rust types.
+//! [`kinds`](kinds/index.html) defines the special built-in traits,
+//! and [`raw`](raw/index.html) the runtime representation of Rust types.
 //! These are some of the lowest-level building blocks in Rust.
 //!
 //! ## Math on primitive types and math traits
@@ -31,11 +31,11 @@
 //!
 //! ## Pervasive types
 //!
-//! The [`option`](option/index.html) and [`result`](../core/result/index.html)
+//! The [`option`](option/index.html) and [`result`](result/index.html)
 //! modules define optional and error-handling types, `Option` and `Result`.
-//! [`iter`](../core/iter/index.html) defines Rust's iterator protocol
+//! [`iter`](iter/index.html) defines Rust's iterator protocol
 //! along with a wide variety of iterators.
-//! [`Cell` and `RefCell`](../core/cell/index.html) are for creating types that
+//! [`Cell` and `RefCell`](cell/index.html) are for creating types that
 //! manage their own mutability.
 //!
 //! ## Vectors, slices and strings
