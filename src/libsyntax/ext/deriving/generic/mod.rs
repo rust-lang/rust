@@ -182,6 +182,7 @@ use std::cell::RefCell;
 use ast;
 use ast::{P, EnumDef, Expr, Ident, Generics, StructDef};
 use ast_util;
+use attr;
 use attr::AttrMetaMethods;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
@@ -430,6 +431,8 @@ impl<'a> TraitDef<'a> {
             self.span,
             cx.meta_word(self.span,
                          InternedString::new("automatically_derived")));
+        // Just mark it now since we know that it'll end up used downstream
+        attr::mark_used(&attr);
         let opt_trait_ref = Some(trait_ref);
         let ident = ast_util::impl_pretty_name(&opt_trait_ref, self_type);
         cx.item(

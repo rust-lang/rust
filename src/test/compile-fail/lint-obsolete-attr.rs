@@ -12,10 +12,13 @@
 // injected intrinsics by the compiler.
 
 #![deny(attribute_usage)]
+#![deny(unused_attribute)]
 #![allow(dead_code)]
 
 #[abi="stdcall"] extern {} //~ ERROR: obsolete attribute
+                           //~^ ERROR: unused attribute
 
 #[fixed_stack_segment] fn f() {} //~ ERROR: obsolete attribute
+                                 //~^ ERROR: unused attribute
 
 fn main() {}

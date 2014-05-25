@@ -661,6 +661,7 @@ Attributes on the anonymous crate module define important metadata that influenc
 the behavior of the compiler.
 
 ~~~~ {.rust}
+# #![allow(unused_attribute)]
 // Crate ID
 #![crate_id = "projx#2.5"]
 

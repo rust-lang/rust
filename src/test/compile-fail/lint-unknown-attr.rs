@@ -12,9 +12,13 @@
 // injected intrinsics by the compiler.
 
 #![deny(attribute_usage)]
+#![deny(unused_attribute)]
 
 #![mutable_doc] //~ ERROR: unknown crate attribute
+                //~^ ERROR: unused attribute
 
 #[dance] mod a {} //~ ERROR: unknown attribute
+                //~^ ERROR: unused attribute
 
 #[dance] fn main() {} //~ ERROR: unknown attribute
+                //~^ ERROR: unused attribute

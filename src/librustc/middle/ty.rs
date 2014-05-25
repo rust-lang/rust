@@ -3889,20 +3889,22 @@ pub fn lookup_trait_def(cx: &ctxt, did: ast::DefId) -> Rc<ty::TraitDef> {
     }
 }
 
-/// Iterate over meta_items of a definition.
+/// Iterate over attributes of a definition.
 // (This should really be an iterator, but that would require csearch and
 // decoder to use iterators instead of higher-order functions.)
-pub fn each_attr(tcx: &ctxt, did: DefId, f: |@ast::MetaItem| -> bool) -> bool {
+pub fn each_attr(tcx: &ctxt, did: DefId, f: |&ast::Attribute| -> bool) -> bool {
     if is_local(did) {
         let item = tcx.map.expect_item(did.node);
-        item.attrs.iter().advance(|attr| f(attr.node.value))
+        item.attrs.iter().advance(|attr| f(attr))
     } else {
+        info!("getting foreign attrs");
         let mut cont = true;
-        csearch::get_item_attrs(&tcx.sess.cstore, did, |meta_items| {
+        csearch::get_item_attrs(&tcx.sess.cstore, did, |attrs| {
             if cont {
-                cont = meta_items.iter().advance(|ptrptr| f(*ptrptr));
+                cont = attrs.iter().advance(|attr| f(attr));
             }
         });
+        info!("done");
         cont
     }
 }
@@ -3911,7 +3913,7 @@ pub fn each_attr(tcx: &ctxt, did: DefId, f: |@ast::MetaItem| -> bool) -> bool {
 pub fn has_attr(tcx: &ctxt, did: DefId, attr: &str) -> bool {
     let mut found = false;
     each_attr(tcx, did, |item| {
-        if item.name().equiv(&attr) {
+        if item.check_name(attr) {
             found = true;
             false
         } else {

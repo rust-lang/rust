@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // pp-exact - Make sure we print all the attributes
+#![allow(unused_attribute)]
 
 #[frobable]
 trait frobable {

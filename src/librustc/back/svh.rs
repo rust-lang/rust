@@ -91,7 +91,12 @@ impl Svh {
         // types and then use hash_content.  But, since all crate
         // attributes should appear near beginning of the file, it is
         // not such a big deal to be sensitive to their spans for now.
-        krate.attrs.hash(&mut state);
+        //
+        // We hash only the MetaItems instead of the entire Attribute
+        // to avoid hashing the AttrId
+        for attr in krate.attrs.iter() {
+            attr.node.value.hash(&mut state);
+        }
 
         let hash = state.result();
         return Svh {

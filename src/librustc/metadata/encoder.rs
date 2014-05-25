@@ -1436,7 +1436,7 @@ fn synthesize_crate_attrs(ecx: &EncodeContext,
     fn synthesize_crateid_attr(ecx: &EncodeContext) -> Attribute {
         assert!(!ecx.link_meta.crateid.name.is_empty());
 
-        attr::mk_attr_inner(
+        attr::mk_attr_inner(attr::mk_attr_id(),
             attr::mk_name_value_item_str(
                 InternedString::new("crate_id"),
                 token::intern_and_get_ident(ecx.link_meta
@@ -1447,7 +1447,7 @@ fn synthesize_crate_attrs(ecx: &EncodeContext,
 
     let mut attrs = Vec::new();
     for attr in krate.attrs.iter() {
-        if !attr.name().equiv(&("crate_id")) {
+        if !attr.check_name("crate_id") {
             attrs.push(*attr);
         }
     }

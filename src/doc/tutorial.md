@@ -3166,6 +3166,7 @@ without conflict.
 Therefore, if you plan to compile your crate as a library, you should annotate it with that information:
 
 ~~~~
+# #![allow(unused_attribute)]
 // `lib.rs`
 
 # #![crate_type = "lib"]
@@ -3189,6 +3190,7 @@ Other crate settings and metadata include things like enabling/disabling certain
 or setting the crate type (library or executable) explicitly:
 
 ~~~~
+# #![allow(unused_attribute)]
 // `lib.rs`
 // ...
 
@@ -3208,6 +3210,7 @@ Now for something that you can actually compile yourself.
 We define two crates, and use one of them as a library in the other.
 
 ~~~~
+# #![allow(unused_attribute)]
 // `world.rs`
 #![crate_id = "world#0.42"]
 
@@ -3282,11 +3285,13 @@ fn main() {
 Both auto-insertions can be disabled with an attribute if necessary:
 
 ~~~
+# #![allow(unused_attribute)]
 // In the crate root:
 #![no_std]
 ~~~
 
 ~~~
+# #![allow(unused_attribute)]
 // In any module:
 #![no_implicit_prelude]
 ~~~
