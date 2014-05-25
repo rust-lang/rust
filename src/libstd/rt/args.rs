@@ -22,47 +22,23 @@
 
 use option::Option;
 use vec::Vec;
-#[cfg(test)] use option::{Some, None};
-#[cfg(test)] use realstd;
-#[cfg(test)] use realargs = realstd::rt::args;
 
 /// One-time global initialization.
-#[cfg(not(test))]
 pub unsafe fn init(argc: int, argv: **u8) { imp::init(argc, argv) }
-#[cfg(test)]
-pub unsafe fn init(argc: int, argv: **u8) { realargs::init(argc, argv) }
 
 /// One-time global cleanup.
-#[cfg(not(test))] pub unsafe fn cleanup() { imp::cleanup() }
-#[cfg(test)]      pub unsafe fn cleanup() { realargs::cleanup() }
+pub unsafe fn cleanup() { imp::cleanup() }
 
 /// Take the global arguments from global storage.
-#[cfg(not(test))] pub fn take() -> Option<Vec<Vec<u8>>> { imp::take() }
-#[cfg(test)]      pub fn take() -> Option<Vec<Vec<u8>>> {
-    match realargs::take() {
-        realstd::option::Some(v) => Some(unsafe{ ::mem::transmute(v) }),
-        realstd::option::None => None,
-    }
-}
+pub fn take() -> Option<Vec<Vec<u8>>> { imp::take() }
 
 /// Give the global arguments to global storage.
 ///
 /// It is an error if the arguments already exist.
-#[cfg(not(test))] pub fn put(args: Vec<Vec<u8>>) { imp::put(args) }
-#[cfg(test)]      pub fn put(args: Vec<Vec<u8>>) {
-    realargs::put(unsafe {
-        ::mem::transmute(args)
-    })
-}
+pub fn put(args: Vec<Vec<u8>>) { imp::put(args) }
 
 /// Make a clone of the global arguments.
-#[cfg(not(test))] pub fn clone() -> Option<Vec<Vec<u8>>> { imp::clone() }
-#[cfg(test)]      pub fn clone() -> Option<Vec<Vec<u8>>> {
-    match realargs::clone() {
-        realstd::option::Some(v) => Some(unsafe { ::mem::transmute(v) }),
-        realstd::option::None => None,
-    }
-}
+pub fn clone() -> Option<Vec<Vec<u8>>> { imp::clone() }
 
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "android")]
@@ -75,18 +51,16 @@ mod imp {
     use unstable::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
     use mem;
     use vec::Vec;
-    #[cfg(not(test))] use ptr::RawPtr;
+    use ptr::RawPtr;
 
     static mut global_args_ptr: uint = 0;
     static mut lock: StaticNativeMutex = NATIVE_MUTEX_INIT;
 
-    #[cfg(not(test))]
     pub unsafe fn init(argc: int, argv: **u8) {
         let args = load_argc_and_argv(argc, argv);
         put(args);
     }
 
-    #[cfg(not(test))]
     pub unsafe fn cleanup() {
         rtassert!(take().is_some());
         lock.destroy();
@@ -127,7 +101,6 @@ mod imp {
     }
 
     // Copied from `os`.
-    #[cfg(not(test))]
     unsafe fn load_argc_and_argv(argc: int, argv: **u8) -> Vec<Vec<u8>> {
         use c_str::CString;
         use ptr::RawPtr;
@@ -173,8 +146,8 @@ mod imp {
     }
 }
 
-#[cfg(target_os = "macos", not(test))]
-#[cfg(target_os = "win32", not(test))]
+#[cfg(target_os = "macos")]
+#[cfg(target_os = "win32")]
 mod imp {
     use option::Option;
     use vec::Vec;
