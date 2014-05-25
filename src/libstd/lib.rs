@@ -120,12 +120,10 @@
 #[cfg(test)] extern crate debug;
 #[cfg(test)] #[phase(syntax, link)] extern crate log;
 
-// Make and rand accessible for benchmarking/testcases
-#[cfg(test)] extern crate rand;
-
 extern crate alloc;
 extern crate core;
 extern crate libc;
+extern crate core_rand = "rand";
 
 // Make std testable by not duplicating lang items. See #2912
 #[cfg(test)] extern crate realstd = "std";
@@ -208,6 +206,7 @@ pub mod slice;
 pub mod vec;
 pub mod str;
 pub mod string;
+pub mod rand;
 
 pub mod ascii;
 

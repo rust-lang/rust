@@ -10,9 +10,10 @@
 
 //! The implementations of `Rand` for the built-in types.
 
-use std::char;
-use std::int;
-use std::uint;
+use core::prelude::*;
+use core::char;
+use core::int;
+use core::uint;
 
 use {Rand,Rng};
 
@@ -214,19 +215,10 @@ impl<T:Rand> Rand for Option<T> {
     }
 }
 
-impl<T: Rand> Rand for Box<T> {
-    #[inline]
-    fn rand<R: Rng>(rng: &mut R) -> Box<T> { box rng.gen() }
-}
-
-impl<T: Rand + 'static> Rand for @T {
-    #[inline]
-    fn rand<R: Rng>(rng: &mut R) -> @T { @rng.gen() }
-}
-
 #[cfg(test)]
 mod tests {
-    use {Rng, task_rng, Open01, Closed01};
+    use std::prelude::*;
+    use std::rand::{Rng, task_rng, Open01, Closed01};
 
     struct ConstantRng(u64);
     impl Rng for ConstantRng {

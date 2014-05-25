@@ -11,8 +11,10 @@
 //! A wrapper around another RNG that reseeds it after it
 //! generates a certain number of random bytes.
 
-use std::default::Default;
+use core::prelude::*;
+
 use {Rng, SeedableRng};
+use core::default::Default;
 
 /// How many bytes of entropy the underling RNG is allowed to generate
 /// before it is reseeded.
@@ -76,13 +78,14 @@ impl<R: Rng, Rsdr: Reseeder<R>> Rng for ReseedingRng<R, Rsdr> {
     }
 }
 
-impl<S, R: SeedableRng<S>, Rsdr: Reseeder<R>>
+impl<S, R: SeedableRng<S>, Rsdr: Reseeder<R> + Default>
      SeedableRng<(Rsdr, S)> for ReseedingRng<R, Rsdr> {
     fn reseed(&mut self, (rsdr, seed): (Rsdr, S)) {
         self.rng.reseed(seed);
         self.reseeder = rsdr;
         self.bytes_generated = 0;
     }
+
     /// Create a new `ReseedingRng` from the given reseeder and
     /// seed. This uses a default value for `generation_threshold`.
     fn from_seed((rsdr, seed): (Rsdr, S)) -> ReseedingRng<R, Rsdr> {
@@ -100,8 +103,8 @@ impl<S, R: SeedableRng<S>, Rsdr: Reseeder<R>>
 /// # Example
 ///
 /// ```rust
-/// use rand::{Rng, SeedableRng, StdRng};
-/// use rand::reseeding::{Reseeder, ReseedingRng};
+/// use std::rand::{Rng, SeedableRng, StdRng};
+/// use std::rand::reseeding::{Reseeder, ReseedingRng};
 ///
 /// struct TickTockReseeder { tick: bool }
 /// impl Reseeder<StdRng> for TickTockReseeder {
@@ -118,7 +121,8 @@ impl<S, R: SeedableRng<S>, Rsdr: Reseeder<R>>
 ///     let mut rng = ReseedingRng::new(inner, 10, rsdr);
 ///
 ///     // this will repeat, because it gets reseeded very regularly.
-///     println!("{}", rng.gen_ascii_str(100));
+///     let s: String = rng.gen_ascii_chars().take(100).collect();
+///     println!("{}", s);
 /// }
 ///
 /// ```
@@ -142,6 +146,9 @@ impl Default for ReseedWithDefault {
 
 #[cfg(test)]
 mod test {
+    use std::prelude::*;
+
+    use core::iter::order;
     use super::{ReseedingRng, ReseedWithDefault};
     use std::default::Default;
     use {SeedableRng, Rng};
@@ -187,26 +194,26 @@ mod test {
     fn test_rng_seeded() {
         let mut ra: MyRng = SeedableRng::from_seed((ReseedWithDefault, 2));
         let mut rb: MyRng = SeedableRng::from_seed((ReseedWithDefault, 2));
-        assert_eq!(ra.gen_ascii_str(100u), rb.gen_ascii_str(100u));
+        assert!(order::equals(ra.gen_ascii_chars().take(100),
+                              rb.gen_ascii_chars().take(100)));
     }
 
     #[test]
     fn test_rng_reseed() {
         let mut r: MyRng = SeedableRng::from_seed((ReseedWithDefault, 3));
-        let string1 = r.gen_ascii_str(100);
+        let string1: String = r.gen_ascii_chars().take(100).collect();
 
         r.reseed((ReseedWithDefault, 3));
 
-        let string2 = r.gen_ascii_str(100);
+        let string2: String = r.gen_ascii_chars().take(100).collect();
         assert_eq!(string1, string2);
     }
 
     static fill_bytes_v_len: uint = 13579;
     #[test]
     fn test_rng_fill_bytes() {
-        use task_rng;
         let mut v = Vec::from_elem(fill_bytes_v_len, 0u8);
-        task_rng().fill_bytes(v.as_mut_slice());
+        ::test::rng().fill_bytes(v.as_mut_slice());
 
         // Sanity test: if we've gotten here, `fill_bytes` has not infinitely
         // recursed.

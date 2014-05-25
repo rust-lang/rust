@@ -15,9 +15,11 @@ pub use self::imp::OSRng;
 
 #[cfg(unix)]
 mod imp {
-    use Rng;
-    use reader::ReaderRng;
-    use std::io::{IoResult, File};
+    use io::{IoResult, File};
+    use path::Path;
+    use rand::Rng;
+    use rand::reader::ReaderRng;
+    use result::{Ok, Err};
 
     /// A random number generator that retrieves randomness straight from
     /// the operating system. Platform sources:
@@ -60,12 +62,16 @@ mod imp {
 mod imp {
     extern crate libc;
 
-    use Rng;
-    use std::io::{IoResult, IoError};
-    use std::mem;
-    use std::os;
-    use std::rt::stack;
+    use container::Container;
+    use io::{IoResult, IoError};
+    use mem;
+    use ops::Drop;
+    use os;
+    use rand::Rng;
+    use result::{Ok, Err};
+    use rt::stack;
     use self::libc::{c_ulong, DWORD, BYTE, LPCSTR, BOOL};
+    use slice::MutableVector;
 
     type HCRYPTPROV = c_ulong;
 
@@ -189,9 +195,11 @@ mod imp {
 
 #[cfg(test)]
 mod test {
+    use prelude::*;
+
     use super::OSRng;
-    use Rng;
-    use std::task;
+    use rand::Rng;
+    use task;
 
     #[test]
     fn test_os_rng() {
