@@ -692,19 +692,19 @@ pub fn is_utf16(v: &[u16]) -> bool {
 /// An iterator that decodes UTF-16 encoded codepoints from a vector
 /// of `u16`s.
 #[deriving(Clone)]
-pub struct UTF16Items<'a> {
+pub struct Utf16Items<'a> {
     iter: slice::Items<'a, u16>
 }
 /// The possibilities for values decoded from a `u16` stream.
 #[deriving(Eq, TotalEq, Clone, Show)]
-pub enum UTF16Item {
+pub enum Utf16Item {
     /// A valid codepoint.
     ScalarValue(char),
     /// An invalid surrogate without its pair.
     LoneSurrogate(u16)
 }
 
-impl UTF16Item {
+impl Utf16Item {
     /// Convert `self` to a `char`, taking `LoneSurrogate`s to the
     /// replacement character (U+FFFD).
     #[inline]
@@ -716,8 +716,8 @@ impl UTF16Item {
     }
 }
 
-impl<'a> Iterator<UTF16Item> for UTF16Items<'a> {
-    fn next(&mut self) -> Option<UTF16Item> {
+impl<'a> Iterator<Utf16Item> for Utf16Items<'a> {
+    fn next(&mut self) -> Option<Utf16Item> {
         let u = match self.iter.next() {
             Some(u) => *u,
             None => return None
@@ -781,8 +781,8 @@ impl<'a> Iterator<UTF16Item> for UTF16Items<'a> {
 ///                 ScalarValue('i'), ScalarValue('c'),
 ///                 LoneSurrogate(0xD834)]);
 /// ```
-pub fn utf16_items<'a>(v: &'a [u16]) -> UTF16Items<'a> {
-    UTF16Items { iter : v.iter() }
+pub fn utf16_items<'a>(v: &'a [u16]) -> Utf16Items<'a> {
+    Utf16Items { iter : v.iter() }
 }
 
 /// Return a slice of `v` ending at (and not including) the first NUL

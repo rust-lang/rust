@@ -86,8 +86,8 @@ use vec::Vec;
 pub use core::str::{from_utf8, CharEq, Chars, CharOffsets};
 pub use core::str::{Bytes, CharSplits};
 pub use core::str::{CharSplitsN, Words, AnyLines, MatchIndices, StrSplits};
-pub use core::str::{eq_slice, is_utf8, is_utf16, UTF16Items};
-pub use core::str::{UTF16Item, ScalarValue, LoneSurrogate, utf16_items};
+pub use core::str::{eq_slice, is_utf8, is_utf16, Utf16Items};
+pub use core::str::{Utf16Item, ScalarValue, LoneSurrogate, utf16_items};
 pub use core::str::{truncate_utf16_at_nul, utf8_char_width, CharRange};
 pub use core::str::{Str, StrSlice};
 
