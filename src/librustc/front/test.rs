@@ -253,7 +253,7 @@ fn is_bench_fn(cx: &TestCtxt, i: @ast::Item) -> bool {
 fn is_ignored(cx: &TestCtxt, i: @ast::Item) -> bool {
     i.attrs.iter().any(|attr| {
         // check ignore(cfg(foo, bar))
-        attr.name().equiv(&("ignore")) && match attr.meta_item_list() {
+        attr.check_name("ignore") && match attr.meta_item_list() {
             Some(ref cfgs) => {
                 attr::test_cfg(cx.config.as_slice(), cfgs.iter().map(|x| *x))
             }
@@ -341,7 +341,8 @@ fn mk_test_module(cx: &TestCtxt) -> @ast::Item {
     // This attribute tells resolve to let us call unexported functions
     let resolve_unexported_str = InternedString::new("!resolve_unexported");
     let resolve_unexported_attr =
-        attr::mk_attr_inner(attr::mk_word_item(resolve_unexported_str));
+        attr::mk_attr_inner(attr::mk_attr_id(),
+                            attr::mk_word_item(resolve_unexported_str));
 
     let item = ast::Item {
         ident: token::str_to_ident("__test"),

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use attr;
 use ast;
 use codemap::{spanned, Spanned, mk_sp, Span};
 use parse::common::*; //resolve bug?
@@ -39,6 +40,7 @@ impl<'a> ParserAttr for Parser<'a> {
               }
               token::DOC_COMMENT(s) => {
                 let attr = ::attr::mk_sugared_doc_attr(
+                    attr::mk_attr_id(),
                     self.id_to_interned_str(s),
                     self.span.lo,
                     self.span.hi
@@ -101,6 +103,7 @@ impl<'a> ParserAttr for Parser<'a> {
         return Spanned {
             span: span,
             node: ast::Attribute_ {
+                id: attr::mk_attr_id(),
                 style: style,
                 value: value,
                 is_sugared_doc: false
@@ -132,7 +135,10 @@ impl<'a> ParserAttr for Parser<'a> {
                     // we need to get the position of this token before we bump.
                     let Span { lo, hi, .. } = self.span;
                     self.bump();
-                    ::attr::mk_sugared_doc_attr(self.id_to_interned_str(s), lo, hi)
+                    attr::mk_sugared_doc_attr(attr::mk_attr_id(),
+                                              self.id_to_interned_str(s),
+                                              lo,
+                                              hi)
                 }
                 _ => {
                     break;

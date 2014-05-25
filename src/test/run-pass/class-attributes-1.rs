@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // pp-exact - Make sure we actually print the attributes
+#![allow(unused_attribute)]
 
 struct cat {
     name: StrBuf,

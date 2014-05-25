@@ -314,9 +314,9 @@ impl Clean<Attribute> for ast::Attribute {
 }
 
 // This is a rough approximation that gets us what we want.
-impl<'a> attr::AttrMetaMethods for &'a Attribute {
+impl attr::AttrMetaMethods for Attribute {
     fn name(&self) -> InternedString {
-        match **self {
+        match *self {
             Word(ref n) | List(ref n, _) | NameValue(ref n, _) => {
                 token::intern_and_get_ident(n.as_slice())
             }
@@ -324,7 +324,7 @@ impl<'a> attr::AttrMetaMethods for &'a Attribute {
     }
 
     fn value_str(&self) -> Option<InternedString> {
-        match **self {
+        match *self {
             NameValue(_, ref v) => {
                 Some(token::intern_and_get_ident(v.as_slice()))
             }

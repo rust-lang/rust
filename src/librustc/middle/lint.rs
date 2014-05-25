@@ -64,7 +64,7 @@ use collections::SmallIntMap;
 use syntax::abi;
 use syntax::ast_map;
 use syntax::ast_util::IdVisitingOperation;
-use syntax::attr::{AttrMetaMethods, AttributeMethods};
+use syntax::attr::AttrMetaMethods;
 use syntax::attr;
 use syntax::codemap::Span;
 use syntax::parse::token::InternedString;
@@ -90,6 +90,7 @@ pub enum Lint {
     UnusedUnsafe,
     UnsafeBlock,
     AttributeUsage,
+    UnusedAttribute,
     UnknownFeatures,
     UnknownCrateType,
     UnsignedNegate,
@@ -286,6 +287,13 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
         lint: AttributeUsage,
         desc: "detects bad use of attributes",
         default: Warn
+    }),
+
+    ("unused_attribute",
+     LintSpec {
+         lint: UnusedAttribute,
+         desc: "detects attributes that were not used by the compiler",
+         default: Warn
     }),
 
     ("unused_variable",
@@ -619,7 +627,7 @@ pub fn each_lint(sess: &session::Session,
     let xs = [Allow, Warn, Deny, Forbid];
     for &level in xs.iter() {
         let level_name = level_to_str(level);
-        for attr in attrs.iter().filter(|m| m.name().equiv(&level_name)) {
+        for attr in attrs.iter().filter(|m| m.check_name(level_name)) {
             let meta = attr.node.value;
             let metas = match meta.node {
                 ast::MetaList(_, ref metas) => metas,
@@ -1137,6 +1145,54 @@ fn check_attrs_usage(cx: &Context, attrs: &[ast::Attribute]) {
     }
 }
 
+fn check_unused_attribute(cx: &Context, attrs: &[ast::Attribute]) {
+    static ATTRIBUTE_WHITELIST: &'static [&'static str] = &'static [
+        // FIXME: #14408 whitelist docs since rustdoc looks at them
+        "doc",
+
+        // FIXME: #14406 these are processed in trans, which happens after the
+        // lint pass
+        "address_insignificant",
+        "cold",
+        "inline",
+        "link",
+        "link_name",
+        "link_section",
+        "no_builtins",
+        "no_mangle",
+        "no_split_stack",
+        "packed",
+        "static_assert",
+        "thread_local",
+
+        // not used anywhere (!?) but apparently we want to keep them around
+        "comment",
+        "desc",
+        "license",
+
+        // FIXME: #14407 these are only looked at on-demand so we can't
+        // guarantee they'll have already been checked
+        "deprecated",
+        "experimental",
+        "frozen",
+        "locked",
+        "must_use",
+        "stable",
+        "unstable",
+    ];
+    for attr in attrs.iter() {
+        for &name in ATTRIBUTE_WHITELIST.iter() {
+            if attr.check_name(name) {
+                break;
+            }
+        }
+
+        if !attr::is_used(attr) {
+            cx.span_lint(UnusedAttribute, attr.span, "unused attribute");
+        }
+    }
+}
+
 fn check_heap_expr(cx: &Context, e: &ast::Expr) {
     let ty = ty::expr_ty(cx.tcx, e);
     check_heap_type(cx, e.span, ty);
@@ -1637,9 +1693,7 @@ fn check_stability(cx: &Context, e: &ast::Expr) {
     let stability = if ast_util::is_local(id) {
         // this crate
         let s = cx.tcx.map.with_attrs(id.node, |attrs| {
-            attrs.map(|a| {
-                attr::find_stability(a.iter().map(|a| a.meta()))
-            })
+            attrs.map(|a| attr::find_stability(a.as_slice()))
         });
         match s {
             Some(s) => s,
@@ -1655,9 +1709,9 @@ fn check_stability(cx: &Context, e: &ast::Expr) {
         let mut s = None;
         // run through all the attributes and take the first
         // stability one.
-        csearch::get_item_attrs(&cx.tcx.sess.cstore, id, |meta_items| {
+        csearch::get_item_attrs(&cx.tcx.sess.cstore, id, |attrs| {
             if s.is_none() {
-                s = attr::find_stability(meta_items.move_iter())
+                s = attr::find_stability(attrs.as_slice())
             }
         });
         s
@@ -1694,6 +1748,7 @@ impl<'a> Visitor<()> for Context<'a> {
             check_heap_item(cx, it);
             check_missing_doc_item(cx, it);
             check_attrs_usage(cx, it.attrs.as_slice());
+            check_unused_attribute(cx, it.attrs.as_slice());
             check_raw_ptr_deriving(cx, it);
 
             cx.visit_ids(|v| v.visit_item(it, ()));
@@ -1900,6 +1955,7 @@ pub fn check_crate(tcx: &ty::ctxt,
         check_crate_attrs_usage(cx, krate.attrs.as_slice());
         // since the root module isn't visited as an item (because it isn't an item), warn for it
         // here.
+        check_unused_attribute(cx, krate.attrs.as_slice());
         check_missing_doc_attrs(cx,
                                 None,
                                 krate.attrs.as_slice(),
