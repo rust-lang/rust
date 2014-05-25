@@ -497,12 +497,12 @@ fn test_try_fail_message_static_str() {
 #[test]
 fn test_try_fail_message_owned_str() {
     match try(proc() {
-        fail!("owned string".to_strbuf());
+        fail!("owned string".to_string());
     }) {
         Err(e) => {
             type T = String;
             assert!(e.is::<T>());
-            assert_eq!(*e.move::<T>().unwrap(), "owned string".to_strbuf());
+            assert_eq!(*e.move::<T>().unwrap(), "owned string".to_string());
         }
         Ok(()) => fail!()
     }

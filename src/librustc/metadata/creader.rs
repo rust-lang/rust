@@ -165,7 +165,7 @@ fn extract_crate_info(e: &Env, i: &ast::ViewItem) -> Option<CrateInfo> {
                 None => from_str(ident.get().to_str().as_slice()).unwrap()
             };
             Some(CrateInfo {
-                ident: ident.get().to_strbuf(),
+                ident: ident.get().to_string(),
                 crate_id: crate_id,
                 id: id,
                 should_link: should_link(i),
@@ -251,7 +251,7 @@ fn visit_item(e: &Env, i: &ast::Item) {
                         } else {
                             e.sess
                              .cstore
-                             .add_used_library(n.get().to_strbuf(), kind);
+                             .add_used_library(n.get().to_string(), kind);
                         }
                     }
                     None => {}
@@ -293,7 +293,7 @@ fn register_crate<'a>(e: &mut Env,
     // Stash paths for top-most crate locally if necessary.
     let crate_paths = if root.is_none() {
         Some(CratePaths {
-            ident: ident.to_strbuf(),
+            ident: ident.to_string(),
             dylib: lib.dylib.clone(),
             rlib:  lib.rlib.clone(),
         })
@@ -308,7 +308,7 @@ fn register_crate<'a>(e: &mut Env,
     let loader::Library{ dylib, rlib, metadata } = lib;
 
     let cmeta = Rc::new( cstore::crate_metadata {
-        name: crate_id.name.to_strbuf(),
+        name: crate_id.name.to_string(),
         data: metadata,
         cnum_map: cnum_map,
         cnum: cnum,
@@ -442,11 +442,11 @@ impl<'a> CrateLoader for Loader<'a> {
         };
         let macros = decoder::get_exported_macros(library.metadata.as_slice());
         let registrar = decoder::get_macro_registrar_fn(library.metadata.as_slice()).map(|id| {
-            decoder::get_symbol(library.metadata.as_slice(), id).to_strbuf()
+            decoder::get_symbol(library.metadata.as_slice(), id).to_string()
         });
         let mc = MacroCrate {
             lib: library.dylib.clone(),
-            macros: macros.move_iter().map(|x| x.to_strbuf()).collect(),
+            macros: macros.move_iter().map(|x| x.to_string()).collect(),
             registrar_symbol: registrar,
         };
         if should_link {

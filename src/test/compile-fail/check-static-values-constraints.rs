@@ -109,7 +109,7 @@ static mut STATIC13: SafeStruct = SafeStruct{field1: Variant1, field2: Variant3(
 static mut STATIC14: SafeStruct = SafeStruct {
 //~^ ERROR mutable static items are not allowed to have destructors
     field1: Variant1,
-    field2: Variant4("str".to_strbuf())
+    field2: Variant4("str".to_string())
 };
 
 static STATIC15: &'static [Box<MyOwned>] = &'static [box MyOwned, box MyOwned];

@@ -11,7 +11,7 @@
 use std::task;
 
 pub fn main() {
-    task::spawn(proc() child("Hello".to_strbuf()) );
+    task::spawn(proc() child("Hello".to_string()) );
 }
 
 fn child(_s: String) {

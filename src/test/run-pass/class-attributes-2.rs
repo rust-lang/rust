@@ -34,5 +34,5 @@ fn cat(name: String) -> cat {
 }
 
 pub fn main() {
-  let _kitty = cat("Spotty".to_strbuf());
+  let _kitty = cat("Spotty".to_string());
 }

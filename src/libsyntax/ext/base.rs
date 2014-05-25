@@ -550,7 +550,7 @@ pub fn get_single_str_from_tts(cx: &ExtCtxt,
         match tts[0] {
             ast::TTTok(_, token::LIT_STR(ident))
             | ast::TTTok(_, token::LIT_STR_RAW(ident, _)) => {
-                return Some(token::get_ident(ident).get().to_strbuf())
+                return Some(token::get_ident(ident).get().to_string())
             }
             _ => {
                 cx.span_err(sp,

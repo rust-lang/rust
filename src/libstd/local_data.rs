@@ -277,11 +277,11 @@ mod tests {
     #[test]
     fn test_tls_multitask() {
         static my_key: Key<String> = &Key;
-        my_key.replace(Some("parent data".to_strbuf()));
+        my_key.replace(Some("parent data".to_string()));
         task::spawn(proc() {
             // TLS shouldn't carry over.
             assert!(my_key.get().is_none());
-            my_key.replace(Some("child data".to_strbuf()));
+            my_key.replace(Some("child data".to_string()));
             assert!(my_key.get().get_ref().as_slice() == "child data");
             // should be cleaned up for us
         });
@@ -295,16 +295,16 @@ mod tests {
     #[test]
     fn test_tls_overwrite() {
         static my_key: Key<String> = &Key;
-        my_key.replace(Some("first data".to_strbuf()));
-        my_key.replace(Some("next data".to_strbuf())); // Shouldn't leak.
+        my_key.replace(Some("first data".to_string()));
+        my_key.replace(Some("next data".to_string())); // Shouldn't leak.
         assert!(my_key.get().unwrap().as_slice() == "next data");
     }
 
     #[test]
     fn test_tls_pop() {
         static my_key: Key<String> = &Key;
-        my_key.replace(Some("weasel".to_strbuf()));
-        assert!(my_key.replace(None).unwrap() == "weasel".to_strbuf());
+        my_key.replace(Some("weasel".to_string()));
+        assert!(my_key.replace(None).unwrap() == "weasel".to_string());
         // Pop must remove the data from the map.
         assert!(my_key.replace(None).is_none());
     }
@@ -319,7 +319,7 @@ mod tests {
         // a stack smaller than 1 MB.
         static my_key: Key<String> = &Key;
         task::spawn(proc() {
-            my_key.replace(Some("hax".to_strbuf()));
+            my_key.replace(Some("hax".to_string()));
         });
     }
 
@@ -329,7 +329,7 @@ mod tests {
         static box_key: Key<@()> = &Key;
         static int_key: Key<int> = &Key;
         task::spawn(proc() {
-            str_key.replace(Some("string data".to_strbuf()));
+            str_key.replace(Some("string data".to_string()));
             box_key.replace(Some(@()));
             int_key.replace(Some(42));
         });
@@ -341,8 +341,8 @@ mod tests {
         static box_key: Key<@()> = &Key;
         static int_key: Key<int> = &Key;
         task::spawn(proc() {
-            str_key.replace(Some("string data".to_strbuf()));
-            str_key.replace(Some("string data 2".to_strbuf()));
+            str_key.replace(Some("string data".to_string()));
+            str_key.replace(Some("string data 2".to_string()));
             box_key.replace(Some(@()));
             box_key.replace(Some(@()));
             int_key.replace(Some(42));
@@ -359,10 +359,10 @@ mod tests {
         static str_key: Key<String> = &Key;
         static box_key: Key<@()> = &Key;
         static int_key: Key<int> = &Key;
-        str_key.replace(Some("parent data".to_strbuf()));
+        str_key.replace(Some("parent data".to_string()));
         box_key.replace(Some(@()));
         task::spawn(proc() {
-            str_key.replace(Some("string data".to_strbuf()));
+            str_key.replace(Some("string data".to_string()));
             box_key.replace(Some(@()));
             int_key.replace(Some(42));
             fail!();

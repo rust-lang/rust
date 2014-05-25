@@ -8,7 +8,7 @@ Use [`ToStr`](../std/to_str/trait.ToStr.html).
 
 ~~~
 let x: int = 42;
-let y: String = x.to_str().to_strbuf();
+let y: String = x.to_str().to_string();
 ~~~
 
 **String to int**
@@ -65,7 +65,7 @@ To return an Owned String use the str helper function
 use std::str;
 
 let x: Option<String> =
-    str::from_utf8([ 104u8, 105u8 ]).map(|x| x.to_strbuf());
+    str::from_utf8([ 104u8, 105u8 ]).map(|x| x.to_string());
 let y: String = x.unwrap();
 ~~~
 
@@ -211,13 +211,13 @@ fn open(Door(name): Door<Closed>) -> Door<Open> {
     Door::<Open>(name)
 }
 
-let _ = close(Door::<Open>("front".to_strbuf()));
+let _ = close(Door::<Open>("front".to_string()));
 ~~~
 
 Attempting to close a closed door is prevented statically:
 
 ~~~ {.ignore}
-let _ = close(Door::<Closed>("front".to_strbuf())); // error: mismatched types: expected `main::Door<main::Open>` but found `main::Door<main::Closed>`
+let _ = close(Door::<Closed>("front".to_string())); // error: mismatched types: expected `main::Door<main::Open>` but found `main::Door<main::Closed>`
 ~~~
 
 # FFI (Foreign Function Interface)

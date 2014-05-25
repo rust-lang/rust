@@ -134,7 +134,7 @@ impl<'a> Visitor<bool> for CheckStaticVisitor<'a> {
                         if ty::has_dtor(self.tcx, did) {
                             self.report_error(e.span,
                              Some("static items are not allowed to have \
-                                   destructors".to_strbuf()));
+                                   destructors".to_string()));
                             return;
                         }
                     }

@@ -106,13 +106,13 @@ pub fn compile_input(sess: Session,
  * (e.g. source from stdin or a string)
  */
 pub fn anon_src() -> String {
-    "<anon>".to_strbuf()
+    "<anon>".to_string()
 }
 
 pub fn source_name(input: &Input) -> String {
     match *input {
         // FIXME (#9639): This needs to handle non-utf8 paths
-        FileInput(ref ifile) => ifile.as_str().unwrap().to_strbuf(),
+        FileInput(ref ifile) => ifile.as_str().unwrap().to_string(),
         StrInput(_) => anon_src()
     }
 }
@@ -127,8 +127,8 @@ pub enum Input {
 impl Input {
     fn filestem(&self) -> String {
         match *self {
-            FileInput(ref ifile) => ifile.filestem_str().unwrap().to_strbuf(),
-            StrInput(_) => "rust_out".to_strbuf(),
+            FileInput(ref ifile) => ifile.filestem_str().unwrap().to_string(),
+            StrInput(_) => "rust_out".to_string(),
         }
     }
 }
@@ -142,8 +142,8 @@ pub fn phase_1_parse_input(sess: &Session, cfg: ast::CrateConfig, input: &Input)
                 parse::parse_crate_from_file(&(*file), cfg.clone(), &sess.parse_sess)
             }
             StrInput(ref src) => {
-                parse::parse_crate_from_source_str(anon_src().to_strbuf(),
-                                                   src.to_strbuf(),
+                parse::parse_crate_from_source_str(anon_src().to_string(),
+                                                   src.to_string(),
                                                    cfg.clone(),
                                                    &sess.parse_sess)
             }
@@ -497,7 +497,7 @@ fn write_out_deps(sess: &Session,
         // write Makefile-compatible dependency rules
         let files: Vec<String> = sess.codemap().files.borrow()
                                    .iter().filter(|fmap| fmap.is_real_file())
-                                   .map(|fmap| fmap.name.to_strbuf())
+                                   .map(|fmap| fmap.name.to_string())
                                    .collect();
         let mut file = try!(io::File::create(&deps_filename));
         for path in out_filenames.iter() {
@@ -533,20 +533,20 @@ impl pprust::PpAnn for IdentifiedAnnotation {
         match node {
             pprust::NodeItem(item) => {
                 try!(pp::space(&mut s.s));
-                s.synth_comment(item.id.to_str().to_strbuf())
+                s.synth_comment(item.id.to_str().to_string())
             }
             pprust::NodeBlock(blk) => {
                 try!(pp::space(&mut s.s));
-                s.synth_comment((format!("block {}", blk.id)).to_strbuf())
+                s.synth_comment((format!("block {}", blk.id)).to_string())
             }
             pprust::NodeExpr(expr) => {
                 try!(pp::space(&mut s.s));
-                try!(s.synth_comment(expr.id.to_str().to_strbuf()));
+                try!(s.synth_comment(expr.id.to_str().to_string()));
                 s.pclose()
             }
             pprust::NodePat(pat) => {
                 try!(pp::space(&mut s.s));
-                s.synth_comment((format!("pat {}", pat.id)).to_strbuf())
+                s.synth_comment((format!("pat {}", pat.id)).to_string())
             }
         }
     }
@@ -629,7 +629,7 @@ pub fn pretty_print_input(sess: Session,
             pprust::print_crate(sess.codemap(),
                                 sess.diagnostic(),
                                 &krate,
-                                src_name.to_strbuf(),
+                                src_name.to_string(),
                                 &mut rdr,
                                 out,
                                 &IdentifiedAnnotation,
@@ -644,7 +644,7 @@ pub fn pretty_print_input(sess: Session,
             pprust::print_crate(annotation.analysis.ty_cx.sess.codemap(),
                                 annotation.analysis.ty_cx.sess.diagnostic(),
                                 &krate,
-                                src_name.to_strbuf(),
+                                src_name.to_string(),
                                 &mut rdr,
                                 out,
                                 &annotation,
@@ -677,7 +677,7 @@ pub fn pretty_print_input(sess: Session,
             pprust::print_crate(sess.codemap(),
                                 sess.diagnostic(),
                                 &krate,
-                                src_name.to_strbuf(),
+                                src_name.to_string(),
                                 &mut rdr,
                                 out,
                                 &pprust::NoAnn,
@@ -694,7 +694,7 @@ fn print_flowgraph<W:io::Writer>(analysis: CrateAnalysis,
     let cfg = cfg::CFG::new(ty_cx, block);
     let lcfg = LabelledCFG { ast_map: &ty_cx.map,
                              cfg: &cfg,
-                             name: format!("block{}", block.id).to_strbuf(), };
+                             name: format!("block{}", block.id).to_string(), };
     debug!("cfg: {:?}", cfg);
     let r = dot::render(&lcfg, &mut out);
     return expand_err_details(r);
@@ -705,7 +705,7 @@ fn print_flowgraph<W:io::Writer>(analysis: CrateAnalysis,
             let m = "graphviz::render failed";
             io::IoError {
                 detail: Some(match orig_detail {
-                    None => m.into_strbuf(),
+                    None => m.into_string(),
                     Some(d) => format_strbuf!("{}: {}", m, d)
                 }),
                 ..ioerr
@@ -738,7 +738,7 @@ pub fn collect_crate_types(session: &Session,
                                      ast::CRATE_NODE_ID,
                                      a.span,
                                      "invalid `crate_type` \
-                                      value".to_strbuf());
+                                      value".to_string());
                     None
                 }
                 _ => {
@@ -746,7 +746,7 @@ pub fn collect_crate_types(session: &Session,
                                      ast::CRATE_NODE_ID,
                                      a.span,
                                      "`crate_type` requires a \
-                                      value".to_strbuf());
+                                      value".to_string());
                     None
                 }
             }
@@ -832,7 +832,7 @@ pub fn build_output_filenames(input: &Input,
             let crateid = attr::find_crateid(attrs);
             match crateid {
                 None => {}
-                Some(crateid) => stem = crateid.name.to_strbuf(),
+                Some(crateid) => stem = crateid.name.to_string(),
             }
             OutputFilenames {
                 out_directory: dirpath,
@@ -854,7 +854,7 @@ pub fn build_output_filenames(input: &Input,
             }
             OutputFilenames {
                 out_directory: out_file.dir_path(),
-                out_filestem: out_file.filestem_str().unwrap().to_strbuf(),
+                out_filestem: out_file.filestem_str().unwrap().to_string(),
                 single_output_file: ofile,
             }
         }

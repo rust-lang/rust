@@ -99,7 +99,7 @@ pub fn explain_region_and_span(cx: &ctxt, region: ty::Region)
               format_strbuf!("the anonymous lifetime \\#{} defined on",
                              idx + 1)
           }
-          BrFresh(_) => "an anonymous lifetime defined on".to_strbuf(),
+          BrFresh(_) => "an anonymous lifetime defined on".to_string(),
           _ => {
               format_strbuf!("the lifetime {} as defined on",
                              bound_region_ptr_to_str(cx, fr.bound_region))
@@ -123,9 +123,9 @@ pub fn explain_region_and_span(cx: &ctxt, region: ty::Region)
         }
       }
 
-      ReStatic => { ("the static lifetime".to_strbuf(), None) }
+      ReStatic => { ("the static lifetime".to_string(), None) }
 
-      ReEmpty => { ("the empty lifetime".to_strbuf(), None) }
+      ReEmpty => { ("the empty lifetime".to_string(), None) }
 
       // I believe these cases should not occur (except when debugging,
       // perhaps)
@@ -164,8 +164,8 @@ pub fn bound_region_to_str(cx: &ctxt,
                            token::get_name(name),
                            space_str)
         }
-        BrAnon(_) => prefix.to_strbuf(),
-        BrFresh(_) => prefix.to_strbuf(),
+        BrAnon(_) => prefix.to_string(),
+        BrFresh(_) => prefix.to_string(),
     }
 }
 
@@ -188,16 +188,16 @@ pub fn region_to_str(cx: &ctxt, prefix: &str, space: bool, region: Region) -> St
     // to fit that into a short string.  Hence the recommendation to use
     // `explain_region()` or `note_and_explain_region()`.
     match region {
-        ty::ReScope(_) => prefix.to_strbuf(),
+        ty::ReScope(_) => prefix.to_string(),
         ty::ReEarlyBound(_, _, name) => {
-            token::get_name(name).get().to_strbuf()
+            token::get_name(name).get().to_string()
         }
         ty::ReLateBound(_, br) => bound_region_to_str(cx, prefix, space, br),
         ty::ReFree(ref fr) => bound_region_to_str(cx, prefix, space, fr.bound_region),
         ty::ReInfer(ReSkolemized(_, br)) => {
             bound_region_to_str(cx, prefix, space, br)
         }
-        ty::ReInfer(ReVar(_)) => prefix.to_strbuf(),
+        ty::ReInfer(ReVar(_)) => prefix.to_string(),
         ty::ReStatic => format_strbuf!("{}'static{}", prefix, space_str),
         ty::ReEmpty => format_strbuf!("{}'<empty>{}", prefix, space_str),
     }
@@ -205,8 +205,8 @@ pub fn region_to_str(cx: &ctxt, prefix: &str, space: bool, region: Region) -> St
 
 pub fn mutability_to_str(m: ast::Mutability) -> String {
     match m {
-        ast::MutMutable => "mut ".to_strbuf(),
-        ast::MutImmutable => "".to_strbuf(),
+        ast::MutMutable => "mut ".to_string(),
+        ast::MutImmutable => "".to_string(),
     }
 }
 
@@ -216,7 +216,7 @@ pub fn mt_to_str(cx: &ctxt, m: &mt) -> String {
 
 pub fn trait_store_to_str(cx: &ctxt, s: ty::TraitStore) -> String {
     match s {
-        ty::UniqTraitStore => "Box ".to_strbuf(),
+        ty::UniqTraitStore => "Box ".to_string(),
         ty::RegionTraitStore(r, m) => {
             format_strbuf!("{}{}",
                            region_ptr_to_str(cx, r),
@@ -238,12 +238,12 @@ pub fn fn_sig_to_str(cx: &ctxt, typ: &ty::FnSig) -> String {
 }
 
 pub fn trait_ref_to_str(cx: &ctxt, trait_ref: &ty::TraitRef) -> String {
-    trait_ref.user_string(cx).to_strbuf()
+    trait_ref.user_string(cx).to_string()
 }
 
 pub fn ty_to_str(cx: &ctxt, typ: t) -> String {
     fn fn_input_to_str(cx: &ctxt, input: ty::t) -> String {
-        ty_to_str(cx, input).to_strbuf()
+        ty_to_str(cx, input).to_string()
     }
     fn bare_fn_to_str(cx: &ctxt,
                       fn_style: ast::FnStyle,
@@ -351,15 +351,15 @@ pub fn ty_to_str(cx: &ctxt, typ: t) -> String {
 
     // pretty print the structural type representation:
     return match ty::get(typ).sty {
-      ty_nil => "()".to_strbuf(),
-      ty_bot => "!".to_strbuf(),
-      ty_bool => "bool".to_strbuf(),
-      ty_char => "char".to_strbuf(),
+      ty_nil => "()".to_string(),
+      ty_bot => "!".to_string(),
+      ty_bool => "bool".to_string(),
+      ty_char => "char".to_string(),
       ty_int(t) => ast_util::int_ty_to_str(t, None,
-                                           ast_util::AutoSuffix).to_strbuf(),
+                                           ast_util::AutoSuffix).to_string(),
       ty_uint(t) => ast_util::uint_ty_to_str(t, None,
-                                             ast_util::AutoSuffix).to_strbuf(),
-      ty_float(t) => ast_util::float_ty_to_str(t).to_strbuf(),
+                                             ast_util::AutoSuffix).to_string(),
+      ty_float(t) => ast_util::float_ty_to_str(t).to_string(),
       ty_box(typ) => format_strbuf!("@{}", ty_to_str(cx, typ)),
       ty_uniq(typ) => format_strbuf!("~{}", ty_to_str(cx, typ)),
       ty_ptr(ref tm) => format_strbuf!("*{}", mt_to_str(cx, tm)),
@@ -378,11 +378,11 @@ pub fn ty_to_str(cx: &ctxt, typ: t) -> String {
       ty_bare_fn(ref f) => {
           bare_fn_to_str(cx, f.fn_style, f.abi, None, &f.sig)
       }
-      ty_infer(infer_ty) => infer_ty.to_str().to_strbuf(),
-      ty_err => "[type error]".to_strbuf(),
+      ty_infer(infer_ty) => infer_ty.to_str().to_string(),
+      ty_err => "[type error]".to_string(),
       ty_param(param_ty {idx: id, def_id: did}) => {
           let ident = match cx.ty_param_defs.borrow().find(&did.node) {
-              Some(def) => token::get_ident(def.ident).get().to_strbuf(),
+              Some(def) => token::get_ident(def.ident).get().to_string(),
               // This can only happen when a type mismatch error happens and
               // the actual type has more type parameters than the expected one.
               None => format_strbuf!("<generic \\#{}>", id)
@@ -393,7 +393,7 @@ pub fn ty_to_str(cx: &ctxt, typ: t) -> String {
               format_strbuf!("{}:{:?}", ident, did)
           }
       }
-      ty_self(..) => "Self".to_strbuf(),
+      ty_self(..) => "Self".to_string(),
       ty_enum(did, ref substs) | ty_struct(did, ref substs) => {
         let base = ty::item_path_str(cx, did);
         parameterized(cx,
@@ -417,7 +417,7 @@ pub fn ty_to_str(cx: &ctxt, typ: t) -> String {
                        bound_sep,
                        bound_str)
       }
-      ty_str => "str".to_strbuf(),
+      ty_str => "str".to_string(),
       ty_vec(ref mt, sz) => {
           match sz {
               Some(n) => {
@@ -483,9 +483,9 @@ pub fn parameterized(cx: &ctxt,
 }
 
 pub fn ty_to_short_str(cx: &ctxt, typ: t) -> String {
-    let mut s = typ.repr(cx).to_strbuf();
+    let mut s = typ.repr(cx).to_string();
     if s.len() >= 32u {
-        s = s.as_slice().slice(0u, 32u).to_strbuf();
+        s = s.as_slice().slice(0u, 32u).to_string();
     }
     return s;
 }
@@ -493,7 +493,7 @@ pub fn ty_to_short_str(cx: &ctxt, typ: t) -> String {
 impl<T:Repr> Repr for Option<T> {
     fn repr(&self, tcx: &ctxt) -> String {
         match self {
-            &None => "None".to_strbuf(),
+            &None => "None".to_string(),
             &Some(ref t) => t.repr(tcx),
         }
     }
@@ -510,7 +510,7 @@ impl<T:Repr,U:Repr> Repr for Result<T,U> {
 
 impl Repr for () {
     fn repr(&self, _tcx: &ctxt) -> String {
-        "()".to_strbuf()
+        "()".to_string()
     }
 }
 
@@ -596,7 +596,7 @@ impl Repr for ty::ItemSubsts {
 impl Repr for ty::RegionSubsts {
     fn repr(&self, tcx: &ctxt) -> String {
         match *self {
-            ty::ErasedRegions => "erased".to_strbuf(),
+            ty::ErasedRegions => "erased".to_string(),
             ty::NonerasedRegions(ref regions) => regions.repr(tcx)
         }
     }
@@ -607,17 +607,17 @@ impl Repr for ty::ParamBounds {
         let mut res = Vec::new();
         for b in self.builtin_bounds.iter() {
             res.push(match b {
-                ty::BoundStatic => "'static".to_strbuf(),
-                ty::BoundSend => "Send".to_strbuf(),
-                ty::BoundSized => "Sized".to_strbuf(),
-                ty::BoundCopy => "Copy".to_strbuf(),
-                ty::BoundShare => "Share".to_strbuf(),
+                ty::BoundStatic => "'static".to_string(),
+                ty::BoundSend => "Send".to_string(),
+                ty::BoundSized => "Sized".to_string(),
+                ty::BoundCopy => "Copy".to_string(),
+                ty::BoundShare => "Share".to_string(),
             });
         }
         for t in self.trait_bounds.iter() {
             res.push(t.repr(tcx));
         }
-        res.connect("+").to_strbuf()
+        res.connect("+").to_string()
     }
 }
 
@@ -694,7 +694,7 @@ impl Repr for ty::Region {
             }
 
             ty::ReStatic => {
-                "ReStatic".to_strbuf()
+                "ReStatic".to_string()
             }
 
             ty::ReInfer(ReVar(ref vid)) => {
@@ -708,7 +708,7 @@ impl Repr for ty::Region {
             }
 
             ty::ReEmpty => {
-                "ReEmpty".to_strbuf()
+                "ReEmpty".to_string()
             }
         }
     }
@@ -771,7 +771,7 @@ impl Repr for ty::ItemVariances {
 
 impl Repr for ty::Variance {
     fn repr(&self, _: &ctxt) -> String {
-        self.to_str().to_strbuf()
+        self.to_str().to_string()
     }
 }
 
@@ -790,13 +790,13 @@ impl Repr for ty::Method {
 
 impl Repr for ast::Name {
     fn repr(&self, _tcx: &ctxt) -> String {
-        token::get_name(*self).get().to_strbuf()
+        token::get_name(*self).get().to_string()
     }
 }
 
 impl Repr for ast::Ident {
     fn repr(&self, _tcx: &ctxt) -> String {
-        token::get_ident(*self).get().to_strbuf()
+        token::get_ident(*self).get().to_string()
     }
 }
 
@@ -893,11 +893,11 @@ impl Repr for ty::BuiltinBound {
 impl UserString for ty::BuiltinBound {
     fn user_string(&self, _tcx: &ctxt) -> String {
         match *self {
-            ty::BoundStatic => "'static".to_strbuf(),
-            ty::BoundSend => "Send".to_strbuf(),
-            ty::BoundSized => "Sized".to_strbuf(),
-            ty::BoundCopy => "Copy".to_strbuf(),
-            ty::BoundShare => "Share".to_strbuf(),
+            ty::BoundStatic => "'static".to_string(),
+            ty::BoundSend => "Send".to_string(),
+            ty::BoundSized => "Sized".to_string(),
+            ty::BoundCopy => "Copy".to_string(),
+            ty::BoundShare => "Share".to_string(),
         }
     }
 }
@@ -910,7 +910,7 @@ impl Repr for ty::BuiltinBounds {
 
 impl Repr for Span {
     fn repr(&self, tcx: &ctxt) -> String {
-        tcx.sess.codemap().span_to_str(*self).to_strbuf()
+        tcx.sess.codemap().span_to_str(*self).to_string()
     }
 }
 
@@ -927,7 +927,7 @@ impl UserString for ty::BuiltinBounds {
             .map(|bb| bb.user_string(tcx))
             .collect::<Vec<String>>()
             .connect("+")
-            .to_strbuf()
+            .to_string()
     }
 }
 
@@ -962,19 +962,19 @@ impl UserString for ty::t {
 
 impl UserString for ast::Ident {
     fn user_string(&self, _tcx: &ctxt) -> String {
-        token::get_name(self.name).get().to_strbuf()
+        token::get_name(self.name).get().to_string()
     }
 }
 
 impl Repr for abi::Abi {
     fn repr(&self, _tcx: &ctxt) -> String {
-        self.to_str().to_strbuf()
+        self.to_str().to_string()
     }
 }
 
 impl UserString for abi::Abi {
     fn user_string(&self, _tcx: &ctxt) -> String {
-        self.to_str().to_strbuf()
+        self.to_str().to_string()
     }
 }
 

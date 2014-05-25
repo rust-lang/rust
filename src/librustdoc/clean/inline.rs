@@ -87,7 +87,7 @@ fn try_inline_def(cx: &core::DocContext,
     let fqn = csearch::get_item_path(tcx, did);
     ret.push(clean::Item {
         source: clean::Span::empty(),
-        name: Some(fqn.last().unwrap().to_str().to_strbuf()),
+        name: Some(fqn.last().unwrap().to_str().to_string()),
         attrs: load_attrs(tcx, did),
         inner: inner,
         visibility: Some(ast::Public),
@@ -123,7 +123,7 @@ pub fn record_extern_fqn(cx: &core::DocContext,
     match cx.maybe_typed {
         core::Typed(ref tcx) => {
             let fqn = csearch::get_item_path(tcx, did);
-            let fqn = fqn.move_iter().map(|i| i.to_str().to_strbuf()).collect();
+            let fqn = fqn.move_iter().map(|i| i.to_str().to_string()).collect();
             cx.external_paths.borrow_mut().get_mut_ref().insert(did, (fqn, kind));
         }
         core::NotTyped(..) => {}

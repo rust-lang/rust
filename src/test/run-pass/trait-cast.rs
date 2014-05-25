@@ -28,7 +28,7 @@ trait to_str {
 impl<T:to_str> to_str for Option<T> {
     fn to_str_(&self) -> String {
         match *self {
-          None => { "none".to_strbuf() }
+          None => { "none".to_string() }
           Some(ref t) => format_strbuf!("some({})", t.to_str_()),
         }
     }
@@ -36,7 +36,7 @@ impl<T:to_str> to_str for Option<T> {
 
 impl to_str for int {
     fn to_str_(&self) -> String {
-        self.to_str().to_strbuf()
+        self.to_str().to_string()
     }
 }
 
@@ -63,7 +63,7 @@ pub fn main() {
                                       right: Some(t1),
                                       val: box 2 as Box<to_str:Send>}));
     let expected =
-        "[2, some([1, none, none]), some([1, none, none])]".to_strbuf();
+        "[2, some([1, none, none]), some([1, none, none])]".to_string();
     assert!(t2.to_str_() == expected);
     assert!(foo(t2) == expected);
 

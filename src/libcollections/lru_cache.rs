@@ -271,22 +271,22 @@ mod tests {
     #[test]
     fn test_put_update() {
         let mut cache: LruCache<String, Vec<u8>> = LruCache::new(1);
-        cache.put("1".to_strbuf(), vec![10, 10]);
-        cache.put("1".to_strbuf(), vec![10, 19]);
-        assert_opt_eq(cache.get(&"1".to_strbuf()), vec![10, 19]);
+        cache.put("1".to_string(), vec![10, 10]);
+        cache.put("1".to_string(), vec![10, 19]);
+        assert_opt_eq(cache.get(&"1".to_string()), vec![10, 19]);
         assert_eq!(cache.len(), 1);
     }
 
     #[test]
     fn test_expire_lru() {
         let mut cache: LruCache<String, String> = LruCache::new(2);
-        cache.put("foo1".to_strbuf(), "bar1".to_strbuf());
-        cache.put("foo2".to_strbuf(), "bar2".to_strbuf());
-        cache.put("foo3".to_strbuf(), "bar3".to_strbuf());
-        assert!(cache.get(&"foo1".to_strbuf()).is_none());
-        cache.put("foo2".to_strbuf(), "bar2update".to_strbuf());
-        cache.put("foo4".to_strbuf(), "bar4".to_strbuf());
-        assert!(cache.get(&"foo3".to_strbuf()).is_none());
+        cache.put("foo1".to_string(), "bar1".to_string());
+        cache.put("foo2".to_string(), "bar2".to_string());
+        cache.put("foo3".to_string(), "bar3".to_string());
+        assert!(cache.get(&"foo1".to_string()).is_none());
+        cache.put("foo2".to_string(), "bar2update".to_string());
+        cache.put("foo4".to_string(), "bar4".to_string());
+        assert!(cache.get(&"foo3".to_string()).is_none());
     }
 
     #[test]

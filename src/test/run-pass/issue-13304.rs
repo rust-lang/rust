@@ -35,12 +35,12 @@ fn main() {
             rx.recv();
         }
     } else {
-        parent("green".to_strbuf());
-        parent("native".to_strbuf());
+        parent("green".to_string());
+        parent("native".to_string());
         let (tx, rx) = channel();
         native::task::spawn(proc() {
-            parent("green".to_strbuf());
-            parent("native".to_strbuf());
+            parent("green".to_string());
+            parent("native".to_string());
             tx.send(());
         });
         rx.recv();

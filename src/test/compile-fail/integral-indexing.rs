@@ -10,7 +10,7 @@
 
 pub fn main() {
     let v: Vec<int> = vec!(0, 1, 2, 3, 4, 5);
-    let s: String = "abcdef".to_strbuf();
+    let s: String = "abcdef".to_string();
     assert_eq!(v.as_slice()[3u], 3);
     assert_eq!(v.as_slice()[3u8], 3); //~ ERROR: mismatched types
     assert_eq!(v.as_slice()[3i8], 3); //~ ERROR: mismatched types

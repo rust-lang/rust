@@ -587,7 +587,7 @@ impl GenericPath for Path {
                     }
                 }
             }
-            Some(Path::new(comps.connect("\\").into_strbuf()))
+            Some(Path::new(comps.connect("\\").into_string()))
         }
     }
 
@@ -695,7 +695,7 @@ impl Path {
             (prefix, path)
         };
         (prefix, match val {
-            None => s.into_strbuf(),
+            None => s.into_string(),
             Some(val) => val
         })
     }
@@ -1318,9 +1318,9 @@ mod tests {
     #[test]
     fn test_display_str() {
         let path = Path::new("foo");
-        assert_eq!(path.display().to_str(), "foo".to_strbuf());
+        assert_eq!(path.display().to_str(), "foo".to_string());
         let path = Path::new(b!("\\"));
-        assert_eq!(path.filename_display().to_str(), "".to_strbuf());
+        assert_eq!(path.filename_display().to_str(), "".to_string());
 
         let path = Path::new("foo");
         let mo = path.display().as_maybe_owned();
@@ -1581,7 +1581,7 @@ mod tests {
         t!(s: "a\\b\\c", ["d", "e"], "a\\b\\c\\d\\e");
         t!(s: "a\\b\\c", ["d", "\\e"], "\\e");
         t!(s: "a\\b\\c", ["d", "\\e", "f"], "\\e\\f");
-        t!(s: "a\\b\\c", ["d".to_strbuf(), "e".to_strbuf()], "a\\b\\c\\d\\e");
+        t!(s: "a\\b\\c", ["d".to_string(), "e".to_string()], "a\\b\\c\\d\\e");
         t!(v: b!("a\\b\\c"), [b!("d"), b!("e")], b!("a\\b\\c\\d\\e"));
         t!(v: b!("a\\b\\c"), [b!("d"), b!("\\e"), b!("f")], b!("\\e\\f"));
         t!(v: b!("a\\b\\c"), [Vec::from_slice(b!("d")), Vec::from_slice(b!("e"))],
@@ -1722,7 +1722,7 @@ mod tests {
         t!(s: "a\\b\\c", ["d", "e"], "a\\b\\c\\d\\e");
         t!(s: "a\\b\\c", ["..", "d"], "a\\b\\d");
         t!(s: "a\\b\\c", ["d", "\\e", "f"], "\\e\\f");
-        t!(s: "a\\b\\c", ["d".to_strbuf(), "e".to_strbuf()], "a\\b\\c\\d\\e");
+        t!(s: "a\\b\\c", ["d".to_string(), "e".to_string()], "a\\b\\c\\d\\e");
         t!(v: b!("a\\b\\c"), [b!("d"), b!("e")], b!("a\\b\\c\\d\\e"));
         t!(v: b!("a\\b\\c"), [Vec::from_slice(b!("d")), Vec::from_slice(b!("e"))],
            b!("a\\b\\c\\d\\e"));

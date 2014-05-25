@@ -34,7 +34,7 @@ impl Drop for S {
 }
 
 fn move_in_match() {
-    match S {f: "foo".to_strbuf(), g: "bar".to_strbuf()} {
+    match S {f: "foo".to_string(), g: "bar".to_string()} {
         S {         //~ ERROR cannot move out of type `S`, which defines the `Drop` trait
             f: _s,  //~ NOTE attempting to move value to here
             g: _t   //~ NOTE and here

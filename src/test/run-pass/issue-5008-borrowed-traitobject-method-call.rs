@@ -25,7 +25,7 @@ struct Thing {
 }
 
 impl Thing {
-    fn new() -> Thing { Thing { name: "dummy".to_strbuf() } }
+    fn new() -> Thing { Thing { name: "dummy".to_string() } }
 }
 
 impl Debuggable for Thing {

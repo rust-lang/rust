@@ -882,7 +882,7 @@ impl<'a> MethodDef<'a> {
 
         } else {  // there are still matches to create
             let current_match_str = if match_count == 0 {
-                "__self".to_strbuf()
+                "__self".to_string()
             } else {
                 format!("__arg_{}", match_count)
             };
@@ -1011,7 +1011,7 @@ impl<'a> TraitDef<'a> {
         to_set.expn_info = Some(@codemap::ExpnInfo {
             call_site: to_set,
             callee: codemap::NameAndSpan {
-                name: format!("deriving({})", trait_name).to_strbuf(),
+                name: format!("deriving({})", trait_name).to_string(),
                 format: codemap::MacroAttribute,
                 span: Some(self.span)
             }

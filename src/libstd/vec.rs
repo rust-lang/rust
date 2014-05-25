@@ -1850,9 +1850,9 @@ mod tests {
         let b: ~[u8] = FromVec::from_vec(a);
         assert_eq!(b.as_slice(), &[]);
 
-        let a = vec!["one".to_strbuf(), "two".to_strbuf()];
+        let a = vec!["one".to_string(), "two".to_string()];
         let b: ~[String] = FromVec::from_vec(a);
-        assert_eq!(b.as_slice(), &["one".to_strbuf(), "two".to_strbuf()]);
+        assert_eq!(b.as_slice(), &["one".to_string(), "two".to_string()]);
 
         struct Foo {
             x: uint,

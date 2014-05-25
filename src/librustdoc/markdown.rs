@@ -22,7 +22,7 @@ use test::Collector;
 fn load_string(input: &Path) -> io::IoResult<Option<String>> {
     let mut f = try!(io::File::open(input));
     let d = try!(f.read_to_end());
-    Ok(str::from_utf8(d.as_slice()).map(|s| s.to_strbuf()))
+    Ok(str::from_utf8(d.as_slice()).map(|s| s.to_string()))
 }
 macro_rules! load_or_return {
     ($input: expr, $cant_read: expr, $not_utf8: expr) => {
@@ -88,17 +88,17 @@ pub fn render(input: &str, mut output: Path, matches: &getopts::Matches) -> int 
     let (in_header, before_content, after_content) =
         match (load_external_files(matches.opt_strs("markdown-in-header")
                                           .move_iter()
-                                          .map(|x| x.to_strbuf())
+                                          .map(|x| x.to_string())
                                           .collect::<Vec<_>>()
                                           .as_slice()),
                load_external_files(matches.opt_strs("markdown-before-content")
                                           .move_iter()
-                                          .map(|x| x.to_strbuf())
+                                          .map(|x| x.to_string())
                                           .collect::<Vec<_>>()
                                           .as_slice()),
                load_external_files(matches.opt_strs("markdown-after-content")
                                           .move_iter()
-                                          .map(|x| x.to_strbuf())
+                                          .map(|x| x.to_string())
                                           .collect::<Vec<_>>()
                                           .as_slice())) {
         (Some(a), Some(b), Some(c)) => (a,b,c),
@@ -173,9 +173,9 @@ pub fn render(input: &str, mut output: Path, matches: &getopts::Matches) -> int 
 pub fn test(input: &str, libs: HashSet<Path>, mut test_args: Vec<String>) -> int {
     let input_str = load_or_return!(input, 1, 2);
 
-    let mut collector = Collector::new(input.to_strbuf(), libs, true, true);
+    let mut collector = Collector::new(input.to_string(), libs, true, true);
     find_testable_code(input_str.as_slice(), &mut collector);
-    test_args.unshift("rustdoctest".to_strbuf());
+    test_args.unshift("rustdoctest".to_string());
     testing::test_main(test_args.as_slice(), collector.tests);
     0
 }

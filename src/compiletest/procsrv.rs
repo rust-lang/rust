@@ -15,7 +15,7 @@ use std::unstable::dynamic_lib::DynamicLibrary;
 
 fn target_env(lib_path: &str, prog: &str) -> Vec<(String, String)> {
     let prog = if cfg!(windows) {prog.slice_to(prog.len() - 4)} else {prog};
-    let mut aux_path = prog.to_strbuf();
+    let mut aux_path = prog.to_string();
     aux_path.push_str(".libaux");
 
     // Need to be sure to put both the lib_path and the aux path in the dylib
@@ -27,7 +27,7 @@ fn target_env(lib_path: &str, prog: &str) -> Vec<(String, String)> {
     // Remove the previous dylib search path var
     let var = DynamicLibrary::envvar();
     let mut env: Vec<(String,String)> =
-        os::env().move_iter().map(|(a,b)|(a.to_strbuf(), b.to_strbuf())).collect();
+        os::env().move_iter().map(|(a,b)|(a.to_string(), b.to_string())).collect();
     match env.iter().position(|&(ref k, _)| k.as_slice() == var) {
         Some(i) => { env.remove(i); }
         None => {}
@@ -35,8 +35,8 @@ fn target_env(lib_path: &str, prog: &str) -> Vec<(String, String)> {
 
     // Add the new dylib search path var
     let newpath = DynamicLibrary::create_path(path.as_slice());
-    env.push((var.to_strbuf(),
-              str::from_utf8(newpath.as_slice()).unwrap().to_strbuf()));
+    env.push((var.to_string(),
+              str::from_utf8(newpath.as_slice()).unwrap().to_string()));
     return env;
 }
 
@@ -59,8 +59,8 @@ pub fn run(lib_path: &str,
 
             Some(Result {
                 status: status,
-                out: str::from_utf8(output.as_slice()).unwrap().to_strbuf(),
-                err: str::from_utf8(error.as_slice()).unwrap().to_strbuf()
+                out: str::from_utf8(output.as_slice()).unwrap().to_string(),
+                err: str::from_utf8(error.as_slice()).unwrap().to_string()
             })
         },
         Err(..) => None

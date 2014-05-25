@@ -1264,8 +1264,8 @@ enum Animal {
     Cat { name: String, weight: f64 }
 }
 
-let mut a: Animal = Dog("Cocoa".to_strbuf(), 37.2);
-a = Cat { name: "Spotty".to_strbuf(), weight: 2.7 };
+let mut a: Animal = Dog("Cocoa".to_string(), 37.2);
+a = Cat { name: "Spotty".to_string(), weight: 2.7 };
 ~~~~
 
 In this example, `Cat` is a _struct-like enum variant_,
@@ -3578,7 +3578,7 @@ trait Printable {
 }
 
 impl Printable for int {
-  fn to_string(&self) -> String { self.to_str().to_strbuf() }
+  fn to_string(&self) -> String { self.to_str().to_string() }
 }
 
 fn print(a: Box<Printable>) {

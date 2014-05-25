@@ -211,14 +211,14 @@ pub fn get_field_type(tcx: &ty::ctxt, class_id: ast::DefId,
                            decoder::maybe_find_item(class_id.node, all_items),
                            || {
         (format!("get_field_type: class ID {:?} not found",
-                 class_id)).to_strbuf()
+                 class_id)).to_string()
     });
     let the_field = expect(tcx.sess.diagnostic(),
         decoder::maybe_find_item(def.node, class_doc),
         || {
             (format!("get_field_type: in class {:?}, field ID {:?} not found",
                     class_id,
-                    def)).to_strbuf()
+                    def)).to_string()
         });
     let ty = decoder::item_type(def, the_field, tcx, &*cdata);
     ty::ty_param_bounds_and_ty {
