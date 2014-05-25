@@ -399,10 +399,10 @@ fn monitor(f: proc():Send) {
                 }
 
                 let xs = [
-                    "the compiler hit an unexpected failure path. this is a bug.".to_owned(),
+                    "the compiler hit an unexpected failure path. this is a bug.".to_string(),
                     format!("we would appreciate a bug report: {}",
                             BUG_REPORT_URL),
-                    "run with `RUST_BACKTRACE=1` for a backtrace".to_owned(),
+                    "run with `RUST_BACKTRACE=1` for a backtrace".to_string(),
                 ];
                 for note in xs.iter() {
                     emitter.emit(None, note.as_slice(), diagnostic::Note)

@@ -198,7 +198,7 @@ fn path(w: &mut fmt::Formatter, path: &clean::Path, print_all: bool,
     let cache = cache_key.get().unwrap();
     let abs_root = root(&**cache, loc.as_slice());
     let rel_root = match path.segments.get(0).name.as_slice() {
-        "self" => Some("./".to_owned()),
+        "self" => Some("./".to_string()),
         _ => None,
     };
 

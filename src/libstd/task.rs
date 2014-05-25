@@ -295,7 +295,7 @@ fn test_unnamed_task() {
 
 #[test]
 fn test_owned_named_task() {
-    TaskBuilder::new().named("ada lovelace".to_owned()).spawn(proc() {
+    TaskBuilder::new().named("ada lovelace".to_string()).spawn(proc() {
         with_task_name(|name| {
             assert!(name.unwrap() == "ada lovelace");
         })
@@ -367,7 +367,7 @@ fn test_back_to_the_future_result() {
 #[test]
 fn test_try_success() {
     match try(proc() {
-        "Success!".to_owned()
+        "Success!".to_string()
     }).as_ref().map(|s| s.as_slice()) {
         result::Ok("Success!") => (),
         _ => fail!()

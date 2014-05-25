@@ -31,8 +31,8 @@ fn check_strs(actual: &str, expected: &str) -> bool
 
 pub fn main()
 {
-// assert!(check_strs(fmt!("%?", Text(@"foo".to_owned())), "Text(@~\"foo\")"));
-// assert!(check_strs(fmt!("%?", ETag(@~["foo".to_owned()], @"bar".to_owned())),
+// assert!(check_strs(fmt!("%?", Text(@"foo".to_string())), "Text(@~\"foo\")"));
+// assert!(check_strs(fmt!("%?", ETag(@~["foo".to_string()], @"bar".to_string())),
 //                    "ETag(@~[ ~\"foo\" ], @~\"bar\")"));
 
     let t = Text(@"foo".to_strbuf());

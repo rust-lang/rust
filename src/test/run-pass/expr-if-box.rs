@@ -17,8 +17,8 @@ fn test_box() {
 }
 
 fn test_str() {
-    let rs = if true { "happy".to_owned() } else { "sad".to_owned() };
-    assert_eq!(rs, "happy".to_owned());
+    let rs = if true { "happy".to_string() } else { "sad".to_string() };
+    assert_eq!(rs, "happy".to_string());
 }
 
 pub fn main() { test_box(); test_str(); }

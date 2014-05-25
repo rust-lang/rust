@@ -140,7 +140,7 @@ pub struct RadixFmt<T, R>(T, R);
 ///
 /// ~~~
 /// use std::fmt::radix;
-/// assert_eq!(format!("{}", radix(55, 36)), "1j".to_owned());
+/// assert_eq!(format!("{}", radix(55, 36)), "1j".to_string());
 /// ~~~
 pub fn radix<T>(x: T, base: u8) -> RadixFmt<T, Radix> {
     RadixFmt(x, Radix::new(base))

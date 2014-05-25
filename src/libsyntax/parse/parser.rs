@@ -4159,7 +4159,7 @@ impl<'a> Parser<'a> {
                 outer_attrs, "path") {
             Some(d) => (dir_path.join(d), true),
             None => {
-                let mod_name = mod_string.get().to_owned();
+                let mod_name = mod_string.get().to_string();
                 let default_path_str = format!("{}.rs", mod_name);
                 let secondary_path_str = format!("{}/mod.rs", mod_name);
                 let default_path = dir_path.join(default_path_str.as_slice());

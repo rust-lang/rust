@@ -396,7 +396,7 @@ pub trait OwnedVector<T> {
     /// # Examples
     ///
     /// ```rust
-    /// let v = ~["a".to_owned(), "b".to_owned()];
+    /// let v = ~["a".to_string(), "b".to_string()];
     /// for s in v.move_iter() {
     ///   // s has type ~str, not &~str
     ///   println!("{}", s);
@@ -1186,7 +1186,7 @@ mod tests {
             assert_eq!(it.next(), None);
         }
         {
-            let v = ["Hello".to_owned()];
+            let v = ["Hello".to_string()];
             let mut it = v.permutations();
             let (min_size, max_opt) = it.size_hint();
             assert_eq!(min_size, 1);

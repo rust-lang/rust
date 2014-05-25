@@ -728,7 +728,7 @@ pub fn usage(brief: &str, opts: &[OptGroup]) -> String {
         each_split_within(desc_normalized_whitespace.as_slice(),
                           54,
                           |substr| {
-            desc_rows.push(substr.to_owned());
+            desc_rows.push(substr.to_string());
             true
         });
 

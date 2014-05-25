@@ -314,10 +314,10 @@ pub fn is_test(config: &Config, testfile: &Path) -> bool {
     // Pretty-printer does not work with .rc files yet
     let valid_extensions =
         match config.mode {
-          Pretty => vec!(".rs".to_owned()),
-          _ => vec!(".rc".to_owned(), ".rs".to_owned())
+          Pretty => vec!(".rs".to_string()),
+          _ => vec!(".rc".to_string(), ".rs".to_string())
         };
-    let invalid_prefixes = vec!(".".to_owned(), "#".to_owned(), "~".to_owned());
+    let invalid_prefixes = vec!(".".to_string(), "#".to_string(), "~".to_string());
     let name = testfile.filename_str().unwrap();
 
     let mut valid = false;

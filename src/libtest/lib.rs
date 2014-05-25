@@ -1026,8 +1026,8 @@ pub fn run_test(opts: &TestOpts,
             let stdout = ChanWriter::new(tx.clone());
             let stderr = ChanWriter::new(tx);
             let mut task = TaskBuilder::new().named(match desc.name {
-                DynTestName(ref name) => name.clone().to_owned(),
-                StaticTestName(name) => name.to_owned(),
+                DynTestName(ref name) => name.clone().to_string(),
+                StaticTestName(name) => name.to_string(),
             });
             if nocapture {
                 drop((stdout, stderr));

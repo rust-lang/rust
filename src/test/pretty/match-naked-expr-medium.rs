@@ -15,10 +15,10 @@ fn main() {
     let _y =
         match x {
             Some(_) =>
-            ["some(_)".to_owned(), "not".to_owned(), "SO".to_owned(),
-             "long".to_owned(), "string".to_owned()],
+            ["some(_)".to_string(), "not".to_string(), "SO".to_string(),
+             "long".to_string(), "string".to_string()],
             None =>
-            ["none".to_owned(), "a".to_owned(), "a".to_owned(),
-             "a".to_owned(), "a".to_owned()]
+            ["none".to_string(), "a".to_string(), "a".to_string(),
+             "a".to_string(), "a".to_string()]
         };
 }

@@ -703,7 +703,7 @@ pub fn exported_name(path: PathElems, hash: &str, vers: &str) -> String {
     let vers = if vers.len() > 0 && !char::is_XID_start(vers.char_at(0)) {
         format!("v{}", vers)
     } else {
-        vers.to_owned()
+        vers.to_string()
     };
 
     mangle(path, Some(hash), Some(vers.as_slice()))

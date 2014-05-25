@@ -179,8 +179,8 @@ fn runtest(test: &str, cratename: &str, libs: HashSet<Path>, should_fail: bool,
 
         // Add the new dylib search path var
         let newpath = DynamicLibrary::create_path(path.as_slice());
-        env.push((var.to_owned(),
-                  str::from_utf8(newpath.as_slice()).unwrap().to_owned()));
+        env.push((var.to_string(),
+                  str::from_utf8(newpath.as_slice()).unwrap().to_string()));
         env
     };
     match Command::new(exe).env(env.as_slice()).output() {
@@ -265,7 +265,7 @@ impl Collector {
         };
         self.cnt += 1;
         let libs = self.libs.clone();
-        let cratename = self.cratename.to_owned();
+        let cratename = self.cratename.to_string();
         let loose_feature_gating = self.loose_feature_gating;
         debug!("Creating test {}: {}", name, test);
         self.tests.push(testing::TestDescAndFn {

@@ -1146,28 +1146,28 @@ fn basic_type_metadata(cx: &CrateContext, t: ty::t) -> DIType {
     debug!("basic_type_metadata: {:?}", ty::get(t));
 
     let (name, encoding) = match ty::get(t).sty {
-        ty::ty_nil => ("()".to_owned(), DW_ATE_unsigned),
-        ty::ty_bot => ("!".to_owned(), DW_ATE_unsigned),
-        ty::ty_bool => ("bool".to_owned(), DW_ATE_boolean),
-        ty::ty_char => ("char".to_owned(), DW_ATE_unsigned_char),
+        ty::ty_nil => ("()".to_string(), DW_ATE_unsigned),
+        ty::ty_bot => ("!".to_string(), DW_ATE_unsigned),
+        ty::ty_bool => ("bool".to_string(), DW_ATE_boolean),
+        ty::ty_char => ("char".to_string(), DW_ATE_unsigned_char),
         ty::ty_int(int_ty) => match int_ty {
-            ast::TyI => ("int".to_owned(), DW_ATE_signed),
-            ast::TyI8 => ("i8".to_owned(), DW_ATE_signed),
-            ast::TyI16 => ("i16".to_owned(), DW_ATE_signed),
-            ast::TyI32 => ("i32".to_owned(), DW_ATE_signed),
-            ast::TyI64 => ("i64".to_owned(), DW_ATE_signed)
+            ast::TyI => ("int".to_string(), DW_ATE_signed),
+            ast::TyI8 => ("i8".to_string(), DW_ATE_signed),
+            ast::TyI16 => ("i16".to_string(), DW_ATE_signed),
+            ast::TyI32 => ("i32".to_string(), DW_ATE_signed),
+            ast::TyI64 => ("i64".to_string(), DW_ATE_signed)
         },
         ty::ty_uint(uint_ty) => match uint_ty {
-            ast::TyU => ("uint".to_owned(), DW_ATE_unsigned),
-            ast::TyU8 => ("u8".to_owned(), DW_ATE_unsigned),
-            ast::TyU16 => ("u16".to_owned(), DW_ATE_unsigned),
-            ast::TyU32 => ("u32".to_owned(), DW_ATE_unsigned),
-            ast::TyU64 => ("u64".to_owned(), DW_ATE_unsigned)
+            ast::TyU => ("uint".to_string(), DW_ATE_unsigned),
+            ast::TyU8 => ("u8".to_string(), DW_ATE_unsigned),
+            ast::TyU16 => ("u16".to_string(), DW_ATE_unsigned),
+            ast::TyU32 => ("u32".to_string(), DW_ATE_unsigned),
+            ast::TyU64 => ("u64".to_string(), DW_ATE_unsigned)
         },
         ty::ty_float(float_ty) => match float_ty {
-            ast::TyF32 => ("f32".to_owned(), DW_ATE_float),
-            ast::TyF64 => ("f64".to_owned(), DW_ATE_float),
-            ast::TyF128 => ("f128".to_owned(), DW_ATE_float)
+            ast::TyF32 => ("f32".to_string(), DW_ATE_float),
+            ast::TyF64 => ("f64".to_string(), DW_ATE_float),
+            ast::TyF128 => ("f128".to_string(), DW_ATE_float)
         },
         _ => cx.sess().bug("debuginfo::basic_type_metadata - t is invalid type")
     };

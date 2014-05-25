@@ -389,10 +389,10 @@ fn test_show() {
 
 #[test]
 fn test_to_str() {
-    assert_eq!(parse("1.2.3").unwrap().to_str(), "1.2.3".to_owned());
-    assert_eq!(parse("1.2.3-alpha1").unwrap().to_str(), "1.2.3-alpha1".to_owned());
-    assert_eq!(parse("1.2.3+build.42").unwrap().to_str(), "1.2.3+build.42".to_owned());
-    assert_eq!(parse("1.2.3-alpha1+42").unwrap().to_str(), "1.2.3-alpha1+42".to_owned());
+    assert_eq!(parse("1.2.3").unwrap().to_str(), "1.2.3".to_string());
+    assert_eq!(parse("1.2.3-alpha1").unwrap().to_str(), "1.2.3-alpha1".to_string());
+    assert_eq!(parse("1.2.3+build.42").unwrap().to_str(), "1.2.3+build.42".to_string());
+    assert_eq!(parse("1.2.3-alpha1+42").unwrap().to_str(), "1.2.3-alpha1+42".to_string());
 }
 
 #[test]

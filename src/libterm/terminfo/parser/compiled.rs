@@ -217,7 +217,7 @@ pub fn parse(file: &mut io::Reader, longnames: bool)
     // don't read NUL
     let bytes = try!(file.read_exact(names_bytes as uint - 1));
     let names_str = match str::from_utf8(bytes.as_slice()) {
-        Some(s) => s.to_owned(),
+        Some(s) => s.to_string(),
         None => return Err("input not utf-8".to_strbuf()),
     };
 

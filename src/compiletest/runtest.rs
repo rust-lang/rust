@@ -1034,7 +1034,7 @@ fn compose_and_run_compiler(
 
     let aux_dir = aux_output_dir_name(config, testfile);
     // FIXME (#9639): This needs to handle non-utf8 paths
-    let extra_link_args = vec!("-L".to_owned(), aux_dir.as_str().unwrap().to_owned());
+    let extra_link_args = vec!("-L".to_string(), aux_dir.as_str().unwrap().to_owned());
 
     for rel_ab in props.aux_builds.iter() {
         let abs_ab = config.aux_base.join(rel_ab.as_slice());

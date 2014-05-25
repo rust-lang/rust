@@ -52,7 +52,7 @@ impl fmt::Show for CrateId {
 impl FromStr for CrateId {
     fn from_str(s: &str) -> Option<CrateId> {
         let pieces: Vec<&str> = s.splitn('#', 1).collect();
-        let path = pieces.get(0).to_owned();
+        let path = pieces.get(0).to_string();
 
         if path.as_slice().starts_with("/") || path.as_slice().ends_with("/") ||
             path.as_slice().starts_with(".") || path.is_empty() {
