@@ -46,7 +46,7 @@
 #![feature(macro_rules, phase)]
 
 extern crate regex;
-#[phase(syntax)]extern crate regex_macros;
+#[phase(plugin)]extern crate regex_macros;
 extern crate sync;
 
 use std::io;

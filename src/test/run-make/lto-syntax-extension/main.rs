@@ -11,7 +11,7 @@
 #![feature(phase)]
 
 extern crate lib;
-#[phase(syntax)] extern crate fourcc;
+#[phase(plugin)] extern crate fourcc;
 
 fn main() {
     fourcc!("1234");

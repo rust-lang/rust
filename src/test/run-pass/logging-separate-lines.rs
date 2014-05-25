@@ -13,7 +13,7 @@
 
 #![feature(phase)]
 
-#[phase(syntax, link)]
+#[phase(plugin, link)]
 extern crate log;
 
 use std::io::Command;

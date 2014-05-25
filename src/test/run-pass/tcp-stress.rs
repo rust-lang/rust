@@ -13,7 +13,7 @@
 // exec-env:RUST_LOG=debug
 
 #![feature(phase)]
-#[phase(syntax, link)]
+#[phase(plugin, link)]
 extern crate log;
 extern crate libc;
 extern crate green;
