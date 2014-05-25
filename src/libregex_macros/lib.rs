@@ -75,6 +75,7 @@ pub fn macro_registrar(register: |ast::Name, SyntaxExtension|) {
 /// It is strongly recommended to read the dynamic implementation in vm.rs
 /// first before trying to understand the code generator. The implementation
 /// strategy is identical and vm.rs has comments and will be easier to follow.
+#[allow(experimental)]
 fn native(cx: &mut ExtCtxt, sp: codemap::Span, tts: &[ast::TokenTree])
           -> Box<MacResult> {
     let regex = match parse(cx, tts) {
@@ -89,14 +90,14 @@ fn native(cx: &mut ExtCtxt, sp: codemap::Span, tts: &[ast::TokenTree])
             return DummyResult::any(sp)
         }
     };
-    let prog = match re.p {
-        Dynamic(ref prog) => prog.clone(),
+    let prog = match re {
+        Dynamic(Dynamic { ref prog, .. }) => prog.clone(),
         Native(_) => unreachable!(),
     };
 
     let mut gen = NfaGen {
         cx: &*cx, sp: sp, prog: prog,
-        names: re.names.clone(), original: re.original.clone(),
+        names: re.names_iter().collect(), original: re.as_str().to_strbuf(),
     };
     MacExpr::new(gen.code())
 }
@@ -119,7 +120,7 @@ impl<'a> NfaGen<'a> {
             |cx, name| match *name {
                 Some(ref name) => {
                     let name = name.as_slice();
-                    quote_expr!(cx, Some($name.to_strbuf()))
+                    quote_expr!(cx, Some($name))
                 }
                 None => cx.expr_none(self.sp),
             }
@@ -141,9 +142,11 @@ impl<'a> NfaGen<'a> {
         let regex = self.original.as_slice();
 
         quote_expr!(self.cx, {
+static CAP_NAMES: &'static [Option<&'static str>] = &$cap_names;
 fn exec<'t>(which: ::regex::native::MatchKind, input: &'t str,
             start: uint, end: uint) -> Vec<Option<uint>> {
     #![allow(unused_imports)]
+    #![allow(unused_mut)]
     use regex::native::{
         MatchKind, Exists, Location, Submatches,
         StepState, StepMatchEarlyReturn, StepMatch, StepContinue,
@@ -310,11 +313,11 @@ fn exec<'t>(which: ::regex::native::MatchKind, input: &'t str,
     }
 }
 
-::regex::Regex {
-    original: $regex.to_strbuf(),
-    names: vec!$cap_names,
-    p: ::regex::native::Native(exec),
-}
+::regex::native::Native(::regex::native::Native {
+    original: $regex,
+    names: CAP_NAMES,
+    prog: exec,
+})
         })
     }
 
