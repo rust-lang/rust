@@ -2236,7 +2236,7 @@ impl Printable for String {
 }
 
 # 1.print();
-# ("foo".to_strbuf()).print();
+# ("foo".to_string()).print();
 ~~~~
 
 Methods defined in an impl for a trait may be called just like
@@ -2286,7 +2286,7 @@ impl Printable for bool {}
 impl Printable for f32 {}
 
 # 1.print();
-# ("foo".to_strbuf()).print();
+# ("foo".to_string()).print();
 # true.print();
 # 3.14159.print();
 ~~~~

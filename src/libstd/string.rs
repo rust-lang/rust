@@ -328,7 +328,7 @@ impl StrAllocating for String {
     }
 
     #[inline]
-    fn into_strbuf(self) -> String {
+    fn into_string(self) -> String {
         self
     }
 }
@@ -362,7 +362,7 @@ impl<'a, S: Str> Equiv<S> for String {
 impl FromStr for String {
     #[inline]
     fn from_str(s: &str) -> Option<String> {
-        Some(s.to_strbuf())
+        Some(s.to_string())
     }
 }
 

@@ -609,7 +609,7 @@ impl<'a> BorrowckCtxt<'a> {
             }
             err_out_of_scope(..) => {
                 let msg = match opt_loan_path(&err.cmt) {
-                    None => "borrowed value".to_strbuf(),
+                    None => "borrowed value".to_string(),
                     Some(lp) => {
                         format_strbuf!("`{}`", self.loan_path_to_str(&*lp))
                     }
@@ -826,7 +826,7 @@ impl Repr for Loan {
                  self.kind,
                  self.gen_scope,
                  self.kill_scope,
-                 self.restrictions.repr(tcx))).to_strbuf()
+                 self.restrictions.repr(tcx))).to_string()
     }
 }
 
@@ -834,7 +834,7 @@ impl Repr for Restriction {
     fn repr(&self, tcx: &ty::ctxt) -> String {
         (format!("Restriction({}, {:x})",
                  self.loan_path.repr(tcx),
-                 self.set.bits as uint)).to_strbuf()
+                 self.set.bits as uint)).to_string()
     }
 }
 
@@ -842,17 +842,17 @@ impl Repr for LoanPath {
     fn repr(&self, tcx: &ty::ctxt) -> String {
         match self {
             &LpVar(id) => {
-                (format!("$({})", tcx.map.node_to_str(id))).to_strbuf()
+                (format!("$({})", tcx.map.node_to_str(id))).to_string()
             }
 
             &LpExtend(ref lp, _, LpDeref(_)) => {
-                (format!("{}.*", lp.repr(tcx))).to_strbuf()
+                (format!("{}.*", lp.repr(tcx))).to_string()
             }
 
             &LpExtend(ref lp, _, LpInterior(ref interior)) => {
                 (format!("{}.{}",
                          lp.repr(tcx),
-                         interior.repr(tcx))).to_strbuf()
+                         interior.repr(tcx))).to_string()
             }
         }
     }

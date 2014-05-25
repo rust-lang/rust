@@ -187,7 +187,7 @@ static PATH_ENTRY_SEPARATOR: &'static str = ":";
 
 /// Returns RUST_PATH as a string, without default paths added
 pub fn get_rust_path() -> Option<String> {
-    os::getenv("RUST_PATH").map(|x| x.to_strbuf())
+    os::getenv("RUST_PATH").map(|x| x.to_string())
 }
 
 /// Returns the value of RUST_PATH, as a list
@@ -251,26 +251,26 @@ fn find_libdir(sysroot: &Path) -> String {
 
     #[cfg(target_word_size = "64")]
     fn primary_libdir_name() -> String {
-        "lib64".to_strbuf()
+        "lib64".to_string()
     }
 
     #[cfg(target_word_size = "32")]
     fn primary_libdir_name() -> String {
-        "lib32".to_strbuf()
+        "lib32".to_string()
     }
 
     fn secondary_libdir_name() -> String {
-        "lib".to_strbuf()
+        "lib".to_string()
     }
 }
 
 #[cfg(windows)]
 fn find_libdir(_sysroot: &Path) -> String {
-    "bin".to_strbuf()
+    "bin".to_string()
 }
 
 // The name of rustc's own place to organize libraries.
 // Used to be "rustc", now the default is "rustlib"
 pub fn rustlibdir() -> String {
-    "rustlib".to_strbuf()
+    "rustlib".to_string()
 }

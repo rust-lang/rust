@@ -101,7 +101,7 @@ impl<'a> Clean<Crate> for visit_ast::RustdocVisitor<'a> {
         let id = link::find_crate_id(self.attrs.as_slice(),
                                      t_outputs.out_filestem.as_slice());
         Crate {
-            name: id.name.to_strbuf(),
+            name: id.name.to_string(),
             module: Some(self.module.clean()),
             externs: externs,
         }
@@ -117,7 +117,7 @@ pub struct ExternalCrate {
 impl Clean<ExternalCrate> for cstore::crate_metadata {
     fn clean(&self) -> ExternalCrate {
         ExternalCrate {
-            name: self.name.to_strbuf(),
+            name: self.name.to_string(),
             attrs: decoder::get_crate_attributes(self.data()).clean()
                                                              .move_iter()
                                                              .collect(),
@@ -240,7 +240,7 @@ impl Clean<Item> for doctree::Module {
         let name = if self.name.is_some() {
             self.name.unwrap().clean()
         } else {
-            "".to_strbuf()
+            "".to_string()
         };
         let mut foreigns = Vec::new();
         for subforeigns in self.foreigns.clean().move_iter() {
@@ -305,12 +305,12 @@ pub enum Attribute {
 impl Clean<Attribute> for ast::MetaItem {
     fn clean(&self) -> Attribute {
         match self.node {
-            ast::MetaWord(ref s) => Word(s.get().to_strbuf()),
+            ast::MetaWord(ref s) => Word(s.get().to_string()),
             ast::MetaList(ref s, ref l) => {
-                List(s.get().to_strbuf(), l.clean().move_iter().collect())
+                List(s.get().to_string(), l.clean().move_iter().collect())
             }
             ast::MetaNameValue(ref s, ref v) => {
-                NameValue(s.get().to_strbuf(), lit_to_str(v))
+                NameValue(s.get().to_string(), lit_to_str(v))
             }
         }
     }
@@ -404,7 +404,7 @@ fn external_path(name: &str) -> Path {
     Path {
         global: false,
         segments: vec![PathSegment {
-            name: name.to_strbuf(),
+            name: name.to_string(),
             lifetimes: Vec::new(),
             types: Vec::new(),
         }]
@@ -430,7 +430,7 @@ impl Clean<TyParamBound> for ty::BuiltinBound {
                 (tcx.lang_items.share_trait().unwrap(), external_path("Share")),
         };
         let fqn = csearch::get_item_path(tcx, did);
-        let fqn = fqn.move_iter().map(|i| i.to_str().to_strbuf()).collect();
+        let fqn = fqn.move_iter().map(|i| i.to_str().to_string()).collect();
         cx.external_paths.borrow_mut().get_mut_ref().insert(did,
                                                             (fqn, TypeTrait));
         TraitBound(ResolvedPath {
@@ -449,7 +449,7 @@ impl Clean<TyParamBound> for ty::TraitRef {
             core::NotTyped(_) => return RegionBound,
         };
         let fqn = csearch::get_item_path(tcx, self.def_id);
-        let fqn = fqn.move_iter().map(|i| i.to_str().to_strbuf())
+        let fqn = fqn.move_iter().map(|i| i.to_str().to_string())
                      .collect::<Vec<String>>();
         let path = external_path(fqn.last().unwrap().as_slice());
         cx.external_paths.borrow_mut().get_mut_ref().insert(self.def_id,
@@ -503,22 +503,22 @@ impl Lifetime {
 
 impl Clean<Lifetime> for ast::Lifetime {
     fn clean(&self) -> Lifetime {
-        Lifetime(token::get_name(self.name).get().to_strbuf())
+        Lifetime(token::get_name(self.name).get().to_string())
     }
 }
 
 impl Clean<Lifetime> for ty::RegionParameterDef {
     fn clean(&self) -> Lifetime {
-        Lifetime(token::get_name(self.name).get().to_strbuf())
+        Lifetime(token::get_name(self.name).get().to_string())
     }
 }
 
 impl Clean<Option<Lifetime>> for ty::Region {
     fn clean(&self) -> Option<Lifetime> {
         match *self {
-            ty::ReStatic => Some(Lifetime("static".to_strbuf())),
+            ty::ReStatic => Some(Lifetime("static".to_string())),
             ty::ReLateBound(_, ty::BrNamed(_, name)) =>
-                Some(Lifetime(token::get_name(name).get().to_strbuf())),
+                Some(Lifetime(token::get_name(name).get().to_string())),
 
             ty::ReLateBound(..) |
             ty::ReEarlyBound(..) |
@@ -749,7 +749,7 @@ impl<'a> Clean<FnDecl> for (ast::DefId, &'a ty::FnSig) {
                     Argument {
                         type_: t.clean(),
                         id: 0,
-                        name: names.next().unwrap_or("".to_strbuf()),
+                        name: names.next().unwrap_or("".to_string()),
                     }
                 }).collect(),
             },
@@ -1013,7 +1013,7 @@ impl Clean<Type> for ty::t {
                     lifetimes: Vec::new(), type_params: Vec::new()
                 },
                 decl: (ast_util::local_def(0), &fty.sig).clean(),
-                abi: fty.abi.to_str().to_strbuf(),
+                abi: fty.abi.to_str(),
             }),
             ty::ty_closure(ref fty) => {
                 let decl = box ClosureDecl {
@@ -1038,7 +1038,7 @@ impl Clean<Type> for ty::t {
                 };
                 let fqn = csearch::get_item_path(tcx, did);
                 let fqn: Vec<String> = fqn.move_iter().map(|i| {
-                    i.to_str().to_strbuf()
+                    i.to_str().to_string()
                 }).collect();
                 let mut path = external_path(fqn.last()
                                                 .unwrap()
@@ -1302,7 +1302,7 @@ pub struct Span {
 impl Span {
     fn empty() -> Span {
         Span {
-            filename: "".to_strbuf(),
+            filename: "".to_string(),
             loline: 0, locol: 0,
             hiline: 0, hicol: 0,
         }
@@ -1317,7 +1317,7 @@ impl Clean<Span> for syntax::codemap::Span {
         let lo = cm.lookup_char_pos(self.lo);
         let hi = cm.lookup_char_pos(self.hi);
         Span {
-            filename: filename.to_strbuf(),
+            filename: filename.to_string(),
             loline: lo.line,
             locol: lo.col.to_uint(),
             hiline: hi.line,
@@ -1376,13 +1376,13 @@ fn path_to_str(p: &ast::Path) -> String {
 
 impl Clean<String> for ast::Ident {
     fn clean(&self) -> String {
-        token::get_ident(*self).get().to_strbuf()
+        token::get_ident(*self).get().to_string()
     }
 }
 
 impl Clean<String> for ast::Name {
     fn clean(&self) -> String {
-        token::get_name(*self).get().to_strbuf()
+        token::get_name(*self).get().to_string()
     }
 }
 
@@ -1425,7 +1425,7 @@ impl Clean<BareFunctionDecl> for ast::BareFnTy {
                 type_params: Vec::new(),
             },
             decl: self.decl.clean(),
-            abi: self.abi.to_str().to_strbuf(),
+            abi: self.abi.to_str().to_string(),
         }
     }
 }
@@ -1582,7 +1582,7 @@ impl Clean<ViewItemInner> for ast::ViewItem_ {
             &ast::ViewItemExternCrate(ref i, ref p, ref id) => {
                 let string = match *p {
                     None => None,
-                    Some((ref x, _)) => Some(x.get().to_strbuf()),
+                    Some((ref x, _)) => Some(x.get().to_string()),
                 };
                 ExternCrate(i.clean(), string, *id)
             }
@@ -1659,7 +1659,7 @@ impl Clean<Item> for ast::ForeignItem {
                 ForeignStaticItem(Static {
                     type_: ty.clean(),
                     mutability: if mutbl {Mutable} else {Immutable},
-                    expr: "".to_strbuf(),
+                    expr: "".to_string(),
                 })
             }
         };
@@ -1686,8 +1686,8 @@ impl ToSource for syntax::codemap::Span {
         let ctxt = super::ctxtkey.get().unwrap();
         let cm = ctxt.sess().codemap().clone();
         let sn = match cm.span_to_snippet(*self) {
-            Some(x) => x.to_strbuf(),
-            None    => "".to_strbuf()
+            Some(x) => x.to_string(),
+            None    => "".to_string()
         };
         debug!("got snippet {}", sn);
         sn
@@ -1696,16 +1696,16 @@ impl ToSource for syntax::codemap::Span {
 
 fn lit_to_str(lit: &ast::Lit) -> String {
     match lit.node {
-        ast::LitStr(ref st, _) => st.get().to_strbuf(),
+        ast::LitStr(ref st, _) => st.get().to_string(),
         ast::LitBinary(ref data) => format_strbuf!("{:?}", data.as_slice()),
         ast::LitChar(c) => format_strbuf!("'{}'", c),
-        ast::LitInt(i, _t) => i.to_str().to_strbuf(),
-        ast::LitUint(u, _t) => u.to_str().to_strbuf(),
-        ast::LitIntUnsuffixed(i) => i.to_str().to_strbuf(),
-        ast::LitFloat(ref f, _t) => f.get().to_strbuf(),
-        ast::LitFloatUnsuffixed(ref f) => f.get().to_strbuf(),
-        ast::LitBool(b) => b.to_str().to_strbuf(),
-        ast::LitNil => "".to_strbuf(),
+        ast::LitInt(i, _t) => i.to_str().to_string(),
+        ast::LitUint(u, _t) => u.to_str().to_string(),
+        ast::LitIntUnsuffixed(i) => i.to_str().to_string(),
+        ast::LitFloat(ref f, _t) => f.get().to_string(),
+        ast::LitFloatUnsuffixed(ref f) => f.get().to_string(),
+        ast::LitBool(b) => b.to_str().to_string(),
+        ast::LitNil => "".to_string(),
     }
 }
 
@@ -1714,19 +1714,19 @@ fn name_from_pat(p: &ast::Pat) -> String {
     debug!("Trying to get a name from pattern: {:?}", p);
 
     match p.node {
-        PatWild => "_".to_strbuf(),
-        PatWildMulti => "..".to_strbuf(),
+        PatWild => "_".to_string(),
+        PatWildMulti => "..".to_string(),
         PatIdent(_, ref p, _) => path_to_str(p),
         PatEnum(ref p, _) => path_to_str(p),
         PatStruct(..) => fail!("tried to get argument name from pat_struct, \
                                 which is not allowed in function arguments"),
-        PatTup(..) => "(tuple arg NYI)".to_strbuf(),
+        PatTup(..) => "(tuple arg NYI)".to_string(),
         PatUniq(p) => name_from_pat(p),
         PatRegion(p) => name_from_pat(p),
         PatLit(..) => {
             warn!("tried to get argument name from PatLit, \
                   which is silly in function arguments");
-            "()".to_strbuf()
+            "()".to_string()
         },
         PatRange(..) => fail!("tried to get argument name from PatRange, \
                               which is not allowed in function arguments"),

@@ -101,7 +101,7 @@ impl fmt::Show for AsciiArt {
         // Convert each line into a string.
         let lines = self.lines.iter()
                               .map(|line| {
-                                  str::from_chars(line.as_slice()).to_strbuf()
+                                  str::from_chars(line.as_slice()).to_string()
                               })
                               .collect::<Vec<String>>();
 

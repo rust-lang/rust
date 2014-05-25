@@ -233,7 +233,7 @@ pub fn unindent_comments(krate: clean::Crate) -> plugins::PluginResult {
                 match attr {
                     &clean::NameValue(ref x, ref s)
                             if "doc" == x.as_slice() => {
-                        avec.push(clean::NameValue("doc".to_strbuf(),
+                        avec.push(clean::NameValue("doc".to_string(),
                                                    unindent(s.as_slice())))
                     }
                     x => avec.push(x.clone())
@@ -269,7 +269,7 @@ pub fn collapse_docs(krate: clean::Crate) -> plugins::PluginResult {
                 _ => true
             }).map(|x| x.clone()).collect();
             if docstr.len() > 0 {
-                a.push(clean::NameValue("doc".to_strbuf(), docstr));
+                a.push(clean::NameValue("doc".to_string(), docstr));
             }
             i.attrs = a;
             self.fold_item_recur(i)
@@ -325,18 +325,18 @@ pub fn unindent(s: &str) -> String {
     });
 
     if lines.len() >= 1 {
-        let mut unindented = vec![ lines.get(0).trim().to_strbuf() ];
+        let mut unindented = vec![ lines.get(0).trim().to_string() ];
         unindented.push_all(lines.tail().iter().map(|&line| {
             if line.is_whitespace() {
-                line.to_strbuf()
+                line.to_string()
             } else {
                 assert!(line.len() >= min_indent);
-                line.slice_from(min_indent).to_strbuf()
+                line.slice_from(min_indent).to_string()
             }
         }).collect::<Vec<_>>().as_slice());
-        unindented.connect("\n").to_strbuf()
+        unindented.connect("\n").to_string()
     } else {
-        s.to_strbuf()
+        s.to_string()
     }
 }
 

@@ -12,9 +12,9 @@
 struct Foo(int, int, String);
 
 pub fn main() {
-  let a1 = Foo(5, 6, "abc".to_strbuf());
-  let a2 = Foo(5, 6, "abc".to_strbuf());
-  let b = Foo(5, 7, "def".to_strbuf());
+  let a1 = Foo(5, 6, "abc".to_string());
+  let a2 = Foo(5, 6, "abc".to_string());
+  let b = Foo(5, 7, "def".to_string());
 
   assert!(a1 == a1);
   assert!(a2 == a1);

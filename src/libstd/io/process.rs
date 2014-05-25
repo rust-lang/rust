@@ -601,7 +601,7 @@ mod tests {
     iotest!(fn stdout_works() {
         let mut cmd = Command::new("echo");
         cmd.arg("foobar").stdout(CreatePipe(false, true));
-        assert_eq!(run_output(cmd), "foobar\n".to_strbuf());
+        assert_eq!(run_output(cmd), "foobar\n".to_string());
     })
 
     #[cfg(unix, not(target_os="android"))]
@@ -610,7 +610,7 @@ mod tests {
         cmd.arg("-c").arg("pwd")
            .cwd(&Path::new("/"))
            .stdout(CreatePipe(false, true));
-        assert_eq!(run_output(cmd), "/\n".to_strbuf());
+        assert_eq!(run_output(cmd), "/\n".to_string());
     })
 
     #[cfg(unix, not(target_os="android"))]
@@ -624,7 +624,7 @@ mod tests {
         drop(p.stdin.take());
         let out = read_all(p.stdout.get_mut_ref() as &mut Reader);
         assert!(p.wait().unwrap().success());
-        assert_eq!(out, "foobar\n".to_strbuf());
+        assert_eq!(out, "foobar\n".to_string());
     })
 
     #[cfg(not(target_os="android"))]
@@ -682,7 +682,7 @@ mod tests {
         let output_str = str::from_utf8(output.as_slice()).unwrap();
 
         assert!(status.success());
-        assert_eq!(output_str.trim().to_strbuf(), "hello".to_strbuf());
+        assert_eq!(output_str.trim().to_string(), "hello".to_string());
         // FIXME #7224
         if !running_on_valgrind() {
             assert_eq!(error, Vec::new());
@@ -719,7 +719,7 @@ mod tests {
         let output_str = str::from_utf8(output.as_slice()).unwrap();
 
         assert!(status.success());
-        assert_eq!(output_str.trim().to_strbuf(), "hello".to_strbuf());
+        assert_eq!(output_str.trim().to_string(), "hello".to_string());
         // FIXME #7224
         if !running_on_valgrind() {
             assert_eq!(error, Vec::new());
@@ -749,7 +749,7 @@ mod tests {
         let prog = pwd_cmd().spawn().unwrap();
 
         let output = str::from_utf8(prog.wait_with_output().unwrap()
-                                        .output.as_slice()).unwrap().to_strbuf();
+                                        .output.as_slice()).unwrap().to_string();
         let parent_dir = os::getcwd();
         let child_dir = Path::new(output.as_slice().trim());
 
@@ -768,8 +768,8 @@ mod tests {
         let prog = pwd_cmd().cwd(&parent_dir).spawn().unwrap();
 
         let output = str::from_utf8(prog.wait_with_output().unwrap()
-                                        .output.as_slice()).unwrap().to_strbuf();
-        let child_dir = Path::new(output.as_slice().trim().into_strbuf());
+                                        .output.as_slice()).unwrap().to_string();
+        let child_dir = Path::new(output.as_slice().trim().into_string());
 
         let parent_stat = parent_dir.stat().unwrap();
         let child_stat = child_dir.stat().unwrap();
@@ -803,7 +803,7 @@ mod tests {
 
         let prog = env_cmd().spawn().unwrap();
         let output = str::from_utf8(prog.wait_with_output().unwrap()
-                                        .output.as_slice()).unwrap().to_strbuf();
+                                        .output.as_slice()).unwrap().to_string();
 
         let r = os::env();
         for &(ref k, ref v) in r.iter() {
@@ -821,12 +821,12 @@ mod tests {
         let mut prog = env_cmd().spawn().unwrap();
         let output = str::from_utf8(prog.wait_with_output()
                                         .unwrap().output.as_slice())
-                                   .unwrap().to_strbuf();
+                                   .unwrap().to_string();
 
         let r = os::env();
         for &(ref k, ref v) in r.iter() {
             // don't check android RANDOM variables
-            if *k != "RANDOM".to_strbuf() {
+            if *k != "RANDOM".to_string() {
                 assert!(output.as_slice()
                               .contains(format!("{}={}",
                                                 *k,
@@ -843,7 +843,7 @@ mod tests {
         let new_env = box [("RUN_TEST_NEW_ENV", "123")];
         let prog = env_cmd().env(new_env).spawn().unwrap();
         let result = prog.wait_with_output().unwrap();
-        let output = str::from_utf8_lossy(result.output.as_slice()).into_strbuf();
+        let output = str::from_utf8_lossy(result.output.as_slice()).into_string();
 
         assert!(output.as_slice().contains("RUN_TEST_NEW_ENV=123"),
                 "didn't find RUN_TEST_NEW_ENV inside of:\n\n{}", output);

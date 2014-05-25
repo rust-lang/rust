@@ -163,7 +163,7 @@ pub fn register_static(ccx: &CrateContext,
                 });
                 lib::llvm::SetLinkage(g1, linkage);
 
-                let mut real_name = "_rust_extern_with_linkage_".to_strbuf();
+                let mut real_name = "_rust_extern_with_linkage_".to_string();
                 real_name.push_str(ident.get());
                 let g2 = real_name.with_c_str(|buf| {
                     llvm::LLVMAddGlobal(ccx.llmod, llty.to_ref(), buf)
@@ -465,7 +465,7 @@ pub fn trans_foreign_mod(ccx: &CrateContext, foreign_mod: &ast::ForeignMod) {
         }
 
         ccx.item_symbols.borrow_mut().insert(foreign_item.id,
-                                             lname.get().to_strbuf());
+                                             lname.get().to_string());
     }
 }
 

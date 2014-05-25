@@ -175,7 +175,7 @@ fn test_write() {
         writeln!(w, "{foo}", foo="bar");
     }
 
-    let s = str::from_utf8(buf.unwrap().as_slice()).unwrap().to_owned();
+    let s = str::from_utf8(buf.unwrap().as_slice()).unwrap().to_string();
     t!(s, "34helloline\nbar\n");
 }
 
@@ -199,7 +199,7 @@ fn test_format_args() {
         format_args!(|args| { write!(w, "{}", args); }, "test");
         format_args!(|args| { write!(w, "{}", args); }, "{test}", test=3);
     }
-    let s = str::from_utf8(buf.unwrap().as_slice()).unwrap().to_owned();
+    let s = str::from_utf8(buf.unwrap().as_slice()).unwrap().to_string();
     t!(s, "1test3");
 
     let s = format_args!(fmt::format, "hello {}", "world");
@@ -222,5 +222,5 @@ fn test_order() {
     }
     assert_eq!(format!("{} {} {a} {b} {} {c}",
                        foo(), foo(), foo(), a=foo(), b=foo(), c=foo()),
-               "1 2 4 5 3 6".to_strbuf());
+               "1 2 4 5 3 6".to_string());
 }

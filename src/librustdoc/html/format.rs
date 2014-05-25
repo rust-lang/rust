@@ -151,12 +151,12 @@ fn resolved_path(w: &mut fmt::Formatter, did: ast::DefId, p: &clean::Path,
     path(w, p, print_all,
         |cache, loc| {
             if ast_util::is_local(did) || cache.paths.contains_key(&did) {
-                Some(("../".repeat(loc.len())).to_strbuf())
+                Some(("../".repeat(loc.len())).to_string())
             } else {
                 match *cache.extern_locations.get(&did.krate) {
-                    render::Remote(ref s) => Some(s.to_strbuf()),
+                    render::Remote(ref s) => Some(s.to_string()),
                     render::Local => {
-                        Some(("../".repeat(loc.len())).to_strbuf())
+                        Some(("../".repeat(loc.len())).to_string())
                     }
                     render::Unknown => None,
                 }
@@ -323,7 +323,7 @@ impl fmt::Show for clean::Type {
                            {arrow, select, yes{ -&gt; {ret}} other{}}",
                        style = FnStyleSpace(decl.fn_style),
                        lifetimes = if decl.lifetimes.len() == 0 {
-                           "".to_strbuf()
+                           "".to_string()
                        } else {
                            format!("&lt;{:#}&gt;", decl.lifetimes)
                        },
@@ -364,17 +364,17 @@ impl fmt::Show for clean::Type {
                            {arrow, select, yes{ -&gt; {ret}} other{}}",
                        style = FnStyleSpace(decl.fn_style),
                        lifetimes = if decl.lifetimes.len() == 0 {
-                           "".to_strbuf()
+                           "".to_string()
                        } else {
                            format_strbuf!("&lt;{:#}&gt;", decl.lifetimes)
                        },
                        args = decl.decl.inputs,
                        bounds = if decl.bounds.len() == 0 {
-                           "".to_strbuf()
+                           "".to_string()
                        } else {
                            let mut m = decl.bounds
                                            .iter()
-                                           .map(|s| s.to_str().to_strbuf());
+                                           .map(|s| s.to_str().to_string());
                            format_strbuf!(
                                ": {}",
                                m.collect::<Vec<String>>().connect(" + "))
@@ -386,8 +386,8 @@ impl fmt::Show for clean::Type {
                 write!(f, "{}{}fn{}{}",
                        FnStyleSpace(decl.fn_style),
                        match decl.abi.as_slice() {
-                           "" => " extern ".to_strbuf(),
-                           "\"Rust\"" => "".to_strbuf(),
+                           "" => " extern ".to_string(),
+                           "\"Rust\"" => "".to_string(),
                            s => format_strbuf!(" extern {} ", s)
                        },
                        decl.generics,
@@ -423,7 +423,7 @@ impl fmt::Show for clean::Type {
             clean::BorrowedRef{ lifetime: ref l, mutability, type_: ref ty} => {
                 let lt = match *l {
                     Some(ref l) => format!("{} ", *l),
-                    _ => "".to_strbuf(),
+                    _ => "".to_string(),
                 };
                 write!(f, "&amp;{}{}{}",
                        lt,

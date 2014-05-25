@@ -111,11 +111,11 @@ impl Token {
 
 pub fn tok_str(t: Token) -> String {
     match t {
-        String(s, len) => return format!("STR({},{})", s, len).to_strbuf(),
-        Break(_) => return "BREAK".to_strbuf(),
-        Begin(_) => return "BEGIN".to_strbuf(),
-        End => return "END".to_strbuf(),
-        Eof => return "EOF".to_strbuf()
+        String(s, len) => return format!("STR({},{})", s, len).to_string(),
+        Break(_) => return "BREAK".to_string(),
+        Begin(_) => return "BEGIN".to_string(),
+        End => return "END".to_string(),
+        Eof => return "EOF".to_string()
     }
 }
 
@@ -142,7 +142,7 @@ pub fn buf_str(toks: Vec<Token>,
         i %= n;
     }
     s.push_char(']');
-    return s.into_strbuf();
+    return s.into_string();
 }
 
 pub enum PrintStackBreak {
@@ -627,15 +627,15 @@ pub fn end(p: &mut Printer) -> io::IoResult<()> { p.pretty_print(End) }
 pub fn eof(p: &mut Printer) -> io::IoResult<()> { p.pretty_print(Eof) }
 
 pub fn word(p: &mut Printer, wrd: &str) -> io::IoResult<()> {
-    p.pretty_print(String(/* bad */ wrd.to_strbuf(), wrd.len() as int))
+    p.pretty_print(String(/* bad */ wrd.to_string(), wrd.len() as int))
 }
 
 pub fn huge_word(p: &mut Printer, wrd: &str) -> io::IoResult<()> {
-    p.pretty_print(String(/* bad */ wrd.to_strbuf(), SIZE_INFINITY))
+    p.pretty_print(String(/* bad */ wrd.to_string(), SIZE_INFINITY))
 }
 
 pub fn zero_word(p: &mut Printer, wrd: &str) -> io::IoResult<()> {
-    p.pretty_print(String(/* bad */ wrd.to_strbuf(), 0))
+    p.pretty_print(String(/* bad */ wrd.to_string(), 0))
 }
 
 pub fn spaces(p: &mut Printer, n: uint) -> io::IoResult<()> {

@@ -409,7 +409,7 @@ mod tests {
             set_stdout(box w);
             println!("hello!");
         });
-        assert_eq!(r.read_to_str().unwrap(), "hello!\n".to_strbuf());
+        assert_eq!(r.read_to_str().unwrap(), "hello!\n".to_string());
     })
 
     iotest!(fn capture_stderr() {

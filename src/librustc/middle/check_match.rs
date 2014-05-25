@@ -164,8 +164,8 @@ fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, pats: Vec<@Pat> ) {
             match ty::get(ty).sty {
                 ty::ty_bool => {
                     match *ctor {
-                        val(const_bool(true)) => Some("true".to_strbuf()),
-                        val(const_bool(false)) => Some("false".to_strbuf()),
+                        val(const_bool(true)) => Some("true".to_string()),
+                        val(const_bool(false)) => Some("false".to_string()),
                         _ => None
                     }
                 }
@@ -180,7 +180,7 @@ fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, pats: Vec<@Pat> ) {
                         Some(v) => {
                             Some(token::get_ident(v.name).get()
                                                          .to_str()
-                                                         .into_strbuf())
+                                                         .into_string())
                         }
                         None => {
                             fail!("check_exhaustive: bad variant in ctor")
@@ -201,7 +201,7 @@ fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, pats: Vec<@Pat> ) {
     };
     let msg = format_strbuf!("non-exhaustive patterns{}", match ext {
         Some(ref s) => format_strbuf!(": {} not covered", *s),
-        None => "".to_strbuf()
+        None => "".to_string()
     });
     cx.tcx.sess.span_err(sp, msg.as_slice());
 }

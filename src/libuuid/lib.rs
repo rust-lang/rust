@@ -329,7 +329,7 @@ impl Uuid {
             *s.get_mut(i*2+0) = digit.as_slice()[0];
             *s.get_mut(i*2+1) = digit.as_slice()[1];
         }
-        str::from_utf8(s.as_slice()).unwrap().to_strbuf()
+        str::from_utf8(s.as_slice()).unwrap().to_string()
     }
 
     /// Returns a string of hexadecimal digits, separated into groups with a hyphen.
@@ -732,7 +732,7 @@ mod test {
 
         let u = Uuid::from_fields(d1, d2, d3, d4.as_slice());
 
-        let expected = "a1a2a3a4b1b2c1c2d1d2d3d4d5d6d7d8".to_strbuf();
+        let expected = "a1a2a3a4b1b2c1c2d1d2d3d4d5d6d7d8".to_string();
         let result = u.to_simple_str();
         assert!(result == expected);
     }
@@ -743,7 +743,7 @@ mod test {
                    0xd1, 0xd2, 0xd3, 0xd4, 0xd5, 0xd6, 0xd7, 0xd8 );
 
         let u = Uuid::from_bytes(b.as_slice()).unwrap();
-        let expected = "a1a2a3a4b1b2c1c2d1d2d3d4d5d6d7d8".to_strbuf();
+        let expected = "a1a2a3a4b1b2c1c2d1d2d3d4d5d6d7d8".to_string();
 
         assert!(u.to_simple_str() == expected);
     }

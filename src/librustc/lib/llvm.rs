@@ -1873,7 +1873,7 @@ impl TypeNames {
     }
 
     pub fn associate_type(&self, s: &str, t: &Type) {
-        assert!(self.named_types.borrow_mut().insert(s.to_strbuf(),
+        assert!(self.named_types.borrow_mut().insert(s.to_string(),
                                                      t.to_ref()));
     }
 
@@ -1886,13 +1886,13 @@ impl TypeNames {
             let s = llvm::LLVMTypeToString(ty.to_ref());
             let ret = from_c_str(s);
             free(s as *mut c_void);
-            ret.to_strbuf()
+            ret.to_string()
         }
     }
 
     pub fn types_to_str(&self, tys: &[Type]) -> String {
         let strs: Vec<String> = tys.iter().map(|t| self.type_to_str(*t)).collect();
-        format_strbuf!("[{}]", strs.connect(",").to_strbuf())
+        format_strbuf!("[{}]", strs.connect(",").to_string())
     }
 
     pub fn val_to_str(&self, val: ValueRef) -> String {
@@ -1900,7 +1900,7 @@ impl TypeNames {
             let s = llvm::LLVMValueToString(val);
             let ret = from_c_str(s);
             free(s as *mut c_void);
-            ret.to_strbuf()
+            ret.to_string()
         }
     }
 }

@@ -27,8 +27,8 @@ use std::u32;
 pub fn path_name_i(idents: &[Ident]) -> String {
     // FIXME: Bad copies (#2543 -- same for everything else that says "bad")
     idents.iter().map(|i| {
-        token::get_ident(*i).get().to_strbuf()
-    }).collect::<Vec<String>>().connect("::").to_strbuf()
+        token::get_ident(*i).get().to_string()
+    }).collect::<Vec<String>>().connect("::").to_string()
 }
 
 // totally scary function: ignores all but the last element, should have
@@ -156,8 +156,8 @@ pub fn int_ty_to_str(t: IntTy, val: Option<i64>, mode: SuffixMode) -> String {
         // cast to a u64 so we can correctly print INT64_MIN. All integral types
         // are parsed as u64, so we wouldn't want to print an extra negative
         // sign.
-        Some(n) => format!("{}{}", n as u64, s).to_strbuf(),
-        None => s.to_strbuf()
+        Some(n) => format!("{}{}", n as u64, s).to_string(),
+        None => s.to_string()
     }
 }
 
@@ -186,8 +186,8 @@ pub fn uint_ty_to_str(t: UintTy, val: Option<u64>, mode: SuffixMode) -> String {
     };
 
     match val {
-        Some(n) => format!("{}{}", n, s).to_strbuf(),
-        None => s.to_strbuf()
+        Some(n) => format!("{}{}", n, s).to_string(),
+        None => s.to_string()
     }
 }
 
@@ -202,9 +202,9 @@ pub fn uint_ty_max(t: UintTy) -> u64 {
 
 pub fn float_ty_to_str(t: FloatTy) -> String {
     match t {
-        TyF32 => "f32".to_strbuf(),
-        TyF64 => "f64".to_strbuf(),
-        TyF128 => "f128".to_strbuf(),
+        TyF32 => "f32".to_string(),
+        TyF64 => "f64".to_string(),
+        TyF128 => "f128".to_string(),
     }
 }
 

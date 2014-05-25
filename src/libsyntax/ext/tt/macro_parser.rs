@@ -372,9 +372,9 @@ pub fn parse(sess: &ParseSess,
                 }
                 return Success(nameize(sess, ms, v.as_slice()));
             } else if eof_eis.len() > 1u {
-                return Error(sp, "ambiguity: multiple successful parses".to_strbuf());
+                return Error(sp, "ambiguity: multiple successful parses".to_string());
             } else {
-                return Failure(sp, "unexpected end of macro invocation".to_strbuf());
+                return Failure(sp, "unexpected end of macro invocation".to_string());
             }
         } else {
             if (bb_eis.len() > 0u && next_eis.len() > 0u)
@@ -384,17 +384,17 @@ pub fn parse(sess: &ParseSess,
                       MatchNonterminal(bind, name, _) => {
                         (format!("{} ('{}')",
                                 token::get_ident(name),
-                                token::get_ident(bind))).to_strbuf()
+                                token::get_ident(bind))).to_string()
                       }
                       _ => fail!()
                     } }).collect::<Vec<String>>().connect(" or ");
                 return Error(sp, format!(
                     "local ambiguity: multiple parsing options: \
                      built-in NTs {} or {} other options.",
-                    nts, next_eis.len()).to_strbuf());
+                    nts, next_eis.len()).to_string());
             } else if bb_eis.len() == 0u && next_eis.len() == 0u {
                 return Failure(sp, format!("no rules expected the token `{}`",
-                            token::to_str(&tok)).to_strbuf());
+                            token::to_str(&tok)).to_string());
             } else if next_eis.len() > 0u {
                 /* Now process the next token */
                 while next_eis.len() > 0u {

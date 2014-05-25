@@ -18,9 +18,9 @@ fn main() {
         _ => ()
     }
 
-    let x: Vec<String> = vec!["foo".to_strbuf(),
-                              "bar".to_strbuf(),
-                              "baz".to_strbuf()];
+    let x: Vec<String> = vec!["foo".to_string(),
+                              "bar".to_string(),
+                              "baz".to_string()];
     let x: &[String] = x.as_slice();
     match x {
         [a, _, _, ..] => { println!("{}", a); }

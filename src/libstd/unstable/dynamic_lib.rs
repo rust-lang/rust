@@ -240,7 +240,7 @@ pub mod dl {
             } else {
                 Err(CString::new(last_error, false).as_str()
                                                    .unwrap()
-                                                   .to_strbuf())
+                                                   .to_string())
             };
 
             ret

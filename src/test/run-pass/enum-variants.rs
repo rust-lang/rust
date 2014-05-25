@@ -18,8 +18,8 @@ enum Animal {
 }
 
 pub fn main() {
-    let mut a: Animal = Dog("Cocoa".to_strbuf(), 37.2);
-    a = Cat{ name: "Spotty".to_strbuf(), weight: 2.7 };
+    let mut a: Animal = Dog("Cocoa".to_string(), 37.2);
+    a = Cat{ name: "Spotty".to_string(), weight: 2.7 };
     // permuting the fields should work too
-    let _c = Cat { weight: 3.1, name: "Spreckles".to_strbuf() };
+    let _c = Cat { weight: 3.1, name: "Spreckles".to_string() };
 }

@@ -24,7 +24,7 @@ fn unwrap(x: X) -> String {
 }
 
 fn main() {
-    let x = X { x: "hello".to_strbuf() };
+    let x = X { x: "hello".to_string() };
     let y = unwrap(x);
     println!("contents: {}", y);
 }

@@ -23,6 +23,6 @@ impl S {
 }
 
 pub fn main() {
-    let x = S { x: "Hello!".to_strbuf() };
+    let x = S { x: "Hello!".to_string() };
     x.foo();
 }

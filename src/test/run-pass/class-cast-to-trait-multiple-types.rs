@@ -93,7 +93,7 @@ fn annoy_neighbors(critter: &mut noisy) {
 }
 
 pub fn main() {
-  let mut nyan: cat = cat(0u, 2, "nyan".to_strbuf());
+  let mut nyan: cat = cat(0u, 2, "nyan".to_string());
   let mut whitefang: dog = dog();
   annoy_neighbors(&mut nyan);
   annoy_neighbors(&mut whitefang);

@@ -548,14 +548,14 @@ pub trait Poly {
 pub fn format(args: &Arguments) -> string::String{
     let mut output = io::MemWriter::new();
     let _ = write!(&mut output, "{}", args);
-    str::from_utf8(output.unwrap().as_slice()).unwrap().into_strbuf()
+    str::from_utf8(output.unwrap().as_slice()).unwrap().into_string()
 }
 
 /// Temporary transition utility
 pub fn format_strbuf(args: &Arguments) -> string::String {
     let mut output = io::MemWriter::new();
     let _ = write!(&mut output, "{}", args);
-    str::from_utf8(output.unwrap().as_slice()).unwrap().into_strbuf()
+    str::from_utf8(output.unwrap().as_slice()).unwrap().into_string()
 }
 
 impl<T> Poly for T {

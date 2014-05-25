@@ -139,7 +139,7 @@ impl<'a> Archive<'a> {
         let output = str::from_utf8(output.output.as_slice()).unwrap();
         // use lines_any because windows delimits output with `\r\n` instead of
         // just `\n`
-        output.lines_any().map(|s| s.to_strbuf()).collect()
+        output.lines_any().map(|s| s.to_string()).collect()
     }
 
     fn add_archive(&mut self, archive: &Path, name: &str,

@@ -407,7 +407,7 @@ impl<'a> Parser<'a> {
             let mut i = tokens.iter();
             // This might be a sign we need a connect method on Iterator.
             let b = i.next()
-                     .map_or("".to_strbuf(), |t| Parser::token_to_str(t));
+                     .map_or("".to_string(), |t| Parser::token_to_str(t));
             i.fold(b, |b,a| {
                 let mut b = b;
                 b.push_str("`, `");
@@ -4171,7 +4171,7 @@ impl<'a> Parser<'a> {
                     self.span_err(id_sp,
                                   "cannot declare a new module at this location");
                     let this_module = match self.mod_path_stack.last() {
-                        Some(name) => name.get().to_strbuf(),
+                        Some(name) => name.get().to_string(),
                         None => self.root_module_name.get_ref().clone(),
                     };
                     self.span_note(id_sp,
@@ -4212,7 +4212,7 @@ impl<'a> Parser<'a> {
         };
 
         self.eval_src_mod_from_path(file_path, owns_directory,
-                                    mod_string.get().to_strbuf(), id_sp)
+                                    mod_string.get().to_string(), id_sp)
     }
 
     fn eval_src_mod_from_path(&mut self,

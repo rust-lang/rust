@@ -43,7 +43,7 @@ fn replace_newline_with_backslash_l(s: String) -> String {
         if last_two.as_slice() != ['\\', 'l'] {
             s = s.append("\\l");
         }
-        s.to_strbuf()
+        s.to_string()
     } else {
         s
     }

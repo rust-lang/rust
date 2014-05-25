@@ -107,7 +107,7 @@ pub fn basic_options() -> Options {
         output_types: Vec::new(),
         addl_lib_search_paths: RefCell::new(HashSet::new()),
         maybe_sysroot: None,
-        target_triple: driver::host_triple().to_strbuf(),
+        target_triple: driver::host_triple().to_string(),
         cfg: Vec::new(),
         test: false,
         parse_only: false,
@@ -252,14 +252,14 @@ macro_rules! cgoptions(
 
         fn parse_opt_string(slot: &mut Option<String>, v: Option<&str>) -> bool {
             match v {
-                Some(s) => { *slot = Some(s.to_strbuf()); true },
+                Some(s) => { *slot = Some(s.to_string()); true },
                 None => false,
             }
         }
 
         fn parse_string(slot: &mut String, v: Option<&str>) -> bool {
             match v {
-                Some(s) => { *slot = s.to_strbuf(); true },
+                Some(s) => { *slot = s.to_string(); true },
                 None => false,
             }
         }
@@ -269,7 +269,7 @@ macro_rules! cgoptions(
             match v {
                 Some(s) => {
                     for s in s.words() {
-                        slot.push(s.to_strbuf());
+                        slot.push(s.to_string());
                     }
                     true
                 },
@@ -287,9 +287,9 @@ cgoptions!(
         "system linker to link outputs with"),
     link_args: Vec<String> = (Vec::new(), parse_list,
         "extra arguments to pass to the linker (space separated)"),
-    target_cpu: String = ("generic".to_strbuf(), parse_string,
+    target_cpu: String = ("generic".to_string(), parse_string,
         "select target processor (llc -mcpu=help for details)"),
-    target_feature: String = ("".to_strbuf(), parse_string,
+    target_feature: String = ("".to_string(), parse_string,
         "target specific attributes (llc -mattr=help for details)"),
     passes: Vec<String> = (Vec::new(), parse_list,
         "a list of extra LLVM passes to run (space separated)"),
@@ -311,7 +311,7 @@ cgoptions!(
         "prefer dynamic linking to static linking"),
     no_integrated_as: bool = (false, parse_bool,
         "use an external assembler rather than LLVM's integrated one"),
-    relocation_model: String = ("pic".to_strbuf(), parse_string,
+    relocation_model: String = ("pic".to_string(), parse_string,
          "choose the relocation model to use (llc -relocation-model for details)"),
 )
 
@@ -557,8 +557,8 @@ pub fn optgroups() -> Vec<getopts::OptGroup> {
 // Convert strings provided as --cfg [cfgspec] into a crate_cfg
 fn parse_cfgspecs(cfgspecs: Vec<String> ) -> ast::CrateConfig {
     cfgspecs.move_iter().map(|s| {
-        parse::parse_meta_from_source_str("cfgspec".to_strbuf(),
-                                          s.to_strbuf(),
+        parse::parse_meta_from_source_str("cfgspec".to_string(),
+                                          s.to_string(),
                                           Vec::new(),
                                           &parse::new_parse_sess())
     }).collect::<ast::CrateConfig>()
@@ -602,7 +602,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
                            .collect::<Vec<_>>()
                            .append(matches.opt_strs(level_name).as_slice());
         for lint_name in flags.iter() {
-            let lint_name = lint_name.replace("-", "_").into_strbuf();
+            let lint_name = lint_name.replace("-", "_").into_string();
             match lint_dict.find_equiv(&lint_name) {
               None => {
                 early_error(format!("unknown {} flag: {}",
@@ -667,8 +667,8 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
 
     let sysroot_opt = matches.opt_str("sysroot").map(|m| Path::new(m));
     let target = match matches.opt_str("target") {
-        Some(supplied_target) => supplied_target.to_strbuf(),
-        None => driver::host_triple().to_strbuf(),
+        Some(supplied_target) => supplied_target.to_string(),
+        None => driver::host_triple().to_string(),
     };
     let opt_level = {
         if (debugging_opts & NO_OPT) != 0 {
@@ -723,7 +723,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
 
     let cfg = parse_cfgspecs(matches.opt_strs("cfg")
                                     .move_iter()
-                                    .map(|x| x.to_strbuf())
+                                    .map(|x| x.to_string())
                                     .collect());
     let test = matches.opt_present("test");
     let write_dependency_info = (matches.opt_present("dep-info"),
@@ -787,7 +787,7 @@ mod test {
     #[test]
     fn test_switch_implies_cfg_test() {
         let matches =
-            &match getopts(["--test".to_strbuf()], optgroups().as_slice()) {
+            &match getopts(["--test".to_string()], optgroups().as_slice()) {
               Ok(m) => m,
               Err(f) => fail!("test_switch_implies_cfg_test: {}", f.to_err_msg())
             };
@@ -802,7 +802,7 @@ mod test {
     #[test]
     fn test_switch_implies_cfg_test_unless_cfg_test() {
         let matches =
-            &match getopts(["--test".to_strbuf(), "--cfg=test".to_strbuf()],
+            &match getopts(["--test".to_string(), "--cfg=test".to_string()],
                            optgroups().as_slice()) {
               Ok(m) => m,
               Err(f) => {

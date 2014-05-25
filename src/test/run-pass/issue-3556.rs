@@ -35,13 +35,13 @@ pub fn main()
 // assert!(check_strs(fmt!("%?", ETag(@~["foo".to_string()], @"bar".to_string())),
 //                    "ETag(@~[ ~\"foo\" ], @~\"bar\")"));
 
-    let t = Text(@"foo".to_strbuf());
-    let u = Section(@vec!("alpha".to_strbuf()),
+    let t = Text(@"foo".to_string());
+    let u = Section(@vec!("alpha".to_string()),
                           true,
                           @vec!(t),
-                          @"foo".to_strbuf(),
-                    @"foo".to_strbuf(), @"foo".to_strbuf(), @"foo".to_strbuf(),
-                    @"foo".to_strbuf());
+                          @"foo".to_string(),
+                    @"foo".to_string(), @"foo".to_string(), @"foo".to_string(),
+                    @"foo".to_string());
     let v = format!("{:?}", u);    // this is the line that causes the seg fault
     assert!(v.len() > 0);
 }

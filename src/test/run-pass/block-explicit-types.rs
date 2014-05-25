@@ -10,5 +10,5 @@
 
 pub fn main() {
     fn as_buf<T>(s: String, f: |String| -> T) -> T { f(s) }
-    as_buf("foo".to_strbuf(), |foo: String| -> () println!("{}", foo) );
+    as_buf("foo".to_string(), |foo: String| -> () println!("{}", foo) );
 }

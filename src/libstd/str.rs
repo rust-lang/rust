@@ -726,13 +726,13 @@ pub trait StrAllocating: Str {
 
     /// Convert `self` into a `String`.
     #[inline]
-    fn to_strbuf(&self) -> String {
+    fn to_string(&self) -> String {
         String::from_str(self.as_slice())
     }
 
     /// Convert `self` into a `String`, not making a copy if possible.
     #[inline]
-    fn into_strbuf(self) -> String {
+    fn into_string(self) -> String {
         self.into_owned()
     }
 
@@ -1009,7 +1009,7 @@ mod tests {
         assert!(data.slice(2u, 4u).find_str("ab").is_none());
 
         let string = "ประเทศไทย中华Việt Nam";
-        let mut data = string.to_strbuf();
+        let mut data = string.to_string();
         data.push_str(string);
         assert!(data.as_slice().find_str("ไท华").is_none());
         assert_eq!(data.as_slice().slice(0u, 43u).find_str(""), Some(0u));
@@ -1532,10 +1532,10 @@ mod tests {
 
     #[test]
     fn vec_str_conversions() {
-        let s1: String = "All mimsy were the borogoves".to_strbuf();
+        let s1: String = "All mimsy were the borogoves".to_string();
 
         let v: Vec<u8> = Vec::from_slice(s1.as_bytes());
-        let s2: String = from_utf8(v.as_slice()).unwrap().to_strbuf();
+        let s2: String = from_utf8(v.as_slice()).unwrap().to_string();
         let mut i: uint = 0u;
         let n1: uint = s1.len();
         let n2: uint = v.len();
@@ -1968,30 +1968,30 @@ mod tests {
 
     #[test]
     fn test_nfd_chars() {
-        assert_eq!("abc".nfd_chars().collect::<String>(), "abc".to_strbuf());
-        assert_eq!("\u1e0b\u01c4".nfd_chars().collect::<String>(), "d\u0307\u01c4".to_strbuf());
-        assert_eq!("\u2026".nfd_chars().collect::<String>(), "\u2026".to_strbuf());
-        assert_eq!("\u2126".nfd_chars().collect::<String>(), "\u03a9".to_strbuf());
-        assert_eq!("\u1e0b\u0323".nfd_chars().collect::<String>(), "d\u0323\u0307".to_strbuf());
-        assert_eq!("\u1e0d\u0307".nfd_chars().collect::<String>(), "d\u0323\u0307".to_strbuf());
-        assert_eq!("a\u0301".nfd_chars().collect::<String>(), "a\u0301".to_strbuf());
-        assert_eq!("\u0301a".nfd_chars().collect::<String>(), "\u0301a".to_strbuf());
-        assert_eq!("\ud4db".nfd_chars().collect::<String>(), "\u1111\u1171\u11b6".to_strbuf());
-        assert_eq!("\uac1c".nfd_chars().collect::<String>(), "\u1100\u1162".to_strbuf());
+        assert_eq!("abc".nfd_chars().collect::<String>(), "abc".to_string());
+        assert_eq!("\u1e0b\u01c4".nfd_chars().collect::<String>(), "d\u0307\u01c4".to_string());
+        assert_eq!("\u2026".nfd_chars().collect::<String>(), "\u2026".to_string());
+        assert_eq!("\u2126".nfd_chars().collect::<String>(), "\u03a9".to_string());
+        assert_eq!("\u1e0b\u0323".nfd_chars().collect::<String>(), "d\u0323\u0307".to_string());
+        assert_eq!("\u1e0d\u0307".nfd_chars().collect::<String>(), "d\u0323\u0307".to_string());
+        assert_eq!("a\u0301".nfd_chars().collect::<String>(), "a\u0301".to_string());
+        assert_eq!("\u0301a".nfd_chars().collect::<String>(), "\u0301a".to_string());
+        assert_eq!("\ud4db".nfd_chars().collect::<String>(), "\u1111\u1171\u11b6".to_string());
+        assert_eq!("\uac1c".nfd_chars().collect::<String>(), "\u1100\u1162".to_string());
     }
 
     #[test]
     fn test_nfkd_chars() {
-        assert_eq!("abc".nfkd_chars().collect::<String>(), "abc".to_strbuf());
-        assert_eq!("\u1e0b\u01c4".nfkd_chars().collect::<String>(), "d\u0307DZ\u030c".to_strbuf());
-        assert_eq!("\u2026".nfkd_chars().collect::<String>(), "...".to_strbuf());
-        assert_eq!("\u2126".nfkd_chars().collect::<String>(), "\u03a9".to_strbuf());
-        assert_eq!("\u1e0b\u0323".nfkd_chars().collect::<String>(), "d\u0323\u0307".to_strbuf());
-        assert_eq!("\u1e0d\u0307".nfkd_chars().collect::<String>(), "d\u0323\u0307".to_strbuf());
-        assert_eq!("a\u0301".nfkd_chars().collect::<String>(), "a\u0301".to_strbuf());
-        assert_eq!("\u0301a".nfkd_chars().collect::<String>(), "\u0301a".to_strbuf());
-        assert_eq!("\ud4db".nfkd_chars().collect::<String>(), "\u1111\u1171\u11b6".to_strbuf());
-        assert_eq!("\uac1c".nfkd_chars().collect::<String>(), "\u1100\u1162".to_strbuf());
+        assert_eq!("abc".nfkd_chars().collect::<String>(), "abc".to_string());
+        assert_eq!("\u1e0b\u01c4".nfkd_chars().collect::<String>(), "d\u0307DZ\u030c".to_string());
+        assert_eq!("\u2026".nfkd_chars().collect::<String>(), "...".to_string());
+        assert_eq!("\u2126".nfkd_chars().collect::<String>(), "\u03a9".to_string());
+        assert_eq!("\u1e0b\u0323".nfkd_chars().collect::<String>(), "d\u0323\u0307".to_string());
+        assert_eq!("\u1e0d\u0307".nfkd_chars().collect::<String>(), "d\u0323\u0307".to_string());
+        assert_eq!("a\u0301".nfkd_chars().collect::<String>(), "a\u0301".to_string());
+        assert_eq!("\u0301a".nfkd_chars().collect::<String>(), "\u0301a".to_string());
+        assert_eq!("\ud4db".nfkd_chars().collect::<String>(), "\u1111\u1171\u11b6".to_string());
+        assert_eq!("\uac1c".nfkd_chars().collect::<String>(), "\u1100\u1162".to_string());
     }
 
     #[test]
@@ -2113,7 +2113,7 @@ mod tests {
     #[test]
     fn test_from_str() {
       let owned: Option<String> = from_str("string");
-      assert_eq!(owned, Some("string".to_strbuf()));
+      assert_eq!(owned, Some("string".to_string()));
     }
 
     #[test]
@@ -2129,8 +2129,8 @@ mod tests {
         let o = Owned("abcde".to_string());
         assert_eq!(o.len(), 5);
         assert_eq!(o.as_slice(), "abcde");
-        assert_eq!(o.to_str(), "abcde".to_strbuf());
-        assert_eq!(format_strbuf!("{}", o), "abcde".to_strbuf());
+        assert_eq!(o.to_str(), "abcde".to_string());
+        assert_eq!(format_strbuf!("{}", o), "abcde".to_string());
         assert!(o.lt(&Slice("bcdef")));
         assert_eq!(Owned("".to_string()), Default::default());
 
