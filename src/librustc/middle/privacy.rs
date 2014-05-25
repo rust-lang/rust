@@ -297,6 +297,23 @@ impl<'a> Visitor<()> for EmbargoVisitor<'a> {
                 }
             }
 
+            ast::ItemTy(ref ty, _) if public_first => {
+                match ty.node {
+                    ast::TyPath(_, _, id) => {
+                        match self.tcx.def_map.borrow().get_copy(&id) {
+                            ast::DefPrimTy(..) => {},
+                            def => {
+                                let did = def_id_of_def(def);
+                                if is_local(did) {
+                                    self.exported_items.insert(did.node);
+                                }
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            }
+
             _ => {}
         }
 
