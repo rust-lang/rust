@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -256,7 +256,7 @@ pub fn filemap_to_tts(sess: &ParseSess, filemap: Rc<FileMap>)
     // parsing tt's probably shouldn't require a parser at all.
     let cfg = Vec::new();
     let srdr = lexer::new_string_reader(&sess.span_diagnostic, filemap);
-    let mut p1 = Parser(sess, cfg, box srdr);
+    let mut p1 = Parser::new(sess, cfg, box srdr);
     p1.parse_all_token_trees()
 }
 
@@ -265,7 +265,7 @@ pub fn tts_to_parser<'a>(sess: &'a ParseSess,
                          tts: Vec<ast::TokenTree>,
                          cfg: ast::CrateConfig) -> Parser<'a> {
     let trdr = lexer::new_tt_reader(&sess.span_diagnostic, None, tts);
-    Parser(sess, cfg, box trdr)
+    Parser::new(sess, cfg, box trdr)
 }
 
 // abort if necessary
