@@ -20,6 +20,9 @@ mod native_bench;
 #[path = "tests.rs"]
 mod native_tests;
 
+#[cfg(not(stage1))]
+mod native_static;
+
 // Due to macro scoping rules, this definition only applies for the modules
 // defined below. Effectively, it allows us to use the same tests for both
 // native and dynamic regexes.
