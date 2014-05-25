@@ -127,10 +127,12 @@ fn key_to_key_value<T: 'static>(key: Key<T>) -> *u8 {
 /// The task-local data can be accessed through this value, and when this
 /// structure is dropped it will return the borrow on the data.
 pub struct Ref<T> {
-    ptr: &'static T,
-    key: Key<T>,
-    index: uint,
-    nosend: marker::NoSend,
+    // FIXME #12808: strange names to try to avoid interfering with
+    // field accesses of the contained type via Deref
+    _ptr: &'static T,
+    _key: Key<T>,
+    _index: uint,
+    _nosend: marker::NoSend,
 }
 
 impl<T: 'static> KeyValue<T> {
@@ -233,7 +235,7 @@ impl<T: 'static> KeyValue<T> {
                 let data = data as *Box<LocalData:Send> as *raw::TraitObject;
                 &mut *((*data).data as *mut T)
             };
-            Ref { ptr: ptr, index: pos, nosend: marker::NoSend, key: self }
+            Ref { _ptr: ptr, _index: pos, _nosend: marker::NoSend, _key: self }
         })
     }
 
@@ -252,7 +254,7 @@ impl<T: 'static> KeyValue<T> {
 }
 
 impl<T: 'static> Deref<T> for Ref<T> {
-    fn deref<'a>(&'a self) -> &'a T { self.ptr }
+    fn deref<'a>(&'a self) -> &'a T { self._ptr }
 }
 
 #[unsafe_destructor]
@@ -260,7 +262,7 @@ impl<T: 'static> Drop for Ref<T> {
     fn drop(&mut self) {
         let map = unsafe { get_local_map() };
 
-        let (_, _, ref mut loan) = *map.get_mut(self.index).get_mut_ref();
+        let (_, _, ref mut loan) = *map.get_mut(self._index).get_mut_ref();
         *loan -= 1;
     }
 }
