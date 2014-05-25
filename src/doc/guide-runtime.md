@@ -45,7 +45,7 @@ The runtime is designed with a few goals in mind:
   support as well.
 
 * The runtime should not enforce separate "modes of compilation" in order to
-  work in multiple circumstances. Is it an explicit goal that you compile a Rust
+  work in multiple circumstances. It is an explicit goal that you compile a Rust
   library once and use it forever (in all environments).
 
 * The runtime should be fast. There should be no architectural design barrier
