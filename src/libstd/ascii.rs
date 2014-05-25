@@ -591,13 +591,10 @@ mod tests {
     fn test_ascii_vec() {
         let test = &[40u8, 32u8, 59u8];
         assert_eq!(test.to_ascii(), v2ascii!([40, 32, 59]));
-        assert_eq!("( ;".to_ascii(),                 v2ascii!([40, 32, 59]));
-        // FIXME: #5475 borrowchk error, owned vectors do not live long enough
-        // if chained-from directly
+        assert_eq!("( ;".to_ascii(), v2ascii!([40, 32, 59]));
         let v = box [40u8, 32u8, 59u8];
         assert_eq!(v.to_ascii(), v2ascii!([40, 32, 59]));
-        let v = "( ;".to_strbuf();
-        assert_eq!(v.as_slice().to_ascii(), v2ascii!([40, 32, 59]));
+        assert_eq!("( ;".to_strbuf().as_slice().to_ascii(), v2ascii!([40, 32, 59]));
 
         assert_eq!("abCDef&?#".to_ascii().to_lower().into_str(), "abcdef&?#".to_strbuf());
         assert_eq!("abCDef&?#".to_ascii().to_upper().into_str(), "ABCDEF&?#".to_strbuf());
