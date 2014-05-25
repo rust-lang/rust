@@ -220,16 +220,13 @@ impl<T> Deque<T> for DList<T> {
     /// Provide a reference to the back element, or None if the list is empty
     #[inline]
     fn back<'a>(&'a self) -> Option<&'a T> {
-        let tmp = self.list_tail.resolve_immut(); // FIXME: #3511: shouldn't need variable
-        tmp.as_ref().map(|tail| &tail.value)
+        self.list_tail.resolve_immut().as_ref().map(|tail| &tail.value)
     }
 
     /// Provide a mutable reference to the back element, or None if the list is empty
     #[inline]
     fn back_mut<'a>(&'a mut self) -> Option<&'a mut T> {
-        let tmp: Option<&'a mut Node<T>> =
-            self.list_tail.resolve(); // FIXME: #3511: shouldn't need variable
-        tmp.map(|tail| &mut tail.value)
+        self.list_tail.resolve().map(|tail| &mut tail.value)
     }
 
     /// Add an element first in the list
@@ -449,8 +446,7 @@ impl<'a, A> DoubleEndedIterator<&'a A> for Items<'a, A> {
         if self.nelem == 0 {
             return None;
         }
-        let tmp = self.tail.resolve_immut(); // FIXME: #3511: shouldn't need variable
-        tmp.as_ref().map(|prev| {
+        self.tail.resolve_immut().as_ref().map(|prev| {
             self.nelem -= 1;
             self.tail = prev.prev;
             &prev.value
