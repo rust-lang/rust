@@ -1328,7 +1328,7 @@ impl Drop for MemoryMap {
 
 #[cfg(target_os = "linux")]
 pub mod consts {
-    pub use std::os::arch_consts::ARCH;
+    pub use os::arch_consts::ARCH;
 
     pub static FAMILY: &'static str = "unix";
 
@@ -1359,7 +1359,7 @@ pub mod consts {
 
 #[cfg(target_os = "macos")]
 pub mod consts {
-    pub use std::os::arch_consts::ARCH;
+    pub use os::arch_consts::ARCH;
 
     pub static FAMILY: &'static str = "unix";
 
@@ -1390,7 +1390,7 @@ pub mod consts {
 
 #[cfg(target_os = "freebsd")]
 pub mod consts {
-    pub use std::os::arch_consts::ARCH;
+    pub use os::arch_consts::ARCH;
 
     pub static FAMILY: &'static str = "unix";
 
@@ -1421,7 +1421,7 @@ pub mod consts {
 
 #[cfg(target_os = "android")]
 pub mod consts {
-    pub use std::os::arch_consts::ARCH;
+    pub use os::arch_consts::ARCH;
 
     pub static FAMILY: &'static str = "unix";
 
@@ -1452,7 +1452,7 @@ pub mod consts {
 
 #[cfg(target_os = "win32")]
 pub mod consts {
-    pub use std::os::arch_consts::ARCH;
+    pub use os::arch_consts::ARCH;
 
     pub static FAMILY: &'static str = "windows";
 
