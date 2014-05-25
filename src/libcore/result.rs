@@ -637,11 +637,10 @@ pub fn fold_<T,E,Iter:Iterator<Result<T,E>>>(iterator: Iter) -> Result<(),E> {
 #[cfg(test)]
 mod tests {
     use realstd::vec::Vec;
-    use realstd::string::String;
 
     use result::{collect, fold, fold_};
     use prelude::*;
-    use realstd::str::{Str, StrAllocating};
+    use realstd::str::Str;
     use iter::range;
 
     pub fn op1() -> Result<int, &'static str> { Ok(666) }

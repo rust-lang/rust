@@ -8,11 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate rand;
-use rand::{task_rng, Rng};
-
 use std::{char, os, str};
 use std::io::{File, Command};
+use std::rand::{task_rng, Rng};
 
 // creates unicode_input_multiple_files_{main,chars}.rs, where the
 // former imports the latter. `_chars` just contains an indentifier

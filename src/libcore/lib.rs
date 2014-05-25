@@ -59,7 +59,6 @@
 #[cfg(test)] extern crate realcore = "core";
 #[cfg(test)] extern crate libc;
 #[cfg(test)] extern crate native;
-#[cfg(test)] extern crate rand;
 #[cfg(test)] extern crate realstd = "std";
 
 #[cfg(test)] pub use cmp = realcore::cmp;

@@ -11,10 +11,8 @@
 // Multi-language Perlin noise benchmark.
 // See https://github.com/nsf/pnoise for timings and alternative implementations.
 
-extern crate rand;
-
 use std::f32::consts::PI;
-use rand::{Rng, StdRng};
+use std::rand::{Rng, StdRng};
 
 struct Vec2 {
     x: f32,

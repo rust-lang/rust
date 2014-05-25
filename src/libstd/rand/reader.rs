@@ -10,7 +10,10 @@
 
 //! A wrapper around any Reader to treat it as an RNG.
 
-use Rng;
+use container::Container;
+use io::Reader;
+use rand::Rng;
+use result::{Ok, Err};
 
 /// An RNG that reads random bytes straight from a `Reader`. This will
 /// work best with an infinite reader, but this is not required.
@@ -20,7 +23,7 @@ use Rng;
 /// # Example
 ///
 /// ```rust
-/// use rand::{reader, Rng};
+/// use std::rand::{reader, Rng};
 /// use std::io::MemReader;
 ///
 /// let mut rng = reader::ReaderRng::new(MemReader::new(vec!(1,2,3,4,5,6,7,8)));
@@ -70,10 +73,12 @@ impl<R: Reader> Rng for ReaderRng<R> {
 #[cfg(test)]
 #[allow(deprecated_owned_vector)]
 mod test {
+    use prelude::*;
+
     use super::ReaderRng;
-    use std::io::MemReader;
-    use std::mem;
-    use Rng;
+    use io::MemReader;
+    use mem;
+    use rand::Rng;
 
     #[test]
     fn test_reader_rng_u64() {

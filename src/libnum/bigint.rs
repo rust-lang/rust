@@ -1372,7 +1372,7 @@ mod biguint_tests {
     use std::num::{Zero, One, FromStrRadix, ToStrRadix};
     use std::num::{ToPrimitive, FromPrimitive};
     use std::num::CheckedDiv;
-    use rand::{task_rng};
+    use std::rand::task_rng;
     use std::u64;
 
     #[test]
@@ -2220,7 +2220,7 @@ mod bigint_tests {
     use std::num::CheckedDiv;
     use std::num::{Zero, One, FromStrRadix, ToStrRadix};
     use std::num::{ToPrimitive, FromPrimitive};
-    use rand::{task_rng};
+    use std::rand::task_rng;
     use std::u64;
 
     #[test]
