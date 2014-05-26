@@ -135,17 +135,21 @@ at INTERPOLATED tokens */
 macro_rules! maybe_whole_expr (
     ($p:expr) => (
         {
-            let mut maybe_path = match ($p).token {
-                INTERPOLATED(token::NtPath(ref pt)) => Some((**pt).clone()),
-                _ => None,
-            };
-            let found = match ($p).token {
+            let found = match $p.token {
                 INTERPOLATED(token::NtExpr(e)) => {
                     Some(e)
                 }
                 INTERPOLATED(token::NtPath(_)) => {
-                    let pt = maybe_path.take_unwrap();
-                    Some($p.mk_expr(($p).span.lo, ($p).span.hi, ExprPath(pt)))
+                    // FIXME: The following avoids an issue with lexical borrowck scopes,
+                    // but the clone is unfortunate.
+                    let pt = match $p.token {
+                        INTERPOLATED(token::NtPath(ref pt)) => (**pt).clone(),
+                        _ => unreachable!()
+                    };
+                    Some($p.mk_expr($p.span.lo, $p.span.hi, ExprPath(pt)))
+                }
+                INTERPOLATED(token::NtBlock(b)) => {
+                    Some($p.mk_expr($p.span.lo, $p.span.hi, ExprBlock(b)))
                 }
                 _ => None
             };
