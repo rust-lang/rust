@@ -1780,16 +1780,20 @@ pub fn get_fn_llvm_attributes(ccx: &CrateContext, fn_ty: ty::t) -> Vec<(uint, u6
 
     for (idx, &t) in fn_sig.inputs.iter().enumerate().map(|(i, v)| (i + first_arg_offset, v)) {
         match ty::get(t).sty {
+            // this needs to be first to prevent fat pointers from falling through
+            _ if !type_is_immediate(ccx, t) => {
+                // For non-immediate arguments the callee gets its own copy of
+                // the value on the stack, so there are no aliases. It's also
+                // program-invisible so can't possibly capture
+                attrs.push((idx, lib::llvm::NoAliasAttribute as u64));
+                attrs.push((idx, lib::llvm::NoCaptureAttribute as u64));
+                attrs.push((idx, lib::llvm::NonNullAttribute as u64));
+            }
             // `~` pointer parameters never alias because ownership is transferred
             ty::ty_uniq(_) => {
                 attrs.push((idx, lib::llvm::NoAliasAttribute as u64));
                 attrs.push((idx, lib::llvm::NonNullAttribute as u64));
             }
-            // These are not really pointers but pairs, (pointer, len)
-            ty::ty_rptr(_, ty::mt { ty: it, .. }) |
-            ty::ty_rptr(_, ty::mt { ty: it, .. }) if match ty::get(it).sty {
-                ty::ty_str | ty::ty_vec(..) => true, _ => false
-            } => {}
             // `&mut` pointer parameters never alias other parameters, or mutable global data
             ty::ty_rptr(b, mt) if mt.mutbl == ast::MutMutable => {
                 attrs.push((idx, lib::llvm::NoAliasAttribute as u64));
@@ -1811,15 +1815,7 @@ pub fn get_fn_llvm_attributes(ccx: &CrateContext, fn_ty: ty::t) -> Vec<(uint, u6
             ty::ty_rptr(_, _) => {
                 attrs.push((idx, lib::llvm::NonNullAttribute as u64));
             }
-            _ => {
-                // For non-immediate arguments the callee gets its own copy of
-                // the value on the stack, so there are no aliases. It's also
-                // program-invisible so can't possibly capture
-                if !type_is_immediate(ccx, t) {
-                    attrs.push((idx, lib::llvm::NoAliasAttribute as u64));
-                    attrs.push((idx, lib::llvm::NoCaptureAttribute as u64));
-                }
-            }
+            _ => ()
         }
     }
 
