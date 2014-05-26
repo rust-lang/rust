@@ -669,7 +669,8 @@ fn expand_non_macro_stmt(s: &Stmt, fld: &mut MacroExpander)
                         pat: pat,
                         init: init,
                         id: id,
-                        span: span
+                        span: span,
+                        source: source,
                     } = **local;
                     // expand the pat (it might contain exprs... #:(o)>
                     let expanded_pat = fld.fold_pat(pat);
@@ -703,6 +704,7 @@ fn expand_non_macro_stmt(s: &Stmt, fld: &mut MacroExpander)
                             init: new_init_opt,
                             id: id,
                             span: span,
+                            source: source
                         };
                     SmallVector::one(@Spanned {
                         node: StmtDecl(@Spanned {
