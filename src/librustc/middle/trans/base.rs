@@ -1766,6 +1766,7 @@ pub fn get_fn_llvm_attributes(ccx: &CrateContext, fn_ty: ty::t) -> Vec<(uint, u6
                 if !type_is_immediate(ccx, t) {
                     attrs.push((idx, lib::llvm::NoAliasAttribute as u64));
                     attrs.push((idx, lib::llvm::NoCaptureAttribute as u64));
+                    attrs.push((idx, lib::llvm::NonNullAttribute as u64));
                 }
             }
         }
