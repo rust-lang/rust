@@ -57,13 +57,24 @@ they don't contain references to names that aren't actually defined.
 
 # Getting started
 
-> *Warning:* The tarball and installer links are for the most recent
-> release, not master. To use master, you **must** build from [git].
+There are two ways to install the Rust compiler: by building from source or
+by downloading prebuilt binaries or installers for your platform. The
+[install page][rust-install] contains links to download binaries for both
+the nightly build and the most current Rust major release. For Windows and
+OS X, the install page provides links to native installers. 
 
-The Rust compiler currently must be built from a [tarball] or [git], unless
-you are on Windows, in which case using the [installer][win-exe] is
-recommended. There is a list of community-maintained nightly builds and
-packages [on the wiki][wiki-packages].
+> *Note:* Windows users should read the detailed
+> [Getting started][wiki-start] notes on the wiki. Even when using
+> the binary installer, the Windows build requires a MinGW installation,
+> the precise details of which are not discussed here.
+
+For Linux and OS X, the install page provides links to binary tarballs.
+To install the Rust compiler from the from a binary tarball, download 
+the binary package, extract it, and execute the `install.sh` script in 
+the root directory of the package.
+
+To build the Rust compiler from source, you will need to obtain the source through
+[Git][git] or by downloading the source package from the [install page][rust-install].
 
 Since the Rust compiler is written in Rust, it must be built by
 a precompiled "snapshot" version of itself (made in an earlier state
@@ -79,13 +90,9 @@ Snapshot binaries are currently built and tested on several platforms:
 You may find that other platforms work, but these are our "tier 1"
 supported build environments that are most likely to work.
 
-> *Note:* Windows users should read the detailed
-> [Getting started][wiki-start] notes on the wiki. Even when using
-> the binary installer, the Windows build requires a MinGW installation,
-> the precise details of which are not discussed here.
-
 [wiki-start]: https://github.com/mozilla/rust/wiki/Note-getting-started-developing-Rust
 [git]: https://github.com/mozilla/rust.git
+[rust-install]: http://www.rust-lang.org/install.html
 
 To build from source you will also need the following prerequisite
 packages:
