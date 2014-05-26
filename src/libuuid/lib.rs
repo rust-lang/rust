@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -795,14 +795,16 @@ mod test {
 
     #[test]
     fn test_serialize_round_trip() {
-        use serialize::ebml;
+        use serialize::ebml::Doc;
+        use serialize::ebml::writer::Encoder;
+        use serialize::ebml::reader::Decoder;
         use serialize::{Encodable, Decodable};
 
         let u = Uuid::new_v4();
         let mut wr = MemWriter::new();
-        let _ = u.encode(&mut ebml::writer::Encoder(&mut wr));
-        let doc = ebml::reader::Doc(wr.get_ref());
-        let u2 = Decodable::decode(&mut ebml::reader::Decoder(doc)).unwrap();
+        let _ = u.encode(&mut Encoder::new(&mut wr));
+        let doc = Doc::new(wr.get_ref());
+        let u2 = Decodable::decode(&mut Decoder::new(doc)).unwrap();
         assert_eq!(u, u2);
     }
 
