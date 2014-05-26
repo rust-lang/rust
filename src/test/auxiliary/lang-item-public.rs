@@ -11,7 +11,7 @@
 #![no_std]
 
 #[lang="fail_"]
-fn fail(_: *i8, _: *i8, _: uint) -> ! { loop {} }
+fn fail(_: &'static str, _: &'static str, _: uint) -> ! { loop {} }
 
 #[lang = "stack_exhausted"]
 extern fn stack_exhausted() {}
