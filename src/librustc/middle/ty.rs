@@ -14,6 +14,7 @@ use back::svh::Svh;
 use driver::session::Session;
 use metadata::csearch;
 use mc = middle::mem_categorization;
+use middle::lint;
 use middle::const_eval;
 use middle::dependency_format;
 use middle::lang_items::{ExchangeHeapLangItem, OpaqueStructLangItem};
@@ -237,8 +238,8 @@ pub enum AutoRef {
 /// generates so that so that it can be reused and doesn't have to be redone
 /// later on.
 pub struct ctxt {
-    // Specifically use a speedy hash algorithm for this hash map, it's used
-    // quite often.
+    /// Specifically use a speedy hash algorithm for this hash map, it's used
+    /// quite often.
     pub interner: RefCell<FnvHashMap<intern_key, Box<t_box_>>>,
     pub next_id: Cell<uint>,
     pub sess: Session,
@@ -248,24 +249,24 @@ pub struct ctxt {
 
     pub region_maps: middle::region::RegionMaps,
 
-    // Stores the types for various nodes in the AST.  Note that this table
-    // is not guaranteed to be populated until after typeck.  See
-    // typeck::check::fn_ctxt for details.
+    /// Stores the types for various nodes in the AST.  Note that this table
+    /// is not guaranteed to be populated until after typeck.  See
+    /// typeck::check::fn_ctxt for details.
     pub node_types: node_type_table,
 
-    // Stores the type parameters which were substituted to obtain the type
-    // of this node.  This only applies to nodes that refer to entities
-    // param<eterized by type parameters, such as generic fns, types, or
-    // other items.
+    /// Stores the type parameters which were substituted to obtain the type
+    /// of this node.  This only applies to nodes that refer to entities
+    /// param<eterized by type parameters, such as generic fns, types, or
+    /// other items.
     pub item_substs: RefCell<NodeMap<ItemSubsts>>,
 
-    // Maps from a method to the method "descriptor"
+    /// Maps from a method to the method "descriptor"
     pub methods: RefCell<DefIdMap<Rc<Method>>>,
 
-    // Maps from a trait def-id to a list of the def-ids of its methods
+    /// Maps from a trait def-id to a list of the def-ids of its methods
     pub trait_method_def_ids: RefCell<DefIdMap<Rc<Vec<DefId>>>>,
 
-    // A cache for the trait_methods() routine
+    /// A cache for the trait_methods() routine
     pub trait_methods_cache: RefCell<DefIdMap<Rc<Vec<Rc<Method>>>>>,
 
     pub impl_trait_cache: RefCell<DefIdMap<Option<Rc<ty::TraitRef>>>>,
@@ -287,64 +288,64 @@ pub struct ctxt {
     pub adjustments: RefCell<NodeMap<AutoAdjustment>>,
     pub normalized_cache: RefCell<HashMap<t, t>>,
     pub lang_items: middle::lang_items::LanguageItems,
-    // A mapping of fake provided method def_ids to the default implementation
+    /// A mapping of fake provided method def_ids to the default implementation
     pub provided_method_sources: RefCell<DefIdMap<ast::DefId>>,
     pub supertraits: RefCell<DefIdMap<Rc<Vec<Rc<TraitRef>>>>>,
     pub superstructs: RefCell<DefIdMap<Option<ast::DefId>>>,
     pub struct_fields: RefCell<DefIdMap<Rc<Vec<field_ty>>>>,
 
-    // Maps from def-id of a type or region parameter to its
-    // (inferred) variance.
+    /// Maps from def-id of a type or region parameter to its
+    /// (inferred) variance.
     pub item_variance_map: RefCell<DefIdMap<Rc<ItemVariances>>>,
 
-    // A mapping from the def ID of an enum or struct type to the def ID
-    // of the method that implements its destructor. If the type is not
-    // present in this map, it does not have a destructor. This map is
-    // populated during the coherence phase of typechecking.
+    /// A mapping from the def ID of an enum or struct type to the def ID
+    /// of the method that implements its destructor. If the type is not
+    /// present in this map, it does not have a destructor. This map is
+    /// populated during the coherence phase of typechecking.
     pub destructor_for_type: RefCell<DefIdMap<ast::DefId>>,
 
-    // A method will be in this list if and only if it is a destructor.
+    /// A method will be in this list if and only if it is a destructor.
     pub destructors: RefCell<DefIdSet>,
 
-    // Maps a trait onto a list of impls of that trait.
+    /// Maps a trait onto a list of impls of that trait.
     pub trait_impls: RefCell<DefIdMap<Rc<RefCell<Vec<ast::DefId>>>>>,
 
-    // Maps a DefId of a type to a list of its inherent impls.
-    // Contains implementations of methods that are inherent to a type.
-    // Methods in these implementations don't need to be exported.
+    /// Maps a DefId of a type to a list of its inherent impls.
+    /// Contains implementations of methods that are inherent to a type.
+    /// Methods in these implementations don't need to be exported.
     pub inherent_impls: RefCell<DefIdMap<Rc<RefCell<Vec<ast::DefId>>>>>,
 
-    // Maps a DefId of an impl to a list of its methods.
-    // Note that this contains all of the impls that we know about,
-    // including ones in other crates. It's not clear that this is the best
-    // way to do it.
+    /// Maps a DefId of an impl to a list of its methods.
+    /// Note that this contains all of the impls that we know about,
+    /// including ones in other crates. It's not clear that this is the best
+    /// way to do it.
     pub impl_methods: RefCell<DefIdMap<Vec<ast::DefId>>>,
 
-    // Set of used unsafe nodes (functions or blocks). Unsafe nodes not
-    // present in this set can be warned about.
+    /// Set of used unsafe nodes (functions or blocks). Unsafe nodes not
+    /// present in this set can be warned about.
     pub used_unsafe: RefCell<NodeSet>,
 
-    // Set of nodes which mark locals as mutable which end up getting used at
-    // some point. Local variable definitions not in this set can be warned
-    // about.
+    /// Set of nodes which mark locals as mutable which end up getting used at
+    /// some point. Local variable definitions not in this set can be warned
+    /// about.
     pub used_mut_nodes: RefCell<NodeSet>,
 
-    // vtable resolution information for impl declarations
+    /// vtable resolution information for impl declarations
     pub impl_vtables: typeck::impl_vtable_map,
 
-    // The set of external nominal types whose implementations have been read.
-    // This is used for lazy resolution of methods.
+    /// The set of external nominal types whose implementations have been read.
+    /// This is used for lazy resolution of methods.
     pub populated_external_types: RefCell<DefIdSet>,
 
-    // The set of external traits whose implementations have been read. This
-    // is used for lazy resolution of traits.
+    /// The set of external traits whose implementations have been read. This
+    /// is used for lazy resolution of traits.
     pub populated_external_traits: RefCell<DefIdSet>,
 
-    // Borrows
+    /// Borrows
     pub upvar_borrow_map: RefCell<UpvarBorrowMap>,
 
-    // These two caches are used by const_eval when decoding external statics
-    // and variants that are found.
+    /// These two caches are used by const_eval when decoding external statics
+    /// and variants that are found.
     pub extern_const_statics: RefCell<DefIdMap<Option<@ast::Expr>>>,
     pub extern_const_variants: RefCell<DefIdMap<Option<@ast::Expr>>>,
 
@@ -352,6 +353,9 @@ pub struct ctxt {
     pub vtable_map: typeck::vtable_map,
 
     pub dependency_formats: RefCell<dependency_format::Dependencies>,
+
+    pub node_lint_levels: RefCell<HashMap<(ast::NodeId, lint::Lint),
+                                          (lint::Level, lint::LintSource)>>,
 }
 
 pub enum tbox_flag {
@@ -1134,6 +1138,7 @@ pub fn mk_ctxt(s: Session,
         method_map: RefCell::new(FnvHashMap::new()),
         vtable_map: RefCell::new(FnvHashMap::new()),
         dependency_formats: RefCell::new(HashMap::new()),
+        node_lint_levels: RefCell::new(HashMap::new()),
     }
 }
 
