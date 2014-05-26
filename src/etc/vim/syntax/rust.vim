@@ -78,7 +78,8 @@ syn keyword   rustEnumVariant Ok Err
 "syn keyword rustFunction drop
 
 " Types and traits {{{3
-syn keyword rustTrait Ascii AsciiCast OwnedAsciiCast AsciiStr IntoBytes
+syn keyword rustTrait Ascii ToAscii IntoAscii AsciiStr
+syn keyword rustTrait AsciiSlice AsciiVec IntoBytes
 syn keyword rustTrait ToCStr
 syn keyword rustTrait Char
 syn keyword rustTrait Clone

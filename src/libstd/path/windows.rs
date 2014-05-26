@@ -10,7 +10,7 @@
 
 //! Windows file path handling
 
-use ascii::AsciiCast;
+use ascii::ToAscii;
 use c_str::{CString, ToCStr};
 use clone::Clone;
 use cmp::{Eq, TotalEq};

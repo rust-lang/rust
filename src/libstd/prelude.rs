@@ -53,8 +53,8 @@
 
 // Reexported types and traits
 
-#[doc(no_inline)] pub use ascii::{Ascii, AsciiCast, OwnedAsciiCast, AsciiStr};
-#[doc(no_inline)] pub use ascii::IntoBytes;
+#[doc(no_inline)] pub use ascii::{Ascii, ToAscii, IntoAscii, AsciiStr};
+#[doc(no_inline)] pub use ascii::{AsciiSlice, AsciiVec, IntoBytes};
 #[doc(no_inline)] pub use c_str::ToCStr;
 #[doc(no_inline)] pub use char::Char;
 #[doc(no_inline)] pub use clone::Clone;
