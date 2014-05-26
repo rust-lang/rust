@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Used by plugin crates to tell `rustc` about the plugins they provide.
+
 use syntax::ext::base::{SyntaxExtension, NamedSyntaxExtension, NormalTT};
 use syntax::ext::base::{IdentTT, ItemDecorator, ItemModifier, BasicMacroExpander};
 use syntax::ext::base::{MacroExpanderFn};
@@ -15,6 +17,14 @@ use syntax::codemap::Span;
 use syntax::parse::token;
 use syntax::ast;
 
+/// Structure used to register plugins.
+///
+/// A plugin registrar function takes an `&mut Registry` and should call
+/// methods to register its plugins.
+///
+/// This struct has public fields and other methods for use by `rustc`
+/// itself. They are not documented here, and plugin authors should
+/// not use them.
 pub struct Registry {
     #[doc(hidden)]
     pub krate_span: Span,
@@ -22,9 +32,6 @@ pub struct Registry {
     #[doc(hidden)]
     pub syntax_exts: Vec<NamedSyntaxExtension>,
 }
-
-pub type PluginRegistrarFun =
-    fn(&mut Registry);
 
 impl Registry {
     #[doc(hidden)]
@@ -35,6 +42,9 @@ impl Registry {
         }
     }
 
+    /// Register a syntax extension of any kind.
+    ///
+    /// This is the most general hook into `libsyntax`'s expansion behavior.
     pub fn register_syntax_extension(&mut self, name: ast::Name, extension: SyntaxExtension) {
         self.syntax_exts.push((name, match extension {
             NormalTT(ext, _) => NormalTT(ext, Some(self.krate_span)),
@@ -44,6 +54,11 @@ impl Registry {
         }));
     }
 
+    /// Register a macro of the usual kind.
+    ///
+    /// This is a convenience wrapper for `register_syntax_extension`.
+    /// It builds for you a `NormalTT` with a `BasicMacroExpander`,
+    /// and also takes care of interning the macro's name.
     pub fn register_macro(&mut self, name: &str, expander: MacroExpanderFn) {
         self.register_syntax_extension(
             token::intern(name),
