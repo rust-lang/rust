@@ -8,9 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use plugin::registry::PluginRegistrarFun;
+//! Used by `rustc` when loading a plugin.
+
 use driver::session::Session;
 use metadata::creader::PluginMetadataReader;
+use plugin::registry::Registry;
 
 use std::mem;
 use std::os;
@@ -22,14 +24,25 @@ use syntax::visit::Visitor;
 use syntax::ext::expand::ExportedMacros;
 use syntax::attr::AttrMetaMethods;
 
+/// Plugin-related crate metadata.
 pub struct PluginMetadata {
+    /// Source code of macros exported by the crate.
     pub macros: Vec<String>,
+    /// Path to the shared library file.
     pub lib: Option<Path>,
+    /// Symbol name of the plugin registrar function.
     pub registrar_symbol: Option<String>,
 }
 
+/// Pointer to a registrar function.
+pub type PluginRegistrarFun =
+    fn(&mut Registry);
+
+/// Information about loaded plugins.
 pub struct Plugins {
+    /// Source code of exported macros.
     pub macros: Vec<ExportedMacros>,
+    /// Registrars, as function pointers.
     pub registrars: Vec<PluginRegistrarFun>,
 }
 
@@ -52,6 +65,7 @@ impl<'a> PluginLoader<'a> {
     }
 }
 
+/// Read plugin metadata and dynamically load registrar functions.
 pub fn load_plugins(sess: &Session, krate: &ast::Crate) -> Plugins {
     let mut loader = PluginLoader::new(sess);
     visit::walk_crate(&mut loader, krate, ());
