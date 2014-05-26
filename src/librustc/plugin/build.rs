@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Used by `rustc` when compiling a plugin crate.
+
 use syntax::ast;
 use syntax::attr;
 use syntax::codemap::Span;
@@ -36,7 +38,6 @@ impl Visitor<()> for RegistrarFinder {
 }
 
 /// Find the function marked with `#[plugin_registrar]`, if any.
-/// Used while compiling a crate which defines a registrar.
 pub fn find_plugin_registrar(diagnostic: &diagnostic::SpanHandler,
                              krate: &ast::Crate) -> Option<ast::NodeId> {
     let mut finder = RegistrarFinder { registrars: Vec::new() };
