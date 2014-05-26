@@ -66,10 +66,12 @@ impl<K: Clone + Hash + TotalEq> CountedSet<K> {
         self.get_min_or_max(other, min)
     }
 
-    fn get_min_or_max(&self, other: &CountedSet<K>, min_or_max: |uint, uint| -> uint) -> CountedSet<K> {
+    fn get_min_or_max(&self, other: &CountedSet<K>,
+                      min_or_max: |uint, uint| -> uint) -> CountedSet<K> {
         let mut result = self.clone();
         for (k, v) in other.iter() {
-            result.data.insert_or_update_with((*k).clone(), *v, |_, old| *old = min_or_max(*v, *old));
+            result.data.insert_or_update_with(
+                (*k).clone(), *v, |_, old| *old = min_or_max(*v, *old));
         }
         result
     }
@@ -86,7 +88,7 @@ impl<K: Clone + Hash + TotalEq> CountedSet<K> {
 
     /// Returns a vector with containing each element the same number of times
     /// as its count.
-    // TODO: Return FlatMap
+    // FIXME(schmee): Return FlatMap
     pub fn elements(&self) -> Vec<K> {
         let data = self.data.clone();
         data.move_iter().flat_map(|(k,v)| Repeat::new(k).take(v)).collect()
