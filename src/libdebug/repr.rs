@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -99,17 +99,6 @@ pub struct ReprVisitor<'a> {
     last_err: Option<io::IoError>,
 }
 
-pub fn ReprVisitor<'a>(ptr: *u8,
-                       writer: &'a mut io::Writer) -> ReprVisitor<'a> {
-    ReprVisitor {
-        ptr: ptr,
-        ptr_stk: vec!(),
-        var_stk: vec!(),
-        writer: writer,
-        last_err: None,
-    }
-}
-
 impl<'a> MovePtr for ReprVisitor<'a> {
     #[inline]
     fn move_ptr(&mut self, adjustment: |*u8| -> *u8) {
@@ -125,6 +114,15 @@ impl<'a> MovePtr for ReprVisitor<'a> {
 
 impl<'a> ReprVisitor<'a> {
     // Various helpers for the TyVisitor impl
+    pub fn new(ptr: *u8, writer: &'a mut io::Writer) -> ReprVisitor<'a> {
+        ReprVisitor {
+            ptr: ptr,
+            ptr_stk: vec!(),
+            var_stk: vec!(),
+            writer: writer,
+            last_err: None,
+        }
+    }
 
     #[inline]
     pub fn get<T>(&mut self, f: |&mut ReprVisitor, &T| -> bool) -> bool {
@@ -141,16 +139,8 @@ impl<'a> ReprVisitor<'a> {
     #[inline]
     pub fn visit_ptr_inner(&mut self, ptr: *u8, inner: *TyDesc) -> bool {
         unsafe {
-            // This should call the constructor up above, but due to limiting
-            // issues we have to recreate it here.
-            let u = ReprVisitor {
-                ptr: ptr,
-                ptr_stk: vec!(),
-                var_stk: vec!(),
-                writer: mem::transmute_copy(&self.writer),
-                last_err: None,
-            };
-            let mut v = reflect::MovePtrAdaptor(u);
+            let u = ReprVisitor::new(ptr, mem::transmute_copy(&self.writer));
+            let mut v = reflect::MovePtrAdaptor::new(u);
             // Obviously this should not be a thing, but blame #8401 for now
             visit_tydesc(inner, &mut v as &mut TyVisitor);
             match v.unwrap().last_err {
@@ -584,8 +574,8 @@ pub fn write_repr<T>(writer: &mut io::Writer, object: &T) -> io::IoResult<()> {
     unsafe {
         let ptr = object as *T as *u8;
         let tydesc = get_tydesc::<T>();
-        let u = ReprVisitor(ptr, writer);
-        let mut v = reflect::MovePtrAdaptor(u);
+        let u = ReprVisitor::new(ptr, writer);
+        let mut v = reflect::MovePtrAdaptor::new(u);
         visit_tydesc(tydesc, &mut v as &mut TyVisitor);
         match v.unwrap().last_err {
             Some(e) => Err(e),
