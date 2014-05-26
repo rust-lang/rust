@@ -36,6 +36,7 @@ use lib::llvm::{ModuleRef, ValueRef, BasicBlockRef};
 use lib::llvm::{llvm, Vector};
 use lib;
 use metadata::{csearch, encoder};
+use middle::lint;
 use middle::astencode;
 use middle::lang_items::{LangItem, ExchangeMallocFnLangItem, StartFnLangItem};
 use middle::weak_lang_items;
@@ -57,7 +58,7 @@ use middle::trans::foreign;
 use middle::trans::glue;
 use middle::trans::inline;
 use middle::trans::machine;
-use middle::trans::machine::{llalign_of_min, llsize_of};
+use middle::trans::machine::{llalign_of_min, llsize_of, llsize_of_real};
 use middle::trans::meth;
 use middle::trans::monomorphize;
 use middle::trans::tvec;
@@ -1489,7 +1490,7 @@ fn trans_enum_variant_or_tuple_like_struct(ccx: &CrateContext,
 }
 
 fn trans_enum_def(ccx: &CrateContext, enum_definition: &ast::EnumDef,
-                  id: ast::NodeId, vi: &[Rc<ty::VariantInfo>],
+                  sp: Span, id: ast::NodeId, vi: &[Rc<ty::VariantInfo>],
                   i: &mut uint) {
     for &variant in enum_definition.variants.iter() {
         let disr_val = vi[*i].disr_val;
@@ -1507,6 +1508,57 @@ fn trans_enum_def(ccx: &CrateContext, enum_definition: &ast::EnumDef,
             ast::StructVariantKind(struct_def) => {
                 trans_struct_def(ccx, struct_def);
             }
+        }
+    }
+
+    enum_variant_size_lint(ccx, enum_definition, sp, id);
+}
+
+fn enum_variant_size_lint(ccx: &CrateContext, enum_def: &ast::EnumDef, sp: Span, id: ast::NodeId) {
+    let mut sizes = Vec::new(); // does no allocation if no pushes, thankfully
+
+    let (lvl, src) = ccx.tcx.node_lint_levels.borrow()
+                        .find(&(id, lint::VariantSizeDifference))
+                        .map_or((lint::Allow, lint::Default), |&(lvl,src)| (lvl, src));
+
+    if lvl != lint::Allow {
+        let avar = adt::represent_type(ccx, ty::node_id_to_type(ccx.tcx(), id));
+        match *avar {
+            adt::General(_, ref variants) => {
+                for var in variants.iter() {
+                    let mut size = 0;
+                    for field in var.fields.iter().skip(1) {
+                        // skip the dicriminant
+                        size += llsize_of_real(ccx, sizing_type_of(ccx, *field));
+                    }
+                    sizes.push(size);
+                }
+            },
+            _ => { /* its size is either constant or unimportant */ }
+        }
+
+        let (largest, slargest, largest_index) = sizes.iter().enumerate().fold((0, 0, 0),
+            |(l, s, li), (idx, &size)|
+                if size > l {
+                    (size, l, idx)
+                } else if size > s {
+                    (l, size, li)
+                } else {
+                    (l, s, li)
+                }
+        );
+
+        // we only warn if the largest variant is at least thrice as large as
+        // the second-largest.
+        if largest > slargest * 3 && slargest > 0 {
+            lint::emit_lint(lvl, src,
+                            format!("enum variant is more than three times larger \
+                                    ({} bytes) than the next largest (ignoring padding)",
+                                    largest).as_slice(),
+                            sp, lint::lint_to_str(lint::VariantSizeDifference), ccx.tcx());
+
+            ccx.sess().span_note(enum_def.variants.get(largest_index).span,
+                                 "this variant is the largest");
         }
     }
 }
@@ -1555,7 +1607,7 @@ pub fn trans_item(ccx: &CrateContext, item: &ast::Item) {
         if !generics.is_type_parameterized() {
             let vi = ty::enum_variants(ccx.tcx(), local_def(item.id));
             let mut i = 0;
-            trans_enum_def(ccx, enum_definition, item.id, vi.as_slice(), &mut i);
+            trans_enum_def(ccx, enum_definition, item.span, item.id, vi.as_slice(), &mut i);
         }
       }
       ast::ItemStatic(_, m, expr) => {
