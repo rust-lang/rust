@@ -9,8 +9,55 @@
 // except according to those terms.
 
 //! Operations on tuples
-
-#![allow(missing_doc)]
+//!
+//! To access a single element of a tuple one can use the following
+//! methods:
+//!
+//! * `valN` - returns a value of _N_-th element
+//! * `refN` - returns a reference to _N_-th element
+//! * `mutN` - returns a mutable reference to _N_-th element
+//!
+//! Indexing starts from zero, so `val0` returns first value, `val1`
+//! returns second value, and so on. In general, a tuple with _S_
+//! elements provides aforementioned methods suffixed with numbers
+//! from `0` to `S-1`. Traits which contain these methods are
+//! implemented for tuples with up to 12 elements.
+//!
+//! If every type inside a tuple implements one of the following
+//! traits, then a tuple itself also implements it.
+//!
+//! * `Clone`
+//! * `Eq`
+//! * `TotalEq`
+//! * `Ord`
+//! * `TotalOrd`
+//! * `Default`
+//!
+//! # Examples
+//!
+//! Using methods:
+//!
+//! ```
+//! let pair = ("pi", 3.14);
+//! assert_eq!(pair.val0(), "pi");
+//! assert_eq!(pair.val1(), 3.14);
+//! ```
+//!
+//! Using traits implemented for tuples:
+//!
+//! ```
+//! use std::default::Default;
+//!
+//! let a = (1, 2);
+//! let b = (3, 4);
+//! assert!(a != b);
+//!
+//! let c = b.clone();
+//! assert!(b == c);
+//!
+//! let d : (u32, f32) = Default::default();
+//! assert_eq!(d, (0u32, 0.0f32));
+//! ```
 
 use clone::Clone;
 #[cfg(not(test))] use cmp::*;
@@ -26,6 +73,7 @@ macro_rules! tuple_impls {
         }
     )+) => {
         $(
+            #[allow(missing_doc)]
             pub trait $Tuple<$($T),+> {
                 $(fn $valN(self) -> $T;)+
                 $(fn $refN<'a>(&'a self) -> &'a $T;)+
