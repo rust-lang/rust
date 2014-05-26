@@ -451,8 +451,8 @@ struct Context<'a> {
     cur: SmallIntMap<(Level, LintSource)>,
     // context we're checking in (used to access fields like sess)
     tcx: &'a ty::ctxt,
-    // Items exported by the crate; used by the missing_doc lint.
-    exported_items: &'a privacy::ExportedItems,
+    // Public items in the crate; used by the missing_doc lint.
+    public_items: &'a privacy::ExportedItems,
     // The id of the current `ast::StructDef` being walked.
     cur_struct_def_id: ast::NodeId,
     // Whether some ancestor of the current node was marked
@@ -1556,7 +1556,7 @@ fn check_missing_doc_attrs(cx: &Context,
     // Only check publicly-visible items, using the result from the privacy pass. It's an option so
     // the crate root can also use this function (it doesn't have a NodeId).
     match id {
-        Some(ref id) if !cx.exported_items.contains(id) => return,
+        Some(ref id) if !cx.public_items.contains(id) => return,
         _ => ()
     }
 
@@ -1921,13 +1921,13 @@ impl<'a> IdVisitingOperation for Context<'a> {
 }
 
 pub fn check_crate(tcx: &ty::ctxt,
-                   exported_items: &privacy::ExportedItems,
+                   public_items: &privacy::PublicItems,
                    krate: &ast::Crate) {
     let mut cx = Context {
         dict: get_lint_dict(),
         cur: SmallIntMap::new(),
         tcx: tcx,
-        exported_items: exported_items,
+        public_items: public_items,
         cur_struct_def_id: -1,
         is_doc_hidden: false,
         lint_stack: Vec::new(),
