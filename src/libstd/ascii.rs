@@ -336,11 +336,25 @@ impl<'a> AsciiStr for &'a [Ascii] {
 pub trait AsciiSlice {
     /// Converts the receiver to a vector representation of a lowercase ASCII
     /// string.
-    fn to_lower(&self) -> Vec<Ascii>;
+    fn to_lowercase(&self) -> Vec<Ascii>;
+
+    #[allow(missing_doc)]
+    #[deprecated = "replaced by .to_lowercase()"]
+    #[inline]
+    fn to_lower(&self) -> Vec<Ascii> {
+        self.to_lowercase()
+    }
 
     /// Converts the receiver to a vector representation of an uppercase ASCII
     /// string.
-    fn to_upper(&self) -> Vec<Ascii>;
+    fn to_uppercase(&self) -> Vec<Ascii>;
+
+    #[allow(missing_doc)]
+    #[deprecated = "replaced by .to_uppercase()"]
+    #[inline]
+    fn to_upper(&self) -> Vec<Ascii> {
+        self.to_uppercase()
+    }
 
     /// Compares two ASCII strings ignoring case.
     fn eq_ignore_case(self, other: &[Ascii]) -> bool;
@@ -348,13 +362,13 @@ pub trait AsciiSlice {
 
 impl<'a> AsciiSlice for &'a [Ascii] {
     #[inline]
-    fn to_lower(&self) -> Vec<Ascii> {
-        self.iter().map(|a| a.to_lower()).collect()
+    fn to_lowercase(&self) -> Vec<Ascii> {
+        self.iter().map(|a| a.to_lowercase()).collect()
     }
 
     #[inline]
-    fn to_upper(&self) -> Vec<Ascii> {
-        self.iter().map(|a| a.to_upper()).collect()
+    fn to_uppercase(&self) -> Vec<Ascii> {
+        self.iter().map(|a| a.to_uppercase()).collect()
     }
 
     #[inline]
@@ -367,28 +381,28 @@ impl<'a> AsciiSlice for &'a [Ascii] {
 pub trait AsciiVec {
     /// Converts the receiver to a vector representation of a lowercase ASCII
     /// string.
-    fn into_lower(self) -> Vec<Ascii>;
+    fn into_lowercase(self) -> Vec<Ascii>;
 
     /// Converts the receiver to a vector representation of an uppercase ASCII
     /// string.
-    fn into_upper(self) -> Vec<Ascii>;
+    fn into_uppercase(self) -> Vec<Ascii>;
 }
 
 impl AsciiVec for Vec<Ascii> {
     #[inline]
-    fn into_lower(self) -> Vec<Ascii> {
+    fn into_lowercase(self) -> Vec<Ascii> {
         let mut v = self;
         for b in v.mut_iter() {
-            *b = b.to_lower()
+            *b = b.to_lowercase()
         }
         v
     }
 
     #[inline]
-    fn into_upper(self) -> Vec<Ascii> {
+    fn into_uppercase(self) -> Vec<Ascii> {
         let mut v = self;
         for b in v.mut_iter() {
-            *b = b.to_upper()
+            *b = b.to_uppercase()
         }
         v
     }
@@ -431,13 +445,27 @@ pub trait StringAsciiExt {
     ///
     /// ASCII letters 'a' to 'z' are mapped to 'A' to 'Z',
     /// but non-ASCII letters are unchanged.
-    fn into_ascii_upper(self) -> String;
+    fn into_ascii_uppercase(self) -> String;
+
+    #[allow(missing_doc)]
+    #[deprecated = "replaced by .into_ascii_uppercase"]
+    #[inline]
+    fn into_ascii_upper(self) -> String {
+        self.into_ascii_uppercase()
+    }
 
     /// Convert the string to ASCII lower case.
     ///
     /// ASCII letters 'A' to 'Z' are mapped to 'a' to 'z',
     /// but non-ASCII letters are unchanged.
-    fn into_ascii_lower(self) -> String;
+    fn into_ascii_lowercase(self) -> String;
+
+    #[allow(missing_doc)]
+    #[deprecated = "replaced by .into_ascii_lowercase"]
+    #[inline]
+    fn into_ascii_lower(self) -> String {
+        self.into_ascii_lowercase()
+    }
 }
 
 /// Extension methods for ASCII-subset only operations on string slices
@@ -446,29 +474,43 @@ pub trait StrAsciiExt {
     ///
     /// ASCII letters 'a' to 'z' are mapped to 'A' to 'Z',
     /// but non-ASCII letters are unchanged.
-    fn to_ascii_upper(&self) -> String;
+    fn to_ascii_uppercase(&self) -> String;
+
+    #[allow(missing_doc)]
+    #[deprecated = "replaced by .to_ascii_uppercase()"]
+    #[inline]
+    fn to_ascii_upper(&self) -> String {
+        self.to_ascii_uppercase()
+    }
 
     /// Makes a copy of the string in ASCII lower case.
     ///
     /// ASCII letters 'A' to 'Z' are mapped to 'a' to 'z',
     /// but non-ASCII letters are unchanged.
-    fn to_ascii_lower(&self) -> String;
+    fn to_ascii_lowercase(&self) -> String;
+
+    #[allow(missing_doc)]
+    #[deprecated = "replaced by .to_ascii_lowercase()"]
+    #[inline]
+    fn to_ascii_lower(&self) -> String {
+        self.to_ascii_lowercase()
+    }
 
     /// Check that two strings are an ASCII case-insensitive match.
     ///
-    /// Same as `to_ascii_lower(a) == to_ascii_lower(b)`,
+    /// Same as `to_ascii_lowercase(a) == to_ascii_lowercase(b)`,
     /// but without allocating and copying temporary strings.
     fn eq_ignore_ascii_case(&self, other: &str) -> bool;
 }
 
 impl<'a> StrAsciiExt for &'a str {
     #[inline]
-    fn to_ascii_upper(&self) -> String {
+    fn to_ascii_uppercase(&self) -> String {
         unsafe { str_map_bytes(self.to_owned(), ASCII_UPPER_MAP) }
     }
 
     #[inline]
-    fn to_ascii_lower(&self) -> String {
+    fn to_ascii_lowercase(&self) -> String {
         unsafe { str_map_bytes(self.to_owned(), ASCII_LOWER_MAP) }
     }
 
@@ -485,12 +527,12 @@ impl<'a> StrAsciiExt for &'a str {
 
 impl StringAsciiExt for String {
     #[inline]
-    fn into_ascii_upper(self) -> String {
+    fn into_ascii_uppercase(self) -> String {
         unsafe { str_map_bytes(self, ASCII_UPPER_MAP) }
     }
 
     #[inline]
-    fn into_ascii_lower(self) -> String {
+    fn into_ascii_lowercase(self) -> String {
         unsafe { str_map_bytes(self, ASCII_LOWER_MAP) }
     }
 }
@@ -599,15 +641,15 @@ mod tests {
         assert_eq!('A'.to_ascii().to_char(), 'A');
         assert_eq!('A'.to_ascii().to_byte(), 65u8);
 
-        assert_eq!('A'.to_ascii().to_lower().to_char(), 'a');
-        assert_eq!('Z'.to_ascii().to_lower().to_char(), 'z');
-        assert_eq!('a'.to_ascii().to_upper().to_char(), 'A');
-        assert_eq!('z'.to_ascii().to_upper().to_char(), 'Z');
+        assert_eq!('A'.to_ascii().to_lowercase().to_char(), 'a');
+        assert_eq!('Z'.to_ascii().to_lowercase().to_char(), 'z');
+        assert_eq!('a'.to_ascii().to_uppercase().to_char(), 'A');
+        assert_eq!('z'.to_ascii().to_uppercase().to_char(), 'Z');
 
-        assert_eq!('@'.to_ascii().to_lower().to_char(), '@');
-        assert_eq!('['.to_ascii().to_lower().to_char(), '[');
-        assert_eq!('`'.to_ascii().to_upper().to_char(), '`');
-        assert_eq!('{'.to_ascii().to_upper().to_char(), '{');
+        assert_eq!('@'.to_ascii().to_lowercase().to_char(), '@');
+        assert_eq!('['.to_ascii().to_lowercase().to_char(), '[');
+        assert_eq!('`'.to_ascii().to_uppercase().to_char(), '`');
+        assert_eq!('{'.to_ascii().to_uppercase().to_char(), '{');
 
         assert!('0'.to_ascii().is_digit());
         assert!('9'.to_ascii().is_digit());
@@ -631,12 +673,13 @@ mod tests {
         assert_eq!(v.to_ascii(), v2ascii!([40, 32, 59]));
         assert_eq!("( ;".to_string().as_slice().to_ascii(), v2ascii!([40, 32, 59]));
 
-        assert_eq!("abCDef&?#".to_ascii().to_lower().into_str(), "abcdef&?#".to_string());
-        assert_eq!("abCDef&?#".to_ascii().to_upper().into_str(), "ABCDEF&?#".to_string());
+        assert_eq!("abCDef&?#".to_ascii().to_lowercase().into_str(), "abcdef&?#".to_string());
+        assert_eq!("abCDef&?#".to_ascii().to_uppercase().into_str(), "ABCDEF&?#".to_string());
 
-        assert_eq!("".to_ascii().to_lower().into_str(), "".to_string());
-        assert_eq!("YMCA".to_ascii().to_lower().into_str(), "ymca".to_string());
-        assert_eq!("abcDEFxyz:.;".to_ascii().to_upper().into_str(), "ABCDEFXYZ:.;".to_string());
+        assert_eq!("".to_ascii().into_lowercase().into_str(), "".to_string());
+        assert_eq!("YMCA".to_ascii().into_lowercase().into_str(), "ymca".to_string());
+        assert_eq!("abcDEFxyz:.;".to_ascii().into_uppercase().into_str(),
+                   "ABCDEFXYZ:.;".to_string());
 
         assert!("aBcDeF&?#".to_ascii().eq_ignore_case("AbCdEf&?#".to_ascii()));
 
@@ -648,11 +691,11 @@ mod tests {
 
     #[test]
     fn test_ascii_vec_ng() {
-        assert_eq!("abCDef&?#".to_ascii().to_lower().into_str(), "abcdef&?#".to_string());
-        assert_eq!("abCDef&?#".to_ascii().to_upper().into_str(), "ABCDEF&?#".to_string());
-        assert_eq!("".to_ascii().to_lower().into_str(), "".to_string());
-        assert_eq!("YMCA".to_ascii().to_lower().into_str(), "ymca".to_string());
-        assert_eq!("abcDEFxyz:.;".to_ascii().to_upper().into_str(), "ABCDEFXYZ:.;".to_string());
+        assert_eq!("abCDef&?#".to_ascii().to_lowercase().into_str(), "abcdef&?#".to_string());
+        assert_eq!("abCDef&?#".to_ascii().to_uppercase().into_str(), "ABCDEF&?#".to_string());
+        assert_eq!("".to_ascii().to_lowercase().into_str(), "".to_string());
+        assert_eq!("YMCA".to_ascii().to_lowercase().into_str(), "ymca".to_string());
+        assert_eq!("abcDEFxyz:.;".to_ascii().to_uppercase().into_str(), "ABCDEFXYZ:.;".to_string());
     }
 
     #[test]
@@ -722,64 +765,64 @@ mod tests {
     }
 
     #[test]
-    fn test_to_ascii_upper() {
-        assert_eq!("url()URL()uRl()ürl".to_ascii_upper(), "URL()URL()URL()üRL".to_string());
-        assert_eq!("hıKß".to_ascii_upper(), "HıKß".to_string());
+    fn test_to_ascii_uppercase() {
+        assert_eq!("url()URL()uRl()ürl".to_ascii_uppercase(), "URL()URL()URL()üRL".to_string());
+        assert_eq!("hıKß".to_ascii_uppercase(), "HıKß".to_string());
 
         let mut i = 0;
         while i <= 500 {
             let upper = if 'a' as u32 <= i && i <= 'z' as u32 { i + 'A' as u32 - 'a' as u32 }
                         else { i };
-            assert_eq!(from_char(from_u32(i).unwrap()).as_slice().to_ascii_upper(),
+            assert_eq!(from_char(from_u32(i).unwrap()).as_slice().to_ascii_uppercase(),
                        from_char(from_u32(upper).unwrap()).to_string())
             i += 1;
         }
     }
 
     #[test]
-    fn test_to_ascii_lower() {
-        assert_eq!("url()URL()uRl()Ürl".to_ascii_lower(), "url()url()url()Ürl".to_string());
+    fn test_to_ascii_lowercase() {
+        assert_eq!("url()URL()uRl()Ürl".to_ascii_lowercase(), "url()url()url()Ürl".to_string());
         // Dotted capital I, Kelvin sign, Sharp S.
-        assert_eq!("HİKß".to_ascii_lower(), "hİKß".to_string());
+        assert_eq!("HİKß".to_ascii_lowercase(), "hİKß".to_string());
 
         let mut i = 0;
         while i <= 500 {
             let lower = if 'A' as u32 <= i && i <= 'Z' as u32 { i + 'a' as u32 - 'A' as u32 }
                         else { i };
-            assert_eq!(from_char(from_u32(i).unwrap()).as_slice().to_ascii_lower(),
+            assert_eq!(from_char(from_u32(i).unwrap()).as_slice().to_ascii_lowercase(),
                        from_char(from_u32(lower).unwrap()).to_string())
             i += 1;
         }
     }
 
     #[test]
-    fn test_into_ascii_upper() {
-        assert_eq!(("url()URL()uRl()ürl".to_string()).into_ascii_upper(),
+    fn test_into_ascii_uppercase() {
+        assert_eq!(("url()URL()uRl()ürl".to_string()).into_ascii_uppercase(),
                    "URL()URL()URL()üRL".to_string());
-        assert_eq!(("hıKß".to_string()).into_ascii_upper(), "HıKß".to_string());
+        assert_eq!(("hıKß".to_string()).into_ascii_uppercase(), "HıKß".to_string());
 
         let mut i = 0;
         while i <= 500 {
             let upper = if 'a' as u32 <= i && i <= 'z' as u32 { i + 'A' as u32 - 'a' as u32 }
                         else { i };
-            assert_eq!(from_char(from_u32(i).unwrap()).to_string().into_ascii_upper(),
+            assert_eq!(from_char(from_u32(i).unwrap()).to_string().into_ascii_uppercase(),
                        from_char(from_u32(upper).unwrap()).to_string())
             i += 1;
         }
     }
 
     #[test]
-    fn test_into_ascii_lower() {
-        assert_eq!(("url()URL()uRl()Ürl".to_string()).into_ascii_lower(),
+    fn test_into_ascii_lowercase() {
+        assert_eq!(("url()URL()uRl()Ürl".to_string()).into_ascii_lowercase(),
                    "url()url()url()Ürl".to_string());
         // Dotted capital I, Kelvin sign, Sharp S.
-        assert_eq!(("HİKß".to_string()).into_ascii_lower(), "hİKß".to_string());
+        assert_eq!(("HİKß".to_string()).into_ascii_lowercase(), "hİKß".to_string());
 
         let mut i = 0;
         while i <= 500 {
             let lower = if 'A' as u32 <= i && i <= 'Z' as u32 { i + 'a' as u32 - 'A' as u32 }
                         else { i };
-            assert_eq!(from_char(from_u32(i).unwrap()).to_string().into_ascii_lower(),
+            assert_eq!(from_char(from_u32(i).unwrap()).to_string().into_ascii_lowercase(),
                        from_char(from_u32(lower).unwrap()).to_string())
             i += 1;
         }
