@@ -802,21 +802,8 @@ fn check_expected_errors(expected_errors: Vec<errors::ExpectedError> ,
     }).collect::<Vec<String> >();
 
     #[cfg(target_os = "win32")]
-    fn to_lower( s : &str ) -> String {
-        let i = s.chars();
-        let c : Vec<char> = i.map( |c| {
-            if c.is_ascii() {
-                c.to_ascii().to_lowercase().to_char()
-            } else {
-                c
-            }
-        } ).collect();
-        str::from_chars(c.as_slice()).to_string()
-    }
-
-    #[cfg(target_os = "win32")]
     fn prefix_matches( line : &str, prefix : &str ) -> bool {
-        to_lower(line).as_slice().starts_with(to_lower(prefix).as_slice())
+        line.len() >= prefix.len() && line.slice_to(prefix.len()).eq_ignore_ascii_case(prefix)
     }
 
     #[cfg(target_os = "linux")]

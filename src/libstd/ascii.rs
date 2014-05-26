@@ -676,9 +676,9 @@ mod tests {
         assert_eq!("abCDef&?#".to_ascii().to_lowercase().into_str(), "abcdef&?#".to_string());
         assert_eq!("abCDef&?#".to_ascii().to_uppercase().into_str(), "ABCDEF&?#".to_string());
 
-        assert_eq!("".to_ascii().into_lowercase().into_str(), "".to_string());
-        assert_eq!("YMCA".to_ascii().into_lowercase().into_str(), "ymca".to_string());
-        assert_eq!("abcDEFxyz:.;".to_ascii().into_uppercase().into_str(),
+        assert_eq!("".to_ascii().to_lowercase().into_str(), "".to_string());
+        assert_eq!("YMCA".to_ascii().to_lowercase().into_str(), "ymca".to_string());
+        assert_eq!("abcDEFxyz:.;".to_ascii().to_uppercase().into_str(),
                    "ABCDEFXYZ:.;".to_string());
 
         assert!("aBcDeF&?#".to_ascii().eq_ignore_case("AbCdEf&?#".to_ascii()));

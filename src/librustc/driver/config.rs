@@ -36,6 +36,7 @@ use getopts::{optopt, optmulti, optflag, optflagopt};
 use getopts;
 use lib::llvm::llvm;
 use std::cell::{RefCell};
+use std::ascii::StrAsciiExt;
 
 
 pub struct Config {
@@ -596,7 +597,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         let level_name = lint::level_to_str(*level);
 
         let level_short = level_name.slice_chars(0, 1);
-        let level_short = level_short.to_ascii().to_upper().into_str();
+        let level_short = level_short.to_ascii_uppercase();
         let flags = matches.opt_strs(level_short.as_slice())
                            .move_iter()
                            .collect::<Vec<_>>()

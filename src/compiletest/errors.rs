@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use std::io::{BufferedReader, File};
+use std::ascii::StrAsciiExt;
 use regex::Regex;
 
 pub struct ExpectedError {
@@ -31,7 +32,7 @@ pub fn load_errors(re: &Regex, testfile: &Path) -> Vec<ExpectedError> {
 fn parse_expected(line_num: uint, line: &str, re: &Regex) -> Option<ExpectedError> {
     re.captures(line).and_then(|caps| {
         let adjusts = caps.name("adjusts").len();
-        let kind = caps.name("kind").to_ascii().to_lower().into_str().to_string();
+        let kind = caps.name("kind").to_ascii_lowercase();
         let msg = caps.name("msg").trim().to_string();
 
         debug!("line={} kind={} msg={}", line_num, kind, msg);

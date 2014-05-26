@@ -257,7 +257,7 @@ fn get_sequence<R: Buffer>(r: &mut R, key: &str) -> Vec<u8> {
         res.push_all(l.as_slice().trim().as_bytes());
     }
     for b in res.mut_iter() {
-        *b = b.to_ascii().to_upper().to_byte();
+        *b = b.to_ascii().to_uppercase().to_byte();
     }
     res
 }

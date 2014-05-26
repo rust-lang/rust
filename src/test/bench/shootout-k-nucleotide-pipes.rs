@@ -63,7 +63,7 @@ fn sort_and_fmt(mm: &HashMap<Vec<u8> , uint>, total: uint) -> String {
        buffer.push_str(format!("{} {:0.3f}\n",
                                k.as_slice()
                                .to_ascii()
-                               .to_upper()
+                               .to_uppercase()
                                .into_str(), v).as_slice());
    }
 
