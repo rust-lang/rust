@@ -864,8 +864,13 @@ fn default(cx: &MatchCheckCtxt, r: &[@Pat]) -> Option<Vec<@Pat> > {
 fn check_local(cx: &mut MatchCheckCtxt, loc: &Local) {
     visit::walk_local(cx, loc, ());
     if is_refutable(cx, loc.pat) {
+        let name = match loc.source {
+            LocalLet => "local",
+            LocalFor => "`for` loop"
+        };
+
         cx.tcx.sess.span_err(loc.pat.span,
-                             "refutable pattern in local binding");
+                             format!("refutable pattern in {} binding", name).as_slice());
     }
 
     // Check legality of move bindings.
