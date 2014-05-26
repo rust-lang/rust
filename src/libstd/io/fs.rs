@@ -859,7 +859,7 @@ mod test {
     })
 
     iotest!(fn file_test_io_seek_shakedown() {
-        use std::str;          // 01234567890123
+        use str;          // 01234567890123
         let initial_msg =   "qwer-asdf-zxcv";
         let chunk_one: &str = "qwer";
         let chunk_two: &str = "asdf";
@@ -947,7 +947,7 @@ mod test {
     })
 
     iotest!(fn file_test_directoryinfo_readdir() {
-        use std::str;
+        use str;
         let tmpdir = tmpdir();
         let dir = &tmpdir.join("di_readdir");
         check!(mkdir(dir, io::UserRWX));
