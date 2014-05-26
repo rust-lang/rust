@@ -10,15 +10,11 @@
 
 //! Operations and constants for 64-bits floats (`f64` type)
 
-use default::Default;
 use intrinsics;
 use mem;
 use num::{FPNormal, FPCategory, FPZero, FPSubnormal, FPInfinite, FPNaN};
-use num::{Zero, One, Bounded, Signed, Num, Primitive, Float};
+use num::Float;
 use option::Option;
-
-#[cfg(not(test))] use cmp::{Eq, Ord};
-#[cfg(not(test))] use ops::{Add, Sub, Mul, Div, Rem, Neg};
 
 // FIXME(#5527): These constants should be deprecated once associated
 // constants are implemented in favour of referencing the respective
@@ -108,125 +104,6 @@ pub mod consts {
 
     /// ln(10.0)
     pub static LN_10: f64 = 2.30258509299404568401799145468436421_f64;
-}
-
-#[cfg(not(test))]
-impl Ord for f64 {
-    #[inline]
-    fn lt(&self, other: &f64) -> bool { (*self) < (*other) }
-    #[inline]
-    fn le(&self, other: &f64) -> bool { (*self) <= (*other) }
-    #[inline]
-    fn ge(&self, other: &f64) -> bool { (*self) >= (*other) }
-    #[inline]
-    fn gt(&self, other: &f64) -> bool { (*self) > (*other) }
-}
-#[cfg(not(test))]
-impl Eq for f64 {
-    #[inline]
-    fn eq(&self, other: &f64) -> bool { (*self) == (*other) }
-}
-
-impl Default for f64 {
-    #[inline]
-    fn default() -> f64 { 0.0 }
-}
-
-impl Primitive for f64 {}
-
-impl Num for f64 {}
-
-impl Zero for f64 {
-    #[inline]
-    fn zero() -> f64 { 0.0 }
-
-    /// Returns true if the number is equal to either `0.0` or `-0.0`
-    #[inline]
-    fn is_zero(&self) -> bool { *self == 0.0 || *self == -0.0 }
-}
-
-impl One for f64 {
-    #[inline]
-    fn one() -> f64 { 1.0 }
-}
-
-#[cfg(not(test))]
-impl Add<f64,f64> for f64 {
-    #[inline]
-    fn add(&self, other: &f64) -> f64 { *self + *other }
-}
-#[cfg(not(test))]
-impl Sub<f64,f64> for f64 {
-    #[inline]
-    fn sub(&self, other: &f64) -> f64 { *self - *other }
-}
-#[cfg(not(test))]
-impl Mul<f64,f64> for f64 {
-    #[inline]
-    fn mul(&self, other: &f64) -> f64 { *self * *other }
-}
-#[cfg(not(test))]
-impl Div<f64,f64> for f64 {
-    #[inline]
-    fn div(&self, other: &f64) -> f64 { *self / *other }
-}
-#[cfg(not(test))]
-impl Rem<f64,f64> for f64 {
-    #[inline]
-    fn rem(&self, other: &f64) -> f64 {
-        extern { fn fmod(a: f64, b: f64) -> f64; }
-        unsafe { fmod(*self, *other) }
-    }
-}
-#[cfg(not(test))]
-impl Neg<f64> for f64 {
-    #[inline]
-    fn neg(&self) -> f64 { -*self }
-}
-
-impl Signed for f64 {
-    /// Computes the absolute value. Returns `NAN` if the number is `NAN`.
-    #[inline]
-    fn abs(&self) -> f64 {
-        unsafe { intrinsics::fabsf64(*self) }
-    }
-
-    /// The positive difference of two numbers. Returns `0.0` if the number is less than or
-    /// equal to `other`, otherwise the difference between`self` and `other` is returned.
-    #[inline]
-    fn abs_sub(&self, other: &f64) -> f64 {
-        extern { fn fdim(a: f64, b: f64) -> f64; }
-        unsafe { fdim(*self, *other) }
-    }
-
-    /// # Returns
-    ///
-    /// - `1.0` if the number is positive, `+0.0` or `INFINITY`
-    /// - `-1.0` if the number is negative, `-0.0` or `NEG_INFINITY`
-    /// - `NAN` if the number is NaN
-    #[inline]
-    fn signum(&self) -> f64 {
-        if self != self { NAN } else {
-            unsafe { intrinsics::copysignf64(1.0, *self) }
-        }
-    }
-
-    /// Returns `true` if the number is positive, including `+0.0` and `INFINITY`
-    #[inline]
-    fn is_positive(&self) -> bool { *self > 0.0 || (1.0 / *self) == INFINITY }
-
-    /// Returns `true` if the number is negative, including `-0.0` and `NEG_INFINITY`
-    #[inline]
-    fn is_negative(&self) -> bool { *self < 0.0 || (1.0 / *self) == NEG_INFINITY }
-}
-
-impl Bounded for f64 {
-    // NOTE: this is the smallest non-infinite f32 value, *not* MIN_VALUE
-    #[inline]
-    fn min_value() -> f64 { -MAX_VALUE }
-
-    #[inline]
-    fn max_value() -> f64 { MAX_VALUE }
 }
 
 impl Float for f64 {

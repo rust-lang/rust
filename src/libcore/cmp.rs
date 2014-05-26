@@ -189,10 +189,21 @@ pub fn max<T: TotalOrd>(v1: T, v2: T) -> T {
     if v1 > v2 { v1 } else { v2 }
 }
 
-// Implementation of Eq/TotalEq for some primitive types
+// Implementation of Eq, TotalEq, Ord and TotalOrd for primitive types
 #[cfg(not(test))]
 mod impls {
-    use cmp::{Ord, TotalOrd, Eq, TotalEq, Ordering, Equal};
+    use cmp::{Ord, TotalOrd, Eq, TotalEq, Ordering, Less, Greater, Equal};
+
+    macro_rules! eq_impl(
+        ($($t:ty)*) => ($(
+            impl Eq for $t {
+                #[inline]
+                fn eq(&self, other: &$t) -> bool { (*self) == (*other) }
+                #[inline]
+                fn ne(&self, other: &$t) -> bool { (*self) != (*other) }
+            }
+        )*)
+    )
 
     impl Eq for () {
         #[inline]
@@ -200,15 +211,72 @@ mod impls {
         #[inline]
         fn ne(&self, _other: &()) -> bool { false }
     }
-    impl TotalEq for () {}
+
+    eq_impl!(bool char uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64)
+
+    macro_rules! totaleq_impl(
+        ($($t:ty)*) => ($(
+            impl TotalEq for $t {}
+        )*)
+    )
+
+    totaleq_impl!(() bool char uint u8 u16 u32 u64 int i8 i16 i32 i64)
+
+    macro_rules! ord_impl(
+        ($($t:ty)*) => ($(
+            impl Ord for $t {
+                #[inline]
+                fn lt(&self, other: &$t) -> bool { (*self) < (*other) }
+                #[inline]
+                fn le(&self, other: &$t) -> bool { (*self) <= (*other) }
+                #[inline]
+                fn ge(&self, other: &$t) -> bool { (*self) >= (*other) }
+                #[inline]
+                fn gt(&self, other: &$t) -> bool { (*self) > (*other) }
+            }
+        )*)
+    )
+
     impl Ord for () {
         #[inline]
         fn lt(&self, _other: &()) -> bool { false }
     }
+
+    impl Ord for bool {
+        #[inline]
+        fn lt(&self, other: &bool) -> bool {
+            (*self as u8) < (*other as u8)
+        }
+    }
+
+    ord_impl!(char uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64)
+
+    macro_rules! totalord_impl(
+        ($($t:ty)*) => ($(
+            impl TotalOrd for $t {
+                #[inline]
+                fn cmp(&self, other: &$t) -> Ordering {
+                    if *self < *other { Less }
+                    else if *self > *other { Greater }
+                    else { Equal }
+                }
+            }
+        )*)
+    )
+
     impl TotalOrd for () {
         #[inline]
         fn cmp(&self, _other: &()) -> Ordering { Equal }
     }
+
+    impl TotalOrd for bool {
+        #[inline]
+        fn cmp(&self, other: &bool) -> Ordering {
+            (*self as u8).cmp(&(*other as u8))
+        }
+    }
+
+    totalord_impl!(char uint u8 u16 u32 u64 int i8 i16 i32 i64)
 
     // & pointers
     impl<'a, T: Eq> Eq for &'a T {

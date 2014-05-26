@@ -10,47 +10,5 @@
 
 //! Operations and constants for unsigned 64-bits integer (`u64` type)
 
-use default::Default;
-use intrinsics;
-use num::{Bitwise, Bounded, Zero, One, Unsigned, Num, Int, Primitive};
-use num::{CheckedAdd, CheckedSub, CheckedMul, CheckedDiv};
-use option::{Some, None, Option};
-
-#[cfg(not(test))]
-use cmp::{Eq, Ord, TotalEq, TotalOrd, Less, Greater, Equal, Ordering};
-#[cfg(not(test))]
-use ops::{Add, Sub, Mul, Div, Rem, Neg, BitAnd, BitOr, BitXor};
-#[cfg(not(test))]
-use ops::{Shl, Shr, Not};
-
 uint_module!(u64, i64, 64)
 
-impl CheckedAdd for u64 {
-    #[inline]
-    fn checked_add(&self, v: &u64) -> Option<u64> {
-        unsafe {
-            let (x, y) = intrinsics::u64_add_with_overflow(*self, *v);
-            if y { None } else { Some(x) }
-        }
-    }
-}
-
-impl CheckedSub for u64 {
-    #[inline]
-    fn checked_sub(&self, v: &u64) -> Option<u64> {
-        unsafe {
-            let (x, y) = intrinsics::u64_sub_with_overflow(*self, *v);
-            if y { None } else { Some(x) }
-        }
-    }
-}
-
-impl CheckedMul for u64 {
-    #[inline]
-    fn checked_mul(&self, v: &u64) -> Option<u64> {
-        unsafe {
-            let (x, y) = intrinsics::u64_mul_with_overflow(*self, *v);
-            if y { None } else { Some(x) }
-        }
-    }
-}
