@@ -72,7 +72,7 @@ use syntax::parse::token;
 use syntax::visit::Visitor;
 use syntax::{ast, ast_util, visit};
 
-#[deriving(Clone, Eq, Ord, TotalEq, TotalOrd)]
+#[deriving(Clone, Show, Eq, Ord, TotalEq, TotalOrd, Hash)]
 pub enum Lint {
     CTypes,
     UnusedImports,
@@ -94,6 +94,7 @@ pub enum Lint {
     UnknownFeatures,
     UnknownCrateType,
     UnsignedNegate,
+    VariantSizeDifference,
 
     ManagedHeapMemory,
     OwnedHeapMemory,
@@ -147,8 +148,9 @@ pub struct LintSpec {
 
 pub type LintDict = HashMap<&'static str, LintSpec>;
 
+// this is public for the lints that run in trans
 #[deriving(Eq)]
-enum LintSource {
+pub enum LintSource {
     Node(Span),
     Default,
     CommandLine
@@ -407,6 +409,13 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
         default: Warn
     }),
 
+    ("variant_size_difference",
+    LintSpec {
+        lint: VariantSizeDifference,
+        desc: "detects enums with widely varying variant sizes",
+        default: Allow,
+    }),
+
     ("unused_must_use",
     LintSpec {
         lint: UnusedMustUse,
@@ -445,30 +454,78 @@ pub fn get_lint_dict() -> LintDict {
 }
 
 struct Context<'a> {
-    // All known lint modes (string versions)
+    /// All known lint modes (string versions)
     dict: LintDict,
-    // Current levels of each lint warning
+    /// Current levels of each lint warning
     cur: SmallIntMap<(Level, LintSource)>,
-    // context we're checking in (used to access fields like sess)
+    /// Context we're checking in (used to access fields like sess)
     tcx: &'a ty::ctxt,
-    // Items exported by the crate; used by the missing_doc lint.
+    /// Items exported by the crate; used by the missing_doc lint.
     exported_items: &'a privacy::ExportedItems,
-    // The id of the current `ast::StructDef` being walked.
+    /// The id of the current `ast::StructDef` being walked.
     cur_struct_def_id: ast::NodeId,
-    // Whether some ancestor of the current node was marked
-    // #[doc(hidden)].
+    /// Whether some ancestor of the current node was marked
+    /// #[doc(hidden)].
     is_doc_hidden: bool,
 
-    // When recursing into an attributed node of the ast which modifies lint
-    // levels, this stack keeps track of the previous lint levels of whatever
-    // was modified.
+    /// When recursing into an attributed node of the ast which modifies lint
+    /// levels, this stack keeps track of the previous lint levels of whatever
+    /// was modified.
     lint_stack: Vec<(Lint, Level, LintSource)>,
 
-    // id of the last visited negated expression
+    /// Id of the last visited negated expression
     negated_expr_id: ast::NodeId,
 
-    // ids of structs/enums which have been checked for raw_pointer_deriving
+    /// Ids of structs/enums which have been checked for raw_pointer_deriving
     checked_raw_pointers: NodeSet,
+
+    /// Level of lints for certain NodeIds, stored here because the body of
+    /// the lint needs to run in trans.
+    node_levels: HashMap<(ast::NodeId, Lint), (Level, LintSource)>,
+}
+
+pub fn emit_lint(level: Level, src: LintSource, msg: &str, span: Span,
+                 lint_str: &str, tcx: &ty::ctxt) {
+    if level == Allow { return }
+
+    let mut note = None;
+    let msg = match src {
+        Default => {
+            format!("{}, \\#[{}({})] on by default", msg,
+                level_to_str(level), lint_str)
+        },
+        CommandLine => {
+            format!("{} [-{} {}]", msg,
+                match level {
+                    Warn => 'W', Deny => 'D', Forbid => 'F',
+                    Allow => fail!()
+                }, lint_str.replace("_", "-"))
+        },
+        Node(src) => {
+            note = Some(src);
+            msg.to_str()
+        }
+    };
+
+    match level {
+        Warn =>          { tcx.sess.span_warn(span, msg.as_slice()); }
+        Deny | Forbid => { tcx.sess.span_err(span, msg.as_slice());  }
+        Allow => fail!(),
+    }
+
+    for &span in note.iter() {
+        tcx.sess.span_note(span, "lint level defined here");
+    }
+}
+
+pub fn lint_to_str(lint: Lint) -> &'static str {
+    for &(name, lspec) in lint_table.iter() {
+        if lspec.lint == lint {
+            return name;
+        }
+    }
+
+    fail!("unrecognized lint: {}", lint);
 }
 
 impl<'a> Context<'a> {
@@ -500,7 +557,7 @@ impl<'a> Context<'a> {
                 return *k;
             }
         }
-        fail!("unregistered lint {:?}", lint);
+        fail!("unregistered lint {}", lint);
     }
 
     fn span_lint(&self, lint: Lint, span: Span, msg: &str) {
@@ -509,37 +566,8 @@ impl<'a> Context<'a> {
             Some(&(Warn, src)) => (self.get_level(Warnings), src),
             Some(&pair) => pair,
         };
-        if level == Allow { return }
 
-        let mut note = None;
-        let msg = match src {
-            Default => {
-                format_strbuf!("{}, \\#[{}({})] on by default",
-                               msg,
-                               level_to_str(level),
-                               self.lint_to_str(lint))
-            },
-            CommandLine => {
-                format!("{} [-{} {}]", msg,
-                    match level {
-                        Warn => 'W', Deny => 'D', Forbid => 'F',
-                        Allow => fail!()
-                    }, self.lint_to_str(lint).replace("_", "-"))
-            },
-            Node(src) => {
-                note = Some(src);
-                msg.to_str()
-            }
-        };
-        match level {
-            Warn => self.tcx.sess.span_warn(span, msg.as_slice()),
-            Deny | Forbid => self.tcx.sess.span_err(span, msg.as_slice()),
-            Allow => fail!(),
-        }
-
-        for &span in note.iter() {
-            self.tcx.sess.span_note(span, "lint level defined here");
-        }
+        emit_lint(level, src, msg, span, self.lint_to_str(lint), self.tcx);
     }
 
     /**
@@ -618,8 +646,8 @@ impl<'a> Context<'a> {
     }
 }
 
-// Check that every lint from the list of attributes satisfies `f`.
-// Return true if that's the case. Otherwise return false.
+/// Check that every lint from the list of attributes satisfies `f`.
+/// Return true if that's the case. Otherwise return false.
 pub fn each_lint(sess: &session::Session,
                  attrs: &[ast::Attribute],
                  f: |@ast::MetaItem, Level, InternedString| -> bool)
@@ -653,8 +681,8 @@ pub fn each_lint(sess: &session::Session,
     true
 }
 
-// Check from a list of attributes if it contains the appropriate
-// `#[level(lintname)]` attribute (e.g. `#[allow(dead_code)]).
+/// Check from a list of attributes if it contains the appropriate
+/// `#[level(lintname)]` attribute (e.g. `#[allow(dead_code)]).
 pub fn contains_lint(attrs: &[ast::Attribute],
                      level: Level,
                      lintname: &'static str)
@@ -1739,9 +1767,24 @@ fn check_stability(cx: &Context, e: &ast::Expr) {
     cx.span_lint(lint, e.span, msg.as_slice());
 }
 
+fn check_enum_variant_sizes(cx: &mut Context, it: &ast::Item) {
+    match it.node {
+        ast::ItemEnum(..) => {
+            match cx.cur.find(&(VariantSizeDifference as uint)) {
+                Some(&(lvl, src)) if lvl != Allow => {
+                    cx.node_levels.insert((it.id, VariantSizeDifference), (lvl, src));
+                },
+                _ => { }
+            }
+        },
+        _ => { }
+    }
+}
+
 impl<'a> Visitor<()> for Context<'a> {
     fn visit_item(&mut self, it: &ast::Item, _: ()) {
         self.with_lint_attrs(it.attrs.as_slice(), |cx| {
+            check_enum_variant_sizes(cx, it);
             check_item_ctypes(cx, it);
             check_item_non_camel_case_types(cx, it);
             check_item_non_uppercase_statics(cx, it);
@@ -1933,6 +1976,7 @@ pub fn check_crate(tcx: &ty::ctxt,
         lint_stack: Vec::new(),
         negated_expr_id: -1,
         checked_raw_pointers: NodeSet::new(),
+        node_levels: HashMap::new(),
     };
 
     // Install default lint levels, followed by the command line levels, and
@@ -1969,13 +2013,11 @@ pub fn check_crate(tcx: &ty::ctxt,
     // in the iteration code.
     for (id, v) in tcx.sess.lints.borrow().iter() {
         for &(lint, span, ref msg) in v.iter() {
-            tcx.sess.span_bug(span,
-                              format!("unprocessed lint {:?} at {}: {}",
-                                      lint,
-                                      tcx.map.node_to_str(*id),
-                                      *msg).as_slice())
+            tcx.sess.span_bug(span, format!("unprocessed lint {} at {}: {}",
+                                            lint, tcx.map.node_to_str(*id), *msg).as_slice())
         }
     }
 
     tcx.sess.abort_if_errors();
+    *tcx.node_lint_levels.borrow_mut() = cx.node_levels;
 }
