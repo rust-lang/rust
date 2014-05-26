@@ -918,15 +918,8 @@ extern "system" {
 ///
 /// The arguments are interpreted as utf-8, with invalid bytes replaced with \uFFFD.
 /// See `str::from_utf8_lossy` for details.
-#[cfg(not(test))]
 pub fn args() -> Vec<String> {
     real_args()
-}
-
-#[cfg(test)]
-#[allow(missing_doc)]
-pub fn args() -> ::realstd::vec::Vec<::realstd::string::String> {
-    ::realstd::os::args()
 }
 
 /// Returns the arguments which this program was started with (normally passed
@@ -1328,7 +1321,7 @@ impl Drop for MemoryMap {
 
 #[cfg(target_os = "linux")]
 pub mod consts {
-    pub use std::os::arch_consts::ARCH;
+    pub use os::arch_consts::ARCH;
 
     pub static FAMILY: &'static str = "unix";
 
@@ -1359,7 +1352,7 @@ pub mod consts {
 
 #[cfg(target_os = "macos")]
 pub mod consts {
-    pub use std::os::arch_consts::ARCH;
+    pub use os::arch_consts::ARCH;
 
     pub static FAMILY: &'static str = "unix";
 
@@ -1390,7 +1383,7 @@ pub mod consts {
 
 #[cfg(target_os = "freebsd")]
 pub mod consts {
-    pub use std::os::arch_consts::ARCH;
+    pub use os::arch_consts::ARCH;
 
     pub static FAMILY: &'static str = "unix";
 
@@ -1421,7 +1414,7 @@ pub mod consts {
 
 #[cfg(target_os = "android")]
 pub mod consts {
-    pub use std::os::arch_consts::ARCH;
+    pub use os::arch_consts::ARCH;
 
     pub static FAMILY: &'static str = "unix";
 
@@ -1452,7 +1445,7 @@ pub mod consts {
 
 #[cfg(target_os = "win32")]
 pub mod consts {
-    pub use std::os::arch_consts::ARCH;
+    pub use os::arch_consts::ARCH;
 
     pub static FAMILY: &'static str = "windows";
 
@@ -1507,7 +1500,7 @@ mod tests {
     use prelude::*;
     use c_str::ToCStr;
     use option;
-    use os::{env, getcwd, getenv, make_absolute, args};
+    use os::{env, getcwd, getenv, make_absolute};
     use os::{setenv, unsetenv};
     use os;
     use rand::Rng;
@@ -1516,12 +1509,6 @@ mod tests {
     #[test]
     pub fn last_os_error() {
         debug!("{}", os::last_os_error());
-    }
-
-    #[test]
-    pub fn test_args() {
-        let a = args();
-        assert!(a.len() >= 1);
     }
 
     fn make_rand_name() -> String {

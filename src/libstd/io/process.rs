@@ -14,7 +14,7 @@
 
 use prelude::*;
 
-use std::str;
+use str;
 use fmt;
 use io::IoResult;
 use io;
