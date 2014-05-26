@@ -417,6 +417,14 @@ pub enum Stmt_ {
     StmtMac(Mac, bool),
 }
 
+/// Where a local declaration came from: either a true `let ... =
+/// ...;`, or one desugared from the pattern of a for loop.
+#[deriving(Clone, Eq, TotalEq, Encodable, Decodable, Hash)]
+pub enum LocalSource {
+    LocalLet,
+    LocalFor,
+}
+
 // FIXME (pending discussion of #1697, #2178...): local should really be
 // a refinement on pat.
 /// Local represents a `let` statement, e.g., `let <pat>:<ty> = <expr>;`
@@ -427,6 +435,7 @@ pub struct Local {
     pub init: Option<@Expr>,
     pub id: NodeId,
     pub span: Span,
+    pub source: LocalSource,
 }
 
 pub type Decl = Spanned<Decl_>;

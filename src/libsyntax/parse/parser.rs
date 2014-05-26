@@ -34,7 +34,7 @@ use ast::{Ident, NormalFn, Inherited, Item, Item_, ItemStatic};
 use ast::{ItemEnum, ItemFn, ItemForeignMod, ItemImpl};
 use ast::{ItemMac, ItemMod, ItemStruct, ItemTrait, ItemTy, Lit, Lit_};
 use ast::{LitBool, LitFloat, LitFloatUnsuffixed, LitInt, LitChar};
-use ast::{LitIntUnsuffixed, LitNil, LitStr, LitUint, Local};
+use ast::{LitIntUnsuffixed, LitNil, LitStr, LitUint, Local, LocalLet};
 use ast::{MutImmutable, MutMutable, Mac_, MacInvocTT, Matcher, MatchNonterminal};
 use ast::{MatchSeq, MatchTok, Method, MutTy, BiMul, Mutability};
 use ast::{NamedField, UnNeg, NoReturn, UnNot, P, Pat, PatEnum};
@@ -3034,6 +3034,7 @@ impl<'a> Parser<'a> {
             init: init,
             id: ast::DUMMY_NODE_ID,
             span: mk_sp(lo, self.last_span.hi),
+            source: LocalLet,
         }
     }
 
