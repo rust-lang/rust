@@ -266,24 +266,21 @@ pub mod rt;
 // can be resolved within libstd.
 #[doc(hidden)]
 mod std {
+    // mods used for deriving
     pub use clone;
     pub use cmp;
-    pub use comm;
-    pub use fmt;
     pub use hash;
-    pub use io;
-    pub use kinds;
-    pub use local_data;
-    pub use option;
-    pub use os;
-    pub use rt;
-    pub use str;
-    pub use to_str;
-    pub use ty;
-    pub use unstable;
-    pub use vec;
 
+    pub use comm; // used for select!()
+    pub use fmt; // used for any formatting strings
+    pub use io; // used for println!()
+    pub use local_data; // used for local_data_key!()
+    pub use option; // used for bitflags!()
+    pub use rt; // used for fail!()
+    pub use vec; // used for vec![]
+
+    // The test runner calls ::std::os::args() but really wants realstd
+    #[cfg(test)] pub use os = realstd::os;
     // The test runner requires std::slice::Vector, so re-export std::slice just for it.
     #[cfg(test)] pub use slice;
-    #[cfg(test)] pub use string;
 }
