@@ -1184,15 +1184,7 @@ impl<T> Vec<T> {
     /// would also make any pointers to it invalid.
     #[inline]
     pub fn as_ptr(&self) -> *T {
-        // If we have a 0-sized vector, then the base pointer should not be NULL
-        // because an iterator over the slice will attempt to yield the base
-        // pointer as the first element in the vector, but this will end up
-        // being Some(NULL) which is optimized to None.
-        if mem::size_of::<T>() == 0 {
-            1 as *T
-        } else {
-            self.ptr as *T
-        }
+        self.ptr as *T
     }
 
     /// Returns a mutable unsafe pointer to the vector's buffer.
@@ -1204,12 +1196,7 @@ impl<T> Vec<T> {
     /// would also make any pointers to it invalid.
     #[inline]
     pub fn as_mut_ptr(&mut self) -> *mut T {
-        // see above for the 0-size check
-        if mem::size_of::<T>() == 0 {
-            1 as *mut T
-        } else {
-            self.ptr
-        }
+        self.ptr
     }
 
     /// Retains only the elements specified by the predicate.
