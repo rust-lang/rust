@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -42,11 +42,12 @@ pub fn align(size: uint, align: uint) -> uint {
 pub struct MovePtrAdaptor<V> {
     inner: V
 }
-pub fn MovePtrAdaptor<V:TyVisitor + MovePtr>(v: V) -> MovePtrAdaptor<V> {
-    MovePtrAdaptor { inner: v }
-}
 
 impl<V:TyVisitor + MovePtr> MovePtrAdaptor<V> {
+    pub fn new(v: V) -> MovePtrAdaptor<V> {
+        MovePtrAdaptor { inner: v }
+    }
+
     #[inline]
     pub fn bump(&mut self, sz: uint) {
         self.inner.move_ptr(|p| ((p as uint) + sz) as *u8)
