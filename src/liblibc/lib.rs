@@ -334,6 +334,7 @@ pub mod types {
                 __variant1,
                 __variant2,
             }
+
             pub enum FILE {}
             pub enum fpos_t {}
         }

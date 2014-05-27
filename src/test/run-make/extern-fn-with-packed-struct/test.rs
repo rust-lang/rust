@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[packed]
+#[repr(packed)]
 #[deriving(PartialEq, Show)]
 struct Foo {
     a: i8,

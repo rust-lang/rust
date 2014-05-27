@@ -701,7 +701,7 @@ mod imp {
     static IMAGE_FILE_MACHINE_IA64: libc::DWORD = 0x0200;
     static IMAGE_FILE_MACHINE_AMD64: libc::DWORD = 0x8664;
 
-    #[packed]
+    #[repr(packed)]
     struct SYMBOL_INFO {
         SizeOfStruct: libc::c_ulong,
         TypeIndex: libc::c_ulong,

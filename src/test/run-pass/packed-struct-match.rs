@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[packed]
+#[repr(packed)]
 struct Foo {
     bar: u8,
     baz: uint

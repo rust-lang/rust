@@ -87,7 +87,7 @@ struct PaddedStruct {
     e: i16
 }
 
-#[packed]
+#[repr(packed)]
 struct PackedStruct {
     a: i16,
     b: AnEnum,

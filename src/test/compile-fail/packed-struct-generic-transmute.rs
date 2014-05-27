@@ -19,7 +19,7 @@ extern crate debug;
 
 use std::mem;
 
-#[packed]
+#[repr(packed)]
 struct Foo<T,S> {
     bar: T,
     baz: S
