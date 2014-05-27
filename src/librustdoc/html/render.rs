@@ -1094,10 +1094,10 @@ impl<'a> Item<'a> {
             let path = cache.external_paths.get(&self.item.def_id);
             let root = match *cache.extern_locations.get(&self.item.def_id.krate) {
                 Remote(ref s) => s.to_string(),
-                Local => format!("{}/..", self.cx.root_path),
+                Local => self.cx.root_path.clone(),
                 Unknown => return None,
             };
-            Some(format!("{root}/{path}/{file}?gotosrc={goto}",
+            Some(format!("{root}{path}/{file}?gotosrc={goto}",
                          root = root,
                          path = path.slice_to(path.len() - 1).connect("/"),
                          file = item_path(self.item),
