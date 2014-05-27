@@ -147,11 +147,17 @@ pub fn expand_expr(e: @ast::Expr, fld: &mut MacroExpander) -> @ast::Expr {
             //       ['<ident>:] loop {
             //         match i.next() {
             //           None => break,
-            //           Some(<src_pat>) => <src_loop_block>
+            //           Some(mut value) => {
+            //             let <src_pat> = value;
+            //             <src_loop_block>
+            //           }
             //         }
             //       }
             //     }
             //   }
+            //
+            // (The use of the `let` is to give better error messages
+            // when the pattern is refutable.)
 
             let local_ident = token::gensym_ident("__i"); // FIXME #13573
             let next_ident = fld.cx.ident_of("next");
@@ -167,11 +173,33 @@ pub fn expand_expr(e: @ast::Expr, fld: &mut MacroExpander) -> @ast::Expr {
                 fld.cx.arm(span, vec!(none_pat), break_expr)
             };
 
-            // `Some(<src_pat>) => <src_loop_block>`
+            // let <src_pat> = value;
+            let value_ident = token::gensym_ident("__value");
+            // this is careful to use src_pat.span so that error
+            // messages point exact at that.
+            let local = @ast::Local {
+                ty: fld.cx.ty_infer(src_pat.span),
+                pat: src_pat,
+                init: Some(fld.cx.expr_ident(src_pat.span, value_ident)),
+                id: ast::DUMMY_NODE_ID,
+                span: src_pat.span,
+                source: ast::LocalFor
+            };
+            let local = codemap::respan(src_pat.span, ast::DeclLocal(local));
+            let local = @codemap::respan(span, ast::StmtDecl(@local, ast::DUMMY_NODE_ID));
+
+            // { let ...; <src_loop_block> }
+            let block = fld.cx.block(span, vec![local],
+                                     Some(fld.cx.expr_block(src_loop_block)));
+
+            // `Some(mut value) => { ... }`
+            // Note the _'s in the name will stop any unused mutability warnings.
+            let value_pat = fld.cx.pat_ident_binding_mode(span, value_ident,
+                                                          ast::BindByValue(ast::MutMutable));
             let some_arm =
                 fld.cx.arm(span,
-                           vec!(fld.cx.pat_enum(span, some_path, vec!(src_pat))),
-                           fld.cx.expr_block(src_loop_block));
+                           vec!(fld.cx.pat_enum(span, some_path, vec!(value_pat))),
+                           fld.cx.expr_block(block));
 
             // `match i.next() { ... }`
             let match_expr = {
@@ -669,7 +697,8 @@ fn expand_non_macro_stmt(s: &Stmt, fld: &mut MacroExpander)
                         pat: pat,
                         init: init,
                         id: id,
-                        span: span
+                        span: span,
+                        source: source,
                     } = **local;
                     // expand the pat (it might contain exprs... #:(o)>
                     let expanded_pat = fld.fold_pat(pat);
@@ -703,6 +732,7 @@ fn expand_non_macro_stmt(s: &Stmt, fld: &mut MacroExpander)
                             init: new_init_opt,
                             id: id,
                             span: span,
+                            source: source
                         };
                     SmallVector::one(@Spanned {
                         node: StmtDecl(@Spanned {
