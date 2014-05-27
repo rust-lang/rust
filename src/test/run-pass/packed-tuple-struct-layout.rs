@@ -10,10 +10,10 @@
 
 use std::mem;
 
-#[packed]
+#[repr(packed)]
 struct S4(u8,[u8, .. 3]);
 
-#[packed]
+#[repr(packed)]
 struct S5(u8,u32);
 
 pub fn main() {

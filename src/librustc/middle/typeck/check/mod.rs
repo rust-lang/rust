@@ -3803,6 +3803,9 @@ pub fn check_enum_variants(ccx: &CrateCtxt,
                         ccx.tcx.sess.span_note(sp, "discriminant type specified here");
                     }
                 }
+                attr::ReprPacked => {
+                    ccx.tcx.sess.bug("range_to_inttype: found ReprPacked on an enum");
+                }
             }
             disr_vals.push(current_disr_val);
 
@@ -3816,7 +3819,7 @@ pub fn check_enum_variants(ccx: &CrateCtxt,
         return variants;
     }
 
-    let hint = ty::lookup_repr_hint(ccx.tcx, ast::DefId { krate: ast::LOCAL_CRATE, node: id });
+    let hint = ty::lookup_enum_repr_hint(ccx.tcx, ast::DefId { krate: ast::LOCAL_CRATE, node: id });
     if hint != attr::ReprAny && vs.len() <= 1 {
         let msg = if vs.len() == 1 {
             "unsupported representation for univariant enum"

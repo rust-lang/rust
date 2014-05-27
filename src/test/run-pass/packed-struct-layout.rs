@@ -10,13 +10,13 @@
 
 use std::mem;
 
-#[packed]
+#[repr(packed)]
 struct S4 {
     a: u8,
     b: [u8, .. 3],
 }
 
-#[packed]
+#[repr(packed)]
 struct S5 {
     a: u8,
     b: u32

@@ -17,7 +17,7 @@
 
 use std::mem;
 
-#[packed]
+#[repr(packed)]
 struct Foo {
     bar: u8,
     baz: uint

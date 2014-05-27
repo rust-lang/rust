@@ -464,7 +464,7 @@ pub fn require_unique_names(diagnostic: &SpanHandler, metas: &[@MetaItem]) {
  * present (before fields, if any) with that type; reprensentation
  * optimizations which would remove it will not be done.
  */
-pub fn find_repr_attr(diagnostic: &SpanHandler, attr: &Attribute, acc: ReprAttr)
+pub fn find_enum_repr_attr(diagnostic: &SpanHandler, attr: &Attribute, acc: ReprAttr)
     -> ReprAttr {
     let mut acc = acc;
     match attr.node.value.node {
@@ -496,7 +496,7 @@ pub fn find_repr_attr(diagnostic: &SpanHandler, attr: &Attribute, acc: ReprAttr)
                         }
                     }
                     // Not a word:
-                    _ => diagnostic.span_err(item.span, "unrecognized representation hint")
+                    _ => diagnostic.span_err(item.span, "unrecognized enum representation hint")
                 }
             }
         }
@@ -504,6 +504,44 @@ pub fn find_repr_attr(diagnostic: &SpanHandler, attr: &Attribute, acc: ReprAttr)
         _ => { }
     }
     acc
+}
+
+/// A struct `repr` attribute can only take the values `C` and `packed`, or
+/// possibly both.
+pub fn find_struct_repr_attrs(diagnostic: &SpanHandler, attr: &Attribute) -> Vec<ReprAttr> {
+    let mut attrs = Vec::new();
+    match attr.node.value.node {
+        ast::MetaList(ref s, ref items) if s.equiv(&("repr")) => {
+            mark_used(attr);
+            for item in items.iter() {
+                match item.node {
+                    ast::MetaWord(ref word) => {
+                        let hint = match word.get() {
+                            "C" => Some(ReprExtern),
+                            "packed" => Some(ReprPacked),
+                            _ => {
+                                // Not a word we recognize
+                                diagnostic.span_err(item.span,
+                                                    "unrecognized struct representation hint");
+                                None
+                            }
+                        };
+
+                        match hint {
+                            Some(h) => attrs.push(h),
+                            None => { }
+                        }
+                    }
+                    // Not a word:
+                    _ => diagnostic.span_err(item.span, "unrecognized representation hint")
+                }
+            }
+        }
+        // Not a "repr" hint: ignore.
+        _ => { }
+    }
+
+    attrs
 }
 
 fn int_type_of_word(s: &str) -> Option<IntType> {
@@ -526,7 +564,8 @@ fn int_type_of_word(s: &str) -> Option<IntType> {
 pub enum ReprAttr {
     ReprAny,
     ReprInt(Span, IntType),
-    ReprExtern
+    ReprExtern,
+    ReprPacked,
 }
 
 impl ReprAttr {
@@ -534,7 +573,8 @@ impl ReprAttr {
         match *self {
             ReprAny => false,
             ReprInt(_sp, ity) => ity.is_ffi_safe(),
-            ReprExtern => true
+            ReprExtern => true,
+            ReprPacked => false
         }
     }
 }
@@ -559,7 +599,7 @@ impl IntType {
             SignedInt(ast::TyI16) | UnsignedInt(ast::TyU16) |
             SignedInt(ast::TyI32) | UnsignedInt(ast::TyU32) |
             SignedInt(ast::TyI64) | UnsignedInt(ast::TyU64) => true,
-            _ => false
+            SignedInt(ast::TyI) | UnsignedInt(ast::TyU) => false
         }
     }
 }

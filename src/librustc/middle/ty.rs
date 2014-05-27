@@ -3928,9 +3928,9 @@ pub fn has_attr(tcx: &ctxt, did: DefId, attr: &str) -> bool {
     found
 }
 
-/// Determine whether an item is annotated with `#[packed]`
+/// Determine whether an item is annotated with `#[repr(packed)]`
 pub fn lookup_packed(tcx: &ctxt, did: DefId) -> bool {
-    has_attr(tcx, did, "packed")
+    lookup_struct_repr_hint(tcx, did).contains(&attr::ReprPacked)
 }
 
 /// Determine whether an item is annotated with `#[simd]`
@@ -3938,14 +3938,26 @@ pub fn lookup_simd(tcx: &ctxt, did: DefId) -> bool {
     has_attr(tcx, did, "simd")
 }
 
-// Obtain the representation annotation for a definition.
-pub fn lookup_repr_hint(tcx: &ctxt, did: DefId) -> attr::ReprAttr {
+/// Obtain the representation annotation for an enum definition.
+pub fn lookup_enum_repr_hint(tcx: &ctxt, did: DefId) -> attr::ReprAttr {
     let mut acc = attr::ReprAny;
     ty::each_attr(tcx, did, |meta| {
-        acc = attr::find_repr_attr(tcx.sess.diagnostic(), meta, acc);
+        acc = attr::find_enum_repr_attr(tcx.sess.diagnostic(), meta, acc);
         true
     });
     return acc;
+}
+
+/// Obtain the representation annotation for a struct definition.
+pub fn lookup_struct_repr_hint(tcx: &ctxt, did: DefId) -> Vec<attr::ReprAttr> {
+    let mut acc = Vec::new();
+
+    ty::each_attr(tcx, did, |meta| {
+        acc.extend(attr::find_struct_repr_attrs(tcx.sess.diagnostic(), meta).move_iter());
+        true
+    });
+
+    acc
 }
 
 // Look up a field ID, whether or not it's local

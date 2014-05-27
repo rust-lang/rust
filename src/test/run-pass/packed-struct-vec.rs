@@ -12,7 +12,7 @@
 
 use std::mem;
 
-#[packed]
+#[repr(packed)]
 #[deriving(Eq, Show)]
 struct Foo {
     bar: u8,

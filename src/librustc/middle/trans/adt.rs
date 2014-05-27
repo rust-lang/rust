@@ -45,10 +45,11 @@
 
 #![allow(unsigned_negate)]
 
-use std::container::Map;
 use libc::c_ulonglong;
-use std::num::{Bitwise};
+use std::container::Map;
+use std::num::Bitwise;
 use std::rc::Rc;
+use std;
 
 use lib::llvm::{ValueRef, True, IntEQ, IntNE};
 use middle::trans::_match;
@@ -165,7 +166,7 @@ fn represent_type_uncached(cx: &CrateContext, t: ty::t) -> Repr {
         }
         ty::ty_enum(def_id, ref substs) => {
             let cases = get_cases(cx.tcx(), def_id, substs);
-            let hint = ty::lookup_repr_hint(cx.tcx(), def_id);
+            let hint = ty::lookup_enum_repr_hint(cx.tcx(), def_id);
 
             if cases.len() == 0 {
                 // Uninhabitable; represent as unit
@@ -254,31 +255,60 @@ fn represent_type_uncached(cx: &CrateContext, t: ty::t) -> Repr {
 
 /// Determine, without doing translation, whether an ADT must be FFI-safe.
 /// For use in lint or similar, where being sound but slightly incomplete is acceptable.
-pub fn is_ffi_safe(tcx: &ty::ctxt, def_id: ast::DefId) -> bool {
+/// Returns Ok(()) if it is, and Err(causes) which is a vector of the DefId's
+/// of the types that are unsafe (either the type being checked itself if it
+/// lacks a repr attribute, or the fields of a struct).
+pub fn is_ffi_safe(tcx: &ty::ctxt, def_id: ast::DefId) -> std::result::Result<(), Vec<ast::DefId>> {
     match ty::get(ty::lookup_item_type(tcx, def_id).ty).sty {
         ty::ty_enum(def_id, _) => {
             let variants = ty::enum_variants(tcx, def_id);
             // Univariant => like struct/tuple.
             if variants.len() <= 1 {
-                return true;
+                return Ok(());
             }
-            let hint = ty::lookup_repr_hint(tcx, def_id);
+            let hint = ty::lookup_enum_repr_hint(tcx, def_id);
             // Appropriate representation explicitly selected?
             if hint.is_ffi_safe() {
-                return true;
+                return Ok(());
             }
             // Option<Box<T>> and similar are used in FFI.  Rather than try to
             // resolve type parameters and recognize this case exactly, this
             // overapproximates -- assuming that if a non-C-like enum is being
             // used in FFI then the user knows what they're doing.
             if variants.iter().any(|vi| !vi.args.is_empty()) {
-                return true;
+                return Ok(());
             }
-            false
-        }
-        // struct, tuple, etc.
+            Err(vec![def_id])
+        },
+        ty::ty_struct(def_id, _) => {
+            let struct_is_safe =
+                ty::lookup_struct_repr_hint(tcx, def_id).contains(&attr::ReprExtern);
+            let mut fields_are_safe = true;
+            let mut bad_fields = Vec::new();
+
+            if !struct_is_safe {
+                bad_fields.push(def_id);
+            }
+
+            for field in ty::lookup_struct_fields(tcx, def_id).iter() {
+                match is_ffi_safe(tcx, field.id) {
+                    Ok(_) => { }
+                    Err(types) => {
+                        fields_are_safe = false;
+                        bad_fields.extend(types.move_iter())
+                    }
+                }
+            }
+
+            if struct_is_safe && fields_are_safe {
+                Ok(())
+            } else {
+                Err(bad_fields)
+            }
+        },
+        // tuple, etc.
         // (is this right in the present of typedefs?)
-        _ => true
+        _ => Ok(())
     }
 }
 
@@ -370,6 +400,9 @@ fn range_to_inttype(cx: &CrateContext, hint: Hint, bounds: &IntBounds) -> IntTyp
         }
         attr::ReprAny => {
             attempts = choose_shortest;
+        },
+        attr::ReprPacked => {
+            cx.tcx.sess.bug("range_to_inttype: found ReprPacked on an enum");
         }
     }
     for &ity in attempts.iter() {
