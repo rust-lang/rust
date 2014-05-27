@@ -1,6 +1,6 @@
 - Start Date: 2014-05-21
-- RFC PR #:
-- Rust Issue #:
+- RFC PR #: 85
+- Rust Issue #: 14473
 
 # Summary
 
