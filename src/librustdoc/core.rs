@@ -41,6 +41,7 @@ pub struct DocContext {
     pub external_paths: ExternalPaths,
     pub external_traits: RefCell<Option<HashMap<ast::DefId, clean::Trait>>>,
     pub external_typarams: RefCell<Option<HashMap<ast::DefId, String>>>,
+    pub inlined: RefCell<Option<HashSet<ast::DefId>>>,
 }
 
 impl DocContext {
@@ -58,6 +59,7 @@ pub struct CrateAnalysis {
     pub external_paths: ExternalPaths,
     pub external_traits: RefCell<Option<HashMap<ast::DefId, clean::Trait>>>,
     pub external_typarams: RefCell<Option<HashMap<ast::DefId, String>>>,
+    pub inlined: RefCell<Option<HashSet<ast::DefId>>>,
 }
 
 /// Parses, resolves, and typechecks the given crate
@@ -111,12 +113,14 @@ fn get_ast_and_resolve(cpath: &Path, libs: HashSet<Path>, cfgs: Vec<String>)
         external_traits: RefCell::new(Some(HashMap::new())),
         external_typarams: RefCell::new(Some(HashMap::new())),
         external_paths: RefCell::new(Some(HashMap::new())),
+        inlined: RefCell::new(Some(HashSet::new())),
     }, CrateAnalysis {
         exported_items: exported_items,
         public_items: public_items,
         external_paths: RefCell::new(None),
         external_traits: RefCell::new(None),
         external_typarams: RefCell::new(None),
+        inlined: RefCell::new(None),
     })
 }
 
@@ -138,5 +142,7 @@ pub fn run_core(libs: HashSet<Path>, cfgs: Vec<String>, path: &Path)
     *analysis.external_traits.borrow_mut() = map;
     let map = ctxt.external_typarams.borrow_mut().take();
     *analysis.external_typarams.borrow_mut() = map;
+    let map = ctxt.inlined.borrow_mut().take();
+    *analysis.inlined.borrow_mut() = map;
     (krate, analysis)
 }
