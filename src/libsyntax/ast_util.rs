@@ -657,7 +657,7 @@ pub fn walk_pat(pat: &Pat, it: |&Pat| -> bool) -> bool {
         PatEnum(_, Some(ref s)) | PatTup(ref s) => {
             s.iter().advance(|&p| walk_pat(p, |p| it(p)))
         }
-        PatUniq(s) | PatRegion(s) => {
+        PatBox(s) | PatRegion(s) => {
             walk_pat(s, it)
         }
         PatVec(ref before, ref slice, ref after) => {

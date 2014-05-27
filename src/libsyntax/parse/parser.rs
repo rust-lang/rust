@@ -39,7 +39,7 @@ use ast::{MutImmutable, MutMutable, Mac_, MacInvocTT, Matcher, MatchNonterminal}
 use ast::{MatchSeq, MatchTok, Method, MutTy, BiMul, Mutability};
 use ast::{NamedField, UnNeg, NoReturn, UnNot, P, Pat, PatEnum};
 use ast::{PatIdent, PatLit, PatRange, PatRegion, PatStruct};
-use ast::{PatTup, PatUniq, PatWild, PatWildMulti};
+use ast::{PatTup, PatBox, PatWild, PatWildMulti};
 use ast::{BiRem, Required};
 use ast::{RetStyle, Return, BiShl, BiShr, Stmt, StmtDecl};
 use ast::{Sized, DynSize, StaticSize};
@@ -2784,7 +2784,7 @@ impl<'a> Parser<'a> {
             // parse ~pat
             self.bump();
             let sub = self.parse_pat();
-            pat = PatUniq(sub);
+            pat = PatBox(sub);
             hi = self.last_span.hi;
             self.obsolete(self.last_span, ObsoleteOwnedPattern);
             return @ast::Pat {
@@ -2888,7 +2888,7 @@ impl<'a> Parser<'a> {
             // FIXME(#13910): Rename to `PatBox` and extend to full DST
             // support.
             let sub = self.parse_pat();
-            pat = PatUniq(sub);
+            pat = PatBox(sub);
             hi = self.last_span.hi;
             return @ast::Pat {
                 id: ast::DUMMY_NODE_ID,

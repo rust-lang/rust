@@ -1721,7 +1721,7 @@ fn name_from_pat(p: &ast::Pat) -> String {
         PatStruct(..) => fail!("tried to get argument name from pat_struct, \
                                 which is not allowed in function arguments"),
         PatTup(..) => "(tuple arg NYI)".to_string(),
-        PatUniq(p) => name_from_pat(p),
+        PatBox(p) => name_from_pat(p),
         PatRegion(p) => name_from_pat(p),
         PatLit(..) => {
             warn!("tried to get argument name from PatLit, \
