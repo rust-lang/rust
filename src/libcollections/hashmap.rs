@@ -2004,6 +2004,20 @@ mod test_map {
     }
 
     #[test]
+    fn test_show() {
+        let mut map: HashMap<int, int> = HashMap::new();
+        let empty: HashMap<int, int> = HashMap::new();
+
+        map.insert(1, 2);
+        map.insert(3, 4);
+
+        let map_str = format!("{}", map);
+
+        assert!(map_str == "{1: 2, 3: 4}".to_owned() || map_str == "{3: 4, 1: 2}".to_owned());
+        assert_eq!(format!("{}", empty), "{}".to_owned());
+    }
+
+    #[test]
     fn test_expand() {
         let mut m = HashMap::new();
 
