@@ -16,15 +16,16 @@ Unicode string manipulation (`str` type)
 
 Rust's string type is one of the core primitive types of the language. While
 represented by the name `str`, the name `str` is not actually a valid type in
-Rust. Each string must also be decorated with its ownership. This means that
-there is one common kind of string in Rust:
+Rust. Each string must also be decorated with a pointer. `String` is used
+for an owned string, so there is only one commonly-used `str` type in Rust:
+`&str`.
 
-* `&str` - This is the borrowed string type. This type of string can only be
-           created from the other kind of string. As the name "borrowed"
-           implies, this type of string is owned elsewhere, and this string
-           cannot be moved out of.
+`&str` is the borrowed string type. This type of string can only be created
+from other strings, unless it is a static string (see below). As the word
+"borrowed" implies, this type of string is owned elsewhere, and this string
+cannot be moved out of.
 
-As an example, here's the one kind of string.
+As an example, here's some code that uses a string.
 
 ```rust
 fn main() {
@@ -32,8 +33,8 @@ fn main() {
 }
 ```
 
-From the example above, you can see that Rust has 1 different kind of string
-literal. The "borrowed literal" is akin to C's concept of a static string.
+From the example above, you can see that Rust's string literals have the
+`'static` lifetime. This is akin to C's concept of a static string.
 
 String literals are allocated statically in the rodata of the
 executable/library. The string then has the type `&'static str` meaning that
@@ -509,7 +510,7 @@ pub fn from_utf8_lossy<'a>(v: &'a [u8]) -> MaybeOwned<'a> {
 Section: MaybeOwned
 */
 
-/// A MaybeOwned is a string that can hold either a String or a &str.
+/// A `MaybeOwned` is a string that can hold either a `String` or a `&str`.
 /// This can be useful as an optimization when an allocation is sometimes
 /// needed but not always.
 pub enum MaybeOwned<'a> {
@@ -519,7 +520,7 @@ pub enum MaybeOwned<'a> {
     Owned(String)
 }
 
-/// SendStr is a specialization of `MaybeOwned` to be sendable
+/// `SendStr` is a specialization of `MaybeOwned` to be sendable
 pub type SendStr = MaybeOwned<'static>;
 
 impl<'a> MaybeOwned<'a> {
