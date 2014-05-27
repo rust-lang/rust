@@ -288,6 +288,7 @@ pub trait Folder {
             pat: self.fold_pat(l.pat),
             init: l.init.map(|e| self.fold_expr(e)),
             span: self.new_span(l.span),
+            source: l.source,
         }
     }
 
