@@ -1434,36 +1434,6 @@ impl<T: Iterator<char>> Parser<T> {
                         },
                     },
                     _ => return self.error(InvalidEscape),
-/*=======
-                    'u' => {
-                        // Parse \u1234.
-                        let mut i = 0u;
-                        let mut n = 0u;
-                        while i < 4u && !self.eof() {
-                            self.bump();
-                            n = match self.ch_or_null() {
-                                c @ '0' .. '9' => n * 16u + (c as uint) - ('0' as uint),
-                                'a' | 'A' => n * 16u + 10u,
-                                'b' | 'B' => n * 16u + 11u,
-                                'c' | 'C' => n * 16u + 12u,
-                                'd' | 'D' => n * 16u + 13u,
-                                'e' | 'E' => n * 16u + 14u,
-                                'f' | 'F' => n * 16u + 15u,
-                                _ => return self.error(UnrecognizedHex)
-                            };
-
-                            i += 1u;
-                        }
-
-                        // Error out if we didn't parse 4 digits.
-                        if i != 4u {
-                            return self.error(NotFourDigit);
-                        }
-
-                        res.push_char(char::from_u32(n as u32).unwrap());
-                    }
-                    _ => return self.error(InvalidEscape),
->>>>>>> Add a streaming parser to serialize::json.*/
                 }
                 escape = false;
             } else if self.ch_is('\\') {
