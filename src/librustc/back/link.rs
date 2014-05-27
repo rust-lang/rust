@@ -1019,6 +1019,8 @@ fn link_staticlib(sess: &Session, obj_filename: &Path, out_filename: &Path) {
     a.add_native_library("compiler-rt").unwrap();
 
     let crates = sess.cstore.get_used_crates(cstore::RequireStatic);
+    let mut all_native_libs = vec![];
+
     for &(cnum, ref path) in crates.iter() {
         let name = sess.cstore.get_crate_data(cnum).name.clone();
         let p = match *path {
@@ -1029,17 +1031,25 @@ fn link_staticlib(sess: &Session, obj_filename: &Path, out_filename: &Path) {
             }
         };
         a.add_rlib(&p, name.as_slice(), sess.lto()).unwrap();
+
         let native_libs = csearch::get_native_libraries(&sess.cstore, cnum);
-        for &(kind, ref lib) in native_libs.iter() {
-            let name = match kind {
-                cstore::NativeStatic => "static library",
-                cstore::NativeUnknown => "library",
-                cstore::NativeFramework => "framework",
-            };
-            sess.warn(format!("unlinked native {}: {}",
-                              name,
-                              *lib).as_slice());
-        }
+        all_native_libs.extend(native_libs.move_iter());
+    }
+
+    if !all_native_libs.is_empty() {
+        sess.warn("link against the following native artifacts when linking against \
+                  this static library");
+        sess.note("the order and any duplication can be significant on some platforms, \
+                  and so may need to be preserved");
+    }
+
+    for &(kind, ref lib) in all_native_libs.iter() {
+        let name = match kind {
+            cstore::NativeStatic => "static library",
+            cstore::NativeUnknown => "library",
+            cstore::NativeFramework => "framework",
+        };
+        sess.note(format!("{}: {}", name, *lib).as_slice());
     }
 }
 
