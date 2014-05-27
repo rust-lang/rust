@@ -160,9 +160,9 @@ pub unsafe fn overwrite<T>(dst: *mut T, src: T) {
     intrinsics::move_val_init(&mut *dst, src)
 }
 
-/// Deprecated, use move_val_init() instead
+/// Deprecated, use `overwrite` instead
 #[inline]
-#[deprecated = "this function has been renamed to move_val_init()"]
+#[deprecated = "this function has been renamed to `overwrite`"]
 pub unsafe fn move_val_init<T>(dst: &mut T, src: T) {
     overwrite(dst, src)
 }
