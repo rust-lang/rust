@@ -12,9 +12,11 @@
 //! trees. The only requirement for the types is that the key implements
 //! `TotalOrd`.
 
-use std::iter;
-use std::iter::{Peekable};
 use std::cmp::Ordering;
+use std::fmt::Show;
+use std::fmt;
+use std::iter::Peekable;
+use std::iter;
 use std::mem::{replace, swap};
 use std::ptr;
 
@@ -65,6 +67,19 @@ fn lt<K: Ord + TotalOrd, V: Ord>(a: &TreeMap<K, V>,
 impl<K: Ord + TotalOrd, V: Ord> Ord for TreeMap<K, V> {
     #[inline]
     fn lt(&self, other: &TreeMap<K, V>) -> bool { lt(self, other) }
+}
+
+impl<K: TotalOrd + Show, V: Show> Show for TreeMap<K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        try!(write!(f, r"\{"));
+
+        for (i, (k, v)) in self.iter().enumerate() {
+            if i != 0 { try!(write!(f, ", ")); }
+            try!(write!(f, "{}: {}", *k, *v));
+        }
+
+        write!(f, r"\}")
+    }
 }
 
 impl<K: TotalOrd, V> Container for TreeMap<K, V> {
@@ -545,6 +560,19 @@ impl<T: Eq + TotalOrd> Eq for TreeSet<T> {
 impl<T: Ord + TotalOrd> Ord for TreeSet<T> {
     #[inline]
     fn lt(&self, other: &TreeSet<T>) -> bool { self.map < other.map }
+}
+
+impl<T: TotalOrd + Show> Show for TreeSet<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        try!(write!(f, r"\{"));
+
+        for (i, x) in self.iter().enumerate() {
+            if i != 0 { try!(write!(f, ", ")); }
+            try!(write!(f, "{}", *x));
+        }
+
+        write!(f, r"\}")
+    }
 }
 
 impl<T: TotalOrd> Container for TreeSet<T> {
@@ -1329,6 +1357,20 @@ mod test_treemap {
     }
 
     #[test]
+    fn test_show() {
+        let mut map: TreeMap<int, int> = TreeMap::new();
+        let empty: TreeMap<int, int> = TreeMap::new();
+
+        map.insert(1, 2);
+        map.insert(3, 4);
+
+        let map_str = format!("{}", map);
+
+        assert!(map_str == "{1: 2, 3: 4}".to_owned());
+        assert_eq!(format!("{}", empty), "{}".to_owned());
+    }
+
+    #[test]
     fn test_lazy_iterator() {
         let mut m = TreeMap::new();
         let (x1, y1) = (2, 5);
@@ -1722,5 +1764,19 @@ mod test_set {
         for x in xs.iter() {
             assert!(set.contains(x));
         }
+    }
+
+    #[test]
+    fn test_show() {
+        let mut set: TreeSet<int> = TreeSet::new();
+        let empty: TreeSet<int> = TreeSet::new();
+
+        set.insert(1);
+        set.insert(2);
+
+        let set_str = format!("{}", set);
+
+        assert!(set_str == "{1, 2}".to_owned());
+        assert_eq!(format!("{}", empty), "{}".to_owned());
     }
 }
