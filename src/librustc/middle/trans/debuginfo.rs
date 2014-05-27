@@ -2633,7 +2633,7 @@ fn populate_scope_map(cx: &CrateContext,
                 }
             }
 
-            ast::PatUniq(sub_pat) | ast::PatRegion(sub_pat) => {
+            ast::PatBox(sub_pat) | ast::PatRegion(sub_pat) => {
                 scope_map.insert(pat.id, scope_stack.last().unwrap().scope_metadata);
                 walk_pattern(cx, sub_pat, scope_stack, scope_map);
             }

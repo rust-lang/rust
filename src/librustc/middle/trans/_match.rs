@@ -838,7 +838,7 @@ fn enter_uniq<'a, 'b>(
     let dummy = @ast::Pat {id: 0, node: ast::PatWild, span: DUMMY_SP};
     enter_match(bcx, dm, m, col, val, |p| {
         match p.node {
-            ast::PatUniq(sub) => {
+            ast::PatBox(sub) => {
                 Some(vec!(sub))
             }
             _ => {
@@ -1105,7 +1105,7 @@ macro_rules! any_pat (
 )
 
 fn any_uniq_pat(m: &[Match], col: uint) -> bool {
-    any_pat!(m, ast::PatUniq(_))
+    any_pat!(m, ast::PatBox(_))
 }
 
 fn any_region_pat(m: &[Match], col: uint) -> bool {
@@ -2270,7 +2270,7 @@ fn bind_irrefutable_pat<'a>(
                                            binding_mode, cleanup_scope);
             }
         }
-        ast::PatUniq(inner) => {
+        ast::PatBox(inner) => {
             let llbox = Load(bcx, val);
             bcx = bind_irrefutable_pat(bcx, inner, llbox, binding_mode, cleanup_scope);
         }
