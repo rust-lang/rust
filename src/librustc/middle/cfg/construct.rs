@@ -113,7 +113,7 @@ impl<'a> CFGBuilder<'a> {
                 self.add_node(pat.id, [pred])
             }
 
-            ast::PatUniq(subpat) |
+            ast::PatBox(subpat) |
             ast::PatRegion(subpat) |
             ast::PatIdent(_, _, Some(subpat)) => {
                 let subpat_exit = self.pat(subpat, pred);
