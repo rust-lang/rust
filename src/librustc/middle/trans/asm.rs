@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -70,7 +70,7 @@ pub fn trans_inline_asm<'a>(bcx: &'a Block<'a>, ia: &ast::InlineAsm)
                                     .connect(",")
                                     .as_slice());
 
-    let mut clobbers = getClobbers();
+    let mut clobbers = get_clobbers();
     if !ia.clobbers.get().is_empty() && !clobbers.is_empty() {
         clobbers = format!("{},{}", ia.clobbers.get(), clobbers);
     } else {
@@ -135,12 +135,12 @@ pub fn trans_inline_asm<'a>(bcx: &'a Block<'a>, ia: &ast::InlineAsm)
 
 #[cfg(target_arch = "arm")]
 #[cfg(target_arch = "mips")]
-fn getClobbers() -> String {
+fn get_clobbers() -> String {
     "".to_string()
 }
 
 #[cfg(target_arch = "x86")]
 #[cfg(target_arch = "x86_64")]
-fn getClobbers() -> String {
+fn get_clobbers() -> String {
     "~{dirflag},~{fpsr},~{flags}".to_string()
 }

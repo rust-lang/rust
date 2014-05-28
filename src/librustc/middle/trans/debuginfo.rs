@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -941,6 +941,7 @@ fn is_node_local_to_unit(cx: &CrateContext, node_id: ast::NodeId) -> bool
     !cx.reachable.contains(&node_id)
 }
 
+#[allow(non_snake_case_functions)]
 fn create_DIArray(builder: DIBuilderRef, arr: &[DIDescriptor]) -> DIArray {
     return unsafe {
         llvm::LLVMDIBuilderGetOrCreateArray(builder, arr.as_ptr(), arr.len() as u32)
@@ -2487,6 +2488,7 @@ fn debug_context<'a>(cx: &'a CrateContext) -> &'a CrateDebugContext {
 }
 
 #[inline]
+#[allow(non_snake_case_functions)]
 fn DIB(cx: &CrateContext) -> DIBuilderRef {
     cx.dbg_cx.get_ref().builder
 }
