@@ -34,7 +34,7 @@ impl Ascii {
         self.as_byte()
     }
 
-    /// Converts an ascii character into a `u8`.
+    /// Returns the ascii character as a `u8`.
     #[inline]
     pub fn as_byte(self) -> u8 {
         self.chr
@@ -47,7 +47,7 @@ impl Ascii {
         self.as_char()
     }
     
-    /// Converts an ascii character into a `char`.
+    /// Returns the ascii character a `char`.
     #[inline]
     pub fn as_char(self) -> char {
         self.chr as char
@@ -229,7 +229,7 @@ impl Ascii {
             c @ 65 .. 90 => c + 10u8 - 65u8,
             _ => return None,
         };
-        if val < radix { Some(val) }
+        if (val as uint) < radix { Some(val as uint) }
         else { None }
     }
 }
@@ -850,5 +850,31 @@ mod tests {
     fn test_show() {
         let c = Ascii { chr: 't' as u8 };
         assert_eq!(format_strbuf!("{}", c), "t".to_string());
+    }
+    
+    #[test]
+    fn test_to_digit() {
+        assert_eq!('0'.to_ascii().to_digit(10u), Some(0u));
+        assert_eq!('1'.to_ascii().to_digit(2u), Some(1u));
+        assert_eq!('2'.to_ascii().to_digit(3u), Some(2u));
+        assert_eq!('9'.to_ascii().to_digit(10u), Some(9u));
+        assert_eq!('a'.to_ascii().to_digit(16u), Some(10u));
+        assert_eq!('A'.to_ascii().to_digit(16u), Some(10u));
+        assert_eq!('b'.to_ascii().to_digit(16u), Some(11u));
+        assert_eq!('B'.to_ascii().to_digit(16u), Some(11u));
+        assert_eq!('z'.to_ascii().to_digit(36u), Some(35u));
+        assert_eq!('Z'.to_ascii().to_digit(36u), Some(35u));
+        assert_eq!(' '.to_ascii().to_digit(10u), None);
+        assert_eq!('$'.to_ascii().to_digit(36u), None);
+    }
+    
+    #[test]
+    fn test_is_digit_radix() {
+        assert!('A'.to_ascii().is_digit_radix(16));
+        assert!(!'A'.to_ascii().is_digit_radix(10));
+        assert!('9'.to_ascii().is_digit_radix(10));
+        assert!(!'9'.to_ascii().is_digit_radix(8));
+        assert!('G'.to_ascii().is_digit_radix(17));
+        assert!(!'G'.to_ascii().is_digit_radix(16));
     }
 }
