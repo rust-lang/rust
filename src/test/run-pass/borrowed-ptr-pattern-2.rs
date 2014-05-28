@@ -16,6 +16,6 @@ fn foo(s: &String) -> bool {
 }
 
 pub fn main() {
-    assert!(foo(&"kitty".to_strbuf()));
-    assert!(!foo(&"gata".to_strbuf()));
+    assert!(foo(&"kitty".to_string()));
+    assert!(!foo(&"gata".to_string()));
 }

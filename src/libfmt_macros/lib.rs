@@ -249,7 +249,7 @@ impl<'a> Parser<'a> {
     /// String, but I think it does when this eventually uses conditions so it
     /// might as well start using it now.
     fn err(&mut self, msg: &str) {
-        self.errors.push(msg.to_strbuf());
+        self.errors.push(msg.to_string());
     }
 
     /// Optionally consumes the specified character. If the character is not at

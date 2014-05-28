@@ -197,7 +197,7 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
 
         // Extract the text provided
         let s = if text.is_null() {
-            "".to_owned()
+            "".to_string()
         } else {
             unsafe {
                 str::raw::from_buf_len((*text).data, (*text).size as uint)
@@ -207,14 +207,14 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
         // Transform the contents of the header into a hyphenated string
         let id = (s.as_slice().words().map(|s| {
             match s.to_ascii_opt() {
-                Some(s) => s.to_lower().into_str().to_strbuf(),
-                None => s.to_strbuf()
+                Some(s) => s.to_lower().into_str().to_string(),
+                None => s.to_string()
             }
-        }).collect::<Vec<String>>().connect("-")).to_strbuf();
+        }).collect::<Vec<String>>().connect("-")).to_string();
 
         // This is a terrible hack working around how hoedown gives us rendered
         // html for text rather than the raw text.
-        let id = id.replace("<code>", "").replace("</code>", "").to_strbuf();
+        let id = id.replace("<code>", "").replace("</code>", "").to_string();
 
         let opaque = opaque as *mut hoedown_html_renderer_state;
         let opaque = unsafe { &mut *((*opaque).opaque as *mut MyOpaque) };
@@ -229,7 +229,7 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
 
         let sec = match opaque.toc_builder {
             Some(ref mut builder) => {
-                builder.push(level as u32, s.to_strbuf(), id.clone())
+                builder.push(level as u32, s.to_string(), id.clone())
             }
             None => {""}
         };
@@ -302,7 +302,7 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
                     stripped_filtered_line(l).unwrap_or(l)
                 });
                 let text = lines.collect::<Vec<&str>>().connect("\n");
-                tests.add_test(text.to_strbuf(), should_fail, no_run, ignore);
+                tests.add_test(text.to_string(), should_fail, no_run, ignore);
             })
         }
     }

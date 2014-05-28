@@ -161,7 +161,7 @@ fn gen_text(n: uint) -> String {
             *b = '\n' as u8
         }
     }
-    str::from_utf8(bytes.as_slice()).unwrap().to_strbuf()
+    str::from_utf8(bytes.as_slice()).unwrap().to_string()
 }
 
 throughput!(easy0_32, easy0(), 32)

@@ -609,7 +609,7 @@ pub fn repr_to_str<T>(t: &T) -> String {
 
     let mut result = io::MemWriter::new();
     write_repr(&mut result as &mut io::Writer, t).unwrap();
-    str::from_utf8(result.unwrap().as_slice()).unwrap().to_strbuf()
+    str::from_utf8(result.unwrap().as_slice()).unwrap().to_string()
 }
 
 #[cfg(test)]

@@ -16,6 +16,6 @@ fn g(act: |Vec<int> | -> int) -> int { return act(vec!(1, 2, 3)); }
 pub fn main() {
     assert_eq!(g(f), 1);
     let f1: |Vec<String>| -> String = f;
-    assert_eq!(f1(vec!["x".to_strbuf(), "y".to_strbuf(), "z".to_strbuf()]),
-               "x".to_strbuf());
+    assert_eq!(f1(vec!["x".to_string(), "y".to_string(), "z".to_string()]),
+               "x".to_string());
 }

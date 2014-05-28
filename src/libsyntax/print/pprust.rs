@@ -144,7 +144,7 @@ pub fn to_str(f: |&mut State| -> IoResult<()>) -> String {
         let result =
             str::from_utf8_owned(Vec::from_slice(wr.get_ref())).unwrap();
         mem::forget(wr);
-        result.to_strbuf()
+        result.to_string()
     }
 }
 
@@ -243,8 +243,8 @@ pub fn variant_to_str(var: &ast::Variant) -> String {
 
 pub fn visibility_qualified(vis: ast::Visibility, s: &str) -> String {
     match vis {
-        ast::Public => format!("pub {}", s).to_strbuf(),
-        ast::Inherited => s.to_strbuf()
+        ast::Public => format!("pub {}", s).to_string(),
+        ast::Inherited => s.to_string()
     }
 }
 
@@ -2475,7 +2475,7 @@ mod test {
         let generics = ast_util::empty_generics();
         assert_eq!(&fun_to_str(&decl, ast::NormalFn, abba_ident,
                                None, &generics),
-                   &"fn abba()".to_strbuf());
+                   &"fn abba()".to_string());
     }
 
     #[test]
@@ -2493,6 +2493,6 @@ mod test {
         });
 
         let varstr = variant_to_str(&var);
-        assert_eq!(&varstr,&"pub principal_skinner".to_strbuf());
+        assert_eq!(&varstr,&"pub principal_skinner".to_string());
     }
 }

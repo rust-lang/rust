@@ -17,8 +17,8 @@ pub struct CrateId {
 impl CrateId {
     fn new(s: &str) -> CrateId {
         CrateId {
-            local_path: s.to_strbuf(),
-            junk: "wutevs".to_strbuf()
+            local_path: s.to_string(),
+            junk: "wutevs".to_string()
         }
     }
 }

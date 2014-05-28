@@ -162,7 +162,7 @@ fn live_node_kind_to_str(lnk: LiveNodeKind, cx: &ty::ctxt) -> String {
         VarDefNode(s) => {
             format_strbuf!("Var def node [{}]", cm.span_to_str(s))
         }
-        ExitNode => "Exit node".to_strbuf(),
+        ExitNode => "Exit node".to_string(),
     }
 }
 
@@ -325,9 +325,9 @@ impl<'a> IrMaps<'a> {
     fn variable_name(&self, var: Variable) -> String {
         match self.var_kinds.get(var.get()) {
             &Local(LocalInfo { ident: nm, .. }) | &Arg(_, nm) => {
-                token::get_ident(nm).get().to_str().to_strbuf()
+                token::get_ident(nm).get().to_str().to_string()
             },
-            &ImplicitRet => "<implicit-ret>".to_strbuf()
+            &ImplicitRet => "<implicit-ret>".to_string()
         }
     }
 
@@ -760,7 +760,7 @@ impl<'a> Liveness<'a> {
             self.write_vars(wr, ln, |idx| self.users.get(idx).writer);
             write!(wr, "  precedes {}]", self.successors.get(ln.get()).to_str());
         }
-        str::from_utf8(wr.unwrap().as_slice()).unwrap().to_strbuf()
+        str::from_utf8(wr.unwrap().as_slice()).unwrap().to_string()
     }
 
     fn init_empty(&mut self, ln: LiveNode, succ_ln: LiveNode) {

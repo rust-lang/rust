@@ -32,6 +32,6 @@ fn strlen(str: String) -> uint {
 }
 
 pub fn main() {
-    let len = strlen("Rust".to_strbuf());
+    let len = strlen("Rust".to_string());
     assert_eq!(len, 4u);
 }

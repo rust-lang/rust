@@ -60,10 +60,10 @@ impl fmt::Show for cat {
 fn print_out(thing: Box<ToStr>, expected: String) {
   let actual = thing.to_str();
   println!("{}", actual);
-  assert_eq!(actual.to_strbuf(), expected);
+  assert_eq!(actual.to_string(), expected);
 }
 
 pub fn main() {
-  let nyan: Box<ToStr> = box cat(0u, 2, "nyan".to_strbuf()) as Box<ToStr>;
-  print_out(nyan, "nyan".to_strbuf());
+  let nyan: Box<ToStr> = box cat(0u, 2, "nyan".to_string()) as Box<ToStr>;
+  print_out(nyan, "nyan".to_string());
 }

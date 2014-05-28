@@ -222,7 +222,7 @@ impl<'a> Parser<'a> {
                         self.caps += 1;
                         self.stack.push(Paren(self.flags,
                                               self.caps,
-                                              "".to_strbuf()))
+                                              "".to_string()))
                     }
                 }
                 ')' => {
@@ -796,7 +796,7 @@ impl<'a> Parser<'a> {
                     }
                     if self.cur() == ':' {
                         // Save the old flags with the opening paren.
-                        self.stack.push(Paren(self.flags, 0, "".to_strbuf()));
+                        self.stack.push(Paren(self.flags, 0, "".to_string()));
                     }
                     self.flags = flags;
                     return Ok(())
@@ -922,7 +922,7 @@ impl<'a> Parser<'a> {
     fn err<T>(&self, msg: &str) -> Result<T, Error> {
         Err(Error {
             pos: self.chari,
-            msg: msg.to_strbuf(),
+            msg: msg.to_string(),
         })
     }
 
@@ -942,7 +942,7 @@ impl<'a> Parser<'a> {
     }
 
     fn slice(&self, start: uint, end: uint) -> String {
-        str::from_chars(self.chars.as_slice().slice(start, end)).to_strbuf()
+        str::from_chars(self.chars.as_slice().slice(start, end)).to_string()
     }
 }
 

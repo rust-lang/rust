@@ -129,13 +129,13 @@ fn make_sequence_processor(sz: uint,
    let buffer = match sz {
        1u => { sort_and_fmt(&freqs, total) }
        2u => { sort_and_fmt(&freqs, total) }
-       3u => { format_strbuf!("{}\t{}", find(&freqs, "GGT".to_strbuf()), "GGT") }
-       4u => { format_strbuf!("{}\t{}", find(&freqs, "GGTA".to_strbuf()), "GGTA") }
-       6u => { format_strbuf!("{}\t{}", find(&freqs, "GGTATT".to_strbuf()), "GGTATT") }
-      12u => { format_strbuf!("{}\t{}", find(&freqs, "GGTATTTTAATT".to_strbuf()), "GGTATTTTAATT") }
-      18u => { format_strbuf!("{}\t{}", find(&freqs, "GGTATTTTAATTTATAGT".to_strbuf()),
+       3u => { format_strbuf!("{}\t{}", find(&freqs, "GGT".to_string()), "GGT") }
+       4u => { format_strbuf!("{}\t{}", find(&freqs, "GGTA".to_string()), "GGTA") }
+       6u => { format_strbuf!("{}\t{}", find(&freqs, "GGTATT".to_string()), "GGTATT") }
+      12u => { format_strbuf!("{}\t{}", find(&freqs, "GGTATTTTAATT".to_string()), "GGTATTTTAATT") }
+      18u => { format_strbuf!("{}\t{}", find(&freqs, "GGTATTTTAATTTATAGT".to_string()),
                        "GGTATTTTAATTTATAGT") }
-        _ => { "".to_strbuf() }
+        _ => { "".to_string() }
    };
 
     to_parent.send(buffer);

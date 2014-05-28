@@ -46,11 +46,11 @@ static EMPTY_SOURCE_STR: &str = "/* Hello, world! */";
 
 fn setup_env(test_name: &str, source_string: &str) -> Env {
     let messages = @DVec();
-    let matches = getopts(vec!("-Z".to_owned(), "verbose".to_owned()), optgroups()).get();
+    let matches = getopts(vec!("-Z".to_string(), "verbose".to_string()), optgroups()).get();
     let diag = diagnostic::collect(messages);
-    let sessopts = build_session_options("rustc".to_owned(), &matches, diag);
+    let sessopts = build_session_options("rustc".to_string(), &matches, diag);
     let sess = build_session(sessopts, None, diag);
-    let cfg = build_configuration(sess, "whatever".to_owned(), str_input("".to_owned()));
+    let cfg = build_configuration(sess, "whatever".to_string(), str_input("".to_string()));
     let dm = HashMap();
     let amap = HashMap();
     let freevars = HashMap();

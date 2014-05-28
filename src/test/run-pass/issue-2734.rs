@@ -17,7 +17,7 @@ fn perform_hax<T: 'static>(x: Box<T>) -> Box<hax:> {
 }
 
 fn deadcode() {
-    perform_hax(box "deadcode".to_owned());
+    perform_hax(box "deadcode".to_string());
 }
 
 pub fn main() {

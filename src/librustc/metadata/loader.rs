@@ -327,13 +327,13 @@ impl<'a> Context<'a> {
             Some(..) => {} // check the hash
 
             // hash is irrelevant, no version specified
-            None => return Some(hash.to_strbuf())
+            None => return Some(hash.to_string())
         }
         debug!("matching -- {}, vers ok", file);
         // hashes in filenames are prefixes of the "true hash"
         if self.id_hash == hash.as_slice() {
             debug!("matching -- {}, hash ok", file);
-            Some(hash.to_strbuf())
+            Some(hash.to_string())
         } else {
             None
         }
@@ -423,7 +423,7 @@ impl<'a> Context<'a> {
             info!("Rejecting via crate triple: expected {} got {}", self.triple, triple);
             self.rejected_via_triple.push(CrateMismatch {
                 path: libpath.clone(),
-                got: triple.to_strbuf()
+                got: triple.to_string()
             });
             return false;
         }
@@ -435,7 +435,7 @@ impl<'a> Context<'a> {
                     info!("Rejecting via hash: expected {} got {}", *myhash, hash);
                     self.rejected_via_hash.push(CrateMismatch {
                         path: libpath.clone(),
-                        got: myhash.as_str().to_strbuf()
+                        got: myhash.as_str().to_string()
                     });
                     false
                 } else {

@@ -18,32 +18,32 @@ struct MyVisitor {
 
 impl TyVisitor for MyVisitor {
     fn visit_bot(&mut self) -> bool {
-        self.types.push("bot".to_strbuf());
+        self.types.push("bot".to_string());
         println!("visited bot type");
         true
     }
     fn visit_nil(&mut self) -> bool {
-        self.types.push("nil".to_strbuf());
+        self.types.push("nil".to_string());
         println!("visited nil type");
         true
     }
     fn visit_bool(&mut self) -> bool {
-        self.types.push("bool".to_strbuf());
+        self.types.push("bool".to_string());
         println!("visited bool type");
         true
     }
     fn visit_int(&mut self) -> bool {
-        self.types.push("int".to_strbuf());
+        self.types.push("int".to_string());
         println!("visited int type");
         true
     }
     fn visit_i8(&mut self) -> bool {
-        self.types.push("i8".to_strbuf());
+        self.types.push("i8".to_string());
         println!("visited i8 type");
         true
     }
     fn visit_i16(&mut self) -> bool {
-        self.types.push("i16".to_strbuf());
+        self.types.push("i16".to_string());
         println!("visited i16 type");
         true
     }
@@ -76,9 +76,9 @@ impl TyVisitor for MyVisitor {
 
     fn visit_evec_box(&mut self, _mtbl: uint, _inner: *TyDesc) -> bool { true }
     fn visit_evec_uniq(&mut self, _mtbl: uint, inner: *TyDesc) -> bool {
-        self.types.push("[".to_strbuf());
+        self.types.push("[".to_string());
         unsafe { visit_tydesc(inner, &mut *self as &mut TyVisitor); }
-        self.types.push("]".to_strbuf());
+        self.types.push("]".to_string());
         true
     }
     fn visit_evec_slice(&mut self, _mtbl: uint, _inner: *TyDesc) -> bool { true }
@@ -156,6 +156,6 @@ pub fn main() {
     }
 
     let vec_types: Vec<String> = v.types.clone().move_iter().collect();
-    assert_eq!(vec_types, vec!("bool".to_strbuf(), "int".to_strbuf(),
-                               "i8".to_strbuf(), "i16".to_strbuf()));
+    assert_eq!(vec_types, vec!("bool".to_string(), "int".to_string(),
+                               "i8".to_string(), "i16".to_string()));
 }

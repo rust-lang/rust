@@ -228,7 +228,7 @@ pub fn trans_uniq_vstore<'a>(bcx: &'a Block<'a>,
                              content_expr: &ast::Expr)
                              -> DatumBlock<'a, Expr> {
     /*!
-     * ~[...] and "...".to_owned() allocate boxes in the exchange heap and write
+     * ~[...] and "...".to_string() allocate boxes in the exchange heap and write
      * the array elements into them.
      */
 
@@ -236,7 +236,7 @@ pub fn trans_uniq_vstore<'a>(bcx: &'a Block<'a>,
     let fcx = bcx.fcx;
     let ccx = fcx.ccx;
 
-    // Handle "".to_owned().
+    // Handle "".to_string().
     match content_expr.node {
         ast::ExprLit(lit) => {
             match lit.node {

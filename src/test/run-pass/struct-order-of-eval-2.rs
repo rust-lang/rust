@@ -14,9 +14,9 @@ struct S {
 }
 
 pub fn main() {
-    let s = "Hello, world!".to_strbuf();
+    let s = "Hello, world!".to_string();
     let _s = S {
-        f1: s.to_strbuf(),
+        f1: s.to_string(),
         f0: s
     };
 }

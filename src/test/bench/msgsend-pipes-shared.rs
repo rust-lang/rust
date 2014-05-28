@@ -97,11 +97,11 @@ fn run(args: &[String]) {
 fn main() {
     let args = os::args();
     let args = if os::getenv("RUST_BENCH").is_some() {
-        vec!("".to_strbuf(), "1000000".to_strbuf(), "10000".to_strbuf())
+        vec!("".to_string(), "1000000".to_string(), "10000".to_string())
     } else if args.len() <= 1u {
-        vec!("".to_strbuf(), "10000".to_strbuf(), "4".to_strbuf())
+        vec!("".to_string(), "10000".to_string(), "4".to_string())
     } else {
-        args.move_iter().map(|x| x.to_strbuf()).collect()
+        args.move_iter().map(|x| x.to_string()).collect()
     };
 
     println!("{}", args);

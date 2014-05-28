@@ -146,7 +146,7 @@ impl<'a> ToBase64 for &'a [u8] {
         }
 
         unsafe {
-            str::raw::from_utf8(v.as_slice()).to_strbuf()
+            str::raw::from_utf8(v.as_slice()).to_string()
         }
     }
 }
@@ -267,13 +267,13 @@ mod tests {
 
     #[test]
     fn test_to_base64_basic() {
-        assert_eq!("".as_bytes().to_base64(STANDARD), "".to_strbuf());
-        assert_eq!("f".as_bytes().to_base64(STANDARD), "Zg==".to_strbuf());
-        assert_eq!("fo".as_bytes().to_base64(STANDARD), "Zm8=".to_strbuf());
-        assert_eq!("foo".as_bytes().to_base64(STANDARD), "Zm9v".to_strbuf());
-        assert_eq!("foob".as_bytes().to_base64(STANDARD), "Zm9vYg==".to_strbuf());
-        assert_eq!("fooba".as_bytes().to_base64(STANDARD), "Zm9vYmE=".to_strbuf());
-        assert_eq!("foobar".as_bytes().to_base64(STANDARD), "Zm9vYmFy".to_strbuf());
+        assert_eq!("".as_bytes().to_base64(STANDARD), "".to_string());
+        assert_eq!("f".as_bytes().to_base64(STANDARD), "Zg==".to_string());
+        assert_eq!("fo".as_bytes().to_base64(STANDARD), "Zm8=".to_string());
+        assert_eq!("foo".as_bytes().to_base64(STANDARD), "Zm9v".to_string());
+        assert_eq!("foob".as_bytes().to_base64(STANDARD), "Zm9vYg==".to_string());
+        assert_eq!("fooba".as_bytes().to_base64(STANDARD), "Zm9vYmE=".to_string());
+        assert_eq!("foobar".as_bytes().to_base64(STANDARD), "Zm9vYmFy".to_string());
     }
 
     #[test]
@@ -283,19 +283,19 @@ mod tests {
                               .contains("\r\n"));
         assert_eq!("foobar".as_bytes().to_base64(Config {line_length: Some(4),
                                                          ..STANDARD}),
-                   "Zm9v\r\nYmFy".to_strbuf());
+                   "Zm9v\r\nYmFy".to_string());
     }
 
     #[test]
     fn test_to_base64_padding() {
-        assert_eq!("f".as_bytes().to_base64(Config {pad: false, ..STANDARD}), "Zg".to_strbuf());
-        assert_eq!("fo".as_bytes().to_base64(Config {pad: false, ..STANDARD}), "Zm8".to_strbuf());
+        assert_eq!("f".as_bytes().to_base64(Config {pad: false, ..STANDARD}), "Zg".to_string());
+        assert_eq!("fo".as_bytes().to_base64(Config {pad: false, ..STANDARD}), "Zm8".to_string());
     }
 
     #[test]
     fn test_to_base64_url_safe() {
-        assert_eq!([251, 255].to_base64(URL_SAFE), "-_8".to_strbuf());
-        assert_eq!([251, 255].to_base64(STANDARD), "+/8=".to_strbuf());
+        assert_eq!([251, 255].to_base64(URL_SAFE), "-_8".to_string());
+        assert_eq!([251, 255].to_base64(STANDARD), "+/8=".to_string());
     }
 
     #[test]

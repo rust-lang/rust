@@ -21,5 +21,5 @@ fn cat(in_name: String) -> cat {
 }
 
 pub fn main() {
-  let _nyan = cat("nyan".to_strbuf());
+  let _nyan = cat("nyan".to_string());
 }

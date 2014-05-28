@@ -35,7 +35,7 @@ impl<'doc> Doc<'doc> {
     }
 
     pub fn as_str(&self) -> String {
-        self.as_str_slice().to_strbuf()
+        self.as_str_slice().to_string()
     }
 }
 

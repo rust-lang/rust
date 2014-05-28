@@ -61,7 +61,7 @@ pub struct Svh {
 impl Svh {
     pub fn new(hash: &str) -> Svh {
         assert!(hash.len() == 16);
-        Svh { hash: hash.to_strbuf() }
+        Svh { hash: hash.to_string() }
     }
 
     pub fn as_str<'a>(&'a self) -> &'a str {

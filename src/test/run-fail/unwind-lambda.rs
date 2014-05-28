@@ -13,8 +13,8 @@
 // error-pattern:fail
 
 fn main() {
-    let cheese = "roquefort".to_strbuf();
-    let carrots = @"crunchy".to_strbuf();
+    let cheese = "roquefort".to_string();
+    let carrots = @"crunchy".to_string();
 
     let result: |@String, |String||: 'static = (|tasties, macerate| {
         macerate((*tasties).clone());

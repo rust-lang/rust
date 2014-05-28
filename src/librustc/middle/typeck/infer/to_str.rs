@@ -56,7 +56,7 @@ impl<V:InferStr> InferStr for Bound<V> {
     fn inf_str(&self, cx: &InferCtxt) -> String {
         match *self {
             Some(ref v) => v.inf_str(cx),
-            None => "none".to_strbuf()
+            None => "none".to_string()
         }
     }
 }
@@ -82,13 +82,13 @@ impl<V:Vid + ToStr,T:InferStr> InferStr for VarValue<V, T> {
 
 impl InferStr for IntVarValue {
     fn inf_str(&self, _cx: &InferCtxt) -> String {
-        self.to_str().to_strbuf()
+        self.to_str().to_string()
     }
 }
 
 impl InferStr for ast::FloatTy {
     fn inf_str(&self, _cx: &InferCtxt) -> String {
-        self.to_str().to_strbuf()
+        self.to_str().to_string()
     }
 }
 

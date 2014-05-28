@@ -18,10 +18,10 @@ fn start(tx: &Sender<Sender<String>>) {
     let mut a;
     let mut b;
     a = rx.recv();
-    assert!(a == "A".to_strbuf());
+    assert!(a == "A".to_string());
     println!("{}", a);
     b = rx.recv();
-    assert!(b == "B".to_strbuf());
+    assert!(b == "B".to_string());
     println!("{}", b);
 }
 
@@ -30,7 +30,7 @@ pub fn main() {
     let _child = task::spawn(proc() { start(&tx) });
 
     let mut c = rx.recv();
-    c.send("A".to_strbuf());
-    c.send("B".to_strbuf());
+    c.send("A".to_string());
+    c.send("B".to_string());
     task::deschedule();
 }

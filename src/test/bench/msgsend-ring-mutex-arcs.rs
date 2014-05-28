@@ -63,9 +63,9 @@ fn thread_ring(i: uint, count: uint, num_chan: pipe, num_port: pipe) {
 fn main() {
     let args = os::args();
     let args = if os::getenv("RUST_BENCH").is_some() {
-        vec!("".to_owned(), "100".to_owned(), "10000".to_owned())
+        vec!("".to_string(), "100".to_string(), "10000".to_string())
     } else if args.len() <= 1u {
-        vec!("".to_owned(), "10".to_owned(), "100".to_owned())
+        vec!("".to_string(), "10".to_string(), "100".to_string())
     } else {
         args.clone().move_iter().collect()
     };

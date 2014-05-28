@@ -988,10 +988,10 @@ mod tests {
     #[test]
     fn test_to_str() {
         let zerolen = Bitv::new(0u, false);
-        assert_eq!(zerolen.to_str(), "".to_owned());
+        assert_eq!(zerolen.to_str(), "".to_string());
 
         let eightbits = Bitv::new(8u, false);
-        assert_eq!(eightbits.to_str(), "00000000".to_owned());
+        assert_eq!(eightbits.to_str(), "00000000".to_string());
     }
 
     #[test]
@@ -1014,7 +1014,7 @@ mod tests {
         let mut b = bitv::Bitv::new(2, false);
         b.set(0, true);
         b.set(1, false);
-        assert_eq!(b.to_str(), "10".to_owned());
+        assert_eq!(b.to_str(), "10".to_string());
     }
 
     #[test]
@@ -1343,7 +1343,7 @@ mod tests {
     #[test]
     fn test_from_bools() {
         assert!(from_bools([true, false, true, true]).to_str() ==
-            "1011".to_owned());
+            "1011".to_string());
     }
 
     #[test]

@@ -57,7 +57,7 @@ pub fn expand_asm(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     let mut asm_str_style = None;
     let mut outputs = Vec::new();
     let mut inputs = Vec::new();
-    let mut cons = "".to_owned();
+    let mut cons = "".to_string();
     let mut volatile = false;
     let mut alignstack = false;
     let mut dialect = ast::AsmAtt;

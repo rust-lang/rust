@@ -1032,16 +1032,16 @@ mod tests {
             use std::io::MemWriter;
             let mut m = MemWriter::new();
             write_boxplot(&mut m as &mut io::Writer, s, 30).unwrap();
-            let out = str::from_utf8(m.unwrap().as_slice()).unwrap().to_strbuf();
+            let out = str::from_utf8(m.unwrap().as_slice()).unwrap().to_string();
             assert_eq!(out, expected);
         }
 
         t(&Summary::new([-2.0, -1.0]),
-                        "-2 |[------******#*****---]| -1".to_strbuf());
+                        "-2 |[------******#*****---]| -1".to_string());
         t(&Summary::new([0.0, 2.0]),
-                        "0 |[-------*****#*******---]| 2".to_strbuf());
+                        "0 |[-------*****#*******---]| 2".to_string());
         t(&Summary::new([-2.0, 0.0]),
-                        "-2 |[------******#******---]| 0".to_strbuf());
+                        "-2 |[------******#******---]| 0".to_string());
 
     }
     #[test]

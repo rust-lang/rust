@@ -361,7 +361,7 @@ pub fn check_crate(sess: &Session, krate: &ast::Crate) {
                             sess.add_lint(lint::UnknownFeatures,
                                           ast::CRATE_NODE_ID,
                                           mi.span,
-                                          "unknown feature".to_strbuf());
+                                          "unknown feature".to_string());
                         }
                     }
                 }

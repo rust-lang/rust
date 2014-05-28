@@ -435,8 +435,8 @@ impl<'a> LabelText<'a> {
     /// Renders text as string suitable for a label in a .dot file.
     pub fn escape(&self) -> String {
         match self {
-            &LabelStr(ref s) => s.as_slice().escape_default().to_strbuf(),
-            &EscStr(ref s) => LabelText::escape_str(s.as_slice()).to_strbuf(),
+            &LabelStr(ref s) => s.as_slice().escape_default().to_string(),
+            &EscStr(ref s) => LabelText::escape_str(s.as_slice()).to_string(),
         }
     }
 }
@@ -666,7 +666,7 @@ mod tests {
         render(&g, &mut writer).unwrap();
         let mut r = BufReader::new(writer.get_ref());
         match r.read_to_str() {
-            Ok(string) => Ok(string.to_strbuf()),
+            Ok(string) => Ok(string.to_string()),
             Err(err) => Err(err),
         }
     }

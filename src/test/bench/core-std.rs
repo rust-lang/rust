@@ -25,12 +25,12 @@ use std::io::File;
 
 macro_rules! bench (
     ($argv:expr, $id:ident) => (maybe_run_test($argv.as_slice(),
-                                               stringify!($id).to_strbuf(),
+                                               stringify!($id).to_string(),
                                                           $id))
 )
 
 fn main() {
-    let argv = os::args().move_iter().map(|x| x.to_strbuf()).collect::<Vec<String>>();
+    let argv = os::args().move_iter().map(|x| x.to_string()).collect::<Vec<String>>();
     let _tests = argv.slice(1, argv.len());
 
     bench!(argv, shift_push);
@@ -48,7 +48,7 @@ fn maybe_run_test(argv: &[String], name: String, test: ||) {
     if os::getenv("RUST_BENCH").is_some() {
         run_test = true
     } else if argv.len() > 0 {
-        run_test = argv.iter().any(|x| x == &"all".to_strbuf()) || argv.iter().any(|x| x == &name)
+        run_test = argv.iter().any(|x| x == &"all".to_string()) || argv.iter().any(|x| x == &name)
     }
 
     if !run_test {

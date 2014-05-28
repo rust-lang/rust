@@ -94,13 +94,13 @@ mod tests {
 
     #[test]
     pub fn test_to_str() {
-        assert_eq!((0 as $T).to_str_radix(10u), "0".to_strbuf());
-        assert_eq!((1 as $T).to_str_radix(10u), "1".to_strbuf());
-        assert_eq!((2 as $T).to_str_radix(10u), "2".to_strbuf());
-        assert_eq!((11 as $T).to_str_radix(10u), "11".to_strbuf());
-        assert_eq!((11 as $T).to_str_radix(16u), "b".to_strbuf());
-        assert_eq!((255 as $T).to_str_radix(16u), "ff".to_strbuf());
-        assert_eq!((0xff as $T).to_str_radix(10u), "255".to_strbuf());
+        assert_eq!((0 as $T).to_str_radix(10u), "0".to_string());
+        assert_eq!((1 as $T).to_str_radix(10u), "1".to_string());
+        assert_eq!((2 as $T).to_str_radix(10u), "2".to_string());
+        assert_eq!((11 as $T).to_str_radix(10u), "11".to_string());
+        assert_eq!((11 as $T).to_str_radix(16u), "b".to_string());
+        assert_eq!((255 as $T).to_str_radix(16u), "ff".to_string());
+        assert_eq!((0xff as $T).to_str_radix(10u), "255".to_string());
     }
 
     #[test]
@@ -133,28 +133,28 @@ mod tests {
     #[test]
     fn test_uint_to_str_overflow() {
         let mut u8_val: u8 = 255_u8;
-        assert_eq!(u8_val.to_str(), "255".to_strbuf());
+        assert_eq!(u8_val.to_str(), "255".to_string());
 
         u8_val += 1 as u8;
-        assert_eq!(u8_val.to_str(), "0".to_strbuf());
+        assert_eq!(u8_val.to_str(), "0".to_string());
 
         let mut u16_val: u16 = 65_535_u16;
-        assert_eq!(u16_val.to_str(), "65535".to_strbuf());
+        assert_eq!(u16_val.to_str(), "65535".to_string());
 
         u16_val += 1 as u16;
-        assert_eq!(u16_val.to_str(), "0".to_strbuf());
+        assert_eq!(u16_val.to_str(), "0".to_string());
 
         let mut u32_val: u32 = 4_294_967_295_u32;
-        assert_eq!(u32_val.to_str(), "4294967295".to_strbuf());
+        assert_eq!(u32_val.to_str(), "4294967295".to_string());
 
         u32_val += 1 as u32;
-        assert_eq!(u32_val.to_str(), "0".to_strbuf());
+        assert_eq!(u32_val.to_str(), "0".to_string());
 
         let mut u64_val: u64 = 18_446_744_073_709_551_615_u64;
-        assert_eq!(u64_val.to_str(), "18446744073709551615".to_strbuf());
+        assert_eq!(u64_val.to_str(), "18446744073709551615".to_string());
 
         u64_val += 1 as u64;
-        assert_eq!(u64_val.to_str(), "0".to_strbuf());
+        assert_eq!(u64_val.to_str(), "0".to_string());
     }
 
     #[test]

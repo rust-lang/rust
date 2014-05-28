@@ -14,6 +14,6 @@ extern crate explicit_self_xcrate;
 use explicit_self_xcrate::{Foo, Bar};
 
 pub fn main() {
-    let x = Bar { x: "hello".to_strbuf() };
+    let x = Bar { x: "hello".to_string() };
     x.f();
 }

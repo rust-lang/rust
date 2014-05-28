@@ -154,7 +154,7 @@ impl Regex {
         let ast = try!(parse::parse(re));
         let (prog, names) = Program::new(ast);
         Ok(Dynamic(Dynamic {
-            original: re.to_strbuf(),
+            original: re.to_string(),
             names: names,
             prog: prog,
         }))
@@ -539,8 +539,8 @@ enum NamesIter<'a> {
 impl<'a> Iterator<Option<String>> for NamesIter<'a> {
     fn next(&mut self) -> Option<Option<String>> {
         match *self {
-            NamesIterNative(ref mut i) => i.next().map(|x| x.map(|s| s.to_strbuf())),
-            NamesIterDynamic(ref mut i) => i.next().map(|x| x.as_ref().map(|s| s.to_strbuf())),
+            NamesIterNative(ref mut i) => i.next().map(|x| x.map(|s| s.to_string())),
+            NamesIterDynamic(ref mut i) => i.next().map(|x| x.as_ref().map(|s| s.to_string())),
         }
     }
 }
@@ -764,8 +764,8 @@ impl<'t> Captures<'t> {
             format_strbuf!("{}{}",
                            pre,
                            match from_str::<uint>(name.as_slice()) {
-                None => self.name(name).to_strbuf(),
-                Some(i) => self.at(i).to_strbuf(),
+                None => self.name(name).to_string(),
+                Some(i) => self.at(i).to_string(),
             })
         });
         let re = Regex::new(r"\$\$").unwrap();
