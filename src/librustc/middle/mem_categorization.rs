@@ -1088,6 +1088,10 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
           ast::PatLit(_) | ast::PatRange(_, _) => {
               /*always ok*/
           }
+
+          ast::PatMac(_) => {
+              self.tcx().sess.span_bug(pat.span, "unexpanded macro");
+          }
         }
 
         Ok(())

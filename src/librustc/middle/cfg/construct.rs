@@ -142,6 +142,10 @@ impl<'a> CFGBuilder<'a> {
                     self.pats_all(post.iter().map(|p| *p), vec_exit);
                 self.add_node(pat.id, [post_exit])
             }
+
+            ast::PatMac(_) => {
+                self.tcx.sess.span_bug(pat.span, "unexpanded macro");
+            }
         }
     }
 

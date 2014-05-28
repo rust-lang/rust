@@ -722,6 +722,8 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
         }
         fcx.write_ty(pat.id, expected);
       }
+
+      ast::PatMac(_) => tcx.sess.bug("unexpanded macro"),
     }
 }
 

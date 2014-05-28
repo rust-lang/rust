@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{P, Block, Crate, DeclLocal, ExprMac};
+use ast::{P, Block, Crate, DeclLocal, ExprMac, PatMac};
 use ast::{Local, Ident, MacInvocTT};
 use ast::{ItemMac, Mrk, Stmt, StmtDecl, StmtMac, StmtExpr, StmtSemi};
 use ast::TokenTree;
@@ -92,8 +92,7 @@ pub fn expand_expr(e: @ast::Expr, fld: &mut MacroExpander) -> @ast::Expr {
                                 None => {
                                     fld.cx.span_err(
                                         pth.span,
-                                        format!("non-expr macro in expr pos: \
-                                                 {}",
+                                        format!("non-expression macro in expression position: {}",
                                                 extnamestr.get().as_slice()
                                         ).as_slice());
                                     return DummyResult::raw_expr(e.span);
@@ -487,7 +486,7 @@ pub fn expand_item_mac(it: @ast::Item, fld: &mut MacroExpander)
                 }
                 None => {
                     fld.cx.span_err(pth.span,
-                                    format!("expr macro in item position: {}",
+                                    format!("non-item macro in item position: {}",
                                             extnamestr.get()).as_slice());
                     return SmallVector::zero();
                 }
@@ -639,7 +638,7 @@ pub fn expand_stmt(s: &Stmt, fld: &mut MacroExpander) -> SmallVector<@Stmt> {
                 Some(stmt) => stmt,
                 None => {
                     fld.cx.span_err(pth.span,
-                                    format!("non-stmt macro in stmt pos: {}",
+                                    format!("non-statement macro in statement position: {}",
                                             extnamestr).as_slice());
                     return SmallVector::zero();
                 }
@@ -842,6 +841,83 @@ pub fn expand_block_elts(b: &Block, fld: &mut MacroExpander) -> P<Block> {
     })
 }
 
+pub fn expand_pat(p: @ast::Pat, fld: &mut MacroExpander) -> @ast::Pat {
+    let (pth, tts) = match p.node {
+        PatMac(ref mac) => {
+            match mac.node {
+                MacInvocTT(ref pth, ref tts, _) => {
+                    (pth, (*tts).clone())
+                }
+            }
+        }
+        _ => return noop_fold_pat(p, fld),
+    };
+    if pth.segments.len() > 1u {
+        fld.cx.span_err(pth.span, "expected macro name without module separators");
+        return DummyResult::raw_pat(p.span);
+    }
+    let extname = pth.segments.get(0).identifier;
+    let extnamestr = token::get_ident(extname);
+    let marked_after = match fld.extsbox.find(&extname.name) {
+        None => {
+            fld.cx.span_err(pth.span,
+                            format!("macro undefined: '{}!'",
+                                    extnamestr).as_slice());
+            // let compilation continue
+            return DummyResult::raw_pat(p.span);
+        }
+
+        Some(&NormalTT(ref expander, span)) => {
+            fld.cx.bt_push(ExpnInfo {
+                call_site: p.span,
+                callee: NameAndSpan {
+                    name: extnamestr.get().to_string(),
+                    format: MacroBang,
+                    span: span
+                }
+            });
+
+            let fm = fresh_mark();
+            let marked_before = mark_tts(tts.as_slice(), fm);
+            let mac_span = original_span(fld.cx);
+            let expanded = match expander.expand(fld.cx,
+                                   mac_span.call_site,
+                                   marked_before.as_slice()).make_pat() {
+                Some(e) => e,
+                None => {
+                    fld.cx.span_err(
+                        pth.span,
+                        format!(
+                            "non-pattern macro in pattern position: {}",
+                            extnamestr.get()
+                        ).as_slice()
+                    );
+                    return DummyResult::raw_pat(p.span);
+                }
+            };
+
+            // mark after:
+            mark_pat(expanded,fm)
+        }
+        _ => {
+            fld.cx.span_err(p.span,
+                            format!("{}! is not legal in pattern position",
+                                    extnamestr.get()).as_slice());
+            return DummyResult::raw_pat(p.span);
+        }
+    };
+
+    let fully_expanded =
+        fld.fold_pat(marked_after).node.clone();
+    fld.cx.bt_pop();
+
+    @ast::Pat {
+        id: ast::DUMMY_NODE_ID,
+        node: fully_expanded,
+        span: p.span,
+    }
+}
+
 pub struct IdentRenamer<'a> {
     renames: &'a mut RenameList,
 }
@@ -883,6 +959,10 @@ pub struct MacroExpander<'a, 'b> {
 impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
     fn fold_expr(&mut self, expr: @ast::Expr) -> @ast::Expr {
         expand_expr(expr, self)
+    }
+
+    fn fold_pat(&mut self, pat: @ast::Pat) -> @ast::Pat {
+        expand_pat(pat, self)
     }
 
     fn fold_item(&mut self, item: @ast::Item) -> SmallVector<@ast::Item> {
@@ -972,6 +1052,11 @@ fn mark_tts(tts: &[TokenTree], m: Mrk) -> Vec<TokenTree> {
 // apply a given mark to the given expr. Used following the expansion of a macro.
 fn mark_expr(expr: @ast::Expr, m: Mrk) -> @ast::Expr {
     new_mark_folder(m).fold_expr(expr)
+}
+
+// apply a given mark to the given pattern. Used following the expansion of a macro.
+fn mark_pat(pat: @ast::Pat, m: Mrk) -> @ast::Pat {
+    new_mark_folder(m).fold_pat(pat)
 }
 
 // apply a given mark to the given stmt. Used following the expansion of a macro.

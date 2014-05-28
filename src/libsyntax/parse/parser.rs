@@ -2911,15 +2911,28 @@ impl<'a> Parser<'a> {
                 pat = PatRange(start, end);
             } else if is_plain_ident(&self.token) && !can_be_enum_or_struct {
                 let name = self.parse_path(NoTypesAllowed).path;
-                let sub;
-                if self.eat(&token::AT) {
-                    // parse foo @ pat
-                    sub = Some(self.parse_pat());
+                if self.eat(&token::NOT) {
+                    // macro invocation
+                    let ket = token::close_delimiter_for(&self.token)
+                                    .unwrap_or_else(|| self.fatal("expected open delimiter"));
+                    self.bump();
+
+                    let tts = self.parse_seq_to_end(&ket,
+                                                    seq_sep_none(),
+                                                    |p| p.parse_token_tree());
+
+                    let mac = MacInvocTT(name, tts, EMPTY_CTXT);
+                    pat = ast::PatMac(codemap::Spanned {node: mac, span: self.span});
                 } else {
-                    // or just foo
-                    sub = None;
+                    let sub = if self.eat(&token::AT) {
+                        // parse foo @ pat
+                        Some(self.parse_pat())
+                    } else {
+                        // or just foo
+                        None
+                    };
+                    pat = PatIdent(BindByValue(MutImmutable), name, sub);
                 }
-                pat = PatIdent(BindByValue(MutImmutable), name, sub);
             } else {
                 // parse an enum pat
                 let enum_path = self.parse_path(LifetimeAndTypesWithColons)

@@ -392,6 +392,7 @@ fn pat_ctor_id(cx: &MatchCheckCtxt, p: @Pat) -> Option<ctor> {
           None => Some(vec(before.len() + after.len()))
         }
       }
+      PatMac(_) => cx.tcx.sess.bug("unexpanded macro"),
     }
 }
 
@@ -849,6 +850,10 @@ fn specialize(cx: &MatchCheckCtxt,
                     _ => None
                 }
             }
+            PatMac(_) => {
+                cx.tcx.sess.span_err(pat_span, "unexpanded macro");
+                None
+            }
         }
     }
 }
@@ -947,6 +952,7 @@ fn find_refutable(cx: &MatchCheckCtxt, pat: &Pat, spans: &mut Vec<Span>) {
       }
       PatEnum(_,_) => {}
       PatVec(..) => { this_pattern!() }
+      PatMac(_) => cx.tcx.sess.bug("unexpanded macro"),
     }
 }
 

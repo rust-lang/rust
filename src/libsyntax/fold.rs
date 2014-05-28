@@ -770,6 +770,7 @@ pub fn noop_fold_pat<T: Folder>(p: @Pat, folder: &mut T) -> @Pat {
                     slice.map(|x| folder.fold_pat(x)),
                     after.iter().map(|x| folder.fold_pat(*x)).collect())
         }
+        PatMac(ref mac) => PatMac(folder.fold_mac(mac)),
     };
 
     @Pat {
