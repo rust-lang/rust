@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn main() {
-    match "foo".to_strbuf() {
+    match "foo".to_string() {
         ['f', 'o', ..] => {} //~ ERROR mismatched types
         _ => { }
     }

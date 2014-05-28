@@ -925,15 +925,15 @@ pub trait MutableVector<'a, T> {
     /// # Example
     ///
     /// ```rust
-    /// let mut v = ~["foo".to_owned(), "bar".to_owned(), "baz".to_owned()];
+    /// let mut v = ~["foo".to_string(), "bar".to_string(), "baz".to_string()];
     ///
     /// unsafe {
-    ///     // `"baz".to_owned()` is deallocated.
-    ///     v.unsafe_set(2, "qux".to_owned());
+    ///     // `"baz".to_string()` is deallocated.
+    ///     v.unsafe_set(2, "qux".to_string());
     ///
     ///     // Out of bounds: could cause a crash, or overwriting
     ///     // other data, or something else.
-    ///     // v.unsafe_set(10, "oops".to_owned());
+    ///     // v.unsafe_set(10, "oops".to_string());
     /// }
     /// ```
     unsafe fn unsafe_set(self, index: uint, val: T);
@@ -945,10 +945,10 @@ pub trait MutableVector<'a, T> {
     /// # Example
     ///
     /// ```rust
-    /// let mut v = ["foo".to_owned(), "bar".to_owned()];
+    /// let mut v = ["foo".to_string(), "bar".to_string()];
     ///
-    /// // memory leak! `"bar".to_owned()` is not deallocated.
-    /// unsafe { v.init_elem(1, "baz".to_owned()); }
+    /// // memory leak! `"bar".to_string()` is not deallocated.
+    /// unsafe { v.init_elem(1, "baz".to_string()); }
     /// ```
     unsafe fn init_elem(self, i: uint, val: T);
 

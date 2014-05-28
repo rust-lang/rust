@@ -31,7 +31,7 @@ trait uint_utils {
 
 impl uint_utils for uint {
     fn str(&self) -> String {
-        self.to_str().to_strbuf()
+        self.to_str().to_string()
     }
     fn multi(&self, f: |uint|) {
         let mut c = 0u;
@@ -59,9 +59,9 @@ impl<T> vec_utils<T> for Vec<T> {
 
 pub fn main() {
     assert_eq!(10u.plus(), 30);
-    assert_eq!(("hi".to_strbuf()).plus(), 200);
+    assert_eq!(("hi".to_string()).plus(), 200);
 
-    assert_eq!((vec!(1)).length_().str(), "1".to_strbuf());
+    assert_eq!((vec!(1)).length_().str(), "1".to_string());
     let vect = vec!(3, 4).map_(|a| *a + 4);
     assert_eq!(*vect.get(0), 7);
     let vect = (vec!(3, 4)).map_::<uint>(|a| *a as uint + 4u);

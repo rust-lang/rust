@@ -15,7 +15,7 @@ trait to_str {
 }
 
 impl to_str for int {
-    fn to_string(&self) -> String { self.to_str().to_strbuf() }
+    fn to_string(&self) -> String { self.to_str().to_string() }
 }
 
 impl<T:to_str> to_str for Vec<T> {
@@ -29,16 +29,16 @@ impl<T:to_str> to_str for Vec<T> {
 }
 
 pub fn main() {
-    assert!(1.to_string() == "1".to_strbuf());
-    assert!((vec!(2, 3, 4)).to_string() == "[2, 3, 4]".to_strbuf());
+    assert!(1.to_string() == "1".to_string());
+    assert!((vec!(2, 3, 4)).to_string() == "[2, 3, 4]".to_string());
 
     fn indirect<T:to_str>(x: T) -> String {
         format_strbuf!("{}!", x.to_string())
     }
-    assert!(indirect(vec!(10, 20)) == "[10, 20]!".to_strbuf());
+    assert!(indirect(vec!(10, 20)) == "[10, 20]!".to_string());
 
     fn indirect2<T:to_str>(x: T) -> String {
         indirect(x)
     }
-    assert!(indirect2(vec!(1)) == "[1]!".to_strbuf());
+    assert!(indirect2(vec!(1)) == "[1]!".to_string());
 }

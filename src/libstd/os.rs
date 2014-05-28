@@ -178,8 +178,8 @@ fn with_env_lock<T>(f: || -> T) -> T {
 /// for details.
 pub fn env() -> Vec<(String,String)> {
     env_as_bytes().move_iter().map(|(k,v)| {
-        let k = str::from_utf8_lossy(k.as_slice()).to_strbuf();
-        let v = str::from_utf8_lossy(v.as_slice()).to_strbuf();
+        let k = str::from_utf8_lossy(k.as_slice()).to_string();
+        let v = str::from_utf8_lossy(v.as_slice()).to_string();
         (k,v)
     }).collect()
 }
@@ -277,7 +277,7 @@ pub fn env_as_bytes() -> Vec<(Vec<u8>,Vec<u8>)> {
 ///
 /// Fails if `n` has any interior NULs.
 pub fn getenv(n: &str) -> Option<String> {
-    getenv_as_bytes(n).map(|v| str::from_utf8_lossy(v.as_slice()).to_strbuf())
+    getenv_as_bytes(n).map(|v| str::from_utf8_lossy(v.as_slice()).to_string())
 }
 
 #[cfg(unix)]
@@ -503,7 +503,7 @@ pub fn self_exe_name() -> Option<Path> {
             use os::win32::fill_utf16_buf_and_decode;
             fill_utf16_buf_and_decode(|buf, sz| {
                 libc::GetModuleFileNameW(0u as libc::DWORD, buf, sz)
-            }).map(|s| s.into_strbuf().into_bytes())
+            }).map(|s| s.into_string().into_bytes())
         }
     }
 
@@ -736,7 +736,7 @@ pub fn error_string(errnum: uint) -> String {
                 fail!("strerror_r failure");
             }
 
-            str::raw::from_c_str(p as *c_char).into_strbuf()
+            str::raw::from_c_str(p as *c_char).into_string()
         }
     }
 
@@ -859,7 +859,7 @@ fn real_args_as_bytes() -> Vec<Vec<u8>> {
 fn real_args() -> Vec<String> {
     real_args_as_bytes().move_iter()
                         .map(|v| {
-                            str::from_utf8_lossy(v.as_slice()).into_strbuf()
+                            str::from_utf8_lossy(v.as_slice()).into_string()
                         }).collect()
 }
 
@@ -1522,7 +1522,7 @@ mod tests {
     fn test_setenv() {
         let n = make_rand_name();
         setenv(n.as_slice(), "VALUE");
-        assert_eq!(getenv(n.as_slice()), option::Some("VALUE".to_strbuf()));
+        assert_eq!(getenv(n.as_slice()), option::Some("VALUE".to_string()));
     }
 
     #[test]
@@ -1539,9 +1539,9 @@ mod tests {
         let n = make_rand_name();
         setenv(n.as_slice(), "1");
         setenv(n.as_slice(), "2");
-        assert_eq!(getenv(n.as_slice()), option::Some("2".to_strbuf()));
+        assert_eq!(getenv(n.as_slice()), option::Some("2".to_string()));
         setenv(n.as_slice(), "");
-        assert_eq!(getenv(n.as_slice()), option::Some("".to_strbuf()));
+        assert_eq!(getenv(n.as_slice()), option::Some("".to_string()));
     }
 
     // Windows GetEnvironmentVariable requires some extra work to make sure
@@ -1549,7 +1549,7 @@ mod tests {
     #[test]
     #[ignore]
     fn test_getenv_big() {
-        let mut s = "".to_strbuf();
+        let mut s = "".to_string();
         let mut i = 0;
         while i < 100 {
             s.push_str("aaaaaaaaaa");
@@ -1602,7 +1602,7 @@ mod tests {
     #[test]
     fn test_env_set_get_huge() {
         let n = make_rand_name();
-        let s = "x".repeat(10000).to_strbuf();
+        let s = "x".repeat(10000).to_string();
         setenv(n.as_slice(), s.as_slice());
         assert_eq!(getenv(n.as_slice()), Some(s));
         unsetenv(n.as_slice());
@@ -1615,10 +1615,10 @@ mod tests {
 
         let mut e = env();
         setenv(n.as_slice(), "VALUE");
-        assert!(!e.contains(&(n.clone(), "VALUE".to_strbuf())));
+        assert!(!e.contains(&(n.clone(), "VALUE".to_string())));
 
         e = env();
-        assert!(e.contains(&(n, "VALUE".to_strbuf())));
+        assert!(e.contains(&(n, "VALUE".to_string())));
     }
 
     #[test]

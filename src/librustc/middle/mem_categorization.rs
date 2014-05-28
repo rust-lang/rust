@@ -1096,24 +1096,24 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
     pub fn cmt_to_str(&self, cmt: &cmt_) -> String {
         match cmt.cat {
           cat_static_item => {
-              "static item".to_strbuf()
+              "static item".to_string()
           }
           cat_copied_upvar(_) => {
-              "captured outer variable in a proc".to_strbuf()
+              "captured outer variable in a proc".to_string()
           }
           cat_rvalue(..) => {
-              "non-lvalue".to_strbuf()
+              "non-lvalue".to_string()
           }
           cat_local(_) => {
-              "local variable".to_strbuf()
+              "local variable".to_string()
           }
           cat_arg(..) => {
-              "argument".to_strbuf()
+              "argument".to_string()
           }
           cat_deref(ref base, _, pk) => {
               match base.cat {
                   cat_upvar(..) => {
-                      "captured outer variable".to_strbuf()
+                      "captured outer variable".to_string()
                   }
                   _ => {
                       format_strbuf!("dereference of `{}`-pointer",
@@ -1122,22 +1122,22 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
               }
           }
           cat_interior(_, InteriorField(NamedField(_))) => {
-              "field".to_strbuf()
+              "field".to_string()
           }
           cat_interior(_, InteriorField(PositionalField(_))) => {
-              "anonymous field".to_strbuf()
+              "anonymous field".to_string()
           }
           cat_interior(_, InteriorElement(VecElement)) => {
-              "vec content".to_strbuf()
+              "vec content".to_string()
           }
           cat_interior(_, InteriorElement(StrElement)) => {
-              "str content".to_strbuf()
+              "str content".to_string()
           }
           cat_interior(_, InteriorElement(OtherElement)) => {
-              "indexed content".to_strbuf()
+              "indexed content".to_string()
           }
           cat_upvar(..) => {
-              "captured outer variable".to_strbuf()
+              "captured outer variable".to_string()
           }
           cat_discr(ref cmt, _) => {
             self.cmt_to_str(&**cmt)
@@ -1303,10 +1303,10 @@ impl Repr for InteriorKind {
     fn repr(&self, _tcx: &ty::ctxt) -> String {
         match *self {
             InteriorField(NamedField(fld)) => {
-                token::get_name(fld).get().to_str().to_strbuf()
+                token::get_name(fld).get().to_str().to_string()
             }
             InteriorField(PositionalField(i)) => format_strbuf!("\\#{:?}", i),
-            InteriorElement(_) => "[]".to_strbuf(),
+            InteriorElement(_) => "[]".to_string(),
         }
     }
 }

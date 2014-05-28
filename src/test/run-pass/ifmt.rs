@@ -52,7 +52,7 @@ pub fn main() {
     t!(format!("{}", 1.0f32), "1");
     t!(format!("{}", 1.0f64), "1");
     t!(format!("{}", "a"), "a");
-    t!(format!("{}", "a".to_owned()), "a");
+    t!(format!("{}", "a".to_string()), "a");
     t!(format!("{}", false), "false");
     t!(format!("{}", 'a'), "a");
 
@@ -66,7 +66,7 @@ pub fn main() {
     t!(format!("{:x}", 10u), "a");
     t!(format!("{:X}", 10u), "A");
     t!(format!("{:s}", "foo"), "foo");
-    t!(format!("{:s}", "foo".to_owned()), "foo");
+    t!(format!("{:s}", "foo".to_string()), "foo");
     t!(format!("{:p}", 0x1234 as *int), "0x1234");
     t!(format!("{:p}", 0x1234 as *mut int), "0x1234");
     t!(format!("{:d}", A), "aloha");
@@ -175,7 +175,7 @@ fn test_write() {
         writeln!(w, "{foo}", foo="bar");
     }
 
-    let s = str::from_utf8(buf.unwrap().as_slice()).unwrap().to_owned();
+    let s = str::from_utf8(buf.unwrap().as_slice()).unwrap().to_string();
     t!(s, "34helloline\nbar\n");
 }
 
@@ -199,7 +199,7 @@ fn test_format_args() {
         format_args!(|args| { write!(w, "{}", args); }, "test");
         format_args!(|args| { write!(w, "{}", args); }, "{test}", test=3);
     }
-    let s = str::from_utf8(buf.unwrap().as_slice()).unwrap().to_owned();
+    let s = str::from_utf8(buf.unwrap().as_slice()).unwrap().to_string();
     t!(s, "1test3");
 
     let s = format_args!(fmt::format, "hello {}", "world");
@@ -222,5 +222,5 @@ fn test_order() {
     }
     assert_eq!(format!("{} {} {a} {b} {} {c}",
                        foo(), foo(), foo(), a=foo(), b=foo(), c=foo()),
-               "1 2 4 5 3 6".to_strbuf());
+               "1 2 4 5 3 6".to_string());
 }

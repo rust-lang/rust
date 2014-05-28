@@ -40,7 +40,7 @@ pub fn get_dbpath_for_term(term: &str) -> Option<Box<Path>> {
                     if i == "" {
                         dirs_to_search.push(Path::new("/usr/share/terminfo"));
                     } else {
-                        dirs_to_search.push(Path::new(i.to_strbuf()));
+                        dirs_to_search.push(Path::new(i.to_string()));
                     }
                 },
                 // Found nothing in TERMINFO_DIRS, use the default paths:
@@ -99,12 +99,12 @@ fn test_get_dbpath_for_term() {
     // FIXME (#9639): This needs to handle non-utf8 paths
     fn x(t: &str) -> String {
         let p = get_dbpath_for_term(t).expect("no terminfo entry found");
-        p.as_str().unwrap().to_strbuf()
+        p.as_str().unwrap().to_string()
     };
-    assert!(x("screen") == "/usr/share/terminfo/s/screen".to_strbuf());
+    assert!(x("screen") == "/usr/share/terminfo/s/screen".to_string());
     assert!(get_dbpath_for_term("") == None);
     setenv("TERMINFO_DIRS", ":");
-    assert!(x("screen") == "/usr/share/terminfo/s/screen".to_strbuf());
+    assert!(x("screen") == "/usr/share/terminfo/s/screen".to_string());
     unsetenv("TERMINFO_DIRS");
 }
 

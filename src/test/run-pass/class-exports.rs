@@ -33,6 +33,6 @@ mod kitty {
 }
 
 pub fn main() {
-  assert_eq!(cat("Spreckles".to_strbuf()).get_name(),
-                 "Spreckles".to_strbuf());
+  assert_eq!(cat("Spreckles".to_string()).get_name(),
+                 "Spreckles".to_string());
 }

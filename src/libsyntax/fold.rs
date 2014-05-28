@@ -964,13 +964,13 @@ mod test {
     #[test] fn ident_transformation () {
         let mut zz_fold = ToZzIdentFolder;
         let ast = string_to_crate(
-            "#[a] mod b {fn c (d : e, f : g) {h!(i,j,k);l;m}}".to_strbuf());
+            "#[a] mod b {fn c (d : e, f : g) {h!(i,j,k);l;m}}".to_string());
         let folded_crate = zz_fold.fold_crate(ast);
         assert_pred!(
             matches_codepattern,
             "matches_codepattern",
             pprust::to_str(|s| fake_print_crate(s, &folded_crate)),
-            "#[a]mod zz{fn zz(zz:zz,zz:zz){zz!(zz,zz,zz);zz;zz}}".to_strbuf());
+            "#[a]mod zz{fn zz(zz:zz,zz:zz){zz!(zz,zz,zz);zz;zz}}".to_string());
     }
 
     // even inside macro defs....
@@ -978,12 +978,12 @@ mod test {
         let mut zz_fold = ToZzIdentFolder;
         let ast = string_to_crate(
             "macro_rules! a {(b $c:expr $(d $e:token)f+ => \
-             (g $(d $d $e)+))} ".to_strbuf());
+             (g $(d $d $e)+))} ".to_string());
         let folded_crate = zz_fold.fold_crate(ast);
         assert_pred!(
             matches_codepattern,
             "matches_codepattern",
             pprust::to_str(|s| fake_print_crate(s, &folded_crate)),
-            "zz!zz((zz$zz:zz$(zz $zz:zz)zz+=>(zz$(zz$zz$zz)+)))".to_strbuf());
+            "zz!zz((zz$zz:zz$(zz $zz:zz)zz+=>(zz$(zz$zz$zz)+)))".to_string());
     }
 }

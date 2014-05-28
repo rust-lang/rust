@@ -143,7 +143,7 @@ impl Handler {
         let s;
         match self.err_count.get() {
           0u => return,
-          1u => s = "aborting due to previous error".to_strbuf(),
+          1u => s = "aborting due to previous error".to_string(),
           _  => {
             s = format!("aborting due to {} previous errors",
                         self.err_count.get());
@@ -492,7 +492,7 @@ fn print_macro_backtrace(w: &mut EmitterWriter,
         let ss = ei.callee
                    .span
                    .as_ref()
-                   .map_or("".to_strbuf(), |span| cm.span_to_str(*span));
+                   .map_or("".to_string(), |span| cm.span_to_str(*span));
         let (pre, post) = match ei.callee.format {
             codemap::MacroAttribute => ("#[", "]"),
             codemap::MacroBang => ("", "!")

@@ -467,7 +467,7 @@ fn stringifier(channel: &sync::DuplexStream<String, uint>) {
     let mut value: uint;
     loop {
         value = channel.recv();
-        channel.send(value.to_str().to_strbuf());
+        channel.send(value.to_str().to_string());
         if value == 0 { break; }
     }
 }
@@ -492,7 +492,7 @@ extern crate sync;
 #     let mut value: uint;
 #     loop {
 #         value = channel.recv();
-#         channel.send(value.to_str().to_strbuf());
+#         channel.send(value.to_str().to_string());
 #         if value == 0u { break; }
 #     }
 # }

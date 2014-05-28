@@ -57,7 +57,7 @@ fn run_compiler(args: &[String]) {
             if ifile == "-" {
                 let contents = io::stdin().read_to_end().unwrap();
                 let src = str::from_utf8(contents.as_slice()).unwrap()
-                                                             .to_strbuf();
+                                                             .to_string();
                 (StrInput(src), None)
             } else {
                 (FileInput(Path::new(ifile)), Some(Path::new(ifile)))
@@ -84,7 +84,7 @@ fn run_compiler(args: &[String]) {
     }
 
     let r = matches.opt_strs("Z");
-    if r.contains(&("ls".to_strbuf())) {
+    if r.contains(&("ls".to_string())) {
         match input {
             FileInput(ref ifile) => {
                 let mut stdout = io::stdout();
@@ -233,7 +233,7 @@ pub fn handle_options(mut args: Vec<String>) -> Option<getopts::Matches> {
         return None;
     }
 
-    if cg_flags.contains(&"passes=list".to_strbuf()) {
+    if cg_flags.contains(&"passes=list".to_string()) {
         unsafe { ::lib::llvm::llvm::LLVMRustPrintPasses(); }
         return None;
     }
@@ -332,8 +332,8 @@ fn parse_crate_attrs(sess: &Session, input: &Input) ->
         }
         StrInput(ref src) => {
             parse::parse_crate_attrs_from_source_str(
-                driver::anon_src().to_strbuf(),
-                src.to_strbuf(),
+                driver::anon_src().to_string(),
+                src.to_string(),
                 Vec::new(),
                 &sess.parse_sess)
         }
@@ -399,10 +399,10 @@ fn monitor(f: proc():Send) {
                 }
 
                 let xs = [
-                    "the compiler hit an unexpected failure path. this is a bug.".to_owned(),
+                    "the compiler hit an unexpected failure path. this is a bug.".to_string(),
                     format!("we would appreciate a bug report: {}",
                             BUG_REPORT_URL),
-                    "run with `RUST_BACKTRACE=1` for a backtrace".to_owned(),
+                    "run with `RUST_BACKTRACE=1` for a backtrace".to_string(),
                 ];
                 for note in xs.iter() {
                     emitter.emit(None, note.as_slice(), diagnostic::Note)

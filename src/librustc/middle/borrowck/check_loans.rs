@@ -243,7 +243,7 @@ impl<'a> CheckLoanCtxt<'a> {
             if restr.loan_path != loan2.loan_path { continue; }
 
             let old_pronoun = if new_loan.loan_path == old_loan.loan_path {
-                "it".to_strbuf()
+                "it".to_string()
             } else {
                 format!("`{}`",
                         self.bccx.loan_path_to_str(&*old_loan.loan_path))

@@ -73,7 +73,7 @@ pub fn expand_mod(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     base::check_zero_tts(cx, sp, tts, "module_path!");
     let string = cx.mod_path()
                    .iter()
-                   .map(|x| token::get_ident(*x).get().to_strbuf())
+                   .map(|x| token::get_ident(*x).get().to_string())
                    .collect::<Vec<String>>()
                    .connect("::");
     base::MacExpr::new(cx.expr_str(
@@ -125,9 +125,9 @@ pub fn expand_include_str(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
         Some(src) => {
             // Add this input file to the code map to make it available as
             // dependency information
-            let filename = file.display().to_str().to_strbuf();
+            let filename = file.display().to_str().to_string();
             let interned = token::intern_and_get_ident(src);
-            cx.codemap().new_filemap(filename, src.to_strbuf());
+            cx.codemap().new_filemap(filename, src.to_string());
 
             base::MacExpr::new(cx.expr_str(sp, interned))
         }

@@ -35,7 +35,7 @@ fn rename_directory() {
             })
         });
         assert!((ostream as uint != 0u));
-        let s = "hello".to_owned();
+        let s = "hello".to_string();
         "hello".with_c_str(|buf| {
             let write_len = libc::fwrite(buf as *libc::c_void,
                                          1u as libc::size_t,

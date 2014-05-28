@@ -186,7 +186,7 @@ fn item_method_sort(item: ebml::Doc) -> char {
 }
 
 fn item_symbol(item: ebml::Doc) -> String {
-    reader::get_doc(item, tag_items_data_item_symbol).as_str().to_strbuf()
+    reader::get_doc(item, tag_items_data_item_symbol).as_str().to_string()
 }
 
 fn item_parent_item(d: ebml::Doc) -> Option<ast::DefId> {
@@ -1095,7 +1095,7 @@ pub fn get_crate_deps(data: &[u8]) -> Vec<CrateDep> {
     let mut crate_num = 1;
     fn docstr(doc: ebml::Doc, tag_: uint) -> String {
         let d = reader::get_doc(doc, tag_);
-        d.as_str_slice().to_strbuf()
+        d.as_str_slice().to_string()
     }
     reader::tagged_docs(depsdoc, tag_crate_dep, |depdoc| {
         let crate_id =
@@ -1145,7 +1145,7 @@ pub fn maybe_get_crate_id(data: &[u8]) -> Option<CrateId> {
 pub fn get_crate_triple(data: &[u8]) -> String {
     let cratedoc = reader::Doc(data);
     let triple_doc = reader::maybe_get_doc(cratedoc, tag_crate_triple);
-    triple_doc.expect("No triple in crate").as_str().to_strbuf()
+    triple_doc.expect("No triple in crate").as_str().to_string()
 }
 
 pub fn get_crate_id(data: &[u8]) -> CrateId {
@@ -1247,7 +1247,7 @@ pub fn get_native_libraries(cdata: Cmd)
         let name_doc = reader::get_doc(lib_doc, tag_native_libraries_name);
         let kind: cstore::NativeLibaryKind =
             FromPrimitive::from_u32(reader::doc_as_u32(kind_doc)).unwrap();
-        let name = name_doc.as_str().to_strbuf();
+        let name = name_doc.as_str().to_string();
         result.push((kind, name));
         true
     });
@@ -1264,7 +1264,7 @@ pub fn get_exported_macros(data: &[u8]) -> Vec<String> {
                                  tag_exported_macros);
     let mut result = Vec::new();
     reader::tagged_docs(macros, tag_macro_def, |macro_doc| {
-        result.push(macro_doc.as_str().to_strbuf());
+        result.push(macro_doc.as_str().to_string());
         true
     });
     result
@@ -1316,7 +1316,7 @@ pub fn get_method_arg_names(cdata: Cmd, id: ast::NodeId) -> Vec<String> {
     match reader::maybe_get_doc(method_doc, tag_method_argument_names) {
         Some(args_doc) => {
             reader::tagged_docs(args_doc, tag_method_argument_name, |name_doc| {
-                ret.push(name_doc.as_str_slice().to_strbuf());
+                ret.push(name_doc.as_str_slice().to_string());
                 true
             });
         }

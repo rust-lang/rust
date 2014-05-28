@@ -808,7 +808,7 @@ impl<'a> Rebuilder<'a> {
             // choice of lifetime name deterministic and thus easier to test.
             let mut names = Vec::new();
             for rn in region_names.iter() {
-                let lt_name = token::get_name(*rn).get().to_owned();
+                let lt_name = token::get_name(*rn).get().to_string();
                 names.push(lt_name);
             }
             names.sort();
@@ -1227,12 +1227,12 @@ impl<'a> ErrorReportingHelpers for InferCtxt<'a> {
     fn report_inference_failure(&self,
                                 var_origin: RegionVariableOrigin) {
         let var_description = match var_origin {
-            infer::MiscVariable(_) => "".to_strbuf(),
-            infer::PatternRegion(_) => " for pattern".to_strbuf(),
-            infer::AddrOfRegion(_) => " for borrow expression".to_strbuf(),
-            infer::AddrOfSlice(_) => " for slice expression".to_strbuf(),
-            infer::Autoref(_) => " for autoref".to_strbuf(),
-            infer::Coercion(_) => " for automatic coercion".to_strbuf(),
+            infer::MiscVariable(_) => "".to_string(),
+            infer::PatternRegion(_) => " for pattern".to_string(),
+            infer::AddrOfRegion(_) => " for borrow expression".to_string(),
+            infer::AddrOfSlice(_) => " for slice expression".to_string(),
+            infer::Autoref(_) => " for autoref".to_string(),
+            infer::Coercion(_) => " for automatic coercion".to_string(),
             infer::LateBoundRegion(_, br) => {
                 format!(" for {}in function call",
                         bound_region_to_str(self.tcx, "lifetime parameter ", true, br))
@@ -1475,7 +1475,7 @@ impl LifeGiver {
     fn with_taken(taken: &[ast::Lifetime]) -> LifeGiver {
         let mut taken_ = HashSet::new();
         for lt in taken.iter() {
-            let lt_name = token::get_name(lt.name).get().to_strbuf();
+            let lt_name = token::get_name(lt.name).get().to_string();
             taken_.insert(lt_name);
         }
         LifeGiver {

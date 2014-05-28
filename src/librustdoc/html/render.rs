@@ -218,8 +218,8 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
         root_path: String::new(),
         sidebar: HashMap::new(),
         layout: layout::Layout {
-            logo: "".to_strbuf(),
-            favicon: "".to_strbuf(),
+            logo: "".to_string(),
+            favicon: "".to_string(),
             krate: krate.name.clone(),
         },
         include_sources: true,
@@ -232,11 +232,11 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
                 match *attr {
                     clean::NameValue(ref x, ref s)
                             if "html_favicon_url" == x.as_slice() => {
-                        cx.layout.favicon = s.to_strbuf();
+                        cx.layout.favicon = s.to_string();
                     }
                     clean::NameValue(ref x, ref s)
                             if "html_logo_url" == x.as_slice() => {
-                        cx.layout.logo = s.to_strbuf();
+                        cx.layout.logo = s.to_string();
                     }
                     clean::Word(ref x)
                             if "html_no_source" == x.as_slice() => {
@@ -307,8 +307,8 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
                         ty: shortty(item),
                         name: item.name.clone().unwrap(),
                         path: fqp.slice_to(fqp.len() - 1).connect("::")
-                                                         .to_strbuf(),
-                        desc: shorter(item.doc_value()).to_strbuf(),
+                                                         .to_string(),
+                        desc: shorter(item.doc_value()).to_string(),
                         parent: Some(did),
                     });
                 },
@@ -338,14 +338,14 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
         let mut w = MemWriter::new();
         try!(write!(&mut w, r#"searchIndex['{}'] = \{"items":["#, krate.name));
 
-        let mut lastpath = "".to_strbuf();
+        let mut lastpath = "".to_string();
         for (i, item) in cache.search_index.iter().enumerate() {
             // Omit the path if it is same to that of the prior item.
             let path;
             if lastpath.as_slice() == item.path.as_slice() {
                 path = "";
             } else {
-                lastpath = item.path.to_strbuf();
+                lastpath = item.path.to_string();
                 path = item.path.as_slice();
             };
 
@@ -378,7 +378,7 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
 
         try!(write!(&mut w, r"]\};"));
 
-        str::from_utf8(w.unwrap().as_slice()).unwrap().to_owned()
+        str::from_utf8(w.unwrap().as_slice()).unwrap().to_string()
     };
 
     // Write out the shared files. Note that these are shared among all rustdoc
@@ -420,7 +420,7 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
                             format!("{}['{}']", key, krate).as_slice()) {
                         continue
                     }
-                    ret.push(line.to_strbuf());
+                    ret.push(line.to_string());
                 }
             }
             return Ok(ret);
@@ -504,14 +504,14 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
             cx: &mut cx,
         };
         // skip all invalid spans
-        folder.seen.insert("".to_strbuf());
+        folder.seen.insert("".to_string());
         krate = folder.fold_crate(krate);
     }
 
     for &(n, ref e) in krate.externs.iter() {
         cache.extern_locations.insert(n, extern_location(e, &cx.dst));
         let did = ast::DefId { krate: n, node: ast::CRATE_NODE_ID };
-        cache.paths.insert(did, (vec![e.name.to_strbuf()], item_type::Module));
+        cache.paths.insert(did, (vec![e.name.to_string()], item_type::Module));
     }
 
     // And finally render the whole crate's documentation
@@ -570,7 +570,7 @@ fn extern_location(e: &clean::ExternalCrate, dst: &Path) -> ExternalLocation {
                         clean::NameValue(ref x, ref s)
                                 if "html_root_url" == x.as_slice() => {
                             if s.as_slice().ends_with("/") {
-                                return Remote(s.to_strbuf());
+                                return Remote(s.to_string());
                             }
                             return Remote(format_strbuf!("{}/", s));
                         }
@@ -766,9 +766,9 @@ impl DocFolder for Cache {
                     (parent, Some(path)) if !self.privmod => {
                         self.search_index.push(IndexItem {
                             ty: shortty(&item),
-                            name: s.to_strbuf(),
-                            path: path.connect("::").to_strbuf(),
-                            desc: shorter(item.doc_value()).to_strbuf(),
+                            name: s.to_string(),
+                            path: path.connect("::").to_string(),
+                            desc: shorter(item.doc_value()).to_string(),
                             parent: parent,
                         });
                     }
@@ -789,7 +789,7 @@ impl DocFolder for Cache {
         let pushed = if item.name.is_some() {
             let n = item.name.get_ref();
             if n.len() > 0 {
-                self.stack.push(n.to_strbuf());
+                self.stack.push(n.to_string());
                 true
             } else { false }
         } else { false };
@@ -1001,7 +1001,7 @@ impl Context {
             // modules are special because they add a namespace. We also need to
             // recurse into the items of the module as well.
             clean::ModuleItem(..) => {
-                let name = item.name.get_ref().to_strbuf();
+                let name = item.name.get_ref().to_string();
                 let mut item = Some(item);
                 self.recurse(name, |this| {
                     let item = item.take_unwrap();
@@ -1057,7 +1057,7 @@ impl<'a> Item<'a> {
         if ast_util::is_local(self.item.def_id) {
             let mut path = Vec::new();
             clean_srcpath(self.item.source.filename.as_bytes(), |component| {
-                path.push(component.to_owned());
+                path.push(component.to_string());
             });
             let href = if self.item.source.loline == self.item.source.hiline {
                 format!("{}", self.item.source.loline)
@@ -1087,7 +1087,7 @@ impl<'a> Item<'a> {
             let cache = cache_key.get().unwrap();
             let path = cache.external_paths.get(&self.item.def_id);
             let root = match *cache.extern_locations.get(&self.item.def_id.krate) {
-                Remote(ref s) => s.to_strbuf(),
+                Remote(ref s) => s.to_string(),
                 Local => format!("{}/..", self.cx.root_path),
                 Unknown => return None,
             };
@@ -1908,9 +1908,9 @@ fn build_sidebar(m: &clean::Module) -> HashMap<String, Vec<String>> {
         let short = shortty(item).to_static_str();
         let myname = match item.name {
             None => continue,
-            Some(ref s) => s.to_strbuf(),
+            Some(ref s) => s.to_string(),
         };
-        let v = map.find_or_insert_with(short.to_strbuf(), |_| Vec::new());
+        let v = map.find_or_insert_with(short.to_string(), |_| Vec::new());
         v.push(myname);
     }
 

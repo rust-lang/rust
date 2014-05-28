@@ -232,8 +232,8 @@ pub fn file_to_filemap(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
     };
     match str::from_utf8(bytes.as_slice()) {
         Some(s) => {
-            return string_to_filemap(sess, s.to_strbuf(),
-                                     path.as_str().unwrap().to_strbuf())
+            return string_to_filemap(sess, s.to_string(),
+                                     path.as_str().unwrap().to_string())
         }
         None => {
             err(format!("{} is not UTF-8 encoded", path.display()).as_slice())
@@ -297,7 +297,7 @@ mod test {
         let mut writer = MemWriter::new();
         let mut encoder = json::Encoder::new(&mut writer as &mut io::Writer);
         let _ = val.encode(&mut encoder);
-        str::from_utf8(writer.unwrap().as_slice()).unwrap().to_strbuf()
+        str::from_utf8(writer.unwrap().as_slice()).unwrap().to_string()
     }
 
     // produce a codemap::span
@@ -306,7 +306,7 @@ mod test {
     }
 
     #[test] fn path_exprs_1() {
-        assert!(string_to_expr("a".to_strbuf()) ==
+        assert!(string_to_expr("a".to_string()) ==
                    @ast::Expr{
                     id: ast::DUMMY_NODE_ID,
                     node: ast::ExprPath(ast::Path {
@@ -325,7 +325,7 @@ mod test {
     }
 
     #[test] fn path_exprs_2 () {
-        assert!(string_to_expr("::a::b".to_strbuf()) ==
+        assert!(string_to_expr("::a::b".to_string()) ==
                    @ast::Expr {
                     id: ast::DUMMY_NODE_ID,
                     node: ast::ExprPath(ast::Path {
@@ -350,12 +350,12 @@ mod test {
 
     #[should_fail]
     #[test] fn bad_path_expr_1() {
-        string_to_expr("::abc::def::return".to_strbuf());
+        string_to_expr("::abc::def::return".to_string());
     }
 
     // check the token-tree-ization of macros
     #[test] fn string_to_tts_macro () {
-        let tts = string_to_tts("macro_rules! zip (($a)=>($a))".to_strbuf());
+        let tts = string_to_tts("macro_rules! zip (($a)=>($a))".to_string());
         let tts: &[ast::TokenTree] = tts.as_slice();
         match tts {
             [ast::TTTok(_,_),
@@ -408,7 +408,7 @@ mod test {
     }
 
     #[test] fn string_to_tts_1 () {
-        let tts = string_to_tts("fn a (b : int) { b; }".to_strbuf());
+        let tts = string_to_tts("fn a (b : int) { b; }".to_string());
         assert_eq!(to_json_str(&tts),
         "[\
     {\
@@ -532,12 +532,12 @@ mod test {
             ]\
         ]\
     }\
-]".to_strbuf()
+]".to_string()
         );
     }
 
     #[test] fn ret_expr() {
-        assert!(string_to_expr("return d".to_strbuf()) ==
+        assert!(string_to_expr("return d".to_string()) ==
                    @ast::Expr{
                     id: ast::DUMMY_NODE_ID,
                     node:ast::ExprRet(Some(@ast::Expr{
@@ -560,7 +560,7 @@ mod test {
     }
 
     #[test] fn parse_stmt_1 () {
-        assert!(string_to_stmt("b;".to_strbuf()) ==
+        assert!(string_to_stmt("b;".to_string()) ==
                    @Spanned{
                        node: ast::StmtExpr(@ast::Expr {
                            id: ast::DUMMY_NODE_ID,
@@ -587,7 +587,7 @@ mod test {
 
     #[test] fn parse_ident_pat () {
         let sess = new_parse_sess();
-        let mut parser = string_to_parser(&sess, "b".to_strbuf());
+        let mut parser = string_to_parser(&sess, "b".to_string());
         assert!(parser.parse_pat() ==
                    @ast::Pat{id: ast::DUMMY_NODE_ID,
                              node: ast::PatIdent(
@@ -611,7 +611,7 @@ mod test {
     // check the contents of the tt manually:
     #[test] fn parse_fundecl () {
         // this test depends on the intern order of "fn" and "int"
-        assert!(string_to_item("fn a (b : int) { b; }".to_strbuf()) ==
+        assert!(string_to_item("fn a (b : int) { b; }".to_string()) ==
                   Some(
                       @ast::Item{ident:str_to_ident("a"),
                             attrs:Vec::new(),
@@ -703,8 +703,8 @@ mod test {
 
     #[test] fn parse_exprs () {
         // just make sure that they parse....
-        string_to_expr("3 + 4".to_strbuf());
-        string_to_expr("a::z.froob(b,@(987+3))".to_strbuf());
+        string_to_expr("3 + 4".to_string());
+        string_to_expr("a::z.froob(b,@(987+3))".to_string());
     }
 
     #[test] fn attrs_fix_bug () {
@@ -719,7 +719,7 @@ mod test {
     fn wb() -> c_int { O_WRONLY as c_int }
 
     let mut fflags: c_int = wb();
-}".to_strbuf());
+}".to_string());
     }
 
 }

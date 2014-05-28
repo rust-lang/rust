@@ -2097,9 +2097,9 @@ impl<'a> Resolver<'a> {
                                         -> String {
         match subclass {
             SingleImport(_, source) => {
-                token::get_ident(source).get().to_strbuf()
+                token::get_ident(source).get().to_string()
             }
-            GlobImport => "*".to_strbuf()
+            GlobImport => "*".to_string()
         }
     }
 
@@ -2113,7 +2113,7 @@ impl<'a> Resolver<'a> {
             (format!("{}::{}",
                      self.idents_to_str(idents),
                      self.import_directive_subclass_to_str(
-                         subclass))).to_strbuf()
+                         subclass))).to_string()
         }
     }
 
@@ -3314,7 +3314,7 @@ impl<'a> Resolver<'a> {
                 debug!("(computing exports) YES: export '{}' => {:?}",
                        name, def_id_of_def(d));
                 exports2.push(Export2 {
-                    name: name.get().to_strbuf(),
+                    name: name.get().to_string(),
                     def_id: def_id_of_def(d)
                 });
             }
@@ -4591,7 +4591,7 @@ impl<'a> Resolver<'a> {
                         .add_lint(UnnecessaryQualification,
                                   id,
                                   path.span,
-                                  "unnecessary qualification".to_strbuf());
+                                  "unnecessary qualification".to_string());
                 }
                 _ => ()
             }
@@ -5051,7 +5051,7 @@ impl<'a> Resolver<'a> {
             *values.get(smallest) <= max_distance &&
             name != maybes.get(smallest).get() {
 
-            Some(maybes.get(smallest).get().to_strbuf())
+            Some(maybes.get(smallest).get().to_string())
 
         } else {
             None
@@ -5145,7 +5145,7 @@ impl<'a> Resolver<'a> {
                                             // limit search to 5 to reduce the number
                                             // of stupid suggestions
                                             self.find_best_match_for_name(wrong_name.as_slice(), 5)
-                                                                .map_or("".to_strbuf(),
+                                                                .map_or("".to_string(),
                                                                         |x| format!("`{}`", x))
                                         }
                                         Field =>
@@ -5426,7 +5426,7 @@ impl<'a> Resolver<'a> {
                                 .add_lint(UnusedImports,
                                           id,
                                           p.span,
-                                          "unused import".to_strbuf());
+                                          "unused import".to_string());
                         }
                     },
                 }
@@ -5450,7 +5450,7 @@ impl<'a> Resolver<'a> {
             self.session.add_lint(UnusedImports,
                                   id,
                                   span,
-                                  "unused import".to_strbuf());
+                                  "unused import".to_string());
         }
 
         let (v_priv, t_priv) = match self.last_private.find(&id) {
@@ -5518,7 +5518,7 @@ impl<'a> Resolver<'a> {
         collect_mod(&mut idents, module);
 
         if idents.len() == 0 {
-            return "???".to_strbuf();
+            return "???".to_string();
         }
         self.idents_to_str(idents.move_iter().rev()
                                  .collect::<Vec<ast::Ident>>()
@@ -5540,18 +5540,18 @@ impl<'a> Resolver<'a> {
         for (&name, import_resolution) in import_resolutions.iter() {
             let value_repr;
             match import_resolution.target_for_namespace(ValueNS) {
-                None => { value_repr = "".to_owned(); }
+                None => { value_repr = "".to_string(); }
                 Some(_) => {
-                    value_repr = " value:?".to_owned();
+                    value_repr = " value:?".to_string();
                     // FIXME #4954
                 }
             }
 
             let type_repr;
             match import_resolution.target_for_namespace(TypeNS) {
-                None => { type_repr = "".to_owned(); }
+                None => { type_repr = "".to_string(); }
                 Some(_) => {
-                    type_repr = " type:?".to_owned();
+                    type_repr = " type:?".to_string();
                     // FIXME #4954
                 }
             }

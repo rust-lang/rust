@@ -19,7 +19,7 @@ impl Drop for X {
 }
 
 fn main() {
-    let x = X { x: "hello".to_strbuf() };
+    let x = X { x: "hello".to_string() };
 
     match x {
         X { x: y } => println!("contents: {}", y)

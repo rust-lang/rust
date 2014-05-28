@@ -68,7 +68,8 @@ impl String {
         }
     }
 
-    /// Creates a new string buffer from the given owned string, taking care not to copy it.
+    #[allow(missing_doc)]
+    #[deprecated = "obsoleted by the removal of ~str"]
     #[inline]
     pub fn from_owned_str(string: String) -> String {
         string
@@ -327,7 +328,7 @@ impl StrAllocating for String {
     }
 
     #[inline]
-    fn into_strbuf(self) -> String {
+    fn into_string(self) -> String {
         self
     }
 }
@@ -361,7 +362,7 @@ impl<'a, S: Str> Equiv<S> for String {
 impl FromStr for String {
     #[inline]
     fn from_str(s: &str) -> Option<String> {
-        Some(s.to_strbuf())
+        Some(s.to_string())
     }
 }
 

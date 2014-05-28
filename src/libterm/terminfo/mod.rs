@@ -186,7 +186,7 @@ impl<T: Writer> Terminal<T> for TerminfoTerminal<T> {
                 cap = self.ti.strings.find_equiv(&("op"));
             }
         }
-        let s = cap.map_or(Err("can't find terminfo capability `sgr0`".to_strbuf()), |op| {
+        let s = cap.map_or(Err("can't find terminfo capability `sgr0`".to_string()), |op| {
             expand(op.as_slice(), [], &mut Variables::new())
         });
         if s.is_ok() {

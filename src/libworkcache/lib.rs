@@ -108,8 +108,8 @@ struct WorkKey {
 impl WorkKey {
     pub fn new(kind: &str, name: &str) -> WorkKey {
         WorkKey {
-            kind: kind.to_strbuf(),
-            name: name.to_strbuf(),
+            kind: kind.to_string(),
+            name: name.to_string(),
         }
     }
 }
@@ -190,7 +190,7 @@ impl Database {
         // FIXME(pcwalton): Yuck.
         let mut new_db_cache = TreeMap::new();
         for (ref k, ref v) in self.db_cache.iter() {
-            new_db_cache.insert((*k).to_strbuf(), (*v).to_strbuf());
+            new_db_cache.insert((*k).to_string(), (*v).to_string());
         }
 
         new_db_cache.to_json().to_pretty_writer(&mut f)
@@ -262,7 +262,7 @@ fn json_encode<'a, T:Encodable<json::Encoder<'a>, io::IoError>>(t: &T) -> String
     let mut writer = MemWriter::new();
     let mut encoder = json::Encoder::new(&mut writer as &mut io::Writer);
     let _ = t.encode(&mut encoder);
-    str::from_utf8(writer.unwrap().as_slice()).unwrap().to_strbuf()
+    str::from_utf8(writer.unwrap().as_slice()).unwrap().to_string()
 }
 
 // FIXME(#5121)
@@ -313,7 +313,7 @@ impl Exec {
                           dependency_val: &str) {
         debug!("Discovering input {} {} {}", dependency_kind, dependency_name, dependency_val);
         self.discovered_inputs.insert_work_key(WorkKey::new(dependency_kind, dependency_name),
-                                 dependency_val.to_strbuf());
+                                 dependency_val.to_string());
     }
     pub fn discover_output(&mut self,
                            dependency_kind: &str,
@@ -321,7 +321,7 @@ impl Exec {
                            dependency_val: &str) {
         debug!("Discovering output {} {} {}", dependency_kind, dependency_name, dependency_val);
         self.discovered_outputs.insert_work_key(WorkKey::new(dependency_kind, dependency_name),
-                                 dependency_val.to_strbuf());
+                                 dependency_val.to_string());
     }
 
     // returns pairs of (kind, name)
@@ -364,11 +364,11 @@ impl<'a> Prep<'a> {
     pub fn declare_input(&mut self, kind: &str, name: &str, val: &str) {
         debug!("Declaring input {} {} {}", kind, name, val);
         self.declared_inputs.insert_work_key(WorkKey::new(kind, name),
-                                 val.to_strbuf());
+                                 val.to_string());
     }
 
     fn is_fresh(&self, cat: &str, kind: &str, name: &str, val: &str) -> bool {
-        let k = kind.to_strbuf();
+        let k = kind.to_string();
         let f = self.ctxt.freshness.deref().find(&k);
         debug!("freshness for: {}/{}/{}/{}", cat, kind, name, val)
         let fresh = match f {
@@ -499,10 +499,10 @@ fn test() {
         return pth;
     }
 
-    let pth = make_path("foo.c".to_strbuf());
+    let pth = make_path("foo.c".to_string());
     File::create(&pth).write(bytes!("int main() { return 0; }")).unwrap();
 
-    let db_path = make_path("db.json".to_strbuf());
+    let db_path = make_path("db.json".to_string());
 
     let cx = Context::new(Arc::new(RWLock::new(Database::new(db_path))),
                           Arc::new(TreeMap::new()));
@@ -514,14 +514,14 @@ fn test() {
 
         let contents = File::open(&pth).read_to_end().unwrap();
         let file_content = from_utf8(contents.as_slice()).unwrap()
-                                                         .to_strbuf();
+                                                         .to_string();
 
         // FIXME (#9639): This needs to handle non-utf8 paths
         prep.declare_input("file",
                            pth.as_str().unwrap(),
                            file_content.as_slice());
         prep.exec(proc(_exe) {
-            let out = make_path("foo.o".to_strbuf());
+            let out = make_path("foo.o".to_string());
             let compiler = if cfg!(windows) {"gcc"} else {"cc"};
             Command::new(compiler).arg(pth).arg("-o").arg(out.clone()).status().unwrap();
 
@@ -529,7 +529,7 @@ fn test() {
             // Could run sub-rules inside here.
 
             // FIXME (#9639): This needs to handle non-utf8 paths
-            out.as_str().unwrap().to_strbuf()
+            out.as_str().unwrap().to_string()
         })
     });
 

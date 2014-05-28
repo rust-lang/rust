@@ -50,7 +50,7 @@
 //!
 //! fn main() {
 //!     let args: Vec<String> = os::args().iter()
-//!                                       .map(|x| x.to_strbuf())
+//!                                       .map(|x| x.to_string())
 //!                                       .collect();
 //!
 //!     let program = args.get(0).clone();
@@ -215,14 +215,14 @@ impl Name {
         if nm.len() == 1u {
             Short(nm.char_at(0u))
         } else {
-            Long(nm.to_strbuf())
+            Long(nm.to_string())
         }
     }
 
     fn to_str(&self) -> String {
         match *self {
-            Short(ch) => ch.to_str().to_strbuf(),
-            Long(ref s) => s.to_strbuf()
+            Short(ch) => ch.to_str().to_string(),
+            Long(ref s) => s.to_string()
         }
     }
 }
@@ -362,7 +362,7 @@ impl Matches {
         }
         match vals.get(0) {
             &Val(ref s) => Some((*s).clone()),
-            _ => Some(def.to_strbuf())
+            _ => Some(def.to_string())
         }
     }
 
@@ -394,10 +394,10 @@ pub fn reqopt(short_name: &str, long_name: &str, desc: &str, hint: &str) -> OptG
     let len = short_name.len();
     assert!(len == 1 || len == 0);
     OptGroup {
-        short_name: short_name.to_strbuf(),
-        long_name: long_name.to_strbuf(),
-        hint: hint.to_strbuf(),
-        desc: desc.to_strbuf(),
+        short_name: short_name.to_string(),
+        long_name: long_name.to_string(),
+        hint: hint.to_string(),
+        desc: desc.to_string(),
         hasarg: Yes,
         occur: Req
     }
@@ -408,10 +408,10 @@ pub fn optopt(short_name: &str, long_name: &str, desc: &str, hint: &str) -> OptG
     let len = short_name.len();
     assert!(len == 1 || len == 0);
     OptGroup {
-        short_name: short_name.to_strbuf(),
-        long_name: long_name.to_strbuf(),
-        hint: hint.to_strbuf(),
-        desc: desc.to_strbuf(),
+        short_name: short_name.to_string(),
+        long_name: long_name.to_string(),
+        hint: hint.to_string(),
+        desc: desc.to_string(),
         hasarg: Yes,
         occur: Optional
     }
@@ -422,10 +422,10 @@ pub fn optflag(short_name: &str, long_name: &str, desc: &str) -> OptGroup {
     let len = short_name.len();
     assert!(len == 1 || len == 0);
     OptGroup {
-        short_name: short_name.to_strbuf(),
-        long_name: long_name.to_strbuf(),
-        hint: "".to_strbuf(),
-        desc: desc.to_strbuf(),
+        short_name: short_name.to_string(),
+        long_name: long_name.to_string(),
+        hint: "".to_string(),
+        desc: desc.to_string(),
         hasarg: No,
         occur: Optional
     }
@@ -437,10 +437,10 @@ pub fn optflagmulti(short_name: &str, long_name: &str, desc: &str) -> OptGroup {
     let len = short_name.len();
     assert!(len == 1 || len == 0);
     OptGroup {
-        short_name: short_name.to_strbuf(),
-        long_name: long_name.to_strbuf(),
-        hint: "".to_strbuf(),
-        desc: desc.to_strbuf(),
+        short_name: short_name.to_string(),
+        long_name: long_name.to_string(),
+        hint: "".to_string(),
+        desc: desc.to_string(),
         hasarg: No,
         occur: Multi
     }
@@ -451,10 +451,10 @@ pub fn optflagopt(short_name: &str, long_name: &str, desc: &str, hint: &str) -> 
     let len = short_name.len();
     assert!(len == 1 || len == 0);
     OptGroup {
-        short_name: short_name.to_strbuf(),
-        long_name: long_name.to_strbuf(),
-        hint: hint.to_strbuf(),
-        desc: desc.to_strbuf(),
+        short_name: short_name.to_string(),
+        long_name: long_name.to_string(),
+        hint: hint.to_string(),
+        desc: desc.to_string(),
         hasarg: Maybe,
         occur: Optional
     }
@@ -466,10 +466,10 @@ pub fn optmulti(short_name: &str, long_name: &str, desc: &str, hint: &str) -> Op
     let len = short_name.len();
     assert!(len == 1 || len == 0);
     OptGroup {
-        short_name: short_name.to_strbuf(),
-        long_name: long_name.to_strbuf(),
-        hint: hint.to_strbuf(),
-        desc: desc.to_strbuf(),
+        short_name: short_name.to_string(),
+        long_name: long_name.to_string(),
+        hint: hint.to_string(),
+        desc: desc.to_string(),
         hasarg: Yes,
         occur: Multi
     }
@@ -485,10 +485,10 @@ pub fn opt(short_name: &str,
     let len = short_name.len();
     assert!(len == 1 || len == 0);
     OptGroup {
-        short_name: short_name.to_strbuf(),
-        long_name: long_name.to_strbuf(),
-        hint: hint.to_strbuf(),
-        desc: desc.to_strbuf(),
+        short_name: short_name.to_string(),
+        long_name: long_name.to_string(),
+        hint: hint.to_string(),
+        desc: desc.to_string(),
         hasarg: hasarg,
         occur: occur
     }
@@ -548,11 +548,11 @@ pub fn getopts(args: &[String], optgrps: &[OptGroup]) -> Result {
                 let tail = cur.as_slice().slice(2, curlen);
                 let tail_eq: Vec<&str> = tail.split('=').collect();
                 if tail_eq.len() <= 1 {
-                    names = vec!(Long(tail.to_strbuf()));
+                    names = vec!(Long(tail.to_string()));
                 } else {
                     names =
-                        vec!(Long((*tail_eq.get(0)).to_strbuf()));
-                    i_arg = Some((*tail_eq.get(1)).to_strbuf());
+                        vec!(Long((*tail_eq.get(0)).to_string()));
+                    i_arg = Some((*tail_eq.get(1)).to_string());
                 }
             } else {
                 let mut j = 1;
@@ -582,7 +582,7 @@ pub fn getopts(args: &[String], optgrps: &[OptGroup]) -> Result {
                             };
                         if arg_follows && j < curlen {
                             i_arg = Some(cur.as_slice()
-                                            .slice(j, curlen).to_strbuf());
+                                            .slice(j, curlen).to_string());
                             break;
                         } else {
                             last_valid_opt_id = None;
@@ -671,7 +671,7 @@ pub fn usage(brief: &str, opts: &[OptGroup]) -> String {
                      hasarg: hasarg,
                      ..} = (*optref).clone();
 
-        let mut row = String::from_owned_str(" ".repeat(4));
+        let mut row = " ".repeat(4);
 
         // short option
         match short_name.len() {
@@ -728,7 +728,7 @@ pub fn usage(brief: &str, opts: &[OptGroup]) -> String {
         each_split_within(desc_normalized_whitespace.as_slice(),
                           54,
                           |substr| {
-            desc_rows.push(substr.to_owned());
+            desc_rows.push(substr.to_string());
             true
         });
 
@@ -900,19 +900,19 @@ fn each_split_within<'a>(ss: &'a str, lim: uint, it: |&'a str| -> bool)
 fn test_split_within() {
     fn t(s: &str, i: uint, u: &[String]) {
         let mut v = Vec::new();
-        each_split_within(s, i, |s| { v.push(s.to_strbuf()); true });
+        each_split_within(s, i, |s| { v.push(s.to_string()); true });
         assert!(v.iter().zip(u.iter()).all(|(a,b)| a == b));
     }
     t("", 0, []);
     t("", 15, []);
-    t("hello", 15, ["hello".to_strbuf()]);
+    t("hello", 15, ["hello".to_string()]);
     t("\nMary had a little lamb\nLittle lamb\n", 15, [
-        "Mary had a".to_strbuf(),
-        "little lamb".to_strbuf(),
-        "Little lamb".to_strbuf()
+        "Mary had a".to_string(),
+        "little lamb".to_string(),
+        "Little lamb".to_string()
     ]);
     t("\nMary had a little lamb\nLittle lamb\n", ::std::uint::MAX,
-        ["Mary had a little lamb\nLittle lamb".to_strbuf()]);
+        ["Mary had a little lamb\nLittle lamb".to_string()]);
 }
 
 #[cfg(test)]
@@ -935,25 +935,25 @@ mod tests {
     // Tests for reqopt
     #[test]
     fn test_reqopt() {
-        let long_args = vec!("--test=20".to_strbuf());
+        let long_args = vec!("--test=20".to_string());
         let opts = vec!(reqopt("t", "test", "testing", "TEST"));
         let rs = getopts(long_args.as_slice(), opts.as_slice());
         match rs {
           Ok(ref m) => {
             assert!(m.opt_present("test"));
-            assert_eq!(m.opt_str("test").unwrap(), "20".to_strbuf());
+            assert_eq!(m.opt_str("test").unwrap(), "20".to_string());
             assert!(m.opt_present("t"));
-            assert_eq!(m.opt_str("t").unwrap(), "20".to_strbuf());
+            assert_eq!(m.opt_str("t").unwrap(), "20".to_string());
           }
           _ => { fail!("test_reqopt failed (long arg)"); }
         }
-        let short_args = vec!("-t".to_strbuf(), "20".to_strbuf());
+        let short_args = vec!("-t".to_string(), "20".to_string());
         match getopts(short_args.as_slice(), opts.as_slice()) {
           Ok(ref m) => {
             assert!((m.opt_present("test")));
-            assert_eq!(m.opt_str("test").unwrap(), "20".to_strbuf());
+            assert_eq!(m.opt_str("test").unwrap(), "20".to_string());
             assert!((m.opt_present("t")));
-            assert_eq!(m.opt_str("t").unwrap(), "20".to_strbuf());
+            assert_eq!(m.opt_str("t").unwrap(), "20".to_string());
           }
           _ => { fail!("test_reqopt failed (short arg)"); }
         }
@@ -961,7 +961,7 @@ mod tests {
 
     #[test]
     fn test_reqopt_missing() {
-        let args = vec!("blah".to_strbuf());
+        let args = vec!("blah".to_string());
         let opts = vec!(reqopt("t", "test", "testing", "TEST"));
         let rs = getopts(args.as_slice(), opts.as_slice());
         match rs {
@@ -972,14 +972,14 @@ mod tests {
 
     #[test]
     fn test_reqopt_no_arg() {
-        let long_args = vec!("--test".to_strbuf());
+        let long_args = vec!("--test".to_string());
         let opts = vec!(reqopt("t", "test", "testing", "TEST"));
         let rs = getopts(long_args.as_slice(), opts.as_slice());
         match rs {
           Err(f) => check_fail_type(f, ArgumentMissing_),
           _ => fail!()
         }
-        let short_args = vec!("-t".to_strbuf());
+        let short_args = vec!("-t".to_string());
         match getopts(short_args.as_slice(), opts.as_slice()) {
           Err(f) => check_fail_type(f, ArgumentMissing_),
           _ => fail!()
@@ -988,7 +988,7 @@ mod tests {
 
     #[test]
     fn test_reqopt_multi() {
-        let args = vec!("--test=20".to_strbuf(), "-t".to_strbuf(), "30".to_strbuf());
+        let args = vec!("--test=20".to_string(), "-t".to_string(), "30".to_string());
         let opts = vec!(reqopt("t", "test", "testing", "TEST"));
         let rs = getopts(args.as_slice(), opts.as_slice());
         match rs {
@@ -1000,25 +1000,25 @@ mod tests {
     // Tests for optopt
     #[test]
     fn test_optopt() {
-        let long_args = vec!("--test=20".to_strbuf());
+        let long_args = vec!("--test=20".to_string());
         let opts = vec!(optopt("t", "test", "testing", "TEST"));
         let rs = getopts(long_args.as_slice(), opts.as_slice());
         match rs {
           Ok(ref m) => {
             assert!(m.opt_present("test"));
-            assert_eq!(m.opt_str("test").unwrap(), "20".to_strbuf());
+            assert_eq!(m.opt_str("test").unwrap(), "20".to_string());
             assert!((m.opt_present("t")));
-            assert_eq!(m.opt_str("t").unwrap(), "20".to_strbuf());
+            assert_eq!(m.opt_str("t").unwrap(), "20".to_string());
           }
           _ => fail!()
         }
-        let short_args = vec!("-t".to_strbuf(), "20".to_strbuf());
+        let short_args = vec!("-t".to_string(), "20".to_string());
         match getopts(short_args.as_slice(), opts.as_slice()) {
           Ok(ref m) => {
             assert!((m.opt_present("test")));
-            assert_eq!(m.opt_str("test").unwrap(), "20".to_strbuf());
+            assert_eq!(m.opt_str("test").unwrap(), "20".to_string());
             assert!((m.opt_present("t")));
-            assert_eq!(m.opt_str("t").unwrap(), "20".to_strbuf());
+            assert_eq!(m.opt_str("t").unwrap(), "20".to_string());
           }
           _ => fail!()
         }
@@ -1026,7 +1026,7 @@ mod tests {
 
     #[test]
     fn test_optopt_missing() {
-        let args = vec!("blah".to_strbuf());
+        let args = vec!("blah".to_string());
         let opts = vec!(optopt("t", "test", "testing", "TEST"));
         let rs = getopts(args.as_slice(), opts.as_slice());
         match rs {
@@ -1040,14 +1040,14 @@ mod tests {
 
     #[test]
     fn test_optopt_no_arg() {
-        let long_args = vec!("--test".to_strbuf());
+        let long_args = vec!("--test".to_string());
         let opts = vec!(optopt("t", "test", "testing", "TEST"));
         let rs = getopts(long_args.as_slice(), opts.as_slice());
         match rs {
           Err(f) => check_fail_type(f, ArgumentMissing_),
           _ => fail!()
         }
-        let short_args = vec!("-t".to_strbuf());
+        let short_args = vec!("-t".to_string());
         match getopts(short_args.as_slice(), opts.as_slice()) {
           Err(f) => check_fail_type(f, ArgumentMissing_),
           _ => fail!()
@@ -1056,7 +1056,7 @@ mod tests {
 
     #[test]
     fn test_optopt_multi() {
-        let args = vec!("--test=20".to_strbuf(), "-t".to_strbuf(), "30".to_strbuf());
+        let args = vec!("--test=20".to_string(), "-t".to_string(), "30".to_string());
         let opts = vec!(optopt("t", "test", "testing", "TEST"));
         let rs = getopts(args.as_slice(), opts.as_slice());
         match rs {
@@ -1068,7 +1068,7 @@ mod tests {
     // Tests for optflag
     #[test]
     fn test_optflag() {
-        let long_args = vec!("--test".to_strbuf());
+        let long_args = vec!("--test".to_string());
         let opts = vec!(optflag("t", "test", "testing"));
         let rs = getopts(long_args.as_slice(), opts.as_slice());
         match rs {
@@ -1078,7 +1078,7 @@ mod tests {
           }
           _ => fail!()
         }
-        let short_args = vec!("-t".to_strbuf());
+        let short_args = vec!("-t".to_string());
         match getopts(short_args.as_slice(), opts.as_slice()) {
           Ok(ref m) => {
             assert!(m.opt_present("test"));
@@ -1090,7 +1090,7 @@ mod tests {
 
     #[test]
     fn test_optflag_missing() {
-        let args = vec!("blah".to_strbuf());
+        let args = vec!("blah".to_string());
         let opts = vec!(optflag("t", "test", "testing"));
         let rs = getopts(args.as_slice(), opts.as_slice());
         match rs {
@@ -1104,7 +1104,7 @@ mod tests {
 
     #[test]
     fn test_optflag_long_arg() {
-        let args = vec!("--test=20".to_strbuf());
+        let args = vec!("--test=20".to_string());
         let opts = vec!(optflag("t", "test", "testing"));
         let rs = getopts(args.as_slice(), opts.as_slice());
         match rs {
@@ -1118,7 +1118,7 @@ mod tests {
 
     #[test]
     fn test_optflag_multi() {
-        let args = vec!("--test".to_strbuf(), "-t".to_strbuf());
+        let args = vec!("--test".to_string(), "-t".to_string());
         let opts = vec!(optflag("t", "test", "testing"));
         let rs = getopts(args.as_slice(), opts.as_slice());
         match rs {
@@ -1129,14 +1129,14 @@ mod tests {
 
     #[test]
     fn test_optflag_short_arg() {
-        let args = vec!("-t".to_strbuf(), "20".to_strbuf());
+        let args = vec!("-t".to_string(), "20".to_string());
         let opts = vec!(optflag("t", "test", "testing"));
         let rs = getopts(args.as_slice(), opts.as_slice());
         match rs {
           Ok(ref m) => {
             // The next variable after the flag is just a free argument
 
-            assert!(*m.free.get(0) == "20".to_strbuf());
+            assert!(*m.free.get(0) == "20".to_string());
           }
           _ => fail!()
         }
@@ -1145,7 +1145,7 @@ mod tests {
     // Tests for optflagmulti
     #[test]
     fn test_optflagmulti_short1() {
-        let args = vec!("-v".to_strbuf());
+        let args = vec!("-v".to_string());
         let opts = vec!(optflagmulti("v", "verbose", "verbosity"));
         let rs = getopts(args.as_slice(), opts.as_slice());
         match rs {
@@ -1158,7 +1158,7 @@ mod tests {
 
     #[test]
     fn test_optflagmulti_short2a() {
-        let args = vec!("-v".to_strbuf(), "-v".to_strbuf());
+        let args = vec!("-v".to_string(), "-v".to_string());
         let opts = vec!(optflagmulti("v", "verbose", "verbosity"));
         let rs = getopts(args.as_slice(), opts.as_slice());
         match rs {
@@ -1171,7 +1171,7 @@ mod tests {
 
     #[test]
     fn test_optflagmulti_short2b() {
-        let args = vec!("-vv".to_strbuf());
+        let args = vec!("-vv".to_string());
         let opts = vec!(optflagmulti("v", "verbose", "verbosity"));
         let rs = getopts(args.as_slice(), opts.as_slice());
         match rs {
@@ -1184,7 +1184,7 @@ mod tests {
 
     #[test]
     fn test_optflagmulti_long1() {
-        let args = vec!("--verbose".to_strbuf());
+        let args = vec!("--verbose".to_string());
         let opts = vec!(optflagmulti("v", "verbose", "verbosity"));
         let rs = getopts(args.as_slice(), opts.as_slice());
         match rs {
@@ -1197,7 +1197,7 @@ mod tests {
 
     #[test]
     fn test_optflagmulti_long2() {
-        let args = vec!("--verbose".to_strbuf(), "--verbose".to_strbuf());
+        let args = vec!("--verbose".to_string(), "--verbose".to_string());
         let opts = vec!(optflagmulti("v", "verbose", "verbosity"));
         let rs = getopts(args.as_slice(), opts.as_slice());
         match rs {
@@ -1210,8 +1210,8 @@ mod tests {
 
     #[test]
     fn test_optflagmulti_mix() {
-        let args = vec!("--verbose".to_strbuf(), "-v".to_strbuf(),
-                        "-vv".to_strbuf(), "verbose".to_strbuf());
+        let args = vec!("--verbose".to_string(), "-v".to_string(),
+                        "-vv".to_string(), "verbose".to_string());
         let opts = vec!(optflagmulti("v", "verbose", "verbosity"));
         let rs = getopts(args.as_slice(), opts.as_slice());
         match rs {
@@ -1226,25 +1226,25 @@ mod tests {
     // Tests for optmulti
     #[test]
     fn test_optmulti() {
-        let long_args = vec!("--test=20".to_strbuf());
+        let long_args = vec!("--test=20".to_string());
         let opts = vec!(optmulti("t", "test", "testing", "TEST"));
         let rs = getopts(long_args.as_slice(), opts.as_slice());
         match rs {
           Ok(ref m) => {
             assert!((m.opt_present("test")));
-            assert_eq!(m.opt_str("test").unwrap(), "20".to_strbuf());
+            assert_eq!(m.opt_str("test").unwrap(), "20".to_string());
             assert!((m.opt_present("t")));
-            assert_eq!(m.opt_str("t").unwrap(), "20".to_strbuf());
+            assert_eq!(m.opt_str("t").unwrap(), "20".to_string());
           }
           _ => fail!()
         }
-        let short_args = vec!("-t".to_strbuf(), "20".to_strbuf());
+        let short_args = vec!("-t".to_string(), "20".to_string());
         match getopts(short_args.as_slice(), opts.as_slice()) {
           Ok(ref m) => {
             assert!((m.opt_present("test")));
-            assert_eq!(m.opt_str("test").unwrap(), "20".to_strbuf());
+            assert_eq!(m.opt_str("test").unwrap(), "20".to_string());
             assert!((m.opt_present("t")));
-            assert_eq!(m.opt_str("t").unwrap(), "20".to_strbuf());
+            assert_eq!(m.opt_str("t").unwrap(), "20".to_string());
           }
           _ => fail!()
         }
@@ -1252,7 +1252,7 @@ mod tests {
 
     #[test]
     fn test_optmulti_missing() {
-        let args = vec!("blah".to_strbuf());
+        let args = vec!("blah".to_string());
         let opts = vec!(optmulti("t", "test", "testing", "TEST"));
         let rs = getopts(args.as_slice(), opts.as_slice());
         match rs {
@@ -1266,14 +1266,14 @@ mod tests {
 
     #[test]
     fn test_optmulti_no_arg() {
-        let long_args = vec!("--test".to_strbuf());
+        let long_args = vec!("--test".to_string());
         let opts = vec!(optmulti("t", "test", "testing", "TEST"));
         let rs = getopts(long_args.as_slice(), opts.as_slice());
         match rs {
           Err(f) => check_fail_type(f, ArgumentMissing_),
           _ => fail!()
         }
-        let short_args = vec!("-t".to_strbuf());
+        let short_args = vec!("-t".to_string());
         match getopts(short_args.as_slice(), opts.as_slice()) {
           Err(f) => check_fail_type(f, ArgumentMissing_),
           _ => fail!()
@@ -1282,18 +1282,18 @@ mod tests {
 
     #[test]
     fn test_optmulti_multi() {
-        let args = vec!("--test=20".to_strbuf(), "-t".to_strbuf(), "30".to_strbuf());
+        let args = vec!("--test=20".to_string(), "-t".to_string(), "30".to_string());
         let opts = vec!(optmulti("t", "test", "testing", "TEST"));
         let rs = getopts(args.as_slice(), opts.as_slice());
         match rs {
           Ok(ref m) => {
               assert!(m.opt_present("test"));
-              assert_eq!(m.opt_str("test").unwrap(), "20".to_strbuf());
+              assert_eq!(m.opt_str("test").unwrap(), "20".to_string());
               assert!(m.opt_present("t"));
-              assert_eq!(m.opt_str("t").unwrap(), "20".to_strbuf());
+              assert_eq!(m.opt_str("t").unwrap(), "20".to_string());
               let pair = m.opt_strs("test");
-              assert!(*pair.get(0) == "20".to_strbuf());
-              assert!(*pair.get(1) == "30".to_strbuf());
+              assert!(*pair.get(0) == "20".to_string());
+              assert!(*pair.get(1) == "30".to_string());
           }
           _ => fail!()
         }
@@ -1301,14 +1301,14 @@ mod tests {
 
     #[test]
     fn test_unrecognized_option() {
-        let long_args = vec!("--untest".to_strbuf());
+        let long_args = vec!("--untest".to_string());
         let opts = vec!(optmulti("t", "test", "testing", "TEST"));
         let rs = getopts(long_args.as_slice(), opts.as_slice());
         match rs {
           Err(f) => check_fail_type(f, UnrecognizedOption_),
           _ => fail!()
         }
-        let short_args = vec!("-u".to_strbuf());
+        let short_args = vec!("-u".to_string());
         match getopts(short_args.as_slice(), opts.as_slice()) {
           Err(f) => check_fail_type(f, UnrecognizedOption_),
           _ => fail!()
@@ -1318,22 +1318,22 @@ mod tests {
     #[test]
     fn test_combined() {
         let args =
-            vec!("prog".to_strbuf(),
-                 "free1".to_strbuf(),
-                 "-s".to_strbuf(),
-                 "20".to_strbuf(),
-                 "free2".to_strbuf(),
-                 "--flag".to_strbuf(),
-                 "--long=30".to_strbuf(),
-                 "-f".to_strbuf(),
-                 "-m".to_strbuf(),
-                 "40".to_strbuf(),
-                 "-m".to_strbuf(),
-                 "50".to_strbuf(),
-                 "-n".to_strbuf(),
-                 "-A B".to_strbuf(),
-                 "-n".to_strbuf(),
-                 "-60 70".to_strbuf());
+            vec!("prog".to_string(),
+                 "free1".to_string(),
+                 "-s".to_string(),
+                 "20".to_string(),
+                 "free2".to_string(),
+                 "--flag".to_string(),
+                 "--long=30".to_string(),
+                 "-f".to_string(),
+                 "-m".to_string(),
+                 "40".to_string(),
+                 "-m".to_string(),
+                 "50".to_string(),
+                 "-n".to_string(),
+                 "-A B".to_string(),
+                 "-n".to_string(),
+                 "-60 70".to_string());
         let opts =
             vec!(optopt("s", "something", "something", "SOMETHING"),
               optflag("", "flag", "a flag"),
@@ -1345,19 +1345,19 @@ mod tests {
         let rs = getopts(args.as_slice(), opts.as_slice());
         match rs {
           Ok(ref m) => {
-            assert!(*m.free.get(0) == "prog".to_strbuf());
-            assert!(*m.free.get(1) == "free1".to_strbuf());
-            assert_eq!(m.opt_str("s").unwrap(), "20".to_strbuf());
-            assert!(*m.free.get(2) == "free2".to_strbuf());
+            assert!(*m.free.get(0) == "prog".to_string());
+            assert!(*m.free.get(1) == "free1".to_string());
+            assert_eq!(m.opt_str("s").unwrap(), "20".to_string());
+            assert!(*m.free.get(2) == "free2".to_string());
             assert!((m.opt_present("flag")));
-            assert_eq!(m.opt_str("long").unwrap(), "30".to_strbuf());
+            assert_eq!(m.opt_str("long").unwrap(), "30".to_string());
             assert!((m.opt_present("f")));
             let pair = m.opt_strs("m");
-            assert!(*pair.get(0) == "40".to_strbuf());
-            assert!(*pair.get(1) == "50".to_strbuf());
+            assert!(*pair.get(0) == "40".to_string());
+            assert!(*pair.get(1) == "50".to_string());
             let pair = m.opt_strs("n");
-            assert!(*pair.get(0) == "-A B".to_strbuf());
-            assert!(*pair.get(1) == "-60 70".to_strbuf());
+            assert!(*pair.get(0) == "-A B".to_string());
+            assert!(*pair.get(1) == "-60 70".to_string());
             assert!((!m.opt_present("notpresent")));
           }
           _ => fail!()
@@ -1370,68 +1370,68 @@ mod tests {
                      optopt("", "encrypt", "encrypt", "ENCRYPT"),
                      optopt("f", "", "flag", "FLAG"));
 
-        let args_single = vec!("-e".to_strbuf(), "foo".to_strbuf());
+        let args_single = vec!("-e".to_string(), "foo".to_string());
         let matches_single = &match getopts(args_single.as_slice(),
                                             opts.as_slice()) {
           result::Ok(m) => m,
           result::Err(_) => fail!()
         };
-        assert!(matches_single.opts_present(["e".to_strbuf()]));
-        assert!(matches_single.opts_present(["encrypt".to_strbuf(), "e".to_strbuf()]));
-        assert!(matches_single.opts_present(["e".to_strbuf(), "encrypt".to_strbuf()]));
-        assert!(!matches_single.opts_present(["encrypt".to_strbuf()]));
-        assert!(!matches_single.opts_present(["thing".to_strbuf()]));
+        assert!(matches_single.opts_present(["e".to_string()]));
+        assert!(matches_single.opts_present(["encrypt".to_string(), "e".to_string()]));
+        assert!(matches_single.opts_present(["e".to_string(), "encrypt".to_string()]));
+        assert!(!matches_single.opts_present(["encrypt".to_string()]));
+        assert!(!matches_single.opts_present(["thing".to_string()]));
         assert!(!matches_single.opts_present([]));
 
-        assert_eq!(matches_single.opts_str(["e".to_strbuf()]).unwrap(), "foo".to_strbuf());
-        assert_eq!(matches_single.opts_str(["e".to_strbuf(), "encrypt".to_strbuf()]).unwrap(),
-                   "foo".to_strbuf());
-        assert_eq!(matches_single.opts_str(["encrypt".to_strbuf(), "e".to_strbuf()]).unwrap(),
-                   "foo".to_strbuf());
+        assert_eq!(matches_single.opts_str(["e".to_string()]).unwrap(), "foo".to_string());
+        assert_eq!(matches_single.opts_str(["e".to_string(), "encrypt".to_string()]).unwrap(),
+                   "foo".to_string());
+        assert_eq!(matches_single.opts_str(["encrypt".to_string(), "e".to_string()]).unwrap(),
+                   "foo".to_string());
 
-        let args_both = vec!("-e".to_strbuf(), "foo".to_strbuf(), "--encrypt".to_strbuf(),
-                             "foo".to_strbuf());
+        let args_both = vec!("-e".to_string(), "foo".to_string(), "--encrypt".to_string(),
+                             "foo".to_string());
         let matches_both = &match getopts(args_both.as_slice(),
                                           opts.as_slice()) {
           result::Ok(m) => m,
           result::Err(_) => fail!()
         };
-        assert!(matches_both.opts_present(["e".to_strbuf()]));
-        assert!(matches_both.opts_present(["encrypt".to_strbuf()]));
-        assert!(matches_both.opts_present(["encrypt".to_strbuf(), "e".to_strbuf()]));
-        assert!(matches_both.opts_present(["e".to_strbuf(), "encrypt".to_strbuf()]));
-        assert!(!matches_both.opts_present(["f".to_strbuf()]));
-        assert!(!matches_both.opts_present(["thing".to_strbuf()]));
+        assert!(matches_both.opts_present(["e".to_string()]));
+        assert!(matches_both.opts_present(["encrypt".to_string()]));
+        assert!(matches_both.opts_present(["encrypt".to_string(), "e".to_string()]));
+        assert!(matches_both.opts_present(["e".to_string(), "encrypt".to_string()]));
+        assert!(!matches_both.opts_present(["f".to_string()]));
+        assert!(!matches_both.opts_present(["thing".to_string()]));
         assert!(!matches_both.opts_present([]));
 
-        assert_eq!(matches_both.opts_str(["e".to_strbuf()]).unwrap(), "foo".to_strbuf());
-        assert_eq!(matches_both.opts_str(["encrypt".to_strbuf()]).unwrap(), "foo".to_strbuf());
-        assert_eq!(matches_both.opts_str(["e".to_strbuf(), "encrypt".to_strbuf()]).unwrap(),
-                   "foo".to_strbuf());
-        assert_eq!(matches_both.opts_str(["encrypt".to_strbuf(), "e".to_strbuf()]).unwrap(),
-                   "foo".to_strbuf());
+        assert_eq!(matches_both.opts_str(["e".to_string()]).unwrap(), "foo".to_string());
+        assert_eq!(matches_both.opts_str(["encrypt".to_string()]).unwrap(), "foo".to_string());
+        assert_eq!(matches_both.opts_str(["e".to_string(), "encrypt".to_string()]).unwrap(),
+                   "foo".to_string());
+        assert_eq!(matches_both.opts_str(["encrypt".to_string(), "e".to_string()]).unwrap(),
+                   "foo".to_string());
     }
 
     #[test]
     fn test_nospace() {
-        let args = vec!("-Lfoo".to_strbuf(), "-M.".to_strbuf());
+        let args = vec!("-Lfoo".to_string(), "-M.".to_string());
         let opts = vec!(optmulti("L", "", "library directory", "LIB"),
                      optmulti("M", "", "something", "MMMM"));
         let matches = &match getopts(args.as_slice(), opts.as_slice()) {
           result::Ok(m) => m,
           result::Err(_) => fail!()
         };
-        assert!(matches.opts_present(["L".to_strbuf()]));
-        assert_eq!(matches.opts_str(["L".to_strbuf()]).unwrap(), "foo".to_strbuf());
-        assert!(matches.opts_present(["M".to_strbuf()]));
-        assert_eq!(matches.opts_str(["M".to_strbuf()]).unwrap(), ".".to_strbuf());
+        assert!(matches.opts_present(["L".to_string()]));
+        assert_eq!(matches.opts_str(["L".to_string()]).unwrap(), "foo".to_string());
+        assert!(matches.opts_present(["M".to_string()]));
+        assert_eq!(matches.opts_str(["M".to_string()]).unwrap(), ".".to_string());
 
     }
 
     #[test]
     fn test_long_to_short() {
         let mut short = Opt {
-            name: Long("banana".to_strbuf()),
+            name: Long("banana".to_string()),
             hasarg: Yes,
             occur: Req,
             aliases: Vec::new(),
@@ -1450,7 +1450,7 @@ mod tests {
         let opts = vec!(
             optflagmulti("a", "apple", "Desc"));
 
-        let args = vec!("-a".to_strbuf(), "--apple".to_strbuf(), "-a".to_strbuf());
+        let args = vec!("-a".to_string(), "--apple".to_string(), "-a".to_string());
 
         let matches = getopts(args.as_slice(), opts.as_slice()).unwrap();
         assert_eq!(3, matches.opt_count("a"));
@@ -1477,7 +1477,7 @@ Options:
     -k --kiwi           Desc
     -p [VAL]            Desc
     -l VAL              Desc
-".to_strbuf();
+".to_string();
 
         let generated_usage = usage("Usage: fruits", optgroups.as_slice());
 
@@ -1504,7 +1504,7 @@ Options:
     -k --kiwi           This is a long description which won't be wrapped..+..
     -a --apple          This is a long description which _will_ be
                         wrapped..+..
-".to_strbuf();
+".to_string();
 
         let usage = usage("Usage: fruits", optgroups.as_slice());
 
@@ -1530,7 +1530,7 @@ Options:
     -a --apple          This “description” has some characters that could
                         confuse the line wrapping; an apple costs 0.51€ in
                         some parts of Europe.
-".to_strbuf();
+".to_string();
 
         let usage = usage("Usage: fruits", optgroups.as_slice());
 
@@ -1549,7 +1549,7 @@ Options:
             optflagopt("p", "", "Desc", "VAL"),
             optmulti("l", "", "Desc", "VAL"));
 
-        let expected = "Usage: fruits -b VAL [-a VAL] [-k] [-p [VAL]] [-l VAL]..".to_strbuf();
+        let expected = "Usage: fruits -b VAL [-a VAL] [-k] [-p [VAL]] [-l VAL]..".to_string();
         let generated_usage = short_usage("fruits", optgroups.as_slice());
 
         debug!("expected: <<{}>>", expected);

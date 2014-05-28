@@ -10,4 +10,4 @@
 
 // error-pattern:quux
 fn my_err(s: String) -> ! { println!("{}", s); fail!("quux"); }
-fn main() { 3u == my_err("bye".to_strbuf()); }
+fn main() { 3u == my_err("bye".to_string()); }

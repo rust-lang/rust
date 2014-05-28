@@ -81,7 +81,7 @@ pub fn WriteOutputFile(
             let result = llvm::LLVMRustWriteOutputFile(
                     target, pm, m, output, file_type);
             if !result {
-                llvm_err(sess, "could not write output".to_strbuf());
+                llvm_err(sess, "could not write output".to_string());
             }
         })
     }
@@ -554,7 +554,7 @@ pub fn crate_id_hash(crate_id: &CrateId) -> String {
     // not by path.
     let mut s = Sha256::new();
     s.input_str(crate_id.short_name_with_version().as_slice());
-    truncated_hash_result(&mut s).as_slice().slice_to(8).to_strbuf()
+    truncated_hash_result(&mut s).as_slice().slice_to(8).to_string()
 }
 
 // FIXME (#9639): This needs to handle non-utf8 `out_filestem` values
@@ -570,7 +570,7 @@ pub fn build_link_meta(krate: &ast::Crate, out_filestem: &str) -> LinkMeta {
 fn truncated_hash_result(symbol_hasher: &mut Sha256) -> String {
     let output = symbol_hasher.result_bytes();
     // 64 bits should be enough to avoid collisions.
-    output.slice_to(8).to_hex().to_strbuf()
+    output.slice_to(8).to_hex().to_string()
 }
 
 
@@ -597,7 +597,7 @@ fn symbol_hash(tcx: &ty::ctxt,
 
 fn get_symbol_hash(ccx: &CrateContext, t: ty::t) -> String {
     match ccx.type_hashcodes.borrow().find(&t) {
-        Some(h) => return h.to_strbuf(),
+        Some(h) => return h.to_string(),
         None => {}
     }
 
@@ -649,7 +649,7 @@ pub fn sanitize(s: &str) -> String {
     if result.len() > 0u &&
         result.as_slice()[0] != '_' as u8 &&
         ! char::is_XID_start(result.as_slice()[0] as char) {
-        return format!("_{}", result.as_slice()).to_strbuf();
+        return format!("_{}", result.as_slice()).to_string();
     }
 
     return result;
@@ -703,7 +703,7 @@ pub fn exported_name(path: PathElems, hash: &str, vers: &str) -> String {
     let vers = if vers.len() > 0 && !char::is_XID_start(vers.char_at(0)) {
         format!("v{}", vers)
     } else {
-        vers.to_owned()
+        vers.to_string()
     };
 
     mangle(path, Some(hash), Some(vers.as_slice()))
@@ -759,7 +759,7 @@ pub fn output_lib_filename(id: &CrateId) -> String {
 
 pub fn get_cc_prog(sess: &Session) -> String {
     match sess.opts.cg.linker {
-        Some(ref linker) => return linker.to_strbuf(),
+        Some(ref linker) => return linker.to_string(),
         None => {}
     }
 
@@ -770,13 +770,13 @@ pub fn get_cc_prog(sess: &Session) -> String {
     match sess.targ_cfg.os {
         abi::OsWin32 => "gcc",
         _ => "cc",
-    }.to_strbuf()
+    }.to_string()
 }
 
 pub fn get_ar_prog(sess: &Session) -> String {
     match sess.opts.cg.ar {
         Some(ref ar) => (*ar).clone(),
-        None => "ar".to_strbuf()
+        None => "ar".to_string()
     }
 }
 

@@ -11,5 +11,5 @@
 // error-pattern:failed at 'test-assert-owned'
 
 fn main() {
-    assert!(false, "test-assert-owned".to_strbuf());
+    assert!(false, "test-assert-owned".to_string());
 }

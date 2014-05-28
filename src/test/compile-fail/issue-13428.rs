@@ -19,7 +19,7 @@ fn foo() -> String {  //~ ERROR not all control paths return a value
 }
 
 fn bar() -> String {  //~ ERROR not all control paths return a value
-    "foobar".to_strbuf()
+    "foobar".to_string()
     ;   //~ NOTE consider removing this semicolon
 }
 

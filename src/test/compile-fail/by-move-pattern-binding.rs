@@ -20,7 +20,7 @@ struct S {
 fn f(x: String) {}
 
 fn main() {
-    let s = S { x: Bar("hello".to_strbuf()) };
+    let s = S { x: Bar("hello".to_string()) };
     match &s.x {
         &Foo => {}
         &Bar(identifier) => f(identifier.clone())  //~ ERROR cannot move

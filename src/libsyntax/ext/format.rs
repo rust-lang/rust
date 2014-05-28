@@ -148,8 +148,8 @@ fn parse_args(ecx: &mut ExtCtxt, sp: Span, allow_method: bool,
                     continue
                 }
             }
-            order.push(name.to_strbuf());
-            names.insert(name.to_strbuf(), e);
+            order.push(name.to_string());
+            names.insert(name.to_string(), e);
         } else {
             args.push(p.parse_expr());
         }
@@ -188,13 +188,13 @@ impl<'a, 'b> Context<'a, 'b> {
                         Exact(i)
                     }
                     parse::ArgumentIs(i) => Exact(i),
-                    parse::ArgumentNamed(s) => Named(s.to_strbuf()),
+                    parse::ArgumentNamed(s) => Named(s.to_string()),
                 };
 
                 // and finally the method being applied
                 match arg.method {
                     None => {
-                        let ty = Known(arg.format.ty.to_strbuf());
+                        let ty = Known(arg.format.ty.to_string());
                         self.verify_arg_type(pos, ty);
                     }
                     Some(ref method) => { self.verify_method(pos, *method); }
@@ -216,7 +216,7 @@ impl<'a, 'b> Context<'a, 'b> {
                 self.verify_arg_type(Exact(i), Unsigned);
             }
             parse::CountIsName(s) => {
-                self.verify_arg_type(Named(s.to_strbuf()), Unsigned);
+                self.verify_arg_type(Named(s.to_string()), Unsigned);
             }
             parse::CountIsNextParam => {
                 if self.check_positional_ok() {

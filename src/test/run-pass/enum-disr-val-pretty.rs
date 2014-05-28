@@ -13,10 +13,10 @@
 enum color { red = 1, green, blue, imaginary = -1, }
 
 pub fn main() {
-    test_color(red, 1, "red".to_strbuf());
-    test_color(green, 2, "green".to_strbuf());
-    test_color(blue, 3, "blue".to_strbuf());
-    test_color(imaginary, -1, "imaginary".to_strbuf());
+    test_color(red, 1, "red".to_string());
+    test_color(green, 2, "green".to_string());
+    test_color(blue, 3, "blue".to_string());
+    test_color(imaginary, -1, "imaginary".to_string());
 }
 
 fn test_color(color: color, val: int, _name: String) {

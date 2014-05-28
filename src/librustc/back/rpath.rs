@@ -33,9 +33,9 @@ pub fn get_rpath_flags(sess: &Session, out_filename: &Path) -> Vec<String> {
     let mut flags = Vec::new();
 
     if sess.targ_cfg.os == abi::OsFreebsd {
-        flags.push_all(["-Wl,-rpath,/usr/local/lib/gcc46".to_strbuf(),
-                        "-Wl,-rpath,/usr/local/lib/gcc44".to_strbuf(),
-                        "-Wl,-z,origin".to_strbuf()]);
+        flags.push_all(["-Wl,-rpath,/usr/local/lib/gcc46".to_string(),
+                        "-Wl,-rpath,/usr/local/lib/gcc44".to_string(),
+                        "-Wl,-z,origin".to_string()]);
     }
 
     debug!("preparing the RPATH!");
@@ -145,7 +145,7 @@ pub fn get_install_prefix_rpath(sysroot: &Path, target_triple: &str) -> String {
     path.push(&tlib);
     let path = os::make_absolute(&path);
     // FIXME (#9639): This needs to handle non-utf8 paths
-    path.as_str().expect("non-utf8 component in rpath").to_strbuf()
+    path.as_str().expect("non-utf8 component in rpath").to_string()
 }
 
 pub fn minimize_rpaths(rpaths: &[String]) -> Vec<String> {
@@ -169,12 +169,12 @@ mod test {
     #[test]
     fn test_rpaths_to_flags() {
         let flags = rpaths_to_flags([
-            "path1".to_strbuf(),
-            "path2".to_strbuf()
+            "path1".to_string(),
+            "path2".to_string()
         ]);
         assert_eq!(flags,
-                   vec!("-Wl,-rpath,path1".to_strbuf(),
-                        "-Wl,-rpath,path2".to_strbuf()));
+                   vec!("-Wl,-rpath,path1".to_string(),
+                        "-Wl,-rpath,path2".to_string()));
     }
 
     #[test]
@@ -201,35 +201,35 @@ mod test {
     #[test]
     fn test_minimize1() {
         let res = minimize_rpaths([
-            "rpath1".to_strbuf(),
-            "rpath2".to_strbuf(),
-            "rpath1".to_strbuf()
+            "rpath1".to_string(),
+            "rpath2".to_string(),
+            "rpath1".to_string()
         ]);
         assert!(res.as_slice() == [
-            "rpath1".to_strbuf(),
-            "rpath2".to_strbuf()
+            "rpath1".to_string(),
+            "rpath2".to_string()
         ]);
     }
 
     #[test]
     fn test_minimize2() {
         let res = minimize_rpaths([
-            "1a".to_strbuf(),
-            "2".to_strbuf(),
-            "2".to_strbuf(),
-            "1a".to_strbuf(),
-            "4a".to_strbuf(),
-            "1a".to_strbuf(),
-            "2".to_strbuf(),
-            "3".to_strbuf(),
-            "4a".to_strbuf(),
-            "3".to_strbuf()
+            "1a".to_string(),
+            "2".to_string(),
+            "2".to_string(),
+            "1a".to_string(),
+            "4a".to_string(),
+            "1a".to_string(),
+            "2".to_string(),
+            "3".to_string(),
+            "4a".to_string(),
+            "3".to_string()
         ]);
         assert!(res.as_slice() == [
-            "1a".to_strbuf(),
-            "2".to_strbuf(),
-            "4a".to_strbuf(),
-            "3".to_strbuf()
+            "1a".to_string(),
+            "2".to_string(),
+            "4a".to_string(),
+            "3".to_string()
         ]);
     }
 

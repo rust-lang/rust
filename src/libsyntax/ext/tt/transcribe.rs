@@ -117,7 +117,7 @@ fn lis_merge(lhs: LockstepIterSize, rhs: LockstepIterSize) -> LockstepIterSize {
                 let r_n = token::get_ident(r_id);
                 LisContradiction(format!("inconsistent lockstep iteration: \
                                           '{}' has {} items, but '{}' has {}",
-                                          l_n, l_len, r_n, r_len).to_strbuf())
+                                          l_n, l_len, r_n, r_len).to_string())
             }
         }
     }

@@ -121,7 +121,7 @@ impl fmt::Show for RcStr {
 impl RcStr {
     pub fn new(string: &str) -> RcStr {
         RcStr {
-            string: Rc::new(string.to_strbuf()),
+            string: Rc::new(string.to_string()),
         }
     }
 }

@@ -65,7 +65,7 @@ pub fn trans_inline_asm<'a>(bcx: &'a Block<'a>, ia: &ast::InlineAsm)
 
     let mut constraints =
         String::from_str(constraints.iter()
-                                    .map(|s| s.get().to_strbuf())
+                                    .map(|s| s.get().to_string())
                                     .collect::<Vec<String>>()
                                     .connect(",")
                                     .as_slice());
@@ -136,11 +136,11 @@ pub fn trans_inline_asm<'a>(bcx: &'a Block<'a>, ia: &ast::InlineAsm)
 #[cfg(target_arch = "arm")]
 #[cfg(target_arch = "mips")]
 fn getClobbers() -> String {
-    "".to_strbuf()
+    "".to_string()
 }
 
 #[cfg(target_arch = "x86")]
 #[cfg(target_arch = "x86_64")]
 fn getClobbers() -> String {
-    "~{dirflag},~{fpsr},~{flags}".to_strbuf()
+    "~{dirflag},~{fpsr},~{flags}".to_string()
 }

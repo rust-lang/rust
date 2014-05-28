@@ -14,13 +14,13 @@ trait to_str {
     fn to_string(&self) -> String;
 }
 impl to_str for int {
-    fn to_string(&self) -> String { self.to_str().to_strbuf() }
+    fn to_string(&self) -> String { self.to_str() }
 }
 impl to_str for String {
     fn to_string(&self) -> String { self.clone() }
 }
 impl to_str for () {
-    fn to_string(&self) -> String { "()".to_strbuf() }
+    fn to_string(&self) -> String { "()".to_string() }
 }
 
 trait map<T> {
@@ -38,16 +38,16 @@ impl<T> map<T> for Vec<T> {
 }
 
 fn foo<U, T: map<U>>(x: T) -> Vec<String> {
-    x.map(|_e| "hi".to_strbuf() )
+    x.map(|_e| "hi".to_string() )
 }
 fn bar<U:to_str,T:map<U>>(x: T) -> Vec<String> {
     x.map(|_e| _e.to_string() )
 }
 
 pub fn main() {
-    assert_eq!(foo(vec!(1)), vec!("hi".to_strbuf()));
-    assert_eq!(bar::<int, Vec<int> >(vec!(4, 5)), vec!("4".to_strbuf(), "5".to_strbuf()));
-    assert_eq!(bar::<String, Vec<String> >(vec!("x".to_strbuf(), "y".to_strbuf())),
-               vec!("x".to_strbuf(), "y".to_strbuf()));
-    assert_eq!(bar::<(), Vec<()>>(vec!(())), vec!("()".to_strbuf()));
+    assert_eq!(foo(vec!(1)), vec!("hi".to_string()));
+    assert_eq!(bar::<int, Vec<int> >(vec!(4, 5)), vec!("4".to_string(), "5".to_string()));
+    assert_eq!(bar::<String, Vec<String> >(vec!("x".to_string(), "y".to_string())),
+               vec!("x".to_string(), "y".to_string()));
+    assert_eq!(bar::<(), Vec<()>>(vec!(())), vec!("()".to_string()));
 }

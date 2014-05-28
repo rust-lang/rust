@@ -21,7 +21,7 @@ extern crate collections;
 */
 
 pub fn map(filename: String, emit: map_reduce::putter) {
-    emit(filename, "1".to_strbuf());
+    emit(filename, "1".to_string());
 }
 
 mod map_reduce {
@@ -86,7 +86,7 @@ mod map_reduce {
               find_reducer(k, cc) => {
                 let mut c;
                 match reducers.find(&str::from_utf8(
-                        k.as_slice()).unwrap().to_strbuf()) {
+                        k.as_slice()).unwrap().to_string()) {
                   Some(&_c) => { c = _c; }
                   None => { c = 0; }
                 }
@@ -99,5 +99,5 @@ mod map_reduce {
 
 pub fn main() {
     map_reduce::map_reduce(
-        vec!("../src/test/run-pass/hashmap-memory.rs".to_strbuf()));
+        vec!("../src/test/run-pass/hashmap-memory.rs".to_string()));
 }

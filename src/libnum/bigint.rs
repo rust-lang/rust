@@ -629,7 +629,7 @@ impl ToStrRadix for BigUint {
 
         fn fill_concat(v: &[BigDigit], radix: uint, l: uint) -> String {
             if v.is_empty() {
-                return "0".to_strbuf()
+                return "0".to_string()
             }
             let mut s = String::with_capacity(v.len() * l);
             for n in v.iter().rev() {
@@ -637,7 +637,7 @@ impl ToStrRadix for BigUint {
                 s.push_str("0".repeat(l - ss.len()).as_slice());
                 s.push_str(ss.as_slice());
             }
-            s.as_slice().trim_left_chars('0').to_strbuf()
+            s.as_slice().trim_left_chars('0').to_string()
         }
     }
 }
@@ -1214,7 +1214,7 @@ impl ToStrRadix for BigInt {
     fn to_str_radix(&self, radix: uint) -> String {
         match self.sign {
             Plus  => self.data.to_str_radix(radix),
-            Zero  => "0".to_strbuf(),
+            Zero  => "0".to_string(),
             Minus => format_strbuf!("-{}", self.data.to_str_radix(radix)),
         }
     }
@@ -2032,35 +2032,35 @@ mod biguint_tests {
     fn to_str_pairs() -> Vec<(BigUint, Vec<(uint, String)>)> {
         let bits = BigDigit::bits;
         vec!(( Zero::zero(), vec!(
-            (2, "0".to_strbuf()), (3, "0".to_strbuf())
+            (2, "0".to_string()), (3, "0".to_string())
         )), ( BigUint::from_slice([ 0xff ]), vec!(
-            (2,  "11111111".to_strbuf()),
-            (3,  "100110".to_strbuf()),
-            (4,  "3333".to_strbuf()),
-            (5,  "2010".to_strbuf()),
-            (6,  "1103".to_strbuf()),
-            (7,  "513".to_strbuf()),
-            (8,  "377".to_strbuf()),
-            (9,  "313".to_strbuf()),
-            (10, "255".to_strbuf()),
-            (11, "212".to_strbuf()),
-            (12, "193".to_strbuf()),
-            (13, "168".to_strbuf()),
-            (14, "143".to_strbuf()),
-            (15, "120".to_strbuf()),
-            (16, "ff".to_strbuf())
+            (2,  "11111111".to_string()),
+            (3,  "100110".to_string()),
+            (4,  "3333".to_string()),
+            (5,  "2010".to_string()),
+            (6,  "1103".to_string()),
+            (7,  "513".to_string()),
+            (8,  "377".to_string()),
+            (9,  "313".to_string()),
+            (10, "255".to_string()),
+            (11, "212".to_string()),
+            (12, "193".to_string()),
+            (13, "168".to_string()),
+            (14, "143".to_string()),
+            (15, "120".to_string()),
+            (16, "ff".to_string())
         )), ( BigUint::from_slice([ 0xfff ]), vec!(
-            (2,  "111111111111".to_strbuf()),
-            (4,  "333333".to_strbuf()),
-            (16, "fff".to_strbuf())
+            (2,  "111111111111".to_string()),
+            (4,  "333333".to_string()),
+            (16, "fff".to_string())
         )), ( BigUint::from_slice([ 1, 2 ]), vec!(
             (2,
              format_strbuf!("10{}1", "0".repeat(bits - 1))),
             (4,
              format_strbuf!("2{}1", "0".repeat(bits / 2 - 1))),
             (10, match bits {
-                32 => "8589934593".to_strbuf(),
-                16 => "131073".to_strbuf(),
+                32 => "8589934593".to_string(),
+                16 => "131073".to_string(),
                 _ => fail!()
             }),
             (16,
@@ -2075,8 +2075,8 @@ mod biguint_tests {
                             "0".repeat(bits / 2 - 1),
                             "0".repeat(bits / 2 - 1))),
             (10, match bits {
-                32 => "55340232229718589441".to_strbuf(),
-                16 => "12885032961".to_strbuf(),
+                32 => "55340232229718589441".to_string(),
+                16 => "12885032961".to_string(),
                 _ => fail!()
             }),
             (16,

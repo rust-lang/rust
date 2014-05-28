@@ -669,7 +669,7 @@ mod tests {
     #[test]
     fn test_clone_noleak() {
         fn foo(f: |c: &CString|) {
-            let s = "test".to_owned();
+            let s = "test".to_string();
             let c = s.to_c_str();
             // give the closure a non-owned CString
             let mut c_ = c.with_ref(|c| unsafe { CString::new(c, false) } );

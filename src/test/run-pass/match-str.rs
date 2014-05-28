@@ -16,7 +16,7 @@ pub fn main() {
     enum t { tag1(String), tag2, }
 
 
-    match tag1("test".to_strbuf()) {
+    match tag1("test".to_string()) {
       tag2 => fail!(),
       tag1(ref s) if "test" != s.as_slice() => fail!(),
       tag1(ref s) if "test" == s.as_slice() => (),

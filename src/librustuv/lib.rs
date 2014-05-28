@@ -359,7 +359,7 @@ impl UvError {
             let inner = match self { &UvError(a) => a };
             let name_str = uvll::uv_err_name(inner);
             assert!(name_str.is_not_null());
-            from_c_str(name_str).to_strbuf()
+            from_c_str(name_str).to_string()
         }
     }
 
@@ -368,7 +368,7 @@ impl UvError {
             let inner = match self { &UvError(a) => a };
             let desc_str = uvll::uv_strerror(inner);
             assert!(desc_str.is_not_null());
-            from_c_str(desc_str).to_strbuf()
+            from_c_str(desc_str).to_string()
         }
     }
 
@@ -387,7 +387,7 @@ impl fmt::Show for UvError {
 #[test]
 fn error_smoke_test() {
     let err: UvError = UvError(uvll::EOF);
-    assert_eq!(err.to_str(), "EOF: end of file".to_strbuf());
+    assert_eq!(err.to_str(), "EOF: end of file".to_string());
 }
 
 pub fn uv_error_to_io_error(uverr: UvError) -> IoError {

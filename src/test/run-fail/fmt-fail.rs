@@ -11,6 +11,6 @@
 // error-pattern:meh
 
 fn main() {
-    let str_var: String = "meh".to_strbuf();
+    let str_var: String = "meh".to_string();
     fail!("{}", str_var);
 }

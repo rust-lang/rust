@@ -42,23 +42,23 @@ mod tests {
 
     #[test]
     fn test_simple_types() {
-        assert_eq!(1i.to_str(), "1".to_strbuf());
-        assert_eq!((-1i).to_str(), "-1".to_strbuf());
-        assert_eq!(200u.to_str(), "200".to_strbuf());
-        assert_eq!(2u8.to_str(), "2".to_strbuf());
-        assert_eq!(true.to_str(), "true".to_strbuf());
-        assert_eq!(false.to_str(), "false".to_strbuf());
-        assert_eq!(().to_str(), "()".to_strbuf());
-        assert_eq!(("hi".to_strbuf()).to_str(), "hi".to_strbuf());
+        assert_eq!(1i.to_str(), "1".to_string());
+        assert_eq!((-1i).to_str(), "-1".to_string());
+        assert_eq!(200u.to_str(), "200".to_string());
+        assert_eq!(2u8.to_str(), "2".to_string());
+        assert_eq!(true.to_str(), "true".to_string());
+        assert_eq!(false.to_str(), "false".to_string());
+        assert_eq!(().to_str(), "()".to_string());
+        assert_eq!(("hi".to_string()).to_str(), "hi".to_string());
     }
 
     #[test]
     fn test_vectors() {
         let x: ~[int] = box [];
-        assert_eq!(x.to_str(), "[]".to_strbuf());
-        assert_eq!((box [1]).to_str(), "[1]".to_strbuf());
-        assert_eq!((box [1, 2, 3]).to_str(), "[1, 2, 3]".to_strbuf());
+        assert_eq!(x.to_str(), "[]".to_string());
+        assert_eq!((box [1]).to_str(), "[1]".to_string());
+        assert_eq!((box [1, 2, 3]).to_str(), "[1, 2, 3]".to_string());
         assert!((box [box [], box [1], box [1, 1]]).to_str() ==
-               "[[], [1], [1, 1]]".to_strbuf());
+               "[[], [1], [1, 1]]".to_string());
     }
 }

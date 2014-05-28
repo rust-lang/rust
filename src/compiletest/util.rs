@@ -41,15 +41,15 @@ pub fn make_new_path(path: &str) -> String {
       Some(curr) => {
         format_strbuf!("{}{}{}", path, path_div(), curr)
       }
-      None => path.to_str().to_strbuf()
+      None => path.to_str().to_string()
     }
 }
 
 #[cfg(target_os = "win32")]
-pub fn lib_path_env_var() -> String { "PATH".to_strbuf() }
+pub fn lib_path_env_var() -> String { "PATH".to_string() }
 
 #[cfg(target_os = "win32")]
-pub fn path_div() -> String { ";".to_strbuf() }
+pub fn path_div() -> String { ";".to_string() }
 
 pub fn logv(config: &Config, s: String) {
     debug!("{}", s);

@@ -2040,9 +2040,9 @@ mod test_map {
         let mut m = HashMap::new();
 
         let (foo, bar, baz) = (1,2,3);
-        m.insert("foo".to_owned(), foo);
-        m.insert("bar".to_owned(), bar);
-        m.insert("baz".to_owned(), baz);
+        m.insert("foo".to_string(), foo);
+        m.insert("bar".to_string(), bar);
+        m.insert("baz".to_string(), baz);
 
 
         assert_eq!(m.find_equiv(&("foo")), Some(&foo));
@@ -2327,8 +2327,8 @@ mod test_set {
 
         let set_str = format!("{}", set);
 
-        assert!(set_str == "{1, 2}".to_owned() || set_str == "{2, 1}".to_owned());
-        assert_eq!(format!("{}", empty), "{}".to_owned());
+        assert!(set_str == "{1, 2}".to_string() || set_str == "{2, 1}".to_string());
+        assert_eq!(format!("{}", empty), "{}".to_string());
     }
 }
 

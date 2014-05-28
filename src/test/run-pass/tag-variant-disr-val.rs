@@ -27,14 +27,14 @@ impl Eq for color {
 }
 
 pub fn main() {
-    test_color(red, 0xff0000, "red".to_strbuf());
-    test_color(green, 0x00ff00, "green".to_strbuf());
-    test_color(blue, 0x0000ff, "blue".to_strbuf());
-    test_color(black, 0x000000, "black".to_strbuf());
-    test_color(white, 0xFFFFFF, "white".to_strbuf());
-    test_color(imaginary, -1, "imaginary".to_strbuf());
-    test_color(purple, 2, "purple".to_strbuf());
-    test_color(orange, 4, "orange".to_strbuf());
+    test_color(red, 0xff0000, "red".to_string());
+    test_color(green, 0x00ff00, "green".to_string());
+    test_color(blue, 0x0000ff, "blue".to_string());
+    test_color(black, 0x000000, "black".to_string());
+    test_color(white, 0xFFFFFF, "white".to_string());
+    test_color(imaginary, -1, "imaginary".to_string());
+    test_color(purple, 2, "purple".to_string());
+    test_color(orange, 4, "orange".to_string());
 }
 
 fn test_color(color: color, val: int, name: String) {
@@ -47,25 +47,25 @@ fn test_color(color: color, val: int, name: String) {
 
 fn get_color_alt(color: color) -> String {
     match color {
-      red => {"red".to_strbuf()}
-      green => {"green".to_strbuf()}
-      blue => {"blue".to_strbuf()}
-      black => {"black".to_strbuf()}
-      white => {"white".to_strbuf()}
-      imaginary => {"imaginary".to_strbuf()}
-      purple => {"purple".to_strbuf()}
-      orange => {"orange".to_strbuf()}
+      red => {"red".to_string()}
+      green => {"green".to_string()}
+      blue => {"blue".to_string()}
+      black => {"black".to_string()}
+      white => {"white".to_string()}
+      imaginary => {"imaginary".to_string()}
+      purple => {"purple".to_string()}
+      orange => {"orange".to_string()}
     }
 }
 
 fn get_color_if(color: color) -> String {
-    if color == red {"red".to_strbuf()}
-    else if color == green {"green".to_strbuf()}
-    else if color == blue {"blue".to_strbuf()}
-    else if color == black {"black".to_strbuf()}
-    else if color == white {"white".to_strbuf()}
-    else if color == imaginary {"imaginary".to_strbuf()}
-    else if color == purple {"purple".to_strbuf()}
-    else if color == orange {"orange".to_strbuf()}
-    else {"unknown".to_strbuf()}
+    if color == red {"red".to_string()}
+    else if color == green {"green".to_string()}
+    else if color == blue {"blue".to_string()}
+    else if color == black {"black".to_string()}
+    else if color == white {"white".to_string()}
+    else if color == imaginary {"imaginary".to_string()}
+    else if color == purple {"purple".to_string()}
+    else if color == orange {"orange".to_string()}
+    else {"unknown".to_string()}
 }

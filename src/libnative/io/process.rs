@@ -1103,24 +1103,24 @@ mod tests {
 
         assert_eq!(
             test_wrapper("prog", ["aaa", "bbb", "ccc"]),
-            "prog aaa bbb ccc".to_owned()
+            "prog aaa bbb ccc".to_string()
         );
 
         assert_eq!(
             test_wrapper("C:\\Program Files\\blah\\blah.exe", ["aaa"]),
-            "\"C:\\Program Files\\blah\\blah.exe\" aaa".to_owned()
+            "\"C:\\Program Files\\blah\\blah.exe\" aaa".to_string()
         );
         assert_eq!(
             test_wrapper("C:\\Program Files\\test", ["aa\"bb"]),
-            "\"C:\\Program Files\\test\" aa\\\"bb".to_owned()
+            "\"C:\\Program Files\\test\" aa\\\"bb".to_string()
         );
         assert_eq!(
             test_wrapper("echo", ["a b c"]),
-            "echo \"a b c\"".to_owned()
+            "echo \"a b c\"".to_string()
         );
         assert_eq!(
             test_wrapper("\u03c0\u042f\u97f3\u00e6\u221e", []),
-            "\u03c0\u042f\u97f3\u00e6\u221e".to_owned()
+            "\u03c0\u042f\u97f3\u00e6\u221e".to_string()
         );
     }
 }
