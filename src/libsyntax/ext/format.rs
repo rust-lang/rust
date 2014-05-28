@@ -19,7 +19,7 @@ use parse::token;
 use rsparse = parse;
 
 use parse = fmt_macros;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::gc::Gc;
 
 #[deriving(PartialEq)]
@@ -165,13 +165,6 @@ impl<'a, 'b> Context<'a, 'b> {
     fn verify_piece(&mut self, p: &parse::Piece) {
         match *p {
             parse::String(..) => {}
-            parse::CurrentArgument => {
-                if self.nest_level == 0 {
-                    self.ecx.span_err(self.fmtsp,
-                                      "`#` reference used with nothing to \
-                                       reference back to");
-                }
-            }
             parse::Argument(ref arg) => {
                 // width/precision first, if they have implicit positional
                 // parameters it makes more sense to consume them first.
@@ -192,21 +185,9 @@ impl<'a, 'b> Context<'a, 'b> {
                     parse::ArgumentNamed(s) => Named(s.to_string()),
                 };
 
-                // and finally the method being applied
-                match arg.method {
-                    None => {
-                        let ty = Known(arg.format.ty.to_string());
-                        self.verify_arg_type(pos, ty);
-                    }
-                    Some(ref method) => { self.verify_method(pos, *method); }
-                }
+                let ty = Known(arg.format.ty.to_string());
+                self.verify_arg_type(pos, ty);
             }
-        }
-    }
-
-    fn verify_pieces(&mut self, pieces: &[parse::Piece]) {
-        for piece in pieces.iter() {
-            self.verify_piece(piece);
         }
     }
 
@@ -236,53 +217,6 @@ impl<'a, 'b> Context<'a, 'b> {
         } else {
             true
         }
-    }
-
-    fn verify_method(&mut self, pos: Position, m: &parse::Method) {
-        self.nest_level += 1;
-        match *m {
-            parse::Plural(_, ref arms, ref default) => {
-                let mut seen_cases = HashSet::new();
-                self.verify_arg_type(pos, Unsigned);
-                for arm in arms.iter() {
-                    if !seen_cases.insert(arm.selector) {
-                        match arm.selector {
-                            parse::Keyword(name) => {
-                                self.ecx.span_err(self.fmtsp,
-                                                  format!("duplicate \
-                                                           selector `{}`",
-                                                          name).as_slice());
-                            }
-                            parse::Literal(idx) => {
-                                self.ecx.span_err(self.fmtsp,
-                                                  format!("duplicate \
-                                                           selector `={}`",
-                                                          idx).as_slice());
-                            }
-                        }
-                    }
-                    self.verify_pieces(arm.result.as_slice());
-                }
-                self.verify_pieces(default.as_slice());
-            }
-            parse::Select(ref arms, ref default) => {
-                self.verify_arg_type(pos, String);
-                let mut seen_cases = HashSet::new();
-                for arm in arms.iter() {
-                    if !seen_cases.insert(arm.selector) {
-                        self.ecx.span_err(self.fmtsp,
-                                          format!("duplicate selector `{}`",
-                                                  arm.selector).as_slice());
-                    } else if arm.selector == "" {
-                        self.ecx.span_err(self.fmtsp,
-                                          "empty selector in `select`");
-                    }
-                    self.verify_pieces(arm.result.as_slice());
-                }
-                self.verify_pieces(default.as_slice());
-            }
-        }
-        self.nest_level -= 1;
     }
 
     fn verify_arg_type(&mut self, arg: Position, ty: ArgumentType) {
@@ -400,23 +334,6 @@ impl<'a, 'b> Context<'a, 'b> {
           self.ecx.ident_of("rt"), self.ecx.ident_of(s))
     }
 
-    fn none(&self) -> Gc<ast::Expr> {
-        let none = self.ecx.path_global(self.fmtsp, vec!(
-                self.ecx.ident_of("std"),
-                self.ecx.ident_of("option"),
-                self.ecx.ident_of("None")));
-        self.ecx.expr_path(none)
-    }
-
-    fn some(&self, e: Gc<ast::Expr>) -> Gc<ast::Expr> {
-        let p = self.ecx.path_global(self.fmtsp, vec!(
-                self.ecx.ident_of("std"),
-                self.ecx.ident_of("option"),
-                self.ecx.ident_of("Some")));
-        let p = self.ecx.expr_path(p);
-        self.ecx.expr_call(self.fmtsp, p, vec!(e))
-    }
-
     fn trans_count(&self, c: parse::Count) -> Gc<ast::Expr> {
         let sp = self.fmtsp;
         match c {
@@ -448,86 +365,6 @@ impl<'a, 'b> Context<'a, 'b> {
         }
     }
 
-    fn trans_method(&mut self, method: &parse::Method) -> Gc<ast::Expr> {
-        let sp = self.fmtsp;
-        let method = match *method {
-            parse::Select(ref arms, ref default) => {
-                let arms = arms.iter().map(|arm| {
-                        let p = self.ecx.path_global(sp, self.rtpath("SelectArm"));
-                        let result = arm.result.iter().map(|p| {
-                            self.trans_piece(p)
-                        }).collect();
-                        let s = token::intern_and_get_ident(arm.selector);
-                        let selector = self.ecx.expr_str(sp, s);
-                        self.ecx.expr_struct(sp, p, vec!(
-                                self.ecx.field_imm(sp,
-                                                   self.ecx.ident_of("selector"),
-                                                   selector),
-                                self.ecx.field_imm(sp, self.ecx.ident_of("result"),
-                                                   self.ecx.expr_vec_slice(sp, result))))
-                    }).collect();
-                let default = default.iter().map(|p| {
-                        self.trans_piece(p)
-                    }).collect();
-                self.ecx.expr_call_global(sp, self.rtpath("Select"), vec!(
-                        self.ecx.expr_vec_slice(sp, arms),
-                        self.ecx.expr_vec_slice(sp, default)))
-            }
-            parse::Plural(offset, ref arms, ref default) => {
-                let offset = match offset {
-                    Some(i) => { self.some(self.ecx.expr_uint(sp, i)) }
-                    None => { self.none() }
-                };
-                let arms = arms.iter().map(|arm| {
-                        let p = self.ecx.path_global(sp, self.rtpath("PluralArm"));
-                        let result = arm.result.iter().map(|p| {
-                                self.trans_piece(p)
-                            }).collect();
-                        let (lr, selarg) = match arm.selector {
-                            parse::Keyword(t) => {
-                                let p = self.rtpath(t.to_str().as_slice());
-                                let p = self.ecx.path_global(sp, p);
-                                (self.rtpath("Keyword"), self.ecx.expr_path(p))
-                            }
-                            parse::Literal(i) => {
-                                (self.rtpath("Literal"), self.ecx.expr_uint(sp, i))
-                            }
-                        };
-                        let selector = self.ecx.expr_call_global(sp,
-                                                                 lr, vec!(selarg));
-                        self.ecx.expr_struct(sp, p, vec!(
-                                self.ecx.field_imm(sp,
-                                                   self.ecx.ident_of("selector"),
-                                                   selector),
-                                self.ecx.field_imm(sp, self.ecx.ident_of("result"),
-                                                   self.ecx.expr_vec_slice(sp, result))))
-                    }).collect();
-                let default = default.iter().map(|p| {
-                        self.trans_piece(p)
-                    }).collect();
-                self.ecx.expr_call_global(sp, self.rtpath("Plural"), vec!(
-                        offset,
-                        self.ecx.expr_vec_slice(sp, arms),
-                        self.ecx.expr_vec_slice(sp, default)))
-            }
-        };
-        let life = self.ecx.lifetime(sp, self.ecx.ident_of("static").name);
-        let ty = self.ecx.ty_path(self.ecx.path_all(
-                sp,
-                true,
-                self.rtpath("Method"),
-                vec!(life),
-                Vec::new()
-                    ), None);
-        let st = ast::ItemStatic(ty, ast::MutImmutable, method);
-        let static_name = self.ecx.ident_of(format!("__STATIC_METHOD_{}",
-                                                    self.method_statics
-                                                        .len()).as_slice());
-        let item = self.ecx.item(sp, static_name, self.static_attrs(), st);
-        self.method_statics.push(item);
-        self.ecx.expr_ident(sp, static_name)
-    }
-
     /// Translate a `parse::Piece` to a static `rt::Piece`
     fn trans_piece(&mut self, piece: &parse::Piece) -> Gc<ast::Expr> {
         let sp = self.fmtsp;
@@ -539,10 +376,6 @@ impl<'a, 'b> Context<'a, 'b> {
                                           vec!(
                     self.ecx.expr_str(sp, s)
                 ))
-            }
-            parse::CurrentArgument => {
-                let nil = self.ecx.expr_lit(sp, ast::LitNil);
-                self.ecx.expr_call_global(sp, self.rtpath("CurrentArgument"), vec!(nil))
             }
             parse::Argument(ref arg) => {
                 // Translate the position
@@ -596,19 +429,10 @@ impl<'a, 'b> Context<'a, 'b> {
                     self.ecx.field_imm(sp, self.ecx.ident_of("precision"), prec),
                     self.ecx.field_imm(sp, self.ecx.ident_of("width"), width)));
 
-                // Translate the method (if any)
-                let method = match arg.method {
-                    None => { self.none() }
-                    Some(ref m) => {
-                        let m = self.trans_method(*m);
-                        self.some(self.ecx.expr_addr_of(sp, m))
-                    }
-                };
                 let path = self.ecx.path_global(sp, self.rtpath("Argument"));
                 let s = self.ecx.expr_struct(sp, path, vec!(
                     self.ecx.field_imm(sp, self.ecx.ident_of("position"), pos),
-                    self.ecx.field_imm(sp, self.ecx.ident_of("format"), fmt),
-                    self.ecx.field_imm(sp, self.ecx.ident_of("method"), method)));
+                    self.ecx.field_imm(sp, self.ecx.ident_of("format"), fmt)));
                 self.ecx.expr_call_global(sp, self.rtpath("Argument"), vec!(s))
             }
         }

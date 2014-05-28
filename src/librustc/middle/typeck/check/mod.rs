@@ -902,26 +902,26 @@ fn compare_impl_method(tcx: &ty::ctxt,
     if num_impl_m_type_params != num_trait_m_type_params {
         tcx.sess.span_err(
             impl_m_span,
-            format!("method `{method}` has {nimpl, plural, =1{# type parameter} \
-                                                        other{# type parameters}}, \
-                     but its trait declaration has {ntrait, plural, =1{# type parameter} \
-                                                                 other{# type parameters}}",
-                    method = token::get_ident(trait_m.ident),
-                    nimpl = num_impl_m_type_params,
-                    ntrait = num_trait_m_type_params).as_slice());
+            format!("method `{}` has {} type parameter{} \
+                     but its trait declaration has {} type parameter{}",
+                    token::get_ident(trait_m.ident),
+                    num_impl_m_type_params,
+                    if num_impl_m_type_params == 1 {""} else {"s"},
+                    num_trait_m_type_params,
+                    if num_trait_m_type_params == 1 {""} else {"s"}).as_slice());
         return;
     }
 
     if impl_m.fty.sig.inputs.len() != trait_m.fty.sig.inputs.len() {
         tcx.sess.span_err(
             impl_m_span,
-            format!("method `{method}` has {nimpl, plural, =1{# parameter} \
-                                                        other{# parameters}} \
-                     but the declaration in trait `{trait}` has {ntrait}",
-                 method = token::get_ident(trait_m.ident),
-                 nimpl = impl_m.fty.sig.inputs.len(),
-                 trait = ty::item_path_str(tcx, trait_m.def_id),
-                 ntrait = trait_m.fty.sig.inputs.len()).as_slice());
+            format!("method `{}` has {} parameter{} \
+                     but the declaration in trait `{}` has {}",
+                 token::get_ident(trait_m.ident),
+                 impl_m.fty.sig.inputs.len(),
+                 if impl_m.fty.sig.inputs.len() == 1 {""} else {"s"},
+                 ty::item_path_str(tcx, trait_m.def_id),
+                 trait_m.fty.sig.inputs.len()).as_slice());
         return;
     }
 
@@ -954,20 +954,19 @@ fn compare_impl_method(tcx: &ty::ctxt,
         if impl_param_def.bounds.trait_bounds.len() !=
             trait_param_def.bounds.trait_bounds.len()
         {
+            let found = impl_param_def.bounds.trait_bounds.len();
+            let expected =  trait_param_def.bounds.trait_bounds.len();
             tcx.sess.span_err(
                 impl_m_span,
-                format!("in method `{method}`, \
-                        type parameter {typaram} has \
-                        {nimpl, plural, =1{# trait bound} other{# trait bounds}}, \
-                        but the corresponding type parameter in \
-                        the trait declaration has \
-                        {ntrait, plural, =1{# trait bound} other{# trait bounds}}",
-                        method = token::get_ident(trait_m.ident),
-                        typaram = i,
-                        nimpl = impl_param_def.bounds.trait_bounds.len(),
-                        ntrait = trait_param_def.bounds
-                                                .trait_bounds
-                                                .len()).as_slice());
+                format!("in method `{}`, type parameter {} has {} trait \
+                         bound{}, but the corresponding type parameter in \
+                         the trait declaration has {} trait bound{}",
+                        token::get_ident(trait_m.ident),
+                        i,
+                        found,
+                        if found == 1 {""} else {"s"},
+                        expected,
+                        if expected == 1 {""} else {"s"}).as_slice());
             return;
         }
     }
@@ -1526,13 +1525,12 @@ fn check_argument_types(fcx: &FnCtxt,
             ty::ty_tup(ref arg_types) => {
                 if arg_types.len() != args.len() {
                     let msg = format!(
-                        "this function takes \
-                         {nexpected, plural, =1{# parameter} \
-                         other{# parameters}} \
-                         but {nsupplied, plural, =1{# parameter was} \
-                         other{# parameters were}} supplied",
-                         nexpected = arg_types.len(),
-                         nsupplied = args.len());
+                        "this function takes {} parameter{} \
+                         but {} parameter{} supplied",
+                         arg_types.len(),
+                         if arg_types.len() == 1 {""} else {"s"},
+                         args.len(),
+                         if args.len() == 1 {" was"} else {"s were"});
                     tcx.sess.span_err(sp, msg.as_slice());
                     err_args(args.len())
                 } else {
@@ -1543,9 +1541,9 @@ fn check_argument_types(fcx: &FnCtxt,
                 if args.len() != 0 {
                     let msg = format!(
                         "this function takes 0 parameters \
-                         but {nsupplied, plural, =1{# parameter was} \
-                         other{# parameters were}} supplied",
-                         nsupplied = args.len());
+                         but {} parameter{} supplied",
+                         args.len(),
+                         if args.len() == 1 {" was"} else {"s were"});
                     tcx.sess.span_err(sp, msg.as_slice());
                 }
                 Vec::new()
@@ -1566,12 +1564,12 @@ fn check_argument_types(fcx: &FnCtxt,
             fn_inputs.iter().map(|a| *a).collect()
         } else {
             let msg = format!(
-                "this function takes at least {nexpected, plural, =1{# parameter} \
-                                                               other{# parameters}} \
-                 but {nsupplied, plural, =1{# parameter was} \
-                                      other{# parameters were}} supplied",
-                 nexpected = expected_arg_count,
-                 nsupplied = supplied_arg_count);
+                "this function takes at least {} parameter{} \
+                 but {} parameter{} supplied",
+                 expected_arg_count,
+                 if expected_arg_count == 1 {""} else {"s"},
+                 supplied_arg_count,
+                 if supplied_arg_count == 1 {" was"} else {"s were"});
 
             tcx.sess.span_err(sp, msg.as_slice());
 
@@ -1579,12 +1577,12 @@ fn check_argument_types(fcx: &FnCtxt,
         }
     } else {
         let msg = format!(
-            "this function takes {nexpected, plural, =1{# parameter} \
-                                                  other{# parameters}} \
-             but {nsupplied, plural, =1{# parameter was} \
-                                  other{# parameters were}} supplied",
-             nexpected = expected_arg_count,
-             nsupplied = supplied_arg_count);
+            "this function takes {} parameter{} \
+             but {} parameter{} supplied",
+             expected_arg_count,
+             if expected_arg_count == 1 {""} else {"s"},
+             supplied_arg_count,
+             if supplied_arg_count == 1 {" was"} else {"s were"});
 
         tcx.sess.span_err(sp, msg.as_slice());
 
@@ -1932,12 +1930,14 @@ fn check_type_parameter_positions_in_path(function_context: &FnCtxt,
                 function_context.tcx()
                     .sess
                     .span_err(path.span,
-                              format!("expected {nexpected, plural, =1{# lifetime parameter} \
-                                                                 other{# lifetime parameters}}, \
-                                       found {nsupplied, plural, =1{# lifetime parameter} \
-                                                              other{# lifetime parameters}}",
-                                      nexpected = trait_region_parameter_count,
-                                      nsupplied = supplied_region_parameter_count).as_slice());
+                              format!("expected {} lifetime parameter{} \
+                                       found {} liftime parameter{}",
+                                      trait_region_parameter_count,
+                                      if trait_region_parameter_count == 1 {""}
+                                        else {"s"},
+                                      supplied_region_parameter_count,
+                                      if supplied_region_parameter_count == 1 {""}
+                                        else {"s"}).as_slice());
             }
 
             // Make sure the number of type parameters supplied on the trait
@@ -1950,45 +1950,41 @@ fn check_type_parameter_positions_in_path(function_context: &FnCtxt,
             let supplied_ty_param_count = trait_segment.types.len();
             if supplied_ty_param_count < required_ty_param_count {
                 let msg = if required_ty_param_count < generics.type_param_defs().len() {
-                    format!("the {trait_or_impl} referenced by this path needs at least \
-                             {nexpected, plural, =1{# type parameter} \
-                                              other{# type parameters}}, \
-                             but {nsupplied, plural, =1{# type parameter} \
-                                                  other{# type parameters}} were supplied",
-                            trait_or_impl = name,
-                            nexpected = required_ty_param_count,
-                            nsupplied = supplied_ty_param_count)
+                    format!("the {} referenced by this path needs at least \
+                             {} type parameter{}, but {} type parameters were \
+                             supplied",
+                            name,
+                            required_ty_param_count,
+                            if required_ty_param_count == 1 {""} else {"s"},
+                            supplied_ty_param_count)
                 } else {
-                    format!("the {trait_or_impl} referenced by this path needs \
-                             {nexpected, plural, =1{# type parameter} \
-                                              other{# type parameters}}, \
-                             but {nsupplied, plural, =1{# type parameter} \
-                                                  other{# type parameters}} were supplied",
-                            trait_or_impl = name,
-                            nexpected = required_ty_param_count,
-                            nsupplied = supplied_ty_param_count)
+                    format!("the {} referenced by this path needs \
+                             {} type parameter{}, but {} type parameters were \
+                             supplied",
+                            name,
+                            required_ty_param_count,
+                            if required_ty_param_count == 1 {""} else {"s"},
+                            supplied_ty_param_count)
                 };
                 function_context.tcx().sess.span_err(path.span,
                                                      msg.as_slice())
             } else if supplied_ty_param_count > formal_ty_param_count {
                 let msg = if required_ty_param_count < generics.type_param_defs().len() {
-                    format!("the {trait_or_impl} referenced by this path needs at most \
-                             {nexpected, plural, =1{# type parameter} \
-                                              other{# type parameters}}, \
-                             but {nsupplied, plural, =1{# type parameter} \
-                                                  other{# type parameters}} were supplied",
-                            trait_or_impl = name,
-                            nexpected = formal_ty_param_count,
-                            nsupplied = supplied_ty_param_count)
+                    format!("the {} referenced by this path needs at most \
+                             {} type parameter{}, but {} type parameters were \
+                             supplied",
+                            name,
+                            formal_ty_param_count,
+                            if formal_ty_param_count == 1 {""} else {"s"},
+                            supplied_ty_param_count)
                 } else {
-                    format!("the {trait_or_impl} referenced by this path needs \
-                             {nexpected, plural, =1{# type parameter} \
-                                              other{# type parameters}}, \
-                             but {nsupplied, plural, =1{# type parameter} \
-                                                  other{# type parameters}} were supplied",
-                            trait_or_impl = name,
-                            nexpected = formal_ty_param_count,
-                            nsupplied = supplied_ty_param_count)
+                    format!("the {} referenced by this path needs \
+                             {} type parameter{}, but {} type parameters were \
+                             supplied",
+                            name,
+                            formal_ty_param_count,
+                            if formal_ty_param_count == 1 {""} else {"s"},
+                            supplied_ty_param_count)
                 };
                 function_context.tcx().sess.span_err(path.span,
                                                      msg.as_slice())
@@ -2670,8 +2666,8 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
 
                 tcx.sess.span_err(span,
                     format!(
-                        "missing {nfields, plural, =1{field} other{fields}}: {fields}",
-                        nfields = missing_fields.len(),
+                        "missing field{}: {fields}",
+                        if missing_fields.len() == 1 {""} else {"s"},
                         fields = missing_fields.connect(", ")).as_slice());
              }
         }
@@ -4021,12 +4017,12 @@ pub fn instantiate_path(fcx: &FnCtxt,
         if num_supplied_regions != 0 {
             fcx.ccx.tcx.sess.span_err(
                 span,
-                format!("expected {nexpected, plural, =1{# lifetime parameter} \
-                                                   other{# lifetime parameters}}, \
-                         found {nsupplied, plural, =1{# lifetime parameter} \
-                                                other{# lifetime parameters}}",
-                        nexpected = num_expected_regions,
-                        nsupplied = num_supplied_regions).as_slice());
+                format!("expected {} lifetime parameter{}, \
+                         found {} lifetime parameter{}",
+                        num_expected_regions,
+                        if num_expected_regions == 1 {""} else {"s"},
+                        num_supplied_regions,
+                        if num_supplied_regions == 1 {""} else {"s"}).as_slice());
         }
 
         fcx.infcx().region_vars_for_defs(span, tpt.generics.region_param_defs.as_slice())
@@ -4296,8 +4292,14 @@ pub fn check_bounds_are_used(ccx: &CrateCtxt,
 
     ty::walk_ty(ty, |t| {
             match ty::get(t).sty {
+                #[cfg(stage0)]
                 ty::ty_param(param_ty {idx, ..}) => {
                     debug!("Found use of ty param \\#{}", idx);
+                    *tps_used.get_mut(idx) = true;
+                }
+                #[cfg(not(stage0))]
+                ty::ty_param(param_ty {idx, ..}) => {
+                    debug!("Found use of ty param #{}", idx);
                     *tps_used.get_mut(idx) = true;
                 }
                 _ => ()

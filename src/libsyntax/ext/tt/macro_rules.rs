@@ -129,11 +129,13 @@ fn generic_extension(cx: &ExtCtxt,
                      rhses: &[Rc<NamedMatch>])
                      -> Box<MacResult> {
     if cx.trace_macros() {
-        println!("{}! \\{ {} \\}",
+        println!("{}! {} {} {}",
                  token::get_ident(name),
+                 "{",
                  print::pprust::tt_to_str(&TTDelim(Rc::new(arg.iter()
                                                               .map(|x| (*x).clone())
-                                                              .collect()))));
+                                                              .collect()))),
+                 "}");
     }
 
     // Which arm's failure should we report? (the one furthest along)

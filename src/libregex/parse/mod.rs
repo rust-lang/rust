@@ -634,8 +634,13 @@ impl<'a> Parser<'a> {
             let closer =
                 match self.pos('}') {
                     Some(i) => i,
+                    #[cfg(stage0)]
                     None => return self.err(format!(
                         "Missing '\\}' for unclosed '\\{' at position {}",
+                        self.chari).as_slice()),
+                    #[cfg(not(stage0))]
+                    None => return self.err(format!(
+                        "Missing '}}' for unclosed '{{' at position {}",
                         self.chari).as_slice()),
                 };
             if closer - self.chari + 1 == 0 {
@@ -695,9 +700,16 @@ impl<'a> Parser<'a> {
         let start = self.chari + 2;
         let closer =
             match self.pos('}') {
+                #[cfg(stage0)]
                 None => {
                     return self.err(format!("Missing '\\}' for unclosed \
                                              '\\{' at position {}",
+                                            start).as_slice())
+                }
+                #[cfg(not(stage0))]
+                None => {
+                    return self.err(format!("Missing '}}' for unclosed \
+                                             '{{' at position {}",
                                             start).as_slice())
                 }
                 Some(i) => i,

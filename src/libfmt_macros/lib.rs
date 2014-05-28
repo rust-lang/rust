@@ -30,9 +30,6 @@ use std::str;
 pub enum Piece<'a> {
     /// A literal string which should directly be emitted
     String(&'a str),
-    /// A back-reference to whatever the current argument is. This is used
-    /// inside of a method call to refer back to the original argument.
-    CurrentArgument,
     /// This describes that formatting should process the next argument (as
     /// specified inside) for emission.
     Argument(Argument<'a>),
@@ -45,8 +42,6 @@ pub struct Argument<'a> {
     pub position: Position<'a>,
     /// How to format the argument
     pub format: FormatSpec<'a>,
-    /// If not `None`, what method to invoke on the argument
-    pub method: Option<Box<Method<'a>>>
 }
 
 /// Specification for the formatting of an argument in the format string.
@@ -122,76 +117,6 @@ pub enum Count<'a> {
     CountImplied,
 }
 
-/// Enum describing all of the possible methods which the formatting language
-/// currently supports.
-#[deriving(PartialEq)]
-pub enum Method<'a> {
-    /// A plural method selects on an integer over a list of either integer or
-    /// keyword-defined clauses. The meaning of the keywords is defined by the
-    /// current locale.
-    ///
-    /// An offset is optionally present at the beginning which is used to
-    /// match against keywords, but it is not matched against the literal
-    /// integers.
-    ///
-    /// The final element of this enum is the default "other" case which is
-    /// always required to be specified.
-    Plural(Option<uint>, Vec<PluralArm<'a>>, Vec<Piece<'a>>),
-
-    /// A select method selects over a string. Each arm is a different string
-    /// which can be selected for.
-    ///
-    /// As with `Plural`, a default "other" case is required as well.
-    Select(Vec<SelectArm<'a>>, Vec<Piece<'a>>),
-}
-
-/// A selector for what pluralization a plural method should take
-#[deriving(PartialEq, Eq, Hash)]
-pub enum PluralSelector {
-    /// One of the plural keywords should be used
-    Keyword(PluralKeyword),
-    /// A literal pluralization should be used
-    Literal(uint),
-}
-
-/// Structure representing one "arm" of the `plural` function.
-#[deriving(PartialEq)]
-pub struct PluralArm<'a> {
-    /// A selector can either be specified by a keyword or with an integer
-    /// literal.
-    pub selector: PluralSelector,
-    /// Array of pieces which are the format of this arm
-    pub result: Vec<Piece<'a>>,
-}
-
-/// Enum of the 5 CLDR plural keywords. There is one more, "other", but that
-/// is specially placed in the `Plural` variant of `Method`.
-///
-/// http://www.icu-project.org/apiref/icu4c/classicu_1_1PluralRules.html
-#[deriving(PartialEq, Eq, Hash, Show)]
-#[allow(missing_doc)]
-pub enum PluralKeyword {
-    /// The plural form for zero objects.
-    Zero,
-    /// The plural form for one object.
-    One,
-    /// The plural form for two objects.
-    Two,
-    /// The plural form for few objects.
-    Few,
-    /// The plural form for many objects.
-    Many,
-}
-
-/// Structure representing one "arm" of the `select` function.
-#[deriving(PartialEq)]
-pub struct SelectArm<'a> {
-    /// String selector which guards this arm
-    pub selector: &'a str,
-    /// Array of pieces which are the format of this arm
-    pub result: Vec<Piece<'a>>,
-}
-
 /// The parser structure for interpreting the input format string. This is
 /// modelled as an iterator over `Piece` structures to form a stream of tokens
 /// being output.
@@ -201,7 +126,6 @@ pub struct SelectArm<'a> {
 pub struct Parser<'a> {
     input: &'a str,
     cur: str::CharOffsets<'a>,
-    depth: uint,
     /// Error messages accumulated during parsing
     pub errors: Vec<String>,
 }
@@ -209,27 +133,27 @@ pub struct Parser<'a> {
 impl<'a> Iterator<Piece<'a>> for Parser<'a> {
     fn next(&mut self) -> Option<Piece<'a>> {
         match self.cur.clone().next() {
-            Some((_, '#')) => { self.cur.next(); Some(CurrentArgument) }
-            Some((_, '{')) => {
+            Some((pos, '{')) => {
                 self.cur.next();
-                let ret = Some(Argument(self.argument()));
-                self.must_consume('}');
-                ret
+                if self.consume('{') {
+                    Some(String(self.string(pos + 1)))
+                } else {
+                    let ret = Some(Argument(self.argument()));
+                    self.must_consume('}');
+                    ret
+                }
             }
-            Some((pos, '\\')) => {
+            Some((pos, '}')) => {
                 self.cur.next();
-                self.escape(); // ensure it's a valid escape sequence
-                Some(String(self.string(pos + 1))) // skip the '\' character
+                if self.consume('}') {
+                    Some(String(self.string(pos + 1)))
+                } else {
+                    self.err("unmatched `}` found");
+                    None
+                }
             }
-            Some((_, '}')) if self.depth == 0 => {
-                self.cur.next();
-                self.err("unmatched `}` found");
-                None
-            }
-            Some((_, '}')) | None => { None }
-            Some((pos, _)) => {
-                Some(String(self.string(pos)))
-            }
+            Some((pos, _)) => { Some(String(self.string(pos))) }
+            None => None
         }
     }
 }
@@ -240,7 +164,6 @@ impl<'a> Parser<'a> {
         Parser {
             input: s,
             cur: s.char_indices(),
-            depth: 0,
             errors: vec!(),
         }
     }
@@ -285,11 +208,6 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Attempts to consume any amount of whitespace followed by a character
-    fn wsconsume(&mut self, c: char) -> bool {
-        self.ws(); self.consume(c)
-    }
-
     /// Consumes all whitespace characters until the first non-whitespace
     /// character
     fn ws(&mut self) {
@@ -301,32 +219,12 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Consumes an escape sequence, failing if there is not a valid character
-    /// to be escaped.
-    fn escape(&mut self) -> char {
-        match self.cur.next() {
-            Some((_, c @ '#')) | Some((_, c @ '{')) |
-            Some((_, c @ '\\')) | Some((_, c @ '}')) => { c }
-            Some((_, c)) => {
-                self.err(format!("invalid escape character `{}`",
-                                 c).as_slice());
-                c
-            }
-            None => {
-                self.err("expected an escape sequence, but format string was \
-                           terminated");
-                ' '
-            }
-        }
-    }
-
     /// Parses all of a string which is to be considered a "raw literal" in a
     /// format string. This is everything outside of the braces.
     fn string(&mut self, start: uint) -> &'a str {
         loop {
             // we may not consume the character, so clone the iterator
             match self.cur.clone().next() {
-                Some((pos, '\\')) | Some((pos, '#')) |
                 Some((pos, '}')) | Some((pos, '{')) => {
                     return self.input.slice(start, pos);
                 }
@@ -345,7 +243,6 @@ impl<'a> Parser<'a> {
         Argument {
             position: self.position(),
             format: self.format(),
-            method: self.method(),
         }
     }
 
@@ -438,173 +335,6 @@ impl<'a> Parser<'a> {
             spec.ty = self.word();
         }
         return spec;
-    }
-
-    /// Parses a method to be applied to the previously specified argument and
-    /// its format. The two current supported methods are 'plural' and 'select'
-    fn method(&mut self) -> Option<Box<Method<'a>>> {
-        if !self.wsconsume(',') {
-            return None;
-        }
-        self.ws();
-        match self.word() {
-            "select" => {
-                self.must_consume(',');
-                Some(self.select())
-            }
-            "plural" => {
-                self.must_consume(',');
-                Some(self.plural())
-            }
-            "" => {
-                self.err("expected method after comma");
-                return None;
-            }
-            method => {
-                self.err(format!("unknown method: `{}`", method).as_slice());
-                return None;
-            }
-        }
-    }
-
-    /// Parses a 'select' statement (after the initial 'select' word)
-    fn select(&mut self) -> Box<Method<'a>> {
-        let mut other = None;
-        let mut arms = vec!();
-        // Consume arms one at a time
-        loop {
-            self.ws();
-            let selector = self.word();
-            if selector == "" {
-                self.err("cannot have an empty selector");
-                break
-            }
-            self.must_consume('{');
-            self.depth += 1;
-            let pieces = self.collect();
-            self.depth -= 1;
-            self.must_consume('}');
-            if selector == "other" {
-                if !other.is_none() {
-                    self.err("multiple `other` statements in `select");
-                }
-                other = Some(pieces);
-            } else {
-                arms.push(SelectArm { selector: selector, result: pieces });
-            }
-            self.ws();
-            match self.cur.clone().next() {
-                Some((_, '}')) => { break }
-                Some(..) | None => {}
-            }
-        }
-        // The "other" selector must be present
-        let other = match other {
-            Some(arm) => { arm }
-            None => {
-                self.err("`select` statement must provide an `other` case");
-                vec!()
-            }
-        };
-        box Select(arms, other)
-    }
-
-    /// Parses a 'plural' statement (after the initial 'plural' word)
-    fn plural(&mut self) -> Box<Method<'a>> {
-        let mut offset = None;
-        let mut other = None;
-        let mut arms = vec!();
-
-        // First, attempt to parse the 'offset:' field. We know the set of
-        // selector words which can appear in plural arms, and the only ones
-        // which start with 'o' are "other" and "offset", hence look two
-        // characters deep to see if we can consume the word "offset"
-        self.ws();
-        let mut it = self.cur.clone();
-        match it.next() {
-            Some((_, 'o')) => {
-                match it.next() {
-                    Some((_, 'f')) => {
-                        let word = self.word();
-                        if word != "offset" {
-                            self.err(format!("expected `offset`, found `{}`",
-                                             word).as_slice());
-                        } else {
-                            self.must_consume(':');
-                            match self.integer() {
-                                Some(i) => { offset = Some(i); }
-                                None => {
-                                    self.err("offset must be an integer");
-                                }
-                            }
-                        }
-                    }
-                    Some(..) | None => {}
-                }
-            }
-            Some(..) | None => {}
-        }
-
-        // Next, generate all the arms
-        loop {
-            let mut isother = false;
-            let selector = if self.wsconsume('=') {
-                match self.integer() {
-                    Some(i) => Literal(i),
-                    None => {
-                        self.err("plural `=` selectors must be followed by an \
-                                  integer");
-                        Literal(0)
-                    }
-                }
-            } else {
-                let word = self.word();
-                match word {
-                    "other" => { isother = true; Keyword(Zero) }
-                    "zero"  => Keyword(Zero),
-                    "one"   => Keyword(One),
-                    "two"   => Keyword(Two),
-                    "few"   => Keyword(Few),
-                    "many"  => Keyword(Many),
-                    word    => {
-                        self.err(format!("unexpected plural selector `{}`",
-                                         word).as_slice());
-                        if word == "" {
-                            break
-                        } else {
-                            Keyword(Zero)
-                        }
-                    }
-                }
-            };
-            self.must_consume('{');
-            self.depth += 1;
-            let pieces = self.collect();
-            self.depth -= 1;
-            self.must_consume('}');
-            if isother {
-                if !other.is_none() {
-                    self.err("multiple `other` statements in `select");
-                }
-                other = Some(pieces);
-            } else {
-                arms.push(PluralArm { selector: selector, result: pieces });
-            }
-            self.ws();
-            match self.cur.clone().next() {
-                Some((_, '}')) => { break }
-                Some(..) | None => {}
-            }
-        }
-
-        let other = match other {
-            Some(arm) => { arm }
-            None => {
-                self.err("`plural` statement must provide an `other` case");
-                vec!()
-            }
-        };
-        box Plural(offset, arms, other)
     }
 
     /// Parses a Count parameter at the current position. This does not check
@@ -715,16 +445,15 @@ mod tests {
     #[test]
     fn simple() {
         same("asdf", [String("asdf")]);
-        same("a\\{b", [String("a"), String("{b")]);
-        same("a\\#b", [String("a"), String("#b")]);
-        same("a\\}b", [String("a"), String("}b")]);
-        same("a\\}", [String("a"), String("}")]);
-        same("\\}", [String("}")]);
+        same("a{{b", [String("a"), String("{b")]);
+        same("a}}b", [String("a"), String("}b")]);
+        same("a}}", [String("a"), String("}")]);
+        same("}}", [String("}")]);
+        same("\\}}", [String("\\"), String("}")]);
     }
 
     #[test] fn invalid01() { musterr("{") }
-    #[test] fn invalid02() { musterr("\\") }
-    #[test] fn invalid03() { musterr("\\a") }
+    #[test] fn invalid02() { musterr("}") }
     #[test] fn invalid04() { musterr("{3a}") }
     #[test] fn invalid05() { musterr("{:|}") }
     #[test] fn invalid06() { musterr("{:>>>}") }
@@ -734,7 +463,6 @@ mod tests {
         same("{}", [Argument(Argument {
             position: ArgumentNext,
             format: fmtdflt(),
-            method: None,
         })]);
     }
     #[test]
@@ -742,7 +470,6 @@ mod tests {
         same("{3}", [Argument(Argument {
             position: ArgumentIs(3),
             format: fmtdflt(),
-            method: None,
         })]);
     }
     #[test]
@@ -750,7 +477,6 @@ mod tests {
         same("{3:}", [Argument(Argument {
             position: ArgumentIs(3),
             format: fmtdflt(),
-            method: None,
         })]);
     }
     #[test]
@@ -765,7 +491,6 @@ mod tests {
                 width: CountImplied,
                 ty: "a",
             },
-            method: None,
         })]);
     }
     #[test]
@@ -780,7 +505,6 @@ mod tests {
                 width: CountImplied,
                 ty: "",
             },
-            method: None,
         })]);
         same("{3:0<}", [Argument(Argument {
             position: ArgumentIs(3),
@@ -792,7 +516,6 @@ mod tests {
                 width: CountImplied,
                 ty: "",
             },
-            method: None,
         })]);
         same("{3:*<abcd}", [Argument(Argument {
             position: ArgumentIs(3),
@@ -804,7 +527,6 @@ mod tests {
                 width: CountImplied,
                 ty: "abcd",
             },
-            method: None,
         })]);
     }
     #[test]
@@ -819,7 +541,6 @@ mod tests {
                 width: CountIs(10),
                 ty: "s",
             },
-            method: None,
         })]);
         same("{:10$.10s}", [Argument(Argument {
             position: ArgumentNext,
@@ -831,7 +552,6 @@ mod tests {
                 width: CountIsParam(10),
                 ty: "s",
             },
-            method: None,
         })]);
         same("{:.*s}", [Argument(Argument {
             position: ArgumentNext,
@@ -843,7 +563,6 @@ mod tests {
                 width: CountImplied,
                 ty: "s",
             },
-            method: None,
         })]);
         same("{:.10$s}", [Argument(Argument {
             position: ArgumentNext,
@@ -855,7 +574,6 @@ mod tests {
                 width: CountImplied,
                 ty: "s",
             },
-            method: None,
         })]);
         same("{:a$.b$s}", [Argument(Argument {
             position: ArgumentNext,
@@ -867,7 +585,6 @@ mod tests {
                 width: CountIsName("a"),
                 ty: "s",
             },
-            method: None,
         })]);
     }
     #[test]
@@ -882,7 +599,6 @@ mod tests {
                 width: CountImplied,
                 ty: "",
             },
-            method: None,
         })]);
         same("{:+#}", [Argument(Argument {
             position: ArgumentNext,
@@ -894,7 +610,6 @@ mod tests {
                 width: CountImplied,
                 ty: "",
             },
-            method: None,
         })]);
     }
     #[test]
@@ -909,83 +624,6 @@ mod tests {
                 width: CountImplied,
                 ty: "a",
             },
-            method: None,
         }), String(" efg")]);
-    }
-
-    #[test]
-    fn select_simple() {
-        same("{, select, other { haha } }", [Argument(Argument{
-            position: ArgumentNext,
-            format: fmtdflt(),
-            method: Some(box Select(vec![], vec![String(" haha ")]))
-        })]);
-        same("{1, select, other { haha } }", [Argument(Argument{
-            position: ArgumentIs(1),
-            format: fmtdflt(),
-            method: Some(box Select(vec![], vec![String(" haha ")]))
-        })]);
-        same("{1, select, other {#} }", [Argument(Argument{
-            position: ArgumentIs(1),
-            format: fmtdflt(),
-            method: Some(box Select(vec![], vec![CurrentArgument]))
-        })]);
-        same("{1, select, other {{2, select, other {lol}}} }", [Argument(Argument{
-            position: ArgumentIs(1),
-            format: fmtdflt(),
-            method: Some(box Select(vec![], vec![Argument(Argument{
-                position: ArgumentIs(2),
-                format: fmtdflt(),
-                method: Some(box Select(vec![], vec![String("lol")]))
-            })])) // wat
-        })]);
-    }
-
-    #[test]
-    fn select_cases() {
-        same("{1, select, a{1} b{2} c{3} other{4} }", [Argument(Argument{
-            position: ArgumentIs(1),
-            format: fmtdflt(),
-            method: Some(box Select(vec![
-                SelectArm{ selector: "a", result: vec![String("1")] },
-                SelectArm{ selector: "b", result: vec![String("2")] },
-                SelectArm{ selector: "c", result: vec![String("3")] },
-            ], vec![String("4")]))
-        })]);
-    }
-
-    #[test] fn badselect01() { musterr("{select, }") }
-    #[test] fn badselect02() { musterr("{1, select}") }
-    #[test] fn badselect03() { musterr("{1, select, }") }
-    #[test] fn badselect04() { musterr("{1, select, a {}}") }
-    #[test] fn badselect05() { musterr("{1, select, other }}") }
-    #[test] fn badselect06() { musterr("{1, select, other {}") }
-    #[test] fn badselect07() { musterr("{select, other {}") }
-    #[test] fn badselect08() { musterr("{1 select, other {}") }
-    #[test] fn badselect09() { musterr("{:d select, other {}") }
-    #[test] fn badselect10() { musterr("{1:d select, other {}") }
-
-    #[test]
-    fn plural_simple() {
-        same("{, plural, other { haha } }", [Argument(Argument{
-            position: ArgumentNext,
-            format: fmtdflt(),
-            method: Some(box Plural(None, vec![], vec![String(" haha ")]))
-        })]);
-        same("{:, plural, other { haha } }", [Argument(Argument{
-            position: ArgumentNext,
-            format: fmtdflt(),
-            method: Some(box Plural(None, vec![], vec![String(" haha ")]))
-        })]);
-        same("{, plural, offset:1 =2{2} =3{3} many{yes} other{haha} }",
-        [Argument(Argument{
-            position: ArgumentNext,
-            format: fmtdflt(),
-            method: Some(box Plural(Some(1), vec![
-                PluralArm{ selector: Literal(2), result: vec![String("2")] },
-                PluralArm{ selector: Literal(3), result: vec![String("3")] },
-                PluralArm{ selector: Keyword(Many), result: vec![String("yes")] }
-            ], vec![String("haha")]))
-        })]);
     }
 }

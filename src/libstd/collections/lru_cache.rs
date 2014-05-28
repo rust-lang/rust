@@ -208,6 +208,7 @@ impl<K: Hash + Eq, V> LruCache<K, V> {
 impl<A: fmt::Show + Hash + Eq, B: fmt::Show> fmt::Show for LruCache<A, B> {
     /// Return a string that lists the key-value pairs from most-recently
     /// used to least-recently used.
+    #[cfg(stage0)]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(f, r"\{"));
         let mut cur = self.head;
@@ -223,6 +224,25 @@ impl<A: fmt::Show + Hash + Eq, B: fmt::Show> fmt::Show for LruCache<A, B> {
             }
         }
         write!(f, r"\}")
+    }
+    /// Return a string that lists the key-value pairs from most-recently
+    /// used to least-recently used.
+    #[cfg(not(stage0))]
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        try!(write!(f, "{{"));
+        let mut cur = self.head;
+        for i in range(0, self.len()) {
+            if i > 0 { try!(write!(f, ", ")) }
+            unsafe {
+                cur = (*cur).next;
+                try!(write!(f, "{}", (*cur).key));
+            }
+            try!(write!(f, ": "));
+            unsafe {
+                try!(write!(f, "{}", (*cur).value));
+            }
+        }
+        write!(f, r"}}")
     }
 }
 
