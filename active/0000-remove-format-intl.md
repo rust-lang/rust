@@ -4,19 +4,19 @@
 
 # Summary
 
-Remove internationalization features from format!, and change the set of escapes
+Remove localization features from format!, and change the set of escapes
 accepted by format strings. The `plural` and `select` methods would be removed,
 `#` would no longer need to be escaped, and `{{`/`}}` would become escapes for
 `{` and `}`, respectively.
 
 # Motivation
 
-Internationalization is difficult to implement correctly, and doing so will
+Localization is difficult to implement correctly, and doing so will
 likely not be done in the standard library, but rather in an external library.
-After talking with others much more familiar with internationalization, it has
-come to light that our ad-hoc "internationalization support" in our format
+After talking with others much more familiar with localization, it has
+come to light that our ad-hoc "localization support" in our format
 strings are woefully inadequate for most real use cases of support for
-internationalization.
+localization.
 
 Instead of having a half-baked unused system adding complexity to the compiler
 and libraries, the support for this functionality would be removed from format
@@ -24,7 +24,7 @@ strings.
 
 # Detailed design
 
-The primary internationalization features that `format!` supports today are the
+The primary localization features that `format!` supports today are the
 `plural` and `select` methods inside of format strings. These methods are
 choices made at format-time based on the input arguments of how to format a
 string. This functionality would be removed from the compiler entirely.
@@ -59,7 +59,7 @@ see the diff between the two
 Upon landing, there was a significant amount of discussion about the escape
 sequence that would be used in format strings. Some context can be found on some
 [old pull requests][1], and the current escape mechanism has been the source of
-[much confusion][2]. With the removal of internationalization methods, and
+[much confusion][2]. With the removal of localization methods, and
 namely nested format directives, it is possible to reconsider the choices of
 escaping again.
 
@@ -77,8 +77,8 @@ the comments of an [old PR][1].
 
 # Drawbacks
 
-The internationalization methods of select/plural are genuinely used for
-applications that do not involve internationalization. For example, the compiler
+The localization methods of select/plural are genuinely used for
+applications that do not involve localization. For example, the compiler
 and rustdoc often use plural to easily create plural messages. Removing this
 functionality from format strings would impose a burden of likely dynamically
 allocating a string at runtime or defining two separate format strings.
@@ -90,20 +90,20 @@ with for today.
 
 # Alternatives
 
-The major internationalization approach explored has been l20n, which has shown
+The major localization approach explored has been l20n, which has shown
 itself to be fairly incompatible with the way format strings work today.
-Different internationalization systems, however, have not been explored. Systems
+Different localization systems, however, have not been explored. Systems
 such as gettext would be able to leverage format strings quite well, but it
-was claimed that gettext for internationalization is inadequate for modern
+was claimed that gettext for localization is inadequate for modern
 use-cases.
 
 It is also an unexplored possibility whether the current format string syntax
 could be leveraged by l20n. It is unlikely that time will be allocated to polish
-off an internationalization library before 1.0, and it is currently seen as
+off an localization library before 1.0, and it is currently seen as
 undesirable to have a half-baked system in the libraries rather than a
 first-class well designed system.
 
 # Unresolved questions
 
-* Should internationalization support be left in `std::fmt` as a "poor man's"
+* Should localization support be left in `std::fmt` as a "poor man's"
   implementation for those to use as they see fit?
