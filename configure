@@ -401,6 +401,7 @@ opt optimize 1 "build optimized rust code"
 opt optimize-cxx 1 "build optimized C++ code"
 opt optimize-llvm 1 "build optimized LLVM"
 opt optimize-tests 1 "build tests with optimizations"
+opt libcpp 1 "build with clang's libcpp"
 opt llvm-assertions 1 "build LLVM with assertions"
 opt debug 1 "build with extra debug fun"
 opt ratchet-bench 0 "ratchet benchmarks"
@@ -1047,7 +1048,6 @@ do
 
             LLVM_CXX_64="ccache clang++ -Qunused-arguments"
             LLVM_CC_64="ccache clang -Qunused-arguments"
-            LLVM_OPTS="$LLVM_OPTS --enable-libcpp"
             ;;
             ("clang")
             LLVM_CXX_32="clang++ -m32 -Qunused-arguments"
@@ -1055,7 +1055,6 @@ do
 
             LLVM_CXX_64="clang++ -Qunused-arguments"
             LLVM_CC_64="clang -Qunused-arguments"
-            LLVM_OPTS="$LLVM_OPTS --enable-libcpp"
             ;;
             ("ccache gcc")
             LLVM_CXX_32="ccache g++ -m32"
@@ -1110,6 +1109,10 @@ do
         CFLAGS=$LLVM_CFLAGS
         CXXFLAGS=$LLVM_CXXFLAGS
         LDFLAGS=$LLVM_LDFLAGS
+
+        if [ "$CFG_DISABLE_LIBCPP" != 1 ]; then
+            LLVM_OPTS="$LLVM_OPTS --enable-libcpp"
+        fi
 
         LLVM_FLAGS="$LLVM_TARGETS $LLVM_OPTS $LLVM_BUILD \
                         $LLVM_HOST $LLVM_TARGET --with-python=$CFG_PYTHON"
