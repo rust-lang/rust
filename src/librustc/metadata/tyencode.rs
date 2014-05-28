@@ -69,7 +69,7 @@ pub fn enc_ty(w: &mut MemWriter, cx: &ctxt, t: ty::t) {
         cx.abbrevs.borrow_mut().insert(t, ty_abbrev {
             pos: pos as uint,
             len: len as uint,
-            s: format_strbuf!("\\#{:x}:{:x}\\#", pos, len)
+            s: format!("\\#{:x}:{:x}\\#", pos, len)
         });
     }
 }

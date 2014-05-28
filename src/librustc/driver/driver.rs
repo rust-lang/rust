@@ -653,14 +653,14 @@ pub fn pretty_print_input(sess: Session,
         PpmFlowGraph(nodeid) => {
             let ast_map = ast_map.expect("--pretty flowgraph missing ast_map");
             let node = ast_map.find(nodeid).unwrap_or_else(|| {
-                sess.fatal(format_strbuf!("--pretty flowgraph couldn't find id: {}",
-                                          nodeid).as_slice())
+                sess.fatal(format!("--pretty flowgraph couldn't find id: {}",
+                                   nodeid).as_slice())
             });
             let block = match node {
                 syntax::ast_map::NodeBlock(block) => block,
                 _ => {
-                    let message = format_strbuf!("--pretty=flowgraph needs block, got {:?}",
-                                                 node);
+                    let message = format!("--pretty=flowgraph needs block, got {:?}",
+                                          node);
 
                     // point to what was found, if there's an
                     // accessible span.
@@ -706,7 +706,7 @@ fn print_flowgraph<W:io::Writer>(analysis: CrateAnalysis,
             io::IoError {
                 detail: Some(match orig_detail {
                     None => m.into_string(),
-                    Some(d) => format_strbuf!("{}: {}", m, d)
+                    Some(d) => format!("{}: {}", m, d)
                 }),
                 ..ioerr
             }

@@ -45,8 +45,8 @@ pub fn main() {
     assert_eq!(transform(Some(10)), Some("11".to_string()));
     assert_eq!(transform(None), None);
     assert!((vec!("hi".to_string()))
-        .bind(|x| vec!(x.clone(), format_strbuf!("{}!", x)) )
-        .bind(|x| vec!(x.clone(), format_strbuf!("{}?", x)) ) ==
+        .bind(|x| vec!(x.clone(), format!("{}!", x)) )
+        .bind(|x| vec!(x.clone(), format!("{}?", x)) ) ==
         vec!("hi".to_string(),
              "hi?".to_string(),
              "hi!".to_string(),

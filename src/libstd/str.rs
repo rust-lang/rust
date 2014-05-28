@@ -2123,7 +2123,7 @@ mod tests {
         assert_eq!(s.len(), 5);
         assert_eq!(s.as_slice(), "abcde");
         assert_eq!(s.to_str(), "abcde".to_string());
-        assert_eq!(format_strbuf!("{}", s), "abcde".to_string());
+        assert_eq!(format!("{}", s), "abcde".to_string());
         assert!(s.lt(&Owned("bcdef".to_string())));
         assert_eq!(Slice(""), Default::default());
 
@@ -2131,7 +2131,7 @@ mod tests {
         assert_eq!(o.len(), 5);
         assert_eq!(o.as_slice(), "abcde");
         assert_eq!(o.to_str(), "abcde".to_string());
-        assert_eq!(format_strbuf!("{}", o), "abcde".to_string());
+        assert_eq!(format!("{}", o), "abcde".to_string());
         assert!(o.lt(&Slice("bcdef")));
         assert_eq!(Owned("".to_string()), Default::default());
 

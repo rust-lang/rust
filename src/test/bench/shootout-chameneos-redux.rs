@@ -134,9 +134,7 @@ fn creature(
         }
     }
     // log creatures met and evil clones of self
-    let report = format_strbuf!("{}{}",
-                                creatures_met,
-                                Number(evil_clones_met));
+    let report = format!("{}{}", creatures_met, Number(evil_clones_met));
     to_rendezvous_log.send(report);
 }
 

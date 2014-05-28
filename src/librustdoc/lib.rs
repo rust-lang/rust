@@ -248,7 +248,7 @@ fn acquire_input(input: &str,
     match matches.opt_str("r").as_ref().map(|s| s.as_slice()) {
         Some("rust") => Ok(rust_input(input, matches)),
         Some("json") => json_input(input),
-        Some(s) => Err(format_strbuf!("unknown input format: {}", s)),
+        Some(s) => Err(format!("unknown input format: {}", s)),
         None => {
             if input.ends_with(".json") {
                 json_input(input)
@@ -356,7 +356,7 @@ fn json_input(input: &str) -> Result<Output, String> {
     let mut input = match File::open(&Path::new(input)) {
         Ok(f) => f,
         Err(e) => {
-            return Err(format_strbuf!("couldn't open {}: {}", input, e))
+            return Err(format!("couldn't open {}: {}", input, e))
         }
     };
     match json::from_reader(&mut input) {
@@ -367,7 +367,7 @@ fn json_input(input: &str) -> Result<Output, String> {
             match obj.pop(&"schema".to_string()) {
                 Some(json::String(version)) => {
                     if version.as_slice() != SCHEMA_VERSION {
-                        return Err(format_strbuf!(
+                        return Err(format!(
                                 "sorry, but I only understand version {}",
                                 SCHEMA_VERSION))
                     }

@@ -625,10 +625,10 @@ impl<K:KindOps> Datum<K> {
 
     #[allow(dead_code)] // useful for debugging
     pub fn to_str(&self, ccx: &CrateContext) -> String {
-        format_strbuf!("Datum({}, {}, {:?})",
-                       ccx.tn.val_to_str(self.val),
-                       ty_to_str(ccx.tcx(), self.ty),
-                       self.kind)
+        format!("Datum({}, {}, {:?})",
+                ccx.tn.val_to_str(self.val),
+                ty_to_str(ccx.tcx(), self.ty),
+                self.kind)
     }
 
     pub fn appropriate_rvalue_mode(&self, ccx: &CrateContext) -> RvalueMode {

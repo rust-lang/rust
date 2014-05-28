@@ -562,13 +562,6 @@ pub fn format(args: &Arguments) -> string::String{
     str::from_utf8(output.unwrap().as_slice()).unwrap().into_string()
 }
 
-/// Temporary transition utility
-pub fn format_strbuf(args: &Arguments) -> string::String {
-    let mut output = io::MemWriter::new();
-    let _ = write!(&mut output, "{}", args);
-    str::from_utf8(output.unwrap().as_slice()).unwrap().into_string()
-}
-
 #[cfg(stage0)]
 impl<T> Poly for T {
     fn fmt(&self, f: &mut Formatter) -> Result {
