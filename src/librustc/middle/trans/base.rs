@@ -1210,7 +1210,7 @@ pub fn create_datums_for_fn_args(fcx: &FunctionContext,
         let llarg = unsafe {
             llvm::LLVMGetParam(fcx.llfn, fcx.arg_pos(i) as c_uint)
         };
-        datum::Datum(llarg, arg_ty, arg_kind(fcx, arg_ty))
+        datum::Datum::new(llarg, arg_ty, arg_kind(fcx, arg_ty))
     }).collect()
 }
 

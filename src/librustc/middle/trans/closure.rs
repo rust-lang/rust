@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -460,5 +460,5 @@ pub fn make_closure_from_bare_fn<'a>(bcx: &'a Block<'a>,
     let wrapper = get_wrapper_for_bare_fn(bcx.ccx(), closure_ty, def, fn_ptr, true);
     fill_fn_pair(bcx, scratch.val, wrapper, C_null(Type::i8p(bcx.ccx())));
 
-    DatumBlock(bcx, scratch.to_expr_datum())
+    DatumBlock::new(bcx, scratch.to_expr_datum())
 }

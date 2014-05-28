@@ -997,7 +997,7 @@ fn match_datum(bcx: &Block,
      */
 
     let ty = node_id_type(bcx, pat_id);
-    Datum(val, ty, Lvalue)
+    Datum::new(val, ty, Lvalue)
 }
 
 
@@ -1297,7 +1297,7 @@ fn store_non_ref_bindings<'a>(
         match binding_info.trmode {
             TrByValue(lldest) => {
                 let llval = Load(bcx, binding_info.llmatch); // get a T*
-                let datum = Datum(llval, binding_info.ty, Lvalue);
+                let datum = Datum::new(llval, binding_info.ty, Lvalue);
                 bcx = datum.store_to(bcx, lldest);
 
                 match opt_cleanup_scope {
@@ -1334,7 +1334,7 @@ fn insert_lllocals<'a>(bcx: &'a Block<'a>,
             TrByRef => binding_info.llmatch
         };
 
-        let datum = Datum(llval, binding_info.ty, Lvalue);
+        let datum = Datum::new(llval, binding_info.ty, Lvalue);
         fcx.schedule_drop_mem(cleanup_scope, llval, binding_info.ty);
 
         debug!("binding {:?} to {}",
@@ -2081,7 +2081,7 @@ pub fn store_arg<'a>(mut bcx: &'a Block<'a>,
                 // we emit extra-debug-info, which requires local allocas :(.
                 let arg_val = arg.add_clean(bcx.fcx, arg_scope);
                 bcx.fcx.llargs.borrow_mut()
-                   .insert(pat.id, Datum(arg_val, arg_ty, Lvalue));
+                   .insert(pat.id, Datum::new(arg_val, arg_ty, Lvalue));
                 bcx
             } else {
                 mk_binding_alloca(
@@ -2122,7 +2122,7 @@ fn mk_binding_alloca<'a,A>(bcx: &'a Block<'a>,
 
     // Now that memory is initialized and has cleanup scheduled,
     // create the datum and insert into the local variable map.
-    let datum = Datum(llval, var_ty, Lvalue);
+    let datum = Datum::new(llval, var_ty, Lvalue);
     let mut llmap = match binding_mode {
         BindLocal => bcx.fcx.lllocals.borrow_mut(),
         BindArgument => bcx.fcx.llargs.borrow_mut()
@@ -2183,7 +2183,7 @@ fn bind_irrefutable_pat<'a>(
                             ast::BindByValue(_) => {
                                 // By value binding: move the value that `val`
                                 // points at into the binding's stack slot.
-                                let d = Datum(val, ty, Lvalue);
+                                let d = Datum::new(val, ty, Lvalue);
                                 d.store_to(bcx, llval)
                             }
 

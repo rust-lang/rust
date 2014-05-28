@@ -177,7 +177,7 @@ impl<'a> Visitor<()> for IrMaps<'a> {
 
 pub fn check_crate(tcx: &ty::ctxt,
                    krate: &Crate) {
-    visit::walk_crate(&mut IrMaps(tcx), krate, ());
+    visit::walk_crate(&mut IrMaps::new(tcx), krate, ());
     tcx.sess.abort_if_errors();
 }
 
@@ -260,21 +260,20 @@ struct IrMaps<'a> {
     lnks: Vec<LiveNodeKind>,
 }
 
-fn IrMaps<'a>(tcx: &'a ty::ctxt)
-              -> IrMaps<'a> {
-    IrMaps {
-        tcx: tcx,
-        num_live_nodes: 0,
-        num_vars: 0,
-        live_node_map: NodeMap::new(),
-        variable_map: NodeMap::new(),
-        capture_info_map: NodeMap::new(),
-        var_kinds: Vec::new(),
-        lnks: Vec::new(),
-    }
-}
-
 impl<'a> IrMaps<'a> {
+    fn new(tcx: &'a ty::ctxt) -> IrMaps<'a> {
+        IrMaps {
+            tcx: tcx,
+            num_live_nodes: 0,
+            num_vars: 0,
+            live_node_map: NodeMap::new(),
+            variable_map: NodeMap::new(),
+            capture_info_map: NodeMap::new(),
+            var_kinds: Vec::new(),
+            lnks: Vec::new(),
+        }
+    }
+
     fn add_live_node(&mut self, lnk: LiveNodeKind) -> LiveNode {
         let ln = LiveNode(self.num_live_nodes);
         self.lnks.push(lnk);
@@ -365,7 +364,7 @@ fn visit_fn(ir: &mut IrMaps,
     let _i = ::util::common::indenter();
 
     // swap in a new set of IR maps for this function body:
-    let mut fn_maps = IrMaps(ir.tcx);
+    let mut fn_maps = IrMaps::new(ir.tcx);
 
     unsafe {
         debug!("creating fn_maps: {}", transmute::<&IrMaps, *IrMaps>(&fn_maps));
@@ -396,7 +395,7 @@ fn visit_fn(ir: &mut IrMaps,
     };
 
     // compute liveness
-    let mut lsets = Liveness(&mut fn_maps, specials);
+    let mut lsets = Liveness::new(&mut fn_maps, specials);
     let entry_ln = lsets.compute(decl, body);
 
     // check for various error conditions
@@ -584,19 +583,19 @@ struct Liveness<'a> {
     cont_ln: NodeMap<LiveNode>
 }
 
-fn Liveness<'a>(ir: &'a mut IrMaps<'a>, specials: Specials) -> Liveness<'a> {
-    Liveness {
-        ir: ir,
-        s: specials,
-        successors: Vec::from_elem(ir.num_live_nodes, invalid_node()),
-        users: Vec::from_elem(ir.num_live_nodes * ir.num_vars, invalid_users()),
-        loop_scope: Vec::new(),
-        break_ln: NodeMap::new(),
-        cont_ln: NodeMap::new(),
-    }
-}
-
 impl<'a> Liveness<'a> {
+    fn new(ir: &'a mut IrMaps<'a>, specials: Specials) -> Liveness<'a> {
+        Liveness {
+            ir: ir,
+            s: specials,
+            successors: Vec::from_elem(ir.num_live_nodes, invalid_node()),
+            users: Vec::from_elem(ir.num_live_nodes * ir.num_vars, invalid_users()),
+            loop_scope: Vec::new(),
+            break_ln: NodeMap::new(),
+            cont_ln: NodeMap::new(),
+        }
+    }
+
     fn live_node(&self, node_id: NodeId, span: Span) -> LiveNode {
         match self.ir.live_node_map.find(&node_id) {
           Some(&ln) => ln,

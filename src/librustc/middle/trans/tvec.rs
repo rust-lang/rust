@@ -257,7 +257,7 @@ pub fn trans_uniq_vstore<'a>(bcx: &'a Block<'a>,
                         alloc_fn,
                         [ llptrval, llsizeval ],
                         Some(expr::SaveIn(lldestval.val))).bcx;
-                    return DatumBlock(bcx, lldestval).to_expr_datumblock();
+                    return DatumBlock::new(bcx, lldestval).to_expr_datumblock();
                 }
                 _ => {}
             }

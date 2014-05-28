@@ -69,7 +69,7 @@ pub fn llvm_err(sess: &Session, msg: String) -> ! {
     }
 }
 
-pub fn WriteOutputFile(
+pub fn write_output_file(
         sess: &Session,
         target: lib::llvm::TargetMachineRef,
         pm: lib::llvm::PassManagerRef,
@@ -90,7 +90,7 @@ pub fn WriteOutputFile(
 pub mod write {
 
     use back::lto;
-    use back::link::{WriteOutputFile, OutputType};
+    use back::link::{write_output_file, OutputType};
     use back::link::{OutputTypeAssembly, OutputTypeBitcode};
     use back::link::{OutputTypeExe, OutputTypeLlvmAssembly};
     use back::link::{OutputTypeObject};
@@ -310,7 +310,7 @@ pub mod write {
                             output.temp_path(OutputTypeAssembly)
                         };
                         with_codegen(tm, llmod, trans.no_builtins, |cpm| {
-                            WriteOutputFile(sess, tm, cpm, llmod, &path,
+                            write_output_file(sess, tm, cpm, llmod, &path,
                                             lib::llvm::AssemblyFile);
                         });
                     }
@@ -328,7 +328,7 @@ pub mod write {
                 match object_file {
                     Some(ref path) => {
                         with_codegen(tm, llmod, trans.no_builtins, |cpm| {
-                            WriteOutputFile(sess, tm, cpm, llmod, path,
+                            write_output_file(sess, tm, cpm, llmod, path,
                                             lib::llvm::ObjectFile);
                         });
                     }
@@ -339,7 +339,7 @@ pub mod write {
                                  trans.no_builtins, |cpm| {
                         let out = output.temp_path(OutputTypeObject)
                                         .with_extension("metadata.o");
-                        WriteOutputFile(sess, tm, cpm,
+                        write_output_file(sess, tm, cpm,
                                         trans.metadata_module, &out,
                                         lib::llvm::ObjectFile);
                     })

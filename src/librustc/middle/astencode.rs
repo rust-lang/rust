@@ -120,7 +120,7 @@ pub fn decode_inlined_item(cdata: &cstore::crate_metadata,
             path_as_str = Some(s);
             path_as_str.as_ref().map(|x| x.as_slice())
         });
-        let mut ast_dsr = reader::Decoder(ast_doc);
+        let mut ast_dsr = reader::Decoder::new(ast_doc);
         let from_id_range = Decodable::decode(&mut ast_dsr).unwrap();
         let to_id_range = reserve_id_range(&dcx.tcx.sess, from_id_range);
         let xcx = &ExtendedDecodeContext {
@@ -349,7 +349,7 @@ fn simplify_ast(ii: e::InlinedItemRef) -> ast::InlinedItem {
 
 fn decode_ast(par_doc: ebml::Doc) -> ast::InlinedItem {
     let chi_doc = par_doc.get(c::tag_tree as uint);
-    let mut d = reader::Decoder(chi_doc);
+    let mut d = reader::Decoder::new(chi_doc);
     Decodable::decode(&mut d).unwrap()
 }
 
@@ -395,7 +395,7 @@ fn renumber_and_map_ast(xcx: &ExtendedDecodeContext,
 // Encoding and decoding of ast::def
 
 fn decode_def(xcx: &ExtendedDecodeContext, doc: ebml::Doc) -> ast::Def {
-    let mut dsr = reader::Decoder(doc);
+    let mut dsr = reader::Decoder::new(doc);
     let def: ast::Def = Decodable::decode(&mut dsr).unwrap();
     def.tr(xcx)
 }
@@ -1317,7 +1317,7 @@ fn decode_side_tables(xcx: &ExtendedDecodeContext,
             }
             Some(value) => {
                 let val_doc = entry_doc.get(c::tag_table_val as uint);
-                let mut val_dsr = reader::Decoder(val_doc);
+                let mut val_dsr = reader::Decoder::new(val_doc);
                 let val_dsr = &mut val_dsr;
 
                 match value {
@@ -1402,7 +1402,7 @@ fn encode_item_ast(ebml_w: &mut Encoder, item: @ast::Item) {
 #[cfg(test)]
 fn decode_item_ast(par_doc: ebml::Doc) -> @ast::Item {
     let chi_doc = par_doc.get(c::tag_tree as uint);
-    let mut d = reader::Decoder(chi_doc);
+    let mut d = reader::Decoder::new(chi_doc);
     @Decodable::decode(&mut d).unwrap()
 }
 
@@ -1444,10 +1444,10 @@ fn roundtrip(in_item: Option<@ast::Item>) {
     let in_item = in_item.unwrap();
     let mut wr = MemWriter::new();
     {
-        let mut ebml_w = writer::Encoder(&mut wr);
+        let mut ebml_w = writer::Encoder::new(&mut wr);
         encode_item_ast(&mut ebml_w, in_item);
     }
-    let ebml_doc = reader::Doc(wr.get_ref());
+    let ebml_doc = ebml::Doc::new(wr.get_ref());
     let out_item = decode_item_ast(ebml_doc);
 
     assert!(in_item == out_item);
