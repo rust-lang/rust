@@ -97,7 +97,7 @@ fn native(cx: &mut ExtCtxt, sp: codemap::Span, tts: &[ast::TokenTree])
 
     let mut gen = NfaGen {
         cx: &*cx, sp: sp, prog: prog,
-        names: re.names_iter().collect(), original: re.as_str().to_strbuf(),
+        names: re.names_iter().collect(), original: re.as_str().to_string(),
     };
     MacExpr::new(gen.code())
 }
@@ -611,7 +611,7 @@ fn parse(cx: &mut ExtCtxt, tts: &[ast::TokenTree]) -> Option<String> {
     let regex = match entry.node {
         ast::ExprLit(lit) => {
             match lit.node {
-                ast::LitStr(ref s, _) => s.to_str().to_strbuf(),
+                ast::LitStr(ref s, _) => s.to_str().to_string(),
                 _ => {
                     cx.span_err(entry.span, format!(
                         "expected string literal but got `{}`",

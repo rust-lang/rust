@@ -17,13 +17,13 @@ fn parse_args() -> String {
         match args[n].as_slice() {
             "-v" => (),
             s => {
-                return s.to_strbuf();
+                return s.to_string();
             }
         }
         n += 1;
     }
 
-    return "".to_strbuf()
+    return "".to_string()
 }
 
 pub fn main() {

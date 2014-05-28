@@ -13,7 +13,7 @@ fn decode() -> String {
         let mut ch_start: uint;
         break 'outer;
     }
-    "".to_strbuf()
+    "".to_string()
 }
 
 pub fn main() {

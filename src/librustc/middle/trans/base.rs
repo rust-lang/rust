@@ -216,7 +216,7 @@ pub fn get_extern_fn(ccx: &CrateContext,
         None => {}
     }
     let f = decl_fn(ccx.llmod, name, cc, ty, output);
-    externs.insert(name.to_strbuf(), f);
+    externs.insert(name.to_string(), f);
     f
 }
 
@@ -232,7 +232,7 @@ fn get_extern_rust_fn(ccx: &CrateContext, fn_ty: ty::t, name: &str, did: ast::De
         set_llvm_fn_attrs(attrs.as_slice(), f)
     });
 
-    ccx.externs.borrow_mut().insert(name.to_strbuf(), f);
+    ccx.externs.borrow_mut().insert(name.to_string(), f);
     f
 }
 
@@ -271,7 +271,7 @@ pub fn get_extern_const(externs: &mut ExternMap, llmod: ModuleRef,
         let c = name.with_c_str(|buf| {
             llvm::LLVMAddGlobal(llmod, ty.to_ref(), buf)
         });
-        externs.insert(name.to_strbuf(), c);
+        externs.insert(name.to_string(), c);
         return c;
     }
 }
@@ -1106,9 +1106,9 @@ pub fn new_fn_ctxt<'a>(ccx: &'a CrateContext,
 
     debug!("new_fn_ctxt(path={}, id={}, param_substs={})",
            if id == -1 {
-               "".to_owned()
+               "".to_string()
            } else {
-               ccx.tcx.map.path_to_str(id).to_owned()
+               ccx.tcx.map.path_to_str(id).to_string()
            },
            id, param_substs.map(|s| s.repr(ccx.tcx())));
 
@@ -1406,7 +1406,7 @@ pub fn trans_fn(ccx: &CrateContext,
                 param_substs: Option<&param_substs>,
                 id: ast::NodeId,
                 attrs: &[ast::Attribute]) {
-    let _s = StatRecorder::new(ccx, ccx.tcx.map.path_to_str(id).to_strbuf());
+    let _s = StatRecorder::new(ccx, ccx.tcx.map.path_to_str(id).to_string());
     debug!("trans_fn(param_substs={})", param_substs.map(|s| s.repr(ccx.tcx())));
     let _icx = push_ctxt("trans_fn");
     let output_type = ty::ty_fn_ret(ty::node_id_to_type(ccx.tcx(), id));
@@ -1923,15 +1923,15 @@ fn exported_name(ccx: &CrateContext, id: ast::NodeId,
                  ty: ty::t, attrs: &[ast::Attribute]) -> String {
     match attr::first_attr_value_str_by_name(attrs, "export_name") {
         // Use provided name
-        Some(name) => name.get().to_strbuf(),
+        Some(name) => name.get().to_string(),
 
         _ => ccx.tcx.map.with_path(id, |mut path| {
             if attr::contains_name(attrs, "no_mangle") {
                 // Don't mangle
-                path.last().unwrap().to_str().to_strbuf()
+                path.last().unwrap().to_str().to_string()
             } else {
                 match weak_lang_items::link_name(attrs) {
-                    Some(name) => name.get().to_strbuf(),
+                    Some(name) => name.get().to_string(),
                     None => {
                         // Usual name mangling
                         mangle_exported_name(ccx, path, ty, id)
@@ -2328,7 +2328,7 @@ pub fn trans_crate(krate: ast::Crate,
     let llmod = ccx.llmod;
 
     let mut reachable: Vec<String> = ccx.reachable.iter().filter_map(|id| {
-        ccx.item_symbols.borrow().find(id).map(|s| s.to_strbuf())
+        ccx.item_symbols.borrow().find(id).map(|s| s.to_string())
     }).collect();
 
     // Make sure that some other crucial symbols are not eliminated from the
@@ -2337,13 +2337,13 @@ pub fn trans_crate(krate: ast::Crate,
     // symbol. This symbol is required for use by the libmorestack library that
     // we link in, so we must ensure that this symbol is not internalized (if
     // defined in the crate).
-    reachable.push("main".to_strbuf());
-    reachable.push("rust_stack_exhausted".to_strbuf());
+    reachable.push("main".to_string());
+    reachable.push("rust_stack_exhausted".to_string());
 
     // referenced from .eh_frame section on some platforms
-    reachable.push("rust_eh_personality".to_strbuf());
+    reachable.push("rust_eh_personality".to_string());
     // referenced from rt/rust_try.ll
-    reachable.push("rust_eh_personality_catch".to_strbuf());
+    reachable.push("rust_eh_personality_catch".to_string());
 
     let metadata_module = ccx.metadata_llmod;
     let formats = ccx.tcx.dependency_formats.borrow().clone();

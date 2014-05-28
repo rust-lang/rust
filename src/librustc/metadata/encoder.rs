@@ -1738,7 +1738,7 @@ fn encode_dylib_dependency_formats(ebml_w: &mut Encoder, ecx: &EncodeContext) {
                 slot.map(|kind| (format!("{}:{}", i + 1, match kind {
                     cstore::RequireDynamic => "d",
                     cstore::RequireStatic => "s",
-                })).to_strbuf())
+                })).to_string())
             }).collect::<Vec<String>>();
             ebml_w.writer.write(s.connect(",").as_bytes());
         }
@@ -1909,5 +1909,5 @@ pub fn encoded_ty(tcx: &ty::ctxt, t: ty::t) -> String {
         tcx: tcx,
         abbrevs: &RefCell::new(HashMap::new())
     }, t);
-    str::from_utf8_owned(Vec::from_slice(wr.get_ref())).unwrap().to_strbuf()
+    str::from_utf8_owned(Vec::from_slice(wr.get_ref())).unwrap().to_string()
 }

@@ -123,7 +123,7 @@ pub mod lib {
 
 pub fn main() {
     let args = std::os::args().iter()
-                              .map(|x| x.to_strbuf())
+                              .map(|x| x.to_string())
                               .collect::<Vec<_>>();
     std::os::set_exit_status(driver::main_args(args.as_slice()));
 }

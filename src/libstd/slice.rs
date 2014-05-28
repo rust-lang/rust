@@ -396,7 +396,7 @@ pub trait OwnedVector<T> {
     /// # Examples
     ///
     /// ```rust
-    /// let v = ~["a".to_owned(), "b".to_owned()];
+    /// let v = ~["a".to_string(), "b".to_string()];
     /// for s in v.move_iter() {
     ///   // s has type ~str, not &~str
     ///   println!("{}", s);
@@ -1186,7 +1186,7 @@ mod tests {
             assert_eq!(it.next(), None);
         }
         {
-            let v = ["Hello".to_owned()];
+            let v = ["Hello".to_string()];
             let mut it = v.permutations();
             let (min_size, max_opt) = it.size_hint();
             assert_eq!(min_size, 1);
@@ -1839,18 +1839,18 @@ mod tests {
             })
         )
         let empty: ~[int] = box [];
-        test_show_vec!(empty, "[]".to_strbuf());
-        test_show_vec!(box [1], "[1]".to_strbuf());
-        test_show_vec!(box [1, 2, 3], "[1, 2, 3]".to_strbuf());
+        test_show_vec!(empty, "[]".to_string());
+        test_show_vec!(box [1], "[1]".to_string());
+        test_show_vec!(box [1, 2, 3], "[1, 2, 3]".to_string());
         test_show_vec!(box [box [], box [1u], box [1u, 1u]],
-                       "[[], [1], [1, 1]]".to_strbuf());
+                       "[[], [1], [1, 1]]".to_string());
 
         let empty_mut: &mut [int] = &mut[];
-        test_show_vec!(empty_mut, "[]".to_strbuf());
-        test_show_vec!(&mut[1], "[1]".to_strbuf());
-        test_show_vec!(&mut[1, 2, 3], "[1, 2, 3]".to_strbuf());
+        test_show_vec!(empty_mut, "[]".to_string());
+        test_show_vec!(&mut[1], "[1]".to_string());
+        test_show_vec!(&mut[1, 2, 3], "[1, 2, 3]".to_string());
         test_show_vec!(&mut[&mut[], &mut[1u], &mut[1u, 1u]],
-                       "[[], [1], [1, 1]]".to_strbuf());
+                       "[[], [1], [1, 1]]".to_string());
     }
 
     #[test]

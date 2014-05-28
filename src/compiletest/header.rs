@@ -170,23 +170,23 @@ fn iter_header(testfile: &Path, it: |&str| -> bool) -> bool {
 }
 
 fn parse_error_pattern(line: &str) -> Option<String> {
-    parse_name_value_directive(line, "error-pattern".to_strbuf())
+    parse_name_value_directive(line, "error-pattern".to_string())
 }
 
 fn parse_aux_build(line: &str) -> Option<String> {
-    parse_name_value_directive(line, "aux-build".to_strbuf())
+    parse_name_value_directive(line, "aux-build".to_string())
 }
 
 fn parse_compile_flags(line: &str) -> Option<String> {
-    parse_name_value_directive(line, "compile-flags".to_strbuf())
+    parse_name_value_directive(line, "compile-flags".to_string())
 }
 
 fn parse_run_flags(line: &str) -> Option<String> {
-    parse_name_value_directive(line, "run-flags".to_strbuf())
+    parse_name_value_directive(line, "run-flags".to_string())
 }
 
 fn parse_check_line(line: &str) -> Option<String> {
-    parse_name_value_directive(line, "check".to_strbuf())
+    parse_name_value_directive(line, "check".to_string())
 }
 
 fn parse_force_host(line: &str) -> bool {
@@ -206,15 +206,15 @@ fn parse_no_pretty_expanded(line: &str) -> bool {
 }
 
 fn parse_exec_env(line: &str) -> Option<(String, String)> {
-    parse_name_value_directive(line, "exec-env".to_strbuf()).map(|nv| {
+    parse_name_value_directive(line, "exec-env".to_string()).map(|nv| {
         // nv is either FOO or FOO=BAR
         let mut strs: Vec<String> = nv.as_slice()
                                       .splitn('=', 1)
-                                      .map(|s| s.to_strbuf())
+                                      .map(|s| s.to_string())
                                       .collect();
 
         match strs.len() {
-          1u => (strs.pop().unwrap(), "".to_strbuf()),
+          1u => (strs.pop().unwrap(), "".to_string()),
           2u => {
               let end = strs.pop().unwrap();
               (strs.pop().unwrap(), end)
@@ -225,7 +225,7 @@ fn parse_exec_env(line: &str) -> Option<(String, String)> {
 }
 
 fn parse_pp_exact(line: &str, testfile: &Path) -> Option<Path> {
-    match parse_name_value_directive(line, "pp-exact".to_strbuf()) {
+    match parse_name_value_directive(line, "pp-exact".to_string()) {
       Some(s) => Some(Path::new(s)),
       None => {
         if parse_name_directive(line, "pp-exact") {
@@ -247,7 +247,7 @@ pub fn parse_name_value_directive(line: &str, directive: String)
     match line.find_str(keycolon.as_slice()) {
         Some(colon) => {
             let value = line.slice(colon + keycolon.len(),
-                                   line.len()).to_strbuf();
+                                   line.len()).to_string();
             debug!("{}: {}", directive, value);
             Some(value)
         }

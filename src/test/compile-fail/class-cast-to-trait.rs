@@ -58,6 +58,6 @@ fn cat(in_x : uint, in_y : int, in_name: String) -> cat {
 }
 
 fn main() {
-  let nyan: Box<noisy> = box cat(0, 2, "nyan".to_strbuf()) as Box<noisy>;
+  let nyan: Box<noisy> = box cat(0, 2, "nyan".to_string()) as Box<noisy>;
   nyan.eat(); //~ ERROR does not implement any method in scope named `eat`
 }

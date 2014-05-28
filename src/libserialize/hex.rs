@@ -45,7 +45,7 @@ impl<'a> ToHex for &'a [u8] {
         }
 
         unsafe {
-            str::raw::from_utf8(v.as_slice()).to_strbuf()
+            str::raw::from_utf8(v.as_slice()).to_string()
         }
     }
 }
@@ -143,7 +143,7 @@ mod tests {
 
     #[test]
     pub fn test_to_hex() {
-        assert_eq!("foobar".as_bytes().to_hex(), "666f6f626172".to_strbuf());
+        assert_eq!("foobar".as_bytes().to_hex(), "666f6f626172".to_string());
     }
 
     #[test]

@@ -40,8 +40,8 @@ impl<K:Eq,V:Clone> Index<K,V> for AssociationList<K,V> {
 }
 
 pub fn main() {
-    let foo = "foo".to_owned();
-    let bar = "bar".to_owned();
+    let foo = "foo".to_string();
+    let bar = "bar".to_string();
 
     let mut list = AssociationList {pairs: Vec::new()};
     list.push(foo.clone(), 22);

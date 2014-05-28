@@ -87,13 +87,13 @@ pub fn run(input: &str,
     let (krate, _) = passes::unindent_comments(krate);
     let (krate, _) = passes::collapse_docs(krate);
 
-    let mut collector = Collector::new(krate.name.to_strbuf(),
+    let mut collector = Collector::new(krate.name.to_string(),
                                        libs,
                                        false,
                                        false);
     collector.fold_crate(krate);
 
-    test_args.unshift("rustdoctest".to_strbuf());
+    test_args.unshift("rustdoctest".to_string());
 
     testing::test_main(test_args.as_slice(),
                        collector.tests.move_iter().collect());
@@ -103,7 +103,7 @@ pub fn run(input: &str,
 fn runtest(test: &str, cratename: &str, libs: HashSet<Path>, should_fail: bool,
            no_run: bool, loose_feature_gating: bool) {
     let test = maketest(test, cratename, loose_feature_gating);
-    let input = driver::StrInput(test.to_strbuf());
+    let input = driver::StrInput(test.to_string());
 
     let sessopts = config::Options {
         maybe_sysroot: Some(os::self_exe_path().unwrap().dir_path()),
@@ -179,8 +179,8 @@ fn runtest(test: &str, cratename: &str, libs: HashSet<Path>, should_fail: bool,
 
         // Add the new dylib search path var
         let newpath = DynamicLibrary::create_path(path.as_slice());
-        env.push((var.to_owned(),
-                  str::from_utf8(newpath.as_slice()).unwrap().to_owned()));
+        env.push((var.to_string(),
+                  str::from_utf8(newpath.as_slice()).unwrap().to_string()));
         env
     };
     match Command::new(exe).env(env.as_slice()).output() {
@@ -265,7 +265,7 @@ impl Collector {
         };
         self.cnt += 1;
         let libs = self.libs.clone();
-        let cratename = self.cratename.to_owned();
+        let cratename = self.cratename.to_string();
         let loose_feature_gating = self.loose_feature_gating;
         debug!("Creating test {}: {}", name, test);
         self.tests.push(testing::TestDescAndFn {
@@ -309,7 +309,7 @@ impl DocFolder for Collector {
     fn fold_item(&mut self, item: clean::Item) -> Option<clean::Item> {
         let pushed = match item.name {
             Some(ref name) if name.len() == 0 => false,
-            Some(ref name) => { self.names.push(name.to_strbuf()); true }
+            Some(ref name) => { self.names.push(name.to_string()); true }
             None => false
         };
         match item.doc_value() {

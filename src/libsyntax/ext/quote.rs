@@ -72,7 +72,7 @@ pub mod rt {
 
     impl ToSource for ast::Ident {
         fn to_source(&self) -> String {
-            get_ident(*self).get().to_strbuf()
+            get_ident(*self).get().to_string()
         }
     }
 
@@ -88,7 +88,7 @@ pub mod rt {
                 .map(|i| i.to_source())
                 .collect::<Vec<String>>()
                 .connect("\n\n")
-                .to_strbuf()
+                .to_string()
         }
     }
 
@@ -104,7 +104,7 @@ pub mod rt {
                 .map(|i| i.to_source())
                 .collect::<Vec<String>>()
                 .connect(", ")
-                .to_strbuf()
+                .to_string()
         }
     }
 
@@ -136,7 +136,7 @@ pub mod rt {
 
     impl ToSource for () {
         fn to_source(&self) -> String {
-            "()".to_strbuf()
+            "()".to_string()
         }
     }
 
@@ -281,7 +281,7 @@ pub mod rt {
 
         fn parse_item(&self, s: String) -> @ast::Item {
             let res = parse::parse_item_from_source_str(
-                "<quote expansion>".to_strbuf(),
+                "<quote expansion>".to_string(),
                 s,
                 self.cfg(),
                 self.parse_sess());
@@ -295,7 +295,7 @@ pub mod rt {
         }
 
         fn parse_stmt(&self, s: String) -> @ast::Stmt {
-            parse::parse_stmt_from_source_str("<quote expansion>".to_strbuf(),
+            parse::parse_stmt_from_source_str("<quote expansion>".to_string(),
                                               s,
                                               self.cfg(),
                                               Vec::new(),
@@ -303,14 +303,14 @@ pub mod rt {
         }
 
         fn parse_expr(&self, s: String) -> @ast::Expr {
-            parse::parse_expr_from_source_str("<quote expansion>".to_strbuf(),
+            parse::parse_expr_from_source_str("<quote expansion>".to_string(),
                                               s,
                                               self.cfg(),
                                               self.parse_sess())
         }
 
         fn parse_tts(&self, s: String) -> Vec<ast::TokenTree> {
-            parse::parse_tts_from_source_str("<quote expansion>".to_strbuf(),
+            parse::parse_tts_from_source_str("<quote expansion>".to_string(),
                                              s,
                                              self.cfg(),
                                              self.parse_sess())
@@ -430,11 +430,11 @@ fn mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> @ast::Expr {
 
         LIT_INT(i, ity) => {
             let s_ity = match ity {
-                ast::TyI => "TyI".to_owned(),
-                ast::TyI8 => "TyI8".to_owned(),
-                ast::TyI16 => "TyI16".to_owned(),
-                ast::TyI32 => "TyI32".to_owned(),
-                ast::TyI64 => "TyI64".to_owned()
+                ast::TyI => "TyI".to_string(),
+                ast::TyI8 => "TyI8".to_string(),
+                ast::TyI16 => "TyI16".to_string(),
+                ast::TyI32 => "TyI32".to_string(),
+                ast::TyI64 => "TyI64".to_string()
             };
             let e_ity = cx.expr_ident(sp, id_ext(s_ity.as_slice()));
 
@@ -447,11 +447,11 @@ fn mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> @ast::Expr {
 
         LIT_UINT(u, uty) => {
             let s_uty = match uty {
-                ast::TyU => "TyU".to_owned(),
-                ast::TyU8 => "TyU8".to_owned(),
-                ast::TyU16 => "TyU16".to_owned(),
-                ast::TyU32 => "TyU32".to_owned(),
-                ast::TyU64 => "TyU64".to_owned()
+                ast::TyU => "TyU".to_string(),
+                ast::TyU8 => "TyU8".to_string(),
+                ast::TyU16 => "TyU16".to_string(),
+                ast::TyU32 => "TyU32".to_string(),
+                ast::TyU64 => "TyU64".to_string()
             };
             let e_uty = cx.expr_ident(sp, id_ext(s_uty.as_slice()));
 
@@ -472,9 +472,9 @@ fn mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> @ast::Expr {
 
         LIT_FLOAT(fident, fty) => {
             let s_fty = match fty {
-                ast::TyF32 => "TyF32".to_owned(),
-                ast::TyF64 => "TyF64".to_owned(),
-                ast::TyF128 => "TyF128".to_owned()
+                ast::TyF32 => "TyF32".to_string(),
+                ast::TyF64 => "TyF64".to_string(),
+                ast::TyF128 => "TyF128".to_string()
             };
             let e_fty = cx.expr_ident(sp, id_ext(s_fty.as_slice()));
 
@@ -686,10 +686,10 @@ fn expand_wrapper(cx: &ExtCtxt,
                   cx_expr: @ast::Expr,
                   expr: @ast::Expr) -> @ast::Expr {
     let uses = vec![ cx.view_use_glob(sp, ast::Inherited,
-                                   ids_ext(vec!["syntax".to_strbuf(),
-                                                "ext".to_strbuf(),
-                                                "quote".to_strbuf(),
-                                                "rt".to_strbuf()])) ];
+                                   ids_ext(vec!["syntax".to_string(),
+                                                "ext".to_string(),
+                                                "quote".to_string(),
+                                                "rt".to_string()])) ];
 
     let stmt_let_ext_cx = cx.stmt_let(sp, false, id_ext("ext_cx"), cx_expr);
 

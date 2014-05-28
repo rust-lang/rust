@@ -106,7 +106,7 @@ fn get_error(s: c_int) -> IoError {
     use std::io;
 
     let err_str = unsafe {
-        CString::new(gai_strerror(s), false).as_str().unwrap().to_strbuf()
+        CString::new(gai_strerror(s), false).as_str().unwrap().to_string()
     };
     IoError {
         kind: io::OtherIoError,

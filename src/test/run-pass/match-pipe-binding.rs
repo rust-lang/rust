@@ -10,10 +10,10 @@
 
 fn test1() {
     // from issue 6338
-    match ((1, "a".to_owned()), (2, "b".to_owned())) {
+    match ((1, "a".to_string()), (2, "b".to_string())) {
         ((1, a), (2, b)) | ((2, b), (1, a)) => {
-                assert_eq!(a, "a".to_owned());
-                assert_eq!(b, "b".to_owned());
+                assert_eq!(a, "a".to_string());
+                assert_eq!(b, "b".to_string());
             },
             _ => fail!(),
     }

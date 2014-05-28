@@ -587,8 +587,8 @@ fn check_sized(tcx: &ty::ctxt, ty: ty::t, name: String, sp: Span) {
 // Check that any variables in a pattern have types with statically known size.
 fn check_pat(cx: &mut Context, pat: &Pat) {
     let var_name = match pat.node {
-        PatWild => Some("_".to_strbuf()),
-        PatIdent(_, ref path, _) => Some(path_to_str(path).to_strbuf()),
+        PatWild => Some("_".to_string()),
+        PatIdent(_, ref path, _) => Some(path_to_str(path).to_string()),
         _ => None
     };
 

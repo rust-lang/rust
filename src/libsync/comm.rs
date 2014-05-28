@@ -60,10 +60,10 @@ mod test {
     pub fn DuplexStream1() {
         let (left, right) = duplex();
 
-        left.send("abc".to_owned());
+        left.send("abc".to_string());
         right.send(123);
 
         assert!(left.recv() == 123);
-        assert!(right.recv() == "abc".to_owned());
+        assert!(right.recv() == "abc".to_string());
     }
 }

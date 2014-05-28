@@ -34,12 +34,12 @@ format arguments directly while performing minimal allocations.
 Some examples of the `format!` extension are:
 
 ```rust
-format!("Hello");                 // => "Hello".to_owned()
-format!("Hello, {:s}!", "world"); // => "Hello, world!".to_owned()
-format!("The number is {:d}", 1); // => "The number is 1".to_owned()
-format!("{:?}", ~[3, 4]);         // => "~[3, 4]".to_owned()
-format!("{value}", value=4);      // => "4".to_owned()
-format!("{} {}", 1, 2);           // => "1 2".to_owned()
+format!("Hello");                 // => "Hello".to_string()
+format!("Hello, {:s}!", "world"); // => "Hello, world!".to_string()
+format!("The number is {:d}", 1); // => "The number is 1".to_string()
+format!("{:?}", ~[3, 4]);         // => "~[3, 4]".to_string()
+format!("{value}", value=4);      // => "4".to_string()
+format!("{} {}", 1, 2);           // => "1 2".to_string()
 ```
 
 From these, you can see that the first argument is a format string. It is
@@ -62,7 +62,7 @@ iterator over the argument. Each time a "next argument" specifier is seen, the
 iterator advances. This leads to behavior like this:
 
 ```rust
-format!("{1} {} {0} {}", 1, 2); // => "2 1 1 2".to_owned()
+format!("{1} {} {0} {}", 1, 2); // => "2 1 1 2".to_string()
 ```
 
 The internal iterator over the argument has not been advanced by the time the
@@ -89,9 +89,9 @@ identifier '=' expression
 For example, the following `format!` expressions all use named argument:
 
 ```rust
-format!("{argument}", argument = "test");       // => "test".to_owned()
-format!("{name} {}", 1, name = 2);              // => "2 1".to_owned()
-format!("{a:s} {c:d} {b:?}", a="a", b=(), c=3); // => "a 3 ()".to_owned()
+format!("{argument}", argument = "test");       // => "test".to_string()
+format!("{name} {}", 1, name = 2);              // => "2 1".to_string()
+format!("{a:s} {c:d} {b:?}", a="a", b=(), c=3); // => "a 3 ()".to_string()
 ```
 
 It is illegal to put positional parameters (those without names) after arguments
@@ -330,7 +330,7 @@ to reference the string value of the argument which was selected upon. As an
 example:
 
 ```rust
-format!("{0, select, other{#}}", "hello"); // => "hello".to_owned()
+format!("{0, select, other{#}}", "hello"); // => "hello".to_string()
 ```
 
 This example is the equivalent of `{0:s}` essentially.
@@ -543,19 +543,19 @@ pub trait Poly {
 /// use std::fmt;
 ///
 /// let s = format_args!(fmt::format, "Hello, {}!", "world");
-/// assert_eq!(s, "Hello, world!".to_owned());
+/// assert_eq!(s, "Hello, world!".to_string());
 /// ```
 pub fn format(args: &Arguments) -> string::String{
     let mut output = io::MemWriter::new();
     let _ = write!(&mut output, "{}", args);
-    str::from_utf8(output.unwrap().as_slice()).unwrap().into_strbuf()
+    str::from_utf8(output.unwrap().as_slice()).unwrap().into_string()
 }
 
 /// Temporary transition utility
 pub fn format_strbuf(args: &Arguments) -> string::String {
     let mut output = io::MemWriter::new();
     let _ = write!(&mut output, "{}", args);
-    str::from_utf8(output.unwrap().as_slice()).unwrap().into_strbuf()
+    str::from_utf8(output.unwrap().as_slice()).unwrap().into_string()
 }
 
 impl<T> Poly for T {

@@ -168,7 +168,7 @@ fn generate_test_harness(sess: &Session, krate: ast::Crate)
     cx.ext_cx.bt_push(ExpnInfo {
         call_site: DUMMY_SP,
         callee: NameAndSpan {
-            name: "test".to_strbuf(),
+            name: "test".to_string(),
             format: MacroAttribute,
             span: None
         }

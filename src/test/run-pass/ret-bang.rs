@@ -15,7 +15,7 @@ fn my_err(s: String) -> ! { println!("{}", s); fail!(); }
 
 fn okay(i: uint) -> int {
     if i == 3u {
-        my_err("I don't like three".to_strbuf());
+        my_err("I don't like three".to_string());
     } else {
         return 42;
     }

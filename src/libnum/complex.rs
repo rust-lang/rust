@@ -349,14 +349,14 @@ mod test {
     #[test]
     fn test_to_str() {
         fn test(c : Complex64, s: String) {
-            assert_eq!(c.to_str().to_strbuf(), s);
+            assert_eq!(c.to_str().to_string(), s);
         }
-        test(_0_0i, "0+0i".to_strbuf());
-        test(_1_0i, "1+0i".to_strbuf());
-        test(_0_1i, "0+1i".to_strbuf());
-        test(_1_1i, "1+1i".to_strbuf());
-        test(_neg1_1i, "-1+1i".to_strbuf());
-        test(-_neg1_1i, "1-1i".to_strbuf());
-        test(_05_05i, "0.5+0.5i".to_strbuf());
+        test(_0_0i, "0+0i".to_string());
+        test(_1_0i, "1+0i".to_string());
+        test(_0_1i, "0+1i".to_string());
+        test(_1_1i, "1+1i".to_string());
+        test(_neg1_1i, "-1+1i".to_string());
+        test(-_neg1_1i, "1-1i".to_string());
+        test(_05_05i, "0.5+0.5i".to_string());
     }
 }

@@ -443,11 +443,11 @@ impl<'a> Block<'a> {
     pub fn sess(&self) -> &'a Session { self.fcx.ccx.sess() }
 
     pub fn ident(&self, ident: Ident) -> String {
-        token::get_ident(ident).get().to_strbuf()
+        token::get_ident(ident).get().to_string()
     }
 
     pub fn node_id_to_str(&self, id: ast::NodeId) -> String {
-        self.tcx().map.node_to_str(id).to_strbuf()
+        self.tcx().map.node_to_str(id).to_string()
     }
 
     pub fn expr_to_str(&self, e: &ast::Expr) -> String {

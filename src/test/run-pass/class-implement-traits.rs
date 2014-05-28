@@ -62,7 +62,7 @@ fn make_speak<C:noisy>(mut c: C) {
 }
 
 pub fn main() {
-    let mut nyan = cat(0u, 2, "nyan".to_strbuf());
+    let mut nyan = cat(0u, 2, "nyan".to_string());
     nyan.eat();
     assert!((!nyan.eat()));
     for _ in range(1u, 10u) {

@@ -29,7 +29,7 @@ fn main() {
         return
     }
 
-    let env = [("RUST_LOG".to_owned(), "debug".to_owned())];
+    let env = [("RUST_LOG".to_string(), "debug".to_string())];
     let p = Command::new(args[0].as_slice())
                     .arg("child").env(env.as_slice())
                     .spawn().unwrap().wait_with_output().unwrap();

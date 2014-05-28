@@ -496,7 +496,7 @@ pub trait Reader {
     fn read_at_least(&mut self, min: uint, buf: &mut [u8]) -> IoResult<uint> {
         if min > buf.len() {
             return Err(IoError {
-                detail: Some("the buffer is too short".to_strbuf()),
+                detail: Some("the buffer is too short".to_string()),
                 ..standard_error(InvalidInput)
             });
         }
@@ -564,7 +564,7 @@ pub trait Reader {
     fn push_at_least(&mut self, min: uint, len: uint, buf: &mut Vec<u8>) -> IoResult<uint> {
         if min > len {
             return Err(IoError {
-                detail: Some("the buffer is too short".to_strbuf()),
+                detail: Some("the buffer is too short".to_string()),
                 ..standard_error(InvalidInput)
             });
         }
@@ -635,7 +635,7 @@ pub trait Reader {
     fn read_to_str(&mut self) -> IoResult<String> {
         self.read_to_end().and_then(|s| {
             match str::from_utf8(s.as_slice()) {
-                Some(s) => Ok(s.to_strbuf()),
+                Some(s) => Ok(s.to_string()),
                 None => Err(standard_error(InvalidInput)),
             }
         })
@@ -1315,7 +1315,7 @@ pub trait Buffer: Reader {
     /// use std::io;
     ///
     /// let mut reader = io::stdin();
-    /// let input = reader.read_line().ok().unwrap_or("nothing".to_owned());
+    /// let input = reader.read_line().ok().unwrap_or("nothing".to_string());
     /// ```
     ///
     /// # Error
@@ -1333,7 +1333,7 @@ pub trait Buffer: Reader {
     fn read_line(&mut self) -> IoResult<String> {
         self.read_until('\n' as u8).and_then(|line|
             match str::from_utf8(line.as_slice()) {
-                Some(s) => Ok(s.to_strbuf()),
+                Some(s) => Ok(s.to_string()),
                 None => Err(standard_error(InvalidInput)),
             }
         )

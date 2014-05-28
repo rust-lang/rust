@@ -247,10 +247,10 @@ pub enum fixup_err {
 
 pub fn fixup_err_to_str(f: fixup_err) -> String {
     match f {
-      unresolved_int_ty(_) => "unconstrained integral type".to_strbuf(),
-      unresolved_ty(_) => "unconstrained type".to_strbuf(),
-      cyclic_ty(_) => "cyclic type of infinite size".to_strbuf(),
-      unresolved_region(_) => "unconstrained region".to_strbuf(),
+      unresolved_int_ty(_) => "unconstrained integral type".to_string(),
+      unresolved_ty(_) => "unconstrained type".to_string(),
+      cyclic_ty(_) => "cyclic type of infinite size".to_string(),
+      unresolved_region(_) => "unconstrained region".to_string(),
       region_var_bound_by_region_var(r1, r2) => {
         format_strbuf!("region var {:?} bound by another region var {:?}; \
                         this is a bug in rustc",
@@ -729,7 +729,7 @@ impl<'a> InferCtxt<'a> {
                                                 err: Option<&ty::type_err>) {
         debug!("hi! expected_ty = {:?}, actual_ty = {}", expected_ty, actual_ty);
 
-        let error_str = err.map_or("".to_strbuf(), |t_err| {
+        let error_str = err.map_or("".to_string(), |t_err| {
             format!(" ({})", ty::type_err_to_str(self.tcx, t_err))
         });
         let resolved_expected = expected_ty.map(|e_ty| {

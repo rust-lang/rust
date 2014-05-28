@@ -136,39 +136,39 @@ mod tests {
 
     #[test]
     fn test_to_str() {
-        assert_eq!((0 as $T).to_str_radix(10u), "0".to_strbuf());
-        assert_eq!((1 as $T).to_str_radix(10u), "1".to_strbuf());
-        assert_eq!((-1 as $T).to_str_radix(10u), "-1".to_strbuf());
-        assert_eq!((127 as $T).to_str_radix(16u), "7f".to_strbuf());
-        assert_eq!((100 as $T).to_str_radix(10u), "100".to_strbuf());
+        assert_eq!((0 as $T).to_str_radix(10u), "0".to_string());
+        assert_eq!((1 as $T).to_str_radix(10u), "1".to_string());
+        assert_eq!((-1 as $T).to_str_radix(10u), "-1".to_string());
+        assert_eq!((127 as $T).to_str_radix(16u), "7f".to_string());
+        assert_eq!((100 as $T).to_str_radix(10u), "100".to_string());
 
     }
 
     #[test]
     fn test_int_to_str_overflow() {
         let mut i8_val: i8 = 127_i8;
-        assert_eq!(i8_val.to_str(), "127".to_strbuf());
+        assert_eq!(i8_val.to_str(), "127".to_string());
 
         i8_val += 1 as i8;
-        assert_eq!(i8_val.to_str(), "-128".to_strbuf());
+        assert_eq!(i8_val.to_str(), "-128".to_string());
 
         let mut i16_val: i16 = 32_767_i16;
-        assert_eq!(i16_val.to_str(), "32767".to_strbuf());
+        assert_eq!(i16_val.to_str(), "32767".to_string());
 
         i16_val += 1 as i16;
-        assert_eq!(i16_val.to_str(), "-32768".to_strbuf());
+        assert_eq!(i16_val.to_str(), "-32768".to_string());
 
         let mut i32_val: i32 = 2_147_483_647_i32;
-        assert_eq!(i32_val.to_str(), "2147483647".to_strbuf());
+        assert_eq!(i32_val.to_str(), "2147483647".to_string());
 
         i32_val += 1 as i32;
-        assert_eq!(i32_val.to_str(), "-2147483648".to_strbuf());
+        assert_eq!(i32_val.to_str(), "-2147483648".to_string());
 
         let mut i64_val: i64 = 9_223_372_036_854_775_807_i64;
-        assert_eq!(i64_val.to_str(), "9223372036854775807".to_strbuf());
+        assert_eq!(i64_val.to_str(), "9223372036854775807".to_string());
 
         i64_val += 1 as i64;
-        assert_eq!(i64_val.to_str(), "-9223372036854775808".to_strbuf());
+        assert_eq!(i64_val.to_str(), "-9223372036854775808".to_string());
     }
 
     #[test]

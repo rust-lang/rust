@@ -30,7 +30,7 @@ fn atoll(s: String) -> i64 {
 }
 
 pub fn main() {
-    assert_eq!(atol("1024".to_strbuf()) * 10, atol("10240".to_strbuf()));
-    assert!((atoll("11111111111111111".to_strbuf()) * 10) ==
-             atoll("111111111111111110".to_strbuf()));
+    assert_eq!(atol("1024".to_string()) * 10, atol("10240".to_string()));
+    assert!((atoll("11111111111111111".to_string()) * 10) ==
+             atoll("111111111111111110".to_string()));
 }

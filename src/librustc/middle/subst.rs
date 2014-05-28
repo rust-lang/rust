@@ -112,7 +112,7 @@ impl<'a> TypeFolder for SubstFolder<'a> {
                     let root_msg = match self.root_ty {
                         Some(root) => format!(" in the substitution of `{}`",
                                               root.repr(self.tcx)),
-                        None => "".to_strbuf()
+                        None => "".to_string()
                     };
                     let m = format!("can't use type parameters from outer \
                                     function{}; try using a local type \
@@ -134,7 +134,7 @@ impl<'a> TypeFolder for SubstFolder<'a> {
                         let root_msg = match self.root_ty {
                             Some(root) => format!(" in the substitution of `{}`",
                                                   root.repr(self.tcx)),
-                            None => "".to_strbuf()
+                            None => "".to_string()
                         };
                         let m = format!("missing `Self` type param{}",
                                         root_msg);

@@ -41,7 +41,7 @@ macro_rules! parse_node (
     ) => (
         parse_node!(
             [$(: $tags ($(:$tag_nodes),*))*];
-            [$(:$head_nodes,)* :tag(stringify!($head).to_strbuf(),
+            [$(:$head_nodes,)* :tag(stringify!($head).to_string(),
                                     vec!($($nodes),*))];
             $($rest)*
         )
@@ -66,7 +66,7 @@ macro_rules! parse_node (
     ) => (
         parse_node!(
             [$(: $tags ($(:$tag_nodes),*))*];
-            [$(:$nodes,)* :text(".".to_strbuf())];
+            [$(:$nodes,)* :text(".".to_string())];
             $($rest)*
         )
     );
@@ -78,7 +78,7 @@ macro_rules! parse_node (
     ) => (
         parse_node!(
             [$(: $tags ($(:$tag_nodes),*))*];
-            [$(:$nodes,)* :text(stringify!($word).to_strbuf())];
+            [$(:$nodes,)* :text(stringify!($word).to_string())];
             $($rest)*
         )
     );

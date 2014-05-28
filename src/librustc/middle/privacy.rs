@@ -374,7 +374,7 @@ enum FieldName {
 impl<'a> PrivacyVisitor<'a> {
     // used when debugging
     fn nodestr(&self, id: ast::NodeId) -> String {
-        self.tcx.map.node_to_str(id).to_strbuf()
+        self.tcx.map.node_to_str(id).to_string()
     }
 
     // Determines whether the given definition is public from the point of view
@@ -1400,7 +1400,7 @@ impl<'a> Visitor<()> for VisiblePrivateTypesVisitor<'a> {
                         lint::VisiblePrivateTypes,
                         path_id, p.span,
                         "private type in exported type \
-                         signature".to_strbuf());
+                         signature".to_string());
                 }
             }
             _ => {}

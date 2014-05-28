@@ -736,7 +736,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
         let containing_scope = namespace_node.scope;
         (linkage_name, containing_scope)
     } else {
-        (function_name.as_slice().to_strbuf(), file_metadata)
+        (function_name.as_slice().to_string(), file_metadata)
     };
 
     // Clang sets this parameter to the opening brace of the function's block, so let's do this too.
@@ -1119,7 +1119,7 @@ fn file_metadata(cx: &CrateContext, full_path: &str) -> DIFile {
         });
 
     let mut created_files = debug_context(cx).created_files.borrow_mut();
-    created_files.insert(full_path.to_strbuf(), file_metadata);
+    created_files.insert(full_path.to_string(), file_metadata);
     return file_metadata;
 }
 
@@ -1146,28 +1146,28 @@ fn basic_type_metadata(cx: &CrateContext, t: ty::t) -> DIType {
     debug!("basic_type_metadata: {:?}", ty::get(t));
 
     let (name, encoding) = match ty::get(t).sty {
-        ty::ty_nil => ("()".to_owned(), DW_ATE_unsigned),
-        ty::ty_bot => ("!".to_owned(), DW_ATE_unsigned),
-        ty::ty_bool => ("bool".to_owned(), DW_ATE_boolean),
-        ty::ty_char => ("char".to_owned(), DW_ATE_unsigned_char),
+        ty::ty_nil => ("()".to_string(), DW_ATE_unsigned),
+        ty::ty_bot => ("!".to_string(), DW_ATE_unsigned),
+        ty::ty_bool => ("bool".to_string(), DW_ATE_boolean),
+        ty::ty_char => ("char".to_string(), DW_ATE_unsigned_char),
         ty::ty_int(int_ty) => match int_ty {
-            ast::TyI => ("int".to_owned(), DW_ATE_signed),
-            ast::TyI8 => ("i8".to_owned(), DW_ATE_signed),
-            ast::TyI16 => ("i16".to_owned(), DW_ATE_signed),
-            ast::TyI32 => ("i32".to_owned(), DW_ATE_signed),
-            ast::TyI64 => ("i64".to_owned(), DW_ATE_signed)
+            ast::TyI => ("int".to_string(), DW_ATE_signed),
+            ast::TyI8 => ("i8".to_string(), DW_ATE_signed),
+            ast::TyI16 => ("i16".to_string(), DW_ATE_signed),
+            ast::TyI32 => ("i32".to_string(), DW_ATE_signed),
+            ast::TyI64 => ("i64".to_string(), DW_ATE_signed)
         },
         ty::ty_uint(uint_ty) => match uint_ty {
-            ast::TyU => ("uint".to_owned(), DW_ATE_unsigned),
-            ast::TyU8 => ("u8".to_owned(), DW_ATE_unsigned),
-            ast::TyU16 => ("u16".to_owned(), DW_ATE_unsigned),
-            ast::TyU32 => ("u32".to_owned(), DW_ATE_unsigned),
-            ast::TyU64 => ("u64".to_owned(), DW_ATE_unsigned)
+            ast::TyU => ("uint".to_string(), DW_ATE_unsigned),
+            ast::TyU8 => ("u8".to_string(), DW_ATE_unsigned),
+            ast::TyU16 => ("u16".to_string(), DW_ATE_unsigned),
+            ast::TyU32 => ("u32".to_string(), DW_ATE_unsigned),
+            ast::TyU64 => ("u64".to_string(), DW_ATE_unsigned)
         },
         ty::ty_float(float_ty) => match float_ty {
-            ast::TyF32 => ("f32".to_owned(), DW_ATE_float),
-            ast::TyF64 => ("f64".to_owned(), DW_ATE_float),
-            ast::TyF128 => ("f128".to_owned(), DW_ATE_float)
+            ast::TyF32 => ("f32".to_string(), DW_ATE_float),
+            ast::TyF64 => ("f64".to_string(), DW_ATE_float),
+            ast::TyF128 => ("f128".to_string(), DW_ATE_float)
         },
         _ => cx.sess().bug("debuginfo::basic_type_metadata - t is invalid type")
     };
@@ -1255,9 +1255,9 @@ impl StructMemberDescriptionFactory {
 
         self.fields.iter().enumerate().map(|(i, field)| {
             let name = if field.ident.name == special_idents::unnamed_field.name {
-                "".to_strbuf()
+                "".to_string()
             } else {
-                token::get_ident(field.ident).get().to_strbuf()
+                token::get_ident(field.ident).get().to_string()
             };
 
             let offset = if self.is_simd {
@@ -1366,7 +1366,7 @@ impl TupleMemberDescriptionFactory {
                                   -> Vec<MemberDescription> {
         self.component_types.iter().map(|&component_type| {
             MemberDescription {
-                name: "".to_strbuf(),
+                name: "".to_string(),
                 llvm_type: type_of::type_of(cx, component_type),
                 type_metadata: type_metadata(cx, component_type, self.span),
                 offset: ComputedMemberOffset,
@@ -1444,7 +1444,7 @@ impl GeneralMemberDescriptionFactory {
                                               self.file_metadata,
                                               codemap::DUMMY_SP);
                 MemberDescription {
-                    name: "".to_strbuf(),
+                    name: "".to_string(),
                     llvm_type: variant_llvm_type,
                     type_metadata: variant_type_metadata,
                     offset: FixedMemberOffset { bytes: 0 },
@@ -1464,7 +1464,7 @@ impl EnumVariantMemberDescriptionFactory {
                                   -> Vec<MemberDescription> {
         self.args.iter().enumerate().map(|(i, &(ref name, ty))| {
             MemberDescription {
-                name: name.to_strbuf(),
+                name: name.to_string(),
                 llvm_type: type_of::type_of(cx, ty),
                 type_metadata: match self.discriminant_type_metadata {
                     Some(metadata) if i == 0 => metadata,
@@ -1513,21 +1513,21 @@ fn describe_enum_variant(cx: &CrateContext,
         Some(ref names) => {
             names.iter()
                  .map(|ident| {
-                     token::get_ident(*ident).get().to_str().into_strbuf()
+                     token::get_ident(*ident).get().to_str().into_string()
                  }).collect()
         }
-        None => variant_info.args.iter().map(|_| "".to_strbuf()).collect()
+        None => variant_info.args.iter().map(|_| "".to_string()).collect()
     };
 
     // If this is not a univariant enum, there is also the (unnamed) discriminant field
     if discriminant_type_metadata.is_some() {
-        arg_names.insert(0, "".to_strbuf());
+        arg_names.insert(0, "".to_string());
     }
 
     // Build an array of (field name, field type) pairs to be captured in the factory closure.
     let args: Vec<(String, ty::t)> = arg_names.iter()
         .zip(struct_def.fields.iter())
-        .map(|(s, &t)| (s.to_strbuf(), t))
+        .map(|(s, &t)| (s.to_string(), t))
         .collect();
 
     let member_description_factory =
@@ -1876,7 +1876,7 @@ fn boxed_type_metadata(cx: &CrateContext,
                     -> DICompositeType {
     let box_type_name = match content_type_name {
         Some(content_type_name) => format!("Boxed<{}>", content_type_name),
-        None                    => "BoxedType".to_strbuf()
+        None                    => "BoxedType".to_string()
     };
 
     let box_llvm_type = Type::at_box(cx, content_llvm_type);
@@ -1891,31 +1891,31 @@ fn boxed_type_metadata(cx: &CrateContext,
 
     let member_descriptions = [
         MemberDescription {
-            name: "refcnt".to_strbuf(),
+            name: "refcnt".to_string(),
             llvm_type: *member_llvm_types.get(0),
             type_metadata: type_metadata(cx, int_type, codemap::DUMMY_SP),
             offset: ComputedMemberOffset,
         },
         MemberDescription {
-            name: "drop_glue".to_strbuf(),
+            name: "drop_glue".to_string(),
             llvm_type: *member_llvm_types.get(1),
             type_metadata: nil_pointer_type_metadata,
             offset: ComputedMemberOffset,
         },
         MemberDescription {
-            name: "prev".to_strbuf(),
+            name: "prev".to_string(),
             llvm_type: *member_llvm_types.get(2),
             type_metadata: nil_pointer_type_metadata,
             offset: ComputedMemberOffset,
         },
         MemberDescription {
-            name: "next".to_strbuf(),
+            name: "next".to_string(),
             llvm_type: *member_llvm_types.get(3),
             type_metadata: nil_pointer_type_metadata,
             offset: ComputedMemberOffset,
         },
         MemberDescription {
-            name: "val".to_strbuf(),
+            name: "val".to_string(),
             llvm_type: *member_llvm_types.get(4),
             type_metadata: content_type_metadata,
             offset: ComputedMemberOffset,
@@ -2004,19 +2004,19 @@ fn vec_metadata(cx: &CrateContext,
 
     let member_descriptions = [
         MemberDescription {
-            name: "fill".to_strbuf(),
+            name: "fill".to_string(),
             llvm_type: *member_llvm_types.get(0),
             type_metadata: int_type_metadata,
             offset: ComputedMemberOffset,
         },
         MemberDescription {
-            name: "alloc".to_strbuf(),
+            name: "alloc".to_string(),
             llvm_type: *member_llvm_types.get(1),
             type_metadata: int_type_metadata,
             offset: ComputedMemberOffset,
         },
         MemberDescription {
-            name: "elements".to_strbuf(),
+            name: "elements".to_string(),
             llvm_type: *member_llvm_types.get(2),
             type_metadata: array_type_metadata,
             offset: ComputedMemberOffset,
@@ -2061,13 +2061,13 @@ fn vec_slice_metadata(cx: &CrateContext,
 
     let member_descriptions = [
         MemberDescription {
-            name: "data_ptr".to_strbuf(),
+            name: "data_ptr".to_string(),
             llvm_type: *member_llvm_types.get(0),
             type_metadata: type_metadata(cx, data_ptr_type, span),
             offset: ComputedMemberOffset,
         },
         MemberDescription {
-            name: "length".to_strbuf(),
+            name: "length".to_string(),
             llvm_type: *member_llvm_types.get(1),
             type_metadata: type_metadata(cx, ty::mk_uint(), span),
             offset: ComputedMemberOffset,

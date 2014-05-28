@@ -14,7 +14,7 @@ pub fn main() {
     for i in x.iter() { println!("{:?}", *i); y += *i; }
     println!("{:?}", y);
     assert_eq!(y, 6);
-    let s = "hello there".to_owned();
+    let s = "hello there".to_string();
     let mut i: int = 0;
     for c in s.as_slice().bytes() {
         if i == 0 { assert!((c == 'h' as u8)); }

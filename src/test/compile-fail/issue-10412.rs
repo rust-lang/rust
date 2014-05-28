@@ -26,7 +26,7 @@ impl<'self> Serializable<str> for &'self str { //~ ERROR no longer a special lif
 
 fn main() {
     println!("hello");
-    let x = "foo".to_owned();
+    let x = "foo".to_string();
     let y = x;
     println!("{}", y);
 }

@@ -36,7 +36,7 @@ impl<'f> Glb<'f> {
 
 impl<'f> Combine for Glb<'f> {
     fn infcx<'a>(&'a self) -> &'a InferCtxt<'a> { self.get_ref().infcx }
-    fn tag(&self) -> String { "glb".to_strbuf() }
+    fn tag(&self) -> String { "glb".to_string() }
     fn a_is_expected(&self) -> bool { self.get_ref().a_is_expected }
     fn trace(&self) -> TypeTrace { self.get_ref().trace.clone() }
 

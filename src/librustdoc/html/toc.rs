@@ -202,8 +202,8 @@ mod test {
         macro_rules! push {
             ($level: expr, $name: expr) => {
                 assert_eq!(builder.push($level,
-                                        $name.to_strbuf(),
-                                        "".to_strbuf()),
+                                        $name.to_string(),
+                                        "".to_string()),
                            $name);
             }
         }
@@ -242,9 +242,9 @@ mod test {
                         $(
                             TocEntry {
                                 level: $level,
-                                name: $name.to_strbuf(),
-                                sec_number: $name.to_strbuf(),
-                                id: "".to_strbuf(),
+                                name: $name.to_string(),
+                                sec_number: $name.to_string(),
+                                id: "".to_string(),
                                 children: toc!($($sub),*)
                             }
                             ),*
