@@ -10,15 +10,11 @@
 
 //! Operations and constants for 32-bits floats (`f32` type)
 
-use default::Default;
 use intrinsics;
 use mem;
 use num::{FPNormal, FPCategory, FPZero, FPSubnormal, FPInfinite, FPNaN};
-use num::{Zero, One, Bounded, Signed, Num, Primitive, Float};
+use num::Float;
 use option::Option;
-
-#[cfg(not(test))] use cmp::{Eq, Ord};
-#[cfg(not(test))] use ops::{Add, Sub, Mul, Div, Rem, Neg};
 
 pub static RADIX: uint = 2u;
 
@@ -102,131 +98,6 @@ pub mod consts {
 
     /// ln(10.0)
     pub static LN_10: f32 = 2.30258509299404568401799145468436421_f32;
-}
-
-#[cfg(not(test))]
-impl Ord for f32 {
-    #[inline]
-    fn lt(&self, other: &f32) -> bool { (*self) < (*other) }
-    #[inline]
-    fn le(&self, other: &f32) -> bool { (*self) <= (*other) }
-    #[inline]
-    fn ge(&self, other: &f32) -> bool { (*self) >= (*other) }
-    #[inline]
-    fn gt(&self, other: &f32) -> bool { (*self) > (*other) }
-}
-#[cfg(not(test))]
-impl Eq for f32 {
-    #[inline]
-    fn eq(&self, other: &f32) -> bool { (*self) == (*other) }
-}
-
-impl Num for f32 {}
-
-impl Default for f32 {
-    #[inline]
-    fn default() -> f32 { 0.0 }
-}
-
-impl Primitive for f32 {}
-
-impl Zero for f32 {
-    #[inline]
-    fn zero() -> f32 { 0.0 }
-
-    /// Returns true if the number is equal to either `0.0` or `-0.0`
-    #[inline]
-    fn is_zero(&self) -> bool { *self == 0.0 || *self == -0.0 }
-}
-
-impl One for f32 {
-    #[inline]
-    fn one() -> f32 { 1.0 }
-}
-
-#[cfg(not(test))]
-impl Add<f32,f32> for f32 {
-    #[inline]
-    fn add(&self, other: &f32) -> f32 { *self + *other }
-}
-
-#[cfg(not(test))]
-impl Sub<f32,f32> for f32 {
-    #[inline]
-    fn sub(&self, other: &f32) -> f32 { *self - *other }
-}
-
-#[cfg(not(test))]
-impl Mul<f32,f32> for f32 {
-    #[inline]
-    fn mul(&self, other: &f32) -> f32 { *self * *other }
-}
-
-#[cfg(not(test))]
-impl Div<f32,f32> for f32 {
-    #[inline]
-    fn div(&self, other: &f32) -> f32 { *self / *other }
-}
-
-#[cfg(not(test))]
-impl Rem<f32,f32> for f32 {
-    #[inline]
-    fn rem(&self, other: &f32) -> f32 {
-        extern { fn fmodf(a: f32, b: f32) -> f32; }
-        unsafe { fmodf(*self, *other) }
-    }
-}
-
-#[cfg(not(test))]
-impl Neg<f32> for f32 {
-    #[inline]
-    fn neg(&self) -> f32 { -*self }
-}
-
-impl Signed for f32 {
-    /// Computes the absolute value. Returns `NAN` if the number is `NAN`.
-    #[inline]
-    fn abs(&self) -> f32 {
-        unsafe { intrinsics::fabsf32(*self) }
-    }
-
-    /// The positive difference of two numbers. Returns `0.0` if the number is
-    /// less than or equal to `other`, otherwise the difference between`self`
-    /// and `other` is returned.
-    #[inline]
-    fn abs_sub(&self, other: &f32) -> f32 {
-        extern { fn fdimf(a: f32, b: f32) -> f32; }
-        unsafe { fdimf(*self, *other) }
-    }
-
-    /// # Returns
-    ///
-    /// - `1.0` if the number is positive, `+0.0` or `INFINITY`
-    /// - `-1.0` if the number is negative, `-0.0` or `NEG_INFINITY`
-    /// - `NAN` if the number is NaN
-    #[inline]
-    fn signum(&self) -> f32 {
-        if self != self { NAN } else {
-            unsafe { intrinsics::copysignf32(1.0, *self) }
-        }
-    }
-
-    /// Returns `true` if the number is positive, including `+0.0` and `INFINITY`
-    #[inline]
-    fn is_positive(&self) -> bool { *self > 0.0 || (1.0 / *self) == INFINITY }
-
-    /// Returns `true` if the number is negative, including `-0.0` and `NEG_INFINITY`
-    #[inline]
-    fn is_negative(&self) -> bool { *self < 0.0 || (1.0 / *self) == NEG_INFINITY }
-}
-
-impl Bounded for f32 {
-    // NOTE: this is the smallest non-infinite f32 value, *not* MIN_VALUE
-    #[inline]
-    fn min_value() -> f32 { -MAX_VALUE }
-
-    #[inline]
-    fn max_value() -> f32 { MAX_VALUE }
 }
 
 impl Float for f32 {
