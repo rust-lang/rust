@@ -331,11 +331,11 @@ macro_rules! vec(
 )
 
 
-/// A macro to select an event from a number of ports.
+/// A macro to select an event from a number of receivers.
 ///
 /// This macro is used to wait for the first event to occur on a number of
-/// ports. It places no restrictions on the types of ports given to this macro,
-/// this can be viewed as a heterogeneous select.
+/// receivers. It places no restrictions on the types of receivers given to
+/// this macro, this can be viewed as a heterogeneous select.
 ///
 /// # Example
 ///
