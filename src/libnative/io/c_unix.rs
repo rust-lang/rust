@@ -22,15 +22,20 @@ use libc;
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "freebsd")]
 pub static FIONBIO: libc::c_ulong = 0x8004667e;
-#[cfg(target_os = "linux")]
+#[cfg(target_os = "linux", not(target_arch = "mips"))]
 #[cfg(target_os = "android")]
 pub static FIONBIO: libc::c_ulong = 0x5421;
+#[cfg(target_os = "linux", target_arch = "mips")]
+pub static FIONBIO: libc::c_ulong = 0x667e;
+
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "freebsd")]
 pub static FIOCLEX: libc::c_ulong = 0x20006601;
-#[cfg(target_os = "linux")]
+#[cfg(target_os = "linux", not(target_arch = "mips"))]
 #[cfg(target_os = "android")]
 pub static FIOCLEX: libc::c_ulong = 0x5451;
+#[cfg(target_os = "linux", target_arch = "mips")]
+pub static FIOCLEX: libc::c_ulong = 0x6601;
 
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "freebsd")]
@@ -100,7 +105,7 @@ mod select {
     }
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(target_os = "linux", not(target_arch = "mips"))]
 #[cfg(target_os = "android")]
 mod signal {
     use libc;
@@ -140,6 +145,44 @@ mod signal {
     #[cfg(target_word_size = "64")]
     pub struct sigset_t {
         __val: [libc::c_ulong, ..16],
+    }
+}
+
+#[cfg(target_os = "linux", target_arch = "mips")]
+mod signal {
+    use libc;
+
+    pub static SA_NOCLDSTOP: libc::c_ulong = 0x00000001;
+    pub static SA_NOCLDWAIT: libc::c_ulong = 0x00010000;
+    pub static SA_NODEFER: libc::c_ulong = 0x40000000;
+    pub static SA_ONSTACK: libc::c_ulong = 0x08000000;
+    pub static SA_RESETHAND: libc::c_ulong = 0x80000000;
+    pub static SA_RESTART: libc::c_ulong = 0x10000000;
+    pub static SA_SIGINFO: libc::c_ulong = 0x00000008;
+    pub static SIGCHLD: libc::c_int = 18;
+
+    // This definition is not as accurate as it could be, {pid, uid, status} is
+    // actually a giant union. Currently we're only interested in these fields,
+    // however.
+    pub struct siginfo {
+        si_signo: libc::c_int,
+        si_code: libc::c_int,
+        si_errno: libc::c_int,
+        pub pid: libc::pid_t,
+        pub uid: libc::uid_t,
+        pub status: libc::c_int,
+    }
+
+    pub struct sigaction {
+        pub sa_flags: libc::c_uint,
+        pub sa_handler: extern fn(libc::c_int),
+        pub sa_mask: sigset_t,
+        sa_restorer: *mut libc::c_void,
+        sa_resv: [libc::c_int, ..1],
+    }
+
+    pub struct sigset_t {
+        __val: [libc::c_ulong, ..32],
     }
 }
 
