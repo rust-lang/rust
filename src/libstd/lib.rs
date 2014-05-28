@@ -117,6 +117,7 @@
 #[cfg(test)] extern crate rustuv;
 #[cfg(test)] extern crate native;
 #[cfg(test)] extern crate green;
+#[cfg(test)] extern crate debug;
 #[cfg(test)] #[phase(syntax, link)] extern crate log;
 
 // Make and rand accessible for benchmarking/testcases

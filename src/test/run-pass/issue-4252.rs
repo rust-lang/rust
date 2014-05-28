@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+extern crate debug;
+
 trait X {
     fn call<T>(&self, x: &T);
     fn default_method<T>(&self, x: &T) {

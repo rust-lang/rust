@@ -14,6 +14,7 @@
 #![feature(phase)]
 #[phase(syntax, link)]
 extern crate log;
+extern crate debug;
 
 pub fn main() {
     // only fails if println! evaluates its argument.

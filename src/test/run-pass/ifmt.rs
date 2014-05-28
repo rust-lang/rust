@@ -15,6 +15,8 @@
 #![allow(unused_must_use)]
 #![allow(deprecated_owned_vector)]
 
+extern crate debug;
+
 use std::fmt;
 use std::io::MemWriter;
 use std::io;

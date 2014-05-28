@@ -31,16 +31,17 @@ This API is completely unstable and subject to change.
 #![feature(macro_rules, globs, struct_variant, managed_boxes, quote,
            default_type_params, phase)]
 
-extern crate flate;
 extern crate arena;
+extern crate collections;
+extern crate debug;
+extern crate flate;
+extern crate getopts;
 extern crate graphviz;
-extern crate syntax;
+extern crate libc;
 extern crate serialize;
 extern crate sync;
-extern crate getopts;
-extern crate collections;
+extern crate syntax;
 extern crate time;
-extern crate libc;
 
 #[phase(syntax, link)]
 extern crate log;

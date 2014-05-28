@@ -10,6 +10,8 @@
 
 #![feature(managed_boxes)]
 
+extern crate debug;
+
 struct clam {
     x: @int,
     y: @int,

@@ -10,6 +10,8 @@
 
 #![feature(macro_rules)]
 
+extern crate debug;
+
 macro_rules! check {
     ($m:ident, $t:ty, $v:expr) => {{
         mod $m {

@@ -405,14 +405,20 @@ will often see in examples, and its related family of macros: `print!`,
 that [printf][pf] has. Unlike printf, `format!` will give you a compile-time
 error when the types of the directives don't match the types of the arguments.
 
-~~~~
-# let mystery_object = ();
-
+~~~
 // `{}` will print the "default format" of a type
 println!("{} is {}", "the answer", 43);
+~~~
 
-// `{:?}` will conveniently print any type
+~~~~
+extern crate debug;
+
+# fn main() {
+# let mystery_object = ();
+// `{:?}` will conveniently print any type,
+// but requires the `debug` crate to be linked in
 println!("what is this thing: {:?}", mystery_object);
+# }
 ~~~~
 
 [pf]: http://en.cppreference.com/w/cpp/io/c/fprintf
@@ -698,8 +704,8 @@ When an enum has simple integer discriminators, you can apply the `as` cast
 operator to convert a variant to its discriminator value as an `int`:
 
 ~~~~
-# enum Direction { North }
-println!( "{:?} => {}", North, North as int );
+# #[deriving(Show)] enum Direction { North }
+println!( "{} => {}", North, North as int );
 ~~~~
 
 It is possible to set the discriminator values to chosen constant values:
@@ -2228,7 +2234,7 @@ method.
 ~~~~
 # trait Printable { fn print(&self); }
 impl Printable for int {
-    fn print(&self) { println!("{:?}", *self) }
+    fn print(&self) { println!("{}", *self) }
 }
 
 impl Printable for String {
@@ -2253,11 +2259,11 @@ types to be exactly as it is for `int`, above:
 ~~~~
 # trait Printable { fn print(&self); }
 impl Printable for f32 {
-    fn print(&self) { println!("{:?}", *self) }
+    fn print(&self) { println!("{}", *self) }
 }
 
 impl Printable for bool {
-    fn print(&self) { println!("{:?}", *self) }
+    fn print(&self) { println!("{}", *self) }
 }
 
 # true.print();
@@ -2270,8 +2276,11 @@ definition of `print` right in the trait definition, instead of just
 giving its signature.  That is, we can write the following:
 
 ~~~~
+extern crate debug;
+
+# fn main() {
 trait Printable {
-	// Default method implementation
+    // Default method implementation
     fn print(&self) { println!("{:?}", *self) }
 }
 
@@ -2289,6 +2298,7 @@ impl Printable for f32 {}
 # ("foo".to_string()).print();
 # true.print();
 # 3.14159.print();
+# }
 ~~~~
 
 Here, the impls of `Printable` for `int`, `bool`, and `f32` don't

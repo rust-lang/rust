@@ -8,8 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 // Issue #2303
+
+extern crate debug;
 
 use std::mem;
 

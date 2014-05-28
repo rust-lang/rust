@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
+extern crate debug;
 
 fn incr(x: &mut int) -> bool { *x += 1; assert!((false)); return false; }
 

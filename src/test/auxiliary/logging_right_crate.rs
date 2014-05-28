@@ -10,6 +10,7 @@
 
 #![feature(phase)]
 #[phase(syntax, link)] extern crate log;
+extern crate debug;
 
 pub fn foo<T>() {
     fn death() -> int { fail!() }

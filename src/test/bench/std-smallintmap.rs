@@ -12,6 +12,7 @@
 
 extern crate collections;
 extern crate time;
+extern crate debug;
 
 use collections::SmallIntMap;
 use std::os;
