@@ -10,47 +10,4 @@
 
 //! Operations and constants for unsigned 16-bits integers (`u16` type)
 
-use default::Default;
-use intrinsics;
-use num::{Bitwise, Bounded, Zero, One, Unsigned, Num, Int, Primitive};
-use num::{CheckedAdd, CheckedSub, CheckedMul, CheckedDiv};
-use option::{Some, None, Option};
-
-#[cfg(not(test))]
-use cmp::{Eq, Ord, TotalEq, TotalOrd, Less, Greater, Equal, Ordering};
-#[cfg(not(test))]
-use ops::{Add, Sub, Mul, Div, Rem, Neg, BitAnd, BitOr, BitXor};
-#[cfg(not(test))]
-use ops::{Shl, Shr, Not};
-
 uint_module!(u16, i16, 16)
-
-impl CheckedAdd for u16 {
-    #[inline]
-    fn checked_add(&self, v: &u16) -> Option<u16> {
-        unsafe {
-            let (x, y) = intrinsics::u16_add_with_overflow(*self, *v);
-            if y { None } else { Some(x) }
-        }
-    }
-}
-
-impl CheckedSub for u16 {
-    #[inline]
-    fn checked_sub(&self, v: &u16) -> Option<u16> {
-        unsafe {
-            let (x, y) = intrinsics::u16_sub_with_overflow(*self, *v);
-            if y { None } else { Some(x) }
-        }
-    }
-}
-
-impl CheckedMul for u16 {
-    #[inline]
-    fn checked_mul(&self, v: &u16) -> Option<u16> {
-        unsafe {
-            let (x, y) = intrinsics::u16_mul_with_overflow(*self, *v);
-            if y { None } else { Some(x) }
-        }
-    }
-}
