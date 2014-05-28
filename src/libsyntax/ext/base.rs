@@ -114,6 +114,10 @@ pub trait MacResult {
     fn make_items(&self) -> Option<SmallVector<@ast::Item>> {
         None
     }
+    /// Create a pattern.
+    fn make_pat(&self) -> Option<@ast::Pat> {
+        None
+    }
 
     /// Create a statement.
     ///
@@ -137,6 +141,20 @@ impl MacExpr {
 impl MacResult for MacExpr {
     fn make_expr(&self) -> Option<@ast::Expr> {
         Some(self.e)
+    }
+}
+/// A convenience type for macros that return a single pattern.
+pub struct MacPat {
+    p: @ast::Pat
+}
+impl MacPat {
+    pub fn new(p: @ast::Pat) -> Box<MacResult> {
+        box MacPat { p: p } as Box<MacResult>
+    }
+}
+impl MacResult for MacPat {
+    fn make_pat(&self) -> Option<@ast::Pat> {
+        Some(self.p)
     }
 }
 /// A convenience type for macros that return a single item.
@@ -194,11 +212,23 @@ impl DummyResult {
             span: sp,
         }
     }
+
+    /// A plain dummy pattern.
+    pub fn raw_pat(sp: Span) -> @ast::Pat {
+        @ast::Pat {
+            id: ast::DUMMY_NODE_ID,
+            node: ast::PatWild,
+            span: sp,
+        }
+    }
 }
 
 impl MacResult for DummyResult {
     fn make_expr(&self) -> Option<@ast::Expr> {
         Some(DummyResult::raw_expr(self.span))
+    }
+    fn make_pat(&self) -> Option<@ast::Pat> {
+        Some(DummyResult::raw_pat(self.span))
     }
     fn make_items(&self) -> Option<SmallVector<@ast::Item>> {
         if self.expr_only {

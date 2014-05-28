@@ -482,6 +482,7 @@ mod test {
     }
 
     #[test]
+    #[allow(experimental)]
     fn clone_ref_updates_flag() {
         let x = RefCell::new(0);
         {

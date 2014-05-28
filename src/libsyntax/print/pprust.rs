@@ -1757,6 +1757,7 @@ impl<'a> State<'a> {
                                    |s, &p| s.print_pat(p)));
                 try!(word(&mut self.s, "]"));
             }
+            ast::PatMac(ref m) => try!(self.print_mac(m)),
         }
         self.ann.post(self, NodePat(pat))
     }
