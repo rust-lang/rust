@@ -10,6 +10,9 @@
 
 // Test that a class with a non-copyable field can't be
 // copied
+
+extern crate debug;
+
 struct bar {
   x: int,
 }

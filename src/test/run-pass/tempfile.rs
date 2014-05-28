@@ -18,6 +18,8 @@
 // they're in a different location than before. Hence, these tests are all run
 // serially here.
 
+extern crate debug;
+
 use std::io::{fs, TempDir};
 use std::io;
 use std::os;

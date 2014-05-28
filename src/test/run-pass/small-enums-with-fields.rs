@@ -10,6 +10,8 @@
 
 #![feature(macro_rules)]
 
+extern crate debug;
+
 use std::mem::size_of;
 
 #[deriving(Eq, Show)]

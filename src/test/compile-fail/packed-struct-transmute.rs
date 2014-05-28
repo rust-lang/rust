@@ -15,6 +15,8 @@
 
 // error-pattern: transmute called on types with different size
 
+extern crate debug;
+
 use std::mem;
 
 #[packed]

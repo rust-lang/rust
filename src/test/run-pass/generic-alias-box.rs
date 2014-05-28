@@ -10,6 +10,8 @@
 
 #![feature(managed_boxes)]
 
+extern crate debug;
+
 fn id<T>(t: T) -> T { return t; }
 
 pub fn main() {

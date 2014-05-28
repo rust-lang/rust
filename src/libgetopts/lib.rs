@@ -89,6 +89,7 @@
 #![deny(missing_doc)]
 #![deny(deprecated_owned_vector)]
 
+#[cfg(test)] extern crate debug;
 #[cfg(test)] #[phase(syntax, link)] extern crate log;
 
 use std::cmp::Eq;

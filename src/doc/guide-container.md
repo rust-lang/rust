@@ -254,7 +254,7 @@ for (x, y) in it {
 }
 
 // yield and print the last pair from the iterator
-println!("last: {:?}", it.next());
+println!("last: {}", it.next());
 
 // the iterator is now fully consumed
 assert!(it.next().is_none());
@@ -349,9 +349,9 @@ returning another `DoubleEndedIterator` with `next` and `next_back` exchanged.
 ~~~
 let xs = [1, 2, 3, 4, 5, 6];
 let mut it = xs.iter();
-println!("{:?}", it.next()); // prints `Some(&1)`
-println!("{:?}", it.next()); // prints `Some(&2)`
-println!("{:?}", it.next_back()); // prints `Some(&6)`
+println!("{}", it.next()); // prints `Some(1)`
+println!("{}", it.next()); // prints `Some(2)`
+println!("{}", it.next_back()); // prints `Some(6)`
 
 // prints `5`, `4` and `3`
 for &x in it.rev() {
@@ -367,7 +367,7 @@ let xs = [1, 2, 3, 4];
 let ys = [5, 6, 7, 8];
 let mut it = xs.iter().chain(ys.iter()).map(|&x| x * 2);
 
-println!("{:?}", it.next()); // prints `Some(2)`
+println!("{}", it.next()); // prints `Some(2)`
 
 // prints `16`, `14`, `12`, `10`, `8`, `6`, `4`
 for x in it.rev() {
@@ -398,17 +398,17 @@ underlying iterators are.
 let xs = [1, 2, 3, 4, 5];
 let ys = ~[7, 9, 11];
 let mut it = xs.iter().chain(ys.iter());
-println!("{:?}", it.idx(0)); // prints `Some(&1)`
-println!("{:?}", it.idx(5)); // prints `Some(&7)`
-println!("{:?}", it.idx(7)); // prints `Some(&11)`
-println!("{:?}", it.idx(8)); // prints `None`
+println!("{}", it.idx(0)); // prints `Some(1)`
+println!("{}", it.idx(5)); // prints `Some(7)`
+println!("{}", it.idx(7)); // prints `Some(11)`
+println!("{}", it.idx(8)); // prints `None`
 
 // yield two elements from the beginning, and one from the end
 it.next();
 it.next();
 it.next_back();
 
-println!("{:?}", it.idx(0)); // prints `Some(&3)`
-println!("{:?}", it.idx(4)); // prints `Some(&9)`
-println!("{:?}", it.idx(6)); // prints `None`
+println!("{}", it.idx(0)); // prints `Some(3)`
+println!("{}", it.idx(4)); // prints `Some(9)`
+println!("{}", it.idx(6)); // prints `None`
 ~~~

@@ -19,6 +19,7 @@
 // version.
 
 extern crate time;
+extern crate debug;
 
 use std::comm;
 use std::os;

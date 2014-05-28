@@ -12,6 +12,7 @@
 // storing closure data (as we used to do), the u64 would
 // overwrite the u16.
 
+extern crate debug;
 
 struct Pair<A,B> {
     a: A, b: B

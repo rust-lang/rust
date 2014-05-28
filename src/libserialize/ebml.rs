@@ -44,6 +44,7 @@ pub struct TaggedDoc<'a> {
     pub doc: Doc<'a>,
 }
 
+#[deriving(Show)]
 pub enum EbmlEncoderTag {
     EsUint,     // 0
     EsU64,      // 1
@@ -323,7 +324,7 @@ pub mod reader {
         }
 
         fn next_doc(&mut self, exp_tag: EbmlEncoderTag) -> DecodeResult<Doc<'doc>> {
-            debug!(". next_doc(exp_tag={:?})", exp_tag);
+            debug!(". next_doc(exp_tag={})", exp_tag);
             if self.pos >= self.parent.end {
                 return Err(Expected(format_strbuf!("no more documents in \
                                                     current node!")));
@@ -339,8 +340,8 @@ pub mod reader {
                    r_doc.end);
             if r_tag != (exp_tag as uint) {
                 return Err(Expected(format_strbuf!("expected EBML doc with \
-                                                    tag {:?} but found tag \
-                                                    {:?}",
+                                                    tag {} but found tag \
+                                                    {}",
                                                    exp_tag,
                                                    r_tag)));
             }
@@ -370,7 +371,7 @@ pub mod reader {
 
         fn _next_uint(&mut self, exp_tag: EbmlEncoderTag) -> DecodeResult<uint> {
             let r = doc_as_u32(try!(self.next_doc(exp_tag)));
-            debug!("_next_uint exp_tag={:?} result={}", exp_tag, r);
+            debug!("_next_uint exp_tag={} result={}", exp_tag, r);
             Ok(r as uint)
         }
 
@@ -1085,7 +1086,7 @@ mod tests {
     #[test]
     fn test_option_int() {
         fn test_v(v: Option<int>) {
-            debug!("v == {:?}", v);
+            debug!("v == {}", v);
             let mut wr = MemWriter::new();
             {
                 let mut ebml_w = writer::Encoder(&mut wr);
@@ -1094,7 +1095,7 @@ mod tests {
             let ebml_doc = reader::Doc(wr.get_ref());
             let mut deser = reader::Decoder(ebml_doc);
             let v1 = Decodable::decode(&mut deser).unwrap();
-            debug!("v1 == {:?}", v1);
+            debug!("v1 == {}", v1);
             assert_eq!(v, v1);
         }
 

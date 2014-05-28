@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
+extern crate debug;
 
 struct Pair<T, U> { a: T, b: U }
 struct Triple { x: int, y: int, z: int }

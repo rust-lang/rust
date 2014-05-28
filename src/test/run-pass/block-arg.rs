@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+extern crate debug;
+
 fn inty(fun: proc(int) -> int) -> int {
     fun(100)
 }
