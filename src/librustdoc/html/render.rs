@@ -159,6 +159,9 @@ pub struct Cache {
     /// Cache of where external crate documentation can be found.
     pub extern_locations: HashMap<ast::CrateNum, ExternalLocation>,
 
+    /// Set of definitions which have been inlined from external crates.
+    pub inlined: HashSet<ast::DefId>,
+
     // Private fields only used when initially crawling a crate to build a cache
 
     stack: Vec<String>,
@@ -287,6 +290,9 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
         typarams: analysis.as_ref().map(|a| {
             a.external_typarams.borrow_mut().take_unwrap()
         }).unwrap_or(HashMap::new()),
+        inlined: analysis.as_ref().map(|a| {
+            a.inlined.borrow_mut().take_unwrap()
+        }).unwrap_or(HashSet::new()),
     };
     cache.stack.push(krate.name.clone());
     krate = cache.fold_crate(krate);
