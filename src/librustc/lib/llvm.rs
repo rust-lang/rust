@@ -1892,7 +1892,7 @@ impl TypeNames {
 
     pub fn types_to_str(&self, tys: &[Type]) -> String {
         let strs: Vec<String> = tys.iter().map(|t| self.type_to_str(*t)).collect();
-        format_strbuf!("[{}]", strs.connect(",").to_string())
+        format!("[{}]", strs.connect(",").to_string())
     }
 
     pub fn val_to_str(&self, val: ValueRef) -> String {

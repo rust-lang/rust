@@ -16,7 +16,7 @@ pub fn main() {
     while i > 0 {
         println!("{}", a.len());
         assert_eq!(a.len(), expected_len);
-        a = format_strbuf!("{}{}", a, a);
+        a = format!("{}{}", a, a);
         i -= 1;
         expected_len *= 2u;
     }

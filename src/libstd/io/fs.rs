@@ -745,8 +745,7 @@ mod test {
     pub fn tmpdir() -> TempDir {
         use os;
         use rand;
-        let ret = os::tmpdir().join(
-            format_strbuf!("rust-{}", rand::random::<u32>()));
+        let ret = os::tmpdir().join(format!("rust-{}", rand::random::<u32>()));
         check!(io::fs::mkdir(&ret, io::UserRWX));
         TempDir(ret)
     }
@@ -953,7 +952,7 @@ mod test {
         check!(mkdir(dir, io::UserRWX));
         let prefix = "foo";
         for n in range(0,3) {
-            let f = dir.join(format_strbuf!("{}.txt", n));
+            let f = dir.join(format!("{}.txt", n));
             let mut w = check!(File::create(&f));
             let msg_str = format!("{}{}", prefix, n.to_str());
             let msg = msg_str.as_slice().as_bytes();
@@ -1040,7 +1039,7 @@ mod test {
         let tmpdir = tmpdir();
 
         let mut dirpath = tmpdir.path().clone();
-        dirpath.push(format_strbuf!("test-가一ー你好"));
+        dirpath.push(format!("test-가一ー你好"));
         check!(mkdir(&dirpath, io::UserRWX));
         assert!(dirpath.is_dir());
 
@@ -1057,7 +1056,7 @@ mod test {
 
         let tmpdir = tmpdir();
         let unicode = tmpdir.path();
-        let unicode = unicode.join(format_strbuf!("test-각丁ー再见"));
+        let unicode = unicode.join(format!("test-각丁ー再见"));
         check!(mkdir(&unicode, io::UserRWX));
         assert!(unicode.exists());
         assert!(!Path::new("test/unicode-bogus-path-각丁ー再见").exists());

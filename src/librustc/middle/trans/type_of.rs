@@ -316,9 +316,9 @@ pub fn llvm_type_name(cx: &CrateContext,
                                     did,
                                     false);
     if did.krate == 0 {
-        format_strbuf!("{}.{}", name, tstr)
+        format!("{}.{}", name, tstr)
     } else {
-        format_strbuf!("{}.{}[\\#{}]", name, tstr, did.krate)
+        format!("{}.{}[\\#{}]", name, tstr, did.krate)
     }
 }
 

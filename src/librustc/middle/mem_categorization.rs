@@ -1116,8 +1116,7 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
                       "captured outer variable".to_string()
                   }
                   _ => {
-                      format_strbuf!("dereference of `{}`-pointer",
-                                     ptr_sigil(pk))
+                      format!("dereference of `{}`-pointer", ptr_sigil(pk))
                   }
               }
           }
@@ -1250,11 +1249,11 @@ impl cmt_ {
 
 impl Repr for cmt_ {
     fn repr(&self, tcx: &ty::ctxt) -> String {
-        format_strbuf!("\\{{} id:{} m:{:?} ty:{}\\}",
-                       self.cat.repr(tcx),
-                       self.id,
-                       self.mutbl,
-                       self.ty.repr(tcx))
+        format!("\\{{} id:{} m:{:?} ty:{}\\}",
+                self.cat.repr(tcx),
+                self.id,
+                self.mutbl,
+                self.ty.repr(tcx))
     }
 }
 
@@ -1267,19 +1266,16 @@ impl Repr for categorization {
             cat_local(..) |
             cat_upvar(..) |
             cat_arg(..) => {
-                format_strbuf!("{:?}", *self)
+                format!("{:?}", *self)
             }
             cat_deref(ref cmt, derefs, ptr) => {
-                format_strbuf!("{}-{}{}->",
-                               cmt.cat.repr(tcx),
-                               ptr_sigil(ptr),
-                               derefs)
+                format!("{}-{}{}->", cmt.cat.repr(tcx), ptr_sigil(ptr), derefs)
             }
             cat_interior(ref cmt, interior) => {
-                format_strbuf!("{}.{}", cmt.cat.repr(tcx), interior.repr(tcx))
+                format!("{}.{}", cmt.cat.repr(tcx), interior.repr(tcx))
             }
             cat_downcast(ref cmt) => {
-                format_strbuf!("{}->(enum)", cmt.cat.repr(tcx))
+                format!("{}->(enum)", cmt.cat.repr(tcx))
             }
             cat_discr(ref cmt, _) => {
                 cmt.cat.repr(tcx)
@@ -1305,7 +1301,7 @@ impl Repr for InteriorKind {
             InteriorField(NamedField(fld)) => {
                 token::get_name(fld).get().to_str().to_string()
             }
-            InteriorField(PositionalField(i)) => format_strbuf!("\\#{:?}", i),
+            InteriorField(PositionalField(i)) => format!("\\#{:?}", i),
             InteriorElement(_) => "[]".to_string(),
         }
     }

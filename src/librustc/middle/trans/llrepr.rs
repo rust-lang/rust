@@ -19,7 +19,7 @@ pub trait LlvmRepr {
 impl<'a, T:LlvmRepr> LlvmRepr for &'a [T] {
     fn llrepr(&self, ccx: &CrateContext) -> String {
         let reprs: Vec<String> = self.iter().map(|t| t.llrepr(ccx)).collect();
-        format_strbuf!("[{}]", reprs.connect(","))
+        format!("[{}]", reprs.connect(","))
     }
 }
 

@@ -16,13 +16,13 @@ trait Foo {
 
 impl<T:Foo> Foo for @T {
     fn foo(&self) -> String {
-        format_strbuf!("@{}", (**self).foo())
+        format!("@{}", (**self).foo())
     }
 }
 
 impl Foo for uint {
     fn foo(&self) -> String {
-        format_strbuf!("{}", *self)
+        format!("{}", *self)
     }
 }
 

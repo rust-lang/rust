@@ -195,7 +195,7 @@ impl param_substs {
 }
 
 fn param_substs_to_str(this: &param_substs, tcx: &ty::ctxt) -> String {
-    format_strbuf!("param_substs({})", this.substs.repr(tcx))
+    format!("param_substs({})", this.substs.repr(tcx))
 }
 
 impl Repr for param_substs {
@@ -478,7 +478,7 @@ impl<'a> Block<'a> {
 
     pub fn to_str(&self) -> String {
         let blk: *Block = self;
-        format_strbuf!("[block {}]", blk)
+        format!("[block {}]", blk)
     }
 }
 

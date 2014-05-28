@@ -165,7 +165,7 @@ impl<'a> Archive<'a> {
             if skip.iter().any(|s| *s == filename) { continue }
             if filename.contains(".SYMDEF") { continue }
 
-            let filename = format_strbuf!("r-{}-{}", name, filename);
+            let filename = format!("r-{}-{}", name, filename);
             let new_filename = file.with_filename(filename);
             try!(fs::rename(file, &new_filename));
             inputs.push(new_filename);
@@ -185,8 +185,8 @@ impl<'a> Archive<'a> {
         };
         // On Windows, static libraries sometimes show up as libfoo.a and other
         // times show up as foo.lib
-        let oslibname = format_strbuf!("{}{}.{}", osprefix, name, osext);
-        let unixlibname = format_strbuf!("lib{}.a", name);
+        let oslibname = format!("{}{}.{}", osprefix, name, osext);
+        let unixlibname = format!("lib{}.a", name);
 
         let mut rustpath = filesearch::rust_path();
         rustpath.push(self.sess.target_filesearch().get_lib_path());

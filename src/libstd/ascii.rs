@@ -783,6 +783,6 @@ mod tests {
     #[test]
     fn test_show() {
         let c = Ascii { chr: 't' as u8 };
-        assert_eq!(format_strbuf!("{}", c), "t".to_string());
+        assert_eq!(format!("{}", c), "t".to_string());
     }
 }
