@@ -1178,8 +1178,8 @@ pub enum InlinedItem {
 mod test {
     use serialize::json;
     use serialize;
-    use codemap::*;
-    use super::*;
+    use codemap::{Span, BytePos};
+    use super::{Crate, Mod};
 
     // are ASTs encodable?
     #[test]

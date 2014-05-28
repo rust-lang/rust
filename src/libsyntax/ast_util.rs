@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::*;
 use ast;
 use ast_util;
 use codemap;
@@ -21,10 +20,9 @@ use visit;
 
 use std::cell::Cell;
 use std::cmp;
-use std::string::String;
 use std::u32;
 
-pub fn path_name_i(idents: &[Ident]) -> String {
+pub fn path_name_i(idents: &[ast::Ident]) -> String {
     // FIXME: Bad copies (#2543 -- same for everything else that says "bad")
     idents.iter().map(|i| {
         token::get_ident(*i).get().to_string()
@@ -33,103 +31,103 @@ pub fn path_name_i(idents: &[Ident]) -> String {
 
 // totally scary function: ignores all but the last element, should have
 // a different name
-pub fn path_to_ident(path: &Path) -> Ident {
+pub fn path_to_ident(path: &ast::Path) -> ast::Ident {
     path.segments.last().unwrap().identifier
 }
 
-pub fn local_def(id: NodeId) -> DefId {
-    ast::DefId { krate: LOCAL_CRATE, node: id }
+pub fn local_def(id: ast::NodeId) -> ast::DefId {
+    ast::DefId { krate: ast::LOCAL_CRATE, node: id }
 }
 
-pub fn is_local(did: ast::DefId) -> bool { did.krate == LOCAL_CRATE }
+pub fn is_local(did: ast::DefId) -> bool { did.krate == ast::LOCAL_CRATE }
 
-pub fn stmt_id(s: &Stmt) -> NodeId {
+pub fn stmt_id(s: &ast::Stmt) -> ast::NodeId {
     match s.node {
-      StmtDecl(_, id) => id,
-      StmtExpr(_, id) => id,
-      StmtSemi(_, id) => id,
-      StmtMac(..) => fail!("attempted to analyze unexpanded stmt")
+      ast::StmtDecl(_, id) => id,
+      ast::StmtExpr(_, id) => id,
+      ast::StmtSemi(_, id) => id,
+      ast::StmtMac(..) => fail!("attempted to analyze unexpanded stmt")
     }
 }
 
-pub fn variant_def_ids(d: Def) -> Option<(DefId, DefId)> {
+pub fn variant_def_ids(d: ast::Def) -> Option<(ast::DefId, ast::DefId)> {
     match d {
-      DefVariant(enum_id, var_id, _) => {
+      ast::DefVariant(enum_id, var_id, _) => {
           Some((enum_id, var_id))
       }
       _ => None
     }
 }
 
-pub fn def_id_of_def(d: Def) -> DefId {
+pub fn def_id_of_def(d: ast::Def) -> ast::DefId {
     match d {
-        DefFn(id, _) | DefStaticMethod(id, _, _) | DefMod(id) |
-        DefForeignMod(id) | DefStatic(id, _) |
-        DefVariant(_, id, _) | DefTy(id) | DefTyParam(id, _) |
-        DefUse(id) | DefStruct(id) | DefTrait(id) | DefMethod(id, _) => {
+        ast::DefFn(id, _) | ast::DefStaticMethod(id, _, _) | ast::DefMod(id) |
+        ast::DefForeignMod(id) | ast::DefStatic(id, _) |
+        ast::DefVariant(_, id, _) | ast::DefTy(id) | ast::DefTyParam(id, _) |
+        ast::DefUse(id) | ast::DefStruct(id) | ast::DefTrait(id) | ast::DefMethod(id, _) => {
             id
         }
-        DefArg(id, _) | DefLocal(id, _) | DefSelfTy(id)
-        | DefUpvar(id, _, _, _) | DefBinding(id, _) | DefRegion(id)
-        | DefTyParamBinder(id) | DefLabel(id) => {
+        ast::DefArg(id, _) | ast::DefLocal(id, _) | ast::DefSelfTy(id) |
+        ast::DefUpvar(id, _, _, _) | ast::DefBinding(id, _) | ast::DefRegion(id) |
+        ast::DefTyParamBinder(id) | ast::DefLabel(id) => {
             local_def(id)
         }
 
-        DefPrimTy(_) => fail!()
+        ast::DefPrimTy(_) => fail!()
     }
 }
 
-pub fn binop_to_str(op: BinOp) -> &'static str {
+pub fn binop_to_str(op: ast::BinOp) -> &'static str {
     match op {
-        BiAdd => "+",
-        BiSub => "-",
-        BiMul => "*",
-        BiDiv => "/",
-        BiRem => "%",
-        BiAnd => "&&",
-        BiOr => "||",
-        BiBitXor => "^",
-        BiBitAnd => "&",
-        BiBitOr => "|",
-        BiShl => "<<",
-        BiShr => ">>",
-        BiEq => "==",
-        BiLt => "<",
-        BiLe => "<=",
-        BiNe => "!=",
-        BiGe => ">=",
-        BiGt => ">"
+        ast::BiAdd => "+",
+        ast::BiSub => "-",
+        ast::BiMul => "*",
+        ast::BiDiv => "/",
+        ast::BiRem => "%",
+        ast::BiAnd => "&&",
+        ast::BiOr => "||",
+        ast::BiBitXor => "^",
+        ast::BiBitAnd => "&",
+        ast::BiBitOr => "|",
+        ast::BiShl => "<<",
+        ast::BiShr => ">>",
+        ast::BiEq => "==",
+        ast::BiLt => "<",
+        ast::BiLe => "<=",
+        ast::BiNe => "!=",
+        ast::BiGe => ">=",
+        ast::BiGt => ">"
     }
 }
 
-pub fn lazy_binop(b: BinOp) -> bool {
+pub fn lazy_binop(b: ast::BinOp) -> bool {
     match b {
-      BiAnd => true,
-      BiOr => true,
+      ast::BiAnd => true,
+      ast::BiOr => true,
       _ => false
     }
 }
 
-pub fn is_shift_binop(b: BinOp) -> bool {
+pub fn is_shift_binop(b: ast::BinOp) -> bool {
     match b {
-      BiShl => true,
-      BiShr => true,
+      ast::BiShl => true,
+      ast::BiShr => true,
       _ => false
     }
 }
 
-pub fn unop_to_str(op: UnOp) -> &'static str {
+pub fn unop_to_str(op: ast::UnOp) -> &'static str {
     match op {
-      UnBox => "@",
-      UnUniq => "box() ",
-      UnDeref => "*",
-      UnNot => "!",
-      UnNeg => "-",
+      ast::UnBox => "@",
+      ast::UnUniq => "box() ",
+      ast::UnDeref => "*",
+      ast::UnNot => "!",
+      ast::UnNeg => "-",
     }
 }
 
-pub fn is_path(e: @Expr) -> bool {
-    return match e.node { ExprPath(_) => true, _ => false };
+pub fn is_path(e: @ast::Expr) -> bool {
+    return match e.node { ast::ExprPath(_) => true, _ => false };
 }
 
 pub enum SuffixMode {
@@ -139,17 +137,17 @@ pub enum SuffixMode {
 
 // Get a string representation of a signed int type, with its value.
 // We want to avoid "45int" and "-3int" in favor of "45" and "-3"
-pub fn int_ty_to_str(t: IntTy, val: Option<i64>, mode: SuffixMode) -> String {
+pub fn int_ty_to_str(t: ast::IntTy, val: Option<i64>, mode: SuffixMode) -> String {
     let s = match t {
-        TyI if val.is_some() => match mode {
+        ast::TyI if val.is_some() => match mode {
             AutoSuffix => "",
             ForceSuffix => "i",
         },
-        TyI => "int",
-        TyI8 => "i8",
-        TyI16 => "i16",
-        TyI32 => "i32",
-        TyI64 => "i64"
+        ast::TyI => "int",
+        ast::TyI8 => "i8",
+        ast::TyI16 => "i16",
+        ast::TyI32 => "i32",
+        ast::TyI64 => "i64"
     };
 
     match val {
@@ -161,28 +159,28 @@ pub fn int_ty_to_str(t: IntTy, val: Option<i64>, mode: SuffixMode) -> String {
     }
 }
 
-pub fn int_ty_max(t: IntTy) -> u64 {
+pub fn int_ty_max(t: ast::IntTy) -> u64 {
     match t {
-        TyI8 => 0x80u64,
-        TyI16 => 0x8000u64,
-        TyI | TyI32 => 0x80000000u64, // actually ni about TyI
-        TyI64 => 0x8000000000000000u64
+        ast::TyI8 => 0x80u64,
+        ast::TyI16 => 0x8000u64,
+        ast::TyI | ast::TyI32 => 0x80000000u64, // actually ni about TyI
+        ast::TyI64 => 0x8000000000000000u64
     }
 }
 
 // Get a string representation of an unsigned int type, with its value.
 // We want to avoid "42uint" in favor of "42u"
-pub fn uint_ty_to_str(t: UintTy, val: Option<u64>, mode: SuffixMode) -> String {
+pub fn uint_ty_to_str(t: ast::UintTy, val: Option<u64>, mode: SuffixMode) -> String {
     let s = match t {
-        TyU if val.is_some() => match mode {
+        ast::TyU if val.is_some() => match mode {
             AutoSuffix => "",
             ForceSuffix => "u",
         },
-        TyU => "uint",
-        TyU8 => "u8",
-        TyU16 => "u16",
-        TyU32 => "u32",
-        TyU64 => "u64"
+        ast::TyU => "uint",
+        ast::TyU8 => "u8",
+        ast::TyU16 => "u16",
+        ast::TyU32 => "u32",
+        ast::TyU64 => "u64"
     };
 
     match val {
@@ -191,39 +189,39 @@ pub fn uint_ty_to_str(t: UintTy, val: Option<u64>, mode: SuffixMode) -> String {
     }
 }
 
-pub fn uint_ty_max(t: UintTy) -> u64 {
+pub fn uint_ty_max(t: ast::UintTy) -> u64 {
     match t {
-        TyU8 => 0xffu64,
-        TyU16 => 0xffffu64,
-        TyU | TyU32 => 0xffffffffu64, // actually ni about TyU
-        TyU64 => 0xffffffffffffffffu64
+        ast::TyU8 => 0xffu64,
+        ast::TyU16 => 0xffffu64,
+        ast::TyU | ast::TyU32 => 0xffffffffu64, // actually ni about TyU
+        ast::TyU64 => 0xffffffffffffffffu64
     }
 }
 
-pub fn float_ty_to_str(t: FloatTy) -> String {
+pub fn float_ty_to_str(t: ast::FloatTy) -> String {
     match t {
-        TyF32 => "f32".to_string(),
-        TyF64 => "f64".to_string(),
-        TyF128 => "f128".to_string(),
+        ast::TyF32 => "f32".to_string(),
+        ast::TyF64 => "f64".to_string(),
+        ast::TyF128 => "f128".to_string(),
     }
 }
 
-pub fn is_call_expr(e: @Expr) -> bool {
-    match e.node { ExprCall(..) => true, _ => false }
+pub fn is_call_expr(e: @ast::Expr) -> bool {
+    match e.node { ast::ExprCall(..) => true, _ => false }
 }
 
-pub fn block_from_expr(e: @Expr) -> P<Block> {
-    P(Block {
+pub fn block_from_expr(e: @ast::Expr) -> ast::P<ast::Block> {
+    ast::P(ast::Block {
         view_items: Vec::new(),
         stmts: Vec::new(),
         expr: Some(e),
         id: e.id,
-        rules: DefaultBlock,
+        rules: ast::DefaultBlock,
         span: e.span
     })
 }
 
-pub fn ident_to_path(s: Span, identifier: Ident) -> Path {
+pub fn ident_to_path(s: Span, identifier: ast::Ident) -> ast::Path {
     ast::Path {
         span: s,
         global: false,
@@ -237,26 +235,26 @@ pub fn ident_to_path(s: Span, identifier: Ident) -> Path {
     }
 }
 
-pub fn ident_to_pat(id: NodeId, s: Span, i: Ident) -> @Pat {
+pub fn ident_to_pat(id: ast::NodeId, s: Span, i: ast::Ident) -> @ast::Pat {
     @ast::Pat { id: id,
-                node: PatIdent(BindByValue(MutImmutable), ident_to_path(s, i), None),
+                node: ast::PatIdent(ast::BindByValue(ast::MutImmutable), ident_to_path(s, i), None),
                 span: s }
 }
 
-pub fn name_to_dummy_lifetime(name: Name) -> Lifetime {
-    Lifetime { id: DUMMY_NODE_ID,
-               span: codemap::DUMMY_SP,
-               name: name }
+pub fn name_to_dummy_lifetime(name: ast::Name) -> ast::Lifetime {
+    ast::Lifetime { id: ast::DUMMY_NODE_ID,
+                    span: codemap::DUMMY_SP,
+                    name: name }
 }
 
-pub fn is_unguarded(a: &Arm) -> bool {
+pub fn is_unguarded(a: &ast::Arm) -> bool {
     match a.guard {
       None => true,
       _    => false
     }
 }
 
-pub fn unguarded_pat(a: &Arm) -> Option<Vec<@Pat> > {
+pub fn unguarded_pat(a: &ast::Arm) -> Option<Vec<@ast::Pat> > {
     if is_unguarded(a) {
         Some(/* FIXME (#2543) */ a.pats.clone())
     } else {
@@ -269,7 +267,7 @@ pub fn unguarded_pat(a: &Arm) -> Option<Vec<@Pat> > {
 /// hint of where they came from, (previously they would all just be
 /// listed as `__extensions__::method_name::hash`, with no indication
 /// of the type).
-pub fn impl_pretty_name(trait_ref: &Option<TraitRef>, ty: &Ty) -> Ident {
+pub fn impl_pretty_name(trait_ref: &Option<ast::TraitRef>, ty: &ast::Ty) -> ast::Ident {
     let mut pretty = pprust::ty_to_str(ty);
     match *trait_ref {
         Some(ref trait_ref) => {
@@ -281,10 +279,10 @@ pub fn impl_pretty_name(trait_ref: &Option<TraitRef>, ty: &Ty) -> Ident {
     token::gensym_ident(pretty.as_slice())
 }
 
-pub fn public_methods(ms: Vec<@Method> ) -> Vec<@Method> {
+pub fn public_methods(ms: Vec<@ast::Method> ) -> Vec<@ast::Method> {
     ms.move_iter().filter(|m| {
         match m.vis {
-            Public => true,
+            ast::Public => true,
             _   => false
         }
     }).collect()
@@ -292,11 +290,11 @@ pub fn public_methods(ms: Vec<@Method> ) -> Vec<@Method> {
 
 // extract a TypeMethod from a TraitMethod. if the TraitMethod is
 // a default, pull out the useful fields to make a TypeMethod
-pub fn trait_method_to_ty_method(method: &TraitMethod) -> TypeMethod {
+pub fn trait_method_to_ty_method(method: &ast::TraitMethod) -> ast::TypeMethod {
     match *method {
-        Required(ref m) => (*m).clone(),
-        Provided(ref m) => {
-            TypeMethod {
+        ast::Required(ref m) => (*m).clone(),
+        ast::Provided(ref m) => {
+            ast::TypeMethod {
                 ident: m.ident,
                 attrs: m.attrs.clone(),
                 fn_style: m.fn_style,
@@ -311,20 +309,20 @@ pub fn trait_method_to_ty_method(method: &TraitMethod) -> TypeMethod {
     }
 }
 
-pub fn split_trait_methods(trait_methods: &[TraitMethod])
-    -> (Vec<TypeMethod> , Vec<@Method> ) {
+pub fn split_trait_methods(trait_methods: &[ast::TraitMethod])
+    -> (Vec<ast::TypeMethod> , Vec<@ast::Method> ) {
     let mut reqd = Vec::new();
     let mut provd = Vec::new();
     for trt_method in trait_methods.iter() {
         match *trt_method {
-            Required(ref tm) => reqd.push((*tm).clone()),
-            Provided(m) => provd.push(m)
+            ast::Required(ref tm) => reqd.push((*tm).clone()),
+            ast::Provided(m) => provd.push(m)
         }
     };
     (reqd, provd)
 }
 
-pub fn struct_field_visibility(field: ast::StructField) -> Visibility {
+pub fn struct_field_visibility(field: ast::StructField) -> ast::Visibility {
     match field.node.kind {
         ast::NamedField(_, v) | ast::UnnamedField(v) => v
     }
@@ -334,16 +332,16 @@ pub fn struct_field_visibility(field: ast::StructField) -> Visibility {
 pub fn operator_prec(op: ast::BinOp) -> uint {
   match op {
       // 'as' sits here with 12
-      BiMul | BiDiv | BiRem     => 11u,
-      BiAdd | BiSub             => 10u,
-      BiShl | BiShr             =>  9u,
-      BiBitAnd                  =>  8u,
-      BiBitXor                  =>  7u,
-      BiBitOr                   =>  6u,
-      BiLt | BiLe | BiGe | BiGt =>  4u,
-      BiEq | BiNe               =>  3u,
-      BiAnd                     =>  2u,
-      BiOr                      =>  1u
+      ast::BiMul | ast::BiDiv | ast::BiRem          => 11u,
+      ast::BiAdd | ast::BiSub                       => 10u,
+      ast::BiShl | ast::BiShr                       =>  9u,
+      ast::BiBitAnd                                 =>  8u,
+      ast::BiBitXor                                 =>  7u,
+      ast::BiBitOr                                  =>  6u,
+      ast::BiLt | ast::BiLe | ast::BiGe | ast::BiGt =>  4u,
+      ast::BiEq | ast::BiNe                         =>  3u,
+      ast::BiAnd                                    =>  2u,
+      ast::BiOr                                     =>  1u
   }
 }
 
@@ -351,8 +349,8 @@ pub fn operator_prec(op: ast::BinOp) -> uint {
 /// not appearing in the prior table.
 pub static as_prec: uint = 12u;
 
-pub fn empty_generics() -> Generics {
-    Generics {lifetimes: Vec::new(),
+pub fn empty_generics() -> ast::Generics {
+    ast::Generics {lifetimes: Vec::new(),
               ty_params: OwnedSlice::empty()}
 }
 
@@ -361,8 +359,8 @@ pub fn empty_generics() -> Generics {
 
 #[deriving(Encodable, Decodable)]
 pub struct IdRange {
-    pub min: NodeId,
-    pub max: NodeId,
+    pub min: ast::NodeId,
+    pub max: ast::NodeId,
 }
 
 impl IdRange {
@@ -377,14 +375,14 @@ impl IdRange {
         self.min >= self.max
     }
 
-    pub fn add(&mut self, id: NodeId) {
+    pub fn add(&mut self, id: ast::NodeId) {
         self.min = cmp::min(self.min, id);
         self.max = cmp::max(self.max, id + 1);
     }
 }
 
 pub trait IdVisitingOperation {
-    fn visit_id(&self, node_id: NodeId);
+    fn visit_id(&self, node_id: ast::NodeId);
 }
 
 pub struct IdVisitor<'a, O> {
@@ -394,7 +392,7 @@ pub struct IdVisitor<'a, O> {
 }
 
 impl<'a, O: IdVisitingOperation> IdVisitor<'a, O> {
-    fn visit_generics_helper(&self, generics: &Generics) {
+    fn visit_generics_helper(&self, generics: &ast::Generics) {
         for type_parameter in generics.ty_params.iter() {
             self.operation.visit_id(type_parameter.id)
         }
@@ -406,15 +404,15 @@ impl<'a, O: IdVisitingOperation> IdVisitor<'a, O> {
 
 impl<'a, O: IdVisitingOperation> Visitor<()> for IdVisitor<'a, O> {
     fn visit_mod(&mut self,
-                 module: &Mod,
+                 module: &ast::Mod,
                  _: Span,
-                 node_id: NodeId,
+                 node_id: ast::NodeId,
                  env: ()) {
         self.operation.visit_id(node_id);
         visit::walk_mod(self, module, env)
     }
 
-    fn visit_view_item(&mut self, view_item: &ViewItem, env: ()) {
+    fn visit_view_item(&mut self, view_item: &ast::ViewItem, env: ()) {
         if !self.pass_through_items {
             if self.visited_outermost {
                 return;
@@ -423,16 +421,16 @@ impl<'a, O: IdVisitingOperation> Visitor<()> for IdVisitor<'a, O> {
             }
         }
         match view_item.node {
-            ViewItemExternCrate(_, _, node_id) => {
+            ast::ViewItemExternCrate(_, _, node_id) => {
                 self.operation.visit_id(node_id)
             }
-            ViewItemUse(ref view_path) => {
+            ast::ViewItemUse(ref view_path) => {
                 match view_path.node {
-                    ViewPathSimple(_, _, node_id) |
-                    ViewPathGlob(_, node_id) => {
+                    ast::ViewPathSimple(_, _, node_id) |
+                    ast::ViewPathGlob(_, node_id) => {
                         self.operation.visit_id(node_id)
                     }
-                    ViewPathList(_, ref paths, node_id) => {
+                    ast::ViewPathList(_, ref paths, node_id) => {
                         self.operation.visit_id(node_id);
                         for path in paths.iter() {
                             self.operation.visit_id(path.node.id)
@@ -445,12 +443,12 @@ impl<'a, O: IdVisitingOperation> Visitor<()> for IdVisitor<'a, O> {
         self.visited_outermost = false;
     }
 
-    fn visit_foreign_item(&mut self, foreign_item: &ForeignItem, env: ()) {
+    fn visit_foreign_item(&mut self, foreign_item: &ast::ForeignItem, env: ()) {
         self.operation.visit_id(foreign_item.id);
         visit::walk_foreign_item(self, foreign_item, env)
     }
 
-    fn visit_item(&mut self, item: &Item, env: ()) {
+    fn visit_item(&mut self, item: &ast::Item, env: ()) {
         if !self.pass_through_items {
             if self.visited_outermost {
                 return
@@ -461,7 +459,7 @@ impl<'a, O: IdVisitingOperation> Visitor<()> for IdVisitor<'a, O> {
 
         self.operation.visit_id(item.id);
         match item.node {
-            ItemEnum(ref enum_definition, _) => {
+            ast::ItemEnum(ref enum_definition, _) => {
                 for variant in enum_definition.variants.iter() {
                     self.operation.visit_id(variant.node.id)
                 }
@@ -474,51 +472,51 @@ impl<'a, O: IdVisitingOperation> Visitor<()> for IdVisitor<'a, O> {
         self.visited_outermost = false
     }
 
-    fn visit_local(&mut self, local: &Local, env: ()) {
+    fn visit_local(&mut self, local: &ast::Local, env: ()) {
         self.operation.visit_id(local.id);
         visit::walk_local(self, local, env)
     }
 
-    fn visit_block(&mut self, block: &Block, env: ()) {
+    fn visit_block(&mut self, block: &ast::Block, env: ()) {
         self.operation.visit_id(block.id);
         visit::walk_block(self, block, env)
     }
 
-    fn visit_stmt(&mut self, statement: &Stmt, env: ()) {
+    fn visit_stmt(&mut self, statement: &ast::Stmt, env: ()) {
         self.operation.visit_id(ast_util::stmt_id(statement));
         visit::walk_stmt(self, statement, env)
     }
 
-    fn visit_pat(&mut self, pattern: &Pat, env: ()) {
+    fn visit_pat(&mut self, pattern: &ast::Pat, env: ()) {
         self.operation.visit_id(pattern.id);
         visit::walk_pat(self, pattern, env)
     }
 
-    fn visit_expr(&mut self, expression: &Expr, env: ()) {
+    fn visit_expr(&mut self, expression: &ast::Expr, env: ()) {
         self.operation.visit_id(expression.id);
         visit::walk_expr(self, expression, env)
     }
 
-    fn visit_ty(&mut self, typ: &Ty, env: ()) {
+    fn visit_ty(&mut self, typ: &ast::Ty, env: ()) {
         self.operation.visit_id(typ.id);
         match typ.node {
-            TyPath(_, _, id) => self.operation.visit_id(id),
+            ast::TyPath(_, _, id) => self.operation.visit_id(id),
             _ => {}
         }
         visit::walk_ty(self, typ, env)
     }
 
-    fn visit_generics(&mut self, generics: &Generics, env: ()) {
+    fn visit_generics(&mut self, generics: &ast::Generics, env: ()) {
         self.visit_generics_helper(generics);
         visit::walk_generics(self, generics, env)
     }
 
     fn visit_fn(&mut self,
                 function_kind: &visit::FnKind,
-                function_declaration: &FnDecl,
-                block: &Block,
+                function_declaration: &ast::FnDecl,
+                block: &ast::Block,
                 span: Span,
-                node_id: NodeId,
+                node_id: ast::NodeId,
                 env: ()) {
         if !self.pass_through_items {
             match *function_kind {
@@ -557,16 +555,16 @@ impl<'a, O: IdVisitingOperation> Visitor<()> for IdVisitor<'a, O> {
         }
     }
 
-    fn visit_struct_field(&mut self, struct_field: &StructField, env: ()) {
+    fn visit_struct_field(&mut self, struct_field: &ast::StructField, env: ()) {
         self.operation.visit_id(struct_field.node.id);
         visit::walk_struct_field(self, struct_field, env)
     }
 
     fn visit_struct_def(&mut self,
-                        struct_def: &StructDef,
+                        struct_def: &ast::StructDef,
                         _: ast::Ident,
                         _: &ast::Generics,
-                        id: NodeId,
+                        id: ast::NodeId,
                         _: ()) {
         self.operation.visit_id(id);
         struct_def.ctor_id.map(|ctor_id| self.operation.visit_id(ctor_id));
@@ -582,7 +580,7 @@ impl<'a, O: IdVisitingOperation> Visitor<()> for IdVisitor<'a, O> {
     }
 }
 
-pub fn visit_ids_for_inlined_item<O: IdVisitingOperation>(item: &InlinedItem,
+pub fn visit_ids_for_inlined_item<O: IdVisitingOperation>(item: &ast::InlinedItem,
                                                           operation: &O) {
     let mut id_visitor = IdVisitor {
         operation: operation,
@@ -598,14 +596,14 @@ struct IdRangeComputingVisitor {
 }
 
 impl IdVisitingOperation for IdRangeComputingVisitor {
-    fn visit_id(&self, id: NodeId) {
+    fn visit_id(&self, id: ast::NodeId) {
         let mut id_range = self.result.get();
         id_range.add(id);
         self.result.set(id_range)
     }
 }
 
-pub fn compute_id_range_for_inlined_item(item: &InlinedItem) -> IdRange {
+pub fn compute_id_range_for_inlined_item(item: &ast::InlinedItem) -> IdRange {
     let visitor = IdRangeComputingVisitor {
         result: Cell::new(IdRange::max())
     };
@@ -614,10 +612,10 @@ pub fn compute_id_range_for_inlined_item(item: &InlinedItem) -> IdRange {
 }
 
 pub fn compute_id_range_for_fn_body(fk: &visit::FnKind,
-                                    decl: &FnDecl,
-                                    body: &Block,
+                                    decl: &ast::FnDecl,
+                                    body: &ast::Block,
                                     sp: Span,
-                                    id: NodeId)
+                                    id: ast::NodeId)
                                     -> IdRange
 {
     /*!
@@ -639,35 +637,35 @@ pub fn compute_id_range_for_fn_body(fk: &visit::FnKind,
 
 pub fn is_item_impl(item: @ast::Item) -> bool {
     match item.node {
-        ItemImpl(..) => true,
-        _            => false
+        ast::ItemImpl(..) => true,
+        _                 => false
     }
 }
 
-pub fn walk_pat(pat: &Pat, it: |&Pat| -> bool) -> bool {
+pub fn walk_pat(pat: &ast::Pat, it: |&ast::Pat| -> bool) -> bool {
     if !it(pat) {
         return false;
     }
 
     match pat.node {
-        PatIdent(_, _, Some(p)) => walk_pat(p, it),
-        PatStruct(_, ref fields, _) => {
+        ast::PatIdent(_, _, Some(p)) => walk_pat(p, it),
+        ast::PatStruct(_, ref fields, _) => {
             fields.iter().advance(|f| walk_pat(f.pat, |p| it(p)))
         }
-        PatEnum(_, Some(ref s)) | PatTup(ref s) => {
+        ast::PatEnum(_, Some(ref s)) | ast::PatTup(ref s) => {
             s.iter().advance(|&p| walk_pat(p, |p| it(p)))
         }
-        PatBox(s) | PatRegion(s) => {
+        ast::PatBox(s) | ast::PatRegion(s) => {
             walk_pat(s, it)
         }
-        PatVec(ref before, ref slice, ref after) => {
+        ast::PatVec(ref before, ref slice, ref after) => {
             before.iter().advance(|&p| walk_pat(p, |p| it(p))) &&
                 slice.iter().advance(|&p| walk_pat(p, |p| it(p))) &&
                 after.iter().advance(|&p| walk_pat(p, |p| it(p)))
         }
-        PatMac(_) => fail!("attempted to analyze unexpanded pattern"),
-        PatWild | PatWildMulti | PatLit(_) | PatRange(_, _) | PatIdent(_, _, _) |
-        PatEnum(_, _) => {
+        ast::PatMac(_) => fail!("attempted to analyze unexpanded pattern"),
+        ast::PatWild | ast::PatWildMulti | ast::PatLit(_) | ast::PatRange(_, _) |
+        ast::PatIdent(_, _, _) | ast::PatEnum(_, _) => {
             true
         }
     }
@@ -697,10 +695,10 @@ impl EachViewItem for ast::Crate {
     }
 }
 
-pub fn view_path_id(p: &ViewPath) -> NodeId {
+pub fn view_path_id(p: &ast::ViewPath) -> ast::NodeId {
     match p.node {
-        ViewPathSimple(_, _, id) | ViewPathGlob(_, id)
-        | ViewPathList(_, _, id) => id
+        ast::ViewPathSimple(_, _, id) | ast::ViewPathGlob(_, id) |
+        ast::ViewPathList(_, _, id) => id
     }
 }
 
@@ -747,14 +745,14 @@ pub fn segments_name_eq(a : &[ast::PathSegment], b : &[ast::PathSegment]) -> boo
 }
 
 // Returns true if this literal is a string and false otherwise.
-pub fn lit_is_str(lit: @Lit) -> bool {
+pub fn lit_is_str(lit: @ast::Lit) -> bool {
     match lit.node {
-        LitStr(..) => true,
+        ast::LitStr(..) => true,
         _ => false,
     }
 }
 
-pub fn get_inner_tys(ty: P<Ty>) -> Vec<P<Ty>> {
+pub fn get_inner_tys(ty: ast::P<ast::Ty>) -> Vec<ast::P<ast::Ty>> {
     match ty.node {
         ast::TyRptr(_, mut_ty) | ast::TyPtr(mut_ty) => {
             vec!(mut_ty.ty)
@@ -771,11 +769,9 @@ pub fn get_inner_tys(ty: P<Ty>) -> Vec<P<Ty>> {
 
 #[cfg(test)]
 mod test {
-    use ast::*;
-    use super::*;
     use owned_slice::OwnedSlice;
 
-    fn ident_to_segment(id : &Ident) -> PathSegment {
+    fn ident_to_segment(id : &ast::Ident) -> PathSegment {
         PathSegment {identifier:id.clone(),
                      lifetimes: Vec::new(),
                      types: OwnedSlice::empty()}
@@ -783,14 +779,14 @@ mod test {
 
     #[test] fn idents_name_eq_test() {
         assert!(segments_name_eq(
-            [Ident{name:3,ctxt:4}, Ident{name:78,ctxt:82}]
+            [ast::Ident{name:3,ctxt:4}, ast::Ident{name:78,ctxt:82}]
                 .iter().map(ident_to_segment).collect::<Vec<PathSegment>>().as_slice(),
-            [Ident{name:3,ctxt:104}, Ident{name:78,ctxt:182}]
+            [ast::Ident{name:3,ctxt:104}, ast::Ident{name:78,ctxt:182}]
                 .iter().map(ident_to_segment).collect::<Vec<PathSegment>>().as_slice()));
         assert!(!segments_name_eq(
-            [Ident{name:3,ctxt:4}, Ident{name:78,ctxt:82}]
+            [ast::Ident{name:3,ctxt:4}, ast::Ident{name:78,ctxt:82}]
                 .iter().map(ident_to_segment).collect::<Vec<PathSegment>>().as_slice(),
-            [Ident{name:3,ctxt:104}, Ident{name:77,ctxt:182}]
+            [ast::Ident{name:3,ctxt:104}, ast::Ident{name:77,ctxt:182}]
                 .iter().map(ident_to_segment).collect::<Vec<PathSegment>>().as_slice()));
     }
 }

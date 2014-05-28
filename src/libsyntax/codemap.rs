@@ -530,8 +530,6 @@ impl CodeMap {
 
 #[cfg(test)]
 mod test {
-    use super::*;
-
     #[test]
     fn t1 () {
         let cm = CodeMap::new();

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use abi;
-use ast::*;
+use ast;
 use ast_util;
 use codemap::Span;
 use fold::Folder;
@@ -26,12 +26,12 @@ use std::string::String;
 
 #[deriving(Clone, PartialEq)]
 pub enum PathElem {
-    PathMod(Name),
-    PathName(Name)
+    PathMod(ast::Name),
+    PathName(ast::Name)
 }
 
 impl PathElem {
-    pub fn name(&self) -> Name {
+    pub fn name(&self) -> ast::Name {
         match *self {
             PathMod(name) | PathName(name) => name
         }
@@ -94,22 +94,22 @@ pub fn path_to_str<PI: Iterator<PathElem>>(mut path: PI) -> String {
 
 #[deriving(Clone)]
 pub enum Node {
-    NodeItem(@Item),
-    NodeForeignItem(@ForeignItem),
-    NodeTraitMethod(@TraitMethod),
-    NodeMethod(@Method),
-    NodeVariant(P<Variant>),
-    NodeExpr(@Expr),
-    NodeStmt(@Stmt),
-    NodeArg(@Pat),
-    NodeLocal(@Pat),
-    NodePat(@Pat),
-    NodeBlock(P<Block>),
+    NodeItem(@ast::Item),
+    NodeForeignItem(@ast::ForeignItem),
+    NodeTraitMethod(@ast::TraitMethod),
+    NodeMethod(@ast::Method),
+    NodeVariant(ast::P<ast::Variant>),
+    NodeExpr(@ast::Expr),
+    NodeStmt(@ast::Stmt),
+    NodeArg(@ast::Pat),
+    NodeLocal(@ast::Pat),
+    NodePat(@ast::Pat),
+    NodeBlock(ast::P<ast::Block>),
 
     /// NodeStructCtor represents a tuple struct.
-    NodeStructCtor(@StructDef),
+    NodeStructCtor(@ast::StructDef),
 
-    NodeLifetime(@Lifetime),
+    NodeLifetime(@ast::Lifetime),
 }
 
 // The odd layout is to bring down the total size.
@@ -119,33 +119,33 @@ enum MapEntry {
     NotPresent,
 
     // All the node types, with a parent ID.
-    EntryItem(NodeId, @Item),
-    EntryForeignItem(NodeId, @ForeignItem),
-    EntryTraitMethod(NodeId, @TraitMethod),
-    EntryMethod(NodeId, @Method),
-    EntryVariant(NodeId, P<Variant>),
-    EntryExpr(NodeId, @Expr),
-    EntryStmt(NodeId, @Stmt),
-    EntryArg(NodeId, @Pat),
-    EntryLocal(NodeId, @Pat),
-    EntryPat(NodeId, @Pat),
-    EntryBlock(NodeId, P<Block>),
-    EntryStructCtor(NodeId, @StructDef),
-    EntryLifetime(NodeId, @Lifetime),
+    EntryItem(ast::NodeId, @ast::Item),
+    EntryForeignItem(ast::NodeId, @ast::ForeignItem),
+    EntryTraitMethod(ast::NodeId, @ast::TraitMethod),
+    EntryMethod(ast::NodeId, @ast::Method),
+    EntryVariant(ast::NodeId, ast::P<ast::Variant>),
+    EntryExpr(ast::NodeId, @ast::Expr),
+    EntryStmt(ast::NodeId, @ast::Stmt),
+    EntryArg(ast::NodeId, @ast::Pat),
+    EntryLocal(ast::NodeId, @ast::Pat),
+    EntryPat(ast::NodeId, @ast::Pat),
+    EntryBlock(ast::NodeId, ast::P<ast::Block>),
+    EntryStructCtor(ast::NodeId, @ast::StructDef),
+    EntryLifetime(ast::NodeId, @ast::Lifetime),
 
     // Roots for node trees.
     RootCrate,
-    RootInlinedParent(P<InlinedParent>)
+    RootInlinedParent(ast::P<InlinedParent>)
 }
 
 struct InlinedParent {
     path: Vec<PathElem> ,
     // Required by NodeTraitMethod and NodeMethod.
-    def_id: DefId
+    def_id: ast::DefId
 }
 
 impl MapEntry {
-    fn parent(&self) -> Option<NodeId> {
+    fn parent(&self) -> Option<ast::NodeId> {
         Some(match *self {
             EntryItem(id, _) => id,
             EntryForeignItem(id, _) => id,
@@ -198,7 +198,7 @@ pub struct Map {
 }
 
 impl Map {
-    fn find_entry(&self, id: NodeId) -> Option<MapEntry> {
+    fn find_entry(&self, id: ast::NodeId) -> Option<MapEntry> {
         let map = self.map.borrow();
         if map.len() > id as uint {
             Some(*map.get(id as uint))
@@ -209,7 +209,7 @@ impl Map {
 
     /// Retrieve the Node corresponding to `id`, failing if it cannot
     /// be found.
-    pub fn get(&self, id: NodeId) -> Node {
+    pub fn get(&self, id: ast::NodeId) -> Node {
         match self.find(id) {
             Some(node) => node,
             None => fail!("couldn't find node id {} in the AST map", id)
@@ -218,17 +218,17 @@ impl Map {
 
     /// Retrieve the Node corresponding to `id`, returning None if
     /// cannot be found.
-    pub fn find(&self, id: NodeId) -> Option<Node> {
+    pub fn find(&self, id: ast::NodeId) -> Option<Node> {
         self.find_entry(id).and_then(|x| x.to_node())
     }
 
     /// Retrieve the parent NodeId for `id`, or `id` itself if no
     /// parent is registered in this map.
-    pub fn get_parent(&self, id: NodeId) -> NodeId {
+    pub fn get_parent(&self, id: ast::NodeId) -> ast::NodeId {
         self.find_entry(id).and_then(|x| x.parent()).unwrap_or(id)
     }
 
-    pub fn get_parent_did(&self, id: NodeId) -> DefId {
+    pub fn get_parent_did(&self, id: ast::NodeId) -> ast::DefId {
         let parent = self.get_parent(id);
         match self.find_entry(parent) {
             Some(RootInlinedParent(data)) => data.def_id,
@@ -236,11 +236,11 @@ impl Map {
         }
     }
 
-    pub fn get_foreign_abi(&self, id: NodeId) -> abi::Abi {
+    pub fn get_foreign_abi(&self, id: ast::NodeId) -> abi::Abi {
         let parent = self.get_parent(id);
         let abi = match self.find_entry(parent) {
             Some(EntryItem(_, i)) => match i.node {
-                ItemForeignMod(ref nm) => Some(nm.abi),
+                ast::ItemForeignMod(ref nm) => Some(nm.abi),
                 _ => None
             },
             // Wrong but OK, because the only inlined foreign items are intrinsics.
@@ -254,7 +254,7 @@ impl Map {
         }
     }
 
-    pub fn get_foreign_vis(&self, id: NodeId) -> Visibility {
+    pub fn get_foreign_vis(&self, id: ast::NodeId) -> ast::Visibility {
         let vis = self.expect_foreign_item(id).vis;
         match self.find(self.get_parent(id)) {
             Some(NodeItem(i)) => vis.inherit_from(i.vis),
@@ -262,24 +262,24 @@ impl Map {
         }
     }
 
-    pub fn expect_item(&self, id: NodeId) -> @Item {
+    pub fn expect_item(&self, id: ast::NodeId) -> @ast::Item {
         match self.find(id) {
             Some(NodeItem(item)) => item,
             _ => fail!("expected item, found {}", self.node_to_str(id))
         }
     }
 
-    pub fn expect_struct(&self, id: NodeId) -> @StructDef {
+    pub fn expect_struct(&self, id: ast::NodeId) -> @ast::StructDef {
         match self.find(id) {
             Some(NodeItem(i)) => {
                 match i.node {
-                    ItemStruct(struct_def, _) => struct_def,
+                    ast::ItemStruct(struct_def, _) => struct_def,
                     _ => fail!("struct ID bound to non-struct")
                 }
             }
             Some(NodeVariant(ref variant)) => {
                 match (*variant).node.kind {
-                    StructVariantKind(struct_def) => struct_def,
+                    ast::StructVariantKind(struct_def) => struct_def,
                     _ => fail!("struct ID bound to enum variant that isn't struct-like"),
                 }
             }
@@ -287,25 +287,25 @@ impl Map {
         }
     }
 
-    pub fn expect_variant(&self, id: NodeId) -> P<Variant> {
+    pub fn expect_variant(&self, id: ast::NodeId) -> ast::P<ast::Variant> {
         match self.find(id) {
             Some(NodeVariant(variant)) => variant,
             _ => fail!(format!("expected variant, found {}", self.node_to_str(id))),
         }
     }
 
-    pub fn expect_foreign_item(&self, id: NodeId) -> @ForeignItem {
+    pub fn expect_foreign_item(&self, id: ast::NodeId) -> @ast::ForeignItem {
         match self.find(id) {
             Some(NodeForeignItem(item)) => item,
             _ => fail!("expected foreign item, found {}", self.node_to_str(id))
         }
     }
 
-    pub fn get_path_elem(&self, id: NodeId) -> PathElem {
+    pub fn get_path_elem(&self, id: ast::NodeId) -> PathElem {
         match self.get(id) {
             NodeItem(item) => {
                 match item.node {
-                    ItemMod(_) | ItemForeignMod(_) => {
+                    ast::ItemMod(_) | ast::ItemForeignMod(_) => {
                         PathMod(item.ident.name)
                     }
                     _ => PathName(item.ident.name)
@@ -314,29 +314,29 @@ impl Map {
             NodeForeignItem(i) => PathName(i.ident.name),
             NodeMethod(m) => PathName(m.ident.name),
             NodeTraitMethod(tm) => match *tm {
-                Required(ref m) => PathName(m.ident.name),
-                Provided(ref m) => PathName(m.ident.name)
+                ast::Required(ref m) => PathName(m.ident.name),
+                ast::Provided(ref m) => PathName(m.ident.name)
             },
             NodeVariant(v) => PathName(v.node.name.name),
             node => fail!("no path elem for {:?}", node)
         }
     }
 
-    pub fn with_path<T>(&self, id: NodeId, f: |PathElems| -> T) -> T {
+    pub fn with_path<T>(&self, id: ast::NodeId, f: |PathElems| -> T) -> T {
         self.with_path_next(id, None, f)
     }
 
-    pub fn path_to_str(&self, id: NodeId) -> String {
+    pub fn path_to_str(&self, id: ast::NodeId) -> String {
         self.with_path(id, |path| path_to_str(path))
     }
 
-    fn path_to_str_with_ident(&self, id: NodeId, i: Ident) -> String {
+    fn path_to_str_with_ident(&self, id: ast::NodeId, i: ast::Ident) -> String {
         self.with_path(id, |path| {
             path_to_str(path.chain(Some(PathName(i.name)).move_iter()))
         })
     }
 
-    fn with_path_next<T>(&self, id: NodeId, next: LinkedPath, f: |PathElems| -> T) -> T {
+    fn with_path_next<T>(&self, id: ast::NodeId, next: LinkedPath, f: |PathElems| -> T) -> T {
         let parent = self.get_parent(id);
         let parent = match self.find_entry(id) {
             Some(EntryForeignItem(..)) | Some(EntryVariant(..)) => {
@@ -366,14 +366,14 @@ impl Map {
         }
     }
 
-    pub fn with_attrs<T>(&self, id: NodeId, f: |Option<&[Attribute]>| -> T) -> T {
+    pub fn with_attrs<T>(&self, id: ast::NodeId, f: |Option<&[ast::Attribute]>| -> T) -> T {
         let node = self.get(id);
         let attrs = match node {
             NodeItem(ref i) => Some(i.attrs.as_slice()),
             NodeForeignItem(ref fi) => Some(fi.attrs.as_slice()),
             NodeTraitMethod(ref tm) => match **tm {
-                Required(ref type_m) => Some(type_m.attrs.as_slice()),
-                Provided(ref m) => Some(m.attrs.as_slice())
+                ast::Required(ref type_m) => Some(type_m.attrs.as_slice()),
+                ast::Provided(ref m) => Some(m.attrs.as_slice())
             },
             NodeMethod(ref m) => Some(m.attrs.as_slice()),
             NodeVariant(ref v) => Some(v.node.attrs.as_slice()),
@@ -388,14 +388,14 @@ impl Map {
         f(attrs)
     }
 
-    pub fn opt_span(&self, id: NodeId) -> Option<Span> {
+    pub fn opt_span(&self, id: ast::NodeId) -> Option<Span> {
         let sp = match self.find(id) {
             Some(NodeItem(item)) => item.span,
             Some(NodeForeignItem(foreign_item)) => foreign_item.span,
             Some(NodeTraitMethod(trait_method)) => {
                 match *trait_method {
-                    Required(ref type_method) => type_method.span,
-                    Provided(ref method) => method.span,
+                    ast::Required(ref type_method) => type_method.span,
+                    ast::Provided(ref method) => method.span,
                 }
             }
             Some(NodeMethod(method)) => method.span,
@@ -411,18 +411,18 @@ impl Map {
         Some(sp)
     }
 
-    pub fn span(&self, id: NodeId) -> Span {
+    pub fn span(&self, id: ast::NodeId) -> Span {
         self.opt_span(id)
             .unwrap_or_else(|| fail!("AstMap.span: could not find span for id {}", id))
     }
 
-    pub fn node_to_str(&self, id: NodeId) -> String {
+    pub fn node_to_str(&self, id: ast::NodeId) -> String {
         node_id_to_str(self, id)
     }
 }
 
 pub trait FoldOps {
-    fn new_id(&self, id: NodeId) -> NodeId {
+    fn new_id(&self, id: ast::NodeId) -> ast::NodeId {
         id
     }
     fn new_span(&self, span: Span) -> Span {
@@ -434,20 +434,20 @@ pub struct Ctx<'a, F> {
     map: &'a Map,
     // The node in which we are currently mapping (an item or a method).
     // When equal to DUMMY_NODE_ID, the next mapped node becomes the parent.
-    parent: NodeId,
+    parent: ast::NodeId,
     fold_ops: F
 }
 
 impl<'a, F> Ctx<'a, F> {
-    fn insert(&self, id: NodeId, entry: MapEntry) {
+    fn insert(&self, id: ast::NodeId, entry: MapEntry) {
         (*self.map.map.borrow_mut()).grow_set(id as uint, &NotPresent, entry);
     }
 }
 
 impl<'a, F: FoldOps> Folder for Ctx<'a, F> {
-    fn new_id(&mut self, id: NodeId) -> NodeId {
+    fn new_id(&mut self, id: ast::NodeId) -> ast::NodeId {
         let id = self.fold_ops.new_id(id);
-        if self.parent == DUMMY_NODE_ID {
+        if self.parent == ast::DUMMY_NODE_ID {
             self.parent = id;
         }
         id
@@ -457,30 +457,30 @@ impl<'a, F: FoldOps> Folder for Ctx<'a, F> {
         self.fold_ops.new_span(span)
     }
 
-    fn fold_item(&mut self, i: @Item) -> SmallVector<@Item> {
+    fn fold_item(&mut self, i: @ast::Item) -> SmallVector<@ast::Item> {
         let parent = self.parent;
-        self.parent = DUMMY_NODE_ID;
+        self.parent = ast::DUMMY_NODE_ID;
 
         let i = fold::noop_fold_item(i, self).expect_one("expected one item");
         assert_eq!(self.parent, i.id);
 
         match i.node {
-            ItemImpl(_, _, _, ref ms) => {
+            ast::ItemImpl(_, _, _, ref ms) => {
                 for &m in ms.iter() {
                     self.insert(m.id, EntryMethod(self.parent, m));
                 }
             }
-            ItemEnum(ref enum_definition, _) => {
+            ast::ItemEnum(ref enum_definition, _) => {
                 for &v in enum_definition.variants.iter() {
                     self.insert(v.node.id, EntryVariant(self.parent, v));
                 }
             }
-            ItemForeignMod(ref nm) => {
+            ast::ItemForeignMod(ref nm) => {
                 for &nitem in nm.items.iter() {
                     self.insert(nitem.id, EntryForeignItem(self.parent, nitem));
                 }
             }
-            ItemStruct(struct_def, _) => {
+            ast::ItemStruct(struct_def, _) => {
                 // If this is a tuple-like struct, register the constructor.
                 match struct_def.ctor_id {
                     Some(ctor_id) => {
@@ -490,20 +490,20 @@ impl<'a, F: FoldOps> Folder for Ctx<'a, F> {
                     None => {}
                 }
             }
-            ItemTrait(_, _, ref traits, ref methods) => {
+            ast::ItemTrait(_, _, ref traits, ref methods) => {
                 for t in traits.iter() {
                     self.insert(t.ref_id, EntryItem(self.parent, i));
                 }
 
                 for tm in methods.iter() {
                     match *tm {
-                        Required(ref m) => {
+                        ast::Required(ref m) => {
                             self.insert(m.id, EntryTraitMethod(self.parent,
                                                                @(*tm).clone()));
                         }
-                        Provided(m) => {
+                        ast::Provided(m) => {
                             self.insert(m.id, EntryTraitMethod(self.parent,
-                                                               @Provided(m)));
+                                                               @ast::Provided(m)));
                         }
                     }
                 }
@@ -517,10 +517,10 @@ impl<'a, F: FoldOps> Folder for Ctx<'a, F> {
         SmallVector::one(i)
     }
 
-    fn fold_pat(&mut self, pat: @Pat) -> @Pat {
+    fn fold_pat(&mut self, pat: @ast::Pat) -> @ast::Pat {
         let pat = fold::noop_fold_pat(pat, self);
         match pat.node {
-            PatIdent(..) => {
+            ast::PatIdent(..) => {
                 // Note: this is at least *potentially* a pattern...
                 self.insert(pat.id, EntryLocal(self.parent, pat));
             }
@@ -532,7 +532,7 @@ impl<'a, F: FoldOps> Folder for Ctx<'a, F> {
         pat
     }
 
-    fn fold_expr(&mut self, expr: @Expr) -> @Expr {
+    fn fold_expr(&mut self, expr: @ast::Expr) -> @ast::Expr {
         let expr = fold::noop_fold_expr(expr, self);
 
         self.insert(expr.id, EntryExpr(self.parent, expr));
@@ -540,31 +540,31 @@ impl<'a, F: FoldOps> Folder for Ctx<'a, F> {
         expr
     }
 
-    fn fold_stmt(&mut self, stmt: &Stmt) -> SmallVector<@Stmt> {
+    fn fold_stmt(&mut self, stmt: &ast::Stmt) -> SmallVector<@ast::Stmt> {
         let stmt = fold::noop_fold_stmt(stmt, self).expect_one("expected one statement");
         self.insert(ast_util::stmt_id(stmt), EntryStmt(self.parent, stmt));
         SmallVector::one(stmt)
     }
 
-    fn fold_type_method(&mut self, m: &TypeMethod) -> TypeMethod {
+    fn fold_type_method(&mut self, m: &ast::TypeMethod) -> ast::TypeMethod {
         let parent = self.parent;
-        self.parent = DUMMY_NODE_ID;
+        self.parent = ast::DUMMY_NODE_ID;
         let m = fold::noop_fold_type_method(m, self);
         assert_eq!(self.parent, m.id);
         self.parent = parent;
         m
     }
 
-    fn fold_method(&mut self, m: @Method) -> @Method {
+    fn fold_method(&mut self, m: @ast::Method) -> @ast::Method {
         let parent = self.parent;
-        self.parent = DUMMY_NODE_ID;
+        self.parent = ast::DUMMY_NODE_ID;
         let m = fold::noop_fold_method(m, self);
         assert_eq!(self.parent, m.id);
         self.parent = parent;
         m
     }
 
-    fn fold_fn_decl(&mut self, decl: &FnDecl) -> P<FnDecl> {
+    fn fold_fn_decl(&mut self, decl: &ast::FnDecl) -> ast::P<ast::FnDecl> {
         let decl = fold::noop_fold_fn_decl(decl, self);
         for a in decl.inputs.iter() {
             self.insert(a.id, EntryArg(self.parent, a.pat));
@@ -572,28 +572,28 @@ impl<'a, F: FoldOps> Folder for Ctx<'a, F> {
         decl
     }
 
-    fn fold_block(&mut self, block: P<Block>) -> P<Block> {
+    fn fold_block(&mut self, block: ast::P<ast::Block>) -> ast::P<ast::Block> {
         let block = fold::noop_fold_block(block, self);
         self.insert(block.id, EntryBlock(self.parent, block));
         block
     }
 
-    fn fold_lifetime(&mut self, lifetime: &Lifetime) -> Lifetime {
+    fn fold_lifetime(&mut self, lifetime: &ast::Lifetime) -> ast::Lifetime {
         let lifetime = fold::noop_fold_lifetime(lifetime, self);
         self.insert(lifetime.id, EntryLifetime(self.parent, @lifetime));
         lifetime
     }
 }
 
-pub fn map_crate<F: FoldOps>(krate: Crate, fold_ops: F) -> (Crate, Map) {
+pub fn map_crate<F: FoldOps>(krate: ast::Crate, fold_ops: F) -> (ast::Crate, Map) {
     let map = Map { map: RefCell::new(Vec::new()) };
     let krate = {
         let mut cx = Ctx {
             map: &map,
-            parent: CRATE_NODE_ID,
+            parent: ast::CRATE_NODE_ID,
             fold_ops: fold_ops
         };
-        cx.insert(CRATE_NODE_ID, RootCrate);
+        cx.insert(ast::CRATE_NODE_ID, RootCrate);
         cx.fold_crate(krate)
     };
 
@@ -623,39 +623,39 @@ pub fn map_crate<F: FoldOps>(krate: Crate, fold_ops: F) -> (Crate, Map) {
 pub fn map_decoded_item<F: FoldOps>(map: &Map,
                                     path: Vec<PathElem> ,
                                     fold_ops: F,
-                                    fold: |&mut Ctx<F>| -> InlinedItem)
-                                    -> InlinedItem {
+                                    fold: |&mut Ctx<F>| -> ast::InlinedItem)
+                                    -> ast::InlinedItem {
     let mut cx = Ctx {
         map: map,
-        parent: DUMMY_NODE_ID,
+        parent: ast::DUMMY_NODE_ID,
         fold_ops: fold_ops
     };
 
     // Generate a NodeId for the RootInlinedParent inserted below.
-    cx.new_id(DUMMY_NODE_ID);
+    cx.new_id(ast::DUMMY_NODE_ID);
 
     // Methods get added to the AST map when their impl is visited.  Since we
     // don't decode and instantiate the impl, but just the method, we have to
     // add it to the table now. Likewise with foreign items.
-    let mut def_id = DefId { krate: LOCAL_CRATE, node: DUMMY_NODE_ID };
+    let mut def_id = ast::DefId { krate: ast::LOCAL_CRATE, node: ast::DUMMY_NODE_ID };
     let ii = fold(&mut cx);
     match ii {
-        IIItem(_) => {}
-        IIMethod(impl_did, is_provided, m) => {
+        ast::IIItem(_) => {}
+        ast::IIMethod(impl_did, is_provided, m) => {
             let entry = if is_provided {
-                EntryTraitMethod(cx.parent, @Provided(m))
+                EntryTraitMethod(cx.parent, @ast::Provided(m))
             } else {
                 EntryMethod(cx.parent, m)
             };
             cx.insert(m.id, entry);
             def_id = impl_did;
         }
-        IIForeign(i) => {
+        ast::IIForeign(i) => {
             cx.insert(i.id, EntryForeignItem(cx.parent, i));
         }
     }
 
-    cx.insert(cx.parent, RootInlinedParent(P(InlinedParent {
+    cx.insert(cx.parent, RootInlinedParent(ast::P(InlinedParent {
         path: path,
         def_id: def_id
     })));
@@ -663,21 +663,21 @@ pub fn map_decoded_item<F: FoldOps>(map: &Map,
     ii
 }
 
-fn node_id_to_str(map: &Map, id: NodeId) -> String {
+fn node_id_to_str(map: &Map, id: ast::NodeId) -> String {
     match map.find(id) {
         Some(NodeItem(item)) => {
             let path_str = map.path_to_str_with_ident(id, item.ident);
             let item_str = match item.node {
-                ItemStatic(..) => "static",
-                ItemFn(..) => "fn",
-                ItemMod(..) => "mod",
-                ItemForeignMod(..) => "foreign mod",
-                ItemTy(..) => "ty",
-                ItemEnum(..) => "enum",
-                ItemStruct(..) => "struct",
-                ItemTrait(..) => "trait",
-                ItemImpl(..) => "impl",
-                ItemMac(..) => "macro"
+                ast::ItemStatic(..) => "static",
+                ast::ItemFn(..) => "fn",
+                ast::ItemMod(..) => "mod",
+                ast::ItemForeignMod(..) => "foreign mod",
+                ast::ItemTy(..) => "ty",
+                ast::ItemEnum(..) => "enum",
+                ast::ItemStruct(..) => "struct",
+                ast::ItemTrait(..) => "trait",
+                ast::ItemImpl(..) => "impl",
+                ast::ItemMac(..) => "macro"
             };
             (format!("{} {} (id={})", item_str, path_str, id)).to_string()
         }
