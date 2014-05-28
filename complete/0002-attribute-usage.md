@@ -1,6 +1,6 @@
 - Start Date: 2012-03-20
 - RFC PR #: 3
-- Rust Issue #: TBD
+- Rust Issue #: 14373
 
 # Summary
 
