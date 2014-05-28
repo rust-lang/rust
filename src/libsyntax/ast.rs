@@ -353,7 +353,8 @@ pub enum Pat_ {
     PatRange(@Expr, @Expr),
     // [a, b, ..i, y, z] is represented as
     // PatVec(~[a, b], Some(i), ~[y, z])
-    PatVec(Vec<@Pat> , Option<@Pat>, Vec<@Pat> )
+    PatVec(Vec<@Pat> , Option<@Pat>, Vec<@Pat> ),
+    PatMac(Mac),
 }
 
 #[deriving(Clone, Eq, TotalEq, Encodable, Decodable, Hash, Show)]
