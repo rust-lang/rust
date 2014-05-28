@@ -27,15 +27,29 @@ use vec::Vec;
 pub struct Ascii { chr: u8 }
 
 impl Ascii {
-    /// Converts an ascii character into a `u8`.
     #[inline]
+    #[allow(missing_doc)]
+    #[deprecated="renamed to `as_byte`"]
     pub fn to_byte(self) -> u8 {
+        self.as_byte()
+    }
+
+    /// Returns the ascii character as a `u8`.
+    #[inline]
+    pub fn as_byte(self) -> u8 {
         self.chr
     }
 
-    /// Converts an ascii character into a `char`.
     #[inline]
+    #[allow(missing_doc)]
+    #[deprecated="renamed to `as_char`"]
     pub fn to_char(self) -> char {
+        self.as_char()
+    }
+
+    /// Returns the ascii character a `char`.
+    #[inline]
+    pub fn as_char(self) -> char {
         self.chr as char
     }
 
@@ -67,6 +81,7 @@ impl Ascii {
 
     /// Compares two ascii characters of equality, ignoring case.
     #[inline]
+    #[deprecated="Use a.to_lowercase() == b.to_lowercase()"]
     pub fn eq_ignore_case(self, other: Ascii) -> bool {
         ASCII_LOWER_MAP[self.chr as uint] == ASCII_LOWER_MAP[other.chr as uint]
     }
@@ -90,6 +105,27 @@ impl Ascii {
     #[inline]
     pub fn is_digit(&self) -> bool {
         self.chr >= 0x30 && self.chr <= 0x39
+    }
+
+    /// Checks if the character parses as a numeric digit in the given radix
+    ///
+    /// Compared to `is_digit()`, this function not only recognizes the
+    /// characters `0-9`, but also `a-z` and `A-Z`.
+    ///
+    /// # Return value
+    ///
+    /// Returns `true` if the character is a valid digit under `radix`, and `false`
+    /// otherwise.
+    ///
+    /// # Failure
+    ///
+    /// Fails if given a `radix` > 36.
+    #[inline]
+    pub fn is_digit_radix(self, radix: uint) -> bool {
+        match self.to_digit(radix) {
+            Some(_) => true,
+            None    => false,
+        }
     }
 
     #[inline]
@@ -165,6 +201,36 @@ impl Ascii {
     #[inline]
     pub fn is_hex(&self) -> bool {
         self.is_digit() || ((self.chr | 32u8) - 'a' as u8) < 6
+    }
+
+    /// Converts a `char` to the corresponding digit
+    ///
+    /// # Return value
+    ///
+    /// If Ascii is between '0' and '9', the corresponding value
+    /// between 0 and 9. If `c` is 'a' or 'A', 10. If `c` is
+    /// 'b' or 'B', 11, etc. Returns none if the `char` does not
+    /// refer to a digit in the given radix.
+    ///
+    /// # Failure
+    ///
+    /// Fails if given a `radix` outside the range `[0..36]`.
+    #[inline]
+    pub fn to_digit(&self, radix: uint) -> Option<uint> {
+        if radix > 36 {
+            fail!("to_digit: radix is too high (maximum 36)");
+        }
+        let val = match self.as_byte() {
+            // From '0' to '9'
+            c @ 48 .. 57 => c - 48u8,
+            // From 'a' to 'z'
+            c @ 97 .. 122 => c + 10u8 - 97u8,
+            // From 'A' to 'Z'
+            c @ 65 .. 90 => c + 10u8 - 65u8,
+            _ => return None,
+        };
+        if (val as uint) < radix { Some(val as uint) }
+        else { None }
     }
 }
 
@@ -349,7 +415,7 @@ impl<'a> AsciiStr for &'a [Ascii] {
 
     #[inline]
     fn eq_ignore_case(self, other: &[Ascii]) -> bool {
-        self.iter().zip(other.iter()).all(|(&a, &b)| a.eq_ignore_case(b))
+        self.iter().zip(other.iter()).all(|(&a, &b)| a.to_lowercase() == b.to_lowercase())
     }
 }
 
@@ -559,20 +625,20 @@ mod tests {
 
     #[test]
     fn test_ascii() {
-        assert_eq!(65u8.to_ascii().to_byte(), 65u8);
-        assert_eq!(65u8.to_ascii().to_char(), 'A');
-        assert_eq!('A'.to_ascii().to_char(), 'A');
-        assert_eq!('A'.to_ascii().to_byte(), 65u8);
+        assert_eq!(65u8.to_ascii().as_byte(), 65u8);
+        assert_eq!(65u8.to_ascii().as_char(), 'A');
+        assert_eq!('A'.to_ascii().as_char(), 'A');
+        assert_eq!('A'.to_ascii().as_byte(), 65u8);
 
-        assert_eq!('A'.to_ascii().to_lower().to_char(), 'a');
-        assert_eq!('Z'.to_ascii().to_lower().to_char(), 'z');
-        assert_eq!('a'.to_ascii().to_upper().to_char(), 'A');
-        assert_eq!('z'.to_ascii().to_upper().to_char(), 'Z');
+        assert_eq!('A'.to_ascii().to_lower().as_char(), 'a');
+        assert_eq!('Z'.to_ascii().to_lower().as_char(), 'z');
+        assert_eq!('a'.to_ascii().to_upper().as_char(), 'A');
+        assert_eq!('z'.to_ascii().to_upper().as_char(), 'Z');
 
-        assert_eq!('@'.to_ascii().to_lower().to_char(), '@');
-        assert_eq!('['.to_ascii().to_lower().to_char(), '[');
-        assert_eq!('`'.to_ascii().to_upper().to_char(), '`');
-        assert_eq!('{'.to_ascii().to_upper().to_char(), '{');
+        assert_eq!('@'.to_ascii().to_lower().as_char(), '@');
+        assert_eq!('['.to_ascii().to_lower().as_char(), '[');
+        assert_eq!('`'.to_ascii().to_upper().as_char(), '`');
+        assert_eq!('{'.to_ascii().to_upper().as_char(), '{');
 
         assert!('0'.to_ascii().is_digit());
         assert!('9'.to_ascii().is_digit());
@@ -784,5 +850,31 @@ mod tests {
     fn test_show() {
         let c = Ascii { chr: 't' as u8 };
         assert_eq!(format_strbuf!("{}", c), "t".to_string());
+    }
+
+    #[test]
+    fn test_to_digit() {
+        assert_eq!('0'.to_ascii().to_digit(10u), Some(0u));
+        assert_eq!('1'.to_ascii().to_digit(2u), Some(1u));
+        assert_eq!('2'.to_ascii().to_digit(3u), Some(2u));
+        assert_eq!('9'.to_ascii().to_digit(10u), Some(9u));
+        assert_eq!('a'.to_ascii().to_digit(16u), Some(10u));
+        assert_eq!('A'.to_ascii().to_digit(16u), Some(10u));
+        assert_eq!('b'.to_ascii().to_digit(16u), Some(11u));
+        assert_eq!('B'.to_ascii().to_digit(16u), Some(11u));
+        assert_eq!('z'.to_ascii().to_digit(36u), Some(35u));
+        assert_eq!('Z'.to_ascii().to_digit(36u), Some(35u));
+        assert_eq!(' '.to_ascii().to_digit(10u), None);
+        assert_eq!('$'.to_ascii().to_digit(36u), None);
+    }
+
+    #[test]
+    fn test_is_digit_radix() {
+        assert!('A'.to_ascii().is_digit_radix(16));
+        assert!(!'A'.to_ascii().is_digit_radix(10));
+        assert!('9'.to_ascii().is_digit_radix(10));
+        assert!(!'9'.to_ascii().is_digit_radix(8));
+        assert!('G'.to_ascii().is_digit_radix(17));
+        assert!(!'G'.to_ascii().is_digit_radix(16));
     }
 }
