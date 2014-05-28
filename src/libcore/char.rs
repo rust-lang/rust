@@ -34,9 +34,6 @@ pub use unicode::normalization::decompose_canonical;
 /// Returns the compatibility decomposition of a character.
 pub use unicode::normalization::decompose_compatible;
 
-#[cfg(not(test))] use cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering};
-#[cfg(not(test))] use default::Default;
-
 // UTF-8 ranges and tags for encoding characters
 static TAG_CONT: u8    = 0b1000_0000u8;
 static TAG_TWO_B: u8   = 0b1100_0000u8;
@@ -601,33 +598,6 @@ impl Char for char {
     }
 }
 
-#[cfg(not(test))]
-impl Eq for char {
-    #[inline]
-    fn eq(&self, other: &char) -> bool { (*self) == (*other) }
-}
-
-#[cfg(not(test))]
-impl TotalEq for char {}
-
-#[cfg(not(test))]
-impl Ord for char {
-    #[inline]
-    fn lt(&self, other: &char) -> bool { *self < *other }
-}
-
-#[cfg(not(test))]
-impl TotalOrd for char {
-    fn cmp(&self, other: &char) -> Ordering {
-        (*self as u32).cmp(&(*other as u32))
-    }
-}
-
-#[cfg(not(test))]
-impl Default for char {
-    #[inline]
-    fn default() -> char { '\x00' }
-}
 
 #[cfg(test)]
 mod test {

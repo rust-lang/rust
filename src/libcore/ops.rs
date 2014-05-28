@@ -115,6 +115,18 @@ pub trait Add<RHS,Result> {
     fn add(&self, rhs: &RHS) -> Result;
 }
 
+macro_rules! add_impl(
+    ($($t:ty)*) => ($(
+        #[cfg(not(test))]
+        impl Add<$t, $t> for $t {
+            #[inline]
+            fn add(&self, other: &$t) -> $t { (*self) + (*other) }
+        }
+    )*)
+)
+
+add_impl!(uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64)
+
 /**
  *
  * The `Sub` trait is used to specify the functionality of `-`.
@@ -144,6 +156,18 @@ pub trait Sub<RHS,Result> {
     /// The method for the `-` operator
     fn sub(&self, rhs: &RHS) -> Result;
 }
+
+macro_rules! sub_impl(
+    ($($t:ty)*) => ($(
+        #[cfg(not(test))]
+        impl Sub<$t, $t> for $t {
+            #[inline]
+            fn sub(&self, other: &$t) -> $t { (*self) - (*other) }
+        }
+    )*)
+)
+
+sub_impl!(uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64)
 
 /**
  *
@@ -175,6 +199,18 @@ pub trait Mul<RHS,Result> {
     fn mul(&self, rhs: &RHS) -> Result;
 }
 
+macro_rules! mul_impl(
+    ($($t:ty)*) => ($(
+        #[cfg(not(test))]
+        impl Mul<$t, $t> for $t {
+            #[inline]
+            fn mul(&self, other: &$t) -> $t { (*self) * (*other) }
+        }
+    )*)
+)
+
+mul_impl!(uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64)
+
 /**
  *
  * The `Div` trait is used to specify the functionality of `/`.
@@ -204,6 +240,18 @@ pub trait Div<RHS,Result> {
     /// The method for the `/` operator
     fn div(&self, rhs: &RHS) -> Result;
 }
+
+macro_rules! div_impl(
+    ($($t:ty)*) => ($(
+        #[cfg(not(test))]
+        impl Div<$t, $t> for $t {
+            #[inline]
+            fn div(&self, other: &$t) -> $t { (*self) / (*other) }
+        }
+    )*)
+)
+
+div_impl!(uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64)
 
 /**
  *
@@ -235,6 +283,33 @@ pub trait Rem<RHS,Result> {
     fn rem(&self, rhs: &RHS) -> Result;
 }
 
+macro_rules! rem_impl(
+    ($($t:ty)*) => ($(
+        #[cfg(not(test))]
+        impl Rem<$t, $t> for $t {
+            #[inline]
+            fn rem(&self, other: &$t) -> $t { (*self) % (*other) }
+        }
+    )*)
+)
+
+macro_rules! rem_float_impl(
+    ($t:ty, $fmod:ident) => {
+        #[cfg(not(test))]
+        impl Rem<$t, $t> for $t {
+            #[inline]
+            fn rem(&self, other: &$t) -> $t {
+                extern { fn $fmod(a: $t, b: $t) -> $t; }
+                unsafe { $fmod(*self, *other) }
+            }
+        }
+    }
+)
+
+rem_impl!(uint u8 u16 u32 u64 int i8 i16 i32 i64)
+rem_float_impl!(f32, fmodf)
+rem_float_impl!(f64, fmod)
+
 /**
  *
  * The `Neg` trait is used to specify the functionality of unary `-`.
@@ -264,6 +339,35 @@ pub trait Neg<Result> {
     /// The method for the unary `-` operator
     fn neg(&self) -> Result;
 }
+
+macro_rules! neg_impl(
+    ($($t:ty)*) => ($(
+        #[cfg(not(test))]
+        impl Neg<$t> for $t {
+            #[inline]
+            fn neg(&self) -> $t { -*self }
+        }
+    )*)
+)
+
+macro_rules! neg_uint_impl(
+    ($t:ty, $t_signed:ty) => {
+        #[cfg(not(test))]
+        impl Neg<$t> for $t {
+            #[inline]
+            fn neg(&self) -> $t { -(*self as $t_signed) as $t }
+        }
+    }
+)
+
+neg_impl!(int i8 i16 i32 i64 f32 f64)
+
+neg_uint_impl!(uint, int)
+neg_uint_impl!(u8, i8)
+neg_uint_impl!(u16, i16)
+neg_uint_impl!(u32, i32)
+neg_uint_impl!(u64, i64)
+
 
 /**
  *
@@ -295,6 +399,19 @@ pub trait Not<Result> {
     fn not(&self) -> Result;
 }
 
+
+macro_rules! not_impl(
+    ($($t:ty)*) => ($(
+        #[cfg(not(test))]
+        impl Not<$t> for $t {
+            #[inline]
+            fn not(&self) -> $t { !*self }
+        }
+    )*)
+)
+
+not_impl!(bool uint u8 u16 u32 u64 int i8 i16 i32 i64)
+
 /**
  *
  * The `BitAnd` trait is used to specify the functionality of `&`.
@@ -324,6 +441,18 @@ pub trait BitAnd<RHS,Result> {
     /// The method for the `&` operator
     fn bitand(&self, rhs: &RHS) -> Result;
 }
+
+macro_rules! bitand_impl(
+    ($($t:ty)*) => ($(
+        #[cfg(not(test))]
+        impl BitAnd<$t, $t> for $t {
+            #[inline]
+            fn bitand(&self, rhs: &$t) -> $t { (*self) & (*rhs) }
+        }
+    )*)
+)
+
+bitand_impl!(bool uint u8 u16 u32 u64 int i8 i16 i32 i64)
 
 /**
  *
@@ -355,6 +484,18 @@ pub trait BitOr<RHS,Result> {
     fn bitor(&self, rhs: &RHS) -> Result;
 }
 
+macro_rules! bitor_impl(
+    ($($t:ty)*) => ($(
+        #[cfg(not(test))]
+        impl BitOr<$t,$t> for $t {
+            #[inline]
+            fn bitor(&self, rhs: &$t) -> $t { (*self) | (*rhs) }
+        }
+    )*)
+)
+
+bitor_impl!(bool uint u8 u16 u32 u64 int i8 i16 i32 i64)
+
 /**
  *
  * The `BitXor` trait is used to specify the functionality of `^`.
@@ -384,6 +525,18 @@ pub trait BitXor<RHS,Result> {
     /// The method for the `^` operator
     fn bitxor(&self, rhs: &RHS) -> Result;
 }
+
+macro_rules! bitxor_impl(
+    ($($t:ty)*) => ($(
+        #[cfg(not(test))]
+        impl BitXor<$t, $t> for $t {
+            #[inline]
+            fn bitxor(&self, other: &$t) -> $t { (*self) ^ (*other) }
+        }
+    )*)
+)
+
+bitxor_impl!(bool uint u8 u16 u32 u64 int i8 i16 i32 i64)
 
 /**
  *
@@ -415,6 +568,18 @@ pub trait Shl<RHS,Result> {
     fn shl(&self, rhs: &RHS) -> Result;
 }
 
+macro_rules! shl_impl(
+    ($($t:ty)*) => ($(
+        #[cfg(not(test))]
+        impl Shl<$t, $t> for $t {
+            #[inline]
+            fn shl(&self, other: &$t) -> $t { (*self) << (*other) }
+        }
+    )*)
+)
+
+shl_impl!(uint u8 u16 u32 u64 int i8 i16 i32 i64)
+
 /**
  *
  * The `Shr` trait is used to specify the functionality of `>>`.
@@ -444,6 +609,18 @@ pub trait Shr<RHS,Result> {
     /// The method for the `>>` operator
     fn shr(&self, rhs: &RHS) -> Result;
 }
+
+macro_rules! shr_impl(
+    ($($t:ty)*) => ($(
+        #[cfg(not(test))]
+        impl Shr<$t, $t> for $t {
+            #[inline]
+            fn shr(&self, other: &$t) -> $t { (*self) >> (*other) }
+        }
+    )*)
+)
+
+shr_impl!(uint u8 u16 u32 u64 int i8 i16 i32 i64)
 
 /**
  *
