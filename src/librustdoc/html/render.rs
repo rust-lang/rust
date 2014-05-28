@@ -102,13 +102,11 @@ pub enum ExternalLocation {
     Unknown,
 }
 
-/// Different ways an implementor of a trait can be rendered.
-pub enum Implementor {
-    /// Paths are displayed specially by omitting the `impl XX for` cruft
-    PathType(clean::Type),
-    /// This is the generic representation of a trait implementor, used for
-    /// primitive types and otherwise non-path types.
-    OtherType(clean::Generics, /* trait */ clean::Type, /* for */ clean::Type),
+/// Metadata about an implementor of a trait.
+pub struct Implementor {
+    generics: clean::Generics,
+    trait_: clean::Type,
+    for_: clean::Type,
 }
 
 /// This cache is used to store information about the `clean::Crate` being
@@ -312,6 +310,7 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
     // for future parallelization opportunities
     let cache = Arc::new(cache);
     cache_key.replace(Some(cache.clone()));
+    current_location_key.replace(Some(Vec::new()));
 
     try!(write_shared(&cx, &krate, &*cache, index));
     let krate = try!(render_sources(&mut cx, krate));
@@ -476,7 +475,6 @@ fn write_shared(cx: &Context,
     let dst = cx.dst.join("implementors");
     try!(mkdir(&dst));
     for (&did, imps) in cache.implementors.iter() {
-        if ast_util::is_local(did) { continue }
         let &(ref remote_path, remote_item_type) = cache.paths.get(&did);
 
         let mut mydst = dst.clone();
@@ -495,25 +493,15 @@ fn write_shared(cx: &Context,
         try!(writeln!(&mut f, r"(function() \{var implementors = \{\};"));
 
         for implementor in all_implementors.iter() {
-            try!(writeln!(&mut f, "{}", *implementor));
+            try!(write!(&mut f, "{}", *implementor));
         }
 
-        try!(write!(&mut f, r"implementors['{}'] = \{", krate.name));
+        try!(write!(&mut f, r"implementors['{}'] = [", krate.name));
         for imp in imps.iter() {
-            let &(ref path, item_type) = match *imp {
-                PathType(clean::ResolvedPath { did, .. }) => {
-                    cache.paths.get(&did)
-                }
-                PathType(..) | OtherType(..) => continue,
-            };
-            try!(write!(&mut f, r#"{}:"#, *path.get(path.len() - 1)));
-            try!(write!(&mut f, r#""{}"#,
-                        path.slice_to(path.len() - 1).connect("/")));
-            try!(write!(&mut f, r#"/{}.{}.html","#,
-                        item_type.to_static_str(),
-                        *path.get(path.len() - 1)));
+            try!(write!(&mut f, r#""impl{} {} for {}","#,
+                        imp.generics, imp.trait_, imp.for_));
         }
-        try!(writeln!(&mut f, r"\};"));
+        try!(writeln!(&mut f, r"];"));
         try!(writeln!(&mut f, "{}", r"
             if (window.register_implementors) {
                 window.register_implementors(implementors);
@@ -737,16 +725,11 @@ impl DocFolder for Cache {
                         let v = self.implementors.find_or_insert_with(did, |_| {
                             Vec::new()
                         });
-                        match i.for_ {
-                            clean::ResolvedPath{..} => {
-                                v.unshift(PathType(i.for_.clone()));
-                            }
-                            _ => {
-                                v.push(OtherType(i.generics.clone(),
-                                                 i.trait_.get_ref().clone(),
-                                                 i.for_.clone()));
-                            }
-                        }
+                        v.push(Implementor {
+                            generics: i.generics.clone(),
+                            trait_: i.trait_.get_ref().clone(),
+                            for_: i.for_.clone(),
+                        });
                     }
                     Some(..) | None => {}
                 }
@@ -1489,34 +1472,33 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         try!(write!(w, "</div>"));
     }
 
-    match cache_key.get().unwrap().implementors.find(&it.def_id) {
+    let cache = cache_key.get().unwrap();
+    try!(write!(w, "
+        <h2 id='implementors'>Implementors</h2>
+        <ul class='item-list' id='implementors-list'>
+    "));
+    match cache.implementors.find(&it.def_id) {
         Some(implementors) => {
-            try!(write!(w, "
-                <h2 id='implementors'>Implementors</h2>
-                <ul class='item-list' id='implementors-list'>
-            "));
             for i in implementors.iter() {
-                match *i {
-                    PathType(ref ty) => {
-                        try!(write!(w, "<li><code>{}</code></li>", *ty));
-                    }
-                    OtherType(ref generics, ref trait_, ref for_) => {
-                        try!(write!(w, "<li><code>impl{} {} for {}</code></li>",
-                                      *generics, *trait_, *for_));
-                    }
-                }
+                try!(writeln!(w, "<li><code>impl{} {} for {}</code></li>",
+                              i.generics, i.trait_, i.for_));
             }
-            try!(write!(w, "</ul>"));
-            try!(write!(w, r#"<script type="text/javascript" async
-                                      src="{}/implementors/{}/{}.{}.js"></script>"#,
-                        cx.current.iter().map(|_| "..")
-                                  .collect::<Vec<&str>>().connect("/"),
-                        cx.current.connect("/"),
-                        shortty(it).to_static_str(),
-                        *it.name.get_ref()));
         }
         None => {}
     }
+    try!(write!(w, "</ul>"));
+    try!(write!(w, r#"<script type="text/javascript" async
+                              src="{root_path}/implementors/{path}/\
+                                   {ty}.{name}.js"></script>"#,
+                root_path = Vec::from_elem(cx.current.len(), "..").connect("/"),
+                path = if ast_util::is_local(it.def_id) {
+                    cx.current.connect("/")
+                } else {
+                    let path = cache.external_paths.get(&it.def_id);
+                    path.slice_to(path.len() - 1).connect("/")
+                },
+                ty = shortty(it).to_static_str(),
+                name = *it.name.get_ref()));
     Ok(())
 }
 
