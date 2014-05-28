@@ -348,6 +348,11 @@ case $CFG_CPUTYPE in
         CFG_CPUTYPE=arm
         ;;
 
+    armv7l)
+        CFG_CPUTYPE=arm
+        CFG_OSTYPE="${CFG_OSTYPE}eabihf"
+        ;;
+
     x86_64 | x86-64 | x64 | amd64)
         CFG_CPUTYPE=x86_64
         ;;
@@ -401,6 +406,7 @@ opt optimize 1 "build optimized rust code"
 opt optimize-cxx 1 "build optimized C++ code"
 opt optimize-llvm 1 "build optimized LLVM"
 opt optimize-tests 1 "build tests with optimizations"
+opt libcpp 1 "build with clang's libcpp"
 opt llvm-assertions 1 "build LLVM with assertions"
 opt debug 1 "build with extra debug fun"
 opt ratchet-bench 0 "ratchet benchmarks"
@@ -1043,31 +1049,29 @@ do
 
         case "$CFG_CC" in
             ("ccache clang")
-            LLVM_CXX_32="ccache clang++ -m32 -Qunused-arguments"
-            LLVM_CC_32="ccache clang -m32 -Qunused-arguments"
+            LLVM_CXX_32="ccache clang++ -Qunused-arguments"
+            LLVM_CC_32="ccache clang -Qunused-arguments"
 
             LLVM_CXX_64="ccache clang++ -Qunused-arguments"
             LLVM_CC_64="ccache clang -Qunused-arguments"
-            LLVM_OPTS="$LLVM_OPTS --enable-libcpp"
             ;;
             ("clang")
-            LLVM_CXX_32="clang++ -m32 -Qunused-arguments"
-            LLVM_CC_32="clang -m32 -Qunused-arguments"
+            LLVM_CXX_32="clang++ -Qunused-arguments"
+            LLVM_CC_32="clang -Qunused-arguments"
 
             LLVM_CXX_64="clang++ -Qunused-arguments"
             LLVM_CC_64="clang -Qunused-arguments"
-            LLVM_OPTS="$LLVM_OPTS --enable-libcpp"
             ;;
             ("ccache gcc")
-            LLVM_CXX_32="ccache g++ -m32"
-            LLVM_CC_32="ccache gcc -m32"
+            LLVM_CXX_32="ccache g++"
+            LLVM_CC_32="ccache gcc"
 
             LLVM_CXX_64="ccache g++"
             LLVM_CC_64="ccache gcc"
             ;;
             ("gcc")
-            LLVM_CXX_32="g++ -m32"
-            LLVM_CC_32="gcc -m32"
+            LLVM_CXX_32="g++"
+            LLVM_CC_32="gcc"
 
             LLVM_CXX_64="g++"
             LLVM_CC_64="gcc"
@@ -1075,21 +1079,41 @@ do
 
             (*)
             msg "inferring LLVM_CXX/CC from CXX/CC = $CXX/$CC"
-            LLVM_CXX_32="$CXX -m32"
-            LLVM_CC_32="$CC -m32"
+            LLVM_CXX_32="$CXX"
+            LLVM_CC_32="$CC"
 
             LLVM_CXX_64="$CXX"
             LLVM_CC_64="$CC"
             ;;
         esac
 
-        LLVM_CFLAGS_32="-m32"
-        LLVM_CXXFLAGS_32="-m32"
-        LLVM_LDFLAGS_32="-m32"
+        case "$CFG_CPUTYPE" in
+            (x86*)
+                LLVM_CXX_32="$LLVM_CXX_32 -m32"
+                LLVM_CC_32="$LLVM_CC_32 -m32"
 
-        LLVM_CFLAGS_64=""
-        LLVM_CXXFLAGS_64=""
-        LLVM_LDFLAGS_64=""
+                LLVM_CFLAGS_32="-m32"
+                LLVM_CXXFLAGS_32="-m32"
+                LLVM_LDFLAGS_32="-m32"
+
+                LLVM_CFLAGS_64=""
+                LLVM_CXXFLAGS_64=""
+                LLVM_LDFLAGS_64=""
+
+                LLVM_CXX_32="$LLVM_CXX_32 -m32"
+                LLVM_CC_32="$LLVM_CC_32 -m32"
+                ;;
+
+            (*)
+                LLVM_CFLAGS_32=""
+                LLVM_CXXFLAGS_32=""
+                LLVM_LDFLAGS_32=""
+
+                LLVM_CFLAGS_64=""
+                LLVM_CXXFLAGS_64=""
+                LLVM_LDFLAGS_64=""
+                ;;
+        esac
 
         if echo $t | grep -q x86_64
         then
@@ -1111,6 +1135,10 @@ do
         CFLAGS=$LLVM_CFLAGS
         CXXFLAGS=$LLVM_CXXFLAGS
         LDFLAGS=$LLVM_LDFLAGS
+
+        if [ "$CFG_DISABLE_LIBCPP" != 1 ]; then
+            LLVM_OPTS="$LLVM_OPTS --enable-libcpp"
+        fi
 
         LLVM_FLAGS="$LLVM_TARGETS $LLVM_OPTS $LLVM_BUILD \
                         $LLVM_HOST $LLVM_TARGET --with-python=$CFG_PYTHON"
