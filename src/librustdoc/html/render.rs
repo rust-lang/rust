@@ -229,6 +229,8 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
     };
     try!(mkdir(&cx.dst));
 
+    // Crawl the crate attributes looking for attributes which control how we're
+    // going to emit HTML
     match krate.module.as_ref().map(|m| m.doc_list().unwrap_or(&[])) {
         Some(attrs) => {
             for attr in attrs.iter() {
@@ -297,19 +299,37 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
     cache.stack.push(krate.name.clone());
     krate = cache.fold_crate(krate);
 
+
+    for &(n, ref e) in krate.externs.iter() {
+        cache.extern_locations.insert(n, extern_location(e, &cx.dst));
+        let did = ast::DefId { krate: n, node: ast::CRATE_NODE_ID };
+        cache.paths.insert(did, (vec![e.name.to_string()], item_type::Module));
+    }
+
+    let index = try!(build_index(&krate, &mut cache));
+    try!(write_shared(&cx, &krate, &cache, index));
+    let krate = try!(render_sources(&mut cx, krate));
+
+    // And finally render the whole crate's documentation
+    cx.krate(krate, cache)
+}
+
+fn build_index(krate: &clean::Crate, cache: &mut Cache) -> io::IoResult<String> {
+    // Build the search index from the collected metadata
     let mut nodeid_to_pathid = HashMap::new();
     let mut pathid_to_nodeid = Vec::new();
     {
-        let Cache { search_index: ref mut index,
-                    orphan_methods: ref meths, paths: ref mut paths, ..} = cache;
+        let Cache { ref mut search_index,
+                    ref orphan_methods,
+                    ref mut paths, .. } = *cache;
 
         // Attach all orphan methods to the type's definition if the type
         // has since been learned.
-        for &(pid, ref item) in meths.iter() {
+        for &(pid, ref item) in orphan_methods.iter() {
             let did = ast_util::local_def(pid);
             match paths.find(&did) {
                 Some(&(ref fqp, _)) => {
-                    index.push(IndexItem {
+                    search_index.push(IndexItem {
                         ty: shortty(item),
                         name: item.name.clone().unwrap(),
                         path: fqp.slice_to(fqp.len() - 1).connect("::")
@@ -324,7 +344,7 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
 
         // Reduce `NodeId` in paths into smaller sequential numbers,
         // and prune the paths that do not appear in the index.
-        for item in index.iter() {
+        for item in search_index.iter() {
             match item.parent {
                 Some(nodeid) => {
                     if !nodeid_to_pathid.contains_key(&nodeid) {
@@ -339,189 +359,182 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
         assert_eq!(nodeid_to_pathid.len(), pathid_to_nodeid.len());
     }
 
-    // Publish the search index
-    let index = {
-        let mut w = MemWriter::new();
-        try!(write!(&mut w, r#"searchIndex['{}'] = \{"items":["#, krate.name));
+    // Collect the index into a string
+    let mut w = MemWriter::new();
+    try!(write!(&mut w, r#"searchIndex['{}'] = \{"items":["#, krate.name));
 
-        let mut lastpath = "".to_string();
-        for (i, item) in cache.search_index.iter().enumerate() {
-            // Omit the path if it is same to that of the prior item.
-            let path;
-            if lastpath.as_slice() == item.path.as_slice() {
-                path = "";
-            } else {
-                lastpath = item.path.to_string();
-                path = item.path.as_slice();
-            };
+    let mut lastpath = "".to_string();
+    for (i, item) in cache.search_index.iter().enumerate() {
+        // Omit the path if it is same to that of the prior item.
+        let path;
+        if lastpath.as_slice() == item.path.as_slice() {
+            path = "";
+        } else {
+            lastpath = item.path.to_string();
+            path = item.path.as_slice();
+        };
 
-            if i > 0 {
-                try!(write!(&mut w, ","));
-            }
-            try!(write!(&mut w, r#"[{:u},"{}","{}",{}"#,
-                        item.ty, item.name, path,
-                        item.desc.to_json().to_str()));
-            match item.parent {
-                Some(nodeid) => {
-                    let pathid = *nodeid_to_pathid.find(&nodeid).unwrap();
-                    try!(write!(&mut w, ",{}", pathid));
-                }
-                None => {}
-            }
-            try!(write!(&mut w, "]"));
+        if i > 0 {
+            try!(write!(&mut w, ","));
         }
-
-        try!(write!(&mut w, r#"],"paths":["#));
-
-        for (i, &did) in pathid_to_nodeid.iter().enumerate() {
-            let &(ref fqp, short) = cache.paths.find(&did).unwrap();
-            if i > 0 {
-                try!(write!(&mut w, ","));
+        try!(write!(&mut w, r#"[{:u},"{}","{}",{}"#,
+                    item.ty, item.name, path,
+                    item.desc.to_json().to_str()));
+        match item.parent {
+            Some(nodeid) => {
+                let pathid = *nodeid_to_pathid.find(&nodeid).unwrap();
+                try!(write!(&mut w, ",{}", pathid));
             }
-            try!(write!(&mut w, r#"[{:u},"{}"]"#,
-                        short, *fqp.last().unwrap()));
+            None => {}
         }
+        try!(write!(&mut w, "]"));
+    }
 
-        try!(write!(&mut w, r"]\};"));
+    try!(write!(&mut w, r#"],"paths":["#));
 
-        str::from_utf8(w.unwrap().as_slice()).unwrap().to_string()
-    };
+    for (i, &did) in pathid_to_nodeid.iter().enumerate() {
+        let &(ref fqp, short) = cache.paths.find(&did).unwrap();
+        if i > 0 {
+            try!(write!(&mut w, ","));
+        }
+        try!(write!(&mut w, r#"[{:u},"{}"]"#,
+                    short, *fqp.last().unwrap()));
+    }
 
+    try!(write!(&mut w, r"]\};"));
+
+    Ok(str::from_utf8(w.unwrap().as_slice()).unwrap().to_string())
+}
+
+fn write_shared(cx: &Context,
+                krate: &clean::Crate,
+                cache: &Cache,
+                search_index: String) -> io::IoResult<()> {
     // Write out the shared files. Note that these are shared among all rustdoc
     // docs placed in the output directory, so this needs to be a synchronized
     // operation with respect to all other rustdocs running around.
-    {
-        try!(mkdir(&cx.dst));
-        let _lock = ::flock::Lock::new(&cx.dst.join(".lock"));
+    try!(mkdir(&cx.dst));
+    let _lock = ::flock::Lock::new(&cx.dst.join(".lock"));
 
-        // Add all the static files. These may already exist, but we just
-        // overwrite them anyway to make sure that they're fresh and up-to-date.
-        try!(write(cx.dst.join("jquery.js"),
-                   include_bin!("static/jquery-2.1.0.min.js")));
-        try!(write(cx.dst.join("main.js"), include_bin!("static/main.js")));
-        try!(write(cx.dst.join("main.css"), include_bin!("static/main.css")));
-        try!(write(cx.dst.join("normalize.css"),
-                   include_bin!("static/normalize.css")));
-        try!(write(cx.dst.join("FiraSans-Regular.woff"),
-                   include_bin!("static/FiraSans-Regular.woff")));
-        try!(write(cx.dst.join("FiraSans-Medium.woff"),
-                   include_bin!("static/FiraSans-Medium.woff")));
-        try!(write(cx.dst.join("Heuristica-Regular.woff"),
-                   include_bin!("static/Heuristica-Regular.woff")));
-        try!(write(cx.dst.join("Heuristica-Italic.woff"),
-                   include_bin!("static/Heuristica-Italic.woff")));
-        try!(write(cx.dst.join("Heuristica-Bold.woff"),
-                   include_bin!("static/Heuristica-Bold.woff")));
+    // Add all the static files. These may already exist, but we just
+    // overwrite them anyway to make sure that they're fresh and up-to-date.
+    try!(write(cx.dst.join("jquery.js"),
+               include_bin!("static/jquery-2.1.0.min.js")));
+    try!(write(cx.dst.join("main.js"), include_bin!("static/main.js")));
+    try!(write(cx.dst.join("main.css"), include_bin!("static/main.css")));
+    try!(write(cx.dst.join("normalize.css"),
+               include_bin!("static/normalize.css")));
+    try!(write(cx.dst.join("FiraSans-Regular.woff"),
+               include_bin!("static/FiraSans-Regular.woff")));
+    try!(write(cx.dst.join("FiraSans-Medium.woff"),
+               include_bin!("static/FiraSans-Medium.woff")));
+    try!(write(cx.dst.join("Heuristica-Regular.woff"),
+               include_bin!("static/Heuristica-Regular.woff")));
+    try!(write(cx.dst.join("Heuristica-Italic.woff"),
+               include_bin!("static/Heuristica-Italic.woff")));
+    try!(write(cx.dst.join("Heuristica-Bold.woff"),
+               include_bin!("static/Heuristica-Bold.woff")));
 
-        fn collect(path: &Path, krate: &str,
-                   key: &str) -> io::IoResult<Vec<String>> {
-            let mut ret = Vec::new();
-            if path.exists() {
-                for line in BufferedReader::new(File::open(path)).lines() {
-                    let line = try!(line);
-                    if !line.as_slice().starts_with(key) {
-                        continue
-                    }
-                    if line.as_slice().starts_with(
-                            format!("{}['{}']", key, krate).as_slice()) {
-                        continue
-                    }
-                    ret.push(line.to_string());
+    fn collect(path: &Path, krate: &str,
+               key: &str) -> io::IoResult<Vec<String>> {
+        let mut ret = Vec::new();
+        if path.exists() {
+            for line in BufferedReader::new(File::open(path)).lines() {
+                let line = try!(line);
+                if !line.as_slice().starts_with(key) {
+                    continue
                 }
-            }
-            return Ok(ret);
-        }
-
-        // Update the search index
-        let dst = cx.dst.join("search-index.js");
-        let all_indexes = try!(collect(&dst, krate.name.as_slice(),
-                                       "searchIndex"));
-        let mut w = try!(File::create(&dst));
-        try!(writeln!(&mut w, r"var searchIndex = \{\};"));
-        try!(writeln!(&mut w, "{}", index));
-        for index in all_indexes.iter() {
-            try!(writeln!(&mut w, "{}", *index));
-        }
-        try!(writeln!(&mut w, "initSearch(searchIndex);"));
-
-        // Update the list of all implementors for traits
-        let dst = cx.dst.join("implementors");
-        try!(mkdir(&dst));
-        for (&did, imps) in cache.implementors.iter() {
-            if ast_util::is_local(did) { continue }
-            let &(ref remote_path, remote_item_type) = cache.paths.get(&did);
-
-            let mut mydst = dst.clone();
-            for part in remote_path.slice_to(remote_path.len() - 1).iter() {
-                mydst.push(part.as_slice());
-                try!(mkdir(&mydst));
-            }
-            mydst.push(format!("{}.{}.js",
-                               remote_item_type.to_static_str(),
-                               *remote_path.get(remote_path.len() - 1)));
-            let all_implementors = try!(collect(&mydst, krate.name.as_slice(),
-                                                "implementors"));
-
-            try!(mkdir(&mydst.dir_path()));
-            let mut f = BufferedWriter::new(try!(File::create(&mydst)));
-            try!(writeln!(&mut f, r"(function() \{var implementors = \{\};"));
-
-            for implementor in all_implementors.iter() {
-                try!(writeln!(&mut f, "{}", *implementor));
-            }
-
-            try!(write!(&mut f, r"implementors['{}'] = \{", krate.name));
-            for imp in imps.iter() {
-                let &(ref path, item_type) = match *imp {
-                    PathType(clean::ResolvedPath { did, .. }) => {
-                        cache.paths.get(&did)
-                    }
-                    PathType(..) | OtherType(..) => continue,
-                };
-                try!(write!(&mut f, r#"{}:"#, *path.get(path.len() - 1)));
-                try!(write!(&mut f, r#""{}"#,
-                            path.slice_to(path.len() - 1).connect("/")));
-                try!(write!(&mut f, r#"/{}.{}.html","#,
-                            item_type.to_static_str(),
-                            *path.get(path.len() - 1)));
-            }
-            try!(writeln!(&mut f, r"\};"));
-            try!(writeln!(&mut f, "{}", r"
-                if (window.register_implementors) {
-                    window.register_implementors(implementors);
-                } else {
-                    window.pending_implementors = implementors;
+                if line.as_slice().starts_with(
+                        format!("{}['{}']", key, krate).as_slice()) {
+                    continue
                 }
-            "));
-            try!(writeln!(&mut f, r"\})()"));
+                ret.push(line.to_string());
+            }
         }
+        return Ok(ret);
     }
 
-    // Render all source files (this may turn into a giant no-op)
-    {
-        info!("emitting source files");
-        let dst = cx.dst.join("src");
-        try!(mkdir(&dst));
-        let dst = dst.join(krate.name.as_slice());
-        try!(mkdir(&dst));
-        let mut folder = SourceCollector {
-            dst: dst,
-            seen: HashSet::new(),
-            cx: &mut cx,
-        };
-        // skip all invalid spans
-        folder.seen.insert("".to_string());
-        krate = folder.fold_crate(krate);
+    // Update the search index
+    let dst = cx.dst.join("search-index.js");
+    let all_indexes = try!(collect(&dst, krate.name.as_slice(),
+                                   "searchIndex"));
+    let mut w = try!(File::create(&dst));
+    try!(writeln!(&mut w, r"var searchIndex = \{\};"));
+    try!(writeln!(&mut w, "{}", search_index));
+    for index in all_indexes.iter() {
+        try!(writeln!(&mut w, "{}", *index));
     }
+    try!(writeln!(&mut w, "initSearch(searchIndex);"));
 
-    for &(n, ref e) in krate.externs.iter() {
-        cache.extern_locations.insert(n, extern_location(e, &cx.dst));
-        let did = ast::DefId { krate: n, node: ast::CRATE_NODE_ID };
-        cache.paths.insert(did, (vec![e.name.to_string()], item_type::Module));
+    // Update the list of all implementors for traits
+    let dst = cx.dst.join("implementors");
+    try!(mkdir(&dst));
+    for (&did, imps) in cache.implementors.iter() {
+        if ast_util::is_local(did) { continue }
+        let &(ref remote_path, remote_item_type) = cache.paths.get(&did);
+
+        let mut mydst = dst.clone();
+        for part in remote_path.slice_to(remote_path.len() - 1).iter() {
+            mydst.push(part.as_slice());
+            try!(mkdir(&mydst));
+        }
+        mydst.push(format!("{}.{}.js",
+                           remote_item_type.to_static_str(),
+                           *remote_path.get(remote_path.len() - 1)));
+        let all_implementors = try!(collect(&mydst, krate.name.as_slice(),
+                                            "implementors"));
+
+        try!(mkdir(&mydst.dir_path()));
+        let mut f = BufferedWriter::new(try!(File::create(&mydst)));
+        try!(writeln!(&mut f, r"(function() \{var implementors = \{\};"));
+
+        for implementor in all_implementors.iter() {
+            try!(writeln!(&mut f, "{}", *implementor));
+        }
+
+        try!(write!(&mut f, r"implementors['{}'] = \{", krate.name));
+        for imp in imps.iter() {
+            let &(ref path, item_type) = match *imp {
+                PathType(clean::ResolvedPath { did, .. }) => {
+                    cache.paths.get(&did)
+                }
+                PathType(..) | OtherType(..) => continue,
+            };
+            try!(write!(&mut f, r#"{}:"#, *path.get(path.len() - 1)));
+            try!(write!(&mut f, r#""{}"#,
+                        path.slice_to(path.len() - 1).connect("/")));
+            try!(write!(&mut f, r#"/{}.{}.html","#,
+                        item_type.to_static_str(),
+                        *path.get(path.len() - 1)));
+        }
+        try!(writeln!(&mut f, r"\};"));
+        try!(writeln!(&mut f, "{}", r"
+            if (window.register_implementors) {
+                window.register_implementors(implementors);
+            } else {
+                window.pending_implementors = implementors;
+            }
+        "));
+        try!(writeln!(&mut f, r"\})()"));
     }
+    Ok(())
+}
 
-    // And finally render the whole crate's documentation
-    cx.krate(krate, cache)
+fn render_sources(cx: &mut Context,
+                  krate: clean::Crate) -> io::IoResult<clean::Crate> {
+    info!("emitting source files");
+    let dst = cx.dst.join("src");
+    try!(mkdir(&dst));
+    let dst = dst.join(krate.name.as_slice());
+    try!(mkdir(&dst));
+    let mut folder = SourceCollector {
+        dst: dst,
+        seen: HashSet::new(),
+        cx: cx,
+    };
+    // skip all invalid spans
+    folder.seen.insert("".to_string());
+    Ok(folder.fold_crate(krate))
 }
 
 /// Writes the entire contents of a string to a destination, not attempting to
