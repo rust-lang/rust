@@ -307,11 +307,17 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
     }
 
     let index = try!(build_index(&krate, &mut cache));
-    try!(write_shared(&cx, &krate, &cache, index));
+
+    // Freeze the cache now that the index has been built. Put an Arc into TLS
+    // for future parallelization opportunities
+    let cache = Arc::new(cache);
+    cache_key.replace(Some(cache.clone()));
+
+    try!(write_shared(&cx, &krate, &*cache, index));
     let krate = try!(render_sources(&mut cx, krate));
 
     // And finally render the whole crate's documentation
-    cx.krate(krate, cache)
+    cx.krate(krate)
 }
 
 fn build_index(krate: &clean::Crate, cache: &mut Cache) -> io::IoResult<String> {
@@ -954,15 +960,12 @@ impl Context {
     ///
     /// This currently isn't parallelized, but it'd be pretty easy to add
     /// parallelization to this function.
-    fn krate(self, mut krate: clean::Crate, cache: Cache) -> io::IoResult<()> {
+    fn krate(self, mut krate: clean::Crate) -> io::IoResult<()> {
         let mut item = match krate.module.take() {
             Some(i) => i,
             None => return Ok(())
         };
         item.name = Some(krate.name);
-
-        // using a rwarc makes this parallelizable in the future
-        cache_key.replace(Some(Arc::new(cache)));
 
         let mut work = vec!((self, item));
         loop {
