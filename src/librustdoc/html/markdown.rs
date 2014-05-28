@@ -65,6 +65,7 @@ static HOEDOWN_EXTENSIONS: libc::c_uint =
 
 type hoedown_document = libc::c_void;  // this is opaque to us
 
+#[repr(C)]
 struct hoedown_renderer {
     opaque: *mut hoedown_html_renderer_state,
     blockcode: Option<extern "C" fn(*mut hoedown_buffer, *const hoedown_buffer,
@@ -78,6 +79,7 @@ struct hoedown_renderer {
     other: [libc::size_t, ..28],
 }
 
+#[repr(C)]
 struct hoedown_html_renderer_state {
     opaque: *mut libc::c_void,
     toc_data: html_toc_data,
@@ -87,6 +89,7 @@ struct hoedown_html_renderer_state {
                                           *mut libc::c_void)>,
 }
 
+#[repr(C)]
 struct html_toc_data {
     header_count: libc::c_int,
     current_level: libc::c_int,
@@ -100,6 +103,7 @@ struct MyOpaque {
     toc_builder: Option<TocBuilder>,
 }
 
+#[repr(C)]
 struct hoedown_buffer {
     data: *const u8,
     size: libc::size_t,

@@ -103,6 +103,7 @@ pub type uv_buf_len_t = libc::size_t;
 pub type uv_buf_len_t = libc::c_ulong;
 
 // see libuv/include/uv-unix.h
+#[repr(C)]
 #[cfg(unix)]
 pub struct uv_buf_t {
     pub base: *mut u8,
@@ -114,6 +115,7 @@ pub type uv_os_socket_t = c_int;
 
 // see libuv/include/uv-win.h
 #[cfg(windows)]
+#[repr(C)]
 pub struct uv_buf_t {
     pub len: uv_buf_len_t,
     pub base: *mut u8,
@@ -135,6 +137,7 @@ pub enum uv_poll_event {
     UV_WRITABLE = 2,
 }
 
+#[repr(C)]
 pub struct uv_process_options_t {
     pub exit_cb: uv_exit_cb,
     pub file: *const libc::c_char,
@@ -178,11 +181,13 @@ pub type uv_tty_t = c_void;
 pub type uv_signal_t = c_void;
 pub type uv_shutdown_t = c_void;
 
+#[repr(C)]
 pub struct uv_timespec_t {
     pub tv_sec: libc::c_long,
     pub tv_nsec: libc::c_long
 }
 
+#[repr(C)]
 pub struct uv_stat_t {
     pub st_dev: libc::uint64_t,
     pub st_mode: libc::uint64_t,
