@@ -34,7 +34,7 @@ pub use unicode::normalization::decompose_canonical;
 /// Returns the compatibility decomposition of a character.
 pub use unicode::normalization::decompose_compatible;
 
-#[cfg(not(test))] use cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering};
+#[cfg(not(test))] use cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Bounded};
 #[cfg(not(test))] use default::Default;
 
 // UTF-8 ranges and tags for encoding characters
@@ -621,6 +621,14 @@ impl TotalOrd for char {
     fn cmp(&self, other: &char) -> Ordering {
         (*self as u32).cmp(&(*other as u32))
     }
+}
+
+#[cfg(not(test))]
+impl Bounded for char {
+    #[inline]
+    fn min_value() -> char { '\x00' }
+    #[inline]
+    fn max_value() -> char { MAX }
 }
 
 #[cfg(not(test))]

@@ -14,10 +14,10 @@ use default::Default;
 use intrinsics;
 use mem;
 use num::{FPNormal, FPCategory, FPZero, FPSubnormal, FPInfinite, FPNaN};
-use num::{Zero, One, Bounded, Signed, Num, Primitive, Float};
+use num::{Zero, One, Signed, Num, Primitive, Float};
 use option::Option;
 
-#[cfg(not(test))] use cmp::{Eq, Ord};
+#[cfg(not(test))] use cmp::{Eq, Ord, Bounded};
 #[cfg(not(test))] use ops::{Add, Sub, Mul, Div, Rem, Neg};
 
 pub static RADIX: uint = 2u;
@@ -220,6 +220,7 @@ impl Signed for f32 {
     fn is_negative(&self) -> bool { *self < 0.0 || (1.0 / *self) == NEG_INFINITY }
 }
 
+#[cfg(not(test))]
 impl Bounded for f32 {
     // NOTE: this is the smallest non-infinite f32 value, *not* MIN_VALUE
     #[inline]
