@@ -22,7 +22,6 @@ pub use middle::typeck::infer::resolve::{resolve_nested_tvar};
 pub use middle::typeck::infer::resolve::{resolve_rvar};
 
 use collections::HashMap;
-use collections::SmallIntMap;
 use middle::ty::{TyVid, IntVid, FloatVid, RegionVid, Vid};
 use middle::ty;
 use middle::ty_fold;
@@ -258,27 +257,20 @@ pub fn fixup_err_to_str(f: fixup_err) -> String {
     }
 }
 
-fn new_ValsAndBindings<V:Clone,T:Clone>() -> ValsAndBindings<V, T> {
-    ValsAndBindings {
-        vals: SmallIntMap::new(),
-        bindings: Vec::new()
-    }
-}
-
 pub fn new_infer_ctxt<'a>(tcx: &'a ty::ctxt) -> InferCtxt<'a> {
     InferCtxt {
         tcx: tcx,
 
-        ty_var_bindings: RefCell::new(new_ValsAndBindings()),
+        ty_var_bindings: RefCell::new(ValsAndBindings::new()),
         ty_var_counter: Cell::new(0),
 
-        int_var_bindings: RefCell::new(new_ValsAndBindings()),
+        int_var_bindings: RefCell::new(ValsAndBindings::new()),
         int_var_counter: Cell::new(0),
 
-        float_var_bindings: RefCell::new(new_ValsAndBindings()),
+        float_var_bindings: RefCell::new(ValsAndBindings::new()),
         float_var_counter: Cell::new(0),
 
-        region_vars: RegionVarBindings(tcx),
+        region_vars: RegionVarBindings::new(tcx),
     }
 }
 
@@ -679,7 +671,7 @@ impl<'a> InferCtxt<'a> {
                                   trait_ref.def_id,
                                   trait_ref.substs.clone(),
                                   ty::UniqTraitStore,
-                                  ty::EmptyBuiltinBounds());
+                                  ty::empty_builtin_bounds());
         let dummy1 = self.resolve_type_vars_if_possible(dummy0);
         match ty::get(dummy1).sty {
             ty::ty_trait(box ty::TyTrait { ref def_id, ref substs, .. }) => {

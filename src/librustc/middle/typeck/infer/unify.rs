@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -28,6 +28,15 @@ pub enum VarValue<V, T> {
 pub struct ValsAndBindings<V, T> {
     pub vals: SmallIntMap<VarValue<V, T>>,
     pub bindings: Vec<(V, VarValue<V, T>)> ,
+}
+
+impl<V:Clone, T:Clone> ValsAndBindings<V, T> {
+    pub fn new() -> ValsAndBindings<V, T> {
+        ValsAndBindings {
+            vals: SmallIntMap::new(),
+            bindings: Vec::new()
+        }
+    }
 }
 
 pub struct Node<V, T> {

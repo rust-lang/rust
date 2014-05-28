@@ -556,7 +556,7 @@ fn parse_type_param_def(st: &mut PState, conv: conv_did) -> ty::TypeParameterDef
 
 fn parse_bounds(st: &mut PState, conv: conv_did) -> ty::ParamBounds {
     let mut param_bounds = ty::ParamBounds {
-        builtin_bounds: ty::EmptyBuiltinBounds(),
+        builtin_bounds: ty::empty_builtin_bounds(),
         trait_bounds: Vec::new()
     };
     loop {

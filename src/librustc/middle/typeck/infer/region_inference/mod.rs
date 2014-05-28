@@ -143,21 +143,21 @@ pub struct RegionVarBindings<'a> {
     values: RefCell<Option<Vec<VarValue> >>,
 }
 
-pub fn RegionVarBindings<'a>(tcx: &'a ty::ctxt) -> RegionVarBindings<'a> {
-    RegionVarBindings {
-        tcx: tcx,
-        var_origins: RefCell::new(Vec::new()),
-        values: RefCell::new(None),
-        constraints: RefCell::new(HashMap::new()),
-        lubs: RefCell::new(HashMap::new()),
-        glbs: RefCell::new(HashMap::new()),
-        skolemization_count: Cell::new(0),
-        bound_count: Cell::new(0),
-        undo_log: RefCell::new(Vec::new())
-    }
-}
-
 impl<'a> RegionVarBindings<'a> {
+    pub fn new(tcx: &'a ty::ctxt) -> RegionVarBindings<'a> {
+        RegionVarBindings {
+            tcx: tcx,
+            var_origins: RefCell::new(Vec::new()),
+            values: RefCell::new(None),
+            constraints: RefCell::new(HashMap::new()),
+            lubs: RefCell::new(HashMap::new()),
+            glbs: RefCell::new(HashMap::new()),
+            skolemization_count: Cell::new(0),
+            bound_count: Cell::new(0),
+            undo_log: RefCell::new(Vec::new())
+        }
+    }
+
     pub fn in_snapshot(&self) -> bool {
         self.undo_log.borrow().len() > 0
     }
