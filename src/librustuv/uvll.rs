@@ -98,6 +98,7 @@ pub type uv_buf_len_t = libc::size_t;
 pub type uv_buf_len_t = libc::c_ulong;
 
 // see libuv/include/uv-unix.h
+#[repr(C)]
 #[cfg(unix)]
 pub struct uv_buf_t {
     pub base: *u8,
@@ -118,6 +119,7 @@ pub enum uv_run_mode {
     RUN_NOWAIT,
 }
 
+#[repr(C)]
 pub struct uv_process_options_t {
     pub exit_cb: uv_exit_cb,
     pub file: *libc::c_char,
@@ -133,6 +135,7 @@ pub struct uv_process_options_t {
 
 // These fields are private because they must be interfaced with through the
 // functions below.
+#[repr(C)]
 pub struct uv_stdio_container_t {
     flags: libc::c_int,
     stream: *uv_stream_t,
@@ -159,11 +162,13 @@ pub type uv_tty_t = c_void;
 pub type uv_signal_t = c_void;
 pub type uv_shutdown_t = c_void;
 
+#[repr(C)]
 pub struct uv_timespec_t {
     pub tv_sec: libc::c_long,
     pub tv_nsec: libc::c_long
 }
 
+#[repr(C)]
 pub struct uv_stat_t {
     pub st_dev: libc::uint64_t,
     pub st_mode: libc::uint64_t,
