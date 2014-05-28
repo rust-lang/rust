@@ -27,6 +27,7 @@ extern crate time;
 #[phase(syntax, link)]
 extern crate log;
 extern crate libc;
+extern crate libhtml = "html";
 
 use std::io;
 use std::io::{File, MemWriter};
@@ -42,7 +43,6 @@ pub mod doctree;
 pub mod fold;
 pub mod html {
     pub mod highlight;
-    pub mod escape;
     pub mod item_type;
     pub mod format;
     pub mod layout;

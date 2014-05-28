@@ -15,7 +15,7 @@ use std::string::String;
 use getopts;
 use testing;
 
-use html::escape::Escape;
+use libhtml::fmt::Escape;
 use html::markdown::{MarkdownWithToc, find_testable_code, reset_headers};
 use test::Collector;
 

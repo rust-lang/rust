@@ -20,7 +20,7 @@ use syntax::parse;
 use syntax::parse::lexer;
 use syntax::codemap::{BytePos, Span};
 
-use html::escape::Escape;
+use libhtml::fmt::Escape;
 
 use t = syntax::parse::token;
 
