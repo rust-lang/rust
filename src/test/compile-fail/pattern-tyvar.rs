@@ -10,6 +10,8 @@
 
 // error-pattern: mismatched types
 
+extern crate debug;
+
 enum bar { t1((), Option<Vec<int> >), t2, }
 
 fn foo(t: bar) {

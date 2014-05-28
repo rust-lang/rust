@@ -104,6 +104,6 @@ fn main() {
          '\u2028', '\u2029', '\u202F', '\u205F', '\u3000'];
     for c in chars.iter() {
         let ws = c.is_whitespace();
-        println!("{:?} {:?}", c , ws);
+        println!("{} {}", c , ws);
     }
 }

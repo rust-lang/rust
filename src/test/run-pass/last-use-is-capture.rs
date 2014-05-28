@@ -10,6 +10,7 @@
 
 // Make sure #1399 stays fixed
 
+extern crate debug;
 
 struct A { a: Box<int> }
 

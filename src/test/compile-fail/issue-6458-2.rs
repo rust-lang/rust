@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+extern crate debug;
+
 fn main() {
     format!("{:?}", None); //~ ERROR: cannot determine a type for this bounded
 }

@@ -12,7 +12,7 @@
 #![feature(managed_boxes)]
 
 extern crate collections;
-
+extern crate debug;
 
 /**
    A somewhat reduced test case to expose some Valgrind issues.

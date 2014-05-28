@@ -12,6 +12,8 @@
 
 #![feature(managed_boxes)]
 
+extern crate debug;
+
 fn failfn() {
     fail!();
 }

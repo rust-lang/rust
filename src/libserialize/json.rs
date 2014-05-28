@@ -1906,7 +1906,7 @@ impl ::Decoder<DecoderError> for Decoder {
                             names: &[&str],
                             f: |&mut Decoder, uint| -> DecodeResult<T>)
                             -> DecodeResult<T> {
-        debug!("read_enum_variant(names={:?})", names);
+        debug!("read_enum_variant(names={})", names);
         let name = match self.pop() {
             String(s) => s,
             Object(mut o) => {
@@ -1961,7 +1961,7 @@ impl ::Decoder<DecoderError> for Decoder {
                                    names: &[&str],
                                    f: |&mut Decoder, uint| -> DecodeResult<T>)
                                    -> DecodeResult<T> {
-        debug!("read_enum_struct_variant(names={:?})", names);
+        debug!("read_enum_struct_variant(names={})", names);
         self.read_enum_variant(names, f)
     }
 
@@ -3013,7 +3013,7 @@ mod tests {
         let bytes = mem_buf.unwrap();
         let json_str = from_utf8(bytes.as_slice()).unwrap();
         match from_str(json_str) {
-            Err(_) => fail!("Unable to parse json_str: {:?}", json_str),
+            Err(_) => fail!("Unable to parse json_str: {}", json_str),
             _ => {} // it parsed and we are good to go
         }
     }
@@ -3033,7 +3033,7 @@ mod tests {
         let bytes = mem_buf.unwrap();
         let json_str = from_utf8(bytes.as_slice()).unwrap();
         match from_str(json_str) {
-            Err(_) => fail!("Unable to parse json_str: {:?}", json_str),
+            Err(_) => fail!("Unable to parse json_str: {}", json_str),
             _ => {} // it parsed and we are good to go
         }
     }
@@ -3043,7 +3043,7 @@ mod tests {
         use Decodable;
         let json_str = "{\"1\":true}";
         let json_obj = match from_str(json_str) {
-            Err(_) => fail!("Unable to parse json_str: {:?}", json_str),
+            Err(_) => fail!("Unable to parse json_str: {}", json_str),
             Ok(o) => o
         };
         let mut decoder = Decoder::new(json_obj);

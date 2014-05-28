@@ -21,7 +21,9 @@
 #![feature(phase)]
 #![deny(deprecated_owned_vector)]
 
+#[cfg(test)] extern crate debug;
 #[cfg(test)] #[phase(syntax, link)] extern crate log;
+
 extern crate serialize;
 extern crate libc;
 #[cfg(target_os = "macos")]

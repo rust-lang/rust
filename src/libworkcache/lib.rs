@@ -412,8 +412,7 @@ impl<'a> Prep<'a> {
             &'a self, blk: proc(&mut Exec):Send -> T) -> Work<'a, T> {
         let mut bo = Some(blk);
 
-        debug!("exec_work: looking up {} and {:?}", self.fn_name,
-               self.declared_inputs);
+        debug!("exec_work: looking up {}", self.fn_name);
         let cached = {
             let db = self.ctxt.db.deref().read();
             db.deref().prepare(self.fn_name, &self.declared_inputs)
@@ -425,8 +424,7 @@ impl<'a> Prep<'a> {
                self.all_fresh("discovered input", disc_in) &&
                self.all_fresh("discovered output", disc_out) => {
                 debug!("Cache hit!");
-                debug!("Trying to decode: {:?} / {:?} / {}",
-                       disc_in, disc_out, *res);
+                debug!("Trying to decode: {}", *res);
                 Work::from_value(json_decode(res.as_slice()))
             }
 

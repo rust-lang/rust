@@ -44,6 +44,7 @@ via `close` and `delete` methods.
 #![allow(visible_private_types)]
 
 #[cfg(test)] extern crate green;
+#[cfg(test)] extern crate debug;
 #[cfg(test)] extern crate realrustuv = "rustuv";
 extern crate libc;
 extern crate alloc;

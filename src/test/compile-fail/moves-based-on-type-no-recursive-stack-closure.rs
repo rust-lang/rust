@@ -12,6 +12,8 @@
 // bound must be noncopyable. For details see
 // http://smallcultfollowing.com/babysteps/blog/2013/04/30/the-case-of-the-recurring-closure/
 
+extern crate debug;
+
 struct R<'a> {
     // This struct is needed to create the
     // otherwise infinite type of a fn that

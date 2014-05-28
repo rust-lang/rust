@@ -10,6 +10,8 @@
 
 // error-pattern:non-scalar cast
 
+extern crate debug;
+
 struct foo {
     x:int
 }

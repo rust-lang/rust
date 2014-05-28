@@ -17,6 +17,8 @@ with the representation of [int, ..n] and [int] somehow, or at least
 failed to typecheck correctly.
 */
 
+extern crate debug;
+
 struct X { vec: &'static [int] }
 static V: &'static [X] = &[X { vec: &[1, 2, 3] }];
 pub fn main() {
