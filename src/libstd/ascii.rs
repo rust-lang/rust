@@ -46,7 +46,7 @@ impl Ascii {
     pub fn to_char(self) -> char {
         self.as_char()
     }
-    
+
     /// Returns the ascii character a `char`.
     #[inline]
     pub fn as_char(self) -> char {
@@ -106,7 +106,7 @@ impl Ascii {
     pub fn is_digit(&self) -> bool {
         self.chr >= 0x30 && self.chr <= 0x39
     }
-    
+
     /// Checks if the character parses as a numeric digit in the given radix
     ///
     /// Compared to `is_digit()`, this function not only recognizes the
@@ -121,8 +121,8 @@ impl Ascii {
     ///
     /// Fails if given a `radix` > 36.
     #[inline]
-    pub fn is_digit_radix(c: char, radix: uint) -> bool {
-        match c.to_digit(radix) {
+    pub fn is_digit_radix(self, radix: uint) -> bool {
+        match self.to_digit(radix) {
             Some(_) => true,
             None    => false,
         }
@@ -202,7 +202,7 @@ impl Ascii {
     pub fn is_hex(&self) -> bool {
         self.is_digit() || ((self.chr | 32u8) - 'a' as u8) < 6
     }
-    
+
     /// Converts a `char` to the corresponding digit
     ///
     /// # Return value
@@ -851,7 +851,7 @@ mod tests {
         let c = Ascii { chr: 't' as u8 };
         assert_eq!(format_strbuf!("{}", c), "t".to_string());
     }
-    
+
     #[test]
     fn test_to_digit() {
         assert_eq!('0'.to_ascii().to_digit(10u), Some(0u));
@@ -867,7 +867,7 @@ mod tests {
         assert_eq!(' '.to_ascii().to_digit(10u), None);
         assert_eq!('$'.to_ascii().to_digit(36u), None);
     }
-    
+
     #[test]
     fn test_is_digit_radix() {
         assert!('A'.to_ascii().is_digit_radix(16));
