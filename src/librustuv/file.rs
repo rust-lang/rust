@@ -377,7 +377,7 @@ impl FileWatcher {
         let r = FsRequest::write(&self.loop_, self.fd, buf, offset);
         r.map_err(uv_error_to_io_error)
     }
-    fn seek_common(&mut self, pos: i64, whence: c_int) ->
+    fn seek_common(&self, pos: i64, whence: c_int) ->
         Result<u64, IoError>{
         unsafe {
             match libc::lseek(self.fd, pos as libc::off_t, whence) {
@@ -446,10 +446,8 @@ impl rtio::RtioFileStream for FileWatcher {
     }
     fn tell(&self) -> Result<u64, IoError> {
         use libc::SEEK_CUR;
-        // this is temporary
-        // FIXME #13933: Remove/justify all `&T` to `&mut T` transmutes
-        let self_ = unsafe { mem::transmute::<&_, &mut FileWatcher>(self) };
-        self_.seek_common(0, SEEK_CUR)
+
+        self.seek_common(0, SEEK_CUR)
     }
     fn fsync(&mut self) -> Result<(), IoError> {
         let _m = self.fire_homing_missile();
