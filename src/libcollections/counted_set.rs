@@ -22,8 +22,6 @@ use std::fmt::Show;
 use std::hash::Hash;
 use std::iter::Repeat;
 
-static MISSING: uint = 0;
-
 /// A Rust port of Pythons collections.Counter().
 ///
 /// Struct for counting hashable items, Also known as bag or multiset. Stores
@@ -95,10 +93,10 @@ impl<K: Clone + Hash + TotalEq> CountedSet<K> {
     }
 
     /// Returns the count of an element in the counter. Missing elements return 0.
-    pub fn get<'a>(&'a self, k: &K) -> &'a uint {
+    pub fn get(&self, k: &K) -> uint {
         match self.data.find(k) {
-            Some(v) => v,
-            None => &'static MISSING
+            Some(v) => *v,
+            None => 0u
         }
     }
 
@@ -108,10 +106,6 @@ impl<K: Clone + Hash + TotalEq> CountedSet<K> {
     }
 
     // =============== HashMap aliases ===============
-
-    pub fn get_mut<'a>(&'a mut self, k: &K) -> &'a mut uint {
-        self.data.get_mut(k)
-    }
 
     pub fn find_copy(&self, k: &K) -> Option<uint> {
         self.data.find_copy(k)
@@ -319,10 +313,10 @@ fn test_most_common() {
 fn test_get() {
     let strings = ["a", "b", "a", "b", "b", "c"];
     let count: CountedSet<_> = strings.iter().map(|&x|x).collect();
-    assert_eq!(count.get(&"a"), &2)
-    assert_eq!(count.get(&"b"), &3)
-    assert_eq!(count.get(&"c"), &1)
-    assert_eq!(count.get(&"missing"), &0)
+    assert_eq!(count.get(&"a"), 2)
+    assert_eq!(count.get(&"b"), 3)
+    assert_eq!(count.get(&"c"), 1)
+    assert_eq!(count.get(&"missing"), 0)
 }
 
 #[test]
