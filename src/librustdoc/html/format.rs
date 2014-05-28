@@ -150,7 +150,7 @@ fn resolved_path(w: &mut fmt::Formatter, did: ast::DefId, p: &clean::Path,
                  print_all: bool) -> fmt::Result {
     path(w, p, print_all,
         |cache, loc| {
-            if ast_util::is_local(did) || cache.paths.contains_key(&did) {
+            if ast_util::is_local(did) || cache.inlined.contains(&did) {
                 Some(("../".repeat(loc.len())).to_string())
             } else {
                 match *cache.extern_locations.get(&did.krate) {
