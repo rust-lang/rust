@@ -415,7 +415,7 @@ impl<'a> AsciiStr for &'a [Ascii] {
 
     #[inline]
     fn eq_ignore_case(self, other: &[Ascii]) -> bool {
-        self.iter().zip(other.iter()).all(|(&a, &b)| a.eq_ignore_case(b))
+        self.iter().zip(other.iter()).all(|(&a, &b)| a.to_lowercase() == b.to_lowercase())
     }
 }
 
@@ -625,20 +625,20 @@ mod tests {
 
     #[test]
     fn test_ascii() {
-        assert_eq!(65u8.to_ascii().to_byte(), 65u8);
-        assert_eq!(65u8.to_ascii().to_char(), 'A');
-        assert_eq!('A'.to_ascii().to_char(), 'A');
-        assert_eq!('A'.to_ascii().to_byte(), 65u8);
+        assert_eq!(65u8.to_ascii().as_byte(), 65u8);
+        assert_eq!(65u8.to_ascii().as_char(), 'A');
+        assert_eq!('A'.to_ascii().as_char(), 'A');
+        assert_eq!('A'.to_ascii().as_byte(), 65u8);
 
-        assert_eq!('A'.to_ascii().to_lower().to_char(), 'a');
-        assert_eq!('Z'.to_ascii().to_lower().to_char(), 'z');
-        assert_eq!('a'.to_ascii().to_upper().to_char(), 'A');
-        assert_eq!('z'.to_ascii().to_upper().to_char(), 'Z');
+        assert_eq!('A'.to_ascii().to_lower().as_char(), 'a');
+        assert_eq!('Z'.to_ascii().to_lower().as_char(), 'z');
+        assert_eq!('a'.to_ascii().to_upper().as_char(), 'A');
+        assert_eq!('z'.to_ascii().to_upper().as_char(), 'Z');
 
-        assert_eq!('@'.to_ascii().to_lower().to_char(), '@');
-        assert_eq!('['.to_ascii().to_lower().to_char(), '[');
-        assert_eq!('`'.to_ascii().to_upper().to_char(), '`');
-        assert_eq!('{'.to_ascii().to_upper().to_char(), '{');
+        assert_eq!('@'.to_ascii().to_lower().as_char(), '@');
+        assert_eq!('['.to_ascii().to_lower().as_char(), '[');
+        assert_eq!('`'.to_ascii().to_upper().as_char(), '`');
+        assert_eq!('{'.to_ascii().to_upper().as_char(), '{');
 
         assert!('0'.to_ascii().is_digit());
         assert!('9'.to_ascii().is_digit());
