@@ -3,60 +3,52 @@
 # Introduction
 
 References are one of the more flexible and powerful tools available in
-Rust. A reference can point anywhere: into the managed or exchange
-heap, into the stack, and even into the interior of another data structure. A
-reference is as flexible as a C pointer or C++ reference. However,
-unlike C and C++ compilers, the Rust compiler includes special static checks
-that ensure that programs use references safely. Another advantage of
-references is that they are invisible to the garbage collector, so
-working with references helps reduce the overhead of automatic memory
-management.
+Rust. They can point anywhere: into the heap, stack, and even into the
+interior of another data structure. A reference is as flexible as a C pointer
+or C++ reference.
+
+Unlike C and C++ compilers, the Rust compiler includes special static
+checks that ensure that programs use references safely.
 
 Despite their complete safety, a reference's representation at runtime
 is the same as that of an ordinary pointer in a C program. They introduce zero
 overhead. The compiler does all safety checks at compile time.
 
-Although references have rather elaborate theoretical
-underpinnings (region pointers), the core concepts will be familiar to
-anyone who has worked with C or C++. Therefore, the best way to explain
-how they are used—and their limitations—is probably just to work
-through several examples.
+Although references have rather elaborate theoretical underpinnings usually
+introduced as (e.g. region pointers), the core concepts will be familiar to
+anyone who has worked with C or C++. The best way to explain how they are
+used—and their limitations—is probably just to work through several examples.
 
 # By example
 
 References, sometimes known as *borrowed pointers*, are only valid for
 a limited duration. References never claim any kind of ownership
-over the data that they point to: instead, they are used for cases
+over the data that they point to. Instead, they are used for cases
 where you would like to use data for a short time.
 
-As an example, consider a simple struct type `Point`:
+Consider a simple struct type `Point`:
 
 ~~~
 struct Point {x: f64, y: f64}
 ~~~
 
 We can use this simple definition to allocate points in many different ways. For
-example, in this code, each of these three local variables contains a
-point, but allocated in a different place:
+example, in this code, each of these local variables contains a point,
+but allocated in a different place:
 
 ~~~
 # struct Point {x: f64, y: f64}
-let on_the_stack :  Point     =     Point {x: 3.0, y: 4.0};
-let managed_box  : @Point     =    @Point {x: 5.0, y: 1.0};
-let owned_box    : Box<Point> = box Point {x: 7.0, y: 9.0};
+let on_the_stack : Point      =     Point {x: 3.0, y: 4.0};
+let on_the_heap  : Box<Point> = box Point {x: 7.0, y: 9.0};
 ~~~
 
 Suppose we wanted to write a procedure that computed the distance between any
-two points, no matter where they were stored. For example, we might like to
-compute the distance between `on_the_stack` and `managed_box`, or between
-`managed_box` and `owned_box`. One option is to define a function that takes
-two arguments of type `Point`—that is, it takes the points by value. But if we
-define it this way, calling the function will cause the points to be
+two points, no matter where they were stored. One option is to define a function
+that takes two arguments of type `Point`—that is, it takes the points by value.
+But if we define it this way, calling the function will cause the points to be
 copied. For points, this is probably not so bad, but often copies are
-expensive. Worse, if the data type contains mutable fields, copying can change
-the semantics of your program in unexpected ways. So we'd like to define a
-function that takes the points by pointer. We can use references to do
-this:
+expensive. So we'd like to define a function that takes the points just as
+a reference.
 
 ~~~
 # struct Point {x: f64, y: f64}
@@ -68,16 +60,14 @@ fn compute_distance(p1: &Point, p2: &Point) -> f64 {
 }
 ~~~
 
-Now we can call `compute_distance()` in various ways:
+Now we can call `compute_distance()`:
 
 ~~~
 # struct Point {x: f64, y: f64}
 # let on_the_stack :     Point  =     Point{x: 3.0, y: 4.0};
-# let managed_box  :    @Point  =    @Point{x: 5.0, y: 1.0};
-# let owned_box    : Box<Point> = box Point{x: 7.0, y: 9.0};
+# let on_the_heap  : Box<Point> = box Point{x: 7.0, y: 9.0};
 # fn compute_distance(p1: &Point, p2: &Point) -> f64 { 0.0 }
-compute_distance(&on_the_stack, managed_box);
-compute_distance(managed_box, owned_box);
+compute_distance(&on_the_stack, &*on_the_heap);
 ~~~
 
 Here, the `&` operator takes the address of the variable
@@ -87,11 +77,9 @@ value. We also call this _borrowing_ the local variable
 `on_the_stack`, because we have created an alias: that is, another
 name for the same data.
 
-In contrast, we can pass the boxes `managed_box` and `owned_box` to
-`compute_distance` directly. The compiler automatically converts a box like
-`@Point` or `~Point` to a reference like `&Point`. This is another form
-of borrowing: in this case, the caller lends the contents of the managed or
-owned box to the callee.
+For the second argument, we need to extract the contents of `on_the_heap`
+by derefercing with the `*` symbol. Now that we have the data, we need
+to create a reference with the `&` symbol.
 
 Whenever a caller lends data to a callee, there are some limitations on what
 the caller can do with the original. For example, if the contents of a
@@ -134,10 +122,10 @@ let on_the_stack2 : &Point = &tmp;
 
 # Taking the address of fields
 
-As in C, the `&` operator is not limited to taking the address of
+The `&` operator is not limited to taking the address of
 local variables. It can also take the address of fields or
 individual array elements. For example, consider this type definition
-for `rectangle`:
+for `Rectangle`:
 
 ~~~
 struct Point {x: f64, y: f64} // as before
@@ -153,9 +141,7 @@ Now, as before, we can define rectangles in a few different ways:
 # struct Rectangle {origin: Point, size: Size}
 let rect_stack   =    &Rectangle {origin: Point {x: 1.0, y: 2.0},
                                   size: Size {w: 3.0, h: 4.0}};
-let rect_managed =    @Rectangle {origin: Point {x: 3.0, y: 4.0},
-                                  size: Size {w: 3.0, h: 4.0}};
-let rect_owned   = box Rectangle {origin: Point {x: 5.0, y: 6.0},
+let rect_heap    = box Rectangle {origin: Point {x: 5.0, y: 6.0},
                                   size: Size {w: 3.0, h: 4.0}};
 ~~~
 
@@ -167,109 +153,29 @@ operator. For example, I could write:
 # struct Size {w: f64, h: f64} // as before
 # struct Rectangle {origin: Point, size: Size}
 # let rect_stack  = &Rectangle {origin: Point {x: 1.0, y: 2.0}, size: Size {w: 3.0, h: 4.0}};
-# let rect_managed = @Rectangle {origin: Point {x: 3.0, y: 4.0}, size: Size {w: 3.0, h: 4.0}};
-# let rect_owned = box Rectangle {origin: Point {x: 5.0, y: 6.0}, size: Size {w: 3.0, h: 4.0}};
+# let rect_heap   = box Rectangle {origin: Point {x: 5.0, y: 6.0}, size: Size {w: 3.0, h: 4.0}};
 # fn compute_distance(p1: &Point, p2: &Point) -> f64 { 0.0 }
-compute_distance(&rect_stack.origin, &rect_managed.origin);
+compute_distance(&rect_stack.origin, &rect_heap.origin);
 ~~~
 
 which would borrow the field `origin` from the rectangle on the stack
-as well as from the managed box, and then compute the distance between them.
+as well as from the owned box, and then compute the distance between them.
 
-# Borrowing managed boxes and rooting
+# Lifetimes
 
-We’ve seen a few examples so far of borrowing heap boxes, both managed
-and owned. Up till this point, we’ve glossed over issues of
-safety. As stated in the introduction, at runtime a reference
-is simply a pointer, nothing more. Therefore, avoiding C's problems
-with dangling pointers requires a compile-time safety check.
+We’ve seen a few examples of borrowing data. To this point, we’ve glossed
+over issues of safety. As stated in the introduction, at runtime a reference
+is simply a pointer, nothing more. Therefore, avoiding C's problems with
+dangling pointers requires a compile-time safety check.
 
 The basis for the check is the notion of _lifetimes_. A lifetime is a
 static approximation of the span of execution during which the pointer
 is valid: it always corresponds to some expression or block within the
-program. Code inside that expression can use the pointer without
-restrictions. But if the pointer escapes from that expression (for
-example, if the expression contains an assignment expression that
-assigns the pointer to a mutable field of a data structure with a
-broader scope than the pointer itself), the compiler reports an
-error. We'll be discussing lifetimes more in the examples to come, and
-a more thorough introduction is also available.
+program.
 
-When the `&` operator creates a reference, the compiler must
-ensure that the pointer remains valid for its entire
-lifetime. Sometimes this is relatively easy, such as when taking the
-address of a local variable or a field that is stored on the stack:
-
-~~~
-struct X { f: int }
-fn example1() {
-    let mut x = X { f: 3 };
-    let y = &mut x.f;  // -+ L
-    // ...             //  |
-}                      // -+
-~~~
-
-Here, the lifetime of the reference `y` is simply L, the
-remainder of the function body. The compiler need not do any other
-work to prove that code will not free `x.f`. This is true even if the
-code mutates `x`.
-
-The situation gets more complex when borrowing data inside heap boxes:
-
-~~~
-# struct X { f: int }
-fn example2() {
-    let mut x = @X { f: 3 };
-    let y = &x.f;      // -+ L
-    // ...             //  |
-}                      // -+
-~~~
-
-In this example, the value `x` is a heap box, and `y` is therefore a
-pointer into that heap box. Again the lifetime of `y` is L, the
-remainder of the function body. But there is a crucial difference:
-suppose `x` were to be reassigned during the lifetime L? If the
-compiler isn't careful, the managed box could become *unrooted*, and
-would therefore be subject to garbage collection. A heap box that is
-unrooted is one such that no pointer values in the heap point to
-it. It would violate memory safety for the box that was originally
-assigned to `x` to be garbage-collected, since a non-heap
-pointer *`y`* still points into it.
-
-> *Note:* Our current implementation implements the garbage collector
-> using reference counting and cycle detection.
-
-For this reason, whenever an `&` expression borrows the interior of a
-managed box stored in a mutable location, the compiler inserts a
-temporary that ensures that the managed box remains live for the
-entire lifetime. So, the above example would be compiled as if it were
-written
-
-~~~
-# struct X { f: int }
-fn example2() {
-    let mut x = @X {f: 3};
-    let x1 = x;
-    let y = &x1.f;     // -+ L
-    // ...             //  |
-}                      // -+
-~~~
-
-Now if `x` is reassigned, the pointer `y` will still remain valid. This
-process is called *rooting*.
-
-# Borrowing owned boxes
-
-The previous example demonstrated *rooting*, the process by which the
-compiler ensures that managed boxes remain live for the duration of a
-borrow. Unfortunately, rooting does not work for borrows of owned
-boxes, because it is not possible to have two references to an owned
-box.
-
-For owned boxes, therefore, the compiler will only allow a borrow *if
-the compiler can guarantee that the owned box will not be reassigned
-or moved for the lifetime of the pointer*. This does not necessarily
-mean that the owned box is stored in immutable memory. For example,
+The compiler will only allow a borrow *if it can guarantee that the data will
+not be reassigned or moved for the lifetime of the pointer*. This does not
+necessarily mean that the data is stored in immutable memory. For example,
 the following function is legal:
 
 ~~~
@@ -287,14 +193,14 @@ fn example3() -> int {
 }
 ~~~
 
-Here, as before, the interior of the variable `x` is being borrowed
+Here, the interior of the variable `x` is being borrowed
 and `x` is declared as mutable. However, the compiler can prove that
 `x` is not assigned anywhere in the lifetime L of the variable
 `y`. Therefore, it accepts the function, even though `x` is mutable
 and in fact is mutated later in the function.
 
 It may not be clear why we are so concerned about mutating a borrowed
-variable. The reason is that the runtime system frees any owned box
+variable. The reason is that the runtime system frees any box
 _as soon as its owning reference changes or goes out of
 scope_. Therefore, a program like this is illegal (and would be
 rejected by the compiler):
@@ -337,31 +243,34 @@ Once the reassignment occurs, the memory will look like this:
                              +---------+
 ~~~
 
-Here you can see that the variable `y` still points at the old box,
-which has been freed.
+Here you can see that the variable `y` still points at the old `f`
+property of Foo, which has been freed.
 
 In fact, the compiler can apply the same kind of reasoning to any
-memory that is _(uniquely) owned by the stack frame_. So we could
+memory that is (uniquely) owned by the stack frame. So we could
 modify the previous example to introduce additional owned pointers
 and structs, and the compiler will still be able to detect possible
-mutations:
+mutations. This time, we'll use an analogy to illustrate the concept.
 
 ~~~ {.ignore}
 fn example3() -> int {
-    struct R { g: int }
-    struct S { f: Box<R> }
+    struct House { owner: Box<Person> }
+    struct Person { age: int }
 
-    let mut x = box S {f: box R {g: 3}};
-    let y = &x.f.g;
-    x = box S {f: box R {g: 4}};  // Error reported here.
-    x.f = box R {g: 5};           // Error reported here.
-    *y
+    let mut house = box House {
+        owner: box Person {age: 30}
+    };
+
+    let owner_age = &house.owner.age;
+    house = box House {owner: box Person {age: 40}};  // Error reported here.
+    house.owner = box Person {age: 50};               // Error reported here.
+    *owner_age
 }
 ~~~
 
-In this case, two errors are reported, one when the variable `x` is
-modified and another when `x.f` is modified. Either modification would
-invalidate the pointer `y`.
+In this case, two errors are reported, one when the variable `house` is
+modified and another when `house.owner` is modified. Either modification would
+invalidate the pointer `owner_age`.
 
 # Borrowing and enums
 
@@ -371,8 +280,8 @@ prevents pointers from pointing into freed memory. There is one other
 case where the compiler must be very careful to ensure that pointers
 remain valid: pointers into the interior of an `enum`.
 
-As an example, let’s look at the following `shape` type that can
-represent both rectangles and circles:
+Let’s look at the following `shape` type that can represent both rectangles
+and circles:
 
 ~~~
 struct Point {x: f64, y: f64}; // as before
@@ -481,7 +390,7 @@ reference, then uses it within the same scope. It is also
 possible to return references as the result of a function, but
 as we'll see, doing so requires some explicit annotation.
 
-For example, we could write a subroutine like this:
+We could write a subroutine like this:
 
 ~~~
 struct Point {x: f64, y: f64}
@@ -502,11 +411,10 @@ pointer result will always have the same lifetime as one of the
 parameters; named lifetimes indicate which parameter that
 is.
 
-In the previous examples, function parameter types did not include a
-lifetime name. In those examples, the compiler simply creates a fresh
-name for the lifetime automatically: that is, the lifetime name is
-guaranteed to refer to a distinct lifetime from the lifetimes of all
-other parameters.
+In the previous code samples, function parameter types did not include a
+lifetime name. The compiler simply creates a fresh name for the lifetime
+automatically: that is, the lifetime name is guaranteed to refer to a distinct
+lifetime from the lifetimes of all other parameters.
 
 Named lifetimes that appear in function signatures are conceptually
 the same as the other lifetimes we have seen before, but they are a bit
@@ -526,12 +434,12 @@ time one that does not compile:
 
 ~~~ {.ignore}
 struct Point {x: f64, y: f64}
-fn get_x_sh(p: @Point) -> &f64 {
+fn get_x_sh(p: &Point) -> &f64 {
     &p.x // Error reported here
 }
 ~~~
 
-Here, the function `get_x_sh()` takes a managed box as input and
+Here, the function `get_x_sh()` takes a reference as input and
 returns a reference. As before, the lifetime of the reference
 that will be returned is a parameter (specified by the
 caller). That means that `get_x_sh()` promises to return a reference
@@ -540,17 +448,18 @@ subtly different from the first example, which promised to return a
 pointer that was valid for as long as its pointer argument was valid.
 
 Within `get_x_sh()`, we see the expression `&p.x` which takes the
-address of a field of a managed box. The presence of this expression
-implies that the compiler must guarantee that, so long as the
-resulting pointer is valid, the managed box will not be reclaimed by
-the garbage collector. But recall that `get_x_sh()` also promised to
+address of a field of a Point. The presence of this expression
+implies that the compiler must guarantee that , so long as the
+resulting pointer is valid, the original Point won't be moved or changed.
+
+But recall that `get_x_sh()` also promised to
 return a pointer that was valid for as long as the caller wanted it to
 be. Clearly, `get_x_sh()` is not in a position to make both of these
 guarantees; in fact, it cannot guarantee that the pointer will remain
 valid at all once it returns, as the parameter `p` may or may not be
 live in the caller. Therefore, the compiler will report an error here.
 
-In general, if you borrow a managed (or owned) box to create a
+In general, if you borrow a struct or box to create a
 reference, it will only be valid within the function
 and cannot be returned. This is why the typical way to return references
 is to take references as input (the only other case in
