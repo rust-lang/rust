@@ -4,9 +4,7 @@
 
 # Summary
 
-Remove `*mut T` from the type grammar, add `*const T`. Coerce `&T` to `*const
-T`, and coerce `&mut T` to `*T`. The type `*T` would correspond to C's notion of
-`T*`.
+Rename `*T` to `*const T`, retain all other semantics of unsafe pointers.
 
 # Motivation
 
@@ -24,6 +22,25 @@ proving to be too error prone to realistically enable these optimizations at a
 future date. By renaming Rust's unsafe pointers to closely match their C
 brethren, the likelihood for errneously transcribing a signature is diminished.
 
+# Detailed design
+
+> This section will assume that the current unsafe pointer design is forgotten
+> completely, and will explain the unsafe pointer design from scratch.
+
+There are two unsafe pointers in rust, `*mut cT` and `*const T`. These two types
+are primarily useful when interacting with foreign functions through a FFI. The
+`*mut T` type is equivalent to the `T*` type in C, and the `*const T` type is
+equivalent to the `const T*` type in C.
+
+The type `&mut T` will automatically coerce to `*mut T` in the normal locations
+that coercion occurs today. It will also be possible to explicitly cast with an
+`as` expression. Additionally, the `&T` type will automatically coerce to
+`*const T`.  Note that `&mut T` will not automatically coerce to `*const T`.
+
+The two unsafe pointer types will be freely castable among one another via `as`
+expressions, but no coercion will occur between the two. Additionally, values of
+type `uint` can be casted to unsafe pointers.
+
 # Drawbacks
 
 Today's unsafe pointers design is consistent with the borrowed pointers types in
@@ -31,25 +48,6 @@ Rust, using the `mut` qualifier for a mutable pointer, and no qualifier for an
 "immutable" pointer. Renaming the pointers would be divergence from this
 consistency, and would also introduce a keyword that is not used elsehwere in
 the language, `const`.
-
-# Detailed design
-
-> This section will assume that the current unsafe pointer design is forgotten
-> completely, and will explain the unsafe pointer design from scratch.
-
-There are two unsafe pointers in rust, `*T` and `*const T`. These two types are
-primarily useful when interacting with foreign functions through a FFI. The `*T`
-type is equivalent to the `T*` type in C, and the `*const T` type is equivalent
-to the `const T*` type in C.
-
-The type `&mut T` will automatically coerce to `*T` in the normal locations that
-coercion occurs today. It will also be possible to explicitly cast with an `as`
-expression. Additionally, the `&T` type will automatically coerce to `*const T`.
-Note that `&mut T` will not automatically coerce to `*const T`.
-
-The two unsafe pointer types will be freely castable among one another via `as`
-expressions, but no coercion will occur between the two. Additionally, values of
-type `uint` can be casted to unsafe pointers.
 
 # Alternatives
 
