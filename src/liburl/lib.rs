@@ -845,7 +845,7 @@ impl fmt::Show for Url {
 
         match self.fragment {
             Some(ref fragment) => {
-                write!(f, "\\#{}", encode_component(fragment.as_slice()))
+                write!(f, "#{}", encode_component(fragment.as_slice()))
             }
             None => Ok(()),
         }
@@ -861,7 +861,7 @@ impl fmt::Show for Path {
 
         match self.fragment {
             Some(ref fragment) => {
-                write!(f, "\\#{}", encode_component(fragment.as_slice()))
+                write!(f, "#{}", encode_component(fragment.as_slice()))
             }
             None => Ok(())
         }

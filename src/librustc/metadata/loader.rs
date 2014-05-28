@@ -146,8 +146,8 @@ impl<'a> Context<'a> {
                                         self.triple).as_slice());
             for (i, &CrateMismatch{ ref path, ref got }) in mismatches.enumerate() {
                 self.sess.fileline_note(self.span,
-                    format!("crate `{}` path \\#{}, triple {}: {}",
-                            self.ident, i+1, got, path.display()).as_slice());
+                    format!("crate `{}` path {}{}, triple {}: {}",
+                            self.ident, "#", i+1, got, path.display()).as_slice());
             }
         }
         if self.rejected_via_hash.len() > 0 {
@@ -156,15 +156,24 @@ impl<'a> Context<'a> {
             let mismatches = self.rejected_via_hash.iter();
             for (i, &CrateMismatch{ ref path, .. }) in mismatches.enumerate() {
                 self.sess.fileline_note(self.span,
-                    format!("crate `{}` path \\#{}: {}",
-                            self.ident, i+1, path.display()).as_slice());
+                    format!("crate `{}` path {}{}: {}",
+                            self.ident, "#", i+1, path.display()).as_slice());
             }
             match self.root {
                 &None => {}
+                #[cfg(stage0)]
                 &Some(ref r) => {
                     for (i, path) in r.paths().iter().enumerate() {
                         self.sess.fileline_note(self.span,
                             format!("crate `{}` path \\#{}: {}",
+                                    r.ident, i+1, path.display()).as_slice());
+                    }
+                }
+                #[cfg(not(stage0))]
+                &Some(ref r) => {
+                    for (i, path) in r.paths().iter().enumerate() {
+                        self.sess.fileline_note(self.span,
+                            format!("crate `{}` path #{}: {}",
                                     r.ident, i+1, path.display()).as_slice());
                     }
                 }

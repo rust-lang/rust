@@ -399,7 +399,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> io::IoResult<String> 
 
     // Collect the index into a string
     let mut w = MemWriter::new();
-    try!(write!(&mut w, r#"searchIndex['{}'] = \{"items":["#, krate.name));
+    try!(write!(&mut w, r#"searchIndex['{}'] = {{"items":["#, krate.name));
 
     let mut lastpath = "".to_string();
     for (i, item) in cache.search_index.iter().enumerate() {
@@ -439,7 +439,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> io::IoResult<String> 
                     short, *fqp.last().unwrap()));
     }
 
-    try!(write!(&mut w, r"]\};"));
+    try!(write!(&mut w, "]}};"));
 
     Ok(str::from_utf8(w.unwrap().as_slice()).unwrap().to_string())
 }
@@ -498,7 +498,7 @@ fn write_shared(cx: &Context,
     let all_indexes = try!(collect(&dst, krate.name.as_slice(),
                                    "searchIndex"));
     let mut w = try!(File::create(&dst));
-    try!(writeln!(&mut w, r"var searchIndex = \{\};"));
+    try!(writeln!(&mut w, "var searchIndex = {{}};"));
     try!(writeln!(&mut w, "{}", search_index));
     for index in all_indexes.iter() {
         try!(writeln!(&mut w, "{}", *index));
@@ -534,7 +534,7 @@ fn write_shared(cx: &Context,
 
         try!(mkdir(&mydst.dir_path()));
         let mut f = BufferedWriter::new(try!(File::create(&mydst)));
-        try!(writeln!(&mut f, r"(function() \{var implementors = \{\};"));
+        try!(writeln!(&mut f, "(function() {{var implementors = {{}};"));
 
         for implementor in all_implementors.iter() {
             try!(write!(&mut f, "{}", *implementor));
@@ -558,7 +558,7 @@ fn write_shared(cx: &Context,
                 window.pending_implementors = implementors;
             }
         "));
-        try!(writeln!(&mut f, r"\})()"));
+        try!(writeln!(&mut f, r"}})()"));
     }
     Ok(())
 }
@@ -1178,7 +1178,7 @@ impl<'a> Item<'a> {
                         self.item.source.loline,
                         self.item.source.hiline)
             };
-            Some(format!("{root}src/{krate}/{path}.html\\#{href}",
+            Some(format!("{root}src/{krate}/{path}.html#{href}",
                          root = self.cx.root_path,
                          krate = self.cx.layout.krate,
                          path = path.connect("/"),
@@ -1423,7 +1423,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
             };
             try!(write!(w,
                         "<h2 id='{id}' class='section-header'>\
-                        <a href=\"\\#{id}\">{name}</a></h2>\n<table>",
+                        <a href=\"#{id}\">{name}</a></h2>\n<table>",
                         id = short, name = name));
         }
 
@@ -1538,9 +1538,9 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     let provided = t.methods.iter().filter(|m| !m.is_req()).collect::<Vec<&clean::TraitMethod>>();
 
     if t.methods.len() == 0 {
-        try!(write!(w, "\\{ \\}"));
+        try!(write!(w, "{{ }}"));
     } else {
-        try!(write!(w, "\\{\n"));
+        try!(write!(w, "{{\n"));
         for m in required.iter() {
             try!(write!(w, "    "));
             try!(render_method(w, m.item()));
@@ -1552,9 +1552,9 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         for m in provided.iter() {
             try!(write!(w, "    "));
             try!(render_method(w, m.item()));
-            try!(write!(w, " \\{ ... \\}\n"));
+            try!(write!(w, " {{ ... }}\n"));
         }
-        try!(write!(w, "\\}"));
+        try!(write!(w, "}}"));
     }
     try!(write!(w, "</pre>"));
 
@@ -1627,7 +1627,7 @@ fn render_method(w: &mut fmt::Formatter, meth: &clean::Item) -> fmt::Result {
     fn fun(w: &mut fmt::Formatter, it: &clean::Item, fn_style: ast::FnStyle,
            g: &clean::Generics, selfty: &clean::SelfTy,
            d: &clean::FnDecl) -> fmt::Result {
-        write!(w, "{}fn <a href='\\#{ty}.{name}' class='fnname'>{name}</a>\
+        write!(w, "{}fn <a href='#{ty}.{name}' class='fnname'>{name}</a>\
                    {generics}{decl}",
                match fn_style {
                    ast::UnsafeFn => "unsafe ",
@@ -1693,9 +1693,9 @@ fn item_enum(w: &mut fmt::Formatter, it: &clean::Item,
                   it.name.get_ref().as_slice(),
                   e.generics));
     if e.variants.len() == 0 && !e.variants_stripped {
-        try!(write!(w, " \\{\\}"));
+        try!(write!(w, " {{}}"));
     } else {
-        try!(write!(w, " \\{\n"));
+        try!(write!(w, " {{\n"));
         for v in e.variants.iter() {
             try!(write!(w, "    "));
             let name = v.name.get_ref().as_slice();
@@ -1732,7 +1732,7 @@ fn item_enum(w: &mut fmt::Formatter, it: &clean::Item,
         if e.variants_stripped {
             try!(write!(w, "    // some variants omitted\n"));
         }
-        try!(write!(w, "\\}"));
+        try!(write!(w, "}}"));
     }
     try!(write!(w, "</pre>"));
 
@@ -1799,7 +1799,7 @@ fn render_struct(w: &mut fmt::Formatter, it: &clean::Item,
     }
     match ty {
         doctree::Plain => {
-            try!(write!(w, " \\{\n{}", tab));
+            try!(write!(w, " {{\n{}", tab));
             let mut fields_stripped = false;
             for field in fields.iter() {
                 match field.inner {
@@ -1820,7 +1820,7 @@ fn render_struct(w: &mut fmt::Formatter, it: &clean::Item,
             if fields_stripped {
                 try!(write!(w, "    // some fields omitted\n{}", tab));
             }
-            try!(write!(w, "\\}"));
+            try!(write!(w, "}}"));
         }
         doctree::Tuple | doctree::Newtype => {
             try!(write!(w, "("));
@@ -1979,7 +1979,7 @@ impl<'a> fmt::Show for Sidebar<'a> {
         let len = cx.current.len() - if it.is_mod() {1} else {0};
         for (i, name) in cx.current.iter().take(len).enumerate() {
             if i > 0 {
-                try!(write!(fmt, "&\\#8203;::"));
+                try!(write!(fmt, "&#8203;::"));
             }
             try!(write!(fmt, "<a href='{}index.html'>{}</a>",
                           cx.root_path
@@ -1998,22 +1998,18 @@ impl<'a> fmt::Show for Sidebar<'a> {
             try!(write!(w, "<div class='block {}'><h2>{}</h2>", short, longty));
             for item in items.iter() {
                 let curty = shortty(cur).to_static_str();
-                let class = if cur.name.get_ref() == item && short == curty {
-                    "current"
-                } else {
-                    ""
-                };
-                try!(write!(w, "<a class='{ty} {class}' href='{curty, select,
-                                mod{../}
-                                other{}
-                           }{tysel, select,
-                                mod{{name}/index.html}
-                                other{#.{name}.html}
-                           }'>{name}</a><br/>",
+                let class = if cur.name.get_ref() == item &&
+                               short == curty { "current" } else { "" };
+                try!(write!(w, "<a class='{ty} {class}' href='{href}{path}'>\
+                                {name}</a><br/>",
                        ty = short,
-                       tysel = short,
                        class = class,
-                       curty = curty,
+                       href = if curty == "mod" {"../"} else {""},
+                       path = if short == "mod" {
+                           format!("{}/index.html", item.as_slice())
+                       } else {
+                           format!("{}.{}.html", short, item.as_slice())
+                       },
                        name = item.as_slice()));
             }
             try!(write!(w, "</div>"));

@@ -1208,9 +1208,16 @@ impl<'a> Parser<'a> {
                 })
               }
 
+              #[cfg(stage0)]
               _ => {
                   let token_str = p.this_token_to_str();
                   p.fatal((format!("expected `;` or `\\{` but found `{}`",
+                                   token_str)).as_slice())
+              }
+              #[cfg(not(stage0))]
+              _ => {
+                  let token_str = p.this_token_to_str();
+                  p.fatal((format!("expected `;` or `{{` but found `{}`",
                                    token_str)).as_slice())
               }
             }
@@ -2738,7 +2745,7 @@ impl<'a> Parser<'a> {
                 self.bump();
                 if self.token != token::RBRACE {
                     let token_str = self.this_token_to_str();
-                    self.fatal(format!("expected `\\}`, found `{}`",
+                    self.fatal(format!("expected `{}`, found `{}`", "}",
                                        token_str).as_slice())
                 }
                 etc = true;
@@ -3148,6 +3155,7 @@ impl<'a> Parser<'a> {
             // consuming more tokens).
             let (bra, ket) = match token::close_delimiter_for(&self.token) {
                 Some(ket) => (self.token.clone(), ket),
+                #[cfg(stage0)]
                 None      => {
                     // we only expect an ident if we didn't parse one
                     // above.
@@ -3158,6 +3166,20 @@ impl<'a> Parser<'a> {
                     };
                     let tok_str = self.this_token_to_str();
                     self.fatal(format!("expected {}`(` or `\\{`, but found `{}`",
+                                       ident_str,
+                                       tok_str).as_slice())
+                }
+                #[cfg(not(stage0))]
+                None      => {
+                    // we only expect an ident if we didn't parse one
+                    // above.
+                    let ident_str = if id == token::special_idents::invalid {
+                        "identifier, "
+                    } else {
+                        ""
+                    };
+                    let tok_str = self.this_token_to_str();
+                    self.fatal(format!("expected {}`(` or `{{`, but found `{}`",
                                        ident_str,
                                        tok_str).as_slice())
                 }
@@ -4040,8 +4062,8 @@ impl<'a> Parser<'a> {
             fields = Vec::new();
         } else {
             let token_str = self.this_token_to_str();
-            self.fatal(format!("expected `\\{`, `(`, or `;` after struct \
-                                name but found `{}`",
+            self.fatal(format!("expected `{}`, `(`, or `;` after struct \
+                                name but found `{}`", "{",
                                token_str).as_slice())
         }
 
@@ -4068,10 +4090,18 @@ impl<'a> Parser<'a> {
                 self.bump();
             }
             token::RBRACE => {}
+            #[cfg(stage0)]
             _ => {
                 let token_str = self.this_token_to_str();
                 self.span_fatal(self.span,
                                 format!("expected `,`, or `\\}` but found `{}`",
+                                        token_str).as_slice())
+            }
+            #[cfg(not(stage0))]
+            _ => {
+                let token_str = self.this_token_to_str();
+                self.span_fatal(self.span,
+                                format!("expected `,`, or `}}` but found `{}`",
                                         token_str).as_slice())
             }
         }
@@ -4683,7 +4713,7 @@ impl<'a> Parser<'a> {
 
             let token_str = self.this_token_to_str();
             self.span_fatal(self.span,
-                            format!("expected `\\{` or `fn` but found `{}`",
+                            format!("expected `{}` or `fn` but found `{}`", "{",
                                     token_str).as_slice());
         }
 

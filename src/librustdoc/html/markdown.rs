@@ -260,9 +260,13 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
 
         // Render the HTML
         let text = format!(r#"<h{lvl} id="{id}" class='section-header'><a
-                           href="\#{id}">{sec_len,plural,=0{}other{{sec} }}{}</a></h{lvl}>"#,
+                           href="\#{id}">{sec}{}</a></h{lvl}>"#,
                            s, lvl = level, id = id,
-                           sec_len = sec.len(), sec = sec);
+                           sec = if sec.len() == 0 {
+                               sec.to_string()
+                           } else {
+                               format!("{} ", sec)
+                           });
 
         text.with_c_str(|p| unsafe { hoedown_buffer_puts(ob, p) });
     }

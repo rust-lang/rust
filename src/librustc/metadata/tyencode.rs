@@ -47,6 +47,7 @@ pub struct ty_abbrev {
 
 pub type abbrev_map = RefCell<HashMap<ty::t, ty_abbrev>>;
 
+#[cfg(stage0)]
 pub fn enc_ty(w: &mut MemWriter, cx: &ctxt, t: ty::t) {
     match cx.abbrevs.borrow_mut().find(&t) {
         Some(a) => { w.write(a.s.as_bytes()); return; }
@@ -67,6 +68,30 @@ pub fn enc_ty(w: &mut MemWriter, cx: &ctxt, t: ty::t) {
         // I.e. it's actually an abbreviation.
         cx.abbrevs.borrow_mut().insert(t, ty_abbrev {
             s: format!("\\#{:x}:{:x}\\#", pos, len)
+        });
+    }
+}
+#[cfg(not(stage0))]
+pub fn enc_ty(w: &mut MemWriter, cx: &ctxt, t: ty::t) {
+    match cx.abbrevs.borrow_mut().find(&t) {
+        Some(a) => { w.write(a.s.as_bytes()); return; }
+        None => {}
+    }
+    let pos = w.tell().unwrap();
+    enc_sty(w, cx, &ty::get(t).sty);
+    let end = w.tell().unwrap();
+    let len = end - pos;
+    fn estimate_sz(u: u64) -> u64 {
+        let mut n = u;
+        let mut len = 0;
+        while n != 0 { len += 1; n = n >> 4; }
+        return len;
+    }
+    let abbrev_len = 3 + estimate_sz(pos) + estimate_sz(len);
+    if abbrev_len < len {
+        // I.e. it's actually an abbreviation.
+        cx.abbrevs.borrow_mut().insert(t, ty_abbrev {
+            s: format!("#{:x}:{:x}#", pos, len)
         });
     }
 }

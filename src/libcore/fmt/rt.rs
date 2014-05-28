@@ -14,13 +14,13 @@
 //! These definitions are similar to their `ct` equivalents, but differ in that
 //! these can be statically allocated and are slightly optimized for the runtime
 
+
+#[cfg(stage0)]
 use option::Option;
 
 #[doc(hidden)]
 pub enum Piece<'a> {
     String(&'a str),
-    // FIXME(#8259): this shouldn't require the unit-value here
-    CurrentArgument(()),
     Argument(Argument<'a>),
 }
 
@@ -28,7 +28,8 @@ pub enum Piece<'a> {
 pub struct Argument<'a> {
     pub position: Position,
     pub format: FormatSpec,
-    pub method: Option<&'a Method<'a>>
+    #[cfg(stage0)]
+    pub method: Option<uint>,
 }
 
 #[doc(hidden)]
@@ -79,37 +80,4 @@ pub enum Flag {
     /// Indicates that padding should be done with a `0` character as well as
     /// being aware of the sign to be printed.
     FlagSignAwareZeroPad,
-}
-
-#[doc(hidden)]
-pub enum Method<'a> {
-    Plural(Option<uint>, &'a [PluralArm<'a>], &'a [Piece<'a>]),
-    Select(&'a [SelectArm<'a>], &'a [Piece<'a>]),
-}
-
-#[doc(hidden)]
-pub enum PluralSelector {
-    Keyword(PluralKeyword),
-    Literal(uint),
-}
-
-#[doc(hidden)]
-pub enum PluralKeyword {
-    Zero,
-    One,
-    Two,
-    Few,
-    Many,
-}
-
-#[doc(hidden)]
-pub struct PluralArm<'a> {
-    pub selector: PluralSelector,
-    pub result: &'a [Piece<'a>],
-}
-
-#[doc(hidden)]
-pub struct SelectArm<'a> {
-    pub selector: &'a str,
-    pub result: &'a [Piece<'a>],
 }
