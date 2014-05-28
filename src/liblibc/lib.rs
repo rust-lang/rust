@@ -2476,6 +2476,9 @@ pub mod consts {
         }
         pub mod posix08 {
         }
+        #[cfg(target_arch = "arm")]
+        #[cfg(target_arch = "x86")]
+        #[cfg(target_arch = "x86_64")]
         pub mod bsd44 {
             use types::os::arch::c95::c_int;
 
@@ -2513,6 +2516,49 @@ pub mod consts {
             pub static SO_BROADCAST: c_int = 6;
             pub static SO_REUSEADDR: c_int = 2;
             pub static SO_ERROR: c_int = 4;
+
+            pub static SHUT_RD: c_int = 0;
+            pub static SHUT_WR: c_int = 1;
+            pub static SHUT_RDWR: c_int = 2;
+        }
+        #[cfg(target_arch = "mips")]
+        pub mod bsd44 {
+            use types::os::arch::c95::c_int;
+
+            pub static MADV_NORMAL : c_int = 0;
+            pub static MADV_RANDOM : c_int = 1;
+            pub static MADV_SEQUENTIAL : c_int = 2;
+            pub static MADV_WILLNEED : c_int = 3;
+            pub static MADV_DONTNEED : c_int = 4;
+            pub static MADV_REMOVE : c_int = 9;
+            pub static MADV_DONTFORK : c_int = 10;
+            pub static MADV_DOFORK : c_int = 11;
+            pub static MADV_MERGEABLE : c_int = 12;
+            pub static MADV_UNMERGEABLE : c_int = 13;
+            pub static MADV_HWPOISON : c_int = 100;
+
+            pub static AF_UNIX: c_int = 1;
+            pub static AF_INET: c_int = 2;
+            pub static AF_INET6: c_int = 10;
+            pub static SOCK_STREAM: c_int = 2;
+            pub static SOCK_DGRAM: c_int = 1;
+            pub static IPPROTO_TCP: c_int = 6;
+            pub static IPPROTO_IP: c_int = 0;
+            pub static IPPROTO_IPV6: c_int = 41;
+            pub static IP_MULTICAST_TTL: c_int = 33;
+            pub static IP_MULTICAST_LOOP: c_int = 34;
+            pub static IP_TTL: c_int = 2;
+            pub static IP_ADD_MEMBERSHIP: c_int = 35;
+            pub static IP_DROP_MEMBERSHIP: c_int = 36;
+            pub static IPV6_ADD_MEMBERSHIP: c_int = 20;
+            pub static IPV6_DROP_MEMBERSHIP: c_int = 21;
+
+            pub static TCP_NODELAY: c_int = 1;
+            pub static SOL_SOCKET: c_int = 65535;
+            pub static SO_KEEPALIVE: c_int = 8;
+            pub static SO_BROADCAST: c_int = 32;
+            pub static SO_REUSEADDR: c_int = 4;
+            pub static SO_ERROR: c_int = 4103;
 
             pub static SHUT_RD: c_int = 0;
             pub static SHUT_WR: c_int = 1;
