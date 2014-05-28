@@ -547,9 +547,7 @@ impl<'a> PrivacyVisitor<'a> {
                      source_did: Option<ast::DefId>, msg: &str) -> CheckResult {
         let id = match self.def_privacy(to_check) {
             ExternallyDenied => {
-                return Some((span,
-                             format_strbuf!("{} is private", msg),
-                             None))
+                return Some((span, format!("{} is private", msg), None))
             }
             Allowable => return None,
             DisallowedBy(id) => id,
@@ -560,11 +558,9 @@ impl<'a> PrivacyVisitor<'a> {
         // because the item itself is private or because its parent is private
         // and its parent isn't in our ancestry.
         let (err_span, err_msg) = if id == source_did.unwrap_or(to_check).node {
-            return Some((span,
-                         format_strbuf!("{} is private", msg),
-                         None));
+            return Some((span, format!("{} is private", msg), None));
         } else {
-            (span, format_strbuf!("{} is inaccessible", msg))
+            (span, format!("{} is inaccessible", msg))
         };
         let item = match self.tcx.map.find(id) {
             Some(ast_map::NodeItem(item)) => {
@@ -600,9 +596,8 @@ impl<'a> PrivacyVisitor<'a> {
             ast::ItemEnum(..) => "enum",
             _ => return Some((err_span, err_msg, None))
         };
-        let msg = format_strbuf!("{} `{}` is private",
-                                 desc,
-                                 token::get_ident(item.ident));
+        let msg = format!("{} `{}` is private", desc,
+                          token::get_ident(item.ident));
         Some((err_span, err_msg, Some((span, msg))))
     }
 

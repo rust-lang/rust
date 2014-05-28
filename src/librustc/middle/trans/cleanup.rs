@@ -763,9 +763,9 @@ impl<'a> CleanupScope<'a> {
          */
 
         match self.kind {
-            CustomScopeKind => format_strbuf!("{}_custom_", prefix),
-            AstScopeKind(id) => format_strbuf!("{}_ast_{}_", prefix, id),
-            LoopScopeKind(id, _) => format_strbuf!("{}_loop_{}_", prefix, id),
+            CustomScopeKind => format!("{}_custom_", prefix),
+            AstScopeKind(id) => format!("{}_ast_{}_", prefix, id),
+            LoopScopeKind(id, _) => format!("{}_loop_{}_", prefix, id),
         }
     }
 }

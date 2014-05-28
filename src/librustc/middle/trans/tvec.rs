@@ -74,12 +74,12 @@ pub struct VecTypes {
 
 impl VecTypes {
     pub fn to_str(&self, ccx: &CrateContext) -> String {
-        format_strbuf!("VecTypes \\{unit_ty={}, llunit_ty={}, \
-                        llunit_size={}, llunit_alloc_size={}\\}",
-                       ty_to_str(ccx.tcx(), self.unit_ty),
-                       ccx.tn.type_to_str(self.llunit_ty),
-                       ccx.tn.val_to_str(self.llunit_size),
-                       self.llunit_alloc_size)
+        format!("VecTypes \\{unit_ty={}, llunit_ty={}, \
+                 llunit_size={}, llunit_alloc_size={}\\}",
+                ty_to_str(ccx.tcx(), self.unit_ty),
+                ccx.tn.type_to_str(self.llunit_ty),
+                ccx.tn.val_to_str(self.llunit_size),
+                self.llunit_alloc_size)
     }
 }
 

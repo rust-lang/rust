@@ -164,7 +164,7 @@ pub fn parse(file: &mut io::Reader, longnames: bool)
     macro_rules! try( ($e:expr) => (
         match $e {
             Ok(e) => e,
-            Err(e) => return Err(format_strbuf!("{}", e))
+            Err(e) => return Err(format!("{}", e))
         }
     ) )
 
@@ -185,10 +185,8 @@ pub fn parse(file: &mut io::Reader, longnames: bool)
     // Check magic number
     let magic = try!(file.read_le_u16());
     if magic != 0x011A {
-        return Err(format_strbuf!("invalid magic number: expected {:x} but \
-                                   found {:x}",
-                                  0x011A,
-                                  magic as uint));
+        return Err(format!("invalid magic number: expected {:x} but found {:x}",
+                           0x011A, magic as uint));
     }
 
     let names_bytes          = try!(file.read_le_i16()) as int;

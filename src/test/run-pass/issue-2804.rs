@@ -45,7 +45,7 @@ fn add_interface(_store: int, managed_ip: String, data: json::Json) -> (String, 
             let name = lookup((*interface).clone(),
                               "ifDescr".to_string(),
                               "".to_string());
-            let label = format_strbuf!("{}-{}", managed_ip, name);
+            let label = format!("{}-{}", managed_ip, name);
 
             (label, bool_value(false))
         }

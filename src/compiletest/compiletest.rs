@@ -188,41 +188,41 @@ pub fn parse_config(args: Vec<String> ) -> Config {
 
 pub fn log_config(config: &Config) {
     let c = config;
-    logv(c, format_strbuf!("configuration:"));
-    logv(c, format_strbuf!("compile_lib_path: {}", config.compile_lib_path));
-    logv(c, format_strbuf!("run_lib_path: {}", config.run_lib_path));
-    logv(c, format_strbuf!("rustc_path: {}", config.rustc_path.display()));
-    logv(c, format_strbuf!("src_base: {}", config.src_base.display()));
-    logv(c, format_strbuf!("build_base: {}", config.build_base.display()));
-    logv(c, format_strbuf!("stage_id: {}", config.stage_id));
-    logv(c, format_strbuf!("mode: {}", config.mode));
-    logv(c, format_strbuf!("run_ignored: {}", config.run_ignored));
-    logv(c, format_strbuf!("filter: {}",
-                           opt_str(&config.filter
-                                          .as_ref()
-                                          .map(|re| {
-                                              re.to_str().into_string()
-                                          }))));
-    logv(c, format_strbuf!("runtool: {}", opt_str(&config.runtool)));
-    logv(c, format_strbuf!("host-rustcflags: {}",
-                           opt_str(&config.host_rustcflags)));
-    logv(c, format_strbuf!("target-rustcflags: {}",
-                           opt_str(&config.target_rustcflags)));
-    logv(c, format_strbuf!("jit: {}", config.jit));
-    logv(c, format_strbuf!("target: {}", config.target));
-    logv(c, format_strbuf!("host: {}", config.host));
-    logv(c, format_strbuf!("android-cross-path: {}",
-                           config.android_cross_path.display()));
-    logv(c, format_strbuf!("adb_path: {}", config.adb_path));
-    logv(c, format_strbuf!("adb_test_dir: {}", config.adb_test_dir));
-    logv(c, format_strbuf!("adb_device_status: {}",
-                           config.adb_device_status));
+    logv(c, format!("configuration:"));
+    logv(c, format!("compile_lib_path: {}", config.compile_lib_path));
+    logv(c, format!("run_lib_path: {}", config.run_lib_path));
+    logv(c, format!("rustc_path: {}", config.rustc_path.display()));
+    logv(c, format!("src_base: {}", config.src_base.display()));
+    logv(c, format!("build_base: {}", config.build_base.display()));
+    logv(c, format!("stage_id: {}", config.stage_id));
+    logv(c, format!("mode: {}", config.mode));
+    logv(c, format!("run_ignored: {}", config.run_ignored));
+    logv(c, format!("filter: {}",
+                    opt_str(&config.filter
+                                   .as_ref()
+                                   .map(|re| {
+                                       re.to_str().into_string()
+                                   }))));
+    logv(c, format!("runtool: {}", opt_str(&config.runtool)));
+    logv(c, format!("host-rustcflags: {}",
+                    opt_str(&config.host_rustcflags)));
+    logv(c, format!("target-rustcflags: {}",
+                    opt_str(&config.target_rustcflags)));
+    logv(c, format!("jit: {}", config.jit));
+    logv(c, format!("target: {}", config.target));
+    logv(c, format!("host: {}", config.host));
+    logv(c, format!("android-cross-path: {}",
+                    config.android_cross_path.display()));
+    logv(c, format!("adb_path: {}", config.adb_path));
+    logv(c, format!("adb_test_dir: {}", config.adb_test_dir));
+    logv(c, format!("adb_device_status: {}",
+                    config.adb_device_status));
     match config.test_shard {
         None => logv(c, "test_shard: (all)".to_string()),
-        Some((a,b)) => logv(c, format_strbuf!("test_shard: {}.{}", a, b))
+        Some((a,b)) => logv(c, format!("test_shard: {}.{}", a, b))
     }
-    logv(c, format_strbuf!("verbose: {}", config.verbose));
-    logv(c, format_strbuf!("\n"));
+    logv(c, format!("verbose: {}", config.verbose));
+    logv(c, format!("\n"));
 }
 
 pub fn opt_str<'a>(maybestr: &'a Option<String>) -> &'a str {
@@ -356,12 +356,10 @@ pub fn make_test_name(config: &Config, testfile: &Path) -> test::TestName {
         let filename = path.filename_str();
         let p = path.dir_path();
         let dir = p.filename_str();
-        format_strbuf!("{}/{}", dir.unwrap_or(""), filename.unwrap_or(""))
+        format!("{}/{}", dir.unwrap_or(""), filename.unwrap_or(""))
     }
 
-    test::DynTestName(format_strbuf!("[{}] {}",
-                                     config.mode,
-                                     shorten(testfile)))
+    test::DynTestName(format!("[{}] {}", config.mode, shorten(testfile)))
 }
 
 pub fn make_test_closure(config: &Config, testfile: &Path) -> test::TestFn {

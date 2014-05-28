@@ -79,7 +79,7 @@ impl ToStrRadix for $T {
     /// Convert to a string in a given base.
     #[inline]
     fn to_str_radix(&self, radix: uint) -> String {
-        format_strbuf!("{}", ::fmt::radix(*self, radix as u8))
+        format!("{}", ::fmt::radix(*self, radix as u8))
     }
 }
 

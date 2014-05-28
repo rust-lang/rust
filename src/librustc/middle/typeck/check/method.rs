@@ -1510,12 +1510,12 @@ impl<'a> LookupContext<'a> {
 
 impl Repr for Candidate {
     fn repr(&self, tcx: &ty::ctxt) -> String {
-        format_strbuf!("Candidate(rcvr_ty={}, rcvr_substs={}, method_ty={}, \
-                        origin={:?})",
-                       self.rcvr_match_condition.repr(tcx),
-                       self.rcvr_substs.repr(tcx),
-                       self.method_ty.repr(tcx),
-                       self.origin)
+        format!("Candidate(rcvr_ty={}, rcvr_substs={}, method_ty={}, \
+                 origin={:?})",
+                self.rcvr_match_condition.repr(tcx),
+                self.rcvr_substs.repr(tcx),
+                self.method_ty.repr(tcx),
+                self.origin)
     }
 }
 
@@ -1523,10 +1523,10 @@ impl Repr for RcvrMatchCondition {
     fn repr(&self, tcx: &ty::ctxt) -> String {
         match *self {
             RcvrMatchesIfObject(d) => {
-                format_strbuf!("RcvrMatchesIfObject({})", d.repr(tcx))
+                format!("RcvrMatchesIfObject({})", d.repr(tcx))
             }
             RcvrMatchesIfSubtype(t) => {
-                format_strbuf!("RcvrMatchesIfSubtype({})", t.repr(tcx))
+                format!("RcvrMatchesIfSubtype({})", t.repr(tcx))
             }
         }
     }

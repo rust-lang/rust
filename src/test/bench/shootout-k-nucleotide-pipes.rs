@@ -129,11 +129,11 @@ fn make_sequence_processor(sz: uint,
    let buffer = match sz {
        1u => { sort_and_fmt(&freqs, total) }
        2u => { sort_and_fmt(&freqs, total) }
-       3u => { format_strbuf!("{}\t{}", find(&freqs, "GGT".to_string()), "GGT") }
-       4u => { format_strbuf!("{}\t{}", find(&freqs, "GGTA".to_string()), "GGTA") }
-       6u => { format_strbuf!("{}\t{}", find(&freqs, "GGTATT".to_string()), "GGTATT") }
-      12u => { format_strbuf!("{}\t{}", find(&freqs, "GGTATTTTAATT".to_string()), "GGTATTTTAATT") }
-      18u => { format_strbuf!("{}\t{}", find(&freqs, "GGTATTTTAATTTATAGT".to_string()),
+       3u => { format!("{}\t{}", find(&freqs, "GGT".to_string()), "GGT") }
+       4u => { format!("{}\t{}", find(&freqs, "GGTA".to_string()), "GGTA") }
+       6u => { format!("{}\t{}", find(&freqs, "GGTATT".to_string()), "GGTATT") }
+      12u => { format!("{}\t{}", find(&freqs, "GGTATTTTAATT".to_string()), "GGTATTTTAATT") }
+      18u => { format!("{}\t{}", find(&freqs, "GGTATTTTAATTTATAGT".to_string()),
                        "GGTATTTTAATTTATAGT") }
         _ => { "".to_string() }
    };

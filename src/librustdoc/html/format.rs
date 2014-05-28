@@ -366,7 +366,7 @@ impl fmt::Show for clean::Type {
                        lifetimes = if decl.lifetimes.len() == 0 {
                            "".to_string()
                        } else {
-                           format_strbuf!("&lt;{:#}&gt;", decl.lifetimes)
+                           format!("&lt;{:#}&gt;", decl.lifetimes)
                        },
                        args = decl.decl.inputs,
                        bounds = if decl.bounds.len() == 0 {
@@ -375,7 +375,7 @@ impl fmt::Show for clean::Type {
                            let mut m = decl.bounds
                                            .iter()
                                            .map(|s| s.to_str().to_string());
-                           format_strbuf!(
+                           format!(
                                ": {}",
                                m.collect::<Vec<String>>().connect(" + "))
                        },
@@ -388,7 +388,7 @@ impl fmt::Show for clean::Type {
                        match decl.abi.as_slice() {
                            "" => " extern ".to_string(),
                            "\"Rust\"" => "".to_string(),
-                           s => format_strbuf!(" extern {} ", s)
+                           s => format!(" extern {} ", s)
                        },
                        decl.generics,
                        decl.decl)

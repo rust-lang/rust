@@ -1342,24 +1342,16 @@ impl Repr for Constraint {
     fn repr(&self, tcx: &ty::ctxt) -> String {
         match *self {
             ConstrainVarSubVar(a, b) => {
-                format_strbuf!("ConstrainVarSubVar({}, {})",
-                               a.repr(tcx),
-                               b.repr(tcx))
+                format!("ConstrainVarSubVar({}, {})", a.repr(tcx), b.repr(tcx))
             }
             ConstrainRegSubVar(a, b) => {
-                format_strbuf!("ConstrainRegSubVar({}, {})",
-                               a.repr(tcx),
-                               b.repr(tcx))
+                format!("ConstrainRegSubVar({}, {})", a.repr(tcx), b.repr(tcx))
             }
             ConstrainVarSubReg(a, b) => {
-                format_strbuf!("ConstrainVarSubReg({}, {})",
-                               a.repr(tcx),
-                               b.repr(tcx))
+                format!("ConstrainVarSubReg({}, {})", a.repr(tcx), b.repr(tcx))
             }
             ConstrainRegSubReg(a, b) => {
-                format_strbuf!("ConstrainRegSubReg({}, {})",
-                               a.repr(tcx),
-                               b.repr(tcx))
+                format!("ConstrainRegSubReg({}, {})", a.repr(tcx), b.repr(tcx))
             }
         }
     }
