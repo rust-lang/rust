@@ -270,7 +270,7 @@ fn initialize_call_frame(regs: &mut Registers, fptr: InitFn, arg: uint,
 type Registers = [uint, ..32];
 
 #[cfg(target_arch = "mips")]
-fn new_regs() -> Box<Registers> { box [0, .. 32] }
+fn new_regs() -> Box<Registers> { box {[0, .. 32]} }
 
 #[cfg(target_arch = "mips")]
 fn initialize_call_frame(regs: &mut Registers, fptr: InitFn, arg: uint,

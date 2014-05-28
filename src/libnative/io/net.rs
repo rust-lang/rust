@@ -42,11 +42,12 @@ enum InAddr {
 fn ip_to_inaddr(ip: ip::IpAddr) -> InAddr {
     match ip {
         ip::Ipv4Addr(a, b, c, d) => {
+            let ip = (a as u32 << 24) |
+                     (b as u32 << 16) |
+                     (c as u32 <<  8) |
+                     (d as u32 <<  0);
             InAddr(libc::in_addr {
-                s_addr: (d as u32 << 24) |
-                        (c as u32 << 16) |
-                        (b as u32 <<  8) |
-                        (a as u32 <<  0)
+                s_addr: mem::from_be32(ip)
             })
         }
         ip::Ipv6Addr(a, b, c, d, e, f, g, h) => {
@@ -174,11 +175,11 @@ pub fn sockaddr_to_addr(storage: &libc::sockaddr_storage,
             let storage: &libc::sockaddr_in = unsafe {
                 mem::transmute(storage)
             };
-            let addr = storage.sin_addr.s_addr as u32;
-            let a = (addr >>  0) as u8;
-            let b = (addr >>  8) as u8;
-            let c = (addr >> 16) as u8;
-            let d = (addr >> 24) as u8;
+            let ip = mem::to_be32(storage.sin_addr.s_addr as u32);
+            let a = (ip >> 24) as u8;
+            let b = (ip >> 16) as u8;
+            let c = (ip >>  8) as u8;
+            let d = (ip >>  0) as u8;
             Ok(ip::SocketAddr {
                 ip: ip::Ipv4Addr(a, b, c, d),
                 port: ntohs(storage.sin_port),
