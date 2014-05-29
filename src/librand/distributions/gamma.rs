@@ -10,7 +10,8 @@
 
 //! The Gamma and derived distributions.
 
-use std::num::Float;
+use core::num::Float;
+
 use {Rng, Open01};
 use super::normal::StandardNormal;
 use super::{IndependentSample, Sample, Exp};
@@ -34,7 +35,8 @@ use super::{IndependentSample, Sample, Exp};
 /// # Example
 ///
 /// ```rust
-/// use rand::distributions::{IndependentSample, Gamma};
+/// use std::rand;
+/// use std::rand::distributions::{IndependentSample, Gamma};
 ///
 /// let gamma = Gamma::new(2.0, 5.0);
 /// let v = gamma.ind_sample(&mut rand::task_rng());
@@ -182,7 +184,8 @@ impl IndependentSample<f64> for GammaLargeShape {
 /// # Example
 ///
 /// ```rust
-/// use rand::distributions::{ChiSquared, IndependentSample};
+/// use std::rand;
+/// use std::rand::distributions::{ChiSquared, IndependentSample};
 ///
 /// let chi = ChiSquared::new(11.0);
 /// let v = chi.ind_sample(&mut rand::task_rng());
@@ -238,7 +241,8 @@ impl IndependentSample<f64> for ChiSquared {
 /// # Example
 ///
 /// ```rust
-/// use rand::distributions::{FisherF, IndependentSample};
+/// use std::rand;
+/// use std::rand::distributions::{FisherF, IndependentSample};
 ///
 /// let f = FisherF::new(2.0, 32.0);
 /// let v = f.ind_sample(&mut rand::task_rng());
@@ -281,7 +285,8 @@ impl IndependentSample<f64> for FisherF {
 /// # Example
 ///
 /// ```rust
-/// use rand::distributions::{StudentT, IndependentSample};
+/// use std::rand;
+/// use std::rand::distributions::{StudentT, IndependentSample};
 ///
 /// let t = StudentT::new(11.0);
 /// let v = t.ind_sample(&mut rand::task_rng());
@@ -315,14 +320,15 @@ impl IndependentSample<f64> for StudentT {
 
 #[cfg(test)]
 mod test {
+    use std::prelude::*;
+
     use distributions::{Sample, IndependentSample};
-    use {Rng, task_rng};
     use super::{ChiSquared, StudentT, FisherF};
 
     #[test]
     fn test_chi_squared_one() {
         let mut chi = ChiSquared::new(1.0);
-        let mut rng = task_rng();
+        let mut rng = ::test::rng();
         for _ in range(0, 1000) {
             chi.sample(&mut rng);
             chi.ind_sample(&mut rng);
@@ -331,7 +337,7 @@ mod test {
     #[test]
     fn test_chi_squared_small() {
         let mut chi = ChiSquared::new(0.5);
-        let mut rng = task_rng();
+        let mut rng = ::test::rng();
         for _ in range(0, 1000) {
             chi.sample(&mut rng);
             chi.ind_sample(&mut rng);
@@ -340,7 +346,7 @@ mod test {
     #[test]
     fn test_chi_squared_large() {
         let mut chi = ChiSquared::new(30.0);
-        let mut rng = task_rng();
+        let mut rng = ::test::rng();
         for _ in range(0, 1000) {
             chi.sample(&mut rng);
             chi.ind_sample(&mut rng);
@@ -355,7 +361,7 @@ mod test {
     #[test]
     fn test_f() {
         let mut f = FisherF::new(2.0, 32.0);
-        let mut rng = task_rng();
+        let mut rng = ::test::rng();
         for _ in range(0, 1000) {
             f.sample(&mut rng);
             f.ind_sample(&mut rng);
@@ -365,7 +371,7 @@ mod test {
     #[test]
     fn test_t() {
         let mut t = StudentT::new(11.0);
-        let mut rng = task_rng();
+        let mut rng = ::test::rng();
         for _ in range(0, 1000) {
             t.sample(&mut rng);
             t.ind_sample(&mut rng);
@@ -376,36 +382,36 @@ mod test {
 #[cfg(test)]
 mod bench {
     extern crate test;
+    use std::prelude::*;
     use self::test::Bencher;
     use std::mem::size_of;
     use distributions::IndependentSample;
-    use {XorShiftRng, RAND_BENCH_N};
     use super::Gamma;
 
 
     #[bench]
     fn bench_gamma_large_shape(b: &mut Bencher) {
         let gamma = Gamma::new(10., 1.0);
-        let mut rng = XorShiftRng::new().unwrap();
+        let mut rng = ::test::weak_rng();
 
         b.iter(|| {
-            for _ in range(0, RAND_BENCH_N) {
+            for _ in range(0, ::RAND_BENCH_N) {
                 gamma.ind_sample(&mut rng);
             }
         });
-        b.bytes = size_of::<f64>() as u64 * RAND_BENCH_N;
+        b.bytes = size_of::<f64>() as u64 * ::RAND_BENCH_N;
     }
 
     #[bench]
     fn bench_gamma_small_shape(b: &mut Bencher) {
         let gamma = Gamma::new(0.1, 1.0);
-        let mut rng = XorShiftRng::new().unwrap();
+        let mut rng = ::test::weak_rng();
 
         b.iter(|| {
-            for _ in range(0, RAND_BENCH_N) {
+            for _ in range(0, ::RAND_BENCH_N) {
                 gamma.ind_sample(&mut rng);
             }
         });
-        b.bytes = size_of::<f64>() as u64 * RAND_BENCH_N;
+        b.bytes = size_of::<f64>() as u64 * ::RAND_BENCH_N;
     }
 }

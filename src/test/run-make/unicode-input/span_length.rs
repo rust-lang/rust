@@ -8,11 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate rand;
-use rand::{task_rng, Rng};
-
 use std::{char, os, str};
 use std::io::{File, Command};
+use std::rand::{task_rng, Rng};
 
 // creates a file with `fn main() { <random ident> }` and checks the
 // compiler emits a span of the appropriate length (for the
