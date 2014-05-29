@@ -4537,7 +4537,7 @@ impl<'a> Parser<'a> {
                     Some(abi) => Some(abi),
                     None => {
                         self.span_err(
-                            self.span,
+                            self.last_span,
                             format!("illegal ABI: expected one of [{}], \
                                      found `{}`",
                                     abi::all_names().connect(", "),
