@@ -424,14 +424,8 @@ impl fmt::Show for clean::Type {
                        decl.decl)
             }
             clean::Tuple(ref typs) => {
-                try!(f.write("(".as_bytes()));
-                for (i, typ) in typs.iter().enumerate() {
-                    if i > 0 {
-                        try!(f.write(", ".as_bytes()))
-                    }
-                    try!(write!(f, "{}", *typ));
-                }
-                f.write(")".as_bytes())
+                primitive_link(f, clean::PrimitiveTuple,
+                               format!("({:#})", typs).as_slice())
             }
             clean::Vector(ref t) => {
                 primitive_link(f, clean::Slice, format!("[{}]", **t).as_slice())

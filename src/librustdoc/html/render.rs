@@ -70,7 +70,7 @@ use html::markdown;
 pub struct Context {
     /// Current hierarchy of components leading down to what's currently being
     /// rendered
-    pub current: Vec<String> ,
+    pub current: Vec<String>,
     /// String representation of how to get back to the root path of the 'doc/'
     /// folder in terms of a relative URL.
     pub root_path: String,
@@ -90,6 +90,10 @@ pub struct Context {
     /// the source files are present in the html rendering, then this will be
     /// `true`.
     pub include_sources: bool,
+    /// A flag, which when turned off, will render pages which redirect to the
+    /// real location of an item. This is used to allow external links to
+    /// publicly reused items to redirect to the right location.
+    pub render_redirect_pages: bool,
 }
 
 /// Indicates where an external crate can be found.
@@ -227,6 +231,7 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
             krate: krate.name.clone(),
         },
         include_sources: true,
+        render_redirect_pages: false,
     };
     try!(mkdir(&cx.dst));
 
@@ -493,7 +498,17 @@ fn write_shared(cx: &Context,
     let dst = cx.dst.join("implementors");
     try!(mkdir(&dst));
     for (&did, imps) in cache.implementors.iter() {
-        let &(ref remote_path, remote_item_type) = cache.paths.get(&did);
+        // Private modules can leak through to this phase of rustdoc, which
+        // could contain implementations for otherwise private types. In some
+        // rare cases we could find an implementation for an item which wasn't
+        // indexed, so we just skip this step in that case.
+        //
+        // FIXME: this is a vague explanation for why this can't be a `get`, in
+        //        theory it should be...
+        let &(ref remote_path, remote_item_type) = match cache.paths.find(&did) {
+            Some(p) => p,
+            None => continue,
+        };
 
         let mut mydst = dst.clone();
         for part in remote_path.slice_to(remote_path.len() - 1).iter() {
@@ -823,7 +838,7 @@ impl DocFolder for Cache {
             clean::StructItem(..) | clean::EnumItem(..) |
             clean::TypedefItem(..) | clean::TraitItem(..) |
             clean::FunctionItem(..) | clean::ModuleItem(..) |
-            clean::ForeignFunctionItem(..) => {
+            clean::ForeignFunctionItem(..) if !self.privmod => {
                 // Reexported items mean that the same id can show up twice
                 // in the rustdoc ast that we're looking at. We know,
                 // however, that a reexported item doesn't show up in the
@@ -840,7 +855,7 @@ impl DocFolder for Cache {
             }
             // link variants to their parent enum because pages aren't emitted
             // for each variant
-            clean::VariantItem(..) => {
+            clean::VariantItem(..) if !self.privmod => {
                 let mut stack = self.stack.clone();
                 stack.pop();
                 self.paths.insert(item.def_id, (stack, item_type::Enum));
@@ -932,14 +947,6 @@ impl DocFolder for Cache {
                         }
                         None
                     }
-                    // Private modules may survive the strip-private pass if
-                    // they contain impls for public types, but those will get
-                    // stripped here
-                    clean::Item { inner: clean::ModuleItem(ref m),
-                                  visibility, .. }
-                            if (m.items.len() == 0 &&
-                                item.doc_value().is_none()) ||
-                               visibility != Some(ast::Public) => None,
 
                     i => Some(i),
                 }
@@ -1020,7 +1027,7 @@ impl Context {
     /// The rendering driver uses this closure to queue up more work.
     fn item(&mut self, item: clean::Item,
             f: |&mut Context, clean::Item|) -> io::IoResult<()> {
-        fn render(w: io::File, cx: &mut Context, it: &clean::Item,
+        fn render(w: io::File, cx: &Context, it: &clean::Item,
                   pushname: bool) -> io::IoResult<()> {
             info!("Rendering an item to {}", w.path().display());
             // A little unfortunate that this is done like this, but it sure
@@ -1047,9 +1054,24 @@ impl Context {
             // of the pain by using a buffered writer instead of invoking the
             // write sycall all the time.
             let mut writer = BufferedWriter::new(w);
-            try!(layout::render(&mut writer as &mut Writer, &cx.layout, &page,
-                                &Sidebar{ cx: cx, item: it },
-                                &Item{ cx: cx, item: it }));
+            if !cx.render_redirect_pages {
+                try!(layout::render(&mut writer, &cx.layout, &page,
+                                    &Sidebar{ cx: cx, item: it },
+                                    &Item{ cx: cx, item: it }));
+            } else {
+                let mut url = "../".repeat(cx.current.len());
+                match cache_key.get().unwrap().paths.find(&it.def_id) {
+                    Some(&(ref names, _)) => {
+                        for name in names.slice_to(names.len() - 1).iter() {
+                            url.push_str(name.as_slice());
+                            url.push_str("/");
+                        }
+                        url.push_str(item_path(it).as_slice());
+                        try!(layout::redirect(&mut writer, url.as_slice()));
+                    }
+                    None => {}
+                }
+            }
             writer.flush()
         }
 
@@ -1057,6 +1079,17 @@ impl Context {
             // modules are special because they add a namespace. We also need to
             // recurse into the items of the module as well.
             clean::ModuleItem(..) => {
+                // Private modules may survive the strip-private pass if they
+                // contain impls for public types. These modules can also
+                // contain items such as publicly reexported structures.
+                //
+                // External crates will provide links to these structures, so
+                // these modules are recursed into, but not rendered normally (a
+                // flag on the context).
+                if !self.render_redirect_pages {
+                    self.render_redirect_pages = ignore_private_module(&item);
+                }
+
                 let name = item.name.get_ref().to_string();
                 let mut item = Some(item);
                 self.recurse(name, |this| {
@@ -1289,8 +1322,9 @@ fn document(w: &mut fmt::Formatter, item: &clean::Item) -> fmt::Result {
 fn item_module(w: &mut fmt::Formatter, cx: &Context,
                item: &clean::Item, items: &[clean::Item]) -> fmt::Result {
     try!(document(w, item));
-    debug!("{:?}", items);
-    let mut indices = Vec::from_fn(items.len(), |i| i);
+    let mut indices = range(0, items.len()).filter(|i| {
+        !ignore_private_module(&items[*i])
+    }).collect::<Vec<uint>>();
 
     fn cmp(i1: &clean::Item, i2: &clean::Item, idx1: uint, idx2: uint) -> Ordering {
         if shortty(i1) == shortty(i2) {
@@ -1332,7 +1366,6 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
         }
     }
 
-    debug!("{:?}", indices);
     indices.sort_by(|&i1, &i2| cmp(&items[i1], &items[i2], i1, i2));
 
     debug!("{:?}", indices);
@@ -1976,6 +2009,8 @@ impl<'a> fmt::Show for Sidebar<'a> {
 fn build_sidebar(m: &clean::Module) -> HashMap<String, Vec<String>> {
     let mut map = HashMap::new();
     for item in m.items.iter() {
+        if ignore_private_module(item) { continue }
+
         let short = shortty(item).to_static_str();
         let myname = match item.name {
             None => continue,
@@ -2022,4 +2057,14 @@ fn item_primitive(w: &mut fmt::Formatter,
                   _p: &clean::Primitive) -> fmt::Result {
     try!(document(w, it));
     render_methods(w, it)
+}
+
+fn ignore_private_module(it: &clean::Item) -> bool {
+    match it.inner {
+        clean::ModuleItem(ref m) => {
+            (m.items.len() == 0 && it.doc_value().is_none()) ||
+               it.visibility != Some(ast::Public)
+        }
+        _ => false,
+    }
 }
