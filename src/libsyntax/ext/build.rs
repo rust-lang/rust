@@ -9,16 +9,16 @@
 // except according to those terms.
 
 use abi;
-use ast::{P, Ident};
+use ast::{P, Ident, Generics, NodeId, Expr};
 use ast;
 use ast_util;
 use attr;
 use codemap::{Span, respan, Spanned, DUMMY_SP};
 use ext::base::ExtCtxt;
-use ext::quote::rt::*;
 use fold::Folder;
 use owned_slice::OwnedSlice;
 use parse::token::special_idents;
+use parse::token::InternedString;
 use parse::token;
 
 pub struct Field {

@@ -88,6 +88,7 @@ use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
+use ext::deriving::generic::ty::*;
 use parse::token;
 
 pub fn expand_deriving_encodable(cx: &mut ExtCtxt,

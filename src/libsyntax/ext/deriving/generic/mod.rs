@@ -191,8 +191,9 @@ use codemap::Span;
 use owned_slice::OwnedSlice;
 use parse::token::InternedString;
 
-pub use self::ty::*;
-mod ty;
+use self::ty::*;
+
+pub mod ty;
 
 pub struct TraitDef<'a> {
     /// The span for the current #[deriving(Foo)] header.

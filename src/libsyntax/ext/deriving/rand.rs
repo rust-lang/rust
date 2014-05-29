@@ -14,6 +14,7 @@ use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::{AstBuilder};
 use ext::deriving::generic::*;
+use ext::deriving::generic::ty::*;
 
 pub fn expand_deriving_rand(cx: &mut ExtCtxt,
                             span: Span,
