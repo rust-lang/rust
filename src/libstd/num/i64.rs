@@ -10,6 +10,8 @@
 
 //! Operations and constants for signed 64-bits integers (`i64` type)
 
+#![doc(primitive = "i64")]
+
 use from_str::FromStr;
 use num::{ToStrRadix, FromStrRadix};
 use num::strconv;
