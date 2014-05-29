@@ -626,7 +626,7 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
             }
         }
       }
-      ast::PatUniq(inner) => {
+      ast::PatBox(inner) => {
           check_pointer_pat(pcx, Send, inner, pat.id, pat.span, expected);
       }
       ast::PatRegion(inner) => {

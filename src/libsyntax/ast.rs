@@ -347,7 +347,7 @@ pub enum Pat_ {
                                      * we don't bind the fields to names */
     PatStruct(Path, Vec<FieldPat> , bool),
     PatTup(Vec<@Pat> ),
-    PatUniq(@Pat),
+    PatBox(@Pat),
     PatRegion(@Pat), // reference pattern
     PatLit(@Expr),
     PatRange(@Expr, @Expr),

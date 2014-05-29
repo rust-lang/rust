@@ -1064,7 +1064,7 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
             }
           }
 
-          ast::PatUniq(subpat) | ast::PatRegion(subpat) => {
+          ast::PatBox(subpat) | ast::PatRegion(subpat) => {
             // @p1, ~p1
             let subcmt = self.cat_deref(pat, cmt, 0);
             if_ok!(self.cat_pattern(subcmt, subpat, op));
