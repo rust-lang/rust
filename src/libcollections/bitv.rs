@@ -980,8 +980,8 @@ mod tests {
     use bitv;
 
     use std::uint;
-    use rand;
-    use rand::Rng;
+    use std::rand;
+    use std::rand::Rng;
 
     static BENCH_BITS : uint = 1 << 14;
 

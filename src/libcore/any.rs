@@ -119,7 +119,7 @@ mod tests {
     use prelude::*;
     use super::*;
     use realstd::owned::{Box, AnyOwnExt};
-    use realstd::str::{Str, StrAllocating};
+    use realstd::str::Str;
 
     #[deriving(Eq, Show)]
     struct Test;

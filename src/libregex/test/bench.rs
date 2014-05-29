@@ -8,9 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rand::{Rng, task_rng};
-use stdtest::Bencher;
+use std::rand::{Rng, task_rng};
 use std::str;
+use stdtest::Bencher;
+
 use regex::{Regex, NoExpand};
 
 fn bench_assert_match(b: &mut Bencher, re: Regex, text: &str) {
@@ -152,10 +153,10 @@ fn easy1() -> Regex { regex!("A[AB]B[BC]C[CD]D[DE]E[EF]F[FG]G[GH]H[HI]I[IJ]J$") 
 fn medium() -> Regex { regex!("[XYZ]ABCDEFGHIJKLMNOPQRSTUVWXYZ$") }
 fn hard() -> Regex { regex!("[ -~]*ABCDEFGHIJKLMNOPQRSTUVWXYZ$") }
 
-#[allow(deprecated_owned_vector)]
 fn gen_text(n: uint) -> String {
     let mut rng = task_rng();
-    let mut bytes = rng.gen_ascii_str(n).into_bytes();
+    let mut bytes = rng.gen_ascii_chars().map(|n| n as u8).take(n)
+                       .collect::<Vec<u8>>();
     for (i, b) in bytes.mut_iter().enumerate() {
         if i % 20 == 0 {
             *b = '\n' as u8

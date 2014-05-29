@@ -294,7 +294,7 @@ mod tests {
     use super::*;
     use clone::Clone;
     use cmp::*;
-    use realstd::str::{Str, StrAllocating};
+    use realstd::str::Str;
 
     #[test]
     fn test_clone() {

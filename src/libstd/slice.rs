@@ -1303,7 +1303,8 @@ mod tests {
         use realstd::clone::Clone;
         for len in range(4u, 25) {
             for _ in range(0, 100) {
-                let mut v = task_rng().gen_vec::<uint>(len);
+                let mut v = task_rng().gen_iter::<uint>().take(len)
+                                      .collect::<Vec<uint>>();
                 let mut v1 = v.clone();
 
                 v.as_mut_slice().sort();
@@ -2321,7 +2322,7 @@ mod bench {
     fn sort_random_small(b: &mut Bencher) {
         let mut rng = weak_rng();
         b.iter(|| {
-            let mut v = rng.gen_vec::<u64>(5);
+            let mut v = rng.gen_iter::<u64>().take(5).collect::<Vec<u64>>();
             v.as_mut_slice().sort();
         });
         b.bytes = 5 * mem::size_of::<u64>() as u64;
@@ -2331,7 +2332,7 @@ mod bench {
     fn sort_random_medium(b: &mut Bencher) {
         let mut rng = weak_rng();
         b.iter(|| {
-            let mut v = rng.gen_vec::<u64>(100);
+            let mut v = rng.gen_iter::<u64>().take(100).collect::<Vec<u64>>();
             v.as_mut_slice().sort();
         });
         b.bytes = 100 * mem::size_of::<u64>() as u64;
@@ -2341,7 +2342,7 @@ mod bench {
     fn sort_random_large(b: &mut Bencher) {
         let mut rng = weak_rng();
         b.iter(|| {
-            let mut v = rng.gen_vec::<u64>(10000);
+            let mut v = rng.gen_iter::<u64>().take(10000).collect::<Vec<u64>>();
             v.as_mut_slice().sort();
         });
         b.bytes = 10000 * mem::size_of::<u64>() as u64;
@@ -2362,7 +2363,8 @@ mod bench {
     fn sort_big_random_small(b: &mut Bencher) {
         let mut rng = weak_rng();
         b.iter(|| {
-            let mut v = rng.gen_vec::<BigSortable>(5);
+            let mut v = rng.gen_iter::<BigSortable>().take(5)
+                           .collect::<Vec<BigSortable>>();
             v.sort();
         });
         b.bytes = 5 * mem::size_of::<BigSortable>() as u64;
@@ -2372,7 +2374,8 @@ mod bench {
     fn sort_big_random_medium(b: &mut Bencher) {
         let mut rng = weak_rng();
         b.iter(|| {
-            let mut v = rng.gen_vec::<BigSortable>(100);
+            let mut v = rng.gen_iter::<BigSortable>().take(100)
+                           .collect::<Vec<BigSortable>>();
             v.sort();
         });
         b.bytes = 100 * mem::size_of::<BigSortable>() as u64;
@@ -2382,7 +2385,8 @@ mod bench {
     fn sort_big_random_large(b: &mut Bencher) {
         let mut rng = weak_rng();
         b.iter(|| {
-            let mut v = rng.gen_vec::<BigSortable>(10000);
+            let mut v = rng.gen_iter::<BigSortable>().take(10000)
+                           .collect::<Vec<BigSortable>>();
             v.sort();
         });
         b.bytes = 10000 * mem::size_of::<BigSortable>() as u64;

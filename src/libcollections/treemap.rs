@@ -1000,8 +1000,8 @@ impl<T: TotalOrd> Extendable<T> for TreeSet<T> {
 mod test_treemap {
     use super::{TreeMap, TreeNode};
 
-    use rand::Rng;
-    use rand;
+    use std::rand::Rng;
+    use std::rand;
 
     #[test]
     fn find_empty() {

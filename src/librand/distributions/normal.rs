@@ -10,7 +10,8 @@
 
 //! The normal and derived distributions.
 
-use std::num::Float;
+use core::num::Float;
+
 use {Rng, Rand, Open01};
 use distributions::{ziggurat, ziggurat_tables, Sample, IndependentSample};
 
@@ -74,7 +75,8 @@ impl Rand for StandardNormal {
 /// # Example
 ///
 /// ```rust
-/// use rand::distributions::{Normal, IndependentSample};
+/// use std::rand;
+/// use std::rand::distributions::{Normal, IndependentSample};
 ///
 /// // mean 2, standard deviation 3
 /// let normal = Normal::new(2.0, 3.0);
@@ -116,7 +118,8 @@ impl IndependentSample<f64> for Normal {
 /// # Example
 ///
 /// ```rust
-/// use rand::distributions::{LogNormal, IndependentSample};
+/// use std::rand;
+/// use std::rand::distributions::{LogNormal, IndependentSample};
 ///
 /// // mean 2, standard deviation 3
 /// let log_normal = LogNormal::new(2.0, 3.0);
@@ -146,14 +149,15 @@ impl IndependentSample<f64> for LogNormal {
 
 #[cfg(test)]
 mod tests {
+    use std::prelude::*;
+
     use distributions::{Sample, IndependentSample};
-    use {Rng, task_rng};
     use super::{Normal, LogNormal};
 
     #[test]
     fn test_normal() {
         let mut norm = Normal::new(10.0, 10.0);
-        let mut rng = task_rng();
+        let mut rng = ::test::rng();
         for _ in range(0, 1000) {
             norm.sample(&mut rng);
             norm.ind_sample(&mut rng);
@@ -169,7 +173,7 @@ mod tests {
     #[test]
     fn test_log_normal() {
         let mut lnorm = LogNormal::new(10.0, 10.0);
-        let mut rng = task_rng();
+        let mut rng = ::test::rng();
         for _ in range(0, 1000) {
             lnorm.sample(&mut rng);
             lnorm.ind_sample(&mut rng);
@@ -185,22 +189,22 @@ mod tests {
 #[cfg(test)]
 mod bench {
     extern crate test;
+    use std::prelude::*;
     use self::test::Bencher;
     use std::mem::size_of;
-    use {XorShiftRng, RAND_BENCH_N};
     use distributions::{Sample};
     use super::Normal;
 
     #[bench]
     fn rand_normal(b: &mut Bencher) {
-        let mut rng = XorShiftRng::new().unwrap();
+        let mut rng = ::test::weak_rng();
         let mut normal = Normal::new(-2.71828, 3.14159);
 
         b.iter(|| {
-            for _ in range(0, RAND_BENCH_N) {
+            for _ in range(0, ::RAND_BENCH_N) {
                 normal.sample(&mut rng);
             }
         });
-        b.bytes = size_of::<f64>() as u64 * RAND_BENCH_N;
+        b.bytes = size_of::<f64>() as u64 * ::RAND_BENCH_N;
     }
 }

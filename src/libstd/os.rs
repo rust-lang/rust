@@ -1513,7 +1513,8 @@ mod tests {
 
     fn make_rand_name() -> String {
         let mut rng = rand::task_rng();
-        let n = format!("TEST{}", rng.gen_ascii_str(10u).as_slice());
+        let n = format!("TEST{}", rng.gen_ascii_chars().take(10u)
+                                     .collect::<String>());
         assert!(getenv(n.as_slice()).is_none());
         n
     }

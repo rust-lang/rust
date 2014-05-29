@@ -329,10 +329,10 @@ Here is a small example showing how to use Arcs. We wish to run concurrently sev
 a single large vector of floats. Each task needs the full vector to perform its duty.
 
 ~~~
-extern crate rand;
 extern crate sync;
 
 use sync::Arc;
+use std::rand;
 
 fn pnorm(nums: &[f64], p: uint) -> f64 {
     nums.iter().fold(0.0, |a, b| a + b.powf(p as f64)).powf(1.0 / (p as f64))
@@ -358,7 +358,7 @@ created by the line
 
 ~~~
 # extern crate sync;
-# extern crate rand;
+# use std::rand;
 # use sync::Arc;
 # fn main() {
 # let numbers = Vec::from_fn(1000000, |_| rand::random::<f64>());
@@ -372,7 +372,7 @@ reference to the underlying vector as if it were local.
 
 ~~~
 # extern crate sync;
-# extern crate rand;
+# use std::rand;
 # use sync::Arc;
 # fn pnorm(nums: &[f64], p: uint) -> f64 { 4.0 }
 # fn main() {
