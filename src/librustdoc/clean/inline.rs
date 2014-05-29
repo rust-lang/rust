@@ -259,7 +259,8 @@ fn build_module(cx: &core::DocContext, tcx: &ty::ctxt,
 
     // FIXME: this doesn't handle reexports inside the module itself.
     //        Should they be handled?
-    csearch::each_child_of_item(&tcx.sess.cstore, did, |def, _, _| {
+    csearch::each_child_of_item(&tcx.sess.cstore, did, |def, _, vis| {
+        if vis != ast::Public { return }
         match def {
             decoder::DlDef(def) => {
                 match try_inline_def(cx, tcx, def) {
