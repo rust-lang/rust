@@ -278,18 +278,24 @@ fn primitive_link(f: &mut fmt::Formatter,
             needs_termination = true;
         }
         Some(&cnum) => {
+            let path = m.paths.get(&ast::DefId {
+                krate: cnum,
+                node: ast::CRATE_NODE_ID,
+            });
             let loc = match *m.extern_locations.get(&cnum) {
                 render::Remote(ref s) => Some(s.to_string()),
                 render::Local => {
                     let loc = current_location_key.get().unwrap();
-                    Some(("../".repeat(loc.len())).to_string())
+                    Some("../".repeat(loc.len()))
                 }
                 render::Unknown => None,
             };
             match loc {
-                Some(s) => {
-                    try!(write!(f, "<a href='{}/primitive.{}.html'>",
-                                s, prim.to_url_str()));
+                Some(root) => {
+                    try!(write!(f, "<a href='{}{}/primitive.{}.html'>",
+                                root,
+                                path.ref0().as_slice().head().unwrap(),
+                                prim.to_url_str()));
                     needs_termination = true;
                 }
                 None => {}
