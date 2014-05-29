@@ -400,14 +400,19 @@ impl Clean<TyParamBound> for ast::TyParamBound {
     }
 }
 
-fn external_path(name: &str) -> Path {
+fn external_path(name: &str, substs: &ty::substs) -> Path {
     Path {
         global: false,
         segments: vec![PathSegment {
             name: name.to_string(),
-            lifetimes: Vec::new(),
-            types: Vec::new(),
-        }]
+            lifetimes: match substs.regions {
+                ty::ErasedRegions => Vec::new(),
+                ty::NonerasedRegions(ref v) => {
+                    v.iter().filter_map(|v| v.clean()).collect()
+                }
+            },
+            types: substs.tps.clean(),
+        }],
     }
 }
 
@@ -418,16 +423,21 @@ impl Clean<TyParamBound> for ty::BuiltinBound {
             core::Typed(ref tcx) => tcx,
             core::NotTyped(_) => return RegionBound,
         };
+        let empty = ty::substs::empty();
         let (did, path) = match *self {
             ty::BoundStatic => return RegionBound,
             ty::BoundSend =>
-                (tcx.lang_items.send_trait().unwrap(), external_path("Send")),
+                (tcx.lang_items.send_trait().unwrap(),
+                 external_path("Send", &empty)),
             ty::BoundSized =>
-                (tcx.lang_items.sized_trait().unwrap(), external_path("Sized")),
+                (tcx.lang_items.sized_trait().unwrap(),
+                 external_path("Sized", &empty)),
             ty::BoundCopy =>
-                (tcx.lang_items.copy_trait().unwrap(), external_path("Copy")),
+                (tcx.lang_items.copy_trait().unwrap(),
+                 external_path("Copy", &empty)),
             ty::BoundShare =>
-                (tcx.lang_items.share_trait().unwrap(), external_path("Share")),
+                (tcx.lang_items.share_trait().unwrap(),
+                 external_path("Share", &empty)),
         };
         let fqn = csearch::get_item_path(tcx, did);
         let fqn = fqn.move_iter().map(|i| i.to_str().to_string()).collect();
@@ -451,7 +461,8 @@ impl Clean<TyParamBound> for ty::TraitRef {
         let fqn = csearch::get_item_path(tcx, self.def_id);
         let fqn = fqn.move_iter().map(|i| i.to_str().to_string())
                      .collect::<Vec<String>>();
-        let path = external_path(fqn.last().unwrap().as_slice());
+        let path = external_path(fqn.last().unwrap().as_slice(),
+                                 &self.substs);
         cx.external_paths.borrow_mut().get_mut_ref().insert(self.def_id,
                                                             (fqn, TypeTrait));
         TraitBound(ResolvedPath {
@@ -1040,26 +1051,16 @@ impl Clean<Type> for ty::t {
                 let fqn: Vec<String> = fqn.move_iter().map(|i| {
                     i.to_str().to_string()
                 }).collect();
-                let mut path = external_path(fqn.last()
-                                                .unwrap()
-                                                .to_str()
-                                                .as_slice());
                 let kind = match ty::get(*self).sty {
                     ty::ty_struct(..) => TypeStruct,
                     ty::ty_trait(..) => TypeTrait,
                     _ => TypeEnum,
                 };
-                path.segments.get_mut(0).lifetimes = match substs.regions {
-                    ty::ErasedRegions => Vec::new(),
-                    ty::NonerasedRegions(ref v) => {
-                        v.iter().filter_map(|v| v.clean()).collect()
-                    }
-                };
-                path.segments.get_mut(0).types = substs.tps.clean();
                 cx.external_paths.borrow_mut().get_mut_ref().insert(did,
                                                                     (fqn, kind));
                 ResolvedPath {
-                    path: path,
+                    path: external_path(fqn.last().unwrap().to_str().as_slice(),
+                                        substs),
                     typarams: None,
                     did: did,
                 }
