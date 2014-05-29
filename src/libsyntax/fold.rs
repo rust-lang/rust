@@ -727,6 +727,7 @@ pub fn noop_fold_type_method<T: Folder>(m: &TypeMethod, fld: &mut T) -> TypeMeth
         ident: fld.fold_ident(m.ident),
         attrs: m.attrs.iter().map(|a| fld.fold_attribute(*a)).collect(),
         fn_style: m.fn_style,
+        abi: m.abi,
         decl: fld.fold_fn_decl(&*m.decl),
         generics: fold_generics(&m.generics, fld),
         explicit_self: fld.fold_explicit_self(&m.explicit_self),
@@ -818,9 +819,17 @@ pub fn noop_fold_method<T: Folder>(m: &Method, folder: &mut T) -> SmallVector<Gc
         id: id,
         span: folder.new_span(m.span),
         node: match m.node {
-            MethDecl(ident, ref generics, ref explicit_self, fn_style, decl, body, vis) => {
+            MethDecl(ident,
+                     ref generics,
+                     abi,
+                     ref explicit_self,
+                     fn_style,
+                     decl,
+                     body,
+                     vis) => {
                 MethDecl(folder.fold_ident(ident),
                          fold_generics(generics, folder),
+                         abi,
                          folder.fold_explicit_self(explicit_self),
                          fn_style,
                          folder.fold_fn_decl(&*decl),
@@ -948,7 +957,11 @@ pub fn noop_fold_expr<T: Folder>(e: Gc<Expr>, folder: &mut T) -> Gc<Expr> {
             ExprProc(folder.fold_fn_decl(&**decl),
                      folder.fold_block(body.clone()))
         }
-        ExprBlock(ref blk) => ExprBlock(folder.fold_block(blk.clone())),
+        ExprUnboxedFn(ref decl, ref body) => {
+            ExprUnboxedFn(folder.fold_fn_decl(&**decl),
+                          folder.fold_block(*body))
+        }
+        ExprBlock(ref blk) => ExprBlock(folder.fold_block(*blk)),
         ExprAssign(el, er) => {
             ExprAssign(folder.fold_expr(el), folder.fold_expr(er))
         }

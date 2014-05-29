@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use abi::Abi;
 use ast::*;
 use ast;
 use ast_util;
@@ -249,7 +250,14 @@ pub fn trait_method_to_ty_method(method: &TraitMethod) -> TypeMethod {
         Required(ref m) => (*m).clone(),
         Provided(m) => {
             match m.node {
-                MethDecl(ident, ref generics, explicit_self, fn_style, decl, _, vis) => {
+                MethDecl(ident,
+                         ref generics,
+                         abi,
+                         explicit_self,
+                         fn_style,
+                         decl,
+                         _,
+                         vis) => {
                     TypeMethod {
                         ident: ident,
                         attrs: m.attrs.clone(),
@@ -260,6 +268,7 @@ pub fn trait_method_to_ty_method(method: &TraitMethod) -> TypeMethod {
                         id: m.id,
                         span: m.span,
                         vis: vis,
+                        abi: abi,
                     }
                 },
                 MethMac(_) => fail!("expected non-macro method declaration")
@@ -749,6 +758,7 @@ pub fn static_has_significant_address(mutbl: ast::Mutability,
 pub trait PostExpansionMethod {
     fn pe_ident(&self) -> ast::Ident;
     fn pe_generics<'a>(&'a self) -> &'a ast::Generics;
+    fn pe_abi(&self) -> Abi;
     fn pe_explicit_self<'a>(&'a self) -> &'a ast::ExplicitSelf;
     fn pe_fn_style(&self) -> ast::FnStyle;
     fn pe_fn_decl(&self) -> P<ast::FnDecl>;
@@ -797,25 +807,28 @@ macro_rules! mf_method{
 // PRE
 impl PostExpansionMethod for Method {
     fn pe_ident(&self) -> ast::Ident {
-        mf_method_body!(self,MethDecl(ident,_,_,_,_,_,_),ident)
+        mf_method_body!(self, MethDecl(ident,_,_,_,_,_,_,_),ident)
     }
     fn pe_generics<'a>(&'a self) -> &'a ast::Generics {
-        mf_method_body!(self,MethDecl(_,ref generics,_,_,_,_,_),generics)
+        mf_method_body!(self, MethDecl(_,ref generics,_,_,_,_,_,_),generics)
+    }
+    fn pe_abi(&self) -> Abi {
+        mf_method_body!(self, MethDecl(_,_,abi,_,_,_,_,_),abi)
     }
     fn pe_explicit_self<'a>(&'a self) -> &'a ast::ExplicitSelf {
-        mf_method_body!(self,MethDecl(_,_,ref explicit_self,_,_,_,_),explicit_self)
+        mf_method_body!(self, MethDecl(_,_,_,ref explicit_self,_,_,_,_),explicit_self)
     }
     fn pe_fn_style(&self) -> ast::FnStyle{
-        mf_method_body!(self,MethDecl(_,_,_,fn_style,_,_,_),fn_style)
+        mf_method_body!(self, MethDecl(_,_,_,_,fn_style,_,_,_),fn_style)
     }
     fn pe_fn_decl(&self) -> P<ast::FnDecl> {
-        mf_method_body!(self,MethDecl(_,_,_,_,decl,_,_),decl)
+        mf_method_body!(self, MethDecl(_,_,_,_,_,decl,_,_),decl)
     }
     fn pe_body(&self) -> P<ast::Block> {
-        mf_method_body!(self,MethDecl(_,_,_,_,_,body,_),body)
+        mf_method_body!(self, MethDecl(_,_,_,_,_,_,body,_),body)
     }
     fn pe_vis(&self) -> ast::Visibility {
-        mf_method_body!(self,MethDecl(_,_,_,_,_,_,vis),vis)
+        mf_method_body!(self, MethDecl(_,_,_,_,_,_,_,vis),vis)
     }
 }
 

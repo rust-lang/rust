@@ -216,6 +216,9 @@ fn with_appropriate_checker(cx: &Context,
         ty::ty_bare_fn(_) => {
             b(check_for_bare)
         }
+
+        ty::ty_unboxed_closure(_) => {}
+
         ref s => {
             cx.tcx.sess.bug(format!("expect fn type in kind checker, not \
                                      {:?}",
@@ -321,7 +324,9 @@ fn check_bounds_on_type_parameters(cx: &mut Context, e: &Expr) {
         Some(method) => {
             let is_object_call = match method.origin {
                 typeck::MethodObject(..) => true,
-                typeck::MethodStatic(..) | typeck::MethodParam(..) => false
+                typeck::MethodStatic(..) |
+                typeck::MethodStaticUnboxedClosure(..) |
+                typeck::MethodParam(..) => false
             };
             (&method.substs.types, is_object_call)
         }

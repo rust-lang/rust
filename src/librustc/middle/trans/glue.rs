@@ -15,8 +15,8 @@
 
 use back::abi;
 use back::link::*;
+use llvm::{ValueRef, True, get_param};
 use llvm;
-use llvm::{ValueRef, True};
 use middle::lang_items::{FreeFnLangItem, ExchangeFreeFnLangItem};
 use middle::subst;
 use middle::trans::adt;
@@ -353,6 +353,7 @@ fn make_drop_glue<'a>(bcx: &'a Block<'a>, v0: ValueRef, t: ty::t) -> &'a Block<'
                 }
             }
         }
+        ty::ty_unboxed_closure(..) => iter_structural_ty(bcx, v0, t, drop_ty),
         ty::ty_closure(ref f) if f.store == ty::UniqTraitStore => {
             let box_cell_v = GEPi(bcx, v0, [0u, abi::fn_field_box]);
             let env = Load(bcx, box_cell_v);
@@ -502,7 +503,7 @@ fn make_generic_glue(ccx: &CrateContext,
     // llfn is expected be declared to take a parameter of the appropriate
     // type, so we don't need to explicitly cast the function parameter.
 
-    let llrawptr0 = unsafe { llvm::LLVMGetParam(llfn, fcx.arg_pos(0) as c_uint) };
+    let llrawptr0 = get_param(llfn, fcx.arg_pos(0) as c_uint);
     let bcx = helper(bcx, llrawptr0, t);
     finish_fn(&fcx, bcx, ty::mk_nil());
 

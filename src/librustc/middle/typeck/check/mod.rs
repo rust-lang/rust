@@ -114,7 +114,7 @@ use lint;
 use util::common::{block_query, indenter, loop_query};
 use util::ppaux;
 use util::ppaux::{UserString, Repr};
-use util::nodemap::{FnvHashMap, NodeMap};
+use util::nodemap::{DefIdMap, FnvHashMap, NodeMap};
 
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
@@ -167,6 +167,7 @@ pub struct Inherited<'a> {
     method_map: MethodMap,
     vtable_map: vtable_map,
     upvar_borrow_map: RefCell<ty::UpvarBorrowMap>,
+    unboxed_closure_types: RefCell<DefIdMap<ty::ClosureTy>>,
 }
 
 /// When type-checking an expression, we propagate downward
@@ -273,6 +274,7 @@ impl<'a> Inherited<'a> {
             method_map: RefCell::new(FnvHashMap::new()),
             vtable_map: RefCell::new(FnvHashMap::new()),
             upvar_borrow_map: RefCell::new(HashMap::new()),
+            unboxed_closure_types: RefCell::new(DefIdMap::new()),
         }
     }
 }
@@ -1251,7 +1253,8 @@ impl<'a> FnCtxt<'a> {
     pub fn vtable_context<'a>(&'a self) -> VtableContext<'a> {
         VtableContext {
             infcx: self.infcx(),
-            param_env: &self.inh.param_env
+            param_env: &self.inh.param_env,
+            unboxed_closure_types: &self.inh.unboxed_closure_types,
         }
     }
 }
@@ -1861,7 +1864,8 @@ fn check_argument_types(fcx: &FnCtxt,
         for (i, arg) in args.iter().take(t).enumerate() {
             let is_block = match arg.node {
                 ast::ExprFnBlock(..) |
-                ast::ExprProc(..) => true,
+                ast::ExprProc(..) |
+                ast::ExprUnboxedFn(..) => true,
                 _ => false
             };
 
@@ -2514,6 +2518,47 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         })
     }
 
+    fn check_unboxed_closure(fcx: &FnCtxt,
+                             expr: &ast::Expr,
+                             decl: &ast::FnDecl,
+                             body: ast::P<ast::Block>) {
+        // The `RegionTraitStore` is a lie, but we ignore it so it doesn't
+        // matter.
+        //
+        // FIXME(pcwalton): Refactor this API.
+        let mut fn_ty = astconv::ty_of_closure(
+            fcx,
+            expr.id,
+            ast::NormalFn,
+            ast::Many,
+            ty::empty_builtin_bounds(),
+            ty::RegionTraitStore(ty::ReStatic, ast::MutImmutable),
+            decl,
+            abi::RustCall,
+            None);
+
+        let closure_type = ty::mk_unboxed_closure(fcx.ccx.tcx,
+                                                  local_def(expr.id));
+        fcx.write_ty(expr.id, closure_type);
+
+        check_fn(fcx.ccx,
+                 ast::NormalFn,
+                 &fn_ty.sig,
+                 decl,
+                 expr.id,
+                 &*body,
+                 fcx.inh);
+
+        // Tuple up the arguments and insert the resulting function type into
+        // the `unboxed_closure_types` table.
+        fn_ty.sig.inputs = vec![ty::mk_tup(fcx.tcx(), fn_ty.sig.inputs)];
+
+        fcx.inh
+           .unboxed_closure_types
+           .borrow_mut()
+           .insert(local_def(expr.id), fn_ty);
+    }
+
     fn check_expr_fn(fcx: &FnCtxt,
                      expr: &ast::Expr,
                      store: ty::TraitStore,
@@ -2577,6 +2622,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                                            expected_bounds,
                                            store,
                                            decl,
+                                           abi::Rust,
                                            expected_sig);
         let fty_sig = fn_ty.sig.clone();
         let fty = ty::mk_closure(tcx, fn_ty);
@@ -2593,8 +2639,13 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
             ty::UniqTraitStore => (ast::NormalFn, expr.id)
         };
 
-        check_fn(fcx.ccx, inherited_style, &fty_sig,
-                 &*decl, id, &*body, fcx.inh);
+        check_fn(fcx.ccx,
+                 inherited_style,
+                 &fty_sig,
+                 decl,
+                 id,
+                 &*body,
+                 fcx.inh);
     }
 
 
@@ -3240,6 +3291,12 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                       &**decl,
                       body.clone(),
                       expected);
+      }
+      ast::ExprUnboxedFn(ref decl, ref body) => {
+        check_unboxed_closure(fcx,
+                              expr,
+                              &**decl,
+                              *body);
       }
       ast::ExprProc(ref decl, ref body) => {
         check_expr_fn(fcx,

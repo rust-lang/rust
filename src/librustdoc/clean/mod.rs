@@ -1301,6 +1301,8 @@ impl Clean<Type> for ty::t {
                 }
             }
 
+            ty::ty_unboxed_closure(..) => Primitive(Unit), // FIXME(pcwalton)
+
             ty::ty_infer(..) => fail!("ty_infer"),
             ty::ty_err => fail!("ty_err"),
         }

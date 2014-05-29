@@ -452,7 +452,8 @@ impl TypeMap {
                                                onceness,
                                                store,
                                                ref bounds,
-                                               ref sig }) => {
+                                               ref sig,
+                                               abi: _ }) => {
                 if fn_style == ast::UnsafeFn {
                     unique_type_id.push_str("unsafe ");
                 }
@@ -1150,7 +1151,8 @@ pub fn create_function_debug_context(cx: &CrateContext,
         ast_map::NodeExpr(ref expr) => {
             match expr.node {
                 ast::ExprFnBlock(fn_decl, top_level_block) |
-                ast::ExprProc(fn_decl, top_level_block) => {
+                ast::ExprProc(fn_decl, top_level_block) |
+                ast::ExprUnboxedFn(fn_decl, top_level_block) => {
                     let name = format!("fn{}", token::gensym("fn"));
                     let name = token::str_to_ident(name.as_slice());
                     (name, fn_decl,
@@ -3602,7 +3604,8 @@ fn populate_scope_map(cx: &CrateContext,
             }
 
             ast::ExprFnBlock(ref decl, ref block) |
-            ast::ExprProc(ref decl, ref block) => {
+            ast::ExprProc(ref decl, ref block) |
+            ast::ExprUnboxedFn(ref decl, ref block) => {
                 with_new_scope(cx,
                                block.span,
                                scope_stack,
@@ -3877,6 +3880,9 @@ fn push_debuginfo_type_name(cx: &CrateContext,
                 push_debuginfo_type_name(cx, sig.output, true, output);
             }
         },
+        ty::ty_unboxed_closure(_) => {
+            output.push_str("closure");
+        }
         ty::ty_err      |
         ty::ty_infer(_) |
         ty::ty_param(_) => {
