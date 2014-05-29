@@ -20,6 +20,7 @@
        html_root_url = "http://doc.rust-lang.org/")]
 
 #![feature(macro_registrar, managed_boxes, quote)]
+#![allow(unused_imports)] // `quote_expr!` adds some `use` globs which may be unused
 
 extern crate regex;
 extern crate syntax;
