@@ -10,6 +10,8 @@
 
 //! Operations and constants for unsigned 64-bits integer (`u64` type)
 
+#![doc(primitive = "u64")]
+
 use from_str::FromStr;
 use num::{ToStrRadix, FromStrRadix};
 use num::strconv;

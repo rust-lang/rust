@@ -10,6 +10,8 @@
 
 //! Operations and constants for architecture-sized signed integers (`int` type)
 
+#![doc(primitive = "int")]
+
 use from_str::FromStr;
 use num::{ToStrRadix, FromStrRadix};
 use num::strconv;

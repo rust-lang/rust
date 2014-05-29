@@ -12,6 +12,8 @@
 //!
 //! For more details, see std::str
 
+#![doc(primitive = "str")]
+
 use mem;
 use char;
 use clone::Clone;

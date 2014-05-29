@@ -157,6 +157,9 @@ pub struct Cache {
     /// Cache of where external crate documentation can be found.
     pub extern_locations: HashMap<ast::CrateNum, ExternalLocation>,
 
+    /// Cache of where documentation for primitives can be found.
+    pub primitive_locations: HashMap<clean::Primitive, ast::CrateNum>,
+
     /// Set of definitions which have been inlined from external crates.
     pub inlined: HashSet<ast::DefId>,
 
@@ -281,6 +284,7 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
         parent_stack: Vec::new(),
         search_index: Vec::new(),
         extern_locations: HashMap::new(),
+        primitive_locations: HashMap::new(),
         privmod: false,
         public_items: public_items,
         orphan_methods: Vec::new(),
@@ -297,13 +301,27 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
     cache.stack.push(krate.name.clone());
     krate = cache.fold_crate(krate);
 
-
+    // Cache where all our extern crates are located
     for &(n, ref e) in krate.externs.iter() {
         cache.extern_locations.insert(n, extern_location(e, &cx.dst));
         let did = ast::DefId { krate: n, node: ast::CRATE_NODE_ID };
         cache.paths.insert(did, (vec![e.name.to_string()], item_type::Module));
     }
 
+    // Cache where all known primitives have their documentation located.
+    //
+    // Favor linking to as local extern as possible, so iterate all crates in
+    // reverse topological order.
+    for &(n, ref e) in krate.externs.iter().rev() {
+        for &prim in e.primitives.iter() {
+            cache.primitive_locations.insert(prim, n);
+        }
+    }
+    for &prim in krate.primitives.iter() {
+        cache.primitive_locations.insert(prim, ast::LOCAL_CRATE);
+    }
+
+    // Build our search index
     let index = try!(build_index(&krate, &mut cache));
 
     // Freeze the cache now that the index has been built. Put an Arc into TLS
@@ -854,30 +872,63 @@ impl DocFolder for Cache {
             Some(item) => {
                 match item {
                     clean::Item{ attrs, inner: clean::ImplItem(i), .. } => {
-                        match i.for_ {
-                            clean::ResolvedPath { did, .. } => {
+                        use clean::{Primitive, Vector, ResolvedPath, BorrowedRef};
+                        use clean::{FixedVector, Slice, Tuple, PrimitiveTuple};
+
+                        // extract relevant documentation for this impl
+                        let dox = match attrs.move_iter().find(|a| {
+                            match *a {
+                                clean::NameValue(ref x, _)
+                                        if "doc" == x.as_slice() => {
+                                    true
+                                }
+                                _ => false
+                            }
+                        }) {
+                            Some(clean::NameValue(_, dox)) => Some(dox),
+                            Some(..) | None => None,
+                        };
+
+                        // Figure out the id of this impl. This may map to a
+                        // primitive rather than always to a struct/enum.
+                        let did = match i.for_ {
+                            ResolvedPath { did, .. } => Some(did),
+
+                            // References to primitives are picked up as well to
+                            // recognize implementations for &str, this may not
+                            // be necessary in a DST world.
+                            Primitive(p) |
+                                BorrowedRef { type_: box Primitive(p), ..} =>
+                            {
+                                Some(ast_util::local_def(p.to_node_id()))
+                            }
+
+                            // In a DST world, we may only need
+                            // Vector/FixedVector, but for now we also pick up
+                            // borrowed references
+                            Vector(..) | FixedVector(..) |
+                                BorrowedRef{ type_: box Vector(..), ..  } |
+                                BorrowedRef{ type_: box FixedVector(..), .. } =>
+                            {
+                                Some(ast_util::local_def(Slice.to_node_id()))
+                            }
+
+                            Tuple(..) => {
+                                let id = PrimitiveTuple.to_node_id();
+                                Some(ast_util::local_def(id))
+                            }
+
+                            _ => None,
+                        };
+
+                        match did {
+                            Some(did) => {
                                 let v = self.impls.find_or_insert_with(did, |_| {
                                     Vec::new()
                                 });
-                                // extract relevant documentation for this impl
-                                match attrs.move_iter().find(|a| {
-                                    match *a {
-                                        clean::NameValue(ref x, _)
-                                                if "doc" == x.as_slice() => {
-                                            true
-                                        }
-                                        _ => false
-                                    }
-                                }) {
-                                    Some(clean::NameValue(_, dox)) => {
-                                        v.push((i, Some(dox)));
-                                    }
-                                    Some(..) | None => {
-                                        v.push((i, None));
-                                    }
-                                }
+                                v.push((i, dox));
                             }
-                            _ => {}
+                            None => {}
                         }
                         None
                     }
@@ -1119,17 +1170,21 @@ impl<'a> fmt::Show for Item<'a> {
             clean::TraitItem(..) => try!(write!(fmt, "Trait ")),
             clean::StructItem(..) => try!(write!(fmt, "Struct ")),
             clean::EnumItem(..) => try!(write!(fmt, "Enum ")),
+            clean::PrimitiveItem(..) => try!(write!(fmt, "Primitive Type ")),
             _ => {}
         }
-        let cur = self.cx.current.as_slice();
-        let amt = if self.ismodule() { cur.len() - 1 } else { cur.len() };
-        for (i, component) in cur.iter().enumerate().take(amt) {
-            let mut trail = String::new();
-            for _ in range(0, cur.len() - i - 1) {
-                trail.push_str("../");
+        let is_primitive = match self.item.inner {
+            clean::PrimitiveItem(..) => true,
+            _ => false,
+        };
+        if !is_primitive {
+            let cur = self.cx.current.as_slice();
+            let amt = if self.ismodule() { cur.len() - 1 } else { cur.len() };
+            for (i, component) in cur.iter().enumerate().take(amt) {
+                try!(write!(fmt, "<a href='{}index.html'>{}</a>::",
+                            "../".repeat(cur.len() - i - 1),
+                            component.as_slice()));
             }
-            try!(write!(fmt, "<a href='{}index.html'>{}</a>::",
-                        trail, component.as_slice()));
         }
         try!(write!(fmt, "<a class='{}' href=''>{}</a>",
                     shortty(self.item), self.item.name.get_ref().as_slice()));
@@ -1154,7 +1209,7 @@ impl<'a> fmt::Show for Item<'a> {
         // [src] link in the downstream documentation will actually come back to
         // this page, and this link will be auto-clicked. The `id` attribute is
         // used to find the link to auto-click.
-        if self.cx.include_sources {
+        if self.cx.include_sources && !is_primitive {
             match self.href() {
                 Some(l) => {
                     try!(write!(fmt,
@@ -1178,6 +1233,7 @@ impl<'a> fmt::Show for Item<'a> {
             clean::EnumItem(ref e) => item_enum(fmt, self.item, e),
             clean::TypedefItem(ref t) => item_typedef(fmt, self.item, t),
             clean::MacroItem(ref m) => item_macro(fmt, self.item, m),
+            clean::PrimitiveItem(ref p) => item_primitive(fmt, self.item, p),
             _ => Ok(())
         }
     }
@@ -1250,6 +1306,8 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
             }
             (&clean::ViewItemItem(..), _) => Less,
             (_, &clean::ViewItemItem(..)) => Greater,
+            (&clean::PrimitiveItem(..), _) => Less,
+            (_, &clean::PrimitiveItem(..)) => Greater,
             (&clean::ModuleItem(..), _) => Less,
             (_, &clean::ModuleItem(..)) => Greater,
             (&clean::MacroItem(..), _) => Less,
@@ -1305,6 +1363,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                 clean::ForeignFunctionItem(..) => ("ffi-fns", "Foreign Functions"),
                 clean::ForeignStaticItem(..)   => ("ffi-statics", "Foreign Statics"),
                 clean::MacroItem(..)           => ("macros", "Macros"),
+                clean::PrimitiveItem(..)       => ("primitives", "Primitive Types"),
             };
             try!(write!(w,
                         "<h2 id='{id}' class='section-header'>\
@@ -1877,8 +1936,11 @@ impl<'a> fmt::Show for Sidebar<'a> {
             try!(write!(w, "<div class='block {}'><h2>{}</h2>", short, longty));
             for item in items.iter() {
                 let curty = shortty(cur).to_static_str();
-                let class = if cur.name.get_ref() == item &&
-                               short == curty { "current" } else { "" };
+                let class = if cur.name.get_ref() == item && short == curty {
+                    "current"
+                } else {
+                    ""
+                };
                 try!(write!(w, "<a class='{ty} {class}' href='{curty, select,
                                 mod{../}
                                 other{}
@@ -1948,4 +2010,11 @@ fn item_macro(w: &mut fmt::Formatter, it: &clean::Item,
               t: &clean::Macro) -> fmt::Result {
     try!(w.write(highlight::highlight(t.source.as_slice(), Some("macro")).as_bytes()));
     document(w, it)
+}
+
+fn item_primitive(w: &mut fmt::Formatter,
+                  it: &clean::Item,
+                  _p: &clean::Primitive) -> fmt::Result {
+    try!(document(w, it));
+    render_methods(w, it)
 }

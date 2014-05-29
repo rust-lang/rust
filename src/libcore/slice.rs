@@ -12,6 +12,8 @@
 //!
 //! For more details `std::slice`.
 
+#![doc(primitive = "slice")]
+
 use mem::transmute;
 use clone::Clone;
 use container::Container;

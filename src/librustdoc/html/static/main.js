@@ -527,7 +527,8 @@
                          "variant",
                          "ffi",
                          "ffs",
-                         "macro"];
+                         "macro",
+                         "primitive"];
 
         function itemTypeFromName(typename) {
             for (var i = 0; i < itemTypes.length; ++i) {

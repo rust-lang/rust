@@ -11,6 +11,7 @@
 //! Operations and constants for 64-bits floats (`f64` type)
 
 #![allow(missing_doc)]
+#![doc(primitive = "f64")]
 
 use prelude::*;
 

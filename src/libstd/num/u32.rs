@@ -10,6 +10,8 @@
 
 //! Operations and constants for unsigned 32-bits integers (`u32` type)
 
+#![doc(primitive = "u32")]
+
 use from_str::FromStr;
 use num::{ToStrRadix, FromStrRadix};
 use num::strconv;
