@@ -1112,7 +1112,7 @@ let ys = xs;
 
 xs = Nil;
 
-// `xs` can't be used again
+// `xs` can be used again
 ~~~
 
 A destructor call will only occur for a variable that has not been moved from,
