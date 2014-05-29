@@ -95,6 +95,7 @@ pub enum Lint {
     UnknownCrateType,
     UnsignedNegate,
     VariantSizeDifference,
+    ShadowedPrimitiveTypeNames,
 
     ManagedHeapMemory,
     OwnedHeapMemory,
@@ -441,6 +442,13 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
      LintSpec {
         lint: RawPointerDeriving,
         desc: "uses of #[deriving] with raw pointers are rarely correct",
+        default: Warn,
+    }),
+
+    ("shadowed_primitive_type_names",
+     LintSpec {
+        lint: ShadowedPrimitiveTypeNames,
+        desc: "detects shadowing primitive type names",
         default: Warn,
     }),
 ];
@@ -1359,6 +1367,42 @@ fn check_item_non_uppercase_statics(cx: &Context, it: &ast::Item) {
     }
 }
 
+fn check_item_shadowed_primivite_type_names(cx: &Context, it: &ast::Item) {
+    fn is_primitive_type_name(ident: ast::Ident) -> bool {
+        static NAMES: &'static [&'static str] = &[
+                     "bool", "char",
+                     "int", "i8", "i16", "i32", "i64",
+                     "uint", "u8", "u16", "u32", "u64",
+                     "f32", "f64", "f128"];
+        NAMES.contains(&token::get_ident(ident).get())
+    }
+
+    fn check_case(cx: &Context, sort: &str, ident: ast::Ident, span: Span) {
+        if is_primitive_type_name(ident) {
+            cx.span_lint(
+                ShadowedPrimitiveTypeNames, span,
+                format!("`{} {}` shadows a built-in primitive type",
+                    sort, token::get_ident(ident)).as_slice());
+        }
+    }
+
+    match it.node {
+        ast::ItemTy(..) => {
+            check_case(cx, "type", it.ident, it.span)
+        }
+        ast::ItemStruct(..) => {
+            check_case(cx, "struct", it.ident, it.span)
+        }
+        ast::ItemTrait(..) => {
+            check_case(cx, "trait", it.ident, it.span)
+        }
+        ast::ItemEnum(..) => {
+            check_case(cx, "enum", it.ident, it.span);
+        }
+        _ => ()
+    }
+}
+
 fn check_pat_non_uppercase_statics(cx: &Context, p: &ast::Pat) {
     // Lint for constants that look like binding identifiers (#7526)
     match (&p.node, cx.tcx.def_map.borrow().find(&p.id)) {
@@ -1786,6 +1830,7 @@ impl<'a> Visitor<()> for Context<'a> {
         self.with_lint_attrs(it.attrs.as_slice(), |cx| {
             check_enum_variant_sizes(cx, it);
             check_item_ctypes(cx, it);
+            check_item_shadowed_primivite_type_names(cx, it);
             check_item_non_camel_case_types(cx, it);
             check_item_non_uppercase_statics(cx, it);
             check_heap_item(cx, it);
