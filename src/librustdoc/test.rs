@@ -260,9 +260,9 @@ impl Collector {
     pub fn add_test(&mut self, test: String, should_fail: bool, no_run: bool, should_ignore: bool) {
         let name = if self.use_headers {
             let s = self.current_header.as_ref().map(|s| s.as_slice()).unwrap_or("");
-            format_strbuf!("{}_{}", s, self.cnt)
+            format!("{}_{}", s, self.cnt)
         } else {
-            format_strbuf!("{}_{}", self.names.connect("::"), self.cnt)
+            format!("{}_{}", self.names.connect("::"), self.cnt)
         };
         self.cnt += 1;
         let libs = self.libs.clone();

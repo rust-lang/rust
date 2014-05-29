@@ -112,11 +112,8 @@ impl<'a, O:DataFlowOperator> pprust::PpAnn for DataFlowContext<'a, O> {
                 "".to_string()
             };
 
-            try!(ps.synth_comment(format_strbuf!("id {}: {}{}{}",
-                                                 id,
-                                                 entry_str,
-                                                 gens_str,
-                                                 kills_str)));
+            try!(ps.synth_comment(format!("id {}: {}{}{}", id, entry_str,
+                                          gens_str, kills_str)));
             try!(pp::space(&mut ps.s));
         }
         Ok(())
@@ -895,5 +892,5 @@ fn set_bit(words: &mut [uint], bit: uint) -> bool {
 fn bit_str(bit: uint) -> String {
     let byte = bit >> 8;
     let lobits = 1 << (bit & 0xFF);
-    format_strbuf!("[{}:{}-{:02x}]", bit, byte, lobits)
+    format!("[{}:{}-{:02x}]", bit, byte, lobits)
 }

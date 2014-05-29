@@ -395,9 +395,9 @@ impl<'a> ErrorReporting for InferCtxt<'a> {
             return None;
         }
 
-        Some(format_strbuf!("expected `{}` but found `{}`",
-                            expected.user_string(self.tcx),
-                            found.user_string(self.tcx)))
+        Some(format!("expected `{}` but found `{}`",
+                     expected.user_string(self.tcx),
+                     found.user_string(self.tcx)))
     }
 
     fn report_concrete_failure(&self,

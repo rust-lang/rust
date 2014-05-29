@@ -698,10 +698,9 @@ pub fn iter_structural_ty<'r,
                   for variant in (*variants).iter() {
                       let variant_cx =
                           fcx.new_temp_block(
-                              format_strbuf!("enum-iter-variant-{}",
-                                             variant.disr_val
-                                                    .to_str()
-                                                    .as_slice()).as_slice());
+                              format!("enum-iter-variant-{}",
+                                      variant.disr_val.to_str().as_slice())
+                                     .as_slice());
                       match adt::trans_case(cx, &*repr, variant.disr_val) {
                           _match::single_result(r) => {
                               AddCase(llswitch, r.val, variant_cx.llbb)

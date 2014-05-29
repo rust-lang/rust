@@ -167,10 +167,8 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: &ast::Pat, path: &ast::Path,
                     fcx.infcx().type_error_message_str_with_expected(pat.span,
                                                        |expected, actual| {
                        expected.map_or("".to_string(), |e| {
-                        format_strbuf!("mismatched types: expected `{}` but \
-                                        found {}",
-                                       e,
-                                       actual)
+                        format!("mismatched types: expected `{}` but found {}",
+                                e, actual)
                         })},
                         Some(expected),
                         "a structure pattern".to_string(),
@@ -223,10 +221,8 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: &ast::Pat, path: &ast::Path,
                                                |expected, actual| {
                                                expected.map_or("".to_string(),
                                                               |e| {
-                        format_strbuf!("mismatched types: expected `{}` but \
-                                        found {}",
-                                       e,
-                                       actual)
+                        format!("mismatched types: expected `{}` but found {}",
+                                e, actual)
                     })
                 },
                 Some(expected),
@@ -555,10 +551,8 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
                                                                 |expected, actual| {
                             expected.map_or("".to_string(),
                                             |e| {
-                                format_strbuf!("mismatched types: expected \
-                                                `{}` but found {}",
-                                               e,
-                                               actual)
+                                format!("mismatched types: expected \
+                                        `{}` but found {}", e, actual)
                             })},
                             Some(expected),
                             "a structure pattern".to_string(),
@@ -621,10 +615,8 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
                                                                  |expected,
                                                                   actual| {
                         expected.map_or("".to_string(), |e| {
-                            format_strbuf!("mismatched types: expected `{}` \
-                                            but found {}",
-                                           e,
-                                           actual)
+                            format!("mismatched types: expected `{}` \
+                                     but found {}", e, actual)
                         }
                     )},
                     Some(expected),
@@ -661,10 +653,8 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
                 |expected, actual| {
                     expected.map_or("".to_string(),
                                     |e| {
-                        format_strbuf!("mismatched types: expected `{}` but \
-                                        found {}",
-                                       e,
-                                       actual)
+                        format!("mismatched types: expected `{}` but found {}",
+                                e, actual)
                     })
                 },
                 Some(expected),
@@ -753,14 +743,12 @@ pub fn check_pointer_pat(pcx: &pat_ctxt,
                 span,
                 |expected, actual| {
                     expected.map_or("".to_string(), |e| {
-                        format_strbuf!("mismatched types: expected `{}` but \
-                                        found {}",
-                                       e,
-                                       actual)
+                        format!("mismatched types: expected `{}` but found {}",
+                                e, actual)
                     })
                 },
                 Some(expected),
-                format_strbuf!("{} pattern", match pointer_kind {
+                format!("{} pattern", match pointer_kind {
                     Send => "a box",
                     Borrowed => "an `&`-pointer",
                 }),

@@ -346,8 +346,8 @@ impl Uuid {
         uf.data1 = to_be32(uf.data1);
         uf.data2 = to_be16(uf.data2);
         uf.data3 = to_be16(uf.data3);
-        let s = format_strbuf!("{:08x}-{:04x}-{:04x}-{:02x}{:02x}-\
-                                {:02x}{:02x}{:02x}{:02x}{:02x}{:02x}",
+        let s = format!("{:08x}-{:04x}-{:04x}-{:02x}{:02x}-\
+                         {:02x}{:02x}{:02x}{:02x}{:02x}{:02x}",
             uf.data1,
             uf.data2, uf.data3,
             uf.data4[0], uf.data4[1],
@@ -362,7 +362,7 @@ impl Uuid {
     ///
     /// Example: `urn:uuid:F9168C5E-CEB2-4faa-B6BF-329BF39FA1E4`
     pub fn to_urn_str(&self) -> String {
-        format_strbuf!("urn:uuid:{}", self.to_hyphenated_str())
+        format!("urn:uuid:{}", self.to_hyphenated_str())
     }
 
     /// Parses a UUID from a string of hexadecimal digits with optional hyphens

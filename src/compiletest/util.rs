@@ -39,7 +39,7 @@ pub fn make_new_path(path: &str) -> String {
     // maintain the current value while adding our own
     match getenv(lib_path_env_var().as_slice()) {
       Some(curr) => {
-        format_strbuf!("{}{}{}", path, path_div(), curr)
+        format!("{}{}{}", path, path_div(), curr)
       }
       None => path.to_str().to_string()
     }

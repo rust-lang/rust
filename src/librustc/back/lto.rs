@@ -85,8 +85,8 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
                                                     ptr as *libc::c_char,
                                                     bc.len() as libc::size_t) {
                 link::llvm_err(sess,
-                               format_strbuf!("failed to load bc of `{}`",
-                                               name.as_slice()));
+                               format!("failed to load bc of `{}`",
+                                       name.as_slice()));
             }
         });
     }

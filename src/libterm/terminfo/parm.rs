@@ -281,9 +281,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
                     ';' => (),
 
                     _ => {
-                        return Err(format_strbuf!("unrecognized format \
-                                                   option {}",
-                                                  cur))
+                        return Err(format!("unrecognized format option {}", cur))
                     }
                 }
             },
@@ -549,8 +547,8 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<Vec<u8> ,String> {
                     s
                 }
                 _ => {
-                    return Err(format_strbuf!("non-string on stack with %{}",
-                                              op.to_char()))
+                    return Err(format!("non-string on stack with %{}",
+                                       op.to_char()))
                 }
             }
         }

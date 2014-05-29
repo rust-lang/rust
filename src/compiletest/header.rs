@@ -120,11 +120,11 @@ pub fn load_props(testfile: &Path) -> TestProps {
 
 pub fn is_test_ignored(config: &Config, testfile: &Path) -> bool {
     fn ignore_target(config: &Config) -> String {
-        format_strbuf!("ignore-{}", util::get_os(config.target.as_slice()))
+        format!("ignore-{}", util::get_os(config.target.as_slice()))
     }
     fn ignore_stage(config: &Config) -> String {
-        format_strbuf!("ignore-{}",
-                       config.stage_id.as_slice().split('-').next().unwrap())
+        format!("ignore-{}",
+                config.stage_id.as_slice().split('-').next().unwrap())
     }
 
     let val = iter_header(testfile, |ln| {
@@ -243,7 +243,7 @@ fn parse_name_directive(line: &str, directive: &str) -> bool {
 
 pub fn parse_name_value_directive(line: &str, directive: String)
                                   -> Option<String> {
-    let keycolon = format_strbuf!("{}:", directive);
+    let keycolon = format!("{}:", directive);
     match line.find_str(keycolon.as_slice()) {
         Some(colon) => {
             let value = line.slice(colon + keycolon.len(),

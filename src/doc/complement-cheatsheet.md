@@ -23,14 +23,14 @@ let y: int = x.unwrap();
 
 **Int to string, in non-base-10**
 
-Use the `format_strbuf!` syntax extension.
+Use the `format!` syntax extension.
 
 ~~~
 let x: int = 42;
-let y: String = format_strbuf!("{:t}", x);   // binary
-let y: String = format_strbuf!("{:o}", x);   // octal
-let y: String = format_strbuf!("{:x}", x);   // lowercase hexadecimal
-let y: String = format_strbuf!("{:X}", x);   // uppercase hexadecimal
+let y: String = format!("{:t}", x);   // binary
+let y: String = format!("{:o}", x);   // octal
+let y: String = format!("{:x}", x);   // lowercase hexadecimal
+let y: String = format!("{:X}", x);   // uppercase hexadecimal
 ~~~
 
 **String to int, in non-base-10**

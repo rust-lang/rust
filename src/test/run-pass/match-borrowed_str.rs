@@ -22,7 +22,7 @@ fn f2(ref_string: &str) -> String {
     match ref_string {
         "a" => "found a".to_string(),
         "b" => "found b".to_string(),
-        s => format_strbuf!("not found ({})", s)
+        s => format!("not found ({})", s)
     }
 }
 
@@ -38,7 +38,7 @@ fn g2(ref_1: &str, ref_2: &str) -> String {
     match (ref_1, ref_2) {
         ("a", "b") => "found a,b".to_string(),
         ("b", "c") => "found b,c".to_string(),
-        (s1, s2) => format_strbuf!("not found ({}, {})", s1, s2)
+        (s1, s2) => format!("not found ({}, {})", s1, s2)
     }
 }
 

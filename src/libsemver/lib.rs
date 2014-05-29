@@ -377,13 +377,13 @@ fn test_ne() {
 
 #[test]
 fn test_show() {
-    assert_eq!(format_strbuf!("{}", parse("1.2.3").unwrap()),
+    assert_eq!(format!("{}", parse("1.2.3").unwrap()),
                "1.2.3".to_string());
-    assert_eq!(format_strbuf!("{}", parse("1.2.3-alpha1").unwrap()),
+    assert_eq!(format!("{}", parse("1.2.3-alpha1").unwrap()),
                "1.2.3-alpha1".to_string());
-    assert_eq!(format_strbuf!("{}", parse("1.2.3+build.42").unwrap()),
+    assert_eq!(format!("{}", parse("1.2.3+build.42").unwrap()),
                "1.2.3+build.42".to_string());
-    assert_eq!(format_strbuf!("{}", parse("1.2.3-alpha1+42").unwrap()),
+    assert_eq!(format!("{}", parse("1.2.3-alpha1+42").unwrap()),
                "1.2.3-alpha1+42".to_string());
 }
 

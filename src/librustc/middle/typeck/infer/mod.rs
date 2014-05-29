@@ -252,10 +252,8 @@ pub fn fixup_err_to_str(f: fixup_err) -> String {
       cyclic_ty(_) => "cyclic type of infinite size".to_string(),
       unresolved_region(_) => "unconstrained region".to_string(),
       region_var_bound_by_region_var(r1, r2) => {
-        format_strbuf!("region var {:?} bound by another region var {:?}; \
-                        this is a bug in rustc",
-                       r1,
-                       r2)
+        format!("region var {:?} bound by another region var {:?}; \
+                 this is a bug in rustc", r1, r2)
       }
     }
 }
@@ -657,7 +655,7 @@ impl<'a> InferCtxt<'a> {
 
     pub fn tys_to_str(&self, ts: &[ty::t]) -> String {
         let tstrs: Vec<String> = ts.iter().map(|t| self.ty_to_str(*t)).collect();
-        format_strbuf!("({})", tstrs.connect(", "))
+        format!("({})", tstrs.connect(", "))
     }
 
     pub fn trait_ref_to_str(&self, t: &ty::TraitRef) -> String {
@@ -786,10 +784,9 @@ impl<'a> InferCtxt<'a> {
             _ => {
                 // if I leave out : String, it infers &str and complains
                 |actual: String| {
-                    format_strbuf!("mismatched types: expected `{}` but \
-                                    found `{}`",
-                                   self.ty_to_str(resolved_expected),
-                                   actual)
+                    format!("mismatched types: expected `{}` but found `{}`",
+                            self.ty_to_str(resolved_expected),
+                            actual)
                 }
             }
         };
@@ -830,7 +827,7 @@ impl TypeTrace {
 
 impl Repr for TypeTrace {
     fn repr(&self, tcx: &ty::ctxt) -> String {
-        format_strbuf!("TypeTrace({})", self.origin.repr(tcx))
+        format!("TypeTrace({})", self.origin.repr(tcx))
     }
 }
 
@@ -852,23 +849,23 @@ impl Repr for TypeOrigin {
     fn repr(&self, tcx: &ty::ctxt) -> String {
         match *self {
             MethodCompatCheck(a) => {
-                format_strbuf!("MethodCompatCheck({})", a.repr(tcx))
+                format!("MethodCompatCheck({})", a.repr(tcx))
             }
             ExprAssignable(a) => {
-                format_strbuf!("ExprAssignable({})", a.repr(tcx))
+                format!("ExprAssignable({})", a.repr(tcx))
             }
-            Misc(a) => format_strbuf!("Misc({})", a.repr(tcx)),
+            Misc(a) => format!("Misc({})", a.repr(tcx)),
             RelateTraitRefs(a) => {
-                format_strbuf!("RelateTraitRefs({})", a.repr(tcx))
+                format!("RelateTraitRefs({})", a.repr(tcx))
             }
             RelateSelfType(a) => {
-                format_strbuf!("RelateSelfType({})", a.repr(tcx))
+                format!("RelateSelfType({})", a.repr(tcx))
             }
             MatchExpression(a) => {
-                format_strbuf!("MatchExpression({})", a.repr(tcx))
+                format!("MatchExpression({})", a.repr(tcx))
             }
             IfExpression(a) => {
-                format_strbuf!("IfExpression({})", a.repr(tcx))
+                format!("IfExpression({})", a.repr(tcx))
             }
         }
     }
@@ -901,41 +898,41 @@ impl Repr for SubregionOrigin {
     fn repr(&self, tcx: &ty::ctxt) -> String {
         match *self {
             Subtype(ref a) => {
-                format_strbuf!("Subtype({})", a.repr(tcx))
+                format!("Subtype({})", a.repr(tcx))
             }
             InfStackClosure(a) => {
-                format_strbuf!("InfStackClosure({})", a.repr(tcx))
+                format!("InfStackClosure({})", a.repr(tcx))
             }
             InvokeClosure(a) => {
-                format_strbuf!("InvokeClosure({})", a.repr(tcx))
+                format!("InvokeClosure({})", a.repr(tcx))
             }
             DerefPointer(a) => {
-                format_strbuf!("DerefPointer({})", a.repr(tcx))
+                format!("DerefPointer({})", a.repr(tcx))
             }
             FreeVariable(a, b) => {
-                format_strbuf!("FreeVariable({}, {})", a.repr(tcx), b)
+                format!("FreeVariable({}, {})", a.repr(tcx), b)
             }
             IndexSlice(a) => {
-                format_strbuf!("IndexSlice({})", a.repr(tcx))
+                format!("IndexSlice({})", a.repr(tcx))
             }
             RelateObjectBound(a) => {
-                format_strbuf!("RelateObjectBound({})", a.repr(tcx))
+                format!("RelateObjectBound({})", a.repr(tcx))
             }
-            Reborrow(a) => format_strbuf!("Reborrow({})", a.repr(tcx)),
+            Reborrow(a) => format!("Reborrow({})", a.repr(tcx)),
             ReborrowUpvar(a, b) => {
-                format_strbuf!("ReborrowUpvar({},{:?})", a.repr(tcx), b)
+                format!("ReborrowUpvar({},{:?})", a.repr(tcx), b)
             }
             ReferenceOutlivesReferent(_, a) => {
-                format_strbuf!("ReferenceOutlivesReferent({})", a.repr(tcx))
+                format!("ReferenceOutlivesReferent({})", a.repr(tcx))
             }
             BindingTypeIsNotValidAtDecl(a) => {
-                format_strbuf!("BindingTypeIsNotValidAtDecl({})", a.repr(tcx))
+                format!("BindingTypeIsNotValidAtDecl({})", a.repr(tcx))
             }
-            CallRcvr(a) => format_strbuf!("CallRcvr({})", a.repr(tcx)),
-            CallArg(a) => format_strbuf!("CallArg({})", a.repr(tcx)),
-            CallReturn(a) => format_strbuf!("CallReturn({})", a.repr(tcx)),
-            AddrOf(a) => format_strbuf!("AddrOf({})", a.repr(tcx)),
-            AutoBorrow(a) => format_strbuf!("AutoBorrow({})", a.repr(tcx)),
+            CallRcvr(a) => format!("CallRcvr({})", a.repr(tcx)),
+            CallArg(a) => format!("CallArg({})", a.repr(tcx)),
+            CallReturn(a) => format!("CallReturn({})", a.repr(tcx)),
+            AddrOf(a) => format!("AddrOf({})", a.repr(tcx)),
+            AutoBorrow(a) => format!("AutoBorrow({})", a.repr(tcx)),
         }
     }
 }
@@ -962,39 +959,32 @@ impl Repr for RegionVariableOrigin {
     fn repr(&self, tcx: &ty::ctxt) -> String {
         match *self {
             MiscVariable(a) => {
-                format_strbuf!("MiscVariable({})", a.repr(tcx))
+                format!("MiscVariable({})", a.repr(tcx))
             }
             PatternRegion(a) => {
-                format_strbuf!("PatternRegion({})", a.repr(tcx))
+                format!("PatternRegion({})", a.repr(tcx))
             }
             AddrOfRegion(a) => {
-                format_strbuf!("AddrOfRegion({})", a.repr(tcx))
+                format!("AddrOfRegion({})", a.repr(tcx))
             }
-            AddrOfSlice(a) => format_strbuf!("AddrOfSlice({})", a.repr(tcx)),
-            Autoref(a) => format_strbuf!("Autoref({})", a.repr(tcx)),
-            Coercion(ref a) => format_strbuf!("Coercion({})", a.repr(tcx)),
+            AddrOfSlice(a) => format!("AddrOfSlice({})", a.repr(tcx)),
+            Autoref(a) => format!("Autoref({})", a.repr(tcx)),
+            Coercion(ref a) => format!("Coercion({})", a.repr(tcx)),
             EarlyBoundRegion(a, b) => {
-                format_strbuf!("EarlyBoundRegion({},{})",
-                               a.repr(tcx),
-                               b.repr(tcx))
+                format!("EarlyBoundRegion({},{})", a.repr(tcx), b.repr(tcx))
             }
             LateBoundRegion(a, b) => {
-                format_strbuf!("LateBoundRegion({},{})",
-                               a.repr(tcx),
-                               b.repr(tcx))
+                format!("LateBoundRegion({},{})", a.repr(tcx), b.repr(tcx))
             }
             BoundRegionInFnType(a, b) => {
-                format_strbuf!("bound_regionInFnType({},{})",
-                               a.repr(tcx),
-                               b.repr(tcx))
+                format!("bound_regionInFnType({},{})", a.repr(tcx),
+                b.repr(tcx))
             }
             BoundRegionInCoherence(a) => {
-                format_strbuf!("bound_regionInCoherence({})", a.repr(tcx))
+                format!("bound_regionInCoherence({})", a.repr(tcx))
             }
             UpvarRegion(a, b) => {
-                format_strbuf!("UpvarRegion({}, {})",
-                               a.repr(tcx),
-                               b.repr(tcx))
+                format!("UpvarRegion({}, {})", a.repr(tcx), b.repr(tcx))
             }
         }
     }

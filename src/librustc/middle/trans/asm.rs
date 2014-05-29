@@ -72,7 +72,7 @@ pub fn trans_inline_asm<'a>(bcx: &'a Block<'a>, ia: &ast::InlineAsm)
 
     let mut clobbers = getClobbers();
     if !ia.clobbers.get().is_empty() && !clobbers.is_empty() {
-        clobbers = format_strbuf!("{},{}", ia.clobbers.get(), clobbers);
+        clobbers = format!("{},{}", ia.clobbers.get(), clobbers);
     } else {
         clobbers.push_str(ia.clobbers.get());
     }

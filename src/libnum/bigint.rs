@@ -1215,7 +1215,7 @@ impl ToStrRadix for BigInt {
         match self.sign {
             Plus  => self.data.to_str_radix(radix),
             Zero  => "0".to_string(),
-            Minus => format_strbuf!("-{}", self.data.to_str_radix(radix)),
+            Minus => format!("-{}", self.data.to_str_radix(radix)),
         }
     }
 }
@@ -2055,34 +2055,34 @@ mod biguint_tests {
             (16, "fff".to_string())
         )), ( BigUint::from_slice([ 1, 2 ]), vec!(
             (2,
-             format_strbuf!("10{}1", "0".repeat(bits - 1))),
+             format!("10{}1", "0".repeat(bits - 1))),
             (4,
-             format_strbuf!("2{}1", "0".repeat(bits / 2 - 1))),
+             format!("2{}1", "0".repeat(bits / 2 - 1))),
             (10, match bits {
                 32 => "8589934593".to_string(),
                 16 => "131073".to_string(),
                 _ => fail!()
             }),
             (16,
-             format_strbuf!("2{}1", "0".repeat(bits / 4 - 1)))
+             format!("2{}1", "0".repeat(bits / 4 - 1)))
         )), ( BigUint::from_slice([ 1, 2, 3 ]), vec!(
             (2,
-             format_strbuf!("11{}10{}1",
-                            "0".repeat(bits - 2),
-                            "0".repeat(bits - 1))),
+             format!("11{}10{}1",
+                     "0".repeat(bits - 2),
+                     "0".repeat(bits - 1))),
             (4,
-             format_strbuf!("3{}2{}1",
-                            "0".repeat(bits / 2 - 1),
-                            "0".repeat(bits / 2 - 1))),
+             format!("3{}2{}1",
+                     "0".repeat(bits / 2 - 1),
+                     "0".repeat(bits / 2 - 1))),
             (10, match bits {
                 32 => "55340232229718589441".to_string(),
                 16 => "12885032961".to_string(),
                 _ => fail!()
             }),
             (16,
-             format_strbuf!("3{}2{}1",
-                            "0".repeat(bits / 4 - 1),
-                            "0".repeat(bits / 4 - 1)))
+             format!("3{}2{}1",
+                     "0".repeat(bits / 4 - 1),
+                     "0".repeat(bits / 4 - 1)))
         )) )
     }
 

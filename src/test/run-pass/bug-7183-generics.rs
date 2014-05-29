@@ -19,15 +19,15 @@ fn hello<S:Speak>(s:&S) -> String{
 
 impl Speak for int {
     fn say(&self, s:&str) -> String {
-        format_strbuf!("{}: {}", s, *self)
+        format!("{}: {}", s, *self)
     }
 }
 
 impl<T: Speak> Speak for Option<T> {
     fn say(&self, s:&str) -> String {
         match *self {
-            None => format_strbuf!("{} - none", s),
-            Some(ref x) => { format_strbuf!("something!{}", x.say(s)) }
+            None => format!("{} - none", s),
+            Some(ref x) => { format!("something!{}", x.say(s)) }
         }
     }
 }

@@ -3236,7 +3236,7 @@ pub fn ty_sort_str(cx: &ctxt, t: t) -> String {
             ::util::ppaux::ty_to_str(cx, t)
         }
 
-        ty_enum(id, _) => format_strbuf!("enum {}", item_path_str(cx, id)),
+        ty_enum(id, _) => format!("enum {}", item_path_str(cx, id)),
         ty_box(_) => "@-ptr".to_string(),
         ty_uniq(_) => "box".to_string(),
         ty_vec(_, _) => "vector".to_string(),
@@ -3245,10 +3245,10 @@ pub fn ty_sort_str(cx: &ctxt, t: t) -> String {
         ty_bare_fn(_) => "extern fn".to_string(),
         ty_closure(_) => "fn".to_string(),
         ty_trait(ref inner) => {
-            format_strbuf!("trait {}", item_path_str(cx, inner.def_id))
+            format!("trait {}", item_path_str(cx, inner.def_id))
         }
         ty_struct(id, _) => {
-            format_strbuf!("struct {}", item_path_str(cx, id))
+            format!("struct {}", item_path_str(cx, id))
         }
         ty_tup(_) => "tuple".to_string(),
         ty_infer(TyVar(_)) => "inferred type".to_string(),
@@ -3280,24 +3280,24 @@ pub fn type_err_to_str(cx: &ctxt, err: &type_err) -> String {
     match *err {
         terr_mismatch => "types differ".to_string(),
         terr_fn_style_mismatch(values) => {
-            format_strbuf!("expected {} fn but found {} fn",
-                           values.expected.to_str(),
-                           values.found.to_str())
+            format!("expected {} fn but found {} fn",
+                    values.expected.to_str(),
+                    values.found.to_str())
         }
         terr_abi_mismatch(values) => {
-            format_strbuf!("expected {} fn but found {} fn",
-                           values.expected.to_str(),
-                           values.found.to_str())
+            format!("expected {} fn but found {} fn",
+                    values.expected.to_str(),
+                    values.found.to_str())
         }
         terr_onceness_mismatch(values) => {
-            format_strbuf!("expected {} fn but found {} fn",
-                           values.expected.to_str(),
-                           values.found.to_str())
+            format!("expected {} fn but found {} fn",
+                    values.expected.to_str(),
+                    values.found.to_str())
         }
         terr_sigil_mismatch(values) => {
-            format_strbuf!("expected {}, found {}",
-                           tstore_to_closure(&values.expected),
-                           tstore_to_closure(&values.found))
+            format!("expected {}, found {}",
+                    tstore_to_closure(&values.expected),
+                    tstore_to_closure(&values.found))
         }
         terr_mutability => "values differ in mutability".to_string(),
         terr_box_mutability => {
@@ -3307,31 +3307,31 @@ pub fn type_err_to_str(cx: &ctxt, err: &type_err) -> String {
         terr_ptr_mutability => "pointers differ in mutability".to_string(),
         terr_ref_mutability => "references differ in mutability".to_string(),
         terr_ty_param_size(values) => {
-            format_strbuf!("expected a type with {} type params \
-                            but found one with {} type params",
-                           values.expected,
-                           values.found)
+            format!("expected a type with {} type params \
+                     but found one with {} type params",
+                    values.expected,
+                    values.found)
         }
         terr_tuple_size(values) => {
-            format_strbuf!("expected a tuple with {} elements \
-                            but found one with {} elements",
-                           values.expected,
-                           values.found)
+            format!("expected a tuple with {} elements \
+                     but found one with {} elements",
+                    values.expected,
+                    values.found)
         }
         terr_record_size(values) => {
-            format_strbuf!("expected a record with {} fields \
-                            but found one with {} fields",
-                           values.expected,
-                           values.found)
+            format!("expected a record with {} fields \
+                     but found one with {} fields",
+                    values.expected,
+                    values.found)
         }
         terr_record_mutability => {
             "record elements differ in mutability".to_string()
         }
         terr_record_fields(values) => {
-            format_strbuf!("expected a record with field `{}` but found one \
-                            with field `{}`",
-                           token::get_ident(values.expected),
-                           token::get_ident(values.found))
+            format!("expected a record with field `{}` but found one \
+                     with field `{}`",
+                    token::get_ident(values.expected),
+                    token::get_ident(values.found))
         }
         terr_arg_count => {
             "incorrect number of function parameters".to_string()
@@ -3346,69 +3346,60 @@ pub fn type_err_to_str(cx: &ctxt, err: &type_err) -> String {
             "lifetimes do not intersect".to_string()
         }
         terr_regions_insufficiently_polymorphic(br, _) => {
-            format_strbuf!("expected bound lifetime parameter {}, \
-                            but found concrete lifetime",
-                           bound_region_ptr_to_str(cx, br))
+            format!("expected bound lifetime parameter {}, \
+                     but found concrete lifetime",
+                    bound_region_ptr_to_str(cx, br))
         }
         terr_regions_overly_polymorphic(br, _) => {
-            format_strbuf!("expected concrete lifetime, \
-                            but found bound lifetime parameter {}",
-                           bound_region_ptr_to_str(cx, br))
+            format!("expected concrete lifetime, \
+                     but found bound lifetime parameter {}",
+                    bound_region_ptr_to_str(cx, br))
         }
         terr_trait_stores_differ(_, ref values) => {
-            format_strbuf!("trait storage differs: expected `{}` but found \
-                            `{}`",
-                           trait_store_to_str(cx, (*values).expected),
-                           trait_store_to_str(cx, (*values).found))
+            format!("trait storage differs: expected `{}` but found `{}`",
+                    trait_store_to_str(cx, (*values).expected),
+                    trait_store_to_str(cx, (*values).found))
         }
         terr_sorts(values) => {
-            format_strbuf!("expected {} but found {}",
-                           ty_sort_str(cx, values.expected),
-                           ty_sort_str(cx, values.found))
+            format!("expected {} but found {}",
+                    ty_sort_str(cx, values.expected),
+                    ty_sort_str(cx, values.found))
         }
         terr_traits(values) => {
-            format_strbuf!("expected trait `{}` but found trait `{}`",
-                           item_path_str(cx, values.expected),
-                           item_path_str(cx, values.found))
+            format!("expected trait `{}` but found trait `{}`",
+                    item_path_str(cx, values.expected),
+                    item_path_str(cx, values.found))
         }
         terr_builtin_bounds(values) => {
             if values.expected.is_empty() {
-                format_strbuf!("expected no bounds but found `{}`",
-                               values.found.user_string(cx))
+                format!("expected no bounds but found `{}`",
+                        values.found.user_string(cx))
             } else if values.found.is_empty() {
-                format_strbuf!("expected bounds `{}` but found no bounds",
-                               values.expected.user_string(cx))
+                format!("expected bounds `{}` but found no bounds",
+                        values.expected.user_string(cx))
             } else {
-                format_strbuf!("expected bounds `{}` but found bounds `{}`",
-                               values.expected.user_string(cx),
-                               values.found.user_string(cx))
+                format!("expected bounds `{}` but found bounds `{}`",
+                        values.expected.user_string(cx),
+                        values.found.user_string(cx))
             }
         }
         terr_integer_as_char => {
             "expected an integral type but found `char`".to_string()
         }
         terr_int_mismatch(ref values) => {
-            format_strbuf!("expected `{}` but found `{}`",
-                           values.expected.to_str(),
-                           values.found.to_str())
+            format!("expected `{}` but found `{}`",
+                    values.expected.to_str(),
+                    values.found.to_str())
         }
         terr_float_mismatch(ref values) => {
-            format_strbuf!("expected `{}` but found `{}`",
-                           values.expected.to_str(),
-                           values.found.to_str())
+            format!("expected `{}` but found `{}`",
+                    values.expected.to_str(),
+                    values.found.to_str())
         }
         terr_variadic_mismatch(ref values) => {
-            format_strbuf!("expected {} fn but found {} function",
-                           if values.expected {
-                                "variadic"
-                           } else {
-                                "non-variadic"
-                           },
-                           if values.found {
-                               "variadic"
-                           } else {
-                               "non-variadic"
-                           })
+            format!("expected {} fn but found {} function",
+                    if values.expected { "variadic" } else { "non-variadic" },
+                    if values.found { "variadic" } else { "non-variadic" })
         }
     }
 }

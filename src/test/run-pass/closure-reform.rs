@@ -50,15 +50,15 @@ pub fn main() {
 
     let greeting = "Hello ".to_string();
     call_it(proc(s) {
-        format_strbuf!("{}{}", greeting, s)
+        format!("{}{}", greeting, s)
     });
 
     let greeting = "Goodbye ".to_string();
-    call_it(proc(s) format_strbuf!("{}{}", greeting, s));
+    call_it(proc(s) format!("{}{}", greeting, s));
 
     let greeting = "How's life, ".to_string();
     call_it(proc(s: String) -> String {
-        format_strbuf!("{}{}", greeting, s)
+        format!("{}{}", greeting, s)
     });
 
     // Closures
