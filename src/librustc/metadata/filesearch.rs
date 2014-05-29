@@ -34,6 +34,16 @@ pub struct FileSearch<'a> {
     pub triple: &'a str,
 }
 
+impl<'a> Clone for FileSearch<'a> {
+    fn clone(&self) -> FileSearch<'a> {
+        FileSearch {
+            sysroot: self.sysroot,
+            addl_lib_search_paths: self.addl_lib_search_paths,
+            triple: self.triple,
+        }
+    }
+}
+
 impl<'a> FileSearch<'a> {
     pub fn for_each_lib_search_path(&self, f: |&Path| -> FileMatch) {
         let mut visited_dirs = HashSet::new();

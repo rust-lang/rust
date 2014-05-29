@@ -205,12 +205,13 @@ impl<'a, O:DataFlowOperator> DataFlowContext<'a, O> {
 
     fn compute_id_range(&mut self, id: ast::NodeId) -> (uint, uint) {
         let mut expanded = false;
+        let expanded_ptr = &mut expanded;
         let len = self.nodeid_to_bitset.len();
         let n = self.nodeid_to_bitset.find_or_insert_with(id, |_| {
-            expanded = true;
+            *expanded_ptr = true;
             len
         });
-        if expanded {
+        if *expanded_ptr {
             let entry = if self.oper.initial_value() { uint::MAX } else {0};
             for _ in range(0, self.words_per_id) {
                 self.gens.push(0);
@@ -713,15 +714,16 @@ impl<'a, 'b, O:DataFlowOperator> PropagationContext<'a, 'b, O> {
 
     fn walk_pat(&mut self,
                 pat: @ast::Pat,
-                in_out: &mut [uint],
+                mut in_out: &mut [uint],
                 _loop_scopes: &mut Vec<LoopScope> ) {
         debug!("DataFlowContext::walk_pat(pat={}, in_out={})",
                pat.repr(self.dfcx.tcx), bits_to_str(in_out));
 
+        let in_out = &mut in_out;
         ast_util::walk_pat(pat, |p| {
-            debug!("  p.id={} in_out={}", p.id, bits_to_str(in_out));
-            self.merge_with_entry_set(p.id, in_out);
-            self.dfcx.apply_gen_kill(p.id, in_out);
+            debug!("  p.id={} in_out={}", p.id, bits_to_str(*in_out));
+            self.merge_with_entry_set(p.id, *in_out);
+            self.dfcx.apply_gen_kill(p.id, *in_out);
             true
         });
     }

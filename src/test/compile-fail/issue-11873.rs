@@ -11,7 +11,8 @@
 fn main() {
     let mut v = vec!(1);
     let f = || v.push(2);
-    let _w = v; //~ ERROR: cannot move out of `v`
+    //~^ ERROR cannot borrow immutable captured outer variable
+    let _w = v; //~ ERROR: use of moved value
 
     f();
 }

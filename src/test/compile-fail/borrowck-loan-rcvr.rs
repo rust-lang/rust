@@ -32,8 +32,9 @@ fn a() {
     p.impurem();
 
     // But in this case we do not honor the loan:
-    p.blockm(|| { //~ ERROR cannot borrow `p` as mutable
-        p.x = 10;
+    p.blockm(|| {
+        p.x = 10; //~ ERROR cannot move `p` into closure
+        //~^ ERROR cannot assign to immutable field
     })
 }
 

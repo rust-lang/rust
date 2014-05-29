@@ -349,6 +349,7 @@ pub fn test_cfg<AM: AttrMetaMethods, It: Iterator<AM>>
     (cfg: &[@MetaItem], mut metas: It) -> bool {
     // having no #[cfg(...)] attributes counts as matching.
     let mut no_cfgs = true;
+    let no_cfgs_ptr = &mut no_cfgs;
 
     // this would be much nicer as a chain of iterator adaptors, but
     // this doesn't work.
@@ -356,7 +357,7 @@ pub fn test_cfg<AM: AttrMetaMethods, It: Iterator<AM>>
         debug!("testing name: {}", mi.name());
         let this_matches = if mi.check_name("cfg") { // it is a #[cfg()] attribute
             debug!("is cfg");
-            no_cfgs = false;
+            *no_cfgs_ptr = false;
              // only #[cfg(...)] ones are understood.
             match mi.meta_item_list() {
                 Some(cfg_meta) => {
@@ -385,8 +386,10 @@ pub fn test_cfg<AM: AttrMetaMethods, It: Iterator<AM>>
         };
         matches || this_matches
     });
-    debug!("test_cfg (no_cfgs={}, some_cfg_matches={})", no_cfgs, some_cfg_matches);
-    no_cfgs || some_cfg_matches
+    debug!("test_cfg (no_cfgs={}, some_cfg_matches={})",
+           *no_cfgs_ptr,
+           some_cfg_matches);
+    *no_cfgs_ptr || some_cfg_matches
 }
 
 /// Represents the #[deprecated="foo"] and friends attributes.

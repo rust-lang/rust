@@ -104,7 +104,10 @@ impl TocBuilder {
         loop {
             match self.chain.pop() {
                 Some(mut next) => {
-                    this.map(|e| next.children.entries.push(e));
+                    {
+                        let next_ptr = &mut next;
+                        this.map(|e| next_ptr.children.entries.push(e));
+                    }
                     if next.level < level {
                         // this is the parent we want, so return it to
                         // its rightful place.

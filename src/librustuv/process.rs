@@ -68,16 +68,24 @@ impl Process {
             }
         }
 
+        let cfg_env = &cfg.env;
+        let cfg_uid = &cfg.uid;
+        let cfg_gid = &cfg.gid;
+        let cfg_detach = cfg.detach;
+        let cfg_cwd = &cfg.cwd;
+        let stdio_ptr = stdio.as_ptr();
+        let stdio_len = stdio.len();
+
         let ret = with_argv(cfg.program, cfg.args, |argv| {
-            with_env(cfg.env, |envp| {
+            with_env(*cfg_env, |envp| {
                 let mut flags = 0;
-                if cfg.uid.is_some() {
+                if cfg_uid.is_some() {
                     flags |= uvll::PROCESS_SETUID;
                 }
-                if cfg.gid.is_some() {
+                if cfg_gid.is_some() {
                     flags |= uvll::PROCESS_SETGID;
                 }
-                if cfg.detach {
+                if cfg_detach {
                     flags |= uvll::PROCESS_DETACHED;
                 }
                 let options = uvll::uv_process_options_t {
@@ -85,15 +93,15 @@ impl Process {
                     file: unsafe { *argv },
                     args: argv,
                     env: envp,
-                    cwd: match cfg.cwd {
-                        Some(cwd) => cwd.with_ref(|p| p),
+                    cwd: match *cfg_cwd {
+                        Some(ref cwd) => cwd.with_ref(|p| p),
                         None => ptr::null(),
                     },
                     flags: flags as libc::c_uint,
-                    stdio_count: stdio.len() as libc::c_int,
-                    stdio: stdio.as_ptr(),
-                    uid: cfg.uid.unwrap_or(0) as uvll::uv_uid_t,
-                    gid: cfg.gid.unwrap_or(0) as uvll::uv_gid_t,
+                    stdio_count: stdio_len as libc::c_int,
+                    stdio: stdio_ptr,
+                    uid: cfg_uid.unwrap_or(0) as uvll::uv_uid_t,
+                    gid: cfg_gid.unwrap_or(0) as uvll::uv_gid_t,
                 };
 
                 let handle = UvHandle::alloc(None::<Process>, uvll::UV_PROCESS);

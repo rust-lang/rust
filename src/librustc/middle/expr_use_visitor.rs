@@ -791,51 +791,44 @@ impl<'d,'t,TYPER:mc::Typer> ExprUseVisitor<'d,'t,TYPER> {
 
         let tcx = self.typer.tcx();
         freevars::with_freevars(tcx, closure_expr.id, |freevars| {
-            match freevars::get_capture_mode(self.tcx(), closure_expr.id) {
-                freevars::CaptureByRef => {
-                    self.walk_by_ref_captures(closure_expr, freevars);
-                }
-                freevars::CaptureByValue => {
-                    self.walk_by_value_captures(closure_expr, freevars);
+            for freevar in freevars.iter() {
+                let cmt_var = return_if_err!(self.cat_captured_var(
+                        closure_expr.id,
+                        closure_expr.span,
+                        freevar.def));
+                let upvar_id = ty::UpvarId {
+                    var_id: ast_util::def_id_of_def(freevar.def).node,
+                    closure_expr_id: closure_expr.id,
+                };
+                match self.typer
+                          .tcx()
+                          .upvar_borrow_map
+                          .borrow()
+                          .find(&upvar_id) {
+                    None => {
+                        self.delegate_consume(closure_expr.id,
+                                              freevar.span,
+                                              cmt_var);
+                    }
+                    Some(upvar_borrow) => {
+                        let region =
+                            ty::ty_region(tcx,
+                                          freevar.span,
+                                          upvar_borrow.reborrowed_type);
+                        // Borrow `*x`, not `x`.
+                        let upvar_cmt = self.mc.cat_deref(closure_expr,
+                                                          cmt_var,
+                                                          0);
+                        self.delegate.borrow(closure_expr.id,
+                                             closure_expr.span,
+                                             upvar_cmt,
+                                             region,
+                                             ty::UniqueImmBorrow,
+                                             ClosureCapture(freevar.span));
+                    }
                 }
             }
         });
-    }
-
-    fn walk_by_ref_captures(&mut self,
-                            closure_expr: &ast::Expr,
-                            freevars: &[freevars::freevar_entry]) {
-        for freevar in freevars.iter() {
-            let id_var = ast_util::def_id_of_def(freevar.def).node;
-            let cmt_var = return_if_err!(self.cat_captured_var(closure_expr.id,
-                                                               closure_expr.span,
-                                                               freevar.def));
-
-            // Lookup the kind of borrow the callee requires, as
-            // inferred by regionbk
-            let upvar_id = ty::UpvarId { var_id: id_var,
-                                         closure_expr_id: closure_expr.id };
-            let upvar_borrow = self.tcx().upvar_borrow_map.borrow()
-                                   .get_copy(&upvar_id);
-
-            self.delegate.borrow(closure_expr.id,
-                                 closure_expr.span,
-                                 cmt_var,
-                                 upvar_borrow.region,
-                                 upvar_borrow.kind,
-                                 ClosureCapture(freevar.span));
-        }
-    }
-
-    fn walk_by_value_captures(&mut self,
-                              closure_expr: &ast::Expr,
-                              freevars: &[freevars::freevar_entry]) {
-        for freevar in freevars.iter() {
-            let cmt_var = return_if_err!(self.cat_captured_var(closure_expr.id,
-                                                               closure_expr.span,
-                                                               freevar.def));
-            self.delegate_consume(closure_expr.id, freevar.span, cmt_var);
-        }
     }
 
     fn cat_captured_var(&mut self,

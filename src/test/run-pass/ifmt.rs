@@ -196,10 +196,13 @@ fn test_print() {
 fn test_format_args() {
     let mut buf = MemWriter::new();
     {
-        let w = &mut buf as &mut io::Writer;
-        format_args!(|args| { write!(w, "{}", args); }, "{}", 1);
-        format_args!(|args| { write!(w, "{}", args); }, "test");
-        format_args!(|args| { write!(w, "{}", args); }, "{test}", test=3);
+        let mut w = &mut buf as &mut io::Writer;
+        let w_ptr = &mut w;
+        format_args!(|args| { write!(*w_ptr, "{}", args); }, "{}", 1);
+        format_args!(|args| { write!(*w_ptr, "{}", args); }, "test");
+        format_args!(|args| {
+            write!(*w_ptr, "{}", args);
+        }, "{test}", test=3);
     }
     let s = str::from_utf8(buf.unwrap().as_slice()).unwrap().to_string();
     t!(s, "1test3");

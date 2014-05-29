@@ -382,18 +382,22 @@ impl Pattern {
                     options: MatchOptions) -> MatchResult {
 
         let prev_char = Cell::new(prev_char);
+        let prev_char_ptr = &prev_char;
 
         let require_literal = |c| {
             (options.require_literal_separator && is_sep(c)) ||
             (options.require_literal_leading_dot && c == '.'
-             && is_sep(prev_char.get().unwrap_or('/')))
+             && is_sep(prev_char_ptr.get().unwrap_or('/')))
         };
 
         for (ti, token) in self.tokens.slice_from(i).iter().enumerate() {
             match *token {
                 AnySequence => {
                     loop {
-                        match self.matches_from(prev_char.get(), file, i + ti + 1, options) {
+                        match self.matches_from(prev_char_ptr.get(),
+                                                file,
+                                                i + ti + 1,
+                                                options) {
                             SubPatternDoesntMatch => (), // keep trying
                             m => return m,
                         }
@@ -406,7 +410,7 @@ impl Pattern {
                         if require_literal(some_c.unwrap()) {
                             return SubPatternDoesntMatch;
                         }
-                        prev_char.set(some_c);
+                        prev_char_ptr.set(some_c);
                         file = next;
                     }
                 }
@@ -443,7 +447,7 @@ impl Pattern {
                     if !matches {
                         return SubPatternDoesntMatch;
                     }
-                    prev_char.set(some_c);
+                    prev_char_ptr.set(some_c);
                     file = next;
                 }
             }

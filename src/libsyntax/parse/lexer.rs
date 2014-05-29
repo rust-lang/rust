@@ -158,14 +158,20 @@ fn fatal_span_char(rdr: &mut StringReader,
                    m: &str, c: char) -> ! {
     let mut m = m.to_string();
     m.push_str(": ");
-    char::escape_default(c, |c| m.push_char(c));
+    {
+        let m_ptr = &mut m;
+        char::escape_default(c, |c| m_ptr.push_char(c));
+    }
     fatal_span(rdr, from_pos, to_pos, m.as_slice());
 }
 
 fn err_span_char(rdr: &mut StringReader, from_pos: BytePos, to_pos: BytePos, m: &str, c: char) {
     let mut m = m.to_string();
     m.push_str(": ");
-    char::escape_default(c, |c| m.push_char(c));
+    {
+        let m_ptr = &mut m;
+        char::escape_default(c, |c| m_ptr.push_char(c));
+    }
     err_span(rdr, from_pos, to_pos, m.as_slice());
 }
 
@@ -324,12 +330,14 @@ fn consume_any_line_comment(rdr: &mut StringReader)
                     while !rdr.curr_is('\n') && !is_eof(rdr) {
                         bump(rdr);
                     }
+
+                    let rdr_pos = rdr.pos;
                     let ret = with_str_from(rdr, start_bpos, |string| {
                         // but comments with only more "/"s are not
                         if !is_line_non_doc_comment(string) {
                             Some(TokenAndSpan{
                                 tok: token::DOC_COMMENT(str_to_ident(string)),
-                                sp: codemap::mk_sp(start_bpos, rdr.pos)
+                                sp: codemap::mk_sp(start_bpos, rdr_pos)
                             })
                         } else {
                             None
@@ -405,12 +413,13 @@ fn consume_block_comment(rdr: &mut StringReader) -> Option<TokenAndSpan> {
     }
 
     let res = if is_doc_comment {
+        let rdr_pos = rdr.pos;
         with_str_from(rdr, start_bpos, |string| {
             // but comments with only "*"s between two "/"s are not
             if !is_block_non_doc_comment(string) {
                 Some(TokenAndSpan{
                         tok: token::DOC_COMMENT(str_to_ident(string)),
-                        sp: codemap::mk_sp(start_bpos, rdr.pos)
+                        sp: codemap::mk_sp(start_bpos, rdr_pos)
                     })
             } else {
                 None
@@ -674,11 +683,13 @@ fn next_token_inner(rdr: &mut StringReader) -> token::Token {
             bump(rdr);
         }
 
-        return with_str_from(rdr, start, |string| {
+        let rdr_ptr = &rdr;
+        return with_str_from(*rdr_ptr, start, |string| {
             if string == "_" {
                 token::UNDERSCORE
             } else {
-                let is_mod_name = rdr.curr_is(':') && nextch_is(rdr, ':');
+                let is_mod_name = rdr_ptr.curr_is(':') &&
+                    nextch_is(*rdr_ptr, ':');
 
                 // FIXME: perform NFKC normalization here. (Issue #2253)
                 token::IDENT(str_to_ident(string), is_mod_name)

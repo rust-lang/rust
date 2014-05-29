@@ -345,16 +345,21 @@ fn is_useful_specialized(cx: &MatchCheckCtxt,
                              arity: uint,
                              lty: ty::t)
                              -> useful {
-    let ms = m.iter().filter_map(|r| {
-        specialize(cx, r.as_slice(), &ctor, arity, lty)
-    }).collect::<matrix>();
-    let could_be_useful = match specialize(cx, v, &ctor, arity, lty) {
-        Some(v) => is_useful(cx, &ms, v.as_slice()),
-        None => return not_useful,
-    };
+    let ms;
+    let could_be_useful;
+    {
+        let ctor_ptr = &ctor;
+        ms = m.iter().filter_map(|r| {
+            specialize(cx, r.as_slice(), ctor_ptr, arity, lty)
+        }).collect::<matrix>();
+        could_be_useful = match specialize(cx, v, ctor_ptr, arity, lty) {
+            Some(v) => is_useful(cx, &ms, v.as_slice()),
+            None => return not_useful,
+        };
+    }
     match could_be_useful {
-      useful_ => useful(lty, ctor),
-      u => u,
+        useful_ => useful(lty, ctor),
+        u => u,
     }
 }
 
@@ -964,19 +969,19 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
     let tcx = cx.tcx;
     let def_map = &tcx.def_map;
     let mut by_ref_span = None;
-    for pat in pats.iter() {
-        pat_bindings(def_map, *pat, |bm, _, span, _path| {
-            match bm {
-                BindByRef(_) => {
-                    by_ref_span = Some(span);
+    {
+        let by_ref_span_ptr = &mut by_ref_span;
+        for pat in pats.iter() {
+            pat_bindings(def_map, *pat, |bm, _, span, _path| {
+                match bm {
+                    BindByRef(_) => *by_ref_span_ptr = Some(span),
+                    BindByValue(_) => {}
                 }
-                BindByValue(_) => {
-                }
-            }
-        })
+            })
+        }
     }
 
-    let check_move: |&Pat, Option<@Pat>| = |p, sub| {
+    let mut check_move: |&Pat, Option<@Pat>| = |p, sub| {
         // check legality of moving out of the enum
 
         // x @ Foo(..) is legal, but x @ Foo(y) isn't.
@@ -998,6 +1003,7 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
                 "by-ref binding occurs here");
         }
     };
+    let check_move_ptr = &mut check_move;
 
     for pat in pats.iter() {
         walk_pat(*pat, |p| {
@@ -1006,7 +1012,7 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
                     PatIdent(BindByValue(_), _, sub) => {
                         let pat_ty = ty::node_id_to_type(tcx, p.id);
                         if ty::type_moves_by_default(tcx, pat_ty) {
-                            check_move(p, sub);
+                            (*check_move_ptr)(p, sub);
                         }
                     }
                     PatIdent(BindByRef(_), _, _) => {

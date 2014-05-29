@@ -644,26 +644,27 @@ pub fn is_item_impl(item: @ast::Item) -> bool {
     }
 }
 
-pub fn walk_pat(pat: &Pat, it: |&Pat| -> bool) -> bool {
+pub fn walk_pat(pat: &Pat, mut it: |&Pat| -> bool) -> bool {
     if !it(pat) {
         return false;
     }
 
+    let it_ptr = &mut it;
     match pat.node {
-        PatIdent(_, _, Some(p)) => walk_pat(p, it),
+        PatIdent(_, _, Some(p)) => walk_pat(p, |p| (*it_ptr)(p)),
         PatStruct(_, ref fields, _) => {
-            fields.iter().advance(|f| walk_pat(f.pat, |p| it(p)))
+            fields.iter().advance(|f| walk_pat(f.pat, |p| (*it_ptr)(p)))
         }
         PatEnum(_, Some(ref s)) | PatTup(ref s) => {
-            s.iter().advance(|&p| walk_pat(p, |p| it(p)))
+            s.iter().advance(|&p| walk_pat(p, |p| (*it_ptr)(p)))
         }
         PatUniq(s) | PatRegion(s) => {
-            walk_pat(s, it)
+            walk_pat(s, |p| (*it_ptr)(p))
         }
         PatVec(ref before, ref slice, ref after) => {
-            before.iter().advance(|&p| walk_pat(p, |p| it(p))) &&
-                slice.iter().advance(|&p| walk_pat(p, |p| it(p))) &&
-                after.iter().advance(|&p| walk_pat(p, |p| it(p)))
+            before.iter().advance(|&p| walk_pat(p, |p| (*it_ptr)(p))) &&
+                slice.iter().advance(|&p| walk_pat(p, |p| (*it_ptr)(p))) &&
+                after.iter().advance(|&p| walk_pat(p, |p| (*it_ptr)(p)))
         }
         PatMac(_) => fail!("attempted to analyze unexpanded pattern"),
         PatWild | PatWildMulti | PatLit(_) | PatRange(_, _) | PatIdent(_, _, _) |

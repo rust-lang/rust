@@ -714,7 +714,10 @@ mod test {
     fn test_escape_default() {
         fn string(c: char) -> String {
             let mut result = String::new();
-            escape_default(c, |c| { result.push_char(c); });
+            {
+                let result_ptr = &mut result;
+                escape_default(c, |c| { result_ptr.push_char(c); });
+            }
             return result;
         }
         let s = string('\n');
@@ -749,7 +752,10 @@ mod test {
     fn test_escape_unicode() {
         fn string(c: char) -> String {
             let mut result = String::new();
-            escape_unicode(c, |c| { result.push_char(c); });
+            {
+                let result_ptr = &mut result;
+                escape_unicode(c, |c| { result_ptr.push_char(c); });
+            }
             return result;
         }
         let s = string('\x00');

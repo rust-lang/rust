@@ -1880,15 +1880,17 @@ impl<'a> Resolver<'a> {
             Some(def_id) => def_id,
         };
 
+        let new_module = module.clone();
         csearch::each_child_of_item(&self.session.cstore,
                                     def_id,
                                     |def_like, child_ident, visibility| {
             debug!("(populating external module) ... found ident: {}",
                    token::get_ident(child_ident));
-            self.build_reduced_graph_for_external_crate_def(module.clone(),
-                                                            def_like,
-                                                            child_ident,
-                                                            visibility)
+            self.build_reduced_graph_for_external_crate_def(
+                new_module.clone(),
+                def_like,
+                child_ident,
+                visibility)
         });
         module.populated.set(true)
     }
@@ -4050,12 +4052,16 @@ impl<'a> Resolver<'a> {
     // user and one 'x' came from the macro.
     fn binding_mode_map(&mut self, pat: &Pat) -> BindingMap {
         let mut result = HashMap::new();
-        pat_bindings(&self.def_map, pat, |binding_mode, _id, sp, path| {
-            let name = mtwt::resolve(path_to_ident(path));
-            result.insert(name,
-                          binding_info {span: sp,
-                                        binding_mode: binding_mode});
-        });
+        {
+            let result_ptr = &mut result;
+            pat_bindings(&self.def_map, pat, |binding_mode, _id, sp, path| {
+                let name = mtwt::resolve(path_to_ident(path));
+                result_ptr.insert(name, binding_info {
+                    span: sp,
+                    binding_mode: binding_mode,
+                });
+            });
+        }
         return result;
     }
 
@@ -4260,6 +4266,7 @@ impl<'a> Resolver<'a> {
                        // pattern that binds them
                        mut bindings_list: Option<&mut HashMap<Name,NodeId>>) {
         let pat_id = pattern.id;
+        let bindings_list_ptr = &mut bindings_list;
         walk_pat(pattern, |pattern| {
             match pattern.node {
                 PatIdent(binding_mode, ref path, _)
@@ -4347,7 +4354,7 @@ impl<'a> Resolver<'a> {
                             // because that breaks the assumptions later
                             // passes make about or-patterns.)
 
-                            match bindings_list {
+                            match *bindings_list_ptr {
                                 Some(ref mut bindings_list)
                                 if !bindings_list.contains_key(&renamed) => {
                                     let this = &mut *self;
@@ -5120,16 +5127,30 @@ impl<'a> Resolver<'a> {
                             }
                             _ => {
                                 let mut method_scope = false;
-                                self.value_ribs.borrow().iter().rev().advance(|rib| {
-                                    let res = match *rib {
-                                        Rib { bindings: _, kind: MethodRibKind(_, _) } => true,
-                                        Rib { bindings: _, kind: OpaqueFunctionRibKind } => false,
-                                        _ => return true, // Keep advancing
-                                    };
+                                {
+                                    let method_scope_ptr = &mut method_scope;
+                                    self.value_ribs.borrow()
+                                                   .iter()
+                                                   .rev()
+                                                   .advance(|rib| {
+                                        let res = match *rib {
+                                            Rib {
+                                                bindings: _,
+                                                kind: MethodRibKind(_, _)
+                                            } => true,
+                                            Rib {
+                                                bindings: _,
+                                                kind: OpaqueFunctionRibKind
+                                            } => false,
+                                            _ => {
+                                                return true // Keep advancing
+                                            }
+                                        };
 
-                                    method_scope = res;
-                                    false // Stop advancing
-                                });
+                                        *method_scope_ptr = res;
+                                        false // Stop advancing
+                                    });
+                                }
 
                                 if method_scope && token::get_name(self.self_ident.name).get()
                                                                         == wrong_name.as_slice() {
@@ -5358,17 +5379,18 @@ impl<'a> Resolver<'a> {
         assert!(match lp {LastImport{..} => false, _ => true},
                 "Import should only be used for `use` directives");
         self.last_private.insert(node_id, lp);
+        let session = self.session;
         self.def_map.borrow_mut().insert_or_update_with(node_id, def, |_, old_value| {
             // Resolve appears to "resolve" the same ID multiple
             // times, so here is a sanity check it at least comes to
             // the same conclusion! - nmatsakis
             if def != *old_value {
-                self.session
-                    .bug(format!("node_id {:?} resolved first to {:?} and \
-                                  then {:?}",
-                                 node_id,
-                                 *old_value,
-                                 def).as_slice());
+                session.bug(
+                    format!("node_id {:?} resolved first to {:?} and \
+                             then {:?}",
+                            node_id,
+                            *old_value,
+                            def).as_slice());
             }
         });
     }

@@ -73,8 +73,7 @@ impl<'a> RestrictionsContext<'a> {
             }
 
             mc::cat_local(local_id) |
-            mc::cat_arg(local_id) |
-            mc::cat_upvar(ty::UpvarId {var_id: local_id, ..}, _) => {
+            mc::cat_arg(local_id) => {
                 // R-Variable
                 let lp = Rc::new(LpVar(local_id));
                 SafeIf(lp.clone(), vec!(Restriction {

@@ -51,57 +51,71 @@ pub fn load_props(testfile: &Path) -> TestProps {
     let mut check_stdout = false;
     let mut no_prefer_dynamic = false;
     let mut no_pretty_expanded = false;
-    iter_header(testfile, |ln| {
-        match parse_error_pattern(ln) {
-          Some(ep) => error_patterns.push(ep),
-          None => ()
-        };
 
-        if compile_flags.is_none() {
-            compile_flags = parse_compile_flags(ln);
-        }
+    {
+        let error_patterns_ptr = &mut error_patterns;
+        let aux_builds_ptr = &mut aux_builds;
+        let exec_env_ptr = &mut exec_env;
+        let compile_flags_ptr = &mut compile_flags;
+        let run_flags_ptr = &mut run_flags;
+        let pp_exact_ptr = &mut pp_exact;
+        let check_lines_ptr = &mut check_lines;
+        let force_host_ptr = &mut force_host;
+        let check_stdout_ptr = &mut check_stdout;
+        let no_prefer_dynamic_ptr = &mut no_prefer_dynamic;
+        let no_pretty_expanded_ptr = &mut no_pretty_expanded;
+        iter_header(testfile, |ln| {
+            match parse_error_pattern(ln) {
+              Some(ep) => error_patterns_ptr.push(ep),
+              None => ()
+            };
 
-        if run_flags.is_none() {
-            run_flags = parse_run_flags(ln);
-        }
+            if compile_flags_ptr.is_none() {
+                *compile_flags_ptr = parse_compile_flags(ln);
+            }
 
-        if pp_exact.is_none() {
-            pp_exact = parse_pp_exact(ln, testfile);
-        }
+            if run_flags_ptr.is_none() {
+                *run_flags_ptr = parse_run_flags(ln);
+            }
 
-        if !force_host {
-            force_host = parse_force_host(ln);
-        }
+            if pp_exact_ptr.is_none() {
+                *pp_exact_ptr = parse_pp_exact(ln, testfile);
+            }
 
-        if !check_stdout {
-            check_stdout = parse_check_stdout(ln);
-        }
+            if !*force_host_ptr {
+                *force_host_ptr = parse_force_host(ln);
+            }
 
-        if !no_prefer_dynamic {
-            no_prefer_dynamic = parse_no_prefer_dynamic(ln);
-        }
+            if !*check_stdout_ptr {
+                *check_stdout_ptr = parse_check_stdout(ln);
+            }
 
-        if !no_pretty_expanded {
-            no_pretty_expanded = parse_no_pretty_expanded(ln);
-        }
+            if !*no_prefer_dynamic_ptr {
+                *no_prefer_dynamic_ptr = parse_no_prefer_dynamic(ln);
+            }
 
-        match parse_aux_build(ln) {
-            Some(ab) => { aux_builds.push(ab); }
-            None => {}
-        }
+            if !*no_pretty_expanded_ptr {
+                *no_pretty_expanded_ptr = parse_no_pretty_expanded(ln);
+            }
 
-        match parse_exec_env(ln) {
-            Some(ee) => { exec_env.push(ee); }
-            None => {}
-        }
+            match parse_aux_build(ln) {
+                Some(ab) => { aux_builds_ptr.push(ab); }
+                None => {}
+            }
 
-        match parse_check_line(ln) {
-            Some(cl) => check_lines.push(cl),
-            None => ()
-        };
+            match parse_exec_env(ln) {
+                Some(ee) => { exec_env_ptr.push(ee); }
+                None => {}
+            }
 
-        true
-    });
+            match parse_check_line(ln) {
+                Some(cl) => check_lines_ptr.push(cl),
+                None => ()
+            };
+
+            true
+        });
+    }
 
     TestProps {
         error_patterns: error_patterns,

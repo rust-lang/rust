@@ -54,8 +54,6 @@ fn cs_clone(
     let clone_ident = substr.method_ident;
     let ctor_ident;
     let all_fields;
-    let subcall = |field: &FieldInfo|
-        cx.expr_method_call(field.span, field.self_, clone_ident, Vec::new());
 
     match *substr.fields {
         Struct(ref af) => {
@@ -81,7 +79,15 @@ fn cs_clone(
 
     if all_fields.len() >= 1 && all_fields.get(0).name.is_none() {
         // enum-like
-        let subcalls = all_fields.iter().map(subcall).collect();
+        let subcalls = {
+            let subcall = |field: &FieldInfo| {
+                cx.expr_method_call(field.span,
+                                    field.self_,
+                                    clone_ident,
+                                    Vec::new())
+            };
+            all_fields.iter().map(subcall).collect()
+        };
         cx.expr_call_ident(trait_span, ctor_ident, subcalls)
     } else {
         // struct-like
@@ -94,6 +100,12 @@ fn cs_clone(
                                          `deriving({})`",
                                         name).as_slice())
                 }
+            };
+            let subcall = |field: &FieldInfo| {
+                cx.expr_method_call(field.span,
+                                    field.self_,
+                                    clone_ident,
+                                    Vec::new())
             };
             cx.field_imm(field.span, ident, subcall(field))
         }).collect::<Vec<_>>();

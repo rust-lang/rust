@@ -1274,8 +1274,9 @@ fn my_visit_item(i: &Item,
     let mut ebml_w = unsafe { ebml_w.unsafe_clone() };
     // See above
     let ecx: &EncodeContext = unsafe { mem::transmute(ecx_ptr) };
+    let ebml_w_ptr = &mut ebml_w;
     ecx.tcx.map.with_path(i.id, |path| {
-        encode_info_for_item(ecx, &mut ebml_w, i, index, path, i.vis);
+        encode_info_for_item(ecx, ebml_w_ptr, i, index, path, i.vis);
     });
 }
 
@@ -1293,10 +1294,9 @@ fn my_visit_foreign_item(ni: &ForeignItem,
         ebml_w.unsafe_clone()
     };
     let abi = ecx.tcx.map.get_foreign_abi(ni.id);
+    let ebml_w_ptr = &mut ebml_w;
     ecx.tcx.map.with_path(ni.id, |path| {
-        encode_info_for_foreign_item(ecx, &mut ebml_w,
-                                     ni, index,
-                                     path, abi);
+        encode_info_for_foreign_item(ecx, ebml_w_ptr, ni, index, path, abi);
     });
 }
 
@@ -1484,14 +1484,17 @@ fn encode_crate_deps(ebml_w: &mut Encoder, cstore: &cstore::CStore) {
     fn get_ordered_deps(cstore: &cstore::CStore) -> Vec<decoder::CrateDep> {
         // Pull the cnums and name,vers,hash out of cstore
         let mut deps = Vec::new();
-        cstore.iter_crate_data(|key, val| {
-            let dep = decoder::CrateDep {
-                cnum: key,
-                crate_id: decoder::get_crate_id(val.data()),
-                hash: decoder::get_crate_hash(val.data())
-            };
-            deps.push(dep);
-        });
+        {
+            let deps_ptr = &mut deps;
+            cstore.iter_crate_data(|key, val| {
+                let dep = decoder::CrateDep {
+                    cnum: key,
+                    crate_id: decoder::get_crate_id(val.data()),
+                    hash: decoder::get_crate_hash(val.data())
+                };
+                deps_ptr.push(dep);
+            });
+        }
 
         // Sort by cnum
         deps.sort_by(|kv1, kv2| kv1.cnum.cmp(&kv2.cnum));

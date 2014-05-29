@@ -583,34 +583,37 @@ impl<'a> Context<'a> {
         // of what we changed so we can roll everything back after invoking the
         // specified closure
         let mut pushed = 0u;
-        each_lint(&self.tcx.sess, attrs, |meta, level, lintname| {
-            match self.dict.find_equiv(&lintname) {
-                None => {
-                    self.span_lint(
-                        UnrecognizedLint,
-                        meta.span,
-                        format!("unknown `{}` attribute: `{}`",
-                                level_to_str(level), lintname).as_slice());
-                }
-                Some(lint) => {
-                    let lint = lint.lint;
-                    let now = self.get_level(lint);
-                    if now == Forbid && level != Forbid {
-                        self.tcx.sess.span_err(meta.span,
-                        format!("{}({}) overruled by outer forbid({})",
-                                level_to_str(level),
-                                lintname,
-                                lintname).as_slice());
-                    } else if now != level {
-                        let src = self.get_source(lint);
-                        self.lint_stack.push((lint, now, src));
-                        pushed += 1;
-                        self.set_level(lint, level, Node(meta.span));
+        {
+            let pushed_ptr = &mut pushed;
+            each_lint(&self.tcx.sess, attrs, |meta, level, lintname| {
+                match self.dict.find_equiv(&lintname) {
+                    None => {
+                        self.span_lint(
+                            UnrecognizedLint,
+                            meta.span,
+                            format!("unknown `{}` attribute: `{}`",
+                                    level_to_str(level), lintname).as_slice());
+                    }
+                    Some(lint) => {
+                        let lint = lint.lint;
+                        let now = self.get_level(lint);
+                        if now == Forbid && level != Forbid {
+                            self.tcx.sess.span_err(meta.span,
+                            format!("{}({}) overruled by outer forbid({})",
+                                    level_to_str(level),
+                                    lintname,
+                                    lintname).as_slice());
+                        } else if now != level {
+                            let src = self.get_source(lint);
+                            self.lint_stack.push((lint, now, src));
+                            *pushed_ptr += 1;
+                            self.set_level(lint, level, Node(meta.span));
+                        }
                     }
                 }
-            }
-            true
-        });
+                true
+            });
+        }
 
         let old_is_doc_hidden = self.is_doc_hidden;
         self.is_doc_hidden =
@@ -980,26 +983,30 @@ fn check_heap_type(cx: &Context, span: Span, ty: ty::t) {
 
         let mut n_box = 0;
         let mut n_uniq = 0;
-        ty::fold_ty(cx.tcx, ty, |t| {
-            match ty::get(t).sty {
-                ty::ty_box(_) => {
-                    n_box += 1;
-                }
-                ty::ty_uniq(_) |
-                ty::ty_trait(box ty::TyTrait {
-                    store: ty::UniqTraitStore, ..
-                }) |
-                ty::ty_closure(box ty::ClosureTy {
-                    store: ty::UniqTraitStore,
-                    ..
-                }) => {
-                    n_uniq += 1;
-                }
+        {
+            let n_box_ptr = &mut n_box;
+            let n_uniq_ptr = &mut n_uniq;
+            ty::fold_ty(cx.tcx, ty, |t| {
+                match ty::get(t).sty {
+                    ty::ty_box(_) => {
+                        *n_box_ptr += 1;
+                    }
+                    ty::ty_uniq(_) |
+                    ty::ty_trait(box ty::TyTrait {
+                        store: ty::UniqTraitStore, ..
+                    }) |
+                    ty::ty_closure(box ty::ClosureTy {
+                        store: ty::UniqTraitStore,
+                        ..
+                    }) => {
+                        *n_uniq_ptr += 1;
+                    }
 
-                _ => ()
-            };
-            t
-        });
+                    _ => ()
+                };
+                t
+            });
+        }
 
         if n_uniq > 0 && lint != ManagedHeapMemory {
             let s = ty_to_str(cx.tcx, ty);
@@ -1128,11 +1135,12 @@ fn check_crate_attrs_usage(cx: &Context, attrs: &[ast::Attribute]) {
 
     for attr in attrs.iter() {
         let name = attr.node.value.name();
+        let name_ptr = &name;
         let mut iter = crate_attrs.iter().chain(other_attrs.iter());
-        if !iter.any(|other_attr| { name.equiv(other_attr) }) {
+        if !iter.any(|other_attr| (*name_ptr).equiv(other_attr)) {
             cx.span_lint(AttributeUsage, attr.span, "unknown crate attribute");
         }
-        if name.equiv(&("link")) {
+        if (*name_ptr).equiv(&("link")) {
             cx.tcx.sess.span_err(attr.span,
                                  "obsolete crate `link` attribute");
             cx.tcx.sess.note("the link attribute has been superceded by the crate_id \
@@ -1275,11 +1283,12 @@ fn check_unused_result(cx: &Context, s: &ast::Stmt) {
                     _ => {}
                 }
             } else {
+                let warned_ptr = &mut warned;
                 csearch::get_item_attrs(&cx.tcx.sess.cstore, did, |attrs| {
                     if attr::contains_name(attrs.as_slice(), "must_use") {
                         cx.span_lint(UnusedMustUse, s.span,
                                      "unused result which must be used");
-                        warned = true;
+                        *warned_ptr = true;
                     }
                 });
             }
@@ -1481,31 +1490,38 @@ fn check_unused_mut_pat(cx: &Context, pats: &[@ast::Pat]) {
     // collect all mutable pattern and group their NodeIDs by their Identifier to
     // avoid false warnings in match arms with multiple patterns
     let mut mutables = HashMap::new();
-    for &p in pats.iter() {
-        pat_util::pat_bindings(&cx.tcx.def_map, p, |mode, id, _, path| {
-            match mode {
-                ast::BindByValue(ast::MutMutable) => {
-                    if path.segments.len() != 1 {
-                        cx.tcx.sess.span_bug(p.span,
-                                             "mutable binding that doesn't consist \
-                                              of exactly one segment");
+    {
+        let mutables_ptr = &mut mutables;
+        for &p in pats.iter() {
+            let p_span = p.span.clone();
+            pat_util::pat_bindings(&cx.tcx.def_map, p, |mode, id, _, path| {
+                match mode {
+                    ast::BindByValue(ast::MutMutable) => {
+                        if path.segments.len() != 1 {
+                            cx.tcx.sess.span_bug(p_span,
+                                                 "mutable binding that \
+                                                  doesn't consist of exactly \
+                                                  one segment");
+                        }
+                        let ident = path.segments.get(0).identifier;
+                        if !token::get_ident(ident).get().starts_with("_") {
+                            mutables_ptr.insert_or_update_with(
+                                    ident.name as uint, vec!(id), |_, old| {
+                                old.push(id);
+                            });
+                        }
                     }
-                    let ident = path.segments.get(0).identifier;
-                    if !token::get_ident(ident).get().starts_with("_") {
-                        mutables.insert_or_update_with(ident.name as uint, vec!(id), |_, old| {
-                            old.push(id);
-                        });
+                    _ => {
                     }
                 }
-                _ => {
-                }
-            }
-        });
+            });
+        }
     }
 
     let used_mutables = cx.tcx.used_mut_nodes.borrow();
     for (_, v) in mutables.iter() {
-        if !v.iter().any(|e| used_mutables.contains(e)) {
+        let used_mutables_ptr = &used_mutables;
+        if !v.iter().any(|e| used_mutables_ptr.contains(e)) {
             cx.span_lint(UnusedMut, cx.tcx.map.span(*v.get(0)),
                          "variable does not need to be mutable");
         }
@@ -1737,11 +1753,14 @@ fn check_stability(cx: &Context, e: &ast::Expr) {
         let mut s = None;
         // run through all the attributes and take the first
         // stability one.
-        csearch::get_item_attrs(&cx.tcx.sess.cstore, id, |attrs| {
-            if s.is_none() {
-                s = attr::find_stability(attrs.as_slice())
-            }
-        });
+        {
+            let s_ptr = &mut s;
+            csearch::get_item_attrs(&cx.tcx.sess.cstore, id, |attrs| {
+                if s_ptr.is_none() {
+                    *s_ptr = attr::find_stability(attrs.as_slice())
+                }
+            });
+        }
         s
     };
 

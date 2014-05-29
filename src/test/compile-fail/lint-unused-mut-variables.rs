@@ -45,9 +45,12 @@ fn main() {
     let mut a = Vec::new();
     a.push(3);
     let mut a = Vec::new();
-    callback(|| {
-        a.push(3);
-    });
+    {
+        let a_ptr = &mut a;
+        callback(|| {
+            a_ptr.push(3);
+        });
+    }
     let (mut a, b) = (1, 2);
     a = 34;
 

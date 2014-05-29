@@ -15,11 +15,12 @@ fn iter_vec<T>(v: Vec<T> , f: |&T|) { for x in v.iter() { f(x); } }
 pub fn main() {
     let v = vec!(1, 2, 3, 4, 5);
     let mut sum = 0;
+    let sum_ptr = &mut sum;
     iter_vec(v.clone(), |i| {
         iter_vec(v.clone(), |j| {
-            sum += *i * *j;
+            *sum_ptr += *i * *j;
         });
     });
-    println!("{:?}", sum);
-    assert_eq!(sum, 225);
+    println!("{:?}", *sum_ptr);
+    assert_eq!(*sum_ptr, 225);
 }

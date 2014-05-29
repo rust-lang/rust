@@ -822,22 +822,24 @@ impl<'a> ebml_writer_helpers for Encoder<'a> {
     fn emit_tpbt(&mut self,
                  ecx: &e::EncodeContext,
                  tpbt: ty::ty_param_bounds_and_ty) {
+        let tpbt_ref = &tpbt;
         self.emit_struct("ty_param_bounds_and_ty", 2, |this| {
             this.emit_struct_field("generics", 0, |this| {
                 this.emit_struct("Generics", 2, |this| {
                     this.emit_struct_field("type_param_defs", 0, |this| {
-                        this.emit_from_vec(tpbt.generics.type_param_defs(),
+                        this.emit_from_vec(tpbt_ref.generics
+                                                   .type_param_defs(),
                                            |this, type_param_def| {
                             Ok(this.emit_type_param_def(ecx, type_param_def))
                         })
                     });
                     this.emit_struct_field("region_param_defs", 1, |this| {
-                        tpbt.generics.region_param_defs().encode(this)
+                        tpbt_ref.generics.region_param_defs().encode(this)
                     })
                 })
             });
             this.emit_struct_field("ty", 1, |this| {
-                Ok(this.emit_ty(ecx, tpbt.ty))
+                Ok(this.emit_ty(ecx, tpbt_ref.ty))
             })
         });
     }

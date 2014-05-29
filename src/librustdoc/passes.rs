@@ -284,6 +284,8 @@ pub fn unindent(s: &str) -> String {
     let lines = s.lines_any().collect::<Vec<&str> >();
     let mut saw_first_line = false;
     let mut saw_second_line = false;
+    let saw_first_line_ptr = &mut saw_first_line;
+    let saw_second_line_ptr = &mut saw_second_line;
     let min_indent = lines.iter().fold(uint::MAX, |min_indent, line| {
 
         // After we see the first non-whitespace line, look at
@@ -291,8 +293,8 @@ pub fn unindent(s: &str) -> String {
         // part of the first paragraph, then ignore the indentation
         // level of the first line
         let ignore_previous_indents =
-            saw_first_line &&
-            !saw_second_line &&
+            *saw_first_line_ptr &&
+            !*saw_second_line_ptr &&
             !line.is_whitespace();
 
         let min_indent = if ignore_previous_indents {
@@ -301,26 +303,27 @@ pub fn unindent(s: &str) -> String {
             min_indent
         };
 
-        if saw_first_line {
-            saw_second_line = true;
+        if *saw_first_line_ptr {
+            *saw_second_line_ptr = true;
         }
 
         if line.is_whitespace() {
             min_indent
         } else {
-            saw_first_line = true;
+            *saw_first_line_ptr = true;
             let mut spaces = 0;
+            let spaces_ptr = &mut spaces;
             line.chars().all(|char| {
                 // Only comparing against space because I wouldn't
                 // know what to do with mixed whitespace chars
                 if char == ' ' {
-                    spaces += 1;
+                    *spaces_ptr += 1;
                     true
                 } else {
                     false
                 }
             });
-            cmp::min(min_indent, spaces)
+            cmp::min(min_indent, *spaces_ptr)
         }
     });
 

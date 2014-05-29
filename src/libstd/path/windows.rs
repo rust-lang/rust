@@ -1022,14 +1022,15 @@ fn parse_prefix<'a>(mut path: &'a str) -> Option<PathPrefix> {
     }
     return None;
 
-    fn parse_two_comps<'a>(mut path: &'a str, f: |char| -> bool)
+    fn parse_two_comps<'a>(mut path: &'a str, mut f: |char| -> bool)
                        -> Option<(uint, uint)> {
-        let idx_a = match path.find(|x| f(x)) {
+        let f_ptr = &mut f;
+        let idx_a = match path.find(|x| (*f_ptr)(x)) {
             None => return None,
             Some(x) => x
         };
         path = path.slice_from(idx_a+1);
-        let idx_b = path.find(f).unwrap_or(path.len());
+        let idx_b = path.find(|x| (*f_ptr)(x)).unwrap_or(path.len());
         Some((idx_a, idx_b))
     }
 }

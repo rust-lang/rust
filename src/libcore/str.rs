@@ -1779,11 +1779,12 @@ impl<'a> StrSlice<'a> for &'a str {
 
     #[inline]
     fn trim_chars<C: CharEq>(&self, mut to_trim: C) -> &'a str {
-        let cur = match self.find(|c: char| !to_trim.matches(c)) {
+        let to_trim = &mut to_trim;
+        let cur = match self.find(|c: char| !(*to_trim).matches(c)) {
             None => "",
             Some(i) => unsafe { raw::slice_bytes(*self, i, self.len()) }
         };
-        match cur.rfind(|c: char| !to_trim.matches(c)) {
+        match cur.rfind(|c: char| !(*to_trim).matches(c)) {
             None => "",
             Some(i) => {
                 let right = cur.char_range_at(i).next;
@@ -1794,7 +1795,8 @@ impl<'a> StrSlice<'a> for &'a str {
 
     #[inline]
     fn trim_left_chars<C: CharEq>(&self, mut to_trim: C) -> &'a str {
-        match self.find(|c: char| !to_trim.matches(c)) {
+        let to_trim = &mut to_trim;
+        match self.find(|c: char| !(*to_trim).matches(c)) {
             None => "",
             Some(first) => unsafe { raw::slice_bytes(*self, first, self.len()) }
         }
@@ -1802,7 +1804,8 @@ impl<'a> StrSlice<'a> for &'a str {
 
     #[inline]
     fn trim_right_chars<C: CharEq>(&self, mut to_trim: C) -> &'a str {
-        match self.rfind(|c: char| !to_trim.matches(c)) {
+        let to_trim = &mut to_trim;
+        match self.rfind(|c: char| !(*to_trim).matches(c)) {
             None => "",
             Some(last) => {
                 let next = self.char_range_at(last).next;
@@ -1887,22 +1890,28 @@ impl<'a> StrSlice<'a> for &'a str {
     }
 
     fn find<C: CharEq>(&self, mut search: C) -> Option<uint> {
+        let search = &mut search;
         if search.only_ascii() {
-            self.bytes().position(|b| search.matches(b as char))
+            self.bytes().position(|b| (*search).matches(b as char))
         } else {
             for (index, c) in self.char_indices() {
-                if search.matches(c) { return Some(index); }
+                if (*search).matches(c) {
+                    return Some(index);
+                }
             }
             None
         }
     }
 
     fn rfind<C: CharEq>(&self, mut search: C) -> Option<uint> {
+        let search = &mut search;
         if search.only_ascii() {
-            self.bytes().rposition(|b| search.matches(b as char))
+            self.bytes().rposition(|b| (*search).matches(b as char))
         } else {
             for (index, c) in self.char_indices().rev() {
-                if search.matches(c) { return Some(index); }
+                if (*search).matches(c) {
+                    return Some(index);
+                }
             }
             None
         }

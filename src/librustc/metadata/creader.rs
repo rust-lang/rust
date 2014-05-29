@@ -82,11 +82,14 @@ fn dump_crates(cstore: &CStore) {
 
 fn warn_if_multiple_versions(diag: &SpanHandler, cstore: &CStore) {
     let mut map = HashMap::new();
-    cstore.iter_crate_data(|cnum, data| {
-        let crateid = data.crate_id();
-        let key = (crateid.name.clone(), crateid.path.clone());
-        map.find_or_insert_with(key, |_| Vec::new()).push(cnum);
-    });
+    {
+        let map_ptr = &mut map;
+        cstore.iter_crate_data(|cnum, data| {
+            let crateid = data.crate_id();
+            let key = (crateid.name.clone(), crateid.path.clone());
+            map_ptr.find_or_insert_with(key, |_| Vec::new()).push(cnum);
+        });
+    }
 
     for ((name, _), dupes) in map.move_iter() {
         if dupes.len() == 1 { continue }
@@ -265,16 +268,19 @@ fn visit_item(e: &Env, i: &ast::Item) {
 fn existing_match(e: &Env, crate_id: &CrateId,
                   hash: Option<&Svh>) -> Option<ast::CrateNum> {
     let mut ret = None;
-    e.sess.cstore.iter_crate_data(|cnum, data| {
-        let other_id = data.crate_id();
-        if crate_id.matches(&other_id) {
-            let other_hash = data.hash();
-            match hash {
-                Some(hash) if *hash != other_hash => {}
-                Some(..) | None => { ret = Some(cnum); }
+    {
+        let ret_ptr = &mut ret;
+        e.sess.cstore.iter_crate_data(|cnum, data| {
+            let other_id = data.crate_id();
+            if crate_id.matches(&other_id) {
+                let other_hash = data.hash();
+                match hash {
+                    Some(hash) if *hash != other_hash => {}
+                    Some(..) | None => *ret_ptr = Some(cnum),
+                }
             }
-        }
-    });
+        });
+    }
     return ret;
 }
 
@@ -441,9 +447,14 @@ impl<'a> CrateLoader for Loader<'a> {
             None => { load_ctxt.report_load_errs(); unreachable!() },
         };
         let macros = decoder::get_exported_macros(library.metadata.as_slice());
-        let registrar = decoder::get_macro_registrar_fn(library.metadata.as_slice()).map(|id| {
-            decoder::get_symbol(library.metadata.as_slice(), id).to_string()
-        });
+        let registrar = {
+            let library_ptr = &library;
+            decoder::get_macro_registrar_fn(library.metadata.as_slice())
+                    .map(|id| {
+                decoder::get_symbol(library_ptr.metadata.as_slice(),
+                                    id).to_string()
+            })
+        };
         let mc = MacroCrate {
             lib: library.dylib.clone(),
             macros: macros.move_iter().map(|x| x.to_string()).collect(),

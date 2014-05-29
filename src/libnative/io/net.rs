@@ -341,12 +341,11 @@ impl rtio::RtioTcpStream for TcpStream {
     fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
         let fd = self.fd();
         let dolock = || self.lock_nonblocking();
+        let buf_ptr = buf.as_mut_ptr() as *mut libc::c_void;
+        let buf_len = buf.len();
         let doread = |nb| unsafe {
             let flags = if nb {c::MSG_DONTWAIT} else {0};
-            libc::recv(fd,
-                       buf.as_mut_ptr() as *mut libc::c_void,
-                       buf.len() as wrlen,
-                       flags) as libc::c_int
+            libc::recv(fd, buf_ptr, buf_len as u64, flags) as libc::c_int
         };
         read(fd, self.read_deadline, dolock, doread)
     }
@@ -499,10 +498,11 @@ impl TcpAcceptor {
             let storagep = &mut storage as *mut libc::sockaddr_storage;
             let size = mem::size_of::<libc::sockaddr_storage>();
             let mut size = size as libc::socklen_t;
+            let size_ptr = &mut size;
             match retry(|| {
                 libc::accept(self.fd(),
                              storagep as *mut libc::sockaddr,
-                             &mut size as *mut libc::socklen_t) as libc::c_int
+                             size_ptr as *mut libc::socklen_t) as libc::c_int
             }) as sock_t {
                 -1 => Err(last_error()),
                 fd => Ok(TcpStream::new(Inner::new(fd))),
@@ -623,14 +623,17 @@ impl rtio::RtioUdpSocket for UdpSocket {
                 mem::size_of::<libc::sockaddr_storage>() as libc::socklen_t;
 
         let dolock = || self.lock_nonblocking();
+        let buf_ptr = buf.as_mut_ptr();
+        let buf_len = buf.len();
+        let addrlen_ptr = &mut addrlen;
         let doread = |nb| unsafe {
             let flags = if nb {c::MSG_DONTWAIT} else {0};
             libc::recvfrom(fd,
-                           buf.as_mut_ptr() as *mut libc::c_void,
-                           buf.len() as msglen_t,
+                           buf_ptr as *mut libc::c_void,
+                           buf_len as msglen_t,
                            flags,
                            storagep,
-                           &mut addrlen) as libc::c_int
+                           addrlen_ptr) as libc::c_int
         };
         let n = try!(read(fd, self.read_deadline, dolock, doread));
         sockaddr_to_addr(&storage, addrlen as uint).and_then(|addr| {
@@ -788,10 +791,11 @@ impl rtio::RtioUdpSocket for UdpSocket {
 pub fn read<T>(fd: sock_t,
                deadline: u64,
                lock: || -> T,
-               read: |bool| -> libc::c_int) -> IoResult<uint> {
+               mut read: |bool| -> libc::c_int) -> IoResult<uint> {
+    let read_ptr = &mut read;
     let mut ret = -1;
     if deadline == 0 {
-        ret = retry(|| read(false));
+        ret = retry(|| (*read_ptr)(false));
     }
 
     if deadline != 0 || (ret == -1 && util::wouldblock()) {
@@ -812,7 +816,7 @@ pub fn read<T>(fd: sock_t,
             // fail to read some data, we retry (hence the outer loop) and
             // wait for the socket to become readable again.
             let _guard = lock();
-            match retry(|| read(deadline.is_some())) {
+            match retry(|| (*read_ptr)(deadline.is_some())) {
                 -1 if util::wouldblock() => { assert!(deadline.is_some()); }
                 -1 => return Err(last_error()),
                n => { ret = n; break }
@@ -832,20 +836,24 @@ pub fn write<T>(fd: sock_t,
                 buf: &[u8],
                 write_everything: bool,
                 lock: || -> T,
-                write: |bool, *u8, uint| -> i64) -> IoResult<uint> {
+                mut write: |bool, *u8, uint| -> i64) -> IoResult<uint> {
     let mut ret = -1;
     let mut written = 0;
+    let write_ptr = &mut write;
+    let written_ptr = &mut written;
     if deadline == 0 {
         if write_everything {
             ret = keep_going(buf, |inner, len| {
-                written = buf.len() - len;
-                write(false, inner, len)
+                *written_ptr = buf.len() - len;
+                (*write_ptr)(false, inner, len)
             });
         } else {
             ret = retry(|| {
-                write(false, buf.as_ptr(), buf.len()) as libc::c_int
+                (*write_ptr)(false, buf.as_ptr(), buf.len()) as libc::c_int
             }) as i64;
-            if ret > 0 { written = ret as uint; }
+            if ret > 0 {
+                *written_ptr = ret as uint;
+            }
         }
     }
 
@@ -875,10 +883,12 @@ pub fn write<T>(fd: sock_t,
             let _guard = lock();
             let ptr = buf.slice_from(written).as_ptr();
             let len = buf.len() - written;
-            match retry(|| write(deadline.is_some(), ptr, len) as libc::c_int) {
+            match retry(|| (*write_ptr)(deadline.is_some(),
+                                        ptr,
+                                        len) as libc::c_int) {
                 -1 if util::wouldblock() => {}
                 -1 => return Err(last_error()),
-                n => { written += n as uint; }
+                n => { *written_ptr += n as uint; }
             }
         }
         ret = 0;

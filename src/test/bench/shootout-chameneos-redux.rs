@@ -148,12 +148,13 @@ fn rendezvous(nn: uint, set: Vec<Color>) {
     let (to_rendezvous_log, from_creatures_log) = channel::<String>();
 
     // these channels will allow us to talk to each creature by 'name'/index
-    let mut to_creature: Vec<Sender<CreatureInfo>> =
+    let mut to_creature: Vec<Sender<CreatureInfo>> = {
+        let to_rendezvous_log_ptr = &to_rendezvous_log;
         set.iter().enumerate().map(|(ii, &col)| {
             // create each creature as a listener with a port, and
             // give us a channel to talk to each
             let to_rendezvous = to_rendezvous.clone();
-            let to_rendezvous_log = to_rendezvous_log.clone();
+            let to_rendezvous_log = (*to_rendezvous_log_ptr).clone();
             let (to_creature, from_rendezvous) = channel();
             spawn(proc() {
                 creature(ii,
@@ -163,7 +164,8 @@ fn rendezvous(nn: uint, set: Vec<Color>) {
                          to_rendezvous_log);
             });
             to_creature
-        }).collect();
+        }).collect()
+    };
 
     let mut creatures_met = 0;
 

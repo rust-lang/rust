@@ -55,16 +55,17 @@ impl GetAddrInfoRequest {
 
         let hint = hints.map(|hint| {
             let mut flags = 0;
+            let flags_ref = &mut flags;
             each_ai_flag(|cval, aival| {
                 if hint.flags & (aival as uint) != 0 {
-                    flags |= cval as i32;
+                    *flags_ref |= cval as i32;
                 }
             });
             let socktype = 0;
             let protocol = 0;
 
             libc::addrinfo {
-                ai_flags: flags,
+                ai_flags: *flags_ref,
                 ai_family: hint.family as c_int,
                 ai_socktype: socktype,
                 ai_protocol: protocol,
@@ -86,9 +87,12 @@ impl GetAddrInfoRequest {
                 req.defuse(); // uv callback now owns this request
                 let mut cx = Ctx { slot: None, status: 0, addrinfo: None };
 
-                wait_until_woken_after(&mut cx.slot, loop_, || {
-                    req.set_data(&cx);
-                });
+                {
+                    let cx_ref = &mut cx;
+                    wait_until_woken_after(&mut cx_ref.slot, loop_, || {
+                        req.set_data(cx_ref as *mut Ctx as *Ctx);
+                    });
+                }
 
                 match cx.status {
                     0 => Ok(accum_addrinfo(cx.addrinfo.get_ref())),
@@ -144,9 +148,10 @@ pub fn accum_addrinfo(addr: &Addrinfo) -> Vec<ai::Info> {
                                                  (*addr).ai_addrlen as uint);
 
             let mut flags = 0;
+            let flags_ref = &mut flags;
             each_ai_flag(|cval, aival| {
                 if (*addr).ai_flags & cval != 0 {
-                    flags |= aival as uint;
+                    *flags_ref |= aival as uint;
                 }
             });
 
@@ -171,7 +176,7 @@ pub fn accum_addrinfo(addr: &Addrinfo) -> Vec<ai::Info> {
                 family: (*addr).ai_family as uint,
                 socktype: socktype,
                 protocol: protocol,
-                flags: flags,
+                flags: *flags_ref,
             });
             if (*addr).ai_next.is_not_null() {
                 addr = (*addr).ai_next;

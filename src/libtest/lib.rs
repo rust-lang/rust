@@ -816,7 +816,10 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn> ) -> io::IoR
         },
         None => {}
     }
-    try!(run_tests(opts, tests, |x| callback(&x, &mut st)));
+    {
+        let st_ptr = &mut st;
+        try!(run_tests(opts, tests, |x| callback(&x, st_ptr)));
+    }
     match opts.save_metrics {
         None => (),
         Some(ref pth) => {
@@ -1287,11 +1290,13 @@ impl Bencher {
     }
 
     // This is a more statistics-driven benchmark algorithm
-    pub fn auto_bench(&mut self, f: |&mut Bencher|) -> stats::Summary<f64> {
+    pub fn auto_bench(&mut self, mut f: |&mut Bencher|)
+                      -> stats::Summary<f64> {
+        let f_ptr = &mut f;
 
         // Initial bench run to get ballpark figure.
         let mut n = 1_u64;
-        self.bench_n(n, |x| f(x));
+        self.bench_n(n, |x| (*f_ptr)(x));
 
         // Try to estimate iter count for 1ms falling back to 1m
         // iterations if first run took < 1ns.
@@ -1313,7 +1318,7 @@ impl Bencher {
             let loop_start = precise_time_ns();
 
             for p in samples.mut_iter() {
-                self.bench_n(n, |x| f(x));
+                self.bench_n(n, |x| (*f_ptr)(x));
                 *p = self.ns_per_iter() as f64;
             };
 
@@ -1321,7 +1326,7 @@ impl Bencher {
             let summ = stats::Summary::new(samples);
 
             for p in samples.mut_iter() {
-                self.bench_n(5 * n, |x| f(x));
+                self.bench_n(5 * n, |x| (*f_ptr)(x));
                 *p = self.ns_per_iter() as f64;
             };
 

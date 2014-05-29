@@ -99,18 +99,21 @@ fn try_inline_def(cx: &core::DocContext,
 
 pub fn load_attrs(tcx: &ty::ctxt, did: ast::DefId) -> Vec<clean::Attribute> {
     let mut attrs = Vec::new();
-    csearch::get_item_attrs(&tcx.sess.cstore, did, |v| {
-        attrs.extend(v.move_iter().map(|mut a| {
-            // FIXME this isn't quite always true, it's just true about 99% of
-            //       the time when dealing with documentation. For example,
-            //       this would treat doc comments of the form `#[doc = "foo"]`
-            //       incorrectly.
-            if a.name().get() == "doc" && a.value_str().is_some() {
-                a.node.is_sugared_doc = true;
-            }
-            a.clean()
-        }));
-    });
+    {
+        let attrs_ptr = &mut attrs;
+        csearch::get_item_attrs(&tcx.sess.cstore, did, |v| {
+            attrs_ptr.extend(v.move_iter().map(|mut a| {
+                // FIXME this isn't quite always true, it's just true about
+                //       99% of the time when dealing with documentation. For
+                //       example, this would treat doc comments of the form
+                //       `#[doc = "foo"]` incorrectly.
+                if a.name().get() == "doc" && a.value_str().is_some() {
+                    a.node.is_sugared_doc = true;
+                }
+                a.clean()
+            }));
+        });
+    }
     attrs
 }
 
@@ -259,18 +262,21 @@ fn build_module(cx: &core::DocContext, tcx: &ty::ctxt,
 
     // FIXME: this doesn't handle reexports inside the module itself.
     //        Should they be handled?
-    csearch::each_child_of_item(&tcx.sess.cstore, did, |def, _, _| {
-        match def {
-            decoder::DlDef(def) => {
-                match try_inline_def(cx, tcx, def) {
-                    Some(i) => items.extend(i.move_iter()),
-                    None => {}
+    {
+        let items_ptr = &mut items;
+        csearch::each_child_of_item(&tcx.sess.cstore, did, |def, _, _| {
+            match def {
+                decoder::DlDef(def) => {
+                    match try_inline_def(cx, tcx, def) {
+                        Some(i) => items_ptr.extend(i.move_iter()),
+                        None => {}
+                    }
                 }
+                decoder::DlImpl(did) => items_ptr.push(build_impl(tcx, did)),
+                decoder::DlField => fail!("unimplemented field"),
             }
-            decoder::DlImpl(did) => items.push(build_impl(tcx, did)),
-            decoder::DlField => fail!("unimplemented field"),
-        }
-    });
+        });
+    }
 
     clean::Module {
         items: items,

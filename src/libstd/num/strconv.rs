@@ -480,7 +480,8 @@ pub fn float_to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Float+
                 _ => unreachable!()
             } as u8);
 
-            int_to_str_bytes_common(exp, 10, sign, |c| buf.push(c));
+            let bufptr = &mut buf;
+            int_to_str_bytes_common(exp, 10, sign, |c| bufptr.push(c));
         }
     }
 
@@ -825,31 +826,36 @@ mod bench {
         #[bench]
         fn to_str_bin(b: &mut Bencher) {
             let mut rng = XorShiftRng::new().unwrap();
-            b.iter(|| { rng.gen::<uint>().to_str_radix(2); })
+            let rng_ptr = &mut rng;
+            b.iter(|| { rng_ptr.gen::<uint>().to_str_radix(2); })
         }
 
         #[bench]
         fn to_str_oct(b: &mut Bencher) {
             let mut rng = XorShiftRng::new().unwrap();
-            b.iter(|| { rng.gen::<uint>().to_str_radix(8); })
+            let rng_ptr = &mut rng;
+            b.iter(|| { rng_ptr.gen::<uint>().to_str_radix(8); })
         }
 
         #[bench]
         fn to_str_dec(b: &mut Bencher) {
             let mut rng = XorShiftRng::new().unwrap();
-            b.iter(|| { rng.gen::<uint>().to_str_radix(10); })
+            let rng_ptr = &mut rng;
+            b.iter(|| { rng_ptr.gen::<uint>().to_str_radix(10); })
         }
 
         #[bench]
         fn to_str_hex(b: &mut Bencher) {
             let mut rng = XorShiftRng::new().unwrap();
-            b.iter(|| { rng.gen::<uint>().to_str_radix(16); })
+            let rng_ptr = &mut rng;
+            b.iter(|| { rng_ptr.gen::<uint>().to_str_radix(16); })
         }
 
         #[bench]
         fn to_str_base_36(b: &mut Bencher) {
             let mut rng = XorShiftRng::new().unwrap();
-            b.iter(|| { rng.gen::<uint>().to_str_radix(36); })
+            let rng_ptr = &mut rng;
+            b.iter(|| { rng_ptr.gen::<uint>().to_str_radix(36); })
         }
     }
 
@@ -861,31 +867,36 @@ mod bench {
         #[bench]
         fn to_str_bin(b: &mut Bencher) {
             let mut rng = XorShiftRng::new().unwrap();
-            b.iter(|| { rng.gen::<int>().to_str_radix(2); })
+            let rng_ptr = &mut rng;
+            b.iter(|| { rng_ptr.gen::<int>().to_str_radix(2); })
         }
 
         #[bench]
         fn to_str_oct(b: &mut Bencher) {
             let mut rng = XorShiftRng::new().unwrap();
-            b.iter(|| { rng.gen::<int>().to_str_radix(8); })
+            let rng_ptr = &mut rng;
+            b.iter(|| { rng_ptr.gen::<int>().to_str_radix(8); })
         }
 
         #[bench]
         fn to_str_dec(b: &mut Bencher) {
             let mut rng = XorShiftRng::new().unwrap();
-            b.iter(|| { rng.gen::<int>().to_str_radix(10); })
+            let rng_ptr = &mut rng;
+            b.iter(|| { rng_ptr.gen::<int>().to_str_radix(10); })
         }
 
         #[bench]
         fn to_str_hex(b: &mut Bencher) {
             let mut rng = XorShiftRng::new().unwrap();
-            b.iter(|| { rng.gen::<int>().to_str_radix(16); })
+            let rng_ptr = &mut rng;
+            b.iter(|| { rng_ptr.gen::<int>().to_str_radix(16); })
         }
 
         #[bench]
         fn to_str_base_36(b: &mut Bencher) {
             let mut rng = XorShiftRng::new().unwrap();
-            b.iter(|| { rng.gen::<int>().to_str_radix(36); })
+            let rng_ptr = &mut rng;
+            b.iter(|| { rng_ptr.gen::<int>().to_str_radix(36); })
         }
     }
 
@@ -897,7 +908,8 @@ mod bench {
         #[bench]
         fn float_to_str(b: &mut Bencher) {
             let mut rng = XorShiftRng::new().unwrap();
-            b.iter(|| { f64::to_str(rng.gen()); })
+            let rng_ptr = &mut rng;
+            b.iter(|| { f64::to_str(rng_ptr.gen()); })
         }
     }
 }

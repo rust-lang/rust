@@ -651,11 +651,15 @@ impl<'a> SourceCollector<'a> {
         // Create the intermediate directories
         let mut cur = self.dst.clone();
         let mut root_path = String::from_str("../../");
-        clean_srcpath(p.dirname(), |component| {
-            cur.push(component);
-            mkdir(&cur).unwrap();
-            root_path.push_str("../");
-        });
+        {
+            let cur_ptr = &mut cur;
+            let root_path_ptr = &mut root_path;
+            clean_srcpath(p.dirname(), |component| {
+                cur_ptr.push(component);
+                mkdir(cur_ptr).unwrap();
+                root_path_ptr.push_str("../");
+            });
+        }
 
         cur.push(Vec::from_slice(p.filename().expect("source has no filename"))
                  .append(bytes!(".html")));
@@ -952,10 +956,11 @@ impl Context {
         cache_key.replace(Some(Arc::new(cache)));
 
         let mut work = vec!((self, item));
+        let work_ptr = &mut work;
         loop {
-            match work.pop() {
+            match work_ptr.pop() {
                 Some((mut cx, item)) => try!(cx.item(item, |cx, item| {
-                    work.push((cx.clone(), item));
+                    work_ptr.push((cx.clone(), item));
                 })),
                 None => break,
             }
@@ -1009,8 +1014,9 @@ impl Context {
             clean::ModuleItem(..) => {
                 let name = item.name.get_ref().to_string();
                 let mut item = Some(item);
+                let item_ptr = &mut item;
                 self.recurse(name, |this| {
-                    let item = item.take_unwrap();
+                    let item = (*item_ptr).take_unwrap();
                     let dst = this.dst.join("index.html");
                     let dst = try!(File::create(&dst));
                     try!(render(dst, this, &item, false));
@@ -1021,7 +1027,7 @@ impl Context {
                     };
                     this.sidebar = build_sidebar(&m);
                     for item in m.items.move_iter() {
-                        f(this,item);
+                        f(this, item);
                     }
                     Ok(())
                 })
@@ -1062,9 +1068,13 @@ impl<'a> Item<'a> {
         // has anchors for the line numbers that we're linking to.
         if ast_util::is_local(self.item.def_id) {
             let mut path = Vec::new();
-            clean_srcpath(self.item.source.filename.as_bytes(), |component| {
-                path.push(component.to_string());
-            });
+            {
+                let path_ptr = &mut path;
+                clean_srcpath(self.item.source.filename.as_bytes(),
+                              |component| {
+                    path_ptr.push(component.to_string());
+                });
+            }
             let href = if self.item.source.loline == self.item.source.hiline {
                 format!("{}", self.item.source.loline)
             } else {

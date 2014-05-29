@@ -448,15 +448,16 @@ impl MoveData {
 
     fn each_extending_path(&self,
                            index: MovePathIndex,
-                           f: |MovePathIndex| -> bool)
+                           mut f: |MovePathIndex| -> bool)
                            -> bool {
-        if !f(index) {
+        let f_ptr = &mut f;
+        if !(*f_ptr)(index) {
             return false;
         }
 
         let mut p = self.path_first_child(index);
         while p != InvalidMovePathIndex {
-            if !self.each_extending_path(p, |x| f(x)) {
+            if !self.each_extending_path(p, |x| (*f_ptr)(x)) {
                 return false;
             }
             p = self.path_next_sibling(p);
@@ -467,21 +468,23 @@ impl MoveData {
 
     fn each_applicable_move(&self,
                             index0: MovePathIndex,
-                            f: |MoveIndex| -> bool)
+                            mut f: |MoveIndex| -> bool)
                             -> bool {
+        let f_ptr = &mut f;
         let mut ret = true;
+        let ret_ptr = &mut ret;
         self.each_extending_path(index0, |index| {
             let mut p = self.path_first_move(index);
             while p != InvalidMoveIndex {
-                if !f(p) {
-                    ret = false;
+                if !(*f_ptr)(p) {
+                    *ret_ptr = false;
                     break;
                 }
                 p = self.move_next_move(p);
             }
-            ret
+            *ret_ptr
         });
-        ret
+        *ret_ptr
     }
 
     fn kill_moves(&self,
@@ -540,7 +543,7 @@ impl<'a> FlowedMoveData<'a> {
     pub fn each_move_of(&self,
                         id: ast::NodeId,
                         loan_path: &Rc<LoanPath>,
-                        f: |&Move, &LoanPath| -> bool)
+                        mut f: |&Move, &LoanPath| -> bool)
                         -> bool {
         /*!
          * Iterates through each move of `loan_path` (or some base path
@@ -559,6 +562,8 @@ impl<'a> FlowedMoveData<'a> {
         //
         // 4. move of `a.b.c`, use of `a.b.d`
 
+        let f_ptr = &mut f;
+
         let base_indices = self.move_data.existing_base_paths(loan_path);
         if base_indices.is_empty() {
             return true;
@@ -567,6 +572,7 @@ impl<'a> FlowedMoveData<'a> {
         let opt_loan_path_index = self.move_data.existing_move_path(loan_path);
 
         let mut ret = true;
+        let ret_ptr = &mut ret;
 
         self.dfcx_moves.each_bit_on_entry_frozen(id, |index| {
             let move = self.move_data.moves.borrow();
@@ -575,8 +581,9 @@ impl<'a> FlowedMoveData<'a> {
             if base_indices.iter().any(|x| x == &moved_path) {
                 // Scenario 1 or 2: `loan_path` or some base path of
                 // `loan_path` was moved.
-                if !f(move, &*self.move_data.path_loan_path(moved_path)) {
-                    ret = false;
+                if !(*f_ptr)(move,
+                             &*self.move_data.path_loan_path(moved_path)) {
+                    *ret_ptr = false;
                 }
             } else {
                 for &loan_path_index in opt_loan_path_index.iter() {
@@ -584,15 +591,20 @@ impl<'a> FlowedMoveData<'a> {
                         if p == loan_path_index {
                             // Scenario 3: some extension of `loan_path`
                             // was moved
-                            f(move, &*self.move_data.path_loan_path(moved_path))
+                            (*f_ptr)(move,
+                                     &*self.move_data
+                                           .path_loan_path(moved_path))
                         } else {
                             true
                         }
                     });
-                    if !cont { ret = false; break }
+                    if !cont {
+                        *ret_ptr = false;
+                        break
+                    }
                 }
             }
-            ret
+            *ret_ptr
         })
     }
 

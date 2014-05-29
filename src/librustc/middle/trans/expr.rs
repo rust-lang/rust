@@ -438,13 +438,31 @@ fn trans_rec_field<'a>(bcx: &'a Block<'a>,
 
     let base_datum = unpack_datum!(bcx, trans_to_lvalue(bcx, base, "field"));
     let repr = adt::represent_type(bcx.ccx(), base_datum.ty);
-    with_field_tys(bcx.tcx(), base_datum.ty, None, |discr, field_tys| {
-            let ix = ty::field_idx_strict(bcx.tcx(), field.name, field_tys);
-            let d = base_datum.get_element(
+    let repr_ptr = &repr;
+    let d = {
+        let bcx_ptr = &mut bcx;
+        with_field_tys(bcx_ptr.tcx(),
+                       base_datum.ty,
+                       None,
+                       |discr, field_tys| {
+            let ix = ty::field_idx_strict(bcx_ptr.tcx(),
+                                          field.name,
+                                          field_tys);
+            base_datum.get_element(
                 field_tys[ix].mt.ty,
-                |srcval| adt::trans_field_ptr(bcx, &*repr, srcval, discr, ix));
-            DatumBlock { datum: d.to_expr_datum(), bcx: bcx }
+                |srcval| {
+                    adt::trans_field_ptr(*bcx_ptr,
+                                         &**repr_ptr,
+                                         srcval,
+                                         discr,
+                                         ix)
+                })
         })
+    };
+    DatumBlock {
+        datum: d.to_expr_datum(),
+        bcx: bcx,
+    }
 }
 
 fn trans_index<'a>(bcx: &'a Block<'a>,
@@ -971,6 +989,7 @@ fn trans_rec_or_struct<'a>(
     let tcx = bcx.tcx();
     with_field_tys(tcx, ty, Some(id), |discr, field_tys| {
         let mut need_base = Vec::from_elem(field_tys.len(), true);
+        let need_base_ptr = &mut need_base;
 
         let numbered_fields = fields.iter().map(|field| {
             let opt_pos =
@@ -978,7 +997,7 @@ fn trans_rec_or_struct<'a>(
                                           field_ty.ident.name == field.ident.node.name);
             match opt_pos {
                 Some(i) => {
-                    *need_base.get_mut(i) = false;
+                    *need_base_ptr.get_mut(i) = false;
                     (i, field.expr)
                 }
                 None => {
@@ -990,7 +1009,7 @@ fn trans_rec_or_struct<'a>(
         let optbase = match base {
             Some(base_expr) => {
                 let mut leftovers = Vec::new();
-                for (i, b) in need_base.iter().enumerate() {
+                for (i, b) in need_base_ptr.iter().enumerate() {
                     if *b {
                         leftovers.push((i, field_tys[i].mt.ty))
                     }
@@ -999,7 +1018,7 @@ fn trans_rec_or_struct<'a>(
                                      fields: leftovers })
             }
             None => {
-                if need_base.iter().any(|b| *b) {
+                if need_base_ptr.iter().any(|b| *b) {
                     tcx.sess.span_bug(expr_span, "missing fields and no base expr")
                 }
                 None

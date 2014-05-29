@@ -238,6 +238,7 @@ impl StaticMutex {
             }
             old => old,
         };
+        let old_ptr = &mut old;
 
         // Alright, everything else failed. We need to deschedule ourselves and
         // flag ourselves as waiting. Note that this case should only happen
@@ -258,24 +259,26 @@ impl StaticMutex {
             assert_eq!(prev, 0);
 
             loop {
-                assert_eq!(old & native_bit, 0);
+                assert_eq!(*old_ptr & native_bit, 0);
                 // If the old state was locked, then we need to flag ourselves
                 // as blocking in the state. If the old state was unlocked, then
                 // we attempt to acquire the mutex. Everything here is a CAS
                 // loop that'll eventually make progress.
-                if old & LOCKED != 0 {
-                    old = match self.state.compare_and_swap(old,
-                                                            old | native_bit,
-                                                            atomics::SeqCst) {
-                        n if n == old => return Ok(()),
+                if *old_ptr & LOCKED != 0 {
+                    *old_ptr = match self.state.compare_and_swap(
+                            *old_ptr,
+                            *old_ptr | native_bit,
+                            atomics::SeqCst) {
+                        n if n == *old_ptr => return Ok(()),
                         n => n
                     };
                 } else {
-                    assert_eq!(old, 0);
-                    old = match self.state.compare_and_swap(old,
-                                                            old | LOCKED,
-                                                            atomics::SeqCst) {
-                        n if n == old => {
+                    assert_eq!(*old_ptr, 0);
+                    *old_ptr = match self.state.compare_and_swap(
+                            *old_ptr,
+                            *old_ptr | LOCKED,
+                            atomics::SeqCst) {
+                        n if n == *old_ptr => {
                             // After acquiring the lock, we have access to the
                             // flavor field, and we've regained access to our
                             // respective native/green blocker field.
@@ -330,10 +333,11 @@ impl StaticMutex {
         }
 
         let mut node = q::Node::new(0);
+        let node_ptr = &mut node;
         t.deschedule(1, |task| {
             unsafe {
-                node.data = task.cast_to_uint();
-                self.q.push(&mut node);
+                node_ptr.data = task.cast_to_uint();
+                self.q.push(node_ptr);
             }
             Ok(())
         });

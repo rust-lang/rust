@@ -23,9 +23,10 @@ fn main() {
     let test = |foo: &Foo| {
         println!("access {}", foo.x);
         ptr = box Foo { x: ptr.x + 1 };
+        //~^ ERROR cannot assign to immutable captured outer variable
         println!("access {}", foo.x);
     };
     test(ptr);
-    //~^ ERROR: cannot borrow `*ptr` as immutable
+    //~^ ERROR use of moved value
 }
 

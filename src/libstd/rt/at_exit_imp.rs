@@ -47,8 +47,9 @@ pub fn push(f: proc():Send) {
         rtassert!(!QUEUE.is_null());
         let state: &mut Queue = mem::transmute(QUEUE);
         let mut f = Some(f);
-        state.with(|arr|  {
-            arr.push(f.take_unwrap());
+        let f_ref = &mut f;
+        state.with(|arr| {
+            arr.push((*f_ref).take_unwrap());
         });
     }
 }
@@ -61,9 +62,12 @@ pub fn run() {
         let state: Box<Queue> = mem::transmute(QUEUE);
         QUEUE = 0 as *mut Queue;
         let mut vec = None;
-        state.with(|arr| {
-            vec = Some(mem::replace(arr, vec!()));
-        });
+        {
+            let vec_ptr = &mut vec;
+            state.with(|arr| {
+                *vec_ptr = Some(mem::replace(arr, vec!()));
+            });
+        }
         vec.take_unwrap()
     };
 

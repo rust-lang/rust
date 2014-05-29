@@ -25,8 +25,9 @@ fn has_mut_vec_but_tries_to_change_it() {
     let mut v = vec!(1, 2, 3);
     takes_imm_elt(
         v.get(0),
-        || { //~ ERROR cannot borrow `v` as mutable
-            *v.get_mut(1) = 4;
+        || {
+            *v.get_mut(1) = 4;  //~ ERROR cannot move `v`
+            //~^ ERROR cannot borrow
         })
 }
 

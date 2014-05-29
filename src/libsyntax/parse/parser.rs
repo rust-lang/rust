@@ -3442,18 +3442,22 @@ impl<'a> Parser<'a> {
         if self.eat(&token::LT) {
             let lifetimes = self.parse_lifetimes();
             let mut seen_default = false;
+            let seen_default_ptr = &mut seen_default;
             let ty_params = self.parse_seq_to_gt(Some(token::COMMA), |p| {
                 p.forbid_lifetime();
                 let ty_param = p.parse_ty_param();
                 if ty_param.default.is_some() {
-                    seen_default = true;
-                } else if seen_default {
+                    *seen_default_ptr = true;
+                } else if *seen_default_ptr {
                     p.span_err(p.last_span,
                                "type parameters with a default must be trailing");
                 }
                 ty_param
             });
-            ast::Generics { lifetimes: lifetimes, ty_params: ty_params }
+            ast::Generics {
+                lifetimes: lifetimes,
+                ty_params: ty_params,
+            }
         } else {
             ast_util::empty_generics()
         }
@@ -4235,7 +4239,8 @@ impl<'a> Parser<'a> {
                               name: String,
                               id_sp: Span) -> (ast::Item_, Vec<ast::Attribute> ) {
         let mut included_mod_stack = self.sess.included_mod_stack.borrow_mut();
-        match included_mod_stack.iter().position(|p| *p == path) {
+        let path_ptr = &path;
+        match included_mod_stack.iter().position(|p| *p == *path_ptr) {
             Some(i) => {
                 let mut err = String::from_str("circular modules: ");
                 let len = included_mod_stack.len();
@@ -4243,12 +4248,12 @@ impl<'a> Parser<'a> {
                     err.push_str(p.display().as_maybe_owned().as_slice());
                     err.push_str(" -> ");
                 }
-                err.push_str(path.display().as_maybe_owned().as_slice());
+                err.push_str(path_ptr.display().as_maybe_owned().as_slice());
                 self.span_fatal(id_sp, err.as_slice());
             }
             None => ()
         }
-        included_mod_stack.push(path.clone());
+        included_mod_stack.push((*path_ptr).clone());
         drop(included_mod_stack);
 
         let mut p0 =

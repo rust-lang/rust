@@ -88,9 +88,12 @@ impl<'a> Clean<Crate> for visit_ast::RustdocVisitor<'a> {
         let cx = super::ctxtkey.get().unwrap();
 
         let mut externs = Vec::new();
-        cx.sess().cstore.iter_crate_data(|n, meta| {
-            externs.push((n, meta.clean()));
-        });
+        {
+            let externs_ptr = &mut externs;
+            cx.sess().cstore.iter_crate_data(|n, meta| {
+                externs_ptr.push((n, meta.clean()));
+            });
+        }
 
         let input = driver::FileInput(cx.src.clone());
         let t_outputs = driver::build_output_filenames(&input,
@@ -740,6 +743,7 @@ impl<'a> Clean<FnDecl> for (ast::DefId, &'a ty::FnSig) {
         if names.peek().map(|s| s.as_slice()) == Some("self") {
             let _ = names.next();
         }
+        let names_ptr = &mut names;
         FnDecl {
             output: sig.output.clean(),
             cf: Return,
@@ -749,7 +753,7 @@ impl<'a> Clean<FnDecl> for (ast::DefId, &'a ty::FnSig) {
                     Argument {
                         type_: t.clean(),
                         id: 0,
-                        name: names.next().unwrap_or("".to_string()),
+                        name: names_ptr.next().unwrap_or("".to_string()),
                     }
                 }).collect(),
             },
@@ -1532,39 +1536,48 @@ impl Clean<Vec<Item>> for ast::ViewItem {
             }
         };
         let mut ret = Vec::new();
-        match self.node {
-            ast::ViewItemUse(ref path) if !denied => {
-                match path.node {
-                    ast::ViewPathGlob(..) => ret.push(convert(&self.node)),
-                    ast::ViewPathList(ref a, ref list, ref b) => {
-                        // Attempt to inline all reexported items, but be sure
-                        // to keep any non-inlineable reexports so they can be
-                        // listed in the documentation.
-                        let remaining = list.iter().filter(|path| {
-                            match inline::try_inline(path.node.id) {
-                                Some(items) => {
-                                    ret.extend(items.move_iter()); false
-                                }
-                                None => true,
-                            }
-                        }).map(|a| a.clone()).collect::<Vec<ast::PathListIdent>>();
-                        if remaining.len() > 0 {
-                            let path = ast::ViewPathList(a.clone(),
-                                                         remaining,
-                                                         b.clone());
-                            let path = syntax::codemap::dummy_spanned(path);
-                            ret.push(convert(&ast::ViewItemUse(@path)));
+        {
+            let ret_ptr = &mut ret;
+            match self.node {
+                ast::ViewItemUse(ref path) if !denied => {
+                    match path.node {
+                        ast::ViewPathGlob(..) => {
+                            ret_ptr.push(convert(&self.node))
                         }
-                    }
-                    ast::ViewPathSimple(_, _, id) => {
-                        match inline::try_inline(id) {
-                            Some(items) => ret.extend(items.move_iter()),
-                            None => ret.push(convert(&self.node)),
+                        ast::ViewPathList(ref a, ref list, ref b) => {
+                            // Attempt to inline all reexported items, but be sure
+                            // to keep any non-inlineable reexports so they can be
+                            // listed in the documentation.
+                            let remaining = list.iter().filter(|path| {
+                                match inline::try_inline(path.node.id) {
+                                    Some(items) => {
+                                        ret_ptr.extend(items.move_iter());
+                                        false
+                                    }
+                                    None => true,
+                                }
+                            }).map(|a| a.clone()).collect::<Vec<ast::PathListIdent>>();
+                            if remaining.len() > 0 {
+                                let path = ast::ViewPathList(a.clone(),
+                                                             remaining,
+                                                             b.clone());
+                                let path = syntax::codemap::dummy_spanned(path);
+                                ret_ptr.push(convert(
+                                        &ast::ViewItemUse(@path)));
+                            }
+                        }
+                        ast::ViewPathSimple(_, _, id) => {
+                            match inline::try_inline(id) {
+                                Some(items) => {
+                                    ret_ptr.extend(items.move_iter())
+                                }
+                                None => ret_ptr.push(convert(&self.node)),
+                            }
                         }
                     }
                 }
+                ref n => ret_ptr.push(convert(n)),
             }
-            ref n => ret.push(convert(n)),
         }
         return ret;
     }
@@ -1808,7 +1821,10 @@ fn resolve_def(id: ast::NodeId) -> Option<ast::DefId> {
     let cx = super::ctxtkey.get().unwrap();
     match cx.maybe_typed {
         core::Typed(ref tcx) => {
-            tcx.def_map.borrow().find(&id).map(|&def| register_def(&**cx, def))
+            let cx_ptr = &**cx;
+            tcx.def_map
+               .borrow()
+               .find(&id).map(|&def| register_def(cx_ptr, def))
         }
         core::NotTyped(_) => None
     }

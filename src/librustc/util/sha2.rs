@@ -652,8 +652,9 @@ mod bench {
     pub fn sha256_10(b: &mut Bencher) {
         let mut sh = Sha256::new();
         let bytes = [1u8, ..10];
+        let sh_ptr = &mut sh;
         b.iter(|| {
-            sh.input(bytes);
+            sh_ptr.input(bytes);
         });
         b.bytes = bytes.len() as u64;
     }
@@ -662,8 +663,9 @@ mod bench {
     pub fn sha256_1k(b: &mut Bencher) {
         let mut sh = Sha256::new();
         let bytes = [1u8, ..1024];
+        let sh_ptr = &mut sh;
         b.iter(|| {
-            sh.input(bytes);
+            sh_ptr.input(bytes);
         });
         b.bytes = bytes.len() as u64;
     }
@@ -672,8 +674,9 @@ mod bench {
     pub fn sha256_64k(b: &mut Bencher) {
         let mut sh = Sha256::new();
         let bytes = [1u8, ..65536];
+        let sh_ptr = &mut sh;
         b.iter(|| {
-            sh.input(bytes);
+            sh_ptr.input(bytes);
         });
         b.bytes = bytes.len() as u64;
     }

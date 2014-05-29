@@ -76,14 +76,16 @@ fn verify(sess: &Session, items: &lang_items::LanguageItems) {
     if !needs_check { return }
 
     let mut missing = HashSet::new();
+    let missing_ptr = &mut missing;
     sess.cstore.iter_crate_data(|cnum, _| {
         for item in csearch::get_missing_lang_items(&sess.cstore, cnum).iter() {
-            missing.insert(*item);
+            missing_ptr.insert(*item);
         }
     });
 
     $(
-        if missing.contains(&lang_items::$item) && items.$name().is_none() {
+        if missing_ptr.contains(&lang_items::$item) &&
+                items.$name().is_none() {
             sess.err(format!("language item required, but not found: `{}`",
                              stringify!($name)).as_slice());
 

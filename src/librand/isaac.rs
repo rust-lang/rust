@@ -52,11 +52,12 @@ impl IsaacRng {
     pub fn new() -> IoResult<IsaacRng> {
         let mut rng = EMPTY;
         let mut os_rng = try!(OSRng::new());
+        let os_rng_ptr = &mut os_rng;
         unsafe {
             let ptr = rng.rsl.as_mut_ptr();
 
             raw::mut_buf_as_slice(ptr as *mut u8, mem::size_of_val(&rng.rsl), |slice| {
-                os_rng.fill_bytes(slice);
+                os_rng_ptr.fill_bytes(slice);
             })
         }
 
@@ -261,12 +262,13 @@ impl Isaac64Rng {
     pub fn new() -> IoResult<Isaac64Rng> {
         let mut rng = EMPTY_64;
         let mut os_rng = try!(OSRng::new());
+        let os_rng_ptr = &mut os_rng;
 
         unsafe {
             let ptr = rng.rsl.as_mut_ptr();
 
             raw::mut_buf_as_slice(ptr as *mut u8, mem::size_of_val(&rng.rsl), |slice| {
-                os_rng.fill_bytes(slice);
+                os_rng_ptr.fill_bytes(slice);
             })
         }
 
@@ -500,7 +502,8 @@ mod test {
         let seed = &[1, 23, 456, 7890, 12345];
         let mut ra: IsaacRng = SeedableRng::from_seed(seed);
         // Regression test that isaac is actually using the above vector
-        let v = Vec::from_fn(10, |_| ra.next_u32());
+        let ra_ptr = &mut ra;
+        let v = Vec::from_fn(10, |_| ra_ptr.next_u32());
         assert_eq!(v,
                    vec!(2558573138, 873787463, 263499565, 2103644246, 3595684709,
                         4203127393, 264982119, 2765226902, 2737944514, 3900253796));
@@ -508,9 +511,10 @@ mod test {
         let seed = &[12345, 67890, 54321, 9876];
         let mut rb: IsaacRng = SeedableRng::from_seed(seed);
         // skip forward to the 10000th number
-        for _ in range(0, 10000) { rb.next_u32(); }
+        let rb_ptr = &mut rb;
+        for _ in range(0, 10000) { rb_ptr.next_u32(); }
 
-        let v = Vec::from_fn(10, |_| rb.next_u32());
+        let v = Vec::from_fn(10, |_| rb_ptr.next_u32());
         assert_eq!(v,
                    vec!(3676831399, 3183332890, 2834741178, 3854698763, 2717568474,
                         1576568959, 3507990155, 179069555, 141456972, 2478885421));
@@ -520,7 +524,8 @@ mod test {
         let seed = &[1, 23, 456, 7890, 12345];
         let mut ra: Isaac64Rng = SeedableRng::from_seed(seed);
         // Regression test that isaac is actually using the above vector
-        let v = Vec::from_fn(10, |_| ra.next_u64());
+        let ra_ptr = &mut ra;
+        let v = Vec::from_fn(10, |_| ra_ptr.next_u64());
         assert_eq!(v,
                    vec!(547121783600835980, 14377643087320773276, 17351601304698403469,
                         1238879483818134882, 11952566807690396487, 13970131091560099343,
@@ -530,9 +535,10 @@ mod test {
         let seed = &[12345, 67890, 54321, 9876];
         let mut rb: Isaac64Rng = SeedableRng::from_seed(seed);
         // skip forward to the 10000th number
-        for _ in range(0, 10000) { rb.next_u64(); }
+        let rb_ptr = &mut rb;
+        for _ in range(0, 10000) { rb_ptr.next_u64(); }
 
-        let v = Vec::from_fn(10, |_| rb.next_u64());
+        let v = Vec::from_fn(10, |_| rb_ptr.next_u64());
         assert_eq!(v,
                    vec!(18143823860592706164, 8491801882678285927, 2699425367717515619,
                         17196852593171130876, 2606123525235546165, 15790932315217671084,

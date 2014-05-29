@@ -467,12 +467,13 @@ mod tests {
             let ptr = input.as_ptr();
             let expected = ["zero", "one"];
             let mut it = expected.iter();
+            let it_ptr = &mut it;
             let result = from_c_multistring(ptr as *libc::c_char, None, |c| {
                 let cbytes = c.as_bytes_no_nul();
-                assert_eq!(cbytes, it.next().unwrap().as_bytes());
+                assert_eq!(cbytes, it_ptr.next().unwrap().as_bytes());
             });
             assert_eq!(result, 2);
-            assert!(it.next().is_none());
+            assert!(it_ptr.next().is_none());
         }
     }
 
@@ -679,12 +680,15 @@ mod tests {
         }
 
         let mut c_: Option<CString> = None;
-        foo(|c| {
-            c_ = Some(c.clone());
-            c.clone();
-            // force a copy, reading the memory
-            c.as_bytes().to_owned();
-        });
+        {
+            let c_ptr = &mut c_;
+            foo(|c| {
+                *c_ptr = Some(c.clone());
+                c.clone();
+                // force a copy, reading the memory
+                c.as_bytes().to_owned();
+            });
+        }
         let c_ = c_.unwrap();
         // force a copy, reading the memory
         c_.as_bytes().to_owned();

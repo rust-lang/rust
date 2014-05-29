@@ -177,11 +177,17 @@ impl StreamWatcher {
                 };
                 req.defuse(); // uv callback now owns this request
 
-                let loop_ = unsafe { uvll::get_loop_for_uv_handle(self.handle) };
-                wait_until_woken_after(&mut self.blocked_writer,
-                                       &Loop::wrap(loop_), || {
-                    req.set_data(&wcx);
-                });
+                let loop_ = unsafe {
+                    uvll::get_loop_for_uv_handle(self.handle)
+                };
+                {
+                    let wcx_ptr = &wcx;
+                    let req_ptr = &mut req;
+                    wait_until_woken_after(&mut self.blocked_writer,
+                                           &Loop::wrap(loop_), || {
+                        req_ptr.set_data(wcx_ptr);
+                    });
+                }
 
                 if wcx.result != uvll::ECANCELED {
                     self.last_write_req = Some(Request::wrap(req.handle));

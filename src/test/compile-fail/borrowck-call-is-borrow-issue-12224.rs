@@ -19,8 +19,8 @@ struct Test<'a> {
 
 fn call(f: |Fn|) {
     f(|| {
-    //~^ ERROR: closure requires unique access to `f` but it is already borrowed
         f(|| {})
+        //~^ ERROR: cannot move `f` into closure
     });
 }
 
@@ -56,8 +56,9 @@ fn test6() {
 fn test7() {
     fn foo(_: |g: |int|, b: int|) {}
     let f = |g: |int|, b: int| {};
-    f(|a| { //~ ERROR: cannot borrow `f` as immutable because previous closure
-        foo(f); //~ ERROR: cannot move out of captured outer variable
+    f(|a| {
+        foo(f); //~ ERROR: cannot move `f`
+        //~^ ERROR cannot move out of captured outer variable
     }, 3);
 }
 

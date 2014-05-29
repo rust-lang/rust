@@ -365,9 +365,12 @@ mod tests {
         let s = "イロハニホヘト チリヌルヲ ワカヨタレソ ツネナラム \
                  ウヰノオクヤマ ケフコエテ アサキユメミシ ヱヒモセスン";
         let sb = s.as_bytes().to_base64(STANDARD);
-        b.iter(|| {
-            sb.as_slice().from_base64().unwrap();
-        });
+        {
+            let sb_ptr = &sb;
+            b.iter(|| {
+                sb_ptr.as_slice().from_base64().unwrap();
+            });
+        }
         b.bytes = sb.len() as u64;
     }
 

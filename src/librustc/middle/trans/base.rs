@@ -623,7 +623,7 @@ pub fn iter_structural_ty<'r,
                           cx: &'b Block<'b>,
                           av: ValueRef,
                           t: ty::t,
-                          f: val_and_ty_fn<'r,'b>)
+                          mut f: val_and_ty_fn<'r,'b>)
                           -> &'b Block<'b> {
     let _icx = push_ctxt("iter_structural_ty");
 
@@ -652,10 +652,16 @@ pub fn iter_structural_ty<'r,
     match ty::get(t).sty {
       ty::ty_struct(..) => {
           let repr = adt::represent_type(cx.ccx(), t);
-          expr::with_field_tys(cx.tcx(), t, None, |discr, field_tys| {
+          let f_ptr = &mut f;
+          let cx_ptr = &mut cx;
+          expr::with_field_tys(cx_ptr.tcx(), t, None, |discr, field_tys| {
               for (i, field_ty) in field_tys.iter().enumerate() {
-                  let llfld_a = adt::trans_field_ptr(cx, &*repr, av, discr, i);
-                  cx = f(cx, llfld_a, field_ty.mt.ty);
+                  let llfld_a = adt::trans_field_ptr(*cx_ptr,
+                                                     &*repr,
+                                                     av,
+                                                     discr,
+                                                     i);
+                  *cx_ptr = (*f_ptr)(*cx_ptr, llfld_a, field_ty.mt.ty);
               }
           })
       }
@@ -688,7 +694,8 @@ pub fn iter_structural_ty<'r,
                                     substs, f);
               }
               (_match::switch, Some(lldiscrim_a)) => {
-                  cx = f(cx, lldiscrim_a, ty::mk_int());
+                  let f_ptr = &mut f;
+                  cx = (*f_ptr)(cx, lldiscrim_a, ty::mk_int());
                   let unr_cx = fcx.new_temp_block("enum-iter-unr");
                   Unreachable(unr_cx);
                   let llswitch = Switch(cx, lldiscrim_a, unr_cx.llbb,
@@ -715,7 +722,7 @@ pub fn iter_structural_ty<'r,
                                        av,
                                        &**variant,
                                        substs,
-                                       |x,y,z| f(x,y,z));
+                                       |x,y,z| (*f_ptr)(x,y,z));
                       Br(variant_cx, next_cx.llbb);
                   }
                   cx = next_cx;
@@ -2327,9 +2334,12 @@ pub fn trans_crate(krate: ast::Crate,
     let link_meta = ccx.link_meta.clone();
     let llmod = ccx.llmod;
 
-    let mut reachable: Vec<String> = ccx.reachable.iter().filter_map(|id| {
-        ccx.item_symbols.borrow().find(id).map(|s| s.to_string())
-    }).collect();
+    let mut reachable: Vec<String> = {
+        let ccx_ptr = &ccx;
+        ccx_ptr.reachable.iter().filter_map(|id| {
+            ccx_ptr.item_symbols.borrow().find(id).map(|s| s.to_string())
+        }).collect()
+    };
 
     // Make sure that some other crucial symbols are not eliminated from the
     // module. This includes the main function, the crate map (used for debug

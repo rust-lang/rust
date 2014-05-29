@@ -219,13 +219,18 @@ fn get_method_index(tcx: &ty::ctxt,
     // we find the trait the method came from, counting up the
     // methods from them.
     let mut method_count = 0;
-    ty::each_bound_trait_and_supertraits(tcx, &[subtrait], |bound_ref| {
-        if bound_ref.def_id == trait_ref.def_id { false }
-            else {
-            method_count += ty::trait_methods(tcx, bound_ref.def_id).len();
-            true
-        }
-    });
+    {
+        let method_count_ptr = &mut method_count;
+        ty::each_bound_trait_and_supertraits(tcx, &[subtrait], |bound_ref| {
+            if bound_ref.def_id == trait_ref.def_id {
+                false
+            } else {
+                *method_count_ptr +=
+                    ty::trait_methods(tcx, bound_ref.def_id).len();
+                true
+            }
+        });
+    }
     method_count + n_method
 }
 
@@ -616,10 +621,11 @@ impl<'a> LookupContext<'a> {
                                                             -> Option<Candidate>) {
         let tcx = self.tcx();
         let mut next_bound_idx = 0; // count only trait bounds
+        let next_bound_idx_ptr = &mut next_bound_idx;
 
         ty::each_bound_trait_and_supertraits(tcx, bounds, |bound_trait_ref| {
-            let this_bound_idx = next_bound_idx;
-            next_bound_idx += 1;
+            let this_bound_idx = *next_bound_idx_ptr;
+            *next_bound_idx_ptr += 1;
 
             let trait_methods = ty::trait_methods(tcx, bound_trait_ref.def_id);
             match trait_methods.iter().position(|m| {
@@ -686,8 +692,13 @@ impl<'a> LookupContext<'a> {
                                  .collect::<Vec<ast::Ident>>()
                                  .repr(self.tcx()));
 
-        let method = match impl_methods.iter().map(|&did| ty::method(self.tcx(), did))
-                                              .find(|m| m.ident.name == self.m_name) {
+        let my_m_name = self.m_name.clone();
+        let method = match impl_methods.iter()
+                                       .map(|&did| {
+                                           ty::method(self.tcx(), did)
+                                       }).find(|m| {
+                                           m.ident.name == my_m_name
+                                       }) {
             Some(method) => method,
             None => { return; } // No method with the right name.
         };
@@ -1195,8 +1206,9 @@ impl<'a> LookupContext<'a> {
             MethodObject(..) => {
                 // For annoying reasons, we've already handled the
                 // substitution of self for object calls.
+                let all_substs_ptr = &all_substs;
                 let args = fn_sig.inputs.slice_from(1).iter().map(|t| {
-                    t.subst(tcx, &all_substs)
+                    t.subst(tcx, all_substs_ptr)
                 });
                 Some(*fn_sig.inputs.get(0)).move_iter().chain(args).collect()
             }

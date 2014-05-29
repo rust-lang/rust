@@ -144,6 +144,7 @@ pub fn await(fd: net::sock_t, deadline: Option<u64>,
         Writable => (ptr::null(), &set as *_),
     };
     let mut tv: libc::timeval = unsafe { mem::zeroed() };
+    let tv_ptr = &mut tv;
 
     match retry(|| {
         let now = ::io::timer::now();
@@ -153,8 +154,8 @@ pub fn await(fd: net::sock_t, deadline: Option<u64>,
                 // If we're past the deadline, then pass a 0 timeout to
                 // select() so we can poll the status
                 let ms = if deadline < now {0} else {deadline - now};
-                tv = ms_to_timeval(ms);
-                &tv as *_
+                *tv_ptr = ms_to_timeval(ms);
+                tv_ptr as *mut _ as *_
             }
         };
         let n = if cfg!(windows) {1} else {fd as libc::c_int + 1};

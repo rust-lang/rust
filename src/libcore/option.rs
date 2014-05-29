@@ -732,15 +732,16 @@ mod tests {
     #[test]
     fn test_option_while_some() {
         let mut i = 0;
+        let i_ptr = &mut i;
         Some(10).while_some(|j| {
-            i += 1;
+            *i_ptr += 1;
             if j > 0 {
                 Some(j-1)
             } else {
                 None
             }
         });
-        assert_eq!(i, 11);
+        assert_eq!(*i_ptr, 11);
     }
 
     #[test]

@@ -67,6 +67,7 @@ pub fn main() {
     let vect = (vec!(3, 4)).map_::<uint>(|a| *a as uint + 4u);
     assert_eq!(*vect.get(0), 7u);
     let mut x = 0u;
-    10u.multi(|_n| x += 2u );
-    assert_eq!(x, 20u);
+    let x_ptr = &mut x;
+    10u.multi(|_n| *x_ptr += 2u );
+    assert_eq!(*x_ptr, 20u);
 }

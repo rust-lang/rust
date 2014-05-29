@@ -394,11 +394,16 @@ impl<T> TrieNode<T> {
 }
 
 impl<T> TrieNode<T> {
-    fn each_reverse<'a>(&'a self, f: |&uint, &'a T| -> bool) -> bool {
+    fn each_reverse<'a>(&'a self, mut f: |&uint, &'a T| -> bool) -> bool {
+        let f_ptr = &mut f;
         for elt in self.children.iter().rev() {
             match *elt {
-                Internal(ref x) => if !x.each_reverse(|i,t| f(i,t)) { return false },
-                External(k, ref v) => if !f(&k, v) { return false },
+                Internal(ref x) => {
+                    if !x.each_reverse(|i,t| (*f_ptr)(i,t)) {
+                        return false
+                    }
+                }
+                External(k, ref v) => if !(*f_ptr)(&k, v) { return false },
                 Nothing => ()
             }
         }
@@ -730,10 +735,11 @@ mod test_map {
         assert!(m.insert(1, 2));
 
         let mut n = 4;
+        let n_ptr = &mut n;
         m.each_reverse(|k, v| {
-            assert_eq!(*k, n);
-            assert_eq!(*v, n * 2);
-            n -= 1;
+            assert_eq!(*k, *n_ptr);
+            assert_eq!(*v, *n_ptr * 2);
+            *n_ptr -= 1;
             true
         });
     }
@@ -747,13 +753,14 @@ mod test_map {
         }
 
         let mut n = uint::MAX - 1;
+        let n_ptr = &mut n;
         m.each_reverse(|k, v| {
-            if n == uint::MAX - 5000 { false } else {
-                assert!(n > uint::MAX - 5000);
+            if *n_ptr == uint::MAX - 5000 { false } else {
+                assert!(*n_ptr > uint::MAX - 5000);
 
-                assert_eq!(*k, n);
-                assert_eq!(*v, n / 2);
-                n -= 1;
+                assert_eq!(*k, *n_ptr);
+                assert_eq!(*v, *n_ptr / 2);
+                *n_ptr -= 1;
                 true
             }
         });
@@ -948,9 +955,11 @@ mod bench_map {
             m.insert(rng.gen(), rng.gen());
         }
 
+        let m_ptr = &mut m;
+        let rng_ptr = &mut rng;
         b.iter(|| {
                 for _ in range(0, 10) {
-                    m.lower_bound(rng.gen());
+                    m_ptr.lower_bound(rng_ptr.gen());
                 }
             });
     }
@@ -963,9 +972,11 @@ mod bench_map {
             m.insert(rng.gen(), rng.gen());
         }
 
+        let m_ptr = &mut m;
+        let rng_ptr = &mut rng;
         b.iter(|| {
                 for _ in range(0, 10) {
-                    m.upper_bound(rng.gen());
+                    m_ptr.upper_bound(rng_ptr.gen());
                 }
             });
     }
@@ -975,9 +986,11 @@ mod bench_map {
         let mut m = TrieMap::<[uint, .. 10]>::new();
         let mut rng = weak_rng();
 
+        let m_ptr = &mut m;
+        let rng_ptr = &mut rng;
         b.iter(|| {
                 for _ in range(0, 1000) {
-                    m.insert(rng.gen(), [1, .. 10]);
+                    m_ptr.insert(rng_ptr.gen(), [1, .. 10]);
                 }
             })
     }
@@ -986,10 +999,12 @@ mod bench_map {
         let mut m = TrieMap::<[uint, .. 10]>::new();
         let mut rng = weak_rng();
 
+        let m_ptr = &mut m;
+        let rng_ptr = &mut rng;
         b.iter(|| {
                 for _ in range(0, 1000) {
                     // only have the last few bits set.
-                    m.insert(rng.gen::<uint>() & 0xff_ff, [1, .. 10]);
+                    m_ptr.insert(rng_ptr.gen::<uint>() & 0xff_ff, [1, .. 10]);
                 }
             })
     }
@@ -999,9 +1014,11 @@ mod bench_map {
         let mut m = TrieMap::<()>::new();
         let mut rng = weak_rng();
 
+        let m_ptr = &mut m;
+        let rng_ptr = &mut rng;
         b.iter(|| {
                 for _ in range(0, 1000) {
-                    m.insert(rng.gen(), ());
+                    m_ptr.insert(rng_ptr.gen(), ());
                 }
             })
     }
@@ -1010,10 +1027,12 @@ mod bench_map {
         let mut m = TrieMap::<()>::new();
         let mut rng = weak_rng();
 
+        let m_ptr = &mut m;
+        let rng_ptr = &mut rng;
         b.iter(|| {
                 for _ in range(0, 1000) {
                     // only have the last few bits set.
-                    m.insert(rng.gen::<uint>() & 0xff_ff, ());
+                    m_ptr.insert(rng_ptr.gen::<uint>() & 0xff_ff, ());
                 }
             })
     }

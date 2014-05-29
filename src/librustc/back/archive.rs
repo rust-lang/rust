@@ -230,9 +230,10 @@ impl ArchiveRO {
     pub fn read<'a>(&'a self, file: &str) -> Option<&'a [u8]> {
         unsafe {
             let mut size = 0 as libc::size_t;
-            let ptr = file.with_c_str(|file| {
-                llvm::LLVMRustArchiveReadSection(self.ptr, file, &mut size)
-            });
+            let file_c = file.to_c_str();
+            let ptr = llvm::LLVMRustArchiveReadSection(self.ptr,
+                                                       file_c.with_ref(|x| x),
+                                                       &mut size);
             if ptr.is_null() {
                 None
             } else {

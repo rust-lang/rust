@@ -94,7 +94,13 @@ impl<'a> dot::Labeller<'a, Node<'a>, Edge<'a>> for LabelledCFG<'a> {
 impl<'a> dot::GraphWalk<'a, Node<'a>, Edge<'a>> for &'a cfg::CFG {
     fn nodes(&self) -> dot::Nodes<'a, Node<'a>> {
         let mut v = Vec::new();
-        self.graph.each_node(|i, nd| { v.push((i, nd)); true });
+        {
+            let v_ptr = &mut v;
+            self.graph.each_node(|i, nd| {
+                v_ptr.push((i, nd));
+                true
+            });
+        }
         dot::maybe_owned_vec::Growable(v)
     }
     fn edges(&self) -> dot::Edges<'a, Edge<'a>> {
