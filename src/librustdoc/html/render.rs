@@ -1380,8 +1380,13 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                         if s.len() == 0 { return Ok(()); }
                         try!(write!(f, "<code> = </code>"));
                         if s.contains("\n") {
-                            write!(f, "<a href='{}'>[definition]</a>",
-                                   item.href())
+                            match item.href() {
+                                Some(url) => {
+                                    write!(f, "<a href='{}'>[definition]</a>",
+                                           url)
+                                }
+                                None => Ok(()),
+                            }
                         } else {
                             write!(f, "<code>{}</code>", s.as_slice())
                         }
@@ -1547,8 +1552,8 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     }
     try!(write!(w, "</ul>"));
     try!(write!(w, r#"<script type="text/javascript" async
-                              src="{root_path}/implementors/{path}/\
-                                   {ty}.{name}.js"></script>"#,
+                              src="{root_path}/implementors/{path}/{ty}.{name}.js">
+                      </script>"#,
                 root_path = Vec::from_elem(cx.current.len(), "..").connect("/"),
                 path = if ast_util::is_local(it.def_id) {
                     cx.current.connect("/")
