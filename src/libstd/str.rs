@@ -79,7 +79,7 @@ use mem;
 use option::{None, Option, Some};
 use result::Result;
 use slice::Vector;
-use slice::{ImmutableVector, MutableVector, CloneableVector};
+use slice::{ImmutableVector, MutableVector};
 use string::String;
 use vec::Vec;
 
@@ -503,7 +503,7 @@ pub fn from_utf8_lossy<'a>(v: &'a [u8]) -> MaybeOwned<'a> {
             res.push_bytes(v.slice(subseqidx, total))
         };
     }
-    Owned(res.into_owned())
+    Owned(res.into_string())
 }
 
 /*
@@ -608,7 +608,7 @@ impl<'a> Str for MaybeOwned<'a> {
 
 impl<'a> StrAllocating for MaybeOwned<'a> {
     #[inline]
-    fn into_owned(self) -> String {
+    fn into_string(self) -> String {
         match self {
             Slice(s) => s.to_string(),
             Owned(s) => s
@@ -723,7 +723,7 @@ Section: Trait implementations
 /// Any string that can be represented as a slice
 pub trait StrAllocating: Str {
     /// Convert `self` into a `String`, not making a copy if possible.
-    fn into_owned(self) -> String;
+    fn into_string(self) -> String;
 
     /// Convert `self` into a `String`.
     #[inline]
@@ -731,10 +731,10 @@ pub trait StrAllocating: Str {
         String::from_str(self.as_slice())
     }
 
-    /// Convert `self` into a `String`, not making a copy if possible.
-    #[inline]
-    fn into_string(self) -> String {
-        self.into_owned()
+    #[allow(missing_doc)]
+    #[deprecated = "replaced by .into_string()"]
+    fn into_owned(self) -> String {
+        self.into_string()
     }
 
     /// Escape each char in `s` with `char::escape_default`.
@@ -889,7 +889,7 @@ pub trait StrAllocating: Str {
 
 impl<'a> StrAllocating for &'a str {
     #[inline]
-    fn into_owned(self) -> String {
+    fn into_string(self) -> String {
         self.to_string()
     }
 }
@@ -1045,7 +1045,7 @@ mod tests {
     #[test]
     fn test_concat() {
         fn t(v: &[String], s: &str) {
-            assert_eq!(v.concat(), s.to_str().into_owned());
+            assert_eq!(v.concat(), s.to_str().into_string());
         }
         t(["you".to_string(), "know".to_string(), "I'm".to_string(),
           "no".to_string(), "good".to_string()], "youknowI'mnogood");
@@ -1057,7 +1057,7 @@ mod tests {
     #[test]
     fn test_connect() {
         fn t(v: &[String], sep: &str, s: &str) {
-            assert_eq!(v.connect(sep), s.to_str().into_owned());
+            assert_eq!(v.connect(sep), s.to_str().into_string());
         }
         t(["you".to_string(), "know".to_string(), "I'm".to_string(),
            "no".to_string(), "good".to_string()],
@@ -1070,7 +1070,7 @@ mod tests {
     #[test]
     fn test_concat_slices() {
         fn t(v: &[&str], s: &str) {
-            assert_eq!(v.concat(), s.to_str().into_owned());
+            assert_eq!(v.concat(), s.to_str().into_string());
         }
         t(["you", "know", "I'm", "no", "good"], "youknowI'mnogood");
         let v: &[&str] = [];
@@ -1081,7 +1081,7 @@ mod tests {
     #[test]
     fn test_connect_slices() {
         fn t(v: &[&str], sep: &str, s: &str) {
-            assert_eq!(v.connect(sep), s.to_str().into_owned());
+            assert_eq!(v.connect(sep), s.to_str().into_string());
         }
         t(["you", "know", "I'm", "no", "good"],
           " ", "you know I'm no good");
@@ -2162,9 +2162,9 @@ mod tests {
     }
 
     #[test]
-    fn test_maybe_owned_into_owned() {
-        assert_eq!(Slice("abcde").into_owned(), "abcde".to_string());
-        assert_eq!(Owned("abcde".to_string()).into_owned(), "abcde".to_string());
+    fn test_maybe_owned_into_string() {
+        assert_eq!(Slice("abcde").into_string(), "abcde".to_string());
+        assert_eq!(Owned("abcde".to_string()).into_string(), "abcde".to_string());
     }
 
     #[test]
