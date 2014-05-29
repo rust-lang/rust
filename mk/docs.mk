@@ -287,6 +287,7 @@ $(foreach crate,$(COMPILER_DOC_CRATES),$(eval $(call DEF_LIB_DOC,$(crate),COMPIL
 ifdef CFG_DISABLE_DOCS
   $(info cfg: disabling doc build (CFG_DISABLE_DOCS))
   DOC_TARGETS :=
+  COMPILER_DOC_TARGETS :=
 endif
 
 docs: $(DOC_TARGETS)
