@@ -90,6 +90,25 @@ impl FileDesc {
     pub fn handle(&self) -> libc::HANDLE {
         unsafe { libc::get_osfhandle(self.fd()) as libc::HANDLE }
     }
+
+    // A version of seek that takes &self so that tell can call it
+    //   - the private seek should of course take &mut self.
+    fn seek_common(&self, pos: i64, style: io::SeekStyle) -> Result<u64, IoError> {
+        let whence = match style {
+            io::SeekSet => libc::FILE_BEGIN,
+            io::SeekEnd => libc::FILE_END,
+            io::SeekCur => libc::FILE_CURRENT,
+        };
+        unsafe {
+            let mut newpos = 0;
+            match libc::SetFilePointerEx(self.handle(), pos, &mut newpos,
+                                         whence) {
+                0 => Err(super::last_error()),
+                _ => Ok(newpos as u64),
+            }
+        }
+    }
+
 }
 
 impl io::Reader for FileDesc {
@@ -151,26 +170,13 @@ impl rtio::RtioFileStream for FileDesc {
         }
         Ok(())
     }
+
     fn seek(&mut self, pos: i64, style: io::SeekStyle) -> Result<u64, IoError> {
-        let whence = match style {
-            io::SeekSet => libc::FILE_BEGIN,
-            io::SeekEnd => libc::FILE_END,
-            io::SeekCur => libc::FILE_CURRENT,
-        };
-        unsafe {
-            let mut newpos = 0;
-            match libc::SetFilePointerEx(self.handle(), pos, &mut newpos,
-                                         whence) {
-                0 => Err(super::last_error()),
-                _ => Ok(newpos as u64),
-            }
-        }
+        self.seek_common(pos, style)
     }
+
     fn tell(&self) -> Result<u64, IoError> {
-        // This transmute is fine because our seek implementation doesn't
-        // actually use the mutable self at all.
-        // FIXME #13933: Remove/justify all `&T` to `&mut T` transmutes
-        unsafe { mem::transmute::<&_, &mut FileDesc>(self).seek(0, io::SeekCur) }
+        self.seek_common(0, io::SeekCur)
     }
 
     fn fsync(&mut self) -> Result<(), IoError> {
