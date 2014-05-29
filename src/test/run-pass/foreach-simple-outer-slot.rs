@@ -13,10 +13,15 @@
 
 pub fn main() {
     let mut sum: int = 0;
-    first_ten(|i| { println!("main"); println!("{}", i); sum = sum + i; });
+    let sum_ptr = &mut sum;
+    first_ten(|i| {
+        println!("main");
+        println!("{}", i);
+        *sum_ptr = *sum_ptr + i;
+    });
     println!("sum");
-    println!("{}", sum);
-    assert_eq!(sum, 45);
+    println!("{}", *sum_ptr);
+    assert_eq!(*sum_ptr, 45);
 }
 
 fn first_ten(it: |int|) {

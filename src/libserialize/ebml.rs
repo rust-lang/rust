@@ -573,14 +573,17 @@ pub mod reader {
             self.read_tuple_arg(idx, f)
         }
 
-        fn read_option<T>(&mut self,
-                          f: |&mut Decoder<'doc>, bool| -> DecodeResult<T>) -> DecodeResult<T> {
+        fn read_option<T>(
+                       &mut self,
+                       mut f: |&mut Decoder<'doc>, bool| -> DecodeResult<T>)
+                       -> DecodeResult<T> {
             debug!("read_option()");
+            let f_ptr = &mut f;
             self.read_enum("Option", |this| {
                 this.read_enum_variant(["None", "Some"], |this, idx| {
                     match idx {
-                        0 => f(this, false),
-                        1 => f(this, true),
+                        0 => (*f_ptr)(this, false),
+                        1 => (*f_ptr)(this, true),
                         _ => {
                             Err(Expected(format_strbuf!("Expected None or \
                                                          Some")))
@@ -1120,13 +1123,17 @@ mod bench {
             }
         });
         let mut sum = 0u;
-        b.iter(|| {
-            let mut i = 0;
-            while i < data.len() {
-                sum += reader::vuint_at(data.as_slice(), i).unwrap().val;
-                i += 4;
-            }
-        });
+        {
+            let sum_ptr = &mut sum;
+            b.iter(|| {
+                let mut i = 0;
+                while i < data.len() {
+                    *sum_ptr += reader::vuint_at(data.as_slice(), i).unwrap()
+                                                                    .val;
+                    i += 4;
+                }
+            });
+        }
     }
 
     #[bench]
@@ -1138,13 +1145,17 @@ mod bench {
             }
         });
         let mut sum = 0u;
-        b.iter(|| {
-            let mut i = 1;
-            while i < data.len() {
-                sum += reader::vuint_at(data.as_slice(), i).unwrap().val;
-                i += 4;
-            }
-        });
+        {
+            let sum_ptr = &mut sum;
+            b.iter(|| {
+                let mut i = 1;
+                while i < data.len() {
+                    *sum_ptr += reader::vuint_at(data.as_slice(), i).unwrap()
+                                                                    .val;
+                    i += 4;
+                }
+            });
+        }
     }
 
     #[bench]
@@ -1157,13 +1168,17 @@ mod bench {
             }
         });
         let mut sum = 0u;
-        b.iter(|| {
-            let mut i = 0;
-            while i < data.len() {
-                sum += reader::vuint_at(data.as_slice(), i).unwrap().val;
-                i += 4;
-            }
-        });
+        {
+            let sum_ptr = &mut sum;
+            b.iter(|| {
+                let mut i = 0;
+                while i < data.len() {
+                    *sum_ptr += reader::vuint_at(data.as_slice(), i).unwrap()
+                                                                    .val;
+                    i += 4;
+                }
+            });
+        }
     }
 
     #[bench]
@@ -1176,12 +1191,16 @@ mod bench {
             }
         });
         let mut sum = 0u;
-        b.iter(|| {
-            let mut i = 1;
-            while i < data.len() {
-                sum += reader::vuint_at(data.as_slice(), i).unwrap().val;
-                i += 4;
-            }
-        });
+        {
+            let sum_ptr = &mut sum;
+            b.iter(|| {
+                let mut i = 1;
+                while i < data.len() {
+                    *sum_ptr += reader::vuint_at(data.as_slice(), i).unwrap()
+                                                                    .val;
+                    i += 4;
+                }
+            });
+        }
     }
 }

@@ -302,7 +302,12 @@ pub fn common_supertype(cx: &InferCtxt,
         values: Types(expected_found(a_is_expected, a, b))
     };
 
-    let result = cx.commit(|| cx.lub(a_is_expected, trace.clone()).tys(a, b));
+    let result = {
+        let trace_ptr = &trace;
+        cx.commit(|| {
+            cx.lub(a_is_expected, trace_ptr.clone()).tys(a, b)
+        })
+    };
     match result {
         Ok(t) => t,
         Err(ref err) => {
@@ -382,14 +387,20 @@ pub fn mk_sub_trait_refs(cx: &InferCtxt,
 {
     debug!("mk_sub_trait_refs({} <: {})",
            a.inf_str(cx), b.inf_str(cx));
+    let new_a = a.clone();
+    let new_b = b.clone();
     indent(|| {
+        let new_a = new_a.clone();
+        let new_b = new_b.clone();
         cx.commit(|| {
             let trace = TypeTrace {
                 origin: origin,
-                values: TraitRefs(expected_found(a_is_expected, a.clone(), b.clone()))
+                values: TraitRefs(expected_found(a_is_expected,
+                                                 new_a.clone(),
+                                                 new_b.clone()))
             };
             let suber = cx.sub(a_is_expected, trace);
-            suber.trait_refs(&*a, &*b)
+            suber.trait_refs(&*new_a, &*new_b)
         })
     }).to_ures()
 }
@@ -539,12 +550,14 @@ impl<'a> InferCtxt<'a> {
     }
 
     /// Execute `f` and commit the bindings if successful
-    pub fn commit<T,E>(&self, f: || -> Result<T,E>) -> Result<T,E> {
+    pub fn commit<T,E>(&self, mut f: || -> Result<T,E>) -> Result<T,E> {
         assert!(!self.in_snapshot());
 
         debug!("commit()");
+
+        let f_ptr = &mut f;
         indent(|| {
-            let r = self.try(|| f());
+            let r = self.try(|| (*f_ptr)());
 
             self.ty_var_bindings.borrow_mut().bindings.truncate(0);
             self.int_var_bindings.borrow_mut().bindings.truncate(0);

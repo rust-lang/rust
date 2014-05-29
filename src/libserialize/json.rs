@@ -1941,12 +1941,11 @@ impl ::Decoder<DecoderError> for Decoder {
                                          format_strbuf!("{}", json)))
             }
         };
+        let name_slice = name.as_slice();
         let idx = match names.iter()
-                             .position(|n| {
-                                 str::eq_slice(*n, name.as_slice())
-                             }) {
+                             .position(|n| str::eq_slice(*n, name_slice)) {
             Some(idx) => idx,
-            None => return Err(UnknownVariantError(name))
+            None => return Err(UnknownVariantError(name.to_string()))
         };
         f(self, idx)
     }
@@ -2470,33 +2469,35 @@ mod tests {
     #[test]
     fn test_write_enum() {
         let animal = Dog;
+        let animal_ptr = &animal;
         assert_eq!(
             with_str_writer(|wr| {
                 let mut encoder = Encoder::new(wr);
-                animal.encode(&mut encoder).unwrap();
+                animal_ptr.encode(&mut encoder).unwrap();
             }),
             "\"Dog\"".to_string()
         );
         assert_eq!(
             with_str_writer(|wr| {
                 let mut encoder = PrettyEncoder::new(wr);
-                animal.encode(&mut encoder).unwrap();
+                animal_ptr.encode(&mut encoder).unwrap();
             }),
             "\"Dog\"".to_string()
         );
 
         let animal = Frog("Henry".to_string(), 349);
+        let animal_ptr = &animal;
         assert_eq!(
             with_str_writer(|wr| {
                 let mut encoder = Encoder::new(wr);
-                animal.encode(&mut encoder).unwrap();
+                animal_ptr.encode(&mut encoder).unwrap();
             }),
             "{\"variant\":\"Frog\",\"fields\":[\"Henry\",349]}".to_string()
         );
         assert_eq!(
             with_str_writer(|wr| {
                 let mut encoder = PrettyEncoder::new(wr);
-                animal.encode(&mut encoder).unwrap();
+                animal_ptr.encode(&mut encoder).unwrap();
             }),
             "\
             [\n  \
@@ -2510,16 +2511,18 @@ mod tests {
     #[test]
     fn test_write_some() {
         let value = Some("jodhpurs".to_string());
+        let value_ptr = &value;
         let s = with_str_writer(|wr| {
             let mut encoder = Encoder::new(wr);
-            value.encode(&mut encoder).unwrap();
+            value_ptr.encode(&mut encoder).unwrap();
         });
         assert_eq!(s, "\"jodhpurs\"".to_string());
 
         let value = Some("jodhpurs".to_string());
+        let value_ptr = &value;
         let s = with_str_writer(|wr| {
             let mut encoder = PrettyEncoder::new(wr);
-            value.encode(&mut encoder).unwrap();
+            value_ptr.encode(&mut encoder).unwrap();
         });
         assert_eq!(s, "\"jodhpurs\"".to_string());
     }
@@ -2527,11 +2530,14 @@ mod tests {
     #[test]
     fn test_write_none() {
         let value: Option<String> = None;
-        let s = with_str_writer(|wr| {
-            let mut encoder = Encoder::new(wr);
-            value.encode(&mut encoder).unwrap();
-        });
-        assert_eq!(s, "null".to_string());
+        {
+            let value_ptr = &value;
+            let s = with_str_writer(|wr| {
+                let mut encoder = Encoder::new(wr);
+                value_ptr.encode(&mut encoder).unwrap();
+            });
+            assert_eq!(s, "null".to_string());
+        }
 
         let s = with_str_writer(|wr| {
             let mut encoder = Encoder::new(wr);

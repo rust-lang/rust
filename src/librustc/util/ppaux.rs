@@ -460,10 +460,11 @@ pub fn parameterized(cx: &ctxt,
             regions: regions.clone(),
             self_ty: None
         };
+        let substs_ptr = &mut substs;
         ty_params.iter().zip(tps.iter()).rev().take_while(|&(def, &actual)| {
-            substs.tps.pop();
+            substs_ptr.tps.pop();
             match def.default {
-                Some(default) => ty::subst(cx, &substs, default) == actual,
+                Some(default) => ty::subst(cx, substs_ptr, default) == actual,
                 None => false
             }
         }).len()
@@ -1001,8 +1002,6 @@ impl Repr for ty::BorrowKind {
 
 impl Repr for ty::UpvarBorrow {
     fn repr(&self, tcx: &ctxt) -> String {
-        format_strbuf!("UpvarBorrow({}, {})",
-                       self.kind.repr(tcx),
-                       self.region.repr(tcx))
+        format_strbuf!("UpvarBorrow({})", self.reborrowed_type.repr(tcx))
     }
 }

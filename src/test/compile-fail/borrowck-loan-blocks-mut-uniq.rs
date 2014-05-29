@@ -14,10 +14,11 @@ fn borrow(v: &int, f: |x: &int|) {
 
 fn box_imm() {
     let mut v = box 3;
-    borrow(v,
-           |w| { //~ ERROR cannot borrow `v` as mutable
-            v = box 4;
-            assert_eq!(*v, 3);
+    let v_ptr = &mut v;
+    borrow(*v_ptr,
+           |w| { //~ ERROR closure requires unique access to `*v_ptr`
+            *v_ptr = box 4; //~ ERROR cannot move `v_ptr`
+            assert_eq!(**v_ptr, 3);
             assert_eq!(*w, 4);
         })
 }

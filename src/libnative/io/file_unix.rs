@@ -52,10 +52,12 @@ impl FileDesc {
     //               native::io wanting to use them is forced to have all the
     //               rtio traits in scope
     pub fn inner_read(&mut self, buf: &mut [u8]) -> Result<uint, IoError> {
+        let buf_ptr = buf.as_mut_ptr();
+        let buf_len = buf.len();
         let ret = retry(|| unsafe {
             libc::read(self.fd(),
-                       buf.as_mut_ptr() as *mut libc::c_void,
-                       buf.len() as libc::size_t) as libc::c_int
+                       buf_ptr as *mut libc::c_void,
+                       buf_len as libc::size_t) as libc::c_int
         });
         if ret == 0 {
             Err(io::standard_error(io::EndOfFile))
@@ -102,9 +104,11 @@ impl rtio::RtioFileStream for FileDesc {
         self.inner_write(buf)
     }
     fn pread(&mut self, buf: &mut [u8], offset: u64) -> Result<int, IoError> {
+        let buf_ptr = buf.as_ptr();
+        let buf_len = buf.len();
         match retry(|| unsafe {
-            libc::pread(self.fd(), buf.as_ptr() as *libc::c_void,
-                        buf.len() as libc::size_t,
+            libc::pread(self.fd(), buf_ptr as *libc::c_void,
+                        buf_len as libc::size_t,
                         offset as libc::off_t) as libc::c_int
         }) {
             -1 => Err(super::last_error()),
@@ -165,8 +169,9 @@ impl rtio::RtioFileStream for FileDesc {
 
     fn fstat(&mut self) -> IoResult<io::FileStat> {
         let mut stat: libc::stat = unsafe { mem::zeroed() };
-        match retry(|| unsafe { libc::fstat(self.fd(), &mut stat) }) {
-            0 => Ok(mkstat(&stat)),
+        let stat_ptr = &mut stat;
+        match retry(|| unsafe { libc::fstat(self.fd(), stat_ptr) }) {
+            0 => Ok(mkstat(stat_ptr)),
             _ => Err(super::last_error()),
         }
     }
@@ -285,8 +290,10 @@ impl rtio::RtioFileStream for CFile {
         }
     }
 
-    fn pread(&mut self, buf: &mut [u8], offset: u64) -> Result<int, IoError> {
-        self.flush().and_then(|()| self.fd.pread(buf, offset))
+    fn pread(&mut self, mut buf: &mut [u8], offset: u64)
+             -> Result<int, IoError> {
+        let buf_ptr = &mut buf;
+        self.flush().and_then(|()| self.fd.pread(*buf_ptr, offset))
     }
     fn pwrite(&mut self, buf: &[u8], offset: u64) -> Result<(), IoError> {
         self.flush().and_then(|()| self.fd.pwrite(buf, offset))
@@ -438,8 +445,10 @@ pub fn readlink(p: &CString) -> IoResult<Path> {
         len = 1024; // FIXME: read PATH_MAX from C ffi?
     }
     let mut buf: Vec<u8> = Vec::with_capacity(len as uint);
+    let buf_ptr = buf.as_ptr();
     match retry(|| unsafe {
-        libc::readlink(p, buf.as_ptr() as *mut libc::c_char,
+        libc::readlink(p,
+                       buf_ptr as *mut libc::c_char,
                        len as libc::size_t) as libc::c_int
     }) {
         -1 => Err(super::last_error()),
@@ -510,16 +519,18 @@ fn mkstat(stat: &libc::stat) -> io::FileStat {
 
 pub fn stat(p: &CString) -> IoResult<io::FileStat> {
     let mut stat: libc::stat = unsafe { mem::zeroed() };
-    match retry(|| unsafe { libc::stat(p.with_ref(|p| p), &mut stat) }) {
-        0 => Ok(mkstat(&stat)),
+    let stat_ptr = &mut stat;
+    match retry(|| unsafe { libc::stat(p.with_ref(|p| p), stat_ptr) }) {
+        0 => Ok(mkstat(stat_ptr)),
         _ => Err(super::last_error()),
     }
 }
 
 pub fn lstat(p: &CString) -> IoResult<io::FileStat> {
     let mut stat: libc::stat = unsafe { mem::zeroed() };
-    match retry(|| unsafe { libc::lstat(p.with_ref(|p| p), &mut stat) }) {
-        0 => Ok(mkstat(&stat)),
+    let stat_ptr = &mut stat;
+    match retry(|| unsafe { libc::lstat(p.with_ref(|p| p), stat_ptr) }) {
+        0 => Ok(mkstat(stat_ptr)),
         _ => Err(super::last_error()),
     }
 }

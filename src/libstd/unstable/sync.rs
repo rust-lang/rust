@@ -92,14 +92,17 @@ impl<T:Send> Exclusive<T> {
     }
 
     #[inline]
-    pub unsafe fn hold_and_wait(&self, f: |x: &T| -> bool) {
+    pub unsafe fn hold_and_wait<U>(
+                                &self,
+                                f: |x: &T, cookie: U| -> bool,
+                                cookie: U) {
         let rec = self.x.get();
         let l = (*rec).lock.lock();
         if (*rec).failed {
             fail!("Poisoned Exclusive::new - another task failed inside!");
         }
         (*rec).failed = true;
-        let result = f(&(*rec).data);
+        let result = f(&(*rec).data, cookie);
         (*rec).failed = false;
         if result {
             l.wait();

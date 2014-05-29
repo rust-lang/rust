@@ -45,14 +45,16 @@ pub fn expand_deriving_default(cx: &mut ExtCtxt,
     trait_def.expand(cx, mitem, item, push)
 }
 
-fn default_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) -> @Expr {
+fn default_substructure(cx: &mut ExtCtxt,
+                        trait_span: Span,
+                        substr: &Substructure)
+                        -> @Expr {
     let default_ident = vec!(
         cx.ident_of("std"),
         cx.ident_of("default"),
         cx.ident_of("Default"),
         cx.ident_of("default")
     );
-    let default_call = |span| cx.expr_call_global(span, default_ident.clone(), Vec::new());
 
     return match *substr.fields {
         StaticStruct(_, ref summary) => {
@@ -61,14 +63,35 @@ fn default_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructur
                     if fields.is_empty() {
                         cx.expr_ident(trait_span, substr.type_ident)
                     } else {
-                        let exprs = fields.iter().map(|sp| default_call(*sp)).collect();
-                        cx.expr_call_ident(trait_span, substr.type_ident, exprs)
+                        let exprs = {
+                            let default_call = |span| {
+                                cx.expr_call_global(span,
+                                                    default_ident.clone(),
+                                                    Vec::new())
+                            };
+                            fields.iter()
+                                  .map(|sp| default_call(*sp))
+                                  .collect()
+                        };
+                        cx.expr_call_ident(trait_span,
+                                           substr.type_ident,
+                                           exprs)
                     }
                 }
                 Named(ref fields) => {
-                    let default_fields = fields.iter().map(|&(ident, span)| {
-                        cx.field_imm(span, ident, default_call(span))
-                    }).collect();
+                    let default_fields = {
+                        let cx: &ExtCtxt = cx;
+                        let default_ident_ref = &default_ident;
+                        fields.iter().map(|&(ident, span)| {
+                            let default_call = |span| {
+                                cx.expr_call_global(
+                                    span,
+                                    (*default_ident_ref).clone(),
+                                    Vec::new())
+                            };
+                            cx.field_imm(span, ident, default_call(span))
+                        }).collect()
+                    };
                     cx.expr_struct_ident(trait_span, substr.type_ident, default_fields)
                 }
             }

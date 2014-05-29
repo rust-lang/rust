@@ -168,10 +168,16 @@ fn is_board_unfeasible(board: u64, masks: &Vec<Vec<Vec<u64>>>) -> bool {
 fn filter_masks(masks: &mut Vec<Vec<Vec<u64>>>) {
     for i in range(0, masks.len()) {
         for j in range(0, masks.get(i).len()) {
-            *masks.get_mut(i).get_mut(j) =
-                masks.get(i).get(j).iter().map(|&m| m)
-                .filter(|&m| !is_board_unfeasible(m, masks))
-                .collect();
+            let mut result = Vec::new();
+            {
+                let array = masks.get(i).get(j);
+                for &value in array.iter() {
+                    if !is_board_unfeasible(value, masks) {
+                        result.push(value)
+                    }
+                }
+            }
+            *masks.get_mut(i).get_mut(j) = result
         }
     }
 }

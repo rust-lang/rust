@@ -107,7 +107,8 @@ fn helper(input: libc::c_int, messages: Receiver<Req>, _: ()) {
 
     // inserts a timer into an array of timers (sorted by firing time)
     fn insert(t: Box<Inner>, active: &mut Vec<Box<Inner>>) {
-        match active.iter().position(|tm| tm.target > t.target) {
+        let t_target = t.target;
+        match active.iter().position(|tm| tm.target > t_target) {
             Some(pos) => { active.insert(pos, t); }
             None => { active.push(t); }
         }

@@ -127,11 +127,10 @@ impl EventLoop for BasicLoop {
             unsafe {
                 // We block here if we have no messages to process and we may
                 // receive a message at a later date
-                self.messages.hold_and_wait(|messages| {
-                    self.remotes.len() > 0 &&
-                        messages.len() == 0 &&
-                        self.work.len() == 0
-                })
+                self.messages.hold_and_wait(|messages, (remotes, work)| {
+                    remotes.len() > 0 && messages.len() == 0 &&
+                        work.len() == 0
+                }, (&self.remotes, &self.work))
             }
         }
     }
@@ -178,8 +177,9 @@ impl BasicRemote {
 impl RemoteCallback for BasicRemote {
     fn fire(&mut self) {
         unsafe {
+            let id = self.id;
             self.queue.hold_and_signal(|queue| {
-                queue.push(RunRemote(self.id));
+                queue.push(RunRemote(id));
             })
         }
     }
@@ -188,8 +188,9 @@ impl RemoteCallback for BasicRemote {
 impl Drop for BasicRemote {
     fn drop(&mut self) {
         unsafe {
+            let id = self.id;
             self.queue.hold_and_signal(|queue| {
-                queue.push(RemoveRemote(self.id));
+                queue.push(RemoveRemote(id));
             })
         }
     }

@@ -72,7 +72,6 @@ impl<'a> GuaranteeLifetimeContext<'a> {
             mc::cat_copied_upvar(..) |                  // L-Local
             mc::cat_local(..) |                         // L-Local
             mc::cat_arg(..) |                           // L-Local
-            mc::cat_upvar(..) |
             mc::cat_deref(_, _, mc::BorrowedPtr(..)) |  // L-Deref-Borrowed
             mc::cat_deref(_, _, mc::UnsafePtr(..)) => {
                 self.check_scope(self.scope(cmt))
@@ -168,7 +167,6 @@ impl<'a> GuaranteeLifetimeContext<'a> {
             mc::cat_rvalue(temp_scope) => {
                 temp_scope
             }
-            mc::cat_upvar(..) |
             mc::cat_copied_upvar(_) => {
                 ty::ReScope(self.item_scope_id)
             }

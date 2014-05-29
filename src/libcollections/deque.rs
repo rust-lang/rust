@@ -59,8 +59,9 @@ pub mod bench {
         }
 
         // measure
+        let rng_ptr = &mut rng;
         b.iter(|| {
-            let k = rng.gen::<uint>() % n;
+            let k = rng_ptr.gen::<uint>() % n;
             map.insert(k, 1);
             map.remove(&k);
         })
@@ -77,10 +78,11 @@ pub mod bench {
 
         // measure
         let mut i = 1;
+        let i_ptr = &mut i;
         b.iter(|| {
-            map.insert(i, 1);
-            map.remove(&i);
-            i = (i + 2) % n;
+            map.insert(*i_ptr, 1);
+            map.remove(i_ptr);
+            *i_ptr = (*i_ptr + 2) % n;
         })
     }
 
@@ -89,19 +91,21 @@ pub mod bench {
                                                 b: &mut Bencher) {
         // setup
         let mut rng = rand::weak_rng();
-        let mut keys = Vec::from_fn(n, |_| rng.gen::<uint>() % n);
+        let rng_ptr = &mut rng;
+        let mut keys = Vec::from_fn(n, |_| rng_ptr.gen::<uint>() % n);
 
         for k in keys.iter() {
             map.insert(*k, 1);
         }
 
-        rng.shuffle(keys.as_mut_slice());
+        rng_ptr.shuffle(keys.as_mut_slice());
 
         // measure
         let mut i = 0;
+        let i_ptr = &mut i;
         b.iter(|| {
-            map.find(keys.get(i));
-            i = (i + 1) % n;
+            map.find(keys.get(*i_ptr));
+            *i_ptr = (*i_ptr + 1) % n;
         })
     }
 
@@ -115,9 +119,10 @@ pub mod bench {
 
         // measure
         let mut i = 0;
+        let i_ptr = &mut i;
         b.iter(|| {
-            let x = map.find(&i);
-            i = (i + 1) % n;
+            let x = map.find(i_ptr);
+            *i_ptr = (*i_ptr + 1) % n;
             x
         })
      }

@@ -22,9 +22,12 @@ pub type PatIdMap = HashMap<Ident, NodeId>;
 // use the NodeId of their namesake in the first pattern.
 pub fn pat_id_map(dm: &resolve::DefMap, pat: &Pat) -> PatIdMap {
     let mut map = HashMap::new();
-    pat_bindings(dm, pat, |_bm, p_id, _s, n| {
-      map.insert(path_to_ident(n), p_id);
-    });
+    {
+        let map_ptr = &mut map;
+        pat_bindings(dm, pat, |_bm, p_id, _s, n| {
+            map_ptr.insert(path_to_ident(n), p_id);
+        });
+    }
     map
 }
 
@@ -90,15 +93,16 @@ pub fn pat_bindings(dm: &resolve::DefMap,
 /// an ident, e.g. `foo`, or `Foo(foo)` or `foo @ Bar(..)`.
 pub fn pat_contains_bindings(dm: &resolve::DefMap, pat: &Pat) -> bool {
     let mut contains_bindings = false;
+    let contains_bindings_ptr = &mut contains_bindings;
     walk_pat(pat, |p| {
         if pat_is_binding(dm, p) {
-            contains_bindings = true;
+            *contains_bindings_ptr = true;
             false // there's at least one binding, can short circuit now.
         } else {
             true
         }
     });
-    contains_bindings
+    *contains_bindings_ptr
 }
 
 pub fn simple_identifier<'a>(pat: &'a Pat) -> Option<&'a Path> {

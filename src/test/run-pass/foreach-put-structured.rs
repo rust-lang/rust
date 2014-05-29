@@ -19,13 +19,17 @@ fn pairs(it: |(int, int)|) {
 pub fn main() {
     let mut i: int = 10;
     let mut j: int = 0;
-    pairs(|p| {
-        let (_0, _1) = p;
-        println!("{}", _0);
-        println!("{}", _1);
-        assert_eq!(_0 + 10, i);
-        i += 1;
-        j = _1;
-    });
+    {
+        let i_ptr = &mut i;
+        let j_ptr = &mut j;
+        pairs(|p| {
+            let (_0, _1) = p;
+            println!("{}", _0);
+            println!("{}", _1);
+            assert_eq!(_0 + 10, *i_ptr);
+            *i_ptr += 1;
+            *j_ptr = _1;
+        });
+    }
     assert_eq!(j, 45);
 }

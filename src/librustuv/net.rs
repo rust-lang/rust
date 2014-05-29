@@ -560,9 +560,16 @@ impl rtio::RtioUdpSocket for UdpWatcher {
                     result: None,
                 };
                 let handle = self.handle;
-                wait_until_woken_after(&mut cx.task, &loop_, || {
-                    unsafe { uvll::set_data_for_uv_handle(handle, &cx) }
-                });
+                {
+                    let cx_ptr = &mut cx;
+                    wait_until_woken_after(&mut cx_ptr.task, &loop_, || {
+                        unsafe {
+                            uvll::set_data_for_uv_handle(
+                                handle,
+                                cx_ptr as *mut UdpRecvCtx as *UdpRecvCtx)
+                        }
+                    });
+                }
                 match cx.result.take_unwrap() {
                     (n, _) if n < 0 =>
                         Err(uv_error_to_io_error(UvError(n as c_int))),
@@ -635,9 +642,16 @@ impl rtio::RtioUdpSocket for UdpWatcher {
                 let mut cx = UdpSendCtx {
                     result: uvll::ECANCELED, data: data, udp: self as *mut _
                 };
-                wait_until_woken_after(&mut self.blocked_sender, &loop_, || {
-                    req.set_data(&cx);
-                });
+                {
+                    let cx_ptr = &mut cx;
+                    let req_ptr = &mut req;
+                    wait_until_woken_after(&mut self.blocked_sender,
+                                           &loop_,
+                                           || {
+                        req_ptr.set_data(cx_ptr as *mut UdpSendCtx
+                                         as *UdpSendCtx);
+                    });
+                }
 
                 if cx.result != uvll::ECANCELED {
                     return match cx.result {
@@ -819,13 +833,18 @@ pub fn shutdown(handle: *uvll::uv_stream_t, loop_: &Loop) -> Result<(), IoError>
     return match unsafe { uvll::uv_shutdown(req.handle, handle, shutdown_cb) } {
         0 => {
             req.defuse(); // uv callback now owns this request
-            let mut cx = Ctx { slot: None, status: 0 };
+            let mut cx = Ctx {
+                slot: None,
+                status: 0
+            };
 
-            wait_until_woken_after(&mut cx.slot, loop_, || {
-                req.set_data(&cx);
+            let cx_ptr = &mut cx;
+
+            wait_until_woken_after(&mut cx_ptr.slot, loop_, || {
+                req.set_data(cx_ptr as *mut Ctx as *Ctx);
             });
 
-            status_to_io_result(cx.status)
+            status_to_io_result(cx_ptr.status)
         }
         n => Err(uv_error_to_io_error(UvError(n)))
     };

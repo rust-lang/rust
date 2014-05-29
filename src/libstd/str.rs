@@ -741,8 +741,11 @@ pub trait StrAllocating: Str {
     fn escape_default(&self) -> String {
         let me = self.as_slice();
         let mut out = String::with_capacity(me.len());
-        for c in me.chars() {
-            c.escape_default(|c| out.push_char(c));
+        {
+            let outptr = &mut out;
+            for c in me.chars() {
+                c.escape_default(|c| outptr.push_char(c));
+            }
         }
         out
     }
@@ -751,8 +754,11 @@ pub trait StrAllocating: Str {
     fn escape_unicode(&self) -> String {
         let me = self.as_slice();
         let mut out = String::with_capacity(me.len());
-        for c in me.chars() {
-            c.escape_unicode(|c| out.push_char(c));
+        {
+            let outptr = &mut out;
+            for c in me.chars() {
+                c.escape_unicode(|c| outptr.push_char(c));
+            }
         }
         out
     }

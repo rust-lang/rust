@@ -72,9 +72,12 @@ fn run_compiler(args: &[String]) {
     let odir = matches.opt_str("out-dir").map(|o| Path::new(o));
     let ofile = matches.opt_str("o").map(|o| Path::new(o));
 
-    let pretty = matches.opt_default("pretty", "normal").map(|a| {
-        parse_pretty(&sess, a.as_slice())
-    });
+    let pretty = {
+        let sess_ptr = &sess;
+        matches.opt_default("pretty", "normal").map(|a| {
+            parse_pretty(sess_ptr, a.as_slice())
+        })
+    };
     match pretty {
         Some::<PpMode>(ppm) => {
             driver::pretty_print_input(sess, cfg, &input, ppm, ofile);

@@ -19,7 +19,8 @@ fn box_it<'r>(x: ||: 'r) -> closure_box<'r> {
 fn main() {
     let cl_box = {
         let mut i = 3;
-        box_it(|| i += 1) //~ ERROR cannot infer
+        let i_ptr = &mut i; //~ ERROR `i` does not live long enough
+        box_it(|| *i_ptr += 1)
     };
     (cl_box.cl)();
 }

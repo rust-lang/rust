@@ -37,8 +37,11 @@ pub fn suptype_with_fn(fcx: &FnCtxt,
                        ty_b: ty::t,
                        handle_err: |Span, ty::t, ty::t, &ty::type_err|) {
     // n.b.: order of actual, expected is reversed
-    match infer::mk_subty(fcx.infcx(), b_is_expected, infer::Misc(sp),
-                          ty_b, ty_a) {
+    match infer::mk_subty(fcx.infcx(),
+                          b_is_expected,
+                          infer::Misc(sp),
+                          ty_b,
+                          ty_a) {
       result::Ok(()) => { /* ok */ }
       result::Err(ref err) => {
           handle_err(sp, ty_a, ty_b, err);
@@ -47,7 +50,11 @@ pub fn suptype_with_fn(fcx: &FnCtxt,
 }
 
 pub fn eqtype(fcx: &FnCtxt, sp: Span, expected: ty::t, actual: ty::t) {
-    match infer::mk_eqty(fcx.infcx(), false, infer::Misc(sp), actual, expected) {
+    match infer::mk_eqty(fcx.infcx(),
+                         false,
+                         infer::Misc(sp),
+                         actual,
+                         expected) {
         Ok(()) => { /* ok */ }
         Err(ref err) => {
             fcx.report_mismatched_types(sp, expected, actual, err);

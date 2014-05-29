@@ -539,23 +539,39 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr,
                 None => None
               };
 
+              let cx_ptr = &cx;
+              let repr_ptr = &*repr;
               expr::with_field_tys(tcx, ety, Some(e.id), |discr, field_tys| {
-                  let (cs, inlineable) = vec::unzip(field_tys.iter().enumerate()
-                      .map(|(ix, &field_ty)| {
-                      match fs.iter().find(|f| field_ty.ident.name == f.ident.node.name) {
-                          Some(f) => const_expr(cx, (*f).expr, is_local),
+                  let discr_ptr = &discr;
+                  let field_tys_ptr = &field_tys;
+                  let (cs, inlineable) =
+                        vec::unzip(field_tys_ptr.iter()
+                                                .enumerate()
+                                                .map(|(ix, &field_ty)| {
+                      let field_ty_name = field_ty.ident.name.clone();
+                      match fs.iter()
+                              .find(|f| field_ty_name == f.ident.node.name) {
+                          Some(f) => const_expr(*cx_ptr, (*f).expr, is_local),
                           None => {
                               match base_val {
                                 Some((bv, inlineable)) => {
-                                    (adt::const_get_field(cx, &*repr, bv, discr, ix),
+                                    (adt::const_get_field(*cx_ptr,
+                                                          repr_ptr,
+                                                          bv,
+                                                          *discr_ptr,
+                                                          ix),
                                      inlineable)
                                 }
-                                None => cx.sess().span_bug(e.span, "missing struct field")
+                                None => {
+                                    cx_ptr.sess()
+                                          .span_bug(e.span,
+                                                    "missing struct field")
+                                }
                               }
                           }
                       }
                   }));
-                  (adt::trans_const(cx, &*repr, discr, cs.as_slice()),
+                  (adt::trans_const(*cx_ptr, repr_ptr, discr, cs.as_slice()),
                    inlineable.iter().fold(true, |a, &b| a && b))
               })
           }

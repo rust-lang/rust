@@ -317,8 +317,11 @@ pub fn expected_found<C:Combine,T>(
 
 pub fn eq_tys<C:Combine>(this: &C, a: ty::t, b: ty::t) -> ures {
     let suber = this.sub();
+    let suber_ptr = &suber;
     this.infcx().try(|| {
-        suber.tys(a, b).and_then(|_ok| suber.contratys(a, b)).to_ures()
+        suber_ptr.tys(a, b)
+                 .and_then(|_ok| suber_ptr.contratys(a, b))
+                 .to_ures()
     })
 }
 
@@ -328,9 +331,10 @@ pub fn eq_regions<C:Combine>(this: &C, a: ty::Region, b: ty::Region)
             a.repr(this.infcx().tcx),
             b.repr(this.infcx().tcx));
     let sub = this.sub();
+    let sub_ptr = &sub;
     indent(|| {
         this.infcx().try(|| {
-            sub.regions(a, b).and_then(|_r| sub.contraregions(a, b))
+            sub_ptr.regions(a, b).and_then(|_r| sub_ptr.contraregions(a, b))
         }).or_else(|e| {
             // substitute a better error, but use the regions
             // found in the original error

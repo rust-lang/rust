@@ -106,12 +106,13 @@ impl FsRequest {
     }
 
     pub fn read(loop_: &Loop, fd: c_int, buf: &mut [u8], offset: i64)
-        -> Result<int, UvError>
-    {
+        -> Result<int, UvError> {
+        let buf_ptr = buf.as_ptr();
+        let buf_len = buf.len();
         execute(|req, cb| unsafe {
             let uvbuf = uvll::uv_buf_t {
-                base: buf.as_ptr(),
-                len: buf.len() as uvll::uv_buf_len_t,
+                base: buf_ptr,
+                len: buf_len as uvll::uv_buf_len_t,
             };
             uvll::uv_fs_read(loop_.handle, req, fd, &uvbuf, 1, offset, cb)
         }).map(|req| {
@@ -166,12 +167,15 @@ impl FsRequest {
             let mut paths = vec!();
             let path = CString::new(path.with_ref(|p| p), false);
             let parent = Path::new(path);
-            let _ = c_str::from_c_multistring(req.get_ptr() as *libc::c_char,
-                                              Some(req.get_result() as uint),
-                                              |rel| {
-                let p = rel.as_bytes();
-                paths.push(parent.join(p.slice_to(rel.len())));
-            });
+            let _ = {
+                let paths_ref = &mut paths;
+                c_str::from_c_multistring(req.get_ptr() as *libc::c_char,
+                                          Some(req.get_result() as uint),
+                                          |rel| {
+                    let p = rel.as_bytes();
+                    paths_ref.push(parent.join(p.slice_to(rel.len())));
+                })
+            };
             paths
         })
     }
@@ -327,10 +331,21 @@ fn execute(f: |*uvll::uv_fs_t, uvll::uv_fs_cb| -> c_int)
         0 => {
             req.fired = true;
             let mut slot = None;
-            let loop_ = unsafe { uvll::get_loop_from_fs_req(req.req) };
-            wait_until_woken_after(&mut slot, &Loop::wrap(loop_), || {
-                unsafe { uvll::set_data_for_req(req.req, &slot) }
-            });
+            let loop_ = unsafe {
+                uvll::get_loop_from_fs_req(req.req)
+            };
+            {
+                let req_ptr = &mut req;
+                let slot_ptr = &mut slot;
+                wait_until_woken_after(slot_ptr, &Loop::wrap(loop_), || {
+                    unsafe {
+                        uvll::set_data_for_req(
+                            req_ptr.req,
+                            slot_ptr as *mut Option<BlockedTask>
+                                as *Option<BlockedTask>)
+                    }
+                });
+            }
             match req.get_result() {
                 n if n < 0 => Err(UvError(n as i32)),
                 _ => Ok(req),

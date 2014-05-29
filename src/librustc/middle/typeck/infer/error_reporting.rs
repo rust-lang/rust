@@ -1167,14 +1167,15 @@ impl<'a> Rebuilder<'a> {
 
         let last_seg = path.segments.last().unwrap();
         let mut new_lts = Vec::new();
+        let indexes_ptr = &indexes;
         if last_seg.lifetimes.len() == 0 {
             // traverse once to see if there's a need to insert lifetime
             let need_insert = range(0, expected).any(|i| {
-                indexes.contains(&i)
+                indexes_ptr.contains(&i)
             });
             if need_insert {
                 for i in range(0, expected) {
-                    if indexes.contains(&i) {
+                    if indexes_ptr.contains(&i) {
                         new_lts.push(lifetime);
                     } else {
                         new_lts.push(self.life_giver.give_lifetime());
@@ -1183,7 +1184,7 @@ impl<'a> Rebuilder<'a> {
             }
         } else {
             for (i, lt) in last_seg.lifetimes.iter().enumerate() {
-                if indexes.contains(&i) {
+                if indexes_ptr.contains(&i) {
                     new_lts.push(lifetime);
                 } else {
                     new_lts.push(*lt);

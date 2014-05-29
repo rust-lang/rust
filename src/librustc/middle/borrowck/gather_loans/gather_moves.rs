@@ -128,7 +128,7 @@ fn check_and_get_illegal_move_origin(bccx: &BorrowckCtxt,
         mc::cat_deref(_, _, mc::BorrowedPtr(..)) |
         mc::cat_deref(_, _, mc::GcPtr) |
         mc::cat_deref(_, _, mc::UnsafePtr(..)) |
-        mc::cat_upvar(..) | mc::cat_static_item |
+        mc::cat_static_item |
         mc::cat_copied_upvar(mc::CopiedUpvar { onceness: ast::Many, .. }) => {
             Some(cmt.clone())
         }

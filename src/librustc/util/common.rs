@@ -16,21 +16,38 @@ use syntax::visit::Visitor;
 
 use time;
 
-pub fn time<T, U>(do_it: bool, what: &str, u: U, f: |U| -> T) -> T {
-    local_data_key!(depth: uint);
-    if !do_it { return f(u); }
+pub struct Timer {
+    start: f64,
+    what: &'static str,
+    enabled: bool,
+    old_depth: uint,
+}
 
-    let old = depth.get().map(|d| *d).unwrap_or(0);
-    depth.replace(Some(old + 1));
+local_data_key!(depth: uint)
 
-    let start = time::precise_time_s();
-    let rv = f(u);
-    let end = time::precise_time_s();
+impl Timer {
+    pub fn new(enabled: bool, what: &'static str) -> Timer {
+        let old_depth = depth.get().map(|d| *d).unwrap_or(0);
+        depth.replace(Some(old_depth + 1));
 
-    println!("{}time: {:3.3f} s\t{}", "  ".repeat(old), end - start, what);
-    depth.replace(Some(old));
+        Timer {
+            start: time::precise_time_s(),
+            what: what,
+            enabled: enabled,
+            old_depth: old_depth,
+        }
+    }
+}
 
-    rv
+impl Drop for Timer {
+    fn drop(&mut self) {
+        let end = time::precise_time_s();
+        depth.replace(Some(self.old_depth));
+        println!("{}time: {:3.3f} s\t{}",
+                 "  ".repeat(self.old_depth),
+                 end - self.start,
+                 self.what);
+    }
 }
 
 pub fn indent<R>(op: || -> R) -> R {

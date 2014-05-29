@@ -99,16 +99,16 @@ pub fn lookup(name: &str) -> Option<Abi> {
      */
 
     let mut res = None;
-
+    let res_ptr = &mut res;
     each_abi(|abi| {
         if name == abi.data().name {
-            res = Some(abi);
+            *res_ptr = Some(abi);
             false
         } else {
             true
         }
     });
-    res
+    *res_ptr
 }
 
 pub fn all_names() -> Vec<&'static str> {

@@ -503,8 +503,9 @@ mod tests {
     #[bench]
     pub fn bench_copy(b: &mut Bencher) {
         let arena = TypedArena::new();
+        let arena_ptr = &arena;
         b.iter(|| {
-            arena.alloc(Point {
+            arena_ptr.alloc(Point {
                 x: 1,
                 y: 2,
                 z: 3,
@@ -526,8 +527,9 @@ mod tests {
     #[bench]
     pub fn bench_copy_old_arena(b: &mut Bencher) {
         let arena = Arena::new();
+        let arena_ptr = &arena;
         b.iter(|| {
-            arena.alloc(|| {
+            arena_ptr.alloc(|| {
                 Point {
                     x: 1,
                     y: 2,
@@ -545,8 +547,9 @@ mod tests {
     #[test]
     pub fn test_noncopy() {
         let arena = TypedArena::new();
+        let arena_ptr = &arena;
         for _ in range(0, 100000) {
-            arena.alloc(Noncopy {
+            arena_ptr.alloc(Noncopy {
                 string: "hello world".to_string(),
                 array: vec!( 1, 2, 3, 4, 5 ),
             });
@@ -556,8 +559,9 @@ mod tests {
     #[bench]
     pub fn bench_noncopy(b: &mut Bencher) {
         let arena = TypedArena::new();
+        let arena_ptr = &arena;
         b.iter(|| {
-            arena.alloc(Noncopy {
+            arena_ptr.alloc(Noncopy {
                 string: "hello world".to_string(),
                 array: vec!( 1, 2, 3, 4, 5 ),
             })
@@ -577,8 +581,9 @@ mod tests {
     #[bench]
     pub fn bench_noncopy_old_arena(b: &mut Bencher) {
         let arena = Arena::new();
+        let arena_ptr = &arena;
         b.iter(|| {
-            arena.alloc(|| Noncopy {
+            arena_ptr.alloc(|| Noncopy {
                 string: "hello world".to_string(),
                 array: vec!( 1, 2, 3, 4, 5 ),
             })

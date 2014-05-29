@@ -69,10 +69,6 @@ fn hash_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) 
         _ => cx.span_bug(trait_span, "incorrect number of arguments in `deriving(Hash)`")
     };
     let hash_ident = substr.method_ident;
-    let call_hash = |span, thing_expr| {
-        let expr = cx.expr_method_call(span, thing_expr, hash_ident, vec!(state_expr));
-        cx.stmt_expr(expr)
-    };
     let mut stmts = Vec::new();
 
     let fields = match *substr.fields {
@@ -85,6 +81,13 @@ fn hash_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) 
                 None => cx.expr_uint(trait_span, index)
             };
 
+            let call_hash = |span, thing_expr| {
+                let expr = cx.expr_method_call(span,
+                                               thing_expr,
+                                               hash_ident,
+                                               vec!(state_expr));
+                cx.stmt_expr(expr)
+            };
             stmts.push(call_hash(trait_span, discriminant));
 
             fs
@@ -93,6 +96,13 @@ fn hash_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) 
     };
 
     for &FieldInfo { self_, span, .. } in fields.iter() {
+        let call_hash = |span, thing_expr| {
+            let expr = cx.expr_method_call(span,
+                                           thing_expr,
+                                           hash_ident,
+                                           vec!(state_expr));
+            cx.stmt_expr(expr)
+        };
         stmts.push(call_hash(span, self_));
     }
 

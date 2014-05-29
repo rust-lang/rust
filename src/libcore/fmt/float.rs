@@ -351,15 +351,16 @@ pub fn float_to_str_bytes_common<T: Primitive + Float, U>(
             }
 
             let mut filler = Filler { buf: buf, end: &mut end };
+            let filler = &mut filler;
             match sign {
                 SignNeg => {
                     let _ = format_args!(|args| {
-                        fmt::write(&mut filler, args)
+                        fmt::write(&mut *filler, args)
                     }, "{:-}", exp);
                 }
                 SignNone | SignAll => {
                     let _ = format_args!(|args| {
-                        fmt::write(&mut filler, args)
+                        fmt::write(&mut *filler, args)
                     }, "{}", exp);
                 }
             }

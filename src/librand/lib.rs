@@ -872,9 +872,10 @@ mod bench {
     #[bench]
     fn rand_xorshift(b: &mut Bencher) {
         let mut rng = XorShiftRng::new().unwrap();
+        let rng_ptr = &mut rng;
         b.iter(|| {
             for _ in range(0, RAND_BENCH_N) {
-                rng.gen::<uint>();
+                rng_ptr.gen::<uint>();
             }
         });
         b.bytes = size_of::<uint>() as u64 * RAND_BENCH_N;
@@ -883,9 +884,10 @@ mod bench {
     #[bench]
     fn rand_isaac(b: &mut Bencher) {
         let mut rng = IsaacRng::new().unwrap();
+        let rng_ptr = &mut rng;
         b.iter(|| {
             for _ in range(0, RAND_BENCH_N) {
-                rng.gen::<uint>();
+                rng_ptr.gen::<uint>();
             }
         });
         b.bytes = size_of::<uint>() as u64 * RAND_BENCH_N;
@@ -894,9 +896,10 @@ mod bench {
     #[bench]
     fn rand_isaac64(b: &mut Bencher) {
         let mut rng = Isaac64Rng::new().unwrap();
+        let rng_ptr = &mut rng;
         b.iter(|| {
             for _ in range(0, RAND_BENCH_N) {
-                rng.gen::<uint>();
+                rng_ptr.gen::<uint>();
             }
         });
         b.bytes = size_of::<uint>() as u64 * RAND_BENCH_N;
@@ -905,9 +908,10 @@ mod bench {
     #[bench]
     fn rand_std(b: &mut Bencher) {
         let mut rng = StdRng::new().unwrap();
+        let rng_ptr = &mut rng;
         b.iter(|| {
             for _ in range(0, RAND_BENCH_N) {
-                rng.gen::<uint>();
+                rng_ptr.gen::<uint>();
             }
         });
         b.bytes = size_of::<uint>() as u64 * RAND_BENCH_N;
@@ -916,9 +920,11 @@ mod bench {
     #[bench]
     fn rand_shuffle_100(b: &mut Bencher) {
         let mut rng = XorShiftRng::new().unwrap();
-        let x : &mut[uint] = [1,..100];
+        let mut x: &mut[uint] = [1,..100];
+        let rng_ptr = &mut rng;
+        let x_ptr = &mut x;
         b.iter(|| {
-            rng.shuffle(x);
+            rng_ptr.shuffle(*x_ptr);
         })
     }
 }

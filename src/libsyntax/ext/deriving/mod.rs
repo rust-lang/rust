@@ -49,7 +49,8 @@ pub fn expand_meta_deriving(cx: &mut ExtCtxt,
                             _span: Span,
                             mitem: @MetaItem,
                             item: @Item,
-                            push: |@Item|) {
+                            mut push: |@Item|) {
+    let push_ref = &mut push;
     match mitem.node {
         MetaNameValue(_, ref l) => {
             cx.span_err(l.span, "unexpected value in `deriving`");
@@ -68,7 +69,7 @@ pub fn expand_meta_deriving(cx: &mut ExtCtxt,
                     MetaWord(ref tname) => {
                         macro_rules! expand(($func:path) => ($func(cx, titem.span,
                                                                    titem, item,
-                                                                   |i| push(i))));
+                                                                   |i| (*push_ref)(i))));
                         match tname.get() {
                             "Clone" => expand!(clone::expand_deriving_clone),
 

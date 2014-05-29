@@ -397,9 +397,13 @@ pub fn gather_comments_and_literals(span_diagnostic:
         //discard, and look ahead; we're working with internal state
         let TokenAndSpan {tok: tok, sp: sp} = rdr.peek();
         if token::is_lit(&tok) {
+            let literals_ptr = &mut literals;
             with_str_from(&rdr, bstart, |s| {
                 debug!("tok lit: {}", s);
-                literals.push(Literal {lit: s.to_string(), pos: sp.lo});
+                literals_ptr.push(Literal {
+                    lit: s.to_string(),
+                    pos: sp.lo,
+                });
             })
         } else {
             debug!("tok: {}", token::to_str(&tok));

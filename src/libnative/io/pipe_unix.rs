@@ -76,10 +76,11 @@ fn connect(addr: &CString, ty: libc::c_int,
     let inner = Inner::new(try!(unix_socket(ty)));
     let addrp = &addr as *_ as *libc::sockaddr;
     let len = len as libc::socklen_t;
+    let inner_fd = inner.fd;
 
     match timeout {
         None => {
-            match retry(|| unsafe { libc::connect(inner.fd, addrp, len) }) {
+            match retry(|| unsafe { libc::connect(inner_fd, addrp, len) }) {
                 -1 => Err(super::last_error()),
                 _  => Ok(inner)
             }
@@ -149,11 +150,13 @@ impl rtio::RtioPipe for UnixStream {
     fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
         let fd = self.fd();
         let dolock = || self.lock_nonblocking();
+        let buf_ptr = buf.as_mut_ptr();
+        let buf_len = buf.len();
         let doread = |nb| unsafe {
             let flags = if nb {c::MSG_DONTWAIT} else {0};
             libc::recv(fd,
-                       buf.as_mut_ptr() as *mut libc::c_void,
-                       buf.len() as libc::size_t,
+                       buf_ptr as *mut libc::c_void,
+                       buf_len as libc::size_t,
                        flags) as libc::c_int
         };
         net::read(fd, self.read_deadline, dolock, doread)
@@ -248,10 +251,11 @@ impl UnixAcceptor {
         let storagep = &mut storage as *mut libc::sockaddr_storage;
         let size = mem::size_of::<libc::sockaddr_storage>();
         let mut size = size as libc::socklen_t;
+        let size_ptr = &mut size;
         match retry(|| unsafe {
             libc::accept(self.fd(),
                          storagep as *mut libc::sockaddr,
-                         &mut size as *mut libc::socklen_t) as libc::c_int
+                         size_ptr as *mut libc::socklen_t) as libc::c_int
         }) {
             -1 => Err(super::last_error()),
             fd => Ok(UnixStream::new(Arc::new(Inner::new(fd))))

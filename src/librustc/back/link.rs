@@ -23,7 +23,7 @@ use metadata::{encoder, cstore, filesearch, csearch, loader};
 use middle::trans::context::CrateContext;
 use middle::trans::common::gensym_name;
 use middle::ty;
-use util::common::time;
+use util::common::Timer;
 use util::ppaux;
 use util::sha2::{Digest, Sha256};
 
@@ -101,7 +101,7 @@ pub mod write {
     use lib::llvm::llvm;
     use lib::llvm::{ModuleRef, TargetMachineRef, PassManagerRef};
     use lib;
-    use util::common::time;
+    use util::common::Timer;
     use syntax::abi;
 
     use std::c_str::ToCStr;
@@ -230,10 +230,16 @@ pub mod write {
             }
 
             // Finally, run the actual optimization passes
-            time(sess.time_passes(), "llvm function passes", (), |()|
-                 llvm::LLVMRustRunFunctionPassManager(fpm, llmod));
-            time(sess.time_passes(), "llvm module passes", (), |()|
-                 llvm::LLVMRunPassManager(mpm, llmod));
+            {
+                let _timer = Timer::new(sess.time_passes(),
+                                        "LLVM function passes");
+                llvm::LLVMRustRunFunctionPassManager(fpm, llmod);
+            }
+            {
+                let _timer = Timer::new(sess.time_passes(),
+                                        "LLVM module passes");
+                llvm::LLVMRunPassManager(mpm, llmod);
+            }
 
             // Deallocate managers that we're now done with
             llvm::LLVMDisposePassManager(fpm);
@@ -251,8 +257,11 @@ pub mod write {
             }
 
             if sess.lto() {
-                time(sess.time_passes(), "all lto passes", (), |()|
-                     lto::run(sess, llmod, tm, trans.reachable.as_slice()));
+                {
+                    let _timer = Timer::new(sess.time_passes(),
+                                            "all LTO passes");
+                    lto::run(sess, llmod, tm, trans.reachable.as_slice());
+                }
 
                 if sess.opts.cg.save_temps {
                     output.with_extension("lto.bc").with_c_str(|buf| {
@@ -324,7 +333,9 @@ pub mod write {
                 }
             }
 
-            time(sess.time_passes(), "codegen passes", (), |()| {
+            {
+                let _timer = Timer::new(sess.time_passes(),
+                                        "code generation passes");
                 match object_file {
                     Some(ref path) => {
                         with_codegen(tm, llmod, trans.no_builtins, |cpm| {
@@ -344,7 +355,7 @@ pub mod write {
                                         lib::llvm::ObjectFile);
                     })
                 }
-            });
+            }
 
             llvm::LLVMRustDisposeTargetMachine(tm);
             llvm::LLVMDisposeModule(trans.metadata_module);
@@ -400,10 +411,12 @@ pub mod write {
         let mut llvm_c_strs = Vec::new();
         let mut llvm_args = Vec::new();
         {
+            let llvm_args_ptr = &mut llvm_args;
+            let llvm_c_strs_ptr = &mut llvm_c_strs;
             let add = |arg: &str| {
                 let s = arg.to_c_str();
-                llvm_args.push(s.with_ref(|p| p));
-                llvm_c_strs.push(s);
+                llvm_args_ptr.push(s.with_ref(|p| p));
+                llvm_c_strs_ptr.push(s);
             };
             add("rustc"); // fake program name
             if vectorize_loop { add("-vectorize-loops"); }
@@ -416,6 +429,8 @@ pub mod write {
             }
         }
 
+        let llvm_args_len = llvm_args.len();
+        let llvm_args_ptr = llvm_args.as_ptr();
         INIT.doit(|| {
             llvm::LLVMInitializePasses();
 
@@ -441,8 +456,8 @@ pub mod write {
             llvm::LLVMInitializeMipsAsmPrinter();
             llvm::LLVMInitializeMipsAsmParser();
 
-            llvm::LLVMRustSetLLVMOptions(llvm_args.len() as c_int,
-                                         llvm_args.as_ptr());
+            llvm::LLVMRustSetLLVMOptions(llvm_args_len as c_int,
+                                         llvm_args_ptr);
         });
     }
 
@@ -638,7 +653,10 @@ pub fn sanitize(s: &str) -> String {
 
             _ => {
                 let mut tstr = String::new();
-                char::escape_unicode(c, |c| tstr.push_char(c));
+                {
+                    let tstr_ptr = &mut tstr;
+                    char::escape_unicode(c, |c| tstr_ptr.push_char(c));
+                }
                 result.push_char('$');
                 result.push_str(tstr.as_slice().slice_from(1));
             }
@@ -965,8 +983,9 @@ fn link_rlib<'a>(sess: &'a Session,
             // into the archive.
             let bc = obj_filename.with_extension("bc");
             let bc_deflated = obj_filename.with_extension("bc.deflate");
+            let bc_deflated_ptr = &bc_deflated;
             match fs::File::open(&bc).read_to_end().and_then(|data| {
-                fs::File::create(&bc_deflated)
+                fs::File::create(bc_deflated_ptr)
                     .write(match flate::deflate_bytes(data.as_slice()) {
                         Some(compressed) => compressed,
                         None => sess.fatal("failed to compress bytecode")
@@ -980,8 +999,8 @@ fn link_rlib<'a>(sess: &'a Session,
                     sess.abort_if_errors()
                 }
             }
-            a.add_file(&bc_deflated, false);
-            remove(sess, &bc_deflated);
+            a.add_file(bc_deflated_ptr, false);
+            remove(sess, bc_deflated_ptr);
             if !sess.opts.cg.save_temps &&
                !sess.opts.output_types.contains(&OutputTypeBitcode) {
                 remove(sess, &bc);
@@ -1078,7 +1097,10 @@ fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
 
     // Invoke the system linker
     debug!("{}", &cmd);
-    let prog = time(sess.time_passes(), "running linker", (), |()| cmd.output());
+    let prog = {
+        let _timer = Timer::new(sess.time_passes(), "running linker");
+        cmd.output()
+    };
     match prog {
         Ok(prog) => {
             if !prog.status.success() {
@@ -1447,27 +1469,25 @@ fn add_upstream_rust_crates(cmd: &mut Command, sess: &Session,
         // against the archive.
         if sess.lto() {
             let name = sess.cstore.get_crate_data(cnum).name.clone();
-            time(sess.time_passes(),
-                 format!("altering {}.rlib", name).as_slice(),
-                 (), |()| {
-                let dst = tmpdir.join(cratepath.filename().unwrap());
-                match fs::copy(&cratepath, &dst) {
-                    Ok(..) => {}
-                    Err(e) => {
-                        sess.err(format!("failed to copy {} to {}: {}",
-                                         cratepath.display(),
-                                         dst.display(),
-                                         e).as_slice());
-                        sess.abort_if_errors();
-                    }
+            let _timer = Timer::new(sess.time_passes(),
+                                    "altering external rlib crate");
+            let dst = tmpdir.join(cratepath.filename().unwrap());
+            match fs::copy(&cratepath, &dst) {
+                Ok(..) => {}
+                Err(e) => {
+                    sess.err(format!("failed to copy {} to {}: {}",
+                                     cratepath.display(),
+                                     dst.display(),
+                                     e).as_slice());
+                    sess.abort_if_errors();
                 }
-                let mut archive = Archive::open(sess, dst.clone());
-                archive.remove_file(format!("{}.o", name).as_slice());
-                let files = archive.files();
-                if files.iter().any(|s| s.as_slice().ends_with(".o")) {
-                    cmd.arg(dst);
-                }
-            });
+            }
+            let mut archive = Archive::open(sess, dst.clone());
+            archive.remove_file(format!("{}.o", name).as_slice());
+            let files = archive.files();
+            if files.iter().any(|s| s.as_slice().ends_with(".o")) {
+                cmd.arg(dst);
+            }
         } else {
             cmd.arg(cratepath);
         }

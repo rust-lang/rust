@@ -11,7 +11,7 @@
 #![macro_escape]
 
 macro_rules! unpack_datum(
-    ($bcx: ident, $inp: expr) => (
+    ($bcx: expr, $inp: expr) => (
         {
             let db = $inp;
             $bcx = db.bcx;
@@ -21,7 +21,7 @@ macro_rules! unpack_datum(
 )
 
 macro_rules! unpack_result(
-    ($bcx: ident, $inp: expr) => (
+    ($bcx: expr, $inp: expr) => (
         {
             let db = $inp;
             $bcx = db.bcx;

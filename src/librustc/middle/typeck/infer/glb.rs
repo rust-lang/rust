@@ -150,6 +150,7 @@ impl<'f> Combine for Glb<'f> {
         // Generalize the regions appearing in fn_ty0 if possible
         let new_vars =
             self.get_ref().infcx.region_vars.vars_created_since_snapshot(snapshot);
+        let sig0_binder_id = sig0.binder_id;
         let sig1 =
             fold_regions_in_sig(
                 self.get_ref().infcx.tcx,
@@ -158,7 +159,7 @@ impl<'f> Combine for Glb<'f> {
                 generalize_region(self,
                                   snapshot,
                                   new_vars.as_slice(),
-                                  sig0.binder_id,
+                                  sig0_binder_id,
                                   &a_map,
                                   a_vars.as_slice(),
                                   b_vars.as_slice(),

@@ -62,14 +62,14 @@ fn rand_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) 
         cx.ident_of("Rand"),
         cx.ident_of("rand")
     );
-    let rand_call = |cx: &mut ExtCtxt, span| {
-        cx.expr_call_global(span,
-                            rand_ident.clone(),
-                            vec!( *rng.get(0) ))
-    };
 
     return match *substr.fields {
         StaticStruct(_, ref summary) => {
+            let rand_call = |cx: &mut ExtCtxt, span| {
+                cx.expr_call_global(span,
+                                    rand_ident.clone(),
+                                    vec!( *rng.get(0) ))
+            };
             rand_thing(cx, trait_span, substr.type_ident, summary, rand_call)
         }
         StaticEnum(_, ref variants) => {
@@ -113,6 +113,13 @@ fn rand_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) 
                 let i_expr = cx.expr_uint(v_span, i);
                 let pat = cx.pat_lit(v_span, i_expr);
 
+                let rand_ident_ptr = &rand_ident;
+                let rng_ptr = &rng;
+                let rand_call = |cx: &mut ExtCtxt, span| {
+                    cx.expr_call_global(span,
+                                        (*rand_ident_ptr).clone(),
+                                        vec!( *(*rng_ptr).get(0) ))
+                };
                 let thing = rand_thing(cx, v_span, ident, summary, |cx, sp| rand_call(cx, sp));
                 cx.arm(v_span, vec!( pat ), thing)
             }).collect::<Vec<ast::Arm> >();

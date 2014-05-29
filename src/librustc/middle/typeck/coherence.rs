@@ -100,22 +100,23 @@ fn type_is_defined_in_local_crate(tcx: &ty::ctxt, original_type: t) -> bool {
      */
 
     let mut found_nominal = false;
+    let found_nominal_ptr = &mut found_nominal;
     ty::walk_ty(original_type, |t| {
         match get(t).sty {
             ty_enum(def_id, _) |
             ty_struct(def_id, _) => {
                 if def_id.krate == ast::LOCAL_CRATE {
-                    found_nominal = true;
+                    *found_nominal_ptr = true;
                 }
             }
             ty_trait(box ty::TyTrait { def_id, ref store, .. }) => {
                 if def_id.krate == ast::LOCAL_CRATE {
-                    found_nominal = true;
+                    *found_nominal_ptr = true;
                 }
                 if *store == ty::UniqTraitStore {
                     match tcx.lang_items.owned_box() {
                         Some(did) if did.krate == ast::LOCAL_CRATE => {
-                            found_nominal = true;
+                            *found_nominal_ptr = true;
                         }
                         _ => {}
                     }
@@ -124,7 +125,7 @@ fn type_is_defined_in_local_crate(tcx: &ty::ctxt, original_type: t) -> bool {
             ty_uniq(..) => {
                 match tcx.lang_items.owned_box() {
                     Some(did) if did.krate == ast::LOCAL_CRATE => {
-                        found_nominal = true;
+                        *found_nominal_ptr = true;
                     }
                     _ => {}
                 }
@@ -133,7 +134,7 @@ fn type_is_defined_in_local_crate(tcx: &ty::ctxt, original_type: t) -> bool {
             _ => { }
         }
     });
-    return found_nominal;
+    return *found_nominal_ptr;
 }
 
 // Returns the def ID of the base type, if there is one.
@@ -451,8 +452,9 @@ impl<'a> CoherenceChecker<'a> {
         })
     }
 
-    fn iter_impls_of_trait(&self, trait_def_id: DefId, f: |DefId|) {
-        self.iter_impls_of_trait_local(trait_def_id, |x| f(x));
+    fn iter_impls_of_trait(&self, trait_def_id: DefId, mut f: |DefId|) {
+        let f_ptr = &mut f;
+        self.iter_impls_of_trait_local(trait_def_id, |x| (*f_ptr)(x));
 
         if trait_def_id.krate == LOCAL_CRATE {
             return;
@@ -462,7 +464,7 @@ impl<'a> CoherenceChecker<'a> {
         csearch::each_implementation_for_trait(crate_store, trait_def_id, |impl_def_id| {
             // Is this actually necessary?
             let _ = lookup_item_type(self.crate_context.tcx, impl_def_id);
-            f(impl_def_id);
+            (*f_ptr)(impl_def_id);
         });
     }
 
@@ -657,12 +659,13 @@ impl<'a> CoherenceChecker<'a> {
     // info.
     fn add_external_crates(&self) {
         let mut impls_seen = HashSet::new();
+        let impls_seen_ptr = &mut impls_seen;
 
         let crate_store = &self.crate_context.tcx.sess.cstore;
         crate_store.iter_crate_data(|crate_number, _crate_metadata| {
             each_impl(crate_store, crate_number, |def_id| {
                 assert_eq!(crate_number, def_id.krate);
-                self.add_external_impl(&mut impls_seen, def_id)
+                self.add_external_impl(impls_seen_ptr, def_id)
             })
         })
     }

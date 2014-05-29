@@ -118,11 +118,13 @@ fn make_sequence_processor(sz: uint,
       line = from_parent.recv();
       if line == Vec::new() { break; }
 
-       carry = windows_with_carry(carry.append(line.as_slice()).as_slice(),
-                                  sz,
-                                  |window| {
-         update_freq(&mut freqs, window);
-         total += 1u;
+      let freqs_ptr = &mut freqs;
+      let total_ptr = &mut total;
+      carry = windows_with_carry(carry.append(line.as_slice()).as_slice(),
+                                 sz,
+                                 |window| {
+         update_freq(freqs_ptr, window);
+         *total_ptr += 1u;
       });
    }
 
@@ -157,21 +159,24 @@ fn main() {
     let sizes = vec!(1u,2,3,4,6,12,18);
     let mut streams = Vec::from_fn(sizes.len(), |_| Some(channel::<String>()));
     let mut from_child = Vec::new();
-    let to_child  = sizes.iter().zip(streams.mut_iter()).map(|(sz, stream_ref)| {
-        let sz = *sz;
-        let stream = replace(stream_ref, None);
-        let (to_parent_, from_child_) = stream.unwrap();
+    let to_child = {
+        let from_child_ptr = &mut from_child;
+        sizes.iter().zip(streams.mut_iter()).map(|(sz, stream_ref)| {
+            let sz = *sz;
+            let stream = replace(stream_ref, None);
+            let (to_parent_, from_child_) = stream.unwrap();
 
-        from_child.push(from_child_);
+            from_child_ptr.push(from_child_);
 
-        let (to_child, from_parent) = channel();
+            let (to_child, from_parent) = channel();
 
-        spawn(proc() {
-            make_sequence_processor(sz, &from_parent, &to_parent_);
-        });
+            spawn(proc() {
+                make_sequence_processor(sz, &from_parent, &to_parent_);
+            });
 
-        to_child
-    }).collect::<Vec<Sender<Vec<u8> >> >();
+            to_child
+        }).collect::<Vec<Sender<Vec<u8> >> >()
+    };
 
 
    // latch stores true after we've started

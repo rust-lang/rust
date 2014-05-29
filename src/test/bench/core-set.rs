@@ -46,35 +46,38 @@ impl Results {
                      rand_cap: uint,
                      f: || -> T) { {
             let mut set = f();
+            let set_ptr = &mut set;
             timed(&mut self.sequential_ints, || {
                 for i in range(0u, num_keys) {
-                    set.insert(i);
+                    set_ptr.insert(i);
                 }
 
                 for i in range(0u, num_keys) {
-                    assert!(set.contains(&i));
+                    assert!(set_ptr.contains(&i));
                 }
             })
         }
 
         {
             let mut set = f();
+            let set_ptr = &mut set;
             timed(&mut self.random_ints, || {
                 for _ in range(0, num_keys) {
-                    set.insert(rng.gen::<uint>() % rand_cap);
+                    set_ptr.insert(rng.gen::<uint>() % rand_cap);
                 }
             })
         }
 
         {
             let mut set = f();
+            let set_ptr = &mut set;
             for i in range(0u, num_keys) {
-                set.insert(i);
+                set_ptr.insert(i);
             }
 
             timed(&mut self.delete_ints, || {
                 for i in range(0u, num_keys) {
-                    assert!(set.remove(&i));
+                    assert!(set_ptr.remove(&i));
                 }
             })
         }
@@ -88,35 +91,38 @@ impl Results {
                      f: || -> T) {
         {
             let mut set = f();
+            let set_ptr = &mut set;
             timed(&mut self.sequential_strings, || {
                 for i in range(0u, num_keys) {
-                    set.insert(i.to_str().to_string());
+                    set_ptr.insert(i.to_str().to_string());
                 }
 
                 for i in range(0u, num_keys) {
-                    assert!(set.contains(&i.to_str().to_string()));
+                    assert!(set_ptr.contains(&i.to_str().to_string()));
                 }
             })
         }
 
         {
             let mut set = f();
+            let set_ptr = &mut set;
             timed(&mut self.random_strings, || {
                 for _ in range(0, num_keys) {
                     let s = rng.gen::<uint>().to_str().to_string();
-                    set.insert(s);
+                    set_ptr.insert(s);
                 }
             })
         }
 
         {
             let mut set = f();
+            let set_ptr = &mut set;
             for i in range(0u, num_keys) {
-                set.insert(i.to_str().to_string());
+                set_ptr.insert(i.to_str().to_string());
             }
             timed(&mut self.delete_strings, || {
                 for i in range(0u, num_keys) {
-                    assert!(set.remove(&i.to_str().to_string()));
+                    assert!(set_ptr.remove(&i.to_str().to_string()));
                 }
             })
         }

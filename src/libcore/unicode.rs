@@ -2126,7 +2126,7 @@ pub mod normalization {
 
     pub fn decompose_compatible(c: char, i: |char|) { d(c, i, true); }
 
-    fn d(c: char, i: |char|, k: bool) {
+    fn d(c: char, mut i: |char|, k: bool) {
         use iter::Iterator;
 
         // 7-bit ASCII never decomposes
@@ -2142,7 +2142,8 @@ pub mod normalization {
         match bsearch_table(c, canonical_table) {
             Some(canon) => {
                 for x in canon.iter() {
-                    d(*x, |b| i(b), k);
+                    let i = &mut i;
+                    d(*x, |b| (*i)(b), k);
                 }
                 return;
             }
@@ -2156,7 +2157,8 @@ pub mod normalization {
         match bsearch_table(c, compatibility_table) {
             Some(compat) => {
                 for x in compat.iter() {
-                    d(*x, |b| i(b), k);
+                    let f = &mut i;
+                    d(*x, |b| (*f)(b), k);
                 }
                 return;
             }

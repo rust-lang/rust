@@ -23,17 +23,19 @@ use util::ppaux;
 pub fn replace_late_bound_regions_in_fn_sig(
         tcx: &ty::ctxt,
         fn_sig: &ty::FnSig,
-        mapf: |ty::BoundRegion| -> ty::Region)
+        mut mapf: |ty::BoundRegion| -> ty::Region)
         -> (HashMap<ty::BoundRegion,ty::Region>, ty::FnSig) {
     debug!("replace_late_bound_regions_in_fn_sig({})", fn_sig.repr(tcx));
 
     let mut map = HashMap::new();
     let fn_sig = {
+        let mapf_ptr = &mut mapf;
+        let map_ptr = &mut map;
         let mut f = ty_fold::RegionFolder::regions(tcx, |r| {
             debug!("region r={}", r.to_str());
             match r {
                 ty::ReLateBound(s, br) if s == fn_sig.binder_id => {
-                    *map.find_or_insert_with(br, |_| mapf(br))
+                    *map_ptr.find_or_insert_with(br, |_| (*mapf_ptr)(br))
                 }
                 _ => r
             }

@@ -813,7 +813,8 @@ impl<K: TotalOrd, V> TreeNode<K, V> {
 
 // Remove left horizontal link by rotating right
 fn skew<K: TotalOrd, V>(node: &mut Box<TreeNode<K, V>>) {
-    if node.left.as_ref().map_or(false, |x| x.level == node.level) {
+    let node_level = node.level;
+    if node.left.as_ref().map_or(false, |x| x.level == node_level) {
         let mut save = node.left.take_unwrap();
         swap(&mut node.left, &mut save.right); // save.right now None
         swap(node, &mut save);
@@ -824,8 +825,9 @@ fn skew<K: TotalOrd, V>(node: &mut Box<TreeNode<K, V>>) {
 // Remove dual horizontal link by rotating left and increasing level of
 // the parent
 fn split<K: TotalOrd, V>(node: &mut Box<TreeNode<K, V>>) {
+    let node_level = node.level;
     if node.right.as_ref().map_or(false,
-      |x| x.right.as_ref().map_or(false, |y| y.level == node.level)) {
+      |x| x.right.as_ref().map_or(false, |y| y.level == node_level)) {
         let mut save = node.right.take_unwrap();
         swap(&mut node.right, &mut save.left); // save.left now None
         save.level += 1;
@@ -1134,7 +1136,7 @@ mod test_treemap {
     #[test]
     fn test_rand_int() {
         let mut map: TreeMap<int,int> = TreeMap::new();
-        let mut ctrl = vec![];
+        let mut ctrl: Vec<(int,int)> = vec![];
 
         check_equal(ctrl.as_slice(), &map);
         assert!(map.find(&5).is_none());
@@ -1143,8 +1145,8 @@ mod test_treemap {
 
         for _ in range(0, 3) {
             for _ in range(0, 90) {
-                let k = rng.gen();
-                let v = rng.gen();
+                let k: int = rng.gen();
+                let v: int = rng.gen();
                 if !ctrl.iter().any(|x| x == &(k, v)) {
                     assert!(map.insert(k, v));
                     ctrl.push((k, v));
@@ -1642,12 +1644,13 @@ mod test_set {
         for y in b.iter() { assert!(set_b.insert(*y)) }
 
         let mut i = 0;
+        let i_ptr = &mut i;
         f(&set_a, &set_b, |x| {
-            assert_eq!(*x, expected[i]);
-            i += 1;
+            assert_eq!(*x, expected[*i_ptr]);
+            *i_ptr += 1;
             true
         });
-        assert_eq!(i, expected.len());
+        assert_eq!(*i_ptr, expected.len());
     }
 
     #[test]

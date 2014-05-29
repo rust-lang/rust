@@ -91,7 +91,11 @@ pub fn get_host_addresses(host: &str) -> IoResult<Vec<IpAddr>> {
 ///      consumption just yet.
 fn lookup(hostname: Option<&str>, servname: Option<&str>, hint: Option<Hint>)
           -> IoResult<Vec<Info>> {
-    LocalIo::maybe_raise(|io| io.get_host_addresses(hostname, servname, hint))
+    LocalIo::maybe_raise(|io| {
+        unsafe {
+            io.get_host_addresses(::mem::transmute(hostname), servname, hint)
+        }
+    })
 }
 
 // Ignored on android since we cannot give tcp/ip

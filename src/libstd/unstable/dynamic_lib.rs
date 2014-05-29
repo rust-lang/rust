@@ -60,8 +60,9 @@ impl DynamicLibrary {
                         -> Result<DynamicLibrary, String> {
         unsafe {
             let mut filename = filename;
+            let filename_ptr = &mut filename;
             let maybe_library = dl::check_for_errors_in(|| {
-                match filename.take() {
+                match (*filename_ptr).take() {
                     Some(name) => dl::open_external(name),
                     None => dl::open_internal()
                 }

@@ -271,14 +271,23 @@ fn main() {
     };
     let input = Arc::new(input);
 
-    let nb_freqs: Vec<(uint, Future<Table>)> = range(1u, 3).map(|i| {
-        let input = input.clone();
-        (i, Future::spawn(proc() generate_frequencies(input.as_slice(), i)))
-    }).collect();
-    let occ_freqs: Vec<Future<Table>> = OCCURRENCES.iter().map(|&occ| {
-        let input = input.clone();
-        Future::spawn(proc() generate_frequencies(input.as_slice(), occ.len()))
-    }).collect();
+    let nb_freqs: Vec<(uint, Future<Table>)>;
+    let occ_freqs: Vec<Future<Table>>;
+    {
+        let input_ptr = &input;
+        nb_freqs = range(1u, 3).map(|i| {
+            let input = (*input_ptr).clone();
+            (i, Future::spawn(proc() {
+                generate_frequencies(input.as_slice(), i)
+            }))
+        }).collect();
+        occ_freqs = OCCURRENCES.iter().map(|&occ| {
+            let input = (*input_ptr).clone();
+            Future::spawn(proc() {
+                generate_frequencies(input.as_slice(), occ.len())
+            })
+        }).collect();
+    }
 
     for (i, freq) in nb_freqs.move_iter() {
         print_frequencies(&freq.unwrap(), i);

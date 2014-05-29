@@ -426,8 +426,11 @@ impl<'a> LabelText<'a> {
     }
     fn escape_str(s: &str) -> String {
         let mut out = String::with_capacity(s.len());
-        for c in s.chars() {
-            LabelText::escape_char(c, |c| out.push_char(c));
+        {
+            let out_ref = &mut out;
+            for c in s.chars() {
+                LabelText::escape_char(c, |c| out_ref.push_char(c));
+            }
         }
         out
     }

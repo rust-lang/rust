@@ -21,11 +21,12 @@ impl X {
 
 fn main() {
     let mut x = X(Right(main));
-    (&mut x).with(
-        |opt| { //~ ERROR cannot borrow `x` as mutable more than once at a time
+    let x_ptr = &mut x;
+    x_ptr.with(
+        |opt| { //~ ERROR closure requires unique access
             match opt {
                 &Right(ref f) => {
-                    x = X(Left((0,0)));
+                    *x_ptr = X(Left((0,0)));    //~ ERROR cannot move `x_ptr`
                     (*f)()
                 },
                 _ => fail!()

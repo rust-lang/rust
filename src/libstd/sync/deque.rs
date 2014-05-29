@@ -174,9 +174,11 @@ impl<T: Send> BufferPool<T> {
     fn free(&self, buf: Box<Buffer<T>>) {
         unsafe {
             let mut buf = Some(buf);
+            let buf_ptr = &mut buf;
             self.pool.with(|pool| {
-                let buf = buf.take_unwrap();
-                match pool.iter().position(|v| v.size() > buf.size()) {
+                let buf = buf_ptr.take_unwrap();
+                let buf_size = buf.size();
+                match pool.iter().position(|v| v.size() > buf_size) {
                     Some(i) => pool.insert(i, buf),
                     None => pool.push(buf),
                 }
@@ -531,9 +533,10 @@ mod tests {
     #[test]
     fn many_stampede() {
         static AMT: uint = 4;
-        let pool = BufferPool::<Box<int>>::new();
+        let mut pool = BufferPool::<Box<int>>::new();
+        let pool_ptr = &mut pool;
         let threads = range(0, AMT).map(|_| {
-            let (w, s) = pool.deque();
+            let (w, s) = pool_ptr.deque();
             Thread::start(proc() {
                 stampede(w, s, 4, 10000);
             })

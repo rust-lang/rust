@@ -627,32 +627,38 @@ fn parse_debugger_commands(file_path: &Path, debugger_prefix: &str)
     let mut check_lines = vec!();
     let mut counter = 1;
     let mut reader = BufferedReader::new(File::open(file_path).unwrap());
-    for line in reader.lines() {
-        match line {
-            Ok(line) => {
-                if line.as_slice().contains("#break") {
-                    breakpoint_lines.push(counter);
+
+    {
+        let breakpoint_lines_ptr = &mut breakpoint_lines;
+        let commands_ptr = &mut commands;
+        let check_lines_ptr = &mut check_lines;
+        for line in reader.lines() {
+            match line {
+                Ok(line) => {
+                    if line.as_slice().contains("#break") {
+                        breakpoint_lines_ptr.push(counter);
+                    }
+
+                    header::parse_name_value_directive(
+                            line.as_slice(),
+                            command_directive.to_string()).map(|cmd| {
+                        commands_ptr.push(cmd)
+                    });
+
+                    header::parse_name_value_directive(
+                            line.as_slice(),
+                            check_directive.to_string()).map(|cmd| {
+                        check_lines_ptr.push(cmd)
+                    });
                 }
-
-                header::parse_name_value_directive(
-                        line.as_slice(),
-                        command_directive.to_string()).map(|cmd| {
-                    commands.push(cmd)
-                });
-
-                header::parse_name_value_directive(
-                        line.as_slice(),
-                        check_directive.to_string()).map(|cmd| {
-                    check_lines.push(cmd)
-                });
+                Err(e) => {
+                    fatal(format_strbuf!("Error while parsing debugger commands: \
+                                          {}",
+                                         e))
+                }
             }
-            Err(e) => {
-                fatal(format_strbuf!("Error while parsing debugger commands: \
-                                      {}",
-                                     e))
-            }
+            counter += 1;
         }
-        counter += 1;
     }
 
     DebuggerCommands {
