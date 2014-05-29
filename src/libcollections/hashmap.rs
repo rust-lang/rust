@@ -2013,8 +2013,8 @@ mod test_map {
 
         let map_str = format!("{}", map);
 
-        assert!(map_str == "{1: 2, 3: 4}".to_owned() || map_str == "{3: 4, 1: 2}".to_owned());
-        assert_eq!(format!("{}", empty), "{}".to_owned());
+        assert!(map_str == "{1: 2, 3: 4}".to_string() || map_str == "{3: 4, 1: 2}".to_string());
+        assert_eq!(format!("{}", empty), "{}".to_string());
     }
 
     #[test]
