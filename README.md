@@ -1,5 +1,7 @@
 # The Rust Programming Language
 
+[![Build Status](https://travis-ci.org/mozilla/rust.svg?branch=master)](https://travis-ci.org/mozilla/rust)
+
 This is a compiler for Rust, including standard libraries, tools and
 documentation.
 
