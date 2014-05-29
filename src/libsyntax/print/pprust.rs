@@ -1721,7 +1721,7 @@ impl<'a> State<'a> {
                 }
                 try!(self.pclose());
             }
-            ast::PatUniq(inner) => {
+            ast::PatBox(inner) => {
                 try!(word(&mut self.s, "box "));
                 try!(self.print_pat(inner));
             }
