@@ -288,7 +288,7 @@ pub enum SubstructureFields<'a> {
 
     /**
     non-matching variants of the enum, [(variant index, ast::Variant,
-    [field span, field ident, fields])] (i.e. all fields for self are in the
+    [field span, field ident, fields])] \(i.e. all fields for self are in the
     first tuple, for other1 are in the second tuple, etc.)
     */
     EnumNonMatching(&'a [(uint, P<ast::Variant>, Vec<(Span, Option<Ident>, @Expr)> )]),
