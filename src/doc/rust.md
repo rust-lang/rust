@@ -1309,7 +1309,7 @@ let c = [Cookie, Cookie, Cookie, Cookie];
 ~~~~
 
 The precise memory layout of a structure is not specified. One can specify a
-particular layout using the [`repr` attribute](
+particular layout using the [`repr` attribute](#ffi-attributes).
 
 By using the `struct_inherit` feature gate, structures may use single inheritance. A Structure may only
 inherit from a single other structure, called the _super-struct_. The inheriting structure (sub-struct)
