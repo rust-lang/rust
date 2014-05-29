@@ -14,15 +14,14 @@ use middle::lang_items::{FailFnLangItem, FailBoundsCheckFnLangItem};
 use middle::trans::base::*;
 use middle::trans::build::*;
 use middle::trans::callee;
+use middle::trans::cleanup::CleanupMethods;
+use middle::trans::cleanup;
 use middle::trans::common::*;
 use middle::trans::debuginfo;
-use middle::trans::cleanup;
-use middle::trans::cleanup::CleanupMethods;
 use middle::trans::expr;
+use middle::trans::type_of;
 use middle::ty;
 use util::ppaux::Repr;
-
-use middle::trans::type_::Type;
 
 use syntax::ast;
 use syntax::ast::Ident;
@@ -337,23 +336,31 @@ pub fn trans_ret<'a>(bcx: &'a Block<'a>,
     return bcx;
 }
 
+fn str_slice_arg<'a>(bcx: &'a Block<'a>, s: InternedString) -> ValueRef {
+    let ccx = bcx.ccx();
+    let t = ty::mk_str_slice(bcx.tcx(), ty::ReStatic, ast::MutImmutable);
+    let s = C_str_slice(ccx, s);
+    let slot = alloca(bcx, val_ty(s), "__temp");
+    Store(bcx, s, slot);
+
+    // The type of C_str_slice is { i8*, i64 }, but the type of the &str is
+    // %str_slice, so we do a bitcast here to the right type.
+    BitCast(bcx, slot, type_of::type_of(ccx, t).ptr_to())
+}
+
 pub fn trans_fail<'a>(
                   bcx: &'a Block<'a>,
                   sp: Span,
                   fail_str: InternedString)
                   -> &'a Block<'a> {
     let ccx = bcx.ccx();
-    let v_fail_str = C_cstr(ccx, fail_str, true);
     let _icx = push_ctxt("trans_fail_value");
+
+    let v_str = str_slice_arg(bcx, fail_str);
     let loc = bcx.sess().codemap().lookup_char_pos(sp.lo);
-    let v_filename = C_cstr(ccx,
-                            token::intern_and_get_ident(loc.file
-                                                           .name
-                                                           .as_slice()),
-                            true);
+    let filename = token::intern_and_get_ident(loc.file.name.as_slice());
+    let v_filename = str_slice_arg(bcx, filename);
     let v_line = loc.line as int;
-    let v_str = PointerCast(bcx, v_fail_str, Type::i8p(ccx));
-    let v_filename = PointerCast(bcx, v_filename, Type::i8p(ccx));
     let args = vec!(v_str, v_filename, C_int(ccx, v_line));
     let did = langcall(bcx, Some(sp), "", FailFnLangItem);
     let bcx = callee::trans_lang_call(bcx,
@@ -371,7 +378,14 @@ pub fn trans_fail_bounds_check<'a>(
                                len: ValueRef)
                                -> &'a Block<'a> {
     let _icx = push_ctxt("trans_fail_bounds_check");
-    let (filename, line) = filename_and_line_num_from_span(bcx, sp);
+
+    // Extract the file/line from the span
+    let loc = bcx.sess().codemap().lookup_char_pos(sp.lo);
+    let filename = token::intern_and_get_ident(loc.file.name.as_slice());
+
+    // Invoke the lang item
+    let filename = str_slice_arg(bcx, filename);
+    let line = C_int(bcx.ccx(), loc.line as int);
     let args = vec!(filename, line, index, len);
     let did = langcall(bcx, Some(sp), "", FailBoundsCheckFnLangItem);
     let bcx = callee::trans_lang_call(bcx,
