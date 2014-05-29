@@ -244,7 +244,8 @@ struct SpawnProcessResult {
 }
 
 #[cfg(windows)]
-fn spawn_process_os(cfg: ProcessConfig, in_fd: c_int, out_fd: c_int, err_fd: c_int)
+fn spawn_process_os(cfg: ProcessConfig,
+                    in_fd: c_int, out_fd: c_int, err_fd: c_int)
                  -> IoResult<SpawnProcessResult> {
     use libc::types::os::arch::extra::{DWORD, HANDLE, STARTUPINFO};
     use libc::consts::os::extra::{
@@ -278,38 +279,51 @@ fn spawn_process_os(cfg: ProcessConfig, in_fd: c_int, out_fd: c_int, err_fd: c_i
 
         let cur_proc = GetCurrentProcess();
 
-        if in_fd != -1 {
-            let orig_std_in = get_osfhandle(in_fd) as HANDLE;
-            if orig_std_in == INVALID_HANDLE_VALUE as HANDLE {
-                fail!("failure in get_osfhandle: {}", os::last_os_error());
+        // Similarly to unix, we don't actually leave holes for the stdio file
+        // descriptors, but rather open up /dev/null equivalents. These
+        // equivalents are drawn from libuv's windows process spawning.
+        let set_fd = |fd: c_int, slot: &mut HANDLE, is_stdin: bool| {
+            if fd == -1 {
+                let access = if is_stdin {
+                    libc::FILE_GENERIC_READ
+                } else {
+                    libc::FILE_GENERIC_WRITE | libc::FILE_READ_ATTRIBUTES
+                };
+                let size = mem::size_of::<libc::SECURITY_ATTRIBUTES>();
+                let mut sa = libc::SECURITY_ATTRIBUTES {
+                    nLength: size as libc::DWORD,
+                    lpSecurityDescriptor: ptr::mut_null(),
+                    bInheritHandle: 1,
+                };
+                *slot = os::win32::as_utf16_p("NUL", |filename| {
+                    libc::CreateFileW(filename,
+                                      access,
+                                      libc::FILE_SHARE_READ |
+                                          libc::FILE_SHARE_WRITE,
+                                      &mut sa,
+                                      libc::OPEN_EXISTING,
+                                      0,
+                                      ptr::mut_null())
+                });
+                if *slot == INVALID_HANDLE_VALUE as libc::HANDLE {
+                    return Err(super::last_error())
+                }
+            } else {
+                let orig = get_osfhandle(fd) as HANDLE;
+                if orig == INVALID_HANDLE_VALUE as HANDLE {
+                    return Err(super::last_error())
+                }
+                if DuplicateHandle(cur_proc, orig, cur_proc, slot,
+                                   0, TRUE, DUPLICATE_SAME_ACCESS) == FALSE {
+                    return Err(super::last_error())
+                }
             }
-            if DuplicateHandle(cur_proc, orig_std_in, cur_proc, &mut si.hStdInput,
-                               0, TRUE, DUPLICATE_SAME_ACCESS) == FALSE {
-                fail!("failure in DuplicateHandle: {}", os::last_os_error());
-            }
-        }
+            Ok(())
+        };
 
-        if out_fd != -1 {
-            let orig_std_out = get_osfhandle(out_fd) as HANDLE;
-            if orig_std_out == INVALID_HANDLE_VALUE as HANDLE {
-                fail!("failure in get_osfhandle: {}", os::last_os_error());
-            }
-            if DuplicateHandle(cur_proc, orig_std_out, cur_proc, &mut si.hStdOutput,
-                               0, TRUE, DUPLICATE_SAME_ACCESS) == FALSE {
-                fail!("failure in DuplicateHandle: {}", os::last_os_error());
-            }
-        }
-
-        if err_fd != -1 {
-            let orig_std_err = get_osfhandle(err_fd) as HANDLE;
-            if orig_std_err == INVALID_HANDLE_VALUE as HANDLE {
-                fail!("failure in get_osfhandle: {}", os::last_os_error());
-            }
-            if DuplicateHandle(cur_proc, orig_std_err, cur_proc, &mut si.hStdError,
-                               0, TRUE, DUPLICATE_SAME_ACCESS) == FALSE {
-                fail!("failure in DuplicateHandle: {}", os::last_os_error());
-            }
-        }
+        try!(set_fd(in_fd, &mut si.hStdInput, true));
+        try!(set_fd(out_fd, &mut si.hStdOutput, false));
+        try!(set_fd(err_fd, &mut si.hStdError, false));
 
         let cmd_str = make_command_line(cfg.program, cfg.args);
         let mut pi = zeroed_process_information();
@@ -338,9 +352,9 @@ fn spawn_process_os(cfg: ProcessConfig, in_fd: c_int, out_fd: c_int, err_fd: c_i
             })
         });
 
-        if in_fd != -1 { assert!(CloseHandle(si.hStdInput) != 0); }
-        if out_fd != -1 { assert!(CloseHandle(si.hStdOutput) != 0); }
-        if err_fd != -1 { assert!(CloseHandle(si.hStdError) != 0); }
+        assert!(CloseHandle(si.hStdInput) != 0);
+        assert!(CloseHandle(si.hStdOutput) != 0);
+        assert!(CloseHandle(si.hStdError) != 0);
 
         match create_err {
             Some(err) => return Err(err),
@@ -379,9 +393,9 @@ fn zeroed_startupinfo() -> libc::types::os::arch::extra::STARTUPINFO {
         wShowWindow: 0,
         cbReserved2: 0,
         lpReserved2: ptr::mut_null(),
-        hStdInput: ptr::mut_null(),
-        hStdOutput: ptr::mut_null(),
-        hStdError: ptr::mut_null()
+        hStdInput: libc::INVALID_HANDLE_VALUE as libc::HANDLE,
+        hStdOutput: libc::INVALID_HANDLE_VALUE as libc::HANDLE,
+        hStdError: libc::INVALID_HANDLE_VALUE as libc::HANDLE,
     }
 }
 
@@ -489,6 +503,10 @@ fn spawn_process_os(cfg: ProcessConfig, in_fd: c_int, out_fd: c_int, err_fd: c_i
             let mut input = file::FileDesc::new(pipe.input, true);
             let mut output = file::FileDesc::new(pipe.out, true);
 
+            // We may use this in the child, so perform allocations before the
+            // fork
+            let devnull = "/dev/null".to_c_str();
+
             set_cloexec(output.fd());
 
             let pid = fork();
@@ -563,21 +581,29 @@ fn spawn_process_os(cfg: ProcessConfig, in_fd: c_int, out_fd: c_int, err_fd: c_i
 
             rustrt::rust_unset_sigprocmask();
 
-            if in_fd == -1 {
-                let _ = libc::close(libc::STDIN_FILENO);
-            } else if retry(|| dup2(in_fd, 0)) == -1 {
-                fail(&mut output);
-            }
-            if out_fd == -1 {
-                let _ = libc::close(libc::STDOUT_FILENO);
-            } else if retry(|| dup2(out_fd, 1)) == -1 {
-                fail(&mut output);
-            }
-            if err_fd == -1 {
-                let _ = libc::close(libc::STDERR_FILENO);
-            } else if retry(|| dup2(err_fd, 2)) == -1 {
-                fail(&mut output);
-            }
+            // If a stdio file descriptor is set to be ignored (via a -1 file
+            // descriptor), then we don't actually close it, but rather open
+            // up /dev/null into that file descriptor. Otherwise, the first file
+            // descriptor opened up in the child would be numbered as one of the
+            // stdio file descriptors, which is likely to wreak havoc.
+            let setup = |src: c_int, dst: c_int| {
+                let src = if src == -1 {
+                    let flags = if dst == libc::STDIN_FILENO {
+                        libc::O_RDONLY
+                    } else {
+                        libc::O_RDWR
+                    };
+                    devnull.with_ref(|p| libc::open(p, flags, 0))
+                } else {
+                    src
+                };
+                src != -1 && retry(|| dup2(src, dst)) != -1
+            };
+
+            if !setup(in_fd, libc::STDIN_FILENO) { fail(&mut output) }
+            if !setup(out_fd, libc::STDOUT_FILENO) { fail(&mut output) }
+            if !setup(err_fd, libc::STDERR_FILENO) { fail(&mut output) }
+
             // close all other fds
             for fd in range(3, getdtablesize()).rev() {
                 if fd != output.fd() {
