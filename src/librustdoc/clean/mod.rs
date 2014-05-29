@@ -519,9 +519,9 @@ impl Clean<Option<Lifetime>> for ty::Region {
             ty::ReStatic => Some(Lifetime("static".to_string())),
             ty::ReLateBound(_, ty::BrNamed(_, name)) =>
                 Some(Lifetime(token::get_name(name).get().to_string())),
+            ty::ReEarlyBound(_, _, name) => Some(Lifetime(name.clean())),
 
             ty::ReLateBound(..) |
-            ty::ReEarlyBound(..) |
             ty::ReFree(..) |
             ty::ReScope(..) |
             ty::ReInfer(..) |
