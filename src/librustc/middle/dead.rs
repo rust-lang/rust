@@ -361,8 +361,8 @@ impl<'a> DeadVisitor<'a> {
             .add_lint(DeadCode,
                       id,
                       span,
-                      format_strbuf!("code is never used: `{}`",
-                                     token::get_ident(ident)));
+                      format!("code is never used: `{}`",
+                              token::get_ident(ident)));
     }
 }
 

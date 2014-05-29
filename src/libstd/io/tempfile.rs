@@ -43,10 +43,10 @@ impl TempDir {
 
         for _ in range(0u, 1000) {
             let filename =
-                format_strbuf!("rs-{}-{}-{}",
-                               unsafe { libc::getpid() },
-                               unsafe { CNT.fetch_add(1, atomics::SeqCst) },
-                               suffix);
+                format!("rs-{}-{}-{}",
+                        unsafe { libc::getpid() },
+                        unsafe { CNT.fetch_add(1, atomics::SeqCst) },
+                        suffix);
             let p = tmpdir.join(filename);
             match fs::mkdir(&p, io::UserRWX) {
                 Err(..) => {}

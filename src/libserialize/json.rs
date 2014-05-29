@@ -1819,7 +1819,7 @@ macro_rules! expect(
         match $e {
             Null => Ok(()),
             other => Err(ExpectedError("Null".to_string(),
-                                       format_strbuf!("{}", other)))
+                                       format!("{}", other)))
         }
     });
     ($e:expr, $t:ident) => ({
@@ -1827,7 +1827,7 @@ macro_rules! expect(
             $t(v) => Ok(v),
             other => {
                 Err(ExpectedError(stringify!($t).to_string(),
-                                  format_strbuf!("{}", other)))
+                                  format!("{}", other)))
             }
         }
     })
@@ -1869,7 +1869,7 @@ impl ::Decoder<DecoderError> for Decoder {
             },
             value => {
                 Err(ExpectedError("Number".to_string(),
-                                  format_strbuf!("{}", value)))
+                                  format!("{}", value)))
             }
         }
     }
@@ -1887,7 +1887,7 @@ impl ::Decoder<DecoderError> for Decoder {
             }
         }
         Err(ExpectedError("single character string".to_string(),
-                          format_strbuf!("{}", s)))
+                          format!("{}", s)))
     }
 
     fn read_str(&mut self) -> DecodeResult<String> {
@@ -1914,7 +1914,7 @@ impl ::Decoder<DecoderError> for Decoder {
                     Some(String(s)) => s,
                     Some(val) => {
                         return Err(ExpectedError("String".to_string(),
-                                                 format_strbuf!("{}", val)))
+                                                 format!("{}", val)))
                     }
                     None => {
                         return Err(MissingFieldError("variant".to_string()))
@@ -1928,7 +1928,7 @@ impl ::Decoder<DecoderError> for Decoder {
                     },
                     Some(val) => {
                         return Err(ExpectedError("List".to_string(),
-                                                 format_strbuf!("{}", val)))
+                                                 format!("{}", val)))
                     }
                     None => {
                         return Err(MissingFieldError("fields".to_string()))
@@ -1938,7 +1938,7 @@ impl ::Decoder<DecoderError> for Decoder {
             }
             json => {
                 return Err(ExpectedError("String or Object".to_string(),
-                                         format_strbuf!("{}", json)))
+                                         format!("{}", json)))
             }
         };
         let idx = match names.iter()

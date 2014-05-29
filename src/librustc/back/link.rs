@@ -751,10 +751,7 @@ pub fn mangle_internal_name_by_path_and_seq(path: PathElems, flav: &str) -> Stri
 }
 
 pub fn output_lib_filename(id: &CrateId) -> String {
-    format_strbuf!("{}-{}-{}",
-                   id.name,
-                   crate_id_hash(id),
-                   id.version_or_default())
+    format!("{}-{}-{}", id.name, crate_id_hash(id), id.version_or_default())
 }
 
 pub fn get_cc_prog(sess: &Session) -> String {
@@ -827,7 +824,7 @@ pub fn filename_for_input(sess: &Session, crate_type: config::CrateType,
     let libname = output_lib_filename(id);
     match crate_type {
         config::CrateTypeRlib => {
-            out_filename.with_filename(format_strbuf!("lib{}.rlib", libname))
+            out_filename.with_filename(format!("lib{}.rlib", libname))
         }
         config::CrateTypeDylib => {
             let (prefix, suffix) = match sess.targ_cfg.os {
@@ -837,13 +834,11 @@ pub fn filename_for_input(sess: &Session, crate_type: config::CrateType,
                 abi::OsAndroid => (loader::ANDROID_DLL_PREFIX, loader::ANDROID_DLL_SUFFIX),
                 abi::OsFreebsd => (loader::FREEBSD_DLL_PREFIX, loader::FREEBSD_DLL_SUFFIX),
             };
-            out_filename.with_filename(format_strbuf!("{}{}{}",
-                                                      prefix,
-                                                      libname,
-                                                      suffix))
+            out_filename.with_filename(format!("{}{}{}", prefix, libname,
+                                               suffix))
         }
         config::CrateTypeStaticlib => {
-            out_filename.with_filename(format_strbuf!("lib{}.a", libname))
+            out_filename.with_filename(format!("lib{}.a", libname))
         }
         config::CrateTypeExecutable => out_filename.clone(),
     }
@@ -1360,7 +1355,7 @@ fn add_local_native_libraries(cmd: &mut Command, sess: &Session) {
                         cmd.arg("-Wl,-Bdynamic");
                     }
                 }
-                cmd.arg(format_strbuf!("-l{}", *l));
+                cmd.arg(format!("-l{}", *l));
             }
             cstore::NativeFramework => {
                 cmd.arg("-framework");
@@ -1524,7 +1519,7 @@ fn add_upstream_native_libraries(cmd: &mut Command, sess: &Session) {
         for &(kind, ref lib) in libs.iter() {
             match kind {
                 cstore::NativeUnknown => {
-                    cmd.arg(format_strbuf!("-l{}", *lib));
+                    cmd.arg(format!("-l{}", *lib));
                 }
                 cstore::NativeFramework => {
                     cmd.arg("-framework");

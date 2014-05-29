@@ -1000,7 +1000,7 @@ impl Clean<Type> for ty::t {
             ty::ty_str => String,
             ty::ty_vec(mt, None) => Vector(box mt.ty.clean()),
             ty::ty_vec(mt, Some(i)) => FixedVector(box mt.ty.clean(),
-                                                   format_strbuf!("{}", i)),
+                                                   format!("{}", i)),
             ty::ty_ptr(mt) => RawPointer(mt.mutbl.clean(), box mt.ty.clean()),
             ty::ty_rptr(r, mt) => BorrowedRef {
                 lifetime: r.clean(),
@@ -1697,8 +1697,8 @@ impl ToSource for syntax::codemap::Span {
 fn lit_to_str(lit: &ast::Lit) -> String {
     match lit.node {
         ast::LitStr(ref st, _) => st.get().to_string(),
-        ast::LitBinary(ref data) => format_strbuf!("{:?}", data.as_slice()),
-        ast::LitChar(c) => format_strbuf!("'{}'", c),
+        ast::LitBinary(ref data) => format!("{:?}", data.as_slice()),
+        ast::LitChar(c) => format!("'{}'", c),
         ast::LitInt(i, _t) => i.to_str().to_string(),
         ast::LitUint(u, _t) => u.to_str().to_string(),
         ast::LitIntUnsuffixed(i) => i.to_str().to_string(),
@@ -1822,7 +1822,7 @@ pub struct Macro {
 impl Clean<Item> for doctree::Macro {
     fn clean(&self) -> Item {
         Item {
-            name: Some(format_strbuf!("{}!", self.name.clean())),
+            name: Some(format!("{}!", self.name.clean())),
             attrs: self.attrs.clean(),
             source: self.where.clean(),
             visibility: ast::Public.clean(),

@@ -78,8 +78,8 @@ impl LanguageItems {
         match self.items.get(it as uint) {
             &Some(id) => Ok(id),
             &None => {
-                Err(format_strbuf!("requires `{}` lang_item",
-                                   LanguageItems::item_name(it as uint)))
+                Err(format!("requires `{}` lang_item",
+                            LanguageItems::item_name(it as uint)))
             }
         }
     }

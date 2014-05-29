@@ -31,12 +31,11 @@ impl InferStr for ty::t {
 
 impl InferStr for FnSig {
     fn inf_str(&self, cx: &InferCtxt) -> String {
-        format_strbuf!("({}) -> {}",
-                       self.inputs
-                           .iter()
-                           .map(|a| a.inf_str(cx))
-                           .collect::<Vec<String>>().connect(", "),
-                       self.output.inf_str(cx))
+        format!("({}) -> {}",
+                self.inputs.iter()
+                    .map(|a| a.inf_str(cx))
+                    .collect::<Vec<String>>().connect(", "),
+                self.output.inf_str(cx))
     }
 }
 
@@ -48,7 +47,7 @@ impl InferStr for ty::mt {
 
 impl InferStr for ty::Region {
     fn inf_str(&self, _cx: &InferCtxt) -> String {
-        format_strbuf!("{:?}", *self)
+        format!("{:?}", *self)
     }
 }
 
@@ -63,18 +62,16 @@ impl<V:InferStr> InferStr for Bound<V> {
 
 impl<T:InferStr> InferStr for Bounds<T> {
     fn inf_str(&self, cx: &InferCtxt) -> String {
-        format_strbuf!("\\{{} <: {}\\}",
-                       self.lb.inf_str(cx),
-                       self.ub.inf_str(cx))
+        format!("\\{{} <: {}\\}", self.lb.inf_str(cx), self.ub.inf_str(cx))
     }
 }
 
 impl<V:Vid + ToStr,T:InferStr> InferStr for VarValue<V, T> {
     fn inf_str(&self, cx: &InferCtxt) -> String {
         match *self {
-          Redirect(ref vid) => format_strbuf!("Redirect({})", vid.to_str()),
+          Redirect(ref vid) => format!("Redirect({})", vid.to_str()),
           Root(ref pt, rk) => {
-              format_strbuf!("Root({}, {})", pt.inf_str(cx), rk)
+              format!("Root({}, {})", pt.inf_str(cx), rk)
           }
         }
     }

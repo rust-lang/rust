@@ -313,10 +313,8 @@ pub mod reader {
                     self.pos = r_doc.end;
                     let str = r_doc.as_str_slice();
                     if lbl != str {
-                        return Err(Expected(format_strbuf!("Expected label \
-                                                            {} but found {}",
-                                                           lbl,
-                                                           str)));
+                        return Err(Expected(format!("Expected label {} but \
+                                                     found {}", lbl, str)));
                     }
                 }
             }
@@ -326,8 +324,8 @@ pub mod reader {
         fn next_doc(&mut self, exp_tag: EbmlEncoderTag) -> DecodeResult<Doc<'doc>> {
             debug!(". next_doc(exp_tag={})", exp_tag);
             if self.pos >= self.parent.end {
-                return Err(Expected(format_strbuf!("no more documents in \
-                                                    current node!")));
+                return Err(Expected(format!("no more documents in \
+                                             current node!")));
             }
             let TaggedDoc { tag: r_tag, doc: r_doc } =
                 try!(doc_at(self.parent.data, self.pos));
@@ -339,18 +337,13 @@ pub mod reader {
                    r_doc.start,
                    r_doc.end);
             if r_tag != (exp_tag as uint) {
-                return Err(Expected(format_strbuf!("expected EBML doc with \
-                                                    tag {} but found tag \
-                                                    {}",
-                                                   exp_tag,
-                                                   r_tag)));
+                return Err(Expected(format!("expected EBML doc with tag {} but \
+                                             found tag {}", exp_tag, r_tag)));
             }
             if r_doc.end > self.parent.end {
-                return Err(Expected(format_strbuf!("invalid EBML, child \
-                                                    extends to {:#x}, parent \
-                                                    to {:#x}",
-                                                   r_doc.end,
-                                                   self.parent.end)));
+                return Err(Expected(format!("invalid EBML, child extends to \
+                                             {:#x}, parent to {:#x}",
+                                            r_doc.end, self.parent.end)));
             }
             self.pos = r_doc.end;
             Ok(r_doc)
@@ -582,8 +575,7 @@ pub mod reader {
                         0 => f(this, false),
                         1 => f(this, true),
                         _ => {
-                            Err(Expected(format_strbuf!("Expected None or \
-                                                         Some")))
+                            Err(Expected(format!("Expected None or Some")))
                         }
                     }
                 })
@@ -664,7 +656,7 @@ pub mod writer {
             _ => Err(io::IoError {
                 kind: io::OtherIoError,
                 desc: "int too big",
-                detail: Some(format_strbuf!("{}", n))
+                detail: Some(format!("{}", n))
             })
         }
     }
@@ -677,7 +669,7 @@ pub mod writer {
         Err(io::IoError {
             kind: io::OtherIoError,
             desc: "int too big",
-            detail: Some(format_strbuf!("{}", n))
+            detail: Some(format!("{}", n))
         })
     }
 

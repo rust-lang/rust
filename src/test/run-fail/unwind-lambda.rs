@@ -20,10 +20,10 @@ fn main() {
         macerate((*tasties).clone());
     });
     result(carrots, |food| {
-        let mush = format_strbuf!("{}{}", food, cheese);
+        let mush = format!("{}{}", food, cheese);
         let cheese = cheese.clone();
         let f: || = || {
-            let _chew = format_strbuf!("{}{}", mush, cheese);
+            let _chew = format!("{}{}", mush, cheese);
             fail!("so yummy")
         };
         f();

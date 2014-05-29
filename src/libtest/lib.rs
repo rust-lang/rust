@@ -374,7 +374,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
         let s = matches.free.get(0).as_slice();
         match Regex::new(s) {
             Ok(re) => Some(re),
-            Err(e) => return Some(Err(format_strbuf!("could not parse /{}/: {}", s, e)))
+            Err(e) => return Some(Err(format!("could not parse /{}/: {}", s, e)))
         }
     } else {
         None
@@ -739,22 +739,20 @@ impl<T: Writer> ConsoleTestState<T> {
 pub fn fmt_metrics(mm: &MetricMap) -> String {
     let MetricMap(ref mm) = *mm;
     let v : Vec<String> = mm.iter()
-        .map(|(k,v)| format_strbuf!("{}: {} (+/- {})",
-                          *k,
-                          v.value as f64,
-                          v.noise as f64))
+        .map(|(k,v)| format!("{}: {} (+/- {})", *k,
+                             v.value as f64, v.noise as f64))
         .collect();
     v.connect(", ").to_string()
 }
 
 pub fn fmt_bench_samples(bs: &BenchSamples) -> String {
     if bs.mb_s != 0 {
-        format_strbuf!("{:>9} ns/iter (+/- {}) = {} MB/s",
+        format!("{:>9} ns/iter (+/- {}) = {} MB/s",
              bs.ns_iter_summ.median as uint,
              (bs.ns_iter_summ.max - bs.ns_iter_summ.min) as uint,
              bs.mb_s)
     } else {
-        format_strbuf!("{:>9} ns/iter (+/- {})",
+        format!("{:>9} ns/iter (+/- {})",
              bs.ns_iter_summ.median as uint,
              (bs.ns_iter_summ.max - bs.ns_iter_summ.min) as uint)
     }

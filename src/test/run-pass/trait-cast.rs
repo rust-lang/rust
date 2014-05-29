@@ -29,7 +29,7 @@ impl<T:to_str> to_str for Option<T> {
     fn to_str_(&self) -> String {
         match *self {
           None => { "none".to_string() }
-          Some(ref t) => format_strbuf!("some({})", t.to_str_()),
+          Some(ref t) => format!("some({})", t.to_str_()),
         }
     }
 }
@@ -46,10 +46,7 @@ impl to_str for Tree {
         let this = t.borrow();
         let (l, r) = (this.left, this.right);
         let val = &this.val;
-        format_strbuf!("[{}, {}, {}]",
-                       val.to_str_(),
-                       l.to_str_(),
-                       r.to_str_())
+        format!("[{}, {}, {}]", val.to_str_(), l.to_str_(), r.to_str_())
     }
 }
 

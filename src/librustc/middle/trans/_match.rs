@@ -405,7 +405,7 @@ impl<'a, 'b> Repr for Match<'a, 'b> {
             // for many programs, this just take too long to serialize
             self.pats.repr(tcx)
         } else {
-            format_strbuf!("{} pats", self.pats.len())
+            format!("{} pats", self.pats.len())
         }
     }
 }

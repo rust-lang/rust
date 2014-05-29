@@ -354,7 +354,7 @@ pub fn begin_unwind_fmt(msg: &fmt::Arguments, file: &'static str,
     // required with the current scheme, and (b) we don't handle
     // failure + OOM properly anyway (see comment in begin_unwind
     // below).
-    begin_unwind_inner(box fmt::format_strbuf(msg), file, line)
+    begin_unwind_inner(box fmt::format(msg), file, line)
 }
 
 /// This is the entry point of unwinding for fail!() and assert!().

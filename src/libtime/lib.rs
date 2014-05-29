@@ -363,7 +363,7 @@ impl Tm {
             let mut m = num::abs(self.tm_gmtoff) / 60_i32;
             let h = m / 60_i32;
             m -= h * 60_i32;
-            format_strbuf!("{}{}{:02d}:{:02d}", s, sign, h as int, m as int)
+            format!("{}{}{:02d}:{:02d}", s, sign, h as int, m as int)
         }
     }
 }
@@ -469,7 +469,7 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, String> {
         if c == range.ch {
             Ok(range.next)
         } else {
-            Err(format_strbuf!("Expected {}, found {}",
+            Err(format!("Expected {}, found {}",
                 str::from_char(c),
                 str::from_char(range.ch)))
         }
@@ -772,8 +772,7 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, String> {
           }
           '%' => parse_char(s, pos, '%'),
           ch => {
-            Err(format_strbuf!("unknown formatting type: {}",
-                               str::from_char(ch)))
+            Err(format!("unknown formatting type: {}", str::from_char(ch)))
           }
         }
     }
@@ -889,16 +888,16 @@ pub fn strftime(format: &str, tm: &Tm) -> String {
         }
 
         match ch {
-            'G' => format_strbuf!("{}", year),
-            'g' => format_strbuf!("{:02d}", (year % 100 + 100) % 100),
-            'V' => format_strbuf!("{:02d}", days / 7 + 1),
+            'G' => format!("{}", year),
+            'g' => format!("{:02d}", (year % 100 + 100) % 100),
+            'V' => format!("{:02d}", days / 7 + 1),
             _ => "".to_string()
         }
     }
 
     fn parse_type(ch: char, tm: &Tm) -> String {
       let die = || {
-          format_strbuf!("strftime: can't understand this format {} ", ch)
+          format!("strftime: can't understand this format {} ", ch)
       };
         match ch {
           'A' => match tm.tm_wday as int {
@@ -951,9 +950,9 @@ pub fn strftime(format: &str, tm: &Tm) -> String {
             11 => "Dec".to_string(),
             _  => die()
           },
-          'C' => format_strbuf!("{:02d}", (tm.tm_year as int + 1900) / 100),
+          'C' => format!("{:02d}", (tm.tm_year as int + 1900) / 100),
           'c' => {
-            format_strbuf!("{} {} {} {} {}",
+            format!("{} {} {} {} {}",
                 parse_type('a', tm),
                 parse_type('b', tm),
                 parse_type('e', tm),
@@ -961,89 +960,89 @@ pub fn strftime(format: &str, tm: &Tm) -> String {
                 parse_type('Y', tm))
           }
           'D' | 'x' => {
-            format_strbuf!("{}/{}/{}",
+            format!("{}/{}/{}",
                 parse_type('m', tm),
                 parse_type('d', tm),
                 parse_type('y', tm))
           }
-          'd' => format_strbuf!("{:02d}", tm.tm_mday),
-          'e' => format_strbuf!("{:2d}", tm.tm_mday),
-          'f' => format_strbuf!("{:09d}", tm.tm_nsec),
+          'd' => format!("{:02d}", tm.tm_mday),
+          'e' => format!("{:2d}", tm.tm_mday),
+          'f' => format!("{:09d}", tm.tm_nsec),
           'F' => {
-            format_strbuf!("{}-{}-{}",
+            format!("{}-{}-{}",
                 parse_type('Y', tm),
                 parse_type('m', tm),
                 parse_type('d', tm))
           }
           'G' => iso_week('G', tm),
           'g' => iso_week('g', tm),
-          'H' => format_strbuf!("{:02d}", tm.tm_hour),
+          'H' => format!("{:02d}", tm.tm_hour),
           'I' => {
             let mut h = tm.tm_hour;
             if h == 0 { h = 12 }
             if h > 12 { h -= 12 }
-            format_strbuf!("{:02d}", h)
+            format!("{:02d}", h)
           }
-          'j' => format_strbuf!("{:03d}", tm.tm_yday + 1),
-          'k' => format_strbuf!("{:2d}", tm.tm_hour),
+          'j' => format!("{:03d}", tm.tm_yday + 1),
+          'k' => format!("{:2d}", tm.tm_hour),
           'l' => {
             let mut h = tm.tm_hour;
             if h == 0 { h = 12 }
             if h > 12 { h -= 12 }
-            format_strbuf!("{:2d}", h)
+            format!("{:2d}", h)
           }
-          'M' => format_strbuf!("{:02d}", tm.tm_min),
-          'm' => format_strbuf!("{:02d}", tm.tm_mon + 1),
+          'M' => format!("{:02d}", tm.tm_min),
+          'm' => format!("{:02d}", tm.tm_mon + 1),
           'n' => "\n".to_string(),
           'P' => if (tm.tm_hour as int) < 12 { "am".to_string() } else { "pm".to_string() },
           'p' => if (tm.tm_hour as int) < 12 { "AM".to_string() } else { "PM".to_string() },
           'R' => {
-            format_strbuf!("{}:{}",
+            format!("{}:{}",
                 parse_type('H', tm),
                 parse_type('M', tm))
           }
           'r' => {
-            format_strbuf!("{}:{}:{} {}",
+            format!("{}:{}:{} {}",
                 parse_type('I', tm),
                 parse_type('M', tm),
                 parse_type('S', tm),
                 parse_type('p', tm))
           }
-          'S' => format_strbuf!("{:02d}", tm.tm_sec),
-          's' => format_strbuf!("{}", tm.to_timespec().sec),
+          'S' => format!("{:02d}", tm.tm_sec),
+          's' => format!("{}", tm.to_timespec().sec),
           'T' | 'X' => {
-            format_strbuf!("{}:{}:{}",
+            format!("{}:{}:{}",
                 parse_type('H', tm),
                 parse_type('M', tm),
                 parse_type('S', tm))
           }
           't' => "\t".to_string(),
-          'U' => format_strbuf!("{:02d}", (tm.tm_yday - tm.tm_wday + 7) / 7),
+          'U' => format!("{:02d}", (tm.tm_yday - tm.tm_wday + 7) / 7),
           'u' => {
             let i = tm.tm_wday as int;
             (if i == 0 { 7 } else { i }).to_str().to_string()
           }
           'V' => iso_week('V', tm),
           'v' => {
-            format_strbuf!("{}-{}-{}",
+            format!("{}-{}-{}",
                 parse_type('e', tm),
                 parse_type('b', tm),
                 parse_type('Y', tm))
           }
           'W' => {
-              format_strbuf!("{:02d}",
+              format!("{:02d}",
                              (tm.tm_yday - (tm.tm_wday - 1 + 7) % 7 + 7) / 7)
           }
           'w' => (tm.tm_wday as int).to_str().to_string(),
           'Y' => (tm.tm_year as int + 1900).to_str().to_string(),
-          'y' => format_strbuf!("{:02d}", (tm.tm_year as int + 1900) % 100),
+          'y' => format!("{:02d}", (tm.tm_year as int + 1900) % 100),
           'Z' => "".to_string(),    // FIXME(pcwalton): Implement this.
           'z' => {
             let sign = if tm.tm_gmtoff > 0_i32 { '+' } else { '-' };
             let mut m = num::abs(tm.tm_gmtoff) / 60_i32;
             let h = m / 60_i32;
             m -= h * 60_i32;
-            format_strbuf!("{}{:02d}{:02d}", sign, h, m)
+            format!("{}{:02d}{:02d}", sign, h, m)
           }
           '+' => tm.rfc3339(),
           '%' => "%".to_string(),

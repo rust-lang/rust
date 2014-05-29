@@ -474,9 +474,7 @@ fn make_generic_glue(ccx: &CrateContext,
                      name: &str)
                      -> ValueRef {
     let _icx = push_ctxt("make_generic_glue");
-    let glue_name = format_strbuf!("glue {} {}",
-                                   name,
-                                   ty_to_short_str(ccx.tcx(), t));
+    let glue_name = format!("glue {} {}", name, ty_to_short_str(ccx.tcx(), t));
     let _s = StatRecorder::new(ccx, glue_name);
 
     let arena = TypedArena::new();

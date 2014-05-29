@@ -94,7 +94,7 @@ pub fn check_crate(tcx: &ty::ctxt,
     fn make_stat(bccx: &BorrowckCtxt, stat: uint) -> String {
         let stat_f = stat as f64;
         let total = bccx.stats.guaranteed_paths.get() as f64;
-        format_strbuf!("{} ({:.0f}%)", stat  , stat_f * 100.0 / total)
+        format!("{} ({:.0f}%)", stat  , stat_f * 100.0 / total)
     }
 }
 
@@ -297,7 +297,7 @@ impl BitAnd<RestrictionSet,RestrictionSet> for RestrictionSet {
 
 impl Repr for RestrictionSet {
     fn repr(&self, _tcx: &ty::ctxt) -> String {
-        format_strbuf!("RestrictionSet(0x{:x})", self.bits as uint)
+        format!("RestrictionSet(0x{:x})", self.bits as uint)
     }
 }
 
@@ -579,27 +579,27 @@ impl<'a> BorrowckCtxt<'a> {
             err_mutbl => {
                 let descr = match opt_loan_path(&err.cmt) {
                     None => {
-                        format_strbuf!("{} {}",
-                                       err.cmt.mutbl.to_user_str(),
-                                       self.cmt_to_str(&*err.cmt))
+                        format!("{} {}",
+                                err.cmt.mutbl.to_user_str(),
+                                self.cmt_to_str(&*err.cmt))
                     }
                     Some(lp) => {
-                        format_strbuf!("{} {} `{}`",
-                                       err.cmt.mutbl.to_user_str(),
-                                       self.cmt_to_str(&*err.cmt),
-                                       self.loan_path_to_str(&*lp))
+                        format!("{} {} `{}`",
+                                err.cmt.mutbl.to_user_str(),
+                                self.cmt_to_str(&*err.cmt),
+                                self.loan_path_to_str(&*lp))
                     }
                 };
 
                 match err.cause {
                     euv::ClosureCapture(_) => {
-                        format_strbuf!("closure cannot assign to {}", descr)
+                        format!("closure cannot assign to {}", descr)
                     }
                     euv::OverloadedOperator |
                     euv::AddrOf |
                     euv::RefBinding |
                     euv::AutoRef => {
-                        format_strbuf!("cannot borrow {} as mutable", descr)
+                        format!("cannot borrow {} as mutable", descr)
                     }
                     euv::ClosureInvocation => {
                         self.tcx.sess.span_bug(err.span,
@@ -611,20 +611,20 @@ impl<'a> BorrowckCtxt<'a> {
                 let msg = match opt_loan_path(&err.cmt) {
                     None => "borrowed value".to_string(),
                     Some(lp) => {
-                        format_strbuf!("`{}`", self.loan_path_to_str(&*lp))
+                        format!("`{}`", self.loan_path_to_str(&*lp))
                     }
                 };
-                format_strbuf!("{} does not live long enough", msg)
+                format!("{} does not live long enough", msg)
             }
             err_borrowed_pointer_too_short(..) => {
                 let descr = match opt_loan_path(&err.cmt) {
                     Some(lp) => {
-                        format_strbuf!("`{}`", self.loan_path_to_str(&*lp))
+                        format!("`{}`", self.loan_path_to_str(&*lp))
                     }
                     None => self.cmt_to_str(&*err.cmt),
                 };
 
-                format_strbuf!("lifetime of {} is too short to guarantee \
+                format!("lifetime of {} is too short to guarantee \
                                 its contents can be safely reborrowed",
                                descr)
             }
@@ -713,7 +713,7 @@ impl<'a> BorrowckCtxt<'a> {
             err_borrowed_pointer_too_short(loan_scope, ptr_scope, _) => {
                 let descr = match opt_loan_path(&err.cmt) {
                     Some(lp) => {
-                        format_strbuf!("`{}`", self.loan_path_to_str(&*lp))
+                        format!("`{}`", self.loan_path_to_str(&*lp))
                     }
                     None => self.cmt_to_str(&*err.cmt),
                 };

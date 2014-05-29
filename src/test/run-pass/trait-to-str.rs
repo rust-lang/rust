@@ -20,11 +20,11 @@ impl to_str for int {
 
 impl<T:to_str> to_str for Vec<T> {
     fn to_string(&self) -> String {
-        format_strbuf!("[{}]",
-                       self.iter()
-                           .map(|e| e.to_string())
-                           .collect::<Vec<String>>()
-                           .connect(", "))
+        format!("[{}]",
+                self.iter()
+                    .map(|e| e.to_string())
+                    .collect::<Vec<String>>()
+                    .connect(", "))
     }
 }
 
@@ -33,7 +33,7 @@ pub fn main() {
     assert!((vec!(2, 3, 4)).to_string() == "[2, 3, 4]".to_string());
 
     fn indirect<T:to_str>(x: T) -> String {
-        format_strbuf!("{}!", x.to_string())
+        format!("{}!", x.to_string())
     }
     assert!(indirect(vec!(10, 20)) == "[10, 20]!".to_string());
 

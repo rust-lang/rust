@@ -500,19 +500,19 @@ impl Fail_ {
     pub fn to_err_msg(self) -> String {
         match self {
             ArgumentMissing(ref nm) => {
-                format_strbuf!("Argument to option '{}' missing.", *nm)
+                format!("Argument to option '{}' missing.", *nm)
             }
             UnrecognizedOption(ref nm) => {
-                format_strbuf!("Unrecognized option: '{}'.", *nm)
+                format!("Unrecognized option: '{}'.", *nm)
             }
             OptionMissing(ref nm) => {
-                format_strbuf!("Required option '{}' missing.", *nm)
+                format!("Required option '{}' missing.", *nm)
             }
             OptionDuplicated(ref nm) => {
-                format_strbuf!("Option '{}' given more than once.", *nm)
+                format!("Option '{}' given more than once.", *nm)
             }
             UnexpectedArgument(ref nm) => {
-                format_strbuf!("Option '{}' does not take an argument.", *nm)
+                format!("Option '{}' does not take an argument.", *nm)
             }
         }
     }
@@ -740,9 +740,8 @@ pub fn usage(brief: &str, opts: &[OptGroup]) -> String {
         row
     });
 
-    format_strbuf!("{}\n\nOptions:\n{}\n",
-                   brief,
-                   rows.collect::<Vec<String>>().connect("\n"))
+    format!("{}\n\nOptions:\n{}\n", brief,
+            rows.collect::<Vec<String>>().connect("\n"))
 }
 
 fn format_option(opt: &OptGroup) -> String {
@@ -784,7 +783,7 @@ fn format_option(opt: &OptGroup) -> String {
 
 /// Derive a short one-line usage summary from a set of long options.
 pub fn short_usage(program_name: &str, opts: &[OptGroup]) -> String {
-    let mut line = format_strbuf!("Usage: {} ", program_name);
+    let mut line = format!("Usage: {} ", program_name);
     line.push_str(opts.iter()
                       .map(format_option)
                       .collect::<Vec<String>>()
