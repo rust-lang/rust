@@ -900,7 +900,7 @@ pub fn make_non_verbatim(path: &Path) -> Option<Path> {
         }
         Some(VerbatimUNCPrefix(_,_)) => {
             // \\?\UNC\server\share
-            Path::new(format_strbuf!(r"\\{}", repr.slice_from(7)))
+            Path::new(format!(r"\\{}", repr.slice_from(7)))
         }
     };
     if new_path.prefix.is_none() {

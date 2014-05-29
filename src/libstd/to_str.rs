@@ -31,7 +31,7 @@ pub trait IntoStr {
 
 impl<T: fmt::Show> ToStr for T {
     fn to_str(&self) -> String {
-        format_strbuf!("{}", *self)
+        format!("{}", *self)
     }
 }
 

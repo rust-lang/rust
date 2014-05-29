@@ -2342,9 +2342,8 @@ fn cache_id_for_type(t: ty::t) -> uint {
 fn generate_unique_type_id(prefix: &'static str) -> String {
     unsafe {
         static mut unique_id_counter: atomics::AtomicUint = atomics::INIT_ATOMIC_UINT;
-        format_strbuf!("{}{}",
-                       prefix,
-                       unique_id_counter.fetch_add(1, atomics::SeqCst))
+        format!("{}{}", prefix,
+                unique_id_counter.fetch_add(1, atomics::SeqCst))
     }
 }
 

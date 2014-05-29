@@ -229,14 +229,6 @@ macro_rules! format(
     )
 )
 
-/// Temporary transitionary thing.
-#[macro_export]
-macro_rules! format_strbuf(
-    ($($arg:tt)*) => (
-        format_args!(::std::fmt::format_strbuf, $($arg)*)
-    )
-)
-
 /// Use the `format!` syntax to write data into a buffer of type `&mut Writer`.
 /// See `std::fmt` for more information.
 ///

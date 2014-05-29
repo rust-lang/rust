@@ -578,7 +578,7 @@ fn extern_location(e: &clean::ExternalCrate, dst: &Path) -> ExternalLocation {
                             if s.as_slice().ends_with("/") {
                                 return Remote(s.to_string());
                             }
-                            return Remote(format_strbuf!("{}/", s));
+                            return Remote(format!("{}/", s));
                         }
                         _ => {}
                     }
@@ -1187,12 +1187,12 @@ impl<'a> fmt::Show for Item<'a> {
 fn item_path(item: &clean::Item) -> String {
     match item.inner {
         clean::ModuleItem(..) => {
-            format_strbuf!("{}/index.html", item.name.get_ref())
+            format!("{}/index.html", item.name.get_ref())
         }
         _ => {
-            format_strbuf!("{}.{}.html",
-                           shortty(item).to_static_str(),
-                           *item.name.get_ref())
+            format!("{}.{}.html",
+                    shortty(item).to_static_str(),
+                    *item.name.get_ref())
         }
     }
 }

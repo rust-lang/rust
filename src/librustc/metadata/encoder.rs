@@ -140,7 +140,7 @@ fn encode_family(ebml_w: &mut Encoder, c: char) {
 }
 
 pub fn def_to_str(did: DefId) -> String {
-    format_strbuf!("{}:{}", did.krate, did.node)
+    format!("{}:{}", did.krate, did.node)
 }
 
 fn encode_ty_type_param_defs(ebml_w: &mut Encoder,

@@ -154,13 +154,13 @@ fn live_node_kind_to_str(lnk: LiveNodeKind, cx: &ty::ctxt) -> String {
     let cm = cx.sess.codemap();
     match lnk {
         FreeVarNode(s) => {
-            format_strbuf!("Free var node [{}]", cm.span_to_str(s))
+            format!("Free var node [{}]", cm.span_to_str(s))
         }
         ExprNode(s) => {
-            format_strbuf!("Expr node [{}]", cm.span_to_str(s))
+            format!("Expr node [{}]", cm.span_to_str(s))
         }
         VarDefNode(s) => {
-            format_strbuf!("Var def node [{}]", cm.span_to_str(s))
+            format!("Var def node [{}]", cm.span_to_str(s))
         }
         ExitNode => "Exit node".to_string(),
     }
@@ -1594,12 +1594,11 @@ impl<'a> Liveness<'a> {
 
                 if is_assigned {
                     self.ir.tcx.sess.add_lint(UnusedVariable, id, sp,
-                        format_strbuf!("variable `{}` is assigned to, \
-                                        but never used",
-                                       *name));
+                        format!("variable `{}` is assigned to, but never used",
+                                *name));
                 } else {
                     self.ir.tcx.sess.add_lint(UnusedVariable, id, sp,
-                        format_strbuf!("unused variable: `{}`", *name));
+                        format!("unused variable: `{}`", *name));
                 }
             }
             true
@@ -1617,8 +1616,7 @@ impl<'a> Liveness<'a> {
             let r = self.should_warn(var);
             for name in r.iter() {
                 self.ir.tcx.sess.add_lint(DeadAssignment, id, sp,
-                    format_strbuf!("value assigned to `{}` is never read",
-                                   *name));
+                    format!("value assigned to `{}` is never read", *name));
             }
         }
     }

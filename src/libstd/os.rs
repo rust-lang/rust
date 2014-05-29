@@ -437,7 +437,7 @@ pub fn pipe() -> Pipe {
 
 /// Returns the proper dll filename for the given basename of a file.
 pub fn dll_filename(base: &str) -> String {
-    format_strbuf!("{}{}{}", consts::DLL_PREFIX, base, consts::DLL_SUFFIX)
+    format!("{}{}{}", consts::DLL_PREFIX, base, consts::DLL_SUFFIX)
 }
 
 /// Optionally returns the filesystem path of the current executable which is
@@ -1513,7 +1513,7 @@ mod tests {
 
     fn make_rand_name() -> String {
         let mut rng = rand::task_rng();
-        let n = format_strbuf!("TEST{}", rng.gen_ascii_str(10u).as_slice());
+        let n = format!("TEST{}", rng.gen_ascii_str(10u).as_slice());
         assert!(getenv(n.as_slice()).is_none());
         n
     }

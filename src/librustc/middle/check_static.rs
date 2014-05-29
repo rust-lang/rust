@@ -49,8 +49,7 @@ fn safe_type_for_static_mut(cx: &ty::ctxt, e: &ast::Expr) -> Option<String> {
         return None;
     };
 
-    Some(format_strbuf!("mutable static items are not allowed to have {}",
-                        suffix))
+    Some(format!("mutable static items are not allowed to have {}", suffix))
 }
 
 struct CheckStaticVisitor<'a> {

@@ -223,7 +223,7 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
         let map = used_header_map.get().unwrap();
         let id = match map.borrow_mut().find_mut(&id) {
             None => id,
-            Some(a) => { *a += 1; format_strbuf!("{}-{}", id, *a - 1) }
+            Some(a) => { *a += 1; format!("{}-{}", id, *a - 1) }
         };
         map.borrow_mut().insert(id.clone(), 1);
 

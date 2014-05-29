@@ -36,8 +36,7 @@ fn main() {
     let blah       = "\u03c0\u042f\u97f3\u00e6\u221e";
 
     let child_name = "child";
-    let child_dir  = format_strbuf!("process-spawn-with-unicode-params-{}",
-                                    blah);
+    let child_dir  = format!("process-spawn-with-unicode-params-{}", blah);
 
     // parameters sent to child / expected to be received from parent
     let arg = blah;

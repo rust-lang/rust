@@ -109,10 +109,10 @@ pub fn monomorphic_fn(ccx: &CrateContext,
         ccx.sess(),
         ccx.tcx.map.find(fn_id.node),
         || {
-            format_strbuf!("while monomorphizing {:?}, couldn't find it in \
-                            the item map (may have attempted to monomorphize \
-                            an item defined in a different crate?)",
-                           fn_id)
+            format!("while monomorphizing {:?}, couldn't find it in \
+                     the item map (may have attempted to monomorphize \
+                     an item defined in a different crate?)",
+                    fn_id)
         });
 
     match map_node {
