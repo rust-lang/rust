@@ -104,12 +104,27 @@ impl<'a> Clean<Crate> for visit_ast::RustdocVisitor<'a> {
         let id = link::find_crate_id(self.attrs.as_slice(),
                                      t_outputs.out_filestem.as_slice());
 
-        // Clean the module, translating the entire libsyntax AST to one that is
+        // Clean the crate, translating the entire libsyntax AST to one that is
         // understood by rustdoc.
         let mut module = self.module.clean();
 
         // Collect all inner modules which are tagged as implementations of
         // primitives.
+        //
+        // Note that this loop only searches the top-level items of the crate,
+        // and this is intentional. If we were to search the entire crate for an
+        // item tagged with `#[doc(primitive)]` then we we would also have to
+        // search the entirety of external modules for items tagged
+        // `#[doc(primitive)]`, which is a pretty inefficient process (decoding
+        // all that metadata unconditionally).
+        //
+        // In order to keep the metadata load under control, the
+        // `#[doc(primitive)]` feature is explicitly designed to only allow the
+        // primitive tags to show up as the top level items in a crate.
+        //
+        // Also note that this does not attempt to deal with modules tagged
+        // duplicately for the same primitive. This is handled later on when
+        // rendering by delegating everything to a hash map.
         let mut primitives = Vec::new();
         {
             let m = match module.inner {
