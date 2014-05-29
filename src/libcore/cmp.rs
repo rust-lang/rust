@@ -37,6 +37,9 @@
 //! assert!(SketchyNum {num: 25} != SketchyNum {num: 57});
 //! ```
 
+pub use PartialEq = cmp::Eq;
+pub use PartialOrd = cmp::Ord;
+
 /// Trait for values that can be compared for equality and inequality.
 ///
 /// This trait allows partial equality, where types can be unordered instead of
