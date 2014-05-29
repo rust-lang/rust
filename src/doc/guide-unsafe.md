@@ -511,7 +511,7 @@ function is never called.
 With the above techniques, we've got a bare-metal executable running some Rust
 code. There is a good deal of functionality provided by the standard library,
 however, that is necessary to be productive in Rust. If the standard library is
-not sufficient, then [libcore](../core/index.html) is designed to be used
+not sufficient, then [libcore](core/index.html) is designed to be used
 instead.
 
 The core library has very few dependencies and is much more portable than the

@@ -130,3 +130,17 @@ r##"<!DOCTYPE html>
 fn nonestr<'a>(s: &'a str) -> &'a str {
     if s == "" { "none" } else { s }
 }
+
+pub fn redirect(dst: &mut io::Writer, url: &str) -> io::IoResult<()> {
+    write!(dst,
+r##"<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta http-equiv="refresh" content="0;URL={url}">
+</head>
+<body>
+</body>
+</html>"##,
+    url = url,
+    )
+}

@@ -70,7 +70,7 @@ pub fn strip_hidden(krate: clean::Crate) -> plugins::PluginResult {
                         for_: clean::ResolvedPath{ did, .. },
                         ref trait_, ..
                     }) => {
-                        // Impls for stripped don't need to exist
+                        // Impls for stripped types don't need to exist
                         if self.stripped.contains(&did.node) {
                             return None;
                         }
