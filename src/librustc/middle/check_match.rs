@@ -383,7 +383,7 @@ fn pat_ctor_id(cx: &MatchCheckCtxt, p: @Pat) -> Option<ctor> {
           _ => Some(single)
         }
       }
-      PatUniq(_) | PatTup(_) | PatRegion(..) => {
+      PatBox(_) | PatTup(_) | PatRegion(..) => {
         Some(single)
       }
       PatVec(ref before, slice, ref after) => {
@@ -764,7 +764,7 @@ fn specialize(cx: &MatchCheckCtxt,
             PatTup(args) => {
                 Some(args.iter().map(|x| *x).collect::<Vec<_>>().append(r.tail()))
             }
-            PatUniq(a) | PatRegion(a) => {
+            PatBox(a) | PatRegion(a) => {
                 Some((vec!(a)).append(r.tail()))
             }
             PatLit(expr) => {
@@ -924,7 +924,7 @@ fn find_refutable(cx: &MatchCheckCtxt, pat: &Pat, spans: &mut Vec<Span>) {
     }
 
     match pat.node {
-      PatUniq(sub) | PatRegion(sub) | PatIdent(_, _, Some(sub)) => {
+      PatBox(sub) | PatRegion(sub) | PatIdent(_, _, Some(sub)) => {
         find_refutable(cx, sub, spans)
       }
       PatWild | PatWildMulti | PatIdent(_, _, None) => {}

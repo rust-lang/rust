@@ -429,7 +429,7 @@ pub fn walk_pat<E: Clone, V: Visitor<E>>(visitor: &mut V, pattern: &Pat, env: E)
                 visitor.visit_pat(*tuple_element, env.clone())
             }
         }
-        PatUniq(subpattern) |
+        PatBox(subpattern) |
         PatRegion(subpattern) => {
             visitor.visit_pat(subpattern, env)
         }
