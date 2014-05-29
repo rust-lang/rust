@@ -44,8 +44,8 @@ pub mod bench {
     extern crate test;
     use self::test::Bencher;
     use std::container::MutableMap;
-    use rand;
-    use rand::Rng;
+    use std::rand;
+    use std::rand::Rng;
 
     pub fn insert_rand_n<M:MutableMap<uint,uint>>(n: uint,
                                                   map: &mut M,

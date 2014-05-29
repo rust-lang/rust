@@ -819,84 +819,84 @@ mod bench {
 
     mod uint {
         use super::test::Bencher;
-        use rand::{XorShiftRng, Rng};
+        use rand::{weak_rng, Rng};
         use num::ToStrRadix;
 
         #[bench]
         fn to_str_bin(b: &mut Bencher) {
-            let mut rng = XorShiftRng::new().unwrap();
+            let mut rng = weak_rng();
             b.iter(|| { rng.gen::<uint>().to_str_radix(2); })
         }
 
         #[bench]
         fn to_str_oct(b: &mut Bencher) {
-            let mut rng = XorShiftRng::new().unwrap();
+            let mut rng = weak_rng();
             b.iter(|| { rng.gen::<uint>().to_str_radix(8); })
         }
 
         #[bench]
         fn to_str_dec(b: &mut Bencher) {
-            let mut rng = XorShiftRng::new().unwrap();
+            let mut rng = weak_rng();
             b.iter(|| { rng.gen::<uint>().to_str_radix(10); })
         }
 
         #[bench]
         fn to_str_hex(b: &mut Bencher) {
-            let mut rng = XorShiftRng::new().unwrap();
+            let mut rng = weak_rng();
             b.iter(|| { rng.gen::<uint>().to_str_radix(16); })
         }
 
         #[bench]
         fn to_str_base_36(b: &mut Bencher) {
-            let mut rng = XorShiftRng::new().unwrap();
+            let mut rng = weak_rng();
             b.iter(|| { rng.gen::<uint>().to_str_radix(36); })
         }
     }
 
     mod int {
         use super::test::Bencher;
-        use rand::{XorShiftRng, Rng};
+        use rand::{weak_rng, Rng};
         use num::ToStrRadix;
 
         #[bench]
         fn to_str_bin(b: &mut Bencher) {
-            let mut rng = XorShiftRng::new().unwrap();
+            let mut rng = weak_rng();
             b.iter(|| { rng.gen::<int>().to_str_radix(2); })
         }
 
         #[bench]
         fn to_str_oct(b: &mut Bencher) {
-            let mut rng = XorShiftRng::new().unwrap();
+            let mut rng = weak_rng();
             b.iter(|| { rng.gen::<int>().to_str_radix(8); })
         }
 
         #[bench]
         fn to_str_dec(b: &mut Bencher) {
-            let mut rng = XorShiftRng::new().unwrap();
+            let mut rng = weak_rng();
             b.iter(|| { rng.gen::<int>().to_str_radix(10); })
         }
 
         #[bench]
         fn to_str_hex(b: &mut Bencher) {
-            let mut rng = XorShiftRng::new().unwrap();
+            let mut rng = weak_rng();
             b.iter(|| { rng.gen::<int>().to_str_radix(16); })
         }
 
         #[bench]
         fn to_str_base_36(b: &mut Bencher) {
-            let mut rng = XorShiftRng::new().unwrap();
+            let mut rng = weak_rng();
             b.iter(|| { rng.gen::<int>().to_str_radix(36); })
         }
     }
 
     mod f64 {
         use super::test::Bencher;
-        use rand::{XorShiftRng, Rng};
+        use rand::{weak_rng, Rng};
         use f64;
 
         #[bench]
         fn float_to_str(b: &mut Bencher) {
-            let mut rng = XorShiftRng::new().unwrap();
+            let mut rng = weak_rng();
             b.iter(|| { f64::to_str(rng.gen()); })
         }
     }

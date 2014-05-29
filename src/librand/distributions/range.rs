@@ -12,7 +12,9 @@
 
 // this is surprisingly complicated to be both generic & correct
 
-use std::num::Bounded;
+use core::prelude::*;
+use core::num::Bounded;
+
 use Rng;
 use distributions::{Sample, IndependentSample};
 
@@ -33,7 +35,8 @@ use distributions::{Sample, IndependentSample};
 /// # Example
 ///
 /// ```rust
-/// use rand::distributions::{IndependentSample, Range};
+/// use std::rand;
+/// use std::rand::distributions::{IndependentSample, Range};
 ///
 /// fn main() {
 ///     let between = Range::new(10u, 10000u);
@@ -161,8 +164,8 @@ float_impl! { f64 }
 
 #[cfg(test)]
 mod tests {
+    use std::prelude::*;
     use distributions::{Sample, IndependentSample};
-    use {Rng, task_rng};
     use super::Range;
     use std::num::Bounded;
 
@@ -179,7 +182,7 @@ mod tests {
 
     #[test]
     fn test_integers() {
-        let mut rng = task_rng();
+        let mut rng = ::test::rng();
         macro_rules! t (
             ($($ty:ty),*) => {{
                 $(
@@ -204,7 +207,7 @@ mod tests {
 
     #[test]
     fn test_floats() {
-        let mut rng = task_rng();
+        let mut rng = ::test::rng();
         macro_rules! t (
             ($($ty:ty),*) => {{
                 $(

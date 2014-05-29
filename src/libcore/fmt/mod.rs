@@ -596,7 +596,6 @@ pub fn argument<'a, T>(f: extern "Rust" fn(&T, &mut Formatter) -> Result,
 #[cfg(test)]
 pub fn format(args: &Arguments) -> ::realstd::string::String {
     use str;
-    use realstd::str::StrAllocating;
     use realstd::io::MemWriter;
 
     fn mywrite<T: ::realstd::io::Writer>(t: &mut T, b: &[u8]) {

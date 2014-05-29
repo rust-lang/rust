@@ -607,7 +607,7 @@ mod test {
     use slice::ImmutableVector;
     use option::{Some, None};
     use realstd::string::String;
-    use realstd::str::{Str, StrAllocating};
+    use realstd::str::Str;
 
     #[test]
     fn test_is_lowercase() {

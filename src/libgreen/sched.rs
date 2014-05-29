@@ -17,7 +17,7 @@ use std::sync::deque;
 use std::unstable::mutex::NativeMutex;
 use std::raw;
 
-use rand::{XorShiftRng, Rng, Rand};
+use std::rand::{XorShiftRng, Rng, Rand};
 
 use TaskState;
 use context::Context;
@@ -977,8 +977,9 @@ impl ClosureConverter for UnsafeTaskReceiver {
 // worry there.
 #[cfg(windows)]
 fn new_sched_rng() -> XorShiftRng {
-    match XorShiftRng::new() {
-        Ok(r) => r,
+    use std::rand::OSRng;
+    match OSRng::new() {
+        Ok(mut r) => r.gen(),
         Err(e) => {
             rtabort!("sched: failed to create seeded RNG: {}", e)
         }
@@ -988,7 +989,7 @@ fn new_sched_rng() -> XorShiftRng {
 fn new_sched_rng() -> XorShiftRng {
     use libc;
     use std::mem;
-    use rand::SeedableRng;
+    use std::rand::SeedableRng;
 
     let fd = "/dev/urandom".with_c_str(|name| {
         unsafe { libc::open(name, libc::O_RDONLY, 0) }
