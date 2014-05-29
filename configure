@@ -406,7 +406,7 @@ opt optimize 1 "build optimized rust code"
 opt optimize-cxx 1 "build optimized C++ code"
 opt optimize-llvm 1 "build optimized LLVM"
 opt optimize-tests 1 "build tests with optimizations"
-opt libcpp 1 "build with clang's libcpp"
+opt libcpp 1 "build with llvm with libc++ instead of libstdc++ when using clang"
 opt llvm-assertions 1 "build LLVM with assertions"
 opt debug 1 "build with extra debug fun"
 opt ratchet-bench 0 "ratchet benchmarks"
@@ -1136,7 +1136,7 @@ do
         CXXFLAGS=$LLVM_CXXFLAGS
         LDFLAGS=$LLVM_LDFLAGS
 
-        if [ "$CFG_DISABLE_LIBCPP" != 1 ]; then
+        if [ "$CFG_DISABLE_LIBCPP" != 1 ] && [ "$CFG_USING_CLANG" == 1 ]; then
             LLVM_OPTS="$LLVM_OPTS --enable-libcpp"
         fi
 
