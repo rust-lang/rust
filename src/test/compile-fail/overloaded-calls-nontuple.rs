@@ -18,7 +18,7 @@ struct S {
 }
 
 impl FnMut<int,int> for S {
-    fn call_mut(&mut self, z: int) -> int {
+    extern "rust-call" fn call_mut(&mut self, z: int) -> int {
         self.x + self.y + z
     }
 }

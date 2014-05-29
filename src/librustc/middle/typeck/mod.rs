@@ -97,6 +97,9 @@ pub enum MethodOrigin {
     // fully statically resolved method
     MethodStatic(ast::DefId),
 
+    // fully statically resolved unboxed closure invocation
+    MethodStaticUnboxedClosure(ast::DefId),
+
     // method invoked on a type parameter with a bounded trait
     MethodParam(MethodParam),
 
@@ -233,6 +236,12 @@ pub enum vtable_origin {
     vtable_param(param_index, uint),
 
     /*
+      Vtable automatically generated for an unboxed closure. The def ID is the
+      ID of the closure expression.
+     */
+    vtable_unboxed_closure(ast::DefId),
+
+    /*
       Asked to determine the vtable for ty_err. This is the value used
       for the vtables of `Self` in a virtual call like `foo.bar()`
       where `foo` is of object type. The same value is also used when
@@ -254,6 +263,10 @@ impl Repr for vtable_origin {
 
             vtable_param(x, y) => {
                 format!("vtable_param({:?}, {:?})", x, y)
+            }
+
+            vtable_unboxed_closure(def_id) => {
+                format!("vtable_unboxed_closure({})", def_id)
             }
 
             vtable_error => {

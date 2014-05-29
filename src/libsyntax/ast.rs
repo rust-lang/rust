@@ -503,6 +503,7 @@ pub enum Expr_ {
     ExprMatch(Gc<Expr>, Vec<Arm>),
     ExprFnBlock(P<FnDecl>, P<Block>),
     ExprProc(P<FnDecl>, P<Block>),
+    ExprUnboxedFn(P<FnDecl>, P<Block>),
     ExprBlock(P<Block>),
 
     ExprAssign(Gc<Expr>, Gc<Expr>),
@@ -690,6 +691,7 @@ pub struct TypeMethod {
     pub ident: Ident,
     pub attrs: Vec<Attribute>,
     pub fn_style: FnStyle,
+    pub abi: Abi,
     pub decl: P<FnDecl>,
     pub generics: Generics,
     pub explicit_self: ExplicitSelf,
@@ -966,13 +968,20 @@ pub struct Method {
     pub attrs: Vec<Attribute>,
     pub id: NodeId,
     pub span: Span,
-    pub node: Method_
+    pub node: Method_,
 }
 
 #[deriving(PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum Method_ {
     /// Represents a method declaration
-    MethDecl(Ident, Generics, ExplicitSelf, FnStyle, P<FnDecl>, P<Block>, Visibility),
+    MethDecl(Ident,
+             Generics,
+             Abi,
+             ExplicitSelf,
+             FnStyle,
+             P<FnDecl>,
+             P<Block>,
+             Visibility),
     /// Represents a macro in method position
     MethMac(Mac),
 }

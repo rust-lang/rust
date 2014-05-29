@@ -18,7 +18,7 @@ use lint;
 use middle::const_eval;
 use middle::def;
 use middle::dependency_format;
-use middle::lang_items::OpaqueStructLangItem;
+use middle::lang_items::{FnMutTraitLangItem, OpaqueStructLangItem};
 use middle::lang_items::{TyDescStructLangItem, TyVisitorTraitLangItem};
 use middle::freevars;
 use middle::resolve;
@@ -370,6 +370,10 @@ pub struct ctxt {
 
     pub dependency_formats: RefCell<dependency_format::Dependencies>,
 
+    /// Records the type of each unboxed closure. The def ID is the ID of the
+    /// expression defining the unboxed closure.
+    pub unboxed_closure_types: RefCell<DefIdMap<ClosureTy>>,
+
     pub node_lint_levels: RefCell<HashMap<(ast::NodeId, lint::LintId),
                                           lint::LevelSource>>,
 
@@ -454,6 +458,7 @@ pub struct ClosureTy {
     pub store: TraitStore,
     pub bounds: BuiltinBounds,
     pub sig: FnSig,
+    pub abi: abi::Abi,
 }
 
 /**
@@ -736,6 +741,7 @@ pub enum sty {
     ty_closure(Box<ClosureTy>),
     ty_trait(Box<TyTrait>),
     ty_struct(DefId, Substs),
+    ty_unboxed_closure(DefId),
     ty_tup(Vec<t>),
 
     ty_param(ParamTy), // type parameter
@@ -1054,7 +1060,7 @@ pub fn mk_ctxt(s: Session,
                region_maps: middle::region::RegionMaps,
                lang_items: middle::lang_items::LanguageItems,
                stability: stability::Index)
-            -> ctxt {
+               -> ctxt {
     ctxt {
         named_region_map: named_region_map,
         item_variance_map: RefCell::new(DefIdMap::new()),
@@ -1106,6 +1112,7 @@ pub fn mk_ctxt(s: Session,
         method_map: RefCell::new(FnvHashMap::new()),
         vtable_map: RefCell::new(FnvHashMap::new()),
         dependency_formats: RefCell::new(HashMap::new()),
+        unboxed_closure_types: RefCell::new(DefIdMap::new()),
         node_lint_levels: RefCell::new(HashMap::new()),
         transmute_restrictions: RefCell::new(Vec::new()),
         stability: RefCell::new(stability)
@@ -1164,7 +1171,7 @@ pub fn mk_t(cx: &ctxt, st: sty) -> t {
     }
     match &st {
       &ty_nil | &ty_bool | &ty_char | &ty_int(_) | &ty_float(_) | &ty_uint(_) |
-      &ty_str => {}
+      &ty_str | &ty_unboxed_closure(_) => {}
       // You might think that we could just return ty_err for
       // any type containing ty_err as a component, and get
       // rid of the has_ty_err flag -- likewise for ty_bot (with
@@ -1429,6 +1436,10 @@ pub fn mk_struct(cx: &ctxt, struct_id: ast::DefId, substs: Substs) -> t {
     mk_t(cx, ty_struct(struct_id, substs))
 }
 
+pub fn mk_unboxed_closure(cx: &ctxt, closure_id: ast::DefId) -> t {
+    mk_t(cx, ty_unboxed_closure(closure_id))
+}
+
 pub fn mk_var(cx: &ctxt, v: TyVid) -> t { mk_infer(cx, TyVar(v)) }
 
 pub fn mk_int_var(cx: &ctxt, v: IntVid) -> t { mk_infer(cx, IntVar(v)) }
@@ -1459,7 +1470,7 @@ pub fn maybe_walk_ty(ty: t, f: |t| -> bool) {
     }
     match get(ty).sty {
         ty_nil | ty_bot | ty_bool | ty_char | ty_int(_) | ty_uint(_) | ty_float(_) |
-        ty_str | ty_infer(_) | ty_param(_) | ty_err => {
+        ty_str | ty_infer(_) | ty_param(_) | ty_unboxed_closure(_) | ty_err => {
         }
         ty_box(ty) | ty_uniq(ty) => maybe_walk_ty(ty, f),
         ty_ptr(ref tm) | ty_rptr(_, ref tm) | ty_vec(ref tm, _) => {
@@ -1567,7 +1578,7 @@ pub fn type_is_vec(ty: t) -> bool {
 pub fn type_is_structural(ty: t) -> bool {
     match get(ty).sty {
       ty_struct(..) | ty_tup(_) | ty_enum(..) | ty_closure(_) |
-      ty_vec(_, Some(_)) => true,
+      ty_vec(_, Some(_)) | ty_unboxed_closure(_) => true,
       _ => type_is_slice(ty) | type_is_trait(ty)
     }
 }
@@ -2082,6 +2093,12 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
                 apply_lang_items(cx, did, res)
             }
 
+            ty_unboxed_closure(did) => {
+                let upvars = unboxed_closure_upvars(cx, did);
+                TypeContents::union(upvars.as_slice(),
+                                    |f| tc_ty(cx, f.ty, cache))
+            }
+
             ty_tup(ref tys) => {
                 TypeContents::union(tys.as_slice(),
                                     |ty| tc_ty(cx, *ty, cache))
@@ -2323,6 +2340,11 @@ pub fn is_instantiable(cx: &ctxt, r_ty: t) -> bool {
                 r
             }
 
+            ty_unboxed_closure(did) => {
+                let upvars = unboxed_closure_upvars(cx, did);
+                upvars.iter().any(|f| type_requires(cx, seen, r_ty, f.ty))
+            }
+
             ty_tup(ref ts) => {
                 ts.iter().any(|t| type_requires(cx, seen, r_ty, *t))
             }
@@ -2427,6 +2449,7 @@ pub fn is_type_representable(cx: &ctxt, sp: Span, ty: t) -> Representability {
                 seen.pop();
                 r
             }
+
             ty_enum(did, ref substs) => {
                 seen.push(did);
                 let vs = enum_variants(cx, did);
@@ -2443,6 +2466,14 @@ pub fn is_type_representable(cx: &ctxt, sp: Span, ty: t) -> Representability {
 
                 seen.pop();
                 r
+            }
+
+            ty_unboxed_closure(did) => {
+                let upvars = unboxed_closure_upvars(cx, did);
+                find_nonrepresentable(cx,
+                                      sp,
+                                      seen,
+                                      upvars.iter().map(|f| f.ty))
             }
 
             _ => Representable,
@@ -2655,6 +2686,15 @@ pub fn ty_fn_sig(fty: t) -> FnSig {
     }
 }
 
+/// Returns the ABI of the given function.
+pub fn ty_fn_abi(fty: t) -> abi::Abi {
+    match get(fty).sty {
+        ty_bare_fn(ref f) => f.abi,
+        ty_closure(ref f) => f.abi,
+        _ => fail!("ty_fn_abi() called on non-fn type"),
+    }
+}
+
 // Type accessors for substructures of types
 pub fn ty_fn_args(fty: t) -> Vec<t> {
     match get(fty).sty {
@@ -2669,6 +2709,11 @@ pub fn ty_fn_args(fty: t) -> Vec<t> {
 pub fn ty_closure_store(fty: t) -> TraitStore {
     match get(fty).sty {
         ty_closure(ref f) => f.store,
+        ty_unboxed_closure(_) => {
+            // Close enough for the purposes of all the callers of this
+            // function (which is soon to be deprecated anyhow).
+            UniqTraitStore
+        }
         ref s => {
             fail!("ty_closure_store() called on non-closure type: {:?}", s)
         }
@@ -2816,11 +2861,14 @@ pub fn adjust_ty(cx: &ctxt,
                         ty::ty_bare_fn(ref b) => {
                             ty::mk_closure(
                                 cx,
-                                ty::ClosureTy {fn_style: b.fn_style,
-                                               onceness: ast::Many,
-                                               store: store,
-                                               bounds: ty::all_builtin_bounds(),
-                                               sig: b.sig.clone()})
+                                ty::ClosureTy {
+                                    fn_style: b.fn_style,
+                                    onceness: ast::Many,
+                                    store: store,
+                                    bounds: ty::all_builtin_bounds(),
+                                    sig: b.sig.clone(),
+                                    abi: b.abi,
+                                })
                         }
                         ref b => {
                             cx.sess.bug(
@@ -2990,6 +3038,14 @@ pub fn method_call_type_param_defs(tcx: &ctxt, origin: typeck::MethodOrigin)
         typeck::MethodStatic(did) => {
             ty::lookup_item_type(tcx, did).generics.types.clone()
         }
+        typeck::MethodStaticUnboxedClosure(_) => {
+            match tcx.lang_items.require(FnMutTraitLangItem) {
+                Ok(def_id) => {
+                    lookup_trait_def(tcx, def_id).generics.types.clone()
+                }
+                Err(s) => tcx.sess.fatal(s.as_slice()),
+            }
+        }
         typeck::MethodParam(typeck::MethodParam{trait_id: trt_id,
                                                 method_num: n_mth, ..}) |
         typeck::MethodObject(typeck::MethodObject{trait_id: trt_id,
@@ -3104,6 +3160,7 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
         ast::ExprMatch(..) |
         ast::ExprFnBlock(..) |
         ast::ExprProc(..) |
+        ast::ExprUnboxedFn(..) |
         ast::ExprBlock(..) |
         ast::ExprRepeat(..) |
         ast::ExprVstore(_, ast::ExprVstoreSlice) |
@@ -3250,6 +3307,7 @@ pub fn ty_sort_string(cx: &ctxt, t: t) -> String {
         ty_struct(id, _) => {
             format!("struct {}", item_path_str(cx, id))
         }
+        ty_unboxed_closure(_) => "closure".to_string(),
         ty_tup(_) => "tuple".to_string(),
         ty_infer(TyVar(_)) => "inferred type".to_string(),
         ty_infer(IntVar(_)) => "integral variable".to_string(),
@@ -3617,7 +3675,8 @@ pub fn ty_to_def_id(ty: t) -> Option<ast::DefId> {
     match get(ty).sty {
         ty_trait(box TyTrait { def_id: id, .. }) |
         ty_struct(id, _) |
-        ty_enum(id, _) => Some(id),
+        ty_enum(id, _) |
+        ty_unboxed_closure(id) => Some(id),
         _ => None
     }
 }
@@ -4044,6 +4103,34 @@ pub fn struct_fields(cx: &ctxt, did: ast::DefId, substs: &Substs)
             }
         }
     }).collect()
+}
+
+pub struct UnboxedClosureUpvar {
+    pub def: def::Def,
+    pub span: Span,
+    pub ty: t,
+}
+
+// Returns a list of `UnboxedClosureUpvar`s for each upvar.
+pub fn unboxed_closure_upvars(tcx: &ctxt, closure_id: ast::DefId)
+                              -> Vec<UnboxedClosureUpvar> {
+    if closure_id.krate == ast::LOCAL_CRATE {
+        match tcx.freevars.borrow().find(&closure_id.node) {
+            None => tcx.sess.bug("no freevars for unboxed closure?!"),
+            Some(ref freevars) => {
+                freevars.iter().map(|freevar| {
+                    let freevar_def_id = freevar.def.def_id();
+                    UnboxedClosureUpvar {
+                        def: freevar.def,
+                        span: freevar.span,
+                        ty: node_id_to_type(tcx, freevar_def_id.node),
+                    }
+                }).collect()
+            }
+        }
+    } else {
+        tcx.sess.bug("unimplemented cross-crate closure upvars")
+    }
 }
 
 pub fn is_binopable(cx: &ctxt, ty: t, op: ast::BinOp) -> bool {
@@ -4623,6 +4710,10 @@ pub fn hash_crate_independent(tcx: &ctxt, t: t, svh: &Svh) -> u64 {
             }
             ty_infer(_) => unreachable!(),
             ty_err => byte!(23),
+            ty_unboxed_closure(d) => {
+                byte!(24);
+                did(&mut state, d);
+            }
         }
     });
 

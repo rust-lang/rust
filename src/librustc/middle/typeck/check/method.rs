@@ -87,10 +87,11 @@ use middle::ty;
 use middle::typeck::astconv::AstConv;
 use middle::typeck::check::{FnCtxt, PreferMutLvalue, impl_self_ty};
 use middle::typeck::check;
+use middle::typeck::infer::MiscVariable;
 use middle::typeck::infer;
 use middle::typeck::MethodCallee;
 use middle::typeck::{MethodOrigin, MethodParam};
-use middle::typeck::{MethodStatic, MethodObject};
+use middle::typeck::{MethodStatic, MethodStaticUnboxedClosure, MethodObject};
 use middle::typeck::{param_index};
 use middle::typeck::check::regionmanip::replace_late_bound_regions_in_fn_sig;
 use middle::typeck::TypeAndSubsts;
@@ -341,7 +342,7 @@ struct Candidate {
 #[deriving(Clone)]
 pub enum RcvrMatchCondition {
     RcvrMatchesIfObject(ast::DefId),
-    RcvrMatchesIfSubtype(ty::t)
+    RcvrMatchesIfSubtype(ty::t),
 }
 
 impl<'a> LookupContext<'a> {
@@ -441,7 +442,9 @@ impl<'a> LookupContext<'a> {
                     }
                     _ => {}
                 },
-                ty_enum(did, _) | ty_struct(did, _) => {
+                ty_enum(did, _) |
+                ty_struct(did, _) |
+                ty_unboxed_closure(did) => {
                     if self.check_traits == CheckTraitsAndInherentMethods {
                         self.push_inherent_impl_candidates_for_type(did);
                     }
@@ -464,6 +467,10 @@ impl<'a> LookupContext<'a> {
             match get(self_ty).sty {
                 ty_param(p) => {
                     self.push_inherent_candidates_from_param(self_ty, restrict_to, p);
+                }
+                ty_unboxed_closure(closure_did) => {
+                    self.push_unboxed_closure_call_candidates_if_applicable(
+                        closure_did);
                 }
                 _ => { /* No bound methods in these types */ }
             }
@@ -497,9 +504,87 @@ impl<'a> LookupContext<'a> {
         let opt_applicable_traits = self.fcx.ccx.trait_map.find(&expr_id);
         for applicable_traits in opt_applicable_traits.move_iter() {
             for trait_did in applicable_traits.iter() {
+                debug!("push_extension_candidates() found trait: {}",
+                       if trait_did.krate == ast::LOCAL_CRATE {
+                           self.fcx.ccx.tcx.map.node_to_string(trait_did.node)
+                       } else {
+                           "(external)".to_string()
+                       });
                 self.push_extension_candidate(*trait_did);
             }
         }
+    }
+
+    fn push_unboxed_closure_call_candidate_if_applicable(
+            &mut self,
+            trait_did: DefId,
+            closure_did: DefId,
+            closure_function_type: &ClosureTy) {
+        let method =
+            ty::trait_methods(self.tcx(), trait_did).get(0).clone();
+
+        let vcx = self.fcx.vtable_context();
+        let region_params =
+            vec!(vcx.infcx.next_region_var(MiscVariable(self.span)));
+
+        // Get the tupled type of the arguments.
+        let arguments_type = *closure_function_type.sig.inputs.get(0);
+        let return_type = closure_function_type.sig.output;
+
+        let unboxed_closure_type = ty::mk_unboxed_closure(self.tcx(),
+                                                          closure_did);
+        self.extension_candidates.push(Candidate {
+            rcvr_match_condition:
+                RcvrMatchesIfSubtype(unboxed_closure_type),
+            rcvr_substs: subst::Substs::new_trait(
+                vec![arguments_type, return_type],
+                region_params,
+                *vcx.infcx.next_ty_vars(1).get(0)),
+            method_ty: method,
+            origin: MethodStaticUnboxedClosure(closure_did),
+        });
+    }
+
+    fn push_unboxed_closure_call_candidates_if_applicable(
+            &mut self,
+            closure_did: DefId) {
+        // FIXME(pcwalton): Try `Fn` and `FnOnce` too.
+        let trait_did = match self.tcx().lang_items.fn_mut_trait() {
+            Some(trait_did) => trait_did,
+            None => return,
+        };
+
+        match self.tcx()
+                  .unboxed_closure_types
+                  .borrow()
+                  .find(&closure_did) {
+            None => {}  // Fall through to try inherited.
+            Some(closure_function_type) => {
+                self.push_unboxed_closure_call_candidate_if_applicable(
+                    trait_did,
+                    closure_did,
+                    closure_function_type);
+                return
+            }
+        }
+
+        match self.fcx
+                  .inh
+                  .unboxed_closure_types
+                  .borrow()
+                  .find(&closure_did) {
+            Some(closure_function_type) => {
+                self.push_unboxed_closure_call_candidate_if_applicable(
+                    trait_did,
+                    closure_did,
+                    closure_function_type);
+                return
+            }
+            None => {}
+        }
+
+        self.tcx().sess.bug("didn't find unboxed closure type in tcx map or \
+                             inherited map, so there")
     }
 
     fn push_inherent_candidates_from_object(&mut self,
@@ -926,7 +1011,8 @@ impl<'a> LookupContext<'a> {
             ty_infer(FloatVar(_)) |
             ty_param(..) | ty_nil | ty_bot | ty_bool |
             ty_char | ty_int(..) | ty_uint(..) |
-            ty_float(..) | ty_enum(..) | ty_ptr(..) | ty_struct(..) | ty_tup(..) |
+            ty_float(..) | ty_enum(..) | ty_ptr(..) | ty_struct(..) |
+            ty_unboxed_closure(..) | ty_tup(..) |
             ty_str | ty_vec(..) | ty_trait(..) | ty_closure(..) => {
                 self.search_for_some_kind_of_autorefd_method(
                     AutoPtr, autoderefs, [MutImmutable, MutMutable],
@@ -1212,7 +1298,9 @@ impl<'a> LookupContext<'a> {
          */
 
         match candidate.origin {
-            MethodStatic(..) | MethodParam(..) => {
+            MethodStatic(..) |
+            MethodParam(..) |
+            MethodStaticUnboxedClosure(..) => {
                 return; // not a call to a trait instance
             }
             MethodObject(..) => {}
@@ -1268,6 +1356,7 @@ impl<'a> LookupContext<'a> {
             MethodStatic(method_id) => {
                 bad = self.tcx().destructors.borrow().contains(&method_id);
             }
+            MethodStaticUnboxedClosure(_) => bad = false,
             // FIXME: does this properly enforce this on everything now
             // that self has been merged in? -sully
             MethodParam(MethodParam { trait_id: trait_id, .. }) |
@@ -1407,6 +1496,9 @@ impl<'a> LookupContext<'a> {
                         Some(did) => did
                     }
                 };
+                self.report_static_candidate(idx, did)
+            }
+            MethodStaticUnboxedClosure(did) => {
                 self.report_static_candidate(idx, did)
             }
             MethodParam(ref mp) => {

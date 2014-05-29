@@ -448,7 +448,7 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
         }
         visit::walk_expr(ir, expr, ());
       }
-      ExprFnBlock(..) | ExprProc(..) => {
+      ExprFnBlock(..) | ExprProc(..) | ExprUnboxedFn(..) => {
         // Interesting control flow (for loops can contain labeled
         // breaks or continues)
         ir.add_live_node_for_node(expr.id, ExprNode(expr.span));
@@ -941,8 +941,11 @@ impl<'a> Liveness<'a> {
               self.propagate_through_expr(&**e, succ)
           }
 
-          ExprFnBlock(_, ref blk) | ExprProc(_, ref blk) => {
-              debug!("{} is an ExprFnBlock or ExprProc", expr_to_string(expr));
+          ExprFnBlock(_, ref blk) |
+          ExprProc(_, ref blk) |
+          ExprUnboxedFn(_, ref blk) => {
+              debug!("{} is an ExprFnBlock, ExprProc, or ExprUnboxedFn",
+                     expr_to_string(expr));
 
               /*
               The next-node for a break is the successor of the entire
@@ -1411,8 +1414,8 @@ fn check_expr(this: &mut Liveness, expr: &Expr) {
       ExprCast(..) | ExprUnary(..) | ExprRet(..) | ExprBreak(..) |
       ExprAgain(..) | ExprLit(_) | ExprBlock(..) |
       ExprMac(..) | ExprAddrOf(..) | ExprStruct(..) | ExprRepeat(..) |
-      ExprParen(..) | ExprFnBlock(..) | ExprProc(..) | ExprPath(..) |
-      ExprBox(..) => {
+      ExprParen(..) | ExprFnBlock(..) | ExprProc(..) | ExprUnboxedFn(..) |
+      ExprPath(..) | ExprBox(..) => {
         visit::walk_expr(this, expr, ());
       }
       ExprForLoop(..) => fail!("non-desugared expr_for_loop")

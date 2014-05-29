@@ -783,12 +783,14 @@ fn trans_rvalue_dps_unadjusted<'a>(bcx: &'a Block<'a>,
                    expr_to_string(expr), expr_ty.repr(tcx));
             closure::trans_expr_fn(bcx, store, &**decl, &**body, expr.id, dest)
         }
+        ast::ExprUnboxedFn(decl, body) => {
+            closure::trans_unboxed_closure(bcx, &*decl, &*body, expr.id, dest)
+        }
         ast::ExprCall(ref f, ref args) => {
             if bcx.tcx().is_method_call(expr.id) {
-                let callee_datum = unpack_datum!(bcx, trans(bcx, &**f));
                 trans_overloaded_call(bcx,
                                       expr,
-                                      callee_datum,
+                                      *f,
                                       args.as_slice(),
                                       Some(dest))
             } else {
@@ -1502,54 +1504,18 @@ fn trans_overloaded_op<'a, 'b>(
 fn trans_overloaded_call<'a>(
                          mut bcx: &'a Block<'a>,
                          expr: &ast::Expr,
-                         callee: Datum<Expr>,
+                         callee: Gc<ast::Expr>,
                          args: &[Gc<ast::Expr>],
                          dest: Option<Dest>)
                          -> &'a Block<'a> {
-    // Evaluate and tuple the arguments.
-    let tuple_type = ty::mk_tup(bcx.tcx(),
-                                args.iter()
-                                    .map(|e| ty::expr_ty_adjusted(bcx.tcx(), &**e))
-                                    .collect());
-    let repr = adt::represent_type(bcx.ccx(), tuple_type);
-    let numbered_fields: Vec<(uint, Gc<ast::Expr>)> =
-        args.iter().enumerate().map(|(i, arg)| (i, *arg)).collect();
-    let argument_scope = bcx.fcx.push_custom_cleanup_scope();
-    let tuple_datum =
-        unpack_datum!(bcx,
-                      lvalue_scratch_datum(bcx,
-                                           tuple_type,
-                                           "tupled_arguments",
-                                           false,
-                                           cleanup::CustomScope(
-                                               argument_scope),
-                                           (),
-                                           |(), bcx, addr| {
-            trans_adt(bcx,
-                      &*repr,
-                      0,
-                      numbered_fields.as_slice(),
-                      None,
-                      SaveIn(addr))
-        }));
-
     let method_call = MethodCall::expr(expr.id);
     let method_type = bcx.tcx()
                          .method_map
                          .borrow()
                          .get(&method_call)
                          .ty;
-    let callee_rvalue = unpack_datum!(bcx,
-                                      callee.to_rvalue_datum(bcx, "callee"));
-    let tuple_datum = tuple_datum.to_expr_datum();
-    let tuple_rvalue = unpack_datum!(bcx,
-                                     tuple_datum.to_rvalue_datum(bcx,
-                                                                 "tuple"));
-    let argument_values = [
-        callee_rvalue.add_clean(bcx.fcx,
-                                cleanup::CustomScope(argument_scope)),
-        tuple_rvalue.add_clean(bcx.fcx, cleanup::CustomScope(argument_scope))
-    ];
+    let mut all_args = vec!(callee);
+    all_args.push_all(args);
     unpack_result!(bcx,
                    callee::trans_call_inner(bcx,
                                             Some(expr_info(expr)),
@@ -1562,10 +1528,9 @@ fn trans_overloaded_call<'a>(
                                                     None,
                                                     arg_cleanup_scope)
                                             },
-                                            callee::ArgVals(argument_values),
+                                            callee::ArgOverloadedCall(
+                                                all_args.as_slice()),
                                             dest));
-
-    bcx.fcx.pop_custom_cleanup_scope(argument_scope);
     bcx
 }
 

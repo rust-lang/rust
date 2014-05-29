@@ -10,8 +10,8 @@
 
 
 use back::{link};
+use llvm::{ValueRef, CallConv, Linkage, get_param};
 use llvm;
-use llvm::{ValueRef, CallConv, Linkage};
 use middle::weak_lang_items;
 use middle::trans::base::push_ctxt;
 use middle::trans::base;
@@ -27,7 +27,7 @@ use middle::ty;
 use std::cmp;
 use libc::c_uint;
 use syntax::abi::{Cdecl, Aapcs, C, Win64, Abi};
-use syntax::abi::{RustIntrinsic, Rust, Stdcall, Fastcall, System};
+use syntax::abi::{RustIntrinsic, Rust, RustCall, Stdcall, Fastcall, System};
 use syntax::codemap::Span;
 use syntax::parse::token::{InternedString, special_idents};
 use syntax::parse::token;
@@ -82,6 +82,11 @@ pub fn llvm_calling_convention(ccx: &CrateContext,
             Rust => {
                 // FIXME(#3678) Implement linking to foreign fns with Rust ABI
                 ccx.sess().unimpl("foreign functions with Rust ABI");
+            }
+
+            RustCall => {
+                // FIXME(#3678) Implement linking to foreign fns with Rust ABI
+                ccx.sess().unimpl("foreign functions with RustCall ABI");
             }
 
             // It's the ABI's job to select this, not us.
@@ -646,7 +651,7 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: &CrateContext,
         // If there is an out pointer on the foreign function
         let foreign_outptr = {
             if tys.fn_ty.ret_ty.is_indirect() {
-                Some(llvm::LLVMGetParam(llwrapfn, next_foreign_arg(false)))
+                Some(get_param(llwrapfn, next_foreign_arg(false)))
             } else {
                 None
             }
@@ -708,7 +713,7 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: &CrateContext,
 
             // skip padding
             let foreign_index = next_foreign_arg(llforeign_arg_ty.pad.is_some());
-            let mut llforeign_arg = llvm::LLVMGetParam(llwrapfn, foreign_index);
+            let mut llforeign_arg = get_param(llwrapfn, foreign_index);
 
             debug!("llforeign_arg {}{}: {}", "#",
                    i, ccx.tn.val_to_string(llforeign_arg));

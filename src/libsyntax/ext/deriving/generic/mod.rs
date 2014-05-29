@@ -183,6 +183,8 @@
 use std::cell::RefCell;
 use std::gc::{Gc, GC};
 
+use abi::Abi;
+use abi;
 use ast;
 use ast::{P, EnumDef, Expr, Ident, Generics, StructDef};
 use ast_util;
@@ -477,9 +479,13 @@ impl<'a> TraitDef<'a> {
                                                      nonself_args.as_slice())
             };
 
-            method_def.create_method(cx, self,
-                                     type_ident, generics,
-                                     explicit_self, tys,
+            method_def.create_method(cx,
+                                     self,
+                                     type_ident,
+                                     generics,
+                                     abi::Rust,
+                                     explicit_self,
+                                     tys,
                                      body)
         }).collect();
 
@@ -513,9 +519,13 @@ impl<'a> TraitDef<'a> {
                                                    nonself_args.as_slice())
             };
 
-            method_def.create_method(cx, self,
-                                     type_ident, generics,
-                                     explicit_self, tys,
+            method_def.create_method(cx,
+                                     self,
+                                     type_ident,
+                                     generics,
+                                     abi::Rust,
+                                     explicit_self,
+                                     tys,
                                      body)
         }).collect();
 
@@ -622,9 +632,11 @@ impl<'a> MethodDef<'a> {
                      trait_: &TraitDef,
                      type_ident: Ident,
                      generics: &Generics,
+                     abi: Abi,
                      explicit_self: ast::ExplicitSelf,
                      arg_types: Vec<(Ident, P<ast::Ty>)> ,
-                     body: Gc<Expr>) -> Gc<ast::Method> {
+                     body: Gc<Expr>)
+                     -> Gc<ast::Method> {
         // create the generics that aren't for Self
         let fn_generics = self.generics.to_generics(cx, trait_.span, type_ident, generics);
 
@@ -653,6 +665,7 @@ impl<'a> MethodDef<'a> {
             span: trait_.span,
             node: ast::MethDecl(method_ident,
                                 fn_generics,
+                                abi,
                                 explicit_self,
                                 ast::NormalFn,
                                 fn_decl,

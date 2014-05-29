@@ -762,6 +762,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                                             bounds,
                                             store,
                                             &*f.decl,
+                                            abi::Rust,
                                             None);
                 ty::mk_closure(tcx, fn_decl)
             }
@@ -780,6 +781,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                                             bounds,
                                             ty::UniqTraitStore,
                                             &*f.decl,
+                                            abi::Rust,
                                             None);
                 ty::mk_closure(tcx, fn_decl)
             }
@@ -879,9 +881,9 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
             }
             ast::TyInfer => {
                 // TyInfer also appears as the type of arguments or return
-                // values in a ExprFnBlock or ExprProc, or as the type of
-                // local variables. Both of these cases are handled specially
-                // and will not descend into this routine.
+                // values in a ExprFnBlock, ExprProc, or ExprUnboxedFn, or as
+                // the type of local variables. Both of these cases are
+                // handled specially and will not descend into this routine.
                 this.ty_infer(ast_ty.span)
             }
         }
@@ -911,7 +913,8 @@ pub fn ty_of_method<AC:AstConv>(
                     fn_style: ast::FnStyle,
                     untransformed_self_ty: ty::t,
                     explicit_self: ast::ExplicitSelf,
-                    decl: &ast::FnDecl)
+                    decl: &ast::FnDecl,
+                    abi: abi::Abi)
                     -> (ty::BareFnTy, ty::ExplicitSelfCategory) {
     let self_info = Some(SelfInfo {
         untransformed_self_ty: untransformed_self_ty,
@@ -921,7 +924,7 @@ pub fn ty_of_method<AC:AstConv>(
         ty_of_method_or_bare_fn(this,
                                 id,
                                 fn_style,
-                                abi::Rust,
+                                abi,
                                 self_info,
                                 decl);
     (bare_fn_ty, optional_explicit_self_category.unwrap())
@@ -1083,6 +1086,7 @@ pub fn ty_of_closure<AC:AstConv>(
     bounds: ty::BuiltinBounds,
     store: ty::TraitStore,
     decl: &ast::FnDecl,
+    abi: abi::Abi,
     expected_sig: Option<ty::FnSig>)
     -> ty::ClosureTy
 {
@@ -1117,6 +1121,7 @@ pub fn ty_of_closure<AC:AstConv>(
         onceness: onceness,
         store: store,
         bounds: bounds,
+        abi: abi,
         sig: ty::FnSig {binder_id: id,
                         inputs: input_tys,
                         output: output_ty,
