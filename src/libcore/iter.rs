@@ -386,6 +386,41 @@ pub trait Iterator<A> {
         Fuse{iter: self, done: false}
     }
 
+    /// Creates an iterator that yields pairs ef elements from the underlying
+    /// iterator, yielding `None` when there are fewer than two elements to
+    /// return.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let xs = "10ab20cde".chars().pair();
+    /// fn hex(data: &str) -> Option<Vec<u8>> {
+    ///   let hex = "0123456789abcdef";
+    ///   let mut char_iter = data.chars().pair();
+    ///   let mut ret = vec![];
+    /// 
+    ///   // Convert pairs of base-16 digits at a time to bytes
+    ///   for (f, s) in char_iter {
+    ///     let fx = hex.find(f.to_lowercase());
+    ///     let sx = hex.find(s.to_lowercase());
+    ///     if fx.is_none() || sx.is_none() {
+    ///       return None;
+    ///     }
+    ///     ret.push((fx.unwrap() * 0x10 + sx.unwrap()) as u8);
+    ///   }
+    /// 
+    ///   // If there is a remaining element, fail decode
+    ///   match char_iter.remainder() {
+    ///     None => Some(ret),
+    ///     Some(_) => None
+    ///   }
+    /// }
+    /// ```
+    #[inline]
+    fn pair(self) -> Pair<A, Self> {
+        Pair{iter: self, last_elem: None}
+    }
+
     /// Creates an iterator that calls a function with a reference to each
     /// element before yielding it. This is often useful for debugging an
     /// iterator pipeline.
@@ -1816,6 +1851,46 @@ impl<T> Fuse<T> {
         self.done = false
     }
 }
+
+/// An iterator that returns pairs of elements
+pub struct Pair<A, T> {
+  iter: T,
+  last_elem: Option<A>
+}
+
+impl<A, T: Iterator<A>> Iterator<(A, A)> for Pair<A, T> {
+    #[inline]
+    fn next(&mut self) -> Option<(A, A)> {
+        let elem1 = self.iter.next();
+        let elem2 = self.iter.next();
+        if elem1.is_none() {
+            None
+        } else if elem2.is_none() {
+            self.last_elem = elem2;
+            None
+        } else {
+            Some((elem1.unwrap(), elem2.unwrap()))
+        }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        match self.iter.size_hint() {
+          (n, None) => (n/2, None),
+          (n, Some(m)) => (n/2, Some(m/2))
+        }
+    }
+}
+
+impl<A, T: Iterator<A>> Pair<A, T> {
+    /// Returns the last element of the iterator if there were an odd
+    /// number of elements remaining before it was Pair-ified.
+    #[inline]
+    pub fn remainder(self) -> Option<A> {
+        self.last_elem
+    }
+}
+
 
 /// An iterator that calls a function with a reference to each
 /// element before yielding it.
