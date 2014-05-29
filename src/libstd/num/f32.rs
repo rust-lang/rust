@@ -12,6 +12,7 @@
 
 #![allow(missing_doc)]
 #![allow(unsigned_negate)]
+#![doc(primitive = "f32")]
 
 use prelude::*;
 

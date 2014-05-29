@@ -10,5 +10,7 @@
 
 //! Operations and constants for signed 16-bits integers (`i16` type)
 
+#![doc(primitive = "i16")]
+
 int_module!(i16, 16)
 

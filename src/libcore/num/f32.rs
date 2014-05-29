@@ -10,6 +10,8 @@
 
 //! Operations and constants for 32-bits floats (`f32` type)
 
+#![doc(primitive = "f32")]
+
 use intrinsics;
 use mem;
 use num::{FPNormal, FPCategory, FPZero, FPSubnormal, FPInfinite, FPNaN};

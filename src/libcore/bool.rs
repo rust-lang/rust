@@ -12,6 +12,8 @@
 //!
 //! A `to_bit` conversion function.
 
+#![doc(primitive = "bool")]
+
 use num::{Int, one, zero};
 
 /////////////////////////////////////////////////////////////////////////////

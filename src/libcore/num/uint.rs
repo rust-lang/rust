@@ -10,5 +10,7 @@
 
 //! Operations and constants for architecture-sized unsigned integers (`uint` type)
 
+#![doc(primitive = "uint")]
+
 uint_module!(uint, int, ::int::BITS)
 

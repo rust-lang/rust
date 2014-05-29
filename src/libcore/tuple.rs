@@ -59,6 +59,8 @@
 //! assert_eq!(d, (0u32, 0.0f32));
 //! ```
 
+#![doc(primitive = "tuple")]
+
 use clone::Clone;
 #[cfg(not(test))] use cmp::*;
 #[cfg(not(test))] use default::Default;

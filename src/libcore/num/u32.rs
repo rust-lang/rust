@@ -10,5 +10,7 @@
 
 //! Operations and constants for unsigned 32-bits integers (`u32` type)
 
+#![doc(primitive = "u32")]
+
 uint_module!(u32, i32, 32)
 

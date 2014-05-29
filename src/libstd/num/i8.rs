@@ -10,6 +10,8 @@
 
 //! Operations and constants for signed 8-bits integers (`i8` type)
 
+#![doc(primitive = "i8")]
+
 use from_str::FromStr;
 use num::{ToStrRadix, FromStrRadix};
 use num::strconv;
