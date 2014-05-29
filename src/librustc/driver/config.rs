@@ -220,7 +220,7 @@ pub fn debugging_opts_map() -> Vec<(&'static str, &'static str, u64)> {
 /// its respective field in the struct. There are a few hand-written parsers for
 /// parsing specific types of values in this module.
 macro_rules! cgoptions(
-    ($($opt:ident : $t:ty = ($init:expr, $parse:ident, $desc:expr)),* ,) =>
+    ($($opt:ident : $t:ty = ($init:expr, $parse:ident, $desc:expr, $is_public:expr)),* ,) =>
 (
     #[deriving(Clone)]
     pub struct CodegenOptions { $(pub $opt: $t),* }
@@ -231,8 +231,8 @@ macro_rules! cgoptions(
 
     pub type CodegenSetter = fn(&mut CodegenOptions, v: Option<&str>) -> bool;
     pub static CG_OPTIONS: &'static [(&'static str, CodegenSetter,
-                                      &'static str)] =
-        &[ $( (stringify!($opt), cgsetters::$opt, $desc) ),* ];
+                                      &'static str, bool)] =
+        &[ $( (stringify!($opt), cgsetters::$opt, $desc, $is_public) ),* ];
 
     mod cgsetters {
         use super::CodegenOptions;
@@ -282,39 +282,39 @@ macro_rules! cgoptions(
 
 cgoptions!(
     ar: Option<StrBuf> = (None, parse_opt_string,
-        "tool to assemble archives with"),
+        "tool to assemble archives with", true),
     linker: Option<StrBuf> = (None, parse_opt_string,
-        "system linker to link outputs with"),
+        "system linker to link outputs with", true),
     link_args: Vec<StrBuf> = (Vec::new(), parse_list,
-        "extra arguments to pass to the linker (space separated)"),
+        "extra arguments to pass to the linker (space separated)", true),
     target_cpu: StrBuf = ("generic".to_strbuf(), parse_string,
-        "select target processor (llc -mcpu=help for details)"),
+        "select target processor (llc -mcpu=help for details)", true),
     target_feature: StrBuf = ("".to_strbuf(), parse_string,
-        "target specific attributes (llc -mattr=help for details)"),
+        "target specific attributes (llc -mattr=help for details)", true),
     passes: Vec<StrBuf> = (Vec::new(), parse_list,
-        "a list of extra LLVM passes to run (space separated)"),
+        "a list of extra LLVM passes to run (space separated)", true),
     llvm_args: Vec<StrBuf> = (Vec::new(), parse_list,
-        "a list of arguments to pass to llvm (space separated)"),
+        "a list of arguments to pass to llvm (space separated)", true),
     save_temps: bool = (false, parse_bool,
-        "save all temporary output files during compilation"),
+        "save all temporary output files during compilation", true),
     no_rpath: bool = (false, parse_bool,
-        "disables setting the rpath in libs/exes"),
+        "disables setting the rpath in libs/exes", true),
     no_prepopulate_passes: bool = (false, parse_bool,
-        "don't pre-populate the pass manager with a list of passes"),
+        "don't pre-populate the pass manager with a list of passes", true),
     no_vectorize_loops: bool = (false, parse_bool,
-        "don't run the loop vectorization optimization passes"),
+        "don't run the loop vectorization optimization passes", true),
     no_vectorize_slp: bool = (false, parse_bool,
-        "don't run LLVM's SLP vectorization pass"),
+        "don't run LLVM's SLP vectorization pass", true),
     soft_float: bool = (false, parse_bool,
-        "generate software floating point library calls"),
+        "generate software floating point library calls", true),
     prefer_dynamic: bool = (false, parse_bool,
-        "prefer dynamic linking to static linking"),
+        "prefer dynamic linking to static linking", true),
     no_integrated_as: bool = (false, parse_bool,
-        "use an external assembler rather than LLVM's integrated one"),
+        "use an external assembler rather than LLVM's integrated one", true),
     relocation_model: StrBuf = ("pic".to_strbuf(), parse_string,
-         "choose the relocation model to use (llc -relocation-model for details)"),
+         "choose the relocation model to use (llc -relocation-model for details)", true),
     no_split_stack: bool = (false, parse_bool,
-        "disable segmented stack support"),
+        "disable segmented stack support", false),
 )
 
 pub fn build_codegen_options(matches: &getopts::Matches) -> CodegenOptions
@@ -326,8 +326,8 @@ pub fn build_codegen_options(matches: &getopts::Matches) -> CodegenOptions
         let value = iter.next();
         let option_to_lookup = key.replace("-", "_");
         let mut found = false;
-        for &(candidate, setter, _) in CG_OPTIONS.iter() {
-            if option_to_lookup.as_slice() != candidate { continue }
+        for &(candidate, setter, _, is_public) in CG_OPTIONS.iter() {
+            if option_to_lookup.as_slice() != candidate || !is_public { continue }
             if !setter(&mut cg, value) {
                 match value {
                     Some(..) => {

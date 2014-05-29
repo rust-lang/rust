@@ -176,7 +176,8 @@ fn describe_debug_flags() {
 fn describe_codegen_flags() {
     println!("\nAvailable codegen options:\n");
     let mut cg = config::basic_codegen_options();
-    for &(name, parser, desc) in config::CG_OPTIONS.iter() {
+    for &(name, parser, desc, is_public) in config::CG_OPTIONS.iter() {
+        if !is_public { continue }
         // we invoke the parser function on `None` to see if this option needs
         // an argument or not.
         let (width, extra) = if parser(&mut cg, None) {
