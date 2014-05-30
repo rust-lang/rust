@@ -133,14 +133,7 @@ unsafe fn exchange_malloc(size: uint, align: uint) -> *mut u8 {
     }
 }
 
-#[cfg(not(test), stage0)]
-#[lang="exchange_free"]
-#[inline]
-unsafe fn exchange_free(ptr: *mut u8) {
-    deallocate(ptr, 0, 8);
-}
-
-#[cfg(not(test), not(stage0))]
+#[cfg(not(test))]
 #[lang="exchange_free"]
 #[inline]
 unsafe fn exchange_free(ptr: *mut u8, size: uint, align: uint) {
