@@ -30,7 +30,7 @@ impl<K,V> AssociationList<K,V> {
     }
 }
 
-impl<K:Eq,V:Clone> Index<K,V> for AssociationList<K,V> {
+impl<K:PartialEq,V:Clone> Index<K,V> for AssociationList<K,V> {
     fn index(&self, index: &K) -> V {
         for pair in self.pairs.iter() {
             if pair.key == *index {

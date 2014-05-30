@@ -20,7 +20,7 @@ use syntax::codemap::Span;
 use syntax::visit;
 use syntax::visit::Visitor;
 
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 enum UnsafeContext {
     SafeContext,
     UnsafeFn,

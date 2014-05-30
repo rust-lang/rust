@@ -23,7 +23,7 @@ use to_str::{IntoStr};
 use vec::Vec;
 
 /// Datatype to hold one ascii character. It wraps a `u8`, with the highest bit always zero.
-#[deriving(Clone, Eq, Ord, TotalOrd, TotalEq, Hash)]
+#[deriving(Clone, PartialEq, PartialOrd, TotalOrd, TotalEq, Hash)]
 pub struct Ascii { chr: u8 }
 
 impl Ascii {

@@ -8,17 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// This file was auto-generated using 'src/etc/generate-keyword-span-tests.py'
+// This file was auto-generated using 'src/etc/generate-deriving-span-tests.py'
 
 #![feature(struct_variant)]
 extern crate rand;
 
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 struct Error;
 
-#[deriving(Eq, Ord)]
-struct Struct(
-    Error //~ ERROR
+#[deriving(PartialOrd,PartialEq)]
+enum Enum {
+   A {
+     x: Error //~ ERROR
 //~^ ERROR
 //~^^ ERROR
 //~^^^ ERROR
@@ -26,6 +27,7 @@ struct Struct(
 //~^^^^^ ERROR
 //~^^^^^^ ERROR
 //~^^^^^^^ ERROR
-);
+   }
+}
 
 fn main() {}

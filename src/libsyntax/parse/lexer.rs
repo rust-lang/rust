@@ -34,7 +34,7 @@ pub trait Reader {
     fn peek(&self) -> TokenAndSpan;
 }
 
-#[deriving(Clone, Eq, Show)]
+#[deriving(Clone, PartialEq, Show)]
 pub struct TokenAndSpan {
     pub tok: token::Token,
     pub sp: Span,

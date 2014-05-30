@@ -249,7 +249,7 @@ use Encodable;
 use collections::{HashMap, TreeMap};
 
 /// Represents a json value
-#[deriving(Clone, Eq)]
+#[deriving(Clone, PartialEq)]
 pub enum Json {
     Number(f64),
     String(String),
@@ -263,7 +263,7 @@ pub type List = Vec<Json>;
 pub type Object = TreeMap<String, Json>;
 
 /// The errors that can arise while parsing a JSON stream.
-#[deriving(Clone, Eq)]
+#[deriving(Clone, PartialEq)]
 pub enum ErrorCode {
     InvalidSyntax,
     InvalidNumber,
@@ -283,7 +283,7 @@ pub enum ErrorCode {
     NotUtf8,
 }
 
-#[deriving(Clone, Eq, Show)]
+#[deriving(Clone, PartialEq, Show)]
 pub enum ParserError {
     /// msg, line, col
     SyntaxError(ErrorCode, uint, uint),
@@ -293,7 +293,7 @@ pub enum ParserError {
 // Builder and Parser have the same errors.
 pub type BuilderError = ParserError;
 
-#[deriving(Clone, Eq, Show)]
+#[deriving(Clone, PartialEq, Show)]
 pub enum DecoderError {
     ParseError(ParserError),
     ExpectedError(String, String),
@@ -975,7 +975,7 @@ impl Json {
 }
 
 /// The output of the streaming parser.
-#[deriving(Eq, Clone, Show)]
+#[deriving(PartialEq, Clone, Show)]
 pub enum JsonEvent {
     ObjectStart,
     ObjectEnd,
@@ -988,7 +988,7 @@ pub enum JsonEvent {
     Error(ParserError),
 }
 
-#[deriving(Eq, Show)]
+#[deriving(PartialEq, Show)]
 enum ParserState {
     // Parse a value in a list, true means first element.
     ParseList(bool),
@@ -1017,7 +1017,7 @@ pub struct Stack {
 /// StackElements compose a Stack.
 /// For example, Key("foo"), Key("bar"), Index(3) and Key("x") are the
 /// StackElements compositing the stack that represents foo.bar[3].x
-#[deriving(Eq, Clone, Show)]
+#[deriving(PartialEq, Clone, Show)]
 pub enum StackElement<'l> {
     Index(u32),
     Key(&'l str),
@@ -1025,7 +1025,7 @@ pub enum StackElement<'l> {
 
 // Internally, Key elements are stored as indices in a buffer to avoid
 // allocating a string for every member of an object.
-#[deriving(Eq, Clone, Show)]
+#[deriving(PartialEq, Clone, Show)]
 enum InternalStackElement {
     InternalIndex(u32),
     InternalKey(u16, u16), // start, size
@@ -2082,7 +2082,7 @@ impl ::Decoder<DecoderError> for Decoder {
 }
 
 /// Test if two json values are less than one another
-impl Ord for Json {
+impl PartialOrd for Json {
     fn lt(&self, other: &Json) -> bool {
         match *self {
             Number(f0) => {
@@ -2288,20 +2288,20 @@ mod tests {
     use std::io;
     use collections::TreeMap;
 
-    #[deriving(Eq, Encodable, Decodable, Show)]
+    #[deriving(PartialEq, Encodable, Decodable, Show)]
     enum Animal {
         Dog,
         Frog(String, int)
     }
 
-    #[deriving(Eq, Encodable, Decodable, Show)]
+    #[deriving(PartialEq, Encodable, Decodable, Show)]
     struct Inner {
         a: (),
         b: uint,
         c: Vec<String>,
     }
 
-    #[deriving(Eq, Encodable, Decodable, Show)]
+    #[deriving(PartialEq, Encodable, Decodable, Show)]
     struct Outer {
         inner: Vec<Inner>,
     }

@@ -18,7 +18,7 @@ use std::num::{Zero,One,ToStrRadix};
 // probably doesn't map to C's _Complex correctly.
 
 /// A complex number in Cartesian form.
-#[deriving(Eq,Clone)]
+#[deriving(PartialEq,Clone)]
 pub struct Complex<T> {
     /// Real portion of the complex number
     pub re: T,
@@ -164,7 +164,7 @@ impl<T: Clone + Num> One for Complex<T> {
 }
 
 /* string conversions */
-impl<T: fmt::Show + Num + Ord> fmt::Show for Complex<T> {
+impl<T: fmt::Show + Num + PartialOrd> fmt::Show for Complex<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if self.im < Zero::zero() {
             write!(f, "{}-{}i", self.re, -self.im)
@@ -174,7 +174,7 @@ impl<T: fmt::Show + Num + Ord> fmt::Show for Complex<T> {
     }
 }
 
-impl<T: ToStrRadix + Num + Ord> ToStrRadix for Complex<T> {
+impl<T: ToStrRadix + Num + PartialOrd> ToStrRadix for Complex<T> {
     fn to_str_radix(&self, radix: uint) -> String {
         if self.im < Zero::zero() {
             format!("{}-{}i",

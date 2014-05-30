@@ -84,7 +84,7 @@ pub mod collect;
 pub mod coherence;
 pub mod variance;
 
-#[deriving(Clone, Encodable, Decodable, Eq, Ord)]
+#[deriving(Clone, Encodable, Decodable, PartialEq, PartialOrd)]
 pub enum param_index {
     param_numbered(uint),
     param_self
@@ -147,7 +147,7 @@ pub struct MethodCallee {
     pub substs: ty::substs
 }
 
-#[deriving(Clone, Eq, TotalEq, Hash, Show)]
+#[deriving(Clone, PartialEq, TotalEq, Hash, Show)]
 pub struct MethodCall {
     pub expr_id: ast::NodeId,
     pub autoderef: u32

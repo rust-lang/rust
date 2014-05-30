@@ -10,7 +10,7 @@
 
 struct NoCloneOrEq;
 
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 struct E {
     x: NoCloneOrEq //~ ERROR does not implement any method in scope named `eq`
          //~^ ERROR does not implement any method in scope named `ne`

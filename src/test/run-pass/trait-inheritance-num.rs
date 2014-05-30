@@ -9,10 +9,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::cmp::{Eq, Ord};
+use std::cmp::{PartialEq, PartialOrd};
 use std::num::NumCast;
 
-pub trait NumExt: Num + NumCast + Eq + Ord {}
+pub trait NumExt: Num + NumCast + PartialEq + PartialOrd {}
 
 pub trait FloatExt: NumExt {}
 

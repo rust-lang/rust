@@ -121,7 +121,7 @@ mod tests {
     use realstd::owned::{Box, AnyOwnExt};
     use realstd::str::Str;
 
-    #[deriving(Eq, Show)]
+    #[deriving(PartialEq, Show)]
     struct Test;
 
     static TEST: &'static str = "Test";

@@ -29,7 +29,7 @@ pub static False: Bool = 0 as Bool;
 
 // Consts for the LLVM CallConv type, pre-cast to uint.
 
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 pub enum CallConv {
     CCallConv = 0,
     FastCallConv = 8,
@@ -156,7 +156,7 @@ pub enum RealPredicate {
 
 // The LLVM TypeKind type - must stay in sync with the def of
 // LLVMTypeKind in llvm/include/llvm-c/Core.h
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 #[repr(C)]
 pub enum TypeKind {
     Void      = 0,
@@ -226,7 +226,7 @@ pub enum AsmDialect {
     AD_Intel = 1
 }
 
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 #[repr(C)]
 pub enum CodeGenOptLevel {
     CodeGenLevelNone = 0,

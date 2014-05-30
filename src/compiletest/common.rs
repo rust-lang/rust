@@ -12,7 +12,7 @@ use std::from_str::FromStr;
 use std::fmt;
 use regex::Regex;
 
-#[deriving(Clone, Eq)]
+#[deriving(Clone, PartialEq)]
 pub enum Mode {
     CompileFail,
     RunFail,

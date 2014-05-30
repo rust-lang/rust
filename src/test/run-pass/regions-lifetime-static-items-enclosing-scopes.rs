@@ -11,9 +11,9 @@
 // This test verifies that temporary lifetime is correctly computed
 // for static objects in enclosing scopes.
 
-use std::cmp::Eq;
+use std::cmp::PartialEq;
 
-fn f<T:Eq>(o: &mut Option<T>) {
+fn f<T:PartialEq>(o: &mut Option<T>) {
     assert!(*o == None);
 }
 

@@ -82,7 +82,7 @@ use std::rc::Rc;
 use std::string::String;
 
 #[allow(non_camel_case_types)]
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 pub enum restriction {
     UNRESTRICTED,
     RESTRICT_STMT_EXPR,
@@ -94,7 +94,7 @@ type ItemInfo = (Ident, Item_, Option<Vec<Attribute> >);
 
 /// How to parse a path. There are four different kinds of paths, all of which
 /// are parsed somewhat differently.
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 pub enum PathParsingMode {
     /// A path with no type parameters; e.g. `foo::bar::Baz`
     NoTypesAllowed,

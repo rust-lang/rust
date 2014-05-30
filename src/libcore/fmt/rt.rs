@@ -40,7 +40,7 @@ pub struct FormatSpec {
     pub width: Count,
 }
 
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 pub enum Alignment {
     AlignLeft,
     AlignRight,

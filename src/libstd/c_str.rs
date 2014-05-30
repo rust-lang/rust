@@ -66,7 +66,7 @@ fn main() {
 */
 
 use clone::Clone;
-use cmp::Eq;
+use cmp::PartialEq;
 use container::Container;
 use iter::{Iterator, range};
 use kinds::marker;
@@ -109,7 +109,7 @@ impl Clone for CString {
     }
 }
 
-impl Eq for CString {
+impl PartialEq for CString {
     fn eq(&self, other: &CString) -> bool {
         if self.buf as uint == other.buf as uint {
             true

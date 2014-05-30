@@ -92,7 +92,7 @@ impl<K: Clone + TotalOrd, V: Clone> Clone for BTree<K, V> {
     }
 }
 
-impl<K: TotalOrd, V: TotalEq> Eq for BTree<K, V> {
+impl<K: TotalOrd, V: TotalEq> PartialEq for BTree<K, V> {
     fn eq(&self, other: &BTree<K, V>) -> bool {
         self.root.cmp(&other.root) == Equal
     }
@@ -100,7 +100,7 @@ impl<K: TotalOrd, V: TotalEq> Eq for BTree<K, V> {
 
 impl<K: TotalOrd, V: TotalEq> TotalEq for BTree<K, V> {}
 
-impl<K: TotalOrd, V: TotalEq> Ord for BTree<K, V> {
+impl<K: TotalOrd, V: TotalEq> PartialOrd for BTree<K, V> {
     fn lt(&self, other: &BTree<K, V>) -> bool {
         self.cmp(other) == Less
     }
@@ -198,7 +198,7 @@ impl<K: Clone + TotalOrd, V: Clone> Clone for Node<K, V> {
     }
 }
 
-impl<K: TotalOrd, V: TotalEq> Eq for Node<K, V> {
+impl<K: TotalOrd, V: TotalEq> PartialEq for Node<K, V> {
     fn eq(&self, other: &Node<K, V>) -> bool {
         match *self{
             BranchNode(ref branch) => {
@@ -222,7 +222,7 @@ impl<K: TotalOrd, V: TotalEq> Eq for Node<K, V> {
 
 impl<K: TotalOrd, V: TotalEq> TotalEq for Node<K, V> {}
 
-impl<K: TotalOrd, V: TotalEq> Ord for Node<K, V> {
+impl<K: TotalOrd, V: TotalEq> PartialOrd for Node<K, V> {
     fn lt(&self, other: &Node<K, V>) -> bool {
         self.cmp(other) == Less
     }
@@ -393,7 +393,7 @@ impl<K: Clone + TotalOrd, V: Clone> Clone for Leaf<K, V> {
     }
 }
 
-impl<K: TotalOrd, V: TotalEq> Eq for Leaf<K, V> {
+impl<K: TotalOrd, V: TotalEq> PartialEq for Leaf<K, V> {
     fn eq(&self, other: &Leaf<K, V>) -> bool {
         self.elts == other.elts
     }
@@ -401,7 +401,7 @@ impl<K: TotalOrd, V: TotalEq> Eq for Leaf<K, V> {
 
 impl<K: TotalOrd, V: TotalEq> TotalEq for Leaf<K, V> {}
 
-impl<K: TotalOrd, V: TotalEq> Ord for Leaf<K, V> {
+impl<K: TotalOrd, V: TotalEq> PartialOrd for Leaf<K, V> {
     fn lt(&self, other: &Leaf<K, V>) -> bool {
         self.cmp(other) == Less
     }
@@ -623,7 +623,7 @@ impl<K: Clone + TotalOrd, V: Clone> Clone for Branch<K, V> {
     }
 }
 
-impl<K: TotalOrd, V: TotalEq> Eq for Branch<K, V> {
+impl<K: TotalOrd, V: TotalEq> PartialEq for Branch<K, V> {
     fn eq(&self, other: &Branch<K, V>) -> bool {
         self.elts == other.elts
     }
@@ -631,7 +631,7 @@ impl<K: TotalOrd, V: TotalEq> Eq for Branch<K, V> {
 
 impl<K: TotalOrd, V: TotalEq> TotalEq for Branch<K, V> {}
 
-impl<K: TotalOrd, V: TotalEq> Ord for Branch<K, V> {
+impl<K: TotalOrd, V: TotalEq> PartialOrd for Branch<K, V> {
     fn lt(&self, other: &Branch<K, V>) -> bool {
         self.cmp(other) == Less
     }
@@ -691,7 +691,7 @@ impl<K: Clone + TotalOrd, V: Clone> Clone for LeafElt<K, V> {
     }
 }
 
-impl<K: TotalOrd, V: TotalEq> Eq for LeafElt<K, V> {
+impl<K: TotalOrd, V: TotalEq> PartialEq for LeafElt<K, V> {
     fn eq(&self, other: &LeafElt<K, V>) -> bool {
         self.key == other.key && self.value == other.value
     }
@@ -699,7 +699,7 @@ impl<K: TotalOrd, V: TotalEq> Eq for LeafElt<K, V> {
 
 impl<K: TotalOrd, V: TotalEq> TotalEq for LeafElt<K, V> {}
 
-impl<K: TotalOrd, V: TotalEq> Ord for LeafElt<K, V> {
+impl<K: TotalOrd, V: TotalEq> PartialOrd for LeafElt<K, V> {
     fn lt(&self, other: &LeafElt<K, V>) -> bool {
         self.cmp(other) == Less
     }
@@ -740,7 +740,7 @@ impl<K: Clone + TotalOrd, V: Clone> Clone for BranchElt<K, V> {
     }
 }
 
-impl<K: TotalOrd, V: TotalEq> Eq for BranchElt<K, V>{
+impl<K: TotalOrd, V: TotalEq> PartialEq for BranchElt<K, V>{
     fn eq(&self, other: &BranchElt<K, V>) -> bool {
         self.key == other.key && self.value == other.value
     }
@@ -748,7 +748,7 @@ impl<K: TotalOrd, V: TotalEq> Eq for BranchElt<K, V>{
 
 impl<K: TotalOrd, V: TotalEq> TotalEq for BranchElt<K, V>{}
 
-impl<K: TotalOrd, V: TotalEq> Ord for BranchElt<K, V> {
+impl<K: TotalOrd, V: TotalEq> PartialOrd for BranchElt<K, V> {
     fn lt(&self, other: &BranchElt<K, V>) -> bool {
         self.cmp(other) == Less
     }

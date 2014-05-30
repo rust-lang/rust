@@ -378,7 +378,7 @@ mod test {
     /// A type, free to create, primarily intended for benchmarking creation of
     /// wrappers that, just for construction, don't need a Reader/Writer that
     /// does anything useful. Is equivalent to `/dev/null` in semantics.
-    #[deriving(Clone,Eq,Ord)]
+    #[deriving(Clone,PartialEq,PartialOrd)]
     pub struct NullStream;
 
     impl Reader for NullStream {
