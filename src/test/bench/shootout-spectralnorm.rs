@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![feature(phase)]
+#![allow(non_snake_case_functions)]
 #[phase(syntax)] extern crate green;
 extern crate sync;
 

@@ -11,6 +11,7 @@
 //! Unwind library interface
 
 #![allow(non_camel_case_types)]
+#![allow(non_snake_case_functions)]
 #![allow(dead_code)] // these are just bindings
 
 use libc;
