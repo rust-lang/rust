@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -20,6 +20,8 @@
 //! available, however, and that's where these native implementations come into
 //! play. The only dependencies of these modules are the normal system libraries
 //! that you would find on the respective platform.
+
+#![allow(non_snake_case_functions)]
 
 use libc::c_int;
 use libc;

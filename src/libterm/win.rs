@@ -27,6 +27,7 @@ pub struct WinConsole<T> {
     background: color::Color,
 }
 
+#[allow(non_snake_case_functions)]
 #[link(name = "kernel32")]
 extern "system" {
     fn SetConsoleTextAttribute(handle: libc::HANDLE, attr: libc::WORD) -> libc::BOOL;

@@ -141,6 +141,7 @@ mod imp {
 
     static LOCKFILE_EXCLUSIVE_LOCK: libc::DWORD = 0x00000002;
 
+    #[allow(non_snake_case_functions)]
     extern "system" {
         fn LockFileEx(hFile: libc::HANDLE,
                       dwFlags: libc::DWORD,

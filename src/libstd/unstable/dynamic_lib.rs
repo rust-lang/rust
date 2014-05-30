@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -317,6 +317,7 @@ pub mod dl {
         FreeLibrary(handle as *libc::c_void); ()
     }
 
+    #[allow(non_snake_case_functions)]
     extern "system" {
         fn SetLastError(error: libc::size_t);
         fn LoadLibraryW(name: *libc::c_void) -> *libc::c_void;
