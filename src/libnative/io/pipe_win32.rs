@@ -94,7 +94,7 @@ use std::os;
 use std::ptr;
 use std::rt::rtio;
 use std::sync::atomics;
-use std::unstable::mutex;
+use std::rt::mutex;
 
 use super::IoResult;
 use super::c;

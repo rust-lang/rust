@@ -92,8 +92,9 @@ pub mod shouldnt_be_public {
 // Internal macros used by the runtime.
 mod macros;
 
-/// Implementations of language-critical runtime features like @.
 pub mod task;
+
+pub mod mutex;
 
 // The EventLoop and internal synchronous I/O interface.
 pub mod rtio;

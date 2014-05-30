@@ -22,7 +22,7 @@
 #![doc(hidden)]
 
 use sync::atomics;
-use unstable::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
+use rt::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
 
 static mut TASK_COUNT: atomics::AtomicUint = atomics::INIT_ATOMIC_UINT;
 static mut TASK_LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;

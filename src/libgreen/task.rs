@@ -28,7 +28,7 @@ use std::rt::rtio;
 use std::rt::stack;
 use std::rt::task::{Task, BlockedTask, SendMessage};
 use std::task::TaskOpts;
-use std::unstable::mutex::NativeMutex;
+use std::rt::mutex::NativeMutex;
 
 use context::Context;
 use coroutine::Coroutine;

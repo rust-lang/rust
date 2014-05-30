@@ -242,7 +242,7 @@ mod imp {
     use mem;
     use option::{Some, None, Option};
     use result::{Ok, Err};
-    use unstable::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
+    use rt::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
     use uw = rt::libunwind;
 
     struct Context<'a> {
@@ -515,7 +515,7 @@ mod imp {
     use str::StrSlice;
     use unstable::dynamic_lib::DynamicLibrary;
     use intrinsics;
-    use unstable::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
+    use rt::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
     use slice::ImmutableVector;
 
     extern "system" {

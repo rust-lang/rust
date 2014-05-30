@@ -33,7 +33,7 @@
 //! # Example
 //!
 //! ```rust
-//! use std::unstable::mutex::{NativeMutex, StaticNativeMutex, NATIVE_MUTEX_INIT};
+//! use std::rt::mutex::{NativeMutex, StaticNativeMutex, NATIVE_MUTEX_INIT};
 //!
 //! // Use a statically initialized mutex
 //! static mut LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;
@@ -109,7 +109,7 @@ impl StaticNativeMutex {
     /// # Example
     ///
     /// ```rust
-    /// use std::unstable::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
+    /// use std::rt::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
     /// static mut LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;
     /// unsafe {
     ///     let _guard = LOCK.lock();
@@ -183,7 +183,7 @@ impl NativeMutex {
     ///
     /// # Example
     /// ```rust
-    /// use std::unstable::mutex::NativeMutex;
+    /// use std::rt::mutex::NativeMutex;
     /// unsafe {
     ///     let mut lock = NativeMutex::new();
     ///

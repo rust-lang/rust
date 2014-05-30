@@ -25,7 +25,7 @@ use std::rt::task::{Task, BlockedTask, SendMessage};
 use std::rt::thread::Thread;
 use std::rt;
 use std::task::TaskOpts;
-use std::unstable::mutex::NativeMutex;
+use std::rt::mutex::NativeMutex;
 
 use io;
 use task;

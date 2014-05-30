@@ -15,7 +15,8 @@ use std::intrinsics;
 use std::io;
 use std::mem;
 use std::rt::rtio;
-use std::unstable::mutex;
+use std::sync::arc::UnsafeArc;
+use std::rt::mutex;
 
 use super::{IoResult, retry};
 use super::net;
