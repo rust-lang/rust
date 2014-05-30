@@ -21,7 +21,7 @@ pub use middle::typeck::infer::resolve::{resolve_ivar, resolve_all};
 pub use middle::typeck::infer::resolve::{resolve_nested_tvar};
 pub use middle::typeck::infer::resolve::{resolve_rvar};
 
-use collections::HashMap;
+use std::collections::HashMap;
 use middle::ty::{TyVid, IntVid, FloatVid, RegionVid, Vid};
 use middle::ty;
 use middle::ty_fold;

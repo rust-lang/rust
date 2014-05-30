@@ -17,7 +17,7 @@
 //! # Example
 //!
 //! ```rust
-//! use collections::LruCache;
+//! use std::collections::LruCache;
 //!
 //! let mut cache: LruCache<int, int> = LruCache::new(2);
 //! cache.put(1, 10);
@@ -37,7 +37,7 @@
 //! assert!(cache.get(&2).is_none());
 //! ```
 
-use cmp::{Eq, TotalEq};
+use cmp::{PartialEq, Eq};
 use collections::HashMap;
 use container::{Container, Mutable, MutableMap};
 use fmt;
@@ -256,6 +256,7 @@ impl<K, V> Drop for LruCache<K, V> {
 
 #[cfg(test)]
 mod tests {
+    use prelude::*;
     use super::LruCache;
 
     fn assert_opt_eq<V: PartialEq>(opt: Option<&V>, v: V) {

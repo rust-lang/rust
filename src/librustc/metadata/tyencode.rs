@@ -14,7 +14,7 @@
 #![allow(non_camel_case_types)]
 
 use std::cell::RefCell;
-use collections::HashMap;
+use std::collections::HashMap;
 use std::io::MemWriter;
 
 use middle::ty::param_ty;

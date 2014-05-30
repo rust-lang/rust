@@ -19,8 +19,7 @@ use ast::{Ident, Mrk, Name, SyntaxContext};
 
 use std::cell::RefCell;
 use std::rc::Rc;
-
-use collections::HashMap;
+use std::collections::HashMap;
 
 // the SCTable contains a table of SyntaxContext_'s. It
 // represents a flattened tree structure, to avoid having
@@ -267,7 +266,7 @@ mod tests {
     use super::{resolve, xor_push, new_mark_internal, new_sctable_internal};
     use super::{new_rename_internal, marksof_internal, resolve_internal};
     use super::{SCTable, EmptyCtxt, Mark, Rename, IllegalCtxt};
-    use collections::HashMap;
+    use std::collections::HashMap;
 
     #[test]
     fn xorpush_test () {

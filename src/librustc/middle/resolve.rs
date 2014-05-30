@@ -31,7 +31,7 @@ use syntax::owned_slice::OwnedSlice;
 use syntax::visit;
 use syntax::visit::Visitor;
 
-use collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet};
 use std::cell::{Cell, RefCell};
 use std::mem::replace;
 use std::rc::{Rc, Weak};

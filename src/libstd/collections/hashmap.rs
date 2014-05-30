@@ -38,7 +38,7 @@ mod table {
     use mem::{overwrite, transmute};
     use num::{CheckedMul, is_power_of_two};
     use ops::Drop;
-    use option::{Some, None, Option, Expect};
+    use option::{Some, None, Option};
     use ptr::RawPtr;
     use ptr::set_memory;
     use ptr;
@@ -254,6 +254,7 @@ mod table {
 
         /// Creates a new raw table from a given capacity. All buckets are
         /// initially empty.
+        #[allow(experimental)]
         pub fn new(capacity: uint) -> RawTable<K, V> {
             unsafe {
                 let ret = RawTable::new_uninitialized(capacity);
@@ -410,18 +411,21 @@ mod table {
         assert_eq!(size_of::<SafeHash>(), size_of::<u64>())
     }
 
+    /// Iterator over shared references to entries in a table.
     pub struct Entries<'a, K, V> {
         table: &'a RawTable<K, V>,
         idx: uint,
         elems_seen: uint,
     }
 
+    /// Iterator over mutable references to entries in a table.
     pub struct MutEntries<'a, K, V> {
         table: &'a mut RawTable<K, V>,
         idx: uint,
         elems_seen: uint,
     }
 
+    /// Iterator over the entries in a table, consuming the table.
     pub struct MoveEntries<K, V> {
         table: RawTable<K, V>,
         idx: uint,
@@ -694,7 +698,7 @@ impl DefaultResizePolicy {
 /// # Example
 ///
 /// ```rust
-/// use collections::HashMap;
+/// use std::collections::HashMap;
 ///
 /// // type inference lets us omit an explicit type signature (which
 /// // would be `HashMap<&str, &str>` in this example).
@@ -1274,7 +1278,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// # Example
     ///
     /// ```rust
-    /// use collections::HashMap;
+    /// use std::collections::HashMap;
     ///
     /// // map some strings to vectors of strings
     /// let mut map = HashMap::new();
@@ -1639,7 +1643,7 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S> + Default> Extendable<T> for HashSet<T, H>
     }
 }
 
-impl<T: TotalEq + Hash<S>, S, H: Hasher<S> + Default> Default for HashSet<T, H> {
+impl<T: Eq + Hash<S>, S, H: Hasher<S> + Default> Default for HashSet<T, H> {
     fn default() -> HashSet<T, H> {
         HashSet::with_hasher(Default::default())
     }
@@ -1654,11 +1658,13 @@ pub type SetAlgebraItems<'a, T, H> =
 
 #[cfg(test)]
 mod test_map {
+    use prelude::*;
+
     use super::HashMap;
-    use std::cmp::Equiv;
-    use std::hash::Hash;
-    use std::iter::{Iterator,range_inclusive,range_step_inclusive};
-    use std::cell::RefCell;
+    use cmp::Equiv;
+    use hash;
+    use iter::{Iterator,range_inclusive,range_step_inclusive};
+    use cell::RefCell;
 
     struct KindaIntLike(int);
 
@@ -1668,7 +1674,7 @@ mod test_map {
             this == *other
         }
     }
-    impl<S: Writer> Hash<S> for KindaIntLike {
+    impl<S: hash::Writer> hash::Hash<S> for KindaIntLike {
         fn hash(&self, state: &mut S) {
             let KindaIntLike(this) = *self;
             this.hash(state)
@@ -2146,9 +2152,11 @@ mod test_map {
 
 #[cfg(test)]
 mod test_set {
+    use prelude::*;
+
     use super::HashSet;
-    use std::container::Container;
-    use std::slice::ImmutableEqVector;
+    use container::Container;
+    use slice::ImmutableEqVector;
 
     #[test]
     fn test_disjoint() {
@@ -2389,8 +2397,10 @@ mod test_set {
 #[cfg(test)]
 mod bench {
     extern crate test;
+    use prelude::*;
+
     use self::test::Bencher;
-    use std::iter::{range_inclusive};
+    use iter::{range_inclusive};
 
     #[bench]
     fn new_drop(b : &mut Bencher) {

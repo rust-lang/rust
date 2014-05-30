@@ -22,7 +22,7 @@ use parse::token::{Token, EOF, Nonterminal};
 use parse::token;
 
 use std::rc::Rc;
-use collections::HashMap;
+use std::collections::HashMap;
 
 /* This is an Earley-like parser, without support for in-grammar nonterminals,
 only by calling out to the main rust parser for named nonterminals (which it

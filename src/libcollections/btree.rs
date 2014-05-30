@@ -777,6 +777,7 @@ impl<K: fmt::Show + Ord, V: fmt::Show> fmt::Show for BranchElt<K, V> {
 
 #[cfg(test)]
 mod test_btree {
+    use std::prelude::*;
 
     use super::{BTree, Node, LeafElt};
 

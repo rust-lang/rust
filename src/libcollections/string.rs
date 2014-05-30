@@ -353,9 +353,9 @@ impl<'a, S: Str> Equiv<S> for String {
 
 #[cfg(test)]
 mod tests {
-    extern crate test;
-    use container::{Container, Mutable};
-    use self::test::Bencher;
+    use std::prelude::*;
+    use test::Bencher;
+
     use str::{Str, StrSlice};
     use super::String;
 

@@ -410,13 +410,14 @@ impl<T: fmt::Show> fmt::Show for RingBuf<T> {
 
 #[cfg(test)]
 mod tests {
-    extern crate test;
-    use self::test::Bencher;
-    use deque::Deque;
-    use std::clone::Clone;
-    use std::cmp::PartialEq;
     use std::fmt::Show;
+    use std::prelude::*;
+    use test::Bencher;
+    use test;
+
+    use deque::Deque;
     use super::RingBuf;
+    use vec::Vec;
 
     #[test]
     fn test_simple() {

@@ -21,7 +21,7 @@ use syntax::parse::token::InternedString;
 use syntax::visit::Visitor;
 use syntax::visit;
 
-use collections::HashSet;
+use std::collections::HashSet;
 
 macro_rules! weak_lang_items( ($($name:ident, $item:ident, $sym:ident;)*) => (
 

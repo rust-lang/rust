@@ -29,7 +29,7 @@ use util::ppaux;
 use util::ppaux::Repr;
 
 use std::rc::Rc;
-use collections::HashSet;
+use std::collections::HashSet;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::codemap::Span;

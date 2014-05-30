@@ -269,16 +269,15 @@ pub fn hash_with_keys<T: Hash<SipState>>(k0: u64, k1: u64, value: &T) -> u64 {
 
 #[cfg(test)]
 mod tests {
-    extern crate test;
-    use prelude::*;
-    use num::ToStrRadix;
-    use option::{Some, None};
+    use test::Bencher;
+    use std::prelude::*;
+    use std::num::ToStrRadix;
+
     use str::Str;
     use string::String;
     use slice::{Vector, ImmutableVector};
-    use self::test::Bencher;
 
-    use super::super::Hash;
+    use super::super::{Hash, Writer};
     use super::{SipState, hash, hash_with_keys};
 
     // Hash just the bytes of the slice, without length prefix
@@ -399,7 +398,7 @@ mod tests {
         }
 
         while t < 64 {
-            debug!("siphash test {}", t);
+            debug!("siphash test {}: {}", t, buf);
             let vec = u8to64_le!(vecs[t], 0);
             let out = hash_with_keys(k0, k1, &Bytes(buf.as_slice()));
             debug!("got {:?}, expected {:?}", out, vec);
@@ -412,10 +411,14 @@ mod tests {
             let v = to_hex_str(&vecs[t]);
             debug!("{}: ({}) => inc={} full={}", t, v, i, f);
 
-            assert!(f == i && f == v);
+            debug!("full state {:?}", state_full);
+            debug!("inc  state {:?}", state_inc);
+
+            assert_eq!(f, i);
+            assert_eq!(f, v);
 
             buf.push(t as u8);
-            state_inc.write_u8(t as u8);
+            state_inc.write([t as u8]);
 
             t += 1;
         }
@@ -540,23 +543,6 @@ officia deserunt mollit anim id est laborum.";
         let u = 16262950014981195938u64;
         b.iter(|| {
             assert_eq!(hash(&u), 5254097107239593357);
-        })
-    }
-
-    #[deriving(Hash)]
-    struct Compound {
-        x: u8,
-        y: u64,
-    }
-
-    #[bench]
-    fn bench_compound_1(b: &mut Bencher) {
-        let compound = Compound {
-            x: 1,
-            y: 2,
-        };
-        b.iter(|| {
-            assert_eq!(hash(&compound), 12506681940457338191);
         })
     }
 }

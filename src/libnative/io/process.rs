@@ -921,19 +921,22 @@ fn waitpid(pid: pid_t, deadline: u64) -> IoResult<p::ProcessExit> {
 
     // Register a new SIGCHLD handler, returning the reading half of the
     // self-pipe plus the old handler registered (return value of sigaction).
+    //
+    // Be sure to set up the self-pipe first because as soon as we reigster a
+    // handler we're going to start receiving signals.
     fn register_sigchld() -> (libc::c_int, c::sigaction) {
         unsafe {
-            let mut old: c::sigaction = mem::zeroed();
-            let mut new: c::sigaction = mem::zeroed();
-            new.sa_handler = sigchld_handler;
-            new.sa_flags = c::SA_NOCLDSTOP;
-            assert_eq!(c::sigaction(c::SIGCHLD, &new, &mut old), 0);
-
             let mut pipes = [0, ..2];
             assert_eq!(libc::pipe(pipes.as_mut_ptr()), 0);
             util::set_nonblocking(pipes[0], true).unwrap();
             util::set_nonblocking(pipes[1], true).unwrap();
             WRITE_FD = pipes[1];
+
+            let mut old: c::sigaction = mem::zeroed();
+            let mut new: c::sigaction = mem::zeroed();
+            new.sa_handler = sigchld_handler;
+            new.sa_flags = c::SA_NOCLDSTOP;
+            assert_eq!(c::sigaction(c::SIGCHLD, &new, &mut old), 0);
             (pipes[0], old)
         }
     }

@@ -11,7 +11,7 @@
 extern crate collections;
 extern crate debug;
 
-use collections::HashMap;
+use std::collections::HashMap;
 
 pub fn main() {
     let mut m = HashMap::new();
