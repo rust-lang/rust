@@ -371,7 +371,7 @@ pub fn check_builtin_bounds(cx: &Context,
                             bounds: ty::BuiltinBounds,
                             any_missing: |ty::BuiltinBounds|) {
     let kind = ty::type_contents(cx.tcx, ty);
-    let mut missing = ty::EmptyBuiltinBounds();
+    let mut missing = ty::empty_builtin_bounds();
     for bound in bounds.iter() {
         if !kind.meets_bound(cx.tcx, bound) {
             missing.add(bound);
@@ -565,6 +565,7 @@ pub fn check_cast_for_escaping_regions(
             }
         });
 
+    #[allow(non_snake_case_functions)]
     fn is_ReScope(r: ty::Region) -> bool {
         match r {
             ty::ReScope(..) => true,

@@ -199,6 +199,7 @@ mod imp {
         SwitchToThread();
     }
 
+    #[allow(non_snake_case_functions)]
     extern "system" {
         fn CreateThread(lpThreadAttributes: LPSECURITY_ATTRIBUTES,
                         dwStackSize: SIZE_T,

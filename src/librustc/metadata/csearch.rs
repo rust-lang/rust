@@ -19,7 +19,8 @@ use middle::lang_items;
 use middle::ty;
 use middle::typeck;
 
-use reader = serialize::ebml::reader;
+use serialize::ebml;
+use serialize::ebml::reader;
 use std::rc::Rc;
 use syntax::ast;
 use syntax::ast_map;
@@ -206,7 +207,7 @@ pub fn get_field_type(tcx: &ty::ctxt, class_id: ast::DefId,
                       def: ast::DefId) -> ty::ty_param_bounds_and_ty {
     let cstore = &tcx.sess.cstore;
     let cdata = cstore.get_crate_data(class_id.krate);
-    let all_items = reader::get_doc(reader::Doc(cdata.data()), tag_items);
+    let all_items = reader::get_doc(ebml::Doc::new(cdata.data()), tag_items);
     let class_doc = expect(tcx.sess.diagnostic(),
                            decoder::maybe_find_item(class_id.node, all_items),
                            || {

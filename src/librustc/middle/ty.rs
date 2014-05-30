@@ -840,11 +840,11 @@ pub enum BuiltinBound {
     BoundShare,
 }
 
-pub fn EmptyBuiltinBounds() -> BuiltinBounds {
+pub fn empty_builtin_bounds() -> BuiltinBounds {
     EnumSet::empty()
 }
 
-pub fn AllBuiltinBounds() -> BuiltinBounds {
+pub fn all_builtin_bounds() -> BuiltinBounds {
     let mut set = EnumSet::empty();
     set.add(BoundStatic);
     set.add(BoundSend);
@@ -2833,7 +2833,7 @@ pub fn adjust_ty(cx: &ctxt,
                                 ty::ClosureTy {fn_style: b.fn_style,
                                                onceness: ast::Many,
                                                store: store,
-                                               bounds: ty::AllBuiltinBounds(),
+                                               bounds: ty::all_builtin_bounds(),
                                                sig: b.sig.clone()})
                         }
                         ref b => {
@@ -4303,7 +4303,7 @@ pub fn visitor_object_ty(tcx: &ctxt,
                  trait_ref.def_id,
                  trait_ref.substs.clone(),
                  RegionTraitStore(region, ast::MutMutable),
-                 EmptyBuiltinBounds())))
+                 empty_builtin_bounds())))
 }
 
 pub fn item_variances(tcx: &ctxt, item_id: ast::DefId) -> Rc<ItemVariances> {

@@ -476,6 +476,7 @@ extern crate libc;
 
 #[cfg(target_os = "win32", target_arch = "x86")]
 #[link(name = "kernel32")]
+#[allow(non_snake_case_functions)]
 extern "stdcall" {
     fn SetEnvironmentVariableA(n: *u8, v: *u8) -> libc::c_int;
 }

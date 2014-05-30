@@ -152,7 +152,7 @@ pub fn trans<'a>(bcx: &'a Block<'a>,
     let datum = unpack_datum!(bcx, trans_unadjusted(bcx, expr));
     let datum = unpack_datum!(bcx, apply_adjustments(bcx, expr, datum));
     bcx = fcx.pop_and_trans_ast_cleanup_scope(bcx, expr.id);
-    return DatumBlock(bcx, datum);
+    return DatumBlock::new(bcx, datum);
 }
 
 fn apply_adjustments<'a>(bcx: &'a Block<'a>,
@@ -168,7 +168,7 @@ fn apply_adjustments<'a>(bcx: &'a Block<'a>,
     let mut datum = datum;
     let adjustment = match bcx.tcx().adjustments.borrow().find_copy(&expr.id) {
         None => {
-            return DatumBlock(bcx, datum);
+            return DatumBlock::new(bcx, datum);
         }
         Some(adj) => { adj }
     };
@@ -244,7 +244,7 @@ fn apply_adjustments<'a>(bcx: &'a Block<'a>,
         let scratch = rvalue_scratch_datum(bcx, slice_ty, "__adjust");
         Store(bcx, base, GEPi(bcx, scratch.val, [0u, abi::slice_elt_base]));
         Store(bcx, len, GEPi(bcx, scratch.val, [0u, abi::slice_elt_len]));
-        DatumBlock(bcx, scratch.to_expr_datum())
+        DatumBlock::new(bcx, scratch.to_expr_datum())
     }
 
     fn add_env<'a>(bcx: &'a Block<'a>,
@@ -282,7 +282,7 @@ fn apply_adjustments<'a>(bcx: &'a Block<'a>,
 
         let mut datum = source_datum.to_expr_datum();
         datum.ty = target_obj_ty;
-        DatumBlock(bcx, datum)
+        DatumBlock::new(bcx, datum)
     }
 }
 
@@ -357,7 +357,7 @@ fn trans_unadjusted<'a>(bcx: &'a Block<'a>,
                 let scratch = unpack_datum!(
                     bcx, scratch.to_appropriate_datum(bcx));
 
-                DatumBlock(bcx, scratch.to_expr_datum())
+                DatumBlock::new(bcx, scratch.to_expr_datum())
             }
         }
     };
@@ -365,7 +365,7 @@ fn trans_unadjusted<'a>(bcx: &'a Block<'a>,
     fn nil<'a>(bcx: &'a Block<'a>, ty: ty::t) -> DatumBlock<'a, Expr> {
         let llval = C_undef(type_of::type_of(bcx.ccx(), ty));
         let datum = immediate_rvalue(llval, ty);
-        DatumBlock(bcx, datum.to_expr_datum())
+        DatumBlock::new(bcx, datum.to_expr_datum())
     }
 }
 
@@ -394,7 +394,7 @@ fn trans_datum_unadjusted<'a>(bcx: &'a Block<'a>,
             let datum = unpack_datum!(
                 bcx, tvec::trans_uniq_vstore(bcx, expr, contents));
             bcx = fcx.pop_and_trans_ast_cleanup_scope(bcx, contents.id);
-            DatumBlock(bcx, datum)
+            DatumBlock::new(bcx, datum)
         }
         ast::ExprBox(_, contents) => {
             // Special case for `box T`. (The other case, for GC, is handled
@@ -494,7 +494,7 @@ fn trans_index<'a>(bcx: &'a Block<'a>,
         });
     let elt = InBoundsGEP(bcx, base, [ix_val]);
     let elt = PointerCast(bcx, elt, vt.llunit_ty.ptr_to());
-    DatumBlock(bcx, Datum(elt, vt.unit_ty, LvalueExpr))
+    DatumBlock::new(bcx, Datum::new(elt, vt.unit_ty, LvalueExpr))
 }
 
 fn trans_def<'a>(bcx: &'a Block<'a>,
@@ -559,10 +559,10 @@ fn trans_def<'a>(bcx: &'a Block<'a>,
 
             let did = get_did(bcx.ccx(), did);
             let val = get_val(bcx, did, const_ty);
-            DatumBlock(bcx, Datum(val, const_ty, LvalueExpr))
+            DatumBlock::new(bcx, Datum::new(val, const_ty, LvalueExpr))
         }
         _ => {
-            DatumBlock(bcx, trans_local_var(bcx, def).to_expr_datum())
+            DatumBlock::new(bcx, trans_local_var(bcx, def).to_expr_datum())
         }
     }
 }
@@ -845,7 +845,7 @@ fn trans_def_fn_unadjusted<'a>(bcx: &'a Block<'a>,
     };
 
     let fn_ty = expr_ty(bcx, ref_expr);
-    DatumBlock(bcx, Datum(llfn, fn_ty, RvalueExpr(Rvalue(ByValue))))
+    DatumBlock::new(bcx, Datum::new(llfn, fn_ty, RvalueExpr(Rvalue::new(ByValue))))
 }
 
 pub fn trans_local_var<'a>(bcx: &'a Block<'a>,
@@ -863,7 +863,7 @@ pub fn trans_local_var<'a>(bcx: &'a Block<'a>,
             // Can't move upvars, so this is never a ZeroMemLastUse.
             let local_ty = node_id_type(bcx, nid);
             match bcx.fcx.llupvars.borrow().find(&nid) {
-                Some(&val) => Datum(val, local_ty, Lvalue),
+                Some(&val) => Datum::new(val, local_ty, Lvalue),
                 None => {
                     bcx.sess().bug(format!(
                         "trans_local_var: no llval for upvar {:?} found",
@@ -1664,7 +1664,7 @@ fn auto_ref<'a>(bcx: &'a Block<'a>,
     // Construct the resulting datum, using what was the "by ref"
     // ValueRef of type `referent_ty` to be the "by value" ValueRef
     // of type `&referent_ty`.
-    DatumBlock(bcx, Datum(llref, ptr_ty, RvalueExpr(Rvalue(ByValue))))
+    DatumBlock::new(bcx, Datum::new(llref, ptr_ty, RvalueExpr(Rvalue::new(ByValue))))
 }
 
 fn deref_multiple<'a>(bcx: &'a Block<'a>,
@@ -1717,7 +1717,7 @@ fn deref_once<'a>(bcx: &'a Block<'a>,
             let val = unpack_result!(bcx, trans_overloaded_op(bcx, expr, method_call,
                                                               datum, None, None));
             let ref_ty = ty::ty_fn_ret(monomorphize_type(bcx, method_ty));
-            Datum(val, ref_ty, RvalueExpr(Rvalue(ByValue)))
+            Datum::new(val, ref_ty, RvalueExpr(Rvalue::new(ByValue)))
         }
         None => {
             // Not overloaded. We already have a pointer we know how to deref.
@@ -1740,7 +1740,7 @@ fn deref_once<'a>(bcx: &'a Block<'a>,
             let llptrref = datum.to_llref();
             let llptr = Load(bcx, llptrref);
             let llbody = GEPi(bcx, llptr, [0u, abi::box_field_body]);
-            DatumBlock(bcx, Datum(llbody, content_ty, LvalueExpr))
+            DatumBlock::new(bcx, Datum::new(llbody, content_ty, LvalueExpr))
         }
 
         ty::ty_ptr(ty::mt { ty: content_ty, .. }) |
@@ -1758,7 +1758,7 @@ fn deref_once<'a>(bcx: &'a Block<'a>,
                     // rvalue for non-owning pointers like &T or *T, in which
                     // case cleanup *is* scheduled elsewhere, by the true
                     // owner (or, in the case of *T, by the user).
-                    DatumBlock(bcx, Datum(ptr, content_ty, LvalueExpr))
+                    DatumBlock::new(bcx, Datum::new(ptr, content_ty, LvalueExpr))
                 }
             }
         }
@@ -1818,10 +1818,10 @@ fn deref_once<'a>(bcx: &'a Block<'a>,
                 (Load(bcx, datum.val), LvalueExpr)
             }
             RvalueExpr(Rvalue { mode: ByRef }) => {
-                (Load(bcx, datum.val), RvalueExpr(Rvalue(ByRef)))
+                (Load(bcx, datum.val), RvalueExpr(Rvalue::new(ByRef)))
             }
             RvalueExpr(Rvalue { mode: ByValue }) => {
-                (datum.val, RvalueExpr(Rvalue(ByRef)))
+                (datum.val, RvalueExpr(Rvalue::new(ByRef)))
             }
         };
 
