@@ -1366,8 +1366,8 @@ mod test_treemap {
 
         let map_str = format!("{}", map);
 
-        assert!(map_str == "{1: 2, 3: 4}".to_owned());
-        assert_eq!(format!("{}", empty), "{}".to_owned());
+        assert!(map_str == "{1: 2, 3: 4}".to_string());
+        assert_eq!(format!("{}", empty), "{}".to_string());
     }
 
     #[test]
@@ -1776,7 +1776,7 @@ mod test_set {
 
         let set_str = format!("{}", set);
 
-        assert!(set_str == "{1, 2}".to_owned());
-        assert_eq!(format!("{}", empty), "{}".to_owned());
+        assert!(set_str == "{1, 2}".to_string());
+        assert_eq!(format!("{}", empty), "{}".to_string());
     }
 }
