@@ -356,7 +356,7 @@ impl fmt::Show for clean::Type {
                                     }
                                 }
                            }
-                           ret.into_owned()
+                           ret
                        })
             }
             clean::Proc(ref decl) => {
