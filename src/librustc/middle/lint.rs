@@ -1650,7 +1650,7 @@ fn check_missing_doc_item(cx: &Context, it: &ast::Item) {
                             desc);
 }
 
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 enum MethodContext {
     TraitDefaultImpl,
     TraitImpl,
