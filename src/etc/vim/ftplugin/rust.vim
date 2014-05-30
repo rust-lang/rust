@@ -60,33 +60,10 @@ onoremap <silent> <buffer> ]] :call rust#Jump('o', 'Forward')<CR>
 
 " Commands {{{1
 
-" :RustRun will compile and run the current file. If it has unsaved changes,
-" they will be saved first. If it has no path, it will be written to a
-" temporary file first. The generated binary is always placed in a temporary
-" directory, but run from the current directory.
-"
-" The arguments passed to :RustRun will be passed to the generated binary.
-"
-" If ! is specified, the arguments are given to rustc as well. A -- argument
-" separates rustc args from the args passed to the binary.
-"
-" If g:rustc_path is defined, it is used as the path to rustc. Otherwise it is
-" assumed that rustc is in $PATH.
+" See |:RustRun| for docs
 command! -nargs=* -complete=file -bang -bar -buffer RustRun call rust#Run(<bang>0, [<f-args>])
 
-" :RustExpand will expand the current file using --pretty.
-"
-" Any arguments given to :RustExpand will be passed to rustc. This is largely
-" so you can pass various --cfg configurations.
-"
-" If ! is specified, the first argument will be interpreted as the --pretty
-" type. Otherwise it will default to 'expanded'.
-"
-" If the current file has unsaved changes, it will be saved first. If it's an
-" unnamed buffer, it will be written to a temporary file.
-"
-" If g:rustc_path is defined, it is used as the path to rustc. Otherwise it is
-" assumed that rustc is in $PATH.
+" See |:RustExpand| for docs
 command! -nargs=* -complete=customlist,rust#CompleteExpand -bang -bar -buffer RustExpand call rust#Expand(<bang>0, [<f-args>])
 
 " Mappings {{{1
