@@ -66,6 +66,12 @@ command! -nargs=* -complete=file -bang -bar -buffer RustRun call rust#Run(<bang>
 " See |:RustExpand| for docs
 command! -nargs=* -complete=customlist,rust#CompleteExpand -bang -bar -buffer RustExpand call rust#Expand(<bang>0, [<f-args>])
 
+" See |:RustEmitIr| for docs
+command! -nargs=* -bar -buffer RustEmitIr call rust#Emit("ir", [<f-args>])
+
+" See |:RustEmitAsm| for docs
+command! -nargs=* -bar -buffer RustEmitAsm call rust#Emit("asm", [<f-args>])
+
 " Mappings {{{1
 
 " Bind ⌘R in MacVim to :RustRun
@@ -91,6 +97,8 @@ let b:undo_ftplugin = "
 		\|unlet! b:rust_last_rustc_args b:rust_last_args
 		\|delcommand RustRun
 		\|delcommand RustExpand
+		\|delcommand RustEmitIr
+		\|delcommand RustEmitAsm
 		\|nunmap <buffer> <D-r>
 		\|nunmap <buffer> <D-R>
 		\|nunmap <buffer> [[

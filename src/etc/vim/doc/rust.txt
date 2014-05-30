@@ -107,6 +107,27 @@ COMMANDS                                                       *rust-commands*
 		If |g:rustc_path| is defined, it is used as the path to rustc.
 		Otherwise it is assumed rustc can be found in $PATH.
 
+:RustEmitIr [args]                                               *:RustEmitIr*
+		Compiles the current file to LLVM IR and displays the results
+		in a new split. If the current file has unsaved changes, it
+		will be saved first using |:update|. If the current file is an
+		unnamed buffer, it will be written to a temporary file first.
+
+		The arguments given to |:RustEmitIr| will be passed to rustc.
+
+		If |g:rustc_path| is defined, it is used as the path to rustc.
+		Otherwise it is assumed rustc can be found in $PATH.
+
+:RustEmitAsm [args]                                             *:RustEmitAsm*
+		Compiles the current file to assembly and displays the results
+		in a new split. If the current file has unsaved changes, it
+		will be saved first using |:update|. If the current file is an
+		unnamed buffer, it will be written to a temporary file first.
+
+		The arguments given to |:RustEmitAsm| will be passed to rustc.
+
+		If |g:rustc_path| is defined, it is used as the path to rustc.
+		Otherwise it is assumed rustc can be found in $PATH.
 
 ==============================================================================
 MAPPINGS                                                       *rust-mappings*
