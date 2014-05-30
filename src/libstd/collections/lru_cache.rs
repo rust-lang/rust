@@ -37,13 +37,18 @@
 //! assert!(cache.get(&2).is_none());
 //! ```
 
-use std::container::Container;
-use std::hash::Hash;
-use std::fmt;
-use std::mem;
-use std::ptr;
-
-use HashMap;
+use cmp::{Eq, TotalEq};
+use collections::HashMap;
+use container::{Container, Mutable, MutableMap};
+use fmt;
+use hash::Hash;
+use iter::{range, Iterator};
+use mem;
+use ops::Drop;
+use option::{Some, None, Option};
+use owned::Box;
+use ptr;
+use result::{Ok, Err};
 
 struct KeyRef<K> { k: *K }
 

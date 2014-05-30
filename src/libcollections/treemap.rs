@@ -12,13 +12,17 @@
 //! trees. The only requirement for the types is that the key implements
 //! `Ord`.
 
-use std::cmp::Ordering;
-use std::fmt::Show;
-use std::fmt;
-use std::iter::Peekable;
-use std::iter;
-use std::mem::{replace, swap};
-use std::ptr;
+use core::prelude::*;
+
+use alloc::owned::Box;
+use core::fmt;
+use core::fmt::Show;
+use core::iter::Peekable;
+use core::iter;
+use core::mem::{replace, swap};
+use core::ptr;
+
+use vec::Vec;
 
 // This is implemented as an AA tree, which is a simplified variation of
 // a red-black tree where red (horizontal) nodes can only be added

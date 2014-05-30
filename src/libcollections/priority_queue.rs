@@ -12,10 +12,12 @@
 
 #![allow(missing_doc)]
 
-use std::clone::Clone;
-use std::mem::{zeroed, replace, swap};
-use std::ptr;
-use std::slice;
+use core::prelude::*;
+
+use core::mem::{overwrite, zeroed, replace, swap};
+
+use slice;
+use vec::Vec;
 
 /// A priority queue implemented with a binary heap
 #[deriving(Clone)]

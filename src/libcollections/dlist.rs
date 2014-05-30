@@ -21,9 +21,12 @@
 // Backlinks over DList::prev are raw pointers that form a full chain in
 // the reverse direction.
 
-use std::iter;
-use std::mem;
-use std::ptr;
+use core::prelude::*;
+
+use alloc::owned::Box;
+use core::iter;
+use core::mem;
+use core::ptr;
 
 use deque::Deque;
 

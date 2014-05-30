@@ -11,6 +11,8 @@
 //! The `FromStr` trait for types that can be created from strings
 
 use option::{Option, Some, None};
+use string::String;
+use str::StrAllocating;
 
 /// A trait to abstract the idea of creating a new instance of a type from a
 /// string.
@@ -44,6 +46,13 @@ impl FromStr for bool {
             "false" => Some(false),
             _       => None,
         }
+    }
+}
+
+impl FromStr for String {
+    #[inline]
+    fn from_str(s: &str) -> Option<String> {
+        Some(s.to_string())
     }
 }
 
