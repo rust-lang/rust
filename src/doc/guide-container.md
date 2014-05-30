@@ -396,7 +396,7 @@ underlying iterators are.
 
 ~~~
 let xs = [1, 2, 3, 4, 5];
-let ys = ~[7, 9, 11];
+let ys = [7, 9, 11];
 let mut it = xs.iter().chain(ys.iter());
 println!("{}", it.idx(0)); // prints `Some(1)`
 println!("{}", it.idx(5)); // prints `Some(7)`
