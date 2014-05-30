@@ -347,7 +347,7 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt, trait_id: ast::NodeId) {
             ident: special_idents::self_,
             def_id: dummy_defid,
             bounds: Rc::new(ty::ParamBounds {
-                builtin_bounds: ty::EmptyBuiltinBounds(),
+                builtin_bounds: ty::empty_builtin_bounds(),
                 trait_bounds: vec!(self_trait_ref)
             }),
             default: None
@@ -418,7 +418,7 @@ pub fn ensure_supertraits(ccx: &CrateCtxt,
 
     let self_ty = ty::mk_self(ccx.tcx, local_def(id));
     let mut ty_trait_refs: Vec<Rc<ty::TraitRef>> = Vec::new();
-    let mut bounds = ty::EmptyBuiltinBounds();
+    let mut bounds = ty::empty_builtin_bounds();
     for ast_trait_ref in ast_trait_refs.iter() {
         let trait_def_id = ty::trait_ref_to_def_id(ccx.tcx, ast_trait_ref);
         // FIXME(#8559): Need to instantiate the trait_ref whether or not it's a
@@ -1094,7 +1094,7 @@ fn ty_generics(ccx: &CrateCtxt,
          */
 
         let mut param_bounds = ty::ParamBounds {
-            builtin_bounds: ty::EmptyBuiltinBounds(),
+            builtin_bounds: ty::empty_builtin_bounds(),
             trait_bounds: Vec::new()
         };
         for ast_bound in ast_bounds.iter() {

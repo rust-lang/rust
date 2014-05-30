@@ -26,6 +26,10 @@ pub struct Doc<'a> {
 }
 
 impl<'doc> Doc<'doc> {
+    pub fn new(data: &'doc [u8]) -> Doc<'doc> {
+        Doc { data: data, start: 0u, end: data.len() }
+    }
+
     pub fn get<'a>(&'a self, tag: uint) -> Doc<'a> {
         reader::get_doc(*self, tag)
     }
@@ -192,10 +196,6 @@ pub mod reader {
         }
     }
 
-    pub fn Doc<'a>(data: &'a [u8]) -> Doc<'a> {
-        Doc { data: data, start: 0u, end: data.len() }
-    }
-
     pub fn doc_at<'a>(data: &'a [u8], start: uint) -> DecodeResult<TaggedDoc<'a>> {
         let elt_tag = try!(vuint_at(data, start));
         let elt_size = try!(vuint_at(data, elt_tag.next));
@@ -296,14 +296,14 @@ pub mod reader {
         pos: uint,
     }
 
-    pub fn Decoder<'a>(d: Doc<'a>) -> Decoder<'a> {
-        Decoder {
-            parent: d,
-            pos: d.start
-        }
-    }
-
     impl<'doc> Decoder<'doc> {
+        pub fn new(d: Doc<'doc>) -> Decoder<'doc> {
+            Decoder {
+                parent: d,
+                pos: d.start
+            }
+        }
+
         fn _check_label(&mut self, lbl: &str) -> DecodeResult<()> {
             if self.pos < self.parent.end {
                 let TaggedDoc { tag: r_tag, doc: r_doc } =
@@ -673,15 +673,15 @@ pub mod writer {
         })
     }
 
-    pub fn Encoder<'a, W: Writer + Seek>(w: &'a mut W) -> Encoder<'a, W> {
-        Encoder {
-            writer: w,
-            size_positions: vec!(),
-        }
-    }
-
     // FIXME (#2741): Provide a function to write the standard ebml header.
     impl<'a, W: Writer + Seek> Encoder<'a, W> {
+        pub fn new(w: &'a mut W) -> Encoder<'a, W> {
+            Encoder {
+                writer: w,
+                size_positions: vec!(),
+            }
+        }
+
         /// FIXME(pcwalton): Workaround for badness in trans. DO NOT USE ME.
         pub unsafe fn unsafe_clone(&self) -> Encoder<'a, W> {
             Encoder {
@@ -1020,6 +1020,7 @@ pub mod writer {
 
 #[cfg(test)]
 mod tests {
+    use super::Doc;
     use ebml::reader;
     use ebml::writer;
     use {Encodable, Decodable};
@@ -1081,11 +1082,11 @@ mod tests {
             debug!("v == {}", v);
             let mut wr = MemWriter::new();
             {
-                let mut ebml_w = writer::Encoder(&mut wr);
+                let mut ebml_w = writer::Encoder::new(&mut wr);
                 let _ = v.encode(&mut ebml_w);
             }
-            let ebml_doc = reader::Doc(wr.get_ref());
-            let mut deser = reader::Decoder(ebml_doc);
+            let ebml_doc = Doc::new(wr.get_ref());
+            let mut deser = reader::Decoder::new(ebml_doc);
             let v1 = Decodable::decode(&mut deser).unwrap();
             debug!("v1 == {}", v1);
             assert_eq!(v, v1);
@@ -1099,6 +1100,7 @@ mod tests {
 
 #[cfg(test)]
 mod bench {
+    #![allow(non_snake_case_functions)]
     extern crate test;
     use self::test::Bencher;
     use ebml::reader;

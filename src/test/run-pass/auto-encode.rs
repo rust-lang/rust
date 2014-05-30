@@ -33,12 +33,12 @@ fn test_ebml<'a, 'b, A:
     Decodable<EBReader::Decoder<'b>>
 >(a1: &A) {
     let mut wr = std::io::MemWriter::new();
-    let mut ebml_w = EBWriter::Encoder(&mut wr);
+    let mut ebml_w = EBwriter::Encoder::new(&mut wr);
     a1.encode(&mut ebml_w);
     let bytes = wr.get_ref();
 
-    let d: serialize::ebml::Doc<'a> = EBReader::Doc(bytes);
-    let mut decoder: EBReader::Decoder<'a> = EBReader::Decoder(d);
+    let d: serialize::ebml::Doc<'a> = EBDoc::new(bytes);
+    let mut decoder: EBReader::Decoder<'a> = EBreader::Decoder::new(d);
     let a2: A = Decodable::decode(&mut decoder);
     assert!(*a1 == a2);
 }

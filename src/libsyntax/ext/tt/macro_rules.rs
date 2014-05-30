@@ -171,7 +171,7 @@ fn generic_extension(cx: &ExtCtxt,
                 let trncbr = new_tt_reader(&cx.parse_sess().span_diagnostic,
                                            Some(named_matches),
                                            rhs);
-                let p = Parser(cx.parse_sess(), cx.cfg(), box trncbr);
+                let p = Parser::new(cx.parse_sess(), cx.cfg(), box trncbr);
                 // Let the context choose how to interpret the result.
                 // Weird, but useful for X-macros.
                 return box ParserAnyMacro {

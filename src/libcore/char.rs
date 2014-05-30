@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -23,6 +23,7 @@
 //! however the converse is not always true due to the above range limits
 //! and, as such, should be performed via the `from_u32` function..
 
+#![allow(non_snake_case_functions)]
 
 use mem::transmute;
 use option::{None, Option, Some};

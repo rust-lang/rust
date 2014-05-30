@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -86,6 +86,7 @@ pub unsafe fn destroy(key: Key) {
 }
 
 #[cfg(windows)]
+#[allow(non_snake_case_functions)]
 extern "system" {
     fn TlsAlloc() -> DWORD;
     fn TlsFree(dwTlsIndex: DWORD) -> BOOL;

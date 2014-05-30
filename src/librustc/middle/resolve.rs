@@ -549,6 +549,13 @@ enum TraitReferenceType {
 }
 
 impl NameBindings {
+    fn new() -> NameBindings {
+        NameBindings {
+            type_def: RefCell::new(None),
+            value_def: RefCell::new(None),
+        }
+    }
+
     /// Creates a new module in this set of name bindings.
     fn define_module(&self,
                      parent_link: ParentLink,
@@ -749,47 +756,40 @@ impl NameBindings {
     }
 }
 
-fn NameBindings() -> NameBindings {
-    NameBindings {
-        type_def: RefCell::new(None),
-        value_def: RefCell::new(None),
-    }
-}
-
 /// Interns the names of the primitive types.
 struct PrimitiveTypeTable {
     primitive_types: HashMap<Name, PrimTy>,
 }
 
 impl PrimitiveTypeTable {
+    fn new() -> PrimitiveTypeTable {
+        let mut table = PrimitiveTypeTable {
+            primitive_types: HashMap::new()
+        };
+
+        table.intern("bool",    TyBool);
+        table.intern("char",    TyChar);
+        table.intern("f32",     TyFloat(TyF32));
+        table.intern("f64",     TyFloat(TyF64));
+        table.intern("f128",    TyFloat(TyF128));
+        table.intern("int",     TyInt(TyI));
+        table.intern("i8",      TyInt(TyI8));
+        table.intern("i16",     TyInt(TyI16));
+        table.intern("i32",     TyInt(TyI32));
+        table.intern("i64",     TyInt(TyI64));
+        table.intern("str",     TyStr);
+        table.intern("uint",    TyUint(TyU));
+        table.intern("u8",      TyUint(TyU8));
+        table.intern("u16",     TyUint(TyU16));
+        table.intern("u32",     TyUint(TyU32));
+        table.intern("u64",     TyUint(TyU64));
+
+        table
+    }
+
     fn intern(&mut self, string: &str, primitive_type: PrimTy) {
         self.primitive_types.insert(token::intern(string), primitive_type);
     }
-}
-
-fn PrimitiveTypeTable() -> PrimitiveTypeTable {
-    let mut table = PrimitiveTypeTable {
-        primitive_types: HashMap::new()
-    };
-
-    table.intern("bool",    TyBool);
-    table.intern("char",    TyChar);
-    table.intern("f32",     TyFloat(TyF32));
-    table.intern("f64",     TyFloat(TyF64));
-    table.intern("f128",    TyFloat(TyF128));
-    table.intern("int",     TyInt(TyI));
-    table.intern("i8",      TyInt(TyI8));
-    table.intern("i16",     TyInt(TyI16));
-    table.intern("i32",     TyInt(TyI32));
-    table.intern("i64",     TyInt(TyI64));
-    table.intern("str",     TyStr);
-    table.intern("uint",    TyUint(TyU));
-    table.intern("u8",      TyUint(TyU8));
-    table.intern("u16",     TyUint(TyU16));
-    table.intern("u32",     TyUint(TyU32));
-    table.intern("u64",     TyUint(TyU64));
-
-    return table;
 }
 
 
@@ -800,62 +800,6 @@ fn namespace_error_to_str(ns: NamespaceError) -> &'static str {
         TypeError   => "type",
         ValueError  => "value",
     }
-}
-
-fn Resolver<'a>(session: &'a Session,
-                lang_items: &'a LanguageItems,
-                crate_span: Span) -> Resolver<'a> {
-    let graph_root = NameBindings();
-
-    graph_root.define_module(NoParentLink,
-                             Some(DefId { krate: 0, node: 0 }),
-                             NormalModuleKind,
-                             false,
-                             true,
-                             crate_span);
-
-    let current_module = graph_root.get_module();
-
-    let this = Resolver {
-        session: session,
-        lang_items: lang_items,
-
-        // The outermost module has def ID 0; this is not reflected in the
-        // AST.
-
-        graph_root: graph_root,
-
-        method_map: RefCell::new(FnvHashMap::new()),
-        structs: FnvHashMap::new(),
-
-        unresolved_imports: 0,
-
-        current_module: current_module,
-        value_ribs: RefCell::new(Vec::new()),
-        type_ribs: RefCell::new(Vec::new()),
-        label_ribs: RefCell::new(Vec::new()),
-
-        current_trait_ref: None,
-        current_self_type: None,
-
-        self_ident: special_idents::self_,
-        type_self_ident: special_idents::type_self,
-
-        primitive_type_table: PrimitiveTypeTable(),
-
-        namespaces: vec!(TypeNS, ValueNS),
-
-        def_map: RefCell::new(NodeMap::new()),
-        export_map2: RefCell::new(NodeMap::new()),
-        trait_map: NodeMap::new(),
-        used_imports: HashSet::new(),
-        external_exports: DefIdSet::new(),
-        last_private: NodeMap::new(),
-
-        emit_errors: true,
-    };
-
-    this
 }
 
 /// The main resolver class.
@@ -957,6 +901,57 @@ impl<'a, 'b> Visitor<()> for UnusedImportCheckVisitor<'a, 'b> {
 }
 
 impl<'a> Resolver<'a> {
+    fn new(session: &'a Session, lang_items: &'a LanguageItems, crate_span: Span) -> Resolver<'a> {
+        let graph_root = NameBindings::new();
+
+        graph_root.define_module(NoParentLink,
+                                 Some(DefId { krate: 0, node: 0 }),
+                                 NormalModuleKind,
+                                 false,
+                                 true,
+                                 crate_span);
+
+        let current_module = graph_root.get_module();
+
+        Resolver {
+            session: session,
+            lang_items: lang_items,
+
+            // The outermost module has def ID 0; this is not reflected in the
+            // AST.
+
+            graph_root: graph_root,
+
+            method_map: RefCell::new(FnvHashMap::new()),
+            structs: FnvHashMap::new(),
+
+            unresolved_imports: 0,
+
+            current_module: current_module,
+            value_ribs: RefCell::new(Vec::new()),
+            type_ribs: RefCell::new(Vec::new()),
+            label_ribs: RefCell::new(Vec::new()),
+
+            current_trait_ref: None,
+            current_self_type: None,
+
+            self_ident: special_idents::self_,
+            type_self_ident: special_idents::type_self,
+
+            primitive_type_table: PrimitiveTypeTable::new(),
+
+            namespaces: vec!(TypeNS, ValueNS),
+
+            def_map: RefCell::new(NodeMap::new()),
+            export_map2: RefCell::new(NodeMap::new()),
+            trait_map: NodeMap::new(),
+            used_imports: HashSet::new(),
+            external_exports: DefIdSet::new(),
+            last_private: NodeMap::new(),
+
+            emit_errors: true,
+        }
+    }
     /// The main name resolution procedure.
     fn resolve(&mut self, krate: &ast::Crate) {
         self.build_reduced_graph(krate);
@@ -1017,7 +1012,7 @@ impl<'a> Resolver<'a> {
         let child = module_.children.borrow().find_copy(&name.name);
         match child {
             None => {
-                let child = Rc::new(NameBindings());
+                let child = Rc::new(NameBindings::new());
                 module_.children.borrow_mut().insert(name.name, child.clone());
                 child
             }
@@ -5574,7 +5569,7 @@ pub fn resolve_crate(session: &Session,
                      lang_items: &LanguageItems,
                      krate: &Crate)
                   -> CrateMap {
-    let mut resolver = Resolver(session, lang_items, krate.span);
+    let mut resolver = Resolver::new(session, lang_items, krate.span);
     resolver.resolve(krate);
     let Resolver { def_map, export_map2, trait_map, last_private,
                    external_exports, .. } = resolver;

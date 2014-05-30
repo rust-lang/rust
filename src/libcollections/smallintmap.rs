@@ -296,20 +296,20 @@ mod test_map {
 
         // given a new key, initialize it with this new count,
         // given an existing key, add more to its count
-        fn addMoreToCount(_k: uint, v0: uint, v1: uint) -> uint {
+        fn add_more_to_count(_k: uint, v0: uint, v1: uint) -> uint {
             v0 + v1
         }
 
-        fn addMoreToCount_simple(v0: uint, v1: uint) -> uint {
+        fn add_more_to_count_simple(v0: uint, v1: uint) -> uint {
             v0 + v1
         }
 
         // count integers
-        map.update(3, 1, addMoreToCount_simple);
-        map.update_with_key(9, 1, addMoreToCount);
-        map.update(3, 7, addMoreToCount_simple);
-        map.update_with_key(5, 3, addMoreToCount);
-        map.update_with_key(3, 2, addMoreToCount);
+        map.update(3, 1, add_more_to_count_simple);
+        map.update_with_key(9, 1, add_more_to_count);
+        map.update(3, 7, add_more_to_count_simple);
+        map.update_with_key(5, 3, add_more_to_count);
+        map.update_with_key(3, 2, add_more_to_count);
 
         // check the total counts
         assert_eq!(map.find(&3).unwrap(), &10);

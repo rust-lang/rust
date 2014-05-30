@@ -22,6 +22,7 @@ use std::io::MemWriter;
 use rand::{random, Rand};
 use serialize::{Encodable, Decodable};
 use serialize::ebml;
+use serialize::ebml::Doc;
 use serialize::ebml::writer::Encoder;
 use serialize::ebml::reader::Decoder;
 
@@ -58,10 +59,10 @@ fn roundtrip<'a, T: Rand + Eq + Encodable<Encoder<'a>> +
                     Decodable<Decoder<'a>>>() {
     let obj: T = random();
     let mut w = MemWriter::new();
-    let mut e = Encoder(&mut w);
+    let mut e = Encoder::new(&mut w);
     obj.encode(&mut e);
-    let doc = ebml::reader::Doc(@w.get_ref());
-    let mut dec = Decoder(doc);
+    let doc = ebml::Doc::new(@w.get_ref());
+    let mut dec = Decoder::new(doc);
     let obj2 = Decodable::decode(&mut dec);
     assert!(obj == obj2);
 }
