@@ -36,7 +36,7 @@ use std::intrinsics::{TyDesc, get_tydesc};
 use std::intrinsics;
 use std::mem;
 use std::num;
-use std::ptr::read;
+use std::ptr;
 use std::rc::Rc;
 use std::rt::heap::allocate;
 
@@ -209,7 +209,7 @@ impl Arena {
             let ptr = self.alloc_copy_inner(mem::size_of::<T>(),
                                             mem::min_align_of::<T>());
             let ptr = ptr as *mut T;
-            mem::overwrite(&mut (*ptr), op());
+            ptr::write(&mut (*ptr), op());
             return &*ptr;
         }
     }
@@ -262,7 +262,7 @@ impl Arena {
             // has *not* been initialized yet.
             *ty_ptr = mem::transmute(tydesc);
             // Actually initialize it
-            mem::overwrite(&mut(*ptr), op());
+            ptr::write(&mut(*ptr), op());
             // Now that we are done, update the tydesc to indicate that
             // the object is there.
             *ty_ptr = bitpack_tydesc_ptr(tydesc, true);
@@ -360,7 +360,7 @@ impl<T> TypedArenaChunk<T> {
         let mut chunk = unsafe {
             let chunk = allocate(size, mem::min_align_of::<TypedArenaChunk<T>>());
             let mut chunk: Box<TypedArenaChunk<T>> = mem::transmute(chunk);
-            mem::overwrite(&mut chunk.next, next);
+            ptr::write(&mut chunk.next, next);
             chunk
         };
 
@@ -376,7 +376,7 @@ impl<T> TypedArenaChunk<T> {
         if intrinsics::needs_drop::<T>() {
             let mut start = self.start();
             for _ in range(0, len) {
-                read(start as *T); // run the destructor on the pointer
+                ptr::read(start as *T); // run the destructor on the pointer
                 start = start.offset(mem::size_of::<T>() as int)
             }
         }
@@ -442,7 +442,7 @@ impl<T> TypedArena<T> {
             }
 
             let ptr: &'a mut T = mem::transmute(this.ptr);
-            mem::overwrite(ptr, object);
+            ptr::write(ptr, object);
             this.ptr = this.ptr.offset(1);
             let ptr: &'a T = ptr;
             ptr

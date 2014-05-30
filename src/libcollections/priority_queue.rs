@@ -13,7 +13,8 @@
 #![allow(missing_doc)]
 
 use std::clone::Clone;
-use std::mem::{overwrite, zeroed, replace, swap};
+use std::mem::{zeroed, replace, swap};
+use std::ptr;
 use std::slice;
 
 /// A priority queue implemented with a binary heap
@@ -163,13 +164,13 @@ impl<T: Ord> PriorityQueue<T> {
                 let parent = (pos - 1) >> 1;
                 if new > *self.data.get(parent) {
                     let x = replace(self.data.get_mut(parent), zeroed());
-                    overwrite(self.data.get_mut(pos), x);
+                    ptr::write(self.data.get_mut(pos), x);
                     pos = parent;
                     continue
                 }
                 break
             }
-            overwrite(self.data.get_mut(pos), new);
+            ptr::write(self.data.get_mut(pos), new);
         }
     }
 
@@ -185,12 +186,12 @@ impl<T: Ord> PriorityQueue<T> {
                     child = right;
                 }
                 let x = replace(self.data.get_mut(child), zeroed());
-                overwrite(self.data.get_mut(pos), x);
+                ptr::write(self.data.get_mut(pos), x);
                 pos = child;
                 child = 2 * pos + 1;
             }
 
-            overwrite(self.data.get_mut(pos), new);
+            ptr::write(self.data.get_mut(pos), new);
             self.siftup(start, pos);
         }
     }

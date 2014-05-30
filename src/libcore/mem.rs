@@ -155,16 +155,16 @@ pub unsafe fn uninit<T>() -> T {
 /// contained at the location `dst`. This could leak allocations or resources,
 /// so care must be taken to previously deallocate the value at `dst`.
 #[inline]
-#[stable]
+#[deprecated = "use ptr::write"]
 pub unsafe fn overwrite<T>(dst: *mut T, src: T) {
     intrinsics::move_val_init(&mut *dst, src)
 }
 
 /// Deprecated, use `overwrite` instead
 #[inline]
-#[deprecated = "this function has been renamed to `overwrite`"]
+#[deprecated = "use ptr::write"]
 pub unsafe fn move_val_init<T>(dst: &mut T, src: T) {
-    overwrite(dst, src)
+    ptr::write(dst, src)
 }
 
 /// Convert an u16 to little endian from the target's endianness.
