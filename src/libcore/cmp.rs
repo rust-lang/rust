@@ -37,6 +37,9 @@
 //! assert!(SketchyNum {num: 25} != SketchyNum {num: 57});
 //! ```
 
+pub use Eq = self::TotalEq;
+pub use Ord = self::TotalOrd;
+
 /// Trait for values that can be compared for equality and inequality.
 ///
 /// This trait allows partial equality, where types can be unordered instead of
