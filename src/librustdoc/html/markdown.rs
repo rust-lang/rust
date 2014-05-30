@@ -31,7 +31,7 @@ use std::cell::RefCell;
 use std::fmt;
 use std::slice;
 use std::str;
-use collections::HashMap;
+use std::collections::HashMap;
 
 use html::toc::TocBuilder;
 use html::highlight;

@@ -32,7 +32,7 @@ use std::ptr;
 use std::slice;
 use std::str;
 
-use collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet};
 use flate;
 use time;
 

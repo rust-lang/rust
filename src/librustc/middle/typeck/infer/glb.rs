@@ -24,7 +24,7 @@ use middle::typeck::infer::fold_regions_in_sig;
 use syntax::ast::{Many, Once, MutImmutable, MutMutable};
 use syntax::ast::{NormalFn, UnsafeFn, NodeId};
 use syntax::ast::{Onceness, FnStyle};
-use collections::HashMap;
+use std::collections::HashMap;
 use util::common::{indenter};
 use util::ppaux::mt_to_str;
 

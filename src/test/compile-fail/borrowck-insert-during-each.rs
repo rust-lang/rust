@@ -9,7 +9,7 @@
 // except according to those terms.
 
 extern crate collections;
-use collections::HashSet;
+use std::collections::HashSet;
 
 struct Foo {
   n: HashSet<int>,

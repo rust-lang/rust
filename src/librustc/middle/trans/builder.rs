@@ -19,7 +19,7 @@ use middle::trans::base;
 use middle::trans::common::*;
 use middle::trans::machine::llalign_of_pref;
 use middle::trans::type_::Type;
-use collections::HashMap;
+use std::collections::HashMap;
 use libc::{c_uint, c_ulonglong, c_char};
 use std::string::String;
 use syntax::codemap::Span;

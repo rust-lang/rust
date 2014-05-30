@@ -13,9 +13,8 @@
 
 #![feature(managed_boxes)]
 
-extern crate collections;
-
 use std::vec;
+use std::collections;
 
 fn main() {
     let _count = @0u;

@@ -23,7 +23,7 @@ use metadata::loader;
 use metadata::loader::CratePaths;
 
 use std::rc::Rc;
-use collections::HashMap;
+use std::collections::HashMap;
 use syntax::ast;
 use syntax::abi;
 use syntax::attr;

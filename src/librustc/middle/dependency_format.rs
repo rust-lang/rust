@@ -61,7 +61,7 @@
 //! Additionally, the algorithm is geared towards finding *any* solution rather
 //! than finding a number of solutions (there are normally quite a few).
 
-use collections::HashMap;
+use std::collections::HashMap;
 use syntax::ast;
 
 use driver::session;

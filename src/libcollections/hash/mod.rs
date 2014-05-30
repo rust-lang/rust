@@ -68,6 +68,7 @@ use core::prelude::*;
 use alloc::owned::Box;
 use alloc::rc::Rc;
 use core::intrinsics::TypeId;
+use core::mem;
 
 use vec::Vec;
 
@@ -97,14 +98,16 @@ pub trait Writer {
 
 //////////////////////////////////////////////////////////////////////////////
 
+fn id<T>(t: T) -> T { t }
+
 macro_rules! impl_hash(
-    ( $($ty:ident)* ) => (
+    ( $($ty:ident, $uty:ident, $f:path;)* ) => (
         $(
             impl<S: Writer> Hash<S> for $ty {
                 #[inline]
                 fn hash(&self, state: &mut S) {
                     let a: [u8, ..::core::$ty::BYTES] = unsafe {
-                        ::core::mem::transmute(*self)
+                        mem::transmute($f(*self as $uty) as $ty)
                     };
                     state.write(a.as_slice())
                 }
@@ -113,7 +116,28 @@ macro_rules! impl_hash(
     )
 )
 
-impl_hash!( u8 u16 u32 u64 uint i8 i16 i32 i64 int )
+impl_hash!(
+    u8, u8, id;
+    u16, u16, mem::to_le16;
+    u32, u32, mem::to_le32;
+    u64, u64, mem::to_le64;
+    i8, u8, id;
+    i16, u16, mem::to_le16;
+    i32, u32, mem::to_le32;
+    i64, u64, mem::to_le64;
+)
+
+#[cfg(target_word_size = "32")]
+impl_hash!(
+    uint, u32, mem::to_le32;
+    int, u32, mem::to_le32;
+)
+
+#[cfg(target_word_size = "64")]
+impl_hash!(
+    uint, u64, mem::to_le64;
+    int, u64, mem::to_le64;
+)
 
 impl<S: Writer> Hash<S> for bool {
     #[inline]
@@ -292,14 +316,11 @@ impl<S: Writer, T: Hash<S>, U: Hash<S>> Hash<S> for Result<T, U> {
 
 #[cfg(test)]
 mod tests {
-    use mem;
-    use io::{IoResult, Writer};
-    use iter::{Iterator};
-    use option::{Some, None};
-    use result::Ok;
-    use slice::ImmutableVector;
+    use std::prelude::*;
+    use std::mem;
 
-    use super::{Hash, Hasher};
+    use slice::ImmutableVector;
+    use super::{Hash, Hasher, Writer};
 
     struct MyWriterHasher;
 
@@ -317,11 +338,10 @@ mod tests {
 
     impl Writer for MyWriter {
         // Most things we'll just add up the bytes.
-        fn write(&mut self, buf: &[u8]) -> IoResult<()> {
+        fn write(&mut self, buf: &[u8]) {
             for byte in buf.iter() {
                 self.hash += *byte as u64;
             }
-            Ok(())
         }
     }
 

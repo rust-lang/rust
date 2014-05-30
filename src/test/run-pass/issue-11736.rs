@@ -11,7 +11,7 @@
 extern crate collections;
 extern crate std;
 
-use collections::Bitv;
+use std::collections::Bitv;
 
 fn main() {
     // Generate sieve of Eratosthenes for n up to 1e6

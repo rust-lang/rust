@@ -11,7 +11,7 @@
 //buggy.rs
 
 extern crate collections;
-use collections::HashMap;
+use std::collections::HashMap;
 
 fn main() {
     let mut buggy_map: HashMap<uint, &uint> = HashMap::new();

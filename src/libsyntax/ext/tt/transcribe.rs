@@ -18,7 +18,7 @@ use parse::token;
 use parse::lexer::TokenAndSpan;
 
 use std::rc::Rc;
-use collections::HashMap;
+use std::collections::HashMap;
 
 ///an unzipping of `TokenTree`s
 #[deriving(Clone)]

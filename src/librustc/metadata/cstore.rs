@@ -20,7 +20,7 @@ use metadata::loader;
 use std::cell::RefCell;
 use std::c_vec::CVec;
 use std::rc::Rc;
-use collections::HashMap;
+use std::collections::HashMap;
 use syntax::ast;
 use syntax::crateid::CrateId;
 use syntax::codemap::Span;

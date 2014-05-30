@@ -99,12 +99,9 @@ A basic `ToJson` example using a TreeMap of attribute name / attribute value:
 
 
 ```rust
-extern crate collections;
-extern crate serialize;
-
+use std::collections::TreeMap;
 use serialize::json;
 use serialize::json::ToJson;
-use collections::TreeMap;
 
 pub struct MyStruct  {
     attr1: u8,
@@ -190,12 +187,9 @@ This example use the ToJson impl to deserialize the JSON string.
 Example of `ToJson` trait implementation for TestStruct1.
 
 ```rust
-extern crate serialize;
-extern crate collections;
-
+use std::collections::TreeMap;
 use serialize::json::ToJson;
 use serialize::{json, Encodable, Decodable};
-use collections::TreeMap;
 
 #[deriving(Decodable, Encodable)] // generate Decodable, Encodable impl.
 pub struct TestStruct1  {
@@ -234,6 +228,7 @@ fn main() {
 */
 
 use std::char;
+use std::collections::{HashMap, TreeMap};
 use std::f64;
 use std::fmt;
 use std::io::MemWriter;
@@ -246,7 +241,6 @@ use std::string::String;
 use std::vec::Vec;
 
 use Encodable;
-use collections::{HashMap, TreeMap};
 
 /// Represents a json value
 #[deriving(Clone, PartialEq)]
@@ -2290,7 +2284,7 @@ mod tests {
                 EOFWhileParsingValue, EOFWhileParsingString, KeyMustBeAString, ExpectedColon,
                 TrailingCharacters};
     use std::io;
-    use collections::TreeMap;
+    use std::collections::TreeMap;
 
     #[deriving(PartialEq, Encodable, Decodable, Show)]
     enum Animal {
@@ -3006,7 +3000,7 @@ mod tests {
         use std::str::from_utf8;
         use std::io::Writer;
         use std::io::MemWriter;
-        use collections::HashMap;
+        use std::collections::HashMap;
         let mut hm: HashMap<uint, bool> = HashMap::new();
         hm.insert(1, true);
         let mut mem_buf = MemWriter::new();
@@ -3026,7 +3020,7 @@ mod tests {
         use std::str::from_utf8;
         use std::io::Writer;
         use std::io::MemWriter;
-        use collections::HashMap;
+        use std::collections::HashMap;
         let mut hm: HashMap<uint, bool> = HashMap::new();
         hm.insert(1, true);
         let mut mem_buf = MemWriter::new();
@@ -3043,7 +3037,7 @@ mod tests {
     }
     #[test]
     fn test_hashmap_with_numeric_key_can_handle_double_quote_delimited_key() {
-        use collections::HashMap;
+        use std::collections::HashMap;
         use Decodable;
         let json_str = "{\"1\":true}";
         let json_obj = match from_str(json_str) {
@@ -3340,7 +3334,7 @@ mod tests {
 
     #[test]
     fn test_to_json() {
-        use collections::{HashMap,TreeMap};
+        use std::collections::{HashMap,TreeMap};
         use super::ToJson;
 
         let list2 = List(vec!(Number(1.0_f64), Number(2.0_f64)));

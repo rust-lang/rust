@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate collections;
-use collections; //~ ERROR unresolved import (maybe you meant `collections::*`?)
+extern crate url;
+use url; //~ ERROR unresolved import (maybe you meant `url::*`?)
 
 fn main() {}

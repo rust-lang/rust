@@ -20,7 +20,7 @@ extern crate collections;
 extern crate libc;
 
 use arena::Arena;
-use collections::HashMap;
+use std::collections::HashMap;
 use std::mem;
 
 type Type<'tcx> = &'tcx TypeStructure<'tcx>;

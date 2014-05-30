@@ -249,6 +249,7 @@ double_ended_iterator!(impl MutEntries -> (uint, &'a mut T), get_mut_ref)
 
 #[cfg(test)]
 mod test_map {
+    use std::prelude::*;
 
     use super::SmallIntMap;
 

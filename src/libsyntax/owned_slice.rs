@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use std::default::Default;
-use std::hash::Hash;
+use std::hash;
 use std::{mem, raw, ptr, slice};
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 
@@ -107,7 +107,7 @@ impl<T: Clone> Clone for OwnedSlice<T> {
     }
 }
 
-impl<S: Writer, T: Hash<S>> Hash<S> for OwnedSlice<T> {
+impl<S: hash::Writer, T: hash::Hash<S>> hash::Hash<S> for OwnedSlice<T> {
     fn hash(&self, state: &mut S) {
         self.as_slice().hash(state)
     }

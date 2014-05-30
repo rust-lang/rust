@@ -1002,10 +1002,11 @@ impl<T: Ord> Extendable<T> for TreeSet<T> {
 
 #[cfg(test)]
 mod test_treemap {
-    use super::{TreeMap, TreeNode};
-
+    use std::prelude::*;
     use std::rand::Rng;
     use std::rand;
+
+    use super::{TreeMap, TreeNode};
 
     #[test]
     fn find_empty() {
@@ -1436,8 +1437,9 @@ mod test_treemap {
 
 #[cfg(test)]
 mod bench {
-    extern crate test;
-    use self::test::Bencher;
+    use std::prelude::*;
+    use test::Bencher;
+
     use super::TreeMap;
     use deque::bench::{insert_rand_n, insert_seq_n, find_rand_n, find_seq_n};
 
@@ -1496,6 +1498,7 @@ mod bench {
 
 #[cfg(test)]
 mod test_set {
+    use std::prelude::*;
 
     use super::{TreeMap, TreeSet};
 
