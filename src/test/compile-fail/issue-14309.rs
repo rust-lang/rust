@@ -11,7 +11,7 @@
 #![deny(ctypes)]
 #![allow(dead_code)]
 
-struct A { //~ NOTE #[repr(C)]
+struct A { //~ NOTE consider adding `#[repr(C)]` to this type
     x: int
 }
 
@@ -37,7 +37,7 @@ struct D {
 }
 
 extern "C" {
-    fn foo(x: A); //~ ERROR FFI-safe
+    fn foo(x: A); //~ ERROR found struct without FFI-safe representation used in FFI
     fn bar(x: B); //~ ERROR FFI-safe
     fn baz(x: C);
     fn qux(x: A2); //~ ERROR FFI-safe

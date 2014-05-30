@@ -40,7 +40,6 @@ use metadata::csearch;
 use middle::dead::DEAD_CODE_LINT_STR;
 use middle::pat_util;
 use middle::privacy;
-use middle::trans::adt; // for `adt::is_ffi_safe`
 use middle::ty;
 use middle::typeck::astconv::{ast_ty_to_ty, AstConv};
 use middle::typeck::infer;
@@ -942,40 +941,9 @@ fn check_item_ctypes(cx: &Context, it: &ast::Item) {
                                 libc::c_uint or libc::c_ulong should be used");
                     }
                     ast::DefTy(def_id) => {
-                        match adt::is_ffi_safe(cx.tcx, def_id) {
-                            Ok(_) => { },
-                            Err(types) => {
-                                // in the enum case, we don't care about
-                                // "fields".
-
-                                let ty = ty::get(ty::lookup_item_type(cx.tcx, def_id).ty);
-
-                                match ty.sty {
-                                    ty::ty_struct(_, _) => {
-                                        cx.span_lint(CTypes, aty.span, "found struct without \
-                                                     FFI-safe representation used in FFI");
-
-                                        for def_id in types.iter() {
-                                            if !cx.checked_ffi_structs.borrow_mut()
-                                                                      .insert(def_id.node) {
-                                                return;
-                                            }
-
-                                            match cx.tcx.map.opt_span(def_id.node) {
-                                                Some(sp) => cx.tcx.sess.span_note(sp, "consider \
-                                                    adding `#[repr(C)]` to this type"),
-                                                None => { }
-                                            }
-                                        }
-                                    },
-                                    ty::ty_enum(_, _) => {
-                                        cx.span_lint(CTypes, aty.span,
-                                                     "found enum without FFI-safe representation \
-                                                     annotation used in FFI");
-                                    }
-                                    _ => { }
-                                }
-                            }
+                        if !ty::is_ffi_safe(cx.tcx, def_id) {
+                            cx.span_lint(CTypes, aty.span, "type without FFI-safe \
+                                         representation used in FFI");
                         }
                     }
                     _ => ()

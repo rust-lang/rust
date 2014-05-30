@@ -453,20 +453,15 @@ pub fn require_unique_names(diagnostic: &SpanHandler, metas: &[@MetaItem]) {
 
 
 /**
- * Fold this over attributes to parse #[repr(...)] forms.
+ * Parse #[repr(...)] forms.
  *
  * Valid repr contents: any of the primitive integral type names (see
- * `int_type_of_word`, below) to specify the discriminant type; and `C`, to use
- * the same discriminant size that the corresponding C enum would.  These are
- * not allowed on univariant or zero-variant enums, which have no discriminant.
- *
- * If a discriminant type is so specified, then the discriminant will be
- * present (before fields, if any) with that type; reprensentation
- * optimizations which would remove it will not be done.
+ * `int_type_of_word`, below) to specify enum discriminant type; `C`, to use
+ * the same discriminant size that the corresponding C enum would or C
+ * structure layout, and `packed` to remove padding.
  */
-pub fn find_enum_repr_attr(diagnostic: &SpanHandler, attr: &Attribute, acc: ReprAttr)
-    -> ReprAttr {
-    let mut acc = acc;
+pub fn find_repr_attrs(diagnostic: &SpanHandler, attr: &Attribute) -> Vec<ReprAttr> {
+    let mut acc = Vec::new();
     match attr.node.value.node {
         ast::MetaList(ref s, ref items) if s.equiv(&("repr")) => {
             mark_used(attr);
@@ -475,24 +470,22 @@ pub fn find_enum_repr_attr(diagnostic: &SpanHandler, attr: &Attribute, acc: Repr
                     ast::MetaWord(ref word) => {
                         let hint = match word.get() {
                             // Can't use "extern" because it's not a lexical identifier.
-                            "C" => ReprExtern,
+                            "C" => Some(ReprExtern),
+                            "packed" => Some(ReprPacked),
                             _ => match int_type_of_word(word.get()) {
-                                Some(ity) => ReprInt(item.span, ity),
+                                Some(ity) => Some(ReprInt(item.span, ity)),
                                 None => {
                                     // Not a word we recognize
                                     diagnostic.span_err(item.span,
                                                         "unrecognized representation hint");
-                                    ReprAny
+                                    None
                                 }
                             }
                         };
-                        if hint != ReprAny {
-                            if acc == ReprAny {
-                                acc = hint;
-                            } else if acc != hint {
-                                diagnostic.span_warn(item.span,
-                                                     "conflicting representation hint ignored")
-                            }
+
+                        match hint {
+                            Some(h) => acc.push(h),
+                            None => { }
                         }
                     }
                     // Not a word:
@@ -504,44 +497,6 @@ pub fn find_enum_repr_attr(diagnostic: &SpanHandler, attr: &Attribute, acc: Repr
         _ => { }
     }
     acc
-}
-
-/// A struct `repr` attribute can only take the values `C` and `packed`, or
-/// possibly both.
-pub fn find_struct_repr_attrs(diagnostic: &SpanHandler, attr: &Attribute) -> Vec<ReprAttr> {
-    let mut attrs = Vec::new();
-    match attr.node.value.node {
-        ast::MetaList(ref s, ref items) if s.equiv(&("repr")) => {
-            mark_used(attr);
-            for item in items.iter() {
-                match item.node {
-                    ast::MetaWord(ref word) => {
-                        let hint = match word.get() {
-                            "C" => Some(ReprExtern),
-                            "packed" => Some(ReprPacked),
-                            _ => {
-                                // Not a word we recognize
-                                diagnostic.span_err(item.span,
-                                                    "unrecognized struct representation hint");
-                                None
-                            }
-                        };
-
-                        match hint {
-                            Some(h) => attrs.push(h),
-                            None => { }
-                        }
-                    }
-                    // Not a word:
-                    _ => diagnostic.span_err(item.span, "unrecognized representation hint")
-                }
-            }
-        }
-        // Not a "repr" hint: ignore.
-        _ => { }
-    }
-
-    attrs
 }
 
 fn int_type_of_word(s: &str) -> Option<IntType> {
