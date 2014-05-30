@@ -118,7 +118,7 @@ function! s:Expand(path, pretty, args)
 endfunction
 
 function! rust#CompleteExpand(lead, line, pos)
-	if a:line[: a:pos-1] =~ '^Expand!\s*\S*$'
+	if a:line[: a:pos-1] =~ '^RustExpand!\s*\S*$'
 		" first argument and it has a !
 		let list = ["normal", "expanded", "typed", "expanded,identified", "flowgraph="]
 		if !empty(a:lead)
