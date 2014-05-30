@@ -77,10 +77,11 @@ pub fn expand_meta_deriving(cx: &mut ExtCtxt,
                             "Encodable" => expand!(encodable::expand_deriving_encodable),
                             "Decodable" => expand!(decodable::expand_deriving_decodable),
 
+                            // NOTE: after a stage0 snap this needs treatment
                             "PartialEq" => expand!(eq::expand_deriving_eq),
-                            "TotalEq" => expand!(totaleq::expand_deriving_totaleq),
+                            "Eq" | "TotalEq" => expand!(totaleq::expand_deriving_totaleq),
                             "PartialOrd" => expand!(ord::expand_deriving_ord),
-                            "TotalOrd" => expand!(totalord::expand_deriving_totalord),
+                            "Ord" | "TotalOrd" => expand!(totalord::expand_deriving_totalord),
 
                             "Rand" => expand!(rand::expand_deriving_rand),
 

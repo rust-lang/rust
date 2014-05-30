@@ -2083,7 +2083,8 @@ pub struct RangeStep<A> {
 
 /// Return an iterator over the range [start, stop) by `step`. It handles overflow by stopping.
 #[inline]
-pub fn range_step<A: CheckedAdd + PartialOrd + Clone + Zero>(start: A, stop: A, step: A) -> RangeStep<A> {
+pub fn range_step<A: CheckedAdd + PartialOrd +
+                  Clone + Zero>(start: A, stop: A, step: A) -> RangeStep<A> {
     let rev = step < Zero::zero();
     RangeStep{state: start, stop: stop, step: step, rev: rev}
 }
