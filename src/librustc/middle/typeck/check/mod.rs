@@ -2335,7 +2335,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                 }
                 _ => {
                     // Not an error! Means we're inferring the closure type
-                    let mut bounds = ty::EmptyBuiltinBounds();
+                    let mut bounds = ty::empty_builtin_bounds();
                     let onceness = match expr.node {
                         ast::ExprProc(..) => {
                             bounds.add(ty::BoundSend);

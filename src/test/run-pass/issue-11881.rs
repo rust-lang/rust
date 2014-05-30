@@ -43,7 +43,7 @@ fn encode_ebml<'a,
                T: Encodable<writer::Encoder<'a, MemWriter>,
                             std::io::IoError>>(val: &T,
                                                wr: &'a mut MemWriter) {
-    let mut encoder = writer::Encoder(wr);
+    let mut encoder = writer::Encoder::new(wr);
     val.encode(&mut encoder);
 }
 

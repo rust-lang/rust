@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -88,7 +88,7 @@ pub trait HomingIO {
     /// This function will move tasks to run on their home I/O scheduler. Note
     /// that this function does *not* pin the task to the I/O scheduler, but
     /// rather it simply moves it to running on the I/O scheduler.
-    fn go_to_IO_home(&mut self) -> uint {
+    fn go_to_io_home(&mut self) -> uint {
         let _f = ForbidUnwind::new("going home");
 
         let cur_loop_id = local_id();
@@ -118,7 +118,7 @@ pub trait HomingIO {
     /// move the local task to its I/O scheduler and then return an RAII wrapper
     /// which will return the task home.
     fn fire_homing_missile(&mut self) -> HomingMissile {
-        HomingMissile { io_home: self.go_to_IO_home() }
+        HomingMissile { io_home: self.go_to_io_home() }
     }
 }
 

@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -274,12 +274,12 @@ fn construct_transformed_self_ty_for_object(
                     let r = r.subst(tcx, &substs); // handle Early-Bound lifetime
                     ty::mk_trait(tcx, trait_def_id, substs,
                                  RegionTraitStore(r, mt.mutbl),
-                                 ty::EmptyBuiltinBounds())
+                                 ty::empty_builtin_bounds())
                 }
                 ty::ty_uniq(_) => { // must be SelfUniq
                     ty::mk_trait(tcx, trait_def_id, substs,
                                  UniqTraitStore,
-                                 ty::EmptyBuiltinBounds())
+                                 ty::empty_builtin_bounds())
                 }
                 _ => {
                     tcx.sess.span_bug(span,

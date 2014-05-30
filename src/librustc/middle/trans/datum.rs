@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -71,8 +71,10 @@ pub struct Rvalue {
     pub mode: RvalueMode
 }
 
-pub fn Rvalue(m: RvalueMode) -> Rvalue {
-    Rvalue { mode: m }
+impl Rvalue {
+    pub fn new(m: RvalueMode) -> Rvalue {
+        Rvalue { mode: m }
+    }
 }
 
 // Make Datum linear for more type safety.
@@ -89,25 +91,15 @@ pub enum RvalueMode {
     ByValue,
 }
 
-pub fn Datum<K:KindOps>(val: ValueRef, ty: ty::t, kind: K) -> Datum<K> {
-    Datum { val: val, ty: ty, kind: kind }
-}
-
-pub fn DatumBlock<'a, K>(bcx: &'a Block<'a>,
-                         datum: Datum<K>)
-                         -> DatumBlock<'a, K> {
-    DatumBlock { bcx: bcx, datum: datum }
-}
-
 pub fn immediate_rvalue(val: ValueRef, ty: ty::t) -> Datum<Rvalue> {
-    return Datum(val, ty, Rvalue(ByValue));
+    return Datum::new(val, ty, Rvalue::new(ByValue));
 }
 
 pub fn immediate_rvalue_bcx<'a>(bcx: &'a Block<'a>,
                                 val: ValueRef,
                                 ty: ty::t)
                                 -> DatumBlock<'a, Rvalue> {
-    return DatumBlock(bcx, immediate_rvalue(val, ty))
+    return DatumBlock::new(bcx, immediate_rvalue(val, ty))
 }
 
 
@@ -136,7 +128,7 @@ pub fn lvalue_scratch_datum<'a, A>(bcx: &'a Block<'a>,
     let bcx = populate(arg, bcx, scratch);
     bcx.fcx.schedule_drop_mem(scope, scratch, ty);
 
-    DatumBlock(bcx, Datum(scratch, ty, Lvalue))
+    DatumBlock::new(bcx, Datum::new(scratch, ty, Lvalue))
 }
 
 pub fn rvalue_scratch_datum(bcx: &Block,
@@ -155,7 +147,7 @@ pub fn rvalue_scratch_datum(bcx: &Block,
 
     let llty = type_of::type_of(bcx.ccx(), ty);
     let scratch = alloca_maybe_zeroed(bcx, llty, name, false);
-    Datum(scratch, ty, Rvalue(ByRef))
+    Datum::new(scratch, ty, Rvalue::new(ByRef))
 }
 
 pub fn appropriate_rvalue_mode(ccx: &CrateContext, ty: ty::t) -> RvalueMode {
@@ -320,7 +312,7 @@ impl Datum<Rvalue> {
         match self.kind.mode {
             ByRef => {
                 add_rvalue_clean(ByRef, fcx, scope, self.val, self.ty);
-                DatumBlock(bcx, Datum(self.val, self.ty, Lvalue))
+                DatumBlock::new(bcx, Datum::new(self.val, self.ty, Lvalue))
             }
 
             ByValue => {
@@ -334,11 +326,11 @@ impl Datum<Rvalue> {
     pub fn to_ref_datum<'a>(self, bcx: &'a Block<'a>) -> DatumBlock<'a, Rvalue> {
         let mut bcx = bcx;
         match self.kind.mode {
-            ByRef => DatumBlock(bcx, self),
+            ByRef => DatumBlock::new(bcx, self),
             ByValue => {
                 let scratch = rvalue_scratch_datum(bcx, self.ty, "to_ref");
                 bcx = self.store_to(bcx, scratch.val);
-                DatumBlock(bcx, scratch)
+                DatumBlock::new(bcx, scratch)
             }
         }
     }
@@ -352,10 +344,10 @@ impl Datum<Rvalue> {
             }
             ByValue => {
                 match self.kind.mode {
-                    ByValue => DatumBlock(bcx, self),
+                    ByValue => DatumBlock::new(bcx, self),
                     ByRef => {
                         let llval = load(bcx, self.val, self.ty);
-                        DatumBlock(bcx, Datum(llval, self.ty, Rvalue(ByValue)))
+                        DatumBlock::new(bcx, Datum::new(llval, self.ty, Rvalue::new(ByValue)))
                     }
                 }
             }
@@ -378,8 +370,8 @@ impl Datum<Expr> {
                      -> R {
         let Datum { val, ty, kind } = self;
         match kind {
-            LvalueExpr => if_lvalue(Datum(val, ty, Lvalue)),
-            RvalueExpr(r) => if_rvalue(Datum(val, ty, r)),
+            LvalueExpr => if_lvalue(Datum::new(val, ty, Lvalue)),
+            RvalueExpr(r) => if_rvalue(Datum::new(val, ty, r)),
         }
     }
 
@@ -455,7 +447,7 @@ impl Datum<Expr> {
                                expr_id: ast::NodeId)
                                -> DatumBlock<'a, Lvalue> {
         self.match_kind(
-            |l| DatumBlock(bcx, l),
+            |l| DatumBlock::new(bcx, l),
             |r| {
                 let scope = cleanup::temporary_scope(bcx.tcx(), expr_id);
                 r.to_lvalue_datum_in_scope(bcx, name, scope)
@@ -478,16 +470,16 @@ impl Datum<Expr> {
                     ByRef => {
                         let scratch = rvalue_scratch_datum(bcx, l.ty, name);
                         bcx = l.store_to(bcx, scratch.val);
-                        DatumBlock(bcx, scratch)
+                        DatumBlock::new(bcx, scratch)
                     }
                     ByValue => {
                         let v = load(bcx, l.val, l.ty);
                         bcx = l.kind.post_store(bcx, l.val, l.ty);
-                        DatumBlock(bcx, Datum(v, l.ty, Rvalue(ByValue)))
+                        DatumBlock::new(bcx, Datum::new(v, l.ty, Rvalue::new(ByValue)))
                     }
                 }
             },
-            |r| DatumBlock(bcx, r))
+            |r| DatumBlock::new(bcx, r))
     }
 
 }
@@ -550,6 +542,10 @@ fn load<'a>(bcx: &'a Block<'a>, llptr: ValueRef, ty: ty::t) -> ValueRef {
  * Generic methods applicable to any sort of datum.
  */
 impl<K:KindOps> Datum<K> {
+    pub fn new(val: ValueRef, ty: ty::t, kind: K) -> Datum<K> {
+        Datum { val: val, ty: ty, kind: kind }
+    }
+
     pub fn to_expr_datum(self) -> Datum<Expr> {
         let Datum { val, ty, kind } = self;
         Datum { val: val, ty: ty, kind: kind.to_expr_kind() }
@@ -663,9 +659,15 @@ impl<K:KindOps> Datum<K> {
     }
 }
 
+impl <'a, K> DatumBlock<'a, K> {
+    pub fn new(bcx: &'a Block<'a>, datum: Datum<K>) -> DatumBlock<'a, K> {
+        DatumBlock { bcx: bcx, datum: datum }
+    }
+}
+
 impl<'a, K:KindOps> DatumBlock<'a, K> {
     pub fn to_expr_datumblock(self) -> DatumBlock<'a, Expr> {
-        DatumBlock(self.bcx, self.datum.to_expr_datum())
+        DatumBlock::new(self.bcx, self.datum.to_expr_datum())
     }
 }
 

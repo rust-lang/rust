@@ -1813,7 +1813,7 @@ fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, krate: &Crate)
         type_abbrevs: RefCell::new(HashMap::new()),
      };
 
-    let mut ebml_w = writer::Encoder(wr);
+    let mut ebml_w = writer::Encoder::new(wr);
 
     encode_crate_id(&mut ebml_w, &ecx.link_meta.crateid);
     encode_crate_triple(&mut ebml_w,

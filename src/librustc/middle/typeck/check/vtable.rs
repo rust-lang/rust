@@ -472,7 +472,7 @@ fn fixup_substs(vcx: &VtableContext,
     let t = ty::mk_trait(tcx,
                          id, substs,
                          ty::RegionTraitStore(ty::ReStatic, ast::MutImmutable),
-                         ty::EmptyBuiltinBounds());
+                         ty::empty_builtin_bounds());
     fixup_ty(vcx, span, t, is_early).map(|t_f| {
         match ty::get(t_f).sty {
           ty::ty_trait(ref inner) => inner.substs.clone(),
@@ -574,7 +574,7 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
                       });
 
                       let param_bounds = ty::ParamBounds {
-                          builtin_bounds: ty::EmptyBuiltinBounds(),
+                          builtin_bounds: ty::empty_builtin_bounds(),
                           trait_bounds: vec!(target_trait_ref)
                       };
                       let vtables =
@@ -766,7 +766,7 @@ pub fn resolve_impl(tcx: &ty::ctxt,
     // purpose of this is to check for supertrait impls,
     // but that falls out of doing this.
     let param_bounds = ty::ParamBounds {
-        builtin_bounds: ty::EmptyBuiltinBounds(),
+        builtin_bounds: ty::empty_builtin_bounds(),
         trait_bounds: vec!(Rc::new(impl_trait_ref))
     };
     let t = ty::node_id_to_type(tcx, impl_item.id);

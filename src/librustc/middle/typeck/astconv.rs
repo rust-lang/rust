@@ -907,7 +907,7 @@ fn conv_builtin_bounds(tcx: &ty::ctxt, ast_bounds: &Option<OwnedSlice<ast::TyPar
 
     match (ast_bounds, store) {
         (&Some(ref bound_vec), _) => {
-            let mut builtin_bounds = ty::EmptyBuiltinBounds();
+            let mut builtin_bounds = ty::empty_builtin_bounds();
             for ast_bound in bound_vec.iter() {
                 match *ast_bound {
                     ast::TraitTyParamBound(ref b) => {
@@ -942,10 +942,10 @@ fn conv_builtin_bounds(tcx: &ty::ctxt, ast_bounds: &Option<OwnedSlice<ast::TyPar
         },
         // &'static Trait is sugar for &'static Trait:'static.
         (&None, ty::RegionTraitStore(ty::ReStatic, _)) => {
-            let mut set = ty::EmptyBuiltinBounds(); set.add(ty::BoundStatic); set
+            let mut set = ty::empty_builtin_bounds(); set.add(ty::BoundStatic); set
         }
         // No bounds are automatically applied for &'r Trait or ~Trait
         (&None, ty::RegionTraitStore(..)) |
-        (&None, ty::UniqTraitStore) => ty::EmptyBuiltinBounds(),
+        (&None, ty::UniqTraitStore) => ty::empty_builtin_bounds(),
     }
 }
