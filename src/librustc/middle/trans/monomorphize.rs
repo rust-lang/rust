@@ -312,14 +312,14 @@ pub fn monomorphic_fn(ccx: &CrateContext,
 }
 
 // Used to identify cached monomorphized functions and vtables
-#[deriving(Eq, TotalEq, Hash)]
+#[deriving(PartialEq, TotalEq, Hash)]
 pub struct MonoParamId {
     pub subst: ty::t,
     // Do we really need the vtables to be hashed? Isn't the type enough?
     pub vtables: Vec<MonoId>
 }
 
-#[deriving(Eq, TotalEq, Hash)]
+#[deriving(PartialEq, TotalEq, Hash)]
 pub struct MonoId {
     pub def: ast::DefId,
     pub params: Vec<MonoParamId>

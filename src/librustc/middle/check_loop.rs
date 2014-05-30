@@ -15,7 +15,7 @@ use syntax::codemap::Span;
 use syntax::visit::Visitor;
 use syntax::visit;
 
-#[deriving(Clone, Eq)]
+#[deriving(Clone, PartialEq)]
 enum Context {
     Normal, Loop, Closure
 }

@@ -12,7 +12,7 @@
 
 use RawVec = raw::Vec;
 use clone::Clone;
-use cmp::{Ord, Eq, Ordering, TotalEq, TotalOrd, max};
+use cmp::{PartialOrd, PartialEq, Ordering, TotalEq, TotalOrd, max};
 use container::{Container, Mutable};
 use default::Default;
 use fmt;
@@ -374,14 +374,14 @@ impl<T> Extendable<T> for Vec<T> {
     }
 }
 
-impl<T: Eq> Eq for Vec<T> {
+impl<T: PartialEq> PartialEq for Vec<T> {
     #[inline]
     fn eq(&self, other: &Vec<T>) -> bool {
         self.as_slice() == other.as_slice()
     }
 }
 
-impl<T: Ord> Ord for Vec<T> {
+impl<T: PartialOrd> PartialOrd for Vec<T> {
     #[inline]
     fn lt(&self, other: &Vec<T>) -> bool {
         self.as_slice() < other.as_slice()
@@ -1288,7 +1288,7 @@ impl<T> Mutable for Vec<T> {
     }
 }
 
-impl<T:Eq> Vec<T> {
+impl<T:PartialEq> Vec<T> {
     /// Return true if a vector contains an element with the given value
     ///
     /// # Example
@@ -1315,7 +1315,7 @@ impl<T:Eq> Vec<T> {
     pub fn dedup(&mut self) {
         unsafe {
             // Although we have a mutable reference to `self`, we cannot make
-            // *arbitrary* changes. The `Eq` comparisons could fail, so we
+            // *arbitrary* changes. The `PartialEq` comparisons could fail, so we
             // must ensure that the vector is in a valid state at all time.
             //
             // The way that we handle this is by using swaps; we iterate

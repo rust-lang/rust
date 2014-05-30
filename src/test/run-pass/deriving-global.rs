@@ -15,21 +15,21 @@ mod submod {
     // if any of these are implemented without global calls for any
     // function calls, then being in a submodule will (correctly)
     // cause errors about unrecognised module `std` (or `extra`)
-    #[deriving(Eq, Ord, TotalEq, TotalOrd,
+    #[deriving(PartialEq, PartialOrd, TotalEq, TotalOrd,
                Hash,
                Clone,
                Show, Rand,
                Encodable, Decodable)]
     enum A { A1(uint), A2(int) }
 
-    #[deriving(Eq, Ord, TotalEq, TotalOrd,
+    #[deriving(PartialEq, PartialOrd, TotalEq, TotalOrd,
                Hash,
                Clone,
                Show, Rand,
                Encodable, Decodable)]
     struct B { x: uint, y: int }
 
-    #[deriving(Eq, Ord, TotalEq, TotalOrd,
+    #[deriving(PartialEq, PartialOrd, TotalEq, TotalOrd,
                Hash,
                Clone,
                Show, Rand,

@@ -17,7 +17,7 @@ use {int, i8, i16, i32, i64};
 use {uint, u8, u16, u32, u64};
 use {f32, f64};
 use clone::Clone;
-use cmp::{Eq, Ord};
+use cmp::{PartialEq, PartialOrd};
 use kinds::Copy;
 use mem::size_of;
 use ops::{Add, Sub, Mul, Div, Rem, Neg};
@@ -25,7 +25,7 @@ use ops::{Not, BitAnd, BitOr, BitXor, Shl, Shr};
 use option::{Option, Some, None};
 
 /// The base trait for numeric types
-pub trait Num: Eq + Zero + One
+pub trait Num: PartialEq + Zero + One
              + Neg<Self>
              + Add<Self,Self>
              + Sub<Self,Self>
@@ -495,7 +495,7 @@ pub trait Primitive: Copy
                    + Clone
                    + Num
                    + NumCast
-                   + Ord
+                   + PartialOrd
                    + Bounded {}
 
 trait_impl!(Primitive for uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64)
@@ -1043,7 +1043,7 @@ pub trait Saturating {
     fn saturating_sub(self, v: Self) -> Self;
 }
 
-impl<T: CheckedAdd + CheckedSub + Zero + Ord + Bounded> Saturating for T {
+impl<T: CheckedAdd + CheckedSub + Zero + PartialOrd + Bounded> Saturating for T {
     #[inline]
     fn saturating_add(self, v: T) -> T {
         match self.checked_add(&v) {
@@ -1238,7 +1238,7 @@ pub fn test_num<T:Num + NumCast + ::std::fmt::Show>(ten: T, two: T) {
 }
 
 /// Used for representing the classification of floating point numbers
-#[deriving(Eq, Show)]
+#[deriving(PartialEq, Show)]
 pub enum FPCategory {
     /// "Not a Number", often obtained by dividing by zero
     FPNaN,

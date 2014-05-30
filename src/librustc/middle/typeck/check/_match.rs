@@ -758,7 +758,7 @@ pub fn check_pointer_pat(pcx: &pat_ctxt,
     }
 }
 
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 pub enum PointerKind {
     Send,
     Borrowed,

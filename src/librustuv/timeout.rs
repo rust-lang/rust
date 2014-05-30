@@ -34,14 +34,14 @@ pub struct Guard<'a> {
     pub can_timeout: bool,
 }
 
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 enum TimeoutState {
     NoTimeout,
     TimeoutPending(ClientState),
     TimedOut,
 }
 
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 enum ClientState {
     NoWaiter,
     AccessPending,

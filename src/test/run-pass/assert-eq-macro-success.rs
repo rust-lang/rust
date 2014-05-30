@@ -10,7 +10,7 @@
 
 #![feature(managed_boxes)]
 
-#[deriving(Eq, Show)]
+#[deriving(PartialEq, Show)]
 struct Point { x : int }
 
 pub fn main() {

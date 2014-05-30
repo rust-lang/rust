@@ -13,7 +13,7 @@
 
 // ignore-win32 #9205
 
-#[deriving(Eq, Show)]
+#[deriving(PartialEq, Show)]
 struct TwoU64s {
     one: u64, two: u64
 }

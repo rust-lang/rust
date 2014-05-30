@@ -456,7 +456,7 @@ trait CresCompare<T> {
     fn compare(&self, t: T, f: || -> ty::type_err) -> cres<T>;
 }
 
-impl<T:Clone + Eq> CresCompare<T> for cres<T> {
+impl<T:Clone + PartialEq> CresCompare<T> for cres<T> {
     fn compare(&self, t: T, f: || -> ty::type_err) -> cres<T> {
         (*self).clone().and_then(|s| {
             if s == t {

@@ -160,7 +160,7 @@
 // FIXME: Relationship to Atomic types and RWLock
 
 use clone::Clone;
-use cmp::Eq;
+use cmp::PartialEq;
 use kinds::{marker, Copy};
 use ops::{Deref, DerefMut, Drop};
 use option::{None, Option, Some};
@@ -202,7 +202,7 @@ impl<T:Copy> Clone for Cell<T> {
     }
 }
 
-impl<T:Eq + Copy> Eq for Cell<T> {
+impl<T:PartialEq + Copy> PartialEq for Cell<T> {
     fn eq(&self, other: &Cell<T>) -> bool {
         self.get() == other.get()
     }
@@ -308,7 +308,7 @@ impl<T: Clone> Clone for RefCell<T> {
     }
 }
 
-impl<T: Eq> Eq for RefCell<T> {
+impl<T: PartialEq> PartialEq for RefCell<T> {
     fn eq(&self, other: &RefCell<T>) -> bool {
         *self.borrow() == *other.borrow()
     }

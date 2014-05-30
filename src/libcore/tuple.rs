@@ -27,9 +27,9 @@
 //! traits, then a tuple itself also implements it.
 //!
 //! * `Clone`
-//! * `Eq`
+//! * `PartialEq`
 //! * `TotalEq`
-//! * `Ord`
+//! * `PartialOrd`
 //! * `TotalOrd`
 //! * `Default`
 //!
@@ -109,7 +109,7 @@ macro_rules! tuple_impls {
             }
 
             #[cfg(not(test))]
-            impl<$($T:Eq),+> Eq for ($($T,)+) {
+            impl<$($T:PartialEq),+> PartialEq for ($($T,)+) {
                 #[inline]
                 fn eq(&self, other: &($($T,)+)) -> bool {
                     $(*self.$refN() == *other.$refN())&&+
@@ -124,7 +124,7 @@ macro_rules! tuple_impls {
             impl<$($T:TotalEq),+> TotalEq for ($($T,)+) {}
 
             #[cfg(not(test))]
-            impl<$($T:Ord + Eq),+> Ord for ($($T,)+) {
+            impl<$($T:PartialOrd + PartialEq),+> PartialOrd for ($($T,)+) {
                 #[inline]
                 fn lt(&self, other: &($($T,)+)) -> bool {
                     lexical_ord!(lt, $(self.$refN(), other.$refN()),+)
@@ -335,13 +335,13 @@ mod tests {
 
         let nan = 0.0/0.0;
 
-        // Eq
+        // PartialEq
         assert_eq!(small, small);
         assert_eq!(big, big);
         assert!(small != big);
         assert!(big != small);
 
-        // Ord
+        // PartialOrd
         assert!(small < big);
         assert!(!(small < small));
         assert!(!(big < small));

@@ -46,14 +46,14 @@ use std::string::String;
 
 /// An identifier in the pre-release or build metadata. If the identifier can
 /// be parsed as a decimal value, it will be represented with `Numeric`.
-#[deriving(Clone, Eq)]
+#[deriving(Clone, PartialEq)]
 #[allow(missing_doc)]
 pub enum Identifier {
     Numeric(uint),
     AlphaNumeric(String)
 }
 
-impl cmp::Ord for Identifier {
+impl cmp::PartialOrd for Identifier {
     #[inline]
     fn lt(&self, other: &Identifier) -> bool {
         match (self, other) {
@@ -115,7 +115,7 @@ impl fmt::Show for Version {
     }
 }
 
-impl cmp::Eq for Version {
+impl cmp::PartialEq for Version {
     #[inline]
     fn eq(&self, other: &Version) -> bool {
         // We should ignore build metadata here, otherwise versions v1 and v2
@@ -128,7 +128,7 @@ impl cmp::Eq for Version {
     }
 }
 
-impl cmp::Ord for Version {
+impl cmp::PartialOrd for Version {
     #[inline]
     fn lt(&self, other: &Version) -> bool {
 

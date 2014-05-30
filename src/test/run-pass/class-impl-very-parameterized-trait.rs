@@ -14,7 +14,7 @@ use std::cmp;
 #[deriving(Show)]
 enum cat_type { tuxedo, tabby, tortoiseshell }
 
-impl cmp::Eq for cat_type {
+impl cmp::PartialEq for cat_type {
     fn eq(&self, other: &cat_type) -> bool {
         ((*self) as uint) == ((*other) as uint)
     }

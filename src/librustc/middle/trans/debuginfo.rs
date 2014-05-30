@@ -2403,7 +2403,7 @@ fn type_metadata(cx: &CrateContext,
     type_metadata
 }
 
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 enum DebugLocation {
     KnownLocation { scope: DIScope, line: uint, col: uint },
     UnknownLocation

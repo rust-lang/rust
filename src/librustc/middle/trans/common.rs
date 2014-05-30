@@ -722,7 +722,7 @@ pub fn expr_ty_adjusted(bcx: &Block, ex: &ast::Expr) -> ty::t {
 }
 
 // Key used to lookup values supplied for type parameters in an expr.
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 pub enum ExprOrMethodCall {
     // Type parameters for a path like `None::<int>`
     ExprId(ast::NodeId),

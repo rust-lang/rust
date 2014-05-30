@@ -11,7 +11,7 @@
 
 use std::hash::hash;
 
-#[deriving(Eq, Clone, Hash)]
+#[deriving(PartialEq, Clone, Hash)]
 struct Foo {
     bar: uint,
     baz: int
@@ -20,7 +20,7 @@ struct Foo {
 pub fn main() {
     let a = Foo {bar: 4, baz: -3};
 
-    a == a;    // check for Eq impl w/o testing its correctness
+    a == a;    // check for PartialEq impl w/o testing its correctness
     a.clone(); // check for Clone impl w/o testing its correctness
     hash(&a);  // check for Hash impl w/o testing its correctness
 }

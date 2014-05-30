@@ -34,7 +34,7 @@ use vec::Vec;
 
 /// Signals that can be sent and received
 #[repr(int)]
-#[deriving(Eq, Hash, Show)]
+#[deriving(PartialEq, Hash, Show)]
 pub enum Signum {
     /// Equivalent to SIGBREAK, delivered when the user presses Ctrl-Break.
     Break = 21i,

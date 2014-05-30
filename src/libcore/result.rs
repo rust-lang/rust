@@ -275,7 +275,7 @@
 //! will not resume after failure, that failure is catastrophic.
 
 use clone::Clone;
-use cmp::Eq;
+use cmp::PartialEq;
 use std::fmt::Show;
 use iter::{Iterator, FromIterator};
 use option::{None, Option, Some};
@@ -283,7 +283,7 @@ use option::{None, Option, Some};
 /// `Result` is a type that represents either success (`Ok`) or failure (`Err`).
 ///
 /// See the [`std::result`](index.html) module documentation for details.
-#[deriving(Clone, Eq, Ord, TotalEq, TotalOrd, Show)]
+#[deriving(Clone, PartialEq, PartialOrd, TotalEq, TotalOrd, Show)]
 #[must_use]
 pub enum Result<T, E> {
     /// Contains the success value

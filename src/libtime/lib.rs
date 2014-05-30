@@ -74,7 +74,7 @@ mod imp {
 }
 
 /// A record specifying a time value in seconds and nanoseconds.
-#[deriving(Clone, Eq, TotalEq, Ord, TotalOrd, Encodable, Decodable, Show)]
+#[deriving(Clone, PartialEq, TotalEq, PartialOrd, TotalOrd, Encodable, Decodable, Show)]
 pub struct Timespec { pub sec: i64, pub nsec: i32 }
 /*
  * Timespec assumes that pre-epoch Timespecs have negative sec and positive
@@ -202,7 +202,7 @@ pub fn tzset() {
 
 /// Holds a calendar date and time broken down into its components (year, month, day, and so on),
 /// also called a broken-down time value.
-#[deriving(Clone, Eq, Show)]
+#[deriving(Clone, PartialEq, Show)]
 pub struct Tm {
     /// Seconds after the minute – [0, 60]
     pub tm_sec: i32,

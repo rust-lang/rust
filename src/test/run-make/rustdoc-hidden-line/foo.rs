@@ -16,10 +16,10 @@
 /// ```rust
 /// mod to_make_deriving_work { // FIXME #4913
 ///
-/// # #[deriving(Eq)] // invisible
+/// # #[deriving(PartialEq)] // invisible
 /// # struct Foo; // invisible
 ///
-/// #[deriving(Eq)] // Bar
+/// #[deriving(PartialEq)] // Bar
 /// struct Bar(Foo);
 ///
 /// fn test() {

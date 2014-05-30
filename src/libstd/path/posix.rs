@@ -13,7 +13,7 @@
 use container::Container;
 use c_str::{CString, ToCStr};
 use clone::Clone;
-use cmp::{Eq, TotalEq};
+use cmp::{PartialEq, TotalEq};
 use from_str::FromStr;
 use io::Writer;
 use iter::{DoubleEndedIterator, AdditiveIterator, Extendable, Iterator, Map};
@@ -58,7 +58,7 @@ pub fn is_sep(c: char) -> bool {
     c == SEP
 }
 
-impl Eq for Path {
+impl PartialEq for Path {
     #[inline]
     fn eq(&self, other: &Path) -> bool {
         self.repr == other.repr
