@@ -346,7 +346,7 @@ impl<'a> ErrorReporting for InferCtxt<'a> {
             infer::ExprAssignable(_) => "mismatched types",
             infer::RelateTraitRefs(_) => "mismatched traits",
             infer::RelateSelfType(_) => "mismatched types",
-            infer::MatchExpression(_) => "match arms have incompatible types",
+            infer::MatchExpressionArm(_, _) => "match arms have incompatible types",
             infer::IfExpression(_) => "if and else have incompatible types",
         };
 
@@ -356,6 +356,12 @@ impl<'a> ErrorReporting for InferCtxt<'a> {
                  message_root_str,
                  expected_found_str,
                  ty::type_err_to_str(self.tcx, terr)).as_slice());
+
+        match trace.origin {
+            infer::MatchExpressionArm(_, arm_span) =>
+                self.tcx.sess.span_note(arm_span, "match arm with an incompatible type"),
+            _ => ()
+        }
     }
 
     fn report_and_explain_type_error(&self,
@@ -1281,7 +1287,7 @@ impl<'a> ErrorReportingHelpers for InferCtxt<'a> {
                     infer::RelateSelfType(_) => {
                         format!("type matches impl")
                     }
-                    infer::MatchExpression(_) => {
+                    infer::MatchExpressionArm(_, _) => {
                         format!("match arms have compatible types")
                     }
                     infer::IfExpression(_) => {
