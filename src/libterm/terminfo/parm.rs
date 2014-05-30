@@ -13,7 +13,7 @@
 use std::char;
 use std::mem::replace;
 
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 enum States {
     Nothing,
     Percent,
@@ -30,7 +30,7 @@ enum States {
     SeekIfEndPercent(int)
 }
 
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 enum FormatState {
     FormatStateFlags,
     FormatStateWidth,
@@ -434,7 +434,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
     Ok(output)
 }
 
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 struct Flags {
     width: uint,
     precision: uint,

@@ -93,7 +93,7 @@ use intrinsics;
 use iter::{range, Iterator};
 use option::{Some, None, Option};
 
-#[cfg(not(test))] use cmp::{Eq, TotalEq, Ord, Equiv};
+#[cfg(not(test))] use cmp::{PartialEq, TotalEq, PartialOrd, Equiv};
 
 /// Return the offset of the first null pointer in `buf`.
 #[inline]
@@ -386,7 +386,7 @@ impl<T> RawPtr<T> for *mut T {
 
 // Equality for pointers
 #[cfg(not(test))]
-impl<T> Eq for *T {
+impl<T> PartialEq for *T {
     #[inline]
     fn eq(&self, other: &*T) -> bool {
         *self == *other
@@ -399,7 +399,7 @@ impl<T> Eq for *T {
 impl<T> TotalEq for *T {}
 
 #[cfg(not(test))]
-impl<T> Eq for *mut T {
+impl<T> PartialEq for *mut T {
     #[inline]
     fn eq(&self, other: &*mut T) -> bool {
         *self == *other
@@ -430,9 +430,9 @@ impl<T> Equiv<*T> for *mut T {
 #[cfg(not(test))]
 mod externfnpointers {
     use mem;
-    use cmp::Eq;
+    use cmp::PartialEq;
 
-    impl<_R> Eq for extern "C" fn() -> _R {
+    impl<_R> PartialEq for extern "C" fn() -> _R {
         #[inline]
         fn eq(&self, other: &extern "C" fn() -> _R) -> bool {
             let self_: *() = unsafe { mem::transmute(*self) };
@@ -442,7 +442,7 @@ mod externfnpointers {
     }
     macro_rules! fnptreq(
         ($($p:ident),*) => {
-            impl<_R,$($p),*> Eq for extern "C" fn($($p),*) -> _R {
+            impl<_R,$($p),*> PartialEq for extern "C" fn($($p),*) -> _R {
                 #[inline]
                 fn eq(&self, other: &extern "C" fn($($p),*) -> _R) -> bool {
                     let self_: *() = unsafe { mem::transmute(*self) };
@@ -461,13 +461,13 @@ mod externfnpointers {
 
 // Comparison for pointers
 #[cfg(not(test))]
-impl<T> Ord for *T {
+impl<T> PartialOrd for *T {
     #[inline]
     fn lt(&self, other: &*T) -> bool { *self < *other }
 }
 
 #[cfg(not(test))]
-impl<T> Ord for *mut T {
+impl<T> PartialOrd for *mut T {
     #[inline]
     fn lt(&self, other: &*mut T) -> bool { *self < *other }
 }

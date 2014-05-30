@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 struct thing(uint);
-impl Ord for thing { //~ ERROR not all trait methods implemented, missing: `lt`
+impl PartialOrd for thing { //~ ERROR not all trait methods implemented, missing: `lt`
     fn le(&self, other: &thing) -> bool { true }
     fn ge(&self, other: &thing) -> bool { true }
 }

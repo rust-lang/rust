@@ -76,7 +76,7 @@ use syntax::parse::token;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-#[deriving(Clone, Eq)]
+#[deriving(Clone, PartialEq)]
 pub enum categorization {
     cat_rvalue(ty::Region),            // temporary val, argument is its scope
     cat_static_item,
@@ -92,14 +92,14 @@ pub enum categorization {
     // (*1) downcast is only required if the enum has more than one variant
 }
 
-#[deriving(Clone, Eq)]
+#[deriving(Clone, PartialEq)]
 pub struct CopiedUpvar {
     pub upvar_id: ast::NodeId,
     pub onceness: ast::Onceness,
 }
 
 // different kinds of pointers:
-#[deriving(Clone, Eq, TotalEq, Hash)]
+#[deriving(Clone, PartialEq, TotalEq, Hash)]
 pub enum PointerKind {
     OwnedPtr,
     GcPtr,
@@ -109,26 +109,26 @@ pub enum PointerKind {
 
 // We use the term "interior" to mean "something reachable from the
 // base without a pointer dereference", e.g. a field
-#[deriving(Clone, Eq, TotalEq, Hash)]
+#[deriving(Clone, PartialEq, TotalEq, Hash)]
 pub enum InteriorKind {
     InteriorField(FieldName),
     InteriorElement(ElementKind),
 }
 
-#[deriving(Clone, Eq, TotalEq, Hash)]
+#[deriving(Clone, PartialEq, TotalEq, Hash)]
 pub enum FieldName {
     NamedField(ast::Name),
     PositionalField(uint)
 }
 
-#[deriving(Clone, Eq, TotalEq, Hash)]
+#[deriving(Clone, PartialEq, TotalEq, Hash)]
 pub enum ElementKind {
     VecElement,
     StrElement,
     OtherElement,
 }
 
-#[deriving(Clone, Eq, TotalEq, Hash, Show)]
+#[deriving(Clone, PartialEq, TotalEq, Hash, Show)]
 pub enum MutabilityCategory {
     McImmutable, // Immutable.
     McDeclared,  // Directly declared as mutable.
@@ -149,7 +149,7 @@ pub enum MutabilityCategory {
 // dereference, but its type is the type *before* the dereference
 // (`@T`). So use `cmt.type` to find the type of the value in a consistent
 // fashion. For more details, see the method `cat_pattern`
-#[deriving(Clone, Eq)]
+#[deriving(Clone, PartialEq)]
 pub struct cmt_ {
     pub id: ast::NodeId,          // id of expr/pat producing this value
     pub span: Span,                // span of same expr/pat

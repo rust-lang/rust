@@ -67,7 +67,7 @@ impl<S, K: Hash<S>> Hash<S> for KeyRef<K> {
     }
 }
 
-impl<K: Eq> Eq for KeyRef<K> {
+impl<K: PartialEq> PartialEq for KeyRef<K> {
     fn eq(&self, other: &KeyRef<K>) -> bool {
         unsafe{ (*self.k).eq(&*other.k) }
     }
@@ -253,7 +253,7 @@ impl<K, V> Drop for LruCache<K, V> {
 mod tests {
     use super::LruCache;
 
-    fn assert_opt_eq<V: Eq>(opt: Option<&V>, v: V) {
+    fn assert_opt_eq<V: PartialEq>(opt: Option<&V>, v: V) {
         assert!(opt.is_some());
         assert!(opt.unwrap() == &v);
     }

@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::cmp::{Eq, Ord};
+use std::cmp::{PartialEq, PartialOrd};
 use std::num::NumCast;
 
-pub trait NumExt: Eq + Ord + Num + NumCast {}
+pub trait NumExt: PartialEq + PartialOrd + Num + NumCast {}
 
 impl NumExt for f32 {}
 

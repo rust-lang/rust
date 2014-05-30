@@ -51,7 +51,7 @@ mod foo {
 
 mod bar {
     // Don't ignore on 'pub use' because we're not sure if it's used or not
-    pub use std::cmp::Eq;
+    pub use std::cmp::PartialEq;
 
     pub mod c {
         use foo::Point;
@@ -61,7 +61,7 @@ mod bar {
 
     #[allow(unused_imports)]
     mod foo {
-        use std::cmp::Eq;
+        use std::cmp::PartialEq;
     }
 }
 

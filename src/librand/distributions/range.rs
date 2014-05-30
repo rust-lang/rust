@@ -54,7 +54,7 @@ pub struct Range<X> {
     accept_zone: X
 }
 
-impl<X: SampleRange + Ord> Range<X> {
+impl<X: SampleRange + PartialOrd> Range<X> {
     /// Create a new `Range` instance that samples uniformly from
     /// `[low, high)`. Fails if `low >= high`.
     pub fn new(low: X, high: X) -> Range<X> {

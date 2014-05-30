@@ -55,11 +55,11 @@ pub struct Edge<E> {
     pub data: E,
 }
 
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 pub struct NodeIndex(pub uint);
 pub static InvalidNodeIndex: NodeIndex = NodeIndex(uint::MAX);
 
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 pub struct EdgeIndex(pub uint);
 pub static InvalidEdgeIndex: EdgeIndex = EdgeIndex(uint::MAX);
 
@@ -356,7 +356,7 @@ mod test {
         });
     }
 
-    fn test_adjacent_edges<N:Eq,E:Eq>(graph: &Graph<N,E>,
+    fn test_adjacent_edges<N:PartialEq,E:PartialEq>(graph: &Graph<N,E>,
                                       start_index: NodeIndex,
                                       start_data: N,
                                       expected_incoming: &[(E,N)],

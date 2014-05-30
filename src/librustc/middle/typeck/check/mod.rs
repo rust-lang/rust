@@ -213,7 +213,7 @@ impl FnStyleState {
 /// Whether `check_binop` is part of an assignment or not.
 /// Used to know wether we allow user overloads and to print
 /// better messages on error.
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 enum IsBinopAssignment{
     SimpleBinop,
     BinopAssignment,

@@ -99,7 +99,7 @@ use std::str;
 use std::io;
 use std::io::{File, MemWriter};
 
-#[deriving(Clone, Eq, Encodable, Decodable, Ord, TotalOrd, TotalEq)]
+#[deriving(Clone, PartialEq, Encodable, Decodable, PartialOrd, TotalOrd, TotalEq)]
 struct WorkKey {
     kind: String,
     name: String
@@ -116,10 +116,10 @@ impl WorkKey {
 
 // FIXME #8883: The key should be a WorkKey and not a String.
 // This is working around some JSON weirdness.
-#[deriving(Clone, Eq, Encodable, Decodable)]
+#[deriving(Clone, PartialEq, Encodable, Decodable)]
 struct WorkMap(TreeMap<String, KindMap>);
 
-#[deriving(Clone, Eq, Encodable, Decodable)]
+#[deriving(Clone, PartialEq, Encodable, Decodable)]
 struct KindMap(TreeMap<String, String>);
 
 impl WorkMap {

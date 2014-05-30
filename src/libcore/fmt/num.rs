@@ -65,23 +65,23 @@ trait GenericRadix {
 }
 
 /// A binary (base 2) radix
-#[deriving(Clone, Eq)]
+#[deriving(Clone, PartialEq)]
 struct Binary;
 
 /// An octal (base 8) radix
-#[deriving(Clone, Eq)]
+#[deriving(Clone, PartialEq)]
 struct Octal;
 
 /// A decimal (base 10) radix
-#[deriving(Clone, Eq)]
+#[deriving(Clone, PartialEq)]
 struct Decimal;
 
 /// A hexadecimal (base 16) radix, formatted with lower-case characters
-#[deriving(Clone, Eq)]
+#[deriving(Clone, PartialEq)]
 struct LowerHex;
 
 /// A hexadecimal (base 16) radix, formatted with upper-case characters
-#[deriving(Clone, Eq)]
+#[deriving(Clone, PartialEq)]
 pub struct UpperHex;
 
 macro_rules! radix {
@@ -108,7 +108,7 @@ radix!(UpperHex, 16, "0x", x @  0 .. 9 => '0' as u8 + x,
                            x @ 10 ..15 => 'A' as u8 + (x - 10))
 
 /// A radix with in the range of `2..36`.
-#[deriving(Clone, Eq)]
+#[deriving(Clone, PartialEq)]
 pub struct Radix {
     base: u8,
 }

@@ -13,7 +13,7 @@
 #[deriving(Show)]
 enum foo { large, small, }
 
-impl Eq for foo {
+impl PartialEq for foo {
     fn eq(&self, other: &foo) -> bool {
         ((*self) as uint) == ((*other) as uint)
     }

@@ -31,7 +31,7 @@ impl<T, H: Helper<T>> Deref<T> for DerefWithHelper<H, T> {
 }
 
 // Test cross-crate autoderef + vtable.
-pub fn check<T: Eq>(x: T, y: T) -> bool {
+pub fn check<T: PartialEq>(x: T, y: T) -> bool {
     let d: DerefWithHelper<Option<T>, T> = DerefWithHelper { helper: Some(x) };
     d.eq(&y)
 }

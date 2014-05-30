@@ -215,7 +215,7 @@ enum useful {
     not_useful,
 }
 
-#[deriving(Clone, Eq)]
+#[deriving(Clone, PartialEq)]
 enum ctor {
     single,
     variant(DefId),

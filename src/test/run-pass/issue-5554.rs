@@ -17,7 +17,7 @@ pub struct X<T> {
 }
 
 // reordering these bounds stops the ICE
-impl<T: Default + Eq + Default> Default for X<T> {
+impl<T: Default + PartialEq + Default> Default for X<T> {
     fn default() -> X<T> {
         X { a: Default::default() }
     }

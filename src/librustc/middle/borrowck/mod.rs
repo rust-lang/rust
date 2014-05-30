@@ -166,7 +166,7 @@ pub struct BorrowStats {
 
 pub type BckResult<T> = Result<T, BckError>;
 
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 pub enum PartialTotal {
     Partial,   // Loan affects some portion
     Total      // Loan affects entire path
@@ -188,13 +188,13 @@ pub struct Loan {
     cause: euv::LoanCause,
 }
 
-#[deriving(Eq, TotalEq, Hash)]
+#[deriving(PartialEq, TotalEq, Hash)]
 pub enum LoanPath {
     LpVar(ast::NodeId),               // `x` in doc.rs
     LpExtend(Rc<LoanPath>, mc::MutabilityCategory, LoanPathElem)
 }
 
-#[deriving(Eq, TotalEq, Hash)]
+#[deriving(PartialEq, TotalEq, Hash)]
 pub enum LoanPathElem {
     LpDeref(mc::PointerKind),    // `*LV` in doc.rs
     LpInterior(mc::InteriorKind) // `LV.f` in doc.rs
@@ -267,7 +267,7 @@ pub struct Restriction {
     set: RestrictionSet
 }
 
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 pub struct RestrictionSet {
     bits: u32
 }
@@ -305,7 +305,7 @@ impl Repr for RestrictionSet {
 // Errors
 
 // Errors that can occur
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 pub enum bckerr_code {
     err_mutbl,
     err_out_of_scope(ty::Region, ty::Region), // superscope, subscope
@@ -315,7 +315,7 @@ pub enum bckerr_code {
 
 // Combination of an error code and the categorization of the expression
 // that caused it
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 pub struct BckError {
     span: Span,
     cause: euv::LoanCause,

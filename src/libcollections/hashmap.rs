@@ -12,7 +12,7 @@
 
 use std::container::{Container, Mutable, Map, MutableMap, Set, MutableSet};
 use std::clone::Clone;
-use std::cmp::{Eq, TotalEq, Equiv, max};
+use std::cmp::{PartialEq, TotalEq, Equiv, max};
 use std::default::Default;
 use std::fmt;
 use std::fmt::Show;
@@ -32,7 +32,7 @@ use std::slice::ImmutableVector;
 mod table {
     use std::clone::Clone;
     use std::cmp;
-    use std::cmp::Eq;
+    use std::cmp::PartialEq;
     use std::hash::{Hash, Hasher};
     use std::kinds::marker;
     use std::num::{CheckedMul, is_power_of_two};
@@ -145,7 +145,7 @@ mod table {
 
     /// A hash that is not zero, since we use a hash of zero to represent empty
     /// buckets.
-    #[deriving(Eq)]
+    #[deriving(PartialEq)]
     pub struct SafeHash {
         hash: u64,
     }
@@ -661,8 +661,8 @@ static INITIAL_LOAD_FACTOR: Fraction = (9, 10);
 /// denial-of-service attacks (Hash DoS). This behaviour can be
 /// overridden with one of the constructors.
 ///
-/// It is required that the keys implement the `Eq` and `Hash` traits, although
-/// this can frequently be achieved by using `#[deriving(Eq, Hash)]`.
+/// It is required that the keys implement the `PartialEq` and `Hash` traits, although
+/// this can frequently be achieved by using `#[deriving(PartialEq, Hash)]`.
 ///
 /// Relevant papers/articles:
 ///
@@ -1402,7 +1402,7 @@ impl<K: TotalEq + Hash<S>, V: Clone, S, H: Hasher<S>> HashMap<K, V, H> {
     }
 }
 
-impl<K: TotalEq + Hash<S>, V: Eq, S, H: Hasher<S>> Eq for HashMap<K, V, H> {
+impl<K: TotalEq + Hash<S>, V: PartialEq, S, H: Hasher<S>> PartialEq for HashMap<K, V, H> {
     fn eq(&self, other: &HashMap<K, V, H>) -> bool {
         if self.len() != other.len() { return false; }
 
@@ -1480,13 +1480,13 @@ pub type SetMoveItems<K> =
 
 /// An implementation of a hash set using the underlying representation of a
 /// HashMap where the value is (). As with the `HashMap` type, a `HashSet`
-/// requires that the elements implement the `Eq` and `Hash` traits.
+/// requires that the elements implement the `PartialEq` and `Hash` traits.
 #[deriving(Clone)]
 pub struct HashSet<T, H = sip::SipHasher> {
     map: HashMap<T, (), H>
 }
 
-impl<T: TotalEq + Hash<S>, S, H: Hasher<S>> Eq for HashSet<T, H> {
+impl<T: TotalEq + Hash<S>, S, H: Hasher<S>> PartialEq for HashSet<T, H> {
     fn eq(&self, other: &HashSet<T, H>) -> bool {
         if self.len() != other.len() { return false; }
 
@@ -1691,7 +1691,7 @@ mod test_map {
 
     local_data_key!(drop_vector: RefCell<Vec<int>>)
 
-    #[deriving(Hash, Eq, TotalEq)]
+    #[deriving(Hash, PartialEq, TotalEq)]
     struct Dropable {
         k: uint
     }

@@ -18,7 +18,7 @@ use middle::trans::cabi_mips;
 use middle::trans::type_::Type;
 use syntax::abi::{X86, X86_64, Arm, Mips};
 
-#[deriving(Clone, Eq)]
+#[deriving(Clone, PartialEq)]
 pub enum ArgKind {
     /// Pass the argument directly using the normal converted
     /// LLVM type or by coercing to another specified type

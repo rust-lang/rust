@@ -83,7 +83,7 @@ pub mod stats;
 // colons. This way if some test runner wants to arrange the tests
 // hierarchically it may.
 
-#[deriving(Clone, Eq, TotalEq, Hash)]
+#[deriving(Clone, PartialEq, TotalEq, Hash)]
 pub enum TestName {
     StaticTestName(&'static str),
     DynTestName(String)
@@ -183,7 +183,7 @@ pub struct Bencher {
 
 // The definition of a single test. A test runner will run a list of
 // these.
-#[deriving(Clone, Show, Eq, TotalEq, Hash)]
+#[deriving(Clone, Show, PartialEq, TotalEq, Hash)]
 pub struct TestDesc {
     pub name: TestName,
     pub ignore: bool,
@@ -196,7 +196,7 @@ pub struct TestDescAndFn {
     pub testfn: TestFn,
 }
 
-#[deriving(Clone, Encodable, Decodable, Eq, Show)]
+#[deriving(Clone, Encodable, Decodable, PartialEq, Show)]
 pub struct Metric {
     value: f64,
     noise: f64
@@ -208,7 +208,7 @@ impl Metric {
     }
 }
 
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 pub struct MetricMap(TreeMap<String,Metric>);
 
 impl Clone for MetricMap {
@@ -219,7 +219,7 @@ impl Clone for MetricMap {
 }
 
 /// Analysis of a single change in metric
-#[deriving(Eq, Show)]
+#[deriving(PartialEq, Show)]
 pub enum MetricChange {
     LikelyNoise,
     MetricAdded,
@@ -444,13 +444,13 @@ pub fn opt_shard(maybestr: Option<String>) -> Option<(uint,uint)> {
 }
 
 
-#[deriving(Clone, Eq)]
+#[deriving(Clone, PartialEq)]
 pub struct BenchSamples {
     ns_iter_summ: stats::Summary<f64>,
     mb_s: uint,
 }
 
-#[deriving(Clone, Eq)]
+#[deriving(Clone, PartialEq)]
 pub enum TestResult {
     TrOk,
     TrFailed,

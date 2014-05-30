@@ -106,19 +106,19 @@ use syntax::codemap::Span;
 use syntax::parse::token;
 use syntax::owned_slice::OwnedSlice;
 
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 pub enum CheckTraitsFlag {
     CheckTraitsOnly,
     CheckTraitsAndInherentMethods,
 }
 
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 pub enum AutoderefReceiverFlag {
     AutoderefReceiver,
     DontAutoderefReceiver,
 }
 
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 pub enum StaticMethodsFlag {
     ReportStaticMethods,
     IgnoreStaticMethods,

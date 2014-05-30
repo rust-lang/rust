@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[deriving(Eq, TotalEq, Ord, TotalOrd)]
+#[deriving(PartialEq, TotalEq, PartialOrd, TotalOrd)]
 struct S<T> {
     x: T,
     y: T
@@ -18,7 +18,7 @@ pub fn main() {
     let s1 = S {x: 1, y: 1};
     let s2 = S {x: 1, y: 2};
 
-    // in order for both Ord and TotalOrd
+    // in order for both PartialOrd and TotalOrd
     let ss = [s1, s2];
 
     for (i, s1) in ss.iter().enumerate() {
@@ -31,11 +31,11 @@ pub fn main() {
             let gt = i > j;
             let ge = i >= j;
 
-            // Eq
+            // PartialEq
             assert_eq!(*s1 == *s2, eq);
             assert_eq!(*s1 != *s2, !eq);
 
-            // Ord
+            // PartialOrd
             assert_eq!(*s1 < *s2, lt);
             assert_eq!(*s1 > *s2, gt);
 

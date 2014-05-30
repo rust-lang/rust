@@ -67,7 +67,7 @@ pub enum Ast {
     Rep(Box<Ast>, Repeater, Greed),
 }
 
-#[deriving(Show, Eq, Clone)]
+#[deriving(Show, PartialEq, Clone)]
 pub enum Repeater {
     ZeroOne,
     ZeroMore,

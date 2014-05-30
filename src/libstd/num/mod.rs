@@ -702,7 +702,7 @@ mod tests {
     test_checked_next_power_of_two!(test_checked_next_power_of_two_u64, u64)
     test_checked_next_power_of_two!(test_checked_next_power_of_two_uint, uint)
 
-    #[deriving(Eq, Show)]
+    #[deriving(PartialEq, Show)]
     struct Value { x: int }
 
     impl ToPrimitive for Value {

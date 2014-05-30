@@ -20,7 +20,7 @@ use num;
 use ops::{Add, Sub, Mul, Div, Rem, Neg};
 use option::{None, Option, Some};
 use slice::{ImmutableVector, MutableVector};
-use std::cmp::{Ord, Eq};
+use std::cmp::{PartialOrd, PartialEq};
 use str::StrSlice;
 use string::String;
 use vec::Vec;
@@ -259,7 +259,7 @@ pub fn int_to_str_bytes_common<T: Int>(num: T, radix: uint, sign: SignFormat, f:
  *   between digit and exponent sign `'p'`.
  */
 #[allow(deprecated)]
-pub fn float_to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Float+
+pub fn float_to_str_bytes_common<T:NumCast+Zero+One+PartialEq+PartialOrd+Float+
                                   Div<T,T>+Neg<T>+Rem<T,T>+Mul<T,T>>(
         num: T, radix: uint, negative_zero: bool,
         sign: SignFormat, digits: SignificantDigits, exp_format: ExponentFormat, exp_upper: bool
@@ -492,7 +492,7 @@ pub fn float_to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Float+
  * `to_str_bytes_common()`, for details see there.
  */
 #[inline]
-pub fn float_to_str_common<T:NumCast+Zero+One+Eq+Ord+NumStrConv+Float+
+pub fn float_to_str_common<T:NumCast+Zero+One+PartialEq+PartialOrd+NumStrConv+Float+
                              Div<T,T>+Neg<T>+Rem<T,T>+Mul<T,T>>(
         num: T, radix: uint, negative_zero: bool,
         sign: SignFormat, digits: SignificantDigits, exp_format: ExponentFormat, exp_capital: bool
@@ -547,7 +547,7 @@ static DIGIT_E_RADIX: uint = ('e' as uint) - ('a' as uint) + 11u;
  * - Fails if `radix` > 18 and `special == true` due to conflict
  *   between digit and lowest first character in `inf` and `NaN`, the `'i'`.
  */
-pub fn from_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Div<T,T>+
+pub fn from_str_bytes_common<T:NumCast+Zero+One+PartialEq+PartialOrd+Div<T,T>+
                                     Mul<T,T>+Sub<T,T>+Neg<T>+Add<T,T>+
                                     NumStrConv+Clone>(
         buf: &[u8], radix: uint, negative: bool, fractional: bool,
@@ -754,7 +754,7 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Div<T,T>+
  * `from_str_bytes_common()`, for details see there.
  */
 #[inline]
-pub fn from_str_common<T:NumCast+Zero+One+Eq+Ord+Div<T,T>+Mul<T,T>+
+pub fn from_str_common<T:NumCast+Zero+One+PartialEq+PartialOrd+Div<T,T>+Mul<T,T>+
                               Sub<T,T>+Neg<T>+Add<T,T>+NumStrConv+Clone>(
         buf: &str, radix: uint, negative: bool, fractional: bool,
         special: bool, exponent: ExponentFormat, empty_zero: bool,
