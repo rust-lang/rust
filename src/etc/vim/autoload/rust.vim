@@ -130,6 +130,39 @@ function! rust#CompleteExpand(lead, line, pos)
 	return glob(escape(a:lead, "*?[") . '*', 0, 1)
 endfunction
 
+" Emit {{{1
+
+function! rust#Emit(type, args)
+	call s:WithPath(function("s:Emit"), a:type, a:args)
+endfunction
+
+function! s:Emit(path, type, args)
+	try
+		let rustc = exists("g:rustc_path") ? g:rustc_path : "rustc"
+
+		let args = [a:path, '--emit', a:type, '-o', '-'] + a:args
+		let output = system(shellescape(rustc) . " " . join(map(args, "shellescape(v:val)")))
+		if v:shell_error
+			echohl WarningMsg
+			echo output
+			echohl None
+		else
+			new
+			silent put =output
+			1
+			d
+			if a:type == "ir"
+				setl filetype=llvm
+			elseif a:type == "asm"
+				setl filetype=asm
+			endif
+			setl buftype=nofile
+			setl bufhidden=hide
+			setl noswapfile
+		endif
+	endtry
+endfunction
+
 " Utility functions {{{1
 
 function! s:WithPath(func, ...)
