@@ -63,21 +63,16 @@
 
 #![allow(unused_must_use)]
 
-use container::Container;
-use intrinsics::TypeId;
-use iter::Iterator;
-use option::{Option, Some, None};
-use owned::Box;
-use rc::Rc;
-use result::{Result, Ok, Err};
-use slice::{Vector, ImmutableVector};
-use str::{Str, StrSlice};
+use core::prelude::*;
+
+use alloc::owned::Box;
+use alloc::rc::Rc;
+use core::intrinsics::TypeId;
+
 use vec::Vec;
 
 /// Reexport the `sip::hash` function as our default hasher.
 pub use hash = self::sip::hash;
-
-pub use Writer = io::Writer;
 
 pub mod sip;
 
@@ -96,33 +91,29 @@ pub trait Hasher<S> {
     fn hash<T: Hash<S>>(&self, value: &T) -> u64;
 }
 
+pub trait Writer {
+    fn write(&mut self, bytes: &[u8]);
+}
+
 //////////////////////////////////////////////////////////////////////////////
 
 macro_rules! impl_hash(
-    ( $( $ty:ty => $method:ident;)* ) => (
+    ( $($ty:ident)* ) => (
         $(
             impl<S: Writer> Hash<S> for $ty {
                 #[inline]
                 fn hash(&self, state: &mut S) {
-                    state.$method(*self);
+                    let a: [u8, ..::core::$ty::BYTES] = unsafe {
+                        ::core::mem::transmute(*self)
+                    };
+                    state.write(a.as_slice())
                 }
             }
         )*
     )
 )
 
-impl_hash!(
-    u8 => write_u8;
-    u16 => write_le_u16;
-    u32 => write_le_u32;
-    u64 => write_le_u64;
-    uint => write_le_uint;
-    i8 => write_i8;
-    i16 => write_le_i16;
-    i32 => write_le_i32;
-    i64 => write_le_i64;
-    int => write_le_int;
-)
+impl_hash!( u8 u16 u32 u64 uint i8 i16 i32 i64 int )
 
 impl<S: Writer> Hash<S> for bool {
     #[inline]
@@ -142,7 +133,7 @@ impl<'a, S: Writer> Hash<S> for &'a str {
     #[inline]
     fn hash(&self, state: &mut S) {
         state.write(self.as_bytes());
-        state.write_u8(0xFF);
+        0xffu8.hash(state)
     }
 }
 

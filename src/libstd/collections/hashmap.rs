@@ -10,40 +10,39 @@
 
 //! Unordered containers, implemented as hash-tables (`HashSet` and `HashMap` types)
 
-use std::container::{Container, Mutable, Map, MutableMap, Set, MutableSet};
-use std::clone::Clone;
-use std::cmp::{PartialEq, Eq, Equiv, max};
-use std::default::Default;
-use std::fmt;
-use std::fmt::Show;
-use std::hash::{Hash, Hasher, sip};
-use std::iter;
-use std::iter::{Iterator, FromIterator, Extendable};
-use std::iter::{FilterMap, Chain, Repeat, Zip};
-use std::iter::{range, range_inclusive};
-use std::mem::replace;
-use std::num;
-use std::option::{Option, Some, None};
-use std::rand;
-use std::rand::Rng;
-use std::result::{Ok, Err};
-use std::slice::ImmutableVector;
+use clone::Clone;
+use cmp::{max, Eq, Equiv, PartialEq};
+use container::{Container, Mutable, Set, MutableSet, Map, MutableMap};
+use default::Default;
+use fmt::Show;
+use fmt;
+use hash::{Hash, Hasher, sip};
+use iter::{Iterator, FilterMap, Chain, Repeat, Zip, Extendable};
+use iter::{range, range_inclusive, FromIterator};
+use iter;
+use mem::replace;
+use num;
+use option::{Some, None, Option};
+use rand::Rng;
+use rand;
+use result::{Ok, Err};
 
 mod table {
-    use std::clone::Clone;
-    use std::cmp;
-    use std::cmp::PartialEq;
-    use std::hash::{Hash, Hasher};
-    use std::kinds::marker;
-    use std::num::{CheckedMul, is_power_of_two};
-    use std::option::{Option, Some, None};
-    use std::prelude::Drop;
-    use std::ptr;
-    use std::ptr::RawPtr;
-    use std::mem::{min_align_of, size_of};
-    use std::intrinsics::{move_val_init, set_memory, transmute};
-    use std::iter::{Iterator, range_step_inclusive};
-    use std::rt::heap::{allocate, deallocate};
+    use clone::Clone;
+    use cmp;
+    use hash::{Hash, Hasher};
+    use iter::range_step_inclusive;
+    use iter::{Iterator, range};
+    use kinds::marker;
+    use mem::{min_align_of, size_of};
+    use mem::{overwrite, transmute};
+    use num::{CheckedMul, is_power_of_two};
+    use ops::Drop;
+    use option::{Some, None, Option, Expect};
+    use ptr::RawPtr;
+    use ptr::set_memory;
+    use ptr;
+    use rt::heap::{allocate, deallocate};
 
     static EMPTY_BUCKET: u64 = 0u64;
 
@@ -217,12 +216,12 @@ mod table {
         /// Does not initialize the buckets. The caller should ensure they,
         /// at the very least, set every hash to EMPTY_BUCKET.
         unsafe fn new_uninitialized(capacity: uint) -> RawTable<K, V> {
-            let hashes_size =
-                capacity.checked_mul(&size_of::<u64>()).expect("capacity overflow");
-            let keys_size   =
-                capacity.checked_mul(&size_of::< K >()).expect("capacity overflow");
-            let vals_size   =
-                capacity.checked_mul(&size_of::< V >()).expect("capacity overflow");
+            let hashes_size = capacity.checked_mul(&size_of::<u64>())
+                                      .expect("capacity overflow");
+            let keys_size = capacity.checked_mul(&size_of::< K >())
+                                    .expect("capacity overflow");
+            let vals_size = capacity.checked_mul(&size_of::< V >())
+                                    .expect("capacity overflow");
 
             // Allocating hashmaps is a little tricky. We need to allocate three
             // arrays, but since we know their sizes and alignments up front,
@@ -339,8 +338,8 @@ mod table {
             unsafe {
                 debug_assert_eq!(*self.hashes.offset(idx), EMPTY_BUCKET);
                 *self.hashes.offset(idx) = hash.inspect();
-                move_val_init(&mut *self.keys.offset(idx), k);
-                move_val_init(&mut *self.vals.offset(idx), v);
+                overwrite(&mut *self.keys.offset(idx), k);
+                overwrite(&mut *self.vals.offset(idx), v);
             }
 
             self.size += 1;
@@ -519,8 +518,8 @@ mod table {
                             let hash = idx.hash().inspect();
                             let (k, v) = self.read(&idx);
                             *new_ht.hashes.offset(i as int) = hash;
-                            move_val_init(&mut *new_ht.keys.offset(i as int), (*k).clone());
-                            move_val_init(&mut *new_ht.vals.offset(i as int), (*v).clone());
+                            overwrite(&mut *new_ht.keys.offset(i as int), (*k).clone());
+                            overwrite(&mut *new_ht.vals.offset(i as int), (*v).clone());
                         }
                     }
                 }
@@ -1037,6 +1036,7 @@ impl<K: Hash + Eq, V> HashMap<K, V, sip::SipHasher> {
         HashMap::with_capacity(INITIAL_CAPACITY)
     }
 
+    /// Creates an empty hash map with the given initial capacity.
     pub fn with_capacity(capacity: uint) -> HashMap<K, V, sip::SipHasher> {
         let mut r = rand::task_rng();
         let r0 = r.gen();
@@ -1047,6 +1047,9 @@ impl<K: Hash + Eq, V> HashMap<K, V, sip::SipHasher> {
 }
 
 impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
+    /// Creates an empty hashmap which will use the given hasher to hash keys.
+    ///
+    /// The creates map has the default initial capacity.
     pub fn with_hasher(hasher: H) -> HashMap<K, V, H> {
         HashMap::with_capacity_and_hasher(INITIAL_CAPACITY, hasher)
     }
@@ -1326,7 +1329,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     pub fn get<'a>(&'a self, k: &K) -> &'a V {
         match self.find(k) {
             Some(v) => v,
-            None => fail!("No entry found for key: {:?}", k)
+            None => fail!("no entry found for key")
         }
     }
 
@@ -1334,7 +1337,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     pub fn get_mut<'a>(&'a mut self, k: &K) -> &'a mut V {
         match self.find_mut(k) {
             Some(v) => v,
-            None => fail!("No entry found for key: {:?}", k)
+            None => fail!("no entry found for key")
         }
     }
 
@@ -1533,6 +1536,10 @@ impl<T: Hash + Eq> HashSet<T, sip::SipHasher> {
 }
 
 impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
+    /// Creates a new empty hash set which will use the given hasher to hash
+    /// keys.
+    ///
+    /// The hash set is also created with the default initial capacity.
     pub fn with_hasher(hasher: H) -> HashSet<T, H> {
         HashSet::with_capacity_and_hasher(INITIAL_CAPACITY, hasher)
     }
@@ -1632,8 +1639,10 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S> + Default> Extendable<T> for HashSet<T, H>
     }
 }
 
-impl<T: Eq + Hash> Default for HashSet<T, sip::SipHasher> {
-    fn default() -> HashSet<T> { HashSet::new() }
+impl<T: TotalEq + Hash<S>, S, H: Hasher<S> + Default> Default for HashSet<T, H> {
+    fn default() -> HashSet<T, H> {
+        HashSet::with_hasher(Default::default())
+    }
 }
 
 // `Repeat` is used to feed the filter closure an explicit capture

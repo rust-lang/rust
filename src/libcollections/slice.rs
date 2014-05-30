@@ -99,20 +99,16 @@ There are a number of free functions that create or take vectors, for example:
 
 #![doc(primitive = "slice")]
 
-use mem::transmute;
-use clone::Clone;
-use cmp::{Ord, Ordering, Less, Greater};
-use cmp;
-use container::Container;
-use iter::*;
-use mem::size_of;
-use mem;
-use ops::Drop;
-use option::{None, Option, Some};
-use ptr::RawPtr;
-use ptr;
-use rt::heap::{allocate, deallocate};
-use finally::try_finally;
+use core::prelude::*;
+
+use alloc::heap::{allocate, deallocate};
+use core::cmp;
+use core::finally::try_finally;
+use core::mem::size_of;
+use core::mem::transmute;
+use core::mem;
+use core::ptr;
+use core::iter::{range_step, MultiplicativeIterator};
 use vec::Vec;
 
 pub use core::slice::{ref_slice, mut_ref_slice, Splits, Windows};
@@ -295,13 +291,13 @@ impl<'a, T: Clone> CloneableVector<T> for &'a [T] {
     #[inline]
     fn to_owned(&self) -> ~[T] {
         use RawVec = core::raw::Vec;
-        use num::{CheckedAdd, CheckedMul};
+        use core::num::{CheckedAdd, CheckedMul};
 
         let len = self.len();
         let data_size = len.checked_mul(&mem::size_of::<T>());
-        let data_size = data_size.expect("overflow in to_owned()");
+        let data_size = ::expect(data_size, "overflow in to_owned()");
         let size = mem::size_of::<RawVec<()>>().checked_add(&data_size);
-        let size = size.expect("overflow in to_owned()");
+        let size = ::expect(size, "overflow in to_owned()");
 
         unsafe {
             // this should pass the real required alignment

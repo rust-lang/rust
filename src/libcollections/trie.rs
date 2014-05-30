@@ -10,11 +10,15 @@
 
 //! Ordered containers with integer keys, implemented as radix tries (`TrieSet` and `TrieMap` types)
 
-use std::mem::zeroed;
-use std::mem;
-use std::slice::{Items, MutItems};
-use std::slice;
-use std::uint;
+use core::prelude::*;
+
+use alloc::owned::Box;
+use core::mem::zeroed;
+use core::mem;
+use core::uint;
+
+use slice::{Items, MutItems};
+use slice;
 
 // FIXME: #5244: need to manually update the TrieNode constructor
 static SHIFT: uint = 4;
@@ -457,7 +461,7 @@ fn insert<T>(count: &mut uint, child: &mut Child<T>, key: uint, value: T,
             *child = Internal(new);
             return ret;
         }
-        _ => unreachable!()
+        _ => fail!("unreachable code"),
     }
 }
 

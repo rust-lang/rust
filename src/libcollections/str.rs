@@ -67,21 +67,17 @@ is the same as `&[u8]`.
 
 #![doc(primitive = "str")]
 
-use char::Char;
-use char;
-use clone::Clone;
-use cmp::{PartialEq, Eq, PartialOrd, Ord, Equiv, Ordering};
-use container::Container;
-use default::Default;
-use fmt;
-use io::Writer;
-use iter::{Iterator, range, AdditiveIterator};
-use mem::transmute;
-use mem;
-use option::{None, Option, Some};
-use result::Result;
-use slice::Vector;
-use slice::{ImmutableVector, MutableVector};
+use core::prelude::*;
+
+use core::char;
+use core::default::Default;
+use core::fmt;
+use core::cmp;
+use core::iter::AdditiveIterator;
+use core::mem;
+
+use hash;
+use slice::CloneableVector;
 use string::String;
 use vec::Vec;
 
@@ -201,9 +197,6 @@ Section: Iterators
 
 // Helper functions used for Unicode normalization
 fn canonical_sort(comb: &mut [(char, u8)]) {
-    use iter::range;
-    use tuple::Tuple2;
-
     let len = comb.len();
     for i in range(0, len) {
         let mut swapped = false;
@@ -638,13 +631,10 @@ impl<'a> Default for MaybeOwned<'a> {
     fn default() -> MaybeOwned<'a> { Slice("") }
 }
 
-impl<'a, H: Writer> ::hash::Hash<H> for MaybeOwned<'a> {
+impl<'a, H: hash::Writer> hash::Hash<H> for MaybeOwned<'a> {
     #[inline]
     fn hash(&self, hasher: &mut H) {
-        match *self {
-            Slice(s) => s.hash(hasher),
-            Owned(ref s) => s.as_slice().hash(hasher),
-        }
+        self.as_slice().hash(hasher)
     }
 }
 
@@ -660,10 +650,10 @@ impl<'a> fmt::Show for MaybeOwned<'a> {
 
 /// Unsafe operations
 pub mod raw {
-    use c_str::CString;
-    use libc;
-    use mem;
-    use raw::Slice;
+    use core::prelude::*;
+    use core::mem;
+    use core::raw::Slice;
+
     use string::String;
     use vec::Vec;
 
@@ -681,9 +671,16 @@ pub mod raw {
     }
 
     /// Create a Rust string from a null-terminated C string
-    pub unsafe fn from_c_str(c_string: *libc::c_char) -> String {
+    pub unsafe fn from_c_str(c_string: *i8) -> String {
         let mut buf = String::new();
-        buf.push_bytes(CString::new(c_string, false).as_bytes_no_nul());
+        let mut len = 0;
+        while *c_string.offset(len) != 0 {
+            len += 1;
+        }
+        buf.push_bytes(mem::transmute(Slice {
+            data: c_string,
+            len: len as uint,
+        }));
         buf
     }
 
@@ -800,10 +797,8 @@ pub trait StrAllocating: Str {
     #[deprecated = "obsolete, use `to_string`"]
     #[inline]
     fn to_owned(&self) -> String {
-        use slice::Vector;
-
         unsafe {
-            ::mem::transmute(Vec::from_slice(self.as_slice().as_bytes()))
+            mem::transmute(Vec::from_slice(self.as_slice().as_bytes()))
         }
     }
 
@@ -852,9 +847,9 @@ pub trait StrAllocating: Str {
                 if sc == tc {
                     *dcol.get_mut(j + 1) = current;
                 } else {
-                    *dcol.get_mut(j + 1) = ::cmp::min(current, next);
-                    *dcol.get_mut(j + 1) = ::cmp::min(*dcol.get(j + 1),
-                                                      *dcol.get(j)) + 1;
+                    *dcol.get_mut(j + 1) = cmp::min(current, next);
+                    *dcol.get_mut(j + 1) = cmp::min(*dcol.get(j + 1),
+                                                    *dcol.get(j)) + 1;
                 }
 
                 current = next;

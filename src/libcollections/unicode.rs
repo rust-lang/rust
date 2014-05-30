@@ -13,11 +13,9 @@
 #![allow(missing_doc, non_uppercase_statics)]
 
 pub mod normalization {
-    use option::{Some, None};
-    use slice::ImmutableVector;
+    use core::prelude::*;
 
     fn bsearch_range_value_table(c: char, r: &'static [(char, char, u8)]) -> u8 {
-        use cmp::{Equal, Less, Greater};
         match r.bsearch(|&(lo, hi, _)| {
             if lo <= c && c <= hi { Equal }
             else if hi < c { Less }

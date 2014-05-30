@@ -10,7 +10,7 @@
 
 //! Container traits for collections
 
-use std::container::Mutable;
+use core::prelude::*;
 
 /// A double-ended sequence that allows querying, insertion and deletion at both ends.
 pub trait Deque<T> : Mutable {
