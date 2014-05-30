@@ -641,6 +641,8 @@ impl<'a> CheckLoanCtxt<'a> {
                     // with inherited mutability and with `&mut`
                     // pointers.
                     LpExtend(ref lp_base, mc::McInherited, _) |
+                    LpExtend(ref lp_base, _, LpDeref(mc::OwnedPtr)) |
+                    LpExtend(ref lp_base, _, LpDeref(mc::GcPtr)) |
                     LpExtend(ref lp_base, _, LpDeref(mc::BorrowedPtr(ty::MutBorrow, _))) => {
                         lp_base.clone()
                     }
