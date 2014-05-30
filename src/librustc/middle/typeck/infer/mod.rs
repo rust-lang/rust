@@ -116,8 +116,8 @@ pub enum TypeOrigin {
     // Relating trait refs when resolving vtables
     RelateSelfType(Span),
 
-    // Computing common supertype in a match expression
-    MatchExpression(Span),
+    // Computing common supertype in the arms of a match expression
+    MatchExpressionArm(Span, Span),
 
     // Computing common supertype in an if expression
     IfExpression(Span),
@@ -831,7 +831,7 @@ impl TypeOrigin {
             Misc(span) => span,
             RelateTraitRefs(span) => span,
             RelateSelfType(span) => span,
-            MatchExpression(span) => span,
+            MatchExpressionArm(match_span, _) => match_span,
             IfExpression(span) => span,
         }
     }
@@ -853,8 +853,8 @@ impl Repr for TypeOrigin {
             RelateSelfType(a) => {
                 format!("RelateSelfType({})", a.repr(tcx))
             }
-            MatchExpression(a) => {
-                format!("MatchExpression({})", a.repr(tcx))
+            MatchExpressionArm(a, b) => {
+                format!("MatchExpressionArm({}, {})", a.repr(tcx), b.repr(tcx))
             }
             IfExpression(a) => {
                 format!("IfExpression({})", a.repr(tcx))
