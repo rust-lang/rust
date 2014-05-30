@@ -152,7 +152,11 @@ impl<T: Send + Share + Clone> Arc<T> {
     #[inline]
     #[experimental]
     pub fn make_unique<'a>(&'a mut self) -> &'a mut T {
-        if self.inner().strong.load(atomics::SeqCst) != 1 {
+        // Note that we hold a strong reference, which also counts as
+        // a weak reference, so we only clone if there is an
+        // additional reference of either kind.
+        if self.inner().strong.load(atomics::SeqCst) != 1 ||
+           self.inner().weak.load(atomics::SeqCst) != 1 {
             *self = Arc::new(self.deref().clone())
         }
         // This unsafety is ok because we're guaranteed that the pointer
@@ -354,6 +358,20 @@ mod tests {
         assert!(*cow0 != *cow1);
         assert!(*cow0 != *cow2);
         assert!(*cow1 == *cow2);
+    }
+
+    #[test]
+    fn test_cowarc_clone_weak() {
+        let mut cow0 = Arc::new(75u);
+        let cow1_weak = cow0.downgrade();
+
+        assert!(75 == *cow0);
+        assert!(75 == *cow1_weak.upgrade().unwrap());
+
+        *cow0.make_unique() += 1;
+
+        assert!(76 == *cow0);
+        assert!(cow1_weak.upgrade().is_none());
     }
 
     #[test]
