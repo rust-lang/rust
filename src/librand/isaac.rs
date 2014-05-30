@@ -24,7 +24,7 @@ static RAND_SIZE: u32 = 1 << RAND_SIZE_LEN;
 ///
 /// The ISAAC algorithm is generally accepted as suitable for
 /// cryptographic purposes, but this implementation has not be
-/// verified as such. Prefer a generator like `OSRng` that defers to
+/// verified as such. Prefer a generator like `OsRng` that defers to
 /// the operating system for cases that need high security.
 ///
 /// [1]: Bob Jenkins, [*ISAAC: A fast cryptographic random number
@@ -231,7 +231,7 @@ static RAND_SIZE_64: uint = 1 << RAND_SIZE_64_LEN;
 ///
 /// The ISAAC algorithm is generally accepted as suitable for
 /// cryptographic purposes, but this implementation has not be
-/// verified as such. Prefer a generator like `OSRng` that defers to
+/// verified as such. Prefer a generator like `OsRng` that defers to
 /// the operating system for cases that need high security.
 ///
 /// [1]: Bob Jenkins, [*ISAAC: A fast cryptographic random number

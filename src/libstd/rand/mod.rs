@@ -32,7 +32,7 @@ after generating 32 KiB of random data.
 # Cryptographic security
 
 An application that requires an entropy source for cryptographic purposes
-must use `OSRng`, which reads randomness from the source that the operating
+must use `OsRng`, which reads randomness from the source that the operating
 system provides (e.g. `/dev/urandom` on Unixes or `CryptGenRandom()` on Windows).
 The other random number generators provided by this module are not suitable
 for such purposes.
@@ -91,7 +91,7 @@ use IsaacWordRng = core_rand::Isaac64Rng;
 pub use core_rand::{Rand, Rng, SeedableRng, Open01, Closed01};
 pub use core_rand::{XorShiftRng, IsaacRng, Isaac64Rng};
 pub use core_rand::{distributions, reseeding};
-pub use rand::os::OSRng;
+pub use rand::os::OsRng;
 
 pub mod os;
 pub mod reader;
@@ -113,7 +113,7 @@ impl StdRng {
     /// Reading the randomness from the OS may fail, and any error is
     /// propagated via the `IoResult` return value.
     pub fn new() -> IoResult<StdRng> {
-        OSRng::new().map(|mut r| StdRng { rng: r.gen() })
+        OsRng::new().map(|mut r| StdRng { rng: r.gen() })
     }
 }
 
@@ -151,7 +151,7 @@ impl<'a> SeedableRng<&'a [uint]> for StdRng {
 /// This will read randomness from the operating system to seed the
 /// generator.
 pub fn weak_rng() -> XorShiftRng {
-    match OSRng::new() {
+    match OsRng::new() {
         Ok(mut r) => r.gen(),
         Err(e) => fail!("weak_rng: failed to create seeded RNG: {}", e)
     }
@@ -467,12 +467,12 @@ mod bench {
 
     use self::test::Bencher;
     use super::{XorShiftRng, StdRng, IsaacRng, Isaac64Rng, Rng, RAND_BENCH_N};
-    use super::{OSRng, weak_rng};
+    use super::{OsRng, weak_rng};
     use mem::size_of;
 
     #[bench]
     fn rand_xorshift(b: &mut Bencher) {
-        let mut rng: XorShiftRng = OSRng::new().unwrap().gen();
+        let mut rng: XorShiftRng = OsRng::new().unwrap().gen();
         b.iter(|| {
             for _ in range(0, RAND_BENCH_N) {
                 rng.gen::<uint>();
@@ -483,7 +483,7 @@ mod bench {
 
     #[bench]
     fn rand_isaac(b: &mut Bencher) {
-        let mut rng: IsaacRng = OSRng::new().unwrap().gen();
+        let mut rng: IsaacRng = OsRng::new().unwrap().gen();
         b.iter(|| {
             for _ in range(0, RAND_BENCH_N) {
                 rng.gen::<uint>();
@@ -494,7 +494,7 @@ mod bench {
 
     #[bench]
     fn rand_isaac64(b: &mut Bencher) {
-        let mut rng: Isaac64Rng = OSRng::new().unwrap().gen();
+        let mut rng: Isaac64Rng = OsRng::new().unwrap().gen();
         b.iter(|| {
             for _ in range(0, RAND_BENCH_N) {
                 rng.gen::<uint>();
