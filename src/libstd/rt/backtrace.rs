@@ -518,6 +518,7 @@ mod imp {
     use unstable::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
     use slice::ImmutableVector;
 
+    #[allow(non_snake_case_functions)]
     extern "system" {
         fn GetCurrentProcess() -> libc::HANDLE;
         fn GetCurrentThread() -> libc::HANDLE;
