@@ -573,13 +573,13 @@ impl<'t> Replacer for NoExpand<'t> {
 
 impl<'t> Replacer for &'t str {
     fn reg_replace<'a>(&'a mut self, caps: &Captures) -> MaybeOwned<'a> {
-        Owned(caps.expand(*self).into_owned())
+        Owned(caps.expand(*self))
     }
 }
 
 impl<'a> Replacer for |&Captures|: 'a -> String {
     fn reg_replace<'r>(&'r mut self, caps: &Captures) -> MaybeOwned<'r> {
-        Owned((*self)(caps).into_owned())
+        Owned((*self)(caps))
     }
 }
 

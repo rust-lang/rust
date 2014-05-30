@@ -323,11 +323,6 @@ impl Str for String {
 
 impl StrAllocating for String {
     #[inline]
-    fn into_owned(self) -> String {
-        self
-    }
-
-    #[inline]
     fn into_string(self) -> String {
         self
     }
