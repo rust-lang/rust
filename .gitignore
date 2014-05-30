@@ -84,7 +84,7 @@ config.stamp
 .DS_Store
 src/etc/dl
 .settings/
-build/
+/build
 i686-pc-mingw32/
 src/librustc/lib/llvmdeps.rs
 *.pot
