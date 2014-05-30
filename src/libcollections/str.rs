@@ -77,7 +77,6 @@ use core::iter::AdditiveIterator;
 use core::mem;
 
 use hash;
-use slice::CloneableVector;
 use string::String;
 use vec::Vec;
 
@@ -917,11 +916,13 @@ impl OwnedStr for String {
 
 #[cfg(test)]
 mod tests {
-    use iter::AdditiveIterator;
-    use default::Default;
-    use prelude::*;
+    use std::prelude::*;
+    use std::iter::AdditiveIterator;
+    use std::default::Default;
+
     use str::*;
     use string::String;
+    use vec::Vec;
 
     #[test]
     fn test_eq_slice() {
@@ -1042,7 +1043,7 @@ mod tests {
     #[test]
     fn test_concat() {
         fn t(v: &[String], s: &str) {
-            assert_eq!(v.concat(), s.to_str().into_string());
+            assert_eq!(v.concat().as_slice(), s);
         }
         t(["you".to_string(), "know".to_string(), "I'm".to_string(),
           "no".to_string(), "good".to_string()], "youknowI'mnogood");
@@ -1054,7 +1055,7 @@ mod tests {
     #[test]
     fn test_connect() {
         fn t(v: &[String], sep: &str, s: &str) {
-            assert_eq!(v.connect(sep), s.to_str().into_string());
+            assert_eq!(v.connect(sep).as_slice(), s);
         }
         t(["you".to_string(), "know".to_string(), "I'm".to_string(),
            "no".to_string(), "good".to_string()],
@@ -1067,7 +1068,7 @@ mod tests {
     #[test]
     fn test_concat_slices() {
         fn t(v: &[&str], s: &str) {
-            assert_eq!(v.concat(), s.to_str().into_string());
+            assert_eq!(v.concat().as_slice(), s);
         }
         t(["you", "know", "I'm", "no", "good"], "youknowI'mnogood");
         let v: &[&str] = [];
@@ -1078,7 +1079,7 @@ mod tests {
     #[test]
     fn test_connect_slices() {
         fn t(v: &[&str], sep: &str, s: &str) {
-            assert_eq!(v.connect(sep), s.to_str().into_string());
+            assert_eq!(v.connect(sep).as_slice(), s);
         }
         t(["you", "know", "I'm", "no", "good"],
           " ", "you know I'm no good");
@@ -1753,7 +1754,6 @@ mod tests {
 
     #[test]
     fn test_iterator() {
-        use iter::*;
         let s = "ศไทย中华Việt Nam";
         let v = box ['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a','m'];
 
@@ -1769,7 +1769,6 @@ mod tests {
 
     #[test]
     fn test_rev_iterator() {
-        use iter::*;
         let s = "ศไทย中华Việt Nam";
         let v = box ['m', 'a', 'N', ' ', 't', 'ệ','i','V','华','中','ย','ท','ไ','ศ'];
 
@@ -1825,7 +1824,6 @@ mod tests {
 
     #[test]
     fn test_char_indicesator() {
-        use iter::*;
         let s = "ศไทย中华Việt Nam";
         let p = [0, 3, 6, 9, 12, 15, 18, 19, 20, 23, 24, 25, 26, 27];
         let v = ['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a','m'];
@@ -1843,7 +1841,6 @@ mod tests {
 
     #[test]
     fn test_char_indices_revator() {
-        use iter::*;
         let s = "ศไทย中华Việt Nam";
         let p = [27, 26, 25, 24, 23, 20, 19, 18, 15, 12, 9, 6, 3, 0];
         let v = ['m', 'a', 'N', ' ', 't', 'ệ','i','V','华','中','ย','ท','ไ','ศ'];
@@ -2027,7 +2024,7 @@ mod tests {
 
     #[test]
     fn test_str_default() {
-        use default::Default;
+        use std::default::Default;
         fn t<S: Default + Str>() {
             let s: S = Default::default();
             assert_eq!(s.as_slice(), "");
@@ -2110,8 +2107,8 @@ mod tests {
 
     #[test]
     fn test_from_str() {
-      let owned: Option<String> = from_str("string");
-      assert_eq!(owned, Some("string".to_string()));
+      let owned: Option<::std::string::String> = from_str("string");
+      assert_eq!(owned.as_ref().map(|s| s.as_slice()), Some("string"));
     }
 
     #[test]
@@ -2119,16 +2116,16 @@ mod tests {
         let s = Slice("abcde");
         assert_eq!(s.len(), 5);
         assert_eq!(s.as_slice(), "abcde");
-        assert_eq!(s.to_str(), "abcde".to_string());
-        assert_eq!(format!("{}", s), "abcde".to_string());
+        assert_eq!(s.to_str().as_slice(), "abcde");
+        assert_eq!(format!("{}", s).as_slice(), "abcde");
         assert!(s.lt(&Owned("bcdef".to_string())));
         assert_eq!(Slice(""), Default::default());
 
         let o = Owned("abcde".to_string());
         assert_eq!(o.len(), 5);
         assert_eq!(o.as_slice(), "abcde");
-        assert_eq!(o.to_str(), "abcde".to_string());
-        assert_eq!(format!("{}", o), "abcde".to_string());
+        assert_eq!(o.to_str().as_slice(), "abcde");
+        assert_eq!(format!("{}", o).as_slice(), "abcde");
         assert!(o.lt(&Slice("bcdef")));
         assert_eq!(Owned("".to_string()), Default::default());
 
@@ -2175,10 +2172,9 @@ mod tests {
 
 #[cfg(test)]
 mod bench {
-    extern crate test;
-    use self::test::Bencher;
+    use test::Bencher;
     use super::*;
-    use prelude::*;
+    use std::prelude::*;
 
     #[bench]
     fn char_iterator(b: &mut Bencher) {

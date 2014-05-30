@@ -17,7 +17,7 @@ use std::str;
 use std::string::String;
 use std::unstable::dynamic_lib::DynamicLibrary;
 
-use collections::{HashSet, HashMap};
+use std::collections::{HashSet, HashMap};
 use testing;
 use rustc::back::link;
 use rustc::driver::config;

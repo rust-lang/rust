@@ -13,7 +13,7 @@
 
 extern crate collections;
 
-use collections::HashMap;
+use std::collections::HashMap;
 
 struct A(int, int);
 

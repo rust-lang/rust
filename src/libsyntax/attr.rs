@@ -20,8 +20,8 @@ use parse::token::InternedString;
 use parse::token;
 use crateid::CrateId;
 
-use collections::HashSet;
-use collections::bitv::BitvSet;
+use std::collections::HashSet;
+use std::collections::BitvSet;
 
 local_data_key!(used_attrs: BitvSet)
 

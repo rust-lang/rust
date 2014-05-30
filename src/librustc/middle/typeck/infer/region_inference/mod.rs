@@ -26,7 +26,7 @@ use util::ppaux::{Repr};
 
 use std::cell::{Cell, RefCell};
 use std::uint;
-use collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet};
 use syntax::ast;
 
 mod doc;

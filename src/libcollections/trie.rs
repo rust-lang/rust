@@ -641,9 +641,11 @@ impl<'a> Iterator<uint> for SetItems<'a> {
 
 #[cfg(test)]
 mod test_map {
-    use super::{TrieMap, TrieNode, Internal, External, Nothing};
+    use std::prelude::*;
     use std::iter::range_step;
     use std::uint;
+
+    use super::{TrieMap, TrieNode, Internal, External, Nothing};
 
     fn check_integrity<T>(trie: &TrieNode<T>) {
         assert!(trie.count != 0);
@@ -917,10 +919,11 @@ mod test_map {
 
 #[cfg(test)]
 mod bench_map {
-    extern crate test;
-    use super::TrieMap;
+    use std::prelude::*;
     use std::rand::{weak_rng, Rng};
-    use self::test::Bencher;
+    use test::Bencher;
+
+    use super::TrieMap;
 
     #[bench]
     fn bench_iter_small(b: &mut Bencher) {
@@ -1025,8 +1028,10 @@ mod bench_map {
 
 #[cfg(test)]
 mod test_set {
-    use super::TrieSet;
+    use std::prelude::*;
     use std::uint;
+
+    use super::TrieSet;
 
     #[test]
     fn test_sane_chunk() {

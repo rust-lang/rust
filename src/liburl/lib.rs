@@ -19,13 +19,10 @@
        html_root_url = "http://doc.rust-lang.org/")]
 #![feature(default_type_params)]
 
-extern crate collections;
-
-use collections::HashMap;
-use std::cmp::PartialEq;
+use std::collections::HashMap;
 use std::fmt;
 use std::from_str::FromStr;
-use std::hash::Hash;
+use std::hash;
 use std::io::BufReader;
 use std::string::String;
 use std::uint;
@@ -870,13 +867,13 @@ impl fmt::Show for Path {
     }
 }
 
-impl<S: Writer> Hash<S> for Url {
+impl<S: hash::Writer> hash::Hash<S> for Url {
     fn hash(&self, state: &mut S) {
         self.to_str().hash(state)
     }
 }
 
-impl<S: Writer> Hash<S> for Path {
+impl<S: hash::Writer> hash::Hash<S> for Path {
     fn hash(&self, state: &mut S) {
         self.to_str().hash(state)
     }
@@ -973,7 +970,7 @@ mod tests {
          decode, encode, from_str, encode_component, decode_component,
          path_from_str, UserInfo, get_scheme};
 
-    use collections::HashMap;
+    use std::collections::HashMap;
 
     #[test]
     fn test_url_parse() {

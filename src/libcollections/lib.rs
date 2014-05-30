@@ -26,8 +26,9 @@
 extern crate alloc;
 
 #[cfg(test)] extern crate native;
-#[cfg(test)] extern crate std;
 #[cfg(test)] extern crate test;
+#[cfg(test)] extern crate debug;
+#[cfg(test)] #[phase(syntax, link)] extern crate std;
 #[cfg(test)] #[phase(syntax, link)] extern crate log;
 
 pub use bitv::{Bitv, BitvSet};
@@ -66,10 +67,11 @@ mod unicode;
 fn expect<T>(a: core::option::Option<T>, b: &str) -> T {
     match a {
         core::option::Some(a) => a,
-        core::option::None => fail!(b),
+        core::option::None => fail!("{}", b),
     }
 }
 
+#[cfg(not(test))]
 mod std {
     pub use core::fmt;      // necessary for fail!()
     pub use core::option;   // necessary for fail!()

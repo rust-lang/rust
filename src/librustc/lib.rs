@@ -32,7 +32,6 @@ This API is completely unstable and subject to change.
            default_type_params, phase)]
 
 extern crate arena;
-extern crate collections;
 extern crate debug;
 extern crate flate;
 extern crate getopts;

@@ -10,15 +10,15 @@
 
 // aux-build:issue-11908-1.rs
 // ignore-android this test is incompatible with the android test runner
-// error-pattern: multiple dylib candidates for `collections` found
+// error-pattern: multiple dylib candidates for `url` found
 
 // This test ensures that if you have the same rlib or dylib at two locations
 // in the same path that you don't hit an assertion in the compiler.
 //
-// Note that this relies on `libcollections` to be in the path somewhere else,
-// and then our aux-built libraries will collide with libcollections (they have
+// Note that this relies on `liburl` to be in the path somewhere else,
+// and then our aux-built libraries will collide with liburl (they have
 // the same version listed)
 
-extern crate collections;
+extern crate url;
 
 fn main() {}

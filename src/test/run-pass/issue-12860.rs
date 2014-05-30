@@ -11,7 +11,7 @@
 
 extern crate collections;
 
-use collections::HashSet;
+use std::collections::HashSet;
 
 #[deriving(PartialEq, Eq, Hash)]
 struct XYZ {

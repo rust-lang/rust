@@ -14,7 +14,7 @@ use middle::ty;
 use middle::ty_fold;
 use middle::ty_fold::TypeFolder;
 
-use collections::HashMap;
+use std::collections::HashMap;
 use util::ppaux::Repr;
 use util::ppaux;
 

@@ -52,7 +52,6 @@
 #![deny(missing_doc)]
 
 #[phase(syntax, link)] extern crate log;
-extern crate collections;
 
 pub use terminfo::TerminfoTerminal;
 #[cfg(windows)]

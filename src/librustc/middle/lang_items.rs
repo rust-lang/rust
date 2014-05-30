@@ -31,7 +31,7 @@ use syntax::parse::token::InternedString;
 use syntax::visit::Visitor;
 use syntax::visit;
 
-use collections::HashMap;
+use std::collections::HashMap;
 use std::iter::Enumerate;
 use std::slice;
 

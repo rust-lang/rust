@@ -45,7 +45,7 @@ use syntax::owned_slice::OwnedSlice;
 use syntax::parse::token;
 use syntax::visit;
 
-use collections::HashSet;
+use std::collections::HashSet;
 use std::cell::RefCell;
 use std::rc::Rc;
 

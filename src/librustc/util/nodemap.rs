@@ -10,9 +10,8 @@
 
 //! An efficient hash map for node IDs
 
-use collections::{HashMap, HashSet};
-use std::hash::{Hasher, Hash};
-use std::io;
+use std::collections::{HashMap, HashSet};
+use std::hash::{Hasher, Hash, Writer};
 use syntax::ast;
 
 pub type FnvHashMap<K, V> = HashMap<K, V, FnvHasher>;
@@ -27,14 +26,14 @@ pub type DefIdSet = FnvHashSet<ast::DefId>;
 // Hacks to get good names
 pub mod FnvHashMap {
     use std::hash::Hash;
-    use collections::HashMap;
+    use std::collections::HashMap;
     pub fn new<K: Hash<super::FnvState> + Eq, V>() -> super::FnvHashMap<K, V> {
         HashMap::with_hasher(super::FnvHasher)
     }
 }
 pub mod FnvHashSet {
     use std::hash::Hash;
-    use collections::HashSet;
+    use std::collections::HashSet;
     pub fn new<V: Hash<super::FnvState> + Eq>() -> super::FnvHashSet<V> {
         HashSet::with_hasher(super::FnvHasher)
     }
@@ -82,13 +81,12 @@ impl Hasher<FnvState> for FnvHasher {
 }
 
 impl Writer for FnvState {
-    fn write(&mut self, bytes: &[u8]) -> io::IoResult<()> {
+    fn write(&mut self, bytes: &[u8]) {
         let FnvState(mut hash) = *self;
         for byte in bytes.iter() {
             hash = hash ^ (*byte as u64);
             hash = hash * 0x100000001b3;
         }
         *self = FnvState(hash);
-        Ok(())
     }
 }

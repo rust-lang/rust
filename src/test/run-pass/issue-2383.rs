@@ -10,8 +10,8 @@
 // except according to those terms.
 
 extern crate collections;
-use collections::RingBuf;
-use collections::Deque;
+use std::collections::RingBuf;
+use std::collections::Deque;
 
 pub fn main() {
     let mut q = RingBuf::new();

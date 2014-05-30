@@ -11,11 +11,11 @@
 // aux-build:issue-11908-2.rs
 // no-prefer-dynamic
 // ignore-android this test is incompatible with the android test runner
-// error-pattern: multiple rlib candidates for `collections` found
+// error-pattern: multiple rlib candidates for `url` found
 
 // see comments in issue-11908-1 for what's going on here
 
-extern crate collections;
+extern crate url;
 
 fn main() {}
 

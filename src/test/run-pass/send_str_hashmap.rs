@@ -12,7 +12,7 @@ extern crate collections;
 
 use std::container::{Map, MutableMap};
 use std::str::{SendStr, Owned, Slice};
-use collections::HashMap;
+use std::collections::HashMap;
 use std::option::Some;
 
 pub fn main() {

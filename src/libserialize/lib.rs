@@ -29,8 +29,6 @@ extern crate test;
 #[phase(syntax, link)]
 extern crate log;
 
-extern crate collections;
-
 pub use self::serialize::{Decoder, Encoder, Decodable, Encodable,
                           DecoderHelpers, EncoderHelpers};
 

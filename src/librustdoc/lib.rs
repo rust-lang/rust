@@ -16,7 +16,6 @@
 
 #![feature(globs, struct_variant, managed_boxes, macro_rules, phase)]
 
-extern crate collections;
 extern crate debug;
 extern crate getopts;
 extern crate libc;
@@ -403,7 +402,7 @@ fn json_output(krate: clean::Crate, res: Vec<plugins::PluginJson> ,
     //   "crate": { parsed crate ... },
     //   "plugins": { output of plugins ... }
     // }
-    let mut json = box collections::TreeMap::new();
+    let mut json = box std::collections::TreeMap::new();
     json.insert("schema".to_string(),
                 json::String(SCHEMA_VERSION.to_string()));
     let plugins_json = box res.move_iter()

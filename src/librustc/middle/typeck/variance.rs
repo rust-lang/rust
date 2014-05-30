@@ -192,7 +192,7 @@ represents the "variance transform" as defined in the paper:
 
 */
 
-use collections::HashMap;
+use std::collections::HashMap;
 use arena;
 use arena::Arena;
 use middle::ty;
