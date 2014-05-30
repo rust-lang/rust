@@ -977,8 +977,8 @@ impl ClosureConverter for UnsafeTaskReceiver {
 // worry there.
 #[cfg(windows)]
 fn new_sched_rng() -> XorShiftRng {
-    use std::rand::OSRng;
-    match OSRng::new() {
+    use std::rand::OsRng;
+    match OsRng::new() {
         Ok(mut r) => r.gen(),
         Err(e) => {
             rtabort!("sched: failed to create seeded RNG: {}", e)
