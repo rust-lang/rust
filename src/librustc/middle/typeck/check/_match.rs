@@ -298,9 +298,8 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: &ast::Pat, path: &ast::Path,
 /// `etc` is true if the pattern said '...' and false otherwise.
 pub fn check_struct_pat_fields(pcx: &pat_ctxt,
                                span: Span,
-                               path: &ast::Path,
                                fields: &[ast::FieldPat],
-                               class_fields: Vec<ty::field_ty> ,
+                               class_fields: Vec<ty::field_ty>,
                                class_id: ast::DefId,
                                substitutions: &ty::substs,
                                etc: bool) {
@@ -333,13 +332,12 @@ pub fn check_struct_pat_fields(pcx: &pat_ctxt,
                 found_fields.insert(index);
             }
             None => {
-                let name = pprust::path_to_str(path);
                 // Check the pattern anyway, so that attempts to look
                 // up its type won't fail
                 check_pat(pcx, field.pat, ty::mk_err());
                 tcx.sess.span_err(span,
                     format!("struct `{}` does not have a field named `{}`",
-                            name,
+                            ty::item_path_str(tcx, class_id),
                             token::get_ident(field.ident)).as_slice());
             }
         }
@@ -390,7 +388,7 @@ pub fn check_struct_pat(pcx: &pat_ctxt, pat_id: ast::NodeId, span: Span,
         }
     }
 
-    check_struct_pat_fields(pcx, span, path, fields, class_fields, struct_id,
+    check_struct_pat_fields(pcx, span, fields, class_fields, struct_id,
                             substitutions, etc);
 }
 
@@ -413,7 +411,7 @@ pub fn check_struct_like_enum_variant_pat(pcx: &pat_ctxt,
             // Get the struct fields from this struct-like enum variant.
             let class_fields = ty::lookup_struct_fields(tcx, variant_id);
 
-            check_struct_pat_fields(pcx, span, path, fields, class_fields,
+            check_struct_pat_fields(pcx, span, fields, class_fields,
                                     variant_id, substitutions, etc);
         }
         Some(&ast::DefStruct(..)) | Some(&ast::DefVariant(..)) => {
