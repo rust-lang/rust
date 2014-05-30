@@ -12,11 +12,11 @@
 
 
 use std::cmp;
+use std::fmt;
 use std::iter::RandomAccessIterator;
 use std::iter::{Enumerate, Repeat, Map, Zip};
 use std::ops;
 use std::slice;
-use std::string::String;
 use std::uint;
 
 #[deriving(Clone)]
@@ -527,25 +527,6 @@ impl Bitv {
     }
 
     /**
-     * Converts `self` to a string.
-     *
-     * The resulting string has the same length as `self`, and each
-     * character is either '0' or '1'.
-     */
-     pub fn to_str(&self) -> String {
-        let mut rs = String::new();
-        for i in self.iter() {
-            if i {
-                rs.push_char('1');
-            } else {
-                rs.push_char('0');
-            }
-        };
-        rs
-     }
-
-
-    /**
      * Compare a bitvector to a vector of `bool`.
      *
      * Both the bitvector and vector must have the same length.
@@ -601,6 +582,15 @@ pub fn from_fn(len: uint, f: |index: uint| -> bool) -> Bitv {
 impl ops::Index<uint,bool> for Bitv {
     fn index(&self, i: &uint) -> bool {
         self.get(*i)
+    }
+}
+
+impl fmt::Show for Bitv {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        for bit in self.iter() {
+            try!(write!(fmt, "{}", if bit { 1 } else { 0 }));
+        }
+        Ok(())
     }
 }
 
@@ -825,6 +815,21 @@ impl cmp::Eq for BitvSet {
     }
 
     fn ne(&self, other: &BitvSet) -> bool { !self.eq(other) }
+}
+
+impl fmt::Show for BitvSet {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        try!(write!(fmt, r"\{"));
+        let mut first = true;
+        for n in self.iter() {
+            if !first {
+                try!(write!(fmt, ", "));
+            }
+            try!(write!(fmt, "{}", n));
+            first = false;
+        }
+        write!(fmt, r"\}")
+    }
 }
 
 impl Container for BitvSet {
@@ -1627,6 +1632,16 @@ mod tests {
         assert!(v.all());
         assert!(v.any());
         assert!(!v.none());
+    }
+
+    #[test]
+    fn test_bitv_set_show() {
+        let mut s = BitvSet::new();
+        s.insert(1);
+        s.insert(10);
+        s.insert(50);
+        s.insert(2);
+        assert_eq!("{1, 2, 10, 50}".to_string(), s.to_str());
     }
 
     fn rng() -> rand::IsaacRng {
