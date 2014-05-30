@@ -10,14 +10,17 @@
 
 #![allow(missing_doc)]
 
+use core::prelude::*;
 
-use std::cmp;
-use std::fmt;
-use std::iter::RandomAccessIterator;
-use std::iter::{Enumerate, Repeat, Map, Zip};
-use std::ops;
-use std::slice;
-use std::uint;
+use core::cmp;
+use core::fmt;
+use core::iter::{Enumerate, Repeat, Map, Zip};
+use core::ops;
+use core::slice;
+use core::uint;
+
+use string::String;
+use vec::Vec;
 
 #[deriving(Clone)]
 struct SmallBitv {
