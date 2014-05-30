@@ -95,36 +95,6 @@ use option::{Some, None, Option};
 
 #[cfg(not(test))] use cmp::{PartialEq, Eq, PartialOrd, Equiv};
 
-/// Return the offset of the first null pointer in `buf`.
-#[inline]
-pub unsafe fn buf_len<T>(buf: **T) -> uint {
-    position(buf, |i| *i == null())
-}
-
-impl<T> Clone for *T {
-    #[inline]
-    fn clone(&self) -> *T {
-        *self
-    }
-}
-
-impl<T> Clone for *mut T {
-    #[inline]
-    fn clone(&self) -> *mut T {
-        *self
-    }
-}
-
-/// Return the first offset `i` such that `f(buf[i]) == true`.
-#[inline]
-pub unsafe fn position<T>(buf: *T, f: |&T| -> bool) -> uint {
-    let mut i = 0;
-    loop {
-        if f(&(*buf.offset(i as int))) { return i; }
-        else { i += 1; }
-    }
-}
-
 /// Create a null pointer.
 ///
 /// # Example
@@ -136,6 +106,7 @@ pub unsafe fn position<T>(buf: *T, f: |&T| -> bool) -> uint {
 /// assert!(p.is_null());
 /// ```
 #[inline]
+#[unstable = "may need a different name after pending changes to pointer types"]
 pub fn null<T>() -> *T { 0 as *T }
 
 /// Create an unsafe mutable null pointer.
@@ -149,6 +120,7 @@ pub fn null<T>() -> *T { 0 as *T }
 /// assert!(p.is_null());
 /// ```
 #[inline]
+#[unstable = "may need a different name after pending changes to pointer types"]
 pub fn mut_null<T>() -> *mut T { 0 as *mut T }
 
 /// Copies data from one location to another.
@@ -174,6 +146,7 @@ pub fn mut_null<T>() -> *mut T { 0 as *mut T }
 /// ```
 ///
 #[inline]
+#[unstable]
 pub unsafe fn copy_memory<T>(dst: *mut T, src: *T, count: uint) {
     intrinsics::copy_memory(dst, src, count)
 }
@@ -215,6 +188,7 @@ pub unsafe fn copy_memory<T>(dst: *mut T, src: *T, count: uint) {
 /// If the source and destination overlap then the behavior of this
 /// function is undefined.
 #[inline]
+#[unstable]
 pub unsafe fn copy_nonoverlapping_memory<T>(dst: *mut T,
                                             src: *T,
                                             count: uint) {
@@ -224,12 +198,15 @@ pub unsafe fn copy_nonoverlapping_memory<T>(dst: *mut T,
 /// Invokes memset on the specified pointer, setting `count * size_of::<T>()`
 /// bytes of memory starting at `dst` to `c`.
 #[inline]
+#[experimental = "uncertain about naming and semantics"]
 pub unsafe fn set_memory<T>(dst: *mut T, c: u8, count: uint) {
     intrinsics::set_memory(dst, c, count)
 }
 
 /// Zeroes out `count * size_of::<T>` bytes of memory at `dst`
 #[inline]
+#[experimental = "uncertain about naming and semantics"]
+#[allow(experimental)]
 pub unsafe fn zero_memory<T>(dst: *mut T, count: uint) {
     set_memory(dst, 0, count);
 }
@@ -237,6 +214,7 @@ pub unsafe fn zero_memory<T>(dst: *mut T, count: uint) {
 /// Swap the values at two mutable locations of the same type, without
 /// deinitialising either. They may overlap.
 #[inline]
+#[unstable]
 pub unsafe fn swap<T>(x: *mut T, y: *mut T) {
     // Give ourselves some scratch space to work with
     let mut tmp: T = mem::uninitialized();
@@ -255,6 +233,7 @@ pub unsafe fn swap<T>(x: *mut T, y: *mut T) {
 /// Replace the value at a mutable location with a new one, returning the old
 /// value, without deinitialising either.
 #[inline]
+#[unstable]
 pub unsafe fn replace<T>(dest: *mut T, mut src: T) -> T {
     mem::swap(mem::transmute(dest), &mut src); // cannot overlap
     src
@@ -262,6 +241,7 @@ pub unsafe fn replace<T>(dest: *mut T, mut src: T) -> T {
 
 /// Reads the value from `*src` and returns it.
 #[inline(always)]
+#[unstable]
 pub unsafe fn read<T>(src: *T) -> T {
     let mut tmp: T = mem::uninitialized();
     copy_nonoverlapping_memory(&mut tmp, src, 1);
@@ -271,6 +251,8 @@ pub unsafe fn read<T>(src: *T) -> T {
 /// Reads the value from `*src` and nulls it out.
 /// This currently prevents destructors from executing.
 #[inline(always)]
+#[experimental]
+#[allow(experimental)]
 pub unsafe fn read_and_zero<T>(dest: *mut T) -> T {
     // Copy the data out from `dest`:
     let tmp = read(&*dest);
@@ -281,9 +263,22 @@ pub unsafe fn read_and_zero<T>(dest: *mut T) -> T {
     tmp
 }
 
+/// Unsafely overwrite a memory location with the given value without destroying
+/// the old value.
+///
+/// This operation is unsafe because it does not destroy the previous value
+/// contained at the location `dst`. This could leak allocations or resources,
+/// so care must be taken to previously deallocate the value at `dst`.
+#[inline]
+#[unstable]
+pub unsafe fn write<T>(dst: *mut T, src: T) {
+    intrinsics::move_val_init(&mut *dst, src)
+}
+
 /// Given a **T (pointer to an array of pointers),
 /// iterate through each *T, up to the provided `len`,
 /// passing to the provided callback function
+#[deprecated = "old-style iteration. use a loop and RawPtr::offset"]
 pub unsafe fn array_each_with_len<T>(arr: **T, len: uint, cb: |*T|) {
     if arr.is_null() {
         fail!("ptr::array_each_with_len failure: arr input is null pointer");
@@ -303,12 +298,33 @@ pub unsafe fn array_each_with_len<T>(arr: **T, len: uint, cb: |*T|) {
 ///
 /// This will only work with a null-terminated
 /// pointer array.
+#[deprecated = "old-style iteration. use a loop and RawPtr::offset"]
+#[allow(deprecated)]
 pub unsafe fn array_each<T>(arr: **T, cb: |*T|) {
     if arr.is_null()  {
         fail!("ptr::array_each_with_len failure: arr input is null pointer");
     }
     let len = buf_len(arr);
     array_each_with_len(arr, len, cb);
+}
+
+/// Return the offset of the first null pointer in `buf`.
+#[inline]
+#[deprecated = "use a loop and RawPtr::offset"]
+#[allow(deprecated)]
+pub unsafe fn buf_len<T>(buf: **T) -> uint {
+    position(buf, |i| *i == null())
+}
+
+/// Return the first offset `i` such that `f(buf[i]) == true`.
+#[inline]
+#[deprecated = "old-style iteration. use a loop and RawPtr::offset"]
+pub unsafe fn position<T>(buf: *T, f: |&T| -> bool) -> uint {
+    let mut i = 0;
+    loop {
+        if f(&(*buf.offset(i as int))) { return i; }
+        else { i += 1; }
+    }
 }
 
 /// Methods on raw pointers
@@ -423,6 +439,20 @@ impl<T> Equiv<*mut T> for *T {
 impl<T> Equiv<*T> for *mut T {
     fn equiv(&self, other: &*T) -> bool {
         self.to_uint() == other.to_uint()
+    }
+}
+
+impl<T> Clone for *T {
+    #[inline]
+    fn clone(&self) -> *T {
+        *self
+    }
+}
+
+impl<T> Clone for *mut T {
+    #[inline]
+    fn clone(&self) -> *mut T {
+        *self
     }
 }
 
