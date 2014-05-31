@@ -750,12 +750,15 @@ fn check_local(cx: &mut MatchCheckCtxt, loc: &Local) {
         LocalFor => "`for` loop"
     };
 
-    let mut spans = vec![];
-    find_refutable(cx, &*loc.pat, &mut spans);
-
-    for span in spans.iter() {
-        cx.tcx.sess.span_err(*span,
-                             format!("refutable pattern in {} binding", name).as_slice());
+    match is_refutable(cx, loc.pat) {
+        Some(pat) => {
+            let msg = format!(
+                "refutable pattern in {} binding: {} not covered",
+                name, pat_to_str(&*pat)
+            );
+            cx.tcx.sess.span_err(loc.pat.span, msg.as_slice());
+        },
+        None => ()
     }
 
     // Check legality of move bindings.
@@ -769,67 +772,27 @@ fn check_fn(cx: &mut MatchCheckCtxt,
             sp: Span) {
     visit::walk_fn(cx, kind, decl, body, sp, ());
     for input in decl.inputs.iter() {
-        let mut spans = vec![];
-        find_refutable(cx, &*input.pat, &mut spans);
-
-        for span in spans.iter() {
-            cx.tcx.sess.span_err(*span,
-                                 "refutable pattern in function argument");
+        match is_refutable(cx, input.pat) {
+            Some(pat) => {
+                let msg = format!(
+                    "refutable pattern in function argument: {} not covered",
+                    pat_to_str(&*pat)
+                );
+                cx.tcx.sess.span_err(input.pat.span, msg.as_slice());
+            },
+            None => ()
         }
     }
 }
 
-fn find_refutable(cx: &MatchCheckCtxt, pat: &Pat, spans: &mut Vec<Span>) {
-    macro_rules! this_pattern {
-        () => {
-            {
-                spans.push(pat.span);
-                return
-            }
-        }
-    }
-    let opt_def = cx.tcx.def_map.borrow().find_copy(&pat.id);
-    match opt_def {
-      Some(DefVariant(enum_id, _, _)) => {
-        if ty::enum_variants(cx.tcx, enum_id).len() != 1u {
-            this_pattern!()
-        }
-      }
-      Some(DefStatic(..)) => this_pattern!(),
-      _ => ()
-    }
-
-    match pat.node {
-      PatBox(ref sub) | PatRegion(ref sub) | PatIdent(_, _, Some(ref sub)) => {
-        find_refutable(cx, &**sub, spans)
-      }
-      PatWild | PatWildMulti | PatIdent(_, _, None) => {}
-      PatLit(lit) => {
-          match lit.node {
-            ExprLit(lit) => {
-                match lit.node {
-                    LitNil => {}    // `()`
-                    _ => this_pattern!(),
-                }
-            }
-            _ => this_pattern!(),
-          }
-      }
-      PatRange(_, _) => { this_pattern!() }
-      PatStruct(_, ref fields, _) => {
-          for f in fields.iter() {
-              find_refutable(cx, &*f.pat, spans);
-          }
-      }
-      PatTup(ref elts) | PatEnum(_, Some(ref elts))=> {
-          for elt in elts.iter() {
-              find_refutable(cx, &**elt, spans)
-          }
-      }
-      PatEnum(_,_) => {}
-      PatVec(..) => { this_pattern!() }
-      PatMac(_) => cx.tcx.sess.bug("unexpanded macro"),
-    }
+fn is_refutable(cx: &MatchCheckCtxt, pat: Gc<Pat>) -> Option<Gc<Pat>> {
+    let pats = vec!(vec!(pat));
+    is_useful(cx, &pats, [wild()])
+        .useful()
+        .map(|pats| {
+            assert_eq!(pats.len(), 1);
+            pats.get(0).clone()
+        })
 }
 
 // Legality of move bindings checking
