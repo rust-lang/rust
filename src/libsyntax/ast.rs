@@ -208,14 +208,6 @@ impl Generics {
     }
 }
 
-#[deriving(Clone, PartialEq, Eq, Hash, Encodable, Decodable, Show)]
-pub enum DefRegion {
-    DefStaticRegion,
-    DefEarlyBoundRegion(/* index */ uint, /* lifetime decl */ NodeId),
-    DefLateBoundRegion(/* binder_id */ NodeId, /* depth */ uint, /* lifetime decl */ NodeId),
-    DefFreeRegion(/* block scope */ NodeId, /* lifetime decl */ NodeId),
-}
-
 // The set of MetaItems that define the compilation environment of the crate,
 // used to drive conditional compilation
 pub type CrateConfig = Vec<Gc<MetaItem>>;

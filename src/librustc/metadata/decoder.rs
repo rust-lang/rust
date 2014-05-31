@@ -23,6 +23,7 @@ use metadata::tydecode::{parse_ty_data, parse_def_id,
                          parse_bare_fn_ty_data, parse_trait_ref_data};
 use middle::lang_items;
 use middle::def;
+use middle::subst;
 use middle::ty::{ImplContainer, TraitContainer};
 use middle::ty;
 use middle::typeck;
@@ -257,34 +258,44 @@ fn item_ty_param_defs(item: ebml::Doc,
                       tcx: &ty::ctxt,
                       cdata: Cmd,
                       tag: uint)
-                      -> Rc<Vec<ty::TypeParameterDef> > {
-    let mut bounds = Vec::new();
+                      -> subst::VecPerParamSpace<ty::TypeParameterDef> {
+    let mut bounds = subst::VecPerParamSpace::empty();
     reader::tagged_docs(item, tag, |p| {
         let bd = parse_type_param_def_data(
             p.data, p.start, cdata.cnum, tcx,
             |_, did| translate_def_id(cdata, did));
-        bounds.push(bd);
+        bounds.push(bd.space, bd);
         true
     });
-    Rc::new(bounds)
+    bounds
 }
 
 fn item_region_param_defs(item_doc: ebml::Doc, cdata: Cmd)
-                          -> Rc<Vec<ty::RegionParameterDef> > {
-    let mut v = Vec::new();
+                          -> subst::VecPerParamSpace<ty::RegionParameterDef>
+{
+    let mut v = subst::VecPerParamSpace::empty();
     reader::tagged_docs(item_doc, tag_region_param_def, |rp_doc| {
-            let ident_str_doc = reader::get_doc(rp_doc,
-                                                tag_region_param_def_ident);
-            let ident = item_name(&*token::get_ident_interner(), ident_str_doc);
-            let def_id_doc = reader::get_doc(rp_doc,
-                                             tag_region_param_def_def_id);
-            let def_id = reader::with_doc_data(def_id_doc, parse_def_id);
-            let def_id = translate_def_id(cdata, def_id);
-            v.push(ty::RegionParameterDef { name: ident.name,
-                                            def_id: def_id });
-            true
-        });
-    Rc::new(v)
+        let ident_str_doc = reader::get_doc(rp_doc,
+                                            tag_region_param_def_ident);
+        let ident = item_name(&*token::get_ident_interner(), ident_str_doc);
+        let def_id_doc = reader::get_doc(rp_doc,
+                                         tag_region_param_def_def_id);
+        let def_id = reader::with_doc_data(def_id_doc, parse_def_id);
+        let def_id = translate_def_id(cdata, def_id);
+
+        let doc = reader::get_doc(rp_doc, tag_region_param_def_space);
+        let space = subst::ParamSpace::from_uint(reader::doc_as_u64(doc) as uint);
+
+        let doc = reader::get_doc(rp_doc, tag_region_param_def_index);
+        let index = reader::doc_as_u64(doc) as uint;
+
+        v.push(space, ty::RegionParameterDef { name: ident.name,
+                                               def_id: def_id,
+                                               space: space,
+                                               index: index });
+        true
+    });
+    v
 }
 
 fn enum_variant_ids(item: ebml::Doc, cdata: Cmd) -> Vec<ast::DefId> {
@@ -403,8 +414,8 @@ pub fn get_trait_def(cdata: Cmd,
     }
 
     ty::TraitDef {
-        generics: ty::Generics {type_param_defs: tp_defs,
-                                region_param_defs: rp_defs},
+        generics: ty::Generics {types: tp_defs,
+                                regions: rp_defs},
         bounds: bounds,
         trait_ref: Rc::new(item_trait_ref(item_doc, tcx, cdata))
     }
@@ -422,8 +433,8 @@ pub fn get_type(cdata: Cmd, id: ast::NodeId, tcx: &ty::ctxt)
     let rp_defs = item_region_param_defs(item, cdata);
 
     ty::ty_param_bounds_and_ty {
-        generics: ty::Generics {type_param_defs: tp_defs,
-                                region_param_defs: rp_defs},
+        generics: ty::Generics {types: tp_defs,
+                                regions: rp_defs},
         ty: t
     }
 }
@@ -440,16 +451,13 @@ pub fn get_impl_trait(cdata: Cmd,
 
 pub fn get_impl_vtables(cdata: Cmd,
                         id: ast::NodeId,
-                        tcx: &ty::ctxt) -> typeck::impl_res
+                        tcx: &ty::ctxt)
+                        -> typeck::vtable_res
 {
     let item_doc = lookup_item(id, cdata.data());
     let vtables_doc = reader::get_doc(item_doc, tag_item_impl_vtables);
     let mut decoder = reader::Decoder::new(vtables_doc);
-
-    typeck::impl_res {
-        trait_vtables: decoder.read_vtable_res(tcx, cdata),
-        self_vtables: decoder.read_vtable_param_res(tcx, cdata)
-    }
+    decoder.read_vtable_res(tcx, cdata)
 }
 
 
@@ -802,8 +810,8 @@ pub fn get_method(intr: Rc<IdentInterner>, cdata: Cmd, id: ast::NodeId,
     ty::Method::new(
         name,
         ty::Generics {
-            type_param_defs: type_param_defs,
-            region_param_defs: rp_defs,
+            types: type_param_defs,
+            regions: rp_defs,
         },
         fty,
         explicit_self,

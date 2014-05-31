@@ -11,6 +11,7 @@
 // Generalized type folding mechanism.
 
 use middle::subst;
+use middle::subst::VecPerParamSpace;
 use middle::ty;
 use middle::typeck;
 use std::rc::Rc;
@@ -127,6 +128,12 @@ impl<T:TypeFoldable> TypeFoldable for OwnedSlice<T> {
     }
 }
 
+impl<T:TypeFoldable> TypeFoldable for VecPerParamSpace<T> {
+    fn fold_with<F:TypeFolder>(&self, folder: &mut F) -> VecPerParamSpace<T> {
+        self.map(|t| t.fold_with(folder))
+    }
+}
+
 impl TypeFoldable for ty::TraitStore {
     fn fold_with<F:TypeFolder>(&self, folder: &mut F) -> ty::TraitStore {
         folder.fold_trait_store(*self)
@@ -212,15 +219,9 @@ impl TypeFoldable for typeck::vtable_origin {
             typeck::vtable_param(n, b) => {
                 typeck::vtable_param(n, b)
             }
-        }
-    }
-}
-
-impl TypeFoldable for typeck::impl_res {
-    fn fold_with<F:TypeFolder>(&self, folder: &mut F) -> typeck::impl_res {
-        typeck::impl_res {
-            trait_vtables: self.trait_vtables.fold_with(folder),
-            self_vtables: self.self_vtables.fold_with(folder),
+            typeck::vtable_error => {
+                typeck::vtable_error
+            }
         }
     }
 }
@@ -245,6 +246,8 @@ impl TypeFoldable for ty::TypeParameterDef {
         ty::TypeParameterDef {
             ident: self.ident,
             def_id: self.def_id,
+            space: self.space,
+            index: self.index,
             bounds: self.bounds.fold_with(folder),
             default: self.default.fold_with(folder),
         }
@@ -260,8 +263,8 @@ impl TypeFoldable for ty::RegionParameterDef {
 impl TypeFoldable for ty::Generics {
     fn fold_with<F:TypeFolder>(&self, folder: &mut F) -> ty::Generics {
         ty::Generics {
-            type_param_defs: self.type_param_defs.fold_with(folder),
-            region_param_defs: self.region_param_defs.fold_with(folder)
+            types: self.types.fold_with(folder),
+            regions: self.regions.fold_with(folder),
         }
     }
 }
@@ -291,8 +294,7 @@ pub fn super_fold_substs<T:TypeFolder>(this: &mut T,
     };
 
     subst::Substs { regions: regions,
-                    self_ty: substs.self_ty.fold_with(this),
-                    tps: substs.tps.fold_with(this) }
+                    types: substs.types.fold_with(this) }
 }
 
 pub fn super_fold_sig<T:TypeFolder>(this: &mut T,
@@ -390,7 +392,7 @@ pub fn super_fold_sty<T:TypeFolder>(this: &mut T,
         ty::ty_nil | ty::ty_bot | ty::ty_bool | ty::ty_char | ty::ty_str |
         ty::ty_int(_) | ty::ty_uint(_) | ty::ty_float(_) |
         ty::ty_err | ty::ty_infer(_) |
-        ty::ty_param(..) | ty::ty_self(_) => {
+        ty::ty_param(..) => {
             (*sty).clone()
         }
     }
