@@ -198,14 +198,14 @@ Typically, tasks do not share memory but instead communicate amongst each other 
 
 ```
 fn main() {
-    let numbers = ~[1,2,3];
+    let numbers = vec![1,2,3];
 
     let (tx, rx)  = channel();
     tx.send(numbers);
 
     spawn(proc() {
         let numbers = rx.recv();
-        println!("{}", numbers[0]);
+        println!("{}", *numbers.get(0));
     })
 }
 ```
@@ -237,18 +237,18 @@ try to modify the previous example to continue using the variable `numbers`:
 
 ```ignore
 fn main() {
-    let numbers = ~[1,2,3];
+    let numbers = vec![1,2,3];
 
     let (tx, rx)  = channel();
     tx.send(numbers);
 
     spawn(proc() {
         let numbers = rx.recv();
-        println!("{}", numbers[0]);
+        println!("{}", numbers.get(0));
     });
 
     // Try to print a number from the original task
-    println!("{}", numbers[0]);
+    println!("{}", *numbers.get(0));
 }
 ```
 
@@ -256,7 +256,7 @@ This will result an error indicating that the value is no longer in scope:
 
 ```notrust
 concurrency.rs:12:20: 12:27 error: use of moved value: 'numbers'
-concurrency.rs:12     println!("{}", numbers[0]);
+concurrency.rs:12     println!("{}", numbers.get(0));
                                      ^~~~~~~
 ```
 
@@ -267,7 +267,7 @@ Let's see an example that uses the `clone` method to create copies of the data:
 
 ```
 fn main() {
-    let numbers = ~[1,2,3];
+    let numbers = vec![1,2,3];
 
     for num in range(0, 3) {
         let (tx, rx)  = channel();
@@ -276,7 +276,7 @@ fn main() {
 
         spawn(proc() {
             let numbers = rx.recv();
-            println!("{:d}", numbers[num as uint]);
+            println!("{:d}", *numbers.get(num as uint));
         })
     }
 }
@@ -301,7 +301,7 @@ extern crate sync;
 use sync::Arc;
 
 fn main() {
-    let numbers = ~[1,2,3];
+    let numbers = vec![1,2,3];
     let numbers = Arc::new(numbers);
 
     for num in range(0, 3) {
@@ -310,7 +310,7 @@ fn main() {
 
         spawn(proc() {
             let numbers = rx.recv();
-            println!("{:d}", numbers[num as uint]);
+            println!("{:d}", *numbers.get(num as uint));
         })
     }
 }
@@ -348,7 +348,7 @@ extern crate sync;
 use sync::{Arc, Mutex};
 
 fn main() {
-    let numbers = ~[1,2,3];
+    let numbers = vec![1,2,3];
     let numbers_lock = Arc::new(Mutex::new(numbers));
 
     for num in range(0, 3) {
@@ -360,9 +360,13 @@ fn main() {
 
             // Take the lock, along with exclusive access to the underlying array
             let mut numbers = numbers_lock.lock();
-            numbers[num as uint] += 1;
 
-            println!("{}", numbers[num as uint]);
+            // This is ugly for now, but will be replaced by
+            // `numbers[num as uint] += 1` in the near future.
+            // See: https://github.com/mozilla/rust/issues/6515
+            *numbers.get_mut(num as uint) = *numbers.get_mut(num as uint) + 1;
+
+            println!("{}", *numbers.get(num as uint));
 
             // When `numbers` goes out of scope the lock is dropped
         })
