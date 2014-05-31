@@ -937,7 +937,7 @@ impl<'a> LookupContext<'a> {
             ty_bare_fn(..) | ty_box(..) | ty_uniq(..) | ty_rptr(..) |
             ty_infer(IntVar(_)) |
             ty_infer(FloatVar(_)) |
-            ty_self(_) | ty_param(..) | ty_nil | ty_bot | ty_bool |
+            ty_self(_) | ty_param(..) | ty_nil | ty_bool |
             ty_char | ty_int(..) | ty_uint(..) |
             ty_float(..) | ty_enum(..) | ty_ptr(..) | ty_struct(..) | ty_tup(..) |
             ty_str | ty_vec(..) | ty_trait(..) | ty_closure(..) => {
@@ -946,7 +946,7 @@ impl<'a> LookupContext<'a> {
                     |m,r| ty::mk_rptr(tcx, r, ty::mt {ty:self_ty, mutbl:m}))
             }
 
-            ty_err => None,
+            ty_bot | ty_err => None,
 
             ty_infer(TyVar(_)) => {
                 self.bug(format!("unexpected type: {}",
