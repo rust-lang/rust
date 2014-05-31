@@ -65,7 +65,7 @@ pub struct FlowedMoveData<'a> {
 }
 
 /// Index into `MoveData.paths`, used like a pointer
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 pub struct MovePathIndex(uint);
 
 impl MovePathIndex {
@@ -84,7 +84,7 @@ static InvalidMovePathIndex: MovePathIndex =
     MovePathIndex(uint::MAX);
 
 /// Index into `MoveData.moves`, used like a pointer
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 pub struct MoveIndex(uint);
 
 impl MoveIndex {

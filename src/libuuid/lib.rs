@@ -87,7 +87,7 @@ use serialize::{Encoder, Encodable, Decoder, Decodable};
 pub type UuidBytes = [u8, ..16];
 
 /// The version of the UUID, denoting the generating algorithm
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 pub enum UuidVersion {
     /// Version 1: MAC address
     Version1Mac    = 1,
@@ -102,7 +102,7 @@ pub enum UuidVersion {
 }
 
 /// The reserved variants of UUIDs
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 pub enum UuidVariant {
     /// Reserved by the NCS for backward compatibility
     VariantNCS,
@@ -481,7 +481,7 @@ impl fmt::Show for Uuid {
 /// Test two UUIDs for equality
 ///
 /// UUIDs are equal only when they are byte-for-byte identical
-impl Eq for Uuid {
+impl PartialEq for Uuid {
     fn eq(&self, other: &Uuid) -> bool {
         self.bytes == other.bytes
     }

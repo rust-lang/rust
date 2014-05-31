@@ -24,7 +24,7 @@ Supported features (fairly exhaustive):
   current trait as a bound. (This includes separate type parameters
   and lifetimes for methods.)
 - Additional bounds on the type parameters, e.g. the `Ord` instance
-  requires an explicit `Eq` bound at the
+  requires an explicit `PartialEq` bound at the
   moment. (`TraitDef.additional_bounds`)
 
 Unsupported: FIXME #6257: calling methods on reference fields,
@@ -82,13 +82,13 @@ variants, it is represented as a count of 0.
 
 # Examples
 
-The following simplified `Eq` is used for in-code examples:
+The following simplified `PartialEq` is used for in-code examples:
 
 ```rust
-trait Eq {
+trait PartialEq {
     fn eq(&self, other: &Self);
 }
-impl Eq for int {
+impl PartialEq for int {
     fn eq(&self, other: &int) -> bool {
         *self == *other
     }
@@ -96,7 +96,7 @@ impl Eq for int {
 ```
 
 Some examples of the values of `SubstructureFields` follow, using the
-above `Eq`, `A`, `B` and `C`.
+above `PartialEq`, `A`, `B` and `C`.
 
 ## Structs
 
@@ -645,11 +645,11 @@ impl<'a> MethodDef<'a> {
 
     /**
    ~~~
-    #[deriving(Eq)]
+    #[deriving(PartialEq)]
     struct A { x: int, y: int }
 
     // equivalent to:
-    impl Eq for A {
+    impl PartialEq for A {
         fn eq(&self, __arg_1: &A) -> bool {
             match *self {
                 A {x: ref __self_0_0, y: ref __self_0_1} => {
@@ -750,7 +750,7 @@ impl<'a> MethodDef<'a> {
 
     /**
    ~~~
-    #[deriving(Eq)]
+    #[deriving(PartialEq)]
     enum A {
         A1
         A2(int)
@@ -758,7 +758,7 @@ impl<'a> MethodDef<'a> {
 
     // is equivalent to (with const_nonmatching == false)
 
-    impl Eq for A {
+    impl PartialEq for A {
         fn eq(&self, __arg_1: &A) {
             match *self {
                 A1 => match *__arg_1 {
@@ -994,7 +994,7 @@ impl<'a> MethodDef<'a> {
     }
 }
 
-#[deriving(Eq)] // dogfooding!
+#[deriving(PartialEq)] // dogfooding!
 enum StructType {
     Unknown, Record, Tuple
 }

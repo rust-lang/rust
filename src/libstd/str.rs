@@ -68,7 +68,7 @@ is the same as `&[u8]`.
 use char::Char;
 use char;
 use clone::Clone;
-use cmp::{Eq, TotalEq, Ord, TotalOrd, Equiv, Ordering};
+use cmp::{PartialEq, TotalEq, PartialOrd, TotalOrd, Equiv, Ordering};
 use container::Container;
 use default::Default;
 use fmt;
@@ -566,7 +566,7 @@ impl<'a> IntoMaybeOwned<'a> for MaybeOwned<'a> {
     fn into_maybe_owned(self) -> MaybeOwned<'a> { self }
 }
 
-impl<'a> Eq for MaybeOwned<'a> {
+impl<'a> PartialEq for MaybeOwned<'a> {
     #[inline]
     fn eq(&self, other: &MaybeOwned) -> bool {
         self.as_slice() == other.as_slice()
@@ -575,7 +575,7 @@ impl<'a> Eq for MaybeOwned<'a> {
 
 impl<'a> TotalEq for MaybeOwned<'a> {}
 
-impl<'a> Ord for MaybeOwned<'a> {
+impl<'a> PartialOrd for MaybeOwned<'a> {
     #[inline]
     fn lt(&self, other: &MaybeOwned) -> bool {
         self.as_slice().lt(&other.as_slice())

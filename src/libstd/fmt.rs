@@ -492,10 +492,6 @@ will look like `"\\{"`.
 
 use io::Writer;
 use io;
-#[cfg(stage0)]
-use option::None;
-#[cfg(stage0)]
-use repr;
 use result::{Ok, Err};
 use str::{Str, StrAllocating};
 use str;
@@ -524,21 +520,6 @@ pub use core::fmt::{secret_float, secret_upper_exp, secret_lower_exp};
 #[doc(hidden)]
 pub use core::fmt::{secret_pointer};
 
-#[doc(hidden)]
-#[cfg(stage0)]
-pub fn secret_poly<T: Poly>(x: &T, fmt: &mut Formatter) -> Result {
-    // FIXME #11938 - UFCS would make us able call the this method
-    //                directly Poly::fmt(x, fmt).
-    x.fmt(fmt)
-}
-
-/// Format trait for the `?` character
-#[cfg(stage0)]
-pub trait Poly {
-    /// Formats the value using the given formatter.
-    fn fmt(&self, &mut Formatter) -> Result;
-}
-
 /// The format function takes a precompiled format string and a list of
 /// arguments, to return the resulting formatted string.
 ///
@@ -560,27 +541,6 @@ pub fn format(args: &Arguments) -> string::String{
     let mut output = io::MemWriter::new();
     let _ = write!(&mut output, "{}", args);
     str::from_utf8(output.unwrap().as_slice()).unwrap().into_string()
-}
-
-#[cfg(stage0)]
-impl<T> Poly for T {
-    fn fmt(&self, f: &mut Formatter) -> Result {
-        match (f.width, f.precision) {
-            (None, None) => {
-                match repr::write_repr(f, self) {
-                    Ok(()) => Ok(()),
-                    Err(..) => Err(WriteError),
-                }
-            }
-
-            // If we have a specified width for formatting, then we have to make
-            // this allocation of a new string
-            _ => {
-                let s = repr::repr_to_str(self);
-                f.pad(s.as_slice())
-            }
-        }
-    }
 }
 
 impl<'a> Writer for Formatter<'a> {

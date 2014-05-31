@@ -572,7 +572,7 @@ impl<A> Extendable<A> for DList<A> {
     }
 }
 
-impl<A: Eq> Eq for DList<A> {
+impl<A: PartialEq> PartialEq for DList<A> {
     fn eq(&self, other: &DList<A>) -> bool {
         self.len() == other.len() &&
             iter::order::eq(self.iter(), other.iter())
@@ -584,7 +584,7 @@ impl<A: Eq> Eq for DList<A> {
     }
 }
 
-impl<A: Ord> Ord for DList<A> {
+impl<A: PartialOrd> PartialOrd for DList<A> {
     fn lt(&self, other: &DList<A>) -> bool {
         iter::order::lt(self.iter(), other.iter())
     }

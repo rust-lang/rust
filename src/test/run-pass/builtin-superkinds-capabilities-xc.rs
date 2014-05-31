@@ -17,7 +17,7 @@
 extern crate trait_superkinds_in_metadata;
 use trait_superkinds_in_metadata::{RequiresRequiresShareAndSend, RequiresShare};
 
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 struct X<T>(T);
 
 impl <T: Share> RequiresShare for X<T> { }

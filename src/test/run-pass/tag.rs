@@ -11,7 +11,7 @@
 
 enum colour { red(int, int), green, }
 
-impl Eq for colour {
+impl PartialEq for colour {
     fn eq(&self, other: &colour) -> bool {
         match *self {
             red(a0, b0) => {

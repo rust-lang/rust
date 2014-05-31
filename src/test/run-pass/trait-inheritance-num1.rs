@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::cmp::Ord;
+use std::cmp::PartialOrd;
 use std::num::NumCast;
 
-pub trait NumExt: Num + NumCast + Ord { }
+pub trait NumExt: Num + NumCast + PartialOrd { }
 
 fn greater_than_one<T:NumExt>(n: &T) -> bool {
     *n > NumCast::from(1).unwrap()

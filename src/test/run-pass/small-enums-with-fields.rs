@@ -14,7 +14,7 @@ extern crate debug;
 
 use std::mem::size_of;
 
-#[deriving(Eq, Show)]
+#[deriving(PartialEq, Show)]
 enum Either<T, U> { Left(T), Right(U) }
 
 macro_rules! check {

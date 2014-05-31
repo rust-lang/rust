@@ -87,7 +87,7 @@ pub enum PrivateDep {
 }
 
 // How an import is used.
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 pub enum ImportUse {
     Unused,       // The import is not used.
     Used,         // The import is used.
@@ -102,20 +102,20 @@ impl LastPrivate {
     }
 }
 
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 enum PatternBindingMode {
     RefutableMode,
     LocalIrrefutableMode,
     ArgumentIrrefutableMode,
 }
 
-#[deriving(Eq, TotalEq, Hash)]
+#[deriving(PartialEq, TotalEq, Hash)]
 enum Namespace {
     TypeNS,
     ValueNS
 }
 
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 enum NamespaceError {
     NoError,
     ModuleError,
@@ -288,7 +288,7 @@ enum ModulePrefixResult {
     PrefixFound(Rc<Module>, uint)
 }
 
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 enum NameSearchType {
     /// We're doing a name search in order to resolve a `use` directive.
     ImportSearch,
@@ -306,7 +306,7 @@ enum BareIdentifierPatternResolution {
 
 // Specifies how duplicates should be handled when adding a child item if
 // another item exists with the same name in some namespace.
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 enum DuplicateCheckingMode {
     ForbidDuplicateModules,
     ForbidDuplicateTypes,
@@ -435,7 +435,7 @@ enum ParentLink {
 }
 
 /// The type of module this is.
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 enum ModuleKind {
     NormalModuleKind,
     ExternModuleKind,
@@ -4900,7 +4900,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn find_fallback_in_self_type(&mut self, name: Name) -> FallbackSuggestion {
-        #[deriving(Eq)]
+        #[deriving(PartialEq)]
         enum FallbackChecks {
             Everything,
             OnlyTraitAndStatics

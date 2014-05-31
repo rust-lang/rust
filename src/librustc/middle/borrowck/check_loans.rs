@@ -82,7 +82,7 @@ pub fn check_loans(bccx: &BorrowckCtxt,
     clcx.visit_block(body, ());
 }
 
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 enum MoveError {
     MoveOk,
     MoveWhileBorrowed(/*loan*/Rc<LoanPath>, /*loan*/Span)

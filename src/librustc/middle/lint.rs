@@ -72,7 +72,7 @@ use syntax::parse::token;
 use syntax::visit::Visitor;
 use syntax::{ast, ast_util, visit};
 
-#[deriving(Clone, Show, Eq, Ord, TotalEq, TotalOrd, Hash)]
+#[deriving(Clone, Show, PartialEq, PartialOrd, TotalEq, TotalOrd, Hash)]
 pub enum Lint {
     CTypes,
     UnusedImports,
@@ -135,12 +135,12 @@ pub fn level_to_str(lv: Level) -> &'static str {
     }
 }
 
-#[deriving(Clone, Eq, Ord, TotalEq, TotalOrd)]
+#[deriving(Clone, PartialEq, PartialOrd, TotalEq, TotalOrd)]
 pub enum Level {
     Allow, Warn, Deny, Forbid
 }
 
-#[deriving(Clone, Eq, Ord, TotalEq, TotalOrd)]
+#[deriving(Clone, PartialEq, PartialOrd, TotalEq, TotalOrd)]
 pub struct LintSpec {
     pub default: Level,
     pub lint: Lint,
@@ -150,7 +150,7 @@ pub struct LintSpec {
 pub type LintDict = HashMap<&'static str, LintSpec>;
 
 // this is public for the lints that run in trans
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 pub enum LintSource {
     Node(Span),
     Default,
@@ -836,7 +836,7 @@ fn check_type_limits(cx: &Context, e: &ast::Expr) {
         _ => ()
     };
 
-    fn is_valid<T:cmp::Ord>(binop: ast::BinOp, v: T,
+    fn is_valid<T:cmp::PartialOrd>(binop: ast::BinOp, v: T,
                             min: T, max: T) -> bool {
         match binop {
             ast::BiLt => v >  min && v <= max,
@@ -1650,7 +1650,7 @@ fn check_missing_doc_item(cx: &Context, it: &ast::Item) {
                             desc);
 }
 
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 enum MethodContext {
     TraitDefaultImpl,
     TraitImpl,

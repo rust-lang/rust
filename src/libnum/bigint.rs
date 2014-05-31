@@ -83,7 +83,7 @@ pub struct BigUint {
     data: Vec<BigDigit>
 }
 
-impl Eq for BigUint {
+impl PartialEq for BigUint {
     #[inline]
     fn eq(&self, other: &BigUint) -> bool {
         match self.cmp(other) { Equal => true, _ => false }
@@ -91,7 +91,7 @@ impl Eq for BigUint {
 }
 impl TotalEq for BigUint {}
 
-impl Ord for BigUint {
+impl PartialOrd for BigUint {
     #[inline]
     fn lt(&self, other: &BigUint) -> bool {
         match self.cmp(other) { Less => true, _ => false}
@@ -786,7 +786,7 @@ fn get_radix_base(radix: uint) -> (DoubleBigDigit, uint) {
 }
 
 /// A Sign is a `BigInt`'s composing element.
-#[deriving(Eq, Ord, TotalEq, TotalOrd, Clone, Show)]
+#[deriving(PartialEq, PartialOrd, TotalEq, TotalOrd, Clone, Show)]
 pub enum Sign { Minus, Zero, Plus }
 
 impl Neg<Sign> for Sign {
@@ -808,7 +808,7 @@ pub struct BigInt {
     data: BigUint
 }
 
-impl Eq for BigInt {
+impl PartialEq for BigInt {
     #[inline]
     fn eq(&self, other: &BigInt) -> bool {
         match self.cmp(other) { Equal => true, _ => false }
@@ -817,7 +817,7 @@ impl Eq for BigInt {
 
 impl TotalEq for BigInt {}
 
-impl Ord for BigInt {
+impl PartialOrd for BigInt {
     #[inline]
     fn lt(&self, other: &BigInt) -> bool {
         match self.cmp(other) { Less => true, _ => false}

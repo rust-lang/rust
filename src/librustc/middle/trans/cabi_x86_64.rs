@@ -22,7 +22,7 @@ use middle::trans::type_::Type;
 
 use std::cmp;
 
-#[deriving(Clone, Eq)]
+#[deriving(Clone, PartialEq)]
 enum RegClass {
     NoClass,
     Int,

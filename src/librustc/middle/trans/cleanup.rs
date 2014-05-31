@@ -55,7 +55,7 @@ pub enum CleanupScopeKind<'a> {
     LoopScopeKind(ast::NodeId, [&'a Block<'a>, ..EXIT_MAX])
 }
 
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 pub enum EarlyExitLabel {
     UnwindExit,
     ReturnExit,

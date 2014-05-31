@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test default methods in Ord and Eq
+// Test default methods in PartialOrd and PartialEq
 //
 struct Fool(bool);
 
-impl Eq for Fool {
+impl PartialEq for Fool {
     fn eq(&self, other: &Fool) -> bool {
         let Fool(this) = *self;
         let Fool(other) = *other;
@@ -22,7 +22,7 @@ impl Eq for Fool {
 
 struct Int(int);
 
-impl Eq for Int {
+impl PartialEq for Int {
     fn eq(&self, other: &Int) -> bool {
         let Int(this) = *self;
         let Int(other) = *other;
@@ -30,7 +30,7 @@ impl Eq for Int {
     }
 }
 
-impl Ord for Int {
+impl PartialOrd for Int {
     fn lt(&self, other: &Int) -> bool {
         let Int(this) = *self;
         let Int(other) = *other;
@@ -40,7 +40,7 @@ impl Ord for Int {
 
 struct RevInt(int);
 
-impl Eq for RevInt {
+impl PartialEq for RevInt {
     fn eq(&self, other: &RevInt) -> bool {
         let RevInt(this) = *self;
         let RevInt(other) = *other;
@@ -48,7 +48,7 @@ impl Eq for RevInt {
     }
 }
 
-impl Ord for RevInt {
+impl PartialOrd for RevInt {
     fn lt(&self, other: &RevInt) -> bool {
         let RevInt(this) = *self;
         let RevInt(other) = *other;

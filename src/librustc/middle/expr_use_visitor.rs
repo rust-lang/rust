@@ -68,7 +68,7 @@ pub trait Delegate {
               mode: MutateMode);
 }
 
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 pub enum LoanCause {
     ClosureCapture(Span),
     AddrOf,
@@ -78,13 +78,13 @@ pub enum LoanCause {
     ClosureInvocation
 }
 
-#[deriving(Eq,Show)]
+#[deriving(PartialEq,Show)]
 pub enum ConsumeMode {
     Copy,    // reference to x where x has a type that copies
     Move,    // reference to x where x has a type that moves
 }
 
-#[deriving(Eq,Show)]
+#[deriving(PartialEq,Show)]
 pub enum MutateMode {
     JustWrite,    // x = y
     WriteAndRead, // x += y

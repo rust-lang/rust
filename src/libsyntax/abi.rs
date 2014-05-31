@@ -10,10 +10,10 @@
 
 use std::fmt;
 
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 pub enum Os { OsWin32, OsMacos, OsLinux, OsAndroid, OsFreebsd, }
 
-#[deriving(Eq, TotalEq, Hash, Encodable, Decodable, Clone)]
+#[deriving(PartialEq, TotalEq, Hash, Encodable, Decodable, Clone)]
 pub enum Abi {
     // NB: This ordering MUST match the AbiDatas array below.
     // (This is ensured by the test indices_are_correct().)
@@ -33,7 +33,7 @@ pub enum Abi {
 }
 
 #[allow(non_camel_case_types)]
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 pub enum Architecture {
     // NB. You cannot change the ordering of these
     // constants without adjusting IntelBits below.

@@ -64,7 +64,7 @@
 use std::io;
 use std::string::String;
 
-#[deriving(Clone, Eq)]
+#[deriving(Clone, PartialEq)]
 pub enum Breaks {
     Consistent,
     Inconsistent,

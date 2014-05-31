@@ -103,7 +103,7 @@ fn lookup_item<'a>(item_id: ast::NodeId, data: &'a [u8]) -> ebml::Doc<'a> {
     find_item(item_id, items)
 }
 
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 enum Family {
     ImmStatic,             // c
     MutStatic,             // b

@@ -30,12 +30,10 @@
 
 use fmt;
 use intrinsics;
-#[cfg(not(test), stage0)]
-use str::raw::c_str_to_static_slice;
 
 #[cold] #[inline(never)] // this is the slow path, always
 #[lang="fail_"]
-#[cfg(not(test), not(stage0))]
+#[cfg(not(test))]
 fn fail_(expr: &'static str, file: &'static str, line: uint) -> ! {
     format_args!(|args| -> () {
         begin_unwind(args, file, line);
@@ -44,24 +42,9 @@ fn fail_(expr: &'static str, file: &'static str, line: uint) -> ! {
     unsafe { intrinsics::abort() }
 }
 
-#[cold] #[inline(never)] // this is the slow path, always
-#[lang="fail_"]
-#[cfg(not(test), stage0)]
-fn fail_(expr: *u8, file: *u8, line: uint) -> ! {
-    unsafe {
-        let expr = c_str_to_static_slice(expr as *i8);
-        let file = c_str_to_static_slice(file as *i8);
-        format_args!(|args| -> () {
-            begin_unwind(args, file, line);
-        }, "{}", expr);
-
-        intrinsics::abort()
-    }
-}
-
 #[cold]
 #[lang="fail_bounds_check"]
-#[cfg(not(test), not(stage0))]
+#[cfg(not(test))]
 fn fail_bounds_check(file: &'static str, line: uint,
                      index: uint, len: uint) -> ! {
     format_args!(|args| -> () {
@@ -71,27 +54,8 @@ fn fail_bounds_check(file: &'static str, line: uint,
 }
 
 #[cold]
-#[lang="fail_bounds_check"]
-#[cfg(not(test), stage0)]
-fn fail_bounds_check(file: *u8, line: uint, index: uint, len: uint) -> ! {
-    let file = unsafe { c_str_to_static_slice(file as *i8) };
-    format_args!(|args| -> () {
-        begin_unwind(args, file, line);
-    }, "index out of bounds: the len is {} but the index is {}", len, index);
-    unsafe { intrinsics::abort() }
-}
-
-#[cold]
 pub fn begin_unwind(fmt: &fmt::Arguments, file: &'static str, line: uint) -> ! {
     #[allow(ctypes)]
-    #[cfg(stage0)]
-    extern {
-        #[link_name = "rust_begin_unwind"]
-        fn begin_unwind(fmt: &fmt::Arguments, file: &'static str,
-                        line: uint) -> !;
-    }
-    #[allow(ctypes)]
-    #[cfg(not(stage0))]
     extern {
         #[lang = "begin_unwind"]
         fn begin_unwind(fmt: &fmt::Arguments, file: &'static str,

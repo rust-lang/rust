@@ -46,7 +46,7 @@ pub struct Config {
     pub uint_type: UintTy,
 }
 
-#[deriving(Clone, Eq)]
+#[deriving(Clone, PartialEq)]
 pub enum OptLevel {
     No, // -O0
     Less, // -O1
@@ -54,7 +54,7 @@ pub enum OptLevel {
     Aggressive // -O3
 }
 
-#[deriving(Clone, Eq)]
+#[deriving(Clone, PartialEq)]
 pub enum DebugInfoLevel {
     NoDebugInfo,
     LimitedDebugInfo,
@@ -125,14 +125,14 @@ pub fn basic_options() -> Options {
 // users can have their own entry
 // functions that don't start a
 // scheduler
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 pub enum EntryFnType {
     EntryMain,
     EntryStart,
     EntryNone,
 }
 
-#[deriving(Eq, Ord, Clone, TotalOrd, TotalEq, Hash)]
+#[deriving(PartialEq, PartialOrd, Clone, TotalOrd, TotalEq, Hash)]
 pub enum CrateType {
     CrateTypeExecutable,
     CrateTypeDylib,

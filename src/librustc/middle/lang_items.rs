@@ -42,7 +42,7 @@ macro_rules! lets_do_this {
         $( $variant:ident, $name:expr, $method:ident; )*
     ) => {
 
-#[deriving(FromPrimitive, Eq, TotalEq, Hash)]
+#[deriving(FromPrimitive, PartialEq, TotalEq, Hash)]
 pub enum LangItem {
     $($variant),*
 }
