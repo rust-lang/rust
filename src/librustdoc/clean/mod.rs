@@ -1028,7 +1028,7 @@ pub enum Type {
     // region, raw, other boxes, mutable
 }
 
-#[deriving(Clone, Encodable, Decodable, PartialEq, TotalEq, Hash)]
+#[deriving(Clone, Encodable, Decodable, PartialEq, Eq, Hash)]
 pub enum Primitive {
     Int, I8, I16, I32, I64,
     Uint, U8, U16, U32, U64,

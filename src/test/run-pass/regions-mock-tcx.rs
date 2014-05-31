@@ -40,7 +40,7 @@ impl<'tcx> PartialEq for TypeStructure<'tcx> {
     }
 }
 
-impl<'tcx> TotalEq for TypeStructure<'tcx> {}
+impl<'tcx> Eq for TypeStructure<'tcx> {}
 
 struct TypeContext<'tcx, 'ast> {
     ty_arena: &'tcx Arena,
@@ -86,7 +86,7 @@ impl<'tcx,'ast> TypeContext<'tcx, 'ast> {
     }
 }
 
-#[deriving(PartialEq, TotalEq, Hash)]
+#[deriving(PartialEq, Eq, Hash)]
 struct NodeId {
     id: uint
 }

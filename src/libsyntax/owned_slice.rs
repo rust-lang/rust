@@ -119,7 +119,7 @@ impl<T: PartialEq> PartialEq for OwnedSlice<T> {
     }
 }
 
-impl<T: TotalEq> TotalEq for OwnedSlice<T> {}
+impl<T: Eq> Eq for OwnedSlice<T> {}
 
 impl<T> Container for OwnedSlice<T> {
     fn len(&self) -> uint { self.len }
