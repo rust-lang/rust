@@ -60,7 +60,7 @@ pub mod bigint;
 pub mod rational;
 pub mod complex;
 
-pub trait Integer: Num + Ord
+pub trait Integer: Num + PartialOrd
                  + Div<Self, Self>
                  + Rem<Self, Self> {
     /// Simultaneous truncated integer division and modulus

@@ -79,7 +79,7 @@ use syntax::print::pprust::{expr_to_str};
 // These are passed around by the code generating functions to track the
 // destination of a computation's value.
 
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 pub enum Dest {
     SaveIn(ValueRef),
     Ignore,
@@ -1497,7 +1497,7 @@ fn float_cast(bcx: &Block,
     } else { llsrc };
 }
 
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 pub enum cast_kind {
     cast_pointer,
     cast_integral,

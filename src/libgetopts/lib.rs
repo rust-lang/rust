@@ -92,13 +92,13 @@
 #[cfg(test)] extern crate debug;
 #[cfg(test)] #[phase(syntax, link)] extern crate log;
 
-use std::cmp::Eq;
+use std::cmp::PartialEq;
 use std::result::{Err, Ok};
 use std::result;
 use std::string::String;
 
 /// Name of an option. Either a string or a single char.
-#[deriving(Clone, Eq)]
+#[deriving(Clone, PartialEq)]
 pub enum Name {
     /// A string representing the long name of an option.
     /// For example: "help"
@@ -109,7 +109,7 @@ pub enum Name {
 }
 
 /// Describes whether an option has an argument.
-#[deriving(Clone, Eq)]
+#[deriving(Clone, PartialEq)]
 pub enum HasArg {
     /// The option requires an argument.
     Yes,
@@ -120,7 +120,7 @@ pub enum HasArg {
 }
 
 /// Describes how often an option may occur.
-#[deriving(Clone, Eq)]
+#[deriving(Clone, PartialEq)]
 pub enum Occur {
     /// The option occurs once.
     Req,
@@ -131,7 +131,7 @@ pub enum Occur {
 }
 
 /// A description of a possible option.
-#[deriving(Clone, Eq)]
+#[deriving(Clone, PartialEq)]
 pub struct Opt {
     /// Name of the option
     pub name: Name,
@@ -145,7 +145,7 @@ pub struct Opt {
 
 /// One group of options, e.g., both -h and --help, along with
 /// their shared description and properties.
-#[deriving(Clone, Eq)]
+#[deriving(Clone, PartialEq)]
 pub struct OptGroup {
     /// Short Name of the `OptGroup`
     pub short_name: String,
@@ -162,7 +162,7 @@ pub struct OptGroup {
 }
 
 /// Describes wether an option is given at all or has a value.
-#[deriving(Clone, Eq)]
+#[deriving(Clone, PartialEq)]
 enum Optval {
     Val(String),
     Given,
@@ -170,7 +170,7 @@ enum Optval {
 
 /// The result of checking command line arguments. Contains a vector
 /// of matches and a vector of free strings.
-#[deriving(Clone, Eq)]
+#[deriving(Clone, PartialEq)]
 pub struct Matches {
     /// Options that matched
     opts: Vec<Opt> ,
@@ -183,7 +183,7 @@ pub struct Matches {
 /// The type returned when the command line does not conform to the
 /// expected format. Call the `to_err_msg` method to retrieve the
 /// error as a string.
-#[deriving(Clone, Eq, Show)]
+#[deriving(Clone, PartialEq, Show)]
 pub enum Fail_ {
     /// The option requires an argument but none was passed.
     ArgumentMissing(String),
@@ -198,7 +198,7 @@ pub enum Fail_ {
 }
 
 /// The type of failure that occurred.
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 #[allow(missing_doc)]
 pub enum FailType {
     ArgumentMissing_,

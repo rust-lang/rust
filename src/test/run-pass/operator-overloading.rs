@@ -48,7 +48,7 @@ impl ops::Index<bool,int> for Point {
     }
 }
 
-impl cmp::Eq for Point {
+impl cmp::PartialEq for Point {
     fn eq(&self, other: &Point) -> bool {
         (*self).x == (*other).x && (*self).y == (*other).y
     }

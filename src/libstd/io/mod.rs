@@ -285,7 +285,7 @@ pub type IoResult<T> = Result<T, IoError>;
 /// # FIXME
 ///
 /// Is something like this sufficient? It's kind of archaic
-#[deriving(Eq, Clone)]
+#[deriving(PartialEq, Clone)]
 pub struct IoError {
     /// An enumeration which can be matched against for determining the flavor
     /// of error.
@@ -395,7 +395,7 @@ impl fmt::Show for IoError {
 }
 
 /// A list specifying general categories of I/O error.
-#[deriving(Eq, Clone, Show)]
+#[deriving(PartialEq, Clone, Show)]
 pub enum IoErrorKind {
     /// Any I/O error not part of this list.
     OtherIoError,
@@ -1582,7 +1582,7 @@ pub enum FileAccess {
 }
 
 /// Different kinds of files which can be identified by a call to stat
-#[deriving(Eq, Show, Hash)]
+#[deriving(PartialEq, Show, Hash)]
 pub enum FileType {
     /// This is a normal file, corresponding to `S_IFREG`
     TypeFile,
@@ -1726,7 +1726,7 @@ mod tests {
     use prelude::*;
     use uint;
 
-    #[deriving(Clone, Eq, Show)]
+    #[deriving(Clone, PartialEq, Show)]
     enum BadReaderBehavior {
         GoodBehavior(uint),
         BadBehavior(uint)

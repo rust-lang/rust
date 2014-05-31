@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[deriving(Show,Eq,Clone)]
+#[deriving(Show,PartialEq,Clone)]
 struct Foo<T> {
     bar: T,
     baz: T

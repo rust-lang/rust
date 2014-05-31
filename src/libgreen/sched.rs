@@ -105,7 +105,7 @@ pub struct Scheduler {
 
 /// An indication of how hard to work on a given operation, the difference
 /// mainly being whether memory is synchronized or not
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 enum EffortLevel {
     DontTryTooHard,
     GiveItYourBest

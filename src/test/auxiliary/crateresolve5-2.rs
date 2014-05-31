@@ -21,7 +21,7 @@ pub enum e {
     e_val
 }
 
-impl Eq for e {
+impl PartialEq for e {
     fn eq(&self, other: &e) -> bool { !nominal_neq(*self, *other) }
     fn ne(&self, other: &e) -> bool { nominal_neq(*self, *other) }
 }

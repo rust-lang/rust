@@ -43,7 +43,7 @@ pub struct TreeMap<K, V> {
     length: uint
 }
 
-impl<K: Eq + TotalOrd, V: Eq> Eq for TreeMap<K, V> {
+impl<K: PartialEq + TotalOrd, V: PartialEq> PartialEq for TreeMap<K, V> {
     fn eq(&self, other: &TreeMap<K, V>) -> bool {
         self.len() == other.len() &&
             self.iter().zip(other.iter()).all(|(a, b)| a == b)
@@ -51,7 +51,7 @@ impl<K: Eq + TotalOrd, V: Eq> Eq for TreeMap<K, V> {
 }
 
 // Lexicographical comparison
-fn lt<K: Ord + TotalOrd, V: Ord>(a: &TreeMap<K, V>,
+fn lt<K: PartialOrd + TotalOrd, V: PartialOrd>(a: &TreeMap<K, V>,
                                  b: &TreeMap<K, V>) -> bool {
     // the Zip iterator is as long as the shortest of a and b.
     for ((key_a, value_a), (key_b, value_b)) in a.iter().zip(b.iter()) {
@@ -64,7 +64,7 @@ fn lt<K: Ord + TotalOrd, V: Ord>(a: &TreeMap<K, V>,
     a.len() < b.len()
 }
 
-impl<K: Ord + TotalOrd, V: Ord> Ord for TreeMap<K, V> {
+impl<K: PartialOrd + TotalOrd, V: PartialOrd> PartialOrd for TreeMap<K, V> {
     #[inline]
     fn lt(&self, other: &TreeMap<K, V>) -> bool { lt(self, other) }
 }
@@ -552,12 +552,12 @@ pub struct TreeSet<T> {
     map: TreeMap<T, ()>
 }
 
-impl<T: Eq + TotalOrd> Eq for TreeSet<T> {
+impl<T: PartialEq + TotalOrd> PartialEq for TreeSet<T> {
     #[inline]
     fn eq(&self, other: &TreeSet<T>) -> bool { self.map == other.map }
 }
 
-impl<T: Ord + TotalOrd> Ord for TreeSet<T> {
+impl<T: PartialOrd + TotalOrd> PartialOrd for TreeSet<T> {
     #[inline]
     fn lt(&self, other: &TreeSet<T>) -> bool { self.map < other.map }
 }
@@ -1070,7 +1070,7 @@ mod test_treemap {
         assert_eq!(m.find(&k1), Some(&v1));
     }
 
-    fn check_equal<K: Eq + TotalOrd, V: Eq>(ctrl: &[(K, V)],
+    fn check_equal<K: PartialEq + TotalOrd, V: PartialEq>(ctrl: &[(K, V)],
                                             map: &TreeMap<K, V>) {
         assert_eq!(ctrl.is_empty(), map.is_empty());
         for x in ctrl.iter() {

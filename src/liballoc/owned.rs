@@ -12,7 +12,7 @@
 
 use core::any::{Any, AnyRefExt};
 use core::clone::Clone;
-use core::cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering};
+use core::cmp::{PartialEq, PartialOrd, TotalEq, TotalOrd, Ordering};
 use core::default::Default;
 use core::fmt;
 use core::intrinsics;
@@ -51,13 +51,13 @@ impl<T: Clone> Clone for Box<T> {
 }
 
 // box pointers
-impl<T:Eq> Eq for Box<T> {
+impl<T:PartialEq> PartialEq for Box<T> {
     #[inline]
     fn eq(&self, other: &Box<T>) -> bool { *(*self) == *(*other) }
     #[inline]
     fn ne(&self, other: &Box<T>) -> bool { *(*self) != *(*other) }
 }
-impl<T:Ord> Ord for Box<T> {
+impl<T:PartialOrd> PartialOrd for Box<T> {
     #[inline]
     fn lt(&self, other: &Box<T>) -> bool { *(*self) < *(*other) }
     #[inline]

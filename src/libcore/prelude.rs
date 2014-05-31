@@ -45,7 +45,8 @@ pub use mem::drop;
 
 pub use char::Char;
 pub use clone::Clone;
-pub use cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater, Equiv};
+pub use cmp::{PartialEq, PartialOrd, TotalEq, TotalOrd};
+pub use cmp::{Ordering, Less, Equal, Greater, Equiv};
 pub use container::{Container, Mutable, Map, MutableMap, Set, MutableSet};
 pub use iter::{FromIterator, Extendable};
 pub use iter::{Iterator, DoubleEndedIterator, RandomAccessIterator, CloneableIterator};

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn f<T:Eq + Ord>(_: T) {
+fn f<T:PartialEq + PartialOrd>(_: T) {
 }
 
 pub fn main() {

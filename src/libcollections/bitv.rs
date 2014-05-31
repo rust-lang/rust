@@ -796,7 +796,7 @@ impl BitvSet {
     }
 }
 
-impl cmp::Eq for BitvSet {
+impl cmp::PartialEq for BitvSet {
     fn eq(&self, other: &BitvSet) -> bool {
         if self.size != other.size {
             return false;

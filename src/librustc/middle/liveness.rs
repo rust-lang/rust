@@ -123,9 +123,9 @@ use syntax::print::pprust::{expr_to_str, block_to_str};
 use syntax::{visit, ast_util};
 use syntax::visit::{Visitor, FnKind};
 
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 struct Variable(uint);
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 struct LiveNode(uint);
 
 impl Variable {
@@ -142,7 +142,7 @@ impl Clone for LiveNode {
     }
 }
 
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 enum LiveNodeKind {
     FreeVarNode(Span),
     ExprNode(Span),

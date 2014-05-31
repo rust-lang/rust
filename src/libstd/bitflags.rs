@@ -78,7 +78,7 @@
 //!
 //! # Derived traits
 //!
-//! The `Eq` and `Clone` traits are automatically derived for the `struct` using
+//! The `PartialEq` and `Clone` traits are automatically derived for the `struct` using
 //! the `deriving` attribute. Additional traits can be derived by providing an
 //! explicit `deriving` attribute on `flags`.
 //!
@@ -112,7 +112,7 @@ macro_rules! bitflags(
     ($(#[$attr:meta])* flags $BitFlags:ident: $T:ty {
         $($(#[$Flag_attr:meta])* static $Flag:ident = $value:expr),+
     }) => (
-        #[deriving(Eq, TotalEq, Clone)]
+        #[deriving(PartialEq, TotalEq, Clone)]
         $(#[$attr])*
         pub struct $BitFlags {
             bits: $T,

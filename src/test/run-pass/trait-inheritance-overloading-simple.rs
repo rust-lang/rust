@@ -8,14 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::cmp::Eq;
+use std::cmp::PartialEq;
 
-trait MyNum : Eq { }
+trait MyNum : PartialEq { }
 
 #[deriving(Show)]
 struct MyInt { val: int }
 
-impl Eq for MyInt {
+impl PartialEq for MyInt {
     fn eq(&self, other: &MyInt) -> bool { self.val == other.val }
     fn ne(&self, other: &MyInt) -> bool { !self.eq(other) }
 }

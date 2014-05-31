@@ -33,13 +33,13 @@ pub trait Pos {
 
 /// A byte offset. Keep this small (currently 32-bits), as AST contains
 /// a lot of them.
-#[deriving(Clone, Eq, TotalEq, Hash, Ord, Show)]
+#[deriving(Clone, PartialEq, TotalEq, Hash, PartialOrd, Show)]
 pub struct BytePos(pub u32);
 
 /// A character offset. Because of multibyte utf8 characters, a byte offset
 /// is not equivalent to a character offset. The CodeMap will convert BytePos
 /// values to CharPos values as necessary.
-#[deriving(Eq, Hash, Ord, Show)]
+#[deriving(PartialEq, Hash, PartialOrd, Show)]
 pub struct CharPos(pub uint);
 
 // FIXME: Lots of boilerplate in these impls, but so far my attempts to fix
@@ -96,13 +96,13 @@ pub struct Span {
 
 pub static DUMMY_SP: Span = Span { lo: BytePos(0), hi: BytePos(0), expn_info: None };
 
-#[deriving(Clone, Eq, TotalEq, Encodable, Decodable, Hash)]
+#[deriving(Clone, PartialEq, TotalEq, Encodable, Decodable, Hash)]
 pub struct Spanned<T> {
     pub node: T,
     pub span: Span,
 }
 
-impl Eq for Span {
+impl PartialEq for Span {
     fn eq(&self, other: &Span) -> bool {
         return (*self).lo == (*other).lo && (*self).hi == (*other).hi;
     }

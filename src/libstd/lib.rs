@@ -241,13 +241,6 @@ pub mod path;
 pub mod fmt;
 pub mod cleanup;
 
-/* Unsupported interfaces */
-
-#[unstable]
-pub mod repr;
-#[unstable]
-pub mod reflect;
-
 // Private APIs
 #[unstable]
 pub mod unstable;

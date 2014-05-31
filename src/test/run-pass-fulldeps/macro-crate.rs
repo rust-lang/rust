@@ -17,7 +17,7 @@
 extern crate macro_crate_test;
 
 #[into_foo]
-#[deriving(Eq, Clone, Show)]
+#[deriving(PartialEq, Clone, Show)]
 fn foo() -> AFakeTypeThatHadBetterGoAway {}
 
 pub fn main() {
@@ -28,4 +28,4 @@ pub fn main() {
     test(None::<Foo>);
 }
 
-fn test<T: Eq+Clone>(_: Option<T>) {}
+fn test<T: PartialEq+Clone>(_: Option<T>) {}

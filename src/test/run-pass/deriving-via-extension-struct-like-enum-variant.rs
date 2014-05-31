@@ -10,7 +10,7 @@
 
 #![feature(struct_variant)]
 
-#[deriving(Eq, Show)]
+#[deriving(PartialEq, Show)]
 enum S {
     X { x: int, y: int },
     Y

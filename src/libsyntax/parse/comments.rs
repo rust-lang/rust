@@ -22,7 +22,7 @@ use std::str;
 use std::string::String;
 use std::uint;
 
-#[deriving(Clone, Eq)]
+#[deriving(Clone, PartialEq)]
 pub enum CommentStyle {
     Isolated, // No code on either side of each line of the comment
     Trailing, // Code exists to the left of the comment

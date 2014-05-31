@@ -20,7 +20,7 @@ use std::fmt;
 
 use std::from_str::FromStr;
 
-#[deriving(Clone, Eq)]
+#[deriving(Clone, PartialEq)]
 pub struct CrateId {
     /// A path which represents the codes origin. By convention this is the
     /// URL, without `http://` or `https://` prefix, to the crate's repository
