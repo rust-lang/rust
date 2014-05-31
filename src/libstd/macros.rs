@@ -470,6 +470,26 @@ pub mod builtin {
     #[macro_export]
     macro_rules! bytes( ($($e:expr),*) => ({ /* compiler built-in */ }) )
 
+    /// Decode a literal string as a hex-encoded byte array
+    ///
+    /// This macro takes any number of comma-separated literal strings,
+    /// yielding an expression of type `&'static [u8]` which is the
+    /// concatenation (left to right) of all the literals interpreted as
+    /// as hex-encoding of the bytes.
+    ///
+    /// This extension currently only supports string literals.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let rust = hex_bytes!("ABcd", "01");
+    /// assert_eq!(rust[0], 0xab as u8);
+    /// assert_eq!(rust[1], 0xcd as u8);
+    /// assert_eq!(rust[2], 0x01 as u8);
+    /// ```
+    #[macro_export]
+    macro_rules! hex_bytes( ($($e:expr),*) => ({ /* compiler built-in */ }) )
+
     /// Concatenate identifiers into one identifier.
     ///
     /// This macro takes any number of comma-separated identifiers, and
