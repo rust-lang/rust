@@ -99,7 +99,7 @@ pub struct CopiedUpvar {
 }
 
 // different kinds of pointers:
-#[deriving(Clone, PartialEq, TotalEq, Hash)]
+#[deriving(Clone, PartialEq, Eq, Hash)]
 pub enum PointerKind {
     OwnedPtr,
     GcPtr,
@@ -109,26 +109,26 @@ pub enum PointerKind {
 
 // We use the term "interior" to mean "something reachable from the
 // base without a pointer dereference", e.g. a field
-#[deriving(Clone, PartialEq, TotalEq, Hash)]
+#[deriving(Clone, PartialEq, Eq, Hash)]
 pub enum InteriorKind {
     InteriorField(FieldName),
     InteriorElement(ElementKind),
 }
 
-#[deriving(Clone, PartialEq, TotalEq, Hash)]
+#[deriving(Clone, PartialEq, Eq, Hash)]
 pub enum FieldName {
     NamedField(ast::Name),
     PositionalField(uint)
 }
 
-#[deriving(Clone, PartialEq, TotalEq, Hash)]
+#[deriving(Clone, PartialEq, Eq, Hash)]
 pub enum ElementKind {
     VecElement,
     StrElement,
     OtherElement,
 }
 
-#[deriving(Clone, PartialEq, TotalEq, Hash, Show)]
+#[deriving(Clone, PartialEq, Eq, Hash, Show)]
 pub enum MutabilityCategory {
     McImmutable, // Immutable.
     McDeclared,  // Directly declared as mutable.

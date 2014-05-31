@@ -68,7 +68,7 @@ use cmp;
 use num::{Zero, One, CheckedAdd, CheckedSub, Saturating, ToPrimitive, Int};
 use option::{Option, Some, None};
 use ops::{Add, Mul, Sub};
-use cmp::{PartialEq, PartialOrd, TotalOrd};
+use cmp::{PartialEq, PartialOrd, Ord};
 use clone::Clone;
 use uint;
 use mem;
@@ -611,7 +611,7 @@ pub trait Iterator<A> {
     /// assert_eq!(*xs.iter().max_by(|x| x.abs()).unwrap(), -10);
     /// ```
     #[inline]
-    fn max_by<B: TotalOrd>(&mut self, f: |&A| -> B) -> Option<A> {
+    fn max_by<B: Ord>(&mut self, f: |&A| -> B) -> Option<A> {
         self.fold(None, |max: Option<(A, B)>, x| {
             let x_val = f(&x);
             match max {
@@ -635,7 +635,7 @@ pub trait Iterator<A> {
     /// assert_eq!(*xs.iter().min_by(|x| x.abs()).unwrap(), 0);
     /// ```
     #[inline]
-    fn min_by<B: TotalOrd>(&mut self, f: |&A| -> B) -> Option<A> {
+    fn min_by<B: Ord>(&mut self, f: |&A| -> B) -> Option<A> {
         self.fold(None, |min: Option<(A, B)>, x| {
             let x_val = f(&x);
             match min {
@@ -905,7 +905,7 @@ pub trait OrdIterator<A> {
     fn min_max(&mut self) -> MinMaxResult<A>;
 }
 
-impl<A: TotalOrd, T: Iterator<A>> OrdIterator<A> for T {
+impl<A: Ord, T: Iterator<A>> OrdIterator<A> for T {
     #[inline]
     fn max(&mut self) -> Option<A> {
         self.fold(None, |max, x| {
@@ -2182,12 +2182,12 @@ impl<A: Clone> RandomAccessIterator<A> for Repeat<A> {
 /// the shorter sequence compares less.
 pub mod order {
     use cmp;
-    use cmp::{TotalEq, TotalOrd, PartialOrd, PartialEq};
+    use cmp::{Eq, Ord, PartialOrd, PartialEq};
     use option::{Some, None};
     use super::Iterator;
 
-    /// Compare `a` and `b` for equality using `TotalEq`
-    pub fn equals<A: TotalEq, T: Iterator<A>, S: Iterator<A>>(mut a: T, mut b: S) -> bool {
+    /// Compare `a` and `b` for equality using `Eq`
+    pub fn equals<A: Eq, T: Iterator<A>, S: Iterator<A>>(mut a: T, mut b: S) -> bool {
         loop {
             match (a.next(), b.next()) {
                 (None, None) => return true,
@@ -2197,8 +2197,8 @@ pub mod order {
         }
     }
 
-    /// Order `a` and `b` lexicographically using `TotalOrd`
-    pub fn cmp<A: TotalOrd, T: Iterator<A>, S: Iterator<A>>(mut a: T, mut b: S) -> cmp::Ordering {
+    /// Order `a` and `b` lexicographically using `Ord`
+    pub fn cmp<A: Ord, T: Iterator<A>, S: Iterator<A>>(mut a: T, mut b: S) -> cmp::Ordering {
         loop {
             match (a.next(), b.next()) {
                 (None, None) => return cmp::Equal,

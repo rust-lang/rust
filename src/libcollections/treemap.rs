@@ -10,7 +10,7 @@
 
 //! An ordered map and set implemented as self-balancing binary search
 //! trees. The only requirement for the types is that the key implements
-//! `TotalOrd`.
+//! `Ord`.
 
 use std::cmp::Ordering;
 use std::fmt::Show;
@@ -43,7 +43,7 @@ pub struct TreeMap<K, V> {
     length: uint
 }
 
-impl<K: PartialEq + TotalOrd, V: PartialEq> PartialEq for TreeMap<K, V> {
+impl<K: PartialEq + Ord, V: PartialEq> PartialEq for TreeMap<K, V> {
     fn eq(&self, other: &TreeMap<K, V>) -> bool {
         self.len() == other.len() &&
             self.iter().zip(other.iter()).all(|(a, b)| a == b)
@@ -51,7 +51,7 @@ impl<K: PartialEq + TotalOrd, V: PartialEq> PartialEq for TreeMap<K, V> {
 }
 
 // Lexicographical comparison
-fn lt<K: PartialOrd + TotalOrd, V: PartialOrd>(a: &TreeMap<K, V>,
+fn lt<K: PartialOrd + Ord, V: PartialOrd>(a: &TreeMap<K, V>,
                                  b: &TreeMap<K, V>) -> bool {
     // the Zip iterator is as long as the shortest of a and b.
     for ((key_a, value_a), (key_b, value_b)) in a.iter().zip(b.iter()) {
@@ -64,12 +64,12 @@ fn lt<K: PartialOrd + TotalOrd, V: PartialOrd>(a: &TreeMap<K, V>,
     a.len() < b.len()
 }
 
-impl<K: PartialOrd + TotalOrd, V: PartialOrd> PartialOrd for TreeMap<K, V> {
+impl<K: PartialOrd + Ord, V: PartialOrd> PartialOrd for TreeMap<K, V> {
     #[inline]
     fn lt(&self, other: &TreeMap<K, V>) -> bool { lt(self, other) }
 }
 
-impl<K: TotalOrd + Show, V: Show> Show for TreeMap<K, V> {
+impl<K: Ord + Show, V: Show> Show for TreeMap<K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(f, r"\{"));
 
@@ -82,18 +82,18 @@ impl<K: TotalOrd + Show, V: Show> Show for TreeMap<K, V> {
     }
 }
 
-impl<K: TotalOrd, V> Container for TreeMap<K, V> {
+impl<K: Ord, V> Container for TreeMap<K, V> {
     fn len(&self) -> uint { self.length }
 }
 
-impl<K: TotalOrd, V> Mutable for TreeMap<K, V> {
+impl<K: Ord, V> Mutable for TreeMap<K, V> {
     fn clear(&mut self) {
         self.root = None;
         self.length = 0
     }
 }
 
-impl<K: TotalOrd, V> Map<K, V> for TreeMap<K, V> {
+impl<K: Ord, V> Map<K, V> for TreeMap<K, V> {
     fn find<'a>(&'a self, key: &K) -> Option<&'a V> {
         let mut current: &'a Option<Box<TreeNode<K, V>>> = &self.root;
         loop {
@@ -111,7 +111,7 @@ impl<K: TotalOrd, V> Map<K, V> for TreeMap<K, V> {
     }
 }
 
-impl<K: TotalOrd, V> MutableMap<K, V> for TreeMap<K, V> {
+impl<K: Ord, V> MutableMap<K, V> for TreeMap<K, V> {
     #[inline]
     fn find_mut<'a>(&'a mut self, key: &K) -> Option<&'a mut V> {
         find_mut(&mut self.root, key)
@@ -130,7 +130,7 @@ impl<K: TotalOrd, V> MutableMap<K, V> for TreeMap<K, V> {
     }
 }
 
-impl<K: TotalOrd, V> TreeMap<K, V> {
+impl<K: Ord, V> TreeMap<K, V> {
     /// Create an empty TreeMap
     pub fn new() -> TreeMap<K, V> { TreeMap{root: None, length: 0} }
 
@@ -216,7 +216,7 @@ macro_rules! bound_setup {
 }
 
 
-impl<K: TotalOrd, V> TreeMap<K, V> {
+impl<K: Ord, V> TreeMap<K, V> {
     /// Get a lazy iterator that should be initialized using
     /// `traverse_left`/`traverse_right`/`traverse_complete`.
     fn iter_for_traversal<'a>(&'a self) -> Entries<'a, K, V> {
@@ -546,23 +546,23 @@ impl<'a, T> Iterator<&'a T> for RevSetItems<'a, T> {
 
 /// A implementation of the `Set` trait on top of the `TreeMap` container. The
 /// only requirement is that the type of the elements contained ascribes to the
-/// `TotalOrd` trait.
+/// `Ord` trait.
 #[deriving(Clone)]
 pub struct TreeSet<T> {
     map: TreeMap<T, ()>
 }
 
-impl<T: PartialEq + TotalOrd> PartialEq for TreeSet<T> {
+impl<T: PartialEq + Ord> PartialEq for TreeSet<T> {
     #[inline]
     fn eq(&self, other: &TreeSet<T>) -> bool { self.map == other.map }
 }
 
-impl<T: PartialOrd + TotalOrd> PartialOrd for TreeSet<T> {
+impl<T: PartialOrd + Ord> PartialOrd for TreeSet<T> {
     #[inline]
     fn lt(&self, other: &TreeSet<T>) -> bool { self.map < other.map }
 }
 
-impl<T: TotalOrd + Show> Show for TreeSet<T> {
+impl<T: Ord + Show> Show for TreeSet<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(f, r"\{"));
 
@@ -575,17 +575,17 @@ impl<T: TotalOrd + Show> Show for TreeSet<T> {
     }
 }
 
-impl<T: TotalOrd> Container for TreeSet<T> {
+impl<T: Ord> Container for TreeSet<T> {
     #[inline]
     fn len(&self) -> uint { self.map.len() }
 }
 
-impl<T: TotalOrd> Mutable for TreeSet<T> {
+impl<T: Ord> Mutable for TreeSet<T> {
     #[inline]
     fn clear(&mut self) { self.map.clear() }
 }
 
-impl<T: TotalOrd> Set<T> for TreeSet<T> {
+impl<T: Ord> Set<T> for TreeSet<T> {
     #[inline]
     fn contains(&self, value: &T) -> bool {
         self.map.contains_key(value)
@@ -620,7 +620,7 @@ impl<T: TotalOrd> Set<T> for TreeSet<T> {
     }
 }
 
-impl<T: TotalOrd> MutableSet<T> for TreeSet<T> {
+impl<T: Ord> MutableSet<T> for TreeSet<T> {
     #[inline]
     fn insert(&mut self, value: T) -> bool { self.map.insert(value, ()) }
 
@@ -628,7 +628,7 @@ impl<T: TotalOrd> MutableSet<T> for TreeSet<T> {
     fn remove(&mut self, value: &T) -> bool { self.map.remove(value) }
 }
 
-impl<T: TotalOrd> TreeSet<T> {
+impl<T: Ord> TreeSet<T> {
     /// Create an empty TreeSet
     #[inline]
     pub fn new() -> TreeSet<T> { TreeSet{map: TreeMap::new()} }
@@ -728,7 +728,7 @@ pub struct UnionItems<'a, T> {
 }
 
 /// Compare `x` and `y`, but return `short` if x is None and `long` if y is None
-fn cmp_opt<T: TotalOrd>(x: Option<&T>, y: Option<&T>,
+fn cmp_opt<T: Ord>(x: Option<&T>, y: Option<&T>,
                         short: Ordering, long: Ordering) -> Ordering {
     match (x, y) {
         (None    , _       ) => short,
@@ -737,7 +737,7 @@ fn cmp_opt<T: TotalOrd>(x: Option<&T>, y: Option<&T>,
     }
 }
 
-impl<'a, T: TotalOrd> Iterator<&'a T> for DifferenceItems<'a, T> {
+impl<'a, T: Ord> Iterator<&'a T> for DifferenceItems<'a, T> {
     fn next(&mut self) -> Option<&'a T> {
         loop {
             match cmp_opt(self.a.peek(), self.b.peek(), Less, Less) {
@@ -749,7 +749,7 @@ impl<'a, T: TotalOrd> Iterator<&'a T> for DifferenceItems<'a, T> {
     }
 }
 
-impl<'a, T: TotalOrd> Iterator<&'a T> for SymDifferenceItems<'a, T> {
+impl<'a, T: Ord> Iterator<&'a T> for SymDifferenceItems<'a, T> {
     fn next(&mut self) -> Option<&'a T> {
         loop {
             match cmp_opt(self.a.peek(), self.b.peek(), Greater, Less) {
@@ -761,7 +761,7 @@ impl<'a, T: TotalOrd> Iterator<&'a T> for SymDifferenceItems<'a, T> {
     }
 }
 
-impl<'a, T: TotalOrd> Iterator<&'a T> for IntersectionItems<'a, T> {
+impl<'a, T: Ord> Iterator<&'a T> for IntersectionItems<'a, T> {
     fn next(&mut self) -> Option<&'a T> {
         loop {
             let o_cmp = match (self.a.peek(), self.b.peek()) {
@@ -779,7 +779,7 @@ impl<'a, T: TotalOrd> Iterator<&'a T> for IntersectionItems<'a, T> {
     }
 }
 
-impl<'a, T: TotalOrd> Iterator<&'a T> for UnionItems<'a, T> {
+impl<'a, T: Ord> Iterator<&'a T> for UnionItems<'a, T> {
     fn next(&mut self) -> Option<&'a T> {
         loop {
             match cmp_opt(self.a.peek(), self.b.peek(), Greater, Less) {
@@ -803,7 +803,7 @@ struct TreeNode<K, V> {
     level: uint
 }
 
-impl<K: TotalOrd, V> TreeNode<K, V> {
+impl<K: Ord, V> TreeNode<K, V> {
     /// Creates a new tree node.
     #[inline]
     pub fn new(key: K, value: V) -> TreeNode<K, V> {
@@ -812,7 +812,7 @@ impl<K: TotalOrd, V> TreeNode<K, V> {
 }
 
 // Remove left horizontal link by rotating right
-fn skew<K: TotalOrd, V>(node: &mut Box<TreeNode<K, V>>) {
+fn skew<K: Ord, V>(node: &mut Box<TreeNode<K, V>>) {
     if node.left.as_ref().map_or(false, |x| x.level == node.level) {
         let mut save = node.left.take_unwrap();
         swap(&mut node.left, &mut save.right); // save.right now None
@@ -823,7 +823,7 @@ fn skew<K: TotalOrd, V>(node: &mut Box<TreeNode<K, V>>) {
 
 // Remove dual horizontal link by rotating left and increasing level of
 // the parent
-fn split<K: TotalOrd, V>(node: &mut Box<TreeNode<K, V>>) {
+fn split<K: Ord, V>(node: &mut Box<TreeNode<K, V>>) {
     if node.right.as_ref().map_or(false,
       |x| x.right.as_ref().map_or(false, |y| y.level == node.level)) {
         let mut save = node.right.take_unwrap();
@@ -834,7 +834,7 @@ fn split<K: TotalOrd, V>(node: &mut Box<TreeNode<K, V>>) {
     }
 }
 
-fn find_mut<'r, K: TotalOrd, V>(node: &'r mut Option<Box<TreeNode<K, V>>>,
+fn find_mut<'r, K: Ord, V>(node: &'r mut Option<Box<TreeNode<K, V>>>,
                                 key: &K)
                              -> Option<&'r mut V> {
     match *node {
@@ -849,7 +849,7 @@ fn find_mut<'r, K: TotalOrd, V>(node: &'r mut Option<Box<TreeNode<K, V>>>,
     }
 }
 
-fn insert<K: TotalOrd, V>(node: &mut Option<Box<TreeNode<K, V>>>,
+fn insert<K: Ord, V>(node: &mut Option<Box<TreeNode<K, V>>>,
                           key: K, value: V) -> Option<V> {
     match *node {
       Some(ref mut save) => {
@@ -879,9 +879,9 @@ fn insert<K: TotalOrd, V>(node: &mut Option<Box<TreeNode<K, V>>>,
     }
 }
 
-fn remove<K: TotalOrd, V>(node: &mut Option<Box<TreeNode<K, V>>>,
+fn remove<K: Ord, V>(node: &mut Option<Box<TreeNode<K, V>>>,
                           key: &K) -> Option<V> {
-    fn heir_swap<K: TotalOrd, V>(node: &mut Box<TreeNode<K, V>>,
+    fn heir_swap<K: Ord, V>(node: &mut Box<TreeNode<K, V>>,
                                  child: &mut Option<Box<TreeNode<K, V>>>) {
         // *could* be done without recursion, but it won't borrow check
         for x in child.mut_iter() {
@@ -962,7 +962,7 @@ fn remove<K: TotalOrd, V>(node: &mut Option<Box<TreeNode<K, V>>>,
     };
 }
 
-impl<K: TotalOrd, V> FromIterator<(K, V)> for TreeMap<K, V> {
+impl<K: Ord, V> FromIterator<(K, V)> for TreeMap<K, V> {
     fn from_iter<T: Iterator<(K, V)>>(iter: T) -> TreeMap<K, V> {
         let mut map = TreeMap::new();
         map.extend(iter);
@@ -970,7 +970,7 @@ impl<K: TotalOrd, V> FromIterator<(K, V)> for TreeMap<K, V> {
     }
 }
 
-impl<K: TotalOrd, V> Extendable<(K, V)> for TreeMap<K, V> {
+impl<K: Ord, V> Extendable<(K, V)> for TreeMap<K, V> {
     #[inline]
     fn extend<T: Iterator<(K, V)>>(&mut self, mut iter: T) {
         for (k, v) in iter {
@@ -979,7 +979,7 @@ impl<K: TotalOrd, V> Extendable<(K, V)> for TreeMap<K, V> {
     }
 }
 
-impl<T: TotalOrd> FromIterator<T> for TreeSet<T> {
+impl<T: Ord> FromIterator<T> for TreeSet<T> {
     fn from_iter<Iter: Iterator<T>>(iter: Iter) -> TreeSet<T> {
         let mut set = TreeSet::new();
         set.extend(iter);
@@ -987,7 +987,7 @@ impl<T: TotalOrd> FromIterator<T> for TreeSet<T> {
     }
 }
 
-impl<T: TotalOrd> Extendable<T> for TreeSet<T> {
+impl<T: Ord> Extendable<T> for TreeSet<T> {
     #[inline]
     fn extend<Iter: Iterator<T>>(&mut self, mut iter: Iter) {
         for elem in iter {
@@ -1070,7 +1070,7 @@ mod test_treemap {
         assert_eq!(m.find(&k1), Some(&v1));
     }
 
-    fn check_equal<K: PartialEq + TotalOrd, V: PartialEq>(ctrl: &[(K, V)],
+    fn check_equal<K: PartialEq + Ord, V: PartialEq>(ctrl: &[(K, V)],
                                             map: &TreeMap<K, V>) {
         assert_eq!(ctrl.is_empty(), map.is_empty());
         for x in ctrl.iter() {
@@ -1091,7 +1091,7 @@ mod test_treemap {
         }
     }
 
-    fn check_left<K: TotalOrd, V>(node: &Option<Box<TreeNode<K, V>>>,
+    fn check_left<K: Ord, V>(node: &Option<Box<TreeNode<K, V>>>,
                                   parent: &Box<TreeNode<K, V>>) {
         match *node {
           Some(ref r) => {
@@ -1104,7 +1104,7 @@ mod test_treemap {
         }
     }
 
-    fn check_right<K: TotalOrd, V>(node: &Option<Box<TreeNode<K, V>>>,
+    fn check_right<K: Ord, V>(node: &Option<Box<TreeNode<K, V>>>,
                                    parent: &Box<TreeNode<K, V>>,
                                    parent_red: bool) {
         match *node {
@@ -1121,7 +1121,7 @@ mod test_treemap {
         }
     }
 
-    fn check_structure<K: TotalOrd, V>(map: &TreeMap<K, V>) {
+    fn check_structure<K: Ord, V>(map: &TreeMap<K, V>) {
         match map.root {
           Some(ref r) => {
             check_left(&r.left, r);

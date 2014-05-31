@@ -198,12 +198,12 @@ fn list_dir_sorted(path: &Path) -> Option<Vec<Path>> {
 /**
  * A compiled Unix shell style pattern.
  */
-#[deriving(Clone, PartialEq, TotalEq, PartialOrd, TotalOrd, Hash, Default)]
+#[deriving(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub struct Pattern {
     tokens: Vec<PatternToken>,
 }
 
-#[deriving(Clone, PartialEq, TotalEq, PartialOrd, TotalOrd, Hash)]
+#[deriving(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 enum PatternToken {
     Char(char),
     AnyChar,
@@ -212,7 +212,7 @@ enum PatternToken {
     AnyExcept(Vec<CharSpecifier> )
 }
 
-#[deriving(Clone, PartialEq, TotalEq, PartialOrd, TotalOrd, Hash)]
+#[deriving(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 enum CharSpecifier {
     SingleChar(char),
     CharRange(char, char)
@@ -596,7 +596,7 @@ fn chars_eq(a: char, b: char, case_sensitive: bool) -> bool {
 /**
  * Configuration options to modify the behaviour of `Pattern::matches_with(..)`
  */
-#[deriving(Clone, PartialEq, TotalEq, PartialOrd, TotalOrd, Hash, Default)]
+#[deriving(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub struct MatchOptions {
 
     /**

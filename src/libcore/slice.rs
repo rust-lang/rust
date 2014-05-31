@@ -17,7 +17,7 @@
 use mem::transmute;
 use clone::Clone;
 use container::Container;
-use cmp::{PartialEq, TotalOrd, Ordering, Less, Equal, Greater};
+use cmp::{PartialEq, Ord, Ordering, Less, Equal, Greater};
 use cmp;
 use default::Default;
 use iter::*;
@@ -251,7 +251,7 @@ impl<'a, T> RandomAccessIterator<&'a [T]> for Chunks<'a, T> {
 pub mod traits {
     use super::*;
 
-    use cmp::{PartialEq, PartialOrd, TotalEq, TotalOrd, Ordering, Equiv};
+    use cmp::{PartialEq, PartialOrd, Eq, Ord, Ordering, Equiv};
     use iter::{order, Iterator};
     use container::Container;
 
@@ -273,9 +273,9 @@ pub mod traits {
         fn ne(&self, other: &~[T]) -> bool { !self.eq(other) }
     }
 
-    impl<'a,T:TotalEq> TotalEq for &'a [T] {}
+    impl<'a,T:Eq> Eq for &'a [T] {}
 
-    impl<T:TotalEq> TotalEq for ~[T] {}
+    impl<T:Eq> Eq for ~[T] {}
 
     impl<'a,T:PartialEq, V: Vector<T>> Equiv<V> for &'a [T] {
         #[inline]
@@ -287,13 +287,13 @@ pub mod traits {
         fn equiv(&self, other: &V) -> bool { self.as_slice() == other.as_slice() }
     }
 
-    impl<'a,T:TotalOrd> TotalOrd for &'a [T] {
+    impl<'a,T:Ord> Ord for &'a [T] {
         fn cmp(&self, other: & &'a [T]) -> Ordering {
             order::cmp(self.iter(), other.iter())
         }
     }
 
-    impl<T: TotalOrd> TotalOrd for ~[T] {
+    impl<T: Ord> Ord for ~[T] {
         #[inline]
         fn cmp(&self, other: &~[T]) -> Ordering { self.as_slice().cmp(&other.as_slice()) }
     }
@@ -741,8 +741,8 @@ impl<'a,T:PartialEq> ImmutableEqVector<T> for &'a [T] {
     }
 }
 
-/// Extension methods for vectors containing `TotalOrd` elements.
-pub trait ImmutableTotalOrdVector<T: TotalOrd> {
+/// Extension methods for vectors containing `Ord` elements.
+pub trait ImmutableOrdVector<T: Ord> {
     /**
      * Binary search a sorted vector for a given element.
      *
@@ -751,7 +751,7 @@ pub trait ImmutableTotalOrdVector<T: TotalOrd> {
     fn bsearch_elem(&self, x: &T) -> Option<uint>;
 }
 
-impl<'a, T: TotalOrd> ImmutableTotalOrdVector<T> for &'a [T] {
+impl<'a, T: Ord> ImmutableOrdVector<T> for &'a [T] {
     fn bsearch_elem(&self, x: &T) -> Option<uint> {
         self.bsearch(|p| p.cmp(x))
     }

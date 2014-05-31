@@ -13,7 +13,7 @@
 use ascii::AsciiCast;
 use c_str::{CString, ToCStr};
 use clone::Clone;
-use cmp::{PartialEq, TotalEq};
+use cmp::{PartialEq, Eq};
 use container::Container;
 use from_str::FromStr;
 use io::Writer;
@@ -86,7 +86,7 @@ impl PartialEq for Path {
     }
 }
 
-impl TotalEq for Path {}
+impl Eq for Path {}
 
 impl FromStr for Path {
     fn from_str(s: &str) -> Option<Path> {

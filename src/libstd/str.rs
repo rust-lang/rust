@@ -70,7 +70,7 @@ is the same as `&[u8]`.
 use char::Char;
 use char;
 use clone::Clone;
-use cmp::{PartialEq, TotalEq, PartialOrd, TotalOrd, Equiv, Ordering};
+use cmp::{PartialEq, Eq, PartialOrd, Ord, Equiv, Ordering};
 use container::Container;
 use default::Default;
 use fmt;
@@ -575,7 +575,7 @@ impl<'a> PartialEq for MaybeOwned<'a> {
     }
 }
 
-impl<'a> TotalEq for MaybeOwned<'a> {}
+impl<'a> Eq for MaybeOwned<'a> {}
 
 impl<'a> PartialOrd for MaybeOwned<'a> {
     #[inline]
@@ -584,7 +584,7 @@ impl<'a> PartialOrd for MaybeOwned<'a> {
     }
 }
 
-impl<'a> TotalOrd for MaybeOwned<'a> {
+impl<'a> Ord for MaybeOwned<'a> {
     #[inline]
     fn cmp(&self, other: &MaybeOwned) -> Ordering {
         self.as_slice().cmp(&other.as_slice())

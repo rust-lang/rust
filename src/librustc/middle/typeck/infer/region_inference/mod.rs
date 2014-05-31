@@ -31,7 +31,7 @@ use syntax::ast;
 
 mod doc;
 
-#[deriving(PartialEq, TotalEq, Hash)]
+#[deriving(PartialEq, Eq, Hash)]
 pub enum Constraint {
     ConstrainVarSubVar(RegionVid, RegionVid),
     ConstrainRegSubVar(Region, RegionVid),
@@ -39,7 +39,7 @@ pub enum Constraint {
     ConstrainRegSubReg(Region, Region),
 }
 
-#[deriving(PartialEq, TotalEq, Hash)]
+#[deriving(PartialEq, Eq, Hash)]
 pub struct TwoRegions {
     a: Region,
     b: Region,

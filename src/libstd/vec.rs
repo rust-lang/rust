@@ -12,7 +12,7 @@
 
 use RawVec = raw::Vec;
 use clone::Clone;
-use cmp::{PartialOrd, PartialEq, Ordering, TotalEq, TotalOrd, max};
+use cmp::{PartialOrd, PartialEq, Ordering, Eq, Ord, max};
 use container::{Container, Mutable};
 use default::Default;
 use fmt;
@@ -27,7 +27,7 @@ use ptr;
 use raw::Slice;
 use rt::heap::{allocate, reallocate, deallocate};
 use slice::{ImmutableEqVector, ImmutableVector, Items, MutItems, MutableVector};
-use slice::{MutableTotalOrdVector, OwnedVector, Vector};
+use slice::{MutableOrdVector, OwnedVector, Vector};
 use slice::{MutableVectorAllocating};
 
 /// An owned, growable vector.
@@ -388,9 +388,9 @@ impl<T: PartialOrd> PartialOrd for Vec<T> {
     }
 }
 
-impl<T: TotalEq> TotalEq for Vec<T> {}
+impl<T: Eq> Eq for Vec<T> {}
 
-impl<T: TotalOrd> TotalOrd for Vec<T> {
+impl<T: Ord> Ord for Vec<T> {
     #[inline]
     fn cmp(&self, other: &Vec<T>) -> Ordering {
         self.as_slice().cmp(&other.as_slice())
@@ -1263,7 +1263,7 @@ impl<T> Vec<T> {
     }
 }
 
-impl<T:TotalOrd> Vec<T> {
+impl<T:Ord> Vec<T> {
     /// Sorts the vector in place.
     ///
     /// This sort is `O(n log n)` worst-case and stable, but allocates
