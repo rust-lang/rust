@@ -1026,13 +1026,7 @@ impl<'a> LookupContext<'a> {
     fn consider_candidates(&self, rcvr_ty: ty::t,
                            candidates: &[Candidate])
                            -> Option<MethodCallee> {
-        // FIXME(pcwalton): Do we need to clone here?
-        let relevant_candidates: Vec<Candidate> =
-            candidates.iter().map(|c| (*c).clone()).
-                filter(|c| self.is_relevant(rcvr_ty, c)).collect();
-
-        let relevant_candidates =
-            self.merge_candidates(relevant_candidates.as_slice());
+        let relevant_candidates = self.filter_candidates(rcvr_ty, candidates);
 
         if relevant_candidates.len() == 0 {
             return None;
@@ -1069,22 +1063,16 @@ impl<'a> LookupContext<'a> {
         Some(self.confirm_candidate(rcvr_ty, relevant_candidates.get(0)))
     }
 
-    fn merge_candidates(&self, candidates: &[Candidate]) -> Vec<Candidate> {
-        let mut merged = Vec::new();
-        let mut i = 0;
-        while i < candidates.len() {
-            let candidate_a = &candidates[i];
+    fn filter_candidates(&self, rcvr_ty: ty::t, candidates: &[Candidate]) -> Vec<Candidate> {
+        let mut relevant_candidates: Vec<Candidate> = Vec::new();
 
-            let mut skip = false;
-
-            let mut j = i + 1;
-            while j < candidates.len() {
-                let candidate_b = &candidates[j];
+        for candidate_a in candidates.iter().filter(|&c| self.is_relevant(rcvr_ty, c)) {
+            // Skip this one if we already have one like it
+            if !relevant_candidates.iter().any(|candidate_b| {
                 debug!("attempting to merge {} and {}",
                        candidate_a.repr(self.tcx()),
                        candidate_b.repr(self.tcx()));
-                let candidates_same = match (&candidate_a.origin,
-                                             &candidate_b.origin) {
+                match (&candidate_a.origin, &candidate_b.origin) {
                     (&MethodParam(ref p1), &MethodParam(ref p2)) => {
                         let same_trait = p1.trait_id == p2.trait_id;
                         let same_method = p1.method_num == p2.method_num;
@@ -1095,25 +1083,13 @@ impl<'a> LookupContext<'a> {
                         same_trait && same_method && same_param
                     }
                     _ => false
-                };
-                if candidates_same {
-                    skip = true;
-                    break;
                 }
-                j += 1;
-            }
-
-            i += 1;
-
-            if skip {
-                // There are more than one of these and we need only one
-                continue;
-            } else {
-                merged.push(candidate_a.clone());
+            }) {
+                relevant_candidates.push(candidate_a.clone());
             }
         }
 
-        return merged;
+        relevant_candidates
     }
 
     fn confirm_candidate(&self, rcvr_ty: ty::t, candidate: &Candidate)
