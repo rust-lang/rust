@@ -10,8 +10,8 @@
 
 fn f<Z>() -> bool {
     enum E { V(Z) }
-    //~^ ERROR can't use type parameters from outer function in the
-
+    //~^ ERROR can't use type parameters from outer function
+    //~^^ ERROR use of undeclared type name `Z`
     true
 }
 

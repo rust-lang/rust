@@ -266,8 +266,8 @@ enum RibKind {
               // parent;   method itself
     MethodRibKind(NodeId, MethodSort),
 
-    // We passed through a function *item* scope. Disallow upvars.
-    OpaqueFunctionRibKind,
+    // We passed through an item scope. Disallow upvars.
+    ItemRibKind,
 
     // We're in a constant item. Can't refer to dynamic stuff.
     ConstantItemRibKind
@@ -3418,7 +3418,8 @@ impl<'a> Resolver<'a> {
                 def = d;
                 is_ty_param = false;
             }
-            DlDef(d @ DefTyParam(..)) => {
+            DlDef(d @ DefTyParam(..)) |
+            DlDef(d @ DefSelfTy(..)) => {
                 def = d;
                 is_ty_param = true;
             }
@@ -3451,6 +3452,13 @@ impl<'a> Resolver<'a> {
                     } => {
                       // ok
                     }
+
+                    DefSelfTy(did) if {
+                        did == item_id
+                    } => {
+                      // ok
+                    }
+
                     _ => {
                     if !is_ty_param {
                         // This was an attempt to access an upvar inside a
@@ -3475,7 +3483,7 @@ impl<'a> Resolver<'a> {
                     }
                   }
                 }
-                OpaqueFunctionRibKind => {
+                ItemRibKind => {
                     if !is_ty_param {
                         // This was an attempt to access an upvar inside a
                         // named function item. This is not allowed, so we
@@ -3575,7 +3583,7 @@ impl<'a> Resolver<'a> {
                 self.with_type_parameter_rib(HasTypeParameters(generics,
                                                                item.id,
                                                                0,
-                                                               NormalRibKind),
+                                                               ItemRibKind),
                                              |this| {
                     visit::walk_item(this, item, ());
                 });
@@ -3585,7 +3593,7 @@ impl<'a> Resolver<'a> {
                 self.with_type_parameter_rib(HasTypeParameters(generics,
                                                                item.id,
                                                                0,
-                                                               NormalRibKind),
+                                                               ItemRibKind),
                                              |this| {
                     visit::walk_item(this, item, ());
                 });
@@ -3604,7 +3612,8 @@ impl<'a> Resolver<'a> {
 
             ItemTrait(ref generics, _, ref traits, ref methods) => {
                 // Create a new rib for the self type.
-                let self_type_rib = Rib::new(NormalRibKind);
+                let self_type_rib = Rib::new(ItemRibKind);
+
                 // plain insert (no renaming)
                 let name = self.type_self_ident.name;
                 self_type_rib.bindings.borrow_mut()
@@ -3686,7 +3695,7 @@ impl<'a> Resolver<'a> {
                                 this.with_type_parameter_rib(
                                     HasTypeParameters(
                                         generics, foreign_item.id, 0,
-                                        NormalRibKind),
+                                        ItemRibKind),
                                     |this| visit::walk_foreign_item(this,
                                                                 *foreign_item,
                                                                 ()));
@@ -3702,13 +3711,13 @@ impl<'a> Resolver<'a> {
             }
 
             ItemFn(fn_decl, _, _, ref generics, block) => {
-                self.resolve_function(OpaqueFunctionRibKind,
+                self.resolve_function(ItemRibKind,
                                       Some(fn_decl),
                                       HasTypeParameters
                                         (generics,
                                          item.id,
                                          0,
-                                         OpaqueFunctionRibKind),
+                                         ItemRibKind),
                                       block);
             }
 
@@ -3890,7 +3899,7 @@ impl<'a> Resolver<'a> {
         self.with_type_parameter_rib(HasTypeParameters(generics,
                                                        id,
                                                        0,
-                                                       OpaqueFunctionRibKind),
+                                                       ItemRibKind),
                                      |this| {
             // Resolve the type parameters.
             this.resolve_type_parameters(&generics.ty_params);
@@ -5119,7 +5128,7 @@ impl<'a> Resolver<'a> {
                                 self.value_ribs.borrow().iter().rev().advance(|rib| {
                                     let res = match *rib {
                                         Rib { bindings: _, kind: MethodRibKind(_, _) } => true,
-                                        Rib { bindings: _, kind: OpaqueFunctionRibKind } => false,
+                                        Rib { bindings: _, kind: ItemRibKind } => false,
                                         _ => return true, // Keep advancing
                                     };
 
