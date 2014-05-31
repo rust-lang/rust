@@ -487,7 +487,7 @@ impl PartialEq for Uuid {
     }
 }
 
-impl TotalEq for Uuid {}
+impl Eq for Uuid {}
 
 // FIXME #9845: Test these more thoroughly
 impl<T: Encoder<E>, E> Encodable<T, E> for Uuid {

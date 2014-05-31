@@ -33,7 +33,7 @@ pub trait Pos {
 
 /// A byte offset. Keep this small (currently 32-bits), as AST contains
 /// a lot of them.
-#[deriving(Clone, PartialEq, TotalEq, Hash, PartialOrd, Show)]
+#[deriving(Clone, PartialEq, Eq, Hash, PartialOrd, Show)]
 pub struct BytePos(pub u32);
 
 /// A character offset. Because of multibyte utf8 characters, a byte offset
@@ -96,7 +96,7 @@ pub struct Span {
 
 pub static DUMMY_SP: Span = Span { lo: BytePos(0), hi: BytePos(0), expn_info: None };
 
-#[deriving(Clone, PartialEq, TotalEq, Encodable, Decodable, Hash)]
+#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
 pub struct Spanned<T> {
     pub node: T,
     pub span: Span,
@@ -109,7 +109,7 @@ impl PartialEq for Span {
     fn ne(&self, other: &Span) -> bool { !(*self).eq(other) }
 }
 
-impl TotalEq for Span {}
+impl Eq for Span {}
 
 impl<S:Encoder<E>, E> Encodable<S, E> for Span {
     /* Note #1972 -- spans are encoded but not decoded */

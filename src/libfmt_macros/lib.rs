@@ -146,7 +146,7 @@ pub enum Method<'a> {
 }
 
 /// A selector for what pluralization a plural method should take
-#[deriving(PartialEq, TotalEq, Hash)]
+#[deriving(PartialEq, Eq, Hash)]
 pub enum PluralSelector {
     /// One of the plural keywords should be used
     Keyword(PluralKeyword),
@@ -168,7 +168,7 @@ pub struct PluralArm<'a> {
 /// is specially placed in the `Plural` variant of `Method`.
 ///
 /// http://www.icu-project.org/apiref/icu4c/classicu_1_1PluralRules.html
-#[deriving(PartialEq, TotalEq, Hash, Show)]
+#[deriving(PartialEq, Eq, Hash, Show)]
 #[allow(missing_doc)]
 pub enum PluralKeyword {
     /// The plural form for zero objects.

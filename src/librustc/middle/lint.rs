@@ -72,7 +72,7 @@ use syntax::parse::token;
 use syntax::visit::Visitor;
 use syntax::{ast, ast_util, visit};
 
-#[deriving(Clone, Show, PartialEq, PartialOrd, TotalEq, TotalOrd, Hash)]
+#[deriving(Clone, Show, PartialEq, PartialOrd, Eq, Ord, Hash)]
 pub enum Lint {
     CTypes,
     UnusedImports,
@@ -135,12 +135,12 @@ pub fn level_to_str(lv: Level) -> &'static str {
     }
 }
 
-#[deriving(Clone, PartialEq, PartialOrd, TotalEq, TotalOrd)]
+#[deriving(Clone, PartialEq, PartialOrd, Eq, Ord)]
 pub enum Level {
     Allow, Warn, Deny, Forbid
 }
 
-#[deriving(Clone, PartialEq, PartialOrd, TotalEq, TotalOrd)]
+#[deriving(Clone, PartialEq, PartialOrd, Eq, Ord)]
 pub struct LintSpec {
     pub default: Level,
     pub lint: Lint,

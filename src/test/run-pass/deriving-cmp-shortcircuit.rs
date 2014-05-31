@@ -21,13 +21,13 @@ impl PartialOrd for FailCmp {
     fn lt(&self, _: &FailCmp) -> bool { fail!("lt") }
 }
 
-impl TotalEq for FailCmp {}
+impl Eq for FailCmp {}
 
-impl TotalOrd for FailCmp {
+impl Ord for FailCmp {
     fn cmp(&self, _: &FailCmp) -> Ordering { fail!("cmp") }
 }
 
-#[deriving(PartialEq,PartialOrd,TotalEq,TotalOrd)]
+#[deriving(PartialEq,PartialOrd,Eq,Ord)]
 struct ShortCircuit {
     x: int,
     y: FailCmp

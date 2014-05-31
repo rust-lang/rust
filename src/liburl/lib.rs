@@ -48,7 +48,7 @@ use std::uint;
 ///                 fragment: Some("quz".to_string()) };
 /// // https://username@example.com:8080/foo/bar?baz=qux#quz
 /// ```
-#[deriving(Clone, PartialEq, TotalEq)]
+#[deriving(Clone, PartialEq, Eq)]
 pub struct Url {
     /// The scheme part of a URL, such as `https` in the above example.
     pub scheme: String,
@@ -81,7 +81,7 @@ pub struct Path {
 }
 
 /// An optional subcomponent of a URI authority component.
-#[deriving(Clone, PartialEq, TotalEq)]
+#[deriving(Clone, PartialEq, Eq)]
 pub struct UserInfo {
     /// The user name.
     pub user: String,

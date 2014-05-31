@@ -147,7 +147,7 @@ pub struct MethodCallee {
     pub substs: ty::substs
 }
 
-#[deriving(Clone, PartialEq, TotalEq, Hash, Show)]
+#[deriving(Clone, PartialEq, Eq, Hash, Show)]
 pub struct MethodCall {
     pub expr_id: ast::NodeId,
     pub autoderef: u32
