@@ -287,10 +287,7 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
                 slice::raw::buf_as_slice((*lang).data,
                                        (*lang).size as uint, |lang| {
                     let s = str::from_utf8(lang).unwrap();
-                    (s.contains("should_fail"),
-                     s.contains("no_run"),
-                     s.contains("ignore"),
-                     s.contains("notrust"))
+                    parse_lang_string(s)
                 })
             };
             if notrust { return }
@@ -340,6 +337,35 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
     }
 }
 
+fn parse_lang_string(string: &str) -> (bool,bool,bool,bool) {
+    let mut seen_rust_tags = false;
+    let mut seen_other_tags = false;
+    let mut should_fail = false;
+    let mut no_run = false;
+    let mut ignore = false;
+    let mut notrust = false;
+
+    let mut tokens = string.as_slice().split(|c: char|
+      !(c == '_' || c == '-' || c.is_alphanumeric())
+    );
+
+    for token in tokens {
+        match token {
+            "" => {},
+            "should_fail" => { should_fail = true; seen_rust_tags = true; },
+            "no_run" => { no_run = true; seen_rust_tags = true; },
+            "ignore" => { ignore = true; seen_rust_tags = true; },
+            "notrust" => { notrust = true; seen_rust_tags = true; },
+            "rust" => { notrust = false; seen_rust_tags = true; },
+            _ => { seen_other_tags = true }
+        }
+    }
+
+    let notrust = notrust || (seen_other_tags && !seen_rust_tags);
+
+    (should_fail, no_run, ignore, notrust)
+}
+
 /// By default this markdown renderer generates anchors for each header in the
 /// rendered document. The anchor name is the contents of the header spearated
 /// by hyphens, and a task-local map is used to disambiguate among duplicate
@@ -365,5 +391,24 @@ impl<'a> fmt::Show for MarkdownWithToc<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let MarkdownWithToc(md) = *self;
         render(fmt, md.as_slice(), true)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_lang_string;
+
+    #[test]
+    fn test_parse_lang_string() {
+        assert_eq!(parse_lang_string(""), (false,false,false,false))
+        assert_eq!(parse_lang_string("rust"), (false,false,false,false))
+        assert_eq!(parse_lang_string("sh"), (false,false,false,true))
+        assert_eq!(parse_lang_string("notrust"), (false,false,false,true))
+        assert_eq!(parse_lang_string("ignore"), (false,false,true,false))
+        assert_eq!(parse_lang_string("should_fail"), (true,false,false,false))
+        assert_eq!(parse_lang_string("no_run"), (false,true,false,false))
+        assert_eq!(parse_lang_string("{.no_run .example}"), (false,true,false,false))
+        assert_eq!(parse_lang_string("{.sh .should_fail}"), (true,false,false,false))
+        assert_eq!(parse_lang_string("{.example .rust}"), (false,false,false,false))
     }
 }
