@@ -2062,7 +2062,7 @@ extern crate collections;
 type Set<T> = collections::HashMap<T, ()>;
 
 struct Stack<T> {
-    elements: ~[T]
+    elements: Vec<T>
 }
 
 enum Option<T> {
@@ -2320,7 +2320,7 @@ trait Seq<T> {
     fn length(&self) -> uint;
 }
 
-impl<T> Seq<T> for ~[T] {
+impl<T> Seq<T> for Vec<T> {
     fn length(&self) -> uint { self.len() }
 }
 ~~~~
@@ -2392,7 +2392,7 @@ generic types.
 
 ~~~~
 # trait Printable { fn print(&self); }
-fn print_all<T: Printable>(printable_things: ~[T]) {
+fn print_all<T: Printable>(printable_things: Vec<T>) {
     for thing in printable_things.iter() {
         thing.print();
     }
@@ -2410,10 +2410,10 @@ as in this version of `print_all` that copies elements.
 
 ~~~
 # trait Printable { fn print(&self); }
-fn print_all<T: Printable + Clone>(printable_things: ~[T]) {
+fn print_all<T: Printable + Clone>(printable_things: Vec<T>) {
     let mut i = 0;
     while i < printable_things.len() {
-        let copy_of_thing = printable_things[i].clone();
+        let copy_of_thing = printable_things.get(i).clone();
         copy_of_thing.print();
         i += 1;
     }
@@ -2438,11 +2438,11 @@ However, consider this function:
 # fn new_circle() -> int { 1 }
 trait Drawable { fn draw(&self); }
 
-fn draw_all<T: Drawable>(shapes: ~[T]) {
+fn draw_all<T: Drawable>(shapes: Vec<T>) {
     for shape in shapes.iter() { shape.draw(); }
 }
 # let c: Circle = new_circle();
-# draw_all(~[c]);
+# draw_all(vec![c]);
 ~~~~
 
 You can call that on a vector of circles, or a vector of rectangles
@@ -2742,9 +2742,9 @@ mod farm {
 # pub type Chicken = int;
 # struct Human(int);
 # impl Human { pub fn rest(&self) { } }
-# pub fn make_me_a_farm() -> Farm { Farm { chickens: ~[], farmer: Human(0) } }
+# pub fn make_me_a_farm() -> Farm { Farm { chickens: vec![], farmer: Human(0) } }
     pub struct Farm {
-        chickens: ~[Chicken],
+        chickens: Vec<Chicken>,
         pub farmer: Human
     }
 
