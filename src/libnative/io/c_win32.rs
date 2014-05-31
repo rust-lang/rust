@@ -70,6 +70,7 @@ extern "system" {
 
 pub mod compat {
     use std::intrinsics::{atomic_store_relaxed, transmute};
+    use std::iter::Iterator;
     use libc::types::os::arch::extra::{LPCWSTR, HMODULE, LPCSTR, LPVOID};
 
     extern "system" {
@@ -82,7 +83,8 @@ pub mod compat {
     // layer (after it's loaded) shouldn't be any slower than a regular DLL
     // call.
     unsafe fn store_func(ptr: *mut uint, module: &str, symbol: &str, fallback: uint) {
-        let module = module.to_utf16().append_one(0);
+        let module: Vec<u16> = module.utf16_units().collect();
+        let module = module.append_one(0);
         symbol.with_c_str(|symbol| {
             let handle = GetModuleHandleW(module.as_ptr());
             let func: uint = transmute(GetProcAddress(handle, symbol));

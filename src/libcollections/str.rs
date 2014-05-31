@@ -803,15 +803,9 @@ pub trait StrAllocating: Str {
     }
 
     /// Converts to a vector of `u16` encoded as UTF-16.
+    #[deprecated = "use `utf16_units` instead"]
     fn to_utf16(&self) -> Vec<u16> {
-        let me = self.as_slice();
-        let mut u = Vec::new();
-        for ch in me.chars() {
-            let mut buf = [0u16, ..2];
-            let n = ch.encode_utf16(buf /* as mut slice! */);
-            u.push_all(buf.slice_to(n));
-        }
-        u
+        self.as_slice().utf16_units().collect::<Vec<u16>>()
     }
 
     /// Given a string, make a new string with repeated copies of it.
@@ -1619,14 +1613,17 @@ mod tests {
 
         for p in pairs.iter() {
             let (s, u) = (*p).clone();
-            assert!(is_utf16(u.as_slice()));
-            assert_eq!(s.to_utf16(), u);
+            let s_as_utf16 = s.as_slice().utf16_units().collect::<Vec<u16>>();
+            let u_as_string = from_utf16(u.as_slice()).unwrap();
 
-            assert_eq!(from_utf16(u.as_slice()).unwrap(), s);
+            assert!(is_utf16(u.as_slice()));
+            assert_eq!(s_as_utf16, u);
+
+            assert_eq!(u_as_string, s);
             assert_eq!(from_utf16_lossy(u.as_slice()), s);
 
-            assert_eq!(from_utf16(s.to_utf16().as_slice()).unwrap(), s);
-            assert_eq!(from_utf16(u.as_slice()).unwrap().to_utf16(), u);
+            assert_eq!(from_utf16(s_as_utf16.as_slice()).unwrap(), s);
+            assert_eq!(u_as_string.as_slice().utf16_units().collect::<Vec<u16>>(), u);
         }
     }
 

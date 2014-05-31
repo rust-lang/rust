@@ -365,7 +365,8 @@ pub fn getenv(n: &str) -> Option<String> {
     unsafe {
         with_env_lock(|| {
             use os::win32::{fill_utf16_buf_and_decode};
-            let n = n.to_utf16().append_one(0);
+            let n: Vec<u16> = n.utf16_units().collect();
+            let n = n.append_one(0);
             fill_utf16_buf_and_decode(|buf, sz| {
                 libc::GetEnvironmentVariableW(n.as_ptr(), buf, sz)
             })
@@ -411,8 +412,10 @@ pub fn setenv(n: &str, v: &str) {
 
     #[cfg(windows)]
     fn _setenv(n: &str, v: &str) {
-        let n = n.to_utf16().append_one(0);
-        let v = v.to_utf16().append_one(0);
+        let n: Vec<u16> = n.utf16_units().collect();
+        let n = n.append_one(0);
+        let v: Vec<u16> = v.utf16_units().collect();
+        let v = v.append_one(0);
         unsafe {
             with_env_lock(|| {
                 libc::SetEnvironmentVariableW(n.as_ptr(), v.as_ptr());
@@ -437,7 +440,8 @@ pub fn unsetenv(n: &str) {
 
     #[cfg(windows)]
     fn _unsetenv(n: &str) {
-        let n = n.to_utf16().append_one(0);
+        let n: Vec<u16> = n.utf16_units().collect();
+        let n = n.append_one(0);
         unsafe {
             with_env_lock(|| {
                 libc::SetEnvironmentVariableW(n.as_ptr(), ptr::null());
@@ -804,7 +808,7 @@ pub fn change_dir(p: &Path) -> bool {
     #[cfg(windows)]
     fn chdir(p: &Path) -> bool {
         let p = match p.as_str() {
-            Some(s) => s.to_utf16().append_one(0),
+            Some(s) => s.utf16_units().collect::<Vec<u16>>().append_one(0),
             None => return false,
         };
         unsafe {
