@@ -886,8 +886,8 @@ fn main() {
     // Equivalent to 'std::iter::range_step(0, 10, 2);'
     range_step(0, 10, 2);
 
-    // Equivalent to 'foo(~[std::option::Some(1.0), std::option::None]);'
-    foo(~[Some(1.0), None]);
+    // Equivalent to 'foo(vec![std::option::Some(1.0), std::option::None]);'
+    foo(vec![Some(1.0), None]);
 }
 ~~~~
 
@@ -995,8 +995,8 @@ the function name.
 fn iter<T>(seq: &[T], f: |T|) {
     for elt in seq.iter() { f(elt); }
 }
-fn map<T, U>(seq: &[T], f: |T| -> U) -> ~[U] {
-    let mut acc = ~[];
+fn map<T, U>(seq: &[T], f: |T| -> U) -> Vec<U> {
+    let mut acc = vec![];
     for elt in seq.iter() { acc.push(f(elt)); }
     acc
 }
@@ -1159,10 +1159,10 @@ except that they have the `extern` modifier.
 
 ~~~~
 // Declares an extern fn, the ABI defaults to "C"
-extern fn new_vec() -> ~[int] { ~[] }
+extern fn new_int() -> int { 0 }
 
 // Declares an extern fn with "stdcall" ABI
-extern "stdcall" fn new_vec_stdcall() -> ~[int] { ~[] }
+extern "stdcall" fn new_int_stdcall() -> int { 0 }
 ~~~~
 
 Unlike normal functions, extern fns have an `extern "ABI" fn()`.
@@ -1170,8 +1170,8 @@ This is the same type as the functions declared in an extern
 block.
 
 ~~~~
-# extern fn new_vec() -> ~[int] { ~[] }
-let fptr: extern "C" fn() -> ~[int] = new_vec;
+# extern fn new_int() -> int { 0 }
+let fptr: extern "C" fn() -> int = new_int;
 ~~~~
 
 Extern functions may be called directly from Rust code as Rust uses large,
@@ -1509,7 +1509,7 @@ Implementation parameters are written after the `impl` keyword.
 
 ~~~~
 # trait Seq<T> { }
-impl<T> Seq<T> for ~[T] {
+impl<T> Seq<T> for Vec<T> {
    /* ... */
 }
 impl Seq<bool> for u32 {
@@ -3347,7 +3347,7 @@ Such a definite-sized vector type is a first-class type, since its size is known
 A vector without such a size is said to be of _indefinite_ size,
 and is therefore not a _first-class_ type.
 An indefinite-size vector can only be instantiated through a pointer type,
-such as `&[T]` or `~[T]`.
+such as `&[T]` or `Vec<T>`.
 The kind of a vector type depends on the kind of its element type,
 as with other simple structural types.
 

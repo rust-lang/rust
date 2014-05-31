@@ -53,9 +53,8 @@ To return a Borrowed String Slice (&str) use the str helper function
 ~~~
 use std::str;
 
-let bytes = ~[104u8,105u8];
-let x: Option<&str> = str::from_utf8(bytes);
-let y: &str = x.unwrap();
+let bytes = &[104u8,105u8];
+let x: &str = str::from_utf8(bytes).unwrap();
 ~~~
 
 To return an Owned String use the str helper function
@@ -136,7 +135,7 @@ let index: Option<uint> = str.find_str("rand");
 The [`Container`](../std/container/trait.Container.html) trait provides the `len` method.
 
 ~~~
-let u: ~[u32] = ~[0, 1, 2];
+let u: Vec<u32> = vec![0, 1, 2];
 let v: &[u32] = &[0, 1, 2, 3];
 let w: [u32, .. 5] = [0, 1, 2, 3, 4];
 
@@ -148,7 +147,7 @@ println!("u: {}, v: {}, w: {}", u.len(), v.len(), w.len()); // 3, 4, 5
 Use the [`iter`](../std/vec/trait.ImmutableVector.html#tymethod.iter) method.
 
 ~~~
-let values: ~[int] = ~[1, 2, 3, 4, 5];
+let values: Vec<int> = vec![1, 2, 3, 4, 5];
 for value in values.iter() {  // value: &int
     println!("{}", *value);
 }
