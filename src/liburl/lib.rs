@@ -452,8 +452,8 @@ fn query_from_str(rawquery: &str) -> Query {
  *
  * ```rust
  * let query = vec!(("title".to_string(), "The Village".to_string()),
-                    ("north".to_string(), "52.91".to_string()),
-                    ("west".to_string(), "4.10".to_string()));
+ *                  ("north".to_string(), "52.91".to_string()),
+ *                  ("west".to_string(), "4.10".to_string()));
  * println!("{}", url::query_to_str(&query));  // title=The%20Village&north=52.91&west=4.10
  * ```
  */
