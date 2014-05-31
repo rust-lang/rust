@@ -18,7 +18,5 @@ impl<A, B, C = (A, B)> Foo<A, B, C> {
 
 fn main() {
     Foo::<int>::new();
-    //~^ ERROR the impl referenced by this path needs at least 2 type parameters,
-    //         but 1 was supplied
-    //~^^^ ERROR not enough type parameters provided: expected at least 2, found 1
+    //~^ ERROR too few type parameters provided
 }

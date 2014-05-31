@@ -366,7 +366,6 @@ impl<'a, 'b> Reflector<'a, 'b> {
               let extra = vec!(self.c_uint(p.idx));
               self.visit("param", extra.as_slice())
           }
-          ty::ty_self(..) => self.leaf("self")
         }
     }
 

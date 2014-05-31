@@ -14,7 +14,7 @@
 // Regions that just appear in normal spots are contravariant:
 
 #[rustc_variance]
-struct Test2<'a, 'b, 'c> { //~ ERROR region_params=[-, -, -]
+struct Test2<'a, 'b, 'c> { //~ ERROR regions=[[-, -, -];[];[]]
     x: &'a int,
     y: &'b [int],
     c: &'c str
@@ -23,7 +23,7 @@ struct Test2<'a, 'b, 'c> { //~ ERROR region_params=[-, -, -]
 // Those same annotations in function arguments become covariant:
 
 #[rustc_variance]
-struct Test3<'a, 'b, 'c> { //~ ERROR region_params=[+, +, +]
+struct Test3<'a, 'b, 'c> { //~ ERROR regions=[[+, +, +];[];[]]
     x: extern "Rust" fn(&'a int),
     y: extern "Rust" fn(&'b [int]),
     c: extern "Rust" fn(&'c str),
@@ -32,7 +32,7 @@ struct Test3<'a, 'b, 'c> { //~ ERROR region_params=[+, +, +]
 // Mutability induces invariance:
 
 #[rustc_variance]
-struct Test4<'a, 'b> { //~ ERROR region_params=[-, o]
+struct Test4<'a, 'b> { //~ ERROR regions=[[-, o];[];[]]
     x: &'a mut &'b int,
 }
 
@@ -40,7 +40,7 @@ struct Test4<'a, 'b> { //~ ERROR region_params=[-, o]
 // contravariant context:
 
 #[rustc_variance]
-struct Test5<'a, 'b> { //~ ERROR region_params=[+, o]
+struct Test5<'a, 'b> { //~ ERROR regions=[[+, o];[];[]]
     x: extern "Rust" fn(&'a mut &'b int),
 }
 
@@ -50,21 +50,21 @@ struct Test5<'a, 'b> { //~ ERROR region_params=[+, o]
 // argument list occurs in an invariant context.
 
 #[rustc_variance]
-struct Test6<'a, 'b> { //~ ERROR region_params=[-, o]
+struct Test6<'a, 'b> { //~ ERROR regions=[[-, o];[];[]]
     x: &'a mut extern "Rust" fn(&'b int),
 }
 
 // No uses at all is bivariant:
 
 #[rustc_variance]
-struct Test7<'a> { //~ ERROR region_params=[*]
+struct Test7<'a> { //~ ERROR regions=[[*];[];[]]
     x: int
 }
 
 // Try enums too.
 
 #[rustc_variance]
-enum Test8<'a, 'b, 'c> { //~ ERROR region_params=[+, -, o]
+enum Test8<'a, 'b, 'c> { //~ ERROR regions=[[+, -, o];[];[]]
     Test8A(extern "Rust" fn(&'a int)),
     Test8B(&'b [int]),
     Test8C(&'b mut &'c str),
