@@ -8,21 +8,21 @@ Cleanup the trait, method, and operator semantics so that they are
 well-defined and cover more use cases. A high-level summary of the
 changes is as follows:
 
-1. Full support for proper generic traits ("multiparameter type classes"),
-   including a simplified version of functional dependencies that may
-   evolve into associated types in the future.
-2. Generalize explicit self types beyond `&self` and `&mut self` etc,
+1. Generalize explicit self types beyond `&self` and `&mut self` etc,
    so that self-type declarations like `self: Rc<Self>` become possible.
-3. Expand coherence rules to operate recursively and distinguish
+2. Expand coherence rules to operate recursively and distinguish
    orphans more carefully.
-4. Revise vtable resolution algorithm to be gradual.
-5. Revise method resolution algorithm in terms of vtable resolution.
+3. Revise vtable resolution algorithm to be gradual.
+4. Revise method resolution algorithm in terms of vtable resolution.
+
+This RFC excludes discussion of associated types and multidimensional
+type classes, which will be the subject of a follow-up RFC.
 
 # Motivation
 
 The current trait system is ill-specified and inadequate. Its
-implementation dates from a rather different language. I want to clean
-it up and put it on a surer footing.
+implementation dates from a rather different language. It should be
+put onto a surer footing.
 
 ## Use cases
 
@@ -190,73 +190,6 @@ property.  And the popularity and usefulness of blanket impls cannot
 be denied.  Therefore, I think this property ("always being able to
 add impls") is not especially useful or important.
 
-### Overloadable operators
-
-*Addressed by:* Proper generic traits.
-
-Our current rules around operator overloading are too limiting.
-Consider the case of defining a mathematical library for modeling
-vectors. I might like to overload the `+` operator. Following mathematical
-convention, I'd like to say that:
-
-1. Vector + vector yields a vector.
-2. Vector + scalar yields a vector.
-3. Scalar + vector yields a vector.
-
-Given that the trait for addition looks like:
-
-```
-trait Add<RHS,SUM> { ... }
-```
-
-where `RHS` is the type of the right-hand-side argument and `SUM` is
-the type of their sum. One might then imagine translating the three
-kinds of addition for vectors into impls like so (note that the type
-after the `for` is the left-hand-side of the addition):
-
-```
-impl Add<Vector, Vector> for Vector { ... }
-impl Add<Scalar, Vector> for Vector { ... }
-impl Add<Vector, Vector> for Scalar { ... }
-```
-
-Of course, if you do this, you'll get...well, it won't work. You'll
-get some coherence failures, I think, but in addition the algorithms
-and trait matching are just not up to the task of resolving these
-sorts of traits (see "Insufficient implementation").
-
-I think however that this sort of impl *should* work, though not
-necessarily for *every* trait. Basically, trait type parameters can be
-divided into two groups: inputs and ouputs. An *input* type parameter
-is one that is used to decide what impl applies. An *output* type
-parameter is one that is determined by the impl. In the case of the
-`Add` trait, the *inputs* would be the implicit type parameter `Self`
-as well as `RHS`. The *output* would be the type `SUM`.
-
-In Haskell, the distinction between *input* and *output* type
-parameters can be expressed in two mostly equivalent ways. One is
-*functional dependencies*, in which one declares an expression like `A
-B -> C D`, which means that the type parameters `A` and `B` uniquely
-determine `C` and `D`. In other words, `A` and `B` are inputs, and `C`
-and `D` are outputs. (Functional dependencies are more general than
-this, though I know of no actual use case for their full generality.)
-*Asssociated types* are another means of drawing this distinction:
-here the *associated types* are outputs.
-
-In this proposal, I specify that the implicit type parameter `Self`
-is, by default, the only input type parameters. All explicit type
-parameters on a trait default to *output* unless prefixed by the `in`
-keyword. This means that, e.g., the trait `Add` should be defined as:
-
-```
-trait Add<in RHS, SUM> { ... }
-```
-
-The decision to make *output* be the default is data-driven: a quick
-look over existing traits, as well as existing practice from Haskell,
-shows that output type parameters are *much* more common. I have
-further discussion on the interaction with *associated types* below.
-
 ### Hokey implementation <a name=hokey>
 
 *Addressed by:* Gradual vtable resolution algorithm
@@ -296,11 +229,10 @@ some other reason.
 
 Note that there is some interaction with the distinction between input
 and output type parameters discussed in the previous
-example. Specifically, we must never *infer* the value of an input
+example. Specifically, we must never *infer* the value of the `Self`
 type parameter based on the impls in scope. This is because it would
 cause *crate concatentation* to potentially lead to compilation errors
-in the form of inference failure. (I am not 100% convinced this is a
-big deal, though, see the *Alternatives* section for more details.)
+in the form of inference failure.
 
 ## Properties
 
@@ -338,17 +270,6 @@ like to write out a declarative and non-algorithmic specification for
 the rules too, but that is work in progress and beyond the scope of
 this RFC. Instead, I'll try to explain in "plain English".
 
-## Trait syntax
-
-Use the `in` keyword to designate *input* type parameters \[[1](#1)]:
-
-    trait Add<in RHS, SUM> { ... }
-    
-The implicit `Self` type parameter is *always* considered an input.
-All explicit type parameters are considered outputs unless declared as
-inputs. Input type parameters must come *before* explicit type
-parameters. \[[3](#3)]
-
 ## Method self-type syntax
 
 Currently methods must be declared using the explicit-self shorthands:
@@ -383,9 +304,8 @@ and the *overlapping implementations* restriction.
 the following conditions:
 
 1. The trait being implemented (if any) must be defined in the current crate.
-2. At least one of the input type parameters (including but not
-   necessarily `Self`) must meet the following grammar, where `C`
-   is a struct or enum defined within the current crate:
+2. The `Self` type parameter must meet the following grammar, where
+   `C` is a struct or enum defined within the current crate:
    
        T = C
          | [T]
@@ -396,12 +316,13 @@ the following conditions:
          | (..., T, ...)
          | X<..., T, ...> where X is not bivariant with respect to T
 
-*Overlapping instances*: No two implementations can be instantiable
-with the same set of types for the input type parameters. For this
-purpose, we will also recursively check bounds. This check is
-ultimately defined in terms of the *RESOLVE* algorithm discussed in
-the implementation section below: it must be able to conclude that the
-requirements of one impl are incompatible with the other.
+*Overlapping instances*: No two implementations of the same trait can
+be defined for the same type (note that it is only the `Self` type
+that matters). For this purpose of this check, we will also
+recursively check bounds. This check is ultimately defined in terms of
+the *RESOLVE* algorithm discussed in the implementation section below:
+it must be able to conclude that the requirements of one impl are
+incompatible with the other.
 
 Here is a simple example that is OK:
 
@@ -413,17 +334,6 @@ The first impl implements `Show for int` and the case implements
 `Show for uint`. This is ok because the type `int` cannot be unified
 with `uint`.
 
-Here is another example that is OK under these rules:
-
-    trait Add<in RHS, SUM> { ... }
-    impl Add<int, int> for int { ... }
-    impl Add<Vector, Vector> for int { ... }
-    
-It might seem surprising that these two impls are ok, because both
-implement `Add` for `int`. However, the type `RHS` is different in
-each case, and `RHS` is an input type parameter.
-
-Note that it is crucial for `RHS` to be an input type parameter.
 The following example is *NOT OK*:
 
     trait Iterator<E> { ... }
@@ -448,10 +358,20 @@ might add an implementation of `Copy` for `~B`.)
 
 Since trait resolution is not fully decidable, it is possible to
 concoct scenarios in which coherence can neither confirm nor deny the
-possibility that two impls are overlapping. I know of no examples that
-do not involve infinite recursion between impls. For example, in the
-following scenario, the coherence checked would be unable to decide if
-the following impls overlap:
+possibility that two impls are overlapping. One way for this to happen
+is when there are two traits which the user knows are mutually
+exclusive; mutual exclusion is not currently expressible in the type
+system \[[7](#7)\] however, and hence the coherence check will report
+errors. For example:
+
+    trait Even { } // Naturally can't be Even and Odd at once!
+    trait Odd { } 
+    impl<T:Even> Foo for T { }
+    impl<T:Odd> Foo for T { }
+    
+Another possible scenario is infinite recursion between impls. For
+example, in the following scenario, the coherence checked would be
+unable to decide if the following impls overlap:
 
     impl<A:Foo> Bar for A { ... }
     impl<A:Bar> Foo for A { ... }
@@ -676,14 +596,17 @@ resolution. If, after type checking the function in its entirety,
 there are *still* obligations that cannot be definitely resolved,
 that's an error.
 
-## Ensuring crate concatenation through functional dependencies
+## Ensuring crate concatenation
 
-It depends. The distinction between *input* and *output* type
-parameters is necessary to ensure that inference is stable even if
-crates are concatenated.  That is, imagine a scenario like this one:
+To ensure *crate concentanability*, we must only consider the `Self`
+type parameter when deciding when a trait has been implemented (more
+generally, we must know the precise set of *input* type parameters; I
+will cover an expanded set of rules for this in a subsequent RFC).
+
+To see why this matters, imagine a scenario like this one:
 
     trait Produce<R> {
-        fn produce(self: Self) -> R;
+        fn produce(&self: Self) -> R;
     }
     
 Now imagine I have two crates, C and D. Crate C defines two types,
@@ -694,19 +617,28 @@ Now imagine I have two crates, C and D. Crate C defines two types,
 
 Now imagine crate C has some code like:
 
-    fn foo(v: Vector) {
-        let x = v.produce();
-        ...
+    fn foo() {
+        let mut v = None;
+        loop {
+            if v.is_some() {
+                let x = v.get().produce(); // (*)
+                ...
+            } else {
+                v = Some(Vector);
+            }
+        }
     }
 
-At this point we don't know the type of `x`. But the inferencer might
-conclude that, since it can only see one `impl` of `Produce` for
-`Vector`, `x` must have the type `int`.
+At the point `(*)` of the call to `produce()` we do not yet know the
+type of the receiver. But the inferencer might conclude that, since it
+can only see one `impl` of `Produce` for `Vector`, `v` must have type
+`Vector` and hence `x` must have the type `int`.
 
 However, then we might find another crate D that adds a new impl:
 
+    struct Other;
     struct Real;
-    impl Combine<Real> for Vector { ... }
+    impl Combine<Real> for Other { ... }
     
 This definition passes the orphan check because *at least one* of the
 types (`Real`, in this case) in the impl is local to the current
@@ -743,11 +675,11 @@ is four sets:
   recursion.
 
 In general, if we ever encounter a NO-IMPL or UNDECIDABLE, it's
-probably an error.  DEFERRED obligations are ok until we reach the end
+probably an error. DEFERRED obligations are ok until we reach the end
 of the function. For details, please refer to the
 [prototype][prototype].
 
-# Alternatives <a name=alternatives>
+# Alternatives and downsides <a name=alternatives>
 
 ## Autoderef and ambiguity <a name=ambig>
 
@@ -772,77 +704,6 @@ that are not smart pointers.
 
 This idea appeals to me but I think belongs in a separate RFC. It
 needs to be evaluated.
-
-## What are the downsides to fundeps? <a=fundepdownsides>
-
-There is one place where a strict concern about fundeps will limit
-inference. One scenario I am envisioning is the following:
-
-    struct MyIterator<E> {
-    }
-    
-    impl<E:Copy> Iterator<E> for MyIterator<E> {
-        fn next(&self) -> Option<E> { ... }
-    }
-    
-    ...
-    
-    let i: MyIterator<_> = ...;
-    i.next();
-    
-Note that I wrote `MyIterator<_>` for the type of `i` -- let's say
-that the type inference hasn't yet settled on what type we are
-iterating over, and hence (from it's point of view) the type of `i` is
-`MyIterator<$0>`, where `$0` represents an inference variable. In that
-case, we won't be able to decide whether `MyIterator<$0>` implements
-`Iterator` because we don't know whether `$0` implements `Copy`.
-
-One way to address this would be by allowing the definition of
-`MyIterator` to declare bounds of its own:
-
-    struct MyIterator<E:Copy> { ... }
-    
-Then we might adjust the algorithm to understand that we can match the
-impl, since if there is a value of type `MyIterator<$0>`, then `$0`
-must be `Copy`. This basically relies on some other pull requests that
-are in the pipeline.
-
-## How do functional dependencies and associated types relate? <a name=assoc>
-
-An *associated type* is basically an "output" functional dependency. I
-expect we will eventually add some sort of syntax for associated
-types. Associated types have a lot of advantages over fundeps, but I
-do have some concrete concerns too. I think we may want both in the
-end.
-
-My usual example for where a fundep may be more appropriate
-is the `Iterator` trait:
-
-    trait Iterator<E> { ... }
-    
-It is common to want to write a function that takes an iterator of
-some specific type, e.g. char. With a fundep-style approach, this can
-easily be expressed:
-
-    fn foo<I:Iterator<Char>>(...) { ... }
-    
-If using associated types, the equivalent would require some sort
-of `where` clause:
-
-    trait Iterator { type E; }
-    fn foo<I:Iterator>(...) where I::E == Char { ... }
-    
-Past experience also suggests that it's harder to figure out how to
-integrate this substitution into the type system rules themselves.
-
-Moreover, it's not clear how associated types integrate with object
-types. For example, an object type like `&Iterator<char>` works fine,
-but for traits using associated types that doesn't work at all.
-
-## Why functional dependencies and not traits implemented over tuples? <a name=tuples>
-
-All things being equal, I might prefer to say that only the `Self`
-type of a trait is
 
 # Footnotes
 
@@ -884,5 +745,10 @@ to this rule.
 **Note 6:** In the section on [autoderef and ambiguity](#ambig), I
 discuss alternate rules that might allow us to lift the requirement
 that the receiver be named `self`.
+
+<a name=7>
+
+**Note 7:** I am considering introducing mechanisms in a subsequent
+RFC that could be used to express mutual exclusion of traits.
 
 [prototype]: https://github.com/nikomatsakis/trait-matching-algorithm
