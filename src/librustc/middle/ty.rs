@@ -65,7 +65,7 @@ pub static INITIAL_DISCRIMINANT_VALUE: Disr = 0;
 
 // Data types
 
-#[deriving(Eq, TotalEq, Hash)]
+#[deriving(PartialEq, TotalEq, Hash)]
 pub struct field {
     pub ident: ast::Ident,
     pub mt: mt
@@ -121,13 +121,13 @@ impl Method {
     }
 }
 
-#[deriving(Clone, Eq, TotalEq, Hash)]
+#[deriving(Clone, PartialEq, TotalEq, Hash)]
 pub struct mt {
     pub ty: t,
     pub mutbl: ast::Mutability,
 }
 
-#[deriving(Clone, Eq, TotalEq, Hash, Encodable, Decodable, Show)]
+#[deriving(Clone, PartialEq, TotalEq, Hash, Encodable, Decodable, Show)]
 pub enum TraitStore {
     /// Box<Trait>
     UniqTraitStore,
@@ -145,7 +145,7 @@ pub struct field_ty {
 
 // Contains information needed to resolve types and (in the future) look up
 // the types of AST nodes.
-#[deriving(Eq, TotalEq, Hash)]
+#[deriving(PartialEq, TotalEq, Hash)]
 pub struct creader_cache_key {
     pub cnum: CrateNum,
     pub pos: uint,
@@ -158,10 +158,10 @@ pub struct intern_key {
     sty: *sty,
 }
 
-// NB: Do not replace this with #[deriving(Eq)]. The automatically-derived
+// NB: Do not replace this with #[deriving(PartialEq)]. The automatically-derived
 // implementation will not recurse through sty and you will get stack
 // exhaustion.
-impl cmp::Eq for intern_key {
+impl cmp::PartialEq for intern_key {
     fn eq(&self, other: &intern_key) -> bool {
         unsafe {
             *self.sty == *other.sty
@@ -185,14 +185,14 @@ pub enum ast_ty_to_ty_cache_entry {
     atttce_resolved(t)  /* resolved to a type, irrespective of region */
 }
 
-#[deriving(Clone, Eq, Decodable, Encodable)]
+#[deriving(Clone, PartialEq, Decodable, Encodable)]
 pub struct ItemVariances {
     pub self_param: Option<Variance>,
     pub type_params: OwnedSlice<Variance>,
     pub region_params: OwnedSlice<Variance>
 }
 
-#[deriving(Clone, Eq, Decodable, Encodable, Show)]
+#[deriving(Clone, PartialEq, Decodable, Encodable, Show)]
 pub enum Variance {
     Covariant,      // T<A> <: T<B> iff A <: B -- e.g., function return type
     Invariant,      // T<A> <: T<B> iff B == A -- e.g., type of mutable cell
@@ -216,7 +216,7 @@ pub struct AutoDerefRef {
     pub autoref: Option<AutoRef>
 }
 
-#[deriving(Clone, Decodable, Encodable, Eq, Show)]
+#[deriving(Clone, Decodable, Encodable, PartialEq, Show)]
 pub enum AutoRef {
     /// Convert from T to &T
     AutoPtr(Region, ast::Mutability),
@@ -387,7 +387,7 @@ pub struct t_box_ {
 enum t_opaque {}
 
 #[allow(raw_pointer_deriving)]
-#[deriving(Clone, Eq, TotalEq, Hash)]
+#[deriving(Clone, PartialEq, TotalEq, Hash)]
 pub struct t { inner: *t_opaque }
 
 impl fmt::Show for t {
@@ -415,14 +415,14 @@ pub fn type_needs_infer(t: t) -> bool {
 }
 pub fn type_id(t: t) -> uint { get(t).id }
 
-#[deriving(Clone, Eq, TotalEq, Hash)]
+#[deriving(Clone, PartialEq, TotalEq, Hash)]
 pub struct BareFnTy {
     pub fn_style: ast::FnStyle,
     pub abi: abi::Abi,
     pub sig: FnSig,
 }
 
-#[deriving(Clone, Eq, TotalEq, Hash)]
+#[deriving(Clone, PartialEq, TotalEq, Hash)]
 pub struct ClosureTy {
     pub fn_style: ast::FnStyle,
     pub onceness: ast::Onceness,
@@ -443,7 +443,7 @@ pub struct ClosureTy {
  * - `output` is the return type.
  * - `variadic` indicates whether this is a varidic function. (only true for foreign fns)
  */
-#[deriving(Clone, Eq, TotalEq, Hash)]
+#[deriving(Clone, PartialEq, TotalEq, Hash)]
 pub struct FnSig {
     pub binder_id: ast::NodeId,
     pub inputs: Vec<t>,
@@ -451,14 +451,14 @@ pub struct FnSig {
     pub variadic: bool
 }
 
-#[deriving(Clone, Eq, TotalEq, Hash)]
+#[deriving(Clone, PartialEq, TotalEq, Hash)]
 pub struct param_ty {
     pub idx: uint,
     pub def_id: DefId
 }
 
 /// Representation of regions:
-#[deriving(Clone, Eq, TotalEq, Hash, Encodable, Decodable, Show)]
+#[deriving(Clone, PartialEq, TotalEq, Hash, Encodable, Decodable, Show)]
 pub enum Region {
     // Region bound in a type or fn declaration which will be
     // substituted 'early' -- that is, at the same time when type
@@ -499,13 +499,13 @@ pub enum Region {
  * the original var id (that is, the root variable that is referenced
  * by the upvar) and the id of the closure expression.
  */
-#[deriving(Clone, Eq, TotalEq, Hash)]
+#[deriving(Clone, PartialEq, TotalEq, Hash)]
 pub struct UpvarId {
     pub var_id: ast::NodeId,
     pub closure_expr_id: ast::NodeId,
 }
 
-#[deriving(Clone, Eq, TotalEq, Hash, Show)]
+#[deriving(Clone, PartialEq, TotalEq, Hash, Show)]
 pub enum BorrowKind {
     /// Data must be immutable and is aliasable.
     ImmBorrow,
@@ -600,7 +600,7 @@ pub enum BorrowKind {
  *   the closure, so sometimes it is necessary for them to be larger
  *   than the closure lifetime itself.
  */
-#[deriving(Eq, Clone)]
+#[deriving(PartialEq, Clone)]
 pub struct UpvarBorrow {
     pub kind: BorrowKind,
     pub region: ty::Region,
@@ -618,13 +618,13 @@ impl Region {
     }
 }
 
-#[deriving(Clone, Eq, Ord, TotalEq, TotalOrd, Hash, Encodable, Decodable, Show)]
+#[deriving(Clone, PartialEq, PartialOrd, TotalEq, TotalOrd, Hash, Encodable, Decodable, Show)]
 pub struct FreeRegion {
     pub scope_id: NodeId,
     pub bound_region: BoundRegion
 }
 
-#[deriving(Clone, Eq, Ord, TotalEq, TotalOrd, Hash, Encodable, Decodable, Show)]
+#[deriving(Clone, PartialEq, PartialOrd, TotalEq, TotalOrd, Hash, Encodable, Decodable, Show)]
 pub enum BoundRegion {
     /// An anonymous region parameter for a given fn (&T)
     BrAnon(uint),
@@ -643,7 +643,7 @@ pub enum BoundRegion {
  * Represents the values to use when substituting lifetime parameters.
  * If the value is `ErasedRegions`, then this subst is occurring during
  * trans, and all region parameters will be replaced with `ty::ReStatic`. */
-#[deriving(Clone, Eq, TotalEq, Hash)]
+#[deriving(Clone, PartialEq, TotalEq, Hash)]
 pub enum RegionSubsts {
     ErasedRegions,
     NonerasedRegions(OwnedSlice<ty::Region>)
@@ -666,7 +666,7 @@ pub enum RegionSubsts {
  * - `self_ty` is the type to which `self` should be remapped, if any.  The
  *   `self` type is rather funny in that it can only appear on traits and is
  *   always substituted away to the implementing type for a trait. */
-#[deriving(Clone, Eq, TotalEq, Hash)]
+#[deriving(Clone, PartialEq, TotalEq, Hash)]
 pub struct substs {
     pub self_ty: Option<ty::t>,
     pub tps: Vec<t>,
@@ -722,7 +722,7 @@ mod primitives {
 
 // NB: If you change this, you'll probably want to change the corresponding
 // AST structure in libsyntax/ast.rs as well.
-#[deriving(Clone, Eq, TotalEq, Hash)]
+#[deriving(Clone, PartialEq, TotalEq, Hash)]
 pub enum sty {
     ty_nil,
     ty_bot,
@@ -754,7 +754,7 @@ pub enum sty {
             // on non-useful type error messages)
 }
 
-#[deriving(Clone, Eq, TotalEq, Hash)]
+#[deriving(Clone, PartialEq, TotalEq, Hash)]
 pub struct TyTrait {
     pub def_id: DefId,
     pub substs: substs,
@@ -762,13 +762,13 @@ pub struct TyTrait {
     pub bounds: BuiltinBounds
 }
 
-#[deriving(Eq, TotalEq, Hash)]
+#[deriving(PartialEq, TotalEq, Hash)]
 pub struct TraitRef {
     pub def_id: DefId,
     pub substs: substs
 }
 
-#[deriving(Clone, Eq)]
+#[deriving(Clone, PartialEq)]
 pub enum IntVarValue {
     IntType(ast::IntTy),
     UintType(ast::UintTy),
@@ -822,7 +822,7 @@ pub enum type_err {
     terr_variadic_mismatch(expected_found<bool>)
 }
 
-#[deriving(Eq, TotalEq, Hash)]
+#[deriving(PartialEq, TotalEq, Hash)]
 pub struct ParamBounds {
     pub builtin_bounds: BuiltinBounds,
     pub trait_bounds: Vec<Rc<TraitRef>>
@@ -830,7 +830,7 @@ pub struct ParamBounds {
 
 pub type BuiltinBounds = EnumSet<BuiltinBound>;
 
-#[deriving(Clone, Encodable, Eq, TotalEq, Decodable, Hash, Show)]
+#[deriving(Clone, Encodable, PartialEq, TotalEq, Decodable, Hash, Show)]
 #[repr(uint)]
 pub enum BuiltinBound {
     BoundStatic,
@@ -862,21 +862,21 @@ impl CLike for BuiltinBound {
     }
 }
 
-#[deriving(Clone, Eq, TotalEq, Hash)]
+#[deriving(Clone, PartialEq, TotalEq, Hash)]
 pub struct TyVid(pub uint);
 
-#[deriving(Clone, Eq, TotalEq, Hash)]
+#[deriving(Clone, PartialEq, TotalEq, Hash)]
 pub struct IntVid(pub uint);
 
-#[deriving(Clone, Eq, TotalEq, Hash)]
+#[deriving(Clone, PartialEq, TotalEq, Hash)]
 pub struct FloatVid(pub uint);
 
-#[deriving(Clone, Eq, TotalEq, Encodable, Decodable, Hash)]
+#[deriving(Clone, PartialEq, TotalEq, Encodable, Decodable, Hash)]
 pub struct RegionVid {
     pub id: uint
 }
 
-#[deriving(Clone, Eq, TotalEq, Hash)]
+#[deriving(Clone, PartialEq, TotalEq, Hash)]
 pub enum InferTy {
     TyVar(TyVid),
     IntVar(IntVid),
@@ -889,7 +889,7 @@ pub enum InferRegion {
     ReSkolemized(uint, BoundRegion)
 }
 
-impl cmp::Eq for InferRegion {
+impl cmp::PartialEq for InferRegion {
     fn eq(&self, other: &InferRegion) -> bool {
         match ((*self), *other) {
             (ReVar(rva), ReVar(rvb)) => {
@@ -2402,7 +2402,7 @@ pub fn is_instantiable(cx: &ctxt, r_ty: t) -> bool {
 /// distinguish between types that are recursive with themselves and types that
 /// contain a different recursive type. These cases can therefore be treated
 /// differently when reporting errors.
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 pub enum Representability {
     Representable,
     SelfRecursive,

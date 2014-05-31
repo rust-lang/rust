@@ -30,7 +30,7 @@ enum TypeStructure<'tcx> {
     TypeInt,
     TypeFunction(Type<'tcx>, Type<'tcx>),
 }
-impl<'tcx> Eq for TypeStructure<'tcx> {
+impl<'tcx> PartialEq for TypeStructure<'tcx> {
     fn eq(&self, other: &TypeStructure<'tcx>) -> bool {
         match (*self, *other) {
             (TypeInt, TypeInt) => true,
@@ -86,7 +86,7 @@ impl<'tcx,'ast> TypeContext<'tcx, 'ast> {
     }
 }
 
-#[deriving(Eq, TotalEq, Hash)]
+#[deriving(PartialEq, TotalEq, Hash)]
 struct NodeId {
     id: uint
 }

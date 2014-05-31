@@ -11,7 +11,7 @@
 use std::num::FromPrimitive;
 use std::int;
 
-#[deriving(Eq, FromPrimitive, Show)]
+#[deriving(PartialEq, FromPrimitive, Show)]
 enum A {
     Foo = int::MAX,
     Bar = 1,

@@ -30,7 +30,7 @@ pub static RED_ZONE: uint = 20 * 1024;
 /// stacks are currently not enabled as segmented stacks, but rather one giant
 /// stack segment. This means that whenever we run out of stack, we want to
 /// truly consider it to be stack overflow rather than allocating a new stack.
-#[cfg(not(test), not(stage0))] // in testing, use the original libstd's version
+#[cfg(not(test))] // in testing, use the original libstd's version
 #[lang = "stack_exhausted"]
 extern fn stack_exhausted() {
     use option::{Option, None, Some};
@@ -99,35 +99,6 @@ extern fn stack_exhausted() {
         // and the FFI call needs 2MB of stack when we just ran out.
         rterrln!("task '{}' has overflowed its stack", name);
 
-        intrinsics::abort();
-    }
-}
-
-#[no_mangle]      // - this is called from C code
-#[no_split_stack] // - it would be sad for this function to trigger __morestack
-#[doc(hidden)]    // - Function must be `pub` to get exported, but it's
-                  //   irrelevant for documentation purposes.
-#[cfg(stage0, not(test))] // in testing, use the original libstd's version
-pub extern "C" fn rust_stack_exhausted() {
-    use option::{Option, None, Some};
-    use owned::Box;
-    use rt::local::Local;
-    use rt::task::Task;
-    use str::Str;
-    use intrinsics;
-
-    unsafe {
-        let limit = get_sp_limit();
-        record_sp_limit(limit - RED_ZONE / 2);
-        let task: Option<Box<Task>> = Local::try_take();
-        let name = match task {
-            Some(ref task) => {
-                task.name.as_ref().map(|n| n.as_slice())
-            }
-            None => None
-        };
-        let name = name.unwrap_or("<unknown>");
-        rterrln!("task '{}' has overflowed its stack", name);
         intrinsics::abort();
     }
 }

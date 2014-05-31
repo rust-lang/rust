@@ -15,7 +15,7 @@
 use mem::transmute;
 use clone::Clone;
 use container::Container;
-use cmp::{Eq, TotalOrd, Ordering, Less, Equal, Greater};
+use cmp::{PartialEq, TotalOrd, Ordering, Less, Equal, Greater};
 use cmp;
 use default::Default;
 use iter::*;
@@ -249,11 +249,11 @@ impl<'a, T> RandomAccessIterator<&'a [T]> for Chunks<'a, T> {
 pub mod traits {
     use super::*;
 
-    use cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Equiv};
+    use cmp::{PartialEq, PartialOrd, TotalEq, TotalOrd, Ordering, Equiv};
     use iter::{order, Iterator};
     use container::Container;
 
-    impl<'a,T:Eq> Eq for &'a [T] {
+    impl<'a,T:PartialEq> PartialEq for &'a [T] {
         fn eq(&self, other: & &'a [T]) -> bool {
             self.len() == other.len() &&
                 order::eq(self.iter(), other.iter())
@@ -264,7 +264,7 @@ pub mod traits {
         }
     }
 
-    impl<T:Eq> Eq for ~[T] {
+    impl<T:PartialEq> PartialEq for ~[T] {
         #[inline]
         fn eq(&self, other: &~[T]) -> bool { self.as_slice() == *other }
         #[inline]
@@ -275,12 +275,12 @@ pub mod traits {
 
     impl<T:TotalEq> TotalEq for ~[T] {}
 
-    impl<'a,T:Eq, V: Vector<T>> Equiv<V> for &'a [T] {
+    impl<'a,T:PartialEq, V: Vector<T>> Equiv<V> for &'a [T] {
         #[inline]
         fn equiv(&self, other: &V) -> bool { self.as_slice() == other.as_slice() }
     }
 
-    impl<'a,T:Eq, V: Vector<T>> Equiv<V> for ~[T] {
+    impl<'a,T:PartialEq, V: Vector<T>> Equiv<V> for ~[T] {
         #[inline]
         fn equiv(&self, other: &V) -> bool { self.as_slice() == other.as_slice() }
     }
@@ -296,7 +296,7 @@ pub mod traits {
         fn cmp(&self, other: &~[T]) -> Ordering { self.as_slice().cmp(&other.as_slice()) }
     }
 
-    impl<'a, T: Ord> Ord for &'a [T] {
+    impl<'a, T: PartialOrd> PartialOrd for &'a [T] {
         fn lt(&self, other: & &'a [T]) -> bool {
             order::lt(self.iter(), other.iter())
         }
@@ -314,7 +314,7 @@ pub mod traits {
         }
     }
 
-    impl<T: Ord> Ord for ~[T] {
+    impl<T: PartialOrd> PartialOrd for ~[T] {
         #[inline]
         fn lt(&self, other: &~[T]) -> bool { self.as_slice() < other.as_slice() }
         #[inline]
@@ -692,8 +692,8 @@ impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
     }
 }
 
-/// Extension methods for vectors contain `Eq` elements.
-pub trait ImmutableEqVector<T:Eq> {
+/// Extension methods for vectors contain `PartialEq` elements.
+pub trait ImmutableEqVector<T:PartialEq> {
     /// Find the first index containing a matching value
     fn position_elem(&self, t: &T) -> Option<uint>;
 
@@ -710,7 +710,7 @@ pub trait ImmutableEqVector<T:Eq> {
     fn ends_with(&self, needle: &[T]) -> bool;
 }
 
-impl<'a,T:Eq> ImmutableEqVector<T> for &'a [T] {
+impl<'a,T:PartialEq> ImmutableEqVector<T> for &'a [T] {
     #[inline]
     fn position_elem(&self, x: &T) -> Option<uint> {
         self.iter().position(|y| *x == *y)

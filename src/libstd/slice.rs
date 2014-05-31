@@ -1916,7 +1916,7 @@ mod tests {
         assert!(values == [2, 3, 5, 6, 7]);
     }
 
-    #[deriving(Clone, Eq)]
+    #[deriving(Clone, PartialEq)]
     struct Foo;
 
     #[test]

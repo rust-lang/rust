@@ -76,8 +76,8 @@ impl<E, D:Decoder<E>,T:Decodable<D, E>> Decodable<D, E> for RingBuf<T> {
 impl<
     E,
     S: Encoder<E>,
-    K: Encodable<S, E> + Eq + TotalOrd,
-    V: Encodable<S, E> + Eq
+    K: Encodable<S, E> + PartialEq + TotalOrd,
+    V: Encodable<S, E> + PartialEq
 > Encodable<S, E> for TreeMap<K, V> {
     fn encode(&self, e: &mut S) -> Result<(), E> {
         e.emit_map(self.len(), |e| {
@@ -95,8 +95,8 @@ impl<
 impl<
     E,
     D: Decoder<E>,
-    K: Decodable<D, E> + Eq + TotalOrd,
-    V: Decodable<D, E> + Eq
+    K: Decodable<D, E> + PartialEq + TotalOrd,
+    V: Decodable<D, E> + PartialEq
 > Decodable<D, E> for TreeMap<K, V> {
     fn decode(d: &mut D) -> Result<TreeMap<K, V>, E> {
         d.read_map(|d, len| {
@@ -114,7 +114,7 @@ impl<
 impl<
     E,
     S: Encoder<E>,
-    T: Encodable<S, E> + Eq + TotalOrd
+    T: Encodable<S, E> + PartialEq + TotalOrd
 > Encodable<S, E> for TreeSet<T> {
     fn encode(&self, s: &mut S) -> Result<(), E> {
         s.emit_seq(self.len(), |s| {
@@ -131,7 +131,7 @@ impl<
 impl<
     E,
     D: Decoder<E>,
-    T: Decodable<D, E> + Eq + TotalOrd
+    T: Decodable<D, E> + PartialEq + TotalOrd
 > Decodable<D, E> for TreeSet<T> {
     fn decode(d: &mut D) -> Result<TreeSet<T>, E> {
         d.read_seq(|d, len| {

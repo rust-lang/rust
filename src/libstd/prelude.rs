@@ -58,7 +58,7 @@
 #[doc(no_inline)] pub use c_str::ToCStr;
 #[doc(no_inline)] pub use char::Char;
 #[doc(no_inline)] pub use clone::Clone;
-#[doc(no_inline)] pub use cmp::{Eq, Ord, TotalEq, TotalOrd};
+#[doc(no_inline)] pub use cmp::{PartialEq, PartialOrd, TotalEq, TotalOrd};
 #[doc(no_inline)] pub use cmp::{Ordering, Less, Equal, Greater, Equiv};
 #[doc(no_inline)] pub use container::{Container, Mutable, Map, MutableMap};
 #[doc(no_inline)] pub use container::{Set, MutableSet};

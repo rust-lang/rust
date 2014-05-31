@@ -490,7 +490,7 @@ impl Clean<Option<Vec<TyParamBound>>> for ty::substs {
     }
 }
 
-#[deriving(Clone, Encodable, Decodable, Eq)]
+#[deriving(Clone, Encodable, Decodable, PartialEq)]
 pub struct Lifetime(String);
 
 impl Lifetime {
@@ -631,7 +631,7 @@ impl Clean<Item> for ast::TypeMethod {
     }
 }
 
-#[deriving(Clone, Encodable, Decodable, Eq)]
+#[deriving(Clone, Encodable, Decodable, PartialEq)]
 pub enum SelfTy {
     SelfStatic,
     SelfValue,
@@ -1458,7 +1458,7 @@ impl Clean<Item> for doctree::Static {
     }
 }
 
-#[deriving(Show, Clone, Encodable, Decodable, Eq)]
+#[deriving(Show, Clone, Encodable, Decodable, PartialEq)]
 pub enum Mutability {
     Mutable,
     Immutable,

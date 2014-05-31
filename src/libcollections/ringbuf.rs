@@ -364,7 +364,7 @@ fn raw_index(lo: uint, len: uint, index: uint) -> uint {
     }
 }
 
-impl<A: Eq> Eq for RingBuf<A> {
+impl<A: PartialEq> PartialEq for RingBuf<A> {
     fn eq(&self, other: &RingBuf<A>) -> bool {
         self.nelts == other.nelts &&
             self.iter().zip(other.iter()).all(|(a, b)| a.eq(b))
@@ -397,7 +397,7 @@ mod tests {
     use self::test::Bencher;
     use deque::Deque;
     use std::clone::Clone;
-    use std::cmp::Eq;
+    use std::cmp::PartialEq;
     use std::fmt::Show;
     use super::RingBuf;
 
@@ -483,7 +483,7 @@ mod tests {
     }
 
     #[cfg(test)]
-    fn test_parameterized<T:Clone + Eq + Show>(a: T, b: T, c: T, d: T) {
+    fn test_parameterized<T:Clone + PartialEq + Show>(a: T, b: T, c: T, d: T) {
         let mut deq = RingBuf::new();
         assert_eq!(deq.len(), 0);
         deq.push_front(a.clone());
@@ -568,21 +568,21 @@ mod tests {
         })
     }
 
-    #[deriving(Clone, Eq, Show)]
+    #[deriving(Clone, PartialEq, Show)]
     enum Taggy {
         One(int),
         Two(int, int),
         Three(int, int, int),
     }
 
-    #[deriving(Clone, Eq, Show)]
+    #[deriving(Clone, PartialEq, Show)]
     enum Taggypar<T> {
         Onepar(int),
         Twopar(int, int),
         Threepar(int, int, int),
     }
 
-    #[deriving(Clone, Eq, Show)]
+    #[deriving(Clone, PartialEq, Show)]
     struct RecCy {
         x: int,
         y: int,

@@ -11,7 +11,7 @@
 use std::cell::Cell;
 use std::ops::{Deref, DerefMut};
 
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 struct DerefCounter<T> {
     count_imm: Cell<uint>,
     count_mut: uint,
@@ -46,7 +46,7 @@ impl<T> DerefMut<T> for DerefCounter<T> {
     }
 }
 
-#[deriving(Eq, Show)]
+#[deriving(PartialEq, Show)]
 struct Point {
     x: int,
     y: int

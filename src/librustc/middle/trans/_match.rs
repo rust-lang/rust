@@ -240,7 +240,7 @@ enum Lit {
     ConstLit(ast::DefId),              // the def ID of the constant
 }
 
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 pub enum VecLenOpt {
     vec_len_eq,
     vec_len_ge(/* length of prefix */uint)
@@ -1215,7 +1215,7 @@ fn pick_col(m: &[Match]) -> uint {
     return best_col;
 }
 
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 pub enum branch_kind { no_branch, single, switch, compare, compare_vec_len, }
 
 // Compiles a comparison between two things.

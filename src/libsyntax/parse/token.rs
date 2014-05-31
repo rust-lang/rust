@@ -24,7 +24,7 @@ use std::rc::Rc;
 use std::string::String;
 
 #[allow(non_camel_case_types)]
-#[deriving(Clone, Encodable, Decodable, Eq, TotalEq, Hash, Show)]
+#[deriving(Clone, Encodable, Decodable, PartialEq, TotalEq, Hash, Show)]
 pub enum BinOp {
     PLUS,
     MINUS,
@@ -39,7 +39,7 @@ pub enum BinOp {
 }
 
 #[allow(non_camel_case_types)]
-#[deriving(Clone, Encodable, Decodable, Eq, TotalEq, Hash, Show)]
+#[deriving(Clone, Encodable, Decodable, PartialEq, TotalEq, Hash, Show)]
 pub enum Token {
     /* Expression-operator symbols. */
     EQ,
@@ -102,7 +102,7 @@ pub enum Token {
     EOF,
 }
 
-#[deriving(Clone, Encodable, Decodable, Eq, TotalEq, Hash)]
+#[deriving(Clone, Encodable, Decodable, PartialEq, TotalEq, Hash)]
 /// For interpolation during macro expansion.
 pub enum Nonterminal {
     NtItem(@ast::Item),
@@ -552,7 +552,7 @@ pub fn get_ident_interner() -> Rc<IdentInterner> {
 /// destroyed. In particular, they must not access string contents. This can
 /// be fixed in the future by just leaking all strings until task death
 /// somehow.
-#[deriving(Clone, Eq, Hash, Ord, TotalEq, TotalOrd)]
+#[deriving(Clone, PartialEq, Hash, PartialOrd, TotalEq, TotalOrd)]
 pub struct InternedString {
     string: RcStr,
 }

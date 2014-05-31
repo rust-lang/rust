@@ -61,7 +61,7 @@ There are two ways to install the Rust compiler: by building from source or
 by downloading prebuilt binaries or installers for your platform. The
 [install page][rust-install] contains links to download binaries for both
 the nightly build and the most current Rust major release. For Windows and
-OS X, the install page provides links to native installers. 
+OS X, the install page provides links to native installers.
 
 > *Note:* Windows users should read the detailed
 > [Getting started][wiki-start] notes on the wiki. Even when using
@@ -69,8 +69,8 @@ OS X, the install page provides links to native installers.
 > the precise details of which are not discussed here.
 
 For Linux and OS X, the install page provides links to binary tarballs.
-To install the Rust compiler from the from a binary tarball, download 
-the binary package, extract it, and execute the `install.sh` script in 
+To install the Rust compiler from the from a binary tarball, download
+the binary package, extract it, and execute the `install.sh` script in
 the root directory of the package.
 
 To build the Rust compiler from source, you will need to obtain the source through
@@ -1303,7 +1303,7 @@ be specified up-front. Our previous definition of list equality relied on the el
 the `==` operator available, and took advantage of the lack of a destructor on `u32` to copy it
 without a move of ownership.
 
-We can add a *trait bound* on the `Eq` trait to require that the type implement the `==` operator.
+We can add a *trait bound* on the `PartialEq` trait to require that the type implement the `==` operator.
 Two more `ref` annotations need to be added to avoid attempting to move out the element types:
 
 ~~~
@@ -1311,7 +1311,7 @@ Two more `ref` annotations need to be added to avoid attempting to move out the 
 #     Cons(T, Box<List<T>>),
 #     Nil
 # }
-fn eq<T: Eq>(xs: &List<T>, ys: &List<T>) -> bool {
+fn eq<T: PartialEq>(xs: &List<T>, ys: &List<T>) -> bool {
     // Match on the next node in both lists.
     match (xs, ys) {
         // If we have reached the end of both lists, they are equal.
@@ -1329,8 +1329,8 @@ let ys = Cons('c', box Cons('a', box Cons('t', box Nil)));
 assert!(eq(&xs, &ys));
 ~~~
 
-This would be a good opportunity to implement the `Eq` trait for our list type, making the `==` and
-`!=` operators available. We'll need to provide an `impl` for the `Eq` trait and a definition of the
+This would be a good opportunity to implement the `PartialEq` trait for our list type, making the `==` and
+`!=` operators available. We'll need to provide an `impl` for the `PartialEq` trait and a definition of the
 `eq` method. In a method, the `self` parameter refers to an instance of the type we're implementing
 on.
 
@@ -1339,7 +1339,7 @@ on.
 #     Cons(T, Box<List<T>>),
 #     Nil
 # }
-impl<T: Eq> Eq for List<T> {
+impl<T: PartialEq> PartialEq for List<T> {
     fn eq(&self, ys: &List<T>) -> bool {
         // Match on the next node in both lists.
         match (self, ys) {
@@ -1356,12 +1356,12 @@ impl<T: Eq> Eq for List<T> {
 
 let xs = Cons(5, box Cons(10, box Nil));
 let ys = Cons(5, box Cons(10, box Nil));
-// The methods below are part of the Eq trait,
+// The methods below are part of the PartialEq trait,
 // which we implemented on our linked list.
 assert!(xs.eq(&ys));
 assert!(!xs.ne(&ys));
 
-// The Eq trait also allows us to use the shorthand infix operators.
+// The PartialEq trait also allows us to use the shorthand infix operators.
 assert!(xs == ys);    // `xs == ys` is short for `xs.eq(&ys)`
 assert!(!(xs != ys)); // `xs != ys` is short for `xs.ne(&ys)`
 ~~~
@@ -2345,12 +2345,12 @@ trait describes types that support an equality operation:
 ~~~~
 // In a trait, `self` refers to the self argument.
 // `Self` refers to the type implementing the trait.
-trait Eq {
+trait PartialEq {
     fn equals(&self, other: &Self) -> bool;
 }
 
 // In an impl, `self` refers just to the value of the receiver
-impl Eq for int {
+impl PartialEq for int {
     fn equals(&self, other: &int) -> bool { *other == *self }
 }
 ~~~~
@@ -2600,13 +2600,13 @@ A small number of traits in `std` and `extra` can have implementations
 that can be automatically derived. These instances are specified by
 placing the `deriving` attribute on a data type declaration. For
 example, the following will mean that `Circle` has an implementation
-for `Eq` and can be used with the equality operators, and that a value
+for `PartialEq` and can be used with the equality operators, and that a value
 of type `ABC` can be randomly generated and converted to a string:
 
 ~~~
 extern crate rand;
 
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 struct Circle { radius: f64 }
 
 #[deriving(Rand, Show)]
@@ -2618,7 +2618,7 @@ fn main() {
 }
 ~~~
 
-The full list of derivable traits is `Eq`, `TotalEq`, `Ord`,
+The full list of derivable traits is `PartialEq`, `TotalEq`, `Ord`,
 `TotalOrd`, `Encodable`, `Decodable`, `Clone`,
 `Hash`, `Rand`, `Default`, `Zero`, `FromPrimitive` and `Show`.
 

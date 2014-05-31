@@ -24,7 +24,7 @@ use std::iter;
 use std::slice;
 use std::string::String;
 
-#[deriving(Clone, Eq)]
+#[deriving(Clone, PartialEq)]
 pub enum PathElem {
     PathMod(Name),
     PathName(Name)

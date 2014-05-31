@@ -8,6 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo<T: ::std::cmp::Eq>(_t: T) { }
+fn foo<T: ::std::cmp::PartialEq>(_t: T) { }
 
 pub fn main() { }

@@ -10,7 +10,7 @@
 
 use std::string::String;
 
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 enum t { a, b(String), }
 
 fn make(i: int) -> t {

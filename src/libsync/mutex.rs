@@ -97,7 +97,7 @@ pub struct Mutex {
     lock: StaticMutex,
 }
 
-#[deriving(Eq, Show)]
+#[deriving(PartialEq, Show)]
 enum Flavor {
     Unlocked,
     TryLockAcquisition,

@@ -182,7 +182,7 @@ pub trait Rng {
     /// let m: f64 = rng.gen_range(-40.0, 1.3e5);
     /// println!("{}", m);
     /// ```
-    fn gen_range<T: Ord + SampleRange>(&mut self, low: T, high: T) -> T {
+    fn gen_range<T: PartialOrd + SampleRange>(&mut self, low: T, high: T) -> T {
         assert!(low < high, "Rng.gen_range called with low >= high");
         Range::new(low, high).ind_sample(self)
     }

@@ -317,7 +317,7 @@ impl fmt::Show for Command {
 }
 
 /// The output of a finished process.
-#[deriving(Eq, TotalEq, Clone)]
+#[deriving(PartialEq, TotalEq, Clone)]
 pub struct ProcessOutput {
     /// The status (exit code) of the process.
     pub status: ProcessExit,
@@ -348,7 +348,7 @@ pub enum StdioContainer {
 
 /// Describes the result of a process after it has terminated.
 /// Note that Windows have no signals, so the result is usually ExitStatus.
-#[deriving(Eq, TotalEq, Clone)]
+#[deriving(PartialEq, TotalEq, Clone)]
 pub enum ProcessExit {
     /// Normal termination with an exit status.
     ExitStatus(int),

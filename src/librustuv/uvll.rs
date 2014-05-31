@@ -254,7 +254,7 @@ pub type uv_shutdown_cb = extern "C" fn(req: *uv_shutdown_t, status: c_int);
 #[cfg(windows)] pub type uv_gid_t = libc::c_uchar;
 
 #[repr(C)]
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 pub enum uv_handle_type {
     UV_UNKNOWN_HANDLE,
     UV_ASYNC,
@@ -279,7 +279,7 @@ pub enum uv_handle_type {
 
 #[repr(C)]
 #[cfg(unix)]
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 pub enum uv_req_type {
     UV_UNKNOWN_REQ,
     UV_REQ,
@@ -297,7 +297,7 @@ pub enum uv_req_type {
 // See UV_REQ_TYPE_PRIVATE at libuv/include/uv-win.h
 #[repr(C)]
 #[cfg(windows)]
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 pub enum uv_req_type {
     UV_UNKNOWN_REQ,
     UV_REQ,
@@ -320,7 +320,7 @@ pub enum uv_req_type {
 }
 
 #[repr(C)]
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 pub enum uv_membership {
     UV_LEAVE_GROUP,
     UV_JOIN_GROUP

@@ -21,7 +21,7 @@ use rsparse = parse;
 use parse = fmt_macros;
 use collections::{HashMap, HashSet};
 
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 enum ArgumentType {
     Known(String),
     Unsigned,

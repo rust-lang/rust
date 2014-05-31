@@ -35,7 +35,7 @@ TEMPLATE = """// Copyright {year} The Rust Project Developers. See the COPYRIGHT
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// This file was auto-generated using 'src/etc/generate-keyword-span-tests.py'
+// This file was auto-generated using 'src/etc/generate-deriving-span-tests.py'
 
 #![feature(struct_variant)]
 extern crate rand;
@@ -117,8 +117,10 @@ traits = {
 
 for (trait, supers, errs) in [('Rand', [], 1),
                               ('Clone', [], 1),
-                              ('Eq', [], 2), ('Ord', [], 8),
-                              ('TotalEq', [], 1), ('TotalOrd', ['TotalEq'], 1),
+                              ('PartialEq', [], 2),
+                              ('PartialOrd', ['PartialEq'], 8),
+                              ('TotalEq', ['PartialEq'], 1),
+                              ('TotalOrd', ['TotalEq', 'PartialOrd', 'PartialEq'], 1),
                               ('Show', [], 1),
                               ('Hash', [], 1)]:
     traits[trait] = (ALL, supers, errs)

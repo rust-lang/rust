@@ -172,7 +172,7 @@ struct DefaultLogger {
 }
 
 /// Wraps the log level with fmt implementations.
-#[deriving(Eq, Ord)]
+#[deriving(PartialEq, PartialOrd)]
 pub struct LogLevel(pub u32);
 
 impl fmt::Show for LogLevel {

@@ -8,23 +8,25 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::cmp::Eq;
+// ignore-tidy-linelength
 
-trait Hahaha: Eq + Eq + Eq + Eq + Eq + //~ ERROR duplicate supertrait
-              Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq +
-              Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq +
-              Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq +
-              Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq +
-              Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq +
-              Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq +
-              Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq +
-              Eq {}
+use std::cmp::PartialEq;
+
+trait Hahaha: PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + //~ ERROR duplicate supertrait
+              PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq +
+              PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq +
+              PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq +
+              PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq +
+              PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq +
+              PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq +
+              PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq + PartialEq +
+              PartialEq {}
 
 struct Lol(int);
 
 impl Hahaha for Lol { }
 
-impl Eq for Lol {
+impl PartialEq for Lol {
     fn eq(&self, other: &Lol) -> bool { **self != **other }
     fn ne(&self, other: &Lol) -> bool { **self == **other }
 }

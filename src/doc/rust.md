@@ -1436,7 +1436,7 @@ trait Circle : Shape { fn radius() -> f64; }
 ~~~~
 
 the syntax `Circle : Shape` means that types that implement `Circle` must also have an implementation for `Shape`.
-Multiple supertraits are separated by `+`, `trait Circle : Shape + Eq { }`.
+Multiple supertraits are separated by `+`, `trait Circle : Shape + PartialEq { }`.
 In an implementation of `Circle` for a given type `T`, methods can refer to `Shape` methods,
 since the typechecker checks that any type with an implementation of `Circle` also has an implementation of `Shape`.
 
@@ -2159,23 +2159,23 @@ There are three different types of inline attributes:
 
 The `deriving` attribute allows certain traits to be automatically
 implemented for data structures. For example, the following will
-create an `impl` for the `Eq` and `Clone` traits for `Foo`, the type
-parameter `T` will be given the `Eq` or `Clone` constraints for the
+create an `impl` for the `PartialEq` and `Clone` traits for `Foo`, the type
+parameter `T` will be given the `PartialEq` or `Clone` constraints for the
 appropriate `impl`:
 
 ~~~~
-#[deriving(Eq, Clone)]
+#[deriving(PartialEq, Clone)]
 struct Foo<T> {
     a: int,
     b: T
 }
 ~~~~
 
-The generated `impl` for `Eq` is equivalent to
+The generated `impl` for `PartialEq` is equivalent to
 
 ~~~~
 # struct Foo<T> { a: int, b: T }
-impl<T: Eq> Eq for Foo<T> {
+impl<T: PartialEq> PartialEq for Foo<T> {
     fn eq(&self, other: &Foo<T>) -> bool {
         self.a == other.a && self.b == other.b
     }
@@ -2188,7 +2188,7 @@ impl<T: Eq> Eq for Foo<T> {
 
 Supported traits for `deriving` are:
 
-* Comparison traits: `Eq`, `TotalEq`, `Ord`, `TotalOrd`.
+* Comparison traits: `PartialEq`, `TotalEq`, `PartialOrd`, `TotalOrd`.
 * Serialization: `Encodable`, `Decodable`. These require `serialize`.
 * `Clone`, to create `T` from `&T` via a copy.
 * `Hash`, to iterate over the bytes in a data type.
@@ -2734,22 +2734,22 @@ The default meaning of the operators on standard types is given here.
 
 * `==`
   : Equal to.
-    Calls the `eq` method on the `std::cmp::Eq` trait.
+    Calls the `eq` method on the `std::cmp::PartialEq` trait.
 * `!=`
   : Unequal to.
-    Calls the `ne` method on the `std::cmp::Eq` trait.
+    Calls the `ne` method on the `std::cmp::PartialEq` trait.
 * `<`
   : Less than.
-    Calls the `lt` method on the `std::cmp::Ord` trait.
+    Calls the `lt` method on the `std::cmp::PartialOrd` trait.
 * `>`
   : Greater than.
-    Calls the `gt` method on the `std::cmp::Ord` trait.
+    Calls the `gt` method on the `std::cmp::PartialOrd` trait.
 * `<=`
   : Less than or equal.
-    Calls the `le` method on the `std::cmp::Ord` trait.
+    Calls the `le` method on the `std::cmp::PartialOrd` trait.
 * `>=`
   : Greater than or equal.
-    Calls the `ge` method on the `std::cmp::Ord` trait.
+    Calls the `ge` method on the `std::cmp::PartialOrd` trait.
 
 #### Type cast expressions
 

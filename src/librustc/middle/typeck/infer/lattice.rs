@@ -72,19 +72,19 @@ impl LatticeValue for ty::t {
 
 pub trait CombineFieldsLatticeMethods {
     fn var_sub_var<T:Clone + InferStr + LatticeValue,
-                   V:Clone + Eq + ToStr + Vid + UnifyVid<Bounds<T>>>(&self,
+                   V:Clone + PartialEq + ToStr + Vid + UnifyVid<Bounds<T>>>(&self,
                                                                      a_id: V,
                                                                      b_id: V)
                                                                      -> ures;
     /// make variable a subtype of T
     fn var_sub_t<T:Clone + InferStr + LatticeValue,
-                 V:Clone + Eq + ToStr + Vid + UnifyVid<Bounds<T>>>(
+                 V:Clone + PartialEq + ToStr + Vid + UnifyVid<Bounds<T>>>(
                  &self,
                  a_id: V,
                  b: T)
                  -> ures;
     fn t_sub_var<T:Clone + InferStr + LatticeValue,
-                 V:Clone + Eq + ToStr + Vid + UnifyVid<Bounds<T>>>(
+                 V:Clone + PartialEq + ToStr + Vid + UnifyVid<Bounds<T>>>(
                  &self,
                  a: T,
                  b_id: V)
@@ -96,7 +96,7 @@ pub trait CombineFieldsLatticeMethods {
                  lattice_op: LatticeOp<T>)
                  -> cres<Bound<T>>;
     fn set_var_to_merged_bounds<T:Clone + InferStr + LatticeValue,
-                                V:Clone+Eq+ToStr+Vid+UnifyVid<Bounds<T>>>(
+                                V:Clone+PartialEq+ToStr+Vid+UnifyVid<Bounds<T>>>(
                                 &self,
                                 v_id: V,
                                 a: &Bounds<T>,
@@ -112,7 +112,7 @@ pub trait CombineFieldsLatticeMethods {
 
 impl<'f> CombineFieldsLatticeMethods for CombineFields<'f> {
     fn var_sub_var<T:Clone + InferStr + LatticeValue,
-                   V:Clone + Eq + ToStr + Vid + UnifyVid<Bounds<T>>>(
+                   V:Clone + PartialEq + ToStr + Vid + UnifyVid<Bounds<T>>>(
                    &self,
                    a_id: V,
                    b_id: V)
@@ -165,7 +165,7 @@ impl<'f> CombineFieldsLatticeMethods for CombineFields<'f> {
 
     /// make variable a subtype of T
     fn var_sub_t<T:Clone + InferStr + LatticeValue,
-                 V:Clone + Eq + ToStr + Vid + UnifyVid<Bounds<T>>>(
+                 V:Clone + PartialEq + ToStr + Vid + UnifyVid<Bounds<T>>>(
                  &self,
                  a_id: V,
                  b: T)
@@ -189,7 +189,7 @@ impl<'f> CombineFieldsLatticeMethods for CombineFields<'f> {
     }
 
     fn t_sub_var<T:Clone + InferStr + LatticeValue,
-                 V:Clone + Eq + ToStr + Vid + UnifyVid<Bounds<T>>>(
+                 V:Clone + PartialEq + ToStr + Vid + UnifyVid<Bounds<T>>>(
                  &self,
                  a: T,
                  b_id: V)
@@ -238,7 +238,7 @@ impl<'f> CombineFieldsLatticeMethods for CombineFields<'f> {
     }
 
     fn set_var_to_merged_bounds<T:Clone + InferStr + LatticeValue,
-                                V:Clone+Eq+ToStr+Vid+UnifyVid<Bounds<T>>>(
+                                V:Clone+PartialEq+ToStr+Vid+UnifyVid<Bounds<T>>>(
                                 &self,
                                 v_id: V,
                                 a: &Bounds<T>,
@@ -432,7 +432,7 @@ pub enum LatticeVarResult<V,T> {
  *   return. */
 pub fn lattice_vars<L:LatticeDir + Combine,
                     T:Clone + InferStr + LatticeValue,
-                    V:Clone + Eq + ToStr + Vid + UnifyVid<Bounds<T>>>(
+                    V:Clone + PartialEq + ToStr + Vid + UnifyVid<Bounds<T>>>(
     this: &L,                           // defines whether we want LUB or GLB
     a_vid: V,                          // first variable
     b_vid: V,                          // second variable
@@ -478,7 +478,7 @@ pub fn lattice_vars<L:LatticeDir + Combine,
 
 pub fn lattice_var_and_t<L:LatticeDir + Combine,
                          T:Clone + InferStr + LatticeValue,
-                         V:Clone + Eq + ToStr + Vid + UnifyVid<Bounds<T>>>(
+                         V:Clone + PartialEq + ToStr + Vid + UnifyVid<Bounds<T>>>(
     this: &L,
     a_id: V,
     b: &T,

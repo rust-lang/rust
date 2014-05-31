@@ -113,7 +113,7 @@ impl<S: Writer, T: Hash<S>> Hash<S> for OwnedSlice<T> {
     }
 }
 
-impl<T: Eq> Eq for OwnedSlice<T> {
+impl<T: PartialEq> PartialEq for OwnedSlice<T> {
     fn eq(&self, other: &OwnedSlice<T>) -> bool {
         self.as_slice() == other.as_slice()
     }

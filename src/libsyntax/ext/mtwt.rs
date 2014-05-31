@@ -37,7 +37,7 @@ pub struct SCTable {
     rename_memo: RefCell<HashMap<(SyntaxContext,Ident,Name),SyntaxContext>>,
 }
 
-#[deriving(Eq, Encodable, Decodable, Hash)]
+#[deriving(PartialEq, Encodable, Decodable, Hash)]
 pub enum SyntaxContext_ {
     EmptyCtxt,
     Mark (Mrk,SyntaxContext),
@@ -294,7 +294,7 @@ mod tests {
 
     // because of the SCTable, I now need a tidy way of
     // creating syntax objects. Sigh.
-    #[deriving(Clone, Eq, Show)]
+    #[deriving(Clone, PartialEq, Show)]
     enum TestSC {
         M(Mrk),
         R(Ident,Name)

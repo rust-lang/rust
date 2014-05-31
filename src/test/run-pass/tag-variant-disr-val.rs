@@ -19,7 +19,7 @@ enum color {
     orange = 8 >> 1
 }
 
-impl Eq for color {
+impl PartialEq for color {
     fn eq(&self, other: &color) -> bool {
         ((*self) as uint) == ((*other) as uint)
     }
