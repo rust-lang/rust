@@ -38,7 +38,7 @@ use libc;
 use ops::Drop;
 use option::{Some, None, Option};
 use os;
-use path::{Path, GenericPath};
+use path::{Path, GenericPath, BytesContainer};
 use ptr::RawPtr;
 use ptr;
 use result::{Err, Ok, Result};
@@ -393,6 +393,63 @@ pub fn unsetenv(n: &str) {
     }
 
     _unsetenv(n);
+}
+
+#[cfg(unix)]
+/// Parse a string or vector according to the platform's conventions
+/// for the `PATH` environment variable. Drops empty paths.
+pub fn split_paths<T: BytesContainer>(unparsed: T) -> Vec<Path> {
+    unparsed.container_as_bytes()
+            .split(|b| *b == ':' as u8)
+            .filter(|s| s.len() > 0)
+            .map(Path::new)
+            .collect()
+}
+
+#[cfg(windows)]
+/// Parse a string or vector according to the platform's conventions
+/// for the `PATH` environment variable. Drops empty paths.
+pub fn split_paths<T: BytesContainer>(unparsed: T) -> Vec<Path> {
+    // On Windows, the PATH environment variable is semicolon separated.  Double
+    // quotes are used as a way of introducing literal semicolons (since
+    // c:\some;dir is a valid Windows path). Double quotes are not themselves
+    // permitted in path names, so there is no way to escape a double quote.
+    // Quoted regions can appear in arbitrary locations, so
+    //
+    //   c:\foo;c:\som"e;di"r;c:\bar
+    //
+    // Should parse as [c:\foo, c:\some;dir, c:\bar].
+    //
+    // (The above is based on testing; there is no clear reference available
+    // for the grammar.)
+
+    let mut parsed = Vec::new();
+    let mut in_progress = Vec::new();
+    let mut in_quote = false;
+
+    for b in unparsed.container_as_bytes().iter() {
+        match *b as char {
+            ';' if !in_quote => {
+                // ignore zero-length path strings
+                if in_progress.len() > 0 {
+                    parsed.push(Path::new(in_progress.as_slice()));
+                }
+                in_progress.truncate(0)
+            }
+            '\"' => {
+                in_quote = !in_quote;
+            }
+            _  => {
+                in_progress.push(*b);
+            }
+        }
+    }
+
+    if in_progress.len() > 0 {
+        parsed.push(Path::new(in_progress));
+    }
+
+    parsed
 }
 
 /// A low-level OS in-memory pipe.
@@ -1502,7 +1559,7 @@ mod tests {
     use c_str::ToCStr;
     use option;
     use os::{env, getcwd, getenv, make_absolute};
-    use os::{setenv, unsetenv};
+    use os::{split_paths, setenv, unsetenv};
     use os;
     use rand::Rng;
     use rand;
@@ -1752,6 +1809,41 @@ mod tests {
         drop(chunk);
 
         fs::unlink(&path).unwrap();
+    }
+
+    #[test]
+    #[cfg(windows)]
+    fn split_paths_windows() {
+        fn check_parse(unparsed: &str, parsed: &[&str]) -> bool {
+            split_paths(unparsed) ==
+                parsed.iter().map(|s| Path::new(*s)).collect()
+        }
+
+        assert!(check_parse("", []));
+        assert!(check_parse(r#""""#, []));
+        assert!(check_parse(";;", []));
+        assert!(check_parse(r"c:\", [r"c:\"]));
+        assert!(check_parse(r"c:\;", [r"c:\"]));
+        assert!(check_parse(r"c:\;c:\Program Files\",
+                            [r"c:\", r"c:\Program Files\"]));
+        assert!(check_parse(r#"c:\;c:\"foo"\"#, [r"c:\", r"c:\foo\"]));
+        assert!(check_parse(r#"c:\;c:\"foo;bar"\;c:\baz"#,
+                            [r"c:\", r"c:\foo;bar\", r"c:\baz"]));
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn split_paths_unix() {
+        fn check_parse(unparsed: &str, parsed: &[&str]) -> bool {
+            split_paths(unparsed) ==
+                parsed.iter().map(|s| Path::new(*s)).collect()
+        }
+
+        assert!(check_parse("", []));
+        assert!(check_parse("::", []));
+        assert!(check_parse("/", ["/"]));
+        assert!(check_parse("/:", ["/"]));
+        assert!(check_parse("/:/usr/local", ["/", "/usr/local"]));
     }
 
     // More recursive_mkdir tests are in extra::tempfile
