@@ -868,7 +868,9 @@ fn should_sort_failures_before_printing_them() {
     assert!(apos < bpos);
 }
 
-fn use_color() -> bool { return get_concurrency() == 1; }
+fn use_color() -> bool {
+    get_concurrency() == 1 && io::stdout().get_ref().isatty()
+}
 
 #[deriving(Clone)]
 enum TestEvent {
