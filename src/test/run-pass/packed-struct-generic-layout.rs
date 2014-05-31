@@ -10,7 +10,7 @@
 
 use std::mem;
 
-#[packed]
+#[repr(packed)]
 struct S<T, S> {
     a: T,
     b: u8,

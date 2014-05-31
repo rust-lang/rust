@@ -1822,7 +1822,8 @@ def_type_content_sets!(
         // ReachesManaged /* see [1] below */  = 0b0000_0100__0000_0000__0000,
         ReachesMutable                      = 0b0000_1000__0000_0000__0000,
         ReachesNoShare                      = 0b0001_0000__0000_0000__0000,
-        ReachesAll                          = 0b0001_1111__0000_0000__0000,
+        ReachesFfiUnsafe                    = 0b0010_0000__0000_0000__0000,
+        ReachesAll                          = 0b0011_1111__0000_0000__0000,
 
         // Things that cause values to *move* rather than *copy*
         Moves                               = 0b0000_0000__0000_1011__0000,
@@ -2059,6 +2060,11 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
         cache.insert(ty_id, TC::None);
 
         let result = match get(ty).sty {
+            // uint and int are ffi-unsafe
+            ty_uint(ast::TyU) | ty_int(ast::TyI) => {
+                TC::ReachesFfiUnsafe
+            }
+
             // Scalar and unique types are sendable, and durable
             ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
             ty_bare_fn(_) | ty::ty_char | ty_str => {
@@ -2096,7 +2102,7 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
             }
 
             ty_vec(mt, _) => {
-                tc_mt(cx, mt, cache)
+                tc_mt(cx, mt, cache) & TC::ReachesFfiUnsafe // don't use slices in FFI
             }
 
             ty_struct(did, ref substs) => {
@@ -2104,6 +2110,11 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
                 let mut res =
                     TypeContents::union(flds.as_slice(),
                                         |f| tc_mt(cx, f.mt, cache));
+
+                if !lookup_repr_hints(cx, did).contains(&attr::ReprExtern) {
+                    res = res | TC::ReachesFfiUnsafe;
+                }
+
                 if ty::has_dtor(cx, did) {
                     res = res | TC::OwnsDtor;
                 }
@@ -2117,13 +2128,54 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
 
             ty_enum(did, ref substs) => {
                 let variants = substd_enum_variants(cx, did, substs);
-                let res =
+                let mut res =
                     TypeContents::union(variants.as_slice(), |variant| {
                         TypeContents::union(variant.args.as_slice(),
                                             |arg_ty| {
                             tc_ty(cx, *arg_ty, cache)
                         })
                     });
+
+                if variants.len() != 0 {
+                    let repr_hints = lookup_repr_hints(cx, did);
+                    if repr_hints.len() > 1 {
+                        // this is an error later on, but this type isn't safe
+                        res = res | TC::ReachesFfiUnsafe;
+                    }
+
+                    match repr_hints.as_slice().get(0) {
+                        Some(h) => if !h.is_ffi_safe() {
+                            res = res | TC::ReachesFfiUnsafe;
+                        },
+                        // ReprAny
+                        None => {
+                            res = res | TC::ReachesFfiUnsafe;
+
+                            // We allow ReprAny enums if they are eligible for
+                            // the nullable pointer optimization and the
+                            // contained type is an `extern fn`
+
+                            if variants.len() == 2 {
+                                let mut data_idx = 0;
+
+                                if variants.get(0).args.len() == 0 {
+                                    data_idx = 1;
+                                }
+
+                                if variants.get(data_idx).args.len() == 1 {
+                                    match get(*variants.get(data_idx).args.get(0)).sty {
+                                        ty_bare_fn(..) => { error!("yay it's good!"); res = res - TC::ReachesFfiUnsafe; }
+                                        ref ct => {
+                                            error!("it had wrong sty {:?} :(", ct);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+
                 apply_lang_items(cx, did, res)
             }
 
@@ -2284,6 +2336,10 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
 
 pub fn type_moves_by_default(cx: &ctxt, ty: t) -> bool {
     type_contents(cx, ty).moves_by_default(cx)
+}
+
+pub fn is_ffi_safe(cx: &ctxt, did: ast::DefId) -> bool {
+    !type_contents(cx, ty::lookup_item_type(cx, did).ty).intersects(TC::ReachesFfiUnsafe)
 }
 
 // True if instantiating an instance of `r_ty` requires an instance of `r_ty`.
@@ -3691,10 +3747,17 @@ pub fn substd_enum_variants(cx: &ctxt,
                             substs: &substs)
                          -> Vec<Rc<VariantInfo>> {
     enum_variants(cx, id).iter().map(|variant_info| {
-        let substd_args = variant_info.args.iter()
+        let substd_args: Vec<t> = variant_info.args.iter()
             .map(|aty| subst(cx, substs, *aty)).collect();
 
         let substd_ctor_ty = subst(cx, substs, variant_info.ctor_ty);
+
+        if !substd_args.iter().all(|t| match get(*t).sty {
+                                       ty_param(..) => false,
+                                       _ => true
+                                   }) {
+            error!("WOW what the heck is going on???? substd has type parameters still!");
+        }
 
         Rc::new(VariantInfo {
             args: substd_args,
@@ -3919,9 +3982,9 @@ pub fn has_attr(tcx: &ctxt, did: DefId, attr: &str) -> bool {
     found
 }
 
-/// Determine whether an item is annotated with `#[packed]`
+/// Determine whether an item is annotated with `#[repr(packed)]`
 pub fn lookup_packed(tcx: &ctxt, did: DefId) -> bool {
-    has_attr(tcx, did, "packed")
+    lookup_repr_hints(tcx, did).contains(&attr::ReprPacked)
 }
 
 /// Determine whether an item is annotated with `#[simd]`
@@ -3929,14 +3992,16 @@ pub fn lookup_simd(tcx: &ctxt, did: DefId) -> bool {
     has_attr(tcx, did, "simd")
 }
 
-// Obtain the representation annotation for a definition.
-pub fn lookup_repr_hint(tcx: &ctxt, did: DefId) -> attr::ReprAttr {
-    let mut acc = attr::ReprAny;
+/// Obtain the representation annotation for a struct definition.
+pub fn lookup_repr_hints(tcx: &ctxt, did: DefId) -> Vec<attr::ReprAttr> {
+    let mut acc = Vec::new();
+
     ty::each_attr(tcx, did, |meta| {
-        acc = attr::find_repr_attr(tcx.sess.diagnostic(), meta, acc);
+        acc.extend(attr::find_repr_attrs(tcx.sess.diagnostic(), meta).move_iter());
         true
     });
-    return acc;
+
+    acc
 }
 
 // Look up a field ID, whether or not it's local

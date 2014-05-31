@@ -40,7 +40,6 @@ use metadata::csearch;
 use middle::dead::DEAD_CODE_LINT_STR;
 use middle::pat_util;
 use middle::privacy;
-use middle::trans::adt; // for `adt::is_ffi_safe`
 use middle::ty;
 use middle::typeck::astconv::{ast_ty_to_ty, AstConv};
 use middle::typeck::infer;
@@ -60,6 +59,7 @@ use std::u16;
 use std::u32;
 use std::u64;
 use std::u8;
+use std::cell::RefCell;
 use collections::SmallIntMap;
 use syntax::abi;
 use syntax::ast_map;
@@ -490,6 +490,9 @@ struct Context<'a> {
     /// Level of lints for certain NodeIds, stored here because the body of
     /// the lint needs to run in trans.
     node_levels: HashMap<(ast::NodeId, Lint), (Level, LintSource)>,
+
+    /// ids of structs which have had a representation note emitted with ctypes
+    checked_ffi_structs: RefCell<NodeSet>,
 }
 
 pub fn emit_lint(level: Level, src: LintSource, msg: &str, span: Span,
@@ -931,26 +934,24 @@ fn check_type_limits(cx: &Context, e: &ast::Expr) {
 }
 
 fn check_item_ctypes(cx: &Context, it: &ast::Item) {
-    fn check_ty(cx: &Context, ty: &ast::Ty) {
-        match ty.node {
+    fn check_ty(cx: &Context, aty: &ast::Ty) {
+        match aty.node {
             ast::TyPath(_, _, id) => {
                 match cx.tcx.def_map.borrow().get_copy(&id) {
                     ast::DefPrimTy(ast::TyInt(ast::TyI)) => {
-                        cx.span_lint(CTypes, ty.span,
+                        cx.span_lint(CTypes, aty.span,
                                 "found rust type `int` in foreign module, while \
                                 libc::c_int or libc::c_long should be used");
                     }
                     ast::DefPrimTy(ast::TyUint(ast::TyU)) => {
-                        cx.span_lint(CTypes, ty.span,
+                        cx.span_lint(CTypes, aty.span,
                                 "found rust type `uint` in foreign module, while \
                                 libc::c_uint or libc::c_ulong should be used");
                     }
                     ast::DefTy(def_id) => {
-                        if !adt::is_ffi_safe(cx.tcx, def_id) {
-                            cx.span_lint(CTypes, ty.span,
-                                         "found enum type without foreign-function-safe \
-                                          representation annotation in foreign module");
-                            // hmm... this message could be more helpful
+                        if !ty::is_ffi_safe(cx.tcx, def_id) {
+                            cx.span_lint(CTypes, aty.span, "type without FFI-safe \
+                                         representation used in FFI");
                         }
                     }
                     _ => ()
@@ -1108,6 +1109,7 @@ static obsolete_attrs: &'static [(&'static str, &'static str)] = &[
     ("fast_ffi", "Remove it"),
     ("fixed_stack_segment", "Remove it"),
     ("rust_stack", "Remove it"),
+    ("packed", "Use `#[repr(packed)]` instead")
 ];
 
 static other_attrs: &'static [&'static str] = &[
@@ -1117,7 +1119,7 @@ static other_attrs: &'static [&'static str] = &[
     "allow", "deny", "forbid", "warn", // lint options
     "deprecated", "experimental", "unstable", "stable", "locked", "frozen", //item stability
     "cfg", "doc", "export_name", "link_section",
-    "no_mangle", "static_assert", "unsafe_no_drop_flag", "packed",
+    "no_mangle", "static_assert", "unsafe_no_drop_flag",
     "simd", "repr", "deriving", "unsafe_destructor", "link", "phase",
     "macro_export", "must_use", "automatically_derived",
 
@@ -1186,6 +1188,10 @@ fn check_unused_attribute(cx: &Context, attrs: &[ast::Attribute]) {
         // FIXME: #14408 whitelist docs since rustdoc looks at them
         "doc",
 
+        // Just because a struct isn't used for FFI in *this* crate, doesn't
+        // mean it won't ever be.
+        "repr",
+
         // FIXME: #14406 these are processed in trans, which happens after the
         // lint pass
         "address_insignificant",
@@ -1197,7 +1203,6 @@ fn check_unused_attribute(cx: &Context, attrs: &[ast::Attribute]) {
         "no_builtins",
         "no_mangle",
         "no_split_stack",
-        "packed",
         "static_assert",
         "thread_local",
 
@@ -2030,6 +2035,7 @@ pub fn check_crate(tcx: &ty::ctxt,
         negated_expr_id: -1,
         checked_raw_pointers: NodeSet::new(),
         node_levels: HashMap::new(),
+        checked_ffi_structs: RefCell::new(NodeSet::new()),
     };
 
     // Install default lint levels, followed by the command line levels, and
