@@ -14,11 +14,9 @@
 //! These definitions are similar to their `ct` equivalents, but differ in that
 //! these can be statically allocated and are slightly optimized for the runtime
 
-#![allow(missing_doc)]
-#![doc(hidden)]
-
 use option::Option;
 
+#[doc(hidden)]
 pub enum Piece<'a> {
     String(&'a str),
     // FIXME(#8259): this shouldn't require the unit-value here
@@ -26,12 +24,14 @@ pub enum Piece<'a> {
     Argument(Argument<'a>),
 }
 
+#[doc(hidden)]
 pub struct Argument<'a> {
     pub position: Position,
     pub format: FormatSpec,
     pub method: Option<&'a Method<'a>>
 }
 
+#[doc(hidden)]
 pub struct FormatSpec {
     pub fill: char,
     pub align: Alignment,
@@ -40,38 +40,60 @@ pub struct FormatSpec {
     pub width: Count,
 }
 
+/// Possible alignments that can be requested as part of a formatting directive.
 #[deriving(PartialEq)]
 pub enum Alignment {
+    /// Indication that contents should be left-aligned.
     AlignLeft,
+    /// Indication that contents should be right-aligned.
     AlignRight,
+    /// No alignment was requested.
     AlignUnknown,
 }
 
+#[doc(hidden)]
 pub enum Count {
     CountIs(uint), CountIsParam(uint), CountIsNextParam, CountImplied,
 }
 
+#[doc(hidden)]
 pub enum Position {
     ArgumentNext, ArgumentIs(uint)
 }
 
+/// Flags which can be passed to formatting via a directive.
+///
+/// These flags are discovered through the `flags` field of the `Formatter`
+/// structure. The flag in that structure is a union of these flags into a
+/// `uint` where each flag's discriminant is the corresponding bit.
 pub enum Flag {
+    /// A flag which enables number formatting to always print the sign of a
+    /// number.
     FlagSignPlus,
+    /// Currently not a used flag
     FlagSignMinus,
+    /// Indicates that the "alternate formatting" for a type should be used.
+    ///
+    /// The meaning of this flag is type-specific.
     FlagAlternate,
+    /// Indicates that padding should be done with a `0` character as well as
+    /// being aware of the sign to be printed.
     FlagSignAwareZeroPad,
 }
 
+#[doc(hidden)]
 pub enum Method<'a> {
     Plural(Option<uint>, &'a [PluralArm<'a>], &'a [Piece<'a>]),
     Select(&'a [SelectArm<'a>], &'a [Piece<'a>]),
 }
 
+#[doc(hidden)]
 pub enum PluralSelector {
     Keyword(PluralKeyword),
     Literal(uint),
 }
 
+#[doc(hidden)]
 pub enum PluralKeyword {
     Zero,
     One,
@@ -80,11 +102,13 @@ pub enum PluralKeyword {
     Many,
 }
 
+#[doc(hidden)]
 pub struct PluralArm<'a> {
     pub selector: PluralSelector,
     pub result: &'a [Piece<'a>],
 }
 
+#[doc(hidden)]
 pub struct SelectArm<'a> {
     pub selector: &'a str,
     pub result: &'a [Piece<'a>],
