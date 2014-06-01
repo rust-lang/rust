@@ -356,7 +356,7 @@ pub struct ctxt {
 
     pub dependency_formats: RefCell<dependency_format::Dependencies>,
 
-    pub node_lint_levels: RefCell<HashMap<(ast::NodeId, lint::Lint),
+    pub node_lint_levels: RefCell<HashMap<(ast::NodeId, lint::LintId),
                                           (lint::Level, lint::LintSource)>>,
 }
 

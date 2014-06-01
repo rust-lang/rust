@@ -70,7 +70,7 @@ pub struct Options {
     pub gc: bool,
     pub optimize: OptLevel,
     pub debuginfo: DebugInfoLevel,
-    pub lint_opts: Vec<(lint::Lint, lint::Level)> ,
+    pub lint_opts: Vec<(lint::LintId, lint::Level)> ,
     pub output_types: Vec<back::link::OutputType> ,
     // This was mutable for rustpkg, which updates search paths based on the
     // parsed code. It remains mutable in case its replacements wants to use
