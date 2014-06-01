@@ -108,6 +108,7 @@ pub enum ExternalLocation {
 
 /// Metadata about an implementor of a trait.
 pub struct Implementor {
+    def_id: ast::DefId,
     generics: clean::Generics,
     trait_: clean::Type,
     for_: clean::Type,
@@ -531,6 +532,11 @@ fn write_shared(cx: &Context,
 
         try!(write!(&mut f, r"implementors['{}'] = [", krate.name));
         for imp in imps.iter() {
+            // If the trait and implementation are in the same crate, then
+            // there's no need to emit information about it (there's inlining
+            // going on). If they're in different crates then the crate defining
+            // the trait will be interested in our implementation.
+            if imp.def_id.krate == did.krate { continue }
             try!(write!(&mut f, r#""impl{} {} for {}","#,
                         imp.generics, imp.trait_, imp.for_));
         }
@@ -759,6 +765,7 @@ impl DocFolder for Cache {
                             Vec::new()
                         });
                         v.push(Implementor {
+                            def_id: item.def_id,
                             generics: i.generics.clone(),
                             trait_: i.trait_.get_ref().clone(),
                             for_: i.for_.clone(),
