@@ -21,7 +21,7 @@ Some examples that demonstrate different aspects of the language:
 * The extra library's [json] module. Enums and pattern matching
 
 [sprocketnes]: https://github.com/pcwalton/sprocketnes
-[hash]: https://github.com/mozilla/rust/blob/master/src/libstd/hash.rs
+[hash]: https://github.com/mozilla/rust/blob/master/src/libstd/hash/mod.rs
 [HashMap]: https://github.com/mozilla/rust/blob/master/src/libcollections/hashmap.rs
 [json]: https://github.com/mozilla/rust/blob/master/src/libserialize/json.rs
 
@@ -149,6 +149,6 @@ example we were setting RUST_LOG to the name of the hello crate. Multiple paths
 can be combined to control the exact logging you want to see. For example, when
 debugging linking in the compiler you might set
 `RUST_LOG=rustc::metadata::creader,rustc::util::filesearch,rustc::back::rpath`
-For a full description see [the language reference][1].
+For a full description see [the logging crate][1].
 
-[1]:http://doc.rust-lang.org/doc/master/rust.html#logging-system
+[1]:log/index.html

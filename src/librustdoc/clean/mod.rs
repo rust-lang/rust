@@ -28,6 +28,7 @@ use rustc::metadata::decoder;
 use rustc::middle::ty;
 
 use std::rc::Rc;
+use std::u32;
 
 use core;
 use doctree;
@@ -81,6 +82,7 @@ pub struct Crate {
     pub name: String,
     pub module: Option<Item>,
     pub externs: Vec<(ast::CrateNum, ExternalCrate)>,
+    pub primitives: Vec<Primitive>,
 }
 
 impl<'a> Clean<Crate> for visit_ast::RustdocVisitor<'a> {
@@ -92,6 +94,7 @@ impl<'a> Clean<Crate> for visit_ast::RustdocVisitor<'a> {
             externs.push((n, meta.clean()));
         });
 
+        // Figure out the name of this crate
         let input = driver::FileInput(cx.src.clone());
         let t_outputs = driver::build_output_filenames(&input,
                                                        &None,
@@ -100,10 +103,62 @@ impl<'a> Clean<Crate> for visit_ast::RustdocVisitor<'a> {
                                                        cx.sess());
         let id = link::find_crate_id(self.attrs.as_slice(),
                                      t_outputs.out_filestem.as_slice());
+
+        // Clean the crate, translating the entire libsyntax AST to one that is
+        // understood by rustdoc.
+        let mut module = self.module.clean();
+
+        // Collect all inner modules which are tagged as implementations of
+        // primitives.
+        //
+        // Note that this loop only searches the top-level items of the crate,
+        // and this is intentional. If we were to search the entire crate for an
+        // item tagged with `#[doc(primitive)]` then we we would also have to
+        // search the entirety of external modules for items tagged
+        // `#[doc(primitive)]`, which is a pretty inefficient process (decoding
+        // all that metadata unconditionally).
+        //
+        // In order to keep the metadata load under control, the
+        // `#[doc(primitive)]` feature is explicitly designed to only allow the
+        // primitive tags to show up as the top level items in a crate.
+        //
+        // Also note that this does not attempt to deal with modules tagged
+        // duplicately for the same primitive. This is handled later on when
+        // rendering by delegating everything to a hash map.
+        let mut primitives = Vec::new();
+        {
+            let m = match module.inner {
+                ModuleItem(ref mut m) => m,
+                _ => unreachable!(),
+            };
+            let mut tmp = Vec::new();
+            for child in m.items.iter() {
+                match child.inner {
+                    ModuleItem(..) => {},
+                    _ => continue,
+                }
+                let prim = match Primitive::find(child.attrs.as_slice()) {
+                    Some(prim) => prim,
+                    None => continue,
+                };
+                primitives.push(prim);
+                tmp.push(Item {
+                    source: Span::empty(),
+                    name: Some(prim.to_url_str().to_string()),
+                    attrs: child.attrs.clone(),
+                    visibility: Some(ast::Public),
+                    def_id: ast_util::local_def(prim.to_node_id()),
+                    inner: PrimitiveItem(prim),
+                });
+            }
+            m.items.extend(tmp.move_iter());
+        }
+
         Crate {
             name: id.name.to_string(),
-            module: Some(self.module.clean()),
+            module: Some(module),
             externs: externs,
+            primitives: primitives,
         }
     }
 }
@@ -112,15 +167,35 @@ impl<'a> Clean<Crate> for visit_ast::RustdocVisitor<'a> {
 pub struct ExternalCrate {
     pub name: String,
     pub attrs: Vec<Attribute>,
+    pub primitives: Vec<Primitive>,
 }
 
 impl Clean<ExternalCrate> for cstore::crate_metadata {
     fn clean(&self) -> ExternalCrate {
+        let mut primitives = Vec::new();
+        let cx = super::ctxtkey.get().unwrap();
+        match cx.maybe_typed {
+            core::Typed(ref tcx) => {
+                csearch::each_top_level_item_of_crate(&tcx.sess.cstore,
+                                                      self.cnum,
+                                                      |def, _, _| {
+                    let did = match def {
+                        decoder::DlDef(ast::DefMod(did)) => did,
+                        _ => return
+                    };
+                    let attrs = inline::load_attrs(tcx, did);
+                    match Primitive::find(attrs.as_slice()) {
+                        Some(prim) => primitives.push(prim),
+                        None => {}
+                    }
+                });
+            }
+            core::NotTyped(..) => {}
+        }
         ExternalCrate {
             name: self.name.to_string(),
-            attrs: decoder::get_crate_attributes(self.data()).clean()
-                                                             .move_iter()
-                                                             .collect(),
+            attrs: decoder::get_crate_attributes(self.data()).clean(),
+            primitives: primitives,
         }
     }
 }
@@ -227,6 +302,7 @@ pub enum ItemEnum {
     /// `static`s from an extern block
     ForeignStaticItem(Static),
     MacroItem(Macro),
+    PrimitiveItem(Primitive),
 }
 
 #[deriving(Clone, Encodable, Decodable)]
@@ -400,14 +476,19 @@ impl Clean<TyParamBound> for ast::TyParamBound {
     }
 }
 
-fn external_path(name: &str) -> Path {
+fn external_path(name: &str, substs: &ty::substs) -> Path {
     Path {
         global: false,
         segments: vec![PathSegment {
             name: name.to_string(),
-            lifetimes: Vec::new(),
-            types: Vec::new(),
-        }]
+            lifetimes: match substs.regions {
+                ty::ErasedRegions => Vec::new(),
+                ty::NonerasedRegions(ref v) => {
+                    v.iter().filter_map(|v| v.clean()).collect()
+                }
+            },
+            types: substs.tps.clean(),
+        }],
     }
 }
 
@@ -418,16 +499,21 @@ impl Clean<TyParamBound> for ty::BuiltinBound {
             core::Typed(ref tcx) => tcx,
             core::NotTyped(_) => return RegionBound,
         };
+        let empty = ty::substs::empty();
         let (did, path) = match *self {
             ty::BoundStatic => return RegionBound,
             ty::BoundSend =>
-                (tcx.lang_items.send_trait().unwrap(), external_path("Send")),
+                (tcx.lang_items.send_trait().unwrap(),
+                 external_path("Send", &empty)),
             ty::BoundSized =>
-                (tcx.lang_items.sized_trait().unwrap(), external_path("Sized")),
+                (tcx.lang_items.sized_trait().unwrap(),
+                 external_path("Sized", &empty)),
             ty::BoundCopy =>
-                (tcx.lang_items.copy_trait().unwrap(), external_path("Copy")),
+                (tcx.lang_items.copy_trait().unwrap(),
+                 external_path("Copy", &empty)),
             ty::BoundShare =>
-                (tcx.lang_items.share_trait().unwrap(), external_path("Share")),
+                (tcx.lang_items.share_trait().unwrap(),
+                 external_path("Share", &empty)),
         };
         let fqn = csearch::get_item_path(tcx, did);
         let fqn = fqn.move_iter().map(|i| i.to_str().to_string()).collect();
@@ -451,7 +537,8 @@ impl Clean<TyParamBound> for ty::TraitRef {
         let fqn = csearch::get_item_path(tcx, self.def_id);
         let fqn = fqn.move_iter().map(|i| i.to_str().to_string())
                      .collect::<Vec<String>>();
-        let path = external_path(fqn.last().unwrap().as_slice());
+        let path = external_path(fqn.last().unwrap().as_slice(),
+                                 &self.substs);
         cx.external_paths.borrow_mut().get_mut_ref().insert(self.def_id,
                                                             (fqn, TypeTrait));
         TraitBound(ResolvedPath {
@@ -519,9 +606,9 @@ impl Clean<Option<Lifetime>> for ty::Region {
             ty::ReStatic => Some(Lifetime("static".to_string())),
             ty::ReLateBound(_, ty::BrNamed(_, name)) =>
                 Some(Lifetime(token::get_name(name).get().to_string())),
+            ty::ReEarlyBound(_, _, name) => Some(Lifetime(name.clean())),
 
             ty::ReLateBound(..) |
-            ty::ReEarlyBound(..) |
             ty::ReFree(..) |
             ty::ReScope(..) |
             ty::ReInfer(..) |
@@ -920,7 +1007,7 @@ pub enum Type {
     /// For references to self
     Self(ast::DefId),
     /// Primitives are just the fixed-size numeric types (plus int/uint/float), and char.
-    Primitive(ast::PrimTy),
+    Primitive(Primitive),
     Closure(Box<ClosureDecl>, Option<Lifetime>),
     Proc(Box<ClosureDecl>),
     /// extern "ABI" fn
@@ -928,10 +1015,6 @@ pub enum Type {
     Tuple(Vec<Type>),
     Vector(Box<Type>),
     FixedVector(Box<Type>, String),
-    String,
-    Bool,
-    /// aka TyNil
-    Unit,
     /// aka TyBot
     Bottom,
     Unique(Box<Type>),
@@ -945,6 +1028,19 @@ pub enum Type {
     // region, raw, other boxes, mutable
 }
 
+#[deriving(Clone, Encodable, Decodable, PartialEq, TotalEq, Hash)]
+pub enum Primitive {
+    Int, I8, I16, I32, I64,
+    Uint, U8, U16, U32, U64,
+    F32, F64, F128,
+    Char,
+    Bool,
+    Nil,
+    Str,
+    Slice,
+    PrimitiveTuple,
+}
+
 #[deriving(Clone, Encodable, Decodable)]
 pub enum TypeKind {
     TypeEnum,
@@ -956,11 +1052,97 @@ pub enum TypeKind {
     TypeVariant,
 }
 
+impl Primitive {
+    fn from_str(s: &str) -> Option<Primitive> {
+        match s.as_slice() {
+            "int" => Some(Int),
+            "i8" => Some(I8),
+            "i16" => Some(I16),
+            "i32" => Some(I32),
+            "i64" => Some(I64),
+            "uint" => Some(Uint),
+            "u8" => Some(U8),
+            "u16" => Some(U16),
+            "u32" => Some(U32),
+            "u64" => Some(U64),
+            "bool" => Some(Bool),
+            "nil" => Some(Nil),
+            "char" => Some(Char),
+            "str" => Some(Str),
+            "f32" => Some(F32),
+            "f64" => Some(F64),
+            "f128" => Some(F128),
+            "slice" => Some(Slice),
+            "tuple" => Some(PrimitiveTuple),
+            _ => None,
+        }
+    }
+
+    fn find(attrs: &[Attribute]) -> Option<Primitive> {
+        for attr in attrs.iter() {
+            let list = match *attr {
+                List(ref k, ref l) if k.as_slice() == "doc" => l,
+                _ => continue,
+            };
+            for sub_attr in list.iter() {
+                let value = match *sub_attr {
+                    NameValue(ref k, ref v)
+                        if k.as_slice() == "primitive" => v.as_slice(),
+                    _ => continue,
+                };
+                match Primitive::from_str(value) {
+                    Some(p) => return Some(p),
+                    None => {}
+                }
+            }
+        }
+        return None
+    }
+
+    pub fn to_str(&self) -> &'static str {
+        match *self {
+            Int => "int",
+            I8 => "i8",
+            I16 => "i16",
+            I32 => "i32",
+            I64 => "i64",
+            Uint => "uint",
+            U8 => "u8",
+            U16 => "u16",
+            U32 => "u32",
+            U64 => "u64",
+            F32 => "f32",
+            F64 => "f64",
+            F128 => "f128",
+            Str => "str",
+            Bool => "bool",
+            Char => "char",
+            Nil => "()",
+            Slice => "slice",
+            PrimitiveTuple => "tuple",
+        }
+    }
+
+    pub fn to_url_str(&self) -> &'static str {
+        match *self {
+            Nil => "nil",
+            other => other.to_str(),
+        }
+    }
+
+    /// Creates a rustdoc-specific node id for primitive types.
+    ///
+    /// These node ids are generally never used by the AST itself.
+    pub fn to_node_id(&self) -> ast::NodeId {
+        u32::MAX - 1 - (*self as u32)
+    }
+}
+
 impl Clean<Type> for ast::Ty {
     fn clean(&self) -> Type {
         use syntax::ast::*;
         match self.node {
-            TyNil => Unit,
+            TyNil => Primitive(Nil),
             TyPtr(ref m) => RawPointer(m.mutbl.clean(), box m.ty.clean()),
             TyRptr(ref l, ref m) =>
                 BorrowedRef {lifetime: l.clean(), mutability: m.mutbl.clean(),
@@ -988,16 +1170,26 @@ impl Clean<Type> for ast::Ty {
 impl Clean<Type> for ty::t {
     fn clean(&self) -> Type {
         match ty::get(*self).sty {
-            ty::ty_nil => Unit,
             ty::ty_bot => Bottom,
-            ty::ty_bool => Bool,
-            ty::ty_char => Primitive(ast::TyChar),
-            ty::ty_int(t) => Primitive(ast::TyInt(t)),
-            ty::ty_uint(u) => Primitive(ast::TyUint(u)),
-            ty::ty_float(f) => Primitive(ast::TyFloat(f)),
+            ty::ty_nil => Primitive(Nil),
+            ty::ty_bool => Primitive(Bool),
+            ty::ty_char => Primitive(Char),
+            ty::ty_int(ast::TyI) => Primitive(Int),
+            ty::ty_int(ast::TyI8) => Primitive(I8),
+            ty::ty_int(ast::TyI16) => Primitive(I16),
+            ty::ty_int(ast::TyI32) => Primitive(I32),
+            ty::ty_int(ast::TyI64) => Primitive(I64),
+            ty::ty_uint(ast::TyU) => Primitive(Uint),
+            ty::ty_uint(ast::TyU8) => Primitive(U8),
+            ty::ty_uint(ast::TyU16) => Primitive(U16),
+            ty::ty_uint(ast::TyU32) => Primitive(U32),
+            ty::ty_uint(ast::TyU64) => Primitive(U64),
+            ty::ty_float(ast::TyF32) => Primitive(F32),
+            ty::ty_float(ast::TyF64) => Primitive(F64),
+            ty::ty_float(ast::TyF128) => Primitive(F128),
+            ty::ty_str => Primitive(Str),
             ty::ty_box(t) => Managed(box t.clean()),
             ty::ty_uniq(t) => Unique(box t.clean()),
-            ty::ty_str => String,
             ty::ty_vec(mt, None) => Vector(box mt.ty.clean()),
             ty::ty_vec(mt, Some(i)) => FixedVector(box mt.ty.clean(),
                                                    format!("{}", i)),
@@ -1040,22 +1232,13 @@ impl Clean<Type> for ty::t {
                 let fqn: Vec<String> = fqn.move_iter().map(|i| {
                     i.to_str().to_string()
                 }).collect();
-                let mut path = external_path(fqn.last()
-                                                .unwrap()
-                                                .to_str()
-                                                .as_slice());
                 let kind = match ty::get(*self).sty {
                     ty::ty_struct(..) => TypeStruct,
                     ty::ty_trait(..) => TypeTrait,
                     _ => TypeEnum,
                 };
-                path.segments.get_mut(0).lifetimes = match substs.regions {
-                    ty::ErasedRegions => Vec::new(),
-                    ty::NonerasedRegions(ref v) => {
-                        v.iter().filter_map(|v| v.clean()).collect()
-                    }
-                };
-                path.segments.get_mut(0).types = substs.tps.clean();
+                let path = external_path(fqn.last().unwrap().to_str().as_slice(),
+                                         substs);
                 cx.external_paths.borrow_mut().get_mut_ref().insert(did,
                                                                     (fqn, kind));
                 ResolvedPath {
@@ -1747,7 +1930,7 @@ fn resolve_type(path: Path, tpbs: Option<Vec<TyParamBound>>,
     let tycx = match cx.maybe_typed {
         core::Typed(ref tycx) => tycx,
         // If we're extracting tests, this return value doesn't matter.
-        core::NotTyped(_) => return Bool
+        core::NotTyped(_) => return Primitive(Bool),
     };
     debug!("searching for {:?} in defmap", id);
     let def = match tycx.def_map.borrow().find(&id) {
@@ -1758,9 +1941,22 @@ fn resolve_type(path: Path, tpbs: Option<Vec<TyParamBound>>,
     match def {
         ast::DefSelfTy(i) => return Self(ast_util::local_def(i)),
         ast::DefPrimTy(p) => match p {
-            ast::TyStr => return String,
-            ast::TyBool => return Bool,
-            _ => return Primitive(p)
+            ast::TyStr => return Primitive(Str),
+            ast::TyBool => return Primitive(Bool),
+            ast::TyChar => return Primitive(Char),
+            ast::TyInt(ast::TyI) => return Primitive(Int),
+            ast::TyInt(ast::TyI8) => return Primitive(I8),
+            ast::TyInt(ast::TyI16) => return Primitive(I16),
+            ast::TyInt(ast::TyI32) => return Primitive(I32),
+            ast::TyInt(ast::TyI64) => return Primitive(I64),
+            ast::TyUint(ast::TyU) => return Primitive(Uint),
+            ast::TyUint(ast::TyU8) => return Primitive(U8),
+            ast::TyUint(ast::TyU16) => return Primitive(U16),
+            ast::TyUint(ast::TyU32) => return Primitive(U32),
+            ast::TyUint(ast::TyU64) => return Primitive(U64),
+            ast::TyFloat(ast::TyF32) => return Primitive(F32),
+            ast::TyFloat(ast::TyF64) => return Primitive(F64),
+            ast::TyFloat(ast::TyF128) => return Primitive(F128),
         },
         ast::DefTyParam(i, _) => return Generic(i),
         ast::DefTyParamBinder(i) => return TyParamBinder(i),

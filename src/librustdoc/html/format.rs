@@ -263,6 +263,53 @@ fn path(w: &mut fmt::Formatter, path: &clean::Path, print_all: bool,
     Ok(())
 }
 
+fn primitive_link(f: &mut fmt::Formatter,
+                  prim: clean::Primitive,
+                  name: &str) -> fmt::Result {
+    let m = cache_key.get().unwrap();
+    let mut needs_termination = false;
+    match m.primitive_locations.find(&prim) {
+        Some(&ast::LOCAL_CRATE) => {
+            let loc = current_location_key.get().unwrap();
+            let len = if loc.len() == 0 {0} else {loc.len() - 1};
+            try!(write!(f, "<a href='{}primitive.{}.html'>",
+                        "../".repeat(len),
+                        prim.to_url_str()));
+            needs_termination = true;
+        }
+        Some(&cnum) => {
+            let path = m.paths.get(&ast::DefId {
+                krate: cnum,
+                node: ast::CRATE_NODE_ID,
+            });
+            let loc = match *m.extern_locations.get(&cnum) {
+                render::Remote(ref s) => Some(s.to_string()),
+                render::Local => {
+                    let loc = current_location_key.get().unwrap();
+                    Some("../".repeat(loc.len()))
+                }
+                render::Unknown => None,
+            };
+            match loc {
+                Some(root) => {
+                    try!(write!(f, "<a href='{}{}/primitive.{}.html'>",
+                                root,
+                                path.ref0().as_slice().head().unwrap(),
+                                prim.to_url_str()));
+                    needs_termination = true;
+                }
+                None => {}
+            }
+        }
+        None => {}
+    }
+    try!(write!(f, "{}", name));
+    if needs_termination {
+        try!(write!(f, "</a>"));
+    }
+    Ok(())
+}
+
 /// Helper to render type parameters
 fn tybounds(w: &mut fmt::Formatter,
             typarams: &Option<Vec<clean::TyParamBound> >) -> fmt::Result {
@@ -297,27 +344,7 @@ impl fmt::Show for clean::Type {
                 tybounds(f, typarams)
             }
             clean::Self(..) => f.write("Self".as_bytes()),
-            clean::Primitive(prim) => {
-                let s = match prim {
-                    ast::TyInt(ast::TyI) => "int",
-                    ast::TyInt(ast::TyI8) => "i8",
-                    ast::TyInt(ast::TyI16) => "i16",
-                    ast::TyInt(ast::TyI32) => "i32",
-                    ast::TyInt(ast::TyI64) => "i64",
-                    ast::TyUint(ast::TyU) => "uint",
-                    ast::TyUint(ast::TyU8) => "u8",
-                    ast::TyUint(ast::TyU16) => "u16",
-                    ast::TyUint(ast::TyU32) => "u32",
-                    ast::TyUint(ast::TyU64) => "u64",
-                    ast::TyFloat(ast::TyF32) => "f32",
-                    ast::TyFloat(ast::TyF64) => "f64",
-                    ast::TyFloat(ast::TyF128) => "f128",
-                    ast::TyStr => "str",
-                    ast::TyBool => "bool",
-                    ast::TyChar => "char",
-                };
-                f.write(s.as_bytes())
-            }
+            clean::Primitive(prim) => primitive_link(f, prim, prim.to_str()),
             clean::Closure(ref decl, ref region) => {
                 write!(f, "{style}{lifetimes}|{args}|{bounds}\
                            {arrow, select, yes{ -&gt; {ret}} other{}}",
@@ -329,7 +356,7 @@ impl fmt::Show for clean::Type {
                        },
                        args = decl.decl.inputs,
                        arrow = match decl.decl.output {
-                           clean::Unit => "no",
+                           clean::Primitive(clean::Nil) => "no",
                            _ => "yes",
                        },
                        ret = decl.decl.output,
@@ -379,7 +406,10 @@ impl fmt::Show for clean::Type {
                                ": {}",
                                m.collect::<Vec<String>>().connect(" + "))
                        },
-                       arrow = match decl.decl.output { clean::Unit => "no", _ => "yes" },
+                       arrow = match decl.decl.output {
+                           clean::Primitive(clean::Nil) => "no",
+                           _ => "yes",
+                       },
                        ret = decl.decl.output)
             }
             clean::BareFunction(ref decl) => {
@@ -394,22 +424,16 @@ impl fmt::Show for clean::Type {
                        decl.decl)
             }
             clean::Tuple(ref typs) => {
-                try!(f.write("(".as_bytes()));
-                for (i, typ) in typs.iter().enumerate() {
-                    if i > 0 {
-                        try!(f.write(", ".as_bytes()))
-                    }
-                    try!(write!(f, "{}", *typ));
-                }
-                f.write(")".as_bytes())
+                primitive_link(f, clean::PrimitiveTuple,
+                               format!("({:#})", typs).as_slice())
             }
-            clean::Vector(ref t) => write!(f, "[{}]", **t),
+            clean::Vector(ref t) => {
+                primitive_link(f, clean::Slice, format!("[{}]", **t).as_slice())
+            }
             clean::FixedVector(ref t, ref s) => {
-                write!(f, "[{}, ..{}]", **t, *s)
+                primitive_link(f, clean::Slice,
+                               format!("[{}, ..{}]", **t, *s).as_slice())
             }
-            clean::String => f.write("str".as_bytes()),
-            clean::Bool => f.write("bool".as_bytes()),
-            clean::Unit => f.write("()".as_bytes()),
             clean::Bottom => f.write("!".as_bytes()),
             clean::Unique(ref t) => write!(f, "~{}", **t),
             clean::Managed(ref t) => write!(f, "@{}", **t),
@@ -454,7 +478,10 @@ impl fmt::Show for clean::FnDecl {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "({args}){arrow, select, yes{ -&gt; {ret}} other{}}",
                args = self.inputs,
-               arrow = match self.output { clean::Unit => "no", _ => "yes" },
+               arrow = match self.output {
+                   clean::Primitive(clean::Nil) => "no",
+                   _ => "yes"
+               },
                ret = self.output)
     }
 }
@@ -490,7 +517,10 @@ impl<'a> fmt::Show for Method<'a> {
         write!(f,
                "({args}){arrow, select, yes{ -&gt; {ret}} other{}}",
                args = args,
-               arrow = match d.output { clean::Unit => "no", _ => "yes" },
+               arrow = match d.output {
+                   clean::Primitive(clean::Nil) => "no",
+                   _ => "yes"
+               },
                ret = d.output)
     }
 }

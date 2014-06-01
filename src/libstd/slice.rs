@@ -97,6 +97,8 @@ There are a number of free functions that create or take vectors, for example:
 
 */
 
+#![doc(primitive = "slice")]
+
 use mem::transmute;
 use clone::Clone;
 use cmp::{TotalOrd, Ordering, Less, Greater};
