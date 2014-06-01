@@ -13,7 +13,7 @@ pub use syntax::diagnostic;
 use back::link;
 use driver::driver::{Input, FileInput, StrInput};
 use driver::session::{Session, build_session};
-use middle::lint;
+use lint;
 use metadata;
 
 use std::any::AnyRefExt;

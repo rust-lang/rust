@@ -19,7 +19,7 @@ use back;
 use back::link;
 use back::target_strs;
 use back::{arm, x86, x86_64, mips, mipsel};
-use middle::lint;
+use lint;
 
 use syntax::abi;
 use syntax::ast;

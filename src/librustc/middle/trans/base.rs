@@ -36,7 +36,7 @@ use lib::llvm::{ModuleRef, ValueRef, BasicBlockRef};
 use lib::llvm::{llvm, Vector};
 use lib;
 use metadata::{csearch, encoder, loader};
-use middle::lint;
+use lint;
 use middle::astencode;
 use middle::lang_items::{LangItem, ExchangeMallocFnLangItem, StartFnLangItem};
 use middle::weak_lang_items;

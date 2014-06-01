@@ -56,7 +56,6 @@ pub mod middle {
     pub mod check_match;
     pub mod check_const;
     pub mod check_static;
-    pub mod lint;
     pub mod borrowck;
     pub mod dataflow;
     pub mod mem_categorization;
@@ -112,6 +111,8 @@ pub mod metadata;
 pub mod driver;
 
 pub mod plugin;
+
+pub mod lint;
 
 pub mod util {
     pub mod common;

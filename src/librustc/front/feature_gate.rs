@@ -18,7 +18,7 @@
 //! Features are enabled in programs via the crate-level attributes of
 //! `#![feature(...)]` with a comma-separated list of features.
 
-use middle::lint;
+use lint;
 
 use syntax::abi::RustIntrinsic;
 use syntax::ast::NodeId;

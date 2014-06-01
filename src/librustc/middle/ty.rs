@@ -14,7 +14,7 @@ use back::svh::Svh;
 use driver::session::Session;
 use metadata::csearch;
 use mc = middle::mem_categorization;
-use middle::lint;
+use lint;
 use middle::const_eval;
 use middle::def;
 use middle::dependency_format;
