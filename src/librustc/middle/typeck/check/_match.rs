@@ -635,7 +635,7 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
             fcx.infcx().next_region_var(
                 infer::PatternRegion(pat.span));
 
-        let check_err = || {
+        let check_err = |found: String| {
             for &elt in before.iter() {
                 check_pat(pcx, elt, ty::mk_err());
             }
@@ -656,15 +656,16 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
                     })
                 },
                 Some(expected),
-                "a vector pattern".to_string(),
+                found,
                 None);
             fcx.write_error(pat.id);
         };
 
-        let (elt_type, region_var, mutbl) = match *structure_of(fcx,
+        let (elt_type, region_var, mutbl, fixed) = match *structure_of(fcx,
                                                                 pat.span,
                                                                 expected) {
-          ty::ty_vec(mt, Some(_)) => (mt.ty, default_region_var, ast::MutImmutable),
+          ty::ty_vec(mt, Some(fixed)) =>
+            (mt.ty, default_region_var, ast::MutImmutable, Some(fixed)),
           ty::ty_uniq(t) => match ty::get(t).sty {
               ty::ty_vec(mt, None) => {
                   fcx.type_error_message(pat.span,
@@ -674,25 +675,49 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
                                          },
                                          expected,
                                          None);
-                  (mt.ty, default_region_var, ast::MutImmutable)
+                  (mt.ty, default_region_var, ast::MutImmutable, None)
               }
               _ => {
-                  check_err();
+                  check_err("a vector pattern".to_string());
                   return;
               }
           },
           ty::ty_rptr(r, mt) => match ty::get(mt.ty).sty {
-              ty::ty_vec(mt, None) => (mt.ty, r, mt.mutbl),
+              ty::ty_vec(mt, None) => (mt.ty, r, mt.mutbl, None),
               _ => {
-                  check_err();
+                  check_err("a vector pattern".to_string());
                   return;
               }
           },
           _ => {
-              check_err();
+              check_err("a vector pattern".to_string());
               return;
           }
         };
+
+        match fixed {
+          Some(count) => {
+            let unreachable = match slice {
+              Some(_) if before.len() + after.len() > count =>
+                Some(format!(
+                  "a fixed vector pattern of size at least {:}",
+                  before.len() + after.len()
+                )),
+              None if before.len() + after.len() != count =>
+                Some(format!(
+                  "a fixed vector pattern of size {:}",
+                  before.len() + after.len()
+                )),
+              _ => None
+            };
+            for found in unreachable.move_iter() {
+              check_err(found);
+              return;
+            }
+          }
+          _ => ()
+        }
+
         for elt in before.iter() {
             check_pat(pcx, *elt, elt_type);
         }
