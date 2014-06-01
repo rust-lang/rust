@@ -988,8 +988,7 @@ fn extract_vec_elems<'a>(
                      pat_id: ast::NodeId,
                      elem_count: uint,
                      slice: Option<uint>,
-                     val: ValueRef,
-                     count: ValueRef)
+                     val: ValueRef)
                      -> ExtractedBlock<'a> {
     let _icx = push_ctxt("match::extract_vec_elems");
     let vec_datum = match_datum(bcx, val, pat_id);
@@ -1003,7 +1002,7 @@ fn extract_vec_elems<'a>(
             Some(n) if i < n => GEPi(bcx, base, [i]),
             Some(n) if i > n => {
                 InBoundsGEP(bcx, base, [
-                    Sub(bcx, count,
+                    Sub(bcx, len,
                         C_int(bcx.ccx(), (elem_count - i) as int))])
             }
             _ => unsafe { llvm::LLVMGetUndef(vt.llunit_ty.to_ref()) }
@@ -1765,7 +1764,7 @@ fn compile_submatch_continue<'a, 'b>(
                     vec_len_eq => (n, None)
                 };
                 let args = extract_vec_elems(opt_cx, pat_id, n,
-                                             slice, val, test_val);
+                                             slice, val);
                 size = args.vals.len();
                 unpacked = args.vals.clone();
                 opt_cx = args.bcx;
@@ -2264,9 +2263,21 @@ fn bind_irrefutable_pat<'a>(
             let loaded_val = Load(bcx, val);
             bcx = bind_irrefutable_pat(bcx, inner, loaded_val, binding_mode, cleanup_scope);
         }
-        ast::PatVec(..) => {
-            bcx.sess().span_bug(pat.span,
-                                "vector patterns are never irrefutable!");
+        ast::PatVec(ref before, ref slice, ref after) => {
+            let extracted = extract_vec_elems(
+                bcx, pat.id, before.len() + 1u + after.len(),
+                slice.map(|_| before.len()), val
+            );
+            bcx = before
+                .iter().map(|v| Some(*v))
+                .chain(Some(*slice).move_iter())
+                .chain(after.iter().map(|v| Some(*v)))
+                .zip(extracted.vals.iter())
+                .fold(bcx, |bcx, (inner, elem)| {
+                    inner.map_or(bcx, |inner| {
+                        bind_irrefutable_pat(bcx, inner, *elem, binding_mode, cleanup_scope)
+                    })
+                });
         }
         ast::PatMac(..) => {
             bcx.sess().span_bug(pat.span, "unexpanded macro");
