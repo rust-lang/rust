@@ -110,7 +110,7 @@ HTML_DEPS += doc/version_info.html
 doc/version_info.html: $(D)/version_info.html.template $(MKFILE_DEPS) \
                        $(wildcard $(D)/*.*) | doc/
 	@$(call E, version-info: $@)
-	sed -e "s/VERSION/$(CFG_RELEASE)/; s/SHORT_HASH/$(shell echo \
+	$(Q)sed -e "s/VERSION/$(CFG_RELEASE)/; s/SHORT_HASH/$(shell echo \
                     $(CFG_VER_HASH) | head -c 8)/;\
                 s/STAMP/$(CFG_VER_HASH)/;" $< >$@
 
@@ -156,7 +156,9 @@ doc/footer.tex: $(D)/footer.inc | doc/
 # HTML (rustdoc)
 DOC_TARGETS += doc/not_found.html
 doc/not_found.html: $(D)/not_found.md $(HTML_DEPS) | doc/
-	$(RUSTDOC) $(RUSTDOC_HTML_OPTS_NO_CSS) --markdown-css http://doc.rust-lang.org/rust.css $<
+	@$(call E, rustdoc: $@)
+	$(Q)$(RUSTDOC) $(RUSTDOC_HTML_OPTS_NO_CSS) \
+		--markdown-css http://doc.rust-lang.org/rust.css $<
 
 define DEF_DOC
 
@@ -164,7 +166,7 @@ define DEF_DOC
 DOC_TARGETS += doc/$(1).html
 doc/$(1).html: $$(D)/$(1).md $$(HTML_DEPS) $$(RUSTDOC_DEPS_$(1)) | doc/
 	@$$(call E, rustdoc: $$@)
-	$$(RUSTDOC) $$(RUSTDOC_HTML_OPTS) $$(RUSTDOC_FLAGS_$(1)) $$<
+	$$(Q)$$(RUSTDOC) $$(RUSTDOC_HTML_OPTS) $$(RUSTDOC_FLAGS_$(1)) $$<
 
 ifneq ($(ONLY_HTML_DOCS),1)
 
