@@ -80,6 +80,7 @@ pub use hash = self::sip::hash;
 pub use Writer = io::Writer;
 
 pub mod sip;
+pub mod fnv;
 
 /// A trait that represents a hashable type. The `S` type parameter is an
 /// abstract hash state that is used by the `Hash` to compute the hash.
