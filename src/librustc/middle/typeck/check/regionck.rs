@@ -442,13 +442,15 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
 
     match expr.node {
         ast::ExprCall(callee, ref args) => {
-            constrain_callee(rcx, callee.id, expr, callee);
-            constrain_call(rcx,
-                           Some(callee.id),
-                           expr,
-                           None,
-                           args.as_slice(),
-                           false);
+            if !has_method_map {
+                constrain_callee(rcx, callee.id, expr, callee);
+                constrain_call(rcx,
+                               Some(callee.id),
+                               expr,
+                               None,
+                               args.as_slice(),
+                               false);
+            }
 
             visit::walk_expr(rcx, expr, ());
         }
