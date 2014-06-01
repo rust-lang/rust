@@ -87,7 +87,7 @@ pub fn check_match(fcx: &FnCtxt,
         result_ty =
             infer::common_supertype(
                 fcx.infcx(),
-                infer::MatchExpression(expr.span),
+                infer::MatchExpressionArm(expr.span, arm.body.span),
                 true, // result_ty is "expected" here
                 result_ty,
                 bty);
