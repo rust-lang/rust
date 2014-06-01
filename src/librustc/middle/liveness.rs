@@ -104,10 +104,10 @@
 
 use middle::def::*;
 use middle::freevars;
-use middle::lint::{UnusedVariable, DeadAssignment};
 use middle::mem_categorization::Typer;
 use middle::pat_util;
 use middle::ty;
+use lint::{UnusedVariable, DeadAssignment};
 use util::nodemap::NodeMap;
 
 use std::fmt;

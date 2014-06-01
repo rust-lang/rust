@@ -14,7 +14,7 @@ use driver::driver;
 use front;
 use metadata::cstore::CStore;
 use metadata::filesearch;
-use middle::lint;
+use lint;
 use util::nodemap::NodeMap;
 
 use syntax::ast::NodeId;

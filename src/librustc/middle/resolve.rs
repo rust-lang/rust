@@ -15,7 +15,7 @@ use metadata::csearch;
 use metadata::decoder::{DefLike, DlDef, DlField, DlImpl};
 use middle::def::*;
 use middle::lang_items::LanguageItems;
-use middle::lint::{UnnecessaryQualification, UnusedImports};
+use lint::{UnnecessaryQualification, UnusedImports};
 use middle::pat_util::pat_bindings;
 use middle::subst::{ParamSpace, FnSpace, TypeSpace};
 use util::nodemap::{NodeMap, DefIdSet, FnvHashMap};

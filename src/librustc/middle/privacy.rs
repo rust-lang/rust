@@ -17,7 +17,7 @@ use std::mem::replace;
 
 use metadata::csearch;
 use middle::def;
-use middle::lint;
+use lint;
 use middle::resolve;
 use middle::ty;
 use middle::typeck::{MethodCall, MethodMap, MethodOrigin, MethodParam};

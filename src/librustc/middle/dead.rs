@@ -13,7 +13,7 @@
 // from live codes are live, and everything else is dead.
 
 use middle::def;
-use middle::lint::{Allow, contains_lint, DeadCode};
+use lint::{Allow, contains_lint, DeadCode};
 use middle::privacy;
 use middle::ty;
 use middle::typeck;

@@ -11,7 +11,7 @@
 use rustc;
 use rustc::{driver, middle};
 use rustc::middle::privacy;
-use rustc::middle::lint;
+use rustc::lint;
 
 use syntax::ast;
 use syntax::parse::token;

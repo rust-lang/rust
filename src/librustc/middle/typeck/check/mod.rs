@@ -79,7 +79,7 @@ type parameter).
 
 use middle::const_eval;
 use middle::def;
-use middle::lint::UnreachableCode;
+use lint::UnreachableCode;
 use middle::pat_util::pat_id_map;
 use middle::pat_util;
 use middle::subst;
