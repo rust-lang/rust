@@ -28,9 +28,9 @@
 //!
 //! * `Clone`
 //! * `PartialEq`
-//! * `TotalEq`
+//! * `Eq`
 //! * `PartialOrd`
-//! * `TotalOrd`
+//! * `Ord`
 //! * `Default`
 //!
 //! # Examples
@@ -123,7 +123,7 @@ macro_rules! tuple_impls {
             }
 
             #[cfg(not(test))]
-            impl<$($T:TotalEq),+> TotalEq for ($($T,)+) {}
+            impl<$($T:Eq),+> Eq for ($($T,)+) {}
 
             #[cfg(not(test))]
             impl<$($T:PartialOrd + PartialEq),+> PartialOrd for ($($T,)+) {
@@ -146,7 +146,7 @@ macro_rules! tuple_impls {
             }
 
             #[cfg(not(test))]
-            impl<$($T:TotalOrd),+> TotalOrd for ($($T,)+) {
+            impl<$($T:Ord),+> Ord for ($($T,)+) {
                 #[inline]
                 fn cmp(&self, other: &($($T,)+)) -> Ordering {
                     lexical_cmp!($(self.$refN(), other.$refN()),+)
@@ -364,7 +364,7 @@ mod tests {
         assert!(((1.0, 2.0) < (2.0, nan)));
         assert!(!((2.0, 2.0) < (2.0, nan)));
 
-        // TotalOrd
+        // Ord
         assert!(small.cmp(&small) == Equal);
         assert!(big.cmp(&big) == Equal);
         assert!(small.cmp(&big) == Less);

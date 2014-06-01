@@ -45,7 +45,7 @@ pub use mem::drop;
 
 pub use char::Char;
 pub use clone::Clone;
-pub use cmp::{PartialEq, PartialOrd, TotalEq, TotalOrd};
+pub use cmp::{PartialEq, PartialOrd, Eq, Ord};
 pub use cmp::{Ordering, Less, Equal, Greater, Equiv};
 pub use container::{Container, Mutable, Map, MutableMap, Set, MutableSet};
 pub use iter::{FromIterator, Extendable};
@@ -59,6 +59,6 @@ pub use str::{Str, StrSlice};
 pub use tuple::{Tuple1, Tuple2, Tuple3, Tuple4};
 pub use tuple::{Tuple5, Tuple6, Tuple7, Tuple8};
 pub use tuple::{Tuple9, Tuple10, Tuple11, Tuple12};
-pub use slice::{ImmutableEqVector, ImmutableTotalOrdVector};
+pub use slice::{ImmutableEqVector, ImmutableOrdVector};
 pub use slice::{MutableVector};
 pub use slice::{Vector, ImmutableVector};

@@ -15,7 +15,7 @@
 
 use std::num::Bitwise;
 
-#[deriving(Clone, PartialEq, TotalEq, Hash, Show)]
+#[deriving(Clone, PartialEq, Eq, Hash, Show)]
 /// A specialized Set implementation to use enum types.
 pub struct EnumSet<E> {
     // We must maintain the invariant that no bits are set

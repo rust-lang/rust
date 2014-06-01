@@ -194,8 +194,8 @@ macro_rules! cmp_impl {
 }
 cmp_impl!(impl PartialEq, eq, ne)
 cmp_impl!(impl PartialOrd, lt, gt, le, ge)
-cmp_impl!(impl TotalEq, )
-cmp_impl!(impl TotalOrd, cmp -> cmp::Ordering)
+cmp_impl!(impl Eq, )
+cmp_impl!(impl Ord, cmp -> cmp::Ordering)
 
 /* Arithmetic */
 // a/b * c/d = (a*c)/(b*d)

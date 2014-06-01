@@ -37,9 +37,6 @@
 //! assert!(SketchyNum {num: 25} != SketchyNum {num: 57});
 //! ```
 
-pub use Eq = self::TotalEq;
-pub use Ord = self::TotalOrd;
-
 /// Trait for values that can be compared for equality and inequality.
 ///
 /// This trait allows partial equality, where types can be unordered instead of
@@ -51,7 +48,7 @@ pub use Ord = self::TotalOrd;
 /// default.
 ///
 /// Eventually, this will be implemented by default for types that implement
-/// `TotalEq`.
+/// `Eq`.
 #[lang="eq"]
 pub trait PartialEq {
     /// This method tests for `self` and `other` values to be equal, and is used by `==`.
@@ -71,7 +68,7 @@ pub trait PartialEq {
 /// - reflexive: `a == a`;
 /// - symmetric: `a == b` implies `b == a`; and
 /// - transitive: `a == b` and `b == c` implies `a == c`.
-pub trait TotalEq: PartialEq {
+pub trait Eq: PartialEq {
     // FIXME #13101: this method is used solely by #[deriving] to
     // assert that every component of a type implements #[deriving]
     // itself, the current deriving infrastructure means doing this
@@ -104,7 +101,7 @@ pub enum Ordering {
 ///   true; and
 /// - transitive, `a < b` and `b < c` implies `a < c`. The same must hold for
 ///   both `==` and `>`.
-pub trait TotalOrd: TotalEq + PartialOrd {
+pub trait Ord: Eq + PartialOrd {
     /// This method returns an ordering between `self` and `other` values.
     ///
     /// By convention, `self.cmp(&other)` returns the ordering matching
@@ -118,9 +115,9 @@ pub trait TotalOrd: TotalEq + PartialOrd {
     fn cmp(&self, other: &Self) -> Ordering;
 }
 
-impl TotalEq for Ordering {}
+impl Eq for Ordering {}
 
-impl TotalOrd for Ordering {
+impl Ord for Ordering {
     #[inline]
     fn cmp(&self, other: &Ordering) -> Ordering {
         (*self as int).cmp(&(*other as int))
@@ -182,20 +179,20 @@ pub trait Equiv<T> {
 
 /// Compare and return the minimum of two values.
 #[inline]
-pub fn min<T: TotalOrd>(v1: T, v2: T) -> T {
+pub fn min<T: Ord>(v1: T, v2: T) -> T {
     if v1 < v2 { v1 } else { v2 }
 }
 
 /// Compare and return the maximum of two values.
 #[inline]
-pub fn max<T: TotalOrd>(v1: T, v2: T) -> T {
+pub fn max<T: Ord>(v1: T, v2: T) -> T {
     if v1 > v2 { v1 } else { v2 }
 }
 
-// Implementation of PartialEq, TotalEq, PartialOrd and TotalOrd for primitive types
+// Implementation of PartialEq, Eq, PartialOrd and Ord for primitive types
 #[cfg(not(test))]
 mod impls {
-    use cmp::{PartialOrd, TotalOrd, PartialEq, TotalEq, Ordering,
+    use cmp::{PartialOrd, Ord, PartialEq, Eq, Ordering,
               Less, Greater, Equal};
 
     macro_rules! eq_impl(
@@ -220,7 +217,7 @@ mod impls {
 
     macro_rules! totaleq_impl(
         ($($t:ty)*) => ($(
-            impl TotalEq for $t {}
+            impl Eq for $t {}
         )*)
     )
 
@@ -257,7 +254,7 @@ mod impls {
 
     macro_rules! totalord_impl(
         ($($t:ty)*) => ($(
-            impl TotalOrd for $t {
+            impl Ord for $t {
                 #[inline]
                 fn cmp(&self, other: &$t) -> Ordering {
                     if *self < *other { Less }
@@ -268,12 +265,12 @@ mod impls {
         )*)
     )
 
-    impl TotalOrd for () {
+    impl Ord for () {
         #[inline]
         fn cmp(&self, _other: &()) -> Ordering { Equal }
     }
 
-    impl TotalOrd for bool {
+    impl Ord for bool {
         #[inline]
         fn cmp(&self, other: &bool) -> Ordering {
             (*self as u8).cmp(&(*other as u8))
@@ -299,11 +296,11 @@ mod impls {
         #[inline]
         fn gt(&self, other: & &'a T) -> bool { *(*self) > *(*other) }
     }
-    impl<'a, T: TotalOrd> TotalOrd for &'a T {
+    impl<'a, T: Ord> Ord for &'a T {
         #[inline]
         fn cmp(&self, other: & &'a T) -> Ordering { (**self).cmp(*other) }
     }
-    impl<'a, T: TotalEq> TotalEq for &'a T {}
+    impl<'a, T: Eq> Eq for &'a T {}
 
     // &mut pointers
     impl<'a, T: PartialEq> PartialEq for &'a mut T {
@@ -322,11 +319,11 @@ mod impls {
         #[inline]
         fn gt(&self, other: &&'a mut T) -> bool { **self > **other }
     }
-    impl<'a, T: TotalOrd> TotalOrd for &'a mut T {
+    impl<'a, T: Ord> Ord for &'a mut T {
         #[inline]
         fn cmp(&self, other: &&'a mut T) -> Ordering { (**self).cmp(*other) }
     }
-    impl<'a, T: TotalEq> TotalEq for &'a mut T {}
+    impl<'a, T: Eq> Eq for &'a mut T {}
 
     // @ pointers
     impl<T:PartialEq> PartialEq for @T {
@@ -345,11 +342,11 @@ mod impls {
         #[inline]
         fn gt(&self, other: &@T) -> bool { *(*self) > *(*other) }
     }
-    impl<T: TotalOrd> TotalOrd for @T {
+    impl<T: Ord> Ord for @T {
         #[inline]
         fn cmp(&self, other: &@T) -> Ordering { (**self).cmp(*other) }
     }
-    impl<T: TotalEq> TotalEq for @T {}
+    impl<T: Eq> Eq for @T {}
 }
 
 #[cfg(test)]

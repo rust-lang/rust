@@ -30,7 +30,7 @@ use str;
 use vec::Vec;
 
 /// A growable string stored as a UTF-8 encoded buffer.
-#[deriving(Clone, PartialEq, PartialOrd, TotalEq, TotalOrd)]
+#[deriving(Clone, PartialEq, PartialOrd, Eq, Ord)]
 pub struct String {
     vec: Vec<u8>,
 }

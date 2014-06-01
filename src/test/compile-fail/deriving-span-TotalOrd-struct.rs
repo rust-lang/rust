@@ -13,10 +13,10 @@
 #![feature(struct_variant)]
 extern crate rand;
 
-#[deriving(TotalEq,PartialOrd,PartialEq)]
+#[deriving(Eq,PartialOrd,PartialEq)]
 struct Error;
 
-#[deriving(TotalOrd,TotalEq,PartialOrd,PartialEq)]
+#[deriving(Ord,Eq,PartialOrd,PartialEq)]
 struct Struct {
     x: Error //~ ERROR
 }

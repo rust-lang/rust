@@ -28,14 +28,14 @@ pub type DefIdSet = FnvHashSet<ast::DefId>;
 pub mod FnvHashMap {
     use std::hash::Hash;
     use collections::HashMap;
-    pub fn new<K: Hash<super::FnvState> + TotalEq, V>() -> super::FnvHashMap<K, V> {
+    pub fn new<K: Hash<super::FnvState> + Eq, V>() -> super::FnvHashMap<K, V> {
         HashMap::with_hasher(super::FnvHasher)
     }
 }
 pub mod FnvHashSet {
     use std::hash::Hash;
     use collections::HashSet;
-    pub fn new<V: Hash<super::FnvState> + TotalEq>() -> super::FnvHashSet<V> {
+    pub fn new<V: Hash<super::FnvState> + Eq>() -> super::FnvHashSet<V> {
         HashSet::with_hasher(super::FnvHasher)
     }
 }
