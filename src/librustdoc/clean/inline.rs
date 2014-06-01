@@ -207,7 +207,7 @@ fn build_impls(cx: &core::DocContext,
     match tcx.inherent_impls.borrow().find(&did) {
         None => {}
         Some(i) => {
-            impls.extend(i.borrow().iter().map(|&did| { build_impl(tcx, did) }));
+            impls.extend(i.borrow().iter().map(|&did| { build_impl(cx, tcx, did) }));
         }
     }
 
@@ -223,19 +223,20 @@ fn build_impls(cx: &core::DocContext,
         csearch::each_top_level_item_of_crate(&tcx.sess.cstore,
                                               did.krate,
                                               |def, _, _| {
-            populate_impls(tcx, def, &mut impls)
+            populate_impls(cx, tcx, def, &mut impls)
         });
 
-        fn populate_impls(tcx: &ty::ctxt,
+        fn populate_impls(cx: &core::DocContext,
+                          tcx: &ty::ctxt,
                           def: decoder::DefLike,
-                          impls: &mut Vec<clean::Item>) {
+                          impls: &mut Vec<Option<clean::Item>>) {
             match def {
-                decoder::DlImpl(did) => impls.push(build_impl(tcx, did)),
+                decoder::DlImpl(did) => impls.push(build_impl(cx, tcx, did)),
                 decoder::DlDef(ast::DefMod(did)) => {
                     csearch::each_child_of_item(&tcx.sess.cstore,
                                                 did,
                                                 |def, _, _| {
-                        populate_impls(tcx, def, impls)
+                        populate_impls(cx, tcx, def, impls)
                     })
                 }
                 _ => {}
@@ -243,10 +244,16 @@ fn build_impls(cx: &core::DocContext,
         }
     }
 
-    impls
+    impls.move_iter().filter_map(|a| a).collect()
 }
 
-fn build_impl(tcx: &ty::ctxt, did: ast::DefId) -> clean::Item {
+fn build_impl(cx: &core::DocContext,
+              tcx: &ty::ctxt,
+              did: ast::DefId) -> Option<clean::Item> {
+    if !cx.inlined.borrow_mut().get_mut_ref().insert(did) {
+        return None
+    }
+
     let associated_trait = csearch::get_impl_trait(tcx, did);
     let attrs = load_attrs(tcx, did);
     let ty = ty::lookup_item_type(tcx, did);
@@ -275,7 +282,7 @@ fn build_impl(tcx: &ty::ctxt, did: ast::DefId) -> clean::Item {
         };
         Some(item)
     }).collect();
-    clean::Item {
+    Some(clean::Item {
         inner: clean::ImplItem(clean::Impl {
             derived: clean::detect_derived(attrs.as_slice()),
             trait_: associated_trait.clean().map(|bound| {
@@ -293,7 +300,7 @@ fn build_impl(tcx: &ty::ctxt, did: ast::DefId) -> clean::Item {
         attrs: attrs,
         visibility: Some(ast::Inherited),
         def_id: did,
-    }
+    })
 }
 
 fn build_module(cx: &core::DocContext, tcx: &ty::ctxt,
