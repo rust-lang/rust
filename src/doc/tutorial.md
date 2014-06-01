@@ -1429,7 +1429,7 @@ contains a point, but allocated in a different location:
 ~~~
 # struct Point { x: f64, y: f64 }
 let on_the_stack :     Point  =     Point { x: 3.0, y: 4.0 };
-let owned_box    : Box<Point> = box Point { x: 7.0, y: 9.0 };
+let on_the_heap  : Box<Point> = box Point { x: 7.0, y: 9.0 };
 ~~~
 
 Suppose we want to write a procedure that computes the distance
@@ -1454,9 +1454,9 @@ Now we can call `compute_distance()` in various ways:
 ~~~
 # struct Point{ x: f64, y: f64 };
 # let on_the_stack :     Point  =     Point { x: 3.0, y: 4.0 };
-# let owned_box    : Box<Point> = box Point { x: 7.0, y: 9.0 };
+# let on_the_heap  : Box<Point> = box Point { x: 7.0, y: 9.0 };
 # fn compute_distance(p1: &Point, p2: &Point) -> f64 { 0.0 }
-compute_distance(&on_the_stack, owned_box);
+compute_distance(&on_the_stack, on_the_heap);
 ~~~
 
 Here the `&` operator is used to take the address of the variable
