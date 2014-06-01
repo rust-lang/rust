@@ -43,7 +43,7 @@ pub struct Session {
     // expected to be absolute. `None` means that there is no source file.
     pub local_crate_source_file: Option<Path>,
     pub working_dir: Path,
-    pub lints: RefCell<NodeMap<Vec<(lint::Lint, codemap::Span, String)>>>,
+    pub lints: RefCell<NodeMap<Vec<(lint::LintId, codemap::Span, String)>>>,
     pub node_id: Cell<ast::NodeId>,
     pub crate_types: RefCell<Vec<config::CrateType>>,
     pub features: front::feature_gate::Features,
@@ -106,7 +106,7 @@ impl Session {
         self.diagnostic().handler().unimpl(msg)
     }
     pub fn add_lint(&self,
-                    lint: lint::Lint,
+                    lint: lint::LintId,
                     id: ast::NodeId,
                     sp: Span,
                     msg: String) {

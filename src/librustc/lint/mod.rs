@@ -59,7 +59,7 @@ use syntax::{ast, ast_util, visit};
 mod builtin;
 
 #[deriving(Clone, Show, PartialEq, PartialOrd, Eq, Ord, Hash)]
-pub enum Lint {
+pub enum LintId {
     CTypes,
     UnusedImports,
     UnnecessaryQualification,
@@ -126,7 +126,7 @@ pub enum Level {
 #[deriving(Clone, PartialEq, PartialOrd, Eq, Ord)]
 pub struct LintSpec {
     pub default: Level,
-    pub lint: Lint,
+    pub lint: LintId,
     pub desc: &'static str,
 }
 
@@ -449,7 +449,7 @@ struct Context<'a> {
     /// When recursing into an attributed node of the ast which modifies lint
     /// levels, this stack keeps track of the previous lint levels of whatever
     /// was modified.
-    lint_stack: Vec<(Lint, Level, LintSource)>,
+    lint_stack: Vec<(LintId, Level, LintSource)>,
 
     /// Id of the last visited negated expression
     negated_expr_id: ast::NodeId,
@@ -459,7 +459,7 @@ struct Context<'a> {
 
     /// Level of lints for certain NodeIds, stored here because the body of
     /// the lint needs to run in trans.
-    node_levels: HashMap<(ast::NodeId, Lint), (Level, LintSource)>,
+    node_levels: HashMap<(ast::NodeId, LintId), (Level, LintSource)>,
 }
 
 pub fn emit_lint(level: Level, src: LintSource, msg: &str, span: Span,
@@ -496,7 +496,7 @@ pub fn emit_lint(level: Level, src: LintSource, msg: &str, span: Span,
     }
 }
 
-pub fn lint_to_str(lint: Lint) -> &'static str {
+pub fn lint_to_str(lint: LintId) -> &'static str {
     for &(name, lspec) in lint_table.iter() {
         if lspec.lint == lint {
             return name;
@@ -507,21 +507,21 @@ pub fn lint_to_str(lint: Lint) -> &'static str {
 }
 
 impl<'a> Context<'a> {
-    fn get_level(&self, lint: Lint) -> Level {
+    fn get_level(&self, lint: LintId) -> Level {
         match self.cur.find(&(lint as uint)) {
           Some(&(lvl, _)) => lvl,
           None => Allow
         }
     }
 
-    fn get_source(&self, lint: Lint) -> LintSource {
+    fn get_source(&self, lint: LintId) -> LintSource {
         match self.cur.find(&(lint as uint)) {
           Some(&(_, src)) => src,
           None => Default
         }
     }
 
-    fn set_level(&mut self, lint: Lint, level: Level, src: LintSource) {
+    fn set_level(&mut self, lint: LintId, level: Level, src: LintSource) {
         if level == Allow {
             self.cur.remove(&(lint as uint));
         } else {
@@ -529,7 +529,7 @@ impl<'a> Context<'a> {
         }
     }
 
-    fn lint_to_str(&self, lint: Lint) -> &'static str {
+    fn lint_to_str(&self, lint: LintId) -> &'static str {
         for (k, v) in self.dict.iter() {
             if v.lint == lint {
                 return *k;
@@ -538,7 +538,7 @@ impl<'a> Context<'a> {
         fail!("unregistered lint {}", lint);
     }
 
-    fn span_lint(&self, lint: Lint, span: Span, msg: &str) {
+    fn span_lint(&self, lint: LintId, span: Span, msg: &str) {
         let (level, src) = match self.cur.find(&(lint as uint)) {
             None => { return }
             Some(&(Warn, src)) => (self.get_level(Warnings), src),
