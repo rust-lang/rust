@@ -97,6 +97,7 @@ pub mod arc;
 pub mod rc;
 
 #[cfg(not(test))]
+#[doc(hidden)]
 mod std {
     pub use core::fmt;
     pub use core::option;

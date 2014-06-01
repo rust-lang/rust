@@ -10,4 +10,6 @@
 
 //! Operations and constants for unsigned 16-bits integers (`u16` type)
 
+#![doc(primitive = "u16")]
+
 uint_module!(u16, i16, 16)

@@ -10,6 +10,8 @@
 
 //! Operations and constants for signed 32-bits integers (`i32` type)
 
+#![doc(primitive = "i32")]
+
 use from_str::FromStr;
 use num::{ToStrRadix, FromStrRadix};
 use num::strconv;

@@ -79,6 +79,7 @@ pub fn run(input: &str,
         external_traits: RefCell::new(None),
         external_typarams: RefCell::new(None),
         inlined: RefCell::new(None),
+        populated_crate_impls: RefCell::new(HashSet::new()),
     };
     super::ctxtkey.replace(Some(ctx));
 

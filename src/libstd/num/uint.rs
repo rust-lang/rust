@@ -10,6 +10,8 @@
 
 //! Operations and constants for architecture-sized unsigned integers (`uint` type)
 
+#![doc(primitive = "uint")]
+
 use from_str::FromStr;
 use num::{ToStrRadix, FromStrRadix};
 use num::strconv;

@@ -24,6 +24,7 @@
 //! and, as such, should be performed via the `from_u32` function..
 
 #![allow(non_snake_case_functions)]
+#![doc(primitive = "char")]
 
 use mem::transmute;
 use option::{None, Option, Some};

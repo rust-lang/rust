@@ -62,17 +62,22 @@ fn try_inline_def(cx: &core::DocContext,
             clean::TraitItem(build_external_trait(tcx, did))
         }
         ast::DefFn(did, style) => {
+            // If this function is a tuple struct constructor, we just skip it
+            if csearch::get_tuple_struct_definition_if_ctor(&tcx.sess.cstore,
+                                                            did).is_some() {
+                return None
+            }
             record_extern_fqn(cx, did, clean::TypeFunction);
             clean::FunctionItem(build_external_function(tcx, did, style))
         }
         ast::DefStruct(did) => {
             record_extern_fqn(cx, did, clean::TypeStruct);
-            ret.extend(build_impls(tcx, did).move_iter());
+            ret.extend(build_impls(cx, tcx, did).move_iter());
             clean::StructItem(build_struct(tcx, did))
         }
         ast::DefTy(did) => {
             record_extern_fqn(cx, did, clean::TypeEnum);
-            ret.extend(build_impls(tcx, did).move_iter());
+            ret.extend(build_impls(cx, tcx, did).move_iter());
             build_type(tcx, did)
         }
         // Assume that the enum type is reexported next to the variant, and
@@ -193,7 +198,8 @@ fn build_type(tcx: &ty::ctxt, did: ast::DefId) -> clean::ItemEnum {
     })
 }
 
-fn build_impls(tcx: &ty::ctxt,
+fn build_impls(cx: &core::DocContext,
+               tcx: &ty::ctxt,
                did: ast::DefId) -> Vec<clean::Item> {
     ty::populate_implementations_for_type_if_necessary(tcx, did);
     let mut impls = Vec::new();
@@ -202,6 +208,38 @@ fn build_impls(tcx: &ty::ctxt,
         None => {}
         Some(i) => {
             impls.extend(i.borrow().iter().map(|&did| { build_impl(tcx, did) }));
+        }
+    }
+
+    // If this is the first time we've inlined something from this crate, then
+    // we inline *all* impls from the crate into this crate. Note that there's
+    // currently no way for us to filter this based on type, and we likely need
+    // many impls for a variety of reasons.
+    //
+    // Primarily, the impls will be used to populate the documentation for this
+    // type being inlined, but impls can also be used when generating
+    // documentation for primitives (no way to find those specifically).
+    if cx.populated_crate_impls.borrow_mut().insert(did.krate) {
+        csearch::each_top_level_item_of_crate(&tcx.sess.cstore,
+                                              did.krate,
+                                              |def, _, _| {
+            populate_impls(tcx, def, &mut impls)
+        });
+
+        fn populate_impls(tcx: &ty::ctxt,
+                          def: decoder::DefLike,
+                          impls: &mut Vec<clean::Item>) {
+            match def {
+                decoder::DlImpl(did) => impls.push(build_impl(tcx, did)),
+                decoder::DlDef(ast::DefMod(did)) => {
+                    csearch::each_child_of_item(&tcx.sess.cstore,
+                                                did,
+                                                |def, _, _| {
+                        populate_impls(tcx, def, impls)
+                    })
+                }
+                _ => {}
+            }
         }
     }
 
@@ -259,7 +297,8 @@ fn build_module(cx: &core::DocContext, tcx: &ty::ctxt,
 
     // FIXME: this doesn't handle reexports inside the module itself.
     //        Should they be handled?
-    csearch::each_child_of_item(&tcx.sess.cstore, did, |def, _, _| {
+    csearch::each_child_of_item(&tcx.sess.cstore, did, |def, _, vis| {
+        if vis != ast::Public { return }
         match def {
             decoder::DlDef(def) => {
                 match try_inline_def(cx, tcx, def) {
@@ -267,7 +306,8 @@ fn build_module(cx: &core::DocContext, tcx: &ty::ctxt,
                     None => {}
                 }
             }
-            decoder::DlImpl(did) => items.push(build_impl(tcx, did)),
+            // All impls were inlined above
+            decoder::DlImpl(..) => {}
             decoder::DlField => fail!("unimplemented field"),
         }
     });

@@ -10,6 +10,8 @@
 
 //! Operations and constants for unsigned 8-bits integers (`u8` type)
 
+#![doc(primitive = "u8")]
+
 use from_str::FromStr;
 use num::{ToStrRadix, FromStrRadix};
 use num::strconv;

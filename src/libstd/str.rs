@@ -65,6 +65,8 @@ is the same as `&[u8]`.
 
 */
 
+#![doc(primitive = "str")]
+
 use char::Char;
 use char;
 use clone::Clone;
