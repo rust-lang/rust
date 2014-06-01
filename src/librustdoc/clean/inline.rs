@@ -250,7 +250,12 @@ fn build_impl(tcx: &ty::ctxt, did: ast::DefId) -> clean::Item {
     let associated_trait = csearch::get_impl_trait(tcx, did);
     let attrs = load_attrs(tcx, did);
     let ty = ty::lookup_item_type(tcx, did);
-    let methods = csearch::get_impl_methods(&tcx.sess.cstore, did).iter().map(|did| {
+    let methods = csearch::get_impl_methods(&tcx.sess.cstore,
+                                            did).iter().filter_map(|did| {
+        let method = ty::method(tcx, *did);
+        if method.vis != ast::Public && associated_trait.is_none() {
+            return None
+        }
         let mut item = match ty::method(tcx, *did).clean() {
             clean::Provided(item) => item,
             clean::Required(item) => item,
@@ -268,7 +273,7 @@ fn build_impl(tcx: &ty::ctxt, did: ast::DefId) -> clean::Item {
             }
             _ => fail!("not a tymethod"),
         };
-        item
+        Some(item)
     }).collect();
     clean::Item {
         inner: clean::ImplItem(clean::Impl {
