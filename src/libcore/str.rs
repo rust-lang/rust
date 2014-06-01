@@ -18,7 +18,7 @@ use mem;
 use char;
 use clone::Clone;
 use cmp;
-use cmp::{PartialEq, TotalEq};
+use cmp::{PartialEq, Eq};
 use container::Container;
 use default::Default;
 use iter::{Filter, Map, Iterator};
@@ -698,7 +698,7 @@ pub struct Utf16Items<'a> {
     iter: slice::Items<'a, u16>
 }
 /// The possibilities for values decoded from a `u16` stream.
-#[deriving(PartialEq, TotalEq, Clone, Show)]
+#[deriving(PartialEq, Eq, Clone, Show)]
 pub enum Utf16Item {
     /// A valid codepoint.
     ScalarValue(char),
@@ -932,12 +932,12 @@ Section: Trait implementations
 #[allow(missing_doc)]
 pub mod traits {
     use container::Container;
-    use cmp::{TotalOrd, Ordering, Less, Equal, Greater, PartialEq, PartialOrd, Equiv, TotalEq};
+    use cmp::{Ord, Ordering, Less, Equal, Greater, PartialEq, PartialOrd, Equiv, Eq};
     use iter::Iterator;
     use option::{Some, None};
     use str::{Str, StrSlice, eq_slice};
 
-    impl<'a> TotalOrd for &'a str {
+    impl<'a> Ord for &'a str {
         #[inline]
         fn cmp(&self, other: & &'a str) -> Ordering {
             for (s_b, o_b) in self.bytes().zip(other.bytes()) {
@@ -961,7 +961,7 @@ pub mod traits {
         fn ne(&self, other: & &'a str) -> bool { !(*self).eq(other) }
     }
 
-    impl<'a> TotalEq for &'a str {}
+    impl<'a> Eq for &'a str {}
 
     impl<'a> PartialOrd for &'a str {
         #[inline]

@@ -25,7 +25,7 @@ use slice::{MutableCloneableVector, ImmutableVector, MutableVector};
 
 pub type Port = u16;
 
-#[deriving(PartialEq, TotalEq, Clone, Hash)]
+#[deriving(PartialEq, Eq, Clone, Hash)]
 pub enum IpAddr {
     Ipv4Addr(u8, u8, u8, u8),
     Ipv6Addr(u16, u16, u16, u16, u16, u16, u16, u16)
@@ -56,7 +56,7 @@ impl fmt::Show for IpAddr {
     }
 }
 
-#[deriving(PartialEq, TotalEq, Clone, Hash)]
+#[deriving(PartialEq, Eq, Clone, Hash)]
 pub struct SocketAddr {
     pub ip: IpAddr,
     pub port: Port,

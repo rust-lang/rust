@@ -13,7 +13,7 @@
 use container::Container;
 use c_str::{CString, ToCStr};
 use clone::Clone;
-use cmp::{PartialEq, TotalEq};
+use cmp::{PartialEq, Eq};
 use from_str::FromStr;
 use io::Writer;
 use iter::{DoubleEndedIterator, AdditiveIterator, Extendable, Iterator, Map};
@@ -65,7 +65,7 @@ impl PartialEq for Path {
     }
 }
 
-impl TotalEq for Path {}
+impl Eq for Path {}
 
 impl FromStr for Path {
     fn from_str(s: &str) -> Option<Path> {

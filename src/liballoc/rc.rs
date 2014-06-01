@@ -26,7 +26,7 @@ pointers, and then storing the parent pointers as `Weak` pointers.
 use core::mem::transmute;
 use core::cell::Cell;
 use core::clone::Clone;
-use core::cmp::{PartialEq, PartialOrd, TotalEq, TotalOrd, Ordering};
+use core::cmp::{PartialEq, PartialOrd, Eq, Ord, Ordering};
 use core::kinds::marker;
 use core::ops::{Deref, Drop};
 use core::option::{Option, Some, None};
@@ -157,7 +157,7 @@ impl<T: PartialEq> PartialEq for Rc<T> {
     fn ne(&self, other: &Rc<T>) -> bool { **self != **other }
 }
 
-impl<T: TotalEq> TotalEq for Rc<T> {}
+impl<T: Eq> Eq for Rc<T> {}
 
 impl<T: PartialOrd> PartialOrd for Rc<T> {
     #[inline(always)]
@@ -173,7 +173,7 @@ impl<T: PartialOrd> PartialOrd for Rc<T> {
     fn ge(&self, other: &Rc<T>) -> bool { **self >= **other }
 }
 
-impl<T: TotalOrd> TotalOrd for Rc<T> {
+impl<T: Ord> Ord for Rc<T> {
     #[inline]
     fn cmp(&self, other: &Rc<T>) -> Ordering { (**self).cmp(&**other) }
 }

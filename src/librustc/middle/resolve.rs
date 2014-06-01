@@ -109,7 +109,7 @@ enum PatternBindingMode {
     ArgumentIrrefutableMode,
 }
 
-#[deriving(PartialEq, TotalEq, Hash)]
+#[deriving(PartialEq, Eq, Hash)]
 enum Namespace {
     TypeNS,
     ValueNS

@@ -83,7 +83,7 @@ pub mod stats;
 // colons. This way if some test runner wants to arrange the tests
 // hierarchically it may.
 
-#[deriving(Clone, PartialEq, TotalEq, Hash)]
+#[deriving(Clone, PartialEq, Eq, Hash)]
 pub enum TestName {
     StaticTestName(&'static str),
     DynTestName(String)
@@ -183,7 +183,7 @@ pub struct Bencher {
 
 // The definition of a single test. A test runner will run a list of
 // these.
-#[deriving(Clone, Show, PartialEq, TotalEq, Hash)]
+#[deriving(Clone, Show, PartialEq, Eq, Hash)]
 pub struct TestDesc {
     pub name: TestName,
     pub ignore: bool,

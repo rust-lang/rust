@@ -12,7 +12,7 @@
 
 use std::cmp::{Less,Equal,Greater};
 
-#[deriving(TotalEq,TotalOrd)]
+#[deriving(Eq,Ord)]
 struct A<'a> {
     x: &'a int
 }
