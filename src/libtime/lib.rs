@@ -74,7 +74,7 @@ mod imp {
 }
 
 /// A record specifying a time value in seconds and nanoseconds.
-#[deriving(Clone, PartialEq, TotalEq, PartialOrd, TotalOrd, Encodable, Decodable, Show)]
+#[deriving(Clone, PartialEq, Eq, PartialOrd, Ord, Encodable, Decodable, Show)]
 pub struct Timespec { pub sec: i64, pub nsec: i32 }
 /*
  * Timespec assumes that pre-epoch Timespecs have negative sec and positive

@@ -65,7 +65,7 @@ Vectors are a very useful type, and so there's several implementations of
 traits from other modules. Some notable examples:
 
 * `Clone`
-* `Eq`, `Ord`, `TotalEq`, `TotalOrd` -- vectors can be compared,
+* `Eq`, `Ord`, `Eq`, `Ord` -- vectors can be compared,
   if the element type defines the corresponding trait.
 
 ## Iteration
@@ -101,7 +101,7 @@ There are a number of free functions that create or take vectors, for example:
 
 use mem::transmute;
 use clone::Clone;
-use cmp::{TotalOrd, Ordering, Less, Greater};
+use cmp::{Ord, Ordering, Less, Greater};
 use cmp;
 use container::Container;
 use iter::*;
@@ -117,7 +117,7 @@ use vec::Vec;
 
 pub use core::slice::{ref_slice, mut_ref_slice, Splits, Windows};
 pub use core::slice::{Chunks, Vector, ImmutableVector, ImmutableEqVector};
-pub use core::slice::{ImmutableTotalOrdVector, MutableVector, Items, MutItems};
+pub use core::slice::{ImmutableOrdVector, MutableVector, Items, MutItems};
 pub use core::slice::{MutSplits, MutChunks};
 pub use core::slice::{bytes, MutableCloneableVector};
 
@@ -698,7 +698,7 @@ impl<'a,T> MutableVectorAllocating<'a, T> for &'a mut [T] {
 
 /// Methods for mutable vectors with orderable elements, such as
 /// in-place sorting.
-pub trait MutableTotalOrdVector<T> {
+pub trait MutableOrdVector<T> {
     /// Sort the vector, in place.
     ///
     /// This is equivalent to `self.sort_by(|a, b| a.cmp(b))`.
@@ -714,7 +714,7 @@ pub trait MutableTotalOrdVector<T> {
     fn sort(self);
 }
 
-impl<'a, T: TotalOrd> MutableTotalOrdVector<T> for &'a mut [T] {
+impl<'a, T: Ord> MutableOrdVector<T> for &'a mut [T] {
     #[inline]
     fn sort(self) {
         self.sort_by(|a,b| a.cmp(b))

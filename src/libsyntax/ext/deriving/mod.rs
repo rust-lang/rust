@@ -79,9 +79,9 @@ pub fn expand_meta_deriving(cx: &mut ExtCtxt,
 
                             // NOTE: after a stage0 snap this needs treatment
                             "PartialEq" => expand!(eq::expand_deriving_eq),
-                            "Eq" | "TotalEq" => expand!(totaleq::expand_deriving_totaleq),
+                            "Eq" => expand!(totaleq::expand_deriving_totaleq),
                             "PartialOrd" => expand!(ord::expand_deriving_ord),
-                            "Ord" | "TotalOrd" => expand!(totalord::expand_deriving_totalord),
+                            "Ord" => expand!(totalord::expand_deriving_totalord),
 
                             "Rand" => expand!(rand::expand_deriving_rand),
 

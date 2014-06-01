@@ -112,7 +112,7 @@ macro_rules! bitflags(
     ($(#[$attr:meta])* flags $BitFlags:ident: $T:ty {
         $($(#[$Flag_attr:meta])* static $Flag:ident = $value:expr),+
     }) => (
-        #[deriving(PartialEq, TotalEq, Clone)]
+        #[deriving(PartialEq, Eq, Clone)]
         $(#[$attr])*
         pub struct $BitFlags {
             bits: $T,

@@ -13,7 +13,7 @@ use std::fmt;
 #[deriving(PartialEq)]
 pub enum Os { OsWin32, OsMacos, OsLinux, OsAndroid, OsFreebsd, }
 
-#[deriving(PartialEq, TotalEq, Hash, Encodable, Decodable, Clone)]
+#[deriving(PartialEq, Eq, Hash, Encodable, Decodable, Clone)]
 pub enum Abi {
     // NB: This ordering MUST match the AbiDatas array below.
     // (This is ensured by the test indices_are_correct().)

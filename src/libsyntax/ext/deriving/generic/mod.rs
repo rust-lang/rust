@@ -28,7 +28,7 @@ Supported features (fairly exhaustive):
   moment. (`TraitDef.additional_bounds`)
 
 Unsupported: FIXME #6257: calling methods on reference fields,
-e.g. deriving TotalEq/TotalOrd/Clone don't work on `struct A(&int)`,
+e.g. deriving Eq/Ord/Clone don't work on `struct A(&int)`,
 because of how the auto-dereferencing happens.
 
 The most important thing for implementers is the `Substructure` and

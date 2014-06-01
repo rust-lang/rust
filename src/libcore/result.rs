@@ -283,7 +283,7 @@ use option::{None, Option, Some};
 /// `Result` is a type that represents either success (`Ok`) or failure (`Err`).
 ///
 /// See the [`std::result`](index.html) module documentation for details.
-#[deriving(Clone, PartialEq, PartialOrd, TotalEq, TotalOrd, Show)]
+#[deriving(Clone, PartialEq, PartialOrd, Eq, Ord, Show)]
 #[must_use]
 pub enum Result<T, E> {
     /// Contains the success value

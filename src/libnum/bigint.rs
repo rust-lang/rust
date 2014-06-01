@@ -89,7 +89,7 @@ impl PartialEq for BigUint {
         match self.cmp(other) { Equal => true, _ => false }
     }
 }
-impl TotalEq for BigUint {}
+impl Eq for BigUint {}
 
 impl PartialOrd for BigUint {
     #[inline]
@@ -98,7 +98,7 @@ impl PartialOrd for BigUint {
     }
 }
 
-impl TotalOrd for BigUint {
+impl Ord for BigUint {
     #[inline]
     fn cmp(&self, other: &BigUint) -> Ordering {
         let (s_len, o_len) = (self.data.len(), other.data.len());
@@ -786,7 +786,7 @@ fn get_radix_base(radix: uint) -> (DoubleBigDigit, uint) {
 }
 
 /// A Sign is a `BigInt`'s composing element.
-#[deriving(PartialEq, PartialOrd, TotalEq, TotalOrd, Clone, Show)]
+#[deriving(PartialEq, PartialOrd, Eq, Ord, Clone, Show)]
 pub enum Sign { Minus, Zero, Plus }
 
 impl Neg<Sign> for Sign {
@@ -815,7 +815,7 @@ impl PartialEq for BigInt {
     }
 }
 
-impl TotalEq for BigInt {}
+impl Eq for BigInt {}
 
 impl PartialOrd for BigInt {
     #[inline]
@@ -824,7 +824,7 @@ impl PartialOrd for BigInt {
     }
 }
 
-impl TotalOrd for BigInt {
+impl Ord for BigInt {
     #[inline]
     fn cmp(&self, other: &BigInt) -> Ordering {
         let scmp = self.sign.cmp(&other.sign);

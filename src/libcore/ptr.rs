@@ -93,7 +93,7 @@ use intrinsics;
 use iter::{range, Iterator};
 use option::{Some, None, Option};
 
-#[cfg(not(test))] use cmp::{PartialEq, TotalEq, PartialOrd, Equiv};
+#[cfg(not(test))] use cmp::{PartialEq, Eq, PartialOrd, Equiv};
 
 /// Return the offset of the first null pointer in `buf`.
 #[inline]
@@ -396,7 +396,7 @@ impl<T> PartialEq for *T {
 }
 
 #[cfg(not(test))]
-impl<T> TotalEq for *T {}
+impl<T> Eq for *T {}
 
 #[cfg(not(test))]
 impl<T> PartialEq for *mut T {
@@ -409,7 +409,7 @@ impl<T> PartialEq for *mut T {
 }
 
 #[cfg(not(test))]
-impl<T> TotalEq for *mut T {}
+impl<T> Eq for *mut T {}
 
 // Equivalence for pointers
 #[cfg(not(test))]

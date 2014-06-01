@@ -58,7 +58,7 @@
 #[doc(no_inline)] pub use c_str::ToCStr;
 #[doc(no_inline)] pub use char::Char;
 #[doc(no_inline)] pub use clone::Clone;
-#[doc(no_inline)] pub use cmp::{PartialEq, PartialOrd, TotalEq, TotalOrd};
+#[doc(no_inline)] pub use cmp::{PartialEq, PartialOrd, Eq, Ord};
 #[doc(no_inline)] pub use cmp::{Ordering, Less, Equal, Greater, Equiv};
 #[doc(no_inline)] pub use container::{Container, Mutable, Map, MutableMap};
 #[doc(no_inline)] pub use container::{Set, MutableSet};
@@ -81,9 +81,9 @@
 #[doc(no_inline)] pub use tuple::{Tuple5, Tuple6, Tuple7, Tuple8};
 #[doc(no_inline)] pub use tuple::{Tuple9, Tuple10, Tuple11, Tuple12};
 #[doc(no_inline)] pub use slice::{CloneableVector, ImmutableCloneableVector};
-#[doc(no_inline)] pub use slice::{MutableCloneableVector, MutableTotalOrdVector};
+#[doc(no_inline)] pub use slice::{MutableCloneableVector, MutableOrdVector};
 #[doc(no_inline)] pub use slice::{ImmutableVector, MutableVector};
-#[doc(no_inline)] pub use slice::{ImmutableEqVector, ImmutableTotalOrdVector};
+#[doc(no_inline)] pub use slice::{ImmutableEqVector, ImmutableOrdVector};
 #[doc(no_inline)] pub use slice::{Vector, VectorVector, OwnedVector};
 #[doc(no_inline)] pub use slice::MutableVectorAllocating;
 #[doc(no_inline)] pub use string::String;
