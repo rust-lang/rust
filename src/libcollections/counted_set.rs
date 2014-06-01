@@ -13,6 +13,7 @@ extern crate core;
 
 use collections::HashMap;
 use collections::hashmap::{Entries, Keys, MoveEntries, Values};
+use collections::PriorityQueue;
 use core::clone::Clone;
 use core::cmp::{max, min};
 use core::num::Saturating;
@@ -27,6 +28,26 @@ use std::iter::Repeat;
 /// Struct for counting hashable items, Also known as bag or multiset. Stores
 /// items and their counts as (key,value) pairs. Unlike Pythons Counter, it
 /// only allows non-negative integers as counts (this is subject to change).
+
+/// A wrapper around a (k, v) pair. This is needed since a (K, uint) tuple can't
+/// be put in a PriorityQueue without K implementing TotalOrd.
+#[deriving(TotalEq, PartialEq)]
+struct Counted<K> {
+    k: K,
+    v: uint
+}
+
+impl<K: Clone + Hash + TotalEq> PartialOrd for Counted<K> {
+    fn lt(&self, other: &Counted<K>) -> bool {
+        self.v < other.v
+    }
+}
+
+impl<K: Clone + Hash + TotalEq> TotalOrd for Counted<K> {
+    fn cmp(&self, other: &Counted<K>) -> Ordering {
+        self.v.cmp(&other.v)
+    }
+}
 
 #[deriving(Clone)]
 pub struct CountedSet<K> {
@@ -75,12 +96,20 @@ impl<K: Clone + Hash + TotalEq> CountedSet<K> {
     }
 
     /// Returns the `n` most common elements and their counts in descending
-    /// order.
+    /// order. The time complexity is O(m + n log m), where `m` is the number
+    /// of elements in the counter.
     pub fn most_common(&self, n: uint) -> Vec<(K, uint)> {
+        let n = if n <= self.data.len() { n } else { self.data.len() };
         let data = self.data.clone();
-        let mut n_most_common = data.move_iter().collect::<Vec<(K, uint)>>();
-        n_most_common.sort_by(|&(_, a), &(_, b)| b.cmp(&a));
-        n_most_common.truncate(n);
+        let counted: Vec<Counted<K>> = data.move_iter().
+                                                 map(|(kk, vv)| Counted {k: kk, v: vv}).collect();
+        let mut pq = PriorityQueue::from_vec(counted);
+
+        let mut n_most_common = Vec::with_capacity(n);
+        for _ in range(0u, n) {
+            let Counted { k, v } = pq.pop().unwrap();
+            n_most_common.push((k, v));
+        }
         n_most_common
     }
 
@@ -94,10 +123,7 @@ impl<K: Clone + Hash + TotalEq> CountedSet<K> {
 
     /// Returns the count of an element in the counter. Missing elements return 0.
     pub fn get(&self, k: &K) -> uint {
-        match self.data.find(k) {
-            Some(v) => *v,
-            None => 0u
-        }
+        *self.data.find(k).unwrap_or(&0u)
     }
 
     /// Return a new counter.
@@ -200,7 +226,7 @@ impl<K: Hash + TotalEq> Container for CountedSet<K> {
     fn len(&self) -> uint { self.data.len() }
 }
 
-impl<K: Hash + TotalEq> Eq for CountedSet<K> {
+impl<K: Hash + TotalEq> PartialEq for CountedSet<K> {
     fn eq(&self, other: &CountedSet<K>) -> bool {
         self.data == other.data
     }
@@ -302,10 +328,14 @@ fn test_elements() {
 #[test]
 fn test_most_common() {
     let strings = ["a", "b", "a", "b", "b", "c"];
-    let answer = [("b", 3u), ("a", 2)];
-
     let count: CountedSet<_> = strings.iter().map(|&x|x).collect();
+
     let v: Vec<_> = count.most_common(2);
+    let answer = [("b", 3u), ("a", 2)];
+    assert!(answer == v.as_slice())
+
+    let v: Vec<_> = count.most_common(6);
+    let answer = [("b", 3u), ("a", 2), ("c", 1)];
     assert!(answer == v.as_slice())
 }
 
