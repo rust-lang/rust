@@ -499,9 +499,9 @@ shouldn't get triggered.
 
 The second of these two functions, `eh_personality`, is used by the failure
 mechanisms of the compiler. This is often mapped to GCC's personality function
-(see the [libstd implementation](../std/rt/unwind/) for more information), but
-crates which do not trigger failure can be assured that this function is never
-called.
+(see the [libstd implementation](std/rt/unwind/index.html) for more
+information), but crates which do not trigger failure can be assured that this
+function is never called.
 
 ## Using libcore
 
@@ -511,7 +511,8 @@ called.
 With the above techniques, we've got a bare-metal executable running some Rust
 code. There is a good deal of functionality provided by the standard library,
 however, that is necessary to be productive in Rust. If the standard library is
-not sufficient, then [libcore](../core/) is designed to be used instead.
+not sufficient, then [libcore](core/index.html) is designed to be used
+instead.
 
 The core library has very few dependencies and is much more portable than the
 standard library itself. Additionally, the core library has most of the

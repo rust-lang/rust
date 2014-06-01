@@ -67,10 +67,21 @@ pub fn strip_hidden(krate: clean::Crate) -> plugins::PluginResult {
             fn fold_item(&mut self, i: Item) -> Option<Item> {
                 match i.inner {
                     clean::ImplItem(clean::Impl{
-                        for_: clean::ResolvedPath{ did, .. }, ..
+                        for_: clean::ResolvedPath{ did, .. },
+                        ref trait_, ..
                     }) => {
+                        // Impls for stripped types don't need to exist
                         if self.stripped.contains(&did.node) {
                             return None;
+                        }
+                        // Impls of stripped traits also don't need to exist
+                        match *trait_ {
+                            Some(clean::ResolvedPath { did, .. }) => {
+                                if self.stripped.contains(&did.node) {
+                                    return None
+                                }
+                            }
+                            _ => {}
                         }
                     }
                     _ => {}
@@ -161,6 +172,9 @@ impl<'a> fold::DocFolder for Stripper<'a> {
 
             // tymethods/macros have no control over privacy
             clean::MacroItem(..) | clean::TyMethodItem(..) => {}
+
+            // Primitives are never stripped
+            clean::PrimitiveItem(..) => {}
         }
 
         let fastreturn = match i.inner {

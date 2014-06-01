@@ -42,6 +42,7 @@ pub struct DocContext {
     pub external_traits: RefCell<Option<HashMap<ast::DefId, clean::Trait>>>,
     pub external_typarams: RefCell<Option<HashMap<ast::DefId, String>>>,
     pub inlined: RefCell<Option<HashSet<ast::DefId>>>,
+    pub populated_crate_impls: RefCell<HashSet<ast::CrateNum>>,
 }
 
 impl DocContext {
@@ -114,6 +115,7 @@ fn get_ast_and_resolve(cpath: &Path, libs: HashSet<Path>, cfgs: Vec<String>)
         external_typarams: RefCell::new(Some(HashMap::new())),
         external_paths: RefCell::new(Some(HashMap::new())),
         inlined: RefCell::new(Some(HashSet::new())),
+        populated_crate_impls: RefCell::new(HashSet::new()),
     }, CrateAnalysis {
         exported_items: exported_items,
         public_items: public_items,

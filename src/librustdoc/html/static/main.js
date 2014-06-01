@@ -527,7 +527,8 @@
                          "variant",
                          "ffi",
                          "ffs",
-                         "macro"];
+                         "macro",
+                         "primitive"];
 
         function itemTypeFromName(typename) {
             for (var i = 0; i < itemTypes.length; ++i) {
@@ -658,15 +659,13 @@
         var list = $('#implementors-list');
         var libs = Object.getOwnPropertyNames(imp);
         for (var i = 0; i < libs.length; i++) {
-            var structs = Object.getOwnPropertyNames(imp[libs[i]]);
+            if (libs[i] == currentCrate) continue;
+            var structs = imp[libs[i]];
             for (var j = 0; j < structs.length; j++) {
-                console.log(i, structs[j]);
-                var path = rootPath + imp[libs[i]][structs[j]];
-                var klass = path.contains("type.") ? "type" : "struct";
-                var link = $('<a>').text(structs[j])
-                                   .attr('href', path)
-                                   .attr('class', klass);
-                var code = $('<code>').append(link);
+                var code = $('<code>').append(structs[j]);
+                $.each(code.find('a'), function(idx, a) {
+                    $(a).attr('href', rootPath + $(a).attr('href'));
+                });
                 var li = $('<li>').append(code);
                 list.append(li);
             }

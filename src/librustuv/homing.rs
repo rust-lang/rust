@@ -82,6 +82,7 @@ pub fn local_id() -> uint {
     }
 }
 
+#[doc(hidden)]
 pub trait HomingIO {
     fn home<'r>(&'r mut self) -> &'r mut HomeHandle;
 
