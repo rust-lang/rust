@@ -726,6 +726,27 @@ pub trait DerefMut<Result>: Deref<Result> {
     fn deref_mut<'a>(&'a mut self) -> &'a mut Result;
 }
 
+/// A version of the call operator that takes an immutable receiver.
+#[lang="fn"]
+pub trait Fn<Args,Result> {
+    /// This is called when the call operator is used.
+    fn call(&self, args: Args) -> Result;
+}
+
+/// A version of the call operator that takes a mutable receiver.
+#[lang="fn_mut"]
+pub trait FnMut<Args,Result> {
+    /// This is called when the call operator is used.
+    fn call_mut(&mut self, args: Args) -> Result;
+}
+
+/// A version of the call operator that takes a by-value receiver.
+#[lang="fn_once"]
+pub trait FnOnce<Args,Result> {
+    /// This is called when the call operator is used.
+    fn call_once(self, args: Args) -> Result;
+}
+
 #[cfg(test)]
 mod bench {
     extern crate test;

@@ -19,6 +19,7 @@ use middle::def;
 use middle::freevars;
 use middle::pat_util;
 use middle::ty;
+use middle::typeck::MethodCall;
 use middle::typeck;
 use syntax::ast;
 use syntax::codemap::{Span};
@@ -427,10 +428,20 @@ impl<'d,'t,TYPER:mc::Typer> ExprUseVisitor<'d,'t,TYPER> {
                 }
             }
             _ => {
-                self.tcx().sess.span_bug(
-                    callee.span,
-                    format!("unxpected callee type {}",
-                            callee_ty.repr(self.tcx())).as_slice());
+                match self.tcx()
+                          .method_map
+                          .borrow()
+                          .find(&MethodCall::expr(call.id)) {
+                    Some(_) => {
+                        // FIXME(#14774, pcwalton): Implement this.
+                    }
+                    None => {
+                        self.tcx().sess.span_bug(
+                            callee.span,
+                            format!("unxpected callee type {}",
+                                    callee_ty.repr(self.tcx())).as_slice());
+                    }
+                }
             }
         }
     }

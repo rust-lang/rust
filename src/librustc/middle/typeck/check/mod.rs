@@ -1353,6 +1353,61 @@ pub fn autoderef<T>(fcx: &FnCtxt, sp: Span, base_ty: ty::t,
     (ty::mk_err(), 0, None)
 }
 
+/// Attempts to resolve a call expression as an overloaded call.
+fn try_overloaded_call(fcx: &FnCtxt,
+                       call_expression: &ast::Expr,
+                       callee: @ast::Expr,
+                       callee_type: ty::t,
+                       args: &[@ast::Expr])
+                       -> bool {
+    // Try `FnOnce`, then `FnMut`, then `Fn`.
+    for &(maybe_function_trait, method_name) in [
+        (fcx.tcx().lang_items.fn_once_trait(), token::intern("call_once")),
+        (fcx.tcx().lang_items.fn_mut_trait(), token::intern("call_mut")),
+        (fcx.tcx().lang_items.fn_trait(), token::intern("call"))
+    ].iter() {
+        let function_trait = match maybe_function_trait {
+            None => continue,
+            Some(function_trait) => function_trait,
+        };
+        let method_callee = match method::lookup_in_trait(
+                fcx,
+                call_expression.span,
+                Some(&*callee),
+                method_name,
+                function_trait,
+                callee_type,
+                [],
+                DontAutoderefReceiver,
+                IgnoreStaticMethods) {
+            None => continue,
+            Some(method_callee) => method_callee,
+        };
+        let method_call = MethodCall::expr(call_expression.id);
+        let output_type = check_method_argument_types(fcx,
+                                                      call_expression.span,
+                                                      method_callee.ty,
+                                                      call_expression,
+                                                      args,
+                                                      DontDerefArgs,
+                                                      TupleArguments);
+        fcx.inh.method_map.borrow_mut().insert(method_call, method_callee);
+        write_call(fcx, call_expression, output_type);
+
+        if !fcx.tcx().sess.features.overloaded_calls.get() {
+            fcx.tcx().sess.span_err(call_expression.span,
+                                    "overloaded calls are experimental");
+            fcx.tcx().sess.span_note(call_expression.span,
+                                     "add `#[feature(overloaded_calls)]` to \
+                                      the crate attributes to enable");
+        }
+
+        return true
+    }
+
+    false
+}
+
 fn try_overloaded_deref(fcx: &FnCtxt,
                         span: Span,
                         method_call: Option<MethodCall>,
@@ -1393,6 +1448,261 @@ fn try_overloaded_deref(fcx: &FnCtxt,
         }
         None => None
     }
+}
+
+fn check_method_argument_types(fcx: &FnCtxt,
+                               sp: Span,
+                               method_fn_ty: ty::t,
+                               callee_expr: &ast::Expr,
+                               args: &[@ast::Expr],
+                               deref_args: DerefArgs,
+                               tuple_arguments: TupleArgumentsFlag)
+                               -> ty::t {
+    // HACK(eddyb) ignore provided self (it has special typeck rules).
+    let args = if tuple_arguments == DontTupleArguments {
+        args.slice_from(1)
+    } else {
+        args
+    };
+    if ty::type_is_error(method_fn_ty) {
+        let err_inputs = err_args(args.len());
+        check_argument_types(fcx,
+                             sp,
+                             err_inputs.as_slice(),
+                             callee_expr,
+                             args,
+                             deref_args,
+                             false,
+                             tuple_arguments);
+        method_fn_ty
+    } else {
+        match ty::get(method_fn_ty).sty {
+            ty::ty_bare_fn(ref fty) => {
+                // HACK(eddyb) ignore self in the definition (see above).
+                check_argument_types(fcx,
+                                     sp,
+                                     fty.sig.inputs.slice_from(1),
+                                     callee_expr,
+                                     args,
+                                     deref_args,
+                                     fty.sig.variadic,
+                                     tuple_arguments);
+                fty.sig.output
+            }
+            _ => {
+                fcx.tcx().sess.span_bug(callee_expr.span,
+                                        "method without bare fn type");
+            }
+        }
+    }
+}
+
+fn check_argument_types(fcx: &FnCtxt,
+                        sp: Span,
+                        fn_inputs: &[ty::t],
+                        callee_expr: &ast::Expr,
+                        args: &[@ast::Expr],
+                        deref_args: DerefArgs,
+                        variadic: bool,
+                        tuple_arguments: TupleArgumentsFlag) {
+    /*!
+     *
+     * Generic function that factors out common logic from
+     * function calls, method calls and overloaded operators.
+     */
+
+    let tcx = fcx.ccx.tcx;
+
+    // Grab the argument types, supplying fresh type variables
+    // if the wrong number of arguments were supplied
+    let supplied_arg_count = if tuple_arguments == DontTupleArguments {
+        args.len()
+    } else {
+        1
+    };
+
+    let expected_arg_count = fn_inputs.len();
+    let formal_tys = if tuple_arguments == TupleArguments {
+        let tuple_type = structurally_resolved_type(fcx, sp, fn_inputs[0]);
+        match ty::get(tuple_type).sty {
+            ty::ty_tup(ref arg_types) => {
+                if arg_types.len() != args.len() {
+                    let msg = format!(
+                        "this function takes \
+                         {nexpected, plural, =1{# parameter} \
+                         other{# parameters}} \
+                         but {nsupplied, plural, =1{# parameter was} \
+                         other{# parameters were}} supplied",
+                         nexpected = arg_types.len(),
+                         nsupplied = args.len());
+                    tcx.sess.span_err(sp, msg.as_slice());
+                    err_args(args.len())
+                } else {
+                    (*arg_types).clone()
+                }
+            }
+            ty::ty_nil => {
+                if args.len() != 0 {
+                    let msg = format!(
+                        "this function takes 0 parameters \
+                         but {nsupplied, plural, =1{# parameter was} \
+                         other{# parameters were}} supplied",
+                         nsupplied = args.len());
+                    tcx.sess.span_err(sp, msg.as_slice());
+                }
+                Vec::new()
+            }
+            _ => {
+                tcx.sess
+                   .span_err(sp,
+                             "cannot use call notation; the first type \
+                              parameter for the function trait is neither a \
+                              tuple nor unit");
+                err_args(supplied_arg_count)
+            }
+        }
+    } else if expected_arg_count == supplied_arg_count {
+        fn_inputs.iter().map(|a| *a).collect()
+    } else if variadic {
+        if supplied_arg_count >= expected_arg_count {
+            fn_inputs.iter().map(|a| *a).collect()
+        } else {
+            let msg = format!(
+                "this function takes at least {nexpected, plural, =1{# parameter} \
+                                                               other{# parameters}} \
+                 but {nsupplied, plural, =1{# parameter was} \
+                                      other{# parameters were}} supplied",
+                 nexpected = expected_arg_count,
+                 nsupplied = supplied_arg_count);
+
+            tcx.sess.span_err(sp, msg.as_slice());
+
+            err_args(supplied_arg_count)
+        }
+    } else {
+        let msg = format!(
+            "this function takes {nexpected, plural, =1{# parameter} \
+                                                  other{# parameters}} \
+             but {nsupplied, plural, =1{# parameter was} \
+                                  other{# parameters were}} supplied",
+             nexpected = expected_arg_count,
+             nsupplied = supplied_arg_count);
+
+        tcx.sess.span_err(sp, msg.as_slice());
+
+        err_args(supplied_arg_count)
+    };
+
+    debug!("check_argument_types: formal_tys={:?}",
+           formal_tys.iter().map(|t| fcx.infcx().ty_to_str(*t)).collect::<Vec<String>>());
+
+    // Check the arguments.
+    // We do this in a pretty awful way: first we typecheck any arguments
+    // that are not anonymous functions, then we typecheck the anonymous
+    // functions. This is so that we have more information about the types
+    // of arguments when we typecheck the functions. This isn't really the
+    // right way to do this.
+    let xs = [false, true];
+    for check_blocks in xs.iter() {
+        let check_blocks = *check_blocks;
+        debug!("check_blocks={}", check_blocks);
+
+        // More awful hacks: before we check the blocks, try to do
+        // an "opportunistic" vtable resolution of any trait
+        // bounds on the call.
+        if check_blocks {
+            vtable::early_resolve_expr(callee_expr, fcx, true);
+        }
+
+        // For variadic functions, we don't have a declared type for all of
+        // the arguments hence we only do our usual type checking with
+        // the arguments who's types we do know.
+        let t = if variadic {
+            expected_arg_count
+        } else if tuple_arguments == TupleArguments {
+            args.len()
+        } else {
+            supplied_arg_count
+        };
+        for (i, arg) in args.iter().take(t).enumerate() {
+            let is_block = match arg.node {
+                ast::ExprFnBlock(..) |
+                ast::ExprProc(..) => true,
+                _ => false
+            };
+
+            if is_block == check_blocks {
+                debug!("checking the argument");
+                let mut formal_ty = *formal_tys.get(i);
+
+                match deref_args {
+                    DoDerefArgs => {
+                        match ty::get(formal_ty).sty {
+                            ty::ty_rptr(_, mt) => formal_ty = mt.ty,
+                            ty::ty_err => (),
+                            _ => {
+                                // So we hit this case when one implements the
+                                // operator traits but leaves an argument as
+                                // just T instead of &T. We'll catch it in the
+                                // mismatch impl/trait method phase no need to
+                                // ICE here.
+                                // See: #11450
+                                formal_ty = ty::mk_err();
+                            }
+                        }
+                    }
+                    DontDerefArgs => {}
+                }
+
+                check_expr_coercable_to_type(fcx, *arg, formal_ty);
+
+            }
+        }
+    }
+
+    // We also need to make sure we at least write the ty of the other
+    // arguments which we skipped above.
+    if variadic {
+        for arg in args.iter().skip(expected_arg_count) {
+            check_expr(fcx, *arg);
+
+            // There are a few types which get autopromoted when passed via varargs
+            // in C but we just error out instead and require explicit casts.
+            let arg_ty = structurally_resolved_type(fcx, arg.span, fcx.expr_ty(*arg));
+            match ty::get(arg_ty).sty {
+                ty::ty_float(ast::TyF32) => {
+                    fcx.type_error_message(arg.span,
+                                           |t| {
+                        format!("can't pass an {} to variadic \
+                                 function, cast to c_double", t)
+                    }, arg_ty, None);
+                }
+                ty::ty_int(ast::TyI8) | ty::ty_int(ast::TyI16) | ty::ty_bool => {
+                    fcx.type_error_message(arg.span, |t| {
+                        format!("can't pass {} to variadic \
+                                 function, cast to c_int",
+                                       t)
+                    }, arg_ty, None);
+                }
+                ty::ty_uint(ast::TyU8) | ty::ty_uint(ast::TyU16) => {
+                    fcx.type_error_message(arg.span, |t| {
+                        format!("can't pass {} to variadic \
+                                 function, cast to c_uint",
+                                       t)
+                    }, arg_ty, None);
+                }
+                _ => {}
+            }
+        }
+    }
+}
+
+fn err_args(len: uint) -> Vec<ty::t> {
+    Vec::from_fn(len, |_| ty::mk_err())
+}
+
+fn write_call(fcx: &FnCtxt, call_expr: &ast::Expr, output: ty::t) {
+    fcx.write_ty(call_expr.id, output);
 }
 
 // AST fragment checking
@@ -1519,6 +1829,28 @@ pub fn lookup_field_ty(tcx: &ty::ctxt,
 pub enum DerefArgs {
     DontDerefArgs,
     DoDerefArgs
+}
+
+/// Controls whether the arguments are tupled. This is used for the call
+/// operator.
+///
+/// Tupling means that all call-side arguments are packed into a tuple and
+/// passed as a single parameter. For example, if tupling is enabled, this
+/// function:
+///
+///     fn f(x: (int, int))
+///
+/// Can be called as:
+///
+///     f(1, 2);
+///
+/// Instead of:
+///
+///     f((1, 2));
+#[deriving(Clone, Eq, PartialEq)]
+enum TupleArgumentsFlag {
+    DontTupleArguments,
+    TupleArguments,
 }
 
 // Given the provenance of a static method, returns the generics of the static
@@ -1704,207 +2036,11 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                            unifier: ||) {
     debug!(">> typechecking");
 
-    fn check_method_argument_types(
-        fcx: &FnCtxt,
-        sp: Span,
-        method_fn_ty: ty::t,
-        callee_expr: &ast::Expr,
-        args: &[@ast::Expr],
-        deref_args: DerefArgs) -> ty::t {
-        // HACK(eddyb) ignore provided self (it has special typeck rules).
-        let args = args.slice_from(1);
-        if ty::type_is_error(method_fn_ty) {
-            let err_inputs = err_args(args.len());
-            check_argument_types(fcx, sp, err_inputs.as_slice(), callee_expr,
-                                 args, deref_args, false);
-            method_fn_ty
-        } else {
-            match ty::get(method_fn_ty).sty {
-                ty::ty_bare_fn(ref fty) => {
-                    // HACK(eddyb) ignore self in the definition (see above).
-                    check_argument_types(fcx, sp, fty.sig.inputs.slice_from(1),
-                                         callee_expr, args, deref_args,
-                                         fty.sig.variadic);
-                    fty.sig.output
-                }
-                _ => {
-                    fcx.tcx().sess.span_bug(callee_expr.span,
-                                            "method without bare fn type");
-                }
-            }
-        }
-    }
-
-    fn check_argument_types(fcx: &FnCtxt,
-                            sp: Span,
-                            fn_inputs: &[ty::t],
-                            callee_expr: &ast::Expr,
-                            args: &[@ast::Expr],
-                            deref_args: DerefArgs,
-                            variadic: bool) {
-        /*!
-         *
-         * Generic function that factors out common logic from
-         * function calls, method calls and overloaded operators.
-         */
-
-        let tcx = fcx.ccx.tcx;
-
-        // Grab the argument types, supplying fresh type variables
-        // if the wrong number of arguments were supplied
-        let supplied_arg_count = args.len();
-        let expected_arg_count = fn_inputs.len();
-        let formal_tys = if expected_arg_count == supplied_arg_count {
-            fn_inputs.iter().map(|a| *a).collect()
-        } else if variadic {
-            if supplied_arg_count >= expected_arg_count {
-                fn_inputs.iter().map(|a| *a).collect()
-            } else {
-                let msg = format!(
-                    "this function takes at least {nexpected, plural, =1{# parameter} \
-                                                                   other{# parameters}} \
-                     but {nsupplied, plural, =1{# parameter was} \
-                                          other{# parameters were}} supplied",
-                     nexpected = expected_arg_count,
-                     nsupplied = supplied_arg_count);
-
-                tcx.sess.span_err(sp, msg.as_slice());
-
-                err_args(supplied_arg_count)
-            }
-        } else {
-            let msg = format!(
-                "this function takes {nexpected, plural, =1{# parameter} \
-                                                      other{# parameters}} \
-                 but {nsupplied, plural, =1{# parameter was} \
-                                      other{# parameters were}} supplied",
-                 nexpected = expected_arg_count,
-                 nsupplied = supplied_arg_count);
-
-            tcx.sess.span_err(sp, msg.as_slice());
-
-            err_args(supplied_arg_count)
-        };
-
-        debug!("check_argument_types: formal_tys={:?}",
-               formal_tys.iter().map(|t| fcx.infcx().ty_to_str(*t)).collect::<Vec<String>>());
-
-        // Check the arguments.
-        // We do this in a pretty awful way: first we typecheck any arguments
-        // that are not anonymous functions, then we typecheck the anonymous
-        // functions. This is so that we have more information about the types
-        // of arguments when we typecheck the functions. This isn't really the
-        // right way to do this.
-        let xs = [false, true];
-        for check_blocks in xs.iter() {
-            let check_blocks = *check_blocks;
-            debug!("check_blocks={}", check_blocks);
-
-            // More awful hacks: before we check the blocks, try to do
-            // an "opportunistic" vtable resolution of any trait
-            // bounds on the call.
-            if check_blocks {
-                vtable::early_resolve_expr(callee_expr, fcx, true);
-            }
-
-            // For variadic functions, we don't have a declared type for all of
-            // the arguments hence we only do our usual type checking with
-            // the arguments who's types we do know.
-            let t = if variadic {
-                expected_arg_count
-            } else {
-                supplied_arg_count
-            };
-            for (i, arg) in args.iter().take(t).enumerate() {
-                let is_block = match arg.node {
-                    ast::ExprFnBlock(..) |
-                    ast::ExprProc(..) => true,
-                    _ => false
-                };
-
-                if is_block == check_blocks {
-                    debug!("checking the argument");
-                    let mut formal_ty = *formal_tys.get(i);
-
-                    match deref_args {
-                        DoDerefArgs => {
-                            match ty::get(formal_ty).sty {
-                                ty::ty_rptr(_, mt) => formal_ty = mt.ty,
-                                ty::ty_err => (),
-                                _ => {
-                                    // So we hit this case when one implements the
-                                    // operator traits but leaves an argument as
-                                    // just T instead of &T. We'll catch it in the
-                                    // mismatch impl/trait method phase no need to
-                                    // ICE here.
-                                    // See: #11450
-                                    formal_ty = ty::mk_err();
-                                }
-                            }
-                        }
-                        DontDerefArgs => {}
-                    }
-
-                    check_expr_coercable_to_type(fcx, *arg, formal_ty);
-
-                }
-            }
-        }
-
-        // We also need to make sure we at least write the ty of the other
-        // arguments which we skipped above.
-        if variadic {
-            for arg in args.iter().skip(expected_arg_count) {
-                check_expr(fcx, *arg);
-
-                // There are a few types which get autopromoted when passed via varargs
-                // in C but we just error out instead and require explicit casts.
-                let arg_ty = structurally_resolved_type(fcx, arg.span, fcx.expr_ty(*arg));
-                match ty::get(arg_ty).sty {
-                    ty::ty_float(ast::TyF32) => {
-                        fcx.type_error_message(arg.span,
-                                               |t| {
-                            format!("can't pass an {} to variadic \
-                                     function, cast to c_double", t)
-                        }, arg_ty, None);
-                    }
-                    ty::ty_int(ast::TyI8) | ty::ty_int(ast::TyI16) | ty::ty_bool => {
-                        fcx.type_error_message(arg.span, |t| {
-                            format!("can't pass {} to variadic \
-                                     function, cast to c_int",
-                                           t)
-                        }, arg_ty, None);
-                    }
-                    ty::ty_uint(ast::TyU8) | ty::ty_uint(ast::TyU16) => {
-                        fcx.type_error_message(arg.span, |t| {
-                            format!("can't pass {} to variadic \
-                                     function, cast to c_uint",
-                                           t)
-                        }, arg_ty, None);
-                    }
-                    _ => {}
-                }
-            }
-        }
-    }
-
-    fn err_args(len: uint) -> Vec<ty::t> {
-        Vec::from_fn(len, |_| ty::mk_err())
-    }
-
-    fn write_call(fcx: &FnCtxt, call_expr: &ast::Expr, output: ty::t) {
-        fcx.write_ty(call_expr.id, output);
-    }
-
     // A generic function for doing all of the checking for call expressions
     fn check_call(fcx: &FnCtxt,
                   call_expr: &ast::Expr,
                   f: &ast::Expr,
                   args: &[@ast::Expr]) {
-        // Index expressions need to be handled separately, to inform them
-        // that they appear in call position.
-        check_expr(fcx, f);
-
         // Store the type of `f` as the type of the callee
         let fn_ty = fcx.expr_ty(f);
 
@@ -1939,8 +2075,14 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         });
 
         // Call the generic checker.
-        check_argument_types(fcx, call_expr.span, fn_sig.inputs.as_slice(), f,
-                             args, DontDerefArgs, fn_sig.variadic);
+        check_argument_types(fcx,
+                             call_expr.span,
+                             fn_sig.inputs.as_slice(),
+                             f,
+                             args,
+                             DontDerefArgs,
+                             fn_sig.variadic,
+                             DontTupleArguments);
 
         write_call(fcx, call_expr, fn_sig.output);
     }
@@ -2008,9 +2150,13 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         };
 
         // Call the generic checker.
-        let ret_ty = check_method_argument_types(fcx, method_name.span,
-                                                 fn_ty, expr, args,
-                                                 DontDerefArgs);
+        let ret_ty = check_method_argument_types(fcx,
+                                                 method_name.span,
+                                                 fn_ty,
+                                                 expr,
+                                                 args,
+                                                 DontDerefArgs,
+                                                 DontTupleArguments);
 
         write_call(fcx, expr, ret_ty);
     }
@@ -2078,18 +2224,26 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                 // HACK(eddyb) Fully qualified path to work around a resolve bug.
                 let method_call = ::middle::typeck::MethodCall::expr(op_ex.id);
                 fcx.inh.method_map.borrow_mut().insert(method_call, method);
-                check_method_argument_types(fcx, op_ex.span,
-                                            method_ty, op_ex,
-                                            args, DoDerefArgs)
+                check_method_argument_types(fcx,
+                                            op_ex.span,
+                                            method_ty,
+                                            op_ex,
+                                            args,
+                                            DoDerefArgs,
+                                            DontTupleArguments)
             }
             None => {
                 unbound_method();
                 // Check the args anyway
                 // so we get all the error messages
                 let expected_ty = ty::mk_err();
-                check_method_argument_types(fcx, op_ex.span,
-                                            expected_ty, op_ex,
-                                            args, DoDerefArgs);
+                check_method_argument_types(fcx,
+                                            op_ex.span,
+                                            expected_ty,
+                                            op_ex,
+                                            args,
+                                            DoDerefArgs,
+                                            DontTupleArguments);
                 ty::mk_err()
             }
         }
@@ -3045,19 +3199,25 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         fcx.write_ty(id, fcx.node_ty(b.id));
       }
       ast::ExprCall(f, ref args) => {
-          check_call(fcx, expr, f, args.as_slice());
+          // Index expressions need to be handled separately, to inform them
+          // that they appear in call position.
+          check_expr(fcx, f);
           let f_ty = fcx.expr_ty(f);
-          let (args_bot, args_err) = args.iter().fold((false, false),
-             |(rest_bot, rest_err), a| {
-                 // is this not working?
-                 let a_ty = fcx.expr_ty(*a);
-                 (rest_bot || ty::type_is_bot(a_ty),
-                  rest_err || ty::type_is_error(a_ty))});
-          if ty::type_is_error(f_ty) || args_err {
-              fcx.write_error(id);
-          }
-          else if ty::type_is_bot(f_ty) || args_bot {
-              fcx.write_bot(id);
+
+          if !try_overloaded_call(fcx, expr, f, f_ty, args.as_slice()) {
+              check_call(fcx, expr, f, args.as_slice());
+              let (args_bot, args_err) = args.iter().fold((false, false),
+                 |(rest_bot, rest_err), a| {
+                     // is this not working?
+                     let a_ty = fcx.expr_ty(*a);
+                     (rest_bot || ty::type_is_bot(a_ty),
+                      rest_err || ty::type_is_error(a_ty))});
+              if ty::type_is_error(f_ty) || args_err {
+                  fcx.write_error(id);
+              }
+              else if ty::type_is_bot(f_ty) || args_bot {
+                  fcx.write_bot(id);
+              }
           }
       }
       ast::ExprMethodCall(ident, ref tps, ref args) => {
