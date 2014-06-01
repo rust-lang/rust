@@ -80,6 +80,24 @@ let x = bytes!(72u8,"ello ",0xF0,0x90,0x80,"World!");
 let y = str::from_utf8_lossy(x);
 ~~~
 
+**`Vec<T>`/`String` to `&[T]`/`&str`**
+
+The `.as_slice` method on each type provides a borrowed slice pointing
+to the contents of a `Vec` or `String`. The slice points directly to
+the data already stored in the vector or string, and so is a very
+cheap operation (no allocations or complicated computations required).
+
+~~~
+let vec: Vec<u32> = vec![1, 2, 3];
+let slice: &[u32] = vec.as_slice();
+
+let string: String = "foo bar".to_string();
+let str_slice: &str = string.as_slice();
+~~~
+
+`Vec` also provides the `.as_mut_slice` method for viewing the
+contained data as a `&mut [T]`.
+
 # File operations
 
 ## How do I read from a file?
