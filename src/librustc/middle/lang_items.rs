@@ -240,6 +240,10 @@ lets_do_this! {
     DerefTraitLangItem,              "deref",                   deref_trait;
     DerefMutTraitLangItem,           "deref_mut",               deref_mut_trait;
 
+    FnTraitLangItem,                 "fn",                      fn_trait;
+    FnMutTraitLangItem,              "fn_mut",                  fn_mut_trait;
+    FnOnceTraitLangItem,             "fn_once",                 fn_once_trait;
+
     EqTraitLangItem,                 "eq",                      eq_trait;
     OrdTraitLangItem,                "ord",                     ord_trait;
 
