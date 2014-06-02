@@ -310,8 +310,34 @@ pub fn float_to_str_bytes_common<T:NumCast+Zero+One+PartialEq+PartialOrd+Float+
                     ExpBin => (num.abs().log2().floor(), cast::<f64, T>(2.0f64).unwrap()),
                     ExpNone => unreachable!()
                 };
+                let iexp = cast::<T, i32>(exp).unwrap();
 
-                (num / exp_base.powf(exp), cast::<T, i32>(exp).unwrap())
+                // For subnormal floats, powi and powf behave differently
+                // depending on the platform/compiler.  For example, consider:
+                //
+                //     2f64.pow(-1074) [where pow = powf or powi]
+                //
+                // - On Mingw (vanilla), powf returns zero whereas powi
+                //   returns a subnormal.
+                //
+                // - On Mingw-w64, both powi and powf return subnormals.
+                //
+                // - On Linux, powi returns zero whereas powf returns a
+                //   subnormal.
+                //
+                // This workaround accounts for the difference in behavior and
+                // fixes part of issue #13439.
+                #[cfg(windows)]
+                fn pow<T: Float>(exp_base: T, _: T, iexp: i32) -> T {
+                    exp_base.powi(iexp)
+                }
+
+                #[cfg(not(windows))]
+                fn pow<T: Float>(exp_base: T, exp: T, _: i32) -> T {
+                    exp_base.powf(exp)
+                }
+
+                (num / pow(exp_base, exp, iexp), iexp)
             }
         }
     };
