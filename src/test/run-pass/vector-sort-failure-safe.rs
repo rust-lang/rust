@@ -51,7 +51,12 @@ pub fn main() {
             // work out the total number of comparisons required to sort
             // this array...
             let mut count = 0;
-            main.clone().as_mut_slice().sort_by(|a, b| { count += 1; a.cmp(b) });
+            {
+                let count_ptr = &mut count;
+                main.clone()
+                    .as_mut_slice()
+                    .sort_by(|a, b| { *count_ptr += 1; a.cmp(b) });
+            }
 
             // ... and then fail on each and every single one.
             for fail_countdown in range(0, count) {
@@ -66,11 +71,12 @@ pub fn main() {
                 task::try(proc() {
                         let mut v = v;
                         let mut fail_countdown = fail_countdown;
+                        let fail_countdown_ptr = &mut fail_countdown;
                         v.as_mut_slice().sort_by(|a, b| {
-                                if fail_countdown == 0 {
+                                if *fail_countdown_ptr == 0 {
                                     fail!()
                                 }
-                                fail_countdown -= 1;
+                                *fail_countdown_ptr -= 1;
                                 a.cmp(b)
                             })
                     });

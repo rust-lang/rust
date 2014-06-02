@@ -45,6 +45,7 @@ mod map_reduce {
 
     fn map_task(ctrl: Sender<ctrl_proto>, input: String) {
         let mut intermediates = HashMap::new();
+        let intermediates_ptr = &mut intermediates;
 
         fn emit(im: &mut HashMap<String, int>,
                 ctrl: Sender<ctrl_proto>, key: String,
@@ -62,7 +63,7 @@ mod map_reduce {
         }
 
         let ctrl_clone = ctrl.clone();
-        ::map(input, |a,b| emit(&mut intermediates, ctrl.clone(), a, b) );
+        ::map(input, |a,b| emit(intermediates_ptr, ctrl.clone(), a, b) );
         ctrl_clone.send(mapper_done);
     }
 

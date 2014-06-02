@@ -15,11 +15,12 @@ fn iter_vec<T>(v: Vec<T> , f: |&T|) { for x in v.iter() { f(x); } }
 pub fn main() {
     let v = vec!(1, 2, 3, 4, 5, 6, 7);
     let mut odds = 0;
+    let odds_ptr = &mut odds;
     iter_vec(v, |i| {
         if *i % 2 == 1 {
-            odds += 1;
+            *odds_ptr += 1;
         }
     });
-    println!("{:?}", odds);
-    assert_eq!(odds, 4);
+    println!("{:?}", *odds_ptr);
+    assert_eq!(*odds_ptr, 4);
 }

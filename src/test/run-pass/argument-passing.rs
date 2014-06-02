@@ -29,6 +29,9 @@ pub fn main() {
     assert_eq!(f1(&mut a, &mut b, c), 6);
     assert_eq!(a.x, 0);
     assert_eq!(b, 10);
-    assert_eq!(f2(a.x, |_| a.x = 50), 0);
+    {
+        let a_ptr = &mut a;
+        assert_eq!(f2(a_ptr.x, |_| a_ptr.x = 50), 0);
+    }
     assert_eq!(a.x, 50);
 }
