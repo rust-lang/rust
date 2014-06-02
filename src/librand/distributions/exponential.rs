@@ -128,10 +128,12 @@ mod bench {
     fn rand_exp(b: &mut Bencher) {
         let mut rng = XorShiftRng::new().unwrap();
         let mut exp = Exp::new(2.71828 * 3.14159);
+        let rng_ptr = &mut rng;
+        let exp_ptr = &mut exp;
 
         b.iter(|| {
             for _ in range(0, RAND_BENCH_N) {
-                exp.sample(&mut rng);
+                exp_ptr.sample(rng_ptr);
             }
         });
         b.bytes = size_of::<f64>() as u64 * RAND_BENCH_N;

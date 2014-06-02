@@ -206,11 +206,13 @@ impl UdpStream {
 }
 
 impl Reader for UdpStream {
-    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
-        let peer = self.connected_to;
+    fn read(&mut self, mut buf: &mut [u8]) -> IoResult<uint> {
+        let mut peer = self.connected_to;
+        let peer = &mut peer;
+        let buf_ptr = &mut buf;
         self.as_socket(|sock| {
-            match sock.recvfrom(buf) {
-                Ok((_nread, src)) if src != peer => Ok(0),
+            match sock.recvfrom(*buf_ptr) {
+                Ok((_nread, src)) if src != *peer => Ok(0),
                 Ok((nread, _src)) => Ok(nread),
                 Err(e) => Err(e),
             }

@@ -373,9 +373,11 @@ impl<K: Clone + TotalOrd, V: Clone> Leaf<K, V> {
         if self.elts.len() > ub {
             let midpoint_opt = self.elts.remove(ub / 2);
             let midpoint = midpoint_opt.unwrap();
-            let (left_leaf, right_leaf) = self.elts.partition(|le|
-                                                              le.key.cmp(&midpoint.key.clone())
-                                                              == Less);
+            let (left_leaf, right_leaf) = {
+                let midpoint_ptr = &midpoint;
+                self.elts.partition(|le| le.key.cmp(&midpoint_ptr.key.clone())
+                                                              == Less)
+            };
             let branch_return = Node::new_branch(vec!(BranchElt::new(midpoint.key.clone(),
                                                                   midpoint.value.clone(),
                                                              box Node::new_leaf(left_leaf))),
@@ -600,9 +602,12 @@ impl<K: Clone + TotalOrd, V: Clone> Branch<K, V> {
             //and two children.
             if self.elts.len() > ub {
                 let midpoint = self.elts.remove(ub / 2).unwrap();
-                let (new_left, new_right) = self.clone().elts.partition(|le|
-                                                                midpoint.key.cmp(&le.key)
-                                                                        == Greater);
+                let (new_left, new_right) = {
+                    let midpoint_ptr = &midpoint;
+                    self.clone().elts.partition(|le| {
+                        midpoint_ptr.key.cmp(&le.key) == Greater
+                    })
+                };
                 new_branch = Node::new_branch(
                     vec!(BranchElt::new(midpoint.clone().key,
                                      midpoint.clone().value,

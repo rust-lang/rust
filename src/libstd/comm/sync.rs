@@ -450,20 +450,25 @@ impl Queue {
             task: None,
             next: 0 as *mut Node,
         };
-        task.deschedule(1, |task| {
-            node.task = Some(task);
-            if self.tail.is_null() {
-                self.head = &mut node as *mut Node;
-                self.tail = &mut node as *mut Node;
-            } else {
-                unsafe {
-                    (*self.tail).next = &mut node as *mut Node;
-                    self.tail = &mut node as *mut Node;
+
+        {
+            let node_ptr = &mut node;
+            task.deschedule(1, |task| {
+                node_ptr.task = Some(task);
+                if self.tail.is_null() {
+                    self.head = node_ptr as *mut Node;
+                    self.tail = node_ptr as *mut Node;
+                } else {
+                    unsafe {
+                        (*self.tail).next = node_ptr as *mut Node;
+                        self.tail = node_ptr as *mut Node;
+                    }
                 }
-            }
-            unsafe { lock.unlock_noguard(); }
-            Ok(())
-        });
+                unsafe { lock.unlock_noguard(); }
+                Ok(())
+            });
+        }
+
         unsafe { lock.lock_noguard(); }
         assert!(node.next.is_null());
     }

@@ -2530,13 +2530,14 @@ mod tests {
     fn test_inspect() {
         let xs = [1u, 2, 3, 4];
         let mut n = 0;
+        let n_ptr = &mut n;
 
         let ys = xs.iter()
                    .map(|&x| x)
-                   .inspect(|_| n += 1)
+                   .inspect(|_| *n_ptr += 1)
                    .collect::<Vec<uint>>();
 
-        assert_eq!(n, xs.len());
+        assert_eq!(*n_ptr, xs.len());
         assert_eq!(xs.as_slice(), ys.as_slice());
     }
 
@@ -2838,11 +2839,12 @@ mod tests {
     fn test_rposition_fail() {
         let v = [(box 0, @0), (box 0, @0), (box 0, @0), (box 0, @0)];
         let mut i = 0;
+        let i_ptr = &mut i;
         v.iter().rposition(|_elt| {
-            if i == 2 {
+            if *i_ptr == 2 {
                 fail!()
             }
-            i += 1;
+            *i_ptr += 1;
             false
         });
     }
@@ -2854,9 +2856,10 @@ mod tests {
         let mut b = a.clone();
         assert_eq!(len, b.indexable());
         let mut n = 0;
+        let n_ptr = &mut n;
         for (i, elt) in a.enumerate() {
             assert!(Some(elt) == b.idx(i));
-            n += 1;
+            *n_ptr += 1;
         }
         assert_eq!(n, len);
         assert!(None == b.idx(n));
@@ -2872,7 +2875,11 @@ mod tests {
     fn test_double_ended_flat_map() {
         let u = [0u,1];
         let v = [5,6,7,8];
-        let mut it = u.iter().flat_map(|x| v.slice(*x, v.len()).iter());
+        let v_ptr = &v;
+        let mut it = u.iter()
+                      .flat_map(|x| {
+                          v_ptr.slice(*x, v_ptr.len()).iter()
+                      });
         assert_eq!(it.next_back().unwrap(), &8);
         assert_eq!(it.next().unwrap(),      &5);
         assert_eq!(it.next_back().unwrap(), &7);

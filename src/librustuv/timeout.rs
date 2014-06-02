@@ -239,14 +239,22 @@ impl ConnectCtx {
                     }
                     None => {}
                 }
-                wait_until_woken_after(&mut self.task, &io.loop_, || {
-                    let data = &self as *_;
-                    match self.timer {
-                        Some(ref mut timer) => unsafe { timer.set_data(data) },
-                        None => {}
-                    }
-                    req.set_data(data);
-                });
+                {
+                    let req_ptr = &mut req;
+                    let this = &mut self;
+                    wait_until_woken_after(&mut this.task, &io.loop_, || {
+                        let data = this as *mut ConnectCtx as *ConnectCtx;
+                        match this.timer {
+                            Some(ref mut timer) => {
+                                unsafe {
+                                    timer.set_data(data)
+                                }
+                            }
+                            None => {}
+                        }
+                        req_ptr.set_data(data);
+                    });
+                }
                 // Make sure an erroneously fired callback doesn't have access
                 // to the context any more.
                 req.set_data(0 as *int);

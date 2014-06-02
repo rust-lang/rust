@@ -651,16 +651,18 @@ pub mod ptr_tests {
 
             let mut ctr = 0;
             let mut iteration_count = 0;
+            let ctr_ptr = &mut ctr;
+            let iteration_count_ptr = &mut iteration_count;
             array_each_with_len(arr.as_ptr(), arr.len(), |e| {
                     let actual = str::raw::from_c_str(e);
-                    let expected = expected_arr[ctr].with_ref(|buf| {
+                    let expected = expected_arr[*ctr_ptr].with_ref(|buf| {
                             str::raw::from_c_str(buf)
                         });
                     assert_eq!(actual.as_slice(), expected.as_slice());
-                    ctr += 1;
-                    iteration_count += 1;
+                    *ctr_ptr += 1;
+                    *iteration_count_ptr += 1;
                 });
-            assert_eq!(iteration_count, 3u);
+            assert_eq!(*iteration_count_ptr, 3u);
         }
     }
 
@@ -684,16 +686,18 @@ pub mod ptr_tests {
             let arr_ptr = arr.as_ptr();
             let mut ctr = 0;
             let mut iteration_count = 0;
+            let ctr_ptr = &mut ctr;
+            let iteration_count_ptr = &mut iteration_count;
             array_each(arr_ptr, |e| {
                     let actual = str::raw::from_c_str(e);
-                    let expected = expected_arr[ctr].with_ref(|buf| {
+                    let expected = expected_arr[*ctr_ptr].with_ref(|buf| {
                         str::raw::from_c_str(buf)
                     });
                     assert_eq!(actual.as_slice(), expected.as_slice());
-                    ctr += 1;
-                    iteration_count += 1;
+                    *ctr_ptr += 1;
+                    *iteration_count_ptr += 1;
                 });
-            assert_eq!(iteration_count, 3);
+            assert_eq!(*iteration_count_ptr, 3);
         }
     }
 

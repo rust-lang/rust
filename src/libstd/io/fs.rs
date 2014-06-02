@@ -463,14 +463,15 @@ pub fn rmdir(path: &Path) -> IoResult<()> {
 /// use std::io::fs;
 ///
 /// // one possible implementation of fs::walk_dir only visiting files
-/// fn visit_dirs(dir: &Path, cb: |&Path|) -> io::IoResult<()> {
+/// fn visit_dirs(dir: &Path, mut cb: |&Path|) -> io::IoResult<()> {
+///     let cb_ptr = &mut cb;
 ///     if dir.is_dir() {
 ///         let contents = try!(fs::readdir(dir));
 ///         for entry in contents.iter() {
 ///             if entry.is_dir() {
-///                 try!(visit_dirs(entry, |p| cb(p)));
+///                 try!(visit_dirs(entry, |p| (*cb_ptr)(p)));
 ///             } else {
-///                 cb(entry);
+///                 (*cb_ptr)(entry);
 ///             }
 ///         }
 ///         Ok(())

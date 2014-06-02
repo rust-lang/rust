@@ -200,13 +200,17 @@ impl Add<BigUint, BigUint> for BigUint {
         let (a, b) = if self.data.len() > other.data.len() { (self, other) } else { (other, self) };
 
         let mut carry = 0;
+        let carry_ref = &mut carry;
         let mut sum: Vec<BigDigit> =  a.data.iter().zip(b.data.iter().chain(zeros)).map(|(ai, bi)| {
             let (hi, lo) = BigDigit::from_doublebigdigit(
-                (*ai as DoubleBigDigit) + (*bi as DoubleBigDigit) + (carry as DoubleBigDigit));
-            carry = hi;
+                (*ai as DoubleBigDigit) + (*bi as DoubleBigDigit) +
+                (*carry_ref as DoubleBigDigit));
+            *carry_ref = hi;
             lo
         }).collect();
-        if carry != 0 { sum.push(carry); }
+        if carry != 0 {
+            sum.push(*carry_ref);
+        }
         return BigUint::new(sum);
     }
 }
@@ -218,22 +222,23 @@ impl Sub<BigUint, BigUint> for BigUint {
         let (a, b) = (self.data.iter().chain(zeros.clone()), other.data.iter().chain(zeros));
 
         let mut borrow = 0;
+        let borrow_ref = &mut borrow;
         let diff: Vec<BigDigit> =  a.take(new_len).zip(b).map(|(ai, bi)| {
             let (hi, lo) = BigDigit::from_doublebigdigit(
                 BigDigit::base
                     + (*ai as DoubleBigDigit)
                     - (*bi as DoubleBigDigit)
-                    - (borrow as DoubleBigDigit)
+                    - (*borrow_ref as DoubleBigDigit)
             );
             /*
             hi * (base) + lo == 1*(base) + ai - bi - borrow
             => ai - bi - borrow < 0 <=> hi == 0
             */
-            borrow = if hi == 0 { 1 } else { 0 };
+            *borrow_ref = if hi == 0 { 1 } else { 0 };
             lo
         }).collect();
 
-        assert!(borrow == 0,
+        assert!(*borrow_ref == 0,
                 "Cannot subtract other from self because other is larger than self.");
         return BigUint::new(diff);
     }
@@ -276,14 +281,18 @@ impl Mul<BigUint, BigUint> for BigUint {
             if n == 1 { return (*a).clone(); }
 
             let mut carry = 0;
+            let carry_ref = &mut carry;
             let mut prod: Vec<BigDigit> = a.data.iter().map(|ai| {
                 let (hi, lo) = BigDigit::from_doublebigdigit(
-                    (*ai as DoubleBigDigit) * (n as DoubleBigDigit) + (carry as DoubleBigDigit)
+                    (*ai as DoubleBigDigit) * (n as DoubleBigDigit) +
+                    (*carry_ref as DoubleBigDigit)
                 );
-                carry = hi;
+                *carry_ref = hi;
                 lo
             }).collect();
-            if carry != 0 { prod.push(carry); }
+            if *carry_ref != 0 {
+                prod.push(*carry_ref);
+            }
             return BigUint::new(prod);
         }
 
@@ -719,14 +728,18 @@ impl BigUint {
         if n_bits == 0 || self.is_zero() { return (*self).clone(); }
 
         let mut carry = 0;
+        let carry_ref = &mut carry;
         let mut shifted: Vec<BigDigit> = self.data.iter().map(|elem| {
             let (hi, lo) = BigDigit::from_doublebigdigit(
-                (*elem as DoubleBigDigit) << n_bits | (carry as DoubleBigDigit)
+                (*elem as DoubleBigDigit) << n_bits |
+                (*carry_ref as DoubleBigDigit)
             );
-            carry = hi;
+            *carry_ref = hi;
             lo
         }).collect();
-        if carry != 0 { shifted.push(carry); }
+        if *carry_ref != 0 {
+            shifted.push(*carry_ref);
+        }
         return BigUint::new(shifted);
     }
 

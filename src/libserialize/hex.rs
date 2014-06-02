@@ -210,9 +210,12 @@ mod tests {
         let s = "イロハニホヘト チリヌルヲ ワカヨタレソ ツネナラム \
                  ウヰノオクヤマ ケフコエテ アサキユメミシ ヱヒモセスン";
         let sb = s.as_bytes().to_hex();
-        b.iter(|| {
-            sb.as_slice().from_hex().unwrap();
-        });
+        {
+            let sb_ptr = &sb;
+            b.iter(|| {
+                sb_ptr.as_slice().from_hex().unwrap();
+            });
+        }
         b.bytes = sb.len() as u64;
     }
 }

@@ -122,10 +122,11 @@ impl Task {
 
         // The only try/catch block in the world. Attempt to run the task's
         // client-specified code and catch any failures.
+        let f_ref = &mut f;
         let try_block = || {
 
             // Run the task main function, then do some cleanup.
-            f.finally(|| {
+            (*f_ref).finally(|| {
                 #[allow(unused_must_use)]
                 fn close_outputs() {
                     let mut task = Local::borrow(None::<Task>);

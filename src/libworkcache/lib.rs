@@ -505,10 +505,12 @@ fn test() {
     let cx = Context::new(Arc::new(RWLock::new(Database::new(db_path))),
                           Arc::new(TreeMap::new()));
 
-    let s = cx.with_prep("test1", |prep| {
+    let cx_ptr = &cx;
+    let pth_ptr = &pth;
+    let s = cx_ptr.with_prep("test1", |prep| {
 
-        let subcx = cx.clone();
-        let pth = pth.clone();
+        let subcx = (*cx_ptr).clone();
+        let pth = (*pth_ptr).clone();
 
         let contents = File::open(&pth).read_to_end().unwrap();
         let file_content = from_utf8(contents.as_slice()).unwrap()

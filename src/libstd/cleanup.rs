@@ -66,11 +66,14 @@ pub unsafe fn annihilate() {
     //
     // In this pass, nothing gets freed, so it does not matter whether
     // we read the next field before or after the callback.
-    each_live_alloc(true, |alloc| {
-        n_total_boxes += 1;
-        (*alloc).ref_count = RC_IMMORTAL;
-        true
-    });
+    {
+        let n_total_boxes_ptr = &mut n_total_boxes;
+        each_live_alloc(true, |alloc| {
+            *n_total_boxes_ptr += 1;
+            (*alloc).ref_count = RC_IMMORTAL;
+            true
+        });
+    }
 
     // Pass 2: Drop all boxes.
     //

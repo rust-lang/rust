@@ -178,18 +178,23 @@ impl Select {
             // sequentially until one fails. If one fails, then abort
             // immediately so we can go unblock on all the other receivers.
             let task: Box<Task> = Local::take();
-            task.deschedule(amt, |task| {
-                // Prepare for the block
-                let (i, handle) = iter.next().unwrap();
-                match (*handle).packet.start_selection(task) {
-                    Ok(()) => Ok(()),
-                    Err(task) => {
-                        ready_index = i;
-                        ready_id = (*handle).id;
-                        Err(task)
+            {
+                let iter_ptr = &mut iter;
+                let ready_index_ptr = &mut ready_index;
+                let ready_id_ptr = &mut ready_id;
+                task.deschedule(amt, |task| {
+                    // Prepare for the block
+                    let (i, handle) = iter_ptr.next().unwrap();
+                    match (*handle).packet.start_selection(task) {
+                        Ok(()) => Ok(()),
+                        Err(task) => {
+                            *ready_index_ptr = i;
+                            *ready_id_ptr = (*handle).id;
+                            Err(task)
+                        }
                     }
-                }
-            });
+                });
+            }
 
             // Abort the selection process on each receiver. If the abort
             // process returns `true`, then that means that the receiver is

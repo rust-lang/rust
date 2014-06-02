@@ -128,14 +128,17 @@ impl<Q: Send> Sem<Q> {
     pub fn acquire(&self) {
         unsafe {
             let mut waiter_nobe = None;
-            self.with(|state| {
-                state.count -= 1;
-                if state.count < 0 {
-                    // Create waiter nobe, enqueue ourself, and tell
-                    // outer scope we need to block.
-                    waiter_nobe = Some(state.waiters.wait_end());
-                }
-            });
+            {
+                let waiter_nobe_ptr = &mut waiter_nobe;
+                self.with(|state| {
+                    state.count -= 1;
+                    if state.count < 0 {
+                        // Create waiter nobe, enqueue ourself, and tell
+                        // outer scope we need to block.
+                        *waiter_nobe_ptr = Some(state.waiters.wait_end());
+                    }
+                });
+            }
             // Uncomment if you wish to test for sem races. Not
             // valgrind-friendly.
             /* for _ in range(0, 1000) { task::deschedule(); } */
@@ -241,7 +244,9 @@ impl<'a> Condvar<'a> {
     /// wait() is equivalent to wait_on(0).
     pub fn wait_on(&self, condvar_id: uint) {
         let mut wait_end = None;
+        let wait_end_ptr = &mut wait_end;
         let mut out_of_bounds = None;
+        let out_of_bounds_ptr = &mut out_of_bounds;
         // Release lock, 'atomically' enqueuing ourselves in so doing.
         unsafe {
             self.sem.with(|state| {
@@ -253,21 +258,24 @@ impl<'a> Condvar<'a> {
                     }
                     // Create waiter nobe, and enqueue ourself to
                     // be woken up by a signaller.
-                    wait_end = Some(state.blocked.get(condvar_id).wait_end());
+                    *wait_end_ptr =
+                        Some(state.blocked.get(condvar_id).wait_end());
                 } else {
-                    out_of_bounds = Some(state.blocked.len());
+                    *out_of_bounds_ptr = Some(state.blocked.len());
                 }
             })
         }
 
         // If deschedule checks start getting inserted anywhere, we can be
         // killed before or after enqueueing.
-        check_cvar_bounds(out_of_bounds, condvar_id, "cond.wait_on()", || {
+        check_cvar_bounds(*out_of_bounds_ptr,
+                          condvar_id,
+                          "cond.wait_on()", || {
             // Unconditionally "block". (Might not actually block if a
             // signaller already sent -- I mean 'unconditionally' in contrast
             // with acquire().)
             (|| {
-                let _ = wait_end.take_unwrap().recv();
+                let _ = wait_end_ptr.take_unwrap().recv();
             }).finally(|| {
                 // Reacquire the condvar.
                 match self.order {
@@ -289,17 +297,19 @@ impl<'a> Condvar<'a> {
         unsafe {
             let mut out_of_bounds = None;
             let mut result = false;
+            let result_ptr = &mut result;
+            let out_of_bounds_ptr = &mut out_of_bounds;
             self.sem.with(|state| {
                 if condvar_id < state.blocked.len() {
-                    result = state.blocked.get(condvar_id).signal();
+                    *result_ptr = state.blocked.get(condvar_id).signal();
                 } else {
-                    out_of_bounds = Some(state.blocked.len());
+                    *out_of_bounds_ptr = Some(state.blocked.len());
                 }
             });
-            check_cvar_bounds(out_of_bounds,
+            check_cvar_bounds(*out_of_bounds_ptr,
                               condvar_id,
                               "cond.signal_on()",
-                              || result)
+                              || *result_ptr)
         }
     }
 
@@ -310,23 +320,26 @@ impl<'a> Condvar<'a> {
     pub fn broadcast_on(&self, condvar_id: uint) -> uint {
         let mut out_of_bounds = None;
         let mut queue = None;
+        let queue_ptr = &mut queue;
+        let out_of_bounds_ptr = &mut out_of_bounds;
         unsafe {
             self.sem.with(|state| {
                 if condvar_id < state.blocked.len() {
                     // To avoid :broadcast_heavy, we make a new waitqueue,
                     // swap it out with the old one, and broadcast on the
                     // old one outside of the little-lock.
-                    queue = Some(mem::replace(state.blocked.get_mut(condvar_id),
-                                              WaitQueue::new()));
+                    *queue_ptr =
+                        Some(mem::replace(state.blocked.get_mut(condvar_id),
+                                          WaitQueue::new()));
                 } else {
-                    out_of_bounds = Some(state.blocked.len());
+                    *out_of_bounds_ptr = Some(state.blocked.len());
                 }
             });
-            check_cvar_bounds(out_of_bounds,
+            check_cvar_bounds(*out_of_bounds_ptr,
                               condvar_id,
                               "cond.signal_on()",
                               || {
-                queue.take_unwrap().broadcast()
+                queue_ptr.take_unwrap().broadcast()
             })
         }
     }

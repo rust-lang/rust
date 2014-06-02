@@ -209,9 +209,10 @@ impl<R: Reader, W: Writer> TeeReader<R, W> {
 }
 
 impl<R: Reader, W: Writer> Reader for TeeReader<R, W> {
-    fn read(&mut self, buf: &mut [u8]) -> io::IoResult<uint> {
-        self.reader.read(buf).and_then(|len| {
-            self.writer.write(buf.slice_to(len)).map(|()| len)
+    fn read(&mut self, mut buf: &mut [u8]) -> io::IoResult<uint> {
+        let buf_ptr = &mut buf;
+        self.reader.read(*buf_ptr).and_then(|len| {
+            self.writer.write(buf_ptr.slice_to(len)).map(|()| len)
         })
     }
 }

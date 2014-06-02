@@ -180,8 +180,12 @@ pub trait UvHandle<T> {
             uvll::uv_close(self.uv_handle() as *uvll::uv_handle_t, close_cb);
             uvll::set_data_for_uv_handle(self.uv_handle(), ptr::null::<()>());
 
-            wait_until_woken_after(&mut slot, &self.uv_loop(), || {
-                uvll::set_data_for_uv_handle(self.uv_handle(), &slot);
+            let slot_ptr = &mut slot;
+            wait_until_woken_after(slot_ptr, &self.uv_loop(), || {
+                uvll::set_data_for_uv_handle(
+                    self.uv_handle(),
+                    slot_ptr as *mut Option<BlockedTask>
+                        as *Option<BlockedTask>);
             })
         }
 

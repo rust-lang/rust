@@ -833,10 +833,11 @@ fn waitpid(pid: pid_t, deadline: u64) -> IoResult<p::ProcessExit> {
     static mut WRITE_FD: libc::c_int = 0;
 
     let mut status = 0 as c_int;
+    let status_ptr = &mut status;
     if deadline == 0 {
-        return match retry(|| unsafe { c::waitpid(pid, &mut status, 0) }) {
+        return match retry(|| unsafe { c::waitpid(pid, status_ptr, 0) }) {
             -1 => fail!("unknown waitpid error: {}", super::last_error()),
-            _ => Ok(translate_status(status)),
+            _ => Ok(translate_status(*status_ptr)),
         }
     }
 
@@ -1074,8 +1075,9 @@ fn waitpid_nowait(pid: pid_t) -> Option<p::ProcessExit> {
     #[cfg(unix)]
     fn waitpid_os(pid: pid_t) -> Option<p::ProcessExit> {
         let mut status = 0 as c_int;
+        let status_ptr = &mut status;
         match retry(|| unsafe {
-            c::waitpid(pid, &mut status, c::WNOHANG)
+            c::waitpid(pid, status_ptr, c::WNOHANG)
         }) {
             n if n == pid => Some(translate_status(status)),
             0 => None,

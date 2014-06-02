@@ -1287,32 +1287,36 @@ mod bench {
     #[bench]
     fn push_home_dir(b: &mut Bencher) {
         let mut posix_path = Path::new("/");
+        let posix_path_ptr = &mut posix_path;
         b.iter(|| {
-            posix_path.push("home");
+            posix_path_ptr.push("home");
         });
     }
 
     #[bench]
     fn push_abs_path_home_dir(b: &mut Bencher) {
         let mut posix_path = Path::new("/");
+        let posix_path_ptr = &mut posix_path;
         b.iter(|| {
-            posix_path.push("/home");
+            posix_path_ptr.push("/home");
         });
     }
 
     #[bench]
     fn push_many_home_dir(b: &mut Bencher) {
         let mut posix_path = Path::new("/");
+        let posix_path_ptr = &mut posix_path;
         b.iter(|| {
-            posix_path.push_many(&["home"]);
+            posix_path_ptr.push_many(&["home"]);
         });
     }
 
     #[bench]
     fn push_many_abs_path_home_dir(b: &mut Bencher) {
         let mut posix_path = Path::new("/");
+        let posix_path_ptr = &mut posix_path;
         b.iter(|| {
-            posix_path.push_many(&["/home"]);
+            posix_path_ptr.push_many(&["/home"]);
         });
     }
 

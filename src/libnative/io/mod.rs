@@ -131,12 +131,13 @@ fn retry(f: || -> libc::c_int) -> libc::c_int {
     }
 }
 
-fn keep_going(data: &[u8], f: |*u8, uint| -> i64) -> i64 {
+fn keep_going(data: &[u8], mut f: |*u8, uint| -> i64) -> i64 {
+    let f_ptr = &mut f;
     let origamt = data.len();
     let mut data = data.as_ptr();
     let mut amt = origamt;
     while amt > 0 {
-        let ret = retry(|| f(data, amt) as libc::c_int);
+        let ret = retry(|| (*f_ptr)(data, amt) as libc::c_int);
         if ret == 0 {
             break
         } else if ret != -1 {

@@ -2370,10 +2370,12 @@ mod bench {
         }
 
         let mut k = 1001;
+        let k_ptr = &mut k;
+        let m_ptr = &mut m;
 
         b.iter(|| {
-            m.insert(k, k);
-            k += 1;
+            m_ptr.insert(*k_ptr, *k_ptr);
+            *k_ptr += 1;
         });
     }
 
@@ -2387,9 +2389,10 @@ mod bench {
             m.insert(i, i);
         }
 
+        let m_ptr = &mut m;
         b.iter(|| {
             for i in range_inclusive(1, 1000) {
-                m.contains_key(&i);
+                m_ptr.contains_key(&i);
             }
         });
     }
@@ -2404,9 +2407,10 @@ mod bench {
             m.insert(i, i);
         }
 
+        let m_ptr = &mut m;
         b.iter(|| {
             for i in range_inclusive(1001, 2000) {
-                m.contains_key(&i);
+                m_ptr.contains_key(&i);
             }
         });
     }
@@ -2422,11 +2426,13 @@ mod bench {
         }
 
         let mut k = 1;
+        let k_ptr = &mut k;
+        let m_ptr = &mut m;
 
         b.iter(|| {
-            m.pop(&k);
-            m.insert(k + 1000, k + 1000);
-            k += 1;
+            m_ptr.pop(k_ptr);
+            m_ptr.insert(*k_ptr + 1000, *k_ptr + 1000);
+            *k_ptr += 1;
         });
     }
 
@@ -2441,13 +2447,15 @@ mod bench {
         }
 
         let mut k = 1;
+        let k_ptr = &mut k;
+        let m_ptr = &mut m;
 
         b.iter(|| {
-            m.find(&(k + 400));
-            m.find(&(k + 2000));
-            m.pop(&k);
-            m.insert(k + 1000, k + 1000);
-            k += 1;
+            m_ptr.find(&(*k_ptr + 400));
+            m_ptr.find(&(*k_ptr + 2000));
+            m_ptr.pop(k_ptr);
+            m_ptr.insert(*k_ptr + 1000, *k_ptr + 1000);
+            *k_ptr += 1;
         })
     }
 }

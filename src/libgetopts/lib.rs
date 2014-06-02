@@ -374,15 +374,20 @@ fn is_arg(arg: &str) -> bool {
 }
 
 fn find_opt(opts: &[Opt], nm: Name) -> Option<uint> {
+    let nm_ptr = &nm;
+
     // Search main options.
-    let pos = opts.iter().position(|opt| opt.name == nm);
+    let pos = opts.iter().position(|opt| opt.name == *nm_ptr);
     if pos.is_some() {
         return pos
     }
 
     // Search in aliases.
     for candidate in opts.iter() {
-        if candidate.aliases.iter().position(|opt| opt.name == nm).is_some() {
+        if candidate.aliases
+                    .iter()
+                    .position(|opt| opt.name == *nm_ptr)
+                    .is_some() {
             return opts.iter().position(|opt| opt.name == candidate.name);
         }
     }
@@ -726,16 +731,17 @@ pub fn usage(brief: &str, opts: &[OptGroup]) -> String {
 
         // FIXME: #5516 should be graphemes not codepoints
         let mut desc_rows = Vec::new();
+        let desc_rows_ptr = &mut desc_rows;
         each_split_within(desc_normalized_whitespace.as_slice(),
                           54,
                           |substr| {
-            desc_rows.push(substr.to_string());
+            desc_rows_ptr.push(substr.to_string());
             true
         });
 
         // FIXME: #5516 should be graphemes not codepoints
         // wrapped description
-        row.push_str(desc_rows.connect(desc_sep.as_slice()).as_slice());
+        row.push_str(desc_rows_ptr.connect(desc_sep.as_slice()).as_slice());
 
         row
     });
@@ -830,6 +836,11 @@ fn each_split_within<'a>(ss: &'a str, lim: uint, it: |&'a str| -> bool)
     let mut fake_i = ss.len();
     let mut lim = lim;
 
+    let slice_start_ptr = &mut slice_start;
+    let last_start_ptr = &mut last_start;
+    let last_end_ptr = &mut last_end;
+    let state_ptr = &mut state;
+
     let mut cont = true;
 
     // if the limit is larger than the string, lower it to save cycles
@@ -837,46 +848,46 @@ fn each_split_within<'a>(ss: &'a str, lim: uint, it: |&'a str| -> bool)
         lim = fake_i;
     }
 
-    let machine: |&mut bool, (uint, char)| -> bool = |cont, (i, c)| {
+    let mut machine: |&mut bool, (uint, char)| -> bool = |cont, (i, c)| {
         let whitespace = if ::std::char::is_whitespace(c) { Ws }       else { Cr };
-        let limit      = if (i - slice_start + 1) <= lim  { UnderLim } else { OverLim };
+        let limit = if (i - *slice_start_ptr + 1) <= lim  { UnderLim } else { OverLim };
 
-        state = match (state, whitespace, limit) {
-            (A, Ws, _)        => { A }
-            (A, Cr, _)        => { slice_start = i; last_start = i; B }
+        *state_ptr = match (*state_ptr, whitespace, limit) {
+            (A, Ws, _) => { A }
+            (A, Cr, _) => { *slice_start_ptr = i; *last_start_ptr = i; B }
 
             (B, Cr, UnderLim) => { B }
-            (B, Cr, OverLim)  if (i - last_start + 1) > lim
+            (B, Cr, OverLim)  if (i - *last_start_ptr + 1) > lim
                             => fail!("word starting with {} longer than limit!",
-                                    ss.slice(last_start, i + 1)),
+                                    ss.slice(*last_start_ptr, i + 1)),
             (B, Cr, OverLim)  => {
-                *cont = it(ss.slice(slice_start, last_end));
-                slice_start = last_start;
+                *cont = it(ss.slice(*slice_start_ptr, *last_end_ptr));
+                *slice_start_ptr = *last_start_ptr;
                 B
             }
             (B, Ws, UnderLim) => {
-                last_end = i;
+                *last_end_ptr = i;
                 C
             }
             (B, Ws, OverLim)  => {
-                last_end = i;
-                *cont = it(ss.slice(slice_start, last_end));
+                *last_end_ptr = i;
+                *cont = it(ss.slice(*slice_start_ptr, *last_end_ptr));
                 A
             }
 
             (C, Cr, UnderLim) => {
-                last_start = i;
+                *last_start_ptr = i;
                 B
             }
             (C, Cr, OverLim)  => {
-                *cont = it(ss.slice(slice_start, last_end));
-                slice_start = i;
-                last_start = i;
-                last_end = i;
+                *cont = it(ss.slice(*slice_start_ptr, *last_end_ptr));
+                *slice_start_ptr = i;
+                *last_start_ptr = i;
+                *last_end_ptr = i;
                 B
             }
             (C, Ws, OverLim)  => {
-                *cont = it(ss.slice(slice_start, last_end));
+                *cont = it(ss.slice(*slice_start_ptr, *last_end_ptr));
                 A
             }
             (C, Ws, UnderLim) => {
@@ -887,21 +898,26 @@ fn each_split_within<'a>(ss: &'a str, lim: uint, it: |&'a str| -> bool)
         *cont
     };
 
-    ss.char_indices().advance(|x| machine(&mut cont, x));
+    let machine_ptr = &mut machine;
+    let cont_ptr = &mut cont;
+    ss.char_indices().advance(|x| (*machine_ptr)(cont_ptr, x));
 
     // Let the automaton 'run out' by supplying trailing whitespace
-    while cont && match state { B | C => true, A => false } {
-        machine(&mut cont, (fake_i, ' '));
+    while *cont_ptr && match *state_ptr { B | C => true, A => false } {
+        (*machine_ptr)(cont_ptr, (fake_i, ' '));
         fake_i += 1;
     }
-    return cont;
+    return *cont_ptr;
 }
 
 #[test]
 fn test_split_within() {
     fn t(s: &str, i: uint, u: &[String]) {
         let mut v = Vec::new();
-        each_split_within(s, i, |s| { v.push(s.to_string()); true });
+        {
+            let v_ptr = &mut v;
+            each_split_within(s, i, |s| { v_ptr.push(s.to_string()); true });
+        }
         assert!(v.iter().zip(u.iter()).all(|(a,b)| a == b));
     }
     t("", 0, []);
