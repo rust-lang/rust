@@ -69,7 +69,6 @@
 #[doc(no_inline)] pub use num::{Num, NumCast, CheckedAdd, CheckedSub, CheckedMul};
 #[doc(no_inline)] pub use num::{Signed, Unsigned, Primitive, Int, Float};
 #[doc(no_inline)] pub use num::{FloatMath, ToPrimitive, FromPrimitive};
-#[doc(no_inline)] pub use option::Expect;
 #[doc(no_inline)] pub use owned::Box;
 #[doc(no_inline)] pub use path::{GenericPath, Path, PosixPath, WindowsPath};
 #[doc(no_inline)] pub use ptr::RawPtr;

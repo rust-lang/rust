@@ -90,7 +90,7 @@ impl<'a, 'b> Reflector<'a, 'b> {
         let mth_idx = ty::method_idx(token::str_to_ident(format!(
                         "visit_{}", ty_name).as_slice()),
                                      self.visitor_methods.as_slice()).expect(
-                format!("couldn't find visit method for {}", ty_name));
+                format!("couldn't find visit method for {}", ty_name).as_slice());
         let mth_ty =
             ty::mk_bare_fn(tcx,
                            self.visitor_methods[mth_idx].fty.clone());
