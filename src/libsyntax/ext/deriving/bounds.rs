@@ -12,6 +12,7 @@ use ast::{MetaItem, MetaWord, Item};
 use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::deriving::generic::*;
+use ext::deriving::generic::ty::*;
 
 pub fn expand_deriving_bound(cx: &mut ExtCtxt,
                              span: Span,

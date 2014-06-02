@@ -15,6 +15,7 @@ use ext::format;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
+use ext::deriving::generic::ty::*;
 use parse::token;
 
 use collections::HashMap;
