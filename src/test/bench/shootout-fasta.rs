@@ -40,9 +40,12 @@ struct AAGen<'a> {
 impl<'a> AAGen<'a> {
     fn new<'b>(rng: &'b mut MyRandom, aa: &[(char, f32)]) -> AAGen<'b> {
         let mut cum = 0.;
+        let cum_ptr = &mut cum;
         let data = aa.iter()
-            .map(|&(ch, p)| { cum += p; (MyRandom::normalize(cum), ch as u8) })
-            .collect();
+            .map(|&(ch, p)| {
+                *cum_ptr += p;
+                (MyRandom::normalize(*cum_ptr), ch as u8)
+            }).collect();
         AAGen { rng: rng, data: data }
     }
 }
