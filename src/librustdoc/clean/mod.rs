@@ -477,6 +477,10 @@ impl Clean<TyParamBound> for ast::TyParamBound {
         match *self {
             ast::StaticRegionTyParamBound => RegionBound,
             ast::OtherRegionTyParamBound(_) => RegionBound,
+            ast::UnboxedFnTyParamBound(_) => {
+                // FIXME(pcwalton): Wrong.
+                RegionBound
+            }
             ast::TraitTyParamBound(ref t) => TraitBound(t.clean()),
         }
     }

@@ -175,6 +175,7 @@ pub static DUMMY_NODE_ID: NodeId = -1;
 pub enum TyParamBound {
     TraitTyParamBound(TraitRef),
     StaticRegionTyParamBound,
+    UnboxedFnTyParamBound(UnboxedFnTy),
     OtherRegionTyParamBound(Span) // FIXME -- just here until work for #5723 lands
 }
 
@@ -770,6 +771,11 @@ pub struct BareFnTy {
 }
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
+pub struct UnboxedFnTy {
+    pub decl: P<FnDecl>,
+}
+
+#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
 pub enum Ty_ {
     TyNil,
     TyBot, /* bottom type */
@@ -782,6 +788,7 @@ pub enum Ty_ {
     TyClosure(@ClosureTy, Option<Lifetime>),
     TyProc(@ClosureTy),
     TyBareFn(@BareFnTy),
+    TyUnboxedFn(@UnboxedFnTy),
     TyTup(Vec<P<Ty>> ),
     TyPath(Path, Option<OwnedSlice<TyParamBound>>, NodeId), // for #7264; see above
     TyTypeof(@Expr),
