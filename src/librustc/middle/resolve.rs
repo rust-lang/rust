@@ -1880,15 +1880,17 @@ impl<'a> Resolver<'a> {
             Some(def_id) => def_id,
         };
 
+        let new_module = module.clone();
         csearch::each_child_of_item(&self.session.cstore,
                                     def_id,
                                     |def_like, child_ident, visibility| {
             debug!("(populating external module) ... found ident: {}",
                    token::get_ident(child_ident));
-            self.build_reduced_graph_for_external_crate_def(module.clone(),
-                                                            def_like,
-                                                            child_ident,
-                                                            visibility)
+            self.build_reduced_graph_for_external_crate_def(
+                new_module.clone(),
+                def_like,
+                child_ident,
+                visibility)
         });
         module.populated.set(true)
     }

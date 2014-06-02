@@ -429,6 +429,8 @@ pub mod write {
             }
         }
 
+        let llvm_args_len = llvm_args.len();
+        let llvm_args_ptr = llvm_args.as_ptr();
         INIT.doit(|| {
             llvm::LLVMInitializePasses();
 
@@ -454,8 +456,8 @@ pub mod write {
             llvm::LLVMInitializeMipsAsmPrinter();
             llvm::LLVMInitializeMipsAsmParser();
 
-            llvm::LLVMRustSetLLVMOptions(llvm_args.len() as c_int,
-                                         llvm_args.as_ptr());
+            llvm::LLVMRustSetLLVMOptions(llvm_args_len as c_int,
+                                         llvm_args_ptr);
         });
     }
 
