@@ -11,7 +11,7 @@
 //! Runtime environment settings
 
 use from_str::from_str;
-use option::{Some, None, Expect};
+use option::{Some, None};
 use os;
 use str::Str;
 

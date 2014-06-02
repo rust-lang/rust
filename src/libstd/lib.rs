@@ -155,6 +155,7 @@ pub use core::simd;
 pub use core::tuple;
 #[cfg(not(test))] pub use core::ty;
 pub use core::result;
+pub use core::option;
 
 pub use alloc::owned;
 pub use alloc::rc;
@@ -218,10 +219,6 @@ pub mod from_str;
 pub mod num;
 pub mod to_str;
 pub mod hash;
-
-/* Common data structures */
-
-pub mod option;
 
 /* Tasks and communication */
 

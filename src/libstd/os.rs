@@ -85,7 +85,6 @@ pub fn getcwd() -> Path {
 pub fn getcwd() -> Path {
     use libc::DWORD;
     use libc::GetCurrentDirectoryW;
-    use option::Expect;
 
     let mut buf = [0 as u16, ..BUF_BYTES];
     unsafe {
@@ -101,7 +100,7 @@ pub fn getcwd() -> Path {
 pub mod win32 {
     use libc::types::os::arch::extra::DWORD;
     use libc;
-    use option::{None, Option, Expect};
+    use option::{None, Option};
     use option;
     use os::TMPBUF_SZ;
     use slice::{MutableVector, ImmutableVector};
@@ -924,7 +923,6 @@ fn real_args() -> Vec<String> {
 #[cfg(windows)]
 fn real_args() -> Vec<String> {
     use slice;
-    use option::Expect;
 
     let mut nArgs: c_int = 0;
     let lpArgCount: *mut c_int = &mut nArgs;
