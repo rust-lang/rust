@@ -409,24 +409,12 @@ fn missing_ctor(cx: &MatchCheckCtxt,
           _ => check_matrix_for_wild(cx, m),
       },
       ty::ty_enum(eid, _) => {
-        let mut found = Vec::new();
-        for r in m.iter() {
-            let r = pat_ctor_id(cx, *r.get(0));
-            for id in r.move_iter() {
-                if !found.contains(&id) {
-                    found.push(id);
-                }
-            }
-        }
+        let pat_ctors: Vec<ctor> = m
+          .iter()
+          .filter_map(|r| pat_ctor_id(cx, *r.get(0)))
+          .collect();
         let variants = ty::enum_variants(cx.tcx, eid);
-        if found.len() != (*variants).len() {
-            for v in (*variants).iter() {
-                if !found.iter().any(|x| x == &(variant(v.id))) {
-                    return Some(variant(v.id));
-                }
-            }
-            fail!();
-        } else { None }
+        variants.iter().map(|v| variant(v.id)).find(|c| !pat_ctors.contains(c))
       }
       ty::ty_nil => None,
       ty::ty_bool => {
@@ -567,6 +555,21 @@ fn wild_multi() -> @Pat {
     @Pat {id: 0, node: PatWildMulti, span: DUMMY_SP}
 }
 
+fn range_covered_by_constructor(ctor_id: &ctor, from: &const_val, to: &const_val) -> Option<bool> {
+    let (c_from, c_to) = match *ctor_id {
+        val(ref value)          => (value, value),
+        range(ref from, ref to) => (from, to),
+        single                  => return Some(true),
+        _                       => unreachable!()
+    };
+    let cmp_from = compare_const_vals(c_from, from);
+    let cmp_to = compare_const_vals(c_to, to);
+    match (cmp_from, cmp_to) {
+        (Some(val1), Some(val2)) => Some(val1 >= 0 && val2 <= 0),
+        _ => None
+    }
+}
+
 fn specialize(cx: &MatchCheckCtxt,
                   r: &[@Pat],
                   ctor_id: &ctor,
@@ -592,41 +595,15 @@ fn specialize(cx: &MatchCheckCtxt,
                         }
                     }
                     Some(DefStatic(did, _)) => {
-                        let const_expr =
-                            lookup_const_by_id(cx.tcx, did).unwrap();
+                        let const_expr = lookup_const_by_id(cx.tcx, did).unwrap();
                         let e_v = eval_const_expr(cx.tcx, const_expr);
-                        let match_ = match *ctor_id {
-                            val(ref v) => {
-                                match compare_const_vals(&e_v, v) {
-                                    Some(val1) => (val1 == 0),
-                                    None => {
-                                        cx.tcx.sess.span_err(*pat_span,
-                                            "mismatched types between arms");
-                                        false
-                                    }
-                                }
-                            },
-                            range(ref c_lo, ref c_hi) => {
-                                let m1 = compare_const_vals(c_lo, &e_v);
-                                let m2 = compare_const_vals(c_hi, &e_v);
-                                match (m1, m2) {
-                                    (Some(val1), Some(val2)) => {
-                                        (val1 >= 0 && val2 <= 0)
-                                    }
-                                    _ => {
-                                        cx.tcx.sess.span_err(*pat_span,
-                                            "mismatched types between ranges");
-                                        false
-                                    }
-                                }
-                            }
-                            single => true,
-                            _ => fail!("type error")
-                        };
-                        if match_ {
-                            Some(vec!())
-                        } else {
-                            None
+                        match range_covered_by_constructor(ctor_id, &e_v, &e_v) {
+                           Some(true) => Some(vec!()),
+                           Some(false) => None,
+                           None => {
+                              cx.tcx.sess.span_err(*pat_span, "mismatched types between arms");
+                              None
+                           }
                         }
                     }
                     _ => {
@@ -638,38 +615,15 @@ fn specialize(cx: &MatchCheckCtxt,
                 let def = cx.tcx.def_map.borrow().get_copy(pat_id);
                 match def {
                     DefStatic(did, _) => {
-                        let const_expr =
-                            lookup_const_by_id(cx.tcx, did).unwrap();
+                        let const_expr = lookup_const_by_id(cx.tcx, did).unwrap();
                         let e_v = eval_const_expr(cx.tcx, const_expr);
-                        let match_ = match *ctor_id {
-                            val(ref v) =>
-                                match compare_const_vals(&e_v, v) {
-                                    Some(val1) => (val1 == 0),
-                                    None => {
-                                        cx.tcx.sess.span_err(*pat_span,
-                                            "mismatched types between arms");
-                                        false
-                                    }
-                                },
-                            range(ref c_lo, ref c_hi) => {
-                                let m1 = compare_const_vals(c_lo, &e_v);
-                                let m2 = compare_const_vals(c_hi, &e_v);
-                                match (m1, m2) {
-                                    (Some(val1), Some(val2)) => (val1 >= 0 && val2 <= 0),
-                                    _ => {
-                                        cx.tcx.sess.span_err(*pat_span,
-                                            "mismatched types between ranges");
-                                        false
-                                    }
-                                }
-                            }
-                            single => true,
-                            _ => fail!("type error")
-                        };
-                        if match_ {
-                            Some(vec!())
-                        } else {
-                            None
+                        match range_covered_by_constructor(ctor_id, &e_v, &e_v) {
+                           Some(true) => Some(vec!()),
+                           Some(false) => None,
+                           None => {
+                              cx.tcx.sess.span_err(*pat_span, "mismatched types between arms");
+                              None
+                           }
                         }
                     }
                     DefVariant(_, id, _) if variant(id) != *ctor_id => None,
@@ -720,68 +674,33 @@ fn specialize(cx: &MatchCheckCtxt,
 
             }
             &PatTup(ref args) => {
-                Some(args.iter().map(|x| *x).collect())
+                Some(args.clone())
             }
             &PatBox(ref inner) | &PatRegion(ref inner) => {
                 Some(vec!(inner.clone()))
             }
             &PatLit(ref expr) => {
-                let e_v = eval_const_expr(cx.tcx, *expr);
-                let match_ = match *ctor_id {
-                    val(ref v) => {
-                        match compare_const_vals(&e_v, v) {
-                            Some(val1) => val1 == 0,
-                            None => {
-                                cx.tcx.sess.span_err(*pat_span,
-                                    "mismatched types between arms");
-                                false
-                            }
-                        }
-                    },
-                    range(ref c_lo, ref c_hi) => {
-                        let m1 = compare_const_vals(c_lo, &e_v);
-                        let m2 = compare_const_vals(c_hi, &e_v);
-                        match (m1, m2) {
-                            (Some(val1), Some(val2)) => (val1 >= 0 && val2 <= 0),
-                            _ => {
-                                cx.tcx.sess.span_err(*pat_span,
-                                    "mismatched types between ranges");
-                                false
-                            }
-                        }
-                    }
-                    single => true,
-                    _ => fail!("type error")
-                };
-                if match_ {
-                    Some(vec!())
-                } else {
+              let expr_value = eval_const_expr(cx.tcx, *expr);
+              match range_covered_by_constructor(ctor_id, &expr_value, &expr_value) {
+                 Some(true) => Some(vec!()),
+                 Some(false) => None,
+                 None => {
+                    cx.tcx.sess.span_err(*pat_span, "mismatched types between arms");
                     None
-                }
+                 }
+              }
             }
-            &PatRange(lo, hi) => {
-                let (c_lo, c_hi) = match *ctor_id {
-                    val(ref v) => (v, v),
-                    range(ref lo, ref hi) => (lo, hi),
-                    single => return Some(vec!()),
-                    _ => fail!("type error")
-                };
-                let v_lo = eval_const_expr(cx.tcx, lo);
-                let v_hi = eval_const_expr(cx.tcx, hi);
-
-                let m1 = compare_const_vals(c_lo, &v_lo);
-                let m2 = compare_const_vals(c_hi, &v_hi);
-                match (m1, m2) {
-                    (Some(val1), Some(val2)) if val1 >= 0 && val2 <= 0 => {
-                        Some(vec!())
-                    },
-                    (Some(_), Some(_)) => None,
-                    _ => {
-                        cx.tcx.sess.span_err(*pat_span,
-                            "mismatched types between ranges");
-                        None
-                    }
-                }
+            &PatRange(ref from, ref to) => {
+              let from_value = eval_const_expr(cx.tcx, *from);
+              let to_value = eval_const_expr(cx.tcx, *to);
+              match range_covered_by_constructor(ctor_id, &from_value, &to_value) {
+                 Some(true) => Some(vec!()),
+                 Some(false) => None,
+                 None => {
+                    cx.tcx.sess.span_err(*pat_span, "mismatched types between arms");
+                    None
+                 }
+              }
             }
             &PatVec(ref before, ref slice, ref after) => {
                 match *ctor_id {
