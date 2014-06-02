@@ -26,17 +26,6 @@ fn a() {
 
 fn borrow(_x: &[int], _f: ||) {}
 
-fn b() {
-    // here we alias the mutable vector into an imm slice and try to
-    // modify the original:
-
-    let mut p = vec!(1);
-
-    borrow(
-        p.as_slice(),
-        || *p.get_mut(0) = 5); //~ ERROR cannot borrow `p` as mutable
-}
-
 fn c() {
     // Legal because the scope of the borrow does not include the
     // modification:

@@ -25,6 +25,6 @@ fn main() {
       let x  : Box<uint>  = box 9;
       let sq : || -> uint =  || { *x * *x };
 
-      twice(x); //~ ERROR: cannot move out of
+      twice(x); //~ ERROR use of moved value
       invoke(sq);
 }

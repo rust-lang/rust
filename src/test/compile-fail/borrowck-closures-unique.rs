@@ -24,26 +24,8 @@ fn set(x: &mut int) -> int {
 
 fn a(x: &mut int) {
     let c1 = || get(x);
-    let c2 = || get(x);
-}
-
-fn b(x: &mut int) {
-    let c1 = || get(x);
-    let c2 = || set(x); //~ ERROR closure requires unique access to `x`
-}
-
-fn c(x: &mut int) {
-    let c1 = || get(x);
-    let c2 = || { get(x); set(x); }; //~ ERROR closure requires unique access to `x`
-}
-
-fn d(x: &mut int) {
-    let c1 = || set(x);
-    let c2 = || set(x); //~ ERROR closure requires unique access to `x`
-}
-
-fn e(x: &mut int) {
-    let c1: || = || x = fail!(); //~ ERROR closure cannot assign to immutable argument `x`
+    let c2 = || get(x); //~ ERROR closure requires unique access to `*x`
+    //~^ ERROR cannot move `x`
 }
 
 fn main() {

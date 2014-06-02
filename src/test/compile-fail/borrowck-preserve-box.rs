@@ -22,11 +22,11 @@ fn borrow(x: &int, f: |x: &int|) {
 pub fn main() {
     let mut x = @3;
     borrow(x, |b_x| {
-    //~^ ERROR cannot borrow `x` as mutable because `*x` is also borrowed as immutable
         assert_eq!(*b_x, 3);
         assert_eq!(&(*x) as *int, &(*b_x) as *int);
-        //~^ NOTE borrow occurs due to use of `x` in closure
+        //~^ ERROR cannot move `x` into closure
         x = @22;
+        //~^ ERROR cannot assign to immutable captured outer variable
 
         println!("&*b_x = {:p}", &(*b_x));
         assert_eq!(*b_x, 3);

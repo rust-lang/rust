@@ -25,8 +25,11 @@ impl Drop for Foo {
 
 fn main() {
   let mut ptr = box Foo { x: 0 };
+  let ptr_ref = &mut ptr;
   let test = |foo: &Foo| {
-    ptr = box Foo { x: ptr.x + 1 };
+    *ptr_ref = box Foo {
+        x: ptr_ref.x + 1,
+    };
   };
   test(ptr); //~ ERROR cannot borrow `*ptr`
 }
