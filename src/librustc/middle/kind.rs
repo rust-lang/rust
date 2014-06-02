@@ -112,7 +112,10 @@ fn check_struct_safe_for_destructor(cx: &mut Context,
     }
 }
 
-fn check_impl_of_trait(cx: &mut Context, it: &Item, trait_ref: &TraitRef, self_type: &Ty) {
+fn check_impl_of_trait(cx: &mut Context,
+                       it: &Item,
+                       trait_ref: &TraitRef,
+                       self_type: &Ty) {
     let ast_trait_def = *cx.tcx.def_map.borrow()
                               .find(&trait_ref.ref_id)
                               .expect("trait ref not in def map!");
@@ -141,9 +144,14 @@ fn check_impl_of_trait(cx: &mut Context, it: &Item, trait_ref: &TraitRef, self_t
         match self_type.node {
             TyPath(_, ref bounds, path_node_id) => {
                 assert!(bounds.is_none());
-                let struct_def = cx.tcx.def_map.borrow().get_copy(&path_node_id);
+                let struct_def = cx.tcx
+                                   .def_map
+                                   .borrow()
+                                   .get_copy(&path_node_id);
                 let struct_did = ast_util::def_id_of_def(struct_def);
-                check_struct_safe_for_destructor(cx, self_type.span, struct_did);
+                check_struct_safe_for_destructor(cx,
+                                                 self_type.span,
+                                                 struct_did);
             }
             _ => {
                 cx.tcx.sess.span_bug(self_type.span,

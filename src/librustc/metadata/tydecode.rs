@@ -428,8 +428,8 @@ fn parse_mt(st: &mut PState, mut conv: conv_did) -> ty::mt {
     }
 }
 
-fn parse_def(st: &mut PState, source: DefIdSource,
-             conv: conv_did) -> ast::DefId {
+fn parse_def(st: &mut PState, source: DefIdSource, conv: conv_did)
+             -> ast::DefId {
     return conv(source, scan(st, |c| { c == '|' }, parse_def_id));
 }
 
@@ -525,10 +525,12 @@ fn parse_sig(st: &mut PState, mut conv: conv_did) -> ty::FnSig {
         r => fail!(format!("bad variadic: {}", r)),
     };
     let ret_ty = parse_ty(st, |x,y| (*conv_ptr)(x,y));
-    ty::FnSig {binder_id: id,
-               inputs: inputs,
-               output: ret_ty,
-               variadic: variadic}
+    ty::FnSig {
+        binder_id: id,
+        inputs: inputs,
+        output: ret_ty,
+        variadic: variadic,
+    }
 }
 
 // Rust metadata parsing

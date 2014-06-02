@@ -2310,9 +2310,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         let expected_sty = unpack_expected(fcx,
                                            expected,
                                            |x| Some((*x).clone()));
-        let (expected_sig,
-             expected_onceness,
-             expected_bounds) = {
+        let (expected_sig, expected_onceness, expected_bounds) = {
             match expected_sty {
                 Some(ty::ty_closure(ref cenv)) => {
                     let (_, sig) =
@@ -2377,8 +2375,14 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
             ty::UniqTraitStore => (ast::NormalFn, expr.id)
         };
 
-        check_fn(fcx.ccx, inherited_style, &fty_sig,
-                 decl, id, body, fn_kind, fcx.inh);
+        check_fn(fcx.ccx,
+                 inherited_style,
+                 &fty_sig,
+                 decl,
+                 id,
+                 body,
+                 fn_kind,
+                 fcx.inh);
     }
 
 
@@ -3181,8 +3185,11 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                             } else {
                                 let el = ty::sequence_element_type(fcx.tcx(),
                                                                    t1);
-                                infer::mk_eqty(fcx.infcx(), false,
-                                               infer::Misc(sp), el, t2).is_ok()
+                                infer::mk_eqty(fcx.infcx(),
+                                               false,
+                                               infer::Misc(sp),
+                                               el,
+                                               t2).is_ok()
                             }
                         }
 

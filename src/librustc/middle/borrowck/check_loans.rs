@@ -676,8 +676,9 @@ impl<'a> CheckLoanCtxt<'a> {
                         true
                     }
                 });
-
-                if !cont { return false }
+                if !cont {
+                    return false
+                }
             }
         }
     }

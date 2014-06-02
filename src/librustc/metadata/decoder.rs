@@ -808,11 +808,10 @@ pub fn get_impl_methods(cdata: Cmd, impl_id: ast::NodeId) -> Vec<ast::DefId> {
     methods
 }
 
-pub fn get_method_name_and_explicit_self(
-    intr: Rc<IdentInterner>,
-    cdata: Cmd,
-    id: ast::NodeId) -> (ast::Ident, ast::ExplicitSelf_)
-{
+pub fn get_method_name_and_explicit_self(intr: Rc<IdentInterner>,
+                                         cdata: Cmd,
+                                         id: ast::NodeId)
+                                         -> (ast::Ident, ast::ExplicitSelf_) {
     let method_doc = lookup_item(id, cdata.data());
     let name = item_name(&*intr, method_doc);
     let explicit_self = get_explicit_self(method_doc);

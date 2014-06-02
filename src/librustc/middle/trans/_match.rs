@@ -891,8 +891,10 @@ fn get_options(bcx: &Block, m: &[Match], col: uint) -> Vec<Opt> {
     // conditions over-match, we need to be careful about them. This
     // means that in order to properly handle things in order, we need
     // to not always merge conditions.
-    fn add_veclen_to_set(set: &mut Vec<Opt> , i: uint,
-                         len: uint, vlo: VecLenOpt) {
+    fn add_veclen_to_set(set: &mut Vec<Opt>,
+                         i: uint,
+                         len: uint,
+                         vlo: VecLenOpt) {
         match set.last() {
             // If the last condition in the list matches the one we want
             // to add, then extend its range. Otherwise, make a new

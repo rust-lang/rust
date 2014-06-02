@@ -891,10 +891,12 @@ pub fn ty_of_closure<AC:AstConv>(
         onceness: onceness,
         store: store,
         bounds: bounds,
-        sig: ty::FnSig {binder_id: id,
-                        inputs: input_tys,
-                        output: output_ty,
-                        variadic: decl.variadic}
+        sig: ty::FnSig {
+            binder_id: id,
+            inputs: input_tys,
+            output: output_ty,
+            variadic: decl.variadic,
+        }
     }
 }
 

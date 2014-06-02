@@ -62,7 +62,10 @@ pub fn expand_deriving_zero(cx: &mut ExtCtxt,
     trait_def.expand(cx, mitem, item, push)
 }
 
-fn zero_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) -> @Expr {
+fn zero_substructure(cx: &mut ExtCtxt,
+                     trait_span: Span,
+                     substr: &Substructure)
+                     -> @Expr {
     let zero_ident = vec!(
         cx.ident_of("std"),
         cx.ident_of("num"),

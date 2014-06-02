@@ -45,7 +45,10 @@ pub fn expand_deriving_default(cx: &mut ExtCtxt,
     trait_def.expand(cx, mitem, item, push)
 }
 
-fn default_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) -> @Expr {
+fn default_substructure(cx: &mut ExtCtxt,
+                        trait_span: Span,
+                        substr: &Substructure)
+                        -> @Expr {
     let default_ident = vec!(
         cx.ident_of("std"),
         cx.ident_of("default"),
