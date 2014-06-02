@@ -127,48 +127,51 @@ fn lookup_vtables_for_param(vcx: &VtableContext,
     // ty is the value supplied for the type parameter A...
     let mut param_result = Vec::new();
 
-    ty::each_bound_trait_and_supertraits(tcx,
-                                         type_param_bounds.trait_bounds
-                                                          .as_slice(),
-                                         |trait_ref| {
-        // ...and here trait_ref is each bound that was declared on A,
-        // expressed in terms of the type parameters.
+    {
+        let param_result_ptr = &mut param_result;
+        ty::each_bound_trait_and_supertraits(tcx,
+                                             type_param_bounds.trait_bounds
+                                                              .as_slice(),
+                                             |trait_ref| {
+            // ...and here trait_ref is each bound that was declared on A,
+            // expressed in terms of the type parameters.
 
-        ty::populate_implementations_for_trait_if_necessary(tcx,
-                                                            trait_ref.def_id);
+            ty::populate_implementations_for_trait_if_necessary(tcx,
+                                                                trait_ref.def_id);
 
-        // Substitute the values of the type parameters that may
-        // appear in the bound.
-        let trait_ref = substs.as_ref().map_or(trait_ref.clone(), |substs| {
-            debug!("about to subst: {}, {}",
-                   trait_ref.repr(tcx), substs.repr(tcx));
-            trait_ref.subst(tcx, *substs)
+            // Substitute the values of the type parameters that may
+            // appear in the bound.
+            let trait_ref = substs.as_ref().map_or(trait_ref.clone(), |substs| {
+                debug!("about to subst: {}, {}",
+                       trait_ref.repr(tcx), substs.repr(tcx));
+                trait_ref.subst(tcx, *substs)
+            });
+
+            debug!("after subst: {}", trait_ref.repr(tcx));
+
+            match lookup_vtable(vcx, span, ty, trait_ref.clone(), is_early) {
+                Some(vtable) => param_result_ptr.push(vtable),
+                None => {
+                    vcx.tcx().sess.span_fatal(span,
+                        format!("failed to find an implementation of \
+                              trait {} for {}",
+                             vcx.infcx.trait_ref_to_str(&*trait_ref),
+                             vcx.infcx.ty_to_str(ty)).as_slice());
+                }
+            }
+            true
         });
 
-        debug!("after subst: {}", trait_ref.repr(tcx));
-
-        match lookup_vtable(vcx, span, ty, trait_ref.clone(), is_early) {
-            Some(vtable) => param_result.push(vtable),
-            None => {
-                vcx.tcx().sess.span_fatal(span,
-                    format!("failed to find an implementation of \
-                          trait {} for {}",
-                         vcx.infcx.trait_ref_to_str(&*trait_ref),
-                         vcx.infcx.ty_to_str(ty)).as_slice());
-            }
-        }
-        true
-    });
-
-    debug!("lookup_vtables_for_param result(\
-            span={:?}, \
-            type_param_bounds={}, \
-            ty={}, \
-            result={})",
-           span,
-           type_param_bounds.repr(vcx.tcx()),
-           ty.repr(vcx.tcx()),
-           param_result.repr(vcx.tcx()));
+        debug!("lookup_vtables_for_param result(\
+                span={:?}, \
+                type_param_bounds={}, \
+                ty={}, \
+                result={})",
+               span,
+               type_param_bounds.repr(vcx.tcx()),
+               ty.repr(vcx.tcx()),
+               (*param_result_ptr).repr(vcx.tcx()));
+    }
 
     param_result
 }
@@ -286,22 +289,29 @@ fn lookup_vtable_from_bounds(vcx: &VtableContext,
 
     let mut n_bound = 0;
     let mut ret = None;
-    ty::each_bound_trait_and_supertraits(tcx, bounds, |bound_trait_ref| {
-        debug!("checking bounds trait {}",
-               bound_trait_ref.repr(vcx.tcx()));
+    {
+        let n_bound_ptr = &mut n_bound;
+        let ret_ptr = &mut ret;
+        ty::each_bound_trait_and_supertraits(tcx, bounds, |bound_trait_ref| {
+            debug!("checking bounds trait {}",
+                   bound_trait_ref.repr(vcx.tcx()));
 
-        if bound_trait_ref.def_id == trait_ref.def_id {
-            relate_trait_refs(vcx, span, bound_trait_ref, trait_ref.clone());
-            let vtable = vtable_param(param, n_bound);
-            debug!("found param vtable: {:?}",
-                   vtable);
-            ret = Some(vtable);
-            false
-        } else {
-            n_bound += 1;
-            true
-        }
-    });
+            if bound_trait_ref.def_id == trait_ref.def_id {
+                relate_trait_refs(vcx,
+                                  span,
+                                  bound_trait_ref,
+                                  trait_ref.clone());
+                let vtable = vtable_param(param, *n_bound_ptr);
+                debug!("found param vtable: {:?}",
+                       vtable);
+                *ret_ptr = Some(vtable);
+                false
+            } else {
+                *n_bound_ptr += 1;
+                true
+            }
+        });
+    }
     ret
 }
 

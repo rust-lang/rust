@@ -1481,30 +1481,41 @@ pub fn walk_ty(ty: t, f: |t|) {
     maybe_walk_ty(ty, |t| { f(t); true });
 }
 
-pub fn maybe_walk_ty(ty: t, f: |t| -> bool) {
-    if !f(ty) {
+pub fn maybe_walk_ty(ty: t, mut f: |t| -> bool) {
+    let f_ptr = &mut f;
+    if !(*f_ptr)(ty) {
         return;
     }
     match get(ty).sty {
-        ty_nil | ty_bot | ty_bool | ty_char | ty_int(_) | ty_uint(_) | ty_float(_) |
-        ty_str | ty_self(_) |
+        ty_nil | ty_bot | ty_bool | ty_char | ty_int(_) | ty_uint(_) |
+        ty_float(_) | ty_str | ty_self(_) |
         ty_infer(_) | ty_param(_) | ty_err => {}
-        ty_box(ty) | ty_uniq(ty) => maybe_walk_ty(ty, f),
+        ty_box(ty) | ty_uniq(ty) => maybe_walk_ty(ty, |x| (*f_ptr)(x)),
         ty_ptr(ref tm) | ty_rptr(_, ref tm) | ty_vec(ref tm, _) => {
-            maybe_walk_ty(tm.ty, f);
+            maybe_walk_ty(tm.ty, |x| (*f_ptr)(x));
         }
         ty_enum(_, ref substs) | ty_struct(_, ref substs) |
         ty_trait(box TyTrait { ref substs, .. }) => {
-            for subty in (*substs).tps.iter() { maybe_walk_ty(*subty, |x| f(x)); }
+            for subty in (*substs).tps.iter() {
+                maybe_walk_ty(*subty, |x| (*f_ptr)(x));
+            }
         }
-        ty_tup(ref ts) => { for tt in ts.iter() { maybe_walk_ty(*tt, |x| f(x)); } }
+        ty_tup(ref ts) => {
+            for tt in ts.iter() {
+                maybe_walk_ty(*tt, |x| (*f_ptr)(x));
+            }
+        }
         ty_bare_fn(ref ft) => {
-            for a in ft.sig.inputs.iter() { maybe_walk_ty(*a, |x| f(x)); }
-            maybe_walk_ty(ft.sig.output, f);
+            for a in ft.sig.inputs.iter() {
+                maybe_walk_ty(*a, |x| (*f_ptr)(x));
+            }
+            maybe_walk_ty(ft.sig.output, |x| (*f_ptr)(x));
         }
         ty_closure(ref ft) => {
-            for a in ft.sig.inputs.iter() { maybe_walk_ty(*a, |x| f(x)); }
-            maybe_walk_ty(ft.sig.output, f);
+            for a in ft.sig.inputs.iter() {
+                maybe_walk_ty(*a, |x| (*f_ptr)(x));
+            }
+            maybe_walk_ty(ft.sig.output, |x| (*f_ptr)(x));
         }
     }
 }
@@ -1730,11 +1741,13 @@ fn type_needs_unwind_cleanup_(cx: &ctxt, ty: t,
 
     let mut encountered_box = encountered_box;
     let mut needs_unwind_cleanup = false;
+    let encountered_box_ptr = &mut encountered_box;
+    let needs_unwind_cleanup_ptr = &mut needs_unwind_cleanup;
     maybe_walk_ty(ty, |ty| {
-        let old_encountered_box = encountered_box;
+        let old_encountered_box = *encountered_box_ptr;
         let result = match get(ty).sty {
           ty_box(_) => {
-            encountered_box = true;
+            *encountered_box_ptr = true;
             true
           }
           ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
@@ -1745,34 +1758,34 @@ fn type_needs_unwind_cleanup_(cx: &ctxt, ty: t,
             for v in (*enum_variants(cx, did)).iter() {
                 for aty in v.args.iter() {
                     let t = subst(cx, substs, *aty);
-                    needs_unwind_cleanup |=
+                    *needs_unwind_cleanup_ptr |=
                         type_needs_unwind_cleanup_(cx, t, tycache,
-                                                   encountered_box);
+                                                   *encountered_box_ptr);
                 }
             }
-            !needs_unwind_cleanup
+            !*needs_unwind_cleanup_ptr
           }
           ty_uniq(_) => {
             // Once we're inside a box, the annihilator will find
             // it and destroy it.
-            if !encountered_box {
-                needs_unwind_cleanup = true;
+            if !*encountered_box_ptr {
+                *needs_unwind_cleanup_ptr = true;
                 false
             } else {
                 true
             }
           }
           _ => {
-            needs_unwind_cleanup = true;
+            *needs_unwind_cleanup_ptr = true;
             false
           }
         };
 
-        encountered_box = old_encountered_box;
+        *encountered_box_ptr = old_encountered_box;
         result
     });
 
-    return needs_unwind_cleanup;
+    return *needs_unwind_cleanup_ptr;
 }
 
 /**
@@ -2250,8 +2263,9 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
                                -> TypeContents {
         let _i = indenter();
         let mut tc = TC::All;
+        let tc_ptr = &mut tc;
         each_inherited_builtin_bound(cx, bounds, traits, |bound| {
-            tc = tc - match bound {
+            *tc_ptr = *tc_ptr - match bound {
                 BoundStatic => TC::Nonstatic,
                 BoundSend => TC::Nonsendable,
                 BoundSized => TC::Nonsized,
@@ -2259,7 +2273,7 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
                 BoundShare => TC::Nonsharable,
             };
         });
-        return tc;
+        return *tc_ptr;
 
         // Iterates over all builtin bounds on the type parameter def, including
         // those inherited from traits with builtin-kind-supertraits.
@@ -3218,14 +3232,15 @@ pub fn method_idx(id: ast::Ident, meths: &[Rc<Method>]) -> Option<uint> {
 /// to a bitset or some other representation.
 pub fn param_tys_in_type(ty: t) -> Vec<param_ty> {
     let mut rslt = Vec::new();
-    walk_ty(ty, |ty| {
-        match get(ty).sty {
-          ty_param(p) => {
-            rslt.push(p);
-          }
-          _ => ()
-        }
-    });
+    {
+        let rslt_ptr = &mut rslt;
+        walk_ty(ty, |ty| {
+            match get(ty).sty {
+                ty_param(p) => rslt_ptr.push(p),
+                _ => ()
+            }
+        });
+    }
     rslt
 }
 
@@ -3797,12 +3812,14 @@ pub fn enum_variants(cx: &ctxt, id: ast::DefId) -> Rc<Vec<Rc<VariantInfo>>> {
                 match item.node {
                     ast::ItemEnum(ref enum_definition, _) => {
                         let mut last_discriminant: Option<Disr> = None;
+                        let last_discriminant_ptr = &mut last_discriminant;
                         Rc::new(enum_definition.variants.iter().map(|&variant| {
 
-                            let mut discriminant = match last_discriminant {
-                                Some(val) => val + 1,
-                                None => INITIAL_DISCRIMINANT_VALUE
-                            };
+                            let mut discriminant =
+                                match *last_discriminant_ptr {
+                                    Some(val) => val + 1,
+                                    None => INITIAL_DISCRIMINANT_VALUE
+                                };
 
                             match variant.node.disr_expr {
                                 Some(e) => match const_eval::eval_const_expr_partial(cx, e) {
@@ -3827,7 +3844,7 @@ pub fn enum_variants(cx: &ctxt, id: ast::DefId) -> Rc<Vec<Rc<VariantInfo>>> {
                                 None => {}
                             };
 
-                            last_discriminant = Some(discriminant);
+                            *last_discriminant_ptr = Some(discriminant);
                             Rc::new(VariantInfo::from_ast_variant(cx, variant,
                                                                   discriminant))
                         }).collect())
@@ -3897,16 +3914,19 @@ pub fn lookup_trait_def(cx: &ctxt, did: ast::DefId) -> Rc<ty::TraitDef> {
 /// Iterate over attributes of a definition.
 // (This should really be an iterator, but that would require csearch and
 // decoder to use iterators instead of higher-order functions.)
-pub fn each_attr(tcx: &ctxt, did: DefId, f: |&ast::Attribute| -> bool) -> bool {
+pub fn each_attr(tcx: &ctxt, did: DefId, mut f: |&ast::Attribute| -> bool)
+                 -> bool {
     if is_local(did) {
         let item = tcx.map.expect_item(did.node);
         item.attrs.iter().advance(|attr| f(attr))
     } else {
         info!("getting foreign attrs");
         let mut cont = true;
+        let cont_ptr = &mut cont;
+        let f_ptr = &mut f;
         csearch::get_item_attrs(&tcx.sess.cstore, did, |attrs| {
-            if cont {
-                cont = attrs.iter().advance(|attr| f(attr));
+            if *cont_ptr {
+                *cont_ptr = attrs.iter().advance(|attr| (*f_ptr)(attr));
             }
         });
         info!("done");
@@ -3917,15 +3937,16 @@ pub fn each_attr(tcx: &ctxt, did: DefId, f: |&ast::Attribute| -> bool) -> bool {
 /// Determine whether an item is annotated with an attribute
 pub fn has_attr(tcx: &ctxt, did: DefId, attr: &str) -> bool {
     let mut found = false;
+    let found_ptr = &mut found;
     each_attr(tcx, did, |item| {
         if item.check_name(attr) {
-            found = true;
+            *found_ptr = true;
             false
         } else {
             true
         }
     });
-    found
+    *found_ptr
 }
 
 /// Determine whether an item is annotated with `#[packed]`
@@ -3941,11 +3962,14 @@ pub fn lookup_simd(tcx: &ctxt, did: DefId) -> bool {
 // Obtain the representation annotation for a definition.
 pub fn lookup_repr_hint(tcx: &ctxt, did: DefId) -> attr::ReprAttr {
     let mut acc = attr::ReprAny;
+    let acc_ptr = &mut acc;
     ty::each_attr(tcx, did, |meta| {
-        acc = attr::find_repr_attr(tcx.sess.diagnostic(), meta, acc);
+        *acc_ptr = attr::find_repr_attr(tcx.sess.diagnostic(),
+                                        meta,
+                                        *acc_ptr);
         true
     });
-    return acc;
+    return *acc_ptr;
 }
 
 // Look up a field ID, whether or not it's local
@@ -3973,11 +3997,12 @@ pub fn lookup_field_type(tcx: &ctxt,
 
 // Lookup all ancestor structs of a struct indicated by did. That is the reflexive,
 // transitive closure of doing a single lookup in cx.superstructs.
-fn each_super_struct(cx: &ctxt, mut did: ast::DefId, f: |ast::DefId|) {
+fn each_super_struct(cx: &ctxt, mut did: ast::DefId, mut f: |ast::DefId|) {
     let superstructs = cx.superstructs.borrow();
 
+    let f_ptr = &mut f;
     loop {
-        f(did);
+        (*f_ptr)(did);
         match superstructs.find(&did) {
             Some(&Some(def_id)) => {
                 did = def_id;
@@ -4002,16 +4027,20 @@ pub fn lookup_struct_fields(cx: &ctxt, did: ast::DefId) -> Vec<field_ty> {
         // we could cache the whole list of fields here.
         let struct_fields = cx.struct_fields.borrow();
         let mut results: SmallVector<&[field_ty]> = SmallVector::zero();
-        each_super_struct(cx, did, |s| {
-            match struct_fields.find(&s) {
-                Some(fields) => results.push(fields.as_slice()),
-                _ => {
-                    cx.sess.bug(
-                        format!("ID not mapped to struct fields: {}",
-                                cx.map.node_to_str(did.node)).as_slice());
+        {
+            let struct_fields_ptr = &struct_fields;
+            let results_ptr = &mut results;
+            each_super_struct(cx, did, |s| {
+                match struct_fields_ptr.find(&s) {
+                    Some(fields) => results_ptr.push(fields.as_slice()),
+                    _ => {
+                        cx.sess.bug(
+                            format!("ID not mapped to struct fields: {}",
+                                    cx.map.node_to_str(did.node)).as_slice());
+                    }
                 }
-            }
-        });
+            });
+        }
 
         let len = results.as_slice().iter().map(|x| x.len()).sum();
         let mut result: Vec<field_ty> = Vec::with_capacity(len);
@@ -4486,8 +4515,10 @@ pub fn trait_method_of_method(tcx: &ctxt,
 /// context it's calculated within. This is used by the `type_id` intrinsic.
 pub fn hash_crate_independent(tcx: &ctxt, t: t, svh: &Svh) -> u64 {
     let mut state = sip::SipState::new();
-    macro_rules! byte( ($b:expr) => { ($b as u8).hash(&mut state) } );
-    macro_rules! hash( ($e:expr) => { $e.hash(&mut state) } );
+    let state_ptr = &mut state;
+
+    macro_rules! byte( ($b:expr) => { ($b as u8).hash(state_ptr) } );
+    macro_rules! hash( ($e:expr) => { $e.hash(state_ptr) } );
 
     let region = |_state: &mut sip::SipState, r: Region| {
         match r {
@@ -4538,7 +4569,7 @@ pub fn hash_crate_independent(tcx: &ctxt, t: t, svh: &Svh) -> u64 {
             }
             ty_enum(d, _) => {
                 byte!(8);
-                did(&mut state, d);
+                did(state_ptr, d);
             }
             ty_box(_) => {
                 byte!(9);
@@ -4548,22 +4579,22 @@ pub fn hash_crate_independent(tcx: &ctxt, t: t, svh: &Svh) -> u64 {
             }
             ty_vec(m, Some(_)) => {
                 byte!(11);
-                mt(&mut state, m);
-                1u8.hash(&mut state);
+                mt(state_ptr, m);
+                1u8.hash(state_ptr);
             }
             ty_vec(m, None) => {
                 byte!(11);
-                mt(&mut state, m);
-                0u8.hash(&mut state);
+                mt(state_ptr, m);
+                0u8.hash(state_ptr);
             }
             ty_ptr(m) => {
                 byte!(12);
-                mt(&mut state, m);
+                mt(state_ptr, m);
             }
             ty_rptr(r, m) => {
                 byte!(13);
-                region(&mut state, r);
-                mt(&mut state, m);
+                region(state_ptr, r);
+                mt(state_ptr, m);
             }
             ty_bare_fn(ref b) => {
                 byte!(14);
@@ -4579,19 +4610,19 @@ pub fn hash_crate_independent(tcx: &ctxt, t: t, svh: &Svh) -> u64 {
                     UniqTraitStore => byte!(0),
                     RegionTraitStore(r, m) => {
                         byte!(1)
-                        region(&mut state, r);
+                        region(state_ptr, r);
                         assert_eq!(m, ast::MutMutable);
                     }
                 }
             }
             ty_trait(box ty::TyTrait { def_id: d, store, bounds, .. }) => {
                 byte!(17);
-                did(&mut state, d);
+                did(state_ptr, d);
                 match store {
                     UniqTraitStore => byte!(0),
                     RegionTraitStore(r, m) => {
                         byte!(1)
-                        region(&mut state, r);
+                        region(state_ptr, r);
                         hash!(m);
                     }
                 }
@@ -4599,7 +4630,7 @@ pub fn hash_crate_independent(tcx: &ctxt, t: t, svh: &Svh) -> u64 {
             }
             ty_struct(d, _) => {
                 byte!(18);
-                did(&mut state, d);
+                did(state_ptr, d);
             }
             ty_tup(ref inner) => {
                 byte!(19);
@@ -4608,18 +4639,18 @@ pub fn hash_crate_independent(tcx: &ctxt, t: t, svh: &Svh) -> u64 {
             ty_param(p) => {
                 byte!(20);
                 hash!(p.idx);
-                did(&mut state, p.def_id);
+                did(state_ptr, p.def_id);
             }
             ty_self(d) => {
                 byte!(21);
-                did(&mut state, d);
+                did(state_ptr, d);
             }
             ty_infer(_) => unreachable!(),
             ty_err => byte!(23),
         }
     });
 
-    state.result()
+    state_ptr.result()
 }
 
 impl Variance {
@@ -4695,15 +4726,21 @@ pub fn construct_parameter_environment(
     // Compute the bounds on Self and the type parameters.
     //
 
-    let self_bound_substd = self_bound.map(|b| b.subst(tcx, &free_substs));
-    let type_param_bounds_substd = Vec::from_fn(num_type_params, |i| {
-        if i < num_item_type_params {
-            (*item_type_params[i].bounds).subst(tcx, &free_substs)
-        } else {
-            let j = i - num_item_type_params;
-            (*method_type_params[j].bounds).subst(tcx, &free_substs)
-        }
-    });
+    let self_bound_substd = {
+        let free_substs_ptr = &free_substs;
+        self_bound.map(|b| b.subst(tcx, free_substs_ptr))
+    };
+    let type_param_bounds_substd = {
+        let free_substs_ptr = &free_substs;
+        Vec::from_fn(num_type_params, |i| {
+            if i < num_item_type_params {
+                (*item_type_params[i].bounds).subst(tcx, free_substs_ptr)
+            } else {
+                let j = i - num_item_type_params;
+                (*method_type_params[j].bounds).subst(tcx, free_substs_ptr)
+            }
+        })
+    };
 
     debug!("construct_parameter_environment: free_id={} \
            free_subst={} \

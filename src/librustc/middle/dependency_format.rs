@@ -132,14 +132,15 @@ fn calculate_type(sess: &session::Session,
     // Sweep all crates for found dylibs. Add all dylibs, as well as their
     // dependencies, ensuring there are no conflicts. The only valid case for a
     // dependency to be relied upon twice is for both cases to rely on a dylib.
+    let formats_ptr = &mut formats;
     sess.cstore.iter_crate_data(|cnum, data| {
         let src = sess.cstore.get_used_crate_source(cnum).unwrap();
         if src.dylib.is_some() {
-            add_library(sess, cnum, cstore::RequireDynamic, &mut formats);
+            add_library(sess, cnum, cstore::RequireDynamic, formats_ptr);
             debug!("adding dylib: {}", data.name);
             let deps = csearch::get_dylib_dependency_formats(&sess.cstore, cnum);
             for &(depnum, style) in deps.iter() {
-                add_library(sess, depnum, style, &mut formats);
+                add_library(sess, depnum, style, formats_ptr);
                 debug!("adding {}: {}", style,
                        sess.cstore.get_crate_data(depnum).name.clone());
             }
@@ -148,7 +149,7 @@ fn calculate_type(sess: &session::Session,
 
     // Collect what we've got so far in the return vector.
     let mut ret = range(1, sess.cstore.next_crate_num()).map(|i| {
-        match formats.find(&i).map(|v| *v) {
+        match formats_ptr.find(&i).map(|v| *v) {
             v @ Some(cstore::RequireDynamic) => v,
             _ => None,
         }
@@ -156,15 +157,19 @@ fn calculate_type(sess: &session::Session,
 
     // Run through the dependency list again, and add any missing libraries as
     // static libraries.
-    sess.cstore.iter_crate_data(|cnum, data| {
-        let src = sess.cstore.get_used_crate_source(cnum).unwrap();
-        if src.dylib.is_none() && !formats.contains_key(&cnum) {
-            assert!(src.rlib.is_some());
-            add_library(sess, cnum, cstore::RequireStatic, &mut formats);
-            *ret.get_mut(cnum as uint - 1) = Some(cstore::RequireStatic);
-            debug!("adding staticlib: {}", data.name);
-        }
-    });
+    {
+        let ret_ptr = &mut ret;
+        sess.cstore.iter_crate_data(|cnum, data| {
+            let src = sess.cstore.get_used_crate_source(cnum).unwrap();
+            if src.dylib.is_none() && !formats_ptr.contains_key(&cnum) {
+                assert!(src.rlib.is_some());
+                add_library(sess, cnum, cstore::RequireStatic, formats_ptr);
+                *ret_ptr.get_mut(cnum as uint - 1) =
+                    Some(cstore::RequireStatic);
+                debug!("adding staticlib: {}", data.name);
+            }
+        });
+    }
 
     // When dylib B links to dylib A, then when using B we must also link to A.
     // It could be the case, however, that the rlib for A is present (hence we

@@ -392,10 +392,13 @@ pub fn write_content<'a>(
                     let elem = unpack_datum!(bcx, expr::trans(bcx, element));
                     assert!(!ty::type_moves_by_default(bcx.tcx(), elem.ty));
 
-                    let bcx = iter_vec_loop(bcx, lldest, vt,
+                    let bcx = {
+                        let elem_ptr = &elem;
+                        iter_vec_loop(bcx, lldest, vt,
                                   C_uint(bcx.ccx(), count), |set_bcx, lleltptr, _| {
-                        elem.shallow_copy_and_take(set_bcx, lleltptr)
-                    });
+                            elem_ptr.shallow_copy_and_take(set_bcx, lleltptr)
+                        })
+                    };
 
                     elem.add_clean_if_rvalue(bcx, element.id);
                     bcx

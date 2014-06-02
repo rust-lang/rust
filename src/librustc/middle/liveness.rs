@@ -366,9 +366,11 @@ fn visit_fn(ir: &mut IrMaps,
 
     // swap in a new set of IR maps for this function body:
     let mut fn_maps = IrMaps(ir.tcx);
+    let fn_maps_ptr = &mut fn_maps;
 
     unsafe {
-        debug!("creating fn_maps: {}", transmute::<&IrMaps, *IrMaps>(&fn_maps));
+        debug!("creating fn_maps: {}",
+               transmute::<&IrMaps, *IrMaps>(fn_maps_ptr));
     }
 
     for arg in decl.inputs.iter() {
@@ -377,26 +379,26 @@ fn visit_fn(ir: &mut IrMaps,
                                |_bm, arg_id, _x, path| {
             debug!("adding argument {}", arg_id);
             let ident = ast_util::path_to_ident(path);
-            fn_maps.add_variable(Arg(arg_id, ident));
+            fn_maps_ptr.add_variable(Arg(arg_id, ident));
         })
     };
 
     // gather up the various local variables, significant expressions,
     // and so forth:
-    visit::walk_fn(&mut fn_maps, fk, decl, body, sp, ());
+    visit::walk_fn(fn_maps_ptr, fk, decl, body, sp, ());
 
     // Special nodes and variables:
     // - exit_ln represents the end of the fn, either by return or fail
     // - implicit_ret_var is a pseudo-variable that represents
     //   an implicit return
     let specials = Specials {
-        exit_ln: fn_maps.add_live_node(ExitNode),
-        fallthrough_ln: fn_maps.add_live_node(ExitNode),
-        no_ret_var: fn_maps.add_variable(ImplicitRet)
+        exit_ln: fn_maps_ptr.add_live_node(ExitNode),
+        fallthrough_ln: fn_maps_ptr.add_live_node(ExitNode),
+        no_ret_var: fn_maps_ptr.add_variable(ImplicitRet)
     };
 
     // compute liveness
-    let mut lsets = Liveness(&mut fn_maps, specials);
+    let mut lsets = Liveness(fn_maps_ptr, specials);
     let entry_ln = lsets.compute(decl, body);
 
     // check for various error conditions
@@ -481,33 +483,38 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
         // in better error messages than just pointing at the closure
         // construction site.
         let mut call_caps = Vec::new();
-        let fv_mode = freevars::get_capture_mode(ir.tcx, expr.id);
-        freevars::with_freevars(ir.tcx, expr.id, |freevars| {
-            for fv in freevars.iter() {
-                match moved_variable_node_id_from_def(fv.def) {
-                    Some(rv) => {
-                        let fv_ln = ir.add_live_node(FreeVarNode(fv.span));
-                        let fv_id = ast_util::def_id_of_def(fv.def).node;
-                        let fv_ty = ty::node_id_to_type(ir.tcx, fv_id);
-                        let is_move = match fv_mode {
-                            // var must be dead afterwards
-                            freevars::CaptureByValue => {
-                                ty::type_moves_by_default(ir.tcx, fv_ty)
-                            }
+        {
+            let call_caps_ptr = &mut call_caps;
+            let fv_mode = freevars::get_capture_mode(ir.tcx, expr.id);
+            freevars::with_freevars(ir.tcx, expr.id, |freevars| {
+                for fv in freevars.iter() {
+                    match moved_variable_node_id_from_def(fv.def) {
+                        Some(rv) => {
+                            let fv_ln = ir.add_live_node(FreeVarNode(fv.span));
+                            let fv_id = ast_util::def_id_of_def(fv.def).node;
+                            let fv_ty = ty::node_id_to_type(ir.tcx, fv_id);
+                            let is_move = match fv_mode {
+                                // var must be dead afterwards
+                                freevars::CaptureByValue => {
+                                    ty::type_moves_by_default(ir.tcx, fv_ty)
+                                }
 
-                            // var can still be used
-                            freevars::CaptureByRef => {
-                                false
-                            }
-                        };
-                        call_caps.push(CaptureInfo {ln: fv_ln,
-                                                    is_move: is_move,
-                                                    var_nid: rv});
+                                // var can still be used
+                                freevars::CaptureByRef => {
+                                    false
+                                }
+                            };
+                            call_caps_ptr.push(CaptureInfo {
+                                ln: fv_ln,
+                                is_move: is_move,
+                                var_nid: rv,
+                            });
+                        }
+                        None => {}
                     }
-                    None => {}
                 }
-            }
-        });
+            });
+        }
         ir.set_captures(expr.id, call_caps);
 
         visit::walk_expr(ir, expr, ());
@@ -646,12 +653,13 @@ impl<'a> Liveness<'a> {
     fn define_bindings_in_arm_pats(&mut self, pats: &[@Pat], succ: LiveNode)
                                    -> LiveNode {
         let mut succ = succ;
+        let succ_ptr = &mut succ;
         self.arm_pats_bindings(pats, |this, ln, var, _sp, _id| {
-            this.init_from_succ(ln, succ);
+            this.init_from_succ(ln, *succ_ptr);
             this.define(ln, var);
-            succ = ln;
+            *succ_ptr = ln;
         });
-        succ
+        *succ_ptr
     }
 
     fn idx(&self, ln: LiveNode, var: Variable) -> uint {
@@ -795,20 +803,21 @@ impl<'a> Liveness<'a> {
         if ln == succ_ln { return false; }
 
         let mut changed = false;
+        let changed_ptr = &mut changed;
         self.indices2(ln, succ_ln, |this, idx, succ_idx| {
-            changed |= copy_if_invalid(this.users.get(succ_idx).reader,
+            *changed_ptr |= copy_if_invalid(this.users.get(succ_idx).reader,
                                        &mut this.users.get_mut(idx).reader);
-            changed |= copy_if_invalid(this.users.get(succ_idx).writer,
+            *changed_ptr |= copy_if_invalid(this.users.get(succ_idx).writer,
                                        &mut this.users.get_mut(idx).writer);
             if this.users.get(succ_idx).used && !this.users.get(idx).used {
                 this.users.get_mut(idx).used = true;
-                changed = true;
+                *changed_ptr = true;
             }
         });
 
         debug!("merge_from_succ(ln={}, succ={}, first_merge={}, changed={})",
-               ln.to_str(), self.ln_str(succ_ln), first_merge, changed);
-        return changed;
+               ln.to_str(), self.ln_str(succ_ln), first_merge, *changed_ptr);
+        return *changed_ptr;
 
         fn copy_if_invalid(src: LiveNode, dst: &mut LiveNode) -> bool {
             if src.is_valid() && !dst.is_valid() {

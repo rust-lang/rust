@@ -800,18 +800,19 @@ impl<'a> RegionVarBindings<'a> {
         })
     }
 
-    fn expansion(&self, var_data: &mut [VarData]) {
+    fn expansion(&self, mut var_data: &mut [VarData]) {
+        let var_data = &mut var_data;
         self.iterate_until_fixed_point("Expansion", |constraint| {
             match *constraint {
               ConstrainRegSubVar(a_region, b_vid) => {
-                let b_data = &mut var_data[b_vid.to_uint()];
+                let b_data = &mut (*var_data)[b_vid.to_uint()];
                 self.expand_node(a_region, b_vid, b_data)
               }
               ConstrainVarSubVar(a_vid, b_vid) => {
-                match var_data[a_vid.to_uint()].value {
+                match (*var_data)[a_vid.to_uint()].value {
                   NoValue | ErrorValue => false,
                   Value(a_region) => {
-                    let b_node = &mut var_data[b_vid.to_uint()];
+                    let b_node = &mut (*var_data)[b_vid.to_uint()];
                     self.expand_node(a_region, b_vid, b_node)
                   }
                 }
@@ -865,7 +866,8 @@ impl<'a> RegionVarBindings<'a> {
     }
 
     fn contraction(&self,
-                   var_data: &mut [VarData]) {
+                   mut var_data: &mut [VarData]) {
+        let var_data = &mut var_data;
         self.iterate_until_fixed_point("Contraction", |constraint| {
             match *constraint {
               ConstrainRegSubVar(..) => {
@@ -873,16 +875,16 @@ impl<'a> RegionVarBindings<'a> {
                 false
               }
               ConstrainVarSubVar(a_vid, b_vid) => {
-                match var_data[b_vid.to_uint()].value {
+                match (*var_data)[b_vid.to_uint()].value {
                   NoValue | ErrorValue => false,
                   Value(b_region) => {
-                    let a_data = &mut var_data[a_vid.to_uint()];
+                    let a_data = &mut (*var_data)[a_vid.to_uint()];
                     self.contract_node(a_vid, a_data, b_region)
                   }
                 }
               }
               ConstrainVarSubReg(a_vid, b_region) => {
-                let a_data = &mut var_data[a_vid.to_uint()];
+                let a_data = &mut (*var_data)[a_vid.to_uint()];
                 self.contract_node(a_vid, a_data, b_region)
               }
               ConstrainRegSubReg(..) => {
@@ -966,9 +968,8 @@ impl<'a> RegionVarBindings<'a> {
     }
 
     fn collect_concrete_region_errors(
-        &self,
-        errors: &mut Vec<RegionResolutionError>)
-    {
+            &self,
+            errors: &mut Vec<RegionResolutionError>) {
         for (constraint, _) in self.constraints.borrow().iter() {
             let (sub, sup) = match *constraint {
                 ConstrainVarSubVar(..) |

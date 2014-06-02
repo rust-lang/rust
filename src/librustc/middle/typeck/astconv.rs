@@ -793,6 +793,7 @@ fn ty_of_method_or_bare_fn<AC:AstConv>(this: &AC, id: ast::NodeId,
     // new region names that appear inside of the fn decl are bound to
     // that function type
     let rb = rscope::BindingRscope::new(id);
+    let rb_ptr = &rb;
 
     let self_ty = opt_self_info.and_then(|self_info| {
         match self_info.explicit_self.node {
@@ -802,7 +803,8 @@ fn ty_of_method_or_bare_fn<AC:AstConv>(this: &AC, id: ast::NodeId,
             }
             ast::SelfRegion(ref lifetime, mutability) => {
                 let region =
-                    opt_ast_region_to_region(this, &rb,
+                    opt_ast_region_to_region(this,
+                                             rb_ptr,
                                              self_info.explicit_self.span,
                                              lifetime);
                 Some(ty::mk_rptr(this.tcx(), region,
@@ -821,13 +823,14 @@ fn ty_of_method_or_bare_fn<AC:AstConv>(this: &AC, id: ast::NodeId,
     } else {
         decl.inputs.as_slice()
     };
-    let input_tys = input_tys.iter().map(|a| ty_of_arg(this, &rb, a, None));
+    let input_tys = input_tys.iter()
+                             .map(|a| ty_of_arg(this, rb_ptr, a, None));
 
     let self_and_input_tys = self_ty.move_iter().chain(input_tys).collect();
 
     let output_ty = match decl.output.node {
         ast::TyInfer => this.ty_infer(decl.output.span),
-        _ => ast_ty_to_ty(this, &rb, decl.output)
+        _ => ast_ty_to_ty(this, rb_ptr, decl.output)
     };
 
     return ty::BareFnTy {
@@ -859,18 +862,22 @@ pub fn ty_of_closure<AC:AstConv>(
     // that function type
     let rb = rscope::BindingRscope::new(id);
 
-    let input_tys = decl.inputs.iter().enumerate().map(|(i, a)| {
-        let expected_arg_ty = expected_sig.as_ref().and_then(|e| {
-            // no guarantee that the correct number of expected args
-            // were supplied
-            if i < e.inputs.len() {
-                Some(*e.inputs.get(i))
-            } else {
-                None
-            }
-        });
-        ty_of_arg(this, &rb, a, expected_arg_ty)
-    }).collect();
+    let input_tys = {
+        let expected_sig_ptr = &expected_sig;
+        let rb_ptr = &rb;
+        decl.inputs.iter().enumerate().map(|(i, a)| {
+            let expected_arg_ty = (*expected_sig_ptr).as_ref().and_then(|e| {
+                // no guarantee that the correct number of expected args
+                // were supplied
+                if i < e.inputs.len() {
+                    Some(*e.inputs.get(i))
+                } else {
+                    None
+                }
+            });
+            ty_of_arg(this, rb_ptr, a, expected_arg_ty)
+        }).collect()
+    };
 
     let expected_ret_ty = expected_sig.map(|e| e.output);
     let output_ty = match decl.output.node {

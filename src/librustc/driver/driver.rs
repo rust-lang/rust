@@ -553,6 +553,7 @@ fn write_out_deps(sess: &Session,
         _ => return,
     };
 
+    let deps_filename_ptr = &deps_filename;
     let result = (|| {
         // Build a list of files used to compile the output and
         // write Makefile-compatible dependency rules
@@ -560,7 +561,7 @@ fn write_out_deps(sess: &Session,
                                    .iter().filter(|fmap| fmap.is_real_file())
                                    .map(|fmap| fmap.name.to_string())
                                    .collect();
-        let mut file = try!(io::File::create(&deps_filename));
+        let mut file = try!(io::File::create(deps_filename_ptr));
         for path in out_filenames.iter() {
             try!(write!(&mut file as &mut Writer,
                           "{}: {}\n\n", path.display(), files.connect(" ")));
@@ -572,7 +573,7 @@ fn write_out_deps(sess: &Session,
         Ok(()) => {}
         Err(e) => {
             sess.fatal(format!("error writing dependencies to `{}`: {}",
-                               deps_filename.display(), e).as_slice());
+                               deps_filename_ptr.display(), e).as_slice());
         }
     }
 }
@@ -713,21 +714,28 @@ pub fn pretty_print_input(sess: Session,
         }
         PpmFlowGraph(nodeid) => {
             let ast_map = ast_map.expect("--pretty flowgraph missing ast_map");
-            let node = ast_map.find(nodeid).unwrap_or_else(|| {
-                sess.fatal(format_strbuf!("--pretty flowgraph couldn't find id: {}",
-                                          nodeid).as_slice())
-            });
-            let block = match node {
-                syntax::ast_map::NodeBlock(block) => block,
-                _ => {
-                    let message = format_strbuf!("--pretty=flowgraph needs block, got {:?}",
-                                                 node);
+            let block = {
+                let sess_ptr = &sess;
+                let node = ast_map.find(nodeid).unwrap_or_else(|| {
+                    sess_ptr.fatal(format_strbuf!(
+                            "--pretty flowgraph couldn't find id: {}",
+                            nodeid).as_slice())
+                });
+                match node {
+                    syntax::ast_map::NodeBlock(block) => block,
+                    _ => {
+                        let message = format_strbuf!("--pretty=flowgraph \
+                                                      needs block, got {:?}",
+                                                     node);
 
-                    // point to what was found, if there's an
-                    // accessible span.
-                    match ast_map.opt_span(nodeid) {
-                        Some(sp) => sess.span_fatal(sp, message.as_slice()),
-                        None => sess.fatal(message.as_slice())
+                        // point to what was found, if there's an
+                        // accessible span.
+                        match ast_map.opt_span(nodeid) {
+                            Some(sp) => {
+                                sess_ptr.span_fatal(sp, message.as_slice())
+                            }
+                            None => sess_ptr.fatal(message.as_slice())
+                        }
                     }
                 }
             };

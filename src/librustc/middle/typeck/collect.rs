@@ -425,10 +425,11 @@ pub fn ensure_supertraits(ccx: &CrateCtxt,
         // builtin trait, so that the trait's node id appears in the tcx trait_ref
         // map. This is only needed for metadata; see the similar fixme in encoder.rs.
         let trait_ref = instantiate_trait_ref(ccx, ast_trait_ref, self_ty);
+        let trait_ref_def_id = trait_ref.def_id;
         if !ty::try_add_builtin_trait(ccx.tcx, trait_def_id, &mut bounds) {
 
             // FIXME(#5527) Could have same trait multiple times
-            if ty_trait_refs.iter().any(|other_trait| other_trait.def_id == trait_ref.def_id) {
+            if ty_trait_refs.iter().any(|other_trait| other_trait.def_id == trait_ref_def_id) {
                 // This means a trait inherited from the same supertrait more
                 // than once.
                 tcx.sess.span_err(sp, "duplicate supertrait in trait declaration");
@@ -708,31 +709,38 @@ pub fn convert_struct(ccx: &CrateCtxt,
 
     // Write the type of each of the members and check for duplicate fields.
     let mut seen_fields: HashMap<ast::Name, Span> = HashMap::new();
-    let field_tys = struct_def.fields.iter().map(|f| {
-        let result = convert_field(ccx, &tpt.generics, f, local_def(id));
+    let field_tys = {
+        let seen_fields_ptr = &mut seen_fields;
+        let tpt_ptr = &tpt;
+        struct_def.fields.iter().map(|f| {
+            let result = convert_field(ccx,
+                                       &tpt_ptr.generics,
+                                       f,
+                                       local_def(id));
 
-        if result.name != special_idents::unnamed_field.name {
-            let dup = match seen_fields.find(&result.name) {
-                Some(prev_span) => {
-                    tcx.sess.span_err(
-                        f.span,
-                        format!("field `{}` is already declared",
-                                token::get_name(result.name)).as_slice());
-                    tcx.sess.span_note(*prev_span,
-                                       "previously declared here");
-                    true
-                },
-                None => false,
-            };
-            // FIXME(#6393) this whole dup thing is just to satisfy
-            // the borrow checker :-(
-            if !dup {
-                seen_fields.insert(result.name, f.span);
+            if result.name != special_idents::unnamed_field.name {
+                let dup = match seen_fields_ptr.find(&result.name) {
+                    Some(prev_span) => {
+                        tcx.sess.span_err(
+                            f.span,
+                            format!("field `{}` is already declared",
+                                    token::get_name(result.name)).as_slice());
+                        tcx.sess.span_note(*prev_span,
+                                           "previously declared here");
+                        true
+                    },
+                    None => false,
+                };
+                // FIXME(#6393) this whole dup thing is just to satisfy
+                // the borrow checker :-(
+                if !dup {
+                    seen_fields_ptr.insert(result.name, f.span);
+                }
             }
-        }
 
-        result
-    }).collect();
+            result
+        }).collect()
+    };
 
     tcx.struct_fields.borrow_mut().insert(local_def(id), Rc::new(field_tys));
 
@@ -1183,12 +1191,13 @@ pub fn ty_of_foreign_fn_decl(ccx: &CrateCtxt,
     let ty_generics_for_fn_or_method =
         ty_generics_for_fn_or_method(ccx, ast_generics, 0);
     let rb = BindingRscope::new(def_id.node);
+    let rb_ptr = &rb;
     let input_tys = decl.inputs
                         .iter()
-                        .map(|a| ty_of_arg(ccx, &rb, a, None))
+                        .map(|a| ty_of_arg(ccx, rb_ptr, a, None))
                         .collect();
 
-    let output_ty = ast_ty_to_ty(ccx, &rb, decl.output);
+    let output_ty = ast_ty_to_ty(ccx, rb_ptr, decl.output);
 
     let t_fn = ty::mk_bare_fn(
         ccx.tcx,

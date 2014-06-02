@@ -598,6 +598,7 @@ fn enter_opt<'a, 'b>(
     let tcx = bcx.tcx();
     let dummy = @ast::Pat {id: 0, node: ast::PatWild, span: DUMMY_SP};
     let mut i = 0;
+    let i_ptr = &mut i;
     enter_match(bcx, &tcx.def_map, m, col, val, |p| {
         let answer = match p.node {
             ast::PatEnum(..) |
@@ -677,7 +678,7 @@ fn enter_opt<'a, 'b>(
                 };
 
                 match slice {
-                    Some(slice) if i >= lo && i <= hi => {
+                    Some(slice) if *i_ptr >= lo && *i_ptr <= hi => {
                         let n = before.len() + after.len();
                         let this_opt = vec_len(n, vec_len_ge(before.len()),
                                                (lo, hi));
@@ -695,7 +696,7 @@ fn enter_opt<'a, 'b>(
                             None
                         }
                     }
-                    None if i >= lo && i <= hi => {
+                    None if *i_ptr >= lo && *i_ptr <= hi => {
                         let n = before.len();
                         if opt_eq(tcx, &vec_len(n, vec_len_eq, (lo,hi)), opt) {
                             let mut new_before = Vec::new();
@@ -715,7 +716,7 @@ fn enter_opt<'a, 'b>(
                 Some(Vec::from_elem(variant_size, dummy))
             }
         };
-        i += 1;
+        *i_ptr += 1;
         answer
     })
 }
@@ -1509,10 +1510,19 @@ fn compile_submatch_continue<'a, 'b>(
         Some(ref rec_fields) => {
             let pat_ty = node_id_type(bcx, pat_id);
             let pat_repr = adt::represent_type(bcx.ccx(), pat_ty);
+            let pat_repr_ptr = &*pat_repr;
             expr::with_field_tys(tcx, pat_ty, Some(pat_id), |discr, field_tys| {
+                let discr_ptr = &discr;
+                let field_tys_ptr = &field_tys;
                 let rec_vals = rec_fields.iter().map(|field_name| {
-                        let ix = ty::field_idx_strict(tcx, field_name.name, field_tys);
-                        adt::trans_field_ptr(bcx, &*pat_repr, val, discr, ix)
+                        let ix = ty::field_idx_strict(tcx,
+                                                      field_name.name,
+                                                      *field_tys_ptr);
+                        adt::trans_field_ptr(bcx,
+                                             pat_repr_ptr,
+                                             val,
+                                             *discr_ptr,
+                                             ix)
                         }).collect::<Vec<_>>();
                 compile_submatch(
                         bcx,
@@ -1845,38 +1855,41 @@ fn create_bindings_map(bcx: &Block, pat: @ast::Pat) -> BindingsMap {
     let ccx = bcx.ccx();
     let tcx = bcx.tcx();
     let mut bindings_map = HashMap::new();
-    pat_bindings(&tcx.def_map, pat, |bm, p_id, span, path| {
-        let ident = path_to_ident(path);
-        let variable_ty = node_id_type(bcx, p_id);
-        let llvariable_ty = type_of::type_of(ccx, variable_ty);
+    {
+        let bindings_map_ptr = &mut bindings_map;
+        pat_bindings(&tcx.def_map, pat, |bm, p_id, span, path| {
+            let ident = path_to_ident(path);
+            let variable_ty = node_id_type(bcx, p_id);
+            let llvariable_ty = type_of::type_of(ccx, variable_ty);
 
-        let llmatch;
-        let trmode;
-        match bm {
-            ast::BindByValue(_) => {
-                // in this case, the final type of the variable will be T,
-                // but during matching we need to store a *T as explained
-                // above
-                llmatch = alloca(bcx, llvariable_ty.ptr_to(), "__llmatch");
-                trmode = TrByValue(alloca(bcx,
-                                          llvariable_ty,
-                                          bcx.ident(ident).as_slice()));
-            }
-            ast::BindByRef(_) => {
-                llmatch = alloca(bcx,
-                                 llvariable_ty,
-                                 bcx.ident(ident).as_slice());
-                trmode = TrByRef;
-            }
-        };
-        bindings_map.insert(ident, BindingInfo {
-            llmatch: llmatch,
-            trmode: trmode,
-            id: p_id,
-            span: span,
-            ty: variable_ty
+            let llmatch;
+            let trmode;
+            match bm {
+                ast::BindByValue(_) => {
+                    // in this case, the final type of the variable will be T,
+                    // but during matching we need to store a *T as explained
+                    // above
+                    llmatch = alloca(bcx, llvariable_ty.ptr_to(), "__llmatch");
+                    trmode = TrByValue(alloca(bcx,
+                                              llvariable_ty,
+                                              bcx.ident(ident).as_slice()));
+                }
+                ast::BindByRef(_) => {
+                    llmatch = alloca(bcx,
+                                     llvariable_ty,
+                                     bcx.ident(ident).as_slice());
+                    trmode = TrByRef;
+                }
+            };
+            bindings_map_ptr.insert(ident, BindingInfo {
+                llmatch: llmatch,
+                trmode: trmode,
+                id: p_id,
+                span: span,
+                ty: variable_ty
+            });
         });
-    });
+    }
     return bindings_map;
 }
 
@@ -2038,13 +2051,19 @@ pub fn store_local<'a>(bcx: &'a Block<'a>,
                                -> &'a Block<'a> {
         // create dummy memory for the variables if we have no
         // value to store into them immediately
-        let tcx = bcx.tcx();
-        pat_bindings(&tcx.def_map, pat, |_, p_id, _, path| {
-                let scope = cleanup::var_scope(tcx, p_id);
-                bcx = mk_binding_alloca(
-                    bcx, p_id, path, BindLocal, scope, (),
-                    |(), bcx, llval, ty| { zero_mem(bcx, llval, ty); bcx });
+        {
+            let bcx_ptr = &mut bcx;
+            let tcx = bcx.tcx();
+            pat_bindings(&tcx.def_map, pat, |_, p_id, _, path| {
+                    let scope = cleanup::var_scope(tcx, p_id);
+                    *bcx_ptr = mk_binding_alloca(
+                        *bcx_ptr, p_id, path, BindLocal, scope, (),
+                        |(), bcx, llval, ty| {
+                            zero_mem(bcx, llval, ty);
+                            bcx
+                        });
             });
+        }
         bcx
     }
 }
@@ -2249,18 +2268,27 @@ fn bind_irrefutable_pat<'a>(
             }
         }
         ast::PatStruct(_, ref fields, _) => {
-            let tcx = bcx.tcx();
-            let pat_ty = node_id_type(bcx, pat.id);
-            let pat_repr = adt::represent_type(bcx.ccx(), pat_ty);
-            expr::with_field_tys(tcx, pat_ty, Some(pat.id), |discr, field_tys| {
-                for f in fields.iter() {
-                    let ix = ty::field_idx_strict(tcx, f.ident.name, field_tys);
-                    let fldptr = adt::trans_field_ptr(bcx, &*pat_repr, val,
-                                                      discr, ix);
-                    bcx = bind_irrefutable_pat(bcx, f.pat, fldptr,
-                                               binding_mode, cleanup_scope);
-                }
-            })
+            {
+                let bcx_ptr = &mut bcx;
+                let tcx = bcx_ptr.tcx();
+                let pat_ty = node_id_type(*bcx_ptr, pat.id);
+                let pat_repr = adt::represent_type(bcx_ptr.ccx(), pat_ty);
+                expr::with_field_tys(tcx, pat_ty, Some(pat.id), |discr, field_tys| {
+                    for f in fields.iter() {
+                        let ix = ty::field_idx_strict(tcx, f.ident.name, field_tys);
+                        let fldptr = adt::trans_field_ptr(*bcx_ptr,
+                                                          &*pat_repr,
+                                                          val,
+                                                          discr,
+                                                          ix);
+                        *bcx_ptr = bind_irrefutable_pat(*bcx_ptr,
+                                                        f.pat,
+                                                        fldptr,
+                                                        binding_mode,
+                                                        cleanup_scope);
+                    }
+                })
+            }
         }
         ast::PatTup(ref elems) => {
             let repr = adt::represent_node(bcx, pat.id);

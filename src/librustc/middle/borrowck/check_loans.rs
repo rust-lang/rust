@@ -152,10 +152,13 @@ impl<'a> CheckLoanCtxt<'a> {
         //! we encounter `scope_id`.
 
         let mut result = Vec::new();
-        self.dfcx_loans.each_gen_bit_frozen(scope_id, |loan_index| {
-            result.push(loan_index);
-            true
-        });
+        {
+            let result_ptr = &mut result;
+            self.dfcx_loans.each_gen_bit_frozen(scope_id, |loan_index| {
+                result_ptr.push(loan_index);
+                true
+            });
+        }
         return result;
     }
 
@@ -168,19 +171,20 @@ impl<'a> CheckLoanCtxt<'a> {
         debug!("check_for_conflicting_loans(scope_id={:?})", scope_id);
 
         let new_loan_indices = self.loans_generated_by(scope_id);
+        let new_loan_indices_ptr = &new_loan_indices;
         debug!("new_loan_indices = {:?}", new_loan_indices);
 
         self.each_issued_loan(scope_id, |issued_loan| {
-            for &new_loan_index in new_loan_indices.iter() {
+            for &new_loan_index in new_loan_indices_ptr.iter() {
                 let new_loan = &self.all_loans[new_loan_index];
                 self.report_error_if_loans_conflict(issued_loan, new_loan);
             }
             true
         });
 
-        for (i, &x) in new_loan_indices.iter().enumerate() {
+        for (i, &x) in new_loan_indices_ptr.iter().enumerate() {
             let old_loan = &self.all_loans[x];
-            for &y in new_loan_indices.slice_from(i+1).iter() {
+            for &y in new_loan_indices_ptr.slice_from(i+1).iter() {
                 let new_loan = &self.all_loans[y];
                 self.report_error_if_loans_conflict(old_loan, new_loan);
             }
@@ -413,10 +417,11 @@ impl<'a> CheckLoanCtxt<'a> {
         if self.is_local_variable(cmt.clone()) {
             assert!(cmt.mutbl.is_immutable()); // no "const" locals
             let lp = opt_loan_path(&cmt).unwrap();
-            self.move_data.each_assignment_of(expr.id, &lp, |assign| {
+            let lp_ptr = &lp;
+            self.move_data.each_assignment_of(expr.id, lp_ptr, |assign| {
                 self.bccx.report_reassigned_immutable_variable(
                     expr.span,
-                    &*lp,
+                    &**lp_ptr,
                     assign);
                 false
             });
@@ -579,16 +584,21 @@ impl<'a> CheckLoanCtxt<'a> {
             // `RESTR_MUTATE` restriction whenever the contents of an
             // owned pointer are borrowed, and hence while `v[*]` is not
             // restricted from being written, `v` is.
-            let cont = this.each_in_scope_restriction(expr.id,
-                                                      &*loan_path,
-                                                      |loan, restr| {
-                if restr.set.intersects(RESTR_MUTATE) {
-                    this.report_illegal_mutation(expr, &*loan_path, loan);
-                    false
-                } else {
-                    true
-                }
-            });
+            let cont = {
+                let loan_path_ptr = &*loan_path;
+                this.each_in_scope_restriction(expr.id,
+                                               loan_path_ptr,
+                                               |loan, restr| {
+                    if restr.set.intersects(RESTR_MUTATE) {
+                        this.report_illegal_mutation(expr,
+                                                     loan_path_ptr,
+                                                     loan);
+                        false
+                    } else {
+                        true
+                    }
+                })
+            };
 
             if !cont { return false }
 
@@ -633,6 +643,7 @@ impl<'a> CheckLoanCtxt<'a> {
             // Here the restriction that `v` not be mutated would be misapplied
             // to block the subpath `v[1]`.
             let full_loan_path = loan_path.clone();
+            let full_loan_path_ptr = &*full_loan_path;
             let mut loan_path = loan_path;
             loop {
                 loan_path = match *loan_path {
@@ -654,9 +665,12 @@ impl<'a> CheckLoanCtxt<'a> {
                 };
 
                 // Check for a non-const loan of `loan_path`
+                let loan_path_ptr = &mut loan_path;
                 let cont = this.each_in_scope_loan(expr.id, |loan| {
-                    if loan.loan_path == loan_path {
-                        this.report_illegal_mutation(expr, &*full_loan_path, loan);
+                    if loan.loan_path == *loan_path_ptr {
+                        this.report_illegal_mutation(expr,
+                                                     full_loan_path_ptr,
+                                                     loan);
                         false
                     } else {
                         true
@@ -775,11 +789,15 @@ impl<'a> CheckLoanCtxt<'a> {
 
         // check for a conflicting loan:
         let mut ret = MoveOk;
-        self.each_in_scope_restriction(expr_id, move_path, |loan, _| {
-            // Any restriction prevents moves.
-            ret = MoveWhileBorrowed(loan.loan_path.clone(), loan.span);
-            false
-        });
+        {
+            let ret_ptr = &mut ret;
+            self.each_in_scope_restriction(expr_id, move_path, |loan, _| {
+                // Any restriction prevents moves.
+                *ret_ptr = MoveWhileBorrowed(loan.loan_path.clone(),
+                                             loan.span);
+                false
+            });
+        }
 
         if ret != MoveOk {
             return ret

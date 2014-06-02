@@ -192,22 +192,27 @@ pub fn monomorphic_fn(ccx: &CrateContext,
         monomorphizing.insert(fn_id, depth + 1);
     }
 
-    let s = ccx.tcx.map.with_path(fn_id.node, |path| {
-        let mut state = sip::SipState::new();
-        hash_id.hash(&mut state);
-        mono_ty.hash(&mut state);
+    let s = {
+        let hash_id_ptr = &hash_id;
+        ccx.tcx.map.with_path(fn_id.node, |path| {
+            let mut state = sip::SipState::new();
+            hash_id_ptr.hash(&mut state);
+            mono_ty.hash(&mut state);
 
-        exported_name(path,
-                      format!("h{}", state.result()).as_slice(),
-                      ccx.link_meta.crateid.version_or_default())
-    });
+            exported_name(path,
+                          format!("h{}", state.result()).as_slice(),
+                          ccx.link_meta.crateid.version_or_default())
+        })
+    };
     debug!("monomorphize_fn mangled to {}", s);
 
     // This shouldn't need to option dance.
     let mut hash_id = Some(hash_id);
+    let hash_id_ptr = &mut hash_id;
     let mk_lldecl = || {
         let lldecl = decl_internal_rust_fn(ccx, mono_ty, s.as_slice());
-        ccx.monomorphized.borrow_mut().insert(hash_id.take_unwrap(), lldecl);
+        ccx.monomorphized.borrow_mut().insert(hash_id_ptr.take_unwrap(),
+                                              lldecl);
         lldecl
     };
 

@@ -574,17 +574,22 @@ fn get_metadata_section_imp(os: Os, filename: &Path) -> Result<MetadataBlob, Str
                 let cvbuf1 = cvbuf.offset(vlen as int);
                 debug!("inflating {} bytes of compressed metadata",
                        csz - vlen);
-                slice::raw::buf_as_slice(cvbuf1, csz-vlen, |bytes| {
-                    match flate::inflate_bytes(bytes) {
-                        Some(inflated) => found = Ok(MetadataVec(inflated)),
-                        None => {
-                            found =
-                                Err(format_strbuf!("failed to decompress \
-                                                    metadata for: '{}'",
-                                                   filename.display()))
+                {
+                    let found_ptr = &mut found;
+                    slice::raw::buf_as_slice(cvbuf1, csz-vlen, |bytes| {
+                        match flate::inflate_bytes(bytes) {
+                            Some(inflated) => {
+                                *found_ptr = Ok(MetadataVec(inflated))
+                            }
+                            None => {
+                                *found_ptr =
+                                    Err(format_strbuf!("failed to decompress \
+                                                        metadata for: '{}'",
+                                                       filename.display()))
+                            }
                         }
-                    }
-                });
+                    });
+                }
                 if found.is_ok() {
                     return found;
                 }

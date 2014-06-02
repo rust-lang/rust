@@ -411,10 +411,12 @@ pub mod write {
         let mut llvm_c_strs = Vec::new();
         let mut llvm_args = Vec::new();
         {
+            let llvm_args_ptr = &mut llvm_args;
+            let llvm_c_strs_ptr = &mut llvm_c_strs;
             let add = |arg: &str| {
                 let s = arg.to_c_str();
-                llvm_args.push(s.with_ref(|p| p));
-                llvm_c_strs.push(s);
+                llvm_args_ptr.push(s.with_ref(|p| p));
+                llvm_c_strs_ptr.push(s);
             };
             add("rustc"); // fake program name
             if vectorize_loop { add("-vectorize-loops"); }
@@ -649,7 +651,10 @@ pub fn sanitize(s: &str) -> String {
 
             _ => {
                 let mut tstr = String::new();
-                char::escape_unicode(c, |c| tstr.push_char(c));
+                {
+                    let tstr_ptr = &mut tstr;
+                    char::escape_unicode(c, |c| tstr_ptr.push_char(c));
+                }
                 result.push_char('$');
                 result.push_str(tstr.as_slice().slice_from(1));
             }
@@ -976,8 +981,9 @@ fn link_rlib<'a>(sess: &'a Session,
             // into the archive.
             let bc = obj_filename.with_extension("bc");
             let bc_deflated = obj_filename.with_extension("bc.deflate");
+            let bc_deflated_ptr = &bc_deflated;
             match fs::File::open(&bc).read_to_end().and_then(|data| {
-                fs::File::create(&bc_deflated)
+                fs::File::create(bc_deflated_ptr)
                     .write(match flate::deflate_bytes(data.as_slice()) {
                         Some(compressed) => compressed,
                         None => sess.fatal("failed to compress bytecode")
@@ -991,8 +997,8 @@ fn link_rlib<'a>(sess: &'a Session,
                     sess.abort_if_errors()
                 }
             }
-            a.add_file(&bc_deflated, false);
-            remove(sess, &bc_deflated);
+            a.add_file(bc_deflated_ptr, false);
+            remove(sess, bc_deflated_ptr);
             if !sess.opts.cg.save_temps &&
                !sess.opts.output_types.contains(&OutputTypeBitcode) {
                 remove(sess, &bc);

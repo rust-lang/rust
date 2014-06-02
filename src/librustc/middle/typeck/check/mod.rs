@@ -485,15 +485,15 @@ fn check_fn<'a>(ccx: &'a CrateCtxt<'a>,
     };
 
     {
-
         let mut visit = GatherLocalsVisitor { fcx: &fcx, };
+        let visit_ptr = &mut visit;
         // Add formal parameters.
         for (arg_ty, input) in arg_tys.iter().zip(decl.inputs.iter()) {
             // Create type variables for each argument.
             pat_util::pat_bindings(&tcx.def_map,
                                    input.pat,
                                    |_bm, pat_id, _sp, _path| {
-                                       visit.assign(pat_id, None);
+                                       visit_ptr.assign(pat_id, None);
                                    });
 
             // Check the pattern.
@@ -504,7 +504,7 @@ fn check_fn<'a>(ccx: &'a CrateCtxt<'a>,
             _match::check_pat(&pcx, input.pat, *arg_ty);
         }
 
-        visit.visit_block(body, ());
+        visit_ptr.visit_block(body, ());
     }
 
     check_block_with_expected(&fcx, body, Some(ret_ty));
@@ -515,10 +515,11 @@ fn check_fn<'a>(ccx: &'a CrateCtxt<'a>,
         Some(tail_expr) => {
             // Special case: we print a special error if there appears
             // to be do-block/for-loop confusion
+            let fcx_ptr = &fcx;
             demand::suptype_with_fn(&fcx, tail_expr.span, false,
                 fcx.ret_ty, fcx.expr_ty(tail_expr),
                 |sp, e, a, s| {
-                    fcx.report_mismatched_return_types(sp, e, a, s);
+                    fcx_ptr.report_mismatched_return_types(sp, e, a, s);
                 });
         }
         None => {}
@@ -804,9 +805,10 @@ fn check_impl_methods_against_trait(ccx: &CrateCtxt,
 
         // If this is an impl of a trait method, find the corresponding
         // method definition in the trait.
+        let impl_method_ty_ident_name = impl_method_ty.ident.name.clone();
         let opt_trait_method_ty =
             trait_methods.iter().
-            find(|tm| tm.ident.name == impl_method_ty.ident.name);
+            find(|tm| tm.ident.name == impl_method_ty_ident_name);
         match opt_trait_method_ty {
             Some(trait_method_ty) => {
                 compare_impl_method(ccx.tcx,
@@ -3257,6 +3259,8 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         });
         let mut bot_field = false;
         let mut err_field = false;
+        let bot_field_ptr = &mut bot_field;
+        let err_field_ptr = &mut err_field;
 
         let elt_ts = elts.iter().enumerate().map(|(i, e)| {
             let opt_hint = match flds {
@@ -3265,13 +3269,13 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
             };
             check_expr_with_opt_hint(fcx, *e, opt_hint);
             let t = fcx.expr_ty(*e);
-            err_field = err_field || ty::type_is_error(t);
-            bot_field = bot_field || ty::type_is_bot(t);
+            *err_field_ptr = *err_field_ptr || ty::type_is_error(t);
+            *bot_field_ptr = *bot_field_ptr || ty::type_is_bot(t);
             t
         }).collect();
-        if bot_field {
+        if *bot_field_ptr {
             fcx.write_bot(id);
-        } else if err_field {
+        } else if *err_field_ptr {
             fcx.write_error(id);
         } else {
             let typ = ty::mk_tup(tcx, elt_ts);
@@ -4200,18 +4204,19 @@ pub fn check_bounds_are_used(ccx: &CrateCtxt,
     // make a vector of booleans initially false, set to true when used
     if tps.len() == 0u { return; }
     let mut tps_used = Vec::from_elem(tps.len(), false);
+    let tps_used_ptr = &mut tps_used;
 
     ty::walk_ty(ty, |t| {
             match ty::get(t).sty {
                 ty::ty_param(param_ty {idx, ..}) => {
                     debug!("Found use of ty param \\#{}", idx);
-                    *tps_used.get_mut(idx) = true;
+                    *tps_used_ptr.get_mut(idx) = true;
                 }
                 _ => ()
             }
         });
 
-    for (i, b) in tps_used.iter().enumerate() {
+    for (i, b) in tps_used_ptr.iter().enumerate() {
         if !*b {
             ccx.tcx.sess.span_err(
                 span,

@@ -1024,6 +1024,7 @@ fn declare_local(bcx: &Block,
         CapturedVariable => (0, DW_TAG_auto_variable)
     };
 
+    let loc_line = loc.line as c_uint;
     let (var_alloca, var_metadata) = name.get().with_c_str(|name| {
         match variable_access {
             DirectVariable { alloca } => (
@@ -1035,7 +1036,7 @@ fn declare_local(bcx: &Block,
                         scope_metadata,
                         name,
                         file_metadata,
-                        loc.line as c_uint,
+                        loc_line,
                         type_metadata,
                         cx.sess().opts.optimize != config::No,
                         0,
@@ -1051,7 +1052,7 @@ fn declare_local(bcx: &Block,
                         scope_metadata,
                         name,
                         file_metadata,
-                        loc.line as c_uint,
+                        loc_line,
                         type_metadata,
                         address_operations.as_ptr(),
                         address_operations.len() as c_uint,
@@ -2419,9 +2420,13 @@ fn populate_scope_map(cx: &CrateContext,
     // Push argument identifiers onto the stack so arguments integrate nicely with variable
     // shadowing.
     for &arg_pat in arg_pats.iter() {
+        let scope_stack_ptr = &mut scope_stack;
         pat_util::pat_bindings(def_map, arg_pat, |_, _, _, path_ref| {
             let ident = ast_util::path_to_ident(path_ref);
-            scope_stack.push(ScopeStackEntry { scope_metadata: fn_metadata, ident: Some(ident) });
+            scope_stack_ptr.push(ScopeStackEntry {
+                scope_metadata: fn_metadata,
+                ident: Some(ident),
+            });
         })
     }
 

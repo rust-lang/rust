@@ -134,12 +134,19 @@ impl<'f> Combine for Lub<'f> {
         // Generalize the regions appearing in sig0 if possible
         let new_vars =
             self.get_ref().infcx.region_vars.vars_created_since_snapshot(snapshot);
+        let sig0_binder_id = sig0.binder_id;
         let sig1 =
             fold_regions_in_sig(
                 self.get_ref().infcx.tcx,
                 &sig0,
-                |r| generalize_region(self, snapshot, new_vars.as_slice(),
-                                      sig0.binder_id, &a_map, r));
+                |r| {
+                    generalize_region(self,
+                                      snapshot,
+                                      new_vars.as_slice(),
+                                      sig0_binder_id,
+                                      &a_map,
+                                      r)
+                });
         return Ok(sig1);
 
         fn generalize_region(this: &Lub,

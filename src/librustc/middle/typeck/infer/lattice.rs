@@ -508,9 +508,10 @@ pub fn lattice_var_and_t<L:LatticeDir + Combine,
             // and then return b.
             debug!("bnd=None");
             let a_bounds = this.with_bnd(a_bounds, (*b).clone());
+            let nde_a_rank = nde_a.rank;
             this.combine_fields().bnds(&a_bounds.lb, &a_bounds.ub).then(|| {
                 this.infcx().set(a_id.clone(),
-                                 Root(a_bounds.clone(), nde_a.rank));
+                                 Root(a_bounds.clone(), nde_a_rank));
                 Ok((*b).clone())
             })
         }
