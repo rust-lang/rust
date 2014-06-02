@@ -67,6 +67,7 @@ pub fn cs_cmp(cx: &mut ExtCtxt, span: Span,
               substr: &Substructure) -> @Expr {
     let test_id = cx.ident_of("__test");
     let equals_path = ordering_const(cx, span, Equal);
+    let equals_path_2 = equals_path.clone();
 
     /*
     Builds:
@@ -107,7 +108,7 @@ pub fn cs_cmp(cx: &mut ExtCtxt, span: Span,
                                  old, Some(cx.expr_ident(span, test_id)));
             cx.expr_block(cx.block(span, vec!(assign), Some(if_)))
         },
-        cx.expr_path(equals_path.clone()),
+        cx.expr_path(equals_path_2),
         |cx, span, list, _| {
             match list {
                 // an earlier nonmatching variant is Less than a

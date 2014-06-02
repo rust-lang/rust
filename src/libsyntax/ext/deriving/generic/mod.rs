@@ -380,6 +380,7 @@ impl<'a> TraitDef<'a> {
                            generics: &Generics,
                            methods: Vec<@ast::Method> ) -> @ast::Item {
         let trait_path = self.path.to_path(cx, self.span, type_ident, generics);
+        let trait_path_2 = trait_path.clone();
 
         let Generics { mut lifetimes, ty_params } =
             self.generics.to_generics(cx, self.span, type_ident, generics);
@@ -399,7 +400,7 @@ impl<'a> TraitDef<'a> {
                                                   type_ident, generics))
                 }).collect();
             // require the current trait
-            bounds.push(cx.typarambound(trait_path.clone()));
+            bounds.push(cx.typarambound(trait_path_2.clone()));
 
             cx.typaram(self.span,
                        ty_param.ident,
