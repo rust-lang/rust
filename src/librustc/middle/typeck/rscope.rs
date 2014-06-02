@@ -12,6 +12,7 @@
 use middle::ty;
 
 use std::cell::Cell;
+use std::kinds::marker::NoCopy;
 use syntax::ast;
 use syntax::codemap::Span;
 
@@ -49,6 +50,7 @@ impl RegionScope for ExplicitRscope {
 pub struct BindingRscope {
     binder_id: ast::NodeId,
     anon_bindings: Cell<uint>,
+    noncopyable: NoCopy,
 }
 
 impl BindingRscope {
@@ -56,6 +58,7 @@ impl BindingRscope {
         BindingRscope {
             binder_id: binder_id,
             anon_bindings: Cell::new(0),
+            noncopyable: NoCopy,
         }
     }
 }
