@@ -24,7 +24,7 @@ use middle::cfg::graphviz::LabelledCFG;
 use middle::{trans, freevars, kind, ty, typeck, lint, reachable};
 use middle::dependency_format;
 use middle;
-use util::common::time;
+use util::common::Timer;
 use util::ppaux;
 use util::nodemap::{NodeSet};
 
@@ -136,19 +136,20 @@ impl Input {
 
 pub fn phase_1_parse_input(sess: &Session, cfg: ast::CrateConfig, input: &Input)
     -> ast::Crate {
-    let krate = time(sess.time_passes(), "parsing", (), |_| {
-        match *input {
-            FileInput(ref file) => {
-                parse::parse_crate_from_file(&(*file), cfg.clone(), &sess.parse_sess)
-            }
-            StrInput(ref src) => {
-                parse::parse_crate_from_source_str(anon_src().to_string(),
-                                                   src.to_string(),
-                                                   cfg.clone(),
-                                                   &sess.parse_sess)
-            }
+    let _timer = Timer::new(sess.time_passes(), "parsing");
+    let krate = match *input {
+        FileInput(ref file) => {
+            parse::parse_crate_from_file(&(*file),
+                                         cfg.clone(),
+                                         &sess.parse_sess)
         }
-    });
+        StrInput(ref src) => {
+            parse::parse_crate_from_source_str(anon_src().to_string(),
+                                               src.to_string(),
+                                               cfg.clone(),
+                                               &sess.parse_sess)
+        }
+    };
 
     if sess.opts.debugging_opts & config::AST_JSON_NOEXPAND != 0 {
         let mut stdout = io::BufferedWriter::new(io::stdout());
@@ -180,11 +181,15 @@ pub fn phase_2_configure_and_expand(sess: &Session,
 
     *sess.crate_types.borrow_mut() = collect_crate_types(sess, krate.attrs.as_slice());
 
-    time(time_passes, "gated feature checking", (), |_|
-         front::feature_gate::check_crate(sess, &krate));
+    {
+        let _timer = Timer::new(time_passes, "gated feature checking");
+        front::feature_gate::check_crate(sess, &krate)
+    }
 
-    krate = time(time_passes, "crate injection", krate, |krate|
-                 front::std_inject::maybe_inject_crates_ref(sess, krate));
+    {
+        let _timer = Timer::new(time_passes, "crate injection");
+        krate = front::std_inject::maybe_inject_crates_ref(sess, krate)
+    }
 
     // strip before expansion to allow macros to depend on
     // configuration variables e.g/ in
@@ -194,40 +199,54 @@ pub fn phase_2_configure_and_expand(sess: &Session,
     //
     // baz! should not use this definition unless foo is enabled.
 
-    krate = time(time_passes, "configuration 1", krate, |krate|
-                 front::config::strip_unconfigured_items(krate));
+    {
+        let _timer = Timer::new(time_passes, "early configuration");
+        krate = front::config::strip_unconfigured_items(krate)
+    }
 
-    krate = time(time_passes, "expansion", krate, |krate| {
-        // Windows dlls do not have rpaths, so they don't know how to find their
-        // dependencies. It's up to us to tell the system where to find all the
-        // dependent dlls. Note that this uses cfg!(windows) as opposed to
-        // targ_cfg because syntax extensions are always loaded for the host
-        // compiler, not for the target.
+    {
+        let _timer = Timer::new(time_passes, "macro expansion");
+        // Windows dlls do not have rpaths, so they don't know how to find
+        // their dependencies. It's up to us to tell the system where to find
+        // all the dependent dlls. Note that this uses cfg!(windows) as
+        // opposed to targ_cfg because syntax extensions are always loaded for
+        // the host compiler, not for the target.
         if cfg!(windows) {
             sess.host_filesearch().add_dylib_search_paths();
         }
         let cfg = syntax::ext::expand::ExpansionConfig {
             loader: loader,
-            deriving_hash_type_parameter: sess.features.default_type_params.get(),
+            deriving_hash_type_parameter: sess.features
+                                              .default_type_params
+                                              .get(),
             crate_id: crate_id.clone(),
         };
-        syntax::ext::expand::expand_crate(&sess.parse_sess,
-                                          cfg,
-                                          krate)
-    });
+        krate = syntax::ext::expand::expand_crate(&sess.parse_sess,
+                                                  cfg,
+                                                  krate)
+    }
 
     // strip again, in case expansion added anything with a #[cfg].
-    krate = time(time_passes, "configuration 2", krate, |krate|
-                 front::config::strip_unconfigured_items(krate));
+    {
+        let _timer = Timer::new(time_passes, "late configuration");
+        krate = front::config::strip_unconfigured_items(krate)
+    }
 
-    krate = time(time_passes, "maybe building test harness", krate, |krate|
-                 front::test::modify_for_testing(sess, krate));
+    {
+        let _timer = Timer::new(time_passes, "building test harness");
+        krate = front::test::modify_for_testing(sess, krate)
+    }
 
-    krate = time(time_passes, "prelude injection", krate, |krate|
-                 front::std_inject::maybe_inject_prelude(sess, krate));
+    {
+        let _timer = Timer::new(time_passes, "prelude injection");
+        krate = front::std_inject::maybe_inject_prelude(sess, krate)
+    }
 
-    let (krate, map) = time(time_passes, "assigning node ids and indexing ast", krate, |krate|
-         front::assign_node_ids_and_map::assign_node_ids_and_map(sess, krate));
+    let (krate, map) = {
+        let _timer = Timer::new(time_passes,
+                                "node ID assignment and AST indexing");
+         front::assign_node_ids_and_map::assign_node_ids_and_map(sess, krate)
+    };
 
     if sess.opts.debugging_opts & config::AST_JSON != 0 {
         let mut stdout = io::BufferedWriter::new(io::stdout());
@@ -253,14 +272,17 @@ pub struct CrateAnalysis {
 pub fn phase_3_run_analysis_passes(sess: Session,
                                    krate: &ast::Crate,
                                    ast_map: syntax::ast_map::Map) -> CrateAnalysis {
-
     let time_passes = sess.time_passes();
 
-    time(time_passes, "external crate/lib resolution", (), |_|
-         creader::read_crates(&sess, krate));
+    {
+        let _timer = Timer::new(time_passes, "external crate/lib resolution");
+        creader::read_crates(&sess, krate)
+    }
 
-    let lang_items = time(time_passes, "language item collection", (), |_|
-                          middle::lang_items::collect_language_items(krate, &sess));
+    let lang_items = {
+        let _timer = Timer::new(time_passes, "language item collection");
+        middle::lang_items::collect_language_items(krate, &sess)
+    };
 
     let middle::resolve::CrateMap {
         def_map: def_map,
@@ -268,32 +290,44 @@ pub fn phase_3_run_analysis_passes(sess: Session,
         trait_map: trait_map,
         external_exports: external_exports,
         last_private_map: last_private_map
-    } =
-        time(time_passes, "resolution", (), |_|
-             middle::resolve::resolve_crate(&sess, &lang_items, krate));
+    } = {
+        let _timer = Timer::new(time_passes, "name resolution");
+        middle::resolve::resolve_crate(&sess, &lang_items, krate)
+    };
 
     // Discard MTWT tables that aren't required past resolution.
     syntax::ext::mtwt::clear_tables();
 
-    let named_region_map = time(time_passes, "lifetime resolution", (),
-                                |_| middle::resolve_lifetime::krate(&sess, krate));
+    let named_region_map = {
+        let _timer = Timer::new(time_passes, "lifetime resolution");
+        middle::resolve_lifetime::krate(&sess, krate)
+    };
 
-    time(time_passes, "looking for entry point", (),
-         |_| middle::entry::find_entry_point(&sess, krate, &ast_map));
+    {
+        let _timer = Timer::new(time_passes, "looking for entry point");
+        middle::entry::find_entry_point(&sess, krate, &ast_map)
+    }
 
-    sess.macro_registrar_fn.set(
-        time(time_passes, "looking for macro registrar", (), |_|
-            syntax::ext::registrar::find_macro_registrar(
-                sess.diagnostic(), krate)));
+    sess.macro_registrar_fn.set({
+        let _timer = Timer::new(time_passes, "looking for macro registrar");
+        syntax::ext::registrar::find_macro_registrar(sess.diagnostic(),
+                                                     krate)
+    });
 
-    let freevars = time(time_passes, "freevar finding", (), |_|
-                        freevars::annotate_freevars(&def_map, krate));
+    let freevars = {
+        let _timer = Timer::new(time_passes, "freevar finding");
+        freevars::annotate_freevars(&def_map, krate)
+    };
 
-    let region_map = time(time_passes, "region resolution", (), |_|
-                          middle::region::resolve_crate(&sess, krate));
+    let region_map = {
+        let _timer = Timer::new(time_passes, "region resolution");
+        middle::region::resolve_crate(&sess, krate)
+    };
 
-    time(time_passes, "loop checking", (), |_|
-         middle::check_loop::check_crate(&sess, krate));
+    {
+        let _timer = Timer::new(time_passes, "loop checking");
+        middle::check_loop::check_crate(&sess, krate)
+    }
 
     let ty_cx = ty::mk_ctxt(sess, def_map, named_region_map, ast_map,
                             freevars, region_map, lang_items);
@@ -301,49 +335,73 @@ pub fn phase_3_run_analysis_passes(sess: Session,
     // passes are timed inside typeck
     typeck::check_crate(&ty_cx, trait_map, krate);
 
-    time(time_passes, "check static items", (), |_|
-         middle::check_static::check_crate(&ty_cx, krate));
+    {
+        let _timer = Timer::new(time_passes, "static item checking");
+        middle::check_static::check_crate(&ty_cx, krate)
+    }
 
     // These next two const passes can probably be merged
-    time(time_passes, "const marking", (), |_|
-         middle::const_eval::process_crate(krate, &ty_cx));
+    {
+        let _timer = Timer::new(time_passes, "constant evaluation");
+        middle::const_eval::process_crate(krate, &ty_cx)
+    }
 
-    time(time_passes, "const checking", (), |_|
-         middle::check_const::check_crate(krate, &ty_cx));
+    {
+        let _timer = Timer::new(time_passes, "constant checking");
+        middle::check_const::check_crate(krate, &ty_cx)
+    }
 
-    let maps = (external_exports, last_private_map);
-    let (exported_items, public_items) =
-            time(time_passes, "privacy checking", maps, |(a, b)|
-                 middle::privacy::check_crate(&ty_cx, &exp_map2, a, b, krate));
+    let (exported_items, public_items) = {
+        let _timer = Timer::new(time_passes, "privacy checking");
+        middle::privacy::check_crate(&ty_cx,
+                                     &exp_map2,
+                                     external_exports,
+                                     last_private_map,
+                                     krate)
+    };
 
-    time(time_passes, "effect checking", (), |_|
-         middle::effect::check_crate(&ty_cx, krate));
+    {
+        let _timer = Timer::new(time_passes, "effect checking");
+        middle::effect::check_crate(&ty_cx, krate)
+    }
 
-    time(time_passes, "match checking", (), |_|
-         middle::check_match::check_crate(&ty_cx, krate));
+    {
+        let _timer = Timer::new(time_passes, "pattern checking");
+        middle::check_match::check_crate(&ty_cx, krate)
+    }
 
-    time(time_passes, "liveness checking", (), |_|
-         middle::liveness::check_crate(&ty_cx, krate));
+    {
+        let _timer = Timer::new(time_passes, "liveness checking");
+        middle::liveness::check_crate(&ty_cx, krate)
+    }
 
-    time(time_passes, "borrow checking", (), |_|
-         middle::borrowck::check_crate(&ty_cx, krate));
+    {
+        let _timer = Timer::new(time_passes, "borrow checking");
+        middle::borrowck::check_crate(&ty_cx, krate)
+    }
 
-    time(time_passes, "kind checking", (), |_|
-         kind::check_crate(&ty_cx, krate));
+    {
+        let _timer = Timer::new(time_passes, "kind checking");
+        kind::check_crate(&ty_cx, krate)
+    }
 
-    let reachable_map =
-        time(time_passes, "reachability checking", (), |_|
-             reachable::find_reachable(&ty_cx, &exported_items));
+    let reachable_map = {
+        let _timer = Timer::new(time_passes, "reachability checking");
+        reachable::find_reachable(&ty_cx, &exported_items)
+    };
 
-    time(time_passes, "death checking", (), |_| {
+    {
+        let _timer = Timer::new(time_passes, "death checking");
         middle::dead::check_crate(&ty_cx,
                                   &exported_items,
                                   &reachable_map,
                                   krate)
-    });
+    }
 
-    time(time_passes, "lint checking", (), |_|
-         lint::check_crate(&ty_cx, &exported_items, krate));
+    {
+        let _timer = Timer::new(time_passes, "lint checking");
+        lint::check_crate(&ty_cx, &exported_items, krate)
+    }
 
     CrateAnalysis {
         exp_map2: exp_map2,
@@ -369,15 +427,19 @@ pub struct CrateTranslation {
 /// be discarded.
 pub fn phase_4_translate_to_llvm(krate: ast::Crate,
                                  analysis: CrateAnalysis,
-                                 outputs: &OutputFilenames) -> (ty::ctxt, CrateTranslation) {
+                                 outputs: &OutputFilenames)
+                                 -> (ty::ctxt, CrateTranslation) {
     let time_passes = analysis.ty_cx.sess.time_passes();
 
-    time(time_passes, "resolving dependency formats", (), |_|
-         dependency_format::calculate(&analysis.ty_cx));
+    {
+        let _timer = Timer::new(time_passes, "dependency format resolution");
+        dependency_format::calculate(&analysis.ty_cx)
+    }
 
-    // Option dance to work around the lack of stack once closures.
-    time(time_passes, "translation", (krate, analysis), |(krate, analysis)|
-         trans::base::trans_crate(krate, analysis, outputs))
+    {
+        let _timer = Timer::new(time_passes, "translation to LLVM IR");
+        trans::base::trans_crate(krate, analysis, outputs)
+    }
 }
 
 /// Run LLVM itself, producing a bitcode file, assembly file or object file
@@ -388,8 +450,10 @@ pub fn phase_5_run_llvm_passes(sess: &Session,
     if sess.opts.cg.no_integrated_as {
         let output_type = link::OutputTypeAssembly;
 
-        time(sess.time_passes(), "LLVM passes", (), |_|
-            link::write::run_passes(sess, trans, [output_type], outputs));
+        {
+            let _timer = Timer::new(sess.time_passes(), "LLVM passes");
+            link::write::run_passes(sess, trans, [output_type], outputs);
+        }
 
         link::write::run_assembler(sess, outputs);
 
@@ -398,11 +462,11 @@ pub fn phase_5_run_llvm_passes(sess: &Session,
             fs::unlink(&outputs.temp_path(link::OutputTypeAssembly)).unwrap();
         }
     } else {
-        time(sess.time_passes(), "LLVM passes", (), |_|
-            link::write::run_passes(sess,
-                                    trans,
-                                    sess.opts.output_types.as_slice(),
-                                    outputs));
+        let _timer = Timer::new(sess.time_passes(), "LLVM passes");
+        link::write::run_passes(sess,
+                                trans,
+                                sess.opts.output_types.as_slice(),
+                                outputs);
     }
 }
 
@@ -411,11 +475,8 @@ pub fn phase_5_run_llvm_passes(sess: &Session,
 pub fn phase_6_link_output(sess: &Session,
                            trans: &CrateTranslation,
                            outputs: &OutputFilenames) {
-    time(sess.time_passes(), "linking", (), |_|
-         link::link_binary(sess,
-                           trans,
-                           outputs,
-                           &trans.link.crateid));
+    let _timer = Timer::new(sess.time_passes(), "linking");
+    link::link_binary(sess, trans, outputs, &trans.link.crateid);
 }
 
 pub fn stop_after_phase_3(sess: &Session) -> bool {

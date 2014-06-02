@@ -14,7 +14,7 @@ use driver::session;
 use driver::config;
 use lib::llvm::{ModuleRef, TargetMachineRef, llvm, True, False};
 use metadata::cstore;
-use util::common::time;
+use util::common::Timer;
 
 use libc;
 use flate;
@@ -42,6 +42,7 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
     // load the bitcode from the archive. Then merge it into the current LLVM
     // module that we've got.
     let crates = sess.cstore.get_used_crates(cstore::RequireStatic);
+    let _timer = Timer::new(sess.time_passes(), "reading external crates");
     for (cnum, path) in crates.move_iter() {
         let name = sess.cstore.get_crate_data(cnum).name.clone();
         let path = match path {
@@ -54,33 +55,18 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
 
         let archive = ArchiveRO::open(&path).expect("wanted an rlib");
         debug!("reading {}", name);
-        let bc = time(sess.time_passes(),
-                      format!("read {}.bc.deflate", name).as_slice(),
-                      (),
-                      |_| {
-                          archive.read(format!("{}.bc.deflate",
-                                               name).as_slice())
-                      });
+        let bc = archive.read(format!("{}.bc.deflate", name).as_slice());
         let bc = bc.expect("missing compressed bytecode in archive!");
-        let bc = time(sess.time_passes(),
-                      format!("inflate {}.bc", name).as_slice(),
-                      (),
-                      |_| {
-                          match flate::inflate_bytes(bc) {
-                              Some(bc) => bc,
-                              None => {
-                                  sess.fatal(format!("failed to decompress \
-                                                      bc of `{}`",
-                                                     name).as_slice())
-                              }
-                          }
-                      });
+        let bc = match flate::inflate_bytes(bc) {
+              Some(bc) => bc,
+              None => {
+                  sess.fatal(format!("failed to decompress bc of `{}`",
+                                     name).as_slice())
+              }
+        };
         let ptr = bc.as_slice().as_ptr();
         debug!("linking {}", name);
-        time(sess.time_passes(),
-             format!("ll link {}", name).as_slice(),
-             (),
-             |()| unsafe {
+        unsafe {
             if !llvm::LLVMRustLinkInExternalBitcode(llmod,
                                                     ptr as *libc::c_char,
                                                     bc.len() as libc::size_t) {
@@ -88,7 +74,7 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
                                format_strbuf!("failed to load bc of `{}`",
                                                name.as_slice()));
             }
-        });
+        }
     }
 
     // Internalize everything but the reachable symbols of the current module
@@ -126,8 +112,10 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
 
         "verify".with_c_str(|s| llvm::LLVMRustAddPass(pm, s));
 
-        time(sess.time_passes(), "LTO pases", (), |()|
-             llvm::LLVMRunPassManager(pm, llmod));
+        {
+            let _timer = Timer::new(sess.time_passes(), "LTO passes");
+            llvm::LLVMRunPassManager(pm, llmod);
+        }
 
         llvm::LLVMDisposePassManager(pm);
     }

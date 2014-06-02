@@ -65,7 +65,7 @@ use driver::config;
 
 use middle::resolve;
 use middle::ty;
-use util::common::time;
+use util::common::Timer;
 use util::ppaux::Repr;
 use util::ppaux;
 use util::nodemap::{DefIdMap, FnvHashMap};
@@ -444,21 +444,29 @@ pub fn check_crate(tcx: &ty::ctxt,
         tcx: tcx
     };
 
-    time(time_passes, "type collecting", (), |_|
-        collect::collect_item_types(&ccx, krate));
+    {
+        let _timer = Timer::new(time_passes, "type collecting");
+        collect::collect_item_types(&ccx, krate);
+    }
 
     // this ensures that later parts of type checking can assume that items
     // have valid types and not error
     tcx.sess.abort_if_errors();
 
-    time(time_passes, "variance inference", (), |_|
-         variance::infer_variance(tcx, krate));
+    {
+        let _timer = Timer::new(time_passes, "variance inference");
+        variance::infer_variance(tcx, krate);
+    }
 
-    time(time_passes, "coherence checking", (), |_|
-        coherence::check_coherence(&ccx, krate));
+    {
+        let _timer = Timer::new(time_passes, "coherence checking");
+        coherence::check_coherence(&ccx, krate);
+    }
 
-    time(time_passes, "type checking", (), |_|
-        check::check_item_types(&ccx, krate));
+    {
+        let _timer = Timer::new(time_passes, "typechecking");
+        check::check_item_types(&ccx, krate);
+    }
 
     check_for_entry_fn(&ccx);
     tcx.sess.abort_if_errors();
