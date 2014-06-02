@@ -349,22 +349,23 @@ pub fn create_global_var_metadata(cx: &CrateContext,
         namespace_node.mangled_name_of_contained_item(var_name.as_slice());
     let var_scope = namespace_node.scope;
 
-    var_name.as_slice().with_c_str(|var_name| {
-        linkage_name.as_slice().with_c_str(|linkage_name| {
-            unsafe {
-                llvm::LLVMDIBuilderCreateStaticVariable(DIB(cx),
-                                                        var_scope,
-                                                        var_name,
-                                                        linkage_name,
-                                                        file_metadata,
-                                                        loc.line as c_uint,
-                                                        type_metadata,
-                                                        is_local_to_unit,
-                                                        global,
-                                                        ptr::null());
-            }
-        })
-    });
+    let file_metadata_ptr = &file_metadata;
+    let type_metadata_ptr = &type_metadata;
+    let var_name_c = var_name.to_c_str();
+    let linkage_name_c = linkage_name.to_c_str();
+    unsafe {
+        llvm::LLVMDIBuilderCreateStaticVariable(DIB(cx),
+                                                var_scope,
+                                                var_name_c.with_ref(|x| x),
+                                                linkage_name_c.with_ref(|x|
+                                                                        x),
+                                                *file_metadata_ptr,
+                                                loc.line as c_uint,
+                                                *type_metadata_ptr,
+                                                is_local_to_unit,
+                                                global,
+                                                ptr::null());
+    }
 }
 
 /// Creates debug information for the given local variable.
@@ -744,28 +745,26 @@ pub fn create_function_debug_context(cx: &CrateContext,
 
     let is_local_to_unit = is_node_local_to_unit(cx, fn_ast_id);
 
-    let fn_metadata = function_name.as_slice().with_c_str(|function_name| {
-                          linkage_name.as_slice().with_c_str(|linkage_name| {
-            unsafe {
-                llvm::LLVMDIBuilderCreateFunction(
-                    DIB(cx),
-                    containing_scope,
-                    function_name,
-                    linkage_name,
-                    file_metadata,
-                    loc.line as c_uint,
-                    function_type_metadata,
-                    is_local_to_unit,
-                    true,
-                    scope_line as c_uint,
-                    FlagPrototyped as c_uint,
-                    cx.sess().opts.optimize != config::No,
-                    llfn,
-                    template_parameters,
-                    ptr::null())
-            }
-        })
-    });
+    let function_name_c = function_name.to_c_str();
+    let linkage_name_c = linkage_name.to_c_str();
+    let fn_metadata = unsafe {
+        llvm::LLVMDIBuilderCreateFunction(
+            DIB(cx),
+            containing_scope,
+            function_name_c.with_ref(|x| x),
+            linkage_name_c.with_ref(|x| x),
+            file_metadata,
+            loc.line as c_uint,
+            function_type_metadata,
+            is_local_to_unit,
+            true,
+            scope_line as c_uint,
+            FlagPrototyped as c_uint,
+            cx.sess().opts.optimize != config::No,
+            llfn,
+            template_parameters,
+            ptr::null())
+    };
 
     // Initialize fn debug context (including scope map and namespace map)
     let fn_debug_context = box FunctionDebugContextData {
@@ -981,28 +980,22 @@ fn compile_unit_metadata(cx: &CrateContext) {
     let producer = format!("rustc version {}",
                            (option_env!("CFG_VERSION")).expect("CFG_VERSION"));
 
-    compile_unit_name.with_ref(|compile_unit_name| {
-        work_dir.as_vec().with_c_str(|work_dir| {
-            producer.with_c_str(|producer| {
-                "".with_c_str(|flags| {
-                    "".with_c_str(|split_name| {
-                        unsafe {
-                            llvm::LLVMDIBuilderCreateCompileUnit(
-                                debug_context(cx).builder,
-                                DW_LANG_RUST,
-                                compile_unit_name,
-                                work_dir,
-                                producer,
-                                cx.sess().opts.optimize != config::No,
-                                flags,
-                                0,
-                                split_name);
-                        }
-                    })
-                })
-            })
-        })
-    });
+    let work_dir_c = work_dir.to_c_str();
+    let producer_c = producer.to_c_str();
+    let flags_c = "".to_c_str();
+    let split_name_c = "".to_c_str();
+    unsafe {
+        llvm::LLVMDIBuilderCreateCompileUnit(
+            debug_context(cx).builder,
+            DW_LANG_RUST,
+            compile_unit_name.with_ref(|x| x),
+            work_dir_c.with_ref(|x| x),
+            producer_c.with_ref(|x| x),
+            cx.sess().opts.optimize != config::No,
+            flags_c.with_ref(|x| x),
+            0,
+            split_name_c.with_ref(|x| x));
+    }
 
     fn fallback_path(cx: &CrateContext) -> CString {
         cx.link_meta.crateid.name.as_slice().to_c_str()
@@ -1582,44 +1575,51 @@ fn prepare_enum_metadata(cx: &CrateContext,
         })
         .collect();
 
-    let discriminant_type_metadata = |inttype| {
-        // We can reuse the type of the discriminant for all monomorphized instances of an enum
-        // because it doesn't depend on any type parameters. The def_id, uniquely identifying the
-        // enum's polytype acts as key in this cache.
-        let cached_discriminant_type_metadata = debug_context(cx).created_enum_disr_types
-                                                                 .borrow()
-                                                                 .find_copy(&enum_def_id);
-        match cached_discriminant_type_metadata {
-            Some(discriminant_type_metadata) => discriminant_type_metadata,
-            None => {
-                let discriminant_llvm_type = adt::ll_inttype(cx, inttype);
-                let (discriminant_size, discriminant_align) =
-                    size_and_align_of(cx, discriminant_llvm_type);
-                let discriminant_base_type_metadata = type_metadata(cx,
-                                                                    adt::ty_of_inttype(inttype),
-                                                                    codemap::DUMMY_SP);
-                let discriminant_name = get_enum_discriminant_name(cx, enum_def_id);
+    let loc_line = loc.line;
+    let discriminant_type_metadata = {
+        |inttype| {
+            // We can reuse the type of the discriminant for all monomorphized
+            // instances of an enum because it doesn't depend on any type
+            // parameters. The def_id, uniquely identifying the enum's
+            // polytype acts as key in this cache.
+            let cached_discriminant_type_metadata =
+                debug_context(cx).created_enum_disr_types
+                                 .borrow()
+                                 .find_copy(&enum_def_id);
+            match cached_discriminant_type_metadata {
+                Some(discriminant_type_metadata) => discriminant_type_metadata,
+                None => {
+                    let discriminant_llvm_type = adt::ll_inttype(cx, inttype);
+                    let (discriminant_size, discriminant_align) =
+                        size_and_align_of(cx, discriminant_llvm_type);
+                    let discriminant_base_type_metadata =
+                        type_metadata(cx,
+                                      adt::ty_of_inttype(inttype),
+                                      codemap::DUMMY_SP);
+                    let discriminant_name = get_enum_discriminant_name(cx, enum_def_id);
 
-                let discriminant_type_metadata = discriminant_name.get().with_c_str(|name| {
-                    unsafe {
+                    let discriminant_name =
+                        discriminant_name.get().to_c_str();
+                    let discriminant_type_metadata = unsafe {
                         llvm::LLVMDIBuilderCreateEnumerationType(
                             DIB(cx),
                             containing_scope,
-                            name,
+                            discriminant_name.with_ref(|x| x),
                             file_metadata,
-                            loc.line as c_uint,
+                            loc_line as c_uint,
                             bytes_to_bits(discriminant_size),
                             bytes_to_bits(discriminant_align),
-                            create_DIArray(DIB(cx), enumerators_metadata.as_slice()),
+                            create_DIArray(DIB(cx),
+                                           enumerators_metadata.as_slice()),
                             discriminant_base_type_metadata)
-                    }
-                });
+                    };
 
-                debug_context(cx).created_enum_disr_types
-                                 .borrow_mut()
-                                 .insert(enum_def_id, discriminant_type_metadata);
+                    debug_context(cx).created_enum_disr_types
+                                     .borrow_mut()
+                                     .insert(enum_def_id, discriminant_type_metadata);
 
-                discriminant_type_metadata
+                    discriminant_type_metadata
+                }
             }
         }
     };
@@ -1656,24 +1656,23 @@ fn prepare_enum_metadata(cx: &CrateContext,
             let (enum_type_size, enum_type_align) = size_and_align_of(cx, enum_llvm_type);
             let unique_id = generate_unique_type_id("DI_ENUM_");
 
-            let enum_metadata = enum_name.as_slice().with_c_str(|enum_name| {
-                unique_id.as_slice().with_c_str(|unique_id| {
-                    unsafe {
-                        llvm::LLVMDIBuilderCreateUnionType(
-                        DIB(cx),
-                        containing_scope,
-                        enum_name,
-                        file_metadata,
-                        loc.line as c_uint,
-                        bytes_to_bits(enum_type_size),
-                        bytes_to_bits(enum_type_align),
-                        0, // Flags
-                        ptr::null(),
-                        0, // RuntimeLang
-                        unique_id)
-                    }
-                })
-            });
+            let loc_line = loc.line as c_uint;
+            let enum_name_c = enum_name.to_c_str();
+            let unique_id_c = unique_id.to_c_str();
+            let enum_metadata = unsafe {
+                llvm::LLVMDIBuilderCreateUnionType(
+                    DIB(cx),
+                    containing_scope,
+                    enum_name_c.with_ref(|x| x),
+                    file_metadata,
+                    loc_line,
+                    bytes_to_bits(enum_type_size),
+                    bytes_to_bits(enum_type_align),
+                    0, // Flags
+                    ptr::null(),
+                    0, // RuntimeLang
+                    unique_id_c.with_ref(|x| x))
+            };
 
             UnfinishedMetadata {
                 cache_id: cache_id_for_type(enum_type),
@@ -1802,21 +1801,20 @@ fn set_members_of_composite_type(cx: &CrateContext,
                 ComputedMemberOffset => machine::llelement_offset(cx, composite_llvm_type, i)
             };
 
-            member_description.name.as_slice().with_c_str(|member_name| {
-                unsafe {
-                    llvm::LLVMDIBuilderCreateMemberType(
-                        DIB(cx),
-                        composite_type_metadata,
-                        member_name,
-                        file_metadata,
-                        loc.line as c_uint,
-                        bytes_to_bits(member_size),
-                        bytes_to_bits(member_align),
-                        bytes_to_bits(member_offset),
-                        0,
-                        member_description.type_metadata)
-                }
-            })
+            let member_name_c = member_description.name.to_c_str();
+            unsafe {
+                llvm::LLVMDIBuilderCreateMemberType(
+                    DIB(cx),
+                    composite_type_metadata,
+                    member_name_c.with_ref(|x| x),
+                    file_metadata,
+                    loc.line as c_uint,
+                    bytes_to_bits(member_size),
+                    bytes_to_bits(member_align),
+                    bytes_to_bits(member_offset),
+                    0,
+                    member_description.type_metadata)
+            }
         })
         .collect();
 
@@ -1843,28 +1841,27 @@ fn create_struct_stub(cx: &CrateContext,
     let unique_id = generate_unique_type_id("DI_STRUCT_");
 
     return unsafe {
-        struct_type_name.with_c_str(|name| {
-            unique_id.as_slice().with_c_str(|unique_id| {
-                // LLVMDIBuilderCreateStructType() wants an empty array. A null pointer will lead to
-                // hard to trace and debug LLVM assertions later on in llvm/lib/IR/Value.cpp
-                let empty_array = create_DIArray(DIB(cx), []);
+        let struct_type_name_c = struct_type_name.to_c_str();
+        let unique_id_c = unique_id.to_c_str();
 
-                llvm::LLVMDIBuilderCreateStructType(
-                    DIB(cx),
-                    containing_scope,
-                    name,
-                    file_metadata,
-                    loc.line as c_uint,
-                    bytes_to_bits(struct_size),
-                    bytes_to_bits(struct_align),
-                    0,
-                    ptr::null(),
-                    empty_array,
-                    0,
-                    ptr::null(),
-                    unique_id)
-            })
-        })
+        // LLVMDIBuilderCreateStructType() wants an empty array. A null pointer will lead to
+        // hard to trace and debug LLVM assertions later on in llvm/lib/IR/Value.cpp
+        let empty_array = create_DIArray(DIB(cx), []);
+
+        llvm::LLVMDIBuilderCreateStructType(
+            DIB(cx),
+            containing_scope,
+            struct_type_name_c.with_ref(|x| x),
+            file_metadata,
+            loc.line as c_uint,
+            bytes_to_bits(struct_size),
+            bytes_to_bits(struct_align),
+            0,
+            ptr::null(),
+            empty_array,
+            0,
+            ptr::null(),
+            unique_id_c.with_ref(|x| x))
     };
 }
 
