@@ -298,10 +298,11 @@ pub fn make_tests(config: &Config) -> Vec<test::TestDescAndFn> {
         let file = file.clone();
         debug!("inspecting file {}", file.display());
         if is_test(config, &file) {
-            let t = make_test(config, &file, || {
+            let file_ptr = &file;
+            let t = make_test(config, file_ptr, || {
                 match config.mode {
-                    Codegen => make_metrics_test_closure(config, &file),
-                    _ => make_test_closure(config, &file)
+                    Codegen => make_metrics_test_closure(config, file_ptr),
+                    _ => make_test_closure(config, file_ptr)
                 }
             });
             tests.push(t)
