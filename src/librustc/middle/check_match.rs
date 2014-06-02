@@ -20,7 +20,7 @@ use util::ppaux::ty_to_str;
 use std::cmp;
 use std::iter;
 use syntax::ast::*;
-use syntax::ast_util::{unguarded_pat, walk_pat};
+use syntax::ast_util::{is_unguarded, walk_pat};
 use syntax::codemap::{DUMMY_SP, Span};
 use syntax::parse::token;
 use syntax::visit;
@@ -79,26 +79,13 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &Expr) {
            // If the type *is* empty, it's vacuously exhaustive
            return;
        }
-       match ty::get(pat_ty).sty {
-          ty_enum(did, _) => {
-              if (*enum_variants(cx.tcx, did)).is_empty() &&
-                    (*arms).is_empty() {
-
-               return;
-            }
-          }
-          _ => { /* We assume only enum types can be uninhabited */ }
-       }
-
-       let pats: Vec<@Pat> = arms.iter()
-                               .filter_map(unguarded_pat)
-                               .flat_map(|pats| pats.move_iter())
-                               .collect();
-       if pats.is_empty() {
-           cx.tcx.sess.span_err(ex.span, "non-exhaustive patterns");
-       } else {
-           check_exhaustive(cx, ex.span, pats);
-       }
+       let m: matrix = arms
+          .iter()
+          .filter(|&arm| is_unguarded(arm))
+          .flat_map(|arm| arm.pats.iter())
+          .map(|pat| vec!(pat.clone()))
+          .collect();
+       check_exhaustive(cx, ex.span, &m);
      }
      _ => ()
     }
@@ -152,9 +139,8 @@ fn raw_pat(p: @Pat) -> @Pat {
     }
 }
 
-fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, pats: Vec<@Pat> ) {
-    assert!((!pats.is_empty()));
-    let ext = match is_useful(cx, &pats.iter().map(|p| vec!(*p)).collect(), [wild()]) {
+fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, m: &matrix) {
+    let ext = match is_useful(cx, m, [wild()]) {
         not_useful => {
             // This is good, wildcard pattern isn't reachable
             return;
@@ -587,23 +573,20 @@ fn specialize(cx: &MatchCheckCtxt,
                   arity: uint,
                   left_ty: ty::t)
                -> Option<Vec<@Pat> > {
-    // Sad, but I can't get rid of this easily
-    let r0 = (*raw_pat(r[0])).clone();
-    match r0 {
-        Pat{id: pat_id, node: n, span: pat_span} =>
-            match n {
-            PatWild => {
-                Some(Vec::from_elem(arity, wild()).append(r.tail()))
+    let &Pat{id: ref pat_id, node: ref n, span: ref pat_span} = &(*raw_pat(r[0]));
+    let head: Option<Vec<@Pat>> = match n {
+            &PatWild => {
+                Some(Vec::from_elem(arity, wild()))
             }
-            PatWildMulti => {
-                Some(Vec::from_elem(arity, wild_multi()).append(r.tail()))
+            &PatWildMulti => {
+                Some(Vec::from_elem(arity, wild_multi()))
             }
-            PatIdent(_, _, _) => {
-                let opt_def = cx.tcx.def_map.borrow().find_copy(&pat_id);
+            &PatIdent(_, _, _) => {
+                let opt_def = cx.tcx.def_map.borrow().find_copy(pat_id);
                 match opt_def {
                     Some(DefVariant(_, id, _)) => {
                         if variant(id) == *ctor_id {
-                            Some(Vec::from_slice(r.tail()))
+                            Some(vec!())
                         } else {
                             None
                         }
@@ -617,7 +600,7 @@ fn specialize(cx: &MatchCheckCtxt,
                                 match compare_const_vals(&e_v, v) {
                                     Some(val1) => (val1 == 0),
                                     None => {
-                                        cx.tcx.sess.span_err(pat_span,
+                                        cx.tcx.sess.span_err(*pat_span,
                                             "mismatched types between arms");
                                         false
                                     }
@@ -631,7 +614,7 @@ fn specialize(cx: &MatchCheckCtxt,
                                         (val1 >= 0 && val2 <= 0)
                                     }
                                     _ => {
-                                        cx.tcx.sess.span_err(pat_span,
+                                        cx.tcx.sess.span_err(*pat_span,
                                             "mismatched types between ranges");
                                         false
                                     }
@@ -641,18 +624,18 @@ fn specialize(cx: &MatchCheckCtxt,
                             _ => fail!("type error")
                         };
                         if match_ {
-                            Some(Vec::from_slice(r.tail()))
+                            Some(vec!())
                         } else {
                             None
                         }
                     }
                     _ => {
-                        Some(Vec::from_elem(arity, wild()).append(r.tail()))
+                        Some(Vec::from_elem(arity, wild()))
                     }
                 }
             }
-            PatEnum(_, args) => {
-                let def = cx.tcx.def_map.borrow().get_copy(&pat_id);
+            &PatEnum(_, ref args) => {
+                let def = cx.tcx.def_map.borrow().get_copy(pat_id);
                 match def {
                     DefStatic(did, _) => {
                         let const_expr =
@@ -663,7 +646,7 @@ fn specialize(cx: &MatchCheckCtxt,
                                 match compare_const_vals(&e_v, v) {
                                     Some(val1) => (val1 == 0),
                                     None => {
-                                        cx.tcx.sess.span_err(pat_span,
+                                        cx.tcx.sess.span_err(*pat_span,
                                             "mismatched types between arms");
                                         false
                                     }
@@ -674,7 +657,7 @@ fn specialize(cx: &MatchCheckCtxt,
                                 match (m1, m2) {
                                     (Some(val1), Some(val2)) => (val1 >= 0 && val2 <= 0),
                                     _ => {
-                                        cx.tcx.sess.span_err(pat_span,
+                                        cx.tcx.sess.span_err(*pat_span,
                                             "mismatched types between ranges");
                                         false
                                     }
@@ -684,97 +667,72 @@ fn specialize(cx: &MatchCheckCtxt,
                             _ => fail!("type error")
                         };
                         if match_ {
-                            Some(Vec::from_slice(r.tail()))
+                            Some(vec!())
                         } else {
                             None
                         }
                     }
-                    DefVariant(_, id, _) if variant(id) == *ctor_id => {
-                        let args = match args {
-                            Some(args) => args.iter().map(|x| *x).collect(),
-                            None => Vec::from_elem(arity, wild())
-                        };
-                        Some(args.append(r.tail()))
-                    }
-                    DefVariant(_, _, _) => None,
-
-                    DefFn(..) |
-                    DefStruct(..) => {
-                        let new_args;
-                        match args {
-                            Some(args) => {
-                                new_args = args.iter().map(|x| *x).collect()
-                            }
-                            None => new_args = Vec::from_elem(arity, wild())
-                        }
-                        Some(new_args.append(r.tail()))
+                    DefVariant(_, id, _) if variant(id) != *ctor_id => None,
+                    DefVariant(..) | DefFn(..) | DefStruct(..) => {
+                        Some(match args {
+                            &Some(ref args) => args.clone(),
+                            &None => Vec::from_elem(arity, wild())
+                        })
                     }
                     _ => None
                 }
             }
-            PatStruct(_, ref pattern_fields, _) => {
+            &PatStruct(_, ref pattern_fields, _) => {
                 // Is this a struct or an enum variant?
-                let def = cx.tcx.def_map.borrow().get_copy(&pat_id);
-                match def {
+                let def = cx.tcx.def_map.borrow().get_copy(pat_id);
+                let class_id = match def {
                     DefVariant(_, variant_id, _) => {
-                        if variant(variant_id) == *ctor_id {
-                            let struct_fields = ty::lookup_struct_fields(cx.tcx, variant_id);
-                            let args = struct_fields.iter().map(|sf| {
-                                match pattern_fields.iter().find(|f| f.ident.name == sf.name) {
-                                    Some(f) => f.pat,
-                                    _ => wild()
-                                }
-                            }).collect::<Vec<_>>();
-                            Some(args.append(r.tail()))
-                        } else {
-                            None
-                        }
+                      if variant(variant_id) == *ctor_id {
+                        Some(variant_id)
+                      } else {
+                        None
+                      }
                     }
                     _ => {
-                        // Grab the class data that we care about.
-                        let class_fields;
-                        let class_id;
                         match ty::get(left_ty).sty {
-                            ty::ty_struct(cid, _) => {
-                                class_id = cid;
-                                class_fields =
-                                    ty::lookup_struct_fields(cx.tcx,
-                                                             class_id);
-                            }
+                            ty::ty_struct(cid, _) => Some(cid),
                             _ => {
                                 cx.tcx.sess.span_bug(
-                                    pat_span,
+                                    *pat_span,
                                     format!("struct pattern resolved to {}, \
                                           not a struct",
                                          ty_to_str(cx.tcx,
                                                    left_ty)).as_slice());
                             }
                         }
-                        let args = class_fields.iter().map(|class_field| {
-                            match pattern_fields.iter().find(|f|
-                                            f.ident.name == class_field.name) {
-                                Some(f) => f.pat,
-                                _ => wild()
-                            }
-                        }).collect::<Vec<_>>();
-                        Some(args.append(r.tail()))
                     }
-                }
+                };
+                class_id.map(|variant_id| {
+                  let struct_fields = ty::lookup_struct_fields(cx.tcx, variant_id);
+                  let args = struct_fields.iter().map(|sf| {
+                      match pattern_fields.iter().find(|f| f.ident.name == sf.name) {
+                          Some(f) => f.pat,
+                          _ => wild()
+                      }
+                  }).collect();
+                  args
+                })
+
             }
-            PatTup(args) => {
-                Some(args.iter().map(|x| *x).collect::<Vec<_>>().append(r.tail()))
+            &PatTup(ref args) => {
+                Some(args.iter().map(|x| *x).collect())
             }
-            PatBox(a) | PatRegion(a) => {
-                Some((vec!(a)).append(r.tail()))
+            &PatBox(ref inner) | &PatRegion(ref inner) => {
+                Some(vec!(inner.clone()))
             }
-            PatLit(expr) => {
-                let e_v = eval_const_expr(cx.tcx, expr);
+            &PatLit(ref expr) => {
+                let e_v = eval_const_expr(cx.tcx, *expr);
                 let match_ = match *ctor_id {
                     val(ref v) => {
                         match compare_const_vals(&e_v, v) {
                             Some(val1) => val1 == 0,
                             None => {
-                                cx.tcx.sess.span_err(pat_span,
+                                cx.tcx.sess.span_err(*pat_span,
                                     "mismatched types between arms");
                                 false
                             }
@@ -786,7 +744,7 @@ fn specialize(cx: &MatchCheckCtxt,
                         match (m1, m2) {
                             (Some(val1), Some(val2)) => (val1 >= 0 && val2 <= 0),
                             _ => {
-                                cx.tcx.sess.span_err(pat_span,
+                                cx.tcx.sess.span_err(*pat_span,
                                     "mismatched types between ranges");
                                 false
                             }
@@ -796,52 +754,49 @@ fn specialize(cx: &MatchCheckCtxt,
                     _ => fail!("type error")
                 };
                 if match_ {
-                    Some(Vec::from_slice(r.tail()))
+                    Some(vec!())
                 } else {
                     None
                 }
             }
-            PatRange(lo, hi) => {
+            &PatRange(lo, hi) => {
                 let (c_lo, c_hi) = match *ctor_id {
-                    val(ref v) => ((*v).clone(), (*v).clone()),
-                    range(ref lo, ref hi) => ((*lo).clone(), (*hi).clone()),
-                    single => return Some(Vec::from_slice(r.tail())),
+                    val(ref v) => (v, v),
+                    range(ref lo, ref hi) => (lo, hi),
+                    single => return Some(vec!()),
                     _ => fail!("type error")
                 };
                 let v_lo = eval_const_expr(cx.tcx, lo);
                 let v_hi = eval_const_expr(cx.tcx, hi);
 
-                let m1 = compare_const_vals(&c_lo, &v_lo);
-                let m2 = compare_const_vals(&c_hi, &v_hi);
+                let m1 = compare_const_vals(c_lo, &v_lo);
+                let m2 = compare_const_vals(c_hi, &v_hi);
                 match (m1, m2) {
                     (Some(val1), Some(val2)) if val1 >= 0 && val2 <= 0 => {
-                        Some(Vec::from_slice(r.tail()))
+                        Some(vec!())
                     },
                     (Some(_), Some(_)) => None,
                     _ => {
-                        cx.tcx.sess.span_err(pat_span,
+                        cx.tcx.sess.span_err(*pat_span,
                             "mismatched types between ranges");
                         None
                     }
                 }
             }
-            PatVec(before, slice, after) => {
+            &PatVec(ref before, ref slice, ref after) => {
                 match *ctor_id {
                     vec(_) => {
                         let num_elements = before.len() + after.len();
                         if num_elements < arity && slice.is_some() {
                             let mut result = Vec::new();
-                            let wilds = Vec::from_elem(arity - num_elements, wild());
-                            result.push_all_move(before);
-                            result.push_all_move(wilds);
-                            result.push_all_move(after);
-                            result.push_all(r.tail());
+                            result.push_all(before.as_slice());
+                            result.grow_fn(arity - num_elements, |_| wild());
+                            result.push_all(after.as_slice());
                             Some(result)
                         } else if num_elements == arity {
                             let mut result = Vec::new();
-                            result.push_all_move(before);
-                            result.push_all_move(after);
-                            result.push_all(r.tail());
+                            result.push_all(before.as_slice());
+                            result.push_all(after.as_slice());
                             Some(result)
                         } else {
                             None
@@ -850,12 +805,12 @@ fn specialize(cx: &MatchCheckCtxt,
                     _ => None
                 }
             }
-            PatMac(_) => {
-                cx.tcx.sess.span_err(pat_span, "unexpanded macro");
+            &PatMac(_) => {
+                cx.tcx.sess.span_err(*pat_span, "unexpanded macro");
                 None
             }
-        }
-    }
+    };
+    head.map(|head| head.append(r.tail()))
 }
 
 fn default(cx: &MatchCheckCtxt, r: &[@Pat]) -> Option<Vec<@Pat> > {
