@@ -129,7 +129,7 @@ pub fn record_extern_fqn(cx: &core::DocContext,
     match cx.maybe_typed {
         core::Typed(ref tcx) => {
             let fqn = csearch::get_item_path(tcx, did);
-            let fqn = fqn.move_iter().map(|i| i.to_str().to_string()).collect();
+            let fqn = fqn.move_iter().map(|i| i.to_str()).collect();
             cx.external_paths.borrow_mut().get_mut_ref().insert(did, (fqn, kind));
         }
         core::NotTyped(..) => {}
@@ -138,10 +138,18 @@ pub fn record_extern_fqn(cx: &core::DocContext,
 
 pub fn build_external_trait(tcx: &ty::ctxt, did: ast::DefId) -> clean::Trait {
     let def = ty::lookup_trait_def(tcx, did);
-    let methods = ty::trait_methods(tcx, did);
+    let methods = ty::trait_methods(tcx, did).clean();
+    let provided = ty::provided_trait_methods(tcx, did);
+    let mut methods = methods.move_iter().map(|meth| {
+        if provided.iter().any(|a| a.def_id == meth.def_id) {
+            clean::Provided(meth)
+        } else {
+            clean::Required(meth)
+        }
+    });
     clean::Trait {
         generics: def.generics.clean(),
-        methods: methods.iter().map(|i| i.clean()).collect(),
+        methods: methods.collect(),
         parents: Vec::new(), // FIXME: this is likely wrong
     }
 }
@@ -263,10 +271,7 @@ fn build_impl(cx: &core::DocContext,
         if method.vis != ast::Public && associated_trait.is_none() {
             return None
         }
-        let mut item = match ty::method(tcx, *did).clean() {
-            clean::Provided(item) => item,
-            clean::Required(item) => item,
-        };
+        let mut item = ty::method(tcx, *did).clean();
         item.inner = match item.inner.clone() {
             clean::TyMethodItem(clean::TyMethod {
                 fn_style, decl, self_, generics

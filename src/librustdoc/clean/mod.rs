@@ -942,9 +942,8 @@ impl Clean<TraitMethod> for ast::TraitMethod {
     }
 }
 
-impl Clean<TraitMethod> for ty::Method {
-    fn clean(&self) -> TraitMethod {
-        let m = if self.provided_source.is_some() {Provided} else {Required};
+impl Clean<Item> for ty::Method {
+    fn clean(&self) -> Item {
         let cx = super::ctxtkey.get().unwrap();
         let tcx = match cx.maybe_typed {
             core::Typed(ref tcx) => tcx,
@@ -972,7 +971,7 @@ impl Clean<TraitMethod> for ty::Method {
             }
         };
 
-        m(Item {
+        Item {
             name: Some(self.ident.clean()),
             visibility: Some(ast::Inherited),
             def_id: self.def_id,
@@ -984,7 +983,7 @@ impl Clean<TraitMethod> for ty::Method {
                 self_: self_,
                 decl: (self.def_id, &sig).clean(),
             })
-        })
+        }
     }
 }
 
