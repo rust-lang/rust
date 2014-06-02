@@ -33,6 +33,7 @@ use core::option::{Option, Some, None};
 use core::ptr;
 use core::ptr::RawPtr;
 use core::mem::{min_align_of, size_of};
+use core::fmt;
 
 use heap::deallocate;
 
@@ -176,6 +177,12 @@ impl<T: PartialOrd> PartialOrd for Rc<T> {
 impl<T: Ord> Ord for Rc<T> {
     #[inline]
     fn cmp(&self, other: &Rc<T>) -> Ordering { (**self).cmp(&**other) }
+}
+
+impl<T: fmt::Show> fmt::Show for Rc<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        (**self).fmt(f)
+    }
 }
 
 /// Weak reference to a reference-counted box
