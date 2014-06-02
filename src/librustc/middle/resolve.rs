@@ -3856,14 +3856,20 @@ impl<'a> Resolver<'a> {
     }
 
     fn resolve_type_parameter_bound(&mut self,
-                                        id: NodeId,
-                                        type_parameter_bound: &TyParamBound) {
+                                    id: NodeId,
+                                    type_parameter_bound: &TyParamBound) {
         match *type_parameter_bound {
             TraitTyParamBound(ref tref) => {
                 self.resolve_trait_reference(id, tref, TraitBoundingTypeParameter)
             }
-            StaticRegionTyParamBound => {}
-            OtherRegionTyParamBound(_) => {}
+            UnboxedFnTyParamBound(ref unboxed_function) => {
+                for argument in unboxed_function.decl.inputs.iter() {
+                    self.resolve_type(argument.ty);
+                }
+
+                self.resolve_type(unboxed_function.decl.output);
+            }
+            StaticRegionTyParamBound | OtherRegionTyParamBound(_) => {}
         }
     }
 
