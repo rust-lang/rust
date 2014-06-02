@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-win32 #9205
-
 pub struct Quad { a: u64, b: u64, c: u64, d: u64 }
 pub struct Floats { a: f64, b: u8, c: f64 }
 
