@@ -69,7 +69,6 @@ fn zero_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) 
         cx.ident_of("Zero"),
         cx.ident_of("zero")
     );
-    let zero_call = |span| cx.expr_call_global(span, zero_ident.clone(), Vec::new());
 
     return match *substr.fields {
         StaticStruct(_, ref summary) => {
@@ -78,14 +77,31 @@ fn zero_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) 
                     if fields.is_empty() {
                         cx.expr_ident(trait_span, substr.type_ident)
                     } else {
-                        let exprs = fields.iter().map(|sp| zero_call(*sp)).collect();
+                        let exprs = {
+                            let zero_call = |span| {
+                                cx.expr_call_global(span,
+                                                    zero_ident.clone(),
+                                                    Vec::new())
+                            };
+                            fields.iter().map(|sp| zero_call(*sp)).collect()
+                        };
                         cx.expr_call_ident(trait_span, substr.type_ident, exprs)
                     }
                 }
                 Named(ref fields) => {
-                    let zero_fields = fields.iter().map(|&(ident, span)| {
-                        cx.field_imm(span, ident, zero_call(span))
-                    }).collect();
+                    let zero_fields = {
+                        let cx: &ExtCtxt = cx;
+                        let zero_ident_ref = &zero_ident;
+                        fields.iter().map(|&(ident, span)| {
+                            let zero_call = |span| {
+                                cx.expr_call_global(
+                                    span,
+                                    (*zero_ident_ref).clone(),
+                                    Vec::new())
+                            };
+                            cx.field_imm(span, ident, zero_call(span))
+                        }).collect()
+                    };
                     cx.expr_struct_ident(trait_span, substr.type_ident, zero_fields)
                 }
             }
