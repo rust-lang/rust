@@ -11,8 +11,6 @@
 // Test a foreign function that accepts and returns a struct
 // by value.
 
-// ignore-win32 #9205
-
 #[deriving(PartialEq, Show)]
 struct TwoU64s {
     one: u64, two: u64
