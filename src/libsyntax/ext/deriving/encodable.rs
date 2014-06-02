@@ -175,6 +175,14 @@ fn encodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
                 stmts.push(cx.stmt_expr(call));
             }
 
+            // unit structs have no fields and need to return Ok()
+            if stmts.is_empty() {
+                let ret_ok = cx.expr(trait_span,
+                                     ExprRet(Some(cx.expr_ok(trait_span,
+                                                             cx.expr_lit(trait_span, LitNil)))));
+                stmts.push(cx.stmt_expr(ret_ok));
+            }
+
             let blk = cx.lambda_stmts_1(trait_span, stmts, blkarg);
             cx.expr_method_call(trait_span,
                                 encoder,
