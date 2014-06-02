@@ -106,7 +106,7 @@ packages:
 If you've fulfilled those prerequisites, something along these lines
 should work.
 
-~~~~ {.notrust}
+~~~~console
 $ curl -O http://static.rust-lang.org/dist/rust-nightly.tar.gz
 $ tar -xzf rust-nightly.tar.gz
 $ cd rust-nightly
@@ -151,7 +151,7 @@ error. If you introduce an error into the program (for example, by changing
 `println!` to some nonexistent macro), and then compile it, you'll see
 an error message like this:
 
-~~~~ {.notrust}
+~~~~text
 hello.rs:2:5: 2:24 error: macro undefined: 'print_with_unicorns'
 hello.rs:2     print_with_unicorns!("hello?");
                ^~~~~~~~~~~~~~~~~~~
@@ -1066,7 +1066,7 @@ being destroyed along with the owner. Since the `list` variable above is
 immutable, the whole list is immutable. The memory allocation itself is the
 box, while the owner holds onto a pointer to it:
 
-~~~ {.notrust}
+~~~text
             List box            List box            List box          List box
         +--------------+    +--------------+    +--------------+    +----------+
 list -> | Cons | 1 |   | -> | Cons | 2 |   | -> | Cons | 3 |   | -> | Nil      |
@@ -2841,7 +2841,7 @@ mod animals {
 
 The compiler will look for these files, in this order:
 
-~~~ {.notrust}
+~~~text
 src/plants.rs
 src/plants/mod.rs
 
@@ -2872,7 +2872,7 @@ mod mammals {
 
 ...then the source files of `mod animals`'s submodules can either be in the same directory as the animals source file or in a subdirectory of its directory. If the animals file is `src/animals.rs`, `rustc` will look for:
 
-~~~ {.notrust}
+~~~text
 src/animals.rs
     src/fish.rs
     src/fish/mod.rs
@@ -2883,7 +2883,7 @@ src/animals.rs
 
 If the animals file is `src/animals/mod.rs`, `rustc` will look for:
 
-~~~ {.notrust}
+~~~text
 src/animals/mod.rs
     src/animals/fish.rs
     src/animals/fish/mod.rs
@@ -3244,10 +3244,10 @@ fn main() { println!("hello {}", world::explore()); }
 
 Now compile and run like this (adjust to your platform if necessary):
 
-~~~~ {.notrust}
-> rustc --crate-type=lib world.rs  # compiles libworld-<HASH>-0.42.so
-> rustc main.rs -L .               # compiles main
-> ./main
+~~~~console
+$ rustc --crate-type=lib world.rs  # compiles libworld-<HASH>-0.42.so
+$ rustc main.rs -L .               # compiles main
+$ ./main
 "hello world"
 ~~~~
 

@@ -168,7 +168,8 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
                     slice::raw::buf_as_slice((*lang).data,
                                            (*lang).size as uint, |rlang| {
                         let rlang = str::from_utf8(rlang).unwrap();
-                        if rlang.contains("notrust") {
+                        let (_,_,_,notrust) = parse_lang_string(rlang);
+                        if notrust {
                             (my_opaque.dfltblk)(ob, &buf, lang,
                                                 opaque as *mut libc::c_void);
                             true

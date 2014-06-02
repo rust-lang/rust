@@ -31,7 +31,7 @@ fn main() {
 
 And now I get an error:
 
-~~~ {.notrust}
+~~~text
 error: mismatched types: expected `&int` but found `<generic integer #0>` (expected &-ptr but found integral variable)
 ~~~
 
@@ -201,7 +201,7 @@ fn main() {
 
 This prints:
 
-~~~ {.notrust}
+~~~text
 Cons(1, box Cons(2, box Cons(3, box Nil)))
 ~~~
 
@@ -347,7 +347,7 @@ fn main() {
 
 It gives this error:
 
-~~~ {.notrust}
+~~~text
 test.rs:5:8: 5:10 error: cannot assign to `*x` because it is borrowed
 test.rs:5         *x -= 1;
                   ^~

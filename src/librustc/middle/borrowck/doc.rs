@@ -56,7 +56,7 @@ it is safe with respect to the in-scope loans.
 Throughout the docs we'll consider a simple subset of Rust in which
 you can only borrow from lvalues, defined like so:
 
-```notrust
+```text
 LV = x | LV.f | *LV
 ```
 
@@ -64,7 +64,7 @@ Here `x` represents some variable, `LV.f` is a field reference,
 and `*LV` is a pointer dereference. There is no auto-deref or other
 niceties. This means that if you have a type like:
 
-```notrust
+```text
 struct S { f: uint }
 ```
 
@@ -73,7 +73,7 @@ to an `LV` of `(*a).f`.
 
 Here is the formal grammar for the types we'll consider:
 
-```notrust
+```text
 TY = () | S<'LT...> | Box<TY> | & 'LT MQ TY | @ MQ TY
 MQ = mut | imm | const
 ```
@@ -81,7 +81,7 @@ MQ = mut | imm | const
 Most of these types should be pretty self explanatory. Here `S` is a
 struct name and we assume structs are declared like so:
 
-```notrust
+```text
 SD = struct S<'LT...> { (f: TY)... }
 ```
 
@@ -93,7 +93,7 @@ SD = struct S<'LT...> { (f: TY)... }
 
 Now, imagine we had a program like this:
 
-```notrust
+```text
 struct Foo { f: uint, g: uint }
 ...
 'a: {
@@ -118,7 +118,7 @@ the borrow, and (3) a set of restrictions. In the code, `Loan` is a
 struct defined in `middle::borrowck`. Formally, we define `LOAN` as
 follows:
 
-```notrust
+```text
 LOAN = (LV, LT, MQ, RESTRICTION*)
 RESTRICTION = (LV, ACTION*)
 ACTION = MUTATE | CLAIM | FREEZE
@@ -151,7 +151,7 @@ To give you a better feeling for what kind of restrictions derived
 from a loan, let's look at the loan `L` that would be issued as a
 result of the borrow `&mut (*x).f` in the example above:
 
-```notrust
+```text
 L = ((*x).f, 'a, mut, RS) where
     RS = [((*x).f, [MUTATE, CLAIM, FREEZE]),
           (*x, [MUTATE, CLAIM, FREEZE]),
@@ -214,7 +214,7 @@ conditions that it uses. For simplicity I will ignore const loans.
 I will present the rules in a modified form of standard inference
 rules, which looks as follows:
 
-```notrust
+```text
 PREDICATE(X, Y, Z)                  // Rule-Name
   Condition 1
   Condition 2
@@ -290,7 +290,7 @@ Let's begin with the rules for variables, which state that if a
 variable is declared as mutable, it may be borrowed any which way, but
 otherwise the variable must be borrowed as immutable or const:
 
-```notrust
+```text
 MUTABILITY(X, MQ)                   // M-Var-Mut
   DECL(X) = mut
 
@@ -305,7 +305,7 @@ Fields and owned pointers inherit their mutability from
 their base expressions, so both of their rules basically
 delegate the check to the base expression `LV`:
 
-```notrust
+```text
 MUTABILITY(LV.f, MQ)                // M-Field
   MUTABILITY(LV, MQ)
 
@@ -319,7 +319,7 @@ MUTABILITY(*LV, MQ)                 // M-Deref-Unique
 Immutable pointer types like `&T` and `@T` can only
 be borrowed if MQ is immutable or const:
 
-```notrust
+```text
 MUTABILITY(*LV, MQ)                // M-Deref-Borrowed-Imm
   TYPE(LV) = &Ty
   MQ == imm | const
@@ -333,7 +333,7 @@ MUTABILITY(*LV, MQ)                // M-Deref-Managed-Imm
 
 `&mut T` can be frozen, so it is acceptable to borrow it as either imm or mut:
 
-```notrust
+```text
 MUTABILITY(*LV, MQ)                 // M-Deref-Borrowed-Mut
   TYPE(LV) = &mut Ty
 ```
@@ -352,7 +352,7 @@ Rust code corresponding to this predicate is the function
 Local variables are never aliasable as they are accessible only within
 the stack frame.
 
-```notrust
+```text
     ALIASABLE(X, MQ)                   // M-Var-Mut
 ```
 
@@ -360,7 +360,7 @@ the stack frame.
 
 Owned content is aliasable if it is found in an aliasable location:
 
-```notrust
+```text
 ALIASABLE(LV.f, MQ)                // M-Field
   ALIASABLE(LV, MQ)
 
@@ -373,7 +373,7 @@ ALIASABLE(*LV, MQ)                 // M-Deref-Unique
 Immutable pointer types like `&T` are aliasable, and hence can only be
 borrowed immutably:
 
-```notrust
+```text
 ALIASABLE(*LV, imm)                // M-Deref-Borrowed-Imm
   TYPE(LV) = &Ty
 ```
@@ -382,7 +382,7 @@ ALIASABLE(*LV, imm)                // M-Deref-Borrowed-Imm
 
 `&mut T` can be frozen, so it is acceptable to borrow it as either imm or mut:
 
-```notrust
+```text
 ALIASABLE(*LV, MQ)                 // M-Deref-Borrowed-Mut
   TYPE(LV) = &mut Ty
 ```
@@ -405,13 +405,13 @@ guaranteed to exist, presuming that no mutations occur.
 
 The scope of a local variable is the block where it is declared:
 
-```notrust
+```text
   SCOPE(X) = block where X is declared
 ```
 
 The scope of a field is the scope of the struct:
 
-```notrust
+```text
   SCOPE(LV.f) = SCOPE(LV)
 ```
 
@@ -419,7 +419,7 @@ The scope of a unique referent is the scope of the pointer, since
 (barring mutation or moves) the pointer will not be freed until
 the pointer itself `LV` goes out of scope:
 
-```notrust
+```text
   SCOPE(*LV) = SCOPE(LV) if LV has type Box<T>
 ```
 
@@ -427,7 +427,7 @@ The scope of a managed referent is also the scope of the pointer.  This
 is a conservative approximation, since there may be other aliases for
 that same managed box that would cause it to live longer:
 
-```notrust
+```text
   SCOPE(*LV) = SCOPE(LV) if LV has type @T
 ```
 
@@ -435,7 +435,7 @@ The scope of a borrowed referent is the scope associated with the
 pointer.  This is a conservative approximation, since the data that
 the pointer points at may actually live longer:
 
-```notrust
+```text
   SCOPE(*LV) = LT if LV has type &'LT T or &'LT mut T
 ```
 
@@ -444,7 +444,7 @@ the pointer points at may actually live longer:
 The rule for variables states that a variable can only be borrowed a
 lifetime `LT` that is a subregion of the variable's scope:
 
-```notrust
+```text
 LIFETIME(X, LT, MQ)                 // L-Local
   LT <= SCOPE(X)
 ```
@@ -454,7 +454,7 @@ LIFETIME(X, LT, MQ)                 // L-Local
 The lifetime of a field or owned pointer is the same as the lifetime
 of its owner:
 
-```notrust
+```text
 LIFETIME(LV.f, LT, MQ)              // L-Field
   LIFETIME(LV, LT, MQ)
 
@@ -471,7 +471,7 @@ lifetime. Therefore, the borrow is valid so long as the lifetime `LT`
 of the borrow is shorter than the lifetime `LT'` of the pointer
 itself:
 
-```notrust
+```text
 LIFETIME(*LV, LT, MQ)               // L-Deref-Borrowed
   TYPE(LV) = &LT' Ty OR &LT' mut Ty
   LT <= LT'
@@ -484,7 +484,7 @@ Managed pointers are valid so long as the data within them is
 when the user guarantees such a root will exist. For this to be true,
 three conditions must be met:
 
-```notrust
+```text
 LIFETIME(*LV, LT, MQ)               // L-Deref-Managed-Imm-User-Root
   TYPE(LV) = @Ty
   LT <= SCOPE(LV)                   // (1)
@@ -518,7 +518,7 @@ borrow without crossing the exit from the scope `LT`.
 
 The rule for compiler rooting is as follows:
 
-```notrust
+```text
 LIFETIME(*LV, LT, MQ)               // L-Deref-Managed-Imm-Compiler-Root
   TYPE(LV) = @Ty
   LT <= innermost enclosing loop/func
@@ -542,7 +542,7 @@ for the lifetime of the loan".
 Note that there is an initial set of restrictions: these restrictions
 are computed based on the kind of borrow:
 
-```notrust
+```text
 &mut LV =>   RESTRICTIONS(LV, LT, MUTATE|CLAIM|FREEZE)
 &LV =>       RESTRICTIONS(LV, LT, MUTATE|CLAIM)
 &const LV => RESTRICTIONS(LV, LT, [])
@@ -559,7 +559,7 @@ moved out from under it, so no actions are forbidden.
 
 The simplest case is a borrow of a local variable `X`:
 
-```notrust
+```text
 RESTRICTIONS(X, LT, ACTIONS) = (X, ACTIONS)            // R-Variable
 ```
 
@@ -570,7 +570,7 @@ In such cases we just record the actions that are not permitted.
 Restricting a field is the same as restricting the owner of that
 field:
 
-```notrust
+```text
 RESTRICTIONS(LV.f, LT, ACTIONS) = RS, (LV.f, ACTIONS)  // R-Field
   RESTRICTIONS(LV, LT, ACTIONS) = RS
 ```
@@ -593,7 +593,7 @@ must prevent the owned pointer `LV` from being mutated, which means
 that we always add `MUTATE` and `CLAIM` to the restriction set imposed
 on `LV`:
 
-```notrust
+```text
 RESTRICTIONS(*LV, LT, ACTIONS) = RS, (*LV, ACTIONS)    // R-Deref-Send-Pointer
   TYPE(LV) = Box<Ty>
   RESTRICTIONS(LV, LT, ACTIONS|MUTATE|CLAIM) = RS
@@ -610,7 +610,7 @@ restricting that path. Therefore, the rule for `&Ty` and `@Ty`
 pointers always returns an empty set of restrictions, and it only
 permits restricting `MUTATE` and `CLAIM` actions:
 
-```notrust
+```text
 RESTRICTIONS(*LV, LT, ACTIONS) = []                    // R-Deref-Imm-Managed
   TYPE(LV) = @Ty
   ACTIONS subset of [MUTATE, CLAIM]
@@ -733,7 +733,7 @@ Because moves from a `&const` or `@const` lvalue are never legal, it
 is not necessary to add any restrictions at all to the final
 result.
 
-```notrust
+```text
     RESTRICTIONS(*LV, LT, []) = []                         // R-Deref-Freeze-Borrowed
       TYPE(LV) = &const Ty or @const Ty
 ```
@@ -749,7 +749,7 @@ while the new claimant is live.
 
 The rule for mutable borrowed pointers is as follows:
 
-```notrust
+```text
 RESTRICTIONS(*LV, LT, ACTIONS) = RS, (*LV, ACTIONS)    // R-Deref-Mut-Borrowed
   TYPE(LV) = &LT' mut Ty
   LT <= LT'                                            // (1)

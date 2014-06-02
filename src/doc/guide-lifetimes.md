@@ -218,7 +218,7 @@ fn example3() -> int {
 To make this clearer, consider this diagram showing the state of
 memory immediately before the re-assignment of `x`:
 
-~~~ {.notrust}
+~~~ {.text}
     Stack               Exchange Heap
 
   x +-------------+
@@ -232,7 +232,7 @@ memory immediately before the re-assignment of `x`:
 
 Once the reassignment occurs, the memory will look like this:
 
-~~~ {.notrust}
+~~~ {.text}
     Stack               Exchange Heap
 
   x +-------------+          +---------+
@@ -329,7 +329,7 @@ to a pointer of type `&size` into the _interior of the enum_.
 To make this more clear, let's look at a diagram of memory layout in
 the case where `shape` points at a rectangle:
 
-~~~ {.notrust}
+~~~ {.text}
 Stack             Memory
 
 +-------+         +---------------+
@@ -354,7 +354,7 @@ to store that shape value would still be valid, _it would have a
 different type_! The following diagram shows what memory would look
 like if code overwrote `shape` with a circle:
 
-~~~ {.notrust}
+~~~ {.text}
 Stack             Memory
 
 +-------+         +---------------+

@@ -57,7 +57,7 @@ disabled except for `error!` (a log level of 1). Logging is controlled via the
 `RUST_LOG` environment variable. The value of this environment variable is a
 comma-separated list of logging directives. A logging directive is of the form:
 
-```notrust
+```text
 path::to::module=log_level
 ```
 
@@ -80,7 +80,7 @@ all modules is set to this value.
 
 Some examples of valid values of `RUST_LOG` are:
 
-```notrust
+```text
 hello                // turns on all logging for the 'hello' module
 info                 // turns on all info logging
 hello=debug          // turns on debug logging for 'hello'

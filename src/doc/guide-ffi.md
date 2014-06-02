@@ -229,7 +229,7 @@ fn main() {
 
 C code:
 
-~~~~ {.notrust}
+~~~~c
 typedef void (*rust_callback)(int32_t);
 rust_callback cb;
 
@@ -296,7 +296,7 @@ fn main() {
 
 C code:
 
-~~~~ {.notrust}
+~~~~c
 typedef void (*rust_callback)(int32_t);
 void* cb_target;
 rust_callback cb;
