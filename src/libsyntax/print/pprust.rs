@@ -2234,7 +2234,10 @@ impl<'a> State<'a> {
             ast::LitStr(ref st, style) => self.print_string(st.get(), style),
             ast::LitChar(ch) => {
                 let mut res = String::from_str("'");
-                ch.escape_default(|c| res.push_char(c));
+                {
+                    let res_ptr = &mut res;
+                    ch.escape_default(|c| res_ptr.push_char(c));
+                }
                 res.push_char('\'');
                 word(&mut self.s, res.as_slice())
             }

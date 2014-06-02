@@ -195,9 +195,12 @@ pub fn to_str(t: &Token) -> String {
       /* Literals */
       LIT_CHAR(c) => {
           let mut res = String::from_str("'");
-          c.escape_default(|c| {
-              res.push_char(c);
-          });
+          {
+              let res_ptr = &mut res;
+              c.escape_default(|c| {
+                  res_ptr.push_char(c);
+              });
+          }
           res.push_char('\'');
           res
       }

@@ -306,8 +306,14 @@ pub fn expand_item(it: @ast::Item, fld: &mut MacroExpander)
                 // we'd ideally decorator_items.push_all(expand_item(item, fld)),
                 // but that double-mut-borrows fld
                 let mut items: SmallVector<@ast::Item> = SmallVector::zero();
-                dec_fn(fld.cx, attr.span, attr.node.value, it,
-                       |item| items.push(item));
+                {
+                    let items_ptr = &mut items;
+                    dec_fn(fld.cx,
+                           attr.span,
+                           attr.node.value,
+                           it,
+                           |item| items_ptr.push(item));
+                }
                 decorator_items.extend(items.move_iter()
                     .flat_map(|item| expand_item(item, fld).move_iter()));
 

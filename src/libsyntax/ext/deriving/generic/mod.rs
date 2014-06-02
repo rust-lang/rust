@@ -690,11 +690,12 @@ impl<'a> MethodDef<'a> {
 
         // transpose raw_fields
         let fields = if raw_fields.len() > 0 {
-            raw_fields.get(0)
-                      .iter()
-                      .enumerate()
-                      .map(|(i, &(span, opt_id, field))| {
-                let other_fields = raw_fields.tail().iter().map(|l| {
+            let raw_fields_ptr = &raw_fields;
+            raw_fields_ptr.get(0)
+                          .iter()
+                          .enumerate()
+                          .map(|(i, &(span, opt_id, field))| {
+                let other_fields = raw_fields_ptr.tail().iter().map(|l| {
                     match l.get(i) {
                         &(_, _, ex) => ex
                     }
@@ -1256,27 +1257,30 @@ fields. `use_foldl` controls whether this is done left-to-right
 */
 #[inline]
 pub fn cs_same_method_fold(use_foldl: bool,
-                           f: |&mut ExtCtxt, Span, @Expr, @Expr| -> @Expr,
+                           mut f: |&mut ExtCtxt, Span, @Expr, @Expr| -> @Expr,
                            base: @Expr,
                            enum_nonmatch_f: EnumNonMatchFunc,
                            cx: &mut ExtCtxt,
                            trait_span: Span,
                            substructure: &Substructure)
                            -> @Expr {
+    let f_ptr = &mut f;
     cs_same_method(
         |cx, span, vals| {
             if use_foldl {
                 vals.iter().fold(base, |old, &new| {
-                    f(cx, span, old, new)
+                    (*f_ptr)(cx, span, old, new)
                 })
             } else {
                 vals.iter().rev().fold(base, |old, &new| {
-                    f(cx, span, old, new)
+                    (*f_ptr)(cx, span, old, new)
                 })
             }
         },
         enum_nonmatch_f,
-        cx, trait_span, substructure)
+        cx,
+        trait_span,
+        substructure)
 }
 
 /**
