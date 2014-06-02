@@ -51,13 +51,14 @@
 
 use middle::const_eval;
 use middle::def;
-use middle::subst;
+use middle::lang_items::FnMutTraitLangItem;
 use middle::subst::{Subst, Substs};
-use middle::ty::{ty_param_substs_and_ty};
+use middle::subst;
+use middle::ty::ty_param_substs_and_ty;
 use middle::ty;
-use middle::typeck::rscope;
-use middle::typeck::rscope::{RegionScope};
 use middle::typeck::lookup_def_tcx;
+use middle::typeck::rscope::RegionScope;
+use middle::typeck::rscope;
 use util::ppaux::Repr;
 
 use std::rc::Rc;
@@ -469,6 +470,38 @@ fn ast_ty_to_mt<AC:AstConv, RS:RegionScope>(this: &AC,
     ty::mt {ty: ast_ty_to_ty(this, rscope, ty), mutbl: ast::MutImmutable}
 }
 
+pub fn trait_ref_for_unboxed_function<AC:AstConv,
+                                      RS:RegionScope>(
+                                      this: &AC,
+                                      rscope: &RS,
+                                      unboxed_function: &ast::UnboxedFnTy)
+                                      -> ty::TraitRef {
+    let fn_mut_trait_did = this.tcx()
+                               .lang_items
+                               .require(FnMutTraitLangItem)
+                               .unwrap();
+    let input_types =
+        unboxed_function.decl
+                        .inputs
+                        .iter()
+                        .map(|input| {
+                            ast_ty_to_ty(this, rscope, input.ty)
+                        }).collect::<Vec<_>>();
+    let input_tuple = ty::mk_tup(this.tcx(), input_types);
+    let output_type = ast_ty_to_ty(this,
+                                   rscope,
+                                   unboxed_function.decl.output);
+    let substs = subst::Substs {
+        self_ty: None,
+        tps: vec!(input_tuple, output_type),
+        regions: subst::NonerasedRegions(Vec::new()),
+    };
+    ty::TraitRef {
+        def_id: fn_mut_trait_did,
+        substs: substs,
+    }
+}
+
 // Handle `~`, `Box`, and `&` being able to mean strs and vecs.
 // If a_seq_ty is a str or a vec, make it a str/vec.
 // Also handle first-class trait types.
@@ -490,6 +523,32 @@ fn mk_pointer<AC:AstConv,
                 mt.mutbl = ast::MutMutable;
             }
             return constr(ty::mk_vec(tcx, mt, None));
+        }
+        ast::TyUnboxedFn(ref unboxed_function) => {
+            let trait_store = match ptr_ty {
+                Uniq => ty::UniqTraitStore,
+                RPtr(r) => {
+                    ty::RegionTraitStore(r, a_seq_ty.mutbl)
+                }
+                _ => {
+                    tcx.sess.span_err(
+                        a_seq_ty.ty.span,
+                        "~trait or &trait are the only supported \
+                         forms of casting-to-trait");
+                    return ty::mk_err();
+                }
+            };
+            let ty::TraitRef {
+                def_id,
+                substs
+            } = trait_ref_for_unboxed_function(this,
+                                               rscope,
+                                               *unboxed_function);
+            return ty::mk_trait(this.tcx(),
+                                def_id,
+                                substs,
+                                trait_store,
+                                ty::empty_builtin_bounds());
         }
         ast::TyPath(ref path, ref bounds, id) => {
             // Note that the "bounds must be empty if path is not a trait"
@@ -528,7 +587,10 @@ fn mk_pointer<AC:AstConv,
                             return ty::mk_err();
                         }
                     };
-                    let bounds = conv_builtin_bounds(this.tcx(), bounds, trait_store);
+                    let bounds = conv_builtin_bounds(this.tcx(),
+                                                     path.span,
+                                                     bounds,
+                                                     trait_store);
                     return ty::mk_trait(tcx,
                                         result.def_id,
                                         result.substs.clone(),
@@ -621,7 +683,10 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
 
                 // Use corresponding trait store to figure out default bounds
                 // if none were specified.
-                let bounds = conv_builtin_bounds(this.tcx(), &f.bounds, store);
+                let bounds = conv_builtin_bounds(this.tcx(),
+                                                 ast_ty.span,
+                                                 &f.bounds,
+                                                 store);
 
                 let fn_decl = ty_of_closure(this,
                                             ast_ty.id,
@@ -636,7 +701,10 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
             ast::TyProc(ref f) => {
                 // Use corresponding trait store to figure out default bounds
                 // if none were specified.
-                let bounds = conv_builtin_bounds(this.tcx(), &f.bounds, ty::UniqTraitStore);
+                let bounds = conv_builtin_bounds(this.tcx(),
+                                                 ast_ty.span,
+                                                 &f.bounds,
+                                                 ty::UniqTraitStore);
 
                 let fn_decl = ty_of_closure(this,
                                             ast_ty.id,
@@ -647,6 +715,11 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                                             f.decl,
                                             None);
                 ty::mk_closure(tcx, fn_decl)
+            }
+            ast::TyUnboxedFn(_) => {
+                tcx.sess.span_err(ast_ty.span,
+                                  "cannot use unboxed functions here");
+                ty::mk_err()
             }
             ast::TyPath(ref path, ref bounds, id) => {
                 let a_def = match tcx.def_map.borrow().find(&id) {
@@ -891,7 +964,9 @@ pub fn ty_of_closure<AC:AstConv>(
     }
 }
 
-fn conv_builtin_bounds(tcx: &ty::ctxt, ast_bounds: &Option<OwnedSlice<ast::TyParamBound>>,
+fn conv_builtin_bounds(tcx: &ty::ctxt,
+                       span: Span,
+                       ast_bounds: &Option<OwnedSlice<ast::TyParamBound>>,
                        store: ty::TraitStore)
                        -> ty::BuiltinBounds {
     //! Converts a list of bounds from the AST into a `BuiltinBounds`
@@ -927,6 +1002,11 @@ fn conv_builtin_bounds(tcx: &ty::ctxt, ast_bounds: &Option<OwnedSlice<ast::TyPar
                     }
                     ast::StaticRegionTyParamBound => {
                         builtin_bounds.add(ty::BoundStatic);
+                    }
+                    ast::UnboxedFnTyParamBound(_) => {
+                        tcx.sess.span_err(span,
+                                          "unboxed functions are not allowed \
+                                           here");
                     }
                     ast::OtherRegionTyParamBound(span) => {
                         if !tcx.sess.features.issue_5723_bootstrap.get() {

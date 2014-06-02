@@ -57,6 +57,7 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("linkage", Active),
     ("struct_inherit", Active),
     ("overloaded_calls", Active),
+    ("unboxed_closure_sugar", Active),
 
     ("quad_precision_float", Active),
 
@@ -291,6 +292,11 @@ impl<'a> Visitor<()> for Context<'a> {
 
             },
             ast::TyBox(_) => { self.gate_box(t.span); }
+            ast::TyUnboxedFn(_) => {
+                self.gate_feature("unboxed_closure_sugar",
+                                  t.span,
+                                  "unboxed closure trait sugar is experimental");
+            }
             _ => {}
         }
 
