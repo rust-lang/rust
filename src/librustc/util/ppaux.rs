@@ -1002,8 +1002,6 @@ impl Repr for ty::BorrowKind {
 
 impl Repr for ty::UpvarBorrow {
     fn repr(&self, tcx: &ctxt) -> String {
-        format_strbuf!("UpvarBorrow({}, {})",
-                       self.kind.repr(tcx),
-                       self.region.repr(tcx))
+        format_strbuf!("UpvarBorrow({})", self.reborrowed_type.repr(tcx))
     }
 }

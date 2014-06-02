@@ -884,7 +884,12 @@ fn enter_region<'a, 'b>(
 fn get_options(bcx: &Block, m: &[Match], col: uint) -> Vec<Opt> {
     let ccx = bcx.ccx();
     fn add_to_set(tcx: &ty::ctxt, set: &mut Vec<Opt>, val: Opt) {
-        if set.iter().any(|l| opt_eq(tcx, l, &val)) {return;}
+        {
+            let val_ptr = &val;
+            if set.iter().any(|l| opt_eq(tcx, l, val_ptr)) {
+                return
+            }
+        }
         set.push(val);
     }
     // Vector comparisons are special in that since the actual

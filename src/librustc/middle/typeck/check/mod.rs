@@ -78,6 +78,7 @@ type parameter).
 
 
 use middle::const_eval;
+use middle::freevars;
 use middle::lang_items::{ExchangeHeapLangItem, GcLangItem};
 use middle::lang_items::{ManagedHeapLangItem};
 use middle::lint::UnreachableCode;
@@ -2361,6 +2362,9 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                                            decl,
                                            expected_sig);
         let fty_sig = fn_ty.sig.clone();
+
+        reborrow_mutable_upvars_if_necessary(fcx, expr, &fn_ty);
+
         let fty = ty::mk_closure(tcx, fn_ty);
         debug!("check_expr_fn fty={}", fcx.infcx().ty_to_str(fty));
 
@@ -4530,3 +4534,58 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
             });
     }
 }
+
+fn reborrow_mutable_upvars_if_necessary(fcx: &FnCtxt,
+                                        expr: &ast::Expr,
+                                        closure_type: &ty::ClosureTy) {
+    freevars::with_freevars(fcx.tcx(), expr.id, |freevars| {
+        for freevar in freevars.iter() {
+            let upvar_node_id = ast_util::def_id_of_def(freevar.def).node;
+            let typ = fcx.node_ty(upvar_node_id);
+            let typ = structurally_resolved_type(fcx, freevar.span, typ);
+            match ty::get(typ).sty {
+                ty::ty_rptr(original_region, mutable)
+                        if mutable.mutbl == ast::MutMutable => {
+                    let upvar_id = ty::UpvarId {
+                        var_id: upvar_node_id,
+                        closure_expr_id: expr.id,
+                    };
+                    let new_region =
+                        fcx.infcx()
+                           .next_region_var(infer::UpvarRegion(upvar_id,
+                                                               freevar.span));
+                    fcx.mk_subr(true,
+                                infer::ReborrowUpvar(freevar.span, upvar_id),
+                                new_region,
+                                original_region);
+
+                    let closure_lifetime = match closure_type.store {
+                        ty::UniqTraitStore => ty::ReStatic,
+                        ty::RegionTraitStore(region, _) => region,
+                    };
+                    fcx.mk_subr(false,
+                                infer::ReborrowUpvar(freevar.span, upvar_id),
+                                closure_lifetime,
+                                new_region);
+
+                    debug!("reborrowing mutable upvar: old region {}, \
+                            reborrowed region {}",
+                           original_region.repr(fcx.tcx()),
+                           new_region.repr(fcx.tcx()));
+                    let new_type = ty::mk_rptr(fcx.tcx(),
+                                               new_region,
+                                               mutable);
+                    fcx.inh
+                       .upvar_borrow_map
+                       .borrow_mut()
+                       .insert(upvar_id,
+                               ty::UpvarBorrow {
+                           reborrowed_type: new_type,
+                       });
+                }
+                _ => {}
+            }
+        }
+    });
+}
+

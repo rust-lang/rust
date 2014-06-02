@@ -466,10 +466,6 @@ impl<'a> CheckLoanCtxt<'a> {
                         return;
                     }
 
-                    mc::cat_upvar(..) => {
-                        return;
-                    }
-
                     mc::cat_deref(_, _, mc::GcPtr) => {
                         assert_eq!(cmt.mutbl, mc::McImmutable);
                         return;
@@ -736,19 +732,13 @@ impl<'a> CheckLoanCtxt<'a> {
     fn check_captured_variables(&self,
                                 closure_id: ast::NodeId,
                                 span: Span) {
-        let freevar_mode = freevars::get_capture_mode(self.tcx(), closure_id);
         freevars::with_freevars(self.tcx(), closure_id, |freevars| {
             for freevar in freevars.iter() {
                 let var_id = ast_util::def_id_of_def(freevar.def).node;
                 let var_path = Rc::new(LpVar(var_id));
                 self.check_if_path_is_moved(closure_id, span,
                                             MovedInCapture, &var_path);
-                match freevar_mode {
-                    freevars::CaptureByRef => { }
-                    freevars::CaptureByValue => {
-                        check_by_move_capture(self, closure_id, freevar, &*var_path);
-                    }
-                }
+                check_by_move_capture(self, closure_id, freevar, &*var_path);
             }
         });
         return;

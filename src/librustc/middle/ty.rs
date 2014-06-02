@@ -551,59 +551,10 @@ pub enum BorrowKind {
     MutBorrow
 }
 
-/**
- * Information describing the borrowing of an upvar. This is computed
- * during `typeck`, specifically by `regionck`. The general idea is
- * that the compiler analyses treat closures like:
- *
- *     let closure: &'e fn() = || {
- *        x = 1;   // upvar x is assigned to
- *        use(y);  // upvar y is read
- *        foo(&z); // upvar z is borrowed immutably
- *     };
- *
- * as if they were "desugared" to something loosely like:
- *
- *     struct Vars<'x,'y,'z> { x: &'x mut int,
- *                             y: &'y const int,
- *                             z: &'z int }
- *     let closure: &'e fn() = {
- *         fn f(env: &Vars) {
- *             *env.x = 1;
- *             use(*env.y);
- *             foo(env.z);
- *         }
- *         let env: &'e mut Vars<'x,'y,'z> = &mut Vars { x: &'x mut x,
- *                                                       y: &'y const y,
- *                                                       z: &'z z };
- *         (env, f)
- *     };
- *
- * This is basically what happens at runtime. The closure is basically
- * an existentially quantified version of the `(env, f)` pair.
- *
- * This data structure indicates the region and mutability of a single
- * one of the `x...z` borrows.
- *
- * It may not be obvious why each borrowed variable gets its own
- * lifetime (in the desugared version of the example, these are indicated
- * by the lifetime parameters `'x`, `'y`, and `'z` in the `Vars` definition).
- * Each such lifetime must encompass the lifetime `'e` of the closure itself,
- * but need not be identical to it. The reason that this makes sense:
- *
- * - Callers are only permitted to invoke the closure, and hence to
- *   use the pointers, within the lifetime `'e`, so clearly `'e` must
- *   be a sublifetime of `'x...'z`.
- * - The closure creator knows which upvars were borrowed by the closure
- *   and thus `x...z` will be reserved for `'x...'z` respectively.
- * - Through mutation, the borrowed upvars can actually escape
- *   the closure, so sometimes it is necessary for them to be larger
- *   than the closure lifetime itself.
- */
+/// Information describing the borrowing of an upvar.
 #[deriving(Eq, Clone)]
 pub struct UpvarBorrow {
-    pub kind: BorrowKind,
-    pub region: ty::Region,
+    pub reborrowed_type: t,
 }
 
 pub type UpvarBorrowMap = HashMap<UpvarId, UpvarBorrow>;

@@ -225,8 +225,7 @@ pub fn opt_loan_path(cmt: &mc::cmt) -> Option<Rc<LoanPath>> {
 
         mc::cat_local(id) |
         mc::cat_arg(id) |
-        mc::cat_copied_upvar(mc::CopiedUpvar { upvar_id: id, .. }) |
-        mc::cat_upvar(ty::UpvarId {var_id: id, ..}, _) => {
+        mc::cat_copied_upvar(mc::CopiedUpvar { upvar_id: id, .. }) => {
             Some(Rc::new(LpVar(id)))
         }
 

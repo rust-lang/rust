@@ -22,15 +22,6 @@ use syntax::{ast, ast_util};
 use syntax::visit;
 use syntax::visit::Visitor;
 
-#[deriving(Show)]
-pub enum CaptureMode {
-    /// Copy/move the value from this llvm ValueRef into the environment.
-    CaptureByValue,
-
-    /// Access by reference (used for stack closures).
-    CaptureByRef
-}
-
 // A vector of defs representing the free variables referred to in a function.
 // (The def_upvar will already have been stripped).
 #[deriving(Encodable, Decodable)]
@@ -142,13 +133,3 @@ pub fn with_freevars<T>(tcx: &ty::ctxt, fid: ast::NodeId, f: |&[freevar_entry]| 
     }
 }
 
-pub fn get_capture_mode(tcx: &ty::ctxt,
-                        closure_expr_id: ast::NodeId)
-                        -> CaptureMode
-{
-    let fn_ty = ty::node_id_to_type(tcx, closure_expr_id);
-    match ty::ty_closure_store(fn_ty) {
-        ty::RegionTraitStore(..) => CaptureByRef,
-        ty::UniqTraitStore => CaptureByValue
-    }
-}

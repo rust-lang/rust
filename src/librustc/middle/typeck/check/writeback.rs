@@ -188,16 +188,30 @@ impl<'cx> WritebackCx<'cx> {
             return;
         }
 
-        for (upvar_id, upvar_borrow) in self.fcx.inh.upvar_borrow_map.borrow().iter() {
-            let r = upvar_borrow.region;
-            let r = self.resolve(&r, ResolvingUpvar(*upvar_id));
-            let new_upvar_borrow = ty::UpvarBorrow { kind: upvar_borrow.kind,
-                                                     region: r };
-            debug!("Upvar borrow for {} resolved to {}",
-                   upvar_id.repr(self.tcx()),
-                   new_upvar_borrow.repr(self.tcx()));
-            self.fcx.tcx().upvar_borrow_map.borrow_mut().insert(
-                *upvar_id, new_upvar_borrow);
+        for (upvar_id, upvar_borrow) in self.fcx
+                                            .inh
+                                            .upvar_borrow_map
+                                            .borrow()
+                                            .iter() {
+            match ty::get(upvar_borrow.reborrowed_type).sty {
+                ty::ty_rptr(old_region, tm) => {
+                    let new_region = self.resolve(&old_region,
+                                                  ResolvingUpvar(*upvar_id));
+                    let new_upvar_borrow = ty::UpvarBorrow {
+                        reborrowed_type: ty::mk_rptr(self.tcx(),
+                                                     new_region,
+                                                     tm),
+                    };
+                    self.fcx
+                        .tcx()
+                        .upvar_borrow_map
+                        .borrow_mut()
+                        .insert(*upvar_id, new_upvar_borrow);
+                }
+                _ => {
+                    self.tcx().sess.bug("reborrowed upvar wasn't an rptr");
+                }
+            }
         }
     }
 
