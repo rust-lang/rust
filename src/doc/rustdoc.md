@@ -122,20 +122,24 @@ source code.
 
 To test documentation, the `--test` argument is passed to rustdoc:
 
-~~~ {.notrust}
+~~~ {.sh}
 rustdoc --test crate.rs
 ~~~
 
 ## Defining tests
 
 Rust documentation currently uses the markdown format, and rustdoc treats all
-code blocks as testable-by-default. In order to not run a test over a block of
-code, the `ignore` string can be added to the three-backtick form of markdown
-code block.
+code blocks as testable-by-default unless they carry a language tag of another
+language. In order to not run a test over a block of code, the `ignore` string
+can be added to the three-backtick form of markdown code block.
 
-~~~notrust
+~~~md
 ```
 // This is a testable code block
+```
+
+```rust{.example}
+// This is rust and also testable
 ```
 
 ```ignore
@@ -143,12 +147,16 @@ code block.
 ```
 
     // This is a testable code block (4-space indent)
+
+```sh
+# this is shell code and not tested
+```
 ~~~
 
 You can specify that the test's execution should fail with the `should_fail`
 directive.
 
-~~~notrust
+~~~md
 ```should_fail
 // This code block is expected to generate a failure when run
 ```
@@ -157,7 +165,7 @@ directive.
 You can specify that the code block should be compiled but not run with the
 `no_run` directive.
 
-~~~notrust
+~~~md
 ```no_run
 // This code will be compiled but not executed
 ```
@@ -169,7 +177,7 @@ will not show up in the HTML documentation, but it will be used when
 testing the code block (NB. the space after the `#` is required, so
 that one can still write things like `#[deriving(Eq)]`).
 
-~~~notrust
+~~~md
 ```
 # /!\ The three following lines are comments, which are usually stripped off by
 # the doc-generating tool.  In order to display them anyway in this particular
@@ -194,7 +202,7 @@ uses is build on crate `test`, which is also used when you compile crates with
 rustc's `--test` flag. Extra arguments can be passed to rustdoc's test harness
 with the `--test-args` flag.
 
-~~~ {.notrust}
+~~~console
 # Only run tests containing 'foo' in their name
 $ rustdoc --test lib.rs --test-args 'foo'
 
