@@ -904,7 +904,7 @@ An example of re-exporting:
 ~~~~
 # fn main() { }
 mod quux {
-    pub use quux::foo::*;
+    pub use quux::foo::{bar, baz};
 
     pub mod foo {
         pub fn bar() { }
@@ -913,10 +913,10 @@ mod quux {
 }
 ~~~~
 
-In this example, the module `quux` re-exports all of the public names defined in `foo`.
+In this example, the module `quux` re-exports two public names defined in `foo`.
 
 Also note that the paths contained in `use` items are relative to the crate root.
-So, in the previous example, the `use` refers to `quux::foo::*`, and not simply to `foo::*`.
+So, in the previous example, the `use` refers to `quux::foo::{bar, baz}`, and not simply to `foo::{bar, baz}`.
 This also means that top-level module declarations should be at the crate root if direct usage
 of the declared modules within `use` items is desired.  It is also possible to use `self` and `super`
 at the beginning of a `use` item to refer to the current and direct parent modules respectively.

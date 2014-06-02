@@ -48,6 +48,7 @@ pub mod util {
 pub mod syntax {
     pub use ext;
     pub use parse;
+    pub use ast;
 }
 
 pub mod owned_slice;
