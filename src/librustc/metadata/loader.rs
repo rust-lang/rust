@@ -195,53 +195,61 @@ impl<'a> Context<'a> {
         // of the crate id (path/name/id).
         //
         // The goal of this step is to look at as little metadata as possible.
-        self.filesearch.search(|path| {
-            let file = match path.filename_str() {
-                None => return FileDoesntMatch,
-                Some(file) => file,
-            };
-            if file.starts_with(rlib_prefix.as_slice()) &&
-                    file.ends_with(".rlib") {
-                info!("rlib candidate: {}", path.display());
-                match self.try_match(file, rlib_prefix.as_slice(), ".rlib") {
-                    Some(hash) => {
-                        info!("rlib accepted, hash: {}", hash);
-                        let slot = candidates.find_or_insert_with(hash, |_| {
-                            (HashSet::new(), HashSet::new())
-                        });
-                        let (ref mut rlibs, _) = *slot;
-                        rlibs.insert(fs::realpath(path).unwrap());
-                        FileMatches
+        {
+            let filesearch = self.filesearch.clone();
+            let candidates_ptr = &mut candidates;
+            filesearch.search(|path| {
+                let file = match path.filename_str() {
+                    None => return FileDoesntMatch,
+                    Some(file) => file,
+                };
+                if file.starts_with(rlib_prefix.as_slice()) &&
+                        file.ends_with(".rlib") {
+                    info!("rlib candidate: {}", path.display());
+                    match self.try_match(file,
+                                         rlib_prefix.as_slice(),
+                                         ".rlib") {
+                        Some(hash) => {
+                            info!("rlib accepted, hash: {}", hash);
+                            let slot =
+                                candidates_ptr.find_or_insert_with(hash, |_| {
+                                    (HashSet::new(), HashSet::new())
+                                });
+                            let (ref mut rlibs, _) = *slot;
+                            rlibs.insert(fs::realpath(path).unwrap());
+                            FileMatches
+                        }
+                        None => {
+                            info!("rlib rejected");
+                            FileDoesntMatch
+                        }
                     }
-                    None => {
-                        info!("rlib rejected");
-                        FileDoesntMatch
+                } else if file.starts_with(dylib_prefix.as_slice()) &&
+                        file.ends_with(dysuffix){
+                    info!("dylib candidate: {}", path.display());
+                    match self.try_match(file,
+                                         dylib_prefix.as_slice(),
+                                         dysuffix) {
+                        Some(hash) => {
+                            info!("dylib accepted, hash: {}", hash);
+                            let slot =
+                                candidates_ptr.find_or_insert_with(hash, |_| {
+                                    (HashSet::new(), HashSet::new())
+                                });
+                            let (_, ref mut dylibs) = *slot;
+                            dylibs.insert(fs::realpath(path).unwrap());
+                            FileMatches
+                        }
+                        None => {
+                            info!("dylib rejected");
+                            FileDoesntMatch
+                        }
                     }
+                } else {
+                    FileDoesntMatch
                 }
-            } else if file.starts_with(dylib_prefix.as_slice()) &&
-                    file.ends_with(dysuffix){
-                info!("dylib candidate: {}", path.display());
-                match self.try_match(file,
-                                     dylib_prefix.as_slice(),
-                                     dysuffix) {
-                    Some(hash) => {
-                        info!("dylib accepted, hash: {}", hash);
-                        let slot = candidates.find_or_insert_with(hash, |_| {
-                            (HashSet::new(), HashSet::new())
-                        });
-                        let (_, ref mut dylibs) = *slot;
-                        dylibs.insert(fs::realpath(path).unwrap());
-                        FileMatches
-                    }
-                    None => {
-                        info!("dylib rejected");
-                        FileDoesntMatch
-                    }
-                }
-            } else {
-                FileDoesntMatch
-            }
-        });
+            });
+        }
 
         // We have now collected all known libraries into a set of candidates
         // keyed of the filename hash listed. For each filename, we also have a
