@@ -184,8 +184,9 @@ let xs = [1,2,3,4,5];
 let mut calls = 0;
 
 {
+    let calls_ref = &mut calls;
     let it = xs.iter().scan((), |_, x| {
-        calls += 1;
+        *calls_ref += 1;
         if *x < 3 { Some(x) } else { None }});
 
     // the iterator will only yield 1 and 2 before returning None

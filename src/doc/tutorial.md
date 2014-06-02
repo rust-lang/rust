@@ -1838,7 +1838,8 @@ access local variables in the enclosing scope.
 
 ~~~~
 let mut max = 0;
-let f = |x: int| if x > max { max = x };
+let max_ref = &mut max;
+let f = |x: int| if x > *max_ref { *max_ref = x };
 for x in [1, 2, 3].iter() {
     f(*x);
 }
