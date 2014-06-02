@@ -21,7 +21,7 @@ use mem;
 use num::{CheckedMul, CheckedAdd};
 use num;
 use ops::{Add, Drop};
-use option::{None, Option, Some, Expect};
+use option::{None, Option, Some};
 use ptr::RawPtr;
 use ptr;
 use raw::Slice;
