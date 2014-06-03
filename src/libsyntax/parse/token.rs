@@ -475,25 +475,26 @@ declare_special_idents_and_keywords! {
         (33,                         Trait,      "trait");
         (34,                         Type,       "type");
         (35,                         Unsafe,     "unsafe");
-        (36,                         Use,        "use");
-        (37,                         Virtual,    "virtual");
-        (38,                         While,      "while");
-        (39,                         Continue,   "continue");
-        (40,                         Proc,       "proc");
-        (41,                         Box,        "box");
+        (36,                         Hazard,     "☢");
+        (37,                         Use,        "use");
+        (38,                         Virtual,    "virtual");
+        (39,                         While,      "while");
+        (40,                         Continue,   "continue");
+        (41,                         Proc,       "proc");
+        (42,                         Box,        "box");
 
         'reserved:
-        (42,                         Alignof,    "alignof");
-        (43,                         Be,         "be");
-        (44,                         Const,      "const");
-        (45,                         Offsetof,   "offsetof");
-        (46,                         Priv,       "priv");
-        (47,                         Pure,       "pure");
-        (48,                         Sizeof,     "sizeof");
-        (49,                         Typeof,     "typeof");
-        (50,                         Unsized,    "unsized");
-        (51,                         Yield,      "yield");
-        (52,                         Do,         "do");
+        (43,                         Alignof,    "alignof");
+        (44,                         Be,         "be");
+        (45,                         Const,      "const");
+        (46,                         Offsetof,   "offsetof");
+        (47,                         Priv,       "priv");
+        (48,                         Pure,       "pure");
+        (49,                         Sizeof,     "sizeof");
+        (50,                         Typeof,     "typeof");
+        (51,                         Unsized,    "unsized");
+        (52,                         Yield,      "yield");
+        (53,                         Do,         "do");
     }
 }
 

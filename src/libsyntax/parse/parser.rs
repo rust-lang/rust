@@ -921,8 +921,9 @@ impl<'a> Parser<'a> {
             return true
         }
 
-        if token::is_keyword(keywords::Unsafe, &self.token) ||
-            token::is_keyword(keywords::Once, &self.token) {
+        if token::is_keyword(keywords::Unsafe, &self.token)
+           || token::is_keyword(keywords::Hazard, &self.token)
+           || token::is_keyword(keywords::Once, &self.token) {
             return self.look_ahead(1, |t| token::is_keyword(keywords::Fn, t))
         }
 
@@ -932,6 +933,7 @@ impl<'a> Parser<'a> {
     // Is the current token one of the keywords that signals a closure type?
     pub fn token_is_closure_keyword(&mut self) -> bool {
         token::is_keyword(keywords::Unsafe, &self.token) ||
+            token::is_keyword(keywords::Hazard, &self.token) ||
             token::is_keyword(keywords::Once, &self.token)
     }
 
@@ -939,6 +941,7 @@ impl<'a> Parser<'a> {
     // closure type (with explicit sigil)?
     pub fn token_is_old_style_closure_keyword(&mut self) -> bool {
         token::is_keyword(keywords::Unsafe, &self.token) ||
+            token::is_keyword(keywords::Hazard, &self.token) ||
             token::is_keyword(keywords::Once, &self.token) ||
             token::is_keyword(keywords::Fn, &self.token)
     }
@@ -1089,7 +1092,8 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse_unsafety(&mut self) -> FnStyle {
-        if self.eat_keyword(keywords::Unsafe) {
+        if self.eat_keyword(keywords::Unsafe)
+           || self.eat_keyword(keywords::Hazard) {
             return UnsafeFn;
         } else {
             return NormalFn;
@@ -1327,6 +1331,7 @@ impl<'a> Parser<'a> {
             self.parse_borrowed_pointee()
         } else if self.is_keyword(keywords::Extern) ||
                   self.is_keyword(keywords::Unsafe) ||
+                  self.is_keyword(keywords::Hazard) ||
                 self.token_is_bare_fn_keyword() {
             // BARE FUNCTION
             self.parse_ty_bare_fn()
@@ -1867,6 +1872,8 @@ impl<'a> Parser<'a> {
         } else if self.eat_keyword(keywords::Match) {
             return self.parse_match_expr();
         } else if self.eat_keyword(keywords::Unsafe) {
+            return self.parse_block_expr(lo, UnsafeBlock(ast::UserProvided));
+        } else if self.eat_keyword(keywords::Hazard) {
             return self.parse_block_expr(lo, UnsafeBlock(ast::UserProvided));
         } else if self.token == token::LBRACKET {
             self.bump();
@@ -4306,7 +4313,8 @@ impl<'a> Parser<'a> {
     // parse safe/unsafe and fn
     fn parse_fn_style(&mut self) -> FnStyle {
         if self.eat_keyword(keywords::Fn) { NormalFn }
-        else if self.eat_keyword(keywords::Unsafe) {
+        else if self.eat_keyword(keywords::Unsafe)
+                || self.eat_keyword(keywords::Hazard) {
             self.expect_keyword(keywords::Fn);
             UnsafeFn
         }
@@ -4655,7 +4663,7 @@ impl<'a> Parser<'a> {
                                     maybe_append(attrs, extra_attrs));
             return IoviItem(item);
         }
-        if self.is_keyword(keywords::Unsafe)
+        if (self.is_keyword(keywords::Unsafe) || self.is_keyword(keywords::Hazard))
             && self.look_ahead(1u, |t| *t != token::LBRACE) {
             // UNSAFE FUNCTION ITEM
             self.bump();
@@ -4760,7 +4768,9 @@ impl<'a> Parser<'a> {
             let item = self.parse_item_foreign_static(visibility, attrs);
             return IoviForeignItem(item);
         }
-        if self.is_keyword(keywords::Fn) || self.is_keyword(keywords::Unsafe) {
+        if self.is_keyword(keywords::Fn)
+           || self.is_keyword(keywords::Unsafe)
+           || self.is_keyword(keywords::Hazard) {
             // FOREIGN FUNCTION ITEM
             let item = self.parse_item_foreign_fn(visibility, attrs);
             return IoviForeignItem(item);
