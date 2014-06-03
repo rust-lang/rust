@@ -2227,6 +2227,10 @@ impl<A:ToJson,B:ToJson,C:ToJson> ToJson for (A, B, C) {
     }
 }
 
+impl<'a, A:ToJson> ToJson for &'a [A] {
+    fn to_json(&self) -> Json { List(self.iter().map(|elt| elt.to_json()).collect()) }
+}
+
 impl<A:ToJson> ToJson for ~[A] {
     fn to_json(&self) -> Json { List(self.iter().map(|elt| elt.to_json()).collect()) }
 }
@@ -3332,6 +3336,56 @@ mod tests {
         assert!(!stack.last_is_index());
         assert!(stack.get(0) == Index(1));
         assert!(stack.get(1) == Key("foo"));
+    }
+
+    #[test]
+    fn test_to_json() {
+        use collections::{HashMap,TreeMap};
+        use super::ToJson;
+
+        let list2 = List(vec!(Number(1.0_f64), Number(2.0_f64)));
+        let list3 = List(vec!(Number(1.0f64), Number(2.0f64), Number(3.0f64)));
+        let object = {
+            let mut tree_map = TreeMap::new();
+            tree_map.insert("a".to_string(), Number(1.0_f64));
+            tree_map.insert("b".to_string(), Number(2.0_f64));
+            Object(box tree_map)
+        };
+
+        assert_eq!(list2.to_json(), list2);
+        assert_eq!(object.to_json(), object);
+        assert_eq!(3_i.to_json(), Number(3.0_f64));
+        assert_eq!(4_i8.to_json(), Number(4.0_f64));
+        assert_eq!(5_i16.to_json(), Number(5.0_f64));
+        assert_eq!(6_i32.to_json(), Number(6.0_f64));
+        assert_eq!(7_i64.to_json(), Number(7.0_f64));
+        assert_eq!(8_u.to_json(), Number(8.0_f64));
+        assert_eq!(9_u8.to_json(), Number(9.0_f64));
+        assert_eq!(10_u16.to_json(), Number(10.0_f64));
+        assert_eq!(11_u32.to_json(), Number(11.0_f64));
+        assert_eq!(12_u64.to_json(), Number(12.0_f64));
+        assert_eq!(13.0_f32.to_json(), Number(13.0_f64));
+        assert_eq!(14.0_f64.to_json(), Number(14.0_f64));
+        assert_eq!(().to_json(), Null);
+        assert_eq!(true.to_json(), Boolean(true));
+        assert_eq!(false.to_json(), Boolean(false));
+        assert_eq!("abc".to_string().to_json(), String("abc".to_string()));
+        assert_eq!((1, 2).to_json(), list2);
+        assert_eq!((1, 2, 3).to_json(), list3);
+        assert_eq!([1, 2].to_json(), list2);
+        assert_eq!((&[1, 2, 3]).to_json(), list3);
+        assert_eq!((~[1, 2]).to_json(), list2);
+        assert_eq!(vec!(1, 2, 3).to_json(), list3);
+        let mut tree_map = TreeMap::new();
+        tree_map.insert("a".to_string(), 1);
+        tree_map.insert("b".to_string(), 2);
+        assert_eq!(tree_map.to_json(), object);
+        let mut hash_map = HashMap::new();
+        hash_map.insert("a".to_string(), 1);
+        hash_map.insert("b".to_string(), 2);
+        assert_eq!(hash_map.to_json(), object);
+        assert_eq!(Some(15).to_json(), Number(15 as f64));
+        assert_eq!(None::<int>.to_json(), Null);
     }
 
     #[bench]
