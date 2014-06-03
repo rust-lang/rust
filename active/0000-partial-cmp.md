@@ -30,69 +30,48 @@ the required methods.
 
 # Detailed design
 
-Add an enum to `core::cmp`:
-```rust
-pub enum PartialOrdering {
-    PartialOrdLess,
-    PartialOrdEqual,
-    PartialOrdGreater,
-    PartialOrdUnordered,
-}
-```
-and a method to `PartialOrd`, changing the default implementations of the other
+Add a method to `PartialOrd`, changing the default implementations of the other
 methods:
 ```rust
 pub trait PartialOrd {
-    fn partial_cmp(&self, other: &Self) -> PartialOrdering;
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering>;
 
     fn lt(&self, other: &Self) -> bool {
         match self.partial_cmp(other) {
-            PartialOrdLess => true,
+            Some(Less) => true,
             _ => false,
         }
     }
 
     le(&self, other: &Self) -> bool {
         match self.partial_cmp(other) {
-            PartialOrdLess | PartialOrdEqual => true,
+            Some(Less) | Some(Equal) => true,
             _ => false,
         }
     }
 
     fn gt(&self, other: &Self) -> bool {
         match self.partial_cmp(other) {
-            PartialOrdGreater => true,
+            Some(Greater) => true,
             _ => false,
         }
     }
 
     ge(&self, other: &Self) -> bool {
         match self.partial_cmp(other) {
-            PartialOrdGreater | PartialOrdEqual => true,
+            Some(Greater) | Some(Equal) => true,
             _ => false,
         }
     }
 }
 ```
 
-Since almost all ordered types have a total ordering, add a method to convert
-an `Ordering` to a `PartialOrdering`:
-```rust
-impl Ordering {
-    pub fn to_partial(&self) -> PartialOrdering {
-        Less => PartialOrdLess,
-        Equal => PartialOrdEqual,
-        Greater => PartialOrdGreater,
-    }
-}
-```
-
-This allows the implementation of `PartialOrd` to in most cases be as simple
-as
+Since almost all ordered types have a total ordering, the implementation of
+`partial_cmp` is trivial in most cases:
 ```rust
 impl PartialOrd for Foo {
-    fn partial_cmp(&self, other: &Self) -> PartialOrdering {
-        self.cmp(other).to_partial()
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }
 ```
@@ -121,18 +100,28 @@ be implemented first for that to be workrable.
 We may want to add something similar to `PartialEq` as well. I don't know what
 it would be called, though (maybe `partial_eq`?):
 ```rust
-#[deriving(Eq)]
-pub enum PartialEquality {
-    PartialEqEqual,
-    PartialEqNotEqual,
-    PartialEqUncomparable,
+// I don't feel great about these variant names, but `Equal` is already taken
+// by `Ordering` which is in the same module.
+pub enum Equality {
+    AreEqual,
+    AreUnequal,
 }
 
 pub trait PartialEq {
-    fn partial_eq(&self, other: &Self) -> PartialEquality;
+    fn partial_eq(&self, other: &Self) -> Option<Equality>;
 
-    fn eq(&self, other: &Self) -> bool { self.partial_eq(other) == PartialEqEqual }
+    fn eq(&self, other: &Self) -> bool {
+        match self.partial_eq(other) {
+            Some(AreEqual) => true,
+            _ => false,
+        }
+    }
 
-    fn neq(&self, other: &Self) -> bool { self.partial_eq(other) == PartialEqNotEqual }
+    fn neq(&self, other: &Self) -> bool {
+        match self.partial_eq(other) {
+            Some(AreUnequal) => true,
+            _ => false,
+        }
+    }
 }
 ```
