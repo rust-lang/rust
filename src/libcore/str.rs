@@ -1475,12 +1475,27 @@ pub trait StrSlice<'a> {
     /// This function can be used to iterate over a unicode string in reverse.
     ///
     /// Returns 0 for next index if called on start index 0.
+    ///
+    /// # Failure
+    ///
+    /// If `i` is greater than the length of the string.
+    /// If `i` is not an index following a valid UTF-8 character.
     fn char_range_at_reverse(&self, start: uint) -> CharRange;
 
-    /// Plucks the character starting at the `i`th byte of a string
+    /// Plucks the character starting at the `i`th byte of a string.
+    ///
+    /// # Failure
+    ///
+    /// If `i` is greater than or equal to the length of the string.
+    /// If `i` is not the index of the beginning of a valid UTF-8 character.
     fn char_at(&self, i: uint) -> char;
 
-    /// Plucks the character ending at the `i`th byte of a string
+    /// Plucks the character ending at the `i`th byte of a string.
+    ///
+    /// # Failure
+    ///
+    /// If `i` is greater than the length of the string.
+    /// If `i` is not an index following a valid UTF-8 character.
     fn char_at_reverse(&self, i: uint) -> char;
 
     /// Work with the byte buffer of a string as a byte slice.
