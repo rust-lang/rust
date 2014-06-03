@@ -401,6 +401,16 @@ fn mk_ident(cx: &ExtCtxt, sp: Span, ident: ast::Ident) -> @ast::Expr {
                         vec!(e_str))
 }
 
+fn mk_ast_path(cx: &ExtCtxt, sp: Span, name: &str) -> @ast::Expr {
+    let idents = vec!(id_ext("syntax"), id_ext("ast"), id_ext(name));
+    cx.expr_path(cx.path_global(sp, idents))
+}
+
+fn mk_token_path(cx: &ExtCtxt, sp: Span, name: &str) -> @ast::Expr {
+    let idents = vec!(id_ext("syntax"), id_ext("parse"), id_ext("token"), id_ext(name));
+    cx.expr_path(cx.path_global(sp, idents))
+}
+
 fn mk_binop(cx: &ExtCtxt, sp: Span, bop: token::BinOp) -> @ast::Expr {
     let name = match bop {
         PLUS => "PLUS",
@@ -414,116 +424,96 @@ fn mk_binop(cx: &ExtCtxt, sp: Span, bop: token::BinOp) -> @ast::Expr {
         SHL => "SHL",
         SHR => "SHR"
     };
-    cx.expr_ident(sp, id_ext(name))
+    mk_token_path(cx, sp, name)
 }
 
 fn mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> @ast::Expr {
 
     match *tok {
         BINOP(binop) => {
-            return cx.expr_call_ident(sp,
-                                      id_ext("BINOP"),
-                                      vec!(mk_binop(cx, sp, binop)));
+            return cx.expr_call(sp, mk_token_path(cx, sp, "BINOP"), vec!(mk_binop(cx, sp, binop)));
         }
         BINOPEQ(binop) => {
-            return cx.expr_call_ident(sp,
-                                      id_ext("BINOPEQ"),
-                                      vec!(mk_binop(cx, sp, binop)));
+            return cx.expr_call(sp, mk_token_path(cx, sp, "BINOPEQ"),
+                                vec!(mk_binop(cx, sp, binop)));
         }
 
         LIT_CHAR(i) => {
             let e_char = cx.expr_lit(sp, ast::LitChar(i));
 
-            return cx.expr_call_ident(sp, id_ext("LIT_CHAR"), vec!(e_char));
+            return cx.expr_call(sp, mk_token_path(cx, sp, "LIT_CHAR"), vec!(e_char));
         }
 
         LIT_INT(i, ity) => {
             let s_ity = match ity {
-                ast::TyI => "TyI".to_string(),
-                ast::TyI8 => "TyI8".to_string(),
-                ast::TyI16 => "TyI16".to_string(),
-                ast::TyI32 => "TyI32".to_string(),
-                ast::TyI64 => "TyI64".to_string()
+                ast::TyI => "TyI",
+                ast::TyI8 => "TyI8",
+                ast::TyI16 => "TyI16",
+                ast::TyI32 => "TyI32",
+                ast::TyI64 => "TyI64"
             };
-            let e_ity = cx.expr_ident(sp, id_ext(s_ity.as_slice()));
-
+            let e_ity = mk_ast_path(cx, sp, s_ity);
             let e_i64 = cx.expr_lit(sp, ast::LitInt(i, ast::TyI64));
-
-            return cx.expr_call_ident(sp,
-                                      id_ext("LIT_INT"),
-                                      vec!(e_i64, e_ity));
+            return cx.expr_call(sp, mk_token_path(cx, sp, "LIT_INT"), vec!(e_i64, e_ity));
         }
 
         LIT_UINT(u, uty) => {
             let s_uty = match uty {
-                ast::TyU => "TyU".to_string(),
-                ast::TyU8 => "TyU8".to_string(),
-                ast::TyU16 => "TyU16".to_string(),
-                ast::TyU32 => "TyU32".to_string(),
-                ast::TyU64 => "TyU64".to_string()
+                ast::TyU => "TyU",
+                ast::TyU8 => "TyU8",
+                ast::TyU16 => "TyU16",
+                ast::TyU32 => "TyU32",
+                ast::TyU64 => "TyU64"
             };
-            let e_uty = cx.expr_ident(sp, id_ext(s_uty.as_slice()));
-
+            let e_uty = mk_ast_path(cx, sp, s_uty);
             let e_u64 = cx.expr_lit(sp, ast::LitUint(u, ast::TyU64));
-
-            return cx.expr_call_ident(sp,
-                                      id_ext("LIT_UINT"),
-                                      vec!(e_u64, e_uty));
+            return cx.expr_call(sp, mk_token_path(cx, sp, "LIT_UINT"), vec!(e_u64, e_uty));
         }
 
         LIT_INT_UNSUFFIXED(i) => {
             let e_i64 = cx.expr_lit(sp, ast::LitInt(i, ast::TyI64));
-
-            return cx.expr_call_ident(sp,
-                                      id_ext("LIT_INT_UNSUFFIXED"),
-                                      vec!(e_i64));
+            return cx.expr_call(sp, mk_token_path(cx, sp, "LIT_INT_UNSUFFIXED"), vec!(e_i64));
         }
 
         LIT_FLOAT(fident, fty) => {
             let s_fty = match fty {
-                ast::TyF32 => "TyF32".to_string(),
-                ast::TyF64 => "TyF64".to_string(),
-                ast::TyF128 => "TyF128".to_string()
+                ast::TyF32 => "TyF32",
+                ast::TyF64 => "TyF64",
+                ast::TyF128 => "TyF128"
             };
-            let e_fty = cx.expr_ident(sp, id_ext(s_fty.as_slice()));
-
+            let e_fty = mk_ast_path(cx, sp, s_fty);
             let e_fident = mk_ident(cx, sp, fident);
-
-            return cx.expr_call_ident(sp,
-                                      id_ext("LIT_FLOAT"),
-                                      vec!(e_fident, e_fty));
+            return cx.expr_call(sp, mk_token_path(cx, sp, "LIT_FLOAT"), vec!(e_fident, e_fty));
         }
 
         LIT_STR(ident) => {
-            return cx.expr_call_ident(sp,
-                                      id_ext("LIT_STR"),
-                                      vec!(mk_ident(cx, sp, ident)));
+            return cx.expr_call(sp,
+                                mk_token_path(cx, sp, "LIT_STR"),
+                                vec!(mk_ident(cx, sp, ident)));
         }
 
         LIT_STR_RAW(ident, n) => {
-            return cx.expr_call_ident(sp,
-                                      id_ext("LIT_STR_RAW"),
-                                      vec!(mk_ident(cx, sp, ident),
-                                        cx.expr_uint(sp, n)));
+            return cx.expr_call(sp,
+                                mk_token_path(cx, sp, "LIT_STR_RAW"),
+                                vec!(mk_ident(cx, sp, ident), cx.expr_uint(sp, n)));
         }
 
         IDENT(ident, b) => {
-            return cx.expr_call_ident(sp,
-                                      id_ext("IDENT"),
-                                      vec!(mk_ident(cx, sp, ident),
-                                        cx.expr_bool(sp, b)));
+            return cx.expr_call(sp,
+                                mk_token_path(cx, sp, "IDENT"),
+                                vec!(mk_ident(cx, sp, ident), cx.expr_bool(sp, b)));
         }
 
         LIFETIME(ident) => {
-            return cx.expr_call_ident(sp,
-                                      id_ext("LIFETIME"),
-                                      vec!(mk_ident(cx, sp, ident)));
+            return cx.expr_call(sp,
+                                mk_token_path(cx, sp, "LIFETIME"),
+                                vec!(mk_ident(cx, sp, ident)));
         }
 
         DOC_COMMENT(ident) => {
-            return cx.expr_call_ident(sp,
-                                      id_ext("DOC_COMMENT"),
-                                      vec!(mk_ident(cx, sp, ident)));
+            return cx.expr_call(sp,
+                                mk_token_path(cx, sp, "DOC_COMMENT"),
+                                vec!(mk_ident(cx, sp, ident)));
         }
 
         INTERPOLATED(_) => fail!("quote! with interpolated token"),
@@ -565,19 +555,16 @@ fn mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> @ast::Expr {
         EOF => "EOF",
         _ => fail!()
     };
-    cx.expr_ident(sp, id_ext(name))
+    mk_token_path(cx, sp, name)
 }
 
-
 fn mk_tt(cx: &ExtCtxt, sp: Span, tt: &ast::TokenTree) -> Vec<@ast::Stmt> {
-
     match *tt {
-
         ast::TTTok(sp, ref tok) => {
             let e_sp = cx.expr_ident(sp, id_ext("_sp"));
-            let e_tok = cx.expr_call_ident(sp,
-                                           id_ext("TTTok"),
-                                           vec!(e_sp, mk_token(cx, sp, tok)));
+            let e_tok = cx.expr_call(sp,
+                                     mk_ast_path(cx, sp, "TTTok"),
+                                     vec!(e_sp, mk_token(cx, sp, tok)));
             let e_push =
                 cx.expr_method_call(sp,
                                     cx.expr_ident(sp, id_ext("tt")),
@@ -695,8 +682,6 @@ fn expand_wrapper(cx: &ExtCtxt,
                   cx_expr: @ast::Expr,
                   expr: @ast::Expr) -> @ast::Expr {
     let uses = [
-        &["syntax", "ast"],
-        &["syntax", "parse", "token"],
         &["syntax", "ext", "quote", "rt"],
     ].iter().map(|path| {
         let path = path.iter().map(|s| s.to_string()).collect();
