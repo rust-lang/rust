@@ -232,7 +232,7 @@ impl rtio::IoFactory for IoFactory {
     fn fs_rename(&mut self, path: &CString, to: &CString) -> IoResult<()> {
         file::rename(path, to)
     }
-    fn fs_readdir(&mut self, path: &CString, _flags: c_int) -> IoResult<Vec<Path>> {
+    fn fs_readdir(&mut self, path: &CString, _flags: c_int) -> IoResult<Vec<CString>> {
         file::readdir(path)
     }
     fn fs_lstat(&mut self, path: &CString) -> IoResult<io::FileStat> {
@@ -241,7 +241,7 @@ impl rtio::IoFactory for IoFactory {
     fn fs_chown(&mut self, path: &CString, uid: int, gid: int) -> IoResult<()> {
         file::chown(path, uid, gid)
     }
-    fn fs_readlink(&mut self, path: &CString) -> IoResult<Path> {
+    fn fs_readlink(&mut self, path: &CString) -> IoResult<CString> {
         file::readlink(path)
     }
     fn fs_symlink(&mut self, src: &CString, dst: &CString) -> IoResult<()> {

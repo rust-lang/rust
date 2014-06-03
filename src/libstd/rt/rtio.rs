@@ -19,7 +19,6 @@ use mem;
 use ops::Drop;
 use option::{Option, Some, None};
 use owned::Box;
-use path::Path;
 use result::Err;
 use rt::local::Local;
 use rt::task::Task;
@@ -223,11 +222,11 @@ pub trait IoFactory {
     fn fs_rmdir(&mut self, path: &CString) -> IoResult<()>;
     fn fs_rename(&mut self, path: &CString, to: &CString) -> IoResult<()>;
     fn fs_readdir(&mut self, path: &CString, flags: c_int) ->
-        IoResult<Vec<Path>>;
+        IoResult<Vec<CString>>;
     fn fs_lstat(&mut self, path: &CString) -> IoResult<FileStat>;
     fn fs_chown(&mut self, path: &CString, uid: int, gid: int) ->
         IoResult<()>;
-    fn fs_readlink(&mut self, path: &CString) -> IoResult<Path>;
+    fn fs_readlink(&mut self, path: &CString) -> IoResult<CString>;
     fn fs_symlink(&mut self, src: &CString, dst: &CString) -> IoResult<()>;
     fn fs_link(&mut self, src: &CString, dst: &CString) -> IoResult<()>;
     fn fs_utime(&mut self, src: &CString, atime: u64, mtime: u64) ->

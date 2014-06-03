@@ -410,7 +410,9 @@ pub fn symlink(src: &Path, dst: &Path) -> IoResult<()> {
 /// This function will return an error on failure. Failure conditions include
 /// reading a file that does not exist or reading a file which is not a symlink.
 pub fn readlink(path: &Path) -> IoResult<Path> {
-    LocalIo::maybe_raise(|io| io.fs_readlink(&path.to_c_str()))
+    LocalIo::maybe_raise(|io| {
+        Ok(Path::new(try!(io.fs_readlink(&path.to_c_str()))))
+    })
 }
 
 /// Create a new, empty directory at the provided path
@@ -487,7 +489,9 @@ pub fn rmdir(path: &Path) -> IoResult<()> {
 /// file
 pub fn readdir(path: &Path) -> IoResult<Vec<Path>> {
     LocalIo::maybe_raise(|io| {
-        io.fs_readdir(&path.to_c_str(), 0)
+        Ok(try!(io.fs_readdir(&path.to_c_str(), 0)).move_iter().map(|a| {
+            Path::new(a)
+        }).collect())
     })
 }
 
