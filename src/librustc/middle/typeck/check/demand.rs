@@ -12,11 +12,14 @@
 use middle::ty;
 use middle::typeck::check::FnCtxt;
 use middle::typeck::infer;
+use middle::typeck::infer::resolve_type;
+use middle::typeck::infer::resolve::try_resolve_tvar_shallow;
 
 use std::result::{Err, Ok};
 use std::result;
 use syntax::ast;
 use syntax::codemap::Span;
+use util::ppaux::Repr;
 
 // Requires that the two types unify, and prints an error message if they
 // don't.
@@ -58,6 +61,13 @@ pub fn eqtype(fcx: &FnCtxt, sp: Span, expected: ty::t, actual: ty::t) {
 // Checks that the type `actual` can be coerced to `expected`.
 pub fn coerce(fcx: &FnCtxt, sp: Span, expected: ty::t, expr: &ast::Expr) {
     let expr_ty = fcx.expr_ty(expr);
+    debug!("demand::coerce(expected = {}, expr_ty = {})",
+           expected.repr(fcx.ccx.tcx),
+           expr_ty.repr(fcx.ccx.tcx));
+    let expected = if ty::type_needs_infer(expected) {
+        resolve_type(fcx.infcx(), expected,
+                     try_resolve_tvar_shallow).unwrap_or(expected)
+    } else { expected };
     match fcx.mk_assignty(expr, expr_ty, expected) {
       result::Ok(()) => { /* ok */ }
       result::Err(ref err) => {
