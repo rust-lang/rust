@@ -19,7 +19,7 @@ fn return_two_test() {
 To run these tests, compile with `rustc --test` and run the resulting
 binary:
 
-~~~ {.notrust}
+~~~console
 $ rustc --test foo.rs
 $ ./foo
 running 1 test
@@ -111,7 +111,7 @@ sequentially.
 
 ### Typical test run
 
-~~~ {.notrust}
+~~~console
 $ mytests
 
 running 30 tests
@@ -125,7 +125,7 @@ result: ok. 28 passed; 0 failed; 2 ignored
 
 ### Test run with failures
 
-~~~ {.notrust}
+~~~console
 $ mytests
 
 running 30 tests
@@ -139,7 +139,7 @@ result: FAILED. 27 passed; 1 failed; 2 ignored
 
 ### Running ignored tests
 
-~~~ {.notrust}
+~~~console
 $ mytests --ignored
 
 running 2 tests
@@ -153,7 +153,7 @@ result: FAILED. 1 passed; 1 failed; 0 ignored
 
 Using a plain string:
 
-~~~ {.notrust}
+~~~console
 $ mytests mytest23
 
 running 1 tests
@@ -164,7 +164,7 @@ result: ok. 1 passed; 0 failed; 0 ignored
 
 Using some regular expression features:
 
-~~~ {.notrust}
+~~~console
 $ mytests 'mytest[145]'
 
 running 13 tests
@@ -247,7 +247,7 @@ Advice on writing benchmarks:
 To run benchmarks, pass the `--bench` flag to the compiled
 test-runner. Benchmarks are compiled-in but not executed by default.
 
-~~~ {.notrust}
+~~~console
 $ rustc mytests.rs -O --test
 $ mytests --bench
 
@@ -283,7 +283,7 @@ fn bench_xor_1000_ints(b: &mut Bencher) {
 
 gives the following results
 
-~~~ {.notrust}
+~~~console
 running 1 test
 test bench_xor_1000_ints ... bench:         0 ns/iter (+/- 0)
 
@@ -323,7 +323,7 @@ overhead (e.g. `black_box(&huge_struct)`).
 Performing either of the above changes gives the following
 benchmarking results
 
-~~~ {.notrust}
+~~~console
 running 1 test
 test bench_xor_1000_ints ... bench:       375 ns/iter (+/- 148)
 

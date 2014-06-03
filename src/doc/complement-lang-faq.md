@@ -135,7 +135,7 @@ For simplicity, we do not plan to do so. Implementing automatic semicolon insert
 
 **Short answer** set the RUST_LOG environment variable to the name of your source file, sans extension.
 
-```notrust,sh
+```sh
 rustc hello.rs
 export RUST_LOG=hello
 ./hello

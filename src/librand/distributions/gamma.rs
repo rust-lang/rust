@@ -20,7 +20,7 @@ use super::{IndependentSample, Sample, Exp};
 ///
 /// The density function of this distribution is
 ///
-/// ```notrust
+/// ```text
 /// f(x) =  x^(k - 1) * exp(-x / θ) / (Γ(k) * θ^k)
 /// ```
 ///
