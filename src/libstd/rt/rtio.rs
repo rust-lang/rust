@@ -61,18 +61,6 @@ pub trait RemoteCallback {
     fn fire(&mut self);
 }
 
-/// Data needed to make a successful open(2) call
-/// Using unix flag conventions for now, which happens to also be what's supported
-/// libuv (it does translation to windows under the hood).
-pub struct FileOpenConfig {
-    /// Path to file to be opened
-    pub path: Path,
-    /// Flags for file access mode (as per open(2))
-    pub flags: int,
-    /// File creation mode, ignored unless O_CREAT is passed as part of flags
-    pub mode: int
-}
-
 /// Description of what to do when a file handle is closed
 pub enum CloseBehavior {
     /// Do not close this handle when the object is destroyed
