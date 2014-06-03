@@ -22,7 +22,6 @@ use libc::c_int;
 use libc::{O_CREAT, O_APPEND, O_TRUNC, O_RDWR, O_RDONLY, O_WRONLY, S_IRUSR,
                 S_IWUSR};
 use libc;
-use std::path::Path;
 use std::rt::rtio;
 use std::rt::rtio::{ProcessConfig, IoFactory, EventLoop};
 use ai = std::io::net::addrinfo;
@@ -241,7 +240,7 @@ impl IoFactory for UvIoFactory {
         r.map_err(uv_error_to_io_error)
     }
     fn fs_readdir(&mut self, path: &CString, flags: c_int)
-        -> Result<Vec<Path>, IoError>
+        -> Result<Vec<CString>, IoError>
     {
         let r = FsRequest::readdir(&self.loop_, path, flags);
         r.map_err(uv_error_to_io_error)
@@ -258,7 +257,7 @@ impl IoFactory for UvIoFactory {
         let r = FsRequest::chown(&self.loop_, path, uid, gid);
         r.map_err(uv_error_to_io_error)
     }
-    fn fs_readlink(&mut self, path: &CString) -> Result<Path, IoError> {
+    fn fs_readlink(&mut self, path: &CString) -> Result<CString, IoError> {
         let r = FsRequest::readlink(&self.loop_, path);
         r.map_err(uv_error_to_io_error)
     }
