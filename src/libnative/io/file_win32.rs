@@ -347,16 +347,16 @@ pub fn mkdir(p: &CString, _mode: io::FilePermission) -> IoResult<()> {
     })
 }
 
-pub fn readdir(p: &CString) -> IoResult<Vec<Path>> {
+pub fn readdir(p: &CString) -> IoResult<Vec<CString>> {
     use std::rt::libc_heap::malloc_raw;
 
-    fn prune(root: &CString, dirs: Vec<Path>) -> Vec<Path> {
+    fn prune(root: &CString, dirs: Vec<Path>) -> Vec<CString> {
         let root = unsafe { CString::new(root.with_ref(|p| p), false) };
         let root = Path::new(root);
 
         dirs.move_iter().filter(|path| {
             path.as_vec() != bytes!(".") && path.as_vec() != bytes!("..")
-        }).map(|path| root.join(path)).collect()
+        }).map(|path| root.join(path).to_c_str()).collect()
     }
 
     extern {

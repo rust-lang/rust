@@ -361,17 +361,17 @@ pub fn mkdir(p: &CString, mode: io::FilePermission) -> IoResult<()> {
     }))
 }
 
-pub fn readdir(p: &CString) -> IoResult<Vec<Path>> {
+pub fn readdir(p: &CString) -> IoResult<Vec<CString>> {
     use libc::{dirent_t};
     use libc::{opendir, readdir_r, closedir};
 
-    fn prune(root: &CString, dirs: Vec<Path>) -> Vec<Path> {
+    fn prune(root: &CString, dirs: Vec<Path>) -> Vec<CString> {
         let root = unsafe { CString::new(root.with_ref(|p| p), false) };
         let root = Path::new(root);
 
         dirs.move_iter().filter(|path| {
             path.as_vec() != bytes!(".") && path.as_vec() != bytes!("..")
-        }).map(|path| root.join(path)).collect()
+        }).map(|path| root.join(path).to_c_str()).collect()
     }
 
     extern {
@@ -431,7 +431,7 @@ pub fn chown(p: &CString, uid: int, gid: int) -> IoResult<()> {
     }))
 }
 
-pub fn readlink(p: &CString) -> IoResult<Path> {
+pub fn readlink(p: &CString) -> IoResult<CString> {
     let p = p.with_ref(|p| p);
     let mut len = unsafe { libc::pathconf(p, libc::_PC_NAME_MAX) };
     if len == -1 {
@@ -446,7 +446,7 @@ pub fn readlink(p: &CString) -> IoResult<Path> {
         n => {
             assert!(n > 0);
             unsafe { buf.set_len(n as uint); }
-            Ok(Path::new(buf))
+            Ok(buf.as_slice().to_c_str())
         }
     }
 }

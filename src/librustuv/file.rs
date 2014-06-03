@@ -157,7 +157,7 @@ impl FsRequest {
     }
 
     pub fn readdir(loop_: &Loop, path: &CString, flags: c_int)
-        -> Result<Vec<Path>, UvError>
+        -> Result<Vec<CString>, UvError>
     {
         execute(|req, cb| unsafe {
             uvll::uv_fs_readdir(loop_.handle,
@@ -170,20 +170,22 @@ impl FsRequest {
                                               Some(req.get_result() as uint),
                                               |rel| {
                 let p = rel.as_bytes();
-                paths.push(parent.join(p.slice_to(rel.len())));
+                paths.push(parent.join(p.slice_to(rel.len())).to_c_str());
             });
             paths
         })
     }
 
-    pub fn readlink(loop_: &Loop, path: &CString) -> Result<Path, UvError> {
+    pub fn readlink(loop_: &Loop, path: &CString) -> Result<CString, UvError> {
         execute(|req, cb| unsafe {
             uvll::uv_fs_readlink(loop_.handle, req,
                                  path.with_ref(|p| p), cb)
         }).map(|req| {
-            Path::new(unsafe {
-                CString::new(req.get_ptr() as *libc::c_char, false)
-            })
+            // Be sure to clone the cstring so we get an independently owned
+            // allocation to work with and return.
+            unsafe {
+                CString::new(req.get_ptr() as *libc::c_char, false).clone()
+            }
         })
     }
 
