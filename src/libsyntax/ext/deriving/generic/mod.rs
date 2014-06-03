@@ -102,7 +102,7 @@ above `PartialEq`, `A`, `B` and `C`.
 
 When generating the `expr` for the `A` impl, the `SubstructureFields` is
 
-~~~notrust
+~~~text
 Struct(~[FieldInfo {
            span: <span of x>
            name: Some(<ident of x>),
@@ -113,7 +113,7 @@ Struct(~[FieldInfo {
 
 For the `B` impl, called with `B(a)` and `B(b)`,
 
-~~~notrust
+~~~text
 Struct(~[FieldInfo {
           span: <span of `int`>,
           name: None,
@@ -127,7 +127,7 @@ Struct(~[FieldInfo {
 When generating the `expr` for a call with `self == C0(a)` and `other
 == C0(b)`, the SubstructureFields is
 
-~~~notrust
+~~~text
 EnumMatching(0, <ast::Variant for C0>,
              ~[FieldInfo {
                 span: <span of int>
@@ -139,7 +139,7 @@ EnumMatching(0, <ast::Variant for C0>,
 
 For `C1 {x}` and `C1 {x}`,
 
-~~~notrust
+~~~text
 EnumMatching(1, <ast::Variant for C1>,
              ~[FieldInfo {
                 span: <span of x>
@@ -151,7 +151,7 @@ EnumMatching(1, <ast::Variant for C1>,
 
 For `C0(a)` and `C1 {x}` ,
 
-~~~notrust
+~~~text
 EnumNonMatching(~[(0, <ast::Variant for B0>,
                    ~[(<span of int>, None, <expr for &a>)]),
                   (1, <ast::Variant for B1>,
@@ -165,7 +165,7 @@ EnumNonMatching(~[(0, <ast::Variant for B0>,
 
 A static method on the above would result in,
 
-~~~~notrust
+~~~text
 StaticStruct(<ast::StructDef of A>, Named(~[(<ident of x>, <span of x>)]))
 
 StaticStruct(<ast::StructDef of B>, Unnamed(~[<span of x>]))
@@ -793,7 +793,7 @@ impl<'a> MethodDef<'a> {
     /**
     Creates the nested matches for an enum definition recursively, i.e.
 
-   ~~~notrust
+   ~~~text
     match self {
        Variant1 => match other { Variant1 => matching, Variant2 => nonmatching, ... },
        Variant2 => match other { Variant1 => nonmatching, Variant2 => matching, ... },

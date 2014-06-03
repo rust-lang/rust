@@ -255,7 +255,7 @@ Note: The Rust signatures should be wrapped in an `extern "ABI" { ... }` block.
 
 You might see things like this in C APIs:
 
-~~~ {.notrust}
+~~~c
 typedef struct Window Window;
 Window* createWindow(int width, int height);
 ~~~
