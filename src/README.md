@@ -5,26 +5,37 @@ Source layout:
 | Path                | Description                                               |
 | ------------------- | --------------------------------------------------------- |
 | `librustc/`         | The self-hosted compiler                                  |
+| `liballoc/`         | Rust's core allocation library                            |
+| `libcore/`          | The Rust core library                                     |
+| `libdebug/`         | Debugging utilities                                       |
 | `libstd/`           | The standard library (imported and linked by default)     |
-| `libextra/`         | The "extras" library (slightly more peripheral code)      |
 | `libgreen/`         | The M:N runtime library                                   |
 | `libnative/`        | The 1:1 runtime library                                   |
 | `libsyntax/`        | The Rust parser and pretty-printer                        |
-| `libcollections/`   | A collection of useful data structures and containers     |
-| `libnum/`           | Extended number support library (complex, rational, etc)  |
 | `libtest/`          | Rust's test-runner code                                   |
 | ------------------- | --------------------------------------------------------- |
 | `libarena/`         | The arena (a fast but limited) memory allocator           |
+| `libbacktrace/`     | The libbacktrace library                                  |
+| `libcollections/`   | A collection of useful data structures and containers     |
 | `libflate/`         | Simple compression library                                |
+| `libfmt_macros/`    | Macro support for format strings                          |
 | `libfourcc/`        | Data format identifier library                            |
 | `libgetopts/`       | Get command-line-options library                          |
 | `libglob/`          | Unix glob patterns library                                |
+| `libgraphviz/`      | Generating files for Graphviz                             |
+| `libhexfloat/`      | Hexadecimal floating-point literals                       |
+| `liblibc/`          | Bindings for the C standard library                       |
+| `liblog/`           | Utilities for program-wide and customizable logging       |
+| `libnum/`           | Extended number support library (complex, rational, etc)  |
+| `librand/`          | Random numbers and distributions                          |
 | `libregex/`         | Regular expressions                                       |
+| `libregex_macros/`  | The regex! syntax extension                               |
 | `libsemver/`        | Rust's semantic versioning library                        |
 | `libserialize/`     | Encode-Decode types library                               |
 | `libsync/`          | Concurrency mechanisms and primitives                     |
 | `libterm/`          | ANSI color library for terminals                          |
 | `libtime/`          | Time operations library                                   |
+| `liburl/`           | URL handling lirary                                       |
 | `libuuid/`          | UUID's handling code                                      |
 | ------------------- | --------------------------------------------------------- |
 | `rt/`               | The runtime system                                        |
