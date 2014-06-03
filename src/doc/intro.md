@@ -18,7 +18,7 @@ and its implications on a task that programmers usually find very difficult: con
 
 Ownership is central to Rust,
 and is the feature from which many of Rust's powerful capabilities are derived.
-"Ownership" refers to which parts of your code are allowed read,
+"Ownership" refers to which parts of your code are allowed to read,
 write, and ultimately release, memory.
 Let's start by looking at some C++ code:
 
