@@ -34,8 +34,9 @@ I propose an interface like
 
 ~~~ .rs
 use syntax::parse::token;
-use syntax::ext::Registry;
 use syntax::ext::base::{BasicMacroExpander, NormalTT};
+
+use rustc::plugin::Registry;
 
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {
@@ -53,7 +54,7 @@ Then the struct `Registry` could provide additional methods such as `register_li
 It could also provide convenience methods:
 
 ~~~ .rs
-use syntax::ext::Registry;
+use rustc::plugin::Registry;
 
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {
@@ -61,7 +62,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
 }
 ~~~
 
-I will also change `phase(syntax)` to `phase(plugin)`.  I'll keep `phase(syntax)` as a deprecated synonym with a warning, to avoid silent breakage.
+`phase(syntax)` becomes `phase(plugin)`, with the former as a deprecated synonym that warns.  This is to avoid silent breakage of the very common `#[phase(syntax)] extern crate log`.
 
 We only need one phase of loading plugin crates, even though the plugins we load may be used at different points (or not at all).
 
@@ -71,6 +72,8 @@ Breaking change for existing procedural macros.
 
 More moving parts.
 
+`Registry` is provided by `librustc`, because it will have methods for registering lints and other `librustc` things.  This means that syntax extensions must link `librustc`, when before they only needed `libsyntax` (but could link `librustc` anyway if desired).  This was discussed [on the RFC PR](https://github.com/rust-lang/rfcs/pull/86) and [the Rust PR](https://github.com/mozilla/rust/pull/14554) and [on IRC](https://botbot.me/mozilla/rust-internals/2014-05-22/?msg=15075433&page=5).
+
 # Alternatives
 
 We could add `#[lint_registrar]` etc. alongside `#[macro_registrar]`.  This seems like it will produce more duplicated effort all around.  It doesn't provide convenience methods, and it won't support API evolution as well.
@@ -78,7 +81,5 @@ We could add `#[lint_registrar]` etc. alongside `#[macro_registrar]`.  This seem
 # Unresolved questions
 
 Naming bikeshed.
-
-Should `Registry` be provided by `libsyntax`, when it's used to register more than just syntax extensions?
 
 What set of convenience methods should we provide?
