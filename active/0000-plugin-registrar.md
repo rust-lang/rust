@@ -74,9 +74,17 @@ More moving parts.
 
 `Registry` is provided by `librustc`, because it will have methods for registering lints and other `librustc` things.  This means that syntax extensions must link `librustc`, when before they only needed `libsyntax` (but could link `librustc` anyway if desired).  This was discussed [on the RFC PR](https://github.com/rust-lang/rfcs/pull/86) and [the Rust PR](https://github.com/mozilla/rust/pull/14554) and [on IRC](https://botbot.me/mozilla/rust-internals/2014-05-22/?msg=15075433&page=5).
 
+`#![feature(macro_registrar)]` becomes unknown, contradicting a comment in `feature_gate.rs`:
+
+> This list can never shrink, it may only be expanded (in order to prevent old programs from failing to compile)
+
+Since when do we ensure that old programs will compile? ;)  The `#[macro_registrar]` attribute wouldn't work anyway.
+
 # Alternatives
 
 We could add `#[lint_registrar]` etc. alongside `#[macro_registrar]`.  This seems like it will produce more duplicated effort all around.  It doesn't provide convenience methods, and it won't support API evolution as well.
+
+We could support the old `#[macro_registrar]` by injecting an adapter shim.  This is significant extra work to support a feature with no stability guarantee.
 
 # Unresolved questions
 
