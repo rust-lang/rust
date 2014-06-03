@@ -254,6 +254,11 @@ mod unicode;
 #[unstable]
 pub mod rt;
 
+#[doc(hidden)]
+pub fn issue_14344_workaround() { // FIXME #14344 force linkage to happen correctly
+    libc::issue_14344_workaround();
+}
+
 // A curious inner-module that's not exported that contains the binding
 // 'std' so that macro-expanded references to std::error and such
 // can be resolved within libstd.
