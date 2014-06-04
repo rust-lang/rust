@@ -43,10 +43,10 @@ use owned::Box;
 use ptr::RawPtr;
 use result::{Result, Ok, Err};
 use rt::local::Local;
+use rt::mutex::{NativeMutex, LockGuard};
 use rt::task::{Task, BlockedTask};
 use sync::atomics;
 use ty::Unsafe;
-use unstable::mutex::{NativeMutex, LockGuard};
 use vec::Vec;
 
 pub struct Packet<T> {

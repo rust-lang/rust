@@ -20,10 +20,12 @@ getaddrinfo()
 #![allow(missing_doc)]
 
 use iter::Iterator;
-use io::IoResult;
+use io::{IoResult, IoError};
 use io::net::ip::{SocketAddr, IpAddr};
 use option::{Option, Some, None};
+use result::{Ok, Err};
 use rt::rtio::{IoFactory, LocalIo};
+use rt::rtio;
 use vec::Vec;
 
 /// Hints to the types of sockets that are desired when looking up hosts
@@ -89,9 +91,34 @@ pub fn get_host_addresses(host: &str) -> IoResult<Vec<IpAddr>> {
 ///
 /// FIXME: this is not public because the `Hint` structure is not ready for public
 ///      consumption just yet.
+#[allow(unused_variable)]
 fn lookup(hostname: Option<&str>, servname: Option<&str>, hint: Option<Hint>)
           -> IoResult<Vec<Info>> {
-    LocalIo::maybe_raise(|io| io.get_host_addresses(hostname, servname, hint))
+    let hint = hint.map(|Hint { family, socktype, protocol, flags }| {
+        rtio::AddrinfoHint {
+            family: family,
+            socktype: 0, // FIXME: this should use the above variable
+            protocol: 0, // FIXME: this should use the above variable
+            flags: flags,
+        }
+    });
+    match LocalIo::maybe_raise(|io| {
+        io.get_host_addresses(hostname, servname, hint)
+    }) {
+        Ok(v) => Ok(v.move_iter().map(|info| {
+            Info {
+                address: SocketAddr {
+                    ip: super::from_rtio(info.address.ip),
+                    port: info.address.port,
+                },
+                family: info.family,
+                socktype: None, // FIXME: this should use the above variable
+                protocol: None, // FIXME: this should use the above variable
+                flags: info.flags,
+            }
+        }).collect()),
+        Err(e) => Err(IoError::from_rtio_error(e)),
+    }
 }
 
 // Ignored on android since we cannot give tcp/ip
