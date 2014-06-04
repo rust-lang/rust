@@ -14,6 +14,8 @@
 //! collections::deque::Deque`.
 
 use std::cmp;
+use std::fmt;
+use std::fmt::Show;
 use std::iter::RandomAccessIterator;
 
 use deque::Deque;
@@ -388,6 +390,19 @@ impl<A> Extendable<A> for RingBuf<A> {
         for elt in iterator {
             self.push_back(elt);
         }
+    }
+}
+
+impl<T: Show> Show for RingBuf<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        try!(write!(f, "["));
+
+        for (i, e) in self.iter().enumerate() {
+            if i != 0 { try!(write!(f, ", ")); }
+            try!(write!(f, "{}", *e));
+        }
+
+        write!(f, "]")
     }
 }
 
@@ -818,5 +833,16 @@ mod tests {
         assert!(e != d);
         e.clear();
         assert!(e == RingBuf::new());
+    }
+
+    #[test]
+    fn test_show() {
+        let ringbuf: RingBuf<int> = range(0, 10).collect();
+        assert!(format!("{}", ringbuf).as_slice() == "[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]");
+
+        let ringbuf: RingBuf<&str> = vec!["just", "one", "test", "more"].iter()
+                                                                        .map(|&s| s)
+                                                                        .collect();
+        assert!(format!("{}", ringbuf).as_slice() == "[just, one, test, more]");
     }
 }
