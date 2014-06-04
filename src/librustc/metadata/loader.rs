@@ -347,11 +347,11 @@ impl<'a> Context<'a> {
     // read the metadata from it if `*slot` is `None`. If the metadata couldn't
     // be read, it is assumed that the file isn't a valid rust library (no
     // errors are emitted).
+    //
+    // If there are multiple candidates, and one of them lives in the target
+    // lib path, pick that candidate instead of erroring out.
     fn extract_one(&mut self, m: HashSet<Path>, flavor: &str,
                    slot: &mut Option<MetadataBlob>) -> Option<Path> {
-        let mut ret = None::<Path>;
-        let mut error = 0;
-
         if slot.is_some() {
             // FIXME(#10786): for an optimization, we only read one of the
             //                library's metadata sections. In theory we should
@@ -363,6 +363,8 @@ impl<'a> Context<'a> {
                 return Some(m.move_iter().next().unwrap())
             }
         }
+
+        let mut candidates: Vec<(Path, MetadataBlob)> = Vec::new();
 
         for lib in m.move_iter() {
             info!("{} reading metadata from: {}", flavor, lib.display());
@@ -380,30 +382,45 @@ impl<'a> Context<'a> {
                     continue
                 }
             };
-            if ret.is_some() {
-                self.sess.span_err(self.span,
-                                   format!("multiple {} candidates for `{}` \
-                                            found",
-                                           flavor,
-                                           self.crate_id.name).as_slice());
-                self.sess.span_note(self.span,
-                                    format!(r"candidate \#1: {}",
-                                            ret.get_ref()
-                                               .display()).as_slice());
-                error = 1;
-                ret = None;
-            }
-            if error > 0 {
-                error += 1;
-                self.sess.span_note(self.span,
-                                    format!(r"candidate \#{}: {}", error,
-                                            lib.display()).as_slice());
-                continue
-            }
-            *slot = Some(metadata);
-            ret = Some(lib);
+            candidates.push((lib, metadata));
         }
-        return if error > 0 {None} else {ret}
+        let (lib, metadata) = if candidates.len() > 1 {
+            info!("multiple {} candidates for `{}`", flavor, self.crate_id.name);
+            // look for one from the target lib path
+            let target_lib_path = self.filesearch.get_lib_path();
+
+            let (idx_opt, has_multiple) = {
+                let mut idxs = candidates.iter().enumerate().filter_map(|(i,&(ref lib, _))| {
+                    if target_lib_path.is_ancestor_of(lib) { Some(i) } else { None }
+                });
+                (idxs.next(), idxs.next().is_some())
+            };
+            if idx_opt.is_some() && !has_multiple {
+                // only one library is in the target lib path
+                let idx = idx_opt.unwrap();
+                let (lib, metadata) = candidates.move_iter().nth(idx).unwrap();
+                info!("found candidate in target lib path: {}", lib.display());
+                (lib, metadata)
+            } else {
+                // either multiple libraries were found in the target lib path, or none
+                self.sess.span_err(self.span,
+                                    format!("multiple {} candidates for `{}` found",
+                                            flavor, self.crate_id.name).as_slice());
+                for (i, (lib, _)) in candidates.move_iter().enumerate() {
+                    self.sess.span_note(self.span,
+                                        format!(r"candidate \#{}: {}", i+1,
+                                                lib.display()).as_slice());
+                }
+                return None;
+            }
+        } else {
+            match candidates.move_iter().next() {
+                Some(x) => x,
+                None => return None
+            }
+        };
+        *slot = Some(metadata);
+        Some(lib)
     }
 
     fn crate_matches(&mut self, crate_data: &[u8], libpath: &Path) -> bool {
