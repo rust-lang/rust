@@ -28,7 +28,7 @@ use mem::drop;
 use option::{Some, None};
 use owned::Box;
 use result::{Ok, Err};
-use rt::rtio::{IoFactory, LocalIo, RtioSignal};
+use rt::rtio::{IoFactory, LocalIo, RtioSignal, Callback};
 use slice::ImmutableVector;
 use vec::Vec;
 
@@ -122,17 +122,28 @@ impl Listener {
     /// If this function fails to register a signal handler, then an error will
     /// be returned.
     pub fn register(&mut self, signum: Signum) -> io::IoResult<()> {
+        struct SignalCallback {
+            signum: Signum,
+            tx: Sender<Signum>,
+        }
+        impl Callback for SignalCallback {
+            fn call(&mut self) { self.tx.send(self.signum) }
+        }
+
         if self.handles.iter().any(|&(sig, _)| sig == signum) {
             return Ok(()); // self is already listening to signum, so succeed
         }
         match LocalIo::maybe_raise(|io| {
-            io.signal(signum, self.tx.clone())
+            io.signal(signum as int, box SignalCallback {
+                signum: signum,
+                tx: self.tx.clone(),
+            })
         }) {
             Ok(handle) => {
                 self.handles.push((signum, handle));
                 Ok(())
             }
-            Err(e) => Err(e)
+            Err(e) => Err(io::IoError::from_rtio_error(e))
         }
     }
 

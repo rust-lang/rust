@@ -189,7 +189,7 @@ Accessing environment variables is not generally threadsafe.
 Serialize access through a global lock.
 */
 fn with_env_lock<T>(f: || -> T) -> T {
-    use unstable::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
+    use rt::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
 
     static mut lock: StaticNativeMutex = NATIVE_MUTEX_INIT;
 

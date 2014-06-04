@@ -27,20 +27,19 @@ out.write(bytes!("Hello, world!"));
 
 */
 
+use failure::local_stderr;
 use fmt;
 use io::{Reader, Writer, IoResult, IoError, OtherIoError,
          standard_error, EndOfFile, LineBufferedWriter, BufferedReader};
-use libc;
 use kinds::Send;
-use mem::replace;
+use libc;
 use option::{Option, Some, None};
 use owned::Box;
-use prelude::drop;
 use result::{Ok, Err};
 use rt;
 use rt::local::Local;
-use rt::rtio::{DontClose, IoFactory, LocalIo, RtioFileStream, RtioTTY};
 use rt::task::Task;
+use rt::rtio::{DontClose, IoFactory, LocalIo, RtioFileStream, RtioTTY};
 use str::StrSlice;
 
 // And so begins the tale of acquiring a uv handle to a stdio stream on all
@@ -82,8 +81,10 @@ fn src<T>(fd: libc::c_int, readable: bool, f: |StdSource| -> T) -> T {
             Ok(tty) => f(TTY(tty)),
             Err(_) => f(File(io.fs_from_raw_fd(fd, DontClose))),
         })
-    }).unwrap()
+    }).map_err(IoError::from_rtio_error).unwrap()
 }
+
+local_data_key!(local_stdout: Box<Writer:Send>)
 
 /// Creates a new non-blocking handle to the stdin of the current process.
 ///
@@ -154,22 +155,6 @@ pub fn stderr_raw() -> StdWriter {
     src(libc::STDERR_FILENO, false, |src| StdWriter { inner: src })
 }
 
-fn reset_helper(w: Box<Writer:Send>,
-                f: |&mut Task, Box<Writer:Send>| -> Option<Box<Writer:Send>>)
-                -> Option<Box<Writer:Send>> {
-    let mut t = Local::borrow(None::<Task>);
-    // Be sure to flush any pending output from the writer
-    match f(&mut *t, w) {
-        Some(mut w) => {
-            drop(t);
-            // FIXME: is failing right here?
-            w.flush().unwrap();
-            Some(w)
-        }
-        None => None
-    }
-}
-
 /// Resets the task-local stdout handle to the specified writer
 ///
 /// This will replace the current task's stdout handle, returning the old
@@ -179,7 +164,10 @@ fn reset_helper(w: Box<Writer:Send>,
 /// Note that this does not need to be called for all new tasks; the default
 /// output handle is to the process's stdout stream.
 pub fn set_stdout(stdout: Box<Writer:Send>) -> Option<Box<Writer:Send>> {
-    reset_helper(stdout, |t, w| replace(&mut t.stdout, Some(w)))
+    local_stdout.replace(Some(stdout)).and_then(|mut s| {
+        let _ = s.flush();
+        Some(s)
+    })
 }
 
 /// Resets the task-local stderr handle to the specified writer
@@ -191,7 +179,10 @@ pub fn set_stdout(stdout: Box<Writer:Send>) -> Option<Box<Writer:Send>> {
 /// Note that this does not need to be called for all new tasks; the default
 /// output handle is to the process's stderr stream.
 pub fn set_stderr(stderr: Box<Writer:Send>) -> Option<Box<Writer:Send>> {
-    reset_helper(stderr, |t, w| replace(&mut t.stderr, Some(w)))
+    local_stderr.replace(Some(stderr)).and_then(|mut s| {
+        let _ = s.flush();
+        Some(s)
+    })
 }
 
 // Helper to access the local task's stdout handle
@@ -204,42 +195,18 @@ pub fn set_stderr(stderr: Box<Writer:Send>) -> Option<Box<Writer:Send>> {
 //          // io1 aliases io2
 //      })
 //  })
-fn with_task_stdout(f: |&mut Writer| -> IoResult<()> ) {
-    let task: Option<Box<Task>> = Local::try_take();
-    let result = match task {
-        Some(mut task) => {
-            // Printing may run arbitrary code, so ensure that the task is in
-            // TLS to allow all std services. Note that this means a print while
-            // printing won't use the task's normal stdout handle, but this is
-            // necessary to ensure safety (no aliasing).
-            let mut my_stdout = task.stdout.take();
-            Local::put(task);
-
-            if my_stdout.is_none() {
-                my_stdout = Some(box stdout() as Box<Writer:Send>);
-            }
-            let ret = f(*my_stdout.get_mut_ref());
-
-            // Note that we need to be careful when putting the stdout handle
-            // back into the task. If the handle was set to `Some` while
-            // printing, then we can run aribitrary code when destroying the
-            // previous handle. This means that the local task needs to be in
-            // TLS while we do this.
-            //
-            // To protect against this, we do a little dance in which we
-            // temporarily take the task, swap the handles, put the task in TLS,
-            // and only then drop the previous handle.
-            let prev = replace(&mut Local::borrow(None::<Task>).stdout, my_stdout);
-            drop(prev);
-            ret
-        }
-
-        None => {
-            let mut io = rt::Stdout;
-            f(&mut io as &mut Writer)
-        }
+fn with_task_stdout(f: |&mut Writer| -> IoResult<()>) {
+    let result = if Local::exists(None::<Task>) {
+        let mut my_stdout = local_stdout.replace(None).unwrap_or_else(|| {
+            box stdout() as Box<Writer:Send>
+        });
+        let result = f(my_stdout);
+        local_stdout.replace(Some(my_stdout));
+        result
+    } else {
+        let mut io = rt::Stdout;
+        f(&mut io as &mut Writer)
     };
-
     match result {
         Ok(()) => {}
         Err(e) => fail!("failed printing to stdout: {}", e),
@@ -311,7 +278,7 @@ impl Reader for StdReader {
                 tty.read(buf)
             },
             File(ref mut file) => file.read(buf).map(|i| i as uint),
-        };
+        }.map_err(IoError::from_rtio_error);
         match ret {
             // When reading a piped stdin, libuv will return 0-length reads when
             // stdin reaches EOF. For pretty much all other streams it will
@@ -342,7 +309,9 @@ impl StdWriter {
     /// connected to a TTY instance, or if querying the TTY instance fails.
     pub fn winsize(&mut self) -> IoResult<(int, int)> {
         match self.inner {
-            TTY(ref mut tty) => tty.get_winsize(),
+            TTY(ref mut tty) => {
+                tty.get_winsize().map_err(IoError::from_rtio_error)
+            }
             File(..) => {
                 Err(IoError {
                     kind: OtherIoError,
@@ -362,7 +331,9 @@ impl StdWriter {
     /// connected to a TTY instance, or if querying the TTY instance fails.
     pub fn set_raw(&mut self, raw: bool) -> IoResult<()> {
         match self.inner {
-            TTY(ref mut tty) => tty.set_raw(raw),
+            TTY(ref mut tty) => {
+                tty.set_raw(raw).map_err(IoError::from_rtio_error)
+            }
             File(..) => {
                 Err(IoError {
                     kind: OtherIoError,
@@ -387,7 +358,7 @@ impl Writer for StdWriter {
         match self.inner {
             TTY(ref mut tty) => tty.write(buf),
             File(ref mut file) => file.write(buf),
-        }
+        }.map_err(IoError::from_rtio_error)
     }
 }
 
@@ -413,12 +384,13 @@ mod tests {
     })
 
     iotest!(fn capture_stderr() {
-        use io::{ChanReader, ChanWriter};
+        use realstd::comm::channel;
+        use realstd::io::{Writer, ChanReader, ChanWriter, Reader};
 
         let (tx, rx) = channel();
         let (mut r, w) = (ChanReader::new(rx), ChanWriter::new(tx));
         spawn(proc() {
-            set_stderr(box w);
+            ::realstd::io::stdio::set_stderr(box w);
             fail!("my special message");
         });
         let s = r.read_to_str().unwrap();
