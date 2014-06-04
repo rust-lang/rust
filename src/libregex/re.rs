@@ -18,8 +18,10 @@ use parse;
 use vm;
 use vm::{CaptureLocs, MatchKind, Exists, Location, Submatches};
 
-/// Escapes all regular expression meta characters in `text` so that it may be
-/// safely used in a regular expression as a literal string.
+/// Escapes all regular expression meta characters in `text`.
+///
+/// The string returned may be safely used as a literal in a regular
+/// expression.
 pub fn quote(text: &str) -> String {
     let mut quoted = String::with_capacity(text.len());
     for c in text.chars() {
@@ -45,9 +47,10 @@ pub fn is_match(regex: &str, text: &str) -> Result<bool, parse::Error> {
     Regex::new(regex).map(|r| r.is_match(text))
 }
 
-/// Regex is a compiled regular expression, represented as either a sequence
-/// of bytecode instructions (dynamic) or as a specialized Rust function
-/// (native). It can be used to search, split
+/// A compiled regular expression
+///
+/// It is represented as either a sequence of bytecode instructions (dynamic)
+/// or as a specialized Rust function (native). It can be used to search, split
 /// or replace text. All searching is done with an implicit `.*?` at the
 /// beginning and end of an expression. To force an expression to match the
 /// whole string (or a prefix or a suffix), you must use an anchor like `^` or
@@ -55,7 +58,7 @@ pub fn is_match(regex: &str, text: &str) -> Result<bool, parse::Error> {
 ///
 /// While this crate will handle Unicode strings (whether in the regular
 /// expression or in the search text), all positions returned are **byte
-/// indices**. Every byte index is guaranteed to be at a UTF8 codepoint
+/// indices**. Every byte index is guaranteed to be at a Unicode code point
 /// boundary.
 ///
 /// The lifetimes `'r` and `'t` in this crate correspond to the lifetime of a
@@ -189,7 +192,7 @@ impl Regex {
     ///
     /// # Example
     ///
-    /// Find the start and end location of every word with exactly 13
+    /// Find the start and end location of the first word with exactly 13
     /// characters:
     ///
     /// ```rust
@@ -216,7 +219,7 @@ impl Regex {
     ///
     /// # Example
     ///
-    /// Find the start and end location of the first word with exactly 13
+    /// Find the start and end location of every word with exactly 13
     /// characters:
     ///
     /// ```rust
@@ -577,8 +580,8 @@ impl<'t> Replacer for &'t str {
     }
 }
 
-impl<'a> Replacer for |&Captures|: 'a -> String {
-    fn reg_replace<'r>(&'r mut self, caps: &Captures) -> MaybeOwned<'r> {
+impl<'t> Replacer for |&Captures|: 't -> String {
+    fn reg_replace<'a>(&'a mut self, caps: &Captures) -> MaybeOwned<'a> {
         Owned((*self)(caps))
     }
 }
@@ -823,8 +826,9 @@ impl<'t> Iterator<Option<(uint, uint)>> for SubCapturesPos<'t> {
 }
 
 /// An iterator that yields all non-overlapping capture groups matching a
-/// particular regular expression. The iterator stops when no more matches can
-/// be found.
+/// particular regular expression.
+///
+/// The iterator stops when no more matches can be found.
 ///
 /// `'r` is the lifetime of the compiled expression and `'t` is the lifetime
 /// of the matched string.
