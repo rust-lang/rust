@@ -14,7 +14,6 @@
 #![no_std] // we don't need std, and we can't have std, since it doesn't exist
            // yet. std depends on us.
 #![crate_type = "rlib"]
-#![crate_type = "dylib"]
 
 /*!
 * Bindings for the C standard library and other platform libraries
@@ -4435,5 +4434,8 @@ pub mod funcs {
         }
     }
 }
+
+#[doc(hidden)]
+pub fn issue_14344_workaround() {} // FIXME #14344 force linkage to happen correctly
 
 #[test] fn work_on_windows() { } // FIXME #10872 needed for a happy windows
