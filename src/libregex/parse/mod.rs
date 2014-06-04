@@ -201,6 +201,9 @@ pub fn parse(s: &str) -> Result<Ast, Error> {
 
 impl<'a> Parser<'a> {
     fn parse(&mut self) -> Result<Ast, Error> {
+        if self.chars.len() == 0 {
+            return Ok(Nothing);
+        }
         loop {
             let c = self.cur();
             match c {
