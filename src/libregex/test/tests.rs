@@ -28,6 +28,20 @@ fn split() {
     assert_eq!(subs, vec!("cauchy", "plato", "tyler", "binx"));
 }
 
+#[test]
+fn empty_regex_empty_match() {
+    let re = regex!("");
+    let ms = re.find_iter("").collect::<Vec<(uint, uint)>>();
+    assert_eq!(ms, vec![(0, 0)]);
+}
+
+#[test]
+fn empty_regex_nonempty_match() {
+    let re = regex!("");
+    let ms = re.find_iter("abc").collect::<Vec<(uint, uint)>>();
+    assert_eq!(ms, vec![(0, 0), (1, 1), (2, 2), (3, 3)]);
+}
+
 macro_rules! replace(
     ($name:ident, $which:ident, $re:expr,
      $search:expr, $replace:expr, $result:expr) => (
