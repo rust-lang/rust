@@ -9,9 +9,8 @@
 // except according to those terms.
 
 use libc;
-use std::io::IoError;
 use std::ptr;
-use std::rt::rtio::RtioTTY;
+use std::rt::rtio::{RtioTTY, IoResult};
 
 use homing::{HomingIO, HomeHandle};
 use stream::StreamWatcher;
@@ -80,17 +79,17 @@ impl TtyWatcher {
 }
 
 impl RtioTTY for TtyWatcher {
-    fn read(&mut self, buf: &mut [u8]) -> Result<uint, IoError> {
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
         let _m = self.fire_homing_missile();
         self.stream.read(buf).map_err(uv_error_to_io_error)
     }
 
-    fn write(&mut self, buf: &[u8]) -> Result<(), IoError> {
+    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
         let _m = self.fire_homing_missile();
         self.stream.write(buf, false).map_err(uv_error_to_io_error)
     }
 
-    fn set_raw(&mut self, raw: bool) -> Result<(), IoError> {
+    fn set_raw(&mut self, raw: bool) -> IoResult<()> {
         let raw = raw as libc::c_int;
         let _m = self.fire_homing_missile();
         match unsafe { uvll::uv_tty_set_mode(self.tty, raw) } {
@@ -100,7 +99,7 @@ impl RtioTTY for TtyWatcher {
     }
 
     #[allow(unused_mut)]
-    fn get_winsize(&mut self) -> Result<(int, int), IoError> {
+    fn get_winsize(&mut self) -> IoResult<(int, int)> {
         let mut width: libc::c_int = 0;
         let mut height: libc::c_int = 0;
         let widthptr: *libc::c_int = &width;

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use std::mem;
-use std::rt::rtio::RtioTimer;
+use std::rt::rtio::{RtioTimer, Callback};
 use std::rt::task::BlockedTask;
 
 use homing::{HomeHandle, HomingIO};
@@ -27,8 +27,8 @@ pub struct TimerWatcher {
 
 pub enum NextAction {
     WakeTask,
-    SendOnce(Sender<()>),
-    SendMany(Sender<()>, uint),
+    CallOnce(Box<Callback:Send>),
+    CallMany(Box<Callback:Send>, uint),
 }
 
 impl TimerWatcher {
@@ -103,9 +103,7 @@ impl RtioTimer for TimerWatcher {
         self.stop();
     }
 
-    fn oneshot(&mut self, msecs: u64) -> Receiver<()> {
-        let (tx, rx) = channel();
-
+    fn oneshot(&mut self, msecs: u64, cb: Box<Callback:Send>) {
         // similarly to the destructor, we must drop the previous action outside
         // of the homing missile
         let _prev_action = {
@@ -113,15 +111,11 @@ impl RtioTimer for TimerWatcher {
             self.id += 1;
             self.stop();
             self.start(timer_cb, msecs, 0);
-            mem::replace(&mut self.action, Some(SendOnce(tx)))
+            mem::replace(&mut self.action, Some(CallOnce(cb)))
         };
-
-        return rx;
     }
 
-    fn period(&mut self, msecs: u64) -> Receiver<()> {
-        let (tx, rx) = channel();
-
+    fn period(&mut self, msecs: u64, cb: Box<Callback:Send>) {
         // similarly to the destructor, we must drop the previous action outside
         // of the homing missile
         let _prev_action = {
@@ -129,10 +123,8 @@ impl RtioTimer for TimerWatcher {
             self.id += 1;
             self.stop();
             self.start(timer_cb, msecs, msecs);
-            mem::replace(&mut self.action, Some(SendMany(tx, self.id)))
+            mem::replace(&mut self.action, Some(CallMany(cb, self.id)))
         };
-
-        return rx;
     }
 }
 
@@ -145,9 +137,9 @@ extern fn timer_cb(handle: *uvll::uv_timer_t) {
             let task = timer.blocker.take_unwrap();
             let _ = task.wake().map(|t| t.reawaken());
         }
-        SendOnce(chan) => { let _ = chan.send_opt(()); }
-        SendMany(chan, id) => {
-            let _ = chan.send_opt(());
+        CallOnce(mut cb) => { cb.call() }
+        CallMany(mut cb, id) => {
+            cb.call();
 
             // Note that the above operation could have performed some form of
             // scheduling. This means that the timer may have decided to insert
@@ -158,7 +150,7 @@ extern fn timer_cb(handle: *uvll::uv_timer_t) {
             // for you. We're guaranteed to all be running on the same thread,
             // so there's no need for any synchronization here.
             if timer.id == id {
-                timer.action = Some(SendMany(chan, id));
+                timer.action = Some(CallMany(cb, id));
             }
         }
     }
@@ -177,147 +169,5 @@ impl Drop for TimerWatcher {
             self.close();
             self.action.take()
         };
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use std::rt::rtio::RtioTimer;
-    use super::super::local_loop;
-    use super::TimerWatcher;
-
-    #[test]
-    fn oneshot() {
-        let mut timer = TimerWatcher::new(local_loop());
-        let port = timer.oneshot(1);
-        port.recv();
-        let port = timer.oneshot(1);
-        port.recv();
-    }
-
-    #[test]
-    fn override() {
-        let mut timer = TimerWatcher::new(local_loop());
-        let oport = timer.oneshot(1);
-        let pport = timer.period(1);
-        timer.sleep(1);
-        assert_eq!(oport.recv_opt(), Err(()));
-        assert_eq!(pport.recv_opt(), Err(()));
-        timer.oneshot(1).recv();
-    }
-
-    #[test]
-    fn period() {
-        let mut timer = TimerWatcher::new(local_loop());
-        let port = timer.period(1);
-        port.recv();
-        port.recv();
-        let port2 = timer.period(1);
-        port2.recv();
-        port2.recv();
-    }
-
-    #[test]
-    fn sleep() {
-        let mut timer = TimerWatcher::new(local_loop());
-        timer.sleep(1);
-        timer.sleep(1);
-    }
-
-    #[test] #[should_fail]
-    fn oneshot_fail() {
-        let mut timer = TimerWatcher::new(local_loop());
-        let _port = timer.oneshot(1);
-        fail!();
-    }
-
-    #[test] #[should_fail]
-    fn period_fail() {
-        let mut timer = TimerWatcher::new(local_loop());
-        let _port = timer.period(1);
-        fail!();
-    }
-
-    #[test] #[should_fail]
-    fn normal_fail() {
-        let _timer = TimerWatcher::new(local_loop());
-        fail!();
-    }
-
-    #[test]
-    fn closing_channel_during_drop_doesnt_kill_everything() {
-        // see issue #10375
-        let mut timer = TimerWatcher::new(local_loop());
-        let timer_port = timer.period(1000);
-
-        spawn(proc() {
-            let _ = timer_port.recv_opt();
-        });
-
-        // when we drop the TimerWatcher we're going to destroy the channel,
-        // which must wake up the task on the other end
-    }
-
-    #[test]
-    fn reset_doesnt_switch_tasks() {
-        // similar test to the one above.
-        let mut timer = TimerWatcher::new(local_loop());
-        let timer_port = timer.period(1000);
-
-        spawn(proc() {
-            let _ = timer_port.recv_opt();
-        });
-
-        drop(timer.oneshot(1));
-    }
-    #[test]
-    fn reset_doesnt_switch_tasks2() {
-        // similar test to the one above.
-        let mut timer = TimerWatcher::new(local_loop());
-        let timer_port = timer.period(1000);
-
-        spawn(proc() {
-            let _ = timer_port.recv_opt();
-        });
-
-        timer.sleep(1);
-    }
-
-    #[test]
-    fn sender_goes_away_oneshot() {
-        let port = {
-            let mut timer = TimerWatcher::new(local_loop());
-            timer.oneshot(1000)
-        };
-        assert_eq!(port.recv_opt(), Err(()));
-    }
-
-    #[test]
-    fn sender_goes_away_period() {
-        let port = {
-            let mut timer = TimerWatcher::new(local_loop());
-            timer.period(1000)
-        };
-        assert_eq!(port.recv_opt(), Err(()));
-    }
-
-    #[test]
-    fn receiver_goes_away_oneshot() {
-        let mut timer1 = TimerWatcher::new(local_loop());
-        drop(timer1.oneshot(1));
-        let mut timer2 = TimerWatcher::new(local_loop());
-        // while sleeping, the prevous timer should fire and not have its
-        // callback do something terrible.
-        timer2.sleep(2);
-    }
-
-    #[test]
-    fn receiver_goes_away_period() {
-        let mut timer1 = TimerWatcher::new(local_loop());
-        drop(timer1.period(1));
-        let mut timer2 = TimerWatcher::new(local_loop());
-        // while sleeping, the prevous timer should fire and not have its
-        // callback do something terrible.
-        timer2.sleep(2);
     }
 }
