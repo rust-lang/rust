@@ -13,9 +13,9 @@ use std::io::println;
 pub fn main() {
     let (tx, rx) = channel();
 
+    tx.send("hello, world");
+
     spawn(proc() {
         println(rx.recv());
     });
-
-    tx.send("hello, world");
 }

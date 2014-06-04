@@ -24,9 +24,11 @@ impl CrateId {
 }
 
 pub fn remove_package_from_database() {
-    let mut lines_to_use: Vec<&CrateId> = Vec::new(); //~ ERROR cannot infer an appropriate lifetime
+    let mut lines_to_use: Vec<&CrateId> = Vec::new();
     let push_id = |installed_id: &CrateId| {
         lines_to_use.push(installed_id);
+        //~^ ERROR cannot infer an appropriate lifetime for automatic coercion due to
+        // conflicting requirements
     };
     list_database(push_id);
 
