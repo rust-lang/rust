@@ -106,16 +106,17 @@ impl Session {
         self.diagnostic().handler().unimpl(msg)
     }
     pub fn add_lint(&self,
-                    lint: lint::LintId,
+                    lint: &'static lint::Lint,
                     id: ast::NodeId,
                     sp: Span,
                     msg: String) {
+        let lint_id = lint::LintId::of(lint);
         let mut lints = self.lints.borrow_mut();
         match lints.find_mut(&id) {
-            Some(arr) => { arr.push((lint, sp, msg)); return; }
+            Some(arr) => { arr.push((lint_id, sp, msg)); return; }
             None => {}
         }
-        lints.insert(id, vec!((lint, sp, msg)));
+        lints.insert(id, vec!((lint_id, sp, msg)));
     }
     pub fn next_node_id(&self) -> ast::NodeId {
         self.reserve_node_ids(1)

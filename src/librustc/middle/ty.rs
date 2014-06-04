@@ -368,7 +368,7 @@ pub struct ctxt {
     pub dependency_formats: RefCell<dependency_format::Dependencies>,
 
     pub node_lint_levels: RefCell<HashMap<(ast::NodeId, lint::LintId),
-                                          (lint::Level, lint::LintSource)>>,
+                                          lint::LevelSource>>,
 
     /// The types that must be asserted to be the same size for `transmute`
     /// to be valid. We gather up these restrictions in the intrinsicck pass

@@ -41,13 +41,13 @@
 //! this file, use `span_lint` instead of `add_lint`.
 
 #![allow(non_camel_case_types)]
+#![macro_escape]
 
-use driver::session;
-use middle::dead::DEAD_CODE_LINT_STR;
 use middle::privacy::ExportedItems;
 use middle::ty;
 use middle::typeck::astconv::AstConv;
 use middle::typeck::infer;
+use driver::session::Session;
 
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -55,23 +55,83 @@ use std::gc::Gc;
 use std::to_str::ToStr;
 use std::cell::RefCell;
 use std::default::Default;
-use std::collections::SmallIntMap;
+use std::hash::Hash;
+use std::tuple::Tuple2;
+use std::hash;
 use syntax::ast_util::IdVisitingOperation;
 use syntax::attr::AttrMetaMethods;
+use syntax::attr;
 use syntax::codemap::Span;
-use syntax::parse::token::InternedString;
 use syntax::visit::{Visitor, FnKind};
 use syntax::{ast, ast_util, visit};
 
-mod builtin;
+#[macro_export]
+macro_rules! lint_initializer (
+    ($name:ident, $level:ident, $desc:expr) => (
+        ::rustc::lint::Lint {
+            name: stringify!($name),
+            default_level: ::rustc::lint::$level,
+            desc: $desc,
+        }
+    )
+)
 
-/// Trait for types providing lint checks. Each method checks a single syntax
-/// node, and should not invoke methods recursively (unlike `Visitor`).  Each
-/// method has a default do-nothing implementation. The trait also contains a
-/// few lint-specific methods with no equivalent in `Visitor`.
+#[macro_export]
+macro_rules! declare_lint (
+    // FIXME(#14660): deduplicate
+    (pub $name:ident, $level:ident, $desc:expr) => (
+        pub static $name: &'static ::rustc::lint::Lint
+            = &lint_initializer!($name, $level, $desc);
+    );
+    ($name:ident, $level:ident, $desc:expr) => (
+        static $name: &'static ::rustc::lint::Lint
+            = &lint_initializer!($name, $level, $desc);
+    );
+)
+
+#[macro_export]
+macro_rules! lint_array ( ($( $lint:expr ),*) => (
+    {
+        static array: LintArray = &[ $( $lint ),* ];
+        array
+    }
+))
+
+pub mod builtin;
+
+/// Specification of a single lint.
+pub struct Lint {
+    /// An identifier for the lint, written with underscores,
+    /// e.g. "unused_imports". This identifies the lint in
+    /// attributes and in command-line arguments. On the
+    /// command line, underscores become dashes.
+    pub name: &'static str,
+
+    /// Default level for the lint.
+    pub default_level: Level,
+
+    /// Description of the lint or the issue it detects,
+    /// e.g. "imports that are never used"
+    pub desc: &'static str,
+}
+
+type LintArray = &'static [&'static Lint];
+
+/// Trait for types providing lint checks. Each `check` method checks a single
+/// syntax node, and should not invoke methods recursively (unlike `Visitor`).
+/// By default they do nothing.
 //
-// FIXME: eliminate the duplication with `Visitor`
+// FIXME: eliminate the duplication with `Visitor`. But this also
+// contains a few lint-specific methods with no equivalent in `Visitor`.
 trait LintPass {
+    /// Get descriptions of the lints this `LintPass` object can emit.
+    ///
+    /// NB: there is no enforcement that the object only emits lints it registered.
+    /// And some `rustc` internal `LintPass`es register lints to be emitted by other
+    /// parts of the compiler. If you want enforced access restrictions for your
+    /// `Lint`, make it a private `static` item in its own module.
+    fn get_lints(&self) -> LintArray;
+
     fn check_crate(&mut self, _: &Context, _: &ExportedItems, _: &ast::Crate) { }
     fn check_ident(&mut self, _: &Context, _: Span, _: ast::Ident) { }
     fn check_mod(&mut self, _: &Context, _: &ast::Mod, _: Span, _: ast::NodeId) { }
@@ -116,63 +176,37 @@ trait LintPass {
 
 type LintPassObject = Box<LintPass + 'static>;
 
-#[deriving(Clone, Show, PartialEq, PartialOrd, Eq, Ord, Hash)]
-pub enum LintId {
-    CTypes,
-    UnusedImports,
-    UnnecessaryQualification,
-    WhileTrue,
-    PathStatement,
-    UnrecognizedLint,
-    NonCamelCaseTypes,
-    NonUppercaseStatics,
-    NonUppercasePatternStatics,
-    NonSnakeCaseFunctions,
-    UppercaseVariables,
-    UnnecessaryParens,
-    TypeLimits,
-    TypeOverflow,
-    UnusedUnsafe,
-    UnsafeBlock,
-    UnusedAttribute,
-    UnknownFeatures,
-    UnknownCrateType,
-    UnsignedNegate,
-    VariantSizeDifference,
-
-    ManagedHeapMemory,
-    OwnedHeapMemory,
-    HeapMemory,
-
-    UnusedVariable,
-    DeadAssignment,
-    UnusedMut,
-    UnnecessaryAllocation,
-    DeadCode,
-    VisiblePrivateTypes,
-    UnnecessaryTypecast,
-
-    MissingDoc,
-    UnreachableCode,
-
-    Deprecated,
-    Experimental,
-    Unstable,
-
-    UnusedMustUse,
-    UnusedResult,
-
-    Warnings,
-
-    RawPointerDeriving,
+/// Identifies a lint known to the compiler.
+#[deriving(Clone)]
+pub struct LintId {
+    // Identity is based on pointer equality of this field.
+    lint: &'static Lint,
 }
 
-pub fn level_to_str(lv: Level) -> &'static str {
-    match lv {
-      Allow => "allow",
-      Warn => "warn",
-      Deny => "deny",
-      Forbid => "forbid"
+impl PartialEq for LintId {
+    fn eq(&self, other: &LintId) -> bool {
+        (self.lint as *Lint) == (other.lint as *Lint)
+    }
+}
+
+impl Eq for LintId { }
+
+impl<S: hash::Writer> Hash<S> for LintId {
+    fn hash(&self, state: &mut S) {
+        let ptr = self.lint as *Lint;
+        ptr.hash(state);
+    }
+}
+
+impl LintId {
+    pub fn of(lint: &'static Lint) -> LintId {
+        LintId {
+            lint: lint,
+        }
+    }
+
+    pub fn as_str(&self) -> &'static str {
+        self.lint.name
     }
 }
 
@@ -181,14 +215,26 @@ pub enum Level {
     Allow, Warn, Deny, Forbid
 }
 
-#[deriving(Clone, PartialEq, PartialOrd, Eq, Ord)]
-pub struct LintSpec {
-    pub default: Level,
-    pub lint: LintId,
-    pub desc: &'static str,
-}
+impl Level {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Allow => "allow",
+            Warn => "warn",
+            Deny => "deny",
+            Forbid => "forbid",
+        }
+    }
 
-pub type LintDict = HashMap<&'static str, LintSpec>;
+    pub fn from_str(x: &str) -> Option<Level> {
+        match x {
+            "allow" => Some(Allow),
+            "warn" => Some(Warn),
+            "deny" => Some(Deny),
+            "forbid" => Some(Forbid),
+            _ => None,
+        }
+    }
+}
 
 // this is public for the lints that run in trans
 #[deriving(PartialEq)]
@@ -198,331 +244,49 @@ pub enum LintSource {
     CommandLine
 }
 
-static lint_table: &'static [(&'static str, LintSpec)] = &[
-    ("ctypes",
-     LintSpec {
-        lint: CTypes,
-        desc: "proper use of libc types in foreign modules",
-        default: Warn
-     }),
-
-    ("unused_imports",
-     LintSpec {
-        lint: UnusedImports,
-        desc: "imports that are never used",
-        default: Warn
-     }),
-
-    ("unnecessary_qualification",
-     LintSpec {
-        lint: UnnecessaryQualification,
-        desc: "detects unnecessarily qualified names",
-        default: Allow
-     }),
-
-    ("while_true",
-     LintSpec {
-        lint: WhileTrue,
-        desc: "suggest using `loop { }` instead of `while true { }`",
-        default: Warn
-     }),
-
-    ("path_statement",
-     LintSpec {
-        lint: PathStatement,
-        desc: "path statements with no effect",
-        default: Warn
-     }),
-
-    ("unrecognized_lint",
-     LintSpec {
-        lint: UnrecognizedLint,
-        desc: "unrecognized lint attribute",
-        default: Warn
-     }),
-
-    ("non_camel_case_types",
-     LintSpec {
-        lint: NonCamelCaseTypes,
-        desc: "types, variants and traits should have camel case names",
-        default: Warn
-     }),
-
-    ("non_uppercase_statics",
-     LintSpec {
-         lint: NonUppercaseStatics,
-         desc: "static constants should have uppercase identifiers",
-         default: Allow
-     }),
-
-    ("non_uppercase_pattern_statics",
-     LintSpec {
-         lint: NonUppercasePatternStatics,
-         desc: "static constants in match patterns should be all caps",
-         default: Warn
-     }),
-
-    ("non_snake_case_functions",
-     LintSpec {
-         lint: NonSnakeCaseFunctions,
-         desc: "methods and functions should have snake case names",
-         default: Warn
-     }),
-
-    ("uppercase_variables",
-     LintSpec {
-         lint: UppercaseVariables,
-         desc: "variable and structure field names should start with a lowercase character",
-         default: Warn
-     }),
-
-     ("unnecessary_parens",
-     LintSpec {
-        lint: UnnecessaryParens,
-        desc: "`if`, `match`, `while` and `return` do not need parentheses",
-        default: Warn
-     }),
-
-    ("managed_heap_memory",
-     LintSpec {
-        lint: ManagedHeapMemory,
-        desc: "use of managed (@ type) heap memory",
-        default: Allow
-     }),
-
-    ("owned_heap_memory",
-     LintSpec {
-        lint: OwnedHeapMemory,
-        desc: "use of owned (Box type) heap memory",
-        default: Allow
-     }),
-
-    ("heap_memory",
-     LintSpec {
-        lint: HeapMemory,
-        desc: "use of any (Box type or @ type) heap memory",
-        default: Allow
-     }),
-
-    ("type_limits",
-     LintSpec {
-        lint: TypeLimits,
-        desc: "comparisons made useless by limits of the types involved",
-        default: Warn
-     }),
-
-    ("type_overflow",
-     LintSpec {
-        lint: TypeOverflow,
-        desc: "literal out of range for its type",
-        default: Warn
-     }),
-
-
-    ("unused_unsafe",
-     LintSpec {
-        lint: UnusedUnsafe,
-        desc: "unnecessary use of an `unsafe` block",
-        default: Warn
-    }),
-
-    ("unsafe_block",
-     LintSpec {
-        lint: UnsafeBlock,
-        desc: "usage of an `unsafe` block",
-        default: Allow
-    }),
-
-    ("unused_attribute",
-     LintSpec {
-         lint: UnusedAttribute,
-         desc: "detects attributes that were not used by the compiler",
-         default: Warn
-    }),
-
-    ("unused_variable",
-     LintSpec {
-        lint: UnusedVariable,
-        desc: "detect variables which are not used in any way",
-        default: Warn
-    }),
-
-    ("dead_assignment",
-     LintSpec {
-        lint: DeadAssignment,
-        desc: "detect assignments that will never be read",
-        default: Warn
-    }),
-
-    ("unnecessary_typecast",
-     LintSpec {
-        lint: UnnecessaryTypecast,
-        desc: "detects unnecessary type casts, that can be removed",
-        default: Allow,
-    }),
-
-    ("unused_mut",
-     LintSpec {
-        lint: UnusedMut,
-        desc: "detect mut variables which don't need to be mutable",
-        default: Warn
-    }),
-
-    ("unnecessary_allocation",
-     LintSpec {
-        lint: UnnecessaryAllocation,
-        desc: "detects unnecessary allocations that can be eliminated",
-        default: Warn
-    }),
-
-    (DEAD_CODE_LINT_STR,
-     LintSpec {
-        lint: DeadCode,
-        desc: "detect piece of code that will never be used",
-        default: Warn
-    }),
-    ("visible_private_types",
-     LintSpec {
-        lint: VisiblePrivateTypes,
-        desc: "detect use of private types in exported type signatures",
-        default: Warn
-    }),
-
-    ("missing_doc",
-     LintSpec {
-        lint: MissingDoc,
-        desc: "detects missing documentation for public members",
-        default: Allow
-    }),
-
-    ("unreachable_code",
-     LintSpec {
-        lint: UnreachableCode,
-        desc: "detects unreachable code",
-        default: Warn
-    }),
-
-    ("deprecated",
-     LintSpec {
-        lint: Deprecated,
-        desc: "detects use of #[deprecated] items",
-        default: Warn
-    }),
-
-    ("experimental",
-     LintSpec {
-        lint: Experimental,
-        desc: "detects use of #[experimental] items",
-        // FIXME #6875: Change to Warn after std library stabilization is complete
-        default: Allow
-    }),
-
-    ("unstable",
-     LintSpec {
-        lint: Unstable,
-        desc: "detects use of #[unstable] items (incl. items with no stability attribute)",
-        default: Allow
-    }),
-
-    ("warnings",
-     LintSpec {
-        lint: Warnings,
-        desc: "mass-change the level for lints which produce warnings",
-        default: Warn
-    }),
-
-    ("unknown_features",
-     LintSpec {
-        lint: UnknownFeatures,
-        desc: "unknown features found in crate-level #[feature] directives",
-        default: Deny,
-    }),
-
-    ("unknown_crate_type",
-    LintSpec {
-        lint: UnknownCrateType,
-        desc: "unknown crate type found in #[crate_type] directive",
-        default: Deny,
-    }),
-
-    ("unsigned_negate",
-    LintSpec {
-        lint: UnsignedNegate,
-        desc: "using an unary minus operator on unsigned type",
-        default: Warn
-    }),
-
-    ("variant_size_difference",
-    LintSpec {
-        lint: VariantSizeDifference,
-        desc: "detects enums with widely varying variant sizes",
-        default: Allow,
-    }),
-
-    ("unused_must_use",
-    LintSpec {
-        lint: UnusedMustUse,
-        desc: "unused result of a type flagged as #[must_use]",
-        default: Warn,
-    }),
-
-    ("unused_result",
-    LintSpec {
-        lint: UnusedResult,
-        desc: "unused result of an expression in a statement",
-        default: Allow,
-    }),
-
-    ("raw_pointer_deriving",
-     LintSpec {
-        lint: RawPointerDeriving,
-        desc: "uses of #[deriving] with raw pointers are rarely correct",
-        default: Warn,
-    }),
-];
-
-/*
-  Pass names should not contain a '-', as the compiler normalizes
-  '-' to '_' in command-line flags
- */
-pub fn get_lint_dict() -> LintDict {
-    lint_table.iter().map(|&(k, v)| (k, v)).collect()
-}
+pub type LevelSource = (Level, LintSource);
 
 struct Context<'a> {
-    /// All known lint modes (string versions)
-    dict: LintDict,
-    /// Current levels of each lint warning
-    cur: SmallIntMap<(Level, LintSource)>,
-    /// Context we're checking in (used to access fields like sess)
+    /// Trait objects for each lint pass.
+    lint_objects: Vec<RefCell<LintPassObject>>,
+
+    /// Lints indexed by name.
+    lints_by_name: HashMap<&'static str, LintId>,
+
+    /// Current levels of each lint, and where they were set.
+    levels: HashMap<LintId, LevelSource>,
+
+    /// Context we're checking in (used to access fields like sess).
     tcx: &'a ty::ctxt,
 
     /// When recursing into an attributed node of the ast which modifies lint
     /// levels, this stack keeps track of the previous lint levels of whatever
     /// was modified.
-    level_stack: Vec<(LintId, Level, LintSource)>,
+    level_stack: Vec<(LintId, LevelSource)>,
 
     /// Level of lints for certain NodeIds, stored here because the body of
     /// the lint needs to run in trans.
-    node_levels: RefCell<HashMap<(ast::NodeId, LintId), (Level, LintSource)>>,
-
-    /// Trait objects for each lint.
-    lints: Vec<RefCell<LintPassObject>>,
+    node_levels: RefCell<HashMap<(ast::NodeId, LintId), LevelSource>>,
 }
 
-/// Convenience macro for calling a `LintPass` method on every lint in the context.
+/// Convenience macro for calling a `LintPass` method on every pass in the context.
 macro_rules! run_lints ( ($cx:expr, $f:ident, $($args:expr),*) => (
-    for tl in $cx.lints.iter() {
-        tl.borrow_mut().$f($cx, $($args),*);
+    for obj in $cx.lint_objects.iter() {
+        obj.borrow_mut().$f($cx, $($args),*);
     }
 ))
 
-pub fn emit_lint(level: Level, src: LintSource, msg: &str, span: Span,
-                 lint_str: &str, tcx: &ty::ctxt) {
+/// Emit a lint as a `span_warn` or `span_err` (or not at all)
+/// according to `level`.  This lives outside of `Context` so
+/// it can be used by checks in trans that run after the main
+/// lint phase is finished.
+pub fn emit_lint(sess: &Session, lint: &'static Lint,
+                 lvlsrc: LevelSource, span: Span, msg: &str) {
+    let (level, source) = lvlsrc;
     if level == Allow { return }
 
     let mut note = None;
-    let msg = match src {
+    let msg = match source {
         Default => {
             format!("{}, #[{}({})] on by default", msg,
                 level_to_str(level), lint_str)
@@ -532,75 +296,50 @@ pub fn emit_lint(level: Level, src: LintSource, msg: &str, span: Span,
                 match level {
                     Warn => 'W', Deny => 'D', Forbid => 'F',
                     Allow => fail!()
-                }, lint_str.replace("_", "-"))
+                }, lint.name.replace("_", "-"))
         },
         Node(src) => {
             note = Some(src);
-            msg.to_str()
+            msg.to_string()
         }
     };
 
     match level {
-        Warn =>          { tcx.sess.span_warn(span, msg.as_slice()); }
-        Deny | Forbid => { tcx.sess.span_err(span, msg.as_slice());  }
+        Warn =>          { sess.span_warn(span, msg.as_slice()); }
+        Deny | Forbid => { sess.span_err(span, msg.as_slice());  }
         Allow => fail!(),
     }
 
-    for &span in note.iter() {
-        tcx.sess.span_note(span, "lint level defined here");
+    for span in note.move_iter() {
+        sess.span_note(span, "lint level defined here");
     }
-}
-
-pub fn lint_to_str(lint: LintId) -> &'static str {
-    for &(name, lspec) in lint_table.iter() {
-        if lspec.lint == lint {
-            return name;
-        }
-    }
-
-    fail!("unrecognized lint: {}", lint);
 }
 
 impl<'a> Context<'a> {
-    fn get_level(&self, lint: LintId) -> Level {
-        match self.cur.find(&(lint as uint)) {
-          Some(&(lvl, _)) => lvl,
-          None => Allow
+    fn get_level_source(&self, lint: LintId) -> LevelSource {
+        match self.levels.find(&lint) {
+            Some(&s) => s,
+            None => (Allow, Default),
         }
     }
 
-    fn get_source(&self, lint: LintId) -> LintSource {
-        match self.cur.find(&(lint as uint)) {
-          Some(&(_, src)) => src,
-          None => Default
-        }
-    }
-
-    fn set_level(&mut self, lint: LintId, level: Level, src: LintSource) {
-        if level == Allow {
-            self.cur.remove(&(lint as uint));
+    fn set_level(&mut self, lint: LintId, lvlsrc: LevelSource) {
+        if lvlsrc.val0() == Allow {
+            self.levels.remove(&lint);
         } else {
-            self.cur.insert(lint as uint, (level, src));
+            self.levels.insert(lint, lvlsrc);
         }
     }
 
-    fn lint_to_str(&self, lint: LintId) -> &'static str {
-        for (k, v) in self.dict.iter() {
-            if v.lint == lint {
-                return *k;
-            }
-        }
-        fail!("unregistered lint {}", lint);
-    }
-
-    fn span_lint(&self, lint: LintId, span: Span, msg: &str) {
-        let (level, src) = match self.cur.find(&(lint as uint)) {
-            None => { return }
-            Some(&(Warn, src)) => (self.get_level(Warnings), src),
+    fn span_lint(&self, lint: &'static Lint, span: Span, msg: &str) {
+        let (level, src) = match self.levels.find(&LintId::of(lint)) {
+            None => return,
+            Some(&(Warn, src))
+                => (self.get_level_source(LintId::of(builtin::warnings)).val0(), src),
             Some(&pair) => pair,
         };
 
-        emit_lint(level, src, msg, span, self.lint_to_str(lint), self.tcx);
+        emit_lint(&self.tcx.sess, lint, (level, src), span, msg);
     }
 
     /**
@@ -615,35 +354,22 @@ impl<'a> Context<'a> {
         // current dictionary of lint information. Along the way, keep a history
         // of what we changed so we can roll everything back after invoking the
         // specified closure
+        let lint_attrs = self.gather_lint_attrs(attrs);
         let mut pushed = 0u;
-        each_lint(&self.tcx.sess, attrs, |meta, level, lintname| {
-            match self.dict.find_equiv(&lintname) {
-                None => {
-                    self.span_lint(
-                        UnrecognizedLint,
-                        meta.span,
-                        format!("unknown `{}` attribute: `{}`",
-                                level_to_str(level), lintname).as_slice());
-                }
-                Some(lint) => {
-                    let lint = lint.lint;
-                    let now = self.get_level(lint);
-                    if now == Forbid && level != Forbid {
-                        self.tcx.sess.span_err(meta.span,
-                        format!("{}({}) overruled by outer forbid({})",
-                                level_to_str(level),
-                                lintname,
-                                lintname).as_slice());
-                    } else if now != level {
-                        let src = self.get_source(lint);
-                        self.level_stack.push((lint, now, src));
-                        pushed += 1;
-                        self.set_level(lint, level, Node(meta.span));
-                    }
-                }
+        for (lint_id, level, span) in lint_attrs.move_iter() {
+            let now = self.get_level_source(lint_id).val0();
+            if now == Forbid && level != Forbid {
+                let lint_name = lint_id.as_str();
+                self.tcx.sess.span_err(span,
+                format!("{}({}) overruled by outer forbid({})",
+                        level.as_str(), lint_name, lint_name).as_slice());
+            } else if now != level {
+                let src = self.get_level_source(lint_id).val1();
+                self.level_stack.push((lint_id, (now, src)));
+                pushed += 1;
+                self.set_level(lint_id, (level, Node(span)));
             }
-            true
-        });
+        }
 
         run_lints!(self, enter_lint_attrs, attrs);
         f(self);
@@ -651,8 +377,8 @@ impl<'a> Context<'a> {
 
         // rollback
         for _ in range(0, pushed) {
-            let (lint, lvl, src) = self.level_stack.pop().unwrap();
-            self.set_level(lint, lvl, src);
+            let (lint, lvlsrc) = self.level_stack.pop().unwrap();
+            self.set_level(lint, lvlsrc);
         }
     }
 
@@ -665,65 +391,49 @@ impl<'a> Context<'a> {
         f(&mut v);
     }
 
-    fn insert_node_level(&self, id: ast::NodeId, lint: LintId, lvl: Level, src: LintSource) {
-        self.node_levels.borrow_mut().insert((id, lint), (lvl, src));
+    fn insert_node_level(&self, id: ast::NodeId, lint: LintId, lvlsrc: LevelSource) {
+        self.node_levels.borrow_mut().insert((id, lint), lvlsrc);
     }
-}
 
-/// Check that every lint from the list of attributes satisfies `f`.
-/// Return true if that's the case. Otherwise return false.
-pub fn each_lint(sess: &session::Session,
-                 attrs: &[ast::Attribute],
-                 f: |Gc<ast::MetaItem>, Level, InternedString| -> bool)
-                 -> bool {
-    let xs = [Allow, Warn, Deny, Forbid];
-    for &level in xs.iter() {
-        let level_name = level_to_str(level);
-        for attr in attrs.iter().filter(|m| m.check_name(level_name)) {
+    fn gather_lint_attrs(&mut self, attrs: &[ast::Attribute]) -> Vec<(LintId, Level, Span)> {
+        // Doing this as an iterator is messy due to multiple borrowing.
+        // Allocating and copying these should be quick.
+        let mut out = vec!();
+        for attr in attrs.iter() {
+            let level = match Level::from_str(attr.name().get()) {
+                None => continue,
+                Some(lvl) => lvl,
+            };
+
+            attr::mark_used(attr);
+
             let meta = attr.node.value;
             let metas = match meta.node {
                 ast::MetaList(_, ref metas) => metas,
                 _ => {
-                    sess.span_err(meta.span, "malformed lint attribute");
+                    self.tcx.sess.span_err(meta.span, "malformed lint attribute");
                     continue;
                 }
             };
+
             for meta in metas.iter() {
                 match meta.node {
-                    ast::MetaWord(ref lintname) => {
-                        if !f(*meta, level, (*lintname).clone()) {
-                            return false;
+                    ast::MetaWord(ref lint_name) => {
+                        match self.lints_by_name.find_equiv(lint_name) {
+                            Some(lint_id) => out.push((*lint_id, level, meta.span)),
+
+                            None => self.span_lint(builtin::unrecognized_lint,
+                                meta.span,
+                                format!("unknown `{}` attribute: `{}`",
+                                    level.as_str(), lint_name).as_slice()),
                         }
                     }
-                    _ => {
-                        sess.span_err(meta.span, "malformed lint attribute");
-                    }
+                    _ => self.tcx.sess.span_err(meta.span, "malformed lint attribute"),
                 }
             }
         }
+        out
     }
-    true
-}
-
-/// Check from a list of attributes if it contains the appropriate
-/// `#[level(lintname)]` attribute (e.g. `#[allow(dead_code)]).
-pub fn contains_lint(attrs: &[ast::Attribute],
-                     level: Level,
-                     lintname: &'static str)
-                     -> bool {
-    let level_name = level_to_str(level);
-    for attr in attrs.iter().filter(|m| m.name().equiv(&level_name)) {
-        if attr.meta_item_list().is_none() {
-            continue
-        }
-        let list = attr.meta_item_list().unwrap();
-        for meta_item in list.iter() {
-            if meta_item.name().equiv(&lintname) {
-                return true;
-            }
-        }
-    }
-    false
 }
 
 impl<'a> AstConv for Context<'a>{
@@ -912,59 +622,90 @@ impl<'a> Visitor<()> for Context<'a> {
     }
 }
 
+// Output any lints that were previously added to the session.
 impl<'a> IdVisitingOperation for Context<'a> {
     fn visit_id(&self, id: ast::NodeId) {
         match self.tcx.sess.lints.borrow_mut().pop(&id) {
             None => {}
-            Some(l) => {
-                for (lint, span, msg) in l.move_iter() {
-                    self.span_lint(lint, span, msg.as_slice())
+            Some(lints) => {
+                for (lint_id, span, msg) in lints.move_iter() {
+                    self.span_lint(lint_id.lint, span, msg.as_slice())
                 }
             }
         }
     }
 }
 
-pub fn check_crate(tcx: &ty::ctxt,
-                   exported_items: &ExportedItems,
-                   krate: &ast::Crate) {
+fn builtin_lints() -> Vec<Box<LintPass>> {
     macro_rules! builtin_lints (( $($name:ident),*, ) => (
         vec!($(
             {
                 let obj: builtin::$name = Default::default();
-                RefCell::new(box obj as LintPassObject)
+                box obj as LintPassObject
             }
         ),*)
     ))
 
-    let builtin_lints = builtin_lints!(
-        GatherNodeLevels, WhileTrue, UnusedCasts, TypeLimits, CTypes,
-        HeapMemory, RawPointerDeriving, UnusedAttribute,
-        PathStatement, UnusedMustUse, DeprecatedOwnedVector,
-        NonCamelCaseTypes, NonSnakeCaseFunctions, NonUppercaseStatics,
-        UppercaseVariables, UnnecessaryParens, UnusedUnsafe, UnsafeBlock,
-        UnusedMut, UnnecessaryAllocation, MissingDoc, Stability,
-    );
+    builtin_lints!(
+        WhileTrue, UnusedCasts, TypeLimits, CTypes, HeapMemory,
+        RawPointerDeriving, UnusedAttribute, PathStatement,
+        UnusedResult, DeprecatedOwnedVector, NonCamelCaseTypes,
+        NonSnakeCaseFunctions, NonUppercaseStatics,
+        NonUppercasePatternStatics, UppercaseVariables,
+        UnnecessaryParens, UnusedUnsafe, UnsafeBlock, UnusedMut,
+        UnnecessaryAllocation, MissingDoc, Stability,
+
+        GatherNodeLevels, HardwiredLints,
+    )
+}
+
+/// Get specs for all builtin lints.  Used for `-W help`.
+pub fn builtin_lint_specs() -> Vec<&'static Lint> {
+    builtin_lints().move_iter()
+        .flat_map(|x| x.get_lints().iter().map(|&y| y))
+        .collect()
+}
+
+pub fn check_crate(tcx: &ty::ctxt,
+                   exported_items: &ExportedItems,
+                   krate: &ast::Crate) {
+    let lints = builtin_lints().move_iter().map(|x| RefCell::new(x)).collect();
 
     let mut cx = Context {
-        dict: get_lint_dict(),
-        cur: SmallIntMap::new(),
+        lint_objects: lints,
+        lints_by_name: HashMap::new(),
+        levels: HashMap::new(),
         tcx: tcx,
         level_stack: Vec::new(),
         node_levels: RefCell::new(HashMap::new()),
-        lints: builtin_lints,
     };
 
-    // Install default lint levels, followed by the command line levels, and
-    // then actually visit the whole crate.
-    for (_, spec) in cx.dict.iter() {
-        if spec.default != Allow {
-            cx.cur.insert(spec.lint as uint, (spec.default, Default));
+    // Index the lints by name, and set the default levels.
+    for obj in cx.lint_objects.iter() {
+        for &lint in obj.borrow_mut().get_lints().iter() {
+            let id = LintId::of(lint);
+            if !cx.lints_by_name.insert(lint.name, id) {
+                cx.tcx.sess.err(format!("duplicate specification of lint {}",
+                    lint.name).as_slice());
+            }
+            if lint.default_level != Allow {
+                cx.levels.insert(id, (lint.default_level, Default));
+            }
         }
     }
-    for &(lint, level) in tcx.sess.opts.lint_opts.iter() {
-        cx.set_level(lint, level, CommandLine);
+
+    // Set command line lint levels.
+    for &(ref lint_name, level) in tcx.sess.opts.lint_opts.iter() {
+        match cx.lints_by_name.find_equiv(&lint_name.as_slice()) {
+            Some(&lint_id) => cx.set_level(lint_id, (level, CommandLine)),
+            None => cx.tcx.sess.err(format!("unknown {} flag: {}",
+                level.as_str(), lint_name).as_slice()),
+        }
     }
+
+    tcx.sess.abort_if_errors();
+
+    // Visit the whole crate.
     cx.with_lint_attrs(krate.attrs.as_slice(), |cx| {
         cx.visit_id(ast::CRATE_NODE_ID);
         cx.visit_ids(|v| {
@@ -983,8 +724,10 @@ pub fn check_crate(tcx: &ty::ctxt,
     // in the iteration code.
     for (id, v) in tcx.sess.lints.borrow().iter() {
         for &(lint, span, ref msg) in v.iter() {
-            tcx.sess.span_bug(span, format!("unprocessed lint {} at {}: {}",
-                                            lint, tcx.map.node_to_str(*id), *msg).as_slice())
+            tcx.sess.span_bug(span,
+                format!("unprocessed lint {} at {}: {}",
+                    lint.as_str(), tcx.map.node_to_str(*id), *msg)
+                .as_slice())
         }
     }
 

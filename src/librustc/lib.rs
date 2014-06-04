@@ -127,6 +127,15 @@ pub mod lib {
     pub mod llvmdeps;
 }
 
+// A private module so that macro-expanded idents like
+// `::rustc::lint::Lint` will also work in `rustc` itself.
+//
+// `libstd` uses the same trick.
+#[doc(hidden)]
+mod rustc {
+    pub use lint;
+}
+
 pub fn main() {
     let args = std::os::args().iter()
                               .map(|x| x.to_string())

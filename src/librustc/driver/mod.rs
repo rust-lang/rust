@@ -17,7 +17,6 @@ use lint;
 use metadata;
 
 use std::any::AnyRefExt;
-use std::cmp;
 use std::io;
 use std::os;
 use std::str;
@@ -50,6 +49,12 @@ fn run_compiler(args: &[String]) {
         None => return
     };
 
+    let sopts = config::build_session_options(&matches);
+    if sopts.describe_lints {
+        describe_lints();
+        return;
+    }
+
     let (input, input_file_path) = match matches.free.len() {
         0u => early_error("no input filename given"),
         1u => {
@@ -66,7 +71,6 @@ fn run_compiler(args: &[String]) {
         _ => early_error("multiple input filenames provided")
     };
 
-    let sopts = config::build_session_options(&matches);
     let sess = build_session(sopts, input_file_path);
     let cfg = config::build_configuration(&sess);
     let odir = matches.opt_str("out-dir").map(|o| Path::new(o));
@@ -124,7 +128,7 @@ Additional help:
                              config::optgroups().as_slice()));
 }
 
-fn describe_warnings() {
+fn describe_lints() {
     println!("
 Available lint options:
     -W <foo>           Warn about <foo>
@@ -133,30 +137,32 @@ Available lint options:
     -F <foo>           Forbid <foo> (deny, and deny all overrides)
 ");
 
-    let lint_dict = lint::get_lint_dict();
-    let mut lint_dict = lint_dict.move_iter()
-                                 .map(|(k, v)| (v, k))
-                                 .collect::<Vec<(lint::LintSpec, &'static str)> >();
-    lint_dict.as_mut_slice().sort();
+    let mut builtin_specs = lint::builtin_lint_specs();
+    builtin_specs.sort_by(|x, y| {
+        match x.default_level.cmp(&y.default_level) {
+            Equal => x.name.cmp(&y.name),
+            r => r,
+        }
+    });
 
-    let mut max_key = 0;
-    for &(_, name) in lint_dict.iter() {
-        max_key = cmp::max(name.len(), max_key);
-    }
-    fn padded(max: uint, s: &str) -> String {
-        format!("{}{}", " ".repeat(max - s.len()), s)
-    }
+    // FIXME: What if someone uses combining characters or East Asian fullwidth
+    // characters in a lint name?!?!?
+    let max_name_len = builtin_specs.iter()
+        .map(|&s| s.name.char_len())
+        .max().unwrap_or(0);
+    let padded = |x: &str| {
+        format!("{}{}", " ".repeat(max_name_len - x.char_len()), x)
+    };
+
     println!("\nAvailable lint checks:\n");
-    println!("    {}  {:7.7s}  {}",
-             padded(max_key, "name"), "default", "meaning");
-    println!("    {}  {:7.7s}  {}\n",
-             padded(max_key, "----"), "-------", "-------");
-    for (spec, name) in lint_dict.move_iter() {
-        let name = name.replace("_", "-");
+    println!("    {}  {:7.7s}  {}", padded("name"), "default", "meaning");
+    println!("    {}  {:7.7s}  {}", padded("----"), "-------", "-------");
+    println!("");
+
+    for spec in builtin_specs.move_iter() {
+        let name = spec.name.replace("_", "-");
         println!("    {}  {:7.7s}  {}",
-                 padded(max_key, name.as_slice()),
-                 lint::level_to_str(spec.default),
-                 spec.desc);
+            padded(name.as_slice()), spec.default_level.as_str(), spec.desc);
     }
     println!("");
 }
@@ -214,12 +220,7 @@ pub fn handle_options(mut args: Vec<String>) -> Option<getopts::Matches> {
         return None;
     }
 
-    let lint_flags = matches.opt_strs("W").move_iter().collect::<Vec<_>>().append(
-                                    matches.opt_strs("warn").as_slice());
-    if lint_flags.iter().any(|x| x.as_slice() == "help") {
-        describe_warnings();
-        return None;
-    }
+    // Don't handle -W help here, because we might first load plugins.
 
     let r = matches.opt_strs("Z");
     if r.iter().any(|x| x.as_slice() == "help") {
