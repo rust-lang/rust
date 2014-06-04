@@ -33,7 +33,7 @@
 //! # Example
 //!
 //! ```rust
-//! use std::unstable::mutex::{NativeMutex, StaticNativeMutex, NATIVE_MUTEX_INIT};
+//! use std::rt::mutex::{NativeMutex, StaticNativeMutex, NATIVE_MUTEX_INIT};
 //!
 //! // Use a statically initialized mutex
 //! static mut LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;
@@ -58,8 +58,7 @@
 
 #![allow(non_camel_case_types)]
 
-use option::{Option, None, Some};
-use ops::Drop;
+use core::prelude::*;
 
 /// A native mutex suitable for storing in statics (that is, it has
 /// the `destroy` method rather than a destructor).
@@ -109,7 +108,7 @@ impl StaticNativeMutex {
     /// # Example
     ///
     /// ```rust
-    /// use std::unstable::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
+    /// use std::rt::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
     /// static mut LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;
     /// unsafe {
     ///     let _guard = LOCK.lock();
@@ -183,7 +182,7 @@ impl NativeMutex {
     ///
     /// # Example
     /// ```rust
-    /// use std::unstable::mutex::NativeMutex;
+    /// use std::rt::mutex::NativeMutex;
     /// unsafe {
     ///     let mut lock = NativeMutex::new();
     ///
@@ -264,8 +263,8 @@ mod imp {
     use libc;
     use self::os::{PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER,
                    pthread_mutex_t, pthread_cond_t};
-    use ty::Unsafe;
-    use kinds::marker;
+    use core::ty::Unsafe;
+    use core::kinds::marker;
 
     type pthread_mutexattr_t = libc::c_void;
     type pthread_condattr_t = libc::c_void;
@@ -432,11 +431,11 @@ mod imp {
 
 #[cfg(windows)]
 mod imp {
-    use rt::libc_heap::malloc_raw;
+    use alloc::libc_heap::malloc_raw;
+    use core::atomics;
+    use core::ptr;
     use libc::{HANDLE, BOOL, LPSECURITY_ATTRIBUTES, c_void, DWORD, LPCSTR};
     use libc;
-    use ptr;
-    use sync::atomics;
 
     type LPCRITICAL_SECTION = *mut c_void;
     static SPIN_COUNT: DWORD = 4000;
@@ -563,11 +562,11 @@ mod imp {
 
 #[cfg(test)]
 mod test {
-    use prelude::*;
+    use std::prelude::*;
 
-    use mem::drop;
+    use std::mem::drop;
     use super::{StaticNativeMutex, NATIVE_MUTEX_INIT};
-    use rt::thread::Thread;
+    use std::rt::thread::Thread;
 
     #[test]
     fn smoke_lock() {

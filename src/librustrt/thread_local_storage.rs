@@ -10,26 +10,21 @@
 
 #![allow(dead_code)]
 
-#[cfg(test)]
-use owned::Box;
-#[cfg(unix)]
-use libc::c_int;
-#[cfg(unix)]
-use ptr::null;
-#[cfg(windows)]
-use libc::types::os::arch::extra::{DWORD, LPVOID, BOOL};
+#[cfg(unix)] use libc::c_int;
+#[cfg(unix)] use core::ptr::null;
+#[cfg(windows)] use libc::types::os::arch::extra::{DWORD, LPVOID, BOOL};
 
 #[cfg(unix)]
 pub type Key = pthread_key_t;
 
 #[cfg(unix)]
 pub unsafe fn create(key: &mut Key) {
-    assert_eq!(0, pthread_key_create(key, null()));
+    assert!(pthread_key_create(key, null()) == 0);
 }
 
 #[cfg(unix)]
 pub unsafe fn set(key: Key, value: *mut u8) {
-    assert_eq!(0, pthread_setspecific(key, value));
+    assert!(pthread_setspecific(key, value) == 0);
 }
 
 #[cfg(unix)]
@@ -39,7 +34,7 @@ pub unsafe fn get(key: Key) -> *mut u8 {
 
 #[cfg(unix)]
 pub unsafe fn destroy(key: Key) {
-    assert_eq!(0, pthread_key_delete(key));
+    assert!(pthread_key_delete(key) == 0);
 }
 
 #[cfg(target_os="macos")]
@@ -94,19 +89,25 @@ extern "system" {
     fn TlsSetValue(dwTlsIndex: DWORD, lpTlsvalue: LPVOID) -> BOOL;
 }
 
-#[test]
-fn tls_smoke_test() {
-    use mem::transmute;
-    unsafe {
-        let mut key = 0;
-        let value = box 20;
-        create(&mut key);
-        set(key, transmute(value));
-        let value: Box<int> = transmute(get(key));
-        assert_eq!(value, box 20);
-        let value = box 30;
-        set(key, transmute(value));
-        let value: Box<int> = transmute(get(key));
-        assert_eq!(value, box 30);
+#[cfg(test)]
+mod test {
+    use std::prelude::*;
+    use super::*;
+
+    #[test]
+    fn tls_smoke_test() {
+        use std::mem::transmute;
+        unsafe {
+            let mut key = 0;
+            let value = box 20;
+            create(&mut key);
+            set(key, transmute(value));
+            let value: Box<int> = transmute(get(key));
+            assert_eq!(value, box 20);
+            let value = box 30;
+            set(key, transmute(value));
+            let value: Box<int> = transmute(get(key));
+            assert_eq!(value, box 30);
+        }
     }
 }

@@ -65,24 +65,17 @@ fn main() {
 
 */
 
-use clone::Clone;
-use cmp::PartialEq;
-use container::Container;
-use iter::{Iterator, range};
-use kinds::marker;
+use core::prelude::*;
+
+use alloc::libc_heap::malloc_raw;
+use collections::string::String;
+use core::kinds::marker;
+use core::mem;
+use core::ptr;
+use core::raw::Slice;
+use core::slice;
+use core::str;
 use libc;
-use mem;
-use ops::Drop;
-use option::{Option, Some, None};
-use ptr::RawPtr;
-use ptr;
-use raw::Slice;
-use rt::libc_heap::malloc_raw;
-use slice::{ImmutableVector, MutableVector};
-use slice;
-use str::StrSlice;
-use str;
-use string::String;
 
 /// The representation of a C String.
 ///
@@ -454,11 +447,12 @@ pub unsafe fn from_c_multistring(buf: *libc::c_char,
 
 #[cfg(test)]
 mod tests {
-    use prelude::*;
-    use super::*;
+    use std::prelude::*;
+    use std::ptr;
+    use std::task;
     use libc;
-    use ptr;
-    use str::StrSlice;
+
+    use super::*;
 
     #[test]
     fn test_str_multistring_parsing() {
@@ -574,7 +568,6 @@ mod tests {
 
     #[test]
     fn test_to_c_str_fail() {
-        use task;
         assert!(task::try(proc() { "he\x00llo".to_c_str() }).is_err());
     }
 
@@ -700,10 +693,9 @@ mod tests {
 
 #[cfg(test)]
 mod bench {
-    extern crate test;
-    use self::test::Bencher;
+    use test::Bencher;
     use libc;
-    use prelude::*;
+    use std::prelude::*;
 
     #[inline]
     fn check(s: &str, c_str: *libc::c_char) {
