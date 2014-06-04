@@ -155,15 +155,16 @@
 //! # Unicode
 //!
 //! This implementation executes regular expressions **only** on sequences of
-//! UTF8 codepoints while exposing match locations as byte indices.
+//! Unicode code points while exposing match locations as byte indices into the
+//! search string.
 //!
 //! Currently, only naive case folding is supported. Namely, when matching
 //! case insensitively, the characters are first converted to their uppercase
 //! forms and then compared.
 //!
 //! Regular expressions themselves are also **only** interpreted as a sequence
-//! of UTF8 codepoints. This means you can embed Unicode characters directly
-//! into your expression:
+//! of Unicode code points. This means you can use Unicode characters
+//! directly in your expression:
 //!
 //! ```rust
 //! # #![feature(phase)]
@@ -229,10 +230,10 @@
 //! x*?       zero or more of x (ungreedy)
 //! x+?       one or more of x (ungreedy)
 //! x??       zero or one of x (ungreedy)
-//! x{n,m}    at least n and at most x (greedy)
+//! x{n,m}    at least n x and at most m x (greedy)
 //! x{n,}     at least n x (greedy)
 //! x{n}      exactly n x
-//! x{n,m}?   at least n and at most x (ungreedy)
+//! x{n,m}?   at least n x and at most m x (ungreedy)
 //! x{n,}?    at least n x (ungreedy)
 //! x{n}?     exactly n x
 //! </pre>
@@ -300,7 +301,7 @@
 //! \v         vertical tab (\x0B)
 //! \123       octal character code (up to three digits)
 //! \x7F       hex character code (exactly two digits)
-//! \x{10FFFF} any hex character code corresponding to a valid UTF8 codepoint
+//! \x{10FFFF} any hex character code corresponding to a Unicode code point
 //! </pre>
 //!
 //! ## Perl character classes (Unicode friendly)
@@ -390,7 +391,7 @@ mod vm;
 #[cfg(test, not(windows))]
 mod test;
 
-/// The `program` module exists to support the `regex!` macro. Do not use.
+/// The `native` module exists to support the `regex!` macro. Do not use.
 #[doc(hidden)]
 pub mod native {
     // Exporting this stuff is bad form, but it's necessary for two reasons.
