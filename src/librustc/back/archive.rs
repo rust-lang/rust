@@ -110,7 +110,7 @@ impl<'a> Archive<'a> {
                     lto: bool) -> io::IoResult<()> {
         let object = format!("{}.o", name);
         let bytecode = format!("{}.bc.deflate", name);
-        let mut ignore = vec!(METADATA_FILENAME, bytecode.as_slice());
+        let mut ignore = vec!(bytecode.as_slice(), METADATA_FILENAME);
         if lto {
             ignore.push(object.as_slice());
         }
