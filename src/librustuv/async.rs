@@ -8,9 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use alloc::arc::Arc;
 use std::mem;
+use std::rt::exclusive::Exclusive;
 use std::rt::rtio::{Callback, RemoteCallback};
-use std::unstable::sync::Exclusive;
 
 use uvll;
 use super::{Loop, UvHandle};
@@ -22,12 +23,12 @@ pub struct AsyncWatcher {
 
     // A flag to tell the callback to exit, set from the dtor. This is
     // almost never contested - only in rare races with the dtor.
-    exit_flag: Exclusive<bool>
+    exit_flag: Arc<Exclusive<bool>>,
 }
 
 struct Payload {
     callback: Box<Callback:Send>,
-    exit_flag: Exclusive<bool>,
+    exit_flag: Arc<Exclusive<bool>>,
 }
 
 impl AsyncWatcher {
@@ -36,7 +37,7 @@ impl AsyncWatcher {
         assert_eq!(unsafe {
             uvll::uv_async_init(loop_.handle, handle, async_cb)
         }, 0);
-        let flag = Exclusive::new(false);
+        let flag = Arc::new(Exclusive::new(false));
         let payload = box Payload { callback: cb, exit_flag: flag.clone() };
         unsafe {
             let payload: *u8 = mem::transmute(payload);
@@ -80,9 +81,7 @@ extern fn async_cb(handle: *uvll::uv_async_t) {
     // could be called in the other thread, missing the final
     // callback while still destroying the handle.
 
-    let should_exit = unsafe {
-        payload.exit_flag.with_imm(|&should_exit| should_exit)
-    };
+    let should_exit = unsafe { *payload.exit_flag.lock() };
 
     payload.callback.call();
 
@@ -108,16 +107,13 @@ impl RemoteCallback for AsyncWatcher {
 
 impl Drop for AsyncWatcher {
     fn drop(&mut self) {
-        unsafe {
-            self.exit_flag.with(|should_exit| {
-                // NB: These two things need to happen atomically. Otherwise
-                // the event handler could wake up due to a *previous*
-                // signal and see the exit flag, destroying the handle
-                // before the final send.
-                *should_exit = true;
-                uvll::uv_async_send(self.handle)
-            })
-        }
+        let mut should_exit = unsafe { self.exit_flag.lock() };
+        // NB: These two things need to happen atomically. Otherwise
+        // the event handler could wake up due to a *previous*
+        // signal and see the exit flag, destroying the handle
+        // before the final send.
+        *should_exit = true;
+        unsafe { uvll::uv_async_send(self.handle) }
     }
 }
 

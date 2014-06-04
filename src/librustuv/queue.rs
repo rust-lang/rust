@@ -23,8 +23,8 @@
 use alloc::arc::Arc;
 use libc::c_void;
 use std::mem;
+use std::rt::mutex::NativeMutex;
 use std::rt::task::BlockedTask;
-use std::unstable::mutex::NativeMutex;
 use mpsc = std::sync::mpsc_queue;
 
 use async::AsyncWatcher;
