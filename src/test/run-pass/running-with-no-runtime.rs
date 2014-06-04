@@ -28,7 +28,7 @@ fn start(argc: int, argv: **u8) -> int {
                 4 => assert!(try(|| fail!()).is_err()),
                 5 => assert!(try(|| spawn(proc() {})).is_err()),
                 6 => assert!(Command::new("test").spawn().is_err()),
-                7 => assert!(foo.get().is_some()),
+                7 => assert!(foo.get().is_none()),
                 8 => assert!(try(|| { foo.replace(Some(3)); }).is_err()),
                 _ => fail!()
             }
@@ -49,6 +49,8 @@ fn main() {
     pass(Command::new(me).arg(&[4u8]).output().unwrap());
     pass(Command::new(me).arg(&[5u8]).output().unwrap());
     pass(Command::new(me).arg(&[6u8]).output().unwrap());
+    pass(Command::new(me).arg(&[7u8]).output().unwrap());
+    pass(Command::new(me).arg(&[8u8]).output().unwrap());
 }
 
 fn pass(output: ProcessOutput) {

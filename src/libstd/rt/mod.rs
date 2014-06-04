@@ -57,10 +57,11 @@ Several modules in `core` are clients of `rt`:
 use failure;
 use rustrt;
 
-// TODO: dox
+// Reexport some of our utilities which are expected by other crates.
 pub use self::util::{default_sched_threads, min_stack, running_on_valgrind};
 
-// TODO: dox
+// Reexport functionality from librustrt and other crates underneath the
+// standard library which work together to create the entire runtime.
 pub use alloc::{heap, libc_heap};
 pub use rustrt::{task, local, mutex, exclusive, stack, args, rtio};
 pub use rustrt::{Stdio, Stdout, Stderr, begin_unwind, begin_unwind_fmt};

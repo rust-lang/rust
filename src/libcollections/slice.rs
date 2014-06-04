@@ -862,7 +862,7 @@ mod tests {
     use std::prelude::*;
     use std::rand::{Rng, task_rng};
     use std::rc::Rc;
-    use std::unstable;
+    use std::rt;
     use slice::*;
 
     use vec::Vec;
@@ -1104,9 +1104,9 @@ mod tests {
     #[test]
     fn test_swap_remove_noncopyable() {
         // Tests that we don't accidentally run destructors twice.
-        let mut v = vec![unstable::sync::Exclusive::new(()),
-                         unstable::sync::Exclusive::new(()),
-                         unstable::sync::Exclusive::new(())];
+        let mut v = vec![rt::exclusive::Exclusive::new(()),
+                         rt::exclusive::Exclusive::new(()),
+                         rt::exclusive::Exclusive::new(())];
         let mut _e = v.swap_remove(0);
         assert_eq!(v.len(), 2);
         _e = v.swap_remove(1);

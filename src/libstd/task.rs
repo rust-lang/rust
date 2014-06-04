@@ -182,14 +182,8 @@ impl TaskBuilder {
         };
         if stdout.is_some() || stderr.is_some() {
             t.spawn_sibling(opts, proc() {
-                match stdout {
-                    Some(handle) => { let _ = stdio::set_stdout(handle); }
-                    None => {}
-                }
-                match stderr {
-                    Some(handle) => { let _ = stdio::set_stderr(handle); }
-                    None => {}
-                }
+                let _ = stdout.map(stdio::set_stdout);
+                let _ = stderr.map(stdio::set_stderr);
                 f();
             });
         } else {

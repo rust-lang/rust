@@ -22,13 +22,12 @@ use std::any::Any;
 use std::mem;
 use std::raw;
 use std::rt::Runtime;
-use std::rt::env;
 use std::rt::local::Local;
+use std::rt::mutex::NativeMutex;
 use std::rt::rtio;
 use std::rt::stack;
-use std::rt::task::{Task, BlockedTask, SendMessage};
-use std::task::TaskOpts;
-use std::unstable::mutex::NativeMutex;
+use std::rt::task::{Task, BlockedTask, TaskOpts};
+use std::rt;
 
 use context::Context;
 use coroutine::Coroutine;
@@ -142,7 +141,7 @@ impl GreenTask {
         let mut ops = GreenTask::new_typed(None, TypeGreen(Some(home)));
 
         // Allocate a stack for us to run on
-        let stack_size = stack_size.unwrap_or_else(|| env::min_stack());
+        let stack_size = stack_size.unwrap_or_else(|| rt::min_stack());
         let mut stack = stack_pool.take_stack(stack_size);
         let context = Context::new(bootstrap_green_task, ops.as_uint(), start,
                                    &mut stack);
@@ -176,23 +175,13 @@ impl GreenTask {
     pub fn configure(pool: &mut StackPool,
                      opts: TaskOpts,
                      f: proc():Send) -> Box<GreenTask> {
-        let TaskOpts {
-            notify_chan, name, stack_size,
-            stderr, stdout,
-        } = opts;
+        let TaskOpts { name, stack_size, on_exit } = opts;
 
         let mut green = GreenTask::new(pool, stack_size, f);
         {
             let task = green.task.get_mut_ref();
             task.name = name;
-            task.stderr = stderr;
-            task.stdout = stdout;
-            match notify_chan {
-                Some(chan) => {
-                    task.death.on_exit = Some(SendMessage(chan));
-                }
-                None => {}
-            }
+            task.death.on_exit = on_exit;
         }
         return green;
     }
@@ -490,7 +479,7 @@ mod tests {
     use std::rt::local::Local;
     use std::rt::task::Task;
     use std::task;
-    use std::task::TaskOpts;
+    use std::rt::task::TaskOpts;
 
     use super::super::{PoolConfig, SchedPool};
     use super::GreenTask;
@@ -529,7 +518,7 @@ mod tests {
         opts.name = Some("test".into_maybe_owned());
         opts.stack_size = Some(20 * 4096);
         let (tx, rx) = channel();
-        opts.notify_chan = Some(tx);
+        opts.on_exit = Some(proc(r) tx.send(r));
         spawn_opts(opts, proc() {});
         assert!(rx.recv().is_ok());
     }
@@ -538,7 +527,7 @@ mod tests {
     fn smoke_opts_fail() {
         let mut opts = TaskOpts::new();
         let (tx, rx) = channel();
-        opts.notify_chan = Some(tx);
+        opts.on_exit = Some(proc(r) tx.send(r));
         spawn_opts(opts, proc() { fail!() });
         assert!(rx.recv().is_err());
     }

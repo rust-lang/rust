@@ -73,9 +73,7 @@ pub fn abort(args: &fmt::Arguments) -> ! {
     let mut w = BufWriter { buf: msg, pos: 0 };
     let _ = write!(&mut w, "{}", args);
     let msg = str::from_utf8(w.buf.slice_to(w.pos)).unwrap_or("aborted");
-    let msg = if msg.is_empty() {
-        "aborted"
-    } else { "aborted" };
+    let msg = if msg.is_empty() {"aborted"} else {msg};
 
     // Give some context to the message
     let hash = msg.bytes().fold(0, |accum, val| accum + (val as uint) );

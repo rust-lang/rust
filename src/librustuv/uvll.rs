@@ -38,7 +38,8 @@ use std::rt::libc_heap::malloc_raw;
 use libc::uintptr_t;
 
 pub use self::errors::{EACCES, ECONNREFUSED, ECONNRESET, EPIPE, ECONNABORTED,
-                       ECANCELED, EBADF, ENOTCONN, ENOENT, EADDRNOTAVAIL};
+                       ECANCELED, EBADF, ENOTCONN, ENOENT, EADDRNOTAVAIL,
+                       EADDRINUSE};
 
 pub static OK: c_int = 0;
 pub static EOF: c_int = -4095;
@@ -61,6 +62,7 @@ pub mod errors {
     pub static ECANCELED: c_int = -4081;
     pub static EBADF: c_int = -4083;
     pub static EADDRNOTAVAIL: c_int = -4090;
+    pub static EADDRINUSE: c_int = -4091;
 }
 #[cfg(not(windows))]
 pub mod errors {
@@ -77,6 +79,7 @@ pub mod errors {
     pub static ECANCELED : c_int = -libc::ECANCELED;
     pub static EBADF : c_int = -libc::EBADF;
     pub static EADDRNOTAVAIL : c_int = -libc::EADDRNOTAVAIL;
+    pub static EADDRINUSE : c_int = -libc::EADDRINUSE;
 }
 
 pub static PROCESS_SETUID: c_int = 1 << 0;

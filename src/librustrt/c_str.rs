@@ -238,9 +238,15 @@ impl Container for CString {
     #[inline]
     fn len(&self) -> uint {
         if self.buf.is_null() { fail!("CString is null!"); }
+        let mut cur = self.buf;
+        let mut len = 0;
         unsafe {
-            ptr::position(self.buf, |c| *c == 0)
+            while *cur != 0 {
+                len += 1;
+                cur = cur.offset(1);
+            }
         }
+        return len;
     }
 }
 

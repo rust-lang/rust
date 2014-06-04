@@ -18,10 +18,11 @@ use core::prelude::*;
 use alloc::arc::Arc;
 use alloc::owned::{AnyOwnExt, Box};
 use core::any::Any;
+use core::atomics::{AtomicUint, SeqCst};
+use core::finally::Finally;
 use core::iter::Take;
 use core::mem;
-use core::finally::Finally;
-use core::atomics::{AtomicUint, SeqCst};
+use core::raw;
 
 use local_data;
 use Runtime;
@@ -142,18 +143,17 @@ impl Task {
                 // TLS, or possibly some destructors for those objects being
                 // annihilated invoke TLS. Sadly these two operations seemed to
                 // be intertwined, and miraculously work for now...
-                let mut task = Local::borrow(None::<Task>);
-                let storage_map = {
+                drop({
+                    let mut task = Local::borrow(None::<Task>);
                     let &LocalStorage(ref mut optmap) = &mut task.storage;
                     optmap.take()
-                };
-                drop(task);
-                drop(storage_map);
+                });
 
                 // Destroy remaining boxes. Also may run user dtors.
-                let mut task = Local::borrow(None::<Task>);
-                let mut heap = mem::replace(&mut task.heap, LocalHeap::new());
-                drop(task);
+                let mut heap = {
+                    let mut task = Local::borrow(None::<Task>);
+                    mem::replace(&mut task.heap, LocalHeap::new())
+                };
                 unsafe { heap.annihilate() }
                 drop(heap);
             })
@@ -202,13 +202,16 @@ impl Task {
         //      crops up.
         unsafe {
             let imp = self.imp.take_unwrap();
-            let &(vtable, _): &(uint, uint) = mem::transmute(&imp);
+            let vtable = mem::transmute::<_, &raw::TraitObject>(&imp).vtable;
             match imp.wrap().move::<T>() {
                 Ok(t) => Some(t),
                 Err(t) => {
-                    let (_, obj): (uint, uint) = mem::transmute(t);
+                    let data = mem::transmute::<_, raw::TraitObject>(t).data;
                     let obj: Box<Runtime:Send> =
-                        mem::transmute((vtable, obj));
+                        mem::transmute(raw::TraitObject {
+                            vtable: vtable,
+                            data: data,
+                        });
                     self.put_runtime(obj);
                     None
                 }
