@@ -1485,26 +1485,21 @@ impl<'a> Resolver<'a> {
 
             ViewItemExternCrate(name, _, node_id) => {
                 // n.b. we don't need to look at the path option here, because cstore already did
-                match self.session.cstore.find_extern_mod_stmt_cnum(node_id) {
-                    Some(crate_id) => {
-                        let def_id = DefId { krate: crate_id, node: 0 };
-                        self.external_exports.insert(def_id);
-                        let parent_link = ModuleParentLink
-                            (parent.module().downgrade(), name);
-                        let external_module = Rc::new(Module::new(parent_link,
-                                                                  Some(def_id),
-                                                                  NormalModuleKind,
-                                                                  false,
-                                                                  true));
-
-                        parent.module().external_module_children
-                              .borrow_mut().insert(name.name,
-                                                   external_module.clone());
-
-                        self.build_reduced_graph_for_external_crate(
-                            external_module);
-                    }
-                    None => {}  // Ignore.
+                for &crate_id in self.session.cstore.find_extern_mod_stmt_cnum(node_id).iter() {
+                    let def_id = DefId { krate: crate_id, node: 0 };
+                    self.external_exports.insert(def_id);
+                    let parent_link = ModuleParentLink(parent.module().downgrade(), name);
+                    let external_module = Rc::new(Module::new(parent_link,
+                                                              Some(def_id),
+                                                              NormalModuleKind,
+                                                              false,
+                                                              true));
+                    debug!("(build reduced graph for item) found extern `{}`",
+                            self.module_to_str(&*external_module));
+                    parent.module().external_module_children.borrow_mut()
+                                                            .insert(name.name,
+                                                                    external_module.clone());
+                    self.build_reduced_graph_for_external_crate(external_module);
                 }
             }
         }
@@ -1997,7 +1992,9 @@ impl<'a> Resolver<'a> {
     fn resolve_imports_for_module_subtree(&mut self, module_: Rc<Module>) {
         debug!("(resolving imports for module subtree) resolving {}",
                self.module_to_str(&*module_));
+        let orig_module = replace(&mut self.current_module, module_.clone());
         self.resolve_imports_for_module(module_.clone());
+        self.current_module = orig_module;
 
         self.populate_module_if_necessary(&module_);
         for (_, child_node) in module_.children.borrow().iter() {
@@ -2611,6 +2608,22 @@ impl<'a> Resolver<'a> {
                                      name_search_type: NameSearchType,
                                      lp: LastPrivate)
                                 -> ResolveResult<(Rc<Module>, LastPrivate)> {
+        fn search_parent_externals(needle: Name, module: &Rc<Module>)
+                                -> Option<Rc<Module>> {
+            module.external_module_children.borrow()
+                                            .find_copy(&needle)
+                                            .map(|_| module.clone())
+                                            .or_else(|| {
+                match module.parent_link.clone() {
+                    ModuleParentLink(parent, _) => {
+                        search_parent_externals(needle,
+                                                &parent.upgrade().unwrap())
+                    }
+                   _ => None
+                }
+            })
+        }
+
         let mut search_module = module_;
         let mut index = index;
         let module_path_len = module_path.len();
@@ -2635,11 +2648,28 @@ impl<'a> Resolver<'a> {
                             hi: span.lo + Pos::from_uint(segment_name.get().len()),
                             expn_info: span.expn_info,
                         };
-                        self.resolve_error(span,
-                                           format!("unresolved import. maybe \
-                                                    a missing `extern crate \
-                                                    {}`?",
-                                                   segment_name).as_slice());
+
+                        match search_parent_externals(name.name, &self.current_module) {
+                            Some(module) => {
+                                let path_str = self.idents_to_str(module_path);
+                                let target_mod_str = self.module_to_str(&*module);
+                                let current_mod_str = self.module_to_str(&*self.current_module);
+
+                                let prefix = if target_mod_str == current_mod_str {
+                                    "self::".to_string()
+                                } else {
+                                    format!("{}::", target_mod_str)
+                                };
+
+                                self.resolve_error(span, format!("unresolved import. Did you mean \
+                                                                `{}{}`?",
+                                                                prefix, path_str).as_slice());
+                            },
+                            None => self.resolve_error(span, format!("unresolved import. Maybe a \
+                                                                    missing `extern crate {}`?",
+                                                                    segment_name).as_slice()),
+                        }
+
                         return Failed;
                     }
                     self.resolve_error(span,
@@ -5480,7 +5510,7 @@ impl<'a> Resolver<'a> {
     //
 
     /// A somewhat inefficient routine to obtain the name of a module.
-    fn module_to_str(&mut self, module: &Module) -> String {
+    fn module_to_str(&self, module: &Module) -> String {
         let mut idents = Vec::new();
 
         fn collect_mod(idents: &mut Vec<ast::Ident>, module: &Module) {
