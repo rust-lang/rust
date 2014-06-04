@@ -27,10 +27,10 @@ use option::{Some, None, Option};
 use owned::Box;
 use result::{Ok, Err, Result};
 use rt::local::Local;
+use rt::mutex::NativeMutex;
 use rt::task::{Task, BlockedTask};
 use rt::thread::Thread;
 use sync::atomics;
-use unstable::mutex::NativeMutex;
 
 use mpsc = sync::mpsc_queue;
 

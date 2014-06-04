@@ -28,7 +28,7 @@ use prelude::*;
 
 use c_str::ToCStr;
 use clone::Clone;
-use io::{Listener, Acceptor, Reader, Writer, IoResult};
+use io::{Listener, Acceptor, Reader, Writer, IoResult, IoError};
 use kinds::Send;
 use owned::Box;
 use rt::rtio::{IoFactory, LocalIo, RtioUnixListener};
@@ -58,7 +58,7 @@ impl UnixStream {
     pub fn connect<P: ToCStr>(path: &P) -> IoResult<UnixStream> {
         LocalIo::maybe_raise(|io| {
             io.unix_connect(&path.to_c_str(), None).map(|p| UnixStream { obj: p })
-        })
+        }).map_err(IoError::from_rtio_error)
     }
 
     /// Connect to a pipe named by `path`, timing out if the specified number of
@@ -72,7 +72,7 @@ impl UnixStream {
         LocalIo::maybe_raise(|io| {
             let s = io.unix_connect(&path.to_c_str(), Some(timeout_ms));
             s.map(|p| UnixStream { obj: p })
-        })
+        }).map_err(IoError::from_rtio_error)
     }
 
 
@@ -83,7 +83,9 @@ impl UnixStream {
     ///
     /// Note that this method affects all cloned handles associated with this
     /// stream, not just this one handle.
-    pub fn close_read(&mut self) -> IoResult<()> { self.obj.close_read() }
+    pub fn close_read(&mut self) -> IoResult<()> {
+        self.obj.close_read().map_err(IoError::from_rtio_error)
+    }
 
     /// Closes the writing half of this connection.
     ///
@@ -92,7 +94,9 @@ impl UnixStream {
     ///
     /// Note that this method affects all cloned handles associated with this
     /// stream, not just this one handle.
-    pub fn close_write(&mut self) -> IoResult<()> { self.obj.close_write() }
+    pub fn close_write(&mut self) -> IoResult<()> {
+        self.obj.close_write().map_err(IoError::from_rtio_error)
+    }
 
     /// Sets the read/write timeout for this socket.
     ///
@@ -126,11 +130,15 @@ impl Clone for UnixStream {
 }
 
 impl Reader for UnixStream {
-    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> { self.obj.read(buf) }
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
+        self.obj.read(buf).map_err(IoError::from_rtio_error)
+    }
 }
 
 impl Writer for UnixStream {
-    fn write(&mut self, buf: &[u8]) -> IoResult<()> { self.obj.write(buf) }
+    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
+        self.obj.write(buf).map_err(IoError::from_rtio_error)
+    }
 }
 
 /// A value that can listen for incoming named pipe connection requests.
@@ -165,13 +173,15 @@ impl UnixListener {
     pub fn bind<P: ToCStr>(path: &P) -> IoResult<UnixListener> {
         LocalIo::maybe_raise(|io| {
             io.unix_bind(&path.to_c_str()).map(|s| UnixListener { obj: s })
-        })
+        }).map_err(IoError::from_rtio_error)
     }
 }
 
 impl Listener<UnixStream, UnixAcceptor> for UnixListener {
     fn listen(self) -> IoResult<UnixAcceptor> {
-        self.obj.listen().map(|obj| UnixAcceptor { obj: obj })
+        self.obj.listen().map(|obj| {
+            UnixAcceptor { obj: obj }
+        }).map_err(IoError::from_rtio_error)
     }
 }
 
@@ -202,7 +212,9 @@ impl UnixAcceptor {
 
 impl Acceptor<UnixStream> for UnixAcceptor {
     fn accept(&mut self) -> IoResult<UnixStream> {
-        self.obj.accept().map(|s| UnixStream { obj: s })
+        self.obj.accept().map(|s| {
+            UnixStream { obj: s }
+        }).map_err(IoError::from_rtio_error)
     }
 }
 

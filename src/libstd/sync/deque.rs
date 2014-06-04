@@ -63,7 +63,7 @@ use ptr;
 use rt::heap::{allocate, deallocate};
 use slice::ImmutableVector;
 use sync::atomics::{AtomicInt, AtomicPtr, SeqCst};
-use unstable::sync::Exclusive;
+use rt::exclusive::Exclusive;
 use vec::Vec;
 
 // Once the queue is less than 1/K full, then it will be downsized. Note that
@@ -121,7 +121,7 @@ pub enum Stolen<T> {
 /// will only use this structure when allocating a new buffer or deallocating a
 /// previous one.
 pub struct BufferPool<T> {
-    pool: Exclusive<Vec<Box<Buffer<T>>>>,
+    pool: Arc<Exclusive<Vec<Box<Buffer<T>>>>>,
 }
 
 /// An internal buffer used by the chase-lev deque. This structure is actually
@@ -148,7 +148,7 @@ impl<T: Send> BufferPool<T> {
     /// Allocates a new buffer pool which in turn can be used to allocate new
     /// deques.
     pub fn new() -> BufferPool<T> {
-        BufferPool { pool: Exclusive::new(vec!()) }
+        BufferPool { pool: Arc::new(Exclusive::new(vec!())) }
     }
 
     /// Allocates a new work-stealing deque which will send/receiving memory to
@@ -162,25 +162,21 @@ impl<T: Send> BufferPool<T> {
 
     fn alloc(&self, bits: int) -> Box<Buffer<T>> {
         unsafe {
-            self.pool.with(|pool| {
-                match pool.iter().position(|x| x.size() >= (1 << bits)) {
-                    Some(i) => pool.remove(i).unwrap(),
-                    None => box Buffer::new(bits)
-                }
-            })
+            let mut pool = self.pool.lock();
+            match pool.iter().position(|x| x.size() >= (1 << bits)) {
+                Some(i) => pool.remove(i).unwrap(),
+                None => box Buffer::new(bits)
+            }
         }
     }
 
     fn free(&self, buf: Box<Buffer<T>>) {
         unsafe {
-            let mut buf = Some(buf);
-            self.pool.with(|pool| {
-                let buf = buf.take_unwrap();
-                match pool.iter().position(|v| v.size() > buf.size()) {
-                    Some(i) => pool.insert(i, buf),
-                    None => pool.push(buf),
-                }
-            })
+            let mut pool = self.pool.lock();
+            match pool.iter().position(|v| v.size() > buf.size()) {
+                Some(i) => pool.insert(i, buf),
+                None => pool.push(buf),
+            }
         }
     }
 }
