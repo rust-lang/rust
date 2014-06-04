@@ -66,7 +66,24 @@ pub fn close(fd: int) -> int {
 pub static TMPBUF_SZ : uint = 1000u;
 static BUF_BYTES : uint = 2048u;
 
-/// Returns the current working directory.
+/// Returns the current working directory as a Path.
+///
+/// # Failure
+///
+/// Fails if the current working directory value is invalid:
+/// Possibles cases:
+///
+/// * Current directory does not exist.
+/// * There are insufficient permissions to access the current directory.
+///
+/// # Example
+///
+/// ```rust
+/// // We assume that we are in a valid directory like "/home".
+/// let current_working_directory = std::os::getcwd();
+/// println!("The current directory is {}", current_working_directory.display());
+/// // /home
+/// ```
 #[cfg(unix)]
 pub fn getcwd() -> Path {
     use c_str::CString;
@@ -80,7 +97,24 @@ pub fn getcwd() -> Path {
     }
 }
 
-/// Returns the current working directory.
+/// Returns the current working directory as a Path.
+///
+/// # Failure
+///
+/// Fails if the current working directory value is invalid.
+/// Possibles cases:
+///
+/// * Current directory does not exist.
+/// * There are insufficient permissions to access the current directory.
+///
+/// # Example
+///
+/// ```rust
+/// // We assume that we are in a valid directory like "C:\\Windows".
+/// let current_working_directory = std::os::getcwd();
+/// println!("The current directory is {}", current_working_directory.display());
+/// // C:\\Windows
+/// ```
 #[cfg(windows)]
 pub fn getcwd() -> Path {
     use libc::DWORD;
