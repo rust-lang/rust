@@ -113,6 +113,7 @@ pub fn init(argc: int, argv: **u8) {
     // FIXME(#14344) this shouldn't be necessary
     collections::fixme_14344_be_sure_to_link_to_collections();
     alloc::fixme_14344_be_sure_to_link_to_collections();
+    libc::issue_14344_workaround();
 }
 
 /// Enqueues a procedure to run when the runtime is cleaned up

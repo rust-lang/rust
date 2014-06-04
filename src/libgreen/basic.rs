@@ -20,7 +20,7 @@ use std::sync::atomics;
 use std::mem;
 use std::rt::rtio::{EventLoop, IoFactory, RemoteCallback};
 use std::rt::rtio::{PausableIdleCallback, Callback};
-use std::unstable::sync::Exclusive;
+use std::rt::exclusive::Exclusive;
 
 /// This is the only exported function from this module.
 pub fn event_loop() -> Box<EventLoop:Send> {
@@ -31,7 +31,7 @@ struct BasicLoop {
     work: Vec<proc():Send>,             // pending work
     remotes: Vec<(uint, Box<Callback:Send>)>,
     next_remote: uint,
-    messages: Exclusive<Vec<Message>>,
+    messages: Arc<Exclusive<Vec<Message>>>,
     idle: Option<Box<Callback:Send>>,
     idle_active: Option<Arc<atomics::AtomicBool>>,
 }
@@ -46,7 +46,7 @@ impl BasicLoop {
             idle_active: None,
             next_remote: 0,
             remotes: vec![],
-            messages: Exclusive::new(vec![]),
+            messages: Arc::new(Exclusive::new(Vec::new())),
         }
     }
 
@@ -61,19 +61,10 @@ impl BasicLoop {
 
     fn remote_work(&mut self) {
         let messages = unsafe {
-            self.messages.with(|messages| {
-                if messages.len() > 0 {
-                    Some(mem::replace(messages, vec![]))
-                } else {
-                    None
-                }
-            })
+            mem::replace(&mut *self.messages.lock(), Vec::new())
         };
-        let messages = match messages {
-            Some(m) => m, None => return
-        };
-        for message in messages.iter() {
-            self.message(*message);
+        for message in messages.move_iter() {
+            self.message(message);
         }
     }
 
@@ -125,13 +116,13 @@ impl EventLoop for BasicLoop {
             }
 
             unsafe {
+                let mut messages = self.messages.lock();
                 // We block here if we have no messages to process and we may
                 // receive a message at a later date
-                self.messages.hold_and_wait(|messages| {
-                    self.remotes.len() > 0 &&
-                        messages.len() == 0 &&
-                        self.work.len() == 0
-                })
+                if self.remotes.len() > 0 && messages.len() == 0 &&
+                   self.work.len() == 0 {
+                    messages.wait()
+                }
             }
         }
     }
@@ -165,33 +156,29 @@ impl EventLoop for BasicLoop {
 }
 
 struct BasicRemote {
-    queue: Exclusive<Vec<Message>>,
+    queue: Arc<Exclusive<Vec<Message>>>,
     id: uint,
 }
 
 impl BasicRemote {
-    fn new(queue: Exclusive<Vec<Message>>, id: uint) -> BasicRemote {
+    fn new(queue: Arc<Exclusive<Vec<Message>>>, id: uint) -> BasicRemote {
         BasicRemote { queue: queue, id: id }
     }
 }
 
 impl RemoteCallback for BasicRemote {
     fn fire(&mut self) {
-        unsafe {
-            self.queue.hold_and_signal(|queue| {
-                queue.push(RunRemote(self.id));
-            })
-        }
+        let mut queue = unsafe { self.queue.lock() };
+        queue.push(RunRemote(self.id));
+        queue.signal();
     }
 }
 
 impl Drop for BasicRemote {
     fn drop(&mut self) {
-        unsafe {
-            self.queue.hold_and_signal(|queue| {
-                queue.push(RemoveRemote(self.id));
-            })
-        }
+        let mut queue = unsafe { self.queue.lock() };
+        queue.push(RemoveRemote(self.id));
+        queue.signal();
     }
 }
 
@@ -216,7 +203,7 @@ impl Drop for BasicPausable {
 
 #[cfg(test)]
 mod test {
-    use std::task::TaskOpts;
+    use std::rt::task::TaskOpts;
 
     use basic;
     use PoolConfig;

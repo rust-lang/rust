@@ -313,7 +313,8 @@ impl IoError {
                 libc::ERROR_INVALID_NAME => (InvalidInput, "invalid file name"),
                 libc::WSAECONNREFUSED => (ConnectionRefused, "connection refused"),
                 libc::WSAECONNRESET => (ConnectionReset, "connection reset"),
-                libc::WSAEACCES => (PermissionDenied, "permission denied"),
+                libc::ERROR_ACCESS_DENIED | libc::WSAEACCES =>
+                    (PermissionDenied, "permission denied"),
                 libc::WSAEWOULDBLOCK => {
                     (ResourceUnavailable, "resource temporarily unavailable")
                 }
@@ -327,7 +328,7 @@ impl IoError {
                 libc::WSAEINVAL => (InvalidInput, "invalid argument"),
                 libc::ERROR_CALL_NOT_IMPLEMENTED =>
                     (IoUnavailable, "function not implemented"),
-                libc::ERROR_CALL_NOT_IMPLEMENTED =>
+                libc::ERROR_INVALID_HANDLE =>
                     (MismatchedFileTypeForOperation,
                      "invalid handle provided to function"),
                 libc::ERROR_NOTHING_TO_TERMINATE =>

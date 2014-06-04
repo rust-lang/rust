@@ -87,16 +87,15 @@
 use alloc::arc::Arc;
 use libc;
 use std::c_str::CString;
-use std::io;
 use std::mem;
 use std::os::win32::as_utf16_p;
 use std::os;
 use std::ptr;
 use std::rt::rtio;
+use std::rt::rtio::{IoResult, IoError};
 use std::sync::atomics;
-use std::unstable::mutex;
+use std::rt::mutex;
 
-use super::IoResult;
 use super::c;
 use super::util;
 
@@ -187,6 +186,14 @@ pub fn await(handle: libc::HANDLE, deadline: u64,
         false
     } else {
         true
+    }
+}
+
+fn epipe() -> IoError {
+    IoError {
+        code: libc::ERROR_BROKEN_PIPE as uint,
+        extra: 0,
+        detail: None,
     }
 }
 
@@ -355,7 +362,7 @@ impl rtio::RtioPipe for UnixStream {
         // See comments in close_read() about why this lock is necessary.
         let guard = unsafe { self.inner.lock.lock() };
         if self.read_closed() {
-            return Err(io::standard_error(io::EndOfFile))
+            return Err(util::eof())
         }
 
         // Issue a nonblocking requests, succeeding quickly if it happened to
@@ -403,10 +410,10 @@ impl rtio::RtioPipe for UnixStream {
             // If the reading half is now closed, then we're done. If we woke up
             // because the writing half was closed, keep trying.
             if !succeeded {
-                return Err(io::standard_error(io::TimedOut))
+                return Err(util::timeout("read timed out"))
             }
             if self.read_closed() {
-                return Err(io::standard_error(io::EndOfFile))
+                return Err(util::eof())
             }
         }
     }
@@ -431,7 +438,7 @@ impl rtio::RtioPipe for UnixStream {
             // See comments in close_read() about why this lock is necessary.
             let guard = unsafe { self.inner.lock.lock() };
             if self.write_closed() {
-                return Err(io::standard_error(io::BrokenPipe))
+                return Err(epipe())
             }
             let ret = unsafe {
                 libc::WriteFile(self.handle(),
@@ -445,7 +452,11 @@ impl rtio::RtioPipe for UnixStream {
 
             if ret == 0 {
                 if err != libc::ERROR_IO_PENDING as uint {
-                    return Err(io::IoError::from_errno(err, true));
+                    return Err(IoError {
+                        code: err as uint,
+                        extra: 0,
+                        detail: Some(os::error_string(err as uint)),
+                    })
                 }
                 // Process a timeout if one is pending
                 let succeeded = await(self.handle(), self.write_deadline,
@@ -466,17 +477,17 @@ impl rtio::RtioPipe for UnixStream {
                     if !succeeded {
                         let amt = offset + bytes_written as uint;
                         return if amt > 0 {
-                            Err(io::IoError {
-                                kind: io::ShortWrite(amt),
-                                desc: "short write during write",
-                                detail: None,
+                            Err(IoError {
+                                code: libc::ERROR_OPERATION_ABORTED as uint,
+                                extra: amt,
+                                detail: Some("short write during write".to_str()),
                             })
                         } else {
                             Err(util::timeout("write timed out"))
                         }
                     }
                     if self.write_closed() {
-                        return Err(io::standard_error(io::BrokenPipe))
+                        return Err(epipe())
                     }
                     continue // retry
                 }

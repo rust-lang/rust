@@ -121,7 +121,7 @@ impl Unwinder {
         self.cause = unsafe { try(f) }.err();
     }
 
-    pub fn result(&mut self) -> TaskResult {
+    pub fn result(&mut self) -> Result {
         if self.unwinding {
             Err(self.cause.take().unwrap())
         } else {
@@ -150,10 +150,7 @@ impl Unwinder {
 ///   guaranteed that a rust task is in place when invoking this function.
 ///   Unwinding twice can lead to resource leaks where some destructors are not
 ///   run.
-pub unsafe fn try(f: ||) -> Result<(), Box<Any:Send>> {
-    use raw::Closure;
-    use libc::{c_void};
-
+pub unsafe fn try(f: ||) -> ::core::result::Result<(), Box<Any:Send>> {
     let closure: Closure = mem::transmute(f);
     let ep = rust_try(try_fn, closure.code as *c_void,
                       closure.env as *c_void);
@@ -300,7 +297,7 @@ pub mod eabi {
 #[cfg(target_arch = "arm", not(test))]
 #[allow(visible_private_types)]
 pub mod eabi {
-    use uw = rt::libunwind;
+    use uw = libunwind;
     use libc::c_int;
 
     extern "C" {
@@ -432,9 +429,9 @@ fn begin_unwind_inner(msg: Box<Any:Send>,
     // Now that we've run all the necessary unwind callbacks, we actually
     // perform the unwinding. If we don't have a task, then it's time to die
     // (hopefully someone printed something about this).
-    let task: Box<Task> = match Local::try_take() {
+    let mut task: Box<Task> = match Local::try_take() {
         Some(task) => task,
-        None => unsafe { intrinsics::abort() }
+        None => rust_fail(msg),
     };
 
     if task.unwinder.unwinding {
@@ -445,17 +442,13 @@ fn begin_unwind_inner(msg: Box<Any:Send>,
         rterrln!("task failed during unwinding. aborting.");
         unsafe { intrinsics::abort() }
     }
+    task.unwinder.unwinding = true;
 
     // Put the task back in TLS because the unwinding process may run code which
     // requires the task. We need a handle to its unwinder, however, so after
     // this we unsafely extract it and continue along.
     Local::put(task);
-    unsafe {
-        let task: *mut Task = Local::unsafe_borrow();
-        (*task).unwinder.begin_unwind(msg);
-    }
-    task.name = name;
-    Local::put(task);
+    rust_fail(msg);
 }
 
 /// Register a callback to be invoked when a task unwinds.

@@ -404,22 +404,23 @@ pub fn uv_error_to_io_error(uverr: UvError) -> IoError {
     let UvError(errcode) = uverr;
     IoError {
         code: match errcode {
-            uvll::EOF => io::EOF,
-            uvll::EACCES => io::ERROR_ACCESS_DENIED,
-            uvll::ECONNREFUSED => io::WSAECONNREFUSED,
-            uvll::ECONNRESET => io::WSAECONNRESET,
-            uvll::ENOTCONN => io::WSAENOTCONN,
-            uvll::ENOENT => io::ERROR_NOT_FOUND,
-            uvll::EPIPE => io::ERROR_BROKEN_PIPE,
-            uvll::ECONNABORTED => io::WSAECONNABORTED,
-            uvll::EADDRNOTAVAIL => io::WSAEADDRNOTAVAIL,
+            uvll::EOF => libc::EOF,
+            uvll::EACCES => libc::ERROR_ACCESS_DENIED,
+            uvll::ECONNREFUSED => libc::WSAECONNREFUSED,
+            uvll::ECONNRESET => libc::WSAECONNRESET,
+            uvll::ENOTCONN => libc::WSAENOTCONN,
+            uvll::ENOENT => libc::ERROR_FILE_NOT_FOUND,
+            uvll::EPIPE => libc::ERROR_NO_DATA,
+            uvll::ECONNABORTED => libc::WSAECONNABORTED,
+            uvll::EADDRNOTAVAIL => libc::WSAEADDRNOTAVAIL,
             uvll::ECANCELED => libc::ERROR_OPERATION_ABORTED,
+            uvll::EADDRINUSE => libc::WSAEADDRINUSE,
             err => {
                 uvdebug!("uverr.code {}", err as int);
                 // FIXME: Need to map remaining uv error types
                 -1
             }
-        },
+        } as uint,
         extra: 0,
         detail: Some(uverr.desc()),
     }

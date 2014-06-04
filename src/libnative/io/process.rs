@@ -210,23 +210,23 @@ unsafe fn killpid(pid: pid_t, signal: int) -> IoResult<()> {
             if ret == 0 {
                 Err(super::last_error())
             } else if status != libc::STILL_ACTIVE {
-                Err(io::IoError {
-                    kind: io::OtherIoError,
-                    desc: "process no longer alive",
+                Err(IoError {
+                    code: libc::ERROR_NOTHING_TO_TERMINATE as uint,
+                    extra: 0,
                     detail: None,
                 })
             } else {
                 Ok(())
             }
         }
-        io::process::PleaseExitSignal | io::process::MustDieSignal => {
+        15 | 9 => { // sigterm or sigkill
             let ret = libc::TerminateProcess(handle, 1);
             super::mkerr_winbool(ret)
         }
-        _ => Err(io::IoError {
-            kind: io::OtherIoError,
-            desc: "unsupported signal on windows",
-            detail: None,
+        _ => Err(IoError {
+            code: libc::ERROR_CALL_NOT_IMPLEMENTED as uint,
+            extra: 0,
+            detail: Some("unsupported signal on windows".to_string()),
         })
     };
     let _ = libc::CloseHandle(handle);
@@ -266,10 +266,10 @@ fn spawn_process_os(cfg: ProcessConfig,
     use std::mem;
 
     if cfg.gid.is_some() || cfg.uid.is_some() {
-        return Err(io::IoError {
-            kind: io::OtherIoError,
-            desc: "unsupported gid/uid requested on windows",
-            detail: None,
+        return Err(IoError {
+            code: libc::ERROR_CALL_NOT_IMPLEMENTED as uint,
+            extra: 0,
+            detail: Some("unsupported gid/uid requested on windows".to_str()),
         })
     }
 

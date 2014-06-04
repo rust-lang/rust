@@ -982,7 +982,8 @@ mod test {
         match TcpListener::bind(ip_str.as_slice(), port).listen() {
             Ok(..) => fail!(),
             Err(e) => {
-                assert!(e.kind == ConnectionRefused || e.kind == OtherIoError);
+                assert!(e.kind == ConnectionRefused || e.kind == OtherIoError,
+                        "unknown error: {} {}", e, e.kind);
             }
         }
     })

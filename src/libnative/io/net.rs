@@ -135,10 +135,12 @@ pub fn getsockopt<T: Copy>(fd: sock_t, opt: libc::c_int,
 }
 
 #[cfg(windows)]
-fn last_error() -> IoError {
+pub fn last_error() -> IoError {
+    use std::os;
     let code = unsafe { c::WSAGetLastError() as uint };
     IoError {
         code: code,
+        extra: 0,
         detail: Some(os::error_string(code)),
     }
 }
@@ -225,7 +227,7 @@ pub fn init() {}
 pub fn init() {
 
     unsafe {
-        use std::unstable::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
+        use std::rt::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
         static mut INITIALIZED: bool = false;
         static mut LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;
 
