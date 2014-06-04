@@ -277,6 +277,16 @@ pub fn env_as_bytes() -> Vec<(Vec<u8>,Vec<u8>)> {
 /// # Failure
 ///
 /// Fails if `n` has any interior NULs.
+///
+/// # Example
+///
+/// ```rust
+/// let key = "HOME";
+/// match std::os::getenv(key) {
+///     Some(val) => println!("{}: {}", key, val),
+///     None => println!("{} is not defined in the environnement.", key)
+/// }
+/// ```
 pub fn getenv(n: &str) -> Option<String> {
     getenv_as_bytes(n).map(|v| str::from_utf8_lossy(v.as_slice()).to_string())
 }
