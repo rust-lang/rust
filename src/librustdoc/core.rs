@@ -75,11 +75,13 @@ fn get_ast_and_resolve(cpath: &Path, libs: HashSet<Path>, cfgs: Vec<String>)
 
     let input = FileInput(cpath.clone());
 
+    let warning_lint = lint::builtin::warnings.name.to_string();
+
     let sessopts = driver::config::Options {
         maybe_sysroot: Some(os::self_exe_path().unwrap().dir_path()),
         addl_lib_search_paths: RefCell::new(libs),
         crate_types: vec!(driver::config::CrateTypeRlib),
-        lint_opts: vec!((lint::Warnings, lint::Allow)),
+        lint_opts: vec!((warning_lint, lint::Allow)),
         ..rustc::driver::config::basic_options().clone()
     };
 
