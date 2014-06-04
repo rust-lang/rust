@@ -647,6 +647,7 @@ fn ident_start(c: Option<char>) -> bool {
     (c >= 'a' && c <= 'z')
         || (c >= 'A' && c <= 'Z')
         || c == '_'
+        || c == '☢'
         || (c > '\x7f' && char::is_XID_start(c))
 }
 
@@ -657,6 +658,7 @@ fn ident_continue(c: Option<char>) -> bool {
         || (c >= 'A' && c <= 'Z')
         || (c >= '0' && c <= '9')
         || c == '_'
+        || c == '☢'
         || (c > '\x7f' && char::is_XID_continue(c))
 }
 
