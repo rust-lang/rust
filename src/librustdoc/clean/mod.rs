@@ -93,6 +93,7 @@ impl<'a> Clean<Crate> for visit_ast::RustdocVisitor<'a> {
         cx.sess().cstore.iter_crate_data(|n, meta| {
             externs.push((n, meta.clean()));
         });
+        externs.sort_by(|&(a, _), &(b, _)| a.cmp(&b));
 
         // Figure out the name of this crate
         let input = driver::FileInput(cx.src.clone());
@@ -132,24 +133,33 @@ impl<'a> Clean<Crate> for visit_ast::RustdocVisitor<'a> {
                 _ => unreachable!(),
             };
             let mut tmp = Vec::new();
-            for child in m.items.iter() {
-                match child.inner {
-                    ModuleItem(..) => {},
+            for child in m.items.mut_iter() {
+                let inner = match child.inner {
+                    ModuleItem(ref mut m) => m,
                     _ => continue,
-                }
+                };
                 let prim = match Primitive::find(child.attrs.as_slice()) {
                     Some(prim) => prim,
                     None => continue,
                 };
                 primitives.push(prim);
-                tmp.push(Item {
+                let mut i = Item {
                     source: Span::empty(),
                     name: Some(prim.to_url_str().to_string()),
-                    attrs: child.attrs.clone(),
-                    visibility: Some(ast::Public),
+                    attrs: Vec::new(),
+                    visibility: None,
                     def_id: ast_util::local_def(prim.to_node_id()),
                     inner: PrimitiveItem(prim),
-                });
+                };
+                // Push one copy to get indexed for the whole crate, and push a
+                // another copy in the proper location which will actually get
+                // documented. The first copy will also serve as a redirect to
+                // the other copy.
+                tmp.push(i.clone());
+                i.visibility = Some(ast::Public);
+                i.attrs = child.attrs.clone();
+                inner.items.push(i);
+
             }
             m.items.extend(tmp.move_iter());
         }
@@ -1027,7 +1037,7 @@ pub enum Type {
     // region, raw, other boxes, mutable
 }
 
-#[deriving(Clone, Encodable, Decodable, PartialEq, TotalEq, Hash)]
+#[deriving(Clone, Encodable, Decodable, PartialEq, Eq, Hash)]
 pub enum Primitive {
     Int, I8, I16, I32, I64,
     Uint, U8, U16, U32, U64,
