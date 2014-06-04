@@ -9,11 +9,10 @@
 // except according to those terms.
 
 use libc;
-use std::io::IoResult;
-use std::io;
 use std::mem;
 use std::os;
 use std::ptr;
+use std::rt::rtio::{IoResult, IoError};
 
 use super::c;
 use super::net;
@@ -25,10 +24,30 @@ pub enum SocketStatus {
     Writable,
 }
 
-pub fn timeout(desc: &'static str) -> io::IoError {
-    io::IoError {
-        kind: io::TimedOut,
-        desc: desc,
+pub fn timeout(desc: &'static str) -> IoError {
+    #[cfg(unix)] use ERROR = libc::ETIMEDOUT;
+    #[cfg(windows)] use ERROR = libc::ERROR_OPERATION_ABORTED;
+    IoError {
+        code: ERROR as uint,
+        extra: 0,
+        detail: Some(desc.to_str()),
+    }
+}
+
+pub fn short_write(n: uint, desc: &'static str) -> IoError {
+    #[cfg(unix)] use ERROR = libc::EAGAIN;
+    #[cfg(windows)] use ERROR = libc::ERROR_OPERATION_ABORTED;
+    IoError {
+        code: ERROR as uint,
+        extra: n,
+        detail: Some(desc.to_str()),
+    }
+}
+
+pub fn eof() -> IoError {
+    IoError {
+        code: libc::EOF as uint,
+        extra: 0,
         detail: None,
     }
 }
@@ -100,7 +119,11 @@ pub fn connect_timeout(fd: net::sock_t,
                     if err == 0 {
                         Ok(())
                     } else {
-                        Err(io::IoError::from_errno(err as uint, true))
+                        Err(IoError {
+                            code: err as uint,
+                            extra: 0,
+                            detail: Some(os::error_string(err as uint)),
+                        })
                     }
                 }
             }

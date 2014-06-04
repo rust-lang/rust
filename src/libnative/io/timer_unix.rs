@@ -51,10 +51,10 @@ use std::mem;
 use std::os;
 use std::ptr;
 use std::rt::rtio;
+use std::rt::rtio::IoResult;
 use std::sync::atomics;
 use std::comm;
 
-use io::IoResult;
 use io::c;
 use io::file::FileDesc;
 use io::helper_thread::Helper;
@@ -67,7 +67,7 @@ pub struct Timer {
 }
 
 struct Inner {
-    tx: Option<Sender<()>>,
+    cb: Option<Box<rtio::Callback:Send>>,
     interval: u64,
     repeat: bool,
     target: u64,
@@ -119,13 +119,13 @@ fn helper(input: libc::c_int, messages: Receiver<Req>, _: ()) {
         let mut timer = match active.shift() {
             Some(timer) => timer, None => return
         };
-        let tx = timer.tx.take_unwrap();
-        if tx.send_opt(()).is_ok() && timer.repeat {
-            timer.tx = Some(tx);
+        let mut cb = timer.cb.take_unwrap();
+        cb.call();
+        if timer.repeat {
+            timer.cb = Some(cb);
             timer.target += timer.interval;
             insert(timer, active);
         } else {
-            drop(tx);
             dead.push((timer.id, timer));
         }
     }
@@ -190,7 +190,7 @@ fn helper(input: libc::c_int, messages: Receiver<Req>, _: ()) {
 
                 // drain the file descriptor
                 let mut buf = [0];
-                assert_eq!(fd.inner_read(buf).unwrap(), 1);
+                assert_eq!(fd.inner_read(buf).ok().unwrap(), 1);
             }
 
             -1 if os::errno() == libc::EINTR as int => {}
@@ -209,7 +209,7 @@ impl Timer {
         Ok(Timer {
             id: id,
             inner: Some(box Inner {
-                tx: None,
+                cb: None,
                 interval: 0,
                 target: 0,
                 repeat: false,
@@ -245,38 +245,34 @@ impl Timer {
 impl rtio::RtioTimer for Timer {
     fn sleep(&mut self, msecs: u64) {
         let mut inner = self.inner();
-        inner.tx = None; // cancel any previous request
+        inner.cb = None; // cancel any previous request
         self.inner = Some(inner);
 
         Timer::sleep(msecs);
     }
 
-    fn oneshot(&mut self, msecs: u64) -> Receiver<()> {
+    fn oneshot(&mut self, msecs: u64, cb: Box<rtio::Callback:Send>) {
         let now = now();
         let mut inner = self.inner();
 
-        let (tx, rx) = channel();
         inner.repeat = false;
-        inner.tx = Some(tx);
+        inner.cb = Some(cb);
         inner.interval = msecs;
         inner.target = now + msecs;
 
         unsafe { HELPER.send(NewTimer(inner)); }
-        return rx;
     }
 
-    fn period(&mut self, msecs: u64) -> Receiver<()> {
+    fn period(&mut self, msecs: u64, cb: Box<rtio::Callback:Send>) {
         let now = now();
         let mut inner = self.inner();
 
-        let (tx, rx) = channel();
         inner.repeat = true;
-        inner.tx = Some(tx);
+        inner.cb = Some(cb);
         inner.interval = msecs;
         inner.target = now + msecs;
 
         unsafe { HELPER.send(NewTimer(inner)); }
-        return rx;
     }
 }
 
