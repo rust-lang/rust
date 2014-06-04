@@ -169,15 +169,6 @@ pub struct Inherited<'a> {
 }
 
 #[deriving(Clone)]
-pub enum FnKind {
-    // A do-closure.
-    DoBlock,
-
-    // A normal closure or fn item.
-    Vanilla
-}
-
-#[deriving(Clone)]
 pub struct FnStyleState {
     pub def: ast::NodeId,
     pub fn_style: ast::FnStyle,
@@ -249,11 +240,6 @@ pub struct FnCtxt<'a> {
     // can actually be made to live as long as it needs to live.
     region_lb: Cell<ast::NodeId>,
 
-    // Says whether we're inside a for loop, in a do block
-    // or neither. Helps with error messages involving the
-    // function return type.
-    fn_kind: FnKind,
-
     inh: &'a Inherited<'a>,
 
     ccx: &'a CrateCtxt<'a>,
@@ -289,7 +275,6 @@ fn blank_fn_ctxt<'a>(ccx: &'a CrateCtxt<'a>,
         ret_ty: rty,
         ps: RefCell::new(FnStyleState::function(ast::NormalFn, 0)),
         region_lb: Cell::new(region_bnd),
-        fn_kind: Vanilla,
         inh: inh,
         ccx: ccx
     }
@@ -356,7 +341,7 @@ fn check_bare_fn(ccx: &CrateCtxt,
         ty::ty_bare_fn(ref fn_ty) => {
             let inh = Inherited::new(ccx.tcx, param_env);
             let fcx = check_fn(ccx, fn_ty.fn_style, &fn_ty.sig,
-                               decl, id, body, Vanilla, &inh);
+                               decl, id, body, &inh);
 
             vtable::resolve_in_block(&fcx, body);
             regionck::regionck_fn(&fcx, body);
@@ -440,7 +425,6 @@ fn check_fn<'a>(ccx: &'a CrateCtxt<'a>,
                 decl: &ast::FnDecl,
                 id: ast::NodeId,
                 body: &ast::Block,
-                fn_kind: FnKind,
                 inherited: &'a Inherited<'a>) -> FnCtxt<'a>
 {
     /*!
@@ -479,7 +463,6 @@ fn check_fn<'a>(ccx: &'a CrateCtxt<'a>,
         ret_ty: ret_ty,
         ps: RefCell::new(FnStyleState::function(fn_style, id)),
         region_lb: Cell::new(body.id),
-        fn_kind: fn_kind,
         inh: inherited,
         ccx: ccx
     };
@@ -2295,7 +2278,6 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                      store: ty::TraitStore,
                      decl: &ast::FnDecl,
                      body: ast::P<ast::Block>,
-                     fn_kind: FnKind,
                      expected: Option<ty::t>) {
         let tcx = fcx.ccx.tcx;
 
@@ -2373,7 +2355,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         };
 
         check_fn(fcx.ccx, inherited_style, &fty_sig,
-                 decl, id, body, fn_kind, fcx.inh);
+                 decl, id, body, fcx.inh);
     }
 
 
@@ -3044,7 +3026,6 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                       ty::RegionTraitStore(region, ast::MutMutable),
                       decl,
                       body,
-                      Vanilla,
                       expected);
       }
       ast::ExprProc(decl, body) => {
@@ -3053,7 +3034,6 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                       ty::UniqTraitStore,
                       decl,
                       body,
-                      Vanilla,
                       expected);
       }
       ast::ExprBlock(b) => {
