@@ -10,55 +10,45 @@
 
 //! The local, garbage collected heap
 
-use alloc::util;
-use iter::Iterator;
-use libc::{c_void, free};
-use mem;
-use ops::Drop;
-use option::{Option, None, Some};
-use ptr::RawPtr;
-use ptr;
-use raw;
-use rt::libc_heap;
-use rt::local::Local;
-use rt::task::Task;
-use slice::{ImmutableVector, Vector};
-use vec::Vec;
+use core::prelude::*;
 
-// This has no meaning with out rtdebug also turned on.
-#[cfg(rtdebug)]
-static TRACK_ALLOCATIONS: int = 0;
-#[cfg(rtdebug)]
-static MAGIC: u32 = 0xbadc0ffe;
+use alloc::libc_heap;
+use alloc::util;
+use libc::{c_void, free};
+
+use core::mem;
+use core::ptr;
+use core::raw;
+use local::Local;
+use task::Task;
+
+static RC_IMMORTAL : uint = 0x77777777;
 
 pub type Box = raw::Box<()>;
 
 pub struct MemoryRegion {
-    allocations: Vec<*AllocHeader>,
     live_allocations: uint,
 }
 
 pub struct LocalHeap {
     memory_region: MemoryRegion,
-
     live_allocs: *mut raw::Box<()>,
 }
 
 impl LocalHeap {
-    #[inline]
     pub fn new() -> LocalHeap {
-        let region = MemoryRegion {
-            allocations: Vec::new(),
-            live_allocations: 0,
-        };
         LocalHeap {
-            memory_region: region,
+            memory_region: MemoryRegion { live_allocations: 0 },
             live_allocs: ptr::mut_null(),
         }
     }
 
     #[inline]
-    pub fn alloc(&mut self, drop_glue: fn(*mut u8), size: uint, align: uint) -> *mut Box {
+    #[allow(deprecated)]
+    pub fn alloc(&mut self,
+                 drop_glue: fn(*mut u8),
+                 size: uint,
+                 align: uint) -> *mut Box {
         let total_size = util::get_box_size(size, align);
         let alloc = self.memory_region.malloc(total_size);
         {
@@ -119,6 +109,63 @@ impl LocalHeap {
 
         self.memory_region.free(alloc);
     }
+
+    pub unsafe fn annihilate(&mut self) {
+        let mut n_total_boxes = 0u;
+
+        // Pass 1: Make all boxes immortal.
+        //
+        // In this pass, nothing gets freed, so it does not matter whether
+        // we read the next field before or after the callback.
+        self.each_live_alloc(true, |_, alloc| {
+            n_total_boxes += 1;
+            (*alloc).ref_count = RC_IMMORTAL;
+        });
+
+        // Pass 2: Drop all boxes.
+        //
+        // In this pass, unique-managed boxes may get freed, but not
+        // managed boxes, so we must read the `next` field *after* the
+        // callback, as the original value may have been freed.
+        self.each_live_alloc(false, |_, alloc| {
+            let drop_glue = (*alloc).drop_glue;
+            let data = &mut (*alloc).data as *mut ();
+            drop_glue(data as *mut u8);
+        });
+
+        // Pass 3: Free all boxes.
+        //
+        // In this pass, managed boxes may get freed (but not
+        // unique-managed boxes, though I think that none of those are
+        // left), so we must read the `next` field before, since it will
+        // not be valid after.
+        self.each_live_alloc(true, |me, alloc| {
+            me.free(alloc);
+        });
+
+        if debug_mem() {
+            // We do logging here w/o allocation.
+            rterrln!("total boxes annihilated: {}", n_total_boxes);
+        }
+    }
+
+    unsafe fn each_live_alloc(&mut self, read_next_before: bool,
+                              f: |&mut LocalHeap, alloc: *mut raw::Box<()>|) {
+        //! Walks the internal list of allocations
+
+        let mut alloc = self.live_allocs;
+        while alloc != ptr::mut_null() {
+            let next_before = (*alloc).next;
+
+            f(self, alloc);
+
+            if read_next_before {
+                alloc = next_before;
+            } else {
+                alloc = (*alloc).next;
+            }
+        }
+    }
 }
 
 impl Drop for LocalHeap {
@@ -127,43 +174,11 @@ impl Drop for LocalHeap {
     }
 }
 
-#[cfg(rtdebug)]
-struct AllocHeader {
-    magic: u32,
-    index: i32,
-    size: u32,
-}
-#[cfg(not(rtdebug))]
 struct AllocHeader;
 
 impl AllocHeader {
-    #[cfg(rtdebug)]
-    fn init(&mut self, size: u32) {
-        if TRACK_ALLOCATIONS > 0 {
-            self.magic = MAGIC;
-            self.index = -1;
-            self.size = size;
-        }
-    }
-    #[cfg(not(rtdebug))]
     fn init(&mut self, _size: u32) {}
-
-    #[cfg(rtdebug)]
-    fn assert_sane(&self) {
-        if TRACK_ALLOCATIONS > 0 {
-            rtassert!(self.magic == MAGIC);
-        }
-    }
-    #[cfg(not(rtdebug))]
     fn assert_sane(&self) {}
-
-    #[cfg(rtdebug)]
-    fn update_size(&mut self, size: u32) {
-        if TRACK_ALLOCATIONS > 0 {
-            self.size = size;
-        }
-    }
-    #[cfg(not(rtdebug))]
     fn update_size(&mut self, _size: u32) {}
 
     fn as_box(&mut self) -> *mut Box {
@@ -181,6 +196,17 @@ impl AllocHeader {
     fn from(a_box: *mut Box) -> *mut AllocHeader {
         (a_box as uint - AllocHeader::size()) as *mut AllocHeader
     }
+}
+
+#[cfg(unix)]
+fn debug_mem() -> bool {
+    // FIXME: Need to port the environment struct to newsched
+    false
+}
+
+#[cfg(windows)]
+fn debug_mem() -> bool {
+    false
 }
 
 impl MemoryRegion {
@@ -230,39 +256,10 @@ impl MemoryRegion {
         }
     }
 
-    #[cfg(rtdebug)]
-    fn claim(&mut self, alloc: &mut AllocHeader) {
-        alloc.assert_sane();
-        if TRACK_ALLOCATIONS > 1 {
-            alloc.index = self.allocations.len() as i32;
-            self.allocations.push(&*alloc as *AllocHeader);
-        }
-    }
-    #[cfg(not(rtdebug))]
     #[inline]
     fn claim(&mut self, _alloc: &mut AllocHeader) {}
-
-    #[cfg(rtdebug)]
-    fn release(&mut self, alloc: &AllocHeader) {
-        alloc.assert_sane();
-        if TRACK_ALLOCATIONS > 1 {
-            rtassert!(self.allocations.as_slice()[alloc.index] == alloc as *AllocHeader);
-            self.allocations.as_mut_slice()[alloc.index] = ptr::null();
-        }
-    }
-    #[cfg(not(rtdebug))]
     #[inline]
     fn release(&mut self, _alloc: &AllocHeader) {}
-
-    #[cfg(rtdebug)]
-    fn update(&mut self, alloc: &mut AllocHeader, orig: *AllocHeader) {
-        alloc.assert_sane();
-        if TRACK_ALLOCATIONS > 1 {
-            rtassert!(self.allocations.as_slice()[alloc.index] == orig);
-            self.allocations.as_mut_slice()[alloc.index] = &*alloc as *AllocHeader;
-        }
-    }
-    #[cfg(not(rtdebug))]
     #[inline]
     fn update(&mut self, _alloc: &mut AllocHeader, _orig: *AllocHeader) {}
 }
@@ -272,10 +269,8 @@ impl Drop for MemoryRegion {
         if self.live_allocations != 0 {
             rtabort!("leaked managed memory ({} objects)", self.live_allocations);
         }
-        rtassert!(self.allocations.as_slice().iter().all(|s| s.is_null()));
     }
 }
-
 
 #[cfg(not(test))]
 #[lang="malloc"]
@@ -316,10 +311,6 @@ pub unsafe fn local_free(ptr: *u8) {
         }
         None => rtabort!("local free outside of task")
     }
-}
-
-pub fn live_allocs() -> *mut Box {
-    Local::borrow(None::<Task>).heap.live_allocs
 }
 
 #[cfg(test)]
