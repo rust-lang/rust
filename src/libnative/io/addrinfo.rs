@@ -92,8 +92,6 @@ extern "system" {
     fn freeaddrinfo(res: *mut libc::addrinfo);
     #[cfg(not(windows))]
     fn gai_strerror(errcode: c_int) -> *c_char;
-    #[cfg(windows)]
-    fn WSAGetLastError() -> c_int;
 }
 
 #[cfg(windows)]

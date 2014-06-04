@@ -603,6 +603,7 @@ mod imp {
 mod imp {
     use c_str::CString;
     use container::Container;
+    use intrinsics;
     use io::{IoResult, Writer};
     use libc;
     use mem;
@@ -610,11 +611,10 @@ mod imp {
     use option::{Some, None};
     use path::Path;
     use result::{Ok, Err};
+    use rt::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
+    use slice::ImmutableVector;
     use str::StrSlice;
     use unstable::dynamic_lib::DynamicLibrary;
-    use intrinsics;
-    use unstable::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
-    use slice::ImmutableVector;
 
     #[allow(non_snake_case_functions)]
     extern "system" {
