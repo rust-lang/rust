@@ -213,14 +213,14 @@ pub struct Unique<T> {
 impl<T: Send> Unique<T> {
     pub fn new(value: T) -> Unique<T> {
         unsafe {
-            let ptr = malloc(std::mem::size_of::<T>() as size_t) as *mut T;
+            let ptr = malloc(mem::size_of::<T>() as size_t) as *mut T;
             // we *need* valid pointer.
             assert!(!ptr.is_null());
             // `*ptr` is uninitialized, and `*ptr = value` would
             // attempt to destroy it `overwrite` moves a value into
             // this memory without attempting to drop the original
             // value.
-            mem::overwrite(&mut *ptr, value);
+            ptr::write(&mut *ptr, value);
             Unique{ptr: ptr}
         }
     }
