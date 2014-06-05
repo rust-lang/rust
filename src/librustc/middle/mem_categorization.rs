@@ -1303,7 +1303,7 @@ impl Repr for InteriorKind {
     fn repr(&self, _tcx: &ty::ctxt) -> String {
         match *self {
             InteriorField(NamedField(fld)) => {
-                token::get_name(fld).get().to_str().to_string()
+                token::get_name(fld).get().to_str()
             }
             InteriorField(PositionalField(i)) => format!("\\#{:?}", i),
             InteriorElement(_) => "[]".to_string(),

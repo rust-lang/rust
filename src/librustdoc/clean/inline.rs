@@ -93,7 +93,7 @@ fn try_inline_def(cx: &core::DocContext,
     cx.inlined.borrow_mut().get_mut_ref().insert(did);
     ret.push(clean::Item {
         source: clean::Span::empty(),
-        name: Some(fqn.last().unwrap().to_str().to_string()),
+        name: Some(fqn.last().unwrap().to_str()),
         attrs: load_attrs(tcx, did),
         inner: inner,
         visibility: Some(ast::Public),

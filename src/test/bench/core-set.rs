@@ -90,11 +90,11 @@ impl Results {
             let mut set = f();
             timed(&mut self.sequential_strings, || {
                 for i in range(0u, num_keys) {
-                    set.insert(i.to_str().to_string());
+                    set.insert(i.to_str());
                 }
 
                 for i in range(0u, num_keys) {
-                    assert!(set.contains(&i.to_str().to_string()));
+                    assert!(set.contains(&i.to_str()));
                 }
             })
         }
@@ -103,7 +103,7 @@ impl Results {
             let mut set = f();
             timed(&mut self.random_strings, || {
                 for _ in range(0, num_keys) {
-                    let s = rng.gen::<uint>().to_str().to_string();
+                    let s = rng.gen::<uint>().to_str();
                     set.insert(s);
                 }
             })
@@ -112,11 +112,11 @@ impl Results {
         {
             let mut set = f();
             for i in range(0u, num_keys) {
-                set.insert(i.to_str().to_string());
+                set.insert(i.to_str());
             }
             timed(&mut self.delete_strings, || {
                 for i in range(0u, num_keys) {
-                    assert!(set.remove(&i.to_str().to_string()));
+                    assert!(set.remove(&i.to_str()));
                 }
             })
         }
