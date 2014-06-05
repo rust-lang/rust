@@ -77,7 +77,7 @@ impl<A: Clone> Clone for ~[A] {
             try_finally(
                 &mut i, (),
                 |i, ()| while *i < len {
-                    mem::overwrite(
+                    ptr::write(
                         &mut(*p.offset(*i as int)),
                         self.unsafe_ref(*i).clone());
                     *i += 1;

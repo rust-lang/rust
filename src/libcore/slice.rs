@@ -1093,7 +1093,7 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
 
     #[inline]
     unsafe fn init_elem(self, i: uint, val: T) {
-        mem::overwrite(&mut (*self.as_mut_ptr().offset(i as int)), val);
+        ptr::write(&mut (*self.as_mut_ptr().offset(i as int)), val);
     }
 
     #[inline]
@@ -1218,6 +1218,7 @@ pub mod bytes {
 
     impl<'a> MutableByteVector for &'a mut [u8] {
         #[inline]
+        #[allow(experimental)]
         fn set_memory(self, value: u8) {
             unsafe { ptr::set_memory(self.as_mut_ptr(), value, self.len()) };
         }
