@@ -451,7 +451,7 @@ fn parse_fn_style(c: char) -> FnStyle {
 fn parse_abi_set(st: &mut PState) -> abi::Abi {
     assert_eq!(next(st), '[');
     scan(st, |c| c == ']', |bytes| {
-        let abi_str = str::from_utf8(bytes).unwrap().to_string();
+        let abi_str = str::from_utf8(bytes).unwrap();
         abi::lookup(abi_str.as_slice()).expect(abi_str)
     })
 }

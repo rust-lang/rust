@@ -21,7 +21,6 @@ use comm::Receiver;
 use io::IoResult;
 use kinds::Send;
 use owned::Box;
-use option::Expect;
 use rt::rtio::{IoFactory, LocalIo, RtioTimer};
 
 /// A synchronous timer object
