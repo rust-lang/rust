@@ -101,6 +101,7 @@ mod table {
     /// There's currently no "debug-only" asserts in rust, so if you're reading
     /// this and going "what? of course there are debug-only asserts!", then
     /// please make this use them!
+    #[unsafe_no_drop_flag]
     pub struct RawTable<K, V> {
         capacity: uint,
         size:     uint,
@@ -549,38 +550,59 @@ mod table {
 
             assert_eq!(self.size, 0);
 
-            let hashes_size = self.capacity * size_of::<u64>();
-            let keys_size = self.capacity * size_of::<K>();
-            let vals_size = self.capacity * size_of::<V>();
-            let (align, _, _, _, size) = calculate_offsets(hashes_size, min_align_of::<u64>(),
-                                                           keys_size, min_align_of::<K>(),
-                                                           vals_size, min_align_of::<V>());
+            if self.hashes.is_not_null() {
+                let hashes_size = self.capacity * size_of::<u64>();
+                let keys_size = self.capacity * size_of::<K>();
+                let vals_size = self.capacity * size_of::<V>();
+                let (align, _, _, _, size) = calculate_offsets(hashes_size, min_align_of::<u64>(),
+                                                               keys_size, min_align_of::<K>(),
+                                                               vals_size, min_align_of::<V>());
 
-            unsafe {
-                deallocate(self.hashes as *mut u8, size, align);
-                // Remember how everything was allocated out of one buffer
-                // during initialization? We only need one call to free here.
+                unsafe {
+                    deallocate(self.hashes as *mut u8, size, align);
+                    // Remember how everything was allocated out of one buffer
+                    // during initialization? We only need one call to free here.
+                }
+
+                self.hashes = RawPtr::null();
             }
         }
     }
 }
 
-// We use this type for the load factor, to avoid floating point operations
-// which might not be supported efficiently on some hardware.
-//
-// We use small u16s here to save space in the hashtable. They get upcasted
-// to u64s when we actually use them.
-type Fraction = (u16, u16); // (numerator, denominator)
-
-// multiplication by a fraction, in a way that won't generally overflow for
-// array sizes outside a factor of 10 of U64_MAX.
-fn fraction_mul(lhs: uint, (num, den): Fraction) -> uint {
-    (((lhs as u64) * (num as u64)) / (den as u64)) as uint
-}
-
 static INITIAL_LOG2_CAP: uint = 5;
 static INITIAL_CAPACITY: uint = 1 << INITIAL_LOG2_CAP; // 2^5
-static INITIAL_LOAD_FACTOR: Fraction = (9, 10);
+
+/// The default behavior of HashMap implements a load factor of 90.9%.
+/// This behavior is characterized by the following conditions:
+///
+/// - if `size * 1.1 < cap < size * 4` then shouldn't resize
+/// - if `cap < minimum_capacity * 2` then shouldn't shrink
+#[deriving(Clone)]
+struct DefaultResizePolicy {
+    /// Doubled minimal capacity. The capacity must never drop below
+    /// the minimum capacity. (The check happens before the capacity
+    /// is potentially halved.)
+    minimum_capacity2: uint
+}
+
+impl DefaultResizePolicy {
+    fn new(new_capacity: uint) -> DefaultResizePolicy {
+        DefaultResizePolicy {
+            minimum_capacity2: new_capacity << 1
+        }
+    }
+
+    #[inline]
+    fn capacity_range(&self, new_size: uint) -> (uint, uint) {
+        ((new_size * 11) / 10, max(new_size << 3, self.minimum_capacity2))
+    }
+
+    #[inline]
+    fn reserve(&mut self, new_capacity: uint) {
+        self.minimum_capacity2 = new_capacity << 1;
+    }
+}
 
 // The main performance trick in this hashmap is called Robin Hood Hashing.
 // It gains its excellent performance from one key invariant:
@@ -593,13 +615,13 @@ static INITIAL_LOAD_FACTOR: Fraction = (9, 10);
 // high load factors with good performance. The 90% load factor I use is rather
 // conservative.
 //
-// > Why a load factor of 90%?
+// > Why a load factor of approximately 90%?
 //
 // In general, all the distances to initial buckets will converge on the mean.
 // At a load factor of α, the odds of finding the target bucket after k
 // probes is approximately 1-α^k. If we set this equal to 50% (since we converge
 // on the mean) and set k=8 (64-byte cache line / 8-byte hash), α=0.92. I round
-// this down to 0.90 to make the math easier on the CPU and avoid its FPU.
+// this down to make the math easier on the CPU and avoid its FPU.
 // Since on average we start the probing in the middle of a cache line, this
 // strategy pulls in two cache lines of hashes on every lookup. I think that's
 // pretty good, but if you want to trade off some space, it could go down to one
@@ -616,8 +638,6 @@ static INITIAL_LOAD_FACTOR: Fraction = (9, 10);
 // ============================
 //
 // Allow the load factor to be changed dynamically and/or at initialization.
-// I'm having trouble figuring out a sane API for this without exporting my
-// hackish fraction type, while still avoiding floating point.
 //
 // Also, would it be possible for us to reuse storage when growing the
 // underlying table? This is exactly the use case for 'realloc', and may
@@ -715,31 +735,13 @@ pub struct HashMap<K, V, H = sip::SipHasher> {
     // All hashes are keyed on these values, to prevent hash collision attacks.
     hasher: H,
 
-    // When size == grow_at, we double the capacity.
-    grow_at: uint,
-
-    // The capacity must never drop below this.
-    minimum_capacity: uint,
-
     table: table::RawTable<K, V>,
 
-    // We keep this at the end since it's 4-bytes, unlike everything else
-    // in this struct. Might as well save a word of padding!
-    load_factor: Fraction,
-}
-
-/// Get the number of elements which will force the capacity to grow.
-fn grow_at(capacity: uint, load_factor: Fraction) -> uint {
-    fraction_mul(capacity, load_factor)
+    // We keep this at the end since it might as well have tail padding.
+    resize_policy: DefaultResizePolicy,
 }
 
 impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
-    /// Get the number of elements which will force the capacity to shrink.
-    /// When size == self.shrink_at(), we halve the capacity.
-    fn shrink_at(&self) -> uint {
-        self.table.capacity() >> 2
-    }
-
     // Probe the `idx`th bucket for a given hash, returning the index of the
     // target bucket.
     //
@@ -931,9 +933,12 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> Container for HashMap<K, V, H> {
 }
 
 impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> Mutable for HashMap<K, V, H> {
-    /// Clear the map, removing all key-value pairs.
+    /// Clear the map, removing all key-value pairs. Keeps the allocated memory
+    /// for reuse.
     fn clear(&mut self) {
-        self.minimum_capacity = self.table.size();
+        // Prevent reallocations from happening from now on. Makes it possible
+        // for the map to be reused but has a downside: reserves permanently.
+        self.resize_policy.reserve(self.table.size());
 
         for i in range(0, self.table.capacity()) {
             match self.table.peek(i) {
@@ -943,7 +948,6 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> Mutable for HashMap<K, V, H> {
         }
     }
 }
-
 
 impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> Map<K, V> for HashMap<K, V, H> {
     fn find<'a>(&'a self, k: &K) -> Option<&'a V> {
@@ -1057,11 +1061,9 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     pub fn with_capacity_and_hasher(capacity: uint, hasher: H) -> HashMap<K, V, H> {
         let cap = num::next_power_of_two(max(INITIAL_CAPACITY, capacity));
         HashMap {
-            hasher:           hasher,
-            load_factor:      INITIAL_LOAD_FACTOR,
-            grow_at:          grow_at(cap, INITIAL_LOAD_FACTOR),
-            minimum_capacity: cap,
-            table:            table::RawTable::new(cap),
+            hasher:        hasher,
+            resize_policy: DefaultResizePolicy::new(cap),
+            table:         table::RawTable::new(cap),
         }
     }
 
@@ -1075,7 +1077,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
         let cap = num::next_power_of_two(
             max(INITIAL_CAPACITY, new_minimum_capacity));
 
-        self.minimum_capacity = cap;
+        self.resize_policy.reserve(cap);
 
         if self.table.capacity() < cap {
             self.resize(cap);
@@ -1090,8 +1092,6 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
         assert!(self.table.size() <= new_capacity);
         assert!(num::is_power_of_two(new_capacity));
 
-        self.grow_at = grow_at(new_capacity, self.load_factor);
-
         let old_table = replace(&mut self.table, table::RawTable::new(new_capacity));
         let old_size  = old_table.size();
 
@@ -1105,19 +1105,18 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// Performs any necessary resize operations, such that there's space for
     /// new_size elements.
     fn make_some_room(&mut self, new_size: uint) {
-        let should_shrink = new_size <= self.shrink_at();
-        let should_grow   = self.grow_at <= new_size;
+        let (grow_at, shrink_at) = self.resize_policy.capacity_range(new_size);
+        let cap = self.table.capacity();
 
-        if should_grow {
-            let new_capacity = self.table.capacity() << 1;
+        // An invalid value shouldn't make us run out of space.
+        debug_assert!(grow_at >= new_size);
+
+        if cap <= grow_at {
+            let new_capacity = cap << 1;
             self.resize(new_capacity);
-        } else if should_shrink {
-            let new_capacity = self.table.capacity() >> 1;
-
-            // Never shrink below the minimum capacity
-            if self.minimum_capacity <= new_capacity {
-                self.resize(new_capacity);
-            }
+        } else if shrink_at <= cap {
+            let new_capacity = cap >> 1;
+            self.resize(new_capacity);
         }
     }
 
@@ -2025,12 +2024,58 @@ mod test_map {
         assert!(m.is_empty());
 
         let mut i = 0u;
-        let old_resize_at = m.grow_at;
-        while old_resize_at == m.grow_at {
+        let old_cap = m.table.capacity();
+        while old_cap == m.table.capacity() {
             m.insert(i, i);
             i += 1;
         }
 
+        assert_eq!(m.len(), i);
+        assert!(!m.is_empty());
+    }
+
+    #[test]
+    fn test_resize_policy() {
+        let mut m = HashMap::new();
+
+        assert_eq!(m.len(), 0);
+        assert!(m.is_empty());
+
+        let initial_cap = m.table.capacity();
+        m.reserve(initial_cap * 2);
+        let cap = m.table.capacity();
+
+        assert_eq!(cap, initial_cap * 2);
+
+        let mut i = 0u;
+        for _ in range(0, cap * 3 / 4) {
+            m.insert(i, i);
+            i += 1;
+        }
+
+        assert_eq!(m.len(), i);
+        assert_eq!(m.table.capacity(), cap);
+
+        for _ in range(0, cap / 4) {
+            m.insert(i, i);
+            i += 1;
+        }
+
+        let new_cap = m.table.capacity();
+        assert_eq!(new_cap, cap * 2);
+
+        for _ in range(0, cap / 2) {
+            i -= 1;
+            m.remove(&i);
+            assert_eq!(m.table.capacity(), new_cap);
+        }
+
+        for _ in range(0, cap / 2 - 1) {
+            i -= 1;
+            m.remove(&i);
+        }
+
+        assert_eq!(m.table.capacity(), cap);
         assert_eq!(m.len(), i);
         assert!(!m.is_empty());
     }
