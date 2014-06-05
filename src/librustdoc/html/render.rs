@@ -108,6 +108,7 @@ pub enum ExternalLocation {
 
 /// Metadata about an implementor of a trait.
 pub struct Implementor {
+    def_id: ast::DefId,
     generics: clean::Generics,
     trait_: clean::Type,
     for_: clean::Type,
@@ -531,6 +532,11 @@ fn write_shared(cx: &Context,
 
         try!(write!(&mut f, r"implementors['{}'] = [", krate.name));
         for imp in imps.iter() {
+            // If the trait and implementation are in the same crate, then
+            // there's no need to emit information about it (there's inlining
+            // going on). If they're in different crates then the crate defining
+            // the trait will be interested in our implementation.
+            if imp.def_id.krate == did.krate { continue }
             try!(write!(&mut f, r#""impl{} {} for {}","#,
                         imp.generics, imp.trait_, imp.for_));
         }
@@ -759,6 +765,7 @@ impl DocFolder for Cache {
                             Vec::new()
                         });
                         v.push(Implementor {
+                            def_id: item.def_id,
                             generics: i.generics.clone(),
                             trait_: i.trait_.get_ref().clone(),
                             for_: i.for_.clone(),
@@ -860,6 +867,12 @@ impl DocFolder for Cache {
                 stack.pop();
                 self.paths.insert(item.def_id, (stack, item_type::Enum));
             }
+
+            clean::PrimitiveItem(..) if item.visibility.is_some() => {
+                self.paths.insert(item.def_id, (self.stack.clone(),
+                                                shortty(&item)));
+            }
+
             _ => {}
         }
 
@@ -1075,21 +1088,21 @@ impl Context {
             writer.flush()
         }
 
+        // Private modules may survive the strip-private pass if they
+        // contain impls for public types. These modules can also
+        // contain items such as publicly reexported structures.
+        //
+        // External crates will provide links to these structures, so
+        // these modules are recursed into, but not rendered normally (a
+        // flag on the context).
+        if !self.render_redirect_pages {
+            self.render_redirect_pages = ignore_private_item(&item);
+        }
+
         match item.inner {
             // modules are special because they add a namespace. We also need to
             // recurse into the items of the module as well.
             clean::ModuleItem(..) => {
-                // Private modules may survive the strip-private pass if they
-                // contain impls for public types. These modules can also
-                // contain items such as publicly reexported structures.
-                //
-                // External crates will provide links to these structures, so
-                // these modules are recursed into, but not rendered normally (a
-                // flag on the context).
-                if !self.render_redirect_pages {
-                    self.render_redirect_pages = ignore_private_module(&item);
-                }
-
                 let name = item.name.get_ref().to_string();
                 let mut item = Some(item);
                 self.recurse(name, |this| {
@@ -1323,7 +1336,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                item: &clean::Item, items: &[clean::Item]) -> fmt::Result {
     try!(document(w, item));
     let mut indices = range(0, items.len()).filter(|i| {
-        !ignore_private_module(&items[*i])
+        !ignore_private_item(&items[*i])
     }).collect::<Vec<uint>>();
 
     fn cmp(i1: &clean::Item, i2: &clean::Item, idx1: uint, idx2: uint) -> Ordering {
@@ -2009,7 +2022,7 @@ impl<'a> fmt::Show for Sidebar<'a> {
 fn build_sidebar(m: &clean::Module) -> HashMap<String, Vec<String>> {
     let mut map = HashMap::new();
     for item in m.items.iter() {
-        if ignore_private_module(item) { continue }
+        if ignore_private_item(item) { continue }
 
         let short = shortty(item).to_static_str();
         let myname = match item.name {
@@ -2059,12 +2072,13 @@ fn item_primitive(w: &mut fmt::Formatter,
     render_methods(w, it)
 }
 
-fn ignore_private_module(it: &clean::Item) -> bool {
+fn ignore_private_item(it: &clean::Item) -> bool {
     match it.inner {
         clean::ModuleItem(ref m) => {
             (m.items.len() == 0 && it.doc_value().is_none()) ||
                it.visibility != Some(ast::Public)
         }
+        clean::PrimitiveItem(..) => it.visibility != Some(ast::Public),
         _ => false,
     }
 }
