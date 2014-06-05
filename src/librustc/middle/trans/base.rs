@@ -1927,7 +1927,7 @@ fn exported_name(ccx: &CrateContext, id: ast::NodeId,
         _ => ccx.tcx.map.with_path(id, |mut path| {
             if attr::contains_name(attrs, "no_mangle") {
                 // Don't mangle
-                path.last().unwrap().to_str().to_string()
+                path.last().unwrap().to_str()
             } else {
                 match weak_lang_items::link_name(attrs) {
                     Some(name) => name.get().to_string(),

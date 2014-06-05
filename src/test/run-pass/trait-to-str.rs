@@ -15,7 +15,7 @@ trait to_str {
 }
 
 impl to_str for int {
-    fn to_string(&self) -> String { self.to_str().to_string() }
+    fn to_string(&self) -> String { self.to_str() }
 }
 
 impl<T:to_str> to_str for Vec<T> {

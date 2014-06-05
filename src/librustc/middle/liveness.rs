@@ -324,7 +324,7 @@ impl<'a> IrMaps<'a> {
     fn variable_name(&self, var: Variable) -> String {
         match self.var_kinds.get(var.get()) {
             &Local(LocalInfo { ident: nm, .. }) | &Arg(_, nm) => {
-                token::get_ident(nm).get().to_str().to_string()
+                token::get_ident(nm).get().to_str()
             },
             &ImplicitRet => "<implicit-ret>".to_string()
         }
