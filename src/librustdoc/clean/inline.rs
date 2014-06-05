@@ -147,10 +147,18 @@ pub fn build_external_trait(tcx: &ty::ctxt, did: ast::DefId) -> clean::Trait {
             clean::Required(meth)
         }
     });
+    let supertraits = ty::trait_supertraits(tcx, did);
+    let mut parents = supertraits.iter().map(|i| {
+        match i.clean() {
+            clean::TraitBound(ty) => ty,
+            clean::RegionBound => unreachable!()
+        }
+    });
+
     clean::Trait {
         generics: def.generics.clean(),
         methods: methods.collect(),
-        parents: Vec::new(), // FIXME: this is likely wrong
+        parents: parents.collect()
     }
 }
 
