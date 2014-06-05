@@ -21,7 +21,7 @@ use middle::typeck;
 use middle::privacy;
 use util::nodemap::NodeSet;
 
-use collections::HashSet;
+use std::collections::HashSet;
 use syntax::abi;
 use syntax::ast;
 use syntax::ast_map;

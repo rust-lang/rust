@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use collections::HashMap;
+use std::collections::HashMap;
 use std::fmt;
 use std::from_str::from_str;
 use std::str::{MaybeOwned, Owned, Slice};

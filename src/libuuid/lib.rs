@@ -73,7 +73,7 @@ use std::char::Char;
 use std::default::Default;
 use std::fmt;
 use std::from_str::FromStr;
-use std::hash::Hash;
+use std::hash;
 use std::mem::{transmute,transmute_copy};
 use std::num::FromStrRadix;
 use std::rand;
@@ -120,7 +120,7 @@ pub struct Uuid {
     bytes: UuidBytes
 }
 
-impl<S: Writer> Hash<S> for Uuid {
+impl<S: hash::Writer> hash::Hash<S> for Uuid {
     fn hash(&self, state: &mut S) {
         self.bytes.hash(state)
     }
@@ -519,8 +519,6 @@ impl rand::Rand for Uuid {
 
 #[cfg(test)]
 mod test {
-    extern crate collections;
-
     use super::{Uuid, VariantMicrosoft, VariantNCS, VariantRFC4122,
                 Version1Mac, Version2Dce, Version3Md5, Version4Random,
                 Version5Sha1};
@@ -810,7 +808,7 @@ mod test {
 
     #[test]
     fn test_iterbytes_impl_for_uuid() {
-        use self::collections::HashSet;
+        use std::collections::HashSet;
         let mut set = HashSet::new();
         let id1 = Uuid::new_v4();
         let id2 = Uuid::new_v4();

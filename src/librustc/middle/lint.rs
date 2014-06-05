@@ -49,7 +49,7 @@ use util::ppaux::{ty_to_str};
 use util::nodemap::NodeSet;
 
 use std::cmp;
-use collections::HashMap;
+use std::collections::HashMap;
 use std::i16;
 use std::i32;
 use std::i64;
@@ -60,7 +60,7 @@ use std::u16;
 use std::u32;
 use std::u64;
 use std::u8;
-use collections::SmallIntMap;
+use std::collections::SmallIntMap;
 use syntax::abi;
 use syntax::ast_map;
 use syntax::ast_util::IdVisitingOperation;

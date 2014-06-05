@@ -25,7 +25,7 @@ pub fn map(filename: String, emit: map_reduce::putter) {
 }
 
 mod map_reduce {
-    use collections::HashMap;
+    use std::collections::HashMap;
     use std::str;
     use std::task;
 

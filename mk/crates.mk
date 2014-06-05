@@ -60,36 +60,36 @@ DEPS_core :=
 DEPS_rlibc :=
 DEPS_alloc := core libc native:jemalloc
 DEPS_debug := std
-DEPS_std := core rand libc alloc native:rustrt native:backtrace
+DEPS_std := core rand libc alloc collections native:rustrt native:backtrace
 DEPS_graphviz := std
 DEPS_green := std native:context_switch
 DEPS_rustuv := std native:uv native:uv_support
 DEPS_native := std
-DEPS_syntax := std term serialize collections log fmt_macros debug
+DEPS_syntax := std term serialize log fmt_macros debug
 DEPS_rustc := syntax native:rustllvm flate arena serialize sync getopts \
-              collections time log graphviz debug
-DEPS_rustdoc := rustc native:hoedown serialize sync getopts collections \
+              time log graphviz debug
+DEPS_rustdoc := rustc native:hoedown serialize sync getopts \
                 test time debug
 DEPS_flate := std native:miniz
-DEPS_arena := std collections
+DEPS_arena := std
 DEPS_graphviz := std
 DEPS_glob := std
-DEPS_serialize := std collections log
-DEPS_term := std collections log
+DEPS_serialize := std log
+DEPS_term := std log
 DEPS_semver := std
 DEPS_uuid := std serialize
 DEPS_sync := std alloc
 DEPS_getopts := std
-DEPS_collections := std debug
+DEPS_collections := core alloc
 DEPS_fourcc := syntax std
 DEPS_hexfloat := syntax std
 DEPS_num := std
-DEPS_test := std collections getopts serialize term time regex
+DEPS_test := std getopts serialize term time regex
 DEPS_time := std serialize sync
 DEPS_rand := core
-DEPS_url := std collections
+DEPS_url := std
 DEPS_log := std sync
-DEPS_regex := std collections
+DEPS_regex := std
 DEPS_regex_macros = syntax std regex
 DEPS_fmt_macros = std
 
@@ -105,6 +105,7 @@ ONLY_RLIB_libc := 1
 ONLY_RLIB_rlibc := 1
 ONLY_RLIB_alloc := 1
 ONLY_RLIB_rand := 1
+ONLY_RLIB_collections := 1
 
 ################################################################################
 # You should not need to edit below this line

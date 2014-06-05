@@ -10,5 +10,5 @@
 
 // no-prefer-dynamic
 
-#![crate_id = "collections#0.11.0-pre"]
+#![crate_id = "url#0.11.0-pre"]
 #![crate_type = "dylib"]

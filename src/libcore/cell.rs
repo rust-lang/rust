@@ -61,9 +61,7 @@
 //! types to reintroduce mutability:
 //!
 //! ```
-//! extern crate collections;
-//!
-//! use collections::HashMap;
+//! use std::collections::HashMap;
 //! use std::cell::RefCell;
 //! use std::rc::Rc;
 //!
@@ -86,8 +84,6 @@
 //! to take `&self`.
 //!
 //! ```
-//! extern crate collections;
-//!
 //! use std::cell::RefCell;
 //!
 //! struct Graph {

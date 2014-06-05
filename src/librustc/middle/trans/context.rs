@@ -31,7 +31,7 @@ use std::cell::{Cell, RefCell};
 use std::c_str::ToCStr;
 use std::ptr;
 use std::rc::Rc;
-use collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet};
 use syntax::ast;
 use syntax::parse::token::InternedString;
 

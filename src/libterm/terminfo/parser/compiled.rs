@@ -12,7 +12,7 @@
 
 //! ncurses-compatible compiled terminfo format parsing (term(5))
 
-use collections::HashMap;
+use std::collections::HashMap;
 use std::io;
 use std::str;
 use super::super::TermInfo;

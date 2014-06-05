@@ -67,21 +67,16 @@ is the same as `&[u8]`.
 
 #![doc(primitive = "str")]
 
-use char::Char;
-use char;
-use clone::Clone;
-use cmp::{PartialEq, Eq, PartialOrd, Ord, Equiv, Ordering};
-use container::Container;
-use default::Default;
-use fmt;
-use io::Writer;
-use iter::{Iterator, range, AdditiveIterator};
-use mem::transmute;
-use mem;
-use option::{None, Option, Some};
-use result::Result;
-use slice::Vector;
-use slice::{ImmutableVector, MutableVector};
+use core::prelude::*;
+
+use core::char;
+use core::default::Default;
+use core::fmt;
+use core::cmp;
+use core::iter::AdditiveIterator;
+use core::mem;
+
+use hash;
 use string::String;
 use vec::Vec;
 
@@ -201,9 +196,6 @@ Section: Iterators
 
 // Helper functions used for Unicode normalization
 fn canonical_sort(comb: &mut [(char, u8)]) {
-    use iter::range;
-    use tuple::Tuple2;
-
     let len = comb.len();
     for i in range(0, len) {
         let mut swapped = false;
@@ -638,13 +630,10 @@ impl<'a> Default for MaybeOwned<'a> {
     fn default() -> MaybeOwned<'a> { Slice("") }
 }
 
-impl<'a, H: Writer> ::hash::Hash<H> for MaybeOwned<'a> {
+impl<'a, H: hash::Writer> hash::Hash<H> for MaybeOwned<'a> {
     #[inline]
     fn hash(&self, hasher: &mut H) {
-        match *self {
-            Slice(s) => s.hash(hasher),
-            Owned(ref s) => s.as_slice().hash(hasher),
-        }
+        self.as_slice().hash(hasher)
     }
 }
 
@@ -660,10 +649,10 @@ impl<'a> fmt::Show for MaybeOwned<'a> {
 
 /// Unsafe operations
 pub mod raw {
-    use c_str::CString;
-    use libc;
-    use mem;
-    use raw::Slice;
+    use core::prelude::*;
+    use core::mem;
+    use core::raw::Slice;
+
     use string::String;
     use vec::Vec;
 
@@ -681,9 +670,16 @@ pub mod raw {
     }
 
     /// Create a Rust string from a null-terminated C string
-    pub unsafe fn from_c_str(c_string: *libc::c_char) -> String {
+    pub unsafe fn from_c_str(c_string: *i8) -> String {
         let mut buf = String::new();
-        buf.push_bytes(CString::new(c_string, false).as_bytes_no_nul());
+        let mut len = 0;
+        while *c_string.offset(len) != 0 {
+            len += 1;
+        }
+        buf.push_bytes(mem::transmute(Slice {
+            data: c_string,
+            len: len as uint,
+        }));
         buf
     }
 
@@ -800,10 +796,8 @@ pub trait StrAllocating: Str {
     #[deprecated = "obsolete, use `to_string`"]
     #[inline]
     fn to_owned(&self) -> String {
-        use slice::Vector;
-
         unsafe {
-            ::mem::transmute(Vec::from_slice(self.as_slice().as_bytes()))
+            mem::transmute(Vec::from_slice(self.as_slice().as_bytes()))
         }
     }
 
@@ -852,9 +846,9 @@ pub trait StrAllocating: Str {
                 if sc == tc {
                     *dcol.get_mut(j + 1) = current;
                 } else {
-                    *dcol.get_mut(j + 1) = ::cmp::min(current, next);
-                    *dcol.get_mut(j + 1) = ::cmp::min(*dcol.get(j + 1),
-                                                      *dcol.get(j)) + 1;
+                    *dcol.get_mut(j + 1) = cmp::min(current, next);
+                    *dcol.get_mut(j + 1) = cmp::min(*dcol.get(j + 1),
+                                                    *dcol.get(j)) + 1;
                 }
 
                 current = next;
@@ -922,11 +916,13 @@ impl OwnedStr for String {
 
 #[cfg(test)]
 mod tests {
-    use iter::AdditiveIterator;
-    use default::Default;
-    use prelude::*;
+    use std::prelude::*;
+    use std::iter::AdditiveIterator;
+    use std::default::Default;
+
     use str::*;
     use string::String;
+    use vec::Vec;
 
     #[test]
     fn test_eq_slice() {
@@ -1047,7 +1043,7 @@ mod tests {
     #[test]
     fn test_concat() {
         fn t(v: &[String], s: &str) {
-            assert_eq!(v.concat(), s.to_str().into_string());
+            assert_eq!(v.concat().as_slice(), s);
         }
         t(["you".to_string(), "know".to_string(), "I'm".to_string(),
           "no".to_string(), "good".to_string()], "youknowI'mnogood");
@@ -1059,7 +1055,7 @@ mod tests {
     #[test]
     fn test_connect() {
         fn t(v: &[String], sep: &str, s: &str) {
-            assert_eq!(v.connect(sep), s.to_str().into_string());
+            assert_eq!(v.connect(sep).as_slice(), s);
         }
         t(["you".to_string(), "know".to_string(), "I'm".to_string(),
            "no".to_string(), "good".to_string()],
@@ -1072,7 +1068,7 @@ mod tests {
     #[test]
     fn test_concat_slices() {
         fn t(v: &[&str], s: &str) {
-            assert_eq!(v.concat(), s.to_str().into_string());
+            assert_eq!(v.concat().as_slice(), s);
         }
         t(["you", "know", "I'm", "no", "good"], "youknowI'mnogood");
         let v: &[&str] = [];
@@ -1083,7 +1079,7 @@ mod tests {
     #[test]
     fn test_connect_slices() {
         fn t(v: &[&str], sep: &str, s: &str) {
-            assert_eq!(v.connect(sep), s.to_str().into_string());
+            assert_eq!(v.connect(sep).as_slice(), s);
         }
         t(["you", "know", "I'm", "no", "good"],
           " ", "you know I'm no good");
@@ -1758,7 +1754,6 @@ mod tests {
 
     #[test]
     fn test_iterator() {
-        use iter::*;
         let s = "ศไทย中华Việt Nam";
         let v = box ['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a','m'];
 
@@ -1774,7 +1769,6 @@ mod tests {
 
     #[test]
     fn test_rev_iterator() {
-        use iter::*;
         let s = "ศไทย中华Việt Nam";
         let v = box ['m', 'a', 'N', ' ', 't', 'ệ','i','V','华','中','ย','ท','ไ','ศ'];
 
@@ -1830,7 +1824,6 @@ mod tests {
 
     #[test]
     fn test_char_indicesator() {
-        use iter::*;
         let s = "ศไทย中华Việt Nam";
         let p = [0, 3, 6, 9, 12, 15, 18, 19, 20, 23, 24, 25, 26, 27];
         let v = ['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a','m'];
@@ -1848,7 +1841,6 @@ mod tests {
 
     #[test]
     fn test_char_indices_revator() {
-        use iter::*;
         let s = "ศไทย中华Việt Nam";
         let p = [27, 26, 25, 24, 23, 20, 19, 18, 15, 12, 9, 6, 3, 0];
         let v = ['m', 'a', 'N', ' ', 't', 'ệ','i','V','华','中','ย','ท','ไ','ศ'];
@@ -2032,7 +2024,7 @@ mod tests {
 
     #[test]
     fn test_str_default() {
-        use default::Default;
+        use std::default::Default;
         fn t<S: Default + Str>() {
             let s: S = Default::default();
             assert_eq!(s.as_slice(), "");
@@ -2115,8 +2107,8 @@ mod tests {
 
     #[test]
     fn test_from_str() {
-      let owned: Option<String> = from_str("string");
-      assert_eq!(owned, Some("string".to_string()));
+      let owned: Option<::std::string::String> = from_str("string");
+      assert_eq!(owned.as_ref().map(|s| s.as_slice()), Some("string"));
     }
 
     #[test]
@@ -2124,16 +2116,16 @@ mod tests {
         let s = Slice("abcde");
         assert_eq!(s.len(), 5);
         assert_eq!(s.as_slice(), "abcde");
-        assert_eq!(s.to_str(), "abcde".to_string());
-        assert_eq!(format!("{}", s), "abcde".to_string());
+        assert_eq!(s.to_str().as_slice(), "abcde");
+        assert_eq!(format!("{}", s).as_slice(), "abcde");
         assert!(s.lt(&Owned("bcdef".to_string())));
         assert_eq!(Slice(""), Default::default());
 
         let o = Owned("abcde".to_string());
         assert_eq!(o.len(), 5);
         assert_eq!(o.as_slice(), "abcde");
-        assert_eq!(o.to_str(), "abcde".to_string());
-        assert_eq!(format!("{}", o), "abcde".to_string());
+        assert_eq!(o.to_str().as_slice(), "abcde");
+        assert_eq!(format!("{}", o).as_slice(), "abcde");
         assert!(o.lt(&Slice("bcdef")));
         assert_eq!(Owned("".to_string()), Default::default());
 
@@ -2180,10 +2172,9 @@ mod tests {
 
 #[cfg(test)]
 mod bench {
-    extern crate test;
-    use self::test::Bencher;
+    use test::Bencher;
     use super::*;
-    use prelude::*;
+    use std::prelude::*;
 
     #[bench]
     fn char_iterator(b: &mut Bencher) {

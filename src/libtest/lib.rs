@@ -35,14 +35,13 @@
 #![feature(asm, macro_rules, phase)]
 #![deny(deprecated_owned_vector)]
 
-extern crate collections;
 extern crate getopts;
 extern crate regex;
 extern crate serialize;
 extern crate term;
 extern crate time;
 
-use collections::TreeMap;
+use std::collections::TreeMap;
 use stats::Stats;
 use time::precise_time_ns;
 use getopts::{OptGroup, optflag, optopt};

@@ -15,7 +15,7 @@
 
 extern crate collections;
 
-use collections::HashMap;
+use std::collections::HashMap;
 use std::mem::replace;
 use std::option;
 use std::os;

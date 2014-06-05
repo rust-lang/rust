@@ -76,7 +76,7 @@ use parse::token;
 use parse::{new_sub_parser_from_file, ParseSess};
 use owned_slice::OwnedSlice;
 
-use collections::HashSet;
+use std::collections::HashSet;
 use std::mem::replace;
 use std::rc::Rc;
 use std::string::String;

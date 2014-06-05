@@ -14,7 +14,7 @@ use std::cell::RefCell;
 use std::os;
 use std::io::fs;
 use std::unstable::dynamic_lib::DynamicLibrary;
-use collections::HashSet;
+use std::collections::HashSet;
 
 use myfs = util::fs;
 

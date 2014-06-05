@@ -18,8 +18,13 @@
 ///a length (the height of the tree), and lower and upper bounds on the
 ///number of elements that a given node can contain.
 
-use std::fmt;
-use std::fmt::Show;
+use core::prelude::*;
+
+use alloc::owned::Box;
+use core::fmt;
+use core::fmt::Show;
+
+use vec::Vec;
 
 #[allow(missing_doc)]
 pub struct BTree<K, V> {
@@ -772,6 +777,7 @@ impl<K: fmt::Show + Ord, V: fmt::Show> fmt::Show for BranchElt<K, V> {
 
 #[cfg(test)]
 mod test_btree {
+    use std::prelude::*;
 
     use super::{BTree, Node, LeafElt};
 

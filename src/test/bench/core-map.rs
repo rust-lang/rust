@@ -8,13 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate collections;
-extern crate rand;
 extern crate time;
 
-use collections::{TrieMap, TreeMap, HashMap, HashSet};
+use std::collections::{TrieMap, TreeMap, HashMap, HashSet};
 use std::os;
-use rand::{Rng, IsaacRng, SeedableRng};
+use std::rand::{Rng, IsaacRng, SeedableRng};
 use std::uint;
 
 fn timed(label: &str, f: ||) {

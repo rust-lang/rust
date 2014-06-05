@@ -19,7 +19,7 @@ use parse::token;
 use rsparse = parse;
 
 use parse = fmt_macros;
-use collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet};
 
 #[deriving(PartialEq)]
 enum ArgumentType {

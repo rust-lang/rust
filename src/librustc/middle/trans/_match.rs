@@ -222,7 +222,7 @@ use middle::ty;
 use util::common::indenter;
 use util::ppaux::{Repr, vec_map_to_str};
 
-use collections::HashMap;
+use std::collections::HashMap;
 use std::cell::Cell;
 use std::rc::Rc;
 use syntax::ast;
