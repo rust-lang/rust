@@ -12,7 +12,7 @@ struct TwoU64s {
     one: u64, two: u64
 }
 
-#[link(name = "rustrt")]
+#[link(name = "rust_test_helpers")]
 extern {
     pub fn rust_dbg_extern_return_TwoU64s() -> TwoU64s;
 }
