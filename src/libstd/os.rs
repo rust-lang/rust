@@ -66,7 +66,24 @@ pub fn close(fd: int) -> int {
 pub static TMPBUF_SZ : uint = 1000u;
 static BUF_BYTES : uint = 2048u;
 
-/// Returns the current working directory.
+/// Returns the current working directory as a Path.
+///
+/// # Failure
+///
+/// Fails if the current working directory value is invalid:
+/// Possibles cases:
+///
+/// * Current directory does not exist.
+/// * There are insufficient permissions to access the current directory.
+///
+/// # Example
+///
+/// ```rust
+/// // We assume that we are in a valid directory like "/home".
+/// let current_working_directory = std::os::getcwd();
+/// println!("The current directory is {}", current_working_directory.display());
+/// // /home
+/// ```
 #[cfg(unix)]
 pub fn getcwd() -> Path {
     use c_str::CString;
@@ -80,7 +97,24 @@ pub fn getcwd() -> Path {
     }
 }
 
-/// Returns the current working directory.
+/// Returns the current working directory as a Path.
+///
+/// # Failure
+///
+/// Fails if the current working directory value is invalid.
+/// Possibles cases:
+///
+/// * Current directory does not exist.
+/// * There are insufficient permissions to access the current directory.
+///
+/// # Example
+///
+/// ```rust
+/// // We assume that we are in a valid directory like "C:\\Windows".
+/// let current_working_directory = std::os::getcwd();
+/// println!("The current directory is {}", current_working_directory.display());
+/// // C:\\Windows
+/// ```
 #[cfg(windows)]
 pub fn getcwd() -> Path {
     use libc::DWORD;
@@ -171,11 +205,20 @@ fn with_env_lock<T>(f: || -> T) -> T {
     }
 }
 
-/// Returns a vector of (variable, value) pairs for all the environment
-/// variables of the current process.
+/// Returns a vector of (variable, value) pairs as a Vec<(String, String)>,
+/// for all the environment variables of the current process.
 ///
 /// Invalid UTF-8 bytes are replaced with \uFFFD. See `str::from_utf8_lossy()`
 /// for details.
+///
+/// # Example
+///
+/// ```rust
+/// // We will iterate through the references to the element returned by std::os::env();
+/// for &(ref key, ref value) in std::os::env().iter() {
+///     println!("'{}': '{}'", key, value );
+/// }
+/// ```
 pub fn env() -> Vec<(String,String)> {
     env_as_bytes().move_iter().map(|(k,v)| {
         let k = str::from_utf8_lossy(k.as_slice()).to_string();
@@ -276,6 +319,16 @@ pub fn env_as_bytes() -> Vec<(Vec<u8>,Vec<u8>)> {
 /// # Failure
 ///
 /// Fails if `n` has any interior NULs.
+///
+/// # Example
+///
+/// ```rust
+/// let key = "HOME";
+/// match std::os::getenv(key) {
+///     Some(val) => println!("{}: {}", key, val),
+///     None => println!("{} is not defined in the environnement.", key)
+/// }
+/// ```
 pub fn getenv(n: &str) -> Option<String> {
     getenv_as_bytes(n).map(|v| str::from_utf8_lossy(v.as_slice()).to_string())
 }
