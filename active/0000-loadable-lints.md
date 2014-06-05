@@ -29,8 +29,23 @@ We should make it easy to build such tools and integrate them with an existing R
 In `rustc::lint` (which today is `rustc::middle::lint`):
 
 ~~~ .rs
-pub trait Lint {
-    fn get_specs(&self) -> &'static [&'static LintSpec];
+pub struct Lint {
+    /// An identifier for the lint, written with underscores,
+    /// e.g. "unused_imports".
+    pub name: &'static str,
+
+    /// Default level for the lint.
+    pub default_level: Level,
+
+    /// Description of the lint or the issue it detects,
+    /// e.g. "imports that are never used"
+    pub desc: &'static str,
+}
+
+pub type LintArray = &'static [&'static Lint];
+
+pub trait LintPass {
+    fn get_lints(&self) -> LintArray;
 
     fn check_item(&mut self, cx: &Context, it: &ast::Item) { }
     fn check_expr(&mut self, cx: &Context, e: &ast::Expr) { }
@@ -47,76 +62,68 @@ To define a lint:
 
 extern crate syntax;
 
-// Load rustc as a plugin to get the `declare_lint!` macro
+// Load rustc as a plugin to get macros
 #[phase(plugin, link)]
 extern crate rustc;
 
 use syntax::ast;
 use syntax::parse::token;
-use rustc::lint::{Lint, Context, Warn};
+use rustc::lint::{Context, LintPass, LintArray};
 use rustc::plugin::Registry;
 
-struct LetterE;
+declare_lint!(letter_e, Warn, "forbid use of the letter 'e'")
 
-impl Lint for LetterE {
-    // Defines `get_specs`; see below.
-    declare_lint!("letter_e", "forbid use of the letter 'e'", Warn)
+struct Lipogram;
+
+impl LintPass for Lipogram {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(letter_e)
+    }
 
     fn check_item(&mut self, cx: &Context, it: &ast::Item) {
         let name = token::get_ident(it.ident);
         if name.get().contains_char('e') || name.get().contains_char('E') {
-            cx.span_lint(it.span, "item name contains the letter 'e'");
+            cx.span_lint(letter_e, it.span, "item name contains the letter 'e'");
         }
     }
 }
 
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {
-    reg.register_lint(box LetterE as Box<Lint>);
+    reg.register_lint_pass(box Lipogram as Box<LintPass>);
 }
 ~~~
 
-To use the lint when compiling another crate:
+A pass which defines multiple lints will have e.g. `lint_array!(deprecated, experimental, unstable)`.
+
+To use a lint when compiling another crate:
 
 ~~~ .rs
+#![feature(phase)]
+
 #[phase(plugin)]
 extern crate lipogram;
 
-struct Foo;
+fn hello() { }
 
-#[allow(letter_e)]
-struct Hello;
+fn main() { hello() }
 ~~~
 
-The macro `declare_lint!` is sugar to be used when defining a `Lint` impl which provides only one `LintSpec`.  This is the common case, but some lints will provide more than one.  For example `unstable`, `experimental`, and `deprecated` are implemented by the same chunk of code.  Here's how that looks:
+And you will get
 
-~~~ .rs
-struct Stability;
-
-static unstable:     &'static LintSpec = &LintSpec { ... };
-static experimental: &'static LintSpec = &LintSpec { ... };
-static deprecated:   &'static LintSpec = &LintSpec { ... };
-
-impl Lint for Stability {
-    declare_lints!(unstable, experimental, deprecated)
-
-    fn check_item(&mut self, cx: &Context, it: &ast::Item) {
-        if ... {
-            cx.span_lint_for(unstable, it.span, "use of unstable item");
-        }
-    }
-}
+~~~
+test.rs:6:1: 6:15 warning: item name contains the letter 'e', #[warn(letter_e)] on by default
+test.rs:6 fn hello() { }
+          ^~~~~~~~~~~~~~
 ~~~
 
-Internally, lints are identified by the address of a static `LintSpec`.  This has a number of benefits:
+Internally, lints are identified by the address of a static `Lint`.  This has a number of benefits:
 
 * The linker takes care of assigning unique IDs, even with dynamically loaded plugins.
 * A typo writing a lint ID is usually a compiler error, unlike with string IDs.
-* The ability to output a given lint is controlled by the usual visibility mechanism.  Lints defined within `rustc` use the same infrastructure and will simply export their `LintSpec`s if other parts of the compiler need to output those lints.
+* The ability to output a given lint is controlled by the usual visibility mechanism.  Lints defined within `rustc` use the same infrastructure and will simply export their `Lint`s if other parts of the compiler need to output those lints.
 * IDs are small and easy to hash.
 * It's easy to go from an ID to name, description, etc.
-
-`cx.span_lint` is like `cx.span_lint_for` but implicitly uses the first `LintSpec` declared by this `Lint`, which avoids needing to name that `LintSpec` when there is only one.  (A lint with no `LintSpec`s shouldn't call `span_lint` or `span_lint_for` but can gather information for use by other code.)
 
 User-defined lints are controlled through the usual mechanism of attributes and the `-A -W -D -F` flags to `rustc`.  User-defined lints will show up in `-W help` if a crate filename is also provided; otherwise we append a message suggesting to re-run with a crate filename.
 
@@ -134,12 +141,12 @@ The use of `&'static` means that lint plugins can't dynamically generate the set
 
 We could provide a more generic mechanism for user-defined AST visitors.  This could support other use cases like code transformation.  But it would be harder to use, and harder to integrate with the lint infrastructure.
 
+It would be nice to magically find all static `Lint`s in a crate, so we don't need `get_lints`.  Is this worth adding another attribute and another crate metadata type?  The `plugin::Registry` mechanism was meant to avoid such a proliferation of metadata types, but it's not as declarative as I would like.
+
 # Unresolved questions
 
 Do we provide guarantees about visit order for a lint, or the order of multiple lints defined in the same crate?  Some lints may require multiple passes.
 
-Since a `Lint` impl can provide multiple lints, should the trait have a different name?  I like the simplicity of `impl Lint for ...`, especially in the common case of one lint.
+Should we enforce (while running lints) that each lint printed with `span_lint` was registered by the corresponding `LintPass`?  Users who particularly care can already wrap lints in modules and use visibility to enforce this statically.
 
-Should we enforce (while running lints) that each lint printed with `span_lint_for` was registered by the corresponding `Lint`?  Users who particularly care can already wrap lints in modules and use visibility to enforce this statically.
-
-Should we separate registering a lint from initializing / constructing the value implementing `Lint`?  This would support a future where a single `rustc` invocation can compile multiple crates and needs to reset lint state.
+Should we separate registering a lint pass from initializing / constructing the value implementing `LintPass`?  This would support a future where a single `rustc` invocation can compile multiple crates and needs to reset lint state.
