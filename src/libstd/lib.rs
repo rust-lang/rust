@@ -124,6 +124,7 @@ extern crate alloc;
 extern crate core;
 extern crate libc;
 extern crate core_rand = "rand";
+extern crate core_collections = "collections";
 
 // Make std testable by not duplicating lang items. See #2912
 #[cfg(test)] extern crate realstd = "std";
@@ -159,6 +160,12 @@ pub use core::option;
 
 pub use alloc::owned;
 pub use alloc::rc;
+
+pub use core_collections::hash;
+pub use core_collections::slice;
+pub use core_collections::str;
+pub use core_collections::string;
+pub use core_collections::vec;
 
 // Run tests with libgreen instead of libnative.
 //
@@ -203,10 +210,6 @@ pub mod prelude;
 #[path = "num/f32.rs"]   pub mod f32;
 #[path = "num/f64.rs"]   pub mod f64;
 
-pub mod slice;
-pub mod vec;
-pub mod str;
-pub mod string;
 pub mod rand;
 
 pub mod ascii;
@@ -218,7 +221,10 @@ pub mod gc;
 pub mod from_str;
 pub mod num;
 pub mod to_str;
-pub mod hash;
+
+/* Common data structures */
+
+pub mod collections;
 
 /* Tasks and communication */
 
@@ -241,10 +247,6 @@ pub mod cleanup;
 // Private APIs
 #[unstable]
 pub mod unstable;
-
-/* For internal use, not exported */
-
-mod unicode;
 
 // FIXME #7809: This shouldn't be pub, and it should be reexported under 'unstable'
 // but name resolution doesn't work without it being pub.

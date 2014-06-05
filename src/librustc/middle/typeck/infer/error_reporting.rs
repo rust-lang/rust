@@ -59,7 +59,7 @@ time of error detection.
 
 */
 
-use collections::HashSet;
+use std::collections::HashSet;
 use middle::ty;
 use middle::ty::{Region, ReFree};
 use middle::typeck::infer;

@@ -17,7 +17,7 @@ extern crate req;
 
 use req::request;
 use std::cell::RefCell;
-use collections::HashMap;
+use std::collections::HashMap;
 
 pub fn main() {
   let v = vec!(@"hi".to_string());

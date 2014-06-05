@@ -27,7 +27,7 @@ use middle::ty;
 use util::nodemap::NodeMap;
 
 use std::cell::RefCell;
-use collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet};
 use syntax::codemap::Span;
 use syntax::{ast, visit};
 use syntax::visit::{Visitor, FnKind};

@@ -10,25 +10,22 @@
 
 //! An owned, growable vector.
 
-use RawVec = raw::Vec;
-use clone::Clone;
-use cmp::{PartialOrd, PartialEq, Ordering, Eq, Ord, max};
-use container::{Container, Mutable};
-use default::Default;
-use fmt;
-use iter::{DoubleEndedIterator, FromIterator, Extendable, Iterator, range};
-use mem;
-use num::{CheckedMul, CheckedAdd};
-use num;
-use ops::{Add, Drop};
-use option::{None, Option, Some};
-use ptr::RawPtr;
-use ptr;
-use raw::Slice;
-use rt::heap::{allocate, reallocate, deallocate};
-use slice::{ImmutableEqVector, ImmutableVector, Items, MutItems, MutableVector};
-use slice::{MutableOrdVector, OwnedVector, Vector};
-use slice::{MutableVectorAllocating};
+use core::prelude::*;
+
+use alloc::heap::{allocate, reallocate, deallocate};
+use RawVec = core::raw::Vec;
+use core::raw::Slice;
+use core::cmp::max;
+use core::default::Default;
+use core::fmt;
+use core::mem;
+use core::num::{CheckedMul, CheckedAdd};
+use core::num;
+use core::ptr;
+use core::uint;
+
+use slice::{MutableOrdVector, OwnedVector, MutableVectorAllocating};
+use slice::{Items, MutItems};
 
 /// An owned, growable vector.
 ///
@@ -90,12 +87,12 @@ impl<T> Vec<T> {
     /// ```
     pub fn with_capacity(capacity: uint) -> Vec<T> {
         if mem::size_of::<T>() == 0 {
-            Vec { len: 0, cap: ::uint::MAX, ptr: 0 as *mut T }
+            Vec { len: 0, cap: uint::MAX, ptr: 0 as *mut T }
         } else if capacity == 0 {
             Vec::new()
         } else {
-            let size = capacity.checked_mul(&mem::size_of::<T>())
-                               .expect("capacity overflow");
+            let size = ::expect(capacity.checked_mul(&mem::size_of::<T>()),
+                                "capacity overflow");
             let ptr = unsafe { allocate(size, mem::min_align_of::<T>()) };
             Vec { len: 0, cap: capacity, ptr: ptr as *mut T }
         }
@@ -117,8 +114,7 @@ impl<T> Vec<T> {
         unsafe {
             let mut xs = Vec::with_capacity(length);
             while xs.len < length {
-                mem::overwrite(xs.as_mut_slice().unsafe_mut_ref(xs.len),
-                                   op(xs.len));
+                ptr::write(xs.as_mut_slice().unsafe_mut_ref(xs.len), op(xs.len));
                 xs.len += 1;
             }
             xs
@@ -214,8 +210,8 @@ impl<T: Clone> Vec<T> {
         unsafe {
             let mut xs = Vec::with_capacity(length);
             while xs.len < length {
-                mem::overwrite(xs.as_mut_slice().unsafe_mut_ref(xs.len),
-                                   value.clone());
+                ptr::write(xs.as_mut_slice().unsafe_mut_ref(xs.len),
+                           value.clone());
                 xs.len += 1;
             }
             xs
@@ -325,7 +321,7 @@ impl<T:Clone> Clone for Vec<T> {
             let this_slice = self.as_slice();
             while vector.len < len {
                 unsafe {
-                    mem::overwrite(
+                    ptr::write(
                         vector.as_mut_slice().unsafe_mut_ref(vector.len),
                         this_slice.unsafe_ref(vector.len).clone());
                 }
@@ -503,8 +499,8 @@ impl<T> Vec<T> {
         if mem::size_of::<T>() == 0 { return }
 
         if capacity > self.cap {
-            let size = capacity.checked_mul(&mem::size_of::<T>())
-                               .expect("capacity overflow");
+            let size = ::expect(capacity.checked_mul(&mem::size_of::<T>()),
+                                "capacity overflow");
             unsafe {
                 self.ptr = alloc_or_realloc(self.ptr, size,
                                             self.cap * mem::size_of::<T>());
@@ -583,7 +579,7 @@ impl<T> Vec<T> {
     pub fn push(&mut self, value: T) {
         if mem::size_of::<T>() == 0 {
             // zero-size types consume no memory, so we can't rely on the address space running out
-            self.len = self.len.checked_add(&1).expect("length overflow");
+            self.len = ::expect(self.len.checked_add(&1), "length overflow");
             unsafe { mem::forget(value); }
             return
         }
@@ -600,7 +596,7 @@ impl<T> Vec<T> {
 
         unsafe {
             let end = (self.ptr as *T).offset(self.len as int) as *mut T;
-            mem::overwrite(&mut *end, value);
+            ptr::write(&mut *end, value);
             self.len += 1;
         }
     }
@@ -964,7 +960,7 @@ impl<T> Vec<T> {
                 ptr::copy_memory(p.offset(1), &*p, len - index);
                 // Write it in, overwriting the first copy of the `index`th
                 // element.
-                mem::overwrite(&mut *p, element);
+                ptr::write(&mut *p, element);
             }
             self.set_len(len + 1);
         }
@@ -1530,9 +1526,9 @@ impl<T> FromVec<T> for ~[T] {
     fn from_vec(mut v: Vec<T>) -> ~[T] {
         let len = v.len();
         let data_size = len.checked_mul(&mem::size_of::<T>());
-        let data_size = data_size.expect("overflow in from_vec()");
+        let data_size = ::expect(data_size, "overflow in from_vec()");
         let size = mem::size_of::<RawVec<()>>().checked_add(&data_size);
-        let size = size.expect("overflow in from_vec()");
+        let size = ::expect(size, "overflow in from_vec()");
 
         // In a post-DST world, we can attempt to reuse the Vec allocation by calling
         // shrink_to_fit() on it. That may involve a reallocation+memcpy, but that's no
@@ -1563,7 +1559,7 @@ impl<T> FromVec<T> for ~[T] {
 /// Unsafe operations
 pub mod raw {
     use super::Vec;
-    use ptr;
+    use core::ptr;
 
     /// Constructs a vector from an unsafe pointer to a buffer.
     ///
@@ -1581,10 +1577,10 @@ pub mod raw {
 
 #[cfg(test)]
 mod tests {
-    use prelude::*;
-    use mem::size_of;
-    use kinds::marker;
-    use super::{unzip, raw, FromVec};
+    use std::prelude::*;
+    use std::mem::size_of;
+    use std::kinds::marker;
+    use super::{unzip, raw, FromVec, Vec};
 
     #[test]
     fn test_small_vec_struct() {

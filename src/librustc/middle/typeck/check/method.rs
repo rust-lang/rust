@@ -96,7 +96,7 @@ use util::common::indenter;
 use util::ppaux;
 use util::ppaux::Repr;
 
-use collections::HashSet;
+use std::collections::HashSet;
 use std::rc::Rc;
 use syntax::ast::{DefId, SelfValue, SelfRegion};
 use syntax::ast::{SelfUniq, SelfStatic};

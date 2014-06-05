@@ -10,7 +10,7 @@
 
 extern crate collections;
 
-use collections::HashMap;
+use std::collections::HashMap;
 
 // This is a fancy one: it uses an external iterator established
 // outside the loop, breaks, then _picks back up_ and continues

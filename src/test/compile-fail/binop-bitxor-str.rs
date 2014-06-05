@@ -8,6 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:`^` cannot be applied to type `std::string::String`
+// error-pattern:`^` cannot be applied to type `collections::string::String`
 
 fn main() { let x = "a".to_string() ^ "b".to_string(); }

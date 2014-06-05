@@ -116,7 +116,7 @@ use util::ppaux::{UserString, Repr};
 use util::nodemap::{FnvHashMap, NodeMap};
 
 use std::cell::{Cell, RefCell};
-use collections::HashMap;
+use std::collections::HashMap;
 use std::mem::replace;
 use std::rc::Rc;
 use std::vec::Vec;

@@ -39,12 +39,12 @@ use std::cell::{Cell, RefCell};
 use std::cmp;
 use std::fmt::Show;
 use std::fmt;
-use std::hash::{Hash, sip};
+use std::hash::{Hash, sip, Writer};
 use std::iter::AdditiveIterator;
 use std::mem;
 use std::ops;
 use std::rc::Rc;
-use collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet};
 use syntax::abi;
 use syntax::ast::*;
 use syntax::ast_util::{is_local, lit_is_str};
@@ -57,7 +57,7 @@ use syntax::parse::token::InternedString;
 use syntax::{ast, ast_map};
 use syntax::owned_slice::OwnedSlice;
 use syntax::util::small_vector::SmallVector;
-use collections::enum_set::{EnumSet, CLike};
+use std::collections::enum_set::{EnumSet, CLike};
 
 pub type Disr = u64;
 

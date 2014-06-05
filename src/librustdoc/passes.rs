@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use collections::HashSet;
+use std::collections::HashSet;
 use rustc::util::nodemap::NodeSet;
 use std::cmp;
 use std::string::String;

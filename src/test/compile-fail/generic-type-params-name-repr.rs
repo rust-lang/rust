@@ -29,9 +29,9 @@ fn main() {
 
     // Including cases where the default is using previous type params.
     let _: HashMap<String, int> = ();
-    //~^ ERROR mismatched types: expected `HashMap<std::string::String,int>` but found `()`
+    //~^ ERROR mismatched types: expected `HashMap<collections::string::String,int>` but found `()`
     let _: HashMap<String, int, Hash<String>> = ();
-    //~^ ERROR mismatched types: expected `HashMap<std::string::String,int>` but found `()`
+    //~^ ERROR mismatched types: expected `HashMap<collections::string::String,int>` but found `()`
 
     // But not when there's a different type in between.
     let _: Foo<A, int, C> = ();

@@ -12,13 +12,17 @@
 //! trees. The only requirement for the types is that the key implements
 //! `Ord`.
 
-use std::cmp::Ordering;
-use std::fmt::Show;
-use std::fmt;
-use std::iter::Peekable;
-use std::iter;
-use std::mem::{replace, swap};
-use std::ptr;
+use core::prelude::*;
+
+use alloc::owned::Box;
+use core::fmt;
+use core::fmt::Show;
+use core::iter::Peekable;
+use core::iter;
+use core::mem::{replace, swap};
+use core::ptr;
+
+use vec::Vec;
 
 // This is implemented as an AA tree, which is a simplified variation of
 // a red-black tree where red (horizontal) nodes can only be added
@@ -998,10 +1002,11 @@ impl<T: Ord> Extendable<T> for TreeSet<T> {
 
 #[cfg(test)]
 mod test_treemap {
-    use super::{TreeMap, TreeNode};
-
+    use std::prelude::*;
     use std::rand::Rng;
     use std::rand;
+
+    use super::{TreeMap, TreeNode};
 
     #[test]
     fn find_empty() {
@@ -1432,8 +1437,9 @@ mod test_treemap {
 
 #[cfg(test)]
 mod bench {
-    extern crate test;
-    use self::test::Bencher;
+    use std::prelude::*;
+    use test::Bencher;
+
     use super::TreeMap;
     use deque::bench::{insert_rand_n, insert_seq_n, find_rand_n, find_seq_n};
 
@@ -1492,6 +1498,7 @@ mod bench {
 
 #[cfg(test)]
 mod test_set {
+    use std::prelude::*;
 
     use super::{TreeMap, TreeSet};
 

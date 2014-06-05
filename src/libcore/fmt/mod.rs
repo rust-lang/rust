@@ -31,12 +31,6 @@ pub use self::num::radix;
 pub use self::num::Radix;
 pub use self::num::RadixFmt;
 
-macro_rules! write(
-    ($dst:expr, $($arg:tt)*) => ({
-        format_args!(|args| { $dst.write_fmt(args) }, $($arg)*)
-    })
-)
-
 mod num;
 mod float;
 pub mod rt;

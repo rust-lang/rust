@@ -10,8 +10,6 @@
 
 #![feature(managed_boxes)]
 
-extern crate collections;
-
-use collections::HashMap;
+use std::collections::HashMap;
 
 pub type map = @HashMap<uint, uint>;

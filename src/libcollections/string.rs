@@ -10,23 +10,17 @@
 
 //! An owned, growable string that enforces that its contents are valid UTF-8.
 
-use c_vec::CVec;
-use char::Char;
-use cmp::Equiv;
-use container::{Container, Mutable};
-use default::Default;
-use fmt;
-use from_str::FromStr;
-use io::Writer;
-use iter::{Extendable, FromIterator, Iterator, range};
-use mem;
-use option::{None, Option, Some};
-use ptr::RawPtr;
-use ptr;
-use result::{Result, Ok, Err};
-use slice::Vector;
-use str::{CharRange, Str, StrSlice, StrAllocating};
+use core::prelude::*;
+
+use core::default::Default;
+use core::fmt;
+use core::mem;
+use core::ptr;
+use core::raw::Slice;
+
+use hash;
 use str;
+use str::{CharRange, StrAllocating};
 use vec::Vec;
 
 /// A growable string stored as a UTF-8 encoded buffer.
@@ -168,14 +162,17 @@ impl String {
     #[inline]
     pub fn push_char(&mut self, ch: char) {
         let cur_len = self.len();
-        unsafe {
-            // This may use up to 4 bytes.
-            self.vec.reserve_additional(4);
+        // This may use up to 4 bytes.
+        self.vec.reserve_additional(4);
 
+        unsafe {
             // Attempt to not use an intermediate buffer by just pushing bytes
             // directly onto this string.
-            let mut c_vector = CVec::new(self.vec.as_mut_ptr().offset(cur_len as int), 4);
-            let used = ch.encode_utf8(c_vector.as_mut_slice());
+            let slice = Slice {
+                data: self.vec.as_ptr().offset(cur_len as int),
+                len: 4,
+            };
+            let used = ch.encode_utf8(mem::transmute(slice));
             self.vec.set_len(cur_len + used);
         }
     }
@@ -340,7 +337,7 @@ impl fmt::Show for String {
     }
 }
 
-impl<H:Writer> ::hash::Hash<H> for String {
+impl<H: hash::Writer> hash::Hash<H> for String {
     #[inline]
     fn hash(&self, hasher: &mut H) {
         self.as_slice().hash(hasher)
@@ -354,18 +351,11 @@ impl<'a, S: Str> Equiv<S> for String {
     }
 }
 
-impl FromStr for String {
-    #[inline]
-    fn from_str(s: &str) -> Option<String> {
-        Some(s.to_string())
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    extern crate test;
-    use container::{Container, Mutable};
-    use self::test::Bencher;
+    use std::prelude::*;
+    use test::Bencher;
+
     use str::{Str, StrSlice};
     use super::String;
 

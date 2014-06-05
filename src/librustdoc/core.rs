@@ -20,7 +20,7 @@ use syntax;
 
 use std::cell::RefCell;
 use std::os;
-use collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet};
 
 use visit_ast::RustdocVisitor;
 use clean;

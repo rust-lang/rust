@@ -24,17 +24,11 @@
  * discouraged.
  */
 
-use clone::Clone;
-use container::Container;
-use default::Default;
-use int;
-use io::{IoResult, Writer};
-use iter::Iterator;
-use result::Ok;
-use slice::ImmutableVector;
-use uint;
+use core::prelude::*;
 
-use super::{Hash, Hasher};
+use core::default::Default;
+
+use super::{Hash, Hasher, Writer};
 
 /// `SipState` computes a SipHash 2-4 hash over a stream of bytes.
 pub struct SipState {
@@ -151,41 +145,11 @@ impl SipState {
 
         v0 ^ v1 ^ v2 ^ v3
     }
-
-    #[inline]
-    fn write_le(&mut self, n: u64, size: uint) {
-        self.tail |= n << 8*self.ntail;
-        self.ntail += size;
-
-        if self.ntail >= 8 {
-            let m = self.tail;
-
-            self.v3 ^= m;
-            compress!(self.v0, self.v1, self.v2, self.v3);
-            compress!(self.v0, self.v1, self.v2, self.v3);
-            self.v0 ^= m;
-
-            self.ntail -= 8;
-            if self.ntail == 0 {
-                self.tail = 0;
-            } else {
-                self.tail = n >> 64 - 8*self.ntail;
-            }
-        }
-    }
 }
-
-macro_rules! make_write_le(
-    ($this:expr, $n:expr, $size:expr) => ({
-          $this.write_le($n as u64, $size);
-          $this.length += $size;
-          Ok(())
-    })
-)
 
 impl Writer for SipState {
     #[inline]
-    fn write(&mut self, msg: &[u8]) -> IoResult<()> {
+    fn write(&mut self, msg: &[u8]) {
         let length = msg.len();
         self.length += length;
 
@@ -196,7 +160,7 @@ impl Writer for SipState {
             if length < needed {
                 self.tail |= u8to64_le!(msg, 0, length) << 8*self.ntail;
                 self.ntail += length;
-                return Ok(());
+                return
             }
 
             let m = self.tail | u8to64_le!(msg, 0, needed) << 8*self.ntail;
@@ -228,60 +192,7 @@ impl Writer for SipState {
 
         self.tail = u8to64_le!(msg, i, left);
         self.ntail = left;
-
-        Ok(())
     }
-
-    #[inline]
-    fn write_u8(&mut self, n: u8) -> IoResult<()> {
-        make_write_le!(self, n, 1)
-    }
-
-    #[inline]
-    fn write_le_u16(&mut self, n: u16) -> IoResult<()> {
-        make_write_le!(self, n, 2)
-    }
-
-    #[inline]
-    fn write_le_u32(&mut self, n: u32) -> IoResult<()> {
-        make_write_le!(self, n, 4)
-    }
-
-    #[inline]
-    fn write_le_u64(&mut self, n: u64) -> IoResult<()> {
-        make_write_le!(self, n, 8)
-    }
-
-    #[inline]
-    fn write_le_uint(&mut self, n: uint) -> IoResult<()> {
-        make_write_le!(self, n, uint::BYTES)
-    }
-
-    #[inline]
-    fn write_i8(&mut self, n: i8) -> IoResult<()> {
-        make_write_le!(self, n, 1)
-    }
-
-    #[inline]
-    fn write_le_i16(&mut self, n: i16) -> IoResult<()> {
-        make_write_le!(self, n, 2)
-    }
-
-    #[inline]
-    fn write_le_i32(&mut self, n: i32) -> IoResult<()> {
-        make_write_le!(self, n, 4)
-    }
-
-    #[inline]
-    fn write_le_i64(&mut self, n: i64) -> IoResult<()> {
-        make_write_le!(self, n, 8)
-    }
-
-    #[inline]
-    fn write_le_int(&mut self, n: int) -> IoResult<()> {
-        make_write_le!(self, n, int::BYTES)
-    }
-
 }
 
 impl Clone for SipState {
@@ -358,16 +269,15 @@ pub fn hash_with_keys<T: Hash<SipState>>(k0: u64, k1: u64, value: &T) -> u64 {
 
 #[cfg(test)]
 mod tests {
-    extern crate test;
-    use prelude::*;
-    use num::ToStrRadix;
-    use option::{Some, None};
+    use test::Bencher;
+    use std::prelude::*;
+    use std::num::ToStrRadix;
+
     use str::Str;
     use string::String;
     use slice::{Vector, ImmutableVector};
-    use self::test::Bencher;
 
-    use super::super::Hash;
+    use super::super::{Hash, Writer};
     use super::{SipState, hash, hash_with_keys};
 
     // Hash just the bytes of the slice, without length prefix
@@ -488,7 +398,7 @@ mod tests {
         }
 
         while t < 64 {
-            debug!("siphash test {}", t);
+            debug!("siphash test {}: {}", t, buf);
             let vec = u8to64_le!(vecs[t], 0);
             let out = hash_with_keys(k0, k1, &Bytes(buf.as_slice()));
             debug!("got {:?}, expected {:?}", out, vec);
@@ -501,10 +411,14 @@ mod tests {
             let v = to_hex_str(&vecs[t]);
             debug!("{}: ({}) => inc={} full={}", t, v, i, f);
 
-            assert!(f == i && f == v);
+            debug!("full state {:?}", state_full);
+            debug!("inc  state {:?}", state_inc);
+
+            assert_eq!(f, i);
+            assert_eq!(f, v);
 
             buf.push(t as u8);
-            state_inc.write_u8(t as u8);
+            state_inc.write([t as u8]);
 
             t += 1;
         }
@@ -629,23 +543,6 @@ officia deserunt mollit anim id est laborum.";
         let u = 16262950014981195938u64;
         b.iter(|| {
             assert_eq!(hash(&u), 5254097107239593357);
-        })
-    }
-
-    #[deriving(Hash)]
-    struct Compound {
-        x: u8,
-        y: u64,
-    }
-
-    #[bench]
-    fn bench_compound_1(b: &mut Bencher) {
-        let compound = Compound {
-            x: 1,
-            y: 2,
-        };
-        b.iter(|| {
-            assert_eq!(hash(&compound), 12506681940457338191);
         })
     }
 }

@@ -14,7 +14,7 @@
 
 use ast::Name;
 
-use collections::HashMap;
+use std::collections::HashMap;
 use std::cell::RefCell;
 use std::cmp::Equiv;
 use std::fmt;

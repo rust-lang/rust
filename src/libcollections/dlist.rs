@@ -21,9 +21,12 @@
 // Backlinks over DList::prev are raw pointers that form a full chain in
 // the reverse direction.
 
-use std::iter;
-use std::mem;
-use std::ptr;
+use core::prelude::*;
+
+use alloc::owned::Box;
+use core::iter;
+use core::mem;
+use core::ptr;
 
 use deque::Deque;
 
@@ -607,11 +610,14 @@ impl<A: Clone> Clone for DList<A> {
 
 #[cfg(test)]
 mod tests {
-    extern crate test;
-    use self::test::Bencher;
-    use deque::Deque;
+    use std::prelude::*;
     use std::rand;
+    use test::Bencher;
+    use test;
+
+    use deque::Deque;
     use super::{DList, Node, ListInsertion};
+    use vec::Vec;
 
     pub fn check_links<T>(list: &DList<T>) {
         let mut len = 0u;

@@ -15,7 +15,7 @@
 
 use std::c_str::ToCStr;
 use std::cell::RefCell;
-use collections::HashMap;
+use std::collections::HashMap;
 use libc::{c_uint, c_ushort, c_void, free, uint64_t};
 use std::str::raw::from_c_str;
 
