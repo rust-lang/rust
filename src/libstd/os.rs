@@ -206,11 +206,20 @@ fn with_env_lock<T>(f: || -> T) -> T {
     }
 }
 
-/// Returns a vector of (variable, value) pairs for all the environment
-/// variables of the current process.
+/// Returns a vector of (variable, value) pairs as a Vec<(String, String)>,
+/// for all the environment variables of the current process.
 ///
 /// Invalid UTF-8 bytes are replaced with \uFFFD. See `str::from_utf8_lossy()`
 /// for details.
+///
+/// # Example
+///
+/// ```rust
+/// // We will iterate through the references to the element returned by std::os::env();
+/// for &(ref key, ref value) in std::os::env().iter() {
+///     println!("'{}': '{}'", key, value );
+/// }
+/// ```
 pub fn env() -> Vec<(String,String)> {
     env_as_bytes().move_iter().map(|(k,v)| {
         let k = str::from_utf8_lossy(k.as_slice()).to_string();
