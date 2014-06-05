@@ -296,7 +296,6 @@ impl<'a, T: Clone> CloneableVector<T> for &'a [T] {
     fn to_owned(&self) -> ~[T] {
         use RawVec = core::raw::Vec;
         use num::{CheckedAdd, CheckedMul};
-        use option::Expect;
 
         let len = self.len();
         let data_size = len.checked_mul(&mem::size_of::<T>());
