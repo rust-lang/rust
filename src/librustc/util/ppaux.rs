@@ -366,7 +366,7 @@ pub fn ty_to_str(cx: &ctxt, typ: t) -> String {
       ty_bare_fn(ref f) => {
           bare_fn_to_str(cx, f.fn_style, f.abi, None, &f.sig)
       }
-      ty_infer(infer_ty) => infer_ty.to_str().to_string(),
+      ty_infer(infer_ty) => infer_ty.to_str(),
       ty_err => "[type error]".to_string(),
       ty_param(param_ty {idx: id, def_id: did}) => {
           let ident = match cx.ty_param_defs.borrow().find(&did.node) {
@@ -753,7 +753,10 @@ impl Repr for ty::ItemVariances {
 
 impl Repr for ty::Variance {
     fn repr(&self, _: &ctxt) -> String {
-        self.to_str().to_string()
+        // The first `.to_str()` returns a &'static str (it is not an implementation
+        // of the ToStr trait). Because of that, we need to call `.to_str()` again
+        // if we want to have a `String`.
+        self.to_str().to_str()
     }
 }
 
@@ -950,13 +953,13 @@ impl UserString for ast::Ident {
 
 impl Repr for abi::Abi {
     fn repr(&self, _tcx: &ctxt) -> String {
-        self.to_str().to_string()
+        self.to_str()
     }
 }
 
 impl UserString for abi::Abi {
     fn user_string(&self, _tcx: &ctxt) -> String {
-        self.to_str().to_string()
+        self.to_str()
     }
 }
 

@@ -222,7 +222,7 @@ impl Name {
 
     fn to_str(&self) -> String {
         match *self {
-            Short(ch) => ch.to_str().to_string(),
+            Short(ch) => ch.to_str(),
             Long(ref s) => s.to_string()
         }
     }

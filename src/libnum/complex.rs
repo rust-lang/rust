@@ -349,7 +349,7 @@ mod test {
     #[test]
     fn test_to_str() {
         fn test(c : Complex64, s: String) {
-            assert_eq!(c.to_str().to_string(), s);
+            assert_eq!(c.to_str(), s);
         }
         test(_0_0i, "0+0i".to_string());
         test(_1_0i, "1+0i".to_string());

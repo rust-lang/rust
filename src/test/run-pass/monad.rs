@@ -38,7 +38,7 @@ impl<A> option_monad<A> for Option<A> {
 }
 
 fn transform(x: Option<int>) -> Option<String> {
-    x.bind(|n| Some(*n + 1) ).bind(|n| Some(n.to_str().to_string()) )
+    x.bind(|n| Some(*n + 1) ).bind(|n| Some(n.to_str()) )
 }
 
 pub fn main() {

@@ -79,13 +79,13 @@ impl<V:Vid + ToStr,T:InferStr> InferStr for VarValue<V, T> {
 
 impl InferStr for IntVarValue {
     fn inf_str(&self, _cx: &InferCtxt) -> String {
-        self.to_str().to_string()
+        self.to_str()
     }
 }
 
 impl InferStr for ast::FloatTy {
     fn inf_str(&self, _cx: &InferCtxt) -> String {
-        self.to_str().to_string()
+        self.to_str()
     }
 }
 

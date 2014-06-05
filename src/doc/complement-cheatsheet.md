@@ -8,7 +8,7 @@ Use [`ToStr`](std/to_str/trait.ToStr.html).
 
 ~~~
 let x: int = 42;
-let y: String = x.to_str().to_string();
+let y: String = x.to_str();
 ~~~
 
 **String to int**
