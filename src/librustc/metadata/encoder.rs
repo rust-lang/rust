@@ -1196,6 +1196,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
                 &Required(ref tm) => {
                     encode_attributes(ebml_w, tm.attrs.as_slice());
                     encode_method_sort(ebml_w, 'r');
+                    encode_method_argument_names(ebml_w, &*tm.decl);
                 }
 
                 &Provided(m) => {
@@ -1210,6 +1211,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
                     encode_method_sort(ebml_w, 'p');
                     encode_inlined_item(ecx, ebml_w,
                                         IIMethodRef(def_id, true, m));
+                    encode_method_argument_names(ebml_w, &*m.decl);
                 }
             }
 
