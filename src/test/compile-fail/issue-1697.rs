@@ -12,8 +12,6 @@
 
 #![feature(globs)]
 
-use unresolved::*; //~ ERROR unresolved import. Maybe a missing
-//~^ ERROR failed to resolve import
+use unresolved::*; //~ ERROR unresolved import `unresolved::*`. Maybe a missing `extern crate unres
 
-fn main() {
-}
+fn main() {}

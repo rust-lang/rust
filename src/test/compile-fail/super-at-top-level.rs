@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use super::f; //~ ERROR failed to resolve import
+use super::f; //~ ERROR unresolved import `super::f`
 
 fn main() {
 }
