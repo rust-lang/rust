@@ -2058,8 +2058,7 @@ illegal to copy and pass by value.
 Generic `type`, `struct`, and `enum` declarations follow the same pattern:
 
 ~~~~
-extern crate collections;
-type Set<T> = collections::HashMap<T, ()>;
+type Set<T> = std::collections::HashMap<T, ()>;
 
 struct Stack<T> {
     elements: Vec<T>

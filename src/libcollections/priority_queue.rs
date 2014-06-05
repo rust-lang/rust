@@ -12,10 +12,13 @@
 
 #![allow(missing_doc)]
 
-use std::clone::Clone;
-use std::mem::{zeroed, replace, swap};
-use std::ptr;
-use std::slice;
+use core::prelude::*;
+
+use core::mem::{zeroed, replace, swap};
+use core::ptr;
+
+use slice;
+use vec::Vec;
 
 /// A priority queue implemented with a binary heap
 #[deriving(Clone)]
@@ -238,7 +241,10 @@ impl<T: Ord> Extendable<T> for PriorityQueue<T> {
 
 #[cfg(test)]
 mod tests {
+    use std::prelude::*;
+
     use priority_queue::PriorityQueue;
+    use vec::Vec;
 
     #[test]
     fn test_iterator() {
@@ -342,8 +348,8 @@ mod tests {
         v.sort();
         data.sort();
 
-        assert_eq!(v, data);
-        assert_eq!(heap.into_sorted_vec(), data);
+        assert_eq!(v.as_slice(), data.as_slice());
+        assert_eq!(heap.into_sorted_vec().as_slice(), data.as_slice());
     }
 
     #[test]

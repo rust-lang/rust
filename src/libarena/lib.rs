@@ -28,8 +28,6 @@
        html_root_url = "http://doc.rust-lang.org/")]
 #![allow(missing_doc)]
 
-extern crate collections;
-
 use std::cell::{Cell, RefCell};
 use std::cmp;
 use std::intrinsics::{TyDesc, get_tydesc};

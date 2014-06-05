@@ -10,7 +10,7 @@
 
 extern crate collections;
 
-use collections::HashMap;
+use std::collections::HashMap;
 
 trait Graph<Node, Edge> {
     fn f(&self, Edge);

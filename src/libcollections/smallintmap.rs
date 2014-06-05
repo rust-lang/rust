@@ -15,9 +15,13 @@
 
 #![allow(missing_doc)]
 
-use std::iter::{Enumerate, FilterMap};
-use std::mem::replace;
-use std::{vec, slice};
+use core::prelude::*;
+
+use core::iter::{Enumerate, FilterMap};
+use core::mem::replace;
+
+use {vec, slice};
+use vec::Vec;
 
 #[allow(missing_doc)]
 pub struct SmallIntMap<T> {
@@ -118,7 +122,7 @@ impl<V> SmallIntMap<V> {
     }
 
     pub fn get<'a>(&'a self, key: &uint) -> &'a V {
-        self.find(key).expect("key not present")
+        ::expect(self.find(key), "key not present")
     }
 
     /// An iterator visiting all key-value pairs in ascending order by the keys.
@@ -245,6 +249,7 @@ double_ended_iterator!(impl MutEntries -> (uint, &'a mut T), get_mut_ref)
 
 #[cfg(test)]
 mod test_map {
+    use std::prelude::*;
 
     use super::SmallIntMap;
 

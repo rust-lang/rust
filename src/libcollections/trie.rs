@@ -10,11 +10,15 @@
 
 //! Ordered containers with integer keys, implemented as radix tries (`TrieSet` and `TrieMap` types)
 
-use std::mem::zeroed;
-use std::mem;
-use std::slice::{Items, MutItems};
-use std::slice;
-use std::uint;
+use core::prelude::*;
+
+use alloc::owned::Box;
+use core::mem::zeroed;
+use core::mem;
+use core::uint;
+
+use slice::{Items, MutItems};
+use slice;
 
 // FIXME: #5244: need to manually update the TrieNode constructor
 static SHIFT: uint = 4;
@@ -457,7 +461,7 @@ fn insert<T>(count: &mut uint, child: &mut Child<T>, key: uint, value: T,
             *child = Internal(new);
             return ret;
         }
-        _ => unreachable!()
+        _ => fail!("unreachable code"),
     }
 }
 
@@ -637,9 +641,11 @@ impl<'a> Iterator<uint> for SetItems<'a> {
 
 #[cfg(test)]
 mod test_map {
-    use super::{TrieMap, TrieNode, Internal, External, Nothing};
+    use std::prelude::*;
     use std::iter::range_step;
     use std::uint;
+
+    use super::{TrieMap, TrieNode, Internal, External, Nothing};
 
     fn check_integrity<T>(trie: &TrieNode<T>) {
         assert!(trie.count != 0);
@@ -913,10 +919,11 @@ mod test_map {
 
 #[cfg(test)]
 mod bench_map {
-    extern crate test;
-    use super::TrieMap;
+    use std::prelude::*;
     use std::rand::{weak_rng, Rng};
-    use self::test::Bencher;
+    use test::Bencher;
+
+    use super::TrieMap;
 
     #[bench]
     fn bench_iter_small(b: &mut Bencher) {
@@ -1021,8 +1028,10 @@ mod bench_map {
 
 #[cfg(test)]
 mod test_set {
-    use super::TrieSet;
+    use std::prelude::*;
     use std::uint;
+
+    use super::TrieSet;
 
     #[test]
     fn test_sane_chunk() {

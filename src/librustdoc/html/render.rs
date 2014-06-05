@@ -33,7 +33,7 @@
 //! These tasks are not parallelized (they haven't been a bottleneck yet), and
 //! both occur before the crate is rendered.
 
-use collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::io::{fs, File, BufferedWriter, MemWriter, BufferedReader};
 use std::io;

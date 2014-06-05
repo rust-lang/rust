@@ -14,7 +14,7 @@ use metadata::cstore;
 use metadata::filesearch;
 use util::fs;
 
-use collections::HashSet;
+use std::collections::HashSet;
 use std::os;
 use syntax::abi;
 

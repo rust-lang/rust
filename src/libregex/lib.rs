@@ -365,7 +365,6 @@
 #![feature(macro_rules, phase)]
 #![deny(missing_doc, deprecated_owned_vector)]
 
-extern crate collections;
 #[cfg(test)]
 extern crate stdtest = "test";
 #[cfg(test)]

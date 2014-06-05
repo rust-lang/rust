@@ -10,7 +10,7 @@
 
 extern crate collections;
 
-use collections::HashMap;
+use std::collections::HashMap;
 
 // Test that trait types printed in error msgs include the type arguments.
 

@@ -10,7 +10,7 @@
 
 //! Terminfo database interface.
 
-use collections::HashMap;
+use std::collections::HashMap;
 use std::io::IoResult;
 use std::os;
 

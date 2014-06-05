@@ -47,7 +47,7 @@ use util::ppaux;
 use util::ppaux::Repr;
 
 use std::rc::Rc;
-use collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet};
 
 use syntax::abi;
 use syntax::ast::{StaticRegionTyParamBound, OtherRegionTyParamBound,

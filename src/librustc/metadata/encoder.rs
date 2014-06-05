@@ -33,7 +33,7 @@ use std::hash;
 use std::hash::Hash;
 use std::io::MemWriter;
 use std::str;
-use collections::HashMap;
+use std::collections::HashMap;
 use syntax::abi;
 use syntax::ast::*;
 use syntax::ast;

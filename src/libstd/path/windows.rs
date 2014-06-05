@@ -16,6 +16,7 @@ use clone::Clone;
 use cmp::{PartialEq, Eq};
 use container::Container;
 use from_str::FromStr;
+use hash;
 use io::Writer;
 use iter::{AdditiveIterator, DoubleEndedIterator, Extendable, Iterator, Map};
 use mem;
@@ -126,7 +127,7 @@ impl<'a> ToCStr for &'a Path {
     }
 }
 
-impl<S: Writer> ::hash::Hash<S> for Path {
+impl<S: hash::Writer> hash::Hash<S> for Path {
     #[cfg(not(test))]
     #[inline]
     fn hash(&self, state: &mut S) {

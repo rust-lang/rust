@@ -10,14 +10,16 @@
 
 #![allow(missing_doc)]
 
+use core::prelude::*;
 
-use std::cmp;
-use std::fmt;
-use std::iter::RandomAccessIterator;
-use std::iter::{Enumerate, Repeat, Map, Zip};
-use std::ops;
-use std::slice;
-use std::uint;
+use core::cmp;
+use core::fmt;
+use core::iter::{Enumerate, Repeat, Map, Zip};
+use core::ops;
+use core::slice;
+use core::uint;
+
+use vec::Vec;
 
 #[deriving(Clone)]
 struct SmallBitv {
@@ -977,26 +979,26 @@ impl<'a> Iterator<uint> for BitPositions<'a> {
 
 #[cfg(test)]
 mod tests {
-    extern crate test;
-    use self::test::Bencher;
+    use std::prelude::*;
+    use std::uint;
+    use std::rand;
+    use std::rand::Rng;
+    use test::Bencher;
 
     use bitv::{Bitv, SmallBitv, BigBitv, BitvSet, from_bools, from_fn,
                from_bytes};
     use bitv;
-
-    use std::uint;
-    use std::rand;
-    use std::rand::Rng;
+    use vec::Vec;
 
     static BENCH_BITS : uint = 1 << 14;
 
     #[test]
     fn test_to_str() {
         let zerolen = Bitv::new(0u, false);
-        assert_eq!(zerolen.to_str(), "".to_string());
+        assert_eq!(zerolen.to_str().as_slice(), "");
 
         let eightbits = Bitv::new(8u, false);
-        assert_eq!(eightbits.to_str(), "00000000".to_string());
+        assert_eq!(eightbits.to_str().as_slice(), "00000000")
     }
 
     #[test]
@@ -1019,7 +1021,7 @@ mod tests {
         let mut b = bitv::Bitv::new(2, false);
         b.set(0, true);
         b.set(1, false);
-        assert_eq!(b.to_str(), "10".to_string());
+        assert_eq!(b.to_str().as_slice(), "10");
     }
 
     #[test]
@@ -1330,7 +1332,7 @@ mod tests {
     fn test_from_bytes() {
         let bitv = from_bytes([0b10110110, 0b00000000, 0b11111111]);
         let str = format!("{}{}{}", "10110110", "00000000", "11111111");
-        assert_eq!(bitv.to_str(), str);
+        assert_eq!(bitv.to_str().as_slice(), str.as_slice());
     }
 
     #[test]
@@ -1347,8 +1349,8 @@ mod tests {
 
     #[test]
     fn test_from_bools() {
-        assert!(from_bools([true, false, true, true]).to_str() ==
-            "1011".to_string());
+        assert!(from_bools([true, false, true, true]).to_str().as_slice() ==
+                "1011");
     }
 
     #[test]
