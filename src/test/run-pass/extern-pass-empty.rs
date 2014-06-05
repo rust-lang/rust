@@ -26,7 +26,7 @@ struct ManyInts {
 
 struct Empty;
 
-#[link(name = "rustrt")]
+#[link(name = "rust_test_helpers")]
 extern {
     fn rust_dbg_extern_empty_struct(v1: ManyInts, e: Empty, v2: ManyInts);
 }

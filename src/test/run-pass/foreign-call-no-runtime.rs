@@ -13,7 +13,7 @@ extern crate libc;
 use std::mem;
 use std::rt::thread::Thread;
 
-#[link(name = "rustrt")]
+#[link(name = "rust_test_helpers")]
 extern {
     fn rust_dbg_call(cb: extern "C" fn(libc::uintptr_t),
                      data: libc::uintptr_t) -> libc::uintptr_t;
