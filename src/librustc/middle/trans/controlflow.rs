@@ -264,6 +264,10 @@ pub fn trans_loop<'a>(bcx:&'a Block<'a>,
 
     fcx.pop_loop_cleanup_scope(loop_id);
 
+    if ty::type_is_bot(node_id_type(bcx, loop_id)) {
+        Unreachable(next_bcx_in);
+    }
+
     return next_bcx_in;
 }
 
