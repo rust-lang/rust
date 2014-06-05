@@ -387,9 +387,7 @@ fn begin_unwind_inner(msg: Box<Any:Send>,
             // just abort. In the future we may consider resuming
             // unwinding or otherwise exiting the task cleanly.
             if task.unwinder.unwinding {
-                rterrln!("task failed during unwinding (double-failure - \
-                          total drag!)")
-                rterrln!("rust must abort now. so sorry.");
+                rterrln!("task failed during unwinding. aborting.");
 
                 // Don't print the backtrace twice (it would have already been
                 // printed if logging was enabled).
