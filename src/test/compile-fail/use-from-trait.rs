@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use Trait::foo;  //~ ERROR cannot import from a trait or type implementation
-//~^ ERROR failed to resolve import
-use Foo::new;    //~ ERROR cannot import from a trait or type implementation
-//~^ ERROR failed to resolve import
+use Trait::foo;
+//~^ ERROR unresolved import `Trait::foo`. Cannot import from a trait or type implementation
+use Foo::new;
+//~^ ERROR unresolved import `Foo::new`. Cannot import from a trait or type implementation
 
 pub trait Trait {
     fn foo();

@@ -16,8 +16,7 @@ use foo::bar;
 
 mod test {
     use bar::foo;
-    //~^ ERROR: unresolved import
-    //~^^ ERROR: failed to resolve import
+    //~^ ERROR unresolved import `bar::foo`. Maybe a missing `extern crate bar`?
 }
 
 fn main() {}

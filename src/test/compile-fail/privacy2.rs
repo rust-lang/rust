@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -24,14 +24,13 @@ mod bar {
 pub fn foo() {}
 
 fn test1() {
-    use bar::foo; //~ ERROR: unresolved import
-    //~^ ERROR: failed to resolve
+    use bar::foo;
+    //~^ ERROR unresolved import `bar::foo`. There is no `foo` in `bar`
 }
 
 fn test2() {
     use bar::glob::foo;
-    //~^ ERROR: there is no
-    //~^^ ERROR: failed to resolve
+    //~^ ERROR unresolved import `bar::glob::foo`. There is no `foo` in `bar::glob`
 }
 
 #[start] fn main(_: int, _: **u8) -> int { 3 }
