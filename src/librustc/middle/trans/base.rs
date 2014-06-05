@@ -80,6 +80,7 @@ use libc::{c_uint, uint64_t};
 use std::c_str::ToCStr;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
+use std::{i8, i16, i32, i64};
 use syntax::abi::{X86, X86_64, Arm, Mips, Rust, RustIntrinsic};
 use syntax::ast_util::{local_def, is_local};
 use syntax::attr::AttrMetaMethods;
@@ -777,35 +778,77 @@ pub fn cast_shift_rhs(op: ast::BinOp,
     }
 }
 
-pub fn fail_if_zero<'a>(
+pub fn fail_if_zero_or_overflows<'a>(
                     cx: &'a Block<'a>,
                     span: Span,
                     divrem: ast::BinOp,
+                    lhs: ValueRef,
                     rhs: ValueRef,
                     rhs_t: ty::t)
                     -> &'a Block<'a> {
-    let text = if divrem == ast::BiDiv {
-        "attempted to divide by zero"
+    let (zero_text, overflow_text) = if divrem == ast::BiDiv {
+        ("attempted to divide by zero",
+         "attempted to divide with overflow")
     } else {
-        "attempted remainder with a divisor of zero"
+        ("attempted remainder with a divisor of zero",
+         "attempted remainder with overflow")
     };
-    let is_zero = match ty::get(rhs_t).sty {
-      ty::ty_int(t) => {
-        let zero = C_integral(Type::int_from_ty(cx.ccx(), t), 0u64, false);
-        ICmp(cx, lib::llvm::IntEQ, rhs, zero)
-      }
-      ty::ty_uint(t) => {
-        let zero = C_integral(Type::uint_from_ty(cx.ccx(), t), 0u64, false);
-        ICmp(cx, lib::llvm::IntEQ, rhs, zero)
-      }
-      _ => {
-        cx.sess().bug(format!("fail-if-zero on unexpected type: {}",
-                              ty_to_str(cx.tcx(), rhs_t)).as_slice());
-      }
+    let (is_zero, is_signed) = match ty::get(rhs_t).sty {
+        ty::ty_int(t) => {
+            let zero = C_integral(Type::int_from_ty(cx.ccx(), t), 0u64, false);
+            (ICmp(cx, lib::llvm::IntEQ, rhs, zero), true)
+        }
+        ty::ty_uint(t) => {
+            let zero = C_integral(Type::uint_from_ty(cx.ccx(), t), 0u64, false);
+            (ICmp(cx, lib::llvm::IntEQ, rhs, zero), false)
+        }
+        _ => {
+            cx.sess().bug(format!("fail-if-zero on unexpected type: {}",
+                                  ty_to_str(cx.tcx(), rhs_t)).as_slice());
+        }
     };
-    with_cond(cx, is_zero, |bcx| {
-        controlflow::trans_fail(bcx, span, InternedString::new(text))
-    })
+    let bcx = with_cond(cx, is_zero, |bcx| {
+        controlflow::trans_fail(bcx, span, InternedString::new(zero_text))
+    });
+
+    // To quote LLVM's documentation for the sdiv instruction:
+    //
+    //      Division by zero leads to undefined behavior. Overflow also leads
+    //      to undefined behavior; this is a rare case, but can occur, for
+    //      example, by doing a 32-bit division of -2147483648 by -1.
+    //
+    // In order to avoid undefined behavior, we perform runtime checks for
+    // signed division/remainder which would trigger overflow. For unsigned
+    // integers, no action beyond checking for zero need be taken.
+    if is_signed {
+        let (llty, min) = match ty::get(rhs_t).sty {
+            ty::ty_int(t) => {
+                let llty = Type::int_from_ty(cx.ccx(), t);
+                let min = match t {
+                    ast::TyI if llty == Type::i32(cx.ccx()) => i32::MIN as u64,
+                    ast::TyI => i64::MIN as u64,
+                    ast::TyI8 => i8::MIN as u64,
+                    ast::TyI16 => i16::MIN as u64,
+                    ast::TyI32 => i32::MIN as u64,
+                    ast::TyI64 => i64::MIN as u64,
+                };
+                (llty, min)
+            }
+            _ => unreachable!(),
+        };
+        let minus_one = ICmp(bcx, lib::llvm::IntEQ, rhs,
+                             C_integral(llty, -1, false));
+        with_cond(bcx, minus_one, |bcx| {
+            let is_min = ICmp(bcx, lib::llvm::IntEQ, lhs,
+                              C_integral(llty, min, true));
+            with_cond(bcx, is_min, |bcx| {
+                controlflow::trans_fail(bcx, span,
+                                        InternedString::new(overflow_text))
+            })
+        })
+    } else {
+        bcx
+    }
 }
 
 pub fn trans_external_path(ccx: &CrateContext, did: ast::DefId, t: ty::t) -> ValueRef {
