@@ -398,9 +398,9 @@ pub trait OwnedVector<T> {
     /// # Examples
     ///
     /// ```rust
-    /// let v = ~["a".to_string(), "b".to_string()];
+    /// let v = vec!["a".to_string(), "b".to_string()];
     /// for s in v.move_iter() {
-    ///   // s has type ~str, not &~str
+    ///   // s has type String, not &String
     ///   println!("{}", s);
     /// }
     /// ```

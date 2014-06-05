@@ -301,7 +301,7 @@ struct Foo { bar: int,
 
 struct Blah {x:int,
              y:int,
-             z:~str}"))
+             z:String}"))
 
 (ert-deftest indent-doc-comments ()
   (test-indent
@@ -387,7 +387,7 @@ fn baz(   a:int,  // shoudl work with a comment here
    "
 fn args_on_the_next_line( // with a comment
     a:int,
-    b:~str) {
+    b:String) {
     let aaaaaa = [
         1,
         2,
