@@ -366,9 +366,9 @@ impl<T> Container for ~[T] {
 /// Extension methods for vectors
 pub trait ImmutableVector<'a, T> {
     /**
-     * Returns a slice of self between `start` and `end`.
+     * Returns a slice of self spanning the interval [`start`, `end`).
      *
-     * Fails when `start` or `end` point outside the bounds of self,
+     * Fails when the slice (or part of it) is outside the bounds of self,
      * or when `start` > `end`.
      */
     fn slice(&self, start: uint, end: uint) -> &'a [T];

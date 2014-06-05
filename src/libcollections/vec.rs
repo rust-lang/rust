@@ -782,11 +782,11 @@ impl<T> Vec<T> {
         self.as_mut_slice().sort_by(compare)
     }
 
-    /// Returns a slice of `self` between `start` and `end`.
+    /// Returns a slice of self spanning the interval [`start`, `end`).
     ///
     /// # Failure
     ///
-    /// Fails when `start` or `end` point outside the bounds of `self`, or when
+    /// Fails when the slice (or part of it) is outside the bounds of self, or when
     /// `start` > `end`.
     ///
     /// # Example
