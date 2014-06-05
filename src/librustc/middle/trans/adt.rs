@@ -45,10 +45,14 @@
 
 #![allow(unsigned_negate)]
 
+use std::cmp;
+use std::collections::Map;
+use std::collections::hashmap::HashSet;
 use libc::c_ulonglong;
 use std::collections::Map;
 use std::num::Int;
 use std::rc::Rc;
+// use std::vec::Vec;
 
 use llvm::{ValueRef, True, IntEQ, IntNE};
 use middle::subst;
@@ -77,7 +81,7 @@ type Hint = attr::ReprAttr;
 #[deriving(Eq, PartialEq)]
 pub enum Repr {
     /// C-like enums; basically an int.
-    CEnum(IntType, Disr, Disr), // discriminant range (signedness based on the IntType)
+    CEnum(IntType, Disr, Disr, uint), // discriminant range (signedness based on the IntType)
     /**
      * Single-case variants, and structs/tuples/records.
      *
@@ -136,6 +140,26 @@ pub struct Struct {
     pub sized: bool,
     pub packed: bool,
     pub fields: Vec<ty::t>
+}
+
+#[deriving(Show)]
+enum BitRepr {
+    UsesBits(u64),
+    FreeBits(u64),
+    // EnumSet(HashSet<Disr>),
+    // AnyDiscr(Disr),
+    UsesVariants(Disr, Option<CEnumRepr>),
+    FreeVariants {
+        pub bits: u64,
+        pub nvariants: Disr
+    },
+}
+
+#[deriving(Show)]
+struct CEnumRepr {
+    pub lo: Disr,
+    pub hi: Disr,
+    pub set: Option<HashSet<Disr>>
 }
 
 /**
@@ -198,6 +222,7 @@ fn represent_type_uncached(cx: &CrateContext, t: ty::t) -> Repr {
                 return Univariant(mk_struct(cx, ftys.as_slice(), false), dtor);
             }
 
+            // maybe check len <= 1 here:
             if !dtor && cases.iter().all(|c| c.tys.len() == 0) {
                 // All bodies empty -> intlike
                 let discrs: Vec<u64> = cases.iter().map(|c| c.discr).collect();
@@ -207,7 +232,7 @@ fn represent_type_uncached(cx: &CrateContext, t: ty::t) -> Repr {
                     slo: discrs.iter().map(|n| *n as i64).min().unwrap(),
                     shi: discrs.iter().map(|n| *n as i64).max().unwrap()
                 };
-                return mk_cenum(cx, hint, &bounds);
+                return mk_cenum(cx, hint, &bounds, 0);
             }
 
             // Since there's at least one
@@ -227,6 +252,27 @@ fn represent_type_uncached(cx: &CrateContext, t: ty::t) -> Repr {
                 let mut ftys = cases.get(0).tys.clone();
                 if dtor { ftys.push(ty::mk_bool()); }
                 return Univariant(mk_struct(cx, ftys.as_slice(), false), dtor);
+            }
+
+            match hint {
+                attr::ReprInt(_, itype) => {
+                    // attempt to flatten the enum
+                    let (vnum, set) = collect_cases(cx, cases.as_slice(), hint);
+                    let free_disrs = set.iter().max().unwrap() + 1 - set.len() as u64;
+                    let additional = vnum - cmp::min(free_disrs, vnum);
+                    let bounds = IntBounds {
+                        ulo: if vnum == 0 { *set.iter().min().unwrap() } else { 0u64 },
+                        uhi: *set.iter().max().unwrap() + additional,
+                        slo: if vnum == 0 { set.iter().map(|n| *n as i64).min().unwrap() } else { 0i64 },
+                        shi: set.iter().map(|n| *n as i64).max().unwrap() + additional as i64
+                    };
+                    debug!("nested C-like with hint {} bounds {} {} {} {}", itype, bounds.ulo,
+                                                                                   bounds.uhi,
+                                                                                   bounds.slo,
+                                                                                   bounds.shi);
+                    return mk_cenum(cx, hint, &bounds, 1);
+                }
+                attr::ReprAny | attr::ReprExtern | attr::ReprPacked => {}
             }
 
             if !dtor && cases.len() == 2 && hint == attr::ReprAny {
@@ -349,6 +395,59 @@ fn get_cases(tcx: &ty::ctxt, def_id: ast::DefId, substs: &subst::Substs) -> Vec<
     }).collect()
 }
 
+fn collect_cases(cx: &CrateContext, cases: &[Case], hint: Hint) -> (u64, HashSet<Disr>) {
+    let other_cases = cases.iter().filter(|c| c.tys.len() == 0).count();
+
+    if other_cases == cases.len() {
+        // All bodies empty -> int-like
+        let discrs: HashSet<Disr> = cases.iter().map(|c| c.discr).collect();
+        return (0u64, discrs);
+    }
+
+    let mut other_cases = other_cases as u64;
+
+    match cases.iter().find(|c| c.tys.len() > 1) {
+        None => {}
+        Some(tuple_case) => {
+            let case_str: Vec<String> = tuple_case.tys.iter().map(|&t| ty_to_string(cx.tcx(), t))
+                                                             .collect();
+            cx.sess().bug(format!("Nested enum can't be C-like, it has: {}",
+                                  case_str).as_slice());
+        }
+    }
+
+    let cenum_cases = cases.iter().flat_map(|c| c.tys.as_slice().iter());
+    let mut cenums = cenum_cases.map(|&t| {
+        match ty::get(t).sty {
+            ty::ty_enum(def_id, ref substs) => {
+                let cases = get_cases(cx.tcx(), def_id, substs);
+                let hints = ty::lookup_repr_hints(cx.tcx(), def_id); // no need?
+                collect_cases(cx, cases.as_slice(), hints[0])
+            }
+            _ => {
+                cx.sess().bug(format!("Nested enum can't be C-like, it has: {}",
+                                      ty_to_string(cx.tcx(), t)).as_slice())
+            }
+        }
+    });
+    // at least 2 cases, including one nonzero-sized
+    let (cnum, mut head) = cenums.next().unwrap();
+    other_cases += cnum;
+    for (cnum, cset) in cenums {
+        let initial_len = head.len();
+        for (i, &discr) in cset.iter().enumerate() {
+            head.insert(discr);
+            if head.len() != initial_len + i + 1 {
+                cx.sess().bug(format!("Nested C-like enum variants collide: {}",
+                                      discr).as_slice())
+            }
+        }
+        other_cases += cnum;
+    }
+
+    return (other_cases, head);
+}
+
 fn mk_struct(cx: &CrateContext, tys: &[ty::t], packed: bool) -> Struct {
     if tys.iter().all(|&ty| ty::type_is_sized(cx.tcx(), ty)) {
         let lltys = tys.iter().map(|&ty| type_of::sizing_type_of(cx, ty)).collect::<Vec<_>>();
@@ -382,11 +481,11 @@ struct IntBounds {
     uhi: u64
 }
 
-fn mk_cenum(cx: &CrateContext, hint: Hint, bounds: &IntBounds) -> Repr {
+fn mk_cenum(cx: &CrateContext, hint: Hint, bounds: &IntBounds, args: uint) -> Repr {
     let it = range_to_inttype(cx, hint, bounds);
     match it {
-        attr::SignedInt(_) => CEnum(it, bounds.slo as Disr, bounds.shi as Disr),
-        attr::UnsignedInt(_) => CEnum(it, bounds.ulo, bounds.uhi)
+        attr::SignedInt(_) => CEnum(it, bounds.slo as Disr, bounds.shi as Disr, args),
+        attr::UnsignedInt(_) => CEnum(it, bounds.ulo, bounds.uhi, args)
     }
 }
 
@@ -502,7 +601,7 @@ fn generic_type_of(cx: &CrateContext,
                    sizing: bool,
                    dst: bool) -> Type {
     match *r {
-        CEnum(ity, _, _) => ll_inttype(cx, ity),
+        CEnum(ity, _, _, _) => ll_inttype(cx, ity),
         RawNullablePointer { nnty, .. } => type_of::sizing_type_of(cx, nnty),
         Univariant(ref st, _) | StructWrappedNullablePointer { nonnull: ref st, .. } => {
             match name {
@@ -595,7 +694,7 @@ pub fn trans_get_discr(bcx: &Block, r: &Repr, scrutinee: ValueRef, cast_to: Opti
     let signed;
     let val;
     match *r {
-        CEnum(ity, min, max) => {
+        CEnum(ity, min, max, _) => {
             val = load_discr(bcx, ity, scrutinee, min, max);
             signed = ity.is_signed();
         }
@@ -669,7 +768,7 @@ fn load_discr(bcx: &Block, ity: IntType, ptr: ValueRef, min: Disr, max: Disr)
 pub fn trans_case<'a>(bcx: &'a Block<'a>, r: &Repr, discr: Disr)
                   -> _match::OptResult<'a> {
     match *r {
-        CEnum(ity, _, _) => {
+        CEnum(ity, _, _, _) => {
             _match::SingleResult(Result::new(bcx, C_integral(ll_inttype(bcx.ccx(), ity),
                                                               discr as u64, true)))
         }
@@ -694,7 +793,10 @@ pub fn trans_case<'a>(bcx: &'a Block<'a>, r: &Repr, discr: Disr)
  */
 pub fn trans_set_discr(bcx: &Block, r: &Repr, val: ValueRef, discr: Disr) {
     match *r {
-        CEnum(ity, min, max) => {
+        CEnum(_, _, _, 1) => {
+            // identity function (noop)
+        }
+        CEnum(ity, min, max, _) => {
             assert_discr_in_range(ity, min, max, discr);
             Store(bcx, C_integral(ll_inttype(bcx.ccx(), ity), discr as u64, true),
                   val)
@@ -751,7 +853,7 @@ fn assert_discr_in_range(ity: IntType, min: Disr, max: Disr, discr: Disr) {
  */
 pub fn num_args(r: &Repr, discr: Disr) -> uint {
     match *r {
-        CEnum(..) => 0,
+        CEnum(_, _, _, args) => args,
         Univariant(ref st, dtor) => {
             assert_eq!(discr, 0);
             st.fields.len() - (if dtor { 1 } else { 0 })
@@ -776,8 +878,14 @@ pub fn trans_field_ptr(bcx: &Block, r: &Repr, val: ValueRef, discr: Disr,
     // decide to do some kind of cdr-coding-like non-unique repr
     // someday), it will need to return a possibly-new bcx as well.
     match *r {
+        // CEnum(_, _, _, 1) => {
+        //     // ptr?
+        // }
         CEnum(..) => {
-            bcx.ccx().sess().bug("element access in C-like enum")
+            // C_integral(ll_inttype(ccx, ity), discr as u64, true)
+            debug!("trans_field_ptr ix {}", ix);
+            val
+            // bcx.ccx().sess().bug("element access in C-like enum")
         }
         Univariant(ref st, _dtor) => {
             assert_eq!(discr, 0);
@@ -916,9 +1024,13 @@ pub fn trans_drop_flag_ptr<'b>(mut bcx: &'b Block<'b>, r: &Repr,
 pub fn trans_const(ccx: &CrateContext, r: &Repr, discr: Disr,
                    vals: &[ValueRef]) -> ValueRef {
     match *r {
-        CEnum(ity, min, max) => {
-            assert_eq!(vals.len(), 0);
-            assert_discr_in_range(ity, min, max, discr);
+        CEnum(ity, min, max, 1) if !vals.is_empty() => {
+            *vals.last().unwrap()
+        }
+        CEnum(ity, min, max, _) => {
+            // assert_eq!(vals.len(), 0);
+            // assert_discr_in_range(ity, min, max, discr);
+
             C_integral(ll_inttype(ccx, ity), discr as u64, true)
         }
         General(ity, ref cases, _) => {
@@ -1039,7 +1151,7 @@ fn roundup(x: u64, a: u64) -> u64 { ((x + (a - 1)) / a) * a }
 pub fn const_get_discrim(ccx: &CrateContext, r: &Repr, val: ValueRef)
     -> Disr {
     match *r {
-        CEnum(ity, _, _) => {
+        CEnum(ity, _, _, _) => {
             match ity {
                 attr::SignedInt(..) => const_to_int(val) as Disr,
                 attr::UnsignedInt(..) => const_to_uint(val) as Disr

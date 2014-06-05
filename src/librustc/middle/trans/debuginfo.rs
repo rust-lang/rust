@@ -2383,7 +2383,7 @@ fn prepare_enum_metadata(cx: &CrateContext,
     let type_rep = adt::represent_type(cx, enum_type);
 
     let discriminant_type_metadata = match *type_rep {
-        adt::CEnum(inttype, _, _) => {
+        adt::CEnum(inttype, _, _, _) => {
             return FinalMetadata(discriminant_type_metadata(inttype))
         },
         adt::RawNullablePointer { .. }           |
