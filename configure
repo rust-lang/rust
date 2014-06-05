@@ -1136,7 +1136,7 @@ do
         CXXFLAGS=$LLVM_CXXFLAGS
         LDFLAGS=$LLVM_LDFLAGS
 
-        if [ "$CFG_DISABLE_LIBCPP" != 1 ] && [ "$CFG_USING_CLANG" == 1 ]; then
+        if [ -z "$CFG_DISABLE_LIBCPP" ] && [ -n "$CFG_USING_CLANG" ]; then
             LLVM_OPTS="$LLVM_OPTS --enable-libcpp"
         fi
 
