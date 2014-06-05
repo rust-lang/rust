@@ -2524,10 +2524,10 @@ Note that for a given *unit-like* structure type, this will always be the same v
 
 A structure expression can terminate with the syntax `..` followed by an expression to denote a functional update.
 The expression following `..` (the base) must have the same structure type as the new structure type being formed.
-The entire expression denotes the result of allocating a new structure
+The entire expression denotes the result of constructing a new structure
 (with the same type as the base expression)
 with the given values for the fields that were explicitly specified
-and the values in the base record for all other fields.
+and the values in the base expression for all other fields.
 
 ~~~~
 # struct Point3d { x: int, y: int, z: int }
@@ -2575,15 +2575,15 @@ when not immediately followed by a parenthesized expression-list (the latter is 
 A field expression denotes a field of a [structure](#structure-types).
 
 ~~~~ {.ignore .field}
-myrecord.myfield;
+mystruct.myfield;
 foo().x;
 (Struct {a: 10, b: 20}).a;
 ~~~~
 
-A field access on a record is an [lvalue](#lvalues-rvalues-and-temporaries) referring to the value of that field.
-When the field is mutable, it can be [assigned](#assignment-expressions) to.
+A field access is an [lvalue](#lvalues-rvalues-and-temporaries) referring to the value of that field.
+When the type providing the field inherits mutabilty, it can be [assigned](#assignment-expressions) to.
 
-When the type of the expression to the left of the dot is a pointer to a record or structure,
+Also, if the type of the expression to the left of the dot is a pointer,
 it is automatically dereferenced to make the field access possible.
 
 ### Vector expressions
@@ -3038,7 +3038,7 @@ match_pat : pat [ '|' pat ] * [ "if" expr ] ? ;
 
 A `match` expression branches on a *pattern*. The exact form of matching that
 occurs depends on the pattern. Patterns consist of some combination of
-literals, destructured vectors or enum constructors, structures, records and
+literals, destructured vectors or enum constructors, structures and
 tuples, variable binding specifications, wildcards (`..`), and placeholders
 (`_`). A `match` expression has a *head expression*, which is the value to
 compare to the patterns. The type of the patterns must equal the type of the
@@ -3315,17 +3315,16 @@ such as `&str` or `String`.
 
 ### Tuple types
 
-The tuple type-constructor forms a new heterogeneous product of values similar
-to the record type-constructor. The differences are as follows:
-
-* tuple elements cannot be mutable, unlike record fields
-* tuple elements are not named and can be accessed only by pattern-matching
+A tuple *type* is a heterogeneous product of other types, called the *elements*
+of the tuple. It has no nominal name and is instead structurally typed.
 
 Tuple types and values are denoted by listing the types or values of their
 elements, respectively, in a parenthesized, comma-separated
 list.
 
-The members of a tuple are laid out in memory contiguously, like a record, in
+Because tuple elements don't have a name, they can only be accessed by pattern-matching.
+
+The members of a tuple are laid out in memory contiguously, in
 order specified by the tuple type.
 
 An example of a tuple type and its use:
@@ -3377,12 +3376,13 @@ of the type.[^structtype]
 
 New instances of a `struct` can be constructed with a [struct expression](#structure-expressions).
 
-The memory order of fields in a `struct` is given by the item defining it.
-Fields may be given in any order in a corresponding struct *expression*;
-the resulting `struct` value will always be laid out in memory in the order specified by the corresponding *item*.
+The memory layout of a `struct` is undefined by default to allow for compiler optimziations like
+field reordering, but it can be fixed with the `#[repr(...)]` attribute.
+In either case, fields may be given in any order in a corresponding struct *expression*;
+the resulting `struct` value will always have the same memory layout.
 
 The fields of a `struct` may be qualified by [visibility modifiers](#re-exporting-and-visibility),
-to restrict access to implementation-private data in a structure.
+to allow access to data in a structure outside a module.
 
 A _tuple struct_ type is just like a structure type, except that the fields are anonymous.
 
@@ -3933,7 +3933,7 @@ The runtime provides C and Rust code to assist with various built-in types,
 such as vectors, strings, and the low level communication system (ports,
 channels, tasks).
 
-Support for other built-in types such as simple types, tuples, records, and
+Support for other built-in types such as simple types, tuples and
 enums is open-coded by the Rust compiler.
 
 ### Task scheduling and communication
