@@ -96,22 +96,24 @@ pub type Map = Vec<Option<(*u8, TLSValue, uint)>>;
 type TLSValue = Box<LocalData:Send>;
 
 // Gets the map from the runtime. Lazily initialises if not done so already.
-unsafe fn get_local_map() -> &mut Map {
+unsafe fn get_local_map() -> Option<&mut Map> {
     use rt::local::Local;
+
+    if !Local::exists(None::<Task>) { return None }
 
     let task: *mut Task = Local::unsafe_borrow();
     match &mut (*task).storage {
         // If the at_exit function is already set, then we just need to take
         // a loan out on the TLS map stored inside
         &LocalStorage(Some(ref mut map_ptr)) => {
-            return map_ptr;
+            return Some(map_ptr);
         }
         // If this is the first time we've accessed TLS, perform similar
         // actions to the oldsched way of doing things.
         &LocalStorage(ref mut slot) => {
             *slot = Some(vec!());
             match *slot {
-                Some(ref mut map_ptr) => { return map_ptr }
+                Some(ref mut map_ptr) => { return Some(map_ptr) }
                 None => unreachable!(),
             }
         }
@@ -156,7 +158,10 @@ impl<T: 'static> KeyValue<T> {
     /// assert_eq!(foo.replace(None), Some(4));
     /// ```
     pub fn replace(&'static self, data: Option<T>) -> Option<T> {
-        let map = unsafe { get_local_map() };
+        let map = match unsafe { get_local_map() } {
+            Some(map) => map,
+            None => fail!("must have a local task to insert into TLD"),
+        };
         let keyval = key_to_key_value(self);
 
         // When the task-local map is destroyed, all the data needs to be
@@ -223,7 +228,10 @@ impl<T: 'static> KeyValue<T> {
     /// assert_eq!(*key.get().unwrap(), 3);
     /// ```
     pub fn get(&'static self) -> Option<Ref<T>> {
-        let map = unsafe { get_local_map() };
+        let map = match unsafe { get_local_map() } {
+            Some(map) => map,
+            None => return None,
+        };
 
         self.find(map).map(|(pos, data, loan)| {
             *loan += 1;
@@ -260,7 +268,7 @@ impl<T: 'static> Deref<T> for Ref<T> {
 #[unsafe_destructor]
 impl<T: 'static> Drop for Ref<T> {
     fn drop(&mut self) {
-        let map = unsafe { get_local_map() };
+        let map = unsafe { get_local_map().unwrap() };
 
         let (_, _, ref mut loan) = *map.get_mut(self._index).get_mut_ref();
         *loan -= 1;
