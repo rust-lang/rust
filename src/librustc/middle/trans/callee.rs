@@ -802,7 +802,7 @@ pub fn trans_arg_datum<'a>(
         // "undef" value, as such a value should never
         // be inspected. It's important for the value
         // to have type lldestty (the callee's expected type).
-        let llformal_arg_ty = type_of::type_of(ccx, formal_arg_ty);
+        let llformal_arg_ty = type_of::type_of_explicit_arg(ccx, formal_arg_ty);
         unsafe {
             val = llvm::LLVMGetUndef(llformal_arg_ty.to_ref());
         }
