@@ -66,7 +66,7 @@ use option::{Some, None, Option};
 use owned::Box;
 use prelude::drop;
 use ptr::RawPtr;
-use result::{Err, Ok};
+use result::{Err, Ok, Result};
 use rt::backtrace;
 use rt::local::Local;
 use rt::task::Task;
@@ -79,6 +79,11 @@ use uw = rt::libunwind;
 pub struct Unwinder {
     unwinding: bool,
     cause: Option<Box<Any:Send>>
+}
+
+struct Exception {
+    uwe: uw::_Unwind_Exception,
+    cause: Option<Box<Any:Send>>,
 }
 
 impl Unwinder {
@@ -94,71 +99,7 @@ impl Unwinder {
     }
 
     pub fn try(&mut self, f: ||) {
-        use raw::Closure;
-        use libc::{c_void};
-
-        unsafe {
-            let closure: Closure = mem::transmute(f);
-            let ep = rust_try(try_fn, closure.code as *c_void,
-                              closure.env as *c_void);
-            if !ep.is_null() {
-                rtdebug!("caught {}", (*ep).exception_class);
-                uw::_Unwind_DeleteException(ep);
-            }
-        }
-
-        extern fn try_fn(code: *c_void, env: *c_void) {
-            unsafe {
-                let closure: || = mem::transmute(Closure {
-                    code: code as *(),
-                    env: env as *(),
-                });
-                closure();
-            }
-        }
-
-        extern {
-            // Rust's try-catch
-            // When f(...) returns normally, the return value is null.
-            // When f(...) throws, the return value is a pointer to the caught
-            // exception object.
-            fn rust_try(f: extern "C" fn(*c_void, *c_void),
-                        code: *c_void,
-                        data: *c_void) -> *uw::_Unwind_Exception;
-        }
-    }
-
-    pub fn begin_unwind(&mut self, cause: Box<Any:Send>) -> ! {
-        rtdebug!("begin_unwind()");
-
-        self.unwinding = true;
-        self.cause = Some(cause);
-
-        rust_fail();
-
-        // An uninlined, unmangled function upon which to slap yer breakpoints
-        #[inline(never)]
-        #[no_mangle]
-        fn rust_fail() -> ! {
-            unsafe {
-                let exception = box uw::_Unwind_Exception {
-                    exception_class: rust_exception_class(),
-                    exception_cleanup: exception_cleanup,
-                    private: [0, ..uw::unwinder_private_data_size],
-                };
-                let error = uw::_Unwind_RaiseException(mem::transmute(exception));
-                rtabort!("Could not unwind stack, error = {}", error as int)
-            }
-
-            extern "C" fn exception_cleanup(_unwind_code: uw::_Unwind_Reason_Code,
-                                            exception: *uw::_Unwind_Exception) {
-                rtdebug!("exception_cleanup()");
-                unsafe {
-                    let _: Box<uw::_Unwind_Exception> =
-                        mem::transmute(exception);
-                }
-            }
-        }
+        self.cause = unsafe { try(f) }.err();
     }
 
     pub fn result(&mut self) -> TaskResult {
@@ -166,6 +107,92 @@ impl Unwinder {
             Err(self.cause.take().unwrap())
         } else {
             Ok(())
+        }
+    }
+}
+
+/// Invoke a closure, capturing the cause of failure if one occurs.
+///
+/// This function will return `None` if the closure did not fail, and will
+/// return `Some(cause)` if the closure fails. The `cause` returned is the
+/// object with which failure was originally invoked.
+///
+/// This function also is unsafe for a variety of reasons:
+///
+/// * This is not safe to call in a nested fashion. The unwinding
+///   interface for Rust is designed to have at most one try/catch block per
+///   task, not multiple. No runtime checking is currently performed to uphold
+///   this invariant, so this function is not safe. A nested try/catch block
+///   may result in corruption of the outer try/catch block's state, especially
+///   if this is used within a task itself.
+///
+/// * It is not sound to trigger unwinding while already unwinding. Rust tasks
+///   have runtime checks in place to ensure this invariant, but it is not
+///   guaranteed that a rust task is in place when invoking this function.
+///   Unwinding twice can lead to resource leaks where some destructors are not
+///   run.
+pub unsafe fn try(f: ||) -> Result<(), Box<Any:Send>> {
+    use raw::Closure;
+    use libc::{c_void};
+
+    let closure: Closure = mem::transmute(f);
+    let ep = rust_try(try_fn, closure.code as *c_void,
+                      closure.env as *c_void);
+    return if ep.is_null() {
+        Ok(())
+    } else {
+        let my_ep = ep as *mut Exception;
+        rtdebug!("caught {}", (*my_ep).uwe.exception_class);
+        let cause = (*my_ep).cause.take();
+        uw::_Unwind_DeleteException(ep);
+        Err(cause.unwrap())
+    };
+
+    extern fn try_fn(code: *c_void, env: *c_void) {
+        unsafe {
+            let closure: || = mem::transmute(Closure {
+                code: code as *(),
+                env: env as *(),
+            });
+            closure();
+        }
+    }
+
+    extern {
+        // Rust's try-catch
+        // When f(...) returns normally, the return value is null.
+        // When f(...) throws, the return value is a pointer to the caught
+        // exception object.
+        fn rust_try(f: extern "C" fn(*c_void, *c_void),
+                    code: *c_void,
+                    data: *c_void) -> *uw::_Unwind_Exception;
+    }
+}
+
+// An uninlined, unmangled function upon which to slap yer breakpoints
+#[inline(never)]
+#[no_mangle]
+fn rust_fail(cause: Box<Any:Send>) -> ! {
+    rtdebug!("begin_unwind()");
+
+    unsafe {
+        let exception = box Exception {
+            uwe: uw::_Unwind_Exception {
+                exception_class: rust_exception_class(),
+                exception_cleanup: exception_cleanup,
+                private: [0, ..uw::unwinder_private_data_size],
+            },
+            cause: Some(cause),
+        };
+        let error = uw::_Unwind_RaiseException(mem::transmute(exception));
+        rtabort!("Could not unwind stack, error = {}", error as int)
+    }
+
+    extern fn exception_cleanup(_unwind_code: uw::_Unwind_Reason_Code,
+                                exception: *uw::_Unwind_Exception) {
+        rtdebug!("exception_cleanup()");
+        unsafe {
+            let _: Box<Exception> = mem::transmute(exception);
         }
     }
 }
@@ -346,103 +373,124 @@ pub fn begin_unwind<M: Any + Send>(msg: M, file: &'static str, line: uint) -> ! 
 fn begin_unwind_inner(msg: Box<Any:Send>,
                       file: &'static str,
                       line: uint) -> ! {
-    let mut task;
-    {
-        let msg_s = match msg.as_ref::<&'static str>() {
-            Some(s) => *s,
-            None => match msg.as_ref::<String>() {
-                Some(s) => s.as_slice(),
-                None => "Box<Any>",
-            }
-        };
+    // First up, print the message that we're failing
+    print_failure(msg, file, line);
 
-        // It is assumed that all reasonable rust code will have a local task at
-        // all times. This means that this `try_take` will succeed almost all of
-        // the time. There are border cases, however, when the runtime has
-        // *almost* set up the local task, but hasn't quite gotten there yet. In
-        // order to get some better diagnostics, we print on failure and
-        // immediately abort the whole process if there is no local task
-        // available.
-        let opt_task: Option<Box<Task>> = Local::try_take();
-        task = match opt_task {
-            Some(t) => t,
-            None => {
-                rterrln!("failed at '{}', {}:{}", msg_s, file, line);
-                if backtrace::log_enabled() {
-                    let mut err = ::rt::util::Stderr;
-                    let _err = backtrace::write(&mut err);
-                } else {
-                    rterrln!("run with `RUST_BACKTRACE=1` to see a backtrace");
-                }
-                unsafe { intrinsics::abort() }
-            }
-        };
-
-        // See comments in io::stdio::with_task_stdout as to why we have to be
-        // careful when using an arbitrary I/O handle from the task. We
-        // essentially need to dance to make sure when a task is in TLS when
-        // running user code.
-        let name = task.name.take();
-        {
-            let n = name.as_ref().map(|n| n.as_slice()).unwrap_or("<unnamed>");
-
-            match task.stderr.take() {
-                Some(mut stderr) => {
-                    Local::put(task);
-                    // FIXME: what to do when the task printing fails?
-                    let _err = write!(stderr,
-                                      "task '{}' failed at '{}', {}:{}\n",
-                                      n, msg_s, file, line);
-                    if backtrace::log_enabled() {
-                        let _err = backtrace::write(stderr);
-                    }
-                    task = Local::take();
-
-                    match mem::replace(&mut task.stderr, Some(stderr)) {
-                        Some(prev) => {
-                            Local::put(task);
-                            drop(prev);
-                            task = Local::take();
-                        }
-                        None => {}
-                    }
-                }
-                None => {
-                    rterrln!("task '{}' failed at '{}', {}:{}", n, msg_s,
-                             file, line);
-                    if backtrace::log_enabled() {
-                        let mut err = ::rt::util::Stderr;
-                        let _err = backtrace::write(&mut err);
-                    }
-                }
-            }
-        }
-        task.name = name;
-
-        if task.unwinder.unwinding {
+    let opt_task: Option<Box<Task>> = Local::try_take();
+    match opt_task {
+        Some(mut task) => {
+            // Now that we've printed why we're failing, do a check
+            // to make sure that we're not double failing.
+            //
             // If a task fails while it's already unwinding then we
             // have limited options. Currently our preference is to
             // just abort. In the future we may consider resuming
             // unwinding or otherwise exiting the task cleanly.
-            rterrln!("task failed during unwinding (double-failure - total drag!)")
-            rterrln!("rust must abort now. so sorry.");
+            if task.unwinder.unwinding {
+                rterrln!("task failed during unwinding (double-failure - \
+                          total drag!)")
+                rterrln!("rust must abort now. so sorry.");
 
-            // Don't print the backtrace twice (it would have already been
-            // printed if logging was enabled).
-            if !backtrace::log_enabled() {
+                // Don't print the backtrace twice (it would have already been
+                // printed if logging was enabled).
+                if !backtrace::log_enabled() {
+                    let mut err = ::rt::util::Stderr;
+                    let _err = backtrace::write(&mut err);
+                }
+                unsafe { intrinsics::abort() }
+            }
+
+            // Finally, we've printed our failure and figured out we're not in a
+            // double failure, so flag that we've started to unwind and then
+            // actually unwind.  Be sure that the task is in TLS so destructors
+            // can do fun things like I/O.
+            task.unwinder.unwinding = true;
+            Local::put(task);
+        }
+        None => {}
+    }
+    rust_fail(msg)
+}
+
+/// Given a failure message and the location that it occurred, prints the
+/// message to the local task's appropriate stream.
+///
+/// This function currently handles three cases:
+///
+///     - There is no local task available. In this case the error is printed to
+///       stderr.
+///     - There is a local task available, but it does not have a stderr handle.
+///       In this case the message is also printed to stderr.
+///     - There is a local task available, and it has a stderr handle. The
+///       message is printed to the handle given in this case.
+fn print_failure(msg: &Any:Send, file: &str, line: uint) {
+    let msg = match msg.as_ref::<&'static str>() {
+        Some(s) => *s,
+        None => match msg.as_ref::<String>() {
+            Some(s) => s.as_slice(),
+            None => "Box<Any>",
+        }
+    };
+
+    // It is assumed that all reasonable rust code will have a local task at
+    // all times. This means that this `try_take` will succeed almost all of
+    // the time. There are border cases, however, when the runtime has
+    // *almost* set up the local task, but hasn't quite gotten there yet. In
+    // order to get some better diagnostics, we print on failure and
+    // immediately abort the whole process if there is no local task
+    // available.
+    let mut task: Box<Task> = match Local::try_take() {
+        Some(t) => t,
+        None => {
+            rterrln!("failed at '{}', {}:{}", msg, file, line);
+            if backtrace::log_enabled() {
                 let mut err = ::rt::util::Stderr;
                 let _err = backtrace::write(&mut err);
+            } else {
+                rterrln!("run with `RUST_BACKTRACE=1` to see a backtrace");
             }
-            unsafe { intrinsics::abort() }
+            return
+        }
+    };
+
+    // See comments in io::stdio::with_task_stdout as to why we have to be
+    // careful when using an arbitrary I/O handle from the task. We
+    // essentially need to dance to make sure when a task is in TLS when
+    // running user code.
+    let name = task.name.take();
+    {
+        let n = name.as_ref().map(|n| n.as_slice()).unwrap_or("<unnamed>");
+
+        match task.stderr.take() {
+            Some(mut stderr) => {
+                Local::put(task);
+                // FIXME: what to do when the task printing fails?
+                let _err = write!(stderr,
+                                  "task '{}' failed at '{}', {}:{}\n",
+                                  n, msg, file, line);
+                if backtrace::log_enabled() {
+                    let _err = backtrace::write(stderr);
+                }
+                task = Local::take();
+
+                match mem::replace(&mut task.stderr, Some(stderr)) {
+                    Some(prev) => {
+                        Local::put(task);
+                        drop(prev);
+                        task = Local::take();
+                    }
+                    None => {}
+                }
+            }
+            None => {
+                rterrln!("task '{}' failed at '{}', {}:{}", n, msg, file, line);
+                if backtrace::log_enabled() {
+                    let mut err = ::rt::util::Stderr;
+                    let _err = backtrace::write(&mut err);
+                }
+            }
         }
     }
-
-    // The unwinder won't actually use the task at all, so we put the task back
-    // into TLS right before we invoke the unwinder, but this means we need an
-    // unsafe reference back to the unwinder once it's in TLS.
+    task.name = name;
     Local::put(task);
-    unsafe {
-        let task: *mut Task = Local::unsafe_borrow();
-        (*task).unwinder.begin_unwind(msg);
-    }
 }

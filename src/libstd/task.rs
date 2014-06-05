@@ -176,7 +176,10 @@ impl TaskBuilder {
             Some(gen) => gen(f),
             None => f
         };
-        let t: Box<Task> = Local::take();
+        let t: Box<Task> = match Local::try_take() {
+            Some(t) => t,
+            None => fail!("need a local task to spawn a new task"),
+        };
         t.spawn_sibling(self.opts, f);
     }
 
