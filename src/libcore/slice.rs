@@ -1260,17 +1260,18 @@ macro_rules! iterator {
                     if self.ptr == self.end {
                         None
                     } else {
-                        let old = self.ptr;
-                        self.ptr = if mem::size_of::<T>() == 0 {
+                        if mem::size_of::<T>() == 0 {
                             // purposefully don't use 'ptr.offset' because for
                             // vectors with 0-size elements this would return the
                             // same pointer.
-                            transmute(self.ptr as uint + 1)
+                            self.ptr = transmute(self.ptr as uint + 1);
+                            Some(transmute(1u)) // Use a non-NULL pointer value
                         } else {
-                            self.ptr.offset(1)
-                        };
+                            let old = self.ptr;
+                            self.ptr = self.ptr.offset(1);
 
-                        Some(transmute(old))
+                            Some(transmute(old))
+                        }
                     }
                 }
             }
@@ -1292,13 +1293,14 @@ macro_rules! iterator {
                     if self.end == self.ptr {
                         None
                     } else {
-                        self.end = if mem::size_of::<T>() == 0 {
-                            // See above for why 'ptr.offset' isn't used
-                            transmute(self.end as uint - 1)
+                        if mem::size_of::<T>() == 0 {
+                            // See above for why `ptr.offset` isn't used
+                            self.end = transmute(self.end as uint - 1);
+                            Some(transmute(1u)) // Use a non-NULL pointer value
                         } else {
-                            self.end.offset(-1)
-                        };
-                        Some(transmute(self.end))
+                            self.end = self.end.offset(-1);
+                            Some(transmute(self.end))
+                        }
                     }
                 }
             }
@@ -1317,7 +1319,11 @@ impl<'a, T> RandomAccessIterator<&'a T> for Items<'a, T> {
     fn idx(&mut self, index: uint) -> Option<&'a T> {
         unsafe {
             if index < self.indexable() {
-                transmute(self.ptr.offset(index as int))
+                if mem::size_of::<T>() == 0 {
+                    Some(transmute(1u)) // Use a non-NULL pointer value
+                } else {
+                    Some(transmute(self.ptr.offset(index as int)))
+                }
             } else {
                 None
             }

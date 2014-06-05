@@ -361,6 +361,21 @@ impl FromStr for String {
     }
 }
 
+/// Unsafe operations
+pub mod raw {
+    use super::String;
+    use vec::Vec;
+
+    /// Returns the vector as a string buffer without copying,
+    /// without checking if it contains valid UTF-8.
+    #[inline]
+    pub unsafe fn from_utf8(vec: Vec<u8>) -> String {
+        String {
+            vec: vec
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     extern crate test;
