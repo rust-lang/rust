@@ -322,6 +322,14 @@ macro_rules! vec(
     ($($e:expr),+,) => (vec!($($e),+))
 )
 
+/// Return whether the given expression matches the given pattern, as a bool.
+#[macro_export]
+macro_rules! is_match(
+    ($e: expr, $($p:pat)|*) => (match $e {
+        $($p: pat)|+ => true,
+        _ => false
+    });
+)
 
 /// A macro to select an event from a number of receivers.
 ///
