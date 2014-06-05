@@ -109,7 +109,7 @@ impl<'a> Archive<'a> {
     pub fn add_rlib(&mut self, rlib: &Path, name: &str,
                     lto: bool) -> io::IoResult<()> {
         let object = format!("{}.o", name);
-        let bytecode = format!("{}.bc.deflate", name);
+        let bytecode = format!("{}.bytecode.deflate", name);
         let mut ignore = vec!(bytecode.as_slice(), METADATA_FILENAME);
         if lto {
             ignore.push(object.as_slice());
