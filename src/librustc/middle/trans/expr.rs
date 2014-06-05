@@ -1297,8 +1297,8 @@ fn trans_eager_binop<'a>(
             FDiv(bcx, lhs, rhs)
         } else {
             // Only zero-check integers; fp /0 is NaN
-            bcx = base::fail_if_zero(bcx, binop_expr.span,
-                                     op, rhs, rhs_t);
+            bcx = base::fail_if_zero_or_overflows(bcx, binop_expr.span,
+                                                  op, lhs, rhs, rhs_t);
             if is_signed {
                 SDiv(bcx, lhs, rhs)
             } else {
@@ -1311,8 +1311,8 @@ fn trans_eager_binop<'a>(
             FRem(bcx, lhs, rhs)
         } else {
             // Only zero-check integers; fp %0 is NaN
-            bcx = base::fail_if_zero(bcx, binop_expr.span,
-                                     op, rhs, rhs_t);
+            bcx = base::fail_if_zero_or_overflows(bcx, binop_expr.span,
+                                                  op, lhs, rhs, rhs_t);
             if is_signed {
                 SRem(bcx, lhs, rhs)
             } else {
