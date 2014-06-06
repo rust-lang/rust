@@ -3,6 +3,7 @@ Rust was written by these fine people:
 Aaron Laursen <aaronlaursen@gmail.com>
 Aaron Todd <github@opprobrio.us>
 Adam Bozanich <adam.boz@gmail.com>
+Adolfo Ochagavía <aochagavia92@gmail.com>
 Adrien Tétar <adri-from-59@hotmail.fr>
 Alan Andrade <alan.andradec@gmail.com>
 Aleksander Balicki <balicki.aleksander@gmail.com>
@@ -25,7 +26,6 @@ Andrew Chin <achin@eminence32.net>
 Andrew Dunham <andrew@du.nham.ca>
 Andrew Paseltiner <apaseltiner@gmail.com>
 Anthony Juckel <ajuckel@gmail.com>
-aochagavia <aochagavia92@gmail.com>
 Arcterus <Arcterus@mail.com>
 Arkaitz Jimenez <arkaitzj@gmail.com>
 Armin Ronacher <armin.ronacher@active-4.com>
