@@ -38,8 +38,7 @@
 //! ```
 
 use cmp::{PartialEq, Eq};
-use collections::HashMap;
-use container::{Container, Mutable, MutableMap};
+use collections::{HashMap, Collection, Mutable, MutableMap};
 use fmt;
 use hash::Hash;
 use iter::{range, Iterator};

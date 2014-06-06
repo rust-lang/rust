@@ -602,7 +602,7 @@ mod imp {
 #[allow(dead_code, uppercase_variables)]
 mod imp {
     use c_str::CString;
-    use container::Container;
+    use core_collections::Collection;
     use intrinsics;
     use io::{IoResult, Writer};
     use libc;

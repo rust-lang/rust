@@ -76,6 +76,7 @@ use core::cmp;
 use core::iter::AdditiveIterator;
 use core::mem;
 
+use Collection;
 use hash;
 use string::String;
 use vec::Vec;
