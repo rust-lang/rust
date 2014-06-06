@@ -25,7 +25,7 @@ use html::escape::Escape;
 use t = syntax::parse::token;
 
 /// Highlights some source code, returning the HTML output.
-pub fn highlight(src: &str, class: Option<&str>) -> String {
+pub fn highlight(src: &str, class: Option<&str>, id: Option<&str>) -> String {
     debug!("highlighting: ================\n{}\n==============", src);
     let sess = parse::new_parse_sess();
     let fm = parse::string_to_filemap(&sess,
@@ -36,6 +36,7 @@ pub fn highlight(src: &str, class: Option<&str>) -> String {
     doit(&sess,
          lexer::StringReader::new(&sess.span_diagnostic, fm),
          class,
+         id,
          &mut out).unwrap();
     str::from_utf8_lossy(out.unwrap().as_slice()).to_string()
 }
@@ -47,11 +48,17 @@ pub fn highlight(src: &str, class: Option<&str>) -> String {
 /// it's used. All source code emission is done as slices from the source map,
 /// not from the tokens themselves, in order to stay true to the original
 /// source.
-fn doit(sess: &parse::ParseSess, mut lexer: lexer::StringReader, class: Option<&str>,
+fn doit(sess: &parse::ParseSess, mut lexer: lexer::StringReader,
+        class: Option<&str>, id: Option<&str>,
         out: &mut Writer) -> io::IoResult<()> {
     use syntax::parse::lexer::Reader;
 
-    try!(write!(out, "<pre class='rust {}'>\n", class.unwrap_or("")));
+    try!(write!(out, "<pre "));
+    match id {
+        Some(id) => try!(write!(out, "id='{}' ", id)),
+        None => {}
+    }
+    try!(write!(out, "class='rust {}'>\n", class.unwrap_or("")));
     let mut last = BytePos(0);
     let mut is_attribute = false;
     let mut is_macro = false;

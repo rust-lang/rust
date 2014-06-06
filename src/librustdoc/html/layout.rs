@@ -16,6 +16,7 @@ pub struct Layout {
     pub logo: String,
     pub favicon: String,
     pub krate: String,
+    pub playground_url: String,
 }
 
 pub struct Page<'a> {
@@ -108,11 +109,13 @@ r##"<!DOCTYPE html>
     </div>
 
     <script>
-        var rootPath = "{root_path}";
-        var currentCrate = "{krate}";
+        window.rootPath = "{root_path}";
+        window.currentCrate = "{krate}";
+        window.playgroundUrl = "{play_url}";
     </script>
     <script src="{root_path}jquery.js"></script>
     <script src="{root_path}main.js"></script>
+    {play_js}
     <script async src="{root_path}search-index.js"></script>
 </body>
 </html>"##,
@@ -124,6 +127,12 @@ r##"<!DOCTYPE html>
     favicon   = nonestr(layout.favicon.as_slice()),
     sidebar   = *sidebar,
     krate     = layout.krate,
+    play_url  = layout.playground_url,
+    play_js   = if layout.playground_url.len() == 0 {
+        "".to_string()
+    } else {
+        format!(r#"<script src="{}playpen.js"></script>"#, page.root_path)
+    },
     )
 }
 
