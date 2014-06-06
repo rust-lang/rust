@@ -16,7 +16,7 @@ struct S {
 impl S {
     pub fn foo(self) -> int {
         self.bar();
-        return *self.x;  //~ ERROR use of moved value: `self`
+        return *self.x;  //~ ERROR use of partially moved value: `*self.x`
     }
 
     pub fn bar(self) {}

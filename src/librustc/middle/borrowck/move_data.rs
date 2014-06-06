@@ -115,6 +115,7 @@ pub struct MovePath {
     pub next_sibling: MovePathIndex,
 }
 
+#[deriving(PartialEq)]
 pub enum MoveKind {
     Declared,   // When declared, variables start out "moved".
     MoveExpr,   // Expression or binding that moves a variable

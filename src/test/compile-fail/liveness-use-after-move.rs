@@ -13,6 +13,6 @@ extern crate debug;
 fn main() {
     let x = box 5;
     let y = x;
-    println!("{:?}", *x); //~ ERROR use of moved value: `x`
+    println!("{:?}", *x); //~ ERROR use of partially moved value: `*x`
     y.clone();
 }
