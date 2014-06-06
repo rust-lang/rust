@@ -1595,13 +1595,13 @@ fn enum_variant_size_lint(ccx: &CrateContext, enum_def: &ast::EnumDef, sp: Span,
             // we only warn if the largest variant is at least thrice as large as
             // the second-largest.
             if largest > slargest * 3 && slargest > 0 {
-                // Use lint::emit_lint rather than sess.add_lint because the lint-printing
+                // Use lint::raw_emit_lint rather than sess.add_lint because the lint-printing
                 // pass for the latter already ran.
-                lint::emit_lint(&ccx.tcx().sess, lint::builtin::variant_size_difference,
-                                lvlsrc, sp,
-                                format!("enum variant is more than three times larger \
-                                        ({} bytes) than the next largest (ignoring padding)",
-                                        largest).as_slice());
+                lint::raw_emit_lint(&ccx.tcx().sess, lint::builtin::variant_size_difference,
+                    lvlsrc, Some(sp),
+                    format!("enum variant is more than three times larger \
+                             ({} bytes) than the next largest (ignoring padding)",
+                            largest).as_slice());
 
                 ccx.sess().span_note(enum_def.variants.get(largest_index).span,
                                      "this variant is the largest");

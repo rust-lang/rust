@@ -9,18 +9,31 @@
 // except according to those terms.
 
 //! Lints built in to rustc.
+//!
+//! This is a sibling of `lint::context` in order to ensure that
+//! lints implemented here use the same public API as lint plugins.
+//!
+//! To add a new lint to rustc, declare it here using `declare_lint!()`.
+//! Then add code to emit the new lint in the appropriate circumstances.
+//! You can do that in an existing `LintPass` if it makes sense, or in
+//! a new `LintPass`, or using `Session::add_lint` elsewhere in the
+//! compiler. Only do the latter if the check can't be written cleanly
+//! as a `LintPass`.
+//!
+//! If you define a new `LintPass`, you will also need to add it to the
+//! `add_builtin_lints!()` invocation in `context.rs`. That macro
+//! requires a `Default` impl for your `LintPass` type.
 
 use metadata::csearch;
 use middle::def::*;
 use middle::trans::adt; // for `adt::is_ffi_safe`
-use middle::typeck::astconv::{ast_ty_to_ty, AstConv};
+use middle::typeck::astconv::ast_ty_to_ty;
 use middle::typeck::infer;
 use middle::privacy::ExportedItems;
 use middle::{typeck, ty, def, pat_util};
 use util::ppaux::{ty_to_str};
 use util::nodemap::NodeSet;
 use lint::{Context, LintPass, LintArray};
-use lint;
 
 use std::cmp;
 use std::collections::HashMap;
@@ -88,8 +101,8 @@ impl LintPass for UnusedCasts {
     fn check_expr(&mut self, cx: &Context, e: &ast::Expr) {
         match e.node {
             ast::ExprCast(expr, ty) => {
-                let t_t = ast_ty_to_ty(cx, &infer::new_infer_ctxt(cx.tcx), ty);
-                if  ty::get(ty::expr_ty(cx.tcx, expr)).sty == ty::get(t_t).sty {
+                let t_t = ast_ty_to_ty(cx, &infer::new_infer_ctxt(cx.type_context()), ty);
+                if  ty::get(ty::expr_ty(cx.type_context(), expr)).sty == ty::get(t_t).sty {
                     cx.span_lint(unnecessary_typecast, ty.span, "unnecessary type cast");
                 }
             }
@@ -140,7 +153,7 @@ impl LintPass for TypeLimits {
                         }
                     },
                     _ => {
-                        let t = ty::expr_ty(cx.tcx, expr);
+                        let t = ty::expr_ty(cx.type_context(), expr);
                         match ty::get(t).sty {
                             ty::ty_uint(_) => {
                                 cx.span_lint(unsigned_negate, e.span,
@@ -160,16 +173,16 @@ impl LintPass for TypeLimits {
                 self.negated_expr_id = expr.id;
             },
             ast::ExprBinary(binop, l, r) => {
-                if is_comparison(binop) && !check_limits(cx.tcx, binop, l, r) {
+                if is_comparison(binop) && !check_limits(cx.type_context(), binop, l, r) {
                     cx.span_lint(type_limits, e.span,
                                  "comparison is useless due to type limits");
                 }
             },
             ast::ExprLit(lit) => {
-                match ty::get(ty::expr_ty(cx.tcx, e)).sty {
+                match ty::get(ty::expr_ty(cx.type_context(), e)).sty {
                     ty::ty_int(t) => {
                         let int_type = if t == ast::TyI {
-                            cx.tcx.sess.targ_cfg.int_type
+                            cx.session().targ_cfg.int_type
                         } else { t };
                         let (min, max) = int_ty_range(int_type);
                         let mut lit_val: i64 = match lit.node {
@@ -188,7 +201,7 @@ impl LintPass for TypeLimits {
                     },
                     ty::ty_uint(t) => {
                         let uint_type = if t == ast::TyU {
-                            cx.tcx.sess.targ_cfg.uint_type
+                            cx.session().targ_cfg.uint_type
                         } else { t };
                         let (min, max) = uint_ty_range(uint_type);
                         let lit_val: u64 = match lit.node {
@@ -319,7 +332,7 @@ impl LintPass for CTypes {
         fn check_ty(cx: &Context, ty: &ast::Ty) {
             match ty.node {
                 ast::TyPath(_, _, id) => {
-                    match cx.tcx.def_map.borrow().get_copy(&id) {
+                    match cx.type_context().def_map.borrow().get_copy(&id) {
                         def::DefPrimTy(ast::TyInt(ast::TyI)) => {
                             cx.span_lint(ctypes, ty.span,
                                 "found rust type `int` in foreign module, while \
@@ -331,7 +344,7 @@ impl LintPass for CTypes {
                                  libc::c_uint or libc::c_ulong should be used");
                         }
                         def::DefTy(def_id) => {
-                            if !adt::is_ffi_safe(cx.tcx, def_id) {
+                            if !adt::is_ffi_safe(cx.type_context(), def_id) {
                                 cx.span_lint(ctypes, ty.span,
                                     "found enum type without foreign-function-safe \
                                      representation annotation in foreign module");
@@ -385,7 +398,7 @@ impl HeapMemory {
 
         let mut n_box = 0;
         let mut n_uniq = 0;
-        ty::fold_ty(cx.tcx, ty, |t| {
+        ty::fold_ty(cx.type_context(), ty, |t| {
             match ty::get(t).sty {
                 ty::ty_box(_) => {
                     n_box += 1;
@@ -407,14 +420,14 @@ impl HeapMemory {
         });
 
         if n_uniq > 0 {
-            let s = ty_to_str(cx.tcx, ty);
+            let s = ty_to_str(cx.type_context(), ty);
             let m = format!("type uses owned (Box type) pointers: {}", s);
             cx.span_lint(owned_heap_memory, span, m.as_slice());
             cx.span_lint(heap_memory, span, m.as_slice());
         }
 
         if n_box > 0 {
-            let s = ty_to_str(cx.tcx, ty);
+            let s = ty_to_str(cx.type_context(), ty);
             let m = format!("type uses managed (@ type) pointers: {}", s);
             cx.span_lint(managed_heap_memory, span, m.as_slice());
             cx.span_lint(heap_memory, span, m.as_slice());
@@ -432,9 +445,9 @@ impl LintPass for HeapMemory {
             ast::ItemFn(..) |
             ast::ItemTy(..) |
             ast::ItemEnum(..) |
-            ast::ItemStruct(..) => self.check_heap_type(cx, it.span,
-                                                        ty::node_id_to_type(cx.tcx,
-                                                                            it.id)),
+            ast::ItemStruct(..)
+                => self.check_heap_type(cx, it.span,
+                    ty::node_id_to_type(cx.type_context(), it.id)),
             _ => ()
         }
 
@@ -443,8 +456,7 @@ impl LintPass for HeapMemory {
             ast::ItemStruct(struct_def, _) => {
                 for struct_field in struct_def.fields.iter() {
                     self.check_heap_type(cx, struct_field.span,
-                                         ty::node_id_to_type(cx.tcx,
-                                                             struct_field.node.id));
+                    ty::node_id_to_type(cx.type_context(), struct_field.node.id));
                 }
             }
             _ => ()
@@ -452,7 +464,7 @@ impl LintPass for HeapMemory {
     }
 
     fn check_expr(&mut self, cx: &Context, e: &ast::Expr) {
-        let ty = ty::expr_ty(cx.tcx, e);
+        let ty = ty::expr_ty(cx.type_context(), e);
         self.check_heap_type(cx, e.span, ty);
     }
 }
@@ -501,7 +513,7 @@ impl LintPass for RawPointerDeriving {
         }
         let did = match item.node {
             ast::ItemImpl(..) => {
-                match ty::get(ty::node_id_to_type(cx.tcx, item.id)).sty {
+                match ty::get(ty::node_id_to_type(cx.type_context(), item.id)).sty {
                     ty::ty_enum(did, _) => did,
                     ty::ty_struct(did, _) => did,
                     _ => return,
@@ -510,7 +522,7 @@ impl LintPass for RawPointerDeriving {
             _ => return,
         };
         if !ast_util::is_local(did) { return }
-        let item = match cx.tcx.map.find(did.node) {
+        let item = match cx.type_context().map.find(did.node) {
             Some(ast_map::NodeItem(item)) => item,
             _ => return,
         };
@@ -651,7 +663,7 @@ impl LintPass for UnusedResult {
             ast::StmtSemi(expr, _) => expr,
             _ => return
         };
-        let t = ty::expr_ty(cx.tcx, expr);
+        let t = ty::expr_ty(cx.type_context(), expr);
         match ty::get(t).sty {
             ty::ty_nil | ty::ty_bot | ty::ty_bool => return,
             _ => {}
@@ -661,13 +673,13 @@ impl LintPass for UnusedResult {
             _ => {}
         }
 
-        let t = ty::expr_ty(cx.tcx, expr);
+        let t = ty::expr_ty(cx.type_context(), expr);
         let mut warned = false;
         match ty::get(t).sty {
             ty::ty_struct(did, _) |
             ty::ty_enum(did, _) => {
                 if ast_util::is_local(did) {
-                    match cx.tcx.map.get(did.node) {
+                    match cx.type_context().map.get(did.node) {
                         ast_map::NodeItem(it) => {
                             if attr::contains_name(it.attrs.as_slice(),
                                                    "must_use") {
@@ -679,7 +691,7 @@ impl LintPass for UnusedResult {
                         _ => {}
                     }
                 } else {
-                    csearch::get_item_attrs(&cx.tcx.sess.cstore, did, |attrs| {
+                    csearch::get_item_attrs(&cx.session().cstore, did, |attrs| {
                         if attr::contains_name(attrs.as_slice(), "must_use") {
                             cx.span_lint(unused_must_use, s.span,
                                          "unused result which must be used");
@@ -708,12 +720,12 @@ impl LintPass for DeprecatedOwnedVector {
     }
 
     fn check_expr(&mut self, cx: &Context, e: &ast::Expr) {
-        let t = ty::expr_ty(cx.tcx, e);
+        let t = ty::expr_ty(cx.type_context(), e);
         match ty::get(t).sty {
             ty::ty_uniq(t) => match ty::get(t).sty {
                 ty::ty_vec(_, None) => {
                     cx.span_lint(deprecated_owned_vector, e.span,
-                                 "use of deprecated `~[]` vector; replaced by `std::vec::Vec`")
+                        "use of deprecated `~[]` vector; replaced by `std::vec::Vec`")
                 }
                 _ => {}
             },
@@ -792,13 +804,13 @@ fn method_context(cx: &Context, m: &ast::Method) -> MethodContext {
         node: m.id
     };
 
-    match cx.tcx.methods.borrow().find_copy(&did) {
-        None => cx.tcx.sess.span_bug(m.span, "missing method descriptor?!"),
+    match cx.type_context().methods.borrow().find_copy(&did) {
+        None => cx.session().span_bug(m.span, "missing method descriptor?!"),
         Some(md) => {
             match md.container {
                 ty::TraitContainer(..) => TraitDefaultImpl,
                 ty::ImplContainer(cid) => {
-                    match ty::impl_trait_ref(cx.tcx, cid) {
+                    match ty::impl_trait_ref(cx.type_context(), cid) {
                         Some(..) => TraitImpl,
                         None => PlainImpl
                     }
@@ -931,7 +943,7 @@ impl LintPass for NonUppercasePatternStatics {
 
     fn check_pat(&mut self, cx: &Context, p: &ast::Pat) {
         // Lint for constants that look like binding identifiers (#7526)
-        match (&p.node, cx.tcx.def_map.borrow().find(&p.id)) {
+        match (&p.node, cx.type_context().def_map.borrow().find(&p.id)) {
             (&ast::PatIdent(_, ref path, _), Some(&def::DefStatic(_, false))) => {
                 // last identifier alone is right choice for this lint.
                 let ident = path.segments.last().unwrap().identifier;
@@ -963,7 +975,7 @@ impl LintPass for UppercaseVariables {
     fn check_pat(&mut self, cx: &Context, p: &ast::Pat) {
         match &p.node {
             &ast::PatIdent(_, ref path, _) => {
-                match cx.tcx.def_map.borrow().find(&p.id) {
+                match cx.type_context().def_map.borrow().find(&p.id) {
                     Some(&def::DefLocal(_, _)) | Some(&def::DefBinding(_, _)) |
                             Some(&def::DefArg(_, _)) => {
                         // last identifier alone is right choice for this lint.
@@ -1065,7 +1077,7 @@ impl LintPass for UnusedUnsafe {
             // Don't warn about generated blocks, that'll just pollute the output.
             ast::ExprBlock(ref blk) => {
                 if blk.rules == ast::UnsafeBlock(ast::UserProvided) &&
-                    !cx.tcx.used_unsafe.borrow().contains(&blk.id) {
+                    !cx.type_context().used_unsafe.borrow().contains(&blk.id) {
                     cx.span_lint(unused_unsafe, blk.span, "unnecessary `unsafe` block");
                 }
             }
@@ -1108,19 +1120,18 @@ impl UnusedMut {
         // avoid false warnings in match arms with multiple patterns
         let mut mutables = HashMap::new();
         for &p in pats.iter() {
-            pat_util::pat_bindings(&cx.tcx.def_map, p, |mode, id, _, path| {
+            pat_util::pat_bindings(&cx.type_context().def_map, p, |mode, id, _, path| {
                 match mode {
                     ast::BindByValue(ast::MutMutable) => {
                         if path.segments.len() != 1 {
-                            cx.tcx.sess.span_bug(p.span,
+                            cx.session().span_bug(p.span,
                                                  "mutable binding that doesn't consist \
                                                   of exactly one segment");
                         }
                         let ident = path.segments.get(0).identifier;
                         if !token::get_ident(ident).get().starts_with("_") {
-                            mutables.insert_or_update_with(ident.name as uint, vec!(id), |_, old| {
-                                old.push(id);
-                            });
+                            mutables.insert_or_update_with(ident.name as uint,
+                                vec!(id), |_, old| { old.push(id); });
                         }
                     }
                     _ => {
@@ -1129,10 +1140,10 @@ impl UnusedMut {
             });
         }
 
-        let used_mutables = cx.tcx.used_mut_nodes.borrow();
+        let used_mutables = cx.type_context().used_mut_nodes.borrow();
         for (_, v) in mutables.iter() {
             if !v.iter().any(|e| used_mutables.contains(e)) {
-                cx.span_lint(unused_mut, cx.tcx.map.span(*v.get(0)),
+                cx.span_lint(unused_mut, cx.type_context().map.span(*v.get(0)),
                     "variable does not need to be mutable");
             }
         }
@@ -1213,7 +1224,7 @@ impl LintPass for UnnecessaryAllocation {
             _ => return
         };
 
-        match cx.tcx.adjustments.borrow().find(&e.id) {
+        match cx.type_context().adjustments.borrow().find(&e.id) {
             Some(adjustment) => {
                 match *adjustment {
                     ty::AutoDerefRef(ty::AutoDerefRef { autoref, .. }) => {
@@ -1281,7 +1292,7 @@ impl MissingDoc {
                                desc: &'static str) {
         // If we're building a test harness, then warning about
         // documentation is probably not really relevant right now.
-        if cx.tcx.sess.opts.test { return }
+        if cx.session().opts.test { return }
 
         // `#[doc(hidden)]` disables missing_doc check.
         if self.doc_hidden() { return }
@@ -1360,7 +1371,8 @@ impl LintPass for MissingDoc {
     }
 
     fn check_fn(&mut self, cx: &Context,
-            fk: &visit::FnKind, _: &ast::FnDecl, _: &ast::Block, _: Span, _: ast::NodeId) {
+            fk: &visit::FnKind, _: &ast::FnDecl,
+            _: &ast::Block, _: Span, _: ast::NodeId) {
         match *fk {
             visit::FkMethod(_, _, m) => {
                 // If the method is an impl for a trait, don't doc.
@@ -1383,7 +1395,8 @@ impl LintPass for MissingDoc {
     fn check_struct_field(&mut self, cx: &Context, sf: &ast::StructField) {
         match sf.node.kind {
             ast::NamedField(_, vis) if vis == ast::Public => {
-                let cur_struct_def = *self.struct_def_stack.last().expect("empty struct_def_stack");
+                let cur_struct_def = *self.struct_def_stack.last()
+                    .expect("empty struct_def_stack");
                 self.check_missing_doc_attrs(cx, Some(cur_struct_def),
                     sf.node.attrs.as_slice(), sf.span, "a struct field")
             }
@@ -1406,8 +1419,8 @@ declare_lint!(experimental, Warn,
 declare_lint!(unstable, Allow,
     "detects use of #[unstable] items (incl. items with no stability attribute)")
 
-/// Checks for use of items with #[deprecated], #[experimental] and
-/// #[unstable] (or none of them) attributes.
+/// Checks for use of items with `#[deprecated]`, `#[experimental]` and
+/// `#[unstable]` attributes, or no stability attribute.
 #[deriving(Default)]
 pub struct Stability;
 
@@ -1419,14 +1432,14 @@ impl LintPass for Stability {
     fn check_expr(&mut self, cx: &Context, e: &ast::Expr) {
         let id = match e.node {
             ast::ExprPath(..) | ast::ExprStruct(..) => {
-                match cx.tcx.def_map.borrow().find(&e.id) {
+                match cx.type_context().def_map.borrow().find(&e.id) {
                     Some(&def) => def.def_id(),
                     None => return
                 }
             }
             ast::ExprMethodCall(..) => {
                 let method_call = typeck::MethodCall::expr(e.id);
-                match cx.tcx.method_map.borrow().find(&method_call) {
+                match cx.type_context().method_map.borrow().find(&method_call) {
                     Some(method) => {
                         match method.origin {
                             typeck::MethodStatic(def_id) => {
@@ -1435,7 +1448,7 @@ impl LintPass for Stability {
                                 // Otherwise, use the current def_id (which refers
                                 // to the method inside impl).
                                 ty::trait_method_of_method(
-                                    cx.tcx, def_id).unwrap_or(def_id)
+                                    cx.type_context(), def_id).unwrap_or(def_id)
                             }
                             typeck::MethodParam(typeck::MethodParam {
                                 trait_id: trait_id,
@@ -1446,7 +1459,7 @@ impl LintPass for Stability {
                                 trait_id: trait_id,
                                 method_num: index,
                                 ..
-                            }) => ty::trait_method(cx.tcx, trait_id, index).def_id
+                            }) => ty::trait_method(cx.type_context(), trait_id, index).def_id
                         }
                     }
                     None => return
@@ -1457,7 +1470,7 @@ impl LintPass for Stability {
 
         let stability = if ast_util::is_local(id) {
             // this crate
-            let s = cx.tcx.map.with_attrs(id.node, |attrs| {
+            let s = cx.type_context().map.with_attrs(id.node, |attrs| {
                 attrs.map(|a| attr::find_stability(a.as_slice()))
             });
             match s {
@@ -1474,7 +1487,7 @@ impl LintPass for Stability {
             let mut s = None;
             // run through all the attributes and take the first
             // stability one.
-            csearch::get_item_attrs(&cx.tcx.sess.cstore, id, |attrs| {
+            csearch::get_item_attrs(&cx.session().cstore, id, |attrs| {
                 if s.is_none() {
                     s = attr::find_stability(attrs.as_slice())
                 }
@@ -1502,32 +1515,6 @@ impl LintPass for Stability {
         };
 
         cx.span_lint(lint, e.span, msg.as_slice());
-    }
-}
-
-/// Doesn't actually warn; just gathers information for use by
-/// checks in trans.
-#[deriving(Default)]
-pub struct GatherNodeLevels;
-
-impl LintPass for GatherNodeLevels {
-    fn get_lints(&self) -> LintArray {
-        lint_array!()
-    }
-
-    fn check_item(&mut self, cx: &Context, it: &ast::Item) {
-        match it.node {
-            ast::ItemEnum(..) => {
-                let lint_id = lint::LintId::of(variant_size_difference);
-                match cx.lints.get_level_source(lint_id) {
-                    lvlsrc @ (lvl, _) if lvl != lint::Allow => {
-                        cx.insert_node_level(it.id, lint_id, lvlsrc);
-                    },
-                    _ => { }
-                }
-            },
-            _ => { }
-        }
     }
 }
 
