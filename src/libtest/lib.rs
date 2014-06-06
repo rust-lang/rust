@@ -1502,7 +1502,7 @@ mod tests {
         let filtered = filter_tests(&opts, tests);
 
         assert_eq!(filtered.len(), 1);
-        assert_eq!(filtered.get(0).desc.name.to_str().to_string(),
+        assert_eq!(filtered.get(0).desc.name.to_str(),
                    "1".to_string());
         assert!(filtered.get(0).desc.ignore == false);
     }
@@ -1553,7 +1553,7 @@ mod tests {
                  "test::sort_tests".to_string());
 
         for (a, b) in expected.iter().zip(filtered.iter()) {
-            assert!(*a == b.desc.name.to_str().to_string());
+            assert!(*a == b.desc.name.to_str());
         }
     }
 

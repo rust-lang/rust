@@ -620,7 +620,7 @@ fn parse(cx: &mut ExtCtxt, tts: &[ast::TokenTree]) -> Option<String> {
     let regex = match entry.node {
         ast::ExprLit(lit) => {
             match lit.node {
-                ast::LitStr(ref s, _) => s.to_str().to_string(),
+                ast::LitStr(ref s, _) => s.to_str(),
                 _ => {
                     cx.span_err(entry.span, format!(
                         "expected string literal but got `{}`",
