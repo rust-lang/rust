@@ -76,7 +76,7 @@ impl<'a> euv::Delegate for GatherLoanCtxt<'a> {
 
         match mode {
             euv::Copy => { return; }
-            euv::Move => { }
+            euv::Move(_) => { }
         }
 
         gather_moves::gather_move_from_expr(
@@ -95,7 +95,7 @@ impl<'a> euv::Delegate for GatherLoanCtxt<'a> {
 
         match mode {
             euv::Copy => { return; }
-            euv::Move => { }
+            euv::Move(_) => { }
         }
 
         gather_moves::gather_move_from_pat(
