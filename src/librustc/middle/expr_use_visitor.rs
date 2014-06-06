@@ -86,6 +86,7 @@ pub enum ConsumeMode {
 
 #[deriving(PartialEq,Show)]
 pub enum MutateMode {
+    Init,
     JustWrite,    // x = y
     WriteAndRead, // x += y
 }
@@ -712,7 +713,7 @@ impl<'d,'t,TYPER:mc::Typer> ExprUseVisitor<'d,'t,TYPER> {
                 let def = def_map.borrow().get_copy(&pat.id);
                 match mc.cat_def(pat.id, pat.span, pat_ty, def) {
                     Ok(binding_cmt) => {
-                        delegate.mutate(pat.id, pat.span, binding_cmt, JustWrite);
+                        delegate.mutate(pat.id, pat.span, binding_cmt, Init);
                     }
                     Err(_) => { }
                 }
