@@ -109,6 +109,8 @@ use core::mem::transmute;
 use core::mem;
 use core::ptr;
 use core::iter::{range_step, MultiplicativeIterator};
+
+use Collection;
 use vec::Vec;
 
 pub use core::slice::{ref_slice, mut_ref_slice, Splits, Windows};
@@ -296,9 +298,9 @@ impl<'a, T: Clone> CloneableVector<T> for &'a [T] {
 
         let len = self.len();
         let data_size = len.checked_mul(&mem::size_of::<T>());
-        let data_size = ::expect(data_size, "overflow in to_owned()");
+        let data_size = data_size.expect("overflow in to_owned()");
         let size = mem::size_of::<RawVec<()>>().checked_add(&data_size);
-        let size = ::expect(size, "overflow in to_owned()");
+        let size = size.expect("overflow in to_owned()");
 
         unsafe {
             // this should pass the real required alignment
@@ -865,6 +867,7 @@ mod tests {
     use std::rt;
     use slice::*;
 
+    use Mutable;
     use vec::Vec;
 
     fn square(n: uint) -> uint { n * n }

@@ -11,7 +11,7 @@
 //! A double-ended queue implemented as a circular buffer
 //!
 //! RingBuf implements the trait Deque. It should be imported with `use
-//! collections::deque::Deque`.
+//! collections::Deque`.
 
 use core::prelude::*;
 
@@ -19,7 +19,7 @@ use core::cmp;
 use core::fmt;
 use core::iter::RandomAccessIterator;
 
-use deque::Deque;
+use {Deque, Collection, Mutable};
 use vec::Vec;
 
 static INITIAL_CAPACITY: uint = 8u; // 2^3
@@ -415,7 +415,7 @@ mod tests {
     use test::Bencher;
     use test;
 
-    use deque::Deque;
+    use {Deque, Mutable};
     use super::RingBuf;
     use vec::Vec;
 

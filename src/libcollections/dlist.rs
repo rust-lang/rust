@@ -13,7 +13,7 @@
 //! The DList allows pushing and popping elements at either end.
 //!
 //! DList implements the trait Deque. It should be imported with `use
-//! collections::deque::Deque`.
+//! collections::Deque`.
 
 // DList is constructed like a singly-linked list over the field `next`.
 // including the last link being None; each Node owns its `next` field.
@@ -29,7 +29,7 @@ use core::iter;
 use core::mem;
 use core::ptr;
 
-use deque::Deque;
+use {Collection, Mutable, Deque};
 
 /// A doubly-linked list.
 pub struct DList<T> {
@@ -629,7 +629,7 @@ mod tests {
     use test::Bencher;
     use test;
 
-    use deque::Deque;
+    use Deque;
     use super::{DList, Node, ListInsertion};
     use vec::Vec;
 

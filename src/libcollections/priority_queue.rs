@@ -17,6 +17,7 @@ use core::prelude::*;
 use core::mem::{zeroed, replace, swap};
 use core::ptr;
 
+use {Collection, Mutable};
 use slice;
 use vec::Vec;
 
