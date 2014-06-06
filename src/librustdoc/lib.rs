@@ -126,7 +126,9 @@ pub fn opts() -> Vec<getopts::OptGroup> {
         optmulti("", "markdown-after-content",
                  "files to include inline between the content and </body> of a rendered \
                  Markdown file",
-                 "FILES")
+                 "FILES"),
+        optopt("", "markdown-playground-url",
+               "URL to send code snippets to", "URL")
     )
 }
 
