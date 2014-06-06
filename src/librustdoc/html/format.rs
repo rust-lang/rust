@@ -35,6 +35,8 @@ pub struct VisSpace(pub Option<ast::Visibility>);
 pub struct FnStyleSpace(pub ast::FnStyle);
 /// Wrapper struct for properly emitting a method declaration.
 pub struct Method<'a>(pub &'a clean::SelfTy, pub &'a clean::FnDecl);
+/// Similar to VisSpace, but used for mutability
+pub struct MutableSpace(pub clean::Mutability);
 
 impl VisSpace {
     pub fn get(&self) -> Option<ast::Visibility> {
@@ -438,24 +440,14 @@ impl fmt::Show for clean::Type {
             clean::Unique(ref t) => write!(f, "~{}", **t),
             clean::Managed(ref t) => write!(f, "@{}", **t),
             clean::RawPointer(m, ref t) => {
-                write!(f, "*{}{}",
-                       match m {
-                           clean::Mutable => "mut ",
-                           clean::Immutable => "",
-                       }, **t)
+                write!(f, "*{}{}", MutableSpace(m), **t)
             }
             clean::BorrowedRef{ lifetime: ref l, mutability, type_: ref ty} => {
                 let lt = match *l {
                     Some(ref l) => format!("{} ", *l),
                     _ => "".to_string(),
                 };
-                write!(f, "&amp;{}{}{}",
-                       lt,
-                       match mutability {
-                           clean::Mutable => "mut ",
-                           clean::Immutable => "",
-                       },
-                       **ty)
+                write!(f, "&amp;{}{}{}", lt, MutableSpace(mutability), **ty)
             }
         }
     }
@@ -494,17 +486,13 @@ impl<'a> fmt::Show for Method<'a> {
             clean::SelfStatic => {},
             clean::SelfValue => args.push_str("self"),
             clean::SelfOwned => args.push_str("~self"),
-            clean::SelfBorrowed(Some(ref lt), clean::Immutable) => {
-                args.push_str(format!("&amp;{} self", *lt).as_slice());
+            clean::SelfBorrowed(Some(ref lt), mtbl) => {
+                args.push_str(format!("&amp;{} {}self", *lt,
+                                      MutableSpace(mtbl)).as_slice());
             }
-            clean::SelfBorrowed(Some(ref lt), clean::Mutable) => {
-                args.push_str(format!("&amp;{} mut self", *lt).as_slice());
-            }
-            clean::SelfBorrowed(None, clean::Mutable) => {
-                args.push_str("&amp;mut self");
-            }
-            clean::SelfBorrowed(None, clean::Immutable) => {
-                args.push_str("&amp;self");
+            clean::SelfBorrowed(None, mtbl) => {
+                args.push_str(format!("&amp;{}self",
+                                      MutableSpace(mtbl)).as_slice());
             }
         }
         for (i, input) in d.inputs.values.iter().enumerate() {
@@ -602,6 +590,15 @@ impl fmt::Show for clean::ViewListIdent {
                 resolved_path(f, did, &path, false)
             }
             _ => write!(f, "{}", self.name),
+        }
+    }
+}
+
+impl fmt::Show for MutableSpace {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            MutableSpace(clean::Immutable) => Ok(()),
+            MutableSpace(clean::Mutable) => write!(f, "mut "),
         }
     }
 }

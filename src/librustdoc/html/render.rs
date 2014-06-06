@@ -51,7 +51,7 @@ use rustc::util::nodemap::NodeSet;
 use clean;
 use doctree;
 use fold::DocFolder;
-use html::format::{VisSpace, Method, FnStyleSpace};
+use html::format::{VisSpace, Method, FnStyleSpace, MutableSpace};
 use html::highlight;
 use html::item_type::{ItemType, shortty};
 use html::item_type;
@@ -1441,11 +1441,12 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
 
                 try!(write!(w, "
                     <tr>
-                        <td><code>{}static {}: {}</code>{}</td>
+                        <td><code>{}static {}{}: {}</code>{}</td>
                         <td class='docblock'>{}&nbsp;</td>
                     </tr>
                 ",
                 VisSpace(myitem.visibility),
+                MutableSpace(s.mutability),
                 *myitem.name.get_ref(),
                 s.type_,
                 Initializer(s.expr.as_slice(), Item { cx: cx, item: myitem }),
