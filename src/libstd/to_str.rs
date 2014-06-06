@@ -37,8 +37,8 @@ impl<T: fmt::Show> ToStr for T {
 
 #[cfg(test)]
 mod tests {
+    use prelude::*;
     use super::*;
-    use str::StrAllocating;
 
     #[test]
     fn test_simple_types() {
@@ -54,11 +54,11 @@ mod tests {
 
     #[test]
     fn test_vectors() {
-        let x: ~[int] = box [];
+        let x: Vec<int> = vec![];
         assert_eq!(x.to_str(), "[]".to_string());
-        assert_eq!((box [1]).to_str(), "[1]".to_string());
-        assert_eq!((box [1, 2, 3]).to_str(), "[1, 2, 3]".to_string());
-        assert!((box [box [], box [1], box [1, 1]]).to_str() ==
+        assert_eq!((vec![1]).to_str(), "[1]".to_string());
+        assert_eq!((vec![1, 2, 3]).to_str(), "[1, 2, 3]".to_string());
+        assert!((vec![vec![], vec![1], vec![1, 1]]).to_str() ==
                "[[], [1], [1, 1]]".to_string());
     }
 }

@@ -22,7 +22,7 @@ use option::{Option, None, Some};
 use str::Str;
 use str;
 use slice::{CloneableVector, Splits, Vector, VectorVector,
-            ImmutableEqVector, OwnedVector, ImmutableVector};
+            ImmutableEqVector, ImmutableVector};
 use vec::Vec;
 
 use super::{BytesContainer, GenericPath, GenericPathUnsafe};
@@ -282,7 +282,6 @@ impl GenericPath for Path {
         }
     }
 
-    #[allow(deprecated_owned_vector)]
     fn path_relative_from(&self, base: &Path) -> Option<Path> {
         if self.is_absolute() != base.is_absolute() {
             if self.is_absolute() {

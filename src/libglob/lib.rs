@@ -31,7 +31,6 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/",
        html_playground_url = "http://play.rust-lang.org/")]
-#![deny(deprecated_owned_vector)]
 
 use std::cell::Cell;
 use std::{cmp, os, path};

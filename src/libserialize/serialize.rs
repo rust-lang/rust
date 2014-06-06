@@ -425,32 +425,6 @@ impl<'a, E, S:Encoder<E>,T:Encodable<S, E>> Encodable<S, E> for &'a [T] {
     }
 }
 
-impl<E, S:Encoder<E>,T:Encodable<S, E>> Encodable<S, E> for ~[T] {
-    fn encode(&self, s: &mut S) -> Result<(), E> {
-        s.emit_seq(self.len(), |s| {
-            for (i, e) in self.iter().enumerate() {
-                try!(s.emit_seq_elt(i, |s| e.encode(s)))
-            }
-            Ok(())
-        })
-    }
-}
-
-impl<E, D:Decoder<E>,T:Decodable<D, E>> Decodable<D, E> for ~[T] {
-    fn decode(d: &mut D) -> Result<~[T], E> {
-        use std::vec::FromVec;
-
-        d.read_seq(|d, len| {
-            let mut v: Vec<T> = Vec::with_capacity(len);
-            for i in range(0, len) {
-                v.push(try!(d.read_seq_elt(i, |d| Decodable::decode(d))));
-            }
-            let k: ~[T] = FromVec::from_vec(v);
-            Ok(k)
-        })
-    }
-}
-
 impl<E, S:Encoder<E>,T:Encodable<S, E>> Encodable<S, E> for Vec<T> {
     fn encode(&self, s: &mut S) -> Result<(), E> {
         s.emit_seq(self.len(), |s| {

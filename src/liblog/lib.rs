@@ -115,7 +115,7 @@ if logging is disabled, none of the components of the log will be executed.
        html_playground_url = "http://play.rust-lang.org/")]
 
 #![feature(macro_rules)]
-#![deny(missing_doc, deprecated_owned_vector)]
+#![deny(missing_doc)]
 
 use std::fmt;
 use std::io::LineBufferedWriter;

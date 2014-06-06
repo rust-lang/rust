@@ -828,12 +828,6 @@ impl<'a, T: Show> Show for &'a mut [T] {
     }
 }
 
-impl<T: Show> Show for ~[T] {
-    fn fmt(&self, f: &mut Formatter) -> Result {
-        secret_show(&self.as_slice(), f)
-    }
-}
-
 impl Show for () {
     fn fmt(&self, f: &mut Formatter) -> Result {
         f.pad("()")

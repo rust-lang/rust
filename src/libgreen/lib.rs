@@ -209,7 +209,6 @@
 // NB this does *not* include globs, please keep it that way.
 #![feature(macro_rules, phase)]
 #![allow(visible_private_types)]
-#![deny(deprecated_owned_vector)]
 
 #[cfg(test)] #[phase(plugin, link)] extern crate log;
 #[cfg(test)] extern crate rustuv;

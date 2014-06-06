@@ -12,7 +12,6 @@
 
 #![allow(dead_code)]
 #![deny(unused_unsafe)]
-#![allow(deprecated_owned_vector)]
 
 
 mod foo {

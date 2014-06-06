@@ -660,7 +660,7 @@ mod tests {
             }
         }
 
-        fn R(i: Rc<RefCell<int>>) -> R {
+        fn r(i: Rc<RefCell<int>>) -> R {
             R {
                 i: i
             }
@@ -673,7 +673,7 @@ mod tests {
 
         let i = Rc::new(RefCell::new(0));
         {
-            let x = R(realclone(&i));
+            let x = r(realclone(&i));
             let opt = Some(x);
             let _y = opt.unwrap();
         }

@@ -88,7 +88,6 @@
        html_playground_url = "http://play.rust-lang.org/")]
 #![feature(globs, phase)]
 #![deny(missing_doc)]
-#![deny(deprecated_owned_vector)]
 
 #[cfg(test)] extern crate debug;
 #[cfg(test, stage0)] #[phase(syntax, link)] extern crate log;

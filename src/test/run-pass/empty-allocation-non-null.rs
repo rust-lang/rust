@@ -13,7 +13,4 @@ pub fn main() {
 
     struct Foo;
     assert!(Some(box Foo).is_some());
-
-    let xs: ~[()] = ~[];
-    assert!(Some(xs).is_some());
 }
