@@ -130,9 +130,7 @@ fn inject_crates_ref(sess: &Session, krate: ast::Crate) -> ast::Crate {
     fold.fold_crate(krate)
 }
 
-struct PreludeInjector<'a> {
-    sess: &'a Session,
-}
+struct PreludeInjector<'a>;
 
 
 impl<'a> fold::Folder for PreludeInjector<'a> {
@@ -223,9 +221,7 @@ impl<'a> fold::Folder for PreludeInjector<'a> {
     }
 }
 
-fn inject_prelude(sess: &Session, krate: ast::Crate) -> ast::Crate {
-    let mut fold = PreludeInjector {
-        sess: sess,
-    };
+fn inject_prelude(_: &Session, krate: ast::Crate) -> ast::Crate {
+    let mut fold = PreludeInjector;
     fold.fold_crate(krate)
 }

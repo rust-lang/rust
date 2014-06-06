@@ -86,7 +86,7 @@ pub struct Library {
 }
 
 pub struct ArchiveMetadata {
-    archive: ArchiveRO,
+    _archive: ArchiveRO,
     // See comments in ArchiveMetadata::new for why this is static
     data: &'static [u8],
 }
@@ -487,7 +487,7 @@ impl ArchiveMetadata {
             unsafe { mem::transmute(data) }
         };
         Some(ArchiveMetadata {
-            archive: ar,
+            _archive: ar,
             data: data,
         })
     }

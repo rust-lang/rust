@@ -42,23 +42,17 @@ pub fn indent<R>(op: || -> R) -> R {
     r
 }
 
-pub struct _indenter {
-    _i: (),
+pub struct Indenter {
+    _cannot_construct_outside_of_this_module: ()
 }
 
-impl Drop for _indenter {
+impl Drop for Indenter {
     fn drop(&mut self) { debug!("<<"); }
 }
 
-pub fn _indenter(_i: ()) -> _indenter {
-    _indenter {
-        _i: ()
-    }
-}
-
-pub fn indenter() -> _indenter {
+pub fn indenter() -> Indenter {
     debug!(">>");
-    _indenter(())
+    Indenter { _cannot_construct_outside_of_this_module: () }
 }
 
 struct LoopQueryVisitor<'a> {

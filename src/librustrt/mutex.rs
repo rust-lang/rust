@@ -339,10 +339,12 @@ mod imp {
         #[cfg(target_arch = "mips")]
         static __SIZEOF_PTHREAD_COND_T: uint = 48 - 8;
 
+        #[repr(C)]
         pub struct pthread_mutex_t {
             __align: libc::c_longlong,
             size: [u8, ..__SIZEOF_PTHREAD_MUTEX_T],
         }
+        #[repr(C)]
         pub struct pthread_cond_t {
             __align: libc::c_longlong,
             size: [u8, ..__SIZEOF_PTHREAD_COND_T],

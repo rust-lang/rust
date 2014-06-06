@@ -254,7 +254,10 @@ pub struct TcpStream {
 
 struct Inner {
     fd: sock_t,
-    lock: mutex::NativeMutex,
+
+    // Unused on Linux, where this lock is not necessary.
+    #[allow(dead_code)]
+    lock: mutex::NativeMutex
 }
 
 pub struct Guard<'a> {

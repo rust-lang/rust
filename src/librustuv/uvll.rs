@@ -136,6 +136,7 @@ pub struct uv_process_options_t {
 
 // These fields are private because they must be interfaced with through the
 // functions below.
+#[repr(C)]
 pub struct uv_stdio_container_t {
     flags: libc::c_int,
     stream: *uv_stream_t,

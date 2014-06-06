@@ -52,9 +52,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 struct UniversalQuantificationResult {
-    monotype: t,
-    type_variables: Vec<ty::t> ,
-    type_param_defs: Rc<Vec<ty::TypeParameterDef> >
+    monotype: t
 }
 
 fn get_base_type(inference_context: &InferCtxt,
@@ -515,9 +513,7 @@ impl<'a> CoherenceChecker<'a> {
         let monotype = polytype.ty.subst(self.crate_context.tcx, &substitutions);
 
         UniversalQuantificationResult {
-            monotype: monotype,
-            type_variables: substitutions.tps,
-            type_param_defs: polytype.generics.type_param_defs.clone()
+            monotype: monotype
         }
     }
 

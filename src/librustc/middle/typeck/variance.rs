@@ -271,7 +271,6 @@ enum ParamKind { TypeParam, RegionParam, SelfParam }
 struct InferredInfo<'a> {
     item_id: ast::NodeId,
     kind: ParamKind,
-    index: uint,
     param_id: ast::NodeId,
     term: VarianceTermPtr<'a>,
 }
@@ -310,7 +309,6 @@ impl<'a> TermsContext<'a> {
         let term = self.arena.alloc(|| InferredTerm(inf_index));
         self.inferred_infos.push(InferredInfo { item_id: item_id,
                                                 kind: kind,
-                                                index: index,
                                                 param_id: param_id,
                                                 term: term });
         let newly_added = self.inferred_map.insert(param_id, inf_index);
