@@ -356,7 +356,7 @@ impl MoveData {
         let path_index = self.move_path(tcx, lp.clone());
 
         match mode {
-            euv::JustWrite => {
+            euv::Init | euv::JustWrite => {
                 self.assignee_ids.borrow_mut().insert(assignee_id);
             }
             euv::WriteAndRead => { }
