@@ -15,7 +15,7 @@ to override searching for external crates.
 The intent of CrateId and its support has become unclear over time as the
 initial impetus, `rustpkg`, has faded over time. With `cargo` on the horizon,
 doubts have been cast on the compiler's support for dealing with crate
-versions and friends. The goal of this RFC is to "dumb down" the compiler's
+versions and friends. The goal of this RFC is to simplify the compiler's
 knowledge about the identity of a crate to allow cargo to do all the necessary
 heavy lifting.
 
@@ -28,13 +28,17 @@ with a CrateId should still be supported.
 A new `crate` attribute will be accepted by the compiler. For example:
 
 ```rust
-#![crate(name = "json", type = "dylib", type = "rlib", version = "1.0.2-pre)]
+#![crate(name = "json", type = "dylib", type = "rlib", version = "1.0.2-pre")]
 ```
 
 Breaking down this attribute:
 
 * `crate` - This is a new top-level attribute which has an inner list of meta
             items which are intended to describe the current crate.
+* `name` - This meta item is recognized by the compiler to provide a name for
+           the crate being compiled. This will override the compiler's inference
+           of the crate name based on the file name being compiled. This is also
+           later used to match with when upstream crates link to this one.
 * `type` - This will supersede the `#[crate_type]` attribute. The `crate`
            attribute can contain multiple `type` meta items, describing the type
            of output of this crate. This is used to describe whether the output
@@ -54,7 +58,7 @@ The compiler currently disallows keywords in attributes. This rule would be
 amended to allow any identifier an attribute names and attribute keys. This is
 primarily done to allow the `crate` and `type` attributes to exist.
 
-## Naming files
+## Naming library filenames
 
 Currently, rustc crates filenames for library following this pattern:
 
