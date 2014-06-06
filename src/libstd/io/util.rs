@@ -300,24 +300,24 @@ mod test {
     #[test]
     fn test_null_writer() {
         let mut s = NullWriter;
-        let buf = box [0, 0, 0];
-        s.write(buf).unwrap();
+        let buf = vec![0, 0, 0];
+        s.write(buf.as_slice()).unwrap();
         s.flush().unwrap();
     }
 
     #[test]
     fn test_zero_reader() {
         let mut s = ZeroReader;
-        let mut buf = box [1, 2, 3];
-        assert_eq!(s.read(buf), Ok(3));
-        assert_eq!(box [0, 0, 0], buf);
+        let mut buf = vec![1, 2, 3];
+        assert_eq!(s.read(buf.as_mut_slice()), Ok(3));
+        assert_eq!(vec![0, 0, 0], buf);
     }
 
     #[test]
     fn test_null_reader() {
         let mut r = NullReader;
-        let mut buf = box [0];
-        assert!(r.read(buf).is_err());
+        let mut buf = vec![0];
+        assert!(r.read(buf.as_mut_slice()).is_err());
     }
 
     #[test]

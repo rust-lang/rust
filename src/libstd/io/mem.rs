@@ -450,8 +450,8 @@ mod test {
 
     #[test]
     fn test_buf_reader() {
-        let in_buf = box [0, 1, 2, 3, 4, 5, 6, 7];
-        let mut reader = BufReader::new(in_buf);
+        let in_buf = vec![0, 1, 2, 3, 4, 5, 6, 7];
+        let mut reader = BufReader::new(in_buf.as_slice());
         let mut buf = [];
         assert_eq!(reader.read(buf), Ok(0));
         assert_eq!(reader.tell(), Ok(0));
@@ -466,7 +466,7 @@ mod test {
         assert_eq!(reader.read(buf), Ok(3));
         assert_eq!(buf.slice(0, 3), &[5, 6, 7]);
         assert!(reader.read(buf).is_err());
-        let mut reader = BufReader::new(in_buf);
+        let mut reader = BufReader::new(in_buf.as_slice());
         assert_eq!(reader.read_until(3).unwrap(), vec!(0, 1, 2, 3));
         assert_eq!(reader.read_until(3).unwrap(), vec!(4, 5, 6, 7));
         assert!(reader.read(buf).is_err());

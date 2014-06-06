@@ -30,6 +30,7 @@ pub enum ObsoleteSyntax {
     ObsoleteOwnedType,
     ObsoleteOwnedExpr,
     ObsoleteOwnedPattern,
+    ObsoleteOwnedVector,
 }
 
 pub trait ParserObsoleteMethods {
@@ -62,6 +63,10 @@ impl<'a> ParserObsoleteMethods for parser::Parser<'a> {
             ObsoleteOwnedPattern => (
                 "`~` notation for owned pointer patterns",
                 "use the `box` operator instead of `~`"
+            ),
+            ObsoleteOwnedVector => (
+                "`~[T]` is no longer a type",
+                "use the `Vec` type instead"
             ),
         };
 

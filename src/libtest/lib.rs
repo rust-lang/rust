@@ -33,7 +33,6 @@
        html_root_url = "http://doc.rust-lang.org/")]
 
 #![feature(asm, macro_rules, phase)]
-#![deny(deprecated_owned_vector)]
 
 extern crate getopts;
 extern crate regex;
@@ -72,7 +71,7 @@ pub mod test {
              MetricChange, Improvement, Regression, LikelyNoise,
              StaticTestFn, StaticTestName, DynTestName, DynTestFn,
              run_test, test_main, test_main_static, filter_tests,
-             parse_opts, StaticBenchFn, test_main_static_x};
+             parse_opts, StaticBenchFn};
 }
 
 pub mod stats;
@@ -261,14 +260,6 @@ pub fn test_main_static(args: &[String], tests: &[TestDescAndFn]) {
         }
     }).collect();
     test_main(args, owned_tests)
-}
-
-pub fn test_main_static_x(args: &[~str], tests: &[TestDescAndFn]) {
-    test_main_static(args.iter()
-                         .map(|x| x.to_string())
-                         .collect::<Vec<_>>()
-                         .as_slice(),
-                     tests)
 }
 
 pub enum ColorConfig {

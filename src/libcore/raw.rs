@@ -29,16 +29,6 @@ pub struct Box<T> {
     pub data: T,
 }
 
-/// The representation of a Rust vector
-pub struct Vec<T> {
-    pub fill: uint,
-    pub alloc: uint,
-    pub data: T,
-}
-
-/// The representation of a Rust string
-pub type String = Vec<u8>;
-
 /// The representation of a Rust slice
 pub struct Slice<T> {
     pub data: *T,
@@ -79,7 +69,6 @@ pub trait Repr<T> {
 
 impl<'a, T> Repr<Slice<T>> for &'a [T] {}
 impl<'a> Repr<Slice<u8>> for &'a str {}
-impl<T> Repr<*Vec<T>> for ~[T] {}
 
 #[cfg(test)]
 mod tests {

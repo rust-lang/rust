@@ -13,7 +13,6 @@
 use core::prelude::*;
 
 use alloc::heap::{allocate, reallocate, deallocate};
-use RawVec = core::raw::Vec;
 use core::raw::Slice;
 use core::cmp::max;
 use core::default::Default;
@@ -25,7 +24,7 @@ use core::ptr;
 use core::uint;
 
 use {Collection, Mutable};
-use slice::{MutableOrdVector, OwnedVector, MutableVectorAllocating};
+use slice::{MutableOrdVector, MutableVectorAllocating, CloneableVector};
 use slice::{Items, MutItems};
 
 /// An owned, growable vector.
@@ -387,6 +386,11 @@ impl<T: PartialOrd> PartialOrd for Vec<T> {
 
 impl<T: Eq> Eq for Vec<T> {}
 
+impl<T: PartialEq, V: Vector<T>> Equiv<V> for Vec<T> {
+    #[inline]
+    fn equiv(&self, other: &V) -> bool { self.as_slice() == other.as_slice() }
+}
+
 impl<T: Ord> Ord for Vec<T> {
     #[inline]
     fn cmp(&self, other: &Vec<T>) -> Ordering {
@@ -399,6 +403,11 @@ impl<T> Collection for Vec<T> {
     fn len(&self) -> uint {
         self.len
     }
+}
+
+impl<T: Clone> CloneableVector<T> for Vec<T> {
+    fn to_owned(&self) -> Vec<T> { self.clone() }
+    fn into_owned(self) -> Vec<T> { self }
 }
 
 // FIXME: #13996: need a way to mark the return value as `noalias`
@@ -1511,52 +1520,6 @@ pub fn unzip<T, U, V: Iterator<(T, U)>>(mut iter: V) -> (Vec<T>, Vec<U>) {
     (ts, us)
 }
 
-/// Mechanism to convert from a `Vec<T>` to a `[T]`.
-///
-/// In a post-DST world this will be used to convert to any `Ptr<[T]>`.
-///
-/// This could be implemented on more types than just pointers to vectors, but
-/// the recommended approach for those types is to implement `FromIterator`.
-// FIXME(#12938): Update doc comment when DST lands
-pub trait FromVec<T> {
-    /// Convert a `Vec<T>` into the receiver type.
-    fn from_vec(v: Vec<T>) -> Self;
-}
-
-impl<T> FromVec<T> for ~[T] {
-    fn from_vec(mut v: Vec<T>) -> ~[T] {
-        let len = v.len();
-        let data_size = len.checked_mul(&mem::size_of::<T>());
-        let data_size = data_size.expect("overflow in from_vec()");
-        let size = mem::size_of::<RawVec<()>>().checked_add(&data_size);
-        let size = size.expect("overflow in from_vec()");
-
-        // In a post-DST world, we can attempt to reuse the Vec allocation by calling
-        // shrink_to_fit() on it. That may involve a reallocation+memcpy, but that's no
-        // different than what we're doing manually here.
-
-        let vp = v.as_mut_ptr();
-
-        unsafe {
-            let ret = allocate(size, 8) as *mut RawVec<()>;
-
-            let a_size = mem::size_of::<T>();
-            let a_size = if a_size == 0 {1} else {a_size};
-            (*ret).fill = len * a_size;
-            (*ret).alloc = len * a_size;
-
-            ptr::copy_nonoverlapping_memory(&mut (*ret).data as *mut _ as *mut u8,
-                                            vp as *u8, data_size);
-
-            // we've transferred ownership of the contents from v, but we can't drop it
-            // as it still needs to free its own allocation.
-            v.set_len(0);
-
-            mem::transmute(ret)
-        }
-    }
-}
-
 /// Unsafe operations
 pub mod raw {
     use super::Vec;
@@ -1580,8 +1543,7 @@ pub mod raw {
 mod tests {
     use std::prelude::*;
     use std::mem::size_of;
-    use std::kinds::marker;
-    use super::{unzip, raw, FromVec, Vec};
+    use super::{unzip, raw, Vec};
 
     #[test]
     fn test_small_vec_struct() {
@@ -1830,37 +1792,11 @@ mod tests {
             assert_eq!(b, vec![1, 2, 3]);
 
             // Test on-heap copy-from-buf.
-            let c = box [1, 2, 3, 4, 5];
+            let c = vec![1, 2, 3, 4, 5];
             let ptr = c.as_ptr();
             let d = raw::from_buf(ptr, 5u);
             assert_eq!(d, vec![1, 2, 3, 4, 5]);
         }
-    }
-
-    #[test]
-    fn test_from_vec() {
-        let a = vec![1u, 2, 3];
-        let b: ~[uint] = FromVec::from_vec(a);
-        assert_eq!(b.as_slice(), &[1u, 2, 3]);
-
-        let a = vec![];
-        let b: ~[u8] = FromVec::from_vec(a);
-        assert_eq!(b.as_slice(), &[]);
-
-        let a = vec!["one".to_string(), "two".to_string()];
-        let b: ~[String] = FromVec::from_vec(a);
-        assert_eq!(b.as_slice(), &["one".to_string(), "two".to_string()]);
-
-        struct Foo {
-            x: uint,
-            nocopy: marker::NoCopy
-        }
-
-        let a = vec![Foo{x: 42, nocopy: marker::NoCopy}, Foo{x: 84, nocopy: marker::NoCopy}];
-        let b: ~[Foo] = FromVec::from_vec(a);
-        assert_eq!(b.len(), 2);
-        assert_eq!(b[0].x, 42);
-        assert_eq!(b[1].x, 84);
     }
 
     #[test]

@@ -52,6 +52,9 @@ fs::unlink(&path);
 use c_str::ToCStr;
 use clone::Clone;
 use collections::Collection;
+use io::{FilePermission, Write, UnstableFileStat, Open, FileAccess, FileMode};
+use io::{IoResult, IoError, FileStat, SeekStyle, Seek, Writer, Reader};
+use io::{Read, Truncate, SeekCur, SeekSet, ReadWrite, SeekEnd, Append};
 use io;
 use iter::Iterator;
 use kinds::Send;
@@ -60,14 +63,10 @@ use option::{Some, None, Option};
 use owned::Box;
 use path::{Path, GenericPath};
 use path;
-use result::{Ok, Err};
-use rt::rtio::{RtioFileStream, IoFactory, LocalIo};
+use result::{Err, Ok};
+use rt::rtio::LocalIo;
 use rt::rtio;
-use slice::{OwnedVector, ImmutableVector};
-use super::UnstableFileStat;
-use super::{FileMode, FileAccess, FileStat, IoResult, FilePermission};
-use super::{Reader, Writer, Seek, Append, SeekCur, SeekEnd, SeekSet};
-use super::{SeekStyle, Read, Write, ReadWrite, Open, IoError, Truncate};
+use slice::ImmutableVector;
 use vec::Vec;
 
 /// Unconstrained file access type that exposes read and write operations
@@ -82,7 +81,7 @@ use vec::Vec;
 /// configured at creation time, via the `FileAccess` parameter to
 /// `File::open_mode()`.
 pub struct File {
-    fd: Box<RtioFileStream:Send>,
+    fd: Box<rtio::RtioFileStream:Send>,
     path: Path,
     last_nread: int,
 }
@@ -846,7 +845,7 @@ mod test {
             let mut read_buf = [0, .. 1028];
             let read_str = match check!(read_stream.read(read_buf)) {
                 -1|0 => fail!("shouldn't happen"),
-                n => str::from_utf8(read_buf.slice_to(n).to_owned()).unwrap().to_owned()
+                n => str::from_utf8(read_buf.slice_to(n)).unwrap().to_owned()
             };
             assert_eq!(read_str, message.to_owned());
         }

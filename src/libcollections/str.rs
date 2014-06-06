@@ -707,7 +707,7 @@ pub mod raw {
         use str::StrAllocating;
 
         unsafe {
-            let a = ~[65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 0u8];
+            let a = vec![65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 0u8];
             let b = a.as_ptr();
             let c = from_buf_len(b, 3u);
             assert_eq!(c, "AAA".to_string());
@@ -1124,7 +1124,7 @@ mod tests {
         assert!(half_a_million_letter_a() ==
             unsafe {raw::slice_bytes(letters.as_slice(),
                                      0u,
-                                     500000)}.to_owned());
+                                     500000)}.to_string());
     }
 
     #[test]
@@ -1219,7 +1219,7 @@ mod tests {
         assert_eq!("", data.slice(3, 3));
         assert_eq!("华", data.slice(30, 33));
 
-        fn a_million_letter_X() -> String {
+        fn a_million_letter_x() -> String {
             let mut i = 0;
             let mut rs = String::new();
             while i < 100000 {
@@ -1228,7 +1228,7 @@ mod tests {
             }
             rs
         }
-        fn half_a_million_letter_X() -> String {
+        fn half_a_million_letter_x() -> String {
             let mut i = 0;
             let mut rs = String::new();
             while i < 100000 {
@@ -1237,9 +1237,9 @@ mod tests {
             }
             rs
         }
-        let letters = a_million_letter_X();
-        assert!(half_a_million_letter_X() ==
-            letters.as_slice().slice(0u, 3u * 500000u).to_owned());
+        let letters = a_million_letter_x();
+        assert!(half_a_million_letter_x() ==
+            letters.as_slice().slice(0u, 3u * 500000u).to_string());
     }
 
     #[test]
@@ -1464,7 +1464,7 @@ mod tests {
     #[test]
     fn test_raw_from_c_str() {
         unsafe {
-            let a = box [65, 65, 65, 65, 65, 65, 65, 0];
+            let a = vec![65, 65, 65, 65, 65, 65, 65, 0];
             let b = a.as_ptr();
             let c = raw::from_c_str(b);
             assert_eq!(c, "AAAAAAA".to_string());
@@ -1682,7 +1682,7 @@ mod tests {
     #[test]
     fn test_char_at() {
         let s = "ศไทย中华Việt Nam";
-        let v = box ['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a','m'];
+        let v = vec!['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a','m'];
         let mut pos = 0;
         for ch in v.iter() {
             assert!(s.char_at(pos) == *ch);
@@ -1693,7 +1693,7 @@ mod tests {
     #[test]
     fn test_char_at_reverse() {
         let s = "ศไทย中华Việt Nam";
-        let v = box ['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a','m'];
+        let v = vec!['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a','m'];
         let mut pos = s.len();
         for ch in v.iter().rev() {
             assert!(s.char_at_reverse(pos) == *ch);
@@ -1756,7 +1756,7 @@ mod tests {
     #[test]
     fn test_iterator() {
         let s = "ศไทย中华Việt Nam";
-        let v = box ['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a','m'];
+        let v = ['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a','m'];
 
         let mut pos = 0;
         let mut it = s.chars();
@@ -1771,7 +1771,7 @@ mod tests {
     #[test]
     fn test_rev_iterator() {
         let s = "ศไทย中华Việt Nam";
-        let v = box ['m', 'a', 'N', ' ', 't', 'ệ','i','V','华','中','ย','ท','ไ','ศ'];
+        let v = ['m', 'a', 'N', ' ', 't', 'ệ','i','V','华','中','ย','ท','ไ','ศ'];
 
         let mut pos = 0;
         let mut it = s.chars().rev();

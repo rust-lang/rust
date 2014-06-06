@@ -11,7 +11,6 @@
 #![feature(managed_boxes)]
 #![forbid(heap_memory)]
 #![allow(dead_code)]
-#![allow(deprecated_owned_vector)]
 
 
 struct Foo {

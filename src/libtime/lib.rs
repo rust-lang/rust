@@ -20,7 +20,6 @@
        html_root_url = "http://doc.rust-lang.org/",
        html_playground_url = "http://play.rust-lang.org/")]
 #![feature(phase)]
-#![deny(deprecated_owned_vector)]
 
 #[cfg(test)] extern crate debug;
 

@@ -155,24 +155,6 @@ unsafe fn closure_exchange_malloc(drop_glue: fn(*mut u8), size: uint, align: uin
     alloc as *mut u8
 }
 
-// hack for libcore
-#[no_mangle]
-#[doc(hidden)]
-#[deprecated]
-#[cfg(not(test))]
-pub unsafe extern "C" fn rust_allocate(size: uint, align: uint) -> *mut u8 {
-    allocate(size, align)
-}
-
-// hack for libcore
-#[no_mangle]
-#[doc(hidden)]
-#[deprecated]
-#[cfg(not(test))]
-pub unsafe extern "C" fn rust_deallocate(ptr: *mut u8, size: uint, align: uint) {
-    deallocate(ptr, size, align)
-}
-
 #[cfg(test)]
 mod bench {
     extern crate test;
@@ -182,13 +164,6 @@ mod bench {
     fn alloc_owned_small(b: &mut Bencher) {
         b.iter(|| {
             box 10
-        })
-    }
-
-    #[bench]
-    fn alloc_owned_big(b: &mut Bencher) {
-        b.iter(|| {
-            box [10, ..1000]
         })
     }
 }

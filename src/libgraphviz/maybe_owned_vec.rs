@@ -26,17 +26,13 @@ use std::slice;
 // of the contents of `Vec<T>`, since we anticipate that to be a
 // frequent way to dynamically construct a vector.
 
-/// MaybeOwnedVector<'a,T> abstracts over `Vec<T>`, `~[T]`, `&'a [T]`.
+/// MaybeOwnedVector<'a,T> abstracts over `Vec<T>`, `&'a [T]`.
 ///
 /// Some clients will have a pre-allocated vector ready to hand off in
 /// a slice; others will want to create the set on the fly and hand
-/// off ownership, via either `Growable` or `FixedLen` depending on
-/// which kind of vector they have constructed.  (The `FixedLen`
-/// variant is provided for interoperability with `std::slice` methods
-/// that return `~[T]`.)
+/// off ownership, via `Growable`.
 pub enum MaybeOwnedVector<'a,T> {
     Growable(Vec<T>),
-    FixedLen(~[T]),
     Borrowed(&'a [T]),
 }
 
@@ -51,11 +47,6 @@ impl<'a,T> IntoMaybeOwnedVector<'a,T> for Vec<T> {
     fn into_maybe_owned(self) -> MaybeOwnedVector<'a,T> { Growable(self) }
 }
 
-impl<'a,T> IntoMaybeOwnedVector<'a,T> for ~[T] {
-    #[inline]
-    fn into_maybe_owned(self) -> MaybeOwnedVector<'a,T> { FixedLen(self) }
-}
-
 impl<'a,T> IntoMaybeOwnedVector<'a,T> for &'a [T] {
     #[inline]
     fn into_maybe_owned(self) -> MaybeOwnedVector<'a,T> { Borrowed(self) }
@@ -65,7 +56,6 @@ impl<'a,T> MaybeOwnedVector<'a,T> {
     pub fn iter(&'a self) -> slice::Items<'a,T> {
         match self {
             &Growable(ref v) => v.iter(),
-            &FixedLen(ref v) => v.iter(),
             &Borrowed(ref v) => v.iter(),
         }
     }
@@ -84,7 +74,6 @@ impl<'b,T> slice::Vector<T> for MaybeOwnedVector<'b,T> {
     fn as_slice<'a>(&'a self) -> &'a [T] {
         match self {
             &Growable(ref v) => v.as_slice(),
-            &FixedLen(ref v) => v.as_slice(),
             &Borrowed(ref v) => v.as_slice(),
         }
     }
@@ -106,15 +95,14 @@ impl<'a,T:fmt::Show> fmt::Show for MaybeOwnedVector<'a,T> {
 
 impl<'a,T:Clone> CloneableVector<T> for MaybeOwnedVector<'a,T> {
     /// Returns a copy of `self`.
-    fn to_owned(&self) -> ~[T] {
+    fn to_owned(&self) -> Vec<T> {
         self.as_slice().to_owned()
     }
 
     /// Convert `self` into an owned slice, not making a copy if possible.
-    fn into_owned(self) -> ~[T] {
+    fn into_owned(self) -> Vec<T> {
         match self {
             Growable(v) => v.as_slice().to_owned(),
-            FixedLen(v) => v,
             Borrowed(v) => v.to_owned(),
         }
     }
@@ -125,7 +113,6 @@ impl<'a,T:Clone> MaybeOwnedVector<'a,T> {
     pub fn into_vec(self) -> Vec<T> {
         match self {
             Growable(v) => v,
-            FixedLen(v) => Vec::from_slice(v.as_slice()),
             Borrowed(v) => Vec::from_slice(v),
         }
     }

@@ -13,7 +13,6 @@
 #![allow(dead_assignment)]
 #![allow(unused_variable)]
 #![allow(dead_code)]
-#![allow(deprecated_owned_vector)]
 #![deny(unused_mut)]
 
 
