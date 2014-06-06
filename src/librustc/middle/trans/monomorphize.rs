@@ -129,9 +129,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
         hash_id.hash(&mut state);
         mono_ty.hash(&mut state);
 
-        exported_name(path,
-                      format!("h{}", state.result()).as_slice(),
-                      ccx.link_meta.crateid.version_or_default())
+        exported_name(path, format!("h{}", state.result()).as_slice())
     });
     debug!("monomorphize_fn mangled to {}", s);
 

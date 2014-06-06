@@ -19,7 +19,6 @@ use attr;
 use attr::AttrMetaMethods;
 use codemap;
 use codemap::{Span, Spanned, ExpnInfo, NameAndSpan, MacroBang, MacroAttribute};
-use crateid::CrateId;
 use ext::base::*;
 use fold;
 use fold::*;
@@ -985,7 +984,7 @@ fn new_span(cx: &ExtCtxt, sp: Span) -> Span {
 
 pub struct ExpansionConfig {
     pub deriving_hash_type_parameter: bool,
-    pub crate_id: CrateId,
+    pub crate_name: String,
 }
 
 pub struct ExportedMacros {
@@ -1184,7 +1183,7 @@ mod test {
         // should fail:
         let cfg = ::syntax::ext::expand::ExpansionConfig {
             deriving_hash_type_parameter: false,
-            crate_id: from_str("test").unwrap(),
+            crate_name: "test".to_str(),
         };
         expand_crate(&sess,cfg,vec!(),vec!(),crate_ast);
     }
@@ -1201,7 +1200,7 @@ mod test {
             Vec::new(), &sess);
         let cfg = ::syntax::ext::expand::ExpansionConfig {
             deriving_hash_type_parameter: false,
-            crate_id: from_str("test").unwrap(),
+            crate_name: "test".to_str(),
         };
         expand_crate(&sess,cfg,vec!(),vec!(),crate_ast);
     }
@@ -1217,7 +1216,7 @@ mod test {
             Vec::new(), &sess);
         let cfg = ::syntax::ext::expand::ExpansionConfig {
             deriving_hash_type_parameter: false,
-            crate_id: from_str("test").unwrap(),
+            crate_name: "test".to_str(),
         };
         expand_crate(&sess, cfg, vec!(), vec!(), crate_ast);
     }
@@ -1254,7 +1253,7 @@ mod test {
         // the cfg argument actually does matter, here...
         let cfg = ::syntax::ext::expand::ExpansionConfig {
             deriving_hash_type_parameter: false,
-            crate_id: from_str("test").unwrap(),
+            crate_name: "test".to_str(),
         };
         expand_crate(&ps,cfg,vec!(),vec!(),crate_ast)
     }

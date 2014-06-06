@@ -18,7 +18,6 @@ use diagnostic::SpanHandler;
 use parse::lexer::comments::{doc_comment_style, strip_doc_comment_decoration};
 use parse::token::InternedString;
 use parse::token;
-use crateid::CrateId;
 
 use std::collections::HashSet;
 use std::collections::BitvSet;
@@ -271,11 +270,8 @@ pub fn sort_meta_items(items: &[Gc<MetaItem>]) -> Vec<Gc<MetaItem>> {
     }).collect()
 }
 
-pub fn find_crateid(attrs: &[Attribute]) -> Option<CrateId> {
-    match first_attr_value_str_by_name(attrs, "crate_id") {
-        None => None,
-        Some(id) => from_str::<CrateId>(id.get()),
-    }
+pub fn find_crate_name(attrs: &[Attribute]) -> Option<InternedString> {
+    first_attr_value_str_by_name(attrs, "crate_name")
 }
 
 #[deriving(PartialEq)]

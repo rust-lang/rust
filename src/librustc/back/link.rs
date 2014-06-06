@@ -19,7 +19,7 @@ use lib::llvm::llvm;
 use lib::llvm::ModuleRef;
 use lib;
 use metadata::common::LinkMeta;
-use metadata::{encoder, cstore, filesearch, csearch, loader};
+use metadata::{encoder, cstore, filesearch, csearch, loader, creader};
 use middle::trans::context::CrateContext;
 use middle::trans::common::gensym_name;
 use middle::ty;
@@ -40,9 +40,8 @@ use syntax::abi;
 use syntax::ast;
 use syntax::ast_map::{PathElem, PathElems, PathName};
 use syntax::ast_map;
-use syntax::attr;
 use syntax::attr::AttrMetaMethods;
-use syntax::crateid::CrateId;
+use syntax::codemap::Span;
 use syntax::parse::token;
 
 #[deriving(Clone, PartialEq, PartialOrd, Ord, Eq)]
@@ -547,18 +546,49 @@ pub mod write {
  */
 
 // FIXME (#9639): This needs to handle non-utf8 `out_filestem` values
-pub fn find_crate_id(attrs: &[ast::Attribute], out_filestem: &str) -> CrateId {
-    match attr::find_crateid(attrs) {
-        None => from_str(out_filestem).unwrap_or_else(|| {
-            let mut s = out_filestem.chars().filter(|c| c.is_XID_continue());
-            from_str(s.collect::<String>().as_slice())
-                .or(from_str("rust-out")).unwrap()
-        }),
-        Some(s) => s,
+pub fn find_crate_name(sess: Option<&Session>,
+                       attrs: &[ast::Attribute],
+                       out_filestem: &str) -> String {
+    use syntax::crateid::CrateId;
+
+    let validate = |s: String, span: Option<Span>| {
+        creader::validate_crate_name(sess, s.as_slice(), span);
+        s
+    };
+
+    let crate_name = attrs.iter().find(|at| at.check_name("crate_name"))
+                          .and_then(|at| at.value_str().map(|s| (at, s)));
+    match crate_name {
+        Some((attr, s)) => return validate(s.get().to_string(), Some(attr.span)),
+        None => {}
     }
+    let crate_id = attrs.iter().find(|at| at.check_name("crate_id"))
+                        .and_then(|at| at.value_str().map(|s| (at, s)))
+                        .and_then(|(at, s)| {
+                            from_str::<CrateId>(s.get()).map(|id| (at, id))
+                        });
+    match crate_id {
+        Some((attr, id)) => {
+            match sess {
+                Some(sess) => {
+                    sess.span_warn(attr.span, "the #[crate_id] attribute is \
+                                               deprecated for the \
+                                               #[crate_name] attribute");
+                }
+                None => {}
+            }
+            return validate(id.name, Some(attr.span))
+        }
+        None => {}
+    }
+    return validate(from_str(out_filestem).unwrap_or_else(|| {
+        let mut s = out_filestem.chars().filter(|c| c.is_XID_continue());
+        from_str(s.collect::<String>().as_slice())
+            .or(from_str("rust-out")).unwrap()
+    }), None)
 }
 
-pub fn crate_id_hash(crate_id: &CrateId) -> String {
+pub fn crate_name_hash(sess: &Session, crate_name: &str) -> String {
     // This calculates CMH as defined above. Note that we don't use the path of
     // the crate id in the hash because lookups are only done by (name/vers),
     // not by path.
@@ -567,10 +597,9 @@ pub fn crate_id_hash(crate_id: &CrateId) -> String {
     truncated_hash_result(&mut s).as_slice().slice_to(8).to_string()
 }
 
-// FIXME (#9639): This needs to handle non-utf8 `out_filestem` values
-pub fn build_link_meta(krate: &ast::Crate, out_filestem: &str) -> LinkMeta {
+pub fn build_link_meta(krate: &ast::Crate, name: String) -> LinkMeta {
     let r = LinkMeta {
-        crateid: find_crate_id(krate.attrs.as_slice(), out_filestem),
+        crate_name: name,
         crate_hash: Svh::calculate(krate),
     };
     info!("{}", r);
@@ -594,7 +623,7 @@ fn symbol_hash(tcx: &ty::ctxt,
     // to be independent of one another in the crate.
 
     symbol_hasher.reset();
-    symbol_hasher.input_str(link_meta.crateid.name.as_slice());
+    symbol_hasher.input_str(link_meta.crate_name.as_slice());
     symbol_hasher.input_str("-");
     symbol_hasher.input_str(link_meta.crate_hash.as_str());
     symbol_hasher.input_str("-");
@@ -666,8 +695,7 @@ pub fn sanitize(s: &str) -> String {
 }
 
 pub fn mangle<PI: Iterator<PathElem>>(mut path: PI,
-                                      hash: Option<&str>,
-                                      vers: Option<&str>) -> String {
+                                      hash: Option<&str>) -> String {
     // Follow C++ namespace-mangling style, see
     // http://en.wikipedia.org/wiki/Name_mangling for more info.
     //
@@ -698,25 +726,13 @@ pub fn mangle<PI: Iterator<PathElem>>(mut path: PI,
         Some(s) => push(&mut n, s),
         None => {}
     }
-    match vers {
-        Some(s) => push(&mut n, s),
-        None => {}
-    }
 
     n.push_char('E'); // End name-sequence.
     n
 }
 
-pub fn exported_name(path: PathElems, hash: &str, vers: &str) -> String {
-    // The version will get mangled to have a leading '_', but it makes more
-    // sense to lead with a 'v' b/c this is a version...
-    let vers = if vers.len() > 0 && !char::is_XID_start(vers.char_at(0)) {
-        format!("v{}", vers)
-    } else {
-        vers.to_string()
-    };
-
-    mangle(path, Some(hash), Some(vers.as_slice()))
+pub fn exported_name(path: PathElems, hash: &str) -> String {
+    mangle(path, Some(hash))
 }
 
 pub fn mangle_exported_name(ccx: &CrateContext, path: PathElems,
@@ -741,9 +757,7 @@ pub fn mangle_exported_name(ccx: &CrateContext, path: PathElems,
     hash.push_char(EXTRA_CHARS.as_bytes()[extra2] as char);
     hash.push_char(EXTRA_CHARS.as_bytes()[extra3] as char);
 
-    exported_name(path,
-                  hash.as_slice(),
-                  ccx.link_meta.crateid.version_or_default())
+    exported_name(path, hash.as_slice())
 }
 
 pub fn mangle_internal_name_by_type_and_seq(ccx: &CrateContext,
@@ -753,15 +767,11 @@ pub fn mangle_internal_name_by_type_and_seq(ccx: &CrateContext,
     let path = [PathName(token::intern(s.as_slice())),
                 gensym_name(name)];
     let hash = get_symbol_hash(ccx, t);
-    mangle(ast_map::Values(path.iter()), Some(hash.as_slice()), None)
+    mangle(ast_map::Values(path.iter()), Some(hash.as_slice()))
 }
 
 pub fn mangle_internal_name_by_path_and_seq(path: PathElems, flav: &str) -> String {
-    mangle(path.chain(Some(gensym_name(flav)).move_iter()), None, None)
-}
-
-pub fn output_lib_filename(id: &CrateId) -> String {
-    format!("{}-{}-{}", id.name, crate_id_hash(id), id.version_or_default())
+    mangle(path.chain(Some(gensym_name(flav)).move_iter()), None)
 }
 
 pub fn get_cc_prog(sess: &Session) -> String {
@@ -803,14 +813,15 @@ fn remove(sess: &Session, path: &Path) {
 pub fn link_binary(sess: &Session,
                    trans: &CrateTranslation,
                    outputs: &OutputFilenames,
-                   id: &CrateId) -> Vec<Path> {
+                   crate_name: &str) -> Vec<Path> {
     let mut out_filenames = Vec::new();
     for &crate_type in sess.crate_types.borrow().iter() {
         if invalid_output_for_target(sess, crate_type) {
             sess.bug(format!("invalid output type `{}` for target os `{}`",
                              crate_type, sess.targ_cfg.os).as_slice());
         }
-        let out_file = link_binary_output(sess, trans, crate_type, outputs, id);
+        let out_file = link_binary_output(sess, trans, crate_type, outputs,
+                                          crate_name);
         out_filenames.push(out_file);
     }
 
@@ -859,9 +870,11 @@ fn is_writeable(p: &Path) -> bool {
     }
 }
 
-pub fn filename_for_input(sess: &Session, crate_type: config::CrateType,
-                          id: &CrateId, out_filename: &Path) -> Path {
-    let libname = output_lib_filename(id);
+pub fn filename_for_input(sess: &Session,
+                          crate_type: config::CrateType,
+                          name: &str,
+                          out_filename: &Path) -> Path {
+    let libname = format!("{}-{}", name, crate_name_hash(sess, name));
     match crate_type {
         config::CrateTypeRlib => {
             out_filename.with_filename(format!("lib{}.rlib", libname))
@@ -891,13 +904,13 @@ fn link_binary_output(sess: &Session,
                       trans: &CrateTranslation,
                       crate_type: config::CrateType,
                       outputs: &OutputFilenames,
-                      id: &CrateId) -> Path {
+                      crate_name: &str) -> Path {
     let obj_filename = outputs.temp_path(OutputTypeObject);
     let out_filename = match outputs.single_output_file {
         Some(ref file) => file.clone(),
         None => {
             let out_filename = outputs.path(OutputTypeExe);
-            filename_for_input(sess, crate_type, id, &out_filename)
+            filename_for_input(sess, crate_type, crate_name, &out_filename)
         }
     };
 
