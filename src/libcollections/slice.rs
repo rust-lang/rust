@@ -2155,7 +2155,7 @@ mod tests {
     #[test]
     fn test_mut_splitator() {
         let mut xs = [0,1,0,2,3,0,0,4,5,0];
-        assert_eq!(xs.mut_split(|x| *x == 0).len(), 6);
+        assert_eq!(xs.mut_split(|x| *x == 0).count(), 6);
         for slice in xs.mut_split(|x| *x == 0) {
             slice.reverse();
         }
