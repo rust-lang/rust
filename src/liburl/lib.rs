@@ -524,7 +524,7 @@ fn get_authority(rawurl: &str) ->
     Result<(Option<UserInfo>, String, Option<String>, String), String> {
     if !rawurl.starts_with("//") {
         // there is no authority.
-        return Ok((None, "".to_string(), None, rawurl.to_str().to_string()));
+        return Ok((None, "".to_string(), None, rawurl.to_str()));
     }
 
     enum State {

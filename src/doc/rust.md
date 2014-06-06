@@ -3579,7 +3579,7 @@ trait Printable {
 }
 
 impl Printable for int {
-  fn to_string(&self) -> String { self.to_str().to_string() }
+  fn to_string(&self) -> String { self.to_str() }
 }
 
 fn print(a: Box<Printable>) {

@@ -41,7 +41,7 @@ pub fn make_new_path(path: &str) -> String {
       Some(curr) => {
         format!("{}{}{}", path, path_div(), curr)
       }
-      None => path.to_str().to_string()
+      None => path.to_str()
     }
 }
 
