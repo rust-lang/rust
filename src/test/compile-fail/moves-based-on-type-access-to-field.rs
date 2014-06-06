@@ -17,12 +17,6 @@ struct Foo { f: String, y: int }
 fn consume(_s: String) {}
 fn touch<A>(_a: &A) {}
 
-fn f10() {
-    let x = Foo { f: "hi".to_string(), y: 3 };
-    consume(x.f);
-    touch(&x.y); //~ ERROR use of partially moved value: `x`
-}
-
 fn f20() {
     let x = vec!("hi".to_string());
     consume(x.move_iter().next().unwrap());
