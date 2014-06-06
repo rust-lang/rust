@@ -13,7 +13,7 @@
 mod rustrt1 {
     extern crate libc;
 
-    #[link(name = "rustrt")]
+    #[link(name = "rust_test_helpers")]
     extern {
         pub fn rust_get_test_int() -> libc::intptr_t;
     }
@@ -22,7 +22,7 @@ mod rustrt1 {
 mod rustrt2 {
     extern crate libc;
 
-    #[link(name = "rustrt")]
+    #[link(name = "rust_test_helpers")]
     extern {
         pub fn rust_get_test_int() -> libc::intptr_t;
     }

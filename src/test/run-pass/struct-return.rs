@@ -14,7 +14,7 @@ pub struct Floats { a: f64, b: u8, c: f64 }
 mod rustrt {
     use super::{Floats, Quad};
 
-    #[link(name = "rustrt")]
+    #[link(name = "rust_test_helpers")]
     extern {
         pub fn rust_dbg_abi_1(q: Quad) -> Quad;
         pub fn rust_dbg_abi_2(f: Floats) -> Floats;
