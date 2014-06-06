@@ -103,7 +103,7 @@ pub fn run(input: &str,
 
 fn runtest(test: &str, cratename: &str, libs: HashSet<Path>, should_fail: bool,
            no_run: bool) {
-    let test = maketest(test, cratename);
+    let test = maketest(test, Some(cratename), true);
     let input = driver::StrInput(test.to_string());
 
     let sessopts = config::Options {
@@ -200,23 +200,31 @@ fn runtest(test: &str, cratename: &str, libs: HashSet<Path>, should_fail: bool,
     }
 }
 
-pub fn maketest(s: &str, cratename: &str) -> String {
-    let mut prog = String::from_str(r"
+pub fn maketest(s: &str, cratename: Option<&str>, lints: bool) -> String {
+    let mut prog = String::new();
+    if lints {
+        prog.push_str(r"
 #![deny(warnings)]
 #![allow(unused_variable, dead_assignment, unused_mut, attribute_usage, dead_code)]
 ");
+    }
 
     if !s.contains("extern crate") {
-        if s.contains(cratename) {
-            prog.push_str(format!("extern crate {};\n",
-                                  cratename).as_slice());
+        match cratename {
+            Some(cratename) => {
+                if s.contains(cratename) {
+                    prog.push_str(format!("extern crate {};\n",
+                                          cratename).as_slice());
+                }
+            }
+            None => {}
         }
     }
     if s.contains("fn main") {
         prog.push_str(s);
     } else {
-        prog.push_str("fn main() {\n");
-        prog.push_str(s);
+        prog.push_str("fn main() {\n    ");
+        prog.push_str(s.replace("\n", "\n    ").as_slice());
         prog.push_str("\n}");
     }
 

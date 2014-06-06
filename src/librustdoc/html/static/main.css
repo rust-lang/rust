@@ -156,7 +156,7 @@ nav.sub {
     padding: 0 10px;
     margin-bottom: 10px;
 }
-.block h2 { 
+.block h2 {
     margin-top: 0;
     text-align: center;
 }
@@ -395,6 +395,17 @@ pre.rust .comment { color: #8E908C; }
 pre.rust .doccomment { color: #4D4D4C; }
 pre.rust .macro, pre.rust .macro-nonterminal { color: #3E999F; }
 pre.rust .lifetime { color: #B76514; }
+
+.rusttest { display: none; }
+pre.rust { position: relative; }
+pre.rust a { transform: scaleX(-1); }
+.test-arrow {
+    display: inline-block;
+    position: absolute;
+    top: 0;
+    right: 10px;
+    font-size: 150%;
+}
 
 .methods .section-header {
     /* Override parent class attributes. */

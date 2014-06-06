@@ -43,7 +43,9 @@ L10N_LANGS := ja
 
 # The options are passed to the documentation generators.
 RUSTDOC_HTML_OPTS_NO_CSS = --markdown-before-content=doc/version_info.html \
-	--markdown-in-header=doc/favicon.inc --markdown-after-content=doc/footer.inc
+	--markdown-in-header=doc/favicon.inc \
+	--markdown-after-content=doc/footer.inc \
+	--markdown-playground-url='http://play.rust-lang.org/'
 
 RUSTDOC_HTML_OPTS = $(RUSTDOC_HTML_OPTS_NO_CSS) --markdown-css rust.css
 
