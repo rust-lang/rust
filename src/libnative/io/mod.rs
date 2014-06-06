@@ -152,13 +152,13 @@ fn keep_going(data: &[u8], f: |*u8, uint| -> i64) -> i64 {
 /// Implementation of rt::rtio's IoFactory trait to generate handles to the
 /// native I/O functionality.
 pub struct IoFactory {
-    cannot_construct_outside_of_this_module: ()
+    _cannot_construct_outside_of_this_module: ()
 }
 
 impl IoFactory {
     pub fn new() -> IoFactory {
         net::init();
-        IoFactory { cannot_construct_outside_of_this_module: () }
+        IoFactory { _cannot_construct_outside_of_this_module: () }
     }
 }
 

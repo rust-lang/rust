@@ -64,9 +64,6 @@ struct LlvmSignature {
     // function, because the foreign function may opt to return via an
     // out pointer.
     llret_ty: Type,
-
-    // True if *Rust* would use an outpointer for this function.
-    sret: bool,
 }
 
 
@@ -847,8 +844,7 @@ fn foreign_signature(ccx: &CrateContext, fn_sig: &ty::FnSig, arg_tys: &[ty::t])
     let llret_ty = type_of::type_of(ccx, fn_sig.output);
     LlvmSignature {
         llarg_tys: llarg_tys,
-        llret_ty: llret_ty,
-        sret: type_of::return_uses_outptr(ccx, fn_sig.output),
+        llret_ty: llret_ty
     }
 }
 

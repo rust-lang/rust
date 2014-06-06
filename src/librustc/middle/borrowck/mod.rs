@@ -180,7 +180,6 @@ pub enum PartialTotal {
 pub struct Loan {
     index: uint,
     loan_path: Rc<LoanPath>,
-    cmt: mc::cmt,
     kind: ty::BorrowKind,
     restrictions: Vec<Restriction>,
     gen_scope: ast::NodeId,

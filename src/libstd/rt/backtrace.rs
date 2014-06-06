@@ -325,6 +325,7 @@ mod imp {
     #[cfg(target_os = "macos")]
     fn print(w: &mut Writer, idx: int, addr: *libc::c_void) -> IoResult<()> {
         use intrinsics;
+        #[repr(C)]
         struct Dl_info {
             dli_fname: *libc::c_char,
             dli_fbase: *libc::c_void,
