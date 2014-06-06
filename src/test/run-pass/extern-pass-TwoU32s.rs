@@ -16,7 +16,7 @@ struct TwoU32s {
     one: u32, two: u32
 }
 
-#[link(name = "rustrt")]
+#[link(name = "rust_test_helpers")]
 extern {
     pub fn rust_dbg_extern_identity_TwoU32s(v: TwoU32s) -> TwoU32s;
 }

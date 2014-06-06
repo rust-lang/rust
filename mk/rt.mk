@@ -35,7 +35,8 @@
 # that's per-target so you're allowed to conditionally add files based on the
 # target.
 ################################################################################
-NATIVE_LIBS := rustrt hoedown uv_support morestack miniz context_switch
+NATIVE_LIBS := rustrt hoedown uv_support morestack miniz context_switch \
+		rust_test_helpers
 
 # $(1) is the target triple
 define NATIVE_LIBRARIES
@@ -53,9 +54,9 @@ NATIVE_DEPS_uv_support_$(1) := rust_uv.c
 NATIVE_DEPS_miniz_$(1) = miniz.c
 NATIVE_DEPS_rustrt_$(1) := rust_builtin.c \
 			rust_android_dummy.c \
-			rust_test_helpers.c \
 			rust_try.ll \
 			arch/$$(HOST_$(1))/record_sp.S
+NATIVE_DEPS_rust_test_helpers_$(1) := rust_test_helpers.c
 NATIVE_DEPS_morestack_$(1) := arch/$$(HOST_$(1))/morestack.S
 NATIVE_DEPS_context_switch_$(1) := \
 			arch/$$(HOST_$(1))/_context.S
