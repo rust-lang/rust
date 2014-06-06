@@ -16,6 +16,6 @@ struct point {
 
 fn main() {
     let mut origin: point;
-    origin = point {x: 10,.. origin}; //~ ERROR use of possibly uninitialized variable: `origin`
+    origin = point {x: 10,.. origin}; //~ ERROR use of possibly uninitialized variable: `origin.y`
     origin.clone();
 }

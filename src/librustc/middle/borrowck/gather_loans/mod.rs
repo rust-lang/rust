@@ -75,13 +75,13 @@ impl<'a> euv::Delegate for GatherLoanCtxt<'a> {
                consume_id, cmt.repr(self.tcx()), mode);
 
         match mode {
-            euv::Copy => { return; }
-            euv::Move => { }
+            euv::Move(move_reason) => {
+                gather_moves::gather_move_from_expr(
+                    self.bccx, &self.move_data, &self.move_error_collector,
+                    consume_id, cmt, move_reason);
+            }
+            euv::Copy => { }
         }
-
-        gather_moves::gather_move_from_expr(
-            self.bccx, &self.move_data, &self.move_error_collector,
-            consume_id, cmt);
     }
 
     fn consume_pat(&mut self,
@@ -95,7 +95,7 @@ impl<'a> euv::Delegate for GatherLoanCtxt<'a> {
 
         match mode {
             euv::Copy => { return; }
-            euv::Move => { }
+            euv::Move(_) => { }
         }
 
         gather_moves::gather_move_from_pat(

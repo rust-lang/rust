@@ -142,7 +142,7 @@ fn borrowck_fn(this: &mut BorrowckCtxt,
                                                       body);
 
     check_loans::check_loans(this, &loan_dfcx, flowed_moves,
-                             all_loans.as_slice(), body);
+                             all_loans.as_slice(), decl, body);
 
     visit::walk_fn(this, fk, decl, body, sp, ());
 }

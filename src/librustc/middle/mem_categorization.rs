@@ -390,12 +390,10 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
             Some(adjustment) => {
                 match *adjustment {
                     ty::AutoObject(..) => {
-                        // Implicity casts a concrete object to trait object
-                        // so just patch up the type
+                        // Implicity cast a concrete object to trait object.
+                        // Result is an rvalue.
                         let expr_ty = if_ok!(self.expr_ty_adjusted(expr));
-                        let mut expr_cmt = (*if_ok!(self.cat_expr_unadjusted(expr))).clone();
-                        expr_cmt.ty = expr_ty;
-                        Ok(Rc::new(expr_cmt))
+                        Ok(self.cat_rvalue_node(expr.id(), expr.span(), expr_ty))
                     }
 
                     ty::AutoAddEnv(..) => {
