@@ -18,6 +18,7 @@ use core::mem;
 use core::ptr;
 use core::raw::Slice;
 
+use {Collection, Mutable};
 use hash;
 use str;
 use str::{CharRange, StrAllocating};
@@ -356,6 +357,7 @@ mod tests {
     use std::prelude::*;
     use test::Bencher;
 
+    use Mutable;
     use str::{Str, StrSlice};
     use super::String;
 
