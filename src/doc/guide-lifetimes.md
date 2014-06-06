@@ -14,9 +14,9 @@ Despite their complete safety, a reference's representation at runtime
 is the same as that of an ordinary pointer in a C program. They introduce zero
 overhead. The compiler does all safety checks at compile time.
 
-Although references have rather elaborate theoretical underpinnings usually
-introduced as (e.g. region pointers), the core concepts will be familiar to
-anyone who has worked with C or C++. The best way to explain how they are
+Although references have rather elaborate theoretical underpinnings
+(e.g. region pointers), the core concepts will be familiar to anyone
+who has worked with C or C++. The best way to explain how they are
 used—and their limitations—is probably just to work through several examples.
 
 # By example
