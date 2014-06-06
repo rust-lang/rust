@@ -533,7 +533,7 @@ impl pprust::PpAnn for IdentifiedAnnotation {
         match node {
             pprust::NodeItem(item) => {
                 try!(pp::space(&mut s.s));
-                s.synth_comment(item.id.to_str().to_string())
+                s.synth_comment(item.id.to_str())
             }
             pprust::NodeBlock(blk) => {
                 try!(pp::space(&mut s.s));
@@ -541,7 +541,7 @@ impl pprust::PpAnn for IdentifiedAnnotation {
             }
             pprust::NodeExpr(expr) => {
                 try!(pp::space(&mut s.s));
-                try!(s.synth_comment(expr.id.to_str().to_string()));
+                try!(s.synth_comment(expr.id.to_str()));
                 s.pclose()
             }
             pprust::NodePat(pat) => {

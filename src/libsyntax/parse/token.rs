@@ -205,7 +205,7 @@ pub fn to_str(t: &Token) -> String {
                                                ast_util::ForceSuffix),
       LIT_UINT(u, t) => ast_util::uint_ty_to_str(t, Some(u),
                                                  ast_util::ForceSuffix),
-      LIT_INT_UNSUFFIXED(i) => { (i as u64).to_str().to_string() }
+      LIT_INT_UNSUFFIXED(i) => { (i as u64).to_str() }
       LIT_FLOAT(s, t) => {
         let mut body = String::from_str(get_ident(s).get());
         if body.as_slice().ends_with(".") {

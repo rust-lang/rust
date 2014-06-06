@@ -526,7 +526,7 @@ impl Clean<TyParamBound> for ty::BuiltinBound {
                  external_path("Share", &empty)),
         };
         let fqn = csearch::get_item_path(tcx, did);
-        let fqn = fqn.move_iter().map(|i| i.to_str().to_string()).collect();
+        let fqn = fqn.move_iter().map(|i| i.to_str()).collect();
         cx.external_paths.borrow_mut().get_mut_ref().insert(did,
                                                             (fqn, TypeTrait));
         TraitBound(ResolvedPath {
@@ -545,7 +545,7 @@ impl Clean<TyParamBound> for ty::TraitRef {
             core::NotTyped(_) => return RegionBound,
         };
         let fqn = csearch::get_item_path(tcx, self.def_id);
-        let fqn = fqn.move_iter().map(|i| i.to_str().to_string())
+        let fqn = fqn.move_iter().map(|i| i.to_str())
                      .collect::<Vec<String>>();
         let path = external_path(fqn.last().unwrap().as_slice(),
                                  &self.substs);
@@ -1239,7 +1239,7 @@ impl Clean<Type> for ty::t {
                 };
                 let fqn = csearch::get_item_path(tcx, did);
                 let fqn: Vec<String> = fqn.move_iter().map(|i| {
-                    i.to_str().to_string()
+                    i.to_str()
                 }).collect();
                 let kind = match ty::get(*self).sty {
                     ty::ty_struct(..) => TypeStruct,
@@ -1617,7 +1617,7 @@ impl Clean<BareFunctionDecl> for ast::BareFnTy {
                 type_params: Vec::new(),
             },
             decl: self.decl.clean(),
-            abi: self.abi.to_str().to_string(),
+            abi: self.abi.to_str(),
         }
     }
 }
@@ -1891,12 +1891,12 @@ fn lit_to_str(lit: &ast::Lit) -> String {
         ast::LitStr(ref st, _) => st.get().to_string(),
         ast::LitBinary(ref data) => format!("{:?}", data.as_slice()),
         ast::LitChar(c) => format!("'{}'", c),
-        ast::LitInt(i, _t) => i.to_str().to_string(),
-        ast::LitUint(u, _t) => u.to_str().to_string(),
-        ast::LitIntUnsuffixed(i) => i.to_str().to_string(),
+        ast::LitInt(i, _t) => i.to_str(),
+        ast::LitUint(u, _t) => u.to_str(),
+        ast::LitIntUnsuffixed(i) => i.to_str(),
         ast::LitFloat(ref f, _t) => f.get().to_string(),
         ast::LitFloatUnsuffixed(ref f) => f.get().to_string(),
-        ast::LitBool(b) => b.to_str().to_string(),
+        ast::LitBool(b) => b.to_str(),
         ast::LitNil => "".to_string(),
     }
 }

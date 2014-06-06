@@ -401,7 +401,7 @@ impl fmt::Show for clean::Type {
                        } else {
                            let mut m = decl.bounds
                                            .iter()
-                                           .map(|s| s.to_str().to_string());
+                                           .map(|s| s.to_str());
                            format!(
                                ": {}",
                                m.collect::<Vec<String>>().connect(" + "))

@@ -252,7 +252,7 @@ pub fn add_new_extension(cx: &mut ExtCtxt,
 
     box MacroRulesDefiner {
         def: RefCell::new(Some(MacroDef {
-            name: token::get_ident(name).to_str().to_string(),
+            name: token::get_ident(name).to_str(),
             ext: NormalTT(exp, Some(sp))
         }))
     } as Box<MacResult>
