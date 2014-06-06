@@ -31,7 +31,7 @@ pub struct SmallIntMap<T> {
 impl<V> Container for SmallIntMap<V> {
     /// Return the number of elements in the map
     fn len(&self) -> uint {
-        self.v.iter().count(|elt| elt.is_some())
+        self.v.iter().filter(|elt| elt.is_some()).count()
     }
 
     /// Return true if there are no elements in the map

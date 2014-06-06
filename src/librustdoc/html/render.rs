@@ -2043,7 +2043,7 @@ fn build_sidebar(m: &clean::Module) -> HashMap<String, Vec<String>> {
 impl<'a> fmt::Show for Source<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let Source(s) = *self;
-        let lines = s.lines().len();
+        let lines = s.lines().count();
         let mut cols = 0;
         let mut tmp = lines;
         while tmp > 0 {
