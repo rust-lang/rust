@@ -45,10 +45,15 @@ pub fn gather_move_from_expr(bccx: &BorrowckCtxt,
                              move_data: &MoveData,
                              move_error_collector: &MoveErrorCollector,
                              move_expr_id: ast::NodeId,
-                             cmt: mc::cmt) {
+                             cmt: mc::cmt,
+                             move_reason: euv::MoveReason) {
+    let kind = match move_reason {
+        euv::DirectRefMove | euv::PatBindingMove => MoveExpr,
+        euv::CaptureMove => Captured
+    };
     let move_info = GatherMoveInfo {
         id: move_expr_id,
-        kind: MoveExpr,
+        kind: kind,
         cmt: cmt,
         span_path_opt: None,
     };

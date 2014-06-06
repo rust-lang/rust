@@ -115,6 +115,7 @@ pub struct MovePath {
     pub next_sibling: MovePathIndex,
 }
 
+#[deriving(PartialEq)]
 pub enum MoveKind {
     Declared,   // When declared, variables start out "moved".
     MoveExpr,   // Expression or binding that moves a variable
@@ -356,7 +357,7 @@ impl MoveData {
         let path_index = self.move_path(tcx, lp.clone());
 
         match mode {
-            euv::JustWrite => {
+            euv::Init | euv::JustWrite => {
                 self.assignee_ids.borrow_mut().insert(assignee_id);
             }
             euv::WriteAndRead => { }
@@ -535,6 +536,28 @@ impl<'a> FlowedMoveData<'a> {
             let moved_path = move.path;
             f(move, &*self.move_data.path_loan_path(moved_path))
         })
+    }
+
+    pub fn kind_of_move_of_path(&self,
+                                id: ast::NodeId,
+                                loan_path: &Rc<LoanPath>)
+                                -> Option<MoveKind> {
+        //! Returns the kind of a move of `loan_path` by `id`, if one exists.
+
+        let mut ret = None;
+        for loan_path_index in self.move_data.path_map.borrow().find(&*loan_path).iter() {
+            self.dfcx_moves.each_gen_bit_frozen(id, |move_index| {
+                let move = self.move_data.moves.borrow();
+                let move = move.get(move_index);
+                if move.path == **loan_path_index {
+                    ret = Some(move.kind);
+                    false
+                } else {
+                    true
+                }
+            });
+        }
+        ret
     }
 
     pub fn each_move_of(&self,
