@@ -653,6 +653,8 @@ impl FromStrRadix for BigUint {
 
 impl BigUint {
     /// Creates and initializes a `BigUint`.
+    ///
+    /// The digits are be in base 2^32.
     #[inline]
     pub fn new(v: Vec<BigDigit>) -> BigUint {
         // omit trailing zeros
@@ -665,6 +667,8 @@ impl BigUint {
     }
 
     /// Creates and initializes a `BigUint`.
+    ///
+    /// The digits are be in base 2^32.
     #[inline]
     pub fn from_slice(slice: &[BigDigit]) -> BigUint {
         return BigUint::new(Vec::from_slice(slice));
@@ -1315,12 +1319,16 @@ impl<R: Rng> RandBigInt for R {
 
 impl BigInt {
     /// Creates and initializes a BigInt.
+    ///
+    /// The digits are be in base 2^32.
     #[inline]
     pub fn new(sign: Sign, v: Vec<BigDigit>) -> BigInt {
         BigInt::from_biguint(sign, BigUint::new(v))
     }
 
     /// Creates and initializes a `BigInt`.
+    ///
+    /// The digits are be in base 2^32.
     #[inline]
     pub fn from_biguint(sign: Sign, data: BigUint) -> BigInt {
         if sign == Zero || data.is_zero() {
