@@ -103,6 +103,21 @@ fn foo(n: int) {
 }
 ```
 
+This example would also be rejected, even though there is no use of the
+move-bound variable in the first arm's expression, since the move into the bound
+variable would be moving the same value a second time:
+
+```rust
+enum VecWrapper { A(Vec<int>) }
+
+fn foo(x: VecWrapper) -> uint {
+    match x {
+        A(v) if { drop(v); false } => 1,
+        A(v) => v.len()
+    }
+}
+```
+
 There are issues with mutation of the bound values, but that is true without
 the changes proposed by this RFC, e.g.
 [Rust issue #14684](https://github.com/mozilla/rust/issues/14684). The general
