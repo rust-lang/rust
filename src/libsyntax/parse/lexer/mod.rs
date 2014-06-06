@@ -650,10 +650,13 @@ impl<'a> StringReader<'a> {
     /// token, and updates the interner
     fn next_token_inner(&mut self) -> token::Token {
         let c = self.curr;
-        if ident_start(c) && !self.nextch_is('"') && !self.nextch_is('#') {
+        if ident_start(c) && match (c.unwrap(), self.nextch()) {
             // Note: r as in r" or r#" is part of a raw string literal,
-            // not an identifier, and is handled further down.
-
+            // b as in b' is part of a byte literal.
+            // They are not identifiers, and are handled further down.
+           ('r', Some('"')) | ('r', Some('#')) | ('b', Some('\'')) => false,
+           _ => true
+        } {
             let start = self.last_pos;
             while ident_continue(self.curr) {
                 self.bump();
@@ -853,6 +856,65 @@ impl<'a> StringReader<'a> {
             }
             self.bump(); // advance curr past token
             return token::LIT_CHAR(c2);
+          }
+          'b' => {
+            self.bump();
+            assert!(self.curr_is('\''), "Should have been a token::IDENT");
+            self.bump();
+            let start = self.last_pos;
+
+            // the eof will be picked up by the final `'` check below
+            let mut c2 = self.curr.unwrap_or('\x00');
+            self.bump();
+
+            match c2 {
+                '\\' => {
+                    // '\X' for some X must be a character constant:
+                    let escaped = self.curr;
+                    let escaped_pos = self.last_pos;
+                    self.bump();
+                    match escaped {
+                        None => {}
+                        Some(e) => {
+                            c2 = match e {
+                                'n' => '\n',
+                                'r' => '\r',
+                                't' => '\t',
+                                '\\' => '\\',
+                                '\'' => '\'',
+                                '"' => '"',
+                                '0' => '\x00',
+                                'x' => self.scan_numeric_escape(2u, '\''),
+                                c2 => {
+                                    self.err_span_char(escaped_pos, self.last_pos,
+                                                       "unknown byte escape", c2);
+                                    c2
+                                }
+                            }
+                        }
+                    }
+                }
+                '\t' | '\n' | '\r' | '\'' => {
+                    self.err_span_char( start, self.last_pos,
+                        "byte constant must be escaped", c2);
+                }
+                _ if c2 > '\x7F' => {
+                    self.err_span_char( start, self.last_pos,
+                        "byte constant must be ASCII. \
+                         Use a \\xHH escape for a non-ASCII byte", c2);
+                }
+                _ => {}
+            }
+            if !self.curr_is('\'') {
+                self.fatal_span_verbose(
+                                   // Byte offsetting here is okay because the
+                                   // character before position `start` are an
+                                   // ascii single quote and ascii 'b'.
+                                   start - BytePos(2), self.last_pos,
+                                   "unterminated byte constant".to_string());
+            }
+            self.bump(); // advance curr past token
+            return token::LIT_BYTE(c2 as u8);
           }
           '"' => {
             let mut accum_str = String::new();

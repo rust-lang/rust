@@ -436,6 +436,12 @@ fn mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> Gc<ast::Expr> {
                                 vec!(mk_binop(cx, sp, binop)));
         }
 
+        LIT_BYTE(i) => {
+            let e_byte = cx.expr_lit(sp, ast::LitByte(i));
+
+            return cx.expr_call(sp, mk_token_path(cx, sp, "LIT_BYTE"), vec!(e_byte));
+        }
+
         LIT_CHAR(i) => {
             let e_char = cx.expr_lit(sp, ast::LitChar(i));
 

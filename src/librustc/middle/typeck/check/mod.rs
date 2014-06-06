@@ -1715,6 +1715,7 @@ pub fn check_lit(fcx: &FnCtxt, lit: &ast::Lit) -> ty::t {
         ast::LitBinary(..) => {
             ty::mk_slice(tcx, ty::ReStatic, ty::mt{ ty: ty::mk_u8(), mutbl: ast::MutImmutable })
         }
+        ast::LitByte(_) => ty::mk_u8(),
         ast::LitChar(_) => ty::mk_char(),
         ast::LitInt(_, t) => ty::mk_mach_int(t),
         ast::LitUint(_, t) => ty::mk_mach_uint(t),
