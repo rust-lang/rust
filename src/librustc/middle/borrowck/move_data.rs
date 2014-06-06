@@ -537,6 +537,28 @@ impl<'a> FlowedMoveData<'a> {
         })
     }
 
+    pub fn kind_of_move_of_path(&self,
+                                id: ast::NodeId,
+                                loan_path: &Rc<LoanPath>)
+                                -> Option<MoveKind> {
+        //! Returns the kind of a move of `loan_path` by `id`, if one exists.
+
+        let mut ret = None;
+        for loan_path_index in self.move_data.path_map.borrow().find(&*loan_path).iter() {
+            self.dfcx_moves.each_gen_bit_frozen(id, |move_index| {
+                let move = self.move_data.moves.borrow();
+                let move = move.get(move_index);
+                if move.path == **loan_path_index {
+                    ret = Some(move.kind);
+                    false
+                } else {
+                    true
+                }
+            });
+        }
+        ret
+    }
+
     pub fn each_move_of(&self,
                         id: ast::NodeId,
                         loan_path: &Rc<LoanPath>,
