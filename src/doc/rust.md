@@ -1260,6 +1260,8 @@ a = Cat;
 Enumeration constructors can have either named or unnamed fields:
 
 ~~~~
+# #![feature(struct_variant)]
+# fn main() {
 enum Animal {
     Dog (String, f64),
     Cat { name: String, weight: f64 }
@@ -1267,6 +1269,7 @@ enum Animal {
 
 let mut a: Animal = Dog("Cocoa".to_string(), 37.2);
 a = Cat { name: "Spotty".to_string(), weight: 2.7 };
+# }
 ~~~~
 
 In this example, `Cat` is a _struct-like enum variant_,
