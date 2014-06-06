@@ -385,24 +385,34 @@ impl<'a> CheckLoanCtxt<'a> {
         });
     }
 
-    pub fn check_assignment(&self, expr: &ast::Expr) {
+    pub fn check_assignment_expr(&self, expr: &ast::Expr) {
+        let assignment_id = expr.id;
+        let assignment_span = expr.span;
+
         // We don't use cat_expr() here because we don't want to treat
         // auto-ref'd parameters in overloaded operators as rvalues.
-        let cmt = match self.bccx.tcx.adjustments.borrow().find(&expr.id) {
+        let assignee_cmt = match self.bccx.tcx.adjustments.borrow().find(&assignment_id) {
             None => self.bccx.cat_expr_unadjusted(expr),
             Some(adj) => self.bccx.cat_expr_autoderefd(expr, adj)
         };
 
-        debug!("check_assignment(cmt={})", cmt.repr(self.tcx()));
+        self.check_assignment(assignment_id, assignment_span, assignee_cmt);
+    }
+
+    fn check_assignment(&self,
+                        assignment_id: ast::NodeId,
+                        assignment_span: Span,
+                        assignee_cmt: mc::cmt) {
+        debug!("check_assignment(assignee_cmt={})", assignee_cmt.repr(self.tcx()));
 
         // Mutable values can be assigned, as long as they obey loans
         // and aliasing restrictions:
-        if cmt.mutbl.is_mutable() {
-            if check_for_aliasable_mutable_writes(self, expr, cmt.clone()) {
+        if assignee_cmt.mutbl.is_mutable() {
+            if check_for_aliasable_mutable_writes(self, assignment_span, assignee_cmt.clone()) {
                 if check_for_assignment_to_restricted_or_frozen_location(
-                    self, expr, cmt.clone()) {
+                    self, assignment_id, assignment_span, assignee_cmt.clone()) {
                     // Safe, but record for lint pass later:
-                    mark_variable_as_used_mut(self, cmt);
+                    mark_variable_as_used_mut(self, assignee_cmt);
                 }
             }
             return;
@@ -410,12 +420,12 @@ impl<'a> CheckLoanCtxt<'a> {
 
         // For immutable local variables, assignments are legal
         // if they cannot already have been assigned
-        if self.is_local_variable(cmt.clone()) {
-            assert!(cmt.mutbl.is_immutable()); // no "const" locals
-            let lp = opt_loan_path(&cmt).unwrap();
-            self.move_data.each_assignment_of(expr.id, &lp, |assign| {
+        if self.is_local_variable(assignee_cmt.clone()) {
+            assert!(assignee_cmt.mutbl.is_immutable()); // no "const" locals
+            let lp = opt_loan_path(&assignee_cmt).unwrap();
+            self.move_data.each_assignment_of(assignment_id, &lp, |assign| {
                 self.bccx.report_reassigned_immutable_variable(
-                    expr.span,
+                    assignment_span,
                     &*lp,
                     assign);
                 false
@@ -424,21 +434,21 @@ impl<'a> CheckLoanCtxt<'a> {
         }
 
         // Otherwise, just a plain error.
-        match opt_loan_path(&cmt) {
+        match opt_loan_path(&assignee_cmt) {
             Some(lp) => {
                 self.bccx.span_err(
-                    expr.span,
+                    assignment_span,
                     format!("cannot assign to {} {} `{}`",
-                            cmt.mutbl.to_user_str(),
-                            self.bccx.cmt_to_str(&*cmt),
+                            assignee_cmt.mutbl.to_user_str(),
+                            self.bccx.cmt_to_str(&*assignee_cmt),
                             self.bccx.loan_path_to_str(&*lp)).as_slice());
             }
             None => {
                 self.bccx.span_err(
-                    expr.span,
+                    assignment_span,
                     format!("cannot assign to {} {}",
-                            cmt.mutbl.to_user_str(),
-                            self.bccx.cmt_to_str(&*cmt)).as_slice());
+                            assignee_cmt.mutbl.to_user_str(),
+                            self.bccx.cmt_to_str(&*assignee_cmt)).as_slice());
             }
         }
         return;
@@ -495,7 +505,7 @@ impl<'a> CheckLoanCtxt<'a> {
         }
 
         fn check_for_aliasable_mutable_writes(this: &CheckLoanCtxt,
-                                              expr: &ast::Expr,
+                                              span: Span,
                                               cmt: mc::cmt) -> bool {
             //! Safety checks related to writes to aliasable, mutable locations
 
@@ -506,7 +516,7 @@ impl<'a> CheckLoanCtxt<'a> {
                 mc::cat_deref(ref b, _, mc::BorrowedPtr(ty::MutBorrow, _)) => {
                     // Statically prohibit writes to `&mut` when aliasable
 
-                    check_for_aliasability_violation(this, expr, b.clone());
+                    check_for_aliasability_violation(this, span, b.clone());
                 }
 
                 _ => {}
@@ -516,7 +526,7 @@ impl<'a> CheckLoanCtxt<'a> {
         }
 
         fn check_for_aliasability_violation(this: &CheckLoanCtxt,
-                                            expr: &ast::Expr,
+                                            span: Span,
                                             cmt: mc::cmt)
                                             -> bool {
             match cmt.freely_aliasable(this.tcx()) {
@@ -528,7 +538,7 @@ impl<'a> CheckLoanCtxt<'a> {
                 }
                 Some(cause) => {
                     this.bccx.report_aliasability_violation(
-                        expr.span,
+                        span,
                         MutabilityViolation,
                         cause);
                     return false;
@@ -538,13 +548,14 @@ impl<'a> CheckLoanCtxt<'a> {
 
         fn check_for_assignment_to_restricted_or_frozen_location(
             this: &CheckLoanCtxt,
-            expr: &ast::Expr,
-            cmt: mc::cmt) -> bool
+            assignment_id: ast::NodeId,
+            assignment_span: Span,
+            assignee_cmt: mc::cmt) -> bool
         {
             //! Check for assignments that violate the terms of an
             //! outstanding loan.
 
-            let loan_path = match opt_loan_path(&cmt) {
+            let loan_path = match opt_loan_path(&assignee_cmt) {
                 Some(lp) => lp,
                 None => { return true; /* no loan path, can't be any loans */ }
             };
@@ -579,11 +590,11 @@ impl<'a> CheckLoanCtxt<'a> {
             // `RESTR_MUTATE` restriction whenever the contents of an
             // owned pointer are borrowed, and hence while `v[*]` is not
             // restricted from being written, `v` is.
-            let cont = this.each_in_scope_restriction(expr.id,
+            let cont = this.each_in_scope_restriction(assignment_id,
                                                       &*loan_path,
                                                       |loan, restr| {
                 if restr.set.intersects(RESTR_MUTATE) {
-                    this.report_illegal_mutation(expr, &*loan_path, loan);
+                    this.report_illegal_mutation(assignment_span, &*loan_path, loan);
                     false
                 } else {
                     true
@@ -656,9 +667,9 @@ impl<'a> CheckLoanCtxt<'a> {
                 };
 
                 // Check for a non-const loan of `loan_path`
-                let cont = this.each_in_scope_loan(expr.id, |loan| {
+                let cont = this.each_in_scope_loan(assignment_id, |loan| {
                     if loan.loan_path == loan_path {
-                        this.report_illegal_mutation(expr, &*full_loan_path, loan);
+                        this.report_illegal_mutation(assignment_span, &*full_loan_path, loan);
                         false
                     } else {
                         true
@@ -671,11 +682,11 @@ impl<'a> CheckLoanCtxt<'a> {
     }
 
     pub fn report_illegal_mutation(&self,
-                                   expr: &ast::Expr,
+                                   span: Span,
                                    loan_path: &LoanPath,
                                    loan: &Loan) {
         self.bccx.span_err(
-            expr.span,
+            span,
             format!("cannot assign to `{}` because it is borrowed",
                     self.bccx.loan_path_to_str(loan_path)).as_slice());
         self.bccx.span_note(
@@ -733,7 +744,7 @@ impl<'a> CheckLoanCtxt<'a> {
                 match freevar_mode {
                     freevars::CaptureByRef => { }
                     freevars::CaptureByValue => {
-                        check_by_move_capture(self, closure_id, freevar, &*var_path);
+                        check_by_move_capture(self, closure_id, freevar.span, &*var_path);
                     }
                 }
             }
@@ -742,14 +753,14 @@ impl<'a> CheckLoanCtxt<'a> {
 
         fn check_by_move_capture(this: &CheckLoanCtxt,
                                  closure_id: ast::NodeId,
-                                 freevar: &freevars::freevar_entry,
+                                 freevar_span: Span,
                                  move_path: &LoanPath) {
             let move_err = this.analyze_move_out_from(closure_id, move_path);
             match move_err {
                 MoveOk => {}
                 MoveWhileBorrowed(loan_path, loan_span) => {
                     this.bccx.span_err(
-                        freevar.span,
+                        freevar_span,
                         format!("cannot move `{}` into closure \
                                 because it is borrowed",
                                 this.bccx.loan_path_to_str(
@@ -841,7 +852,7 @@ fn check_loans_in_expr<'a>(this: &mut CheckLoanCtxt<'a>,
       }
       ast::ExprAssign(dest, _) |
       ast::ExprAssignOp(_, dest, _) => {
-        this.check_assignment(dest);
+        this.check_assignment_expr(dest);
       }
       ast::ExprCall(f, ref args) => {
         this.check_call(expr, Some(f), f.span, args.as_slice());
@@ -859,7 +870,7 @@ fn check_loans_in_expr<'a>(this: &mut CheckLoanCtxt<'a>,
       }
       ast::ExprInlineAsm(ref ia) => {
           for &(_, out) in ia.outputs.iter() {
-              this.check_assignment(out);
+              this.check_assignment_expr(out);
           }
       }
       _ => {}
