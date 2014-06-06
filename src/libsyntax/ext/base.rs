@@ -452,7 +452,7 @@ impl<'a> ExtCtxt<'a> {
     pub fn mod_pop(&mut self) { self.mod_path.pop().unwrap(); }
     pub fn mod_path(&self) -> Vec<ast::Ident> {
         let mut v = Vec::new();
-        v.push(token::str_to_ident(self.ecfg.crate_id.name.as_slice()));
+        v.push(token::str_to_ident(self.ecfg.crate_name.as_slice()));
         v.extend(self.mod_path.iter().map(|a| *a));
         return v;
     }

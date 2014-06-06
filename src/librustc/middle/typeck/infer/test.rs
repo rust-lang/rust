@@ -37,7 +37,6 @@ use syntax::codemap;
 use syntax::codemap::{Span, CodeMap, DUMMY_SP};
 use syntax::diagnostic::{Level, RenderSpan, Bug, Fatal, Error, Warning, Note};
 use syntax::ast;
-use syntax::crateid::CrateId;
 use util::ppaux::{ty_to_str, UserString};
 
 struct Env<'a> {
@@ -116,11 +115,8 @@ fn test_env(_test_name: &str,
     let krate_config = Vec::new();
     let input = driver::StrInput(source_string.to_owned());
     let krate = driver::phase_1_parse_input(&sess, krate_config, &input);
-    let krate_id = CrateId { path: "test".to_owned(),
-                             name: "test".to_owned(),
-                             version: None };
     let (krate, ast_map) =
-        driver::phase_2_configure_and_expand(&sess, krate, &krate_id)
+        driver::phase_2_configure_and_expand(&sess, krate, "test")
             .expect("phase 2 aborted");
 
     // run just enough stuff to build a tcx:

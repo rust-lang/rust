@@ -91,8 +91,8 @@ pub struct Options {
     pub debugging_opts: u64,
     /// Whether to write dependency files. It's (enabled, optional filename).
     pub write_dependency_info: (bool, Option<Path>),
-    /// Crate id-related things to maybe print. It's (crate_id, crate_name, crate_file_name).
-    pub print_metas: (bool, bool, bool),
+    /// Crate id-related things to maybe print. It's (crate_name, crate_file_name).
+    pub print_metas: (bool, bool),
     pub cg: CodegenOptions,
     pub color: ColorConfig,
 }
@@ -117,7 +117,7 @@ pub fn basic_options() -> Options {
         no_analysis: false,
         debugging_opts: 0,
         write_dependency_info: (false, None),
-        print_metas: (false, false, false),
+        print_metas: (false, false),
         cg: basic_codegen_options(),
         color: Auto,
     }
@@ -505,7 +505,6 @@ pub fn optgroups() -> Vec<getopts::OptGroup> {
                  "[bin|lib|rlib|dylib|staticlib]"),
         optmulti("", "emit", "Comma separated list of types of output for the compiler to emit",
                  "[asm|bc|ir|obj|link]"),
-        optflag("", "crate-id", "Output the crate id and exit"),
         optflag("", "crate-name", "Output the crate name and exit"),
         optflag("", "crate-file-name", "Output the file(s) that would be written if compilation \
               continued and exit"),
@@ -709,8 +708,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
                                  matches.opt_str("dep-info")
                                         .map(|p| Path::new(p)));
 
-    let print_metas = (matches.opt_present("crate-id"),
-                       matches.opt_present("crate-name"),
+    let print_metas = (matches.opt_present("crate-name"),
                        matches.opt_present("crate-file-name"));
     let cg = build_codegen_options(matches);
 

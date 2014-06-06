@@ -44,11 +44,9 @@ use syntax::ast_map::{PathElem, PathElems};
 use syntax::ast_map;
 use syntax::ast_util::*;
 use syntax::ast_util;
-use syntax::attr::AttrMetaMethods;
 use syntax::attr;
-use syntax::crateid::CrateId;
+use syntax::attr::AttrMetaMethods;
 use syntax::diagnostic::SpanHandler;
-use syntax::parse::token::InternedString;
 use syntax::parse::token::special_idents;
 use syntax::parse::token;
 use syntax::visit::Visitor;
@@ -1494,35 +1492,6 @@ fn encode_attributes(ebml_w: &mut Encoder, attrs: &[Attribute]) {
     ebml_w.end_tag();
 }
 
-// So there's a special crate attribute called 'crate_id' which defines the
-// metadata that Rust cares about for linking crates. If the user didn't
-// provide it we will throw it in anyway with a default value.
-fn synthesize_crate_attrs(ecx: &EncodeContext,
-                          krate: &Crate) -> Vec<Attribute> {
-
-    fn synthesize_crateid_attr(ecx: &EncodeContext) -> Attribute {
-        assert!(!ecx.link_meta.crateid.name.is_empty());
-
-        attr::mk_attr_inner(attr::mk_attr_id(),
-            attr::mk_name_value_item_str(
-                InternedString::new("crate_id"),
-                token::intern_and_get_ident(ecx.link_meta
-                                               .crateid
-                                               .to_str()
-                                               .as_slice())))
-    }
-
-    let mut attrs = Vec::new();
-    for attr in krate.attrs.iter() {
-        if !attr.check_name("crate_id") {
-            attrs.push(*attr);
-        }
-    }
-    attrs.push(synthesize_crateid_attr(ecx));
-
-    attrs
-}
-
 fn encode_crate_deps(ebml_w: &mut Encoder, cstore: &cstore::CStore) {
     fn get_ordered_deps(cstore: &cstore::CStore) -> Vec<decoder::CrateDep> {
         // Pull the cnums and name,vers,hash out of cstore
@@ -1530,8 +1499,8 @@ fn encode_crate_deps(ebml_w: &mut Encoder, cstore: &cstore::CStore) {
         cstore.iter_crate_data(|key, val| {
             let dep = decoder::CrateDep {
                 cnum: key,
-                crate_id: decoder::get_crate_id(val.data()),
-                hash: decoder::get_crate_hash(val.data())
+                name: decoder::get_crate_name(val.data()),
+                hash: decoder::get_crate_hash(val.data()),
             };
             deps.push(dep);
         });
@@ -1766,8 +1735,8 @@ fn encode_reachable_extern_fns(ecx: &EncodeContext, ebml_w: &mut Encoder) {
 fn encode_crate_dep(ebml_w: &mut Encoder,
                     dep: decoder::CrateDep) {
     ebml_w.start_tag(tag_crate_dep);
-    ebml_w.start_tag(tag_crate_dep_crateid);
-    ebml_w.writer.write(dep.crate_id.to_str().as_bytes());
+    ebml_w.start_tag(tag_crate_dep_crate_name);
+    ebml_w.writer.write(dep.name.as_bytes());
     ebml_w.end_tag();
     ebml_w.start_tag(tag_crate_dep_hash);
     ebml_w.writer.write(dep.hash.as_str().as_bytes());
@@ -1781,9 +1750,9 @@ fn encode_hash(ebml_w: &mut Encoder, hash: &Svh) {
     ebml_w.end_tag();
 }
 
-fn encode_crate_id(ebml_w: &mut Encoder, crate_id: &CrateId) {
-    ebml_w.start_tag(tag_crate_crateid);
-    ebml_w.writer.write(crate_id.to_str().as_bytes());
+fn encode_crate_name(ebml_w: &mut Encoder, crate_name: &str) {
+    ebml_w.start_tag(tag_crate_crate_name);
+    ebml_w.writer.write(crate_name.as_bytes());
     ebml_w.end_tag();
 }
 
@@ -1880,7 +1849,7 @@ fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, krate: &Crate)
 
     let mut ebml_w = writer::Encoder::new(wr);
 
-    encode_crate_id(&mut ebml_w, &ecx.link_meta.crateid);
+    encode_crate_name(&mut ebml_w, ecx.link_meta.crate_name.as_slice());
     encode_crate_triple(&mut ebml_w,
                         tcx.sess
                            .targ_cfg
@@ -1891,8 +1860,7 @@ fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, krate: &Crate)
     encode_dylib_dependency_formats(&mut ebml_w, &ecx);
 
     let mut i = ebml_w.writer.tell().unwrap();
-    let crate_attrs = synthesize_crate_attrs(&ecx, krate);
-    encode_attributes(&mut ebml_w, crate_attrs.as_slice());
+    encode_attributes(&mut ebml_w, krate.attrs.as_slice());
     stats.attr_bytes = ebml_w.writer.tell().unwrap() - i;
 
     i = ebml_w.writer.tell().unwrap();

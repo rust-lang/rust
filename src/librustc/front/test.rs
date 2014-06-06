@@ -15,7 +15,6 @@
 
 use driver::session::Session;
 use front::config;
-use front::std_inject::with_version;
 
 use std::cell::RefCell;
 use std::gc::{Gc, GC};
@@ -154,7 +153,7 @@ fn generate_test_harness(sess: &Session, krate: ast::Crate)
         ext_cx: ExtCtxt::new(&sess.parse_sess, sess.opts.cfg.clone(),
                              ExpansionConfig {
                                  deriving_hash_type_parameter: false,
-                                 crate_id: from_str("test").unwrap(),
+                                 crate_name: "test".to_string(),
                              }),
         path: RefCell::new(Vec::new()),
         testfns: RefCell::new(Vec::new()),
@@ -298,9 +297,7 @@ fn mk_std(cx: &TestCtxt) -> ast::ViewItem {
                                         ast::DUMMY_NODE_ID))),
          ast::Public)
     } else {
-        (ast::ViewItemExternCrate(id_test,
-                               with_version("test"),
-                               ast::DUMMY_NODE_ID),
+        (ast::ViewItemExternCrate(id_test, None, ast::DUMMY_NODE_ID),
          ast::Inherited)
     };
     ast::ViewItem {
@@ -395,8 +392,8 @@ fn mk_tests(cx: &TestCtxt) -> Gc<ast::Item> {
 }
 
 fn is_test_crate(krate: &ast::Crate) -> bool {
-    match attr::find_crateid(krate.attrs.as_slice()) {
-        Some(ref s) if "test" == s.name.as_slice() => true,
+    match attr::find_crate_name(krate.attrs.as_slice()) {
+        Some(ref s) if "test" == s.get().as_slice() => true,
         _ => false
     }
 }
