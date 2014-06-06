@@ -173,7 +173,7 @@ pub fn render(input: &str, mut output: Path, matches: &getopts::Matches) -> int 
 pub fn test(input: &str, libs: HashSet<Path>, mut test_args: Vec<String>) -> int {
     let input_str = load_or_return!(input, 1, 2);
 
-    let mut collector = Collector::new(input.to_string(), libs, true, true);
+    let mut collector = Collector::new(input.to_string(), libs, true);
     find_testable_code(input_str.as_slice(), &mut collector);
     test_args.unshift("rustdoctest".to_string());
     testing::test_main(test_args.as_slice(), collector.tests);

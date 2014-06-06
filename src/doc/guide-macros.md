@@ -11,7 +11,7 @@ which both pattern-match on their input and both return early in one case,
 doing nothing otherwise:
 
 ~~~~
-# enum T { SpecialA(uint), SpecialB(uint) };
+# enum T { SpecialA(uint), SpecialB(uint) }
 # fn f() -> uint {
 # let input_1 = SpecialA(0);
 # let input_2 = SpecialA(0);
@@ -37,7 +37,8 @@ lightweight custom syntax extensions, themselves defined using the
 the pattern in the above code:
 
 ~~~~
-# enum T { SpecialA(uint), SpecialB(uint) };
+# #![feature(macro_rules)]
+# enum T { SpecialA(uint), SpecialB(uint) }
 # fn f() -> uint {
 # let input_1 = SpecialA(0);
 # let input_2 = SpecialA(0);
@@ -55,6 +56,7 @@ early_return!(input_1 SpecialA);
 early_return!(input_2 SpecialB);
 # return 0;
 # }
+# fn main() {}
 ~~~~
 
 Macros are defined in pattern-matching style: in the above example, the text
@@ -155,7 +157,8 @@ separator token (a comma-separated list could be written `$(...),*`), and `+`
 instead of `*` to mean "at least one".
 
 ~~~~
-# enum T { SpecialA(uint),SpecialB(uint),SpecialC(uint),SpecialD(uint)};
+# #![feature(macro_rules)]
+# enum T { SpecialA(uint),SpecialB(uint),SpecialC(uint),SpecialD(uint)}
 # fn f() -> uint {
 # let input_1 = SpecialA(0);
 # let input_2 = SpecialA(0);
@@ -175,6 +178,7 @@ early_return!(input_1, [SpecialA|SpecialC|SpecialD]);
 early_return!(input_2, [SpecialB]);
 # return 0;
 # }
+# fn main() {}
 ~~~~
 
 ### Transcription
@@ -215,9 +219,10 @@ solves the problem.
 Now consider code like the following:
 
 ~~~~
-# enum T1 { Good1(T2, uint), Bad1};
+# #![feature(macro_rules)]
+# enum T1 { Good1(T2, uint), Bad1}
 # struct T2 { body: T3 }
-# enum T3 { Good2(uint), Bad2};
+# enum T3 { Good2(uint), Bad2}
 # fn f(x: T1) -> uint {
 match x {
     Good1(g1, val) => {
@@ -232,6 +237,7 @@ match x {
     _ => return 0 // default value
 }
 # }
+# fn main() {}
 ~~~~
 
 All the complicated stuff is deeply indented, and the error-handling code is
@@ -240,6 +246,7 @@ a match, but with a syntax that suits the problem better. The following macro
 can solve the problem:
 
 ~~~~
+# #![feature(macro_rules)]
 macro_rules! biased_match (
     // special case: `let (x) = ...` is illegal, so use `let x = ...` instead
     ( ($e:expr) ~ ($p:pat) else $err:stmt ;
@@ -261,9 +268,9 @@ macro_rules! biased_match (
     )
 )
 
-# enum T1 { Good1(T2, uint), Bad1};
+# enum T1 { Good1(T2, uint), Bad1}
 # struct T2 { body: T3 }
-# enum T3 { Good2(uint), Bad2};
+# enum T3 { Good2(uint), Bad2}
 # fn f(x: T1) -> uint {
 biased_match!((x)       ~ (Good1(g1, val)) else { return 0 };
               binds g1, val )
@@ -273,6 +280,7 @@ biased_match!((g1.body) ~ (Good2(result) )
 // complicated stuff goes here
 return result + val;
 # }
+# fn main() {}
 ~~~~
 
 This solves the indentation problem. But if we have a lot of chained matches
@@ -280,6 +288,8 @@ like this, we might prefer to write a single macro invocation. The input
 pattern we want is clear:
 
 ~~~~
+# #![feature(macro_rules)]
+# fn main() {}
 # macro_rules! b(
     ( $( ($e:expr) ~ ($p:pat) else $err:stmt ; )*
       binds $( $bind_res:ident ),*
@@ -301,14 +311,18 @@ process the semicolon-terminated lines, one-by-one. So, we want the following
 input patterns:
 
 ~~~~
+# #![feature(macro_rules)]
 # macro_rules! b(
     ( binds $( $bind_res:ident ),* )
 # => (0))
+# fn main() {}
 ~~~~
 
 ...and:
 
 ~~~~
+# #![feature(macro_rules)]
+# fn main() {}
 # macro_rules! b(
     (    ($e     :expr) ~ ($p     :pat) else $err     :stmt ;
       $( ($e_rest:expr) ~ ($p_rest:pat) else $err_rest:stmt ; )*
@@ -322,6 +336,8 @@ The resulting macro looks like this. Note that the separation into
 piece of syntax (the `let`) which we only want to transcribe once.
 
 ~~~~
+# #![feature(macro_rules)]
+# fn main() {
 
 macro_rules! biased_match_rec (
     // Handle the first layer
@@ -365,9 +381,9 @@ macro_rules! biased_match (
 )
 
 
-# enum T1 { Good1(T2, uint), Bad1};
+# enum T1 { Good1(T2, uint), Bad1}
 # struct T2 { body: T3 }
-# enum T3 { Good2(uint), Bad2};
+# enum T3 { Good2(uint), Bad2}
 # fn f(x: T1) -> uint {
 biased_match!(
     (x)       ~ (Good1(g1, val)) else { return 0 };
@@ -375,6 +391,7 @@ biased_match!(
     binds val, result )
 // complicated stuff goes here
 return result + val;
+# }
 # }
 ~~~~
 
