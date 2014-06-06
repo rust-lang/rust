@@ -78,6 +78,7 @@ pub enum Token {
     DOLLAR,
 
     /* Literals */
+    LIT_BYTE(u8),
     LIT_CHAR(char),
     LIT_INT(i64, ast::IntTy),
     LIT_UINT(u64, ast::UintTy),
@@ -193,6 +194,14 @@ pub fn to_str(t: &Token) -> String {
       DOLLAR => "$".to_string(),
 
       /* Literals */
+      LIT_BYTE(b) => {
+          let mut res = String::from_str("b'");
+          (b as char).escape_default(|c| {
+              res.push_char(c);
+          });
+          res.push_char('\'');
+          res
+      }
       LIT_CHAR(c) => {
           let mut res = String::from_str("'");
           c.escape_default(|c| {
@@ -273,6 +282,7 @@ pub fn can_begin_expr(t: &Token) -> bool {
       IDENT(_, _) => true,
       UNDERSCORE => true,
       TILDE => true,
+      LIT_BYTE(_) => true,
       LIT_CHAR(_) => true,
       LIT_INT(_, _) => true,
       LIT_UINT(_, _) => true,
@@ -311,6 +321,7 @@ pub fn close_delimiter_for(t: &Token) -> Option<Token> {
 
 pub fn is_lit(t: &Token) -> bool {
     match *t {
+      LIT_BYTE(_) => true,
       LIT_CHAR(_) => true,
       LIT_INT(_, _) => true,
       LIT_UINT(_, _) => true,

@@ -47,6 +47,7 @@ pub fn expand_syntax_ext(cx: &mut base::ExtCtxt,
                     ast::LitBool(b) => {
                         accumulator.push_str(format!("{}", b).as_slice());
                     }
+                    ast::LitByte(..) |
                     ast::LitBinary(..) => {
                         cx.span_err(e.span, "cannot concatenate a binary literal");
                     }

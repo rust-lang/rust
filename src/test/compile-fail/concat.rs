@@ -9,6 +9,7 @@
 // except according to those terms.
 
 fn main() {
+    concat!(b'f');  //~ ERROR: cannot concatenate a binary literal
     concat!(foo);   //~ ERROR: expected a literal
     concat!(foo()); //~ ERROR: expected a literal
 }
