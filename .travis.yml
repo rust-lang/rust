@@ -40,7 +40,7 @@ script: |
     if [[ $LLVM_VERSION != '3.4' ]]; then exit 0; fi
   fi &&
   make tidy &&
-  make -j4 rustc-stage1 &&
+  travis_wait make -j4 rustc-stage1 &&
   make check-stage1-std check-stage1-rpass check-stage1-cfail check-stage1-rfail check-stage1-doc
 
 env:
