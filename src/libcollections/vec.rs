@@ -1772,23 +1772,23 @@ mod tests {
         assert_eq!(v.pop(), Some(()));
         assert_eq!(v.pop(), None);
 
-        assert_eq!(v.iter().len(), 0);
+        assert_eq!(v.iter().count(), 0);
         v.push(());
-        assert_eq!(v.iter().len(), 1);
+        assert_eq!(v.iter().count(), 1);
         v.push(());
-        assert_eq!(v.iter().len(), 2);
+        assert_eq!(v.iter().count(), 2);
 
         for &() in v.iter() {}
 
-        assert_eq!(v.mut_iter().len(), 2);
+        assert_eq!(v.mut_iter().count(), 2);
         v.push(());
-        assert_eq!(v.mut_iter().len(), 3);
+        assert_eq!(v.mut_iter().count(), 3);
         v.push(());
-        assert_eq!(v.mut_iter().len(), 4);
+        assert_eq!(v.mut_iter().count(), 4);
 
         for &() in v.mut_iter() {}
         unsafe { v.set_len(0); }
-        assert_eq!(v.mut_iter().len(), 0);
+        assert_eq!(v.mut_iter().count(), 0);
     }
 
     #[test]

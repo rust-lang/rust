@@ -191,11 +191,11 @@ fn ast_path_substs<AC:AstConv,RS:RegionScope>(
     };
 
     // Convert the type parameters supplied by the user.
-    let supplied_ty_param_count = path.segments.iter().flat_map(|s| s.types.iter()).len();
+    let supplied_ty_param_count = path.segments.iter().flat_map(|s| s.types.iter()).count();
     let formal_ty_param_count = decl_generics.type_param_defs().len();
     let required_ty_param_count = decl_generics.type_param_defs().iter()
                                                .take_while(|x| x.default.is_none())
-                                               .len();
+                                               .count();
     if supplied_ty_param_count < required_ty_param_count {
         let expected = if required_ty_param_count < formal_ty_param_count {
             "expected at least"
@@ -407,7 +407,7 @@ pub fn ast_ty_to_builtin_ty<AC:AstConv,
                     if path.segments
                            .iter()
                            .flat_map(|s| s.types.iter())
-                           .len() > 1 {
+                           .count() > 1 {
                         this.tcx()
                             .sess
                             .span_err(path.span,

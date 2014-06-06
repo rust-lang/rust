@@ -13,7 +13,6 @@
 use char;
 use clone::Clone;
 use container::Container;
-use iter::Iterator;
 use num::{NumCast, Zero, One, cast, Int};
 use num::{Float, FPNaN, FPInfinite, ToPrimitive};
 use num;
