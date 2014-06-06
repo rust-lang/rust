@@ -9,18 +9,31 @@
 // except according to those terms.
 
 //! Lints built in to rustc.
+//!
+//! This is a sibling of `lint::context` in order to ensure that
+//! lints implemented here use the same public API as lint plugins.
+//!
+//! To add a new lint to rustc, declare it here using `declare_lint!()`.
+//! Then add code to emit the new lint in the appropriate circumstances.
+//! You can do that in an existing `LintPass` if it makes sense, or in
+//! a new `LintPass`, or using `Session::add_lint` elsewhere in the
+//! compiler. Only do the latter if the check can't be written cleanly
+//! as a `LintPass`.
+//!
+//! If you define a new `LintPass`, you will also need to add it to the
+//! `add_builtin_lints!()` invocation in `context.rs`. That macro
+//! requires a `Default` impl for your `LintPass` type.
 
 use metadata::csearch;
 use middle::def::*;
 use middle::trans::adt; // for `adt::is_ffi_safe`
-use middle::typeck::astconv::{ast_ty_to_ty, AstConv};
+use middle::typeck::astconv::ast_ty_to_ty;
 use middle::typeck::infer;
 use middle::privacy::ExportedItems;
 use middle::{typeck, ty, def, pat_util};
 use util::ppaux::{ty_to_str};
 use util::nodemap::NodeSet;
 use lint::{Context, LintPass, LintArray};
-use lint;
 
 use std::cmp;
 use std::collections::HashMap;
@@ -169,7 +182,7 @@ impl LintPass for TypeLimits {
                 match ty::get(ty::expr_ty(cx.tcx, e)).sty {
                     ty::ty_int(t) => {
                         let int_type = if t == ast::TyI {
-                            cx.tcx.sess.targ_cfg.int_type
+                            cx.sess().targ_cfg.int_type
                         } else { t };
                         let (min, max) = int_ty_range(int_type);
                         let mut lit_val: i64 = match lit.node {
@@ -188,7 +201,7 @@ impl LintPass for TypeLimits {
                     },
                     ty::ty_uint(t) => {
                         let uint_type = if t == ast::TyU {
-                            cx.tcx.sess.targ_cfg.uint_type
+                            cx.sess().targ_cfg.uint_type
                         } else { t };
                         let (min, max) = uint_ty_range(uint_type);
                         let lit_val: u64 = match lit.node {
@@ -430,9 +443,9 @@ impl LintPass for HeapMemory {
             ast::ItemFn(..) |
             ast::ItemTy(..) |
             ast::ItemEnum(..) |
-            ast::ItemStruct(..) => self.check_heap_type(cx, it.span,
-                                                        ty::node_id_to_type(cx.tcx,
-                                                                            it.id)),
+            ast::ItemStruct(..)
+                => self.check_heap_type(cx, it.span,
+                    ty::node_id_to_type(cx.tcx, it.id)),
             _ => ()
         }
 
@@ -441,8 +454,7 @@ impl LintPass for HeapMemory {
             ast::ItemStruct(struct_def, _) => {
                 for struct_field in struct_def.fields.iter() {
                     self.check_heap_type(cx, struct_field.span,
-                                         ty::node_id_to_type(cx.tcx,
-                                                             struct_field.node.id));
+                    ty::node_id_to_type(cx.tcx, struct_field.node.id));
                 }
             }
             _ => ()
@@ -677,7 +689,7 @@ impl LintPass for UnusedResult {
                         _ => {}
                     }
                 } else {
-                    csearch::get_item_attrs(&cx.tcx.sess.cstore, did, |attrs| {
+                    csearch::get_item_attrs(&cx.sess().cstore, did, |attrs| {
                         if attr::contains_name(attrs.as_slice(), "must_use") {
                             cx.span_lint(unused_must_use, s.span,
                                          "unused result which must be used");
@@ -711,7 +723,7 @@ impl LintPass for DeprecatedOwnedVector {
             ty::ty_uniq(t) => match ty::get(t).sty {
                 ty::ty_vec(_, None) => {
                     cx.span_lint(deprecated_owned_vector, e.span,
-                                 "use of deprecated `~[]` vector; replaced by `std::vec::Vec`")
+                        "use of deprecated `~[]` vector; replaced by `std::vec::Vec`")
                 }
                 _ => {}
             },
@@ -791,7 +803,7 @@ fn method_context(cx: &Context, m: &ast::Method) -> MethodContext {
     };
 
     match cx.tcx.methods.borrow().find_copy(&did) {
-        None => cx.tcx.sess.span_bug(m.span, "missing method descriptor?!"),
+        None => cx.sess().span_bug(m.span, "missing method descriptor?!"),
         Some(md) => {
             match md.container {
                 ty::TraitContainer(..) => TraitDefaultImpl,
@@ -1110,15 +1122,14 @@ impl UnusedMut {
                 match mode {
                     ast::BindByValue(ast::MutMutable) => {
                         if path.segments.len() != 1 {
-                            cx.tcx.sess.span_bug(p.span,
+                            cx.sess().span_bug(p.span,
                                                  "mutable binding that doesn't consist \
                                                   of exactly one segment");
                         }
                         let ident = path.segments.get(0).identifier;
                         if !token::get_ident(ident).get().starts_with("_") {
-                            mutables.insert_or_update_with(ident.name as uint, vec!(id), |_, old| {
-                                old.push(id);
-                            });
+                            mutables.insert_or_update_with(ident.name as uint,
+                                vec!(id), |_, old| { old.push(id); });
                         }
                     }
                     _ => {
@@ -1279,7 +1290,7 @@ impl MissingDoc {
                                desc: &'static str) {
         // If we're building a test harness, then warning about
         // documentation is probably not really relevant right now.
-        if cx.tcx.sess.opts.test { return }
+        if cx.sess().opts.test { return }
 
         // `#[doc(hidden)]` disables missing_doc check.
         if self.doc_hidden() { return }
@@ -1358,7 +1369,8 @@ impl LintPass for MissingDoc {
     }
 
     fn check_fn(&mut self, cx: &Context,
-            fk: &visit::FnKind, _: &ast::FnDecl, _: &ast::Block, _: Span, _: ast::NodeId) {
+            fk: &visit::FnKind, _: &ast::FnDecl,
+            _: &ast::Block, _: Span, _: ast::NodeId) {
         match *fk {
             visit::FkMethod(_, _, m) => {
                 // If the method is an impl for a trait, don't doc.
@@ -1381,7 +1393,8 @@ impl LintPass for MissingDoc {
     fn check_struct_field(&mut self, cx: &Context, sf: &ast::StructField) {
         match sf.node.kind {
             ast::NamedField(_, vis) if vis == ast::Public => {
-                let cur_struct_def = *self.struct_def_stack.last().expect("empty struct_def_stack");
+                let cur_struct_def = *self.struct_def_stack.last()
+                    .expect("empty struct_def_stack");
                 self.check_missing_doc_attrs(cx, Some(cur_struct_def),
                     sf.node.attrs.as_slice(), sf.span, "a struct field")
             }
@@ -1404,8 +1417,8 @@ declare_lint!(experimental, Warn,
 declare_lint!(unstable, Allow,
     "detects use of #[unstable] items (incl. items with no stability attribute)")
 
-/// Checks for use of items with #[deprecated], #[experimental] and
-/// #[unstable] (or none of them) attributes.
+/// Checks for use of items with `#[deprecated]`, `#[experimental]` and
+/// `#[unstable]` attributes, or no stability attribute.
 #[deriving(Default)]
 pub struct Stability;
 
@@ -1472,7 +1485,7 @@ impl LintPass for Stability {
             let mut s = None;
             // run through all the attributes and take the first
             // stability one.
-            csearch::get_item_attrs(&cx.tcx.sess.cstore, id, |attrs| {
+            csearch::get_item_attrs(&cx.sess().cstore, id, |attrs| {
                 if s.is_none() {
                     s = attr::find_stability(attrs.as_slice())
                 }
@@ -1500,32 +1513,6 @@ impl LintPass for Stability {
         };
 
         cx.span_lint(lint, e.span, msg.as_slice());
-    }
-}
-
-/// Doesn't actually warn; just gathers information for use by
-/// checks in trans.
-#[deriving(Default)]
-pub struct GatherNodeLevels;
-
-impl LintPass for GatherNodeLevels {
-    fn get_lints(&self) -> LintArray {
-        lint_array!()
-    }
-
-    fn check_item(&mut self, cx: &Context, it: &ast::Item) {
-        match it.node {
-            ast::ItemEnum(..) => {
-                let lint_id = lint::LintId::of(variant_size_difference);
-                match cx.lints.get_level_source(lint_id) {
-                    lvlsrc @ (lvl, _) if lvl != lint::Allow => {
-                        cx.insert_node_level(it.id, lint_id, lvlsrc);
-                    },
-                    _ => { }
-                }
-            },
-            _ => { }
-        }
     }
 }
 

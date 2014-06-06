@@ -1553,50 +1553,51 @@ fn enum_variant_size_lint(ccx: &CrateContext, enum_def: &ast::EnumDef, sp: Span,
     let mut sizes = Vec::new(); // does no allocation if no pushes, thankfully
 
     let levels = ccx.tcx.node_lint_levels.borrow();
-    match levels.find(&(id, lint::LintId::of(lint::builtin::variant_size_difference))) {
-        None | Some(&(lint::Allow, _)) => (),
-        Some(&lvlsrc) => {
-            let avar = adt::represent_type(ccx, ty::node_id_to_type(ccx.tcx(), id));
-            match *avar {
-                adt::General(_, ref variants) => {
-                    for var in variants.iter() {
-                        let mut size = 0;
-                        for field in var.fields.iter().skip(1) {
-                            // skip the discriminant
-                            size += llsize_of_real(ccx, sizing_type_of(ccx, *field));
-                        }
-                        sizes.push(size);
-                    }
-                },
-                _ => { /* its size is either constant or unimportant */ }
+    let lint_id = lint::LintId::of(lint::builtin::variant_size_difference);
+    let lvlsrc = match levels.find(&(id, lint_id)) {
+        None | Some(&(lint::Allow, _)) => return,
+        Some(&lvlsrc) => lvlsrc,
+    };
+
+    let avar = adt::represent_type(ccx, ty::node_id_to_type(ccx.tcx(), id));
+    match *avar {
+        adt::General(_, ref variants) => {
+            for var in variants.iter() {
+                let mut size = 0;
+                for field in var.fields.iter().skip(1) {
+                    // skip the discriminant
+                    size += llsize_of_real(ccx, sizing_type_of(ccx, *field));
+                }
+                sizes.push(size);
             }
+        },
+        _ => { /* its size is either constant or unimportant */ }
+    }
 
-            let (largest, slargest, largest_index) = sizes.iter().enumerate().fold((0, 0, 0),
-                |(l, s, li), (idx, &size)|
-                    if size > l {
-                        (size, l, idx)
-                    } else if size > s {
-                        (l, size, li)
-                    } else {
-                        (l, s, li)
-                    }
-            );
-
-            // we only warn if the largest variant is at least thrice as large as
-            // the second-largest.
-            if largest > slargest * 3 && slargest > 0 {
-                // Use lint::emit_lint rather than sess.add_lint because the lint-printing
-                // pass for the latter already ran.
-                lint::emit_lint(&ccx.tcx().sess, lint::builtin::variant_size_difference,
-                                lvlsrc, sp,
-                                format!("enum variant is more than three times larger \
-                                        ({} bytes) than the next largest (ignoring padding)",
-                                        largest).as_slice());
-
-                ccx.sess().span_note(enum_def.variants.get(largest_index).span,
-                                     "this variant is the largest");
+    let (largest, slargest, largest_index) = sizes.iter().enumerate().fold((0, 0, 0),
+        |(l, s, li), (idx, &size)|
+            if size > l {
+                (size, l, idx)
+            } else if size > s {
+                (l, size, li)
+            } else {
+                (l, s, li)
             }
-        }
+    );
+
+    // we only warn if the largest variant is at least thrice as large as
+    // the second-largest.
+    if largest > slargest * 3 && slargest > 0 {
+        // Use lint::raw_emit_lint rather than sess.add_lint because the lint-printing
+        // pass for the latter already ran.
+        lint::raw_emit_lint(&ccx.tcx().sess, lint::builtin::variant_size_difference,
+            lvlsrc, Some(sp),
+            format!("enum variant is more than three times larger \
+                     ({} bytes) than the next largest (ignoring padding)",
+                    largest).as_slice());
+
+        ccx.sess().span_note(enum_def.variants.get(largest_index).span,
+                             "this variant is the largest");
     }
 }
 
