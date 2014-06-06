@@ -322,9 +322,19 @@ macro_rules! vec(
     ($($e:expr),+,) => (vec!($($e),+))
 )
 
-/// Return whether the given expression matches the given pattern, as a bool.
+/// Return whether the given expression matches the given patterns.
+///
+/// # Example
+///
+/// ```
+/// let input: &str = /* ... */;
+/// if !input.is_empty() && matches!(input.char_at(0), '+' | '-')
+///         && matches!(input.char_at(1), '0'..'9') {
+///     // Parse signed number
+/// }
+/// ```
 #[macro_export]
-macro_rules! is_match(
+macro_rules! matches(
     ($e: expr, $($p:pat)|*) => (match $e {
         $($p: pat)|+ => true,
         _ => false
