@@ -351,7 +351,7 @@ fn encode_enum_variant_info(ecx: &EncodeContext,
 fn encode_path<PI: Iterator<PathElem> + Clone>(ebml_w: &mut Encoder,
                                                mut path: PI) {
     ebml_w.start_tag(tag_path);
-    ebml_w.wr_tagged_u32(tag_path_len, path.clone().len() as u32);
+    ebml_w.wr_tagged_u32(tag_path_len, path.clone().count() as u32);
     for pe in path {
         let tag = match pe {
             ast_map::PathMod(_) => tag_path_elem_mod,

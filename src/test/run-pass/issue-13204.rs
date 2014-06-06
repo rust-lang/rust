@@ -14,7 +14,7 @@
 pub trait Foo {
     fn bar<'a, I: Iterator<&'a ()>>(&self, it: I) -> uint {
         let mut xs = it.filter(|_| true);
-        xs.len()
+        xs.count()
     }
 }
 

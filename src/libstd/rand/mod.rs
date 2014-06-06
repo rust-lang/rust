@@ -353,17 +353,17 @@ mod test {
     #[test]
     fn test_gen_ascii_str() {
         let mut r = task_rng();
-        assert_eq!(r.gen_ascii_chars().take(0).len(), 0u);
-        assert_eq!(r.gen_ascii_chars().take(10).len(), 10u);
-        assert_eq!(r.gen_ascii_chars().take(16).len(), 16u);
+        assert_eq!(r.gen_ascii_chars().take(0).count(), 0u);
+        assert_eq!(r.gen_ascii_chars().take(10).count(), 10u);
+        assert_eq!(r.gen_ascii_chars().take(16).count(), 16u);
     }
 
     #[test]
     fn test_gen_vec() {
         let mut r = task_rng();
-        assert_eq!(r.gen_iter::<u8>().take(0).len(), 0u);
-        assert_eq!(r.gen_iter::<u8>().take(10).len(), 10u);
-        assert_eq!(r.gen_iter::<f64>().take(16).len(), 16u);
+        assert_eq!(r.gen_iter::<u8>().take(0).count(), 0u);
+        assert_eq!(r.gen_iter::<u8>().take(10).count(), 10u);
+        assert_eq!(r.gen_iter::<f64>().take(16).count(), 16u);
     }
 
     #[test]

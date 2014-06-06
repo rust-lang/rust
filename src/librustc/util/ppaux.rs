@@ -454,7 +454,7 @@ pub fn parameterized(cx: &ctxt,
                 Some(default) => ty::subst(cx, &substs, default) == actual,
                 None => false
             }
-        }).len()
+        }).count()
     } else {
         0
     };
