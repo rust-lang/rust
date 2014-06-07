@@ -958,8 +958,13 @@ fn link_rlib<'a>(sess: &'a Session,
 
             // For LTO purposes, the bytecode of this library is also inserted
             // into the archive.
+            //
+            // Note that we make sure that the bytecode filename in the archive
+            // is never exactly 16 bytes long by adding a 16 byte extension to
+            // it. This is to work around a bug in LLDB that would cause it to
+            // crash if the name of a file in an archive was exactly 16 bytes.
             let bc = obj_filename.with_extension("bc");
-            let bc_deflated = obj_filename.with_extension("bc.deflate");
+            let bc_deflated = obj_filename.with_extension("bytecode.deflate");
             match fs::File::open(&bc).read_to_end().and_then(|data| {
                 fs::File::create(&bc_deflated)
                     .write(match flate::deflate_bytes(data.as_slice()) {

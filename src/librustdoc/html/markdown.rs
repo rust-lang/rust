@@ -27,7 +27,7 @@
 #![allow(non_camel_case_types)]
 
 use libc;
-use std::cell::RefCell;
+use std::cell::{RefCell, Cell};
 use std::fmt;
 use std::slice;
 use std::str;
@@ -35,6 +35,8 @@ use std::collections::HashMap;
 
 use html::toc::TocBuilder;
 use html::highlight;
+use html::escape::Escape;
+use test;
 
 /// A unit struct which has the `fmt::Show` trait implemented. When
 /// formatted, this struct will emit the HTML corresponding to the rendered
@@ -139,6 +141,9 @@ fn stripped_filtered_line<'a>(s: &'a str) -> Option<&'a str> {
 }
 
 local_data_key!(used_header_map: RefCell<HashMap<String, uint>>)
+local_data_key!(test_idx: Cell<uint>)
+// None == render an example, but there's no crate name
+local_data_key!(pub playground_krate: Option<String>)
 
 pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
     extern fn block(ob: *mut hoedown_buffer, text: *hoedown_buffer,
@@ -149,9 +154,9 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
             let opaque = opaque as *mut hoedown_html_renderer_state;
             let my_opaque: &MyOpaque = &*((*opaque).opaque as *MyOpaque);
             slice::raw::buf_as_slice((*text).data, (*text).size as uint, |text| {
-                let text = str::from_utf8(text).unwrap();
+                let origtext = str::from_utf8(text).unwrap();
                 debug!("docblock: ==============\n{}\n=======", text);
-                let mut lines = text.lines().filter(|l| {
+                let mut lines = origtext.lines().filter(|l| {
                     stripped_filtered_line(*l).is_none()
                 });
                 let text = lines.collect::<Vec<&str>>().connect("\n");
@@ -180,9 +185,26 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
                 };
 
                 if !rendered {
-                    let output = highlight::highlight(text.as_slice(),
-                                                      None).as_slice()
-                                                           .to_c_str();
+                    let mut s = String::new();
+                    let id = playground_krate.get().map(|krate| {
+                        let idx = test_idx.get().unwrap();
+                        let i = idx.get();
+                        idx.set(i + 1);
+
+                        let test = origtext.lines().map(|l| {
+                            stripped_filtered_line(l).unwrap_or(l)
+                        }).collect::<Vec<&str>>().connect("\n");
+                        let krate = krate.as_ref().map(|s| s.as_slice());
+                        let test = test::maketest(test.as_slice(), krate, false);
+                        s.push_str(format!("<span id='rust-example-raw-{}' \
+                                             class='rusttest'>{}</span>",
+                                           i, Escape(test.as_slice())).as_slice());
+                        format!("rust-example-rendered-{}", i)
+                    });
+                    let id = id.as_ref().map(|a| a.as_slice());
+                    s.push_str(highlight::highlight(text.as_slice(), None, id)
+                                         .as_slice());
+                    let output = s.to_c_str();
                     output.with_ref(|r| {
                         hoedown_buffer_puts(ob, r)
                     })
@@ -377,6 +399,7 @@ fn parse_lang_string(string: &str) -> (bool,bool,bool,bool) {
 /// previous state (if any).
 pub fn reset_headers() {
     used_header_map.replace(Some(RefCell::new(HashMap::new())));
+    test_idx.replace(Some(Cell::new(0)));
 }
 
 impl<'a> fmt::Show for Markdown<'a> {

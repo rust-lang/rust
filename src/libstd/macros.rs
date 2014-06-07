@@ -212,7 +212,7 @@ macro_rules! unimplemented(
     () => (fail!("not yet implemented"))
 )
 
-/// Use the syntax described in `std::fmt` to create a value of type `~str`.
+/// Use the syntax described in `std::fmt` to create a value of type `String`.
 /// See `std::fmt` for more information.
 ///
 /// # Example
@@ -465,7 +465,7 @@ pub mod builtin {
     /// ```
     /// let rust = bytes!("r", 'u', "st", 255);
     /// assert_eq!(rust[1], 'u' as u8);
-    /// assert_eq!(rust[5], 255);
+    /// assert_eq!(rust[4], 255);
     /// ```
     #[macro_export]
     macro_rules! bytes( ($($e:expr),*) => ({ /* compiler built-in */ }) )
@@ -482,10 +482,14 @@ pub mod builtin {
     /// # Example
     ///
     /// ```
+    /// #![feature(concat_idents)]
+    ///
+    /// # fn main() {
     /// fn foobar() -> int { 23 }
     ///
     /// let f = concat_idents!(foo, bar);
     /// println!("{}", f());
+    /// # }
     /// ```
     #[macro_export]
     macro_rules! concat_idents( ($($e:ident),*) => ({ /* compiler built-in */ }) )

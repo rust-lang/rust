@@ -53,6 +53,20 @@ RPATH_LINK_SEARCH = -Wl,-rpath-link=$(1)
 endif
 endif
 
+# Extra flags needed to compile a working executable with the standard library
+ifdef IS_WINDOWS
+	EXTRACFLAGS :=
+else
+ifeq ($(shell uname),Darwin)
+else
+ifeq ($(shell uname),FreeBSD)
+	EXTRACFLAGS := -lm -lpthread -lgcc_s
+else
+	EXTRACFLAGS := -lm -lrt -ldl -lpthread
+endif
+endif
+endif
+
 REMOVE_DYLIBS     = rm $(TMPDIR)/$(call DYLIB_GLOB,$(1))
 REMOVE_RLIBS      = rm $(TMPDIR)/$(call RLIB_GLOB,$(1))
 

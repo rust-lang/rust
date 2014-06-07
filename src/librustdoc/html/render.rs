@@ -51,7 +51,7 @@ use rustc::util::nodemap::NodeSet;
 use clean;
 use doctree;
 use fold::DocFolder;
-use html::format::{VisSpace, Method, FnStyleSpace};
+use html::format::{VisSpace, Method, FnStyleSpace, MutableSpace};
 use html::highlight;
 use html::item_type::{ItemType, shortty};
 use html::item_type;
@@ -230,6 +230,7 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
             logo: "".to_string(),
             favicon: "".to_string(),
             krate: krate.name.clone(),
+            playground_url: "".to_string(),
         },
         include_sources: true,
         render_redirect_pages: false,
@@ -249,6 +250,14 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
                     clean::NameValue(ref x, ref s)
                             if "html_logo_url" == x.as_slice() => {
                         cx.layout.logo = s.to_string();
+                    }
+                    clean::NameValue(ref x, ref s)
+                            if "html_playground_url" == x.as_slice() => {
+                        cx.layout.playground_url = s.to_string();
+                        let name = krate.name.clone();
+                        if markdown::playground_krate.get().is_none() {
+                            markdown::playground_krate.replace(Some(Some(name)));
+                        }
                     }
                     clean::Word(ref x)
                             if "html_no_source" == x.as_slice() => {
@@ -450,6 +459,7 @@ fn write_shared(cx: &Context,
     try!(write(cx.dst.join("jquery.js"),
                include_bin!("static/jquery-2.1.0.min.js")));
     try!(write(cx.dst.join("main.js"), include_bin!("static/main.js")));
+    try!(write(cx.dst.join("playpen.js"), include_bin!("static/playpen.js")));
     try!(write(cx.dst.join("main.css"), include_bin!("static/main.css")));
     try!(write(cx.dst.join("normalize.css"),
                include_bin!("static/normalize.css")));
@@ -1441,11 +1451,12 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
 
                 try!(write!(w, "
                     <tr>
-                        <td><code>{}static {}: {}</code>{}</td>
+                        <td><code>{}static {}{}: {}</code>{}</td>
                         <td class='docblock'>{}&nbsp;</td>
                     </tr>
                 ",
                 VisSpace(myitem.visibility),
+                MutableSpace(s.mutability),
                 *myitem.name.get_ref(),
                 s.type_,
                 Initializer(s.expr.as_slice(), Item { cx: cx, item: myitem }),
@@ -2042,7 +2053,7 @@ fn build_sidebar(m: &clean::Module) -> HashMap<String, Vec<String>> {
 impl<'a> fmt::Show for Source<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let Source(s) = *self;
-        let lines = s.lines().len();
+        let lines = s.lines().count();
         let mut cols = 0;
         let mut tmp = lines;
         while tmp > 0 {
@@ -2054,14 +2065,15 @@ impl<'a> fmt::Show for Source<'a> {
             try!(write!(fmt, "<span id='{0:u}'>{0:1$u}</span>\n", i, cols));
         }
         try!(write!(fmt, "</pre>"));
-        try!(write!(fmt, "{}", highlight::highlight(s.as_slice(), None)));
+        try!(write!(fmt, "{}", highlight::highlight(s.as_slice(), None, None)));
         Ok(())
     }
 }
 
 fn item_macro(w: &mut fmt::Formatter, it: &clean::Item,
               t: &clean::Macro) -> fmt::Result {
-    try!(w.write(highlight::highlight(t.source.as_slice(), Some("macro")).as_bytes()));
+    try!(w.write(highlight::highlight(t.source.as_slice(), Some("macro"),
+                                      None).as_bytes()));
     document(w, it)
 }
 

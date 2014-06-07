@@ -684,8 +684,8 @@ impl DefaultResizePolicy {
 /// denial-of-service attacks (Hash DoS). This behaviour can be
 /// overridden with one of the constructors.
 ///
-/// It is required that the keys implement the `PartialEq` and `Hash` traits, although
-/// this can frequently be achieved by using `#[deriving(PartialEq, Hash)]`.
+/// It is required that the keys implement the `Eq` and `Hash` traits, although
+/// this can frequently be achieved by using `#[deriving(Eq, Hash)]`.
 ///
 /// Relevant papers/articles:
 ///
@@ -1422,6 +1422,8 @@ impl<K: Eq + Hash<S>, V: PartialEq, S, H: Hasher<S>> PartialEq for HashMap<K, V,
     }
 }
 
+impl<K: Eq + Hash<S>, V: Eq, S, H: Hasher<S>> Eq for HashMap<K, V, H> {}
+
 impl<K: Eq + Hash<S> + Show, V: Show, S, H: Hasher<S>> Show for HashMap<K, V, H> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(f, r"\{"));
@@ -1486,7 +1488,7 @@ pub type SetMoveItems<K> =
 
 /// An implementation of a hash set using the underlying representation of a
 /// HashMap where the value is (). As with the `HashMap` type, a `HashSet`
-/// requires that the elements implement the `PartialEq` and `Hash` traits.
+/// requires that the elements implement the `Eq` and `Hash` traits.
 #[deriving(Clone)]
 pub struct HashSet<T, H = sip::SipHasher> {
     map: HashMap<T, (), H>
@@ -1499,6 +1501,8 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> PartialEq for HashSet<T, H> {
         self.iter().all(|key| other.contains(key))
     }
 }
+
+impl<T: Eq + Hash<S>, S, H: Hasher<S>> Eq for HashSet<T, H> {}
 
 impl<T: Eq + Hash<S>, S, H: Hasher<S>> Container for HashSet<T, H> {
     fn len(&self) -> uint { self.map.len() }

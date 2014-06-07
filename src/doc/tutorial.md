@@ -774,6 +774,7 @@ fn point_from_direction(dir: Direction) -> Point {
 Enum variants may also be structs. For example:
 
 ~~~~
+# #![feature(struct_variant)]
 use std::f64;
 # struct Point { x: f64, y: f64 }
 # fn square(x: f64) -> f64 { x * x }
@@ -789,6 +790,7 @@ fn area(sh: Shape) -> f64 {
         }
     }
 }
+# fn main() {}
 ~~~~
 
 > *Note:* This feature of the compiler is currently gated behind the
@@ -3046,6 +3048,7 @@ use farm::{chicken, cow};
 2. Import everything in a module with a wildcard:
 
 ~~~
+# #![feature(globs)]
 use farm::*;
 # mod farm {
 #     pub fn cow() { println!("Bat-chicken? What a stupid name!") }
