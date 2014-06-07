@@ -11,8 +11,6 @@
 struct A { a: int, b: Box<int> }
 struct B { a: Box<int>, b: Box<int> }
 
-fn borrow<T>(_: &T) { }
-
 fn move_after_copy() {
     let x = A { a: 1, b: box 2 };
     drop(x.a);
@@ -64,21 +62,23 @@ fn fu_copy_after_fu_move() {
 fn borrow_after_move() {
     let x = A { a: 1, b: box 2 };
     drop(x.b);
-    borrow(&x.a);
+    let p = &x.a;
+    drop(*p);
 }
 
 fn borrow_after_fu_move() {
     let x = A { a: 1, b: box 2 };
     let _y = A { a: 3, .. x };
-    borrow(&x.a);
+    let p = &x.a;
+    drop(*p);
 }
 
 fn mut_borrow_after_mut_borrow() {
     let mut x = A { a: 1, b: box 2 };
-    let y = &mut x.a;
-    let z = &mut x.b;
-    drop(*y);
-    drop(**z);
+    let p = &mut x.a;
+    let q = &mut x.b;
+    drop(*p);
+    drop(**q);
 }
 
 fn move_after_move() {
@@ -138,28 +138,32 @@ fn borrow_after_assign_after_move() {
     let mut x = A { a: 1, b: box 2 };
     drop(x.b);
     x = A { a: 3, b: box 4 };
-    borrow(&x.b);
+    let p = &x.b;
+    drop(**p);
 }
 
 fn borrow_after_assign_after_fu_move() {
     let mut x = A { a: 1, b: box 2 };
     let _y = A { a: 3, .. x };
     x = A { a: 3, b: box 4 };
-    borrow(&x.b);
+    let p = &x.b;
+    drop(**p);
 }
 
 fn borrow_after_field_assign_after_move() {
     let mut x = A { a: 1, b: box 2 };
     drop(x.b);
     x.b = box 3;
-    borrow(&x.b);
+    let p = &x.b;
+    drop(**p);
 }
 
 fn borrow_after_field_assign_after_fu_move() {
     let mut x = A { a: 1, b: box 2 };
     let _y = A { a: 3, .. x };
     x.b = box 3;
-    borrow(&x.b);
+    let p = &x.b;
+    drop(**p);
 }
 
 fn move_after_assign_after_move() {
@@ -199,7 +203,8 @@ fn copy_after_assign_after_uninit() {
 fn borrow_after_assign_after_uninit() {
     let mut x: A;
     x = A { a: 1, b: box 2 };
-    borrow(&x.a);
+    let p = &x.a;
+    drop(*p);
 }
 
 fn move_after_assign_after_uninit() {
