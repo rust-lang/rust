@@ -16,12 +16,13 @@ use prelude::*;
 
 use str;
 use fmt;
-use io::IoResult;
+use io::{IoResult, IoError};
 use io;
 use libc;
 use mem;
 use owned::Box;
 use rt::rtio::{RtioProcess, ProcessConfig, IoFactory, LocalIo};
+use rt::rtio;
 use c_str::CString;
 
 /// Signal a process to exit, without forcibly killing it. Corresponds to
@@ -232,16 +233,25 @@ impl Command {
 
     /// Executes the command as a child process, which is returned.
     pub fn spawn(&self) -> IoResult<Process> {
+        fn to_rtio(p: StdioContainer) -> rtio::StdioContainer {
+            match p {
+                Ignored => rtio::Ignored,
+                InheritFd(fd) => rtio::InheritFd(fd),
+                CreatePipe(a, b) => rtio::CreatePipe(a, b),
+            }
+        }
+        let extra_io: Vec<rtio::StdioContainer> =
+            self.extra_io.iter().map(|x| to_rtio(*x)).collect();
         LocalIo::maybe_raise(|io| {
             let cfg = ProcessConfig {
                 program: &self.program,
                 args: self.args.as_slice(),
                 env: self.env.as_ref().map(|env| env.as_slice()),
                 cwd: self.cwd.as_ref(),
-                stdin: self.stdin,
-                stdout: self.stdout,
-                stderr: self.stderr,
-                extra_io: self.extra_io.as_slice(),
+                stdin: to_rtio(self.stdin),
+                stdout: to_rtio(self.stdout),
+                stderr: to_rtio(self.stderr),
+                extra_io: extra_io.as_slice(),
                 uid: self.uid,
                 gid: self.gid,
                 detach: self.detach,
@@ -258,7 +268,7 @@ impl Command {
                     extra_io: io.collect(),
                 }
             })
-        })
+        }).map_err(IoError::from_rtio_error)
     }
 
     /// Executes the command as a child process, waiting for it to finish and
@@ -393,7 +403,9 @@ impl Process {
     /// be successfully delivered if the child has exited, but not yet been
     /// reaped.
     pub fn kill(id: libc::pid_t, signal: int) -> IoResult<()> {
-        LocalIo::maybe_raise(|io| io.kill(id, signal))
+        LocalIo::maybe_raise(|io| {
+            io.kill(id, signal)
+        }).map_err(IoError::from_rtio_error)
     }
 
     /// Returns the process id of this child process
@@ -415,7 +427,7 @@ impl Process {
     ///
     /// If the signal delivery fails, the corresponding error is returned.
     pub fn signal(&mut self, signal: int) -> IoResult<()> {
-        self.handle.kill(signal)
+        self.handle.kill(signal).map_err(IoError::from_rtio_error)
     }
 
     /// Sends a signal to this child requesting that it exits. This is
@@ -442,7 +454,11 @@ impl Process {
     /// `set_timeout` and the timeout expires before the child exits.
     pub fn wait(&mut self) -> IoResult<ProcessExit> {
         drop(self.stdin.take());
-        self.handle.wait()
+        match self.handle.wait() {
+            Ok(rtio::ExitSignal(s)) => Ok(ExitSignal(s)),
+            Ok(rtio::ExitStatus(s)) => Ok(ExitStatus(s)),
+            Err(e) => Err(IoError::from_rtio_error(e)),
+        }
     }
 
     /// Sets a timeout, in milliseconds, for future calls to wait().

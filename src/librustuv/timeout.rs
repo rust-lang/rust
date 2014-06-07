@@ -9,9 +9,9 @@
 // except according to those terms.
 
 use libc::c_int;
-use std::io::IoResult;
 use std::mem;
 use std::rt::task::BlockedTask;
+use std::rt::rtio::IoResult;
 
 use access;
 use homing::{HomeHandle, HomingMissile, HomingIO};

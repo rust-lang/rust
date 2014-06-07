@@ -23,10 +23,10 @@
 use libc;
 use std::ptr;
 use std::rt::rtio;
+use std::rt::rtio::{IoResult, Callback};
 use std::comm;
 
 use io::helper_thread::Helper;
-use io::IoResult;
 
 helper_init!(static mut HELPER: Helper<Req>)
 
@@ -36,7 +36,7 @@ pub struct Timer {
 }
 
 pub enum Req {
-    NewTimer(libc::HANDLE, Sender<()>, bool),
+    NewTimer(libc::HANDLE, Box<Callback:Send>, bool),
     RemoveTimer(libc::HANDLE, Sender<()>),
 }
 
@@ -79,8 +79,8 @@ fn helper(input: libc::HANDLE, messages: Receiver<Req>, _: ()) {
             }
         } else {
             let remove = {
-                match chans.get(idx as uint - 1) {
-                    &(ref c, oneshot) => c.send_opt(()).is_err() || oneshot
+                match chans.get_mut(idx as uint - 1) {
+                    &(ref mut c, oneshot) => { c.call(); oneshot }
                 }
             };
             if remove {
@@ -148,9 +148,8 @@ impl rtio::RtioTimer for Timer {
         let _ = unsafe { imp::WaitForSingleObject(self.obj, libc::INFINITE) };
     }
 
-    fn oneshot(&mut self, msecs: u64) -> Receiver<()> {
+    fn oneshot(&mut self, msecs: u64, cb: Box<Callback:Send>) {
         self.remove();
-        let (tx, rx) = channel();
 
         // see above for the calculation
         let due = -(msecs as i64 * 10000) as libc::LARGE_INTEGER;
@@ -159,14 +158,12 @@ impl rtio::RtioTimer for Timer {
                                   ptr::mut_null(), 0)
         }, 1);
 
-        unsafe { HELPER.send(NewTimer(self.obj, tx, true)) }
+        unsafe { HELPER.send(NewTimer(self.obj, cb, true)) }
         self.on_worker = true;
-        return rx;
     }
 
-    fn period(&mut self, msecs: u64) -> Receiver<()> {
+    fn period(&mut self, msecs: u64, cb: Box<Callback:Send>) {
         self.remove();
-        let (tx, rx) = channel();
 
         // see above for the calculation
         let due = -(msecs as i64 * 10000) as libc::LARGE_INTEGER;
@@ -175,10 +172,8 @@ impl rtio::RtioTimer for Timer {
                                   ptr::null(), ptr::mut_null(), 0)
         }, 1);
 
-        unsafe { HELPER.send(NewTimer(self.obj, tx, false)) }
+        unsafe { HELPER.send(NewTimer(self.obj, cb, false)) }
         self.on_worker = true;
-
-        return rx;
     }
 }
 

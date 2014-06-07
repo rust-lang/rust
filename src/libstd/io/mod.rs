@@ -225,6 +225,7 @@ use option::{Option, Some, None};
 use os;
 use owned::Box;
 use result::{Ok, Err, Result};
+use rt::rtio;
 use slice::{Vector, MutableVector, ImmutableVector};
 use str::{StrSlice, StrAllocating};
 use str;
@@ -312,7 +313,8 @@ impl IoError {
                 libc::ERROR_INVALID_NAME => (InvalidInput, "invalid file name"),
                 libc::WSAECONNREFUSED => (ConnectionRefused, "connection refused"),
                 libc::WSAECONNRESET => (ConnectionReset, "connection reset"),
-                libc::WSAEACCES => (PermissionDenied, "permission denied"),
+                libc::ERROR_ACCESS_DENIED | libc::WSAEACCES =>
+                    (PermissionDenied, "permission denied"),
                 libc::WSAEWOULDBLOCK => {
                     (ResourceUnavailable, "resource temporarily unavailable")
                 }
@@ -323,6 +325,14 @@ impl IoError {
                 libc::ERROR_BROKEN_PIPE => (EndOfFile, "the pipe has ended"),
                 libc::ERROR_OPERATION_ABORTED =>
                     (TimedOut, "operation timed out"),
+                libc::WSAEINVAL => (InvalidInput, "invalid argument"),
+                libc::ERROR_CALL_NOT_IMPLEMENTED =>
+                    (IoUnavailable, "function not implemented"),
+                libc::ERROR_INVALID_HANDLE =>
+                    (MismatchedFileTypeForOperation,
+                     "invalid handle provided to function"),
+                libc::ERROR_NOTHING_TO_TERMINATE =>
+                    (InvalidInput, "no process to kill"),
 
                 // libuv maps this error code to EISDIR. we do too. if it is found
                 // to be incorrect, we can add in some more machinery to only
@@ -351,9 +361,17 @@ impl IoError {
                 libc::EADDRINUSE => (ConnectionRefused, "address in use"),
                 libc::ENOENT => (FileNotFound, "no such file or directory"),
                 libc::EISDIR => (InvalidInput, "illegal operation on a directory"),
+                libc::ENOSYS => (IoUnavailable, "function not implemented"),
+                libc::EINVAL => (InvalidInput, "invalid argument"),
+                libc::ENOTTY =>
+                    (MismatchedFileTypeForOperation,
+                     "file descriptor is not a TTY"),
+                libc::ETIMEDOUT => (TimedOut, "operation timed out"),
+                libc::ECANCELED => (TimedOut, "operation aborted"),
 
-                // These two constants can have the same value on some systems, but
-                // different values on others, so we can't use a match clause
+                // These two constants can have the same value on some systems,
+                // but different values on others, so we can't use a match
+                // clause
                 x if x == libc::EAGAIN || x == libc::EWOULDBLOCK =>
                     (ResourceUnavailable, "resource temporarily unavailable"),
 
@@ -381,6 +399,17 @@ impl IoError {
     /// being checked and the call of this function.
     pub fn last_error() -> IoError {
         IoError::from_errno(os::errno() as uint, true)
+    }
+
+    fn from_rtio_error(err: rtio::IoError) -> IoError {
+        let rtio::IoError { code, extra, detail } = err;
+        let mut ioerr = IoError::from_errno(code, false);
+        ioerr.detail = detail;
+        ioerr.kind = match ioerr.kind {
+            TimedOut if extra > 0 => ShortWrite(extra),
+            k => k,
+        };
+        return ioerr;
     }
 }
 

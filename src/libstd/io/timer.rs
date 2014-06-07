@@ -17,11 +17,11 @@ and create receivers which will receive notifications after a period of time.
 
 */
 
-use comm::Receiver;
-use io::IoResult;
+use comm::{Receiver, Sender, channel};
+use io::{IoResult, IoError};
 use kinds::Send;
 use owned::Box;
-use rt::rtio::{IoFactory, LocalIo, RtioTimer};
+use rt::rtio::{IoFactory, LocalIo, RtioTimer, Callback};
 
 /// A synchronous timer object
 ///
@@ -67,6 +67,8 @@ pub struct Timer {
     obj: Box<RtioTimer:Send>,
 }
 
+struct TimerCallback { tx: Sender<()> }
+
 /// Sleep the current task for `msecs` milliseconds.
 pub fn sleep(msecs: u64) {
     let timer = Timer::new();
@@ -80,7 +82,9 @@ impl Timer {
     /// for a number of milliseconds, or to possibly create channels which will
     /// get notified after an amount of time has passed.
     pub fn new() -> IoResult<Timer> {
-        LocalIo::maybe_raise(|io| io.timer_init().map(|t| Timer { obj: t }))
+        LocalIo::maybe_raise(|io| {
+            io.timer_init().map(|t| Timer { obj: t })
+        }).map_err(IoError::from_rtio_error)
     }
 
     /// Blocks the current task for `msecs` milliseconds.
@@ -99,7 +103,9 @@ impl Timer {
     /// by this timer, and that the returned receiver will be invalidated once
     /// the timer is destroyed (when it falls out of scope).
     pub fn oneshot(&mut self, msecs: u64) -> Receiver<()> {
-        self.obj.oneshot(msecs)
+        let (tx, rx) = channel();
+        self.obj.oneshot(msecs, box TimerCallback { tx: tx });
+        return rx
     }
 
     /// Creates a receiver which will have a continuous stream of notifications
@@ -112,7 +118,15 @@ impl Timer {
     /// by this timer, and that the returned receiver will be invalidated once
     /// the timer is destroyed (when it falls out of scope).
     pub fn periodic(&mut self, msecs: u64) -> Receiver<()> {
-        self.obj.period(msecs)
+        let (tx, rx) = channel();
+        self.obj.period(msecs, box TimerCallback { tx: tx });
+        return rx
+    }
+}
+
+impl Callback for TimerCallback {
+    fn call(&mut self) {
+        let _ = self.tx.send_opt(());
     }
 }
 

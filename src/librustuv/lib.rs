@@ -51,16 +51,14 @@ extern crate alloc;
 
 use libc::{c_int, c_void};
 use std::fmt;
-use std::io::IoError;
-use std::io;
 use std::mem;
 use std::ptr::null;
 use std::ptr;
 use std::rt::local::Local;
 use std::rt::rtio;
+use std::rt::rtio::{IoResult, IoError};
 use std::rt::task::{BlockedTask, Task};
 use std::str::raw::from_c_str;
-use std::str;
 use std::task;
 
 pub use self::async::AsyncWatcher;
@@ -391,40 +389,40 @@ fn error_smoke_test() {
     assert_eq!(err.to_str(), "EOF: end of file".to_string());
 }
 
+#[cfg(unix)]
 pub fn uv_error_to_io_error(uverr: UvError) -> IoError {
-    unsafe {
-        // Importing error constants
+    let UvError(errcode) = uverr;
+    IoError {
+        code: if errcode == uvll::EOF {libc::EOF as uint} else {-errcode as uint},
+        extra: 0,
+        detail: Some(uverr.desc()),
+    }
+}
 
-        // uv error descriptions are static
-        let UvError(errcode) = uverr;
-        let c_desc = uvll::uv_strerror(errcode);
-        let desc = str::raw::c_str_to_static_slice(c_desc);
-
-        let kind = match errcode {
-            uvll::UNKNOWN => io::OtherIoError,
-            uvll::OK => io::OtherIoError,
-            uvll::EOF => io::EndOfFile,
-            uvll::EACCES => io::PermissionDenied,
-            uvll::ECONNREFUSED => io::ConnectionRefused,
-            uvll::ECONNRESET => io::ConnectionReset,
-            uvll::ENOTCONN => io::NotConnected,
-            uvll::ENOENT => io::FileNotFound,
-            uvll::EPIPE => io::BrokenPipe,
-            uvll::ECONNABORTED => io::ConnectionAborted,
-            uvll::EADDRNOTAVAIL => io::ConnectionRefused,
-            uvll::ECANCELED => io::TimedOut,
+#[cfg(windows)]
+pub fn uv_error_to_io_error(uverr: UvError) -> IoError {
+    let UvError(errcode) = uverr;
+    IoError {
+        code: match errcode {
+            uvll::EOF => libc::EOF,
+            uvll::EACCES => libc::ERROR_ACCESS_DENIED,
+            uvll::ECONNREFUSED => libc::WSAECONNREFUSED,
+            uvll::ECONNRESET => libc::WSAECONNRESET,
+            uvll::ENOTCONN => libc::WSAENOTCONN,
+            uvll::ENOENT => libc::ERROR_FILE_NOT_FOUND,
+            uvll::EPIPE => libc::ERROR_NO_DATA,
+            uvll::ECONNABORTED => libc::WSAECONNABORTED,
+            uvll::EADDRNOTAVAIL => libc::WSAEADDRNOTAVAIL,
+            uvll::ECANCELED => libc::ERROR_OPERATION_ABORTED,
+            uvll::EADDRINUSE => libc::WSAEADDRINUSE,
             err => {
                 uvdebug!("uverr.code {}", err as int);
                 // FIXME: Need to map remaining uv error types
-                io::OtherIoError
+                -1
             }
-        };
-
-        IoError {
-            kind: kind,
-            desc: desc,
-            detail: None
-        }
+        } as uint,
+        extra: 0,
+        detail: Some(uverr.desc()),
     }
 }
 
@@ -437,7 +435,7 @@ pub fn status_to_maybe_uv_error(status: c_int) -> Option<UvError> {
     }
 }
 
-pub fn status_to_io_result(status: c_int) -> Result<(), IoError> {
+pub fn status_to_io_result(status: c_int) -> IoResult<()> {
     if status >= 0 {Ok(())} else {Err(uv_error_to_io_error(UvError(status)))}
 }
 
@@ -469,6 +467,33 @@ fn local_loop() -> &'static mut uvio::UvIoFactory {
             uvio
         })
     }
+}
+
+#[cfg(test)]
+fn next_test_ip4() -> std::rt::rtio::SocketAddr {
+    use std::io;
+    use std::rt::rtio;
+
+    let io::net::ip::SocketAddr { ip, port } = io::test::next_test_ip4();
+    let ip = match ip {
+        io::net::ip::Ipv4Addr(a, b, c, d) => rtio::Ipv4Addr(a, b, c, d),
+        _ => unreachable!(),
+    };
+    rtio::SocketAddr { ip: ip, port: port }
+}
+
+#[cfg(test)]
+fn next_test_ip6() -> std::rt::rtio::SocketAddr {
+    use std::io;
+    use std::rt::rtio;
+
+    let io::net::ip::SocketAddr { ip, port } = io::test::next_test_ip6();
+    let ip = match ip {
+        io::net::ip::Ipv6Addr(a, b, c, d, e, f, g, h) =>
+            rtio::Ipv6Addr(a, b, c, d, e, f, g, h),
+        _ => unreachable!(),
+    };
+    rtio::SocketAddr { ip: ip, port: port }
 }
 
 #[cfg(test)]

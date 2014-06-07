@@ -54,74 +54,21 @@ Several modules in `core` are clients of `rt`:
 // FIXME: this should not be here.
 #![allow(missing_doc)]
 
-use any::Any;
-use kinds::Send;
-use option::Option;
-use owned::Box;
-use result::Result;
-use task::TaskOpts;
+use failure;
+use rustrt;
 
-use self::task::{Task, BlockedTask};
+// Reexport some of our utilities which are expected by other crates.
+pub use self::util::{default_sched_threads, min_stack, running_on_valgrind};
 
-// this is somewhat useful when a program wants to spawn a "reasonable" number
-// of workers based on the constraints of the system that it's running on.
-// Perhaps this shouldn't be a `pub use` though and there should be another
-// method...
-pub use self::util::default_sched_threads;
-
-// Export unwinding facilities used by the failure macros
-pub use self::unwind::{begin_unwind, begin_unwind_fmt};
-
-pub use self::util::{Stdio, Stdout, Stderr};
-
+// Reexport functionality from librustrt and other crates underneath the
+// standard library which work together to create the entire runtime.
 pub use alloc::{heap, libc_heap};
-
-// Used by I/O tests
-#[experimental]
-pub use self::util::running_on_valgrind;
-
-// FIXME: these probably shouldn't be public...
-#[doc(hidden)]
-pub mod shouldnt_be_public {
-    #[cfg(not(test))]
-    pub use super::local_ptr::native::maybe_tls_key;
-    #[cfg(not(windows), not(target_os = "android"))]
-    pub use super::local_ptr::compiled::RT_TLS_PTR;
-}
-
-// Internal macros used by the runtime.
-mod macros;
-
-/// Implementations of language-critical runtime features like @.
-pub mod task;
-
-// The EventLoop and internal synchronous I/O interface.
-pub mod rtio;
-
-// The Local trait for types that are accessible via thread-local
-// or task-local storage.
-pub mod local;
+pub use rustrt::{task, local, mutex, exclusive, stack, args, rtio};
+pub use rustrt::{Stdio, Stdout, Stderr, begin_unwind, begin_unwind_fmt};
+pub use rustrt::{bookkeeping, at_exit, unwind, DEFAULT_ERROR_CODE, Runtime};
 
 // Bindings to system threading libraries.
 pub mod thread;
-
-// The runtime configuration, read from environment variables.
-pub mod env;
-
-// The local, managed heap
-pub mod local_heap;
-
-// The runtime needs to be able to put a pointer into thread-local storage.
-mod local_ptr;
-
-// Bindings to pthread/windows thread-local storage.
-mod thread_local_storage;
-
-// Stack unwinding
-pub mod unwind;
-
-// The interface to libunwind that rust is using.
-mod libunwind;
 
 // Simple backtrace functionality (to print on failure)
 pub mod backtrace;
@@ -129,84 +76,15 @@ pub mod backtrace;
 // Just stuff
 mod util;
 
-// Global command line argument storage
-pub mod args;
-
-// Support for running procedures when a program has exited.
-mod at_exit_imp;
-
-// Bookkeeping for task counts
-pub mod bookkeeping;
-
-// Stack overflow protection
-pub mod stack;
-
-/// The default error code of the rust runtime if the main task fails instead
-/// of exiting cleanly.
-pub static DEFAULT_ERROR_CODE: int = 101;
-
-/// The interface to the current runtime.
-///
-/// This trait is used as the abstraction between 1:1 and M:N scheduling. The
-/// two independent crates, libnative and libgreen, both have objects which
-/// implement this trait. The goal of this trait is to encompass all the
-/// fundamental differences in functionality between the 1:1 and M:N runtime
-/// modes.
-pub trait Runtime {
-    // Necessary scheduling functions, used for channels and blocking I/O
-    // (sometimes).
-    fn yield_now(~self, cur_task: Box<Task>);
-    fn maybe_yield(~self, cur_task: Box<Task>);
-    fn deschedule(~self, times: uint, cur_task: Box<Task>,
-                  f: |BlockedTask| -> Result<(), BlockedTask>);
-    fn reawaken(~self, to_wake: Box<Task>);
-
-    // Miscellaneous calls which are very different depending on what context
-    // you're in.
-    fn spawn_sibling(~self,
-                     cur_task: Box<Task>,
-                     opts: TaskOpts,
-                     f: proc():Send);
-    fn local_io<'a>(&'a mut self) -> Option<rtio::LocalIo<'a>>;
-    /// The (low, high) edges of the current stack.
-    fn stack_bounds(&self) -> (uint, uint); // (lo, hi)
-    fn can_block(&self) -> bool;
-
-    // FIXME: This is a serious code smell and this should not exist at all.
-    fn wrap(~self) -> Box<Any>;
-}
-
 /// One-time runtime initialization.
 ///
 /// Initializes global state, including frobbing
 /// the crate's logging flags, registering GC
 /// metadata, and storing the process arguments.
+#[allow(experimental)]
 pub fn init(argc: int, argv: **u8) {
-    // FIXME: Derefing these pointers is not safe.
-    // Need to propagate the unsafety to `start`.
-    unsafe {
-        args::init(argc, argv);
-        env::init();
-        local_ptr::init();
-        at_exit_imp::init();
-    }
-}
-
-/// Enqueues a procedure to run when the runtime is cleaned up
-///
-/// The procedure passed to this function will be executed as part of the
-/// runtime cleanup phase. For normal rust programs, this means that it will run
-/// after all other tasks have exited.
-///
-/// The procedure is *not* executed with a local `Task` available to it, so
-/// primitives like logging, I/O, channels, spawning, etc, are *not* available.
-/// This is meant for "bare bones" usage to clean up runtime details, this is
-/// not meant as a general-purpose "let's clean everything up" function.
-///
-/// It is forbidden for procedures to register more `at_exit` handlers when they
-/// are running, and doing so will lead to a process abort.
-pub fn at_exit(f: proc():Send) {
-    at_exit_imp::push(f);
+    rustrt::init(argc, argv);
+    unsafe { unwind::register(failure::on_fail); }
 }
 
 /// One-time runtime cleanup.
@@ -219,8 +97,5 @@ pub fn at_exit(f: proc():Send) {
 /// Invoking cleanup while portions of the runtime are still in use may cause
 /// undefined behavior.
 pub unsafe fn cleanup() {
-    bookkeeping::wait_for_other_tasks();
-    at_exit_imp::run();
-    args::cleanup();
-    local_ptr::cleanup();
+    rustrt::cleanup();
 }

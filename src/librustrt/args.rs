@@ -18,10 +18,9 @@
 //! discover the command line arguments.
 //!
 //! FIXME #7756: Would be nice for this to not exist.
-//! FIXME #7756: This has a lot of C glue for lack of globals.
 
-use option::Option;
-use vec::Vec;
+use core::prelude::*;
+use collections::vec::Vec;
 
 /// One-time global initialization.
 pub unsafe fn init(argc: int, argv: **u8) { imp::init(argc, argv) }
@@ -44,14 +43,14 @@ pub fn clone() -> Option<Vec<Vec<u8>>> { imp::clone() }
 #[cfg(target_os = "android")]
 #[cfg(target_os = "freebsd")]
 mod imp {
-    use clone::Clone;
-    use iter::Iterator;
-    use option::{Option, Some, None};
-    use owned::Box;
-    use unstable::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
-    use mem;
-    use vec::Vec;
-    use ptr::RawPtr;
+    use core::prelude::*;
+
+    use alloc::owned::Box;
+    use collections::vec::Vec;
+    use core::mem;
+    use core::slice;
+
+    use mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
 
     static mut global_args_ptr: uint = 0;
     static mut lock: StaticNativeMutex = NATIVE_MUTEX_INIT;
@@ -100,24 +99,23 @@ mod imp {
         unsafe { mem::transmute(&global_args_ptr) }
     }
 
-    // Copied from `os`.
     unsafe fn load_argc_and_argv(argc: int, argv: **u8) -> Vec<Vec<u8>> {
-        use c_str::CString;
-        use ptr::RawPtr;
-        use libc;
-        use vec::Vec;
-
         Vec::from_fn(argc as uint, |i| {
-            let cs = CString::new(*(argv as **libc::c_char).offset(i as int), false);
-            Vec::from_slice(cs.as_bytes_no_nul())
+            let base = *argv.offset(i as int);
+            let mut len = 0;
+            while *base.offset(len) != 0 { len += 1; }
+            slice::raw::buf_as_slice(base, len as uint, |slice| {
+                Vec::from_slice(slice)
+            })
         })
     }
 
     #[cfg(test)]
     mod tests {
-        use prelude::*;
+        use std::prelude::*;
+        use std::finally::Finally;
+
         use super::*;
-        use finally::Finally;
 
         #[test]
         fn smoke_test() {
@@ -149,8 +147,8 @@ mod imp {
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "win32")]
 mod imp {
-    use option::Option;
-    use vec::Vec;
+    use core::prelude::*;
+    use collections::vec::Vec;
 
     pub unsafe fn init(_argc: int, _argv: **u8) {
     }

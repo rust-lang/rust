@@ -14,16 +14,13 @@ use alloc::arc::Arc;
 use libc::{c_int, c_void};
 use libc;
 use std::c_str::CString;
-use std::io::IoError;
-use std::io;
 use std::mem;
 use std::os::win32::{as_utf16_p, fill_utf16_buf_and_decode};
 use std::ptr;
 use std::rt::rtio;
+use std::rt::rtio::IoResult;
 use std::str;
 use std::vec;
-
-use io::IoResult;
 
 pub type fd_t = libc::c_int;
 
@@ -52,7 +49,7 @@ impl FileDesc {
         }) }
     }
 
-    pub fn inner_read(&mut self, buf: &mut [u8]) -> Result<uint, IoError> {
+    pub fn inner_read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
         let mut read = 0;
         let ret = unsafe {
             libc::ReadFile(self.handle(), buf.as_ptr() as libc::LPVOID,
@@ -65,7 +62,7 @@ impl FileDesc {
             Err(super::last_error())
         }
     }
-    pub fn inner_write(&mut self, buf: &[u8]) -> Result<(), IoError> {
+    pub fn inner_write(&mut self, buf: &[u8]) -> IoResult<()> {
         let mut cur = buf.as_ptr();
         let mut remaining = buf.len();
         while remaining > 0 {
@@ -93,11 +90,11 @@ impl FileDesc {
 
     // A version of seek that takes &self so that tell can call it
     //   - the private seek should of course take &mut self.
-    fn seek_common(&self, pos: i64, style: io::SeekStyle) -> Result<u64, IoError> {
+    fn seek_common(&self, pos: i64, style: rtio::SeekStyle) -> IoResult<u64> {
         let whence = match style {
-            io::SeekSet => libc::FILE_BEGIN,
-            io::SeekEnd => libc::FILE_END,
-            io::SeekCur => libc::FILE_CURRENT,
+            rtio::SeekSet => libc::FILE_BEGIN,
+            rtio::SeekEnd => libc::FILE_END,
+            rtio::SeekCur => libc::FILE_CURRENT,
         };
         unsafe {
             let mut newpos = 0;
@@ -111,27 +108,15 @@ impl FileDesc {
 
 }
 
-impl io::Reader for FileDesc {
-    fn read(&mut self, buf: &mut [u8]) -> io::IoResult<uint> {
-        self.inner_read(buf)
-    }
-}
-
-impl io::Writer for FileDesc {
-    fn write(&mut self, buf: &[u8]) -> io::IoResult<()> {
-        self.inner_write(buf)
-    }
-}
-
 impl rtio::RtioFileStream for FileDesc {
-    fn read(&mut self, buf: &mut [u8]) -> Result<int, IoError> {
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<int> {
         self.inner_read(buf).map(|i| i as int)
     }
-    fn write(&mut self, buf: &[u8]) -> Result<(), IoError> {
+    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
         self.inner_write(buf)
     }
 
-    fn pread(&mut self, buf: &mut [u8], offset: u64) -> Result<int, IoError> {
+    fn pread(&mut self, buf: &mut [u8], offset: u64) -> IoResult<int> {
         let mut read = 0;
         let mut overlap: libc::OVERLAPPED = unsafe { mem::zeroed() };
         overlap.Offset = offset as libc::DWORD;
@@ -147,7 +132,7 @@ impl rtio::RtioFileStream for FileDesc {
             Err(super::last_error())
         }
     }
-    fn pwrite(&mut self, buf: &[u8], mut offset: u64) -> Result<(), IoError> {
+    fn pwrite(&mut self, buf: &[u8], mut offset: u64) -> IoResult<()> {
         let mut cur = buf.as_ptr();
         let mut remaining = buf.len();
         let mut overlap: libc::OVERLAPPED = unsafe { mem::zeroed() };
@@ -171,36 +156,36 @@ impl rtio::RtioFileStream for FileDesc {
         Ok(())
     }
 
-    fn seek(&mut self, pos: i64, style: io::SeekStyle) -> Result<u64, IoError> {
+    fn seek(&mut self, pos: i64, style: rtio::SeekStyle) -> IoResult<u64> {
         self.seek_common(pos, style)
     }
 
-    fn tell(&self) -> Result<u64, IoError> {
-        self.seek_common(0, io::SeekCur)
+    fn tell(&self) -> IoResult<u64> {
+        self.seek_common(0, rtio::SeekCur)
     }
 
-    fn fsync(&mut self) -> Result<(), IoError> {
+    fn fsync(&mut self) -> IoResult<()> {
         super::mkerr_winbool(unsafe {
             libc::FlushFileBuffers(self.handle())
         })
     }
 
-    fn datasync(&mut self) -> Result<(), IoError> { return self.fsync(); }
+    fn datasync(&mut self) -> IoResult<()> { return self.fsync(); }
 
-    fn truncate(&mut self, offset: i64) -> Result<(), IoError> {
+    fn truncate(&mut self, offset: i64) -> IoResult<()> {
         let orig_pos = try!(self.tell());
-        let _ = try!(self.seek(offset, io::SeekSet));
+        let _ = try!(self.seek(offset, rtio::SeekSet));
         let ret = unsafe {
             match libc::SetEndOfFile(self.handle()) {
                 0 => Err(super::last_error()),
                 _ => Ok(())
             }
         };
-        let _ = self.seek(orig_pos as i64, io::SeekSet);
+        let _ = self.seek(orig_pos as i64, rtio::SeekSet);
         return ret;
     }
 
-    fn fstat(&mut self) -> IoResult<io::FileStat> {
+    fn fstat(&mut self) -> IoResult<rtio::FileStat> {
         let mut stat: libc::stat = unsafe { mem::zeroed() };
         match unsafe { libc::fstat(self.fd(), &mut stat) } {
             0 => Ok(mkstat(&stat)),
@@ -210,10 +195,10 @@ impl rtio::RtioFileStream for FileDesc {
 }
 
 impl rtio::RtioPipe for FileDesc {
-    fn read(&mut self, buf: &mut [u8]) -> Result<uint, IoError> {
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
         self.inner_read(buf)
     }
-    fn write(&mut self, buf: &[u8]) -> Result<(), IoError> {
+    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
         self.inner_write(buf)
     }
     fn clone(&self) -> Box<rtio::RtioPipe:Send> {
@@ -225,10 +210,10 @@ impl rtio::RtioPipe for FileDesc {
     // std::io::PipeStream. If the functionality is exposed in the future, then
     // these methods will need to be implemented.
     fn close_read(&mut self) -> IoResult<()> {
-        Err(io::standard_error(io::InvalidInput))
+        Err(super::unimpl())
     }
     fn close_write(&mut self) -> IoResult<()> {
-        Err(io::standard_error(io::InvalidInput))
+        Err(super::unimpl())
     }
     fn set_timeout(&mut self, _t: Option<u64>) {}
     fn set_read_timeout(&mut self, _t: Option<u64>) {}
@@ -236,16 +221,16 @@ impl rtio::RtioPipe for FileDesc {
 }
 
 impl rtio::RtioTTY for FileDesc {
-    fn read(&mut self, buf: &mut [u8]) -> Result<uint, IoError> {
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
         self.inner_read(buf)
     }
-    fn write(&mut self, buf: &[u8]) -> Result<(), IoError> {
+    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
         self.inner_write(buf)
     }
-    fn set_raw(&mut self, _raw: bool) -> Result<(), IoError> {
+    fn set_raw(&mut self, _raw: bool) -> IoResult<()> {
         Err(super::unimpl())
     }
-    fn get_winsize(&mut self) -> Result<(int, int), IoError> {
+    fn get_winsize(&mut self) -> IoResult<(int, int)> {
         Err(super::unimpl())
     }
     fn isatty(&self) -> bool { false }
@@ -268,24 +253,24 @@ impl Drop for Inner {
     }
 }
 
-pub fn open(path: &CString, fm: io::FileMode, fa: io::FileAccess)
+pub fn open(path: &CString, fm: rtio::FileMode, fa: rtio::FileAccess)
         -> IoResult<FileDesc> {
     // Flags passed to open_osfhandle
     let flags = match fm {
-        io::Open => 0,
-        io::Append => libc::O_APPEND,
-        io::Truncate => libc::O_TRUNC,
+        rtio::Open => 0,
+        rtio::Append => libc::O_APPEND,
+        rtio::Truncate => libc::O_TRUNC,
     };
     let flags = match fa {
-        io::Read => flags | libc::O_RDONLY,
-        io::Write => flags | libc::O_WRONLY | libc::O_CREAT,
-        io::ReadWrite => flags | libc::O_RDWR | libc::O_CREAT,
+        rtio::Read => flags | libc::O_RDONLY,
+        rtio::Write => flags | libc::O_WRONLY | libc::O_CREAT,
+        rtio::ReadWrite => flags | libc::O_RDWR | libc::O_CREAT,
     };
 
     let mut dwDesiredAccess = match fa {
-        io::Read => libc::FILE_GENERIC_READ,
-        io::Write => libc::FILE_GENERIC_WRITE,
-        io::ReadWrite => libc::FILE_GENERIC_READ | libc::FILE_GENERIC_WRITE
+        rtio::Read => libc::FILE_GENERIC_READ,
+        rtio::Write => libc::FILE_GENERIC_WRITE,
+        rtio::ReadWrite => libc::FILE_GENERIC_READ | libc::FILE_GENERIC_WRITE
     };
 
     // libuv has a good comment about this, but the basic idea is what we try to
@@ -295,15 +280,15 @@ pub fn open(path: &CString, fm: io::FileMode, fa: io::FileAccess)
                       libc::FILE_SHARE_DELETE;
 
     let dwCreationDisposition = match (fm, fa) {
-        (io::Truncate, io::Read) => libc::TRUNCATE_EXISTING,
-        (io::Truncate, _) => libc::CREATE_ALWAYS,
-        (io::Open, io::Read) => libc::OPEN_EXISTING,
-        (io::Open, _) => libc::OPEN_ALWAYS,
-        (io::Append, io::Read) => {
+        (rtio::Truncate, rtio::Read) => libc::TRUNCATE_EXISTING,
+        (rtio::Truncate, _) => libc::CREATE_ALWAYS,
+        (rtio::Open, rtio::Read) => libc::OPEN_EXISTING,
+        (rtio::Open, _) => libc::OPEN_ALWAYS,
+        (rtio::Append, rtio::Read) => {
             dwDesiredAccess |= libc::FILE_APPEND_DATA;
             libc::OPEN_EXISTING
         }
-        (io::Append, _) => {
+        (rtio::Append, _) => {
             dwDesiredAccess &= !libc::FILE_WRITE_DATA;
             dwDesiredAccess |= libc::FILE_APPEND_DATA;
             libc::OPEN_ALWAYS
@@ -338,7 +323,7 @@ pub fn open(path: &CString, fm: io::FileMode, fa: io::FileAccess)
     }
 }
 
-pub fn mkdir(p: &CString, _mode: io::FilePermission) -> IoResult<()> {
+pub fn mkdir(p: &CString, _mode: uint) -> IoResult<()> {
     super::mkerr_winbool(unsafe {
         // FIXME: turn mode into something useful? #2623
         as_utf16_p(p.as_str().unwrap(), |buf| {
@@ -347,16 +332,16 @@ pub fn mkdir(p: &CString, _mode: io::FilePermission) -> IoResult<()> {
     })
 }
 
-pub fn readdir(p: &CString) -> IoResult<Vec<Path>> {
+pub fn readdir(p: &CString) -> IoResult<Vec<CString>> {
     use std::rt::libc_heap::malloc_raw;
 
-    fn prune(root: &CString, dirs: Vec<Path>) -> Vec<Path> {
+    fn prune(root: &CString, dirs: Vec<Path>) -> Vec<CString> {
         let root = unsafe { CString::new(root.with_ref(|p| p), false) };
         let root = Path::new(root);
 
         dirs.move_iter().filter(|path| {
             path.as_vec() != bytes!(".") && path.as_vec() != bytes!("..")
-        }).map(|path| root.join(path)).collect()
+        }).map(|path| root.join(path).to_c_str()).collect()
     }
 
     extern {
@@ -413,9 +398,9 @@ pub fn rename(old: &CString, new: &CString) -> IoResult<()> {
     })
 }
 
-pub fn chmod(p: &CString, mode: io::FilePermission) -> IoResult<()> {
+pub fn chmod(p: &CString, mode: uint) -> IoResult<()> {
     super::mkerr_libc(as_utf16_p(p.as_str().unwrap(), |p| unsafe {
-        libc::wchmod(p, mode.bits() as libc::c_int)
+        libc::wchmod(p, mode as libc::c_int)
     }))
 }
 
@@ -430,7 +415,7 @@ pub fn chown(_p: &CString, _uid: int, _gid: int) -> IoResult<()> {
     Ok(())
 }
 
-pub fn readlink(p: &CString) -> IoResult<Path> {
+pub fn readlink(p: &CString) -> IoResult<CString> {
     // FIXME: I have a feeling that this reads intermediate symlinks as well.
     use io::c::compat::kernel32::GetFinalPathNameByHandleW;
     let handle = unsafe {
@@ -457,9 +442,9 @@ pub fn readlink(p: &CString) -> IoResult<Path> {
     });
     let ret = match ret {
         Some(ref s) if s.as_slice().starts_with(r"\\?\") => {
-            Ok(Path::new(s.as_slice().slice_from(4)))
+            Ok(Path::new(s.as_slice().slice_from(4)).to_c_str())
         }
-        Some(s) => Ok(Path::new(s)),
+        Some(s) => Ok(Path::new(s).to_c_str()),
         None => Err(super::last_error()),
     };
     assert!(unsafe { libc::CloseHandle(handle) } != 0);
@@ -483,39 +468,28 @@ pub fn link(src: &CString, dst: &CString) -> IoResult<()> {
     }))
 }
 
-fn mkstat(stat: &libc::stat) -> io::FileStat {
-    let kind = match (stat.st_mode as c_int) & libc::S_IFMT {
-        libc::S_IFREG => io::TypeFile,
-        libc::S_IFDIR => io::TypeDirectory,
-        libc::S_IFIFO => io::TypeNamedPipe,
-        libc::S_IFBLK => io::TypeBlockSpecial,
-        libc::S_IFLNK => io::TypeSymlink,
-        _ => io::TypeUnknown,
-    };
-
-    io::FileStat {
+fn mkstat(stat: &libc::stat) -> rtio::FileStat {
+    rtio::FileStat {
         size: stat.st_size as u64,
-        kind: kind,
-        perm: io::FilePermission::from_bits_truncate(stat.st_mode as u32),
+        kind: stat.st_mode as u64,
+        perm: stat.st_mode as u64,
         created: stat.st_ctime as u64,
         modified: stat.st_mtime as u64,
         accessed: stat.st_atime as u64,
-        unstable: io::UnstableFileStat {
-            device: stat.st_dev as u64,
-            inode: stat.st_ino as u64,
-            rdev: stat.st_rdev as u64,
-            nlink: stat.st_nlink as u64,
-            uid: stat.st_uid as u64,
-            gid: stat.st_gid as u64,
-            blksize: 0,
-            blocks: 0,
-            flags: 0,
-            gen: 0,
-        }
+        device: stat.st_dev as u64,
+        inode: stat.st_ino as u64,
+        rdev: stat.st_rdev as u64,
+        nlink: stat.st_nlink as u64,
+        uid: stat.st_uid as u64,
+        gid: stat.st_gid as u64,
+        blksize: 0,
+        blocks: 0,
+        flags: 0,
+        gen: 0,
     }
 }
 
-pub fn stat(p: &CString) -> IoResult<io::FileStat> {
+pub fn stat(p: &CString) -> IoResult<rtio::FileStat> {
     let mut stat: libc::stat = unsafe { mem::zeroed() };
     as_utf16_p(p.as_str().unwrap(), |up| {
         match unsafe { libc::wstat(up, &mut stat) } {
@@ -525,7 +499,7 @@ pub fn stat(p: &CString) -> IoResult<io::FileStat> {
     })
 }
 
-pub fn lstat(_p: &CString) -> IoResult<io::FileStat> {
+pub fn lstat(_p: &CString) -> IoResult<rtio::FileStat> {
     // FIXME: implementation is missing
     Err(super::unimpl())
 }

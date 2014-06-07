@@ -8,21 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ai = std::io::net::addrinfo;
 use libc::{c_char, c_int};
 use libc;
 use std::c_str::CString;
-use std::io::IoError;
 use std::mem;
 use std::ptr::{null, mut_null};
+use std::rt::rtio;
+use std::rt::rtio::IoError;
 
-use super::net::sockaddr_to_addr;
+use super::net;
 
 pub struct GetAddrInfoRequest;
 
 impl GetAddrInfoRequest {
     pub fn run(host: Option<&str>, servname: Option<&str>,
-               hint: Option<ai::Hint>) -> Result<Vec<ai::Info>, IoError> {
+               hint: Option<rtio::AddrinfoHint>)
+        -> Result<Vec<rtio::AddrinfoInfo>, IoError>
+    {
         assert!(host.is_some() || servname.is_some());
 
         let c_host = host.map_or(unsafe { CString::new(null(), true) }, |x| x.to_c_str());
@@ -61,16 +63,16 @@ impl GetAddrInfoRequest {
         let mut rp = res;
         while rp.is_not_null() {
             unsafe {
-                let addr = match sockaddr_to_addr(mem::transmute((*rp).ai_addr),
-                                                  (*rp).ai_addrlen as uint) {
+                let addr = match net::sockaddr_to_addr(mem::transmute((*rp).ai_addr),
+                                                       (*rp).ai_addrlen as uint) {
                     Ok(a) => a,
                     Err(e) => return Err(e)
                 };
-                addrs.push(ai::Info {
+                addrs.push(rtio::AddrinfoInfo {
                     address: addr,
                     family: (*rp).ai_family as uint,
-                    socktype: None,
-                    protocol: None,
+                    socktype: 0,
+                    protocol: 0,
                     flags: (*rp).ai_flags as uint
                 });
 
@@ -90,27 +92,22 @@ extern "system" {
     fn freeaddrinfo(res: *mut libc::addrinfo);
     #[cfg(not(windows))]
     fn gai_strerror(errcode: c_int) -> *c_char;
-    #[cfg(windows)]
-    fn WSAGetLastError() -> c_int;
 }
 
 #[cfg(windows)]
 fn get_error(_: c_int) -> IoError {
-    unsafe {
-        IoError::from_errno(WSAGetLastError() as uint, true)
-    }
+    net::last_error()
 }
 
 #[cfg(not(windows))]
 fn get_error(s: c_int) -> IoError {
-    use std::io;
 
     let err_str = unsafe {
         CString::new(gai_strerror(s), false).as_str().unwrap().to_string()
     };
     IoError {
-        kind: io::OtherIoError,
-        desc: "unable to resolve host",
+        code: s as uint,
+        extra: 0,
         detail: Some(err_str),
     }
 }

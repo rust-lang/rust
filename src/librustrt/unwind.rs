@@ -8,73 +8,74 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Stack unwinding
+//! Implementation of Rust stack unwinding
+//!
+//! For background on exception handling and stack unwinding please see
+//! "Exception Handling in LLVM" (llvm.org/docs/ExceptionHandling.html) and
+//! documents linked from it.
+//! These are also good reads:
+//!     http://theofilos.cs.columbia.edu/blog/2013/09/22/base_abi/
+//!     http://monoinfinito.wordpress.com/series/exception-handling-in-c/
+//!     http://www.airs.com/blog/index.php?s=exception+frames
+//!
+//! ## A brief summary
+//!
+//! Exception handling happens in two phases: a search phase and a cleanup phase.
+//!
+//! In both phases the unwinder walks stack frames from top to bottom using
+//! information from the stack frame unwind sections of the current process's
+//! modules ("module" here refers to an OS module, i.e. an executable or a
+//! dynamic library).
+//!
+//! For each stack frame, it invokes the associated "personality routine", whose
+//! address is also stored in the unwind info section.
+//!
+//! In the search phase, the job of a personality routine is to examine exception
+//! object being thrown, and to decide whether it should be caught at that stack
+//! frame.  Once the handler frame has been identified, cleanup phase begins.
+//!
+//! In the cleanup phase, personality routines invoke cleanup code associated
+//! with their stack frames (i.e. destructors).  Once stack has been unwound down
+//! to the handler frame level, unwinding stops and the last personality routine
+//! transfers control to its' catch block.
+//!
+//! ## Frame unwind info registration
+//!
+//! Each module has its' own frame unwind info section (usually ".eh_frame"), and
+//! unwinder needs to know about all of them in order for unwinding to be able to
+//! cross module boundaries.
+//!
+//! On some platforms, like Linux, this is achieved by dynamically enumerating
+//! currently loaded modules via the dl_iterate_phdr() API and finding all
+//! .eh_frame sections.
+//!
+//! Others, like Windows, require modules to actively register their unwind info
+//! sections by calling __register_frame_info() API at startup.  In the latter
+//! case it is essential that there is only one copy of the unwinder runtime in
+//! the process.  This is usually achieved by linking to the dynamic version of
+//! the unwind runtime.
+//!
+//! Currently Rust uses unwind runtime provided by libgcc.
 
-// Implementation of Rust stack unwinding
-//
-// For background on exception handling and stack unwinding please see
-// "Exception Handling in LLVM" (llvm.org/docs/ExceptionHandling.html) and
-// documents linked from it.
-// These are also good reads:
-//     http://theofilos.cs.columbia.edu/blog/2013/09/22/base_abi/
-//     http://monoinfinito.wordpress.com/series/exception-handling-in-c/
-//     http://www.airs.com/blog/index.php?s=exception+frames
-//
-// ~~~ A brief summary ~~~
-// Exception handling happens in two phases: a search phase and a cleanup phase.
-//
-// In both phases the unwinder walks stack frames from top to bottom using
-// information from the stack frame unwind sections of the current process's
-// modules ("module" here refers to an OS module, i.e. an executable or a
-// dynamic library).
-//
-// For each stack frame, it invokes the associated "personality routine", whose
-// address is also stored in the unwind info section.
-//
-// In the search phase, the job of a personality routine is to examine exception
-// object being thrown, and to decide whether it should be caught at that stack
-// frame.  Once the handler frame has been identified, cleanup phase begins.
-//
-// In the cleanup phase, personality routines invoke cleanup code associated
-// with their stack frames (i.e. destructors).  Once stack has been unwound down
-// to the handler frame level, unwinding stops and the last personality routine
-// transfers control to its' catch block.
-//
-// ~~~ Frame unwind info registration ~~~
-// Each module has its' own frame unwind info section (usually ".eh_frame"), and
-// unwinder needs to know about all of them in order for unwinding to be able to
-// cross module boundaries.
-//
-// On some platforms, like Linux, this is achieved by dynamically enumerating
-// currently loaded modules via the dl_iterate_phdr() API and finding all
-// .eh_frame sections.
-//
-// Others, like Windows, require modules to actively register their unwind info
-// sections by calling __register_frame_info() API at startup.  In the latter
-// case it is essential that there is only one copy of the unwinder runtime in
-// the process.  This is usually achieved by linking to the dynamic version of
-// the unwind runtime.
-//
-// Currently Rust uses unwind runtime provided by libgcc.
+use core::prelude::*;
 
-use any::{Any, AnyRefExt};
-use fmt;
-use intrinsics;
-use kinds::Send;
-use mem;
-use option::{Some, None, Option};
-use owned::Box;
-use prelude::drop;
-use ptr::RawPtr;
-use result::{Err, Ok, Result};
-use rt::backtrace;
-use rt::local::Local;
-use rt::task::Task;
-use str::Str;
-use string::String;
-use task::TaskResult;
+use alloc::owned::Box;
+use collections::string::String;
+use collections::vec::Vec;
+use core::any::Any;
+use core::atomics;
+use core::cmp;
+use core::fmt;
+use core::intrinsics;
+use core::mem;
+use core::raw::Closure;
+use libc::c_void;
 
-use uw = rt::libunwind;
+use local::Local;
+use task::{Task, Result};
+use exclusive::Exclusive;
+
+use uw = libunwind;
 
 pub struct Unwinder {
     unwinding: bool,
@@ -85,6 +86,24 @@ struct Exception {
     uwe: uw::_Unwind_Exception,
     cause: Option<Box<Any:Send>>,
 }
+
+pub type Callback = fn(msg: &Any:Send, file: &'static str, line: uint);
+type Queue = Exclusive<Vec<Callback>>;
+
+// Variables used for invoking callbacks when a task starts to unwind.
+//
+// For more information, see below.
+static MAX_CALLBACKS: uint = 16;
+static mut CALLBACKS: [atomics::AtomicUint, ..MAX_CALLBACKS] =
+        [atomics::INIT_ATOMIC_UINT, atomics::INIT_ATOMIC_UINT,
+         atomics::INIT_ATOMIC_UINT, atomics::INIT_ATOMIC_UINT,
+         atomics::INIT_ATOMIC_UINT, atomics::INIT_ATOMIC_UINT,
+         atomics::INIT_ATOMIC_UINT, atomics::INIT_ATOMIC_UINT,
+         atomics::INIT_ATOMIC_UINT, atomics::INIT_ATOMIC_UINT,
+         atomics::INIT_ATOMIC_UINT, atomics::INIT_ATOMIC_UINT,
+         atomics::INIT_ATOMIC_UINT, atomics::INIT_ATOMIC_UINT,
+         atomics::INIT_ATOMIC_UINT, atomics::INIT_ATOMIC_UINT];
+static mut CALLBACK_CNT: atomics::AtomicUint = atomics::INIT_ATOMIC_UINT;
 
 impl Unwinder {
     pub fn new() -> Unwinder {
@@ -102,7 +121,7 @@ impl Unwinder {
         self.cause = unsafe { try(f) }.err();
     }
 
-    pub fn result(&mut self) -> TaskResult {
+    pub fn result(&mut self) -> Result {
         if self.unwinding {
             Err(self.cause.take().unwrap())
         } else {
@@ -131,10 +150,7 @@ impl Unwinder {
 ///   guaranteed that a rust task is in place when invoking this function.
 ///   Unwinding twice can lead to resource leaks where some destructors are not
 ///   run.
-pub unsafe fn try(f: ||) -> Result<(), Box<Any:Send>> {
-    use raw::Closure;
-    use libc::{c_void};
-
+pub unsafe fn try(f: ||) -> ::core::result::Result<(), Box<Any:Send>> {
     let closure: Closure = mem::transmute(f);
     let ep = rust_try(try_fn, closure.code as *c_void,
                       closure.env as *c_void);
@@ -158,6 +174,7 @@ pub unsafe fn try(f: ||) -> Result<(), Box<Any:Send>> {
         }
     }
 
+    #[link(name = "rustrt_native", kind = "static")]
     extern {
         // Rust's try-catch
         // When f(...) returns normally, the return value is null.
@@ -227,7 +244,7 @@ fn rust_exception_class() -> uw::_Unwind_Exception_Class {
 #[doc(hidden)]
 #[allow(visible_private_types)]
 pub mod eabi {
-    use uw = rt::libunwind;
+    use uw = libunwind;
     use libc::c_int;
 
     extern "C" {
@@ -280,7 +297,7 @@ pub mod eabi {
 #[cfg(target_arch = "arm", not(test))]
 #[allow(visible_private_types)]
 pub mod eabi {
-    use uw = rt::libunwind;
+    use uw = libunwind;
     use libc::c_int;
 
     extern "C" {
@@ -338,11 +355,26 @@ pub extern fn rust_begin_unwind(msg: &fmt::Arguments,
 #[inline(never)] #[cold]
 pub fn begin_unwind_fmt(msg: &fmt::Arguments, file: &'static str,
                         line: uint) -> ! {
+    use core::fmt::FormatWriter;
+
     // We do two allocations here, unfortunately. But (a) they're
     // required with the current scheme, and (b) we don't handle
     // failure + OOM properly anyway (see comment in begin_unwind
     // below).
-    begin_unwind_inner(box fmt::format(msg), file, line)
+
+    struct VecWriter<'a> { v: &'a mut Vec<u8> }
+
+    impl<'a> fmt::FormatWriter for VecWriter<'a> {
+        fn write(&mut self, buf: &[u8]) -> fmt::Result {
+            self.v.push_all(buf);
+            Ok(())
+        }
+    }
+
+    let mut v = Vec::new();
+    let _ = write!(&mut VecWriter { v: &mut v }, "{}", msg);
+
+    begin_unwind_inner(box String::from_utf8(v).unwrap(), file, line)
 }
 
 /// This is the entry point of unwinding for fail!() and assert!().
@@ -373,122 +405,78 @@ pub fn begin_unwind<M: Any + Send>(msg: M, file: &'static str, line: uint) -> ! 
 fn begin_unwind_inner(msg: Box<Any:Send>,
                       file: &'static str,
                       line: uint) -> ! {
-    // First up, print the message that we're failing
-    print_failure(msg, file, line);
-
-    let opt_task: Option<Box<Task>> = Local::try_take();
-    match opt_task {
-        Some(mut task) => {
-            // Now that we've printed why we're failing, do a check
-            // to make sure that we're not double failing.
-            //
-            // If a task fails while it's already unwinding then we
-            // have limited options. Currently our preference is to
-            // just abort. In the future we may consider resuming
-            // unwinding or otherwise exiting the task cleanly.
-            if task.unwinder.unwinding {
-                rterrln!("task failed during unwinding. aborting.");
-
-                // Don't print the backtrace twice (it would have already been
-                // printed if logging was enabled).
-                if !backtrace::log_enabled() {
-                    let mut err = ::rt::util::Stderr;
-                    let _err = backtrace::write(&mut err);
-                }
-                unsafe { intrinsics::abort() }
+    // First, invoke call the user-defined callbacks triggered on task failure.
+    //
+    // By the time that we see a callback has been registered (by reading
+    // MAX_CALLBACKS), the actuall callback itself may have not been stored yet,
+    // so we just chalk it up to a race condition and move on to the next
+    // callback. Additionally, CALLBACK_CNT may briefly be higher than
+    // MAX_CALLBACKS, so we're sure to clamp it as necessary.
+    let callbacks = unsafe {
+        let amt = CALLBACK_CNT.load(atomics::SeqCst);
+        CALLBACKS.slice_to(cmp::min(amt, MAX_CALLBACKS))
+    };
+    for cb in callbacks.iter() {
+        match cb.load(atomics::SeqCst) {
+            0 => {}
+            n => {
+                let f: Callback = unsafe { mem::transmute(n) };
+                f(msg, file, line);
             }
-
-            // Finally, we've printed our failure and figured out we're not in a
-            // double failure, so flag that we've started to unwind and then
-            // actually unwind.  Be sure that the task is in TLS so destructors
-            // can do fun things like I/O.
-            task.unwinder.unwinding = true;
-            Local::put(task);
         }
-        None => {}
+    };
+
+    // Now that we've run all the necessary unwind callbacks, we actually
+    // perform the unwinding. If we don't have a task, then it's time to die
+    // (hopefully someone printed something about this).
+    let mut task: Box<Task> = match Local::try_take() {
+        Some(task) => task,
+        None => rust_fail(msg),
+    };
+
+    if task.unwinder.unwinding {
+        // If a task fails while it's already unwinding then we
+        // have limited options. Currently our preference is to
+        // just abort. In the future we may consider resuming
+        // unwinding or otherwise exiting the task cleanly.
+        rterrln!("task failed during unwinding. aborting.");
+        unsafe { intrinsics::abort() }
     }
-    rust_fail(msg)
+    task.unwinder.unwinding = true;
+
+    // Put the task back in TLS because the unwinding process may run code which
+    // requires the task. We need a handle to its unwinder, however, so after
+    // this we unsafely extract it and continue along.
+    Local::put(task);
+    rust_fail(msg);
 }
 
-/// Given a failure message and the location that it occurred, prints the
-/// message to the local task's appropriate stream.
+/// Register a callback to be invoked when a task unwinds.
 ///
-/// This function currently handles three cases:
+/// This is an unsafe and experimental API which allows for an arbitrary
+/// callback to be invoked when a task fails. This callback is invoked on both
+/// the initial unwinding and a double unwinding if one occurs. Additionally,
+/// the local `Task` will be in place for the duration of the callback, and
+/// the callback must ensure that it remains in place once the callback returns.
 ///
-///     - There is no local task available. In this case the error is printed to
-///       stderr.
-///     - There is a local task available, but it does not have a stderr handle.
-///       In this case the message is also printed to stderr.
-///     - There is a local task available, and it has a stderr handle. The
-///       message is printed to the handle given in this case.
-fn print_failure(msg: &Any:Send, file: &str, line: uint) {
-    let msg = match msg.as_ref::<&'static str>() {
-        Some(s) => *s,
-        None => match msg.as_ref::<String>() {
-            Some(s) => s.as_slice(),
-            None => "Box<Any>",
+/// Only a limited number of callbacks can be registered, and this function
+/// returns whether the callback was successfully registered or not. It is not
+/// currently possible to unregister a callback once it has been registered.
+#[experimental]
+pub unsafe fn register(f: Callback) -> bool {
+    match CALLBACK_CNT.fetch_add(1, atomics::SeqCst) {
+        // The invocation code has knowledge of this window where the count has
+        // been incremented, but the callback has not been stored. We're
+        // guaranteed that the slot we're storing into is 0.
+        n if n < MAX_CALLBACKS => {
+            let prev = CALLBACKS[n].swap(mem::transmute(f), atomics::SeqCst);
+            rtassert!(prev == 0);
+            true
         }
-    };
-
-    // It is assumed that all reasonable rust code will have a local task at
-    // all times. This means that this `try_take` will succeed almost all of
-    // the time. There are border cases, however, when the runtime has
-    // *almost* set up the local task, but hasn't quite gotten there yet. In
-    // order to get some better diagnostics, we print on failure and
-    // immediately abort the whole process if there is no local task
-    // available.
-    let mut task: Box<Task> = match Local::try_take() {
-        Some(t) => t,
-        None => {
-            rterrln!("failed at '{}', {}:{}", msg, file, line);
-            if backtrace::log_enabled() {
-                let mut err = ::rt::util::Stderr;
-                let _err = backtrace::write(&mut err);
-            } else {
-                rterrln!("run with `RUST_BACKTRACE=1` to see a backtrace");
-            }
-            return
-        }
-    };
-
-    // See comments in io::stdio::with_task_stdout as to why we have to be
-    // careful when using an arbitrary I/O handle from the task. We
-    // essentially need to dance to make sure when a task is in TLS when
-    // running user code.
-    let name = task.name.take();
-    {
-        let n = name.as_ref().map(|n| n.as_slice()).unwrap_or("<unnamed>");
-
-        match task.stderr.take() {
-            Some(mut stderr) => {
-                Local::put(task);
-                // FIXME: what to do when the task printing fails?
-                let _err = write!(stderr,
-                                  "task '{}' failed at '{}', {}:{}\n",
-                                  n, msg, file, line);
-                if backtrace::log_enabled() {
-                    let _err = backtrace::write(stderr);
-                }
-                task = Local::take();
-
-                match mem::replace(&mut task.stderr, Some(stderr)) {
-                    Some(prev) => {
-                        Local::put(task);
-                        drop(prev);
-                        task = Local::take();
-                    }
-                    None => {}
-                }
-            }
-            None => {
-                rterrln!("task '{}' failed at '{}', {}:{}", n, msg, file, line);
-                if backtrace::log_enabled() {
-                    let mut err = ::rt::util::Stderr;
-                    let _err = backtrace::write(&mut err);
-                }
-            }
+        // If we accidentally bumped the count too high, pull it back.
+        _ => {
+            CALLBACK_CNT.store(MAX_CALLBACKS, atomics::SeqCst);
+            false
         }
     }
-    task.name = name;
-    Local::put(task);
 }
