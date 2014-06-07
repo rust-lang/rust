@@ -15,15 +15,15 @@
 //! which are not used for scheduling in any way.
 
 #![allow(non_camel_case_types)]
-#![allow(unsigned_negate)]
 
-use kinds::Send;
+use core::prelude::*;
+
+use alloc::owned::Box;
+use core::mem;
+use core::uint;
 use libc;
-use mem;
-use ops::Drop;
-use option::{Option, Some, None};
-use owned::Box;
-use uint;
+
+use stack;
 
 type StartFn = extern "C" fn(*libc::c_void) -> imp::rust_thread_return;
 
@@ -43,7 +43,6 @@ static DEFAULT_STACK_SIZE: uint = 1024 * 1024;
 // and invoke it.
 #[no_split_stack]
 extern fn thread_start(main: *libc::c_void) -> imp::rust_thread_return {
-    use rt::stack;
     unsafe {
         stack::record_stack_bounds(0, uint::MAX);
         let f: Box<proc()> = mem::transmute(main);
@@ -146,16 +145,16 @@ impl<T: Send> Drop for Thread<T> {
 
 #[cfg(windows)]
 mod imp {
-    use mem;
-    use cmp;
-    use kinds::Send;
+    use core::prelude::*;
+
+    use alloc::owned::Box;
+    use core::cmp;
+    use core::mem;
+    use core::ptr;
     use libc;
     use libc::types::os::arch::extra::{LPSECURITY_ATTRIBUTES, SIZE_T, BOOL,
                                        LPVOID, DWORD, LPDWORD, HANDLE};
-    use os;
-    use owned::Box;
-    use ptr;
-    use rt::stack::RED_ZONE;
+    use stack::RED_ZONE;
 
     pub type rust_thread = HANDLE;
     pub type rust_thread_return = DWORD;
@@ -178,7 +177,7 @@ mod imp {
         if ret as uint == 0 {
             // be sure to not leak the closure
             let _p: Box<proc():Send> = mem::transmute(arg);
-            fail!("failed to spawn native thread: {}", os::last_os_error());
+            fail!("failed to spawn native thread: {}", ret);
         }
         return ret;
     }
@@ -214,15 +213,16 @@ mod imp {
 
 #[cfg(unix)]
 mod imp {
-    use cmp;
-    use kinds::Send;
+    use core::prelude::*;
+
+    use alloc::owned::Box;
+    use core::cmp;
+    use core::mem;
+    use core::ptr;
     use libc::consts::os::posix01::{PTHREAD_CREATE_JOINABLE, PTHREAD_STACK_MIN};
     use libc;
-    use mem;
-    use os;
-    use owned::Box;
-    use ptr;
-    use rt::stack::RED_ZONE;
+
+    use stack::RED_ZONE;
 
     pub type rust_thread = libc::pthread_t;
     pub type rust_thread_return = *u8;
@@ -243,14 +243,15 @@ mod imp {
                 // EINVAL means |stack_size| is either too small or not a
                 // multiple of the system page size.  Because it's definitely
                 // >= PTHREAD_STACK_MIN, it must be an alignment issue.
-                // Round up to the nearest page and try again.
-                let page_size = os::page_size();
-                let stack_size = (stack_size + page_size - 1) & (-(page_size - 1) - 1);
+                // Round up to the neareast page and try again.
+                let page_size = libc::sysconf(libc::_SC_PAGESIZE) as uint;
+                let stack_size = (stack_size + page_size - 1) &
+                                 (-(page_size as int - 1) as uint - 1);
                 assert_eq!(pthread_attr_setstacksize(&mut attr, stack_size as libc::size_t), 0);
             },
             errno => {
                 // This cannot really happen.
-                fail!("pthread_attr_setstacksize() error: {} ({})", os::last_os_error(), errno);
+                fail!("pthread_attr_setstacksize() error: {}", errno);
             },
         };
 
@@ -261,7 +262,7 @@ mod imp {
         if ret != 0 {
             // be sure to not leak the closure
             let _p: Box<proc():Send> = mem::transmute(arg);
-            fail!("failed to spawn native thread: {}", os::last_os_error());
+            fail!("failed to spawn native thread: {}", ret);
         }
         native
     }
@@ -288,7 +289,6 @@ mod imp {
     // is non-null before calling it!
     #[cfg(target_os = "linux")]
     fn min_stack_size(attr: *libc::pthread_attr_t) -> libc::size_t {
-        use ptr::RawPtr;
         type F = unsafe extern "C" fn(*libc::pthread_attr_t) -> libc::size_t;
         extern {
             #[linkage = "extern_weak"]

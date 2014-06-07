@@ -117,8 +117,6 @@ if logging is disabled, none of the components of the log will be executed.
 #![feature(macro_rules)]
 #![deny(missing_doc, deprecated_owned_vector)]
 
-extern crate sync;
-
 use std::fmt;
 use std::io::LineBufferedWriter;
 use std::io;
@@ -126,8 +124,7 @@ use std::mem;
 use std::os;
 use std::rt;
 use std::slice;
-
-use sync::one::{Once, ONCE_INIT};
+use std::sync::{Once, ONCE_INIT};
 
 use directive::LOG_LEVEL_NAMES;
 

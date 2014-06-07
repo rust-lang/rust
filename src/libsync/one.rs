@@ -13,8 +13,10 @@
 //! This primitive is meant to be used to run one-time initialization. An
 //! example use case would be for initializing an FFI library.
 
-use std::int;
-use std::sync::atomics;
+use core::prelude::*;
+
+use core::int;
+use core::atomics;
 
 use mutex::{StaticMutex, MUTEX_INIT};
 
@@ -124,8 +126,9 @@ impl Once {
 
 #[cfg(test)]
 mod test {
-    use super::{ONCE_INIT, Once};
+    use std::prelude::*;
     use std::task;
+    use super::{ONCE_INIT, Once};
 
     #[test]
     fn smoke_once() {

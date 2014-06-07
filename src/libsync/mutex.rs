@@ -57,14 +57,17 @@
 // times in order to manage a few flags about who's blocking where and whether
 // it's locked or not.
 
-use std::kinds::marker;
-use std::mem;
-use std::rt::local::Local;
-use std::rt::task::{BlockedTask, Task};
-use std::rt::thread::Thread;
-use std::sync::atomics;
-use std::ty::Unsafe;
-use std::rt::mutex;
+use core::prelude::*;
+
+use alloc::owned::Box;
+use core::atomics;
+use core::kinds::marker;
+use core::mem;
+use core::ty::Unsafe;
+use rustrt::local::Local;
+use rustrt::mutex;
+use rustrt::task::{BlockedTask, Task};
+use rustrt::thread::Thread;
 
 use q = mpsc_intrusive;
 
@@ -402,7 +405,7 @@ impl StaticMutex {
                         GreenAcquisition => { self.green_unlock(); }
                         NativeAcquisition => { self.native_unlock(); }
                         TryLockAcquisition => {}
-                        Unlocked => unreachable!()
+                        Unlocked => unreachable!(),
                     }
                     unlocked = true;
                 }
@@ -417,7 +420,7 @@ impl StaticMutex {
                 GreenAcquisition => { self.green_unlock(); }
                 NativeAcquisition => { self.native_unlock(); }
                 TryLockAcquisition => {}
-                Unlocked => unreachable!()
+                Unlocked => unreachable!(),
             }
         }
 
@@ -517,8 +520,9 @@ impl Drop for Mutex {
 
 #[cfg(test)]
 mod test {
-    extern crate native;
+    use std::prelude::*;
     use super::{Mutex, StaticMutex, MUTEX_INIT};
+    use native;
 
     #[test]
     fn smoke() {

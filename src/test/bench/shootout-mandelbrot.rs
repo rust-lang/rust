@@ -13,13 +13,10 @@
 
 // ignore-pretty very bad with line comments
 
-extern crate sync;
-
 use std::io;
 use std::os;
 use std::simd::f64x2;
-use sync::Future;
-use sync::Arc;
+use std::sync::{Arc, Future};
 
 static ITER: int = 50;
 static LIMIT: f64 = 2.0;

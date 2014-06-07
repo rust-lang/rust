@@ -10,8 +10,7 @@
 
 // error-pattern:explicit failure
 
-extern crate sync;
-use sync::Arc;
+use std::sync::Arc;
 
 enum e<T> { e(Arc<T>) }
 

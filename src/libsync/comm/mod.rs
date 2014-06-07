@@ -271,36 +271,32 @@
 // And now that you've seen all the races that I found and attempted to fix,
 // here's the code for you to find some more!
 
-use alloc::arc::Arc;
+use core::prelude::*;
 
-use cell::Cell;
-use clone::Clone;
-use iter::Iterator;
-use kinds::Send;
-use kinds::marker;
-use mem;
-use ops::Drop;
-use option::{Some, None, Option};
-use owned::Box;
-use result::{Ok, Err, Result};
-use rt::local::Local;
-use rt::task::{Task, BlockedTask};
-use ty::Unsafe;
+use alloc::arc::Arc;
+use alloc::owned::Box;
+use core::cell::Cell;
+use core::kinds::marker;
+use core::mem;
+use core::ty::Unsafe;
+use rustrt::local::Local;
+use rustrt::task::{Task, BlockedTask};
 
 pub use comm::select::{Select, Handle};
+pub use comm::duplex::{DuplexStream, duplex};
 
 macro_rules! test (
     { fn $name:ident() $b:block $(#[$a:meta])*} => (
         mod $name {
             #![allow(unused_imports)]
 
+            use std::prelude::*;
+
             use native;
             use comm::*;
-            use prelude::*;
             use super::*;
             use super::super::*;
-            use owned::Box;
-            use task;
+            use std::task;
 
             fn f() $b
 
@@ -315,10 +311,11 @@ macro_rules! test (
     )
 )
 
-mod select;
+mod duplex;
 mod oneshot;
-mod stream;
+mod select;
 mod shared;
+mod stream;
 mod sync;
 
 // Use a power of 2 to allow LLVM to optimize to something that's not a
@@ -984,10 +981,10 @@ impl<T: Send> Drop for Receiver<T> {
 
 #[cfg(test)]
 mod test {
-    use prelude::*;
+    use std::prelude::*;
 
     use native;
-    use os;
+    use std::os;
     use super::*;
 
     pub fn stress_factor() -> uint {
@@ -1480,7 +1477,7 @@ mod test {
     })
 
     test!(fn sends_off_the_runtime() {
-        use rt::thread::Thread;
+        use std::rt::thread::Thread;
 
         let (tx, rx) = channel();
         let t = Thread::start(proc() {
@@ -1495,7 +1492,7 @@ mod test {
     })
 
     test!(fn try_recvs_off_the_runtime() {
-        use rt::thread::Thread;
+        use std::rt::thread::Thread;
 
         let (tx, rx) = channel();
         let (cdone, pdone) = channel();
@@ -1520,8 +1517,8 @@ mod test {
 
 #[cfg(test)]
 mod sync_tests {
-    use prelude::*;
-    use os;
+    use std::prelude::*;
+    use std::os;
 
     pub fn stress_factor() -> uint {
         match os::getenv("RUST_TEST_STRESS") {

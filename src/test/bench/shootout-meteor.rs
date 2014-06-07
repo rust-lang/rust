@@ -40,9 +40,8 @@
 
 #![feature(phase)]
 #[phase(plugin)] extern crate green;
-extern crate sync;
 
-use sync::Arc;
+use std::sync::Arc;
 
 green_start!(main)
 
