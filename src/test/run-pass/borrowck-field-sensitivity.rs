@@ -28,15 +28,13 @@ fn move_after_fu_copy() {
 fn fu_move_after_copy() {
     let x = A { a: 1, b: box 2 };
     drop(x.a);
-    let y = A { a: 3, .. x };
-    drop(y.b);
+    let _y = A { a: 3, .. x };
 }
 
 fn fu_move_after_fu_copy() {
     let x = A { a: 1, b: box 2 };
     let _y = A { b: box 3, .. x };
-    let z = A { a: 4, .. x };
-    drop(z.b);
+    let _z = A { a: 4, .. x };
 }
 
 fn copy_after_move() {
@@ -49,7 +47,6 @@ fn copy_after_fu_move() {
     let x = A { a: 1, b: box 2 };
     let y = A { a: 3, .. x };
     drop(x.a);
-    drop(y.b);
 }
 
 fn fu_copy_after_move() {
@@ -60,9 +57,8 @@ fn fu_copy_after_move() {
 
 fn fu_copy_after_fu_move() {
     let x = A { a: 1, b: box 2 };
-    let y = A { a: 3, .. x };
+    let _y = A { a: 3, .. x };
     let _z = A { b: box 3, .. x };
-    drop(y.b);
 }
 
 fn borrow_after_move() {
@@ -73,9 +69,8 @@ fn borrow_after_move() {
 
 fn borrow_after_fu_move() {
     let x = A { a: 1, b: box 2 };
-    let y = A { a: 3, .. x };
+    let _y = A { a: 3, .. x };
     borrow(&x.a);
-    drop(y.b);
 }
 
 fn move_after_borrow() {
@@ -87,8 +82,7 @@ fn move_after_borrow() {
 fn fu_move_after_borrow() {
     let x = A { a: 1, b: box 2 };
     borrow(&x.a);
-    let y = A { a: 3, .. x };
-    drop(y.b);
+    let _y = A { a: 3, .. x };
 }
 
 fn mut_borrow_after_mut_borrow() {
@@ -109,7 +103,6 @@ fn move_after_fu_move() {
     let x = B { a: box 1, b: box 2 };
     let y = B { a: box 3, .. x };
     drop(x.a);
-    drop(y.b);
 }
 
 fn fu_move_after_move() {
@@ -121,10 +114,8 @@ fn fu_move_after_move() {
 
 fn fu_move_after_fu_move() {
     let x = B { a: box 1, b: box 2 };
-    let y = B { b: box 3, .. x };
-    let z = B { a: box 4, .. x };
-    drop(y.a);
-    drop(z.b);
+    let _y = B { b: box 3, .. x };
+    let _z = B { a: box 4, .. x };
 }
 
 fn copy_after_assign_after_move() {
@@ -157,10 +148,9 @@ fn borrow_after_field_assign_after_move() {
 
 fn move_after_assign_after_move() {
     let mut x = A { a: 1, b: box 2 };
-    let y = x.b;
+    let _y = x.b;
     x = A { a: 3, b: box 4 };
     drop(x.b);
-    drop(y);
 }
 
 fn move_after_field_assign_after_move() {
