@@ -88,7 +88,7 @@ fn try_inline_def(cx: &core::DocContext,
             record_extern_fqn(cx, did, clean::TypeModule);
             clean::ModuleItem(build_module(cx, tcx, did))
         }
-        ast::DefStatic(did, mtbl) => {
+        def::DefStatic(did, mtbl) => {
             record_extern_fqn(cx, did, clean::TypeStatic);
             clean::StaticItem(build_static(tcx, did, mtbl))
         }
