@@ -87,6 +87,7 @@ pub enum Token {
     LIT_FLOAT_UNSUFFIXED(ast::Ident),
     LIT_STR(ast::Ident),
     LIT_STR_RAW(ast::Ident, uint), /* raw str delimited by n hash symbols */
+    LIT_BINARY(Rc<Vec<u8>>),
 
     /* Name components */
     // an identifier contains an "is_mod_name" boolean,
@@ -231,17 +232,22 @@ pub fn to_str(t: &Token) -> String {
         body
       }
       LIT_STR(s) => {
-          (format!("\"{}\"", get_ident(s).get().escape_default())).to_string()
+          format!("\"{}\"", get_ident(s).get().escape_default())
       }
       LIT_STR_RAW(s, n) => {
-          (format!("r{delim}\"{string}\"{delim}",
-                  delim="#".repeat(n), string=get_ident(s))).to_string()
+        format!("r{delim}\"{string}\"{delim}",
+                 delim="#".repeat(n), string=get_ident(s))
+      }
+      LIT_BINARY(ref v) => {
+          format!(
+            "b\"{}\"",
+            v.iter().map(|&b| b as char).collect::<String>().escape_default())
       }
 
       /* Name components */
       IDENT(s, _) => get_ident(s).get().to_string(),
       LIFETIME(s) => {
-          (format!("{}", get_ident(s))).to_string()
+          format!("{}", get_ident(s))
       }
       UNDERSCORE => "_".to_string(),
 
@@ -291,6 +297,7 @@ pub fn can_begin_expr(t: &Token) -> bool {
       LIT_FLOAT_UNSUFFIXED(_) => true,
       LIT_STR(_) => true,
       LIT_STR_RAW(_, _) => true,
+      LIT_BINARY(_) => true,
       POUND => true,
       AT => true,
       NOT => true,
@@ -330,6 +337,7 @@ pub fn is_lit(t: &Token) -> bool {
       LIT_FLOAT_UNSUFFIXED(_) => true,
       LIT_STR(_) => true,
       LIT_STR_RAW(_, _) => true,
+      LIT_BINARY(_) => true,
       _ => false
     }
 }

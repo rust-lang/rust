@@ -560,6 +560,8 @@ Section: Comparing strings
 
 // share the implementation of the lang-item vs. non-lang-item
 // eq_slice.
+/// NOTE: This function is (ab)used in rustc::middle::trans::_match
+/// to compare &[u8] byte slices that are not necessarily valid UTF-8.
 #[inline]
 fn eq_slice_(a: &str, b: &str) -> bool {
     #[allow(ctypes)]
@@ -572,6 +574,8 @@ fn eq_slice_(a: &str, b: &str) -> bool {
 }
 
 /// Bytewise slice equality
+/// NOTE: This function is (ab)used in rustc::middle::trans::_match
+/// to compare &[u8] byte slices that are not necessarily valid UTF-8.
 #[cfg(not(test))]
 #[lang="str_eq"]
 #[inline]
