@@ -1615,7 +1615,7 @@ fn check_type_parameter_positions_in_path(function_context: &FnCtxt,
             let formal_ty_param_count = generics.type_param_defs().len();
             let required_ty_param_count = generics.type_param_defs().iter()
                                                   .take_while(|x| x.default.is_none())
-                                                  .len();
+                                                  .count();
             let supplied_ty_param_count = trait_segment.types.len();
             if supplied_ty_param_count < required_ty_param_count {
                 let msg = if required_ty_param_count < generics.type_param_defs().len() {
@@ -3876,7 +3876,7 @@ pub fn instantiate_path(fcx: &FnCtxt,
     let ty_param_count = tpt.generics.type_param_defs().len();
     let ty_param_req = tpt.generics.type_param_defs().iter()
                                                    .take_while(|x| x.default.is_none())
-                                                   .len();
+                                                   .count();
     let mut ty_substs_len = 0;
     for segment in pth.segments.iter() {
         ty_substs_len += segment.types.len()

@@ -16,6 +16,7 @@ use getopts;
 use testing;
 
 use html::escape::Escape;
+use html::markdown;
 use html::markdown::{MarkdownWithToc, find_testable_code, reset_headers};
 use test::Collector;
 
@@ -84,6 +85,11 @@ pub fn render(input: &str, mut output: Path, matches: &getopts::Matches) -> int 
     }
 
     let input_str = load_or_return!(input, 1, 2);
+    let playground = matches.opt_str("markdown-playground-url");
+    if playground.is_some() {
+        markdown::playground_krate.replace(Some(None));
+    }
+    let playground = playground.unwrap_or("".to_string());
 
     let (in_header, before_content, after_content) =
         match (load_external_files(matches.opt_strs("markdown-in-header")
@@ -148,6 +154,9 @@ pub fn render(input: &str, mut output: Path, matches: &getopts::Matches) -> int 
     {before_content}
     <h1 class="title">{title}</h1>
     {text}
+    <script type="text/javascript">
+        window.playgroundUrl = "{playground}";
+    </script>
     {after_content}
 </body>
 </html>"#,
@@ -156,7 +165,9 @@ pub fn render(input: &str, mut output: Path, matches: &getopts::Matches) -> int 
         in_header = in_header,
         before_content = before_content,
         text = MarkdownWithToc(text),
-        after_content = after_content);
+        after_content = after_content,
+        playground = playground,
+        );
 
     match err {
         Err(e) => {
@@ -173,7 +184,7 @@ pub fn render(input: &str, mut output: Path, matches: &getopts::Matches) -> int 
 pub fn test(input: &str, libs: HashSet<Path>, mut test_args: Vec<String>) -> int {
     let input_str = load_or_return!(input, 1, 2);
 
-    let mut collector = Collector::new(input.to_string(), libs, true, true);
+    let mut collector = Collector::new(input.to_string(), libs, true);
     find_testable_code(input_str.as_slice(), &mut collector);
     test_args.unshift("rustdoctest".to_string());
     testing::test_main(test_args.as_slice(), collector.tests);

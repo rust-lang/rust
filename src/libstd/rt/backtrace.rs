@@ -84,7 +84,7 @@ fn demangle(writer: &mut Writer, s: &str) -> IoResult<()> {
             if i == 0 {
                 valid = chars.next().is_none();
                 break
-            } else if chars.by_ref().take(i - 1).len() != i - 1 {
+            } else if chars.by_ref().take(i - 1).count() != i - 1 {
                 valid = false;
             }
         }
@@ -505,7 +505,6 @@ mod imp {
     use c_str::CString;
     use container::Container;
     use io::{IoResult, Writer};
-    use iter::Iterator;
     use libc;
     use mem;
     use ops::Drop;

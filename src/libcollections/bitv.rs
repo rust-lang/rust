@@ -241,17 +241,17 @@ enum Op {Union, Intersect, Assign, Difference}
 /// bv.set(5, true);
 /// bv.set(7, true);
 /// println!("{}", bv.to_str());
-/// println!("total bits set to true: {}", bv.iter().count(|x| x));
+/// println!("total bits set to true: {}", bv.iter().filter(|x| *x).count());
 ///
 /// // flip all values in bitvector, producing non-primes less than 10
 /// bv.negate();
 /// println!("{}", bv.to_str());
-/// println!("total bits set to true: {}", bv.iter().count(|x| x));
+/// println!("total bits set to true: {}", bv.iter().filter(|x| *x).count());
 ///
 /// // reset bitvector to empty
 /// bv.clear();
 /// println!("{}", bv.to_str());
-/// println!("total bits set to true: {}", bv.iter().count(|x| x));
+/// println!("total bits set to true: {}", bv.iter().filter(|x| *x).count());
 /// ```
 #[deriving(Clone)]
 pub struct Bitv {
@@ -461,7 +461,7 @@ impl Bitv {
     /// bv.set(5, true);
     /// bv.set(8, true);
     /// // Count bits set to 1; result should be 5
-    /// println!("{}", bv.iter().count(|x| x));
+    /// println!("{}", bv.iter().filter(|x| *x).count());
     /// ```
     #[inline]
     pub fn iter<'a>(&'a self) -> Bits<'a> {

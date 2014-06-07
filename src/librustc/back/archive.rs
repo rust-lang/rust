@@ -109,7 +109,7 @@ impl<'a> Archive<'a> {
     pub fn add_rlib(&mut self, rlib: &Path, name: &str,
                     lto: bool) -> io::IoResult<()> {
         let object = format!("{}.o", name);
-        let bytecode = format!("{}.bc.deflate", name);
+        let bytecode = format!("{}.bytecode.deflate", name);
         let mut ignore = vec!(bytecode.as_slice(), METADATA_FILENAME);
         if lto {
             ignore.push(object.as_slice());
@@ -166,6 +166,15 @@ impl<'a> Archive<'a> {
             if filename.contains(".SYMDEF") { continue }
 
             let filename = format!("r-{}-{}", name, filename);
+            // LLDB (as mentioned in back::link) crashes on filenames of exactly
+            // 16 bytes in length. If we're including an object file with
+            // exactly 16-bytes of characters, give it some prefix so that it's
+            // not 16 bytes.
+            let filename = if filename.len() == 16 {
+                format!("lldb-fix-{}", filename)
+            } else {
+                filename
+            };
             let new_filename = file.with_filename(filename);
             try!(fs::rename(file, &new_filename));
             inputs.push(new_filename);

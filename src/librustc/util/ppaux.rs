@@ -456,7 +456,7 @@ pub fn parameterized(cx: &ctxt,
                 Some(default) => default.subst(cx, &substs) == actual,
                 None => false
             }
-        }).len()
+        }).count()
     } else {
         0
     };

@@ -88,6 +88,10 @@ fn try_inline_def(cx: &core::DocContext,
             record_extern_fqn(cx, did, clean::TypeModule);
             clean::ModuleItem(build_module(cx, tcx, did))
         }
+        def::DefStatic(did, mtbl) => {
+            record_extern_fqn(cx, did, clean::TypeStatic);
+            clean::StaticItem(build_static(tcx, did, mtbl))
+        }
         _ => return None,
     };
     let fqn = csearch::get_item_path(tcx, did);
@@ -341,5 +345,15 @@ fn build_module(cx: &core::DocContext, tcx: &ty::ctxt,
     clean::Module {
         items: items,
         is_crate: false,
+    }
+}
+
+fn build_static(tcx: &ty::ctxt,
+                did: ast::DefId,
+                mutable: bool) -> clean::Static {
+    clean::Static {
+        type_: ty::lookup_item_type(tcx, did).ty.clean(),
+        mutability: if mutable {clean::Mutable} else {clean::Immutable},
+        expr: "\n\n\n".to_string(), // trigger the "[definition]" links
     }
 }

@@ -1545,7 +1545,7 @@ fn disassemble_extract(config: &Config, _props: &TestProps,
 fn count_extracted_lines(p: &Path) -> uint {
     let x = File::open(&p.with_extension("ll")).read_to_end().unwrap();
     let x = str::from_utf8(x.as_slice()).unwrap();
-    x.lines().len()
+    x.lines().count()
 }
 
 

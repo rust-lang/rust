@@ -55,10 +55,10 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
         let archive = ArchiveRO::open(&path).expect("wanted an rlib");
         debug!("reading {}", name);
         let bc = time(sess.time_passes(),
-                      format!("read {}.bc.deflate", name).as_slice(),
+                      format!("read {}.bytecode.deflate", name).as_slice(),
                       (),
                       |_| {
-                          archive.read(format!("{}.bc.deflate",
+                          archive.read(format!("{}.bytecode.deflate",
                                                name).as_slice())
                       });
         let bc = bc.expect("missing compressed bytecode in archive!");

@@ -56,12 +56,6 @@ use libc::c_char;
 #[cfg(windows)]
 use str::OwnedStr;
 
-/// Delegates to the libc close() function, returning the same return value.
-pub fn close(fd: int) -> int {
-    unsafe {
-        libc::close(fd as c_int) as int
-    }
-}
 
 pub static TMPBUF_SZ : uint = 1000u;
 static BUF_BYTES : uint = 2048u;

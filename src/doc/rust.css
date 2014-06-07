@@ -313,6 +313,19 @@ table th {
     padding: 5px;
 }
 
+/* Code snippets */
+
+.rusttest { display: none; }
+pre.rust { position: relative; }
+pre.rust a { transform: scaleX(-1); }
+.test-arrow {
+    display: inline-block;
+    position: absolute;
+    top: 0;
+    right: 10px;
+    font-size: 150%;
+}
+
 @media (min-width: 1170px) {
     pre {
         font-size: 15px;
