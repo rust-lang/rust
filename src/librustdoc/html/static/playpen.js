@@ -22,7 +22,7 @@
             a.attr('target', '_blank');
             $(this).append(a);
         }, function() {
-            $(this).find('a').remove();
+            $(this).find('a.test-arrow').remove();
         });
     }
 }());
