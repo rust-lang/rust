@@ -12,13 +12,13 @@ struct A { a: int, b: Box<int> }
 
 fn borrow<T>(_: &T) { }
 
-fn use_after_move() {
+fn deref_after_move() {
     let x = A { a: 1, b: box 2 };
     drop(x.b);
     drop(*x.b); //~ ERROR use of partially moved value: `*x.b`
 }
 
-fn use_after_fu_move() {
+fn deref_after_fu_move() {
     let x = A { a: 1, b: box 2 };
     let y = A { a: 3, .. x };
     drop(*x.b); //~ ERROR use of partially moved value: `*x.b`
@@ -84,7 +84,7 @@ fn fu_move_after_fu_move() {
 
 // The following functions aren't yet accepted, but they should be.
 
-fn use_after_field_assign_after_uninit() {
+fn copy_after_field_assign_after_uninit() {
     let mut x: A;
     x.a = 1;
     drop(x.a); //~ ERROR use of possibly uninitialized variable: `x.a`
@@ -103,8 +103,8 @@ fn move_after_field_assign_after_uninit() {
 }
 
 fn main() {
-    use_after_move();
-    use_after_fu_move();
+    deref_after_move();
+    deref_after_fu_move();
 
     borrow_after_move();
     borrow_after_fu_move();
@@ -117,7 +117,7 @@ fn main() {
     fu_move_after_move();
     fu_move_after_fu_move();
 
-    use_after_field_assign_after_uninit();
+    copy_after_field_assign_after_uninit();
     borrow_after_field_assign_after_uninit();
     move_after_field_assign_after_uninit();
 }
