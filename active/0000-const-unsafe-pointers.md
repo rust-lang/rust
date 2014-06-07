@@ -20,14 +20,14 @@ declarations in Rust are faithful to the declaration in C.
 The current difference in Rust unsafe pointers types with C pointers types is
 proving to be too error prone to realistically enable these optimizations at a
 future date. By renaming Rust's unsafe pointers to closely match their C
-brethren, the likelihood for errneously transcribing a signature is diminished.
+brethren, the likelihood for erroneously transcribing a signature is diminished.
 
 # Detailed design
 
 > This section will assume that the current unsafe pointer design is forgotten
 > completely, and will explain the unsafe pointer design from scratch.
 
-There are two unsafe pointers in rust, `*mut cT` and `*const T`. These two types
+There are two unsafe pointers in rust, `*mut T` and `*const T`. These two types
 are primarily useful when interacting with foreign functions through a FFI. The
 `*mut T` type is equivalent to the `T*` type in C, and the `*const T` type is
 equivalent to the `const T*` type in C.
@@ -46,7 +46,7 @@ type `uint` can be casted to unsafe pointers.
 Today's unsafe pointers design is consistent with the borrowed pointers types in
 Rust, using the `mut` qualifier for a mutable pointer, and no qualifier for an
 "immutable" pointer. Renaming the pointers would be divergence from this
-consistency, and would also introduce a keyword that is not used elsehwere in
+consistency, and would also introduce a keyword that is not used elsewhere in
 the language, `const`.
 
 # Alternatives
