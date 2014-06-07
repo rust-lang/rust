@@ -78,15 +78,17 @@ type parameter).
 
 
 use middle::const_eval;
+use middle::def;
 use middle::lang_items::{ExchangeHeapLangItem, GcLangItem};
 use middle::lang_items::{ManagedHeapLangItem};
 use middle::lint::UnreachableCode;
 use middle::pat_util::pat_id_map;
 use middle::pat_util;
-use middle::subst::Subst;
+use middle::subst;
+use middle::subst::{Subst, Substs};
 use middle::ty::{FnSig, VariantInfo};
 use middle::ty::{ty_param_bounds_and_ty, ty_param_substs_and_ty};
-use middle::ty::{substs, param_ty, Disr, ExprTyProvider};
+use middle::ty::{param_ty, Disr, ExprTyProvider};
 use middle::ty;
 use middle::ty_fold::TypeFolder;
 use middle::typeck::astconv::AstConv;
@@ -283,9 +285,11 @@ fn blank_fn_ctxt<'a>(ccx: &'a CrateCtxt<'a>,
 fn blank_inherited_fields<'a>(ccx: &'a CrateCtxt<'a>) -> Inherited<'a> {
     // It's kind of a kludge to manufacture a fake function context
     // and statement context, but we might as well do write the code only once
-    let param_env = ty::ParameterEnvironment { free_substs: substs::empty(),
-                                               self_param_bound: None,
-                                               type_param_bounds: Vec::new() };
+    let param_env = ty::ParameterEnvironment {
+        free_substs: subst::Substs::empty(),
+        self_param_bound: None,
+        type_param_bounds: Vec::new()
+    };
     Inherited::new(ccx.tcx, param_env)
 }
 
@@ -855,7 +859,7 @@ fn compare_impl_method(tcx: &ty::ctxt,
                        impl_m_span: Span,
                        impl_m_body_id: ast::NodeId,
                        trait_m: &ty::Method,
-                       trait_substs: &ty::substs) {
+                       trait_substs: &subst::Substs) {
     debug!("compare_impl_method()");
     let infcx = infer::new_infer_ctxt(tcx);
 
@@ -983,15 +987,15 @@ fn compare_impl_method(tcx: &ty::ctxt,
         impl_m.generics.type_param_defs().iter().enumerate().
         map(|(i,t)| ty::mk_param(tcx, i + impl_tps, t.def_id)).
         collect();
-    let dummy_impl_regions: OwnedSlice<ty::Region> =
+    let dummy_impl_regions: Vec<ty::Region> =
         impl_generics.region_param_defs().iter().
         map(|l| ty::ReFree(ty::FreeRegion {
                 scope_id: impl_m_body_id,
                 bound_region: ty::BrNamed(l.def_id, l.name)})).
         collect();
-    let dummy_substs = ty::substs {
+    let dummy_substs = subst::Substs {
         tps: dummy_impl_tps.append(dummy_method_tps.as_slice()),
-        regions: ty::NonerasedRegions(dummy_impl_regions),
+        regions: subst::NonerasedRegions(dummy_impl_regions),
         self_ty: None };
 
     // Create a bare fn type for trait/impl
@@ -1012,10 +1016,10 @@ fn compare_impl_method(tcx: &ty::ctxt,
     };
     debug!("impl_fty (post-subst): {}", ppaux::ty_to_str(tcx, impl_fty));
     let trait_fty = {
-        let substs { regions: trait_regions,
-                     tps: trait_tps,
-                     self_ty: self_ty } = trait_substs.subst(tcx, &dummy_substs);
-        let substs = substs {
+        let subst::Substs { regions: trait_regions,
+                            tps: trait_tps,
+                            self_ty: self_ty } = trait_substs.subst(tcx, &dummy_substs);
+        let substs = subst::Substs {
             regions: trait_regions,
             tps: trait_tps.append(dummy_method_tps.as_slice()),
             self_ty: self_ty,
@@ -1107,7 +1111,7 @@ impl<'a> FnCtxt<'a> {
     }
 
     pub fn write_substs(&self, node_id: ast::NodeId, substs: ty::ItemSubsts) {
-        if !ty::substs_is_noop(&substs.substs) {
+        if !substs.substs.is_noop() {
             debug!("write_substs({}, {}) in fcx {}",
                    node_id,
                    substs.repr(self.tcx()),
@@ -1121,7 +1125,7 @@ impl<'a> FnCtxt<'a> {
                            node_id: ast::NodeId,
                            ty: ty::t,
                            substs: ty::ItemSubsts) {
-        let ty = ty::subst(self.tcx(), &substs.substs, ty);
+        let ty = ty.subst(self.tcx(), &substs.substs);
         self.write_ty(node_id, ty);
         self.write_substs(node_id, substs);
     }
@@ -1185,7 +1189,7 @@ impl<'a> FnCtxt<'a> {
         }
     }
 
-    pub fn method_ty_substs(&self, id: ast::NodeId) -> ty::substs {
+    pub fn method_ty_substs(&self, id: ast::NodeId) -> subst::Substs {
         match self.inh.method_map.borrow().find(&MethodCall::expr(id)) {
             Some(method) => method.substs.clone(),
             None => {
@@ -1488,12 +1492,12 @@ pub fn impl_self_ty(vcx: &VtableContext,
     let rps = vcx.infcx.region_vars_for_defs(span, rps);
     let tps = vcx.infcx.next_ty_vars(n_tps);
 
-    let substs = substs {
-        regions: ty::NonerasedRegions(rps),
+    let substs = subst::Substs {
+        regions: subst::NonerasedRegions(rps),
         self_ty: None,
         tps: tps,
     };
-    let substd_ty = ty::subst(tcx, &substs, raw_ty);
+    let substd_ty = raw_ty.subst(tcx, &substs);
 
     ty_param_substs_and_ty { substs: substs, ty: substd_ty }
 }
@@ -1504,7 +1508,7 @@ pub fn lookup_field_ty(tcx: &ty::ctxt,
                        class_id: ast::DefId,
                        items: &[ty::field_ty],
                        fieldname: ast::Name,
-                       substs: &ty::substs) -> Option<ty::t> {
+                       substs: &subst::Substs) -> Option<ty::t> {
 
     let o_field = items.iter().find(|f| f.name == fieldname);
     o_field.map(|f| ty::lookup_field_type(tcx, class_id, f.id, substs))
@@ -1520,13 +1524,13 @@ pub enum DerefArgs {
 // Given the provenance of a static method, returns the generics of the static
 // method's container.
 fn generics_of_static_method_container(type_context: &ty::ctxt,
-                                       provenance: ast::MethodProvenance)
+                                       provenance: def::MethodProvenance)
                                        -> ty::Generics {
     match provenance {
-        ast::FromTrait(trait_def_id) => {
+        def::FromTrait(trait_def_id) => {
             ty::lookup_trait_def(type_context, trait_def_id).generics.clone()
         }
-        ast::FromImpl(impl_def_id) => {
+        def::FromImpl(impl_def_id) => {
             ty::lookup_item_type(type_context, impl_def_id).generics.clone()
         }
     }
@@ -1536,7 +1540,7 @@ fn generics_of_static_method_container(type_context: &ty::ctxt,
 // locations.
 fn check_type_parameter_positions_in_path(function_context: &FnCtxt,
                                           path: &ast::Path,
-                                          def: ast::Def) {
+                                          def: def::Def) {
     // We only care about checking the case in which the path has two or
     // more segments.
     if path.segments.len() < 2 {
@@ -1577,13 +1581,13 @@ fn check_type_parameter_positions_in_path(function_context: &FnCtxt,
         // ensure that the segment of the path which names the trait or
         // implementation (the penultimate segment) is annotated with the
         // right number of type parameters.
-        ast::DefStaticMethod(_, provenance, _) => {
+        def::DefStaticMethod(_, provenance, _) => {
             let generics =
                 generics_of_static_method_container(function_context.ccx.tcx,
                                                     provenance);
             let name = match provenance {
-                ast::FromTrait(_) => "trait",
-                ast::FromImpl(_) => "impl",
+                def::FromTrait(_) => "trait",
+                def::FromImpl(_) => "impl",
             };
 
             let trait_segment = &path.segments.get(path.segments.len() - 2);
@@ -2437,7 +2441,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                                       span: Span,
                                       class_id: ast::DefId,
                                       node_id: ast::NodeId,
-                                      substitutions: ty::substs,
+                                      substitutions: subst::Substs,
                                       field_types: &[ty::field_ty],
                                       ast_fields: &[ast::Field],
                                       check_completeness: bool)  {
@@ -2543,13 +2547,13 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         // Generate the struct type.
         let regions = fcx.infcx().region_vars_for_defs(span, region_param_defs);
         let type_parameters = fcx.infcx().next_ty_vars(type_parameter_count);
-        let substitutions = substs {
-            regions: ty::NonerasedRegions(regions),
+        let substitutions = subst::Substs {
+            regions: subst::NonerasedRegions(regions),
             self_ty: None,
             tps: type_parameters
         };
 
-        let mut struct_type = ty::subst(tcx, &substitutions, raw_type);
+        let mut struct_type = raw_type.subst(tcx, &substitutions);
 
         // Look up and check the fields.
         let class_fields = ty::lookup_struct_fields(tcx, class_id);
@@ -2599,13 +2603,13 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         // Generate the enum type.
         let regions = fcx.infcx().region_vars_for_defs(span, region_param_defs);
         let type_parameters = fcx.infcx().next_ty_vars(type_parameter_count);
-        let substitutions = substs {
-            regions: ty::NonerasedRegions(regions),
+        let substitutions = subst::Substs {
+            regions: subst::NonerasedRegions(regions),
             self_ty: None,
             tps: type_parameters
         };
 
-        let enum_type = ty::subst(tcx, &substitutions, raw_type);
+        let enum_type = raw_type.subst(tcx, &substitutions);
 
         // Look up and check the enum variant fields.
         let variant_fields = ty::lookup_struct_fields(tcx, variant_id);
@@ -2703,7 +2707,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                   // FIXME(pcwalton): For now we hardcode the two permissible
                   // places: the exchange heap and the managed heap.
                   let definition = lookup_def(fcx, path.span, place.id);
-                  let def_id = ast_util::def_id_of_def(definition);
+                  let def_id = definition.def_id();
                   match tcx.lang_items
                            .items
                            .get(ExchangeHeapLangItem as uint) {
@@ -2734,10 +2738,10 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                                       }
                                   };
                               let regions =
-                                  ty::NonerasedRegions(OwnedSlice::empty());
+                                  subst::NonerasedRegions(Vec::new());
                               let sty = ty::mk_struct(tcx,
                                                       gc_struct_id,
-                                                      substs {
+                                                      subst::Substs {
                                                         self_ty: None,
                                                         tps: vec!(
                                                             fcx.expr_ty(
@@ -3253,11 +3257,11 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         // Resolve the path.
         let def = tcx.def_map.borrow().find(&id).map(|i| *i);
         match def {
-            Some(ast::DefStruct(type_def_id)) => {
+            Some(def::DefStruct(type_def_id)) => {
                 check_struct_constructor(fcx, id, expr.span, type_def_id,
                                          fields.as_slice(), base_expr);
             }
-            Some(ast::DefVariant(enum_id, variant_id, _)) => {
+            Some(def::DefVariant(enum_id, variant_id, _)) => {
                 check_struct_enum_variant(fcx, id, expr.span, enum_id,
                                           variant_id, fields.as_slice());
             }
@@ -3806,54 +3810,54 @@ pub fn check_enum_variants(ccx: &CrateCtxt,
     check_instantiable(ccx.tcx, sp, id);
 }
 
-pub fn lookup_def(fcx: &FnCtxt, sp: Span, id: ast::NodeId) -> ast::Def {
+pub fn lookup_def(fcx: &FnCtxt, sp: Span, id: ast::NodeId) -> def::Def {
     lookup_def_ccx(fcx.ccx, sp, id)
 }
 
 // Returns the type parameter count and the type for the given definition.
 pub fn ty_param_bounds_and_ty_for_def(fcx: &FnCtxt,
                                       sp: Span,
-                                      defn: ast::Def)
+                                      defn: def::Def)
                                    -> ty_param_bounds_and_ty {
     match defn {
-      ast::DefArg(nid, _) | ast::DefLocal(nid, _) |
-      ast::DefBinding(nid, _) => {
+      def::DefArg(nid, _) | def::DefLocal(nid, _) |
+      def::DefBinding(nid, _) => {
           let typ = fcx.local_ty(sp, nid);
           return no_params(typ);
       }
-      ast::DefFn(id, _) | ast::DefStaticMethod(id, _, _) |
-      ast::DefStatic(id, _) | ast::DefVariant(_, id, _) |
-      ast::DefStruct(id) => {
+      def::DefFn(id, _) | def::DefStaticMethod(id, _, _) |
+      def::DefStatic(id, _) | def::DefVariant(_, id, _) |
+      def::DefStruct(id) => {
         return ty::lookup_item_type(fcx.ccx.tcx, id);
       }
-      ast::DefUpvar(_, inner, _, _) => {
+      def::DefUpvar(_, inner, _, _) => {
         return ty_param_bounds_and_ty_for_def(fcx, sp, *inner);
       }
-      ast::DefTrait(_) |
-      ast::DefTy(_) |
-      ast::DefPrimTy(_) |
-      ast::DefTyParam(..)=> {
+      def::DefTrait(_) |
+      def::DefTy(_) |
+      def::DefPrimTy(_) |
+      def::DefTyParam(..)=> {
         fcx.ccx.tcx.sess.span_bug(sp, "expected value but found type");
       }
-      ast::DefMod(..) | ast::DefForeignMod(..) => {
+      def::DefMod(..) | def::DefForeignMod(..) => {
         fcx.ccx.tcx.sess.span_bug(sp, "expected value but found module");
       }
-      ast::DefUse(..) => {
+      def::DefUse(..) => {
         fcx.ccx.tcx.sess.span_bug(sp, "expected value but found use");
       }
-      ast::DefRegion(..) => {
+      def::DefRegion(..) => {
         fcx.ccx.tcx.sess.span_bug(sp, "expected value but found region");
       }
-      ast::DefTyParamBinder(..) => {
+      def::DefTyParamBinder(..) => {
         fcx.ccx.tcx.sess.span_bug(sp, "expected value but found type parameter");
       }
-      ast::DefLabel(..) => {
+      def::DefLabel(..) => {
         fcx.ccx.tcx.sess.span_bug(sp, "expected value but found label");
       }
-      ast::DefSelfTy(..) => {
+      def::DefSelfTy(..) => {
         fcx.ccx.tcx.sess.span_bug(sp, "expected value but found self ty");
       }
-      ast::DefMethod(..) => {
+      def::DefMethod(..) => {
         fcx.ccx.tcx.sess.span_bug(sp, "expected value but found method");
       }
     }
@@ -3864,7 +3868,7 @@ pub fn ty_param_bounds_and_ty_for_def(fcx: &FnCtxt,
 pub fn instantiate_path(fcx: &FnCtxt,
                         pth: &ast::Path,
                         tpt: ty_param_bounds_and_ty,
-                        def: ast::Def,
+                        def: def::Def,
                         span: Span,
                         node_id: ast::NodeId) {
     debug!(">>> instantiate_path");
@@ -3888,8 +3892,10 @@ pub fn instantiate_path(fcx: &FnCtxt,
     let num_expected_regions = tpt.generics.region_param_defs().len();
     let num_supplied_regions = pth.segments.last().unwrap().lifetimes.len();
     let regions = if num_expected_regions == num_supplied_regions {
-        OwnedSlice::from_vec(pth.segments.last().unwrap().lifetimes.iter().map(
-            |l| ast_region_to_region(fcx.tcx(), l)).collect())
+        pth.segments.last().unwrap().lifetimes
+            .iter()
+            .map(|l| ast_region_to_region(fcx.tcx(), l))
+            .collect()
     } else {
         if num_supplied_regions != 0 {
             fcx.ccx.tcx.sess.span_err(
@@ -3904,7 +3910,7 @@ pub fn instantiate_path(fcx: &FnCtxt,
 
         fcx.infcx().region_vars_for_defs(span, tpt.generics.region_param_defs.as_slice())
     };
-    let regions = ty::NonerasedRegions(regions);
+    let regions = subst::NonerasedRegions(regions);
 
     // Special case: If there is a self parameter, omit it from the list of
     // type parameters.
@@ -3913,7 +3919,7 @@ pub fn instantiate_path(fcx: &FnCtxt,
     // of type parameters actually manifest in the AST. This will differ from
     // the internal type parameter count when there are self types involved.
     let (user_ty_param_count, user_ty_param_req, self_parameter_index) = match def {
-        ast::DefStaticMethod(_, provenance @ ast::FromTrait(_), _) => {
+        def::DefStaticMethod(_, provenance @ def::FromTrait(_), _) => {
             let generics = generics_of_static_method_container(fcx.ccx.tcx,
                                                                provenance);
             (ty_param_count - 1, ty_param_req - 1, Some(generics.type_param_defs().len()))
@@ -3980,7 +3986,7 @@ pub fn instantiate_path(fcx: &FnCtxt,
             tps.push(ty)
         }
 
-        let mut substs = substs {
+        let mut substs = subst::Substs {
             regions: regions,
             self_ty: None,
             tps: tps
@@ -4020,13 +4026,13 @@ pub fn instantiate_path(fcx: &FnCtxt,
 
         assert_eq!(substs.tps.len(), ty_param_count)
 
-        let substs {tps, regions, ..} = substs;
+        let subst::Substs {tps, regions, ..} = substs;
         (tps, regions)
     };
 
-    let substs = substs { regions: regions,
-                          self_ty: None,
-                          tps: tps };
+    let substs = subst::Substs { regions: regions,
+                                 self_ty: None,
+                                 tps: tps };
 
     fcx.write_ty_substs(node_id, tpt.ty, ty::ItemSubsts {
         substs: substs,
@@ -4148,7 +4154,7 @@ pub fn may_break(cx: &ty::ctxt, id: ast::NodeId, b: ast::P<ast::Block>) -> bool 
         match e.node {
             ast::ExprBreak(Some(_)) => {
                 match cx.def_map.borrow().find(&e.id) {
-                    Some(&ast::DefLabel(loop_id)) if id == loop_id => true,
+                    Some(&def::DefLabel(loop_id)) if id == loop_id => true,
                     _ => false,
                 }
             }
@@ -4261,10 +4267,10 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
             "type_id" => {
                 let langid = ccx.tcx.lang_items.require(TypeIdLangItem);
                 match langid {
-                    Ok(did) => (1u, Vec::new(), ty::mk_struct(ccx.tcx, did, substs {
+                    Ok(did) => (1u, Vec::new(), ty::mk_struct(ccx.tcx, did, subst::Substs {
                                                  self_ty: None,
                                                  tps: Vec::new(),
-                                                 regions: ty::NonerasedRegions(OwnedSlice::empty())
+                                                 regions: subst::NonerasedRegions(Vec::new())
                                                  }) ),
                     Err(msg) => {
                         tcx.sess.span_fatal(it.span, msg.as_slice());

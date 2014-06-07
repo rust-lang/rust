@@ -16,6 +16,7 @@ use syntax::attr::AttrMetaMethods;
 
 use rustc::metadata::csearch;
 use rustc::metadata::decoder;
+use rustc::middle::def;
 use rustc::middle::ty;
 
 use core;
@@ -46,22 +47,22 @@ pub fn try_inline(id: ast::NodeId) -> Option<Vec<clean::Item>> {
         Some(def) => *def,
         None => return None,
     };
-    let did = ast_util::def_id_of_def(def);
+    let did = def.def_id();
     if ast_util::is_local(did) { return None }
     try_inline_def(&**cx, tcx, def)
 }
 
 fn try_inline_def(cx: &core::DocContext,
                   tcx: &ty::ctxt,
-                  def: ast::Def) -> Option<Vec<clean::Item>> {
+                  def: def::Def) -> Option<Vec<clean::Item>> {
     let mut ret = Vec::new();
-    let did = ast_util::def_id_of_def(def);
+    let did = def.def_id();
     let inner = match def {
-        ast::DefTrait(did) => {
+        def::DefTrait(did) => {
             record_extern_fqn(cx, did, clean::TypeTrait);
             clean::TraitItem(build_external_trait(tcx, did))
         }
-        ast::DefFn(did, style) => {
+        def::DefFn(did, style) => {
             // If this function is a tuple struct constructor, we just skip it
             if csearch::get_tuple_struct_definition_if_ctor(&tcx.sess.cstore,
                                                             did).is_some() {
@@ -70,20 +71,20 @@ fn try_inline_def(cx: &core::DocContext,
             record_extern_fqn(cx, did, clean::TypeFunction);
             clean::FunctionItem(build_external_function(tcx, did, style))
         }
-        ast::DefStruct(did) => {
+        def::DefStruct(did) => {
             record_extern_fqn(cx, did, clean::TypeStruct);
             ret.extend(build_impls(cx, tcx, did).move_iter());
             clean::StructItem(build_struct(tcx, did))
         }
-        ast::DefTy(did) => {
+        def::DefTy(did) => {
             record_extern_fqn(cx, did, clean::TypeEnum);
             ret.extend(build_impls(cx, tcx, did).move_iter());
             build_type(tcx, did)
         }
         // Assume that the enum type is reexported next to the variant, and
         // variants don't show up in documentation specially.
-        ast::DefVariant(..) => return Some(Vec::new()),
-        ast::DefMod(did) => {
+        def::DefVariant(..) => return Some(Vec::new()),
+        def::DefMod(did) => {
             record_extern_fqn(cx, did, clean::TypeModule);
             clean::ModuleItem(build_module(cx, tcx, did))
         }
@@ -248,7 +249,7 @@ fn build_impls(cx: &core::DocContext,
                           impls: &mut Vec<Option<clean::Item>>) {
             match def {
                 decoder::DlImpl(did) => impls.push(build_impl(cx, tcx, did)),
-                decoder::DlDef(ast::DefMod(did)) => {
+                decoder::DlDef(def::DefMod(did)) => {
                     csearch::each_child_of_item(&tcx.sess.cstore,
                                                 did,
                                                 |def, _, _| {

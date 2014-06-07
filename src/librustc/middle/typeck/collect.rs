@@ -32,12 +32,14 @@ are represented as `ty_param()` instances.
 
 
 use metadata::csearch;
+use middle::def;
 use middle::lang_items::SizedTraitLangItem;
 use middle::resolve_lifetime;
-use middle::ty::{ImplContainer, MethodContainer, TraitContainer, substs};
+use middle::subst;
+use middle::subst::{Subst, Substs};
+use middle::ty::{ImplContainer, MethodContainer, TraitContainer};
 use middle::ty::{ty_param_bounds_and_ty};
 use middle::ty;
-use middle::subst::Subst;
 use middle::typeck::astconv::{AstConv, ty_of_arg};
 use middle::typeck::astconv::{ast_ty_to_ty};
 use middle::typeck::astconv;
@@ -320,16 +322,14 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt, trait_id: ast::NodeId) {
         //     A,B,C => A',B',C'
         //     Self => D'
         //     D,E,F => E',F',G'
-        let substs = substs {
-            regions: ty::NonerasedRegions(rps_from_trait),
+        let substs = subst::Substs {
+            regions: subst::NonerasedRegions(rps_from_trait),
             self_ty: Some(self_param),
             tps: non_shifted_trait_tps.append(shifted_method_tps.as_slice())
         };
 
         // create the type of `foo`, applying the substitution above
-        let ty = ty::subst(tcx,
-                           &substs,
-                           ty::mk_bare_fn(tcx, m.fty.clone()));
+        let ty = ty::mk_bare_fn(tcx, m.fty.clone()).subst(tcx, &substs);
 
         // create the type parameter definitions for `foo`, applying
         // the substitution to any traits that appear in their bounds.
@@ -741,7 +741,7 @@ pub fn convert_struct(ccx: &CrateCtxt,
             ast::TyPath(_, _, path_id) => {
                 let def_map = tcx.def_map.borrow();
                 match def_map.find(&path_id) {
-                    Some(&ast::DefStruct(def_id)) => {
+                    Some(&def::DefStruct(def_id)) => {
                         // FIXME(#12511) Check for cycles in the inheritance hierarchy.
                         // Check super-struct is virtual.
                         match tcx.map.find(def_id.node) {
@@ -832,7 +832,7 @@ pub fn instantiate_trait_ref(ccx: &CrateCtxt,
     let rscope = ExplicitRscope;
 
     match lookup_def_tcx(ccx.tcx, ast_trait_ref.path.span, ast_trait_ref.ref_id) {
-        ast::DefTrait(trait_did) => {
+        def::DefTrait(trait_did) => {
             let trait_ref =
                 astconv::ast_path_to_trait_ref(
                     ccx, &rscope, trait_did, Some(self_ty), &ast_trait_ref.path);
@@ -1211,17 +1211,18 @@ pub fn ty_of_foreign_fn_decl(ccx: &CrateCtxt,
 
 pub fn mk_item_substs(ccx: &CrateCtxt,
                       ty_generics: &ty::Generics,
-                      self_ty: Option<ty::t>) -> ty::substs
+                      self_ty: Option<ty::t>)
+                      -> subst::Substs
 {
     let params: Vec<ty::t> =
         ty_generics.type_param_defs().iter().enumerate().map(
             |(i, t)| ty::mk_param(ccx.tcx, i, t.def_id)).collect();
 
-    let regions: OwnedSlice<ty::Region> =
+    let regions: Vec<ty::Region> =
         ty_generics.region_param_defs().iter().enumerate().map(
             |(i, l)| ty::ReEarlyBound(l.def_id.node, i, l.name)).collect();
 
-    substs {regions: ty::NonerasedRegions(regions),
-            self_ty: self_ty,
-            tps: params}
+    subst::Substs {regions: subst::NonerasedRegions(regions),
+                   self_ty: self_ty,
+                   tps: params}
 }

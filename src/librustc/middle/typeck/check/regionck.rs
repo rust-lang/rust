@@ -118,7 +118,8 @@ and report an error, and it just seems like more mess in the end.)
 
 */
 
-
+use middle::def;
+use middle::def::{DefArg, DefBinding, DefLocal, DefUpvar};
 use middle::freevars;
 use mc = middle::mem_categorization;
 use middle::ty::{ReScope};
@@ -134,9 +135,7 @@ use middle::pat_util;
 use util::nodemap::NodeMap;
 use util::ppaux::{ty_to_str, region_to_str, Repr};
 
-use syntax::ast::{DefArg, DefBinding, DefLocal, DefUpvar};
 use syntax::ast;
-use syntax::ast_util;
 use syntax::codemap::Span;
 use syntax::visit;
 use syntax::visit::Visitor;
@@ -163,7 +162,7 @@ pub struct Rcx<'a> {
     repeating_scope: ast::NodeId,
 }
 
-fn region_of_def(fcx: &FnCtxt, def: ast::Def) -> ty::Region {
+fn region_of_def(fcx: &FnCtxt, def: def::Def) -> ty::Region {
     /*!
      * Returns the validity region of `def` -- that is, how long
      * is `def` valid?
@@ -665,7 +664,7 @@ fn check_expr_fn_block(rcx: &mut Rcx,
 
             // Identify the variable being closed over and its node-id.
             let def = freevar.def;
-            let def_id = ast_util::def_id_of_def(def);
+            let def_id = def.def_id();
             assert!(def_id.krate == ast::LOCAL_CRATE);
             let upvar_id = ty::UpvarId { var_id: def_id.node,
                                          closure_expr_id: expr.id };
@@ -725,7 +724,7 @@ fn check_expr_fn_block(rcx: &mut Rcx,
             // determining the final borrow_kind) and propagate that as
             // a constraint on the outer closure.
             match freevar.def {
-                ast::DefUpvar(var_id, _, outer_closure_id, _) => {
+                def::DefUpvar(var_id, _, outer_closure_id, _) => {
                     // thing being captured is itself an upvar:
                     let outer_upvar_id = ty::UpvarId {
                         var_id: var_id,

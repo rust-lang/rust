@@ -195,6 +195,7 @@ represents the "variance transform" as defined in the paper:
 use std::collections::HashMap;
 use arena;
 use arena::Arena;
+use middle::subst;
 use middle::ty;
 use std::fmt;
 use std::rc::Rc;
@@ -798,7 +799,7 @@ impl<'a> ConstraintContext<'a> {
     fn add_constraints_from_substs(&mut self,
                                    def_id: ast::DefId,
                                    generics: &ty::Generics,
-                                   substs: &ty::substs,
+                                   substs: &subst::Substs,
                                    variance: VarianceTermPtr<'a>) {
         debug!("add_constraints_from_substs(def_id={:?})", def_id);
 
@@ -810,8 +811,8 @@ impl<'a> ConstraintContext<'a> {
         }
 
         match substs.regions {
-            ty::ErasedRegions => {}
-            ty::NonerasedRegions(ref rps) => {
+            subst::ErasedRegions => {}
+            subst::NonerasedRegions(ref rps) => {
                 for (i, p) in generics.region_param_defs().iter().enumerate() {
                     let variance_decl =
                         self.declared_variance(p.def_id, def_id, RegionParam, i);

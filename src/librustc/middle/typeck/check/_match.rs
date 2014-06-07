@@ -10,7 +10,10 @@
 
 #![allow(non_camel_case_types)]
 
+use middle::def;
 use middle::pat_util::{PatIdMap, pat_id_map, pat_is_binding, pat_is_const};
+use middle::subst;
+use middle::subst::Subst;
 use middle::ty;
 use middle::typeck::check::demand;
 use middle::typeck::check::{check_expr, check_expr_has_type, FnCtxt};
@@ -126,7 +129,7 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: &ast::Pat, path: &ast::Path,
         ty::ty_enum(_, ref expected_substs) => {
             // Lookup the enum and variant def ids:
             let v_def = lookup_def(pcx.fcx, pat.span, pat.id);
-            match ast_util::variant_def_ids(v_def) {
+            match v_def.variant_def_ids() {
                 Some((enm, var)) => {
                     // Assign the pattern the type of the *enum*, not the variant.
                     let enum_tpt = ty::lookup_item_type(tcx, enm);
@@ -151,7 +154,7 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: &ast::Pat, path: &ast::Path,
                             if var_tpt.generics.type_param_defs().len() ==
                                 expected_substs.tps.len()
                             {
-                                ty::subst(tcx, expected_substs, *t)
+                                t.subst(tcx, expected_substs)
                             }
                             else {
                                 *t // In this case, an error was already signaled
@@ -186,7 +189,7 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: &ast::Pat, path: &ast::Path,
         ty::ty_struct(struct_def_id, ref expected_substs) => {
             // Lookup the struct ctor def id
             let s_def = lookup_def(pcx.fcx, pat.span, pat.id);
-            let s_def_id = ast_util::def_id_of_def(s_def);
+            let s_def_id = s_def.def_id();
 
             // Assign the pattern the type of the struct.
             let ctor_tpt = ty::lookup_item_type(tcx, s_def_id);
@@ -301,7 +304,7 @@ pub fn check_struct_pat_fields(pcx: &pat_ctxt,
                                fields: &[ast::FieldPat],
                                class_fields: Vec<ty::field_ty>,
                                class_id: ast::DefId,
-                               substitutions: &ty::substs,
+                               substitutions: &subst::Substs,
                                etc: bool) {
     let tcx = pcx.fcx.ccx.tcx;
 
@@ -362,7 +365,7 @@ pub fn check_struct_pat(pcx: &pat_ctxt, pat_id: ast::NodeId, span: Span,
                         expected: ty::t, path: &ast::Path,
                         fields: &[ast::FieldPat], etc: bool,
                         struct_id: ast::DefId,
-                        substitutions: &ty::substs) {
+                        substitutions: &subst::Substs) {
     let fcx = pcx.fcx;
     let tcx = pcx.fcx.ccx.tcx;
 
@@ -370,11 +373,11 @@ pub fn check_struct_pat(pcx: &pat_ctxt, pat_id: ast::NodeId, span: Span,
 
     // Check to ensure that the struct is the one specified.
     match tcx.def_map.borrow().find(&pat_id) {
-        Some(&ast::DefStruct(supplied_def_id))
+        Some(&def::DefStruct(supplied_def_id))
                 if supplied_def_id == struct_id => {
             // OK.
         }
-        Some(&ast::DefStruct(..)) | Some(&ast::DefVariant(..)) => {
+        Some(&def::DefStruct(..)) | Some(&def::DefVariant(..)) => {
             let name = pprust::path_to_str(path);
             tcx.sess
                .span_err(span,
@@ -400,13 +403,13 @@ pub fn check_struct_like_enum_variant_pat(pcx: &pat_ctxt,
                                           fields: &[ast::FieldPat],
                                           etc: bool,
                                           enum_id: ast::DefId,
-                                          substitutions: &ty::substs) {
+                                          substitutions: &subst::Substs) {
     let fcx = pcx.fcx;
     let tcx = pcx.fcx.ccx.tcx;
 
     // Find the variant that was specified.
     match tcx.def_map.borrow().find(&pat_id) {
-        Some(&ast::DefVariant(found_enum_id, variant_id, _))
+        Some(&def::DefVariant(found_enum_id, variant_id, _))
                 if found_enum_id == enum_id => {
             // Get the struct fields from this struct-like enum variant.
             let class_fields = ty::lookup_struct_fields(tcx, variant_id);
@@ -414,7 +417,7 @@ pub fn check_struct_like_enum_variant_pat(pcx: &pat_ctxt,
             check_struct_pat_fields(pcx, span, fields, class_fields,
                                     variant_id, substitutions, etc);
         }
-        Some(&ast::DefStruct(..)) | Some(&ast::DefVariant(..)) => {
+        Some(&def::DefStruct(..)) | Some(&def::DefVariant(..)) => {
             let name = pprust::path_to_str(path);
             tcx.sess.span_err(span,
                               format!("mismatched types: expected `{}` but \
@@ -475,8 +478,7 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
       }
       ast::PatEnum(..) |
       ast::PatIdent(..) if pat_is_const(&tcx.def_map, pat) => {
-        let const_did = ast_util::def_id_of_def(tcx.def_map.borrow()
-                                                   .get_copy(&pat.id));
+        let const_did = tcx.def_map.borrow().get_copy(&pat.id).def_id();
         let const_tpt = ty::lookup_item_type(tcx, const_did);
         demand::suptype(fcx, pat.span, expected, const_tpt.ty);
         fcx.write_ty(pat.id, const_tpt.ty);
@@ -556,7 +558,7 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
                             "a structure pattern".to_string(),
                             None);
                 match tcx.def_map.borrow().find(&pat.id) {
-                    Some(&ast::DefStruct(supplied_def_id)) => {
+                    Some(&def::DefStruct(supplied_def_id)) => {
                          check_struct_pat(pcx,
                                           pat.id,
                                           pat.span,
@@ -565,10 +567,10 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
                                           fields.as_slice(),
                                           etc,
                                           supplied_def_id,
-                                          &ty::substs {
+                                          &subst::Substs {
                                               self_ty: None,
                                               tps: Vec::new(),
-                                              regions: ty::ErasedRegions,
+                                              regions: subst::ErasedRegions,
                                           });
                     }
                     _ => () // Error, but we're already in an error case

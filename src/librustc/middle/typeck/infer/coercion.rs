@@ -64,7 +64,7 @@ we may want to adjust precisely when coercions occur.
 
 */
 
-
+use middle::subst;
 use middle::ty::{AutoPtr, AutoBorrowVec, AutoBorrowObj, AutoDerefRef};
 use middle::ty::{mt};
 use middle::ty;
@@ -443,7 +443,7 @@ impl<'f> Coerce<'f> {
                          sty_a: &ty::sty,
                          b: ty::t,
                          trait_def_id: ast::DefId,
-                         trait_substs: &ty::substs,
+                         trait_substs: &subst::Substs,
                          trait_store: ty::TraitStore,
                          bounds: ty::BuiltinBounds) -> CoerceResult {
 

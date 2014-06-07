@@ -12,8 +12,9 @@
 // unresolved type variables and replaces "ty_var" types with their
 // substitutions.
 
-
+use middle::def;
 use middle::pat_util;
+use middle::subst;
 use middle::ty;
 use middle::ty_fold::{TypeFolder,TypeFoldable};
 use middle::typeck::astconv::AstConv;
@@ -231,10 +232,10 @@ impl<'cx> WritebackCx<'cx> {
                         // bare functions to coerce to a closure to avoid
                         // constructing (slower) indirect call wrappers.
                         match self.tcx().def_map.borrow().find(&id) {
-                            Some(&ast::DefFn(..)) |
-                            Some(&ast::DefStaticMethod(..)) |
-                            Some(&ast::DefVariant(..)) |
-                            Some(&ast::DefStruct(_)) => {
+                            Some(&def::DefFn(..)) |
+                            Some(&def::DefStaticMethod(..)) |
+                            Some(&def::DefVariant(..)) |
+                            Some(&def::DefStruct(_)) => {
                             }
                             _ => {
                                 self.tcx().sess.span_err(
@@ -291,7 +292,7 @@ impl<'cx> WritebackCx<'cx> {
                 // probably for invocations on objects, and this
                 // causes encoding failures). -nmatsakis
                 new_method.substs.self_ty = None;
-                new_method.substs.regions = ty::ErasedRegions;
+                new_method.substs.regions = subst::ErasedRegions;
 
                 self.tcx().method_map.borrow_mut().insert(
                     method_call,

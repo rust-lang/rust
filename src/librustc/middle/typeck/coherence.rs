@@ -17,9 +17,11 @@
 
 use metadata::csearch::{each_impl, get_impl_trait, each_implementation_for_trait};
 use metadata::csearch;
+use middle::subst;
+use middle::subst::{Substs};
 use middle::ty::get;
-use middle::ty::{ImplContainer, lookup_item_type, subst};
-use middle::ty::{substs, t, ty_bool, ty_char, ty_bot, ty_box, ty_enum, ty_err};
+use middle::ty::{ImplContainer, lookup_item_type};
+use middle::ty::{t, ty_bool, ty_char, ty_bot, ty_box, ty_enum, ty_err};
 use middle::ty::{ty_str, ty_vec, ty_float, ty_infer, ty_int, ty_nil};
 use middle::ty::{ty_param, ty_param_bounds_and_ty, ty_ptr};
 use middle::ty::{ty_rptr, ty_self, ty_struct, ty_trait, ty_tup};
@@ -33,15 +35,15 @@ use middle::typeck::infer::InferCtxt;
 use middle::typeck::infer::{new_infer_ctxt, resolve_ivar, resolve_type};
 use middle::typeck::infer;
 use util::ppaux::Repr;
-use syntax::ast::{Crate, DefId, DefStruct, DefTy};
+use middle::def::{DefStruct, DefTy};
+use syntax::ast::{Crate, DefId};
 use syntax::ast::{Item, ItemEnum, ItemImpl, ItemMod, ItemStruct};
 use syntax::ast::{LOCAL_CRATE, TraitRef, TyPath};
 use syntax::ast;
 use syntax::ast_map::NodeItem;
 use syntax::ast_map;
-use syntax::ast_util::{def_id_of_def, local_def};
+use syntax::ast_util::{local_def};
 use syntax::codemap::Span;
-use syntax::owned_slice::OwnedSlice;
 use syntax::parse::token;
 use syntax::visit;
 
@@ -505,14 +507,12 @@ impl<'a> CoherenceChecker<'a> {
         let bounds_count = polytype.generics.type_param_defs().len();
         let type_parameters = self.inference_context.next_ty_vars(bounds_count);
 
-        let substitutions = substs {
-            regions: ty::NonerasedRegions(region_parameters),
+        let substitutions = subst::Substs {
+            regions: subst::NonerasedRegions(region_parameters),
             self_ty: None,
             tps: type_parameters
         };
-        let monotype = subst(self.crate_context.tcx,
-                             &substitutions,
-                             polytype.ty);
+        let monotype = polytype.ty.subst(self.crate_context.tcx, &substitutions);
 
         UniversalQuantificationResult {
             monotype: monotype,
@@ -544,7 +544,7 @@ impl<'a> CoherenceChecker<'a> {
     fn trait_ref_to_trait_def_id(&self, trait_ref: &TraitRef) -> DefId {
         let def_map = &self.crate_context.tcx.def_map;
         let trait_def = def_map.borrow().get_copy(&trait_ref.ref_id);
-        let trait_id = def_id_of_def(trait_def);
+        let trait_id = trait_def.def_id();
         return trait_id;
     }
 
@@ -730,7 +730,7 @@ pub fn make_substs_for_receiver_types(tcx: &ty::ctxt,
                                       impl_id: ast::DefId,
                                       trait_ref: &ty::TraitRef,
                                       method: &ty::Method)
-                                      -> ty::substs {
+                                      -> subst::Substs {
     /*!
      * Substitutes the values for the receiver's type parameters
      * that are found in method, leaving the method's type parameters
@@ -753,17 +753,17 @@ pub fn make_substs_for_receiver_types(tcx: &ty::ctxt,
     let mut combined_tps = trait_ref.substs.tps.clone();
     combined_tps.push_all_move(meth_tps);
     let combined_regions = match &trait_ref.substs.regions {
-        &ty::ErasedRegions =>
+        &subst::ErasedRegions =>
             fail!("make_substs_for_receiver_types: unexpected ErasedRegions"),
 
-        &ty::NonerasedRegions(ref rs) => {
-            let mut rs = rs.clone().into_vec();
+        &subst::NonerasedRegions(ref rs) => {
+            let mut rs = rs.clone();
             rs.push_all_move(meth_regions);
-            ty::NonerasedRegions(OwnedSlice::from_vec(rs))
+            subst::NonerasedRegions(rs)
         }
     };
 
-    ty::substs {
+    subst::Substs {
         regions: combined_regions,
         self_ty: trait_ref.substs.self_ty,
         tps: combined_tps
