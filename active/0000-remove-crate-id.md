@@ -47,10 +47,10 @@ Breaking down this attribute:
               specially recognized by the compiler. These attributes are used as
               controllers for the hashes used in the rest of the compiler.
 
-In addition to allowing metadata being specified through the `crate` attribute,
-the compiler will also grow a new flag, `-C metadata=foo` to be able to specify
-metadata via the command line that should be part of the crate's metadata
-attributes. The usage of this metadata is described below.
+In addition to allowing data to hash being specified through the `crate`
+attribute, the compiler will also grow a new flag, `-C metadata=foo` to be able
+to specify arbitrary strings to hash via the command line. The usage of this
+hashed data is described below.
 
 ## Keywords in attributes
 
