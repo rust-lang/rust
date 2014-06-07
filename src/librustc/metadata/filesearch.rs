@@ -134,6 +134,9 @@ impl<'a> FileSearch<'a> {
         }
     }
 
+    // FIXME: # It's a dirty hack.
+    // A better error handling is needed here.
+    #[allow(unused_must_use)]
     pub fn add_dylib_search_paths(&self) {
         self.for_each_lib_search_path(|lib_search_path| {
             DynamicLibrary::prepend_search_path(lib_search_path);
