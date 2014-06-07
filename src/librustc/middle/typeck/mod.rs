@@ -63,7 +63,9 @@ independently:
 
 use driver::config;
 
+use middle::def;
 use middle::resolve;
+use middle::subst;
 use middle::ty;
 use util::common::time;
 use util::ppaux::Repr;
@@ -144,7 +146,7 @@ pub struct MethodObject {
 pub struct MethodCallee {
     pub origin: MethodOrigin,
     pub ty: ty::t,
-    pub substs: ty::substs
+    pub substs: subst::Substs
 }
 
 #[deriving(Clone, PartialEq, Eq, Hash, Show)]
@@ -184,7 +186,7 @@ pub enum vtable_origin {
       from whence comes the vtable, and tys are the type substs.
       vtable_res is the vtable itself
      */
-    vtable_static(ast::DefId, ty::substs, vtable_res),
+    vtable_static(ast::DefId, subst::Substs, vtable_res),
 
     /*
       Dynamic vtable, comes from a parameter that has a bound on it:
@@ -265,7 +267,7 @@ pub fn write_substs_to_tcx(tcx: &ty::ctxt,
         tcx.item_substs.borrow_mut().insert(node_id, item_substs);
     }
 }
-pub fn lookup_def_tcx(tcx:&ty::ctxt, sp: Span, id: ast::NodeId) -> ast::Def {
+pub fn lookup_def_tcx(tcx:&ty::ctxt, sp: Span, id: ast::NodeId) -> def::Def {
     match tcx.def_map.borrow().find(&id) {
         Some(&x) => x,
         _ => {
@@ -275,7 +277,7 @@ pub fn lookup_def_tcx(tcx:&ty::ctxt, sp: Span, id: ast::NodeId) -> ast::Def {
 }
 
 pub fn lookup_def_ccx(ccx: &CrateCtxt, sp: Span, id: ast::NodeId)
-                   -> ast::Def {
+                   -> def::Def {
     lookup_def_tcx(ccx.tcx, sp, id)
 }
 

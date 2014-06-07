@@ -16,14 +16,16 @@ use metadata::csearch;
 use mc = middle::mem_categorization;
 use middle::lint;
 use middle::const_eval;
+use middle::def;
 use middle::dependency_format;
 use middle::lang_items::{ExchangeHeapLangItem, OpaqueStructLangItem};
 use middle::lang_items::{TyDescStructLangItem, TyVisitorTraitLangItem};
 use middle::freevars;
 use middle::resolve;
 use middle::resolve_lifetime;
+use middle::subst;
+use middle::subst::{Subst, Substs};
 use middle::ty;
-use middle::subst::Subst;
 use middle::typeck;
 use middle::typeck::MethodCall;
 use middle::ty_fold;
@@ -207,7 +209,7 @@ pub enum AutoAdjustment {
     AutoObject(ty::TraitStore,
                ty::BuiltinBounds,
                ast::DefId, /* Trait ID */
-               ty::substs /* Trait substitutions */)
+               subst::Substs /* Trait substitutions */)
 }
 
 #[deriving(Clone, Decodable, Encodable)]
@@ -639,40 +641,6 @@ pub enum BoundRegion {
     BrFresh(uint),
 }
 
-/**
- * Represents the values to use when substituting lifetime parameters.
- * If the value is `ErasedRegions`, then this subst is occurring during
- * trans, and all region parameters will be replaced with `ty::ReStatic`. */
-#[deriving(Clone, PartialEq, Eq, Hash)]
-pub enum RegionSubsts {
-    ErasedRegions,
-    NonerasedRegions(OwnedSlice<ty::Region>)
-}
-
-/**
- * The type substs represents the kinds of things that can be substituted to
- * convert a polytype into a monotype.  Note however that substituting bound
- * regions other than `self` is done through a different mechanism:
- *
- * - `tps` represents the type parameters in scope.  They are indexed
- *   according to the order in which they were declared.
- *
- * - `self_r` indicates the region parameter `self` that is present on nominal
- *   types (enums, structs) declared as having a region parameter.  `self_r`
- *   should always be none for types that are not region-parameterized and
- *   Some(_) for types that are.  The only bound region parameter that should
- *   appear within a region-parameterized type is `self`.
- *
- * - `self_ty` is the type to which `self` should be remapped, if any.  The
- *   `self` type is rather funny in that it can only appear on traits and is
- *   always substituted away to the implementing type for a trait. */
-#[deriving(Clone, PartialEq, Eq, Hash)]
-pub struct substs {
-    pub self_ty: Option<ty::t>,
-    pub tps: Vec<t>,
-    pub regions: RegionSubsts,
-}
-
 mod primitives {
     use super::t_box_;
 
@@ -731,7 +699,7 @@ pub enum sty {
     ty_int(ast::IntTy),
     ty_uint(ast::UintTy),
     ty_float(ast::FloatTy),
-    ty_enum(DefId, substs),
+    ty_enum(DefId, Substs),
     ty_box(t),
     ty_uniq(t),
     ty_str,
@@ -741,7 +709,7 @@ pub enum sty {
     ty_bare_fn(BareFnTy),
     ty_closure(Box<ClosureTy>),
     ty_trait(Box<TyTrait>),
-    ty_struct(DefId, substs),
+    ty_struct(DefId, Substs),
     ty_tup(Vec<t>),
 
     ty_param(param_ty), // type parameter
@@ -757,7 +725,7 @@ pub enum sty {
 #[deriving(Clone, PartialEq, Eq, Hash)]
 pub struct TyTrait {
     pub def_id: DefId,
-    pub substs: substs,
+    pub substs: Substs,
     pub store: TraitStore,
     pub bounds: BuiltinBounds
 }
@@ -765,7 +733,7 @@ pub struct TyTrait {
 #[deriving(PartialEq, Eq, Hash)]
 pub struct TraitRef {
     pub def_id: DefId,
-    pub substs: substs
+    pub substs: Substs
 }
 
 #[deriving(Clone, PartialEq)]
@@ -1032,7 +1000,7 @@ pub struct ParameterEnvironment {
     /// In general, this means converting from bound parameters to
     /// free parameters. Since we currently represent bound/free type
     /// parameters in the same way, this only has an affect on regions.
-    pub free_substs: ty::substs,
+    pub free_substs: Substs,
 
     /// Bound on the Self parameter
     pub self_param_bound: Option<Rc<TraitRef>>,
@@ -1068,11 +1036,11 @@ pub struct TraitDef {
 /// item into the monotype of an item reference.
 #[deriving(Clone)]
 pub struct ItemSubsts {
-    pub substs: ty::substs,
+    pub substs: Substs,
 }
 
 pub struct ty_param_substs_and_ty {
-    pub substs: ty::substs,
+    pub substs: Substs,
     pub ty: ty::t
 }
 
@@ -1176,12 +1144,12 @@ pub fn mk_t(cx: &ctxt, st: sty) -> t {
             }
         }
     }
-    fn sflags(substs: &substs) -> uint {
+    fn sflags(substs: &Substs) -> uint {
         let mut f = 0u;
         for tt in substs.tps.iter() { f |= get(*tt).flags; }
         match substs.regions {
-            ErasedRegions => {}
-            NonerasedRegions(ref regions) => {
+            subst::ErasedRegions => {}
+            subst::NonerasedRegions(ref regions) => {
                 for r in regions.iter() {
                     f |= rflags(*r)
                 }
@@ -1369,7 +1337,7 @@ pub fn mk_str_slice(cx: &ctxt, r: Region, m: ast::Mutability) -> t {
             })
 }
 
-pub fn mk_enum(cx: &ctxt, did: ast::DefId, substs: substs) -> t {
+pub fn mk_enum(cx: &ctxt, did: ast::DefId, substs: Substs) -> t {
     // take a copy of substs so that we own the vectors inside
     mk_t(cx, ty_enum(did, substs))
 }
@@ -1444,7 +1412,7 @@ pub fn mk_ctor_fn(cx: &ctxt,
 
 pub fn mk_trait(cx: &ctxt,
                 did: ast::DefId,
-                substs: substs,
+                substs: Substs,
                 store: TraitStore,
                 bounds: BuiltinBounds)
              -> t {
@@ -1458,7 +1426,7 @@ pub fn mk_trait(cx: &ctxt,
     mk_t(cx, ty_trait(inner))
 }
 
-pub fn mk_struct(cx: &ctxt, struct_id: ast::DefId, substs: substs) -> t {
+pub fn mk_struct(cx: &ctxt, struct_id: ast::DefId, substs: Substs) -> t {
     // take a copy of substs so that we own the vectors inside
     mk_t(cx, ty_struct(struct_id, substs))
 }
@@ -1524,36 +1492,12 @@ pub fn walk_regions_and_ty(cx: &ctxt, ty: t, fldr: |r: Region|, fldt: |t: t|)
 
 impl ItemSubsts {
     pub fn empty() -> ItemSubsts {
-        ItemSubsts {
-            substs: substs::empty(),
-        }
+        ItemSubsts { substs: Substs::empty() }
     }
 
     pub fn is_noop(&self) -> bool {
-        ty::substs_is_noop(&self.substs)
+        self.substs.is_noop()
     }
-}
-
-pub fn substs_is_noop(substs: &substs) -> bool {
-    let regions_is_noop = match substs.regions {
-        ErasedRegions => false, // may be used to canonicalize
-        NonerasedRegions(ref regions) => regions.is_empty()
-    };
-
-    substs.tps.len() == 0u &&
-        regions_is_noop &&
-        substs.self_ty.is_none()
-}
-
-pub fn substs_to_str(cx: &ctxt, substs: &substs) -> String {
-    substs.repr(cx)
-}
-
-pub fn subst(cx: &ctxt,
-             substs: &substs,
-             typ: t)
-          -> t {
-    typ.subst(cx, substs)
 }
 
 // Type utilities
@@ -1744,7 +1688,7 @@ fn type_needs_unwind_cleanup_(cx: &ctxt, ty: t,
           ty_enum(did, ref substs) => {
             for v in (*enum_variants(cx, did)).iter() {
                 for aty in v.args.iter() {
-                    let t = subst(cx, substs, *aty);
+                    let t = aty.subst(cx, substs);
                     needs_unwind_cleanup |=
                         type_needs_unwind_cleanup_(cx, t, tycache,
                                                    encountered_box);
@@ -2376,7 +2320,7 @@ pub fn is_instantiable(cx: &ctxt, r_ty: t) -> bool {
                 let vs = enum_variants(cx, did);
                 let r = !vs.is_empty() && vs.iter().all(|variant| {
                     variant.args.iter().any(|aty| {
-                        let sty = subst(cx, substs, *aty);
+                        let sty = aty.subst(cx, substs);
                         type_requires(cx, seen, r_ty, sty)
                     })
                 });
@@ -3002,7 +2946,7 @@ pub fn method_call_type_param_defs(tcx: &ctxt, origin: typeck::MethodOrigin)
     }
 }
 
-pub fn resolve_expr(tcx: &ctxt, expr: &ast::Expr) -> ast::Def {
+pub fn resolve_expr(tcx: &ctxt, expr: &ast::Expr) -> def::Def {
     match tcx.def_map.borrow().find(&expr.id) {
         Some(&def) => def,
         None => {
@@ -3050,7 +2994,7 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
     match expr.node {
         ast::ExprPath(..) => {
             match resolve_expr(tcx, expr) {
-                ast::DefVariant(tid, vid, _) => {
+                def::DefVariant(tid, vid, _) => {
                     let variant_info = enum_variant_with_id(tcx, tid, vid);
                     if variant_info.args.len() > 0u {
                         // N-ary variant.
@@ -3061,7 +3005,7 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
                     }
                 }
 
-                ast::DefStruct(_) => {
+                def::DefStruct(_) => {
                     match get(expr_ty(tcx, expr)).sty {
                         ty_bare_fn(..) => RvalueDatumExpr,
                         _ => RvalueDpsExpr
@@ -3069,16 +3013,16 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
                 }
 
                 // Fn pointers are just scalar values.
-                ast::DefFn(..) | ast::DefStaticMethod(..) => RvalueDatumExpr,
+                def::DefFn(..) | def::DefStaticMethod(..) => RvalueDatumExpr,
 
                 // Note: there is actually a good case to be made that
                 // DefArg's, particularly those of immediate type, ought to
                 // considered rvalues.
-                ast::DefStatic(..) |
-                ast::DefBinding(..) |
-                ast::DefUpvar(..) |
-                ast::DefArg(..) |
-                ast::DefLocal(..) => LvalueExpr,
+                def::DefStatic(..) |
+                def::DefBinding(..) |
+                def::DefUpvar(..) |
+                def::DefArg(..) |
+                def::DefLocal(..) => LvalueExpr,
 
                 def => {
                     tcx.sess.span_bug(
@@ -3169,7 +3113,7 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
                 Some(&def) => def,
                 None => fail!("no def for place"),
             };
-            let def_id = ast_util::def_id_of_def(definition);
+            let def_id = definition.def_id();
             match tcx.lang_items.items.get(ExchangeHeapLangItem as uint) {
                 &Some(item_def_id) if def_id == item_def_id => {
                     RvalueDatumExpr
@@ -3591,7 +3535,7 @@ pub fn trait_ref_to_def_id(tcx: &ctxt, tr: &ast::TraitRef) -> ast::DefId {
     let def = *tcx.def_map.borrow()
                      .find(&tr.ref_id)
                      .expect("no def-map entry for trait");
-    ast_util::def_id_of_def(def)
+    def.def_id()
 }
 
 pub fn try_add_builtin_trait(tcx: &ctxt,
@@ -3688,13 +3632,13 @@ impl VariantInfo {
 
 pub fn substd_enum_variants(cx: &ctxt,
                             id: ast::DefId,
-                            substs: &substs)
+                            substs: &Substs)
                          -> Vec<Rc<VariantInfo>> {
     enum_variants(cx, id).iter().map(|variant_info| {
         let substd_args = variant_info.args.iter()
-            .map(|aty| subst(cx, substs, *aty)).collect();
+            .map(|aty| aty.subst(cx, substs)).collect();
 
-        let substd_ctor_ty = subst(cx, substs, variant_info.ctor_ty);
+        let substd_ctor_ty = variant_info.ctor_ty.subst(cx, substs);
 
         Rc::new(VariantInfo {
             args: substd_args,
@@ -3944,7 +3888,7 @@ pub fn lookup_repr_hint(tcx: &ctxt, did: DefId) -> attr::ReprAttr {
 pub fn lookup_field_type(tcx: &ctxt,
                          struct_id: DefId,
                          id: DefId,
-                         substs: &substs)
+                         substs: &Substs)
                       -> ty::t {
     let t = if id.krate == ast::LOCAL_CRATE {
         node_id_to_type(tcx, id.node)
@@ -3959,7 +3903,7 @@ pub fn lookup_field_type(tcx: &ctxt,
            }
         }
     };
-    subst(tcx, substs, t)
+    t.subst(tcx, substs)
 }
 
 // Lookup all ancestor structs of a struct indicated by did. That is the reflexive,
@@ -4027,7 +3971,7 @@ pub fn lookup_struct_field(cx: &ctxt,
 
 // Returns a list of fields corresponding to the struct's items. trans uses
 // this. Takes a list of substs with which to instantiate field types.
-pub fn struct_fields(cx: &ctxt, did: ast::DefId, substs: &substs)
+pub fn struct_fields(cx: &ctxt, did: ast::DefId, substs: &Substs)
                      -> Vec<field> {
     lookup_struct_fields(cx, did).iter().map(|f| {
        field {
@@ -4140,11 +4084,11 @@ pub fn normalize_ty(cx: &ctxt, t: t) -> t {
         }
 
         fn fold_substs(&mut self,
-                       substs: &substs)
-                       -> substs {
-            substs { regions: ErasedRegions,
-                     self_ty: substs.self_ty.fold_with(self),
-                     tps: substs.tps.fold_with(self) }
+                       substs: &subst::Substs)
+                       -> subst::Substs {
+            subst::Substs { regions: subst::ErasedRegions,
+                            self_ty: substs.self_ty.fold_with(self),
+                            tps: substs.tps.fold_with(self) }
         }
 
         fn fold_sig(&mut self,
@@ -4292,8 +4236,8 @@ pub fn visitor_object_ty(tcx: &ctxt,
         Ok(id) => id,
         Err(s) => { return Err(s); }
     };
-    let substs = substs {
-        regions: ty::NonerasedRegions(OwnedSlice::empty()),
+    let substs = Substs {
+        regions: subst::NonerasedRegions(Vec::new()),
         self_ty: None,
         tps: Vec::new()
     };
@@ -4676,10 +4620,10 @@ pub fn construct_parameter_environment(
         push_region_params(t, free_id, method_region_params)
     };
 
-    let free_substs = substs {
+    let free_substs = Substs {
         self_ty: self_ty,
         tps: type_params,
-        regions: ty::NonerasedRegions(OwnedSlice::from_vec(region_params))
+        regions: subst::NonerasedRegions(region_params)
     };
 
     //
@@ -4709,16 +4653,6 @@ pub fn construct_parameter_environment(
         free_substs: free_substs,
         self_param_bound: self_bound_substd,
         type_param_bounds: type_param_bounds_substd,
-    }
-}
-
-impl substs {
-    pub fn empty() -> substs {
-        substs {
-            self_ty: None,
-            tps: Vec::new(),
-            regions: NonerasedRegions(OwnedSlice::empty())
-        }
     }
 }
 

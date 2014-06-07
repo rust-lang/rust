@@ -62,6 +62,7 @@
 
 #![allow(non_camel_case_types)]
 
+use middle::def;
 use middle::ty;
 use middle::typeck;
 use util::nodemap::NodeMap;
@@ -489,20 +490,20 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
                    id: ast::NodeId,
                    span: Span,
                    expr_ty: ty::t,
-                   def: ast::Def)
+                   def: def::Def)
                    -> McResult<cmt> {
         debug!("cat_def: id={} expr={} def={:?}",
                id, expr_ty.repr(self.tcx()), def);
 
         match def {
-          ast::DefStruct(..) | ast::DefVariant(..) => {
+          def::DefStruct(..) | def::DefVariant(..) => {
                 Ok(self.cat_rvalue_node(id, span, expr_ty))
           }
-          ast::DefFn(..) | ast::DefStaticMethod(..) | ast::DefMod(_) |
-          ast::DefForeignMod(_) | ast::DefStatic(_, false) |
-          ast::DefUse(_) | ast::DefTrait(_) | ast::DefTy(_) | ast::DefPrimTy(_) |
-          ast::DefTyParam(..) | ast::DefTyParamBinder(..) | ast::DefRegion(_) |
-          ast::DefLabel(_) | ast::DefSelfTy(..) | ast::DefMethod(..) => {
+          def::DefFn(..) | def::DefStaticMethod(..) | def::DefMod(_) |
+          def::DefForeignMod(_) | def::DefStatic(_, false) |
+          def::DefUse(_) | def::DefTrait(_) | def::DefTy(_) | def::DefPrimTy(_) |
+          def::DefTyParam(..) | def::DefTyParamBinder(..) | def::DefRegion(_) |
+          def::DefLabel(_) | def::DefSelfTy(..) | def::DefMethod(..) => {
               Ok(Rc::new(cmt_ {
                   id:id,
                   span:span,
@@ -512,7 +513,7 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
               }))
           }
 
-          ast::DefStatic(_, true) => {
+          def::DefStatic(_, true) => {
               Ok(Rc::new(cmt_ {
                   id:id,
                   span:span,
@@ -522,7 +523,7 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
               }))
           }
 
-          ast::DefArg(vid, binding_mode) => {
+          def::DefArg(vid, binding_mode) => {
             // Idea: make this could be rewritten to model by-ref
             // stuff as `&const` and `&mut`?
 
@@ -540,7 +541,7 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
             }))
           }
 
-          ast::DefUpvar(var_id, _, fn_node_id, _) => {
+          def::DefUpvar(var_id, _, fn_node_id, _) => {
               let ty = if_ok!(self.node_ty(fn_node_id));
               match ty::get(ty).sty {
                   ty::ty_closure(ref closure_ty) => {
@@ -582,8 +583,8 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
               }
           }
 
-          ast::DefLocal(vid, binding_mode) |
-          ast::DefBinding(vid, binding_mode) => {
+          def::DefLocal(vid, binding_mode) |
+          def::DefBinding(vid, binding_mode) => {
             // by-value/by-ref bindings are local variables
             let m = match binding_mode {
                 ast::BindByValue(ast::MutMutable) => McDeclared,
@@ -987,7 +988,7 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
           }
           ast::PatEnum(_, Some(ref subpats)) => {
             match self.tcx().def_map.borrow().find(&pat.id) {
-                Some(&ast::DefVariant(enum_did, _, _)) => {
+                Some(&def::DefVariant(enum_did, _, _)) => {
                     // variant(x, y, z)
 
                     let downcast_cmt = {
@@ -1009,8 +1010,8 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
                         if_ok!(self.cat_pattern(subcmt, subpat, |x,y,z| op(x,y,z)));
                     }
                 }
-                Some(&ast::DefFn(..)) |
-                Some(&ast::DefStruct(..)) => {
+                Some(&def::DefFn(..)) |
+                Some(&def::DefStruct(..)) => {
                     for (i, &subpat) in subpats.iter().enumerate() {
                         let subpat_ty = if_ok!(self.pat_ty(subpat)); // see (*2)
                         let cmt_field =
@@ -1020,7 +1021,7 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
                         if_ok!(self.cat_pattern(cmt_field, subpat, |x,y,z| op(x,y,z)));
                     }
                 }
-                Some(&ast::DefStatic(..)) => {
+                Some(&def::DefStatic(..)) => {
                     for &subpat in subpats.iter() {
                         if_ok!(self.cat_pattern(cmt.clone(), subpat, |x,y,z| op(x,y,z)));
                     }

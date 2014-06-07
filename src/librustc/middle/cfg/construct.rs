@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use middle::cfg::*;
+use middle::def;
 use middle::graph;
 use middle::typeck;
 use middle::ty;
@@ -531,7 +532,7 @@ impl<'a> CFGBuilder<'a> {
 
             Some(_) => {
                 match self.tcx.def_map.borrow().find(&expr.id) {
-                    Some(&ast::DefLabel(loop_id)) => {
+                    Some(&def::DefLabel(loop_id)) => {
                         for l in self.loop_scopes.iter() {
                             if l.loop_id == loop_id {
                                 return *l;

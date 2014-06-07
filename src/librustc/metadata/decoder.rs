@@ -22,6 +22,7 @@ use metadata::tydecode::{parse_ty_data, parse_def_id,
                          parse_type_param_def_data,
                          parse_bare_fn_ty_data, parse_trait_ref_data};
 use middle::lang_items;
+use middle::def;
 use middle::ty::{ImplContainer, TraitContainer};
 use middle::ty;
 use middle::typeck;
@@ -333,11 +334,11 @@ fn item_to_def_like(item: ebml::Doc, did: ast::DefId, cnum: ast::CrateNum)
     -> DefLike {
     let fam = item_family(item);
     match fam {
-        ImmStatic => DlDef(ast::DefStatic(did, false)),
-        MutStatic => DlDef(ast::DefStatic(did, true)),
-        Struct    => DlDef(ast::DefStruct(did)),
-        UnsafeFn  => DlDef(ast::DefFn(did, ast::UnsafeFn)),
-        Fn        => DlDef(ast::DefFn(did, ast::NormalFn)),
+        ImmStatic => DlDef(def::DefStatic(did, false)),
+        MutStatic => DlDef(def::DefStatic(did, true)),
+        Struct    => DlDef(def::DefStruct(did)),
+        UnsafeFn  => DlDef(def::DefFn(did, ast::UnsafeFn)),
+        Fn        => DlDef(def::DefFn(did, ast::NormalFn)),
         StaticMethod | UnsafeStaticMethod => {
             let fn_style = if fam == UnsafeStaticMethod { ast::UnsafeFn } else
                 { ast::NormalFn };
@@ -348,27 +349,27 @@ fn item_to_def_like(item: ebml::Doc, did: ast::DefId, cnum: ast::CrateNum)
             // a trait_method_sort.
             let provenance = if reader::maybe_get_doc(
                   item, tag_item_trait_method_sort).is_some() {
-                ast::FromTrait(item_reqd_and_translated_parent_item(cnum,
+                def::FromTrait(item_reqd_and_translated_parent_item(cnum,
                                                                     item))
             } else {
-                ast::FromImpl(item_reqd_and_translated_parent_item(cnum,
+                def::FromImpl(item_reqd_and_translated_parent_item(cnum,
                                                                    item))
             };
-            DlDef(ast::DefStaticMethod(did, provenance, fn_style))
+            DlDef(def::DefStaticMethod(did, provenance, fn_style))
         }
-        Type | ForeignType => DlDef(ast::DefTy(did)),
-        Mod => DlDef(ast::DefMod(did)),
-        ForeignMod => DlDef(ast::DefForeignMod(did)),
+        Type | ForeignType => DlDef(def::DefTy(did)),
+        Mod => DlDef(def::DefMod(did)),
+        ForeignMod => DlDef(def::DefForeignMod(did)),
         StructVariant => {
             let enum_did = item_reqd_and_translated_parent_item(cnum, item);
-            DlDef(ast::DefVariant(enum_did, did, true))
+            DlDef(def::DefVariant(enum_did, did, true))
         }
         TupleVariant => {
             let enum_did = item_reqd_and_translated_parent_item(cnum, item);
-            DlDef(ast::DefVariant(enum_did, did, false))
+            DlDef(def::DefVariant(enum_did, did, false))
         }
-        Trait => DlDef(ast::DefTrait(did)),
-        Enum => DlDef(ast::DefTy(did)),
+        Trait => DlDef(def::DefTrait(did)),
+        Enum => DlDef(def::DefTy(did)),
         Impl => DlImpl(did),
         PublicField | InheritedField => DlField,
     }
@@ -459,7 +460,7 @@ pub fn get_symbol(data: &[u8], id: ast::NodeId) -> String {
 // Something that a name can resolve to.
 #[deriving(Clone)]
 pub enum DefLike {
-    DlDef(ast::Def),
+    DlDef(def::Def),
     DlImpl(ast::DefId),
     DlField
 }

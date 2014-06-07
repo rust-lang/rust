@@ -49,10 +49,10 @@
  * an rptr (`&r.T`) use the region `r` that appears in the rptr.
  */
 
-
 use middle::const_eval;
-use middle::subst::Subst;
-use middle::ty::{substs};
+use middle::def;
+use middle::subst;
+use middle::subst::{Subst, Substs};
 use middle::ty::{ty_param_substs_and_ty};
 use middle::ty;
 use middle::typeck::rscope;
@@ -152,7 +152,7 @@ fn ast_path_substs<AC:AstConv,RS:RegionScope>(
     rscope: &RS,
     decl_generics: &ty::Generics,
     self_ty: Option<ty::t>,
-    path: &ast::Path) -> ty::substs
+    path: &ast::Path) -> subst::Substs
 {
     /*!
      * Given a path `path` that refers to an item `I` with the
@@ -232,8 +232,8 @@ fn ast_path_substs<AC:AstConv,RS:RegionScope>(
                             .map(|&a_t| ast_ty_to_ty(this, rscope, a_t))
                             .collect();
 
-    let mut substs = substs {
-        regions: ty::NonerasedRegions(OwnedSlice::from_vec(regions)),
+    let mut substs = subst::Substs {
+        regions: subst::NonerasedRegions(regions),
         self_ty: self_ty,
         tps: tps
     };
@@ -261,7 +261,7 @@ pub fn ast_path_to_substs_and_ty<AC:AstConv,
     } = this.get_item_ty(did);
 
     let substs = ast_path_substs(this, rscope, &generics, None, path);
-    let ty = ty::subst(tcx, &substs, decl_ty);
+    let ty = decl_ty.subst(tcx, &substs);
     ty_param_substs_and_ty { substs: substs, ty: ty }
 }
 
@@ -329,7 +329,7 @@ pub fn ast_ty_to_prim_ty(tcx: &ty::ctxt, ast_ty: &ast::Ty) -> Option<ty::t> {
                 Some(&d) => d
             };
             match a_def {
-                ast::DefPrimTy(nty) => {
+                def::DefPrimTy(nty) => {
                     match nty {
                         ast::TyBool => {
                             check_path_args(tcx, path, NO_TPS | NO_REGIONS);
@@ -402,7 +402,7 @@ pub fn ast_ty_to_builtin_ty<AC:AstConv,
             // FIXME(#12938): This is a hack until we have full support for
             // DST.
             match a_def {
-                ast::DefTy(did) | ast::DefStruct(did)
+                def::DefTy(did) | def::DefStruct(did)
                         if Some(did) == this.tcx().lang_items.owned_box() => {
                     if path.segments
                            .iter()
@@ -496,7 +496,7 @@ fn mk_pointer<AC:AstConv,
             // restriction is enforced in the below case for ty_path, which
             // will run after this as long as the path isn't a trait.
             match tcx.def_map.borrow().find(&id) {
-                Some(&ast::DefPrimTy(ast::TyStr)) => {
+                Some(&def::DefPrimTy(ast::TyStr)) => {
                     check_path_args(tcx, path, NO_TPS | NO_REGIONS);
                     match ptr_ty {
                         Uniq => {
@@ -512,7 +512,7 @@ fn mk_pointer<AC:AstConv,
                         }
                     }
                 }
-                Some(&ast::DefTrait(trait_def_id)) => {
+                Some(&def::DefTrait(trait_def_id)) => {
                     let result = ast_path_to_trait_ref(
                         this, rscope, trait_def_id, None, path);
                     let trait_store = match ptr_ty {
@@ -661,14 +661,14 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                 // Kind bounds on path types are only supported for traits.
                 match a_def {
                     // But don't emit the error if the user meant to do a trait anyway.
-                    ast::DefTrait(..) => { },
+                    def::DefTrait(..) => { },
                     _ if bounds.is_some() =>
                         tcx.sess.span_err(ast_ty.span,
                                           "kind bounds can only be used on trait types"),
                     _ => { },
                 }
                 match a_def {
-                    ast::DefTrait(_) => {
+                    def::DefTrait(_) => {
                         let path_str = path_to_str(path);
                         tcx.sess.span_err(
                             ast_ty.span,
@@ -678,14 +678,14 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                                     name=path_str).as_slice());
                         ty::mk_err()
                     }
-                    ast::DefTy(did) | ast::DefStruct(did) => {
+                    def::DefTy(did) | def::DefStruct(did) => {
                         ast_path_to_ty(this, rscope, did, path).ty
                     }
-                    ast::DefTyParam(id, n) => {
+                    def::DefTyParam(id, n) => {
                         check_path_args(tcx, path, NO_TPS | NO_REGIONS);
                         ty::mk_param(tcx, n, id)
                     }
-                    ast::DefSelfTy(id) => {
+                    def::DefSelfTy(id) => {
                         // n.b.: resolve guarantees that the this type only appears in a
                         // trait, which we rely upon in various places when creating
                         // substs
@@ -693,12 +693,12 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                         let did = ast_util::local_def(id);
                         ty::mk_self(tcx, did)
                     }
-                    ast::DefMod(id) => {
+                    def::DefMod(id) => {
                         tcx.sess.span_fatal(ast_ty.span,
                             format!("found module name used as a type: {}",
                                     tcx.map.node_to_str(id.node)).as_slice());
                     }
-                    ast::DefPrimTy(_) => {
+                    def::DefPrimTy(_) => {
                         fail!("DefPrimTy arm missed in previous ast_ty_to_prim_ty call");
                     }
                     _ => {
@@ -912,7 +912,7 @@ fn conv_builtin_bounds(tcx: &ty::ctxt, ast_bounds: &Option<OwnedSlice<ast::TyPar
                 match *ast_bound {
                     ast::TraitTyParamBound(ref b) => {
                         match lookup_def_tcx(tcx, b.path.span, b.ref_id) {
-                            ast::DefTrait(trait_did) => {
+                            def::DefTrait(trait_did) => {
                                 if ty::try_add_builtin_trait(tcx, trait_did,
                                                              &mut builtin_bounds) {
                                     continue; // success

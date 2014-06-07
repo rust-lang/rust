@@ -17,6 +17,7 @@ use lib::llvm::{IntEQ, IntNE, IntUGT, IntUGE, IntULT, IntULE, IntSGT, IntSGE, In
 
 use metadata::csearch;
 use middle::const_eval;
+use middle::def;
 use middle::trans::adt;
 use middle::trans::base;
 use middle::trans::base::push_ctxt;
@@ -617,7 +618,7 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr,
 
             let opt_def = cx.tcx().def_map.borrow().find_copy(&e.id);
             match opt_def {
-                Some(ast::DefFn(def_id, _fn_style)) => {
+                Some(def::DefFn(def_id, _fn_style)) => {
                     if !ast_util::is_local(def_id) {
                         let ty = csearch::get_type(cx.tcx(), def_id).ty;
                         (base::trans_external_path(cx, def_id, ty), true)
@@ -626,10 +627,10 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr,
                         (base::get_item_val(cx, def_id.node), true)
                     }
                 }
-                Some(ast::DefStatic(def_id, false)) => {
+                Some(def::DefStatic(def_id, false)) => {
                     get_const_val(cx, def_id)
                 }
-                Some(ast::DefVariant(enum_did, variant_did, _)) => {
+                Some(def::DefVariant(enum_did, variant_did, _)) => {
                     let ety = ty::expr_ty(cx.tcx(), e);
                     let repr = adt::represent_type(cx, ety);
                     let vinfo = ty::enum_variant_with_id(cx.tcx(),
@@ -637,7 +638,7 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr,
                                                          variant_did);
                     (adt::trans_const(cx, &*repr, vinfo.disr_val, []), true)
                 }
-                Some(ast::DefStruct(_)) => {
+                Some(def::DefStruct(_)) => {
                     let ety = ty::expr_ty(cx.tcx(), e);
                     let llty = type_of::type_of(cx, ety);
                     (C_null(llty), true)
@@ -650,14 +651,14 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr,
           ast::ExprCall(callee, ref args) => {
               let opt_def = cx.tcx().def_map.borrow().find_copy(&callee.id);
               match opt_def {
-                  Some(ast::DefStruct(_)) => {
+                  Some(def::DefStruct(_)) => {
                       let ety = ty::expr_ty(cx.tcx(), e);
                       let repr = adt::represent_type(cx, ety);
                       let (arg_vals, inlineable) = map_list(args.as_slice());
                       (adt::trans_const(cx, &*repr, 0, arg_vals.as_slice()),
                        inlineable)
                   }
-                  Some(ast::DefVariant(enum_did, variant_did, _)) => {
+                  Some(def::DefVariant(enum_did, variant_did, _)) => {
                       let ety = ty::expr_ty(cx.tcx(), e);
                       let repr = adt::represent_type(cx, ety);
                       let vinfo = ty::enum_variant_with_id(cx.tcx(),

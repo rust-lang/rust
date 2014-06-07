@@ -51,6 +51,8 @@ use std::num::{Bitwise};
 use std::rc::Rc;
 
 use lib::llvm::{ValueRef, True, IntEQ, IntNE};
+use middle::subst;
+use middle::subst::Subst;
 use middle::trans::_match;
 use middle::trans::build::*;
 use middle::trans::common::*;
@@ -304,10 +306,10 @@ impl Case {
     }
 }
 
-fn get_cases(tcx: &ty::ctxt, def_id: ast::DefId, substs: &ty::substs) -> Vec<Case> {
+fn get_cases(tcx: &ty::ctxt, def_id: ast::DefId, substs: &subst::Substs) -> Vec<Case> {
     ty::enum_variants(tcx, def_id).iter().map(|vi| {
         let arg_tys = vi.args.iter().map(|&raw_ty| {
-            ty::subst(tcx, substs, raw_ty)
+            raw_ty.subst(tcx, substs)
         }).collect();
         Case { discr: vi.disr_val, tys: arg_tys }
     }).collect()

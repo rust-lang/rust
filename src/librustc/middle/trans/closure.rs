@@ -13,6 +13,7 @@ use back::abi;
 use back::link::mangle_internal_name_by_path_and_seq;
 use driver::config::FullDebugInfo;
 use lib::llvm::ValueRef;
+use middle::def;
 use middle::freevars;
 use middle::lang_items::ClosureExchangeMallocFnLangItem;
 use middle::trans::base::*;
@@ -30,7 +31,6 @@ use util::ppaux::ty_to_str;
 
 use arena::TypedArena;
 use syntax::ast;
-use syntax::ast_util;
 
 // ___Good to know (tm)__________________________________________________
 //
@@ -282,7 +282,7 @@ fn load_environment<'a>(bcx: &'a Block<'a>,
             ty::RegionTraitStore(..) => { upvarptr = Load(bcx, upvarptr); }
             ty::UniqTraitStore => {}
         }
-        let def_id = ast_util::def_id_of_def(freevar.def);
+        let def_id = freevar.def.def_id();
 
         bcx.fcx.llupvars.borrow_mut().insert(def_id.node, upvarptr);
 
@@ -368,13 +368,13 @@ pub fn trans_expr_fn<'a>(
 
 pub fn get_wrapper_for_bare_fn(ccx: &CrateContext,
                                closure_ty: ty::t,
-                               def: ast::Def,
+                               def: def::Def,
                                fn_ptr: ValueRef,
                                is_local: bool) -> ValueRef {
 
     let def_id = match def {
-        ast::DefFn(did, _) | ast::DefStaticMethod(did, _, _) |
-        ast::DefVariant(_, did, _) | ast::DefStruct(did) => did,
+        def::DefFn(did, _) | def::DefStaticMethod(did, _, _) |
+        def::DefVariant(_, did, _) | def::DefStruct(did) => did,
         _ => {
             ccx.sess().bug(format!("get_wrapper_for_bare_fn: \
                                     expected a statically resolved fn, got \
@@ -421,7 +421,9 @@ pub fn get_wrapper_for_bare_fn(ccx: &CrateContext,
     let _icx = push_ctxt("closure::get_wrapper_for_bare_fn");
 
     let arena = TypedArena::new();
-    let fcx = new_fn_ctxt(ccx, llfn, -1, true, f.sig.output, None, None, &arena);
+    let empty_param_substs = param_substs::empty();
+    let fcx = new_fn_ctxt(ccx, llfn, -1, true, f.sig.output,
+                          &empty_param_substs, None, &arena);
     init_function(&fcx, true, f.sig.output);
     let bcx = fcx.entry_bcx.borrow().clone().unwrap();
 
@@ -453,7 +455,7 @@ pub fn get_wrapper_for_bare_fn(ccx: &CrateContext,
 
 pub fn make_closure_from_bare_fn<'a>(bcx: &'a Block<'a>,
                                      closure_ty: ty::t,
-                                     def: ast::Def,
+                                     def: def::Def,
                                      fn_ptr: ValueRef)
                                      -> DatumBlock<'a, Expr>  {
     let scratch = rvalue_scratch_datum(bcx, closure_ty, "__adjust");

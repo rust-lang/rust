@@ -102,7 +102,7 @@
  *   to return explicitly.
  */
 
-
+use middle::def::*;
 use middle::freevars;
 use middle::lint::{UnusedVariable, DeadAssignment};
 use middle::pat_util;
@@ -486,7 +486,7 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
                 match moved_variable_node_id_from_def(fv.def) {
                     Some(rv) => {
                         let fv_ln = ir.add_live_node(FreeVarNode(fv.span));
-                        let fv_id = ast_util::def_id_of_def(fv.def).node;
+                        let fv_id = fv.def.def_id().node;
                         let fv_ty = ty::node_id_to_type(ir.tcx, fv_id);
                         let is_move = match fv_mode {
                             // var must be dead afterwards

@@ -21,6 +21,9 @@ use driver::session;
 use lib::llvm::ValueRef;
 use lib::llvm::llvm;
 use metadata::csearch;
+use middle::def;
+use middle::subst;
+use middle::subst::Subst;
 use middle::trans::base;
 use middle::trans::base::*;
 use middle::trans::build::*;
@@ -39,7 +42,6 @@ use middle::trans::monomorphize;
 use middle::trans::type_of;
 use middle::trans::foreign;
 use middle::ty;
-use middle::subst::Subst;
 use middle::typeck;
 use middle::typeck::coherence::make_substs_for_receiver_types;
 use middle::typeck::MethodCall;
@@ -113,42 +115,42 @@ fn trans<'a>(bcx: &'a Block<'a>, expr: &ast::Expr) -> Callee<'a> {
         return Callee {bcx: bcx, data: Fn(llfn)};
     }
 
-    fn trans_def<'a>(bcx: &'a Block<'a>, def: ast::Def, ref_expr: &ast::Expr)
+    fn trans_def<'a>(bcx: &'a Block<'a>, def: def::Def, ref_expr: &ast::Expr)
                  -> Callee<'a> {
         match def {
-            ast::DefFn(did, _) |
-            ast::DefStaticMethod(did, ast::FromImpl(_), _) => {
+            def::DefFn(did, _) |
+            def::DefStaticMethod(did, def::FromImpl(_), _) => {
                 fn_callee(bcx, trans_fn_ref(bcx, did, ExprId(ref_expr.id)))
             }
-            ast::DefStaticMethod(impl_did,
-                                   ast::FromTrait(trait_did),
-                                   _) => {
+            def::DefStaticMethod(impl_did,
+                                 def::FromTrait(trait_did),
+                                 _) => {
                 fn_callee(bcx, meth::trans_static_method_callee(bcx, impl_did,
                                                                 trait_did,
                                                                 ref_expr.id))
             }
-            ast::DefVariant(tid, vid, _) => {
+            def::DefVariant(tid, vid, _) => {
                 // nullary variants are not callable
                 assert!(ty::enum_variant_with_id(bcx.tcx(),
                                                       tid,
                                                       vid).args.len() > 0u);
                 fn_callee(bcx, trans_fn_ref(bcx, vid, ExprId(ref_expr.id)))
             }
-            ast::DefStruct(def_id) => {
+            def::DefStruct(def_id) => {
                 fn_callee(bcx, trans_fn_ref(bcx, def_id, ExprId(ref_expr.id)))
             }
-            ast::DefStatic(..) |
-            ast::DefArg(..) |
-            ast::DefLocal(..) |
-            ast::DefBinding(..) |
-            ast::DefUpvar(..) => {
+            def::DefStatic(..) |
+            def::DefArg(..) |
+            def::DefLocal(..) |
+            def::DefBinding(..) |
+            def::DefUpvar(..) => {
                 datum_callee(bcx, ref_expr)
             }
-            ast::DefMod(..) | ast::DefForeignMod(..) | ast::DefTrait(..) |
-            ast::DefTy(..) | ast::DefPrimTy(..) |
-            ast::DefUse(..) | ast::DefTyParamBinder(..) |
-            ast::DefRegion(..) | ast::DefLabel(..) | ast::DefTyParam(..) |
-            ast::DefSelfTy(..) | ast::DefMethod(..) => {
+            def::DefMod(..) | def::DefForeignMod(..) | def::DefTrait(..) |
+            def::DefTy(..) | def::DefPrimTy(..) |
+            def::DefUse(..) | def::DefTyParamBinder(..) |
+            def::DefRegion(..) | def::DefLabel(..) | def::DefTyParam(..) |
+            def::DefSelfTy(..) | def::DefMethod(..) => {
                 bcx.tcx().sess.span_bug(
                     ref_expr.span,
                     format!("cannot translate def {:?} \
@@ -184,8 +186,8 @@ pub fn trans_fn_ref(bcx: &Block, def_id: ast::DefId, node: ExprOrMethodCall) -> 
 fn trans_fn_ref_with_vtables_to_callee<'a>(bcx: &'a Block<'a>,
                                            def_id: ast::DefId,
                                            ref_id: ast::NodeId,
-                                           substs: ty::substs,
-                                           vtables: Option<typeck::vtable_res>)
+                                           substs: subst::Substs,
+                                           vtables: typeck::vtable_res)
                                            -> Callee<'a> {
     Callee {bcx: bcx,
             data: Fn(trans_fn_ref_with_vtables(bcx, def_id, ExprId(ref_id),
@@ -195,9 +197,10 @@ fn trans_fn_ref_with_vtables_to_callee<'a>(bcx: &'a Block<'a>,
 fn resolve_default_method_vtables(bcx: &Block,
                                   impl_id: ast::DefId,
                                   method: &ty::Method,
-                                  substs: &ty::substs,
-                                  impl_vtables: Option<typeck::vtable_res>)
-                          -> (typeck::vtable_res, typeck::vtable_param_res) {
+                                  substs: &subst::Substs,
+                                  impl_vtables: typeck::vtable_res)
+                          -> (typeck::vtable_res, typeck::vtable_param_res)
+{
 
     // Get the vtables that the impl implements the trait at
     let impl_res = ty::lookup_impl_vtables(bcx.tcx(), impl_id);
@@ -211,27 +214,15 @@ fn resolve_default_method_vtables(bcx: &Block,
     };
 
     let mut param_vtables = resolve_vtables_under_param_substs(
-        bcx.tcx(), Some(&param_substs), impl_res.trait_vtables.as_slice());
+        bcx.tcx(), &param_substs, impl_res.trait_vtables.as_slice());
 
     // Now we pull any vtables for parameters on the actual method.
     let num_method_vtables = method.generics.type_param_defs().len();
-    match impl_vtables {
-        Some(ref vtables) => {
-            let num_impl_type_parameters =
-                vtables.len() - num_method_vtables;
-            param_vtables.push_all(vtables.tailn(num_impl_type_parameters))
-        },
-        None => {
-            param_vtables.extend(range(0, num_method_vtables).map(
-                |_| -> typeck::vtable_param_res {
-                    Vec::new()
-                }
-            ))
-        }
-    }
+    let num_impl_type_parameters = impl_vtables.len() - num_method_vtables;
+    param_vtables.push_all(impl_vtables.tailn(num_impl_type_parameters));
 
     let self_vtables = resolve_param_vtables_under_param_substs(
-        bcx.tcx(), Some(&param_substs), impl_res.self_vtables.as_slice());
+        bcx.tcx(), &param_substs, impl_res.self_vtables.as_slice());
 
     (param_vtables, self_vtables)
 }
@@ -241,8 +232,8 @@ pub fn trans_fn_ref_with_vtables(
         bcx: &Block,       //
         def_id: ast::DefId,   // def id of fn
         node: ExprOrMethodCall,  // node id of use of fn; may be zero if N/A
-        substs: ty::substs, // values for fn's ty params
-        vtables: Option<typeck::vtable_res>) // vtables for the call
+        substs: subst::Substs, // values for fn's ty params
+        vtables: typeck::vtable_res) // vtables for the call
      -> ValueRef {
     /*!
      * Translates a reference to a fn/method item, monomorphizing and
@@ -334,7 +325,7 @@ pub fn trans_fn_ref_with_vtables(
                    self_vtables.repr(tcx), param_vtables.repr(tcx));
 
             (true, source_id,
-             new_substs, Some(self_vtables), Some(param_vtables))
+             new_substs, Some(self_vtables), param_vtables)
         }
     };
 
@@ -504,8 +495,8 @@ pub fn trans_lang_call<'a>(
                                 trans_fn_ref_with_vtables_to_callee(bcx,
                                                                     did,
                                                                     0,
-                                                                    ty::substs::empty(),
-                                                                    None)
+                                                                    subst::Substs::empty(),
+                                                                    Vec::new())
                              },
                              ArgVals(args),
                              dest)

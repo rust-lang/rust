@@ -16,6 +16,7 @@ use c = metadata::common;
 use cstore = metadata::cstore;
 use driver::session::Session;
 use metadata::decoder;
+use middle::def;
 use e = metadata::encoder;
 use middle::freevars::freevar_entry;
 use middle::region;
@@ -23,6 +24,7 @@ use metadata::tydecode;
 use metadata::tydecode::{DefIdSource, NominalType, TypeWithId, TypeParameter,
                          RegionParameter};
 use metadata::tyencode;
+use middle::subst;
 use middle::typeck::{MethodCall, MethodCallee, MethodOrigin};
 use middle::{ty, typeck};
 use util::ppaux::ty_to_str;
@@ -394,58 +396,58 @@ fn renumber_and_map_ast(xcx: &ExtendedDecodeContext,
 // ______________________________________________________________________
 // Encoding and decoding of ast::def
 
-fn decode_def(xcx: &ExtendedDecodeContext, doc: ebml::Doc) -> ast::Def {
+fn decode_def(xcx: &ExtendedDecodeContext, doc: ebml::Doc) -> def::Def {
     let mut dsr = reader::Decoder::new(doc);
-    let def: ast::Def = Decodable::decode(&mut dsr).unwrap();
+    let def: def::Def = Decodable::decode(&mut dsr).unwrap();
     def.tr(xcx)
 }
 
-impl tr for ast::Def {
-    fn tr(&self, xcx: &ExtendedDecodeContext) -> ast::Def {
+impl tr for def::Def {
+    fn tr(&self, xcx: &ExtendedDecodeContext) -> def::Def {
         match *self {
-          ast::DefFn(did, p) => ast::DefFn(did.tr(xcx), p),
-          ast::DefStaticMethod(did, wrapped_did2, p) => {
-            ast::DefStaticMethod(did.tr(xcx),
+          def::DefFn(did, p) => def::DefFn(did.tr(xcx), p),
+          def::DefStaticMethod(did, wrapped_did2, p) => {
+            def::DefStaticMethod(did.tr(xcx),
                                    match wrapped_did2 {
-                                    ast::FromTrait(did2) => {
-                                        ast::FromTrait(did2.tr(xcx))
+                                    def::FromTrait(did2) => {
+                                        def::FromTrait(did2.tr(xcx))
                                     }
-                                    ast::FromImpl(did2) => {
-                                        ast::FromImpl(did2.tr(xcx))
+                                    def::FromImpl(did2) => {
+                                        def::FromImpl(did2.tr(xcx))
                                     }
                                    },
                                    p)
           }
-          ast::DefMethod(did0, did1) => {
-            ast::DefMethod(did0.tr(xcx), did1.map(|did1| did1.tr(xcx)))
+          def::DefMethod(did0, did1) => {
+            def::DefMethod(did0.tr(xcx), did1.map(|did1| did1.tr(xcx)))
           }
-          ast::DefSelfTy(nid) => { ast::DefSelfTy(xcx.tr_id(nid)) }
-          ast::DefMod(did) => { ast::DefMod(did.tr(xcx)) }
-          ast::DefForeignMod(did) => { ast::DefForeignMod(did.tr(xcx)) }
-          ast::DefStatic(did, m) => { ast::DefStatic(did.tr(xcx), m) }
-          ast::DefArg(nid, b) => { ast::DefArg(xcx.tr_id(nid), b) }
-          ast::DefLocal(nid, b) => { ast::DefLocal(xcx.tr_id(nid), b) }
-          ast::DefVariant(e_did, v_did, is_s) => {
-            ast::DefVariant(e_did.tr(xcx), v_did.tr(xcx), is_s)
+          def::DefSelfTy(nid) => { def::DefSelfTy(xcx.tr_id(nid)) }
+          def::DefMod(did) => { def::DefMod(did.tr(xcx)) }
+          def::DefForeignMod(did) => { def::DefForeignMod(did.tr(xcx)) }
+          def::DefStatic(did, m) => { def::DefStatic(did.tr(xcx), m) }
+          def::DefArg(nid, b) => { def::DefArg(xcx.tr_id(nid), b) }
+          def::DefLocal(nid, b) => { def::DefLocal(xcx.tr_id(nid), b) }
+          def::DefVariant(e_did, v_did, is_s) => {
+            def::DefVariant(e_did.tr(xcx), v_did.tr(xcx), is_s)
           },
-          ast::DefTrait(did) => ast::DefTrait(did.tr(xcx)),
-          ast::DefTy(did) => ast::DefTy(did.tr(xcx)),
-          ast::DefPrimTy(p) => ast::DefPrimTy(p),
-          ast::DefTyParam(did, v) => ast::DefTyParam(did.tr(xcx), v),
-          ast::DefBinding(nid, bm) => ast::DefBinding(xcx.tr_id(nid), bm),
-          ast::DefUse(did) => ast::DefUse(did.tr(xcx)),
-          ast::DefUpvar(nid1, def, nid2, nid3) => {
-            ast::DefUpvar(xcx.tr_id(nid1),
+          def::DefTrait(did) => def::DefTrait(did.tr(xcx)),
+          def::DefTy(did) => def::DefTy(did.tr(xcx)),
+          def::DefPrimTy(p) => def::DefPrimTy(p),
+          def::DefTyParam(did, v) => def::DefTyParam(did.tr(xcx), v),
+          def::DefBinding(nid, bm) => def::DefBinding(xcx.tr_id(nid), bm),
+          def::DefUse(did) => def::DefUse(did.tr(xcx)),
+          def::DefUpvar(nid1, def, nid2, nid3) => {
+            def::DefUpvar(xcx.tr_id(nid1),
                            @(*def).tr(xcx),
                            xcx.tr_id(nid2),
                            xcx.tr_id(nid3))
           }
-          ast::DefStruct(did) => ast::DefStruct(did.tr(xcx)),
-          ast::DefRegion(nid) => ast::DefRegion(xcx.tr_id(nid)),
-          ast::DefTyParamBinder(nid) => {
-            ast::DefTyParamBinder(xcx.tr_id(nid))
+          def::DefStruct(did) => def::DefStruct(did.tr(xcx)),
+          def::DefRegion(nid) => def::DefRegion(xcx.tr_id(nid)),
+          def::DefTyParamBinder(nid) => {
+            def::DefTyParamBinder(xcx.tr_id(nid))
           }
-          ast::DefLabel(nid) => ast::DefLabel(xcx.tr_id(nid))
+          def::DefLabel(nid) => def::DefLabel(xcx.tr_id(nid))
         }
     }
 }
@@ -796,7 +798,7 @@ trait ebml_writer_helpers {
     fn emit_tpbt(&mut self,
                  ecx: &e::EncodeContext,
                  tpbt: ty::ty_param_bounds_and_ty);
-    fn emit_substs(&mut self, ecx: &e::EncodeContext, substs: &ty::substs);
+    fn emit_substs(&mut self, ecx: &e::EncodeContext, substs: &subst::Substs);
     fn emit_auto_adjustment(&mut self, ecx: &e::EncodeContext, adj: &ty::AutoAdjustment);
 }
 
@@ -842,7 +844,7 @@ impl<'a> ebml_writer_helpers for Encoder<'a> {
         });
     }
 
-    fn emit_substs(&mut self, ecx: &e::EncodeContext, substs: &ty::substs) {
+    fn emit_substs(&mut self, ecx: &e::EncodeContext, substs: &subst::Substs) {
         self.emit_opaque(|this| Ok(tyencode::enc_substs(this.writer,
                                                            &ecx.ty_str_ctxt(),
                                                            substs)));
@@ -1076,7 +1078,7 @@ trait ebml_decoder_decoder_helpers {
                            -> ty::TypeParameterDef;
     fn read_ty_param_bounds_and_ty(&mut self, xcx: &ExtendedDecodeContext)
                                 -> ty::ty_param_bounds_and_ty;
-    fn read_substs(&mut self, xcx: &ExtendedDecodeContext) -> ty::substs;
+    fn read_substs(&mut self, xcx: &ExtendedDecodeContext) -> subst::Substs;
     fn read_auto_adjustment(&mut self, xcx: &ExtendedDecodeContext) -> ty::AutoAdjustment;
     fn convert_def_id(&mut self,
                       xcx: &ExtendedDecodeContext,
@@ -1093,7 +1095,7 @@ trait ebml_decoder_decoder_helpers {
                       cdata: &cstore::crate_metadata) -> Vec<ty::t>;
     fn read_substs_noxcx(&mut self, tcx: &ty::ctxt,
                          cdata: &cstore::crate_metadata)
-                         -> ty::substs;
+                         -> subst::Substs;
 }
 
 impl<'a> ebml_decoder_decoder_helpers for reader::Decoder<'a> {
@@ -1121,7 +1123,7 @@ impl<'a> ebml_decoder_decoder_helpers for reader::Decoder<'a> {
     fn read_substs_noxcx(&mut self,
                          tcx: &ty::ctxt,
                          cdata: &cstore::crate_metadata)
-                         -> ty::substs
+                         -> subst::Substs
     {
         self.read_opaque(|_, doc| {
             Ok(tydecode::parse_substs_data(
@@ -1210,7 +1212,7 @@ impl<'a> ebml_decoder_decoder_helpers for reader::Decoder<'a> {
         }).unwrap()
     }
 
-    fn read_substs(&mut self, xcx: &ExtendedDecodeContext) -> ty::substs {
+    fn read_substs(&mut self, xcx: &ExtendedDecodeContext) -> subst::Substs {
         self.read_opaque(|this, doc| {
             Ok(tydecode::parse_substs_data(doc.data,
                                         xcx.dcx.cdata.cnum,

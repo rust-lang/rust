@@ -15,7 +15,77 @@ use middle::ty_fold;
 use middle::ty_fold::{TypeFoldable, TypeFolder};
 use util::ppaux::Repr;
 
+use std::vec::Vec;
 use syntax::codemap::Span;
+
+///////////////////////////////////////////////////////////////////////////
+
+/**
+ * Represents the values to use when substituting lifetime parameters.
+ * If the value is `ErasedRegions`, then this subst is occurring during
+ * trans, and all region parameters will be replaced with `ty::ReStatic`. */
+#[deriving(Clone, PartialEq, Eq, Hash)]
+pub enum RegionSubsts {
+    ErasedRegions,
+    NonerasedRegions(Vec<ty::Region>)
+}
+
+/**
+ * The type `Substs` represents the kinds of things that can be substituted to
+ * convert a polytype into a monotype.  Note however that substituting bound
+ * regions other than `self` is done through a different mechanism:
+ *
+ * - `tps` represents the type parameters in scope.  They are indexed
+ *   according to the order in which they were declared.
+ *
+ * - `self_r` indicates the region parameter `self` that is present on nominal
+ *   types (enums, structs) declared as having a region parameter.  `self_r`
+ *   should always be none for types that are not region-parameterized and
+ *   Some(_) for types that are.  The only bound region parameter that should
+ *   appear within a region-parameterized type is `self`.
+ *
+ * - `self_ty` is the type to which `self` should be remapped, if any.  The
+ *   `self` type is rather funny in that it can only appear on traits and is
+ *   always substituted away to the implementing type for a trait. */
+#[deriving(Clone, PartialEq, Eq, Hash)]
+pub struct Substs {
+    pub self_ty: Option<ty::t>,
+    pub tps: Vec<ty::t>,
+    pub regions: RegionSubsts,
+}
+
+impl Substs {
+    pub fn empty() -> Substs {
+        Substs {
+            self_ty: None,
+            tps: Vec::new(),
+            regions: NonerasedRegions(Vec::new())
+        }
+    }
+
+    pub fn trans_empty() -> Substs {
+        Substs {
+            self_ty: None,
+            tps: Vec::new(),
+            regions: ErasedRegions
+        }
+    }
+
+    pub fn is_noop(&self) -> bool {
+        let regions_is_noop = match self.regions {
+            ErasedRegions => false, // may be used to canonicalize
+            NonerasedRegions(ref regions) => regions.is_empty()
+        };
+
+        self.tps.len() == 0u &&
+            regions_is_noop &&
+            self.self_ty.is_none()
+    }
+
+    pub fn self_ty(&self) -> ty::t {
+        self.self_ty.unwrap()
+    }
+}
 
 ///////////////////////////////////////////////////////////////////////////
 // Public trait `Subst`
@@ -25,12 +95,12 @@ use syntax::codemap::Span;
 // there is more information available (for better errors).
 
 pub trait Subst {
-    fn subst(&self, tcx: &ty::ctxt, substs: &ty::substs) -> Self {
+    fn subst(&self, tcx: &ty::ctxt, substs: &Substs) -> Self {
         self.subst_spanned(tcx, substs, None)
     }
 
     fn subst_spanned(&self, tcx: &ty::ctxt,
-                     substs: &ty::substs,
+                     substs: &Substs,
                      span: Option<Span>)
                      -> Self;
 }
@@ -38,7 +108,7 @@ pub trait Subst {
 impl<T:TypeFoldable> Subst for T {
     fn subst_spanned(&self,
                      tcx: &ty::ctxt,
-                     substs: &ty::substs,
+                     substs: &Substs,
                      span: Option<Span>)
                      -> T
     {
@@ -56,7 +126,7 @@ impl<T:TypeFoldable> Subst for T {
 
 struct SubstFolder<'a> {
     tcx: &'a ty::ctxt,
-    substs: &'a ty::substs,
+    substs: &'a Substs,
 
     // The location for which the substitution is performed, if available.
     span: Option<Span>,
@@ -81,8 +151,8 @@ impl<'a> TypeFolder for SubstFolder<'a> {
         match r {
             ty::ReEarlyBound(_, i, _) => {
                 match self.substs.regions {
-                    ty::ErasedRegions => ty::ReStatic,
-                    ty::NonerasedRegions(ref regions) => *regions.get(i),
+                    ErasedRegions => ty::ReStatic,
+                    NonerasedRegions(ref regions) => *regions.get(i),
                 }
             }
             _ => r
