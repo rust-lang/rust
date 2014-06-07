@@ -314,3 +314,10 @@ pub fn get_method_arg_names(cstore: &cstore::CStore, did: ast::DefId)
     let cdata = cstore.get_crate_data(did.krate);
     decoder::get_method_arg_names(&*cdata, did.node)
 }
+
+pub fn get_reachable_extern_fns(cstore: &cstore::CStore, cnum: ast::CrateNum)
+    -> Vec<ast::DefId>
+{
+    let cdata = cstore.get_crate_data(cnum);
+    decoder::get_reachable_extern_fns(&*cdata)
+}
