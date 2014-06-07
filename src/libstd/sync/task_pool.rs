@@ -13,7 +13,12 @@
 /// A task pool abstraction. Useful for achieving predictable CPU
 /// parallelism.
 
-use std::task;
+use core::prelude::*;
+
+use task;
+use task::spawn;
+use vec::Vec;
+use comm::{channel, Sender};
 
 enum Msg<T> {
     Execute(proc(&T):Send),

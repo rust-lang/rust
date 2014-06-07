@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate sync;
-
-use sync::Arc;
+use std::sync::Arc;
 fn dispose(_x: Arc<bool>) { }
 
 pub fn main() {

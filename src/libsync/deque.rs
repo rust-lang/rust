@@ -42,29 +42,26 @@
 //!     let mut stealer2 = stealer.clone();
 //!     stealer2.steal();
 
+#![experimental]
+
 // NB: the "buffer pool" strategy is not done for speed, but rather for
 //     correctness. For more info, see the comment on `swap_buffer`
 
 // FIXME: all atomic operations in this module use a SeqCst ordering. That is
 //      probably overkill
 
-use alloc::arc::Arc;
+use core::prelude::*;
 
-use clone::Clone;
-use iter::{range, Iterator};
-use kinds::Send;
-use kinds::marker;
-use mem::{forget, min_align_of, size_of, transmute, overwrite};
-use ops::Drop;
-use option::{Option, Some, None};
-use owned::Box;
-use ptr::RawPtr;
-use ptr;
-use rt::heap::{allocate, deallocate};
-use slice::ImmutableVector;
-use sync::atomics::{AtomicInt, AtomicPtr, SeqCst};
-use rt::exclusive::Exclusive;
-use vec::Vec;
+use alloc::arc::Arc;
+use alloc::heap::{allocate, deallocate};
+use alloc::owned::Box;
+use collections::Vec;
+use core::kinds::marker;
+use core::mem::{forget, min_align_of, size_of, transmute};
+use core::ptr;
+use rustrt::exclusive::Exclusive;
+
+use atomics::{AtomicInt, AtomicPtr, SeqCst};
 
 // Once the queue is less than 1/K full, then it will be downsized. Note that
 // the deque requires that this number be less than 2.
@@ -148,7 +145,7 @@ impl<T: Send> BufferPool<T> {
     /// Allocates a new buffer pool which in turn can be used to allocate new
     /// deques.
     pub fn new() -> BufferPool<T> {
-        BufferPool { pool: Arc::new(Exclusive::new(vec!())) }
+        BufferPool { pool: Arc::new(Exclusive::new(Vec::new())) }
     }
 
     /// Allocates a new work-stealing deque which will send/receiving memory to
@@ -380,7 +377,7 @@ impl<T: Send> Buffer<T> {
     // Unsafe because this unsafely overwrites possibly uninitialized or
     // initialized data.
     unsafe fn put(&self, i: int, t: T) {
-        overwrite(self.elem(i) as *mut T, t);
+        ptr::write(self.elem(i) as *mut T, t);
     }
 
     // Again, unsafe because this has incredibly dubious ownership violations.
@@ -405,17 +402,16 @@ impl<T: Send> Drop for Buffer<T> {
 
 #[cfg(test)]
 mod tests {
-    use prelude::*;
+    use std::prelude::*;
     use super::{Data, BufferPool, Abort, Empty, Worker, Stealer};
 
-    use mem;
-    use owned::Box;
-    use rt::thread::Thread;
-    use rand;
-    use rand::Rng;
-    use sync::atomics::{AtomicBool, INIT_ATOMIC_BOOL, SeqCst,
-                        AtomicUint, INIT_ATOMIC_UINT};
-    use vec;
+    use std::mem;
+    use std::rt::thread::Thread;
+    use std::rand;
+    use std::rand::Rng;
+    use atomics::{AtomicBool, INIT_ATOMIC_BOOL, SeqCst,
+                  AtomicUint, INIT_ATOMIC_UINT};
+    use std::vec;
 
     #[test]
     fn smoke() {
@@ -631,7 +627,6 @@ mod tests {
 
         let mut rng = rand::task_rng();
         let mut myhit = false;
-        let mut iter = 0;
         'outer: loop {
             for _ in range(0, rng.gen_range(0, AMT)) {
                 if !myhit && rng.gen_range(0, 3) == 2 {
@@ -644,12 +639,9 @@ mod tests {
                     w.push((1, 2));
                 }
             }
-            iter += 1;
 
-            debug!("loop iteration {}", iter);
-            for (i, slot) in hits.iter().enumerate() {
+            for slot in hits.iter() {
                 let amt = slot.load(SeqCst);
-                debug!("thread {}: {}", i, amt);
                 if amt == 0 { continue 'outer; }
             }
             if myhit {

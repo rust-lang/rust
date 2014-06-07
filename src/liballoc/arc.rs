@@ -33,9 +33,7 @@ use heap::deallocate;
 /// task.
 ///
 /// ```rust
-/// extern crate sync;
-///
-/// use sync::Arc;
+/// use std::sync::Arc;
 ///
 /// fn main() {
 ///     let numbers = Vec::from_fn(100, |i| i as f32);
@@ -276,7 +274,7 @@ mod tests {
     use std::task;
     use std::vec::Vec;
     use super::{Arc, Weak};
-    use sync::Mutex;
+    use std::sync::Mutex;
 
     struct Canary(*mut atomics::AtomicUint);
 

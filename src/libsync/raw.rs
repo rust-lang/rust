@@ -15,13 +15,17 @@
 //! `sync` crate which wrap values directly and provide safer abstractions for
 //! containing data.
 
-use std::kinds::marker;
-use std::mem;
-use std::sync::atomics;
-use std::ty::Unsafe;
-use std::finally::Finally;
+use core::prelude::*;
+
+use core::atomics;
+use core::finally::Finally;
+use core::kinds::marker;
+use core::mem;
+use core::ty::Unsafe;
+use collections::Vec;
 
 use mutex;
+use comm::{Receiver, Sender, channel};
 
 /****************************************************************************
  * Internals
@@ -608,6 +612,8 @@ impl<'a> Drop for RWLockReadGuard<'a> {
 
 #[cfg(test)]
 mod tests {
+    use std::prelude::*;
+
     use Arc;
     use super::{Semaphore, Mutex, RWLock, Condvar};
 

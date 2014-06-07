@@ -15,7 +15,7 @@
  * # Example
  *
  * ```rust
- * use sync::Future;
+ * use std::sync::Future;
  * # fn fib(n: uint) -> uint {42};
  * # fn make_a_sandwich() {};
  * let mut delayed_fib = Future::spawn(proc() { fib(5000) });
@@ -26,7 +26,11 @@
 
 #![allow(missing_doc)]
 
-use std::mem::replace;
+use core::prelude::*;
+use core::mem::replace;
+
+use comm::{Receiver, channel};
+use task::spawn;
 
 /// A type encapsulating the result of a computation which may not be complete
 pub struct Future<A> {
@@ -137,9 +141,9 @@ impl<A:Send> Future<A> {
 
 #[cfg(test)]
 mod test {
-    use future::Future;
-
-    use std::task;
+    use prelude::*;
+    use sync::Future;
+    use task;
 
     #[test]
     fn test_from_value() {

@@ -15,8 +15,14 @@
 //! and/or blocking at all, but rather provide the necessary tools to build
 //! other types of concurrent primitives.
 
-pub mod atomics;
-pub mod deque;
-pub mod mpmc_bounded_queue;
-pub mod mpsc_queue;
-pub mod spsc_queue;
+pub use core_sync::{atomics, deque, mpmc_bounded_queue, mpsc_queue, spsc_queue};
+pub use core_sync::{Arc, Weak, Mutex, MutexGuard, Condvar, Barrier};
+pub use core_sync::{RWLock, RWLockReadGuard, RWLockWriteGuard};
+pub use core_sync::{Semaphore, SemaphoreGuard};
+pub use core_sync::one::{Once, ONCE_INIT};
+
+pub use self::future::Future;
+pub use self::task_pool::TaskPool;
+
+mod future;
+mod task_pool;

@@ -33,21 +33,18 @@
 /// of a synchronous channel. There are a few branches for the unbuffered case,
 /// but they're mostly just relevant to blocking senders.
 
+use core::prelude::*;
+
+use alloc::owned::Box;
+use collections::Vec;
 use collections::Collection;
-use iter::Iterator;
-use kinds::Send;
-use mem;
-use ops::Drop;
-use option::{Some, None, Option};
-use owned::Box;
-use ptr::RawPtr;
-use result::{Result, Ok, Err};
-use rt::local::Local;
-use rt::mutex::{NativeMutex, LockGuard};
-use rt::task::{Task, BlockedTask};
-use sync::atomics;
-use ty::Unsafe;
-use vec::Vec;
+use core::mem;
+use core::ty::Unsafe;
+use rustrt::local::Local;
+use rustrt::mutex::{NativeMutex, LockGuard};
+use rustrt::task::{Task, BlockedTask};
+
+use atomics;
 
 pub struct Packet<T> {
     /// Only field outside of the mutex. Just done for kicks, but mainly because

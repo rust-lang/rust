@@ -21,7 +21,6 @@ extern crate getopts;
 extern crate libc;
 extern crate rustc;
 extern crate serialize;
-extern crate sync;
 extern crate syntax;
 extern crate testing = "test";
 extern crate time;

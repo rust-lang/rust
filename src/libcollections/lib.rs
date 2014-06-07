@@ -52,8 +52,10 @@ pub use enum_set::EnumSet;
 pub use priority_queue::PriorityQueue;
 pub use ringbuf::RingBuf;
 pub use smallintmap::SmallIntMap;
+pub use string::String;
 pub use treemap::{TreeMap, TreeSet};
 pub use trie::{TrieMap, TrieSet};
+pub use vec::Vec;
 
 mod macros;
 

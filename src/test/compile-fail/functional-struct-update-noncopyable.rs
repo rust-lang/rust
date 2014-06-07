@@ -10,9 +10,7 @@
 
 // issue 7327
 
-extern crate sync;
-
-use sync::Arc;
+use std::sync::Arc;
 
 struct A { y: Arc<int>, x: Arc<int> }
 
