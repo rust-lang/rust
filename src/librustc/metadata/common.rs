@@ -209,6 +209,9 @@ pub static tag_dylib_dependency_formats: uint = 0x67;
 pub static tag_method_argument_names: uint = 0x8e;
 pub static tag_method_argument_name: uint = 0x8f;
 
+pub static tag_reachable_extern_fns: uint = 0x90;
+pub static tag_reachable_extern_fn_id: uint = 0x91;
+
 #[deriving(Clone, Show)]
 pub struct LinkMeta {
     pub crateid: CrateId,
