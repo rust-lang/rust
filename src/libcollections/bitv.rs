@@ -815,8 +815,6 @@ impl cmp::PartialEq for BitvSet {
         }
         return true;
     }
-
-    fn ne(&self, other: &BitvSet) -> bool { !self.eq(other) }
 }
 
 impl fmt::Show for BitvSet {

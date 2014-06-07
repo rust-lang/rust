@@ -199,9 +199,10 @@ impl<T:Copy> Clone for Cell<T> {
 }
 
 impl<T:PartialEq + Copy> PartialEq for Cell<T> {
-    fn eq(&self, other: &Cell<T>) -> bool {
-        self.get() == other.get()
-    }
+    #[inline]
+    fn eq(&self, other: &Cell<T>) -> bool { self.get() == other.get() }
+    #[inline]
+    fn ne(&self, other: &Cell<T>) -> bool { self.get() != other.get() }
 }
 
 /// A mutable memory location with dynamically checked borrow rules

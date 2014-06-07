@@ -1420,6 +1420,17 @@ impl<K: Eq + Hash<S>, V: PartialEq, S, H: Hasher<S>> PartialEq for HashMap<K, V,
             }
         })
     }
+    fn ne(&self, other: &HashMap<K, V, H>) -> bool {
+        if self.len() != other.len() { return true; }
+
+        self.iter()
+          .all(|(key, value)| {
+            match other.find(key) {
+                None    => true,
+                Some(v) => *value != *v
+            }
+        })
+    }
 }
 
 impl<K: Eq + Hash<S>, V: Eq, S, H: Hasher<S>> Eq for HashMap<K, V, H> {}
@@ -1495,10 +1506,13 @@ pub struct HashSet<T, H = sip::SipHasher> {
 }
 
 impl<T: Eq + Hash<S>, S, H: Hasher<S>> PartialEq for HashSet<T, H> {
+    #[inline]
     fn eq(&self, other: &HashSet<T, H>) -> bool {
-        if self.len() != other.len() { return false; }
-
-        self.iter().all(|key| other.contains(key))
+        self.map == other.map
+    }
+    #[inline]
+    fn ne(&self, other: &HashSet<T, H>) -> bool {
+        self.map != other.map
     }
 }
 
