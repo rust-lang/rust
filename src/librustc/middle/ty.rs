@@ -3986,59 +3986,62 @@ pub fn struct_fields(cx: &ctxt, did: ast::DefId, substs: &Substs)
 }
 
 pub fn is_binopable(cx: &ctxt, ty: t, op: ast::BinOp) -> bool {
-    static tycat_other: int = 0;
-    static tycat_bool: int = 1;
-    static tycat_char: int = 2;
-    static tycat_int: int = 3;
-    static tycat_float: int = 4;
-    static tycat_bot: int = 5;
-    static tycat_raw_ptr: int = 6;
+    enum TyCat {
+        Other = 0,
+        Bool,
+        Char,
+        Int,
+        Float,
+        Bot,
+        RawPtr,
+    }
+    enum OpCat {
+        Add = 0,
+        Sub,
+        Mult,
+        Shift,
+        Rel,
+        Eq,
+        Bit,
+        Logic,
+        Mod,
+    }
 
-    static opcat_add: int = 0;
-    static opcat_sub: int = 1;
-    static opcat_mult: int = 2;
-    static opcat_shift: int = 3;
-    static opcat_rel: int = 4;
-    static opcat_eq: int = 5;
-    static opcat_bit: int = 6;
-    static opcat_logic: int = 7;
-    static opcat_mod: int = 8;
-
-    fn opcat(op: ast::BinOp) -> int {
+    fn opcat(op: ast::BinOp) -> OpCat {
         match op {
-          ast::BiAdd => opcat_add,
-          ast::BiSub => opcat_sub,
-          ast::BiMul => opcat_mult,
-          ast::BiDiv => opcat_mult,
-          ast::BiRem => opcat_mod,
-          ast::BiAnd => opcat_logic,
-          ast::BiOr => opcat_logic,
-          ast::BiBitXor => opcat_bit,
-          ast::BiBitAnd => opcat_bit,
-          ast::BiBitOr => opcat_bit,
-          ast::BiShl => opcat_shift,
-          ast::BiShr => opcat_shift,
-          ast::BiEq => opcat_eq,
-          ast::BiNe => opcat_eq,
-          ast::BiLt => opcat_rel,
-          ast::BiLe => opcat_rel,
-          ast::BiGe => opcat_rel,
-          ast::BiGt => opcat_rel
+          ast::BiAdd => Add,
+          ast::BiSub => Sub,
+          ast::BiMul => Mult,
+          ast::BiDiv => Mult,
+          ast::BiRem => Mod,
+          ast::BiAnd => Logic,
+          ast::BiOr => Logic,
+          ast::BiBitXor => Bit,
+          ast::BiBitAnd => Bit,
+          ast::BiBitOr => Bit,
+          ast::BiShl => Shift,
+          ast::BiShr => Shift,
+          ast::BiEq => Eq,
+          ast::BiNe => Eq,
+          ast::BiLt => Rel,
+          ast::BiLe => Rel,
+          ast::BiGe => Rel,
+          ast::BiGt => Rel
         }
     }
 
-    fn tycat(cx: &ctxt, ty: t) -> int {
+    fn tycat(cx: &ctxt, ty: t) -> TyCat {
         if type_is_simd(cx, ty) {
             return tycat(cx, simd_type(cx, ty))
         }
         match get(ty).sty {
-          ty_char => tycat_char,
-          ty_bool => tycat_bool,
-          ty_int(_) | ty_uint(_) | ty_infer(IntVar(_)) => tycat_int,
-          ty_float(_) | ty_infer(FloatVar(_)) => tycat_float,
-          ty_bot => tycat_bot,
-          ty_ptr(_) => tycat_raw_ptr,
-          _ => tycat_other
+          ty_char => Char,
+          ty_bool => Bool,
+          ty_int(_) | ty_uint(_) | ty_infer(IntVar(_)) => Int,
+          ty_float(_) | ty_infer(FloatVar(_)) => Float,
+          ty_bot => Bot,
+          ty_ptr(_) => RawPtr,
+          _ => Other
         }
     }
 
@@ -4053,7 +4056,8 @@ pub fn is_binopable(cx: &ctxt, ty: t, op: ast::BinOp) -> bool {
     /*int*/     [t, t, t, t,     t,   t,  t,   f,     t],
     /*float*/   [t, t, t, f,     t,   t,  f,   f,     f],
     /*bot*/     [t, t, t, t,     t,   t,  t,   t,     t],
-    /*raw ptr*/ [f, f, f, f,     t,   t,  f,   f,     f]];
+    /*raw ptr*/ [f, f, f, f,     t,   t,  f,   f,     f],
+    ];
 
     return tbl[tycat(cx, ty) as uint ][opcat(op) as uint];
 }
