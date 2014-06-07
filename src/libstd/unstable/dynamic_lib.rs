@@ -26,6 +26,7 @@ use os;
 use path::{Path,GenericPath};
 use result::*;
 use slice::{Vector,ImmutableVector};
+use io::{IoResult};
 use str;
 use string::String;
 use vec::Vec;
@@ -78,12 +79,12 @@ impl DynamicLibrary {
     }
 
     /// Prepends a path to this process's search path for dynamic libraries
-    pub fn prepend_search_path(path: &Path) {
+    pub fn prepend_search_path(path: &Path) -> IoResult<()> {
         let mut search_path = DynamicLibrary::search_path();
         search_path.insert(0, path.clone());
         let newval = DynamicLibrary::create_path(search_path.as_slice());
         os::setenv(DynamicLibrary::envvar(),
-                   str::from_utf8(newval.as_slice()).unwrap());
+                   str::from_utf8(newval.as_slice()).unwrap())
     }
 
     /// From a slice of paths, create a new vector which is suitable to be an

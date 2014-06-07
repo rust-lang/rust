@@ -252,7 +252,12 @@ pub fn run_tests(config: &Config) {
         //arm-linux-androideabi debug-info test uses remote debugger
         //so, we test 1 task at once.
         // also trying to isolate problems with adb_run_wrapper.sh ilooping
-        os::setenv("RUST_TEST_TASKS","1");
+        match os::setenv("RUST_TEST_TASKS","1") {
+            Ok(()) => {},
+            Err(e) => {
+                fail!("`setenv` failed: {}", e);
+            }
+        }
     }
 
     let opts = test_opts(config);
