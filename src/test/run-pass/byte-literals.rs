@@ -10,6 +10,7 @@
 
 
 static FOO: u8 = b'\xF0';
+static BAR: &'static [u8] = b"a\xF0\t";
 
 pub fn main() {
     assert_eq!(b'a', 97u8);
@@ -34,5 +35,16 @@ pub fn main() {
     match 100 {
         b'a' .. b'z' => {},
         _ => fail!()
+    }
+
+    assert_eq!(b"a\n\r\t\\\'\"\0\xF0",
+               &[97u8, 10u8, 13u8, 9u8, 92u8, 39u8, 34u8, 0u8, 240u8]);
+    assert_eq!(b"a\
+                 b", &[97u8, 98u8]);
+    assert_eq!(BAR, &[97u8, 240u8, 9u8]);
+
+    match &[97u8, 10u8] {
+        b"a\n" => {},
+        _ => fail!(),
     }
 }

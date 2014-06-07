@@ -33,7 +33,7 @@ use ast::{ForeignItem, ForeignItemStatic, ForeignItemFn, ForeignMod};
 use ast::{Ident, NormalFn, Inherited, Item, Item_, ItemStatic};
 use ast::{ItemEnum, ItemFn, ItemForeignMod, ItemImpl};
 use ast::{ItemMac, ItemMod, ItemStruct, ItemTrait, ItemTy, Lit, Lit_};
-use ast::{LitBool, LitFloat, LitFloatUnsuffixed, LitInt, LitChar, LitByte};
+use ast::{LitBool, LitFloat, LitFloatUnsuffixed, LitInt, LitChar, LitByte, LitBinary};
 use ast::{LitIntUnsuffixed, LitNil, LitStr, LitUint, Local, LocalLet};
 use ast::{MutImmutable, MutMutable, Mac_, MacInvocTT, Matcher, MatchNonterminal};
 use ast::{MatchSeq, MatchTok, Method, MutTy, BiMul, Mutability};
@@ -1529,6 +1529,7 @@ impl<'a> Parser<'a> {
             token::LIT_STR_RAW(s, n) => {
                 LitStr(self.id_to_interned_str(s), ast::RawStr(n))
             }
+            token::LIT_BINARY(ref v) => LitBinary(v.clone()),
             token::LPAREN => { self.expect(&token::RPAREN); LitNil },
             _ => { self.unexpected_last(tok); }
         }

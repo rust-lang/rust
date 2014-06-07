@@ -654,7 +654,8 @@ impl<'a> StringReader<'a> {
             // Note: r as in r" or r#" is part of a raw string literal,
             // b as in b' is part of a byte literal.
             // They are not identifiers, and are handled further down.
-           ('r', Some('"')) | ('r', Some('#')) | ('b', Some('\'')) => false,
+           ('r', Some('"')) | ('r', Some('#')) |
+           ('b', Some('"')) | ('b', Some('\'')) => false,
            _ => true
         } {
             let start = self.last_pos;
@@ -859,62 +860,124 @@ impl<'a> StringReader<'a> {
           }
           'b' => {
             self.bump();
-            assert!(self.curr_is('\''), "Should have been a token::IDENT");
-            self.bump();
-            let start = self.last_pos;
+            return match self.curr {
+                Some('\'') => parse_byte(self),
+                Some('"') => parse_byte_string(self),
+                _ => unreachable!()  // Should have been a token::IDENT above.
+            };
 
-            // the eof will be picked up by the final `'` check below
-            let mut c2 = self.curr.unwrap_or('\x00');
-            self.bump();
+            fn parse_byte(self_: &mut StringReader) -> token::Token {
+                self_.bump();
+                let start = self_.last_pos;
 
-            match c2 {
-                '\\' => {
-                    // '\X' for some X must be a character constant:
-                    let escaped = self.curr;
-                    let escaped_pos = self.last_pos;
-                    self.bump();
-                    match escaped {
-                        None => {}
-                        Some(e) => {
-                            c2 = match e {
-                                'n' => '\n',
-                                'r' => '\r',
-                                't' => '\t',
-                                '\\' => '\\',
-                                '\'' => '\'',
-                                '"' => '"',
-                                '0' => '\x00',
-                                'x' => self.scan_numeric_escape(2u, '\''),
-                                c2 => {
-                                    self.err_span_char(escaped_pos, self.last_pos,
-                                                       "unknown byte escape", c2);
-                                    c2
+                // the eof will be picked up by the final `'` check below
+                let mut c2 = self_.curr.unwrap_or('\x00');
+                self_.bump();
+
+                match c2 {
+                    '\\' => {
+                        // '\X' for some X must be a character constant:
+                        let escaped = self_.curr;
+                        let escaped_pos = self_.last_pos;
+                        self_.bump();
+                        match escaped {
+                            None => {}
+                            Some(e) => {
+                                c2 = match e {
+                                    'n' => '\n',
+                                    'r' => '\r',
+                                    't' => '\t',
+                                    '\\' => '\\',
+                                    '\'' => '\'',
+                                    '"' => '"',
+                                    '0' => '\x00',
+                                    'x' => self_.scan_numeric_escape(2u, '\''),
+                                    c2 => {
+                                        self_.err_span_char(
+                                            escaped_pos, self_.last_pos,
+                                            "unknown byte escape", c2);
+                                        c2
+                                    }
                                 }
                             }
                         }
                     }
+                    '\t' | '\n' | '\r' | '\'' => {
+                        self_.err_span_char( start, self_.last_pos,
+                            "byte constant must be escaped", c2);
+                    }
+                    _ => if c2 > '\x7F' {
+                        self_.err_span_char( start, self_.last_pos,
+                            "byte constant must be ASCII. \
+                             Use a \\xHH escape for a non-ASCII byte", c2);
+                    }
                 }
-                '\t' | '\n' | '\r' | '\'' => {
-                    self.err_span_char( start, self.last_pos,
-                        "byte constant must be escaped", c2);
+                if !self_.curr_is('\'') {
+                    // Byte offsetting here is okay because the
+                    // character before position `start` are an
+                    // ascii single quote and ascii 'b'.
+                    self_.fatal_span_verbose(
+                        start - BytePos(2), self_.last_pos,
+                        "unterminated byte constant".to_string());
                 }
-                _ if c2 > '\x7F' => {
-                    self.err_span_char( start, self.last_pos,
-                        "byte constant must be ASCII. \
-                         Use a \\xHH escape for a non-ASCII byte", c2);
-                }
-                _ => {}
+                self_.bump(); // advance curr past token
+                return token::LIT_BYTE(c2 as u8);
             }
-            if !self.curr_is('\'') {
-                self.fatal_span_verbose(
-                                   // Byte offsetting here is okay because the
-                                   // character before position `start` are an
-                                   // ascii single quote and ascii 'b'.
-                                   start - BytePos(2), self.last_pos,
-                                   "unterminated byte constant".to_string());
+
+            fn parse_byte_string(self_: &mut StringReader) -> token::Token {
+                self_.bump();
+                let start = self_.last_pos;
+                let mut value = Vec::new();
+                while !self_.curr_is('"') {
+                    if self_.is_eof() {
+                        self_.fatal_span(start, self_.last_pos,
+                                         "unterminated double quote byte string");
+                    }
+
+                    let ch = self_.curr.unwrap();
+                    self_.bump();
+                    match ch {
+                      '\\' => {
+                        if self_.is_eof() {
+                            self_.fatal_span(start, self_.last_pos,
+                                             "unterminated double quote byte string");
+                        }
+
+                        let escaped = self_.curr.unwrap();
+                        let escaped_pos = self_.last_pos;
+                        self_.bump();
+                        match escaped {
+                          'n' => value.push('\n' as u8),
+                          'r' => value.push('\r' as u8),
+                          't' => value.push('\t' as u8),
+                          '\\' => value.push('\\' as u8),
+                          '\'' => value.push('\'' as u8),
+                          '"' => value.push('"' as u8),
+                          '\n' => self_.consume_whitespace(),
+                          '0' => value.push(0),
+                          'x' => {
+                            value.push(self_.scan_numeric_escape(2u, '"') as u8);
+                          }
+                          c2 => {
+                            self_.err_span_char(escaped_pos, self_.last_pos,
+                                                "unknown byte string escape", c2);
+                          }
+                        }
+                      }
+                      _ => {
+                        if ch <= '\x7F' {
+                            value.push(ch as u8)
+                        } else {
+                            self_.err_span_char(self_.last_pos, self_.last_pos,
+                                "byte string must be ASCII. \
+                                 Use a \\xHH escape for a non-ASCII byte", ch);
+                        }
+                      }
+                    }
+                }
+                self_.bump();
+                return token::LIT_BINARY(Rc::new(value));
             }
-            self.bump(); // advance curr past token
-            return token::LIT_BYTE(c2 as u8);
           }
           '"' => {
             let mut accum_str = String::new();
