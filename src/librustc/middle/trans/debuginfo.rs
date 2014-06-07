@@ -131,6 +131,7 @@ use lib::llvm::llvm;
 use lib::llvm::{ModuleRef, ContextRef, ValueRef};
 use lib::llvm::debuginfo::*;
 use metadata::csearch;
+use middle::subst;
 use middle::trans::adt;
 use middle::trans::common::*;
 use middle::trans::datum::{Datum, Lvalue};
@@ -620,7 +621,7 @@ pub fn start_emitting_source_locations(fcx: &FunctionContext) {
 /// indicates why no debuginfo should be created for the function.
 pub fn create_function_debug_context(cx: &CrateContext,
                                      fn_ast_id: ast::NodeId,
-                                     param_substs: Option<&param_substs>,
+                                     param_substs: &param_substs,
                                      llfn: ValueRef) -> FunctionDebugContext {
     if cx.sess().opts.debuginfo == NoDebugInfo {
         return FunctionDebugContext { repr: DebugInfoDisabled };
@@ -787,7 +788,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
     fn get_function_signature(cx: &CrateContext,
                               fn_ast_id: ast::NodeId,
                               fn_decl: &ast::FnDecl,
-                              param_substs: Option<&param_substs>,
+                              param_substs: &param_substs,
                               error_span: Span) -> DIArray {
         if cx.sess().opts.debuginfo == LimitedDebugInfo {
             return create_DIArray(DIB(cx), []);
@@ -822,14 +823,11 @@ pub fn create_function_debug_context(cx: &CrateContext,
 
     fn get_template_parameters(cx: &CrateContext,
                                generics: &ast::Generics,
-                               param_substs: Option<&param_substs>,
+                               param_substs: &param_substs,
                                file_metadata: DIFile,
                                name_to_append_suffix_to: &mut String)
                                -> DIArray {
-        let self_type = match param_substs {
-            Some(param_substs) => param_substs.substs.self_ty,
-            _ => None
-        };
+        let self_type = param_substs.substs.self_ty;
 
         // Only true for static default methods:
         let has_self_type = self_type.is_some();
@@ -883,13 +881,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
         }
 
         // Handle other generic parameters
-        let actual_types = match param_substs {
-            Some(param_substs) => &param_substs.substs.tps,
-            None => {
-                return create_DIArray(DIB(cx), template_params.as_slice());
-            }
-        };
-
+        let actual_types = &param_substs.substs.tps;
         for (index, &ast::TyParam{ ident: ident, .. }) in generics.ty_params.iter().enumerate() {
             let actual_type = *actual_types.get(index);
             // Add actual type name to <...> clause of function name
@@ -1356,7 +1348,7 @@ impl StructMemberDescriptionFactory {
 fn prepare_struct_metadata(cx: &CrateContext,
                            struct_type: ty::t,
                            def_id: ast::DefId,
-                           substs: &ty::substs,
+                           substs: &subst::Substs,
                            span: Span)
                         -> RecursiveTypeDescription {
     let struct_name = ppaux::ty_to_str(cx.tcx(), struct_type);
@@ -2251,7 +2243,7 @@ fn subroutine_type_metadata(cx: &CrateContext,
 fn trait_metadata(cx: &CrateContext,
                   def_id: ast::DefId,
                   trait_type: ty::t,
-                  substs: &ty::substs,
+                  substs: &subst::Substs,
                   trait_store: ty::TraitStore,
                   _: &ty::BuiltinBounds)
                -> DIType {

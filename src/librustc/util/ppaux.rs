@@ -9,6 +9,8 @@
 // except according to those terms.
 
 
+use middle::subst;
+use middle::subst::Subst;
 use middle::ty::{ReSkolemized, ReVar};
 use middle::ty::{BoundRegion, BrAnon, BrNamed};
 use middle::ty::{BrFresh, ctxt};
@@ -419,15 +421,15 @@ pub fn ty_to_str(cx: &ctxt, typ: t) -> String {
 
 pub fn parameterized(cx: &ctxt,
                      base: &str,
-                     regions: &ty::RegionSubsts,
+                     regions: &subst::RegionSubsts,
                      tps: &[ty::t],
                      did: ast::DefId,
                      is_trait: bool)
                      -> String {
     let mut strs = Vec::new();
     match *regions {
-        ty::ErasedRegions => { }
-        ty::NonerasedRegions(ref regions) => {
+        subst::ErasedRegions => { }
+        subst::NonerasedRegions(ref regions) => {
             for &r in regions.iter() {
                 strs.push(region_to_str(cx, "", false, r))
             }
@@ -443,7 +445,7 @@ pub fn parameterized(cx: &ctxt,
     let has_defaults = ty_params.last().map_or(false, |def| def.default.is_some());
     let num_defaults = if has_defaults {
         // We should have a borrowed version of substs instead of cloning.
-        let mut substs = ty::substs {
+        let mut substs = subst::Substs {
             tps: Vec::from_slice(tps),
             regions: regions.clone(),
             self_ty: None
@@ -451,7 +453,7 @@ pub fn parameterized(cx: &ctxt,
         ty_params.iter().zip(tps.iter()).rev().take_while(|&(def, &actual)| {
             substs.tps.pop();
             match def.default {
-                Some(default) => ty::subst(cx, &substs, default) == actual,
+                Some(default) => default.subst(cx, &substs) == actual,
                 None => false
             }
         }).len()
@@ -565,7 +567,7 @@ impl Repr for ty::t {
     }
 }
 
-impl Repr for ty::substs {
+impl Repr for subst::Substs {
     fn repr(&self, tcx: &ctxt) -> String {
         format!("substs(regions={}, self_ty={}, tps={})",
                 self.regions.repr(tcx),
@@ -580,11 +582,11 @@ impl Repr for ty::ItemSubsts {
     }
 }
 
-impl Repr for ty::RegionSubsts {
+impl Repr for subst::RegionSubsts {
     fn repr(&self, tcx: &ctxt) -> String {
         match *self {
-            ty::ErasedRegions => "erased".to_string(),
-            ty::NonerasedRegions(ref regions) => regions.repr(tcx)
+            subst::ErasedRegions => "erased".to_string(),
+            subst::NonerasedRegions(ref regions) => regions.repr(tcx)
         }
     }
 }

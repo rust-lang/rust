@@ -14,6 +14,7 @@ use lib::llvm::llvm;
 use lib::llvm::ValueRef;
 use lib;
 use metadata::csearch;
+use middle::subst;
 use middle::trans::base::*;
 use middle::trans::build::*;
 use middle::trans::callee::*;
@@ -67,7 +68,7 @@ pub fn trans_impl(ccx: &CrateContext,
         if method.generics.ty_params.len() == 0u {
             let llfn = get_item_val(ccx, method.id);
             trans_fn(ccx, method.decl, method.body,
-                     llfn, None, method.id, []);
+                     llfn, &param_substs::empty(), method.id, []);
         } else {
             let mut v = TransItemVisitor{ ccx: ccx };
             visit::walk_method_helper(&mut v, *method, ());
@@ -109,19 +110,13 @@ pub fn trans_method_callee<'a>(
             param_num: p,
             bound_num: b
         }) => {
-            match bcx.fcx.param_substs {
-                Some(substs) => {
-                    ty::populate_implementations_for_trait_if_necessary(
-                        bcx.tcx(),
-                        trait_id);
+            ty::populate_implementations_for_trait_if_necessary(
+                bcx.tcx(),
+                trait_id);
 
-                    let vtbl = find_vtable(bcx.tcx(), substs, p, b);
-                    trans_monomorphized_callee(bcx, method_call,
-                                               trait_id, off, vtbl)
-                }
-                // how to get rid of this?
-                None => fail!("trans_method_callee: missing param_substs")
-            }
+            let vtbl = find_vtable(bcx.tcx(), bcx.fcx.param_substs, p, b);
+            trans_monomorphized_callee(bcx, method_call,
+                                       trait_id, off, vtbl)
         }
 
         typeck::MethodObject(ref mt) => {
@@ -208,7 +203,7 @@ pub fn trans_static_method_callee(bcx: &Block,
 
             let llfn = trans_fn_ref_with_vtables(bcx, mth_id, ExprId(expr_id),
                                                  callee_substs,
-                                                 Some(callee_origins));
+                                                 callee_origins);
 
             let callee_ty = node_id_type(bcx, expr_id);
             let llty = type_of_fn_from_ty(ccx, callee_ty).ptr_to();
@@ -264,7 +259,7 @@ fn trans_monomorphized_callee<'a>(bcx: &'a Block<'a>,
                                                mth_id,
                                                MethodCall(method_call),
                                                callee_substs,
-                                               Some(callee_origins));
+                                               callee_origins);
 
           Callee { bcx: bcx, data: Fn(llfn) }
       }
@@ -277,9 +272,9 @@ fn trans_monomorphized_callee<'a>(bcx: &'a Block<'a>,
 fn combine_impl_and_methods_tps(bcx: &Block,
                                 mth_did: ast::DefId,
                                 node: ExprOrMethodCall,
-                                rcvr_substs: ty::substs,
+                                rcvr_substs: subst::Substs,
                                 rcvr_origins: typeck::vtable_res)
-                                -> (ty::substs, typeck::vtable_res)
+                                -> (subst::Substs, typeck::vtable_res)
 {
     /*!
      * Creates a concatenated set of substitutions which includes
@@ -321,23 +316,13 @@ fn combine_impl_and_methods_tps(bcx: &Block,
         MethodCall(method_call) => method_call
     };
     let mut vtables = rcvr_origins;
-    match node_vtables(bcx, vtable_key) {
-        Some(vt) => {
-            let start = vt.len() - n_m_tps;
-            vtables.extend(vt.move_iter().skip(start));
-        }
-        None => {
-            vtables.extend(range(0, n_m_tps).map(
-                |_| -> typeck::vtable_param_res {
-                    Vec::new()
-                }
-            ));
-        }
-    }
+    let vt = node_vtables(bcx, vtable_key);
+    let start = vt.len() - n_m_tps;
+    vtables.extend(vt.move_iter().skip(start));
 
-    let ty_substs = ty::substs {
+    let ty_substs = subst::Substs {
         tps: tps,
-        regions: ty::ErasedRegions,
+        regions: subst::ErasedRegions,
         self_ty: rcvr_self_ty
     };
 
@@ -493,7 +478,7 @@ pub fn make_vtable<I: Iterator<ValueRef>>(ccx: &CrateContext,
 
 fn emit_vtable_methods(bcx: &Block,
                        impl_id: ast::DefId,
-                       substs: ty::substs,
+                       substs: subst::Substs,
                        vtables: typeck::vtable_res)
                        -> Vec<ValueRef> {
     let ccx = bcx.ccx();
@@ -524,7 +509,7 @@ fn emit_vtable_methods(bcx: &Block,
             C_null(Type::nil(ccx).ptr_to())
         } else {
             trans_fn_ref_with_vtables(bcx, m_id, ExprId(0),
-                                      substs.clone(), Some(vtables.clone()))
+                                      substs.clone(), vtables.clone())
         }
     }).collect()
 }

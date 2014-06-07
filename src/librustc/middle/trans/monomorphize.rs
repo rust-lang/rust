@@ -11,6 +11,8 @@
 use back::link::exported_name;
 use driver::session;
 use lib::llvm::ValueRef;
+use middle::subst;
+use middle::subst::Subst;
 use middle::trans::base::{set_llvm_fn_attrs, set_inline_hint};
 use middle::trans::base::{trans_enum_variant, push_ctxt, get_item_val};
 use middle::trans::base::{trans_fn, decl_internal_rust_fn};
@@ -29,8 +31,8 @@ use std::hash::{sip, Hash};
 
 pub fn monomorphic_fn(ccx: &CrateContext,
                       fn_id: ast::DefId,
-                      real_substs: &ty::substs,
-                      vtables: Option<typeck::vtable_res>,
+                      real_substs: &subst::Substs,
+                      vtables: typeck::vtable_res,
                       self_vtables: Option<typeck::vtable_param_res>,
                       ref_id: Option<ast::NodeId>)
     -> (ValueRef, bool) {
@@ -53,23 +55,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
     let _icx = push_ctxt("monomorphic_fn");
 
     let substs_iter = real_substs.self_ty.iter().chain(real_substs.tps.iter());
-    let param_ids: Vec<MonoParamId> = match vtables {
-        Some(ref vts) => {
-            debug!("make_mono_id vtables={} psubsts={}",
-                   vts.repr(ccx.tcx()), real_substs.tps.repr(ccx.tcx()));
-            let vts_iter = self_vtables.iter().chain(vts.iter());
-            vts_iter.zip(substs_iter).map(|(vtable, subst)| MonoParamId {
-                subst: *subst,
-                // Do we really need the vtables to be hashed? Isn't the type enough?
-                vtables: vtable.iter().map(|vt| make_vtable_id(ccx, vt)).collect()
-            }).collect()
-        }
-        None => substs_iter.map(|subst| MonoParamId {
-            subst: *subst,
-            vtables: Vec::new()
-        }).collect()
-    };
-
+    let param_ids: Vec<ty::t> = substs_iter.map(|t| *t).collect();
     let hash_id = MonoId {
         def: fn_id,
         params: param_ids
@@ -139,7 +125,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
 
     debug!("monomorphic_fn about to subst into {}", llitem_ty.repr(ccx.tcx()));
     let mono_ty = match is_static_provided {
-        None => ty::subst(ccx.tcx(), real_substs, llitem_ty),
+        None => llitem_ty.subst(ccx.tcx(), real_substs),
         Some(num_method_ty_params) => {
             // Static default methods are a little unfortunate, in
             // that the "internal" and "external" type of them differ.
@@ -161,14 +147,14 @@ pub fn monomorphic_fn(ccx: &CrateContext,
             tps.push(real_substs.self_ty.unwrap());
             tps.push_all(real_substs.tps.tailn(idx));
 
-            let substs = ty::substs { regions: ty::ErasedRegions,
-                                      self_ty: None,
-                                      tps: tps };
+            let substs = subst::Substs { regions: subst::ErasedRegions,
+                                         self_ty: None,
+                                         tps: tps };
 
             debug!("static default: changed substitution to {}",
                    substs.repr(ccx.tcx()));
 
-            ty::subst(ccx.tcx(), &substs, llitem_ty)
+            llitem_ty.subst(ccx.tcx(), &substs)
         }
     };
 
@@ -220,7 +206,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
               } => {
                   let d = mk_lldecl();
                   set_llvm_fn_attrs(i.attrs.as_slice(), d);
-                  trans_fn(ccx, decl, body, d, Some(&psubsts), fn_id.node, []);
+                  trans_fn(ccx, decl, body, d, &psubsts, fn_id.node, []);
                   d
               }
               _ => {
@@ -252,7 +238,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
                                        v,
                                        args.as_slice(),
                                        this_tv.disr_val,
-                                       Some(&psubsts),
+                                       &psubsts,
                                        d);
                 }
                 ast::StructVariantKind(_) =>
@@ -263,7 +249,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
         ast_map::NodeMethod(mth) => {
             let d = mk_lldecl();
             set_llvm_fn_attrs(mth.attrs.as_slice(), d);
-            trans_fn(ccx, mth.decl, mth.body, d, Some(&psubsts), mth.id, []);
+            trans_fn(ccx, mth.decl, mth.body, d, &psubsts, mth.id, []);
             d
         }
         ast_map::NodeTraitMethod(method) => {
@@ -271,7 +257,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
                 ast::Provided(mth) => {
                     let d = mk_lldecl();
                     set_llvm_fn_attrs(mth.attrs.as_slice(), d);
-                    trans_fn(ccx, mth.decl, mth.body, d, Some(&psubsts), mth.id, []);
+                    trans_fn(ccx, mth.decl, mth.body, d, &psubsts, mth.id, []);
                     d
                 }
                 _ => {
@@ -287,7 +273,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
                                      struct_def.fields.as_slice(),
                                      struct_def.ctor_id.expect("ast-mapped tuple struct \
                                                                 didn't have a ctor id"),
-                                     Some(&psubsts),
+                                     &psubsts,
                                      d);
             d
         }
@@ -315,33 +301,22 @@ pub fn monomorphic_fn(ccx: &CrateContext,
 #[deriving(PartialEq, Eq, Hash)]
 pub struct MonoParamId {
     pub subst: ty::t,
-    // Do we really need the vtables to be hashed? Isn't the type enough?
-    pub vtables: Vec<MonoId>
 }
 
 #[deriving(PartialEq, Eq, Hash)]
 pub struct MonoId {
     pub def: ast::DefId,
-    pub params: Vec<MonoParamId>
+    pub params: Vec<ty::t>
 }
 
-pub fn make_vtable_id(ccx: &CrateContext,
+pub fn make_vtable_id(_ccx: &CrateContext,
                       origin: &typeck::vtable_origin)
                       -> MonoId {
     match origin {
-        &typeck::vtable_static(impl_id, ref substs, ref sub_vtables) => {
+        &typeck::vtable_static(impl_id, ref substs, _) => {
             MonoId {
                 def: impl_id,
-                // FIXME(NDM) -- this is pretty bogus. It ignores self-type,
-                // and vtables are not necessary, AND they are not guaranteed
-                // to be same length as the number of TPS ANYHOW!
-                params: sub_vtables.iter().zip(substs.tps.iter()).map(|(vtable, subst)| {
-                    MonoParamId {
-                        subst: *subst,
-                        // Do we really need the vtables to be hashed? Isn't the type enough?
-                        vtables: vtable.iter().map(|vt| make_vtable_id(ccx, vt)).collect()
-                    }
-                }).collect()
+                params: substs.tps.iter().map(|subst| *subst).collect()
             }
         }
 

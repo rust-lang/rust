@@ -11,6 +11,7 @@
 //! Enforces the Rust effect system. Currently there is just one effect,
 /// `unsafe`.
 
+use middle::def;
 use middle::ty;
 use middle::typeck::MethodCall;
 use util::ppaux;
@@ -183,7 +184,7 @@ impl<'a> Visitor<()> for EffectCheckVisitor<'a> {
             }
             ast::ExprPath(..) => {
                 match ty::resolve_expr(self.tcx, expr) {
-                    ast::DefStatic(_, true) => {
+                    def::DefStatic(_, true) => {
                         self.require_unsafe(expr.span, "use of mutable static")
                     }
                     _ => {}

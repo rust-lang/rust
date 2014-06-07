@@ -37,6 +37,7 @@ use back::abi;
 use lib::llvm::{ValueRef, llvm};
 use lib;
 use metadata::csearch;
+use middle::def;
 use middle::lang_items::MallocFnLangItem;
 use middle::trans::_match;
 use middle::trans::adt;
@@ -499,18 +500,18 @@ fn trans_index<'a>(bcx: &'a Block<'a>,
 
 fn trans_def<'a>(bcx: &'a Block<'a>,
                  ref_expr: &ast::Expr,
-                 def: ast::Def)
+                 def: def::Def)
                  -> DatumBlock<'a, Expr>
 {
     //! Translates a reference to a path.
 
     let _icx = push_ctxt("trans_def_lvalue");
     match def {
-        ast::DefFn(..) | ast::DefStaticMethod(..) |
-        ast::DefStruct(_) | ast::DefVariant(..) => {
+        def::DefFn(..) | def::DefStaticMethod(..) |
+        def::DefStruct(_) | def::DefVariant(..) => {
             trans_def_fn_unadjusted(bcx, ref_expr, def)
         }
-        ast::DefStatic(did, _) => {
+        def::DefStatic(did, _) => {
             let const_ty = expr_ty(bcx, ref_expr);
 
             fn get_did(ccx: &CrateContext, did: ast::DefId)
@@ -775,7 +776,7 @@ fn trans_rvalue_dps_unadjusted<'a>(bcx: &'a Block<'a>,
 fn trans_def_dps_unadjusted<'a>(
                             bcx: &'a Block<'a>,
                             ref_expr: &ast::Expr,
-                            def: ast::Def,
+                            def: def::Def,
                             dest: Dest)
                             -> &'a Block<'a> {
     let _icx = push_ctxt("trans_def_dps_unadjusted");
@@ -786,7 +787,7 @@ fn trans_def_dps_unadjusted<'a>(
     };
 
     match def {
-        ast::DefVariant(tid, vid, _) => {
+        def::DefVariant(tid, vid, _) => {
             let variant_info = ty::enum_variant_with_id(bcx.tcx(), tid, vid);
             if variant_info.args.len() > 0u {
                 // N-ary variant.
@@ -802,7 +803,7 @@ fn trans_def_dps_unadjusted<'a>(
                 return bcx;
             }
         }
-        ast::DefStruct(_) => {
+        def::DefStruct(_) => {
             let ty = expr_ty(bcx, ref_expr);
             match ty::get(ty).sty {
                 ty::ty_struct(did, _) if ty::has_dtor(bcx.tcx(), did) => {
@@ -823,16 +824,16 @@ fn trans_def_dps_unadjusted<'a>(
 
 fn trans_def_fn_unadjusted<'a>(bcx: &'a Block<'a>,
                                ref_expr: &ast::Expr,
-                               def: ast::Def) -> DatumBlock<'a, Expr> {
+                               def: def::Def) -> DatumBlock<'a, Expr> {
     let _icx = push_ctxt("trans_def_datum_unadjusted");
 
     let llfn = match def {
-        ast::DefFn(did, _) |
-        ast::DefStruct(did) | ast::DefVariant(_, did, _) |
-        ast::DefStaticMethod(did, ast::FromImpl(_), _) => {
+        def::DefFn(did, _) |
+        def::DefStruct(did) | def::DefVariant(_, did, _) |
+        def::DefStaticMethod(did, def::FromImpl(_), _) => {
             callee::trans_fn_ref(bcx, did, ExprId(ref_expr.id))
         }
-        ast::DefStaticMethod(impl_did, ast::FromTrait(trait_did), _) => {
+        def::DefStaticMethod(impl_did, def::FromTrait(trait_did), _) => {
             meth::trans_static_method_callee(bcx, impl_did,
                                              trait_did, ref_expr.id)
         }
@@ -849,7 +850,7 @@ fn trans_def_fn_unadjusted<'a>(bcx: &'a Block<'a>,
 }
 
 pub fn trans_local_var<'a>(bcx: &'a Block<'a>,
-                           def: ast::Def)
+                           def: def::Def)
                            -> Datum<Lvalue> {
     /*!
      * Translates a reference to a local variable or argument.
@@ -859,7 +860,7 @@ pub fn trans_local_var<'a>(bcx: &'a Block<'a>,
     let _icx = push_ctxt("trans_local_var");
 
     return match def {
-        ast::DefUpvar(nid, _, _, _) => {
+        def::DefUpvar(nid, _, _, _) => {
             // Can't move upvars, so this is never a ZeroMemLastUse.
             let local_ty = node_id_type(bcx, nid);
             match bcx.fcx.llupvars.borrow().find(&nid) {
@@ -871,10 +872,10 @@ pub fn trans_local_var<'a>(bcx: &'a Block<'a>,
                 }
             }
         }
-        ast::DefArg(nid, _) => {
+        def::DefArg(nid, _) => {
             take_local(bcx, &*bcx.fcx.llargs.borrow(), nid)
         }
-        ast::DefLocal(nid, _) | ast::DefBinding(nid, _) => {
+        def::DefLocal(nid, _) | def::DefBinding(nid, _) => {
             take_local(bcx, &*bcx.fcx.lllocals.borrow(), nid)
         }
         _ => {
@@ -931,7 +932,7 @@ pub fn with_field_tys<R>(tcx: &ty::ctxt,
                 Some(node_id) => {
                     let def = tcx.def_map.borrow().get_copy(&node_id);
                     match def {
-                        ast::DefVariant(enum_id, variant_id, _) => {
+                        def::DefVariant(enum_id, variant_id, _) => {
                             let variant_info = ty::enum_variant_with_id(
                                 tcx, enum_id, variant_id);
                             op(variant_info.disr_val,

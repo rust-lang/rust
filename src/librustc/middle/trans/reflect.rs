@@ -297,8 +297,10 @@ impl<'a, 'b> Reflector<'a, 'b> {
                                                     fn_ty,
                                                     sym.as_slice());
                 let arena = TypedArena::new();
+                let empty_param_substs = param_substs::empty();
                 let fcx = new_fn_ctxt(ccx, llfdecl, -1, false,
-                                      ty::mk_u64(), None, None, &arena);
+                                      ty::mk_u64(), &empty_param_substs,
+                                      None, &arena);
                 init_function(&fcx, false, ty::mk_u64());
 
                 let arg = unsafe {

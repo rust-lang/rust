@@ -11,6 +11,7 @@
 
 use middle::freevars::freevar_entry;
 use middle::freevars;
+use middle::subst;
 use middle::ty;
 use middle::typeck;
 use util::ppaux::{Repr, ty_to_str};
@@ -19,9 +20,8 @@ use util::ppaux::UserString;
 use syntax::ast::*;
 use syntax::attr;
 use syntax::codemap::Span;
-use syntax::owned_slice::OwnedSlice;
 use syntax::print::pprust::{expr_to_str,path_to_str};
-use syntax::{visit,ast_util};
+use syntax::{visit};
 use syntax::visit::Visitor;
 
 // Kind analysis pass.
@@ -87,8 +87,8 @@ fn check_struct_safe_for_destructor(cx: &mut Context,
                                     struct_did: DefId) {
     let struct_tpt = ty::lookup_item_type(cx.tcx, struct_did);
     if !struct_tpt.generics.has_type_params() {
-        let struct_ty = ty::mk_struct(cx.tcx, struct_did, ty::substs {
-            regions: ty::NonerasedRegions(OwnedSlice::empty()),
+        let struct_ty = ty::mk_struct(cx.tcx, struct_did, subst::Substs {
+            regions: subst::NonerasedRegions(Vec::new()),
             self_ty: None,
             tps: Vec::new()
         });
@@ -116,7 +116,7 @@ fn check_impl_of_trait(cx: &mut Context, it: &Item, trait_ref: &TraitRef, self_t
     let ast_trait_def = *cx.tcx.def_map.borrow()
                               .find(&trait_ref.ref_id)
                               .expect("trait ref not in def map!");
-    let trait_def_id = ast_util::def_id_of_def(ast_trait_def);
+    let trait_def_id = ast_trait_def.def_id();
     let trait_def = cx.tcx.trait_defs.borrow()
                           .find_copy(&trait_def_id)
                           .expect("trait def not in trait-defs map!");
@@ -141,7 +141,7 @@ fn check_impl_of_trait(cx: &mut Context, it: &Item, trait_ref: &TraitRef, self_t
             TyPath(_, ref bounds, path_node_id) => {
                 assert!(bounds.is_none());
                 let struct_def = cx.tcx.def_map.borrow().get_copy(&path_node_id);
-                let struct_did = ast_util::def_id_of_def(struct_def);
+                let struct_did = struct_def.def_id();
                 check_struct_safe_for_destructor(cx, self_type.span, struct_did);
             }
             _ => {
@@ -174,7 +174,7 @@ fn with_appropriate_checker(cx: &Context,
     fn check_for_uniq(cx: &Context, fv: &freevar_entry, bounds: ty::BuiltinBounds) {
         // all captured data must be owned, regardless of whether it is
         // moved in or copied in.
-        let id = ast_util::def_id_of_def(fv.def).node;
+        let id = fv.def.def_id().node;
         let var_t = ty::node_id_to_type(cx.tcx, id);
 
         check_freevar_bounds(cx, fv.span, var_t, bounds, None);
@@ -182,7 +182,7 @@ fn with_appropriate_checker(cx: &Context,
 
     fn check_for_block(cx: &Context, fv: &freevar_entry,
                        bounds: ty::BuiltinBounds, region: ty::Region) {
-        let id = ast_util::def_id_of_def(fv.def).node;
+        let id = fv.def.def_id().node;
         let var_t = ty::node_id_to_type(cx.tcx, id);
         // FIXME(#3569): Figure out whether the implicit borrow is actually
         // mutable. Currently we assume all upvars are referenced mutably.
@@ -257,7 +257,7 @@ pub fn check_expr(cx: &mut Context, e: &Expr) {
             let def_map = cx.tcx.def_map.borrow();
             let type_param_defs = match e.node {
               ExprPath(_) => {
-                let did = ast_util::def_id_of_def(def_map.get_copy(&e.id));
+                let did = def_map.get_copy(&e.id).def_id();
                 ty::lookup_item_type(cx.tcx, did).generics.type_param_defs.clone()
               }
               _ => {
@@ -348,7 +348,7 @@ fn check_ty(cx: &mut Context, aty: &Ty) {
                 None => { }
                 Some(ref item_substs) => {
                     let def_map = cx.tcx.def_map.borrow();
-                    let did = ast_util::def_id_of_def(def_map.get_copy(&id));
+                    let did = def_map.get_copy(&id).def_id();
                     let generics = ty::lookup_item_type(cx.tcx, did).generics;
                     let type_param_defs = generics.type_param_defs();
                     for (&ty, type_param_def) in

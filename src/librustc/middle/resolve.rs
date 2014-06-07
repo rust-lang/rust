@@ -13,6 +13,7 @@
 use driver::session::Session;
 use metadata::csearch;
 use metadata::decoder::{DefLike, DlDef, DlField, DlImpl};
+use middle::def::*;
 use middle::lang_items::LanguageItems;
 use middle::lint::{UnnecessaryQualification, UnusedImports};
 use middle::pat_util::pat_bindings;
@@ -20,7 +21,7 @@ use util::nodemap::{NodeMap, DefIdSet, FnvHashMap};
 
 use syntax::ast::*;
 use syntax::ast;
-use syntax::ast_util::{def_id_of_def, local_def};
+use syntax::ast_util::{local_def};
 use syntax::ast_util::{path_to_ident, walk_pat, trait_method_to_ty_method};
 use syntax::ext::mtwt;
 use syntax::parse::token::special_idents;
@@ -265,8 +266,8 @@ enum RibKind {
               // parent;   method itself
     MethodRibKind(NodeId, MethodSort),
 
-    // We passed through a function *item* scope. Disallow upvars.
-    OpaqueFunctionRibKind,
+    // We passed through an item scope. Disallow upvars.
+    ItemRibKind,
 
     // We're in a constant item. Can't refer to dynamic stuff.
     ConstantItemRibKind
@@ -1599,7 +1600,7 @@ impl<'a> Resolver<'a> {
             }
         };
         if is_exported {
-            self.external_exports.insert(def_id_of_def(def));
+            self.external_exports.insert(def.def_id());
         }
         match def {
           DefMod(def_id) | DefForeignMod(def_id) | DefStruct(def_id) |
@@ -2438,7 +2439,7 @@ impl<'a> Resolver<'a> {
             Some(ref target) => {
                 let def = target.bindings.def_for_namespace(ValueNS).unwrap();
                 self.def_map.borrow_mut().insert(directive.id, def);
-                let did = def_id_of_def(def);
+                let did = def.def_id();
                 if value_used_public {Some(lp)} else {Some(DependsOn(did))}
             },
             // AllPublic here and below is a dummy value, it should never be used because
@@ -2449,7 +2450,7 @@ impl<'a> Resolver<'a> {
             Some(ref target) => {
                 let def = target.bindings.def_for_namespace(TypeNS).unwrap();
                 self.def_map.borrow_mut().insert(directive.id, def);
-                let did = def_id_of_def(def);
+                let did = def.def_id();
                 if type_used_public {Some(lp)} else {Some(DependsOn(did))}
             },
             None => None,
@@ -3307,10 +3308,10 @@ impl<'a> Resolver<'a> {
             Some(d) => {
                 let name = token::get_name(name);
                 debug!("(computing exports) YES: export '{}' => {:?}",
-                       name, def_id_of_def(d));
+                       name, d.def_id());
                 exports2.push(Export2 {
                     name: name.get().to_string(),
-                    def_id: def_id_of_def(d)
+                    def_id: d.def_id()
                 });
             }
             d_opt => {
@@ -3417,7 +3418,8 @@ impl<'a> Resolver<'a> {
                 def = d;
                 is_ty_param = false;
             }
-            DlDef(d @ DefTyParam(..)) => {
+            DlDef(d @ DefTyParam(..)) |
+            DlDef(d @ DefSelfTy(..)) => {
                 def = d;
                 is_ty_param = true;
             }
@@ -3434,10 +3436,10 @@ impl<'a> Resolver<'a> {
                 }
                 FunctionRibKind(function_id, body_id) => {
                     if !is_ty_param {
-                        def = DefUpvar(def_id_of_def(def).node,
-                                        @def,
-                                        function_id,
-                                        body_id);
+                        def = DefUpvar(def.def_id().node,
+                                       @def,
+                                       function_id,
+                                       body_id);
                     }
                 }
                 MethodRibKind(item_id, _) => {
@@ -3450,6 +3452,13 @@ impl<'a> Resolver<'a> {
                     } => {
                       // ok
                     }
+
+                    DefSelfTy(did) if {
+                        did == item_id
+                    } => {
+                      // ok
+                    }
+
                     _ => {
                     if !is_ty_param {
                         // This was an attempt to access an upvar inside a
@@ -3474,7 +3483,7 @@ impl<'a> Resolver<'a> {
                     }
                   }
                 }
-                OpaqueFunctionRibKind => {
+                ItemRibKind => {
                     if !is_ty_param {
                         // This was an attempt to access an upvar inside a
                         // named function item. This is not allowed, so we
@@ -3574,7 +3583,7 @@ impl<'a> Resolver<'a> {
                 self.with_type_parameter_rib(HasTypeParameters(generics,
                                                                item.id,
                                                                0,
-                                                               NormalRibKind),
+                                                               ItemRibKind),
                                              |this| {
                     visit::walk_item(this, item, ());
                 });
@@ -3584,7 +3593,7 @@ impl<'a> Resolver<'a> {
                 self.with_type_parameter_rib(HasTypeParameters(generics,
                                                                item.id,
                                                                0,
-                                                               NormalRibKind),
+                                                               ItemRibKind),
                                              |this| {
                     visit::walk_item(this, item, ());
                 });
@@ -3603,7 +3612,8 @@ impl<'a> Resolver<'a> {
 
             ItemTrait(ref generics, _, ref traits, ref methods) => {
                 // Create a new rib for the self type.
-                let self_type_rib = Rib::new(NormalRibKind);
+                let self_type_rib = Rib::new(ItemRibKind);
+
                 // plain insert (no renaming)
                 let name = self.type_self_ident.name;
                 self_type_rib.bindings.borrow_mut()
@@ -3685,7 +3695,7 @@ impl<'a> Resolver<'a> {
                                 this.with_type_parameter_rib(
                                     HasTypeParameters(
                                         generics, foreign_item.id, 0,
-                                        NormalRibKind),
+                                        ItemRibKind),
                                     |this| visit::walk_foreign_item(this,
                                                                 *foreign_item,
                                                                 ()));
@@ -3701,13 +3711,13 @@ impl<'a> Resolver<'a> {
             }
 
             ItemFn(fn_decl, _, _, ref generics, block) => {
-                self.resolve_function(OpaqueFunctionRibKind,
+                self.resolve_function(ItemRibKind,
                                       Some(fn_decl),
                                       HasTypeParameters
                                         (generics,
                                          item.id,
                                          0,
-                                         OpaqueFunctionRibKind),
+                                         ItemRibKind),
                                       block);
             }
 
@@ -3889,7 +3899,7 @@ impl<'a> Resolver<'a> {
         self.with_type_parameter_rib(HasTypeParameters(generics,
                                                        id,
                                                        0,
-                                                       OpaqueFunctionRibKind),
+                                                       ItemRibKind),
                                      |this| {
             // Resolve the type parameters.
             this.resolve_type_parameters(&generics.ty_params);
@@ -3967,7 +3977,7 @@ impl<'a> Resolver<'a> {
 
                 match self.def_map.borrow().find(&trait_ref.ref_id) {
                     Some(def) => {
-                        let did = def_id_of_def(*def);
+                        let did = def.def_id();
                         Some((did, trait_ref.clone()))
                     }
                     None => None
@@ -4638,7 +4648,7 @@ impl<'a> Resolver<'a> {
                         let p = child_name_bindings.defined_in_public_namespace(
                                         namespace);
                         let lp = if p {LastMod(AllPublic)} else {
-                            LastMod(DependsOn(def_id_of_def(def)))
+                            LastMod(DependsOn(def.def_id()))
                         };
                         return ChildNameDefinition(def, lp);
                     }
@@ -5118,7 +5128,7 @@ impl<'a> Resolver<'a> {
                                 self.value_ribs.borrow().iter().rev().advance(|rib| {
                                     let res = match *rib {
                                         Rib { bindings: _, kind: MethodRibKind(_, _) } => true,
-                                        Rib { bindings: _, kind: OpaqueFunctionRibKind } => false,
+                                        Rib { bindings: _, kind: ItemRibKind } => false,
                                         _ => return true, // Keep advancing
                                     };
 

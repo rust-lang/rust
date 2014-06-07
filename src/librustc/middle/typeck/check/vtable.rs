@@ -23,6 +23,7 @@ use middle::typeck::{vtable_origin, vtable_res, vtable_param_res};
 use middle::typeck::{vtable_static, vtable_param, impl_res};
 use middle::typeck::{param_numbered, param_self, param_index};
 use middle::typeck::MethodCall;
+use middle::subst;
 use middle::subst::Subst;
 use util::common::indenter;
 use util::ppaux;
@@ -73,15 +74,10 @@ impl<'a> VtableContext<'a> {
     pub fn tcx(&self) -> &'a ty::ctxt { self.infcx.tcx }
 }
 
-fn has_trait_bounds(type_param_defs: &[ty::TypeParameterDef]) -> bool {
-    type_param_defs.iter().any(
-        |type_param_def| !type_param_def.bounds.trait_bounds.is_empty())
-}
-
 fn lookup_vtables(vcx: &VtableContext,
                   span: Span,
                   type_param_defs: &[ty::TypeParameterDef],
-                  substs: &ty::substs,
+                  substs: &subst::Substs,
                   is_early: bool) -> vtable_res {
     debug!("lookup_vtables(span={:?}, \
             type_param_defs={}, \
@@ -118,7 +114,7 @@ fn lookup_vtables(vcx: &VtableContext,
 fn lookup_vtables_for_param(vcx: &VtableContext,
                             span: Span,
                             // None for substs means the identity
-                            substs: Option<&ty::substs>,
+                            substs: Option<&subst::Substs>,
                             type_param_bounds: &ty::ParamBounds,
                             ty: ty::t,
                             is_early: bool) -> vtable_param_res {
@@ -464,9 +460,9 @@ fn search_for_vtable(vcx: &VtableContext,
 fn fixup_substs(vcx: &VtableContext,
                 span: Span,
                 id: ast::DefId,
-                substs: ty::substs,
+                substs: subst::Substs,
                 is_early: bool)
-                -> Option<ty::substs> {
+                -> Option<subst::Substs> {
     let tcx = vcx.tcx();
     // use a dummy type just to package up the substs that need fixing up
     let t = ty::mk_trait(tcx,
@@ -503,7 +499,7 @@ fn fixup_ty(vcx: &VtableContext,
 
 fn connect_trait_tps(vcx: &VtableContext,
                      span: Span,
-                     impl_substs: &ty::substs,
+                     impl_substs: &subst::Substs,
                      trait_ref: Rc<ty::TraitRef>,
                      impl_did: ast::DefId) {
     let tcx = vcx.tcx();
@@ -566,7 +562,7 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
                       let vcx = fcx.vtable_context();
                       let target_trait_ref = Rc::new(ty::TraitRef {
                           def_id: target_def_id,
-                          substs: ty::substs {
+                          substs: subst::Substs {
                               tps: target_substs.tps.clone(),
                               regions: target_substs.regions.clone(),
                               self_ty: Some(typ)
@@ -631,20 +627,18 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
             debug!("vtable resolution on parameter bounds for expr {}",
                    ex.repr(fcx.tcx()));
             let def = cx.tcx.def_map.borrow().get_copy(&ex.id);
-            let did = ast_util::def_id_of_def(def);
+            let did = def.def_id();
             let item_ty = ty::lookup_item_type(cx.tcx, did);
             debug!("early resolve expr: def {:?} {:?}, {:?}, {}", ex.id, did, def,
                    fcx.infcx().ty_to_str(item_ty.ty));
-            if has_trait_bounds(item_ty.generics.type_param_defs()) {
-                debug!("early_resolve_expr: looking up vtables for type params {}",
-                       item_ty.generics.type_param_defs().repr(fcx.tcx()));
-                let vcx = fcx.vtable_context();
-                let vtbls = lookup_vtables(&vcx, ex.span,
-                                           item_ty.generics.type_param_defs(),
-                                           &item_substs.substs, is_early);
-                if !is_early {
-                    insert_vtables(fcx, MethodCall::expr(ex.id), vtbls);
-                }
+            debug!("early_resolve_expr: looking up vtables for type params {}",
+                   item_ty.generics.type_param_defs().repr(fcx.tcx()));
+            let vcx = fcx.vtable_context();
+            let vtbls = lookup_vtables(&vcx, ex.span,
+                                       item_ty.generics.type_param_defs(),
+                                       &item_substs.substs, is_early);
+            if !is_early {
+                insert_vtables(fcx, MethodCall::expr(ex.id), vtbls);
             }
         });
       }
@@ -657,19 +651,17 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
       ast::ExprMethodCall(_, _, _) => {
         match fcx.inh.method_map.borrow().find(&MethodCall::expr(ex.id)) {
           Some(method) => {
-            debug!("vtable resolution on parameter bounds for method call {}",
-                   ex.repr(fcx.tcx()));
-            let type_param_defs = ty::method_call_type_param_defs(cx.tcx, method.origin);
-            if has_trait_bounds(type_param_defs.as_slice()) {
-                let substs = fcx.method_ty_substs(ex.id);
-                let vcx = fcx.vtable_context();
-                let vtbls = lookup_vtables(&vcx, ex.span,
-                                           type_param_defs.as_slice(),
-                                           &substs, is_early);
-                if !is_early {
-                    insert_vtables(fcx, MethodCall::expr(ex.id), vtbls);
-                }
-            }
+              debug!("vtable resolution on parameter bounds for method call {}",
+                     ex.repr(fcx.tcx()));
+              let type_param_defs = ty::method_call_type_param_defs(cx.tcx, method.origin);
+              let substs = fcx.method_ty_substs(ex.id);
+              let vcx = fcx.vtable_context();
+              let vtbls = lookup_vtables(&vcx, ex.span,
+                                         type_param_defs.as_slice(),
+                                         &substs, is_early);
+              if !is_early {
+                  insert_vtables(fcx, MethodCall::expr(ex.id), vtbls);
+              }
           }
           None => {}
         }
@@ -695,15 +687,13 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
                                        ex.repr(fcx.tcx()));
                                 let type_param_defs =
                                     ty::method_call_type_param_defs(cx.tcx, method.origin);
-                                if has_trait_bounds(type_param_defs.deref().as_slice()) {
-                                    let vcx = fcx.vtable_context();
-                                    let vtbls = lookup_vtables(&vcx, ex.span,
-                                                               type_param_defs.deref()
-                                                               .as_slice(),
-                                                               &method.substs, is_early);
-                                    if !is_early {
-                                        insert_vtables(fcx, method_call, vtbls);
-                                    }
+                                let vcx = fcx.vtable_context();
+                                let vtbls = lookup_vtables(&vcx, ex.span,
+                                                           type_param_defs.deref()
+                                                           .as_slice(),
+                                                           &method.substs, is_early);
+                                if !is_early {
+                                    insert_vtables(fcx, method_call, vtbls);
                                 }
                             }
                             None => {}
@@ -799,23 +789,19 @@ pub fn resolve_impl(tcx: &ty::ctxt,
 /// Resolve vtables for a method call after typeck has finished.
 /// Used by trans to monomorphize artificial method callees (e.g. drop).
 pub fn trans_resolve_method(tcx: &ty::ctxt, id: ast::NodeId,
-                            substs: &ty::substs) -> Option<vtable_res> {
+                            substs: &subst::Substs) -> vtable_res {
     let generics = ty::lookup_item_type(tcx, ast_util::local_def(id)).generics;
     let type_param_defs = &*generics.type_param_defs;
-    if has_trait_bounds(type_param_defs.as_slice()) {
-        let vcx = VtableContext {
-            infcx: &infer::new_infer_ctxt(tcx),
-            param_env: &ty::construct_parameter_environment(tcx, None, [], [], [], [], id)
-        };
+    let vcx = VtableContext {
+        infcx: &infer::new_infer_ctxt(tcx),
+        param_env: &ty::construct_parameter_environment(tcx, None, [], [], [], [], id)
+    };
 
-        Some(lookup_vtables(&vcx,
-                            tcx.map.span(id),
-                            type_param_defs.as_slice(),
-                            substs,
-                            false))
-    } else {
-        None
-    }
+    lookup_vtables(&vcx,
+                   tcx.map.span(id),
+                   type_param_defs.as_slice(),
+                   substs,
+                   false)
 }
 
 impl<'a, 'b> visit::Visitor<()> for &'a FnCtxt<'b> {

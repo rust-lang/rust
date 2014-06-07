@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: missing `Self` type param in the substitution of `fn(Self)`
-
 trait Trait {
     fn outer(self) {
         fn inner(_: Self) {
+            //~^ ERROR can't use type parameters from outer function
+            //~^^ ERROR use of undeclared type name `Self`
         }
     }
 }
