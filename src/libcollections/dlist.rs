@@ -24,6 +24,7 @@
 use core::prelude::*;
 
 use alloc::owned::Box;
+use core::fmt;
 use core::iter;
 use core::mem;
 use core::ptr;
@@ -608,6 +609,19 @@ impl<A: Clone> Clone for DList<A> {
     }
 }
 
+impl<A: fmt::Show> fmt::Show for DList<A> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        try!(write!(f, "["));
+
+        for (i, e) in self.iter().enumerate() {
+            if i != 0 { try!(write!(f, ", ")); }
+            try!(write!(f, "{}", *e));
+        }
+
+        write!(f, "]")
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::prelude::*;
@@ -1025,6 +1039,17 @@ mod tests {
             fuzz_test(16);
             fuzz_test(189);
         }
+    }
+
+    #[test]
+    fn test_show() {
+        let list: DList<int> = range(0, 10).collect();
+        assert!(list.to_str().as_slice() == "[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]");
+
+        let list: DList<&str> = vec!["just", "one", "test", "more"].iter()
+                                                                   .map(|&s| s)
+                                                                   .collect();
+        assert!(list.to_str().as_slice() == "[just, one, test, more]");
     }
 
     #[cfg(test)]
