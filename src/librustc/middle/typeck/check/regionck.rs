@@ -432,7 +432,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
                 // function check_cast_for_escaping_regions() in kind.rs
                 // explaining how it goes about doing that.
 
-                let source_ty = rcx.fcx.expr_ty(expr);
+                let source_ty = rcx.resolve_node_type(expr.id);
                 constrain_regions_in_type(rcx, trait_region,
                                             infer::RelateObjectBound(expr.span), source_ty);
             }

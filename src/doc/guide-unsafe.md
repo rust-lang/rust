@@ -523,6 +523,7 @@ vectors provided from C, using idiomatic Rust practices.
 
 ```
 #![no_std]
+#![feature(globs)]
 
 # extern crate libc;
 extern crate core;

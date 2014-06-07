@@ -2181,7 +2181,7 @@ mod bench {
         let s = "ศไทย中华Việt Nam; Mary had a little lamb, Little lamb";
         let len = s.char_len();
 
-        b.iter(|| assert_eq!(s.chars().len(), len));
+        b.iter(|| assert_eq!(s.chars().count(), len));
     }
 
     #[bench]
@@ -2194,7 +2194,7 @@ mod bench {
         Mary had a little lamb, Little lamb";
         let len = s.char_len();
 
-        b.iter(|| assert_eq!(s.chars().len(), len));
+        b.iter(|| assert_eq!(s.chars().count(), len));
     }
 
     #[bench]
@@ -2202,7 +2202,7 @@ mod bench {
         let s = "ศไทย中华Việt Nam; Mary had a little lamb, Little lamb";
         let len = s.char_len();
 
-        b.iter(|| assert_eq!(s.chars().rev().len(), len));
+        b.iter(|| assert_eq!(s.chars().rev().count(), len));
     }
 
     #[bench]
@@ -2210,7 +2210,7 @@ mod bench {
         let s = "ศไทย中华Việt Nam; Mary had a little lamb, Little lamb";
         let len = s.char_len();
 
-        b.iter(|| assert_eq!(s.char_indices().len(), len));
+        b.iter(|| assert_eq!(s.char_indices().count(), len));
     }
 
     #[bench]
@@ -2218,14 +2218,14 @@ mod bench {
         let s = "ศไทย中华Việt Nam; Mary had a little lamb, Little lamb";
         let len = s.char_len();
 
-        b.iter(|| assert_eq!(s.char_indices().rev().len(), len));
+        b.iter(|| assert_eq!(s.char_indices().rev().count(), len));
     }
 
     #[bench]
     fn split_unicode_ascii(b: &mut Bencher) {
         let s = "ประเทศไทย中华Việt Namประเทศไทย中华Việt Nam";
 
-        b.iter(|| assert_eq!(s.split('V').len(), 3));
+        b.iter(|| assert_eq!(s.split('V').count(), 3));
     }
 
     #[bench]
@@ -2240,16 +2240,16 @@ mod bench {
         }
         let s = "ประเทศไทย中华Việt Namประเทศไทย中华Việt Nam";
 
-        b.iter(|| assert_eq!(s.split(NotAscii('V')).len(), 3));
+        b.iter(|| assert_eq!(s.split(NotAscii('V')).count(), 3));
     }
 
 
     #[bench]
     fn split_ascii(b: &mut Bencher) {
         let s = "Mary had a little lamb, Little lamb, little-lamb.";
-        let len = s.split(' ').len();
+        let len = s.split(' ').count();
 
-        b.iter(|| assert_eq!(s.split(' ').len(), len));
+        b.iter(|| assert_eq!(s.split(' ').count(), len));
     }
 
     #[bench]
@@ -2264,34 +2264,34 @@ mod bench {
             fn only_ascii(&self) -> bool { false }
         }
         let s = "Mary had a little lamb, Little lamb, little-lamb.";
-        let len = s.split(' ').len();
+        let len = s.split(' ').count();
 
-        b.iter(|| assert_eq!(s.split(NotAscii(' ')).len(), len));
+        b.iter(|| assert_eq!(s.split(NotAscii(' ')).count(), len));
     }
 
     #[bench]
     fn split_extern_fn(b: &mut Bencher) {
         let s = "Mary had a little lamb, Little lamb, little-lamb.";
-        let len = s.split(' ').len();
+        let len = s.split(' ').count();
         fn pred(c: char) -> bool { c == ' ' }
 
-        b.iter(|| assert_eq!(s.split(pred).len(), len));
+        b.iter(|| assert_eq!(s.split(pred).count(), len));
     }
 
     #[bench]
     fn split_closure(b: &mut Bencher) {
         let s = "Mary had a little lamb, Little lamb, little-lamb.";
-        let len = s.split(' ').len();
+        let len = s.split(' ').count();
 
-        b.iter(|| assert_eq!(s.split(|c: char| c == ' ').len(), len));
+        b.iter(|| assert_eq!(s.split(|c: char| c == ' ').count(), len));
     }
 
     #[bench]
     fn split_slice(b: &mut Bencher) {
         let s = "Mary had a little lamb, Little lamb, little-lamb.";
-        let len = s.split(' ').len();
+        let len = s.split(' ').count();
 
-        b.iter(|| assert_eq!(s.split(&[' ']).len(), len));
+        b.iter(|| assert_eq!(s.split(&[' ']).count(), len));
     }
 
     #[bench]

@@ -91,7 +91,6 @@ pub fn run(input: &str,
 
     let mut collector = Collector::new(krate.name.to_string(),
                                        libs,
-                                       false,
                                        false);
     collector.fold_crate(krate);
 
@@ -103,8 +102,8 @@ pub fn run(input: &str,
 }
 
 fn runtest(test: &str, cratename: &str, libs: HashSet<Path>, should_fail: bool,
-           no_run: bool, loose_feature_gating: bool) {
-    let test = maketest(test, cratename, loose_feature_gating);
+           no_run: bool) {
+    let test = maketest(test, Some(cratename), true);
     let input = driver::StrInput(test.to_string());
 
     let sessopts = config::Options {
@@ -201,29 +200,31 @@ fn runtest(test: &str, cratename: &str, libs: HashSet<Path>, should_fail: bool,
     }
 }
 
-fn maketest(s: &str, cratename: &str, loose_feature_gating: bool) -> String {
-    let mut prog = String::from_str(r"
+pub fn maketest(s: &str, cratename: Option<&str>, lints: bool) -> String {
+    let mut prog = String::new();
+    if lints {
+        prog.push_str(r"
 #![deny(warnings)]
 #![allow(unused_variable, dead_assignment, unused_mut, attribute_usage, dead_code)]
 ");
-
-    if loose_feature_gating {
-        // FIXME #12773: avoid inserting these when the tutorial & manual
-        // etc. have been updated to not use them so prolifically.
-        prog.push_str("#![feature(macro_rules, globs, struct_variant, managed_boxes) ]\n");
     }
 
     if !s.contains("extern crate") {
-        if s.contains(cratename) {
-            prog.push_str(format!("extern crate {};\n",
-                                  cratename).as_slice());
+        match cratename {
+            Some(cratename) => {
+                if s.contains(cratename) {
+                    prog.push_str(format!("extern crate {};\n",
+                                          cratename).as_slice());
+                }
+            }
+            None => {}
         }
     }
     if s.contains("fn main") {
         prog.push_str(s);
     } else {
-        prog.push_str("fn main() {\n");
-        prog.push_str(s);
+        prog.push_str("fn main() {\n    ");
+        prog.push_str(s.replace("\n", "\n    ").as_slice());
         prog.push_str("\n}");
     }
 
@@ -238,13 +239,11 @@ pub struct Collector {
     use_headers: bool,
     current_header: Option<String>,
     cratename: String,
-
-    loose_feature_gating: bool
 }
 
 impl Collector {
     pub fn new(cratename: String, libs: HashSet<Path>,
-               use_headers: bool, loose_feature_gating: bool) -> Collector {
+               use_headers: bool) -> Collector {
         Collector {
             tests: Vec::new(),
             names: Vec::new(),
@@ -253,8 +252,6 @@ impl Collector {
             use_headers: use_headers,
             current_header: None,
             cratename: cratename,
-
-            loose_feature_gating: loose_feature_gating
         }
     }
 
@@ -268,7 +265,6 @@ impl Collector {
         self.cnt += 1;
         let libs = self.libs.clone();
         let cratename = self.cratename.to_string();
-        let loose_feature_gating = self.loose_feature_gating;
         debug!("Creating test {}: {}", name, test);
         self.tests.push(testing::TestDescAndFn {
             desc: testing::TestDesc {
@@ -281,8 +277,7 @@ impl Collector {
                         cratename.as_slice(),
                         libs,
                         should_fail,
-                        no_run,
-                        loose_feature_gating);
+                        no_run);
             }),
         });
     }
