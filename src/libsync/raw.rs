@@ -18,6 +18,7 @@
 use std::kinds::marker;
 use std::mem;
 use std::sync::atomics;
+use std::ty::Unsafe;
 use std::finally::Finally;
 
 use mutex;
@@ -85,11 +86,8 @@ struct Sem<Q> {
     // n.b, we need Sem to be `Share`, but the WaitQueue type is not send/share
     //      (for good reason). We have an internal invariant on this semaphore,
     //      however, that the queue is never accessed outside of a locked
-    //      context. For this reason, we shove these behind a pointer which will
-    //      be inferred to be `Share`.
-    //
-    // FIXME: this requires an extra allocation, which is bad.
-    inner: *()
+    //      context.
+    inner: Unsafe<SemInner<Q>>
 }
 
 struct SemInner<Q> {
@@ -107,22 +105,20 @@ struct SemGuard<'a, Q> {
 
 impl<Q: Send> Sem<Q> {
     fn new(count: int, q: Q) -> Sem<Q> {
-        let inner = unsafe {
-            mem::transmute(box SemInner {
+        Sem {
+            lock: mutex::Mutex::new(),
+            inner: Unsafe::new(SemInner {
                 waiters: WaitQueue::new(),
                 count: count,
                 blocked: q,
             })
-        };
-        Sem {
-            lock: mutex::Mutex::new(),
-            inner: inner,
         }
     }
 
     unsafe fn with(&self, f: |&mut SemInner<Q>|) {
         let _g = self.lock.lock();
-        f(&mut *(self.inner as *mut SemInner<Q>))
+        // This &mut is safe because, due to the lock, we are the only one who can touch the data
+        f(&mut *self.inner.get())
     }
 
     pub fn acquire(&self) {
@@ -160,16 +156,6 @@ impl<Q: Send> Sem<Q> {
     pub fn access<'a>(&'a self) -> SemGuard<'a, Q> {
         self.acquire();
         SemGuard { sem: self }
-    }
-}
-
-#[unsafe_destructor]
-impl<Q: Send> Drop for Sem<Q> {
-    fn drop(&mut self) {
-        let _waiters: Box<SemInner<Q>> = unsafe {
-            mem::transmute(self.inner)
-        };
-        self.inner = 0 as *();
     }
 }
 
