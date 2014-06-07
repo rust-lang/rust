@@ -505,7 +505,6 @@ mod imp {
     use c_str::CString;
     use container::Container;
     use io::{IoResult, Writer};
-    use iter::Iterator;
     use libc;
     use mem;
     use ops::Drop;
