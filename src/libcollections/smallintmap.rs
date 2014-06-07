@@ -17,6 +17,7 @@
 
 use core::prelude::*;
 
+use core::fmt;
 use core::iter::{Enumerate, FilterMap};
 use core::mem::replace;
 
@@ -176,6 +177,18 @@ impl<V:Clone> SmallIntMap<V> {
     }
 }
 
+impl<V: fmt::Show> fmt::Show for SmallIntMap<V> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        try!(write!(f, r"\{"));
+
+        for (i, (k, v)) in self.iter().enumerate() {
+            if i != 0 { try!(write!(f, ", ")); }
+            try!(write!(f, "{}: {}", k, *v));
+        }
+
+        write!(f, r"\}")
+    }
+}
 
 macro_rules! iterator {
     (impl $name:ident -> $elem:ty, $getter:ident) => {
@@ -460,6 +473,20 @@ mod test_map {
         }
         assert!(called);
         m.insert(2, box 1);
+    }
+
+    #[test]
+    fn test_show() {
+        let mut map = SmallIntMap::new();
+        let empty = SmallIntMap::<int>::new();
+
+        map.insert(1, 2);
+        map.insert(3, 4);
+
+        let map_str = map.to_str();
+        let map_str = map_str.as_slice();
+        assert!(map_str == "{1: 2, 3: 4}" || map_str == "{3: 4, 1: 2}");
+        assert_eq!(format!("{}", empty), "{}".to_string());
     }
 }
 
