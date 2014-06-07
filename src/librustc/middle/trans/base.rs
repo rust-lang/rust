@@ -506,6 +506,7 @@ pub fn compare_scalar_types<'a>(
 
     match ty::get(t).sty {
         ty::ty_nil => f(nil_type),
+        ty::ty_bare_fn(_) |
         ty::ty_bool | ty::ty_ptr(_) |
         ty::ty_uint(_) | ty::ty_char => f(unsigned_int),
         ty::ty_int(_) => f(signed_int),

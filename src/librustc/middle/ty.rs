@@ -3994,6 +3994,7 @@ pub fn is_binopable(cx: &ctxt, ty: t, op: ast::BinOp) -> bool {
         Float,
         Bot,
         RawPtr,
+        Fn,
     }
     enum OpCat {
         Add = 0,
@@ -4041,6 +4042,7 @@ pub fn is_binopable(cx: &ctxt, ty: t, op: ast::BinOp) -> bool {
           ty_float(_) | ty_infer(FloatVar(_)) => Float,
           ty_bot => Bot,
           ty_ptr(_) => RawPtr,
+          ty_bare_fn(_) => Fn,
           _ => Other
         }
     }
@@ -4057,6 +4059,7 @@ pub fn is_binopable(cx: &ctxt, ty: t, op: ast::BinOp) -> bool {
     /*float*/   [t, t, t, f,     t,   t,  f,   f,     f],
     /*bot*/     [t, t, t, t,     t,   t,  t,   t,     t],
     /*raw ptr*/ [f, f, f, f,     t,   t,  f,   f,     f],
+    /*fn*/      [f, f, f, f,     f,   t,  f,   f,     f],
     ];
 
     return tbl[tycat(cx, ty) as uint ][opcat(op) as uint];
