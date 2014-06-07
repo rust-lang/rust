@@ -98,6 +98,20 @@ macro_rules! try(
     ($e:expr) => (match $e { Ok(e) => e, Err(e) => return Err(e) })
 )
 
+/// Writing a formatted string into a writer
+#[macro_export]
+macro_rules! write(
+    ($dst:expr, $($arg:tt)*) => (format_args_method!($dst, write_fmt, $($arg)*))
+)
+
+/// Writing a formatted string plus a newline into a writer
+#[macro_export]
+macro_rules! writeln(
+    ($dst:expr, $fmt:expr $($arg:tt)*) => (
+        write!($dst, concat!($fmt, "\n") $($arg)*)
+    )
+)
+
 #[cfg(test)]
 macro_rules! vec( ($($e:expr),*) => ({
     let mut _v = ::std::vec::Vec::new();

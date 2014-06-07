@@ -10,11 +10,10 @@
 
 use libc::c_int;
 use libc;
-use std::io::IoError;
-use std::io::process;
 use std::ptr;
 use std::c_str::CString;
-use std::rt::rtio::{ProcessConfig, RtioProcess};
+use std::rt::rtio;
+use std::rt::rtio::IoResult;
 use std::rt::task::BlockedTask;
 
 use homing::{HomingIO, HomeHandle};
@@ -33,7 +32,7 @@ pub struct Process {
     to_wake: Option<BlockedTask>,
 
     /// Collected from the exit_cb
-    exit_status: Option<process::ProcessExit>,
+    exit_status: Option<rtio::ProcessExit>,
 
     /// Lazily initialized timeout timer
     timer: Option<Box<TimerWatcher>>,
@@ -51,7 +50,7 @@ impl Process {
     ///
     /// Returns either the corresponding process object or an error which
     /// occurred.
-    pub fn spawn(io_loop: &mut UvIoFactory, cfg: ProcessConfig)
+    pub fn spawn(io_loop: &mut UvIoFactory, cfg: rtio::ProcessConfig)
                 -> Result<(Box<Process>, Vec<Option<PipeWatcher>>), UvError> {
         let mut io = vec![cfg.stdin, cfg.stdout, cfg.stderr];
         for slot in cfg.extra_io.iter() {
@@ -137,8 +136,8 @@ extern fn on_exit(handle: *uvll::uv_process_t,
 
     assert!(p.exit_status.is_none());
     p.exit_status = Some(match term_signal {
-        0 => process::ExitStatus(exit_status as int),
-        n => process::ExitSignal(n as int),
+        0 => rtio::ExitStatus(exit_status as int),
+        n => rtio::ExitSignal(n as int),
     });
 
     if p.to_wake.is_none() { return }
@@ -146,19 +145,19 @@ extern fn on_exit(handle: *uvll::uv_process_t,
 }
 
 unsafe fn set_stdio(dst: *uvll::uv_stdio_container_t,
-                    io: &process::StdioContainer,
+                    io: &rtio::StdioContainer,
                     io_loop: &mut UvIoFactory) -> Option<PipeWatcher> {
     match *io {
-        process::Ignored => {
+        rtio::Ignored => {
             uvll::set_stdio_container_flags(dst, uvll::STDIO_IGNORE);
             None
         }
-        process::InheritFd(fd) => {
+        rtio::InheritFd(fd) => {
             uvll::set_stdio_container_flags(dst, uvll::STDIO_INHERIT_FD);
             uvll::set_stdio_container_fd(dst, fd);
             None
         }
-        process::CreatePipe(readable, writable) => {
+        rtio::CreatePipe(readable, writable) => {
             let mut flags = uvll::STDIO_CREATE_PIPE as libc::c_int;
             if readable {
                 flags |= uvll::STDIO_READABLE_PIPE as libc::c_int;
@@ -231,12 +230,12 @@ impl UvHandle<uvll::uv_process_t> for Process {
     fn uv_handle(&self) -> *uvll::uv_process_t { self.handle }
 }
 
-impl RtioProcess for Process {
+impl rtio::RtioProcess for Process {
     fn id(&self) -> libc::pid_t {
         unsafe { uvll::process_pid(self.handle) as libc::pid_t }
     }
 
-    fn kill(&mut self, signal: int) -> Result<(), IoError> {
+    fn kill(&mut self, signal: int) -> IoResult<()> {
         let _m = self.fire_homing_missile();
         match unsafe {
             uvll::uv_process_kill(self.handle, signal as libc::c_int)
@@ -246,7 +245,7 @@ impl RtioProcess for Process {
         }
     }
 
-    fn wait(&mut self) -> Result<process::ProcessExit, IoError> {
+    fn wait(&mut self) -> IoResult<rtio::ProcessExit> {
         // Make sure (on the home scheduler) that we have an exit status listed
         let _m = self.fire_homing_missile();
         match self.exit_status {

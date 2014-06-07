@@ -17,15 +17,13 @@
 use std::any::Any;
 use std::mem;
 use std::rt::bookkeeping;
-use std::rt::env;
 use std::rt::local::Local;
+use std::rt::mutex::NativeMutex;
 use std::rt::rtio;
 use std::rt::stack;
-use std::rt::task::{Task, BlockedTask, SendMessage};
+use std::rt::task::{Task, BlockedTask, TaskOpts};
 use std::rt::thread::Thread;
 use std::rt;
-use std::task::TaskOpts;
-use std::unstable::mutex::NativeMutex;
 
 use io;
 use task;
@@ -51,27 +49,19 @@ fn ops() -> Box<Ops> {
 
 /// Spawns a function with the default configuration
 pub fn spawn(f: proc():Send) {
-    spawn_opts(TaskOpts::new(), f)
+    spawn_opts(TaskOpts { name: None, stack_size: None, on_exit: None }, f)
 }
 
 /// Spawns a new task given the configuration options and a procedure to run
 /// inside the task.
 pub fn spawn_opts(opts: TaskOpts, f: proc():Send) {
-    let TaskOpts {
-        notify_chan, name, stack_size,
-        stderr, stdout,
-    } = opts;
+    let TaskOpts { name, stack_size, on_exit } = opts;
 
     let mut task = box Task::new();
     task.name = name;
-    task.stderr = stderr;
-    task.stdout = stdout;
-    match notify_chan {
-        Some(chan) => { task.death.on_exit = Some(SendMessage(chan)); }
-        None => {}
-    }
+    task.death.on_exit = on_exit;
 
-    let stack = stack_size.unwrap_or(env::min_stack());
+    let stack = stack_size.unwrap_or(rt::min_stack());
     let task = task;
     let ops = ops();
 
@@ -267,9 +257,8 @@ impl rt::Runtime for Ops {
 #[cfg(test)]
 mod tests {
     use std::rt::local::Local;
-    use std::rt::task::Task;
+    use std::rt::task::{Task, TaskOpts};
     use std::task;
-    use std::task::TaskOpts;
     use super::{spawn, spawn_opts, Ops};
 
     #[test]
@@ -297,7 +286,7 @@ mod tests {
         opts.name = Some("test".into_maybe_owned());
         opts.stack_size = Some(20 * 4096);
         let (tx, rx) = channel();
-        opts.notify_chan = Some(tx);
+        opts.on_exit = Some(proc(r) tx.send(r));
         spawn_opts(opts, proc() {});
         assert!(rx.recv().is_ok());
     }
@@ -306,7 +295,7 @@ mod tests {
     fn smoke_opts_fail() {
         let mut opts = TaskOpts::new();
         let (tx, rx) = channel();
-        opts.notify_chan = Some(tx);
+        opts.on_exit = Some(proc(r) tx.send(r));
         spawn_opts(opts, proc() { fail!() });
         assert!(rx.recv().is_err());
     }

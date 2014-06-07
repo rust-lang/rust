@@ -13,30 +13,24 @@
 //! local storage, and logging. Even a 'freestanding' Rust would likely want
 //! to implement this.
 
-use alloc::arc::Arc;
+use core::prelude::*;
 
-use cleanup;
-use clone::Clone;
-use comm::Sender;
-use io::Writer;
-use iter::{Iterator, Take};
-use kinds::Send;
+use alloc::arc::Arc;
+use alloc::owned::{AnyOwnExt, Box};
+use core::any::Any;
+use core::atomics::{AtomicUint, SeqCst};
+use core::finally::Finally;
+use core::iter::Take;
+use core::mem;
+use core::raw;
+
 use local_data;
-use mem;
-use ops::Drop;
-use option::{Option, Some, None};
-use owned::{AnyOwnExt, Box};
-use prelude::drop;
-use result::{Result, Ok, Err};
-use rt::Runtime;
-use rt::local::Local;
-use rt::local_heap::LocalHeap;
-use rt::rtio::LocalIo;
-use rt::unwind::Unwinder;
-use str::SendStr;
-use sync::atomics::{AtomicUint, SeqCst};
-use task::{TaskResult, TaskOpts};
-use finally::Finally;
+use Runtime;
+use local::Local;
+use local_heap::LocalHeap;
+use rtio::LocalIo;
+use unwind::Unwinder;
+use collections::str::SendStr;
 
 /// The Task struct represents all state associated with a rust
 /// task. There are at this point two primary "subtypes" of task,
@@ -52,11 +46,25 @@ pub struct Task {
     pub destroyed: bool,
     pub name: Option<SendStr>,
 
-    pub stdout: Option<Box<Writer:Send>>,
-    pub stderr: Option<Box<Writer:Send>>,
-
     imp: Option<Box<Runtime:Send>>,
 }
+
+pub struct TaskOpts {
+    /// Invoke this procedure with the result of the task when it finishes.
+    pub on_exit: Option<proc(Result):Send>,
+    /// A name for the task-to-be, for identification in failure messages
+    pub name: Option<SendStr>,
+    /// The size of the stack for the spawned task
+    pub stack_size: Option<uint>,
+}
+
+/// Indicates the manner in which a task exited.
+///
+/// A task that completes without failing is considered to exit successfully.
+///
+/// If you wish for this result's delivery to block until all
+/// children tasks complete, recommend using a result future.
+pub type Result = ::core::result::Result<(), Box<Any:Send>>;
 
 pub struct GarbageCollector;
 pub struct LocalStorage(pub Option<local_data::Map>);
@@ -69,17 +77,9 @@ pub enum BlockedTask {
     Shared(Arc<AtomicUint>),
 }
 
-pub enum DeathAction {
-    /// Action to be done with the exit code. If set, also makes the task wait
-    /// until all its watched children exit before collecting the status.
-    Execute(proc(TaskResult):Send),
-    /// A channel to send the result of the task on when the task exits
-    SendMessage(Sender<TaskResult>),
-}
-
 /// Per-task state related to task death, killing, failure, etc.
 pub struct Death {
-    pub on_exit: Option<DeathAction>,
+    pub on_exit: Option<proc(Result):Send>,
 }
 
 pub struct BlockedTasks {
@@ -96,8 +96,6 @@ impl Task {
             death: Death::new(),
             destroyed: false,
             name: None,
-            stdout: None,
-            stderr: None,
             imp: None,
         }
     }
@@ -126,20 +124,6 @@ impl Task {
 
             // Run the task main function, then do some cleanup.
             f.finally(|| {
-                #[allow(unused_must_use)]
-                fn close_outputs() {
-                    let mut task = Local::borrow(None::<Task>);
-                    let stderr = task.stderr.take();
-                    let stdout = task.stdout.take();
-                    drop(task);
-                    match stdout { Some(mut w) => { w.flush(); }, None => {} }
-                    match stderr { Some(mut w) => { w.flush(); }, None => {} }
-                }
-
-                // First, flush/destroy the user stdout/logger because these
-                // destructors can run arbitrary code.
-                close_outputs();
-
                 // First, destroy task-local storage. This may run user dtors.
                 //
                 // FIXME #8302: Dear diary. I'm so tired and confused.
@@ -159,23 +143,19 @@ impl Task {
                 // TLS, or possibly some destructors for those objects being
                 // annihilated invoke TLS. Sadly these two operations seemed to
                 // be intertwined, and miraculously work for now...
-                let mut task = Local::borrow(None::<Task>);
-                let storage_map = {
+                drop({
+                    let mut task = Local::borrow(None::<Task>);
                     let &LocalStorage(ref mut optmap) = &mut task.storage;
                     optmap.take()
-                };
-                drop(task);
-                drop(storage_map);
+                });
 
                 // Destroy remaining boxes. Also may run user dtors.
-                unsafe { cleanup::annihilate(); }
-
-                // Finally, just in case user dtors printed/logged during TLS
-                // cleanup and annihilation, re-destroy stdout and the logger.
-                // Note that these will have been initialized with a
-                // runtime-provided type which we have control over what the
-                // destructor does.
-                close_outputs();
+                let mut heap = {
+                    let mut task = Local::borrow(None::<Task>);
+                    mem::replace(&mut task.heap, LocalHeap::new())
+                };
+                unsafe { heap.annihilate() }
+                drop(heap);
             })
         };
 
@@ -222,13 +202,16 @@ impl Task {
         //      crops up.
         unsafe {
             let imp = self.imp.take_unwrap();
-            let &(vtable, _): &(uint, uint) = mem::transmute(&imp);
+            let vtable = mem::transmute::<_, &raw::TraitObject>(&imp).vtable;
             match imp.wrap().move::<T>() {
                 Ok(t) => Some(t),
                 Err(t) => {
-                    let (_, obj): (uint, uint) = mem::transmute(t);
+                    let data = mem::transmute::<_, raw::TraitObject>(t).data;
                     let obj: Box<Runtime:Send> =
-                        mem::transmute((vtable, obj));
+                        mem::transmute(raw::TraitObject {
+                            vtable: vtable,
+                            data: data,
+                        });
                     self.put_runtime(obj);
                     None
                 }
@@ -247,7 +230,7 @@ impl Task {
     /// recommended to use this function directly, but rather communication
     /// primitives in `std::comm` should be used.
     pub fn deschedule(mut ~self, amt: uint,
-                      f: |BlockedTask| -> Result<(), BlockedTask>) {
+                      f: |BlockedTask| -> ::core::result::Result<(), BlockedTask>) {
         let ops = self.imp.take_unwrap();
         ops.deschedule(amt, self, f)
     }
@@ -300,6 +283,12 @@ impl Drop for Task {
     fn drop(&mut self) {
         rtdebug!("called drop for a task: {}", self as *mut Task as uint);
         rtassert!(self.destroyed);
+    }
+}
+
+impl TaskOpts {
+    pub fn new() -> TaskOpts {
+        TaskOpts { on_exit: None, name: None, stack_size: None }
     }
 }
 
@@ -389,10 +378,9 @@ impl Death {
     }
 
     /// Collect failure exit codes from children and propagate them to a parent.
-    pub fn collect_failure(&mut self, result: TaskResult) {
+    pub fn collect_failure(&mut self, result: Result) {
         match self.on_exit.take() {
-            Some(Execute(f)) => f(result),
-            Some(SendMessage(ch)) => { let _ = ch.send_opt(result); }
+            Some(f) => f(result),
             None => {}
         }
     }
@@ -407,8 +395,8 @@ impl Drop for Death {
 #[cfg(test)]
 mod test {
     use super::*;
-    use prelude::*;
-    use task;
+    use std::prelude::*;
+    use std::task;
 
     #[test]
     fn local_heap() {
@@ -440,14 +428,9 @@ mod test {
 
     #[test]
     fn rng() {
-        use rand::{StdRng, Rng};
+        use std::rand::{StdRng, Rng};
         let mut r = StdRng::new().ok().unwrap();
         let _ = r.next_u32();
-    }
-
-    #[test]
-    fn logging() {
-        info!("here i am. logging in a newsched task");
     }
 
     #[test]
@@ -466,8 +449,7 @@ mod test {
 
     #[test]
     fn heap_cycles() {
-        use cell::RefCell;
-        use option::{Option, Some, None};
+        use std::cell::RefCell;
 
         struct List {
             next: Option<@RefCell<List>>,
@@ -485,7 +467,7 @@ mod test {
     #[test]
     #[should_fail]
     fn test_begin_unwind() {
-        use rt::unwind::begin_unwind;
+        use std::rt::unwind::begin_unwind;
         begin_unwind("cause", file!(), line!())
     }
 

@@ -33,12 +33,11 @@ pub static RED_ZONE: uint = 20 * 1024;
 #[cfg(not(test))] // in testing, use the original libstd's version
 #[lang = "stack_exhausted"]
 extern fn stack_exhausted() {
-    use option::{Option, None, Some};
-    use owned::Box;
-    use rt::local::Local;
-    use rt::task::Task;
-    use str::Str;
-    use intrinsics;
+    use core::prelude::*;
+    use alloc::owned::Box;
+    use local::Local;
+    use task::Task;
+    use core::intrinsics;
 
     unsafe {
         // We're calling this function because the stack just ran out. We need

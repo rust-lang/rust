@@ -9,8 +9,7 @@
 // except according to those terms.
 
 use libc::c_int;
-use std::io::signal::Signum;
-use std::rt::rtio::RtioSignal;
+use std::rt::rtio::{RtioSignal, Callback};
 
 use homing::{HomingIO, HomeHandle};
 use super::{UvError, UvHandle};
@@ -21,18 +20,16 @@ pub struct SignalWatcher {
     handle: *uvll::uv_signal_t,
     home: HomeHandle,
 
-    channel: Sender<Signum>,
-    signal: Signum,
+    cb: Box<Callback:Send>,
 }
 
 impl SignalWatcher {
-    pub fn new(io: &mut UvIoFactory, signum: Signum, channel: Sender<Signum>)
+    pub fn new(io: &mut UvIoFactory, signum: int, cb: Box<Callback:Send>)
                -> Result<Box<SignalWatcher>, UvError> {
         let s = box SignalWatcher {
             handle: UvHandle::alloc(None::<SignalWatcher>, uvll::UV_SIGNAL),
             home: io.make_handle(),
-            channel: channel,
-            signal: signum,
+            cb: cb,
         };
         assert_eq!(unsafe {
             uvll::uv_signal_init(io.uv_loop(), s.handle)
@@ -48,10 +45,9 @@ impl SignalWatcher {
     }
 }
 
-extern fn signal_cb(handle: *uvll::uv_signal_t, signum: c_int) {
+extern fn signal_cb(handle: *uvll::uv_signal_t, _signum: c_int) {
     let s: &mut SignalWatcher = unsafe { UvHandle::from_uv_handle(&handle) };
-    assert_eq!(signum as int, s.signal as int);
-    let _ = s.channel.send_opt(s.signal);
+    let _ = s.cb.call();
 }
 
 impl HomingIO for SignalWatcher {
@@ -68,27 +64,5 @@ impl Drop for SignalWatcher {
     fn drop(&mut self) {
         let _m = self.fire_homing_missile();
         self.close();
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::super::local_loop;
-    use std::io::signal;
-    use super::SignalWatcher;
-
-    #[test]
-    fn closing_channel_during_drop_doesnt_kill_everything() {
-        // see issue #10375, relates to timers as well.
-        let (tx, rx) = channel();
-        let _signal = SignalWatcher::new(local_loop(), signal::Interrupt,
-                                         tx);
-
-        spawn(proc() {
-            let _ = rx.recv_opt();
-        });
-
-        // when we drop the SignalWatcher we're going to destroy the channel,
-        // which must wake up the task on the other end
     }
 }

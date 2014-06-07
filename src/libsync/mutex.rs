@@ -64,7 +64,7 @@ use std::rt::task::{BlockedTask, Task};
 use std::rt::thread::Thread;
 use std::sync::atomics;
 use std::ty::Unsafe;
-use std::unstable::mutex;
+use std::rt::mutex;
 
 use q = mpsc_intrusive;
 

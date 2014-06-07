@@ -10,13 +10,12 @@
 
 use alloc::arc::Arc;
 use libc;
-use std::io::net::ip;
-use std::io;
 use std::mem;
+use std::rt::mutex;
 use std::rt::rtio;
-use std::unstable::mutex;
+use std::rt::rtio::{IoResult, IoError};
 
-use super::{IoResult, retry, keep_going};
+use super::{retry, keep_going};
 use super::c;
 use super::util;
 
@@ -39,9 +38,9 @@ enum InAddr {
     In6Addr(libc::in6_addr),
 }
 
-fn ip_to_inaddr(ip: ip::IpAddr) -> InAddr {
+fn ip_to_inaddr(ip: rtio::IpAddr) -> InAddr {
     match ip {
-        ip::Ipv4Addr(a, b, c, d) => {
+        rtio::Ipv4Addr(a, b, c, d) => {
             let ip = (a as u32 << 24) |
                      (b as u32 << 16) |
                      (c as u32 <<  8) |
@@ -50,7 +49,7 @@ fn ip_to_inaddr(ip: ip::IpAddr) -> InAddr {
                 s_addr: mem::from_be32(ip)
             })
         }
-        ip::Ipv6Addr(a, b, c, d, e, f, g, h) => {
+        rtio::Ipv6Addr(a, b, c, d, e, f, g, h) => {
             In6Addr(libc::in6_addr {
                 s6_addr: [
                     htons(a),
@@ -67,7 +66,7 @@ fn ip_to_inaddr(ip: ip::IpAddr) -> InAddr {
     }
 }
 
-fn addr_to_sockaddr(addr: ip::SocketAddr) -> (libc::sockaddr_storage, uint) {
+fn addr_to_sockaddr(addr: rtio::SocketAddr) -> (libc::sockaddr_storage, uint) {
     unsafe {
         let storage: libc::sockaddr_storage = mem::zeroed();
         let len = match ip_to_inaddr(addr.ip) {
@@ -90,11 +89,11 @@ fn addr_to_sockaddr(addr: ip::SocketAddr) -> (libc::sockaddr_storage, uint) {
     }
 }
 
-fn socket(addr: ip::SocketAddr, ty: libc::c_int) -> IoResult<sock_t> {
+fn socket(addr: rtio::SocketAddr, ty: libc::c_int) -> IoResult<sock_t> {
     unsafe {
         let fam = match addr.ip {
-            ip::Ipv4Addr(..) => libc::AF_INET,
-            ip::Ipv6Addr(..) => libc::AF_INET6,
+            rtio::Ipv4Addr(..) => libc::AF_INET,
+            rtio::Ipv6Addr(..) => libc::AF_INET6,
         };
         match libc::socket(fam, ty, 0) {
             -1 => Err(super::last_error()),
@@ -136,12 +135,18 @@ pub fn getsockopt<T: Copy>(fd: sock_t, opt: libc::c_int,
 }
 
 #[cfg(windows)]
-fn last_error() -> io::IoError {
-    io::IoError::from_errno(unsafe { c::WSAGetLastError() } as uint, true)
+pub fn last_error() -> IoError {
+    use std::os;
+    let code = unsafe { c::WSAGetLastError() as uint };
+    IoError {
+        code: code,
+        extra: 0,
+        detail: Some(os::error_string(code)),
+    }
 }
 
 #[cfg(not(windows))]
-fn last_error() -> io::IoError {
+fn last_error() -> IoError {
     super::last_error()
 }
 
@@ -151,7 +156,7 @@ fn last_error() -> io::IoError {
 fn sockname(fd: sock_t,
             f: unsafe extern "system" fn(sock_t, *mut libc::sockaddr,
                                          *mut libc::socklen_t) -> libc::c_int)
-    -> IoResult<ip::SocketAddr>
+    -> IoResult<rtio::SocketAddr>
 {
     let mut storage: libc::sockaddr_storage = unsafe { mem::zeroed() };
     let mut len = mem::size_of::<libc::sockaddr_storage>() as libc::socklen_t;
@@ -168,7 +173,7 @@ fn sockname(fd: sock_t,
 }
 
 pub fn sockaddr_to_addr(storage: &libc::sockaddr_storage,
-                        len: uint) -> IoResult<ip::SocketAddr> {
+                        len: uint) -> IoResult<rtio::SocketAddr> {
     match storage.ss_family as libc::c_int {
         libc::AF_INET => {
             assert!(len as uint >= mem::size_of::<libc::sockaddr_in>());
@@ -180,8 +185,8 @@ pub fn sockaddr_to_addr(storage: &libc::sockaddr_storage,
             let b = (ip >> 16) as u8;
             let c = (ip >>  8) as u8;
             let d = (ip >>  0) as u8;
-            Ok(ip::SocketAddr {
-                ip: ip::Ipv4Addr(a, b, c, d),
+            Ok(rtio::SocketAddr {
+                ip: rtio::Ipv4Addr(a, b, c, d),
                 port: ntohs(storage.sin_port),
             })
         }
@@ -198,13 +203,19 @@ pub fn sockaddr_to_addr(storage: &libc::sockaddr_storage,
             let f = ntohs(storage.sin6_addr.s6_addr[5]);
             let g = ntohs(storage.sin6_addr.s6_addr[6]);
             let h = ntohs(storage.sin6_addr.s6_addr[7]);
-            Ok(ip::SocketAddr {
-                ip: ip::Ipv6Addr(a, b, c, d, e, f, g, h),
+            Ok(rtio::SocketAddr {
+                ip: rtio::Ipv6Addr(a, b, c, d, e, f, g, h),
                 port: ntohs(storage.sin6_port),
             })
         }
         _ => {
-            Err(io::standard_error(io::OtherIoError))
+            #[cfg(unix)] use ERROR = libc::EINVAL;
+            #[cfg(windows)] use ERROR = libc::WSAEINVAL;
+            Err(IoError {
+                code: ERROR as uint,
+                extra: 0,
+                detail: None,
+            })
         }
     }
 }
@@ -216,7 +227,7 @@ pub fn init() {}
 pub fn init() {
 
     unsafe {
-        use std::unstable::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
+        use std::rt::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
         static mut INITIALIZED: bool = false;
         static mut LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;
 
@@ -258,7 +269,7 @@ impl Inner {
 }
 
 impl TcpStream {
-    pub fn connect(addr: ip::SocketAddr,
+    pub fn connect(addr: rtio::SocketAddr,
                    timeout: Option<u64>) -> IoResult<TcpStream> {
         let fd = try!(socket(addr, libc::SOCK_STREAM));
         let ret = TcpStream::new(Inner::new(fd));
@@ -366,7 +377,7 @@ impl rtio::RtioTcpStream for TcpStream {
             Err(e) => Err(e)
         }
     }
-    fn peer_name(&mut self) -> IoResult<ip::SocketAddr> {
+    fn peer_name(&mut self) -> IoResult<rtio::SocketAddr> {
         sockname(self.fd(), libc::getpeername)
     }
     fn control_congestion(&mut self) -> IoResult<()> {
@@ -411,7 +422,7 @@ impl rtio::RtioTcpStream for TcpStream {
 }
 
 impl rtio::RtioSocket for TcpStream {
-    fn socket_name(&mut self) -> IoResult<ip::SocketAddr> {
+    fn socket_name(&mut self) -> IoResult<rtio::SocketAddr> {
         sockname(self.fd(), libc::getsockname)
     }
 }
@@ -436,7 +447,7 @@ pub struct TcpListener {
 }
 
 impl TcpListener {
-    pub fn bind(addr: ip::SocketAddr) -> IoResult<TcpListener> {
+    pub fn bind(addr: rtio::SocketAddr) -> IoResult<TcpListener> {
         let fd = try!(socket(addr, libc::SOCK_STREAM));
         let ret = TcpListener { inner: Inner::new(fd) };
 
@@ -477,7 +488,7 @@ impl rtio::RtioTcpListener for TcpListener {
 }
 
 impl rtio::RtioSocket for TcpListener {
-    fn socket_name(&mut self) -> IoResult<ip::SocketAddr> {
+    fn socket_name(&mut self) -> IoResult<rtio::SocketAddr> {
         sockname(self.fd(), libc::getsockname)
     }
 }
@@ -512,7 +523,7 @@ impl TcpAcceptor {
 }
 
 impl rtio::RtioSocket for TcpAcceptor {
-    fn socket_name(&mut self) -> IoResult<ip::SocketAddr> {
+    fn socket_name(&mut self) -> IoResult<rtio::SocketAddr> {
         sockname(self.fd(), libc::getsockname)
     }
 }
@@ -540,7 +551,7 @@ pub struct UdpSocket {
 }
 
 impl UdpSocket {
-    pub fn bind(addr: ip::SocketAddr) -> IoResult<UdpSocket> {
+    pub fn bind(addr: rtio::SocketAddr) -> IoResult<UdpSocket> {
         let fd = try!(socket(addr, libc::SOCK_DGRAM));
         let ret = UdpSocket {
             inner: Arc::new(Inner::new(fd)),
@@ -570,7 +581,7 @@ impl UdpSocket {
                    on as libc::c_int)
     }
 
-    pub fn set_membership(&mut self, addr: ip::IpAddr,
+    pub fn set_membership(&mut self, addr: rtio::IpAddr,
                           opt: libc::c_int) -> IoResult<()> {
         match ip_to_inaddr(addr) {
             InAddr(addr) => {
@@ -606,7 +617,7 @@ impl UdpSocket {
 }
 
 impl rtio::RtioSocket for UdpSocket {
-    fn socket_name(&mut self) -> IoResult<ip::SocketAddr> {
+    fn socket_name(&mut self) -> IoResult<rtio::SocketAddr> {
         sockname(self.fd(), libc::getsockname)
     }
 }
@@ -615,7 +626,7 @@ impl rtio::RtioSocket for UdpSocket {
 #[cfg(unix)]    type msglen_t = libc::size_t;
 
 impl rtio::RtioUdpSocket for UdpSocket {
-    fn recvfrom(&mut self, buf: &mut [u8]) -> IoResult<(uint, ip::SocketAddr)> {
+    fn recvfrom(&mut self, buf: &mut [u8]) -> IoResult<(uint, rtio::SocketAddr)> {
         let fd = self.fd();
         let mut storage: libc::sockaddr_storage = unsafe { mem::zeroed() };
         let storagep = &mut storage as *mut _ as *mut libc::sockaddr;
@@ -638,7 +649,7 @@ impl rtio::RtioUdpSocket for UdpSocket {
         })
     }
 
-    fn sendto(&mut self, buf: &[u8], dst: ip::SocketAddr) -> IoResult<()> {
+    fn sendto(&mut self, buf: &[u8], dst: rtio::SocketAddr) -> IoResult<()> {
         let (dst, dstlen) = addr_to_sockaddr(dst);
         let dstp = &dst as *_ as *libc::sockaddr;
         let dstlen = dstlen as libc::socklen_t;
@@ -657,32 +668,28 @@ impl rtio::RtioUdpSocket for UdpSocket {
 
         let n = try!(write(fd, self.write_deadline, buf, false, dolock, dowrite));
         if n != buf.len() {
-            Err(io::IoError {
-                kind: io::ShortWrite(n),
-                desc: "couldn't send entire packet at once",
-                detail: None,
-            })
+            Err(util::short_write(n, "couldn't send entire packet at once"))
         } else {
             Ok(())
         }
     }
 
-    fn join_multicast(&mut self, multi: ip::IpAddr) -> IoResult<()> {
+    fn join_multicast(&mut self, multi: rtio::IpAddr) -> IoResult<()> {
         match multi {
-            ip::Ipv4Addr(..) => {
+            rtio::Ipv4Addr(..) => {
                 self.set_membership(multi, libc::IP_ADD_MEMBERSHIP)
             }
-            ip::Ipv6Addr(..) => {
+            rtio::Ipv6Addr(..) => {
                 self.set_membership(multi, libc::IPV6_ADD_MEMBERSHIP)
             }
         }
     }
-    fn leave_multicast(&mut self, multi: ip::IpAddr) -> IoResult<()> {
+    fn leave_multicast(&mut self, multi: rtio::IpAddr) -> IoResult<()> {
         match multi {
-            ip::Ipv4Addr(..) => {
+            rtio::Ipv4Addr(..) => {
                 self.set_membership(multi, libc::IP_DROP_MEMBERSHIP)
             }
-            ip::Ipv6Addr(..) => {
+            rtio::Ipv6Addr(..) => {
                 self.set_membership(multi, libc::IPV6_DROP_MEMBERSHIP)
             }
         }
@@ -821,7 +828,7 @@ pub fn read<T>(fd: sock_t,
     }
 
     match ret {
-        0 => Err(io::standard_error(io::EndOfFile)),
+        0 => Err(util::eof()),
         n if n < 0 => Err(last_error()),
         n => Ok(n as uint)
     }
@@ -858,13 +865,9 @@ pub fn write<T>(fd: sock_t,
             // As with read(), first wait for the socket to be ready for
             // the I/O operation.
             match util::await(fd, deadline, util::Writable) {
-                Err(ref e) if e.kind == io::TimedOut && written > 0 => {
+                Err(ref e) if e.code == libc::EOF as uint && written > 0 => {
                     assert!(deadline.is_some());
-                    return Err(io::IoError {
-                        kind: io::ShortWrite(written),
-                        desc: "short write",
-                        detail: None,
-                    })
+                    return Err(util::short_write(written, "short write"))
                 }
                 Err(e) => return Err(e),
                 Ok(()) => {}

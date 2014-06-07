@@ -224,7 +224,7 @@ pub mod dl {
     }
 
     pub fn check_for_errors_in<T>(f: || -> T) -> Result<T, String> {
-        use unstable::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
+        use rt::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
         static mut lock: StaticNativeMutex = NATIVE_MUTEX_INIT;
         unsafe {
             // dlerror isn't thread safe, so we need to lock around this entire

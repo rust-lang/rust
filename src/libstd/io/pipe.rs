@@ -16,7 +16,7 @@
 #![allow(missing_doc)]
 
 use prelude::*;
-use io::IoResult;
+use io::{IoResult, IoError};
 use libc;
 use owned::Box;
 use rt::rtio::{RtioPipe, LocalIo};
@@ -51,7 +51,7 @@ impl PipeStream {
     pub fn open(fd: libc::c_int) -> IoResult<PipeStream> {
         LocalIo::maybe_raise(|io| {
             io.pipe_open(fd).map(|obj| PipeStream { obj: obj })
-        })
+        }).map_err(IoError::from_rtio_error)
     }
 
     #[doc(hidden)]
@@ -67,11 +67,15 @@ impl Clone for PipeStream {
 }
 
 impl Reader for PipeStream {
-    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> { self.obj.read(buf) }
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
+        self.obj.read(buf).map_err(IoError::from_rtio_error)
+    }
 }
 
 impl Writer for PipeStream {
-    fn write(&mut self, buf: &[u8]) -> IoResult<()> { self.obj.write(buf) }
+    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
+        self.obj.write(buf).map_err(IoError::from_rtio_error)
+    }
 }
 
 #[cfg(test)]

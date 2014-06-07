@@ -24,9 +24,9 @@
 
 use std::mem;
 use std::rt::bookkeeping;
+use std::rt::mutex::StaticNativeMutex;
 use std::rt;
 use std::ty::Unsafe;
-use std::unstable::mutex::StaticNativeMutex;
 
 use task;
 
@@ -57,7 +57,7 @@ pub struct Helper<M> {
 
 macro_rules! helper_init( (static mut $name:ident: Helper<$m:ty>) => (
     static mut $name: Helper<$m> = Helper {
-        lock: ::std::unstable::mutex::NATIVE_MUTEX_INIT,
+        lock: ::std::rt::mutex::NATIVE_MUTEX_INIT,
         chan: ::std::ty::Unsafe {
             value: 0 as *mut Sender<$m>,
             marker1: ::std::kinds::marker::InvariantType,
@@ -163,7 +163,7 @@ mod imp {
     }
 
     pub fn signal(fd: libc::c_int) {
-        FileDesc::new(fd, false).inner_write([0]).unwrap();
+        FileDesc::new(fd, false).inner_write([0]).ok().unwrap();
     }
 
     pub fn close(fd: libc::c_int) {

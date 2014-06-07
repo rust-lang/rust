@@ -160,7 +160,7 @@
 //! # Using a scheduler pool
 //!
 //! ```rust
-//! use std::task::TaskOpts;
+//! use std::rt::task::TaskOpts;
 //! use green::{SchedPool, PoolConfig};
 //! use green::sched::{PinnedTask, TaskFromFriend};
 //!
@@ -221,10 +221,10 @@ use std::mem::replace;
 use std::os;
 use std::rt::rtio;
 use std::rt::thread::Thread;
+use std::rt::task::TaskOpts;
 use std::rt;
 use std::sync::atomics::{SeqCst, AtomicUint, INIT_ATOMIC_UINT};
 use std::sync::deque;
-use std::task::TaskOpts;
 
 use sched::{Shutdown, Scheduler, SchedHandle, TaskFromFriend, NewNeighbor};
 use sleeper_list::SleeperList;
@@ -319,7 +319,7 @@ pub fn run(event_loop_factory: fn() -> Box<rtio::EventLoop:Send>,
     let mut pool = SchedPool::new(cfg);
     let (tx, rx) = channel();
     let mut opts = TaskOpts::new();
-    opts.notify_chan = Some(tx);
+    opts.on_exit = Some(proc(r) tx.send(r));
     opts.name = Some("<main>".into_maybe_owned());
     pool.spawn(opts, main);
 
