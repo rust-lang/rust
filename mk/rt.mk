@@ -253,8 +253,9 @@ else
 endif
 JEMALLOC_LIB_$(1) := $$(RT_OUTPUT_DIR_$(1))/$$(JEMALLOC_NAME_$(1))
 JEMALLOC_BUILD_DIR_$(1) := $$(RT_OUTPUT_DIR_$(1))/jemalloc
+JEMALLOC_LOCAL_$(1) := $$(JEMALLOC_BUILD_DIR_$(1))/lib/$$(JEMALLOC_REAL_NAME_$(1))
 
-$$(JEMALLOC_LIB_$(1)): $$(JEMALLOC_DEPS) $$(MKFILE_DEPS)
+$$(JEMALLOC_LOCAL_$(1)): $$(JEMALLOC_DEPS) $$(MKFILE_DEPS)
 	@$$(call E, make: jemalloc)
 	cd "$$(JEMALLOC_BUILD_DIR_$(1))"; "$(S)src/jemalloc/configure" \
 		$$(JEMALLOC_ARGS_$(1)) --enable-cc-silence --with-jemalloc-prefix=je_ \
@@ -265,7 +266,20 @@ $$(JEMALLOC_LIB_$(1)): $$(JEMALLOC_DEPS) $$(MKFILE_DEPS)
 		CPPFLAGS="-I $(S)src/rt/" \
 		EXTRA_CFLAGS="$$(CFG_CFLAGS_$(1)) -g1"
 	$$(Q)$$(MAKE) -C "$$(JEMALLOC_BUILD_DIR_$(1))" build_lib_static
-	$$(Q)cp $$(JEMALLOC_BUILD_DIR_$(1))/lib/$$(JEMALLOC_REAL_NAME_$(1)) $$(JEMALLOC_LIB_$(1))
+
+ifeq ($(1),$$(CFG_BUILD))
+ifneq ($$(CFG_JEMALLOC_ROOT),)
+$$(JEMALLOC_LIB_$(1)): $$(CFG_JEMALLOC_ROOT)/libjemalloc_pic.a
+	@$$(call E, copy: jemalloc)
+	$$(Q)cp $$< $$@
+else
+$$(JEMALLOC_LIB_$(1)):
+	$$(Q)cp $$< $$@
+endif
+else
+$$(JEMALLOC_LIB_$(1)):
+	$$(Q)cp $$< $$@
+endif
 
 ################################################################################
 # compiler-rt
