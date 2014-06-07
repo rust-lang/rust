@@ -135,6 +135,12 @@ pub mod rt {
         }
     }
 
+    impl ToSource for ast::Arg {
+        fn to_source(&self) -> String {
+            pprust::arg_to_str(self)
+        }
+    }
+
     impl<'a> ToSource for &'a str {
         fn to_source(&self) -> String {
             let lit = dummy_spanned(ast::LitStr(
@@ -264,6 +270,7 @@ pub mod rt {
     impl_to_tokens!(Generics)
     impl_to_tokens!(@ast::Expr)
     impl_to_tokens!(ast::Block)
+    impl_to_tokens!(ast::Arg)
     impl_to_tokens_self!(&'a str)
     impl_to_tokens!(())
     impl_to_tokens!(char)

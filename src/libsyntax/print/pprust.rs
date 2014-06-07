@@ -242,6 +242,10 @@ pub fn variant_to_str(var: &ast::Variant) -> String {
     to_str(|s| s.print_variant(var))
 }
 
+pub fn arg_to_str(arg: &ast::Arg) -> String {
+    to_str(|s| s.print_arg(arg))
+}
+
 pub fn visibility_qualified(vis: ast::Visibility, s: &str) -> String {
     match vis {
         ast::Public => format!("pub {}", s).to_string(),
