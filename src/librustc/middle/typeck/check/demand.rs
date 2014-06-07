@@ -60,6 +60,12 @@ pub fn eqtype(fcx: &FnCtxt, sp: Span, expected: ty::t, actual: ty::t) {
 
 // Checks that the type `actual` can be coerced to `expected`.
 pub fn coerce(fcx: &FnCtxt, sp: Span, expected: ty::t, expr: &ast::Expr) {
+    coerce_with_fn(fcx, sp, expected, expr,
+                   |sp, a, e, err| fcx.report_mismatched_types(sp, e, a, err))
+}
+
+pub fn coerce_with_fn(fcx: &FnCtxt, sp: Span, expected: ty::t,
+                      expr: &ast::Expr, handle_err: |Span, ty::t, ty::t, &ty::type_err|) {
     let expr_ty = fcx.expr_ty(expr);
     debug!("demand::coerce(expected = {}, expr_ty = {})",
            expected.repr(fcx.ccx.tcx),
@@ -71,7 +77,7 @@ pub fn coerce(fcx: &FnCtxt, sp: Span, expected: ty::t, expr: &ast::Expr) {
     match fcx.mk_assignty(expr, expr_ty, expected) {
       result::Ok(()) => { /* ok */ }
       result::Err(ref err) => {
-        fcx.report_mismatched_types(sp, expected, expr_ty, err);
+        handle_err(sp, expr_ty, expected, err);
       }
     }
 }
