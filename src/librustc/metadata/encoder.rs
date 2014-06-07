@@ -75,6 +75,7 @@ pub struct EncodeParams<'a> {
     pub link_meta: &'a LinkMeta,
     pub cstore: &'a cstore::CStore,
     pub encode_inlined_item: EncodeInlinedItem<'a>,
+    pub reachable: &'a NodeSet,
 }
 
 pub struct EncodeContext<'a> {
@@ -87,6 +88,7 @@ pub struct EncodeContext<'a> {
     pub cstore: &'a cstore::CStore,
     pub encode_inlined_item: RefCell<EncodeInlinedItem<'a>>,
     pub type_abbrevs: tyencode::abbrev_map,
+    pub reachable: &'a NodeSet,
 }
 
 fn encode_name(ebml_w: &mut Encoder, name: Name) {
@@ -1702,6 +1704,26 @@ fn encode_misc_info(ecx: &EncodeContext,
     ebml_w.end_tag();
 }
 
+fn encode_reachable_extern_fns(ecx: &EncodeContext, ebml_w: &mut Encoder) {
+    ebml_w.start_tag(tag_reachable_extern_fns);
+
+    for id in ecx.reachable.iter() {
+        match ecx.tcx.map.find(*id) {
+            Some(ast_map::NodeItem(i)) => {
+                match i.node {
+                    ast::ItemFn(_, _, abi, _, _) if abi != abi::Rust => {
+                        ebml_w.wr_tagged_u32(tag_reachable_extern_fn_id, *id);
+                    }
+                    _ => {}
+                }
+            }
+            _ => {}
+        }
+    }
+
+    ebml_w.end_tag();
+}
+
 fn encode_crate_dep(ebml_w: &mut Encoder,
                     dep: decoder::CrateDep) {
     ebml_w.start_tag(tag_crate_dep);
@@ -1801,6 +1823,7 @@ fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, krate: &Crate)
         encode_inlined_item,
         link_meta,
         non_inlineable_statics,
+        reachable,
         ..
     } = parms;
     let ecx = EncodeContext {
@@ -1813,6 +1836,7 @@ fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, krate: &Crate)
         cstore: cstore,
         encode_inlined_item: RefCell::new(encode_inlined_item),
         type_abbrevs: RefCell::new(HashMap::new()),
+        reachable: reachable,
      };
 
     let mut ebml_w = writer::Encoder::new(wr);
@@ -1864,6 +1888,7 @@ fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, krate: &Crate)
     // Encode miscellaneous info.
     i = ebml_w.writer.tell().unwrap();
     encode_misc_info(&ecx, krate, &mut ebml_w);
+    encode_reachable_extern_fns(&ecx, &mut ebml_w);
     stats.misc_bytes = ebml_w.writer.tell().unwrap() - i;
 
     // Encode and index the items.

@@ -2238,6 +2238,7 @@ pub fn crate_ctxt_to_encode_parms<'r>(cx: &'r CrateContext, ie: encoder::EncodeI
             link_meta: &cx.link_meta,
             cstore: &cx.sess().cstore,
             encode_inlined_item: ie,
+            reachable: &cx.reachable,
         }
 }
 
@@ -2373,6 +2374,16 @@ pub fn trans_crate(krate: ast::Crate,
     let mut reachable: Vec<String> = ccx.reachable.iter().filter_map(|id| {
         ccx.item_symbols.borrow().find(id).map(|s| s.to_string())
     }).collect();
+
+    // For the purposes of LTO, we add to the reachable set all of the upstream
+    // reachable extern fns. These functions are all part of the public ABI of
+    // the final product, so LTO needs to preserve them.
+    ccx.sess().cstore.iter_crate_data(|cnum, _| {
+        let syms = csearch::get_reachable_extern_fns(&ccx.sess().cstore, cnum);
+        reachable.extend(syms.move_iter().map(|did| {
+            csearch::get_symbol(&ccx.sess().cstore, did)
+        }));
+    });
 
     // Make sure that some other crucial symbols are not eliminated from the
     // module. This includes the main function, the crate map (used for debug

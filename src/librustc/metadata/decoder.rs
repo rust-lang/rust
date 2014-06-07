@@ -1325,3 +1325,17 @@ pub fn get_method_arg_names(cdata: Cmd, id: ast::NodeId) -> Vec<String> {
     }
     return ret;
 }
+
+pub fn get_reachable_extern_fns(cdata: Cmd) -> Vec<ast::DefId> {
+    let mut ret = Vec::new();
+    let items = reader::get_doc(ebml::Doc::new(cdata.data()),
+                                tag_reachable_extern_fns);
+    reader::tagged_docs(items, tag_reachable_extern_fn_id, |doc| {
+        ret.push(ast::DefId {
+            krate: cdata.cnum,
+            node: reader::doc_as_u32(doc),
+        });
+        true
+    });
+    return ret;
+}
