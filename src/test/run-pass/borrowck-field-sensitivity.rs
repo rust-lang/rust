@@ -125,9 +125,23 @@ fn copy_after_assign_after_move() {
     drop(*x.b);
 }
 
+fn copy_after_assign_after_fu_move() {
+    let mut x = A { a: 1, b: box 2 };
+    let _y = A { a: 3, .. x };
+    x = A { a: 3, b: box 4 };
+    drop(*x.b);
+}
+
 fn copy_after_field_assign_after_move() {
     let mut x = A { a: 1, b: box 2 };
     drop(x.b);
+    x.b = box 3;
+    drop(*x.b);
+}
+
+fn copy_after_field_assign_after_fu_move() {
+    let mut x = A { a: 1, b: box 2 };
+    let _y = A { a: 3, .. x };
     x.b = box 3;
     drop(*x.b);
 }
@@ -139,9 +153,23 @@ fn borrow_after_assign_after_move() {
     borrow(&x.b);
 }
 
+fn borrow_after_assign_after_fu_move() {
+    let mut x = A { a: 1, b: box 2 };
+    let _y = A { a: 3, .. x };
+    x = A { a: 3, b: box 4 };
+    borrow(&x.b);
+}
+
 fn borrow_after_field_assign_after_move() {
     let mut x = A { a: 1, b: box 2 };
     drop(x.b);
+    x.b = box 3;
+    borrow(&x.b);
+}
+
+fn borrow_after_field_assign_after_fu_move() {
+    let mut x = A { a: 1, b: box 2 };
+    let _y = A { a: 3, .. x };
     x.b = box 3;
     borrow(&x.b);
 }
@@ -153,9 +181,23 @@ fn move_after_assign_after_move() {
     drop(x.b);
 }
 
+fn move_after_assign_after_fu_move() {
+    let mut x = A { a: 1, b: box 2 };
+    let _y = A { a: 3, .. x };
+    x = A { a: 3, b: box 4 };
+    drop(x.b);
+}
+
 fn move_after_field_assign_after_move() {
     let mut x = A { a: 1, b: box 2 };
     drop(x.b);
+    x.b = box 3;
+    drop(x.b);
+}
+
+fn move_after_field_assign_after_fu_move() {
+    let mut x = A { a: 1, b: box 2 };
+    let _y = A { a: 3, .. x };
     x.b = box 3;
     drop(x.b);
 }
@@ -200,11 +242,19 @@ fn main() {
     fu_move_after_fu_move();
 
     copy_after_assign_after_move();
+    copy_after_assign_after_fu_move();
     copy_after_field_assign_after_move();
+    copy_after_field_assign_after_fu_move();
+
     borrow_after_assign_after_move();
+    borrow_after_assign_after_fu_move();
     borrow_after_field_assign_after_move();
+    borrow_after_field_assign_after_fu_move();
+
     move_after_assign_after_move();
+    move_after_assign_after_fu_move();
     move_after_field_assign_after_move();
+    move_after_field_assign_after_fu_move();
 
     copy_after_assign_after_uninit();
     borrow_after_assign_after_uninit();
