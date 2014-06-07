@@ -8,14 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::unstable;
+use std::rt;
 
 pub fn main() {
     unsafe {
-        let x = Some(unstable::sync::Exclusive::new(true));
+        let x = Some(rt::exclusive::Exclusive::new(true));
         match x {
-            Some(ref z) if z.with(|b| *b) => {
-                z.with(|b| assert!(*b));
+            Some(ref z) if *z.lock() => {
+                assert!(*z.lock());
             },
             _ => fail!()
         }

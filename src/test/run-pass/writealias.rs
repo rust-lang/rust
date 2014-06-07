@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-use std::unstable;
+use std::rt;
 
 struct Point {x: int, y: int, z: int}
 
@@ -17,10 +17,10 @@ fn f(p: &mut Point) { p.z = 13; }
 
 pub fn main() {
     unsafe {
-        let x = Some(unstable::sync::Exclusive::new(true));
+        let x = Some(rt::exclusive::Exclusive::new(true));
         match x {
-            Some(ref z) if z.with(|b| *b) => {
-                z.with(|b| assert!(*b));
+            Some(ref z) if *z.lock() => {
+                assert!(*z.lock());
             },
             _ => fail!()
         }

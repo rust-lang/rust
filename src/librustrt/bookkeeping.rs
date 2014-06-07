@@ -18,11 +18,9 @@
 //! each respective runtime to make sure that they call increment() and
 //! decrement() manually.
 
-#![experimental] // this is a massive code smell
-#![doc(hidden)]
+use core::atomics;
 
-use sync::atomics;
-use unstable::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
+use mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
 
 static mut TASK_COUNT: atomics::AtomicUint = atomics::INIT_ATOMIC_UINT;
 static mut TASK_LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;

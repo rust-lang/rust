@@ -14,12 +14,12 @@ use alloc::arc::Arc;
 use libc::{c_int, c_void};
 use libc;
 use std::c_str::CString;
-use std::io::IoError;
-use std::io;
 use std::mem;
 use std::rt::rtio;
+use std::rt::rtio::IoResult;
 
-use io::{IoResult, retry, keep_going};
+use io::{retry, keep_going};
+use io::util;
 
 pub type fd_t = libc::c_int;
 
@@ -51,21 +51,21 @@ impl FileDesc {
     // FIXME(#10465) these functions should not be public, but anything in
     //               native::io wanting to use them is forced to have all the
     //               rtio traits in scope
-    pub fn inner_read(&mut self, buf: &mut [u8]) -> Result<uint, IoError> {
+    pub fn inner_read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
         let ret = retry(|| unsafe {
             libc::read(self.fd(),
                        buf.as_mut_ptr() as *mut libc::c_void,
                        buf.len() as libc::size_t) as libc::c_int
         });
         if ret == 0 {
-            Err(io::standard_error(io::EndOfFile))
+            Err(util::eof())
         } else if ret < 0 {
             Err(super::last_error())
         } else {
             Ok(ret as uint)
         }
     }
-    pub fn inner_write(&mut self, buf: &[u8]) -> Result<(), IoError> {
+    pub fn inner_write(&mut self, buf: &[u8]) -> IoResult<()> {
         let ret = keep_going(buf, |buf, len| {
             unsafe {
                 libc::write(self.fd(), buf as *libc::c_void,
@@ -82,26 +82,14 @@ impl FileDesc {
     pub fn fd(&self) -> fd_t { self.inner.fd }
 }
 
-impl io::Reader for FileDesc {
-    fn read(&mut self, buf: &mut [u8]) -> io::IoResult<uint> {
-        self.inner_read(buf)
-    }
-}
-
-impl io::Writer for FileDesc {
-    fn write(&mut self, buf: &[u8]) -> io::IoResult<()> {
-        self.inner_write(buf)
-    }
-}
-
 impl rtio::RtioFileStream for FileDesc {
-    fn read(&mut self, buf: &mut [u8]) -> Result<int, IoError> {
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<int> {
         self.inner_read(buf).map(|i| i as int)
     }
-    fn write(&mut self, buf: &[u8]) -> Result<(), IoError> {
+    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
         self.inner_write(buf)
     }
-    fn pread(&mut self, buf: &mut [u8], offset: u64) -> Result<int, IoError> {
+    fn pread(&mut self, buf: &mut [u8], offset: u64) -> IoResult<int> {
         match retry(|| unsafe {
             libc::pread(self.fd(), buf.as_ptr() as *libc::c_void,
                         buf.len() as libc::size_t,
@@ -111,17 +99,17 @@ impl rtio::RtioFileStream for FileDesc {
             n => Ok(n as int)
         }
     }
-    fn pwrite(&mut self, buf: &[u8], offset: u64) -> Result<(), IoError> {
+    fn pwrite(&mut self, buf: &[u8], offset: u64) -> IoResult<()> {
         super::mkerr_libc(retry(|| unsafe {
             libc::pwrite(self.fd(), buf.as_ptr() as *libc::c_void,
                          buf.len() as libc::size_t, offset as libc::off_t)
         } as c_int))
     }
-    fn seek(&mut self, pos: i64, whence: io::SeekStyle) -> Result<u64, IoError> {
+    fn seek(&mut self, pos: i64, whence: rtio::SeekStyle) -> IoResult<u64> {
         let whence = match whence {
-            io::SeekSet => libc::SEEK_SET,
-            io::SeekEnd => libc::SEEK_END,
-            io::SeekCur => libc::SEEK_CUR,
+            rtio::SeekSet => libc::SEEK_SET,
+            rtio::SeekEnd => libc::SEEK_END,
+            rtio::SeekCur => libc::SEEK_CUR,
         };
         let n = unsafe { libc::lseek(self.fd(), pos as libc::off_t, whence) };
         if n < 0 {
@@ -130,7 +118,7 @@ impl rtio::RtioFileStream for FileDesc {
             Ok(n as u64)
         }
     }
-    fn tell(&self) -> Result<u64, IoError> {
+    fn tell(&self) -> IoResult<u64> {
         let n = unsafe { libc::lseek(self.fd(), 0, libc::SEEK_CUR) };
         if n < 0 {
             Err(super::last_error())
@@ -138,10 +126,10 @@ impl rtio::RtioFileStream for FileDesc {
             Ok(n as u64)
         }
     }
-    fn fsync(&mut self) -> Result<(), IoError> {
+    fn fsync(&mut self) -> IoResult<()> {
         super::mkerr_libc(retry(|| unsafe { libc::fsync(self.fd()) }))
     }
-    fn datasync(&mut self) -> Result<(), IoError> {
+    fn datasync(&mut self) -> IoResult<()> {
         return super::mkerr_libc(os_datasync(self.fd()));
 
         #[cfg(target_os = "macos")]
@@ -157,13 +145,13 @@ impl rtio::RtioFileStream for FileDesc {
             retry(|| unsafe { libc::fsync(fd) })
         }
     }
-    fn truncate(&mut self, offset: i64) -> Result<(), IoError> {
+    fn truncate(&mut self, offset: i64) -> IoResult<()> {
         super::mkerr_libc(retry(|| unsafe {
             libc::ftruncate(self.fd(), offset as libc::off_t)
         }))
     }
 
-    fn fstat(&mut self) -> IoResult<io::FileStat> {
+    fn fstat(&mut self) -> IoResult<rtio::FileStat> {
         let mut stat: libc::stat = unsafe { mem::zeroed() };
         match retry(|| unsafe { libc::fstat(self.fd(), &mut stat) }) {
             0 => Ok(mkstat(&stat)),
@@ -173,10 +161,10 @@ impl rtio::RtioFileStream for FileDesc {
 }
 
 impl rtio::RtioPipe for FileDesc {
-    fn read(&mut self, buf: &mut [u8]) -> Result<uint, IoError> {
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
         self.inner_read(buf)
     }
-    fn write(&mut self, buf: &[u8]) -> Result<(), IoError> {
+    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
         self.inner_write(buf)
     }
     fn clone(&self) -> Box<rtio::RtioPipe:Send> {
@@ -187,11 +175,11 @@ impl rtio::RtioPipe for FileDesc {
     // impact on the std::io primitives, this is never called via
     // std::io::PipeStream. If the functionality is exposed in the future, then
     // these methods will need to be implemented.
-    fn close_read(&mut self) -> Result<(), IoError> {
-        Err(io::standard_error(io::InvalidInput))
+    fn close_read(&mut self) -> IoResult<()> {
+        Err(super::unimpl())
     }
-    fn close_write(&mut self) -> Result<(), IoError> {
-        Err(io::standard_error(io::InvalidInput))
+    fn close_write(&mut self) -> IoResult<()> {
+        Err(super::unimpl())
     }
     fn set_timeout(&mut self, _t: Option<u64>) {}
     fn set_read_timeout(&mut self, _t: Option<u64>) {}
@@ -199,16 +187,16 @@ impl rtio::RtioPipe for FileDesc {
 }
 
 impl rtio::RtioTTY for FileDesc {
-    fn read(&mut self, buf: &mut [u8]) -> Result<uint, IoError> {
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
         self.inner_read(buf)
     }
-    fn write(&mut self, buf: &[u8]) -> Result<(), IoError> {
+    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
         self.inner_write(buf)
     }
-    fn set_raw(&mut self, _raw: bool) -> Result<(), IoError> {
+    fn set_raw(&mut self, _raw: bool) -> IoResult<()> {
         Err(super::unimpl())
     }
-    fn get_winsize(&mut self) -> Result<(int, int), IoError> {
+    fn get_winsize(&mut self) -> IoResult<(int, int)> {
         Err(super::unimpl())
     }
     fn isatty(&self) -> bool { false }
@@ -249,13 +237,13 @@ impl CFile {
         }
     }
 
-    pub fn flush(&mut self) -> Result<(), IoError> {
+    pub fn flush(&mut self) -> IoResult<()> {
         super::mkerr_libc(retry(|| unsafe { libc::fflush(self.file) }))
     }
 }
 
 impl rtio::RtioFileStream for CFile {
-    fn read(&mut self, buf: &mut [u8]) -> Result<int, IoError> {
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<int> {
         let ret = keep_going(buf, |buf, len| {
             unsafe {
                 libc::fread(buf as *mut libc::c_void, 1, len as libc::size_t,
@@ -263,7 +251,7 @@ impl rtio::RtioFileStream for CFile {
             }
         });
         if ret == 0 {
-            Err(io::standard_error(io::EndOfFile))
+            Err(util::eof())
         } else if ret < 0 {
             Err(super::last_error())
         } else {
@@ -271,7 +259,7 @@ impl rtio::RtioFileStream for CFile {
         }
     }
 
-    fn write(&mut self, buf: &[u8]) -> Result<(), IoError> {
+    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
         let ret = keep_going(buf, |buf, len| {
             unsafe {
                 libc::fwrite(buf as *libc::c_void, 1, len as libc::size_t,
@@ -285,17 +273,17 @@ impl rtio::RtioFileStream for CFile {
         }
     }
 
-    fn pread(&mut self, buf: &mut [u8], offset: u64) -> Result<int, IoError> {
+    fn pread(&mut self, buf: &mut [u8], offset: u64) -> IoResult<int> {
         self.flush().and_then(|()| self.fd.pread(buf, offset))
     }
-    fn pwrite(&mut self, buf: &[u8], offset: u64) -> Result<(), IoError> {
+    fn pwrite(&mut self, buf: &[u8], offset: u64) -> IoResult<()> {
         self.flush().and_then(|()| self.fd.pwrite(buf, offset))
     }
-    fn seek(&mut self, pos: i64, style: io::SeekStyle) -> Result<u64, IoError> {
+    fn seek(&mut self, pos: i64, style: rtio::SeekStyle) -> IoResult<u64> {
         let whence = match style {
-            io::SeekSet => libc::SEEK_SET,
-            io::SeekEnd => libc::SEEK_END,
-            io::SeekCur => libc::SEEK_CUR,
+            rtio::SeekSet => libc::SEEK_SET,
+            rtio::SeekEnd => libc::SEEK_END,
+            rtio::SeekCur => libc::SEEK_CUR,
         };
         let n = unsafe { libc::fseek(self.file, pos as libc::c_long, whence) };
         if n < 0 {
@@ -304,7 +292,7 @@ impl rtio::RtioFileStream for CFile {
             Ok(n as u64)
         }
     }
-    fn tell(&self) -> Result<u64, IoError> {
+    fn tell(&self) -> IoResult<u64> {
         let ret = unsafe { libc::ftell(self.file) };
         if ret < 0 {
             Err(super::last_error())
@@ -312,17 +300,17 @@ impl rtio::RtioFileStream for CFile {
             Ok(ret as u64)
         }
     }
-    fn fsync(&mut self) -> Result<(), IoError> {
+    fn fsync(&mut self) -> IoResult<()> {
         self.flush().and_then(|()| self.fd.fsync())
     }
-    fn datasync(&mut self) -> Result<(), IoError> {
+    fn datasync(&mut self) -> IoResult<()> {
         self.flush().and_then(|()| self.fd.fsync())
     }
-    fn truncate(&mut self, offset: i64) -> Result<(), IoError> {
+    fn truncate(&mut self, offset: i64) -> IoResult<()> {
         self.flush().and_then(|()| self.fd.truncate(offset))
     }
 
-    fn fstat(&mut self) -> IoResult<io::FileStat> {
+    fn fstat(&mut self) -> IoResult<rtio::FileStat> {
         self.flush().and_then(|()| self.fd.fstat())
     }
 }
@@ -333,20 +321,21 @@ impl Drop for CFile {
     }
 }
 
-pub fn open(path: &CString, fm: io::FileMode, fa: io::FileAccess)
-        -> IoResult<FileDesc> {
+pub fn open(path: &CString, fm: rtio::FileMode, fa: rtio::FileAccess)
+    -> IoResult<FileDesc>
+{
     let flags = match fm {
-        io::Open => 0,
-        io::Append => libc::O_APPEND,
-        io::Truncate => libc::O_TRUNC,
+        rtio::Open => 0,
+        rtio::Append => libc::O_APPEND,
+        rtio::Truncate => libc::O_TRUNC,
     };
     // Opening with a write permission must silently create the file.
     let (flags, mode) = match fa {
-        io::Read => (flags | libc::O_RDONLY, 0),
-        io::Write => (flags | libc::O_WRONLY | libc::O_CREAT,
-                      libc::S_IRUSR | libc::S_IWUSR),
-        io::ReadWrite => (flags | libc::O_RDWR | libc::O_CREAT,
-                          libc::S_IRUSR | libc::S_IWUSR),
+        rtio::Read => (flags | libc::O_RDONLY, 0),
+        rtio::Write => (flags | libc::O_WRONLY | libc::O_CREAT,
+                        libc::S_IRUSR | libc::S_IWUSR),
+        rtio::ReadWrite => (flags | libc::O_RDWR | libc::O_CREAT,
+                            libc::S_IRUSR | libc::S_IWUSR),
     };
 
     match retry(|| unsafe { libc::open(path.with_ref(|p| p), flags, mode) }) {
@@ -355,23 +344,23 @@ pub fn open(path: &CString, fm: io::FileMode, fa: io::FileAccess)
     }
 }
 
-pub fn mkdir(p: &CString, mode: io::FilePermission) -> IoResult<()> {
+pub fn mkdir(p: &CString, mode: uint) -> IoResult<()> {
     super::mkerr_libc(retry(|| unsafe {
-        libc::mkdir(p.with_ref(|p| p), mode.bits() as libc::mode_t)
+        libc::mkdir(p.with_ref(|p| p), mode as libc::mode_t)
     }))
 }
 
-pub fn readdir(p: &CString) -> IoResult<Vec<Path>> {
+pub fn readdir(p: &CString) -> IoResult<Vec<CString>> {
     use libc::{dirent_t};
     use libc::{opendir, readdir_r, closedir};
 
-    fn prune(root: &CString, dirs: Vec<Path>) -> Vec<Path> {
+    fn prune(root: &CString, dirs: Vec<Path>) -> Vec<CString> {
         let root = unsafe { CString::new(root.with_ref(|p| p), false) };
         let root = Path::new(root);
 
         dirs.move_iter().filter(|path| {
             path.as_vec() != bytes!(".") && path.as_vec() != bytes!("..")
-        }).map(|path| root.join(path)).collect()
+        }).map(|path| root.join(path).to_c_str()).collect()
     }
 
     extern {
@@ -412,9 +401,9 @@ pub fn rename(old: &CString, new: &CString) -> IoResult<()> {
     }))
 }
 
-pub fn chmod(p: &CString, mode: io::FilePermission) -> IoResult<()> {
+pub fn chmod(p: &CString, mode: uint) -> IoResult<()> {
     super::mkerr_libc(retry(|| unsafe {
-        libc::chmod(p.with_ref(|p| p), mode.bits() as libc::mode_t)
+        libc::chmod(p.with_ref(|p| p), mode as libc::mode_t)
     }))
 }
 
@@ -431,7 +420,7 @@ pub fn chown(p: &CString, uid: int, gid: int) -> IoResult<()> {
     }))
 }
 
-pub fn readlink(p: &CString) -> IoResult<Path> {
+pub fn readlink(p: &CString) -> IoResult<CString> {
     let p = p.with_ref(|p| p);
     let mut len = unsafe { libc::pathconf(p, libc::_PC_NAME_MAX) };
     if len == -1 {
@@ -446,7 +435,7 @@ pub fn readlink(p: &CString) -> IoResult<Path> {
         n => {
             assert!(n > 0);
             unsafe { buf.set_len(n as uint); }
-            Ok(Path::new(buf))
+            Ok(buf.as_slice().to_c_str())
         }
     }
 }
@@ -463,18 +452,9 @@ pub fn link(src: &CString, dst: &CString) -> IoResult<()> {
     }))
 }
 
-fn mkstat(stat: &libc::stat) -> io::FileStat {
+fn mkstat(stat: &libc::stat) -> rtio::FileStat {
     // FileStat times are in milliseconds
     fn mktime(secs: u64, nsecs: u64) -> u64 { secs * 1000 + nsecs / 1000000 }
-
-    let kind = match (stat.st_mode as c_int) & libc::S_IFMT {
-        libc::S_IFREG => io::TypeFile,
-        libc::S_IFDIR => io::TypeDirectory,
-        libc::S_IFIFO => io::TypeNamedPipe,
-        libc::S_IFBLK => io::TypeBlockSpecial,
-        libc::S_IFLNK => io::TypeSymlink,
-        _ => io::TypeUnknown,
-    };
 
     #[cfg(not(target_os = "linux"), not(target_os = "android"))]
     fn flags(stat: &libc::stat) -> u64 { stat.st_flags as u64 }
@@ -486,29 +466,27 @@ fn mkstat(stat: &libc::stat) -> io::FileStat {
     #[cfg(target_os = "linux")] #[cfg(target_os = "android")]
     fn gen(_stat: &libc::stat) -> u64 { 0 }
 
-    io::FileStat {
+    rtio::FileStat {
         size: stat.st_size as u64,
-        kind: kind,
-        perm: io::FilePermission::from_bits_truncate(stat.st_mode as u32),
+        kind: stat.st_mode as u64,
+        perm: stat.st_mode as u64,
         created: mktime(stat.st_ctime as u64, stat.st_ctime_nsec as u64),
         modified: mktime(stat.st_mtime as u64, stat.st_mtime_nsec as u64),
         accessed: mktime(stat.st_atime as u64, stat.st_atime_nsec as u64),
-        unstable: io::UnstableFileStat {
-            device: stat.st_dev as u64,
-            inode: stat.st_ino as u64,
-            rdev: stat.st_rdev as u64,
-            nlink: stat.st_nlink as u64,
-            uid: stat.st_uid as u64,
-            gid: stat.st_gid as u64,
-            blksize: stat.st_blksize as u64,
-            blocks: stat.st_blocks as u64,
-            flags: flags(stat),
-            gen: gen(stat),
-        }
+        device: stat.st_dev as u64,
+        inode: stat.st_ino as u64,
+        rdev: stat.st_rdev as u64,
+        nlink: stat.st_nlink as u64,
+        uid: stat.st_uid as u64,
+        gid: stat.st_gid as u64,
+        blksize: stat.st_blksize as u64,
+        blocks: stat.st_blocks as u64,
+        flags: flags(stat),
+        gen: gen(stat),
     }
 }
 
-pub fn stat(p: &CString) -> IoResult<io::FileStat> {
+pub fn stat(p: &CString) -> IoResult<rtio::FileStat> {
     let mut stat: libc::stat = unsafe { mem::zeroed() };
     match retry(|| unsafe { libc::stat(p.with_ref(|p| p), &mut stat) }) {
         0 => Ok(mkstat(&stat)),
@@ -516,7 +494,7 @@ pub fn stat(p: &CString) -> IoResult<io::FileStat> {
     }
 }
 
-pub fn lstat(p: &CString) -> IoResult<io::FileStat> {
+pub fn lstat(p: &CString) -> IoResult<rtio::FileStat> {
     let mut stat: libc::stat = unsafe { mem::zeroed() };
     match retry(|| unsafe { libc::lstat(p.with_ref(|p| p), &mut stat) }) {
         0 => Ok(mkstat(&stat)),
@@ -537,10 +515,9 @@ pub fn utime(p: &CString, atime: u64, mtime: u64) -> IoResult<()> {
 #[cfg(test)]
 mod tests {
     use super::{CFile, FileDesc};
-    use std::io;
     use libc;
     use std::os;
-    use std::rt::rtio::RtioFileStream;
+    use std::rt::rtio::{RtioFileStream, SeekSet};
 
     #[ignore(cfg(target_os = "freebsd"))] // hmm, maybe pipes have a tiny buffer
     #[test]
@@ -551,7 +528,7 @@ mod tests {
         let mut reader = FileDesc::new(input, true);
         let mut writer = FileDesc::new(out, true);
 
-        writer.inner_write(bytes!("test")).unwrap();
+        writer.inner_write(bytes!("test")).ok().unwrap();
         let mut buf = [0u8, ..4];
         match reader.inner_read(buf) {
             Ok(4) => {
@@ -574,9 +551,9 @@ mod tests {
             assert!(!f.is_null());
             let mut file = CFile::new(f);
 
-            file.write(bytes!("test")).unwrap();
+            file.write(bytes!("test")).ok().unwrap();
             let mut buf = [0u8, ..4];
-            let _ = file.seek(0, io::SeekSet).unwrap();
+            let _ = file.seek(0, SeekSet).ok().unwrap();
             match file.read(buf) {
                 Ok(4) => {
                     assert_eq!(buf[0], 't' as u8);

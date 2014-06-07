@@ -38,12 +38,13 @@
 
 use any::Any;
 use comm::{Sender, Receiver, channel};
-use io::Writer;
+use io::{Writer, stdio};
 use kinds::{Send, marker};
 use option::{None, Some, Option};
 use owned::Box;
 use result::{Result, Ok, Err};
 use rt::local::Local;
+use rt::task;
 use rt::task::Task;
 use str::{Str, SendStr, IntoMaybeOwned};
 
@@ -53,18 +54,10 @@ use str::{Str, SendStr, IntoMaybeOwned};
 #[cfg(test)] use str::StrAllocating;
 #[cfg(test)] use string::String;
 
-/// Indicates the manner in which a task exited.
-///
-/// A task that completes without failing is considered to exit successfully.
-///
-/// If you wish for this result's delivery to block until all
-/// children tasks complete, recommend using a result future.
-pub type TaskResult = Result<(), Box<Any:Send>>;
-
 /// Task configuration options
 pub struct TaskOpts {
     /// Enable lifecycle notifications on the given channel
-    pub notify_chan: Option<Sender<TaskResult>>,
+    pub notify_chan: Option<Sender<task::Result>>,
     /// A name for the task-to-be, for identification in failure messages
     pub name: Option<SendStr>,
     /// The size of the stack for the spawned task
@@ -114,7 +107,7 @@ impl TaskBuilder {
     ///
     /// # Failure
     /// Fails if a future_result was already set for this task.
-    pub fn future_result(&mut self) -> Receiver<TaskResult> {
+    pub fn future_result(&mut self) -> Receiver<task::Result> {
         // FIXME (#3725): Once linked failure and notification are
         // handled in the library, I can imagine implementing this by just
         // registering an arbitrary number of task::on_exit handlers and
@@ -180,7 +173,22 @@ impl TaskBuilder {
             Some(t) => t,
             None => fail!("need a local task to spawn a new task"),
         };
-        t.spawn_sibling(self.opts, f);
+        let TaskOpts { notify_chan, name, stack_size, stdout, stderr } = self.opts;
+
+        let opts = task::TaskOpts {
+            on_exit: notify_chan.map(|c| proc(r) c.send(r)),
+            name: name,
+            stack_size: stack_size,
+        };
+        if stdout.is_some() || stderr.is_some() {
+            t.spawn_sibling(opts, proc() {
+                let _ = stdout.map(stdio::set_stdout);
+                let _ = stderr.map(stdio::set_stderr);
+                f();
+            });
+        } else {
+            t.spawn_sibling(opts, f);
+        }
     }
 
     /**

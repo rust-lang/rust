@@ -38,18 +38,16 @@ assert_eq!(*key_vector.get().unwrap(), ~[4]);
 // Casting 'Arcane Sight' reveals an overwhelming aura of Transmutation
 // magic.
 
-use iter::{Iterator};
-use kinds::Send;
-use kinds::marker;
-use mem::replace;
-use mem;
-use ops::{Drop, Deref};
-use option::{None, Option, Some};
-use owned::Box;
-use raw;
-use rt::task::{Task, LocalStorage};
-use slice::{ImmutableVector, MutableVector};
-use vec::Vec;
+use core::prelude::*;
+
+use alloc::owned::Box;
+use collections::vec::Vec;
+use core::kinds::marker;
+use core::mem;
+use core::raw;
+
+use local::Local;
+use task::{Task, LocalStorage};
 
 /**
  * Indexes a task-local data slot. This pointer is used for comparison to
@@ -97,8 +95,6 @@ type TLSValue = Box<LocalData:Send>;
 
 // Gets the map from the runtime. Lazily initialises if not done so already.
 unsafe fn get_local_map() -> Option<&mut Map> {
-    use rt::local::Local;
-
     if !Local::exists(None::<Task>) { return None }
 
     let task: *mut Task = Local::unsafe_borrow();
@@ -111,10 +107,10 @@ unsafe fn get_local_map() -> Option<&mut Map> {
         // If this is the first time we've accessed TLS, perform similar
         // actions to the oldsched way of doing things.
         &LocalStorage(ref mut slot) => {
-            *slot = Some(vec!());
+            *slot = Some(Vec::new());
             match *slot {
                 Some(ref mut map_ptr) => { return Some(map_ptr) }
-                None => unreachable!(),
+                None => fail!("unreachable code"),
             }
         }
     }
@@ -192,7 +188,7 @@ impl<T: 'static> KeyValue<T> {
 
         match pos {
             Some(i) => {
-                replace(map.get_mut(i), newval).map(|(_, data, _)| {
+                mem::replace(map.get_mut(i), newval).map(|(_, data, _)| {
                     // Move `data` into transmute to get out the memory that it
                     // owns, we must free it manually later.
                     let t: raw::TraitObject = unsafe { mem::transmute(data) };
@@ -277,10 +273,9 @@ impl<T: 'static> Drop for Ref<T> {
 
 #[cfg(test)]
 mod tests {
-    use prelude::*;
+    use std::prelude::*;
     use super::*;
-    use owned::Box;
-    use task;
+    use std::task;
 
     #[test]
     fn test_tls_multitask() {

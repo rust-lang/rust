@@ -10,11 +10,11 @@
 
 use std::mem;
 use std::rt::local::Local;
+use std::rt::mutex::NativeMutex;
 use std::rt::rtio::{RemoteCallback, PausableIdleCallback, Callback, EventLoop};
 use std::rt::task::BlockedTask;
 use std::rt::task::Task;
 use std::sync::deque;
-use std::unstable::mutex::NativeMutex;
 use std::raw;
 
 use std::rand::{XorShiftRng, Rng, Rand};
@@ -1022,7 +1022,7 @@ fn new_sched_rng() -> XorShiftRng {
 mod test {
     use rustuv;
 
-    use std::task::TaskOpts;
+    use std::rt::task::TaskOpts;
     use std::rt::task::Task;
     use std::rt::local::Local;
 
@@ -1475,7 +1475,7 @@ mod test {
 
     #[test]
     fn test_spawn_sched_blocking() {
-        use std::unstable::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
+        use std::rt::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
         static mut LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;
 
         // Testing that a task in one scheduler can block in foreign code

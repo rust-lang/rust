@@ -10,33 +10,18 @@
 
 //! The EventLoop and internal synchronous I/O interface.
 
-use c_str::CString;
-use comm::{Sender, Receiver};
-use kinds::Send;
+use core::prelude::*;
+use alloc::owned::Box;
+use collections::string::String;
+use collections::vec::Vec;
+use core::fmt;
+use core::mem;
 use libc::c_int;
 use libc;
-use mem;
-use ops::Drop;
-use option::{Option, Some, None};
-use owned::Box;
-use path::Path;
-use result::Err;
-use rt::local::Local;
-use rt::task::Task;
-use vec::Vec;
 
-use ai = io::net::addrinfo;
-use io;
-use io::IoResult;
-use io::net::ip::{IpAddr, SocketAddr};
-use io::process::{StdioContainer, ProcessExit};
-use io::signal::Signum;
-use io::{FileMode, FileAccess, FileStat, FilePermission};
-use io::{SeekStyle};
-
-pub trait Callback {
-    fn call(&mut self);
-}
+use c_str::CString;
+use local::Local;
+use task::Task;
 
 pub trait EventLoop {
     fn run(&mut self);
@@ -51,6 +36,10 @@ pub trait EventLoop {
     fn has_active_io(&self) -> bool;
 }
 
+pub trait Callback {
+    fn call(&mut self);
+}
+
 pub trait RemoteCallback {
     /// Trigger the remote callback. Note that the number of times the
     /// callback is run is not guaranteed. All that is guaranteed is
@@ -59,18 +48,6 @@ pub trait RemoteCallback {
     /// callbacks may be called more often requested. Destruction also
     /// triggers the callback.
     fn fire(&mut self);
-}
-
-/// Data needed to make a successful open(2) call
-/// Using unix flag conventions for now, which happens to also be what's supported
-/// libuv (it does translation to windows under the hood).
-pub struct FileOpenConfig {
-    /// Path to file to be opened
-    pub path: Path,
-    /// Flags for file access mode (as per open(2))
-    pub flags: int,
-    /// File creation mode, ignored unless O_CREAT is passed as part of flags
-    pub mode: int
 }
 
 /// Description of what to do when a file handle is closed
@@ -185,9 +162,15 @@ impl<'a> LocalIo<'a> {
     pub fn maybe_raise<T>(f: |io: &mut IoFactory| -> IoResult<T>)
         -> IoResult<T>
     {
+        #[cfg(unix)] use ERROR = libc::EINVAL;
+        #[cfg(windows)] use ERROR = libc::ERROR_CALL_NOT_IMPLEMENTED;
         match LocalIo::borrow() {
-            None => Err(io::standard_error(io::IoUnavailable)),
             Some(mut io) => f(io.get()),
+            None => Err(IoError {
+                code: ERROR as uint,
+                extra: 0,
+                detail: None,
+            }),
         }
     }
 
@@ -198,11 +181,8 @@ impl<'a> LocalIo<'a> {
     /// Returns the underlying I/O factory as a trait reference.
     #[inline]
     pub fn get<'a>(&'a mut self) -> &'a mut IoFactory {
-        // FIXME(pcwalton): I think this is actually sound? Could borrow check
-        // allow this safely?
-        unsafe {
-            mem::transmute_copy(&self.factory)
-        }
+        let f: &'a mut IoFactory = self.factory;
+        f
     }
 }
 
@@ -219,7 +199,8 @@ pub trait IoFactory {
     fn unix_connect(&mut self, path: &CString,
                     timeout: Option<u64>) -> IoResult<Box<RtioPipe:Send>>;
     fn get_host_addresses(&mut self, host: Option<&str>, servname: Option<&str>,
-                          hint: Option<ai::Hint>) -> IoResult<Vec<ai::Info>>;
+                          hint: Option<AddrinfoHint>)
+                          -> IoResult<Vec<AddrinfoInfo>>;
 
     // filesystem operations
     fn fs_from_raw_fd(&mut self, fd: c_int, close: CloseBehavior)
@@ -228,18 +209,16 @@ pub trait IoFactory {
                -> IoResult<Box<RtioFileStream:Send>>;
     fn fs_unlink(&mut self, path: &CString) -> IoResult<()>;
     fn fs_stat(&mut self, path: &CString) -> IoResult<FileStat>;
-    fn fs_mkdir(&mut self, path: &CString,
-                mode: FilePermission) -> IoResult<()>;
-    fn fs_chmod(&mut self, path: &CString,
-                mode: FilePermission) -> IoResult<()>;
+    fn fs_mkdir(&mut self, path: &CString, mode: uint) -> IoResult<()>;
+    fn fs_chmod(&mut self, path: &CString, mode: uint) -> IoResult<()>;
     fn fs_rmdir(&mut self, path: &CString) -> IoResult<()>;
     fn fs_rename(&mut self, path: &CString, to: &CString) -> IoResult<()>;
     fn fs_readdir(&mut self, path: &CString, flags: c_int) ->
-        IoResult<Vec<Path>>;
+        IoResult<Vec<CString>>;
     fn fs_lstat(&mut self, path: &CString) -> IoResult<FileStat>;
     fn fs_chown(&mut self, path: &CString, uid: int, gid: int) ->
         IoResult<()>;
-    fn fs_readlink(&mut self, path: &CString) -> IoResult<Path>;
+    fn fs_readlink(&mut self, path: &CString) -> IoResult<CString>;
     fn fs_symlink(&mut self, src: &CString, dst: &CString) -> IoResult<()>;
     fn fs_link(&mut self, src: &CString, dst: &CString) -> IoResult<()>;
     fn fs_utime(&mut self, src: &CString, atime: u64, mtime: u64) ->
@@ -254,7 +233,7 @@ pub trait IoFactory {
     fn pipe_open(&mut self, fd: c_int) -> IoResult<Box<RtioPipe:Send>>;
     fn tty_open(&mut self, fd: c_int, readable: bool)
             -> IoResult<Box<RtioTTY:Send>>;
-    fn signal(&mut self, signal: Signum, channel: Sender<Signum>)
+    fn signal(&mut self, signal: int, cb: Box<Callback:Send>)
         -> IoResult<Box<RtioSignal:Send>>;
 }
 
@@ -313,8 +292,8 @@ pub trait RtioUdpSocket : RtioSocket {
 
 pub trait RtioTimer {
     fn sleep(&mut self, msecs: u64);
-    fn oneshot(&mut self, msecs: u64) -> Receiver<()>;
-    fn period(&mut self, msecs: u64) -> Receiver<()>;
+    fn oneshot(&mut self, msecs: u64, cb: Box<Callback:Send>);
+    fn period(&mut self, msecs: u64, cb: Box<Callback:Send>);
 }
 
 pub trait RtioFileStream {
@@ -372,3 +351,99 @@ pub trait PausableIdleCallback {
 }
 
 pub trait RtioSignal {}
+
+pub struct IoError {
+    pub code: uint,
+    pub extra: uint,
+    pub detail: Option<String>,
+}
+
+pub type IoResult<T> = Result<T, IoError>;
+
+#[deriving(PartialEq, Eq)]
+pub enum IpAddr {
+    Ipv4Addr(u8, u8, u8, u8),
+    Ipv6Addr(u16, u16, u16, u16, u16, u16, u16, u16),
+}
+
+impl fmt::Show for IpAddr {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            Ipv4Addr(a, b, c, d) => write!(fmt, "{}.{}.{}.{}", a, b, c, d),
+            Ipv6Addr(a, b, c, d, e, f, g, h) => {
+                write!(fmt,
+                       "{:04x}:{:04x}:{:04x}:{:04x}:{:04x}:{:04x}:{:04x}:{:04x}",
+                       a, b, c, d, e, f, g, h)
+            }
+        }
+    }
+}
+
+#[deriving(PartialEq, Eq)]
+pub struct SocketAddr {
+    pub ip: IpAddr,
+    pub port: u16,
+}
+
+pub enum StdioContainer {
+    Ignored,
+    InheritFd(i32),
+    CreatePipe(bool, bool),
+}
+
+pub enum ProcessExit {
+    ExitStatus(int),
+    ExitSignal(int),
+}
+
+pub enum FileMode {
+    Open,
+    Append,
+    Truncate,
+}
+
+pub enum FileAccess {
+    Read,
+    Write,
+    ReadWrite,
+}
+
+pub struct FileStat {
+    pub size: u64,
+    pub kind: u64,
+    pub perm: u64,
+    pub created: u64,
+    pub modified: u64,
+    pub accessed: u64,
+    pub device: u64,
+    pub inode: u64,
+    pub rdev: u64,
+    pub nlink: u64,
+    pub uid: u64,
+    pub gid: u64,
+    pub blksize: u64,
+    pub blocks: u64,
+    pub flags: u64,
+    pub gen: u64,
+}
+
+pub enum SeekStyle {
+    SeekSet,
+    SeekEnd,
+    SeekCur,
+}
+
+pub struct AddrinfoHint {
+    pub family: uint,
+    pub socktype: uint,
+    pub protocol: uint,
+    pub flags: uint,
+}
+
+pub struct AddrinfoInfo {
+    pub address: SocketAddr,
+    pub family: uint,
+    pub socktype: uint,
+    pub protocol: uint,
+    pub flags: uint,
+}

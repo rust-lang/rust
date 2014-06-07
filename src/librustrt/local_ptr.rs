@@ -17,10 +17,10 @@
 
 #![allow(dead_code)]
 
-use mem;
-use ops::{Drop, Deref, DerefMut};
-use owned::Box;
-use ptr::RawPtr;
+use core::prelude::*;
+
+use core::mem;
+use alloc::owned::Box;
 
 #[cfg(windows)]               // mingw-w32 doesn't like thread_local things
 #[cfg(target_os = "android")] // see #10686
@@ -83,13 +83,13 @@ pub unsafe fn borrow<T>() -> Borrowed<T> {
 /// it wherever possible.
 #[cfg(not(windows), not(target_os = "android"))]
 pub mod compiled {
-    use mem;
-    use option::{Option, Some, None};
-    use owned::Box;
-    use ptr::RawPtr;
+    use core::prelude::*;
+
+    use alloc::owned::Box;
+    use core::mem;
 
     #[cfg(test)]
-    pub use realstd::rt::shouldnt_be_public::RT_TLS_PTR;
+    pub use realrustrt::shouldnt_be_public::RT_TLS_PTR;
 
     #[cfg(not(test))]
     #[thread_local]
@@ -234,12 +234,12 @@ pub mod compiled {
 /// implementation uses the `thread_local_storage` module to provide a
 /// thread-local value.
 pub mod native {
-    use mem;
-    use option::{Option, Some, None};
-    use owned::Box;
-    use ptr::RawPtr;
-    use ptr;
-    use tls = rt::thread_local_storage;
+    use core::prelude::*;
+
+    use alloc::owned::Box;
+    use core::mem;
+    use core::ptr;
+    use tls = thread_local_storage;
 
     static mut RT_TLS_KEY: tls::Key = -1;
 
@@ -396,9 +396,9 @@ pub mod native {
 
     #[inline] #[cfg(test)]
     pub fn maybe_tls_key() -> Option<tls::Key> {
-        use realstd;
+        use realrustrt;
         unsafe {
-            mem::transmute(realstd::rt::shouldnt_be_public::maybe_tls_key())
+            mem::transmute(realrustrt::shouldnt_be_public::maybe_tls_key())
         }
     }
 }

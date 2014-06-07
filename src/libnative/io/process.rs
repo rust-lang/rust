@@ -10,16 +10,13 @@
 
 use libc::{pid_t, c_void, c_int};
 use libc;
-use std::io;
 use std::mem;
 use std::os;
 use std::ptr;
 use std::rt::rtio;
-use std::rt::rtio::ProcessConfig;
+use std::rt::rtio::{ProcessConfig, IoResult, IoError};
 use std::c_str::CString;
-use p = std::io::process;
 
-use super::IoResult;
 use super::file;
 use super::util;
 
@@ -48,7 +45,7 @@ pub struct Process {
     handle: *(),
 
     /// None until finish() is called.
-    exit_code: Option<p::ProcessExit>,
+    exit_code: Option<rtio::ProcessExit>,
 
     /// Manually delivered signal
     exit_signal: Option<int>,
@@ -59,7 +56,7 @@ pub struct Process {
 
 #[cfg(unix)]
 enum Req {
-    NewChild(libc::pid_t, Sender<p::ProcessExit>, u64),
+    NewChild(libc::pid_t, Sender<rtio::ProcessExit>, u64),
 }
 
 impl Process {
@@ -67,20 +64,21 @@ impl Process {
     /// by the OS. Operations on this process will be blocking instead of using
     /// the runtime for sleeping just this current task.
     pub fn spawn(cfg: ProcessConfig)
-        -> Result<(Process, Vec<Option<file::FileDesc>>), io::IoError>
+        -> IoResult<(Process, Vec<Option<file::FileDesc>>)>
     {
         // right now we only handle stdin/stdout/stderr.
         if cfg.extra_io.len() > 0 {
             return Err(super::unimpl());
         }
 
-        fn get_io(io: p::StdioContainer, ret: &mut Vec<Option<file::FileDesc>>)
+        fn get_io(io: rtio::StdioContainer,
+                  ret: &mut Vec<Option<file::FileDesc>>)
             -> (Option<os::Pipe>, c_int)
         {
             match io {
-                p::Ignored => { ret.push(None); (None, -1) }
-                p::InheritFd(fd) => { ret.push(None); (None, fd) }
-                p::CreatePipe(readable, _writable) => {
+                rtio::Ignored => { ret.push(None); (None, -1) }
+                rtio::InheritFd(fd) => { ret.push(None); (None, fd) }
+                rtio::CreatePipe(readable, _writable) => {
                     let pipe = os::pipe();
                     let (theirs, ours) = if readable {
                         (pipe.input, pipe.out)
@@ -133,7 +131,7 @@ impl rtio::RtioProcess for Process {
         self.deadline = timeout.map(|i| i + ::io::timer::now()).unwrap_or(0);
     }
 
-    fn wait(&mut self) -> IoResult<p::ProcessExit> {
+    fn wait(&mut self) -> IoResult<rtio::ProcessExit> {
         match self.exit_code {
             Some(code) => Ok(code),
             None => {
@@ -143,7 +141,7 @@ impl rtio::RtioProcess for Process {
                 // consider it as having died via a signal.
                 let code = match self.exit_signal {
                     None => code,
-                    Some(signal) if cfg!(windows) => p::ExitSignal(signal),
+                    Some(signal) if cfg!(windows) => rtio::ExitSignal(signal),
                     Some(..) => code,
                 };
                 self.exit_code = Some(code);
@@ -152,7 +150,10 @@ impl rtio::RtioProcess for Process {
         }
     }
 
-    fn kill(&mut self, signum: int) -> Result<(), io::IoError> {
+    fn kill(&mut self, signum: int) -> IoResult<()> {
+        #[cfg(unix)] use ERROR = libc::EINVAL;
+        #[cfg(windows)] use ERROR = libc::ERROR_NOTHING_TO_TERMINATE;
+
         // On linux (and possibly other unices), a process that has exited will
         // continue to accept signals because it is "defunct". The delivery of
         // signals will only fail once the child has been reaped. For this
@@ -169,10 +170,10 @@ impl rtio::RtioProcess for Process {
         // and we kill it, then on unix we might ending up killing a
         // newer process that happens to have the same (re-used) id
         match self.exit_code {
-            Some(..) => return Err(io::IoError {
-                kind: io::OtherIoError,
-                desc: "can't kill an exited process",
-                detail: None,
+            Some(..) => return Err(IoError {
+                code: ERROR as uint,
+                extra: 0,
+                detail: Some("can't kill an exited process".to_str()),
             }),
             None => {}
         }
@@ -194,7 +195,7 @@ impl Drop for Process {
 }
 
 #[cfg(windows)]
-unsafe fn killpid(pid: pid_t, signal: int) -> Result<(), io::IoError> {
+unsafe fn killpid(pid: pid_t, signal: int) -> IoResult<()> {
     let handle = libc::OpenProcess(libc::PROCESS_TERMINATE |
                                    libc::PROCESS_QUERY_INFORMATION,
                                    libc::FALSE, pid as libc::DWORD);
@@ -209,23 +210,23 @@ unsafe fn killpid(pid: pid_t, signal: int) -> Result<(), io::IoError> {
             if ret == 0 {
                 Err(super::last_error())
             } else if status != libc::STILL_ACTIVE {
-                Err(io::IoError {
-                    kind: io::OtherIoError,
-                    desc: "process no longer alive",
+                Err(IoError {
+                    code: libc::ERROR_NOTHING_TO_TERMINATE as uint,
+                    extra: 0,
                     detail: None,
                 })
             } else {
                 Ok(())
             }
         }
-        io::process::PleaseExitSignal | io::process::MustDieSignal => {
+        15 | 9 => { // sigterm or sigkill
             let ret = libc::TerminateProcess(handle, 1);
             super::mkerr_winbool(ret)
         }
-        _ => Err(io::IoError {
-            kind: io::OtherIoError,
-            desc: "unsupported signal on windows",
-            detail: None,
+        _ => Err(IoError {
+            code: libc::ERROR_CALL_NOT_IMPLEMENTED as uint,
+            extra: 0,
+            detail: Some("unsupported signal on windows".to_string()),
         })
     };
     let _ = libc::CloseHandle(handle);
@@ -233,7 +234,7 @@ unsafe fn killpid(pid: pid_t, signal: int) -> Result<(), io::IoError> {
 }
 
 #[cfg(not(windows))]
-unsafe fn killpid(pid: pid_t, signal: int) -> Result<(), io::IoError> {
+unsafe fn killpid(pid: pid_t, signal: int) -> IoResult<()> {
     let r = libc::funcs::posix88::signal::kill(pid, signal as c_int);
     super::mkerr_libc(r)
 }
@@ -265,10 +266,10 @@ fn spawn_process_os(cfg: ProcessConfig,
     use std::mem;
 
     if cfg.gid.is_some() || cfg.uid.is_some() {
-        return Err(io::IoError {
-            kind: io::OtherIoError,
-            desc: "unsupported gid/uid requested on windows",
-            detail: None,
+        return Err(IoError {
+            code: libc::ERROR_CALL_NOT_IMPLEMENTED as uint,
+            extra: 0,
+            detail: Some("unsupported gid/uid requested on windows".to_str()),
         })
     }
 
@@ -521,12 +522,13 @@ fn spawn_process_os(cfg: ProcessConfig, in_fd: c_int, out_fd: c_int, err_fd: c_i
                                     (bytes[1] << 16) as i32 |
                                     (bytes[2] <<  8) as i32 |
                                     (bytes[3] <<  0) as i32;
-                        Err(io::IoError::from_errno(errno as uint, false))
+                        Err(IoError {
+                            code: errno as uint,
+                            detail: None,
+                            extra: 0,
+                        })
                     }
-                    Err(e) => {
-                        assert!(e.kind == io::BrokenPipe ||
-                                e.kind == io::EndOfFile,
-                                "unexpected error: {}", e);
+                    Err(..) => {
                         Ok(SpawnProcessResult {
                             pid: pid,
                             handle: ptr::null()
@@ -757,7 +759,7 @@ fn free_handle(_handle: *()) {
 }
 
 #[cfg(unix)]
-fn translate_status(status: c_int) -> p::ProcessExit {
+fn translate_status(status: c_int) -> rtio::ProcessExit {
     #![allow(non_snake_case_functions)]
     #[cfg(target_os = "linux")]
     #[cfg(target_os = "android")]
@@ -776,9 +778,9 @@ fn translate_status(status: c_int) -> p::ProcessExit {
     }
 
     if imp::WIFEXITED(status) {
-        p::ExitStatus(imp::WEXITSTATUS(status) as int)
+        rtio::ExitStatus(imp::WEXITSTATUS(status) as int)
     } else {
-        p::ExitSignal(imp::WTERMSIG(status) as int)
+        rtio::ExitSignal(imp::WTERMSIG(status) as int)
     }
 }
 
@@ -793,7 +795,7 @@ fn translate_status(status: c_int) -> p::ProcessExit {
  * with the same id.
  */
 #[cfg(windows)]
-fn waitpid(pid: pid_t, deadline: u64) -> IoResult<p::ProcessExit> {
+fn waitpid(pid: pid_t, deadline: u64) -> IoResult<rtio::ProcessExit> {
     use libc::types::os::arch::extra::DWORD;
     use libc::consts::os::extra::{
         SYNCHRONIZE,
@@ -828,7 +830,7 @@ fn waitpid(pid: pid_t, deadline: u64) -> IoResult<p::ProcessExit> {
             }
             if status != STILL_ACTIVE {
                 assert!(CloseHandle(process) != 0);
-                return Ok(p::ExitStatus(status as int));
+                return Ok(rtio::ExitStatus(status as int));
             }
             let interval = if deadline == 0 {
                 INFINITE
@@ -853,7 +855,7 @@ fn waitpid(pid: pid_t, deadline: u64) -> IoResult<p::ProcessExit> {
 }
 
 #[cfg(unix)]
-fn waitpid(pid: pid_t, deadline: u64) -> IoResult<p::ProcessExit> {
+fn waitpid(pid: pid_t, deadline: u64) -> IoResult<rtio::ProcessExit> {
     use std::cmp;
     use std::comm;
 
@@ -862,7 +864,7 @@ fn waitpid(pid: pid_t, deadline: u64) -> IoResult<p::ProcessExit> {
     let mut status = 0 as c_int;
     if deadline == 0 {
         return match retry(|| unsafe { c::waitpid(pid, &mut status, 0) }) {
-            -1 => fail!("unknown waitpid error: {}", super::last_error()),
+            -1 => fail!("unknown waitpid error: {}", super::last_error().code),
             _ => Ok(translate_status(status)),
         }
     }
@@ -928,8 +930,8 @@ fn waitpid(pid: pid_t, deadline: u64) -> IoResult<p::ProcessExit> {
         unsafe {
             let mut pipes = [0, ..2];
             assert_eq!(libc::pipe(pipes.as_mut_ptr()), 0);
-            util::set_nonblocking(pipes[0], true).unwrap();
-            util::set_nonblocking(pipes[1], true).unwrap();
+            util::set_nonblocking(pipes[0], true).ok().unwrap();
+            util::set_nonblocking(pipes[1], true).ok().unwrap();
             WRITE_FD = pipes[1];
 
             let mut old: c::sigaction = mem::zeroed();
@@ -945,10 +947,10 @@ fn waitpid(pid: pid_t, deadline: u64) -> IoResult<p::ProcessExit> {
     fn waitpid_helper(input: libc::c_int,
                       messages: Receiver<Req>,
                       (read_fd, old): (libc::c_int, c::sigaction)) {
-        util::set_nonblocking(input, true).unwrap();
+        util::set_nonblocking(input, true).ok().unwrap();
         let mut set: c::fd_set = unsafe { mem::zeroed() };
         let mut tv: libc::timeval;
-        let mut active = Vec::<(libc::pid_t, Sender<p::ProcessExit>, u64)>::new();
+        let mut active = Vec::<(libc::pid_t, Sender<rtio::ProcessExit>, u64)>::new();
         let max = cmp::max(input, read_fd) + 1;
 
         'outer: loop {
@@ -1094,22 +1096,23 @@ fn waitpid(pid: pid_t, deadline: u64) -> IoResult<p::ProcessExit> {
     }
 }
 
-fn waitpid_nowait(pid: pid_t) -> Option<p::ProcessExit> {
+fn waitpid_nowait(pid: pid_t) -> Option<rtio::ProcessExit> {
     return waitpid_os(pid);
 
     // This code path isn't necessary on windows
     #[cfg(windows)]
-    fn waitpid_os(_pid: pid_t) -> Option<p::ProcessExit> { None }
+    fn waitpid_os(_pid: pid_t) -> Option<rtio::ProcessExit> { None }
 
     #[cfg(unix)]
-    fn waitpid_os(pid: pid_t) -> Option<p::ProcessExit> {
+    fn waitpid_os(pid: pid_t) -> Option<rtio::ProcessExit> {
         let mut status = 0 as c_int;
         match retry(|| unsafe {
             c::waitpid(pid, &mut status, c::WNOHANG)
         }) {
             n if n == pid => Some(translate_status(status)),
             0 => None,
-            n => fail!("unknown waitpid error `{}`: {}", n, super::last_error()),
+            n => fail!("unknown waitpid error `{}`: {}", n,
+                       super::last_error().code),
         }
     }
 }

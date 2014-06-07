@@ -8,10 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use option::Option;
-use owned::Box;
-use rt::task::Task;
-use rt::local_ptr;
+use core::prelude::*;
+
+use alloc::owned::Box;
+use local_ptr;
+use task::Task;
 
 /// Encapsulates some task-local data.
 pub trait Local<Borrowed> {
@@ -52,11 +53,10 @@ impl Local<local_ptr::Borrowed<Task>> for Task {
 
 #[cfg(test)]
 mod test {
-    use option::{None, Option};
-    use rt::thread::Thread;
+    use std::prelude::*;
+    use std::rt::thread::Thread;
     use super::*;
-    use owned::Box;
-    use rt::task::Task;
+    use task::Task;
 
     #[test]
     fn thread_local_task_smoke_test() {
