@@ -13,52 +13,52 @@ struct B { a: Box<int>, b: Box<int> }
 
 fn borrow<T>(_: &T) { }
 
-fn move_after_use() {
+fn move_after_copy() {
     let x = A { a: 1, b: box 2 };
     drop(x.a);
     drop(x.b);
 }
 
-fn move_after_fu_use() {
+fn move_after_fu_copy() {
     let x = A { a: 1, b: box 2 };
     let _y = A { b: box 3, .. x };
     drop(x.b);
 }
 
-fn fu_move_after_use() {
+fn fu_move_after_copy() {
     let x = A { a: 1, b: box 2 };
     drop(x.a);
     let y = A { a: 3, .. x };
     drop(y.b);
 }
 
-fn fu_move_after_fu_use() {
+fn fu_move_after_fu_copy() {
     let x = A { a: 1, b: box 2 };
     let _y = A { b: box 3, .. x };
     let z = A { a: 4, .. x };
     drop(z.b);
 }
 
-fn use_after_move() {
+fn copy_after_move() {
     let x = A { a: 1, b: box 2 };
     drop(x.b);
     drop(x.a);
 }
 
-fn use_after_fu_move() {
+fn copy_after_fu_move() {
     let x = A { a: 1, b: box 2 };
     let y = A { a: 3, .. x };
     drop(x.a);
     drop(y.b);
 }
 
-fn fu_use_after_move() {
+fn fu_copy_after_move() {
     let x = A { a: 1, b: box 2 };
     drop(x.b);
     let _y = A { b: box 3, .. x };
 }
 
-fn fu_use_after_fu_move() {
+fn fu_copy_after_fu_move() {
     let x = A { a: 1, b: box 2 };
     let y = A { a: 3, .. x };
     let _z = A { b: box 3, .. x };
@@ -127,14 +127,14 @@ fn fu_move_after_fu_move() {
     drop(z.b);
 }
 
-fn use_after_assign_after_move() {
+fn copy_after_assign_after_move() {
     let mut x = A { a: 1, b: box 2 };
     drop(x.b);
     x = A { a: 3, b: box 4 };
     drop(*x.b);
 }
 
-fn use_after_field_assign_after_move() {
+fn copy_after_field_assign_after_move() {
     let mut x = A { a: 1, b: box 2 };
     drop(x.b);
     x.b = box 3;
@@ -170,7 +170,7 @@ fn move_after_field_assign_after_move() {
     drop(x.b);
 }
 
-fn use_after_assign_after_uninit() {
+fn copy_after_assign_after_uninit() {
     let mut x: A;
     x = A { a: 1, b: box 2 };
     drop(x.a);
@@ -189,14 +189,14 @@ fn move_after_assign_after_uninit() {
 }
 
 fn main() {
-    move_after_use();
-    move_after_fu_use();
-    fu_move_after_use();
-    fu_move_after_fu_use();
-    use_after_move();
-    use_after_fu_move();
-    fu_use_after_move();
-    fu_use_after_fu_move();
+    move_after_copy();
+    move_after_fu_copy();
+    fu_move_after_copy();
+    fu_move_after_fu_copy();
+    copy_after_move();
+    copy_after_fu_move();
+    fu_copy_after_move();
+    fu_copy_after_fu_move();
 
     borrow_after_move();
     borrow_after_fu_move();
@@ -209,14 +209,14 @@ fn main() {
     fu_move_after_move();
     fu_move_after_fu_move();
 
-    use_after_assign_after_move();
-    use_after_field_assign_after_move();
+    copy_after_assign_after_move();
+    copy_after_field_assign_after_move();
     borrow_after_assign_after_move();
     borrow_after_field_assign_after_move();
     move_after_assign_after_move();
     move_after_field_assign_after_move();
 
-    use_after_assign_after_uninit();
+    copy_after_assign_after_uninit();
     borrow_after_assign_after_uninit();
     move_after_assign_after_uninit();
 }
