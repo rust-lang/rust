@@ -1722,7 +1722,11 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
             match ty::get(method_fn_ty).sty {
                 ty::ty_bare_fn(ref fty) => {
                     // HACK(eddyb) ignore self in the definition (see above).
-                    check_argument_types(fcx, sp, fty.sig.inputs.slice_from(1),
+                    let arg_tys = fty.sig.inputs.slice_from(1).iter()
+                                     .map(|t| {
+                                         fcx.infcx().resolve_type_vars_if_possible(*t)
+                                     }).collect::<Vec<ty::t>>();
+                    check_argument_types(fcx, sp, arg_tys.as_slice(),
                                          callee_expr, args, deref_args,
                                          fty.sig.variadic);
                     fty.sig.output
