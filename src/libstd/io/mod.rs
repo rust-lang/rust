@@ -910,7 +910,7 @@ impl<'a> Reader for &'a mut Reader {
 
 /// Returns a slice of `v` between `start` and `end`.
 ///
-/// Similar to `slice()` except this function only bounds the sclie on the
+/// Similar to `slice()` except this function only bounds the slice on the
 /// capacity of `v`, not the length.
 ///
 /// # Failure
