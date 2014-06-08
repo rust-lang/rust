@@ -1183,7 +1183,7 @@ fn check_attrs_usage(cx: &Context, attrs: &[ast::Attribute]) {
     }
 }
 
-fn check_unused_attribute(cx: &Context, attrs: &[ast::Attribute]) {
+fn check_unused_attribute(cx: &Context, attr: &ast::Attribute) {
     static ATTRIBUTE_WHITELIST: &'static [&'static str] = &'static [
         // FIXME: #14408 whitelist docs since rustdoc looks at them
         "doc",
@@ -1218,16 +1218,15 @@ fn check_unused_attribute(cx: &Context, attrs: &[ast::Attribute]) {
         "stable",
         "unstable",
     ];
-    for attr in attrs.iter() {
-        for &name in ATTRIBUTE_WHITELIST.iter() {
-            if attr.check_name(name) {
-                break;
-            }
-        }
 
-        if !attr::is_used(attr) {
-            cx.span_lint(UnusedAttribute, attr.span, "unused attribute");
+    for &name in ATTRIBUTE_WHITELIST.iter() {
+        if attr.check_name(name) {
+            break;
         }
+    }
+
+    if !attr::is_used(attr) {
+        cx.span_lint(UnusedAttribute, attr.span, "unused attribute");
     }
 }
 
@@ -1836,7 +1835,6 @@ impl<'a> Visitor<()> for Context<'a> {
             check_heap_item(cx, it);
             check_missing_doc_item(cx, it);
             check_attrs_usage(cx, it.attrs.as_slice());
-            check_unused_attribute(cx, it.attrs.as_slice());
             check_raw_ptr_deriving(cx, it);
 
             cx.visit_ids(|v| v.visit_item(it, ()));
@@ -2003,6 +2001,10 @@ impl<'a> Visitor<()> for Context<'a> {
 
     // FIXME(#10894) should continue recursing
     fn visit_ty(&mut self, _t: &ast::Ty, _: ()) {}
+
+    fn visit_attribute(&mut self, attr: &ast::Attribute, _: ()) {
+        check_unused_attribute(self, attr);
+    }
 }
 
 impl<'a> IdVisitingOperation for Context<'a> {
@@ -2054,7 +2056,6 @@ pub fn check_crate(tcx: &ty::ctxt,
         check_crate_attrs_usage(cx, krate.attrs.as_slice());
         // since the root module isn't visited as an item (because it isn't an item), warn for it
         // here.
-        check_unused_attribute(cx, krate.attrs.as_slice());
         check_missing_doc_attrs(cx,
                                 None,
                                 krate.attrs.as_slice(),
