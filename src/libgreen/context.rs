@@ -143,6 +143,7 @@ extern {
 // stacks are disabled.
 
 #[cfg(target_arch = "x86")]
+#[repr(C)]
 struct Registers {
     eax: u32, ebx: u32, ecx: u32, edx: u32,
     ebp: u32, esi: u32, edi: u32, esp: u32,
