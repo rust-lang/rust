@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 #![deny(unused_attribute)]
-#![allow(attribute_usage, dead_code, unused_imports)]
+#![allow(dead_code, unused_imports)]
 
 #![foo] //~ ERROR unused attribute
 
