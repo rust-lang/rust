@@ -43,6 +43,7 @@ exceptions = [
     "libstd/sync/mpmc_bounded_queue.rs", # BSD
     "libsync/mpsc_intrusive.rs", # BSD
     "test/bench/shootout-meteor.rs", # BSD
+    "test/bench/shootout-regex-dna.rs", # BSD
 ]
 
 def check_license(name, contents):
