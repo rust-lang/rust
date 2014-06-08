@@ -127,6 +127,7 @@ impl<'a, T: Int> ToSocketAddrs for (&'a str, T) {
 /// # #![allow(unused_must_use)]
 /// use std::io::net::tcp::TcpStream;
 ///
+/// // ::connect would also accept "127.0.0.1:34254" or a SocketAddr{...} here
 /// let mut stream = TcpStream::connect(("127.0.0.1", 34254));
 ///
 /// stream.write([1]);
@@ -145,8 +146,17 @@ impl TcpStream {
 
     /// Open a TCP connection to a remote host by hostname or IP address.
     ///
-    /// `addr` is any type that implements ToSocketAddrs. If the connection
-    /// is successfully established to the remote host, then Ok(stream) is
+    /// `addr` describes the host & port of the remote peer, and can be
+    /// expressed as a `(host, port)` tuple, a `SocketAddr` or a
+    /// string slice of the form `"host:port"`.
+    ///
+    /// Hostnames or IPv4/IPv6 addresses can be passed for the host portion.
+    /// When using a hostname a DNS lookup may occur. `connect` will
+    /// then attempt to connect to each `IpAddr` associated with the
+    /// hostname until a connection is successfully established.
+    ///
+    /// If the connection is successfully established to the remote host,
+    /// then `Ok(stream)` is returned. Otherwise `Err(IoError{...})` is
     /// returned.
     pub fn connect<T: ToSocketAddrs>(addr: T) -> IoResult<TcpStream> {
         let addresses = try!(addr.to_socket_addrs());
@@ -422,6 +432,7 @@ impl<'a, T: Int> ToBindSocketAddr for (&'a str, T) {
 /// use std::io::{TcpListener, TcpStream};
 /// use std::io::{Acceptor, Listener};
 ///
+/// // ::bind would also accept "127.0.0.1:80" or a SocketAddr{...} here
 /// let listener = TcpListener::bind(("127.0.0.1", 80));
 ///
 /// // bind the listener to the specified address
@@ -454,6 +465,14 @@ impl TcpListener {
     /// Creates a new `TcpListener` which will be bound to the specified IP
     /// and port. This listener is not ready for accepting connections,
     /// `listen` must be called on it before that's possible.
+    ///
+    /// `addr` describes the interface this socket should be bound to, and
+    /// may be expressed as a `(host, port)` tuple, a `SocketAddr` or a
+    /// string slice of the form `"host:port"`.
+    ///
+    /// Note that unlike `TcpStream::connect`, no DNS lookups will be
+    /// performed by this method: use IPv4 or IPv6 addresses for the
+    /// host portion.
     ///
     /// Binding with a port number of 0 will request that the OS assigns a port
     /// to this listener. The port allocated can be queried via the
