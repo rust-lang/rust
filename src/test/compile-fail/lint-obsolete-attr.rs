@@ -11,14 +11,11 @@
 // When denying at the crate level, be sure to not get random warnings from the
 // injected intrinsics by the compiler.
 
-#![deny(attribute_usage)]
 #![deny(unused_attribute)]
 #![allow(dead_code)]
 
-#[abi="stdcall"] extern {} //~ ERROR: obsolete attribute
-                           //~^ ERROR: unused attribute
+#[abi="stdcall"] extern {} //~ ERROR unused attribute
 
-#[fixed_stack_segment] fn f() {} //~ ERROR: obsolete attribute
-                                 //~^ ERROR: unused attribute
+#[fixed_stack_segment] fn f() {} //~ ERROR unused attribute
 
 fn main() {}
