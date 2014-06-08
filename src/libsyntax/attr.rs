@@ -53,12 +53,6 @@ pub trait AttrMetaMethods {
     fn value_str(&self) -> Option<InternedString>;
     /// Gets a list of inner meta items from a list MetaItem type.
     fn meta_item_list<'a>(&'a self) -> Option<&'a [@MetaItem]>;
-
-    /**
-     * If the meta item is a name-value type with a string value then returns
-     * a tuple containing the name and string value, otherwise `None`
-     */
-    fn name_str_pair(&self) -> Option<(InternedString,InternedString)>;
 }
 
 impl AttrMetaMethods for Attribute {
@@ -75,9 +69,6 @@ impl AttrMetaMethods for Attribute {
     }
     fn meta_item_list<'a>(&'a self) -> Option<&'a [@MetaItem]> {
         self.node.value.meta_item_list()
-    }
-    fn name_str_pair(&self) -> Option<(InternedString,InternedString)> {
-        self.meta().name_str_pair()
     }
 }
 
@@ -108,10 +99,6 @@ impl AttrMetaMethods for MetaItem {
             _ => None
         }
     }
-
-    fn name_str_pair(&self) -> Option<(InternedString,InternedString)> {
-        self.value_str().map(|s| (self.name(), s))
-    }
 }
 
 // Annoying, but required to get test_cfg to work
@@ -120,9 +107,6 @@ impl AttrMetaMethods for @MetaItem {
     fn value_str(&self) -> Option<InternedString> { (**self).value_str() }
     fn meta_item_list<'a>(&'a self) -> Option<&'a [@MetaItem]> {
         (**self).meta_item_list()
-    }
-    fn name_str_pair(&self) -> Option<(InternedString,InternedString)> {
-        (**self).name_str_pair()
     }
 }
 
