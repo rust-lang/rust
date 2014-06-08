@@ -12,8 +12,6 @@
 use middle::ty;
 use middle::typeck::check::FnCtxt;
 use middle::typeck::infer;
-use middle::typeck::infer::resolve_type;
-use middle::typeck::infer::resolve::try_resolve_tvar_shallow;
 
 use std::result::{Err, Ok};
 use std::result;
@@ -60,18 +58,20 @@ pub fn eqtype(fcx: &FnCtxt, sp: Span, expected: ty::t, actual: ty::t) {
 
 // Checks that the type `actual` can be coerced to `expected`.
 pub fn coerce(fcx: &FnCtxt, sp: Span, expected: ty::t, expr: &ast::Expr) {
+    coerce_with_fn(fcx, sp, expected, expr,
+                   |sp, a, e, err| fcx.report_mismatched_types(sp, e, a, err))
+}
+
+pub fn coerce_with_fn(fcx: &FnCtxt, sp: Span, expected: ty::t,
+                      expr: &ast::Expr, handle_err: |Span, ty::t, ty::t, &ty::type_err|) {
     let expr_ty = fcx.expr_ty(expr);
     debug!("demand::coerce(expected = {}, expr_ty = {})",
            expected.repr(fcx.ccx.tcx),
            expr_ty.repr(fcx.ccx.tcx));
-    let expected = if ty::type_needs_infer(expected) {
-        resolve_type(fcx.infcx(), expected,
-                     try_resolve_tvar_shallow).unwrap_or(expected)
-    } else { expected };
     match fcx.mk_assignty(expr, expr_ty, expected) {
       result::Ok(()) => { /* ok */ }
       result::Err(ref err) => {
-        fcx.report_mismatched_types(sp, expected, expr_ty, err);
+        handle_err(sp, expr_ty, expected, err);
       }
     }
 }

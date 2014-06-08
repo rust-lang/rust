@@ -502,9 +502,9 @@ fn check_fn<'a>(ccx: &'a CrateCtxt<'a>,
         Some(tail_expr) => {
             // Special case: we print a special error if there appears
             // to be do-block/for-loop confusion
-            demand::suptype_with_fn(&fcx, tail_expr.span, false,
-                fcx.ret_ty, fcx.expr_ty(tail_expr),
-                |sp, e, a, s| {
+            demand::coerce_with_fn(&fcx, tail_expr.span,
+                fcx.ret_ty, tail_expr,
+                |sp, a, e, s| {
                     fcx.report_mismatched_return_types(sp, e, a, s);
                 });
         }
@@ -1722,7 +1722,11 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
             match ty::get(method_fn_ty).sty {
                 ty::ty_bare_fn(ref fty) => {
                     // HACK(eddyb) ignore self in the definition (see above).
-                    check_argument_types(fcx, sp, fty.sig.inputs.slice_from(1),
+                    let arg_tys = fty.sig.inputs.slice_from(1).iter()
+                                     .map(|t| {
+                                         fcx.infcx().resolve_type_vars_if_possible(*t)
+                                     }).collect::<Vec<ty::t>>();
+                    check_argument_types(fcx, sp, arg_tys.as_slice(),
                                          callee_expr, args, deref_args,
                                          fty.sig.variadic);
                     fty.sig.output
@@ -2958,7 +2962,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
             }
           },
           Some(e) => {
-              check_expr_has_type(fcx, e, ret_ty);
+              check_expr_coercable_to_type(fcx, e, ret_ty);
           }
         }
         fcx.write_bot(id);
@@ -3500,26 +3504,31 @@ pub fn check_block_with_expected(fcx: &FnCtxt,
             else  {
                 fcx.write_nil(blk.id);
             },
-          Some(e) => {
-            if any_bot && !warned {
-                fcx.ccx
-                   .tcx
-                   .sess
-                   .add_lint(UnreachableCode,
-                             e.id,
-                             e.span,
-                             "unreachable expression".to_string());
+            Some(e) => {
+                if any_bot && !warned {
+                    fcx.ccx.tcx.sess
+                       .add_lint(UnreachableCode,
+                                 e.id,
+                                 e.span,
+                                 "unreachable expression".to_string());
+                }
+                let ety = match expected {
+                    Some(ety) => {
+                        check_expr_coercable_to_type(fcx, e, ety);
+                        ety
+                    },
+                    None => {
+                        check_expr(fcx, e);
+                        fcx.expr_ty(e)
+                    }
+                };
+                fcx.write_ty(blk.id, ety);
+                if any_err {
+                    fcx.write_error(blk.id);
+                } else if any_bot {
+                    fcx.write_bot(blk.id);
+                }
             }
-            check_expr_with_opt_hint(fcx, e, expected);
-              let ety = fcx.expr_ty(e);
-              fcx.write_ty(blk.id, ety);
-              if any_err {
-                  fcx.write_error(blk.id);
-              }
-              else if any_bot {
-                  fcx.write_bot(blk.id);
-              }
-          }
         };
     });
 
