@@ -31,7 +31,7 @@
 //!
 //! ## Stability Note
 //!
-//! These are all experimental. The inferface may change entirely, without
+//! These are all experimental. The interface may change entirely, without
 //! warning.
 
 #![allow(non_camel_case_types)]
