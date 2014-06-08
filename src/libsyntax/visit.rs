@@ -128,6 +128,7 @@ pub trait Visitor<E: Clone> {
     fn visit_path(&mut self, path: &Path, _id: ast::NodeId, e: E) {
         walk_path(self, path, e)
     }
+    fn visit_attribute(&mut self, _attr: &Attribute, _e: E) {}
 }
 
 pub fn walk_inlined_item<E: Clone, V: Visitor<E>>(visitor: &mut V,
@@ -142,7 +143,10 @@ pub fn walk_inlined_item<E: Clone, V: Visitor<E>>(visitor: &mut V,
 
 
 pub fn walk_crate<E: Clone, V: Visitor<E>>(visitor: &mut V, krate: &Crate, env: E) {
-    visitor.visit_mod(&krate.module, krate.span, CRATE_NODE_ID, env)
+    visitor.visit_mod(&krate.module, krate.span, CRATE_NODE_ID, env.clone());
+    for attr in krate.attrs.iter() {
+        visitor.visit_attribute(attr, env.clone());
+    }
 }
 
 pub fn walk_mod<E: Clone, V: Visitor<E>>(visitor: &mut V, module: &Mod, env: E) {
@@ -158,7 +162,7 @@ pub fn walk_mod<E: Clone, V: Visitor<E>>(visitor: &mut V, module: &Mod, env: E) 
 pub fn walk_view_item<E: Clone, V: Visitor<E>>(visitor: &mut V, vi: &ViewItem, env: E) {
     match vi.node {
         ViewItemExternCrate(name, _, _) => {
-            visitor.visit_ident(vi.span, name, env)
+            visitor.visit_ident(vi.span, name, env.clone())
         }
         ViewItemUse(ref vp) => {
             match vp.node {
@@ -177,6 +181,9 @@ pub fn walk_view_item<E: Clone, V: Visitor<E>>(visitor: &mut V, vi: &ViewItem, e
                 }
             }
         }
+    }
+    for attr in vi.attrs.iter() {
+        visitor.visit_attribute(attr, env.clone());
     }
 }
 
@@ -213,7 +220,7 @@ pub fn walk_item<E: Clone, V: Visitor<E>>(visitor: &mut V, item: &Item, env: E) 
     match item.node {
         ItemStatic(typ, _, expr) => {
             visitor.visit_ty(typ, env.clone());
-            visitor.visit_expr(expr, env);
+            visitor.visit_expr(expr, env.clone());
         }
         ItemFn(declaration, fn_style, abi, ref generics, body) => {
             visitor.visit_fn(&FkItemFn(item.ident, generics, fn_style, abi),
@@ -221,10 +228,10 @@ pub fn walk_item<E: Clone, V: Visitor<E>>(visitor: &mut V, item: &Item, env: E) 
                              body,
                              item.span,
                              item.id,
-                             env)
+                             env.clone())
         }
         ItemMod(ref module) => {
-            visitor.visit_mod(module, item.span, item.id, env)
+            visitor.visit_mod(module, item.span, item.id, env.clone())
         }
         ItemForeignMod(ref foreign_module) => {
             for view_item in foreign_module.view_items.iter() {
@@ -236,11 +243,11 @@ pub fn walk_item<E: Clone, V: Visitor<E>>(visitor: &mut V, item: &Item, env: E) 
         }
         ItemTy(typ, ref type_parameters) => {
             visitor.visit_ty(typ, env.clone());
-            visitor.visit_generics(type_parameters, env)
+            visitor.visit_generics(type_parameters, env.clone())
         }
         ItemEnum(ref enum_definition, ref type_parameters) => {
             visitor.visit_generics(type_parameters, env.clone());
-            walk_enum_def(visitor, enum_definition, type_parameters, env)
+            walk_enum_def(visitor, enum_definition, type_parameters, env.clone())
         }
         ItemImpl(ref type_parameters,
                  ref trait_reference,
@@ -263,7 +270,7 @@ pub fn walk_item<E: Clone, V: Visitor<E>>(visitor: &mut V, item: &Item, env: E) 
                                      item.ident,
                                      generics,
                                      item.id,
-                                     env)
+                                     env.clone())
         }
         ItemTrait(ref generics, _, ref trait_paths, ref methods) => {
             visitor.visit_generics(generics, env.clone());
@@ -276,7 +283,10 @@ pub fn walk_item<E: Clone, V: Visitor<E>>(visitor: &mut V, item: &Item, env: E) 
                 visitor.visit_trait_method(method, env.clone())
             }
         }
-        ItemMac(ref macro) => visitor.visit_mac(macro, env),
+        ItemMac(ref macro) => visitor.visit_mac(macro, env.clone()),
+    }
+    for attr in item.attrs.iter() {
+        visitor.visit_attribute(attr, env.clone());
     }
 }
 
@@ -310,8 +320,11 @@ pub fn walk_variant<E: Clone, V: Visitor<E>>(visitor: &mut V,
         }
     }
     match variant.node.disr_expr {
-        Some(expr) => visitor.visit_expr(expr, env),
+        Some(expr) => visitor.visit_expr(expr, env.clone()),
         None => ()
+    }
+    for attr in variant.node.attrs.iter() {
+        visitor.visit_attribute(attr, env.clone());
     }
 }
 
@@ -469,9 +482,13 @@ pub fn walk_foreign_item<E: Clone, V: Visitor<E>>(visitor: &mut V,
     match foreign_item.node {
         ForeignItemFn(function_declaration, ref generics) => {
             walk_fn_decl(visitor, function_declaration, env.clone());
-            visitor.visit_generics(generics, env)
+            visitor.visit_generics(generics, env.clone())
         }
-        ForeignItemStatic(typ, _) => visitor.visit_ty(typ, env),
+        ForeignItemStatic(typ, _) => visitor.visit_ty(typ, env.clone()),
+    }
+
+    for attr in foreign_item.attrs.iter() {
+        visitor.visit_attribute(attr, env.clone());
     }
 }
 
@@ -525,7 +542,10 @@ pub fn walk_method_helper<E: Clone, V: Visitor<E>>(visitor: &mut V,
                      method.body,
                      method.span,
                      method.id,
-                     env)
+                     env.clone());
+    for attr in method.attrs.iter() {
+        visitor.visit_attribute(attr, env.clone());
+    }
 }
 
 pub fn walk_fn<E: Clone, V: Visitor<E>>(visitor: &mut V,
@@ -560,7 +580,10 @@ pub fn walk_ty_method<E: Clone, V: Visitor<E>>(visitor: &mut V,
         visitor.visit_ty(argument_type.ty, env.clone())
     }
     visitor.visit_generics(&method_type.generics, env.clone());
-    visitor.visit_ty(method_type.decl.output, env);
+    visitor.visit_ty(method_type.decl.output, env.clone());
+    for attr in method_type.attrs.iter() {
+        visitor.visit_attribute(attr, env.clone());
+    }
 }
 
 pub fn walk_trait_method<E: Clone, V: Visitor<E>>(visitor: &mut V,
@@ -596,7 +619,11 @@ pub fn walk_struct_field<E: Clone, V: Visitor<E>>(visitor: &mut V,
         _ => {}
     }
 
-    visitor.visit_ty(struct_field.node.ty, env)
+    visitor.visit_ty(struct_field.node.ty, env.clone());
+
+    for attr in struct_field.node.attrs.iter() {
+        visitor.visit_attribute(attr, env.clone());
+    }
 }
 
 pub fn walk_block<E: Clone, V: Visitor<E>>(visitor: &mut V, block: &Block, env: E) {
@@ -784,5 +811,8 @@ pub fn walk_arm<E: Clone, V: Visitor<E>>(visitor: &mut V, arm: &Arm, env: E) {
         visitor.visit_pat(*pattern, env.clone())
     }
     walk_expr_opt(visitor, arm.guard, env.clone());
-    visitor.visit_expr(arm.body, env)
+    visitor.visit_expr(arm.body, env.clone());
+    for attr in arm.attrs.iter() {
+        visitor.visit_attribute(attr, env.clone());
+    }
 }
