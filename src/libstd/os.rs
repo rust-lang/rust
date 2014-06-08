@@ -48,6 +48,7 @@ use str;
 use string::String;
 use sync::atomics::{AtomicInt, INIT_ATOMIC_INT, SeqCst};
 use vec::Vec;
+use io::{IoResult, IoError};
 
 #[cfg(unix)]
 use c_str::ToCStr;
@@ -380,13 +381,34 @@ pub fn getenv_as_bytes(n: &str) -> Option<Vec<u8>> {
 ///
 /// # Failure
 ///
-/// Fails if `n` or `v` have any interior NULs.
-pub fn setenv(n: &str, v: &str) {
+/// Return Err if:
+/// * `n` has length 0, or contain '=' character.
+/// * There is no memory for adding to a new variable to the environment.
+///
+/// # Example
+///
+/// ```rust
+/// let key = "KEY";
+/// let value = "VALUE";
+/// match std::os::setenv(key.as_slice(), value.as_slice()) {
+///     Ok(()) => {},
+///     Err(e) => fail!("setenv failed: {}", e)
+/// }
+/// match std::os::getenv(key.as_slice()) {
+///     Some(ref val) => println!("{}: {}", key, val),
+///     None => println!("{} is not defined in the environment.", key)
+/// }
+/// ```
+pub fn setenv(n: &str, v: &str) -> IoResult<()> {
     unsafe {
         with_env_lock(|| {
             n.with_c_str(|nbuf| {
                 v.with_c_str(|vbuf| {
-                    libc::funcs::posix01::unistd::setenv(nbuf, vbuf, 1);
+                    if libc::funcs::posix01::unistd::setenv(nbuf, vbuf, 1) == 0 {
+                        Ok(())
+                    } else  {
+                        Err(IoError::last_error())
+                    }
                 })
             })
         })
@@ -397,13 +419,17 @@ pub fn setenv(n: &str, v: &str) {
 #[cfg(windows)]
 /// Sets the environment variable `n` to the value `v` for the currently running
 /// process
-pub fn setenv(n: &str, v: &str) {
+pub fn setenv(n: &str, v: &str) -> IoResult<()> {
     unsafe {
         with_env_lock(|| {
             use os::win32::as_utf16_p;
             as_utf16_p(n, |nbuf| {
                 as_utf16_p(v, |vbuf| {
-                    libc::SetEnvironmentVariableW(nbuf, vbuf);
+                    if libc::SetEnvironmentVariableW(nbuf, vbuf) != 0 {
+                        Ok(())
+                    } else {
+                        Err(IoError::last_error())
+                    }
                 })
             })
         })
@@ -1608,11 +1634,7 @@ mod tests {
     use os;
     use rand::Rng;
     use rand;
-
-    #[test]
-    pub fn last_os_error() {
-        debug!("{}", os::last_os_error());
-    }
+    use libc;
 
     fn make_rand_name() -> String {
         let mut rng = rand::task_rng();
@@ -1623,9 +1645,32 @@ mod tests {
     }
 
     #[test]
+    pub fn last_os_error() {
+        debug!("{}", os::last_os_error());
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn test_setenv_with_name_containing_equal() {
+        let n = format!("a={}", make_rand_name());
+        let ret = setenv(n.as_slice(), "VALUE");
+        assert!(ret.is_err());
+        assert_eq!(ret.err().unwrap().kind, libc::EINVAL);
+    }
+
+    #[test]
+    #[cfg(windows)]
+    fn test_setenv_with_name_containing_equal() {
+        let n = format!("a={}", make_rand_name());
+        let ret = setenv(n.as_slice(), "VALUE");
+        assert!(ret.is_err());
+        assert_eq!(ret.err().unwrap().kind, libc::WSAEINVAL);
+    }
+
+    #[test]
     fn test_setenv() {
         let n = make_rand_name();
-        setenv(n.as_slice(), "VALUE");
+        assert!(setenv(n.as_slice(), "VALUE").is_ok());
         assert_eq!(getenv(n.as_slice()), option::Some("VALUE".to_string()));
     }
 
@@ -1742,13 +1787,13 @@ mod tests {
         let oldhome = getenv("HOME");
 
         setenv("HOME", "/home/MountainView");
-        assert!(os::homedir() == Some(Path::new("/home/MountainView")));
+        assert_eq!(os::homedir(), Some(Path::new("/home/MountainView")));
 
         setenv("HOME", "");
         assert!(os::homedir().is_none());
 
         for s in oldhome.iter() {
-            setenv("HOME", s.as_slice())
+            setenv("HOME", s.as_slice());
         }
     }
 
@@ -1777,10 +1822,10 @@ mod tests {
         assert!(os::homedir() == Some(Path::new("/home/MountainView")));
 
         for s in oldhome.iter() {
-            setenv("HOME", s.as_slice())
+            setenv("HOME", s.as_slice());
         }
         for s in olduserprofile.iter() {
-            setenv("USERPROFILE", s.as_slice())
+            setenv("USERPROFILE", s.as_slice());
         }
     }
 
