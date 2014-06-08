@@ -42,6 +42,7 @@ exceptions = [
     "libstd/sync/spsc_queue.rs", # BSD
     "libstd/sync/mpmc_bounded_queue.rs", # BSD
     "libsync/mpsc_intrusive.rs", # BSD
+    "test/bench/shootout-fannkuch-redux.rs", # BSD
     "test/bench/shootout-meteor.rs", # BSD
     "test/bench/shootout-regex-dna.rs", # BSD
 ]
