@@ -205,7 +205,7 @@ pub fn maketest(s: &str, cratename: Option<&str>, lints: bool) -> String {
     if lints {
         prog.push_str(r"
 #![deny(warnings)]
-#![allow(unused_variable, dead_assignment, unused_mut, attribute_usage, dead_code)]
+#![allow(unused_variable, dead_assignment, unused_mut, unused_attribute, dead_code)]
 ");
     }
 
