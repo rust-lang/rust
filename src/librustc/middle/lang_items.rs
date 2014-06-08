@@ -187,11 +187,11 @@ impl<'a> LanguageItemCollector<'a> {
 
 pub fn extract(attrs: &[ast::Attribute]) -> Option<InternedString> {
     for attribute in attrs.iter() {
-        match attribute.name_str_pair() {
-            Some((ref key, ref value)) if key.equiv(&("lang")) => {
-                return Some((*value).clone());
+        match attribute.value_str() {
+            Some(ref value) if attribute.check_name("lang") => {
+                return Some(value.clone());
             }
-            Some(..) | None => {}
+            _ => {}
         }
     }
 
