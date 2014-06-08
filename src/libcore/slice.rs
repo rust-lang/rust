@@ -717,6 +717,9 @@ impl<'a, T: Ord> ImmutableOrdVector<T> for &'a [T] {
 /// Extension methods for vectors such that their elements are
 /// mutable.
 pub trait MutableVector<'a, T> {
+    /// Returns a mutable reference to the element at the given index,
+    /// or `None` if the index is out of bounds
+    fn get_mut(self, index: uint) -> Option<&'a mut T>;
     /// Work with `self` as a mut slice.
     /// Primarily intended for getting a &mut [T] from a [T, ..N].
     fn as_mut_slice(self) -> &'a mut [T];
@@ -920,6 +923,11 @@ pub trait MutableVector<'a, T> {
 }
 
 impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
+    #[inline]
+    fn get_mut(self, index: uint) -> Option<&'a mut T> {
+        if index < self.len() { Some(&mut self[index]) } else { None }
+    }
+
     #[inline]
     fn as_mut_slice(self) -> &'a mut [T] { self }
 

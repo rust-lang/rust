@@ -2035,6 +2035,16 @@ mod tests {
     }
 
     #[test]
+    fn test_get_mut() {
+        let mut v = [0,1,2];
+        assert_eq!(v.get_mut(3), None);
+        v.get_mut(1).map(|e| *e = 7);
+        assert_eq!(v[1], 7);
+        let mut x = 2;
+        assert_eq!(v.get_mut(2), Some(&mut x));
+    }
+
+    #[test]
     fn test_mut_chunks() {
         let mut v = [0u8, 1, 2, 3, 4, 5, 6];
         for (i, chunk) in v.mut_chunks(3).enumerate() {
