@@ -390,8 +390,11 @@ pub fn getenv_as_bytes(n: &str) -> Option<Vec<u8>> {
 /// ```rust
 /// let key = "KEY";
 /// let value = "VALUE";
-/// std::os::setenv(key.as_slice(), value);
-/// match std::os::getenv(key) {
+/// match std::os::setenv(key.as_slice(), value.as_slice()) {
+///     Ok(()) => {},
+///     Err(e) => fail!("setenv failed: {}", e)
+/// }
+/// match std::os::getenv(key.as_slice()) {
 ///     Some(ref val) => println!("{}: {}", key, val),
 ///     None => println!("{} is not defined in the environment.", key)
 /// }
@@ -1784,13 +1787,13 @@ mod tests {
         let oldhome = getenv("HOME");
 
         setenv("HOME", "/home/MountainView");
-        assert!(os::homedir() == Some(Path::new("/home/MountainView")));
+        assert_eq!(os::homedir(), Some(Path::new("/home/MountainView")));
 
         setenv("HOME", "");
         assert!(os::homedir().is_none());
 
         for s in oldhome.iter() {
-            setenv("HOME", s.as_slice())
+            setenv("HOME", s.as_slice());
         }
     }
 
@@ -1819,10 +1822,10 @@ mod tests {
         assert!(os::homedir() == Some(Path::new("/home/MountainView")));
 
         for s in oldhome.iter() {
-            setenv("HOME", s.as_slice())
+            setenv("HOME", s.as_slice());
         }
         for s in olduserprofile.iter() {
-            setenv("USERPROFILE", s.as_slice())
+            setenv("USERPROFILE", s.as_slice());
         }
     }
 
