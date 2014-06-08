@@ -1424,7 +1424,7 @@ impl<K: Eq + Hash<S>, V: PartialEq, S, H: Hasher<S>> PartialEq for HashMap<K, V,
         if self.len() != other.len() { return true; }
 
         self.iter()
-          .all(|(key, value)| {
+          .any(|(key, value)| {
             match other.find(key) {
                 None    => true,
                 Some(v) => *value != *v

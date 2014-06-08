@@ -53,8 +53,8 @@ impl<K: PartialEq + Ord, V: PartialEq> PartialEq for TreeMap<K, V> {
             self.iter().zip(other.iter()).all(|(a, b)| a == b)
     }
     fn ne(&self, other: &TreeMap<K, V>) -> bool {
-        self.len() != other.len() &&
-            self.iter().zip(other.iter()).all(|(a, b)| a != b)
+        self.len() != other.len() ||
+            self.iter().zip(other.iter()).any(|(a, b)| a != b)
     }
 }
 

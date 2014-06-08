@@ -374,8 +374,8 @@ impl<A: PartialEq> PartialEq for RingBuf<A> {
             self.iter().zip(other.iter()).all(|(a, b)| a == b)
     }
     fn ne(&self, other: &RingBuf<A>) -> bool {
-        self.nelts != other.nelts &&
-            self.iter().zip(other.iter()).all(|(a, b)| a != b)
+        self.nelts != other.nelts ||
+            self.iter().zip(other.iter()).any(|(a, b)| a != b)
     }
 }
 
