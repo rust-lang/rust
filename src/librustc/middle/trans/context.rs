@@ -233,11 +233,11 @@ impl CrateContext {
             ccx.int_type = Type::int(&ccx);
             ccx.opaque_vec_type = Type::opaque_vec(&ccx);
 
-            ccx.tn.associate_type("tydesc", &Type::tydesc(&ccx));
-
             let mut str_slice_ty = Type::named_struct(&ccx, "str_slice");
             str_slice_ty.set_struct_body([Type::i8p(&ccx), ccx.int_type], false);
             ccx.tn.associate_type("str_slice", &str_slice_ty);
+
+            ccx.tn.associate_type("tydesc", &Type::tydesc(&ccx, str_slice_ty));
 
             if ccx.sess().count_llvm_insns() {
                 base::init_insn_ctxt()
