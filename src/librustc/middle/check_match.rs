@@ -240,6 +240,7 @@ fn construct_witness(cx: &MatchCheckCtxt, ctor: &ctor, pats: Vec<Gc<Pat>>, lty: 
                     &vec(_) => PatVec(pats, None, vec!()),
                     _ => unreachable!()
                 },
+                ty::ty_str => PatWild,
                 _ => {
                     assert_eq!(pats.len(), 1);
                     PatRegion(pats.get(0).clone())
@@ -479,6 +480,7 @@ fn constructor_arity(cx: &MatchCheckCtxt, ctor: &ctor, ty: ty::t) -> uint {
                 vec(n) => n,
                 _ => 0u
             },
+            ty::ty_str => 0u,
             _ => 1u
         },
         ty::ty_enum(eid, _) => {
