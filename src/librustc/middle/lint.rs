@@ -1124,6 +1124,20 @@ fn check_unused_attribute(cx: &Context, attr: &ast::Attribute) {
         "unstable",
     ];
 
+    static CRATE_ATTRS: &'static [&'static str] = &'static [
+        "crate_type",
+        "feature",
+        "no_start",
+        "no_main",
+        "no_std",
+        "crate_id",
+        "desc",
+        "comment",
+        "license",
+        "copyright",
+        "no_builtins",
+    ];
+
     for &name in ATTRIBUTE_WHITELIST.iter() {
         if attr.check_name(name) {
             break;
@@ -1132,6 +1146,15 @@ fn check_unused_attribute(cx: &Context, attr: &ast::Attribute) {
 
     if !attr::is_used(attr) {
         cx.span_lint(UnusedAttribute, attr.span, "unused attribute");
+        if CRATE_ATTRS.contains(&attr.name().get()) {
+            let msg = match attr.node.style {
+                ast::AttrOuter => "crate-level attribute should be an inner \
+                                  attribute: add an exclamation mark: #![foo]",
+                ast::AttrInner => "crate-level attribute should be in the \
+                                   root module",
+            };
+            cx.span_lint(UnusedAttribute, attr.span, msg);
+        }
     }
 }
 
