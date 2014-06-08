@@ -20,7 +20,6 @@ use middle::trans::cleanup;
 use middle::trans::common::*;
 use middle::trans::debuginfo;
 use middle::trans::expr;
-use middle::trans::type_of;
 use middle::ty;
 use util::ppaux::Repr;
 
@@ -343,14 +342,10 @@ pub fn trans_ret<'a>(bcx: &'a Block<'a>,
 
 fn str_slice_arg<'a>(bcx: &'a Block<'a>, s: InternedString) -> ValueRef {
     let ccx = bcx.ccx();
-    let t = ty::mk_str_slice(bcx.tcx(), ty::ReStatic, ast::MutImmutable);
     let s = C_str_slice(ccx, s);
     let slot = alloca(bcx, val_ty(s), "__temp");
     Store(bcx, s, slot);
-
-    // The type of C_str_slice is { i8*, i64 }, but the type of the &str is
-    // %str_slice, so we do a bitcast here to the right type.
-    BitCast(bcx, slot, type_of::type_of(ccx, t).ptr_to())
+    slot
 }
 
 pub fn trans_fail<'a>(
