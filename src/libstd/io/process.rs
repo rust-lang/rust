@@ -873,7 +873,7 @@ mod tests {
     pub fn sleeper() -> Process {
         // There's a `timeout` command on windows, but it doesn't like having
         // its output piped, so instead just ping ourselves a few times with
-        // gaps inbetweeen so we're sure this process is alive for awhile
+        // gaps in between so we're sure this process is alive for awhile
         Command::new("ping").arg("127.0.0.1").arg("-n").arg("1000").spawn().unwrap()
     }
 

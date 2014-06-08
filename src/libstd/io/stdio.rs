@@ -102,7 +102,7 @@ local_data_key!(local_stdout: Box<Writer:Send>)
 pub fn stdin() -> BufferedReader<StdReader> {
     // The default buffer capacity is 64k, but apparently windows doesn't like
     // 64k reads on stdin. See #13304 for details, but the idea is that on
-    // windows we use a slighly smaller buffer that's been seen to be
+    // windows we use a slightly smaller buffer that's been seen to be
     // acceptable.
     if cfg!(windows) {
         BufferedReader::with_capacity(8 * 1024, stdin_raw())

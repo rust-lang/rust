@@ -992,7 +992,7 @@ enum ParserState {
     ParseObject(bool),
     // Parse ',' or ']' after an element in an object.
     ParseObjectComma,
-    // Initialial state.
+    // Initial state.
     ParseStart,
     // Expecting the stream to end.
     ParseBeforeFinish,
@@ -1152,7 +1152,7 @@ pub struct Parser<T> {
     // We maintain a stack representing where we are in the logical structure
     // of the JSON stream.
     stack: Stack,
-    // A state machine is kept to make it possible to interupt and resume parsing.
+    // A state machine is kept to make it possible to interrupt and resume parsing.
     state: ParserState,
 }
 
@@ -1449,7 +1449,7 @@ impl<T: Iterator<char>> Parser<T> {
     // information to return a JsonEvent.
     // Manages an internal state so that parsing can be interrupted and resumed.
     // Also keeps track of the position in the logical structure of the json
-    // stream int the form of a stack that can be queried by the user usng the
+    // stream int the form of a stack that can be queried by the user using the
     // stack() method.
     fn parse(&mut self) -> JsonEvent {
         loop {
