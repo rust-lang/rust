@@ -320,7 +320,7 @@ pub fn env_as_bytes() -> Vec<(Vec<u8>,Vec<u8>)> {
 /// let key = "HOME";
 /// match std::os::getenv(key) {
 ///     Some(val) => println!("{}: {}", key, val),
-///     None => println!("{} is not defined in the environnement.", key)
+///     None => println!("{} is not defined in the environment.", key)
 /// }
 /// ```
 pub fn getenv(n: &str) -> Option<String> {

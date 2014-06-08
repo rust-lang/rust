@@ -218,7 +218,7 @@ mod test {
     iotest!(fn test_io_timer_oneshot_then_sleep() {
         let mut timer = Timer::new().unwrap();
         let rx = timer.oneshot(100000000000);
-        timer.sleep(1); // this should inalidate rx
+        timer.sleep(1); // this should invalidate rx
 
         assert_eq!(rx.recv_opt(), Err(()));
     })
@@ -352,7 +352,7 @@ mod test {
         let mut timer1 = Timer::new().unwrap();
         timer1.oneshot(1);
         let mut timer2 = Timer::new().unwrap();
-        // while sleeping, the prevous timer should fire and not have its
+        // while sleeping, the previous timer should fire and not have its
         // callback do something terrible.
         timer2.sleep(2);
     })
@@ -361,7 +361,7 @@ mod test {
         let mut timer1 = Timer::new().unwrap();
         timer1.periodic(1);
         let mut timer2 = Timer::new().unwrap();
-        // while sleeping, the prevous timer should fire and not have its
+        // while sleeping, the previous timer should fire and not have its
         // callback do something terrible.
         timer2.sleep(2);
     })

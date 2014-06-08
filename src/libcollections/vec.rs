@@ -1532,7 +1532,7 @@ impl<T> FromVec<T> for ~[T] {
 
         // In a post-DST world, we can attempt to reuse the Vec allocation by calling
         // shrink_to_fit() on it. That may involve a reallocation+memcpy, but that's no
-        // diffrent than what we're doing manually here.
+        // different than what we're doing manually here.
 
         let vp = v.as_mut_ptr();
 
