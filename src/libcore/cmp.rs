@@ -43,8 +43,10 @@
 /// equivalence relation. For example, in floating point numbers `NaN != NaN`,
 /// so floating point types implement `PartialEq` but not `Eq`.
 ///
-/// PartialEq only requires the `eq` method to be implemented; `ne` is its
-/// negation by default.
+/// PartialEq only requires the `eq` method to be implemented; `ne` is defined
+/// in terms of it by default. Any manual implementation of `ne` *must* respect
+/// the rule that `eq` is a strict inverse of `ne`; that is, `!(a == b)` if and
+/// only if `a != b`.
 ///
 /// Eventually, this will be implemented by default for types that implement
 /// `Eq`.
