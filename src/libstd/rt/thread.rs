@@ -243,7 +243,7 @@ mod imp {
                 // EINVAL means |stack_size| is either too small or not a
                 // multiple of the system page size.  Because it's definitely
                 // >= PTHREAD_STACK_MIN, it must be an alignment issue.
-                // Round up to the neareast page and try again.
+                // Round up to the nearest page and try again.
                 let page_size = os::page_size();
                 let stack_size = (stack_size + page_size - 1) & (-(page_size - 1) - 1);
                 assert_eq!(pthread_attr_setstacksize(&mut attr, stack_size as libc::size_t), 0);

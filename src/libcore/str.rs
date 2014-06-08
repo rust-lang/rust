@@ -478,7 +478,7 @@ impl TwoWaySearcher {
 }
 
 /// The internal state of an iterator that searches for matches of a substring
-/// within a larger string using a dynamically chosed search algorithm
+/// within a larger string using a dynamically chosen search algorithm
 #[deriving(Clone)]
 enum Searcher {
     Naive(NaiveSearcher),
@@ -1120,7 +1120,7 @@ pub trait StrSlice<'a> {
     ///
     /// That is, each returned value `(start, end)` satisfies
     /// `self.slice(start, end) == sep`. For matches of `sep` within
-    /// `self` that overlap, only the indicies corresponding to the
+    /// `self` that overlap, only the indices corresponding to the
     /// first match are returned.
     ///
     /// # Example

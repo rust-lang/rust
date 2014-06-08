@@ -186,7 +186,7 @@ impl GenericPathUnsafe for Path {
         ret
     }
 
-    /// See `GenericPathUnsafe::set_filename_unchecekd`.
+    /// See `GenericPathUnsafe::set_filename_unchecked`.
     ///
     /// # Failure
     ///
