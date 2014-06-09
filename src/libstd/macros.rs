@@ -425,8 +425,8 @@ pub mod builtin {
     /// # Example
     ///
     /// ```rust
-    /// let user: &'static str = env!("USER");
-    /// println!("the user who compiled this code is: {}", user);
+    /// let home: &'static str = env!("HOME");
+    /// println!("the home directory at the time of compiling was: {}", home);
     /// ```
     #[macro_export]
     macro_rules! env( ($name:expr) => ({ /* compiler built-in */ }) )
