@@ -46,7 +46,7 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("thread_local", Active),
     ("link_args", Active),
     ("phase", Active),
-    ("macro_registrar", Active),
+    ("plugin_registrar", Active),
     ("log_syntax", Active),
     ("trace_macros", Active),
     ("concat_idents", Active),
@@ -192,10 +192,9 @@ impl<'a> Visitor<()> for Context<'a> {
             }
 
             ast::ItemFn(..) => {
-                if attr::contains_name(i.attrs.as_slice(), "macro_registrar") {
-                    self.gate_feature("macro_registrar", i.span,
-                                      "cross-crate macro exports are \
-                                       experimental and possibly buggy");
+                if attr::contains_name(i.attrs.as_slice(), "plugin_registrar") {
+                    self.gate_feature("plugin_registrar", i.span,
+                                      "compiler plugins are experimental and possibly buggy");
                 }
             }
 

@@ -11,7 +11,7 @@
 // no-pretty-expanded
 
 #![feature(phase)]
-#[phase(syntax)] extern crate green;
+#[phase(plugin)] extern crate green;
 
 use std::string::String;
 use std::fmt;

@@ -23,7 +23,6 @@ use rustc::back::link;
 use rustc::driver::config;
 use rustc::driver::driver;
 use rustc::driver::session;
-use rustc::metadata::creader::Loader;
 use syntax::ast;
 use syntax::codemap::{CodeMap, dummy_spanned};
 use syntax::diagnostic;
@@ -68,7 +67,7 @@ pub fn run(input: &str,
         @dummy_spanned(ast::MetaWord(cfg_))
     }));
     let krate = driver::phase_1_parse_input(&sess, cfg, &input);
-    let (krate, _) = driver::phase_2_configure_and_expand(&sess, &mut Loader::new(&sess), krate,
+    let (krate, _) = driver::phase_2_configure_and_expand(&sess, krate,
                                                           &from_str("rustdoc-test").unwrap());
 
     let ctx = @core::DocContext {

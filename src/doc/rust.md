@@ -1819,9 +1819,8 @@ type int8_t = i8;
 
 ### Function-only attributes
 
-- `macro_registrar` - when using loadable syntax extensions, mark this
-  function as the registration point for the current crate's syntax
-  extensions.
+- `plugin_registrar` - mark this function as the registration point for
+  compiler plugins, such as loadable syntax extensions.
 - `main` - indicates that this function should be passed to the entry point,
   rather than the function in the crate root named `main`.
 - `start` - indicates that this function should be used as the entry point,
@@ -4098,7 +4097,7 @@ that demonstrates all four of them:
 
 ~~~~
 #![feature(phase)]
-#[phase(syntax, link)] extern crate log;
+#[phase(plugin, link)] extern crate log;
 
 fn main() {
     error!("This is an error log")

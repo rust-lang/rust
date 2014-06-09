@@ -15,7 +15,7 @@
 #![feature(phase)]
 
 extern crate regex;
-#[phase(syntax)] extern crate regex_macros;
+#[phase(plugin)] extern crate regex_macros;
 
 // Tests to make sure that `regex!` will produce a compile error when given
 // an invalid regular expression.

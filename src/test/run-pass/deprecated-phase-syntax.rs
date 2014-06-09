@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: multiple macro registration functions found
+#![feature(phase)]
 
-#![feature(macro_registrar)]
+//~ WARNING phase(syntax) is a deprecated synonym for phase(plugin)
+#[phase(syntax, link)]
+extern crate log;
 
-// the registration function isn't typechecked yet
-#[macro_registrar]
-pub fn one() {}
-
-#[macro_registrar]
-pub fn two() {}
-
-fn main() {}
+fn main() {
+    debug!("foo");
+}

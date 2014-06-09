@@ -42,7 +42,12 @@ extern crate sync;
 extern crate syntax;
 extern crate time;
 
+#[cfg(stage0)]
 #[phase(syntax, link)]
+extern crate log;
+
+#[cfg(not(stage0))]
+#[phase(plugin, link)]
 extern crate log;
 
 pub mod middle {
@@ -108,6 +113,8 @@ pub mod back {
 pub mod metadata;
 
 pub mod driver;
+
+pub mod plugin;
 
 pub mod util {
     pub mod common;

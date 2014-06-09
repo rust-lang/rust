@@ -8,23 +8,25 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast;
-use attr;
-use codemap::Span;
-use diagnostic;
-use visit;
-use visit::Visitor;
+//! Used by `rustc` when compiling a plugin crate.
 
-struct MacroRegistrarContext {
+use syntax::ast;
+use syntax::attr;
+use syntax::codemap::Span;
+use syntax::diagnostic;
+use syntax::visit;
+use syntax::visit::Visitor;
+
+struct RegistrarFinder {
     registrars: Vec<(ast::NodeId, Span)> ,
 }
 
-impl Visitor<()> for MacroRegistrarContext {
+impl Visitor<()> for RegistrarFinder {
     fn visit_item(&mut self, item: &ast::Item, _: ()) {
         match item.node {
             ast::ItemFn(..) => {
                 if attr::contains_name(item.attrs.as_slice(),
-                                       "macro_registrar") {
+                                       "plugin_registrar") {
                     self.registrars.push((item.id, item.span));
                 }
             }
@@ -35,20 +37,21 @@ impl Visitor<()> for MacroRegistrarContext {
     }
 }
 
-pub fn find_macro_registrar(diagnostic: &diagnostic::SpanHandler,
-                            krate: &ast::Crate) -> Option<ast::NodeId> {
-    let mut ctx = MacroRegistrarContext { registrars: Vec::new() };
-    visit::walk_crate(&mut ctx, krate, ());
+/// Find the function marked with `#[plugin_registrar]`, if any.
+pub fn find_plugin_registrar(diagnostic: &diagnostic::SpanHandler,
+                             krate: &ast::Crate) -> Option<ast::NodeId> {
+    let mut finder = RegistrarFinder { registrars: Vec::new() };
+    visit::walk_crate(&mut finder, krate, ());
 
-    match ctx.registrars.len() {
+    match finder.registrars.len() {
         0 => None,
         1 => {
-            let (node_id, _) = ctx.registrars.pop().unwrap();
+            let (node_id, _) = finder.registrars.pop().unwrap();
             Some(node_id)
         },
         _ => {
-            diagnostic.handler().err("multiple macro registration functions found");
-            for &(_, span) in ctx.registrars.iter() {
+            diagnostic.handler().err("multiple plugin registration functions found");
+            for &(_, span) in finder.registrars.iter() {
                 diagnostic.span_note(span, "one is here");
             }
             diagnostic.handler().abort_if_errors();

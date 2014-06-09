@@ -8,8 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// error-pattern: multiple plugin registration functions found
+
+#![feature(plugin_registrar)]
+
 // the registration function isn't typechecked yet
-#[macro_registrar]
-pub fn registrar() {} //~ ERROR cross-crate macro exports are experimental
+#[plugin_registrar]
+pub fn one() {}
+
+#[plugin_registrar]
+pub fn two() {}
 
 fn main() {}
