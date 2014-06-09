@@ -77,7 +77,7 @@ fn unimpl() -> IoError {
     IoError {
         code: ERROR as uint,
         extra: 0,
-        detail: None,
+        detail: Some("not yet supported by the `native` runtime, maybe try `green`.".to_string()),
     }
 }
 
