@@ -25,7 +25,7 @@
 // Currently, no progress has been made on this list.
 
 use clone::Clone;
-use container::Container;
+use collections::Collection;
 use finally::try_finally;
 use intrinsics;
 use iter::{range, Iterator};

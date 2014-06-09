@@ -775,7 +775,7 @@ impl<'t> Captures<'t> {
     }
 }
 
-impl<'t> Container for Captures<'t> {
+impl<'t> Collection for Captures<'t> {
     /// Returns the number of captured groups.
     #[inline]
     fn len(&self) -> uint {

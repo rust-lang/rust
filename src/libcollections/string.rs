@@ -18,6 +18,7 @@ use core::mem;
 use core::ptr;
 use core::raw::Slice;
 
+use {Collection, Mutable};
 use hash;
 use str;
 use str::{CharRange, StrAllocating};
@@ -279,7 +280,7 @@ impl String {
     }
 }
 
-impl Container for String {
+impl Collection for String {
     #[inline]
     fn len(&self) -> uint {
         self.vec.len()
@@ -356,6 +357,7 @@ mod tests {
     use std::prelude::*;
     use test::Bencher;
 
+    use Mutable;
     use str::{Str, StrSlice};
     use super::String;
 

@@ -38,8 +38,7 @@
 //! ```
 
 use cmp::{PartialEq, Eq};
-use collections::HashMap;
-use container::{Container, Mutable, MutableMap};
+use collections::{HashMap, Collection, Mutable, MutableMap};
 use fmt;
 use hash::Hash;
 use iter::{range, Iterator};
@@ -227,7 +226,7 @@ impl<A: fmt::Show + Hash + Eq, B: fmt::Show> fmt::Show for LruCache<A, B> {
     }
 }
 
-impl<K: Hash + Eq, V> Container for LruCache<K, V> {
+impl<K: Hash + Eq, V> Collection for LruCache<K, V> {
     /// Return the number of key-value pairs in the cache.
     fn len(&self) -> uint {
         self.map.len()

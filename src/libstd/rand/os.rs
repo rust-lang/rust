@@ -62,7 +62,7 @@ mod imp {
 mod imp {
     extern crate libc;
 
-    use container::Container;
+    use core_collections::Collection;
     use io::{IoResult, IoError};
     use mem;
     use ops::Drop;

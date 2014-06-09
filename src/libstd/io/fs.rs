@@ -51,7 +51,7 @@ fs::unlink(&path);
 
 use c_str::ToCStr;
 use clone::Clone;
-use container::Container;
+use collections::Collection;
 use io;
 use iter::Iterator;
 use kinds::Send;
