@@ -22,7 +22,7 @@
 ///
 /// ```
 /// #![feature(phase)]
-/// #[phase(syntax, link)] extern crate log;
+/// #[phase(plugin, link)] extern crate log;
 ///
 /// # fn main() {
 /// log!(log::DEBUG, "this is a debug message");
@@ -51,7 +51,7 @@ macro_rules! log(
 ///
 /// ```
 /// #![feature(phase)]
-/// #[phase(syntax, link)] extern crate log;
+/// #[phase(plugin, link)] extern crate log;
 ///
 /// # fn main() {
 /// # let error = 3;
@@ -69,7 +69,7 @@ macro_rules! error(
 ///
 /// ```
 /// #![feature(phase)]
-/// #[phase(syntax, link)] extern crate log;
+/// #[phase(plugin, link)] extern crate log;
 ///
 /// # fn main() {
 /// # let code = 3;
@@ -87,7 +87,7 @@ macro_rules! warn(
 ///
 /// ```
 /// #![feature(phase)]
-/// #[phase(syntax, link)] extern crate log;
+/// #[phase(plugin, link)] extern crate log;
 ///
 /// # fn main() {
 /// # let ret = 3;
@@ -107,7 +107,7 @@ macro_rules! info(
 ///
 /// ```
 /// #![feature(phase)]
-/// #[phase(syntax, link)] extern crate log;
+/// #[phase(plugin, link)] extern crate log;
 ///
 /// # fn main() {
 /// debug!("x = {x}, y = {y}", x=10, y=20);
@@ -124,7 +124,7 @@ macro_rules! debug(
 ///
 /// ```
 /// #![feature(phase)]
-/// #[phase(syntax, link)] extern crate log;
+/// #[phase(plugin, link)] extern crate log;
 ///
 /// # fn main() {
 /// # struct Point { x: int, y: int }

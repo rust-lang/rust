@@ -18,12 +18,14 @@ use front;
 use lib::llvm::{ContextRef, ModuleRef};
 use metadata::common::LinkMeta;
 use metadata::creader;
-use metadata::creader::Loader;
 use middle::cfg;
 use middle::cfg::graphviz::LabelledCFG;
 use middle::{trans, freevars, kind, ty, typeck, lint, reachable};
 use middle::dependency_format;
 use middle;
+use plugin::load::Plugins;
+use plugin::registry::Registry;
+use plugin;
 use util::common::time;
 use util::ppaux;
 use util::nodemap::{NodeSet};
@@ -39,7 +41,6 @@ use syntax::ast;
 use syntax::attr;
 use syntax::attr::{AttrMetaMethods};
 use syntax::crateid::CrateId;
-use syntax::ext::base::CrateLoader;
 use syntax::parse;
 use syntax::parse::token;
 use syntax::print::{pp, pprust};
@@ -75,11 +76,10 @@ pub fn compile_input(sess: Session,
                                                  output,
                                                  krate.attrs.as_slice(),
                                                  &sess);
-            let loader = &mut Loader::new(&sess);
             let id = link::find_crate_id(krate.attrs.as_slice(),
                                          outputs.out_filestem.as_slice());
             let (expanded_crate, ast_map) =
-                phase_2_configure_and_expand(&sess, loader, krate, &id);
+                phase_2_configure_and_expand(&sess, krate, &id);
             (outputs, expanded_crate, ast_map)
         };
         write_out_deps(&sess, input, &outputs, &expanded_crate);
@@ -172,7 +172,6 @@ pub fn phase_1_parse_input(sess: &Session, cfg: ast::CrateConfig, input: &Input)
 /// harness if one is to be provided and injection of a dependency on the
 /// standard library and prelude.
 pub fn phase_2_configure_and_expand(sess: &Session,
-                                    loader: &mut CrateLoader,
                                     mut krate: ast::Crate,
                                     crate_id: &CrateId)
                                     -> (ast::Crate, syntax::ast_map::Map) {
@@ -197,24 +196,41 @@ pub fn phase_2_configure_and_expand(sess: &Session,
     krate = time(time_passes, "configuration 1", krate, |krate|
                  front::config::strip_unconfigured_items(krate));
 
-    krate = time(time_passes, "expansion", krate, |krate| {
-        // Windows dlls do not have rpaths, so they don't know how to find their
-        // dependencies. It's up to us to tell the system where to find all the
-        // dependent dlls. Note that this uses cfg!(windows) as opposed to
-        // targ_cfg because syntax extensions are always loaded for the host
-        // compiler, not for the target.
-        if cfg!(windows) {
-            sess.host_filesearch().add_dylib_search_paths();
+    let Plugins { macros, registrars }
+        = time(time_passes, "plugin loading", (), |_|
+               plugin::load::load_plugins(sess, &krate));
+
+    let mut registry = Registry::new(&krate);
+
+    time(time_passes, "plugin registration", (), |_| {
+        for &registrar in registrars.iter() {
+            registrar(&mut registry);
         }
-        let cfg = syntax::ext::expand::ExpansionConfig {
-            loader: loader,
-            deriving_hash_type_parameter: sess.features.default_type_params.get(),
-            crate_id: crate_id.clone(),
-        };
-        syntax::ext::expand::expand_crate(&sess.parse_sess,
-                                          cfg,
-                                          krate)
     });
+
+    let Registry { syntax_exts, .. } = registry;
+
+    krate = time(time_passes, "expansion", (krate, macros, syntax_exts),
+        |(krate, macros, syntax_exts)| {
+            // Windows dlls do not have rpaths, so they don't know how to find their
+            // dependencies. It's up to us to tell the system where to find all the
+            // dependent dlls. Note that this uses cfg!(windows) as opposed to
+            // targ_cfg because syntax extensions are always loaded for the host
+            // compiler, not for the target.
+            if cfg!(windows) {
+                sess.host_filesearch().add_dylib_search_paths();
+            }
+            let cfg = syntax::ext::expand::ExpansionConfig {
+                deriving_hash_type_parameter: sess.features.default_type_params.get(),
+                crate_id: crate_id.clone(),
+            };
+            syntax::ext::expand::expand_crate(&sess.parse_sess,
+                                              cfg,
+                                              macros,
+                                              syntax_exts,
+                                              krate)
+        }
+    );
 
     // strip again, in case expansion added anything with a #[cfg].
     krate = time(time_passes, "configuration 2", krate, |krate|
@@ -281,9 +297,9 @@ pub fn phase_3_run_analysis_passes(sess: Session,
     time(time_passes, "looking for entry point", (),
          |_| middle::entry::find_entry_point(&sess, krate, &ast_map));
 
-    sess.macro_registrar_fn.set(
-        time(time_passes, "looking for macro registrar", (), |_|
-            syntax::ext::registrar::find_macro_registrar(
+    sess.plugin_registrar_fn.set(
+        time(time_passes, "looking for plugin registrar", (), |_|
+            plugin::build::find_plugin_registrar(
                 sess.diagnostic(), krate)));
 
     let freevars = time(time_passes, "freevar finding", (), |_|
@@ -596,9 +612,7 @@ pub fn pretty_print_input(sess: Session,
 
     let (krate, ast_map, is_expanded) = match ppm {
         PpmExpanded | PpmExpandedIdentified | PpmTyped | PpmFlowGraph(_) => {
-            let loader = &mut Loader::new(&sess);
             let (krate, ast_map) = phase_2_configure_and_expand(&sess,
-                                                                loader,
                                                                 krate,
                                                                 &id);
             (krate, Some(ast_map), true)

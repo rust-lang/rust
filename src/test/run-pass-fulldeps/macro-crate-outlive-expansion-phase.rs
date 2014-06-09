@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:macro_crate_outlive_expansion_phase.rs
+// aux-build:plugin_crate_outlive_expansion_phase.rs
 // ignore-stage1
 
 #![feature(phase)]
 
-#[phase(syntax)]
-extern crate macro_crate_outlive_expansion_phase;
+#[phase(plugin)]
+extern crate plugin_crate_outlive_expansion_phase;
 
 pub fn main() {}

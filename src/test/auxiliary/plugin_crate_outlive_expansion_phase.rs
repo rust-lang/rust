@@ -10,13 +10,12 @@
 
 // force-host
 
-#![feature(macro_registrar)]
+#![feature(plugin_registrar)]
 
-extern crate syntax;
+extern crate rustc;
 
 use std::any::Any;
-use syntax::ast::Name;
-use syntax::ext::base::SyntaxExtension;
+use rustc::plugin::Registry;
 
 struct Foo {
     foo: int
@@ -26,8 +25,8 @@ impl Drop for Foo {
     fn drop(&mut self) {}
 }
 
-#[macro_registrar]
-pub fn registrar(_: |Name, SyntaxExtension|) {
+#[plugin_registrar]
+pub fn registrar(_: &mut Registry) {
     local_data_key!(foo: Box<Any:Send>);
     foo.replace(Some(box Foo { foo: 10 } as Box<Any:Send>));
 }

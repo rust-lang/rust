@@ -70,8 +70,14 @@
 #![no_std]
 #![feature(phase)]
 
+#[cfg(stage0)]
 #[phase(syntax, link)]
 extern crate core;
+
+#[cfg(not(stage0))]
+#[phase(plugin, link)]
+extern crate core;
+
 extern crate libc;
 
 
@@ -80,8 +86,10 @@ extern crate libc;
 #[cfg(test)] extern crate debug;
 #[cfg(test)] extern crate sync;
 #[cfg(test)] extern crate native;
-#[cfg(test)] #[phase(syntax, link)] extern crate std;
-#[cfg(test)] #[phase(syntax, link)] extern crate log;
+#[cfg(test, stage0)] #[phase(syntax, link)] extern crate std;
+#[cfg(test, stage0)] #[phase(syntax, link)] extern crate log;
+#[cfg(test, not(stage0))] #[phase(plugin, link)] extern crate std;
+#[cfg(test, not(stage0))] #[phase(plugin, link)] extern crate log;
 
 // Heaps provided for low-level allocation strategies
 

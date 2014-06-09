@@ -12,24 +12,20 @@
 // no-prefer-dynamic
 
 #![crate_type = "dylib"]
-#![feature(macro_registrar, quote, globs)]
+#![feature(plugin_registrar, quote, globs)]
 
 extern crate other = "syntax-extension-with-dll-deps-1";
 extern crate syntax;
+extern crate rustc;
 
-use syntax::ast::{Name, TokenTree, Item, MetaItem};
+use syntax::ast::{TokenTree, Item, MetaItem};
 use syntax::codemap::Span;
 use syntax::ext::base::*;
-use syntax::parse::token;
+use rustc::plugin::Registry;
 
-#[macro_registrar]
-pub fn macro_registrar(register: |Name, SyntaxExtension|) {
-    register(token::intern("foo"),
-        NormalTT(box BasicMacroExpander {
-            expander: expand_foo,
-            span: None,
-        },
-        None));
+#[plugin_registrar]
+pub fn plugin_registrar(reg: &mut Registry) {
+    reg.register_macro("foo", expand_foo);
 }
 
 fn expand_foo(cx: &mut ExtCtxt, sp: Span, tts: &[TokenTree])

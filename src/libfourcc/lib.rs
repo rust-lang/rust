@@ -22,7 +22,7 @@ to be `big`, i.e. left-to-right order. It returns a u32.
 To load the extension and use it:
 
 ```rust,ignore
-#[phase(syntax)]
+#[phase(plugin)]
 extern crate fourcc;
 
 fn main() {
@@ -48,29 +48,25 @@ fn main() {
        html_root_url = "http://doc.rust-lang.org/")]
 
 #![deny(deprecated_owned_vector)]
-#![feature(macro_registrar, managed_boxes)]
+#![feature(plugin_registrar, managed_boxes)]
 
 extern crate syntax;
+extern crate rustc;
 
 use syntax::ast;
-use syntax::ast::Name;
 use syntax::attr::contains;
 use syntax::codemap::{Span, mk_sp};
 use syntax::ext::base;
-use syntax::ext::base::{SyntaxExtension, BasicMacroExpander, NormalTT, ExtCtxt, MacExpr};
+use syntax::ext::base::{ExtCtxt, MacExpr};
 use syntax::ext::build::AstBuilder;
 use syntax::parse;
 use syntax::parse::token;
 use syntax::parse::token::InternedString;
+use rustc::plugin::Registry;
 
-#[macro_registrar]
-pub fn macro_registrar(register: |Name, SyntaxExtension|) {
-    register(token::intern("fourcc"),
-        NormalTT(box BasicMacroExpander {
-            expander: expand_syntax_ext,
-            span: None,
-        },
-        None));
+#[plugin_registrar]
+pub fn plugin_registrar(reg: &mut Registry) {
+    reg.register_macro("fourcc", expand_syntax_ext);
 }
 
 pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])

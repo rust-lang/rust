@@ -15,7 +15,7 @@
 #![feature(phase)]
 
 extern crate regex;
-#[phase(syntax)] extern crate regex_macros;
+#[phase(plugin)] extern crate regex_macros;
 
 #[deny(unused_variable)]
 #[deny(dead_code)]

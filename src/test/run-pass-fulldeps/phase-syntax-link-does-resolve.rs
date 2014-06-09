@@ -17,7 +17,7 @@
 
 #![feature(phase)]
 
-#[phase(syntax, link)]
+#[phase(plugin, link)]
 extern crate macro_crate_test;
 
 fn main() {

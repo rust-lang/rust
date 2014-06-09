@@ -36,7 +36,7 @@ pub struct Session {
     // For a library crate, this is always none
     pub entry_fn: RefCell<Option<(NodeId, codemap::Span)>>,
     pub entry_type: Cell<Option<config::EntryFnType>>,
-    pub macro_registrar_fn: Cell<Option<ast::NodeId>>,
+    pub plugin_registrar_fn: Cell<Option<ast::NodeId>>,
     pub default_sysroot: Option<Path>,
     // The name of the root source file of the crate, in the local file system. The path is always
     // expected to be absolute. `None` means that there is no source file.
@@ -232,7 +232,7 @@ pub fn build_session_(sopts: config::Options,
         // For a library crate, this is always none
         entry_fn: RefCell::new(None),
         entry_type: Cell::new(None),
-        macro_registrar_fn: Cell::new(None),
+        plugin_registrar_fn: Cell::new(None),
         default_sysroot: default_sysroot,
         local_crate_source_file: local_crate_source_file,
         working_dir: os::getcwd(),
