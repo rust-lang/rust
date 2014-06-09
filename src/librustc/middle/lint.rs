@@ -1253,12 +1253,21 @@ fn check_item_non_camel_case_types(cx: &Context, it: &ast::Item) {
         !ident.char_at(0).is_lowercase() && !ident.contains_char('_')
     }
 
+    fn to_camel_case(s: &str) -> String {
+        s.split('_').flat_map(|word| word.chars().enumerate().map(|(i, c)|
+            if i == 0 { c.to_uppercase() }
+            else { c }
+        )).collect()
+    }
+
     fn check_case(cx: &Context, sort: &str, ident: ast::Ident, span: Span) {
+        let s = token::get_ident(ident);
+
         if !is_camel_case(ident) {
             cx.span_lint(
                 NonCamelCaseTypes, span,
-                format!("{} `{}` should have a camel case identifier",
-                    sort, token::get_ident(ident)).as_slice());
+                format!("{} `{}` should have a camel case name such as `{}`",
+                    sort, s, to_camel_case(s.get())).as_slice());
         }
     }
 
@@ -1296,10 +1305,29 @@ fn check_snake_case(cx: &Context, sort: &str, ident: ast::Ident, span: Span) {
         })
     }
 
+    fn to_snake_case(str: &str) -> String {
+        let mut words = vec![];
+        for s in str.split('_') {
+            let mut buf = String::new();
+            if s.is_empty() { continue; }
+            for ch in s.chars() {
+                if !buf.is_empty() && ch.is_uppercase() {
+                    words.push(buf);
+                    buf = String::new();
+                }
+                buf.push_char(ch.to_lowercase());
+            }
+            words.push(buf);
+        }
+        words.connect("_")
+    }
+
+    let s = token::get_ident(ident);
+
     if !is_snake_case(ident) {
         cx.span_lint(NonSnakeCaseFunctions, span,
-                    format!("{} `{}` should have a snake case identifier",
-                            sort, token::get_ident(ident)).as_slice());
+                    format!("{} `{}` should have a snake case name such as `{}`",
+                            sort, s, to_snake_case(s.get())).as_slice());
     }
 }
 
@@ -1313,7 +1341,10 @@ fn check_item_non_uppercase_statics(cx: &Context, it: &ast::Item) {
             // upper/lowercase)
             if s.get().chars().any(|c| c.is_lowercase()) {
                 cx.span_lint(NonUppercaseStatics, it.span,
-                             "static constant should have an uppercase identifier");
+                            format!("static constant `{}` should have an uppercase name \
+                                such as `{}`", s.get(),
+                                s.get().chars().map(|c| c.to_uppercase())
+                                    .collect::<String>().as_slice()).as_slice());
             }
         }
         _ => {}
@@ -1329,7 +1360,10 @@ fn check_pat_non_uppercase_statics(cx: &Context, p: &ast::Pat) {
             let s = token::get_ident(ident);
             if s.get().chars().any(|c| c.is_lowercase()) {
                 cx.span_lint(NonUppercasePatternStatics, path.span,
-                             "static constant in pattern should be all caps");
+                            format!("static constant in pattern `{}` should have an uppercase \
+                                name such as `{}`", s.get(),
+                                s.get().chars().map(|c| c.to_uppercase())
+                                    .collect::<String>().as_slice()).as_slice());
             }
         }
         _ => {}
