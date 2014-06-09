@@ -13,6 +13,7 @@
 use core::prelude::*;
 
 use core::cmp;
+use core::default::Default;
 use core::fmt;
 use core::iter::{Enumerate, Repeat, Map, Zip};
 use core::ops;
@@ -696,6 +697,11 @@ pub struct BitvSet {
     // there's an array of storage makes our lives a whole lot easier when
     // performing union/intersection/etc operations
     bitv: BigBitv
+}
+
+impl Default for BitvSet {
+    #[inline]
+    fn default() -> BitvSet { BitvSet::new() }
 }
 
 impl BitvSet {

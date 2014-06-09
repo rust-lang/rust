@@ -14,6 +14,7 @@
 
 use core::prelude::*;
 
+use core::default::Default;
 use core::mem::{zeroed, replace, swap};
 use core::ptr;
 
@@ -35,6 +36,11 @@ impl<T: Ord> Collection for PriorityQueue<T> {
 impl<T: Ord> Mutable for PriorityQueue<T> {
     /// Drop all items from the queue
     fn clear(&mut self) { self.data.truncate(0) }
+}
+
+impl<T: Ord> Default for PriorityQueue<T> {
+    #[inline]
+    fn default() -> PriorityQueue<T> { PriorityQueue::new() }
 }
 
 impl<T: Ord> PriorityQueue<T> {
