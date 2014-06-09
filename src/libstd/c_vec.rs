@@ -33,7 +33,7 @@
 //! handled correctly, i.e. that allocated memory is eventually freed
 //! if necessary.
 
-use container::Container;
+use collections::Collection;
 use kinds::Send;
 use mem;
 use ops::Drop;
@@ -149,7 +149,7 @@ impl<T> CVec<T> {
     }
 }
 
-impl<T> Container for CVec<T> {
+impl<T> Collection for CVec<T> {
     fn len(&self) -> uint { self.len }
 }
 

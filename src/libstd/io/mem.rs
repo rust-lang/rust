@@ -11,7 +11,7 @@
 //! Readers and Writers for in-memory buffers
 
 use cmp::min;
-use container::Container;
+use collections::Collection;
 use option::None;
 use result::{Err, Ok};
 use io;

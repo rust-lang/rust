@@ -12,7 +12,7 @@
 
 use clone::Clone;
 use cmp::{max, Eq, Equiv, PartialEq};
-use container::{Container, Mutable, Set, MutableSet, Map, MutableMap};
+use collections::{Collection, Mutable, Set, MutableSet, Map, MutableMap};
 use default::Default;
 use fmt::Show;
 use fmt;
@@ -930,7 +930,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     }
 }
 
-impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> Container for HashMap<K, V, H> {
+impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> Collection for HashMap<K, V, H> {
     /// Return the number of elements in the map
     fn len(&self) -> uint { self.table.size() }
 }
@@ -1504,7 +1504,7 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> PartialEq for HashSet<T, H> {
 
 impl<T: Eq + Hash<S>, S, H: Hasher<S>> Eq for HashSet<T, H> {}
 
-impl<T: Eq + Hash<S>, S, H: Hasher<S>> Container for HashSet<T, H> {
+impl<T: Eq + Hash<S>, S, H: Hasher<S>> Collection for HashSet<T, H> {
     fn len(&self) -> uint { self.map.len() }
 }
 
@@ -2159,8 +2159,8 @@ mod test_set {
     use prelude::*;
 
     use super::HashSet;
-    use container::Container;
     use slice::ImmutableEqVector;
+    use collections::Collection;
 
     #[test]
     fn test_disjoint() {

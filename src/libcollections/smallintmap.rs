@@ -21,6 +21,7 @@ use core::fmt;
 use core::iter::{Enumerate, FilterMap};
 use core::mem::replace;
 
+use {Collection, Mutable, Map, MutableMap};
 use {vec, slice};
 use vec::Vec;
 
@@ -29,7 +30,7 @@ pub struct SmallIntMap<T> {
     v: Vec<Option<T>>,
 }
 
-impl<V> Container for SmallIntMap<V> {
+impl<V> Collection for SmallIntMap<V> {
     /// Return the number of elements in the map
     fn len(&self) -> uint {
         self.v.iter().filter(|elt| elt.is_some()).count()
@@ -123,7 +124,7 @@ impl<V> SmallIntMap<V> {
     }
 
     pub fn get<'a>(&'a self, key: &uint) -> &'a V {
-        ::expect(self.find(key), "key not present")
+        self.find(key).expect("key not present")
     }
 
     /// An iterator visiting all key-value pairs in ascending order by the keys.
@@ -264,6 +265,7 @@ double_ended_iterator!(impl MutEntries -> (uint, &'a mut T), get_mut_ref)
 mod test_map {
     use std::prelude::*;
 
+    use {Map, MutableMap, Mutable};
     use super::SmallIntMap;
 
     #[test]

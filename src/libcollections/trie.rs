@@ -17,6 +17,7 @@ use core::mem::zeroed;
 use core::mem;
 use core::uint;
 
+use {Collection, Mutable, Map, MutableMap, Set, MutableSet};
 use slice::{Items, MutItems};
 use slice;
 
@@ -38,7 +39,7 @@ pub struct TrieMap<T> {
     length: uint
 }
 
-impl<T> Container for TrieMap<T> {
+impl<T> Collection for TrieMap<T> {
     /// Return the number of elements in the map
     #[inline]
     fn len(&self) -> uint { self.length }
@@ -285,7 +286,7 @@ pub struct TrieSet {
     map: TrieMap<()>
 }
 
-impl Container for TrieSet {
+impl Collection for TrieSet {
     /// Return the number of elements in the set
     #[inline]
     fn len(&self) -> uint { self.map.len() }
@@ -645,6 +646,7 @@ mod test_map {
     use std::iter::range_step;
     use std::uint;
 
+    use {MutableMap, Map};
     use super::{TrieMap, TrieNode, Internal, External, Nothing};
 
     fn check_integrity<T>(trie: &TrieNode<T>) {
@@ -923,6 +925,7 @@ mod bench_map {
     use std::rand::{weak_rng, Rng};
     use test::Bencher;
 
+    use MutableMap;
     use super::TrieMap;
 
     #[bench]
@@ -1031,6 +1034,7 @@ mod test_set {
     use std::prelude::*;
     use std::uint;
 
+    use {MutableSet, Set};
     use super::TrieSet;
 
     #[test]
