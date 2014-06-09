@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate collections;
-extern crate core;
-
 use collections::HashMap;
 use collections::hashmap::{Entries, Keys, MoveEntries, MutEntries, Values};
 use collections::PriorityQueue;

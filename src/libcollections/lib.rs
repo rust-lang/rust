@@ -34,6 +34,7 @@ extern crate alloc;
 
 pub use bitv::{Bitv, BitvSet};
 pub use btree::BTree;
+pub use counted_set::CountedSet;
 pub use deque::Deque;
 pub use dlist::DList;
 pub use enum_set::EnumSet;
@@ -47,6 +48,7 @@ mod macros;
 
 pub mod bitv;
 pub mod btree;
+pub mod counted_set;
 pub mod deque;
 pub mod dlist;
 pub mod enum_set;
