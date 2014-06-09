@@ -92,9 +92,9 @@ pub enum Token {
     LIT_BINARY_RAW(Rc<Vec<u8>>, uint), /* raw binary str delimited by n hash symbols */
 
     /* Name components */
-    // an identifier contains an "is_mod_name" boolean,
-    // indicating whether :: follows this token with no
-    // whitespace in between.
+    /// An identifier contains an "is_mod_name" boolean,
+    /// indicating whether :: follows this token with no
+    /// whitespace in between.
     IDENT(ast::Ident, bool),
     UNDERSCORE,
     LIFETIME(ast::Ident),

@@ -10,7 +10,6 @@
 
 //! The main parser interface
 
-
 use ast;
 use codemap::{Span, CodeMap, FileMap};
 use diagnostic::{SpanHandler, mk_span_handler, default_handler, Auto};
@@ -32,7 +31,7 @@ pub mod common;
 pub mod classify;
 pub mod obsolete;
 
-// info about a parsing session.
+/// Info about a parsing session.
 pub struct ParseSess {
     pub span_diagnostic: SpanHandler, // better be the same as the one in the reader!
     /// Used to determine and report recursive mod inclusions
@@ -241,14 +240,14 @@ pub fn file_to_filemap(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
     unreachable!()
 }
 
-// given a session and a string, add the string to
-// the session's codemap and return the new filemap
+/// Given a session and a string, add the string to
+/// the session's codemap and return the new filemap
 pub fn string_to_filemap(sess: &ParseSess, source: String, path: String)
                          -> Rc<FileMap> {
     sess.span_diagnostic.cm.new_filemap(path, source)
 }
 
-// given a filemap, produce a sequence of token-trees
+/// Given a filemap, produce a sequence of token-trees
 pub fn filemap_to_tts(sess: &ParseSess, filemap: Rc<FileMap>)
     -> Vec<ast::TokenTree> {
     // it appears to me that the cfg doesn't matter here... indeed,
@@ -259,7 +258,7 @@ pub fn filemap_to_tts(sess: &ParseSess, filemap: Rc<FileMap>)
     p1.parse_all_token_trees()
 }
 
-// given tts and cfg, produce a parser
+/// Given tts and cfg, produce a parser
 pub fn tts_to_parser<'a>(sess: &'a ParseSess,
                          tts: Vec<ast::TokenTree>,
                          cfg: ast::CrateConfig) -> Parser<'a> {
@@ -267,7 +266,7 @@ pub fn tts_to_parser<'a>(sess: &'a ParseSess,
     Parser::new(sess, cfg, box trdr)
 }
 
-// abort if necessary
+/// Abort if necessary
 pub fn maybe_aborted<T>(result: T, mut p: Parser) -> T {
     p.abort_if_errors();
     result

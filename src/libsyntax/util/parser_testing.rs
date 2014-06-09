@@ -17,14 +17,14 @@ use parse::token;
 
 use std::gc::Gc;
 
-// map a string to tts, using a made-up filename:
+/// Map a string to tts, using a made-up filename:
 pub fn string_to_tts(source_str: String) -> Vec<ast::TokenTree> {
     let ps = new_parse_sess();
     filemap_to_tts(&ps,
                    string_to_filemap(&ps, source_str, "bogofile".to_string()))
 }
 
-// map string to parser (via tts)
+/// Map string to parser (via tts)
 pub fn string_to_parser<'a>(ps: &'a ParseSess, source_str: String) -> Parser<'a> {
     new_parser_from_source_str(ps,
                                Vec::new(),
@@ -40,51 +40,51 @@ fn with_error_checking_parse<T>(s: String, f: |&mut Parser| -> T) -> T {
     x
 }
 
-// parse a string, return a crate.
+/// Parse a string, return a crate.
 pub fn string_to_crate (source_str : String) -> ast::Crate {
     with_error_checking_parse(source_str, |p| {
         p.parse_crate_mod()
     })
 }
 
-// parse a string, return an expr
+/// Parse a string, return an expr
 pub fn string_to_expr (source_str : String) -> Gc<ast::Expr> {
     with_error_checking_parse(source_str, |p| {
         p.parse_expr()
     })
 }
 
-// parse a string, return an item
+/// Parse a string, return an item
 pub fn string_to_item (source_str : String) -> Option<Gc<ast::Item>> {
     with_error_checking_parse(source_str, |p| {
         p.parse_item(Vec::new())
     })
 }
 
-// parse a string, return a stmt
+/// Parse a string, return a stmt
 pub fn string_to_stmt(source_str : String) -> Gc<ast::Stmt> {
     with_error_checking_parse(source_str, |p| {
         p.parse_stmt(Vec::new())
     })
 }
 
-// parse a string, return a pat. Uses "irrefutable"... which doesn't
-// (currently) affect parsing.
+/// Parse a string, return a pat. Uses "irrefutable"... which doesn't
+/// (currently) affect parsing.
 pub fn string_to_pat(source_str: String) -> Gc<ast::Pat> {
     string_to_parser(&new_parse_sess(), source_str).parse_pat()
 }
 
-// convert a vector of strings to a vector of ast::Ident's
+/// Convert a vector of strings to a vector of ast::Ident's
 pub fn strs_to_idents(ids: Vec<&str> ) -> Vec<ast::Ident> {
     ids.iter().map(|u| token::str_to_ident(*u)).collect()
 }
 
-// does the given string match the pattern? whitespace in the first string
-// may be deleted or replaced with other whitespace to match the pattern.
-// this function is unicode-ignorant; fortunately, the careful design of
-// UTF-8 mitigates this ignorance.  In particular, this function only collapses
-// sequences of \n, \r, ' ', and \t, but it should otherwise tolerate unicode
-// chars. Unsurprisingly, it doesn't do NKF-normalization(?).
+/// Does the given string match the pattern? whitespace in the first string
+/// may be deleted or replaced with other whitespace to match the pattern.
+/// this function is unicode-ignorant; fortunately, the careful design of
+/// UTF-8 mitigates this ignorance.  In particular, this function only collapses
+/// sequences of \n, \r, ' ', and \t, but it should otherwise tolerate unicode
+/// chars. Unsurprisingly, it doesn't do NKF-normalization(?).
 pub fn matches_codepattern(a : &str, b : &str) -> bool {
     let mut idx_a = 0;
     let mut idx_b = 0;
@@ -122,9 +122,9 @@ pub fn matches_codepattern(a : &str, b : &str) -> bool {
     }
 }
 
-// given a string and an index, return the first uint >= idx
-// that is a non-ws-char or is outside of the legal range of
-// the string.
+/// Given a string and an index, return the first uint >= idx
+/// that is a non-ws-char or is outside of the legal range of
+/// the string.
 fn scan_for_non_ws_or_end(a : &str, idx: uint) -> uint {
     let mut i = idx;
     let len = a.len();
@@ -134,7 +134,7 @@ fn scan_for_non_ws_or_end(a : &str, idx: uint) -> uint {
     i
 }
 
-// copied from lexer.
+/// Copied from lexer.
 pub fn is_whitespace(c: char) -> bool {
     return c == ' ' || c == '\t' || c == '\r' || c == '\n';
 }

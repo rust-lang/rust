@@ -15,13 +15,13 @@
 use ast;
 use std::gc::Gc;
 
-// does this expression require a semicolon to be treated
-// as a statement? The negation of this: 'can this expression
-// be used as a statement without a semicolon' -- is used
-// as an early-bail-out in the parser so that, for instance,
-// 'if true {...} else {...}
-//  |x| 5 '
-// isn't parsed as (if true {...} else {...} | x) | 5
+/// Does this expression require a semicolon to be treated
+/// as a statement? The negation of this: 'can this expression
+/// be used as a statement without a semicolon' -- is used
+/// as an early-bail-out in the parser so that, for instance,
+///     if true {...} else {...}
+///      |x| 5
+/// isn't parsed as (if true {...} else {...} | x) | 5
 pub fn expr_requires_semi_to_be_stmt(e: Gc<ast::Expr>) -> bool {
     match e.node {
         ast::ExprIf(..)
@@ -41,9 +41,9 @@ pub fn expr_is_simple_block(e: Gc<ast::Expr>) -> bool {
     }
 }
 
-// this statement requires a semicolon after it.
-// note that in one case (stmt_semi), we've already
-// seen the semicolon, and thus don't need another.
+/// this statement requires a semicolon after it.
+/// note that in one case (stmt_semi), we've already
+/// seen the semicolon, and thus don't need another.
 pub fn stmt_ends_with_semi(stmt: &ast::Stmt) -> bool {
     return match stmt.node {
         ast::StmtDecl(d, _) => {
