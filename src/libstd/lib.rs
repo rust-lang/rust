@@ -241,14 +241,11 @@ pub mod sync;
 /* Runtime and platform support */
 
 pub mod c_vec;
+pub mod dynamic_lib;
 pub mod os;
 pub mod io;
 pub mod path;
 pub mod fmt;
-
-// Private APIs
-#[unstable]
-pub mod unstable;
 
 // FIXME #7809: This shouldn't be pub, and it should be reexported under 'unstable'
 // but name resolution doesn't work without it being pub.
@@ -278,4 +275,12 @@ mod std {
     #[cfg(test)] pub use os = realstd::os;
     // The test runner requires std::slice::Vector, so re-export std::slice just for it.
     #[cfg(test)] pub use slice;
+}
+
+#[deprecated]
+#[allow(missing_doc)]
+#[doc(hiden)]
+pub mod unstable {
+    #[deprecated = "use std::dynamic_lib"]
+    pub use dynamic_lib;
 }

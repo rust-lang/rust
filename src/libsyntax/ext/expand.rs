@@ -31,7 +31,7 @@ use util::small_vector::SmallVector;
 
 use std::mem;
 use std::os;
-use std::unstable::dynamic_lib::DynamicLibrary;
+use std::dynamic_lib::DynamicLibrary;
 
 pub fn expand_expr(e: @ast::Expr, fld: &mut MacroExpander) -> @ast::Expr {
     match e.node {

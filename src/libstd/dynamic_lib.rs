@@ -16,6 +16,9 @@ A simple wrapper over the platform's dynamic library facilities
 
 */
 
+#![experimental]
+#![allow(missing_doc)]
+
 use clone::Clone;
 use c_str::ToCStr;
 use iter::Iterator;
