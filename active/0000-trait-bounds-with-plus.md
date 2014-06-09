@@ -29,9 +29,13 @@ Also, since kinds are now just built-in traits, it makes sense to treat a bounde
 
 Instead of `:` in trait bounds for first-class traits (e.g. `&Trait:Share + Send`), we use `+` (e.g. `&Trait + Share + Send`).
 
+`+` will not be permitted in `as` without parentheses. This will be done via a special *restriction* in the type grammar: the special `TYPE` production following `as` will be the same as the regular `TYPE` production, with the exception that it does not accept `+` as a binary operator.
+
 # Drawbacks
 
-It may be that `+` is ugly. Also, it messes with the precedence of `as`. (See Rust PR #14365 for the fallout of the latter.)
+* It may be that `+` is ugly.
+
+* Adding a restriction complicates the type grammar more than I would prefer, but the community backlash against the previous proposal was overwhelming.
 
 # Alternatives
 
