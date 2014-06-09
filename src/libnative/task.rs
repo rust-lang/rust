@@ -166,7 +166,7 @@ impl rt::Runtime for Ops {
     //
     // On a mildly unrelated note, it should also be pointed out that OS
     // condition variables are susceptible to spurious wakeups, which we need to
-    // be ready for. In order to accomodate for this fact, we have an extra
+    // be ready for. In order to accommodate for this fact, we have an extra
     // `awoken` field which indicates whether we were actually woken up via some
     // invocation of `reawaken`. This flag is only ever accessed inside the
     // lock, so there's no need to make it atomic.

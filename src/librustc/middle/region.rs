@@ -39,7 +39,7 @@ The region maps encode information about region relationships.
 
 - `scope_map` maps from a scope id to the enclosing scope id; this is
   usually corresponding to the lexical nesting, though in the case of
-  closures the parent scope is the innermost conditinal expression or repeating
+  closures the parent scope is the innermost conditional expression or repeating
   block
 
 - `var_map` maps from a variable or binding id to the block in which

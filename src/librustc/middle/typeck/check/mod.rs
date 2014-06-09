@@ -204,7 +204,7 @@ impl FnStyleState {
 }
 
 /// Whether `check_binop` is part of an assignment or not.
-/// Used to know wether we allow user overloads and to print
+/// Used to know whether we allow user overloads and to print
 /// better messages on error.
 #[deriving(PartialEq)]
 enum IsBinopAssignment{
@@ -3702,7 +3702,7 @@ pub fn check_const_with_ty(fcx: &FnCtxt,
                            e: &ast::Expr,
                            declty: ty::t) {
     // Gather locals in statics (because of block expressions).
-    // This is technically uneccessary because locals in static items are forbidden,
+    // This is technically unnecessary because locals in static items are forbidden,
     // but prevents type checking from blowing up before const checking can properly
     // emit a error.
     GatherLocalsVisitor { fcx: fcx }.visit_expr(e, ());
@@ -4174,7 +4174,7 @@ pub fn instantiate_path(fcx: &FnCtxt,
                 }
                 None => {
                     fcx.tcx().sess.span_bug(span,
-                        "missing default for a not explicitely provided type param")
+                        "missing default for a not explicitly provided type param")
                 }
             }
         }

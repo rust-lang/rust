@@ -147,7 +147,7 @@ impl StreamWatcher {
         // function is why that wording exists.
         //
         // Implementation-wise, we must be careful when passing a buffer down to
-        // libuv. Most of this implementation avoids allocations becuase of the
+        // libuv. Most of this implementation avoids allocations because of the
         // blocking guarantee (all stack local variables are valid for the
         // entire read/write request). If our write request can be timed out,
         // however, we must heap allocate the data and pass that to the libuv
@@ -164,7 +164,7 @@ impl StreamWatcher {
         };
 
         // Send off the request, but be careful to not block until we're sure
-        // that the write reqeust is queued. If the reqeust couldn't be queued,
+        // that the write request is queued. If the request couldn't be queued,
         // then we should return immediately with an error.
         match unsafe {
             uvll::uv_write(req.handle, self.handle, [uv_buf], write_cb)

@@ -923,7 +923,7 @@ fn waitpid(pid: pid_t, deadline: u64) -> IoResult<rtio::ProcessExit> {
     // Register a new SIGCHLD handler, returning the reading half of the
     // self-pipe plus the old handler registered (return value of sigaction).
     //
-    // Be sure to set up the self-pipe first because as soon as we reigster a
+    // Be sure to set up the self-pipe first because as soon as we register a
     // handler we're going to start receiving signals.
     fn register_sigchld() -> (libc::c_int, c::sigaction) {
         unsafe {

@@ -383,7 +383,7 @@ mod unindent_tests {
 
     #[test]
     fn should_ignore_first_line_indent() {
-        // Thi first line of the first paragraph may not be indented as
+        // The first line of the first paragraph may not be indented as
         // far due to the way the doc string was written:
         //
         // #[doc = "Start way over here

@@ -49,11 +49,11 @@ pub struct TocEntry {
 #[deriving(PartialEq)]
 pub struct TocBuilder {
     top_level: Toc,
-    /// The current heirachy of parent headings, the levels are
+    /// The current hierarchy of parent headings, the levels are
     /// strictly increasing (i.e. chain[0].level < chain[1].level <
-    /// ...) with each entry being the most recent occurance of a
+    /// ...) with each entry being the most recent occurrence of a
     /// heading with that level (it doesn't include the most recent
-    /// occurences of every level, just, if *is* in `chain` then is is
+    /// occurrences of every level, just, if *is* in `chain` then is is
     /// the most recent one).
     ///
     /// We also have `chain[0].level <= top_level.entries[last]`.
@@ -123,7 +123,7 @@ impl TocBuilder {
     }
 
     /// Push a level `level` heading into the appropriate place in the
-    /// heirarchy, returning a string containing the section number in
+    /// hierarchy, returning a string containing the section number in
     /// `<num>.<num>.<num>` format.
     pub fn push<'a>(&'a mut self, level: u32, name: String, id: String) -> &'a str {
         assert!(level >= 1);

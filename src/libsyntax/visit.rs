@@ -62,7 +62,7 @@ pub fn generics_of_fn(fk: &FnKind) -> Generics {
 }
 
 /// Each method of the Visitor trait is a hook to be potentially
-/// overriden.  Each method's default implementation recursively visits
+/// overridden.  Each method's default implementation recursively visits
 /// the substructure of the input via the corresponding `walk` method;
 /// e.g. the `visit_mod` method by default calls `visit::walk_mod`.
 ///

@@ -2582,7 +2582,7 @@ impl<'a> Parser<'a> {
         self.mk_expr(lo, hi, ExprLoop(body, opt_ident))
     }
 
-    // For distingishing between struct literals and blocks
+    // For distinguishing between struct literals and blocks
     fn looking_at_struct_literal(&mut self) -> bool {
         self.token == token::LBRACE &&
         ((self.look_ahead(1, |t| token::is_plain_ident(t)) &&
