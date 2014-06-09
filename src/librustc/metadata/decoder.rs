@@ -1255,8 +1255,8 @@ pub fn get_native_libraries(cdata: Cmd)
     return result;
 }
 
-pub fn get_macro_registrar_fn(data: &[u8]) -> Option<ast::NodeId> {
-    reader::maybe_get_doc(ebml::Doc::new(data), tag_macro_registrar_fn)
+pub fn get_plugin_registrar_fn(data: &[u8]) -> Option<ast::NodeId> {
+    reader::maybe_get_doc(ebml::Doc::new(data), tag_plugin_registrar_fn)
         .map(|doc| FromPrimitive::from_u32(reader::doc_as_u32(doc)).unwrap())
 }
 

@@ -29,10 +29,6 @@ use visit;
 use visit::Visitor;
 use util::small_vector::SmallVector;
 
-use std::mem;
-use std::os;
-use std::unstable::dynamic_lib::DynamicLibrary;
-
 pub fn expand_expr(e: @ast::Expr, fld: &mut MacroExpander) -> @ast::Expr {
     match e.node {
         // expr_mac should really be expr_ext or something; it's the
@@ -497,96 +493,6 @@ pub fn expand_item_mac(it: @ast::Item, fld: &mut MacroExpander)
     return items;
 }
 
-// load macros from syntax-phase crates
-pub fn expand_view_item(vi: &ast::ViewItem,
-                        fld: &mut MacroExpander)
-                        -> ast::ViewItem {
-    match vi.node {
-        ast::ViewItemExternCrate(..) => {
-            let should_load = vi.attrs.iter().any(|attr| {
-                attr.check_name("phase") &&
-                    attr.meta_item_list().map_or(false, |phases| {
-                        attr::contains_name(phases, "syntax")
-                    })
-            });
-
-            if should_load {
-                load_extern_macros(vi, fld);
-            }
-        }
-        ast::ViewItemUse(_) => {}
-    }
-
-    noop_fold_view_item(vi, fld)
-}
-
-fn load_extern_macros(krate: &ast::ViewItem, fld: &mut MacroExpander) {
-    let MacroCrate { lib, macros, registrar_symbol } =
-        fld.cx.ecfg.loader.load_crate(krate);
-
-    let crate_name = match krate.node {
-        ast::ViewItemExternCrate(name, _, _) => name,
-        _ => unreachable!()
-    };
-    let name = format!("<{} macros>", token::get_ident(crate_name));
-    let name = name.to_string();
-
-    for source in macros.iter() {
-        let item = parse::parse_item_from_source_str(name.clone(),
-                                                     (*source).clone(),
-                                                     fld.cx.cfg(),
-                                                     fld.cx.parse_sess())
-                .expect("expected a serialized item");
-        expand_item_mac(item, fld);
-    }
-
-    let path = match lib {
-        Some(path) => path,
-        None => return
-    };
-    // Make sure the path contains a / or the linker will search for it.
-    let path = os::make_absolute(&path);
-
-    let registrar = match registrar_symbol {
-        Some(registrar) => registrar,
-        None => return
-    };
-
-    debug!("load_extern_macros: mapped crate {} to path {} and registrar {:s}",
-           crate_name, path.display(), registrar);
-
-    let lib = match DynamicLibrary::open(Some(&path)) {
-        Ok(lib) => lib,
-        // this is fatal: there are almost certainly macros we need
-        // inside this crate, so continue would spew "macro undefined"
-        // errors
-        Err(err) => fld.cx.span_fatal(krate.span, err.as_slice())
-    };
-
-    unsafe {
-        let registrar: MacroCrateRegistrationFun =
-            match lib.symbol(registrar.as_slice()) {
-                Ok(registrar) => registrar,
-                // again fatal if we can't register macros
-                Err(err) => fld.cx.span_fatal(krate.span, err.as_slice())
-            };
-        registrar(|name, extension| {
-            let extension = match extension {
-                NormalTT(ext, _) => NormalTT(ext, Some(krate.span)),
-                IdentTT(ext, _) => IdentTT(ext, Some(krate.span)),
-                ItemDecorator(ext) => ItemDecorator(ext),
-                ItemModifier(ext) => ItemModifier(ext),
-            };
-            fld.extsbox.insert(name, extension);
-        });
-
-        // Intentionally leak the dynamic library. We can't ever unload it
-        // since the library can do things that will outlive the expansion
-        // phase (e.g. make an @-box cycle or launch a task).
-        mem::forget(lib);
-    }
-}
-
 // expand a stmt
 pub fn expand_stmt(s: &Stmt, fld: &mut MacroExpander) -> SmallVector<@Stmt> {
     // why the copying here and not in expand_expr?
@@ -969,10 +875,6 @@ impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
         expand_item(item, self)
     }
 
-    fn fold_view_item(&mut self, vi: &ast::ViewItem) -> ast::ViewItem {
-        expand_view_item(vi, self)
-    }
-
     fn fold_stmt(&mut self, stmt: &ast::Stmt) -> SmallVector<@ast::Stmt> {
         expand_stmt(stmt, self)
     }
@@ -986,20 +888,44 @@ impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
     }
 }
 
-pub struct ExpansionConfig<'a> {
-    pub loader: &'a mut CrateLoader,
+pub struct ExpansionConfig {
     pub deriving_hash_type_parameter: bool,
     pub crate_id: CrateId,
 }
 
+pub struct ExportedMacros {
+    pub crate_name: Ident,
+    pub macros: Vec<String>,
+}
+
 pub fn expand_crate(parse_sess: &parse::ParseSess,
                     cfg: ExpansionConfig,
+                    macros: Vec<ExportedMacros>,
+                    user_exts: Vec<NamedSyntaxExtension>,
                     c: Crate) -> Crate {
     let mut cx = ExtCtxt::new(parse_sess, c.config.clone(), cfg);
     let mut expander = MacroExpander {
         extsbox: syntax_expander_table(),
         cx: &mut cx,
     };
+
+    for ExportedMacros { crate_name, macros } in macros.move_iter() {
+        let name = format!("<{} macros>", token::get_ident(crate_name))
+            .into_string();
+
+        for source in macros.move_iter() {
+            let item = parse::parse_item_from_source_str(name.clone(),
+                                                         source,
+                                                         expander.cx.cfg(),
+                                                         expander.cx.parse_sess())
+                    .expect("expected a serialized item");
+            expand_item_mac(item, &mut expander);
+        }
+    }
+
+    for (name, extension) in user_exts.move_iter() {
+        expander.extsbox.insert(name, extension);
+    }
 
     let ret = expander.fold_crate(c);
     parse_sess.span_diagnostic.handler().abort_if_errors();
@@ -1093,7 +1019,6 @@ mod test {
     use attr;
     use codemap;
     use codemap::Spanned;
-    use ext::base::{CrateLoader, MacroCrate};
     use ext::mtwt;
     use parse;
     use parse::token;
@@ -1137,14 +1062,6 @@ mod test {
         }
     }
 
-    struct ErrLoader;
-
-    impl CrateLoader for ErrLoader {
-        fn load_crate(&mut self, _: &ast::ViewItem) -> MacroCrate {
-            fail!("lolwut")
-        }
-    }
-
     // these following tests are quite fragile, in that they don't test what
     // *kind* of failure occurs.
 
@@ -1159,13 +1076,11 @@ mod test {
             src,
             Vec::new(), &sess);
         // should fail:
-        let mut loader = ErrLoader;
         let cfg = ::syntax::ext::expand::ExpansionConfig {
-            loader: &mut loader,
             deriving_hash_type_parameter: false,
             crate_id: from_str("test").unwrap(),
         };
-        expand_crate(&sess,cfg,crate_ast);
+        expand_crate(&sess,cfg,vec!(),vec!(),crate_ast);
     }
 
     // make sure that macros can leave scope for modules
@@ -1178,14 +1093,11 @@ mod test {
             "<test>".to_string(),
             src,
             Vec::new(), &sess);
-        // should fail:
-        let mut loader = ErrLoader;
         let cfg = ::syntax::ext::expand::ExpansionConfig {
-            loader: &mut loader,
             deriving_hash_type_parameter: false,
             crate_id: from_str("test").unwrap(),
         };
-        expand_crate(&sess,cfg,crate_ast);
+        expand_crate(&sess,cfg,vec!(),vec!(),crate_ast);
     }
 
     // macro_escape modules shouldn't cause macros to leave scope
@@ -1198,13 +1110,11 @@ mod test {
             src,
             Vec::new(), &sess);
         // should fail:
-        let mut loader = ErrLoader;
         let cfg = ::syntax::ext::expand::ExpansionConfig {
-            loader: &mut loader,
             deriving_hash_type_parameter: false,
             crate_id: from_str("test").unwrap(),
         };
-        expand_crate(&sess, cfg, crate_ast);
+        expand_crate(&sess, cfg, vec!(), vec!(), crate_ast);
     }
 
     #[test] fn test_contains_flatten (){
@@ -1237,13 +1147,11 @@ mod test {
         let ps = parse::new_parse_sess();
         let crate_ast = string_to_parser(&ps, crate_str).parse_crate_mod();
         // the cfg argument actually does matter, here...
-        let mut loader = ErrLoader;
         let cfg = ::syntax::ext::expand::ExpansionConfig {
-            loader: &mut loader,
             deriving_hash_type_parameter: false,
             crate_id: from_str("test").unwrap(),
         };
-        expand_crate(&ps,cfg,crate_ast)
+        expand_crate(&ps,cfg,vec!(),vec!(),crate_ast)
     }
 
     //fn expand_and_resolve(crate_str: @str) -> ast::crate {

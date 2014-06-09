@@ -12,7 +12,7 @@
 // exec-env:RUST_LOG=conditional-debug-macro-off=4
 
 #![feature(phase)]
-#[phase(syntax, link)]
+#[phase(plugin, link)]
 extern crate log;
 extern crate debug;
 

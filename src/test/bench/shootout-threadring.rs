@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #![feature(phase)]
-#[phase(syntax)] extern crate green;
+#[phase(plugin)] extern crate green;
 green_start!(main)
 
 fn start(n_tasks: int, token: int) {

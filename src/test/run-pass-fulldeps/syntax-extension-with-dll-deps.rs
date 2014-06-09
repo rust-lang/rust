@@ -14,7 +14,7 @@
 
 #![feature(phase)]
 
-#[phase(syntax)]
+#[phase(plugin)]
 extern crate extension = "syntax-extension-with-dll-deps-2";
 
 fn main() {

@@ -12,7 +12,7 @@
 // ignore-pretty
 
 #![feature(phase)]
-#[phase(syntax)]
+#[phase(plugin)]
 extern crate hexfloat;
 
 pub fn main() {

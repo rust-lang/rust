@@ -16,7 +16,6 @@
 use driver::session::Session;
 use front::config;
 use front::std_inject::with_version;
-use metadata::creader::Loader;
 
 use std::cell::RefCell;
 use std::slice;
@@ -150,12 +149,10 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
 
 fn generate_test_harness(sess: &Session, krate: ast::Crate)
                          -> ast::Crate {
-    let loader = &mut Loader::new(sess);
     let mut cx: TestCtxt = TestCtxt {
         sess: sess,
         ext_cx: ExtCtxt::new(&sess.parse_sess, sess.opts.cfg.clone(),
                              ExpansionConfig {
-                                 loader: loader,
                                  deriving_hash_type_parameter: false,
                                  crate_id: from_str("test").unwrap(),
                              }),

@@ -198,7 +198,7 @@ pub static tag_native_libraries_lib: uint = 0x88;
 pub static tag_native_libraries_name: uint = 0x89;
 pub static tag_native_libraries_kind: uint = 0x8a;
 
-pub static tag_macro_registrar_fn: uint = 0x8b;
+pub static tag_plugin_registrar_fn: uint = 0x8b;
 pub static tag_exported_macros: uint = 0x8c;
 pub static tag_macro_def: uint = 0x8d;
 

@@ -17,7 +17,7 @@
 #![feature(phase)]
 #![crate_type = "rlib"]
 
-#[phase(syntax, link)]
+#[phase(plugin, link)]
 extern crate core;
 
 struct A;

@@ -10,7 +10,7 @@
 
 #![feature(phase)]
 
-#[phase(syntax, link)]
+#[phase(plugin, link)]
 extern crate green;
 extern crate native;
 

@@ -19,23 +19,23 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/")]
 
-#![feature(macro_registrar, managed_boxes, quote)]
+#![feature(plugin_registrar, managed_boxes, quote)]
 
 extern crate regex;
 extern crate syntax;
+extern crate rustc;
 
 use std::rc::Rc;
 
 use syntax::ast;
 use syntax::codemap;
 use syntax::ext::build::AstBuilder;
-use syntax::ext::base::{
-    SyntaxExtension, ExtCtxt, MacResult, MacExpr, DummyResult,
-    NormalTT, BasicMacroExpander,
-};
+use syntax::ext::base::{ExtCtxt, MacResult, MacExpr, DummyResult};
 use syntax::parse;
 use syntax::parse::token;
 use syntax::print::pprust;
+
+use rustc::plugin::Registry;
 
 use regex::Regex;
 use regex::native::{
@@ -46,11 +46,10 @@ use regex::native::{
 };
 
 /// For the `regex!` syntax extension. Do not use.
-#[macro_registrar]
+#[plugin_registrar]
 #[doc(hidden)]
-pub fn macro_registrar(register: |ast::Name, SyntaxExtension|) {
-    let expander = box BasicMacroExpander { expander: native, span: None };
-    register(token::intern("regex"), NormalTT(expander, None))
+pub fn plugin_registrar(reg: &mut Registry) {
+    reg.register_macro("regex", native);
 }
 
 /// Generates specialized code for the Pike VM for a particular regular

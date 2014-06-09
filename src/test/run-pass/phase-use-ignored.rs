@@ -11,7 +11,7 @@
 
 #![feature(phase)]
 
-#[phase(syntax)]
+#[phase(plugin)]
 use std::mem;
 
 fn main() {}
