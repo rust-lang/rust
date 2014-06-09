@@ -12,7 +12,7 @@ extern crate collections;
 extern crate core;
 
 use collections::HashMap;
-use collections::hashmap::{Entries, Keys, MoveEntries, Values};
+use collections::hashmap::{Entries, Keys, MoveEntries, MutEntries, Values};
 use collections::PriorityQueue;
 use core::clone::Clone;
 use core::cmp::{max, min};
@@ -37,13 +37,13 @@ struct Counted<K> {
     v: uint
 }
 
-impl<K: Clone + Hash + TotalEq> PartialOrd for Counted<K> {
+impl<K: Hash + TotalEq> PartialOrd for Counted<K> {
     fn lt(&self, other: &Counted<K>) -> bool {
         self.v < other.v
     }
 }
 
-impl<K: Clone + Hash + TotalEq> TotalOrd for Counted<K> {
+impl<K: Hash + TotalEq> TotalOrd for Counted<K> {
     fn cmp(&self, other: &Counted<K>) -> Ordering {
         self.v.cmp(&other.v)
     }
@@ -54,58 +54,20 @@ pub struct CountedSet<K> {
     data: HashMap<K, uint>
 }
 
-impl<K: Clone + Hash + TotalEq> CountedSet<K> {
-    /// Adds counts from two counters.
-    pub fn add(&self, other: &CountedSet<K>) -> CountedSet<K> {
-        let mut result = self.clone();
-        for (k, v) in other.iter() {
-            result.data.insert_or_update_with((*k).clone(), *v, |_, old| *old += *v);
-        }
-        result
-    }
-
-    /// Subtracts counts from two counters. If the count for an item
-    /// would be negative, it is instead counted as 0.
-    pub fn subtract(&self, other: &CountedSet<K>) -> CountedSet<K> {
-        let mut result = self.clone();
-        for (k, v) in other.iter() {
-            let value = result.data.find_copy(k);
-            value.map_or(true, |old| result.data.insert((*k).clone(), old.saturating_sub(*v)));
-        }
-        result
-    }
-
-    /// Returns a new counter containing the maximum value of either counter.
-    pub fn union(&self, other: &CountedSet<K>) -> CountedSet<K> {
-        self.get_min_or_max(other, max)
-    }
-
-    /// Returns a new counter containing the minimum value of either counter.
-    pub fn intersection(&self, other: &CountedSet<K>) -> CountedSet<K> {
-        self.get_min_or_max(other, min)
-    }
-
-    fn get_min_or_max(&self, other: &CountedSet<K>,
-                      min_or_max: |uint, uint| -> uint) -> CountedSet<K> {
-        let mut result = self.clone();
-        for (k, v) in other.iter() {
-            result.data.insert_or_update_with(
-                (*k).clone(), *v, |_, old| *old = min_or_max(*v, *old));
-        }
-        result
-    }
+impl<K: Hash + TotalEq> CountedSet<K> {
 
     /// Returns the `n` most common elements and their counts in descending
     /// order. The time complexity is O(m + n log m), where `m` is the number
     /// of elements in the counter.
-    pub fn most_common(&self, n: uint) -> Vec<(K, uint)> {
+    pub fn most_common<'a>(&'a self, n: uint) -> Vec<(&'a K, uint)> {
         let n = if n <= self.data.len() { n } else { self.data.len() };
-        let data = self.data.clone();
-        let counted: Vec<Counted<K>> = data.move_iter().
-                                                 map(|(kk, vv)| Counted {k: kk, v: vv}).collect();
+        let counted: Vec<Counted<&'a K>> = self.data
+                                           .iter()
+                                           .map(|(kk, vv)| Counted {k: kk, v: *vv})
+                                           .collect();
         let mut pq = PriorityQueue::from_vec(counted);
-
         let mut n_most_common = Vec::with_capacity(n);
+
         for _ in range(0u, n) {
             let Counted { k, v } = pq.pop().unwrap();
             n_most_common.push((k, v));
@@ -116,9 +78,8 @@ impl<K: Clone + Hash + TotalEq> CountedSet<K> {
     /// Returns a vector with containing each element the same number of times
     /// as its count.
     // FIXME(schmee): Return FlatMap
-    pub fn elements(&self) -> Vec<K> {
-        let data = self.data.clone();
-        data.move_iter().flat_map(|(k,v)| Repeat::new(k).take(v)).collect()
+    pub fn elements<'a>(&'a self) -> Vec<&'a K> {
+        self.data.iter().flat_map(|(k,v)| Repeat::new(k).take(*v)).collect()
     }
 
     /// Returns the count of an element in the counter. Missing elements return 0.
@@ -133,14 +94,6 @@ impl<K: Clone + Hash + TotalEq> CountedSet<K> {
 
     // =============== HashMap aliases ===============
 
-    pub fn find_copy(&self, k: &K) -> Option<uint> {
-        self.data.find_copy(k)
-    }
-
-    pub fn get_copy(&self, k: &K) -> uint {
-        self.data.get_copy(k)
-    }
-
     pub fn keys<'a>(&'a self) -> Keys<'a, K, uint> {
         self.data.keys()
     }
@@ -153,36 +106,68 @@ impl<K: Clone + Hash + TotalEq> CountedSet<K> {
         self.data.iter()
     }
 
+    pub fn mut_iter<'a>(&'a mut self) -> MutEntries<'a, K, uint> {
+        self.data.mut_iter()
+    }
+
     pub fn move_iter(self) -> MoveEntries<K, uint> {
         self.data.move_iter()
     }
 }
 
-impl<K: Clone + Hash + TotalEq> Add<CountedSet<K>, CountedSet<K>> for CountedSet<K> {
-        fn add(&self, rhs: &CountedSet<K>) -> CountedSet<K> {
-            self.add(rhs)
+impl<K: Clone + Hash + TotalEq> CountedSet<K> {
+    /// Returns a new counter containing the either the minimum or maximum value of either counter.
+    fn get_min_or_max(&self, other: &CountedSet<K>,
+                      min_or_max: |uint, uint| -> uint) -> CountedSet<K> {
+        let mut result = self.clone();
+        for (k, v) in other.iter() {
+            result.data.insert_or_update_with(
+                (*k).clone(), *v, |_, old| *old = min_or_max(*v, *old));
         }
+        result
+    }
+}
+
+
+impl<K: Clone + Hash + TotalEq> Add<CountedSet<K>, CountedSet<K>> for CountedSet<K> {
+    /// Adds counts from two counters.
+    fn add(&self, other: &CountedSet<K>) -> CountedSet<K> {
+        let mut result = self.clone();
+        for (k, v) in other.iter() {
+            result.data.insert_or_update_with((*k).clone(), *v, |_, old| *old += *v);
+        }
+        result
+    }
 }
 
 impl<K: Clone + Hash + TotalEq> Sub<CountedSet<K>, CountedSet<K>> for CountedSet<K> {
-        fn sub(&self, rhs: &CountedSet<K>) -> CountedSet<K> {
-            self.subtract(rhs)
+    /// Subtracts counts from two counters. If the count for an item
+    /// would be negative, it is instead counted as 0.
+    fn sub(&self, other: &CountedSet<K>) -> CountedSet<K> {
+        let mut result = self.clone();
+        for (k, v) in other.iter() {
+            let value = result.data.find_copy(k);
+            value.map_or(true, |old| result.data.insert((*k).clone(), old.saturating_sub(*v)));
         }
+        result
+    }
 }
 
 impl<K: Clone + Hash + TotalEq> BitAnd<CountedSet<K>, CountedSet<K>> for CountedSet<K> {
-        fn bitand(&self, rhs: &CountedSet<K>) -> CountedSet<K> {
-            self.intersection(rhs)
-        }
+    /// Returns a new counter containing the minimum value of either counter.
+    fn bitand(&self, other: &CountedSet<K>) -> CountedSet<K> {
+        self.get_min_or_max(other, min)
+    }
 }
 
 impl<K: Clone + Hash + TotalEq> BitOr<CountedSet<K>, CountedSet<K>> for CountedSet<K> {
-        fn bitor(&self, rhs: &CountedSet<K>) -> CountedSet<K> {
-            self.union(rhs)
-        }
+    /// Returns a new counter containing the maximum value of either counter.
+    fn bitor(&self, other: &CountedSet<K>) -> CountedSet<K> {
+        self.get_min_or_max(other, max)
+    }
 }
 
-impl<K: Clone + Hash + TotalEq> Default for CountedSet<K> {
+impl<K: Hash + TotalEq> Default for CountedSet<K> {
     fn default() -> CountedSet<K> { CountedSet::new() }
 }
 
@@ -232,7 +217,7 @@ impl<K: Hash + TotalEq> PartialEq for CountedSet<K> {
     }
 }
 
-impl<K: Clone + Hash + TotalEq> Extendable<K> for CountedSet<K> {
+impl<K: Hash + TotalEq> Extendable<K> for CountedSet<K> {
     fn extend<I: Iterator<K>>(&mut self, mut iter: I) {
         for item in iter {
             self.data.insert_or_update_with(item, 1u, |_, v| *v += 1);
@@ -240,7 +225,7 @@ impl<K: Clone + Hash + TotalEq> Extendable<K> for CountedSet<K> {
     }
 }
 
-impl<K: Clone + Hash + TotalEq> FromIterator<K> for CountedSet<K> {
+impl<K: Hash + TotalEq> FromIterator<K> for CountedSet<K> {
     fn from_iter<I: Iterator<K>>(iter: I) -> CountedSet<K> {
         let mut counts: CountedSet<K> = CountedSet::new();
         counts.extend(iter);
@@ -320,7 +305,7 @@ fn test_intersection() {
 fn test_elements() {
     let strings = ["a", "a", "a", "b", "b", "c"];
     let count: CountedSet<&'static str> = strings.iter().map(|&x|x).collect();
-    let mut elems: Vec<_> = count.elements().iter().map(|&x|x).collect();
+    let mut elems: Vec<_> = count.elements().move_iter().map(|&x|x).collect();
     elems.sort();
     assert!(elems.as_slice() == strings);
 }
@@ -328,14 +313,14 @@ fn test_elements() {
 #[test]
 fn test_most_common() {
     let strings = ["a", "b", "a", "b", "b", "c"];
-    let count: CountedSet<_> = strings.iter().map(|&x|x).collect();
+    let count: CountedSet<&'static str> = strings.iter().map(|&x|x).collect();
 
     let v: Vec<_> = count.most_common(2);
-    let answer = [("b", 3u), ("a", 2)];
+    let answer = [(&"b", 3u), (&"a", 2)];
     assert!(answer == v.as_slice())
 
     let v: Vec<_> = count.most_common(6);
-    let answer = [("b", 3u), ("a", 2), ("c", 1)];
+    let answer = [(&"b", 3u), (&"a", 2), (&"c", 1)];
     assert!(answer == v.as_slice())
 }
 
