@@ -1339,3 +1339,11 @@ pub fn get_reachable_extern_fns(cdata: Cmd) -> Vec<ast::DefId> {
     });
     return ret;
 }
+
+pub fn is_typedef(cdata: Cmd, id: ast::NodeId) -> bool {
+    let item_doc = lookup_item(id, cdata.data());
+    match item_family(item_doc) {
+        Type => true,
+        _ => false,
+    }
+}
