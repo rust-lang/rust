@@ -17,6 +17,7 @@
 
 use core::prelude::*;
 
+use core::default::Default;
 use core::fmt;
 use core::iter::{Enumerate, FilterMap};
 use core::mem::replace;
@@ -111,6 +112,11 @@ impl<V> MutableMap<uint, V> for SmallIntMap<V> {
         }
         self.v.get_mut(*key).take()
     }
+}
+
+impl<V> Default for SmallIntMap<V> {
+    #[inline]
+    fn default() -> SmallIntMap<V> { SmallIntMap::new() }
 }
 
 impl<V> SmallIntMap<V> {

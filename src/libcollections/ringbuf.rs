@@ -16,6 +16,7 @@
 use core::prelude::*;
 
 use core::cmp;
+use core::default::Default;
 use core::fmt;
 use core::iter::RandomAccessIterator;
 
@@ -110,6 +111,11 @@ impl<T> Deque<T> for RingBuf<T> {
         *self.elts.get_mut(hi) = Some(t);
         self.nelts += 1u;
     }
+}
+
+impl<T> Default for RingBuf<T> {
+    #[inline]
+    fn default() -> RingBuf<T> { RingBuf::new() }
 }
 
 impl<T> RingBuf<T> {
