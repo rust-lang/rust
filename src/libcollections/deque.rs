@@ -10,41 +10,13 @@
 
 //! Container traits for collections
 
-use core::prelude::*;
-
-/// A double-ended sequence that allows querying, insertion and deletion at both ends.
-pub trait Deque<T> : Mutable {
-    /// Provide a reference to the front element, or None if the sequence is empty
-    fn front<'a>(&'a self) -> Option<&'a T>;
-
-    /// Provide a mutable reference to the front element, or None if the sequence is empty
-    fn front_mut<'a>(&'a mut self) -> Option<&'a mut T>;
-
-    /// Provide a reference to the back element, or None if the sequence is empty
-    fn back<'a>(&'a self) -> Option<&'a T>;
-
-    /// Provide a mutable reference to the back element, or None if the sequence is empty
-    fn back_mut<'a>(&'a mut self) -> Option<&'a mut T>;
-
-    /// Insert an element first in the sequence
-    fn push_front(&mut self, elt: T);
-
-    /// Insert an element last in the sequence
-    fn push_back(&mut self, elt: T);
-
-    /// Remove the last element and return it, or None if the sequence is empty
-    fn pop_back(&mut self) -> Option<T>;
-
-    /// Remove the first element and return it, or None if the sequence is empty
-    fn pop_front(&mut self) -> Option<T>;
-}
-
 #[cfg(test)]
 pub mod bench {
     use std::prelude::*;
     use std::rand;
     use std::rand::Rng;
     use test::Bencher;
+    use MutableMap;
 
     pub fn insert_rand_n<M:MutableMap<uint,uint>>(n: uint,
                                                   map: &mut M,
@@ -121,3 +93,4 @@ pub mod bench {
         })
      }
 }
+

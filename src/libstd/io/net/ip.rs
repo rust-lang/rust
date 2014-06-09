@@ -15,7 +15,7 @@
 
 #![allow(missing_doc)]
 
-use container::Container;
+use collections::Collection;
 use fmt;
 use from_str::FromStr;
 use iter::Iterator;

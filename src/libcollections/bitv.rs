@@ -20,6 +20,7 @@ use core::slice;
 use core::uint;
 use std::hash;
 
+use {Collection, Mutable, Set, MutableSet};
 use vec::Vec;
 
 #[deriving(Clone)]
@@ -857,7 +858,7 @@ impl<S: hash::Writer> hash::Hash<S> for BitvSet {
     }
 }
 
-impl Container for BitvSet {
+impl Collection for BitvSet {
     #[inline]
     fn len(&self) -> uint { self.size }
 }
@@ -1008,6 +1009,7 @@ mod tests {
     use std::rand::Rng;
     use test::Bencher;
 
+    use {Set, Mutable, MutableSet};
     use bitv::{Bitv, SmallBitv, BigBitv, BitvSet, from_bools, from_fn,
                from_bytes};
     use bitv;

@@ -10,7 +10,7 @@
 
 //! A wrapper around any Reader to treat it as an RNG.
 
-use container::Container;
+use collections::Collection;
 use io::Reader;
 use rand::Rng;
 use result::{Ok, Err};

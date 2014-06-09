@@ -15,7 +15,7 @@
 // FIXME: Not sure how this should be structured
 // FIXME: Iteration should probably be considered separately
 
-use container::Container;
+use collections::Collection;
 use iter::Iterator;
 use option::{Option, Some, None};
 use result::{Ok, Err};
@@ -504,7 +504,7 @@ mod test {
 mod bench {
     extern crate test;
 
-    use container::Container;
+    use collections::Collection;
     use prelude::*;
     use self::test::Bencher;
 

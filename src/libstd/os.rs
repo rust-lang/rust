@@ -30,7 +30,7 @@
 #![allow(non_snake_case_functions)]
 
 use clone::Clone;
-use container::Container;
+use collections::Collection;
 use fmt;
 use iter::Iterator;
 use libc::{c_void, c_int};

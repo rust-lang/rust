@@ -22,6 +22,7 @@ use core::iter;
 use core::mem::{replace, swap};
 use core::ptr;
 
+use {Collection, Mutable, Set, MutableSet, MutableMap, Map};
 use vec::Vec;
 
 // This is implemented as an AA tree, which is a simplified variation of
@@ -86,7 +87,7 @@ impl<K: Ord + Show, V: Show> Show for TreeMap<K, V> {
     }
 }
 
-impl<K: Ord, V> Container for TreeMap<K, V> {
+impl<K: Ord, V> Collection for TreeMap<K, V> {
     fn len(&self) -> uint { self.length }
 }
 
@@ -579,7 +580,7 @@ impl<T: Ord + Show> Show for TreeSet<T> {
     }
 }
 
-impl<T: Ord> Container for TreeSet<T> {
+impl<T: Ord> Collection for TreeSet<T> {
     #[inline]
     fn len(&self) -> uint { self.map.len() }
 }
@@ -1006,6 +1007,7 @@ mod test_treemap {
     use std::rand::Rng;
     use std::rand;
 
+    use {Map, MutableMap, Mutable};
     use super::{TreeMap, TreeNode};
 
     #[test]
@@ -1437,7 +1439,6 @@ mod test_treemap {
 
 #[cfg(test)]
 mod bench {
-    use std::prelude::*;
     use test::Bencher;
 
     use super::TreeMap;
@@ -1500,6 +1501,7 @@ mod bench {
 mod test_set {
     use std::prelude::*;
 
+    use {Set, MutableSet, Mutable, MutableMap};
     use super::{TreeMap, TreeSet};
 
     #[test]
