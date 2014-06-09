@@ -32,7 +32,7 @@ struct TtFrame {
 #[deriving(Clone)]
 pub struct TtReader<'a> {
     pub sp_diag: &'a SpanHandler,
-    // the unzipped tree:
+    /// the unzipped tree:
     stack: Vec<TtFrame>,
     /* for MBE-style macro transcription */
     interpolations: HashMap<Ident, Rc<NamedMatch>>,
@@ -43,9 +43,9 @@ pub struct TtReader<'a> {
     pub cur_span: Span,
 }
 
-/** This can do Macro-By-Example transcription. On the other hand, if
- *  `src` contains no `TTSeq`s and `TTNonterminal`s, `interp` can (and
- *  should) be none. */
+/// This can do Macro-By-Example transcription. On the other hand, if
+/// `src` contains no `TTSeq`s and `TTNonterminal`s, `interp` can (and
+/// should) be none.
 pub fn new_tt_reader<'a>(sp_diag: &'a SpanHandler,
                          interp: Option<HashMap<Ident, Rc<NamedMatch>>>,
                          src: Vec<ast::TokenTree> )
@@ -138,8 +138,8 @@ fn lockstep_iter_size(t: &TokenTree, r: &TtReader) -> LockstepIterSize {
     }
 }
 
-// return the next token from the TtReader.
-// EFFECT: advances the reader's token field
+/// Return the next token from the TtReader.
+/// EFFECT: advances the reader's token field
 pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
     // FIXME(pcwalton): Bad copy?
     let ret_val = TokenAndSpan {

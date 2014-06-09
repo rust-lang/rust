@@ -246,11 +246,11 @@ pub fn expand_expr(e: Gc<ast::Expr>, fld: &mut MacroExpander) -> Gc<ast::Expr> {
     }
 }
 
-// Rename loop label and expand its loop body
-//
-// The renaming procedure for loop is different in the sense that the loop
-// body is in a block enclosed by loop head so the renaming of loop label
-// must be propagated to the enclosed context.
+/// Rename loop label and expand its loop body
+///
+/// The renaming procedure for loop is different in the sense that the loop
+/// body is in a block enclosed by loop head so the renaming of loop label
+/// must be propagated to the enclosed context.
 fn expand_loop_block(loop_block: P<Block>,
                      opt_ident: Option<Ident>,
                      fld: &mut MacroExpander) -> (P<Block>, Option<Ident>) {

@@ -55,8 +55,8 @@ pub fn expand_deriving_show(cx: &mut ExtCtxt,
     trait_def.expand(cx, mitem, item, push)
 }
 
-// we construct a format string and then defer to std::fmt, since that
-// knows what's up with formatting at so on.
+/// We construct a format string and then defer to std::fmt, since that
+/// knows what's up with formatting and so on.
 fn show_substructure(cx: &mut ExtCtxt, span: Span,
                      substr: &Substructure) -> Gc<Expr> {
     // build `<name>`, `<name>({}, {}, ...)` or `<name> { <field>: {},

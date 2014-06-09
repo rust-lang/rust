@@ -46,10 +46,8 @@ pub trait AttrMetaMethods {
     /// #[foo="bar"] and #[foo(bar)]
     fn name(&self) -> InternedString;
 
-    /**
-     * Gets the string value if self is a MetaNameValue variant
-     * containing a string, otherwise None.
-     */
+    /// Gets the string value if self is a MetaNameValue variant
+    /// containing a string, otherwise None.
     fn value_str(&self) -> Option<InternedString>;
     /// Gets a list of inner meta items from a list MetaItem type.
     fn meta_item_list<'a>(&'a self) -> Option<&'a [Gc<MetaItem>]>;
@@ -420,18 +418,16 @@ pub fn require_unique_names(diagnostic: &SpanHandler, metas: &[Gc<MetaItem>]) {
 }
 
 
-/**
- * Fold this over attributes to parse #[repr(...)] forms.
- *
- * Valid repr contents: any of the primitive integral type names (see
- * `int_type_of_word`, below) to specify the discriminant type; and `C`, to use
- * the same discriminant size that the corresponding C enum would.  These are
- * not allowed on univariant or zero-variant enums, which have no discriminant.
- *
- * If a discriminant type is so specified, then the discriminant will be
- * present (before fields, if any) with that type; reprensentation
- * optimizations which would remove it will not be done.
- */
+/// Fold this over attributes to parse #[repr(...)] forms.
+///
+/// Valid repr contents: any of the primitive integral type names (see
+/// `int_type_of_word`, below) to specify the discriminant type; and `C`, to use
+/// the same discriminant size that the corresponding C enum would.  These are
+/// not allowed on univariant or zero-variant enums, which have no discriminant.
+///
+/// If a discriminant type is so specified, then the discriminant will be
+/// present (before fields, if any) with that type; reprensentation
+/// optimizations which would remove it will not be done.
 pub fn find_repr_attr(diagnostic: &SpanHandler, attr: &Attribute, acc: ReprAttr)
     -> ReprAttr {
     let mut acc = acc;
