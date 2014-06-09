@@ -60,7 +60,7 @@ primarily done to allow the `crate` and `type` attributes to exist.
 
 ## Naming library filenames
 
-Currently, rustc crates filenames for library following this pattern:
+Currently, rustc creates filenames for library following this pattern:
 
 ```
 lib<name>-<version>-<hash>.rlib
