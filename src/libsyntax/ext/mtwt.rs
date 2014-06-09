@@ -21,15 +21,15 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::collections::HashMap;
 
-// the SCTable contains a table of SyntaxContext_'s. It
-// represents a flattened tree structure, to avoid having
-// managed pointers everywhere (that caused an ICE).
-// the mark_memo and rename_memo fields are side-tables
-// that ensure that adding the same mark to the same context
-// gives you back the same context as before. This shouldn't
-// change the semantics--everything here is immutable--but
-// it should cut down on memory use *a lot*; applying a mark
-// to a tree containing 50 identifiers would otherwise generate
+/// the SCTable contains a table of SyntaxContext_'s. It
+/// represents a flattened tree structure, to avoid having
+/// managed pointers everywhere (that caused an ICE).
+/// the mark_memo and rename_memo fields are side-tables
+/// that ensure that adding the same mark to the same context
+/// gives you back the same context as before. This shouldn't
+/// change the semantics--everything here is immutable--but
+/// it should cut down on memory use *a lot*; applying a mark
+/// to a tree containing 50 identifiers would otherwise generate
 pub struct SCTable {
     table: RefCell<Vec<SyntaxContext_>>,
     mark_memo: RefCell<HashMap<(SyntaxContext,Mrk),SyntaxContext>>,
@@ -40,16 +40,16 @@ pub struct SCTable {
 pub enum SyntaxContext_ {
     EmptyCtxt,
     Mark (Mrk,SyntaxContext),
-    // flattening the name and syntaxcontext into the rename...
-    // HIDDEN INVARIANTS:
-    // 1) the first name in a Rename node
-    // can only be a programmer-supplied name.
-    // 2) Every Rename node with a given Name in the
-    // "to" slot must have the same name and context
-    // in the "from" slot. In essence, they're all
-    // pointers to a single "rename" event node.
+    /// flattening the name and syntaxcontext into the rename...
+    /// HIDDEN INVARIANTS:
+    /// 1) the first name in a Rename node
+    /// can only be a programmer-supplied name.
+    /// 2) Every Rename node with a given Name in the
+    /// "to" slot must have the same name and context
+    /// in the "from" slot. In essence, they're all
+    /// pointers to a single "rename" event node.
     Rename (Ident,Name,SyntaxContext),
-    // actually, IllegalCtxt may not be necessary.
+    /// actually, IllegalCtxt may not be necessary.
     IllegalCtxt
 }
 
@@ -58,7 +58,7 @@ pub fn new_mark(m: Mrk, tail: SyntaxContext) -> SyntaxContext {
     with_sctable(|table| new_mark_internal(m, tail, table))
 }
 
-// Extend a syntax context with a given mark and table
+/// Extend a syntax context with a given mark and table
 fn new_mark_internal(m: Mrk, tail: SyntaxContext, table: &SCTable) -> SyntaxContext {
     let key = (tail, m);
     let new_ctxt = |_: &(SyntaxContext, Mrk)|
@@ -73,7 +73,7 @@ pub fn new_rename(id: Ident, to:Name,
     with_sctable(|table| new_rename_internal(id, to, tail, table))
 }
 
-// Extend a syntax context with a given rename and sctable
+/// Extend a syntax context with a given rename and sctable
 fn new_rename_internal(id: Ident,
                        to: Name,
                        tail: SyntaxContext,
@@ -127,7 +127,7 @@ pub fn clear_tables() {
     with_resolve_table_mut(|table| *table = HashMap::new());
 }
 
-// Add a value to the end of a vec, return its index
+/// Add a value to the end of a vec, return its index
 fn idx_push<T>(vec: &mut Vec<T> , val: T) -> u32 {
     vec.push(val);
     (vec.len() - 1) as u32
@@ -159,8 +159,8 @@ fn with_resolve_table_mut<T>(op: |&mut ResolveTable| -> T) -> T {
     }
 }
 
-// Resolve a syntax object to a name, per MTWT.
-// adding memorization to possibly resolve 500+ seconds in resolve for librustc (!)
+/// Resolve a syntax object to a name, per MTWT.
+/// adding memorization to possibly save 500+ seconds in resolve for librustc (!)
 fn resolve_internal(id: Ident,
                     table: &SCTable,
                     resolve_table: &mut ResolveTable) -> Name {
@@ -250,8 +250,8 @@ pub fn outer_mark(ctxt: SyntaxContext) -> Mrk {
     })
 }
 
-// Push a name... unless it matches the one on top, in which
-// case pop and discard (so two of the same marks cancel)
+/// Push a name... unless it matches the one on top, in which
+/// case pop and discard (so two of the same marks cancel)
 fn xor_push(marks: &mut Vec<Mrk>, mark: Mrk) {
     if (marks.len() > 0) && (*marks.last().unwrap() == mark) {
         marks.pop().unwrap();

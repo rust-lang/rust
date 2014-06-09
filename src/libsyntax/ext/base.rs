@@ -269,9 +269,9 @@ pub enum SyntaxExtension {
 pub type NamedSyntaxExtension = (Name, SyntaxExtension);
 
 pub struct BlockInfo {
-    // should macros escape from this scope?
+    /// Should macros escape from this scope?
     pub macros_escape: bool,
-    // what are the pending renames?
+    /// What are the pending renames?
     pub pending_renames: RenameList,
 }
 
@@ -284,11 +284,11 @@ impl BlockInfo {
     }
 }
 
-// a list of ident->name renamings
+/// A list of ident->name renamings
 pub type RenameList = Vec<(ast::Ident, Name)>;
 
-// The base map of methods for expanding syntax extension
-// AST nodes into full ASTs
+/// The base map of methods for expanding syntax extension
+/// AST nodes into full ASTs
 pub fn syntax_expander_table() -> SyntaxEnv {
     // utility function to simplify creating NormalTT syntax extensions
     fn builtin_normal_expander(f: MacroExpanderFn) -> SyntaxExtension {
@@ -392,9 +392,9 @@ pub fn syntax_expander_table() -> SyntaxEnv {
     syntax_expanders
 }
 
-// One of these is made during expansion and incrementally updated as we go;
-// when a macro expansion occurs, the resulting nodes have the backtrace()
-// -> expn_info of their expansion context stored into their span.
+/// One of these is made during expansion and incrementally updated as we go;
+/// when a macro expansion occurs, the resulting nodes have the backtrace()
+/// -> expn_info of their expansion context stored into their span.
 pub struct ExtCtxt<'a> {
     pub parse_sess: &'a parse::ParseSess,
     pub cfg: ast::CrateConfig,
@@ -605,11 +605,11 @@ pub fn get_exprs_from_tts(cx: &mut ExtCtxt,
     Some(es)
 }
 
-// in order to have some notion of scoping for macros,
-// we want to implement the notion of a transformation
-// environment.
+/// In order to have some notion of scoping for macros,
+/// we want to implement the notion of a transformation
+/// environment.
 
-// This environment maps Names to SyntaxExtensions.
+/// This environment maps Names to SyntaxExtensions.
 
 //impl question: how to implement it? Initially, the
 // env will contain only macros, so it might be painful
@@ -626,7 +626,6 @@ struct MapChainFrame {
     map: HashMap<Name, SyntaxExtension>,
 }
 
-// Only generic to make it easy to test
 pub struct SyntaxEnv {
     chain: Vec<MapChainFrame> ,
 }

@@ -8,7 +8,72 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Earley-like parser for macros.
+//! This is an Earley-like parser, without support for in-grammar nonterminals,
+//! only by calling out to the main rust parser for named nonterminals (which it
+//! commits to fully when it hits one in a grammar). This means that there are no
+//! completer or predictor rules, and therefore no need to store one column per
+//! token: instead, there's a set of current Earley items and a set of next
+//! ones. Instead of NTs, we have a special case for Kleene star. The big-O, in
+//! pathological cases, is worse than traditional Earley parsing, but it's an
+//! easier fit for Macro-by-Example-style rules, and I think the overhead is
+//! lower. (In order to prevent the pathological case, we'd need to lazily
+//! construct the resulting `NamedMatch`es at the very end. It'd be a pain,
+//! and require more memory to keep around old items, but it would also save
+//! overhead)
+//!
+//! Quick intro to how the parser works:
+//!
+//! A 'position' is a dot in the middle of a matcher, usually represented as a
+//! dot. For example `· a $( a )* a b` is a position, as is `a $( · a )* a b`.
+//!
+//! The parser walks through the input a character at a time, maintaining a list
+//! of items consistent with the current position in the input string: `cur_eis`.
+//!
+//! As it processes them, it fills up `eof_eis` with items that would be valid if
+//! the macro invocation is now over, `bb_eis` with items that are waiting on
+//! a Rust nonterminal like `$e:expr`, and `next_eis` with items that are waiting
+//! on the a particular token. Most of the logic concerns moving the · through the
+//! repetitions indicated by Kleene stars. It only advances or calls out to the
+//! real Rust parser when no `cur_eis` items remain
+//!
+//! Example: Start parsing `a a a a b` against [· a $( a )* a b].
+//!
+//! Remaining input: `a a a a b`
+//! next_eis: [· a $( a )* a b]
+//!
+//! - - - Advance over an `a`. - - -
+//!
+//! Remaining input: `a a a b`
+//! cur: [a · $( a )* a b]
+//! Descend/Skip (first item).
+//! next: [a $( · a )* a b]  [a $( a )* · a b].
+//!
+//! - - - Advance over an `a`. - - -
+//!
+//! Remaining input: `a a b`
+//! cur: [a $( a · )* a b]  next: [a $( a )* a · b]
+//! Finish/Repeat (first item)
+//! next: [a $( a )* · a b]  [a $( · a )* a b]  [a $( a )* a · b]
+//!
+//! - - - Advance over an `a`. - - - (this looks exactly like the last step)
+//!
+//! Remaining input: `a b`
+//! cur: [a $( a · )* a b]  next: [a $( a )* a · b]
+//! Finish/Repeat (first item)
+//! next: [a $( a )* · a b]  [a $( · a )* a b]  [a $( a )* a · b]
+//!
+//! - - - Advance over an `a`. - - - (this looks exactly like the last step)
+//!
+//! Remaining input: `b`
+//! cur: [a $( a · )* a b]  next: [a $( a )* a · b]
+//! Finish/Repeat (first item)
+//! next: [a $( a )* · a b]  [a $( · a )* a b]
+//!
+//! - - - Advance over a `b`. - - -
+//!
+//! Remaining input: ``
+//! eof: [a $( a )* a b ·]
+
 
 use ast;
 use ast::{Matcher, MatchTok, MatchSeq, MatchNonterminal, Ident};
@@ -24,75 +89,6 @@ use parse::token;
 use std::rc::Rc;
 use std::gc::GC;
 use std::collections::HashMap;
-
-/* This is an Earley-like parser, without support for in-grammar nonterminals,
-only by calling out to the main rust parser for named nonterminals (which it
-commits to fully when it hits one in a grammar). This means that there are no
-completer or predictor rules, and therefore no need to store one column per
-token: instead, there's a set of current Earley items and a set of next
-ones. Instead of NTs, we have a special case for Kleene star. The big-O, in
-pathological cases, is worse than traditional Earley parsing, but it's an
-easier fit for Macro-by-Example-style rules, and I think the overhead is
-lower. (In order to prevent the pathological case, we'd need to lazily
-construct the resulting `NamedMatch`es at the very end. It'd be a pain,
-and require more memory to keep around old items, but it would also save
-overhead)*/
-
-/* Quick intro to how the parser works:
-
-A 'position' is a dot in the middle of a matcher, usually represented as a
-dot. For example `· a $( a )* a b` is a position, as is `a $( · a )* a b`.
-
-The parser walks through the input a character at a time, maintaining a list
-of items consistent with the current position in the input string: `cur_eis`.
-
-As it processes them, it fills up `eof_eis` with items that would be valid if
-the macro invocation is now over, `bb_eis` with items that are waiting on
-a Rust nonterminal like `$e:expr`, and `next_eis` with items that are waiting
-on the a particular token. Most of the logic concerns moving the · through the
-repetitions indicated by Kleene stars. It only advances or calls out to the
-real Rust parser when no `cur_eis` items remain
-
-Example: Start parsing `a a a a b` against [· a $( a )* a b].
-
-Remaining input: `a a a a b`
-next_eis: [· a $( a )* a b]
-
-- - - Advance over an `a`. - - -
-
-Remaining input: `a a a b`
-cur: [a · $( a )* a b]
-Descend/Skip (first item).
-next: [a $( · a )* a b]  [a $( a )* · a b].
-
-- - - Advance over an `a`. - - -
-
-Remaining input: `a a b`
-cur: [a $( a · )* a b]  next: [a $( a )* a · b]
-Finish/Repeat (first item)
-next: [a $( a )* · a b]  [a $( · a )* a b]  [a $( a )* a · b]
-
-- - - Advance over an `a`. - - - (this looks exactly like the last step)
-
-Remaining input: `a b`
-cur: [a $( a · )* a b]  next: [a $( a )* a · b]
-Finish/Repeat (first item)
-next: [a $( a )* · a b]  [a $( · a )* a b]  [a $( a )* a · b]
-
-- - - Advance over an `a`. - - - (this looks exactly like the last step)
-
-Remaining input: `b`
-cur: [a $( a · )* a b]  next: [a $( a )* a · b]
-Finish/Repeat (first item)
-next: [a $( a )* · a b]  [a $( · a )* a b]
-
-- - - Advance over a `b`. - - -
-
-Remaining input: ``
-eof: [a $( a )* a b ·]
-
- */
-
 
 /* to avoid costly uniqueness checks, we require that `MatchSeq` always has a
 nonempty body. */
@@ -147,24 +143,24 @@ pub fn initial_matcher_pos(ms: Vec<Matcher> , sep: Option<Token>, lo: BytePos)
     }
 }
 
-// NamedMatch is a pattern-match result for a single ast::MatchNonterminal:
-// so it is associated with a single ident in a parse, and all
-// MatchedNonterminal's in the NamedMatch have the same nonterminal type
-// (expr, item, etc). All the leaves in a single NamedMatch correspond to a
-// single matcher_nonterminal in the ast::Matcher that produced it.
-//
-// It should probably be renamed, it has more or less exact correspondence to
-// ast::match nodes, and the in-memory structure of a particular NamedMatch
-// represents the match that occurred when a particular subset of an
-// ast::match -- those ast::Matcher nodes leading to a single
-// MatchNonterminal -- was applied to a particular token tree.
-//
-// The width of each MatchedSeq in the NamedMatch, and the identity of the
-// MatchedNonterminal's, will depend on the token tree it was applied to: each
-// MatchedSeq corresponds to a single MatchSeq in the originating
-// ast::Matcher. The depth of the NamedMatch structure will therefore depend
-// only on the nesting depth of ast::MatchSeq's in the originating
-// ast::Matcher it was derived from.
+/// NamedMatch is a pattern-match result for a single ast::MatchNonterminal:
+/// so it is associated with a single ident in a parse, and all
+/// MatchedNonterminal's in the NamedMatch have the same nonterminal type
+/// (expr, item, etc). All the leaves in a single NamedMatch correspond to a
+/// single matcher_nonterminal in the ast::Matcher that produced it.
+///
+/// It should probably be renamed, it has more or less exact correspondence to
+/// ast::match nodes, and the in-memory structure of a particular NamedMatch
+/// represents the match that occurred when a particular subset of an
+/// ast::match -- those ast::Matcher nodes leading to a single
+/// MatchNonterminal -- was applied to a particular token tree.
+///
+/// The width of each MatchedSeq in the NamedMatch, and the identity of the
+/// MatchedNonterminal's, will depend on the token tree it was applied to: each
+/// MatchedSeq corresponds to a single MatchSeq in the originating
+/// ast::Matcher. The depth of the NamedMatch structure will therefore depend
+/// only on the nesting depth of ast::MatchSeq's in the originating
+/// ast::Matcher it was derived from.
 
 pub enum NamedMatch {
     MatchedSeq(Vec<Rc<NamedMatch>>, codemap::Span),
@@ -224,7 +220,8 @@ pub fn parse_or_else(sess: &ParseSess,
     }
 }
 
-// perform a token equality check, ignoring syntax context (that is, an unhygienic comparison)
+/// Perform a token equality check, ignoring syntax context (that is, an
+/// unhygienic comparison)
 pub fn token_name_eq(t1 : &Token, t2 : &Token) -> bool {
     match (t1,t2) {
         (&token::IDENT(id1,_),&token::IDENT(id2,_))

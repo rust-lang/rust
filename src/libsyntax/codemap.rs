@@ -252,15 +252,15 @@ pub struct FileMap {
 }
 
 impl FileMap {
-    // EFFECT: register a start-of-line offset in the
-    // table of line-beginnings.
-    // UNCHECKED INVARIANT: these offsets must be added in the right
-    // order and must be in the right places; there is shared knowledge
-    // about what ends a line between this file and parse.rs
-    // WARNING: pos param here is the offset relative to start of CodeMap,
-    // and CodeMap will append a newline when adding a filemap without a newline at the end,
-    // so the safe way to call this is with value calculated as
-    // filemap.start_pos + newline_offset_relative_to_the_start_of_filemap.
+    /// EFFECT: register a start-of-line offset in the
+    /// table of line-beginnings.
+    /// UNCHECKED INVARIANT: these offsets must be added in the right
+    /// order and must be in the right places; there is shared knowledge
+    /// about what ends a line between this file and parse.rs
+    /// WARNING: pos param here is the offset relative to start of CodeMap,
+    /// and CodeMap will append a newline when adding a filemap without a newline at the end,
+    /// so the safe way to call this is with value calculated as
+    /// filemap.start_pos + newline_offset_relative_to_the_start_of_filemap.
     pub fn next_line(&self, pos: BytePos) {
         // the new charpos must be > the last one (or it's the first one).
         let mut lines = self.lines.borrow_mut();;
@@ -269,7 +269,7 @@ impl FileMap {
         lines.push(pos);
     }
 
-    // get a line from the list of pre-computed line-beginnings
+    /// get a line from the list of pre-computed line-beginnings
     pub fn get_line(&self, line: int) -> String {
         let mut lines = self.lines.borrow_mut();
         let begin: BytePos = *lines.get(line as uint) - self.start_pos;
@@ -428,7 +428,7 @@ impl CodeMap {
         FileMapAndBytePos {fm: fm, pos: offset}
     }
 
-    // Converts an absolute BytePos to a CharPos relative to the filemap and above.
+    /// Converts an absolute BytePos to a CharPos relative to the filemap and above.
     pub fn bytepos_to_file_charpos(&self, bpos: BytePos) -> CharPos {
         debug!("codemap: converting {:?} to char pos", bpos);
         let idx = self.lookup_filemap_idx(bpos);

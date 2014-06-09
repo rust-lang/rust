@@ -44,13 +44,13 @@ pub struct TokenAndSpan {
 
 pub struct StringReader<'a> {
     pub span_diagnostic: &'a SpanHandler,
-    // The absolute offset within the codemap of the next character to read
+    /// The absolute offset within the codemap of the next character to read
     pub pos: BytePos,
-    // The absolute offset within the codemap of the last character read(curr)
+    /// The absolute offset within the codemap of the last character read(curr)
     pub last_pos: BytePos,
-    // The column of the next character to read
+    /// The column of the next character to read
     pub col: CharPos,
-    // The last character to be read
+    /// The last character to be read
     pub curr: Option<char>,
     pub filemap: Rc<codemap::FileMap>,
     /* cached: */
@@ -60,7 +60,7 @@ pub struct StringReader<'a> {
 
 impl<'a> Reader for StringReader<'a> {
     fn is_eof(&self) -> bool { self.curr.is_none() }
-    // return the next token. EFFECT: advances the string_reader.
+    /// Return the next token. EFFECT: advances the string_reader.
     fn next_token(&mut self) -> TokenAndSpan {
         let ret_val = TokenAndSpan {
             tok: replace(&mut self.peek_tok, token::UNDERSCORE),
@@ -417,7 +417,7 @@ impl<'a> StringReader<'a> {
         return self.consume_any_line_comment();
     }
 
-    // might return a sugared-doc-attr
+    /// Might return a sugared-doc-attr
     fn consume_block_comment(&mut self) -> Option<TokenAndSpan> {
         // block comments starting with "/**" or "/*!" are doc-comments
         let is_doc_comment = self.curr_is('*') || self.curr_is('!');

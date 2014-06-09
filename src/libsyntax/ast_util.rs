@@ -33,8 +33,8 @@ pub fn path_name_i(idents: &[Ident]) -> String {
     }).collect::<Vec<String>>().connect("::").to_string()
 }
 
-// totally scary function: ignores all but the last element, should have
-// a different name
+/// Totally scary function: ignores all but the last element, should have
+/// a different name
 pub fn path_to_ident(path: &Path) -> Ident {
     path.segments.last().unwrap().identifier
 }
@@ -112,8 +112,8 @@ pub enum SuffixMode {
     AutoSuffix,
 }
 
-// Get a string representation of a signed int type, with its value.
-// We want to avoid "45int" and "-3int" in favor of "45" and "-3"
+/// Get a string representation of a signed int type, with its value.
+/// We want to avoid "45int" and "-3int" in favor of "45" and "-3"
 pub fn int_ty_to_str(t: IntTy, val: Option<i64>, mode: SuffixMode) -> String {
     let s = match t {
         TyI if val.is_some() => match mode {
@@ -145,8 +145,8 @@ pub fn int_ty_max(t: IntTy) -> u64 {
     }
 }
 
-// Get a string representation of an unsigned int type, with its value.
-// We want to avoid "42uint" in favor of "42u"
+/// Get a string representation of an unsigned int type, with its value.
+/// We want to avoid "42uint" in favor of "42u"
 pub fn uint_ty_to_str(t: UintTy, val: Option<u64>, mode: SuffixMode) -> String {
     let s = match t {
         TyU if val.is_some() => match mode {
@@ -265,8 +265,8 @@ pub fn public_methods(ms: Vec<Gc<Method>> ) -> Vec<Gc<Method>> {
     }).collect()
 }
 
-// extract a TypeMethod from a TraitMethod. if the TraitMethod is
-// a default, pull out the useful fields to make a TypeMethod
+/// extract a TypeMethod from a TraitMethod. if the TraitMethod is
+/// a default, pull out the useful fields to make a TypeMethod
 pub fn trait_method_to_ty_method(method: &TraitMethod) -> TypeMethod {
     match *method {
         Required(ref m) => (*m).clone(),
@@ -721,7 +721,7 @@ pub fn segments_name_eq(a : &[ast::PathSegment], b : &[ast::PathSegment]) -> boo
     }
 }
 
-// Returns true if this literal is a string and false otherwise.
+/// Returns true if this literal is a string and false otherwise.
 pub fn lit_is_str(lit: Gc<Lit>) -> bool {
     match lit.node {
         LitStr(..) => true,
