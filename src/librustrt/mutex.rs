@@ -298,10 +298,12 @@ mod imp {
         static _PTHREAD_MUTEX_SIG_init: libc::c_long = 0x32AAABA7;
         static _PTHREAD_COND_SIG_init: libc::c_long = 0x3CB0B1BB;
 
+        #[repr(C)]
         pub struct pthread_mutex_t {
             __sig: libc::c_long,
             __opaque: [u8, ..__PTHREAD_MUTEX_SIZE__],
         }
+        #[repr(C)]
         pub struct pthread_cond_t {
             __sig: libc::c_long,
             __opaque: [u8, ..__PTHREAD_COND_SIZE__],
@@ -363,7 +365,9 @@ mod imp {
     mod os {
         use libc;
 
+        #[repr(C)]
         pub struct pthread_mutex_t { value: libc::c_int }
+        #[repr(C)]
         pub struct pthread_cond_t { value: libc::c_int }
 
         pub static PTHREAD_MUTEX_INITIALIZER: pthread_mutex_t = pthread_mutex_t {
