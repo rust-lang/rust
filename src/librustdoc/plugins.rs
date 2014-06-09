@@ -10,7 +10,7 @@
 
 use clean;
 
-use dl = std::unstable::dynamic_lib;
+use dl = std::dynamic_lib;
 use serialize::json;
 use std::string::String;
 
