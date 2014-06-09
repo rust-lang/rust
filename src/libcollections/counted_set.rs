@@ -239,122 +239,128 @@ impl<K: Hash + TotalEq + Show> Show for CountedSet<K> {
     }
 }
 
-#[test]
-fn test_add() {
-    let strings = ["a", "a", "a", "b", "b", "c"];
-    let more_strings = ["a", "b", "c"];
-    let count: CountedSet<_> = strings.iter().map(|&x|x).collect();
-    let other: CountedSet<_> = more_strings.iter().map(|&x|x).collect();
-    let answer = [("a", 4u), ("b", 3), ("c", 2)];
+mod test {
 
-    let add = count + other;
-    let add2 = other + count;
-    assert_eq!(add, add2);
-    let a = add.data;
-    let b = answer.iter().map(|&x|x).collect::<HashMap<&'static str, uint>>();
-    assert_eq!(a, b);
-}
+    use super::CountedSet;
+    use collections::HashMap;
 
-#[test]
-fn test_subtract() {
-    let strings = ["a", "a", "a", "b", "b", "c"];
-    let more_strings = ["a", "b", "c", "c", "c"];
-    let count: CountedSet<_> = strings.iter().map(|&x|x).collect();
-    let other: CountedSet<_> = more_strings.iter().map(|&x|x).collect();
-    let answer = [("a", 2u), ("b", 1), ("c", 0)];
+    #[test]
+    fn test_add() {
+        let strings = ["a", "a", "a", "b", "b", "c"];
+        let more_strings = ["a", "b", "c"];
+        let count: CountedSet<_> = strings.iter().map(|&x|x).collect();
+        let other: CountedSet<_> = more_strings.iter().map(|&x|x).collect();
+        let answer = [("a", 4u), ("b", 3), ("c", 2)];
 
-    let sub = count - other;
-    let a = sub.data;
-    let b = answer.iter().map(|&x|x).collect::<HashMap<&'static str, uint>>();
-    assert_eq!(a, b);
-}
+        let add = count + other;
+        let add2 = other + count;
+        assert_eq!(add, add2);
+        let a = add.data;
+        let b = answer.iter().map(|&x|x).collect::<HashMap<&'static str, uint>>();
+        assert_eq!(a, b);
+    }
 
-#[test]
-fn test_union() {
-    let numbers = [1u, 1, 1, 2, 2, 3, 1];
-    let more_numbers = [1u, 1, 2];
-    let count: CountedSet<_> = numbers.iter().map(|&x|x).collect();
-    let other: CountedSet<_> = more_numbers.iter().map(|&x|x).collect();
-    let answer = [(1u, 4u), (2, 2), (3, 1)];
+    #[test]
+    fn test_subtract() {
+        let strings = ["a", "a", "a", "b", "b", "c"];
+        let more_strings = ["a", "b", "c", "c", "c"];
+        let count: CountedSet<_> = strings.iter().map(|&x|x).collect();
+        let other: CountedSet<_> = more_strings.iter().map(|&x|x).collect();
+        let answer = [("a", 2u), ("b", 1), ("c", 0)];
 
-    let union = count | other;
-    let union2 = other | count;
-    assert_eq!(union, union2);
-    let a = union.data;
-    let b = answer.iter().map(|&x|x).collect::<HashMap<uint, uint>>();
-    assert_eq!(a, b)
-}
+        let sub = count - other;
+        let a = sub.data;
+        let b = answer.iter().map(|&x|x).collect::<HashMap<&'static str, uint>>();
+        assert_eq!(a, b);
+    }
 
-#[test]
-fn test_intersection() {
-    let numbers = [1u, 1, 1, 2, 2, 3, 1];
-    let more_numbers = [1u, 1, 2];
-    let count: CountedSet<_> = numbers.iter().map(|&x|x).collect();
-    let other: CountedSet<_> = more_numbers.iter().map(|&x|x).collect();
-    let answer = [(1u, 2u), (2, 1), (3, 1)];
+    #[test]
+    fn test_union() {
+        let numbers = [1u, 1, 1, 2, 2, 3, 1];
+        let more_numbers = [1u, 1, 2];
+        let count: CountedSet<_> = numbers.iter().map(|&x|x).collect();
+        let other: CountedSet<_> = more_numbers.iter().map(|&x|x).collect();
+        let answer = [(1u, 4u), (2, 2), (3, 1)];
 
-    let inter = count & other;
-    let inter2 = other & count;
-    assert_eq!(inter, inter2);
-    let a = inter.data;
-    let b = answer.iter().map(|&x|x).collect::<HashMap<uint, uint>>();
-    assert_eq!(a, b)
-}
+        let union = count | other;
+        let union2 = other | count;
+        assert_eq!(union, union2);
+        let a = union.data;
+        let b = answer.iter().map(|&x|x).collect::<HashMap<uint, uint>>();
+        assert_eq!(a, b)
+    }
 
-#[test]
-fn test_elements() {
-    let strings = ["a", "a", "a", "b", "b", "c"];
-    let count: CountedSet<&'static str> = strings.iter().map(|&x|x).collect();
-    let mut elems: Vec<_> = count.elements().move_iter().map(|&x|x).collect();
-    elems.sort();
-    assert!(elems.as_slice() == strings);
-}
+    #[test]
+    fn test_intersection() {
+        let numbers = [1u, 1, 1, 2, 2, 3, 1];
+        let more_numbers = [1u, 1, 2];
+        let count: CountedSet<_> = numbers.iter().map(|&x|x).collect();
+        let other: CountedSet<_> = more_numbers.iter().map(|&x|x).collect();
+        let answer = [(1u, 2u), (2, 1), (3, 1)];
 
-#[test]
-fn test_most_common() {
-    let strings = ["a", "b", "a", "b", "b", "c"];
-    let count: CountedSet<&'static str> = strings.iter().map(|&x|x).collect();
+        let inter = count & other;
+        let inter2 = other & count;
+        assert_eq!(inter, inter2);
+        let a = inter.data;
+        let b = answer.iter().map(|&x|x).collect::<HashMap<uint, uint>>();
+        assert_eq!(a, b)
+    }
 
-    let v: Vec<_> = count.most_common(2);
-    let answer = [(&"b", 3u), (&"a", 2)];
-    assert!(answer == v.as_slice())
+    #[test]
+    fn test_elements() {
+        let strings = ["a", "a", "a", "b", "b", "c"];
+        let count: CountedSet<&'static str> = strings.iter().map(|&x|x).collect();
+        let mut elems: Vec<_> = count.elements().move_iter().map(|&x|x).collect();
+        elems.sort();
+        assert!(elems.as_slice() == strings);
+    }
 
-    let v: Vec<_> = count.most_common(6);
-    let answer = [(&"b", 3u), (&"a", 2), (&"c", 1)];
-    assert!(answer == v.as_slice())
-}
+    #[test]
+    fn test_most_common() {
+        let strings = ["a", "b", "a", "b", "b", "c"];
+        let count: CountedSet<&'static str> = strings.iter().map(|&x|x).collect();
 
-#[test]
-fn test_get() {
-    let strings = ["a", "b", "a", "b", "b", "c"];
-    let count: CountedSet<_> = strings.iter().map(|&x|x).collect();
-    assert_eq!(count.get(&"a"), 2)
-    assert_eq!(count.get(&"b"), 3)
-    assert_eq!(count.get(&"c"), 1)
-    assert_eq!(count.get(&"missing"), 0)
-}
+        let v: Vec<_> = count.most_common(2);
+        let answer = [(&"b", 3u), (&"a", 2)];
+        assert!(answer == v.as_slice())
 
-#[test]
-fn test_extend() {
-    let strings = ["red", "green", "blue"];
-    let more_strings = ["blue", "blue", "blue"];
-    let answer = [("blue", 4u), ("red", 1), ("green", 1)];
+            let v: Vec<_> = count.most_common(6);
+        let answer = [(&"b", 3u), (&"a", 2), (&"c", 1)];
+        assert!(answer == v.as_slice())
+    }
 
-    let mut count: CountedSet<_> = CountedSet::new();
-    count.extend(strings.iter().map(|&k|k));
-    count.extend(more_strings.iter().map(|&k|k));
-    let a = count.data;
-    let b: HashMap<&'static str, uint> = answer.iter().map(|&x|x).collect();
-    assert_eq!(a, b);
-}
+    #[test]
+    fn test_get() {
+        let strings = ["a", "b", "a", "b", "b", "c"];
+        let count: CountedSet<_> = strings.iter().map(|&x|x).collect();
+        assert_eq!(count.get(&"a"), 2)
+            assert_eq!(count.get(&"b"), 3)
+            assert_eq!(count.get(&"c"), 1)
+            assert_eq!(count.get(&"missing"), 0)
+    }
 
-#[test]
-fn test_from_iter() {
-    let strings = ["blue", "red", "red", "blue", "green", "green", "red"];
-    let answer = [("red", 3u), ("blue", 2), ("green", 2)];
+    #[test]
+    fn test_extend() {
+        let strings = ["red", "green", "blue"];
+        let more_strings = ["blue", "blue", "blue"];
+        let answer = [("blue", 4u), ("red", 1), ("green", 1)];
 
-    let count: CountedSet<_> = strings.iter().map(|&x|x).collect();
-    let a = count.data;
-    let b = answer.iter().map(|&x|x).collect::<HashMap<&'static str, uint>>();
-    assert_eq!(a, b);
+        let mut count: CountedSet<_> = CountedSet::new();
+        count.extend(strings.iter().map(|&k|k));
+        count.extend(more_strings.iter().map(|&k|k));
+        let a = count.data;
+        let b: HashMap<&'static str, uint> = answer.iter().map(|&x|x).collect();
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn test_from_iter() {
+        let strings = ["blue", "red", "red", "blue", "green", "green", "red"];
+        let answer = [("red", 3u), ("blue", 2), ("green", 2)];
+
+        let count: CountedSet<_> = strings.iter().map(|&x|x).collect();
+        let a = count.data;
+        let b = answer.iter().map(|&x|x).collect::<HashMap<&'static str, uint>>();
+        assert_eq!(a, b);
+    }
 }
