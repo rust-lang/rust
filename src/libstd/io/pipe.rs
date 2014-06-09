@@ -16,8 +16,10 @@
 #![allow(missing_doc)]
 
 use prelude::*;
+
 use io::{IoResult, IoError};
 use libc;
+use os;
 use owned::Box;
 use rt::rtio::{RtioPipe, LocalIo};
 
@@ -25,6 +27,11 @@ use rt::rtio::{RtioPipe, LocalIo};
 pub struct PipeStream {
     /// The internal, opaque runtime pipe object.
     obj: Box<RtioPipe + Send>,
+}
+
+pub struct PipePair {
+    pub reader: PipeStream,
+    pub writer: PipeStream,
 }
 
 impl PipeStream {
@@ -58,6 +65,38 @@ impl PipeStream {
     pub fn new(inner: Box<RtioPipe + Send>) -> PipeStream {
         PipeStream { obj: inner }
     }
+
+    /// Creates a pair of in-memory OS pipes for a unidirectional communication
+    /// stream.
+    ///
+    /// The structure returned contains a reader and writer I/O object. Data
+    /// written to the writer can be read from the reader.
+    ///
+    /// # Errors
+    ///
+    /// This function can fail to succeed if the underlying OS has run out of
+    /// available resources to allocate a new pipe.
+    pub fn pair() -> IoResult<PipePair> {
+        struct Closer { fd: libc::c_int }
+
+        let os::Pipe { reader, writer } = try!(unsafe { os::pipe() });
+        let mut reader = Closer { fd: reader };
+        let mut writer = Closer { fd: writer };
+
+        let io_reader = try!(PipeStream::open(reader.fd));
+        reader.fd = -1;
+        let io_writer = try!(PipeStream::open(writer.fd));
+        writer.fd = -1;
+        return Ok(PipePair { reader: io_reader, writer: io_writer });
+
+        impl Drop for Closer {
+            fn drop(&mut self) {
+                if self.fd != -1 {
+                    let _ = unsafe { libc::close(self.fd) };
+                }
+            }
+        }
+    }
 }
 
 impl Clone for PipeStream {
@@ -84,9 +123,9 @@ mod test {
         use os;
         use io::pipe::PipeStream;
 
-        let os::Pipe { input, out } = os::pipe();
-        let out = PipeStream::open(out);
-        let mut input = PipeStream::open(input);
+        let os::Pipe { reader, writer } = unsafe { os::pipe().unwrap() };
+        let out = PipeStream::open(writer);
+        let mut input = PipeStream::open(reader);
         let (tx, rx) = channel();
         spawn(proc() {
             let mut out = out;

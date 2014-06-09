@@ -158,8 +158,8 @@ mod imp {
     pub type signal = libc::c_int;
 
     pub fn new() -> (signal, signal) {
-        let pipe = os::pipe();
-        (pipe.input, pipe.out)
+        let os::Pipe { reader, writer } = unsafe { os::pipe().unwrap() };
+        (reader, writer)
     }
 
     pub fn signal(fd: libc::c_int) {
