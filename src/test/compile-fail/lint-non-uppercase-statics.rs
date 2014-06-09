@@ -11,6 +11,6 @@
 #![forbid(non_uppercase_statics)]
 #![allow(dead_code)]
 
-static foo: int = 1; //~ ERROR static constant should have an uppercase identifier
+static foo: int = 1; //~ ERROR static constant `foo` should have an uppercase name such as `FOO`
 
 fn main() { }
