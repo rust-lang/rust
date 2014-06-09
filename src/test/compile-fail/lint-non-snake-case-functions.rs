@@ -15,25 +15,25 @@ struct Foo;
 
 impl Foo {
     fn Foo_Method() {}
-    //~^ ERROR method `Foo_Method` should have a snake case identifier
+    //~^ ERROR method `Foo_Method` should have a snake case name such as `foo_method`
 
     // Don't allow two underscores in a row
     fn foo__method(&self) {}
-    //~^ ERROR method `foo__method` should have a snake case identifier
+    //~^ ERROR method `foo__method` should have a snake case name such as `foo_method`
 
     pub fn xyZ(&mut self) {}
-    //~^ ERROR method `xyZ` should have a snake case identifier
+    //~^ ERROR method `xyZ` should have a snake case name such as `xy_z`
 }
 
 trait X {
     fn ABC();
-    //~^ ERROR trait method `ABC` should have a snake case identifier
+    //~^ ERROR trait method `ABC` should have a snake case name such as `a_b_c`
 
     fn a_b_C(&self) {}
-    //~^ ERROR trait method `a_b_C` should have a snake case identifier
+    //~^ ERROR trait method `a_b_C` should have a snake case name such as `a_b_c`
 
     fn something__else(&mut self);
-    //~^ ERROR trait method `something__else` should have a snake case identifier
+    //~^ ERROR trait method `something__else` should have a snake case name such as `something_else`
 }
 
 impl X for Foo {
@@ -43,9 +43,9 @@ impl X for Foo {
 }
 
 fn Cookie() {}
-//~^ ERROR function `Cookie` should have a snake case identifier
+//~^ ERROR function `Cookie` should have a snake case name such as `cookie`
 
 pub fn bi_S_Cuit() {}
-//~^ ERROR function `bi_S_Cuit` should have a snake case identifier
+//~^ ERROR function `bi_S_Cuit` should have a snake case name such as `bi_s_cuit`
 
 fn main() { }
