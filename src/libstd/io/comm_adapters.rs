@@ -17,7 +17,8 @@ use option::{None, Option, Some};
 use result::{Ok, Err};
 use super::{Reader, Writer, IoResult};
 use str::StrSlice;
-use slice::{bytes, CloneableVector, MutableVector, ImmutableVector};
+use slice::{bytes, MutableVector, ImmutableVector};
+use vec::Vec;
 
 /// Allows reading from a rx.
 ///
@@ -30,22 +31,22 @@ use slice::{bytes, CloneableVector, MutableVector, ImmutableVector};
 /// # drop(tx);
 /// let mut reader = ChanReader::new(rx);
 ///
-/// let mut buf = ~[0u8, ..100];
+/// let mut buf = [0u8, ..100];
 /// match reader.read(buf) {
 ///     Ok(nread) => println!("Read {} bytes", nread),
 ///     Err(e) => println!("read error: {}", e),
 /// }
 /// ```
 pub struct ChanReader {
-    buf: Option<~[u8]>,  // A buffer of bytes received but not consumed.
-    pos: uint,           // How many of the buffered bytes have already be consumed.
-    rx: Receiver<~[u8]>,   // The rx to pull data from.
-    closed: bool,        // Whether the pipe this rx connects to has been closed.
+    buf: Option<Vec<u8>>,  // A buffer of bytes received but not consumed.
+    pos: uint,             // How many of the buffered bytes have already be consumed.
+    rx: Receiver<Vec<u8>>, // The Receiver to pull data from.
+    closed: bool,          // Whether the channel this Receiver connects to has been closed.
 }
 
 impl ChanReader {
     /// Wraps a `Port` in a `ChanReader` structure
-    pub fn new(rx: Receiver<~[u8]>) -> ChanReader {
+    pub fn new(rx: Receiver<Vec<u8>>) -> ChanReader {
         ChanReader {
             buf: None,
             pos: 0,
@@ -99,12 +100,12 @@ impl Reader for ChanReader {
 /// writer.write("hello, world".as_bytes());
 /// ```
 pub struct ChanWriter {
-    tx: Sender<~[u8]>,
+    tx: Sender<Vec<u8>>,
 }
 
 impl ChanWriter {
     /// Wraps a channel in a `ChanWriter` structure
-    pub fn new(tx: Sender<~[u8]>) -> ChanWriter {
+    pub fn new(tx: Sender<Vec<u8>>) -> ChanWriter {
         ChanWriter { tx: tx }
     }
 }
@@ -117,7 +118,7 @@ impl Clone for ChanWriter {
 
 impl Writer for ChanWriter {
     fn write(&mut self, buf: &[u8]) -> IoResult<()> {
-        self.tx.send_opt(buf.to_owned()).map_err(|_| {
+        self.tx.send_opt(Vec::from_slice(buf)).map_err(|_| {
             io::IoError {
                 kind: io::BrokenPipe,
                 desc: "Pipe closed",
@@ -139,40 +140,40 @@ mod test {
     fn test_rx_reader() {
         let (tx, rx) = channel();
         task::spawn(proc() {
-          tx.send(box [1u8, 2u8]);
-          tx.send(box []);
-          tx.send(box [3u8, 4u8]);
-          tx.send(box [5u8, 6u8]);
-          tx.send(box [7u8, 8u8]);
+          tx.send(vec![1u8, 2u8]);
+          tx.send(vec![]);
+          tx.send(vec![3u8, 4u8]);
+          tx.send(vec![5u8, 6u8]);
+          tx.send(vec![7u8, 8u8]);
         });
 
         let mut reader = ChanReader::new(rx);
-        let mut buf = box [0u8, ..3];
+        let mut buf = [0u8, ..3];
 
 
         assert_eq!(Ok(0), reader.read([]));
 
         assert_eq!(Ok(3), reader.read(buf));
-        assert_eq!(box [1,2,3], buf);
+        assert_eq!(&[1,2,3], buf.as_slice());
 
         assert_eq!(Ok(3), reader.read(buf));
-        assert_eq!(box [4,5,6], buf);
+        assert_eq!(&[4,5,6], buf.as_slice());
 
         assert_eq!(Ok(2), reader.read(buf));
-        assert_eq!(box [7,8,6], buf);
+        assert_eq!(&[7,8,6], buf.as_slice());
 
         match reader.read(buf) {
             Ok(..) => fail!(),
             Err(e) => assert_eq!(e.kind, io::EndOfFile),
         }
-        assert_eq!(box [7,8,6], buf);
+        assert_eq!(&[7,8,6], buf.as_slice());
 
         // Ensure it continues to fail in the same way.
         match reader.read(buf) {
             Ok(..) => fail!(),
             Err(e) => assert_eq!(e.kind, io::EndOfFile),
         }
-        assert_eq!(box [7,8,6], buf);
+        assert_eq!(&[7,8,6], buf.as_slice());
     }
 
     #[test]
@@ -181,7 +182,7 @@ mod test {
         let mut writer = ChanWriter::new(tx);
         writer.write_be_u32(42).unwrap();
 
-        let wanted = box [0u8, 0u8, 0u8, 42u8];
+        let wanted = vec![0u8, 0u8, 0u8, 42u8];
         let got = task::try(proc() { rx.recv() }).unwrap();
         assert_eq!(wanted, got);
 
