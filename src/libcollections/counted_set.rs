@@ -131,6 +131,23 @@ impl<K: Clone + Hash + TotalEq> CountedSet<K> {
 
 impl<K: Clone + Hash + TotalEq> Add<CountedSet<K>, CountedSet<K>> for CountedSet<K> {
     /// Adds counts from two counters.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    ///
+    /// use collections::CountedSet;
+    ///
+    /// let strings = ["a", "a", "a", "b", "b", "c"];
+    /// let more_strings = ["a", "b", "c"];
+    ///
+    /// // CountedSet({a: 3, c: 1, b: 2})
+    /// let count_strings: CountedSet<_> = strings.iter().map(|&x|x).collect();
+    /// // CountedSet({a: 1, b: 1, c: 1})
+    /// let count_more_strings: CountedSet<_> = more_strings.iter().map(|&x|x).collect();
+    /// // CountedSet({a: 4, b: 3, c: 2})
+    /// let sum = count_strings + count_more_strings;
+    /// ```
     fn add(&self, other: &CountedSet<K>) -> CountedSet<K> {
         let mut result = self.clone();
         for (k, v) in other.iter() {
@@ -234,8 +251,11 @@ impl<K: Hash + TotalEq> FromIterator<K> for CountedSet<K> {
 }
 
 impl<K: Hash + TotalEq + Show> Show for CountedSet<K> {
+    #[allow(unused_must_use)]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.data.fmt(f)
+        try!(write!(f, r"CountedSet("));
+        self.data.fmt(f);
+        write!(f, r")")
     }
 }
 
