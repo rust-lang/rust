@@ -542,7 +542,7 @@ impl<T: Send> Sender<T> {
     /// ```
     pub fn send_opt(&self, t: T) -> Result<(), T> {
         // In order to prevent starvation of other tasks in situations where
-        // a task sends repeatedly without ever receiving, we occassionally
+        // a task sends repeatedly without ever receiving, we occasionally
         // yield instead of doing a send immediately.
         //
         // Don't unconditionally attempt to yield because the TLS overhead can

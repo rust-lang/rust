@@ -163,7 +163,7 @@ impl Task {
 
         // Here we must unsafely borrow the task in order to not remove it from
         // TLS. When collecting failure, we may attempt to send on a channel (or
-        // just run aribitrary code), so we must be sure to still have a local
+        // just run arbitrary code), so we must be sure to still have a local
         // task in TLS.
         unsafe {
             let me: *mut Task = Local::unsafe_borrow();

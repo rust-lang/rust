@@ -105,7 +105,7 @@
 //! *Note: The actual definition of `Writer` uses `IoResult`, which
 //! is just a synonym for `Result<T, IoError>`.*
 //!
-//! This method doesn`t produce a value, but the write may
+//! This method doesn't produce a value, but the write may
 //! fail. It's crucial to handle the error case, and *not* write
 //! something like this:
 //!

@@ -71,7 +71,7 @@ impl Once {
 
         // Implementation-wise, this would seem like a fairly trivial primitive.
         // The stickler part is where our mutexes currently require an
-        // allocation, and usage of a `Once` should't leak this allocation.
+        // allocation, and usage of a `Once` shouldn't leak this allocation.
         //
         // This means that there must be a deterministic destroyer of the mutex
         // contained within (because it's not needed after the initialization

@@ -438,7 +438,7 @@ impl<'d,'t,TYPER:mc::Typer> ExprUseVisitor<'d,'t,TYPER> {
                     None => {
                         self.tcx().sess.span_bug(
                             callee.span,
-                            format!("unxpected callee type {}",
+                            format!("unexpected callee type {}",
                                     callee_ty.repr(self.tcx())).as_slice());
                     }
                 }

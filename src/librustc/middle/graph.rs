@@ -257,7 +257,7 @@ impl<N,E> Graph<N,E> {
     //
     // A common use for graphs in our compiler is to perform
     // fixed-point iteration. In this case, each edge represents a
-    // constaint, and the nodes themselves are associated with
+    // constraint, and the nodes themselves are associated with
     // variables or other bitsets. This method facilitates such a
     // computation.
 

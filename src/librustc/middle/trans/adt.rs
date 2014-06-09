@@ -717,7 +717,7 @@ pub fn trans_field_ptr(bcx: &Block, r: &Repr, val: ValueRef, discr: Disr,
             let ty = type_of::type_of(bcx.ccx(), *nullfields.get(ix));
             assert_eq!(machine::llsize_of_alloc(bcx.ccx(), ty), 0);
             // The contents of memory at this pointer can't matter, but use
-            // the value that's "reasonable" in case of pointer comparision.
+            // the value that's "reasonable" in case of pointer comparison.
             PointerCast(bcx, val, ty.ptr_to())
         }
         RawNullablePointer { nndiscr, nnty, .. } => {

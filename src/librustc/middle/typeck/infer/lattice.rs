@@ -19,7 +19,7 @@
  * The code in here is defined quite generically so that it can be
  * applied both to type variables, which represent types being inferred,
  * and fn variables, which represent function types being inferred.
- * It may eventually be applied to ther types as well, who knows.
+ * It may eventually be applied to their types as well, who knows.
  * In some cases, the functions are also generic with respect to the
  * operation on the lattice (GLB vs LUB).
  *

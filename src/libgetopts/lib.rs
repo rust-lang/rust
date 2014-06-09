@@ -163,7 +163,7 @@ pub struct OptGroup {
     pub occur: Occur
 }
 
-/// Describes wether an option is given at all or has a value.
+/// Describes whether an option is given at all or has a value.
 #[deriving(Clone, PartialEq)]
 enum Optval {
     Val(String),

@@ -395,7 +395,7 @@ pub fn begin_unwind<M: Any + Send>(msg: M, file: &'static str, line: uint) -> ! 
 /// The core of the unwinding.
 ///
 /// This is non-generic to avoid instantiation bloat in other crates
-/// (which makes compilation of small crates noticably slower). (Note:
+/// (which makes compilation of small crates noticeably slower). (Note:
 /// we need the `Any` object anyway, we're not just creating it to
 /// avoid being generic.)
 ///
@@ -408,7 +408,7 @@ fn begin_unwind_inner(msg: Box<Any:Send>,
     // First, invoke call the user-defined callbacks triggered on task failure.
     //
     // By the time that we see a callback has been registered (by reading
-    // MAX_CALLBACKS), the actuall callback itself may have not been stored yet,
+    // MAX_CALLBACKS), the actual callback itself may have not been stored yet,
     // so we just chalk it up to a race condition and move on to the next
     // callback. Additionally, CALLBACK_CNT may briefly be higher than
     // MAX_CALLBACKS, so we're sure to clamp it as necessary.
