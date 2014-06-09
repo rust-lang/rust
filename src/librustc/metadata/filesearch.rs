@@ -13,7 +13,7 @@
 use std::cell::RefCell;
 use std::os;
 use std::io::fs;
-use std::unstable::dynamic_lib::DynamicLibrary;
+use std::dynamic_lib::DynamicLibrary;
 use std::collections::HashSet;
 
 use myfs = util::fs;

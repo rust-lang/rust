@@ -15,7 +15,7 @@ use std::io::{Command, TempDir};
 use std::os;
 use std::str;
 use std::string::String;
-use std::unstable::dynamic_lib::DynamicLibrary;
+use std::dynamic_lib::DynamicLibrary;
 
 use std::collections::{HashSet, HashMap};
 use testing;
