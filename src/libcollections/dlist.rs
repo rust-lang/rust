@@ -24,6 +24,7 @@
 use core::prelude::*;
 
 use alloc::owned::Box;
+use core::default::Default;
 use core::fmt;
 use core::iter;
 use core::mem;
@@ -260,6 +261,11 @@ impl<T> Deque<T> for DList<T> {
     fn pop_back(&mut self) -> Option<T> {
         self.pop_back_node().map(|box Node{value, ..}| value)
     }
+}
+
+impl<T> Default for DList<T> {
+    #[inline]
+    fn default() -> DList<T> { DList::new() }
 }
 
 impl<T> DList<T> {
