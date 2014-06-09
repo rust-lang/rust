@@ -81,13 +81,18 @@ Some examples of obvious things you might want to do
 
 * Make a simple TCP client connection and request
 
-    ```rust,should_fail
+    ```rust
     # #![allow(unused_must_use)]
     use std::io::net::tcp::TcpStream;
 
+    # // connection doesn't fail if a server is running on 8080
+    # // locally, we still want to be type checking this code, so lets
+    # // just stop it running (#11576)
+    # if false {
     let mut socket = TcpStream::connect("127.0.0.1", 8080).unwrap();
     socket.write(bytes!("GET / HTTP/1.0\n\n"));
     let response = socket.read_to_end();
+    # }
     ```
 
 * Make a simple TCP server
