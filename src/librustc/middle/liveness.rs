@@ -105,6 +105,7 @@
 use middle::def::*;
 use middle::freevars;
 use middle::lint::{UnusedVariable, DeadAssignment};
+use middle::mem_categorization::Typer;
 use middle::pat_util;
 use middle::ty;
 use util::nodemap::NodeMap;
@@ -1146,9 +1147,15 @@ impl<'a> Liveness<'a> {
           ExprCall(f, ref args) => {
             // calling a fn with bot return type means that the fn
             // will fail, and hence the successors can be ignored
-            let t_ret = ty::ty_fn_ret(ty::expr_ty(self.ir.tcx, f));
-            let succ = if ty::type_is_bot(t_ret) {self.s.exit_ln}
-                       else {succ};
+            let is_bot = !self.ir.tcx.is_method_call(expr.id) && {
+                let t_ret = ty::ty_fn_ret(ty::expr_ty(self.ir.tcx, f));
+                ty::type_is_bot(t_ret)
+            };
+            let succ = if is_bot {
+                self.s.exit_ln
+            } else {
+                succ
+            };
             let succ = self.propagate_through_exprs(args.as_slice(), succ);
             self.propagate_through_expr(f, succ)
           }
