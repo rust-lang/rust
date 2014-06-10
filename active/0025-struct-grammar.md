@@ -1,6 +1,6 @@
-- Start Date: 
-- RFC PR #: 
-- Rust Issue #: 
+- Start Date: 2014-06-10
+- RFC PR #: 92
+- Rust Issue #: 14803
 
 # Summary
 
