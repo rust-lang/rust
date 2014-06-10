@@ -13,6 +13,7 @@ pub use syntax::diagnostic;
 use back::link;
 use driver::driver::{Input, FileInput, StrInput};
 use driver::session::{Session, build_session};
+use lint::Lint;
 use lint;
 use metadata;
 
@@ -48,15 +49,18 @@ fn run_compiler(args: &[String]) {
         Some(matches) => matches,
         None => return
     };
-
     let sopts = config::build_session_options(&matches);
-    if sopts.describe_lints {
-        describe_lints();
-        return;
-    }
 
     let (input, input_file_path) = match matches.free.len() {
-        0u => early_error("no input filename given"),
+        0u => {
+            if sopts.describe_lints {
+                let mut ls = lint::LintStore::new();
+                ls.register_builtin(None);
+                describe_lints(&ls);
+                return;
+            }
+            early_error("no input filename given");
+        }
         1u => {
             let ifile = matches.free.get(0).as_slice();
             if ifile == "-" {
@@ -128,43 +132,56 @@ Additional help:
                              config::optgroups().as_slice()));
 }
 
-fn describe_lints() {
+fn describe_lints(lint_store: &lint::LintStore) {
     println!("
 Available lint options:
     -W <foo>           Warn about <foo>
     -A <foo>           Allow <foo>
     -D <foo>           Deny <foo>
     -F <foo>           Forbid <foo> (deny, and deny all overrides)
+
 ");
 
-    let mut builtin_specs = lint::builtin_lint_specs();
-    builtin_specs.sort_by(|x, y| {
-        match x.default_level.cmp(&y.default_level) {
-            Equal => x.name.cmp(&y.name),
-            r => r,
-        }
-    });
+    fn sort_lints(lints: Vec<(&'static Lint, bool)>) -> Vec<&'static Lint> {
+        let mut lints: Vec<_> = lints.move_iter().map(|(x, _)| x).collect();
+        lints.sort_by(|x: &&Lint, y: &&Lint| {
+            match x.default_level.cmp(&y.default_level) {
+                Equal => x.name.cmp(&y.name),
+                r => r,
+            }
+        });
+        lints
+    }
 
-    // FIXME: What if someone uses combining characters or East Asian fullwidth
-    // characters in a lint name?!?!?
-    let max_name_len = builtin_specs.iter()
+    let (_plugin, builtin) = lint_store.get_lints().partitioned(|&(_, p)| p);
+    // let plugin = sort_lints(plugin);
+    let builtin = sort_lints(builtin);
+
+    // FIXME (#7043): We should use the width in character cells rather than
+    // the number of codepoints.
+    let max_name_len = builtin.iter()
         .map(|&s| s.name.char_len())
         .max().unwrap_or(0);
     let padded = |x: &str| {
-        format!("{}{}", " ".repeat(max_name_len - x.char_len()), x)
+        " ".repeat(max_name_len - x.char_len()).append(x)
     };
 
-    println!("\nAvailable lint checks:\n");
+    println!("Lint checks provided by rustc:\n");
     println!("    {}  {:7.7s}  {}", padded("name"), "default", "meaning");
     println!("    {}  {:7.7s}  {}", padded("----"), "-------", "-------");
-    println!("");
 
-    for spec in builtin_specs.move_iter() {
-        let name = spec.name.replace("_", "-");
-        println!("    {}  {:7.7s}  {}",
-            padded(name.as_slice()), spec.default_level.as_str(), spec.desc);
-    }
-    println!("");
+    let print_lints = |lints: Vec<&Lint>| {
+        for lint in lints.move_iter() {
+            let name = lint.name.replace("_", "-");
+            println!("    {}  {:7.7s}  {}",
+                padded(name.as_slice()), lint.default_level.as_str(), lint.desc);
+        }
+        println!("\n");
+    };
+
+    print_lints(builtin);
+
+    // Describe lint plugins here once they exist.
 }
 
 fn describe_debug_flags() {

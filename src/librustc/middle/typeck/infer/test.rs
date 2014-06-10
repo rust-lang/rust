@@ -120,7 +120,8 @@ fn test_env(_test_name: &str,
                              name: "test".to_owned(),
                              version: None };
     let (krate, ast_map) =
-        driver::phase_2_configure_and_expand(&sess, krate, &krate_id);
+        driver::phase_2_configure_and_expand(&sess, krate, &krate_id)
+            .expect("phase 2 aborted");
 
     // run just enough stuff to build a tcx:
     let lang_items = lang_items::collect_language_items(&krate, &sess);
