@@ -81,7 +81,6 @@ struct GammaSmallShape {
 /// See `Gamma` for sampling from a Gamma distribution with general
 /// shape parameters.
 struct GammaLargeShape {
-    shape: f64,
     scale: f64,
     c: f64,
     d: f64
@@ -118,7 +117,6 @@ impl GammaLargeShape {
     fn new_raw(shape: f64, scale: f64) -> GammaLargeShape {
         let d = shape - 1. / 3.;
         GammaLargeShape {
-            shape: shape,
             scale: scale,
             c: 1. / (9. * d).sqrt(),
             d: d

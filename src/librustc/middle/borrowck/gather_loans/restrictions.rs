@@ -36,7 +36,6 @@ pub fn compute_restrictions(bccx: &BorrowckCtxt,
         bccx: bccx,
         span: span,
         cause: cause,
-        cmt_original: cmt.clone(),
         loan_region: loan_region,
     };
 
@@ -49,7 +48,6 @@ pub fn compute_restrictions(bccx: &BorrowckCtxt,
 struct RestrictionsContext<'a> {
     bccx: &'a BorrowckCtxt<'a>,
     span: Span,
-    cmt_original: mc::cmt,
     loan_region: ty::Region,
     cause: euv::LoanCause,
 }

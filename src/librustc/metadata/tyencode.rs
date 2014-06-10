@@ -42,8 +42,6 @@ pub struct ctxt<'a> {
 // Extra parameters are for converting to/from def_ids in the string rep.
 // Whatever format you choose should not contain pipe characters.
 pub struct ty_abbrev {
-    pos: uint,
-    len: uint,
     s: String
 }
 
@@ -68,8 +66,6 @@ pub fn enc_ty(w: &mut MemWriter, cx: &ctxt, t: ty::t) {
     if abbrev_len < len {
         // I.e. it's actually an abbreviation.
         cx.abbrevs.borrow_mut().insert(t, ty_abbrev {
-            pos: pos as uint,
-            len: len as uint,
             s: format!("\\#{:x}:{:x}\\#", pos, len)
         });
     }

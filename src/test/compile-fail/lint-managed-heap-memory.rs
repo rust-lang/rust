@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(dead_code)]
 #![feature(managed_boxes)]
 #![forbid(managed_heap_memory)]
 

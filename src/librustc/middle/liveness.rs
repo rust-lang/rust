@@ -226,21 +226,12 @@ fn invalid_node() -> LiveNode { LiveNode(uint::MAX) }
 
 struct CaptureInfo {
     ln: LiveNode,
-    is_move: bool,
     var_nid: NodeId
-}
-
-enum LocalKind {
-    FromMatch(BindingMode),
-    FromLetWithInitializer,
-    FromLetNoInitializer
 }
 
 struct LocalInfo {
     id: NodeId,
-    ident: Ident,
-    is_mutbl: bool,
-    kind: LocalKind,
+    ident: Ident
 }
 
 enum VarKind {
@@ -406,23 +397,13 @@ fn visit_fn(ir: &mut IrMaps,
 }
 
 fn visit_local(ir: &mut IrMaps, local: &Local) {
-    pat_util::pat_bindings(&ir.tcx.def_map, local.pat, |bm, p_id, sp, path| {
+    pat_util::pat_bindings(&ir.tcx.def_map, local.pat, |_, p_id, sp, path| {
         debug!("adding local variable {}", p_id);
         let name = ast_util::path_to_ident(path);
         ir.add_live_node_for_node(p_id, VarDefNode(sp));
-        let kind = match local.init {
-          Some(_) => FromLetWithInitializer,
-          None => FromLetNoInitializer
-        };
-        let mutbl = match bm {
-            BindByValue(MutMutable) => true,
-            _ => false
-        };
         ir.add_variable(Local(LocalInfo {
           id: p_id,
-          ident: name,
-          is_mutbl: mutbl,
-          kind: kind
+          ident: name
         }));
     });
     visit::walk_local(ir, local, ());
@@ -434,16 +415,10 @@ fn visit_arm(ir: &mut IrMaps, arm: &Arm) {
             debug!("adding local variable {} from match with bm {:?}",
                    p_id, bm);
             let name = ast_util::path_to_ident(path);
-            let mutbl = match bm {
-                BindByValue(MutMutable) => true,
-                _ => false
-            };
             ir.add_live_node_for_node(p_id, VarDefNode(sp));
             ir.add_variable(Local(LocalInfo {
                 id: p_id,
-                ident: name,
-                is_mutbl: mutbl,
-                kind: FromMatch(bm)
+                ident: name
             }));
         })
     }
@@ -481,27 +456,12 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
         // in better error messages than just pointing at the closure
         // construction site.
         let mut call_caps = Vec::new();
-        let fv_mode = freevars::get_capture_mode(ir.tcx, expr.id);
         freevars::with_freevars(ir.tcx, expr.id, |freevars| {
             for fv in freevars.iter() {
                 match moved_variable_node_id_from_def(fv.def) {
                     Some(rv) => {
                         let fv_ln = ir.add_live_node(FreeVarNode(fv.span));
-                        let fv_id = fv.def.def_id().node;
-                        let fv_ty = ty::node_id_to_type(ir.tcx, fv_id);
-                        let is_move = match fv_mode {
-                            // var must be dead afterwards
-                            freevars::CaptureByValue => {
-                                ty::type_moves_by_default(ir.tcx, fv_ty)
-                            }
-
-                            // var can still be used
-                            freevars::CaptureByRef => {
-                                false
-                            }
-                        };
                         call_caps.push(CaptureInfo {ln: fv_ln,
-                                                    is_move: is_move,
                                                     var_nid: rv});
                     }
                     None => {}

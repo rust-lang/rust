@@ -165,7 +165,6 @@ pub struct TcpWatcher {
 pub struct TcpListener {
     home: HomeHandle,
     handle: *uvll::uv_pipe_t,
-    closing_task: Option<BlockedTask>,
     outgoing: Sender<Result<Box<rtio::RtioTcpStream:Send>, IoError>>,
     incoming: Receiver<Result<Box<rtio::RtioTcpStream:Send>, IoError>>,
 }
@@ -358,7 +357,6 @@ impl TcpListener {
         let l = box TcpListener {
             home: io.make_handle(),
             handle: handle,
-            closing_task: None,
             outgoing: tx,
             incoming: rx,
         };

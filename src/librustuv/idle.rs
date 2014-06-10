@@ -18,7 +18,6 @@ use std::rt::rtio::{Callback, PausableIdleCallback};
 pub struct IdleWatcher {
     handle: *uvll::uv_idle_t,
     idle_flag: bool,
-    closed: bool,
     callback: Box<Callback:Send>,
 }
 
@@ -31,7 +30,6 @@ impl IdleWatcher {
         let me = box IdleWatcher {
             handle: handle,
             idle_flag: false,
-            closed: false,
             callback: cb,
         };
         return me.install();

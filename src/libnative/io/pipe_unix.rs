@@ -58,7 +58,10 @@ fn addr_to_sockaddr_un(addr: &CString) -> IoResult<(libc::sockaddr_storage, uint
 
 struct Inner {
     fd: fd_t,
-    lock: mutex::NativeMutex,
+
+    // Unused on Linux, where this lock is not necessary.
+    #[allow(dead_code)]
+    lock: mutex::NativeMutex
 }
 
 impl Inner {
