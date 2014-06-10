@@ -189,7 +189,7 @@ fn describe_codegen_flags() {
     }
 }
 
-/// Process command line options. Emits messages as appropirate.If compilation
+/// Process command line options. Emits messages as appropriate. If compilation
 /// should continue, returns a getopts::Matches object parsed from args, otherwise
 /// returns None.
 pub fn handle_options(mut args: Vec<String>) -> Option<getopts::Matches> {

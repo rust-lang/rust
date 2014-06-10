@@ -195,7 +195,7 @@ impl DummyResult {
     /// Create a default MacResult that can only be an expression.
     ///
     /// Use this for macros that must expand to an expression, so even
-    /// if an error is encountered internally, the user will recieve
+    /// if an error is encountered internally, the user will receive
     /// an error that they also used it in the wrong place.
     pub fn expr(sp: Span) -> Box<MacResult> {
         box DummyResult { expr_only: true, span: sp } as Box<MacResult>

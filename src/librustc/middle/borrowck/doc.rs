@@ -551,7 +551,7 @@ are computed based on the kind of borrow:
 The reasoning here is that a mutable borrow must be the only writer,
 therefore it prevents other writes (`MUTATE`), mutable borrows
 (`CLAIM`), and immutable borrows (`FREEZE`). An immutable borrow
-permits other immutable borrows but forbids writes and mutable borows.
+permits other immutable borrows but forbids writes and mutable borrows.
 Finally, a const borrow just wants to be sure that the value is not
 moved out from under it, so no actions are forbidden.
 

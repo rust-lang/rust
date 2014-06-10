@@ -212,7 +212,7 @@ impl ForbidSwitch {
 impl Drop for ForbidSwitch {
     fn drop(&mut self) {
         assert!(self.io == homing::local_id(),
-                "didnt want a scheduler switch: {}",
+                "didn't want a scheduler switch: {}",
                 self.msg);
     }
 }

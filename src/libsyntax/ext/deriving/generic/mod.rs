@@ -723,7 +723,7 @@ impl<'a> MethodDef<'a> {
             &Struct(fields));
 
         // make a series of nested matches, to destructure the
-        // structs. This is actually right-to-left, but it shoudn't
+        // structs. This is actually right-to-left, but it shouldn't
         // matter.
         for (&arg_expr, &pat) in self_args.iter().zip(patterns.iter()) {
             body = cx.expr_match(trait_.span, arg_expr,

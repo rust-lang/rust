@@ -31,7 +31,7 @@
  * is the address of the lvalue.  If Expr is an rvalue, this is the address of
  * some temporary spot in memory where the result is stored.
  *
- * Now, cat_expr() classies the expression Expr and the address A=ToAddr(Expr)
+ * Now, cat_expr() classifies the expression Expr and the address A=ToAddr(Expr)
  * as follows:
  *
  * - cat: what kind of expression was this?  This is a subset of the
@@ -42,7 +42,7 @@
  *
  * The resulting categorization tree differs somewhat from the expressions
  * themselves.  For example, auto-derefs are explicit.  Also, an index a[b] is
- * decomposed into two operations: a derefence to reach the array data and
+ * decomposed into two operations: a dereference to reach the array data and
  * then an index to jump forward to the relevant item.
  *
  * ## By-reference upvars

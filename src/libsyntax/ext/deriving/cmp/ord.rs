@@ -77,7 +77,7 @@ fn cs_op(less: bool, equal: bool, cx: &mut ExtCtxt, span: Span, substr: &Substru
             ```
 
             The optimiser should remove the redundancy. We explicitly
-            get use the binops to avoid auto-deref derefencing too many
+            get use the binops to avoid auto-deref dereferencing too many
             layers of pointers, if the type includes pointers.
             */
             let other_f = match other_fs {
