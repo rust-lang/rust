@@ -48,22 +48,21 @@ use middle::typeck::{CrateCtxt, lookup_def_tcx, no_params, write_ty_to_tcx};
 use util::ppaux;
 use util::ppaux::Repr;
 
-use std::rc::Rc;
 use std::collections::{HashMap, HashSet};
-
+use std::rc::Rc;
 use syntax::abi;
-use syntax::ast::{StaticRegionTyParamBound, OtherRegionTyParamBound,
-                  TraitTyParamBound};
+use syntax::ast::{StaticRegionTyParamBound, OtherRegionTyParamBound};
+use syntax::ast::{TraitTyParamBound, UnboxedFnTyParamBound};
 use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util::{local_def, split_trait_methods};
 use syntax::codemap::Span;
 use syntax::codemap;
+use syntax::owned_slice::OwnedSlice;
 use syntax::parse::token::special_idents;
 use syntax::parse::token;
 use syntax::print::pprust::{path_to_str};
 use syntax::visit;
-use syntax::owned_slice::OwnedSlice;
 
 struct CollectItemTypesVisitor<'a> {
     ccx: &'a CrateCtxt<'a>
@@ -1112,6 +1111,20 @@ fn ty_generics(ccx: &CrateCtxt,
 
                 StaticRegionTyParamBound => {
                     param_bounds.builtin_bounds.add(ty::BoundStatic);
+                }
+
+                UnboxedFnTyParamBound(ref unboxed_function) => {
+                    let rscope = ExplicitRscope;
+                    let mut trait_ref =
+                        astconv::trait_ref_for_unboxed_function(
+                            ccx,
+                            &rscope,
+                            unboxed_function);
+                    let self_ty = ty::mk_param(ccx.tcx,
+                                               param_ty.idx,
+                                               param_ty.def_id);
+                    trait_ref.substs.self_ty = Some(self_ty);
+                    param_bounds.trait_bounds.push(Rc::new(trait_ref));
                 }
 
                 OtherRegionTyParamBound(span) => {

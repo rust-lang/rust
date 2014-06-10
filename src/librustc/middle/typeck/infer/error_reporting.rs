@@ -909,6 +909,9 @@ impl<'a> Rebuilder<'a> {
             match tpb {
                 &ast::StaticRegionTyParamBound => ast::StaticRegionTyParamBound,
                 &ast::OtherRegionTyParamBound(s) => ast::OtherRegionTyParamBound(s),
+                &ast::UnboxedFnTyParamBound(unboxed_function_type) => {
+                    ast::UnboxedFnTyParamBound(unboxed_function_type)
+                }
                 &ast::TraitTyParamBound(ref tr) => {
                     let last_seg = tr.path.segments.last().unwrap();
                     let mut insert = Vec::new();
