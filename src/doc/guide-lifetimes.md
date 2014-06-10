@@ -78,7 +78,7 @@ value. We also call this _borrowing_ the local variable
 name for the same data.
 
 In the case of `on_the_heap`, however, no explicit action is necessary. 
-The compiler will automatically convert a box box point to a reference like &point. 
+The compiler will automatically convert a box point to a reference like &point. 
 This is another form of borrowing; in this case, the contents of the owned box 
 are being lent out.
 
