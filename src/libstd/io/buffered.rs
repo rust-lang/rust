@@ -74,10 +74,15 @@ impl<R: Reader> BufferedReader<R> {
     }
 
     /// Gets a reference to the underlying reader.
-    ///
-    /// This type does not expose the ability to get a mutable reference to the
-    /// underlying reader because that could possibly corrupt the buffer.
     pub fn get_ref<'a>(&'a self) -> &'a R { &self.inner }
+
+    /// Gets a mutable reference to the underlying reader.
+    ///
+    /// Note that reading data directly from the contained object is not
+    /// recommended, and could corrupt the data coming out of this reader. This
+    /// method is provided to allow invoking other `&mut self` methods on the
+    /// contained object without having to unwrap the buffered reader.
+    pub fn get_mut<'a>(&'a mut self) -> &'a mut R { &mut self.inner }
 
     /// Unwraps this `BufferedReader`, returning the underlying reader.
     ///
@@ -174,6 +179,14 @@ impl<W: Writer> BufferedWriter<W> {
     /// underlying reader because that could possibly corrupt the buffer.
     pub fn get_ref<'a>(&'a self) -> &'a W { self.inner.get_ref() }
 
+    /// Gets a mutable reference to the underlying writer.
+    ///
+    /// Note that writing data directly from the contained object is not
+    /// recommended, and could corrupt the data going out of this writer. This
+    /// method is provided to allow invoking other `&mut self` methods on the
+    /// contained object without having to unwrap the buffered writer.
+    pub fn get_mut<'a>(&'a mut self) -> &'a mut W { self.inner.get_mut_ref() }
+
     /// Unwraps this `BufferedWriter`, returning the underlying writer.
     ///
     /// The buffer is flushed before returning the writer.
@@ -237,6 +250,14 @@ impl<W: Writer> LineBufferedWriter<W> {
     /// This type does not expose the ability to get a mutable reference to the
     /// underlying reader because that could possibly corrupt the buffer.
     pub fn get_ref<'a>(&'a self) -> &'a W { self.inner.get_ref() }
+
+    /// Gets a mutable reference to the underlying writer.
+    ///
+    /// Note that writing data directly from the contained object is not
+    /// recommended, and could corrupt the data going out of this writer. This
+    /// method is provided to allow invoking other `&mut self` methods on the
+    /// contained object without having to unwrap the buffered writer.
+    pub fn get_mut<'a>(&'a mut self) -> &'a mut W { self.inner.get_mut() }
 
     /// Unwraps this `LineBufferedWriter`, returning the underlying writer.
     ///
@@ -332,6 +353,17 @@ impl<S: Stream> BufferedStream<S> {
     pub fn get_ref<'a>(&'a self) -> &'a S {
         let InternalBufferedWriter(ref w) = self.inner.inner;
         w.get_ref()
+    }
+
+    /// Gets a mutable reference to the underlying stream.
+    ///
+    /// Note that writing or reading data directly from or to the contained
+    /// object is not recommended, and could corrupt the data of this stream.
+    /// This method is provided to allow invoking other `&mut self` methods on
+    /// the contained object without having to unwrap the buffered stream.
+    pub fn get_mut<'a>(&'a mut self) -> &'a mut S {
+        let InternalBufferedWriter(ref mut w) = self.inner.inner;
+        w.get_mut()
     }
 
     /// Unwraps this `BufferedStream`, returning the underlying stream.
