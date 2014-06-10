@@ -3452,7 +3452,7 @@ impl<'a> Parser<'a> {
             match self.token {
                 token::LIFETIME(lifetime) => {
                     let lifetime_interned_string = token::get_ident(lifetime);
-                    if lifetime_interned_string.equiv(&("static")) {
+                    if lifetime_interned_string.equiv(&("'static")) {
                         result.push(StaticRegionTyParamBound);
                         if allow_any_lifetime && ret_lifetime.is_none() {
                             ret_lifetime = Some(ast::Lifetime {

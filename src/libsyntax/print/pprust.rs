@@ -9,8 +9,8 @@
 // except according to those terms.
 
 use abi;
-use ast::{P, StaticRegionTyParamBound, OtherRegionTyParamBound,
-          TraitTyParamBound, UnboxedFnTyParamBound, Required, Provided};
+use ast::{P, StaticRegionTyParamBound, OtherRegionTyParamBound};
+use ast::{TraitTyParamBound, UnboxedFnTyParamBound, Required, Provided};
 use ast;
 use ast_util;
 use owned_slice::OwnedSlice;
@@ -1325,7 +1325,6 @@ impl<'a> State<'a> {
             }
             ast::ExprForLoop(ref pat, ref iter, ref blk, opt_ident) => {
                 for ident in opt_ident.iter() {
-                    try!(word(&mut self.s, "'"));
                     try!(self.print_ident(*ident));
                     try!(self.word_space(":"));
                 }
@@ -1339,7 +1338,6 @@ impl<'a> State<'a> {
             }
             ast::ExprLoop(ref blk, opt_ident) => {
                 for ident in opt_ident.iter() {
-                    try!(word(&mut self.s, "'"));
                     try!(self.print_ident(*ident));
                     try!(self.word_space(":"));
                 }
@@ -1504,7 +1502,6 @@ impl<'a> State<'a> {
                 try!(word(&mut self.s, "break"));
                 try!(space(&mut self.s));
                 for ident in opt_ident.iter() {
-                    try!(word(&mut self.s, "'"));
                     try!(self.print_ident(*ident));
                     try!(space(&mut self.s));
                 }
@@ -1513,7 +1510,6 @@ impl<'a> State<'a> {
                 try!(word(&mut self.s, "continue"));
                 try!(space(&mut self.s));
                 for ident in opt_ident.iter() {
-                    try!(word(&mut self.s, "'"));
                     try!(self.print_ident(*ident));
                     try!(space(&mut self.s))
                 }
@@ -1943,7 +1939,7 @@ impl<'a> State<'a> {
             match *region {
                 Some(ref lt) => {
                     let token = token::get_name(lt.name);
-                    if token.get() != "static" {
+                    if token.get() != "'static" {
                         try!(self.nbsp());
                         first = false;
                         try!(self.print_lifetime(lt));
@@ -1988,7 +1984,6 @@ impl<'a> State<'a> {
 
     pub fn print_lifetime(&mut self,
                           lifetime: &ast::Lifetime) -> IoResult<()> {
-        try!(word(&mut self.s, "'"));
         self.print_name(lifetime.name)
     }
 

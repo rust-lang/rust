@@ -43,7 +43,7 @@ pub fn expand_option_env(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                                                         cx.ident_of("str")),
                                                    Some(cx.lifetime(sp,
                                                         cx.ident_of(
-                                                            "static").name)),
+                                                            "'static").name)),
                                                    ast::MutImmutable))))
       }
       Some(s) => {
