@@ -503,7 +503,7 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr,
                         let s = ty::type_is_signed(ety) as Bool;
                         llvm::LLVMConstIntCast(iv, llty.to_ref(), s)
                     }
-                    expr::cast_float => llvm::LLVMConstUIToFP(iv, llty.to_ref()),
+                    expr::cast_float => llvm::LLVMConstSIToFP(iv, llty.to_ref()),
                     _ => cx.sess().bug("enum cast destination is not \
                                         integral or float")
                 }
