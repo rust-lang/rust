@@ -1517,7 +1517,7 @@ impl LintPass for GatherNodeLevels {
         match it.node {
             ast::ItemEnum(..) => {
                 let lint_id = lint::LintId::of(variant_size_difference);
-                match cx.get_level_source(lint_id) {
+                match cx.lints.get_level_source(lint_id) {
                     lvlsrc @ (lvl, _) if lvl != lint::Allow => {
                         cx.insert_node_level(it.id, lint_id, lvlsrc);
                     },
