@@ -1,6 +1,6 @@
-- Start Date: (fill me in with today's date, YYY-MM-DD)
-- RFC PR #: (leave this empty)
-- Rust Issue #: (leave this empty)
+- Start Date: 2014-06-10
+- RFC PR #: 48
+- Rust Issue #: 14802
 
 # Summary
 
@@ -203,11 +203,11 @@ scenarios, such as a trait like:
     trait Map<E> {
         fn map(&self, op: |&E| -> E) -> Self;
     }
-    
+
 Given some higher-order function like:
 
     fn some_mapping<E,V:Map<E>>(v: &V, op: |&E| -> E) { ... }
-    
+
 If we were then to see a call like:
 
     some_mapping(vec, |elem| ...)
@@ -278,7 +278,7 @@ Currently methods must be declared using the explicit-self shorthands:
     fn foo(&self, ...)
     fn foo(&mut self, ...)
     fn foo(~self, ...)
-    
+
 Under this proposal we would keep these shorthands but also permit any
 function in a trait to be used as a method, so long as the type of the
 first parameter is either `Self` or something derefable `Self`:
@@ -298,7 +298,7 @@ personal preference, if we can achieve it).
 The coherence rules fall into two categories: the *orphan* restriction
 and the *overlapping implementations* restriction.
 
-<a name=orphan> 
+<a name=orphan>
 
 *Orphan check*: Every implementation must meet one of
 the following conditions:
@@ -306,7 +306,7 @@ the following conditions:
 1. The trait being implemented (if any) must be defined in the current crate.
 2. The `Self` type parameter must meet the following grammar, where
    `C` is a struct or enum defined within the current crate:
-   
+
        T = C
          | [T]
          | [T, ..n]
@@ -329,7 +329,7 @@ Here is a simple example that is OK:
     trait Show { ... }
     impl Show for int { ... }
     impl Show for uint { ... }
-    
+
 The first impl implements `Show for int` and the case implements
 `Show for uint`. This is ok because the type `int` cannot be unified
 with `uint`.
@@ -349,7 +349,7 @@ Here is a more complex example that is also OK:
     trait Clone { ... }
     impl<A:Copy> Clone for A { ... }
     impl<B:Clone> Clone for ~B { ... }
-    
+
 These two impls are compatible because the resolution algorithm is
 able to see that the type `~B` will never implement `Copy`, no matter
 what `B` is. (Note that our ability to do this check *relies* on the
@@ -365,10 +365,10 @@ system \[[7](#7)\] however, and hence the coherence check will report
 errors. For example:
 
     trait Even { } // Naturally can't be Even and Odd at once!
-    trait Odd { } 
+    trait Odd { }
     impl<T:Even> Foo for T { }
     impl<T:Odd> Foo for T { }
-    
+
 Another possible scenario is infinite recursion between impls. For
 example, in the following scenario, the coherence checked would be
 unable to decide if the following impls overlap:
@@ -395,19 +395,19 @@ The core method search looks like this:
         let TRAITS = the set consisting of any in-scope trait T where:
             1. T has a method m and
             2. R implements T<...> for any values of Ty's type parameters
-        
+
         if TRAITS is an empty set:
             if RECURSION DEPTH EXCEEDED:
                 return UNDECIDABLE
             if R implements Deref<U> for some U:
                 return METHOD-SEARCH(U, m)
             return NO-MATCH
-            
+
         if TRAITS is the singleton set {T}:
             RECONCILE(R, T, m)
-            
+
         return AMBIGUITY(TRAITS)
-        
+
 Basically, we will continuously auto-dereference the receiver type,
 searching for some type that implements a trait that offers the method
 `m`. This gives precedence to implementations that require fewer
@@ -435,7 +435,7 @@ Let's say we have a type `Monster`, and `Monster` implements `Mob`:
 
     struct Monster { ... }
     impl Mob for Monster { ... }
-    
+
 And now we see a call to `hit_points()` like so:
 
     fn attack(victim: &mut Monster) {
@@ -461,11 +461,11 @@ auto-refs:
         // Case 1.
         if R <: E:
           we're done.
-          
+
         // Case 2.
         if &R <: E:
           add an autoref adjustment, we're done.
-          
+
         // Case 3.
         if &mut R <: E:
           adjust R for mutable borrow (if not possible, error).
@@ -474,7 +474,7 @@ auto-refs:
         // Case 4.
         unwind one adjustment to yield R' (if not possible, error).
         return RECONCILE(R', T, m)
-        
+
 In this case, the expected self type `E` would be `&Monster`. We would
 first check for case 1: is `Monster <: &Monster`? It is not. We would
 then proceed to case 2. Is `&Monster <: &Monster`? It is, and hence
@@ -608,7 +608,7 @@ To see why this matters, imagine a scenario like this one:
     trait Produce<R> {
         fn produce(&self: Self) -> R;
     }
-    
+
 Now imagine I have two crates, C and D. Crate C defines two types,
 `Vector` and `Real`, and specifies a way to combine them:
 
@@ -639,7 +639,7 @@ However, then we might find another crate D that adds a new impl:
     struct Other;
     struct Real;
     impl Combine<Real> for Other { ... }
-    
+
 This definition passes the orphan check because *at least one* of the
 types (`Real`, in this case) in the impl is local to the current
 crate. But what does this mean for our previous inference result? In
