@@ -54,7 +54,8 @@ pub fn run() {
         rtassert!(queue != 0);
 
         let queue: Box<Queue> = mem::transmute(queue);
-        mem::replace(&mut *queue.lock(), Vec::new())
+        let v = mem::replace(&mut *queue.lock(), Vec::new());
+        v
     };
 
     for to_run in cur.move_iter() {
