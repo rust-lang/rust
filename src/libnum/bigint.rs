@@ -17,18 +17,16 @@ A `BigInt` is a combination of `BigUint` and `Sign`.
 */
 
 use Integer;
+use rand::Rng;
 
-use std::cmp;
+use std::{cmp, fmt};
 use std::default::Default;
-use std::fmt;
 use std::from_str::FromStr;
 use std::num::CheckedDiv;
 use std::num::{Bitwise, ToPrimitive, FromPrimitive};
 use std::num::{Zero, One, ToStrRadix, FromStrRadix};
-use rand::Rng;
 use std::string::String;
-use std::uint;
-use std::{i64, u64};
+use std::{uint, i64, u64};
 
 /**
 A `BigDigit` is a `BigUint`'s composing element.
@@ -94,7 +92,7 @@ impl Eq for BigUint {}
 impl PartialOrd for BigUint {
     #[inline]
     fn lt(&self, other: &BigUint) -> bool {
-        match self.cmp(other) { Less => true, _ => false}
+        self.cmp(other) == Less
     }
 }
 
@@ -115,7 +113,7 @@ impl Ord for BigUint {
 
 impl Default for BigUint {
     #[inline]
-    fn default() -> BigUint { BigUint::new(Vec::new()) }
+    fn default() -> BigUint { Zero::zero() }
 }
 
 impl fmt::Show for BigUint {
@@ -605,7 +603,7 @@ impl_to_biguint!(u64,  FromPrimitive::from_u64)
 
 impl ToStrRadix for BigUint {
     fn to_str_radix(&self, radix: uint) -> String {
-        assert!(1 < radix && radix <= 16);
+        assert!(1 < radix && radix <= 16, "The radix must be within (1, 16]");
         let (base, max_len) = get_radix_base(radix);
         if base == BigDigit::base {
             return fill_concat(self.data.as_slice(), radix, max_len)
@@ -645,8 +643,7 @@ impl ToStrRadix for BigUint {
 impl FromStrRadix for BigUint {
     /// Creates and initializes a `BigUint`.
     #[inline]
-    fn from_str_radix(s: &str, radix: uint)
-        -> Option<BigUint> {
+    fn from_str_radix(s: &str, radix: uint) -> Option<BigUint> {
         BigUint::parse_bytes(s.as_bytes(), radix)
     }
 }
@@ -656,14 +653,11 @@ impl BigUint {
     ///
     /// The digits are be in base 2^32.
     #[inline]
-    pub fn new(v: Vec<BigDigit>) -> BigUint {
+    pub fn new(mut digits: Vec<BigDigit>) -> BigUint {
         // omit trailing zeros
-        let new_len = v.iter().rposition(|n| *n != 0).map_or(0, |p| p + 1);
-
-        if new_len == v.len() { return BigUint { data: v }; }
-        let mut v = v;
-        v.truncate(new_len);
-        return BigUint { data: v };
+        let new_len = digits.iter().rposition(|n| *n != 0).map_or(0, |p| p + 1);
+        digits.truncate(new_len);
+        BigUint { data: digits }
     }
 
     /// Creates and initializes a `BigUint`.
@@ -671,7 +665,7 @@ impl BigUint {
     /// The digits are be in base 2^32.
     #[inline]
     pub fn from_slice(slice: &[BigDigit]) -> BigUint {
-        return BigUint::new(Vec::from_slice(slice));
+        BigUint::new(Vec::from_slice(slice))
     }
 
     /// Creates and initializes a `BigUint`.
@@ -768,7 +762,6 @@ impl BigUint {
 // `DoubleBigDigit` size dependent
 #[inline]
 fn get_radix_base(radix: uint) -> (DoubleBigDigit, uint) {
-    assert!(1 < radix && radix <= 16);
     match radix {
         2  => (4294967296, 32),
         3  => (3486784401, 20),
@@ -785,7 +778,7 @@ fn get_radix_base(radix: uint) -> (DoubleBigDigit, uint) {
         14 => (1475789056, 8),
         15 => (2562890625, 8),
         16 => (4294967296, 8),
-        _  => fail!()
+        _  => fail!("The radix must be within (1, 16]")
     }
 }
 
@@ -815,7 +808,7 @@ pub struct BigInt {
 impl PartialEq for BigInt {
     #[inline]
     fn eq(&self, other: &BigInt) -> bool {
-        match self.cmp(other) { Equal => true, _ => false }
+        self.cmp(other) == Equal
     }
 }
 
@@ -824,7 +817,7 @@ impl Eq for BigInt {}
 impl PartialOrd for BigInt {
     #[inline]
     fn lt(&self, other: &BigInt) -> bool {
-        match self.cmp(other) { Less => true, _ => false}
+        self.cmp(other) == Less
     }
 }
 
@@ -844,7 +837,7 @@ impl Ord for BigInt {
 
 impl Default for BigInt {
     #[inline]
-    fn default() -> BigInt { BigInt::new(Zero, Vec::new()) }
+    fn default() -> BigInt { Zero::zero() }
 }
 
 impl fmt::Show for BigInt {
@@ -929,8 +922,7 @@ impl Add<BigInt, BigInt> for BigInt {
         match (self.sign, other.sign) {
             (Zero, _)      => other.clone(),
             (_,    Zero)   => self.clone(),
-            (Plus, Plus)   => BigInt::from_biguint(Plus,
-                                                   self.data + other.data),
+            (Plus, Plus)   => BigInt::from_biguint(Plus, self.data + other.data),
             (Plus, Minus)  => self - (-*other),
             (Minus, Plus)  => other - (-*self),
             (Minus, Minus) => -((-self) + (-*other))
@@ -975,7 +967,7 @@ impl Div<BigInt, BigInt> for BigInt {
     #[inline]
     fn div(&self, other: &BigInt) -> BigInt {
         let (q, _) = self.div_rem(other);
-        return q;
+        q
     }
 }
 
@@ -983,7 +975,7 @@ impl Rem<BigInt, BigInt> for BigInt {
     #[inline]
     fn rem(&self, other: &BigInt) -> BigInt {
         let (_, r) = self.div_rem(other);
-        return r;
+        r
     }
 }
 
@@ -1045,13 +1037,13 @@ impl Integer for BigInt {
     #[inline]
     fn div_floor(&self, other: &BigInt) -> BigInt {
         let (d, _) = self.div_mod_floor(other);
-        return d;
+        d
     }
 
     #[inline]
     fn mod_floor(&self, other: &BigInt) -> BigInt {
         let (_, m) = self.div_mod_floor(other);
-        return m;
+        m
     }
 
     fn div_mod_floor(&self, other: &BigInt) -> (BigInt, BigInt) {
@@ -1265,7 +1257,7 @@ impl<R: Rng> RandBigInt for R {
             let final_digit: BigDigit = self.gen();
             data.push(final_digit >> (BigDigit::bits - rem));
         }
-        return BigUint::new(data);
+        BigUint::new(data)
     }
 
     fn gen_bigint(&mut self, bit_size: uint) -> BigInt {
@@ -1287,7 +1279,7 @@ impl<R: Rng> RandBigInt for R {
         } else {
             Minus
         };
-        return BigInt::from_biguint(sign, biguint);
+        BigInt::from_biguint(sign, biguint)
     }
 
     fn gen_biguint_below(&mut self, bound: &BigUint) -> BigUint {
@@ -1322,8 +1314,8 @@ impl BigInt {
     ///
     /// The digits are be in base 2^32.
     #[inline]
-    pub fn new(sign: Sign, v: Vec<BigDigit>) -> BigInt {
-        BigInt::from_biguint(sign, BigUint::new(v))
+    pub fn new(sign: Sign, digits: Vec<BigDigit>) -> BigInt {
+        BigInt::from_biguint(sign, BigUint::new(digits))
     }
 
     /// Creates and initializes a `BigInt`.
@@ -1334,7 +1326,7 @@ impl BigInt {
         if sign == Zero || data.is_zero() {
             return BigInt { sign: Zero, data: Zero::zero() };
         }
-        return BigInt { sign: sign, data: data };
+        BigInt { sign: sign, data: data }
     }
 
     /// Creates and initializes a `BigInt`.
@@ -1344,8 +1336,7 @@ impl BigInt {
     }
 
     /// Creates and initializes a `BigInt`.
-    pub fn parse_bytes(buf: &[u8], radix: uint)
-        -> Option<BigInt> {
+    pub fn parse_bytes(buf: &[u8], radix: uint) -> Option<BigInt> {
         if buf.is_empty() { return None; }
         let mut sign  = Plus;
         let mut start = 0;
