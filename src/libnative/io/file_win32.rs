@@ -18,7 +18,7 @@ use std::mem;
 use std::os::win32::fill_utf16_buf_and_decode;
 use std::ptr;
 use std::rt::rtio;
-use std::rt::rtio::IoResult;
+use std::rt::rtio::{IoResult, IoError};
 use std::str;
 use std::vec;
 
@@ -412,7 +412,7 @@ pub fn rename(old: &CString, new: &CString) -> IoResult<()> {
 pub fn chmod(p: &CString, mode: uint) -> IoResult<()> {
     let p = try!(to_utf16(p));
     super::mkerr_libc(unsafe {
-        libc::wchmod(p.as_ptr(), mode.bits() as libc::c_int)
+        libc::wchmod(p.as_ptr(), mode as libc::c_int)
     })
 }
 
