@@ -299,6 +299,20 @@ fn test_arena_destructors() {
 }
 
 #[test]
+fn test_arena_alloc_nested() {
+    struct Inner { value: uint }
+    struct Outer<'a> { inner: &'a Inner }
+
+    let arena = Arena::new();
+
+    let result = arena.alloc(|| Outer {
+        inner: arena.alloc(|| Inner { value: 10 })
+    });
+
+    assert_eq!(result.inner.value, 10);
+}
+
+#[test]
 #[should_fail]
 fn test_arena_destructors_fail() {
     let arena = Arena::new();
