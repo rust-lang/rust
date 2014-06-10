@@ -312,9 +312,12 @@ fn trans_opt<'a>(bcx: &'a Block<'a>, o: &Opt) -> opt_result<'a> {
             let datum = datum::rvalue_scratch_datum(bcx, struct_ty, "");
             return single_result(Result::new(bcx, datum.val));
         }
-        lit(ConstLit(lit_id)) => {
-            let (llval, _) = consts::get_const_val(bcx.ccx(), lit_id);
-            return single_result(Result::new(bcx, llval));
+        lit(l @ ConstLit(ref def_id)) => {
+            let lit_ty = ty::node_id_to_type(bcx.tcx(), lit_to_expr(bcx.tcx(), &l).id);
+            let (llval, _) = consts::get_const_val(bcx.ccx(), *def_id);
+            let lit_datum = immediate_rvalue(llval, lit_ty);
+            let lit_datum = unpack_datum!(bcx, lit_datum.to_appropriate_datum(bcx));
+            return single_result(Result::new(bcx, lit_datum.val));
         }
         var(disr_val, ref repr) => {
             return adt::trans_case(bcx, &**repr, disr_val);
