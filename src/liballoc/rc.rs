@@ -232,6 +232,15 @@ impl<T> Clone for Weak<T> {
     }
 }
 
+impl<T: fmt::Show> fmt::Show for Weak<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self.upgrade() {
+            Some(rc) => rc.fmt(f),
+            _ => "<stale weak pointer>".fmt(f)
+        }
+    }
+}
+
 #[doc(hidden)]
 trait RcBoxPtr<T> {
     fn inner<'a>(&'a self) -> &'a RcBox<T>;
@@ -397,6 +406,15 @@ mod tests {
 
         assert!(76 == *cow0);
         assert!(cow1_weak.upgrade().is_none());
+    }
+
+    #[test]
+    fn test_stale_weak_pointer() {
+        let strong = Rc::new(75u);
+        let weak = strong.downgrade();
+        assert_eq!(format!("{}", weak), format!("75"));
+        drop(strong);
+        assert_eq!(format!("{}", weak), format!("<stale weak pointer>"));
     }
 
 }
