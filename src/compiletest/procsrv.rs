@@ -11,7 +11,7 @@
 use std::os;
 use std::str;
 use std::io::process::{ProcessExit, Command, Process, ProcessOutput};
-use std::unstable::dynamic_lib::DynamicLibrary;
+use std::dynamic_lib::DynamicLibrary;
 
 fn target_env(lib_path: &str, prog: &str) -> Vec<(String, String)> {
     let prog = if cfg!(windows) {prog.slice_to(prog.len() - 4)} else {prog};

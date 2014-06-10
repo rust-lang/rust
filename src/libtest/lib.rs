@@ -271,6 +271,12 @@ pub fn test_main_static_x(args: &[~str], tests: &[TestDescAndFn]) {
                      tests)
 }
 
+pub enum ColorConfig {
+    AutoColor,
+    AlwaysColor,
+    NeverColor,
+}
+
 pub struct TestOpts {
     pub filter: Option<Regex>,
     pub run_ignored: bool,
@@ -282,6 +288,7 @@ pub struct TestOpts {
     pub test_shard: Option<(uint,uint)>,
     pub logfile: Option<Path>,
     pub nocapture: bool,
+    pub color: ColorConfig,
 }
 
 impl TestOpts {
@@ -298,6 +305,7 @@ impl TestOpts {
             test_shard: None,
             logfile: None,
             nocapture: false,
+            color: AutoColor,
         }
     }
 }
@@ -324,7 +332,11 @@ fn optgroups() -> Vec<getopts::OptGroup> {
       getopts::optopt("", "test-shard", "run shard A, of B shards, worth of the testsuite",
                      "A.B"),
       getopts::optflag("", "nocapture", "don't capture stdout/stderr of each \
-                                         task, allow printing directly"))
+                                         task, allow printing directly"),
+      getopts::optopt("", "color", "Configure coloring of output:
+            auto   = colorize if stdout is a tty and tests are run on serially (default);
+            always = always colorize output;
+            never  = never colorize output;", "auto|always|never"))
 }
 
 fn usage(binary: &str) {
@@ -406,6 +418,16 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
         nocapture = os::getenv("RUST_TEST_NOCAPTURE").is_some();
     }
 
+    let color = match matches.opt_str("color").as_ref().map(|s| s.as_slice()) {
+        Some("auto") | None => AutoColor,
+        Some("always") => AlwaysColor,
+        Some("never") => NeverColor,
+
+        Some(v) => return Some(Err(format!("argument for --color must be \
+                                            auto, always, or never (was {})",
+                                            v))),
+    };
+
     let test_opts = TestOpts {
         filter: filter,
         run_ignored: run_ignored,
@@ -417,6 +439,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
         test_shard: test_shard,
         logfile: logfile,
         nocapture: nocapture,
+        color: color,
     };
 
     Some(Ok(test_opts))
@@ -492,7 +515,7 @@ impl<T: Writer> ConsoleTestState<T> {
         Ok(ConsoleTestState {
             out: out,
             log_out: log_out,
-            use_color: use_color(),
+            use_color: use_color(opts),
             total: 0u,
             passed: 0u,
             failed: 0u,
@@ -867,8 +890,12 @@ fn should_sort_failures_before_printing_them() {
     assert!(apos < bpos);
 }
 
-fn use_color() -> bool {
-    get_concurrency() == 1 && io::stdout().get_ref().isatty()
+fn use_color(opts: &TestOpts) -> bool {
+    match opts.color {
+        AutoColor => get_concurrency() == 1 && io::stdout().get_ref().isatty(),
+        AlwaysColor => true,
+        NeverColor => false,
+    }
 }
 
 #[deriving(Clone)]

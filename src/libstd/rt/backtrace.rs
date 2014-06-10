@@ -614,7 +614,7 @@ mod imp {
     use rt::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
     use slice::ImmutableVector;
     use str::StrSlice;
-    use unstable::dynamic_lib::DynamicLibrary;
+    use dynamic_lib::DynamicLibrary;
 
     #[allow(non_snake_case_functions)]
     extern "system" {
