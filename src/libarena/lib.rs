@@ -345,19 +345,20 @@ fn test_arena_destructors_fail() {
 /// run again for these objects.
 pub struct TypedArena<T> {
     /// A pointer to the next object to be allocated.
-    ptr: *T,
+    ptr: Cell<*T>,
 
     /// A pointer to the end of the allocated area. When this pointer is
     /// reached, a new chunk is allocated.
-    end: *T,
+    end: Cell<*T>,
 
     /// A pointer to the first arena segment.
-    first: Option<Box<TypedArenaChunk<T>>>,
+    first: RefCell<TypedArenaChunkRef<T>>,
 }
+type TypedArenaChunkRef<T> = Option<Box<TypedArenaChunk<T>>>;
 
 struct TypedArenaChunk<T> {
     /// Pointer to the next arena segment.
-    next: Option<Box<TypedArenaChunk<T>>>,
+    next: TypedArenaChunkRef<T>,
 
     /// The number of elements that this chunk can hold.
     capacity: uint,
@@ -443,39 +444,38 @@ impl<T> TypedArena<T> {
     pub fn with_capacity(capacity: uint) -> TypedArena<T> {
         let chunk = TypedArenaChunk::<T>::new(None, capacity);
         TypedArena {
-            ptr: chunk.start() as *T,
-            end: chunk.end() as *T,
-            first: Some(chunk),
+            ptr: Cell::new(chunk.start() as *T),
+            end: Cell::new(chunk.end() as *T),
+            first: RefCell::new(Some(chunk)),
         }
     }
 
     /// Allocates an object in the TypedArena, returning a reference to it.
     #[inline]
     pub fn alloc<'a>(&'a self, object: T) -> &'a T {
-        unsafe {
-            // FIXME #13933: Remove/justify all `&T` to `&mut T` transmutes
-            let this: &mut TypedArena<T> = mem::transmute::<&_, &mut _>(self);
-            if this.ptr == this.end {
-                this.grow()
-            }
-
-            let ptr: &'a mut T = mem::transmute(this.ptr);
-            ptr::write(ptr, object);
-            this.ptr = this.ptr.offset(1);
-            let ptr: &'a T = ptr;
-            ptr
+        if self.ptr == self.end {
+            self.grow()
         }
+
+        let ptr: &'a T = unsafe {
+            let ptr: &'a mut T = mem::transmute(self.ptr);
+            ptr::write(ptr, object);
+            self.ptr.set(self.ptr.get().offset(1));
+            ptr
+        };
+
+        ptr
     }
 
     /// Grows the arena.
     #[inline(never)]
-    fn grow(&mut self) {
-        let chunk = self.first.take_unwrap();
+    fn grow(&self) {
+        let chunk = self.first.borrow_mut().take_unwrap();
         let new_capacity = chunk.capacity.checked_mul(&2).unwrap();
         let chunk = TypedArenaChunk::<T>::new(Some(chunk), new_capacity);
-        self.ptr = chunk.start() as *T;
-        self.end = chunk.end() as *T;
-        self.first = Some(chunk)
+        self.ptr.set(chunk.start() as *T);
+        self.end.set(chunk.end() as *T);
+        *self.first.borrow_mut() = Some(chunk)
     }
 }
 
@@ -483,13 +483,13 @@ impl<T> TypedArena<T> {
 impl<T> Drop for TypedArena<T> {
     fn drop(&mut self) {
         // Determine how much was filled.
-        let start = self.first.get_ref().start() as uint;
-        let end = self.ptr as uint;
+        let start = self.first.borrow().get_ref().start() as uint;
+        let end = self.ptr.get() as uint;
         let diff = (end - start) / mem::size_of::<T>();
 
         // Pass that to the `destroy` method.
         unsafe {
-            self.first.get_mut_ref().destroy(diff)
+            self.first.borrow_mut().get_mut_ref().destroy(diff)
         }
     }
 }
