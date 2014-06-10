@@ -1573,7 +1573,7 @@ fn enum_variant_size_lint(ccx: &CrateContext, enum_def: &ast::EnumDef, sp: Span,
                 for var in variants.iter() {
                     let mut size = 0;
                     for field in var.fields.iter().skip(1) {
-                        // skip the dicriminant
+                        // skip the discriminant
                         size += llsize_of_real(ccx, sizing_type_of(ccx, *field));
                     }
                     sizes.push(size);
@@ -2320,7 +2320,7 @@ pub fn trans_crate(krate: ast::Crate,
     // LLVM code generator emits a ".file filename" directive
     // for ELF backends. Value of the "filename" is set as the
     // LLVM module identifier.  Due to a LLVM MC bug[1], LLVM
-    // crashes if the module identifer is same as other symbols
+    // crashes if the module identifier is same as other symbols
     // such as a function name in the module.
     // 1. http://llvm.org/bugs/show_bug.cgi?id=11479
     let mut llmod_id = link_meta.crateid.name.clone();

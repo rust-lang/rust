@@ -32,7 +32,7 @@ pub fn get_dbpath_for_term(term: &str) -> Option<Box<Path>> {
         Some(dir) => dirs_to_search.push(Path::new(dir)),
         None => {
             if homedir.is_some() {
-                // ncurses compatability;
+                // ncurses compatibility;
                 dirs_to_search.push(homedir.unwrap().join(".terminfo"))
             }
             match getenv("TERMINFO_DIRS") {

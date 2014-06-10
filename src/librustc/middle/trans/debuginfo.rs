@@ -1527,7 +1527,7 @@ impl EnumMemberDescriptionFactory {
                 // As far as debuginfo is concerned, the pointer this enum represents is still
                 // wrapped in a struct. This is to make the DWARF representation of enums uniform.
 
-                // First create a description of the artifical wrapper struct:
+                // First create a description of the artificial wrapper struct:
                 let non_null_variant = self.variants.get(non_null_variant_index as uint);
                 let non_null_variant_ident = non_null_variant.name;
                 let non_null_variant_name = token::get_ident(non_null_variant_ident);

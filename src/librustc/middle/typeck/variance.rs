@@ -483,7 +483,7 @@ impl<'a> Visitor<()> for ConstraintContext<'a> {
                     let variant =
                         ty::VariantInfo::from_ast_variant(tcx,
                                                           ast_variant,
-                                                          /*discrimant*/ 0);
+                                                          /*discriminant*/ 0);
                     for &arg_ty in variant.args.iter() {
                         self.add_constraints_from_ty(arg_ty, self.covariant);
                     }

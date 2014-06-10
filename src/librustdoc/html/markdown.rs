@@ -391,7 +391,7 @@ fn parse_lang_string(string: &str) -> (bool,bool,bool,bool) {
 }
 
 /// By default this markdown renderer generates anchors for each header in the
-/// rendered document. The anchor name is the contents of the header spearated
+/// rendered document. The anchor name is the contents of the header separated
 /// by hyphens, and a task-local map is used to disambiguate among duplicate
 /// headers (numbers are appended).
 ///

@@ -362,7 +362,7 @@ identify and remove strongly connected components (SCC) in the graph.
 Note that such components must consist solely of region variables; all
 of these variables can effectively be unified into a single variable.
 Once SCCs are removed, we are left with a DAG.  At this point, we
-could walk the DAG in toplogical order once to compute the expanding
+could walk the DAG in topological order once to compute the expanding
 nodes, and again in reverse topological order to compute the
 contracting nodes. However, as I said, this does not work given the
 current treatment of closure bounds, but perhaps in the future we can
@@ -617,7 +617,7 @@ created to replace the bound regions in the input types, but it also
 contains 'intermediate' variables created to represent the LUB/GLB of
 individual regions.  Basically, when asked to compute the LUB/GLB of a
 region variable with another region, the inferencer cannot oblige
-immediately since the valuese of that variables are not known.
+immediately since the values of that variables are not known.
 Therefore, it creates a new variable that is related to the two
 regions.  For example, the LUB of two variables `$x` and `$y` is a
 fresh variable `$z` that is constrained such that `$x <= $z` and `$y

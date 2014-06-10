@@ -227,7 +227,7 @@ fn initialize_call_frame(regs: &mut Registers, fptr: InitFn, arg: uint,
     regs[RUSTRT_R14] = procedure.env as uint;
     regs[RUSTRT_R15] = fptr as uint;
 
-    // These registers are picked up by the regulard context switch paths. These
+    // These registers are picked up by the regular context switch paths. These
     // will put us in "mostly the right context" except for frobbing all the
     // arguments to the right place. We have the small trampoline code inside of
     // rust_bootstrap_green_task to do that.

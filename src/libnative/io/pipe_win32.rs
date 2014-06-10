@@ -50,7 +50,7 @@
 //! it sounded like named pipes just weren't built for this kind of interaction,
 //! and the suggested solution was to use overlapped I/O.
 //!
-//! I don't realy know what overlapped I/O is, but my basic understanding after
+//! I don't really know what overlapped I/O is, but my basic understanding after
 //! reading about it is that you have an external Event which is used to signal
 //! I/O completion, passed around in some OVERLAPPED structures. As to what this
 //! is, I'm not exactly sure.

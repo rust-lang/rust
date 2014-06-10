@@ -17,7 +17,7 @@ works, it often happens that errors are not detected until far after
 the relevant line of code has been type-checked. Therefore, there is
 an elaborate system to track why a particular constraint in the
 inference graph arose so that we can explain to the user what gave
-rise to a patricular error.
+rise to a particular error.
 
 The basis of the system are the "origin" types. An "origin" is the
 reason that a constraint or inference variable arose. There are

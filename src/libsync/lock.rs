@@ -513,7 +513,7 @@ mod tests {
     #[test]
     fn test_mutex_arc_nested() {
         // Tests nested mutexes and access
-        // to underlaying data.
+        // to underlying data.
         let arc = Arc::new(Mutex::new(1));
         let arc2 = Arc::new(Mutex::new(arc));
         task::spawn(proc() {

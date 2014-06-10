@@ -180,7 +180,7 @@ impl<'f> Coerce<'f> {
         self.unpack_actual_value(a, |sty_a| {
             match *sty_a {
                 ty::ty_bare_fn(ref a_f) => {
-                    // Bare functions are coercable to any closure type.
+                    // Bare functions are coercible to any closure type.
                     //
                     // FIXME(#3320) this should go away and be
                     // replaced with proper inference, got a patch

@@ -82,7 +82,7 @@ pub struct Scheduler {
     run_anything: bool,
     /// A fast XorShift rng for scheduler use
     rng: XorShiftRng,
-    /// A togglable idle callback
+    /// A toggleable idle callback
     idle_callback: Option<Box<PausableIdleCallback:Send>>,
     /// A countdown that starts at a random value and is decremented
     /// every time a yield check is performed. When it hits 0 a task
@@ -287,7 +287,7 @@ impl Scheduler {
 
         // After processing a message, we consider doing some more work on the
         // event loop. The "keep going" condition changes after the first
-        // iteration becase we don't want to spin here infinitely.
+        // iteration because we don't want to spin here infinitely.
         //
         // Once we start doing work we can keep doing work so long as the
         // iteration does something. Note that we don't want to starve the
