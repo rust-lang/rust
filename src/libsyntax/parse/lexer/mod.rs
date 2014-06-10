@@ -757,19 +757,34 @@ impl<'a> StringReader<'a> {
                 while ident_continue(self.curr) {
                     self.bump();
                 }
-                let ident = self.with_str_from(start, |lifetime_name| {
-                    str_to_ident(lifetime_name)
-                });
-                let tok = &token::IDENT(ident, false);
 
-                if token::is_keyword(token::keywords::Self, tok) {
-                    self.err_span(start, self.last_pos,
-                               "invalid lifetime name: 'self \
-                                is no longer a special lifetime");
-                } else if token::is_any_keyword(tok) &&
-                    !token::is_keyword(token::keywords::Static, tok) {
-                    self.err_span(start, self.last_pos,
-                               "invalid lifetime name");
+                // Include the leading `'` in the real identifier, for macro
+                // expansion purposes. See #12512 for the gory details of why
+                // this is necessary.
+                let ident = self.with_str_from(start, |lifetime_name| {
+                    str_to_ident(format!("'{}", lifetime_name).as_slice())
+                });
+
+                // Conjure up a "keyword checking ident" to make sure that
+                // the lifetime name is not a keyword.
+                let keyword_checking_ident =
+                    self.with_str_from(start, |lifetime_name| {
+                        str_to_ident(lifetime_name)
+                    });
+                let keyword_checking_token =
+                    &token::IDENT(keyword_checking_ident, false);
+                if token::is_keyword(token::keywords::Self,
+                                     keyword_checking_token) {
+                    self.err_span(start,
+                                  self.last_pos,
+                                  "invalid lifetime name: 'self \
+                                   is no longer a special lifetime");
+                } else if token::is_any_keyword(keyword_checking_token) &&
+                    !token::is_keyword(token::keywords::Static,
+                                       keyword_checking_token) {
+                    self.err_span(start,
+                                  self.last_pos,
+                                  "invalid lifetime name");
                 }
                 return token::LIFETIME(ident);
             }
@@ -1128,7 +1143,7 @@ mod test {
 
     #[test] fn lifetime_name() {
         assert_eq!(setup(&mk_sh(), "'abc".to_string()).next_token().tok,
-                   token::LIFETIME(token::str_to_ident("abc")));
+                   token::LIFETIME(token::str_to_ident("'abc")));
     }
 
     #[test] fn raw_string() {
