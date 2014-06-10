@@ -186,7 +186,7 @@ impl Type {
         Type::func([t], &Type::void(ccx))
     }
 
-    pub fn tydesc(ccx: &CrateContext) -> Type {
+    pub fn tydesc(ccx: &CrateContext, str_slice_ty: Type) -> Type {
         let mut tydesc = Type::named_struct(ccx, "tydesc");
         let glue_fn_ty = Type::glue_fn(ccx, Type::i8p(ccx)).ptr_to();
 
@@ -200,7 +200,7 @@ impl Type {
                      int_ty,     // align
                      glue_fn_ty, // drop
                      glue_fn_ty, // visit
-                     Type::struct_(ccx, [Type::i8p(ccx), Type::int(ccx)], false)]; // name
+                     str_slice_ty]; // name
         tydesc.set_struct_body(elems, false);
 
         tydesc

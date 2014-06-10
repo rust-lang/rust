@@ -599,7 +599,7 @@ pub fn C_str_slice(cx: &CrateContext, s: InternedString) -> ValueRef {
         let len = s.get().len();
         let cs = llvm::LLVMConstPointerCast(C_cstr(cx, s, false),
                                             Type::i8p(cx).to_ref());
-        C_struct(cx, [cs, C_uint(cx, len)], false)
+        C_named_struct(cx.tn.find_type("str_slice").unwrap(), [cs, C_uint(cx, len)])
     }
 }
 
