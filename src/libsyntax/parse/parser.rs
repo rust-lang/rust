@@ -52,9 +52,9 @@ use ast::{TTNonterminal, TupleVariantKind, Ty, Ty_, TyBot, TyBox};
 use ast::{TypeField, TyFixedLengthVec, TyClosure, TyProc, TyBareFn};
 use ast::{TyTypeof, TyInfer, TypeMethod};
 use ast::{TyNil, TyParam, TyParamBound, TyPath, TyPtr, TyRptr};
-use ast::{TyTup, TyU32, TyUniq, TyVec, UnUniq};
-use ast::{UnnamedField, UnsafeBlock, UnsafeFn, ViewItem};
-use ast::{ViewItem_, ViewItemExternCrate, ViewItemUse};
+use ast::{TyTup, TyU32, TyUnboxedFn, TyUniq, TyVec, UnUniq};
+use ast::{UnboxedFnTy, UnboxedFnTyParamBound, UnnamedField, UnsafeBlock};
+use ast::{UnsafeFn, ViewItem, ViewItem_, ViewItemExternCrate, ViewItemUse};
 use ast::{ViewPath, ViewPathGlob, ViewPathList, ViewPathSimple};
 use ast::Visibility;
 use ast;
@@ -1058,15 +1058,27 @@ impl<'a> Parser<'a> {
             Vec::new()
         };
 
-        let inputs = if self.eat(&token::OROR) {
-            Vec::new()
+        let (is_unboxed, inputs) = if self.eat(&token::OROR) {
+            (false, Vec::new())
         } else {
             self.expect_or();
+
+            let is_unboxed = self.token == token::BINOP(token::AND) &&
+                self.look_ahead(1, |t| {
+                    token::is_keyword(keywords::Mut, t)
+                }) &&
+                self.look_ahead(2, |t| *t == token::COLON);
+            if is_unboxed {
+                self.bump();
+                self.bump();
+                self.bump();
+            }
+
             let inputs = self.parse_seq_to_before_or(
                 &token::COMMA,
                 |p| p.parse_arg_general(false));
             self.expect_or();
-            inputs
+            (is_unboxed, inputs)
         };
 
         let (region, bounds) = self.parse_optional_ty_param_bounds(true);
@@ -1079,13 +1091,19 @@ impl<'a> Parser<'a> {
             variadic: false
         });
 
-        TyClosure(@ClosureTy {
-            fn_style: fn_style,
-            onceness: onceness,
-            bounds: bounds,
-            decl: decl,
-            lifetimes: lifetimes,
-        }, region)
+        if is_unboxed {
+            TyUnboxedFn(@UnboxedFnTy {
+                decl: decl,
+            })
+        } else {
+            TyClosure(@ClosureTy {
+                fn_style: fn_style,
+                onceness: onceness,
+                bounds: bounds,
+                decl: decl,
+                lifetimes: lifetimes,
+            }, region)
+        }
     }
 
     pub fn parse_unsafety(&mut self) -> FnStyle {
@@ -3345,6 +3363,41 @@ impl<'a> Parser<'a> {
         })
     }
 
+    fn parse_unboxed_function_type(&mut self) -> UnboxedFnTy {
+        let inputs = if self.eat(&token::OROR) {
+            Vec::new()
+        } else {
+            self.expect_or();
+
+            if self.token == token::BINOP(token::AND) &&
+                    self.look_ahead(1, |t| {
+                        token::is_keyword(keywords::Mut, t)
+                    }) &&
+                    self.look_ahead(2, |t| *t == token::COLON) {
+                self.bump();
+                self.bump();
+                self.bump();
+            }
+
+            let inputs = self.parse_seq_to_before_or(&token::COMMA,
+                                                     |p| {
+                p.parse_arg_general(false)
+            });
+            self.expect_or();
+            inputs
+        };
+
+        let (return_style, output) = self.parse_ret_ty();
+        UnboxedFnTy {
+            decl: P(FnDecl {
+                inputs: inputs,
+                output: output,
+                cf: return_style,
+                variadic: false,
+            })
+        }
+    }
+
     // matches optbounds = ( ( : ( boundseq )? )? )
     // where   boundseq  = ( bound + boundseq ) | bound
     // and     bound     = 'static | ty
@@ -3393,6 +3446,11 @@ impl<'a> Parser<'a> {
                 token::MOD_SEP | token::IDENT(..) => {
                     let tref = self.parse_trait_ref();
                     result.push(TraitTyParamBound(tref));
+                }
+                token::BINOP(token::OR) | token::OROR => {
+                    let unboxed_function_type =
+                        self.parse_unboxed_function_type();
+                    result.push(UnboxedFnTyParamBound(unboxed_function_type));
                 }
                 _ => break,
             }

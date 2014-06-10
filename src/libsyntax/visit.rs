@@ -383,6 +383,12 @@ pub fn walk_ty<E: Clone, V: Visitor<E>>(visitor: &mut V, typ: &Ty, env: E) {
             walk_lifetime_decls(visitor, &function_declaration.lifetimes,
                                 env.clone());
         }
+        TyUnboxedFn(ref function_declaration) => {
+            for argument in function_declaration.decl.inputs.iter() {
+                visitor.visit_ty(argument.ty, env.clone())
+            }
+            visitor.visit_ty(function_declaration.decl.output, env.clone());
+        }
         TyPath(ref path, ref bounds, id) => {
             visitor.visit_path(path, id, env.clone());
             for bounds in bounds.iter() {
@@ -501,6 +507,13 @@ pub fn walk_ty_param_bounds<E: Clone, V: Visitor<E>>(visitor: &mut V,
                 walk_trait_ref_helper(visitor, typ, env.clone())
             }
             StaticRegionTyParamBound => {}
+            UnboxedFnTyParamBound(ref function_declaration) => {
+                for argument in function_declaration.decl.inputs.iter() {
+                    visitor.visit_ty(argument.ty, env.clone())
+                }
+                visitor.visit_ty(function_declaration.decl.output,
+                                 env.clone());
+            }
             OtherRegionTyParamBound(..) => {}
         }
     }
