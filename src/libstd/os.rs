@@ -133,7 +133,7 @@ pub mod win32 {
     use os::TMPBUF_SZ;
     use slice::{MutableVector, ImmutableVector};
     use string::String;
-    use str::{StrSlice, StrAllocating};
+    use str::StrSlice;
     use str;
     use vec::Vec;
 
@@ -170,17 +170,6 @@ pub mod win32 {
             }
             return res;
         }
-    }
-
-    pub fn as_utf16_p<T>(s: &str, f: |*u16| -> T) -> T {
-        as_mut_utf16_p(s, |t| { f(t as *u16) })
-    }
-
-    pub fn as_mut_utf16_p<T>(s: &str, f: |*mut u16| -> T) -> T {
-        let mut t = s.to_utf16();
-        // Null terminate before passing on.
-        t.push(0u16);
-        f(t.as_mut_ptr())
     }
 }
 
@@ -356,11 +345,10 @@ pub fn getenv_as_bytes(n: &str) -> Option<Vec<u8>> {
 pub fn getenv(n: &str) -> Option<String> {
     unsafe {
         with_env_lock(|| {
-            use os::win32::{as_utf16_p, fill_utf16_buf_and_decode};
-            as_utf16_p(n, |u| {
-                fill_utf16_buf_and_decode(|buf, sz| {
-                    libc::GetEnvironmentVariableW(u, buf, sz)
-                })
+            use os::win32::{fill_utf16_buf_and_decode};
+            let n = n.to_utf16().append_one(0);
+            fill_utf16_buf_and_decode(|buf, sz| {
+                libc::GetEnvironmentVariableW(n.as_ptr(), buf, sz)
             })
         })
     }
@@ -398,14 +386,11 @@ pub fn setenv(n: &str, v: &str) {
 /// Sets the environment variable `n` to the value `v` for the currently running
 /// process
 pub fn setenv(n: &str, v: &str) {
+    let n = n.to_utf16().append_one(0);
+    let v = v.to_utf16().append_one(0);
     unsafe {
         with_env_lock(|| {
-            use os::win32::as_utf16_p;
-            as_utf16_p(n, |nbuf| {
-                as_utf16_p(v, |vbuf| {
-                    libc::SetEnvironmentVariableW(nbuf, vbuf);
-                })
-            })
+            libc::SetEnvironmentVariableW(n.as_ptr(), v.as_ptr());
         })
     }
 }
@@ -428,12 +413,10 @@ pub fn unsetenv(n: &str) {
     }
     #[cfg(windows)]
     fn _unsetenv(n: &str) {
+        let n = n.to_utf16().append_one(0);
         unsafe {
             with_env_lock(|| {
-                use os::win32::as_utf16_p;
-                as_utf16_p(n, |nbuf| {
-                    libc::SetEnvironmentVariableW(nbuf, ptr::null());
-                })
+                libc::SetEnvironmentVariableW(n.as_ptr(), ptr::null());
             })
         }
     }
@@ -732,11 +715,12 @@ pub fn change_dir(p: &Path) -> bool {
 
     #[cfg(windows)]
     fn chdir(p: &Path) -> bool {
+        let p = match p.as_str() {
+            Some(s) => s.to_utf16().append_one(0),
+            None => return false,
+        };
         unsafe {
-            use os::win32::as_utf16_p;
-            return as_utf16_p(p.as_str().unwrap(), |buf| {
-                libc::SetCurrentDirectoryW(buf) != (0 as libc::BOOL)
-            });
+            libc::SetCurrentDirectoryW(p.as_ptr()) != (0 as libc::BOOL)
         }
     }
 

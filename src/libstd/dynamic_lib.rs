@@ -16,6 +16,9 @@ A simple wrapper over the platform's dynamic library facilities
 
 */
 
+#![experimental]
+#![allow(missing_doc)]
+
 use clone::Clone;
 use c_str::ToCStr;
 use iter::Iterator;
@@ -272,21 +275,21 @@ pub mod dl {
 
 #[cfg(target_os = "win32")]
 pub mod dl {
+    use c_str::ToCStr;
     use libc;
     use os;
     use ptr;
     use result::{Ok, Err, Result};
-    use string::String;
+    use str::StrAllocating;
     use str;
-    use c_str::ToCStr;
+    use string::String;
 
     pub unsafe fn open_external<T: ToCStr>(filename: T) -> *u8 {
         // Windows expects Unicode data
         let filename_cstr = filename.to_c_str();
         let filename_str = str::from_utf8(filename_cstr.as_bytes_no_nul()).unwrap();
-        os::win32::as_utf16_p(filename_str, |raw_name| {
-            LoadLibraryW(raw_name as *libc::c_void) as *u8
-        })
+        let filename_str = filename_str.to_utf16().append_one(0);
+        LoadLibraryW(filename_str.as_ptr() as *libc::c_void) as *u8
     }
 
     pub unsafe fn open_internal() -> *u8 {

@@ -15,6 +15,7 @@
 use core::prelude::*;
 
 use alloc::owned::Box;
+use core::default::Default;
 use core::fmt;
 use core::fmt::Show;
 use core::iter::Peekable;
@@ -133,6 +134,11 @@ impl<K: Ord, V> MutableMap<K, V> for TreeMap<K, V> {
         if ret.is_some() { self.length -= 1 }
         ret
     }
+}
+
+impl<K: Ord, V> Default for TreeMap<K,V> {
+    #[inline]
+    fn default() -> TreeMap<K, V> { TreeMap::new() }
 }
 
 impl<K: Ord, V> TreeMap<K, V> {
@@ -631,6 +637,11 @@ impl<T: Ord> MutableSet<T> for TreeSet<T> {
 
     #[inline]
     fn remove(&mut self, value: &T) -> bool { self.map.remove(value) }
+}
+
+impl<T: Ord> Default for TreeSet<T> {
+    #[inline]
+    fn default() -> TreeSet<T> { TreeSet::new() }
 }
 
 impl<T: Ord> TreeSet<T> {

@@ -203,7 +203,7 @@ fn build_struct(tcx: &ty::ctxt, did: ast::DefId) -> clean::Struct {
 fn build_type(tcx: &ty::ctxt, did: ast::DefId) -> clean::ItemEnum {
     let t = ty::lookup_item_type(tcx, did);
     match ty::get(t.ty).sty {
-        ty::ty_enum(edid, _) => {
+        ty::ty_enum(edid, _) if !csearch::is_typedef(&tcx.sess.cstore, did) => {
             return clean::EnumItem(clean::Enum {
                 generics: t.generics.clean(),
                 variants_stripped: false,

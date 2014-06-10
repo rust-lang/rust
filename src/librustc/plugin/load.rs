@@ -16,7 +16,7 @@ use plugin::registry::Registry;
 
 use std::mem;
 use std::os;
-use std::unstable::dynamic_lib::DynamicLibrary;
+use std::dynamic_lib::DynamicLibrary;
 use syntax::ast;
 use syntax::attr;
 use syntax::visit;
