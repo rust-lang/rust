@@ -15,10 +15,10 @@ use libc::{c_int, c_void};
 use libc;
 use std::c_str::CString;
 use std::mem;
-use std::os::win32::{as_utf16_p, fill_utf16_buf_and_decode};
+use std::os::win32::fill_utf16_buf_and_decode;
 use std::ptr;
 use std::rt::rtio;
-use std::rt::rtio::IoResult;
+use std::rt::rtio::{IoResult, IoError};
 use std::str;
 use std::vec;
 
@@ -253,6 +253,17 @@ impl Drop for Inner {
     }
 }
 
+pub fn to_utf16(s: &CString) -> IoResult<Vec<u16>> {
+    match s.as_str() {
+        Some(s) => Ok(s.to_utf16().append_one(0)),
+        None => Err(IoError {
+            code: libc::ERROR_INVALID_NAME as uint,
+            extra: 0,
+            detail: Some("valid unicode input required".to_str()),
+        })
+    }
+}
+
 pub fn open(path: &CString, fm: rtio::FileMode, fa: rtio::FileAccess)
         -> IoResult<FileDesc> {
     // Flags passed to open_osfhandle
@@ -299,15 +310,16 @@ pub fn open(path: &CString, fm: rtio::FileMode, fa: rtio::FileAccess)
     // Compat with unix, this allows opening directories (see libuv)
     dwFlagsAndAttributes |= libc::FILE_FLAG_BACKUP_SEMANTICS;
 
-    let handle = as_utf16_p(path.as_str().unwrap(), |buf| unsafe {
-        libc::CreateFileW(buf,
+    let path = try!(to_utf16(path));
+    let handle = unsafe {
+        libc::CreateFileW(path.as_ptr(),
                           dwDesiredAccess,
                           dwShareMode,
                           ptr::mut_null(),
                           dwCreationDisposition,
                           dwFlagsAndAttributes,
                           ptr::mut_null())
-    });
+    };
     if handle == libc::INVALID_HANDLE_VALUE as libc::HANDLE {
         Err(super::last_error())
     } else {
@@ -324,11 +336,10 @@ pub fn open(path: &CString, fm: rtio::FileMode, fa: rtio::FileAccess)
 }
 
 pub fn mkdir(p: &CString, _mode: uint) -> IoResult<()> {
+    let p = try!(to_utf16(p));
     super::mkerr_winbool(unsafe {
         // FIXME: turn mode into something useful? #2623
-        as_utf16_p(p.as_str().unwrap(), |buf| {
-            libc::CreateDirectoryW(buf, ptr::mut_null())
-        })
+        libc::CreateDirectoryW(p.as_ptr(), ptr::mut_null())
     })
 }
 
@@ -351,9 +362,11 @@ pub fn readdir(p: &CString) -> IoResult<Vec<CString>> {
     let star = Path::new(unsafe {
         CString::new(p.with_ref(|p| p), false)
     }).join("*");
-    as_utf16_p(star.as_str().unwrap(), |path_ptr| unsafe {
+    let path = try!(to_utf16(&star.to_c_str()));
+
+    unsafe {
         let wfd_ptr = malloc_raw(rust_list_dir_wfd_size() as uint);
-        let find_handle = libc::FindFirstFileW(path_ptr, wfd_ptr as libc::HANDLE);
+        let find_handle = libc::FindFirstFileW(path.as_ptr(), wfd_ptr as libc::HANDLE);
         if find_handle as libc::c_int != libc::INVALID_HANDLE_VALUE {
             let mut paths = vec!();
             let mut more_files = 1 as libc::c_int;
@@ -377,37 +390,35 @@ pub fn readdir(p: &CString) -> IoResult<Vec<CString>> {
         } else {
             Err(super::last_error())
         }
-    })
+    }
 }
 
 pub fn unlink(p: &CString) -> IoResult<()> {
+    let p = try!(to_utf16(p));
     super::mkerr_winbool(unsafe {
-        as_utf16_p(p.as_str().unwrap(), |buf| {
-            libc::DeleteFileW(buf)
-        })
+        libc::DeleteFileW(p.as_ptr())
     })
 }
 
 pub fn rename(old: &CString, new: &CString) -> IoResult<()> {
+    let old = try!(to_utf16(old));
+    let new = try!(to_utf16(new));
     super::mkerr_winbool(unsafe {
-        as_utf16_p(old.as_str().unwrap(), |old| {
-            as_utf16_p(new.as_str().unwrap(), |new| {
-                libc::MoveFileExW(old, new, libc::MOVEFILE_REPLACE_EXISTING)
-            })
-        })
+        libc::MoveFileExW(old.as_ptr(), new.as_ptr(),
+                          libc::MOVEFILE_REPLACE_EXISTING)
     })
 }
 
 pub fn chmod(p: &CString, mode: uint) -> IoResult<()> {
-    super::mkerr_libc(as_utf16_p(p.as_str().unwrap(), |p| unsafe {
-        libc::wchmod(p, mode as libc::c_int)
-    }))
+    let p = try!(to_utf16(p));
+    super::mkerr_libc(unsafe {
+        libc::wchmod(p.as_ptr(), mode as libc::c_int)
+    })
 }
 
 pub fn rmdir(p: &CString) -> IoResult<()> {
-    super::mkerr_libc(as_utf16_p(p.as_str().unwrap(), |p| unsafe {
-        libc::wrmdir(p)
-    }))
+    let p = try!(to_utf16(p));
+    super::mkerr_libc(unsafe { libc::wrmdir(p.as_ptr()) })
 }
 
 pub fn chown(_p: &CString, _uid: int, _gid: int) -> IoResult<()> {
@@ -418,16 +429,15 @@ pub fn chown(_p: &CString, _uid: int, _gid: int) -> IoResult<()> {
 pub fn readlink(p: &CString) -> IoResult<CString> {
     // FIXME: I have a feeling that this reads intermediate symlinks as well.
     use io::c::compat::kernel32::GetFinalPathNameByHandleW;
+    let p = try!(to_utf16(p));
     let handle = unsafe {
-        as_utf16_p(p.as_str().unwrap(), |p| {
-            libc::CreateFileW(p,
-                              libc::GENERIC_READ,
-                              libc::FILE_SHARE_READ,
-                              ptr::mut_null(),
-                              libc::OPEN_EXISTING,
-                              libc::FILE_ATTRIBUTE_NORMAL,
-                              ptr::mut_null())
-        })
+        libc::CreateFileW(p.as_ptr(),
+                          libc::GENERIC_READ,
+                          libc::FILE_SHARE_READ,
+                          ptr::mut_null(),
+                          libc::OPEN_EXISTING,
+                          libc::FILE_ATTRIBUTE_NORMAL,
+                          ptr::mut_null())
     };
     if handle as int == libc::INVALID_HANDLE_VALUE as int {
         return Err(super::last_error())
@@ -453,19 +463,19 @@ pub fn readlink(p: &CString) -> IoResult<CString> {
 
 pub fn symlink(src: &CString, dst: &CString) -> IoResult<()> {
     use io::c::compat::kernel32::CreateSymbolicLinkW;
-    super::mkerr_winbool(as_utf16_p(src.as_str().unwrap(), |src| {
-        as_utf16_p(dst.as_str().unwrap(), |dst| {
-            unsafe { CreateSymbolicLinkW(dst, src, 0) }
-        }) as libc::BOOL
-    }))
+    let src = try!(to_utf16(src));
+    let dst = try!(to_utf16(dst));
+    super::mkerr_winbool(unsafe {
+        CreateSymbolicLinkW(dst.as_ptr(), src.as_ptr(), 0) as libc::BOOL
+    })
 }
 
 pub fn link(src: &CString, dst: &CString) -> IoResult<()> {
-    super::mkerr_winbool(as_utf16_p(src.as_str().unwrap(), |src| {
-        as_utf16_p(dst.as_str().unwrap(), |dst| {
-            unsafe { libc::CreateHardLinkW(dst, src, ptr::mut_null()) }
-        })
-    }))
+    let src = try!(to_utf16(src));
+    let dst = try!(to_utf16(dst));
+    super::mkerr_winbool(unsafe {
+        libc::CreateHardLinkW(dst.as_ptr(), src.as_ptr(), ptr::mut_null())
+    })
 }
 
 fn mkstat(stat: &libc::stat) -> rtio::FileStat {
@@ -491,12 +501,11 @@ fn mkstat(stat: &libc::stat) -> rtio::FileStat {
 
 pub fn stat(p: &CString) -> IoResult<rtio::FileStat> {
     let mut stat: libc::stat = unsafe { mem::zeroed() };
-    as_utf16_p(p.as_str().unwrap(), |up| {
-        match unsafe { libc::wstat(up, &mut stat) } {
-            0 => Ok(mkstat(&stat)),
-            _ => Err(super::last_error()),
-        }
-    })
+    let p = try!(to_utf16(p));
+    match unsafe { libc::wstat(p.as_ptr(), &mut stat) } {
+        0 => Ok(mkstat(&stat)),
+        _ => Err(super::last_error()),
+    }
 }
 
 pub fn lstat(_p: &CString) -> IoResult<rtio::FileStat> {
@@ -509,7 +518,8 @@ pub fn utime(p: &CString, atime: u64, mtime: u64) -> IoResult<()> {
         actime: (atime / 1000) as libc::time64_t,
         modtime: (mtime / 1000) as libc::time64_t,
     };
-    super::mkerr_libc(as_utf16_p(p.as_str().unwrap(), |p| unsafe {
-        libc::wutime(p, &buf)
-    }))
+    let p = try!(to_utf16(p));
+    super::mkerr_libc(unsafe {
+        libc::wutime(p.as_ptr(), &buf)
+    })
 }

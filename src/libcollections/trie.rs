@@ -13,6 +13,7 @@
 use core::prelude::*;
 
 use alloc::owned::Box;
+use core::default::Default;
 use core::mem::zeroed;
 use core::mem;
 use core::uint;
@@ -103,6 +104,11 @@ impl<T> MutableMap<uint, T> for TrieMap<T> {
         if ret.is_some() { self.length -= 1 }
         ret
     }
+}
+
+impl<T> Default for TrieMap<T> {
+    #[inline]
+    fn default() -> TrieMap<T> { TrieMap::new() }
 }
 
 impl<T> TrieMap<T> {
@@ -330,6 +336,11 @@ impl MutableSet<uint> for TrieSet {
     fn remove(&mut self, value: &uint) -> bool {
         self.map.remove(value)
     }
+}
+
+impl Default for TrieSet {
+    #[inline]
+    fn default() -> TrieSet { TrieSet::new() }
 }
 
 impl TrieSet {

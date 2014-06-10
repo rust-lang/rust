@@ -296,16 +296,15 @@ fn spawn_process_os(cfg: ProcessConfig,
                     lpSecurityDescriptor: ptr::mut_null(),
                     bInheritHandle: 1,
                 };
-                *slot = os::win32::as_utf16_p("NUL", |filename| {
-                    libc::CreateFileW(filename,
-                                      access,
-                                      libc::FILE_SHARE_READ |
-                                          libc::FILE_SHARE_WRITE,
-                                      &mut sa,
-                                      libc::OPEN_EXISTING,
-                                      0,
-                                      ptr::mut_null())
-                });
+                let filename = "NUL".to_utf16().append_one(0);
+                *slot = libc::CreateFileW(filename.as_ptr(),
+                                          access,
+                                          libc::FILE_SHARE_READ |
+                                              libc::FILE_SHARE_WRITE,
+                                          &mut sa,
+                                          libc::OPEN_EXISTING,
+                                          0,
+                                          ptr::mut_null());
                 if *slot == INVALID_HANDLE_VALUE as libc::HANDLE {
                     return Err(super::last_error())
                 }
@@ -338,18 +337,17 @@ fn spawn_process_os(cfg: ProcessConfig,
 
         with_envp(cfg.env, |envp| {
             with_dirp(cfg.cwd, |dirp| {
-                os::win32::as_mut_utf16_p(cmd_str.as_slice(), |cmdp| {
-                    let created = CreateProcessW(ptr::null(),
-                                                 cmdp,
-                                                 ptr::mut_null(),
-                                                 ptr::mut_null(),
-                                                 TRUE,
-                                                 flags, envp, dirp,
-                                                 &mut si, &mut pi);
-                    if created == FALSE {
-                        create_err = Some(super::last_error());
-                    }
-                })
+                let mut cmd_str = cmd_str.to_utf16().append_one(0);
+                let created = CreateProcessW(ptr::null(),
+                                             cmd_str.as_mut_ptr(),
+                                             ptr::mut_null(),
+                                             ptr::mut_null(),
+                                             TRUE,
+                                             flags, envp, dirp,
+                                             &mut si, &mut pi);
+                if created == FALSE {
+                    create_err = Some(super::last_error());
+                }
             })
         });
 
@@ -740,7 +738,8 @@ fn with_dirp<T>(d: Option<&CString>, cb: |*u16| -> T) -> T {
       Some(dir) => {
           let dir_str = dir.as_str()
                            .expect("expected workingdirectory to be utf-8 encoded");
-          os::win32::as_utf16_p(dir_str, cb)
+          let dir_str = dir_str.to_utf16().append_one(0);
+          cb(dir_str.as_ptr())
       },
       None => cb(ptr::null())
     }

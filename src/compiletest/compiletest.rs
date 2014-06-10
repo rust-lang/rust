@@ -292,6 +292,7 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
         save_metrics: config.save_metrics.clone(),
         test_shard: config.test_shard.clone(),
         nocapture: false,
+        color: test::AutoColor,
     }
 }
 

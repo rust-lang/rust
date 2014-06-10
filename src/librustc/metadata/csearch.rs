@@ -321,3 +321,8 @@ pub fn get_reachable_extern_fns(cstore: &cstore::CStore, cnum: ast::CrateNum)
     let cdata = cstore.get_crate_data(cnum);
     decoder::get_reachable_extern_fns(&*cdata)
 }
+
+pub fn is_typedef(cstore: &cstore::CStore, did: ast::DefId) -> bool {
+    let cdata = cstore.get_crate_data(did.krate);
+    decoder::is_typedef(&*cdata, did.node)
+}
