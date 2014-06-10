@@ -42,7 +42,25 @@ pub struct Lint {
     pub desc: &'static str,
 }
 
+#[macro_export]
+macro_rules! declare_lint ( ($name:ident, $level:ident, $desc:expr) => (
+    static $name: &'static ::rustc::lint::Lint
+        = &::rustc::lint::Lint {
+            name: stringify!($name),
+            default_level: ::rustc::lint::$level,
+            desc: $desc,
+        };
+))
+
 pub type LintArray = &'static [&'static Lint];
+
+#[macro_export]
+macro_rules! lint_array ( ($( $lint:expr ),*) => (
+    {
+        static array: LintArray = &[ $( $lint ),* ];
+        array
+    }
+))
 
 pub trait LintPass {
     fn get_lints(&self) -> LintArray;
@@ -51,6 +69,8 @@ pub trait LintPass {
     fn check_expr(&mut self, cx: &Context, e: &ast::Expr) { }
     ...
 }
+
+pub type LintPassObject = Box<LintPass: 'static>;
 ~~~
 
 To define a lint:
@@ -68,7 +88,7 @@ extern crate rustc;
 
 use syntax::ast;
 use syntax::parse::token;
-use rustc::lint::{Context, LintPass, LintArray};
+use rustc::lint::{Context, LintPass, LintPassObject, LintArray};
 use rustc::plugin::Registry;
 
 declare_lint!(letter_e, Warn, "forbid use of the letter 'e'")
@@ -90,7 +110,7 @@ impl LintPass for Lipogram {
 
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {
-    reg.register_lint_pass(box Lipogram as Box<LintPass>);
+    reg.register_lint_pass(box Lipogram as LintPassObject);
 }
 ~~~
 
