@@ -29,7 +29,7 @@ pub fn guarantee_lifetime(bccx: &BorrowckCtxt,
                           cause: euv::LoanCause,
                           cmt: mc::cmt,
                           loan_region: ty::Region,
-                          loan_kind: ty::BorrowKind)
+                          _: ty::BorrowKind)
                           -> Result<(),()> {
     debug!("guarantee_lifetime(cmt={}, loan_region={})",
            cmt.repr(bccx.tcx), loan_region.repr(bccx.tcx));
@@ -38,7 +38,6 @@ pub fn guarantee_lifetime(bccx: &BorrowckCtxt,
                                          span: span,
                                          cause: cause,
                                          loan_region: loan_region,
-                                         loan_kind: loan_kind,
                                          cmt_original: cmt.clone()};
     ctxt.check(&cmt, None)
 }
@@ -55,7 +54,6 @@ struct GuaranteeLifetimeContext<'a> {
     span: Span,
     cause: euv::LoanCause,
     loan_region: ty::Region,
-    loan_kind: ty::BorrowKind,
     cmt_original: mc::cmt
 }
 

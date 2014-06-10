@@ -353,7 +353,6 @@ impl<'a> Visitor<()> for EmbargoVisitor<'a> {
 struct PrivacyVisitor<'a> {
     tcx: &'a ty::ctxt,
     curitem: ast::NodeId,
-    in_fn: bool,
     in_foreign: bool,
     parents: NodeMap<ast::NodeId>,
     external_exports: resolve::ExternalExports,
@@ -1445,7 +1444,6 @@ pub fn check_crate(tcx: &ty::ctxt,
     // Use the parent map to check the privacy of everything
     let mut visitor = PrivacyVisitor {
         curitem: ast::DUMMY_NODE_ID,
-        in_fn: false,
         in_foreign: false,
         tcx: tcx,
         parents: visitor.parents,

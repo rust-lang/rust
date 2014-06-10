@@ -393,7 +393,7 @@ mod table {
         }
 
         pub fn move_iter(self) -> MoveEntries<K, V> {
-            MoveEntries { table: self, idx: 0, elems_seen: 0 }
+            MoveEntries { table: self, idx: 0 }
         }
     }
 
@@ -428,8 +428,7 @@ mod table {
     /// Iterator over the entries in a table, consuming the table.
     pub struct MoveEntries<K, V> {
         table: RawTable<K, V>,
-        idx: uint,
-        elems_seen: uint,
+        idx: uint
     }
 
     impl<'a, K, V> Iterator<(&'a K, &'a V)> for Entries<'a, K, V> {

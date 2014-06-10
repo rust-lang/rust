@@ -20,6 +20,7 @@ pub static FIONBIO: libc::c_long = 0x8004667e;
 static FD_SETSIZE: uint = 64;
 pub static MSG_DONTWAIT: libc::c_int = 0;
 
+#[repr(C)]
 pub struct WSADATA {
     pub wVersion: libc::WORD,
     pub wHighVersion: libc::WORD,
@@ -32,6 +33,7 @@ pub struct WSADATA {
 
 pub type LPWSADATA = *mut WSADATA;
 
+#[repr(C)]
 pub struct fd_set {
     fd_count: libc::c_uint,
     fd_array: [libc::SOCKET, ..FD_SETSIZE],
