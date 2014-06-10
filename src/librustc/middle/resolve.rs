@@ -806,7 +806,6 @@ fn namespace_error_to_str(ns: NamespaceError) -> &'static str {
 /// The main resolver class.
 struct Resolver<'a> {
     session: &'a Session,
-    lang_items: &'a LanguageItems,
 
     graph_root: NameBindings,
 
@@ -842,9 +841,6 @@ struct Resolver<'a> {
 
     // The idents for the primitive types.
     primitive_type_table: PrimitiveTypeTable,
-
-    // The four namespaces.
-    namespaces: Vec<Namespace> ,
 
     def_map: DefMap,
     export_map2: ExportMap2,
@@ -902,7 +898,7 @@ impl<'a, 'b> Visitor<()> for UnusedImportCheckVisitor<'a, 'b> {
 }
 
 impl<'a> Resolver<'a> {
-    fn new(session: &'a Session, lang_items: &'a LanguageItems, crate_span: Span) -> Resolver<'a> {
+    fn new(session: &'a Session, crate_span: Span) -> Resolver<'a> {
         let graph_root = NameBindings::new();
 
         graph_root.define_module(NoParentLink,
@@ -916,7 +912,6 @@ impl<'a> Resolver<'a> {
 
         Resolver {
             session: session,
-            lang_items: lang_items,
 
             // The outermost module has def ID 0; this is not reflected in the
             // AST.
@@ -940,8 +935,6 @@ impl<'a> Resolver<'a> {
             type_self_ident: special_idents::type_self,
 
             primitive_type_table: PrimitiveTypeTable::new(),
-
-            namespaces: vec!(TypeNS, ValueNS),
 
             def_map: RefCell::new(NodeMap::new()),
             export_map2: RefCell::new(NodeMap::new()),
@@ -5582,10 +5575,10 @@ pub struct CrateMap {
 
 /// Entry point to crate resolution.
 pub fn resolve_crate(session: &Session,
-                     lang_items: &LanguageItems,
+                     _: &LanguageItems,
                      krate: &Crate)
                   -> CrateMap {
-    let mut resolver = Resolver::new(session, lang_items, krate.span);
+    let mut resolver = Resolver::new(session, krate.span);
     resolver.resolve(krate);
     let Resolver { def_map, export_map2, trait_map, last_private,
                    external_exports, .. } = resolver;

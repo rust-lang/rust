@@ -19,7 +19,6 @@ use codemap::{CodeMap, BytePos};
 use codemap;
 use diagnostic;
 use parse::classify::expr_is_simple_block;
-use parse::token::IdentInterner;
 use parse::token;
 use parse::lexer::comments;
 use parse;
@@ -30,7 +29,6 @@ use print::pp;
 use std::io::{IoResult, MemWriter};
 use std::io;
 use std::mem;
-use std::rc::Rc;
 use std::str;
 use std::string::String;
 
@@ -58,7 +56,6 @@ pub struct CurrentCommentAndLiteral {
 pub struct State<'a> {
     pub s: pp::Printer,
     cm: Option<&'a CodeMap>,
-    intr: Rc<token::IdentInterner>,
     comments: Option<Vec<comments::Comment> >,
     literals: Option<Vec<comments::Literal> >,
     cur_cmnt_and_lit: CurrentCommentAndLiteral,
@@ -76,7 +73,6 @@ pub fn rust_printer_annotated<'a>(writer: Box<io::Writer>,
     State {
         s: pp::mk_printer(writer, default_columns),
         cm: None,
-        intr: token::get_ident_interner(),
         comments: None,
         literals: None,
         cur_cmnt_and_lit: CurrentCommentAndLiteral {
@@ -111,7 +107,6 @@ pub fn print_crate<'a>(cm: &'a CodeMap,
     let mut s = State {
         s: pp::mk_printer(out, default_columns),
         cm: Some(cm),
-        intr: token::get_ident_interner(),
         comments: Some(cmnts),
         // If the code is post expansion, don't use the table of
         // literals, since it doesn't correspond with the literals

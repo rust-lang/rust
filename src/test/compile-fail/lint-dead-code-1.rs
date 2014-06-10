@@ -39,7 +39,10 @@ static STATIC_USED_IN_ENUM_DISCRIMINANT: uint = 10;
 pub type typ = *UsedStruct4;
 pub struct PubStruct();
 struct PrivStruct; //~ ERROR: code is never used
-struct UsedStruct1 { x: int }
+struct UsedStruct1 {
+    #[allow(dead_code)]
+    x: int
+}
 struct UsedStruct2(int);
 struct UsedStruct3;
 struct UsedStruct4;
@@ -53,6 +56,7 @@ struct StructUsedAsField;
 struct StructUsedInEnum;
 struct StructUsedInGeneric;
 pub struct PubStruct2 {
+    #[allow(dead_code)]
     struct_used_as_field: *StructUsedAsField
 }
 

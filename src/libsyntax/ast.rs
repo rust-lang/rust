@@ -1053,6 +1053,15 @@ pub struct StructField_ {
     pub attrs: Vec<Attribute>,
 }
 
+impl StructField_ {
+    pub fn ident(&self) -> Option<Ident> {
+        match self.kind {
+            NamedField(ref ident, _) => Some(ident.clone()),
+            UnnamedField(_) => None
+        }
+    }
+}
+
 pub type StructField = Spanned<StructField_>;
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]

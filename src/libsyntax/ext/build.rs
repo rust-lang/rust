@@ -21,11 +21,6 @@ use parse::token::special_idents;
 use parse::token::InternedString;
 use parse::token;
 
-pub struct Field {
-    ident: ast::Ident,
-    ex: @ast::Expr
-}
-
 // Transitional reexports so qquote can find the paths it is looking for
 mod syntax {
     pub use ext;
@@ -1000,9 +995,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 }
 
-struct Duplicator<'a> {
-    cx: &'a ExtCtxt<'a>,
-}
+struct Duplicator<'a>;
 
 impl<'a> Folder for Duplicator<'a> {
     fn new_id(&mut self, _: NodeId) -> NodeId {
@@ -1021,10 +1014,8 @@ pub trait Duplicate {
 }
 
 impl Duplicate for @ast::Expr {
-    fn duplicate(&self, cx: &ExtCtxt) -> @ast::Expr {
-        let mut folder = Duplicator {
-            cx: cx,
-        };
+    fn duplicate(&self, _: &ExtCtxt) -> @ast::Expr {
+        let mut folder = Duplicator;
         folder.fold_expr(*self)
     }
 }

@@ -124,6 +124,32 @@ impl<'a> MarkSymbolVisitor<'a> {
         }
     }
 
+    fn handle_field_access(&mut self, lhs: &ast::Expr, name: &ast::Ident) {
+        match ty::get(ty::expr_ty_adjusted(self.tcx, lhs)).sty {
+            ty::ty_struct(id, _) => {
+                let fields = ty::lookup_struct_fields(self.tcx, id);
+                let field_id = fields.iter()
+                    .find(|field| field.name == name.name).unwrap().id;
+                self.live_symbols.insert(field_id.node);
+            },
+            _ => ()
+        }
+    }
+
+    fn handle_field_pattern_match(&mut self, lhs: &ast::Pat, pats: &[ast::FieldPat]) {
+        match self.tcx.def_map.borrow().get(&lhs.id) {
+            &def::DefStruct(id) | &def::DefVariant(_, id, _) => {
+                let fields = ty::lookup_struct_fields(self.tcx, id);
+                for pat in pats.iter() {
+                    let field_id = fields.iter()
+                        .find(|field| field.name == pat.ident.name).unwrap().id;
+                    self.live_symbols.insert(field_id.node);
+                }
+            }
+            _ => ()
+        }
+    }
+
     fn mark_live_symbols(&mut self) {
         let mut scanned = HashSet::new();
         while self.worklist.len() > 0 {
@@ -147,10 +173,22 @@ impl<'a> MarkSymbolVisitor<'a> {
         match *node {
             ast_map::NodeItem(item) => {
                 match item.node {
+                    ast::ItemStruct(struct_def, _) => {
+                        let has_extern_repr = item.attrs.iter().fold(attr::ReprAny, |acc, attr| {
+                            attr::find_repr_attr(self.tcx.sess.diagnostic(), attr, acc)
+                        }) == attr::ReprExtern;
+                        let live_fields = struct_def.fields.iter().filter(|f| {
+                            has_extern_repr || match f.node.kind {
+                                ast::NamedField(_, ast::Public) => true,
+                                _ => false
+                            }
+                        });
+                        self.live_symbols.extend(live_fields.map(|f| f.node.id));
+                        visit::walk_item(self, item, ());
+                    }
                     ast::ItemFn(..)
                     | ast::ItemTy(..)
                     | ast::ItemEnum(..)
-                    | ast::ItemStruct(..)
                     | ast::ItemStatic(..) => {
                         visit::walk_item(self, item, ());
                     }
@@ -178,10 +216,24 @@ impl<'a> Visitor<()> for MarkSymbolVisitor<'a> {
             ast::ExprMethodCall(..) => {
                 self.lookup_and_handle_method(expr.id, expr.span);
             }
+            ast::ExprField(ref lhs, ref ident, _) => {
+                self.handle_field_access(*lhs, ident);
+            }
             _ => ()
         }
 
         visit::walk_expr(self, expr, ())
+    }
+
+    fn visit_pat(&mut self, pat: &ast::Pat, _: ()) {
+        match pat.node {
+            ast::PatStruct(_, ref fields, _) => {
+                self.handle_field_pattern_match(pat, fields.as_slice());
+            }
+            _ => ()
+        }
+
+        visit::walk_pat(self, pat, ())
     }
 
     fn visit_path(&mut self, path: &ast::Path, id: ast::NodeId, _: ()) {
@@ -189,7 +241,7 @@ impl<'a> Visitor<()> for MarkSymbolVisitor<'a> {
         visit::walk_path(self, path, ());
     }
 
-    fn visit_item(&mut self, _item: &ast::Item, _: ()) {
+    fn visit_item(&mut self, _: &ast::Item, _: ()) {
         // Do not recurse into items. These items will be added to the
         // worklist and recursed into manually if necessary.
     }
@@ -317,6 +369,23 @@ struct DeadVisitor<'a> {
 }
 
 impl<'a> DeadVisitor<'a> {
+    fn should_warn_about_field(&mut self, node: &ast::StructField_) -> bool {
+        let (is_named, has_leading_underscore) = match node.ident() {
+            Some(ref ident) => (true, token::get_ident(*ident).get()[0] == ('_' as u8)),
+            _ => (false, false)
+        };
+        let field_type = ty::node_id_to_type(self.tcx, node.id);
+        let is_marker_field = match ty::ty_to_def_id(field_type) {
+            Some(def_id) => self.tcx.lang_items.items().any(|(_, item)| *item == Some(def_id)),
+            _ => false
+        };
+        is_named
+            && !self.symbol_is_live(node.id, None)
+            && !has_leading_underscore
+            && !is_marker_field
+            && !has_allow_dead_code_or_lang_attr(node.attrs.as_slice())
+    }
+
     // id := node id of an item's definition.
     // ctor_id := `Some` if the item is a struct_ctor (tuple struct),
     //            `None` otherwise.
@@ -397,6 +466,14 @@ impl<'a> Visitor<()> for DeadVisitor<'a> {
             _ => ()
         }
         visit::walk_block(self, block, ());
+    }
+
+    fn visit_struct_field(&mut self, field: &ast::StructField, _: ()) {
+        if self.should_warn_about_field(&field.node) {
+            self.warn_dead_code(field.node.id, field.span, field.node.ident().unwrap());
+        }
+
+        visit::walk_struct_field(self, field, ());
     }
 
     // Overwrite so that we don't warn the trait method itself.

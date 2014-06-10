@@ -310,7 +310,6 @@ impl<'a> GatherLoanCtxt<'a> {
                 Loan {
                     index: self.all_loans.len(),
                     loan_path: loan_path,
-                    cmt: cmt,
                     kind: req_kind,
                     gen_scope: gen_scope,
                     kill_scope: kill_scope,
@@ -481,8 +480,7 @@ impl<'a> GatherLoanCtxt<'a> {
 /// This visitor walks static initializer's expressions and makes
 /// sure the loans being taken are sound.
 struct StaticInitializerCtxt<'a> {
-    bccx: &'a BorrowckCtxt<'a>,
-    item_ub: ast::NodeId,
+    bccx: &'a BorrowckCtxt<'a>
 }
 
 impl<'a> visit::Visitor<()> for StaticInitializerCtxt<'a> {
@@ -509,8 +507,7 @@ pub fn gather_loans_in_static_initializer(bccx: &mut BorrowckCtxt, expr: &ast::E
     debug!("gather_loans_in_static_initializer(expr={})", expr.repr(bccx.tcx));
 
     let mut sicx = StaticInitializerCtxt {
-        bccx: bccx,
-        item_ub: expr.id,
+        bccx: bccx
     };
 
     sicx.visit_expr(expr, ());

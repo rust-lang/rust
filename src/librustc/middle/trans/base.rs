@@ -106,7 +106,9 @@ pub fn init_insn_ctxt() {
     task_local_insn_key.replace(Some(RefCell::new(Vec::new())));
 }
 
-pub struct _InsnCtxt { _x: () }
+pub struct _InsnCtxt {
+    _cannot_construct_outside_of_this_module: ()
+}
 
 #[unsafe_destructor]
 impl Drop for _InsnCtxt {
@@ -124,7 +126,7 @@ pub fn push_ctxt(s: &'static str) -> _InsnCtxt {
         Some(ctx) => ctx.borrow_mut().push(s),
         None => {}
     }
-    _InsnCtxt { _x: () }
+    _InsnCtxt { _cannot_construct_outside_of_this_module: () }
 }
 
 pub struct StatRecorder<'a> {

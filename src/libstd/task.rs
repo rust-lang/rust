@@ -84,7 +84,7 @@ pub struct TaskBuilder {
     /// Options to spawn the new task with
     pub opts: TaskOpts,
     gen_body: Option<proc(v: proc():Send):Send -> proc():Send>,
-    nocopy: Option<marker::NoCopy>,
+    nocopy: marker::NoCopy,
 }
 
 impl TaskBuilder {
@@ -94,7 +94,7 @@ impl TaskBuilder {
         TaskBuilder {
             opts: TaskOpts::new(),
             gen_body: None,
-            nocopy: None,
+            nocopy: marker::NoCopy,
         }
     }
 

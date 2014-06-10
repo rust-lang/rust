@@ -355,7 +355,7 @@ pub struct Semaphore {
 /// dropped, this value will release the resource back to the semaphore.
 #[must_use]
 pub struct SemaphoreGuard<'a> {
-    guard: SemGuard<'a, ()>,
+    _guard: SemGuard<'a, ()>,
 }
 
 impl Semaphore {
@@ -375,7 +375,7 @@ impl Semaphore {
     /// Acquire a resource of this semaphore, returning an RAII guard which will
     /// release the resource when dropped.
     pub fn access<'a>(&'a self) -> SemaphoreGuard<'a> {
-        SemaphoreGuard { guard: self.sem.access() }
+        SemaphoreGuard { _guard: self.sem.access() }
     }
 }
 
@@ -398,7 +398,7 @@ pub struct Mutex {
 /// corresponding mutex is also unlocked.
 #[must_use]
 pub struct MutexGuard<'a> {
-    guard: SemGuard<'a, Vec<WaitQueue>>,
+    _guard: SemGuard<'a, Vec<WaitQueue>>,
     /// Inner condition variable which is connected to the outer mutex, and can
     /// be used for atomic-unlock-and-deschedule.
     pub cond: Condvar<'a>,
@@ -421,7 +421,7 @@ impl Mutex {
     /// also be accessed through the returned guard.
     pub fn lock<'a>(&'a self) -> MutexGuard<'a> {
         let SemCondGuard { guard, cvar } = self.sem.access_cond();
-        MutexGuard { guard: guard, cond: cvar }
+        MutexGuard { _guard: guard, cond: cvar }
     }
 }
 
