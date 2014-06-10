@@ -462,7 +462,7 @@ impl FromStr for Uuid {
     /// Parse a hex string and interpret as a UUID
     ///
     /// Accepted formats are a sequence of 32 hexadecimal characters,
-    /// with or without hypens (grouped as 8, 4, 4, 4, 12).
+    /// with or without hyphens (grouped as 8, 4, 4, 4, 12).
     fn from_str(us: &str) -> Option<Uuid> {
         let result = Uuid::parse_string(us);
         match result {
@@ -492,7 +492,7 @@ impl Eq for Uuid {}
 
 // FIXME #9845: Test these more thoroughly
 impl<T: Encoder<E>, E> Encodable<T, E> for Uuid {
-    /// Encode a UUID as a hypenated string
+    /// Encode a UUID as a hyphenated string
     fn encode(&self, e: &mut T) -> Result<(), E> {
         e.emit_str(self.to_hyphenated_str().as_slice())
     }

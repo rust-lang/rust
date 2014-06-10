@@ -34,7 +34,7 @@ pub enum Inst {
 
     // The CharClass instruction tries to match one input character against
     // the range of characters given.
-    // The flags indicate whether to do a case insentivie match and whether
+    // The flags indicate whether to do a case insensitive match and whether
     // the character class is negated or not.
     CharClass(Vec<(char, char)>, Flags),
 
@@ -48,7 +48,7 @@ pub enum Inst {
     EmptyBegin(Flags),
 
     // Matches the end of the string, consumes no characters.
-    // The flags indicate whether it matches if the proceding character
+    // The flags indicate whether it matches if the proceeding character
     // is a new line.
     EmptyEnd(Flags),
 

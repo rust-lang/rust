@@ -291,7 +291,7 @@ pub use types::os::arch::extra::{mach_timebase_info};
 extern {}
 
 /// A wrapper for a nullable pointer. Don't use this except for interacting
-/// with libc. Basically Option, but without the dependance on libstd.
+/// with libc. Basically Option, but without the dependence on libstd.
 // If/when libprim happens, this can be removed in favor of that
 pub enum Nullable<T> {
     Null,
@@ -3497,7 +3497,7 @@ pub mod consts {
 
 
 pub mod funcs {
-    // Thankfull most of c95 is universally available and does not vary by OS
+    // Thankfully most of c95 is universally available and does not vary by OS
     // or anything. The same is not true of POSIX.
 
     pub mod c95 {

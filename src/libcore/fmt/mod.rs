@@ -539,7 +539,7 @@ impl<'a> Formatter<'a> {
     }
 
     /// Runs a callback, emitting the correct padding either before or
-    /// afterwards depending on whether right or left alingment is requested.
+    /// afterwards depending on whether right or left alignment is requested.
     fn with_padding(&mut self,
                     padding: uint,
                     default: rt::Alignment,
