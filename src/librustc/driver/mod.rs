@@ -37,7 +37,7 @@ pub mod config;
 
 pub fn main_args(args: &[String]) -> int {
     let owned_args = args.to_owned();
-    monitor(proc() run_compiler(owned_args));
+    monitor(proc() run_compiler(owned_args.as_slice()));
     0
 }
 

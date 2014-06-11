@@ -167,7 +167,6 @@ impl<T: FloatMath + FromPrimitive> Summary<T> {
 impl<'a,T: FloatMath + FromPrimitive> Stats<T> for &'a [T] {
 
     // FIXME #11059 handle NaN, inf and overflow
-    #[allow(deprecated_owned_vector)]
     fn sum(self) -> T {
         let mut partials = vec![];
 
@@ -1027,7 +1026,6 @@ mod tests {
 
     #[test]
     fn test_boxplot_nonpositive() {
-        #[allow(deprecated_owned_vector)]
         fn t(s: &Summary<f64>, expected: String) {
             use std::io::MemWriter;
             let mut m = MemWriter::new();

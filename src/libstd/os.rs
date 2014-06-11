@@ -42,7 +42,7 @@ use path::{Path, GenericPath, BytesContainer};
 use ptr::RawPtr;
 use ptr;
 use result::{Err, Ok, Result};
-use slice::{Vector, ImmutableVector, MutableVector, OwnedVector};
+use slice::{Vector, ImmutableVector, MutableVector};
 use str::{Str, StrSlice, StrAllocating};
 use str;
 use string::String;
@@ -536,7 +536,7 @@ pub fn self_exe_name() -> Option<Path> {
         unsafe {
             use libc::funcs::bsd44::*;
             use libc::consts::os::extra::*;
-            let mib = box [CTL_KERN as c_int,
+            let mib = vec![CTL_KERN as c_int,
                         KERN_PROC as c_int,
                         KERN_PROC_PATHNAME as c_int, -1 as c_int];
             let mut sz: libc::size_t = 0;

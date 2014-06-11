@@ -856,8 +856,8 @@ mod tests {
     })
 
     iotest!(fn test_add_to_env() {
-        let new_env = box [("RUN_TEST_NEW_ENV", "123")];
-        let prog = env_cmd().env(new_env).spawn().unwrap();
+        let new_env = vec![("RUN_TEST_NEW_ENV", "123")];
+        let prog = env_cmd().env(new_env.as_slice()).spawn().unwrap();
         let result = prog.wait_with_output().unwrap();
         let output = str::from_utf8_lossy(result.output.as_slice()).into_string();
 

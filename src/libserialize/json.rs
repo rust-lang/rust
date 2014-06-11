@@ -81,7 +81,7 @@ fn main() {
 ```
 
 Two wrapper functions are provided to encode a Encodable object
-into a string (String) or buffer (~[u8]): `str_encode(&m)` and `buffer_encode(&m)`.
+into a string (String) or buffer (vec![u8]): `str_encode(&m)` and `buffer_encode(&m)`.
 
 ```rust
 use serialize::json;
@@ -2225,10 +2225,6 @@ impl<'a, A:ToJson> ToJson for &'a [A] {
     fn to_json(&self) -> Json { List(self.iter().map(|elt| elt.to_json()).collect()) }
 }
 
-impl<A:ToJson> ToJson for ~[A] {
-    fn to_json(&self) -> Json { List(self.iter().map(|elt| elt.to_json()).collect()) }
-}
-
 impl<A:ToJson> ToJson for Vec<A> {
     fn to_json(&self) -> Json { List(self.iter().map(|elt| elt.to_json()).collect()) }
 }
@@ -3048,7 +3044,8 @@ mod tests {
         let _hm: HashMap<uint, bool> = Decodable::decode(&mut decoder).unwrap();
     }
 
-    fn assert_stream_equal(src: &str, expected: ~[(JsonEvent, ~[StackElement])]) {
+    fn assert_stream_equal(src: &str,
+                           expected: Vec<(JsonEvent, Vec<StackElement>)>) {
         let mut parser = Parser::new(src.chars());
         let mut i = 0;
         loop {
@@ -3056,7 +3053,7 @@ mod tests {
                 Some(e) => e,
                 None => { break; }
             };
-            let (ref expected_evt, ref expected_stack) = expected[i];
+            let (ref expected_evt, ref expected_stack) = *expected.get(i);
             if !parser.stack().is_equal_to(expected_stack.as_slice()) {
                 fail!("Parser stack is not equal to {}", expected_stack);
             }
@@ -3065,26 +3062,27 @@ mod tests {
         }
     }
     #[test]
+    #[ignore(cfg(target_word_size = "32"))] // FIXME(#14064)
     fn test_streaming_parser() {
         assert_stream_equal(
             r#"{ "foo":"bar", "array" : [0, 1, 2,3 ,4,5], "idents":[null,true,false]}"#,
-            ~[
-                (ObjectStart,             ~[]),
-                  (StringValue("bar".to_string()),   ~[Key("foo")]),
-                  (ListStart,             ~[Key("array")]),
-                    (NumberValue(0.0),    ~[Key("array"), Index(0)]),
-                    (NumberValue(1.0),    ~[Key("array"), Index(1)]),
-                    (NumberValue(2.0),    ~[Key("array"), Index(2)]),
-                    (NumberValue(3.0),    ~[Key("array"), Index(3)]),
-                    (NumberValue(4.0),    ~[Key("array"), Index(4)]),
-                    (NumberValue(5.0),    ~[Key("array"), Index(5)]),
-                  (ListEnd,               ~[Key("array")]),
-                  (ListStart,             ~[Key("idents")]),
-                    (NullValue,           ~[Key("idents"), Index(0)]),
-                    (BooleanValue(true),  ~[Key("idents"), Index(1)]),
-                    (BooleanValue(false), ~[Key("idents"), Index(2)]),
-                  (ListEnd,               ~[Key("idents")]),
-                (ObjectEnd,               ~[]),
+            vec![
+                (ObjectStart,             vec![]),
+                  (StringValue("bar".to_string()),   vec![Key("foo")]),
+                  (ListStart,             vec![Key("array")]),
+                    (NumberValue(0.0),    vec![Key("array"), Index(0)]),
+                    (NumberValue(1.0),    vec![Key("array"), Index(1)]),
+                    (NumberValue(2.0),    vec![Key("array"), Index(2)]),
+                    (NumberValue(3.0),    vec![Key("array"), Index(3)]),
+                    (NumberValue(4.0),    vec![Key("array"), Index(4)]),
+                    (NumberValue(5.0),    vec![Key("array"), Index(5)]),
+                  (ListEnd,               vec![Key("array")]),
+                  (ListStart,             vec![Key("idents")]),
+                    (NullValue,           vec![Key("idents"), Index(0)]),
+                    (BooleanValue(true),  vec![Key("idents"), Index(1)]),
+                    (BooleanValue(false), vec![Key("idents"), Index(2)]),
+                  (ListEnd,               vec![Key("idents")]),
+                (ObjectEnd,               vec![]),
             ]
         );
     }
@@ -3115,34 +3113,34 @@ mod tests {
 
         assert_stream_equal(
             "{}",
-            box [(ObjectStart, box []), (ObjectEnd, box [])]
+            vec![(ObjectStart, vec![]), (ObjectEnd, vec![])]
         );
         assert_stream_equal(
             "{\"a\": 3}",
-            box [
-                (ObjectStart,        box []),
-                  (NumberValue(3.0), box [Key("a")]),
-                (ObjectEnd,          box []),
+            vec![
+                (ObjectStart,        vec![]),
+                  (NumberValue(3.0), vec![Key("a")]),
+                (ObjectEnd,          vec![]),
             ]
         );
         assert_stream_equal(
             "{ \"a\": null, \"b\" : true }",
-            box [
-                (ObjectStart,           box []),
-                  (NullValue,           box [Key("a")]),
-                  (BooleanValue(true),  box [Key("b")]),
-                (ObjectEnd,             box []),
+            vec![
+                (ObjectStart,           vec![]),
+                  (NullValue,           vec![Key("a")]),
+                  (BooleanValue(true),  vec![Key("b")]),
+                (ObjectEnd,             vec![]),
             ]
         );
         assert_stream_equal(
             "{\"a\" : 1.0 ,\"b\": [ true ]}",
-            box [
-                (ObjectStart,           box []),
-                  (NumberValue(1.0),    box [Key("a")]),
-                  (ListStart,           box [Key("b")]),
-                    (BooleanValue(true),box [Key("b"), Index(0)]),
-                  (ListEnd,             box [Key("b")]),
-                (ObjectEnd,             box []),
+            vec![
+                (ObjectStart,           vec![]),
+                  (NumberValue(1.0),    vec![Key("a")]),
+                  (ListStart,           vec![Key("b")]),
+                    (BooleanValue(true),vec![Key("b"), Index(0)]),
+                  (ListEnd,             vec![Key("b")]),
+                (ObjectEnd,             vec![]),
             ]
         );
         assert_stream_equal(
@@ -3154,19 +3152,19 @@ mod tests {
                     { "c": {"d": null} }
                 ]
             }"#,
-            ~[
-                (ObjectStart,                   ~[]),
-                  (NumberValue(1.0),            ~[Key("a")]),
-                  (ListStart,                   ~[Key("b")]),
-                    (BooleanValue(true),        ~[Key("b"), Index(0)]),
-                    (StringValue("foo\nbar".to_string()),  ~[Key("b"), Index(1)]),
-                    (ObjectStart,               ~[Key("b"), Index(2)]),
-                      (ObjectStart,             ~[Key("b"), Index(2), Key("c")]),
-                        (NullValue,             ~[Key("b"), Index(2), Key("c"), Key("d")]),
-                      (ObjectEnd,               ~[Key("b"), Index(2), Key("c")]),
-                    (ObjectEnd,                 ~[Key("b"), Index(2)]),
-                  (ListEnd,                     ~[Key("b")]),
-                (ObjectEnd,                     ~[]),
+            vec![
+                (ObjectStart,                   vec![]),
+                  (NumberValue(1.0),            vec![Key("a")]),
+                  (ListStart,                   vec![Key("b")]),
+                    (BooleanValue(true),        vec![Key("b"), Index(0)]),
+                    (StringValue("foo\nbar".to_string()),  vec![Key("b"), Index(1)]),
+                    (ObjectStart,               vec![Key("b"), Index(2)]),
+                      (ObjectStart,             vec![Key("b"), Index(2), Key("c")]),
+                        (NullValue,             vec![Key("b"), Index(2), Key("c"), Key("d")]),
+                      (ObjectEnd,               vec![Key("b"), Index(2), Key("c")]),
+                    (ObjectEnd,                 vec![Key("b"), Index(2)]),
+                  (ListEnd,                     vec![Key("b")]),
+                (ObjectEnd,                     vec![]),
             ]
         );
     }
@@ -3175,70 +3173,70 @@ mod tests {
     fn test_read_list_streaming() {
         assert_stream_equal(
             "[]",
-            box [
-                (ListStart, box []),
-                (ListEnd,   box []),
+            vec![
+                (ListStart, vec![]),
+                (ListEnd,   vec![]),
             ]
         );
         assert_stream_equal(
             "[ ]",
-            box [
-                (ListStart, box []),
-                (ListEnd,   box []),
+            vec![
+                (ListStart, vec![]),
+                (ListEnd,   vec![]),
             ]
         );
         assert_stream_equal(
             "[true]",
-            box [
-                (ListStart,              box []),
-                    (BooleanValue(true), box [Index(0)]),
-                (ListEnd,                box []),
+            vec![
+                (ListStart,              vec![]),
+                    (BooleanValue(true), vec![Index(0)]),
+                (ListEnd,                vec![]),
             ]
         );
         assert_stream_equal(
             "[ false ]",
-            box [
-                (ListStart,               box []),
-                    (BooleanValue(false), box [Index(0)]),
-                (ListEnd,                 box []),
+            vec![
+                (ListStart,               vec![]),
+                    (BooleanValue(false), vec![Index(0)]),
+                (ListEnd,                 vec![]),
             ]
         );
         assert_stream_equal(
             "[null]",
-            box [
-                (ListStart,     box []),
-                    (NullValue, box [Index(0)]),
-                (ListEnd,       box []),
+            vec![
+                (ListStart,     vec![]),
+                    (NullValue, vec![Index(0)]),
+                (ListEnd,       vec![]),
             ]
         );
         assert_stream_equal(
             "[3, 1]",
-            box [
-                (ListStart,     box []),
-                    (NumberValue(3.0), box [Index(0)]),
-                    (NumberValue(1.0), box [Index(1)]),
-                (ListEnd,       box []),
+            vec![
+                (ListStart,     vec![]),
+                    (NumberValue(3.0), vec![Index(0)]),
+                    (NumberValue(1.0), vec![Index(1)]),
+                (ListEnd,       vec![]),
             ]
         );
         assert_stream_equal(
             "\n[3, 2]\n",
-            box [
-                (ListStart,     box []),
-                    (NumberValue(3.0), box [Index(0)]),
-                    (NumberValue(2.0), box [Index(1)]),
-                (ListEnd,       box []),
+            vec![
+                (ListStart,     vec![]),
+                    (NumberValue(3.0), vec![Index(0)]),
+                    (NumberValue(2.0), vec![Index(1)]),
+                (ListEnd,       vec![]),
             ]
         );
         assert_stream_equal(
             "[2, [4, 1]]",
-            box [
-                (ListStart,                 box []),
-                    (NumberValue(2.0),      box [Index(0)]),
-                    (ListStart,             box [Index(1)]),
-                        (NumberValue(4.0),  box [Index(1), Index(0)]),
-                        (NumberValue(1.0),  box [Index(1), Index(1)]),
-                    (ListEnd,               box [Index(1)]),
-                (ListEnd,                   box []),
+            vec![
+                (ListStart,                 vec![]),
+                    (NumberValue(2.0),      vec![Index(0)]),
+                    (ListStart,             vec![Index(1)]),
+                        (NumberValue(4.0),  vec![Index(1), Index(0)]),
+                        (NumberValue(1.0),  vec![Index(1), Index(1)]),
+                    (ListEnd,               vec![Index(1)]),
+                (ListEnd,                   vec![]),
             ]
         );
 
@@ -3368,7 +3366,7 @@ mod tests {
         assert_eq!((1, 2, 3).to_json(), list3);
         assert_eq!([1, 2].to_json(), list2);
         assert_eq!((&[1, 2, 3]).to_json(), list3);
-        assert_eq!((~[1, 2]).to_json(), list2);
+        assert_eq!((vec![1, 2]).to_json(), list2);
         assert_eq!(vec!(1, 2, 3).to_json(), list3);
         let mut tree_map = TreeMap::new();
         tree_map.insert("a".to_string(), 1);

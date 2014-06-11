@@ -63,8 +63,6 @@ println!("path exists: {}", path.exists());
 
 */
 
-#![deny(deprecated_owned_vector)]
-
 use collections::Collection;
 use c_str::CString;
 use clone::Clone;
@@ -524,13 +522,6 @@ impl<'a> BytesContainer for &'a [u8] {
     #[inline]
     fn container_as_bytes<'a>(&'a self) -> &'a [u8] {
         *self
-    }
-}
-
-impl BytesContainer for ~[u8] {
-    #[inline]
-    fn container_as_bytes<'a>(&'a self) -> &'a [u8] {
-        self.as_slice()
     }
 }
 

@@ -503,7 +503,8 @@ impl<T> PartialOrd for *mut T {
 }
 
 #[cfg(test)]
-pub mod ptr_tests {
+#[allow(deprecated, experimental)]
+pub mod test {
     use super::*;
     use prelude::*;
 
@@ -512,6 +513,8 @@ pub mod ptr_tests {
     use libc;
     use realstd::str;
     use realstd::str::Str;
+    use realstd::vec::Vec;
+    use realstd::collections::Collection;
     use slice::{ImmutableVector, MutableVector};
 
     #[test]
@@ -534,20 +537,24 @@ pub mod ptr_tests {
             assert_eq!(p.fst, 50);
             assert_eq!(p.snd, 60);
 
-            let v0 = box [32000u16, 32001u16, 32002u16];
-            let mut v1 = box [0u16, 0u16, 0u16];
+            let v0 = vec![32000u16, 32001u16, 32002u16];
+            let mut v1 = vec![0u16, 0u16, 0u16];
 
             copy_memory(v1.as_mut_ptr().offset(1),
                         v0.as_ptr().offset(1), 1);
-            assert!((v1[0] == 0u16 && v1[1] == 32001u16 && v1[2] == 0u16));
+            assert!((*v1.get(0) == 0u16 &&
+                     *v1.get(1) == 32001u16 &&
+                     *v1.get(2) == 0u16));
             copy_memory(v1.as_mut_ptr(),
                         v0.as_ptr().offset(2), 1);
-            assert!((v1[0] == 32002u16 && v1[1] == 32001u16 &&
-                     v1[2] == 0u16));
+            assert!((*v1.get(0) == 32002u16 &&
+                     *v1.get(1) == 32001u16 &&
+                     *v1.get(2) == 0u16));
             copy_memory(v1.as_mut_ptr().offset(2),
                         v0.as_ptr(), 1u);
-            assert!((v1[0] == 32002u16 && v1[1] == 32001u16 &&
-                     v1[2] == 32000u16));
+            assert!((*v1.get(0) == 32002u16 &&
+                     *v1.get(1) == 32001u16 &&
+                     *v1.get(2) == 32000u16));
         }
     }
 
@@ -569,7 +576,7 @@ pub mod ptr_tests {
         "hello".with_c_str(|p0| {
             "there".with_c_str(|p1| {
                 "thing".with_c_str(|p2| {
-                    let v = box [p0, p1, p2, null()];
+                    let v = vec![p0, p1, p2, null()];
                     unsafe {
                         assert_eq!(buf_len(v.as_ptr()), 3u);
                     }
@@ -617,7 +624,7 @@ pub mod ptr_tests {
     #[test]
     fn test_ptr_addition() {
         unsafe {
-            let xs = box [5, ..16];
+            let xs = Vec::from_elem(16, 5);
             let mut ptr = xs.as_ptr();
             let end = ptr.offset(16);
 
@@ -626,7 +633,7 @@ pub mod ptr_tests {
                 ptr = ptr.offset(1);
             }
 
-            let mut xs_mut = xs.clone();
+            let mut xs_mut = xs;
             let mut m_ptr = xs_mut.as_mut_ptr();
             let m_end = m_ptr.offset(16);
 
@@ -635,14 +642,14 @@ pub mod ptr_tests {
                 m_ptr = m_ptr.offset(1);
             }
 
-            assert_eq!(xs_mut, box [10, ..16]);
+            assert!(xs_mut == Vec::from_elem(16, 10));
         }
     }
 
     #[test]
     fn test_ptr_subtraction() {
         unsafe {
-            let xs = box [0,1,2,3,4,5,6,7,8,9];
+            let xs = vec![0,1,2,3,4,5,6,7,8,9];
             let mut idx = 9i8;
             let ptr = xs.as_ptr();
 
@@ -651,7 +658,7 @@ pub mod ptr_tests {
                 idx = idx - 1i8;
             }
 
-            let mut xs_mut = xs.clone();
+            let mut xs_mut = xs;
             let m_start = xs_mut.as_mut_ptr();
             let mut m_ptr = m_start.offset(9);
 
@@ -660,7 +667,7 @@ pub mod ptr_tests {
                 m_ptr = m_ptr.offset(-1);
             }
 
-            assert_eq!(xs_mut, box [0,2,4,6,8,10,12,14,16,18]);
+            assert!(xs_mut == vec![0,2,4,6,8,10,12,14,16,18]);
         }
     }
 
@@ -670,10 +677,10 @@ pub mod ptr_tests {
             let one = "oneOne".to_c_str();
             let two = "twoTwo".to_c_str();
             let three = "threeThree".to_c_str();
-            let arr = box [
+            let arr = vec![
                 one.with_ref(|buf| buf),
                 two.with_ref(|buf| buf),
-                three.with_ref(|buf| buf),
+                three.with_ref(|buf| buf)
             ];
             let expected_arr = [
                 one, two, three
@@ -700,12 +707,12 @@ pub mod ptr_tests {
             let one = "oneOne".to_c_str();
             let two = "twoTwo".to_c_str();
             let three = "threeThree".to_c_str();
-            let arr = box [
+            let arr = vec![
                 one.with_ref(|buf| buf),
                 two.with_ref(|buf| buf),
                 three.with_ref(|buf| buf),
                 // fake a null terminator
-                null(),
+                null()
             ];
             let expected_arr = [
                 one, two, three

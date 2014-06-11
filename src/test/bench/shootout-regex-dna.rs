@@ -75,7 +75,7 @@ fn main() {
     let clen = seq.len();
 
     let mut seqlen = Future::spawn(proc() {
-        let substs = ~[
+        let substs = vec![
             (regex!("B"), "(c|g|t)"),
             (regex!("D"), "(a|g|t)"),
             (regex!("H"), "(a|c|t)"),
@@ -95,7 +95,7 @@ fn main() {
         seq.len()
     });
 
-    let variants = ~[
+    let variants = vec![
         regex!("agggtaaa|tttaccct"),
         regex!("[cgt]gggtaaa|tttaccc[acg]"),
         regex!("a[act]ggtaaa|tttacc[agt]t"),

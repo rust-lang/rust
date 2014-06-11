@@ -276,6 +276,7 @@ mod tests {
     use str::Str;
     use string::String;
     use slice::{Vector, ImmutableVector};
+    use vec::Vec;
 
     use super::super::{Hash, Writer};
     use super::{SipState, hash, hash_with_keys};
@@ -376,8 +377,8 @@ mod tests {
             s
         }
 
-        fn result_bytes(h: u64) -> ~[u8] {
-            box [(h >> 0) as u8,
+        fn result_bytes(h: u64) -> Vec<u8> {
+            vec![(h >> 0) as u8,
               (h >> 8) as u8,
               (h >> 16) as u8,
               (h >> 24) as u8,

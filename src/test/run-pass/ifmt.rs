@@ -13,7 +13,6 @@
 #![feature(macro_rules, managed_boxes)]
 #![deny(warnings)]
 #![allow(unused_must_use)]
-#![allow(deprecated_owned_vector)]
 
 extern crate debug;
 

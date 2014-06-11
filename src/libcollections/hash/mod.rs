@@ -213,13 +213,6 @@ impl<'a, S: Writer, T: Hash<S>> Hash<S> for &'a mut [T] {
     }
 }
 
-impl<S: Writer, T: Hash<S>> Hash<S> for ~[T] {
-    #[inline]
-    fn hash(&self, state: &mut S) {
-        self.as_slice().hash(state);
-    }
-}
-
 impl<S: Writer, T: Hash<S>> Hash<S> for Vec<T> {
     #[inline]
     fn hash(&self, state: &mut S) {
