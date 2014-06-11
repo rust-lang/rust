@@ -20,6 +20,7 @@ use ext::build::AstBuilder;
 use codemap::{Span,respan};
 use owned_slice::OwnedSlice;
 
+use std::gc::Gc;
 
 /// The types of pointers
 pub enum PtrTy<'a> {
@@ -81,7 +82,7 @@ impl<'a> Path<'a> {
 /// A type. Supports pointers (except for *), Self, and literals
 pub enum Ty<'a> {
     Self,
-    // &/Box/@ Ty
+    // &/Box/ Ty
     Ptr(Box<Ty<'a>>, PtrTy<'a>),
     // mod::mod::Type<[lifetime], [Params...]>, including a plain type
     // parameter, and things like `int`
@@ -244,7 +245,7 @@ impl<'a> LifetimeBounds<'a> {
 
 
 pub fn get_explicit_self(cx: &ExtCtxt, span: Span, self_ptr: &Option<PtrTy>)
-    -> (@Expr, ast::ExplicitSelf) {
+    -> (Gc<Expr>, ast::ExplicitSelf) {
     let self_path = cx.expr_self(span);
     match *self_ptr {
         None => {

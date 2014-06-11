@@ -184,25 +184,25 @@ impl<'a> MarkSymbolVisitor<'a> {
                             }
                         });
                         self.live_symbols.extend(live_fields.map(|f| f.node.id));
-                        visit::walk_item(self, item, ());
+                        visit::walk_item(self, &*item, ());
                     }
                     ast::ItemFn(..)
                     | ast::ItemTy(..)
                     | ast::ItemEnum(..)
                     | ast::ItemStatic(..) => {
-                        visit::walk_item(self, item, ());
+                        visit::walk_item(self, &*item, ());
                     }
                     _ => ()
                 }
             }
             ast_map::NodeTraitMethod(trait_method) => {
-                visit::walk_trait_method(self, trait_method, ());
+                visit::walk_trait_method(self, &*trait_method, ());
             }
             ast_map::NodeMethod(method) => {
-                visit::walk_block(self, method.body, ());
+                visit::walk_block(self, &*method.body, ());
             }
             ast_map::NodeForeignItem(foreign_item) => {
-                visit::walk_foreign_item(self, foreign_item, ());
+                visit::walk_foreign_item(self, &*foreign_item, ());
             }
             _ => ()
         }
@@ -217,7 +217,7 @@ impl<'a> Visitor<()> for MarkSymbolVisitor<'a> {
                 self.lookup_and_handle_method(expr.id, expr.span);
             }
             ast::ExprField(ref lhs, ref ident, _) => {
-                self.handle_field_access(*lhs, ident);
+                self.handle_field_access(&**lhs, ident);
             }
             _ => ()
         }
@@ -479,7 +479,7 @@ impl<'a> Visitor<()> for DeadVisitor<'a> {
     // Overwrite so that we don't warn the trait method itself.
     fn visit_trait_method(&mut self, trait_method: &ast::TraitMethod, _: ()) {
         match *trait_method {
-            ast::Provided(method) => visit::walk_block(self, method.body, ()),
+            ast::Provided(ref method) => visit::walk_block(self, &*method.body, ()),
             ast::Required(_) => ()
         }
     }

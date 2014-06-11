@@ -486,8 +486,8 @@ struct StaticInitializerCtxt<'a> {
 impl<'a> visit::Visitor<()> for StaticInitializerCtxt<'a> {
     fn visit_expr(&mut self, ex: &Expr, _: ()) {
         match ex.node {
-            ast::ExprAddrOf(mutbl, base) => {
-                let base_cmt = self.bccx.cat_expr(base);
+            ast::ExprAddrOf(mutbl, ref base) => {
+                let base_cmt = self.bccx.cat_expr(&**base);
                 let borrow_kind = ty::BorrowKind::from_mutbl(mutbl);
                 // Check that we don't allow borrows of unsafe static items.
                 if check_aliasability(self.bccx, ex.span, euv::AddrOf,

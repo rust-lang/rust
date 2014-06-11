@@ -28,13 +28,13 @@ use middle::ty;
 use middle::typeck;
 use middle::astencode::vtable_decoder_helpers;
 
-use std::u64;
-use std::hash;
+use std::gc::Gc;
 use std::hash::Hash;
-use std::io;
+use std::hash;
 use std::io::extensions::u64_from_be_bytes;
-use std::option;
+use std::io;
 use std::rc::Rc;
+use std::u64;
 use serialize::ebml::reader;
 use serialize::ebml;
 use serialize::Decodable;
@@ -1010,8 +1010,8 @@ pub fn get_struct_fields(intr: Rc<IdentInterner>, cdata: Cmd, id: ast::NodeId)
     result
 }
 
-fn get_meta_items(md: ebml::Doc) -> Vec<@ast::MetaItem> {
-    let mut items: Vec<@ast::MetaItem> = Vec::new();
+fn get_meta_items(md: ebml::Doc) -> Vec<Gc<ast::MetaItem>> {
+    let mut items: Vec<Gc<ast::MetaItem>> = Vec::new();
     reader::tagged_docs(md, tag_meta_item_word, |meta_item_doc| {
         let nd = reader::get_doc(meta_item_doc, tag_meta_item_name);
         let n = token::intern_and_get_ident(nd.as_str_slice());
@@ -1041,7 +1041,7 @@ fn get_meta_items(md: ebml::Doc) -> Vec<@ast::MetaItem> {
 fn get_attributes(md: ebml::Doc) -> Vec<ast::Attribute> {
     let mut attrs: Vec<ast::Attribute> = Vec::new();
     match reader::maybe_get_doc(md, tag_attributes) {
-      option::Some(attrs_d) => {
+      Some(attrs_d) => {
         reader::tagged_docs(attrs_d, tag_attribute, |attr_doc| {
             let meta_items = get_meta_items(attr_doc);
             // Currently it's only possible to have a single meta item on
@@ -1061,7 +1061,7 @@ fn get_attributes(md: ebml::Doc) -> Vec<ast::Attribute> {
             true
         });
       }
-      option::None => ()
+      None => ()
     }
     return attrs;
 }

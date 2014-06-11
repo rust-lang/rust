@@ -18,52 +18,32 @@ collector is task-local so `Gc<T>` is not sendable.
 
 #![allow(experimental)]
 
-use kinds::marker;
 use clone::Clone;
+use cmp::{Ord, PartialOrd, Ordering, Eq, PartialEq};
+use default::Default;
+use fmt;
+use hash;
+use kinds::marker;
+use ops::Deref;
+use raw;
 
 /// Immutable garbage-collected pointer type
 #[lang="gc"]
-#[cfg(not(test))]
 #[experimental = "Gc is currently based on reference-counting and will not collect cycles until \
                   task annihilation. For now, cycles need to be broken manually by using `Rc<T>` \
                   with a non-owning `Weak<T>` pointer. A tracing garbage collector is planned."]
 pub struct Gc<T> {
+    #[cfg(stage0)]
     ptr: @T,
+    #[cfg(not(stage0))]
+    _ptr: *T,
     marker: marker::NoSend,
-}
-
-#[cfg(test)]
-pub struct Gc<T> {
-    ptr: @T,
-    marker: marker::NoSend,
-}
-
-impl<T: 'static> Gc<T> {
-    /// Construct a new garbage-collected box
-    #[inline]
-    pub fn new(value: T) -> Gc<T> {
-        Gc { ptr: @value, marker: marker::NoSend }
-    }
-
-    /// Borrow the value contained in the garbage-collected box
-    #[inline]
-    pub fn borrow<'r>(&'r self) -> &'r T {
-        &*self.ptr
-    }
-
-    /// Determine if two garbage-collected boxes point to the same object
-    #[inline]
-    pub fn ptr_eq(&self, other: &Gc<T>) -> bool {
-        self.borrow() as *T == other.borrow() as *T
-    }
 }
 
 impl<T> Clone for Gc<T> {
     /// Clone the pointer only
     #[inline]
-    fn clone(&self) -> Gc<T> {
-        Gc{ ptr: self.ptr, marker: marker::NoSend }
-    }
+    fn clone(&self) -> Gc<T> { *self }
 }
 
 /// An value that represents the task-local managed heap.
@@ -73,8 +53,54 @@ impl<T> Clone for Gc<T> {
 #[cfg(not(test))]
 pub static GC: () = ();
 
-#[cfg(test)]
-pub static GC: () = ();
+impl<T: PartialEq + 'static> PartialEq for Gc<T> {
+    #[inline]
+    fn eq(&self, other: &Gc<T>) -> bool { *(*self) == *(*other) }
+    #[inline]
+    fn ne(&self, other: &Gc<T>) -> bool { *(*self) != *(*other) }
+}
+impl<T: PartialOrd + 'static> PartialOrd for Gc<T> {
+    #[inline]
+    fn lt(&self, other: &Gc<T>) -> bool { *(*self) < *(*other) }
+    #[inline]
+    fn le(&self, other: &Gc<T>) -> bool { *(*self) <= *(*other) }
+    #[inline]
+    fn ge(&self, other: &Gc<T>) -> bool { *(*self) >= *(*other) }
+    #[inline]
+    fn gt(&self, other: &Gc<T>) -> bool { *(*self) > *(*other) }
+}
+impl<T: Ord + 'static> Ord for Gc<T> {
+    #[inline]
+    fn cmp(&self, other: &Gc<T>) -> Ordering { (**self).cmp(&**other) }
+}
+impl<T: Eq + 'static> Eq for Gc<T> {}
+
+impl<T: 'static> Deref<T> for Gc<T> {
+    #[cfg(stage0)]
+    fn deref<'a>(&'a self) -> &'a T { &*self.ptr }
+    #[cfg(not(stage0))]
+    fn deref<'a>(&'a self) -> &'a T { &**self }
+}
+
+impl<T: Default + 'static> Default for Gc<T> {
+    fn default() -> Gc<T> {
+        box(GC) Default::default()
+    }
+}
+
+impl<T: 'static> raw::Repr<*raw::Box<T>> for Gc<T> {}
+
+impl<S: hash::Writer, T: hash::Hash<S> + 'static> hash::Hash<S> for Gc<T> {
+    fn hash(&self, s: &mut S) {
+        (**self).hash(s)
+    }
+}
+
+impl<T: 'static + fmt::Show> fmt::Show for Gc<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        (**self).fmt(f)
+    }
+}
 
 #[cfg(test)]
 mod tests {

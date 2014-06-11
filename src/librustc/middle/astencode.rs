@@ -40,7 +40,6 @@ use std::io::Seek;
 use std::io::MemWriter;
 use std::mem;
 use std::rc::Rc;
-use std::string::String;
 
 use serialize::ebml::reader;
 use serialize::ebml;
@@ -51,6 +50,7 @@ use writer = serialize::ebml::writer;
 
 #[cfg(test)] use syntax::parse;
 #[cfg(test)] use syntax::print::pprust;
+#[cfg(test)] use std::gc::Gc;
 
 struct DecodeContext<'a> {
     cdata: &'a cstore::crate_metadata,
@@ -146,7 +146,7 @@ pub fn decode_inlined_item(cdata: &cstore::crate_metadata,
         match ii {
           ast::IIItem(i) => {
             debug!(">>> DECODED ITEM >>>\n{}\n<<< DECODED ITEM <<<",
-                   syntax::print::pprust::item_to_str(i));
+                   syntax::print::pprust::item_to_str(&*i));
           }
           _ => { }
         }
@@ -438,7 +438,7 @@ impl tr for def::Def {
           def::DefUse(did) => def::DefUse(did.tr(xcx)),
           def::DefUpvar(nid1, def, nid2, nid3) => {
             def::DefUpvar(xcx.tr_id(nid1),
-                           @(*def).tr(xcx),
+                           box(GC) (*def).tr(xcx),
                            xcx.tr_id(nid2),
                            xcx.tr_id(nid3))
           }
@@ -1395,17 +1395,17 @@ fn decode_side_tables(xcx: &ExtendedDecodeContext,
 // Testing of astencode_gen
 
 #[cfg(test)]
-fn encode_item_ast(ebml_w: &mut Encoder, item: @ast::Item) {
+fn encode_item_ast(ebml_w: &mut Encoder, item: Gc<ast::Item>) {
     ebml_w.start_tag(c::tag_tree as uint);
     (*item).encode(ebml_w);
     ebml_w.end_tag();
 }
 
 #[cfg(test)]
-fn decode_item_ast(par_doc: ebml::Doc) -> @ast::Item {
+fn decode_item_ast(par_doc: ebml::Doc) -> Gc<ast::Item> {
     let chi_doc = par_doc.get(c::tag_tree as uint);
     let mut d = reader::Decoder::new(chi_doc);
-    @Decodable::decode(&mut d).unwrap()
+    box(GC) Decodable::decode(&mut d).unwrap()
 }
 
 #[cfg(test)]
@@ -1440,7 +1440,7 @@ fn mk_ctxt() -> parse::ParseSess {
 }
 
 #[cfg(test)]
-fn roundtrip(in_item: Option<@ast::Item>) {
+fn roundtrip(in_item: Option<Gc<ast::Item>>) {
     use std::io::MemWriter;
 
     let in_item = in_item.unwrap();

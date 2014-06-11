@@ -18,7 +18,7 @@ use middle::lint;
 use middle::const_eval;
 use middle::def;
 use middle::dependency_format;
-use middle::lang_items::{ExchangeHeapLangItem, OpaqueStructLangItem};
+use middle::lang_items::OpaqueStructLangItem;
 use middle::lang_items::{TyDescStructLangItem, TyVisitorTraitLangItem};
 use middle::freevars;
 use middle::resolve;
@@ -42,6 +42,7 @@ use std::cmp;
 use std::fmt::Show;
 use std::fmt;
 use std::hash::{Hash, sip, Writer};
+use std::gc::Gc;
 use std::iter::AdditiveIterator;
 use std::mem;
 use std::ops;
@@ -348,8 +349,8 @@ pub struct ctxt {
 
     /// These two caches are used by const_eval when decoding external statics
     /// and variants that are found.
-    pub extern_const_statics: RefCell<DefIdMap<Option<@ast::Expr>>>,
-    pub extern_const_variants: RefCell<DefIdMap<Option<@ast::Expr>>>,
+    pub extern_const_statics: RefCell<DefIdMap<Option<Gc<ast::Expr>>>>,
+    pub extern_const_variants: RefCell<DefIdMap<Option<Gc<ast::Expr>>>>,
 
     pub method_map: typeck::MethodMap,
     pub vtable_map: typeck::vtable_map,
@@ -3108,21 +3109,21 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
         }
 
         ast::ExprBox(place, _) => {
-            // Special case `Box<T>` for now:
+            // Special case `Box<T>`/`Gc<T>` for now:
             let definition = match tcx.def_map.borrow().find(&place.id) {
                 Some(&def) => def,
                 None => fail!("no def for place"),
             };
             let def_id = definition.def_id();
-            match tcx.lang_items.items.get(ExchangeHeapLangItem as uint) {
-                &Some(item_def_id) if def_id == item_def_id => {
-                    RvalueDatumExpr
-                }
-                &Some(_) | &None => RvalueDpsExpr,
+            if tcx.lang_items.exchange_heap() == Some(def_id) ||
+               tcx.lang_items.managed_heap() == Some(def_id) {
+                RvalueDatumExpr
+            } else {
+                RvalueDpsExpr
             }
         }
 
-        ast::ExprParen(e) => expr_kind(tcx, e),
+        ast::ExprParen(ref e) => expr_kind(tcx, &**e),
 
         ast::ExprMac(..) => {
             tcx.sess.span_bug(
@@ -3181,7 +3182,7 @@ pub fn ty_sort_str(cx: &ctxt, t: t) -> String {
         }
 
         ty_enum(id, _) => format!("enum {}", item_path_str(cx, id)),
-        ty_box(_) => "@-ptr".to_string(),
+        ty_box(_) => "Gc-ptr".to_string(),
         ty_uniq(_) => "box".to_string(),
         ty_vec(_, _) => "vector".to_string(),
         ty_ptr(_) => "*-ptr".to_string(),
@@ -3740,7 +3741,7 @@ pub fn enum_variants(cx: &ctxt, id: ast::DefId) -> Rc<Vec<Rc<VariantInfo>>> {
                             };
 
                             match variant.node.disr_expr {
-                                Some(e) => match const_eval::eval_const_expr_partial(cx, e) {
+                                Some(ref e) => match const_eval::eval_const_expr_partial(cx, &**e) {
                                     Ok(const_eval::const_int(val)) => {
                                         discriminant = val as Disr
                                     }
@@ -3763,7 +3764,7 @@ pub fn enum_variants(cx: &ctxt, id: ast::DefId) -> Rc<Vec<Rc<VariantInfo>>> {
                             };
 
                             last_discriminant = Some(discriminant);
-                            Rc::new(VariantInfo::from_ast_variant(cx, variant,
+                            Rc::new(VariantInfo::from_ast_variant(cx, &*variant,
                                                                   discriminant))
                         }).collect())
                     }

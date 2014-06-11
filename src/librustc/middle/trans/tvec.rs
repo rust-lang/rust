@@ -351,7 +351,7 @@ pub fn write_content<'a>(
             match dest {
                 Ignore => {
                     for element in elements.iter() {
-                        bcx = expr::trans_into(bcx, *element, Ignore);
+                        bcx = expr::trans_into(bcx, &**element, Ignore);
                     }
                 }
 
@@ -361,7 +361,7 @@ pub fn write_content<'a>(
                         let lleltptr = GEPi(bcx, lldest, [i]);
                         debug!("writing index {:?} with lleltptr={:?}",
                                i, bcx.val_to_str(lleltptr));
-                        bcx = expr::trans_into(bcx, *element,
+                        bcx = expr::trans_into(bcx, &**element,
                                                SaveIn(lleltptr));
                         fcx.schedule_drop_mem(
                             cleanup::CustomScope(temp_scope),
@@ -373,13 +373,13 @@ pub fn write_content<'a>(
             }
             return bcx;
         }
-        ast::ExprRepeat(element, count_expr) => {
+        ast::ExprRepeat(ref element, ref count_expr) => {
             match dest {
                 Ignore => {
-                    return expr::trans_into(bcx, element, Ignore);
+                    return expr::trans_into(bcx, &**element, Ignore);
                 }
                 SaveIn(lldest) => {
-                    let count = ty::eval_repeat_count(bcx.tcx(), count_expr);
+                    let count = ty::eval_repeat_count(bcx.tcx(), &**count_expr);
                     if count == 0 {
                         return bcx;
                     }
@@ -389,7 +389,7 @@ pub fn write_content<'a>(
                     // this can only happen as a result of OOM. So we just skip out on the
                     // cleanup since things would *probably* be broken at that point anyways.
 
-                    let elem = unpack_datum!(bcx, expr::trans(bcx, element));
+                    let elem = unpack_datum!(bcx, expr::trans(bcx, &**element));
                     assert!(!ty::type_moves_by_default(bcx.tcx(), elem.ty));
 
                     let bcx = iter_vec_loop(bcx, lldest, vt,
@@ -442,8 +442,8 @@ pub fn elements_required(bcx: &Block, content_expr: &ast::Expr) -> uint {
             }
         },
         ast::ExprVec(ref es) => es.len(),
-        ast::ExprRepeat(_, count_expr) => {
-            ty::eval_repeat_count(bcx.tcx(), count_expr)
+        ast::ExprRepeat(_, ref count_expr) => {
+            ty::eval_repeat_count(bcx.tcx(), &**count_expr)
         }
         _ => bcx.tcx().sess.span_bug(content_expr.span,
                                      "unexpected vec content")

@@ -155,8 +155,8 @@ fn check_impl_of_trait(cx: &mut Context, it: &Item, trait_ref: &TraitRef, self_t
 fn check_item(cx: &mut Context, item: &Item) {
     if !attr::contains_name(item.attrs.as_slice(), "unsafe_destructor") {
         match item.node {
-            ItemImpl(_, Some(ref trait_ref), self_type, _) => {
-                check_impl_of_trait(cx, item, trait_ref, self_type);
+            ItemImpl(_, Some(ref trait_ref), ref self_type, _) => {
+                check_impl_of_trait(cx, item, trait_ref, &**self_type);
             }
             _ => {}
         }
@@ -292,19 +292,19 @@ pub fn check_expr(cx: &mut Context, e: &Expr) {
     }
 
     match e.node {
-        ExprUnary(UnBox, interior) => {
-            let interior_type = ty::expr_ty(cx.tcx, interior);
+        ExprUnary(UnBox, ref interior) => {
+            let interior_type = ty::expr_ty(cx.tcx, &**interior);
             let _ = check_static(cx.tcx, interior_type, interior.span);
         }
-        ExprCast(source, _) => {
-            let source_ty = ty::expr_ty(cx.tcx, source);
+        ExprCast(ref source, _) => {
+            let source_ty = ty::expr_ty(cx.tcx, &**source);
             let target_ty = ty::expr_ty(cx.tcx, e);
             check_trait_cast(cx, source_ty, target_ty, source.span);
         }
-        ExprRepeat(element, count_expr) => {
-            let count = ty::eval_repeat_count(cx.tcx, count_expr);
+        ExprRepeat(ref element, ref count_expr) => {
+            let count = ty::eval_repeat_count(cx.tcx, &**count_expr);
             if count > 1 {
-                let element_ty = ty::expr_ty(cx.tcx, element);
+                let element_ty = ty::expr_ty(cx.tcx, &**element);
                 check_copy(cx, element_ty, element.span,
                            "repeated element will be copied");
             }

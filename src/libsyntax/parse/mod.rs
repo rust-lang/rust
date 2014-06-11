@@ -18,6 +18,7 @@ use parse::attr::ParserAttr;
 use parse::parser::Parser;
 
 use std::cell::RefCell;
+use std::gc::Gc;
 use std::io::File;
 use std::rc::Rc;
 use std::str;
@@ -105,7 +106,7 @@ pub fn parse_expr_from_source_str(name: String,
                                   source: String,
                                   cfg: ast::CrateConfig,
                                   sess: &ParseSess)
-                                  -> @ast::Expr {
+                                  -> Gc<ast::Expr> {
     let mut p = new_parser_from_source_str(sess, cfg, name, source);
     maybe_aborted(p.parse_expr(), p)
 }
@@ -114,7 +115,7 @@ pub fn parse_item_from_source_str(name: String,
                                   source: String,
                                   cfg: ast::CrateConfig,
                                   sess: &ParseSess)
-                                  -> Option<@ast::Item> {
+                                  -> Option<Gc<ast::Item>> {
     let mut p = new_parser_from_source_str(sess, cfg, name, source);
     let attrs = p.parse_outer_attributes();
     maybe_aborted(p.parse_item(attrs),p)
@@ -124,7 +125,7 @@ pub fn parse_meta_from_source_str(name: String,
                                   source: String,
                                   cfg: ast::CrateConfig,
                                   sess: &ParseSess)
-                                  -> @ast::MetaItem {
+                                  -> Gc<ast::MetaItem> {
     let mut p = new_parser_from_source_str(sess, cfg, name, source);
     maybe_aborted(p.parse_meta_item(),p)
 }
@@ -134,7 +135,7 @@ pub fn parse_stmt_from_source_str(name: String,
                                   cfg: ast::CrateConfig,
                                   attrs: Vec<ast::Attribute> ,
                                   sess: &ParseSess)
-                                  -> @ast::Stmt {
+                                  -> Gc<ast::Stmt> {
     let mut p = new_parser_from_source_str(
         sess,
         cfg,
@@ -306,7 +307,7 @@ mod test {
 
     #[test] fn path_exprs_1() {
         assert!(string_to_expr("a".to_string()) ==
-                   @ast::Expr{
+                   box(GC) ast::Expr{
                     id: ast::DUMMY_NODE_ID,
                     node: ast::ExprPath(ast::Path {
                         span: sp(0, 1),
@@ -325,7 +326,7 @@ mod test {
 
     #[test] fn path_exprs_2 () {
         assert!(string_to_expr("::a::b".to_string()) ==
-                   @ast::Expr {
+                   box(GC) ast::Expr {
                     id: ast::DUMMY_NODE_ID,
                     node: ast::ExprPath(ast::Path {
                             span: sp(0, 6),
@@ -537,9 +538,9 @@ mod test {
 
     #[test] fn ret_expr() {
         assert!(string_to_expr("return d".to_string()) ==
-                   @ast::Expr{
+                   box(GC) ast::Expr{
                     id: ast::DUMMY_NODE_ID,
-                    node:ast::ExprRet(Some(@ast::Expr{
+                    node:ast::ExprRet(Some(box(GC) ast::Expr{
                         id: ast::DUMMY_NODE_ID,
                         node:ast::ExprPath(ast::Path{
                             span: sp(7, 8),
@@ -560,8 +561,8 @@ mod test {
 
     #[test] fn parse_stmt_1 () {
         assert!(string_to_stmt("b;".to_string()) ==
-                   @Spanned{
-                       node: ast::StmtExpr(@ast::Expr {
+                   box(GC) Spanned{
+                       node: ast::StmtExpr(box(GC) ast::Expr {
                            id: ast::DUMMY_NODE_ID,
                            node: ast::ExprPath(ast::Path {
                                span:sp(0,1),
@@ -588,7 +589,7 @@ mod test {
         let sess = new_parse_sess();
         let mut parser = string_to_parser(&sess, "b".to_string());
         assert!(parser.parse_pat() ==
-                   @ast::Pat{id: ast::DUMMY_NODE_ID,
+                   box(GC) ast::Pat{id: ast::DUMMY_NODE_ID,
                              node: ast::PatIdent(
                                 ast::BindByValue(ast::MutImmutable),
                                 ast::Path {
@@ -612,7 +613,7 @@ mod test {
         // this test depends on the intern order of "fn" and "int"
         assert!(string_to_item("fn a (b : int) { b; }".to_string()) ==
                   Some(
-                      @ast::Item{ident:str_to_ident("a"),
+                      box(GC) ast::Item{ident:str_to_ident("a"),
                             attrs:Vec::new(),
                             id: ast::DUMMY_NODE_ID,
                             node: ast::ItemFn(ast::P(ast::FnDecl {
@@ -632,7 +633,7 @@ mod test {
                                         }, None, ast::DUMMY_NODE_ID),
                                         span:sp(10,13)
                                     }),
-                                    pat: @ast::Pat {
+                                    pat: box(GC) ast::Pat {
                                         id: ast::DUMMY_NODE_ID,
                                         node: ast::PatIdent(
                                             ast::BindByValue(ast::MutImmutable),
@@ -668,8 +669,8 @@ mod test {
                                     },
                                     ast::P(ast::Block {
                                         view_items: Vec::new(),
-                                        stmts: vec!(@Spanned{
-                                            node: ast::StmtSemi(@ast::Expr{
+                                        stmts: vec!(box(GC) Spanned{
+                                            node: ast::StmtSemi(box(GC) ast::Expr{
                                                 id: ast::DUMMY_NODE_ID,
                                                 node: ast::ExprPath(
                                                       ast::Path{
@@ -703,12 +704,12 @@ mod test {
     #[test] fn parse_exprs () {
         // just make sure that they parse....
         string_to_expr("3 + 4".to_string());
-        string_to_expr("a::z.froob(b,@(987+3))".to_string());
+        string_to_expr("a::z.froob(b,box(GC)(987+3))".to_string());
     }
 
     #[test] fn attrs_fix_bug () {
         string_to_item("pub fn mk_file_writer(path: &Path, flags: &[FileFlag])
-                   -> Result<@Writer, String> {
+                   -> Result<Gc<Writer>, String> {
     #[cfg(windows)]
     fn wb() -> c_int {
       (O_WRONLY | libc::consts::os::extra::O_BINARY) as c_int

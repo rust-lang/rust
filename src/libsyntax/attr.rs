@@ -22,6 +22,7 @@ use crateid::CrateId;
 
 use std::collections::HashSet;
 use std::collections::BitvSet;
+use std::gc::Gc;
 
 local_data_key!(used_attrs: BitvSet)
 
@@ -52,7 +53,7 @@ pub trait AttrMetaMethods {
      */
     fn value_str(&self) -> Option<InternedString>;
     /// Gets a list of inner meta items from a list MetaItem type.
-    fn meta_item_list<'a>(&'a self) -> Option<&'a [@MetaItem]>;
+    fn meta_item_list<'a>(&'a self) -> Option<&'a [Gc<MetaItem>]>;
 }
 
 impl AttrMetaMethods for Attribute {
@@ -67,7 +68,7 @@ impl AttrMetaMethods for Attribute {
     fn value_str(&self) -> Option<InternedString> {
         self.meta().value_str()
     }
-    fn meta_item_list<'a>(&'a self) -> Option<&'a [@MetaItem]> {
+    fn meta_item_list<'a>(&'a self) -> Option<&'a [Gc<MetaItem>]> {
         self.node.value.meta_item_list()
     }
 }
@@ -93,7 +94,7 @@ impl AttrMetaMethods for MetaItem {
         }
     }
 
-    fn meta_item_list<'a>(&'a self) -> Option<&'a [@MetaItem]> {
+    fn meta_item_list<'a>(&'a self) -> Option<&'a [Gc<MetaItem>]> {
         match self.node {
             MetaList(_, ref l) => Some(l.as_slice()),
             _ => None
@@ -102,23 +103,23 @@ impl AttrMetaMethods for MetaItem {
 }
 
 // Annoying, but required to get test_cfg to work
-impl AttrMetaMethods for @MetaItem {
+impl AttrMetaMethods for Gc<MetaItem> {
     fn name(&self) -> InternedString { (**self).name() }
     fn value_str(&self) -> Option<InternedString> { (**self).value_str() }
-    fn meta_item_list<'a>(&'a self) -> Option<&'a [@MetaItem]> {
+    fn meta_item_list<'a>(&'a self) -> Option<&'a [Gc<MetaItem>]> {
         (**self).meta_item_list()
     }
 }
 
 
 pub trait AttributeMethods {
-    fn meta(&self) -> @MetaItem;
+    fn meta(&self) -> Gc<MetaItem>;
     fn desugar_doc(&self) -> Attribute;
 }
 
 impl AttributeMethods for Attribute {
     /// Extract the MetaItem from inside this Attribute.
-    fn meta(&self) -> @MetaItem {
+    fn meta(&self) -> Gc<MetaItem> {
         self.node.value
     }
 
@@ -146,22 +147,23 @@ impl AttributeMethods for Attribute {
 /* Constructors */
 
 pub fn mk_name_value_item_str(name: InternedString, value: InternedString)
-                              -> @MetaItem {
+                              -> Gc<MetaItem> {
     let value_lit = dummy_spanned(ast::LitStr(value, ast::CookedStr));
     mk_name_value_item(name, value_lit)
 }
 
 pub fn mk_name_value_item(name: InternedString, value: ast::Lit)
-                          -> @MetaItem {
-    @dummy_spanned(MetaNameValue(name, value))
+                          -> Gc<MetaItem> {
+    box(GC) dummy_spanned(MetaNameValue(name, value))
 }
 
-pub fn mk_list_item(name: InternedString, items: Vec<@MetaItem> ) -> @MetaItem {
-    @dummy_spanned(MetaList(name, items))
+pub fn mk_list_item(name: InternedString,
+                    items: Vec<Gc<MetaItem>>) -> Gc<MetaItem> {
+    box(GC) dummy_spanned(MetaList(name, items))
 }
 
-pub fn mk_word_item(name: InternedString) -> @MetaItem {
-    @dummy_spanned(MetaWord(name))
+pub fn mk_word_item(name: InternedString) -> Gc<MetaItem> {
+    box(GC) dummy_spanned(MetaWord(name))
 }
 
 local_data_key!(next_attr_id: uint)
@@ -173,7 +175,7 @@ pub fn mk_attr_id() -> AttrId {
 }
 
 /// Returns an inner attribute with the given value.
-pub fn mk_attr_inner(id: AttrId, item: @MetaItem) -> Attribute {
+pub fn mk_attr_inner(id: AttrId, item: Gc<MetaItem>) -> Attribute {
     dummy_spanned(Attribute_ {
         id: id,
         style: ast::AttrInner,
@@ -183,7 +185,7 @@ pub fn mk_attr_inner(id: AttrId, item: @MetaItem) -> Attribute {
 }
 
 /// Returns an outer attribute with the given value.
-pub fn mk_attr_outer(id: AttrId, item: @MetaItem) -> Attribute {
+pub fn mk_attr_outer(id: AttrId, item: Gc<MetaItem>) -> Attribute {
     dummy_spanned(Attribute_ {
         id: id,
         style: ast::AttrOuter,
@@ -200,7 +202,7 @@ pub fn mk_sugared_doc_attr(id: AttrId, text: InternedString, lo: BytePos,
     let attr = Attribute_ {
         id: id,
         style: style,
-        value: @spanned(lo, hi, MetaNameValue(InternedString::new("doc"),
+        value: box(GC) spanned(lo, hi, MetaNameValue(InternedString::new("doc"),
                                               lit)),
         is_sugared_doc: true
     };
@@ -211,8 +213,8 @@ pub fn mk_sugared_doc_attr(id: AttrId, text: InternedString, lo: BytePos,
 /// Check if `needle` occurs in `haystack` by a structural
 /// comparison. This is slightly subtle, and relies on ignoring the
 /// span included in the `==` comparison a plain MetaItem.
-pub fn contains(haystack: &[@ast::MetaItem],
-                needle: @ast::MetaItem) -> bool {
+pub fn contains(haystack: &[Gc<ast::MetaItem>],
+                needle: Gc<ast::MetaItem>) -> bool {
     debug!("attr::contains (name={})", needle.name());
     haystack.iter().any(|item| {
         debug!("  testing: {}", item.name());
@@ -235,7 +237,7 @@ pub fn first_attr_value_str_by_name(attrs: &[Attribute], name: &str)
         .and_then(|at| at.value_str())
 }
 
-pub fn last_meta_item_value_str_by_name(items: &[@MetaItem], name: &str)
+pub fn last_meta_item_value_str_by_name(items: &[Gc<MetaItem>], name: &str)
                                      -> Option<InternedString> {
     items.iter()
          .rev()
@@ -245,12 +247,12 @@ pub fn last_meta_item_value_str_by_name(items: &[@MetaItem], name: &str)
 
 /* Higher-level applications */
 
-pub fn sort_meta_items(items: &[@MetaItem]) -> Vec<@MetaItem> {
+pub fn sort_meta_items(items: &[Gc<MetaItem>]) -> Vec<Gc<MetaItem>> {
     // This is sort of stupid here, but we need to sort by
     // human-readable strings.
     let mut v = items.iter()
         .map(|&mi| (mi.name(), mi))
-        .collect::<Vec<(InternedString, @MetaItem)> >();
+        .collect::<Vec<(InternedString, Gc<MetaItem>)> >();
 
     v.sort_by(|&(ref a, _), &(ref b, _)| a.cmp(b));
 
@@ -258,7 +260,7 @@ pub fn sort_meta_items(items: &[@MetaItem]) -> Vec<@MetaItem> {
     v.move_iter().map(|(_, m)| {
         match m.node {
             MetaList(ref n, ref mis) => {
-                @Spanned {
+                box(GC) Spanned {
                     node: MetaList((*n).clone(),
                                    sort_meta_items(mis.as_slice())),
                     .. /*bad*/ (*m).clone()
@@ -273,7 +275,7 @@ pub fn sort_meta_items(items: &[@MetaItem]) -> Vec<@MetaItem> {
  * From a list of crate attributes get only the meta_items that affect crate
  * linkage
  */
-pub fn find_linkage_metas(attrs: &[Attribute]) -> Vec<@MetaItem> {
+pub fn find_linkage_metas(attrs: &[Attribute]) -> Vec<Gc<MetaItem>> {
     let mut result = Vec::new();
     for attr in attrs.iter().filter(|at| at.check_name("link")) {
         match attr.meta().node {
@@ -330,7 +332,7 @@ pub fn find_inline_attr(attrs: &[Attribute]) -> InlineAttr {
 /// test_cfg(`[foo="a", bar]`, `[cfg(bar, foo="a")]`) == true
 /// test_cfg(`[foo="a", bar]`, `[cfg(bar, foo="b")]`) == false
 pub fn test_cfg<AM: AttrMetaMethods, It: Iterator<AM>>
-    (cfg: &[@MetaItem], mut metas: It) -> bool {
+    (cfg: &[Gc<MetaItem>], mut metas: It) -> bool {
     // having no #[cfg(...)] attributes counts as matching.
     let mut no_cfgs = true;
 
@@ -422,7 +424,7 @@ pub fn find_stability(attrs: &[Attribute]) -> Option<Stability> {
     })
 }
 
-pub fn require_unique_names(diagnostic: &SpanHandler, metas: &[@MetaItem]) {
+pub fn require_unique_names(diagnostic: &SpanHandler, metas: &[Gc<MetaItem>]) {
     let mut set = HashSet::new();
     for meta in metas.iter() {
         let name = meta.name();

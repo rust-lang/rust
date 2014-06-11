@@ -320,8 +320,8 @@ mod tests {
     #[test]
     fn gc_inside() {
         // see issue #11532
-        use std::gc::Gc;
-        let a = Rc::new(RefCell::new(Gc::new(1)));
+        use std::gc::GC;
+        let a = Rc::new(RefCell::new(box(GC) 1));
         assert!(a.try_borrow_mut().is_some());
     }
 

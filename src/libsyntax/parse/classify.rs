@@ -13,6 +13,7 @@
 // Predicates on exprs and stmts that the pretty-printer and parser use
 
 use ast;
+use std::gc::Gc;
 
 // does this expression require a semicolon to be treated
 // as a statement? The negation of this: 'can this expression
@@ -21,7 +22,7 @@ use ast;
 // 'if true {...} else {...}
 //  |x| 5 '
 // isn't parsed as (if true {...} else {...} | x) | 5
-pub fn expr_requires_semi_to_be_stmt(e: @ast::Expr) -> bool {
+pub fn expr_requires_semi_to_be_stmt(e: Gc<ast::Expr>) -> bool {
     match e.node {
         ast::ExprIf(..)
         | ast::ExprMatch(..)
@@ -33,7 +34,7 @@ pub fn expr_requires_semi_to_be_stmt(e: @ast::Expr) -> bool {
     }
 }
 
-pub fn expr_is_simple_block(e: @ast::Expr) -> bool {
+pub fn expr_is_simple_block(e: Gc<ast::Expr>) -> bool {
     match e.node {
         ast::ExprBlock(block) => block.rules == ast::DefaultBlock,
       _ => false

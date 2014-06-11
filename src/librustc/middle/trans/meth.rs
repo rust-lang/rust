@@ -35,6 +35,7 @@ use util::common::indenter;
 use util::ppaux::Repr;
 
 use std::c_str::ToCStr;
+use std::gc::Gc;
 use syntax::abi::Rust;
 use syntax::parse::token;
 use syntax::{ast, ast_map, visit};
@@ -47,7 +48,7 @@ see `trans::base::lval_static_fn()` or `trans::base::monomorphic_fn()`.
 */
 pub fn trans_impl(ccx: &CrateContext,
                   name: ast::Ident,
-                  methods: &[@ast::Method],
+                  methods: &[Gc<ast::Method>],
                   generics: &ast::Generics,
                   id: ast::NodeId) {
     let _icx = push_ctxt("meth::trans_impl");
@@ -60,18 +61,18 @@ pub fn trans_impl(ccx: &CrateContext,
     if !generics.ty_params.is_empty() {
         let mut v = TransItemVisitor{ ccx: ccx };
         for method in methods.iter() {
-            visit::walk_method_helper(&mut v, *method, ());
+            visit::walk_method_helper(&mut v, &**method, ());
         }
         return;
     }
     for method in methods.iter() {
         if method.generics.ty_params.len() == 0u {
             let llfn = get_item_val(ccx, method.id);
-            trans_fn(ccx, method.decl, method.body,
+            trans_fn(ccx, &*method.decl, &*method.body,
                      llfn, &param_substs::empty(), method.id, []);
         } else {
             let mut v = TransItemVisitor{ ccx: ccx };
-            visit::walk_method_helper(&mut v, *method, ());
+            visit::walk_method_helper(&mut v, &**method, ());
         }
     }
 }

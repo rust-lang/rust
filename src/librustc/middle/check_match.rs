@@ -19,6 +19,7 @@ use middle::ty;
 use util::ppaux::ty_to_str;
 
 use std::cmp;
+use std::gc::Gc;
 use std::iter;
 use syntax::ast::*;
 use syntax::ast_util::{is_unguarded, walk_pat};
@@ -104,7 +105,7 @@ fn check_arms(cx: &MatchCheckCtxt, arms: &[Arm]) {
                 match opt_def {
                     Some(DefStatic(did, false)) => {
                         let const_expr = lookup_const_by_id(cx.tcx, did).unwrap();
-                        match eval_const_expr(cx.tcx, const_expr) {
+                        match eval_const_expr(cx.tcx, &*const_expr) {
                             const_float(f) if f.is_nan() => true,
                             _ => false
                         }
@@ -113,7 +114,7 @@ fn check_arms(cx: &MatchCheckCtxt, arms: &[Arm]) {
                 }
             };
 
-            walk_pat(*pat, |p| {
+            walk_pat(&**pat, |p| {
                 if pat_matches_nan(p) {
                     cx.tcx.sess.span_warn(p.span, "unmatchable NaN in pattern, \
                                                    use the is_nan method in a guard instead");
@@ -133,7 +134,7 @@ fn check_arms(cx: &MatchCheckCtxt, arms: &[Arm]) {
     }
 }
 
-fn raw_pat(p: @Pat) -> @Pat {
+fn raw_pat(p: Gc<Pat>) -> Gc<Pat> {
     match p.node {
       PatIdent(_, _, Some(s)) => { raw_pat(s) }
       _ => { p }
@@ -193,7 +194,7 @@ fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, m: &matrix) {
     cx.tcx.sess.span_err(sp, msg.as_slice());
 }
 
-type matrix = Vec<Vec<@Pat> > ;
+type matrix = Vec<Vec<Gc<Pat>>>;
 
 #[deriving(Clone)]
 enum useful {
@@ -224,7 +225,7 @@ enum ctor {
 
 // Note: is_useful doesn't work on empty types, as the paper notes.
 // So it assumes that v is non-empty.
-fn is_useful(cx: &MatchCheckCtxt, m: &matrix, v: &[@Pat]) -> useful {
+fn is_useful(cx: &MatchCheckCtxt, m: &matrix, v: &[Gc<Pat>]) -> useful {
     if m.len() == 0u {
         return useful_;
     }
@@ -327,7 +328,7 @@ fn is_useful(cx: &MatchCheckCtxt, m: &matrix, v: &[@Pat]) -> useful {
 
 fn is_useful_specialized(cx: &MatchCheckCtxt,
                              m: &matrix,
-                             v: &[@Pat],
+                             v: &[Gc<Pat>],
                              ctor: ctor,
                              arity: uint,
                              lty: ty::t)
@@ -345,7 +346,7 @@ fn is_useful_specialized(cx: &MatchCheckCtxt,
     }
 }
 
-fn pat_ctor_id(cx: &MatchCheckCtxt, p: @Pat) -> Option<ctor> {
+fn pat_ctor_id(cx: &MatchCheckCtxt, p: Gc<Pat>) -> Option<ctor> {
     let pat = raw_pat(p);
     match pat.node {
       PatWild | PatWildMulti => { None }
@@ -355,14 +356,14 @@ fn pat_ctor_id(cx: &MatchCheckCtxt, p: @Pat) -> Option<ctor> {
           Some(DefVariant(_, id, _)) => Some(variant(id)),
           Some(DefStatic(did, false)) => {
             let const_expr = lookup_const_by_id(cx.tcx, did).unwrap();
-            Some(val(eval_const_expr(cx.tcx, const_expr)))
+            Some(val(eval_const_expr(cx.tcx, &*const_expr)))
           }
           _ => None
         }
       }
-      PatLit(expr) => { Some(val(eval_const_expr(cx.tcx, expr))) }
-      PatRange(lo, hi) => {
-        Some(range(eval_const_expr(cx.tcx, lo), eval_const_expr(cx.tcx, hi)))
+      PatLit(ref expr) => { Some(val(eval_const_expr(cx.tcx, &**expr))) }
+      PatRange(ref lo, ref hi) => {
+        Some(range(eval_const_expr(cx.tcx, &**lo), eval_const_expr(cx.tcx, &**hi)))
       }
       PatStruct(..) => {
         match cx.tcx.def_map.borrow().find(&pat.id) {
@@ -383,7 +384,7 @@ fn pat_ctor_id(cx: &MatchCheckCtxt, p: @Pat) -> Option<ctor> {
     }
 }
 
-fn is_wild(cx: &MatchCheckCtxt, p: @Pat) -> bool {
+fn is_wild(cx: &MatchCheckCtxt, p: Gc<Pat>) -> bool {
     let pat = raw_pat(p);
     match pat.node {
       PatWild | PatWildMulti => { true }
@@ -548,12 +549,12 @@ fn ctor_arity(cx: &MatchCheckCtxt, ctor: &ctor, ty: ty::t) -> uint {
     }
 }
 
-fn wild() -> @Pat {
-    @Pat {id: 0, node: PatWild, span: DUMMY_SP}
+fn wild() -> Gc<Pat> {
+    box(GC) Pat {id: 0, node: PatWild, span: DUMMY_SP}
 }
 
-fn wild_multi() -> @Pat {
-    @Pat {id: 0, node: PatWildMulti, span: DUMMY_SP}
+fn wild_multi() -> Gc<Pat> {
+    box(GC) Pat {id: 0, node: PatWildMulti, span: DUMMY_SP}
 }
 
 fn range_covered_by_constructor(ctor_id: &ctor, from: &const_val, to: &const_val) -> Option<bool> {
@@ -572,13 +573,13 @@ fn range_covered_by_constructor(ctor_id: &ctor, from: &const_val, to: &const_val
 }
 
 fn specialize(cx: &MatchCheckCtxt,
-                  r: &[@Pat],
+                  r: &[Gc<Pat>],
                   ctor_id: &ctor,
                   arity: uint,
                   left_ty: ty::t)
-               -> Option<Vec<@Pat> > {
+               -> Option<Vec<Gc<Pat>>> {
     let &Pat{id: ref pat_id, node: ref n, span: ref pat_span} = &(*raw_pat(r[0]));
-    let head: Option<Vec<@Pat>> = match n {
+    let head: Option<Vec<Gc<Pat>>> = match n {
             &PatWild => {
                 Some(Vec::from_elem(arity, wild()))
             }
@@ -597,7 +598,7 @@ fn specialize(cx: &MatchCheckCtxt,
                     }
                     Some(DefStatic(did, _)) => {
                         let const_expr = lookup_const_by_id(cx.tcx, did).unwrap();
-                        let e_v = eval_const_expr(cx.tcx, const_expr);
+                        let e_v = eval_const_expr(cx.tcx, &*const_expr);
                         match range_covered_by_constructor(ctor_id, &e_v, &e_v) {
                            Some(true) => Some(vec!()),
                            Some(false) => None,
@@ -617,7 +618,7 @@ fn specialize(cx: &MatchCheckCtxt,
                 match def {
                     DefStatic(did, _) => {
                         let const_expr = lookup_const_by_id(cx.tcx, did).unwrap();
-                        let e_v = eval_const_expr(cx.tcx, const_expr);
+                        let e_v = eval_const_expr(cx.tcx, &*const_expr);
                         match range_covered_by_constructor(ctor_id, &e_v, &e_v) {
                            Some(true) => Some(vec!()),
                            Some(false) => None,
@@ -681,7 +682,7 @@ fn specialize(cx: &MatchCheckCtxt,
                 Some(vec!(inner.clone()))
             }
             &PatLit(ref expr) => {
-              let expr_value = eval_const_expr(cx.tcx, *expr);
+              let expr_value = eval_const_expr(cx.tcx, &**expr);
               match range_covered_by_constructor(ctor_id, &expr_value, &expr_value) {
                  Some(true) => Some(vec!()),
                  Some(false) => None,
@@ -692,8 +693,8 @@ fn specialize(cx: &MatchCheckCtxt,
               }
             }
             &PatRange(ref from, ref to) => {
-              let from_value = eval_const_expr(cx.tcx, *from);
-              let to_value = eval_const_expr(cx.tcx, *to);
+              let from_value = eval_const_expr(cx.tcx, &**from);
+              let to_value = eval_const_expr(cx.tcx, &**to);
               match range_covered_by_constructor(ctor_id, &from_value, &to_value) {
                  Some(true) => Some(vec!()),
                  Some(false) => None,
@@ -733,7 +734,7 @@ fn specialize(cx: &MatchCheckCtxt,
     head.map(|head| head.append(r.tail()))
 }
 
-fn default(cx: &MatchCheckCtxt, r: &[@Pat]) -> Option<Vec<@Pat> > {
+fn default(cx: &MatchCheckCtxt, r: &[Gc<Pat>]) -> Option<Vec<Gc<Pat>>> {
     if is_wild(cx, r[0]) {
         Some(Vec::from_slice(r.tail()))
     } else {
@@ -750,7 +751,7 @@ fn check_local(cx: &mut MatchCheckCtxt, loc: &Local) {
     };
 
     let mut spans = vec![];
-    find_refutable(cx, loc.pat, &mut spans);
+    find_refutable(cx, &*loc.pat, &mut spans);
 
     for span in spans.iter() {
         cx.tcx.sess.span_err(*span,
@@ -769,7 +770,7 @@ fn check_fn(cx: &mut MatchCheckCtxt,
     visit::walk_fn(cx, kind, decl, body, sp, ());
     for input in decl.inputs.iter() {
         let mut spans = vec![];
-        find_refutable(cx, input.pat, &mut spans);
+        find_refutable(cx, &*input.pat, &mut spans);
 
         for span in spans.iter() {
             cx.tcx.sess.span_err(*span,
@@ -799,8 +800,8 @@ fn find_refutable(cx: &MatchCheckCtxt, pat: &Pat, spans: &mut Vec<Span>) {
     }
 
     match pat.node {
-      PatBox(sub) | PatRegion(sub) | PatIdent(_, _, Some(sub)) => {
-        find_refutable(cx, sub, spans)
+      PatBox(ref sub) | PatRegion(ref sub) | PatIdent(_, _, Some(ref sub)) => {
+        find_refutable(cx, &**sub, spans)
       }
       PatWild | PatWildMulti | PatIdent(_, _, None) => {}
       PatLit(lit) => {
@@ -817,12 +818,12 @@ fn find_refutable(cx: &MatchCheckCtxt, pat: &Pat, spans: &mut Vec<Span>) {
       PatRange(_, _) => { this_pattern!() }
       PatStruct(_, ref fields, _) => {
           for f in fields.iter() {
-              find_refutable(cx, f.pat, spans);
+              find_refutable(cx, &*f.pat, spans);
           }
       }
       PatTup(ref elts) | PatEnum(_, Some(ref elts))=> {
           for elt in elts.iter() {
-              find_refutable(cx, *elt, spans)
+              find_refutable(cx, &**elt, spans)
           }
       }
       PatEnum(_,_) => {}
@@ -835,12 +836,12 @@ fn find_refutable(cx: &MatchCheckCtxt, pat: &Pat, spans: &mut Vec<Span>) {
 
 fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
                                    has_guard: bool,
-                                   pats: &[@Pat]) {
+                                   pats: &[Gc<Pat>]) {
     let tcx = cx.tcx;
     let def_map = &tcx.def_map;
     let mut by_ref_span = None;
     for pat in pats.iter() {
-        pat_bindings(def_map, *pat, |bm, _, span, _path| {
+        pat_bindings(def_map, &**pat, |bm, _, span, _path| {
             match bm {
                 BindByRef(_) => {
                     by_ref_span = Some(span);
@@ -851,11 +852,11 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
         })
     }
 
-    let check_move: |&Pat, Option<@Pat>| = |p, sub| {
+    let check_move: |&Pat, Option<Gc<Pat>>| = |p, sub| {
         // check legality of moving out of the enum
 
         // x @ Foo(..) is legal, but x @ Foo(y) isn't.
-        if sub.map_or(false, |p| pat_contains_bindings(def_map, p)) {
+        if sub.map_or(false, |p| pat_contains_bindings(def_map, &*p)) {
             tcx.sess.span_err(
                 p.span,
                 "cannot bind by-move with sub-bindings");
@@ -875,8 +876,8 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
     };
 
     for pat in pats.iter() {
-        walk_pat(*pat, |p| {
-            if pat_is_binding(def_map, p) {
+        walk_pat(&**pat, |p| {
+            if pat_is_binding(def_map, &*p) {
                 match p.node {
                     PatIdent(BindByValue(_), _, sub) => {
                         let pat_ty = ty::node_id_to_type(tcx, p.id);

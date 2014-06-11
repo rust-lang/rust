@@ -29,7 +29,9 @@ use visit;
 use visit::Visitor;
 use util::small_vector::SmallVector;
 
-pub fn expand_expr(e: @ast::Expr, fld: &mut MacroExpander) -> @ast::Expr {
+use std::gc::Gc;
+
+pub fn expand_expr(e: Gc<ast::Expr>, fld: &mut MacroExpander) -> Gc<ast::Expr> {
     match e.node {
         // expr_mac should really be expr_ext or something; it's the
         // entry-point for all syntax extensions.
@@ -115,7 +117,7 @@ pub fn expand_expr(e: @ast::Expr, fld: &mut MacroExpander) -> @ast::Expr {
                         fld.fold_expr(marked_after).node.clone();
                     fld.cx.bt_pop();
 
-                    @ast::Expr {
+                    box(GC) ast::Expr {
                         id: ast::DUMMY_NODE_ID,
                         node: fully_expanded,
                         span: e.span,
@@ -172,7 +174,7 @@ pub fn expand_expr(e: @ast::Expr, fld: &mut MacroExpander) -> @ast::Expr {
             let value_ident = token::gensym_ident("__value");
             // this is careful to use src_pat.span so that error
             // messages point exact at that.
-            let local = @ast::Local {
+            let local = box(GC) ast::Local {
                 ty: fld.cx.ty_infer(src_pat.span),
                 pat: src_pat,
                 init: Some(fld.cx.expr_ident(src_pat.span, value_ident)),
@@ -181,7 +183,8 @@ pub fn expand_expr(e: @ast::Expr, fld: &mut MacroExpander) -> @ast::Expr {
                 source: ast::LocalFor
             };
             let local = codemap::respan(src_pat.span, ast::DeclLocal(local));
-            let local = @codemap::respan(span, ast::StmtDecl(@local, ast::DUMMY_NODE_ID));
+            let local = box(GC) codemap::respan(span, ast::StmtDecl(box(GC) local,
+                                                            ast::DUMMY_NODE_ID));
 
             // { let ...; <src_loop_block> }
             let block = fld.cx.block(span, vec![local],
@@ -256,7 +259,7 @@ fn expand_loop_block(loop_block: P<Block>,
             // in a block enclosed by loop head.
             fld.extsbox.push_frame();
             fld.extsbox.info().pending_renames.push(rename);
-            let expanded_block = expand_block_elts(loop_block, fld);
+            let expanded_block = expand_block_elts(&*loop_block, fld);
             fld.extsbox.pop_frame();
 
             (expanded_block, Some(renamed_ident))
@@ -277,8 +280,8 @@ macro_rules! with_exts_frame (
 )
 
 // When we enter a module, record it, for the sake of `module!`
-pub fn expand_item(it: @ast::Item, fld: &mut MacroExpander)
-                   -> SmallVector<@ast::Item> {
+pub fn expand_item(it: Gc<ast::Item>, fld: &mut MacroExpander)
+                   -> SmallVector<Gc<ast::Item>> {
     let it = expand_item_modifiers(it, fld);
 
     let mut decorator_items = SmallVector::zero();
@@ -301,7 +304,7 @@ pub fn expand_item(it: @ast::Item, fld: &mut MacroExpander)
 
                 // we'd ideally decorator_items.push_all(expand_item(item, fld)),
                 // but that double-mut-borrows fld
-                let mut items: SmallVector<@ast::Item> = SmallVector::zero();
+                let mut items: SmallVector<Gc<ast::Item>> = SmallVector::zero();
                 dec_fn(fld.cx, attr.span, attr.node.value, it,
                        |item| items.push(item));
                 decorator_items.extend(items.move_iter()
@@ -320,17 +323,17 @@ pub fn expand_item(it: @ast::Item, fld: &mut MacroExpander)
             let macro_escape = contains_macro_escape(new_attrs.as_slice());
             let result = with_exts_frame!(fld.extsbox,
                                           macro_escape,
-                                          noop_fold_item(it, fld));
+                                          noop_fold_item(&*it, fld));
             fld.cx.mod_pop();
             result
         },
         _ => {
-            let it = @ast::Item {
+            let it = box(GC) ast::Item {
                 attrs: new_attrs,
                 ..(*it).clone()
 
             };
-            noop_fold_item(it, fld)
+            noop_fold_item(&*it, fld)
         }
     };
 
@@ -338,8 +341,8 @@ pub fn expand_item(it: @ast::Item, fld: &mut MacroExpander)
     new_items
 }
 
-fn expand_item_modifiers(mut it: @ast::Item, fld: &mut MacroExpander)
-                         -> @ast::Item {
+fn expand_item_modifiers(mut it: Gc<ast::Item>, fld: &mut MacroExpander)
+                         -> Gc<ast::Item> {
     let (modifiers, attrs) = it.attrs.partitioned(|attr| {
         match fld.extsbox.find(&intern(attr.name().get())) {
             Some(&ItemModifier(_)) => true,
@@ -347,7 +350,7 @@ fn expand_item_modifiers(mut it: @ast::Item, fld: &mut MacroExpander)
         }
     });
 
-    it = @ast::Item {
+    it = box(GC) ast::Item {
         attrs: attrs,
         ..(*it).clone()
     };
@@ -388,8 +391,8 @@ pub fn contains_macro_escape(attrs: &[ast::Attribute]) -> bool {
 
 // Support for item-position macro invocations, exactly the same
 // logic as for expression-position macro invocations.
-pub fn expand_item_mac(it: @ast::Item, fld: &mut MacroExpander)
-                       -> SmallVector<@ast::Item> {
+pub fn expand_item_mac(it: Gc<ast::Item>, fld: &mut MacroExpander)
+                       -> SmallVector<Gc<ast::Item>> {
     let (pth, tts) = match it.node {
         ItemMac(codemap::Spanned {
             node: MacInvocTT(ref pth, ref tts, _),
@@ -494,7 +497,7 @@ pub fn expand_item_mac(it: @ast::Item, fld: &mut MacroExpander)
 }
 
 // expand a stmt
-pub fn expand_stmt(s: &Stmt, fld: &mut MacroExpander) -> SmallVector<@Stmt> {
+pub fn expand_stmt(s: &Stmt, fld: &mut MacroExpander) -> SmallVector<Gc<Stmt>> {
     // why the copying here and not in expand_expr?
     // looks like classic changed-in-only-one-place
     let (pth, tts, semi) = match s.node {
@@ -550,7 +553,7 @@ pub fn expand_stmt(s: &Stmt, fld: &mut MacroExpander) -> SmallVector<@Stmt> {
                 }
             };
 
-            mark_stmt(expanded,fm)
+            mark_stmt(&*expanded,fm)
         }
 
         _ => {
@@ -561,20 +564,20 @@ pub fn expand_stmt(s: &Stmt, fld: &mut MacroExpander) -> SmallVector<@Stmt> {
     };
 
     // Keep going, outside-in.
-    let fully_expanded = fld.fold_stmt(marked_after);
+    let fully_expanded = fld.fold_stmt(&*marked_after);
     if fully_expanded.is_empty() {
         fld.cx.span_err(pth.span, "macro didn't expand to a statement");
         return SmallVector::zero();
     }
     fld.cx.bt_pop();
-    let fully_expanded: SmallVector<@Stmt> = fully_expanded.move_iter()
-            .map(|s| @Spanned { span: s.span, node: s.node.clone() })
+    let fully_expanded: SmallVector<Gc<Stmt>> = fully_expanded.move_iter()
+            .map(|s| box(GC) Spanned { span: s.span, node: s.node.clone() })
             .collect();
 
     fully_expanded.move_iter().map(|s| {
         match s.node {
             StmtExpr(e, stmt_id) if semi => {
-                @Spanned {
+                box(GC) Spanned {
                     span: s.span,
                     node: StmtSemi(e, stmt_id)
                 }
@@ -587,7 +590,7 @@ pub fn expand_stmt(s: &Stmt, fld: &mut MacroExpander) -> SmallVector<@Stmt> {
 // expand a non-macro stmt. this is essentially the fallthrough for
 // expand_stmt, above.
 fn expand_non_macro_stmt(s: &Stmt, fld: &mut MacroExpander)
-                         -> SmallVector<@Stmt> {
+                         -> SmallVector<Gc<Stmt>> {
     // is it a let?
     match s.node {
         StmtDecl(decl, node_id) => {
@@ -612,7 +615,7 @@ fn expand_non_macro_stmt(s: &Stmt, fld: &mut MacroExpander)
                     // names, as well... but that should be okay, as long as
                     // the new names are gensyms for the old ones.
                     let mut name_finder = new_name_finder(Vec::new());
-                    name_finder.visit_pat(expanded_pat,());
+                    name_finder.visit_pat(&*expanded_pat,());
                     // generate fresh names, push them to a new pending list
                     let mut new_pending_renames = Vec::new();
                     for ident in name_finder.ident_accumulator.iter() {
@@ -631,7 +634,7 @@ fn expand_non_macro_stmt(s: &Stmt, fld: &mut MacroExpander)
                     // also, don't forget to expand the init:
                     let new_init_opt = init.map(|e| fld.fold_expr(e));
                     let rewritten_local =
-                        @Local {
+                        box(GC) Local {
                             ty: local.ty,
                             pat: rewritten_pat,
                             init: new_init_opt,
@@ -639,8 +642,8 @@ fn expand_non_macro_stmt(s: &Stmt, fld: &mut MacroExpander)
                             span: span,
                             source: source
                         };
-                    SmallVector::one(@Spanned {
-                        node: StmtDecl(@Spanned {
+                    SmallVector::one(box(GC) Spanned {
+                        node: StmtDecl(box(GC) Spanned {
                                 node: DeclLocal(rewritten_local),
                                 span: stmt_span
                             },
@@ -687,7 +690,7 @@ impl Visitor<()> for NewNameFinderContext {
                 }
                 // visit optional subpattern of pat_ident:
                 for subpat in inner.iter() {
-                    self.visit_pat(*subpat, ())
+                    self.visit_pat(&**subpat, ())
                 }
             }
             // use the default traversal for non-pat_idents
@@ -725,9 +728,9 @@ pub fn expand_block_elts(b: &Block, fld: &mut MacroExpander) -> P<Block> {
             let renamed_stmt = {
                 let pending_renames = &mut fld.extsbox.info().pending_renames;
                 let mut rename_fld = renames_to_fold(pending_renames);
-                rename_fld.fold_stmt(*x).expect_one("rename_fold didn't return one value")
+                rename_fld.fold_stmt(&**x).expect_one("rename_fold didn't return one value")
             };
-            fld.fold_stmt(renamed_stmt).move_iter()
+            fld.fold_stmt(&*renamed_stmt).move_iter()
         }).collect();
     let new_expr = b.expr.map(|x| {
         let expr = {
@@ -747,7 +750,7 @@ pub fn expand_block_elts(b: &Block, fld: &mut MacroExpander) -> P<Block> {
     })
 }
 
-pub fn expand_pat(p: @ast::Pat, fld: &mut MacroExpander) -> @ast::Pat {
+pub fn expand_pat(p: Gc<ast::Pat>, fld: &mut MacroExpander) -> Gc<ast::Pat> {
     let (pth, tts) = match p.node {
         PatMac(ref mac) => {
             match mac.node {
@@ -817,7 +820,7 @@ pub fn expand_pat(p: @ast::Pat, fld: &mut MacroExpander) -> @ast::Pat {
         fld.fold_pat(marked_after).node.clone();
     fld.cx.bt_pop();
 
-    @ast::Pat {
+    box(GC) ast::Pat {
         id: ast::DUMMY_NODE_ID,
         node: fully_expanded,
         span: p.span,
@@ -863,24 +866,24 @@ pub struct MacroExpander<'a, 'b> {
 }
 
 impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
-    fn fold_expr(&mut self, expr: @ast::Expr) -> @ast::Expr {
+    fn fold_expr(&mut self, expr: Gc<ast::Expr>) -> Gc<ast::Expr> {
         expand_expr(expr, self)
     }
 
-    fn fold_pat(&mut self, pat: @ast::Pat) -> @ast::Pat {
+    fn fold_pat(&mut self, pat: Gc<ast::Pat>) -> Gc<ast::Pat> {
         expand_pat(pat, self)
     }
 
-    fn fold_item(&mut self, item: @ast::Item) -> SmallVector<@ast::Item> {
+    fn fold_item(&mut self, item: Gc<ast::Item>) -> SmallVector<Gc<ast::Item>> {
         expand_item(item, self)
     }
 
-    fn fold_stmt(&mut self, stmt: &ast::Stmt) -> SmallVector<@ast::Stmt> {
+    fn fold_stmt(&mut self, stmt: &ast::Stmt) -> SmallVector<Gc<ast::Stmt>> {
         expand_stmt(stmt, self)
     }
 
     fn fold_block(&mut self, block: P<Block>) -> P<Block> {
-        expand_block(block, self)
+        expand_block(&*block, self)
     }
 
     fn new_span(&mut self, span: Span) -> Span {
@@ -976,27 +979,27 @@ fn mark_tts(tts: &[TokenTree], m: Mrk) -> Vec<TokenTree> {
 }
 
 // apply a given mark to the given expr. Used following the expansion of a macro.
-fn mark_expr(expr: @ast::Expr, m: Mrk) -> @ast::Expr {
+fn mark_expr(expr: Gc<ast::Expr>, m: Mrk) -> Gc<ast::Expr> {
     new_mark_folder(m).fold_expr(expr)
 }
 
 // apply a given mark to the given pattern. Used following the expansion of a macro.
-fn mark_pat(pat: @ast::Pat, m: Mrk) -> @ast::Pat {
+fn mark_pat(pat: Gc<ast::Pat>, m: Mrk) -> Gc<ast::Pat> {
     new_mark_folder(m).fold_pat(pat)
 }
 
 // apply a given mark to the given stmt. Used following the expansion of a macro.
-fn mark_stmt(expr: &ast::Stmt, m: Mrk) -> @ast::Stmt {
+fn mark_stmt(expr: &ast::Stmt, m: Mrk) -> Gc<ast::Stmt> {
     new_mark_folder(m).fold_stmt(expr)
             .expect_one("marking a stmt didn't return a stmt")
 }
 
 // apply a given mark to the given item. Used following the expansion of a macro.
-fn mark_item(expr: @ast::Item, m: Mrk) -> SmallVector<@ast::Item> {
+fn mark_item(expr: Gc<ast::Item>, m: Mrk) -> SmallVector<Gc<ast::Item>> {
     new_mark_folder(m).fold_item(expr)
 }
 
-fn original_span(cx: &ExtCtxt) -> @codemap::ExpnInfo {
+fn original_span(cx: &ExtCtxt) -> Gc<codemap::ExpnInfo> {
     let mut relevant_info = cx.backtrace();
     let mut einfo = relevant_info.unwrap();
     loop {
@@ -1134,7 +1137,7 @@ mod test {
             node: Attribute_ {
                 id: attr::mk_attr_id(),
                 style: AttrOuter,
-                value: @Spanned {
+                value: box(GC) Spanned {
                     node: MetaWord(token::intern_and_get_ident(s)),
                     span: codemap::DUMMY_SP,
                 },

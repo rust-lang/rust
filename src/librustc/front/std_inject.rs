@@ -23,6 +23,7 @@ use syntax::parse::token;
 use syntax::util::small_vector::SmallVector;
 
 use std::mem;
+use std::gc::Gc;
 
 pub static VERSION: &'static str = "0.11.0-pre";
 
@@ -165,12 +166,12 @@ impl<'a> fold::Folder for PreludeInjector<'a> {
         krate
     }
 
-    fn fold_item(&mut self, item: @ast::Item) -> SmallVector<@ast::Item> {
+    fn fold_item(&mut self, item: Gc<ast::Item>) -> SmallVector<Gc<ast::Item>> {
         if !no_prelude(item.attrs.as_slice()) {
             // only recur if there wasn't `#![no_implicit_prelude]`
             // on this item, i.e. this means that the prelude is not
             // implicitly imported though the whole subtree
-            fold::noop_fold_item(item, self)
+            fold::noop_fold_item(&*item, self)
         } else {
             SmallVector::one(item)
         }
@@ -193,7 +194,8 @@ impl<'a> fold::Folder for PreludeInjector<'a> {
                 }),
         };
 
-        let vp = @codemap::dummy_spanned(ast::ViewPathGlob(prelude_path, ast::DUMMY_NODE_ID));
+        let vp = box(GC) codemap::dummy_spanned(ast::ViewPathGlob(prelude_path,
+                                                                  ast::DUMMY_NODE_ID));
         let vi2 = ast::ViewItem {
             node: ast::ViewItemUse(vp),
             attrs: Vec::new(),

@@ -129,6 +129,14 @@ fn type_is_defined_in_local_crate(tcx: &ty::ctxt, original_type: t) -> bool {
                     _ => {}
                 }
             }
+            ty_box(..) => {
+                match tcx.lang_items.gc() {
+                    Some(did) if did.krate == ast::LOCAL_CRATE => {
+                        found_nominal = true;
+                    }
+                    _ => {}
+                }
+            }
 
             _ => { }
         }
@@ -203,8 +211,8 @@ impl<'a> visit::Visitor<()> for PrivilegedScopeVisitor<'a> {
                 // Then visit the module items.
                 visit::walk_mod(self, module_, ());
             }
-            ItemImpl(_, None, ast_ty, _) => {
-                if !self.cc.ast_type_is_defined_in_local_crate(ast_ty) {
+            ItemImpl(_, None, ref ast_ty, _) => {
+                if !self.cc.ast_type_is_defined_in_local_crate(&**ast_ty) {
                     // This is an error.
                     let session = &self.cc.crate_context.tcx.sess;
                     session.span_err(item.span,
