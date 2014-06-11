@@ -27,7 +27,7 @@ impl Drop for Foo {
 
 #[plugin_registrar]
 pub fn registrar(_: &mut Registry) {
-    local_data_key!(foo: Box<Any:Send>);
-    foo.replace(Some(box Foo { foo: 10 } as Box<Any:Send>));
+    local_data_key!(foo: Box<Any+Send>);
+    foo.replace(Some(box Foo { foo: 10 } as Box<Any+Send>));
 }
 

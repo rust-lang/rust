@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,19 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-trait Foo {
+fn main() {
+    assert_eq!(3 as uint * 3, 9);
+    assert_eq!(3 as (uint) * 3, 9);
+    assert_eq!(3 as (uint) / 3, 1);
+    assert_eq!(3 as uint + 3, 6);
+    assert_eq!(3 as (uint) + 3, 6);
 }
 
-fn a(_x: Box<Foo+Send>) {
-}
-
-fn c(x: Box<Foo+Share+Send>) {
-    a(x);
-}
-
-fn d(x: Box<Foo+>) {
-    a(x); //~ ERROR found no bounds
-}
-
-fn main() { }

@@ -495,6 +495,11 @@ impl<'a> State<'a> {
                 }
                 try!(self.pclose());
             }
+            ast::TyParen(ref typ) => {
+                try!(self.popen());
+                try!(self.print_type(&**typ));
+                try!(self.pclose());
+            }
             ast::TyBareFn(f) => {
                 let generics = ast::Generics {
                     lifetimes: f.lifetimes.clone(),
@@ -1673,7 +1678,7 @@ impl<'a> State<'a> {
 
         match *opt_bounds {
             None => Ok(()),
-            Some(ref bounds) => self.print_bounds(&None, bounds, true),
+            Some(ref bounds) => self.print_bounds(&None, bounds, true, true),
         }
     }
 
@@ -1932,9 +1937,16 @@ impl<'a> State<'a> {
     pub fn print_bounds(&mut self,
                         region: &Option<ast::Lifetime>,
                         bounds: &OwnedSlice<ast::TyParamBound>,
-                        print_colon_anyway: bool) -> IoResult<()> {
+                        print_colon_anyway: bool,
+                        print_plus_before_bounds: bool)
+                        -> IoResult<()> {
+        let separator = if print_plus_before_bounds {
+            "+"
+        } else {
+            ":"
+        };
         if !bounds.is_empty() || region.is_some() {
-            try!(word(&mut self.s, ":"));
+            try!(word(&mut self.s, separator));
             let mut first = true;
             match *region {
                 Some(ref lt) => {
@@ -1976,7 +1988,7 @@ impl<'a> State<'a> {
             }
             Ok(())
         } else if print_colon_anyway {
-            word(&mut self.s, ":")
+            word(&mut self.s, separator)
         } else {
             Ok(())
         }
@@ -2011,7 +2023,10 @@ impl<'a> State<'a> {
                             try!(s.word_space("type"));
                         }
                         try!(s.print_ident(param.ident));
-                        try!(s.print_bounds(&None, &param.bounds, false));
+                        try!(s.print_bounds(&None,
+                                            &param.bounds,
+                                            false,
+                                            false));
                         match param.default {
                             Some(ref default) => {
                                 try!(space(&mut s.s));
@@ -2214,7 +2229,7 @@ impl<'a> State<'a> {
         }
 
         opt_bounds.as_ref().map(|bounds| {
-            self.print_bounds(opt_region, bounds, true)
+            self.print_bounds(opt_region, bounds, true, false)
         });
 
         try!(self.maybe_print_comment(decl.output.span.lo));
