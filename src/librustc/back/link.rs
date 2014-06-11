@@ -806,6 +806,10 @@ pub fn link_binary(sess: &Session,
                    id: &CrateId) -> Vec<Path> {
     let mut out_filenames = Vec::new();
     for &crate_type in sess.crate_types.borrow().iter() {
+        if invalid_output_for_target(sess, crate_type) {
+            sess.bug(format!("invalid output type `{}` for target os `{}`",
+                             crate_type, sess.targ_cfg.os).as_slice());
+        }
         let out_file = link_binary_output(sess, trans, crate_type, outputs, id);
         out_filenames.push(out_file);
     }
@@ -820,6 +824,32 @@ pub fn link_binary(sess: &Session,
     }
 
     out_filenames
+}
+
+
+/// Returns default crate type for target
+///
+/// Default crate type is used when crate type isn't provided neither
+/// through cmd line arguments nor through crate attributes
+///
+/// It is CrateTypeExecutable for all platforms but iOS as there is no
+/// way to run iOS binaries anyway without jailbreaking and
+/// interaction with Rust code through static library is the only
+/// option for now
+pub fn default_output_for_target(sess: &Session) -> config::CrateType {
+    match sess.targ_cfg.os {
+        abi::OsiOS => config::CrateTypeStaticlib,
+        _ => config::CrateTypeExecutable
+    }
+}
+
+/// Checks if target supports crate_type as output
+pub fn invalid_output_for_target(sess: &Session,
+                                 crate_type: config::CrateType) -> bool {
+    match (sess.targ_cfg.os, crate_type) {
+        (abi::OsiOS, config::CrateTypeDylib) => true,
+        _ => false
+    }
 }
 
 fn is_writeable(p: &Path) -> bool {
@@ -837,23 +867,18 @@ pub fn filename_for_input(sess: &Session, crate_type: config::CrateType,
             out_filename.with_filename(format!("lib{}.rlib", libname))
         }
         config::CrateTypeDylib => {
-            // There is no support of DyLibs on iOS
-            if sess.targ_cfg.os == abi::OsiOS {
-                out_filename.with_filename(format!("lib{}.a", libname))
-            } else {
-                let (prefix, suffix) = match sess.targ_cfg.os {
-                    abi::OsWin32 => (loader::WIN32_DLL_PREFIX, loader::WIN32_DLL_SUFFIX),
-                    abi::OsMacos => (loader::MACOS_DLL_PREFIX, loader::MACOS_DLL_SUFFIX),
-                    abi::OsLinux => (loader::LINUX_DLL_PREFIX, loader::LINUX_DLL_SUFFIX),
-                    abi::OsAndroid => (loader::ANDROID_DLL_PREFIX, loader::ANDROID_DLL_SUFFIX),
-                    abi::OsFreebsd => (loader::FREEBSD_DLL_PREFIX, loader::FREEBSD_DLL_SUFFIX),
-                    abi::OsiOS => unreachable!(),
-                };
-                out_filename.with_filename(format!("{}{}{}",
-                                                   prefix,
-                                                   libname,
-                                                   suffix))
-            }
+            let (prefix, suffix) = match sess.targ_cfg.os {
+                abi::OsWin32 => (loader::WIN32_DLL_PREFIX, loader::WIN32_DLL_SUFFIX),
+                abi::OsMacos => (loader::MACOS_DLL_PREFIX, loader::MACOS_DLL_SUFFIX),
+                abi::OsLinux => (loader::LINUX_DLL_PREFIX, loader::LINUX_DLL_SUFFIX),
+                abi::OsAndroid => (loader::ANDROID_DLL_PREFIX, loader::ANDROID_DLL_SUFFIX),
+                abi::OsFreebsd => (loader::FREEBSD_DLL_PREFIX, loader::FREEBSD_DLL_SUFFIX),
+                abi::OsiOS => unreachable!(),
+            };
+            out_filename.with_filename(format!("{}{}{}",
+                                               prefix,
+                                               libname,
+                                               suffix))
         }
         config::CrateTypeStaticlib => {
             out_filename.with_filename(format!("lib{}.a", libname))
@@ -904,14 +929,7 @@ fn link_binary_output(sess: &Session,
             link_natively(sess, trans, false, &obj_filename, &out_filename);
         }
         config::CrateTypeDylib => {
-            if sess.targ_cfg.os == abi::OsiOS {
-                sess.warn(format!("No dylib for iOS -> saving static library {} to {}",
-                                  obj_filename.display(), out_filename.display()).as_slice());
-                link_staticlib(sess, &obj_filename, &out_filename);
-            }
-            else {
-                link_natively(sess, trans, true, &obj_filename, &out_filename);
-            }
+            link_natively(sess, trans, true, &obj_filename, &out_filename);
         }
     }
 

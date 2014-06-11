@@ -10,16 +10,11 @@
 
 
 use back::target_strs;
-use driver::config::cfg_os_to_meta_os;
-use metadata::loader::meta_section_name;
 use syntax::abi;
 
 pub fn get_target_strs(target_triple: String, target_os: abi::Os) -> target_strs::t {
     return target_strs::t {
         module_asm: "".to_string(),
-
-        meta_sect_name:
-            meta_section_name(cfg_os_to_meta_os(target_os)).to_string(),
 
         data_layout: match target_os {
           abi::OsMacos => {
