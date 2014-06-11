@@ -360,10 +360,10 @@ endef
 #   contains spaces which confuse make.
 # * `LD_LIBRARY_PATH_ENV_HOSTDIR`: the entry to add to lookup path for the host
 # * `LD_LIBRARY_PATH_ENV_TARGETDIR`: the entry to add to lookup path for target
-# 
+#
 # Below that, HOST_RPATH_VAR and TARGET_RPATH_VAR are defined in terms of the
 # above settings.
-# 
+#
 define SREQ_CMDS
 
 ifeq ($$(OSTYPE_$(3)),apple-darwin)
@@ -382,9 +382,9 @@ LD_LIBRARY_PATH_ENV_TARGETDIR$(1)_T_$(2)_H_$(3) := \
     $$(CURDIR)/$$(TLIB1_T_$(2)_H_$(CFG_BUILD))
 
 HOST_RPATH_VAR$(1)_T_$(2)_H_$(3) := \
-  $$(LD_LIBRARY_PATH_ENV_NAME$(1)_T_$(2)_H_$(3))=$$$$$$(LD_LIBRARY_PATH_ENV_NAME$(1)_T_$(2)_H_$(3)):$$(LD_LIBRARY_PATH_ENV_HOSTDIR$(1)_T_$(2)_H_$(3))
+  $$(LD_LIBRARY_PATH_ENV_NAME$(1)_T_$(2)_H_$(3))=$$(LD_LIBRARY_PATH_ENV_HOSTDIR$(1)_T_$(2)_H_$(3)):$$$$$$(LD_LIBRARY_PATH_ENV_NAME$(1)_T_$(2)_H_$(3))
 TARGET_RPATH_VAR$(1)_T_$(2)_H_$(3) := \
-  $$(LD_LIBRARY_PATH_ENV_NAME$(1)_T_$(2)_H_$(3))=$$$$$$(LD_LIBRARY_PATH_ENV_NAME$(1)_T_$(2)_H_$(3)):$$(LD_LIBRARY_PATH_ENV_TARGETDIR$(1)_T_$(2)_H_$(3))
+  $$(LD_LIBRARY_PATH_ENV_NAME$(1)_T_$(2)_H_$(3))=$$(LD_LIBRARY_PATH_ENV_TARGETDIR$(1)_T_$(2)_H_$(3)):$$$$$$(LD_LIBRARY_PATH_ENV_NAME$(1)_T_$(2)_H_$(3))
 
 RPATH_VAR$(1)_T_$(2)_H_$(3) := $$(HOST_RPATH_VAR$(1)_T_$(2)_H_$(3))
 
