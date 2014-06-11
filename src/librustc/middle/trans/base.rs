@@ -35,7 +35,7 @@ use driver::driver::{CrateAnalysis, CrateTranslation};
 use lib::llvm::{ModuleRef, ValueRef, BasicBlockRef};
 use lib::llvm::{llvm, Vector};
 use lib;
-use metadata::{csearch, encoder};
+use metadata::{csearch, encoder, loader};
 use middle::lint;
 use middle::astencode;
 use middle::lang_items::{LangItem, ExchangeMallocFnLangItem, StartFnLangItem};
@@ -2281,12 +2281,8 @@ pub fn write_metadata(cx: &CrateContext, krate: &ast::Crate) -> Vec<u8> {
     });
     unsafe {
         llvm::LLVMSetInitializer(llglobal, llconst);
-        cx.sess()
-          .targ_cfg
-          .target_strs
-          .meta_sect_name
-          .as_slice()
-          .with_c_str(|buf| {
+        let name = loader::meta_section_name(cx.sess().targ_cfg.os);
+        name.unwrap_or("rust_metadata").with_c_str(|buf| {
             llvm::LLVMSetSection(llglobal, buf)
         });
     }

@@ -159,6 +159,19 @@ impl fmt::Show for Abi {
     }
 }
 
+impl fmt::Show for Os {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            OsLinux => "linux".fmt(f),
+            OsWin32 => "win32".fmt(f),
+            OsMacos => "macos".fmt(f),
+            OsiOS => "ios".fmt(f),
+            OsAndroid => "android".fmt(f),
+            OsFreebsd => "freebsd".fmt(f)
+        }
+    }
+}
+
 #[allow(non_snake_case_functions)]
 #[test]
 fn lookup_Rust() {

@@ -19,7 +19,6 @@ use back;
 use back::link;
 use back::target_strs;
 use back::{arm, x86, x86_64, mips};
-use metadata;
 use middle::lint;
 
 use syntax::abi;
@@ -36,6 +35,7 @@ use getopts::{optopt, optmulti, optflag, optflagopt};
 use getopts;
 use lib::llvm::llvm;
 use std::cell::{RefCell};
+use std::fmt;
 
 
 pub struct Config {
@@ -352,19 +352,6 @@ pub fn build_codegen_options(matches: &getopts::Matches) -> CodegenOptions
 
 pub fn default_lib_output() -> CrateType {
     CrateTypeRlib
-}
-
-pub fn cfg_os_to_meta_os(os: abi::Os) -> metadata::loader::Os {
-    use metadata::loader;
-
-    match os {
-        abi::OsWin32 => loader::OsWin32,
-        abi::OsLinux => loader::OsLinux,
-        abi::OsAndroid => loader::OsAndroid,
-        abi::OsMacos => loader::OsMacos,
-        abi::OsFreebsd => loader::OsFreebsd,
-        abi::OsiOS => loader::OsiOS,
-    }
 }
 
 pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
@@ -775,6 +762,16 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     }
 }
 
+impl fmt::Show for CrateType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            CrateTypeExecutable => "bin".fmt(f),
+            CrateTypeDylib => "dylib".fmt(f),
+            CrateTypeRlib => "rlib".fmt(f),
+            CrateTypeStaticlib => "staticlib".fmt(f)
+        }
+    }
+}
 
 #[cfg(test)]
 mod test {
