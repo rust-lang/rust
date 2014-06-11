@@ -894,4 +894,3 @@ impl<'a> CheckLoanCtxt<'a> {
         }
     }
 }
-

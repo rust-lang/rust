@@ -53,10 +53,10 @@ pub fn resolve_type_vars_in_fn(fcx: &FnCtxt,
     let mut wbcx = WritebackCx::new(fcx);
     wbcx.visit_block(blk, ());
     for arg in decl.inputs.iter() {
-        wbcx.visit_pat(arg.pat, ());
+        wbcx.visit_pat(&*arg.pat, ());
 
         // Privacy needs the type for the whole pattern, not just each binding
-        if !pat_util::pat_is_binding(&fcx.tcx().def_map, arg.pat) {
+        if !pat_util::pat_is_binding(&fcx.tcx().def_map, &*arg.pat) {
             wbcx.visit_node_id(ResolvingPattern(arg.pat.span),
                                arg.pat.id);
         }

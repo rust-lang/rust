@@ -23,8 +23,8 @@ source code snippets, etc.
 
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 use std::cell::RefCell;
+use std::gc::Gc;
 use std::rc::Rc;
-use std::string::String;
 
 pub trait Pos {
     fn from_uint(n: uint) -> Self;
@@ -91,7 +91,7 @@ pub struct Span {
     pub hi: BytePos,
     /// Information about where the macro came from, if this piece of
     /// code was created by a macro expansion.
-    pub expn_info: Option<@ExpnInfo>
+    pub expn_info: Option<Gc<ExpnInfo>>
 }
 
 pub static DUMMY_SP: Span = Span { lo: BytePos(0), hi: BytePos(0), expn_info: None };

@@ -77,13 +77,14 @@ impl<'a> Visitor<bool> for CheckStaticVisitor<'a> {
     fn visit_item(&mut self, i: &ast::Item, _is_const: bool) {
         debug!("visit_item(item={})", pprust::item_to_str(i));
         match i.node {
-            ast::ItemStatic(_, mutability, expr) => {
+            ast::ItemStatic(_, mutability, ref expr) => {
                 match mutability {
                     ast::MutImmutable => {
-                        self.visit_expr(expr, true);
+                        self.visit_expr(&**expr, true);
                     }
                     ast::MutMutable => {
-                        self.report_error(expr.span, safe_type_for_static_mut(self.tcx, expr));
+                        let safe = safe_type_for_static_mut(self.tcx, &**expr);
+                        self.report_error(expr.span, safe);
                     }
                 }
             }

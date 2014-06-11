@@ -17,11 +17,13 @@ use ext::deriving::generic::*;
 use ext::deriving::generic::ty::*;
 use parse::token::InternedString;
 
+use std::gc::Gc;
+
 pub fn expand_deriving_ord(cx: &mut ExtCtxt,
                            span: Span,
-                           mitem: @MetaItem,
-                           item: @Item,
-                           push: |@Item|) {
+                           mitem: Gc<MetaItem>,
+                           item: Gc<Item>,
+                           push: |Gc<Item>|) {
     macro_rules! md (
         ($name:expr, $op:expr, $equal:expr) => { {
             let inline = cx.meta_word(span, InternedString::new("inline"));
@@ -58,7 +60,8 @@ pub fn expand_deriving_ord(cx: &mut ExtCtxt,
 }
 
 /// Strict inequality.
-fn cs_op(less: bool, equal: bool, cx: &mut ExtCtxt, span: Span, substr: &Substructure) -> @Expr {
+fn cs_op(less: bool, equal: bool, cx: &mut ExtCtxt, span: Span,
+         substr: &Substructure) -> Gc<Expr> {
     let op = if less {ast::BiLt} else {ast::BiGt};
     cs_fold(
         false, // need foldr,

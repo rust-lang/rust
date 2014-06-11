@@ -25,7 +25,7 @@ use middle::ty;
 use middle::typeck;
 
 use std::rc::Rc;
-use std::string::String;
+use std::gc::Gc;
 use syntax::abi;
 use syntax::ast_map;
 use syntax::codemap::{Span, Pos};
@@ -510,7 +510,7 @@ impl<T:Repr> Repr for Rc<T> {
     }
 }
 
-impl<T:Repr> Repr for @T {
+impl<T:Repr + 'static> Repr for Gc<T> {
     fn repr(&self, tcx: &ctxt) -> String {
         (&**self).repr(tcx)
     }

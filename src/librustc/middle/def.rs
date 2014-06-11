@@ -11,6 +11,8 @@
 use syntax::ast;
 use syntax::ast_util::local_def;
 
+use std::gc::Gc;
+
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
 pub enum Def {
     DefFn(ast::DefId, ast::FnStyle),
@@ -29,7 +31,7 @@ pub enum Def {
     DefBinding(ast::NodeId, ast::BindingMode),
     DefUse(ast::DefId),
     DefUpvar(ast::NodeId,  // id of closed over var
-             @Def,     // closed over def
+             Gc<Def>,     // closed over def
              ast::NodeId,  // expr node that creates the closure
              ast::NodeId), // id for the block/body of the closure expr
 

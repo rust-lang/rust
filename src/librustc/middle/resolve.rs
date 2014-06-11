@@ -34,9 +34,9 @@ use syntax::visit::Visitor;
 
 use std::collections::{HashMap, HashSet};
 use std::cell::{Cell, RefCell};
+use std::gc::Gc;
 use std::mem::replace;
 use std::rc::{Rc, Weak};
-use std::string::String;
 use std::uint;
 
 // Definition mapping
@@ -1195,9 +1195,9 @@ impl<'a> Resolver<'a> {
                 name_bindings.define_type
                     (DefTy(local_def(item.id)), sp, is_public);
 
-                for &variant in (*enum_definition).variants.iter() {
+                for variant in (*enum_definition).variants.iter() {
                     self.build_reduced_graph_for_variant(
-                        variant,
+                        &**variant,
                         local_def(item.id),
                         parent.clone(),
                         is_public);
@@ -3430,7 +3430,7 @@ impl<'a> Resolver<'a> {
                 FunctionRibKind(function_id, body_id) => {
                     if !is_ty_param {
                         def = DefUpvar(def.def_id().node,
-                                       @def,
+                                       box(GC) def,
                                        function_id,
                                        body_id);
                     }
@@ -3565,7 +3565,7 @@ impl<'a> Resolver<'a> {
                         // resolve the discriminator expr
                         // as a constant
                         self.with_constant_rib(|this| {
-                            this.resolve_expr(*dis_expr);
+                            this.resolve_expr(&**dis_expr);
                         });
                     }
                 }
@@ -3593,13 +3593,13 @@ impl<'a> Resolver<'a> {
             }
 
             ItemImpl(ref generics,
-                      ref implemented_traits,
-                      self_type,
-                      ref methods) => {
+                     ref implemented_traits,
+                     ref self_type,
+                     ref methods) => {
                 self.resolve_implementation(item.id,
                                             generics,
                                             implemented_traits,
-                                            self_type,
+                                            &**self_type,
                                             methods.as_slice());
             }
 
@@ -3647,16 +3647,16 @@ impl<'a> Resolver<'a> {
                                     &ty_m.generics.ty_params);
 
                                 for argument in ty_m.decl.inputs.iter() {
-                                    this.resolve_type(argument.ty);
+                                    this.resolve_type(&*argument.ty);
                                 }
 
-                                this.resolve_type(ty_m.decl.output);
+                                this.resolve_type(&*ty_m.decl.output);
                             });
                           }
-                          ast::Provided(m) => {
+                          ast::Provided(ref m) => {
                               this.resolve_method(MethodRibKind(item.id,
                                                      Provided(m.id)),
-                                                  m,
+                                                  &**m,
                                                   generics.ty_params.len())
                           }
                         }
@@ -3690,12 +3690,12 @@ impl<'a> Resolver<'a> {
                                         generics, foreign_item.id, 0,
                                         ItemRibKind),
                                     |this| visit::walk_foreign_item(this,
-                                                                *foreign_item,
+                                                                &**foreign_item,
                                                                 ()));
                             }
                             ForeignItemStatic(..) => {
                                 visit::walk_foreign_item(this,
-                                                         *foreign_item,
+                                                         &**foreign_item,
                                                          ());
                             }
                         }
@@ -3812,21 +3812,21 @@ impl<'a> Resolver<'a> {
                 }
                 Some(declaration) => {
                     for argument in declaration.inputs.iter() {
-                        this.resolve_pattern(argument.pat,
+                        this.resolve_pattern(&*argument.pat,
                                              ArgumentIrrefutableMode,
                                              None);
 
-                        this.resolve_type(argument.ty);
+                        this.resolve_type(&*argument.ty);
 
                         debug!("(resolving function) recorded argument");
                     }
 
-                    this.resolve_type(declaration.output);
+                    this.resolve_type(&*declaration.output);
                 }
             }
 
             // Resolve the function body.
-            this.resolve_block(block);
+            this.resolve_block(&*block);
 
             debug!("(resolving function) leaving function");
         });
@@ -3842,7 +3842,7 @@ impl<'a> Resolver<'a> {
                 self.resolve_type_parameter_bound(type_parameter.id, bound);
             }
             match type_parameter.default {
-                Some(ty) => self.resolve_type(ty),
+                Some(ref ty) => self.resolve_type(&**ty),
                 None => {}
             }
         }
@@ -3857,10 +3857,10 @@ impl<'a> Resolver<'a> {
             }
             UnboxedFnTyParamBound(ref unboxed_function) => {
                 for argument in unboxed_function.decl.inputs.iter() {
-                    self.resolve_type(argument.ty);
+                    self.resolve_type(&*argument.ty);
                 }
 
-                self.resolve_type(unboxed_function.decl.output);
+                self.resolve_type(&*unboxed_function.decl.output);
             }
             StaticRegionTyParamBound | OtherRegionTyParamBound(_) => {}
         }
@@ -3938,7 +3938,7 @@ impl<'a> Resolver<'a> {
 
             // Resolve fields.
             for field in fields.iter() {
-                this.resolve_type(field.node.ty);
+                this.resolve_type(&*field.node.ty);
             }
         });
     }
@@ -3995,7 +3995,7 @@ impl<'a> Resolver<'a> {
                                   generics: &Generics,
                                   opt_trait_reference: &Option<TraitRef>,
                                   self_type: &Ty,
-                                  methods: &[@Method]) {
+                                  methods: &[Gc<Method>]) {
         // If applicable, create a rib for the type parameters.
         let outer_type_parameter_count = generics.ty_params.len();
         self.with_type_parameter_rib(HasTypeParameters(generics,
@@ -4015,7 +4015,7 @@ impl<'a> Resolver<'a> {
                     for method in methods.iter() {
                         // We also need a new scope for the method-specific type parameters.
                         this.resolve_method(MethodRibKind(id, Provided(method.id)),
-                                            *method,
+                                            &**method,
                                             outer_type_parameter_count);
                     }
                 });
@@ -4032,20 +4032,20 @@ impl<'a> Resolver<'a> {
 
     fn resolve_local(&mut self, local: &Local) {
         // Resolve the type.
-        self.resolve_type(local.ty);
+        self.resolve_type(&*local.ty);
 
         // Resolve the initializer, if necessary.
         match local.init {
             None => {
                 // Nothing to do.
             }
-            Some(initializer) => {
-                self.resolve_expr(initializer);
+            Some(ref initializer) => {
+                self.resolve_expr(&**initializer);
             }
         }
 
         // Resolve the pattern.
-        self.resolve_pattern(local.pat, LocalIrrefutableMode, None);
+        self.resolve_pattern(&*local.pat, LocalIrrefutableMode, None);
     }
 
     // build a map from pattern identifiers to binding-info's.
@@ -4069,9 +4069,9 @@ impl<'a> Resolver<'a> {
         if arm.pats.len() == 0 {
             return
         }
-        let map_0 = self.binding_mode_map(*arm.pats.get(0));
+        let map_0 = self.binding_mode_map(&**arm.pats.get(0));
         for (i, p) in arm.pats.iter().enumerate() {
-            let map_i = self.binding_mode_map(*p);
+            let map_i = self.binding_mode_map(&**p);
 
             for (&key, &binding_0) in map_0.iter() {
                 match map_i.find(&key) {
@@ -4114,7 +4114,7 @@ impl<'a> Resolver<'a> {
 
         let mut bindings_list = HashMap::new();
         for pattern in arm.pats.iter() {
-            self.resolve_pattern(*pattern,
+            self.resolve_pattern(&**pattern,
                                  RefutableMode,
                                  Some(&mut bindings_list));
         }
@@ -4124,7 +4124,7 @@ impl<'a> Resolver<'a> {
         self.check_consistent_bindings(arm);
 
         visit::walk_expr_opt(self, arm.guard, ());
-        self.resolve_expr(arm.body);
+        self.resolve_expr(&*arm.body);
 
         self.value_ribs.borrow_mut().pop();
     }
@@ -4392,10 +4392,10 @@ impl<'a> Resolver<'a> {
                     }
 
                     // Check the types in the path pattern.
-                    for &ty in path.segments
+                    for ty in path.segments
                                   .iter()
                                   .flat_map(|seg| seg.types.iter()) {
-                        self.resolve_type(ty);
+                        self.resolve_type(&**ty);
                     }
                 }
 
@@ -4430,10 +4430,10 @@ impl<'a> Resolver<'a> {
                     }
 
                     // Check the types in the path pattern.
-                    for &ty in path.segments
+                    for ty in path.segments
                                   .iter()
                                   .flat_map(|s| s.types.iter()) {
-                        self.resolve_type(ty);
+                        self.resolve_type(&**ty);
                     }
                 }
 
@@ -4467,20 +4467,20 @@ impl<'a> Resolver<'a> {
                     }
 
                     // Check the types in the path pattern.
-                    for &ty in path.segments
+                    for ty in path.segments
                                   .iter()
                                   .flat_map(|s| s.types.iter()) {
-                        self.resolve_type(ty);
+                        self.resolve_type(&**ty);
                     }
                 }
 
-                PatLit(expr) => {
-                    self.resolve_expr(expr);
+                PatLit(ref expr) => {
+                    self.resolve_expr(&**expr);
                 }
 
-                PatRange(first_expr, last_expr) => {
-                    self.resolve_expr(first_expr);
-                    self.resolve_expr(last_expr);
+                PatRange(ref first_expr, ref last_expr) => {
+                    self.resolve_expr(&**first_expr);
+                    self.resolve_expr(&**last_expr);
                 }
 
                 PatStruct(ref path, _, _) => {
@@ -4571,8 +4571,8 @@ impl<'a> Resolver<'a> {
                     namespace: Namespace,
                     check_ribs: bool) -> Option<(Def, LastPrivate)> {
         // First, resolve the types.
-        for &ty in path.segments.iter().flat_map(|s| s.types.iter()) {
-            self.resolve_type(ty);
+        for ty in path.segments.iter().flat_map(|s| s.types.iter()) {
+            self.resolve_type(&**ty);
         }
 
         if path.global {
@@ -4919,8 +4919,8 @@ impl<'a> Resolver<'a> {
                                                     -> Option<(Path, NodeId, FallbackChecks)> {
             match t.node {
                 TyPath(ref path, _, node_id) => Some((path.clone(), node_id, allow)),
-                TyPtr(mut_ty) => extract_path_and_node_id(mut_ty.ty, OnlyTraitAndStatics),
-                TyRptr(_, mut_ty) => extract_path_and_node_id(mut_ty.ty, allow),
+                TyPtr(mut_ty) => extract_path_and_node_id(&*mut_ty.ty, OnlyTraitAndStatics),
+                TyRptr(_, mut_ty) => extract_path_and_node_id(&*mut_ty.ty, allow),
                 // This doesn't handle the remaining `Ty` variants as they are not
                 // that commonly the self_type, it might be interesting to provide
                 // support for those in future.

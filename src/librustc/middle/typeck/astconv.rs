@@ -230,7 +230,7 @@ fn ast_path_substs<AC:AstConv,RS:RegionScope>(
     }
 
     let tps = path.segments.iter().flat_map(|s| s.types.iter())
-                            .map(|&a_t| ast_ty_to_ty(this, rscope, a_t))
+                            .map(|a_t| ast_ty_to_ty(this, rscope, &**a_t))
                             .collect();
 
     let mut substs = subst::Substs {
@@ -451,6 +451,53 @@ pub fn ast_ty_to_builtin_ty<AC:AstConv,
                                               supplied to `Box<T>`");
                     Some(ty::mk_err())
                 }
+                def::DefTy(did) | def::DefStruct(did)
+                        if Some(did) == this.tcx().lang_items.gc() => {
+                    if path.segments
+                           .iter()
+                           .flat_map(|s| s.types.iter())
+                           .count() > 1 {
+                        this.tcx()
+                            .sess
+                            .span_err(path.span,
+                                      "`Gc` has only one type parameter")
+                    }
+
+                    for inner_ast_type in path.segments
+                                              .iter()
+                                              .flat_map(|s| s.types.iter()) {
+                        let mt = ast::MutTy {
+                            ty: *inner_ast_type,
+                            mutbl: ast::MutImmutable,
+                        };
+                        return Some(mk_pointer(this,
+                                               rscope,
+                                               &mt,
+                                               Box,
+                                               |typ| {
+                            match ty::get(typ).sty {
+                                ty::ty_str => {
+                                    this.tcx()
+                                        .sess
+                                        .span_err(path.span,
+                                                  "`Gc<str>` is not a type");
+                                    ty::mk_err()
+                                }
+                                ty::ty_vec(_, None) => {
+                                    this.tcx()
+                                        .sess
+                                        .span_err(path.span,
+                                                  "`Gc<[T]>` is not a type");
+                                    ty::mk_err()
+                                }
+                                _ => ty::mk_box(this.tcx(), typ),
+                            }
+                        }))
+                    }
+                    this.tcx().sess.span_bug(path.span,
+                                             "not enough type parameters \
+                                              supplied to `Gc<T>`")
+                }
                 _ => None
             }
         }
@@ -485,12 +532,12 @@ pub fn trait_ref_for_unboxed_function<AC:AstConv,
                         .inputs
                         .iter()
                         .map(|input| {
-                            ast_ty_to_ty(this, rscope, input.ty)
+                            ast_ty_to_ty(this, rscope, &*input.ty)
                         }).collect::<Vec<_>>();
     let input_tuple = ty::mk_tup(this.tcx(), input_types);
     let output_type = ast_ty_to_ty(this,
                                    rscope,
-                                   unboxed_function.decl.output);
+                                   &*unboxed_function.decl.output);
     let substs = subst::Substs {
         self_ty: None,
         tps: vec!(input_tuple, output_type),
@@ -517,8 +564,8 @@ fn mk_pointer<AC:AstConv,
     debug!("mk_pointer(ptr_ty={:?})", ptr_ty);
 
     match a_seq_ty.ty.node {
-        ast::TyVec(ty) => {
-            let mut mt = ast_ty_to_mt(this, rscope, ty);
+        ast::TyVec(ref ty) => {
+            let mut mt = ast_ty_to_mt(this, rscope, &**ty);
             if a_seq_ty.mutbl == ast::MutMutable {
                 mt.mutbl = ast::MutMutable;
             }
@@ -543,7 +590,7 @@ fn mk_pointer<AC:AstConv,
                 substs
             } = trait_ref_for_unboxed_function(this,
                                                rscope,
-                                               *unboxed_function);
+                                               &**unboxed_function);
             return ty::mk_trait(this.tcx(),
                                 def_id,
                                 substs,
@@ -603,7 +650,7 @@ fn mk_pointer<AC:AstConv,
         _ => {}
     }
 
-    constr(ast_ty_to_ty(this, rscope, a_seq_ty.ty))
+    constr(ast_ty_to_ty(this, rscope, &*a_seq_ty.ty))
 }
 
 // Parses the programmer's textual representation of a type into our
@@ -643,12 +690,12 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
             ast::TyVec(ty) => {
                 tcx.sess.span_err(ast_ty.span, "bare `[]` is not a type");
                 // return /something/ so they can at least get more errors
-                let vec_ty = ty::mk_vec(tcx, ast_ty_to_mt(this, rscope, ty), None);
+                let vec_ty = ty::mk_vec(tcx, ast_ty_to_mt(this, rscope, &*ty), None);
                 ty::mk_uniq(tcx, vec_ty)
             }
             ast::TyPtr(ref mt) => {
                 ty::mk_ptr(tcx, ty::mt {
-                    ty: ast_ty_to_ty(this, rscope, mt.ty),
+                    ty: ast_ty_to_ty(this, rscope, &*mt.ty),
                     mutbl: mt.mutbl
                 })
             }
@@ -660,7 +707,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
             }
             ast::TyTup(ref fields) => {
                 let flds = fields.iter()
-                                 .map(|&t| ast_ty_to_ty(this, rscope, t))
+                                 .map(|t| ast_ty_to_ty(this, rscope, &**t))
                                  .collect();
                 ty::mk_tup(tcx, flds)
             }
@@ -670,7 +717,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                                       "variadic function must have C calling convention");
                 }
                 ty::mk_bare_fn(tcx, ty_of_bare_fn(this, ast_ty.id, bf.fn_style,
-                                                  bf.abi, bf.decl))
+                                                  bf.abi, &*bf.decl))
             }
             ast::TyClosure(ref f, ref region) => {
 
@@ -694,7 +741,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                                             f.onceness,
                                             bounds,
                                             store,
-                                            f.decl,
+                                            &*f.decl,
                                             None);
                 ty::mk_closure(tcx, fn_decl)
             }
@@ -712,7 +759,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                                             f.onceness,
                                             bounds,
                                             ty::UniqTraitStore,
-                                            f.decl,
+                                            &*f.decl,
                                             None);
                 ty::mk_closure(tcx, fn_decl)
             }
@@ -783,14 +830,14 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                 }
             }
             ast::TyFixedLengthVec(ty, e) => {
-                match const_eval::eval_const_expr_partial(tcx, e) {
+                match const_eval::eval_const_expr_partial(tcx, &*e) {
                     Ok(ref r) => {
                         match *r {
                             const_eval::const_int(i) =>
-                                ty::mk_vec(tcx, ast_ty_to_mt(this, rscope, ty),
+                                ty::mk_vec(tcx, ast_ty_to_mt(this, rscope, &*ty),
                                            Some(i as uint)),
                             const_eval::const_uint(i) =>
-                                ty::mk_vec(tcx, ast_ty_to_mt(this, rscope, ty),
+                                ty::mk_vec(tcx, ast_ty_to_mt(this, rscope, &*ty),
                                            Some(i as uint)),
                             _ => {
                                 tcx.sess.span_fatal(
@@ -829,7 +876,7 @@ pub fn ty_of_arg<AC: AstConv, RS: RegionScope>(this: &AC, rscope: &RS, a: &ast::
     match a.ty.node {
         ast::TyInfer if expected_ty.is_some() => expected_ty.unwrap(),
         ast::TyInfer => this.ty_infer(a.ty.span),
-        _ => ast_ty_to_ty(this, rscope, a.ty),
+        _ => ast_ty_to_ty(this, rscope, &*a.ty),
     }
 }
 
@@ -900,7 +947,7 @@ fn ty_of_method_or_bare_fn<AC:AstConv>(this: &AC, id: ast::NodeId,
 
     let output_ty = match decl.output.node {
         ast::TyInfer => this.ty_infer(decl.output.span),
-        _ => ast_ty_to_ty(this, &rb, decl.output)
+        _ => ast_ty_to_ty(this, &rb, &*decl.output)
     };
 
     return ty::BareFnTy {
@@ -949,7 +996,7 @@ pub fn ty_of_closure<AC:AstConv>(
     let output_ty = match decl.output.node {
         ast::TyInfer if expected_ret_ty.is_some() => expected_ret_ty.unwrap(),
         ast::TyInfer => this.ty_infer(decl.output.span),
-        _ => ast_ty_to_ty(this, &rb, decl.output)
+        _ => ast_ty_to_ty(this, &rb, &*decl.output)
     };
 
     ty::ClosureTy {

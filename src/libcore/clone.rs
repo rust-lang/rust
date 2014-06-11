@@ -39,12 +39,6 @@ pub trait Clone {
     }
 }
 
-impl<T> Clone for @T {
-    /// Return a shallow copy of the managed box.
-    #[inline]
-    fn clone(&self) -> @T { *self }
-}
-
 impl<'a, T> Clone for &'a T {
     /// Return a shallow copy of the reference.
     #[inline]
@@ -116,6 +110,7 @@ extern_fn_clone!(A, B, C, D, E, F, G, H)
 mod test {
     use prelude::*;
     use realstd::owned::Box;
+    use realstd::gc::{Gc, GC};
 
     fn realclone<T: ::realstd::clone::Clone>(t: &T) -> T {
         use realstd::clone::Clone;
@@ -136,9 +131,9 @@ mod test {
 
     #[test]
     fn test_managed_clone() {
-        let a = @5i;
-        let b: @int = a.clone();
-        assert_eq!(a, b);
+        let a = box(GC) 5i;
+        let b: Gc<int> = realclone(&a);
+        assert!(a == b);
     }
 
     #[test]

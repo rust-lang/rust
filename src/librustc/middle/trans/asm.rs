@@ -37,23 +37,23 @@ pub fn trans_inline_asm<'a>(bcx: &'a Block<'a>, ia: &ast::InlineAsm)
     let temp_scope = fcx.push_custom_cleanup_scope();
 
     // Prepare the output operands
-    let outputs = ia.outputs.iter().map(|&(ref c, out)| {
+    let outputs = ia.outputs.iter().map(|&(ref c, ref out)| {
         constraints.push((*c).clone());
 
-        let out_datum = unpack_datum!(bcx, expr::trans(bcx, out));
+        let out_datum = unpack_datum!(bcx, expr::trans(bcx, &**out));
         output_types.push(type_of::type_of(bcx.ccx(), out_datum.ty));
         out_datum.val
 
     }).collect::<Vec<_>>();
 
     // Now the input operands
-    let inputs = ia.inputs.iter().map(|&(ref c, input)| {
+    let inputs = ia.inputs.iter().map(|&(ref c, ref input)| {
         constraints.push((*c).clone());
 
-        let in_datum = unpack_datum!(bcx, expr::trans(bcx, input));
+        let in_datum = unpack_datum!(bcx, expr::trans(bcx, &**input));
         unpack_result!(bcx, {
             callee::trans_arg_datum(bcx,
-                                   expr_ty(bcx, input),
+                                   expr_ty(bcx, &**input),
                                    in_datum,
                                    cleanup::CustomScope(temp_scope),
                                    callee::DontAutorefArg)

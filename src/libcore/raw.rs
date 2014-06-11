@@ -79,7 +79,6 @@ pub trait Repr<T> {
 
 impl<'a, T> Repr<Slice<T>> for &'a [T] {}
 impl<'a> Repr<Slice<u8>> for &'a str {}
-impl<T> Repr<*Box<T>> for @T {}
 impl<T> Repr<*Vec<T>> for ~[T] {}
 
 #[cfg(test)]

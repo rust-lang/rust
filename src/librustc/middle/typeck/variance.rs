@@ -479,13 +479,13 @@ impl<'a> Visitor<()> for ConstraintContext<'a> {
                 // `ty::VariantInfo::from_ast_variant()` ourselves
                 // here, mainly so as to mask the differences between
                 // struct-like enums and so forth.
-                for &ast_variant in enum_definition.variants.iter() {
+                for ast_variant in enum_definition.variants.iter() {
                     let variant =
                         ty::VariantInfo::from_ast_variant(tcx,
-                                                          ast_variant,
+                                                          &**ast_variant,
                                                           /*discriminant*/ 0);
-                    for &arg_ty in variant.args.iter() {
-                        self.add_constraints_from_ty(arg_ty, self.covariant);
+                    for arg_ty in variant.args.iter() {
+                        self.add_constraints_from_ty(*arg_ty, self.covariant);
                     }
                 }
             }

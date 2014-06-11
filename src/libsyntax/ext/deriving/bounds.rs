@@ -14,11 +14,13 @@ use ext::base::ExtCtxt;
 use ext::deriving::generic::*;
 use ext::deriving::generic::ty::*;
 
+use std::gc::Gc;
+
 pub fn expand_deriving_bound(cx: &mut ExtCtxt,
                              span: Span,
-                             mitem: @MetaItem,
-                             item: @Item,
-                             push: |@Item|) {
+                             mitem: Gc<MetaItem>,
+                             item: Gc<Item>,
+                             push: |Gc<Item>|) {
 
     let name = match mitem.node {
         MetaWord(ref tname) => {

@@ -91,11 +91,13 @@ use ext::deriving::generic::*;
 use ext::deriving::generic::ty::*;
 use parse::token;
 
+use std::gc::Gc;
+
 pub fn expand_deriving_encodable(cx: &mut ExtCtxt,
                                  span: Span,
-                                 mitem: @MetaItem,
-                                 item: @Item,
-                                 push: |@Item|) {
+                                 mitem: Gc<MetaItem>,
+                                 item: Gc<Item>,
+                                 push: |Gc<Item>|) {
     let trait_def = TraitDef {
         span: span,
         attributes: Vec::new(),
@@ -134,7 +136,7 @@ pub fn expand_deriving_encodable(cx: &mut ExtCtxt,
 }
 
 fn encodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
-                          substr: &Substructure) -> @Expr {
+                          substr: &Substructure) -> Gc<Expr> {
     let encoder = substr.nonself_args[0];
     // throw an underscore in front to suppress unused variable warnings
     let blkarg = cx.ident_of("_e");

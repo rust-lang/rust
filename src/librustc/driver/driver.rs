@@ -705,7 +705,7 @@ fn print_flowgraph<W:io::Writer>(analysis: CrateAnalysis,
                                  block: ast::P<ast::Block>,
                                  mut out: W) -> io::IoResult<()> {
     let ty_cx = &analysis.ty_cx;
-    let cfg = cfg::CFG::new(ty_cx, block);
+    let cfg = cfg::CFG::new(ty_cx, &*block);
     let lcfg = LabelledCFG { ast_map: &ty_cx.map,
                              cfg: &cfg,
                              name: format!("block{}", block.id).to_string(), };

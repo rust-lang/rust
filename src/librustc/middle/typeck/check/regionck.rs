@@ -141,6 +141,7 @@ use syntax::visit;
 use syntax::visit::Visitor;
 
 use std::cell::RefCell;
+use std::gc::Gc;
 
 // If mem categorization results in an error, it's because the type
 // check failed (or will fail, when the error is uncovered and
@@ -343,8 +344,8 @@ fn visit_block(rcx: &mut Rcx, b: &ast::Block) {
 
 fn visit_arm(rcx: &mut Rcx, arm: &ast::Arm) {
     // see above
-    for &p in arm.pats.iter() {
-        constrain_bindings_in_pat(p, rcx);
+    for p in arm.pats.iter() {
+        constrain_bindings_in_pat(&**p, rcx);
     }
 
     visit::walk_arm(rcx, arm, ());
@@ -352,7 +353,7 @@ fn visit_arm(rcx: &mut Rcx, arm: &ast::Arm) {
 
 fn visit_local(rcx: &mut Rcx, l: &ast::Local) {
     // see above
-    constrain_bindings_in_pat(l.pat, rcx);
+    constrain_bindings_in_pat(&*l.pat, rcx);
     link_local(rcx, l);
     visit::walk_local(rcx, l, ());
 }
@@ -441,9 +442,9 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
     }
 
     match expr.node {
-        ast::ExprCall(callee, ref args) => {
+        ast::ExprCall(ref callee, ref args) => {
             if !has_method_map {
-                constrain_callee(rcx, callee.id, expr, callee);
+                constrain_callee(rcx, callee.id, expr, &**callee);
                 constrain_call(rcx,
                                Some(callee.id),
                                expr,
@@ -462,45 +463,47 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
             visit::walk_expr(rcx, expr, ());
         }
 
-        ast::ExprAssign(lhs, _) => {
-            adjust_borrow_kind_for_assignment_lhs(rcx, lhs);
+        ast::ExprAssign(ref lhs, _) => {
+            adjust_borrow_kind_for_assignment_lhs(rcx, &**lhs);
             visit::walk_expr(rcx, expr, ());
         }
 
-        ast::ExprAssignOp(_, lhs, rhs) => {
+        ast::ExprAssignOp(_, ref lhs, ref rhs) => {
             if has_method_map {
-                constrain_call(rcx, None, expr, Some(lhs), [rhs], true);
+                constrain_call(rcx, None, expr, Some(lhs.clone()),
+                               [rhs.clone()], true);
             }
 
-            adjust_borrow_kind_for_assignment_lhs(rcx, lhs);
+            adjust_borrow_kind_for_assignment_lhs(rcx, &**lhs);
 
             visit::walk_expr(rcx, expr, ());
         }
 
-        ast::ExprIndex(lhs, rhs) |
-        ast::ExprBinary(_, lhs, rhs) if has_method_map => {
+        ast::ExprIndex(ref lhs, ref rhs) |
+        ast::ExprBinary(_, ref lhs, ref rhs) if has_method_map => {
             // As `expr_method_call`, but the call is via an
             // overloaded op.  Note that we (sadly) currently use an
             // implicit "by ref" sort of passing style here.  This
             // should be converted to an adjustment!
-            constrain_call(rcx, None, expr, Some(lhs), [rhs], true);
+            constrain_call(rcx, None, expr, Some(lhs.clone()),
+                           [rhs.clone()], true);
 
             visit::walk_expr(rcx, expr, ());
         }
 
-        ast::ExprUnary(_, lhs) if has_method_map => {
+        ast::ExprUnary(_, ref lhs) if has_method_map => {
             // As above.
-            constrain_call(rcx, None, expr, Some(lhs), [], true);
+            constrain_call(rcx, None, expr, Some(lhs.clone()), [], true);
 
             visit::walk_expr(rcx, expr, ());
         }
 
-        ast::ExprUnary(ast::UnDeref, base) => {
+        ast::ExprUnary(ast::UnDeref, ref base) => {
             // For *a, the lifetime of a must enclose the deref
             let method_call = MethodCall::expr(expr.id);
             let base_ty = match rcx.fcx.inh.method_map.borrow().find(&method_call) {
                 Some(method) => {
-                    constrain_call(rcx, None, expr, Some(base), [], true);
+                    constrain_call(rcx, None, expr, Some(base.clone()), [], true);
                     ty::ty_fn_ret(method.ty)
                 }
                 None => rcx.resolve_node_type(base.id)
@@ -516,15 +519,15 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
             visit::walk_expr(rcx, expr, ());
         }
 
-        ast::ExprIndex(vec_expr, _) => {
+        ast::ExprIndex(ref vec_expr, _) => {
             // For a[b], the lifetime of a must enclose the deref
-            let vec_type = rcx.resolve_expr_type_adjusted(vec_expr);
+            let vec_type = rcx.resolve_expr_type_adjusted(&**vec_expr);
             constrain_index(rcx, expr, vec_type);
 
             visit::walk_expr(rcx, expr, ());
         }
 
-        ast::ExprCast(source, _) => {
+        ast::ExprCast(ref source, _) => {
             // Determine if we are casting `source` to a trait
             // instance.  If so, we have to be sure that the type of
             // the source obeys the trait's region bound.
@@ -543,7 +546,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
                 ty::ty_trait(box ty::TyTrait {
                     store: ty::RegionTraitStore(trait_region, _), ..
                 }) => {
-                    let source_ty = rcx.resolve_expr_type_adjusted(source);
+                    let source_ty = rcx.resolve_expr_type_adjusted(&**source);
                     constrain_regions_in_type(
                         rcx,
                         trait_region,
@@ -556,8 +559,8 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
             visit::walk_expr(rcx, expr, ());
         }
 
-        ast::ExprAddrOf(m, base) => {
-            link_addr_of(rcx, expr, m, base);
+        ast::ExprAddrOf(m, ref base) => {
+            link_addr_of(rcx, expr, m, &**base);
 
             // Require that when you write a `&expr` expression, the
             // resulting pointer has a lifetime that encompasses the
@@ -572,8 +575,8 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
             visit::walk_expr(rcx, expr, ());
         }
 
-        ast::ExprMatch(discr, ref arms) => {
-            link_match(rcx, discr, arms.as_slice());
+        ast::ExprMatch(ref discr, ref arms) => {
+            link_match(rcx, &**discr, arms.as_slice());
 
             visit::walk_expr(rcx, expr, ());
         }
@@ -582,18 +585,18 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
             check_expr_fn_block(rcx, expr, &**body);
         }
 
-        ast::ExprLoop(body, _) => {
+        ast::ExprLoop(ref body, _) => {
             let repeating_scope = rcx.set_repeating_scope(body.id);
             visit::walk_expr(rcx, expr, ());
             rcx.set_repeating_scope(repeating_scope);
         }
 
-        ast::ExprWhile(cond, body) => {
+        ast::ExprWhile(ref cond, ref body) => {
             let repeating_scope = rcx.set_repeating_scope(cond.id);
-            rcx.visit_expr(cond, ());
+            rcx.visit_expr(&**cond, ());
 
             rcx.set_repeating_scope(body.id);
-            rcx.visit_block(body, ());
+            rcx.visit_block(&**body, ());
 
             rcx.set_repeating_scope(repeating_scope);
         }
@@ -785,8 +788,8 @@ fn constrain_call(rcx: &mut Rcx,
                   // operator
                   fn_expr_id: Option<ast::NodeId>,
                   call_expr: &ast::Expr,
-                  receiver: Option<@ast::Expr>,
-                  arg_exprs: &[@ast::Expr],
+                  receiver: Option<Gc<ast::Expr>>,
+                  arg_exprs: &[Gc<ast::Expr>],
                   implicitly_ref_args: bool) {
     //! Invoked on every call site (i.e., normal calls, method calls,
     //! and overloaded operators). Constrains the regions which appear
@@ -820,7 +823,7 @@ fn constrain_call(rcx: &mut Rcx,
     let callee_scope = call_expr.id;
     let callee_region = ty::ReScope(callee_scope);
 
-    for &arg_expr in arg_exprs.iter() {
+    for arg_expr in arg_exprs.iter() {
         debug!("Argument");
 
         // ensure that any regions appearing in the argument type are
@@ -834,17 +837,17 @@ fn constrain_call(rcx: &mut Rcx,
         // result. modes are going away and the "DerefArgs" code
         // should be ported to use adjustments
         if implicitly_ref_args {
-            link_by_ref(rcx, arg_expr, callee_scope);
+            link_by_ref(rcx, &**arg_expr, callee_scope);
         }
     }
 
     // as loop above, but for receiver
-    for &r in receiver.iter() {
+    for r in receiver.iter() {
         debug!("Receiver");
         constrain_regions_in_type_of_node(
             rcx, r.id, callee_region, infer::CallRcvr(r.span));
         if implicitly_ref_args {
-            link_by_ref(rcx, r, callee_scope);
+            link_by_ref(rcx, &**r, callee_scope);
         }
     }
 
@@ -1054,11 +1057,11 @@ fn link_local(rcx: &Rcx, local: &ast::Local) {
     debug!("regionck::for_local()");
     let init_expr = match local.init {
         None => { return; }
-        Some(expr) => expr,
+        Some(ref expr) => expr,
     };
     let mc = mc::MemCategorizationContext::new(rcx);
-    let discr_cmt = ignore_err!(mc.cat_expr(init_expr));
-    link_pattern(rcx, mc, discr_cmt, local.pat);
+    let discr_cmt = ignore_err!(mc.cat_expr(&**init_expr));
+    link_pattern(rcx, mc, discr_cmt, &*local.pat);
 }
 
 fn link_match(rcx: &Rcx, discr: &ast::Expr, arms: &[ast::Arm]) {
@@ -1073,8 +1076,8 @@ fn link_match(rcx: &Rcx, discr: &ast::Expr, arms: &[ast::Arm]) {
     let discr_cmt = ignore_err!(mc.cat_expr(discr));
     debug!("discr_cmt={}", discr_cmt.repr(rcx.tcx()));
     for arm in arms.iter() {
-        for &root_pat in arm.pats.iter() {
-            link_pattern(rcx, mc, discr_cmt.clone(), root_pat);
+        for root_pat in arm.pats.iter() {
+            link_pattern(rcx, mc, discr_cmt.clone(), &**root_pat);
         }
     }
 }
@@ -1098,8 +1101,8 @@ fn link_pattern(rcx: &Rcx,
                 }
 
                 // `[_, ..slice, _]` pattern
-                ast::PatVec(_, Some(slice_pat), _) => {
-                    match mc.cat_slice_pattern(sub_cmt, slice_pat) {
+                ast::PatVec(_, Some(ref slice_pat), _) => {
+                    match mc.cat_slice_pattern(sub_cmt, &**slice_pat) {
                         Ok((slice_cmt, slice_mutbl, slice_r)) => {
                             link_region(rcx, sub_pat.span, slice_r,
                                         ty::BorrowKind::from_mutbl(slice_mutbl),
