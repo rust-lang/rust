@@ -38,7 +38,6 @@ extern crate getopts;
 extern crate graphviz;
 extern crate libc;
 extern crate serialize;
-extern crate sync;
 extern crate syntax;
 extern crate time;
 

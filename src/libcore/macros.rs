@@ -131,3 +131,6 @@ macro_rules! write(
         format_args_method!($dst, write_fmt, $($arg)*)
     })
 )
+
+#[macro_export]
+macro_rules! unreachable( () => (fail!("unreachable code")) )

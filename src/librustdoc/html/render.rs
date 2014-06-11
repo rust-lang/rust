@@ -39,8 +39,8 @@ use std::io::{fs, File, BufferedWriter, MemWriter, BufferedReader};
 use std::io;
 use std::str;
 use std::string::String;
+use std::sync::Arc;
 
-use sync::Arc;
 use serialize::json::ToJson;
 use syntax::ast;
 use syntax::ast_util;

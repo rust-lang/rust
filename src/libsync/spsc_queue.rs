@@ -33,14 +33,15 @@
 //! concurrently between two tasks. This data structure is safe to use and
 //! enforces the semantics that there is one pusher and one popper.
 
-use kinds::Send;
-use mem;
-use ops::Drop;
-use option::{Some, None, Option};
-use owned::Box;
-use ptr::RawPtr;
-use sync::atomics::{AtomicPtr, Relaxed, AtomicUint, Acquire, Release};
-use ty::Unsafe;
+#![experimental]
+
+use core::prelude::*;
+
+use alloc::owned::Box;
+use core::mem;
+use core::ty::Unsafe;
+
+use atomics::{AtomicPtr, Relaxed, AtomicUint, Acquire, Release};
 
 // Node within the linked list queue of messages to send
 struct Node<T> {
@@ -226,7 +227,7 @@ impl<T: Send> Drop for Queue<T> {
 
 #[cfg(test)]
 mod test {
-    use prelude::*;
+    use std::prelude::*;
 
     use alloc::arc::Arc;
     use native;

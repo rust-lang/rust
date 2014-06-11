@@ -45,20 +45,17 @@
 
 #![allow(dead_code)]
 
-use cell::Cell;
-use iter::Iterator;
-use kinds::Send;
-use kinds::marker;
-use mem;
-use ops::Drop;
-use option::{Some, None, Option};
-use owned::Box;
-use ptr::RawPtr;
-use result::{Ok, Err, Result};
-use rt::local::Local;
-use rt::task::{Task, BlockedTask};
-use super::Receiver;
-use uint;
+use core::prelude::*;
+
+use alloc::owned::Box;
+use core::cell::Cell;
+use core::kinds::marker;
+use core::mem;
+use core::uint;
+use rustrt::local::Local;
+use rustrt::task::{Task, BlockedTask};
+
+use comm::Receiver;
 
 /// The "receiver set" of the select interface. This structure is used to manage
 /// a set of receivers which are being selected over.
@@ -321,8 +318,27 @@ impl Iterator<*mut Handle<'static, ()>> for Packets {
 #[cfg(test)]
 #[allow(unused_imports)]
 mod test {
+    use std::prelude::*;
+
     use super::super::*;
-    use prelude::*;
+
+    // Don't use the libstd version so we can pull in the right Select structure
+    // (std::comm points at the wrong one)
+    macro_rules! select {
+        (
+            $($name:pat = $rx:ident.$meth:ident() => $code:expr),+
+        ) => ({
+            use comm::Select;
+            let sel = Select::new();
+            $( let mut $rx = sel.handle(&$rx); )+
+            unsafe {
+                $( $rx.add(); )+
+            }
+            let ret = sel.wait();
+            $( if ret == $rx.id() { let $name = $rx.$meth(); $code } else )+
+            { unreachable!() }
+        })
+    }
 
     test!(fn smoke() {
         let (tx1, rx1) = channel::<int>();

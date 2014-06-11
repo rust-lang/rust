@@ -35,17 +35,18 @@
 //! method, and see the method for more information about it. Due to this
 //! caveat, this queue may not be appropriate for all use-cases.
 
+#![experimental]
+
 // http://www.1024cores.net/home/lock-free-algorithms
 //                         /queues/non-intrusive-mpsc-node-based-queue
 
-use kinds::Send;
-use mem;
-use ops::Drop;
-use option::{Option, None, Some};
-use owned::Box;
-use ptr::RawPtr;
-use sync::atomics::{AtomicPtr, Release, Acquire, AcqRel, Relaxed};
-use ty::Unsafe;
+use core::prelude::*;
+
+use alloc::owned::Box;
+use core::mem;
+use core::ty::Unsafe;
+
+use atomics::{AtomicPtr, Release, Acquire, AcqRel, Relaxed};
 
 /// A result of the `pop` function.
 pub enum PopResult<T> {
@@ -156,7 +157,7 @@ impl<T: Send> Drop for Queue<T> {
 
 #[cfg(test)]
 mod tests {
-    use prelude::*;
+    use std::prelude::*;
 
     use alloc::arc::Arc;
 

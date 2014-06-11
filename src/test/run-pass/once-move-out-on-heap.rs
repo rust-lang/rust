@@ -12,8 +12,7 @@
 
 
 #![feature(once_fns)]
-extern crate sync;
-use sync::Arc;
+use std::sync::Arc;
 
 fn foo(blk: proc()) {
     blk();

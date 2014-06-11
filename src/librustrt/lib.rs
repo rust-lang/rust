@@ -15,7 +15,8 @@
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/")]
-#![feature(macro_rules, phase, globs, thread_local, managed_boxes, asm)]
+#![feature(macro_rules, phase, globs, thread_local, managed_boxes, asm,
+           linkage)]
 #![no_std]
 #![experimental]
 
@@ -58,6 +59,7 @@ mod libunwind;
 
 pub mod args;
 pub mod bookkeeping;
+pub mod c_str;
 pub mod exclusive;
 pub mod local;
 pub mod local_data;
@@ -66,8 +68,8 @@ pub mod mutex;
 pub mod rtio;
 pub mod stack;
 pub mod task;
+pub mod thread;
 pub mod unwind;
-pub mod c_str;
 
 /// The interface to the current runtime.
 ///

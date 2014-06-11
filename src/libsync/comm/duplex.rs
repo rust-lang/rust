@@ -16,7 +16,10 @@ Higher level communication abstractions.
 
 #![allow(missing_doc)]
 
-use std::comm;
+use core::prelude::*;
+
+use comm;
+use comm::{Sender, Receiver, channel};
 
 /// An extension of `pipes::stream` that allows both sending and receiving.
 pub struct DuplexStream<S, R> {
@@ -53,11 +56,11 @@ impl<S:Send,R:Send> DuplexStream<S, R> {
 
 #[cfg(test)]
 mod test {
+    use std::prelude::*;
     use comm::{duplex};
 
-
     #[test]
-    pub fn DuplexStream1() {
+    pub fn duplex_stream_1() {
         let (left, right) = duplex();
 
         left.send("abc".to_string());

@@ -12,8 +12,7 @@
 // This program would segfault if it were legal.
 
 #![feature(once_fns)]
-extern crate sync;
-use sync::Arc;
+use std::sync::Arc;
 
 fn foo(blk: once ||) {
     blk();

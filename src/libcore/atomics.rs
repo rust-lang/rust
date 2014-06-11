@@ -121,16 +121,14 @@ impl AtomicBool {
     ///
     /// # Examples
     ///
-    /// ```ignore
-    /// # // FIXME: Needs PR #12430
-    /// extern crate sync;
-    ///
-    /// use sync::Arc;
+    /// ```rust
+    /// use std::sync::Arc;
     /// use std::sync::atomics::{AtomicBool, SeqCst};
+    /// use std::task::deschedule;
     ///
     /// fn main() {
     ///     let spinlock = Arc::new(AtomicBool::new(false));
-    ///     let spinlock_clone = spin_lock.clone();
+    ///     let spinlock_clone = spinlock.clone();
     ///
     ///     spawn(proc() {
     ///         with_lock(&spinlock, || println!("task 1 in lock"));
@@ -155,7 +153,7 @@ impl AtomicBool {
     ///     f();
     ///
     ///     // Release the lock
-    ///     spinlock.store(false);
+    ///     spinlock.store(false, SeqCst);
     /// }
     /// ```
     #[inline]
