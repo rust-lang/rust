@@ -147,6 +147,8 @@ Internally, lints are identified by the address of a static `Lint`.  This has a 
 
 User-defined lints are controlled through the usual mechanism of attributes and the `-A -W -D -F` flags to `rustc`.  User-defined lints will show up in `-W help` if a crate filename is also provided; otherwise we append a message suggesting to re-run with a crate filename.
 
+See also the [full demo](https://gist.github.com/kmcallister/3409ece44ead6d280b8e).
+
 # Drawbacks
 
 This increases the amount of code in `rustc` to implement lints, although it makes each individual lint much easier to understand in isolation.
