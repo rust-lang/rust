@@ -71,7 +71,6 @@ impl<R: Reader> Rng for ReaderRng<R> {
 }
 
 #[cfg(test)]
-#[allow(deprecated_owned_vector)]
 mod test {
     use prelude::*;
 
@@ -83,24 +82,23 @@ mod test {
     #[test]
     fn test_reader_rng_u64() {
         // transmute from the target to avoid endianness concerns.
-        let v = box [1u64, 2u64, 3u64];
-        let bytes: ~[u8] = unsafe {mem::transmute(v)};
-        let mut rng = ReaderRng::new(MemReader::new(bytes.move_iter().collect()));
+        let v = vec![0u8, 0, 0, 0, 0, 0, 0, 1,
+                     0  , 0, 0, 0, 0, 0, 0, 2,
+                     0,   0, 0, 0, 0, 0, 0, 3];
+        let mut rng = ReaderRng::new(MemReader::new(v));
 
-        assert_eq!(rng.next_u64(), 1);
-        assert_eq!(rng.next_u64(), 2);
-        assert_eq!(rng.next_u64(), 3);
+        assert_eq!(rng.next_u64(), mem::to_be64(1));
+        assert_eq!(rng.next_u64(), mem::to_be64(2));
+        assert_eq!(rng.next_u64(), mem::to_be64(3));
     }
     #[test]
     fn test_reader_rng_u32() {
-        // transmute from the target to avoid endianness concerns.
-        let v = box [1u32, 2u32, 3u32];
-        let bytes: ~[u8] = unsafe {mem::transmute(v)};
-        let mut rng = ReaderRng::new(MemReader::new(bytes.move_iter().collect()));
+        let v = vec![0u8, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 3];
+        let mut rng = ReaderRng::new(MemReader::new(v));
 
-        assert_eq!(rng.next_u32(), 1);
-        assert_eq!(rng.next_u32(), 2);
-        assert_eq!(rng.next_u32(), 3);
+        assert_eq!(rng.next_u32(), mem::to_be32(1));
+        assert_eq!(rng.next_u32(), mem::to_be32(2));
+        assert_eq!(rng.next_u32(), mem::to_be32(3));
     }
     #[test]
     fn test_reader_rng_fill_bytes() {

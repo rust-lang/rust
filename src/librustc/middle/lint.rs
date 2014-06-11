@@ -121,8 +121,6 @@ pub enum Lint {
     UnusedMustUse,
     UnusedResult,
 
-    DeprecatedOwnedVector,
-
     Warnings,
 
     RawPointerDeriving,
@@ -430,13 +428,6 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
     LintSpec {
         lint: UnusedResult,
         desc: "unused result of an expression in a statement",
-        default: Allow,
-    }),
-
-    ("deprecated_owned_vector",
-     LintSpec {
-        lint: DeprecatedOwnedVector,
-        desc: "use of a `~[T]` vector",
         default: Allow,
     }),
 
@@ -1229,20 +1220,6 @@ fn check_unused_result(cx: &Context, s: &ast::Stmt) {
     }
 }
 
-fn check_deprecated_owned_vector(cx: &Context, e: &ast::Expr) {
-    let t = ty::expr_ty(cx.tcx, e);
-    match ty::get(t).sty {
-        ty::ty_uniq(t) => match ty::get(t).sty {
-            ty::ty_vec(_, None) => {
-                cx.span_lint(DeprecatedOwnedVector, e.span,
-                             "use of deprecated `~[]` vector; replaced by `std::vec::Vec`")
-            }
-            _ => {}
-        },
-        _ => {}
-    }
-}
-
 fn check_item_non_camel_case_types(cx: &Context, it: &ast::Item) {
     fn is_camel_case(ident: ast::Ident) -> bool {
         let ident = token::get_ident(ident);
@@ -1855,7 +1832,6 @@ impl<'a> Visitor<()> for Context<'a> {
 
         check_type_limits(self, e);
         check_unused_casts(self, e);
-        check_deprecated_owned_vector(self, e);
 
         visit::walk_expr(self, e, ());
     }

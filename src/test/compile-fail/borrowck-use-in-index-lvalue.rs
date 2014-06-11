@@ -9,11 +9,10 @@
 // except according to those terms.
 
 fn test() {
-    let w: ~[int];
+    let w: &mut [int];
     w[5] = 0; //~ ERROR use of possibly uninitialized variable: `w`
-              //~^ ERROR cannot assign to immutable vec content `w[..]`
 
-    let mut w: ~[int];
+    let mut w: &mut [int];
     w[5] = 0; //~ ERROR use of possibly uninitialized variable: `w`
 }
 

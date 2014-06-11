@@ -29,7 +29,7 @@
 #![allow(dead_code, missing_doc)]
 
 use fmt;
-use intrinsics;
+#[cfg(not(test))] use intrinsics;
 
 #[cold] #[inline(never)] // this is the slow path, always
 #[lang="fail_"]

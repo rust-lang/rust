@@ -203,10 +203,6 @@ impl<'a> ReprVisitor<'a> {
         true
     }
 
-    pub fn write_unboxed_vec_repr(&mut self, _: uint, v: &raw::Vec<()>, inner: *TyDesc) -> bool {
-        self.write_vec_range(&v.data, v.fill, inner)
-    }
-
     fn write_escaped_char(&mut self, ch: char, is_str: bool) -> bool {
         try!(self, match ch {
             '\t' => self.writer.write("\\t".as_bytes()),
@@ -271,15 +267,14 @@ impl<'a> TyVisitor for ReprVisitor<'a> {
         })
     }
 
+    #[cfg(stage0)]
     fn visit_estr_box(&mut self) -> bool {
-        true
+        false
     }
 
+    #[cfg(stage0)]
     fn visit_estr_uniq(&mut self) -> bool {
-        self.get::<~str>(|this, s| {
-            try!(this, this.writer.write(['~' as u8]));
-            this.write_escaped_slice(*s)
-        })
+        false
     }
 
     fn visit_estr_slice(&mut self) -> bool {
@@ -323,19 +318,14 @@ impl<'a> TyVisitor for ReprVisitor<'a> {
         })
     }
 
-    fn visit_evec_box(&mut self, mtbl: uint, inner: *TyDesc) -> bool {
-        self.get::<&raw::Box<raw::Vec<()>>>(|this, b| {
-            try!(this, this.writer.write(['@' as u8]));
-            this.write_mut_qualifier(mtbl);
-            this.write_unboxed_vec_repr(mtbl, &b.data, inner)
-        })
+    #[cfg(stage0)]
+    fn visit_evec_box(&mut self, _mtbl: uint, _inner: *TyDesc) -> bool {
+        true
     }
 
-    fn visit_evec_uniq(&mut self, mtbl: uint, inner: *TyDesc) -> bool {
-        self.get::<&raw::Vec<()>>(|this, b| {
-            try!(this, this.writer.write("box ".as_bytes()));
-            this.write_unboxed_vec_repr(mtbl, *b, inner)
-        })
+    #[cfg(stage0)]
+    fn visit_evec_uniq(&mut self, _mtbl: uint, _inner: *TyDesc) -> bool {
+        true
     }
 
     fn visit_evec_slice(&mut self, mtbl: uint, inner: *TyDesc) -> bool {

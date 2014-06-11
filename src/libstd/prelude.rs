@@ -83,7 +83,7 @@
 #[doc(no_inline)] pub use slice::{MutableCloneableVector, MutableOrdVector};
 #[doc(no_inline)] pub use slice::{ImmutableVector, MutableVector};
 #[doc(no_inline)] pub use slice::{ImmutableEqVector, ImmutableOrdVector};
-#[doc(no_inline)] pub use slice::{Vector, VectorVector, OwnedVector};
+#[doc(no_inline)] pub use slice::{Vector, VectorVector};
 #[doc(no_inline)] pub use slice::MutableVectorAllocating;
 #[doc(no_inline)] pub use string::String;
 #[doc(no_inline)] pub use vec::Vec;

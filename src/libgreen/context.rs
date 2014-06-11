@@ -191,9 +191,9 @@ type Registers = [uint, ..34];
 type Registers = [uint, ..22];
 
 #[cfg(windows, target_arch = "x86_64")]
-fn new_regs() -> Box<Registers> { box [0, .. 34] }
+fn new_regs() -> Box<Registers> { box() ([0, .. 34]) }
 #[cfg(not(windows), target_arch = "x86_64")]
-fn new_regs() -> Box<Registers> { box {let v = [0, .. 22]; v} }
+fn new_regs() -> Box<Registers> { box() ([0, .. 22]) }
 
 #[cfg(target_arch = "x86_64")]
 fn initialize_call_frame(regs: &mut Registers, fptr: InitFn, arg: uint,

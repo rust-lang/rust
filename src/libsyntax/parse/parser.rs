@@ -1315,11 +1315,8 @@ impl<'a> Parser<'a> {
             // OWNED POINTER
             self.bump();
             match self.token {
-                token::IDENT(ref ident, _)
-                        if "str" == token::get_ident(*ident).get() => {
-                    // This is OK (for now).
-                }
-                token::LBRACKET => {}   // Also OK.
+                token::LBRACKET =>
+                    self.obsolete(self.last_span, ObsoleteOwnedVector),
                 _ => self.obsolete(self.last_span, ObsoleteOwnedType),
             };
             TyUniq(self.parse_ty(false))
@@ -2342,7 +2339,10 @@ impl<'a> Parser<'a> {
             hi = e.span.hi;
             // HACK: turn ~[...] into a ~-vec
             ex = match e.node {
-              ExprVec(..) | ExprRepeat(..) => ExprVstore(e, ExprVstoreUniq),
+              ExprVec(..) | ExprRepeat(..) => {
+                  self.obsolete(self.last_span, ObsoleteOwnedVector);
+                  ExprVstore(e, ExprVstoreUniq)
+              }
               ExprLit(lit) if lit_is_str(lit) => {
                   self.obsolete(self.last_span, ObsoleteOwnedExpr);
                   ExprVstore(e, ExprVstoreUniq)
@@ -2375,6 +2375,7 @@ impl<'a> Parser<'a> {
             // HACK: turn `box [...]` into a boxed-vec
             ex = match subexpression.node {
                 ExprVec(..) | ExprRepeat(..) => {
+                    self.obsolete(self.last_span, ObsoleteOwnedVector);
                     ExprVstore(subexpression, ExprVstoreUniq)
                 }
                 ExprLit(lit) if lit_is_str(lit) => {

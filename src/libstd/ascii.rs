@@ -278,18 +278,6 @@ pub trait OwnedAsciiCast {
     unsafe fn into_ascii_nocheck(self) -> Vec<Ascii>;
 }
 
-impl OwnedAsciiCast for ~[u8] {
-    #[inline]
-    fn is_ascii(&self) -> bool {
-        self.as_slice().is_ascii()
-    }
-
-    #[inline]
-    unsafe fn into_ascii_nocheck(self) -> Vec<Ascii> {
-        mem::transmute(Vec::from_slice(self.as_slice()))
-    }
-}
-
 impl OwnedAsciiCast for String {
     #[inline]
     fn is_ascii(&self) -> bool {
@@ -350,14 +338,6 @@ impl<'a> AsciiStr for &'a [Ascii] {
     #[inline]
     fn eq_ignore_case(self, other: &[Ascii]) -> bool {
         self.iter().zip(other.iter()).all(|(&a, &b)| a.eq_ignore_case(b))
-    }
-}
-
-impl IntoStr for ~[Ascii] {
-    #[inline]
-    fn into_str(self) -> String {
-        let vector: Vec<Ascii> = self.as_slice().iter().map(|x| *x).collect();
-        vector.into_str()
     }
 }
 
@@ -592,8 +572,8 @@ mod tests {
         let test = &[40u8, 32u8, 59u8];
         assert_eq!(test.to_ascii(), v2ascii!([40, 32, 59]));
         assert_eq!("( ;".to_ascii(), v2ascii!([40, 32, 59]));
-        let v = box [40u8, 32u8, 59u8];
-        assert_eq!(v.to_ascii(), v2ascii!([40, 32, 59]));
+        let v = vec![40u8, 32u8, 59u8];
+        assert_eq!(v.as_slice().to_ascii(), v2ascii!([40, 32, 59]));
         assert_eq!("( ;".to_string().as_slice().to_ascii(), v2ascii!([40, 32, 59]));
 
         assert_eq!("abCDef&?#".to_ascii().to_lower().into_str(), "abcdef&?#".to_string());
@@ -623,7 +603,7 @@ mod tests {
     #[test]
     fn test_owned_ascii_vec() {
         assert_eq!(("( ;".to_string()).into_ascii(), vec2ascii![40, 32, 59]);
-        assert_eq!((box [40u8, 32u8, 59u8]).into_ascii(), vec2ascii![40, 32, 59]);
+        assert_eq!((vec![40u8, 32u8, 59u8]).into_ascii(), vec2ascii![40, 32, 59]);
     }
 
     #[test]
