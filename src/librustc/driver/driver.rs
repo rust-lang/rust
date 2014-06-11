@@ -20,12 +20,13 @@ use metadata::common::LinkMeta;
 use metadata::creader;
 use middle::cfg;
 use middle::cfg::graphviz::LabelledCFG;
-use middle::{trans, freevars, kind, ty, typeck, lint, reachable};
+use middle::{trans, freevars, kind, ty, typeck, reachable};
 use middle::dependency_format;
 use middle;
 use plugin::load::Plugins;
 use plugin::registry::Registry;
 use plugin;
+use lint;
 use util::common::time;
 use util::ppaux;
 use util::nodemap::{NodeSet};
@@ -78,8 +79,12 @@ pub fn compile_input(sess: Session,
                                                  &sess);
             let id = link::find_crate_id(krate.attrs.as_slice(),
                                          outputs.out_filestem.as_slice());
-            let (expanded_crate, ast_map) =
-                phase_2_configure_and_expand(&sess, krate, &id);
+            let (expanded_crate, ast_map)
+                = match phase_2_configure_and_expand(&sess, krate, &id) {
+                    None => return,
+                    Some(p) => p,
+                };
+
             (outputs, expanded_crate, ast_map)
         };
         write_out_deps(&sess, input, &outputs, &expanded_crate);
@@ -171,10 +176,12 @@ pub fn phase_1_parse_input(sess: &Session, cfg: ast::CrateConfig, input: &Input)
 /// syntax expansion, secondary `cfg` expansion, synthesis of a test
 /// harness if one is to be provided and injection of a dependency on the
 /// standard library and prelude.
+///
+/// Returns `None` if we're aborting after handling -W help.
 pub fn phase_2_configure_and_expand(sess: &Session,
                                     mut krate: ast::Crate,
                                     crate_id: &CrateId)
-                                    -> (ast::Crate, syntax::ast_map::Map) {
+                                    -> Option<(ast::Crate, syntax::ast_map::Map)> {
     let time_passes = sess.time_passes();
 
     *sess.crate_types.borrow_mut() = collect_crate_types(sess, krate.attrs.as_slice());
@@ -209,6 +216,17 @@ pub fn phase_2_configure_and_expand(sess: &Session,
     });
 
     let Registry { syntax_exts, .. } = registry;
+
+    // Process command line flags for lints.
+    // Do this here because we will have lint plugins eventually.
+    if sess.opts.describe_lints {
+        super::describe_lints(&*sess.lint_store.borrow());
+        return None;
+    }
+    sess.lint_store.borrow_mut().process_command_line(sess);
+
+    // Abort if there are errors from lint processing or a plugin registrar.
+    sess.abort_if_errors();
 
     krate = time(time_passes, "expansion", (krate, macros, syntax_exts),
         |(krate, macros, syntax_exts)| {
@@ -252,7 +270,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
         krate.encode(&mut json).unwrap();
     }
 
-    (krate, map)
+    Some((krate, map))
 }
 
 pub struct CrateAnalysis {
@@ -612,9 +630,11 @@ pub fn pretty_print_input(sess: Session,
 
     let (krate, ast_map, is_expanded) = match ppm {
         PpmExpanded | PpmExpandedIdentified | PpmTyped | PpmFlowGraph(_) => {
-            let (krate, ast_map) = phase_2_configure_and_expand(&sess,
-                                                                krate,
-                                                                &id);
+            let (krate, ast_map)
+                = match phase_2_configure_and_expand(&sess, krate, &id) {
+                    None => return,
+                    Some(p) => p,
+                };
             (krate, Some(ast_map), true)
         }
         _ => (krate, None, false)
@@ -748,7 +768,7 @@ pub fn collect_crate_types(session: &Session,
                 }
                 Some(ref n) if n.equiv(&("bin")) => Some(config::CrateTypeExecutable),
                 Some(_) => {
-                    session.add_lint(lint::UnknownCrateType,
+                    session.add_lint(lint::builtin::unknown_crate_type,
                                      ast::CRATE_NODE_ID,
                                      a.span,
                                      "invalid `crate_type` \
@@ -756,7 +776,7 @@ pub fn collect_crate_types(session: &Session,
                     None
                 }
                 _ => {
-                    session.add_lint(lint::UnknownCrateType,
+                    session.add_lint(lint::builtin::unknown_crate_type,
                                      ast::CRATE_NODE_ID,
                                      a.span,
                                      "`crate_type` requires a \

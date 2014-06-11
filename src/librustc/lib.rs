@@ -63,7 +63,6 @@ pub mod middle {
     pub mod check_match;
     pub mod check_const;
     pub mod check_static;
-    pub mod lint;
     pub mod borrowck;
     pub mod dataflow;
     pub mod mem_categorization;
@@ -116,6 +115,8 @@ pub mod driver;
 
 pub mod plugin;
 
+pub mod lint;
+
 pub mod util {
     pub mod common;
     pub mod ppaux;
@@ -127,6 +128,15 @@ pub mod util {
 pub mod lib {
     pub mod llvm;
     pub mod llvmdeps;
+}
+
+// A private module so that macro-expanded idents like
+// `::rustc::lint::Lint` will also work in `rustc` itself.
+//
+// `libstd` uses the same trick.
+#[doc(hidden)]
+mod rustc {
+    pub use lint;
 }
 
 pub fn main() {
