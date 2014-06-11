@@ -60,7 +60,7 @@ use std::rand;
 use std::rand::Rng;
 
 let mut rng = rand::task_rng();
-if rng.gen() { // bool
+if rng.gen() { // random bool
     println!("int: {}, uint: {}", rng.gen::<int>(), rng.gen::<uint>())
 }
 ```
