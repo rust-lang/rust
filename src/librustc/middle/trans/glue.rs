@@ -100,7 +100,7 @@ pub fn get_drop_glue_type(ccx: &CrateContext, t: ty::t) -> ty::t {
 
         ty::ty_uniq(typ) if !ty::type_needs_drop(tcx, typ) => {
             match ty::get(typ).sty {
-                ty::ty_vec(_, None) | ty::ty_str => t,
+                ty::ty_vec(_, None) | ty::ty_str | ty::ty_trait(..) => t,
                 _ => {
                     let llty = sizing_type_of(ccx, typ);
                     // `Box<ZeroSizeType>` does not allocate.
@@ -295,10 +295,10 @@ fn make_drop_glue<'a>(bcx: &'a Block<'a>, v0: ValueRef, t: ty::t) -> &'a Block<'
             decr_refcnt_maybe_free(bcx, v0, body_ty)
         }
         ty::ty_uniq(content_ty) => {
-            let llbox = Load(bcx, v0);
-            let not_null = IsNotNull(bcx, llbox);
             match ty::get(content_ty).sty {
                 ty::ty_vec(mt, None) => {
+                    let llbox = Load(bcx, v0);
+                    let not_null = IsNotNull(bcx, llbox);
                     with_cond(bcx, not_null, |bcx| {
                         let bcx = tvec::make_drop_glue_unboxed(bcx, llbox, mt.ty);
                         // FIXME: #13994: the old `Box<[T]>` will not support sized deallocation
@@ -306,6 +306,8 @@ fn make_drop_glue<'a>(bcx: &'a Block<'a>, v0: ValueRef, t: ty::t) -> &'a Block<'
                     })
                 }
                 ty::ty_str => {
+                    let llbox = Load(bcx, v0);
+                    let not_null = IsNotNull(bcx, llbox);
                     with_cond(bcx, not_null, |bcx| {
                         let unit_ty = ty::sequence_element_type(bcx.tcx(), t);
                         let bcx = tvec::make_drop_glue_unboxed(bcx, llbox, unit_ty);
@@ -313,7 +315,22 @@ fn make_drop_glue<'a>(bcx: &'a Block<'a>, v0: ValueRef, t: ty::t) -> &'a Block<'
                         trans_exchange_free(bcx, llbox, 0, 8)
                     })
                 }
+                ty::ty_trait(..) => {
+                    let lluniquevalue = GEPi(bcx, v0, [0, abi::trt_field_box]);
+                    // Only drop the value when it is non-null
+                    with_cond(bcx, IsNotNull(bcx, Load(bcx, lluniquevalue)), |bcx| {
+                        let dtor_ptr = Load(bcx, GEPi(bcx, v0, [0, abi::trt_field_vtable]));
+                        let dtor = Load(bcx, dtor_ptr);
+                        Call(bcx,
+                             dtor,
+                             [PointerCast(bcx, lluniquevalue, Type::i8p(bcx.ccx()))],
+                             []);
+                        bcx
+                    })
+                }
                 _ => {
+                    let llbox = Load(bcx, v0);
+                    let not_null = IsNotNull(bcx, llbox);
                     with_cond(bcx, not_null, |bcx| {
                         let bcx = drop_ty(bcx, llbox, content_ty);
                         trans_exchange_free_ty(bcx, llbox, content_ty)
@@ -335,16 +352,6 @@ fn make_drop_glue<'a>(bcx: &'a Block<'a>, v0: ValueRef, t: ty::t) -> &'a Block<'
                     iter_structural_ty(bcx, v0, t, drop_ty)
                 }
             }
-        }
-        ty::ty_trait(box ty::TyTrait { store: ty::UniqTraitStore, .. }) => {
-            let lluniquevalue = GEPi(bcx, v0, [0, abi::trt_field_box]);
-            // Only drop the value when it is non-null
-            with_cond(bcx, IsNotNull(bcx, Load(bcx, lluniquevalue)), |bcx| {
-                let dtor_ptr = Load(bcx, GEPi(bcx, v0, [0, abi::trt_field_vtable]));
-                let dtor = Load(bcx, dtor_ptr);
-                Call(bcx, dtor, [PointerCast(bcx, lluniquevalue, Type::i8p(bcx.ccx()))], []);
-                bcx
-            })
         }
         ty::ty_closure(ref f) if f.store == ty::UniqTraitStore => {
             let box_cell_v = GEPi(bcx, v0, [0u, abi::fn_field_box]);

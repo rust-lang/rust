@@ -157,9 +157,7 @@ pub fn appropriate_rvalue_mode(ccx: &CrateContext, ty: ty::t) -> RvalueMode {
      * on whether type is immediate or not.
      */
 
-    if type_is_zero_size(ccx, ty) {
-        ByValue
-    } else if type_is_immediate(ccx, ty) {
+    if type_is_immediate(ccx, ty) {
         ByValue
     } else {
         ByRef

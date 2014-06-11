@@ -742,7 +742,6 @@ pub enum sty {
 pub struct TyTrait {
     pub def_id: DefId,
     pub substs: Substs,
-    pub store: TraitStore,
     pub bounds: BuiltinBounds
 }
 
@@ -1196,14 +1195,8 @@ pub fn mk_t(cx: &ctxt, st: sty) -> t {
       &ty_enum(_, ref substs) | &ty_struct(_, ref substs) => {
           flags |= sflags(substs);
       }
-      &ty_trait(box ty::TyTrait { ref substs, store, .. }) => {
+      &ty_trait(box ty::TyTrait { ref substs, .. }) => {
           flags |= sflags(substs);
-          match store {
-              RegionTraitStore(r, _) => {
-                    flags |= rflags(r);
-                }
-              _ => {}
-          }
       }
       &ty_box(tt) | &ty_uniq(tt) => {
         flags |= get(tt).flags
@@ -1434,14 +1427,12 @@ pub fn mk_ctor_fn(cx: &ctxt,
 pub fn mk_trait(cx: &ctxt,
                 did: ast::DefId,
                 substs: Substs,
-                store: TraitStore,
                 bounds: BuiltinBounds)
              -> t {
     // take a copy of substs so that we own the vectors inside
     let inner = box TyTrait {
         def_id: did,
         substs: substs,
-        store: store,
         bounds: bounds
     };
     mk_t(cx, ty_trait(inner))
@@ -1577,9 +1568,9 @@ fn type_is_slice(ty:t) -> bool {
 
 pub fn type_is_structural(ty: t) -> bool {
     match get(ty).sty {
-      ty_struct(..) | ty_tup(_) | ty_enum(..) | ty_closure(_) | ty_trait(..) |
+      ty_struct(..) | ty_tup(_) | ty_enum(..) | ty_closure(_) |
       ty_vec(_, Some(_)) => true,
-      _ => type_is_slice(ty)
+      _ => type_is_slice(ty) | type_is_trait(ty)
     }
 }
 
@@ -1635,7 +1626,7 @@ pub fn type_is_region_ptr(ty: t) -> bool {
         ty_rptr(_, mt) => match get(mt.ty).sty {
             // FIXME(nrc, DST) slices weren't regarded as rptrs, so we preserve this
             // odd behaviour for now. (But ~[] were unique. I have no idea why).
-            ty_vec(_, None) | ty_str => false,
+            ty_vec(_, None) | ty_str | ty_trait(..) => false,
             _ => true
         },
         _ => false
@@ -1651,7 +1642,10 @@ pub fn type_is_unsafe_ptr(ty: t) -> bool {
 
 pub fn type_is_unique(ty: t) -> bool {
     match get(ty).sty {
-        ty_uniq(_) => true,
+        ty_uniq(_) => match get(ty).sty {
+            ty_trait(..) => false,
+            _ => true
+        },
         _ => false
     }
 }
@@ -2060,8 +2054,8 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
                 }
             }
 
-            ty_trait(box ty::TyTrait { store, bounds, .. }) => {
-                object_contents(cx, store, bounds)
+            ty_trait(box ty::TyTrait { bounds, .. }) => {
+                object_contents(cx, bounds)
             }
 
             ty_ptr(ref mt) => {
@@ -2185,7 +2179,16 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
     fn closure_contents(cx: &ctxt, cty: &ClosureTy) -> TypeContents {
         // Closure contents are just like trait contents, but with potentially
         // even more stuff.
-        let st = object_contents(cx, cty.store, cty.bounds);
+        let st = object_contents(cx, cty.bounds);
+
+        let st = match cty.store {
+            UniqTraitStore => {
+                st.owned_pointer()
+            }
+            RegionTraitStore(r, mutbl) => {
+                st.reference(borrowed_contents(r, mutbl))
+            }
+        };
 
         // This also prohibits "@once fn" from being copied, which allows it to
         // be called. Neither way really makes much sense.
@@ -2198,20 +2201,10 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
     }
 
     fn object_contents(cx: &ctxt,
-                       store: TraitStore,
                        bounds: BuiltinBounds)
                        -> TypeContents {
         // These are the type contents of the (opaque) interior
-        let contents = kind_bounds_to_contents(cx, bounds, []);
-
-        match store {
-            UniqTraitStore => {
-                contents.owned_pointer()
-            }
-            RegionTraitStore(r, mutbl) => {
-                contents.reference(borrowed_contents(r, mutbl))
-            }
-        }
+        kind_bounds_to_contents(cx, bounds, [])
     }
 
     fn kind_bounds_to_contents(cx: &ctxt,
@@ -2470,6 +2463,10 @@ pub fn is_type_representable(cx: &ctxt, sp: Span, ty: t) -> Representability {
 
 pub fn type_is_trait(ty: t) -> bool {
     match get(ty).sty {
+        ty_uniq(ty) | ty_rptr(_, mt { ty, ..}) => match get(ty).sty {
+            ty_trait(..) => true,
+            _ => false
+        },
         ty_trait(..) => true,
         _ => false
     }
@@ -2559,7 +2556,7 @@ pub fn deref(t: t, explicit: bool) -> Option<mt> {
     match get(t).sty {
         ty_box(typ) | ty_uniq(typ) => match get(typ).sty {
             // Don't deref ~[] etc., might need to generalise this to all DST.
-            ty_vec(_, None) | ty_str => None,
+            ty_vec(_, None) | ty_str | ty_trait(..) => None,
             _ => Some(mt {
                 ty: typ,
                 mutbl: ast::MutImmutable,
@@ -2567,7 +2564,7 @@ pub fn deref(t: t, explicit: bool) -> Option<mt> {
         },
         ty_rptr(_, mt) => match get(mt.ty).sty {
             // Don't deref &[], might need to generalise this to all DST.
-            ty_vec(_, None) | ty_str => None,
+            ty_vec(_, None) | ty_str | ty_trait(..) => None,
             _ => Some(mt),
         },
         ty_ptr(mt) if explicit => Some(mt),
@@ -2888,7 +2885,19 @@ pub fn adjust_ty(cx: &ctxt,
                 }
 
                 AutoObject(store, bounds, def_id, ref substs) => {
-                    mk_trait(cx, def_id, substs.clone(), store, bounds)
+
+                    let tr = mk_trait(cx, def_id, substs.clone(), bounds);
+                    match store {
+                        UniqTraitStore => {
+                            mk_uniq(cx, tr)
+                        }
+                        RegionTraitStore(r, m) => {
+                            mk_rptr(cx, r, mt {
+                                ty: tr,
+                                mutbl: m
+                            })
+                        }
+                    }
                 }
             }
         }
@@ -2926,10 +2935,20 @@ pub fn adjust_ty(cx: &ctxt,
     fn borrow_obj(cx: &ctxt, span: Span, r: Region,
                   m: ast::Mutability, ty: ty::t) -> ty::t {
         match get(ty).sty {
-            ty_trait(box ty::TyTrait {def_id, ref substs, bounds, .. }) => {
-                ty::mk_trait(cx, def_id, substs.clone(),
-                             RegionTraitStore(r, m), bounds)
-            }
+            ty_uniq(t) | ty_rptr(_, mt{ty: t, ..}) => match get(t).sty {
+                ty_trait(box ty::TyTrait {def_id, ref substs, bounds, .. }) => {
+                    mk_rptr(cx, r, mt {
+                        ty: ty::mk_trait(cx, def_id, substs.clone(), bounds),
+                        mutbl: m
+                    })
+                }
+                _ => {
+                    cx.sess.span_bug(
+                        span,
+                        format!("borrow-trait-obj associated with bad sty: {:?}",
+                                get(ty).sty).as_slice());
+                }
+            },
             ref s => {
                 cx.sess.span_bug(
                     span,
@@ -4264,11 +4283,11 @@ pub fn visitor_object_ty(tcx: &ctxt,
     let substs = Substs::empty();
     let trait_ref = Rc::new(TraitRef { def_id: trait_lang_item, substs: substs });
     Ok((trait_ref.clone(),
-        mk_trait(tcx,
-                 trait_ref.def_id,
-                 trait_ref.substs.clone(),
-                 RegionTraitStore(region, ast::MutMutable),
-                 empty_builtin_bounds())))
+        mk_rptr(tcx, region, mt {mutbl: ast::MutMutable,
+                                 ty: mk_trait(tcx,
+                                              trait_ref.def_id,
+                                              trait_ref.substs.clone(),
+                                              empty_builtin_bounds()) })))
 }
 
 pub fn item_variances(tcx: &ctxt, item_id: ast::DefId) -> Rc<ItemVariances> {
@@ -4562,17 +4581,9 @@ pub fn hash_crate_independent(tcx: &ctxt, t: t, svh: &Svh) -> u64 {
                     }
                 }
             }
-            ty_trait(box ty::TyTrait { def_id: d, store, bounds, .. }) => {
+            ty_trait(box ty::TyTrait { def_id: d, bounds, .. }) => {
                 byte!(17);
                 did(&mut state, d);
-                match store {
-                    UniqTraitStore => byte!(0),
-                    RegionTraitStore(r, m) => {
-                        byte!(1)
-                        region(&mut state, r);
-                        hash!(m);
-                    }
-                }
                 hash!(bounds);
             }
             ty_struct(d, _) => {

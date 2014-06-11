@@ -980,9 +980,6 @@ fn check_heap_type(cx: &Context, span: Span, ty: ty::t) {
                     n_box += 1;
                 }
                 ty::ty_uniq(_) |
-                ty::ty_trait(box ty::TyTrait {
-                    store: ty::UniqTraitStore, ..
-                }) |
                 ty::ty_closure(box ty::ClosureTy {
                     store: ty::UniqTraitStore,
                     ..

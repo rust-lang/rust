@@ -694,7 +694,6 @@ impl<'a> InferCtxt<'a> {
         let dummy0 = ty::mk_trait(self.tcx,
                                   trait_ref.def_id,
                                   trait_ref.substs.clone(),
-                                  ty::UniqTraitStore,
                                   ty::empty_builtin_bounds());
         let dummy1 = self.resolve_type_vars_if_possible(dummy0);
         match ty::get(dummy1).sty {

@@ -364,13 +364,11 @@ pub fn super_fold_sty<T:TypeFolder>(this: &mut T,
         ty::ty_trait(box ty::TyTrait {
                 def_id,
                 ref substs,
-                store,
                 bounds
             }) => {
             ty::ty_trait(box ty::TyTrait {
                 def_id: def_id,
                 substs: substs.fold_with(this),
-                store: store.fold_with(this),
                 bounds: bounds
             })
         }
