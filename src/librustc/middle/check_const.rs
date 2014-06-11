@@ -245,7 +245,10 @@ impl<'a> Visitor<()> for CheckItemRecursionVisitor<'a> {
                 match self.def_map.borrow().find(&e.id) {
                     Some(&DefStatic(def_id, _)) if
                             ast_util::is_local(def_id) => {
-                        self.visit_item(self.ast_map.expect_item(def_id.node), ());
+                        match self.ast_map.get(def_id.node) {
+                            ast_map::NodeItem(item) => self.visit_item(item, ()),
+                            _ => {}
+                        }
                     }
                     _ => ()
                 }
