@@ -52,13 +52,15 @@ fs::unlink(&path);
 use c_str::ToCStr;
 use clone::Clone;
 use collections::Collection;
+use io::standard_error;
 use io::{FilePermission, Write, UnstableFileStat, Open, FileAccess, FileMode};
 use io::{IoResult, IoError, FileStat, SeekStyle, Seek, Writer, Reader};
 use io::{Read, Truncate, SeekCur, SeekSet, ReadWrite, SeekEnd, Append};
-use io;
+use io::UpdateIoError;
 use io;
 use iter::Iterator;
 use kinds::Send;
+use libc;
 use option::{Some, None, Option};
 use owned::Box;
 use path::{Path, GenericPath};
@@ -67,6 +69,7 @@ use result::{Err, Ok};
 use rt::rtio::LocalIo;
 use rt::rtio;
 use slice::ImmutableVector;
+use string::String;
 use vec::Vec;
 
 /// Unconstrained file access type that exposes read and write operations
@@ -128,18 +131,18 @@ impl File {
     pub fn open_mode(path: &Path,
                      mode: FileMode,
                      access: FileAccess) -> IoResult<File> {
-        let mode = match mode {
+        let rtio_mode = match mode {
             Open => rtio::Open,
             Append => rtio::Append,
             Truncate => rtio::Truncate,
         };
-        let access = match access {
+        let rtio_access = match access {
             Read => rtio::Read,
             Write => rtio::Write,
             ReadWrite => rtio::ReadWrite,
         };
         let err = LocalIo::maybe_raise(|io| {
-            io.fs_open(&path.to_c_str(), mode, access).map(|fd| {
+            io.fs_open(&path.to_c_str(), rtio_mode, rtio_access).map(|fd| {
                 File {
                     path: path.clone(),
                     fd: fd,
@@ -775,7 +778,8 @@ impl Reader for File {
                                           e, file.path.display()))
         }
 
-        let result: IoResult<int> = update_err(self.fd.read(buf), self);
+        let result = update_err(self.fd.read(buf)
+                                    .map_err(IoError::from_rtio_error), self);
 
         match result {
             Ok(read) => {
@@ -785,14 +789,14 @@ impl Reader for File {
                     _ => Ok(read as uint)
                 }
             },
-            Err(e) => Err(IoError::from_rtio_error(e)),
+            Err(e) => Err(e)
         }
     }
 }
 
 impl Writer for File {
     fn write(&mut self, buf: &[u8]) -> IoResult<()> {
-        let err = self.fd.write(buf).map_err(IoError::from_rtio_error)
+        let err = self.fd.write(buf).map_err(IoError::from_rtio_error);
         err.update_err("couldn't write to file",
                        |e| format!("{}; path={}", e, self.path.display()))
     }
