@@ -73,8 +73,10 @@ static BUF_BYTES : uint = 2048u;
 /// # Example
 ///
 /// ```rust
+/// use std::os;
+///
 /// // We assume that we are in a valid directory like "/home".
-/// let current_working_directory = std::os::getcwd();
+/// let current_working_directory = os::getcwd();
 /// println!("The current directory is {}", current_working_directory.display());
 /// // /home
 /// ```
@@ -104,8 +106,10 @@ pub fn getcwd() -> Path {
 /// # Example
 ///
 /// ```rust
+/// use std::os;
+///
 /// // We assume that we are in a valid directory like "C:\\Windows".
-/// let current_working_directory = std::os::getcwd();
+/// let current_working_directory = os::getcwd();
 /// println!("The current directory is {}", current_working_directory.display());
 /// // C:\\Windows
 /// ```
@@ -188,8 +192,8 @@ fn with_env_lock<T>(f: || -> T) -> T {
     }
 }
 
-/// Returns a vector of (variable, value) pairs as a Vec<(String, String)>,
-/// for all the environment variables of the current process.
+/// Returns a vector of (variable, value) pairs, for all the environment
+/// variables of the current process.
 ///
 /// Invalid UTF-8 bytes are replaced with \uFFFD. See `str::from_utf8_lossy()`
 /// for details.
@@ -197,8 +201,10 @@ fn with_env_lock<T>(f: || -> T) -> T {
 /// # Example
 ///
 /// ```rust
-/// // We will iterate through the references to the element returned by std::os::env();
-/// for &(ref key, ref value) in std::os::env().iter() {
+/// use std::os;
+///
+/// // We will iterate through the references to the element returned by os::env();
+/// for &(ref key, ref value) in os::env().iter() {
 ///     println!("'{}': '{}'", key, value );
 /// }
 /// ```
@@ -306,8 +312,10 @@ pub fn env_as_bytes() -> Vec<(Vec<u8>,Vec<u8>)> {
 /// # Example
 ///
 /// ```rust
+/// use std::os;
+///
 /// let key = "HOME";
-/// match std::os::getenv(key) {
+/// match os::getenv(key) {
 ///     Some(val) => println!("{}: {}", key, val),
 ///     None => println!("{} is not defined in the environment.", key)
 /// }
@@ -361,45 +369,49 @@ pub fn getenv_as_bytes(n: &str) -> Option<Vec<u8>> {
     getenv(n).map(|s| s.into_bytes())
 }
 
-
-#[cfg(unix)]
 /// Sets the environment variable `n` to the value `v` for the currently running
-/// process
+/// process.
 ///
-/// # Failure
+/// # Example
 ///
-/// Fails if `n` or `v` have any interior NULs.
+/// ```rust
+/// use std::os;
+///
+/// let key = "KEY";
+/// os::setenv(key, "VALUE");
+/// match os::getenv(key) {
+///     Some(ref val) => println!("{}: {}", key, val),
+///     None => println!("{} is not defined in the environment.", key)
+/// }
+/// ```
 pub fn setenv(n: &str, v: &str) {
-    unsafe {
-        with_env_lock(|| {
-            n.with_c_str(|nbuf| {
-                v.with_c_str(|vbuf| {
-                    libc::funcs::posix01::unistd::setenv(nbuf, vbuf, 1);
+    #[cfg(unix)]
+    fn _setenv(n: &str, v: &str) {
+        unsafe {
+            with_env_lock(|| {
+                n.with_c_str(|nbuf| {
+                    v.with_c_str(|vbuf| {
+                        libc::funcs::posix01::unistd::setenv(nbuf, vbuf, 1);
+                    })
                 })
             })
-        })
+        }
     }
+
+    #[cfg(windows)]
+    fn _setenv(n: &str, v: &str) {
+        let n = n.to_utf16().append_one(0);
+        let v = v.to_utf16().append_one(0);
+        unsafe {
+            with_env_lock(|| {
+                libc::SetEnvironmentVariableW(n.as_ptr(), v.as_ptr());
+            })
+        }
+    }
+    _setenv(n, v)
 }
 
-
-#[cfg(windows)]
-/// Sets the environment variable `n` to the value `v` for the currently running
-/// process
-pub fn setenv(n: &str, v: &str) {
-    let n = n.to_utf16().append_one(0);
-    let v = v.to_utf16().append_one(0);
-    unsafe {
-        with_env_lock(|| {
-            libc::SetEnvironmentVariableW(n.as_ptr(), v.as_ptr());
-        })
-    }
-}
-
-/// Remove a variable from the environment entirely
-///
-/// # Failure
-///
-/// Fails (on unix) if `n` has any interior NULs.
+/// Remove a variable from the environment entirely.
 pub fn unsetenv(n: &str) {
     #[cfg(unix)]
     fn _unsetenv(n: &str) {
@@ -411,6 +423,7 @@ pub fn unsetenv(n: &str) {
             })
         }
     }
+
     #[cfg(windows)]
     fn _unsetenv(n: &str) {
         let n = n.to_utf16().append_one(0);
@@ -420,13 +433,28 @@ pub fn unsetenv(n: &str) {
             })
         }
     }
-
     _unsetenv(n);
 }
 
 #[cfg(unix)]
 /// Parse a string or vector according to the platform's conventions
-/// for the `PATH` environment variable. Drops empty paths.
+/// for the `PATH` environment variable and return a Vec<Path>.
+/// Drops empty paths.
+///
+/// # Example
+/// ```rust
+/// use std::os;
+///
+/// let key = "PATH";
+/// match os::getenv(key) {
+///     Some(paths) => {
+///         for path in os::split_paths(paths).iter() {
+///             println!("'{}'", path.display());
+///         }
+///     }
+///     None => println!("{} is not defined in the environnement.", key)
+/// }
+/// ```
 pub fn split_paths<T: BytesContainer>(unparsed: T) -> Vec<Path> {
     unparsed.container_as_bytes()
             .split(|b| *b == ':' as u8)
@@ -491,7 +519,7 @@ pub struct Pipe {
     pub out: c_int,
 }
 
-/// Creates a new low-level OS in-memory pipe.
+/// Creates a new low-level OS in-memory pipe represented as a Pipe struct.
 #[cfg(unix)]
 pub fn pipe() -> Pipe {
     unsafe {
@@ -502,7 +530,7 @@ pub fn pipe() -> Pipe {
     }
 }
 
-/// Creates a new low-level OS in-memory pipe.
+/// Creates a new low-level OS in-memory pipe represented as a Pipe struct.
 #[cfg(windows)]
 pub fn pipe() -> Pipe {
     unsafe {
@@ -522,13 +550,25 @@ pub fn pipe() -> Pipe {
     }
 }
 
-/// Returns the proper dll filename for the given basename of a file.
+/// Returns the proper dll filename for the given basename of a file
+/// as a String.
 pub fn dll_filename(base: &str) -> String {
     format!("{}{}{}", consts::DLL_PREFIX, base, consts::DLL_SUFFIX)
 }
 
-/// Optionally returns the filesystem path of the current executable which is
-/// running. If any failure occurs, None is returned.
+/// Optionally returns the filesystem path to the current executable which is
+/// running but with the executable name.
+///
+/// # Examples
+///
+/// ```rust
+/// use std::os;
+///
+/// match os::self_exe_name() {
+///     Some(exe_path) => println!("Path of this executable is: {}", exe_path.display()),
+///     None => println!("Unable to get the path of this executable!")
+/// };
+/// ```
 pub fn self_exe_name() -> Option<Path> {
 
     #[cfg(target_os = "freebsd")]
@@ -598,47 +638,71 @@ pub fn self_exe_name() -> Option<Path> {
 }
 
 /// Optionally returns the filesystem path to the current executable which is
-/// running. Like self_exe_name() but without the binary's name.
-/// If any failure occurs, None is returned.
+/// running.
+///
+/// Like self_exe_name() but without the binary's name.
+///
+/// # Example
+///
+/// ```rust
+/// use std::os;
+///
+/// match os::self_exe_path() {
+///     Some(exe_path) => println!("Executable's Path is: {}", exe_path.display()),
+///     None => println!("Impossible to fetch the path of this executable.")
+/// };
+/// ```
 pub fn self_exe_path() -> Option<Path> {
     self_exe_name().map(|mut p| { p.pop(); p })
 }
 
-/**
- * Returns the path to the user's home directory, if known.
- *
- * On Unix, returns the value of the 'HOME' environment variable if it is set
- * and not equal to the empty string.
- *
- * On Windows, returns the value of the 'HOME' environment variable if it is
- * set and not equal to the empty string. Otherwise, returns the value of the
- * 'USERPROFILE' environment variable if it is set and not equal to the empty
- * string.
- *
- * Otherwise, homedir returns option::none.
- */
+/// Optionally returns the path to the current user's home directory if known.
+///
+/// # Unix
+///
+/// Returns the value of the 'HOME' environment variable if it is set
+/// and not equal to the empty string.
+///
+/// # Windows
+///
+/// Returns the value of the 'HOME' environment variable if it is
+/// set and not equal to the empty string. Otherwise, returns the value of the
+/// 'USERPROFILE' environment variable if it is set and not equal to the empty
+/// string.
+///
+/// # Example
+///
+/// ```rust
+/// use std::os;
+///
+/// match os::homedir() {
+///     Some(ref p) => println!("{}", p.display()),
+///     None => println!("Impossible to get your home dir!")
+/// }
+/// ```
 pub fn homedir() -> Option<Path> {
-    // FIXME (#7188): getenv needs a Vec<u8> variant
-    return match getenv("HOME") {
-        Some(ref p) if !p.is_empty() => Path::new_opt(p.as_slice()),
-        _ => secondary()
-    };
-
+    #[inline]
     #[cfg(unix)]
-    fn secondary() -> Option<Path> {
-        None
+    fn _homedir() -> Option<Path> {
+        aux_homedir("HOME")
     }
 
+    #[inline]
     #[cfg(windows)]
-    fn secondary() -> Option<Path> {
-        getenv("USERPROFILE").and_then(|p| {
-            if !p.is_empty() {
-                Path::new_opt(p)
-            } else {
-                None
-            }
-        })
+    fn _homedir() -> Option<Path> {
+        aux_homedir("HOME").or(aux_homedir("USERPROFILE"))
     }
+
+    #[inline]
+    fn aux_homedir(home_name: &str) -> Option<Path> {
+        match getenv_as_bytes(home_name) {
+            Some(p)  => {
+                if p.is_empty() { None } else { Path::new_opt(p) }
+            },
+            _ => None
+        }
+    }
+    _homedir()
 }
 
 /**
@@ -1732,7 +1796,7 @@ mod tests {
         assert!(os::homedir().is_none());
 
         for s in oldhome.iter() {
-            setenv("HOME", s.as_slice())
+            setenv("HOME", s.as_slice());
         }
     }
 
@@ -1761,10 +1825,10 @@ mod tests {
         assert!(os::homedir() == Some(Path::new("/home/MountainView")));
 
         for s in oldhome.iter() {
-            setenv("HOME", s.as_slice())
+            setenv("HOME", s.as_slice());
         }
         for s in olduserprofile.iter() {
-            setenv("USERPROFILE", s.as_slice())
+            setenv("USERPROFILE", s.as_slice());
         }
     }
 
