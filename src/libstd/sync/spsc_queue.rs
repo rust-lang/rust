@@ -205,7 +205,7 @@ impl<T: Send> Queue<T> {
             let tail = *self.tail.get();
             let next = (*tail).next.load(Acquire);
             if next.is_null() { return None }
-            return (*next).value.as_mut();
+            return (*next).value.as_mut_ref();
         }
     }
 }
