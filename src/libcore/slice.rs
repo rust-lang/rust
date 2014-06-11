@@ -270,7 +270,7 @@ pub mod traits {
         #[inline]
         fn eq(&self, other: &~[T]) -> bool { self.as_slice() == *other }
         #[inline]
-        fn ne(&self, other: &~[T]) -> bool { !self.eq(other) }
+        fn ne(&self, other: &~[T]) -> bool { self.as_slice() != *other }
     }
 
     impl<'a,T:Eq> Eq for &'a [T] {}

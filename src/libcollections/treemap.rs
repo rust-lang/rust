@@ -54,6 +54,10 @@ impl<K: PartialEq + Ord, V: PartialEq> PartialEq for TreeMap<K, V> {
         self.len() == other.len() &&
             self.iter().zip(other.iter()).all(|(a, b)| a == b)
     }
+    fn ne(&self, other: &TreeMap<K, V>) -> bool {
+        self.len() != other.len() ||
+            self.iter().zip(other.iter()).any(|(a, b)| a != b)
+    }
 }
 
 // Lexicographical comparison
@@ -566,6 +570,8 @@ pub struct TreeSet<T> {
 impl<T: PartialEq + Ord> PartialEq for TreeSet<T> {
     #[inline]
     fn eq(&self, other: &TreeSet<T>) -> bool { self.map == other.map }
+    #[inline]
+    fn ne(&self, other: &TreeSet<T>) -> bool { self.map != other.map }
 }
 
 impl<T: PartialOrd + Ord> PartialOrd for TreeSet<T> {

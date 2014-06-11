@@ -377,10 +377,11 @@ fn raw_index(lo: uint, len: uint, index: uint) -> uint {
 impl<A: PartialEq> PartialEq for RingBuf<A> {
     fn eq(&self, other: &RingBuf<A>) -> bool {
         self.nelts == other.nelts &&
-            self.iter().zip(other.iter()).all(|(a, b)| a.eq(b))
+            self.iter().zip(other.iter()).all(|(a, b)| a == b)
     }
     fn ne(&self, other: &RingBuf<A>) -> bool {
-        !self.eq(other)
+        self.nelts != other.nelts ||
+            self.iter().zip(other.iter()).any(|(a, b)| a != b)
     }
 }
 

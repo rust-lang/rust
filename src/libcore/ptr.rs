@@ -404,11 +404,9 @@ impl<T> RawPtr<T> for *mut T {
 #[cfg(not(test))]
 impl<T> PartialEq for *T {
     #[inline]
-    fn eq(&self, other: &*T) -> bool {
-        *self == *other
-    }
+    fn eq(&self, other: &*T) -> bool { *self == *other }
     #[inline]
-    fn ne(&self, other: &*T) -> bool { !self.eq(other) }
+    fn ne(&self, other: &*T) -> bool { *self != *other }
 }
 
 #[cfg(not(test))]
@@ -417,11 +415,9 @@ impl<T> Eq for *T {}
 #[cfg(not(test))]
 impl<T> PartialEq for *mut T {
     #[inline]
-    fn eq(&self, other: &*mut T) -> bool {
-        *self == *other
-    }
+    fn eq(&self, other: &*mut T) -> bool { *self == *other }
     #[inline]
-    fn ne(&self, other: &*mut T) -> bool { !self.eq(other) }
+    fn ne(&self, other: &*mut T) -> bool { *self != *other }
 }
 
 #[cfg(not(test))]

@@ -72,9 +72,10 @@ impl<S, K: Hash<S>> Hash<S> for KeyRef<K> {
 }
 
 impl<K: PartialEq> PartialEq for KeyRef<K> {
-    fn eq(&self, other: &KeyRef<K>) -> bool {
-        unsafe{ (*self.k).eq(&*other.k) }
-    }
+    #[inline]
+    fn eq(&self, other: &KeyRef<K>) -> bool { unsafe { (&*self.k) == (&*other.k) } }
+    #[inline]
+    fn ne(&self, other: &KeyRef<K>) -> bool { unsafe { (&*self.k) != (&*other.k) } }
 }
 
 impl<K: Eq> Eq for KeyRef<K> {}
