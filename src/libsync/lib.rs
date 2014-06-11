@@ -26,7 +26,7 @@
        html_root_url = "http://doc.rust-lang.org/",
        html_playground_url = "http://play.rust-lang.org/")]
 #![feature(phase, globs, macro_rules)]
-#![deny(deprecated_owned_vector)]
+
 #![deny(missing_doc)]
 #![no_std]
 

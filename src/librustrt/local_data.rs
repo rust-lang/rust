@@ -24,13 +24,13 @@ modify/read the slot specified by the key.
 
 ```rust
 local_data_key!(key_int: int)
-local_data_key!(key_vector: ~[int])
+local_data_key!(key_vector: Vec<int>)
 
 key_int.replace(Some(3));
 assert_eq!(*key_int.get().unwrap(), 3);
 
-key_vector.replace(Some(~[4]));
-assert_eq!(*key_vector.get().unwrap(), ~[4]);
+key_vector.replace(Some(vec![4]));
+assert_eq!(*key_vector.get().unwrap(), vec![4]);
 ```
 
 */

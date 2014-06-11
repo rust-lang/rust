@@ -101,11 +101,8 @@ There are a number of free functions that create or take vectors, for example:
 
 use core::prelude::*;
 
-use alloc::heap::{allocate, deallocate};
 use core::cmp;
-use core::finally::try_finally;
 use core::mem::size_of;
-use core::mem::transmute;
 use core::mem;
 use core::ptr;
 use core::iter::{range_step, MultiplicativeIterator};
@@ -255,18 +252,18 @@ impl Iterator<(uint, uint)> for ElementSwaps {
 /// Generates even and odd permutations alternately.
 pub struct Permutations<T> {
     swaps: ElementSwaps,
-    v: ~[T],
+    v: Vec<T>,
 }
 
-impl<T: Clone> Iterator<~[T]> for Permutations<T> {
+impl<T: Clone> Iterator<Vec<T>> for Permutations<T> {
     #[inline]
-    fn next(&mut self) -> Option<~[T]> {
+    fn next(&mut self) -> Option<Vec<T>> {
         match self.swaps.next() {
             None => None,
             Some((0,0)) => Some(self.v.clone()),
             Some((a, b)) => {
                 let elt = self.v.clone();
-                self.v.swap(a, b);
+                self.v.as_mut_slice().swap(a, b);
                 Some(elt)
             }
         }
@@ -281,73 +278,20 @@ impl<T: Clone> Iterator<~[T]> for Permutations<T> {
 /// Extension methods for vector slices with cloneable elements
 pub trait CloneableVector<T> {
     /// Copy `self` into a new owned vector
-    fn to_owned(&self) -> ~[T];
+    fn to_owned(&self) -> Vec<T>;
 
     /// Convert `self` into an owned vector, not making a copy if possible.
-    fn into_owned(self) -> ~[T];
+    fn into_owned(self) -> Vec<T>;
 }
 
 /// Extension methods for vector slices
 impl<'a, T: Clone> CloneableVector<T> for &'a [T] {
     /// Returns a copy of `v`.
     #[inline]
-    fn to_owned(&self) -> ~[T] {
-        use RawVec = core::raw::Vec;
-        use core::num::{CheckedAdd, CheckedMul};
-        use core::ptr;
-
-        let len = self.len();
-        let data_size = len.checked_mul(&mem::size_of::<T>());
-        let data_size = data_size.expect("overflow in to_owned()");
-        let size = mem::size_of::<RawVec<()>>().checked_add(&data_size);
-        let size = size.expect("overflow in to_owned()");
-
-        unsafe {
-            // this should pass the real required alignment
-            let ret = allocate(size, 8) as *mut RawVec<()>;
-
-            let a_size = mem::size_of::<T>();
-            let a_size = if a_size == 0 {1} else {a_size};
-            (*ret).fill = len * a_size;
-            (*ret).alloc = len * a_size;
-
-            // Be careful with the following loop. We want it to be optimized
-            // to a memcpy (or something similarly fast) when T is Copy. LLVM
-            // is easily confused, so any extra operations during the loop can
-            // prevent this optimization.
-            let mut i = 0;
-            let p = &mut (*ret).data as *mut _ as *mut T;
-            try_finally(
-                &mut i, (),
-                |i, ()| while *i < len {
-                    ptr::write(
-                        &mut(*p.offset(*i as int)),
-                        self.unsafe_ref(*i).clone());
-                    *i += 1;
-                },
-                |i| if *i < len {
-                    // we must be failing, clean up after ourselves
-                    for j in range(0, *i as int) {
-                        ptr::read(&*p.offset(j));
-                    }
-                    // FIXME: #13994 (should pass align and size here)
-                    deallocate(ret as *mut u8, 0, 8);
-                });
-            mem::transmute(ret)
-        }
-    }
+    fn to_owned(&self) -> Vec<T> { Vec::from_slice(*self) }
 
     #[inline(always)]
-    fn into_owned(self) -> ~[T] { self.to_owned() }
-}
-
-/// Extension methods for owned vectors
-impl<T: Clone> CloneableVector<T> for ~[T] {
-    #[inline]
-    fn to_owned(&self) -> ~[T] { self.clone() }
-
-    #[inline(always)]
-    fn into_owned(self) -> ~[T] { self }
+    fn into_owned(self) -> Vec<T> { self.to_owned() }
 }
 
 /// Extension methods for vectors containing `Clone` elements.
@@ -385,57 +329,6 @@ impl<'a,T:Clone> ImmutableCloneableVector<T> for &'a [T] {
         }
     }
 
-}
-
-/// Extension methods for owned vectors.
-pub trait OwnedVector<T> {
-    /// Creates a consuming iterator, that is, one that moves each
-    /// value out of the vector (from start to end). The vector cannot
-    /// be used after calling this.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// let v = ~["a".to_string(), "b".to_string()];
-    /// for s in v.move_iter() {
-    ///   // s has type ~str, not &~str
-    ///   println!("{}", s);
-    /// }
-    /// ```
-    fn move_iter(self) -> MoveItems<T>;
-
-    /**
-     * Partitions the vector into two vectors `(A,B)`, where all
-     * elements of `A` satisfy `f` and all elements of `B` do not.
-     */
-    fn partition(self, f: |&T| -> bool) -> (Vec<T>, Vec<T>);
-}
-
-impl<T> OwnedVector<T> for ~[T] {
-    #[inline]
-    fn move_iter(self) -> MoveItems<T> {
-        unsafe {
-            let iter = transmute(self.iter());
-            let ptr = transmute(self);
-            MoveItems { allocation: ptr, iter: iter }
-        }
-    }
-
-    #[inline]
-    fn partition(self, f: |&T| -> bool) -> (Vec<T>, Vec<T>) {
-        let mut lefts  = Vec::new();
-        let mut rights = Vec::new();
-
-        for elt in self.move_iter() {
-            if f(&elt) {
-                lefts.push(elt);
-            } else {
-                rights.push(elt);
-            }
-        }
-
-        (lefts, rights)
-    }
 }
 
 fn insertion_sort<T>(v: &mut [T], compare: |&T, &T| -> Ordering) {
@@ -676,7 +569,7 @@ pub trait MutableVectorAllocating<'a, T> {
      * * start - The index into `src` to start copying from
      * * end - The index into `str` to stop copying from
      */
-    fn move_from(self, src: ~[T], start: uint, end: uint) -> uint;
+    fn move_from(self, src: Vec<T>, start: uint, end: uint) -> uint;
 }
 
 impl<'a,T> MutableVectorAllocating<'a, T> for &'a mut [T] {
@@ -686,7 +579,7 @@ impl<'a,T> MutableVectorAllocating<'a, T> for &'a mut [T] {
     }
 
     #[inline]
-    fn move_from(self, mut src: ~[T], start: uint, end: uint) -> uint {
+    fn move_from(self, mut src: Vec<T>, start: uint, end: uint) -> uint {
         for (a, b) in self.mut_iter().zip(src.mut_slice(start, end).mut_iter()) {
             mem::swap(a, b);
         }
@@ -815,47 +708,6 @@ pub mod raw {
     pub use core::slice::raw::{shift_ptr, pop_ptr};
 }
 
-/// An iterator that moves out of a vector.
-pub struct MoveItems<T> {
-    allocation: *mut u8, // the block of memory allocated for the vector
-    iter: Items<'static, T>
-}
-
-impl<T> Iterator<T> for MoveItems<T> {
-    #[inline]
-    fn next(&mut self) -> Option<T> {
-        unsafe {
-            self.iter.next().map(|x| ptr::read(x))
-        }
-    }
-
-    #[inline]
-    fn size_hint(&self) -> (uint, Option<uint>) {
-        self.iter.size_hint()
-    }
-}
-
-impl<T> DoubleEndedIterator<T> for MoveItems<T> {
-    #[inline]
-    fn next_back(&mut self) -> Option<T> {
-        unsafe {
-            self.iter.next_back().map(|x| ptr::read(x))
-        }
-    }
-}
-
-#[unsafe_destructor]
-impl<T> Drop for MoveItems<T> {
-    fn drop(&mut self) {
-        // destroy the remaining elements
-        for _x in *self {}
-        unsafe {
-            // FIXME: #13994 (should pass align and size here)
-            deallocate(self.allocation, 0, 8)
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use std::cell::Cell;
@@ -944,92 +796,92 @@ mod tests {
 
     #[test]
     fn test_get() {
-        let mut a = box [11];
-        assert_eq!(a.get(1), None);
-        a = box [11, 12];
-        assert_eq!(a.get(1).unwrap(), &12);
-        a = box [11, 12, 13];
-        assert_eq!(a.get(1).unwrap(), &12);
+        let mut a = vec![11];
+        assert_eq!(a.as_slice().get(1), None);
+        a = vec![11, 12];
+        assert_eq!(a.as_slice().get(1).unwrap(), &12);
+        a = vec![11, 12, 13];
+        assert_eq!(a.as_slice().get(1).unwrap(), &12);
     }
 
     #[test]
     fn test_head() {
-        let mut a = box [];
-        assert_eq!(a.head(), None);
-        a = box [11];
-        assert_eq!(a.head().unwrap(), &11);
-        a = box [11, 12];
-        assert_eq!(a.head().unwrap(), &11);
+        let mut a = vec![];
+        assert_eq!(a.as_slice().head(), None);
+        a = vec![11];
+        assert_eq!(a.as_slice().head().unwrap(), &11);
+        a = vec![11, 12];
+        assert_eq!(a.as_slice().head().unwrap(), &11);
     }
 
     #[test]
     fn test_tail() {
-        let mut a = box [11];
+        let mut a = vec![11];
         assert_eq!(a.tail(), &[]);
-        a = box [11, 12];
+        a = vec![11, 12];
         assert_eq!(a.tail(), &[12]);
     }
 
     #[test]
     #[should_fail]
     fn test_tail_empty() {
-        let a: ~[int] = box [];
+        let a: Vec<int> = vec![];
         a.tail();
     }
 
     #[test]
     fn test_tailn() {
-        let mut a = box [11, 12, 13];
+        let mut a = vec![11, 12, 13];
         assert_eq!(a.tailn(0), &[11, 12, 13]);
-        a = box [11, 12, 13];
+        a = vec![11, 12, 13];
         assert_eq!(a.tailn(2), &[13]);
     }
 
     #[test]
     #[should_fail]
     fn test_tailn_empty() {
-        let a: ~[int] = box [];
+        let a: Vec<int> = vec![];
         a.tailn(2);
     }
 
     #[test]
     fn test_init() {
-        let mut a = box [11];
+        let mut a = vec![11];
         assert_eq!(a.init(), &[]);
-        a = box [11, 12];
+        a = vec![11, 12];
         assert_eq!(a.init(), &[11]);
     }
 
     #[test]
     #[should_fail]
     fn test_init_empty() {
-        let a: ~[int] = box [];
+        let a: Vec<int> = vec![];
         a.init();
     }
 
     #[test]
     fn test_initn() {
-        let mut a = box [11, 12, 13];
-        assert_eq!(a.initn(0), &[11, 12, 13]);
-        a = box [11, 12, 13];
-        assert_eq!(a.initn(2), &[11]);
+        let mut a = vec![11, 12, 13];
+        assert_eq!(a.as_slice().initn(0), &[11, 12, 13]);
+        a = vec![11, 12, 13];
+        assert_eq!(a.as_slice().initn(2), &[11]);
     }
 
     #[test]
     #[should_fail]
     fn test_initn_empty() {
-        let a: ~[int] = box [];
-        a.initn(2);
+        let a: Vec<int> = vec![];
+        a.as_slice().initn(2);
     }
 
     #[test]
     fn test_last() {
-        let mut a = box [];
-        assert_eq!(a.last(), None);
-        a = box [11];
-        assert_eq!(a.last().unwrap(), &11);
-        a = box [11, 12];
-        assert_eq!(a.last().unwrap(), &12);
+        let mut a = vec![];
+        assert_eq!(a.as_slice().last(), None);
+        a = vec![11];
+        assert_eq!(a.as_slice().last().unwrap(), &11);
+        a = vec![11, 12];
+        assert_eq!(a.as_slice().last().unwrap(), &12);
     }
 
     #[test]
@@ -1038,6 +890,7 @@ mod tests {
         let vec_fixed = [1, 2, 3, 4];
         let v_a = vec_fixed.slice(1u, vec_fixed.len()).to_owned();
         assert_eq!(v_a.len(), 3u);
+        let v_a = v_a.as_slice();
         assert_eq!(v_a[0], 2);
         assert_eq!(v_a[1], 3);
         assert_eq!(v_a[2], 4);
@@ -1046,13 +899,15 @@ mod tests {
         let vec_stack = &[1, 2, 3];
         let v_b = vec_stack.slice(1u, 3u).to_owned();
         assert_eq!(v_b.len(), 2u);
+        let v_b = v_b.as_slice();
         assert_eq!(v_b[0], 2);
         assert_eq!(v_b[1], 3);
 
         // Test `Box<[T]>`
-        let vec_unique = box [1, 2, 3, 4, 5, 6];
+        let vec_unique = vec![1, 2, 3, 4, 5, 6];
         let v_d = vec_unique.slice(1u, 6u).to_owned();
         assert_eq!(v_d.len(), 5u);
+        let v_d = v_d.as_slice();
         assert_eq!(v_d[0], 2);
         assert_eq!(v_d[1], 3);
         assert_eq!(v_d[2], 4);
@@ -1295,15 +1150,15 @@ mod tests {
             let (min_size, max_opt) = it.size_hint();
             assert_eq!(min_size, 3*2);
             assert_eq!(max_opt.unwrap(), 3*2);
-            assert_eq!(it.next(), Some(box [1,2,3]));
-            assert_eq!(it.next(), Some(box [1,3,2]));
-            assert_eq!(it.next(), Some(box [3,1,2]));
+            assert_eq!(it.next(), Some(vec![1,2,3]));
+            assert_eq!(it.next(), Some(vec![1,3,2]));
+            assert_eq!(it.next(), Some(vec![3,1,2]));
             let (min_size, max_opt) = it.size_hint();
             assert_eq!(min_size, 3);
             assert_eq!(max_opt.unwrap(), 3);
-            assert_eq!(it.next(), Some(box [3,2,1]));
-            assert_eq!(it.next(), Some(box [2,3,1]));
-            assert_eq!(it.next(), Some(box [2,1,3]));
+            assert_eq!(it.next(), Some(vec![3,2,1]));
+            assert_eq!(it.next(), Some(vec![2,3,1]));
+            assert_eq!(it.next(), Some(vec![2,1,3]));
             assert_eq!(it.next(), None);
         }
         {
@@ -1378,11 +1233,11 @@ mod tests {
     fn test_position_elem() {
         assert!([].position_elem(&1).is_none());
 
-        let v1 = box [1, 2, 3, 3, 2, 5];
-        assert_eq!(v1.position_elem(&1), Some(0u));
-        assert_eq!(v1.position_elem(&2), Some(1u));
-        assert_eq!(v1.position_elem(&5), Some(5u));
-        assert!(v1.position_elem(&4).is_none());
+        let v1 = vec![1, 2, 3, 3, 2, 5];
+        assert_eq!(v1.as_slice().position_elem(&1), Some(0u));
+        assert_eq!(v1.as_slice().position_elem(&2), Some(1u));
+        assert_eq!(v1.as_slice().position_elem(&5), Some(5u));
+        assert!(v1.as_slice().position_elem(&4).is_none());
     }
 
     #[test]
@@ -1432,14 +1287,14 @@ mod tests {
 
     #[test]
     fn test_reverse() {
-        let mut v: ~[int] = box [10, 20];
-        assert_eq!(v[0], 10);
-        assert_eq!(v[1], 20);
+        let mut v: Vec<int> = vec![10, 20];
+        assert_eq!(*v.get(0), 10);
+        assert_eq!(*v.get(1), 20);
         v.reverse();
-        assert_eq!(v[0], 20);
-        assert_eq!(v[1], 10);
+        assert_eq!(*v.get(0), 20);
+        assert_eq!(*v.get(1), 10);
 
-        let mut v3: ~[int] = box [];
+        let mut v3: Vec<int> = vec![];
         v3.reverse();
         assert!(v3.is_empty());
     }
@@ -1505,10 +1360,10 @@ mod tests {
 
     #[test]
     fn test_partition() {
-        assert_eq!((box []).partition(|x: &int| *x < 3), (vec![], vec![]));
-        assert_eq!((box [1, 2, 3]).partition(|x: &int| *x < 4), (vec![1, 2, 3], vec![]));
-        assert_eq!((box [1, 2, 3]).partition(|x: &int| *x < 2), (vec![1], vec![2, 3]));
-        assert_eq!((box [1, 2, 3]).partition(|x: &int| *x < 0), (vec![], vec![1, 2, 3]));
+        assert_eq!((vec![]).partition(|x: &int| *x < 3), (vec![], vec![]));
+        assert_eq!((vec![1, 2, 3]).partition(|x: &int| *x < 4), (vec![1, 2, 3], vec![]));
+        assert_eq!((vec![1, 2, 3]).partition(|x: &int| *x < 2), (vec![1], vec![2, 3]));
+        assert_eq!((vec![1, 2, 3]).partition(|x: &int| *x < 0), (vec![], vec![1, 2, 3]));
     }
 
     #[test]
@@ -1521,19 +1376,19 @@ mod tests {
 
     #[test]
     fn test_concat() {
-        let v: [~[int], ..0] = [];
+        let v: [Vec<int>, ..0] = [];
         assert_eq!(v.concat_vec(), vec![]);
-        assert_eq!([box [1], box [2,3]].concat_vec(), vec![1, 2, 3]);
+        assert_eq!([vec![1], vec![2,3]].concat_vec(), vec![1, 2, 3]);
 
         assert_eq!([&[1], &[2,3]].concat_vec(), vec![1, 2, 3]);
     }
 
     #[test]
     fn test_connect() {
-        let v: [~[int], ..0] = [];
+        let v: [Vec<int>, ..0] = [];
         assert_eq!(v.connect_vec(&0), vec![]);
-        assert_eq!([box [1], box [2, 3]].connect_vec(&0), vec![1, 0, 2, 3]);
-        assert_eq!([box [1], box [2], box [3]].connect_vec(&0), vec![1, 0, 2, 0, 3]);
+        assert_eq!([vec![1], vec![2, 3]].connect_vec(&0), vec![1, 0, 2, 3]);
+        assert_eq!([vec![1], vec![2], vec![3]].connect_vec(&0), vec![1, 0, 2, 0, 3]);
 
         assert_eq!([&[1], &[2, 3]].connect_vec(&0), vec![1, 0, 2, 3]);
         assert_eq!([&[1], &[2], &[3]].connect_vec(&0), vec![1, 0, 2, 0, 3]);
@@ -1808,13 +1663,13 @@ mod tests {
 
     #[test]
     fn test_move_iterator() {
-        let xs = box [1u,2,3,4,5];
+        let xs = vec![1u,2,3,4,5];
         assert_eq!(xs.move_iter().fold(0, |a: uint, b: uint| 10*a + b), 12345);
     }
 
     #[test]
     fn test_move_rev_iterator() {
-        let xs = box [1u,2,3,4,5];
+        let xs = vec![1u,2,3,4,5];
         assert_eq!(xs.move_iter().rev().fold(0, |a: uint, b: uint| 10*a + b), 54321);
     }
 
@@ -1927,19 +1782,19 @@ mod tests {
     #[test]
     fn test_move_from() {
         let mut a = [1,2,3,4,5];
-        let b = box [6,7,8];
+        let b = vec![6,7,8];
         assert_eq!(a.move_from(b, 0, 3), 3);
         assert!(a == [6,7,8,4,5]);
         let mut a = [7,2,8,1];
-        let b = box [3,1,4,1,5,9];
+        let b = vec![3,1,4,1,5,9];
         assert_eq!(a.move_from(b, 0, 6), 4);
         assert!(a == [3,1,4,1]);
         let mut a = [1,2,3,4];
-        let b = box [5,6,7,8,9,0];
+        let b = vec![5,6,7,8,9,0];
         assert_eq!(a.move_from(b, 2, 3), 1);
         assert!(a == [7,2,3,4]);
         let mut a = [1,2,3,4,5];
-        let b = box [5,6,7,8,9,0];
+        let b = vec![5,6,7,8,9,0];
         assert_eq!(a.mut_slice(2,4).move_from(b,1,6), 2);
         assert!(a == [1,2,6,7,5]);
     }
@@ -1972,11 +1827,11 @@ mod tests {
                 assert_eq!(format!("{}", x.as_slice()), x_str);
             })
         )
-        let empty: ~[int] = box [];
+        let empty: Vec<int> = vec![];
         test_show_vec!(empty, "[]".to_string());
-        test_show_vec!(box [1], "[1]".to_string());
-        test_show_vec!(box [1, 2, 3], "[1, 2, 3]".to_string());
-        test_show_vec!(box [box [], box [1u], box [1u, 1u]],
+        test_show_vec!(vec![1], "[1]".to_string());
+        test_show_vec!(vec![1, 2, 3], "[1, 2, 3]".to_string());
+        test_show_vec!(vec![vec![], vec![1u], vec![1u, 1u]],
                        "[[], [1], [1, 1]]".to_string());
 
         let empty_mut: &mut [int] = &mut[];
@@ -1997,7 +1852,6 @@ mod tests {
         );
 
         t!(&[int]);
-        t!(~[int]);
         t!(Vec<int>);
     }
 
@@ -2389,13 +2243,6 @@ mod bench {
                 v.set_len(1024);
             }
             v
-        });
-    }
-
-    #[bench]
-    fn zero_1kb_fixed_repeat(b: &mut Bencher) {
-        b.iter(|| {
-            box [0u8, ..1024]
         });
     }
 

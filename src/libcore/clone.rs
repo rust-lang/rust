@@ -159,7 +159,7 @@ mod test {
 
         fn test_fn_a() -> f64 { 1.0 }
         fn test_fn_b<T: Empty>(x: T) -> T { x }
-        fn test_fn_c(_: int, _: f64, _: ~[int], _: int, _: int, _: int) {}
+        fn test_fn_c(_: int, _: f64, _: int, _: int, _: int) {}
 
         let _ = test_fn_a.clone();
         let _ = test_fn_b::<int>.clone();

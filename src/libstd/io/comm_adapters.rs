@@ -15,9 +15,9 @@ use comm::{Sender, Receiver};
 use io;
 use option::{None, Option, Some};
 use result::{Ok, Err};
-use super::{Reader, Writer, IoResult};
-use str::StrSlice;
 use slice::{bytes, MutableVector, ImmutableVector};
+use str::StrSlice;
+use super::{Reader, Writer, IoResult};
 use vec::Vec;
 
 /// Allows reading from a rx.
@@ -162,14 +162,14 @@ mod test {
         assert_eq!(Ok(2), reader.read(buf));
         assert_eq!(&[7,8,6], buf.as_slice());
 
-        match reader.read(buf) {
+        match reader.read(buf.as_mut_slice()) {
             Ok(..) => fail!(),
             Err(e) => assert_eq!(e.kind, io::EndOfFile),
         }
         assert_eq!(&[7,8,6], buf.as_slice());
 
         // Ensure it continues to fail in the same way.
-        match reader.read(buf) {
+        match reader.read(buf.as_mut_slice()) {
             Ok(..) => fail!(),
             Err(e) => assert_eq!(e.kind, io::EndOfFile),
         }

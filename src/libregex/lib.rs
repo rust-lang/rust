@@ -364,7 +364,7 @@
        html_playground_url = "http://play.rust-lang.org/")]
 
 #![feature(macro_rules, phase)]
-#![deny(missing_doc, deprecated_owned_vector)]
+#![deny(missing_doc)]
 
 #[cfg(test)]
 extern crate stdtest = "test";

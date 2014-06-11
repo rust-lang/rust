@@ -418,10 +418,10 @@ impl<'a, 'b, O:DataFlowOperator> PropagationContext<'a, 'b, O> {
                 self.walk_expr(&*cond, in_out, loop_scopes);
 
                 let mut then_bits = in_out.to_owned();
-                self.walk_block(&*then, then_bits, loop_scopes);
+                self.walk_block(&*then, then_bits.as_mut_slice(), loop_scopes);
 
                 self.walk_opt_expr(els, in_out, loop_scopes);
-                join_bits(&self.dfcx.oper, then_bits, in_out);
+                join_bits(&self.dfcx.oper, then_bits.as_slice(), in_out);
             }
 
             ast::ExprWhile(cond, blk) => {
@@ -444,8 +444,8 @@ impl<'a, 'b, O:DataFlowOperator> PropagationContext<'a, 'b, O> {
                     loop_id: expr.id,
                     break_bits: Vec::from_slice(in_out)
                 });
-                self.walk_block(&*blk, body_bits, loop_scopes);
-                self.add_to_entry_set(expr.id, body_bits);
+                self.walk_block(&*blk, body_bits.as_mut_slice(), loop_scopes);
+                self.add_to_entry_set(expr.id, body_bits.as_slice());
                 let new_loop_scope = loop_scopes.pop().unwrap();
                 copy_bits(new_loop_scope.break_bits.as_slice(), in_out);
             }
@@ -468,8 +468,8 @@ impl<'a, 'b, O:DataFlowOperator> PropagationContext<'a, 'b, O> {
                     loop_id: expr.id,
                     break_bits: Vec::from_slice(in_out)
                 });
-                self.walk_block(&**blk, body_bits, loop_scopes);
-                self.add_to_entry_set(expr.id, body_bits);
+                self.walk_block(&**blk, body_bits.as_mut_slice(), loop_scopes);
+                self.add_to_entry_set(expr.id, body_bits.as_slice());
 
                 let new_loop_scope = loop_scopes.pop().unwrap();
                 assert_eq!(new_loop_scope.loop_id, expr.id);
@@ -499,16 +499,17 @@ impl<'a, 'b, O:DataFlowOperator> PropagationContext<'a, 'b, O> {
 
                 for arm in arms.iter() {
                     // in_out reflects the discr and all guards to date
-                    self.walk_opt_expr(arm.guard, guards, loop_scopes);
+                    self.walk_opt_expr(arm.guard, guards.as_mut_slice(),
+                                       loop_scopes);
 
                     // determine the bits for the body and then union
                     // them into `in_out`, which reflects all bodies to date
                     let mut body = guards.to_owned();
                     self.walk_pat_alternatives(arm.pats.as_slice(),
-                                               body,
+                                               body.as_mut_slice(),
                                                loop_scopes);
-                    self.walk_expr(&*arm.body, body, loop_scopes);
-                    join_bits(&self.dfcx.oper, body, in_out);
+                    self.walk_expr(&*arm.body, body.as_mut_slice(), loop_scopes);
+                    join_bits(&self.dfcx.oper, body.as_slice(), in_out);
                 }
             }
 
@@ -578,7 +579,7 @@ impl<'a, 'b, O:DataFlowOperator> PropagationContext<'a, 'b, O> {
                 self.walk_expr(&**l, in_out, loop_scopes);
                 let temp = in_out.to_owned();
                 self.walk_expr(&**r, in_out, loop_scopes);
-                join_bits(&self.dfcx.oper, temp, in_out);
+                join_bits(&self.dfcx.oper, temp.as_slice(), in_out);
             }
 
             ast::ExprIndex(l, r) |
@@ -739,8 +740,8 @@ impl<'a, 'b, O:DataFlowOperator> PropagationContext<'a, 'b, O> {
         let initial_state = in_out.to_owned();
         for &pat in pats.iter() {
             let mut temp = initial_state.clone();
-            self.walk_pat(pat, temp, loop_scopes);
-            join_bits(&self.dfcx.oper, temp, in_out);
+            self.walk_pat(pat, temp.as_mut_slice(), loop_scopes);
+            join_bits(&self.dfcx.oper, temp.as_slice(), in_out);
         }
     }
 

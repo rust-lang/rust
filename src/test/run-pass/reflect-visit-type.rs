@@ -62,8 +62,6 @@ impl TyVisitor for MyVisitor {
 
     fn visit_char(&mut self) -> bool { true }
 
-    fn visit_estr_box(&mut self) -> bool { true }
-    fn visit_estr_uniq(&mut self) -> bool { true }
     fn visit_estr_slice(&mut self) -> bool { true }
     fn visit_estr_fixed(&mut self,
                         _sz: uint, _sz2: uint,
@@ -74,13 +72,6 @@ impl TyVisitor for MyVisitor {
     fn visit_ptr(&mut self, _mtbl: uint, _inner: *TyDesc) -> bool { true }
     fn visit_rptr(&mut self, _mtbl: uint, _inner: *TyDesc) -> bool { true }
 
-    fn visit_evec_box(&mut self, _mtbl: uint, _inner: *TyDesc) -> bool { true }
-    fn visit_evec_uniq(&mut self, _mtbl: uint, inner: *TyDesc) -> bool {
-        self.types.push("[".to_string());
-        unsafe { visit_tydesc(inner, &mut *self as &mut TyVisitor); }
-        self.types.push("]".to_string());
-        true
-    }
     fn visit_evec_slice(&mut self, _mtbl: uint, _inner: *TyDesc) -> bool { true }
     fn visit_evec_fixed(&mut self, _n: uint, _sz: uint, _align: uint,
                         _mtbl: uint, _inner: *TyDesc) -> bool { true }
