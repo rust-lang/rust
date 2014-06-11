@@ -1,15 +1,15 @@
 export LD_LIBRARY_PATH:=$(TMPDIR):$(LD_LIBRARY_PATH)
 export DYLD_LIBRARY_PATH:=$(TMPDIR):$(DYLD_LIBRARY_PATH)
 
-RUSTC := $(RUSTC) --out-dir $(TMPDIR) -L $(TMPDIR)
-CC := $(CC) -L $(TMPDIR)
-
 # These deliberately use `=` and not `:=` so that client makefiles can
 # augment HOST_RPATH_DIR / TARGET_RPATH_DIR.
 HOST_RPATH_ENV = \
-    $(LD_LIB_PATH_ENVVAR)=$$$(LD_LIB_PATH_ENVVAR):$(HOST_RPATH_DIR)
+    $(LD_LIB_PATH_ENVVAR)=$(HOST_RPATH_DIR):$$$(LD_LIB_PATH_ENVVAR)
 TARGET_RPATH_ENV = \
-    $(LD_LIB_PATH_ENVVAR)=$$$(LD_LIB_PATH_ENVVAR):$(TARGET_RPATH_DIR)
+    $(LD_LIB_PATH_ENVVAR)=$(TARGET_RPATH_DIR):$$$(LD_LIB_PATH_ENVVAR)
+
+RUSTC := $(HOST_RPATH_ENV) $(RUSTC) --out-dir $(TMPDIR) -L $(TMPDIR)
+CC := $(CC) -L $(TMPDIR)
 
 # This is the name of the binary we will generate and run; use this
 # e.g. for `$(CC) -o $(RUN_BINFILE)`.
