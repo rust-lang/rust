@@ -17,20 +17,18 @@
 /// High level implementation details can be found in the comment of the parent
 /// module.
 
-use cmp;
+use core::prelude::*;
+
+use alloc::owned::Box;
+use core::cmp;
+use core::int;
+use rustrt::local::Local;
+use rustrt::task::{Task, BlockedTask};
+use rustrt::thread::Thread;
+
+use atomics;
 use comm::Receiver;
-use int;
-use iter::Iterator;
-use kinds::Send;
-use ops::Drop;
-use option::{Some, None};
-use owned::Box;
-use result::{Ok, Err, Result};
-use rt::local::Local;
-use rt::task::{Task, BlockedTask};
-use rt::thread::Thread;
-use spsc = sync::spsc_queue;
-use sync::atomics;
+use spsc = spsc_queue;
 
 static DISCONNECTED: int = int::MIN;
 #[cfg(test)]

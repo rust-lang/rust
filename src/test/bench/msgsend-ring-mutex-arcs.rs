@@ -15,10 +15,9 @@
 
 // This also serves as a pipes test, because Arcs are implemented with pipes.
 
-extern crate sync;
 extern crate time;
 
-use sync::{Arc, Future, Mutex};
+use std::sync::{Arc, Future, Mutex};
 use std::os;
 use std::uint;
 

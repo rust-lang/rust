@@ -126,6 +126,7 @@ extern crate alloc;
 extern crate core;
 extern crate core_collections = "collections";
 extern crate core_rand = "rand";
+extern crate core_sync = "sync";
 extern crate libc;
 extern crate rustrt;
 
@@ -173,6 +174,8 @@ pub use core_collections::vec;
 
 pub use rustrt::c_str;
 pub use rustrt::local_data;
+
+pub use core_sync::comm;
 
 // Run tests with libgreen instead of libnative.
 //
@@ -237,9 +240,7 @@ pub mod collections;
 /* Tasks and communication */
 
 pub mod task;
-pub mod comm;
 pub mod sync;
-
 
 /* Runtime and platform support */
 

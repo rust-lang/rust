@@ -15,11 +15,9 @@
 
 // This also serves as a pipes test, because Arcs are implemented with pipes.
 
-extern crate sync;
 extern crate time;
 
-use sync::{RWLock, Arc};
-use sync::Future;
+use std::sync::{RWLock, Arc, Future};
 use std::os;
 use std::uint;
 

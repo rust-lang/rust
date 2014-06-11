@@ -32,16 +32,15 @@
 /// The one caveat to consider is that when a port sees a disconnected channel
 /// it must check for data because there is no "data plus upgrade" state.
 
+use core::prelude::*;
+
+use alloc::owned::Box;
+use core::mem;
+use rustrt::local::Local;
+use rustrt::task::{Task, BlockedTask};
+
+use atomics;
 use comm::Receiver;
-use kinds::Send;
-use mem;
-use ops::Drop;
-use option::{Some, None, Option};
-use owned::Box;
-use result::{Result, Ok, Err};
-use rt::local::Local;
-use rt::task::{Task, BlockedTask};
-use sync::atomics;
 
 // Various states you can find a port in.
 static EMPTY: uint = 0;

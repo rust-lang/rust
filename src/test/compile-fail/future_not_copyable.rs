@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate sync;
-
-use sync::Future;
+use std::sync::Future;
 
 fn main() {
     let f = Future::from_value(());

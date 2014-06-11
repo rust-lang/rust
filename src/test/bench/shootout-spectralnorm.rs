@@ -11,13 +11,12 @@
 #![feature(phase)]
 #![allow(non_snake_case_functions)]
 #[phase(plugin)] extern crate green;
-extern crate sync;
 
 use std::from_str::FromStr;
 use std::iter::count;
 use std::cmp::min;
 use std::os;
-use sync::{Arc, RWLock};
+use std::sync::{Arc, RWLock};
 
 green_start!(main)
 
