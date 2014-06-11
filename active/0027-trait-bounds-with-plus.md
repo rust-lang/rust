@@ -1,6 +1,6 @@
 - Start Date: 2014-05-22
-- RFC PR #: (leave this empty)
-- Rust Issue #: (leave this empty)
+- RFC PR #: 87
+- Rust Issue #: 14824
 
 # Summary
 
@@ -13,7 +13,7 @@ With DST there is an ambiguity between the following two forms:
     trait X {
         fn f(foo: b);
     }
-    
+
 
 and
 
