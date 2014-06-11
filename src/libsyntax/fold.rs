@@ -192,6 +192,7 @@ pub trait Folder {
                 })
             }
             TyTup(ref tys) => TyTup(tys.iter().map(|&ty| self.fold_ty(ty)).collect()),
+            TyParen(ref ty) => TyParen(self.fold_ty(*ty)),
             TyPath(ref path, ref bounds, id) => {
                 let id = self.new_id(id);
                 TyPath(self.fold_path(path),

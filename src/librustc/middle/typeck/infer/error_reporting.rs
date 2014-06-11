@@ -1140,6 +1140,7 @@ impl<'a> Rebuilder<'a> {
                     }
                     ast::TyTup(new_tys)
                 }
+                ast::TyParen(ref typ) => ast::TyParen(build_to(*typ, to)),
                 ref other => other.clone()
             };
             box(GC) ast::Ty { id: from.id, node: new_node, span: from.span }
