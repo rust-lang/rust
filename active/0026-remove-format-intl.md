@@ -1,6 +1,6 @@
-- Start Date: (fill me in with today's date, YYYY-MM-DD)
-- RFC PR #: (leave this empty)
-- Rust Issue #: (leave this empty)
+- Start Date: 2014-06-10
+- RFC PR #: 93
+- Rust Issue #: 14812
 
 # Summary
 
