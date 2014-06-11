@@ -769,15 +769,12 @@ fn trans_rvalue_dps_unadjusted<'a>(bcx: &'a Block<'a>,
         }
         ast::ExprCast(ref val, _) => {
             // DPS output mode means this is a trait cast:
-            match ty::get(node_id_type(bcx, expr.id)).sty {
-                ty::ty_trait(..) => {
-                    let datum = unpack_datum!(bcx, trans(bcx, &**val));
-                    meth::trans_trait_cast(bcx, datum, expr.id, dest)
-                }
-                _ => {
-                    bcx.tcx().sess.span_bug(expr.span,
-                                            "expr_cast of non-trait");
-                }
+            if ty::type_is_trait(node_id_type(bcx, expr.id)) {
+                let datum = unpack_datum!(bcx, trans(bcx, &**val));
+                meth::trans_trait_cast(bcx, datum, expr.id, dest)
+            } else {
+                bcx.tcx().sess.span_bug(expr.span,
+                                        "expr_cast of non-trait");
             }
         }
         ast::ExprAssignOp(op, ref dst, ref src) => {
@@ -1578,7 +1575,7 @@ pub fn cast_type_kind(t: ty::t) -> cast_kind {
         ty::ty_float(..)   => cast_float,
         ty::ty_ptr(..)     => cast_pointer,
         ty::ty_rptr(_, mt) => match ty::get(mt.ty).sty{
-            ty::ty_vec(_, None) | ty::ty_str => cast_other,
+            ty::ty_vec(_, None) | ty::ty_str | ty::ty_trait(..) => cast_other,
             _ => cast_pointer,
         },
         ty::ty_bare_fn(..) => cast_pointer,
@@ -1794,8 +1791,8 @@ fn deref_once<'a>(bcx: &'a Block<'a>,
     let r = match ty::get(datum.ty).sty {
         ty::ty_uniq(content_ty) => {
             match ty::get(content_ty).sty {
-                ty::ty_vec(_, None) | ty::ty_str
-                    => bcx.tcx().sess.span_bug(expr.span, "unexpected ~[T]"),
+                ty::ty_vec(_, None) | ty::ty_str | ty::ty_trait(..)
+                    => bcx.tcx().sess.span_bug(expr.span, "unexpected unsized box"),
                 _ => deref_owned_pointer(bcx, expr, datum, content_ty),
             }
         }
@@ -1812,8 +1809,8 @@ fn deref_once<'a>(bcx: &'a Block<'a>,
         ty::ty_ptr(ty::mt { ty: content_ty, .. }) |
         ty::ty_rptr(_, ty::mt { ty: content_ty, .. }) => {
             match ty::get(content_ty).sty {
-                ty::ty_vec(_, None) | ty::ty_str
-                    => bcx.tcx().sess.span_bug(expr.span, "unexpected &[T]"),
+                ty::ty_vec(_, None) | ty::ty_str | ty::ty_trait(..)
+                    => bcx.tcx().sess.span_bug(expr.span, "unexpected unsized reference"),
                 _ => {
                     assert!(!ty::type_needs_drop(bcx.tcx(), datum.ty));
 

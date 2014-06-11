@@ -1794,6 +1794,9 @@ pub fn get_fn_llvm_attributes(ccx: &CrateContext, fn_ty: ty::t) -> Vec<(uint, u6
         match ty::get(ret_ty).sty {
             // `~` pointer return values never alias because ownership
             // is transferred
+            ty::ty_uniq(it)  if match ty::get(it).sty {
+                ty::ty_str | ty::ty_vec(..) | ty::ty_trait(..) => true, _ => false
+            } => {}
             ty::ty_uniq(_) => {
                 attrs.push((lib::llvm::ReturnIndex as uint, lib::llvm::NoAliasAttribute as u64));
             }
@@ -1803,9 +1806,9 @@ pub fn get_fn_llvm_attributes(ccx: &CrateContext, fn_ty: ty::t) -> Vec<(uint, u6
         // We can also mark the return value as `nonnull` in certain cases
         match ty::get(ret_ty).sty {
             // These are not really pointers but pairs, (pointer, len)
-            ty::ty_rptr(_, ty::mt { ty: it, .. }) |
+            ty::ty_uniq(it) |
             ty::ty_rptr(_, ty::mt { ty: it, .. }) if match ty::get(it).sty {
-                ty::ty_str | ty::ty_vec(..) => true, _ => false
+                ty::ty_str | ty::ty_vec(..) | ty::ty_trait(..) => true, _ => false
             } => {}
             ty::ty_uniq(_) | ty::ty_rptr(_, _) => {
                 attrs.push((lib::llvm::ReturnIndex as uint, lib::llvm::NonNullAttribute as u64));

@@ -584,10 +584,25 @@ fn mk_pointer<AC:AstConv,
             return constr(ty::mk_vec(tcx, mt, None));
         }
         ast::TyUnboxedFn(ref unboxed_function) => {
-            let trait_store = match ptr_ty {
-                Uniq => ty::UniqTraitStore,
+            let ty::TraitRef {
+                def_id,
+                substs
+            } = trait_ref_for_unboxed_function(this,
+                                               rscope,
+                                               &**unboxed_function,
+                                               None);
+            let tr = ty::mk_trait(this.tcx(),
+                                  def_id,
+                                  substs,
+                                  ty::empty_builtin_bounds());
+            match ptr_ty {
+                Uniq => {
+                    return ty::mk_uniq(this.tcx(), tr);
+                }
                 RPtr(r) => {
-                    ty::RegionTraitStore(r, a_seq_ty.mutbl)
+                    return ty::mk_rptr(this.tcx(),
+                                       r,
+                                       ty::mt {mutbl: a_seq_ty.mutbl, ty: tr});
                 }
                 _ => {
                     tcx.sess.span_err(
@@ -596,19 +611,8 @@ fn mk_pointer<AC:AstConv,
                          forms of casting-to-trait");
                     return ty::mk_err();
                 }
-            };
-            let ty::TraitRef {
-                def_id,
-                substs
-            } = trait_ref_for_unboxed_function(this,
-                                               rscope,
-                                               &**unboxed_function,
-                                               None);
-            return ty::mk_trait(this.tcx(),
-                                def_id,
-                                substs,
-                                trait_store,
-                                ty::empty_builtin_bounds());
+
+            }
         }
         ast::TyPath(ref path, ref bounds, id) => {
             // Note that the "bounds must be empty if path is not a trait"
@@ -651,11 +655,20 @@ fn mk_pointer<AC:AstConv,
                                                      path.span,
                                                      bounds,
                                                      trait_store);
-                    return ty::mk_trait(tcx,
-                                        result.def_id,
-                                        result.substs.clone(),
-                                        trait_store,
-                                        bounds);
+                    let tr = ty::mk_trait(tcx,
+                                          result.def_id,
+                                          result.substs.clone(),
+                                          bounds);
+                    // We could just match on ptr_ty, but we need to pass a trait
+                    // store to conv_builtin_bounds, so mathc twice for now.
+                    return match trait_store {
+                        ty::UniqTraitStore => {
+                            return ty::mk_uniq(tcx, tr);
+                        }
+                        ty::RegionTraitStore(r, m) => {
+                            return ty::mk_rptr(tcx, r, ty::mt{mutbl: m, ty: tr});
+                        }
+                    }
                 }
                 _ => {}
             }

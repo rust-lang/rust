@@ -74,8 +74,14 @@ fn get_base_type(inference_context: &InferCtxt,
     }
 
     match get(resolved_type).sty {
-        ty_enum(..) | ty_trait(..) | ty_struct(..) => {
+        ty_enum(..) | ty_struct(..) => {
             debug!("(getting base type) found base type");
+            Some(resolved_type)
+        }
+        // FIXME(14865) I would prefere to use `_` here, but that causes a
+        // compiler error.
+        ty_uniq(_) | ty_rptr(_, _) | ty_trait(..) if ty::type_is_trait(resolved_type) => {
+            debug!("(getting base type) found base type (trait)");
             Some(resolved_type)
         }
 
@@ -87,6 +93,7 @@ fn get_base_type(inference_context: &InferCtxt,
                    get(original_type).sty);
             None
         }
+        ty_trait(..) => fail!("should have been caught")
     }
 }
 
@@ -108,17 +115,9 @@ fn type_is_defined_in_local_crate(tcx: &ty::ctxt, original_type: t) -> bool {
                     found_nominal = true;
                 }
             }
-            ty_trait(box ty::TyTrait { def_id, ref store, .. }) => {
+            ty_trait(box ty::TyTrait { def_id, .. }) => {
                 if def_id.krate == ast::LOCAL_CRATE {
                     found_nominal = true;
-                }
-                if *store == ty::UniqTraitStore {
-                    match tcx.lang_items.owned_box() {
-                        Some(did) if did.krate == ast::LOCAL_CRATE => {
-                            found_nominal = true;
-                        }
-                        _ => {}
-                    }
                 }
             }
             ty_uniq(..) => {
@@ -150,16 +149,22 @@ fn get_base_type_def_id(inference_context: &InferCtxt,
                         original_type: t)
                         -> Option<DefId> {
     match get_base_type(inference_context, span, original_type) {
-        None => {
-            return None;
-        }
+        None => None,
         Some(base_type) => {
             match get(base_type).sty {
                 ty_enum(def_id, _) |
-                ty_struct(def_id, _) |
-                ty_trait(box ty::TyTrait { def_id, .. }) => {
-                    return Some(def_id);
+                ty_struct(def_id, _) => {
+                    Some(def_id)
                 }
+                ty_rptr(_, ty::mt {ty, ..}) | ty_uniq(ty) => match ty::get(ty).sty {
+                    ty_trait(box ty::TyTrait { def_id, .. }) => {
+                        Some(def_id)
+                    }
+                    _ => {
+                        fail!("get_base_type() returned a type that wasn't an \
+                               enum, struct, or trait");
+                    }
+                },
                 _ => {
                     fail!("get_base_type() returned a type that wasn't an \
                            enum, struct, or trait");

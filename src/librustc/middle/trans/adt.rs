@@ -292,12 +292,11 @@ impl Case {
     fn find_ptr(&self) -> Option<uint> {
         self.tys.iter().position(|&ty| {
             match ty::get(ty).sty {
-                ty::ty_rptr(_, mt) => match ty::get(mt.ty).sty {
-                    ty::ty_vec(_, None) | ty::ty_str => false,
+                ty::ty_uniq(ty) | ty::ty_rptr(_, ty::mt{ty, ..}) => match ty::get(ty).sty {
+                    ty::ty_vec(_, None) | ty::ty_str| ty::ty_trait(..) => false,
                     _ => true,
                 },
-                ty::ty_uniq(..) | ty::ty_box(..) |
-                ty::ty_bare_fn(..) => true,
+                ty::ty_box(..) | ty::ty_bare_fn(..) => true,
                 // Is that everything?  Would closures or slices qualify?
                 _ => false
             }
