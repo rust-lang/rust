@@ -213,7 +213,7 @@
      (,(regexp-opt rust-special-types 'words) . font-lock-type-face)
 
      ;; Attributes like `#[bar(baz)]` or `#![bar(baz)]`
-     (,(rust-re-grab (concat "#\\!?[" rust-re-ident "[^]]*\\]"))
+     (,(rust-re-grab (concat "#\\!?\\[" rust-re-ident "[^]]*\\]"))
       1 font-lock-preprocessor-face)
 
      ;; Syntax extension invocations like `foo!`, highlight including the !
