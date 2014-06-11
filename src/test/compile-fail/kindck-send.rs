@@ -39,17 +39,17 @@ fn test<'a,T,U:Send>(_: &'a int) {
     // careful with object types, who knows what they close over...
     assert_send::<&'static Dummy>(); //~ ERROR does not fulfill `Send`
     assert_send::<&'a Dummy>(); //~ ERROR does not fulfill `Send`
-    assert_send::<&'a Dummy:Send>(); //~ ERROR does not fulfill `Send`
-    assert_send::<Box<Dummy:>>(); //~ ERROR does not fulfill `Send`
+    assert_send::<&'a Dummy+Send>(); //~ ERROR does not fulfill `Send`
+    assert_send::<Box<Dummy+>>(); //~ ERROR does not fulfill `Send`
 
     // ...unless they are properly bounded
-    assert_send::<&'static Dummy:Send>();
-    assert_send::<Box<Dummy:Send>>();
+    assert_send::<&'static Dummy+Send>();
+    assert_send::<Box<Dummy+Send>>();
 
     // but closure and object types can have lifetime bounds which make
     // them not ok (FIXME #5121)
     // assert_send::<proc:'a()>(); // ERROR does not fulfill `Send`
-    // assert_send::<Box<Dummy:'a>>(); // ERROR does not fulfill `Send`
+    // assert_send::<Box<Dummy+'a>>(); // ERROR does not fulfill `Send`
 
     // unsafe ptrs are ok unless they point at unsendable things
     assert_send::<*int>();
