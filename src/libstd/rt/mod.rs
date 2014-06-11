@@ -63,12 +63,9 @@ pub use self::util::{default_sched_threads, min_stack, running_on_valgrind};
 // Reexport functionality from librustrt and other crates underneath the
 // standard library which work together to create the entire runtime.
 pub use alloc::{heap, libc_heap};
-pub use rustrt::{task, local, mutex, exclusive, stack, args, rtio};
+pub use rustrt::{task, local, mutex, exclusive, stack, args, rtio, thread};
 pub use rustrt::{Stdio, Stdout, Stderr, begin_unwind, begin_unwind_fmt};
 pub use rustrt::{bookkeeping, at_exit, unwind, DEFAULT_ERROR_CODE, Runtime};
-
-// Bindings to system threading libraries.
-pub mod thread;
 
 // Simple backtrace functionality (to print on failure)
 pub mod backtrace;

@@ -18,21 +18,18 @@
 /// module. You'll also note that the implementation of the shared and stream
 /// channels are quite similar, and this is no coincidence!
 
-use cmp;
-use int;
-use iter::Iterator;
-use kinds::Send;
-use ops::Drop;
-use option::{Some, None, Option};
-use owned::Box;
-use result::{Ok, Err, Result};
-use rt::local::Local;
-use rt::mutex::NativeMutex;
-use rt::task::{Task, BlockedTask};
-use rt::thread::Thread;
-use sync::atomics;
+use core::prelude::*;
 
-use mpsc = sync::mpsc_queue;
+use alloc::owned::Box;
+use core::cmp;
+use core::int;
+use rustrt::local::Local;
+use rustrt::mutex::NativeMutex;
+use rustrt::task::{Task, BlockedTask};
+use rustrt::thread::Thread;
+
+use atomics;
+use mpsc = mpsc_queue;
 
 static DISCONNECTED: int = int::MIN;
 static FUDGE: int = 1024;

@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate sync;
-use sync::Arc;
-
+use std::sync::Arc;
 use std::task;
 
 fn main() {

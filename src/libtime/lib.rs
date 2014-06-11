@@ -29,8 +29,6 @@
 
 extern crate serialize;
 extern crate libc;
-#[cfg(target_os = "macos")]
-extern crate sync;
 
 use std::io::BufReader;
 use std::num;
@@ -168,7 +166,7 @@ pub fn precise_time_ns() -> u64 {
     fn os_precise_time_ns() -> u64 {
         static mut TIMEBASE: libc::mach_timebase_info = libc::mach_timebase_info { numer: 0,
                                                                                    denom: 0 };
-        static mut ONCE: sync::one::Once = sync::one::ONCE_INIT;
+        static mut ONCE: std::sync::Once = std::sync::ONCE_INIT;
         unsafe {
             ONCE.doit(|| {
                 imp::mach_timebase_info(&mut TIMEBASE);

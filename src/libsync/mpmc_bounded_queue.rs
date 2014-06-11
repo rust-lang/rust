@@ -25,19 +25,19 @@
  * policies, either expressed or implied, of Dmitry Vyukov.
  */
 
+#![experimental]
 #![allow(missing_doc, dead_code)]
 
 // http://www.1024cores.net/home/lock-free-algorithms/queues/bounded-mpmc-queue
 
-use alloc::arc::Arc;
+use core::prelude::*;
 
-use clone::Clone;
-use kinds::Send;
-use num::next_power_of_two;
-use option::{Option, Some, None};
-use sync::atomics::{AtomicUint,Relaxed,Release,Acquire};
-use vec::Vec;
-use ty::Unsafe;
+use alloc::arc::Arc;
+use collections::Vec;
+use core::num::next_power_of_two;
+use core::ty::Unsafe;
+
+use atomics::{AtomicUint,Relaxed,Release,Acquire};
 
 struct Node<T> {
     sequence: AtomicUint,
@@ -165,7 +165,7 @@ impl<T: Send> Clone for Queue<T> {
 
 #[cfg(test)]
 mod tests {
-    use prelude::*;
+    use std::prelude::*;
     use super::Queue;
     use native;
 

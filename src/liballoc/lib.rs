@@ -84,7 +84,6 @@ extern crate libc;
 // Allow testing this library
 
 #[cfg(test)] extern crate debug;
-#[cfg(test)] extern crate sync;
 #[cfg(test)] extern crate native;
 #[cfg(test, stage0)] #[phase(syntax, link)] extern crate std;
 #[cfg(test, stage0)] #[phase(syntax, link)] extern crate log;

@@ -40,9 +40,7 @@
 //! A simple spinlock:
 //!
 //! ```
-//! extern crate sync;
-//!
-//! use sync::Arc;
+//! use std::sync::Arc;
 //! use std::sync::atomics::{AtomicUint, SeqCst};
 //! use std::task::deschedule;
 //!
@@ -68,9 +66,7 @@
 //! Transferring a heap object with `AtomicOption`:
 //!
 //! ```
-//! extern crate sync;
-//!
-//! use sync::Arc;
+//! use std::sync::Arc;
 //! use std::sync::atomics::{AtomicOption, SeqCst};
 //!
 //! fn main() {
@@ -105,10 +101,10 @@
 //! }
 //! ```
 
-use mem;
-use ops::Drop;
-use option::{Option,Some,None};
-use owned::Box;
+use core::prelude::*;
+
+use alloc::owned::Box;
+use core::mem;
 
 pub use core::atomics::{AtomicBool, AtomicInt, AtomicUint, AtomicPtr};
 pub use core::atomics::{Ordering, Relaxed, Release, Acquire, AcqRel, SeqCst};
@@ -188,7 +184,7 @@ impl<T> Drop for AtomicOption<T> {
 
 #[cfg(test)]
 mod test {
-    use option::*;
+    use std::prelude::*;
     use super::*;
 
     #[test]

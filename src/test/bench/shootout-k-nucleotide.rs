@@ -10,12 +10,9 @@
 
 // ignore-android see #10393 #13206
 
-extern crate sync;
-
 use std::string::String;
 use std::slice;
-use sync::Arc;
-use sync::Future;
+use std::sync::{Arc, Future};
 
 static TABLE: [u8, ..4] = [ 'A' as u8, 'C' as u8, 'G' as u8, 'T' as u8 ];
 static TABLE_SIZE: uint = 2 << 16;

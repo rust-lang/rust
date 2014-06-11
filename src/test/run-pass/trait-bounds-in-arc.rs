@@ -12,9 +12,7 @@
 // and shared between tasks as long as all types fulfill Send.
 
 
-extern crate sync;
-
-use sync::Arc;
+use std::sync::Arc;
 use std::task;
 
 trait Pet {

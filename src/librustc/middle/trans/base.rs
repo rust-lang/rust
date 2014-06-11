@@ -2297,7 +2297,7 @@ pub fn trans_crate(krate: ast::Crate,
 
     // Before we touch LLVM, make sure that multithreading is enabled.
     unsafe {
-        use sync::one::{Once, ONCE_INIT};
+        use std::sync::{Once, ONCE_INIT};
         static mut INIT: Once = ONCE_INIT;
         static mut POISONED: bool = false;
         INIT.doit(|| {
