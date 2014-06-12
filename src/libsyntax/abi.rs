@@ -87,24 +87,9 @@ static AbiDatas: &'static [AbiData] = &[
     AbiData {abi: RustIntrinsic, name: "rust-intrinsic", abi_arch: RustArch},
 ];
 
-/// Iterates through each of the defined ABIs.
-fn each_abi(op: |abi: Abi| -> bool) -> bool {
-    AbiDatas.iter().advance(|abi_data| op(abi_data.abi))
-}
-
 /// Returns the ABI with the given name (if any).
 pub fn lookup(name: &str) -> Option<Abi> {
-    let mut res = None;
-
-    each_abi(|abi| {
-        if name == abi.data().name {
-            res = Some(abi);
-            false
-        } else {
-            true
-        }
-    });
-    res
+    AbiDatas.iter().find(|abi_data| name == abi_data.name).map(|&x| x.abi)
 }
 
 pub fn all_names() -> Vec<&'static str> {
