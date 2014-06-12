@@ -105,6 +105,7 @@ pub mod ext {
     pub mod concat_idents;
     pub mod log_syntax;
     pub mod source_util;
+    pub mod ary;
 
     pub mod trace_macros;
 }

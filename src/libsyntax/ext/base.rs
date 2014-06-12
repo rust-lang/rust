@@ -389,6 +389,9 @@ pub fn syntax_expander_table() -> SyntaxEnv {
     syntax_expanders.insert(intern("trace_macros"),
                             builtin_normal_expander(
                                     ext::trace_macros::expand_trace_macros));
+    syntax_expanders.insert(intern("ary"),
+                            builtin_normal_expander(
+                                    ext::ary::expand_ary));
     syntax_expanders
 }
 
