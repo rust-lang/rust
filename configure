@@ -425,6 +425,8 @@ opt verify-install 1 "verify installed binaries work"
 valopt prefix "/usr/local" "set installation prefix"
 valopt local-rust-root "/usr/local" "set prefix for local rust binary"
 valopt llvm-root "" "set LLVM root"
+valopt jemalloc-root "" "set directory where libjemalloc_pic.a is located"
+valopt libuv-root "" "set directory where libuv.a is located"
 valopt android-cross-path "/opt/ndk_standalone" "Android NDK standalone path"
 valopt mingw32-cross-path "" "MinGW32 cross compiler path"
 
@@ -1198,6 +1200,8 @@ putvar CFG_ANDROID_CROSS_PATH
 putvar CFG_MINGW32_CROSS_PATH
 putvar CFG_MANDIR
 putvar CFG_DISABLE_INJECT_STD_VERSION
+putvar CFG_JEMALLOC_ROOT
+putvar CFG_LIBUV_ROOT
 
 # Avoid spurious warnings from clang by feeding it original source on
 # ccache-miss rather than preprocessed input.
