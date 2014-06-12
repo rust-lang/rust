@@ -9,7 +9,6 @@
 // except according to those terms.
 
 pub fn foo<T>() -> int {
-    #[address_insignificant]
     static a: int = 3;
     a
 }

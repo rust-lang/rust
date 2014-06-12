@@ -17,7 +17,7 @@ use middle::ty;
 
 use syntax::ast;
 use syntax::ast_util::local_def;
-use syntax::attr;
+use syntax::ast_util;
 
 pub fn maybe_instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
     -> ast::DefId {
@@ -62,12 +62,13 @@ pub fn maybe_instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
             // however, so we use the available_externally linkage which llvm
             // provides
             match item.node {
-                ast::ItemStatic(..) => {
+                ast::ItemStatic(_, mutbl, _) => {
                     let g = get_item_val(ccx, item.id);
                     // see the comment in get_item_val() as to why this check is
                     // performed here.
-                    if !attr::contains_name(item.attrs.as_slice(),
-                                            "address_insignificant") {
+                    if ast_util::static_has_significant_address(
+                            mutbl,
+                            item.attrs.as_slice()) {
                         SetLinkage(g, AvailableExternallyLinkage);
                     }
                 }
