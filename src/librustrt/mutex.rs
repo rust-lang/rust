@@ -115,6 +115,18 @@ impl StaticNativeMutex {
     ///     // critical section...
     /// } // automatically unlocked in `_guard`'s destructor
     /// ```
+    ///
+    /// # Unsafety
+    ///
+    /// This method is unsafe because it will not function correctly if this
+    /// mutex has been *moved* since it was last used. The mutex can move an
+    /// arbitrary number of times before its first usage, but once a mutex has
+    /// been used once it is no longer allowed to move (or otherwise it invokes
+    /// undefined behavior).
+    ///
+    /// Additionally, this type does not take into account any form of
+    /// scheduling model. This will unconditionally block the *os thread* which
+    /// is not always desired.
     pub unsafe fn lock<'a>(&'a self) -> LockGuard<'a> {
         self.inner.lock();
 
@@ -123,6 +135,10 @@ impl StaticNativeMutex {
 
     /// Attempts to acquire the lock. The value returned is `Some` if
     /// the attempt succeeded.
+    ///
+    /// # Unsafety
+    ///
+    /// This method is unsafe for the same reasons as `lock`.
     pub unsafe fn trylock<'a>(&'a self) -> Option<LockGuard<'a>> {
         if self.inner.trylock() {
             Some(LockGuard { lock: self })
@@ -135,6 +151,12 @@ impl StaticNativeMutex {
     ///
     /// These needs to be paired with a call to `.unlock_noguard`. Prefer using
     /// `.lock`.
+    ///
+    /// # Unsafety
+    ///
+    /// This method is unsafe for the same reasons as `lock`. Additionally, this
+    /// does not guarantee that the mutex will ever be unlocked, and it is
+    /// undefined to drop an already-locked mutex.
     pub unsafe fn lock_noguard(&self) { self.inner.lock() }
 
     /// Attempts to acquire the lock without creating a
@@ -143,12 +165,22 @@ impl StaticNativeMutex {
     ///
     /// If `true` is returned, this needs to be paired with a call to
     /// `.unlock_noguard`. Prefer using `.trylock`.
+    ///
+    /// # Unsafety
+    ///
+    /// This method is unsafe for the same reasons as `lock_noguard`.
     pub unsafe fn trylock_noguard(&self) -> bool {
         self.inner.trylock()
     }
 
     /// Unlocks the lock. This assumes that the current thread already holds the
     /// lock.
+    ///
+    /// # Unsafety
+    ///
+    /// This method is unsafe for the same reasons as `lock`. Additionally, it
+    /// is not guaranteed that this is unlocking a previously locked mutex. It
+    /// is undefined to unlock an unlocked mutex.
     pub unsafe fn unlock_noguard(&self) { self.inner.unlock() }
 
     /// Block on the internal condition variable.
@@ -156,9 +188,19 @@ impl StaticNativeMutex {
     /// This function assumes that the lock is already held. Prefer
     /// using `LockGuard.wait` since that guarantees that the lock is
     /// held.
+    ///
+    /// # Unsafety
+    ///
+    /// This method is unsafe for the same reasons as `lock`. Additionally, this
+    /// is unsafe because the mutex may not be currently locked.
     pub unsafe fn wait_noguard(&self) { self.inner.wait() }
 
     /// Signals a thread in `wait` to wake up
+    ///
+    /// # Unsafety
+    ///
+    /// This method is unsafe for the same reasons as `lock`. Additionally, this
+    /// is unsafe because the mutex may not be currently locked.
     pub unsafe fn signal_noguard(&self) { self.inner.signal() }
 
     /// This function is especially unsafe because there are no guarantees made
@@ -181,6 +223,7 @@ impl NativeMutex {
     /// already hold the lock.
     ///
     /// # Example
+    ///
     /// ```rust
     /// use std::rt::mutex::NativeMutex;
     /// unsafe {
@@ -192,12 +235,22 @@ impl NativeMutex {
     ///     } // automatically unlocked in `_guard`'s destructor
     /// }
     /// ```
+    ///
+    /// # Unsafety
+    ///
+    /// This method is unsafe due to the same reasons as
+    /// `StaticNativeMutex::lock`.
     pub unsafe fn lock<'a>(&'a self) -> LockGuard<'a> {
         self.inner.lock()
     }
 
     /// Attempts to acquire the lock. The value returned is `Some` if
     /// the attempt succeeded.
+    ///
+    /// # Unsafety
+    ///
+    /// This method is unsafe due to the same reasons as
+    /// `StaticNativeMutex::trylock`.
     pub unsafe fn trylock<'a>(&'a self) -> Option<LockGuard<'a>> {
         self.inner.trylock()
     }
@@ -206,6 +259,11 @@ impl NativeMutex {
     ///
     /// These needs to be paired with a call to `.unlock_noguard`. Prefer using
     /// `.lock`.
+    ///
+    /// # Unsafety
+    ///
+    /// This method is unsafe due to the same reasons as
+    /// `StaticNativeMutex::lock_noguard`.
     pub unsafe fn lock_noguard(&self) { self.inner.lock_noguard() }
 
     /// Attempts to acquire the lock without creating a
@@ -214,12 +272,22 @@ impl NativeMutex {
     ///
     /// If `true` is returned, this needs to be paired with a call to
     /// `.unlock_noguard`. Prefer using `.trylock`.
+    ///
+    /// # Unsafety
+    ///
+    /// This method is unsafe due to the same reasons as
+    /// `StaticNativeMutex::trylock_noguard`.
     pub unsafe fn trylock_noguard(&self) -> bool {
         self.inner.trylock_noguard()
     }
 
     /// Unlocks the lock. This assumes that the current thread already holds the
     /// lock.
+    ///
+    /// # Unsafety
+    ///
+    /// This method is unsafe due to the same reasons as
+    /// `StaticNativeMutex::unlock_noguard`.
     pub unsafe fn unlock_noguard(&self) { self.inner.unlock_noguard() }
 
     /// Block on the internal condition variable.
@@ -227,9 +295,19 @@ impl NativeMutex {
     /// This function assumes that the lock is already held. Prefer
     /// using `LockGuard.wait` since that guarantees that the lock is
     /// held.
+    ///
+    /// # Unsafety
+    ///
+    /// This method is unsafe due to the same reasons as
+    /// `StaticNativeMutex::wait_noguard`.
     pub unsafe fn wait_noguard(&self) { self.inner.wait_noguard() }
 
     /// Signals a thread in `wait` to wake up
+    ///
+    /// # Unsafety
+    ///
+    /// This method is unsafe due to the same reasons as
+    /// `StaticNativeMutex::signal_noguard`.
     pub unsafe fn signal_noguard(&self) { self.inner.signal_noguard() }
 }
 
