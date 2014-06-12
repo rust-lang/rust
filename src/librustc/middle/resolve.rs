@@ -5149,7 +5149,7 @@ impl<'a> Resolver<'a> {
                             }
                             _ => {
                                 let mut method_scope = false;
-                                self.value_ribs.borrow().iter().rev().advance(|rib| {
+                                self.value_ribs.borrow().iter().rev().all(|rib| {
                                     let res = match *rib {
                                         Rib { bindings: _, kind: MethodRibKind(_, _) } => true,
                                         Rib { bindings: _, kind: ItemRibKind } => false,
