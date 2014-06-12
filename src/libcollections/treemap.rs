@@ -1770,7 +1770,7 @@ mod test_set {
     #[test]
     fn test_intersection() {
         fn check_intersection(a: &[int], b: &[int], expected: &[int]) {
-            check(a, b, expected, |x, y, f| x.intersection(y).advance(f))
+            check(a, b, expected, |x, y, f| x.intersection(y).all(f))
         }
 
         check_intersection([], [], []);
@@ -1786,7 +1786,7 @@ mod test_set {
     #[test]
     fn test_difference() {
         fn check_difference(a: &[int], b: &[int], expected: &[int]) {
-            check(a, b, expected, |x, y, f| x.difference(y).advance(f))
+            check(a, b, expected, |x, y, f| x.difference(y).all(f))
         }
 
         check_difference([], [], []);
@@ -1804,7 +1804,7 @@ mod test_set {
     fn test_symmetric_difference() {
         fn check_symmetric_difference(a: &[int], b: &[int],
                                       expected: &[int]) {
-            check(a, b, expected, |x, y, f| x.symmetric_difference(y).advance(f))
+            check(a, b, expected, |x, y, f| x.symmetric_difference(y).all(f))
         }
 
         check_symmetric_difference([], [], []);
@@ -1819,7 +1819,7 @@ mod test_set {
     fn test_union() {
         fn check_union(a: &[int], b: &[int],
                                       expected: &[int]) {
-            check(a, b, expected, |x, y, f| x.union(y).advance(f))
+            check(a, b, expected, |x, y, f| x.union(y).all(f))
         }
 
         check_union([], [], []);
