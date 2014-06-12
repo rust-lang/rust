@@ -1829,8 +1829,6 @@ type int8_t = i8;
 
 ### Static-only attributes
 
-- `address_insignificant` - references to this static may alias with
-  references to other statics, potentially of unrelated type.
 - `thread_local` - on a `static mut`, this signals that the value of this
   static may change depending on the current thread. The exact consequences of
   this are implementation-defined.
@@ -2141,12 +2139,21 @@ These types help drive the compiler's analysis
 ### Inline attributes
 
 The inline attribute is used to suggest to the compiler to perform an inline
-expansion and place a copy of the function in the caller rather than generating
-code to call the function where it is defined.
+expansion and place a copy of the function or static in the caller rather than
+generating code to call the function or access the static where it is defined.
 
 The compiler automatically inlines functions based on internal heuristics.
 Incorrectly inlining functions can actually making the program slower, so it
 should be used with care.
+
+Immutable statics are always considered inlineable
+unless marked with `#[inline(never)]`.
+It is undefined
+whether two different inlineable statics
+have the same memory address.
+In other words,
+the compiler is free
+to collapse duplicate inlineable statics together.
 
 `#[inline]` and `#[inline(always)]` always causes the function to be serialized
 into crate metadata to allow cross-crate inlining.

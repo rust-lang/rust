@@ -11,6 +11,8 @@
 use ast::*;
 use ast;
 use ast_util;
+use attr::{InlineNever, InlineNone};
+use attr;
 use codemap;
 use codemap::Span;
 use owned_slice::OwnedSlice;
@@ -742,6 +744,17 @@ pub fn get_inner_tys(ty: P<Ty>) -> Vec<P<Ty>> {
     }
 }
 
+/// Returns true if the static with the given mutability and attributes
+/// has a significant address and false otherwise.
+pub fn static_has_significant_address(mutbl: ast::Mutability,
+                                              attrs: &[ast::Attribute])
+                                              -> bool {
+    if mutbl == ast::MutMutable {
+        return true
+    }
+    let inline = attr::find_inline_attr(attrs);
+    inline == InlineNever || inline == InlineNone
+}
 
 #[cfg(test)]
 mod test {

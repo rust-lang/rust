@@ -312,14 +312,6 @@ impl<'a, 'b> Context<'a, 'b> {
     /// These attributes are applied to all statics that this syntax extension
     /// will generate.
     fn static_attrs(&self) -> Vec<ast::Attribute> {
-        // Flag statics as `address_insignificant` so LLVM can merge duplicate
-        // globals as much as possible (which we're generating a whole lot of).
-        let unnamed = self.ecx
-                          .meta_word(self.fmtsp,
-                                     InternedString::new(
-                                         "address_insignificant"));
-        let unnamed = self.ecx.attribute(self.fmtsp, unnamed);
-
         // Do not warn format string as dead code
         let dead_code = self.ecx.meta_word(self.fmtsp,
                                            InternedString::new("dead_code"));
@@ -327,7 +319,7 @@ impl<'a, 'b> Context<'a, 'b> {
                                                  InternedString::new("allow"),
                                                  vec!(dead_code));
         let allow_dead_code = self.ecx.attribute(self.fmtsp, allow_dead_code);
-        return vec!(unnamed, allow_dead_code);
+        return vec!(allow_dead_code);
     }
 
     fn rtpath(&self, s: &str) -> Vec<ast::Ident> {

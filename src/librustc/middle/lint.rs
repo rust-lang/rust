@@ -1087,7 +1087,6 @@ fn check_unused_attribute(cx: &Context, attr: &ast::Attribute) {
 
         // FIXME: #14406 these are processed in trans, which happens after the
         // lint pass
-        "address_insignificant",
         "cold",
         "inline",
         "link",
