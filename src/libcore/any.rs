@@ -263,6 +263,14 @@ mod tests {
         let s = format!("{}", b);
         assert_eq!(s.as_slice(), "&Any");
     }
+
+    #[test]
+    fn any_fixed_vec() {
+        let test = [0u, ..8];
+        let test = &test as &Any;
+        assert!(test.is::<[uint, ..8]>());
+        assert!(!test.is::<[uint, ..10]>());
+    }
 }
 
 #[cfg(test)]

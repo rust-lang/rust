@@ -4514,9 +4514,10 @@ pub fn hash_crate_independent(tcx: &ctxt, t: t, svh: &Svh) -> u64 {
             ty_uniq(_) => {
                 byte!(10);
             }
-            ty_vec(m, Some(_)) => {
+            ty_vec(m, Some(n)) => {
                 byte!(11);
                 mt(&mut state, m);
+                n.hash(&mut state);
                 1u8.hash(&mut state);
             }
             ty_vec(m, None) => {
