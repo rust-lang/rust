@@ -1,6 +1,6 @@
 - Start Date: 2014-06-10
 - RFC PR #: 48
-- Rust Issue #: 14802
+- Rust Issue #: 5527
 
 # Summary
 
