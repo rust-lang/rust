@@ -385,6 +385,7 @@ impl<'b, T> DerefMut<T> for RefMut<'b, T> {
 #[cfg(test)]
 mod test {
     use super::*;
+    use mem::drop;
 
     #[test]
     fn smoketest_cell() {
@@ -410,6 +411,22 @@ mod test {
 
         x.set("baz qux");
         assert!(format!("{}", x).as_slice().contains(x.get()));
+    }
+
+    #[test]
+    fn ref_and_refmut_have_sensible_show() {
+        use str::StrSlice;
+        use realstd::str::Str;
+
+        let refcell = RefCell::new("foo");
+
+        let refcell_refmut = refcell.borrow_mut();
+        assert!(format!("{}", refcell_refmut).as_slice().contains("foo"));
+        drop(refcell_refmut);
+
+        let refcell_ref = refcell.borrow();
+        assert!(format!("{}", refcell_ref).as_slice().contains("foo"));
+        drop(refcell_ref);
     }
 
     #[test]
