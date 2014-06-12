@@ -13,13 +13,14 @@
 #![allow(unused_variable)]
 
 use any;
-use cell::Cell;
+use cell::{Cell, Ref, RefMut};
 use char::Char;
 use collections::Collection;
 use iter::{Iterator, range};
 use kinds::Copy;
 use mem;
 use option::{Option, Some, None};
+use ops::Deref;
 use result::{Ok, Err};
 use result;
 use slice::{Vector, ImmutableVector};
@@ -837,6 +838,18 @@ impl Show for () {
 impl<T: Copy + Show> Show for Cell<T> {
     fn fmt(&self, f: &mut Formatter) -> Result {
         write!(f, r"Cell \{ value: {} \}", self.get())
+    }
+}
+
+impl<'b, T: Show> Show for Ref<'b, T> {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        (**self).fmt(f)
+    }
+}
+
+impl<'b, T: Show> Show for RefMut<'b, T> {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        (*(self.deref())).fmt(f)
     }
 }
 
