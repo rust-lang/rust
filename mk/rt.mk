@@ -204,19 +204,17 @@ $$(LIBUV_MAKEFILE_$(1)): $$(LIBUV_DEPS) $$(MKFILE_DEPS) $$(LIBUV_STAMP_$(1))
 # theory when we support msvc then we should be using gyp's msvc output instead
 # of mingw's makefile for windows
 ifdef CFG_WINDOWSY_$(1)
-$$(LIBUV_LIB_$(1)): $$(LIBUV_DEPS) $$(MKFILE_DEPS)
+LIBUV_LOCAL_$(1) := $$(S)src/libuv/libuv.a
+$$(LIBUV_LOCAL_$(1)): $$(LIBUV_DEPS) $$(MKFILE_DEPS)
 	$$(Q)$$(MAKE) -C $$(S)src/libuv -f Makefile.mingw \
 		LDFLAGS="$$(CFG_GCCISH_LINK_FLAGS_$(1))" \
 		CC="$$(CC_$(1)) $$(LIBUV_CFLAGS_$(1)) $$(SNAP_DEFINES)" \
 		CXX="$$(CXX_$(1))" \
 		AR="$$(AR_$(1))" \
 		V=$$(VERBOSE)
-	$$(Q)cp $$(S)src/libuv/libuv.a $$@
 else
-$$(LIBUV_LIB_$(1)): $$(LIBUV_DIR_$(1))/Release/libuv.a $$(MKFILE_DEPS)
-	$$(Q)cp $$< $$@
-$$(LIBUV_DIR_$(1))/Release/libuv.a: $$(LIBUV_DEPS) $$(LIBUV_MAKEFILE_$(1)) \
-				    $$(MKFILE_DEPS)
+LIBUV_LOCAL_$(1) := $$(LIBUV_DIR_$(1))/Release/libuv.a
+$$(LIBUV_LOCAL_$(1)): $$(LIBUV_DEPS) $$(LIBUV_MAKEFILE_$(1)) $$(MKFILE_DEPS)
 	$$(Q)$$(MAKE) -C $$(LIBUV_DIR_$(1)) \
 		CFLAGS="$$(LIBUV_CFLAGS_$(1)) $$(SNAP_DEFINES)" \
 		LDFLAGS="$$(CFG_GCCISH_LINK_FLAGS_$(1))" \
@@ -229,6 +227,19 @@ $$(LIBUV_DIR_$(1))/Release/libuv.a: $$(LIBUV_DEPS) $$(LIBUV_MAKEFILE_$(1)) \
 		V=$$(VERBOSE)
 	$$(Q)touch $$@
 
+endif
+
+ifeq ($(1),$$(CFG_BUILD))
+ifneq ($$(CFG_LIBUV_ROOT),)
+$$(LIBUV_LIB_$(1)): $$(CFG_LIBUV_ROOT)/libuv.a
+	$$(Q)cp $$< $$@
+else
+$$(LIBUV_LIB_$(1)): $$(LIBUV_LOCAL_$(1))
+	$$(Q)cp $$< $$@
+endif
+else
+$$(LIBUV_LIB_$(1)): $$(LIBUV_LOCAL_$(1))
+	$$(Q)cp $$< $$@
 endif
 
 ################################################################################
@@ -253,8 +264,9 @@ else
 endif
 JEMALLOC_LIB_$(1) := $$(RT_OUTPUT_DIR_$(1))/$$(JEMALLOC_NAME_$(1))
 JEMALLOC_BUILD_DIR_$(1) := $$(RT_OUTPUT_DIR_$(1))/jemalloc
+JEMALLOC_LOCAL_$(1) := $$(JEMALLOC_BUILD_DIR_$(1))/lib/$$(JEMALLOC_REAL_NAME_$(1))
 
-$$(JEMALLOC_LIB_$(1)): $$(JEMALLOC_DEPS) $$(MKFILE_DEPS)
+$$(JEMALLOC_LOCAL_$(1)): $$(JEMALLOC_DEPS) $$(MKFILE_DEPS)
 	@$$(call E, make: jemalloc)
 	cd "$$(JEMALLOC_BUILD_DIR_$(1))"; "$(S)src/jemalloc/configure" \
 		$$(JEMALLOC_ARGS_$(1)) --enable-cc-silence --with-jemalloc-prefix=je_ \
@@ -265,7 +277,20 @@ $$(JEMALLOC_LIB_$(1)): $$(JEMALLOC_DEPS) $$(MKFILE_DEPS)
 		CPPFLAGS="-I $(S)src/rt/" \
 		EXTRA_CFLAGS="$$(CFG_CFLAGS_$(1)) -g1"
 	$$(Q)$$(MAKE) -C "$$(JEMALLOC_BUILD_DIR_$(1))" build_lib_static
-	$$(Q)cp $$(JEMALLOC_BUILD_DIR_$(1))/lib/$$(JEMALLOC_REAL_NAME_$(1)) $$(JEMALLOC_LIB_$(1))
+
+ifeq ($(1),$$(CFG_BUILD))
+ifneq ($$(CFG_JEMALLOC_ROOT),)
+$$(JEMALLOC_LIB_$(1)): $$(CFG_JEMALLOC_ROOT)/libjemalloc_pic.a
+	@$$(call E, copy: jemalloc)
+	$$(Q)cp $$< $$@
+else
+$$(JEMALLOC_LIB_$(1)): $$(JEMALLOC_LOCAL_$(1))
+	$$(Q)cp $$< $$@
+endif
+else
+$$(JEMALLOC_LIB_$(1)): $$(JEMALLOC_LOCAL_$(1))
+	$$(Q)cp $$< $$@
+endif
 
 ################################################################################
 # compiler-rt
