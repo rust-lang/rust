@@ -129,7 +129,7 @@ enum Flavor {
 ///
 /// static mut LOCK: StaticMutex = MUTEX_INIT;
 ///
-/// unsafe {
+/// {
 ///     let _g = LOCK.lock();
 ///     // do some productive work
 /// }

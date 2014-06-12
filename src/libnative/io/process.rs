@@ -932,6 +932,7 @@ fn waitpid(pid: pid_t, deadline: u64) -> IoResult<rtio::ProcessExit> {
 }
 
 #[cfg(unix)]
+#[allow(unused_unsafe)] // NOTE: remove after a stage0 snap
 fn waitpid(pid: pid_t, deadline: u64) -> IoResult<rtio::ProcessExit> {
     use std::cmp;
     use std::comm;
