@@ -3812,9 +3812,10 @@ impl<'a> Resolver<'a> {
                 }
                 Some(declaration) => {
                     for argument in declaration.inputs.iter() {
+                        let mut bindings_list = HashMap::new();
                         this.resolve_pattern(&*argument.pat,
                                              ArgumentIrrefutableMode,
-                                             None);
+                                             &mut bindings_list);
 
                         this.resolve_type(&*argument.ty);
 
@@ -4045,7 +4046,10 @@ impl<'a> Resolver<'a> {
         }
 
         // Resolve the pattern.
-        self.resolve_pattern(&*local.pat, LocalIrrefutableMode, None);
+        let mut bindings_list = HashMap::new();
+        self.resolve_pattern(&*local.pat,
+                             LocalIrrefutableMode,
+                             &mut bindings_list);
     }
 
     // build a map from pattern identifiers to binding-info's.
@@ -4114,9 +4118,7 @@ impl<'a> Resolver<'a> {
 
         let mut bindings_list = HashMap::new();
         for pattern in arm.pats.iter() {
-            self.resolve_pattern(&**pattern,
-                                 RefutableMode,
-                                 Some(&mut bindings_list));
+            self.resolve_pattern(&**pattern, RefutableMode, &mut bindings_list);
         }
 
         // This has to happen *after* we determine which
@@ -4262,7 +4264,7 @@ impl<'a> Resolver<'a> {
                        mode: PatternBindingMode,
                        // Maps idents to the node ID for the (outermost)
                        // pattern that binds them
-                       mut bindings_list: Option<&mut HashMap<Name,NodeId>>) {
+                       bindings_list: &mut HashMap<Name,NodeId>) {
         let pat_id = pattern.id;
         walk_pat(pattern, |pattern| {
             match pattern.node {
@@ -4351,43 +4353,27 @@ impl<'a> Resolver<'a> {
                             // because that breaks the assumptions later
                             // passes make about or-patterns.)
 
-                            match bindings_list {
-                                Some(ref mut bindings_list)
-                                if !bindings_list.contains_key(&renamed) => {
-                                    let this = &mut *self;
-                                    let value_ribs = this.value_ribs.borrow();
-                                    let length = value_ribs.len();
-                                    let last_rib = value_ribs.get(
-                                        length - 1);
-                                    last_rib.bindings.borrow_mut()
-                                            .insert(renamed, DlDef(def));
-                                    bindings_list.insert(renamed, pat_id);
-                                }
-                                Some(ref mut b) => {
-                                  if b.find(&renamed) == Some(&pat_id) {
-                                      // Then this is a duplicate variable
-                                      // in the same disjunct, which is an
-                                      // error
-                                     self.resolve_error(pattern.span,
-                                       format!("identifier `{}` is bound \
-                                                more than once in the same \
-                                                pattern",
-                                               path_to_str(path)).as_slice());
-                                  }
-                                  // Not bound in the same pattern: do nothing
-                                }
-                                None => {
-                                    let this = &mut *self;
-                                    {
-                                        let value_ribs = this.value_ribs.borrow();
-                                        let length = value_ribs.len();
-                                        let last_rib = value_ribs.get(
-                                                length - 1);
-                                        last_rib.bindings.borrow_mut()
-                                                .insert(renamed, DlDef(def));
-                                    }
-                                }
+                            if !bindings_list.contains_key(&renamed) {
+                                let this = &mut *self;
+                                let value_ribs = this.value_ribs.borrow();
+                                let length = value_ribs.len();
+                                let last_rib = value_ribs.get(
+                                    length - 1);
+                                last_rib.bindings.borrow_mut()
+                                        .insert(renamed, DlDef(def));
+                                bindings_list.insert(renamed, pat_id);
+                            } else if bindings_list.find(&renamed) ==
+                                    Some(&pat_id) {
+                                // Then this is a duplicate variable in the
+                                // same disjunction, which is an error.
+                                self.resolve_error(pattern.span,
+                                    format!("identifier `{}` is bound \
+                                             more than once in the same \
+                                             pattern",
+                                            path_to_str(path)).as_slice());
                             }
+                            // Else, not bound in the same pattern: do
+                            // nothing.
                         }
                     }
 
