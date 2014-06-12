@@ -12,6 +12,8 @@
 #![allow(dead_assignment)]
 #![allow(unused_variable)]
 
-enum t { a, b(@int), }
+use std::gc::{Gc, GC};
 
-pub fn main() { let mut x = b(@10); x = a; }
+enum t { a, b(Gc<int>), }
+
+pub fn main() { let mut x = b(box(GC) 10); x = a; }

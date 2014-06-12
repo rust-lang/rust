@@ -13,6 +13,7 @@
 #![feature(managed_boxes)]
 
 use std::rc::Rc;
+use std::gc::Gc;
 
 fn assert_copy<T:Copy>() { }
 trait Dummy { }
@@ -77,7 +78,7 @@ fn test<'a,T,U:Copy>(_: &'a int) {
     assert_copy::<MyNoncopyStruct>(); //~ ERROR does not fulfill
 
     // managed or ref counted types are not ok
-    assert_copy::<@int>();   //~ ERROR does not fulfill
+    assert_copy::<Gc<int>>();   //~ ERROR does not fulfill
     assert_copy::<Rc<int>>();   //~ ERROR does not fulfill
 }
 

@@ -10,10 +10,12 @@
 
 #![feature(managed_boxes)]
 
+use std::gc::GC;
+
 fn f<T:Send>(_i: T) {
 }
 
 fn main() {
-    let i = box @100;
+    let i = box box(GC) 100;
     f(i); //~ ERROR does not fulfill `Send`
 }

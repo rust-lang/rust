@@ -10,6 +10,7 @@
 
 #![feature(managed_boxes)]
 
+use std::gc::{GC, Gc};
 
 type compare<'a, T> = |T, T|: 'a -> bool;
 
@@ -19,8 +20,8 @@ fn test_generic<T:Clone>(expected: T, eq: compare<T>) {
 }
 
 fn test_vec() {
-    fn compare_vec(v1: @int, v2: @int) -> bool { return v1 == v2; }
-    test_generic::<@int>(@1, compare_vec);
+    fn compare_vec(v1: Gc<int>, v2: Gc<int>) -> bool { return v1 == v2; }
+    test_generic::<Gc<int>>(box(GC) 1, compare_vec);
 }
 
 pub fn main() { test_vec(); }

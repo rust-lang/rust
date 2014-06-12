@@ -92,7 +92,3 @@
 #[doc(no_inline)] pub use comm::{sync_channel, channel};
 #[doc(no_inline)] pub use comm::{SyncSender, Sender, Receiver};
 #[doc(no_inline)] pub use task::spawn;
-
-// Reexported statics
-#[cfg(not(test))]
-#[doc(no_inline)] pub use gc::GC;

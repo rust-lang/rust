@@ -14,21 +14,22 @@
 // Don't try to clean up uninitialized locals
 
 use std::task;
+use std::gc::{Gc};
 
-fn test_break() { loop { let _x: @int = break; } }
+fn test_break() { loop { let _x: Gc<int> = break; } }
 
-fn test_cont() { let mut i = 0; while i < 1 { i += 1; let _x: @int = continue; } }
+fn test_cont() { let mut i = 0; while i < 1 { i += 1; let _x: Gc<int> = continue; } }
 
-fn test_ret() { let _x: @int = return; }
+fn test_ret() { let _x: Gc<int> = return; }
 
 fn test_fail() {
-    fn f() { let _x: @int = fail!(); }
+    fn f() { let _x: Gc<int> = fail!(); }
     task::try(proc() f() );
 }
 
 fn test_fail_indirect() {
     fn f() -> ! { fail!(); }
-    fn g() { let _x: @int = f(); }
+    fn g() { let _x: Gc<int> = f(); }
     task::try(proc() g() );
 }
 

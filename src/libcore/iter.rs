@@ -2345,6 +2345,7 @@ mod tests {
     use num;
     use realstd::vec::Vec;
     use realstd::slice::Vector;
+    use realstd::gc::GC;
 
     use cmp;
     use realstd::owned::Box;
@@ -2835,7 +2836,8 @@ mod tests {
     #[test]
     #[should_fail]
     fn test_rposition_fail() {
-        let v = [(box 0, @0), (box 0, @0), (box 0, @0), (box 0, @0)];
+        let v = [(box 0, box(GC) 0), (box 0, box(GC) 0),
+                 (box 0, box(GC) 0), (box 0, box(GC) 0)];
         let mut i = 0;
         v.iter().rposition(|_elt| {
             if i == 2 {

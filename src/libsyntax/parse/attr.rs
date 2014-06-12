@@ -16,7 +16,7 @@ use parse::token;
 use parse::parser::Parser;
 use parse::token::INTERPOLATED;
 
-use std::gc::Gc;
+use std::gc::{Gc, GC};
 
 // a parser that can parse attributes.
 pub trait ParserAttr {

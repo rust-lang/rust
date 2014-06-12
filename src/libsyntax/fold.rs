@@ -17,7 +17,7 @@ use owned_slice::OwnedSlice;
 use util::small_vector::SmallVector;
 
 use std::rc::Rc;
-use std::gc::Gc;
+use std::gc::{Gc, GC};
 
 // We may eventually want to be able to fold over type parameters, too.
 pub trait Folder {

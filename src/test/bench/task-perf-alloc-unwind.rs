@@ -17,7 +17,7 @@ use time::precise_time_s;
 use std::os;
 use std::task;
 use std::vec;
-use std::gc::Gc;
+use std::gc::{Gc, GC};
 
 #[deriving(Clone)]
 enum List<T> {
@@ -53,10 +53,10 @@ type nillist = List<()>;
 // Filled with things that have to be unwound
 
 struct State {
-    managed: @nillist,
+    managed: Gc<nillist>,
     unique: Box<nillist>,
-    tuple: (@nillist, Box<nillist>),
-    vec: Vec<@nillist>,
+    tuple: (Gc<nillist>, Box<nillist>),
+    vec: Vec<Gc<nillist>>,
     res: r
 }
 

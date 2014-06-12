@@ -11,10 +11,12 @@
 #![feature(managed_boxes)]
 #![allow(dead_assignment)]
 
+use std::gc::{Gc, GC};
+
 pub fn main() {
-    let x : [@int, ..5] = [@1,@2,@3,@4,@5];
-    let _y : [@int, ..5] = [@1,@2,@3,@4,@5];
-    let mut z = [@1,@2,@3,@4,@5];
+    let x : [Gc<int>, ..5] = [box(GC) 1,box(GC) 2,box(GC) 3,box(GC) 4,box(GC) 5];
+    let _y : [Gc<int>, ..5] = [box(GC) 1,box(GC) 2,box(GC) 3,box(GC) 4,box(GC) 5];
+    let mut z = [box(GC) 1,box(GC) 2,box(GC) 3,box(GC) 4,box(GC) 5];
     z = x;
     assert_eq!(*z[0], 1);
     assert_eq!(*z[4], 5);

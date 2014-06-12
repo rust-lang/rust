@@ -123,7 +123,7 @@ impl<'a> Visitor<bool> for CheckStaticVisitor<'a> {
             ast::ExprUnary(ast::UnUniq, _) |
             ast::ExprVstore(_, ast::ExprVstoreUniq) => {
                 self.tcx.sess.span_err(e.span,
-                                   "static items are not allowed to have owned pointers");
+                                   "static items are not allowed to have custom pointers");
             }
             _ => {
                 let node_ty = ty::node_id_to_type(self.tcx, e.id);

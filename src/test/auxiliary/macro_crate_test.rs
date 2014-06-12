@@ -21,6 +21,8 @@ use syntax::ext::base::*;
 use syntax::parse::token;
 use rustc::plugin::Registry;
 
+use std::gc::{Gc, GC};
+
 #[macro_export]
 macro_rules! exported_macro (() => (2))
 
@@ -42,9 +44,9 @@ fn expand_make_a_1(cx: &mut ExtCtxt, sp: Span, tts: &[TokenTree])
     MacExpr::new(quote_expr!(cx, 1i))
 }
 
-fn expand_into_foo(cx: &mut ExtCtxt, sp: Span, attr: @MetaItem, it: @Item)
-                   -> @Item {
-    @Item {
+fn expand_into_foo(cx: &mut ExtCtxt, sp: Span, attr: Gc<MetaItem>, it: Gc<Item>)
+                   -> Gc<Item> {
+    box(GC) Item {
         attrs: it.attrs.clone(),
         ..(*quote_item!(cx, enum Foo { Bar, Baz }).unwrap()).clone()
     }

@@ -12,9 +12,11 @@
 
 #![feature(managed_boxes)]
 
+use std::gc::GC;
+
 fn testfn(cond: bool) {
-    let mut x = @3;
-    let mut y = @4;
+    let mut x = box(GC) 3;
+    let mut y = box(GC) 4;
 
     let mut a = &*x;
 
@@ -25,11 +27,11 @@ fn testfn(cond: bool) {
         exp = 4;
     }
 
-    x = @5; //~ERROR cannot assign to `x` because it is borrowed
-    y = @6; //~ERROR cannot assign to `y` because it is borrowed
+    x = box(GC) 5; //~ERROR cannot assign to `x` because it is borrowed
+    y = box(GC) 6; //~ERROR cannot assign to `y` because it is borrowed
     assert_eq!(*a, exp);
-    assert_eq!(x, @5);
-    assert_eq!(y, @6);
+    assert_eq!(x, box(GC) 5);
+    assert_eq!(y, box(GC) 6);
 }
 
 pub fn main() {}

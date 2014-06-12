@@ -17,22 +17,23 @@
 extern crate syntax;
 
 use syntax::ext::base::ExtCtxt;
+use std::gc::Gc;
 
 fn syntax_extension(cx: &ExtCtxt) {
     let e_toks : Vec<syntax::ast::TokenTree> = quote_tokens!(cx, 1 + 2);
     let p_toks : Vec<syntax::ast::TokenTree> = quote_tokens!(cx, (x, 1 .. 4, *));
 
-    let a: @syntax::ast::Expr = quote_expr!(cx, 1 + 2);
-    let _b: Option<@syntax::ast::Item> = quote_item!(cx, static foo : int = $e_toks; );
-    let _c: @syntax::ast::Pat = quote_pat!(cx, (x, 1 .. 4, *) );
-    let _d: @syntax::ast::Stmt = quote_stmt!(cx, let x = $a; );
-    let _e: @syntax::ast::Expr = quote_expr!(cx, match foo { $p_toks => 10 } );
+    let a: Gc<syntax::ast::Expr> = quote_expr!(cx, 1 + 2);
+    let _b: Option<Gc<syntax::ast::Item>> = quote_item!(cx, static foo : int = $e_toks; );
+    let _c: Gc<syntax::ast::Pat> = quote_pat!(cx, (x, 1 .. 4, *) );
+    let _d: Gc<syntax::ast::Stmt> = quote_stmt!(cx, let x = $a; );
+    let _e: Gc<syntax::ast::Expr> = quote_expr!(cx, match foo { $p_toks => 10 } );
 
-    let _f: @syntax::ast::Expr = quote_expr!(cx, ());
-    let _g: @syntax::ast::Expr = quote_expr!(cx, true);
-    let _h: @syntax::ast::Expr = quote_expr!(cx, 'a');
+    let _f: Gc<syntax::ast::Expr> = quote_expr!(cx, ());
+    let _g: Gc<syntax::ast::Expr> = quote_expr!(cx, true);
+    let _h: Gc<syntax::ast::Expr> = quote_expr!(cx, 'a');
 
-    let i: Option<@syntax::ast::Item> = quote_item!(cx, #[deriving(Eq)] struct Foo; );
+    let i: Option<Gc<syntax::ast::Item>> = quote_item!(cx, #[deriving(Eq)] struct Foo; );
     assert!(i.is_some());
 }
 

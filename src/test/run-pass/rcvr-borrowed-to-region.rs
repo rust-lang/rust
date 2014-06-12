@@ -10,6 +10,8 @@
 
 #![feature(managed_boxes)]
 
+use std::gc::GC;
+
 trait get {
     fn get(self) -> int;
 }
@@ -24,11 +26,11 @@ impl<'a> get for &'a int {
 }
 
 pub fn main() {
-    let x = @6;
+    let x = box(GC) 6;
     let y = x.get();
     assert_eq!(y, 6);
 
-    let x = @6;
+    let x = box(GC) 6;
     let y = x.get();
     println!("y={}", y);
     assert_eq!(y, 6);

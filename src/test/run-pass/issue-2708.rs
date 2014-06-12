@@ -10,6 +10,8 @@
 
 #![feature(managed_boxes)]
 
+use std::gc::GC;
+
 struct Font {
     fontbuf: uint,
     cairo_font: uint,
@@ -30,5 +32,5 @@ fn Font() -> Font {
 }
 
 pub fn main() {
-    let _f = @Font();
+    let _f = box(GC) Font();
 }

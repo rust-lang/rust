@@ -51,6 +51,8 @@
 #![feature(managed_boxes)]
 #![allow(unused_variable)]
 
+use std::gc::GC;
+
 struct Struct {
     a: int,
     b: f64,
@@ -69,7 +71,7 @@ fn main() {
 
     let struct_ref = &a_struct;
     let owned = box 6;
-    let managed = @7;
+    let managed = box(GC) 7;
 
     let closure = || {
         let closure_local = 8;

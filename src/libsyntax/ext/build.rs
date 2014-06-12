@@ -21,7 +21,7 @@ use parse::token::special_idents;
 use parse::token::InternedString;
 use parse::token;
 
-use std::gc::Gc;
+use std::gc::{Gc, GC};
 
 // Transitional reexports so qquote can find the paths it is looking for
 mod syntax {

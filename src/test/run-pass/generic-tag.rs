@@ -12,9 +12,11 @@
 #![allow(dead_assignment)]
 #![allow(unused_variable)]
 
-enum option<T> { some(@T), none, }
+use std::gc::{Gc, GC};
+
+enum option<T> { some(Gc<T>), none, }
 
 pub fn main() {
-    let mut a: option<int> = some::<int>(@10);
+    let mut a: option<int> = some::<int>(box(GC) 10);
     a = none::<int>;
 }

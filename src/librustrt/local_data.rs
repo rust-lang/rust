@@ -274,6 +274,7 @@ impl<T: 'static> Drop for Ref<T> {
 #[cfg(test)]
 mod tests {
     use std::prelude::*;
+    use std::gc::{Gc, GC};
     use super::*;
     use std::task;
 
@@ -329,11 +330,11 @@ mod tests {
     #[test]
     fn test_tls_multiple_types() {
         static str_key: Key<String> = &Key;
-        static box_key: Key<@()> = &Key;
+        static box_key: Key<Gc<()>> = &Key;
         static int_key: Key<int> = &Key;
         task::spawn(proc() {
             str_key.replace(Some("string data".to_string()));
-            box_key.replace(Some(@()));
+            box_key.replace(Some(box(GC) ()));
             int_key.replace(Some(42));
         });
     }
@@ -341,13 +342,13 @@ mod tests {
     #[test]
     fn test_tls_overwrite_multiple_types() {
         static str_key: Key<String> = &Key;
-        static box_key: Key<@()> = &Key;
+        static box_key: Key<Gc<()>> = &Key;
         static int_key: Key<int> = &Key;
         task::spawn(proc() {
             str_key.replace(Some("string data".to_string()));
             str_key.replace(Some("string data 2".to_string()));
-            box_key.replace(Some(@()));
-            box_key.replace(Some(@()));
+            box_key.replace(Some(box(GC) ()));
+            box_key.replace(Some(box(GC) ()));
             int_key.replace(Some(42));
             // This could cause a segfault if overwriting-destruction is done
             // with the crazy polymorphic transmute rather than the provided
@@ -360,13 +361,13 @@ mod tests {
     #[should_fail]
     fn test_tls_cleanup_on_failure() {
         static str_key: Key<String> = &Key;
-        static box_key: Key<@()> = &Key;
+        static box_key: Key<Gc<()>> = &Key;
         static int_key: Key<int> = &Key;
         str_key.replace(Some("parent data".to_string()));
-        box_key.replace(Some(@()));
+        box_key.replace(Some(box(GC) ()));
         task::spawn(proc() {
             str_key.replace(Some("string data".to_string()));
-            box_key.replace(Some(@()));
+            box_key.replace(Some(box(GC) ()));
             int_key.replace(Some(42));
             fail!();
         });
