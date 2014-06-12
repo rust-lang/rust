@@ -2459,7 +2459,7 @@ fn draw_all(shapes: &[Box<Drawable>]) {
 }
 ~~~~
 
-In this example, there is no type parameter. Instead, the `~Drawable`
+In this example, there is no type parameter. Instead, the `Box<Drawable>`
 type denotes any owned box value that implements the `Drawable` trait.
 To construct such a value, you use the `as` operator to cast a value
 to an object:
