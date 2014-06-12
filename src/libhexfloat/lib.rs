@@ -57,6 +57,8 @@ use syntax::parse;
 use syntax::parse::token;
 use rustc::plugin::Registry;
 
+use std::gc::Gc;
+
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_macro("hexfloat", expand_syntax_ext);
@@ -163,7 +165,8 @@ struct Ident {
     span: Span
 }
 
-fn parse_tts(cx: &ExtCtxt, tts: &[ast::TokenTree]) -> (@ast::Expr, Option<Ident>) {
+fn parse_tts(cx: &ExtCtxt,
+             tts: &[ast::TokenTree]) -> (Gc<ast::Expr>, Option<Ident>) {
     let p = &mut parse::new_parser_from_tts(cx.parse_sess(),
                                             cx.cfg(),
                                             tts.iter()

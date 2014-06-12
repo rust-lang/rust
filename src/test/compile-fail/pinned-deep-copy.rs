@@ -13,9 +13,10 @@
 extern crate debug;
 
 use std::cell::Cell;
+use std::gc::{Gc, GC};
 
 struct r {
-  i: @Cell<int>,
+  i: Gc<Cell<int>>,
 }
 
 #[unsafe_destructor]
@@ -27,7 +28,7 @@ impl Drop for r {
     }
 }
 
-fn r(i: @Cell<int>) -> r {
+fn r(i: Gc<Cell<int>>) -> r {
     r {
         i: i
     }
@@ -38,7 +39,7 @@ struct A {
 }
 
 fn main() {
-    let i = @Cell::new(0);
+    let i = box(GC) Cell::new(0);
     {
         // Can't do this copy
         let x = box box box A {y: r(i)};

@@ -317,14 +317,15 @@ pub unsafe fn local_free(ptr: *u8) {
 mod bench {
     extern crate test;
     use self::test::Bencher;
+    use std::gc::GC;
 
     #[bench]
     fn alloc_managed_small(b: &mut Bencher) {
-        b.iter(|| { @10; });
+        b.iter(|| { box(GC) 10 });
     }
 
     #[bench]
     fn alloc_managed_big(b: &mut Bencher) {
-        b.iter(|| { @([10, ..1000]); });
+        b.iter(|| { box(GC) ([10, ..1000]) });
     }
 }

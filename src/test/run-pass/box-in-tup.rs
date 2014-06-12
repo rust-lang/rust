@@ -10,7 +10,9 @@
 
 #![feature(managed_boxes)]
 
+use std::gc::{Gc, GC};
+
 pub fn main() {
-    let i: (@int, int) = (@10, 10);
+    let i: (Gc<int>, int) = (box(GC) 10, 10);
     let (_a, _) = i;
 }

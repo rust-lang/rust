@@ -10,9 +10,11 @@
 
 #![feature(managed_boxes)]
 
+use std::gc::{GC, Gc};
+
 struct Triple { a: int, b: int, c: int }
 
-fn test(foo: @Triple) -> @Triple {
+fn test(foo: Gc<Triple>) -> Gc<Triple> {
     let foo = foo;
     let bar = foo;
     let baz = bar;
@@ -21,7 +23,7 @@ fn test(foo: @Triple) -> @Triple {
 }
 
 pub fn main() {
-    let x = @Triple{a: 1, b: 2, c: 3};
+    let x = box(GC) Triple{a: 1, b: 2, c: 3};
     let y = test(x);
     assert_eq!(y.c, 3);
 }

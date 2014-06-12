@@ -29,7 +29,7 @@ use visit;
 use visit::Visitor;
 use util::small_vector::SmallVector;
 
-use std::gc::Gc;
+use std::gc::{Gc, GC};
 
 pub fn expand_expr(e: Gc<ast::Expr>, fld: &mut MacroExpander) -> Gc<ast::Expr> {
     match e.node {
@@ -1029,6 +1029,8 @@ mod test {
     use util::parser_testing::{string_to_pat, strs_to_idents};
     use visit;
     use visit::Visitor;
+
+    use std::gc::GC;
 
     // a visitor that extracts the paths
     // from a given thingy and puts them in a mutable

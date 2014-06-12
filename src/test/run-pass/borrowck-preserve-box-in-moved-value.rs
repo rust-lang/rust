@@ -15,22 +15,24 @@
 
 #![feature(managed_boxes)]
 
-fn free<T>(x: @T) {}
+use std::gc::{Gc, GC};
+
+fn free<T>(x: Gc<T>) {}
 
 struct Foo {
-    f: @Bar
+    f: Gc<Bar>
 }
 
 struct Bar {
     g: int
 }
 
-fn lend(x: @Foo) -> int {
+fn lend(x: Gc<Foo>) -> int {
     let y = &x.f.g;
     free(x); // specifically here, if x is not rooted, it will be freed
     *y
 }
 
 pub fn main() {
-    assert_eq!(lend(@Foo {f: @Bar {g: 22}}), 22);
+    assert_eq!(lend(box(GC) Foo {f: box(GC) Bar {g: 22}}), 22);
 }

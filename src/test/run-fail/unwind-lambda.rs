@@ -8,15 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// error-pattern:fail
+
 #![feature(managed_boxes)]
 
-// error-pattern:fail
+use std::gc::{Gc, GC};
 
 fn main() {
     let cheese = "roquefort".to_string();
-    let carrots = @"crunchy".to_string();
+    let carrots = box(GC) "crunchy".to_string();
 
-    let result: |@String, |String||: 'static = (|tasties, macerate| {
+    let result: |Gc<String>, |String||: 'static = (|tasties, macerate| {
         macerate((*tasties).clone());
     });
     result(carrots, |food| {

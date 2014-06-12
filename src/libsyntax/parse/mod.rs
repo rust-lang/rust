@@ -282,6 +282,7 @@ mod test {
     use std::io;
     use std::io::MemWriter;
     use std::str;
+    use std::gc::GC;
     use codemap::{Span, BytePos, Spanned};
     use owned_slice::OwnedSlice;
     use ast;

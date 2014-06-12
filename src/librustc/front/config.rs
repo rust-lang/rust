@@ -12,7 +12,7 @@ use syntax::fold::Folder;
 use syntax::{ast, fold, attr};
 use syntax::codemap;
 
-use std::gc::Gc;
+use std::gc::{Gc, GC};
 
 struct Context<'a> {
     in_cfg: |attrs: &[ast::Attribute]|: 'a -> bool,

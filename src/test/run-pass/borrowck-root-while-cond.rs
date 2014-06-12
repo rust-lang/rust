@@ -10,12 +10,13 @@
 
 #![feature(managed_boxes)]
 
+use std::gc::{Gc, GC};
 
 fn borrow<'r,T>(x: &'r T) -> &'r T {x}
 
-struct Rec { f: @int }
+struct Rec { f: Gc<int> }
 
 pub fn main() {
-    let rec = @Rec {f: @22};
+    let rec = box(GC) Rec {f: box(GC) 22};
     while *borrow(rec.f) == 23 {}
 }

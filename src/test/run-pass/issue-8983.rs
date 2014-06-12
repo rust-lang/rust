@@ -10,10 +10,12 @@
 
 #![feature(managed_boxes)]
 
+use std::gc::GC;
+
 fn main() {
     fn f(_: proc()) {}
     fn eat<T>(_: T) {}
 
-    let x = @1;
+    let x = box(GC) 1;
     f(proc() { eat(x) });
 }

@@ -10,14 +10,15 @@
 
 #![feature(managed_boxes)]
 
+use std::gc::{Gc, GC};
 
-fn test(foo: @Vec<int> ) { assert!((*foo.get(0) == 10)); }
+fn test(foo: Gc<Vec<int>>) { assert!((*foo.get(0) == 10)); }
 
 pub fn main() {
-    let x = @vec!(10);
+    let x = box(GC) vec!(10);
     // Test forgetting a local by move-in
     test(x);
 
     // Test forgetting a temporary by move-in.
-    test(@vec!(10));
+    test(box(GC) vec!(10));
 }

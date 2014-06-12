@@ -10,11 +10,12 @@
 
 #![feature(managed_boxes)]
 
+use std::gc::{GC, Gc};
 
-struct F { f: @G }
+struct F { f: Gc<G> }
 struct G { g: Vec<int> }
 
 pub fn main() {
-    let rec = @F {f: @G {g: vec!(1, 2, 3)}};
+    let rec = box(GC) F {f: box(GC) G {g: vec!(1, 2, 3)}};
     while rec.f.g.len() == 23 {}
 }

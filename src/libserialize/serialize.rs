@@ -16,7 +16,7 @@ Core encoding and decoding interfaces.
 
 use std::path;
 use std::rc::Rc;
-use std::gc::Gc;
+use std::gc::{Gc, GC};
 
 pub trait Encoder<E> {
     // Primitive types:

@@ -20,6 +20,8 @@ use parse;
 use parse::token::InternedString;
 use parse::token;
 
+use std::gc::GC;
+
 enum State {
     Asm,
     Outputs,

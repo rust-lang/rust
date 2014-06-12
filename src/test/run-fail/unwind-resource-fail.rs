@@ -12,6 +12,8 @@
 
 // error-pattern:squirrel
 
+use std::gc::GC;
+
 struct r {
     i: int,
 }
@@ -23,6 +25,6 @@ impl Drop for r {
 fn r(i: int) -> r { r { i: i } }
 
 fn main() {
-    @0;
+    box(GC) 0;
     let _r = r(0);
 }

@@ -10,8 +10,12 @@
 
 #![feature(managed_boxes)]
 
+use std::gc::GC;
+
 pub fn main() {
-    assert!((@1 < @3));
-    assert!((@@"hello ".to_string() > @@"hello".to_string()));
-    assert!((@@@"hello".to_string() != @@@"there".to_string()));
+    assert!((box(GC) 1 < box(GC) 3));
+    assert!((box(GC) box(GC) "hello ".to_string() >
+             box(GC) box(GC) "hello".to_string()));
+    assert!((box(GC) box(GC) box(GC) "hello".to_string() !=
+             box(GC) box(GC) box(GC) "there".to_string()));
 }

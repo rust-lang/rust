@@ -30,6 +30,7 @@
 #![feature(managed_boxes)]
 #![allow(unused_variable)]
 
+use std::gc::GC;
 
 struct StructWithSomePadding {
     x: i16,
@@ -52,10 +53,10 @@ impl Drop for StructWithDestructor {
 fn main() {
 
     let unique = box StructWithSomePadding { x: 99, y: 999, z: 9999, w: 99999 };
-    let managed = @StructWithSomePadding { x: 88, y: 888, z: 8888, w: 88888 };
+    let managed = box(GC) StructWithSomePadding { x: 88, y: 888, z: 8888, w: 88888 };
 
     let unique_dtor = box StructWithDestructor { x: 77, y: 777, z: 7777, w: 77777 };
-    let managed_dtor = @StructWithDestructor { x: 33, y: 333, z: 3333, w: 33333 };
+    let managed_dtor = box(GC) StructWithDestructor { x: 33, y: 333, z: 3333, w: 33333 };
 
     zzz();
 }

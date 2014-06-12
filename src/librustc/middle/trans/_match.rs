@@ -226,7 +226,7 @@ use util::ppaux::{Repr, vec_map_to_str};
 use std::collections::HashMap;
 use std::cell::Cell;
 use std::rc::Rc;
-use std::gc::Gc;
+use std::gc::{Gc, GC};
 use syntax::ast;
 use syntax::ast::Ident;
 use syntax::ast_util::path_to_ident;

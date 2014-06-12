@@ -10,13 +10,15 @@
 
 #![feature(managed_boxes)]
 
+use std::gc::{Gc, GC};
+
 trait Foo {
     fn foo(&self) -> String;
 }
 
-impl<T:Foo> Foo for @T {
+impl<T:Foo> Foo for Gc<T> {
     fn foo(&self) -> String {
-        format!("@{}", (**self).foo())
+        format!("box(GC) {}", (**self).foo())
     }
 }
 
@@ -27,6 +29,6 @@ impl Foo for uint {
 }
 
 pub fn main() {
-    let x = @3u;
-    assert_eq!(x.foo(), "@3".to_string());
+    let x = box(GC) 3u;
+    assert_eq!(x.foo(), "box(GC) 3".to_string());
 }

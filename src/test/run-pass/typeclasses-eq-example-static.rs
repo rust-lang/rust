@@ -13,6 +13,8 @@
 // Example from lkuper's intern talk, August 2012 -- now with static
 // methods!
 
+use std::gc::{GC, Gc};
+
 trait Equal {
     fn isEq(a: Self, b: Self) -> bool;
 }
@@ -33,7 +35,7 @@ impl Equal for Color {
 
 enum ColorTree {
     leaf(Color),
-    branch(@ColorTree, @ColorTree)
+    branch(Gc<ColorTree>, Gc<ColorTree>)
 }
 
 impl Equal for ColorTree {
@@ -57,11 +59,11 @@ pub fn main() {
     assert!(Equal::isEq(leaf(cyan), leaf(cyan)));
     assert!(!Equal::isEq(leaf(cyan), leaf(yellow)));
 
-    assert!(Equal::isEq(branch(@leaf(magenta), @leaf(cyan)),
-                branch(@leaf(magenta), @leaf(cyan))));
+    assert!(Equal::isEq(branch(box(GC) leaf(magenta), box(GC) leaf(cyan)),
+                branch(box(GC) leaf(magenta), box(GC) leaf(cyan))));
 
-    assert!(!Equal::isEq(branch(@leaf(magenta), @leaf(cyan)),
-                 branch(@leaf(magenta), @leaf(magenta))));
+    assert!(!Equal::isEq(branch(box(GC) leaf(magenta), box(GC) leaf(cyan)),
+                 branch(box(GC) leaf(magenta), box(GC) leaf(magenta))));
 
     println!("Assertions all succeeded!");
 }

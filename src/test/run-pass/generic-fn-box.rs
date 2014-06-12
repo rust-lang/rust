@@ -12,6 +12,8 @@
 
 extern crate debug;
 
-fn f<T>(x: @T) -> @T { return x; }
+use std::gc::{Gc, GC};
 
-pub fn main() { let x = f(@3); println!("{:?}", *x); }
+fn f<T>(x: Gc<T>) -> Gc<T> { return x; }
+
+pub fn main() { let x = f(box(GC) 3); println!("{:?}", *x); }
