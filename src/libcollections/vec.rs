@@ -696,10 +696,15 @@ impl<T> Vec<T> {
     /// Sets the length of a vector.
     ///
     /// This will explicitly set the size of the vector, without actually
-    /// modifying its buffers, so it is up to the caller to ensure that the
-    /// vector is actually the specified size.
+    /// modifying its buffers, so it is up to the caller to ensure that
+    /// vector content is properly initialized or destroyed.
+    ///
+    /// # Failure
+    ///
+    /// Fails if `len` is larger than capacity.
     #[inline]
     pub unsafe fn set_len(&mut self, len: uint) {
+        assert!(len <= self.cap);
         self.len = len;
     }
 
@@ -1815,6 +1820,15 @@ mod tests {
         assert_eq!(unsafe { drops }, 2);
         v.truncate(0);
         assert_eq!(unsafe { drops }, 5);
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_vec_set_len_beyond_capacity() {
+        let mut v: Vec<u32> = Vec::with_capacity(10);
+        unsafe {
+            v.set_len(1000);
+        }
     }
 
     #[test]
