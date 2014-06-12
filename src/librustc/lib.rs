@@ -85,6 +85,7 @@ pub mod middle {
     pub mod dependency_format;
     pub mod weak_lang_items;
     pub mod save;
+    pub mod intrinsicck;
 }
 
 pub mod front {
