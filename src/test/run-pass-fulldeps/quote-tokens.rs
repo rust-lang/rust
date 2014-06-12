@@ -28,6 +28,9 @@ fn syntax_extension(cx: &ExtCtxt) {
     let _f: @syntax::ast::Expr = quote_expr!(cx, ());
     let _g: @syntax::ast::Expr = quote_expr!(cx, true);
     let _h: @syntax::ast::Expr = quote_expr!(cx, 'a');
+
+    let i: Option<@syntax::ast::Item> = quote_item!(cx, #[deriving(Eq)] struct Foo; );
+    assert!(i.is_some());
 }
 
 fn main() {
