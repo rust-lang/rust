@@ -896,7 +896,7 @@ fn each_split_within<'a>(ss: &'a str, lim: uint, it: |&'a str| -> bool)
         *cont
     };
 
-    ss.char_indices().advance(|x| machine(&mut cont, x));
+    ss.char_indices().all(|x| machine(&mut cont, x));
 
     // Let the automaton 'run out' by supplying trailing whitespace
     while cont && match state { B | C => true, A => false } {
