@@ -435,9 +435,10 @@ pub trait Iterator<A> {
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```rust,ignore
     /// range(0u, 5).advance(|x| {print!("{} ", x); true});
     /// ```
+    #[deprecated = "use the `all` method instead"]
     #[inline]
     fn advance(&mut self, f: |A| -> bool) -> bool {
         loop {
