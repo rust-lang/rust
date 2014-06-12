@@ -134,7 +134,7 @@ impl DynamicLibrary {
     }
 
     /// Access the value at the symbol of the dynamic library
-    pub unsafe fn symbol<T>(&self, symbol: &str) -> Result<T, String> {
+    pub unsafe fn symbol<T>(&self, symbol: &str) -> Result<*T, String> {
         // This function should have a lifetime constraint of 'a on
         // T but that feature is still unimplemented
 

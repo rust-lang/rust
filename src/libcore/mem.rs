@@ -17,6 +17,8 @@ use ptr;
 use intrinsics;
 use intrinsics::{bswap16, bswap32, bswap64};
 
+pub use intrinsics::transmute;
+
 /// Returns the size of a type in bytes.
 #[inline]
 #[stable]
@@ -411,29 +413,6 @@ pub fn drop<T>(_x: T) { }
 #[inline]
 #[stable]
 pub unsafe fn forget<T>(thing: T) { intrinsics::forget(thing) }
-
-/// Unsafely transforms a value of one type into a value of another type.
-///
-/// Both types must have the same size and alignment, and this guarantee is
-/// enforced at compile-time.
-///
-/// # Example
-///
-/// ```rust
-/// use std::mem;
-///
-/// let v: &[u8] = unsafe { mem::transmute("L") };
-/// assert!(v == [76u8]);
-/// ```
-#[inline]
-#[unstable = "this function will be modified to reject invocations of it which \
-              cannot statically prove that T and U are the same size. For \
-              example, this function, as written today, will be rejected in \
-              the future because the size of T and U cannot be statically \
-              known to be the same"]
-pub unsafe fn transmute<T, U>(thing: T) -> U {
-    intrinsics::transmute(thing)
-}
 
 /// Interprets `src` as `&U`, and then reads `src` without moving the contained
 /// value.
