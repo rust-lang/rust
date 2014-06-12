@@ -368,9 +368,7 @@ pub fn expand_quote_pat(cx: &mut ExtCtxt,
                         sp: Span,
                         tts: &[ast::TokenTree])
                         -> Box<base::MacResult> {
-    let e_refutable = cx.expr_lit(sp, ast::LitBool(true));
-    let expanded = expand_parse_call(cx, sp, "parse_pat",
-                                    vec!(e_refutable), tts);
+    let expanded = expand_parse_call(cx, sp, "parse_pat", vec!(), tts);
     base::MacExpr::new(expanded)
 }
 
