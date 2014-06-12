@@ -20,15 +20,10 @@ use core::atomics;
 
 use mutex::{StaticMutex, MUTEX_INIT};
 
-/// A type which can be used to run a one-time global initialization. This type
-/// is *unsafe* to use because it is built on top of the `Mutex` in this module.
-/// It does not know whether the currently running task is in a green or native
-/// context, and a blocking mutex should *not* be used under normal
-/// circumstances on a green task.
-///
-/// Despite its unsafety, it is often useful to have a one-time initialization
-/// routine run for FFI bindings or related external functionality. This type
-/// can only be statically constructed with the `ONCE_INIT` value.
+/// A synchronization primitive which can be used to run a one-time global
+/// initialization. Useful for one-time initialization for FFI or related
+/// functionality. This type can only be constructed with the `ONCE_INIT`
+/// value.
 ///
 /// # Example
 ///
@@ -36,6 +31,7 @@ use mutex::{StaticMutex, MUTEX_INIT};
 /// use sync::one::{Once, ONCE_INIT};
 ///
 /// static mut START: Once = ONCE_INIT;
+///
 /// unsafe {
 ///     START.doit(|| {
 ///         // run initialization here
@@ -60,7 +56,7 @@ impl Once {
     /// will be executed if this is the first time `doit` has been called, and
     /// otherwise the routine will *not* be invoked.
     ///
-    /// This method will block the calling *os thread* if another initialization
+    /// This method will block the calling task if another initialization
     /// routine is currently running.
     ///
     /// When this function returns, it is guaranteed that some initialization
