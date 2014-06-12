@@ -20,14 +20,7 @@
 #![no_std]
 #![experimental]
 
-#[cfg(stage0)]
-#[phase(syntax, link)]
-extern crate core;
-
-#[cfg(not(stage0))]
-#[phase(plugin, link)]
-extern crate core;
-
+#[phase(plugin, link)] extern crate core;
 extern crate alloc;
 extern crate libc;
 extern crate collections;
@@ -36,8 +29,7 @@ extern crate collections;
 #[cfg(test)] extern crate test;
 #[cfg(test)] extern crate native;
 
-#[cfg(test, stage0)] #[phase(syntax, link)] extern crate std;
-#[cfg(test, not(stage0))] #[phase(plugin, link)] extern crate std;
+#[cfg(test)] #[phase(plugin, link)] extern crate std;
 
 pub use self::util::{Stdio, Stdout, Stderr};
 pub use self::unwind::{begin_unwind, begin_unwind_fmt};

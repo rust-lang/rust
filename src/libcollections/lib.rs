@@ -23,24 +23,15 @@
 #![feature(macro_rules, managed_boxes, default_type_params, phase, globs)]
 #![no_std]
 
+#[phase(plugin, link)] extern crate core;
 extern crate alloc;
-
-#[cfg(stage0)]
-#[phase(syntax, link)]
-extern crate core;
-
-#[cfg(not(stage0))]
-#[phase(plugin, link)]
-extern crate core;
 
 #[cfg(test)] extern crate native;
 #[cfg(test)] extern crate test;
 #[cfg(test)] extern crate debug;
 
-#[cfg(test, stage0)] #[phase(syntax, link)] extern crate std;
-#[cfg(test, stage0)] #[phase(syntax, link)] extern crate log;
-#[cfg(test, not(stage0))] #[phase(plugin, link)] extern crate std;
-#[cfg(test, not(stage0))] #[phase(plugin, link)] extern crate log;
+#[cfg(test)] #[phase(plugin, link)] extern crate std;
+#[cfg(test)] #[phase(plugin, link)] extern crate log;
 
 use core::prelude::*;
 
