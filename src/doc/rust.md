@@ -160,8 +160,8 @@ block_comment_body : [block_comment | character] * ;
 line_comment : "//" non_eol * ;
 ~~~~
 
-Comments in Rust code follow the general C++ style of line and block-comment forms,
-with no nesting of block-comment delimiters.
+Comments in Rust code follow the general C++ style of line and block-comment forms. 
+Nested block comments are supported.
 
 Line comments beginning with exactly _three_ slashes (`///`), and block
 comments beginning with exactly one repeated asterisk in the block-open
