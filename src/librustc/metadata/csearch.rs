@@ -25,6 +25,7 @@ use serialize::ebml::reader;
 use std::rc::Rc;
 use syntax::ast;
 use syntax::ast_map;
+use syntax::attr;
 use syntax::diagnostic::expect;
 use syntax::parse::token;
 
@@ -327,4 +328,11 @@ pub fn get_reachable_extern_fns(cstore: &cstore::CStore, cnum: ast::CrateNum)
 pub fn is_typedef(cstore: &cstore::CStore, did: ast::DefId) -> bool {
     let cdata = cstore.get_crate_data(did.krate);
     decoder::is_typedef(&*cdata, did.node)
+}
+
+pub fn get_stability(cstore: &cstore::CStore,
+                     def: ast::DefId)
+                     -> Option<attr::Stability> {
+    let cdata = cstore.get_crate_data(def.krate);
+    decoder::get_stability(&*cdata, def.node)
 }

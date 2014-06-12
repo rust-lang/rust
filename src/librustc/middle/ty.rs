@@ -25,6 +25,7 @@ use middle::resolve;
 use middle::resolve_lifetime;
 use middle::subst;
 use middle::subst::{Subst, Substs, VecPerParamSpace};
+use middle::stability;
 use middle::ty;
 use middle::typeck;
 use middle::typeck::MethodCall;
@@ -373,6 +374,9 @@ pub struct ctxt {
     /// to be valid. We gather up these restrictions in the intrinsicck pass
     /// and check them in trans.
     pub transmute_restrictions: RefCell<Vec<TransmuteRestriction>>,
+
+    /// Maps any item's def-id to its stability index.
+    pub stability: RefCell<stability::Index>,
 }
 
 pub enum tbox_flag {
@@ -1065,7 +1069,8 @@ pub fn mk_ctxt(s: Session,
                map: ast_map::Map,
                freevars: freevars::freevar_map,
                region_maps: middle::region::RegionMaps,
-               lang_items: middle::lang_items::LanguageItems)
+               lang_items: middle::lang_items::LanguageItems,
+               stability: stability::Index)
             -> ctxt {
     ctxt {
         named_region_map: named_region_map,
@@ -1119,6 +1124,7 @@ pub fn mk_ctxt(s: Session,
         dependency_formats: RefCell::new(HashMap::new()),
         node_lint_levels: RefCell::new(HashMap::new()),
         transmute_restrictions: RefCell::new(Vec::new()),
+        stability: RefCell::new(stability)
     }
 }
 

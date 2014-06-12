@@ -80,6 +80,7 @@ pub mod middle {
     pub mod weak_lang_items;
     pub mod save;
     pub mod intrinsicck;
+    pub mod stability;
 }
 
 pub mod front {
