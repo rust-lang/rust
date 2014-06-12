@@ -73,8 +73,7 @@ impl<'a> MacResult for ParserAnyMacro<'a> {
         let mut ret = SmallVector::zero();
         loop {
             let mut parser = self.parser.borrow_mut();
-            let attrs = parser.parse_outer_attributes();
-            match parser.parse_item(attrs) {
+            match parser.parse_item_with_outer_attributes() {
                 Some(item) => ret.push(item),
                 None => break
             }
