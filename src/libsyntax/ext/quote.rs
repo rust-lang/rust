@@ -358,9 +358,8 @@ pub fn expand_quote_item(cx: &mut ExtCtxt,
                          sp: Span,
                          tts: &[ast::TokenTree])
                          -> Box<base::MacResult> {
-    let e_attrs = cx.expr_vec_ng(sp);
-    let expanded = expand_parse_call(cx, sp, "parse_item",
-                                    vec!(e_attrs), tts);
+    let expanded = expand_parse_call(cx, sp, "parse_item_with_outer_attributes",
+                                    vec!(), tts);
     base::MacExpr::new(expanded)
 }
 

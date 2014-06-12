@@ -4965,6 +4965,11 @@ impl<'a> Parser<'a> {
         return IoviNone(attrs);
     }
 
+    pub fn parse_item_with_outer_attributes(&mut self) -> Option<Gc<Item>> {
+        let attrs = self.parse_outer_attributes();
+        self.parse_item(attrs)
+    }
+
     pub fn parse_item(&mut self, attrs: Vec<Attribute> ) -> Option<Gc<Item>> {
         match self.parse_item_or_view_item(attrs, true) {
             IoviNone(_) => None,
