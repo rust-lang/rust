@@ -201,6 +201,7 @@ pub struct Loan {
 #[deriving(PartialEq, Eq, Hash)]
 pub enum LoanPath {
     LpVar(ast::NodeId),               // `x` in doc.rs
+    LpUpvar(ty::UpvarId),             // `x` captured by-value into closure
     LpExtend(Rc<LoanPath>, mc::MutabilityCategory, LoanPathElem)
 }
 
@@ -210,11 +211,25 @@ pub enum LoanPathElem {
     LpInterior(mc::InteriorKind) // `LV.f` in doc.rs
 }
 
+pub fn closure_to_block(closure_id: ast::NodeId,
+                    tcx: &ty::ctxt) -> ast::NodeId {
+    match tcx.map.get(closure_id) {
+        ast_map::NodeExpr(expr) => match expr.node {
+            ast::ExprProc(_decl, block) |
+            ast::ExprFnBlock(_decl, block) => { block.id }
+            _ => fail!("encountered non-closure id: {}", closure_id)
+        },
+        _ => fail!("encountered non-expr id: {}", closure_id)
+    }
+}
+
 impl LoanPath {
-    pub fn node_id(&self) -> ast::NodeId {
+    pub fn kill_scope(&self, tcx: &ty::ctxt) -> ast::NodeId {
         match *self {
-            LpVar(local_id) => local_id,
-            LpExtend(ref base, _, _) => base.node_id()
+            LpVar(local_id) => tcx.region_maps.var_scope(local_id),
+            LpUpvar(upvar_id) =>
+                closure_to_block(upvar_id.closure_expr_id, tcx),
+            LpExtend(ref base, _, _) => base.kill_scope(tcx),
         }
     }
 }
@@ -234,10 +249,16 @@ pub fn opt_loan_path(cmt: &mc::cmt) -> Option<Rc<LoanPath>> {
         }
 
         mc::cat_local(id) |
-        mc::cat_arg(id) |
-        mc::cat_copied_upvar(mc::CopiedUpvar { upvar_id: id, .. }) |
-        mc::cat_upvar(ty::UpvarId {var_id: id, ..}, _) => {
+        mc::cat_arg(id) => {
             Some(Rc::new(LpVar(id)))
+        }
+
+        mc::cat_upvar(ty::UpvarId {var_id: id, closure_expr_id: proc_id}, _) |
+        mc::cat_copied_upvar(mc::CopiedUpvar { upvar_id: id,
+                                               onceness: _,
+                                               capturing_proc: proc_id }) => {
+            let upvar_id = ty::UpvarId{ var_id: id, closure_expr_id: proc_id };
+            Some(Rc::new(LpUpvar(upvar_id)))
         }
 
         mc::cat_deref(ref cmt_base, _, pk) => {
@@ -693,6 +714,7 @@ impl<'a> BorrowckCtxt<'a> {
                                    loan_path: &LoanPath,
                                    out: &mut String) {
         match *loan_path {
+            LpUpvar(ty::UpvarId{ var_id: id, closure_expr_id: _ }) |
             LpVar(id) => {
                 out.push_str(ty::local_var_name_str(self.tcx, id).get());
             }
@@ -734,7 +756,7 @@ impl<'a> BorrowckCtxt<'a> {
                 self.append_autoderefd_loan_path_to_str(&**lp_base, out)
             }
 
-            LpVar(..) | LpExtend(_, _, LpInterior(..)) => {
+            LpVar(..) | LpUpvar(..) | LpExtend(_, _, LpInterior(..)) => {
                 self.append_loan_path_to_str(loan_path, out)
             }
         }
@@ -794,6 +816,12 @@ impl Repr for LoanPath {
         match self {
             &LpVar(id) => {
                 (format!("$({})", tcx.map.node_to_str(id))).to_string()
+            }
+
+            &LpUpvar(ty::UpvarId{ var_id, closure_expr_id }) => {
+                let s = tcx.map.node_to_str(var_id);
+                let s = format!("$({} captured by id={})", s, closure_expr_id);
+                s.to_string()
             }
 
             &LpExtend(ref lp, _, LpDeref(_)) => {

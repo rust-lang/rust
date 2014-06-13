@@ -242,7 +242,7 @@ impl<'a> CheckLoanCtxt<'a> {
         let mut loan_path = loan_path;
         loop {
             match *loan_path {
-                LpVar(_) => {
+                LpVar(_) | LpUpvar(_) => {
                     break;
                 }
                 LpExtend(ref lp_base, _, _) => {
@@ -632,7 +632,7 @@ impl<'a> CheckLoanCtxt<'a> {
          */
 
         match **lp {
-            LpVar(_) => {
+            LpVar(_) | LpUpvar(_) => {
                 // assigning to `x` does not require that `x` is initialized
             }
             LpExtend(ref lp_base, _, LpInterior(_)) => {
