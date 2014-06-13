@@ -21,8 +21,9 @@
 //! as a `LintPass`.
 //!
 //! If you define a new `LintPass`, you will also need to add it to the
-//! `add_builtin_lints!()` invocation in `context.rs`. That macro
-//! requires a `Default` impl for your `LintPass` type.
+//! `add_builtin!` or `add_builtin_with_new!` invocation in `context.rs`.
+//! Use the former for unit-like structs and the latter for structs with
+//! a `pub fn new()`.
 
 use metadata::csearch;
 use middle::def::*;
@@ -45,7 +46,6 @@ use std::u16;
 use std::u32;
 use std::u64;
 use std::u8;
-use std::default::Default;
 use syntax::abi;
 use syntax::ast_map;
 use syntax::attr::AttrMetaMethods;
@@ -57,7 +57,6 @@ use syntax::{ast, ast_util, visit};
 declare_lint!(while_true, Warn,
     "suggest using `loop { }` instead of `while true { }`")
 
-#[deriving(Default)]
 pub struct WhileTrue;
 
 impl LintPass for WhileTrue {
@@ -90,7 +89,6 @@ impl LintPass for WhileTrue {
 declare_lint!(unnecessary_typecast, Allow,
     "detects unnecessary type casts, that can be removed")
 
-#[deriving(Default)]
 pub struct UnusedCasts;
 
 impl LintPass for UnusedCasts {
@@ -125,8 +123,8 @@ pub struct TypeLimits {
     negated_expr_id: ast::NodeId,
 }
 
-impl Default for TypeLimits {
-    fn default() -> TypeLimits {
+impl TypeLimits {
+    pub fn new() -> TypeLimits {
         TypeLimits {
             negated_expr_id: -1,
         }
@@ -320,7 +318,6 @@ impl LintPass for TypeLimits {
 declare_lint!(ctypes, Warn,
     "proper use of libc types in foreign modules")
 
-#[deriving(Default)]
 pub struct CTypes;
 
 impl LintPass for CTypes {
@@ -389,7 +386,6 @@ declare_lint!(owned_heap_memory, Allow,
 declare_lint!(heap_memory, Allow,
     "use of any (Box type or @ type) heap memory")
 
-#[deriving(Default)]
 pub struct HeapMemory;
 
 impl HeapMemory {
@@ -492,8 +488,8 @@ pub struct RawPointerDeriving {
     checked_raw_pointers: NodeSet,
 }
 
-impl Default for RawPointerDeriving {
-    fn default() -> RawPointerDeriving {
+impl RawPointerDeriving {
+    pub fn new() -> RawPointerDeriving {
         RawPointerDeriving {
             checked_raw_pointers: NodeSet::new(),
         }
@@ -538,7 +534,6 @@ impl LintPass for RawPointerDeriving {
 declare_lint!(unused_attribute, Warn,
     "detects attributes that were not used by the compiler")
 
-#[deriving(Default)]
 pub struct UnusedAttribute;
 
 impl LintPass for UnusedAttribute {
@@ -620,7 +615,6 @@ impl LintPass for UnusedAttribute {
 declare_lint!(path_statement, Warn,
     "path statements with no effect")
 
-#[deriving(Default)]
 pub struct PathStatement;
 
 impl LintPass for PathStatement {
@@ -648,7 +642,6 @@ declare_lint!(unused_must_use, Warn,
 declare_lint!(unused_result, Allow,
     "unused result of an expression in a statement")
 
-#[deriving(Default)]
 pub struct UnusedResult;
 
 impl LintPass for UnusedResult {
@@ -709,7 +702,6 @@ impl LintPass for UnusedResult {
 declare_lint!(deprecated_owned_vector, Allow,
     "use of a `~[T]` vector")
 
-#[deriving(Default)]
 pub struct DeprecatedOwnedVector;
 
 impl LintPass for DeprecatedOwnedVector {
@@ -735,7 +727,6 @@ impl LintPass for DeprecatedOwnedVector {
 declare_lint!(non_camel_case_types, Warn,
     "types, variants and traits should have camel case names")
 
-#[deriving(Default)]
 pub struct NonCamelCaseTypes;
 
 impl LintPass for NonCamelCaseTypes {
@@ -821,7 +812,6 @@ fn method_context(cx: &Context, m: &ast::Method) -> MethodContext {
 declare_lint!(non_snake_case_functions, Warn,
     "methods and functions should have snake case names")
 
-#[deriving(Default)]
 pub struct NonSnakeCaseFunctions;
 
 impl NonSnakeCaseFunctions {
@@ -899,7 +889,6 @@ impl LintPass for NonSnakeCaseFunctions {
 declare_lint!(non_uppercase_statics, Allow,
     "static constants should have uppercase identifiers")
 
-#[deriving(Default)]
 pub struct NonUppercaseStatics;
 
 impl LintPass for NonUppercaseStatics {
@@ -931,7 +920,6 @@ impl LintPass for NonUppercaseStatics {
 declare_lint!(non_uppercase_pattern_statics, Warn,
     "static constants in match patterns should be all caps")
 
-#[deriving(Default)]
 pub struct NonUppercasePatternStatics;
 
 impl LintPass for NonUppercasePatternStatics {
@@ -962,7 +950,6 @@ impl LintPass for NonUppercasePatternStatics {
 declare_lint!(uppercase_variables, Warn,
     "variable and structure field names should start with a lowercase character")
 
-#[deriving(Default)]
 pub struct UppercaseVariables;
 
 impl LintPass for UppercaseVariables {
@@ -1011,7 +998,6 @@ impl LintPass for UppercaseVariables {
 declare_lint!(unnecessary_parens, Warn,
     "`if`, `match`, `while` and `return` do not need parentheses")
 
-#[deriving(Default)]
 pub struct UnnecessaryParens;
 
 impl UnnecessaryParens {
@@ -1062,7 +1048,6 @@ impl LintPass for UnnecessaryParens {
 declare_lint!(unused_unsafe, Warn,
     "unnecessary use of an `unsafe` block")
 
-#[deriving(Default)]
 pub struct UnusedUnsafe;
 
 impl LintPass for UnusedUnsafe {
@@ -1087,7 +1072,6 @@ impl LintPass for UnusedUnsafe {
 declare_lint!(unsafe_block, Allow,
     "usage of an `unsafe` block")
 
-#[deriving(Default)]
 pub struct UnsafeBlock;
 
 impl LintPass for UnsafeBlock {
@@ -1109,7 +1093,6 @@ impl LintPass for UnsafeBlock {
 declare_lint!(unused_mut, Warn,
     "detect mut variables which don't need to be mutable")
 
-#[deriving(Default)]
 pub struct UnusedMut;
 
 impl UnusedMut {
@@ -1195,7 +1178,6 @@ enum Allocation {
 declare_lint!(unnecessary_allocation, Warn,
     "detects unnecessary allocations that can be eliminated")
 
-#[deriving(Default)]
 pub struct UnnecessaryAllocation;
 
 impl LintPass for UnnecessaryAllocation {
@@ -1267,17 +1249,15 @@ pub struct MissingDoc {
     doc_hidden_stack: Vec<bool>,
 }
 
-impl Default for MissingDoc {
-    fn default() -> MissingDoc {
+impl MissingDoc {
+    pub fn new() -> MissingDoc {
         MissingDoc {
             exported_items: None,
             struct_def_stack: vec!(),
             doc_hidden_stack: vec!(false),
         }
     }
-}
 
-impl MissingDoc {
     fn doc_hidden(&self) -> bool {
         *self.doc_hidden_stack.last().expect("empty doc_hidden_stack")
     }
@@ -1419,7 +1399,6 @@ declare_lint!(unstable, Allow,
 
 /// Checks for use of items with `#[deprecated]`, `#[experimental]` and
 /// `#[unstable]` attributes, or no stability attribute.
-#[deriving(Default)]
 pub struct Stability;
 
 impl LintPass for Stability {
@@ -1554,7 +1533,6 @@ declare_lint!(pub variant_size_difference, Allow,
 
 /// Does nothing as a lint pass, but registers some `Lint`s
 /// which are used by other parts of the compiler.
-#[deriving(Default)]
 pub struct HardwiredLints;
 
 impl LintPass for HardwiredLints {

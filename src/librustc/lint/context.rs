@@ -37,7 +37,6 @@ use lint::builtin;
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::cell::RefCell;
-use std::default::Default;
 use std::tuple::Tuple2;
 use std::mem;
 use syntax::ast_util::IdVisitingOperation;
@@ -122,23 +121,30 @@ impl LintStore {
     }
 
     pub fn register_builtin(&mut self, sess: Option<&Session>) {
-        macro_rules! add_builtin_lints ( ( $sess:ident, $($name:ident),*, ) => (
+        macro_rules! add_builtin ( ( $sess:ident, $($name:ident),*, ) => (
             {$(
-                {
-                    let obj: builtin::$name = Default::default();
-                    self.register_pass($sess, false, box obj as LintPassObject);
-                };
+                self.register_pass($sess, false, box builtin::$name as LintPassObject);
             )*}
         ))
 
-        add_builtin_lints!(sess, HardwiredLints,
-            WhileTrue, UnusedCasts, TypeLimits, CTypes, HeapMemory,
-            RawPointerDeriving, UnusedAttribute, PathStatement,
-            UnusedResult, DeprecatedOwnedVector, NonCamelCaseTypes,
+        macro_rules! add_builtin_with_new ( ( $sess:ident, $($name:ident),*, ) => (
+            {$(
+                self.register_pass($sess, false, box builtin::$name::new() as LintPassObject);
+            )*}
+        ))
+
+        add_builtin!(sess, HardwiredLints,
+            WhileTrue, UnusedCasts, CTypes, HeapMemory,
+            UnusedAttribute, PathStatement, UnusedResult,
+            DeprecatedOwnedVector, NonCamelCaseTypes,
             NonSnakeCaseFunctions, NonUppercaseStatics,
             NonUppercasePatternStatics, UppercaseVariables,
-            UnnecessaryParens, UnusedUnsafe, UnsafeBlock, UnusedMut,
-            UnnecessaryAllocation, MissingDoc, Stability,
+            UnnecessaryParens, UnusedUnsafe, UnsafeBlock,
+            UnusedMut, UnnecessaryAllocation, Stability,
+        )
+
+        add_builtin_with_new!(sess,
+            TypeLimits, RawPointerDeriving, MissingDoc,
         )
 
         // We have one lint pass defined in this module.
