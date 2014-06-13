@@ -1,4 +1,8 @@
-// Do not compile anything here for iOS
+// Do not compile anything here for iOS because split stacks
+// are disabled at all and do not need any runtime support.
+//
+// See also comments in librustrt/stack.rs about why it was
+// disabled and how it could be implemented in case of need.
 #if !defined(__APPLE__)
 // Mark stack as non-executable
 #if defined(__linux__) && defined(__ELF__)

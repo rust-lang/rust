@@ -248,6 +248,11 @@ mod imp {
     /// _Unwind_Backtrace is even not available there. Still,
     /// backtraces could be extracted using a backtrace function,
     /// which thanks god is public
+    ///
+    /// As mentioned in a huge comment block above, backtrace doesn't
+    /// play well with green threads, so while it is extremely nice
+    /// and simple to use it should be used only on iOS devices as the
+    /// only viable option.
     #[cfg(target_os = "ios", target_arch = "arm")]
     #[inline(never)]
     pub fn write(w: &mut Writer) -> IoResult<()> {
@@ -267,9 +272,9 @@ mod imp {
 
         try!(writeln!(w, "stack backtrace:"));
         // 100 lines should be enough
-        static size: libc::c_int = 100;
-        let mut buf: [*libc::c_void, ..size] = unsafe {mem::zeroed()};
-        let cnt = unsafe { backtrace(buf.as_mut_ptr(), size) as uint};
+        static SIZE: libc::c_int = 100;
+        let mut buf: [*libc::c_void, ..SIZE] = unsafe {mem::zeroed()};
+        let cnt = unsafe { backtrace(buf.as_mut_ptr(), SIZE) as uint};
 
         // skipping the first one as it is write itself
         result::fold_(range(1, cnt).map(|i| {

@@ -97,10 +97,14 @@ extern {}
 extern "C" {
     // iOS on armv7 uses SjLj exceptions and requires to link
     // agains corresponding routine (..._SjLj_...)
-    // So here we just skip linking for iOS
     #[cfg(not(target_os = "ios", target_arch = "arm"))]
     pub fn _Unwind_RaiseException(exception: *_Unwind_Exception)
-                -> _Unwind_Reason_Code;
+                                  -> _Unwind_Reason_Code;
+
+    #[cfg(target_os = "ios", target_arch = "arm")]
+    fn _Unwind_SjLj_RaiseException(e: *_Unwind_Exception)
+                                   -> _Unwind_Reason_Code;
+
     pub fn _Unwind_DeleteException(exception: *_Unwind_Exception);
 }
 
@@ -111,9 +115,5 @@ extern "C" {
 #[inline(always)]
 pub unsafe fn _Unwind_RaiseException(exc: *_Unwind_Exception)
                                      -> _Unwind_Reason_Code {
-    extern "C" {
-        fn _Unwind_SjLj_RaiseException(e: *_Unwind_Exception)
-                                       -> _Unwind_Reason_Code; }
-
     _Unwind_SjLj_RaiseException(exc)
 }

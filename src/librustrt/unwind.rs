@@ -303,7 +303,6 @@ pub mod eabi {
     use libc::c_int;
 
     extern "C" {
-        #[cfg(target_os = "ios", target_arch = "arm")]
         fn __gcc_personality_sj0(version: c_int,
                                 actions: uw::_Unwind_Action,
                                 exception_class: uw::_Unwind_Exception_Class,
