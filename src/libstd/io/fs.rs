@@ -977,7 +977,9 @@ mod test {
         let result = File::open_mode(filename, Open, Read);
 
         error!(result, "couldn't open file");
-        error!(result, "no such file or directory");
+        if cfg!(unix) {
+            error!(result, "no such file or directory");
+        }
         error!(result, format!("path={}; mode=open; access=read", filename.display()));
     })
 
@@ -988,7 +990,9 @@ mod test {
         let result = unlink(filename);
 
         error!(result, "couldn't unlink path");
-        error!(result, "no such file or directory");
+        if cfg!(unix) {
+            error!(result, "no such file or directory");
+        }
         error!(result, format!("path={}", filename.display()));
     })
 

@@ -10,6 +10,8 @@
 
 // Tests that `transmute` cannot be called on types of different size.
 
+#![allow(warnings)]
+
 use std::mem::transmute;
 
 unsafe fn f() {

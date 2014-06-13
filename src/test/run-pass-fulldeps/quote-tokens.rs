@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-android
+// ignore-pretty: does not work well with `--test`
+
 #![feature(quote)]
 #![feature(managed_boxes)]
 
