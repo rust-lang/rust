@@ -602,7 +602,7 @@ pub fn meta_section_name(os: abi::Os) -> Option<&'static str> {
 pub fn read_meta_section_name(os: abi::Os) -> &'static str {
     match os {
         abi::OsMacos => "__note.rustc",
-        abi::OsiOS => "__note.rustc",
+        abi::OsiOS => unreachable!(),
         abi::OsWin32 => ".note.rustc",
         abi::OsLinux => ".note.rustc",
         abi::OsAndroid => ".note.rustc",
