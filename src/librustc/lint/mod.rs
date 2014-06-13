@@ -167,10 +167,6 @@ impl PartialEq for LintId {
     fn eq(&self, other: &LintId) -> bool {
         (self.lint as *Lint) == (other.lint as *Lint)
     }
-
-    fn ne(&self, other: &LintId) -> bool {
-        (self.lint as *Lint) != (other.lint as *Lint)
-    }
 }
 
 impl Eq for LintId { }
