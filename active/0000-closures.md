@@ -76,18 +76,18 @@ invocation of one of the following traits:
     }
 
     trait FnShare<A,R> {
-        fn call(&self, args: A) -> R;
+        fn call_share(&self, args: A) -> R;
     }
 
     trait FnOnce<A,R> {
-        fn call(&self, args: A) -> R;
+        fn call_once(&self, args: A) -> R;
     }
 
 Essentially, `a(b, c, d)` becomes sugar for one of the following:
 
     Fn::call(&mut a, (b, c, d))
-    FnShare::call(&a, (b, c, d))
-    FnOnce::call(a, (b, c, d))
+    FnShare::call_share(&a, (b, c, d))
+    FnOnce::call_once(a, (b, c, d))
 
 To integrate with this, closure expressions are then translated into a
 fresh struct that implements one of those three traits. The precise
@@ -97,11 +97,11 @@ be inferred.
 This change gives user control over virtual vs static dispatch.  This
 works in the same way as generic types today:
 
-    fn foo(x: &mut Fn<int,int>) -> int {
+    fn foo(x: &mut Fn<(int,),int>) -> int {
         x(2) // virtual dispatch
     }
 
-    fn foo<F:Fn<int,int>>(x: &mut F) -> int {
+    fn foo<F:Fn<(int,),int>>(x: &mut F) -> int {
         x(2) // static dispatch
     }
 
@@ -109,7 +109,7 @@ The change also permits returning closures, which is not currently
 possible (the example relies on the proposed `impl` syntax from
 rust-lang/rfcs#105):
 
-    fn foo(x: impl Fn<int,int>) -> impl Fn<int,int> {
+    fn foo(x: impl Fn<(int,),int>) -> impl Fn<(int,),int> {
         |v| x(v * 2)
     }
     
@@ -349,7 +349,7 @@ simpler model overall. Moreover, native ABIs on platforms of interest
 treat a structure passed by value identically to distinct
 arguments. Finally, given that trait calls have the "Rust" ABI, which
 is not specified, we can always tweak the rules if necessary (though
-their advantages for tooling when the Rust ABI closely matches the
+there are advantages for tooling when the Rust ABI closely matches the
 native ABI).
 
 **Use inference to determine the self type of a closure rather than an
@@ -367,6 +367,57 @@ this is the most common use case for closures.
 TBD. pcwalton is working furiously as we speak.
 
 # Unresolved questions
+
+**What if any relationship should there be between the closure
+traits?** On the one hand, there is clearly a relationship between the
+traits.  For example, given a `FnShare`, one can easily implement
+`Fn`:
+
+    impl<A,R,T:FnShare<A,R>> Fn<A,R> for T {
+        fn call(&mut self, args: A) -> R {
+            (&*self).call_share(args)
+        }
+    }
+
+Similarly, given a `Fn` or `FnShare`, you can implement `FnOnce`. From
+this, one might derive a subtrait relationship:
+
+    trait FnOnce { ... }
+    trait Fn : FnOnce { ... }
+    trait FnShare : Fn { ... }
+
+Employing this relationship, however, would require that any manual
+implement of `FnShare` or `Fn` must implement adapters for the other
+two traits, since a subtrait cannot provide a specialized default of
+supertrait methods (yet?). On the other hand, having no relationship
+between the traits limits reuse, at least without employing explicit
+adapters.
+
+Other alternatives that have been proposed to address the problem:
+
+- Use impls to implement the fn traits in terms of one another,
+  similar to what is shown above. The problem is that we would need to
+  implement `FnOnce` both for all `T` where `T:Fn` and for all `T`
+  where `T:FnShare`. This will yield coherence errors unless we extend
+  the language with a means to declare traits as mutually exclusive
+  (which might be valuable, but no such system has currently been
+  proposed nor agreed upon).
+
+- Have the compiler implement multiple traits for a single closure.
+  As with supertraits, this would require manual implements to
+  implement multiple traits. It would also require generic users to
+  write `T:Fn+FnMut` or else employ an explicit adapter. On the other
+  hand, it preserves the "one method per trait" rule described below.
+
+**Can we optimize away the trait vtable?** The runtime representation
+of a reference `&Trait` to a trait object (and hence, under this
+proposal, closures as well) is a pair of pointers `(data, vtable)`. It
+has been proposed that we might be able to optimize this
+representation to `(data, fnptr)` so long as `Trait` has a single
+function. This slightly improves the performance of invoking the
+function as one need not indirect through the vtable. The actual
+implications of this on performance are unclear, but it might be a
+reason to keep the closure traits to a single method.
 
 ## Closures that are quantified over lifetimes
 
