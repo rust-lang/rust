@@ -157,13 +157,13 @@ Available lint options:
     // let plugin = sort_lints(plugin);
     let builtin = sort_lints(builtin);
 
-    // FIXME: What if someone uses combining characters or East Asian fullwidth
-    // characters in a lint name?!?!?
+    // FIXME (#7043): We should use the width in character cells rather than
+    // the number of codepoints.
     let max_name_len = builtin.iter()
         .map(|&s| s.name.char_len())
         .max().unwrap_or(0);
     let padded = |x: &str| {
-        format!("{}{}", " ".repeat(max_name_len - x.char_len()), x)
+        " ".repeat(max_name_len - x.char_len()).append(x)
     };
 
     println!("Lint checks provided by rustc:\n");
