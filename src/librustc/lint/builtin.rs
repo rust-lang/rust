@@ -390,8 +390,6 @@ pub struct HeapMemory;
 
 impl HeapMemory {
     fn check_heap_type(&self, cx: &Context, span: Span, ty: ty::t) {
-        // FIXME: skip the fold for performance when all are allowed?
-
         let mut n_box = 0;
         let mut n_uniq = 0;
         ty::fold_ty(cx.type_context(), ty, |t| {
