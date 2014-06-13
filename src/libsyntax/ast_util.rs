@@ -737,6 +737,7 @@ pub fn get_inner_tys(ty: P<Ty>) -> Vec<P<Ty>> {
         | ast::TyUniq(ty)
         | ast::TyFixedLengthVec(ty, _) => vec!(ty),
         ast::TyTup(ref tys) => tys.clone(),
+        ast::TyParen(ty) => get_inner_tys(ty),
         _ => Vec::new()
     }
 }

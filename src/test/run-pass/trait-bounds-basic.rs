@@ -12,21 +12,21 @@
 trait Foo {
 }
 
-fn a(_x: Box<Foo:>) {
+fn a(_x: Box<Foo+>) {
 }
 
-fn b(_x: Box<Foo:Send>) {
+fn b(_x: Box<Foo+Send>) {
 }
 
-fn c(x: Box<Foo:Share+Send>) {
+fn c(x: Box<Foo+Share+Send>) {
     a(x);
 }
 
-fn d(x: Box<Foo:Send>) {
+fn d(x: Box<Foo+Send>) {
     b(x);
 }
 
-fn e(x: Box<Foo>) { // sugar for Box<Foo:Owned>
+fn e(x: Box<Foo>) { // sugar for Box<Foo+Owned>
     a(x);
 }
 

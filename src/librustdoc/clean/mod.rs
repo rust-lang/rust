@@ -53,7 +53,7 @@ impl<T: Clean<U>, U> Clean<Vec<U>> for Vec<T> {
     }
 }
 
-impl<T: Clean<U>, U> Clean<U> for Gc<T> {
+impl<T: 'static + Clean<U>, U> Clean<U> for Gc<T> {
     fn clean(&self) -> U {
         (**self).clean()
     }
@@ -1171,6 +1171,7 @@ impl Clean<Type> for ast::Ty {
             TyClosure(ref c, region) => Closure(box c.clean(), region.clean()),
             TyProc(ref c) => Proc(box c.clean()),
             TyBareFn(ref barefn) => BareFunction(box barefn.clean()),
+            TyParen(ref ty) => ty.clean(),
             TyBot => Bottom,
             ref x => fail!("Unimplemented type {:?}", x),
         }
