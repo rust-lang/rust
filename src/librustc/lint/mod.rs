@@ -31,6 +31,7 @@
 
 use middle::privacy::ExportedItems;
 use std::hash;
+use std::ascii::StrAsciiExt;
 use syntax::codemap::Span;
 use syntax::visit::FnKind;
 use syntax::ast;
@@ -41,10 +42,14 @@ pub use lint::context::{Context, LintStore, raw_emit_lint, check_crate};
 pub struct Lint {
     /// A string identifier for the lint.
     ///
-    /// Written with underscores, e.g. "unused_imports".
-    /// This identifies the lint in attributes and in
-    /// command-line arguments. On the command line,
-    /// underscores become dashes.
+    /// This identifies the lint in attributes and in command-line arguments.
+    /// In those contexts it is always lowercase, but this field is compared
+    /// in a way which is case-insensitive for ASCII characters. This allows
+    /// `declare_lint!()` invocations to follow the convention of upper-case
+    /// statics without repeating the name.
+    ///
+    /// The name is written with underscores, e.g. "unused_imports".
+    /// On the command line, underscores become dashes.
     pub name: &'static str,
 
     /// Default level for the lint.
@@ -54,6 +59,13 @@ pub struct Lint {
     ///
     /// e.g. "imports that are never used"
     pub desc: &'static str,
+}
+
+impl Lint {
+    /// Get the lint's name, with ASCII letters converted to lowercase.
+    pub fn name_lower(&self) -> String {
+        self.name.to_ascii_lower()
+    }
 }
 
 /// Build a `Lint` initializer.
@@ -186,8 +198,8 @@ impl LintId {
     }
 
     /// Get the name of the lint.
-    pub fn as_str(&self) -> &'static str {
-        self.lint.name
+    pub fn as_str(&self) -> String {
+        self.lint.name_lower()
     }
 }
 
