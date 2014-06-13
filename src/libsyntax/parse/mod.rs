@@ -117,8 +117,7 @@ pub fn parse_item_from_source_str(name: String,
                                   sess: &ParseSess)
                                   -> Option<Gc<ast::Item>> {
     let mut p = new_parser_from_source_str(sess, cfg, name, source);
-    let attrs = p.parse_outer_attributes();
-    maybe_aborted(p.parse_item(attrs),p)
+    maybe_aborted(p.parse_item_with_outer_attributes(),p)
 }
 
 pub fn parse_meta_from_source_str(name: String,
