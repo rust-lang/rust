@@ -391,12 +391,14 @@ pub fn trans_intrinsic(ccx: &CrateContext,
                 };
                 ccx.sess().span_fatal(sp,
                     format!("transmute called on types with different sizes: \
-                             {intype} ({insize, plural, =1{# bit} other{# bits}}) to \
-                             {outtype} ({outsize, plural, =1{# bit} other{# bits}})",
-                            intype = ty_to_str(ccx.tcx(), in_type),
-                            insize = in_type_size as uint,
-                            outtype = ty_to_str(ccx.tcx(), out_type),
-                            outsize = out_type_size as uint).as_slice());
+                             {} ({} bit{}) to \
+                             {} ({} bit{})",
+                            ty_to_str(ccx.tcx(), in_type),
+                            in_type_size,
+                            if in_type_size == 1 {""} else {"s"},
+                            ty_to_str(ccx.tcx(), out_type),
+                            out_type_size,
+                            if out_type_size == 1 {""} else {"s"}).as_slice());
             }
 
             if !return_type_is_void(ccx, out_type) {

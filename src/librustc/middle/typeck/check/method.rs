@@ -1435,6 +1435,7 @@ impl<'a> LookupContext<'a> {
         }
     }
 
+    #[cfg(stage0)]
     fn report_static_candidate(&self, idx: uint, did: DefId) {
         let span = if did.krate == ast::LOCAL_CRATE {
             self.tcx().map.span(did.node)
@@ -1448,6 +1449,7 @@ impl<'a> LookupContext<'a> {
                     ty::item_path_str(self.tcx(), did)).as_slice());
     }
 
+    #[cfg(stage0)]
     fn report_param_candidate(&self, idx: uint, did: DefId) {
         self.tcx().sess.span_note(
             self.span,
@@ -1456,10 +1458,44 @@ impl<'a> LookupContext<'a> {
                     ty::item_path_str(self.tcx(), did)).as_slice());
     }
 
+    #[cfg(stage0)]
     fn report_trait_candidate(&self, idx: uint, did: DefId) {
         self.tcx().sess.span_note(
             self.span,
             format!("candidate \\#{} derives from the type of the receiver, \
+                     which is the trait `{}`",
+                    idx + 1u,
+                    ty::item_path_str(self.tcx(), did)).as_slice());
+    }
+
+    #[cfg(not(stage0))]
+    fn report_static_candidate(&self, idx: uint, did: DefId) {
+        let span = if did.krate == ast::LOCAL_CRATE {
+            self.tcx().map.span(did.node)
+        } else {
+            self.span
+        };
+        self.tcx().sess.span_note(
+            span,
+            format!("candidate #{} is `{}`",
+                    idx + 1u,
+                    ty::item_path_str(self.tcx(), did)).as_slice());
+    }
+
+    #[cfg(not(stage0))]
+    fn report_param_candidate(&self, idx: uint, did: DefId) {
+        self.tcx().sess.span_note(
+            self.span,
+            format!("candidate #{} derives from the bound `{}`",
+                    idx + 1u,
+                    ty::item_path_str(self.tcx(), did)).as_slice());
+    }
+
+    #[cfg(not(stage0))]
+    fn report_trait_candidate(&self, idx: uint, did: DefId) {
+        self.tcx().sess.span_note(
+            self.span,
+            format!("candidate #{} derives from the type of the receiver, \
                      which is the trait `{}`",
                     idx + 1u,
                     ty::item_path_str(self.tcx(), did)).as_slice());

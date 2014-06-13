@@ -43,7 +43,7 @@ r##"<!DOCTYPE html>
           rel='stylesheet' type='text/css'>
     <link rel="stylesheet" type="text/css" href="{root_path}main.css">
 
-    {favicon, select, none{} other{<link rel="shortcut icon" href="#">}}
+    {favicon}
 </head>
 <body>
     <!--[if lte IE 8]>
@@ -54,10 +54,7 @@ r##"<!DOCTYPE html>
     <![endif]-->
 
     <section class="sidebar">
-        {logo, select, none{} other{
-            <a href='{root_path}{krate}/index.html'><img src='#' alt='' width='100'></a>
-        }}
-
+        {logo}
         {sidebar}
     </section>
 
@@ -122,9 +119,20 @@ r##"<!DOCTYPE html>
     content   = *t,
     root_path = page.root_path,
     ty        = page.ty,
-    logo      = nonestr(layout.logo.as_slice()),
+    logo      = if layout.logo.len() == 0 {
+        "".to_string()
+    } else {
+        format!("<a href='{}{}/index.html'>\
+                 <img src='{}' alt='' width='100'></a>",
+                page.root_path, layout.krate,
+                layout.logo)
+    },
     title     = page.title,
-    favicon   = nonestr(layout.favicon.as_slice()),
+    favicon   = if layout.favicon.len() == 0 {
+        "".to_string()
+    } else {
+        format!(r#"<link rel="shortcut icon" href="{}">"#, layout.favicon)
+    },
     sidebar   = *sidebar,
     krate     = layout.krate,
     play_url  = layout.playground_url,
@@ -134,10 +142,6 @@ r##"<!DOCTYPE html>
         format!(r#"<script src="{}playpen.js"></script>"#, page.root_path)
     },
     )
-}
-
-fn nonestr<'a>(s: &'a str) -> &'a str {
-    if s == "" { "none" } else { s }
 }
 
 pub fn redirect(dst: &mut io::Writer, url: &str) -> io::IoResult<()> {

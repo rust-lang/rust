@@ -317,76 +317,6 @@ checks provided by the compiler. The `format_args!` macro is the only method of
 safely creating these structures, but they can be unsafely created with the
 constructor provided.
 
-## Internationalization
-
-The formatting syntax supported by the `format!` extension supports
-internationalization by providing "methods" which execute various different
-outputs depending on the input. The syntax and methods provided are similar to
-other internationalization systems, so again nothing should seem alien.
-Currently two methods are supported by this extension: "select" and "plural".
-
-Each method will execute one of a number of clauses, and then the value of the
-clause will become what's the result of the argument's format. Inside of the
-cases, nested argument strings may be provided, but all formatting arguments
-must not be done through implicit positional means. All arguments inside of each
-case of a method must be explicitly selected by their name or their integer
-position.
-
-Furthermore, whenever a case is running, the special character `#` can be used
-to reference the string value of the argument which was selected upon. As an
-example:
-
-```rust
-format!("{0, select, other{#}}", "hello"); // => "hello"
-```
-
-This example is the equivalent of `{0:s}` essentially.
-
-### Select
-
-The select method is a switch over a `&str` parameter, and the parameter *must*
-be of the type `&str`. An example of the syntax is:
-
-```text
-{0, select, male{...} female{...} other{...}}
-```
-
-Breaking this down, the `0`-th argument is selected upon with the `select`
-method, and then a number of cases follow. Each case is preceded by an
-identifier which is the match-clause to execute the given arm. In this case,
-there are two explicit cases, `male` and `female`. The case will be executed if
-the string argument provided is an exact match to the case selected.
-
-The `other` case is also a required case for all `select` methods. This arm will
-be executed if none of the other arms matched the word being selected over.
-
-### Plural
-
-The plural method is a switch statement over a `uint` parameter, and the
-parameter *must* be a `uint`. A plural method in its full glory can be specified
-as:
-
-```text
-{0, plural, offset=1 =1{...} two{...} many{...} other{...}}
-```
-
-To break this down, the first `0` indicates that this method is selecting over
-the value of the first positional parameter to the format string. Next, the
-`plural` method is being executed. An optionally-supplied `offset` is then given
-which indicates a number to subtract from argument `0` when matching. This is
-then followed by a list of cases.
-
-Each case is allowed to supply a specific value to match upon with the syntax
-`=N`. This case is executed if the value at argument `0` matches N exactly,
-without taking the offset into account. A case may also be specified by one of
-five keywords: `zero`, `one`, `two`, `few`, and `many`. These cases are matched
-on after argument `0` has the offset taken into account. Currently the
-definitions of `many` and `few` are hardcoded, but they are in theory defined by
-the current locale.
-
-Finally, all `plural` methods must have an `other` case supplied which will be
-executed if none of the other cases match.
-
 ## Syntax
 
 The syntax for the formatting language used is drawn from other languages, so it
@@ -396,7 +326,7 @@ actual grammar for the formatting syntax is:
 
 ```text
 format_string := <text> [ format <text> ] *
-format := '{' [ argument ] [ ':' format_spec ] [ ',' function_spec ] '}'
+format := '{' [ argument ] [ ':' format_spec ] '}'
 argument := integer | identifier
 
 format_spec := [[fill]align][sign]['#'][0][width]['.' precision][type]
@@ -408,13 +338,6 @@ precision := count | '*'
 type := identifier | ''
 count := parameter | integer
 parameter := integer '$'
-
-function_spec := plural | select
-select := 'select' ',' ( identifier arm ) *
-plural := 'plural' ',' [ 'offset:' integer ] ( selector arm ) *
-selector := '=' integer | keyword
-keyword := 'zero' | 'one' | 'two' | 'few' | 'many' | 'other'
-arm := '{' format_string '}'
 ```
 
 ## Formatting Parameters
@@ -483,10 +406,9 @@ should be printed.
 
 ## Escaping
 
-The literal characters `{`, `}`, or `#` may be included in a string by
-preceding them with the `\` character. Since `\` is already an
-escape character in Rust strings, a string literal using this escape
-will look like `"\\{"`.
+The literal characters `{` and `}` may be included in a string by preceding them
+with the same character. For example, the `{` character is escaped with `{{` and
+the `}` character is escaped with `}}`.
 
 */
 

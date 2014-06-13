@@ -386,8 +386,8 @@ fn search_for_vtable(vcx: &VtableContext,
         // some value of U) with some_trait<T>. This would fail if T
         // and U weren't compatible.
 
-        debug!("(checking vtable) \\#2 relating trait \
-                ty {} to of_trait_ref {}",
+        debug!("(checking vtable) {}2 relating trait \
+                ty {} to of_trait_ref {}", "#",
                vcx.infcx.trait_ref_to_str(&*trait_ref),
                vcx.infcx.trait_ref_to_str(&*of_trait_ref));
 

@@ -415,7 +415,7 @@ pub fn write_boxplot<T: Float + Show + FromPrimitive>(
         v = v + char_step;
         c += 1;
     }
-    try!(write!(w, r"\#"));
+    try!(write!(w, "#"));
     c += 1;
     while c < range_width && v < q3 {
         try!(write!(w, "*"));

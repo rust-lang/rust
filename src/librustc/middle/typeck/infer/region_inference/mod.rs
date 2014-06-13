@@ -1323,7 +1323,7 @@ impl<'a> RegionVarBindings<'a> {
         while changed {
             changed = false;
             iteration += 1;
-            debug!("---- {} Iteration \\#{}", tag, iteration);
+            debug!("---- {} Iteration {}{}", "#", tag, iteration);
             for (constraint, _) in self.constraints.borrow().iter() {
                 let edge_changed = body(constraint);
                 if edge_changed {
