@@ -61,7 +61,7 @@ pub struct LintStore {
     passes: Option<Vec<LintPassObject>>,
 
     /// Lints indexed by name.
-    by_name: HashMap<&'static str, LintId>,
+    by_name: HashMap<String, LintId>,
 
     /// Current levels of each lint, and where they were set.
     levels: HashMap<LintId, LevelSource>,
@@ -102,8 +102,8 @@ impl LintStore {
             self.lints.push((lint, from_plugin));
 
             let id = LintId::of(lint);
-            if !self.by_name.insert(lint.name, id) {
-                let msg = format!("duplicate specification of lint {}", lint.name);
+            if !self.by_name.insert(lint.name_lower(), id) {
+                let msg = format!("duplicate specification of lint {}", lint.name_lower());
                 match (sess, from_plugin) {
                     // We load builtin lints first, so a duplicate is a compiler bug.
                     // Use early_error when handling -W help with no crate.
@@ -205,18 +205,19 @@ pub fn raw_emit_lint(sess: &Session, lint: &'static Lint,
     let (mut level, source) = lvlsrc;
     if level == Allow { return }
 
+    let name = lint.name_lower();
     let mut note = None;
     let msg = match source {
         Default => {
             format!("{}, #[{}({})] on by default", msg,
-                level.as_str(), lint.name)
+                level.as_str(), name)
         },
         CommandLine => {
             format!("{} [-{} {}]", msg,
                 match level {
                     Warn => 'W', Deny => 'D', Forbid => 'F',
                     Allow => fail!()
-                }, lint.name.replace("_", "-"))
+                }, name.replace("_", "-"))
         },
         Node(src) => {
             note = Some(src);
@@ -355,7 +356,7 @@ impl<'a> Context<'a> {
             for meta in metas.iter() {
                 match meta.node {
                     ast::MetaWord(ref lint_name) => {
-                        match self.lints.by_name.find_equiv(lint_name) {
+                        match self.lints.by_name.find_equiv(&lint_name.get()) {
                             Some(lint_id) => out.push((*lint_id, level, meta.span)),
 
                             None => self.span_lint(builtin::unrecognized_lint,
