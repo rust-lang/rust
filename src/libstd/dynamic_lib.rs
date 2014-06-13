@@ -134,7 +134,7 @@ impl DynamicLibrary {
     }
 
     /// Access the value at the symbol of the dynamic library
-    pub unsafe fn symbol<T>(&self, symbol: &str) -> Result<T, String> {
+    pub unsafe fn symbol<T>(&self, symbol: &str) -> Result<*T, String> {
         // This function should have a lifetime constraint of 'a on
         // T but that feature is still unimplemented
 
@@ -158,6 +158,7 @@ mod test {
     use super::*;
     use prelude::*;
     use libc;
+    use mem;
 
     #[test]
     #[ignore(cfg(windows))] // FIXME #8818
@@ -174,7 +175,7 @@ mod test {
         let cosine: extern fn(libc::c_double) -> libc::c_double = unsafe {
             match libm.symbol("cos") {
                 Err(error) => fail!("Could not load function cos: {}", error),
-                Ok(cosine) => cosine
+                Ok(cosine) => mem::transmute::<*u8, _>(cosine)
             }
         };
 

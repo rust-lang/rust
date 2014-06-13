@@ -9,8 +9,8 @@
 // except according to those terms.
 
 use abi;
-use ast::{P, StaticRegionTyParamBound, OtherRegionTyParamBound,
-          TraitTyParamBound, UnboxedFnTyParamBound, Required, Provided};
+use ast::{P, StaticRegionTyParamBound, OtherRegionTyParamBound};
+use ast::{TraitTyParamBound, UnboxedFnTyParamBound, Required, Provided};
 use ast;
 use ast_util;
 use owned_slice::OwnedSlice;
@@ -493,6 +493,11 @@ impl<'a> State<'a> {
                 if elts.len() == 1 {
                     try!(word(&mut self.s, ","));
                 }
+                try!(self.pclose());
+            }
+            ast::TyParen(ref typ) => {
+                try!(self.popen());
+                try!(self.print_type(&**typ));
                 try!(self.pclose());
             }
             ast::TyBareFn(f) => {
@@ -1325,7 +1330,6 @@ impl<'a> State<'a> {
             }
             ast::ExprForLoop(ref pat, ref iter, ref blk, opt_ident) => {
                 for ident in opt_ident.iter() {
-                    try!(word(&mut self.s, "'"));
                     try!(self.print_ident(*ident));
                     try!(self.word_space(":"));
                 }
@@ -1339,7 +1343,6 @@ impl<'a> State<'a> {
             }
             ast::ExprLoop(ref blk, opt_ident) => {
                 for ident in opt_ident.iter() {
-                    try!(word(&mut self.s, "'"));
                     try!(self.print_ident(*ident));
                     try!(self.word_space(":"));
                 }
@@ -1504,7 +1507,6 @@ impl<'a> State<'a> {
                 try!(word(&mut self.s, "break"));
                 try!(space(&mut self.s));
                 for ident in opt_ident.iter() {
-                    try!(word(&mut self.s, "'"));
                     try!(self.print_ident(*ident));
                     try!(space(&mut self.s));
                 }
@@ -1513,7 +1515,6 @@ impl<'a> State<'a> {
                 try!(word(&mut self.s, "continue"));
                 try!(space(&mut self.s));
                 for ident in opt_ident.iter() {
-                    try!(word(&mut self.s, "'"));
                     try!(self.print_ident(*ident));
                     try!(space(&mut self.s))
                 }
@@ -1677,7 +1678,7 @@ impl<'a> State<'a> {
 
         match *opt_bounds {
             None => Ok(()),
-            Some(ref bounds) => self.print_bounds(&None, bounds, true),
+            Some(ref bounds) => self.print_bounds(&None, bounds, true, true),
         }
     }
 
@@ -1936,14 +1937,21 @@ impl<'a> State<'a> {
     pub fn print_bounds(&mut self,
                         region: &Option<ast::Lifetime>,
                         bounds: &OwnedSlice<ast::TyParamBound>,
-                        print_colon_anyway: bool) -> IoResult<()> {
+                        print_colon_anyway: bool,
+                        print_plus_before_bounds: bool)
+                        -> IoResult<()> {
+        let separator = if print_plus_before_bounds {
+            "+"
+        } else {
+            ":"
+        };
         if !bounds.is_empty() || region.is_some() {
-            try!(word(&mut self.s, ":"));
+            try!(word(&mut self.s, separator));
             let mut first = true;
             match *region {
                 Some(ref lt) => {
                     let token = token::get_name(lt.name);
-                    if token.get() != "static" {
+                    if token.get() != "'static" {
                         try!(self.nbsp());
                         first = false;
                         try!(self.print_lifetime(lt));
@@ -1980,7 +1988,7 @@ impl<'a> State<'a> {
             }
             Ok(())
         } else if print_colon_anyway {
-            word(&mut self.s, ":")
+            word(&mut self.s, separator)
         } else {
             Ok(())
         }
@@ -1988,7 +1996,6 @@ impl<'a> State<'a> {
 
     pub fn print_lifetime(&mut self,
                           lifetime: &ast::Lifetime) -> IoResult<()> {
-        try!(word(&mut self.s, "'"));
         self.print_name(lifetime.name)
     }
 
@@ -2016,7 +2023,10 @@ impl<'a> State<'a> {
                             try!(s.word_space("type"));
                         }
                         try!(s.print_ident(param.ident));
-                        try!(s.print_bounds(&None, &param.bounds, false));
+                        try!(s.print_bounds(&None,
+                                            &param.bounds,
+                                            false,
+                                            false));
                         match param.default {
                             Some(ref default) => {
                                 try!(space(&mut s.s));
@@ -2219,7 +2229,7 @@ impl<'a> State<'a> {
         }
 
         opt_bounds.as_ref().map(|bounds| {
-            self.print_bounds(opt_region, bounds, true)
+            self.print_bounds(opt_region, bounds, true, false)
         });
 
         try!(self.maybe_print_comment(decl.output.span.lo));

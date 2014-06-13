@@ -1,4 +1,4 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(macro_rules)]
 
-macro_rules! foo {
-    () => { break 'x; }
+struct X {
+    a: [u8, ..1]
 }
 
-pub fn main() {
-    'x: loop { foo!() } //~ ERROR use of undeclared label `'x`
+fn main() {
+    let x = X { a: [0] };
+    let _f = &x.a as *mut u8;
+    //~^ ERROR mismatched types: expected `*mut u8` but found `&[u8, .. 1]`
+
+    let local = [0u8];
+    let _v = &local as *mut u8;
+    //~^ ERROR mismatched types: expected `*mut u8` but found `&[u8, .. 1]`
 }

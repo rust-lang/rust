@@ -10,8 +10,8 @@
 
 // This is an interesting test case. We have a trait (Bar) that is
 // implemented for a `Box<Foo>` object (note: no bounds). And then we
-// have a `Box<Foo:Send>` object. The impl for `Box<Foo>` is applicable
-// to `Box<Foo:Send>` because:
+// have a `Box<Foo+Send>` object. The impl for `Box<Foo>` is applicable
+// to `Box<Foo+Send>` because:
 //
 // 1. The trait Bar is contravariant w/r/t Self because `Self` appears
 //    only in argument position.
@@ -30,7 +30,7 @@ impl Bar for Box<Foo> { fn dummy(&self) { } }
 fn wants_bar<B:Bar>(b: &B) { }
 
 fn main() {
-    let x: Box<Foo:Send> = (box SFoo);
+    let x: Box<Foo+Send> = (box SFoo);
     wants_bar(&x);
 }
 

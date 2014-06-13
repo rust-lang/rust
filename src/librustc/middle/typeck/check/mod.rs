@@ -3099,9 +3099,9 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                         /* this cast is only allowed from &[T] to *T or
                         &T to *T. */
                         match (&ty::get(te).sty, &ty::get(t_1).sty) {
-                            (&ty::ty_rptr(_, mt1), &ty::ty_ptr(mt2))
-                            if types_compatible(fcx, e.span,
-                                                mt1.ty, mt2.ty) => {
+                            (&ty::ty_rptr(_, ty::mt { ty: mt1, mutbl: ast::MutImmutable }),
+                             &ty::ty_ptr(ty::mt { ty: mt2, mutbl: ast::MutImmutable }))
+                            if types_compatible(fcx, e.span, mt1, mt2) => {
                                 /* this case is allowed */
                             }
                             _ => {

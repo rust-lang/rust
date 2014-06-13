@@ -12,6 +12,7 @@ use clean;
 
 use dl = std::dynamic_lib;
 use serialize::json;
+use std::mem;
 use std::string::String;
 
 pub type PluginJson = Option<(String, json::Json)>;
@@ -45,9 +46,11 @@ impl PluginManager {
         let x = self.prefix.join(libname(name));
         let lib_result = dl::DynamicLibrary::open(Some(&x));
         let lib = lib_result.unwrap();
-        let plugin = unsafe { lib.symbol("rustdoc_plugin_entrypoint") }.unwrap();
+        unsafe {
+            let plugin = lib.symbol("rustdoc_plugin_entrypoint").unwrap();
+            self.callbacks.push(mem::transmute::<*u8,PluginCallback>(plugin));
+        }
         self.dylibs.push(lib);
-        self.callbacks.push(plugin);
     }
 
     /// Load a normal Rust function as a plugin.

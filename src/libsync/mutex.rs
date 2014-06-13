@@ -97,7 +97,14 @@ pub static NATIVE_BLOCKED: uint = 1 << 2;
 /// drop(guard); // unlock the lock
 /// ```
 pub struct Mutex {
-    lock: StaticMutex,
+    // Note that this static mutex is in a *box*, not inlined into the struct
+    // itself. This is done for memory safety reasons with the usage of a
+    // StaticNativeMutex inside the static mutex above. Once a native mutex has
+    // been used once, its address can never change (it can't be moved). This
+    // mutex type can be safely moved at any time, so to ensure that the native
+    // mutex is used correctly we box the inner lock to give it a constant
+    // address.
+    lock: Box<StaticMutex>,
 }
 
 #[deriving(PartialEq, Show)]
@@ -458,7 +465,7 @@ impl Mutex {
     /// Creates a new mutex in an unlocked state ready for use.
     pub fn new() -> Mutex {
         Mutex {
-            lock: StaticMutex {
+            lock: box StaticMutex {
                 state: atomics::AtomicUint::new(0),
                 flavor: Unsafe::new(Unlocked),
                 green_blocker: Unsafe::new(0),

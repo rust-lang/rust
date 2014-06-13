@@ -1140,6 +1140,7 @@ impl<'a> Rebuilder<'a> {
                     }
                     ast::TyTup(new_tys)
                 }
+                ast::TyParen(ref typ) => ast::TyParen(build_to(*typ, to)),
                 ref other => other.clone()
             };
             box(GC) ast::Ty { id: from.id, node: new_node, span: from.span }
@@ -1505,7 +1506,8 @@ impl LifeGiver {
     fn give_lifetime(&self) -> ast::Lifetime {
         let mut lifetime;
         loop {
-            let s = num_to_str(self.counter.get());
+            let mut s = String::from_str("'");
+            s.push_str(num_to_str(self.counter.get()).as_slice());
             if !self.taken.contains(&s) {
                 lifetime = name_to_dummy_lifetime(
                                     token::str_to_ident(s.as_slice()).name);
