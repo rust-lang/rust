@@ -21,5 +21,4 @@ pub fn main() {
 
 fn test_color(color: color, val: int, _name: String) {
     assert!(color as int == val);
-    assert!(color as f64 == val as f64);
 }
