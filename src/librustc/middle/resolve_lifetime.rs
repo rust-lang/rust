@@ -18,7 +18,7 @@
  */
 
 use driver::session::Session;
-use util::nodemap::NodeMap;
+use middle::subst;
 use syntax::ast;
 use syntax::codemap::Span;
 use syntax::owned_slice::OwnedSlice;
@@ -27,10 +27,24 @@ use syntax::parse::token;
 use syntax::print::pprust::{lifetime_to_str};
 use syntax::visit;
 use syntax::visit::Visitor;
+use util::nodemap::NodeMap;
+
+#[deriving(Clone, PartialEq, Eq, Hash, Encodable, Decodable, Show)]
+pub enum DefRegion {
+    DefStaticRegion,
+    DefEarlyBoundRegion(/* space */ subst::ParamSpace,
+                        /* index */ uint,
+                        /* lifetime decl */ ast::NodeId),
+    DefLateBoundRegion(/* binder_id */ ast::NodeId,
+                       /* depth */ uint,
+                       /* lifetime decl */ ast::NodeId),
+    DefFreeRegion(/* block scope */ ast::NodeId,
+                  /* lifetime decl */ ast::NodeId),
+}
 
 // maps the id of each lifetime reference to the lifetime decl
 // that it corresponds to
-pub type NamedRegionMap = NodeMap<ast::DefRegion>;
+pub type NamedRegionMap = NodeMap<DefRegion>;
 
 // Returns an instance of some type that implements std::fmt::Show
 fn lifetime_show(lt_name: &ast::Name) -> token::InternedString {
@@ -45,7 +59,7 @@ struct LifetimeContext<'a> {
 enum ScopeChain<'a> {
     /// EarlyScope(i, ['a, 'b, ...], s) extends s with early-bound
     /// lifetimes, assigning indexes 'a => i, 'b => i+1, ... etc.
-    EarlyScope(uint, &'a Vec<ast::Lifetime>, Scope<'a>),
+    EarlyScope(subst::ParamSpace, &'a Vec<ast::Lifetime>, Scope<'a>),
     /// LateScope(binder_id, ['a, 'b, ...], s) extends s with late-bound
     /// lifetimes introduced by the declaration binder_id.
     LateScope(ast::NodeId, &'a Vec<ast::Lifetime>, Scope<'a>),
@@ -86,7 +100,7 @@ impl<'a, 'b> Visitor<Scope<'a>> for LifetimeContext<'b> {
             ast::ItemImpl(ref generics, _, _, _) |
             ast::ItemTrait(ref generics, _, _, _) => {
                 self.check_lifetime_names(&generics.lifetimes);
-                EarlyScope(0, &generics.lifetimes, &root)
+                EarlyScope(subst::TypeSpace, &generics.lifetimes, &root)
             }
         };
         debug!("entering scope {:?}", scope);
@@ -152,30 +166,10 @@ impl<'a, 'b> Visitor<Scope<'a>> for LifetimeContext<'b> {
                           lifetime_ref: &ast::Lifetime,
                           scope: Scope<'a>) {
         if lifetime_ref.name == special_idents::statik.name {
-            self.insert_lifetime(lifetime_ref, ast::DefStaticRegion);
+            self.insert_lifetime(lifetime_ref, DefStaticRegion);
             return;
         }
         self.resolve_lifetime_ref(lifetime_ref, scope);
-    }
-}
-
-impl<'a> ScopeChain<'a> {
-    fn count_early_params(&self) -> uint {
-        /*!
-         * Counts the number of early-bound parameters that are in
-         * scope.  Used when checking methods: the early-bound
-         * lifetime parameters declared on the method are assigned
-         * indices that come after the indices from the type.  Given
-         * something like `impl<'a> Foo { ... fn bar<'b>(...) }`
-         * then `'a` gets index 0 and `'b` gets index 1.
-         */
-
-        match *self {
-            RootScope => 0,
-            EarlyScope(base, lifetimes, _) => base + lifetimes.len(),
-            LateScope(_, _, s) => s.count_early_params(),
-            BlockScope(_, _) => 0,
-        }
     }
 }
 
@@ -212,14 +206,11 @@ impl<'a> LifetimeContext<'a> {
 
         self.check_lifetime_names(&generics.lifetimes);
 
-        let early_count = scope.count_early_params();
         let referenced_idents = free_lifetimes(&generics.ty_params);
         debug!("pushing fn scope id={} due to fn item/method\
-               referenced_idents={:?} \
-               early_count={}",
+               referenced_idents={:?}",
                n,
-               referenced_idents.iter().map(lifetime_show).collect::<Vec<token::InternedString>>(),
-               early_count);
+               referenced_idents.iter().map(lifetime_show).collect::<Vec<token::InternedString>>());
         if referenced_idents.is_empty() {
             let scope1 = LateScope(n, &generics.lifetimes, scope);
             walk(self, &scope1)
@@ -227,7 +218,7 @@ impl<'a> LifetimeContext<'a> {
             let (early, late) = generics.lifetimes.clone().partition(
                 |l| referenced_idents.iter().any(|&i| i == l.name));
 
-            let scope1 = EarlyScope(early_count, &early, scope);
+            let scope1 = EarlyScope(subst::FnSpace, &early, scope);
             let scope2 = LateScope(n, &late, &scope1);
 
             walk(self, &scope2);
@@ -256,11 +247,10 @@ impl<'a> LifetimeContext<'a> {
                     break;
                 }
 
-                EarlyScope(base, lifetimes, s) => {
+                EarlyScope(space, lifetimes, s) => {
                     match search_lifetimes(lifetimes, lifetime_ref) {
-                        Some((offset, decl_id)) => {
-                            let index = base + offset;
-                            let def = ast::DefEarlyBoundRegion(index, decl_id);
+                        Some((index, decl_id)) => {
+                            let def = DefEarlyBoundRegion(space, index, decl_id);
                             self.insert_lifetime(lifetime_ref, def);
                             return;
                         }
@@ -274,7 +264,7 @@ impl<'a> LifetimeContext<'a> {
                 LateScope(binder_id, lifetimes, s) => {
                     match search_lifetimes(lifetimes, lifetime_ref) {
                         Some((_index, decl_id)) => {
-                            let def = ast::DefLateBoundRegion(binder_id, depth, decl_id);
+                            let def = DefLateBoundRegion(binder_id, depth, decl_id);
                             self.insert_lifetime(lifetime_ref, def);
                             return;
                         }
@@ -325,7 +315,7 @@ impl<'a> LifetimeContext<'a> {
 
         match search_result {
             Some((_depth, decl_id)) => {
-                let def = ast::DefFreeRegion(scope_id, decl_id);
+                let def = DefFreeRegion(scope_id, decl_id);
                 self.insert_lifetime(lifetime_ref, def);
             }
 
@@ -374,7 +364,7 @@ impl<'a> LifetimeContext<'a> {
 
     fn insert_lifetime(&mut self,
                        lifetime_ref: &ast::Lifetime,
-                       def: ast::DefRegion) {
+                       def: DefRegion) {
         if lifetime_ref.id == ast::DUMMY_NODE_ID {
             self.sess.span_bug(lifetime_ref.span,
                                "lifetime reference not renumbered, \

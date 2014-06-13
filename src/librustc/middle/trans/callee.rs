@@ -23,7 +23,7 @@ use lib::llvm::llvm;
 use metadata::csearch;
 use middle::def;
 use middle::subst;
-use middle::subst::Subst;
+use middle::subst::{Subst, VecPerParamSpace};
 use middle::trans::base;
 use middle::trans::base::*;
 use middle::trans::build::*;
@@ -198,12 +198,10 @@ fn trans_fn_ref_with_vtables_to_callee<'a>(bcx: &'a Block<'a>,
 
 fn resolve_default_method_vtables(bcx: &Block,
                                   impl_id: ast::DefId,
-                                  method: &ty::Method,
                                   substs: &subst::Substs,
                                   impl_vtables: typeck::vtable_res)
-                          -> (typeck::vtable_res, typeck::vtable_param_res)
+                                  -> typeck::vtable_res
 {
-
     // Get the vtables that the impl implements the trait at
     let impl_res = ty::lookup_impl_vtables(bcx.tcx(), impl_id);
 
@@ -211,32 +209,30 @@ fn resolve_default_method_vtables(bcx: &Block,
     // trait_vtables under.
     let param_substs = param_substs {
         substs: (*substs).clone(),
-        vtables: impl_vtables.clone(),
-        self_vtables: None
+        vtables: impl_vtables.clone()
     };
 
     let mut param_vtables = resolve_vtables_under_param_substs(
-        bcx.tcx(), &param_substs, impl_res.trait_vtables.as_slice());
+        bcx.tcx(), &param_substs, &impl_res);
 
     // Now we pull any vtables for parameters on the actual method.
-    let num_method_vtables = method.generics.type_param_defs().len();
-    let num_impl_type_parameters = impl_vtables.len() - num_method_vtables;
-    param_vtables.push_all(impl_vtables.tailn(num_impl_type_parameters));
+    param_vtables
+        .get_mut_vec(subst::FnSpace)
+        .push_all(
+            impl_vtables.get_vec(subst::FnSpace).as_slice());
 
-    let self_vtables = resolve_param_vtables_under_param_substs(
-        bcx.tcx(), &param_substs, impl_res.self_vtables.as_slice());
-
-    (param_vtables, self_vtables)
+    param_vtables
 }
 
 
 pub fn trans_fn_ref_with_vtables(
-        bcx: &Block,       //
-        def_id: ast::DefId,   // def id of fn
-        node: ExprOrMethodCall,  // node id of use of fn; may be zero if N/A
-        substs: subst::Substs, // values for fn's ty params
-        vtables: typeck::vtable_res) // vtables for the call
-     -> ValueRef {
+    bcx: &Block,                 //
+    def_id: ast::DefId,          // def id of fn
+    node: ExprOrMethodCall,      // node id of use of fn; may be zero if N/A
+    substs: subst::Substs,       // values for fn's ty params
+    vtables: typeck::vtable_res) // vtables for the call
+    -> ValueRef
+{
     /*!
      * Translates a reference to a fn/method item, monomorphizing and
      * inlining as it goes.
@@ -264,7 +260,7 @@ pub fn trans_fn_ref_with_vtables(
            substs.repr(tcx),
            vtables.repr(tcx));
 
-    assert!(substs.tps.iter().all(|t| !ty::type_needs_infer(*t)));
+    assert!(substs.types.all(|t| !ty::type_needs_infer(*t)));
 
     // Polytype of the function item (may have type params)
     let fn_tpt = ty::lookup_item_type(tcx, def_id);
@@ -280,9 +276,9 @@ pub fn trans_fn_ref_with_vtables(
     // We need to do a bunch of special handling for default methods.
     // We need to modify the def_id and our substs in order to monomorphize
     // the function.
-    let (is_default, def_id, substs, self_vtables, vtables) =
+    let (is_default, def_id, substs, vtables) =
         match ty::provided_source(tcx, def_id) {
-        None => (false, def_id, substs, None, vtables),
+        None => (false, def_id, substs, vtables),
         Some(source_id) => {
             // There are two relevant substitutions when compiling
             // default methods. First, there is the substitution for
@@ -305,7 +301,7 @@ pub fn trans_fn_ref_with_vtables(
 
             // Compute the first substitution
             let first_subst = make_substs_for_receiver_types(
-                tcx, impl_id, &*trait_ref, &*method);
+                tcx, &*trait_ref, &*method);
 
             // And compose them
             let new_substs = first_subst.subst(tcx, &substs);
@@ -318,16 +314,14 @@ pub fn trans_fn_ref_with_vtables(
                    first_subst.repr(tcx), new_substs.repr(tcx),
                    vtables.repr(tcx));
 
-            let (param_vtables, self_vtables) =
-                resolve_default_method_vtables(bcx, impl_id,
-                                               &*method, &substs, vtables);
+            let param_vtables =
+                resolve_default_method_vtables(bcx, impl_id, &substs, vtables);
 
             debug!("trans_fn_with_vtables - default method: \
-                    self_vtable = {}, param_vtables = {}",
-                   self_vtables.repr(tcx), param_vtables.repr(tcx));
+                    param_vtables = {}",
+                   param_vtables.repr(tcx));
 
-            (true, source_id,
-             new_substs, Some(self_vtables), param_vtables)
+            (true, source_id, new_substs, param_vtables)
         }
     };
 
@@ -345,7 +339,7 @@ pub fn trans_fn_ref_with_vtables(
     // intrinsic, or is a default method.  In particular, if we see an
     // intrinsic that is inlined from a different crate, we want to reemit the
     // intrinsic instead of trying to call it in the other crate.
-    let must_monomorphise = if substs.tps.len() > 0 || is_default {
+    let must_monomorphise = if !substs.types.is_empty() || is_default {
         true
     } else if def_id.krate == ast::LOCAL_CRATE {
         let map_node = session::expect(
@@ -375,8 +369,7 @@ pub fn trans_fn_ref_with_vtables(
 
         let (val, must_cast) =
             monomorphize::monomorphic_fn(ccx, def_id, &substs,
-                                         vtables, self_vtables,
-                                         opt_ref_id);
+                                         vtables, opt_ref_id);
         let mut val = val;
         if must_cast && node != ExprId(0) {
             // Monotype of the REFERENCE to the function (type params
@@ -498,7 +491,7 @@ pub fn trans_lang_call<'a>(
                                                                     did,
                                                                     0,
                                                                     subst::Substs::empty(),
-                                                                    Vec::new())
+                                                                    VecPerParamSpace::empty())
                              },
                              ArgVals(args),
                              dest)

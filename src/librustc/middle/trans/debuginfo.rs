@@ -520,10 +520,11 @@ impl TypeMap {
 
             // Maybe check that there is no self type here
 
-            if substs.tps.len() > 0 {
+            let tps = substs.types.get_vec(subst::TypeSpace);
+            if tps.len() > 0 {
                 output.push_char('<');
 
-                for &type_parameter in substs.tps.iter() {
+                for &type_parameter in tps.iter() {
                     let param_type_id = type_map.get_unique_type_id_of_type(cx, type_parameter);
                     let param_type_id = type_map.get_unique_type_id_as_string(param_type_id);
                     output.push_str(param_type_id.as_slice());
@@ -1209,7 +1210,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
                                file_metadata: DIFile,
                                name_to_append_suffix_to: &mut String)
                                -> DIArray {
-        let self_type = param_substs.substs.self_ty;
+        let self_type = param_substs.substs.self_ty();
 
         // Only true for static default methods:
         let has_self_type = self_type.is_some();
@@ -1263,7 +1264,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
         }
 
         // Handle other generic parameters
-        let actual_types = &param_substs.substs.tps;
+        let actual_types = param_substs.substs.types.get_vec(subst::FnSpace);
         for (index, &ast::TyParam{ ident: ident, .. }) in generics.ty_params.iter().enumerate() {
             let actual_type = *actual_types.get(index);
             // Add actual type name to <...> clause of function name
@@ -2733,13 +2734,11 @@ fn trait_metadata(cx: &CrateContext,
     let ident_string = token::get_name(last.name());
     let mut name = ppaux::trait_store_to_str(cx.tcx(), trait_store);
     name.push_str(ident_string.get());
+
     // Add type and region parameters
-    let name = ppaux::parameterized(cx.tcx(),
-                                    name.as_slice(),
-                                    &substs.regions,
-                                    substs.tps.as_slice(),
-                                    def_id,
-                                    true);
+    let trait_def = ty::lookup_trait_def(cx.tcx(), def_id);
+    let name = ppaux::parameterized(cx.tcx(), name.as_slice(),
+                                    substs, &trait_def.generics);
 
     let (containing_scope, definition_span) = get_namespace_and_span_for_item(cx, def_id);
 

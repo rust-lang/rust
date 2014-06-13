@@ -25,6 +25,7 @@ use metadata::tydecode::{DefIdSource, NominalType, TypeWithId, TypeParameter,
                          RegionParameter};
 use metadata::tyencode;
 use middle::subst;
+use middle::subst::VecPerParamSpace;
 use middle::typeck::{MethodCall, MethodCallee, MethodOrigin};
 use middle::{ty, typeck};
 use util::ppaux::ty_to_str;
@@ -39,7 +40,7 @@ use libc;
 use std::io::Seek;
 use std::io::MemWriter;
 use std::mem;
-use std::rc::Rc;
+use std::string::String;
 
 use serialize::ebml::reader;
 use serialize::ebml;
@@ -433,7 +434,7 @@ impl tr for def::Def {
           def::DefTrait(did) => def::DefTrait(did.tr(xcx)),
           def::DefTy(did) => def::DefTy(did.tr(xcx)),
           def::DefPrimTy(p) => def::DefPrimTy(p),
-          def::DefTyParam(did, v) => def::DefTyParam(did.tr(xcx), v),
+          def::DefTyParam(s, did, v) => def::DefTyParam(s, did.tr(xcx), v),
           def::DefBinding(nid, bm) => def::DefBinding(xcx.tr_id(nid), bm),
           def::DefUse(did) => def::DefUse(did.tr(xcx)),
           def::DefUpvar(nid1, def, nid2, nid3) => {
@@ -476,13 +477,18 @@ impl tr for ty::AutoRef {
 impl tr for ty::Region {
     fn tr(&self, xcx: &ExtendedDecodeContext) -> ty::Region {
         match *self {
-            ty::ReLateBound(id, br) => ty::ReLateBound(xcx.tr_id(id),
-                                                       br.tr(xcx)),
-            ty::ReEarlyBound(id, index, ident) => ty::ReEarlyBound(xcx.tr_id(id),
-                                                                     index,
-                                                                     ident),
-            ty::ReScope(id) => ty::ReScope(xcx.tr_id(id)),
-            ty::ReEmpty | ty::ReStatic | ty::ReInfer(..) => *self,
+            ty::ReLateBound(id, br) => {
+                ty::ReLateBound(xcx.tr_id(id), br.tr(xcx))
+            }
+            ty::ReEarlyBound(id, space, index, ident) => {
+                ty::ReEarlyBound(xcx.tr_id(id), space, index, ident)
+            }
+            ty::ReScope(id) => {
+                ty::ReScope(xcx.tr_id(id))
+            }
+            ty::ReEmpty | ty::ReStatic | ty::ReInfer(..) => {
+                *self
+            }
             ty::ReFree(ref fr) => {
                 ty::ReFree(ty::FreeRegion {scope_id: xcx.tr_id(fr.scope_id),
                                             bound_region: fr.bound_region.tr(xcx)})
@@ -634,15 +640,16 @@ fn encode_vtable_res_with_key(ecx: &e::EncodeContext,
 }
 
 pub fn encode_vtable_res(ecx: &e::EncodeContext,
-                     ebml_w: &mut Encoder,
-                     dr: &typeck::vtable_res) {
+                         ebml_w: &mut Encoder,
+                         dr: &typeck::vtable_res) {
     // can't autogenerate this code because automatic code of
     // ty::t doesn't work, and there is no way (atm) to have
     // hand-written encoding routines combine with auto-generated
-    // ones.  perhaps we should fix this.
-    ebml_w.emit_from_vec(dr.as_slice(), |ebml_w, param_tables| {
-        Ok(encode_vtable_param_res(ecx, ebml_w, param_tables))
-    }).unwrap()
+    // ones. perhaps we should fix this.
+    encode_vec_per_param_space(
+        ebml_w, dr,
+        |ebml_w, param_tables| encode_vtable_param_res(ecx, ebml_w,
+                                                       param_tables))
 }
 
 pub fn encode_vtable_param_res(ecx: &e::EncodeContext,
@@ -673,7 +680,7 @@ pub fn encode_vtable_origin(ecx: &e::EncodeContext,
             })
           }
           typeck::vtable_param(pn, bn) => {
-            ebml_w.emit_enum_variant("vtable_param", 1u, 2u, |ebml_w| {
+            ebml_w.emit_enum_variant("vtable_param", 1u, 3u, |ebml_w| {
                 ebml_w.emit_enum_variant_arg(0u, |ebml_w| {
                     pn.encode(ebml_w)
                 });
@@ -682,11 +689,19 @@ pub fn encode_vtable_origin(ecx: &e::EncodeContext,
                 })
             })
           }
+          typeck::vtable_error => {
+            ebml_w.emit_enum_variant("vtable_error", 2u, 3u, |_ebml_w| {
+                Ok(())
+            })
+          }
         }
     }).unwrap()
 }
 
 pub trait vtable_decoder_helpers {
+    fn read_vec_per_param_space<T>(&mut self,
+                                   f: |&mut Self| -> T)
+                                   -> VecPerParamSpace<T>;
     fn read_vtable_res_with_key(&mut self,
                                 tcx: &ty::ctxt,
                                 cdata: &cstore::crate_metadata)
@@ -703,6 +718,16 @@ pub trait vtable_decoder_helpers {
 }
 
 impl<'a> vtable_decoder_helpers for reader::Decoder<'a> {
+    fn read_vec_per_param_space<T>(&mut self,
+                                   f: |&mut reader::Decoder<'a>| -> T)
+                                   -> VecPerParamSpace<T>
+    {
+        let types = self.read_to_vec(|this| Ok(f(this))).unwrap();
+        let selfs = self.read_to_vec(|this| Ok(f(this))).unwrap();
+        let fns = self.read_to_vec(|this| Ok(f(this))).unwrap();
+        VecPerParamSpace::new(types, selfs, fns)
+    }
+
     fn read_vtable_res_with_key(&mut self,
                                 tcx: &ty::ctxt,
                                 cdata: &cstore::crate_metadata)
@@ -718,10 +743,12 @@ impl<'a> vtable_decoder_helpers for reader::Decoder<'a> {
     }
 
     fn read_vtable_res(&mut self,
-                       tcx: &ty::ctxt, cdata: &cstore::crate_metadata)
-                      -> typeck::vtable_res {
-        self.read_to_vec(|this| Ok(this.read_vtable_param_res(tcx, cdata)))
-             .unwrap().move_iter().collect()
+                       tcx: &ty::ctxt,
+                       cdata: &cstore::crate_metadata)
+                       -> typeck::vtable_res
+    {
+        self.read_vec_per_param_space(
+            |this| this.read_vtable_param_res(tcx, cdata))
     }
 
     fn read_vtable_param_res(&mut self,
@@ -737,7 +764,7 @@ impl<'a> vtable_decoder_helpers for reader::Decoder<'a> {
         self.read_enum("vtable_origin", |this| {
             this.read_enum_variant(["vtable_static",
                                     "vtable_param",
-                                    "vtable_self"],
+                                    "vtable_error"],
                                    |this, i| {
                 Ok(match i {
                   0 => {
@@ -763,11 +790,25 @@ impl<'a> vtable_decoder_helpers for reader::Decoder<'a> {
                         }).unwrap()
                     )
                   }
-                  // hard to avoid - user input
+                  2 => {
+                    typeck::vtable_error
+                  }
                   _ => fail!("bad enum variant")
                 })
             })
         }).unwrap()
+    }
+}
+
+// ___________________________________________________________________________
+//
+
+fn encode_vec_per_param_space<T>(ebml_w: &mut Encoder,
+                                 v: &subst::VecPerParamSpace<T>,
+                                 f: |&mut Encoder, &T|) {
+    for &space in subst::ParamSpace::all().iter() {
+        ebml_w.emit_from_vec(v.get_vec(space).as_slice(),
+                             |ebml_w, n| Ok(f(ebml_w, n))).unwrap();
     }
 }
 
@@ -827,14 +868,15 @@ impl<'a> ebml_writer_helpers for Encoder<'a> {
         self.emit_struct("ty_param_bounds_and_ty", 2, |this| {
             this.emit_struct_field("generics", 0, |this| {
                 this.emit_struct("Generics", 2, |this| {
-                    this.emit_struct_field("type_param_defs", 0, |this| {
-                        this.emit_from_vec(tpbt.generics.type_param_defs(),
-                                           |this, type_param_def| {
-                            Ok(this.emit_type_param_def(ecx, type_param_def))
-                        })
+                    this.emit_struct_field("types", 0, |this| {
+                        Ok(encode_vec_per_param_space(
+                            this, &tpbt.generics.types,
+                            |this, def| this.emit_type_param_def(ecx, def)))
                     });
-                    this.emit_struct_field("region_param_defs", 1, |this| {
-                        tpbt.generics.region_param_defs().encode(this)
+                    this.emit_struct_field("regions", 1, |this| {
+                        Ok(encode_vec_per_param_space(
+                            this, &tpbt.generics.regions,
+                            |this, def| def.encode(this).unwrap()))
                     })
                 })
             });
@@ -1186,22 +1228,17 @@ impl<'a> ebml_decoder_decoder_helpers for reader::Decoder<'a> {
                 generics: this.read_struct_field("generics", 0, |this| {
                     this.read_struct("Generics", 2, |this| {
                         Ok(ty::Generics {
-                            type_param_defs:
-                                this.read_struct_field("type_param_defs",
-                                                       0,
-                                                       |this| {
-                                    Ok(Rc::new(this.read_to_vec(|this|
-                                                             Ok(this.read_type_param_def(xcx)))
-                                                .unwrap()
-                                                .move_iter()
-                                                .collect()))
+                            types:
+                            this.read_struct_field("types", 0, |this| {
+                                Ok(this.read_vec_per_param_space(
+                                    |this| this.read_type_param_def(xcx)))
                             }).unwrap(),
-                            region_param_defs:
-                                this.read_struct_field("region_param_defs",
-                                                       1,
-                                                       |this| {
-                                    Decodable::decode(this)
-                                }).unwrap()
+
+                            regions:
+                            this.read_struct_field("regions", 1, |this| {
+                                Ok(this.read_vec_per_param_space(
+                                    |this| Decodable::decode(this).unwrap()))
+                            }).unwrap()
                         })
                     })
                 }).unwrap(),

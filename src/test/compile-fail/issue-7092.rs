@@ -15,7 +15,6 @@ fn foo(x: Whatever) {
     match x {
         Some(field) => field.access(),
         //~^ ERROR: mismatched types: expected `Whatever` but found
-        //~^^ ERROR: does not implement any method in scope named `access`
     }
 }
 

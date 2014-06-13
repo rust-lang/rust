@@ -33,32 +33,27 @@ pub fn monomorphic_fn(ccx: &CrateContext,
                       fn_id: ast::DefId,
                       real_substs: &subst::Substs,
                       vtables: typeck::vtable_res,
-                      self_vtables: Option<typeck::vtable_param_res>,
                       ref_id: Option<ast::NodeId>)
     -> (ValueRef, bool) {
     debug!("monomorphic_fn(\
             fn_id={}, \
             real_substs={}, \
             vtables={}, \
-            self_vtable={}, \
             ref_id={:?})",
            fn_id.repr(ccx.tcx()),
            real_substs.repr(ccx.tcx()),
            vtables.repr(ccx.tcx()),
-           self_vtables.repr(ccx.tcx()),
            ref_id);
 
-    assert!(real_substs.tps.iter().all(|t| {
+    assert!(real_substs.types.all(|t| {
         !ty::type_needs_infer(*t) && !ty::type_has_params(*t)
     }));
 
     let _icx = push_ctxt("monomorphic_fn");
 
-    let substs_iter = real_substs.self_ty.iter().chain(real_substs.tps.iter());
-    let param_ids: Vec<ty::t> = substs_iter.map(|t| *t).collect();
     let hash_id = MonoId {
         def: fn_id,
-        params: param_ids
+        params: real_substs.types.clone()
     };
 
     match ccx.monomorphized.borrow().find(&hash_id) {
@@ -73,7 +68,6 @@ pub fn monomorphic_fn(ccx: &CrateContext,
     let psubsts = param_substs {
         substs: (*real_substs).clone(),
         vtables: vtables,
-        self_vtables: self_vtables
     };
 
     debug!("monomorphic_fn(\
@@ -86,10 +80,6 @@ pub fn monomorphic_fn(ccx: &CrateContext,
 
     let tpt = ty::lookup_item_type(ccx.tcx(), fn_id);
     let llitem_ty = tpt.ty;
-
-    // We need to do special handling of the substitutions if we are
-    // calling a static provided method. This is sort of unfortunate.
-    let mut is_static_provided = None;
 
     let map_node = session::expect(
         ccx.sess(),
@@ -108,55 +98,11 @@ pub fn monomorphic_fn(ccx: &CrateContext,
                 return (get_item_val(ccx, fn_id.node), true);
             }
         }
-        ast_map::NodeTraitMethod(method) => {
-            match *method {
-                ast::Provided(m) => {
-                    // If this is a static provided method, indicate that
-                    // and stash the number of params on the method.
-                    if m.explicit_self.node == ast::SelfStatic {
-                        is_static_provided = Some(m.generics.ty_params.len());
-                    }
-                }
-                _ => {}
-            }
-        }
         _ => {}
     }
 
     debug!("monomorphic_fn about to subst into {}", llitem_ty.repr(ccx.tcx()));
-    let mono_ty = match is_static_provided {
-        None => llitem_ty.subst(ccx.tcx(), real_substs),
-        Some(num_method_ty_params) => {
-            // Static default methods are a little unfortunate, in
-            // that the "internal" and "external" type of them differ.
-            // Internally, the method body can refer to Self, but the
-            // externally visible type of the method has a type param
-            // inserted in between the trait type params and the
-            // method type params. The substs that we are given are
-            // the proper substs *internally* to the method body, so
-            // we have to use those when compiling it.
-            //
-            // In order to get the proper substitution to use on the
-            // type of the method, we pull apart the substitution and
-            // stick a substitution for the self type in.
-            // This is a bit unfortunate.
-
-            let idx = real_substs.tps.len() - num_method_ty_params;
-            let mut tps = Vec::new();
-            tps.push_all(real_substs.tps.slice(0, idx));
-            tps.push(real_substs.self_ty.unwrap());
-            tps.push_all(real_substs.tps.tailn(idx));
-
-            let substs = subst::Substs { regions: subst::ErasedRegions,
-                                         self_ty: None,
-                                         tps: tps };
-
-            debug!("static default: changed substitution to {}",
-                   substs.repr(ccx.tcx()));
-
-            llitem_ty.subst(ccx.tcx(), &substs)
-        }
-    };
+    let mono_ty = llitem_ty.subst(ccx.tcx(), real_substs);
 
     ccx.stats.n_monos.set(ccx.stats.n_monos.get() + 1);
 
@@ -306,7 +252,7 @@ pub struct MonoParamId {
 #[deriving(PartialEq, Eq, Hash)]
 pub struct MonoId {
     pub def: ast::DefId,
-    pub params: Vec<ty::t>
+    pub params: subst::VecPerParamSpace<ty::t>
 }
 
 pub fn make_vtable_id(_ccx: &CrateContext,
@@ -316,7 +262,7 @@ pub fn make_vtable_id(_ccx: &CrateContext,
         &typeck::vtable_static(impl_id, ref substs, _) => {
             MonoId {
                 def: impl_id,
-                params: substs.tps.iter().map(|subst| *subst).collect()
+                params: substs.types.clone()
             }
         }
 

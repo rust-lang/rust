@@ -21,7 +21,8 @@ pub use middle::typeck::infer::resolve::{resolve_ivar, resolve_all};
 pub use middle::typeck::infer::resolve::{resolve_nested_tvar};
 pub use middle::typeck::infer::resolve::{resolve_rvar};
 
-use std::collections::HashMap;
+use middle::subst;
+use middle::subst::Substs;
 use middle::ty::{TyVid, IntVid, FloatVid, RegionVid, Vid};
 use middle::ty;
 use middle::ty_fold;
@@ -37,6 +38,7 @@ use middle::typeck::infer::to_str::InferStr;
 use middle::typeck::infer::unify::{ValsAndBindings, Root};
 use middle::typeck::infer::error_reporting::ErrorReporting;
 use std::cell::{Cell, RefCell};
+use std::collections::HashMap;
 use std::rc::Rc;
 use syntax::ast;
 use syntax::codemap;
@@ -588,6 +590,7 @@ impl<'a> InferCtxt<'a> {
             let vals = &mut ty_var_bindings.vals;
             vals.insert(id, Root(Bounds { lb: None, ub: None }, 0u));
         }
+        debug!("created type variable {}", TyVid(id));
         return TyVid(id);
     }
 
@@ -623,11 +626,33 @@ impl<'a> InferCtxt<'a> {
 
     pub fn region_vars_for_defs(&self,
                                 span: Span,
-                                defs: &[ty::RegionParameterDef])
+                                defs: &Vec<ty::RegionParameterDef>)
                                 -> Vec<ty::Region> {
         defs.iter()
             .map(|d| self.next_region_var(EarlyBoundRegion(span, d.name)))
             .collect()
+    }
+
+    pub fn fresh_substs_for_type(&self,
+                                 span: Span,
+                                 generics: &ty::Generics)
+                                 -> subst::Substs
+    {
+        /*!
+         * Given a set of generics defined on a type or impl, returns
+         * a substitution mapping each type/region parameter to a
+         * fresh inference variable.
+         */
+        assert!(generics.types.len(subst::SelfSpace) == 0);
+        assert!(generics.types.len(subst::FnSpace) == 0);
+        assert!(generics.regions.len(subst::SelfSpace) == 0);
+        assert!(generics.regions.len(subst::FnSpace) == 0);
+
+        let type_parameter_count = generics.types.len(subst::TypeSpace);
+        let region_param_defs = generics.regions.get_vec(subst::TypeSpace);
+        let regions = self.region_vars_for_defs(span, region_param_defs);
+        let type_parameters = self.next_ty_vars(type_parameter_count);
+        subst::Substs::new_type(type_parameters, regions)
     }
 
     pub fn fresh_bound_region(&self, binder_id: ast::NodeId) -> ty::Region {

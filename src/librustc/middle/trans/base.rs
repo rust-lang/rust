@@ -457,11 +457,11 @@ pub fn get_res_dtor(ccx: &CrateContext,
         did
     };
 
-    if !substs.tps.is_empty() || !substs.self_ty.is_none() {
+    if !substs.types.is_empty() {
         assert_eq!(did.krate, ast::LOCAL_CRATE);
 
         let vtables = typeck::check::vtable::trans_resolve_method(ccx.tcx(), did.node, substs);
-        let (val, _) = monomorphize::monomorphic_fn(ccx, did, substs, vtables, None, None);
+        let (val, _) = monomorphize::monomorphic_fn(ccx, did, substs, vtables, None);
 
         val
     } else if did.krate == ast::LOCAL_CRATE {

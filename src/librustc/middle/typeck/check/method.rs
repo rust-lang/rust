@@ -91,7 +91,7 @@ use middle::typeck::infer;
 use middle::typeck::MethodCallee;
 use middle::typeck::{MethodOrigin, MethodParam};
 use middle::typeck::{MethodStatic, MethodObject};
-use middle::typeck::{param_numbered, param_self, param_index};
+use middle::typeck::{param_index};
 use middle::typeck::check::regionmanip::replace_late_bound_regions_in_fn_sig;
 use util::common::indenter;
 use util::ppaux;
@@ -235,31 +235,36 @@ fn construct_transformed_self_ty_for_object(
     trait_def_id: ast::DefId,
     rcvr_substs: &subst::Substs,
     method_ty: &ty::Method)
-    -> ty::t {
+    -> ty::t
+{
     /*!
-        * This is a bit tricky. We have a match against a trait method
-        * being invoked on an object, and we want to generate the
-        * self-type. As an example, consider a trait
-        *
-        *     trait Foo {
-        *         fn r_method<'a>(&'a self);
-        *         fn u_method(Box<self>);
-        *     }
-        *
-        * Now, assuming that `r_method` is being called, we want the
-        * result to be `&'a Foo`. Assuming that `u_method` is being
-        * called, we want the result to be `Box<Foo>`. Of course,
-        * this transformation has already been done as part of
-        * `method_ty.fty.sig.inputs[0]`, but there the type
-        * is expressed in terms of `Self` (i.e., `&'a Self`, `Box<Self>`).
-        * Because objects are not standalone types, we can't just substitute
-        * `s/Self/Foo/`, so we must instead perform this kind of hokey
-        * match below.
-        */
+     * This is a bit tricky. We have a match against a trait method
+     * being invoked on an object, and we want to generate the
+     * self-type. As an example, consider a trait
+     *
+     *     trait Foo {
+     *         fn r_method<'a>(&'a self);
+     *         fn u_method(Box<self>);
+     *     }
+     *
+     * Now, assuming that `r_method` is being called, we want the
+     * result to be `&'a Foo`. Assuming that `u_method` is being
+     * called, we want the result to be `Box<Foo>`. Of course,
+     * this transformation has already been done as part of
+     * `method_ty.fty.sig.inputs[0]`, but there the type
+     * is expressed in terms of `Self` (i.e., `&'a Self`, `Box<Self>`).
+     * Because objects are not standalone types, we can't just substitute
+     * `s/Self/Foo/`, so we must instead perform this kind of hokey
+     * match below.
+     */
 
-    let substs = subst::Substs {regions: rcvr_substs.regions.clone(),
-                                self_ty: None,
-                                tps: rcvr_substs.tps.clone()};
+    let mut obj_substs = rcvr_substs.clone();
+
+    // The subst we get in has Err as the "Self" type. For an object
+    // type, we don't put any type into the Self paramspace, so let's
+    // make a copy of rcvr_substs that has the Self paramspace empty.
+    obj_substs.types.get_mut_vec(subst::SelfSpace).pop().unwrap();
+
     match method_ty.explicit_self {
         ast::SelfStatic => {
             tcx.sess.span_bug(span, "static method for object type receiver");
@@ -271,13 +276,13 @@ fn construct_transformed_self_ty_for_object(
             let transformed_self_ty = *method_ty.fty.sig.inputs.get(0);
             match ty::get(transformed_self_ty).sty {
                 ty::ty_rptr(r, mt) => { // must be SelfRegion
-                    let r = r.subst(tcx, &substs); // handle Early-Bound lifetime
-                    ty::mk_trait(tcx, trait_def_id, substs,
+                    let r = r.subst(tcx, rcvr_substs); // handle Early-Bound lifetime
+                    ty::mk_trait(tcx, trait_def_id, obj_substs,
                                  RegionTraitStore(r, mt.mutbl),
                                  ty::empty_builtin_bounds())
                 }
                 ty::ty_uniq(_) => { // must be SelfUniq
-                    ty::mk_trait(tcx, trait_def_id, substs,
+                    ty::mk_trait(tcx, trait_def_id, obj_substs,
                                  UniqTraitStore,
                                  ty::empty_builtin_bounds())
                 }
@@ -456,11 +461,6 @@ impl<'a> LookupContext<'a> {
                 ty_param(p) => {
                     self.push_inherent_candidates_from_param(self_ty, restrict_to, p);
                 }
-                ty_self(..) => {
-                    // Call is of the form "self.foo()" and appears in one
-                    // of a trait's default method implementations.
-                    self.push_inherent_candidates_from_self(self_ty, restrict_to);
-                }
                 _ => { /* No bound methods in these types */ }
             }
 
@@ -516,10 +516,7 @@ impl<'a> LookupContext<'a> {
         //
         // `confirm_candidate()` also relies upon this substitution
         // for Self. (fix)
-        let rcvr_substs = subst::Substs {
-            self_ty: Some(ty::mk_err()),
-            ..(*substs).clone()
-        };
+        let rcvr_substs = substs.with_self_ty(ty::mk_err());
         let trait_ref = Rc::new(TraitRef {
             def_id: did,
             substs: rcvr_substs.clone()
@@ -552,35 +549,27 @@ impl<'a> LookupContext<'a> {
     fn push_inherent_candidates_from_param(&mut self,
                                            rcvr_ty: ty::t,
                                            restrict_to: Option<DefId>,
-                                           param_ty: param_ty) {
+                                           param_ty: ParamTy) {
         debug!("push_inherent_candidates_from_param(param_ty={:?})",
                param_ty);
-        let i = param_ty.idx;
-        match self.fcx.inh.param_env.type_param_bounds.as_slice().get(i) {
-            Some(b) => self.push_inherent_candidates_from_bounds(
-                            rcvr_ty, b.trait_bounds.as_slice(), restrict_to,
-                            param_numbered(param_ty.idx)),
-            None => {}
-        }
-    }
-
-
-    fn push_inherent_candidates_from_self(&mut self,
-                                          rcvr_ty: ty::t,
-                                          restrict_to: Option<DefId>) {
-        debug!("push_inherent_candidates_from_self()");
         self.push_inherent_candidates_from_bounds(
             rcvr_ty,
-            [self.fcx.inh.param_env.self_param_bound.clone().unwrap()],
+            param_ty.space,
+            param_ty.idx,
             restrict_to,
-            param_self)
+            param_index { space: param_ty.space, index: param_ty.idx });
     }
+
 
     fn push_inherent_candidates_from_bounds(&mut self,
                                             self_ty: ty::t,
-                                            bounds: &[Rc<TraitRef>],
+                                            space: subst::ParamSpace,
+                                            index: uint,
                                             restrict_to: Option<DefId>,
                                             param: param_index) {
+        let bounds =
+            self.fcx.inh.param_env.bounds.get(space, index).trait_bounds
+            .as_slice();
         self.push_inherent_candidates_from_bounds_inner(bounds,
             |trait_ref, m, method_num, bound_num| {
                 match restrict_to {
@@ -937,7 +926,7 @@ impl<'a> LookupContext<'a> {
             ty_bare_fn(..) | ty_box(..) | ty_uniq(..) | ty_rptr(..) |
             ty_infer(IntVar(_)) |
             ty_infer(FloatVar(_)) |
-            ty_self(_) | ty_param(..) | ty_nil | ty_bot | ty_bool |
+            ty_param(..) | ty_nil | ty_bot | ty_bool |
             ty_char | ty_int(..) | ty_uint(..) |
             ty_float(..) | ty_enum(..) | ty_ptr(..) | ty_struct(..) | ty_tup(..) |
             ty_str | ty_vec(..) | ty_trait(..) | ty_closure(..) => {
@@ -1093,7 +1082,8 @@ impl<'a> LookupContext<'a> {
     }
 
     fn confirm_candidate(&self, rcvr_ty: ty::t, candidate: &Candidate)
-                         -> MethodCallee {
+                         -> MethodCallee
+    {
         // This method performs two sets of substitutions, one after the other:
         // 1. Substitute values for any type/lifetime parameters from the impl and
         //    method declaration into the method type. This is the function type
@@ -1117,8 +1107,8 @@ impl<'a> LookupContext<'a> {
         // If they were not explicitly supplied, just construct fresh
         // variables.
         let num_supplied_tps = self.supplied_tps.len();
-        let num_method_tps = candidate.method_ty.generics.type_param_defs().len();
-        let m_substs = {
+        let num_method_tps = candidate.method_ty.generics.types.len(subst::FnSpace);
+        let m_types = {
             if num_supplied_tps == 0u {
                 self.fcx.infcx().next_ty_vars(num_method_tps)
             } else if num_method_tps == 0u {
@@ -1129,37 +1119,23 @@ impl<'a> LookupContext<'a> {
             } else if num_supplied_tps != num_method_tps {
                 tcx.sess.span_err(
                     self.span,
-                    "incorrect number of type \
-                     parameters given for this method");
+                    "incorrect number of type parameters given for this method");
                 self.fcx.infcx().next_ty_vars(num_method_tps)
             } else {
                 Vec::from_slice(self.supplied_tps)
             }
         };
 
-        // Determine values for the early-bound lifetime parameters.
+        // Create subst for early-bound lifetime parameters, combining
+        // parameters from the type and those from the method.
+        //
         // FIXME -- permit users to manually specify lifetimes
-        let mut all_regions: Vec<Region> = match candidate.rcvr_substs.regions {
-            subst::NonerasedRegions(ref v) => {
-                v.iter().map(|r| r.clone()).collect()
-            }
-            subst::ErasedRegions => tcx.sess.span_bug(self.span, "ErasedRegions")
-        };
         let m_regions =
             self.fcx.infcx().region_vars_for_defs(
                 self.span,
-                candidate.method_ty.generics.region_param_defs.as_slice());
-        for &r in m_regions.iter() {
-            all_regions.push(r);
-        }
+                candidate.method_ty.generics.regions.get_vec(subst::FnSpace));
 
-        // Construct the full set of type parameters for the method,
-        // which is equal to the class tps + the method tps.
-        let all_substs = subst::Substs {
-            tps: candidate.rcvr_substs.tps.clone().append(m_substs.as_slice()),
-            regions: subst::NonerasedRegions(all_regions),
-            self_ty: candidate.rcvr_substs.self_ty,
-        };
+        let all_substs = candidate.rcvr_substs.clone().with_method(m_types, m_regions);
 
         let ref bare_fn_ty = candidate.method_ty.fty;
 
@@ -1285,7 +1261,8 @@ impl<'a> LookupContext<'a> {
             check_for_self_ty(sig.output);
         }
 
-        if candidate.method_ty.generics.has_type_params() { // reason (b) above
+        if candidate.method_ty.generics.has_type_params(subst::FnSpace) {
+            // reason (b) above
             self.tcx().sess.span_err(
                 self.span,
                 "cannot call a generic method through an object");

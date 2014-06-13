@@ -61,6 +61,7 @@ time of error detection.
 
 use std::collections::HashSet;
 use middle::def;
+use middle::subst;
 use middle::ty;
 use middle::ty::{Region, ReFree};
 use middle::typeck::infer;
@@ -1055,9 +1056,10 @@ impl<'a> Rebuilder<'a> {
                                 ty: _
                             } = ty::lookup_item_type(self.tcx, did);
 
-                            let expected = generics.region_param_defs().len();
-                            let lifetimes = &path.segments.last()
-                                                 .unwrap().lifetimes;
+                            let expected =
+                                generics.regions.len(subst::TypeSpace);
+                            let lifetimes =
+                                &path.segments.last().unwrap().lifetimes;
                             let mut insert = Vec::new();
                             if lifetimes.len() == 0 {
                                 let anon = self.cur_anon.get();
