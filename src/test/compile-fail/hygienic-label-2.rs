@@ -15,5 +15,5 @@ macro_rules! foo {
 }
 
 pub fn main() {
-    foo!(break 'x); //~ ERROR use of undeclared label `x`
+    foo!(break 'x); //~ ERROR use of undeclared label `'x`
 }

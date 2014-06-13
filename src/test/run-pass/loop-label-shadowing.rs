@@ -1,4 +1,4 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(macro_rules)]
+// Issue #12512.
 
-macro_rules! foo {
-    () => { break 'x; }
+fn main() {
+    let mut foo = Vec::new();
+    'foo: for i in [1, 2, 3].iter() {
+        foo.push(i);
+    }
 }
 
-pub fn main() {
-    'x: loop { foo!() } //~ ERROR use of undeclared label `'x`
-}

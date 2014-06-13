@@ -511,7 +511,7 @@ impl<'a, 'b> Context<'a, 'b> {
                         self.ecx.expr_vec_slice(sp, default)))
             }
         };
-        let life = self.ecx.lifetime(sp, self.ecx.ident_of("static").name);
+        let life = self.ecx.lifetime(sp, self.ecx.ident_of("'static").name);
         let ty = self.ecx.ty_path(self.ecx.path_all(
                 sp,
                 true,
@@ -641,7 +641,7 @@ impl<'a, 'b> Context<'a, 'b> {
                     self.ecx.ident_of("rt"),
                     self.ecx.ident_of("Piece")),
                 vec!(self.ecx.lifetime(self.fmtsp,
-                                       self.ecx.ident_of("static").name)),
+                                       self.ecx.ident_of("'static").name)),
                 Vec::new()
             ), None);
         let ty = ast::TyFixedLengthVec(

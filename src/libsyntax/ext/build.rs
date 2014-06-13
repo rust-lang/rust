@@ -85,6 +85,7 @@ pub trait AstBuilder {
                       typ: P<ast::Ty>,
                       ex: Gc<ast::Expr>)
                       -> Gc<ast::Stmt>;
+    fn stmt_item(&self, sp: Span, item: Gc<ast::Item>) -> Gc<ast::Stmt>;
 
     // blocks
     fn block(&self, span: Span, stmts: Vec<Gc<ast::Stmt>>,
@@ -238,6 +239,14 @@ pub trait AstBuilder {
                 name: Ident, attrs: Vec<ast::Attribute>,
                 vi: Vec<ast::ViewItem>,
                 items: Vec<Gc<ast::Item>>) -> Gc<ast::Item>;
+
+    fn item_static(&self,
+                   span: Span,
+                   name: Ident,
+                   ty: P<ast::Ty>,
+                   mutbl: ast::Mutability,
+                   expr: Gc<ast::Expr>)
+                   -> Gc<ast::Item>;
 
     fn item_ty_poly(&self,
                     span: Span,
@@ -484,9 +493,17 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         box(GC) respan(sp, ast::StmtDecl(box(GC) decl, ast::DUMMY_NODE_ID))
     }
 
-    fn block(&self, span: Span, stmts: Vec<Gc<ast::Stmt>>,
-             expr: Option<Gc<Expr>>) -> P<ast::Block> {
+    fn block(&self,
+             span: Span,
+             stmts: Vec<Gc<ast::Stmt>>,
+             expr: Option<Gc<Expr>>)
+             -> P<ast::Block> {
         self.block_all(span, Vec::new(), stmts, expr)
+    }
+
+    fn stmt_item(&self, sp: Span, item: Gc<ast::Item>) -> Gc<ast::Stmt> {
+        let decl = respan(sp, ast::DeclItem(item));
+        box(GC) respan(sp, ast::StmtDecl(box(GC) decl, ast::DUMMY_NODE_ID))
     }
 
     fn block_expr(&self, expr: Gc<ast::Expr>) -> P<ast::Block> {
@@ -940,6 +957,16 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                 items: items,
             })
         )
+    }
+
+    fn item_static(&self,
+                   span: Span,
+                   name: Ident,
+                   ty: P<ast::Ty>,
+                   mutbl: ast::Mutability,
+                   expr: Gc<ast::Expr>)
+                   -> Gc<ast::Item> {
+        self.item(span, name, Vec::new(), ast::ItemStatic(ty, mutbl, expr))
     }
 
     fn item_ty_poly(&self, span: Span, name: Ident, ty: P<ast::Ty>,
