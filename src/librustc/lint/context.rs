@@ -44,6 +44,7 @@ use syntax::attr::AttrMetaMethods;
 use syntax::attr;
 use syntax::codemap::Span;
 use syntax::visit::{Visitor, FnKind};
+use syntax::parse::token::InternedString;
 use syntax::{ast, ast_util, visit};
 
 /// Information about the registered lints.
@@ -193,6 +194,38 @@ macro_rules! run_lints ( ($cx:expr, $f:ident, $($args:expr),*) => ({
     $cx.lints.passes = Some(passes);
 }))
 
+/// Parse the lint attributes into a vector, with `Err`s for malformed lint
+/// attributes. Writing this as an iterator is an enormous mess.
+pub fn gather_attrs(attrs: &[ast::Attribute])
+                    -> Vec<Result<(InternedString, Level, Span), Span>> {
+    let mut out = vec!();
+    for attr in attrs.iter() {
+        let level = match Level::from_str(attr.name().get()) {
+            None => continue,
+            Some(lvl) => lvl,
+        };
+
+        attr::mark_used(attr);
+
+        let meta = attr.node.value;
+        let metas = match meta.node {
+            ast::MetaList(_, ref metas) => metas,
+            _ => {
+                out.push(Err(meta.span));
+                continue;
+            }
+        };
+
+        for meta in metas.iter() {
+            out.push(match meta.node {
+                ast::MetaWord(ref lint_name) => Ok((lint_name.clone(), level, meta.span)),
+                _ => Err(meta.span),
+            });
+        }
+    }
+    out
+}
+
 /// Emit a lint as a warning or an error (or not at all)
 /// according to `level`.
 ///
@@ -295,9 +328,27 @@ impl<'a> Context<'a> {
         // current dictionary of lint information. Along the way, keep a history
         // of what we changed so we can roll everything back after invoking the
         // specified closure
-        let lint_attrs = self.gather_lint_attrs(attrs);
         let mut pushed = 0u;
-        for (lint_id, level, span) in lint_attrs.move_iter() {
+
+        for result in gather_attrs(attrs).move_iter() {
+            let (lint_id, level, span) = match result {
+                Err(span) => {
+                    self.tcx.sess.span_err(span, "malformed lint attribute");
+                    continue;
+                }
+                Ok((lint_name, level, span)) => {
+                    match self.lints.by_name.find_equiv(&lint_name.get()) {
+                        Some(&lint_id) => (lint_id, level, span),
+                        None => {
+                            self.span_lint(builtin::UNRECOGNIZED_LINT, span,
+                                           format!("unknown `{}` attribute: `{}`",
+                                                   level.as_str(), lint_name).as_slice());
+                            continue;
+                        }
+                    }
+                }
+            };
+
             let now = self.lints.get_level_source(lint_id).val0();
             if now == Forbid && level != Forbid {
                 let lint_name = lint_id.as_str();
@@ -330,46 +381,6 @@ impl<'a> Context<'a> {
             visited_outermost: false,
         };
         f(&mut v);
-    }
-
-    fn gather_lint_attrs(&mut self, attrs: &[ast::Attribute]) -> Vec<(LintId, Level, Span)> {
-        // Doing this as an iterator is messy due to multiple borrowing.
-        // Allocating and copying these should be quick.
-        let mut out = vec!();
-        for attr in attrs.iter() {
-            let level = match Level::from_str(attr.name().get()) {
-                None => continue,
-                Some(lvl) => lvl,
-            };
-
-            attr::mark_used(attr);
-
-            let meta = attr.node.value;
-            let metas = match meta.node {
-                ast::MetaList(_, ref metas) => metas,
-                _ => {
-                    self.tcx.sess.span_err(meta.span, "malformed lint attribute");
-                    continue;
-                }
-            };
-
-            for meta in metas.iter() {
-                match meta.node {
-                    ast::MetaWord(ref lint_name) => {
-                        match self.lints.by_name.find_equiv(&lint_name.get()) {
-                            Some(lint_id) => out.push((*lint_id, level, meta.span)),
-
-                            None => self.span_lint(builtin::UNRECOGNIZED_LINT,
-                                meta.span,
-                                format!("unknown `{}` attribute: `{}`",
-                                    level.as_str(), lint_name).as_slice()),
-                        }
-                    }
-                    _ => self.tcx.sess.span_err(meta.span, "malformed lint attribute"),
-                }
-            }
-        }
-        out
     }
 }
 

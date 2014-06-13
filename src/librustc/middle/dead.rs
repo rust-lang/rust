@@ -269,16 +269,11 @@ fn has_allow_dead_code_or_lang_attr(attrs: &[ast::Attribute]) -> bool {
         return true;
     }
 
-    // FIXME: use the lint attr parsing already in rustc::lint
-    for attr in attrs.iter().filter(|a| a.check_name("allow")) {
-        match attr.node.value.node {
-            ast::MetaList(_, ref metas) => for meta in metas.iter() {
-                match meta.node {
-                    ast::MetaWord(ref name) if name.get() == "dead_code"
-                        => return true,
-                    _ => (),
-                }
-            },
+    let dead_code = lint::builtin::DEAD_CODE.name_lower();
+    for attr in lint::gather_attrs(attrs).move_iter() {
+        match attr {
+            Ok((ref name, lint::Allow, _))
+                if name.get() == dead_code.as_slice() => return true,
             _ => (),
         }
     }
