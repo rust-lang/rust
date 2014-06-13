@@ -13,7 +13,7 @@ use ast::{P, Ident, Generics, NodeId, Expr};
 use ast;
 use ast_util;
 use attr;
-use codemap::{Span, respan, Spanned, DUMMY_SP};
+use codemap::{Span, respan, Spanned, DUMMY_SP, Pos};
 use ext::base::ExtCtxt;
 use fold::Folder;
 use owned_slice::OwnedSlice;
@@ -560,7 +560,15 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
     fn expr_field_access(&self, sp: Span, expr: Gc<ast::Expr>, ident: ast::Ident) -> Gc<ast::Expr> {
-        self.expr(sp, ast::ExprField(expr, ident, Vec::new()))
+        let field_name = token::get_ident(ident);
+        let field_span = Span {
+            lo: sp.lo - Pos::from_uint(field_name.get().len()),
+            hi: sp.hi,
+            expn_info: sp.expn_info,
+        };
+
+        let id = Spanned { node: ident, span: field_span };
+        self.expr(sp, ast::ExprField(expr, id, Vec::new()))
     }
     fn expr_addr_of(&self, sp: Span, e: Gc<ast::Expr>) -> Gc<ast::Expr> {
         self.expr(sp, ast::ExprAddrOf(ast::MutImmutable, e))

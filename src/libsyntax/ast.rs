@@ -464,7 +464,7 @@ pub enum Expr_ {
 
     ExprAssign(Gc<Expr>, Gc<Expr>),
     ExprAssignOp(BinOp, Gc<Expr>, Gc<Expr>),
-    ExprField(Gc<Expr>, Ident, Vec<P<Ty>>),
+    ExprField(Gc<Expr>, SpannedIdent, Vec<P<Ty>>),
     ExprIndex(Gc<Expr>, Gc<Expr>),
 
     /// Expression that looks like a "name". For example,
