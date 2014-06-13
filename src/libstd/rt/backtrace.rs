@@ -873,12 +873,12 @@ mod imp {
             Err(..) => return Ok(()),
         };
 
-        macro_rules! sym( ($e:expr, $t:ident) => (
-            match unsafe { lib.symbol::<$t>($e) } {
-                Ok(f) => f,
+        macro_rules! sym( ($e:expr, $t:ident) => (unsafe {
+            match lib.symbol($e) {
+                Ok(f) => mem::transmute::<*u8, $t>(f),
                 Err(..) => return Ok(())
             }
-        ) )
+        }) )
 
         // Fetch the symbols necessary from dbghelp.dll
         let SymFromAddr = sym!("SymFromAddr", SymFromAddrFn);

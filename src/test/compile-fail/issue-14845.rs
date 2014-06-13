@@ -17,7 +17,7 @@ fn main() {
     let x = X { a: [0] };
     let _f = &x.a as *mut u8;
     //~^ ERROR mismatched types: expected `*mut u8` but found `&[u8, .. 1]`
-    
+
     let local = [0u8];
     let _v = &local as *mut u8;
     //~^ ERROR mismatched types: expected `*mut u8` but found `&[u8, .. 1]`

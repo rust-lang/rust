@@ -77,15 +77,20 @@ pub mod compat {
         fn GetProcAddress(hModule: HMODULE, lpProcName: LPCSTR) -> LPVOID;
     }
 
-    // store_func() is idempotent, so using relaxed ordering for the atomics should be enough.
-    // This way, calling a function in this compatibility layer (after it's loaded) shouldn't
-    // be any slower than a regular DLL call.
-    unsafe fn store_func<T: Copy>(ptr: *mut T, module: &str, symbol: &str, fallback: T) {
+    // store_func() is idempotent, so using relaxed ordering for the atomics
+    // should be enough.  This way, calling a function in this compatibility
+    // layer (after it's loaded) shouldn't be any slower than a regular DLL
+    // call.
+    unsafe fn store_func(ptr: *mut uint, module: &str, symbol: &str, fallback: uint) {
         let module = module.to_utf16().append_one(0);
         symbol.with_c_str(|symbol| {
             let handle = GetModuleHandleW(module.as_ptr());
-            let func: Option<T> = transmute(GetProcAddress(handle, symbol));
-            atomic_store_relaxed(ptr, func.unwrap_or(fallback))
+            let func: uint = transmute(GetProcAddress(handle, symbol));
+            atomic_store_relaxed(ptr, if func == 0 {
+                fallback
+            } else {
+                func
+            })
         })
     }
 
@@ -109,10 +114,10 @@ pub mod compat {
 
                 extern "system" fn thunk($($argname: $argtype),*) -> $rettype {
                     unsafe {
-                        ::io::c::compat::store_func(&mut ptr,
-                                                             stringify!($module),
-                                                             stringify!($symbol),
-                                                             fallback);
+                        ::io::c::compat::store_func(&mut ptr as *mut _ as *mut uint,
+                                                    stringify!($module),
+                                                    stringify!($symbol),
+                                                    fallback as uint);
                         ::std::intrinsics::atomic_load_relaxed(&ptr)($($argname),*)
                     }
                 }

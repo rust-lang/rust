@@ -9,8 +9,8 @@
 // except according to those terms.
 
 #![feature(struct_variant)]
-#![deny(warnings)]
 
+#[deny(dead_code)]
 pub enum Foo {
     Bar {
         pub baz: int
