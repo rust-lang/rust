@@ -18,10 +18,6 @@ ifdef CFG_ENABLE_LOCAL_RUST
 	$(Q)$(S)src/etc/local_stage0.sh $(CFG_BUILD) $(CFG_LOCAL_RUST_ROOT) rustlib
 else
 	$(Q)$(CFG_PYTHON) $(S)src/etc/get-snapshot.py $(CFG_BUILD) $(SNAPSHOT_FILE)
-ifdef CFG_ENABLE_PAX_FLAGS
-	@$(call E, apply PaX flags: $@)
-	@"$(CFG_PAXCTL)" -cm "$@"
-endif
 endif
 	$(Q)touch $@
 

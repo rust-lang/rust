@@ -465,7 +465,7 @@ impl<'a, 'b> Context<'a, 'b> {
                     self.ecx.ident_of("rt"),
                     self.ecx.ident_of("Piece")),
                 vec!(self.ecx.lifetime(self.fmtsp,
-                                       self.ecx.ident_of("static").name)),
+                                       self.ecx.ident_of("'static").name)),
                 Vec::new()
             ), None);
         let ty = ast::TyFixedLengthVec(

@@ -724,6 +724,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                                  .collect();
                 ty::mk_tup(tcx, flds)
             }
+            ast::TyParen(ref typ) => ast_ty_to_ty(this, rscope, &**typ),
             ast::TyBareFn(ref bf) => {
                 if bf.decl.variadic && bf.abi != abi::C {
                     tcx.sess.span_err(ast_ty.span,

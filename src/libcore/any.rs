@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Traits for dynamic typing of any type (through runtime reflection)
+//! Traits for dynamic typing of any `'static` type (through runtime reflection)
 //!
 //! This module implements the `Any` trait, which enables dynamic typing
-//! of any type, through runtime reflection.
+//! of any `'static` type through runtime reflection.
 //!
 //! `Any` itself can be used to get a `TypeId`, and has more features when used as a trait object.
 //! As `&Any` (a borrowed trait object), it has the `is` and `as_ref` methods, to test if the
@@ -32,8 +32,10 @@ pub enum Void { }
 // Any trait
 ///////////////////////////////////////////////////////////////////////////////
 
-/// The `Any` trait is implemented by all types, and can be used as a trait object
-/// for dynamic typing
+/// The `Any` trait is implemented by all `'static` types, and can be used for dynamic typing
+///
+/// Every type with no non-`'static` references implements `Any`, so `Any` can be used as a trait
+/// object to emulate the effects dynamic typing.
 pub trait Any {
     /// Get the `TypeId` of `self`
     fn get_type_id(&self) -> TypeId;
@@ -260,6 +262,14 @@ mod tests {
         assert_eq!(s.as_slice(), "&Any");
         let s = format!("{}", b);
         assert_eq!(s.as_slice(), "&Any");
+    }
+
+    #[test]
+    fn any_fixed_vec() {
+        let test = [0u, ..8];
+        let test = &test as &Any;
+        assert!(test.is::<[uint, ..8]>());
+        assert!(!test.is::<[uint, ..10]>());
     }
 }
 

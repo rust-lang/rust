@@ -73,7 +73,6 @@ use libc::c_void;
 
 use local::Local;
 use task::{Task, Result};
-use exclusive::Exclusive;
 
 use uw = libunwind;
 
@@ -88,7 +87,6 @@ struct Exception {
 }
 
 pub type Callback = fn(msg: &Any:Send, file: &'static str, line: uint);
-type Queue = Exclusive<Vec<Callback>>;
 
 // Variables used for invoking callbacks when a task starts to unwind.
 //

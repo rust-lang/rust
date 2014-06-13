@@ -12,14 +12,14 @@
 trait Foo {
 }
 
-fn a(_x: Box<Foo:Send>) {
+fn a(_x: Box<Foo+Send>) {
 }
 
-fn c(x: Box<Foo:Share+Send>) {
+fn c(x: Box<Foo+Share+Send>) {
     a(x);
 }
 
-fn d(x: Box<Foo:>) {
+fn d(x: Box<Foo+>) {
     a(x); //~ ERROR found no bounds
 }
 
