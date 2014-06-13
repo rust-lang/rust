@@ -2001,7 +2001,7 @@ impl<'a> fmt::Show for Sidebar<'a> {
                 let class = if cur.name.get_ref() == item &&
                                short == curty { "current" } else { "" };
                 try!(write!(w, "<a class='{ty} {class}' href='{href}{path}'>\
-                                {name}</a><br/>",
+                                {name}</a>",
                        ty = short,
                        class = class,
                        href = if curty == "mod" {"../"} else {""},
