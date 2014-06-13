@@ -140,7 +140,7 @@ fn doit(sess: &parse::ParseSess, mut lexer: lexer::StringReader,
             }
 
             // text literals
-            t::LIT_BYTE(..) | t::LIT_BINARY(..) |
+            t::LIT_BYTE(..) | t::LIT_BINARY(..) | t::LIT_BINARY_RAW(..) |
                 t::LIT_CHAR(..) | t::LIT_STR(..) | t::LIT_STR_RAW(..) => "string",
 
             // number literals

@@ -1529,6 +1529,7 @@ impl<'a> Parser<'a> {
             token::LIT_STR_RAW(s, n) => {
                 LitStr(self.id_to_interned_str(s), ast::RawStr(n))
             }
+            token::LIT_BINARY_RAW(ref v, _) |
             token::LIT_BINARY(ref v) => LitBinary(v.clone()),
             token::LPAREN => { self.expect(&token::RPAREN); LitNil },
             _ => { self.unexpected_last(tok); }

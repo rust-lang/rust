@@ -11,6 +11,7 @@
 
 static FOO: u8 = b'\xF0';
 static BAR: &'static [u8] = b"a\xF0\t";
+static BAZ: &'static [u8] = br"a\n";
 
 pub fn main() {
     assert_eq!(b'a', 97u8);
@@ -24,7 +25,6 @@ pub fn main() {
     assert_eq!(b'\xF0', 240u8);
     assert_eq!(FOO, 240u8);
 
-    // FIXME: Do we want this to be valid?
     assert_eq!([42, ..b'\t'].as_slice(), &[42, 42, 42, 42, 42, 42, 42, 42, 42]);
 
     match 42 {
@@ -47,4 +47,10 @@ pub fn main() {
         b"a\n" => {},
         _ => fail!(),
     }
+
+    assert_eq!(BAZ, &[97u8, 92u8, 110u8]);
+    assert_eq!(br"a\n", &[97u8, 92u8, 110u8]);
+    assert_eq!(br"a\n", b"a\\n");
+    assert_eq!(br###"a"##b"###, &[97u8, 34u8, 35u8, 35u8, 98u8]);
+    assert_eq!(br###"a"##b"###, b"a\"##b");
 }
