@@ -55,6 +55,11 @@ struct MarkSymbolVisitor<'a> {
     live_symbols: Box<HashSet<ast::NodeId>>,
 }
 
+#[deriving(Clone)]
+struct MarkSymbolVisitorContext {
+    struct_has_extern_repr: bool
+}
+
 impl<'a> MarkSymbolVisitor<'a> {
     fn new(tcx: &'a ty::ctxt,
            worklist: Vec<ast::NodeId>) -> MarkSymbolVisitor<'a> {
@@ -170,48 +175,61 @@ impl<'a> MarkSymbolVisitor<'a> {
     }
 
     fn visit_node(&mut self, node: &ast_map::Node) {
+        let ctxt = MarkSymbolVisitorContext {
+            struct_has_extern_repr: false
+        };
         match *node {
             ast_map::NodeItem(item) => {
                 match item.node {
-                    ast::ItemStruct(struct_def, _) => {
+                    ast::ItemStruct(..) => {
                         let has_extern_repr = item.attrs.iter().fold(attr::ReprAny, |acc, attr| {
                             attr::find_repr_attr(self.tcx.sess.diagnostic(), attr, acc)
                         }) == attr::ReprExtern;
-                        let live_fields = struct_def.fields.iter().filter(|f| {
-                            has_extern_repr || match f.node.kind {
-                                ast::NamedField(_, ast::Public) => true,
-                                _ => false
-                            }
+
+                        visit::walk_item(self, &*item, MarkSymbolVisitorContext {
+                            struct_has_extern_repr: has_extern_repr,
+                            ..(ctxt)
                         });
-                        self.live_symbols.extend(live_fields.map(|f| f.node.id));
-                        visit::walk_item(self, &*item, ());
                     }
                     ast::ItemFn(..)
-                    | ast::ItemTy(..)
                     | ast::ItemEnum(..)
+                    | ast::ItemTy(..)
                     | ast::ItemStatic(..) => {
-                        visit::walk_item(self, &*item, ());
+                        visit::walk_item(self, &*item, ctxt);
                     }
                     _ => ()
                 }
             }
             ast_map::NodeTraitMethod(trait_method) => {
-                visit::walk_trait_method(self, &*trait_method, ());
+                visit::walk_trait_method(self, &*trait_method, ctxt);
             }
             ast_map::NodeMethod(method) => {
-                visit::walk_block(self, &*method.body, ());
+                visit::walk_block(self, &*method.body, ctxt);
             }
             ast_map::NodeForeignItem(foreign_item) => {
-                visit::walk_foreign_item(self, &*foreign_item, ());
+                visit::walk_foreign_item(self, &*foreign_item, ctxt);
             }
             _ => ()
         }
     }
 }
 
-impl<'a> Visitor<()> for MarkSymbolVisitor<'a> {
+impl<'a> Visitor<MarkSymbolVisitorContext> for MarkSymbolVisitor<'a> {
 
-    fn visit_expr(&mut self, expr: &ast::Expr, _: ()) {
+    fn visit_struct_def(&mut self, def: &ast::StructDef, _: ast::Ident, _: &ast::Generics,
+                        _: ast::NodeId, ctxt: MarkSymbolVisitorContext) {
+        let live_fields = def.fields.iter().filter(|f| {
+            ctxt.struct_has_extern_repr || match f.node.kind {
+                ast::NamedField(_, ast::Public) => true,
+                _ => false
+            }
+        });
+        self.live_symbols.extend(live_fields.map(|f| f.node.id));
+
+        visit::walk_struct_def(self, def, ctxt);
+    }
+
+    fn visit_expr(&mut self, expr: &ast::Expr, ctxt: MarkSymbolVisitorContext) {
         match expr.node {
             ast::ExprMethodCall(..) => {
                 self.lookup_and_handle_method(expr.id, expr.span);
@@ -222,10 +240,10 @@ impl<'a> Visitor<()> for MarkSymbolVisitor<'a> {
             _ => ()
         }
 
-        visit::walk_expr(self, expr, ())
+        visit::walk_expr(self, expr, ctxt);
     }
 
-    fn visit_pat(&mut self, pat: &ast::Pat, _: ()) {
+    fn visit_pat(&mut self, pat: &ast::Pat, ctxt: MarkSymbolVisitorContext) {
         match pat.node {
             ast::PatStruct(_, ref fields, _) => {
                 self.handle_field_pattern_match(pat, fields.as_slice());
@@ -233,15 +251,15 @@ impl<'a> Visitor<()> for MarkSymbolVisitor<'a> {
             _ => ()
         }
 
-        visit::walk_pat(self, pat, ())
+        visit::walk_pat(self, pat, ctxt);
     }
 
-    fn visit_path(&mut self, path: &ast::Path, id: ast::NodeId, _: ()) {
+    fn visit_path(&mut self, path: &ast::Path, id: ast::NodeId, ctxt: MarkSymbolVisitorContext) {
         self.lookup_and_handle_definition(&id);
-        visit::walk_path(self, path, ());
+        visit::walk_path(self, path, ctxt);
     }
 
-    fn visit_item(&mut self, _: &ast::Item, _: ()) {
+    fn visit_item(&mut self, _: &ast::Item, _: MarkSymbolVisitorContext) {
         // Do not recurse into items. These items will be added to the
         // worklist and recursed into manually if necessary.
     }
