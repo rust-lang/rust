@@ -88,6 +88,7 @@ pub enum Token {
     LIT_STR(ast::Ident),
     LIT_STR_RAW(ast::Ident, uint), /* raw str delimited by n hash symbols */
     LIT_BINARY(Rc<Vec<u8>>),
+    LIT_BINARY_RAW(Rc<Vec<u8>>, uint), /* raw binary str delimited by n hash symbols */
 
     /* Name components */
     // an identifier contains an "is_mod_name" boolean,
@@ -243,6 +244,10 @@ pub fn to_str(t: &Token) -> String {
             "b\"{}\"",
             v.iter().map(|&b| b as char).collect::<String>().escape_default())
       }
+      LIT_BINARY_RAW(ref s, n) => {
+        format!("br{delim}\"{string}\"{delim}",
+                 delim="#".repeat(n), string=s.as_slice().to_ascii().as_str_ascii())
+      }
 
       /* Name components */
       IDENT(s, _) => get_ident(s).get().to_string(),
@@ -298,6 +303,7 @@ pub fn can_begin_expr(t: &Token) -> bool {
       LIT_STR(_) => true,
       LIT_STR_RAW(_, _) => true,
       LIT_BINARY(_) => true,
+      LIT_BINARY_RAW(_, _) => true,
       POUND => true,
       AT => true,
       NOT => true,
@@ -338,6 +344,7 @@ pub fn is_lit(t: &Token) -> bool {
       LIT_STR(_) => true,
       LIT_STR_RAW(_, _) => true,
       LIT_BINARY(_) => true,
+      LIT_BINARY_RAW(_, _) => true,
       _ => false
     }
 }

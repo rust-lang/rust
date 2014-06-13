@@ -650,12 +650,13 @@ impl<'a> StringReader<'a> {
     /// token, and updates the interner
     fn next_token_inner(&mut self) -> token::Token {
         let c = self.curr;
-        if ident_start(c) && match (c.unwrap(), self.nextch()) {
+        if ident_start(c) && match (c.unwrap(), self.nextch(), self.nextnextch()) {
             // Note: r as in r" or r#" is part of a raw string literal,
             // b as in b' is part of a byte literal.
             // They are not identifiers, and are handled further down.
-           ('r', Some('"')) | ('r', Some('#')) |
-           ('b', Some('"')) | ('b', Some('\'')) => false,
+           ('r', Some('"'), _) | ('r', Some('#'), _) |
+           ('b', Some('"'), _) | ('b', Some('\''), _) |
+           ('b', Some('r'), Some('"')) | ('b', Some('r'), Some('#')) => false,
            _ => true
         } {
             let start = self.last_pos;
@@ -863,6 +864,7 @@ impl<'a> StringReader<'a> {
             return match self.curr {
                 Some('\'') => parse_byte(self),
                 Some('"') => parse_byte_string(self),
+                Some('r') => parse_raw_byte_string(self),
                 _ => unreachable!()  // Should have been a token::IDENT above.
             };
 
@@ -977,6 +979,54 @@ impl<'a> StringReader<'a> {
                 }
                 self_.bump();
                 return token::LIT_BINARY(Rc::new(value));
+            }
+
+            fn parse_raw_byte_string(self_: &mut StringReader) -> token::Token {
+                let start_bpos = self_.last_pos;
+                self_.bump();
+                let mut hash_count = 0u;
+                while self_.curr_is('#') {
+                    self_.bump();
+                    hash_count += 1;
+                }
+
+                if self_.is_eof() {
+                    self_.fatal_span(start_bpos, self_.last_pos, "unterminated raw string");
+                } else if !self_.curr_is('"') {
+                    self_.fatal_span_char(start_bpos, self_.last_pos,
+                                    "only `#` is allowed in raw string delimitation; \
+                                     found illegal character",
+                                    self_.curr.unwrap());
+                }
+                self_.bump();
+                let content_start_bpos = self_.last_pos;
+                let mut content_end_bpos;
+                'outer: loop {
+                    match self_.curr {
+                        None => self_.fatal_span(start_bpos, self_.last_pos,
+                                                 "unterminated raw string"),
+                        Some('"') => {
+                            content_end_bpos = self_.last_pos;
+                            for _ in range(0, hash_count) {
+                                self_.bump();
+                                if !self_.curr_is('#') {
+                                    continue 'outer;
+                                }
+                            }
+                            break;
+                        },
+                        Some(c) => if c > '\x7F' {
+                            self_.err_span_char(self_.last_pos, self_.last_pos,
+                                                "raw byte string must be ASCII", c);
+                        }
+                    }
+                    self_.bump();
+                }
+                self_.bump();
+                let bytes = self_.with_str_from_to(content_start_bpos,
+                                                   content_end_bpos,
+                                                   |s| s.as_bytes().to_owned());
+                return token::LIT_BINARY_RAW(Rc::new(bytes), hash_count);
             }
           }
           '"' => {
