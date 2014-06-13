@@ -28,7 +28,16 @@ impl Point {
 
 fn main() {
     let point: Point = Point::new();
-    let px: int =  point.get_x;//~ ERROR attempted to take value of method `get_x` on type `Point`
-    //~^ NOTE maybe a missing `()` to call it? If not, try an anonymous function.
+    let px: int =  point
+                        .get_x;//~ ERROR attempted to take value of method `get_x` on type `Point`
+                        //~^ NOTE maybe a missing `()` to call it? If not, try an anonymous
+
+    // Ensure the span is useful
+    let ys = &[1,2,3,4,5,6,7];
+    let a = ys.iter()
+              .map(|x| x)
+              .filter(|&&x| x == 1)
+              .filter_map; //~ ERROR attempted to take value of method `filter_map` on type
+              //~^ NOTE maybe a missing `()` to call it? If not, try an anonymous function.
 }
 

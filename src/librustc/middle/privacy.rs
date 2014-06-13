@@ -801,7 +801,7 @@ impl<'a> Visitor<()> for PrivacyVisitor<'a> {
             ast::ExprField(ref base, ident, _) => {
                 match ty::get(ty::expr_ty_adjusted(self.tcx, &**base)).sty {
                     ty::ty_struct(id, _) => {
-                        self.check_field(expr.span, id, NamedField(ident));
+                        self.check_field(expr.span, id, NamedField(ident.node));
                     }
                     _ => {}
                 }

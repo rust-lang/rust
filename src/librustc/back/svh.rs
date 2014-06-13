@@ -270,7 +270,7 @@ mod svh_visitor {
             ExprBlock(..)            => SawExprBlock,
             ExprAssign(..)           => SawExprAssign,
             ExprAssignOp(op, _, _)   => SawExprAssignOp(op),
-            ExprField(_, id, _)      => SawExprField(content(id)),
+            ExprField(_, id, _)      => SawExprField(content(id.node)),
             ExprIndex(..)            => SawExprIndex,
             ExprPath(..)             => SawExprPath,
             ExprAddrOf(m, _)         => SawExprAddrOf(m),

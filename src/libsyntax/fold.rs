@@ -876,7 +876,7 @@ pub fn noop_fold_expr<T: Folder>(e: Gc<Expr>, folder: &mut T) -> Gc<Expr> {
         }
         ExprField(el, id, ref tys) => {
             ExprField(folder.fold_expr(el),
-                      folder.fold_ident(id),
+                      respan(id.span, folder.fold_ident(id.node)),
                       tys.iter().map(|&x| folder.fold_ty(x)).collect())
         }
         ExprIndex(el, er) => {
