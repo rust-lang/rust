@@ -18,6 +18,7 @@ use metadata::decoder;
 use middle::lang_items;
 use middle::ty;
 use middle::typeck;
+use middle::subst::VecPerParamSpace;
 
 use serialize::ebml;
 use serialize::ebml::reader;
@@ -223,8 +224,8 @@ pub fn get_field_type(tcx: &ty::ctxt, class_id: ast::DefId,
         });
     let ty = decoder::item_type(def, the_field, tcx, &*cdata);
     ty::ty_param_bounds_and_ty {
-        generics: ty::Generics {type_param_defs: Rc::new(Vec::new()),
-                                region_param_defs: Rc::new(Vec::new())},
+        generics: ty::Generics {types: VecPerParamSpace::empty(),
+                                regions: VecPerParamSpace::empty()},
         ty: ty
     }
 }
@@ -240,7 +241,8 @@ pub fn get_impl_trait(tcx: &ty::ctxt,
 
 // Given a def_id for an impl, return information about its vtables
 pub fn get_impl_vtables(tcx: &ty::ctxt,
-                        def: ast::DefId) -> typeck::impl_res {
+                        def: ast::DefId)
+                        -> typeck::vtable_res {
     let cstore = &tcx.sess.cstore;
     let cdata = cstore.get_crate_data(def.krate);
     decoder::get_impl_vtables(&*cdata, def.node, tcx)

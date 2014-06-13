@@ -86,12 +86,9 @@ fn check_struct_safe_for_destructor(cx: &mut Context,
                                     span: Span,
                                     struct_did: DefId) {
     let struct_tpt = ty::lookup_item_type(cx.tcx, struct_did);
-    if !struct_tpt.generics.has_type_params() {
-        let struct_ty = ty::mk_struct(cx.tcx, struct_did, subst::Substs {
-            regions: subst::NonerasedRegions(Vec::new()),
-            self_ty: None,
-            tps: Vec::new()
-        });
+    if !struct_tpt.generics.has_type_params(subst::TypeSpace) {
+        let struct_ty = ty::mk_struct(cx.tcx, struct_did,
+                                      subst::Substs::empty());
         if !ty::type_is_sendable(cx.tcx, struct_ty) {
             cx.tcx.sess.span_err(span,
                                  "cannot implement a destructor on a \
@@ -245,51 +242,7 @@ pub fn check_expr(cx: &mut Context, e: &Expr) {
     debug!("kind::check_expr({})", expr_to_str(e));
 
     // Handle any kind bounds on type parameters
-    {
-        let method_map = cx.tcx.method_map.borrow();
-        let method = method_map.find(&typeck::MethodCall::expr(e.id));
-        let item_substs = cx.tcx.item_substs.borrow();
-        let r = match method {
-            Some(method) => Some(&method.substs.tps),
-            None => item_substs.find(&e.id).map(|s| &s.substs.tps)
-        };
-        for ts in r.iter() {
-            let def_map = cx.tcx.def_map.borrow();
-            let type_param_defs = match e.node {
-              ExprPath(_) => {
-                let did = def_map.get_copy(&e.id).def_id();
-                ty::lookup_item_type(cx.tcx, did).generics.type_param_defs.clone()
-              }
-              _ => {
-                // Type substitutions should only occur on paths and
-                // method calls, so this needs to be a method call.
-
-                // Even though the callee_id may have been the id with
-                // node_type_substs, e.id is correct here.
-                match method {
-                    Some(method) => {
-                        ty::method_call_type_param_defs(cx.tcx, method.origin)
-                    }
-                    None => {
-                        cx.tcx.sess.span_bug(e.span,
-                            "non path/method call expr has type substs??");
-                    }
-                }
-              }
-            };
-            if ts.len() != type_param_defs.len() {
-                // Fail earlier to make debugging easier
-                fail!("internal error: in kind::check_expr, length \
-                      mismatch between actual and declared bounds: actual = \
-                      {}, declared = {}",
-                      ts.repr(cx.tcx),
-                      type_param_defs.repr(cx.tcx));
-            }
-            for (&ty, type_param_def) in ts.iter().zip(type_param_defs.iter()) {
-                check_typaram_bounds(cx, e.span, ty, type_param_def)
-            }
-        }
-    }
+    check_bounds_on_type_parameters(cx, e);
 
     match e.node {
         ExprUnary(UnBox, ref interior) => {
@@ -331,6 +284,77 @@ pub fn check_expr(cx: &mut Context, e: &Expr) {
     visit::walk_expr(cx, e, ());
 }
 
+fn check_bounds_on_type_parameters(cx: &mut Context, e: &Expr) {
+    let method_map = cx.tcx.method_map.borrow();
+    let method = method_map.find(&typeck::MethodCall::expr(e.id));
+
+    // Find the values that were provided (if any)
+    let item_substs = cx.tcx.item_substs.borrow();
+    let (types, is_object_call) = match method {
+        Some(method) => {
+            let is_object_call = match method.origin {
+                typeck::MethodObject(..) => true,
+                typeck::MethodStatic(..) | typeck::MethodParam(..) => false
+            };
+            (&method.substs.types, is_object_call)
+        }
+        None => {
+            match item_substs.find(&e.id) {
+                None => { return; }
+                Some(s) => { (&s.substs.types, false) }
+            }
+        }
+    };
+
+    // Find the relevant type parameter definitions
+    let def_map = cx.tcx.def_map.borrow();
+    let type_param_defs = match e.node {
+        ExprPath(_) => {
+            let did = def_map.get_copy(&e.id).def_id();
+            ty::lookup_item_type(cx.tcx, did).generics.types.clone()
+        }
+        _ => {
+            // Type substitutions should only occur on paths and
+            // method calls, so this needs to be a method call.
+
+            // Even though the callee_id may have been the id with
+            // node_type_substs, e.id is correct here.
+            match method {
+                Some(method) => {
+                    ty::method_call_type_param_defs(cx.tcx, method.origin)
+                }
+                None => {
+                    cx.tcx.sess.span_bug(e.span,
+                                         "non path/method call expr has type substs??");
+                }
+            }
+        }
+    };
+
+    // Check that the value provided for each definition meets the
+    // kind requirements
+    for type_param_def in type_param_defs.iter() {
+        let ty = *types.get(type_param_def.space, type_param_def.index);
+
+        // If this is a call to an object method (`foo.bar()` where
+        // `foo` has a type like `Trait`), then the self type is
+        // unknown (after all, this is a virtual call). In that case,
+        // we will have put a ty_err in the substitutions, and we can
+        // just skip over validating the bounds (because the bounds
+        // would have been enforced when the object instance was
+        // created).
+        if is_object_call && type_param_def.space == subst::SelfSpace {
+            assert_eq!(type_param_def.index, 0);
+            assert!(ty::type_is_error(ty));
+            continue;
+        }
+
+        debug!("type_param_def space={} index={} ty={}",
+               type_param_def.space, type_param_def.index, ty.repr(cx.tcx));
+        check_typaram_bounds(cx, e.span, ty, type_param_def)
+    }
+}
+
 fn check_trait_cast(cx: &mut Context, source_ty: ty::t, target_ty: ty::t, span: Span) {
     check_cast_for_escaping_regions(cx, source_ty, target_ty, span);
     match ty::get(target_ty).sty {
@@ -350,12 +374,10 @@ fn check_ty(cx: &mut Context, aty: &Ty) {
                     let def_map = cx.tcx.def_map.borrow();
                     let did = def_map.get_copy(&id).def_id();
                     let generics = ty::lookup_item_type(cx.tcx, did).generics;
-                    let type_param_defs = generics.type_param_defs();
-                    for (&ty, type_param_def) in
-                        item_substs.substs.tps.iter().zip(
-                            type_param_defs.iter())
-                    {
-                        check_typaram_bounds(cx, aty.span, ty, type_param_def)
+                    for def in generics.types.iter() {
+                        let ty = *item_substs.substs.types.get(def.space,
+                                                               def.index);
+                        check_typaram_bounds(cx, aty.span, ty, def)
                     }
                 }
             }
@@ -555,7 +577,12 @@ pub fn check_cast_for_escaping_regions(
         |ty| {
             match ty::get(ty).sty {
                 ty::ty_param(source_param) => {
-                    if target_params.iter().any(|x| x == &source_param) {
+                    if source_param.space == subst::SelfSpace {
+                        // FIXME (#5723) -- there is no reason that
+                        // Self should be exempt from this check,
+                        // except for historical accident. Bottom
+                        // line, we need proper region bounding.
+                    } else if target_params.iter().any(|x| x == &source_param) {
                         /* case (2) */
                     } else {
                         check_static(cx.tcx, ty, source_span); /* case (3) */
