@@ -447,7 +447,7 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
 
           ast::ExprField(ref base, f_name, _) => {
             let base_cmt = if_ok!(self.cat_expr(&**base));
-            Ok(self.cat_field(expr, base_cmt, f_name, expr_ty))
+            Ok(self.cat_field(expr, base_cmt, f_name.node, expr_ty))
           }
 
           ast::ExprIndex(ref base, _) => {

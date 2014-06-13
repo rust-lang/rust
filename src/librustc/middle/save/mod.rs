@@ -1210,7 +1210,7 @@ impl<'l> Visitor<DxrVisitorEnv> for DxrVisitor<'l> {
                     ty::ty_struct(def_id, _) => {
                         let fields = ty::lookup_struct_fields(&self.analysis.ty_cx, def_id);
                         for f in fields.iter() {
-                            if f.name == ident.name {
+                            if f.name == ident.node.name {
                                 let sub_span = self.span.span_for_last_ident(ex.span);
                                 self.fmt.ref_str(recorder::VarRef,
                                                  ex.span,
