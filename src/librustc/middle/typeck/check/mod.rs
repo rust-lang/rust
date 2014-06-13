@@ -3638,7 +3638,7 @@ pub fn check_block_with_expected(fcx: &FnCtxt,
                 fcx.ccx
                    .tcx
                    .sess
-                   .add_lint(lint::builtin::unreachable_code,
+                   .add_lint(lint::builtin::UNREACHABLE_CODE,
                              s_id,
                              s.span,
                              "unreachable statement".to_string());
@@ -3665,7 +3665,7 @@ pub fn check_block_with_expected(fcx: &FnCtxt,
                 fcx.ccx
                    .tcx
                    .sess
-                   .add_lint(lint::builtin::unreachable_code,
+                   .add_lint(lint::builtin::UNREACHABLE_CODE,
                              e.id,
                              e.span,
                              "unreachable expression".to_string());

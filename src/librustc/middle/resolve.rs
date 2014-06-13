@@ -4592,7 +4592,7 @@ impl<'a> Resolver<'a> {
             match (def, unqualified_def) {
                 (Some((d, _)), Some((ud, _))) if d == ud => {
                     self.session
-                        .add_lint(lint::builtin::unnecessary_qualification,
+                        .add_lint(lint::builtin::UNNECESSARY_QUALIFICATION,
                                   id,
                                   path.span,
                                   "unnecessary qualification".to_string());
@@ -5427,7 +5427,7 @@ impl<'a> Resolver<'a> {
                         if !self.used_imports.contains(&(id, TypeNS)) &&
                            !self.used_imports.contains(&(id, ValueNS)) {
                             self.session
-                                .add_lint(lint::builtin::unused_imports,
+                                .add_lint(lint::builtin::UNUSED_IMPORTS,
                                           id,
                                           p.span,
                                           "unused import".to_string());
@@ -5451,7 +5451,7 @@ impl<'a> Resolver<'a> {
 
         if !self.used_imports.contains(&(id, TypeNS)) &&
            !self.used_imports.contains(&(id, ValueNS)) {
-            self.session.add_lint(lint::builtin::unused_imports,
+            self.session.add_lint(lint::builtin::UNUSED_IMPORTS,
                                   id,
                                   span,
                                   "unused import".to_string());

@@ -443,7 +443,7 @@ impl<'a> DeadVisitor<'a> {
                       ident: ast::Ident) {
         self.tcx
             .sess
-            .add_lint(lint::builtin::dead_code,
+            .add_lint(lint::builtin::DEAD_CODE,
                       id,
                       span,
                       format!("code is never used: `{}`",
