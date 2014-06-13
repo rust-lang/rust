@@ -36,7 +36,7 @@ use syntax::codemap::Span;
 use syntax::visit::FnKind;
 use syntax::ast;
 
-pub use lint::context::{Context, LintStore, raw_emit_lint, check_crate};
+pub use lint::context::{Context, LintStore, raw_emit_lint, check_crate, gather_attrs};
 
 /// Specification of a single lint.
 pub struct Lint {
