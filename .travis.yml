@@ -12,7 +12,6 @@ install:
   - sudo apt-get update -qq
   - sudo apt-get install -qq --force-yes -y llvm-$LLVM_VERSION
     llvm-${LLVM_VERSION}-dev clang-$LLVM_VERSION lldb-$LLVM_VERSION
-    libjemalloc-dev
 
 
 # All of the llvm tools are suffixed with "-$VERS" which we don't want, so
@@ -29,7 +28,7 @@ before_script:
   - ln -nsf /usr/bin/llc-$LLVM_VERSION local-llvm/bin/llc
   - ln -nsf /usr/include/llvm-$LLVM_VERSION local-llvm/include
   - ./configure --disable-optimize-tests --llvm-root=`pwd`/local-llvm
-    --enable-fast-make --enable-clang --jemalloc-root=/usr/lib
+    --enable-fast-make --enable-clang
 
 # Tidy everything up first, then build a few things, and then run a few tests.
 # Note that this is meant to run in a "fairly small" amount of time, so this
