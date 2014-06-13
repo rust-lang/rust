@@ -126,9 +126,11 @@ impl<'a> PluginLoader<'a> {
         };
 
         unsafe {
-            let registrar: PluginRegistrarFun =
+            let registrar =
                 match lib.symbol(symbol.as_slice()) {
-                    Ok(registrar) => registrar,
+                    Ok(registrar) => {
+                        mem::transmute::<*u8,PluginRegistrarFun>(registrar)
+                    }
                     // again fatal if we can't register macros
                     Err(err) => self.sess.span_fatal(vi.span, err.as_slice())
                 };

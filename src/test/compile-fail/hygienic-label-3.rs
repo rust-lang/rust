@@ -16,6 +16,6 @@ macro_rules! foo {
 
 pub fn main() {
     'x: for _ in range(0,1) {
-        foo!() //~ ERROR use of undeclared label `x`
+        foo!() //~ ERROR use of undeclared label `'x`
     };
 }

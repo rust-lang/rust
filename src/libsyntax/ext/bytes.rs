@@ -94,6 +94,18 @@ pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     }
 
     let e = cx.expr_vec_slice(sp, bytes);
-    let e = quote_expr!(cx, { static BYTES: &'static [u8] = $e; BYTES});
+    let ty = cx.ty(sp, ast::TyVec(cx.ty_ident(sp, cx.ident_of("u8"))));
+    let lifetime = cx.lifetime(sp, cx.ident_of("'static").name);
+    let item = cx.item_static(sp,
+                              cx.ident_of("BYTES"),
+                              cx.ty_rptr(sp,
+                                         ty,
+                                         Some(lifetime),
+                                         ast::MutImmutable),
+                              ast::MutImmutable,
+                              e);
+    let e = cx.expr_block(cx.block(sp,
+                                   vec!(cx.stmt_item(sp, item)),
+                                   Some(cx.expr_ident(sp, cx.ident_of("BYTES")))));
     MacExpr::new(e)
 }

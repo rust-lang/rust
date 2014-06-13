@@ -235,6 +235,17 @@ pub enum AutoRef {
     AutoBorrowObj(Region, ast::Mutability),
 }
 
+/// A restriction that certain types must be the same size. The use of
+/// `transmute` gives rise to these restrictions.
+pub struct TransmuteRestriction {
+    /// The span from whence the restriction comes.
+    pub span: Span,
+    /// The type being transmuted from.
+    pub from: t,
+    /// The type being transmuted to.
+    pub to: t,
+}
+
 /// The data structure to keep track of all the information that typechecker
 /// generates so that so that it can be reused and doesn't have to be redone
 /// later on.
@@ -357,6 +368,11 @@ pub struct ctxt {
 
     pub node_lint_levels: RefCell<HashMap<(ast::NodeId, lint::Lint),
                                           (lint::Level, lint::LintSource)>>,
+
+    /// The types that must be asserted to be the same size for `transmute`
+    /// to be valid. We gather up these restrictions in the intrinsicck pass
+    /// and check them in trans.
+    pub transmute_restrictions: RefCell<Vec<TransmuteRestriction>>,
 }
 
 pub enum tbox_flag {
@@ -1118,6 +1134,7 @@ pub fn mk_ctxt(s: Session,
         vtable_map: RefCell::new(FnvHashMap::new()),
         dependency_formats: RefCell::new(HashMap::new()),
         node_lint_levels: RefCell::new(HashMap::new()),
+        transmute_restrictions: RefCell::new(Vec::new()),
     }
 }
 
@@ -2711,8 +2728,7 @@ pub fn pat_ty(cx: &ctxt, pat: &ast::Pat) -> t {
 //
 // NB (2): This type doesn't provide type parameter substitutions; e.g. if you
 // ask for the type of "id" in "id(3)", it will return "fn(&int) -> int"
-// instead of "fn(t) -> T with T = int". If this isn't what you want, see
-// expr_ty_params_and_ty() below.
+// instead of "fn(t) -> T with T = int".
 pub fn expr_ty(cx: &ctxt, expr: &ast::Expr) -> t {
     return node_id_to_type(cx, expr.id);
 }
@@ -4514,9 +4530,10 @@ pub fn hash_crate_independent(tcx: &ctxt, t: t, svh: &Svh) -> u64 {
             ty_uniq(_) => {
                 byte!(10);
             }
-            ty_vec(m, Some(_)) => {
+            ty_vec(m, Some(n)) => {
                 byte!(11);
                 mt(&mut state, m);
+                n.hash(&mut state);
                 1u8.hash(&mut state);
             }
             ty_vec(m, None) => {

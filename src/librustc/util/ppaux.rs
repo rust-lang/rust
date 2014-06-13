@@ -162,7 +162,7 @@ pub fn bound_region_to_str(cx: &ctxt,
 
     match br {
         BrNamed(_, name) => {
-            format!("{}'{}{}", prefix, token::get_name(name), space_str)
+            format!("{}{}{}", prefix, token::get_name(name), space_str)
         }
         BrAnon(_) => prefix.to_string(),
         BrFresh(_) => prefix.to_string(),

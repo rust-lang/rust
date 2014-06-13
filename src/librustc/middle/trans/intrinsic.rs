@@ -390,7 +390,7 @@ pub fn trans_intrinsic(ccx: &CrateContext,
                     ast_map::NodeExpr(e) => e.span,
                     _ => fail!("transmute has non-expr arg"),
                 };
-                ccx.sess().span_fatal(sp,
+                ccx.sess().span_bug(sp,
                     format!("transmute called on types with different sizes: \
                              {} ({} bit{}) to \
                              {} ({} bit{})",
@@ -564,3 +564,41 @@ pub fn trans_intrinsic(ccx: &CrateContext,
     }
     fcx.cleanup();
 }
+
+/// Performs late verification that intrinsics are used correctly. At present,
+/// the only intrinsic that needs such verification is `transmute`.
+pub fn check_intrinsics(ccx: &CrateContext) {
+    for transmute_restriction in ccx.tcx
+                                    .transmute_restrictions
+                                    .borrow()
+                                    .iter() {
+        let llfromtype = type_of::sizing_type_of(ccx,
+                                                 transmute_restriction.from);
+        let lltotype = type_of::sizing_type_of(ccx,
+                                               transmute_restriction.to);
+        let from_type_size = machine::llbitsize_of_real(ccx, llfromtype);
+        let to_type_size = machine::llbitsize_of_real(ccx, lltotype);
+        if from_type_size != to_type_size {
+            ccx.sess()
+               .span_err(transmute_restriction.span,
+                format!("transmute called on types with different sizes: \
+                         {} ({} bit{}) to {} ({} bit{})",
+                        ty_to_str(ccx.tcx(), transmute_restriction.from),
+                        from_type_size as uint,
+                        if from_type_size == 1 {
+                            ""
+                        } else {
+                            "s"
+                        },
+                        ty_to_str(ccx.tcx(), transmute_restriction.to),
+                        to_type_size as uint,
+                        if to_type_size == 1 {
+                            ""
+                        } else {
+                            "s"
+                        }).as_slice());
+        }
+    }
+    ccx.sess().abort_if_errors();
+}
+

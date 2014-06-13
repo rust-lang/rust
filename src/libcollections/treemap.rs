@@ -761,7 +761,7 @@ pub struct IntersectionItems<'a, T> {
     b: Peekable<&'a T, SetItems<'a, T>>,
 }
 
-/// Lazy iterator producing elements in the set intersection (in-order)
+/// Lazy iterator producing elements in the set union (in-order)
 pub struct UnionItems<'a, T> {
     a: Peekable<&'a T, SetItems<'a, T>>,
     b: Peekable<&'a T, SetItems<'a, T>>,

@@ -307,6 +307,20 @@ extern "rust-intrinsic" {
     /// `forget` is unsafe because the caller is responsible for
     /// ensuring the argument is deallocated already.
     pub fn forget<T>(_: T) -> ();
+
+    /// Unsafely transforms a value of one type into a value of another type.
+    ///
+    /// Both types must have the same size and alignment, and this guarantee
+    /// is enforced at compile-time.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use std::mem;
+    ///
+    /// let v: &[u8] = unsafe { mem::transmute("L") };
+    /// assert!(v == [76u8]);
+    /// ```
     pub fn transmute<T,U>(e: T) -> U;
 
     /// Returns `true` if a type requires drop glue.

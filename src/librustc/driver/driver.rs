@@ -333,6 +333,9 @@ pub fn phase_3_run_analysis_passes(sess: Session,
             time(time_passes, "privacy checking", maps, |(a, b)|
                  middle::privacy::check_crate(&ty_cx, &exp_map2, a, b, krate));
 
+    time(time_passes, "intrinsic checking", (), |_|
+         middle::intrinsicck::check_crate(&ty_cx, krate));
+
     time(time_passes, "effect checking", (), |_|
          middle::effect::check_crate(&ty_cx, krate));
 
