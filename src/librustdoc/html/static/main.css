@@ -154,23 +154,27 @@ nav.sub {
 
 .block {
     padding: 0 10px;
-    margin-bottom: 10px;
+    margin-bottom: 14px;
 }
 .block h2 {
     margin-top: 0;
+    margin-bottom: 8px;
     text-align: center;
 }
 
 .block a {
-    display: inline-block;
+    display: block;
     text-overflow: ellipsis;
     overflow: hidden;
     line-height: 15px;
-    padding-left: 5px;
-    padding-bottom: 6px;
+    padding: 7px 5px;
     font-size: 14px;
     font-weight: 300;
     transition: border 500ms ease-out;
+}
+
+.block a:hover {
+    background: #F5F5F5;
 }
 
 .content {
