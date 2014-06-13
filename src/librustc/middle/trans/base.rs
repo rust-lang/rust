@@ -59,6 +59,7 @@ use middle::trans::expr;
 use middle::trans::foreign;
 use middle::trans::glue;
 use middle::trans::inline;
+use middle::trans::intrinsic;
 use middle::trans::machine;
 use middle::trans::machine::{llalign_of_min, llsize_of, llsize_of_real};
 use middle::trans::meth;
@@ -2329,6 +2330,11 @@ pub fn trans_crate(krate: ast::Crate,
 
     let ccx = CrateContext::new(llmod_id.as_slice(), tcx, exp_map2,
                                 Sha256::new(), link_meta, reachable);
+
+    // First, verify intrinsics.
+    intrinsic::check_intrinsics(&ccx);
+
+    // Next, translate the module.
     {
         let _icx = push_ctxt("text");
         trans_mod(&ccx, &krate.module);
