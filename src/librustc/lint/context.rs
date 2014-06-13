@@ -264,7 +264,7 @@ impl<'a> Context<'a> {
         let (level, src) = match self.lints.levels.find(&LintId::of(lint)) {
             None => return,
             Some(&(Warn, src)) => {
-                let lint_id = LintId::of(builtin::warnings);
+                let lint_id = LintId::of(builtin::WARNINGS);
                 (self.lints.get_level_source(lint_id).val0(), src)
             }
             Some(&pair) => pair,
@@ -359,7 +359,7 @@ impl<'a> Context<'a> {
                         match self.lints.by_name.find_equiv(&lint_name.get()) {
                             Some(lint_id) => out.push((*lint_id, level, meta.span)),
 
-                            None => self.span_lint(builtin::unrecognized_lint,
+                            None => self.span_lint(builtin::UNRECOGNIZED_LINT,
                                 meta.span,
                                 format!("unknown `{}` attribute: `{}`",
                                     level.as_str(), lint_name).as_slice()),
@@ -588,7 +588,7 @@ impl LintPass for GatherNodeLevels {
     fn check_item(&mut self, cx: &Context, it: &ast::Item) {
         match it.node {
             ast::ItemEnum(..) => {
-                let lint_id = LintId::of(builtin::variant_size_difference);
+                let lint_id = LintId::of(builtin::VARIANT_SIZE_DIFFERENCE);
                 match cx.lints.get_level_source(lint_id) {
                     lvlsrc @ (lvl, _) if lvl != Allow => {
                         cx.node_levels.borrow_mut()
