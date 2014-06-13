@@ -232,8 +232,15 @@ pub struct impl_res {
 }
 
 impl Repr for impl_res {
+    #[cfg(stage0)]
     fn repr(&self, tcx: &ty::ctxt) -> String {
         format!("impl_res \\{trait_vtables={}, self_vtables={}\\}",
+                self.trait_vtables.repr(tcx),
+                self.self_vtables.repr(tcx))
+    }
+    #[cfg(not(stage0))]
+    fn repr(&self, tcx: &ty::ctxt) -> String {
+        format!("impl_res {{trait_vtables={}, self_vtables={}}}",
                 self.trait_vtables.repr(tcx),
                 self.self_vtables.repr(tcx))
     }

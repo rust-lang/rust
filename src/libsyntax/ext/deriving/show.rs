@@ -100,7 +100,7 @@ fn show_substructure(cx: &mut ExtCtxt, span: Span,
             } else {
                 // normal struct/struct variant
 
-                format_string.push_str(" \\{");
+                format_string.push_str(" {{");
 
                 for (i, field) in fields.iter().enumerate() {
                     if i != 0 { format_string.push_str(","); }
@@ -113,7 +113,7 @@ fn show_substructure(cx: &mut ExtCtxt, span: Span,
                     exprs.push(field.self_);
                 }
 
-                format_string.push_str(" \\}");
+                format_string.push_str(" }}");
             }
         }
         _ => unreachable!()

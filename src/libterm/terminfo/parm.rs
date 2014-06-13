@@ -645,15 +645,15 @@ mod test {
     fn test_comparison_ops() {
         let v = [('<', [1u8, 0u8, 0u8]), ('=', [0u8, 1u8, 0u8]), ('>', [0u8, 0u8, 1u8])];
         for &(op, bs) in v.iter() {
-            let s = format!("%\\{1\\}%\\{2\\}%{}%d", op);
+            let s = format!("%{{1}}%{{2}}%{}%d", op);
             let res = expand(s.as_bytes(), [], &mut Variables::new());
             assert!(res.is_ok(), res.unwrap_err());
             assert_eq!(res.unwrap(), vec!('0' as u8 + bs[0]));
-            let s = format!("%\\{1\\}%\\{1\\}%{}%d", op);
+            let s = format!("%{{1}}%{{1}}%{}%d", op);
             let res = expand(s.as_bytes(), [], &mut Variables::new());
             assert!(res.is_ok(), res.unwrap_err());
             assert_eq!(res.unwrap(), vec!('0' as u8 + bs[1]));
-            let s = format!("%\\{2\\}%\\{1\\}%{}%d", op);
+            let s = format!("%{{2}}%{{1}}%{}%d", op);
             let res = expand(s.as_bytes(), [], &mut Variables::new());
             assert!(res.is_ok(), res.unwrap_err());
             assert_eq!(res.unwrap(), vec!('0' as u8 + bs[2]));

@@ -256,13 +256,13 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: &ast::Pat, path: &ast::Path,
     if arg_len > 0 {
         // N-ary variant.
         if arg_len != subpats_len {
-            let s = format!("this pattern has \
-                             {npat, plural, =1{# field} other{# fields}}, \
-                             but the corresponding {kind} has \
-                             {narg, plural, =1{# field} other{# fields}}",
-                         npat = subpats_len,
-                         kind = kind_name,
-                         narg = arg_len);
+            let s = format!("this pattern has {} field{}, \
+                             but the corresponding {} has {} field{}",
+                         subpats_len,
+                         if subpats_len == 1 {""} else {"s"},
+                         kind_name,
+                         arg_len,
+                         if arg_len == 1 {""} else {"s"});
             tcx.sess.span_err(pat.span, s.as_slice());
             error_happened = true;
         }
@@ -276,11 +276,11 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: &ast::Pat, path: &ast::Path,
         }
     } else if subpats_len > 0 {
         tcx.sess.span_err(pat.span,
-                          format!("this pattern has \
-                                   {npat, plural, =1{# field} other{# fields}}, \
-                                   but the corresponding {kind} has no fields",
-                               npat = subpats_len,
-                               kind = kind_name).as_slice());
+                          format!("this pattern has {} field{}, \
+                                   but the corresponding {} has no fields",
+                               subpats_len,
+                               if subpats_len == 1 {""} else {"s"},
+                               kind_name).as_slice());
         error_happened = true;
     }
 

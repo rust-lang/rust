@@ -484,8 +484,14 @@ pub fn emit_lint(level: Level, src: LintSource, msg: &str, span: Span,
 
     let mut note = None;
     let msg = match src {
+        #[cfg(stage0)]
         Default => {
             format!("{}, \\#[{}({})] on by default", msg,
+                level_to_str(level), lint_str)
+        },
+        #[cfg(not(stage0))]
+        Default => {
+            format!("{}, #[{}({})] on by default", msg,
                 level_to_str(level), lint_str)
         },
         CommandLine => {

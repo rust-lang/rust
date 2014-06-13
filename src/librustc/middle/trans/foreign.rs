@@ -692,7 +692,7 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: &CrateContext,
             let foreign_index = next_foreign_arg(llforeign_arg_ty.pad.is_some());
             let mut llforeign_arg = llvm::LLVMGetParam(llwrapfn, foreign_index);
 
-            debug!("llforeign_arg \\#{}: {}",
+            debug!("llforeign_arg {}{}: {}", "#",
                    i, ccx.tn.val_to_str(llforeign_arg));
             debug!("rust_indirect = {}, foreign_indirect = {}",
                    rust_indirect, foreign_indirect);
@@ -725,7 +725,7 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: &CrateContext,
                 llvm::LLVMBuildLoad(builder, llforeign_arg, noname())
             };
 
-            debug!("llrust_arg \\#{}: {}",
+            debug!("llrust_arg {}{}: {}", "#",
                    i, ccx.tn.val_to_str(llrust_arg));
             llrust_args.push(llrust_arg);
         }
