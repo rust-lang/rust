@@ -15,7 +15,6 @@ use middle::trans::adt;
 use middle::trans::common::*;
 use middle::trans::foreign;
 use middle::ty;
-use util::ppaux;
 use util::ppaux::Repr;
 
 use middle::trans::type_::Type;
@@ -152,7 +151,7 @@ pub fn sizing_type_of(cx: &CrateContext, t: ty::t) -> Type {
             }
         }
 
-        ty::ty_self(_) | ty::ty_infer(..) | ty::ty_param(..) |
+        ty::ty_infer(..) | ty::ty_param(..) |
         ty::ty_err(..) | ty::ty_vec(_, None) | ty::ty_str => {
             cx.sess().bug(format!("fictitious type {:?} in sizing_type_of()",
                                   ty::get(t).sty).as_slice())
@@ -205,7 +204,8 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
         // avoids creating more than one copy of the enum when one
         // of the enum's variants refers to the enum itself.
         let repr = adt::represent_type(cx, t);
-        let name = llvm_type_name(cx, an_enum, did, substs.tps.as_slice());
+        let tps = substs.types.get_vec(subst::TypeSpace);
+        let name = llvm_type_name(cx, an_enum, did, tps);
         adt::incomplete_type_of(cx, &*repr, name.as_slice())
       }
       ty::ty_box(typ) => {
@@ -260,17 +260,14 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
               // in *after* placing it into the type cache. This prevents
               // infinite recursion with recursive struct types.
               let repr = adt::represent_type(cx, t);
-              let name = llvm_type_name(cx,
-                                        a_struct,
-                                        did,
-                                        substs.tps.as_slice());
+              let tps = substs.types.get_vec(subst::TypeSpace);
+              let name = llvm_type_name(cx, a_struct, did, tps);
               adt::incomplete_type_of(cx, &*repr, name.as_slice())
           }
       }
 
       ty::ty_vec(_, None) => cx.sess().bug("type_of with unsized ty_vec"),
       ty::ty_str => cx.sess().bug("type_of with unsized (bare) ty_str"),
-      ty::ty_self(..) => cx.sess().unimpl("type_of with ty_self"),
       ty::ty_infer(..) => cx.sess().bug("type_of with ty_infer"),
       ty::ty_param(..) => cx.sess().bug("type_of with ty_param"),
       ty::ty_err(..) => cx.sess().bug("type_of with ty_err")
@@ -301,19 +298,17 @@ pub enum named_ty { a_struct, an_enum }
 pub fn llvm_type_name(cx: &CrateContext,
                       what: named_ty,
                       did: ast::DefId,
-                      tps: &[ty::t])
-                      -> String {
+                      tps: &Vec<ty::t>)
+                      -> String
+{
     let name = match what {
         a_struct => { "struct" }
         an_enum => { "enum" }
     };
-    let tstr = ppaux::parameterized(cx.tcx(),
-                                    ty::item_path_str(cx.tcx(),
-                                                      did).as_slice(),
-                                    &subst::ErasedRegions,
-                                    tps,
-                                    did,
-                                    false);
+
+    let base = ty::item_path_str(cx.tcx(), did);
+    let strings: Vec<String> = tps.iter().map(|t| t.repr(cx.tcx())).collect();
+    let tstr = format!("{}<{}>", base, strings);
     if did.krate == 0 {
         format!("{}.{}", name, tstr)
     } else {

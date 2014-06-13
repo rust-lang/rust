@@ -118,18 +118,18 @@ pub fn maybe_instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
             ccx.external.borrow_mut().insert(fn_id, Some(mth.id));
             ccx.external_srcs.borrow_mut().insert(mth.id, fn_id);
 
-          ccx.stats.n_inlines.set(ccx.stats.n_inlines.get() + 1);
+            ccx.stats.n_inlines.set(ccx.stats.n_inlines.get() + 1);
 
-          // If this is a default method, we can't look up the
-          // impl type. But we aren't going to translate anyways, so don't.
-          if is_provided { return local_def(mth.id); }
+            // If this is a default method, we can't look up the
+            // impl type. But we aren't going to translate anyways, so don't.
+            if is_provided { return local_def(mth.id); }
 
             let impl_tpt = ty::lookup_item_type(ccx.tcx(), impl_did);
-            let num_type_params =
-                impl_tpt.generics.type_param_defs().len() +
-                mth.generics.ty_params.len();
+            let unparameterized =
+                impl_tpt.generics.types.is_empty() &&
+                mth.generics.ty_params.is_empty();
 
-          if num_type_params == 0 {
+          if unparameterized {
               let llfn = get_item_val(ccx, mth.id);
               trans_fn(ccx, &*mth.decl, &*mth.body, llfn,
                        &param_substs::empty(), mth.id, []);

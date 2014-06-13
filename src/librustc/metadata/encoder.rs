@@ -19,6 +19,7 @@ use metadata::common::*;
 use metadata::cstore;
 use metadata::decoder;
 use metadata::tyencode;
+use middle::subst::VecPerParamSpace;
 use middle::ty::{node_id_to_type, lookup_item_type};
 use middle::astencode;
 use middle::ty;
@@ -128,10 +129,9 @@ fn encode_trait_ref(ebml_w: &mut Encoder,
 
 fn encode_impl_vtables(ebml_w: &mut Encoder,
                        ecx: &EncodeContext,
-                       vtables: &typeck::impl_res) {
+                       vtables: &typeck::vtable_res) {
     ebml_w.start_tag(tag_item_impl_vtables);
-    astencode::encode_vtable_res(ecx, ebml_w, &vtables.trait_vtables);
-    astencode::encode_vtable_param_res(ecx, ebml_w, &vtables.self_vtables);
+    astencode::encode_vtable_res(ecx, ebml_w, vtables);
     ebml_w.end_tag();
 }
 
@@ -148,7 +148,7 @@ pub fn def_to_str(did: DefId) -> String {
 
 fn encode_ty_type_param_defs(ebml_w: &mut Encoder,
                              ecx: &EncodeContext,
-                             params: &[ty::TypeParameterDef],
+                             params: &VecPerParamSpace<ty::TypeParameterDef>,
                              tag: uint) {
     let ty_str_ctxt = &tyencode::ctxt {
         diag: ecx.diag,
@@ -164,7 +164,7 @@ fn encode_ty_type_param_defs(ebml_w: &mut Encoder,
 }
 
 fn encode_region_param_defs(ebml_w: &mut Encoder,
-                            params: &[ty::RegionParameterDef]) {
+                            params: &VecPerParamSpace<ty::RegionParameterDef>) {
     for param in params.iter() {
         ebml_w.start_tag(tag_region_param_def);
 
@@ -174,6 +174,12 @@ fn encode_region_param_defs(ebml_w: &mut Encoder,
 
         ebml_w.wr_tagged_str(tag_region_param_def_def_id,
                              def_to_str(param.def_id).as_slice());
+
+        ebml_w.wr_tagged_u64(tag_region_param_def_space,
+                             param.space.to_uint() as u64);
+
+        ebml_w.wr_tagged_u64(tag_region_param_def_index,
+                             param.index as u64);
 
         ebml_w.end_tag();
     }
@@ -191,9 +197,9 @@ fn encode_item_variances(ebml_w: &mut Encoder,
 fn encode_bounds_and_type(ebml_w: &mut Encoder,
                           ecx: &EncodeContext,
                           tpt: &ty::ty_param_bounds_and_ty) {
-    encode_ty_type_param_defs(ebml_w, ecx, tpt.generics.type_param_defs(),
+    encode_ty_type_param_defs(ebml_w, ecx, &tpt.generics.types,
                               tag_items_data_item_ty_param_bounds);
-    encode_region_param_defs(ebml_w, tpt.generics.region_param_defs());
+    encode_region_param_defs(ebml_w, &tpt.generics.regions);
     encode_type(ecx, ebml_w, tpt.ty);
 }
 
@@ -725,8 +731,7 @@ fn encode_method_ty_fields(ecx: &EncodeContext,
                            method_ty: &ty::Method) {
     encode_def_id(ebml_w, method_ty.def_id);
     encode_name(ebml_w, method_ty.ident.name);
-    encode_ty_type_param_defs(ebml_w, ecx,
-                              method_ty.generics.type_param_defs(),
+    encode_ty_type_param_defs(ebml_w, ecx, &method_ty.generics.types,
                               tag_item_method_tps);
     encode_method_fty(ecx, ebml_w, &method_ty.fty);
     encode_visibility(ebml_w, method_ty.vis);
@@ -770,10 +775,8 @@ fn encode_info_for_method(ecx: &EncodeContext,
     }
 
     for &ast_method in ast_method_opt.iter() {
-        let num_params = tpt.generics.type_param_defs().len();
-        if num_params > 0u ||
-                is_default_impl ||
-                should_inline(ast_method.attrs.as_slice()) {
+        let any_types = !tpt.generics.types.is_empty();
+        if any_types || is_default_impl || should_inline(ast_method.attrs.as_slice()) {
             encode_inlined_item(ecx, ebml_w,
                                 IIMethodRef(local_def(parent_id), false,
                                             &*ast_method));
@@ -1125,9 +1128,9 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_item_variances(ebml_w, ecx, item.id);
         let trait_def = ty::lookup_trait_def(tcx, def_id);
         encode_ty_type_param_defs(ebml_w, ecx,
-                                  trait_def.generics.type_param_defs(),
+                                  &trait_def.generics.types,
                                   tag_items_data_item_ty_param_bounds);
-        encode_region_param_defs(ebml_w, trait_def.generics.region_param_defs());
+        encode_region_param_defs(ebml_w, &trait_def.generics.regions);
         encode_trait_ref(ebml_w, ecx, &*trait_def.trait_ref, tag_item_trait_ref);
         encode_name(ebml_w, item.ident.name);
         encode_attributes(ebml_w, item.attrs.as_slice());
