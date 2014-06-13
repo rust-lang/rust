@@ -295,8 +295,8 @@ impl<S: Spawner> TaskBuilder<S> {
         let (tx_done, rx_done) = channel(); // signal that task has exited
         let (tx_retv, rx_retv) = channel(); // return value from task
 
-        let on_exit = proc(res) { tx_done.send(res) };
-        self.spawn_internal(proc() { tx_retv.send(f()) },
+        let on_exit = proc(res) { let _ = tx_done.send_opt(res); };
+        self.spawn_internal(proc() { let _ = tx_retv.send_opt(f()); },
                             Some(on_exit));
 
         Future::from_fn(proc() {
@@ -640,4 +640,15 @@ mod test {
 
     // NOTE: the corresponding test for stderr is in run-pass/task-stderr, due
     // to the test harness apparently interfering with stderr configuration.
+}
+
+#[test]
+fn task_abort_no_kill_runtime() {
+    use std::io::timer;
+    use mem;
+
+    let mut tb = TaskBuilder::new();
+    let rx = tb.try_future(proc() {});
+    mem::drop(rx);
+    timer::sleep(1000);
 }
