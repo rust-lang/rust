@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Tests that enum-to-float-casts do *signed* integer-to-float conversion.
+// Tests that enum-to-float casts are disallowed.
 
 enum E {
     L0 = -1,
@@ -20,13 +20,13 @@ enum F {
     H1 = 0xFFFFFFFFFFFFFFFF
 }
 
-static C0: f32 = L0 as f32;
-static C1: f32 = H1 as f32;
+static C0: f32 = L0 as f32; //~ ERROR illegal cast
+static C1: f32 = H1 as f32; //~ ERROR illegal cast
 
 pub fn main() {
-    let a = L0 as f32;
+    let a = L0 as f32;  //~ ERROR illegal cast
     let b = C0;
-    let c = H1 as f32;
+    let c = H1 as f32;  //~ ERROR illegal cast
     let d = C1;
     assert_eq!(a, -1.0f32);
     assert_eq!(b, -1.0f32);
