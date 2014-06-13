@@ -761,7 +761,8 @@ impl<'a> Builder<'a> {
     pub fn add_comment(&self, text: &str) {
         if self.ccx.sess().asm_comments() {
             let sanitized = text.replace("$", "");
-            let comment_text = format!("\\# {}", sanitized.replace("\n", "\n\t# "));
+            let comment_text = format!("{} {}", "#",
+                                       sanitized.replace("\n", "\n\t# "));
             self.count_insn("inlineasm");
             let asm = comment_text.as_slice().with_c_str(|c| {
                 unsafe {

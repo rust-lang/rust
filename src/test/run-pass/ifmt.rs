@@ -47,7 +47,7 @@ pub fn main() {
     // Various edge cases without formats
     t!(format!(""), "");
     t!(format!("hello"), "hello");
-    t!(format!("hello \\{"), "hello {");
+    t!(format!("hello {{"), "hello {");
 
     // default formatters should work
     t!(format!("{}", 1.0f32), "1");
@@ -79,18 +79,6 @@ pub fn main() {
     t!(format!("{} {0}", "a"), "a a");
     t!(format!("{foo_bar}", foo_bar=1), "1");
     t!(format!("{:d}", 5 + 5), "10");
-
-    // Methods should probably work
-    t!(format!("{0, plural, =1{a#} =2{b#} zero{c#} other{d#}}", 0u), "c0");
-    t!(format!("{0, plural, =1{a#} =2{b#} zero{c#} other{d#}}", 1u), "a1");
-    t!(format!("{0, plural, =1{a#} =2{b#} zero{c#} other{d#}}", 2u), "b2");
-    t!(format!("{0, plural, =1{a#} =2{b#} zero{c#} other{d#}}", 3u), "d3");
-    t!(format!("{0, select, a{a#} b{b#} c{c#} other{d#}}", "a"), "aa");
-    t!(format!("{0, select, a{a#} b{b#} c{c#} other{d#}}", "b"), "bb");
-    t!(format!("{0, select, a{a#} b{b#} c{c#} other{d#}}", "c"), "cc");
-    t!(format!("{0, select, a{a#} b{b#} c{c#} other{d#}}", "d"), "dd");
-    t!(format!("{1, select, a{#{0:s}} other{#}}", "b", "a"), "ab");
-    t!(format!("{1, select, a{#{0}} other{#}}", "c", "b"), "b");
 
     // Formatting strings and their arguments
     t!(format!("{:s}", "a"), "a");
@@ -135,10 +123,8 @@ pub fn main() {
     t!(format!("{:+10.3e}", -1.2345e6f64), "  -1.234e6");
 
     // Escaping
-    t!(format!("\\{"), "{");
-    t!(format!("\\}"), "}");
-    t!(format!("\\#"), "#");
-    t!(format!("\\\\"), "\\");
+    t!(format!("{{"), "{");
+    t!(format!("}}"), "}");
 
     test_write();
     test_print();

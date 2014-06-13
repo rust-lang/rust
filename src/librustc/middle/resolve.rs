@@ -4079,6 +4079,7 @@ impl<'a> Resolver<'a> {
 
             for (&key, &binding_0) in map_0.iter() {
                 match map_i.find(&key) {
+                  #[cfg(stage0)]
                   None => {
                     self.resolve_error(
                         p.span,
@@ -4087,12 +4088,33 @@ impl<'a> Resolver<'a> {
                                 token::get_name(key),
                                 i + 1).as_slice());
                   }
+                  #[cfg(not(stage0))]
+                  None => {
+                    self.resolve_error(
+                        p.span,
+                        format!("variable `{}` from pattern #1 is \
+                                  not bound in pattern #{}",
+                                token::get_name(key),
+                                i + 1).as_slice());
+                  }
+                  #[cfg(stage0)]
                   Some(binding_i) => {
                     if binding_0.binding_mode != binding_i.binding_mode {
                         self.resolve_error(
                             binding_i.span,
                             format!("variable `{}` is bound with different \
                                       mode in pattern \\#{} than in pattern \\#1",
+                                    token::get_name(key),
+                                    i + 1).as_slice());
+                    }
+                  }
+                  #[cfg(not(stage0))]
+                  Some(binding_i) => {
+                    if binding_0.binding_mode != binding_i.binding_mode {
+                        self.resolve_error(
+                            binding_i.span,
+                            format!("variable `{}` is bound with different \
+                                      mode in pattern #{} than in pattern #1",
                                     token::get_name(key),
                                     i + 1).as_slice());
                     }
@@ -4104,10 +4126,10 @@ impl<'a> Resolver<'a> {
                 if !map_0.contains_key(&key) {
                     self.resolve_error(
                         binding.span,
-                        format!("variable `{}` from pattern \\#{} is \
-                                  not bound in pattern \\#1",
+                        format!("variable `{}` from pattern {}{} is \
+                                  not bound in pattern {}1",
                                 token::get_name(key),
-                                i + 1).as_slice());
+                                "#", i + 1, "#").as_slice());
                 }
             }
         }
@@ -5094,6 +5116,7 @@ impl<'a> Resolver<'a> {
                         // structs, which wouldn't result in this error.)
                         match self.with_no_errors(|this|
                             this.resolve_path(expr.id, path, TypeNS, false)) {
+                            #[cfg(stage0)]
                             Some((DefTy(struct_id), _))
                               if self.structs.contains_key(&struct_id) => {
                                 self.resolve_error(expr.span,
@@ -5105,6 +5128,21 @@ impl<'a> Resolver<'a> {
                                 self.session.span_note(expr.span,
                                     format!("Did you mean to write: \
                                             `{} \\{ /* fields */ \\}`?",
+                                            wrong_name).as_slice());
+
+                            }
+                            #[cfg(not(stage0))]
+                            Some((DefTy(struct_id), _))
+                              if self.structs.contains_key(&struct_id) => {
+                                self.resolve_error(expr.span,
+                                        format!("`{}` is a structure name, but \
+                                                 this expression \
+                                                 uses it like a function name",
+                                                wrong_name).as_slice());
+
+                                self.session.span_note(expr.span,
+                                    format!("Did you mean to write: \
+                                            `{} {{ /* fields */ }}`?",
                                             wrong_name).as_slice());
 
                             }

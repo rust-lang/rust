@@ -42,7 +42,7 @@ fn main() {
 
         {
             let _ = write!(&mut File::create(&main_file).unwrap(),
-                           r"\#![feature(non_ascii_idents)] fn main() \{ {} \}",
+                           "#![feature(non_ascii_idents)] fn main() {{ {} }}",
                            // random string of length n
                            range(0, n).map(|_| random_char()).collect::<String>());
         }

@@ -76,6 +76,7 @@ impl<K: PartialOrd + Ord, V: PartialOrd> PartialOrd for TreeMap<K, V> {
 }
 
 impl<K: Ord + Show, V: Show> Show for TreeMap<K, V> {
+    #[cfg(stage0)]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(f, r"\{"));
 
@@ -85,6 +86,17 @@ impl<K: Ord + Show, V: Show> Show for TreeMap<K, V> {
         }
 
         write!(f, r"\}")
+    }
+    #[cfg(not(stage0))]
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        try!(write!(f, "{{"));
+
+        for (i, (k, v)) in self.iter().enumerate() {
+            if i != 0 { try!(write!(f, ", ")); }
+            try!(write!(f, "{}: {}", *k, *v));
+        }
+
+        write!(f, "}}")
     }
 }
 
@@ -574,6 +586,7 @@ impl<T: PartialOrd + Ord> PartialOrd for TreeSet<T> {
 }
 
 impl<T: Ord + Show> Show for TreeSet<T> {
+    #[cfg(stage0)]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(f, r"\{"));
 
@@ -583,6 +596,17 @@ impl<T: Ord + Show> Show for TreeSet<T> {
         }
 
         write!(f, r"\}")
+    }
+    #[cfg(not(stage0))]
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        try!(write!(f, "{{"));
+
+        for (i, x) in self.iter().enumerate() {
+            if i != 0 { try!(write!(f, ", ")); }
+            try!(write!(f, "{}", *x));
+        }
+
+        write!(f, "}}")
     }
 }
 
