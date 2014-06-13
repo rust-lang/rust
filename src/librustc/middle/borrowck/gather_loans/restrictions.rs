@@ -67,11 +67,21 @@ impl<'a> RestrictionsContext<'a> {
             }
 
             mc::cat_local(local_id) |
-            mc::cat_arg(local_id) |
-            mc::cat_upvar(ty::UpvarId {var_id: local_id, ..}, _) => {
-                // R-Variable
+            mc::cat_arg(local_id) => {
+                // R-Variable, locally declared
                 let lp = Rc::new(LpVar(local_id));
                 SafeIf(lp.clone(), vec!(lp))
+            }
+
+            mc::cat_upvar(upvar_id, _) => {
+                // R-Variable, captured into closure
+                let lp = Rc::new(LpUpvar(upvar_id));
+                SafeIf(lp.clone(), vec!(lp))
+            }
+
+            mc::cat_copied_upvar(..) => {
+                // FIXME(#2152) allow mutation of upvars
+                Safe
             }
 
             mc::cat_downcast(cmt_base) => {
@@ -107,7 +117,6 @@ impl<'a> RestrictionsContext<'a> {
                 self.extend(result, cmt.mutbl, LpDeref(pk))
             }
 
-            mc::cat_copied_upvar(..) | // FIXME(#2152) allow mutation of upvars
             mc::cat_static_item(..) => {
                 Safe
             }

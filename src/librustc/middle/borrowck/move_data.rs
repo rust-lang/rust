@@ -231,7 +231,7 @@ impl MoveData {
         }
 
         let index = match *lp {
-            LpVar(..) => {
+            LpVar(..) | LpUpvar(..) => {
                 let index = MovePathIndex(self.paths.borrow().len());
 
                 self.paths.borrow_mut().push(MovePath {
@@ -302,7 +302,7 @@ impl MoveData {
             }
             None => {
                 match **lp {
-                    LpVar(..) => { }
+                    LpVar(..) | LpUpvar(..) => { }
                     LpExtend(ref b, _, _) => {
                         self.add_existing_base_paths(b, result);
                     }
@@ -418,6 +418,11 @@ impl MoveData {
                     let path = *self.path_map.borrow().get(&path.loan_path);
                     self.kill_moves(path, kill_id, dfcx_moves);
                 }
+                LpUpvar(ty::UpvarId { var_id: _, closure_expr_id }) => {
+                    let kill_id = closure_to_block(closure_expr_id, tcx);
+                    let path = *self.path_map.borrow().get(&path.loan_path);
+                    self.kill_moves(path, kill_id, dfcx_moves);
+                }
                 LpExtend(..) => {}
             }
         }
@@ -428,6 +433,10 @@ impl MoveData {
             match *self.path_loan_path(assignment.path) {
                 LpVar(id) => {
                     let kill_id = tcx.region_maps.var_scope(id);
+                    dfcx_assign.add_kill(kill_id, assignment_index);
+                }
+                LpUpvar(ty::UpvarId { var_id: _, closure_expr_id }) => {
+                    let kill_id = closure_to_block(closure_expr_id, tcx);
                     dfcx_assign.add_kill(kill_id, assignment_index);
                 }
                 LpExtend(..) => {

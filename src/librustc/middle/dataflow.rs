@@ -266,34 +266,24 @@ impl<'a, O:DataFlowOperator> DataFlowContext<'a, O> {
 
     pub fn add_gen(&mut self, id: ast::NodeId, bit: uint) {
         //! Indicates that `id` generates `bit`
-        if self.nodeid_to_index.contains_key(&id) {
-            debug!("add_gen(id={:?}, bit={:?})", id, bit);
-            let cfgidx = to_cfgidx_or_die(id, &self.nodeid_to_index);
-            let (start, end) = self.compute_id_range(cfgidx);
-            {
-                let gens = self.gens.mut_slice(start, end);
-                set_bit(gens, bit);
-            }
-        } else {
-            debug!("{:s} add_gen skip (id={:?}, bit={:?}); id not in current fn",
-                   self.analysis_name, id, bit);
-        }
+        debug!("{:s} add_gen(id={:?}, bit={:?})",
+               self.analysis_name, id, bit);
+        assert!(self.nodeid_to_index.contains_key(&id));
+        let cfgidx = to_cfgidx_or_die(id, &self.nodeid_to_index);
+        let (start, end) = self.compute_id_range(cfgidx);
+        let gens = self.gens.mut_slice(start, end);
+        set_bit(gens, bit);
     }
 
     pub fn add_kill(&mut self, id: ast::NodeId, bit: uint) {
         //! Indicates that `id` kills `bit`
-        if self.nodeid_to_index.contains_key(&id) {
-            debug!("add_kill(id={:?}, bit={:?})", id, bit);
-            let cfgidx = to_cfgidx_or_die(id, &self.nodeid_to_index);
-            let (start, end) = self.compute_id_range(cfgidx);
-            {
-                let kills = self.kills.mut_slice(start, end);
-                set_bit(kills, bit);
-            }
-        } else {
-            debug!("{:s} add_kill skip (id={:?}, bit={:?}); id not in current fn",
-                   self.analysis_name, id, bit);
-        }
+        debug!("{:s} add_kill(id={:?}, bit={:?})",
+               self.analysis_name, id, bit);
+        assert!(self.nodeid_to_index.contains_key(&id));
+        let cfgidx = to_cfgidx_or_die(id, &self.nodeid_to_index);
+        let (start, end) = self.compute_id_range(cfgidx);
+        let kills = self.kills.mut_slice(start, end);
+        set_bit(kills, bit);
     }
 
     fn apply_gen_kill(&mut self, cfgidx: CFGIndex, bits: &mut [uint]) {
