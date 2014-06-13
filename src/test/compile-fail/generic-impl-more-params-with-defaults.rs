@@ -20,7 +20,5 @@ impl<T, A = Heap> Vec<T, A> {
 
 fn main() {
     Vec::<int, Heap, bool>::new();
-    //~^ ERROR the impl referenced by this path needs at most 2 type parameters,
-    //         but 3 were supplied
-    //~^^^ ERROR too many type parameters provided: expected at most 2, found 3
+    //~^ ERROR too many type parameters provided
 }

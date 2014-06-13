@@ -155,22 +155,6 @@ pub fn trans_static_method_callee(bcx: &Block,
 
     ty::populate_implementations_for_trait_if_necessary(bcx.tcx(), trait_id);
 
-    // When we translate a static fn defined in a trait like:
-    //
-    //   trait<T1...Tn> Trait {
-    //       fn foo<M1...Mn>(...) {...}
-    //   }
-    //
-    // this winds up being translated as something like:
-    //
-    //   fn foo<T1...Tn,self: Trait<T1...Tn>,M1...Mn>(...) {...}
-    //
-    // So when we see a call to this function foo, we have to figure
-    // out which impl the `Trait<T1...Tn>` bound on the type `self` was
-    // bound to.
-    let bound_index = ty::lookup_trait_def(bcx.tcx(), trait_id).
-        generics.type_param_defs().len();
-
     let mname = if method_id.krate == ast::LOCAL_CRATE {
         match bcx.tcx().map.get(method_id.node) {
             ast_map::NodeTraitMethod(method) => {
@@ -189,18 +173,19 @@ pub fn trans_static_method_callee(bcx: &Block,
             name={}", method_id, expr_id, token::get_name(mname));
 
     let vtable_key = MethodCall::expr(expr_id);
-    let vtbls = resolve_vtables_in_fn_ctxt(bcx.fcx, ccx.tcx.vtable_map.borrow()
-                                                       .get(&vtable_key).as_slice());
+    let vtbls = resolve_vtables_in_fn_ctxt(
+        bcx.fcx,
+        ccx.tcx.vtable_map.borrow().get(&vtable_key));
 
-    match vtbls.move_iter().nth(bound_index).unwrap().move_iter().nth(0).unwrap() {
-        typeck::vtable_static(impl_did, rcvr_substs, rcvr_origins) => {
-            assert!(rcvr_substs.tps.iter().all(|t| !ty::type_needs_infer(*t)));
+    match *vtbls.get_self().unwrap().get(0) {
+        typeck::vtable_static(impl_did, ref rcvr_substs, ref rcvr_origins) => {
+            assert!(rcvr_substs.types.all(|t| !ty::type_needs_infer(*t)));
 
             let mth_id = method_with_name(ccx, impl_did, mname);
             let (callee_substs, callee_origins) =
                 combine_impl_and_methods_tps(
-                    bcx, mth_id, ExprId(expr_id),
-                    rcvr_substs, rcvr_origins);
+                    bcx, ExprId(expr_id),
+                    (*rcvr_substs).clone(), (*rcvr_origins).clone());
 
             let llfn = trans_fn_ref_with_vtables(bcx, mth_id, ExprId(expr_id),
                                                  callee_substs,
@@ -252,8 +237,7 @@ fn trans_monomorphized_callee<'a>(bcx: &'a Block<'a>,
           // those from the impl and those from the method:
           let (callee_substs, callee_origins) =
               combine_impl_and_methods_tps(
-                  bcx, mth_id,  MethodCall(method_call),
-                  rcvr_substs, rcvr_origins);
+                  bcx, MethodCall(method_call), rcvr_substs, rcvr_origins);
 
           // translate the function
           let llfn = trans_fn_ref_with_vtables(bcx,
@@ -265,13 +249,17 @@ fn trans_monomorphized_callee<'a>(bcx: &'a Block<'a>,
           Callee { bcx: bcx, data: Fn(llfn) }
       }
       typeck::vtable_param(..) => {
-          fail!("vtable_param left in monomorphized function's vtable substs");
+          bcx.tcx().sess.bug(
+              "vtable_param left in monomorphized function's vtable substs");
+      }
+      typeck::vtable_error => {
+          bcx.tcx().sess.bug(
+              "vtable_error left in monomorphized function's vtable substs");
       }
     }
 }
 
 fn combine_impl_and_methods_tps(bcx: &Block,
-                                mth_did: ast::DefId,
                                 node: ExprOrMethodCall,
                                 rcvr_substs: subst::Substs,
                                 rcvr_origins: typeck::vtable_res)
@@ -295,37 +283,32 @@ fn combine_impl_and_methods_tps(bcx: &Block,
      */
 
     let ccx = bcx.ccx();
-    let method = ty::method(ccx.tcx(), mth_did);
-    let n_m_tps = method.generics.type_param_defs().len();
-    let node_substs = node_id_substs(bcx, node);
-    debug!("rcvr_substs={:?}", rcvr_substs.repr(ccx.tcx()));
-    debug!("node_substs={:?}", node_substs.repr(ccx.tcx()));
-    let rcvr_self_ty = rcvr_substs.self_ty;
-    let mut tps = rcvr_substs.tps;
-    {
-        let start = node_substs.tps.len() - n_m_tps;
-        tps.extend(node_substs.tps.move_iter().skip(start));
-    }
-    debug!("n_m_tps={:?}", n_m_tps);
-    debug!("tps={}", tps.repr(ccx.tcx()));
 
-
-    // Now, do the same work for the vtables.  The vtables might not
-    // exist, in which case we need to make them.
     let vtable_key = match node {
         ExprId(id) => MethodCall::expr(id),
         MethodCall(method_call) => method_call
     };
-    let mut vtables = rcvr_origins;
-    let vt = node_vtables(bcx, vtable_key);
-    let start = vt.len() - n_m_tps;
-    vtables.extend(vt.move_iter().skip(start));
+    let node_substs = node_id_substs(bcx, node);
+    let node_vtables = node_vtables(bcx, vtable_key);
 
+    debug!("rcvr_substs={:?}", rcvr_substs.repr(ccx.tcx()));
+    debug!("node_substs={:?}", node_substs.repr(ccx.tcx()));
+
+    // Break apart the type parameters from the node and type
+    // parameters from the receiver.
+    let (_, _, node_method) = node_substs.types.split();
+    let (rcvr_type, rcvr_self, rcvr_method) = rcvr_substs.types.clone().split();
+    assert!(rcvr_method.is_empty());
     let ty_substs = subst::Substs {
-        tps: tps,
         regions: subst::ErasedRegions,
-        self_ty: rcvr_self_ty
+        types: subst::VecPerParamSpace::new(rcvr_type, rcvr_self, node_method)
     };
+
+    // Now do the same work for the vtables.
+    let (rcvr_type, rcvr_self, rcvr_method) = rcvr_origins.split();
+    let (_, _, node_method) = node_vtables.split();
+    assert!(rcvr_method.is_empty());
+    let vtables = subst::VecPerParamSpace::new(rcvr_type, rcvr_self, node_method);
 
     (ty_substs, vtables)
 }
@@ -426,7 +409,12 @@ pub fn trans_trait_callee_from_llval<'a>(bcx: &'a Block<'a>,
 fn get_vtable(bcx: &Block,
               self_ty: ty::t,
               origins: typeck::vtable_param_res)
-              -> ValueRef {
+              -> ValueRef
+{
+    debug!("get_vtable(self_ty={}, origins={})",
+           self_ty.repr(bcx.tcx()),
+           origins.repr(bcx.tcx()));
+
     let ccx = bcx.ccx();
     let _icx = push_ctxt("meth::get_vtable");
 
@@ -503,8 +491,9 @@ fn emit_vtable_methods(bcx: &Block,
         debug!("(making impl vtable) emitting method {} at subst {}",
                m.repr(tcx),
                substs.repr(tcx));
-        if m.generics.has_type_params() ||
-           ty::type_has_self(ty::mk_bare_fn(tcx, m.fty.clone())) {
+        if m.generics.has_type_params(subst::FnSpace) ||
+           ty::type_has_self(ty::mk_bare_fn(tcx, m.fty.clone()))
+        {
             debug!("(making impl vtable) method has self or type params: {}",
                    token::get_ident(ident));
             C_null(Type::nil(ccx).ptr_to())
@@ -551,7 +540,7 @@ pub fn trans_trait_cast<'a>(bcx: &'a Block<'a>,
         let vtable_map = ccx.tcx.vtable_map.borrow();
         resolve_param_vtables_under_param_substs(ccx.tcx(),
             bcx.fcx.param_substs,
-            vtable_map.get(&MethodCall::expr(id)).get(0).as_slice())
+            vtable_map.get(&MethodCall::expr(id)).get_self().unwrap())
     };
     let vtable = get_vtable(bcx, v_ty, origins);
     let llvtabledest = GEPi(bcx, lldest, [0u, abi::trt_field_vtable]);

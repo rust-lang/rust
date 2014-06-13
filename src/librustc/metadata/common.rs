@@ -189,9 +189,7 @@ pub static tag_impls_impl: uint = 0x81;
 pub static tag_items_data_item_inherent_impl: uint = 0x82;
 pub static tag_items_data_item_extension_impl: uint = 0x83;
 
-pub static tag_region_param_def: uint = 0x84;
-pub static tag_region_param_def_ident: uint = 0x85;
-pub static tag_region_param_def_def_id: uint = 0x86;
+// GAP 0x84, 0x85, 0x86
 
 pub static tag_native_libraries: uint = 0x87;
 pub static tag_native_libraries_lib: uint = 0x88;
@@ -217,3 +215,9 @@ pub struct LinkMeta {
     pub crateid: CrateId,
     pub crate_hash: Svh,
 }
+
+pub static tag_region_param_def: uint = 0x90;
+pub static tag_region_param_def_ident: uint = 0x91;
+pub static tag_region_param_def_def_id: uint = 0x92;
+pub static tag_region_param_def_space: uint = 0x93;
+pub static tag_region_param_def_index: uint = 0x94;

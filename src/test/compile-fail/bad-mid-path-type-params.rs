@@ -45,11 +45,16 @@ impl Trait<int> for S2 {
 
 fn foo<'a>() {
     let _ = S::new::<int,f64>(1, 1.0);
-    //~^ ERROR the impl referenced by this path needs 1 type parameter, but 0 type parameters were supplied
-    let _ = S::<'a,int>::new::<f64>(1, 1.0); //~ ERROR expected 0 lifetime parameters
+    //~^ ERROR too many type parameters provided
+
+    let _ = S::<'a,int>::new::<f64>(1, 1.0);
+    //~^ ERROR too many lifetime parameters provided
+
     let _: S2 = Trait::new::<int,f64>(1, 1.0);
-    //~^ ERROR the trait referenced by this path needs 1 type parameter, but 0 type parameters were supplied
-    let _: S2 = Trait::<'a,int>::new::<f64>(1, 1.0); //~ ERROR expected 0 lifetime parameters
+    //~^ ERROR too many type parameters provided
+
+    let _: S2 = Trait::<'a,int>::new::<f64>(1, 1.0);
+    //~^ ERROR too many lifetime parameters provided
 }
 
 fn main() {}

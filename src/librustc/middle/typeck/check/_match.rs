@@ -127,7 +127,7 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: &ast::Pat, path: &ast::Path,
 
     // Check to see whether this is an enum or a struct.
     match *structure_of(pcx.fcx, pat.span, expected) {
-        ty::ty_enum(_, ref expected_substs) => {
+        ty::ty_enum(expected_def_id, ref expected_substs) => {
             // Lookup the enum and variant def ids:
             let v_def = lookup_def(pcx.fcx, pat.span, pat.id);
             match v_def.variant_def_ids() {
@@ -150,18 +150,15 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: &ast::Pat, path: &ast::Path,
                     arg_types = {
                         let vinfo =
                             ty::enum_variant_with_id(tcx, enm, var);
-                        let var_tpt = ty::lookup_item_type(tcx, var);
-                        vinfo.args.iter().map(|t| {
-                            if var_tpt.generics.type_param_defs().len() ==
-                                expected_substs.tps.len()
-                            {
-                                t.subst(tcx, expected_substs)
-                            }
-                            else {
-                                *t // In this case, an error was already signaled
-                                    // anyway
-                            }
-                        }).collect()
+                        if enm == expected_def_id {
+                            vinfo.args.iter()
+                                .map(|t| t.subst(tcx, expected_substs))
+                                .collect()
+                        } else {
+                            vinfo.args.iter()
+                                .map(|_| ty::mk_err())
+                                .collect()
+                        }
                     };
 
                     kind_name = "variant";
@@ -569,11 +566,7 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
                                           fields.as_slice(),
                                           etc,
                                           supplied_def_id,
-                                          &subst::Substs {
-                                              self_ty: None,
-                                              tps: Vec::new(),
-                                              regions: subst::ErasedRegions,
-                                          });
+                                          &subst::Substs::empty());
                     }
                     _ => () // Error, but we're already in an error case
                 }

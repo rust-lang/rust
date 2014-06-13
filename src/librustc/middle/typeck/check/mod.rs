@@ -83,10 +83,10 @@ use middle::lint::UnreachableCode;
 use middle::pat_util::pat_id_map;
 use middle::pat_util;
 use middle::subst;
-use middle::subst::{Subst, Substs};
+use middle::subst::{Subst, Substs, VecPerParamSpace, ParamSpace};
 use middle::ty::{FnSig, VariantInfo};
 use middle::ty::{ty_param_bounds_and_ty, ty_param_substs_and_ty};
-use middle::ty::{param_ty, Disr, ExprTyProvider};
+use middle::ty::{ParamTy, Disr, ExprTyProvider};
 use middle::ty;
 use middle::ty_fold::TypeFolder;
 use middle::typeck::astconv::AstConv;
@@ -285,8 +285,7 @@ fn blank_inherited_fields<'a>(ccx: &'a CrateCtxt<'a>) -> Inherited<'a> {
     // and statement context, but we might as well do write the code only once
     let param_env = ty::ParameterEnvironment {
         free_substs: subst::Substs::empty(),
-        self_param_bound: None,
-        type_param_bounds: Vec::new()
+        bounds: subst::VecPerParamSpace::empty()
     };
     Inherited::new(ccx.tcx, param_env)
 }
@@ -453,9 +452,9 @@ fn check_fn<'a>(ccx: &'a CrateCtxt<'a>,
     let arg_tys = fn_sig.inputs.as_slice();
     let ret_ty = fn_sig.output;
 
-    debug!("check_fn(arg_tys={:?}, ret_ty={:?})",
-           arg_tys.iter().map(|&a| ppaux::ty_to_str(tcx, a)).collect::<Vec<String>>(),
-           ppaux::ty_to_str(tcx, ret_ty));
+    debug!("check_fn(arg_tys={}, ret_ty={})",
+           arg_tys.repr(tcx),
+           ret_ty.repr(tcx));
 
     // Create the function context.  This is either derived from scratch or,
     // in the case of function expressions, based on the outer context.
@@ -647,14 +646,9 @@ pub fn check_item(ccx: &CrateCtxt, it: &ast::Item) {
       ast::ItemFn(ref decl, _, _, _, ref body) => {
         let fn_tpt = ty::lookup_item_type(ccx.tcx, ast_util::local_def(it.id));
 
-        let param_env = ty::construct_parameter_environment(
-                ccx.tcx,
-                None,
-                fn_tpt.generics.type_param_defs(),
-                [],
-                [],
-                fn_tpt.generics.region_param_defs.as_slice(),
-                body.id);
+        let param_env = ty::construct_parameter_environment(ccx.tcx,
+                                                            &fn_tpt.generics,
+                                                            body.id);
 
         check_bare_fn(ccx, &**decl, &**body, it.id, fn_tpt.ty, param_env);
       }
@@ -663,7 +657,7 @@ pub fn check_item(ccx: &CrateCtxt, it: &ast::Item) {
 
         let impl_tpt = ty::lookup_item_type(ccx.tcx, ast_util::local_def(it.id));
         for m in ms.iter() {
-            check_method_body(ccx, &impl_tpt.generics, None, &**m);
+            check_method_body(ccx, &impl_tpt.generics, &**m);
         }
 
         match *opt_trait_ref {
@@ -672,7 +666,6 @@ pub fn check_item(ccx: &CrateCtxt, it: &ast::Item) {
                     ty::node_id_to_trait_ref(ccx.tcx, ast_trait_ref.ref_id);
                 check_impl_methods_against_trait(ccx,
                                              it.span,
-                                             &impl_tpt.generics,
                                              ast_trait_ref,
                                              &*impl_trait_ref,
                                              ms.as_slice());
@@ -691,8 +684,7 @@ pub fn check_item(ccx: &CrateCtxt, it: &ast::Item) {
                     // bodies to check.
                 }
                 Provided(m) => {
-                    check_method_body(ccx, &trait_def.generics,
-                                      Some(trait_def.trait_ref.clone()), &*m);
+                    check_method_body(ccx, &trait_def.generics, &*m);
                 }
             }
         }
@@ -712,7 +704,7 @@ pub fn check_item(ccx: &CrateCtxt, it: &ast::Item) {
         } else {
             for item in m.items.iter() {
                 let tpt = ty::lookup_item_type(ccx.tcx, local_def(item.id));
-                if tpt.generics.has_type_params() {
+                if !tpt.generics.types.is_empty() {
                     ccx.tcx.sess.span_err(item.span, "foreign items may not have type parameters");
                 }
 
@@ -734,7 +726,6 @@ pub fn check_item(ccx: &CrateCtxt, it: &ast::Item) {
 
 fn check_method_body(ccx: &CrateCtxt,
                      item_generics: &ty::Generics,
-                     self_bound: Option<Rc<ty::TraitRef>>,
                      method: &ast::Method) {
     /*!
      * Type checks a method body.
@@ -746,25 +737,16 @@ fn check_method_body(ccx: &CrateCtxt,
      * - `method`: the method definition
      */
 
-    debug!("check_method_body(item_generics={}, \
-            self_bound={}, \
-            method.id={})",
+    debug!("check_method_body(item_generics={}, method.id={})",
             item_generics.repr(ccx.tcx),
-            self_bound.repr(ccx.tcx),
             method.id);
     let method_def_id = local_def(method.id);
     let method_ty = ty::method(ccx.tcx, method_def_id);
     let method_generics = &method_ty.generics;
 
-    let param_env =
-        ty::construct_parameter_environment(
-            ccx.tcx,
-            self_bound,
-            item_generics.type_param_defs(),
-            method_generics.type_param_defs(),
-            item_generics.region_param_defs(),
-            method_generics.region_param_defs(),
-            method.body.id);
+    let param_env = ty::construct_parameter_environment(ccx.tcx,
+                                                        method_generics,
+                                                        method.body.id);
 
     let fty = ty::node_id_to_type(ccx.tcx, method.id);
 
@@ -773,7 +755,6 @@ fn check_method_body(ccx: &CrateCtxt,
 
 fn check_impl_methods_against_trait(ccx: &CrateCtxt,
                                     impl_span: Span,
-                                    impl_generics: &ty::Generics,
                                     ast_trait_ref: &ast::TraitRef,
                                     impl_trait_ref: &ty::TraitRef,
                                     impl_methods: &[Gc<ast::Method>]) {
@@ -795,7 +776,6 @@ fn check_impl_methods_against_trait(ccx: &CrateCtxt,
         match opt_trait_method_ty {
             Some(trait_method_ty) => {
                 compare_impl_method(ccx.tcx,
-                                    impl_generics,
                                     &*impl_method_ty,
                                     impl_method.span,
                                     impl_method.body.id,
@@ -849,19 +829,16 @@ fn check_impl_methods_against_trait(ccx: &CrateCtxt,
  * - impl_m_span: span to use for reporting errors
  * - impl_m_body_id: id of the method body
  * - trait_m: the method in the trait
- * - trait_substs: the substitutions used on the type of the trait
+ * - trait_to_impl_substs: the substitutions used on the type of the trait
  */
 fn compare_impl_method(tcx: &ty::ctxt,
-                       impl_generics: &ty::Generics,
                        impl_m: &ty::Method,
                        impl_m_span: Span,
                        impl_m_body_id: ast::NodeId,
                        trait_m: &ty::Method,
-                       trait_substs: &subst::Substs) {
+                       trait_to_impl_substs: &subst::Substs) {
     debug!("compare_impl_method()");
     let infcx = infer::new_infer_ctxt(tcx);
-
-    let impl_tps = impl_generics.type_param_defs().len();
 
     // Try to give more informative error messages about self typing
     // mismatches.  Note that any mismatch will also be detected
@@ -897,8 +874,8 @@ fn compare_impl_method(tcx: &ty::ctxt,
         }
     }
 
-    let num_impl_m_type_params = impl_m.generics.type_param_defs().len();
-    let num_trait_m_type_params = trait_m.generics.type_param_defs().len();
+    let num_impl_m_type_params = impl_m.generics.types.len(subst::FnSpace);
+    let num_trait_m_type_params = trait_m.generics.types.len(subst::FnSpace);
     if num_impl_m_type_params != num_trait_m_type_params {
         tcx.sess.span_err(
             impl_m_span,
@@ -925,8 +902,8 @@ fn compare_impl_method(tcx: &ty::ctxt,
         return;
     }
 
-    let it = trait_m.generics.type_param_defs().iter()
-        .zip(impl_m.generics.type_param_defs().iter());
+    let it = trait_m.generics.types.get_vec(subst::FnSpace).iter()
+        .zip(impl_m.generics.types.get_vec(subst::FnSpace).iter());
 
     for (i, (trait_param_def, impl_param_def)) in it.enumerate() {
         // Check that the impl does not require any builtin-bounds
@@ -971,62 +948,89 @@ fn compare_impl_method(tcx: &ty::ctxt,
         }
     }
 
-    // Create a substitution that maps the type parameters on the impl
-    // to themselves and which replace any references to bound regions
-    // in the self type with free regions.  So, for example, if the
-    // impl type is "&'a str", then this would replace the self
-    // type with a free region `self`.
-    let dummy_impl_tps: Vec<ty::t> =
-        impl_generics.type_param_defs().iter().enumerate().
-        map(|(i,t)| ty::mk_param(tcx, i, t.def_id)).
-        collect();
-    let dummy_method_tps: Vec<ty::t> =
-        impl_m.generics.type_param_defs().iter().enumerate().
-        map(|(i,t)| ty::mk_param(tcx, i + impl_tps, t.def_id)).
-        collect();
-    let dummy_impl_regions: Vec<ty::Region> =
-        impl_generics.region_param_defs().iter().
-        map(|l| ty::ReFree(ty::FreeRegion {
-                scope_id: impl_m_body_id,
-                bound_region: ty::BrNamed(l.def_id, l.name)})).
-        collect();
-    let dummy_substs = subst::Substs {
-        tps: dummy_impl_tps.append(dummy_method_tps.as_slice()),
-        regions: subst::NonerasedRegions(dummy_impl_regions),
-        self_ty: None };
+    // This code is best explained by example. Consider a trait:
+    //
+    //     trait Trait<T> {
+    //          fn method<'a,M>(t: T, m: &'a M) -> Self;
+    //     }
+    //
+    // And an impl:
+    //
+    //     impl<'i, U> Trait<&'i U> for Foo {
+    //          fn method<'b,N>(t: &'i U, m: &'b N) -> Foo;
+    //     }
+    //
+    // We wish to decide if those two method types are compatible.
+    //
+    // We start out with trait_to_impl_substs, that maps the trait type
+    // parameters to impl type parameters:
+    //
+    //     trait_to_impl_substs = {T => &'i U, Self => Foo}
+    //
+    // We create a mapping `dummy_substs` that maps from the impl type
+    // parameters to fresh types and regions. For type parameters,
+    // this is the identity transform, but we could as well use any
+    // skolemized types. For regions, we convert from bound to free
+    // regions (Note: but only early-bound regions, i.e., those
+    // declared on the impl or used in type parameter bounds).
+    //
+    //     impl_to_skol_substs = {'i => 'i0, U => U0, N => N0 }
+    //
+    // Now we can apply skol_substs to the type of the impl method
+    // to yield a new function type in terms of our fresh, skolemized
+    // types:
+    //
+    //     <'b> fn(t: &'i0 U0, m: &'b) -> Foo
+    //
+    // We now want to extract and substitute the type of the *trait*
+    // method and compare it. To do so, we must create a compound
+    // substitution by combining trait_to_impl_substs and
+    // impl_to_skol_substs, and also adding a mapping for the method
+    // type parameters. We extend the mapping to also include
+    // the method parameters.
+    //
+    //     trait_to_skol_substs = { T => &'i0 U0, Self => Foo, M => N0 }
+    //
+    // Applying this to the trait method type yields:
+    //
+    //     <'a> fn(t: &'i0 U0, m: &'a) -> Foo
+    //
+    // This type is also the same but the name of the bound region ('a
+    // vs 'b).  However, the normal subtyping rules on fn types handle
+    // this kind of equivalency just fine.
 
-    // Create a bare fn type for trait/impl
-    // It'd be nice to refactor so as to provide the bare fn types instead.
-    let trait_fty = ty::mk_bare_fn(tcx, trait_m.fty.clone());
+    // Create mapping from impl to skolemized.
+    let skol_tps =
+        impl_m.generics.types.map(
+            |d| ty::mk_param_from_def(tcx, d));
+    let skol_regions =
+        impl_m.generics.regions.map(
+            |l| ty::free_region_from_def(impl_m_body_id, l));
+    let impl_to_skol_substs =
+        subst::Substs::new(skol_tps.clone(), skol_regions.clone());
+
+    // Compute skolemized form of impl method ty.
     let impl_fty = ty::mk_bare_fn(tcx, impl_m.fty.clone());
+    let impl_fty = impl_fty.subst(tcx, &impl_to_skol_substs);
 
-    // Perform substitutions so that the trait/impl methods are expressed
-    // in terms of the same set of type/region parameters:
-    // - replace trait type parameters with those from `trait_substs`,
-    //   except with any reference to bound self replaced with `dummy_self_r`
-    // - replace method parameters on the trait with fresh, dummy parameters
-    //   that correspond to the parameters we will find on the impl
-    // - replace self region with a fresh, dummy region
-    let impl_fty = {
-        debug!("impl_fty (pre-subst): {}", ppaux::ty_to_str(tcx, impl_fty));
-        impl_fty.subst(tcx, &dummy_substs)
-    };
-    debug!("impl_fty (post-subst): {}", ppaux::ty_to_str(tcx, impl_fty));
-    let trait_fty = {
-        let subst::Substs { regions: trait_regions,
-                            tps: trait_tps,
-                            self_ty: self_ty } = trait_substs.subst(tcx, &dummy_substs);
-        let substs = subst::Substs {
-            regions: trait_regions,
-            tps: trait_tps.append(dummy_method_tps.as_slice()),
-            self_ty: self_ty,
-        };
-        debug!("trait_fty (pre-subst): {} substs={}",
-               trait_fty.repr(tcx), substs.repr(tcx));
-        trait_fty.subst(tcx, &substs)
-    };
-    debug!("trait_fty (post-subst): {}", trait_fty.repr(tcx));
+    // Compute skolemized form of trait method ty.
+    let trait_to_skol_substs =
+        trait_to_impl_substs
+        .subst(tcx, &impl_to_skol_substs)
+        .with_method(skol_tps.get_vec(subst::FnSpace).clone(),
+                     skol_regions.get_vec(subst::FnSpace).clone());
+    let trait_fty = ty::mk_bare_fn(tcx, trait_m.fty.clone());
+    let trait_fty = trait_fty.subst(tcx, &trait_to_skol_substs);
 
+    // Check the impl method type IM is a subtype of the trait method
+    // type TM. To see why this makes sense, think of a vtable. The
+    // expected type of the function pointers in the vtable is the
+    // type TM of the trait method.  The actual type will be the type
+    // IM of the impl method. Because we know that IM <: TM, that
+    // means that anywhere a TM is expected, a IM will do instead. In
+    // other words, anyone expecting to call a method with the type
+    // from the trait, can safely call a method with the type from the
+    // impl instead.
     match infer::mk_subty(&infcx, false, infer::MethodCompatCheck(impl_m_span),
                           impl_fty, trait_fty) {
         Ok(()) => {}
@@ -1792,18 +1796,13 @@ pub fn impl_self_ty(vcx: &VtableContext,
 
     let ity = ty::lookup_item_type(tcx, did);
     let (n_tps, rps, raw_ty) =
-        (ity.generics.type_param_defs().len(),
-         ity.generics.region_param_defs(),
+        (ity.generics.types.len(subst::TypeSpace),
+         ity.generics.regions.get_vec(subst::TypeSpace),
          ity.ty);
 
     let rps = vcx.infcx.region_vars_for_defs(span, rps);
     let tps = vcx.infcx.next_ty_vars(n_tps);
-
-    let substs = subst::Substs {
-        regions: subst::NonerasedRegions(rps),
-        self_ty: None,
-        tps: tps,
-    };
+    let substs = subst::Substs::new_type(tps, rps);
     let substd_ty = raw_ty.subst(tcx, &substs);
 
     ty_param_substs_and_ty { substs: substs, ty: substd_ty }
@@ -1848,170 +1847,6 @@ pub enum DerefArgs {
 enum TupleArgumentsFlag {
     DontTupleArguments,
     TupleArguments,
-}
-
-// Given the provenance of a static method, returns the generics of the static
-// method's container.
-fn generics_of_static_method_container(type_context: &ty::ctxt,
-                                       provenance: def::MethodProvenance)
-                                       -> ty::Generics {
-    match provenance {
-        def::FromTrait(trait_def_id) => {
-            ty::lookup_trait_def(type_context, trait_def_id).generics.clone()
-        }
-        def::FromImpl(impl_def_id) => {
-            ty::lookup_item_type(type_context, impl_def_id).generics.clone()
-        }
-    }
-}
-
-// Verifies that type parameters supplied in paths are in the right
-// locations.
-fn check_type_parameter_positions_in_path(function_context: &FnCtxt,
-                                          path: &ast::Path,
-                                          def: def::Def) {
-    // We only care about checking the case in which the path has two or
-    // more segments.
-    if path.segments.len() < 2 {
-        return
-    }
-
-    // Verify that no lifetimes or type parameters are present anywhere
-    // except the final two elements of the path.
-    for i in range(0, path.segments.len() - 2) {
-        for lifetime in path.segments.get(i).lifetimes.iter() {
-            function_context.tcx()
-                .sess
-                .span_err(lifetime.span,
-                          "lifetime parameters may not \
-                          appear here");
-            break;
-        }
-
-        for typ in path.segments.get(i).types.iter() {
-            function_context.tcx()
-                            .sess
-                            .span_err(typ.span,
-                                      "type parameters may not appear here");
-            break;
-        }
-    }
-
-    // If there are no parameters at all, there is nothing more to do; the
-    // rest of typechecking will (attempt to) infer everything.
-    if path.segments
-           .iter()
-           .all(|s| s.lifetimes.is_empty() && s.types.is_empty()) {
-        return
-    }
-
-    match def {
-        // If this is a static method of a trait or implementation, then
-        // ensure that the segment of the path which names the trait or
-        // implementation (the penultimate segment) is annotated with the
-        // right number of type parameters.
-        def::DefStaticMethod(_, provenance, _) => {
-            let generics =
-                generics_of_static_method_container(function_context.ccx.tcx,
-                                                    provenance);
-            let name = match provenance {
-                def::FromTrait(_) => "trait",
-                def::FromImpl(_) => "impl",
-            };
-
-            let trait_segment = &path.segments.get(path.segments.len() - 2);
-
-            // Make sure lifetime parameterization agrees with the trait or
-            // implementation type.
-            let trait_region_parameter_count = generics.region_param_defs().len();
-            let supplied_region_parameter_count = trait_segment.lifetimes.len();
-            if trait_region_parameter_count != supplied_region_parameter_count
-                && supplied_region_parameter_count != 0 {
-                function_context.tcx()
-                    .sess
-                    .span_err(path.span,
-                              format!("expected {} lifetime parameter{} \
-                                       found {} liftime parameter{}",
-                                      trait_region_parameter_count,
-                                      if trait_region_parameter_count == 1 {""}
-                                        else {"s"},
-                                      supplied_region_parameter_count,
-                                      if supplied_region_parameter_count == 1 {""}
-                                        else {"s"}).as_slice());
-            }
-
-            // Make sure the number of type parameters supplied on the trait
-            // or implementation segment equals the number of type parameters
-            // on the trait or implementation definition.
-            let formal_ty_param_count = generics.type_param_defs().len();
-            let required_ty_param_count = generics.type_param_defs().iter()
-                                                  .take_while(|x| x.default.is_none())
-                                                  .count();
-            let supplied_ty_param_count = trait_segment.types.len();
-            if supplied_ty_param_count < required_ty_param_count {
-                let msg = if required_ty_param_count < generics.type_param_defs().len() {
-                    format!("the {} referenced by this path needs at least \
-                             {} type parameter{}, but {} type parameters were \
-                             supplied",
-                            name,
-                            required_ty_param_count,
-                            if required_ty_param_count == 1 {""} else {"s"},
-                            supplied_ty_param_count)
-                } else {
-                    format!("the {} referenced by this path needs \
-                             {} type parameter{}, but {} type parameters were \
-                             supplied",
-                            name,
-                            required_ty_param_count,
-                            if required_ty_param_count == 1 {""} else {"s"},
-                            supplied_ty_param_count)
-                };
-                function_context.tcx().sess.span_err(path.span,
-                                                     msg.as_slice())
-            } else if supplied_ty_param_count > formal_ty_param_count {
-                let msg = if required_ty_param_count < generics.type_param_defs().len() {
-                    format!("the {} referenced by this path needs at most \
-                             {} type parameter{}, but {} type parameters were \
-                             supplied",
-                            name,
-                            formal_ty_param_count,
-                            if formal_ty_param_count == 1 {""} else {"s"},
-                            supplied_ty_param_count)
-                } else {
-                    format!("the {} referenced by this path needs \
-                             {} type parameter{}, but {} type parameters were \
-                             supplied",
-                            name,
-                            formal_ty_param_count,
-                            if formal_ty_param_count == 1 {""} else {"s"},
-                            supplied_ty_param_count)
-                };
-                function_context.tcx().sess.span_err(path.span,
-                                                     msg.as_slice())
-            }
-        }
-        _ => {
-            // Verify that no lifetimes or type parameters are present on
-            // the penultimate segment of the path.
-            let segment = &path.segments.get(path.segments.len() - 2);
-            for lifetime in segment.lifetimes.iter() {
-                function_context.tcx()
-                    .sess
-                    .span_err(lifetime.span,
-                              "lifetime parameters may not
-                              appear here");
-                break;
-            }
-            for typ in segment.types.iter() {
-                function_context.tcx()
-                                .sess
-                                .span_err(typ.span,
-                                          "type parameters may not appear \
-                                           here");
-                break;
-            }
-        }
-    }
 }
 
 /// Invariant:
@@ -2689,19 +2524,11 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         // Look up the number of type parameters and the raw type, and
         // determine whether the class is region-parameterized.
         let item_type = ty::lookup_item_type(tcx, class_id);
-        let type_parameter_count = item_type.generics.type_param_defs().len();
-        let region_param_defs = item_type.generics.region_param_defs();
         let raw_type = item_type.ty;
 
         // Generate the struct type.
-        let regions = fcx.infcx().region_vars_for_defs(span, region_param_defs);
-        let type_parameters = fcx.infcx().next_ty_vars(type_parameter_count);
-        let substitutions = subst::Substs {
-            regions: subst::NonerasedRegions(regions),
-            self_ty: None,
-            tps: type_parameters
-        };
-
+        let substitutions = fcx.infcx().fresh_substs_for_type(
+            span, &item_type.generics);
         let mut struct_type = raw_type.subst(tcx, &substitutions);
 
         // Look up and check the fields.
@@ -2745,20 +2572,8 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         // Look up the number of type parameters and the raw type, and
         // determine whether the enum is region-parameterized.
         let item_type = ty::lookup_item_type(tcx, enum_id);
-        let type_parameter_count = item_type.generics.type_param_defs().len();
-        let region_param_defs = item_type.generics.region_param_defs();
-        let raw_type = item_type.ty;
-
-        // Generate the enum type.
-        let regions = fcx.infcx().region_vars_for_defs(span, region_param_defs);
-        let type_parameters = fcx.infcx().next_ty_vars(type_parameter_count);
-        let substitutions = subst::Substs {
-            regions: subst::NonerasedRegions(regions),
-            self_ty: None,
-            tps: type_parameters
-        };
-
-        let enum_type = raw_type.subst(tcx, &substitutions);
+        let substitutions = fcx.infcx().fresh_substs_for_type(span, &item_type.generics);
+        let enum_type = item_type.ty.subst(tcx, &substitutions);
 
         // Look up and check the enum variant fields.
         let variant_fields = ty::lookup_struct_fields(tcx, variant_id);
@@ -3039,8 +2854,6 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
       }
       ast::ExprPath(ref pth) => {
         let defn = lookup_def(fcx, pth.span, id);
-
-        check_type_parameter_positions_in_path(fcx, pth, defn);
         let tpt = ty_param_bounds_and_ty_for_def(fcx, expr.span, defn);
         instantiate_path(fcx, pth, tpt, defn, expr.span, expr.id);
       }
@@ -3983,179 +3796,367 @@ pub fn ty_param_bounds_and_ty_for_def(fcx: &FnCtxt,
 // Instantiates the given path, which must refer to an item with the given
 // number of type parameters and type.
 pub fn instantiate_path(fcx: &FnCtxt,
-                        pth: &ast::Path,
-                        tpt: ty_param_bounds_and_ty,
+                        path: &ast::Path,
+                        polytype: ty_param_bounds_and_ty,
                         def: def::Def,
                         span: Span,
                         node_id: ast::NodeId) {
-    debug!(">>> instantiate_path");
+    debug!("instantiate_path(path={}, def={}, node_id={}, polytype={})",
+           path.repr(fcx.tcx()),
+           def.repr(fcx.tcx()),
+           node_id,
+           polytype.repr(fcx.tcx()));
 
-    let ty_param_count = tpt.generics.type_param_defs().len();
-    let ty_param_req = tpt.generics.type_param_defs().iter()
-                                                   .take_while(|x| x.default.is_none())
-                                                   .count();
-    let mut ty_substs_len = 0;
-    for segment in pth.segments.iter() {
-        ty_substs_len += segment.types.len()
+    // We need to extract the type parameters supplied by the user in
+    // the path `path`. Due to the current setup, this is a bit of a
+    // tricky-process; the problem is that resolve only tells us the
+    // end-point of the path resolution, and not the intermediate steps.
+    // Luckily, we can (at least for now) deduce the intermediate steps
+    // just from the end-point.
+    //
+    // There are basically three cases to consider:
+    //
+    // 1. Reference to a *type*, such as a struct or enum:
+    //
+    //        mod a { struct Foo<T> { ... } }
+    //
+    //    Because we don't allow types to be declared within one
+    //    another, a path that leads to a type will always look like
+    //    `a::b::Foo<T>` where `a` and `b` are modules. This implies
+    //    that only the final segment can have type parameters, and
+    //    they are located in the TypeSpace.
+    //
+    //    *Note:* Generally speaking, references to types don't
+    //    actually pass through this function, but rather the
+    //    `ast_ty_to_ty` function in `astconv`. However, in the case
+    //    of struct patterns (and maybe literals) we do invoke
+    //    `instantiate_path` to get the general type of an instance of
+    //    a struct. (In these cases, there are actually no type
+    //    parameters permitted at present, but perhaps we will allow
+    //    them in the future.)
+    //
+    // 1b. Reference to a enum variant or tuple-like struct:
+    //
+    //        struct foo<T>(...)
+    //        enum E<T> { foo(...) }
+    //
+    //    In these cases, the parameters are declared in the type
+    //    space.
+    //
+    // 2. Reference to a *fn item*:
+    //
+    //        fn foo<T>() { }
+    //
+    //    In this case, the path will again always have the form
+    //    `a::b::foo::<T>` where only the final segment should have
+    //    type parameters. However, in this case, those parameters are
+    //    declared on a value, and hence are in the `FnSpace`.
+    //
+    // 3. Reference to a *method*:
+    //
+    //        impl<A> SomeStruct<A> {
+    //            fn foo<B>(...)
+    //        }
+    //
+    //    Here we can have a path like
+    //    `a::b::SomeStruct::<A>::foo::<B>`, in which case parameters
+    //    may appear in two places. The penultimate segment,
+    //    `SomeStruct::<A>`, contains parameters in TypeSpace, and the
+    //    final segment, `foo::<B>` contains parameters in fn space.
+    //
+    // The first step then is to categorize the segments appropriately.
+
+    assert!(path.segments.len() >= 1);
+    let mut segment_spaces;
+    match def {
+        // Case 1 and 1b. Reference to a *type* or *enum variant*.
+        def::DefSelfTy(..) |
+        def::DefStruct(..) |
+        def::DefVariant(..) |
+        def::DefTyParamBinder(..) |
+        def::DefTy(..) |
+        def::DefTrait(..) |
+        def::DefPrimTy(..) |
+        def::DefTyParam(..) => {
+            // Everything but the final segment should have no
+            // parameters at all.
+            segment_spaces = Vec::from_elem(path.segments.len() - 1, None);
+            segment_spaces.push(Some(subst::TypeSpace));
+        }
+
+        // Case 2. Reference to a top-level value.
+        def::DefFn(..) |
+        def::DefStatic(..) => {
+            segment_spaces = Vec::from_elem(path.segments.len() - 1, None);
+            segment_spaces.push(Some(subst::FnSpace));
+        }
+
+        // Case 3. Reference to a method.
+        def::DefStaticMethod(..) => {
+            assert!(path.segments.len() >= 2);
+            segment_spaces = Vec::from_elem(path.segments.len() - 2, None);
+            segment_spaces.push(Some(subst::TypeSpace));
+            segment_spaces.push(Some(subst::FnSpace));
+        }
+
+        // Other cases. Various nonsense that really shouldn't show up
+        // here. If they do, an error will have been reported
+        // elsewhere. (I hope)
+        def::DefMod(..) |
+        def::DefForeignMod(..) |
+        def::DefArg(..) |
+        def::DefLocal(..) |
+        def::DefMethod(..) |
+        def::DefBinding(..) |
+        def::DefUse(..) |
+        def::DefRegion(..) |
+        def::DefLabel(..) |
+        def::DefUpvar(..) => {
+            segment_spaces = Vec::from_elem(path.segments.len(), None);
+        }
+    }
+    assert_eq!(segment_spaces.len(), path.segments.len());
+
+    debug!("segment_spaces={}", segment_spaces);
+
+    // Next, examine the definition, and determine how many type
+    // parameters we expect from each space.
+    let type_defs = &polytype.generics.types;
+    let region_defs = &polytype.generics.regions;
+
+    // Now that we have categorized what space the parameters for each
+    // segment belong to, let's sort out the parameters that the user
+    // provided (if any) into their appropriate spaces. We'll also report
+    // errors if type parameters are provided in an inappropriate place.
+    let mut substs = Substs::empty();
+    for (opt_space, segment) in segment_spaces.iter().zip(path.segments.iter()) {
+        match *opt_space {
+            None => {
+                report_error_if_segment_contains_type_parameters(fcx, segment);
+            }
+
+            Some(space) => {
+                push_explicit_parameters_from_segment_to_substs(fcx,
+                                                                space,
+                                                                type_defs,
+                                                                region_defs,
+                                                                segment,
+                                                                &mut substs);
+            }
+        }
     }
 
-    debug!("tpt={} ty_param_count={:?} ty_substs_len={:?}",
-           tpt.repr(fcx.tcx()),
-           ty_param_count,
-           ty_substs_len);
+    // Now we have to compare the types that the user *actually*
+    // provided against the types that were *expected*. If the user
+    // did not provide any types, then we want to substitute inference
+    // variables. If the user provided some types, we may still need
+    // to add defaults. If the user provided *too many* types, that's
+    // a problem.
+    for &space in ParamSpace::all().iter() {
+        adjust_type_parameters(fcx, span, space, type_defs, &mut substs);
+        assert_eq!(substs.types.get_vec(space).len(),
+                   type_defs.get_vec(space).len());
 
-    // determine the region parameters, using the value given by the user
-    // (if any) and otherwise using a fresh region variable
-    let num_expected_regions = tpt.generics.region_param_defs().len();
-    let num_supplied_regions = pth.segments.last().unwrap().lifetimes.len();
-    let regions = if num_expected_regions == num_supplied_regions {
-        pth.segments.last().unwrap().lifetimes
-            .iter()
-            .map(|l| ast_region_to_region(fcx.tcx(), l))
-            .collect()
-    } else {
-        if num_supplied_regions != 0 {
-            fcx.ccx.tcx.sess.span_err(
-                span,
-                format!("expected {} lifetime parameter{}, \
-                         found {} lifetime parameter{}",
-                        num_expected_regions,
-                        if num_expected_regions == 1 {""} else {"s"},
-                        num_supplied_regions,
-                        if num_supplied_regions == 1 {""} else {"s"}).as_slice());
-        }
+        adjust_region_parameters(fcx, span, space, region_defs, &mut substs);
+        assert_eq!(substs.regions().get_vec(space).len(),
+                   region_defs.get_vec(space).len());
+    }
 
-        fcx.infcx().region_vars_for_defs(span, tpt.generics.region_param_defs.as_slice())
-    };
-    let regions = subst::NonerasedRegions(regions);
-
-    // Special case: If there is a self parameter, omit it from the list of
-    // type parameters.
-    //
-    // Here we calculate the "user type parameter count", which is the number
-    // of type parameters actually manifest in the AST. This will differ from
-    // the internal type parameter count when there are self types involved.
-    let (user_ty_param_count, user_ty_param_req, self_parameter_index) = match def {
-        def::DefStaticMethod(_, provenance @ def::FromTrait(_), _) => {
-            let generics = generics_of_static_method_container(fcx.ccx.tcx,
-                                                               provenance);
-            (ty_param_count - 1, ty_param_req - 1, Some(generics.type_param_defs().len()))
-        }
-        _ => (ty_param_count, ty_param_req, None),
-    };
-
-    // determine values for type parameters, using the values given by
-    // the user (if any) and otherwise using fresh type variables
-    let (tps, regions) = if ty_substs_len == 0 {
-        (fcx.infcx().next_ty_vars(ty_param_count), regions)
-    } else if ty_param_count == 0 {
-        fcx.ccx.tcx.sess.span_err
-            (span, "this item does not take type parameters");
-        (fcx.infcx().next_ty_vars(ty_param_count), regions)
-    } else if ty_substs_len > user_ty_param_count {
-        let expected = if user_ty_param_req < user_ty_param_count {
-            "expected at most"
-        } else {
-            "expected"
-        };
-        fcx.ccx.tcx.sess.span_err
-            (span,
-             format!("too many type parameters provided: {} {}, found {}",
-                  expected, user_ty_param_count, ty_substs_len).as_slice());
-        (fcx.infcx().next_ty_vars(ty_param_count), regions)
-    } else if ty_substs_len < user_ty_param_req {
-        let expected = if user_ty_param_req < user_ty_param_count {
-            "expected at least"
-        } else {
-            "expected"
-        };
-        fcx.ccx.tcx.sess.span_err(
-            span,
-            format!("not enough type parameters provided: {} {}, found {}",
-                    expected,
-                    user_ty_param_req,
-                    ty_substs_len).as_slice());
-        (fcx.infcx().next_ty_vars(ty_param_count), regions)
-    } else {
-        if ty_substs_len > user_ty_param_req
-            && !fcx.tcx().sess.features.default_type_params.get() {
-            fcx.tcx().sess.span_err(pth.span, "default type parameters are \
-                                               experimental and possibly buggy");
-            fcx.tcx().sess.span_note(pth.span, "add #![feature(default_type_params)] \
-                                                to the crate attributes to enable");
-        }
-
-        // Build up the list of type parameters, inserting the self parameter
-        // at the appropriate position.
-        let mut tps = Vec::new();
-        let mut pushed = false;
-        for (i, ty) in pth.segments.iter()
-                                   .flat_map(|segment| segment.types.iter())
-                                   .map(|ast_type| fcx.to_ty(&**ast_type))
-                                   .enumerate() {
-            match self_parameter_index {
-                Some(index) if index == i => {
-                    tps.push(*fcx.infcx().next_ty_vars(1).get(0));
-                    pushed = true;
-                }
-                _ => {}
-            }
-            tps.push(ty)
-        }
-
-        let mut substs = subst::Substs {
-            regions: regions,
-            self_ty: None,
-            tps: tps
-        };
-
-        let defaults = tpt.generics.type_param_defs().iter()
-                          .enumerate().filter_map(|(i, x)| {
-            match self_parameter_index {
-                Some(index) if index == i => None,
-                _ => Some(x.default)
-            }
-        });
-        for (i, default) in defaults.skip(ty_substs_len).enumerate() {
-            match self_parameter_index {
-                Some(index) if index == i + ty_substs_len => {
-                    substs.tps.push(*fcx.infcx().next_ty_vars(1).get(0));
-                    pushed = true;
-                }
-                _ => {}
-            }
-            match default {
-                Some(default) => {
-                    let ty = default.subst_spanned(fcx.tcx(), &substs, Some(span));
-                    substs.tps.push(ty);
-                }
-                None => {
-                    fcx.tcx().sess.span_bug(span,
-                        "missing default for a not explicitly provided type param")
-                }
-            }
-        }
-
-        // If the self parameter goes at the end, insert it there.
-        if !pushed && self_parameter_index.is_some() {
-            substs.tps.push(*fcx.infcx().next_ty_vars(1).get(0))
-        }
-
-        assert_eq!(substs.tps.len(), ty_param_count)
-
-        let subst::Substs {tps, regions, ..} = substs;
-        (tps, regions)
-    };
-
-    let substs = subst::Substs { regions: regions,
-                                 self_ty: None,
-                                 tps: tps };
-
-    fcx.write_ty_substs(node_id, tpt.ty, ty::ItemSubsts {
+    fcx.write_ty_substs(node_id, polytype.ty, ty::ItemSubsts {
         substs: substs,
     });
 
-    debug!("<<<");
+    fn report_error_if_segment_contains_type_parameters(
+        fcx: &FnCtxt,
+        segment: &ast::PathSegment)
+    {
+        for typ in segment.types.iter() {
+            fcx.tcx().sess.span_err(
+                typ.span,
+                "type parameters may not appear here");
+            break;
+        }
+
+        for lifetime in segment.lifetimes.iter() {
+            fcx.tcx().sess.span_err(
+                lifetime.span,
+                "lifetime parameters may not appear here");
+            break;
+        }
+    }
+
+    fn push_explicit_parameters_from_segment_to_substs(
+        fcx: &FnCtxt,
+        space: subst::ParamSpace,
+        type_defs: &VecPerParamSpace<ty::TypeParameterDef>,
+        region_defs: &VecPerParamSpace<ty::RegionParameterDef>,
+        segment: &ast::PathSegment,
+        substs: &mut Substs)
+    {
+        /*!
+         * Finds the parameters that the user provided and adds them
+         * to `substs`. If too many parameters are provided, then
+         * reports an error and clears the output vector.
+         *
+         * We clear the output vector because that will cause the
+         * `adjust_XXX_parameters()` later to use inference
+         * variables. This seems less likely to lead to derived
+         * errors.
+         *
+         * Note that we *do not* check for *too few* parameters here.
+         * Due to the presence of defaults etc that is more
+         * complicated. I wanted however to do the reporting of *too
+         * many* parameters here because we can easily use the precise
+         * span of the N+1'th parameter.
+         */
+
+        {
+            let type_count = type_defs.get_vec(space).len();
+            assert_eq!(substs.types.get_vec(space).len(), 0);
+            for (i, &typ) in segment.types.iter().enumerate() {
+                let t = fcx.to_ty(&*typ);
+                if i < type_count {
+                    substs.types.push(space, t);
+                } else if i == type_count {
+                    fcx.tcx().sess.span_err(
+                        typ.span,
+                        format!(
+                            "too many type parameters provided: \
+                             expected at most {} parameter(s) \
+                             but found {} parameter(s)",
+                            type_count,
+                            segment.types.len()).as_slice());
+                    substs.types.get_mut_vec(space).truncate(0);
+                }
+            }
+        }
+
+        {
+            let region_count = region_defs.get_vec(space).len();
+            assert_eq!(substs.regions().get_vec(space).len(), 0);
+            for (i, lifetime) in segment.lifetimes.iter().enumerate() {
+                let r = ast_region_to_region(fcx.tcx(), lifetime);
+                if i < region_count {
+                    substs.mut_regions().push(space, r);
+                } else if i == region_count {
+                    fcx.tcx().sess.span_err(
+                        lifetime.span,
+                        format!(
+                            "too many lifetime parameters provided: \
+                             expected {} parameter(s) but found {} parameter(s)",
+                            region_count,
+                            segment.lifetimes.len()).as_slice());
+                    substs.mut_regions().get_mut_vec(space).truncate(0);
+                }
+            }
+        }
+    }
+
+    fn adjust_type_parameters(
+        fcx: &FnCtxt,
+        span: Span,
+        space: ParamSpace,
+        defs: &VecPerParamSpace<ty::TypeParameterDef>,
+        substs: &mut Substs)
+    {
+        let provided_len = substs.types.get_vec(space).len();
+        let desired = defs.get_vec(space).as_slice();
+        let required_len = desired.iter()
+                              .take_while(|d| d.default.is_none())
+                              .count();
+
+        debug!("adjust_type_parameters(space={}, \
+               provided_len={}, \
+               desired_len={}, \
+               required_len={})",
+               space,
+               provided_len,
+               desired.len(),
+               required_len);
+
+        // Enforced by `push_explicit_parameters_from_segment_to_substs()`.
+        assert!(provided_len <= desired.len());
+
+        // Nothing specified at all: supply inference variables for
+        // everything.
+        if provided_len == 0 {
+            let provided = substs.types.get_mut_vec(space);
+            *provided = fcx.infcx().next_ty_vars(desired.len());
+            return;
+        }
+
+        // Too few parameters specified: report an error and use Err
+        // for everything.
+        if provided_len < required_len {
+            let qualifier =
+                if desired.len() != required_len { "at least " } else { "" };
+            fcx.tcx().sess.span_err(
+                span,
+                format!("too few type parameters provided: \
+                             expected {}{} parameter(s) \
+                             but found {} parameter(s)",
+                            qualifier,
+                            required_len,
+                            provided_len).as_slice());
+            let provided = substs.types.get_mut_vec(space);
+            *provided = Vec::from_elem(desired.len(), ty::mk_err());
+            return;
+        }
+
+        // Otherwise, add in any optional parameters that the user
+        // omitted. The case of *too many* parameters is handled
+        // already by
+        // push_explicit_parameters_from_segment_to_substs(). Note
+        // that the *default* type are expressed in terms of all prior
+        // parameters, so we have to substitute as we go with the
+        // partial substitution that we have built up.
+        for i in range(provided_len, desired.len()) {
+            let default = desired[i].default.unwrap();
+            let default = default.subst_spanned(fcx.tcx(), substs, Some(span));
+            substs.types.push(space, default);
+        }
+        assert_eq!(substs.types.get_vec(space).len(), desired.len());
+
+        debug!("Final substs: {}", substs.repr(fcx.tcx()));
+    }
+
+    fn adjust_region_parameters(
+        fcx: &FnCtxt,
+        span: Span,
+        space: ParamSpace,
+        defs: &VecPerParamSpace<ty::RegionParameterDef>,
+        substs: &mut Substs)
+    {
+        let provided = substs.mut_regions().get_mut_vec(space);
+        let desired = defs.get_vec(space);
+
+        // Enforced by `push_explicit_parameters_from_segment_to_substs()`.
+        assert!(provided.len() <= desired.len());
+
+        // If nothing was provided, just use inference variables.
+        if provided.len() == 0 {
+            *provided = fcx.infcx().region_vars_for_defs(span, desired);
+            return;
+        }
+
+        // If just the right number were provided, everybody is happy.
+        if provided.len() == desired.len() {
+            return;
+        }
+
+        // Otherwise, too few were provided. Report an error and then
+        // use inference variables.
+        fcx.tcx().sess.span_err(
+            span,
+            format!(
+                "too few lifetime parameters provided: \
+                         expected {} parameter(s) \
+                         but found {} parameter(s)",
+                desired.len(),
+                provided.len()).as_slice());
+
+        *provided = fcx.infcx().region_vars_for_defs(span, desired);
+    }
 }
 
 // Resolves `typ` by a single level if `typ` is a type variable.  If no
@@ -4292,14 +4293,8 @@ pub fn check_bounds_are_used(ccx: &CrateCtxt,
 
     ty::walk_ty(ty, |t| {
             match ty::get(t).sty {
-                #[cfg(stage0)]
-                ty::ty_param(param_ty {idx, ..}) => {
-                    debug!("Found use of ty param \\#{}", idx);
-                    *tps_used.get_mut(idx) = true;
-                }
-                #[cfg(not(stage0))]
-                ty::ty_param(param_ty {idx, ..}) => {
-                    debug!("Found use of ty param #{}", idx);
+                ty::ty_param(ParamTy {idx, ..}) => {
+                    debug!("Found use of ty param num {}", idx);
                     *tps_used.get_mut(idx) = true;
                 }
                 _ => ()
@@ -4318,7 +4313,7 @@ pub fn check_bounds_are_used(ccx: &CrateCtxt,
 
 pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
     fn param(ccx: &CrateCtxt, n: uint) -> ty::t {
-        ty::mk_param(ccx.tcx, n, local_def(0))
+        ty::mk_param(ccx.tcx, subst::FnSpace, n, local_def(0))
     }
 
     let tcx = ccx.tcx;
@@ -4390,11 +4385,10 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
             "type_id" => {
                 let langid = ccx.tcx.lang_items.require(TypeIdLangItem);
                 match langid {
-                    Ok(did) => (1u, Vec::new(), ty::mk_struct(ccx.tcx, did, subst::Substs {
-                                                 self_ty: None,
-                                                 tps: Vec::new(),
-                                                 regions: subst::NonerasedRegions(Vec::new())
-                                                 }) ),
+                    Ok(did) => (1u,
+                                Vec::new(),
+                                ty::mk_struct(ccx.tcx, did,
+                                              subst::Substs::empty())),
                     Err(msg) => {
                         tcx.sess.span_fatal(it.span, msg.as_slice());
                     }
@@ -4593,7 +4587,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
         }
     });
     let i_ty = ty::lookup_item_type(ccx.tcx, local_def(it.id));
-    let i_n_tps = i_ty.generics.type_param_defs().len();
+    let i_n_tps = i_ty.generics.types.len(subst::FnSpace);
     if i_n_tps != n_tps {
         tcx.sess.span_err(it.span,
                           format!("intrinsic has wrong number of type \

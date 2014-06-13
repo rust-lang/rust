@@ -231,7 +231,7 @@ impl <'l> DxrVisitor<'l> {
             def::DefTyParamBinder(_) |
             def::DefLabel(_) |
             def::DefStaticMethod(_, _, _) |
-            def::DefTyParam(_, _) |
+            def::DefTyParam(..) |
             def::DefUse(_) |
             def::DefMethod(_, _) |
             def::DefPrimTy(_) => {

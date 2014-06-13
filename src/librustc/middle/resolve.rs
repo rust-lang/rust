@@ -17,6 +17,7 @@ use middle::def::*;
 use middle::lang_items::LanguageItems;
 use middle::lint::{UnnecessaryQualification, UnusedImports};
 use middle::pat_util::pat_bindings;
+use middle::subst::{ParamSpace, FnSpace, TypeSpace};
 use util::nodemap::{NodeMap, DefIdSet, FnvHashMap};
 
 use syntax::ast::*;
@@ -227,25 +228,20 @@ enum FallbackSuggestion {
 }
 
 enum TypeParameters<'a> {
-    NoTypeParameters,                   //< No type parameters.
-    HasTypeParameters(&'a Generics,  //< Type parameters.
-                      NodeId,          //< ID of the enclosing item
+    NoTypeParameters,
+    HasTypeParameters(
+        // Type parameters.
+        &'a Generics,
 
-                      // The index to start numbering the type parameters at.
-                      // This is zero if this is the outermost set of type
-                      // parameters, or equal to the number of outer type
-                      // parameters. For example, if we have:
-                      //
-                      //   impl I<T> {
-                      //     fn method<U>() { ... }
-                      //   }
-                      //
-                      // The index at the method site will be 1, because the
-                      // outer T had index 0.
-                      uint,
+        // Identifies the things that these parameters
+        // were declared on (type, fn, etc)
+        ParamSpace,
 
-                      // The kind of the rib used for type parameters.
-                      RibKind)
+        // ID of the enclosing item.
+        NodeId,
+
+        // The kind of the rib used for type parameters.
+        RibKind)
 }
 
 // The rib kind controls the translation of argument or local definitions
@@ -1532,8 +1528,8 @@ impl<'a> Resolver<'a> {
 
                 self.with_type_parameter_rib(
                     HasTypeParameters(generics,
+                                      FnSpace,
                                       foreign_item.id,
-                                      0,
                                       NormalRibKind),
                     f);
             }
@@ -3439,7 +3435,7 @@ impl<'a> Resolver<'a> {
                   // If the def is a ty param, and came from the parent
                   // item, it's ok
                   match def {
-                    DefTyParam(did, _) if {
+                    DefTyParam(_, did, _) if {
                         self.def_map.borrow().find(&did.node).map(|x| *x)
                             == Some(DefTyParamBinder(item_id))
                     } => {
@@ -3574,8 +3570,8 @@ impl<'a> Resolver<'a> {
                 // but maybe it's okay since the first time will signal an
                 // error if there is one? -- tjc
                 self.with_type_parameter_rib(HasTypeParameters(generics,
+                                                               TypeSpace,
                                                                item.id,
-                                                               0,
                                                                ItemRibKind),
                                              |this| {
                     visit::walk_item(this, item, ());
@@ -3584,8 +3580,8 @@ impl<'a> Resolver<'a> {
 
             ItemTy(_, ref generics) => {
                 self.with_type_parameter_rib(HasTypeParameters(generics,
+                                                               TypeSpace,
                                                                item.id,
-                                                               0,
                                                                ItemRibKind),
                                              |this| {
                     visit::walk_item(this, item, ());
@@ -3615,8 +3611,8 @@ impl<'a> Resolver<'a> {
 
                 // Create a new rib for the trait-wide type parameters.
                 self.with_type_parameter_rib(HasTypeParameters(generics,
+                                                               TypeSpace,
                                                                item.id,
-                                                               0,
                                                                NormalRibKind),
                                              |this| {
                     this.resolve_type_parameters(&generics.ty_params);
@@ -3636,8 +3632,8 @@ impl<'a> Resolver<'a> {
                           ast::Required(ref ty_m) => {
                             this.with_type_parameter_rib
                                 (HasTypeParameters(&ty_m.generics,
+                                                   FnSpace,
                                                    item.id,
-                                                   generics.ty_params.len(),
                                         MethodRibKind(item.id, Required)),
                                  |this| {
 
@@ -3655,9 +3651,8 @@ impl<'a> Resolver<'a> {
                           }
                           ast::Provided(ref m) => {
                               this.resolve_method(MethodRibKind(item.id,
-                                                     Provided(m.id)),
-                                                  &**m,
-                                                  generics.ty_params.len())
+                                                                Provided(m.id)),
+                                                  &**m)
                           }
                         }
                     }
@@ -3687,7 +3682,7 @@ impl<'a> Resolver<'a> {
                             ForeignItemFn(_, ref generics) => {
                                 this.with_type_parameter_rib(
                                     HasTypeParameters(
-                                        generics, foreign_item.id, 0,
+                                        generics, FnSpace, foreign_item.id,
                                         ItemRibKind),
                                     |this| visit::walk_foreign_item(this,
                                                                 &**foreign_item,
@@ -3708,8 +3703,8 @@ impl<'a> Resolver<'a> {
                                       Some(fn_decl),
                                       HasTypeParameters
                                         (generics,
+                                         FnSpace,
                                          item.id,
-                                         0,
                                          ItemRibKind),
                                       block);
             }
@@ -3730,7 +3725,7 @@ impl<'a> Resolver<'a> {
                                type_parameters: TypeParameters,
                                f: |&mut Resolver|) {
         match type_parameters {
-            HasTypeParameters(generics, node_id, initial_index,
+            HasTypeParameters(generics, space, node_id,
                               rib_kind) => {
 
                 let function_type_rib = Rib::new(rib_kind);
@@ -3739,9 +3734,9 @@ impl<'a> Resolver<'a> {
                     let ident = type_parameter.ident;
                     debug!("with_type_parameter_rib: {} {}", node_id,
                            type_parameter.id);
-                    let def_like = DlDef(DefTyParam
-                        (local_def(type_parameter.id),
-                         index + initial_index));
+                    let def_like = DlDef(DefTyParam(space,
+                                                    local_def(type_parameter.id),
+                                                    index));
                     // Associate this type parameter with
                     // the item that bound it
                     self.record_def(type_parameter.id,
@@ -3897,8 +3892,8 @@ impl<'a> Resolver<'a> {
                       fields: &[StructField]) {
         // If applicable, create a rib for the type parameters.
         self.with_type_parameter_rib(HasTypeParameters(generics,
+                                                       TypeSpace,
                                                        id,
-                                                       0,
                                                        ItemRibKind),
                                      |this| {
             // Resolve the type parameters.
@@ -3948,14 +3943,12 @@ impl<'a> Resolver<'a> {
     // to be NormalRibKind?
     fn resolve_method(&mut self,
                       rib_kind: RibKind,
-                      method: &Method,
-                      outer_type_parameter_count: uint) {
+                      method: &Method) {
         let method_generics = &method.generics;
-        let type_parameters =
-            HasTypeParameters(method_generics,
-                              method.id,
-                              outer_type_parameter_count,
-                              rib_kind);
+        let type_parameters = HasTypeParameters(method_generics,
+                                                FnSpace,
+                                                method.id,
+                                                rib_kind);
 
         self.resolve_function(rib_kind, Some(method.decl), type_parameters, method.body);
     }
@@ -3992,16 +3985,15 @@ impl<'a> Resolver<'a> {
     }
 
     fn resolve_implementation(&mut self,
-                                  id: NodeId,
-                                  generics: &Generics,
-                                  opt_trait_reference: &Option<TraitRef>,
-                                  self_type: &Ty,
-                                  methods: &[Gc<Method>]) {
+                              id: NodeId,
+                              generics: &Generics,
+                              opt_trait_reference: &Option<TraitRef>,
+                              self_type: &Ty,
+                              methods: &[Gc<Method>]) {
         // If applicable, create a rib for the type parameters.
-        let outer_type_parameter_count = generics.ty_params.len();
         self.with_type_parameter_rib(HasTypeParameters(generics,
+                                                       TypeSpace,
                                                        id,
-                                                       0,
                                                        NormalRibKind),
                                      |this| {
             // Resolve the type parameters.
@@ -4016,8 +4008,7 @@ impl<'a> Resolver<'a> {
                     for method in methods.iter() {
                         // We also need a new scope for the method-specific type parameters.
                         this.resolve_method(MethodRibKind(id, Provided(method.id)),
-                                            &**method,
-                                            outer_type_parameter_count);
+                                            &**method);
                     }
                 });
             });
