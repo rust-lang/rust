@@ -56,7 +56,9 @@ pub struct LintStore {
     lints: Vec<(&'static Lint, bool)>,
 
     /// Trait objects for each lint pass.
-    passes: Vec<RefCell<LintPassObject>>,
+    /// This is only `None` while iterating over the objects. See the definition
+    /// of run_lints.
+    passes: Option<Vec<LintPassObject>>,
 
     /// Lints indexed by name.
     by_name: HashMap<&'static str, LintId>,
@@ -84,7 +86,7 @@ impl LintStore {
     pub fn new() -> LintStore {
         LintStore {
             lints: vec!(),
-            passes: vec!(),
+            passes: Some(vec!()),
             by_name: HashMap::new(),
             levels: HashMap::new(),
         }
@@ -117,7 +119,7 @@ impl LintStore {
                 self.levels.insert(id, (lint.default_level, Default));
             }
         }
-        self.passes.push(RefCell::new(pass));
+        self.passes.get_mut_ref().push(pass);
     }
 
     pub fn register_builtin(&mut self, sess: Option<&Session>) {
@@ -181,11 +183,15 @@ pub struct Context<'a> {
 }
 
 /// Convenience macro for calling a `LintPass` method on every pass in the context.
-macro_rules! run_lints ( ($cx:expr, $f:ident, $($args:expr),*) => (
-    for obj in $cx.lints.passes.iter() {
-        obj.borrow_mut().$f($cx, $($args),*);
+macro_rules! run_lints ( ($cx:expr, $f:ident, $($args:expr),*) => ({
+    // Move the vector of passes out of `$cx` so that we can
+    // iterate over it mutably while passing `$cx` to the methods.
+    let mut passes = $cx.lints.passes.take_unwrap();
+    for obj in passes.mut_iter() {
+        obj.$f($cx, $($args),*);
     }
-))
+    $cx.lints.passes = Some(passes);
+}))
 
 /// Emit a lint as a warning or an error (or not at all)
 /// according to `level`.
