@@ -133,11 +133,79 @@ impl CString {
         c_str.buf
     }
 
+    /// Return a pointer to the NUL-terminated string data.
+    ///
+    /// `.as_ptr` returns an internal pointer into the `CString`, and
+    /// may be invalidated when the `CString` falls out of scope (the
+    /// destructor will run, freeing the allocation if there is
+    /// one).
+    ///
+    /// ```rust
+    /// let foo = "some string";
+    ///
+    /// // right
+    /// let x = foo.to_c_str();
+    /// let p = x.as_ptr();
+    ///
+    /// // wrong (the CString will be freed, invalidating `p`)
+    /// let p = foo.to_c_str().as_ptr();
+    /// ```
+    ///
+    /// # Failure
+    ///
+    /// Fails if the CString is null.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// extern crate libc;
+    ///
+    /// fn main() {
+    ///     let c_str = "foo bar".to_c_str();
+    ///     unsafe {
+    ///         libc::puts(c_str.as_ptr());
+    ///     }
+    /// }
+    /// ```
+    pub fn as_ptr(&self) -> *const libc::c_char {
+        if self.buf.is_null() { fail!("CString is null!"); }
+
+        self.buf
+    }
+
+    /// Return a mutable pointer to the NUL-terminated string data.
+    ///
+    /// `.as_mut_ptr` returns an internal pointer into the `CString`, and
+    /// may be invalidated when the `CString` falls out of scope (the
+    /// destructor will run, freeing the allocation if there is
+    /// one).
+    ///
+    /// ```rust
+    /// let foo = "some string";
+    ///
+    /// // right
+    /// let mut x = foo.to_c_str();
+    /// let p = x.as_mut_ptr();
+    ///
+    /// // wrong (the CString will be freed, invalidating `p`)
+    /// let p = foo.to_c_str().as_mut_ptr();
+    /// ```
+    ///
+    /// # Failure
+    ///
+    /// Fails if the CString is null.
+    pub fn as_mut_ptr(&mut self) -> *mut libc::c_char {
+        if self.buf.is_null() { fail!("CString is null!") }
+
+        self.buf as *mut _
+    }
+
     /// Calls a closure with a reference to the underlying `*libc::c_char`.
     ///
     /// # Failure
     ///
     /// Fails if the CString is null.
+    #[deprecated="use `.as_ptr()`"]
     pub fn with_ref<T>(&self, f: |*const libc::c_char| -> T) -> T {
         if self.buf.is_null() { fail!("CString is null!"); }
         f(self.buf)
@@ -148,6 +216,7 @@ impl CString {
     /// # Failure
     ///
     /// Fails if the CString is null.
+    #[deprecated="use `.as_mut_ptr()`"]
     pub fn with_mut_ref<T>(&mut self, f: |*mut libc::c_char| -> T) -> T {
         if self.buf.is_null() { fail!("CString is null!"); }
         f(self.buf as *mut libc::c_char)
