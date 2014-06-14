@@ -11,5 +11,7 @@
 #![feature(managed_boxes)]
 
 use std::collections::HashMap;
+use std::gc::Gc;
 
-pub type map = @HashMap<uint, uint>;
+pub type map = Gc<HashMap<uint, uint>>;
+

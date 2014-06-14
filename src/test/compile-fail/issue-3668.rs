@@ -10,14 +10,16 @@
 
 #![feature(managed_boxes)]
 
-struct P { child: Option<@P> }
+use std::gc::Gc;
+
+struct P { child: Option<Gc<P>> }
 trait PTrait {
-   fn getChildOption(&self) -> Option<@P>;
+   fn getChildOption(&self) -> Option<Gc<P>>;
 }
 
 impl PTrait for P {
-   fn getChildOption(&self) -> Option<@P> {
-       static childVal: @P = self.child.get();
+   fn getChildOption(&self) -> Option<Gc<P>> {
+       static childVal: Gc<P> = self.child.get();
        //~^ ERROR attempt to use a non-constant value in a constant
        fail!();
    }

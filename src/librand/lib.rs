@@ -28,26 +28,11 @@
 #![no_std]
 #![experimental]
 
-#[cfg(stage0)]
-#[phase(syntax, link)]
-extern crate core;
-
-#[cfg(not(stage0))]
 #[phase(plugin, link)]
 extern crate core;
 
-#[cfg(test, stage0)]
-#[phase(syntax, link)] extern crate std;
-
-#[cfg(test, stage0)]
-#[phase(syntax, link)] extern crate log;
-
-#[cfg(test, not(stage0))]
-#[phase(plugin, link)] extern crate std;
-
-#[cfg(test, not(stage0))]
-#[phase(plugin, link)] extern crate log;
-
+#[cfg(test)] #[phase(plugin, link)] extern crate std;
+#[cfg(test)] #[phase(plugin, link)] extern crate log;
 #[cfg(test)] extern crate native;
 #[cfg(test)] extern crate debug;
 

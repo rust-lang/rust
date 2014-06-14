@@ -10,6 +10,8 @@
 
 #![feature(managed_boxes)]
 
-enum list_cell<T> { cons(@list_cell<T>), nil }
+use std::gc::Gc;
+
+enum list_cell<T> { cons(Gc<list_cell<T>>), nil }
 
 pub fn main() { }

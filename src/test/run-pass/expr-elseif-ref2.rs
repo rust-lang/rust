@@ -10,13 +10,15 @@
 
 #![feature(managed_boxes)]
 
+use std::gc::{GC};
+
 // Regression test for issue #388
 pub fn main() {
     let _x = if false {
-        @0u
+        box(GC) 0u
     } else if true {
-        @10u
+        box(GC) 10u
     } else {
-        @0u
+        box(GC) 0u
     };
 }

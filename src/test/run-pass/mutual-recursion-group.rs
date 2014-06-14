@@ -10,12 +10,14 @@
 
 #![feature(managed_boxes)]
 
+use std::gc::Gc;
+
 enum colour { red, green, blue, }
 
-enum tree { children(@list), leaf(colour), }
+enum tree { children(Gc<list>), leaf(colour), }
 
-enum list { cons(@tree, @list), nil, }
+enum list { cons(Gc<tree>, Gc<list>), nil, }
 
-enum small_list { kons(int, @small_list), neel, }
+enum small_list { kons(int, Gc<small_list>), neel, }
 
 pub fn main() { }

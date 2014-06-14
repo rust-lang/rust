@@ -11,10 +11,11 @@
 #![feature(managed_boxes)]
 
 use std::cell::RefCell;
+use std::gc::{Gc, GC};
 
 enum maybe_pointy {
     none,
-    p(@RefCell<Pointy>),
+    p(Gc<RefCell<Pointy>>),
 }
 
 struct Pointy {
@@ -23,8 +24,8 @@ struct Pointy {
     d : proc():Send->(),
 }
 
-fn empty_pointy() -> @RefCell<Pointy> {
-    return @RefCell::new(Pointy {
+fn empty_pointy() -> Gc<RefCell<Pointy>> {
+    return box(GC) RefCell::new(Pointy {
         a : none,
         c : box 22,
         d : proc() {},

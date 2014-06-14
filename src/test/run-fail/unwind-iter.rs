@@ -14,12 +14,14 @@
 #![allow(unreachable_code)]
 #![allow(unused_variable)]
 
+use std::gc::GC;
+
 fn x(it: |int|) {
     fail!();
     it(0);
 }
 
 fn main() {
-    let a = @0;
+    let a = box(GC) 0;
     x(|_i| { } );
 }

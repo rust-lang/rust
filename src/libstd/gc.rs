@@ -33,9 +33,6 @@ use raw;
                   task annihilation. For now, cycles need to be broken manually by using `Rc<T>` \
                   with a non-owning `Weak<T>` pointer. A tracing garbage collector is planned."]
 pub struct Gc<T> {
-    #[cfg(stage0)]
-    ptr: @T,
-    #[cfg(not(stage0))]
     _ptr: *T,
     marker: marker::NoSend,
 }
@@ -76,9 +73,6 @@ impl<T: Ord + 'static> Ord for Gc<T> {
 impl<T: Eq + 'static> Eq for Gc<T> {}
 
 impl<T: 'static> Deref<T> for Gc<T> {
-    #[cfg(stage0)]
-    fn deref<'a>(&'a self) -> &'a T { &*self.ptr }
-    #[cfg(not(stage0))]
     fn deref<'a>(&'a self) -> &'a T { &**self }
 }
 

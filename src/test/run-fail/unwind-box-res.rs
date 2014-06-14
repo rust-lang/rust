@@ -15,6 +15,7 @@
 extern crate debug;
 
 use std::mem;
+use std::gc::GC;
 
 fn failfn() {
     fail!();
@@ -43,7 +44,7 @@ fn main() {
         let i1 = box 0;
         let i1p = mem::transmute_copy(&i1);
         mem::forget(i1);
-        let x = @r(i1p);
+        let x = box(GC) r(i1p);
         failfn();
         println!("{:?}", x);
     }

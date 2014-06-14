@@ -10,12 +10,14 @@
 
 #![feature(managed_boxes)]
 
-fn f<T>(x: T) -> @T {
-    @x  //~ ERROR value may contain references
+use std::gc::{Gc, GC};
+
+fn f<T>(x: T) -> Gc<T> {
+    box(GC) x  //~ ERROR value may contain references
 }
 
-fn g<T:'static>(x: T) -> @T {
-    @x  // ok
+fn g<T:'static>(x: T) -> Gc<T> {
+    box(GC) x  // ok
 }
 
 fn main() {}

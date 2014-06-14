@@ -12,12 +12,14 @@
 
 // error-pattern:quux
 
+use std::gc::{Gc, GC};
+
 struct faily_box {
-    i: @int
+    i: Gc<int>
 }
 // What happens to the box pointer owned by this class?
 
-fn faily_box(i: @int) -> faily_box { faily_box { i: i } }
+fn faily_box(i: Gc<int>) -> faily_box { faily_box { i: i } }
 
 #[unsafe_destructor]
 impl Drop for faily_box {
@@ -27,5 +29,5 @@ impl Drop for faily_box {
 }
 
 fn main() {
-    faily_box(@10);
+    faily_box(box(GC) 10);
 }

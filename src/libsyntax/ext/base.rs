@@ -20,7 +20,7 @@ use parse::token::{InternedString, intern, str_to_ident};
 use util::small_vector::SmallVector;
 
 use std::collections::HashMap;
-use std::gc::Gc;
+use std::gc::{Gc, GC};
 
 // new-style macro! tt code:
 //

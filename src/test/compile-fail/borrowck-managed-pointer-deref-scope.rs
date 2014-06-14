@@ -13,7 +13,9 @@
 
 #![feature(managed_boxes)]
 
-fn foo<'a>(x: &'a @int) -> &'a int {
+use std::gc::{GC, Gc};
+
+fn foo<'a>(x: &'a Gc<int>) -> &'a int {
     match x {
         &ref y => {
             &**y // Do not expect an error here
@@ -25,7 +27,7 @@ fn bar() {
     let a = 3;
     let mut y = &a;
     if true {
-        let x = @3;
+        let x = box(GC) 3;
         y = &*x; //~ ERROR `*x` does not live long enough
     }
 }

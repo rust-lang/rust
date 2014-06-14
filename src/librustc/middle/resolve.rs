@@ -35,7 +35,7 @@ use syntax::visit::Visitor;
 
 use std::collections::{HashMap, HashSet};
 use std::cell::{Cell, RefCell};
-use std::gc::Gc;
+use std::gc::{Gc, GC};
 use std::mem::replace;
 use std::rc::{Rc, Weak};
 use std::uint;

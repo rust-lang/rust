@@ -19,7 +19,7 @@ use middle::ty;
 use util::ppaux::ty_to_str;
 
 use std::cmp;
-use std::gc::Gc;
+use std::gc::{Gc, GC};
 use std::iter;
 use syntax::ast::*;
 use syntax::ast_util::{is_unguarded, walk_pat};

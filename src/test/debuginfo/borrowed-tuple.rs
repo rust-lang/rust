@@ -31,13 +31,14 @@
 
 #![allow(unused_variable)]
 
+use std::gc::{Gc, GC};
 
 fn main() {
     let stack_val: (i16, f32) = (-14, -19f32);
     let stack_val_ref: &(i16, f32) = &stack_val;
     let ref_to_unnamed: &(i16, f32) = &(-15, -20f32);
 
-    let managed_val: @(i16, f32) = @(-16, -21f32);
+    let managed_val: Gc<(i16, f32)> = box(GC) (-16, -21f32);
     let managed_val_ref: &(i16, f32) = managed_val;
 
     let unique_val: Box<(i16, f32)> = box() (-17, -22f32);

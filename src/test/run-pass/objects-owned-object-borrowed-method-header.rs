@@ -10,6 +10,7 @@
 
 #![feature(managed_boxes)]
 
+use std::gc::{Gc, GC};
 
 // Test invoked `&self` methods on owned objects where the values
 // closed over contain managed values. This implies that the boxes
@@ -20,7 +21,7 @@ trait FooTrait {
 }
 
 struct BarStruct {
-    x: @uint
+    x: Gc<uint>
 }
 
 impl FooTrait for BarStruct {
@@ -31,9 +32,9 @@ impl FooTrait for BarStruct {
 
 pub fn main() {
     let foos: Vec<Box<FooTrait:>> = vec!(
-        box BarStruct{ x: @0 } as Box<FooTrait:>,
-        box BarStruct{ x: @1 } as Box<FooTrait:>,
-        box BarStruct{ x: @2 } as Box<FooTrait:>
+        box BarStruct{ x: box(GC) 0 } as Box<FooTrait:>,
+        box BarStruct{ x: box(GC) 1 } as Box<FooTrait:>,
+        box BarStruct{ x: box(GC) 2 } as Box<FooTrait:>
     );
 
     for i in range(0u, foos.len()) {

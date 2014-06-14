@@ -60,6 +60,7 @@ time of error detection.
 */
 
 use std::collections::HashSet;
+use std::gc::GC;
 use middle::def;
 use middle::subst;
 use middle::ty;

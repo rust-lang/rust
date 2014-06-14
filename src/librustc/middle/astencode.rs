@@ -40,7 +40,7 @@ use libc;
 use std::io::Seek;
 use std::io::MemWriter;
 use std::mem;
-use std::string::String;
+use std::gc::GC;
 
 use serialize::ebml::reader;
 use serialize::ebml;

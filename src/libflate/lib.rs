@@ -27,8 +27,7 @@ Simple [DEFLATE][def]-based compression. This is a wrapper around the
        html_root_url = "http://doc.rust-lang.org/")]
 #![feature(phase)]
 
-#[cfg(test, stage0)] #[phase(syntax, link)] extern crate log;
-#[cfg(test, not(stage0))] #[phase(plugin, link)] extern crate log;
+#[cfg(test)] #[phase(plugin, link)] extern crate log;
 
 extern crate libc;
 

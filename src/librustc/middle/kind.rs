@@ -245,9 +245,12 @@ pub fn check_expr(cx: &mut Context, e: &Expr) {
     check_bounds_on_type_parameters(cx, e);
 
     match e.node {
-        ExprUnary(UnBox, ref interior) => {
-            let interior_type = ty::expr_ty(cx.tcx, &**interior);
-            let _ = check_static(cx.tcx, interior_type, interior.span);
+        ExprBox(ref loc, ref interior) => {
+            let def = ty::resolve_expr(cx.tcx, &**loc);
+            if Some(def.def_id()) == cx.tcx.lang_items.managed_heap() {
+                let interior_type = ty::expr_ty(cx.tcx, &**interior);
+                let _ = check_static(cx.tcx, interior_type, interior.span);
+            }
         }
         ExprCast(ref source, _) => {
             let source_ty = ty::expr_ty(cx.tcx, &**source);

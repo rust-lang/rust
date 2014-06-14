@@ -18,7 +18,7 @@ use syntax::ast_map;
 use syntax::attr::AttrMetaMethods;
 use syntax::codemap::Span;
 
-use std::gc::Gc;
+use std::gc::{Gc, GC};
 
 use core;
 use doctree::*;

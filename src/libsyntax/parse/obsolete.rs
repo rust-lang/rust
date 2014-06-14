@@ -22,7 +22,7 @@ use codemap::{Span, respan};
 use parse::parser;
 use parse::token;
 
-use std::gc::Gc;
+use std::gc::{Gc, GC};
 
 /// The specific types of unsupported syntax
 #[deriving(PartialEq, Eq, Hash)]
@@ -31,6 +31,8 @@ pub enum ObsoleteSyntax {
     ObsoleteOwnedExpr,
     ObsoleteOwnedPattern,
     ObsoleteOwnedVector,
+    ObsoleteManagedType,
+    ObsoleteManagedExpr,
 }
 
 pub trait ParserObsoleteMethods {
@@ -67,6 +69,14 @@ impl<'a> ParserObsoleteMethods for parser::Parser<'a> {
             ObsoleteOwnedVector => (
                 "`~[T]` is no longer a type",
                 "use the `Vec` type instead"
+            ),
+            ObsoleteManagedType => (
+                "`@` notation for managed pointers",
+                "use `Gc<T>` in `std::gc` instead"
+            ),
+            ObsoleteManagedExpr => (
+                "`@` notation for a managed pointer allocation",
+                "use the `box(GC)` oeprator instead of `@`"
             ),
         };
 
