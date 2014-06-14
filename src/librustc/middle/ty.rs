@@ -1685,6 +1685,14 @@ pub fn type_is_scalar(ty: t) -> bool {
     }
 }
 
+/// Returns true if this type is a floating point type and false otherwise.
+pub fn type_is_floating_point(ty: t) -> bool {
+    match get(ty).sty {
+        ty_float(_) => true,
+        _ => false,
+    }
+}
+
 pub fn type_needs_drop(cx: &ctxt, ty: t) -> bool {
     type_contents(cx, ty).needs_drop(cx)
 }
