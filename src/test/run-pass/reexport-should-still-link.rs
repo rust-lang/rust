@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:reexport-should-still-link.rs
+// aux-build:reexport_should_still_link.rs
 
-extern crate foo = "reexport-should-still-link";
+extern crate foo = reexport_should_still_link;
 
 pub fn main() {
     foo::bar();

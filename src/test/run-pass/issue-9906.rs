@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:issue-9906.rs
+// aux-build:issue_9906.rs
 
-extern crate testmod = "issue-9906";
+extern crate testmod = issue_9906;
 
 pub fn main() {
     testmod::foo();

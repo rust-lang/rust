@@ -8,14 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:crateresolve5-1.rs
-// aux-build:crateresolve5-2.rs
+extern crate crate1 = issue_13620_1;
 
-extern crate cr5_1 = "crateresolve5#0.1";
-extern crate cr5_2 = "crateresolve5#0.2";
-
-
-fn main() {
-    // Nominal types from two multiple versions of a crate are different types
-    assert!(cr5_1::nominal() == cr5_2::nominal()); //~ ERROR mismatched types: expected
-}
+pub static FOO2: crate1::Foo = crate1::FOO;

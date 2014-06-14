@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:issue-3012-1.rs
+// aux-build:issue_3012_1.rs
 
 #![feature(managed_boxes)]
 

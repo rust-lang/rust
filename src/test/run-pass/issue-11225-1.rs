@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:issue-11225-1.rs
+// aux-build:issue_11225_1.rs
 
-extern crate foo = "issue-11225-1";
+extern crate foo = issue_11225_1;
 
 pub fn main() {
     foo::foo(1);

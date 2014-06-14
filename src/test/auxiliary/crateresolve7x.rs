@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:crateresolve_calories-1.rs
-// aux-build:crateresolve_calories-2.rs
+// aux-build:crateresolve_calories_1.rs
+// aux-build:crateresolve_calories_2.rs
 
 // These both have the same version but differ in other metadata
 pub mod a {

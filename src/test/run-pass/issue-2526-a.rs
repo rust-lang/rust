@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:issue-2526.rs
+// aux-build:issue_2526.rs
 
 #![feature(globs)]
 #![allow(unused_imports)]

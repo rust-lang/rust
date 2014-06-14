@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:issue-4208-cc.rs
+// aux-build:issue_4208_cc.rs
 
 extern crate numeric;
 use numeric::{sin, Angle};

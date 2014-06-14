@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:issue-12133-rlib.rs
-// aux-build:issue-12133-dylib.rs
+// aux-build:issue_12133_rlib.rs
+// aux-build:issue_12133_dylib.rs
 // no-prefer-dynamic
 
-extern crate a = "issue-12133-rlib";
-extern crate b = "issue-12133-dylib";
+extern crate a = issue_12133_rlib;
+extern crate b = issue_12133_dylib;
 
 fn main() {}

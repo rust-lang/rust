@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//aux-build:extern-crosscrate-source.rs
+//aux-build:extern_crosscrate_source.rs
 
-extern crate externcallback = "externcallback#0.1";
+extern crate externcallback = externcallback;
 
 fn fact(n: uint) -> uint {
     unsafe {

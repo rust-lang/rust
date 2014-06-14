@@ -10,7 +10,7 @@
 
 // aux-build:xcrate_address_insignificant.rs
 
-extern crate foo = "xcrate_address_insignificant";
+extern crate foo = xcrate_address_insignificant;
 
 pub fn main() {
     assert_eq!(foo::foo::<f64>(), foo::bar());

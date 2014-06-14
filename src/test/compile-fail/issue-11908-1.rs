@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:issue-11908-1.rs
+// aux-build:issue_11908_1.rs
 // ignore-android this test is incompatible with the android test runner
 // error-pattern: multiple dylib candidates for `url` found
 

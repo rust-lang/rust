@@ -2107,11 +2107,11 @@ impl<'a> State<'a> {
             ast::ViewItemExternCrate(id, ref optional_path, _) => {
                 try!(self.head("extern crate"));
                 try!(self.print_ident(id));
-                for &(ref p, style) in optional_path.iter() {
+                for ident in optional_path.iter() {
                     try!(space(&mut self.s));
                     try!(word(&mut self.s, "="));
                     try!(space(&mut self.s));
-                    try!(self.print_string(p.get(), style));
+                    try!(self.print_ident(*ident));
                 }
             }
 

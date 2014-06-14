@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:crateresolve4a-1.rs
-// aux-build:crateresolve4a-2.rs
-#![crate_id="crateresolve4b#0.2"]
+// aux-build:crateresolve4a_1.rs
+// aux-build:crateresolve4a_2.rs
+#![crate_id="crateresolve4b#0.1"]
 #![crate_type = "lib"]
 
-extern crate crateresolve4a = "crateresolve4a#0.1";
+extern crate crateresolve4a = crateresolve4a#0.2;
 
-pub fn g() -> int { crateresolve4a::f() }
+pub fn f() -> int { crateresolve4a::g() }

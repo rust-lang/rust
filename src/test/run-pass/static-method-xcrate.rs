@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:static-methods-crate.rs
+// aux-build:static_methods_crate.rs
 
 extern crate static_methods_crate;
 

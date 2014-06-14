@@ -9,9 +9,9 @@
 // except according to those terms.
 
 // note that these aux-build directives must be in this order
-// aux-build:svh-uta-base.rs
-// aux-build:svh-utb.rs
-// aux-build:svh-uta-change-use-trait.rs
+// aux-build:svh_uta_base.rs
+// aux-build:svh_utb.rs
+// aux-build:svh_uta_change_use_trait.rs
 
 //! "compile-fail/svh-uta-trait.rs" is checking that we detect a
 //! change from `use foo::TraitB` to use `foo::TraitB` in the hash

@@ -4474,7 +4474,7 @@ impl<'a> Parser<'a> {
     /// # Example
     ///
     /// extern crate url;
-    /// extern crate foo = "bar";
+    /// extern crate foo = bar;
     fn parse_item_extern_crate(&mut self,
                                 lo: BytePos,
                                 visibility: Visibility,
@@ -4487,8 +4487,16 @@ impl<'a> Parser<'a> {
                 self.expect_one_of(&[], &[token::EQ, token::SEMI]);
                 let path = if self.token == token::EQ {
                     self.bump();
-                    Some(self.parse_str())
-                } else {None};
+                    if is_ident(&self.token) {
+                        Some(self.parse_ident())
+                    } else {
+                        // NOTE(pcwalton, stage0): Remove after snapshot.
+                        let (string, _) = self.parse_str();
+                        Some(token::str_to_ident(string.get()))
+                    }
+                } else {
+                    None
+                };
 
                 self.expect(&token::SEMI);
                 (path, the_ident)

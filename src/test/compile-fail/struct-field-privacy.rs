@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:struct-field-privacy.rs
+// aux-build:struct_field_privacy.rs
 
-extern crate xc = "struct-field-privacy";
+extern crate xc = struct_field_privacy;
 
 struct A {
     a: int,
@@ -37,11 +37,11 @@ fn test(a: A, b: inner::A, c: inner::B, d: xc::A, e: xc::B) {
     c.a;
     c.b; //~ ERROR: field `b` of struct `inner::B` is private
 
-    d.a; //~ ERROR: field `a` of struct `struct-field-privacy::A` is private
+    d.a; //~ ERROR: field `a` of struct `struct_field_privacy::A` is private
     d.b;
 
     e.a;
-    e.b; //~ ERROR: field `b` of struct `struct-field-privacy::B` is private
+    e.b; //~ ERROR: field `b` of struct `struct_field_privacy::B` is private
 }
 
 fn main() {}

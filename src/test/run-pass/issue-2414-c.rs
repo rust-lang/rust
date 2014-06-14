@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:issue-2414-a.rs
-// aux-build:issue-2414-b.rs
+// aux-build:issue_2414_a.rs
+// aux-build:issue_2414_b.rs
 
 extern crate b;
 

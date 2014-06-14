@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:static-function-pointer-aux.rs
-extern crate aux = "static-function-pointer-aux";
+// aux-build:static_function_pointer_aux.rs
+extern crate aux = static_function_pointer_aux;
 
 fn f(x: int) -> int { x }
 

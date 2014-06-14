@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:anon-extern-mod-cross-crate-1.rs
-// aux-build:anon-extern-mod-cross-crate-1.rs
+// aux-build:anon_extern_mod_cross_crate_1.rs
+// aux-build:anon_extern_mod_cross_crate_1.rs
 extern crate anonexternmod;
 
 pub fn main() { }

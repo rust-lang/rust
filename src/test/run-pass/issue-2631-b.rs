@@ -10,7 +10,7 @@
 
 #![feature(managed_boxes)]
 
-// aux-build:issue-2631-a.rs
+// aux-build:issue_2631_a.rs
 
 extern crate collections;
 extern crate req;

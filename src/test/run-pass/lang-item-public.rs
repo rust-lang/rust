@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:lang-item-public.rs
+// aux-build:lang_item_public.rs
 // ignore-android
 // ignore-win32 #13361
 
 #![no_std]
 
-extern crate lang_lib = "lang-item-public";
+extern crate lang_lib = lang_item_public;
 
 #[cfg(target_os = "linux")]
 #[link(name = "c")]

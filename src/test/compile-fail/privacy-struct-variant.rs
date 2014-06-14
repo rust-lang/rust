@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:privacy-struct-variant.rs
+// aux-build:privacy_struct_variant.rs
 
 #![feature(struct_variant)]
 
-extern crate other = "privacy-struct-variant";
+extern crate other = privacy_struct_variant;
 
 mod a {
     pub enum Foo {
@@ -39,10 +39,10 @@ fn main() {
     //~^ ERROR: field `baz` of variant `Bar` of enum `a::Foo` is private
     //
     let foo = other::Bar { baz: 42 };
-    //~^ ERROR: field `baz` of variant `Bar` of enum `privacy-struct-variant::Foo` is private
+    //~^ ERROR: field `baz` of variant `Bar` of enum `privacy_struct_variant::Foo` is private
 
     let other::Bar { baz: _ } = foo;
-    //~^ ERROR: field `baz` of variant `Bar` of enum `privacy-struct-variant::Foo` is private
+    //~^ ERROR: field `baz` of variant `Bar` of enum `privacy_struct_variant::Foo` is private
     match foo { other::Bar { baz: _ } => {} }
-    //~^ ERROR: field `baz` of variant `Bar` of enum `privacy-struct-variant::Foo` is private
+    //~^ ERROR: field `baz` of variant `Bar` of enum `privacy_struct_variant::Foo` is private
 }

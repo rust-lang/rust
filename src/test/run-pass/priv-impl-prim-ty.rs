@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:priv-impl-prim-ty.rs
+// aux-build:priv_impl_prim_ty.rs
 
-extern crate bar = "priv-impl-prim-ty";
+extern crate bar = priv_impl_prim_ty;
 
 pub fn main() {
     bar::frob(1i);

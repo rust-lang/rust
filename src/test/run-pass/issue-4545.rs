@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:issue-4545.rs
+// aux-build:issue_4545.rs
 
-extern crate somelib = "issue-4545";
+extern crate somelib = issue_4545;
 pub fn main() { somelib::mk::<int>(); }
