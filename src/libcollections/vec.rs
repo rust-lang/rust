@@ -114,7 +114,8 @@ impl<T> Vec<T> {
         unsafe {
             let mut xs = Vec::with_capacity(length);
             while xs.len < length {
-                ptr::write(xs.as_mut_slice().unsafe_mut_ref(xs.len), op(xs.len));
+                let len = xs.len;
+                ptr::write(xs.as_mut_slice().unsafe_mut_ref(len), op(len));
                 xs.len += 1;
             }
             xs
@@ -210,7 +211,8 @@ impl<T: Clone> Vec<T> {
         unsafe {
             let mut xs = Vec::with_capacity(length);
             while xs.len < length {
-                ptr::write(xs.as_mut_slice().unsafe_mut_ref(xs.len),
+                let len = xs.len;
+                ptr::write(xs.as_mut_slice().unsafe_mut_ref(len),
                            value.clone());
                 xs.len += 1;
             }
@@ -321,9 +323,10 @@ impl<T:Clone> Clone for Vec<T> {
             let this_slice = self.as_slice();
             while vector.len < len {
                 unsafe {
+                    let len = vector.len;
                     ptr::write(
-                        vector.as_mut_slice().unsafe_mut_ref(vector.len),
-                        this_slice.unsafe_ref(vector.len).clone());
+                        vector.as_mut_slice().unsafe_mut_ref(len),
+                        this_slice.unsafe_ref(len).clone());
                 }
                 vector.len += 1;
             }

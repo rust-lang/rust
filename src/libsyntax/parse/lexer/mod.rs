@@ -368,7 +368,8 @@ impl<'a> StringReader<'a> {
                 } else {
                     "unterminated block comment"
                 };
-                self.fatal_span(start_bpos, self.last_pos, msg);
+                let last_bpos = self.last_pos;
+                self.fatal_span(start_bpos, last_bpos, msg);
             } else if self.curr_is('/') && self.nextch_is('*') {
                 level += 1;
                 self.bump();
@@ -419,7 +420,8 @@ impl<'a> StringReader<'a> {
                 rslt.push_str(exponent.as_slice());
                 return Some(rslt);
             } else {
-                self.err_span(start_bpos, self.last_pos, "scan_exponent: bad fp literal");
+                let last_bpos = self.last_pos;
+                self.err_span(start_bpos, last_bpos, "scan_exponent: bad fp literal");
                 rslt.push_str("1"); // arbitrary placeholder exponent
                 return Some(rslt);
             }
@@ -506,14 +508,16 @@ impl<'a> StringReader<'a> {
                           else { Unsigned(ast::TyU64) };
             }
             if num_str.len() == 0u {
-                self.err_span(start_bpos, self.last_pos, "no valid digits found for number");
+                let last_bpos = self.last_pos;
+                self.err_span(start_bpos, last_bpos, "no valid digits found for number");
                 num_str = "1".to_string();
             }
             let parsed = match from_str_radix::<u64>(num_str.as_slice(),
                                                      base as uint) {
                 Some(p) => p,
                 None => {
-                    self.err_span(start_bpos, self.last_pos, "int literal is too large");
+                    let last_bpos = self.last_pos;
+                    self.err_span(start_bpos, last_bpos, "int literal is too large");
                     1
                 }
             };
@@ -546,13 +550,15 @@ impl<'a> StringReader<'a> {
             if c == '3' && n == '2' {
                 self.bump();
                 self.bump();
-                self.check_float_base(start_bpos, self.last_pos, base);
+                let last_bpos = self.last_pos;
+                self.check_float_base(start_bpos, last_bpos, base);
                 return token::LIT_FLOAT(str_to_ident(num_str.as_slice()),
                                         ast::TyF32);
             } else if c == '6' && n == '4' {
                 self.bump();
                 self.bump();
-                self.check_float_base(start_bpos, self.last_pos, base);
+                let last_bpos = self.last_pos;
+                self.check_float_base(start_bpos, last_bpos, base);
                 return token::LIT_FLOAT(str_to_ident(num_str.as_slice()),
                                         ast::TyF64);
                 /* FIXME (#2252): if this is out of range for either a
@@ -562,25 +568,30 @@ impl<'a> StringReader<'a> {
                 self.bump();
                 self.bump();
                 self.bump();
-                self.check_float_base(start_bpos, self.last_pos, base);
+                let last_bpos = self.last_pos;
+                self.check_float_base(start_bpos, last_bpos, base);
                 return token::LIT_FLOAT(str_to_ident(num_str.as_slice()), ast::TyF128);
             }
-            self.err_span(start_bpos, self.last_pos, "expected `f32`, `f64` or `f128` suffix");
+            let last_bpos = self.last_pos;
+            self.err_span(start_bpos, last_bpos, "expected `f32`, `f64` or `f128` suffix");
         }
         if is_float {
-            self.check_float_base(start_bpos, self.last_pos, base);
+            let last_bpos = self.last_pos;
+            self.check_float_base(start_bpos, last_bpos, base);
             return token::LIT_FLOAT_UNSUFFIXED(str_to_ident(
                     num_str.as_slice()));
         } else {
             if num_str.len() == 0u {
-                self.err_span(start_bpos, self.last_pos, "no valid digits found for number");
+                let last_bpos = self.last_pos;
+                self.err_span(start_bpos, last_bpos, "no valid digits found for number");
                 num_str = "1".to_string();
             }
             let parsed = match from_str_radix::<u64>(num_str.as_slice(),
                                                      base as uint) {
                 Some(p) => p,
                 None => {
-                    self.err_span(start_bpos, self.last_pos, "int literal is too large");
+                    let last_bpos = self.last_pos;
+                    self.err_span(start_bpos, last_bpos, "int literal is too large");
                     1
                 }
             };
@@ -597,10 +608,12 @@ impl<'a> StringReader<'a> {
         let start_bpos = self.last_pos;
         for _ in range(0, n_hex_digits) {
             if self.is_eof() {
-                self.fatal_span(start_bpos, self.last_pos, "unterminated numeric character escape");
+                let last_bpos = self.last_pos;
+                self.fatal_span(start_bpos, last_bpos, "unterminated numeric character escape");
             }
             if self.curr_is(delim) {
-                self.err_span(start_bpos, self.last_pos, "numeric character escape is too short");
+                let last_bpos = self.last_pos;
+                self.err_span(start_bpos, last_bpos, "numeric character escape is too short");
                 break;
             }
             let c = self.curr.unwrap_or('\x00');
@@ -616,7 +629,8 @@ impl<'a> StringReader<'a> {
         match char::from_u32(accum_int) {
             Some(x) => x,
             None => {
-                self.err_span(start_bpos, self.last_pos, "illegal numeric character escape");
+                let last_bpos = self.last_pos;
+                self.err_span(start_bpos, last_bpos, "illegal numeric character escape");
                 '?'
             }
         }
@@ -773,17 +787,18 @@ impl<'a> StringReader<'a> {
                     });
                 let keyword_checking_token =
                     &token::IDENT(keyword_checking_ident, false);
+                let last_bpos = self.last_pos;
                 if token::is_keyword(token::keywords::Self,
                                      keyword_checking_token) {
                     self.err_span(start,
-                                  self.last_pos,
+                                  last_bpos,
                                   "invalid lifetime name: 'self \
                                    is no longer a special lifetime");
                 } else if token::is_any_keyword(keyword_checking_token) &&
                     !token::is_keyword(token::keywords::Static,
                                        keyword_checking_token) {
                     self.err_span(start,
-                                  self.last_pos,
+                                  last_bpos,
                                   "invalid lifetime name");
                 }
                 return token::LIFETIME(ident);
@@ -811,7 +826,8 @@ impl<'a> StringReader<'a> {
                                 'u' => self.scan_numeric_escape(4u, '\''),
                                 'U' => self.scan_numeric_escape(8u, '\''),
                                 c2 => {
-                                    self.err_span_char(escaped_pos, self.last_pos,
+                                    let last_bpos = self.last_pos;
+                                    self.err_span_char(escaped_pos, last_bpos,
                                                          "unknown character escape", c2);
                                     c2
                                 }
@@ -820,17 +836,19 @@ impl<'a> StringReader<'a> {
                     }
                 }
                 '\t' | '\n' | '\r' | '\'' => {
-                    self.err_span_char( start, self.last_pos,
+                    let last_bpos = self.last_pos;
+                    self.err_span_char( start, last_bpos,
                         "character constant must be escaped", c2);
                 }
                 _ => {}
             }
             if !self.curr_is('\'') {
+                let last_bpos = self.last_pos;
                 self.fatal_span_verbose(
                                    // Byte offsetting here is okay because the
                                    // character before position `start` is an
                                    // ascii single quote.
-                                   start - BytePos(1), self.last_pos,
+                                   start - BytePos(1), last_bpos,
                                    "unterminated character constant".to_string());
             }
             self.bump(); // advance curr past token
@@ -842,7 +860,8 @@ impl<'a> StringReader<'a> {
             self.bump();
             while !self.curr_is('"') {
                 if self.is_eof() {
-                    self.fatal_span(start_bpos, self.last_pos, "unterminated double quote string");
+                    let last_bpos = self.last_pos;
+                    self.fatal_span(start_bpos, last_bpos, "unterminated double quote string");
                 }
 
                 let ch = self.curr.unwrap();
@@ -850,7 +869,8 @@ impl<'a> StringReader<'a> {
                 match ch {
                   '\\' => {
                     if self.is_eof() {
-                        self.fatal_span(start_bpos, self.last_pos,
+                        let last_bpos = self.last_pos;
+                        self.fatal_span(start_bpos, last_bpos,
                                "unterminated double quote string");
                     }
 
@@ -876,7 +896,8 @@ impl<'a> StringReader<'a> {
                         accum_str.push_char(self.scan_numeric_escape(8u, '"'));
                       }
                       c2 => {
-                        self.err_span_char(escaped_pos, self.last_pos,
+                        let last_bpos = self.last_pos;
+                        self.err_span_char(escaped_pos, last_bpos,
                                         "unknown string escape", c2);
                       }
                     }
@@ -897,19 +918,23 @@ impl<'a> StringReader<'a> {
             }
 
             if self.is_eof() {
-                self.fatal_span(start_bpos, self.last_pos, "unterminated raw string");
+                let last_bpos = self.last_pos;
+                self.fatal_span(start_bpos, last_bpos, "unterminated raw string");
             } else if !self.curr_is('"') {
-                self.fatal_span_char(start_bpos, self.last_pos,
+                let last_bpos = self.last_pos;
+                let curr_char = self.curr.unwrap();
+                self.fatal_span_char(start_bpos, last_bpos,
                                 "only `#` is allowed in raw string delimitation; \
                                  found illegal character",
-                                self.curr.unwrap());
+                                curr_char);
             }
             self.bump();
             let content_start_bpos = self.last_pos;
             let mut content_end_bpos;
             'outer: loop {
                 if self.is_eof() {
-                    self.fatal_span(start_bpos, self.last_pos, "unterminated raw string");
+                    let last_bpos = self.last_pos;
+                    self.fatal_span(start_bpos, last_bpos, "unterminated raw string");
                 }
                 if self.curr_is('"') {
                     content_end_bpos = self.last_pos;
@@ -956,8 +981,9 @@ impl<'a> StringReader<'a> {
           '^' => { return self.binop(token::CARET); }
           '%' => { return self.binop(token::PERCENT); }
           c => {
-              self.fatal_span_char(self.last_pos, self.pos,
-                              "unknown start of token", c);
+              let last_bpos = self.last_pos;
+              let bpos = self.pos;
+              self.fatal_span_char(last_bpos, bpos, "unknown start of token", c);
           }
         }
     }

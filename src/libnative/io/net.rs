@@ -637,7 +637,7 @@ impl rtio::RtioUdpSocket for UdpSocket {
                 mem::size_of::<libc::sockaddr_storage>() as libc::socklen_t;
 
         let dolock = || self.lock_nonblocking();
-        let doread = |nb| unsafe {
+        let n = try!(read(fd, self.read_deadline, dolock, |nb| unsafe {
             let flags = if nb {c::MSG_DONTWAIT} else {0};
             libc::recvfrom(fd,
                            buf.as_mut_ptr() as *mut libc::c_void,
@@ -645,8 +645,7 @@ impl rtio::RtioUdpSocket for UdpSocket {
                            flags,
                            storagep,
                            &mut addrlen) as libc::c_int
-        };
-        let n = try!(read(fd, self.read_deadline, dolock, doread));
+        }));
         sockaddr_to_addr(&storage, addrlen as uint).and_then(|addr| {
             Ok((n as uint, addr))
         })
