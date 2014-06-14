@@ -454,7 +454,7 @@ impl<'a> CheckLoanCtxt<'a> {
                             }
                             Some(move_kind) => {
                                 self.check_for_move_of_borrowed_path(id, span,
-                                                                     &lp, move_kind);
+                                                                     &*lp, move_kind);
                                 if move_kind == move_data::Captured {
                                     MovedInCapture
                                 } else {
@@ -474,20 +474,20 @@ impl<'a> CheckLoanCtxt<'a> {
     fn check_for_move_of_borrowed_path(&self,
                                        id: ast::NodeId,
                                        span: Span,
-                                       move_path: &Rc<LoanPath>,
+                                       move_path: &LoanPath,
                                        move_kind: move_data::MoveKind) {
-        match self.analyze_move_out_from(id, &**move_path) {
+        match self.analyze_move_out_from(id, move_path) {
             MoveOk => { }
             MoveWhileBorrowed(loan_path, loan_span) => {
                 let err_message = match move_kind {
                     move_data::Captured =>
                         format!("cannot move `{}` into closure because it is borrowed",
-                                self.bccx.loan_path_to_str(&**move_path).as_slice()),
+                                self.bccx.loan_path_to_str(move_path).as_slice()),
                     move_data::Declared |
                     move_data::MoveExpr |
                     move_data::MovePat =>
                         format!("cannot move out of `{}` because it is borrowed",
-                                self.bccx.loan_path_to_str(&**move_path).as_slice())
+                                self.bccx.loan_path_to_str(move_path).as_slice())
                 };
 
                 self.bccx.span_err(span, err_message.as_slice());
