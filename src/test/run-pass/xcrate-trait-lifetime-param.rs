@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:xcrate-trait-lifetime-param.rs
+// aux-build:xcrate_trait_lifetime_param.rs
 
-extern crate other = "xcrate-trait-lifetime-param";
+extern crate other = xcrate_trait_lifetime_param;
 
 struct Reader<'a> {
     b : &'a [u8]

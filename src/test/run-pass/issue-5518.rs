@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:issue-5518.rs
+// aux-build:issue_5518.rs
 
-extern crate other = "issue-5518";
+extern crate other = issue_5518;
 
 fn main() {}

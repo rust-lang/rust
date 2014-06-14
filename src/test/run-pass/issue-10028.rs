@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:issue-10028.rs
+// aux-build:issue_10028.rs
 
-extern crate issue10028 = "issue-10028";
+extern crate issue10028 = issue_10028;
 
 use issue10028::ZeroLengthThingWithDestructor;
 

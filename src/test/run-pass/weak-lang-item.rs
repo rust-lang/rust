@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:weak-lang-items.rs
+// aux-build:weak_lang_items.rs
 
-extern crate other = "weak-lang-items";
+extern crate other = weak_lang_items;
 
 use std::task;
 

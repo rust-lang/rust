@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:issue-13872-1.rs
-// aux-build:issue-13872-2.rs
-// aux-build:issue-13872-3.rs
+// aux-build:issue_13872_1.rs
+// aux-build:issue_13872_2.rs
+// aux-build:issue_13872_3.rs
 
-extern crate other = "issue-13872-3";
+extern crate other = issue_13872_3;
 
 fn main() {
     other::foo();

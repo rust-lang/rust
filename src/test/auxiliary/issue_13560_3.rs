@@ -8,12 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate bar = "issue-13872-2";
+// no-prefer-dynamic
 
-use bar::B;
+#![crate_type = "rlib"]
+#![feature(phase)]
 
-pub fn foo() {
-    match B {
-        B => {}
-    }
-}
+#[phase(plugin)] extern crate t1 = issue_13560_1;
+#[phase(plugin, link)] extern crate t2 = issue_13560_2;
+

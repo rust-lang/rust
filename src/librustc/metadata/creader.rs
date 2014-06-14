@@ -152,8 +152,9 @@ fn extract_crate_info(e: &Env, i: &ast::ViewItem) -> Option<CrateInfo> {
             debug!("resolving extern crate stmt. ident: {:?} path_opt: {:?}",
                    ident, path_opt);
             let crate_id = match *path_opt {
-                Some((ref path_str, _)) => {
-                    let crateid: Option<CrateId> = from_str(path_str.get());
+                Some(ref path_str) => {
+                    let crateid: Option<CrateId> =
+                        from_str(token::get_ident(*path_str).get());
                     match crateid {
                         None => {
                             e.sess.span_err(i.span, "malformed crate id");

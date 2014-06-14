@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:issue-7899.rs
+// aux-build:issue_7899.rs
 
-extern crate testcrate = "issue-7899";
+extern crate testcrate = issue_7899;
 
 fn main() {
     let f = testcrate::V2(1.0f32, 2.0f32);

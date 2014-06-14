@@ -9,9 +9,9 @@
 // except according to those terms.
 
 // note that these aux-build directives must be in this order
-// aux-build:svh-a-base.rs
-// aux-build:svh-b.rs
-// aux-build:svh-a-change-lit.rs
+// aux-build:svh_a_base.rs
+// aux-build:svh_b.rs
+// aux-build:svh_a_change_lit.rs
 
 #![feature(macro_rules)]
 

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:issue-11908-2.rs
+// aux-build:issue_11908_2.rs
 // no-prefer-dynamic
 // ignore-android this test is incompatible with the android test runner
 // error-pattern: multiple rlib candidates for `url` found

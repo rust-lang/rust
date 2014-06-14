@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:issue-8044.rs
+// aux-build:issue_8044.rs
 
-extern crate minimal = "issue-8044";
+extern crate minimal = issue_8044;
 use minimal::{BTree, leaf};
 
 pub fn main() {

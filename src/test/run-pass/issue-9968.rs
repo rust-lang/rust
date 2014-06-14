@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:issue-9968.rs
+// aux-build:issue_9968.rs
 
-extern crate lib = "issue-9968";
+extern crate lib = issue_9968;
 
 use lib::{Trait, Struct};
 

@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:issue-11508.rs
+// aux-build:issue_11508.rs
 
-extern crate rand = "issue-11508";
+extern crate rand = issue_11508;
 
 use rand::{Closed01, random};
 

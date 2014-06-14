@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:issue-14421.rs
+// aux-build:issue_14421.rs
 
-extern crate bug_lib = "issue-14421";
+extern crate bug_lib = issue_14421;
 
 use bug_lib::B;
 use bug_lib::make;

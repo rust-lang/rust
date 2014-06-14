@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:issue-5521.rs
+// aux-build:issue_5521.rs
 
 #![feature(managed_boxes)]
 
-extern crate foo = "issue-5521";
+extern crate foo = issue_5521;
 
 fn foo(a: foo::map) {
     if false {

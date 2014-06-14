@@ -1,4 +1,4 @@
-// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,20 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:issue-9906.rs
+#![crate_id="static_function_pointer_aux"]
 
-pub use other::FooBar;
-pub use other::foo;
+pub fn f(x: int) -> int { -x }
 
-mod other {
-    pub struct FooBar{value: int}
-    impl FooBar{
-        pub fn new(val: int) -> FooBar {
-            FooBar{value: val}
-        }
-    }
-
-    pub fn foo(){
-        1+1;
-    }
-}
+pub static F: fn(int) -> int = f;
+pub static mut MutF: fn(int) -> int = f;

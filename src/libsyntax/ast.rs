@@ -974,11 +974,10 @@ pub struct ViewItem {
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
 pub enum ViewItem_ {
-    // ident: name used to refer to this crate in the code
-    // optional (InternedString,StrStyle): if present, this is a location
-    // (containing arbitrary characters) from which to fetch the crate sources
-    // For example, extern crate whatever = "github.com/mozilla/rust"
-    ViewItemExternCrate(Ident, Option<(InternedString,StrStyle)>, NodeId),
+    // required Ident: name used to refer to this crate in the code
+    // optional Ident: name from which to fetch the crate sources
+    // For example, extern crate whatever = foo;
+    ViewItemExternCrate(Ident, Option<Ident>, NodeId),
     ViewItemUse(Gc<ViewPath>),
 }
 

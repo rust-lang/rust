@@ -1136,7 +1136,7 @@ impl<'l> Visitor<DxrVisitorEnv> for DxrVisitor<'l> {
             ast::ViewItemExternCrate(ident, ref s, id) => {
                 let name = get_ident(ident).get().to_owned();
                 let s = match *s {
-                    Some((ref s, _)) => s.get().to_owned(),
+                    Some(ref s) => get_ident(*s).get().to_owned(),
                     None => name.to_owned(),
                 };
                 let sub_span = self.span.sub_span_after_keyword(i.span, keywords::Crate);

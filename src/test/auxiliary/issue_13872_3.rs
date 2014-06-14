@@ -1,4 +1,4 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,6 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate crate1 = "issue-13620-1";
+extern crate bar = issue_13872_2;
 
-pub static FOO2: crate1::Foo = crate1::FOO;
+use bar::B;
+
+pub fn foo() {
+    match B {
+        B => {}
+    }
+}

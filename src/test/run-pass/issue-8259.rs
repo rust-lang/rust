@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:issue-8259.rs
+// aux-build:issue_8259.rs
 
-extern crate other = "issue-8259";
+extern crate other = issue_8259;
 static a: other::Foo<'static> = other::A;
 
 pub fn main() {}

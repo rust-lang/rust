@@ -1808,7 +1808,9 @@ impl Clean<ViewItemInner> for ast::ViewItem_ {
             &ast::ViewItemExternCrate(ref i, ref p, ref id) => {
                 let string = match *p {
                     None => None,
-                    Some((ref x, _)) => Some(x.get().to_string()),
+                    Some(ref ident) => {
+                        Some(token::get_ident(*ident).get().to_string())
+                    }
                 };
                 ExternCrate(i.clean(), string, *id)
             }

@@ -817,7 +817,7 @@ There are several kinds of view item:
 ##### Extern crate declarations
 
 ~~~~ {.ebnf .gram}
-extern_crate_decl : "extern" "crate" ident [ '(' link_attrs ')' ] ? [ '=' string_lit ] ? ;
+extern_crate_decl : "extern" "crate" ident [ '(' link_attrs ')' ] ? [ '=' ident ] ? ;
 link_attrs : link_attr [ ',' link_attrs ] + ;
 link_attr : ident '=' literal ;
 ~~~~
@@ -839,11 +839,9 @@ Four examples of `extern crate` declarations:
 ~~~~ {.ignore}
 extern crate pcre;
 
-extern crate std; // equivalent to: extern crate std = "std";
+extern crate std; // equivalent to: extern crate std = std;
 
-extern crate ruststd = "std"; // linking to 'std' under another name
-
-extern crate foo = "some/where/rust-foo#foo:1.0"; // a full crate ID for external tools
+extern crate ruststd = std; // linking to 'std' under another name
 ~~~~
 
 ##### Use declarations

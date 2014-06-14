@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:issue-7178.rs
+// aux-build:issue_7178.rs
 
-extern crate cross_crate_self = "issue-7178";
+extern crate cross_crate_self = issue_7178;
 
 pub fn main() {
     let _ = cross_crate_self::Foo::new(&1i);

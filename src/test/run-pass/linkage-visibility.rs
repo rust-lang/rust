@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:linkage-visibility.rs
+// aux-build:linkage_visibility.rs
 // ignore-android: FIXME(#10379)
 // ignore-win32: std::dynamic_lib does not work on win32 well
 
-extern crate foo = "linkage-visibility";
+extern crate foo = linkage_visibility;
 
 pub fn main() {
     foo::test();

@@ -60,23 +60,15 @@ struct StandardLibraryInjector<'a> {
     sess: &'a Session,
 }
 
-pub fn with_version(krate: &str) -> Option<(InternedString, ast::StrStyle)> {
+// FIXME(pcwalton): Making `Ident`s out of this stuff is pretty bogus. What
+// should we do instead?
+pub fn with_version(krate: &str) -> Option<ast::Ident> {
     match option_env!("CFG_DISABLE_INJECT_STD_VERSION") {
         Some("1") => None,
         #[cfg(stage0)]
-        _ => {
-            Some((token::intern_and_get_ident(format!("{}\\#{}",
-                                                      krate,
-                                                      VERSION).as_slice()),
-                  ast::CookedStr))
-        }
+        _ => Some(token::str_to_ident(krate)),
         #[cfg(not(stage0))]
-        _ => {
-            Some((token::intern_and_get_ident(format!("{}#{}",
-                                                      krate,
-                                                      VERSION).as_slice()),
-                  ast::CookedStr))
-        }
+        _ => Some(token::str_to_ident(krate)),
     }
 }
 
