@@ -13,7 +13,6 @@
 
 use libc::{c_void, size_t, free, malloc, realloc};
 use core::ptr::{RawPtr, mut_null};
-use core::intrinsics::abort;
 
 /// A wrapper around libc::malloc, aborting on out-of-memory
 #[inline]
@@ -25,8 +24,7 @@ pub unsafe fn malloc_raw(size: uint) -> *mut u8 {
     } else {
         let p = malloc(size as size_t);
         if p.is_null() {
-            // we need a non-allocating way to print an error here
-            abort();
+            ::oom();
         }
         p as *mut u8
     }
@@ -43,8 +41,7 @@ pub unsafe fn realloc_raw(ptr: *mut u8, size: uint) -> *mut u8 {
     } else {
         let p = realloc(ptr as *mut c_void, size as size_t);
         if p.is_null() {
-            // we need a non-allocating way to print an error here
-            abort();
+            ::oom();
         }
         p as *mut u8
     }

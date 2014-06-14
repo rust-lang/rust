@@ -130,7 +130,6 @@ unsafe fn closure_exchange_malloc(drop_glue: fn(*mut u8), size: uint,
 
 #[cfg(jemalloc)]
 mod imp {
-    use core::intrinsics::abort;
     use core::option::{None, Option};
     use core::ptr::{RawPtr, mut_null, null};
     use core::num::Bitwise;
@@ -163,7 +162,7 @@ mod imp {
     pub unsafe fn allocate(size: uint, align: uint) -> *mut u8 {
         let ptr = je_mallocx(size as size_t, mallocx_align(align)) as *mut u8;
         if ptr.is_null() {
-            abort()
+            ::oom()
         }
         ptr
     }
@@ -174,7 +173,7 @@ mod imp {
         let ptr = je_rallocx(ptr as *mut c_void, size as size_t,
                              mallocx_align(align)) as *mut u8;
         if ptr.is_null() {
-            abort()
+            ::oom()
         }
         ptr
     }
