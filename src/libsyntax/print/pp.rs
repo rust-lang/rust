@@ -322,7 +322,8 @@ impl Printer {
                    b.offset, self.left, self.right);
             *self.token.get_mut(self.right) = t;
             *self.size.get_mut(self.right) = -self.right_total;
-            self.scan_push(self.right);
+            let right = self.right;
+            self.scan_push(right);
             Ok(())
           }
           End => {
@@ -334,7 +335,8 @@ impl Printer {
                 self.advance_right();
                 *self.token.get_mut(self.right) = t;
                 *self.size.get_mut(self.right) = -1;
-                self.scan_push(self.right);
+                let right = self.right;
+                self.scan_push(right);
                 Ok(())
             }
           }
@@ -348,7 +350,8 @@ impl Printer {
             debug!("pp Break({})/buffer ~[{},{}]",
                    b.offset, self.left, self.right);
             self.check_stack(0);
-            self.scan_push(self.right);
+            let right = self.right;
+            self.scan_push(right);
             *self.token.get_mut(self.right) = t;
             *self.size.get_mut(self.right) = -self.right_total;
             self.right_total += b.blank_space;

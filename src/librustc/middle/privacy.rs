@@ -1019,9 +1019,10 @@ impl<'a> Visitor<()> for SanePrivacyVisitor<'a> {
             self.check_sane_privacy(item);
         }
 
+        let in_fn = self.in_fn;
         let orig_in_fn = replace(&mut self.in_fn, match item.node {
             ast::ItemMod(..) => false, // modules turn privacy back on
-            _ => self.in_fn,           // otherwise we inherit
+            _ => in_fn,           // otherwise we inherit
         });
         visit::walk_item(self, item, ());
         self.in_fn = orig_in_fn;

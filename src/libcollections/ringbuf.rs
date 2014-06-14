@@ -66,7 +66,8 @@ impl<T> Deque<T> for RingBuf<T> {
 
     /// Return a mutable reference to the last element in the RingBuf
     fn back_mut<'a>(&'a mut self) -> Option<&'a mut T> {
-        if self.nelts > 0 { Some(self.get_mut(self.nelts - 1)) } else { None }
+        let nelts = self.nelts;
+        if nelts > 0 { Some(self.get_mut(nelts - 1)) } else { None }
     }
 
     /// Remove and return the first element in the RingBuf, or None if it is empty

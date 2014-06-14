@@ -73,6 +73,20 @@ fn borrow_after_fu_move() {
     drop(*p);
 }
 
+fn move_after_borrow() {
+    let x = A { a: 1, b: box 2 };
+    let p = &x.a;
+    drop(x.b);
+    drop(*p);
+}
+
+fn fu_move_after_borrow() {
+    let x = A { a: 1, b: box 2 };
+    let p = &x.a;
+    let _y = A { a: 3, .. x };
+    drop(*p);
+}
+
 fn mut_borrow_after_mut_borrow() {
     let mut x = A { a: 1, b: box 2 };
     let p = &mut x.a;
@@ -225,6 +239,8 @@ fn main() {
 
     borrow_after_move();
     borrow_after_fu_move();
+    move_after_borrow();
+    fu_move_after_borrow();
     mut_borrow_after_mut_borrow();
 
     move_after_move();
