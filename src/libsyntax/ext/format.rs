@@ -202,7 +202,8 @@ impl<'a, 'b> Context<'a, 'b> {
             }
             parse::CountIsNextParam => {
                 if self.check_positional_ok() {
-                    self.verify_arg_type(Exact(self.next_arg), Unsigned);
+                    let next_arg = self.next_arg;
+                    self.verify_arg_type(Exact(next_arg), Unsigned);
                     self.next_arg += 1;
                 }
             }

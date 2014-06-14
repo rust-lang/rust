@@ -300,12 +300,13 @@ impl<'a, O:DataFlowOperator+Clone+'static> DataFlowContext<'a, O> {
         }
 
         {
+            let words_per_id = self.words_per_id;
             let mut propcx = PropagationContext {
                 dfcx: &mut *self,
                 changed: true
             };
 
-            let mut temp = Vec::from_elem(self.words_per_id, 0u);
+            let mut temp = Vec::from_elem(words_per_id, 0u);
             let mut loop_scopes = Vec::new();
 
             while propcx.changed {
