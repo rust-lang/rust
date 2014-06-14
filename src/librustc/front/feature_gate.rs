@@ -108,16 +108,6 @@ struct Context<'a> {
 }
 
 impl<'a> Context<'a> {
-    #[cfg(stage0)]
-    fn gate_feature(&self, feature: &str, span: Span, explain: &str) {
-        if !self.has_feature(feature) {
-            self.sess.span_err(span, explain);
-            self.sess.span_note(span, format!("add \\#![feature({})] to the \
-                                                  crate attributes to enable",
-                                                 feature).as_slice());
-        }
-    }
-    #[cfg(not(stage0))]
     fn gate_feature(&self, feature: &str, span: Span, explain: &str) {
         if !self.has_feature(feature) {
             self.sess.span_err(span, explain);

@@ -15,16 +15,16 @@ struct B<'a, T>(&'a A<T>);
 trait X {}
 impl<'a, T> X for B<'a, T> {}
 
-fn f<'a, T, U>(v: Box<A<T>>) -> Box<X:> {
-    box B(v) as Box<X:> //~ ERROR value may contain references; add `'static` bound to `T`
+fn f<'a, T, U>(v: Box<A<T>>) -> Box<X> {
+    box B(v) as Box<X> //~ ERROR value may contain references; add `'static` bound to `T`
 }
 
-fn g<'a, T, U>(v: Box<A<U>>) -> Box<X:> {
-    box B(v) as Box<X:> //~ ERROR value may contain references; add `'static` bound to `U`
+fn g<'a, T, U>(v: Box<A<U>>) -> Box<X> {
+    box B(v) as Box<X> //~ ERROR value may contain references; add `'static` bound to `U`
 }
 
-fn h<'a, T: 'static>(v: Box<A<T>>) -> Box<X:> {
-    box B(v) as Box<X:> // ok
+fn h<'a, T: 'static>(v: Box<A<T>>) -> Box<X> {
+    box B(v) as Box<X> // ok
 }
 
 fn main() {}

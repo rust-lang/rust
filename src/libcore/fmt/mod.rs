@@ -744,11 +744,6 @@ impl Show for () {
 }
 
 impl<T: Copy + Show> Show for Cell<T> {
-    #[cfg(stage0)]
-    fn fmt(&self, f: &mut Formatter) -> Result {
-        write!(f, r"Cell \{ value: {} \}", self.get())
-    }
-    #[cfg(not(stage0))]
     fn fmt(&self, f: &mut Formatter) -> Result {
         write!(f, "Cell {{ value: {} }}", self.get())
     }

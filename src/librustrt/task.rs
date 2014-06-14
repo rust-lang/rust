@@ -46,12 +46,12 @@ pub struct Task {
     pub destroyed: bool,
     pub name: Option<SendStr>,
 
-    imp: Option<Box<Runtime:Send>>,
+    imp: Option<Box<Runtime + Send>>,
 }
 
 pub struct TaskOpts {
     /// Invoke this procedure with the result of the task when it finishes.
-    pub on_exit: Option<proc(Result):Send>,
+    pub on_exit: Option<proc(Result): Send>,
     /// A name for the task-to-be, for identification in failure messages
     pub name: Option<SendStr>,
     /// The size of the stack for the spawned task
@@ -64,7 +64,7 @@ pub struct TaskOpts {
 ///
 /// If you wish for this result's delivery to block until all
 /// children tasks complete, recommend using a result future.
-pub type Result = ::core::result::Result<(), Box<Any:Send>>;
+pub type Result = ::core::result::Result<(), Box<Any + Send>>;
 
 pub struct GarbageCollector;
 pub struct LocalStorage(pub Option<local_data::Map>);
@@ -79,7 +79,7 @@ pub enum BlockedTask {
 
 /// Per-task state related to task death, killing, failure, etc.
 pub struct Death {
-    pub on_exit: Option<proc(Result):Send>,
+    pub on_exit: Option<proc(Result): Send>,
 }
 
 pub struct BlockedTasks {
@@ -177,7 +177,7 @@ impl Task {
     /// Inserts a runtime object into this task, transferring ownership to the
     /// task. It is illegal to replace a previous runtime object in this task
     /// with this argument.
-    pub fn put_runtime(&mut self, ops: Box<Runtime:Send>) {
+    pub fn put_runtime(&mut self, ops: Box<Runtime + Send>) {
         assert!(self.imp.is_none());
         self.imp = Some(ops);
     }
@@ -207,7 +207,7 @@ impl Task {
                 Ok(t) => Some(t),
                 Err(t) => {
                     let data = mem::transmute::<_, raw::TraitObject>(t).data;
-                    let obj: Box<Runtime:Send> =
+                    let obj: Box<Runtime + Send> =
                         mem::transmute(raw::TraitObject {
                             vtable: vtable,
                             data: data,
@@ -221,7 +221,7 @@ impl Task {
 
     /// Spawns a sibling to this task. The newly spawned task is configured with
     /// the `opts` structure and will run `f` as the body of its code.
-    pub fn spawn_sibling(mut ~self, opts: TaskOpts, f: proc():Send) {
+    pub fn spawn_sibling(mut ~self, opts: TaskOpts, f: proc(): Send) {
         let ops = self.imp.take_unwrap();
         ops.spawn_sibling(self, opts, f)
     }

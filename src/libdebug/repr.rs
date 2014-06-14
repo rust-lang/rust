@@ -269,16 +269,6 @@ impl<'a> TyVisitor for ReprVisitor<'a> {
         })
     }
 
-    #[cfg(stage0)]
-    fn visit_estr_box(&mut self) -> bool {
-        false
-    }
-
-    #[cfg(stage0)]
-    fn visit_estr_uniq(&mut self) -> bool {
-        false
-    }
-
     fn visit_estr_slice(&mut self) -> bool {
         self.get::<&str>(|this, s| this.write_escaped_slice(*s))
     }
@@ -318,16 +308,6 @@ impl<'a> TyVisitor for ReprVisitor<'a> {
         self.get::<*u8>(|this, p| {
             this.visit_ptr_inner(*p, inner)
         })
-    }
-
-    #[cfg(stage0)]
-    fn visit_evec_box(&mut self, _mtbl: uint, _inner: *TyDesc) -> bool {
-        true
-    }
-
-    #[cfg(stage0)]
-    fn visit_evec_uniq(&mut self, _mtbl: uint, _inner: *TyDesc) -> bool {
-        true
     }
 
     fn visit_evec_slice(&mut self, mtbl: uint, inner: *TyDesc) -> bool {

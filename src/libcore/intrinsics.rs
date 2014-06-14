@@ -100,10 +100,6 @@ pub trait TyVisitor {
 
     fn visit_char(&mut self) -> bool;
 
-    #[cfg(stage0)]
-    fn visit_estr_box(&mut self) -> bool;
-    #[cfg(stage0)]
-    fn visit_estr_uniq(&mut self) -> bool;
     fn visit_estr_slice(&mut self) -> bool;
     fn visit_estr_fixed(&mut self, n: uint, sz: uint, align: uint) -> bool;
 
@@ -112,10 +108,6 @@ pub trait TyVisitor {
     fn visit_ptr(&mut self, mtbl: uint, inner: *TyDesc) -> bool;
     fn visit_rptr(&mut self, mtbl: uint, inner: *TyDesc) -> bool;
 
-    #[cfg(stage0)]
-    fn visit_evec_box(&mut self, mtbl: uint, inner: *TyDesc) -> bool;
-    #[cfg(stage0)]
-    fn visit_evec_uniq(&mut self, mtbl: uint, inner: *TyDesc) -> bool;
     fn visit_evec_slice(&mut self, mtbl: uint, inner: *TyDesc) -> bool;
     fn visit_evec_fixed(&mut self, n: uint, sz: uint, align: uint,
                         mtbl: uint, inner: *TyDesc) -> bool;

@@ -15,9 +15,6 @@
 //! these can be statically allocated and are slightly optimized for the runtime
 
 
-#[cfg(stage0)]
-use option::Option;
-
 #[doc(hidden)]
 pub enum Piece<'a> {
     String(&'a str),
@@ -28,8 +25,6 @@ pub enum Piece<'a> {
 pub struct Argument<'a> {
     pub position: Position,
     pub format: FormatSpec,
-    #[cfg(stage0)]
-    pub method: Option<uint>,
 }
 
 #[doc(hidden)]

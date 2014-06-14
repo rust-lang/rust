@@ -161,15 +161,6 @@ impl<'a> Context<'a> {
             }
             match self.root {
                 &None => {}
-                #[cfg(stage0)]
-                &Some(ref r) => {
-                    for (i, path) in r.paths().iter().enumerate() {
-                        self.sess.fileline_note(self.span,
-                            format!("crate `{}` path \\#{}: {}",
-                                    r.ident, i+1, path.display()).as_slice());
-                    }
-                }
-                #[cfg(not(stage0))]
                 &Some(ref r) => {
                     for (i, path) in r.paths().iter().enumerate() {
                         self.sess.fileline_note(self.span,
@@ -396,7 +387,7 @@ impl<'a> Context<'a> {
                                            flavor,
                                            self.crate_id.name).as_slice());
                 self.sess.span_note(self.span,
-                                    format!(r"candidate \#1: {}",
+                                    format!(r"candidate #1: {}",
                                             ret.get_ref()
                                                .display()).as_slice());
                 error = 1;
@@ -405,7 +396,7 @@ impl<'a> Context<'a> {
             if error > 0 {
                 error += 1;
                 self.sess.span_note(self.span,
-                                    format!(r"candidate \#{}: {}", error,
+                                    format!(r"candidate #{}: {}", error,
                                             lib.display()).as_slice());
                 continue
             }

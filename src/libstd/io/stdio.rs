@@ -71,8 +71,8 @@ use str::StrSlice;
 // tl;dr; TTY works on everything but when windows stdout is redirected, in that
 //        case pipe also doesn't work, but magically file does!
 enum StdSource {
-    TTY(Box<RtioTTY:Send>),
-    File(Box<RtioFileStream:Send>),
+    TTY(Box<RtioTTY + Send>),
+    File(Box<RtioFileStream + Send>),
 }
 
 fn src<T>(fd: libc::c_int, readable: bool, f: |StdSource| -> T) -> T {
@@ -84,7 +84,7 @@ fn src<T>(fd: libc::c_int, readable: bool, f: |StdSource| -> T) -> T {
     }).map_err(IoError::from_rtio_error).unwrap()
 }
 
-local_data_key!(local_stdout: Box<Writer:Send>)
+local_data_key!(local_stdout: Box<Writer + Send>)
 
 /// Creates a new non-blocking handle to the stdin of the current process.
 ///
@@ -163,7 +163,7 @@ pub fn stderr_raw() -> StdWriter {
 ///
 /// Note that this does not need to be called for all new tasks; the default
 /// output handle is to the process's stdout stream.
-pub fn set_stdout(stdout: Box<Writer:Send>) -> Option<Box<Writer:Send>> {
+pub fn set_stdout(stdout: Box<Writer + Send>) -> Option<Box<Writer + Send>> {
     local_stdout.replace(Some(stdout)).and_then(|mut s| {
         let _ = s.flush();
         Some(s)
@@ -178,7 +178,7 @@ pub fn set_stdout(stdout: Box<Writer:Send>) -> Option<Box<Writer:Send>> {
 ///
 /// Note that this does not need to be called for all new tasks; the default
 /// output handle is to the process's stderr stream.
-pub fn set_stderr(stderr: Box<Writer:Send>) -> Option<Box<Writer:Send>> {
+pub fn set_stderr(stderr: Box<Writer + Send>) -> Option<Box<Writer + Send>> {
     local_stderr.replace(Some(stderr)).and_then(|mut s| {
         let _ = s.flush();
         Some(s)
@@ -198,7 +198,7 @@ pub fn set_stderr(stderr: Box<Writer:Send>) -> Option<Box<Writer:Send>> {
 fn with_task_stdout(f: |&mut Writer| -> IoResult<()>) {
     let result = if Local::exists(None::<Task>) {
         let mut my_stdout = local_stdout.replace(None).unwrap_or_else(|| {
-            box stdout() as Box<Writer:Send>
+            box stdout() as Box<Writer + Send>
         });
         let result = f(my_stdout);
         local_stdout.replace(Some(my_stdout));

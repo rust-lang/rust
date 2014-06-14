@@ -58,7 +58,7 @@ use c_str::CString;
 /// assert!(child.wait().unwrap().success());
 /// ```
 pub struct Process {
-    handle: Box<RtioProcess:Send>,
+    handle: Box<RtioProcess + Send>,
 
     /// Handle to the child's stdin, if the `stdin` field of this process's
     /// `ProcessConfig` was `CreatePipe`. By default, this handle is `Some`.

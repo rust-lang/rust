@@ -842,20 +842,6 @@ impl cmp::PartialEq for BitvSet {
 }
 
 impl fmt::Show for BitvSet {
-    #[cfg(stage0)]
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(fmt, r"\{"));
-        let mut first = true;
-        for n in self.iter() {
-            if !first {
-                try!(write!(fmt, ", "));
-            }
-            try!(write!(fmt, "{}", n));
-            first = false;
-        }
-        write!(fmt, r"\}")
-    }
-    #[cfg(not(stage0))]
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(fmt, "{{"));
         let mut first = true;

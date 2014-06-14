@@ -642,10 +642,6 @@ impl<'a> PrivacyVisitor<'a> {
         let msg = match name {
             NamedField(name) => format!("field `{}` of {} is private",
                                         token::get_ident(name), struct_desc),
-            #[cfg(stage0)]
-            UnnamedField(idx) => format!("field \\#{} of {} is private",
-                                         idx + 1, struct_desc),
-            #[cfg(not(stage0))]
             UnnamedField(idx) => format!("field #{} of {} is private",
                                          idx + 1, struct_desc),
         };
