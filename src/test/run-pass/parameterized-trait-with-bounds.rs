@@ -19,10 +19,10 @@ mod foo {
     pub trait D<'a, T> {}
 }
 
-fn foo1<T>(_: &A<T>: Send) {}
-fn foo2<T>(_: Box<A<T>: Send + Share>) {}
-fn foo3<T>(_: Box<B<int, uint>: 'static>) {}
-fn foo4<'a, T>(_: Box<C<'a, T>: 'static + Send>) {}
-fn foo5<'a, T>(_: Box<foo::D<'a, T>: 'static + Send>) {}
+fn foo1<T>(_: &A<T> + Send) {}
+fn foo2<T>(_: Box<A<T> + Send + Share>) {}
+fn foo3<T>(_: Box<B<int, uint> + 'static>) {}
+fn foo4<'a, T>(_: Box<C<'a, T> + 'static + Send>) {}
+fn foo5<'a, T>(_: Box<foo::D<'a, T> + 'static + Send>) {}
 
 pub fn main() {}

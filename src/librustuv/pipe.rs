@@ -38,8 +38,8 @@ pub struct PipeWatcher {
 pub struct PipeListener {
     home: HomeHandle,
     pipe: *uvll::uv_pipe_t,
-    outgoing: Sender<IoResult<Box<rtio::RtioPipe:Send>>>,
-    incoming: Receiver<IoResult<Box<rtio::RtioPipe:Send>>>,
+    outgoing: Sender<IoResult<Box<rtio::RtioPipe + Send>>>,
+    incoming: Receiver<IoResult<Box<rtio::RtioPipe + Send>>>,
 }
 
 pub struct PipeAcceptor {
@@ -129,7 +129,7 @@ impl rtio::RtioPipe for PipeWatcher {
         self.stream.write(buf, guard.can_timeout).map_err(uv_error_to_io_error)
     }
 
-    fn clone(&self) -> Box<rtio::RtioPipe:Send> {
+    fn clone(&self) -> Box<rtio::RtioPipe + Send> {
         box PipeWatcher {
             stream: StreamWatcher::new(self.stream.handle),
             defused: false,
@@ -137,7 +137,7 @@ impl rtio::RtioPipe for PipeWatcher {
             refcount: self.refcount.clone(),
             read_access: self.read_access.clone(),
             write_access: self.write_access.clone(),
-        } as Box<rtio::RtioPipe:Send>
+        } as Box<rtio::RtioPipe + Send>
     }
 
     fn close_read(&mut self) -> IoResult<()> {
@@ -248,7 +248,7 @@ impl PipeListener {
 }
 
 impl rtio::RtioUnixListener for PipeListener {
-    fn listen(~self) -> IoResult<Box<rtio::RtioUnixAcceptor:Send>> {
+    fn listen(~self) -> IoResult<Box<rtio::RtioUnixAcceptor + Send>> {
         // create the acceptor object from ourselves
         let mut acceptor = box PipeAcceptor {
             listener: self,
@@ -258,7 +258,7 @@ impl rtio::RtioUnixListener for PipeListener {
         let _m = acceptor.fire_homing_missile();
         // FIXME: the 128 backlog should be configurable
         match unsafe { uvll::uv_listen(acceptor.listener.pipe, 128, listen_cb) } {
-            0 => Ok(acceptor as Box<rtio::RtioUnixAcceptor:Send>),
+            0 => Ok(acceptor as Box<rtio::RtioUnixAcceptor + Send>),
             n => Err(uv_error_to_io_error(UvError(n))),
         }
     }
@@ -283,7 +283,7 @@ extern fn listen_cb(server: *uvll::uv_stream_t, status: libc::c_int) {
             });
             let client = PipeWatcher::new_home(&loop_, pipe.home().clone(), false);
             assert_eq!(unsafe { uvll::uv_accept(server, client.handle()) }, 0);
-            Ok(box client as Box<rtio::RtioPipe:Send>)
+            Ok(box client as Box<rtio::RtioPipe + Send>)
         }
         n => Err(uv_error_to_io_error(UvError(n)))
     };
@@ -300,7 +300,7 @@ impl Drop for PipeListener {
 // PipeAcceptor implementation and traits
 
 impl rtio::RtioUnixAcceptor for PipeAcceptor {
-    fn accept(&mut self) -> IoResult<Box<rtio::RtioPipe:Send>> {
+    fn accept(&mut self) -> IoResult<Box<rtio::RtioPipe + Send>> {
         self.timeout.accept(&self.listener.incoming)
     }
 

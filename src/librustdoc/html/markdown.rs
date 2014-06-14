@@ -259,8 +259,8 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
         };
 
         // Render the HTML
-        let text = format!(r#"<h{lvl} id="{id}" class='section-header'><a
-                           href="\#{id}">{sec}{}</a></h{lvl}>"#,
+        let text = format!(r##"<h{lvl} id="{id}" class='section-header'><a
+                           href="#{id}">{sec}{}</a></h{lvl}>"##,
                            s, lvl = level, id = id,
                            sec = if sec.len() == 0 {
                                sec.to_string()

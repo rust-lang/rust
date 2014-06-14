@@ -11,7 +11,7 @@
 
 trait Foo { }
 
-fn foo<'a>(x: Box<Foo:'a>) { //~ ERROR only the 'static lifetime is accepted here
+fn foo<'a>(x: Box<Foo + 'a>) { //~ ERROR only the 'static lifetime is accepted here
 }
 
 fn bar<'a, T:'a>() { //~ ERROR only the 'static lifetime is accepted here

@@ -36,7 +36,7 @@ use rt::rtio::{RtioUnixAcceptor, RtioPipe};
 
 /// A stream which communicates over a named pipe.
 pub struct UnixStream {
-    obj: Box<RtioPipe:Send>,
+    obj: Box<RtioPipe + Send>,
 }
 
 impl UnixStream {
@@ -144,7 +144,7 @@ impl Writer for UnixStream {
 /// A value that can listen for incoming named pipe connection requests.
 pub struct UnixListener {
     /// The internal, opaque runtime Unix listener.
-    obj: Box<RtioUnixListener:Send>,
+    obj: Box<RtioUnixListener + Send>,
 }
 
 impl UnixListener {
@@ -188,7 +188,7 @@ impl Listener<UnixStream, UnixAcceptor> for UnixListener {
 /// A value that can accept named pipe connections, returned from `listen()`.
 pub struct UnixAcceptor {
     /// The internal, opaque runtime Unix acceptor.
-    obj: Box<RtioUnixAcceptor:Send>,
+    obj: Box<RtioUnixAcceptor + Send>,
 }
 
 impl UnixAcceptor {

@@ -64,7 +64,7 @@ use rt::rtio::{IoFactory, LocalIo, RtioTimer, Callback};
 /// # }
 /// ```
 pub struct Timer {
-    obj: Box<RtioTimer:Send>,
+    obj: Box<RtioTimer + Send>,
 }
 
 struct TimerCallback { tx: Sender<()> }

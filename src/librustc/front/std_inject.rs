@@ -63,14 +63,6 @@ struct StandardLibraryInjector<'a> {
 pub fn with_version(krate: &str) -> Option<(InternedString, ast::StrStyle)> {
     match option_env!("CFG_DISABLE_INJECT_STD_VERSION") {
         Some("1") => None,
-        #[cfg(stage0)]
-        _ => {
-            Some((token::intern_and_get_ident(format!("{}\\#{}",
-                                                      krate,
-                                                      VERSION).as_slice()),
-                  ast::CookedStr))
-        }
-        #[cfg(not(stage0))]
         _ => {
             Some((token::intern_and_get_ident(format!("{}#{}",
                                                       krate,

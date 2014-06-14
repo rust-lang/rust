@@ -13,7 +13,7 @@ trait Foo {
 
 struct Bar;
 
-impl Foo:Owned for Bar { //~ ERROR bounded traits are only valid in type position
+impl Foo + Owned for Bar { //~ ERROR bounded traits are only valid in type position
 }
 
 fn main() { }

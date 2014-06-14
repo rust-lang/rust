@@ -31,10 +31,10 @@ impl FooTrait for BarStruct {
 }
 
 pub fn main() {
-    let foos: Vec<Box<FooTrait:>> = vec!(
-        box BarStruct{ x: box(GC) 0 } as Box<FooTrait:>,
-        box BarStruct{ x: box(GC) 1 } as Box<FooTrait:>,
-        box BarStruct{ x: box(GC) 2 } as Box<FooTrait:>
+    let foos: Vec<Box<FooTrait>> = vec!(
+        box BarStruct{ x: box(GC) 0 } as Box<FooTrait>,
+        box BarStruct{ x: box(GC) 1 } as Box<FooTrait>,
+        box BarStruct{ x: box(GC) 2 } as Box<FooTrait>
     );
 
     for i in range(0u, foos.len()) {

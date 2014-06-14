@@ -13,7 +13,7 @@ trait Foo {
 
 // This should emit the less confusing error, not the more confusing one.
 
-fn foo(_x: Foo:Send) {
+fn foo(_x: Foo + Send) {
     //~^ERROR reference to trait `Foo` where a type is expected; try `Box<Foo>` or `&Foo`
 }
 

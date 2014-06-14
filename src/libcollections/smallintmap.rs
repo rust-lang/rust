@@ -185,18 +185,6 @@ impl<V:Clone> SmallIntMap<V> {
 }
 
 impl<V: fmt::Show> fmt::Show for SmallIntMap<V> {
-    #[cfg(stage0)]
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f, r"\{"));
-
-        for (i, (k, v)) in self.iter().enumerate() {
-            if i != 0 { try!(write!(f, ", ")); }
-            try!(write!(f, "{}: {}", k, *v));
-        }
-
-        write!(f, r"\}")
-    }
-    #[cfg(not(stage0))]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(f, "{{"));
 

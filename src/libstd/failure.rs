@@ -23,7 +23,7 @@ use str::Str;
 use string::String;
 
 // Defined in this module instead of io::stdio so that the unwinding
-local_data_key!(pub local_stderr: Box<Writer:Send>)
+local_data_key!(pub local_stderr: Box<Writer + Send>)
 
 impl Writer for Stdio {
     fn write(&mut self, bytes: &[u8]) -> IoResult<()> {
@@ -35,7 +35,7 @@ impl Writer for Stdio {
     }
 }
 
-pub fn on_fail(obj: &Any:Send, file: &'static str, line: uint) {
+pub fn on_fail(obj: &Any + Send, file: &'static str, line: uint) {
     let msg = match obj.as_ref::<&'static str>() {
         Some(s) => *s,
         None => match obj.as_ref::<String>() {

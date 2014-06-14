@@ -899,12 +899,6 @@ pub fn make_non_verbatim(path: &Path) -> Option<Path> {
             // \\?\D:\
             Path::new(repr.slice_from(4))
         }
-        #[cfg(stage0)]
-        Some(VerbatimUNCPrefix(_,_)) => {
-            // \\?\UNC\server\share
-            Path::new(format!(r"\\{}", repr.slice_from(7)))
-        }
-        #[cfg(not(stage0))]
         Some(VerbatimUNCPrefix(_,_)) => {
             // \\?\UNC\server\share
             Path::new(format!(r"\{}", repr.slice_from(7)))

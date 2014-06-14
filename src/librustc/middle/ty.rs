@@ -899,11 +899,6 @@ impl Vid for TyVid {
 }
 
 impl fmt::Show for TyVid {
-    #[cfg(stage0)]
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result{
-        write!(f, "<generic \\#{}>", self.to_uint())
-    }
-    #[cfg(not(stage0))]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result{
         write!(f, "<generic #{}>", self.to_uint())
     }
@@ -914,11 +909,6 @@ impl Vid for IntVid {
 }
 
 impl fmt::Show for IntVid {
-    #[cfg(stage0)]
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "<generic integer \\#{}>", self.to_uint())
-    }
-    #[cfg(not(stage0))]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "<generic integer #{}>", self.to_uint())
     }
@@ -929,11 +919,6 @@ impl Vid for FloatVid {
 }
 
 impl fmt::Show for FloatVid {
-    #[cfg(stage0)]
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "<generic float \\#{}>", self.to_uint())
-    }
-    #[cfg(not(stage0))]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "<generic float #{}>", self.to_uint())
     }

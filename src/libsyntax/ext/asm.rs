@@ -145,29 +145,6 @@ pub fn expand_asm(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                     inputs.push((constraint, input));
                 }
             }
-            #[cfg(stage0)]
-            Clobbers => {
-                let mut clobs = Vec::new();
-                while p.token != token::EOF &&
-                      p.token != token::COLON &&
-                      p.token != token::MOD_SEP {
-
-                    if clobs.len() != 0 {
-                        p.eat(&token::COMMA);
-                    }
-
-                    let (s, _str_style) = p.parse_str();
-                    let clob = format!("~\\{{}\\}", s);
-                    clobs.push(clob);
-
-                    if OPTIONS.iter().any(|opt| s.equiv(opt)) {
-                        cx.span_warn(p.last_span, "expected a clobber, but found an option");
-                    }
-                }
-
-                cons = clobs.connect(",");
-            }
-            #[cfg(not(stage0))]
             Clobbers => {
                 let mut clobs = Vec::new();
                 while p.token != token::EOF &&
