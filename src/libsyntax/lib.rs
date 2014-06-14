@@ -94,6 +94,7 @@ pub mod ext {
     pub mod format;
     pub mod env;
     pub mod bytes;
+    pub mod hex_bytes;
     pub mod concat;
     pub mod concat_idents;
     pub mod log_syntax;
