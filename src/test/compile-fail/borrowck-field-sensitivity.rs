@@ -84,20 +84,6 @@ fn fu_move_after_fu_move() {
 
 // The following functions aren't yet accepted, but they should be.
 
-fn move_after_borrow_correct() {
-    let x = A { a: 1, b: box 2 };
-    let p = &x.a;
-    drop(x.b); //~ ERROR cannot move out of `x.b` because it is borrowed
-    drop(*p);
-}
-
-fn fu_move_after_borrow_correct() {
-    let x = A { a: 1, b: box 2 };
-    let p = &x.a;
-    let _y = A { a: 3, .. x }; //~ ERROR cannot move out of `x.b` because it is borrowed
-    drop(*p);
-}
-
 fn copy_after_field_assign_after_uninit() {
     let mut x: A;
     x.a = 1;
@@ -131,9 +117,6 @@ fn main() {
     move_after_fu_move();
     fu_move_after_move();
     fu_move_after_fu_move();
-
-    move_after_borrow_correct();
-    fu_move_after_borrow_correct();
 
     copy_after_field_assign_after_uninit();
     borrow_after_field_assign_after_uninit();
