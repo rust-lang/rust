@@ -11,10 +11,11 @@
 #![feature(managed_boxes)]
 
 use std::cell::Cell;
+use std::gc::{Gc, GC};
 
 // This test should behave exactly like issue-2735-2
 struct defer {
-    b: @Cell<bool>,
+    b: Gc<Cell<bool>>,
 }
 
 #[unsafe_destructor]
@@ -24,14 +25,14 @@ impl Drop for defer {
     }
 }
 
-fn defer(b: @Cell<bool>) -> defer {
+fn defer(b: Gc<Cell<bool>>) -> defer {
     defer {
         b: b
     }
 }
 
 pub fn main() {
-    let dtor_ran = @Cell::new(false);
+    let dtor_ran = box(GC) Cell::new(false);
     defer(dtor_ran);
     assert!(dtor_ran.get());
 }

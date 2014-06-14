@@ -11,10 +11,11 @@
 #![feature(managed_boxes)]
 
 use std::cell::Cell;
+use std::gc::{Gc, GC};
 
 // Make sure that destructors get run on slice literals
 struct foo {
-    x: @Cell<int>,
+    x: Gc<Cell<int>>,
 }
 
 #[unsafe_destructor]
@@ -24,14 +25,14 @@ impl Drop for foo {
     }
 }
 
-fn foo(x: @Cell<int>) -> foo {
+fn foo(x: Gc<Cell<int>>) -> foo {
     foo {
         x: x
     }
 }
 
 pub fn main() {
-    let x = @Cell::new(0);
+    let x = box(GC) Cell::new(0);
     {
         let l = &[foo(x)];
         assert_eq!(l[0].x.get(), 0);

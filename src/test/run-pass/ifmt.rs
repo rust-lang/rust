@@ -17,6 +17,7 @@
 extern crate debug;
 
 use std::fmt;
+use std::gc::GC;
 use std::io::MemWriter;
 use std::io;
 use std::str;
@@ -42,7 +43,7 @@ pub fn main() {
     t!(format!("{:?}", 1), "1");
     t!(format!("{:?}", A), "A");
     t!(format!("{:?}", ()), "()");
-    t!(format!("{:?}", @(box 1, "foo")), "@(box 1, \"foo\")");
+    t!(format!("{:?}", box(GC) (box 1, "foo")), "box(GC) (box 1, \"foo\")");
 
     // Various edge cases without formats
     t!(format!(""), "");

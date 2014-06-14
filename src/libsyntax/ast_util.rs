@@ -21,7 +21,7 @@ use visit;
 
 use std::cell::Cell;
 use std::cmp;
-use std::gc::Gc;
+use std::gc::{Gc, GC};
 use std::u32;
 
 pub fn path_name_i(idents: &[Ident]) -> String {

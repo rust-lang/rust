@@ -13,15 +13,16 @@
 // error-pattern:explicit failure
 // Issue #2272 - unwind this without leaking the unique pointer
 
+use std::gc::{Gc, GC};
 
 struct X { y: Y, a: Box<int> }
 
-struct Y { z: @int }
+struct Y { z: Gc<int> }
 
 fn main() {
     let _x = X {
         y: Y {
-            z: @0
+            z: box(GC) 0
         },
         a: box 0
     };

@@ -37,16 +37,7 @@ pub mod rt {
     use parse;
     use print::pprust;
 
-    #[cfg(not(stage0))]
     use ast::{TokenTree, Generics, Expr};
-
-    // NOTE remove this after snapshot
-    // (stage0 quasiquoter needs this)
-    #[cfg(stage0)]
-    pub use ast::{Generics, TokenTree, TTTok};
-    #[cfg(stage0)]
-    pub use parse::token::{IDENT, SEMI, LBRACE, RBRACE, LIFETIME, COLON, AND, BINOP, EQ,
-                           LBRACKET, RBRACKET, LPAREN, RPAREN, POUND, NOT, MOD_SEP, DOT, COMMA};
 
     pub use parse::new_parser_from_tts;
     pub use codemap::{BytePos, Span, dummy_spanned};

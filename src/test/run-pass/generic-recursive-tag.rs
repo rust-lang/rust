@@ -12,9 +12,14 @@
 
 #![feature(managed_boxes)]
 
-enum list<T> { cons(@T, @list<T>), nil, }
+use std::gc::{Gc, GC};
+
+enum list<T> { cons(Gc<T>, Gc<list<T>>), nil, }
 
 pub fn main() {
     let _a: list<int> =
-        cons::<int>(@10, @cons::<int>(@12, @cons::<int>(@13, @nil::<int>)));
+        cons::<int>(box(GC) 10,
+        box(GC) cons::<int>(box(GC) 12,
+        box(GC) cons::<int>(box(GC) 13,
+        box(GC) nil::<int>)));
 }

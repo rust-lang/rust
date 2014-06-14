@@ -288,7 +288,7 @@ impl<'a> TyVisitor for ReprVisitor<'a> {
                         _align: uint) -> bool { fail!(); }
 
     fn visit_box(&mut self, mtbl: uint, inner: *TyDesc) -> bool {
-        try!(self, self.writer.write(['@' as u8]));
+        try!(self, self.writer.write("box(GC) ".as_bytes()));
         self.write_mut_qualifier(mtbl);
         self.get::<&raw::Box<()>>(|this, b| {
             let p = &b.data as *() as *u8;
@@ -591,6 +591,7 @@ fn test_repr() {
     use std::io::stdio::println;
     use std::char::is_alphabetic;
     use std::mem::swap;
+    use std::gc::GC;
 
     fn exact_test<T>(t: &T, e:&str) {
         let mut m = io::MemWriter::new();
@@ -605,7 +606,7 @@ fn test_repr() {
     exact_test(&1.234, "1.234f64");
     exact_test(&("hello"), "\"hello\"");
 
-    exact_test(&(@10), "@10");
+    exact_test(&(box(GC) 10), "box(GC) 10");
     exact_test(&(box 10), "box 10");
     exact_test(&(&10), "&10");
     let mut x = 10;
@@ -619,8 +620,8 @@ fn test_repr() {
                "&[\"hi\", \"there\"]");
     exact_test(&(P{a:10, b:1.234}),
                "repr::P{a: 10, b: 1.234f64}");
-    exact_test(&(@P{a:10, b:1.234}),
-               "@repr::P{a: 10, b: 1.234f64}");
+    exact_test(&(box(GC) P{a:10, b:1.234}),
+               "box(GC) repr::P{a: 10, b: 1.234f64}");
     exact_test(&(box P{a:10, b:1.234}),
                "box repr::P{a: 10, b: 1.234f64}");
 

@@ -11,12 +11,13 @@
 #![feature(managed_boxes)]
 
 use std::cell::Cell;
+use std::gc::{Gc, GC};
 
 // Resources can't be copied, but storing into data structures counts
 // as a move unless the stored thing is used afterwards.
 
 struct r {
-    i: @Cell<int>,
+    i: Gc<Cell<int>>,
 }
 
 struct Box { x: r }
@@ -28,22 +29,22 @@ impl Drop for r {
     }
 }
 
-fn r(i: @Cell<int>) -> r {
+fn r(i: Gc<Cell<int>>) -> r {
     r {
         i: i
     }
 }
 
 fn test_box() {
-    let i = @Cell::new(0);
+    let i = box(GC) Cell::new(0);
     {
-        let _a = @r(i);
+        let _a = box(GC) r(i);
     }
     assert_eq!(i.get(), 1);
 }
 
 fn test_rec() {
-    let i = @Cell::new(0);
+    let i = box(GC) Cell::new(0);
     {
         let _a = Box {x: r(i)};
     }
@@ -55,7 +56,7 @@ fn test_tag() {
         t0(r),
     }
 
-    let i = @Cell::new(0);
+    let i = box(GC) Cell::new(0);
     {
         let _a = t0(r(i));
     }
@@ -63,7 +64,7 @@ fn test_tag() {
 }
 
 fn test_tup() {
-    let i = @Cell::new(0);
+    let i = box(GC) Cell::new(0);
     {
         let _a = (r(i), 0);
     }
@@ -71,7 +72,7 @@ fn test_tup() {
 }
 
 fn test_unique() {
-    let i = @Cell::new(0);
+    let i = box(GC) Cell::new(0);
     {
         let _a = box r(i);
     }
@@ -79,9 +80,9 @@ fn test_unique() {
 }
 
 fn test_box_rec() {
-    let i = @Cell::new(0);
+    let i = box(GC) Cell::new(0);
     {
-        let _a = @Box {
+        let _a = box(GC) Box {
             x: r(i)
         };
     }

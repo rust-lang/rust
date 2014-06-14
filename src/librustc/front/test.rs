@@ -18,7 +18,7 @@ use front::config;
 use front::std_inject::with_version;
 
 use std::cell::RefCell;
-use std::gc::Gc;
+use std::gc::{Gc, GC};
 use std::slice;
 use std::vec;
 use syntax::ast_util::*;

@@ -32,7 +32,7 @@ use rustc::middle::ty;
 
 use std::rc::Rc;
 use std::u32;
-use std::gc::Gc;
+use std::gc::{Gc, GC};
 
 use core;
 use doctree;

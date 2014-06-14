@@ -11,9 +11,10 @@
 #![feature(managed_boxes)]
 
 use std::cell::Cell;
+use std::gc::{GC, Gc};
 
 struct shrinky_pointer {
-  i: @@Cell<int>,
+  i: Gc<Gc<Cell<int>>>,
 }
 
 #[unsafe_destructor]
@@ -27,14 +28,14 @@ impl shrinky_pointer {
     pub fn look_at(&self) -> int { return self.i.get(); }
 }
 
-fn shrinky_pointer(i: @@Cell<int>) -> shrinky_pointer {
+fn shrinky_pointer(i: Gc<Gc<Cell<int>>>) -> shrinky_pointer {
     shrinky_pointer {
         i: i
     }
 }
 
 pub fn main() {
-    let my_total = @@Cell::new(10);
+    let my_total = box(GC) box(GC) Cell::new(10);
     { let pt = shrinky_pointer(my_total); assert!((pt.look_at() == 10)); }
     println!("my_total = {}", my_total.get());
     assert_eq!(my_total.get(), 9);

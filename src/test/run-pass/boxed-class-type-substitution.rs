@@ -13,6 +13,8 @@
 
 #![feature(managed_boxes)]
 
+use std::gc::Gc;
+
 struct Tree<T> {
     parent: Option<T>
 }
@@ -20,7 +22,7 @@ struct Tree<T> {
 fn empty<T>() -> Tree<T> { fail!() }
 
 struct Box {
-    tree: Tree<@Box>
+    tree: Tree<Gc<Box>>
 }
 
 fn Box() -> Box {
@@ -30,7 +32,7 @@ fn Box() -> Box {
 }
 
 struct LayoutData {
-    a_box: Option<@Box>
+    a_box: Option<Gc<Box>>
 }
 
 pub fn main() { }

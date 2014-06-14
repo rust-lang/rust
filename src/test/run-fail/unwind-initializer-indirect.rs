@@ -8,12 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(managed_boxes)]
-
 // error-pattern:fail
 
-fn f() -> @int { fail!(); }
+#![feature(managed_boxes)]
+
+use std::gc::Gc;
+
+fn f() -> Gc<int> { fail!(); }
 
 fn main() {
-    let _a: @int = f();
+    let _a: Gc<int> = f();
 }

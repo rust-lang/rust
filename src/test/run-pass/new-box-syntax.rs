@@ -13,7 +13,7 @@
 
 // Tests that the new `box` syntax works with unique pointers and GC pointers.
 
-use std::gc::Gc;
+use std::gc::{Gc, GC};
 use std::owned::{Box, HEAP};
 
 struct Structure {

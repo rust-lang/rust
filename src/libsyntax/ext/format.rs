@@ -20,7 +20,7 @@ use rsparse = parse;
 
 use parse = fmt_macros;
 use std::collections::HashMap;
-use std::gc::Gc;
+use std::gc::{Gc, GC};
 
 #[deriving(PartialEq)]
 enum ArgumentType {

@@ -12,14 +12,16 @@
 
 extern crate debug;
 
-fn magic(x: A) { println!("{:?}", x); }
-fn magic2(x: @int) { println!("{:?}", x); }
+use std::gc::{GC, Gc};
 
-struct A { a: @int }
+fn magic(x: A) { println!("{:?}", x); }
+fn magic2(x: Gc<int>) { println!("{:?}", x); }
+
+struct A { a: Gc<int> }
 
 pub fn main() {
-    let a = A {a: @10};
-    let b = @10;
-    magic(a); magic(A {a: @20});
-    magic2(b); magic2(@20);
+    let a = A {a: box(GC) 10};
+    let b = box(GC) 10;
+    magic(a); magic(A {a: box(GC) 20});
+    magic2(b); magic2(box(GC) 20);
 }

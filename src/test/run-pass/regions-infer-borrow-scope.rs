@@ -10,6 +10,8 @@
 
 #![feature(managed_boxes)]
 
+use std::gc::GC;
+
 struct Point {x: int, y: int}
 
 fn x_coord<'r>(p: &'r Point) -> &'r int {
@@ -17,7 +19,7 @@ fn x_coord<'r>(p: &'r Point) -> &'r int {
 }
 
 pub fn main() {
-    let p = @Point {x: 3, y: 4};
+    let p = box(GC) Point {x: 3, y: 4};
     let xc = x_coord(p);
     assert_eq!(*xc, 3);
 }

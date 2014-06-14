@@ -10,9 +10,11 @@
 
 #![feature(managed_boxes)]
 
+use std::gc::Gc;
+
 fn borrow<'r, T>(x: &'r T) -> &'r T {x}
 
-fn foo(cond: || -> bool, make_box: || -> @int) {
+fn foo(cond: || -> bool, make_box: || -> Gc<int>) {
     let mut y: &int;
     loop {
         let x = make_box();

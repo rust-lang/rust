@@ -20,7 +20,7 @@ use util::small_vector::SmallVector;
 
 use std::cell::RefCell;
 use std::fmt;
-use std::gc::Gc;
+use std::gc::{Gc, GC};
 use std::iter;
 use std::slice;
 

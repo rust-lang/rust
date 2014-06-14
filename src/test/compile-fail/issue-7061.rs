@@ -10,10 +10,12 @@
 
 #![feature(managed_boxes)]
 
+use std::gc::Gc;
+
 struct BarStruct;
 
 impl<'a> BarStruct {
-    fn foo(&'a mut self) -> @BarStruct { self }
+    fn foo(&'a mut self) -> Gc<BarStruct> { self }
     //~^ ERROR: error: mismatched types: expected `@BarStruct` but found `&'a mut BarStruct
 }
 

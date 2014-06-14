@@ -10,12 +10,14 @@
 
 #![feature(managed_boxes)]
 
+use std::gc::Gc;
+
 struct foo {
     a: int,
     b: int,
 }
 
-type bar = @foo;
+type bar = Gc<foo>;
 
 fn want_foo(f: foo) {}
 fn have_bar(b: bar) {

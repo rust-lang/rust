@@ -10,6 +10,7 @@
 
 #![feature(managed_boxes)]
 
+use std::gc::Gc;
 
 pub struct Foo {
     a: int,
@@ -20,7 +21,7 @@ struct Bar<'a> {
     b: &'a Foo,
 }
 
-fn check(a: @Foo) {
+fn check(a: Gc<Foo>) {
     let _ic = Bar{ b: a, a: box None };
 }
 

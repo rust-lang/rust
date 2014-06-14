@@ -12,8 +12,10 @@
 
 #![feature(managed_boxes)]
 
+use std::gc::{GC};
+
 fn x(it: |int|) {
-    let _a = @0;
+    let _a = box(GC) 0;
     it(1);
 }
 

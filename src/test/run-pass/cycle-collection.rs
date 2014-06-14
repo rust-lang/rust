@@ -11,14 +11,15 @@
 #![feature(managed_boxes)]
 
 use std::cell::RefCell;
+use std::gc::{Gc, GC};
 
 enum taggy {
-    cons(@RefCell<taggy>),
+    cons(Gc<RefCell<taggy>>),
     nil,
 }
 
 fn f() {
-    let a_box = @RefCell::new(nil);
+    let a_box = box(GC) RefCell::new(nil);
     *a_box.borrow_mut() = cons(a_box);
 }
 

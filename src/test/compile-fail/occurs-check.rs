@@ -10,7 +10,9 @@
 
 #![feature(managed_boxes)]
 
+use std::gc::GC;
+
 fn main() {
     let f; //~ ERROR cyclic type of infinite size
-    f = @f;
+    f = box(GC) f;
 }

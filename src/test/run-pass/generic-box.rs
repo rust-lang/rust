@@ -10,11 +10,13 @@
 
 #![feature(managed_boxes)]
 
-fn box_it<T:'static>(x: Box<T>) -> @Box<T> { return @x; }
+use std::gc::{Gc, GC};
+
+fn box_it<T:'static>(x: Box<T>) -> Gc<Box<T>> { return box(GC) x; }
 
 struct Box<T> {x: T, y: T, z: T}
 
 pub fn main() {
-    let x: @Box<int> = box_it::<int>(Box{x: 1, y: 2, z: 3});
+    let x: Gc<Box<int>> = box_it::<int>(Box{x: 1, y: 2, z: 3});
     assert_eq!(x.y, 2);
 }

@@ -17,12 +17,13 @@ extern crate debug;
 // interior record which is then itself interior to
 // something else, shape calculations were off.
 
+use std::gc::{Gc, GC};
 
 #[deriving(Clone)]
 enum opt_span {
     //hack (as opposed to option), to make `span` compile
     os_none,
-    os_some(@Span),
+    os_some(Gc<Span>),
 }
 
 #[deriving(Clone)]
@@ -44,7 +45,7 @@ type ty_ = uint;
 struct Path_ {
     global: bool,
     idents: Vec<String> ,
-    types: Vec<@ty>,
+    types: Vec<Gc<ty>>,
 }
 
 type path = Spanned<Path_>;
@@ -58,7 +59,7 @@ struct X {
 
 pub fn main() {
     let sp: Span = Span {lo: 57451u, hi: 57542u, expanded_from: os_none};
-    let t: @ty = @Spanned { data: 3u, span: sp };
+    let t: Gc<ty> = box(GC) Spanned { data: 3u, span: sp };
     let p_: Path_ = Path_ {
         global: true,
         idents: vec!("hi".to_string()),

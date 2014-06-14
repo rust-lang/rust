@@ -79,7 +79,7 @@ use owned_slice::OwnedSlice;
 use std::collections::HashSet;
 use std::mem::replace;
 use std::rc::Rc;
-use std::gc::Gc;
+use std::gc::{Gc, GC};
 
 #[allow(non_camel_case_types)]
 #[deriving(PartialEq)]
@@ -1342,6 +1342,8 @@ impl<'a> Parser<'a> {
         } else if self.token == token::AT {
             // MANAGED POINTER
             self.bump();
+            let span = self.last_span;
+            self.obsolete(span, ObsoleteManagedType);
             TyBox(self.parse_ty(plus_allowed))
         } else if self.token == token::TILDE {
             // OWNED POINTER
@@ -2375,9 +2377,10 @@ impl<'a> Parser<'a> {
           }
           token::AT => {
             self.bump();
+            let span = self.last_span;
+            self.obsolete(span, ObsoleteManagedExpr);
             let e = self.parse_prefix_expr();
             hi = e.span.hi;
-            // HACK: pretending @[] is a (removed) @-vec
             ex = self.mk_unary(UnBox, e);
           }
           token::TILDE => {

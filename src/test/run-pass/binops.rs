@@ -12,6 +12,8 @@
 
 #![feature(managed_boxes)]
 
+use std::gc::GC;
+
 fn test_nil() {
     assert_eq!((), ());
     assert!((!(() != ())));
@@ -45,7 +47,7 @@ fn test_bool() {
 }
 
 fn test_box() {
-    assert_eq!(@10, @10);
+    assert_eq!(box(GC) 10, box(GC) 10);
 }
 
 fn test_ptr() {

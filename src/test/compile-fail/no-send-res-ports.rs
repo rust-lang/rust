@@ -13,8 +13,9 @@
 extern crate debug;
 
 use std::task;
+use std::gc::{Gc, GC};
 
-struct Port<T>(@T);
+struct Port<T>(Gc<T>);
 
 fn main() {
     struct foo {
@@ -32,7 +33,7 @@ fn main() {
         }
     }
 
-    let x = foo(Port(@()));
+    let x = foo(Port(box(GC) ()));
 
     task::spawn(proc() {
         let y = x;   //~ ERROR does not fulfill `Send`

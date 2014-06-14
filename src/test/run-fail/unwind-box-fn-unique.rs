@@ -14,13 +14,15 @@
 
 extern crate debug;
 
+use std::gc::{GC, Gc};
+
 fn failfn() {
     fail!();
 }
 
 fn main() {
     let y = box 0;
-    let x: @proc():Send = @(proc() {
+    let x: Gc<proc():Send> = box(GC) (proc() {
         println!("{:?}", y.clone());
     });
     failfn();

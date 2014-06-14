@@ -10,13 +10,15 @@
 
 #![feature(managed_boxes)]
 
-struct Box<T> {c: @T}
+use std::gc::{Gc, GC};
+
+struct Box<T> {c: Gc<T>}
 
 fn unbox<T:Clone>(b: Box<T>) -> T { return (*b.c).clone(); }
 
 pub fn main() {
     let foo: int = 17;
-    let bfoo: Box<int> = Box {c: @foo};
+    let bfoo: Box<int> = Box {c: box(GC) foo};
     println!("see what's in our box");
     assert_eq!(unbox::<int>(bfoo), foo);
 }

@@ -23,6 +23,7 @@ use util::ppaux::{note_and_explain_region, Repr, UserString};
 use std::cell::{Cell};
 use std::ops::{BitOr, BitAnd};
 use std::rc::Rc;
+use std::gc::{Gc, GC};
 use std::string::String;
 use syntax::ast;
 use syntax::ast_map;
@@ -70,7 +71,7 @@ pub fn check_crate(tcx: &ty::ctxt,
                    krate: &ast::Crate) {
     let mut bccx = BorrowckCtxt {
         tcx: tcx,
-        stats: @BorrowStats {
+        stats: box(GC) BorrowStats {
             loaned_paths_same: Cell::new(0),
             loaned_paths_imm: Cell::new(0),
             stable_paths: Cell::new(0),
@@ -155,7 +156,7 @@ pub struct BorrowckCtxt<'a> {
     tcx: &'a ty::ctxt,
 
     // Statistics:
-    stats: @BorrowStats
+    stats: Gc<BorrowStats>,
 }
 
 pub struct BorrowStats {

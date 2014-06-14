@@ -22,6 +22,7 @@ use parse::token::{Token, EOF, Nonterminal};
 use parse::token;
 
 use std::rc::Rc;
+use std::gc::GC;
 use std::collections::HashMap;
 
 /* This is an Earley-like parser, without support for in-grammar nonterminals,

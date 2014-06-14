@@ -10,6 +10,8 @@
 
 #![feature(managed_boxes)]
 
+use std::gc::GC;
+
 fn f<T>(t: T) -> T {
     let t1 = t;
     t1
@@ -18,6 +20,6 @@ fn f<T>(t: T) -> T {
 pub fn main() {
     let t = f(box 100);
     assert_eq!(t, box 100);
-    let t = f(box @vec!(100));
-    assert_eq!(t, box @vec!(100));
+    let t = f(box box(GC) vec!(100));
+    assert_eq!(t, box box(GC) vec!(100));
 }

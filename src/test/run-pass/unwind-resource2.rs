@@ -11,9 +11,10 @@
 #![feature(managed_boxes)]
 
 use std::task;
+use std::gc::{Gc, GC};
 
 struct complainer {
-  c: @int,
+  c: Gc<int>,
 }
 
 #[unsafe_destructor]
@@ -21,14 +22,14 @@ impl Drop for complainer {
     fn drop(&mut self) {}
 }
 
-fn complainer(c: @int) -> complainer {
+fn complainer(c: Gc<int>) -> complainer {
     complainer {
         c: c
     }
 }
 
 fn f() {
-    let _c = complainer(@0);
+    let _c = complainer(box(GC) 0);
     fail!();
 }
 

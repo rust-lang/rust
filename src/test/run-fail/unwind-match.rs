@@ -8,12 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(managed_boxes)]
-
 // Issue #945
 // error-pattern:non-exhaustive match failure
+
+#![feature(managed_boxes)]
+
+use std::gc::GC;
+
 fn test_box() {
-    @0;
+    box(GC) 0;
 }
 fn test_str() {
   let res = match false { true => { "happy".to_string() },

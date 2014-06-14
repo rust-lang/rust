@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(managed_boxes)]
+use std::gc::GC;
 
 fn borrow<'r, T>(x: &'r T) -> &'r T {x}
 
 pub fn main() {
-    let x = @3;
+    let x = box(GC) 3;
     loop {
         let y = borrow(x);
         assert_eq!(*x, *y);

@@ -11,4 +11,4 @@
 #![feature(managed_boxes)]
 
 
-pub fn main() { let _quux: @Vec<uint> = @Vec::new(); }
+pub fn main() { let _quux: Box<Vec<uint>> = box Vec::new(); }

@@ -23,7 +23,7 @@ use syntax::parse::token;
 use syntax::util::small_vector::SmallVector;
 
 use std::mem;
-use std::gc::Gc;
+use std::gc::{Gc, GC};
 
 pub static VERSION: &'static str = "0.11.0-pre";
 

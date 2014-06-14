@@ -14,12 +14,14 @@
 
 extern crate debug;
 
+use std::gc::GC;
+
 fn failfn() {
     fail!();
 }
 
 fn main() {
-    let x = @box 0;
+    let x = box(GC) box 0;
     failfn();
     println!("{:?}", x);
 }

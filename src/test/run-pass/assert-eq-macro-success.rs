@@ -10,6 +10,8 @@
 
 #![feature(managed_boxes)]
 
+use std::gc::GC;
+
 #[deriving(PartialEq, Show)]
 struct Point { x : int }
 
@@ -18,5 +20,5 @@ pub fn main() {
     assert_eq!("abc".to_string(),"abc".to_string());
     assert_eq!(box Point{x:34},box Point{x:34});
     assert_eq!(&Point{x:34},&Point{x:34});
-    assert_eq!(@Point{x:34},@Point{x:34});
+    assert_eq!(box(GC) Point{x:34},box(GC) Point{x:34});
 }

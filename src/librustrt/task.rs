@@ -397,10 +397,11 @@ mod test {
     use super::*;
     use std::prelude::*;
     use std::task;
+    use std::gc::{Gc, GC};
 
     #[test]
     fn local_heap() {
-        let a = @5;
+        let a = box(GC) 5;
         let b = a;
         assert!(*a == 5);
         assert!(*b == 5);
@@ -408,11 +409,11 @@ mod test {
 
     #[test]
     fn tls() {
-        local_data_key!(key: @String)
-        key.replace(Some(@"data".to_string()));
+        local_data_key!(key: Gc<String>)
+        key.replace(Some(box(GC) "data".to_string()));
         assert_eq!(key.get().unwrap().as_slice(), "data");
-        local_data_key!(key2: @String)
-        key2.replace(Some(@"data".to_string()));
+        local_data_key!(key2: Gc<String>)
+        key2.replace(Some(box(GC) "data".to_string()));
         assert_eq!(key2.get().unwrap().as_slice(), "data");
     }
 
@@ -452,11 +453,11 @@ mod test {
         use std::cell::RefCell;
 
         struct List {
-            next: Option<@RefCell<List>>,
+            next: Option<Gc<RefCell<List>>>,
         }
 
-        let a = @RefCell::new(List { next: None });
-        let b = @RefCell::new(List { next: Some(a) });
+        let a = box(GC) RefCell::new(List { next: None });
+        let b = box(GC) RefCell::new(List { next: Some(a) });
 
         {
             let mut a = a.borrow_mut();

@@ -31,9 +31,11 @@
 
 #![allow(unused_variable)]
 
+use std::gc::{Gc, GC};
+
 fn main() {
 
-    let unique: Vec<@i64> = vec!(@10, @11, @12, @13);
+    let unique: Vec<Gc<i64>> = vec!(box(GC) 10, box(GC) 11, box(GC) 12, box(GC) 13);
 
     zzz();
 }

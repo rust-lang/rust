@@ -22,7 +22,7 @@ use crateid::CrateId;
 
 use std::collections::HashSet;
 use std::collections::BitvSet;
-use std::gc::Gc;
+use std::gc::{Gc, GC};
 
 local_data_key!(used_attrs: BitvSet)
 
