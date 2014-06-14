@@ -100,7 +100,7 @@ use std::result;
 use std::string::String;
 
 /// Name of an option. Either a string or a single char.
-#[deriving(Clone, PartialEq)]
+#[deriving(Clone, PartialEq, Eq)]
 pub enum Name {
     /// A string representing the long name of an option.
     /// For example: "help"
@@ -111,7 +111,7 @@ pub enum Name {
 }
 
 /// Describes whether an option has an argument.
-#[deriving(Clone, PartialEq)]
+#[deriving(Clone, PartialEq, Eq)]
 pub enum HasArg {
     /// The option requires an argument.
     Yes,
@@ -122,7 +122,7 @@ pub enum HasArg {
 }
 
 /// Describes how often an option may occur.
-#[deriving(Clone, PartialEq)]
+#[deriving(Clone, PartialEq, Eq)]
 pub enum Occur {
     /// The option occurs once.
     Req,
@@ -133,7 +133,7 @@ pub enum Occur {
 }
 
 /// A description of a possible option.
-#[deriving(Clone, PartialEq)]
+#[deriving(Clone, PartialEq, Eq)]
 pub struct Opt {
     /// Name of the option
     pub name: Name,
@@ -142,12 +142,12 @@ pub struct Opt {
     /// How often it can occur
     pub occur: Occur,
     /// Which options it aliases
-    pub aliases: Vec<Opt> ,
+    pub aliases: Vec<Opt>,
 }
 
 /// One group of options, e.g., both -h and --help, along with
 /// their shared description and properties.
-#[deriving(Clone, PartialEq)]
+#[deriving(Clone, PartialEq, Eq)]
 pub struct OptGroup {
     /// Short Name of the `OptGroup`
     pub short_name: String,
@@ -164,7 +164,7 @@ pub struct OptGroup {
 }
 
 /// Describes whether an option is given at all or has a value.
-#[deriving(Clone, PartialEq)]
+#[deriving(Clone, PartialEq, Eq)]
 enum Optval {
     Val(String),
     Given,
@@ -172,12 +172,12 @@ enum Optval {
 
 /// The result of checking command line arguments. Contains a vector
 /// of matches and a vector of free strings.
-#[deriving(Clone, PartialEq)]
+#[deriving(Clone, PartialEq, Eq)]
 pub struct Matches {
     /// Options that matched
-    opts: Vec<Opt> ,
+    opts: Vec<Opt>,
     /// Values of the Options that matched
-    vals: Vec<Vec<Optval> > ,
+    vals: Vec<Vec<Optval>>,
     /// Free string fragments
     pub free: Vec<String>,
 }
@@ -185,7 +185,7 @@ pub struct Matches {
 /// The type returned when the command line does not conform to the
 /// expected format. Use the `Show` implementation to output detailed
 /// information.
-#[deriving(Clone, PartialEq)]
+#[deriving(Clone, PartialEq, Eq)]
 pub enum Fail_ {
     /// The option requires an argument but none was passed.
     ArgumentMissing(String),
@@ -200,7 +200,7 @@ pub enum Fail_ {
 }
 
 /// The type of failure that occurred.
-#[deriving(PartialEq)]
+#[deriving(PartialEq, Eq)]
 #[allow(missing_doc)]
 pub enum FailType {
     ArgumentMissing_,
