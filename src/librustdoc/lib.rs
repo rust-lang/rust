@@ -148,7 +148,7 @@ pub fn main_args(args: &[String]) -> int {
     let matches = match getopts::getopts(args.tail(), opts().as_slice()) {
         Ok(m) => m,
         Err(err) => {
-            println!("{}", err.to_err_msg());
+            println!("{}", err);
             return 1;
         }
     };
