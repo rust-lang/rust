@@ -438,8 +438,7 @@ impl<'a> CheckLoanCtxt<'a> {
             Some(lp) => {
                 let moved_value_use_kind = match mode {
                     euv::Copy => {
-                        // FIXME(#12624) -- If we are copying the value,
-                        // we don't care if it's borrowed.
+                        self.check_for_copy_of_frozen_path(id, span, &*lp);
                         MovedInUse
                     }
                     euv::Move(_) => {
@@ -468,6 +467,27 @@ impl<'a> CheckLoanCtxt<'a> {
                 self.check_if_path_is_moved(id, span, moved_value_use_kind, &lp);
             }
             None => { }
+        }
+    }
+
+    fn check_for_copy_of_frozen_path(&self,
+                                     id: ast::NodeId,
+                                     span: Span,
+                                     copy_path: &LoanPath) {
+        match self.analyze_restrictions_on_use(id, copy_path, ty::ImmBorrow) {
+            UseOk => { }
+            UseWhileBorrowed(loan_path, loan_span) => {
+                self.bccx.span_err(
+                    span,
+                    format!("cannot use `{}` because it was mutably borrowed",
+                            self.bccx.loan_path_to_str(copy_path).as_slice())
+                    .as_slice());
+                self.bccx.span_note(
+                    loan_span,
+                    format!("borrow of `{}` occurs here",
+                            self.bccx.loan_path_to_str(&*loan_path).as_slice())
+                    .as_slice());
+            }
         }
     }
 
