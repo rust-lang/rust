@@ -9,7 +9,8 @@
 // except according to those terms.
 
 // FIXME: #13994: port to the sized deallocation API when available
-// FIXME: #13996: mark the `allocate` and `reallocate` return value as `noalias` and `nonnull`
+// FIXME: #13996: mark the `allocate` and `reallocate` return value as `noalias`
+//                and `nonnull`
 
 use core::intrinsics::{abort, cttz32};
 use core::option::{None, Option};
@@ -23,7 +24,8 @@ use libc::{c_char, c_int, c_void, size_t};
 extern {
     fn je_mallocx(size: size_t, flags: c_int) -> *mut c_void;
     fn je_rallocx(ptr: *mut c_void, size: size_t, flags: c_int) -> *mut c_void;
-    fn je_xallocx(ptr: *mut c_void, size: size_t, extra: size_t, flags: c_int) -> size_t;
+    fn je_xallocx(ptr: *mut c_void, size: size_t, extra: size_t,
+                  flags: c_int) -> size_t;
     fn je_dallocx(ptr: *mut c_void, flags: c_int);
     fn je_nallocx(size: size_t, flags: c_int) -> size_t;
     fn je_malloc_stats_print(write_cb: Option<extern "C" fn(cbopaque: *mut c_void, *c_char)>,
@@ -42,8 +44,9 @@ fn mallocx_align(a: uint) -> c_int { unsafe { cttz32(a as u32) as c_int } }
 
 /// Return a pointer to `size` bytes of memory.
 ///
-/// Behavior is undefined if the requested size is 0 or the alignment is not a power of 2. The
-/// alignment must be no larger than the largest supported page size on the platform.
+/// Behavior is undefined if the requested size is 0 or the alignment is not a
+/// power of 2. The alignment must be no larger than the largest supported page
+/// size on the platform.
 #[inline]
 pub unsafe fn allocate(size: uint, align: uint) -> *mut u8 {
     let ptr = je_mallocx(size as size_t, mallocx_align(align)) as *mut u8;
@@ -53,54 +56,64 @@ pub unsafe fn allocate(size: uint, align: uint) -> *mut u8 {
     ptr
 }
 
-/// Extend or shrink the allocation referenced by `ptr` to `size` bytes of memory.
+/// Extend or shrink the allocation referenced by `ptr` to `size` bytes of
+/// memory.
 ///
-/// Behavior is undefined if the requested size is 0 or the alignment is not a power of 2. The
-/// alignment must be no larger than the largest supported page size on the platform.
+/// Behavior is undefined if the requested size is 0 or the alignment is not a
+/// power of 2. The alignment must be no larger than the largest supported page
+/// size on the platform.
 ///
-/// The `old_size` and `align` parameters are the parameters that were used to create the
-/// allocation referenced by `ptr`. The `old_size` parameter may also be the value returned by
-/// `usable_size` for the requested size.
+/// The `old_size` and `align` parameters are the parameters that were used to
+/// create the allocation referenced by `ptr`. The `old_size` parameter may also
+/// be the value returned by `usable_size` for the requested size.
 #[inline]
 #[allow(unused_variable)] // for the parameter names in the documentation
-pub unsafe fn reallocate(ptr: *mut u8, size: uint, align: uint, old_size: uint) -> *mut u8 {
-    let ptr = je_rallocx(ptr as *mut c_void, size as size_t, mallocx_align(align)) as *mut u8;
+pub unsafe fn reallocate(ptr: *mut u8, size: uint, align: uint,
+                         old_size: uint) -> *mut u8 {
+    let ptr = je_rallocx(ptr as *mut c_void, size as size_t,
+                         mallocx_align(align)) as *mut u8;
     if ptr.is_null() {
         abort()
     }
     ptr
 }
 
-/// Extend or shrink the allocation referenced by `ptr` to `size` bytes of memory in-place.
+/// Extend or shrink the allocation referenced by `ptr` to `size` bytes of
+/// memory in-place.
 ///
-/// Return true if successful, otherwise false if the allocation was not altered.
+/// Return true if successful, otherwise false if the allocation was not
+/// altered.
 ///
-/// Behavior is undefined if the requested size is 0 or the alignment is not a power of 2. The
-/// alignment must be no larger than the largest supported page size on the platform.
+/// Behavior is undefined if the requested size is 0 or the alignment is not a
+/// power of 2. The alignment must be no larger than the largest supported page
+/// size on the platform.
 ///
 /// The `old_size` and `align` parameters are the parameters that were used to
 /// create the allocation referenced by `ptr`. The `old_size` parameter may be
 /// any value in range_inclusive(requested_size, usable_size).
 #[inline]
 #[allow(unused_variable)] // for the parameter names in the documentation
-pub unsafe fn reallocate_inplace(ptr: *mut u8, size: uint, align: uint, old_size: uint) -> bool {
-    je_xallocx(ptr as *mut c_void, size as size_t, 0, mallocx_align(align)) == size as size_t
+pub unsafe fn reallocate_inplace(ptr: *mut u8, size: uint, align: uint,
+                                 old_size: uint) -> bool {
+    je_xallocx(ptr as *mut c_void, size as size_t, 0,
+               mallocx_align(align)) == size as size_t
 }
 
 /// Deallocate the memory referenced by `ptr`.
 ///
 /// The `ptr` parameter must not be null.
 ///
-/// The `size` and `align` parameters are the parameters that were used to create the
-/// allocation referenced by `ptr`. The `size` parameter may also be the value returned by
-/// `usable_size` for the requested size.
+/// The `size` and `align` parameters are the parameters that were used to
+/// create the allocation referenced by `ptr`. The `size` parameter may also be
+/// the value returned by `usable_size` for the requested size.
 #[inline]
 #[allow(unused_variable)] // for the parameter names in the documentation
 pub unsafe fn deallocate(ptr: *mut u8, size: uint, align: uint) {
     je_dallocx(ptr as *mut c_void, mallocx_align(align))
 }
 
-/// Return the usable size of an allocation created with the specified the `size` and `align`.
+/// Return the usable size of an allocation created with the specified the
+/// `size` and `align`.
 #[inline]
 pub fn usable_size(size: uint, align: uint) -> uint {
     unsafe { je_nallocx(size as size_t, mallocx_align(align)) as uint }
@@ -108,7 +121,8 @@ pub fn usable_size(size: uint, align: uint) -> uint {
 
 /// Print implementation-defined allocator statistics.
 ///
-/// These statistics may be inconsistent if other threads use the allocator during the call.
+/// These statistics may be inconsistent if other threads use the allocator
+/// during the call.
 #[unstable]
 pub fn stats_print() {
     unsafe {
@@ -145,7 +159,8 @@ unsafe fn exchange_free(ptr: *mut u8, size: uint, align: uint) {
 #[lang="closure_exchange_malloc"]
 #[inline]
 #[allow(deprecated)]
-unsafe fn closure_exchange_malloc(drop_glue: fn(*mut u8), size: uint, align: uint) -> *mut u8 {
+unsafe fn closure_exchange_malloc(drop_glue: fn(*mut u8), size: uint,
+                                  align: uint) -> *mut u8 {
     let total_size = util::get_box_size(size, align);
     let p = allocate(total_size, 8);
 
