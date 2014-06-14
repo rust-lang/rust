@@ -127,13 +127,15 @@ impl<'a> ReprVisitor<'a> {
     #[inline]
     pub fn get<T>(&mut self, f: |&mut ReprVisitor, &T| -> bool) -> bool {
         unsafe {
-            f(self, mem::transmute::<*u8,&T>(self.ptr))
+            let ptr = self.ptr;
+            f(self, mem::transmute::<*u8,&T>(ptr))
         }
     }
 
     #[inline]
     pub fn visit_inner(&mut self, inner: *TyDesc) -> bool {
-        self.visit_ptr_inner(self.ptr, inner)
+        let ptr = self.ptr;
+        self.visit_ptr_inner(ptr, inner)
     }
 
     #[inline]

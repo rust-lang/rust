@@ -73,7 +73,8 @@ impl<'a> ParserAttr for Parser<'a> {
 
                 let style = if self.eat(&token::NOT) {
                     if !permit_inner {
-                        self.span_err(self.span,
+                        let span = self.span;
+                        self.span_err(span,
                                       "an inner attribute is not permitted in \
                                        this context");
                     }

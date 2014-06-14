@@ -547,11 +547,13 @@ struct Liveness<'a> {
 
 impl<'a> Liveness<'a> {
     fn new(ir: &'a mut IrMaps<'a>, specials: Specials) -> Liveness<'a> {
+        let num_live_nodes = ir.num_live_nodes;
+        let num_vars = ir.num_vars;
         Liveness {
             ir: ir,
             s: specials,
-            successors: Vec::from_elem(ir.num_live_nodes, invalid_node()),
-            users: Vec::from_elem(ir.num_live_nodes * ir.num_vars, invalid_users()),
+            successors: Vec::from_elem(num_live_nodes, invalid_node()),
+            users: Vec::from_elem(num_live_nodes * num_vars, invalid_users()),
             loop_scope: Vec::new(),
             break_ln: NodeMap::new(),
             cont_ln: NodeMap::new(),
@@ -826,8 +828,9 @@ impl<'a> Liveness<'a> {
 
         debug!("compute: using id for block, {}", block_to_str(body));
 
+        let exit_ln = self.s.exit_ln;
         let entry_ln: LiveNode =
-            self.with_loop_nodes(body.id, self.s.exit_ln, self.s.exit_ln,
+            self.with_loop_nodes(body.id, exit_ln, exit_ln,
               |this| this.propagate_through_fn_block(decl, body));
 
         // hack to skip the loop unless debug! is enabled:
@@ -847,12 +850,13 @@ impl<'a> Liveness<'a> {
                                   -> LiveNode {
         // the fallthrough exit is only for those cases where we do not
         // explicitly return:
-        self.init_from_succ(self.s.fallthrough_ln, self.s.exit_ln);
+        let s = self.s;
+        self.init_from_succ(s.fallthrough_ln, s.exit_ln);
         if blk.expr.is_none() {
-            self.acc(self.s.fallthrough_ln, self.s.no_ret_var, ACC_READ)
+            self.acc(s.fallthrough_ln, s.no_ret_var, ACC_READ)
         }
 
-        self.propagate_through_block(blk, self.s.fallthrough_ln)
+        self.propagate_through_block(blk, s.fallthrough_ln)
     }
 
     fn propagate_through_block(&mut self, blk: &Block, succ: LiveNode)
@@ -1036,7 +1040,8 @@ impl<'a> Liveness<'a> {
 
           ExprRet(o_e) => {
             // ignore succ and subst exit_ln:
-            self.propagate_through_opt_expr(o_e, self.s.exit_ln)
+            let exit_ln = self.s.exit_ln;
+            self.propagate_through_opt_expr(o_e, exit_ln)
           }
 
           ExprBreak(opt_label) => {

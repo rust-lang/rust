@@ -347,7 +347,8 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
                         let res = format(stack.pop().unwrap(), FormatOp::from_char(cur), *flags);
                         if res.is_err() { return res }
                         output.push_all(res.unwrap().as_slice());
-                        old_state = state; // will cause state to go to Nothing
+                        // will cause state to go to Nothing
+                        old_state = FormatPattern(*flags, *fstate);
                     } else { return Err("stack is empty".to_string()) },
                     (FormatStateFlags,'#') => {
                         flags.alternate = true;
