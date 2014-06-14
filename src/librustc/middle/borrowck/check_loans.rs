@@ -476,7 +476,10 @@ impl<'a> CheckLoanCtxt<'a> {
                                        span: Span,
                                        move_path: &LoanPath,
                                        move_kind: move_data::MoveKind) {
-        match self.analyze_move_out_from(id, move_path) {
+        // We want to detect if there are any loans at all, so we search for
+        // any loans incompatible with MutBorrrow, since all other kinds of
+        // loans are incompatible with that.
+        match self.analyze_move_out_from(id, move_path, ty::MutBorrow) {
             MoveOk => { }
             MoveWhileBorrowed(loan_path, loan_span) => {
                 let err_message = match move_kind {
@@ -865,7 +868,8 @@ impl<'a> CheckLoanCtxt<'a> {
 
     pub fn analyze_move_out_from(&self,
                                  expr_id: ast::NodeId,
-                                 move_path: &LoanPath)
+                                 move_path: &LoanPath,
+                                 borrow_kind: ty::BorrowKind)
                                  -> MoveError {
         debug!("analyze_move_out_from(expr_id={:?}, move_path={})",
                self.tcx().map.node_to_str(expr_id),
@@ -881,9 +885,12 @@ impl<'a> CheckLoanCtxt<'a> {
         //     let y = a;          // Conflicts with restriction
 
         self.each_in_scope_restriction(expr_id, move_path, |loan, _restr| {
-            // Any restriction prevents moves.
-            ret = MoveWhileBorrowed(loan.loan_path.clone(), loan.span);
-            false
+            if incompatible(loan.kind, borrow_kind) {
+                ret = MoveWhileBorrowed(loan.loan_path.clone(), loan.span);
+                false
+            } else {
+                true
+            }
         });
 
         // Next, we must check for *loans* (not restrictions) on the path P or
@@ -901,8 +908,8 @@ impl<'a> CheckLoanCtxt<'a> {
         let mut loan_path = move_path;
         loop {
             self.each_in_scope_loan(expr_id, |loan| {
-                // Any restriction prevents moves.
-                if *loan.loan_path == *loan_path {
+                if *loan.loan_path == *loan_path &&
+                   incompatible(loan.kind, borrow_kind) {
                     ret = MoveWhileBorrowed(loan.loan_path.clone(), loan.span);
                     false
                 } else {
@@ -921,5 +928,11 @@ impl<'a> CheckLoanCtxt<'a> {
         }
 
         return ret;
+
+        fn incompatible(borrow_kind1: ty::BorrowKind,
+                        borrow_kind2: ty::BorrowKind)
+                        -> bool {
+            borrow_kind1 != ty::ImmBorrow || borrow_kind2 != ty::ImmBorrow
+        }
     }
 }
