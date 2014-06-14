@@ -792,7 +792,7 @@ mod test {
         let matches =
             &match getopts(["--test".to_string()], optgroups().as_slice()) {
               Ok(m) => m,
-              Err(f) => fail!("test_switch_implies_cfg_test: {}", f.to_err_msg())
+              Err(f) => fail!("test_switch_implies_cfg_test: {}", f)
             };
         let sessopts = build_session_options(matches);
         let sess = build_session(sessopts, None);
@@ -809,8 +809,7 @@ mod test {
                            optgroups().as_slice()) {
               Ok(m) => m,
               Err(f) => {
-                fail!("test_switch_implies_cfg_test_unless_cfg_test: {}",
-                       f.to_err_msg());
+                fail!("test_switch_implies_cfg_test_unless_cfg_test: {}", f)
               }
             };
         let sessopts = build_session_options(matches);

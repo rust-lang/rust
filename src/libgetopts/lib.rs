@@ -61,7 +61,7 @@
 //!     ];
 //!     let matches = match getopts(args.tail(), opts) {
 //!         Ok(m) => { m }
-//!         Err(f) => { fail!(f.to_err_msg()) }
+//!         Err(f) => { fail!(f.to_str()) }
 //!     };
 //!     if matches.opt_present("h") {
 //!         print_usage(program.as_slice(), opts);
@@ -94,6 +94,7 @@
 #[cfg(test, not(stage0))] #[phase(plugin, link)] extern crate log;
 
 use std::cmp::PartialEq;
+use std::fmt;
 use std::result::{Err, Ok};
 use std::result;
 use std::string::String;
@@ -182,9 +183,9 @@ pub struct Matches {
 }
 
 /// The type returned when the command line does not conform to the
-/// expected format. Call the `to_err_msg` method to retrieve the
-/// error as a string.
-#[deriving(Clone, PartialEq, Show)]
+/// expected format. Use the `Show` implementation to output detailed
+/// information.
+#[deriving(Clone, PartialEq)]
 pub enum Fail_ {
     /// The option requires an argument but none was passed.
     ArgumentMissing(String),
@@ -498,22 +499,29 @@ pub fn opt(short_name: &str,
 
 impl Fail_ {
     /// Convert a `Fail_` enum into an error string.
+    #[deprecated="use `Show` (`{}` format specifier)"]
     pub fn to_err_msg(self) -> String {
-        match self {
+        self.to_str()
+    }
+}
+
+impl fmt::Show for Fail_ {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
             ArgumentMissing(ref nm) => {
-                format!("Argument to option '{}' missing.", *nm)
+                write!(f, "Argument to option '{}' missing.", *nm)
             }
             UnrecognizedOption(ref nm) => {
-                format!("Unrecognized option: '{}'.", *nm)
+                write!(f, "Unrecognized option: '{}'.", *nm)
             }
             OptionMissing(ref nm) => {
-                format!("Required option '{}' missing.", *nm)
+                write!(f, "Required option '{}' missing.", *nm)
             }
             OptionDuplicated(ref nm) => {
-                format!("Option '{}' given more than once.", *nm)
+                write!(f, "Option '{}' given more than once.", *nm)
             }
             UnexpectedArgument(ref nm) => {
-                format!("Option '{}' does not take an argument.", *nm)
+                write!(f, "Option '{}' does not take an argument.", *nm)
             }
         }
     }
@@ -522,8 +530,9 @@ impl Fail_ {
 /// Parse command line arguments according to the provided options.
 ///
 /// On success returns `Ok(Opt)`. Use methods such as `opt_present`
-/// `opt_str`, etc. to interrogate results.  Returns `Err(Fail_)` on failure.
-/// Use `to_err_msg` to get an error message.
+/// `opt_str`, etc. to interrogate results.  Returns `Err(Fail_)` on
+/// failure: use the `Show` implementation of `Fail_` to display
+/// information about it.
 pub fn getopts(args: &[String], optgrps: &[OptGroup]) -> Result {
     let opts: Vec<Opt> = optgrps.iter().map(|x| x.long_to_short()).collect();
     let n_opts = opts.len();
@@ -1110,7 +1119,6 @@ mod tests {
         let rs = getopts(args.as_slice(), opts.as_slice());
         match rs {
           Err(f) => {
-            error!("{:?}", f.clone().to_err_msg());
             check_fail_type(f, UnexpectedArgument_);
           }
           _ => fail!()

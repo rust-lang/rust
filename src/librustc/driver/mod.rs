@@ -205,7 +205,7 @@ pub fn handle_options(mut args: Vec<String>) -> Option<getopts::Matches> {
         match getopts::getopts(args.as_slice(), config::optgroups().as_slice()) {
             Ok(m) => m,
             Err(f) => {
-                early_error(f.to_err_msg().as_slice());
+                early_error(f.to_str().as_slice());
             }
         };
 

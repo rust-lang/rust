@@ -110,7 +110,7 @@ pub fn parse_config(args: Vec<String> ) -> Config {
     let matches =
         &match getopts::getopts(args_.as_slice(), groups.as_slice()) {
           Ok(m) => m,
-          Err(f) => fail!("{}", f.to_err_msg())
+          Err(f) => fail!("{}", f)
         };
 
     if matches.opt_present("h") || matches.opt_present("help") {
