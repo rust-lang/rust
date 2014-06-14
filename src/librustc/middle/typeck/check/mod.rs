@@ -3042,12 +3042,24 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                     let t_1_is_scalar = type_is_scalar(fcx, expr.span, t_1);
                     let t_1_is_char = type_is_char(fcx, expr.span, t_1);
                     let t_1_is_bare_fn = type_is_bare_fn(fcx, expr.span, t_1);
+                    let t_1_is_float = type_is_floating_point(fcx,
+                                                              expr.span,
+                                                              t_1);
 
                     // casts to scalars other than `char` and `bare fn` are trivial
                     let t_1_is_trivial = t_1_is_scalar &&
                         !t_1_is_char && !t_1_is_bare_fn;
 
-                    if type_is_c_like_enum(fcx, expr.span, t_e) && t_1_is_trivial {
+                    if type_is_c_like_enum(fcx, expr.span, t_e) &&
+                            t_1_is_trivial {
+                        if t_1_is_float {
+                            fcx.type_error_message(expr.span, |actual| {
+                                format!("illegal cast; cast through an \
+                                         integer first: `{}` as `{}`",
+                                        actual,
+                                        fcx.infcx().ty_to_str(t_1))
+                            }, t_e, None);
+                        }
                         // casts from C-like enums are allowed
                     } else if t_1_is_char {
                         let te = fcx.infcx().resolve_type_vars_if_possible(te);
@@ -4204,6 +4216,11 @@ pub fn type_is_char(fcx: &FnCtxt, sp: Span, typ: ty::t) -> bool {
 pub fn type_is_bare_fn(fcx: &FnCtxt, sp: Span, typ: ty::t) -> bool {
     let typ_s = structurally_resolved_type(fcx, sp, typ);
     return ty::type_is_bare_fn(typ_s);
+}
+
+pub fn type_is_floating_point(fcx: &FnCtxt, sp: Span, typ: ty::t) -> bool {
+    let typ_s = structurally_resolved_type(fcx, sp, typ);
+    return ty::type_is_floating_point(typ_s);
 }
 
 pub fn type_is_unsafe_ptr(fcx: &FnCtxt, sp: Span, typ: ty::t) -> bool {
