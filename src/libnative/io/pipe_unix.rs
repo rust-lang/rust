@@ -278,7 +278,7 @@ impl Drop for UnixListener {
         // careful to unlink the path before we close the file descriptor to
         // prevent races where we unlink someone else's path.
         unsafe {
-            let _ = libc::unlink(self.path.with_ref(|p| p));
+            let _ = libc::unlink(self.path.as_ptr());
         }
     }
 }
