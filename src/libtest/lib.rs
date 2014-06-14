@@ -367,7 +367,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
     let matches =
         match getopts::getopts(args_.as_slice(), optgroups().as_slice()) {
           Ok(m) => m,
-          Err(f) => return Some(Err(f.to_err_msg().to_string()))
+          Err(f) => return Some(Err(f.to_str()))
         };
 
     if matches.opt_present("h") { usage(args[0].as_slice()); return None; }
