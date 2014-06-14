@@ -871,26 +871,47 @@ impl<'a> CheckLoanCtxt<'a> {
                self.tcx().map.node_to_str(expr_id),
                move_path.repr(self.tcx()));
 
-        // We must check every element of a move path. See
-        // `borrowck-move-subcomponent.rs` for a test case.
-
         let mut ret = MoveOk;
+
+        // First, we check for a restriction on the path P being used. This
+        // accounts for borrows of P but also borrows of subpaths, like P.a.b.
+        // Consider the following example:
+        //
+        //     let x = &mut a.b.c; // Restricts a, a.b, and a.b.c
+        //     let y = a;          // Conflicts with restriction
+
+        self.each_in_scope_restriction(expr_id, move_path, |loan, _restr| {
+            // Any restriction prevents moves.
+            ret = MoveWhileBorrowed(loan.loan_path.clone(), loan.span);
+            false
+        });
+
+        // Next, we must check for *loans* (not restrictions) on the path P or
+        // any base path. This rejects examples like the following:
+        //
+        //     let x = &mut a.b;
+        //     let y = a.b.c;
+        //
+        // Limiting this search to *loans* and not *restrictions* means that
+        // examples like the following continue to work:
+        //
+        //     let x = &mut a.b;
+        //     let y = a.c;
+
         let mut loan_path = move_path;
         loop {
-            // check for a conflicting loan:
-            self.each_in_scope_restriction(expr_id, loan_path, |loan, _| {
+            self.each_in_scope_loan(expr_id, |loan| {
                 // Any restriction prevents moves.
-                ret = MoveWhileBorrowed(loan.loan_path.clone(), loan.span);
-                false
+                if *loan.loan_path == *loan_path {
+                    ret = MoveWhileBorrowed(loan.loan_path.clone(), loan.span);
+                    false
+                } else {
+                    true
+                }
             });
-
-            if ret != MoveOk {
-                return ret
-            }
 
             match *loan_path {
                 LpVar(_) => {
-                    ret = MoveOk;
                     break;
                 }
                 LpExtend(ref lp_base, _, _) => {
@@ -898,6 +919,7 @@ impl<'a> CheckLoanCtxt<'a> {
                 }
             }
         }
-        ret
+
+        return ret;
     }
 }
