@@ -14,8 +14,9 @@
 // variant
 
 use std::cell::Cell;
+use std::gc::{Gc, GC};
 
-type closable = @Cell<bool>;
+type closable = Gc<Cell<bool>>;
 
 struct close_res {
   i: closable,
@@ -40,7 +41,7 @@ enum option<T> { none, some(T), }
 fn sink(_res: option<close_res>) { }
 
 pub fn main() {
-    let c = @Cell::new(true);
+    let c = box(GC) Cell::new(true);
     sink(none);
     sink(some(close_res(c)));
     assert!(!c.get());

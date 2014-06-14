@@ -178,7 +178,7 @@ StaticEnum(<ast::EnumDef of C>, ~[(<ident of C0>, <span of C0>, Unnamed(~[<span 
 */
 
 use std::cell::RefCell;
-use std::gc::Gc;
+use std::gc::{Gc, GC};
 
 use ast;
 use ast::{P, EnumDef, Expr, Ident, Generics, StructDef};

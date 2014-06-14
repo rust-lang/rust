@@ -16,7 +16,7 @@ use owned_slice::OwnedSlice;
 use parse::token;
 use parse::token::{str_to_ident};
 
-use std::string::String;
+use std::gc::GC;
 
 pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                          -> Box<base::MacResult> {

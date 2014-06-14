@@ -419,6 +419,7 @@ impl<T: fmt::Show> fmt::Show for RingBuf<T> {
 mod tests {
     use std::fmt::Show;
     use std::prelude::*;
+    use std::gc::{GC, Gc};
     use test::Bencher;
     use test;
 
@@ -473,10 +474,10 @@ mod tests {
 
     #[test]
     fn test_boxes() {
-        let a: @int = @5;
-        let b: @int = @72;
-        let c: @int = @64;
-        let d: @int = @175;
+        let a: Gc<int> = box(GC) 5;
+        let b: Gc<int> = box(GC) 72;
+        let c: Gc<int> = box(GC) 64;
+        let d: Gc<int> = box(GC) 175;
 
         let mut deq = RingBuf::new();
         assert_eq!(deq.len(), 0);
@@ -621,7 +622,8 @@ mod tests {
 
     #[test]
     fn test_param_at_int() {
-        test_parameterized::<@int>(@5, @72, @64, @175);
+        test_parameterized::<Gc<int>>(box(GC) 5, box(GC) 72,
+                                      box(GC) 64, box(GC) 175);
     }
 
     #[test]

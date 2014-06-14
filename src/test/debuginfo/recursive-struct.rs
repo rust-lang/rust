@@ -106,6 +106,7 @@
 #![allow(unused_variable)]
 #![feature(struct_variant)]
 
+use std::gc::{Gc, GC};
 
 enum Opt<T> {
     Empty,
@@ -118,7 +119,7 @@ struct UniqueNode<T> {
 }
 
 struct ManagedNode<T> {
-    next: Opt<@ManagedNode<T>>,
+    next: Opt<Gc<ManagedNode<T>>>,
     value: T
 }
 
@@ -183,7 +184,7 @@ fn main() {
         value: 2,
     };
 
-    let box_unique: @UniqueNode<u64> = @UniqueNode {
+    let box_unique: Gc<UniqueNode<u64>> = box(GC) UniqueNode {
         next: Val {
             val: box UniqueNode {
                 next: Empty,
@@ -215,7 +216,7 @@ fn main() {
 
     let stack_managed: ManagedNode<u16> = ManagedNode {
         next: Val {
-            val: @ManagedNode {
+            val: box(GC) ManagedNode {
                 next: Empty,
                 value: 11,
             }
@@ -225,7 +226,7 @@ fn main() {
 
     let unique_managed: Box<ManagedNode<u32>> = box ManagedNode {
         next: Val {
-            val: @ManagedNode {
+            val: box(GC) ManagedNode {
                 next: Empty,
                 value: 13,
             }
@@ -233,9 +234,9 @@ fn main() {
         value: 12,
     };
 
-    let box_managed: @ManagedNode<u64> = @ManagedNode {
+    let box_managed: Gc<ManagedNode<u64>> = box(GC) ManagedNode {
         next: Val {
-            val: @ManagedNode {
+            val: box(GC) ManagedNode {
                 next: Empty,
                 value: 15,
             }
@@ -245,7 +246,7 @@ fn main() {
 
     let vec_managed: [ManagedNode<f32>, ..1] = [ManagedNode {
         next: Val {
-            val: @ManagedNode {
+            val: box(GC) ManagedNode {
                 next: Empty,
                 value: 17.5,
             }
@@ -255,7 +256,7 @@ fn main() {
 
     let borrowed_managed: &ManagedNode<f64> = &ManagedNode {
         next: Val {
-            val: @ManagedNode {
+            val: box(GC) ManagedNode {
                 next: Empty,
                 value: 19.5,
             }

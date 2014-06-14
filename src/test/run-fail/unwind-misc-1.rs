@@ -15,15 +15,16 @@
 
 use std::vec;
 use std::collections;
+use std::gc::GC;
 
 fn main() {
-    let _count = @0u;
+    let _count = box(GC) 0u;
     let mut map = collections::HashMap::new();
     let mut arr = Vec::new();
     for _i in range(0u, 10u) {
-        arr.push(@"key stuff".to_string());
+        arr.push(box(GC) "key stuff".to_string());
         map.insert(arr.clone(),
-                   arr.clone().append([@"value stuff".to_string()]));
+                   arr.clone().append([box(GC) "value stuff".to_string()]));
         if arr.len() == 5 {
             fail!();
         }

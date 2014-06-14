@@ -90,8 +90,7 @@
 #![deny(missing_doc)]
 
 #[cfg(test)] extern crate debug;
-#[cfg(test, stage0)] #[phase(syntax, link)] extern crate log;
-#[cfg(test, not(stage0))] #[phase(plugin, link)] extern crate log;
+#[cfg(test)] #[phase(plugin, link)] extern crate log;
 
 use std::cmp::PartialEq;
 use std::fmt;

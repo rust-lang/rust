@@ -13,24 +13,26 @@
 // Check that we correctly infer that b and c must be region
 // parameterized because they reference a which requires a region.
 
+use std::gc::Gc;
+
 type a<'a> = &'a int;
-type b<'a> = @a<'a>;
+type b<'a> = Gc<a<'a>>;
 
 struct c<'a> {
-    f: @b<'a>
+    f: Gc<b<'a>>
 }
 
 trait set_f<'a> {
-    fn set_f_ok(&self, b: @b<'a>);
-    fn set_f_bad(&self, b: @b);
+    fn set_f_ok(&self, b: Gc<b<'a>>);
+    fn set_f_bad(&self, b: Gc<b>);
 }
 
 impl<'a> set_f<'a> for c<'a> {
-    fn set_f_ok(&self, b: @b<'a>) {
+    fn set_f_ok(&self, b: Gc<b<'a>>) {
         self.f = b;
     }
 
-    fn set_f_bad(&self, b: @b) {
+    fn set_f_bad(&self, b: Gc<b>) {
         self.f = b; //~ ERROR mismatched types: expected `@@&'a int` but found `@@&int`
         //~^ ERROR cannot infer
     }

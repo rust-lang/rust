@@ -10,17 +10,19 @@
 
 #![feature(managed_boxes)]
 
+use std::gc::{Gc, GC};
+
 struct Triple { x: int, y: int, z: int }
 
-fn test(x: bool, foo: @Triple) -> int {
+fn test(x: bool, foo: Gc<Triple>) -> int {
     let bar = foo;
-    let mut y: @Triple;
-    if x { y = bar; } else { y = @Triple{x: 4, y: 5, z: 6}; }
+    let mut y: Gc<Triple>;
+    if x { y = bar; } else { y = box(GC) Triple{x: 4, y: 5, z: 6}; }
     return y.y;
 }
 
 pub fn main() {
-    let x = @Triple{x: 1, y: 2, z: 3};
+    let x = box(GC) Triple{x: 1, y: 2, z: 3};
     for _i in range(0u, 10000u) {
         assert_eq!(test(true, x), 2);
     }

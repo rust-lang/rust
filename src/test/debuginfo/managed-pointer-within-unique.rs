@@ -29,15 +29,17 @@
 
 #![allow(unused_variable)]
 
+use std::gc::{GC, Gc};
+
 struct ContainsManaged {
     x: int,
-    y: @int
+    y: Gc<int>,
 }
 
 fn main() {
     let ordinary_unique = box() (-1, -2);
 
-    let managed_within_unique = box ContainsManaged { x: -3, y: @-4 };
+    let managed_within_unique = box ContainsManaged { x: -3, y: box(GC) -4 };
 
     zzz();
 }

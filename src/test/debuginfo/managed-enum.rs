@@ -27,6 +27,8 @@
 #![allow(unused_variable)]
 #![feature(struct_variant, managed_boxes)]
 
+use std::gc::GC;
+
 // The first element is to ensure proper alignment, irrespective of the machines word size. Since
 // the size of the discriminant value is machine dependent, this has be taken into account when
 // datatype layout should be predictable as in this case.
@@ -50,15 +52,15 @@ fn main() {
     // 0b01111100011111000111110001111100 = 2088533116
     // 0b0111110001111100 = 31868
     // 0b01111100 = 124
-    let the_a = @TheA { x: 0, y: 8970181431921507452 };
+    let the_a = box(GC) TheA { x: 0, y: 8970181431921507452 };
 
     // 0b0001000100010001000100010001000100010001000100010001000100010001 = 1229782938247303441
     // 0b00010001000100010001000100010001 = 286331153
     // 0b0001000100010001 = 4369
     // 0b00010001 = 17
-    let the_b = @TheB (0, 286331153, 286331153);
+    let the_b = box(GC) TheB (0, 286331153, 286331153);
 
-    let univariant = @TheOnlyCase(-9747455);
+    let univariant = box(GC) TheOnlyCase(-9747455);
 
     zzz();
 }

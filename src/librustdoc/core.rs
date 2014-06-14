@@ -18,6 +18,7 @@ use syntax::parse::token;
 use syntax;
 
 use std::cell::RefCell;
+use std::gc::GC;
 use std::os;
 use std::collections::{HashMap, HashSet};
 

@@ -11,9 +11,10 @@
 #![feature(managed_boxes)]
 
 use std::cell::RefCell;
+use std::gc::{Gc, GC};
 
 // Regresion test for issue 7364
-static managed: @RefCell<int> = @RefCell::new(0);
-//~^ ERROR static items are not allowed to have managed pointers
+static managed: Gc<RefCell<int>> = box(GC) RefCell::new(0);
+//~^ ERROR static items are not allowed to have custom pointers
 
 fn main() { }

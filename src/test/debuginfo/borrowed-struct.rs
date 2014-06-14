@@ -48,6 +48,8 @@
 #![feature(managed_boxes)]
 #![allow(unused_variable)]
 
+use std::gc::GC;
+
 struct SomeStruct {
     x: int,
     y: f64
@@ -60,7 +62,7 @@ fn main() {
     let stack_val_interior_ref_2: &f64 = &stack_val.y;
     let ref_to_unnamed: &SomeStruct = &SomeStruct { x: 11, y: 24.5 };
 
-    let managed_val = @SomeStruct { x: 12, y: 25.5 };
+    let managed_val = box(GC) SomeStruct { x: 12, y: 25.5 };
     let managed_val_ref: &SomeStruct = managed_val;
     let managed_val_interior_ref_1: &int = &managed_val.x;
     let managed_val_interior_ref_2: &f64 = &managed_val.y;

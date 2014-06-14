@@ -10,8 +10,10 @@
 
 #![feature(managed_boxes)]
 
+use std::gc::Gc;
+
 struct Foo {
-    f: @int,
+    f: Gc<int>,
 }
 
 impl Drop for Foo {

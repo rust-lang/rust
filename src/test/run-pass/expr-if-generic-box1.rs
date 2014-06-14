@@ -10,16 +10,18 @@
 
 #![feature(managed_boxes)]
 
-type compare<T> = |@T, @T|: 'static -> bool;
+use std::gc::{GC, Gc};
 
-fn test_generic<T>(expected: @T, not_expected: @T, eq: compare<T>) {
-    let actual: @T = if true { expected } else { not_expected };
+type compare<T> = |Gc<T>, Gc<T>|: 'static -> bool;
+
+fn test_generic<T>(expected: Gc<T>, not_expected: Gc<T>, eq: compare<T>) {
+    let actual: Gc<T> = if true { expected } else { not_expected };
     assert!((eq(expected, actual)));
 }
 
 fn test_box() {
-    fn compare_box(b1: @bool, b2: @bool) -> bool { return *b1 == *b2; }
-    test_generic::<bool>(@true, @false, compare_box);
+    fn compare_box(b1: Gc<bool>, b2: Gc<bool>) -> bool { return *b1 == *b2; }
+    test_generic::<bool>(box(GC) true, box(GC) false, compare_box);
 }
 
 pub fn main() { test_box(); }

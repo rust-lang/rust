@@ -12,11 +12,13 @@
 
 #![feature(managed_boxes)]
 
+use std::gc::GC;
+
 fn failfn() {
     fail!();
 }
 
 fn main() {
-    @0;
+    box(GC) 0;
     failfn();
 }

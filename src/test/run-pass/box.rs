@@ -10,4 +10,6 @@
 
 #![feature(managed_boxes)]
 
-pub fn main() { let x: @int = @10; assert!((*x == 10)); }
+use std::gc::{Gc, GC};
+
+pub fn main() { let x: Gc<int> = box(GC) 10; assert!((*x == 10)); }

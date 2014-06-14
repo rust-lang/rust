@@ -12,11 +12,13 @@
 
 extern crate debug;
 
+use std::gc::{Gc, GC};
+
 fn id<T>(t: T) -> T { return t; }
 
 pub fn main() {
-    let expected = @100;
-    let actual = id::<@int>(expected);
+    let expected = box(GC) 100;
+    let actual = id::<Gc<int>>(expected);
     println!("{:?}", *actual);
     assert_eq!(*expected, *actual);
 }

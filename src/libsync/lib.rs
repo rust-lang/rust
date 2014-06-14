@@ -30,9 +30,6 @@
 #![deny(missing_doc)]
 #![no_std]
 
-#[cfg(stage0)]
-#[phase(syntax, link)] extern crate core;
-#[cfg(not(stage0))]
 #[phase(plugin, link)] extern crate core;
 extern crate alloc;
 extern crate collections;
@@ -40,8 +37,7 @@ extern crate rustrt;
 
 #[cfg(test)] extern crate test;
 #[cfg(test)] extern crate native;
-#[cfg(test, stage0)] #[phase(syntax, link)] extern crate std;
-#[cfg(test, not(stage0))] #[phase(plugin, link)] extern crate std;
+#[cfg(test)] #[phase(plugin, link)] extern crate std;
 
 pub use alloc::arc::{Arc, Weak};
 pub use lock::{Mutex, MutexGuard, Condvar, Barrier,

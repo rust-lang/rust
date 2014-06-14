@@ -10,9 +10,11 @@
 
 #![feature(managed_boxes)]
 
-enum t { foo(@int), }
+use std::gc::{Gc, GC};
+
+enum t { foo(Gc<int>), }
 
 pub fn main() {
-    let tt = foo(@10);
+    let tt = foo(box(GC) 10);
     match tt { foo(_z) => { } }
 }

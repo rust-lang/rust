@@ -10,14 +10,15 @@
 
 #![feature(managed_boxes)]
 
+use std::gc::{Gc, GC};
 
 // error-pattern:fail
 
-fn fold_local() -> @Vec<int> {
-    @vec!(0,0,0,0,0,0)
+fn fold_local() -> Gc<Vec<int>> {
+    box(GC) vec!(0,0,0,0,0,0)
 }
 
-fn fold_remote() -> @Vec<int> {
+fn fold_remote() -> Gc<Vec<int>> {
     fail!();
 }
 

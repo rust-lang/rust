@@ -10,10 +10,12 @@
 
 #![feature(managed_boxes)]
 
+use std::gc::GC;
+
 fn f<T:'static>(_: T) {}
 
 fn main() {
-    let x = @3;
+    let x = box(GC) 3;
     f(x);
     let x = &3;
     f(x);   //~ ERROR instantiating a type parameter with an incompatible type
