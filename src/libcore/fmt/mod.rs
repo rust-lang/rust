@@ -13,7 +13,7 @@
 #![allow(unused_variable)]
 
 use any;
-use cell::{Cell, Ref, RefMut};
+use cell::{Cell, RefCell, Ref, RefMut};
 use char::Char;
 use collections::Collection;
 use iter::{Iterator, range};
@@ -758,6 +758,15 @@ impl<'b, T: Show> Show for Ref<'b, T> {
 impl<'b, T: Show> Show for RefMut<'b, T> {
     fn fmt(&self, f: &mut Formatter) -> Result {
         (*(self.deref())).fmt(f)
+    }
+}
+
+impl<T: Show> Show for RefCell<T> {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        match self.try_borrow() {
+            Some(_) => (*self.borrow()).fmt(f),
+            None => f.pad("RefCell (borrowed)")
+        }
     }
 }
 
