@@ -122,17 +122,6 @@ impl CString {
         CString { buf: buf, owns_buffer_: owns_buffer }
     }
 
-    /// Unwraps the wrapped `*libc::c_char` from the `CString` wrapper.
-    ///
-    /// The original object is destructed after this method is called, and if
-    /// the underlying pointer was previously allocated, care must be taken to
-    /// ensure that it is deallocated properly.
-    pub unsafe fn unwrap(self) -> *const libc::c_char {
-        let mut c_str = self;
-        c_str.owns_buffer_ = false;
-        c_str.buf
-    }
-
     /// Return a pointer to the NUL-terminated string data.
     ///
     /// `.as_ptr` returns an internal pointer into the `CString`, and
@@ -289,6 +278,22 @@ impl CString {
             marker: marker::ContravariantLifetime,
         }
     }
+
+    /// Unwraps the wrapped `*libc::c_char` from the `CString` wrapper.
+    ///
+    /// Any ownership of the buffer by the `CString` wrapper is
+    /// forgotten, meaning that the backing allocation of this
+    /// `CString` is not automatically freed if it owns the
+    /// allocation. In this case, a user of `.unwrap()` should ensure
+    /// the allocation is freed, to avoid leaking memory.
+    ///
+    /// Prefer `.as_ptr()` when just retrieving a pointer to the
+    /// string data, as that does not relinquish ownership.
+    pub unsafe fn unwrap(mut self) -> *const libc::c_char {
+        self.owns_buffer_ = false;
+        self.buf
+    }
+
 }
 
 impl Drop for CString {
