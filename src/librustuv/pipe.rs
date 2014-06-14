@@ -94,7 +94,7 @@ impl PipeWatcher {
         cx.connect(pipe, timeout, io, |req, pipe, cb| {
             unsafe {
                 uvll::uv_pipe_connect(req.handle, pipe.handle(),
-                                      name.with_ref(|p| p), cb)
+                                      name.as_ptr(), cb)
             }
             0
         })
@@ -227,7 +227,7 @@ impl PipeListener {
     {
         let pipe = PipeWatcher::new(io, false);
         match unsafe {
-            uvll::uv_pipe_bind(pipe.handle(), name.with_ref(|p| p))
+            uvll::uv_pipe_bind(pipe.handle(), name.as_ptr())
         } {
             0 => {
                 // If successful, unwrap the PipeWatcher because we control how

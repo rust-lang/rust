@@ -94,7 +94,7 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
     // Internalize everything but the reachable symbols of the current module
     let cstrs: Vec<::std::c_str::CString> =
         reachable.iter().map(|s| s.as_slice().to_c_str()).collect();
-    let arr: Vec<*const i8> = cstrs.iter().map(|c| c.with_ref(|p| p)).collect();
+    let arr: Vec<*const i8> = cstrs.iter().map(|c| c.as_ptr()).collect();
     let ptr = arr.as_ptr();
     unsafe {
         llvm::LLVMRustRunRestrictionPass(llmod,
