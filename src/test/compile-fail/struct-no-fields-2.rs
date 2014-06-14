@@ -12,7 +12,7 @@ struct Foo;
 
 fn f2() {
     let _end_stmt     = Foo { };
-    //~^ ERROR: unit-like struct construction is written with no trailing `{ }`
+    //~^ ERROR: structure literal must either have at least one field
 }
 
 fn main() {}

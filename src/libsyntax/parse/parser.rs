@@ -88,6 +88,7 @@ pub enum restriction {
     RESTRICT_STMT_EXPR,
     RESTRICT_NO_BAR_OP,
     RESTRICT_NO_BAR_OR_DOUBLEBAR_OP,
+    RESTRICT_NO_STRUCT_LITERAL,
 }
 
 type ItemInfo = (Ident, Item_, Option<Vec<Attribute> >);
@@ -2024,8 +2025,9 @@ impl<'a> Parser<'a> {
 
                 return self.mk_mac_expr(lo, hi, MacInvocTT(pth, tts, EMPTY_CTXT));
             } else if self.token == token::LBRACE {
-                // This might be a struct literal.
-                if self.looking_at_struct_literal() {
+                // This is a struct literal, unless we're prohibited from
+                // parsing struct literals here.
+                if self.restriction != RESTRICT_NO_STRUCT_LITERAL {
                     // It's a struct literal.
                     self.bump();
                     let mut fields = Vec::new();
@@ -2040,6 +2042,14 @@ impl<'a> Parser<'a> {
                         fields.push(self.parse_field());
                         self.commit_expr(fields.last().unwrap().expr,
                                          &[token::COMMA], &[token::RBRACE]);
+                    }
+
+                    if fields.len() == 0 && base.is_none() {
+                        let last_span = self.last_span;
+                        self.span_err(last_span,
+                                      "structure literal must either have at \
+                                       least one field or use functional \
+                                       structure update syntax");
                     }
 
                     hi = self.span.hi;
@@ -2548,7 +2558,7 @@ impl<'a> Parser<'a> {
     // parse an 'if' expression ('if' token already eaten)
     pub fn parse_if_expr(&mut self) -> Gc<Expr> {
         let lo = self.last_span.lo;
-        let cond = self.parse_expr();
+        let cond = self.parse_expr_res(RESTRICT_NO_STRUCT_LITERAL);
         let thn = self.parse_block();
         let mut els: Option<Gc<Expr>> = None;
         let mut hi = thn.span.hi;
@@ -2633,7 +2643,7 @@ impl<'a> Parser<'a> {
         let lo = self.last_span.lo;
         let pat = self.parse_pat();
         self.expect_keyword(keywords::In);
-        let expr = self.parse_expr();
+        let expr = self.parse_expr_res(RESTRICT_NO_STRUCT_LITERAL);
         let loop_block = self.parse_block();
         let hi = self.span.hi;
 
@@ -2642,7 +2652,7 @@ impl<'a> Parser<'a> {
 
     pub fn parse_while_expr(&mut self) -> Gc<Expr> {
         let lo = self.last_span.lo;
-        let cond = self.parse_expr();
+        let cond = self.parse_expr_res(RESTRICT_NO_STRUCT_LITERAL);
         let body = self.parse_block();
         let hi = body.span.hi;
         return self.mk_expr(lo, hi, ExprWhile(cond, body));
@@ -2655,17 +2665,9 @@ impl<'a> Parser<'a> {
         self.mk_expr(lo, hi, ExprLoop(body, opt_ident))
     }
 
-    // For distinguishing between struct literals and blocks
-    fn looking_at_struct_literal(&mut self) -> bool {
-        self.token == token::LBRACE &&
-        ((self.look_ahead(1, |t| token::is_plain_ident(t)) &&
-          self.look_ahead(2, |t| *t == token::COLON))
-         || self.look_ahead(1, |t| *t == token::DOTDOT))
-    }
-
     fn parse_match_expr(&mut self) -> Gc<Expr> {
         let lo = self.last_span.lo;
-        let discriminant = self.parse_expr();
+        let discriminant = self.parse_expr_res(RESTRICT_NO_STRUCT_LITERAL);
         self.commit_expr_expecting(discriminant, token::LBRACE);
         let mut arms: Vec<Arm> = Vec::new();
         while self.token != token::RBRACE {
