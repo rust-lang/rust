@@ -114,6 +114,33 @@ mod tests {
     }
 
     #[test]
+    fn test_swap_bytes() {
+        let n: $T = 0b0101100; assert_eq!(n.swap_bytes().swap_bytes(), n);
+        let n: $T = 0b0100001; assert_eq!(n.swap_bytes().swap_bytes(), n);
+        let n: $T = 0b1111001; assert_eq!(n.swap_bytes().swap_bytes(), n);
+
+        // Swapping these should make no difference
+        let n: $T = 0;   assert_eq!(n.swap_bytes(), n);
+        let n: $T = -1;  assert_eq!(n.swap_bytes(), n);
+    }
+
+    #[test]
+    fn test_rotate() {
+        let n: $T = 0b0101100; assert_eq!(n.rotate_left(6).rotate_right(2).rotate_right(4), n);
+        let n: $T = 0b0100001; assert_eq!(n.rotate_left(3).rotate_left(2).rotate_right(5),  n);
+        let n: $T = 0b1111001; assert_eq!(n.rotate_left(6).rotate_right(2).rotate_right(4), n);
+
+        // Rotating these should make no difference
+        //
+        // We test using 124 bits because to ensure that overlong bit shifts do
+        // not cause undefined behaviour. See #10183.
+        let n: $T = 0;   assert_eq!(n.rotate_left(124), n);
+        let n: $T = -1;  assert_eq!(n.rotate_left(124), n);
+        let n: $T = 0;   assert_eq!(n.rotate_right(124), n);
+        let n: $T = -1;  assert_eq!(n.rotate_right(124), n);
+    }
+
+    #[test]
     fn test_signed_checked_div() {
         assert!(10i.checked_div(&2) == Some(5));
         assert!(5i.checked_div(&0) == None);
