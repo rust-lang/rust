@@ -647,7 +647,6 @@
                 }
                 div.append($('<a>', {'href': '../' + crates[i] + '/index.html',
                                     'class': klass}).text(crates[i]));
-                div.append($('<br>'));
             }
             sidebar.append(div);
         }
