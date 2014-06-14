@@ -874,23 +874,30 @@ impl<'a> CheckLoanCtxt<'a> {
         // We must check every element of a move path. See
         // `borrowck-move-subcomponent.rs` for a test case.
 
-        // check for a conflicting loan:
         let mut ret = MoveOk;
-        self.each_in_scope_restriction(expr_id, move_path, |loan, _| {
-            // Any restriction prevents moves.
-            ret = MoveWhileBorrowed(loan.loan_path.clone(), loan.span);
-            false
-        });
+        let mut loan_path = move_path;
+        loop {
+            // check for a conflicting loan:
+            self.each_in_scope_restriction(expr_id, loan_path, |loan, _| {
+                // Any restriction prevents moves.
+                ret = MoveWhileBorrowed(loan.loan_path.clone(), loan.span);
+                false
+            });
 
-        if ret != MoveOk {
-            return ret
-        }
+            if ret != MoveOk {
+                return ret
+            }
 
-        match *move_path {
-            LpVar(_) => MoveOk,
-            LpExtend(ref subpath, _, _) => {
-                self.analyze_move_out_from(expr_id, &**subpath)
+            match *loan_path {
+                LpVar(_) => {
+                    ret = MoveOk;
+                    break;
+                }
+                LpExtend(ref lp_base, _, _) => {
+                    loan_path = &**lp_base;
+                }
             }
         }
+        ret
     }
 }
