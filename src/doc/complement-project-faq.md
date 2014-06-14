@@ -32,6 +32,12 @@ No. It started as a Graydon Hoare's part-time side project in 2006 and remained 
 
 Mozilla intends to use Rust as a platform for prototyping experimental browser architectures. Specifically, the hope is to develop a browser that is more amenable to parallelization than existing ones, while also being less prone to common C++ coding errors that result in security exploits. The name of that project is _[Servo](http://github.com/mozilla/servo)_.
 
+# Why is it named "Rust"?
+
+The name evokes imagery of big metallic things, but there are actually a number of different explanations for it. The project revives proven, "rusty" programming language concepts, many first established in the late 1970s and early 1980s. (Note that a rusted bike chainring was chosen as the language logo. Many contributors are also cyclists.) Rust is also named after the Rust fungus, an organism known for being robust, distributed, and parallel. Finally there are many subsequences of the word Rust, like "robust" and "trust", which seem to fit the language.
+
+There's a suggestion that Rust implements parts of a web browser that aren't "chrome" (i.e. user interface), however this wasn't part of the original reasoning for the Rust name.
+
 # Why a BSD-style permissive license rather than MPL or tri-license?
 
 * Partly due to preference of the original developer (Graydon).
