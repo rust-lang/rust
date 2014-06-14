@@ -1993,7 +1993,7 @@ struct EnumMemberDescriptionFactory {
 impl EnumMemberDescriptionFactory {
     fn create_member_descriptions(&self, cx: &CrateContext) -> Vec<MemberDescription> {
         match *self.type_rep {
-            adt::General(_, ref struct_defs) => {
+            adt::General(_, ref struct_defs, _) => {
                 let discriminant_info = RegularDiscriminant(self.discriminant_type_metadata
                     .expect(""));
 
@@ -2362,7 +2362,7 @@ fn prepare_enum_metadata(cx: &CrateContext,
         adt::RawNullablePointer { .. }           |
         adt::StructWrappedNullablePointer { .. } |
         adt::Univariant(..)                      => None,
-        adt::General(inttype, _) => Some(discriminant_type_metadata(inttype)),
+        adt::General(inttype, _, _) => Some(discriminant_type_metadata(inttype)),
     };
 
     let enum_llvm_type = type_of::type_of(cx, enum_type);
