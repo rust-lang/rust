@@ -20,7 +20,7 @@ pub fn main() {
     match getopts(args.as_slice(), opts.as_slice()) {
         Ok(ref m)  =>
             assert!(!m.opt_present("b")),
-        Err(ref f) => fail!("{:?}", (*f).clone().to_err_msg())
+        Err(ref f) => fail!("{}", *f)
     };
 
 }
