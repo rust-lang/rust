@@ -8,20 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct A { a: int, b: int }
-struct B { a: int, b: C }
-struct D { a: int, d: C }
-struct C { c: int }
-
-pub fn main() {
-    match (A {a: 10, b: 20}) {
-        x@A {a, b: 20} => { assert!(x.a == 10); assert!(a == 10); }
-        A {b: _b, ..} => { fail!(); }
-    }
-    let mut x@B {b, ..} = B {a: 10, b: C {c: 20}};
-    x.b.c = 30;
-    assert_eq!(b.c, 20);
-    let mut y@D {d, ..} = D {a: 10, d: C {c: 20}};
-    y.d.c = 30;
-    assert_eq!(d.c, 20);
+struct Foo {
+    x: int,
 }
+
+impl Foo {
+    fn hi(&self) -> bool {
+        true
+    }
+}
+
+fn main() {
+    if Foo {
+        x: 3    //~ ERROR expected one of `;`, `}`
+    }.hi() {
+        println!("yo");
+    }
+}
+

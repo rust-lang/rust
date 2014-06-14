@@ -16,7 +16,7 @@ pub fn main() {
     assert_eq!(a, 2);
 
     let b =
-        match Pair {x: 10, y: 20} {
+        match (Pair {x: 10, y: 20}) {
           x if x.x < 5 && x.y < 5 => { 1 }
           Pair {x: x, y: y} if x == 10 && y == 20 => { 2 }
           Pair {x: _x, y: _y} => { 3 }

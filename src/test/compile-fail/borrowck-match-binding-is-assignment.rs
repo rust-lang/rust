@@ -31,7 +31,7 @@ pub fn main() {
         }
     }
 
-    match S { bar: 1 } {
+    match (S { bar: 1 }) {
         S { bar: x } => {
             x += 1; //~ ERROR re-assignment of immutable variable `x`
         }
