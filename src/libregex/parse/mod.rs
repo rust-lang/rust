@@ -345,18 +345,19 @@ impl<'a> Parser<'a> {
     }
 
     fn push_literal(&mut self, c: char) -> Result<(), Error> {
+        let flags = self.flags;
         match c {
             '.' => {
-                self.push(Dot(self.flags))
+                self.push(Dot(flags))
             }
             '^' => {
-                self.push(Begin(self.flags))
+                self.push(Begin(flags))
             }
             '$' => {
-                self.push(End(self.flags))
+                self.push(End(flags))
             }
             _ => {
-                self.push(Literal(c, self.flags))
+                self.push(Literal(c, flags))
             }
         }
         Ok(())
