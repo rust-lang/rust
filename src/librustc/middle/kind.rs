@@ -13,8 +13,10 @@ use middle::freevars::freevar_entry;
 use middle::freevars;
 use middle::subst;
 use middle::ty;
-use middle::typeck::{MethodCall, NoAdjustment};
+use middle::ty_fold;
+use middle::ty_fold::TypeFoldable;
 use middle::typeck;
+use middle::typeck::{MethodCall, NoAdjustment};
 use util::ppaux::{Repr, ty_to_string};
 use util::ppaux::UserString;
 
@@ -83,18 +85,29 @@ pub fn check_crate(tcx: &ty::ctxt,
     tcx.sess.abort_if_errors();
 }
 
+struct EmptySubstsFolder<'a> {
+    tcx: &'a ty::ctxt
+}
+impl<'a> ty_fold::TypeFolder for EmptySubstsFolder<'a> {
+    fn tcx<'a>(&'a self) -> &'a ty::ctxt {
+        self.tcx
+    }
+    fn fold_substs(&mut self, _: &subst::Substs) -> subst::Substs {
+        subst::Substs::empty()
+    }
+}
+
 fn check_struct_safe_for_destructor(cx: &mut Context,
                                     span: Span,
                                     struct_did: DefId) {
     let struct_tpt = ty::lookup_item_type(cx.tcx, struct_did);
     if !struct_tpt.generics.has_type_params(subst::TypeSpace)
       && !struct_tpt.generics.has_region_params(subst::TypeSpace) {
-        let struct_ty = ty::mk_struct(cx.tcx, struct_did,
-                                      subst::Substs::empty());
-        if !ty::type_is_sendable(cx.tcx, struct_ty) {
+        let mut folder = EmptySubstsFolder { tcx: cx.tcx };
+        if !ty::type_is_sendable(cx.tcx, struct_tpt.ty.fold_with(&mut folder)) {
             span_err!(cx.tcx.sess, span, E0125,
                       "cannot implement a destructor on a \
-                       structure that does not satisfy Send");
+                       structure or enumeration that does not satisfy Send");
             span_note!(cx.tcx.sess, span,
                        "use \"#[unsafe_destructor]\" on the implementation \
                         to force the compiler to allow this");
