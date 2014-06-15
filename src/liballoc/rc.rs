@@ -211,6 +211,28 @@ impl<T> Rc<T> {
             _noshare: marker::NoShare
         }
     }
+
+    /// Tell if this is the last strong reference to the object.
+    #[inline]
+    #[experimental]
+    pub fn is_last_standing(&self) -> bool {
+        self.strong() == 1
+    }
+
+    /// Acquires a mutable pointer to the inner contents if the reference
+    /// count is 1 (this pointer is unique).
+    #[inline]
+    #[experimental]
+    pub fn maybe_unique<'a>(&'a mut self) -> Option<&'a mut T> {
+        if self.strong() == 1 && self.weak() == 1 {
+            // This unsafety is ok because we're guaranteed that the pointer
+            // returned is the *only* pointer that will ever be returned to T.
+            let inner = unsafe { &mut *self._ptr };
+            Some(&mut inner.value)
+        } else {
+            None
+        }
+    }
 }
 
 impl<T: Clone> Rc<T> {
@@ -409,6 +431,7 @@ impl<T> RcBoxPtr<T> for Weak<T> {
 #[allow(experimental)]
 mod tests {
     use super::{Rc, Weak};
+    use core::ops::Deref;
     use std::cell::RefCell;
     use std::option::{Option, Some, None};
     use std::mem::drop;
@@ -537,6 +560,20 @@ mod tests {
 
         assert!(76 == *cow0);
         assert!(cow1_weak.upgrade().is_none());
+    }
+
+    #[test]
+    fn test_unique() {
+        let mut a = Rc::new(1u);
+        *a.make_unique() = 2u;
+        assert_eq!(*a.deref(), 2);
+        {
+            let b = a.clone();
+            assert!(!b.is_last_standing());
+            assert!(a.maybe_unique().is_none());
+        }
+        assert!(a.is_last_standing());
+        assert_eq!(*a.maybe_unique().unwrap(), 2);
     }
 
 }
