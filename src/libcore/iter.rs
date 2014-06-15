@@ -448,6 +448,19 @@ pub trait Iterator<A> {
         }
     }
 
+    /// Applies the specified function to each element yielded by the iterator
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let a = [1, 2, 3];
+    /// a.iter().for_each(|x| println!("{}", x));
+    /// ```
+    #[inline]
+    fn for_each(&mut self, f: |A|) {
+        for x in *self { f(x); }
+    }
+
     /// Loops through the entire iterator, collecting all of the elements into
     /// a container implementing `FromIterator`.
     ///
