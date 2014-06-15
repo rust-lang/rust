@@ -617,7 +617,7 @@ impl Clean<Lifetime> for ty::RegionParameterDef {
 impl Clean<Option<Lifetime>> for ty::Region {
     fn clean(&self) -> Option<Lifetime> {
         match *self {
-            ty::ReStatic => Some(Lifetime("static".to_string())),
+            ty::ReStatic => Some(Lifetime("'static".to_string())),
             ty::ReLateBound(_, ty::BrNamed(_, name)) =>
                 Some(Lifetime(token::get_name(name).get().to_string())),
             ty::ReEarlyBound(_, _, _, name) => Some(Lifetime(name.clean())),
