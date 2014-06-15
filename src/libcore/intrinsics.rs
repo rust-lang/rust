@@ -39,6 +39,14 @@ A quick refresher on memory ordering:
   guaranteed to happen in order. This is the standard mode for working
   with atomic types and is equivalent to Java's `volatile`.
 
+# Prefetch
+
+Prefetch intrinsics provide cache hinting, and don't have any effect on
+the behaviour of the program, prefetching an invalid address is permitted.
+See the LLVM documentation on [[prefetch]]
+
+[prefetch]: http://llvm.org/docs/LangRef.html#llvm-prefetch-intrinsic
+
 */
 
 #![experimental]
@@ -554,6 +562,57 @@ extern "rust-intrinsic" {
     pub fn u32_mul_with_overflow(x: u32, y: u32) -> (u32, bool);
     /// Performs checked `u64` multiplication.
     pub fn u64_mul_with_overflow(x: u64, y: u64) -> (u64, bool);
+}
+
+#[cfg(not(stage0))]
+extern "rust-intrinsic" {
+    /// Prefetch the pointer `address` for read to the data cache with maximum locality
+    pub fn prefetch<T>(address: *T);
+
+    /// Prefetch the pointer `address` for write to the data cache with maximum locality
+    pub fn prefetch_write<T>(address: *mut T);
+
+    /// Prefetch the pointer `address` for read to the data cache with high locality
+    pub fn prefetch_high<T>(address: *T);
+
+    /// Prefetch the pointer `address` for write to the data cache with high locality
+    pub fn prefetch_write_high<T>(address: *mut T);
+
+    /// Prefetch the pointer `address` for read to the data cache with low locality
+    pub fn prefetch_low<T>(address: *T);
+
+    /// Prefetch the pointer `address` for write to the data cache with low locality
+    pub fn prefetch_write_low<T>(address: *mut T);
+
+    /// Prefetch the pointer `address` for read to the data cache with no locality
+    pub fn prefetch_none<T>(address: *T);
+
+    /// Prefetch the pointer `address` for write to the data cache with no locality
+    pub fn prefetch_write_none<T>(address: *mut T);
+
+    /// Prefetch the pointer `address` for read to the instruction cache with maximum locality
+    pub fn prefetch_icache<T>(address: *T);
+
+    /// Prefetch the pointer `address` for write to the instruction cache with maximum locality
+    pub fn prefetch_write_icache<T>(address: *mut T);
+
+    /// Prefetch the pointer `address` for read to the instruction cache with high locality
+    pub fn prefetch_high_icache<T>(address: *T);
+
+    /// Prefetch the pointer `address` for write to the instruction cache with high locality
+    pub fn prefetch_write_high_icache<T>(address: *mut T);
+
+    /// Prefetch the pointer `address` for read to the instruction cache with low locality
+    pub fn prefetch_low_icache<T>(address: *T);
+
+    /// Prefetch the pointer `address` for write to the instruction cache with low locality
+    pub fn prefetch_write_low_icache<T>(address: *mut T);
+
+    /// Prefetch the pointer `address` for read to the instruction cache with no locality
+    pub fn prefetch_none_icache<T>(address: *T);
+
+    /// Prefetch the pointer `address` for write to the instruction cache with no locality
+    pub fn prefetch_write_none_icache<T>(address: *mut T);
 }
 
 

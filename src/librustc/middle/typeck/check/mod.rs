@@ -4368,6 +4368,11 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
             }
         }
 
+    } else if name.get().starts_with("prefetch") {
+        match name.get().find_str("write") {
+            None => (1, vec!(ty::mk_imm_ptr(tcx, param(ccx, 0))), ty::mk_nil()),
+            _ => (1, vec!(ty::mk_mut_ptr(tcx, param(ccx, 0))), ty::mk_nil())
+        }
     } else {
         match name.get() {
             "abort" => (0, Vec::new(), ty::mk_bot()),

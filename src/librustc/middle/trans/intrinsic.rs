@@ -189,6 +189,15 @@ pub fn trans_intrinsic(ccx: &CrateContext,
         Ret(bcx, llcall);
     }
 
+    fn prefetch_intrinsic(bcx: &Block, rw: i32, locality: i32, cache: i32) {
+        let ccx = bcx.ccx();
+        let ptr = get_param(bcx.fcx.llfn, bcx.fcx.arg_pos(0u));
+        let ptri8 = PointerCast(bcx, ptr, Type::i8p(bcx.ccx()));
+        let llfn = bcx.ccx().get_intrinsic(&("llvm.prefetch"));
+        Call(bcx, llfn, [ptri8, C_i32(ccx, rw), C_i32(ccx, locality), C_i32(ccx, cache)], []);
+        RetVoid(bcx)
+    }
+
     let output_type = ty::ty_fn_ret(ty::node_id_to_type(ccx.tcx(), item.id));
 
     let arena = TypedArena::new();
@@ -280,6 +289,54 @@ pub fn trans_intrinsic(ccx: &CrateContext,
             }
         }
 
+        fcx.cleanup();
+        return;
+    }
+
+    if name.get().starts_with("prefetch") {
+        let mut rw = None;
+        let rw_default = 0; // read
+        let mut locality = None;
+        let locality_default = 3; // extreme
+        let mut cache = None;
+        let cache_default = 1; // data cache
+
+        let setparam = |name: &'static str, param: &mut Option<(i32, &'static str)>, val: i32| {
+            match *param {
+                None => {
+                    *param = Some((val, name));
+                }
+                Some((_, old)) => ccx.sess().span_err(item.span,
+                    format!("conflicting arguments `{}`-`{}` in prefetch operation name",
+                            old, name).as_slice())
+            }
+        };
+        fn getparam(param: Option<(i32, &str)>, default: i32) -> i32 {
+            match param {
+                Some((val, _)) => val,
+                None => default
+            }
+        }
+
+        for part in name.get().split('_').skip(1) {
+            match part {
+                "read" => setparam("read", &mut rw, 0),
+                "write" => setparam("write", &mut rw, 1),
+                "extreme" => setparam("extreme", &mut locality, 3),
+                "high" => setparam("high", &mut locality, 2),
+                "low" => setparam("low", &mut locality, 1),
+                "none" => setparam("none", &mut locality, 0),
+                "dcache" => setparam("dcache", &mut cache, 1),
+                "icache" => setparam("icache", &mut cache, 0),
+                _ => ccx.sess().span_err(item.span,
+                                format!("unknown part `{}` in prefetch operation name",
+                                        part).as_slice())
+            }
+        }
+        prefetch_intrinsic(bcx,
+                           getparam(rw, rw_default),
+                           getparam(locality, locality_default),
+                           getparam(cache, cache_default));
         fcx.cleanup();
         return;
     }
