@@ -189,6 +189,15 @@ pub fn trans_intrinsic(ccx: &CrateContext,
         Ret(bcx, llcall);
     }
 
+    fn prefetch_intrinsic(bcx: &Block, rw: i32, locality: i32, cache: i32) {
+        let ccx = bcx.ccx();
+        let ptr = get_param(bcx.fcx.llfn, bcx.fcx.arg_pos(0u));
+        let ptri8 = PointerCast(bcx, ptr, Type::i8p(bcx.ccx()));
+        let llfn = bcx.ccx().get_intrinsic(&("llvm.prefetch"));
+        Call(bcx, llfn, [ptri8, C_i32(ccx, rw), C_i32(ccx, locality), C_i32(ccx, cache)], []);
+        RetVoid(bcx)
+    }
+
     let output_type = ty::ty_fn_ret(ty::node_id_to_type(ccx.tcx(), item.id));
 
     let arena = TypedArena::new();
@@ -280,6 +289,44 @@ pub fn trans_intrinsic(ccx: &CrateContext,
             }
         }
 
+        fcx.cleanup();
+        return;
+    }
+
+    if name.get().starts_with("prefetch") {
+        let mut rw = None;
+        let rw_default = 0; // read
+        let mut locality = None;
+        let locality_default = 3; // extreme
+        let mut cache = None;
+        let cache_default = 1; // data cache
+
+        let setparam = |param: &mut Option<i32>, val: i32| {
+            match *param {
+                None => {
+                    *param = Some(val);
+                }
+                _ => ccx.sess().span_fatal(item.span, "conflicting arguments in prefetch operation name")
+            }
+        };
+
+        for part in name.get().split('_').skip(1) {
+            match part {
+                "read" => setparam(&mut rw, 0),
+                "write" => setparam(&mut rw, 1),
+                "extreme" => setparam(&mut locality, 3),
+                "high" => setparam(&mut locality, 2),
+                "low" => setparam(&mut locality, 1),
+                "none" => setparam(&mut locality, 0),
+                "dcache" => setparam(&mut cache, 1),
+                "icache" => setparam(&mut cache, 0),
+                _ => ccx.sess().span_fatal(item.span, "unknown part in prefetch operation name")
+            }
+        }
+        prefetch_intrinsic(bcx,
+                           rw.unwrap_or(rw_default),
+                           locality.unwrap_or(locality_default),
+                           cache.unwrap_or(cache_default));
         fcx.cleanup();
         return;
     }
