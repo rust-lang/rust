@@ -437,19 +437,6 @@ pub trait Bitwise: Bounded
     /// ```
     fn trailing_zeros(&self) -> Self;
 
-    /// Reverses the byte order of a binary number.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use std::num::Bitwise;
-    ///
-    /// let n = 0x0123456789ABCDEFu64;
-    /// let m = 0xEFCDAB8967452301u64;
-    /// assert_eq!(n.swap_bytes(), m);
-    /// ```
-    fn swap_bytes(&self) -> Self;
-
     /// Shifts the bits to the left by a specified amount amount, `r`, wrapping
     /// the truncated bits to the end of the resulting value.
     ///
@@ -479,25 +466,17 @@ pub trait Bitwise: Bounded
     fn rotate_right(&self, r: uint) -> Self;
 }
 
-/// Swapping a single byte does nothing. This is unsafe to be consistent with
-/// the other `bswap` intrinsics.
-#[inline]
-unsafe fn bswap8(x: u8) -> u8 { x }
-
-macro_rules! bitwise_impl(
-    ($t:ty, $bits:expr, $co:ident, $lz:ident, $tz:ident, $bs:path) => {
+macro_rules! bitwise_impl {
+    ($t:ty, $bits:expr, $co:path, $lz:path, $tz:path) => {
         impl Bitwise for $t {
             #[inline]
-            fn count_ones(&self) -> $t { unsafe { intrinsics::$co(*self) } }
+            fn count_ones(&self) -> $t { unsafe { $co(*self) } }
 
             #[inline]
-            fn leading_zeros(&self) -> $t { unsafe { intrinsics::$lz(*self) } }
+            fn leading_zeros(&self) -> $t { unsafe { $lz(*self) } }
 
             #[inline]
-            fn trailing_zeros(&self) -> $t { unsafe { intrinsics::$tz(*self) } }
-
-            #[inline]
-            fn swap_bytes(&self) -> $t { unsafe { $bs(*self) } }
+            fn trailing_zeros(&self) -> $t { unsafe { $tz(*self) } }
 
             #[inline]
             fn rotate_left(&self, r: uint) -> $t {
@@ -514,22 +493,19 @@ macro_rules! bitwise_impl(
             }
         }
     }
-)
+}
 
-macro_rules! bitwise_cast_impl(
-    ($t:ty, $t_cast:ty, $bits:expr,  $co:ident, $lz:ident, $tz:ident, $bs:path) => {
+macro_rules! bitwise_cast_impl {
+    ($t:ty, $t_cast:ty, $bits:expr, $co:path, $lz:path, $tz:path) => {
         impl Bitwise for $t {
             #[inline]
-            fn count_ones(&self) -> $t { unsafe { intrinsics::$co(*self as $t_cast) as $t } }
+            fn count_ones(&self) -> $t { unsafe { $co(*self as $t_cast) as $t } }
 
             #[inline]
-            fn leading_zeros(&self) -> $t { unsafe { intrinsics::$lz(*self as $t_cast) as $t } }
+            fn leading_zeros(&self) -> $t { unsafe { $lz(*self as $t_cast) as $t } }
 
             #[inline]
-            fn trailing_zeros(&self) -> $t { unsafe { intrinsics::$tz(*self as $t_cast) as $t } }
-
-            #[inline]
-            fn swap_bytes(&self) -> $t { unsafe { $bs(*self as $t_cast) as $t } }
+            fn trailing_zeros(&self) -> $t { unsafe { $tz(*self as $t_cast) as $t } }
 
             #[inline]
             fn rotate_left(&self, r: uint) -> $t {
@@ -544,27 +520,27 @@ macro_rules! bitwise_cast_impl(
             }
         }
     }
-)
+}
 
 #[cfg(target_word_size = "32")]
-bitwise_cast_impl!(uint, u32, 32, ctpop32, ctlz32, cttz32, intrinsics::bswap32)
+bitwise_cast_impl!(uint, u32, 32, intrinsics::ctpop32, intrinsics::ctlz32, intrinsics::cttz32)
 #[cfg(target_word_size = "64")]
-bitwise_cast_impl!(uint, u64, 64, ctpop64, ctlz64, cttz64, intrinsics::bswap64)
+bitwise_cast_impl!(uint, u64, 64, intrinsics::ctpop64, intrinsics::ctlz64, intrinsics::cttz64)
 
-bitwise_impl!(u8, 8, ctpop8, ctlz8, cttz8, bswap8)
-bitwise_impl!(u16, 16, ctpop16, ctlz16, cttz16, intrinsics::bswap16)
-bitwise_impl!(u32, 32, ctpop32, ctlz32, cttz32, intrinsics::bswap32)
-bitwise_impl!(u64, 64, ctpop64, ctlz64, cttz64, intrinsics::bswap64)
+bitwise_impl!(u8, 8, intrinsics::ctpop8, intrinsics::ctlz8, intrinsics::cttz8)
+bitwise_impl!(u16, 16, intrinsics::ctpop16, intrinsics::ctlz16, intrinsics::cttz16)
+bitwise_impl!(u32, 32, intrinsics::ctpop32, intrinsics::ctlz32, intrinsics::cttz32)
+bitwise_impl!(u64, 64, intrinsics::ctpop64, intrinsics::ctlz64, intrinsics::cttz64)
 
 #[cfg(target_word_size = "32")]
-bitwise_cast_impl!(int, u32, 32, ctpop32, ctlz32, cttz32, intrinsics::bswap32)
+bitwise_cast_impl!(int, u32, 32, intrinsics::ctpop32, intrinsics::ctlz32, intrinsics::cttz32)
 #[cfg(target_word_size = "64")]
-bitwise_cast_impl!(int, u64, 64, ctpop64, ctlz64, cttz64, intrinsics::bswap64)
+bitwise_cast_impl!(int, u64, 64, intrinsics::ctpop64, intrinsics::ctlz64, intrinsics::cttz64)
 
-bitwise_cast_impl!(i8, u8, 8, ctpop8, ctlz8, cttz8, bswap8)
-bitwise_cast_impl!(i16, u16, 16, ctpop16, ctlz16, cttz16, intrinsics::bswap16)
-bitwise_cast_impl!(i32, u32, 32, ctpop32, ctlz32, cttz32, intrinsics::bswap32)
-bitwise_cast_impl!(i64, u64, 64, ctpop64, ctlz64, cttz64, intrinsics::bswap64)
+bitwise_cast_impl!(i8, u8, 8, intrinsics::ctpop8, intrinsics::ctlz8, intrinsics::cttz8)
+bitwise_cast_impl!(i16, u16, 16, intrinsics::ctpop16, intrinsics::ctlz16, intrinsics::cttz16)
+bitwise_cast_impl!(i32, u32, 32, intrinsics::ctpop32, intrinsics::ctlz32, intrinsics::cttz32)
+bitwise_cast_impl!(i64, u64, 64, intrinsics::ctpop64, intrinsics::ctlz64, intrinsics::cttz64)
 
 /// Specifies the available operations common to all of Rust's core numeric primitives.
 /// These may not always make sense from a purely mathematical point of view, but

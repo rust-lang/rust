@@ -13,6 +13,7 @@
 //! This module contains functions for querying the size and alignment of
 //! types, initializing and manipulating memory.
 
+use clone::Clone;
 use ptr;
 use intrinsics;
 use intrinsics::{bswap16, bswap32, bswap64};
@@ -169,151 +170,238 @@ pub unsafe fn move_val_init<T>(dst: &mut T, src: T) {
     ptr::write(dst, src)
 }
 
-/// Convert an u16 to little endian from the target's endianness.
-///
-/// On little endian, this is a no-op.  On big endian, the bytes are swapped.
-#[cfg(target_endian = "little")] #[inline] pub fn to_le16(x: u16) -> u16 { x }
+/// A type that can have its bytes re-ordered.
+pub trait ByteOrder: Clone {
+    /// Reverses the byte order of the value.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use std::mem::ByteOrder;
+    ///
+    /// let n = 0x0123456789ABCDEFu64;
+    /// let m = 0xEFCDAB8967452301u64;
+    ///
+    /// assert_eq!(n.swap_bytes(), m);
+    /// ```
+    fn swap_bytes(&self) -> Self;
+
+    /// Convert a value from big endian to the target's endianness.
+    ///
+    /// On big endian this is a no-op. On little endian the bytes are swapped.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use std::mem::ByteOrder;
+    ///
+    /// let n = 0x0123456789ABCDEFu64;
+    ///
+    /// if cfg!(target_endian = "big") {
+    ///     assert_eq!(ByteOrder::from_big_endian(n), n)
+    /// } else {
+    ///     assert_eq!(ByteOrder::from_big_endian(n), n.swap_bytes())
+    /// }
+    /// ```
+    #[inline]
+    fn from_big_endian(x: Self) -> Self {
+        if cfg!(target_endian = "big") { x } else { x.swap_bytes() }
+    }
+
+    /// Convert a value from little endian to the target's endianness.
+    ///
+    /// On little endian this is a no-op. On big endian the bytes are swapped.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use std::mem::ByteOrder;
+    ///
+    /// let n = 0x0123456789ABCDEFu64;
+    ///
+    /// if cfg!(target_endian = "little") {
+    ///     assert_eq!(ByteOrder::from_little_endian(n), n)
+    /// } else {
+    ///     assert_eq!(ByteOrder::from_little_endian(n), n.swap_bytes())
+    /// }
+    /// ```
+    #[inline]
+    fn from_little_endian(x: Self) -> Self {
+        if cfg!(target_endian = "little") { x } else { x.swap_bytes() }
+    }
+
+    /// Convert the value to big endian from the target's endianness.
+    ///
+    /// On big endian this is a no-op. On little endian the bytes are swapped.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use std::mem::ByteOrder;
+    ///
+    /// let n = 0x0123456789ABCDEFu64;
+    ///
+    /// if cfg!(target_endian = "big") {
+    ///     assert_eq!(n.to_big_endian(), n)
+    /// } else {
+    ///     assert_eq!(n.to_big_endian(), n.swap_bytes())
+    /// }
+    /// ```
+    #[inline]
+    fn to_big_endian(&self) -> Self {
+        if cfg!(target_endian = "big") { self.clone() } else { self.swap_bytes() }
+    }
+
+    /// Convert the value to little endian from the target's endianness.
+    ///
+    /// On little endian this is a no-op. On big endian the bytes are swapped.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use std::mem::ByteOrder;
+    ///
+    /// let n = 0x0123456789ABCDEFu64;
+    ///
+    /// if cfg!(target_endian = "little") {
+    ///     assert_eq!(n.to_little_endian(), n)
+    /// } else {
+    ///     assert_eq!(n.to_little_endian(), n.swap_bytes())
+    /// }
+    /// ```
+    #[inline]
+    fn to_little_endian(&self) -> Self {
+        if cfg!(target_endian = "little") { self.clone() } else { self.swap_bytes() }
+    }
+}
+
+impl ByteOrder for u8 {
+    #[inline]
+    fn swap_bytes(&self) -> u8 {
+        *self // swapping a single byte does nothing
+    }
+}
+
+impl ByteOrder for u16 {
+    #[inline]
+    fn swap_bytes(&self) -> u16 {
+        unsafe { intrinsics::bswap16(*self) }
+    }
+}
+
+impl ByteOrder for u32 {
+    #[inline]
+    fn swap_bytes(&self) -> u32 {
+        unsafe { intrinsics::bswap32(*self) }
+    }
+}
+
+impl ByteOrder for u64 {
+    #[inline]
+    fn swap_bytes(&self) -> u64 {
+        unsafe { intrinsics::bswap64(*self) }
+    }
+}
+
+#[cfg(target_word_size = "32")]
+impl ByteOrder for uint {
+    #[inline]
+    fn swap_bytes(&self) -> uint {
+        (*self as u32).swap_bytes() as uint
+    }
+}
+
+#[cfg(target_word_size = "64")]
+impl ByteOrder for uint {
+    #[inline]
+    fn swap_bytes(&self) -> uint {
+        (*self as u64).swap_bytes() as uint
+    }
+}
 
 /// Convert an u16 to little endian from the target's endianness.
 ///
 /// On little endian, this is a no-op.  On big endian, the bytes are swapped.
-#[cfg(target_endian = "big")] #[inline] #[stable]
-pub fn to_le16(x: u16) -> u16 { unsafe { bswap16(x) } }
+#[inline]
+#[stable]
+pub fn to_le16(x: u16) -> u16 { x.to_little_endian() }
 
 /// Convert an u32 to little endian from the target's endianness.
 ///
 /// On little endian, this is a no-op.  On big endian, the bytes are swapped.
-#[cfg(target_endian = "little")] #[inline] #[stable]
-pub fn to_le32(x: u32) -> u32 { x }
-
-/// Convert an u32 to little endian from the target's endianness.
-///
-/// On little endian, this is a no-op.  On big endian, the bytes are swapped.
-#[cfg(target_endian = "big")] #[inline] #[stable]
-pub fn to_le32(x: u32) -> u32 { unsafe { bswap32(x) } }
+#[inline]
+#[stable]
+pub fn to_le32(x: u32) -> u32 { x.to_little_endian() }
 
 /// Convert an u64 to little endian from the target's endianness.
 ///
 /// On little endian, this is a no-op.  On big endian, the bytes are swapped.
-#[cfg(target_endian = "little")] #[inline] #[stable]
-pub fn to_le64(x: u64) -> u64 { x }
-
-/// Convert an u64 to little endian from the target's endianness.
-///
-/// On little endian, this is a no-op.  On big endian, the bytes are swapped.
-#[cfg(target_endian = "big")] #[inline] #[stable]
-pub fn to_le64(x: u64) -> u64 { unsafe { bswap64(x) } }
-
+#[inline]
+#[stable]
+pub fn to_le64(x: u64) -> u64 { x.to_little_endian() }
 
 /// Convert an u16 to big endian from the target's endianness.
 ///
 /// On big endian, this is a no-op.  On little endian, the bytes are swapped.
-#[cfg(target_endian = "little")] #[inline] #[stable]
-pub fn to_be16(x: u16) -> u16 { unsafe { bswap16(x) } }
-
-/// Convert an u16 to big endian from the target's endianness.
-///
-/// On big endian, this is a no-op.  On little endian, the bytes are swapped.
-#[cfg(target_endian = "big")] #[inline] #[stable]
-pub fn to_be16(x: u16) -> u16 { x }
+#[inline]
+#[stable]
+pub fn to_be16(x: u16) -> u16 { x.to_big_endian() }
 
 /// Convert an u32 to big endian from the target's endianness.
 ///
 /// On big endian, this is a no-op.  On little endian, the bytes are swapped.
-#[cfg(target_endian = "little")] #[inline] #[stable]
-pub fn to_be32(x: u32) -> u32 { unsafe { bswap32(x) } }
-
-/// Convert an u32 to big endian from the target's endianness.
-///
-/// On big endian, this is a no-op.  On little endian, the bytes are swapped.
-#[cfg(target_endian = "big")] #[inline] #[stable]
-pub fn to_be32(x: u32) -> u32 { x }
+#[inline]
+#[stable]
+pub fn to_be32(x: u32) -> u32 { x.to_big_endian() }
 
 /// Convert an u64 to big endian from the target's endianness.
 ///
 /// On big endian, this is a no-op.  On little endian, the bytes are swapped.
-#[cfg(target_endian = "little")] #[inline] #[stable]
-pub fn to_be64(x: u64) -> u64 { unsafe { bswap64(x) } }
-
-/// Convert an u64 to big endian from the target's endianness.
-///
-/// On big endian, this is a no-op.  On little endian, the bytes are swapped.
-#[cfg(target_endian = "big")] #[inline] #[stable]
-pub fn to_be64(x: u64) -> u64 { x }
-
+#[inline]
+#[stable]
+pub fn to_be64(x: u64) -> u64 { x.to_big_endian() }
 
 /// Convert an u16 from little endian to the target's endianness.
 ///
 /// On little endian, this is a no-op.  On big endian, the bytes are swapped.
-#[cfg(target_endian = "little")] #[inline] #[stable]
-pub fn from_le16(x: u16) -> u16 { x }
-
-/// Convert an u16 from little endian to the target's endianness.
-///
-/// On little endian, this is a no-op.  On big endian, the bytes are swapped.
-#[cfg(target_endian = "big")] #[inline] #[stable]
-pub fn from_le16(x: u16) -> u16 { unsafe { bswap16(x) } }
+#[inline]
+#[stable]
+pub fn from_le16(x: u16) -> u16 { ByteOrder::from_little_endian(x) }
 
 /// Convert an u32 from little endian to the target's endianness.
 ///
 /// On little endian, this is a no-op.  On big endian, the bytes are swapped.
-#[cfg(target_endian = "little")] #[inline] #[stable]
-pub fn from_le32(x: u32) -> u32 { x }
-
-/// Convert an u32 from little endian to the target's endianness.
-///
-/// On little endian, this is a no-op.  On big endian, the bytes are swapped.
-#[cfg(target_endian = "big")] #[inline] #[stable]
-pub fn from_le32(x: u32) -> u32 { unsafe { bswap32(x) } }
+#[inline]
+#[stable]
+pub fn from_le32(x: u32) -> u32 { ByteOrder::from_little_endian(x) }
 
 /// Convert an u64 from little endian to the target's endianness.
 ///
 /// On little endian, this is a no-op.  On big endian, the bytes are swapped.
-#[cfg(target_endian = "little")] #[inline] #[stable]
-pub fn from_le64(x: u64) -> u64 { x }
-
-/// Convert an u64 from little endian to the target's endianness.
-///
-/// On little endian, this is a no-op.  On big endian, the bytes are swapped.
-#[cfg(target_endian = "big")] #[inline] #[stable]
-pub fn from_le64(x: u64) -> u64 { unsafe { bswap64(x) } }
-
+#[inline]
+#[stable]
+pub fn from_le64(x: u64) -> u64 { ByteOrder::from_little_endian(x) }
 
 /// Convert an u16 from big endian to the target's endianness.
 ///
 /// On big endian, this is a no-op.  On little endian, the bytes are swapped.
-#[cfg(target_endian = "little")] #[inline] #[stable]
-pub fn from_be16(x: u16) -> u16 { unsafe { bswap16(x) } }
-
-/// Convert an u16 from big endian to the target's endianness.
-///
-/// On big endian, this is a no-op.  On little endian, the bytes are swapped.
-#[cfg(target_endian = "big")] #[inline] #[stable]
-pub fn from_be16(x: u16) -> u16 { x }
+#[inline]
+#[stable]
+pub fn from_be16(x: u16) -> u16 { ByteOrder::from_big_endian(x) }
 
 /// Convert an u32 from big endian to the target's endianness.
 ///
 /// On big endian, this is a no-op.  On little endian, the bytes are swapped.
-#[cfg(target_endian = "little")] #[inline] #[stable]
-pub fn from_be32(x: u32) -> u32 { unsafe { bswap32(x) } }
-
-/// Convert an u32 from big endian to the target's endianness.
-///
-/// On big endian, this is a no-op.  On little endian, the bytes are swapped.
-#[cfg(target_endian = "big")] #[inline] #[stable]
-pub fn from_be32(x: u32) -> u32 { x }
+#[inline]
+#[stable]
+pub fn from_be32(x: u32) -> u32 { ByteOrder::from_big_endian(x) }
 
 /// Convert an u64 from big endian to the target's endianness.
 ///
 /// On big endian, this is a no-op.  On little endian, the bytes are swapped.
-#[cfg(target_endian = "little")] #[inline] #[stable]
-pub fn from_be64(x: u64) -> u64 { unsafe { bswap64(x) } }
-
-/// Convert an u64 from big endian to the target's endianness.
-///
-/// On big endian, this is a no-op.  On little endian, the bytes are swapped.
-#[cfg(target_endian = "big")] #[inline] #[stable]
-pub fn from_be64(x: u64) -> u64 { x }
+#[inline]
+#[stable]
+pub fn from_be64(x: u64) -> u64 { ByteOrder::from_big_endian(x) }
 
 /**
  * Swap the values at two mutable locations of the same type, without
@@ -558,6 +646,60 @@ mod tests {
             assert!(Vec::from_slice([76u8]) == transmute("L".to_string()));
         }
     }
+
+    macro_rules! test_byte_order {
+        ($T:ident) => {
+            mod $T {
+                use mem::ByteOrder;
+
+                static A: $T = 0b0101100;
+                static B: $T = 0b0100001;
+                static C: $T = 0b1111001;
+
+                static _0: $T = 0;
+                static _1: $T = !0;
+
+                #[test]
+                fn test_swap_bytes() {
+                    assert_eq!(A.swap_bytes().swap_bytes(), A);
+                    assert_eq!(B.swap_bytes().swap_bytes(), B);
+                    assert_eq!(C.swap_bytes().swap_bytes(), C);
+
+                    // Swapping these should make no difference
+                    assert_eq!(_0.swap_bytes(), _0);
+                    assert_eq!(_1.swap_bytes(), _1);
+                }
+
+                #[test]
+                fn test_little_endian() {
+                    assert_eq!(ByteOrder::from_little_endian(A.to_little_endian()), A);
+                    assert_eq!(ByteOrder::from_little_endian(B.to_little_endian()), B);
+                    assert_eq!(ByteOrder::from_little_endian(C.to_little_endian()), C);
+                    assert_eq!(ByteOrder::from_little_endian(_0), _0);
+                    assert_eq!(ByteOrder::from_little_endian(_1), _1);
+                    assert_eq!(_0.to_little_endian(), _0);
+                    assert_eq!(_1.to_little_endian(), _1);
+                }
+
+                #[test]
+                fn test_big_endian() {
+                    assert_eq!(ByteOrder::from_big_endian(A.to_big_endian()), A);
+                    assert_eq!(ByteOrder::from_big_endian(B.to_big_endian()), B);
+                    assert_eq!(ByteOrder::from_big_endian(C.to_big_endian()), C);
+                    assert_eq!(ByteOrder::from_big_endian(_0), _0);
+                    assert_eq!(ByteOrder::from_big_endian(_1), _1);
+                    assert_eq!(_0.to_big_endian(), _0);
+                    assert_eq!(_1.to_big_endian(), _1);
+                }
+            }
+        }
+    }
+
+    test_byte_order!(u8)
+    test_byte_order!(u16)
+    test_byte_order!(u32)
+    test_byte_order!(u64)
+    test_byte_order!(uint)
 }
 
 // FIXME #13642 (these benchmarks should be in another place)
