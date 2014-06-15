@@ -314,6 +314,7 @@ fn declare_intrinsic(ccx: &CrateContext, key: & &'static str) -> Option<ValueRef
     ifn!("llvm.memset.p0i8.i32" fn(i8p, t_i8, t_i32, t_i32, i1) -> void);
     ifn!("llvm.memset.p0i8.i64" fn(i8p, t_i8, t_i64, t_i32, i1) -> void);
 
+    ifn!("llvm.prefetch" fn(i8p, t_i32, t_i32, t_i32) -> void);
     ifn!("llvm.trap" fn() -> void);
     ifn!("llvm.debugtrap" fn() -> void);
     ifn!("llvm.frameaddress" fn(t_i32) -> i8p);
