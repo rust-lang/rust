@@ -65,17 +65,6 @@ mod tests {
     }
 
     #[test]
-    fn test_swap_bytes() {
-        let n: $T = 0b0101100; assert_eq!(n.swap_bytes().swap_bytes(), n);
-        let n: $T = 0b0100001; assert_eq!(n.swap_bytes().swap_bytes(), n);
-        let n: $T = 0b1111001; assert_eq!(n.swap_bytes().swap_bytes(), n);
-
-        // Swapping these should make no difference
-        let n: $T = 0;   assert_eq!(n.swap_bytes(), n);
-        let n: $T = MAX; assert_eq!(n.swap_bytes(), n);
-    }
-
-    #[test]
     fn test_rotate() {
         let n: $T = 0b0101100; assert_eq!(n.rotate_left(6).rotate_right(2).rotate_right(4), n);
         let n: $T = 0b0100001; assert_eq!(n.rotate_left(3).rotate_left(2).rotate_right(5),  n);
