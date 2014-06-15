@@ -26,13 +26,13 @@ struct fish {
 fn main() {
     let a: clam = clam{x: box(GC) 1, y: box(GC) 2};
     let b: clam = clam{x: box(GC) 10, y: box(GC) 20};
-    let z: int = a.x + b.y; //~ ERROR binary operation `+` cannot be applied to type `@int`
+    let z: int = a.x + b.y; //~ ERROR binary operation `+` cannot be applied to type `Gc<int>`
     println!("{:?}", z);
     assert_eq!(z, 21);
     let forty: fish = fish{a: box(GC) 40};
     let two: fish = fish{a: box(GC) 2};
     let answer: int = forty.a + two.a;
-    //~^ ERROR binary operation `+` cannot be applied to type `@int`
+    //~^ ERROR binary operation `+` cannot be applied to type `Gc<int>`
     println!("{:?}", answer);
     assert_eq!(answer, 42);
 }
