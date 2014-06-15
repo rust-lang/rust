@@ -350,11 +350,7 @@ fn escape_str(s: &str) -> String {
 }
 
 fn spaces(n: uint) -> String {
-    let mut ss = String::new();
-    for _ in range(0, n) {
-        ss.push_str(" ");
-    }
-    return ss
+    String::from_char(n, ' ')
 }
 
 /// A structure for implementing serialization to JSON.
