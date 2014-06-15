@@ -232,25 +232,37 @@ impl TypeMap {
     // Adds a ty::t to metadata mapping to the TypeMap. The method will fail if the mapping already
     // exists.
     fn register_type_with_metadata(&mut self,
-                                   cx: &CrateContext,
+                                   _cx: &CrateContext,
                                    type_: ty::t,
                                    metadata: DIType) {
         if !self.type_to_metadata.insert(ty::type_id(type_), metadata) {
-            cx.sess().bug(format!("Type metadata for ty::t '{}' is already in the TypeMap!",
-                                  ppaux::ty_to_str(cx.tcx(), type_)).as_slice());
+            // FIXME (#14871): Temporary workaround for #14871. This is a consistency check and for
+            //                 some types (e.g. slices in a recursion cycle) this check rightfully
+            //                 fails. However, there's no need to actually abort compilation as the
+            //                 inconsistency won't lead to corrupt state, due to LLVM metadata
+            //                 uniquing.
+            //                 A later, more thorough fix should remove the inconsistency altogether
+            //                 and also make this check non-fatal (we'll need a Session::bug_warn()
+            //                 method for that).
+            //                 For the time being, omit the check so people can compile their code
+            //                 with -g.
+            // cx.sess().bug(format!("Type metadata for ty::t '{}' is already in the TypeMap!",
+            //                       ppaux::ty_to_str(cx.tcx(), type_)).as_slice());
         }
     }
 
     // Adds a UniqueTypeId to metadata mapping to the TypeMap. The method will fail if the mapping
     // already exists.
     fn register_unique_id_with_metadata(&mut self,
-                                        cx: &CrateContext,
+                                        _cx: &CrateContext,
                                         unique_type_id: UniqueTypeId,
                                         metadata: DIType) {
         if !self.unique_id_to_metadata.insert(unique_type_id, metadata) {
-            let unique_type_id_str = self.get_unique_type_id_as_string(unique_type_id);
-            cx.sess().bug(format!("Type metadata for unique id '{}' is already in the TypeMap!",
-                                  unique_type_id_str.as_slice()).as_slice());
+            // FIXME (#14871): Temporary workaround for #14871. See comment above in
+            //                 register_type_with_metadata() for more information.
+            // let unique_type_id_str = self.get_unique_type_id_as_string(unique_type_id);
+            // cx.sess().bug(format!("Type metadata for unique id '{}' is already in the TypeMap!",
+            //                       unique_type_id_str.as_slice()).as_slice());
         }
     }
 
