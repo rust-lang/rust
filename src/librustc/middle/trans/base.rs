@@ -972,23 +972,9 @@ pub fn ignore_lhs(_bcx: &Block, local: &ast::Local) -> bool {
 
 pub fn init_local<'a>(bcx: &'a Block<'a>, local: &ast::Local)
                   -> &'a Block<'a> {
-
-    debug!("init_local(bcx={}, local.id={:?})",
-           bcx.to_str(), local.id);
+    debug!("init_local(bcx={}, local.id={:?})", bcx.to_str(), local.id);
     let _indenter = indenter();
-
     let _icx = push_ctxt("init_local");
-
-    if ignore_lhs(bcx, local) {
-        // Handle let _ = e; just like e;
-        match local.init {
-            Some(ref init) => {
-                return controlflow::trans_stmt_semi(bcx, &**init)
-            }
-            None => { return bcx; }
-        }
-    }
-
     _match::store_local(bcx, local)
 }
 
