@@ -220,6 +220,77 @@ impl<'a> CheckLoanCtxt<'a> {
         })
     }
 
+    fn each_in_scope_loan_affecting_path(&self,
+                                         scope_id: ast::NodeId,
+                                         loan_path: &LoanPath,
+                                         op: |&Loan| -> bool)
+                                         -> bool {
+        //! Iterates through all of the in-scope loans affecting `loan_path`,
+        //! calling `op`, and ceasing iteration if `false` is returned.
+
+        // First, we check for a loan restricting the path P being used. This
+        // accounts for borrows of P but also borrows of subpaths, like P.a.b.
+        // Consider the following example:
+        //
+        //     let x = &mut a.b.c; // Restricts a, a.b, and a.b.c
+        //     let y = a;          // Conflicts with restriction
+
+        let cont = self.each_in_scope_loan(scope_id, |loan| {
+            let mut ret = true;
+            for restr_path in loan.restricted_paths.iter() {
+                if **restr_path == *loan_path {
+                    if !op(loan) {
+                        ret = false;
+                        break;
+                    }
+                }
+            }
+            ret
+        });
+
+        if !cont {
+            return false;
+        }
+
+        // Next, we must check for *loans* (not restrictions) on the path P or
+        // any base path. This rejects examples like the following:
+        //
+        //     let x = &mut a.b;
+        //     let y = a.b.c;
+        //
+        // Limiting this search to *loans* and not *restrictions* means that
+        // examples like the following continue to work:
+        //
+        //     let x = &mut a.b;
+        //     let y = a.c;
+
+        let mut loan_path = loan_path;
+        loop {
+            match *loan_path {
+                LpVar(_) => {
+                    break;
+                }
+                LpExtend(ref lp_base, _, _) => {
+                    loan_path = &**lp_base;
+                }
+            }
+
+            let cont = self.each_in_scope_loan(scope_id, |loan| {
+                if *loan.loan_path == *loan_path {
+                    op(loan)
+                } else {
+                    true
+                }
+            });
+
+            if !cont {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     pub fn loans_generated_by(&self, scope_id: ast::NodeId) -> Vec<uint> {
         //! Returns a vector of the loans that are generated as
         //! we encounter `scope_id`.
@@ -526,14 +597,7 @@ impl<'a> CheckLoanCtxt<'a> {
 
         let mut ret = UseOk;
 
-        // First, we check for a restriction on the path P being used. This
-        // accounts for borrows of P but also borrows of subpaths, like P.a.b.
-        // Consider the following example:
-        //
-        //     let x = &mut a.b.c; // Restricts a, a.b, and a.b.c
-        //     let y = a;          // Conflicts with restriction
-
-        self.each_in_scope_restriction(expr_id, use_path, |loan| {
+        self.each_in_scope_loan_affecting_path(expr_id, use_path, |loan| {
             if !compatible_borrow_kinds(loan.kind, borrow_kind) {
                 ret = UseWhileBorrowed(loan.loan_path.clone(), loan.span);
                 false
@@ -541,40 +605,6 @@ impl<'a> CheckLoanCtxt<'a> {
                 true
             }
         });
-
-        // Next, we must check for *loans* (not restrictions) on the path P or
-        // any base path. This rejects examples like the following:
-        //
-        //     let x = &mut a.b;
-        //     let y = a.b.c;
-        //
-        // Limiting this search to *loans* and not *restrictions* means that
-        // examples like the following continue to work:
-        //
-        //     let x = &mut a.b;
-        //     let y = a.c;
-
-        let mut loan_path = use_path;
-        loop {
-            self.each_in_scope_loan(expr_id, |loan| {
-                if *loan.loan_path == *loan_path &&
-                   !compatible_borrow_kinds(loan.kind, borrow_kind) {
-                    ret = UseWhileBorrowed(loan.loan_path.clone(), loan.span);
-                    false
-                } else {
-                    true
-                }
-            });
-
-            match *loan_path {
-                LpVar(_) => {
-                    break;
-                }
-                LpExtend(ref lp_base, _, _) => {
-                    loan_path = &**lp_base;
-                }
-            }
-        }
 
         return ret;
     }
