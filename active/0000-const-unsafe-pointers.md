@@ -41,6 +41,41 @@ The two unsafe pointer types will be freely castable among one another via `as`
 expressions, but no coercion will occur between the two. Additionally, values of
 type `uint` can be casted to unsafe pointers.
 
+## When is a coercion valid?
+
+When coercing from `&'a T` to `*const T`, Rust will guarantee that the memory
+will remain valid for the lifetime `'a` and the memory will be immutable up to
+memory stored in `Unsafe<U>`. It is the responsibility of the code working with
+the `*const T` that the pointer is only dereferenced in the lifetime `'a`.
+
+When coercing from `&'a mut T` to `*mut T`, Rust will guarantee that the memory
+will stay valid during `'a` and that the memory will *not be accessed* during
+`'a`. Additionally, Rust will *consume* the `&'a mut T` during the coercion. It
+is the responsibility of the code working with the `*mut T` to guarantee that
+the unsafe pointer is only dereferenced in the lifetime `'a`, and that the
+memory is "valid again" after `'a`.
+
+> **Note**: Rust will consume `&mut T` coercions with both implicit and explicit
+> coercions.
+
+The term "valid again" is used to represent that some types in Rust require
+internal invariants, such as `Box<T>` never being `NULL`. This is often a
+per-type invariant, so it is the responsibility of the unsafe code to uphold
+these invariants.
+
+## When is a safe cast valid?
+
+Unsafe code can convert an unsafe pointer to a safe pointer via dereferencing
+inside of an unsafe block. This section will discuss when this action is valid.
+
+When converting `*mut T` to `&'a mut T`, it must be guaranteed that the memory
+is initialized to start out with and that nobody will access the memory during
+`'a` except for the converted pointer.
+
+When converting `*const T` to `&'a T`, it must be guaranteed that the memory is
+initialized to start out with and that nobody will write to the pointer during
+`'a` except for memory within `Unsafe<U>`.
+
 # Drawbacks
 
 Today's unsafe pointers design is consistent with the borrowed pointers types in
@@ -66,6 +101,53 @@ the language, `const`.
   confusion as well that `*T` is not equivalent to C's `T*`.
 
 # Unresolved questions
+
+* How much can the compiler help out when coercing `&mut T` to `*mut T`? As
+  previously stated, the source pointer `&mut T` is consumed during the
+  coerction (it's already a linear type), but this can lead to some unexpected
+  results:
+
+      extern {
+          fn bar(a: *mut int, b: *mut int);
+      }
+
+      fn foo(a: &mut int) {
+          unsafe {
+              bar(&mut *a, &mut *a);
+          }
+      }
+
+  This code is invalid because it is creating two copies of the same mutable
+  pointer, and the external function is unaware that the two pointers alias. The
+  rule that the programmer has violated is that the pointer `*mut T` is only
+  dereferenced during the lifetime of the `&'a mut T` pointer. For example, here
+  are the lifetimes spelled out:
+
+      fn foo(a: &mut int) {
+          unsafe {
+              bar(&mut *a, &mut *a);
+      //          |-----|  |-----|
+      //             |        |
+      //             |       Lifetime of second argument
+      //            Lifetime of first argument
+          }
+      }
+
+  Here it can be seen that it is impossible for the C code to safely dereference
+  the pointers passed in because lifetimes don't extend into the function call
+  itself. The compiler could, in this case, *extend the lifetime* of a coerced
+  pointer to follow the otherwise applied temporary rules for expressions. In
+  layman's terms, this means that whenever the compiler detects a coerction of a
+  pointer, the pointer is modified to live to the end of the "innermost
+  enclosing statement".
+
+  In the example above, the compiler's temporary lifetime rules would cause the
+  first coercion to last for the entire lifetime of the call to `bar`, thereby
+  disallowing the second reborrow because it has an overlapping lifetime with
+  the first.
+
+  It is currently an open question how necessary this sort of treatment will be,
+  and this lifetime treatment will likely require a new RFC.
 
 * Will all pointer types in C need to have their own keyword in Rust for
   representation in the FFI?
