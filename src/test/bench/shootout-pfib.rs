@@ -24,7 +24,6 @@ extern crate time;
 use std::os;
 use std::result::{Ok, Err};
 use std::task;
-use std::task::TaskBuilder;
 use std::uint;
 
 fn fib(n: int) -> int {
@@ -79,14 +78,12 @@ fn stress_task(id: int) {
 fn stress(num_tasks: int) {
     let mut results = Vec::new();
     for i in range(0, num_tasks) {
-        let mut builder = TaskBuilder::new();
-        results.push(builder.future_result());
-        builder.spawn(proc() {
+        results.push(task::try_future(proc() {
             stress_task(i);
-        });
+        }));
     }
-    for r in results.iter() {
-        r.recv();
+    for r in results.move_iter() {
+        r.unwrap();
     }
 }
 

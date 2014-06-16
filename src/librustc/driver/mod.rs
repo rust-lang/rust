@@ -366,22 +366,19 @@ fn monitor(f: proc():Send) {
     #[cfg(not(rtopt))]
     static STACK_SIZE: uint = 20000000; // 20MB
 
-    let mut task_builder = TaskBuilder::new().named("rustc");
-
-    // FIXME: Hacks on hacks. If the env is trying to override the stack size
-    // then *don't* set it explicitly.
-    if os::getenv("RUST_MIN_STACK").is_none() {
-        task_builder.opts.stack_size = Some(STACK_SIZE);
-    }
-
     let (tx, rx) = channel();
     let w = io::ChanWriter::new(tx);
     let mut r = io::ChanReader::new(rx);
 
-    match task_builder.try(proc() {
-        io::stdio::set_stderr(box w);
-        f()
-    }) {
+    let mut task = TaskBuilder::new().named("rustc").stderr(box w);
+
+    // FIXME: Hacks on hacks. If the env is trying to override the stack size
+    // then *don't* set it explicitly.
+    if os::getenv("RUST_MIN_STACK").is_none() {
+        task = task.stack_size(STACK_SIZE);
+    }
+
+    match task.try(f) {
         Ok(()) => { /* fallthrough */ }
         Err(value) => {
             // Task failed without emitting a fatal diagnostic
