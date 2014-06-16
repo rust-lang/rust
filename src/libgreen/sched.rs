@@ -83,7 +83,7 @@ pub struct Scheduler {
     /// A fast XorShift rng for scheduler use
     rng: XorShiftRng,
     /// A toggleable idle callback
-    idle_callback: Option<Box<PausableIdleCallback:Send>>,
+    idle_callback: Option<Box<PausableIdleCallback + Send>>,
     /// A countdown that starts at a random value and is decremented
     /// every time a yield check is performed. When it hits 0 a task
     /// will yield.
@@ -100,7 +100,7 @@ pub struct Scheduler {
     //      destroyed before it's actually destroyed.
 
     /// The event loop used to drive the scheduler and perform I/O
-    pub event_loop: Box<EventLoop:Send>,
+    pub event_loop: Box<EventLoop + Send>,
 }
 
 /// An indication of how hard to work on a given operation, the difference
@@ -123,7 +123,7 @@ impl Scheduler {
     // * Initialization Functions
 
     pub fn new(pool_id: uint,
-               event_loop: Box<EventLoop:Send>,
+               event_loop: Box<EventLoop + Send>,
                work_queue: deque::Worker<Box<GreenTask>>,
                work_queues: Vec<deque::Stealer<Box<GreenTask>>>,
                sleeper_list: SleeperList,
@@ -136,7 +136,7 @@ impl Scheduler {
     }
 
     pub fn new_special(pool_id: uint,
-                       event_loop: Box<EventLoop:Send>,
+                       event_loop: Box<EventLoop + Send>,
                        work_queue: deque::Worker<Box<GreenTask>>,
                        work_queues: Vec<deque::Stealer<Box<GreenTask>>>,
                        sleeper_list: SleeperList,
@@ -183,7 +183,7 @@ impl Scheduler {
     pub fn bootstrap(mut ~self) {
 
         // Build an Idle callback.
-        let cb = box SchedRunner as Box<Callback:Send>;
+        let cb = box SchedRunner as Box<Callback + Send>;
         self.idle_callback = Some(self.event_loop.pausable_idle_callback(cb));
 
         // Create a task for the scheduler with an empty context.
@@ -231,7 +231,7 @@ impl Scheduler {
         // mutable reference to the event_loop to give it the "run"
         // command.
         unsafe {
-            let event_loop: *mut Box<EventLoop:Send> = &mut self.event_loop;
+            let event_loop: *mut Box<EventLoop + Send> = &mut self.event_loop;
             // Our scheduler must be in the task before the event loop
             // is started.
             stask.put_with_sched(self);
@@ -904,7 +904,7 @@ pub enum SchedMessage {
 }
 
 pub struct SchedHandle {
-    remote: Box<RemoteCallback:Send>,
+    remote: Box<RemoteCallback + Send>,
     queue: msgq::Producer<SchedMessage>,
     pub sched_id: uint
 }

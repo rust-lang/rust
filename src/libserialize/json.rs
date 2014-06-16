@@ -430,26 +430,6 @@ impl<'a> ::Encoder<io::IoError> for Encoder<'a> {
                  _name: &str,
                  f: |&mut Encoder<'a>| -> EncodeResult) -> EncodeResult { f(self) }
 
-    #[cfg(stage0)]
-    fn emit_enum_variant(&mut self,
-                         name: &str,
-                         _id: uint,
-                         cnt: uint,
-                         f: |&mut Encoder<'a>| -> EncodeResult) -> EncodeResult {
-        // enums are encoded as strings or objects
-        // Bunny => "Bunny"
-        // Kangaroo(34,"William") => {"variant": "Kangaroo", "fields": [34,"William"]}
-        if cnt == 0 {
-            write!(self.wr, "{}", escape_str(name))
-        } else {
-            try!(write!(self.wr, "\\{\"variant\":"));
-            try!(write!(self.wr, "{}", escape_str(name)));
-            try!(write!(self.wr, ",\"fields\":["));
-            try!(f(self));
-            write!(self.wr, "]\\}")
-        }
-    }
-    #[cfg(not(stage0))]
     fn emit_enum_variant(&mut self,
                          name: &str,
                          _id: uint,
@@ -493,16 +473,6 @@ impl<'a> ::Encoder<io::IoError> for Encoder<'a> {
         self.emit_enum_variant_arg(idx, f)
     }
 
-    #[cfg(stage0)]
-    fn emit_struct(&mut self,
-                   _: &str,
-                   _: uint,
-                   f: |&mut Encoder<'a>| -> EncodeResult) -> EncodeResult {
-        try!(write!(self.wr, r"\{"));
-        try!(f(self));
-        write!(self.wr, r"\}")
-    }
-    #[cfg(not(stage0))]
     fn emit_struct(&mut self,
                    _: &str,
                    _: uint,
@@ -563,13 +533,6 @@ impl<'a> ::Encoder<io::IoError> for Encoder<'a> {
         f(self)
     }
 
-    #[cfg(stage0)]
-    fn emit_map(&mut self, _len: uint, f: |&mut Encoder<'a>| -> EncodeResult) -> EncodeResult {
-        try!(write!(self.wr, r"\{"));
-        try!(f(self));
-        write!(self.wr, r"\}")
-    }
-    #[cfg(not(stage0))]
     fn emit_map(&mut self, _len: uint, f: |&mut Encoder<'a>| -> EncodeResult) -> EncodeResult {
         try!(write!(self.wr, "{{"));
         try!(f(self));
@@ -707,22 +670,6 @@ impl<'a> ::Encoder<io::IoError> for PrettyEncoder<'a> {
     }
 
 
-    #[cfg(stage0)]
-    fn emit_struct(&mut self,
-                   _: &str,
-                   len: uint,
-                   f: |&mut PrettyEncoder<'a>| -> EncodeResult) -> EncodeResult {
-        if len == 0 {
-            write!(self.wr, "\\{\\}")
-        } else {
-            try!(write!(self.wr, "\\{"));
-            self.indent += 2;
-            try!(f(self));
-            self.indent -= 2;
-            write!(self.wr, "\n{}\\}", spaces(self.indent))
-        }
-    }
-    #[cfg(not(stage0))]
     fn emit_struct(&mut self,
                    _: &str,
                    len: uint,
@@ -808,21 +755,6 @@ impl<'a> ::Encoder<io::IoError> for PrettyEncoder<'a> {
         f(self)
     }
 
-    #[cfg(stage0)]
-    fn emit_map(&mut self,
-                len: uint,
-                f: |&mut PrettyEncoder<'a>| -> EncodeResult) -> EncodeResult {
-        if len == 0 {
-            write!(self.wr, "\\{\\}")
-        } else {
-            try!(write!(self.wr, "\\{"));
-            self.indent += 2;
-            try!(f(self));
-            self.indent -= 2;
-            write!(self.wr, "\n{}\\}", spaces(self.indent))
-        }
-    }
-    #[cfg(not(stage0))]
     fn emit_map(&mut self,
                 len: uint,
                 f: |&mut PrettyEncoder<'a>| -> EncodeResult) -> EncodeResult {

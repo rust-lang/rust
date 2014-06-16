@@ -2518,8 +2518,8 @@ valid types:
 trait Foo {}
 trait Bar<T> {}
 
-fn sendable_foo(f: Box<Foo:Send>) { /* ... */ }
-fn shareable_bar<T: Share>(b: &Bar<T>: Share) { /* ... */ }
+fn sendable_foo(f: Box<Foo + Send>) { /* ... */ }
+fn shareable_bar<T: Share>(b: &Bar<T> + Share) { /* ... */ }
 ~~~
 
 When no colon is specified (such as the type `~Foo`), it is inferred that the

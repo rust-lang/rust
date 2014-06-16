@@ -168,8 +168,8 @@ impl rtio::RtioPipe for FileDesc {
     fn write(&mut self, buf: &[u8]) -> IoResult<()> {
         self.inner_write(buf)
     }
-    fn clone(&self) -> Box<rtio::RtioPipe:Send> {
-        box FileDesc { inner: self.inner.clone() } as Box<rtio::RtioPipe:Send>
+    fn clone(&self) -> Box<rtio::RtioPipe + Send> {
+        box FileDesc { inner: self.inner.clone() } as Box<rtio::RtioPipe + Send>
     }
 
     // Only supported on named pipes currently. Note that this doesn't have an

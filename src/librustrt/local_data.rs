@@ -91,7 +91,7 @@ impl<T: 'static> LocalData for T {}
 //      a proper map.
 #[doc(hidden)]
 pub type Map = Vec<Option<(*u8, TLSValue, uint)>>;
-type TLSValue = Box<LocalData:Send>;
+type TLSValue = Box<LocalData + Send>;
 
 // Gets the map from the runtime. Lazily initialises if not done so already.
 unsafe fn get_local_map() -> Option<&mut Map> {
@@ -175,7 +175,7 @@ impl<T: 'static> KeyValue<T> {
         // anything.
         let newval = data.map(|d| {
             let d = box d as Box<LocalData>;
-            let d: Box<LocalData:Send> = unsafe { mem::transmute(d) };
+            let d: Box<LocalData + Send> = unsafe { mem::transmute(d) };
             (keyval, d, 0)
         });
 
@@ -236,7 +236,7 @@ impl<T: 'static> KeyValue<T> {
             // pointer part of the trait, (as ~T), and then use
             // compiler coercions to achieve a '&' pointer.
             let ptr = unsafe {
-                let data = data as *Box<LocalData:Send> as *raw::TraitObject;
+                let data = data as *Box<LocalData + Send> as *raw::TraitObject;
                 &mut *((*data).data as *mut T)
             };
             Ref { _ptr: ptr, _index: pos, _nosend: marker::NoSend, _key: self }

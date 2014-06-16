@@ -27,7 +27,7 @@ impl Foo for B {
 }
 
 struct A {
-    v: Box<Foo:Send>,
+    v: Box<Foo + Send>,
 }
 
 fn main() {
