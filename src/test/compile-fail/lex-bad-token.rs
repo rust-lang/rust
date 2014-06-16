@@ -8,6 +8,4 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-    let h = 0x8.0e+9; //~ ERROR: hexadecimal float literal is not supported
-}
+● //~ ERROR: unknown start of token
