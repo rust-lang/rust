@@ -192,7 +192,7 @@ impl<'a> CheckLoanCtxt<'a> {
     pub fn each_in_scope_restriction(&self,
                                      scope_id: ast::NodeId,
                                      loan_path: &LoanPath,
-                                     op: |&Loan, &Restriction| -> bool)
+                                     op: |&Loan| -> bool)
                                      -> bool {
         //! Iterates through all the in-scope restrictions for the
         //! given `loan_path`
@@ -204,7 +204,7 @@ impl<'a> CheckLoanCtxt<'a> {
             let mut ret = true;
             for restr in loan.restrictions.iter() {
                 if *restr.loan_path == *loan_path {
-                    if !op(loan, restr) {
+                    if !op(loan) {
                         ret = false;
                         break;
                     }
@@ -541,7 +541,7 @@ impl<'a> CheckLoanCtxt<'a> {
         //     let x = &mut a.b.c; // Restricts a, a.b, and a.b.c
         //     let y = a;          // Conflicts with restriction
 
-        self.each_in_scope_restriction(expr_id, use_path, |loan, _restr| {
+        self.each_in_scope_restriction(expr_id, use_path, |loan| {
             if incompatible(loan.kind, borrow_kind) {
                 ret = UseWhileBorrowed(loan.loan_path.clone(), loan.span);
                 false
@@ -833,7 +833,7 @@ impl<'a> CheckLoanCtxt<'a> {
 
             let cont = this.each_in_scope_restriction(assignment_id,
                                                       &*loan_path,
-                                                      |loan, _restr| {
+                                                      |loan| {
                 this.report_illegal_mutation(assignment_span, &*loan_path, loan);
                 false
             });
