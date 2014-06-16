@@ -154,8 +154,6 @@ pub mod reader {
     }
 
     pub fn vuint_at(data: &[u8], start: uint) -> DecodeResult<Res> {
-        use std::mem::ByteOrder;
-
         if data.len() - start < 4 {
             return vuint_at_slow(data, start);
         }
@@ -185,7 +183,7 @@ pub mod reader {
 
         unsafe {
             let ptr = data.as_ptr().offset(start as int) as *u32;
-            let val = ByteOrder::from_big_endian(*ptr);
+            let val = Int::from_big_endian(*ptr);
 
             let i = (val >> 28u) as uint;
             let (shift, mask) = SHIFT_MASK_TABLE[i];

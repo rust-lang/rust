@@ -11,7 +11,6 @@
 use libc::{size_t, ssize_t, c_int, c_void, c_uint};
 use libc;
 use std::mem;
-use std::mem::ByteOrder;
 use std::ptr;
 use std::rt::rtio;
 use std::rt::rtio::IoError;
@@ -32,7 +31,7 @@ use uvll;
 ////////////////////////////////////////////////////////////////////////////////
 
 pub fn htons(u: u16) -> u16 { u.to_big_endian() }
-pub fn ntohs(u: u16) -> u16 { ByteOrder::from_big_endian(u) }
+pub fn ntohs(u: u16) -> u16 { Int::from_big_endian(u) }
 
 pub fn sockaddr_to_addr(storage: &libc::sockaddr_storage,
                         len: uint) -> rtio::SocketAddr {
@@ -90,7 +89,7 @@ fn addr_to_sockaddr(addr: rtio::SocketAddr) -> (libc::sockaddr_storage, uint) {
                 (*storage).sin_family = libc::AF_INET as libc::sa_family_t;
                 (*storage).sin_port = htons(addr.port);
                 (*storage).sin_addr = libc::in_addr {
-                    s_addr: ByteOrder::from_big_endian(ip),
+                    s_addr: Int::from_big_endian(ip),
 
                 };
                 mem::size_of::<libc::sockaddr_in>()
