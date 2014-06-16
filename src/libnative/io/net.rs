@@ -11,7 +11,6 @@
 use alloc::arc::Arc;
 use libc;
 use std::mem;
-use std::mem::ByteOrder;
 use std::rt::mutex;
 use std::rt::rtio;
 use std::rt::rtio::{IoResult, IoError};
@@ -31,7 +30,7 @@ pub fn htons(u: u16) -> u16 {
     u.to_big_endian()
 }
 pub fn ntohs(u: u16) -> u16 {
-    ByteOrder::from_big_endian(u)
+    Int::from_big_endian(u)
 }
 
 enum InAddr {
@@ -47,7 +46,7 @@ fn ip_to_inaddr(ip: rtio::IpAddr) -> InAddr {
                      (c as u32 <<  8) |
                      (d as u32 <<  0);
             InAddr(libc::in_addr {
-                s_addr: ByteOrder::from_big_endian(ip)
+                s_addr: Int::from_big_endian(ip)
             })
         }
         rtio::Ipv6Addr(a, b, c, d, e, f, g, h) => {

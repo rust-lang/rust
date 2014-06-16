@@ -23,7 +23,7 @@ use std::{cmp, fmt};
 use std::default::Default;
 use std::from_str::FromStr;
 use std::num::CheckedDiv;
-use std::num::{Bitwise, ToPrimitive, FromPrimitive};
+use std::num::{ToPrimitive, FromPrimitive};
 use std::num::{Zero, One, ToStrRadix, FromStrRadix};
 use std::string::String;
 use std::{uint, i64, u64};

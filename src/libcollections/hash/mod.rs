@@ -103,7 +103,6 @@ macro_rules! impl_hash {
         impl<S: Writer> Hash<S> for $ty {
             #[inline]
             fn hash(&self, state: &mut S) {
-                use core::mem::ByteOrder;
                 let a: [u8, ..::core::$ty::BYTES] = unsafe {
                     mem::transmute((*self as $uty).to_little_endian() as $ty)
                 };

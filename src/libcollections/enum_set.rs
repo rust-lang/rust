@@ -15,8 +15,6 @@
 
 use core::prelude::*;
 
-use core::num::Bitwise;
-
 #[deriving(Clone, PartialEq, Eq, Hash, Show)]
 /// A specialized Set implementation to use enum types.
 pub struct EnumSet<E> {
