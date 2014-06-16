@@ -660,7 +660,7 @@ impl<'a> CheckLoanCtxt<'a> {
         if assignee_cmt.mutbl.is_mutable() {
             if check_for_aliasable_mutable_writes(self, assignment_span, assignee_cmt.clone()) {
                 if mode != euv::Init {
-                    check_for_assignment_to_restricted_or_frozen_location(
+                    check_for_assignment_to_borrowed_path(
                         self, assignment_id, assignment_span, assignee_cmt.clone());
                     mark_variable_as_used_mut(self, assignee_cmt);
                 }
@@ -796,7 +796,7 @@ impl<'a> CheckLoanCtxt<'a> {
             }
         }
 
-        fn check_for_assignment_to_restricted_or_frozen_location(
+        fn check_for_assignment_to_borrowed_path(
             this: &CheckLoanCtxt,
             assignment_id: ast::NodeId,
             assignment_span: Span,
