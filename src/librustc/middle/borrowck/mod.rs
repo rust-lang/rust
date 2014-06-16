@@ -310,8 +310,7 @@ impl Repr for RestrictionSet {
 pub enum bckerr_code {
     err_mutbl,
     err_out_of_scope(ty::Region, ty::Region), // superscope, subscope
-    err_borrowed_pointer_too_short(
-        ty::Region, ty::Region, RestrictionSet), // loan, ptr
+    err_borrowed_pointer_too_short(ty::Region, ty::Region), // loan, ptr
 }
 
 // Combination of an error code and the categorization of the expression
@@ -711,7 +710,7 @@ impl<'a> BorrowckCtxt<'a> {
                     suggestion);
             }
 
-            err_borrowed_pointer_too_short(loan_scope, ptr_scope, _) => {
+            err_borrowed_pointer_too_short(loan_scope, ptr_scope) => {
                 let descr = match opt_loan_path(&err.cmt) {
                     Some(lp) => {
                         format!("`{}`", self.loan_path_to_str(&*lp))

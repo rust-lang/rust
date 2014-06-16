@@ -133,7 +133,7 @@ impl<'a> RestrictionsContext<'a> {
                             cause: self.cause,
                             cmt: cmt_base,
                             code: err_borrowed_pointer_too_short(
-                                self.loan_region, lt, restrictions)});
+                                self.loan_region, lt)});
                     return Safe;
                 }
                 Safe
@@ -148,7 +148,7 @@ impl<'a> RestrictionsContext<'a> {
                             cause: self.cause,
                             cmt: cmt_base,
                             code: err_borrowed_pointer_too_short(
-                                self.loan_region, lt, restrictions)});
+                                self.loan_region, lt)});
                     return Safe;
                 }
 
