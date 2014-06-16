@@ -193,16 +193,6 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
         true
     }
 
-    #[cfg(stage0)]
-    fn visit_estr_box(&mut self) -> bool {
-        true
-    }
-
-    #[cfg(stage0)]
-    fn visit_estr_uniq(&mut self) -> bool {
-        false
-    }
-
     fn visit_estr_slice(&mut self) -> bool {
         self.align_to::<&'static str>();
         if ! self.inner.visit_estr_slice() { return false; }
@@ -245,16 +235,6 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
         if ! self.inner.visit_rptr(mtbl, inner) { return false; }
         self.bump_past::<&'static u8>();
         true
-    }
-
-    #[cfg(stage0)]
-    fn visit_evec_box(&mut self, _mtbl: uint, _inner: *TyDesc) -> bool {
-        true
-    }
-
-    #[cfg(stage0)]
-    fn visit_evec_uniq(&mut self, _mtbl: uint, _inner: *TyDesc) -> bool {
-        false
     }
 
     fn visit_evec_slice(&mut self, mtbl: uint, inner: *TyDesc) -> bool {

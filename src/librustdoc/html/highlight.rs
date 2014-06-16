@@ -126,7 +126,7 @@ fn doit(sess: &parse::ParseSess, mut lexer: lexer::StringReader,
             // span when we see the ']'.
             t::POUND => {
                 is_attribute = true;
-                try!(write!(out, r"<span class='attribute'>\#"));
+                try!(write!(out, r"<span class='attribute'>#"));
                 continue
             }
             t::RBRACKET => {

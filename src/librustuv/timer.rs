@@ -27,8 +27,8 @@ pub struct TimerWatcher {
 
 pub enum NextAction {
     WakeTask,
-    CallOnce(Box<Callback:Send>),
-    CallMany(Box<Callback:Send>, uint),
+    CallOnce(Box<Callback + Send>),
+    CallMany(Box<Callback + Send>, uint),
 }
 
 impl TimerWatcher {
@@ -103,7 +103,7 @@ impl RtioTimer for TimerWatcher {
         self.stop();
     }
 
-    fn oneshot(&mut self, msecs: u64, cb: Box<Callback:Send>) {
+    fn oneshot(&mut self, msecs: u64, cb: Box<Callback + Send>) {
         // similarly to the destructor, we must drop the previous action outside
         // of the homing missile
         let _prev_action = {
@@ -115,7 +115,7 @@ impl RtioTimer for TimerWatcher {
         };
     }
 
-    fn period(&mut self, msecs: u64, cb: Box<Callback:Send>) {
+    fn period(&mut self, msecs: u64, cb: Box<Callback + Send>) {
         // similarly to the destructor, we must drop the previous action outside
         // of the homing missile
         let _prev_action = {

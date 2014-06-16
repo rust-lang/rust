@@ -15,10 +15,10 @@
 
 trait Foo { }
 
-fn foo<'a>(x: Box<Foo:'a>) {
+fn foo<'a>(x: Box<Foo + 'a>) {
 }
 
-fn bar<'a, T:'a>() {
+fn bar<'a, T: 'a>() {
 }
 
 pub fn main() { }

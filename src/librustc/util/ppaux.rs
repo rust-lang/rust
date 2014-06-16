@@ -96,11 +96,6 @@ pub fn explain_region_and_span(cx: &ctxt, region: ty::Region)
 
       ReFree(ref fr) => {
         let prefix = match fr.bound_region {
-          #[cfg(stage0)]
-          BrAnon(idx) => {
-              format!("the anonymous lifetime \\#{} defined on", idx + 1)
-          }
-          #[cfg(not(stage0))]
           BrAnon(idx) => {
               format!("the anonymous lifetime #{} defined on", idx + 1)
           }
@@ -381,9 +376,6 @@ pub fn ty_to_str(cx: &ctxt, typ: t) -> String {
               Some(def) => token::get_ident(def.ident).get().to_string(),
               // This can only happen when a type mismatch error happens and
               // the actual type has more type parameters than the expected one.
-              #[cfg(stage0)]
-              None => format!("<generic \\#{}>", id),
-              #[cfg(not(stage0))]
               None => format!("<generic #{}>", id),
           };
           if !cx.sess.verbose() {
@@ -758,13 +750,6 @@ impl Repr for ast::DefId {
 }
 
 impl Repr for ty::ty_param_bounds_and_ty {
-    #[cfg(stage0)]
-    fn repr(&self, tcx: &ctxt) -> String {
-        format!("ty_param_bounds_and_ty \\{generics: {}, ty: {}\\}",
-                self.generics.repr(tcx),
-                self.ty.repr(tcx))
-    }
-    #[cfg(not(stage0))]
     fn repr(&self, tcx: &ctxt) -> String {
         format!("ty_param_bounds_and_ty {{generics: {}, ty: {}}}",
                 self.generics.repr(tcx),
@@ -836,14 +821,6 @@ impl Repr for ast::Visibility {
 }
 
 impl Repr for ty::BareFnTy {
-    #[cfg(stage0)]
-    fn repr(&self, tcx: &ctxt) -> String {
-        format!("BareFnTy \\{fn_style: {:?}, abi: {}, sig: {}\\}",
-                self.fn_style,
-                self.abi.to_str(),
-                self.sig.repr(tcx))
-    }
-    #[cfg(not(stage0))]
     fn repr(&self, tcx: &ctxt) -> String {
         format!("BareFnTy {{fn_style: {:?}, abi: {}, sig: {}}}",
                 self.fn_style,
@@ -859,14 +836,6 @@ impl Repr for ty::FnSig {
 }
 
 impl Repr for typeck::MethodCallee {
-    #[cfg(stage0)]
-    fn repr(&self, tcx: &ctxt) -> String {
-        format!("MethodCallee \\{origin: {}, ty: {}, {}\\}",
-                self.origin.repr(tcx),
-                self.ty.repr(tcx),
-                self.substs.repr(tcx))
-    }
-    #[cfg(not(stage0))]
     fn repr(&self, tcx: &ctxt) -> String {
         format!("MethodCallee {{origin: {}, ty: {}, {}}}",
                 self.origin.repr(tcx),

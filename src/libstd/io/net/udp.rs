@@ -57,7 +57,7 @@ use rt::rtio;
 /// drop(socket); // close the socket
 /// ```
 pub struct UdpSocket {
-    obj: Box<RtioUdpSocket:Send>,
+    obj: Box<RtioUdpSocket + Send>,
 }
 
 impl UdpSocket {

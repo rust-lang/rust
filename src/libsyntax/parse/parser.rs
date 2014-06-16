@@ -302,7 +302,7 @@ pub struct Parser<'a> {
     pub tokens_consumed: uint,
     pub restriction: restriction,
     pub quote_depth: uint, // not (yet) related to the quasiquoter
-    pub reader: Box<Reader:>,
+    pub reader: Box<Reader>,
     pub interner: Rc<token::IdentInterner>,
     /// The set of seen errors about obsolete syntax. Used to suppress
     /// extra detail when the same error is seen twice
@@ -325,7 +325,8 @@ fn is_plain_ident_or_underscore(t: &token::Token) -> bool {
 }
 
 impl<'a> Parser<'a> {
-    pub fn new(sess: &'a ParseSess, cfg: ast::CrateConfig, mut rdr: Box<Reader:>) -> Parser<'a> {
+    pub fn new(sess: &'a ParseSess, cfg: ast::CrateConfig,
+               mut rdr: Box<Reader>) -> Parser<'a> {
         let tok0 = rdr.next_token();
         let span = tok0.sp;
         let placeholder = TokenAndSpan {
@@ -1232,13 +1233,6 @@ impl<'a> Parser<'a> {
                 })
               }
 
-              #[cfg(stage0)]
-              _ => {
-                  let token_str = p.this_token_to_str();
-                  p.fatal((format!("expected `;` or `\\{` but found `{}`",
-                                   token_str)).as_slice())
-              }
-              #[cfg(not(stage0))]
               _ => {
                   let token_str = p.this_token_to_str();
                   p.fatal((format!("expected `;` or `{{` but found `{}`",
@@ -1645,12 +1639,9 @@ impl<'a> Parser<'a> {
         }
 
         // Next, parse a plus and bounded type parameters, if applicable.
-        //
-        // NOTE(stage0, pcwalton): Remove `token::COLON` after a snapshot.
         let bounds = if mode == LifetimeAndTypesAndBounds {
             let bounds = {
-                if self.eat(&token::BINOP(token::PLUS)) ||
-                        self.eat(&token::COLON) {
+                if self.eat(&token::BINOP(token::PLUS)) {
                     let (_, bounds) = self.parse_ty_param_bounds(false);
                     Some(bounds)
                 } else {
@@ -3208,21 +3199,6 @@ impl<'a> Parser<'a> {
             // consuming more tokens).
             let (bra, ket) = match token::close_delimiter_for(&self.token) {
                 Some(ket) => (self.token.clone(), ket),
-                #[cfg(stage0)]
-                None      => {
-                    // we only expect an ident if we didn't parse one
-                    // above.
-                    let ident_str = if id == token::special_idents::invalid {
-                        "identifier, "
-                    } else {
-                        ""
-                    };
-                    let tok_str = self.this_token_to_str();
-                    self.fatal(format!("expected {}`(` or `\\{`, but found `{}`",
-                                       ident_str,
-                                       tok_str).as_slice())
-                }
-                #[cfg(not(stage0))]
                 None      => {
                     // we only expect an ident if we didn't parse one
                     // above.
@@ -4153,15 +4129,6 @@ impl<'a> Parser<'a> {
                 self.bump();
             }
             token::RBRACE => {}
-            #[cfg(stage0)]
-            _ => {
-                let span = self.span;
-                let token_str = self.this_token_to_str();
-                self.span_fatal(span,
-                                format!("expected `,`, or `\\}` but found `{}`",
-                                        token_str).as_slice())
-            }
-            #[cfg(not(stage0))]
             _ => {
                 let span = self.span;
                 let token_str = self.this_token_to_str();

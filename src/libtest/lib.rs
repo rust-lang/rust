@@ -346,16 +346,16 @@ environment variable. Logging is not captured by default.
 
 Test Attributes:
 
-    \#[test]        - Indicates a function is a test to be run. This function
+    #[test]        - Indicates a function is a test to be run. This function
                      takes no arguments.
-    \#[bench]       - Indicates a function is a benchmark to be run. This
+    #[bench]       - Indicates a function is a benchmark to be run. This
                      function takes one argument (test::Bencher).
-    \#[should_fail] - This function (also labeled with \#[test]) will only pass if
+    #[should_fail] - This function (also labeled with #[test]) will only pass if
                      the code causes a failure (an assertion failure or fail!)
-    \#[ignore]      - When applied to a function which is already attributed as a
+    #[ignore]      - When applied to a function which is already attributed as a
                      test, then the test runner will ignore these tests during
                      normal test runs. Running with --ignored will run these
-                     tests. This may also be written as \#[ignore(cfg(...))] to
+                     tests. This may also be written as #[ignore(cfg(...))] to
                      ignore the test on certain configurations.",
              usage = getopts::usage(message.as_slice(),
                                     optgroups().as_slice()));
@@ -473,7 +473,7 @@ pub enum TestResult {
 }
 
 enum OutputLocation<T> {
-    Pretty(Box<term::Terminal<Box<Writer:Send>>:Send>),
+    Pretty(Box<term::Terminal<Box<Writer + Send>> + Send>),
     Raw(T),
 }
 
@@ -1049,8 +1049,8 @@ pub fn run_test(opts: &TestOpts,
             if nocapture {
                 drop((stdout, stderr));
             } else {
-                task.opts.stdout = Some(box stdout as Box<Writer:Send>);
-                task.opts.stderr = Some(box stderr as Box<Writer:Send>);
+                task.opts.stdout = Some(box stdout as Box<Writer + Send>);
+                task.opts.stderr = Some(box stderr as Box<Writer + Send>);
             }
             let result_future = task.future_result();
             task.spawn(testfn);
