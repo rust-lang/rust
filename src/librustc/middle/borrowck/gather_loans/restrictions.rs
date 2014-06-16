@@ -23,7 +23,7 @@ use std::rc::Rc;
 
 pub enum RestrictionResult {
     Safe,
-    SafeIf(Rc<LoanPath>, Vec<Restriction>)
+    SafeIf(Rc<LoanPath>, Vec<Rc<LoanPath>>)
 }
 
 pub fn compute_restrictions(bccx: &BorrowckCtxt,
@@ -71,7 +71,7 @@ impl<'a> RestrictionsContext<'a> {
             mc::cat_upvar(ty::UpvarId {var_id: local_id, ..}, _) => {
                 // R-Variable
                 let lp = Rc::new(LpVar(local_id));
-                SafeIf(lp.clone(), vec!(Restriction { loan_path: lp }))
+                SafeIf(lp.clone(), vec!(lp))
             }
 
             mc::cat_downcast(cmt_base) => {
@@ -164,7 +164,7 @@ impl<'a> RestrictionsContext<'a> {
             Safe => Safe,
             SafeIf(base_lp, mut base_vec) => {
                 let lp = Rc::new(LpExtend(base_lp, mc, elem));
-                base_vec.push(Restriction { loan_path: lp.clone() });
+                base_vec.push(lp.clone());
                 SafeIf(lp, base_vec)
             }
         }

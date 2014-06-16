@@ -268,7 +268,7 @@ impl<'a> GatherLoanCtxt<'a> {
                 return;
             }
 
-            restrictions::SafeIf(loan_path, restrictions) => {
+            restrictions::SafeIf(loan_path, restricted_paths) => {
                 let loan_scope = match loan_region {
                     ty::ReScope(id) => id,
                     ty::ReFree(ref fr) => fr.scope_id,
@@ -314,7 +314,7 @@ impl<'a> GatherLoanCtxt<'a> {
                     gen_scope: gen_scope,
                     kill_scope: kill_scope,
                     span: borrow_span,
-                    restrictions: restrictions,
+                    restricted_paths: restricted_paths,
                     cause: cause,
                 }
             }
