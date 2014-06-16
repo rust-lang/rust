@@ -30,8 +30,7 @@ syn keyword   rustKeyword     unsafe virtual while
 syn keyword   rustKeyword     use nextgroup=rustModPath skipwhite skipempty
 " FIXME: Scoped impl's name is also fallen in this category
 syn keyword   rustKeyword     mod trait struct enum type nextgroup=rustIdentifier skipwhite skipempty
-syn keyword   rustStorage     mut ref static
-syn keyword   rustObsoleteStorage const
+syn keyword   rustStorage     mut ref static const
 
 syn keyword   rustInvalidBareKeyword crate
 
