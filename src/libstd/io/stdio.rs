@@ -31,6 +31,7 @@ use failure::local_stderr;
 use fmt;
 use io::{Reader, Writer, IoResult, IoError, OtherIoError,
          standard_error, EndOfFile, LineBufferedWriter, BufferedReader};
+use iter::Iterator;
 use kinds::Send;
 use libc;
 use option::{Option, Some, None};
@@ -40,7 +41,9 @@ use rt;
 use rt::local::Local;
 use rt::task::Task;
 use rt::rtio::{DontClose, IoFactory, LocalIo, RtioFileStream, RtioTTY};
+use slice::ImmutableVector;
 use str::StrSlice;
+use uint;
 
 // And so begins the tale of acquiring a uv handle to a stdio stream on all
 // platforms in all situations. Our story begins by splitting the world into two
@@ -355,10 +358,18 @@ impl StdWriter {
 
 impl Writer for StdWriter {
     fn write(&mut self, buf: &[u8]) -> IoResult<()> {
-        match self.inner {
-            TTY(ref mut tty) => tty.write(buf),
-            File(ref mut file) => file.write(buf),
-        }.map_err(IoError::from_rtio_error)
+        // As with stdin on windows, stdout often can't handle writes of large
+        // sizes. For an example, see #14940. For this reason, chunk the output
+        // buffer on windows, but on unix we can just write the whole buffer all
+        // at once.
+        let max_size = if cfg!(windows) {64 * 1024} else {uint::MAX};
+        for chunk in buf.chunks(max_size) {
+            try!(match self.inner {
+                TTY(ref mut tty) => tty.write(chunk),
+                File(ref mut file) => file.write(chunk),
+            }.map_err(IoError::from_rtio_error))
+        }
+        Ok(())
     }
 }
 
