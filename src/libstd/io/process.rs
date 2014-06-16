@@ -59,6 +59,7 @@ use c_str::CString;
 /// ```
 pub struct Process {
     handle: Box<RtioProcess + Send>,
+    forget: bool,
 
     /// Handle to the child's stdin, if the `stdin` field of this process's
     /// `ProcessConfig` was `CreatePipe`. By default, this handle is `Some`.
@@ -262,6 +263,7 @@ impl Command {
                 });
                 Process {
                     handle: p,
+                    forget: false,
                     stdin: io.next().unwrap(),
                     stdout: io.next().unwrap(),
                     stderr: io.next().unwrap(),
@@ -540,10 +542,23 @@ impl Process {
             error:  stderr.recv().ok().unwrap_or(Vec::new()),
         })
     }
+
+    /// Forgets this process, allowing it to outlive the parent
+    ///
+    /// This function will forcefully prevent calling `wait()` on the child
+    /// process in the destructor, allowing the child to outlive the
+    /// parent. Note that this operation can easily lead to leaking the
+    /// resources of the child process, so care must be taken when
+    /// invoking this method.
+    pub fn forget(mut self) {
+        self.forget = true;
+    }
 }
 
 impl Drop for Process {
     fn drop(&mut self) {
+        if self.forget { return }
+
         // Close all I/O before exiting to ensure that the child doesn't wait
         // forever to print some text or something similar.
         drop(self.stdin.take());
@@ -932,5 +947,13 @@ mod tests {
         });
         rx.recv();
         rx.recv();
+    })
+
+    iotest!(fn forget() {
+        let p = sleeper();
+        let id = p.id();
+        p.forget();
+        assert!(Process::kill(id, 0).is_ok());
+        assert!(Process::kill(id, PleaseExitSignal).is_ok());
     })
 }
