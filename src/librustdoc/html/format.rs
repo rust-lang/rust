@@ -91,7 +91,6 @@ impl fmt::Show for clean::Generics {
 
 impl fmt::Show for clean::Lifetime {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(f.write("'".as_bytes()));
         try!(f.write(self.get_ref().as_bytes()));
         Ok(())
     }

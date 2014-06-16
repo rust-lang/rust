@@ -257,13 +257,13 @@ pub enum SyntaxExtension {
     /// A normal, function-like syntax extension.
     ///
     /// `bytes!` is a `NormalTT`.
-    NormalTT(Box<MacroExpander:'static>, Option<Span>),
+    NormalTT(Box<MacroExpander + 'static>, Option<Span>),
 
     /// A function-like syntax extension that has an extra ident before
     /// the block.
     ///
     /// `macro_rules!` is an `IdentTT`.
-    IdentTT(Box<IdentMacroExpander:'static>, Option<Span>),
+    IdentTT(Box<IdentMacroExpander + 'static>, Option<Span>),
 }
 
 pub type NamedSyntaxExtension = (Name, SyntaxExtension);

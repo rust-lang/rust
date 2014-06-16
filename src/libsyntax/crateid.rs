@@ -32,23 +32,6 @@ pub struct CrateId {
 }
 
 impl fmt::Show for CrateId {
-    #[cfg(stage0)]
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f, "{}", self.path));
-        let version = match self.version {
-            None => "0.0",
-            Some(ref version) => version.as_slice(),
-        };
-        if self.path == self.name ||
-                self.path
-                    .as_slice()
-                    .ends_with(format!("/{}", self.name).as_slice()) {
-            write!(f, "\\#{}", version)
-        } else {
-            write!(f, "\\#{}:{}", self.name, version)
-        }
-    }
-    #[cfg(not(stage0))]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(f, "{}", self.path));
         let version = match self.version {

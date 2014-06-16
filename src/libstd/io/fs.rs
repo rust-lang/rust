@@ -84,7 +84,7 @@ use vec::Vec;
 /// configured at creation time, via the `FileAccess` parameter to
 /// `File::open_mode()`.
 pub struct File {
-    fd: Box<rtio::RtioFileStream:Send>,
+    fd: Box<rtio::RtioFileStream + Send>,
     path: Path,
     last_nread: int,
 }

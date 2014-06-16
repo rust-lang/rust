@@ -36,7 +36,7 @@ pub struct Timer {
 }
 
 pub enum Req {
-    NewTimer(libc::HANDLE, Box<Callback:Send>, bool),
+    NewTimer(libc::HANDLE, Box<Callback + Send>, bool),
     RemoveTimer(libc::HANDLE, Sender<()>),
 }
 
@@ -148,7 +148,7 @@ impl rtio::RtioTimer for Timer {
         let _ = unsafe { imp::WaitForSingleObject(self.obj, libc::INFINITE) };
     }
 
-    fn oneshot(&mut self, msecs: u64, cb: Box<Callback:Send>) {
+    fn oneshot(&mut self, msecs: u64, cb: Box<Callback + Send>) {
         self.remove();
 
         // see above for the calculation
@@ -162,7 +162,7 @@ impl rtio::RtioTimer for Timer {
         self.on_worker = true;
     }
 
-    fn period(&mut self, msecs: u64, cb: Box<Callback:Send>) {
+    fn period(&mut self, msecs: u64, cb: Box<Callback + Send>) {
         self.remove();
 
         // see above for the calculation

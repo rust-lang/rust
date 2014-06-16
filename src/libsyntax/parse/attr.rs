@@ -90,13 +90,6 @@ impl<'a> ParserAttr for Parser<'a> {
                 let hi = self.span.hi;
                 (mk_sp(lo, hi), meta_item, style)
             }
-            #[cfg(stage0)]
-            _ => {
-                let token_str = self.this_token_to_str();
-                self.fatal(format!("expected `\\#` but found `{}`",
-                                   token_str).as_slice());
-            }
-            #[cfg(not(stage0))]
             _ => {
                 let token_str = self.this_token_to_str();
                 self.fatal(format!("expected `#` but found `{}`",

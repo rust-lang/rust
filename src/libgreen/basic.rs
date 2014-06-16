@@ -23,16 +23,16 @@ use std::rt::rtio::{PausableIdleCallback, Callback};
 use std::rt::exclusive::Exclusive;
 
 /// This is the only exported function from this module.
-pub fn event_loop() -> Box<EventLoop:Send> {
-    box BasicLoop::new() as Box<EventLoop:Send>
+pub fn event_loop() -> Box<EventLoop + Send> {
+    box BasicLoop::new() as Box<EventLoop + Send>
 }
 
 struct BasicLoop {
-    work: Vec<proc():Send>,             // pending work
-    remotes: Vec<(uint, Box<Callback:Send>)>,
+    work: Vec<proc(): Send>,             // pending work
+    remotes: Vec<(uint, Box<Callback + Send>)>,
     next_remote: uint,
     messages: Arc<Exclusive<Vec<Message>>>,
-    idle: Option<Box<Callback:Send>>,
+    idle: Option<Box<Callback + Send>>,
     idle_active: Option<Arc<atomics::AtomicBool>>,
 }
 
@@ -132,22 +132,22 @@ impl EventLoop for BasicLoop {
     }
 
     // FIXME: Seems like a really weird requirement to have an event loop provide.
-    fn pausable_idle_callback(&mut self, cb: Box<Callback:Send>)
-                              -> Box<PausableIdleCallback:Send> {
+    fn pausable_idle_callback(&mut self, cb: Box<Callback + Send>)
+                              -> Box<PausableIdleCallback + Send> {
         rtassert!(self.idle.is_none());
         self.idle = Some(cb);
         let a = Arc::new(atomics::AtomicBool::new(true));
         self.idle_active = Some(a.clone());
-        box BasicPausable { active: a } as Box<PausableIdleCallback:Send>
+        box BasicPausable { active: a } as Box<PausableIdleCallback + Send>
     }
 
-    fn remote_callback(&mut self, f: Box<Callback:Send>)
-                       -> Box<RemoteCallback:Send> {
+    fn remote_callback(&mut self, f: Box<Callback + Send>)
+                       -> Box<RemoteCallback + Send> {
         let id = self.next_remote;
         self.next_remote += 1;
         self.remotes.push((id, f));
         box BasicRemote::new(self.messages.clone(), id) as
-            Box<RemoteCallback:Send>
+            Box<RemoteCallback + Send>
     }
 
     fn io<'a>(&'a mut self) -> Option<&'a mut IoFactory> { None }

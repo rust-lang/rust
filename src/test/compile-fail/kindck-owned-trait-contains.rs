@@ -15,8 +15,8 @@ impl<A:Clone> Repeat<A> for A {
     fn get(&self) -> A { self.clone() }
 }
 
-fn repeater<A:Clone>(v: A) -> Box<Repeat<A>:> {
-    box v as Box<Repeat<A>:> // No
+fn repeater<A:Clone>(v: A) -> Box<Repeat<A>> {
+    box v as Box<Repeat<A>> // No
 }
 
 fn main() {

@@ -1253,15 +1253,6 @@ impl cmt_ {
 }
 
 impl Repr for cmt_ {
-    #[cfg(stage0)]
-    fn repr(&self, tcx: &ty::ctxt) -> String {
-        format!("\\{{} id:{} m:{:?} ty:{}\\}",
-                self.cat.repr(tcx),
-                self.id,
-                self.mutbl,
-                self.ty.repr(tcx))
-    }
-    #[cfg(not(stage0))]
     fn repr(&self, tcx: &ty::ctxt) -> String {
         format!("{{{} id:{} m:{:?} ty:{}}}",
                 self.cat.repr(tcx),
@@ -1315,9 +1306,6 @@ impl Repr for InteriorKind {
             InteriorField(NamedField(fld)) => {
                 token::get_name(fld).get().to_str()
             }
-            #[cfg(stage0)]
-            InteriorField(PositionalField(i)) => format!("\\#{:?}", i),
-            #[cfg(not(stage0))]
             InteriorField(PositionalField(i)) => format!("#{:?}", i),
             InteriorElement(_) => "[]".to_string(),
         }
