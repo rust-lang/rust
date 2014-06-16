@@ -208,8 +208,8 @@ impl<'a> CheckLoanCtxt<'a> {
                    loan.repr(self.tcx()));
 
             let mut ret = true;
-            for restr in loan.restrictions.iter() {
-                if *restr.loan_path == *loan_path {
+            for restr_path in loan.restricted_paths.iter() {
+                if **restr_path == *loan_path {
                     if !op(loan) {
                         ret = false;
                         break;
@@ -298,8 +298,8 @@ impl<'a> CheckLoanCtxt<'a> {
             return true;
         }
 
-        for restr in loan1.restrictions.iter() {
-            if restr.loan_path != loan2.loan_path { continue; }
+        for restr_path in loan1.restricted_paths.iter() {
+            if *restr_path != loan2.loan_path { continue; }
 
             let old_pronoun = if new_loan.loan_path == old_loan.loan_path {
                 "it".to_string()

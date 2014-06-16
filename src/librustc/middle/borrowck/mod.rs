@@ -181,7 +181,7 @@ pub struct Loan {
     index: uint,
     loan_path: Rc<LoanPath>,
     kind: ty::BorrowKind,
-    restrictions: Vec<Restriction>,
+    restricted_paths: Vec<Rc<LoanPath>>,
     gen_scope: ast::NodeId,
     kill_scope: ast::NodeId,
     span: Span,
@@ -247,10 +247,6 @@ pub fn opt_loan_path(cmt: &mc::cmt) -> Option<Rc<LoanPath>> {
             opt_loan_path(cmt_base)
         }
     }
-}
-
-pub struct Restriction {
-    loan_path: Rc<LoanPath>,
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -777,13 +773,7 @@ impl Repr for Loan {
                  self.kind,
                  self.gen_scope,
                  self.kill_scope,
-                 self.restrictions.repr(tcx))).to_string()
-    }
-}
-
-impl Repr for Restriction {
-    fn repr(&self, tcx: &ty::ctxt) -> String {
-        (format!("Restriction({})", self.loan_path.repr(tcx))).to_string()
+                 self.restricted_paths.repr(tcx))).to_string()
     }
 }
 
