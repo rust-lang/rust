@@ -36,7 +36,7 @@ little unfortunate.
 As any bikeshed, there are a number of other names which could be possible for
 this trait:
 
-* `Conurrent`
+* `Concurrent`
 * `Synchronized`
 * `Parallel`
 * `Threaded`
