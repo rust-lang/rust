@@ -16,12 +16,12 @@ use std::io::PipeStream;
 use std::io::Command;
 
 fn test() {
-    let os::Pipe { input, out } = os::pipe();
-    let input = PipeStream::open(input);
-    let mut out = PipeStream::open(out);
-    drop(input);
+    let os::Pipe { reader, writer } = unsafe { os::pipe().unwrap() };
+    let reader = PipeStream::open(reader);
+    let mut writer = PipeStream::open(writer);
+    drop(reader);
 
-    let _ = out.write([1]);
+    let _ = writer.write([1]);
 }
 
 fn main() {
