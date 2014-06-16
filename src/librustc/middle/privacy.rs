@@ -303,7 +303,7 @@ impl<'a> Visitor<()> for EmbargoVisitor<'a> {
                 match ty.node {
                     ast::TyPath(_, _, id) => {
                         match self.tcx.def_map.borrow().get_copy(&id) {
-                            def::DefPrimTy(..) => {},
+                            def::DefPrimTy(..) | def::DefTyParam(..) => {},
                             def => {
                                 let did = def.def_id();
                                 if is_local(did) {
