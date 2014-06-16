@@ -525,9 +525,9 @@ mod tests {
     fn test_file_desc() {
         // Run this test with some pipes so we don't have to mess around with
         // opening or closing files.
-        let os::Pipe { input, out } = os::pipe();
-        let mut reader = FileDesc::new(input, true);
-        let mut writer = FileDesc::new(out, true);
+        let os::Pipe { reader, writer } = unsafe { os::pipe().unwrap() };
+        let mut reader = FileDesc::new(reader, true);
+        let mut writer = FileDesc::new(writer, true);
 
         writer.inner_write(bytes!("test")).ok().unwrap();
         let mut buf = [0u8, ..4];
