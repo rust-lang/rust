@@ -19,7 +19,6 @@ use back;
 use back::link;
 use back::target_strs;
 use back::{arm, x86, x86_64, mips};
-use metadata;
 use middle::lint;
 
 use syntax::abi;
@@ -36,6 +35,7 @@ use getopts::{optopt, optmulti, optflag, optflagopt};
 use getopts;
 use lib::llvm::llvm;
 use std::cell::{RefCell};
+use std::fmt;
 
 
 pub struct Config {
@@ -357,18 +357,6 @@ pub fn default_lib_output() -> CrateType {
     CrateTypeRlib
 }
 
-pub fn cfg_os_to_meta_os(os: abi::Os) -> metadata::loader::Os {
-    use metadata::loader;
-
-    match os {
-        abi::OsWin32 => loader::OsWin32,
-        abi::OsLinux => loader::OsLinux,
-        abi::OsAndroid => loader::OsAndroid,
-        abi::OsMacos => loader::OsMacos,
-        abi::OsFreebsd => loader::OsFreebsd
-    }
-}
-
 pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
     let tos = match sess.targ_cfg.os {
         abi::OsWin32 =>   InternedString::new("win32"),
@@ -376,6 +364,7 @@ pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
         abi::OsLinux =>   InternedString::new("linux"),
         abi::OsAndroid => InternedString::new("android"),
         abi::OsFreebsd => InternedString::new("freebsd"),
+        abi::OsiOS =>     InternedString::new("ios"),
     };
 
     // ARM is bi-endian, however using NDK seems to default
@@ -441,7 +430,8 @@ static os_names : &'static [(&'static str, abi::Os)] = &'static [
     ("darwin",  abi::OsMacos),
     ("android", abi::OsAndroid),
     ("linux",   abi::OsLinux),
-    ("freebsd", abi::OsFreebsd)];
+    ("freebsd", abi::OsFreebsd),
+    ("ios",     abi::OsiOS)];
 
 pub fn get_arch(triple: &str) -> Option<abi::Architecture> {
     for &(arch, abi) in architecture_abis.iter() {
@@ -775,6 +765,16 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     }
 }
 
+impl fmt::Show for CrateType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            CrateTypeExecutable => "bin".fmt(f),
+            CrateTypeDylib => "dylib".fmt(f),
+            CrateTypeRlib => "rlib".fmt(f),
+            CrateTypeStaticlib => "staticlib".fmt(f)
+        }
+    }
+}
 
 #[cfg(test)]
 mod test {

@@ -794,17 +794,26 @@ pub fn collect_crate_types(session: &Session,
     // command line, then reuse the empty `base` Vec to hold the types that
     // will be found in crate attributes.
     let mut base = session.opts.crate_types.clone();
-    if base.len() > 0 {
-        return base
-    } else {
+    if base.len() == 0 {
         base.extend(attr_types.move_iter());
         if base.len() == 0 {
-            base.push(config::CrateTypeExecutable);
+            base.push(link::default_output_for_target(session));
         }
         base.as_mut_slice().sort();
         base.dedup();
-        return base;
     }
+
+    base.move_iter().filter(|crate_type| {
+        let res = !link::invalid_output_for_target(session, *crate_type);
+
+        if !res {
+            session.warn(format!("dropping unsupported crate type `{}` \
+                                   for target os `{}`",
+                                 *crate_type, session.targ_cfg.os).as_slice());
+        }
+
+        res
+    }).collect()
 }
 
 pub struct OutputFilenames {

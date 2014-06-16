@@ -13,7 +13,7 @@
 
 pub use self::imp::OsRng;
 
-#[cfg(unix)]
+#[cfg(unix, not(target_os = "ios"))]
 mod imp {
     use io::{IoResult, File};
     use path::Path;
@@ -28,7 +28,7 @@ mod imp {
     ///   `/dev/urandom`.
     /// - Windows: calls `CryptGenRandom`, using the default cryptographic
     ///   service provider with the `PROV_RSA_FULL` type.
-    ///
+    /// - iOS: calls SecRandomCopyBytes as /dev/(u)random is sandboxed
     /// This does not block.
     #[cfg(unix)]
     pub struct OsRng {
@@ -54,6 +54,71 @@ mod imp {
         }
         fn fill_bytes(&mut self, v: &mut [u8]) {
             self.inner.fill_bytes(v)
+        }
+    }
+}
+
+#[cfg(target_os = "ios")]
+mod imp {
+    extern crate libc;
+
+    use collections::Collection;
+    use io::{IoResult};
+    use kinds::marker;
+    use mem;
+    use os;
+    use rand::Rng;
+    use result::{Ok};
+    use self::libc::{c_int, size_t};
+    use slice::MutableVector;
+
+    /// A random number generator that retrieves randomness straight from
+    /// the operating system. Platform sources:
+    ///
+    /// - Unix-like systems (Linux, Android, Mac OSX): read directly from
+    ///   `/dev/urandom`.
+    /// - Windows: calls `CryptGenRandom`, using the default cryptographic
+    ///   service provider with the `PROV_RSA_FULL` type.
+    /// - iOS: calls SecRandomCopyBytes as /dev/(u)random is sandboxed
+    /// This does not block.
+    pub struct OsRng {
+        marker: marker::NoCopy
+    }
+
+    struct SecRandom;
+
+    static kSecRandomDefault: *SecRandom = 0 as *SecRandom;
+
+    #[link(name = "Security", kind = "framework")]
+    extern "C" {
+        fn SecRandomCopyBytes(rnd: *SecRandom, count: size_t, bytes: *mut u8) -> c_int;
+    }
+
+    impl OsRng {
+        /// Create a new `OsRng`.
+        pub fn new() -> IoResult<OsRng> {
+            Ok(OsRng {marker: marker::NoCopy} )
+        }
+    }
+
+    impl Rng for OsRng {
+        fn next_u32(&mut self) -> u32 {
+            let mut v = [0u8, .. 4];
+            self.fill_bytes(v);
+            unsafe { mem::transmute(v) }
+        }
+        fn next_u64(&mut self) -> u64 {
+            let mut v = [0u8, .. 8];
+            self.fill_bytes(v);
+            unsafe { mem::transmute(v) }
+        }
+        fn fill_bytes(&mut self, v: &mut [u8]) {
+            let ret = unsafe {
+                SecRandomCopyBytes(kSecRandomDefault, v.len() as size_t, v.as_mut_ptr())
+            };
+            if ret == -1 {
+                fail!("couldn't generate random bytes: {}", os::last_os_error());
+            }
         }
     }
 }

@@ -145,6 +145,7 @@ mod imp {
 }
 
 #[cfg(target_os = "macos")]
+#[cfg(target_os = "ios")]
 #[cfg(target_os = "win32")]
 mod imp {
     use core::prelude::*;

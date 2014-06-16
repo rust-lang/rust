@@ -349,8 +349,7 @@ pub fn early_error(msg: &str) -> ! {
 
 pub fn list_metadata(sess: &Session, path: &Path,
                      out: &mut io::Writer) -> io::IoResult<()> {
-    metadata::loader::list_file_metadata(
-        config::cfg_os_to_meta_os(sess.targ_cfg.os), path, out)
+    metadata::loader::list_file_metadata(sess.targ_cfg.os, path, out)
 }
 
 /// Run a procedure which will detect failures in the compiler and print nicer

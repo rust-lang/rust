@@ -166,6 +166,9 @@ ifeq ($$(CFG_WINDOWSY_$(1)), 1)
   JEMALLOC_ARGS_$(1) := --enable-lazy-lock
 else ifeq ($(OSTYPE_$(1)), apple-darwin)
   LIBUV_OSTYPE_$(1) := mac
+else ifeq ($(OSTYPE_$(1)), apple-ios)
+  LIBUV_OSTYPE_$(1) := ios
+  JEMALLOC_ARGS_$(1) := --disable-tls
 else ifeq ($(OSTYPE_$(1)), unknown-freebsd)
   LIBUV_OSTYPE_$(1) := freebsd
 else ifeq ($(OSTYPE_$(1)), linux-androideabi)
@@ -181,6 +184,8 @@ LIBUV_DIR_$(1) := $$(RT_OUTPUT_DIR_$(1))/libuv
 LIBUV_LIB_$(1) := $$(RT_OUTPUT_DIR_$(1))/$$(LIBUV_NAME_$(1))
 
 LIBUV_MAKEFILE_$(1) := $$(CFG_BUILD_DIR)$$(RT_OUTPUT_DIR_$(1))/libuv/Makefile
+LIBUV_BUILD_DIR_$(1) := $$(CFG_BUILD_DIR)$$(RT_OUTPUT_DIR_$(1))/libuv
+LIBUV_XCODEPROJ_$(1) := $$(LIBUV_BUILD_DIR_$(1))/uv.xcodeproj
 
 LIBUV_STAMP_$(1) = $$(LIBUV_DIR_$(1))/libuv-auto-clean-stamp
 
@@ -212,6 +217,30 @@ $$(LIBUV_LOCAL_$(1)): $$(LIBUV_DEPS) $$(MKFILE_DEPS)
 		CXX="$$(CXX_$(1))" \
 		AR="$$(AR_$(1))" \
 		V=$$(VERBOSE)
+else ifeq ($(OSTYPE_$(1)), apple-ios) # iOS
+$$(LIBUV_XCODEPROJ_$(1)): $$(LIBUV_DEPS) $$(MKFILE_DEPS) $$(LIBUV_STAMP_$(1))
+	cp -rf $(S)src/libuv/ $$(LIBUV_BUILD_DIR_$(1))
+	(cd $$(LIBUV_BUILD_DIR_$(1)) && \
+	 $$(CFG_PYTHON) ./gyp_uv.py -f xcode \
+	   -D ninja \
+	   -R libuv)
+	touch $$@
+
+LIBUV_XCODE_OUT_LIB_$(1) := $$(LIBUV_BUILD_DIR_$(1))/build/Release-$$(CFG_SDK_NAME_$(1))/libuv.a
+
+$$(LIBUV_LIB_$(1)): $$(LIBUV_XCODE_OUT_LIB_$(1)) $$(MKFILE_DEPS)
+	$$(Q)cp $$< $$@
+$$(LIBUV_XCODE_OUT_LIB_$(1)): $$(LIBUV_DEPS) $$(LIBUV_XCODEPROJ_$(1)) \
+				    $$(MKFILE_DEPS)
+	$$(Q)xcodebuild -project $$(LIBUV_BUILD_DIR_$(1))/uv.xcodeproj \
+		CFLAGS="$$(LIBUV_CFLAGS_$(1)) $$(SNAP_DEFINES)" \
+		LDFLAGS="$$(CFG_GCCISH_LINK_FLAGS_$(1))" \
+		$$(LIBUV_ARGS_$(1)) \
+		V=$$(VERBOSE) \
+		-configuration Release \
+		-sdk "$$(CFG_SDK_NAME_$(1))" \
+		ARCHS="$$(CFG_SDK_ARCHS_$(1))"
+	$$(Q)touch $$@
 else
 LIBUV_LOCAL_$(1) := $$(LIBUV_DIR_$(1))/Release/libuv.a
 $$(LIBUV_LOCAL_$(1)): $$(LIBUV_DEPS) $$(LIBUV_MAKEFILE_$(1)) $$(MKFILE_DEPS)
@@ -226,7 +255,6 @@ $$(LIBUV_LOCAL_$(1)): $$(LIBUV_DEPS) $$(LIBUV_MAKEFILE_$(1)) $$(MKFILE_DEPS)
 		NO_LOAD="$$(LIBUV_NO_LOAD)" \
 		V=$$(VERBOSE)
 	$$(Q)touch $$@
-
 endif
 
 ifeq ($(1),$$(CFG_BUILD))
@@ -269,13 +297,13 @@ JEMALLOC_LOCAL_$(1) := $$(JEMALLOC_BUILD_DIR_$(1))/lib/$$(JEMALLOC_REAL_NAME_$(1
 $$(JEMALLOC_LOCAL_$(1)): $$(JEMALLOC_DEPS) $$(MKFILE_DEPS)
 	@$$(call E, make: jemalloc)
 	cd "$$(JEMALLOC_BUILD_DIR_$(1))"; "$(S)src/jemalloc/configure" \
-		$$(JEMALLOC_ARGS_$(1)) --enable-cc-silence --with-jemalloc-prefix=je_ \
-		--disable-experimental --build=$(CFG_BUILD) --host=$(1) \
+		$$(JEMALLOC_ARGS_$(1)) --with-jemalloc-prefix=je_ \
+		--build=$(CFG_BUILD) --host=$(1) \
 		CC="$$(CC_$(1))" \
 		AR="$$(AR_$(1))" \
 		RANLIB="$$(AR_$(1)) s" \
 		CPPFLAGS="-I $(S)src/rt/" \
-		EXTRA_CFLAGS="$$(CFG_CFLAGS_$(1)) -g1"
+		EXTRA_CFLAGS="$$(CFG_CFLAGS_$(1)) $$(CFG_JEMALLOC_CFLAGS_$(1)) -g1"
 	$$(Q)$$(MAKE) -C "$$(JEMALLOC_BUILD_DIR_$(1))" build_lib_static
 
 ifeq ($(1),$$(CFG_BUILD))
@@ -335,15 +363,22 @@ BACKTRACE_NAME_$(1) := $$(call CFG_STATIC_LIB_NAME_$(1),backtrace)
 BACKTRACE_LIB_$(1) := $$(RT_OUTPUT_DIR_$(1))/$$(BACKTRACE_NAME_$(1))
 BACKTRACE_BUILD_DIR_$(1) := $$(RT_OUTPUT_DIR_$(1))/libbacktrace
 
-ifeq ($$(findstring darwin,$$(OSTYPE_$(1))),darwin)
-
 # We don't use this on platforms that aren't linux-based, so just make the file
 # available, the compilation of libstd won't actually build it.
+ifeq ($$(findstring darwin,$$(OSTYPE_$(1))),darwin)
+# See comment above
 $$(BACKTRACE_LIB_$(1)):
 	touch $$@
 
 else
+ifeq ($$(findstring ios,$$(OSTYPE_$(1))),ios)
+# See comment above
+$$(BACKTRACE_LIB_$(1)):
+	touch $$@
+else
+
 ifeq ($$(CFG_WINDOWSY_$(1)),1)
+# See comment above
 $$(BACKTRACE_LIB_$(1)):
 	touch $$@
 else
@@ -388,6 +423,7 @@ $$(BACKTRACE_LIB_$(1)): $$(BACKTRACE_BUILD_DIR_$(1))/Makefile $$(MKFILE_DEPS)
 	$$(Q)cp $$(BACKTRACE_BUILD_DIR_$(1))/.libs/libbacktrace.a $$@
 
 endif # endif for windowsy
+endif # endif for ios
 endif # endif for darwin
 
 endef

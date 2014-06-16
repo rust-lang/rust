@@ -114,6 +114,13 @@ pub mod write {
     // which are *far* more efficient. This is obviously undesirable in some
     // cases, so if any sort of target feature is specified we don't append v7
     // to the feature list.
+    //
+    // On iOS only armv7 and newer are supported. So it is useful to
+    // get all hardware potential via VFP3 (hardware floating point)
+    // and NEON (SIMD) instructions supported by LLVM.
+    // Note that without those flags various linking errors might
+    // arise as some of intrinsicts are converted into function calls
+    // and nobody provides implementations those functions
     fn target_feature<'a>(sess: &'a Session) -> &'a str {
         match sess.targ_cfg.os {
             abi::OsAndroid => {
@@ -122,7 +129,10 @@ pub mod write {
                 } else {
                     sess.opts.cg.target_feature.as_slice()
                 }
-            }
+            },
+            abi::OsiOS if sess.targ_cfg.arch == abi::Arm => {
+                "+v7,+thumb2,+vfp3,+neon"
+            },
             _ => sess.opts.cg.target_feature.as_slice()
         }
     }
@@ -796,6 +806,10 @@ pub fn link_binary(sess: &Session,
                    id: &CrateId) -> Vec<Path> {
     let mut out_filenames = Vec::new();
     for &crate_type in sess.crate_types.borrow().iter() {
+        if invalid_output_for_target(sess, crate_type) {
+            sess.bug(format!("invalid output type `{}` for target os `{}`",
+                             crate_type, sess.targ_cfg.os).as_slice());
+        }
         let out_file = link_binary_output(sess, trans, crate_type, outputs, id);
         out_filenames.push(out_file);
     }
@@ -810,6 +824,32 @@ pub fn link_binary(sess: &Session,
     }
 
     out_filenames
+}
+
+
+/// Returns default crate type for target
+///
+/// Default crate type is used when crate type isn't provided neither
+/// through cmd line arguments nor through crate attributes
+///
+/// It is CrateTypeExecutable for all platforms but iOS as there is no
+/// way to run iOS binaries anyway without jailbreaking and
+/// interaction with Rust code through static library is the only
+/// option for now
+pub fn default_output_for_target(sess: &Session) -> config::CrateType {
+    match sess.targ_cfg.os {
+        abi::OsiOS => config::CrateTypeStaticlib,
+        _ => config::CrateTypeExecutable
+    }
+}
+
+/// Checks if target supports crate_type as output
+pub fn invalid_output_for_target(sess: &Session,
+                                 crate_type: config::CrateType) -> bool {
+    match (sess.targ_cfg.os, crate_type) {
+        (abi::OsiOS, config::CrateTypeDylib) => true,
+        _ => false
+    }
 }
 
 fn is_writeable(p: &Path) -> bool {
@@ -833,8 +873,11 @@ pub fn filename_for_input(sess: &Session, crate_type: config::CrateType,
                 abi::OsLinux => (loader::LINUX_DLL_PREFIX, loader::LINUX_DLL_SUFFIX),
                 abi::OsAndroid => (loader::ANDROID_DLL_PREFIX, loader::ANDROID_DLL_SUFFIX),
                 abi::OsFreebsd => (loader::FREEBSD_DLL_PREFIX, loader::FREEBSD_DLL_SUFFIX),
+                abi::OsiOS => unreachable!(),
             };
-            out_filename.with_filename(format!("{}{}{}", prefix, libname,
+            out_filename.with_filename(format!("{}{}{}",
+                                               prefix,
+                                               libname,
                                                suffix))
         }
         config::CrateTypeStaticlib => {
@@ -991,7 +1034,7 @@ fn link_rlib<'a>(sess: &'a Session,
             // symbol table of the archive. This currently dies on OSX (see
             // #11162), and isn't necessary there anyway
             match sess.targ_cfg.os {
-                abi::OsMacos => {}
+                abi::OsMacos | abi::OsiOS => {}
                 _ => { a.update_symbols(); }
             }
         }
@@ -1104,15 +1147,16 @@ fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
 
     // On OSX, debuggers need this utility to get run to do some munging of
     // the symbols
-    if sess.targ_cfg.os == abi::OsMacos && (sess.opts.debuginfo != NoDebugInfo) {
-        match Command::new("dsymutil").arg(out_filename).status() {
-            Ok(..) => {}
-            Err(e) => {
-                sess.err(format!("failed to run dsymutil: {}", e).as_slice());
-                sess.abort_if_errors();
+    if (sess.targ_cfg.os == abi::OsMacos || sess.targ_cfg.os == abi::OsiOS)
+        && (sess.opts.debuginfo != NoDebugInfo) {
+            match Command::new("dsymutil").arg(out_filename).status() {
+                Ok(..) => {}
+                Err(e) => {
+                    sess.err(format!("failed to run dsymutil: {}", e).as_slice());
+                    sess.abort_if_errors();
+                }
             }
         }
-    }
 }
 
 fn link_args(cmd: &mut Command,
@@ -1169,7 +1213,7 @@ fn link_args(cmd: &mut Command,
     // already done the best it can do, and we also don't want to eliminate the
     // metadata. If we're building an executable, however, --gc-sections drops
     // the size of hello world from 1.8MB to 597K, a 67% reduction.
-    if !dylib && sess.targ_cfg.os != abi::OsMacos {
+    if !dylib && sess.targ_cfg.os != abi::OsMacos && sess.targ_cfg.os != abi::OsiOS {
         cmd.arg("-Wl,--gc-sections");
     }
 
@@ -1185,7 +1229,7 @@ fn link_args(cmd: &mut Command,
            sess.opts.optimize == config::Aggressive {
             cmd.arg("-Wl,-O1");
         }
-    } else if sess.targ_cfg.os == abi::OsMacos {
+    } else if sess.targ_cfg.os == abi::OsMacos || sess.targ_cfg.os == abi::OsiOS {
         // The dead_strip option to the linker specifies that functions and data
         // unreachable by the entry point will be removed. This is quite useful
         // with Rust's compilation model of compiling libraries at a time into
@@ -1348,7 +1392,7 @@ fn add_local_native_libraries(cmd: &mut Command, sess: &Session) {
     // For those that support this, we ensure we pass the option if the library
     // was flagged "static" (most defaults are dynamic) to ensure that if
     // libfoo.a and libfoo.so both exist that the right one is chosen.
-    let takes_hints = sess.targ_cfg.os != abi::OsMacos;
+    let takes_hints = sess.targ_cfg.os != abi::OsMacos && sess.targ_cfg.os != abi::OsiOS;
 
     for &(ref l, kind) in sess.cstore.get_used_libraries().borrow().iter() {
         match kind {

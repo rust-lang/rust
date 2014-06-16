@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 use driver::config::NoDebugInfo;
 use driver::session::Session;
 use lib::llvm::{ContextRef, ModuleRef, ValueRef};
@@ -32,6 +31,7 @@ use std::c_str::ToCStr;
 use std::ptr;
 use std::rc::Rc;
 use std::collections::{HashMap, HashSet};
+use syntax::abi;
 use syntax::ast;
 use syntax::parse::token::InternedString;
 
@@ -273,20 +273,32 @@ impl CrateContext {
             None => fail!()
         }
     }
+
+    // Although there is an experimental implementation of LLVM which
+    // supports SS on armv7 it wasn't approved by Apple, see:
+    // http://lists.cs.uiuc.edu/pipermail/llvm-commits/Week-of-Mon-20140505/216350.html
+    // It looks like it might be never accepted to upstream LLVM.
+    //
+    // So far the decision was to disable them in default builds
+    // but it could be enabled (with patched LLVM)
+    pub fn is_split_stack_supported(&self) -> bool {
+        let ref cfg = self.sess().targ_cfg;
+        cfg.os != abi::OsiOS || cfg.arch != abi::Arm
+    }
 }
 
 fn declare_intrinsic(ccx: &CrateContext, key: & &'static str) -> Option<ValueRef> {
     macro_rules! ifn (
         ($name:expr fn() -> $ret:expr) => (
             if *key == $name {
-                let f = base::decl_cdecl_fn(ccx.llmod, $name, Type::func([], &$ret), ty::mk_nil());
+                let f = base::decl_cdecl_fn(ccx, $name, Type::func([], &$ret), ty::mk_nil());
                 ccx.intrinsics.borrow_mut().insert($name, f.clone());
                 return Some(f);
             }
         );
         ($name:expr fn($($arg:expr),*) -> $ret:expr) => (
             if *key == $name {
-                let f = base::decl_cdecl_fn(ccx.llmod, $name,
+                let f = base::decl_cdecl_fn(ccx, $name,
                                   Type::func([$($arg),*], &$ret), ty::mk_nil());
                 ccx.intrinsics.borrow_mut().insert($name, f.clone());
                 return Some(f);
@@ -418,7 +430,7 @@ fn declare_intrinsic(ccx: &CrateContext, key: & &'static str) -> Option<ValueRef
                 // The `if key == $name` is already in ifn!
                 ifn!($name fn($($arg),*) -> $ret);
             } else if *key == $name {
-                let f = base::decl_cdecl_fn(ccx.llmod, stringify!($cname),
+                let f = base::decl_cdecl_fn(ccx, stringify!($cname),
                                       Type::func([$($arg),*], &$ret),
                                       ty::mk_nil());
                 ccx.intrinsics.borrow_mut().insert($name, f.clone());
