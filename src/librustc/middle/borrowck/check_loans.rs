@@ -825,14 +825,14 @@ impl<'a> CheckLoanCtxt<'a> {
             this: &CheckLoanCtxt,
             assignment_id: ast::NodeId,
             assignment_span: Span,
-            assignee_cmt: mc::cmt) -> bool
+            assignee_cmt: mc::cmt)
         {
             //! Check for assignments that violate the terms of an
             //! outstanding loan.
 
             let loan_path = match opt_loan_path(&assignee_cmt) {
                 Some(lp) => lp,
-                None => { return true; /* no loan path, can't be any loans */ }
+                None => { return; /* no loan path, can't be any loans */ }
             };
 
             // Start by searching for an assignment to a *restricted*
@@ -852,7 +852,7 @@ impl<'a> CheckLoanCtxt<'a> {
                 false
             });
 
-            if !cont { return false }
+            if !cont { return; }
 
             // The previous code handled assignments to paths that
             // have been restricted. This covers paths that have been
@@ -899,12 +899,12 @@ impl<'a> CheckLoanCtxt<'a> {
                     LpExtend(_, mc::McDeclared, _) |
                     LpExtend(_, mc::McImmutable, _) |
                     LpVar(_) => {
-                        return true;
+                        return;
                     }
                 };
 
                 // Check for a non-const loan of `loan_path`
-                let cont = this.each_in_scope_loan(assignment_id, |loan| {
+                this.each_in_scope_loan(assignment_id, |loan| {
                     if loan.loan_path == loan_path {
                         this.report_illegal_mutation(assignment_span, &*full_loan_path, loan);
                         false
@@ -912,8 +912,6 @@ impl<'a> CheckLoanCtxt<'a> {
                         true
                     }
                 });
-
-                if !cont { return false }
             }
         }
     }
