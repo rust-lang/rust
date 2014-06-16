@@ -98,8 +98,8 @@
 # This is hardly all there is to know of The Rust Build System's
 # mysteries. The tale continues on the wiki[1][2].
 #
-# [1]: https://github.com/mozilla/rust/wiki/Note-build-system
-# [2]: https://github.com/mozilla/rust/wiki/Note-testsuite
+# [1]: https://github.com/rust-lang/rust/wiki/Note-build-system
+# [2]: https://github.com/rust-lang/rust/wiki/Note-testsuite
 #
 # If you really feel like getting your hands dirty, then:
 #

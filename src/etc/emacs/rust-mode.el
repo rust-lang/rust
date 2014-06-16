@@ -2,7 +2,7 @@
 
 ;; Version: 0.2.0
 ;; Author: Mozilla
-;; Url: https://github.com/mozilla/rust
+;; Url: https://github.com/rust-lang/rust
 ;; Keywords: languages
 
 ;;; Commentary:

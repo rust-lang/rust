@@ -111,7 +111,7 @@ match val.do_something() {
 [#3101][iss] is the issue that proposed making this the only behavior, with
 rationale and discussion.
 
-[iss]: https://github.com/mozilla/rust/issues/3101
+[iss]: https://github.com/rust-lang/rust/issues/3101
 
 ## No guaranteed tail-call optimization
 
