@@ -34,7 +34,7 @@ Mozilla intends to use Rust as a platform for prototyping experimental browser a
 
 # Why is it named "Rust"?
 
-The name evokes imagery of big metallic things, but there are actually a number of different explanations for it. The project revives proven, "rusty" programming language concepts, many first established in the late 1970s and early 1980s. (Note that a rusted bike chainring was chosen as the language logo. Many contributors are also cyclists.) Rust is also named after the Rust fungus, an organism known for being robust, distributed, and parallel. Finally there are many subsequences of the word Rust, like "robust" and "trust", which seem to fit the language.
+The name evokes imagery of big metallic things, but there are actually a number of different explanations for it. The project revives proven, "rusty" programming language concepts, many first established in the late 1970s and early 1980s. (Note that a rusted bike chainring was chosen as the language logo. Many contributors are also cyclists.) Rust is also named after the Rust fungus, an organism known for being robust, distributed, and parallel.
 
 There's a suggestion that Rust implements parts of a web browser that aren't "chrome" (i.e. user interface), however this wasn't part of the original reasoning for the Rust name.
 
