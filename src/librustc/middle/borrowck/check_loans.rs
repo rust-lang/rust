@@ -155,6 +155,12 @@ enum UseError {
     UseWhileBorrowed(/*loan*/Rc<LoanPath>, /*loan*/Span)
 }
 
+fn compatible_borrow_kinds(borrow_kind1: ty::BorrowKind,
+                           borrow_kind2: ty::BorrowKind)
+                           -> bool {
+    borrow_kind1 == ty::ImmBorrow && borrow_kind2 == ty::ImmBorrow
+}
+
 impl<'a> CheckLoanCtxt<'a> {
     pub fn tcx(&self) -> &'a ty::ctxt { self.bccx.tcx }
 
@@ -542,7 +548,7 @@ impl<'a> CheckLoanCtxt<'a> {
         //     let y = a;          // Conflicts with restriction
 
         self.each_in_scope_restriction(expr_id, use_path, |loan| {
-            if incompatible(loan.kind, borrow_kind) {
+            if !compatible_borrow_kinds(loan.kind, borrow_kind) {
                 ret = UseWhileBorrowed(loan.loan_path.clone(), loan.span);
                 false
             } else {
@@ -566,7 +572,7 @@ impl<'a> CheckLoanCtxt<'a> {
         loop {
             self.each_in_scope_loan(expr_id, |loan| {
                 if *loan.loan_path == *loan_path &&
-                   incompatible(loan.kind, borrow_kind) {
+                   !compatible_borrow_kinds(loan.kind, borrow_kind) {
                     ret = UseWhileBorrowed(loan.loan_path.clone(), loan.span);
                     false
                 } else {
@@ -585,12 +591,6 @@ impl<'a> CheckLoanCtxt<'a> {
         }
 
         return ret;
-
-        fn incompatible(borrow_kind1: ty::BorrowKind,
-                        borrow_kind2: ty::BorrowKind)
-                        -> bool {
-            borrow_kind1 != ty::ImmBorrow || borrow_kind2 != ty::ImmBorrow
-        }
     }
 
     fn check_if_path_is_moved(&self,
