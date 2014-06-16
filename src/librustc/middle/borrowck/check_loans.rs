@@ -684,11 +684,9 @@ impl<'a> CheckLoanCtxt<'a> {
         // and aliasing restrictions:
         if assignee_cmt.mutbl.is_mutable() {
             if check_for_aliasable_mutable_writes(self, assignment_span, assignee_cmt.clone()) {
-                if mode != euv::Init &&
+                if mode != euv::Init {
                     check_for_assignment_to_restricted_or_frozen_location(
-                        self, assignment_id, assignment_span, assignee_cmt.clone())
-                {
-                    // Safe, but record for lint pass later:
+                        self, assignment_id, assignment_span, assignee_cmt.clone());
                     mark_variable_as_used_mut(self, assignee_cmt);
                 }
             }
