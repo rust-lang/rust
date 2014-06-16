@@ -44,7 +44,7 @@
 //!
 //! # Relevant links
 //!
-//! Original issue: https://github.com/mozilla/rust/issues/10207
+//! Original issue: https://github.com/rust-lang/rust/issues/10207
 
 use std::fmt;
 use std::hash::Hash;

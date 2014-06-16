@@ -146,7 +146,7 @@ pub unsafe fn record_stack_bounds(stack_lo: uint, stack_hi: uint) {
         // means that if we want to perform valid FFI on windows, then we need
         // to ensure that the stack bounds are what they truly are for this
         // task. More info can be found at:
-        //   https://github.com/mozilla/rust/issues/3445#issuecomment-26114839
+        //   https://github.com/rust-lang/rust/issues/3445#issuecomment-26114839
         //
         // stack range is at TIB: %gs:0x08 (top) and %gs:0x10 (bottom)
         asm!("mov $0, %gs:0x08" :: "r"(stack_hi) :: "volatile");
