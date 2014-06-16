@@ -195,31 +195,6 @@ impl<'a> CheckLoanCtxt<'a> {
         })
     }
 
-    pub fn each_in_scope_restriction(&self,
-                                     scope_id: ast::NodeId,
-                                     loan_path: &LoanPath,
-                                     op: |&Loan| -> bool)
-                                     -> bool {
-        //! Iterates through all the in-scope restrictions for the
-        //! given `loan_path`
-
-        self.each_in_scope_loan(scope_id, |loan| {
-            debug!("each_in_scope_restriction found loan: {:?}",
-                   loan.repr(self.tcx()));
-
-            let mut ret = true;
-            for restr_path in loan.restricted_paths.iter() {
-                if **restr_path == *loan_path {
-                    if !op(loan) {
-                        ret = false;
-                        break;
-                    }
-                }
-            }
-            ret
-        })
-    }
-
     fn each_in_scope_loan_affecting_path(&self,
                                          scope_id: ast::NodeId,
                                          loan_path: &LoanPath,
@@ -835,66 +810,10 @@ impl<'a> CheckLoanCtxt<'a> {
                 None => { return; /* no loan path, can't be any loans */ }
             };
 
-            // Start by searching for an assignment to a *restricted*
-            // location. Here is one example of the kind of error caught
-            // by this check:
-            //
-            //    let mut v = ~[1, 2, 3];
-            //    let p = &v;
-            //    v = ~[4];
-            //
-            // In this case, creating `p` restricts the mutation of `v`.
-
-            let cont = this.each_in_scope_restriction(assignment_id,
-                                                      &*loan_path,
-                                                      |loan| {
+            this.each_in_scope_loan_affecting_path(assignment_id, &*loan_path, |loan| {
                 this.report_illegal_mutation(assignment_span, &*loan_path, loan);
                 false
             });
-
-            if !cont { return; }
-
-            // The previous code handled assignments to paths that
-            // have been restricted. This covers paths that have been
-            // directly lent out and their base paths, but does not
-            // cover random extensions of those paths. For example,
-            // the following program is not declared illegal by the
-            // previous check:
-            //
-            //    let mut v = ~[1, 2, 3];
-            //    let p = &v;
-            //    v[0] = 4; // declared error by loop below, not code above
-            //
-            // The reason that this passes the previous check whereas
-            // an assignment like `v = ~[4]` fails is because the assignment
-            // here is to `v[*]`, and the existing restrictions were issued
-            // for `v`, not `v[*]`.
-            //
-            // So in this loop, we walk back up the path and look for
-            // loans, not restrictions.
-
-            let full_loan_path = loan_path.clone();
-            let mut loan_path = loan_path;
-            loop {
-                loan_path = match *loan_path {
-                    LpExtend(ref lp_base, _, _) => {
-                        lp_base.clone()
-                    }
-                    LpVar(_) => {
-                        return;
-                    }
-                };
-
-                // Check for a non-const loan of `loan_path`
-                this.each_in_scope_loan(assignment_id, |loan| {
-                    if loan.loan_path == loan_path {
-                        this.report_illegal_mutation(assignment_span, &*full_loan_path, loan);
-                        false
-                    } else {
-                        true
-                    }
-                });
-            }
         }
     }
 
