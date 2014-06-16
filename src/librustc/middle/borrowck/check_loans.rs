@@ -829,28 +829,8 @@ impl<'a> CheckLoanCtxt<'a> {
             //    let p = &v;
             //    v = ~[4];
             //
-            // In this case, creating `p` triggers a RESTR_MUTATE
-            // restriction on the path `v`.
-            //
-            // Here is a second, more subtle example:
-            //
-            //    let mut v = ~[1, 2, 3];
-            //    let p = &const v[0];
-            //    v[0] = 4;                   // OK
-            //    v[1] = 5;                   // OK
-            //    v = ~[4, 5, 3];             // Error
-            //
-            // In this case, `p` is pointing to `v[0]`, and it is a
-            // `const` pointer in any case. So the first two
-            // assignments are legal (and would be permitted by this
-            // check). However, the final assignment (which is
-            // logically equivalent) is forbidden, because it would
-            // cause the existing `v` array to be freed, thus
-            // invalidating `p`. In the code, this error results
-            // because `gather_loans::restrictions` adds a
-            // `RESTR_MUTATE` restriction whenever the contents of an
-            // owned pointer are borrowed, and hence while `v[*]` is not
-            // restricted from being written, `v` is.
+            // In this case, creating `p` restricts the mutation of `v`.
+
             let cont = this.each_in_scope_restriction(assignment_id,
                                                       &*loan_path,
                                                       |loan, restr| {
@@ -882,28 +862,14 @@ impl<'a> CheckLoanCtxt<'a> {
             //
             // So in this loop, we walk back up the loan path so long
             // as the mutability of the path is dependent on a super
-            // path, and check that the super path was not lent out as
-            // mutable or immutable (a const loan is ok).
+            // path, and check that the super path was not borrowed.
             //
             // Mutability of a path can be dependent on the super path
             // in two ways. First, it might be inherited mutability.
             // Second, the pointee of an `&mut` pointer can only be
             // mutated if it is found in an unaliased location, so we
             // have to check that the owner location is not borrowed.
-            //
-            // Note that we are *not* checking for any and all
-            // restrictions.  We are only interested in the pointers
-            // that the user created, whereas we add restrictions for
-            // all kinds of paths that are not directly aliased. If we checked
-            // for all restrictions, and not just loans, then the following
-            // valid program would be considered illegal:
-            //
-            //    let mut v = ~[1, 2, 3];
-            //    let p = &const v[0];
-            //    v[1] = 5; // ok
-            //
-            // Here the restriction that `v` not be mutated would be misapplied
-            // to block the subpath `v[1]`.
+
             let full_loan_path = loan_path.clone();
             let mut loan_path = loan_path;
             loop {
