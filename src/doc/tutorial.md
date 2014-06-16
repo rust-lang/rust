@@ -183,7 +183,7 @@ There is ctags support via `src/etc/ctags.rust`, but many other
 tools and editors are not yet supported. If you end up writing a Rust
 mode for your favorite editor, let us know so that we can link to it.
 
-[sublime]: http://github.com/dbp/sublime-rust
+[sublime]: http://github.com/jhasse/sublime-rust
 [sublime-pkg]: http://wbond.net/sublime_packages/package_control
 
 # Syntax basics
