@@ -833,13 +833,9 @@ impl<'a> CheckLoanCtxt<'a> {
 
             let cont = this.each_in_scope_restriction(assignment_id,
                                                       &*loan_path,
-                                                      |loan, restr| {
-                if restr.set.intersects(RESTR_MUTATE) {
-                    this.report_illegal_mutation(assignment_span, &*loan_path, loan);
-                    false
-                } else {
-                    true
-                }
+                                                      |loan, _restr| {
+                this.report_illegal_mutation(assignment_span, &*loan_path, loan);
+                false
             });
 
             if !cont { return false }
