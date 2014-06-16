@@ -217,7 +217,6 @@ $$(LIBUV_LOCAL_$(1)): $$(LIBUV_DEPS) $$(MKFILE_DEPS)
 		CXX="$$(CXX_$(1))" \
 		AR="$$(AR_$(1))" \
 		V=$$(VERBOSE)
-	$$(Q)cp $$(S)src/libuv/libuv.a $$@
 else ifeq ($(OSTYPE_$(1)), apple-ios) # iOS
 $$(LIBUV_XCODEPROJ_$(1)): $$(LIBUV_DEPS) $$(MKFILE_DEPS) $$(LIBUV_STAMP_$(1))
 	cp -rf $(S)src/libuv/ $$(LIBUV_BUILD_DIR_$(1))
