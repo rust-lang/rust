@@ -11,22 +11,10 @@
 use from_str::FromStr;
 use from_str::from_str;
 use libc::uintptr_t;
-use libc;
 use option::{Some, None, Option};
 use os;
 use str::Str;
 use sync::atomics;
-
-/// Get the number of cores available
-pub fn num_cpus() -> uint {
-    unsafe {
-        return rust_get_num_cpus();
-    }
-
-    extern {
-        fn rust_get_num_cpus() -> libc::uintptr_t;
-    }
-}
 
 /// Dynamically inquire about whether we're running under V.
 /// You should usually not use this unless your test definitely
@@ -81,7 +69,7 @@ pub fn default_sched_threads() -> uint {
             if limit_thread_creation_due_to_osx_and_valgrind() {
                 1
             } else {
-                num_cpus()
+                os::num_cpus()
             }
         }
     }

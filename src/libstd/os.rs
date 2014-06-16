@@ -56,6 +56,16 @@ use libc::c_char;
 #[cfg(windows)]
 use str::OwnedStr;
 
+/// Get the number of cores available
+pub fn num_cpus() -> uint {
+    unsafe {
+        return rust_get_num_cpus();
+    }
+
+    extern {
+        fn rust_get_num_cpus() -> libc::uintptr_t;
+    }
+}
 
 pub static TMPBUF_SZ : uint = 1000u;
 static BUF_BYTES : uint = 2048u;
@@ -1749,6 +1759,11 @@ mod tests {
                                      .collect::<String>());
         assert!(getenv(n.as_slice()).is_none());
         n
+    }
+
+    #[test]
+    fn test_num_cpus() {
+        assert!(os::num_cpus() > 0);
     }
 
     #[test]
