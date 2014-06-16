@@ -10,7 +10,7 @@
 
 extern crate debug;
 
-use std::task::TaskBuilder;
+use std::task;
 
 pub fn main() { test00(); }
 
@@ -25,9 +25,7 @@ fn test00() {
     let (tx, rx) = channel();
     let number_of_messages: int = 10;
 
-    let mut builder = TaskBuilder::new();
-    let result = builder.future_result();
-    builder.spawn(proc() {
+    let result = task::try_future(proc() {
         test00_start(&tx, number_of_messages);
     });
 
@@ -38,7 +36,7 @@ fn test00() {
         i += 1;
     }
 
-    result.recv();
+    result.unwrap();
 
     assert_eq!(sum, number_of_messages * (number_of_messages - 1) / 2);
 }

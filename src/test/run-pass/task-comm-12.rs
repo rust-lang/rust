@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use std::task;
-use std::task::TaskBuilder;
 
 pub fn main() { test00(); }
 
@@ -17,9 +16,7 @@ fn start(_task_number: int) { println!("Started / Finished task."); }
 
 fn test00() {
     let i: int = 0;
-    let mut builder = TaskBuilder::new();
-    let mut result = builder.future_result();
-    builder.spawn(proc() {
+    let mut result = task::try_future(proc() {
         start(i)
     });
 
@@ -31,7 +28,7 @@ fn test00() {
     }
 
     // Try joining tasks that have already finished.
-    result.recv();
+    result.unwrap();
 
     println!("Joined task.");
 }

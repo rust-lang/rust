@@ -9,14 +9,14 @@
 // except according to those terms.
 
 use std::io::{ChanReader, ChanWriter};
-use std::task::build;
+use std::task::TaskBuilder;
 
 fn main() {
     let (tx, rx) = channel();
     let mut reader = ChanReader::new(rx);
     let stderr = ChanWriter::new(tx);
 
-    let res = build().stderr(box stderr as Box<Writer + Send>).try(proc() -> () {
+    let res = TaskBuilder::new().stderr(box stderr as Box<Writer + Send>).try(proc() -> () {
         fail!("Hello, world!")
     });
     assert!(res.is_err());
