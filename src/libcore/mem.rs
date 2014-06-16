@@ -173,84 +173,84 @@ pub unsafe fn move_val_init<T>(dst: &mut T, src: T) {
 ///
 /// On little endian, this is a no-op.  On big endian, the bytes are swapped.
 #[inline]
-#[stable]
+#[deprecated = "use `Int::to_little_endian` instead"]
 pub fn to_le16(x: u16) -> u16 { x.to_little_endian() }
 
 /// Convert an u32 to little endian from the target's endianness.
 ///
 /// On little endian, this is a no-op.  On big endian, the bytes are swapped.
 #[inline]
-#[stable]
+#[deprecated = "use `Int::to_little_endian` instead"]
 pub fn to_le32(x: u32) -> u32 { x.to_little_endian() }
 
 /// Convert an u64 to little endian from the target's endianness.
 ///
 /// On little endian, this is a no-op.  On big endian, the bytes are swapped.
 #[inline]
-#[stable]
+#[deprecated = "use `Int::to_little_endian` instead"]
 pub fn to_le64(x: u64) -> u64 { x.to_little_endian() }
 
 /// Convert an u16 to big endian from the target's endianness.
 ///
 /// On big endian, this is a no-op.  On little endian, the bytes are swapped.
 #[inline]
-#[stable]
+#[deprecated = "use `Int::to_big_endian` instead"]
 pub fn to_be16(x: u16) -> u16 { x.to_big_endian() }
 
 /// Convert an u32 to big endian from the target's endianness.
 ///
 /// On big endian, this is a no-op.  On little endian, the bytes are swapped.
 #[inline]
-#[stable]
+#[deprecated = "use `Int::to_big_endian` instead"]
 pub fn to_be32(x: u32) -> u32 { x.to_big_endian() }
 
 /// Convert an u64 to big endian from the target's endianness.
 ///
 /// On big endian, this is a no-op.  On little endian, the bytes are swapped.
 #[inline]
-#[stable]
+#[deprecated = "use `Int::to_big_endian` instead"]
 pub fn to_be64(x: u64) -> u64 { x.to_big_endian() }
 
 /// Convert an u16 from little endian to the target's endianness.
 ///
 /// On little endian, this is a no-op.  On big endian, the bytes are swapped.
 #[inline]
-#[stable]
+#[deprecated = "use `Int::from_little_endian` instead"]
 pub fn from_le16(x: u16) -> u16 { Int::from_little_endian(x) }
 
 /// Convert an u32 from little endian to the target's endianness.
 ///
 /// On little endian, this is a no-op.  On big endian, the bytes are swapped.
 #[inline]
-#[stable]
+#[deprecated = "use `Int::from_little_endian` instead"]
 pub fn from_le32(x: u32) -> u32 { Int::from_little_endian(x) }
 
 /// Convert an u64 from little endian to the target's endianness.
 ///
 /// On little endian, this is a no-op.  On big endian, the bytes are swapped.
 #[inline]
-#[stable]
+#[deprecated = "use `Int::from_little_endian` instead"]
 pub fn from_le64(x: u64) -> u64 { Int::from_little_endian(x) }
 
 /// Convert an u16 from big endian to the target's endianness.
 ///
 /// On big endian, this is a no-op.  On little endian, the bytes are swapped.
 #[inline]
-#[stable]
+#[deprecated = "use `Int::from_big_endian` instead"]
 pub fn from_be16(x: u16) -> u16 { Int::from_big_endian(x) }
 
 /// Convert an u32 from big endian to the target's endianness.
 ///
 /// On big endian, this is a no-op.  On little endian, the bytes are swapped.
 #[inline]
-#[stable]
+#[deprecated = "use `Int::from_big_endian` instead"]
 pub fn from_be32(x: u32) -> u32 { Int::from_big_endian(x) }
 
 /// Convert an u64 from big endian to the target's endianness.
 ///
 /// On big endian, this is a no-op.  On little endian, the bytes are swapped.
 #[inline]
-#[stable]
+#[deprecated = "use `Int::from_big_endian` instead"]
 pub fn from_be64(x: u64) -> u64 { Int::from_big_endian(x) }
 
 /// Swap the values at two mutable locations of the same type, without
