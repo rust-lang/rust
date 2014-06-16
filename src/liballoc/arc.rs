@@ -90,6 +90,37 @@ impl<T: Share + Send> Arc<T> {
         Arc { _ptr: unsafe { mem::transmute(x) } }
     }
 
+    /// Construct a new atomically reference-counted box storing the value returned
+    /// by the given closure. The weak reference will be inactive during construction
+    /// to preserve safety, but will point to the returned value when construction
+    /// is complete.
+    #[inline]
+    #[experimental]
+    pub fn new_cyclic(op: |Weak<T>| -> T) -> Arc<T> {
+        let ptr = unsafe {
+            // The strong count must be initially set to zero to prevent the closure
+            // from upgrading the weak pointer. However, the weak count must cover
+            // both the weak pointer passed to the closure and the final strong reference
+            // to prevent the closure from dropping the pointer and freeing the memory.
+            mem::transmute(box ArcInner {
+                data: mem::uninitialized::<T>(),
+                strong: atomics::AtomicUint::new(0),
+                weak: atomics::AtomicUint::new(2)
+            })
+        };
+
+        let val = op(Weak { _ptr: ptr });
+
+        unsafe {
+            ptr::write(&mut (*ptr).data, val);
+            // The closure can't have changed the strong count, so we can safely set it.
+            // We need to use release so that any upgrade calls see the write of the data.
+            (*ptr).strong.store(1, atomics::Release);
+        }
+
+        Arc { _ptr: ptr }
+    }
+
     #[inline]
     fn inner<'a>(&'a self) -> &'a ArcInner<T> {
         // This unsafety is ok because while this arc is alive we're guaranteed
@@ -278,7 +309,7 @@ mod tests {
     use super::{Arc, Weak};
     use sync::Mutex;
 
-    struct Canary(*mut atomics::AtomicUint);
+    struct Canary(*atomics::AtomicUint);
 
     impl Drop for Canary
     {
@@ -404,20 +435,58 @@ mod tests {
 
     #[test]
     fn drop_arc() {
-        let mut canary = atomics::AtomicUint::new(0);
-        let x = Arc::new(Canary(&mut canary as *mut atomics::AtomicUint));
+        let canary = atomics::AtomicUint::new(0);
+        let x = Arc::new(Canary(&canary as *atomics::AtomicUint));
         drop(x);
         assert!(canary.load(atomics::Acquire) == 1);
     }
 
     #[test]
     fn drop_arc_weak() {
-        let mut canary = atomics::AtomicUint::new(0);
-        let arc = Arc::new(Canary(&mut canary as *mut atomics::AtomicUint));
+        let canary = atomics::AtomicUint::new(0);
+        let arc = Arc::new(Canary(&canary as *atomics::AtomicUint));
         let arc_weak = arc.downgrade();
         assert!(canary.load(atomics::Acquire) == 0);
         drop(arc);
         assert!(canary.load(atomics::Acquire) == 1);
         drop(arc_weak);
+    }
+
+    #[test]
+    fn test_acyclic_cyclic() {
+        let canary = atomics::AtomicUint::new(0);
+        let arc = Arc::new_cyclic(|weak| {
+            assert_eq!(canary.load(atomics::Relaxed), 0);
+            drop(weak);
+            assert_eq!(canary.load(atomics::Relaxed), 0);
+            Canary(&canary as *atomics::AtomicUint)
+        });
+        assert_eq!(canary.load(atomics::Relaxed), 0);
+        drop(arc);
+        assert_eq!(canary.load(atomics::Relaxed), 1);
+    }
+
+    struct Cycle {
+        weak: Weak<Cycle>,
+        canary: Canary
+    }
+
+    #[test]
+    fn test_collected_cyclic() {
+        let canary = atomics::AtomicUint::new(0);
+        let arc = Arc::new_cyclic(|weak| {
+            assert_eq!(canary.load(atomics::Relaxed), 0);
+            Cycle { weak: weak, canary: Canary(&canary as *atomics::AtomicUint) }
+        });
+        assert_eq!(canary.load(atomics::Relaxed), 0);
+        drop(arc);
+        assert_eq!(canary.load(atomics::Relaxed), 1);
+    }
+
+    #[test]
+    fn test_uninitialized_cyclic() {
+        let _ = Arc::new_cyclic(|weak| {
+            assert!(weak.upgrade().is_none());
+        });
     }
 }

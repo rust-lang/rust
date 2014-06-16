@@ -23,7 +23,7 @@ pointers, and then storing the parent pointers as `Weak` pointers.
 
 */
 
-use core::mem::transmute;
+use core::mem::{transmute, uninitialized};
 use core::cell::Cell;
 use core::clone::Clone;
 use core::cmp::{PartialEq, PartialOrd, Eq, Ord, Ordering};
@@ -71,6 +71,44 @@ impl<T> Rc<T> {
                 _nosend: marker::NoSend,
                 _noshare: marker::NoShare
             }
+        }
+    }
+
+    /// Construct a new reference-counted box storing the value returned by the
+    /// given closure. The weak reference will be inactive during construction
+    /// to preserve safety, but will point to the returned value when construction
+    /// is complete.
+    #[inline]
+    #[experimental]
+    pub fn new_cyclic(op: |Weak<T>| -> T) -> Rc<T> {
+        let ptr = unsafe {
+            // The strong count must be initially set to zero to prevent the closure
+            // from upgrading the weak pointer. However, the weak count must cover
+            // both the weak pointer passed to the closure and the final strong reference
+            // to prevent the closure from dropping the pointer and freeing the memory.
+            transmute(box RcBox {
+                value: uninitialized::<T>(),
+                strong: Cell::new(0),
+                weak: Cell::new(2)
+            })
+        };
+
+        let val = op(Weak {
+            _ptr: ptr,
+            _nosend: marker::NoSend,
+            _noshare: marker::NoShare
+        });
+
+        unsafe {
+            ptr::write(&mut (*ptr).value, val);
+            // The closure can't have changed the strong count, so we can safely set it.
+            (*ptr).strong.set(1);
+        }
+
+        Rc {
+            _ptr: ptr,
+            _nosend: marker::NoSend,
+            _noshare: marker::NoShare
         }
     }
 }
@@ -269,9 +307,10 @@ impl<T> RcBoxPtr<T> for Weak<T> {
 #[allow(experimental)]
 mod tests {
     use super::{Rc, Weak};
-    use std::cell::RefCell;
+    use std::cell::{Cell, RefCell};
     use std::option::{Option, Some, None};
     use std::mem::drop;
+    use std::ops::Drop;
     use std::clone::Clone;
 
     #[test]
@@ -399,4 +438,54 @@ mod tests {
         assert!(cow1_weak.upgrade().is_none());
     }
 
+    struct Canary<'a> {
+        count: &'a Cell<uint>
+    }
+
+    // This isn't unsafe in any way, but as described in #14889, #14377, and #13853,
+    // we need #[unsafe_destructor] to not ICE.
+    #[unsafe_destructor]
+    impl<'a> Drop for Canary<'a> {
+        fn drop(&mut self) {
+            self.count.set(self.count.get() + 1);
+        }
+    }
+
+    #[test]
+    fn test_acyclic_cyclic() {
+        let canary = Cell::new(0);
+        let rc = Rc::new_cyclic(|weak| {
+            assert_eq!(canary.get(), 0);
+            drop(weak);
+            assert_eq!(canary.get(), 0);
+            Canary { count: &canary }
+        });
+        assert_eq!(canary.get(), 0);
+        drop(rc);
+        assert_eq!(canary.get(), 1);
+    }
+
+    struct Cycle<'a> {
+        weak: Weak<Cycle<'a>>,
+        canary: Canary<'a>
+    }
+
+    #[test]
+    fn test_collected_cyclic() {
+        let canary = Cell::new(0);
+        let rc = Rc::new_cyclic(|weak| {
+            assert_eq!(canary.get(), 0);
+            Cycle { weak: weak, canary: Canary { count: &canary } }
+        });
+        assert_eq!(canary.get(), 0);
+        drop(rc);
+        assert_eq!(canary.get(), 1);
+    }
+
+    #[test]
+    fn test_uninitialized_cyclic() {
+        let _ = Rc::new_cyclic(|weak| {
+            assert!(weak.upgrade().is_none());
+        });
+    }
 }
