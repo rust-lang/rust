@@ -21,7 +21,6 @@ use middle::ty;
 use util::ppaux::{note_and_explain_region, Repr, UserString};
 
 use std::cell::{Cell};
-use std::ops::{BitOr, BitAnd};
 use std::rc::Rc;
 use std::gc::{Gc, GC};
 use std::string::String;
@@ -250,56 +249,8 @@ pub fn opt_loan_path(cmt: &mc::cmt) -> Option<Rc<LoanPath>> {
     }
 }
 
-///////////////////////////////////////////////////////////////////////////
-// Restrictions
-//
-// Borrowing an lvalue often results in *restrictions* that limit what
-// can be done with this lvalue during the scope of the loan:
-//
-// - `RESTR_MUTATE`: The lvalue may not be modified or `&mut` borrowed.
-// - `RESTR_FREEZE`: `&` borrows of the lvalue are forbidden.
-//
-// In addition, no value which is restricted may be moved. Therefore,
-// restrictions are meaningful even if the RestrictionSet is empty,
-// because the restriction against moves is implied.
-
 pub struct Restriction {
     loan_path: Rc<LoanPath>,
-    set: RestrictionSet
-}
-
-#[deriving(PartialEq)]
-pub struct RestrictionSet {
-    bits: u32
-}
-
-#[allow(dead_code)] // potentially useful
-pub static RESTR_EMPTY: RestrictionSet  = RestrictionSet {bits: 0b0000};
-pub static RESTR_MUTATE: RestrictionSet = RestrictionSet {bits: 0b0001};
-pub static RESTR_FREEZE: RestrictionSet = RestrictionSet {bits: 0b0010};
-
-impl RestrictionSet {
-    pub fn intersects(&self, restr: RestrictionSet) -> bool {
-        (self.bits & restr.bits) != 0
-    }
-}
-
-impl BitOr<RestrictionSet,RestrictionSet> for RestrictionSet {
-    fn bitor(&self, rhs: &RestrictionSet) -> RestrictionSet {
-        RestrictionSet {bits: self.bits | rhs.bits}
-    }
-}
-
-impl BitAnd<RestrictionSet,RestrictionSet> for RestrictionSet {
-    fn bitand(&self, rhs: &RestrictionSet) -> RestrictionSet {
-        RestrictionSet {bits: self.bits & rhs.bits}
-    }
-}
-
-impl Repr for RestrictionSet {
-    fn repr(&self, _tcx: &ty::ctxt) -> String {
-        format!("RestrictionSet(0x{:x})", self.bits as uint)
-    }
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -832,9 +783,7 @@ impl Repr for Loan {
 
 impl Repr for Restriction {
     fn repr(&self, tcx: &ty::ctxt) -> String {
-        (format!("Restriction({}, {:x})",
-                 self.loan_path.repr(tcx),
-                 self.set.bits as uint)).to_string()
+        (format!("Restriction({})", self.loan_path.repr(tcx))).to_string()
     }
 }
 
