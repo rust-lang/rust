@@ -17,6 +17,7 @@
 use libc;
 
 #[cfg(not(target_arch = "arm"))]
+#[cfg(target_os = "ios")]
 #[repr(C)]
 pub enum _Unwind_Action {
     _UA_SEARCH_PHASE = 1,
@@ -61,8 +62,11 @@ pub static unwinder_private_data_size: int = 5;
 #[cfg(target_arch = "x86_64")]
 pub static unwinder_private_data_size: int = 2;
 
-#[cfg(target_arch = "arm")]
+#[cfg(target_arch = "arm", not(target_os = "ios"))]
 pub static unwinder_private_data_size: int = 20;
+
+#[cfg(target_arch = "arm", target_os = "ios")]
+pub static unwinder_private_data_size: int = 5;
 
 #[cfg(target_arch = "mips")]
 pub static unwinder_private_data_size: int = 2;
@@ -89,8 +93,27 @@ extern {}
 #[link(name = "gcc")]
 extern {}
 
+
 extern "C" {
+    // iOS on armv7 uses SjLj exceptions and requires to link
+    // agains corresponding routine (..._SjLj_...)
+    #[cfg(not(target_os = "ios", target_arch = "arm"))]
     pub fn _Unwind_RaiseException(exception: *_Unwind_Exception)
-                -> _Unwind_Reason_Code;
+                                  -> _Unwind_Reason_Code;
+
+    #[cfg(target_os = "ios", target_arch = "arm")]
+    fn _Unwind_SjLj_RaiseException(e: *_Unwind_Exception)
+                                   -> _Unwind_Reason_Code;
+
     pub fn _Unwind_DeleteException(exception: *_Unwind_Exception);
+}
+
+// ... and now we just providing access to SjLj counterspart
+// through a standard name to hide those details from others
+// (see also comment above regarding _Unwind_RaiseException)
+#[cfg(target_os = "ios", target_arch = "arm")]
+#[inline(always)]
+pub unsafe fn _Unwind_RaiseException(exc: *_Unwind_Exception)
+                                     -> _Unwind_Reason_Code {
+    _Unwind_SjLj_RaiseException(exc)
 }

@@ -50,6 +50,7 @@ pub mod file;
 pub mod file;
 
 #[cfg(target_os = "macos")]
+#[cfg(target_os = "ios")]
 #[cfg(target_os = "freebsd")]
 #[cfg(target_os = "android")]
 #[cfg(target_os = "linux")]

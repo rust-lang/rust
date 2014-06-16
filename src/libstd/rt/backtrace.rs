@@ -237,22 +237,63 @@ fn demangle(writer: &mut Writer, s: &str) -> IoResult<()> {
 #[cfg(unix)]
 mod imp {
     use c_str::CString;
-    use io::{IoResult, IoError, Writer};
+    use io::{IoResult, Writer};
     use libc;
     use mem;
     use option::{Some, None, Option};
     use result::{Ok, Err};
     use rt::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
 
-    struct Context<'a> {
-        idx: int,
-        writer: &'a mut Writer,
-        last_error: Option<IoError>,
+    /// As always - iOS on arm uses SjLj exceptions and
+    /// _Unwind_Backtrace is even not available there. Still,
+    /// backtraces could be extracted using a backtrace function,
+    /// which thanks god is public
+    ///
+    /// As mentioned in a huge comment block above, backtrace doesn't
+    /// play well with green threads, so while it is extremely nice
+    /// and simple to use it should be used only on iOS devices as the
+    /// only viable option.
+    #[cfg(target_os = "ios", target_arch = "arm")]
+    #[inline(never)]
+    pub fn write(w: &mut Writer) -> IoResult<()> {
+        use iter::{Iterator, range};
+        use result;
+        use slice::{MutableVector};
+
+        extern {
+            fn backtrace(buf: *mut *libc::c_void, sz: libc::c_int) -> libc::c_int;
+        }
+
+        // while it doesn't requires lock for work as everything is
+        // local, it still displays much nicier backtraces when a
+        // couple of tasks fail simultaneously
+        static mut LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;
+        let _g = unsafe { LOCK.lock() };
+
+        try!(writeln!(w, "stack backtrace:"));
+        // 100 lines should be enough
+        static SIZE: libc::c_int = 100;
+        let mut buf: [*libc::c_void, ..SIZE] = unsafe {mem::zeroed()};
+        let cnt = unsafe { backtrace(buf.as_mut_ptr(), SIZE) as uint};
+
+        // skipping the first one as it is write itself
+        result::fold_(range(1, cnt).map(|i| {
+            print(w, i as int, buf[i])
+        }))
     }
 
+    #[cfg(not(target_os = "ios", target_arch = "arm"))]
     #[inline(never)] // if we know this is a function call, we can skip it when
                      // tracing
     pub fn write(w: &mut Writer) -> IoResult<()> {
+        use io::IoError;
+
+        struct Context<'a> {
+            idx: int,
+            writer: &'a mut Writer,
+            last_error: Option<IoError>,
+        }
+
         // When using libbacktrace, we use some necessary global state, so we
         // need to prevent more than one thread from entering this block. This
         // is semi-reasonable in terms of printing anyway, and we know that all
@@ -291,7 +332,7 @@ mod imp {
             // instructions after it. This means that the return instruction
             // pointer points *outside* of the calling function, and by
             // unwinding it we go back to the original function.
-            let ip = if cfg!(target_os = "macos") {
+            let ip = if cfg!(target_os = "macos") || cfg!(target_os = "ios") {
                 ip
             } else {
                 unsafe { uw::_Unwind_FindEnclosingFunction(ip) }
@@ -323,6 +364,7 @@ mod imp {
     }
 
     #[cfg(target_os = "macos")]
+    #[cfg(target_os = "ios")]
     fn print(w: &mut Writer, idx: int, addr: *libc::c_void) -> IoResult<()> {
         use intrinsics;
         #[repr(C)]
@@ -347,7 +389,7 @@ mod imp {
         }
     }
 
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(not(target_os = "macos"), not(target_os = "ios"))]
     fn print(w: &mut Writer, idx: int, addr: *libc::c_void) -> IoResult<()> {
         use collections::Collection;
         use iter::Iterator;
@@ -487,9 +529,14 @@ mod imp {
 
     /// Unwind library interface used for backtraces
     ///
-    /// Note that the native libraries come from librustrt, not this module.
+    /// Note that the native libraries come from librustrt, not this
+    /// module.
+    /// Note that dead code is allowed as here are just bindings
+    /// iOS doesn't use all of them it but adding more
+    /// platform-specific configs pollutes the code too much
     #[allow(non_camel_case_types)]
     #[allow(non_snake_case_functions)]
+    #[allow(dead_code)]
     mod uw {
         use libc;
 
@@ -514,6 +561,8 @@ mod imp {
                           arg: *libc::c_void) -> _Unwind_Reason_Code;
 
         extern {
+            // No native _Unwind_Backtrace on iOS
+            #[cfg(not(target_os = "ios", target_arch = "arm"))]
             pub fn _Unwind_Backtrace(trace: _Unwind_Trace_Fn,
                                      trace_argument: *libc::c_void)
                         -> _Unwind_Reason_Code;

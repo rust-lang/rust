@@ -462,7 +462,7 @@ fn declare_generic_glue(ccx: &CrateContext, t: ty::t, llfnty: Type,
         t,
         format!("glue_{}", name).as_slice());
     debug!("{} is for type {}", fn_nm, ppaux::ty_to_str(ccx.tcx(), t));
-    let llfn = decl_cdecl_fn(ccx.llmod, fn_nm.as_slice(), llfnty, ty::mk_nil());
+    let llfn = decl_cdecl_fn(ccx, fn_nm.as_slice(), llfnty, ty::mk_nil());
     note_unique_llvm_symbol(ccx, fn_nm);
     return llfn;
 }

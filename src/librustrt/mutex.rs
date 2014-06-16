@@ -361,6 +361,7 @@ mod imp {
     }
 
     #[cfg(target_os = "macos")]
+    #[cfg(target_os = "ios")]
     mod os {
         use libc;
 
@@ -371,6 +372,10 @@ mod imp {
         #[cfg(target_arch = "x86")]
         static __PTHREAD_MUTEX_SIZE__: uint = 40;
         #[cfg(target_arch = "x86")]
+        static __PTHREAD_COND_SIZE__: uint = 24;
+        #[cfg(target_arch = "arm")]
+        static __PTHREAD_MUTEX_SIZE__: uint = 40;
+        #[cfg(target_arch = "arm")]
         static __PTHREAD_COND_SIZE__: uint = 24;
 
         static _PTHREAD_MUTEX_SIG_init: libc::c_long = 0x32AAABA7;

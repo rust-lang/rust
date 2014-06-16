@@ -215,7 +215,8 @@ fn visit_item(e: &Env, i: &ast::Item) {
                             Some(k) => {
                                 if k.equiv(&("static")) {
                                     cstore::NativeStatic
-                                } else if e.sess.targ_cfg.os == abi::OsMacos &&
+                                } else if (e.sess.targ_cfg.os == abi::OsMacos ||
+                                           e.sess.targ_cfg.os == abi::OsiOS) &&
                                           k.equiv(&("framework")) {
                                     cstore::NativeFramework
                                 } else if k.equiv(&("framework")) {
@@ -345,7 +346,7 @@ fn resolve_crate<'a>(e: &mut Env,
                 id_hash: id_hash.as_slice(),
                 hash: hash.map(|a| &*a),
                 filesearch: e.sess.target_filesearch(),
-                os: config::cfg_os_to_meta_os(e.sess.targ_cfg.os),
+                os: e.sess.targ_cfg.os,
                 triple: e.sess.targ_cfg.target_strs.target_triple.as_slice(),
                 root: root,
                 rejected_via_hash: vec!(),
@@ -409,7 +410,7 @@ impl<'a> PluginMetadataReader<'a> {
             hash: None,
             filesearch: self.env.sess.host_filesearch(),
             triple: driver::host_triple(),
-            os: config::cfg_os_to_meta_os(os),
+            os: os,
             root: &None,
             rejected_via_hash: vec!(),
             rejected_via_triple: vec!(),
@@ -420,7 +421,7 @@ impl<'a> PluginMetadataReader<'a> {
                 // try loading from target crates (only valid if there are
                 // no syntax extensions)
                 load_ctxt.triple = target_triple;
-                load_ctxt.os = config::cfg_os_to_meta_os(self.env.sess.targ_cfg.os);
+                load_ctxt.os = self.env.sess.targ_cfg.os;
                 load_ctxt.filesearch = self.env.sess.target_filesearch();
                 let lib = load_ctxt.load_library_crate();
                 if decoder::get_plugin_registrar_fn(lib.metadata.as_slice()).is_some() {

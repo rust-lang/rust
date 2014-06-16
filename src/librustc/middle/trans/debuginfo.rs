@@ -660,7 +660,8 @@ pub fn finalize(cx: &CrateContext) {
         // instruct LLVM to emit an older version of dwarf, however,
         // for OS X to understand. For more info see #11352
         // This can be overridden using --llvm-opts -dwarf-version,N.
-        if cx.sess().targ_cfg.os == abi::OsMacos {
+        if cx.sess().targ_cfg.os == abi::OsMacos ||
+            cx.sess().targ_cfg.os == abi::OsiOS {
             "Dwarf Version".with_c_str(
                 |s| llvm::LLVMRustAddModuleFlag(cx.llmod, s, 2));
         } else {
