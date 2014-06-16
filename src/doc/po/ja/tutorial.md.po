@@ -303,15 +303,15 @@ msgstr ""
 #: src/doc/tutorial.md:92
 #, fuzzy
 #| msgid ""
-#| "[bug-3319]: https://github.com/mozilla/rust/issues/3319 [wiki-start]: "
-#| "https://github.com/mozilla/rust/wiki/Note-getting-started-developing-Rust"
+#| "[bug-3319]: https://github.com/rust-lang/rust/issues/3319 [wiki-start]: "
+#| "https://github.com/rust-lang/rust/wiki/Note-getting-started-developing-Rust"
 msgid ""
-"[bug-3319]: https://github.com/mozilla/rust/issues/3319 [wiki-start]: "
-"https://github.com/mozilla/rust/wiki/Note-getting-started-developing-Rust "
-"[git]: https://github.com/mozilla/rust.git"
+"[bug-3319]: https://github.com/rust-lang/rust/issues/3319 [wiki-start]: "
+"https://github.com/rust-lang/rust/wiki/Note-getting-started-developing-Rust "
+"[git]: https://github.com/rust-lang/rust.git"
 msgstr ""
-"[bug-3319]: https://github.com/mozilla/rust/issues/3319\n"
-"[wiki-start]: https://github.com/mozilla/rust/wiki/Note-getting-started-"
+"[bug-3319]: https://github.com/rust-lang/rust/issues/3319\n"
+"[wiki-start]: https://github.com/rust-lang/rust/wiki/Note-getting-started-"
 "developing-Rust"
 
 #. type: Plain text

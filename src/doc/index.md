@@ -75,4 +75,4 @@ li {list-style-type: none; }
     * [`#rust-internals`](http://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust-internals) - compiler and libraries
     * [`#rust-osdev`](http://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust-osdev) - operating system development
 * The Rust community on [Reddit](http://reddit.com/r/rust)
-* The Rust [wiki](http://github.com/mozilla/rust/wiki)
+* The Rust [wiki](http://github.com/rust-lang/rust/wiki)

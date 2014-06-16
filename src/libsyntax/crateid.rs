@@ -12,8 +12,8 @@ use std::fmt;
 
 /// CrateIds identify crates and include the crate name and optionally a path
 /// and version. In the full form, they look like relative URLs. Example:
-/// `github.com/mozilla/rust#std:1.0` would be a package ID with a path of
-/// `github.com/mozilla/rust` and a crate name of `std` with a version of
+/// `github.com/rust-lang/rust#std:1.0` would be a package ID with a path of
+/// `github.com/rust-lang/rust` and a crate name of `std` with a version of
 /// `1.0`. If no crate name is given after the hash, the name is inferred to
 /// be the last component of the path. If no version is given, it is inferred
 /// to be `0.0`.
