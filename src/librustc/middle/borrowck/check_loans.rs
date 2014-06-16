@@ -870,34 +870,16 @@ impl<'a> CheckLoanCtxt<'a> {
             // here is to `v[*]`, and the existing restrictions were issued
             // for `v`, not `v[*]`.
             //
-            // So in this loop, we walk back up the loan path so long
-            // as the mutability of the path is dependent on a super
-            // path, and check that the super path was not borrowed.
-            //
-            // Mutability of a path can be dependent on the super path
-            // in two ways. First, it might be inherited mutability.
-            // Second, the pointee of an `&mut` pointer can only be
-            // mutated if it is found in an unaliased location, so we
-            // have to check that the owner location is not borrowed.
+            // So in this loop, we walk back up the path and look for
+            // loans, not restrictions.
 
             let full_loan_path = loan_path.clone();
             let mut loan_path = loan_path;
             loop {
                 loan_path = match *loan_path {
-                    // Peel back one layer if, for `loan_path` to be
-                    // mutable, `lp_base` must be mutable. This occurs
-                    // with inherited mutability, owned pointers and
-                    // `&mut` pointers.
-                    LpExtend(ref lp_base, mc::McInherited, _) |
-                    LpExtend(ref lp_base, _, LpDeref(mc::OwnedPtr)) |
-                    LpExtend(ref lp_base, _, LpDeref(mc::GcPtr)) |
-                    LpExtend(ref lp_base, _, LpDeref(mc::BorrowedPtr(ty::MutBorrow, _))) => {
+                    LpExtend(ref lp_base, _, _) => {
                         lp_base.clone()
                     }
-
-                    // Otherwise stop iterating
-                    LpExtend(_, mc::McDeclared, _) |
-                    LpExtend(_, mc::McImmutable, _) |
                     LpVar(_) => {
                         return;
                     }
