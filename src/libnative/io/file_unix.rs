@@ -133,6 +133,7 @@ impl rtio::RtioFileStream for FileDesc {
         return super::mkerr_libc(os_datasync(self.fd()));
 
         #[cfg(target_os = "macos")]
+        #[cfg(target_os = "ios")]
         fn os_datasync(fd: c_int) -> c_int {
             unsafe { libc::fcntl(fd, libc::F_FULLFSYNC) }
         }
@@ -140,7 +141,7 @@ impl rtio::RtioFileStream for FileDesc {
         fn os_datasync(fd: c_int) -> c_int {
             retry(|| unsafe { libc::fdatasync(fd) })
         }
-        #[cfg(not(target_os = "macos"), not(target_os = "linux"))]
+        #[cfg(not(target_os = "macos"), not(target_os = "ios"), not(target_os = "linux"))]
         fn os_datasync(fd: c_int) -> c_int {
             retry(|| unsafe { libc::fsync(fd) })
         }

@@ -93,7 +93,20 @@ pub fn now() -> u64 {
     }
 }
 
-fn helper(input: libc::c_int, messages: Receiver<Req>, _: ()) {
+
+// Note: although the last parameter isn't used there is no way now to
+// convert it to unit type, because LLVM dies in SjLj preparation
+// step (unfortunately iOS uses SjLJ exceptions)
+//
+// It's definitely a temporary workaround just to get it working.
+// So far it looks like an LLVM issue and it was reported:
+// http://llvm.org/bugs/show_bug.cgi?id=19855
+// Actually this issue is pretty common while compiling for armv7 iOS
+// and in most cases it is simply solved by using --opt-level=2 (or -O)
+//
+// For this specific case unfortunately turning optimizations wasn't
+// enough.
+fn helper(input: libc::c_int, messages: Receiver<Req>, _: int) {
     let mut set: c::fd_set = unsafe { mem::zeroed() };
 
     let mut fd = FileDesc::new(input, true);
@@ -202,7 +215,9 @@ fn helper(input: libc::c_int, messages: Receiver<Req>, _: ()) {
 
 impl Timer {
     pub fn new() -> IoResult<Timer> {
-        unsafe { HELPER.boot(|| {}, helper); }
+        // See notes above regarding using int return value
+        // instead of ()
+        unsafe { HELPER.boot(|| {0}, helper); }
 
         static mut ID: atomics::AtomicUint = atomics::INIT_ATOMIC_UINT;
         let id = unsafe { ID.fetch_add(1, atomics::Relaxed) };

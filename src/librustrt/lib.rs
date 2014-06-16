@@ -156,7 +156,7 @@ pub unsafe fn cleanup() {
 pub mod shouldnt_be_public {
     #[cfg(not(test))]
     pub use super::local_ptr::native::maybe_tls_key;
-    #[cfg(not(windows), not(target_os = "android"))]
+    #[cfg(not(windows), not(target_os = "android"), not(target_os = "ios"))]
     pub use super::local_ptr::compiled::RT_TLS_PTR;
 }
 

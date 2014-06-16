@@ -12,7 +12,6 @@
 
 pub struct t {
     pub module_asm: String,
-    pub meta_sect_name: String,
     pub data_layout: String,
     pub target_triple: String,
     pub cc_args: Vec<String> ,
