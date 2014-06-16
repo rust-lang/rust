@@ -120,6 +120,52 @@
 //! });
 //! rx.recv();
 //! ```
+//!
+//! Reading from a channel with a timeout requires to use a Timer together
+//! with the channel. You can use the select! macro to select either and
+//! handle the timeout case. This first example will break out of the loop
+//! after 10 seconds no matter what:
+//!
+//! ```no_run
+//! use std::io::timer::Timer;
+//!
+//! let (tx, rx) = channel::<int>();
+//! let mut timer = Timer::new().unwrap();
+//! let timeout = timer.oneshot(10000);
+//!
+//! loop {
+//!     select! {
+//!         val = rx.recv() => println!("Received {}", val),
+//!         () = timeout.recv() => {
+//!             println!("timed out, total time was more than 10 seconds")
+//!             break;
+//!         }
+//!     }
+//! }
+//! ```
+//!
+//! This second example is more costly since it allocates a new timer every
+//! time a message is received, but it allows you to timeout after the channel
+//! has been inactive for 5 seconds:
+//!
+//! ```no_run
+//! use std::io::timer::Timer;
+//!
+//! let (tx, rx) = channel::<int>();
+//! let mut timer = Timer::new().unwrap();
+//!
+//! loop {
+//!     let timeout = timer.oneshot(5000);
+//!
+//!     select! {
+//!         val = rx.recv() => println!("Received {}", val),
+//!         () = timeout.recv() => {
+//!             println!("timed out, no message received in 5 seconds")
+//!             break;
+//!         }
+//!     }
+//! }
+//! ```
 
 // A description of how Rust's channel implementation works
 //
