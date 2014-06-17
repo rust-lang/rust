@@ -170,6 +170,12 @@ pub struct Context<'a> {
     /// Type context we're checking in.
     pub tcx: &'a ty::ctxt,
 
+    /// The crate being checked.
+    pub krate: &'a ast::Crate,
+
+    /// Items exported from the crate being checked.
+    pub exported_items: &'a ExportedItems,
+
     /// The store of registered lints.
     lints: LintStore,
 
@@ -275,14 +281,18 @@ pub fn raw_emit_lint(sess: &Session, lint: &'static Lint,
 }
 
 impl<'a> Context<'a> {
-    fn new(tcx: &'a ty::ctxt) -> Context<'a> {
+    fn new(tcx: &'a ty::ctxt,
+           krate: &'a ast::Crate,
+           exported_items: &'a ExportedItems) -> Context<'a> {
         // We want to own the lint store, so move it out of the session.
         let lint_store = mem::replace(&mut *tcx.sess.lint_store.borrow_mut(),
             LintStore::new());
 
         Context {
-            lints: lint_store,
             tcx: tcx,
+            krate: krate,
+            exported_items: exported_items,
+            lints: lint_store,
             level_stack: vec!(),
             node_levels: RefCell::new(HashMap::new()),
         }
@@ -619,7 +629,7 @@ impl LintPass for GatherNodeLevels {
 pub fn check_crate(tcx: &ty::ctxt,
                    krate: &ast::Crate,
                    exported_items: &ExportedItems) {
-    let mut cx = Context::new(tcx);
+    let mut cx = Context::new(tcx, krate, exported_items);
 
     // Visit the whole crate.
     cx.with_lint_attrs(krate.attrs.as_slice(), |cx| {
