@@ -178,7 +178,8 @@ Negative impls are only permitted if `Trait` has a default impl.
 Negative impls are subject to the usual orphan rules, but they are
 permitting to be overlapping. This makes sense because negative impls
 are not providing an implementation and hence we are not forced to
-select between them.
+select between them. For similar reasons, negative impls never need to
+be marked unsafe, even if they reference an unsafe trait.
 
 Intuitively, to check whether a trait `Foo` that contains a default
 impl is implemented for some type `T`, we first check for explicit
