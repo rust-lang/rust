@@ -1163,15 +1163,19 @@ impl<'a> Liveness<'a> {
           }
 
           ExprInlineAsm(ref ia) => {
-            let succ = ia.outputs.iter().rev().fold(succ, |succ, &(_, ref expr)| {
-                // see comment on lvalues in
-                // propagate_through_lvalue_components()
-                let succ = self.write_lvalue(&**expr, succ, ACC_WRITE);
-                self.propagate_through_lvalue_components(&**expr, succ)
+            let succ = ia.inputs.iter().rev().fold(succ, |succ, &(_, ref expr)| {
+              self.propagate_through_expr(&**expr, succ)
             });
-            // Inputs are executed first. Propagate last because of rev order
-            ia.inputs.iter().rev().fold(succ, |succ, &(_, ref expr)| {
-                self.propagate_through_expr(&**expr, succ)
+            // Outputs are executed first. Propagate last because of rev order
+            ia.outputs.iter().rev().fold(succ, |succ, &(_, ref expr)| {
+              // see comment on lvalues in
+              // propagate_through_lvalue_components()
+              //
+              // FIXME(#14936): A read-write output should eventually
+              // be modelled as a single expression, which will then
+              // require updating this code.
+              let succ = self.write_lvalue(&**expr, succ, ACC_WRITE);
+              self.propagate_through_lvalue_components(&**expr, succ)
             })
           }
 
@@ -1394,14 +1398,14 @@ fn check_expr(this: &mut Liveness, expr: &Expr) {
       }
 
       ExprInlineAsm(ref ia) => {
-        for &(_, ref input) in ia.inputs.iter() {
-          this.visit_expr(&**input, ());
-        }
-
         // Output operands must be lvalues
         for &(_, ref out) in ia.outputs.iter() {
           this.check_lvalue(&**out);
           this.visit_expr(&**out, ());
+        }
+
+        for &(_, ref input) in ia.inputs.iter() {
+          this.visit_expr(&**input, ());
         }
 
         visit::walk_expr(this, expr, ());

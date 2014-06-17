@@ -606,10 +606,10 @@ impl<'a, 'b, O:DataFlowOperator> PropagationContext<'a, 'b, O> {
             }
 
             ast::ExprInlineAsm(ref inline_asm) => {
-                for &(_, ref expr) in inline_asm.inputs.iter() {
+                for &(_, ref expr) in inline_asm.outputs.iter() {
                     self.walk_expr(&**expr, in_out, loop_scopes);
                 }
-                for &(_, ref expr) in inline_asm.outputs.iter() {
+                for &(_, ref expr) in inline_asm.inputs.iter() {
                     self.walk_expr(&**expr, in_out, loop_scopes);
                 }
             }

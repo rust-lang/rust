@@ -3572,11 +3572,11 @@ fn populate_scope_map(cx: &CrateContext,
                                                 outputs: ref outputs,
                                                 .. }) => {
                 // inputs, outputs: ~[(String, Gc<expr>)]
-                for &(_, ref exp) in inputs.iter() {
+                for &(_, ref exp) in outputs.iter() {
                     walk_expr(cx, &**exp, scope_stack, scope_map);
                 }
 
-                for &(_, ref exp) in outputs.iter() {
+                for &(_, ref exp) in inputs.iter() {
                     walk_expr(cx, &**exp, scope_stack, scope_map);
                 }
             }
