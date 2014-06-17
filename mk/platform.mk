@@ -374,6 +374,36 @@ CFG_RUN_TARG_arm-unknown-linux-gnueabi=$(call CFG_RUN_arm-unknown-linux-gnueabi,
 RUSTC_FLAGS_arm-unknown-linux-gnueabi :=
 RUSTC_CROSS_FLAGS_arm-unknown-linux-gnueabi :=
 
+# mipsel-linux configuration
+CC_mipsel-linux=mipsel-linux-gcc
+CXX_mipsel-linux=mipsel-linux-g++
+CPP_mipsel-linux=mipsel-linux-gcc 
+AR_mipsel-linux=mipsel-linux-ar
+CFG_LIB_NAME_mipsel-linux=lib$(1).so
+CFG_STATIC_LIB_NAME_mipsel-linux=lib$(1).a
+CFG_LIB_GLOB_mipsel-linux=lib$(1)-*.so
+CFG_LIB_DSYM_GLOB_mipsel-linux=lib$(1)-*.dylib.dSYM
+CFG_CFLAGS_mipsel-linux := -mips32 -mabi=32 $(CFLAGS)
+CFG_GCCISH_CFLAGS_mipsel-linux := -Wall -g -fPIC -mips32 -mabi=32 $(CFLAGS)
+CFG_GCCISH_CXXFLAGS_mipsel-linux := -fno-rtti $(CXXFLAGS)
+CFG_GCCISH_LINK_FLAGS_mipsel-linux := -shared -fPIC -g -mips32
+CFG_GCCISH_DEF_FLAG_mipsel-linux := -Wl,--export-dynamic,--dynamic-list=
+CFG_GCCISH_PRE_LIB_FLAGS_mipsel-linux := -Wl,-whole-archive
+CFG_GCCISH_POST_LIB_FLAGS_mipsel-linux := -Wl,-no-whole-archive
+CFG_DEF_SUFFIX_mipsel-linux := .linux.def
+CFG_LLC_FLAGS_mipsel-linux :=
+CFG_INSTALL_NAME_mipsel-linux =
+CFG_LIBUV_LINK_FLAGS_mipsel-linux =
+CFG_EXE_SUFFIX_mipsel-linux :=
+CFG_WINDOWSY_mipsel-linux :=
+CFG_UNIXY_mipsel-linux := 1
+CFG_PATH_MUNGE_mipsel-linux := true
+CFG_LDPATH_mipsel-linux :=
+CFG_RUN_mipsel-linux=
+CFG_RUN_TARG_mipsel-linux=
+RUSTC_FLAGS_mipsel-linux := -C target-cpu=mips32 -C target-feature="+mips32,+o32"
+
+
 # mips-unknown-linux-gnu configuration
 CC_mips-unknown-linux-gnu=mips-linux-gnu-gcc
 CXX_mips-unknown-linux-gnu=mips-linux-gnu-g++
@@ -612,7 +642,7 @@ define CFG_MAKE_TOOLCHAIN
         $$(CFG_GCCISH_DEF_FLAG_$(1))$$(3) $$(2)        \
         $$(call CFG_INSTALL_NAME_$(1),$$(4))
 
-  ifeq ($$(findstring $(HOST_$(1)),arm mips),)
+  ifeq ($$(findstring $(HOST_$(1)),arm mips mipsel),)
 
   # We're using llvm-mc as our assembler because it supports
   # .cfi pseudo-ops on mac
