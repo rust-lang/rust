@@ -498,13 +498,13 @@ pub trait Int: Primitive
     /// let n = 0x0123456789ABCDEFu64;
     ///
     /// if cfg!(target_endian = "big") {
-    ///     assert_eq!(Int::from_big_endian(n), n)
+    ///     assert_eq!(Int::from_be(n), n)
     /// } else {
-    ///     assert_eq!(Int::from_big_endian(n), n.swap_bytes())
+    ///     assert_eq!(Int::from_be(n), n.swap_bytes())
     /// }
     /// ```
     #[inline]
-    fn from_big_endian(x: Self) -> Self {
+    fn from_be(x: Self) -> Self {
         if cfg!(target_endian = "big") { x } else { x.swap_bytes() }
     }
 
@@ -518,13 +518,13 @@ pub trait Int: Primitive
     /// let n = 0x0123456789ABCDEFu64;
     ///
     /// if cfg!(target_endian = "little") {
-    ///     assert_eq!(Int::from_little_endian(n), n)
+    ///     assert_eq!(Int::from_le(n), n)
     /// } else {
-    ///     assert_eq!(Int::from_little_endian(n), n.swap_bytes())
+    ///     assert_eq!(Int::from_le(n), n.swap_bytes())
     /// }
     /// ```
     #[inline]
-    fn from_little_endian(x: Self) -> Self {
+    fn from_le(x: Self) -> Self {
         if cfg!(target_endian = "little") { x } else { x.swap_bytes() }
     }
 
@@ -538,13 +538,13 @@ pub trait Int: Primitive
     /// let n = 0x0123456789ABCDEFu64;
     ///
     /// if cfg!(target_endian = "big") {
-    ///     assert_eq!(n.to_big_endian(), n)
+    ///     assert_eq!(n.to_be(), n)
     /// } else {
-    ///     assert_eq!(n.to_big_endian(), n.swap_bytes())
+    ///     assert_eq!(n.to_be(), n.swap_bytes())
     /// }
     /// ```
     #[inline]
-    fn to_big_endian(self) -> Self {
+    fn to_be(self) -> Self { // or not to be?
         if cfg!(target_endian = "big") { self } else { self.swap_bytes() }
     }
 
@@ -558,13 +558,13 @@ pub trait Int: Primitive
     /// let n = 0x0123456789ABCDEFu64;
     ///
     /// if cfg!(target_endian = "little") {
-    ///     assert_eq!(n.to_little_endian(), n)
+    ///     assert_eq!(n.to_le(), n)
     /// } else {
-    ///     assert_eq!(n.to_little_endian(), n.swap_bytes())
+    ///     assert_eq!(n.to_le(), n.swap_bytes())
     /// }
     /// ```
     #[inline]
-    fn to_little_endian(self) -> Self {
+    fn to_le(self) -> Self {
         if cfg!(target_endian = "little") { self } else { self.swap_bytes() }
     }
 }
