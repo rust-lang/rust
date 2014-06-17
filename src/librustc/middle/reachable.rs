@@ -26,7 +26,9 @@ use std::collections::HashSet;
 use syntax::abi;
 use syntax::ast;
 use syntax::ast_map;
-use syntax::ast_util::{is_local};
+use syntax::ast_util::is_local;
+use syntax::ast_util;
+use syntax::attr::{InlineAlways, InlineHint, InlineNever, InlineNone};
 use syntax::attr;
 use syntax::visit::Visitor;
 use syntax::visit;
@@ -34,7 +36,10 @@ use syntax::visit;
 // Returns true if the given set of attributes contains the `#[inline]`
 // attribute.
 fn attributes_specify_inlining(attrs: &[ast::Attribute]) -> bool {
-    attr::contains_name(attrs, "inline")
+    match attr::find_inline_attr(attrs) {
+        InlineNone | InlineNever => false,
+        InlineAlways | InlineHint => true,
+    }
 }
 
 // Returns true if the given set of generics implies that the item it's
@@ -118,8 +123,8 @@ impl<'a> Visitor<()> for ReachableContext<'a> {
                         match def {
                             // If this path leads to a static, then we may have
                             // to do some work to figure out whether the static
-                            // is indeed reachable (address_insignificant
-                            // statics are *never* reachable).
+                            // is indeed reachable. (Inlineable statics are
+                            // never reachable.)
                             def::DefStatic(..) => {
                                 self.worklist.push(def_id.node);
                             }
@@ -281,9 +286,10 @@ impl<'a> ReachableContext<'a> {
 
                     // Statics with insignificant addresses are not reachable
                     // because they're inlined specially into all other crates.
-                    ast::ItemStatic(_, _, ref init) => {
-                        if attr::contains_name(item.attrs.as_slice(),
-                                               "address_insignificant") {
+                    ast::ItemStatic(_, mutbl, ref init) => {
+                        if !ast_util::static_has_significant_address(
+                                mutbl,
+                                item.attrs.as_slice()) {
                             self.reachable_symbols.remove(&search_item);
                         }
                         visit::walk_expr(self, &**init, ());
