@@ -306,6 +306,8 @@ $$(JEMALLOC_LOCAL_$(1)): $$(JEMALLOC_DEPS) $$(MKFILE_DEPS)
 		EXTRA_CFLAGS="$$(CFG_CFLAGS_$(1)) $$(CFG_JEMALLOC_CFLAGS_$(1)) -g1"
 	$$(Q)$$(MAKE) -C "$$(JEMALLOC_BUILD_DIR_$(1))" build_lib_static
 
+ifeq ($$(CFG_DISABLE_JEMALLOC),)
+RUSTFLAGS_alloc := --cfg jemalloc
 ifeq ($(1),$$(CFG_BUILD))
 ifneq ($$(CFG_JEMALLOC_ROOT),)
 $$(JEMALLOC_LIB_$(1)): $$(CFG_JEMALLOC_ROOT)/libjemalloc_pic.a
@@ -318,6 +320,10 @@ endif
 else
 $$(JEMALLOC_LIB_$(1)): $$(JEMALLOC_LOCAL_$(1))
 	$$(Q)cp $$< $$@
+endif
+else
+$$(JEMALLOC_LIB_$(1)): $$(MKFILE_DEPS)
+	$$(Q)touch $$@
 endif
 
 ################################################################################

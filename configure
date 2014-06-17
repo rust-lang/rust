@@ -421,6 +421,7 @@ opt llvm-static-stdcpp 0 "statically link to libstdc++ for LLVM"
 opt rpath 1 "build rpaths into rustc itself"
 opt nightly 0 "build nightly packages"
 opt verify-install 1 "verify installed binaries work"
+opt jemalloc 1 "build liballoc with jemalloc"
 valopt prefix "/usr/local" "set installation prefix"
 valopt local-rust-root "/usr/local" "set prefix for local rust binary"
 valopt llvm-root "" "set LLVM root"
@@ -1167,6 +1168,7 @@ putvar CFG_MANDIR
 putvar CFG_DISABLE_INJECT_STD_VERSION
 putvar CFG_JEMALLOC_ROOT
 putvar CFG_LIBUV_ROOT
+putvar CFG_DISABLE_JEMALLOC
 
 # Avoid spurious warnings from clang by feeding it original source on
 # ccache-miss rather than preprocessed input.

@@ -5,9 +5,9 @@
 
 There aren't many large programs yet. The Rust [compiler][rustc], 60,000+ lines at the time of writing, is written in Rust. As the oldest body of Rust code it has gone through many iterations of the language, and some parts are nicer to look at than others. It may not be the best code to learn from, but [borrowck] and [resolve] were written recently.
 
-[rustc]: https://github.com/mozilla/rust/tree/master/src/librustc
-[resolve]: https://github.com/mozilla/rust/blob/master/src/librustc/middle/resolve.rs
-[borrowck]: https://github.com/mozilla/rust/blob/master/src/librustc/middle/borrowck/
+[rustc]: https://github.com/rust-lang/rust/tree/master/src/librustc
+[resolve]: https://github.com/rust-lang/rust/blob/master/src/librustc/middle/resolve.rs
+[borrowck]: https://github.com/rust-lang/rust/blob/master/src/librustc/middle/borrowck/
 
 A research browser engine called [Servo][servo], currently 30,000+ lines across more than a dozen crates, will be exercising a lot of Rust's distinctive type-system and concurrency features, and integrating many native libraries.
 
@@ -21,9 +21,9 @@ Some examples that demonstrate different aspects of the language:
 * The extra library's [json] module. Enums and pattern matching
 
 [sprocketnes]: https://github.com/pcwalton/sprocketnes
-[hash]: https://github.com/mozilla/rust/blob/master/src/libstd/hash/mod.rs
-[HashMap]: https://github.com/mozilla/rust/blob/master/src/libcollections/hashmap.rs
-[json]: https://github.com/mozilla/rust/blob/master/src/libserialize/json.rs
+[hash]: https://github.com/rust-lang/rust/blob/master/src/libstd/hash/mod.rs
+[HashMap]: https://github.com/rust-lang/rust/blob/master/src/libcollections/hashmap.rs
+[json]: https://github.com/rust-lang/rust/blob/master/src/libserialize/json.rs
 
 You may also be interested in browsing [GitHub's Rust][github-rust] page.
 
@@ -33,8 +33,8 @@ You may also be interested in browsing [GitHub's Rust][github-rust] page.
 
 Yes. All development happens in lock-step on all 3 target platforms. Using MinGW, not Cygwin. Note that the windows implementation currently has some limitations: in particular 64-bit build is [not fully supported yet][win64], and all executables created by rustc [depends on libgcc DLL at runtime][libgcc].
 
-[win64]: https://github.com/mozilla/rust/issues/1237
-[libgcc]: https://github.com/mozilla/rust/issues/11782
+[win64]: https://github.com/rust-lang/rust/issues/1237
+[libgcc]: https://github.com/rust-lang/rust/issues/11782
 
 ## Is it OO? How do I do this thing I normally do in an OO language?
 

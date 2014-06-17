@@ -1487,7 +1487,7 @@ impl<'a> State<'a> {
             ast::ExprField(ref expr, id, ref tys) => {
                 try!(self.print_expr(&**expr));
                 try!(word(&mut self.s, "."));
-                try!(self.print_ident(id));
+                try!(self.print_ident(id.node));
                 if tys.len() > 0u {
                     try!(word(&mut self.s, "::<"));
                     try!(self.commasep(
