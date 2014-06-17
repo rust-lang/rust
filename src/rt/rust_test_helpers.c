@@ -199,3 +199,21 @@ void
 rust_dbg_static_mut_check_four() {
     assert(rust_dbg_static_mut == 4);
 }
+
+struct S {
+    uint64_t x;
+    uint64_t y;
+    uint64_t z;
+};
+
+uint64_t get_x(struct S s) {
+    return s.x;
+}
+
+uint64_t get_y(struct S s) {
+    return s.y;
+}
+
+uint64_t get_z(struct S s) {
+    return s.z;
+}
