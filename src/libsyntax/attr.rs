@@ -271,21 +271,6 @@ pub fn sort_meta_items(items: &[Gc<MetaItem>]) -> Vec<Gc<MetaItem>> {
     }).collect()
 }
 
-/**
- * From a list of crate attributes get only the meta_items that affect crate
- * linkage
- */
-pub fn find_linkage_metas(attrs: &[Attribute]) -> Vec<Gc<MetaItem>> {
-    let mut result = Vec::new();
-    for attr in attrs.iter().filter(|at| at.check_name("link")) {
-        match attr.meta().node {
-            MetaList(_, ref items) => result.push_all(items.as_slice()),
-            _ => ()
-        }
-    }
-    result
-}
-
 pub fn find_crateid(attrs: &[Attribute]) -> Option<CrateId> {
     match first_attr_value_str_by_name(attrs, "crate_id") {
         None => None,
