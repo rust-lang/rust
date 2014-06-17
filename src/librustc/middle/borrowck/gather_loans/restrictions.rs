@@ -23,15 +23,14 @@ use std::rc::Rc;
 
 pub enum RestrictionResult {
     Safe,
-    SafeIf(Rc<LoanPath>, Vec<Restriction>)
+    SafeIf(Rc<LoanPath>, Vec<Rc<LoanPath>>)
 }
 
 pub fn compute_restrictions(bccx: &BorrowckCtxt,
                             span: Span,
                             cause: euv::LoanCause,
                             cmt: mc::cmt,
-                            loan_region: ty::Region,
-                            restr: RestrictionSet) -> RestrictionResult {
+                            loan_region: ty::Region) -> RestrictionResult {
     let ctxt = RestrictionsContext {
         bccx: bccx,
         span: span,
@@ -39,7 +38,7 @@ pub fn compute_restrictions(bccx: &BorrowckCtxt,
         loan_region: loan_region,
     };
 
-    ctxt.restrict(cmt, restr)
+    ctxt.restrict(cmt)
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -54,11 +53,8 @@ struct RestrictionsContext<'a> {
 
 impl<'a> RestrictionsContext<'a> {
     fn restrict(&self,
-                cmt: mc::cmt,
-                restrictions: RestrictionSet) -> RestrictionResult {
-        debug!("restrict(cmt={}, restrictions={})",
-               cmt.repr(self.bccx.tcx),
-               restrictions.repr(self.bccx.tcx));
+                cmt: mc::cmt) -> RestrictionResult {
+        debug!("restrict(cmt={})", cmt.repr(self.bccx.tcx));
 
         match cmt.cat.clone() {
             mc::cat_rvalue(..) => {
@@ -75,19 +71,14 @@ impl<'a> RestrictionsContext<'a> {
             mc::cat_upvar(ty::UpvarId {var_id: local_id, ..}, _) => {
                 // R-Variable
                 let lp = Rc::new(LpVar(local_id));
-                SafeIf(lp.clone(), vec!(Restriction {
-                    loan_path: lp,
-                    set: restrictions
-                }))
+                SafeIf(lp.clone(), vec!(lp))
             }
 
             mc::cat_downcast(cmt_base) => {
                 // When we borrow the interior of an enum, we have to
                 // ensure the enum itself is not mutated, because that
                 // could cause the type of the memory to change.
-                self.restrict(
-                    cmt_base,
-                    restrictions | RESTR_MUTATE)
+                self.restrict(cmt_base)
             }
 
             mc::cat_interior(cmt_base, i) => {
@@ -96,8 +87,8 @@ impl<'a> RestrictionsContext<'a> {
                 // Overwriting the base would not change the type of
                 // the memory, so no additional restrictions are
                 // needed.
-                let result = self.restrict(cmt_base, restrictions);
-                self.extend(result, cmt.mutbl, LpInterior(i), restrictions)
+                let result = self.restrict(cmt_base);
+                self.extend(result, cmt.mutbl, LpInterior(i))
             }
 
             mc::cat_deref(cmt_base, _, pk @ mc::OwnedPtr) |
@@ -112,10 +103,8 @@ impl<'a> RestrictionsContext<'a> {
                 // same, because this could be the last ref.
                 // Eventually we should make these non-special and
                 // just rely on Deref<T> implementation.
-                let result = self.restrict(
-                    cmt_base,
-                    restrictions | RESTR_MUTATE);
-                self.extend(result, cmt.mutbl, LpDeref(pk), restrictions)
+                let result = self.restrict(cmt_base);
+                self.extend(result, cmt.mutbl, LpDeref(pk))
             }
 
             mc::cat_copied_upvar(..) | // FIXME(#2152) allow mutation of upvars
@@ -133,7 +122,7 @@ impl<'a> RestrictionsContext<'a> {
                             cause: self.cause,
                             cmt: cmt_base,
                             code: err_borrowed_pointer_too_short(
-                                self.loan_region, lt, restrictions)});
+                                self.loan_region, lt)});
                     return Safe;
                 }
                 Safe
@@ -148,12 +137,12 @@ impl<'a> RestrictionsContext<'a> {
                             cause: self.cause,
                             cmt: cmt_base,
                             code: err_borrowed_pointer_too_short(
-                                self.loan_region, lt, restrictions)});
+                                self.loan_region, lt)});
                     return Safe;
                 }
 
-                let result = self.restrict(cmt_base, restrictions);
-                self.extend(result, cmt.mutbl, LpDeref(pk), restrictions)
+                let result = self.restrict(cmt_base);
+                self.extend(result, cmt.mutbl, LpDeref(pk))
             }
 
             mc::cat_deref(_, _, mc::UnsafePtr(..)) => {
@@ -162,7 +151,7 @@ impl<'a> RestrictionsContext<'a> {
             }
 
             mc::cat_discr(cmt_base, _) => {
-                self.restrict(cmt_base, restrictions)
+                self.restrict(cmt_base)
             }
         }
     }
@@ -170,16 +159,12 @@ impl<'a> RestrictionsContext<'a> {
     fn extend(&self,
               result: RestrictionResult,
               mc: mc::MutabilityCategory,
-              elem: LoanPathElem,
-              restrictions: RestrictionSet) -> RestrictionResult {
+              elem: LoanPathElem) -> RestrictionResult {
         match result {
             Safe => Safe,
             SafeIf(base_lp, mut base_vec) => {
                 let lp = Rc::new(LpExtend(base_lp, mc, elem));
-                base_vec.push(Restriction {
-                    loan_path: lp.clone(),
-                    set: restrictions
-                });
+                base_vec.push(lp.clone());
                 SafeIf(lp, base_vec)
             }
         }

@@ -21,7 +21,6 @@ use middle::ty;
 use util::ppaux::{note_and_explain_region, Repr, UserString};
 
 use std::cell::{Cell};
-use std::ops::{BitOr, BitAnd};
 use std::rc::Rc;
 use std::gc::{Gc, GC};
 use std::string::String;
@@ -182,7 +181,7 @@ pub struct Loan {
     index: uint,
     loan_path: Rc<LoanPath>,
     kind: ty::BorrowKind,
-    restrictions: Vec<Restriction>,
+    restricted_paths: Vec<Rc<LoanPath>>,
     gen_scope: ast::NodeId,
     kill_scope: ast::NodeId,
     span: Span,
@@ -251,58 +250,6 @@ pub fn opt_loan_path(cmt: &mc::cmt) -> Option<Rc<LoanPath>> {
 }
 
 ///////////////////////////////////////////////////////////////////////////
-// Restrictions
-//
-// Borrowing an lvalue often results in *restrictions* that limit what
-// can be done with this lvalue during the scope of the loan:
-//
-// - `RESTR_MUTATE`: The lvalue may not be modified or `&mut` borrowed.
-// - `RESTR_FREEZE`: `&` borrows of the lvalue are forbidden.
-//
-// In addition, no value which is restricted may be moved. Therefore,
-// restrictions are meaningful even if the RestrictionSet is empty,
-// because the restriction against moves is implied.
-
-pub struct Restriction {
-    loan_path: Rc<LoanPath>,
-    set: RestrictionSet
-}
-
-#[deriving(PartialEq)]
-pub struct RestrictionSet {
-    bits: u32
-}
-
-#[allow(dead_code)] // potentially useful
-pub static RESTR_EMPTY: RestrictionSet  = RestrictionSet {bits: 0b0000};
-pub static RESTR_MUTATE: RestrictionSet = RestrictionSet {bits: 0b0001};
-pub static RESTR_FREEZE: RestrictionSet = RestrictionSet {bits: 0b0010};
-
-impl RestrictionSet {
-    pub fn intersects(&self, restr: RestrictionSet) -> bool {
-        (self.bits & restr.bits) != 0
-    }
-}
-
-impl BitOr<RestrictionSet,RestrictionSet> for RestrictionSet {
-    fn bitor(&self, rhs: &RestrictionSet) -> RestrictionSet {
-        RestrictionSet {bits: self.bits | rhs.bits}
-    }
-}
-
-impl BitAnd<RestrictionSet,RestrictionSet> for RestrictionSet {
-    fn bitand(&self, rhs: &RestrictionSet) -> RestrictionSet {
-        RestrictionSet {bits: self.bits & rhs.bits}
-    }
-}
-
-impl Repr for RestrictionSet {
-    fn repr(&self, _tcx: &ty::ctxt) -> String {
-        format!("RestrictionSet(0x{:x})", self.bits as uint)
-    }
-}
-
-///////////////////////////////////////////////////////////////////////////
 // Errors
 
 // Errors that can occur
@@ -310,8 +257,7 @@ impl Repr for RestrictionSet {
 pub enum bckerr_code {
     err_mutbl,
     err_out_of_scope(ty::Region, ty::Region), // superscope, subscope
-    err_borrowed_pointer_too_short(
-        ty::Region, ty::Region, RestrictionSet), // loan, ptr
+    err_borrowed_pointer_too_short(ty::Region, ty::Region), // loan, ptr
 }
 
 // Combination of an error code and the categorization of the expression
@@ -711,7 +657,7 @@ impl<'a> BorrowckCtxt<'a> {
                     suggestion);
             }
 
-            err_borrowed_pointer_too_short(loan_scope, ptr_scope, _) => {
+            err_borrowed_pointer_too_short(loan_scope, ptr_scope) => {
                 let descr = match opt_loan_path(&err.cmt) {
                     Some(lp) => {
                         format!("`{}`", self.loan_path_to_str(&*lp))
@@ -827,15 +773,7 @@ impl Repr for Loan {
                  self.kind,
                  self.gen_scope,
                  self.kill_scope,
-                 self.restrictions.repr(tcx))).to_string()
-    }
-}
-
-impl Repr for Restriction {
-    fn repr(&self, tcx: &ty::ctxt) -> String {
-        (format!("Restriction({}, {:x})",
-                 self.loan_path.repr(tcx),
-                 self.set.bits as uint)).to_string()
+                 self.restricted_paths.repr(tcx))).to_string()
     }
 }
 
