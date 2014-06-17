@@ -2859,11 +2859,11 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         instantiate_path(fcx, pth, tpt, defn, expr.span, expr.id);
       }
       ast::ExprInlineAsm(ref ia) => {
-          for &(_, ref input) in ia.inputs.iter() {
-              check_expr(fcx, &**input);
-          }
           for &(_, ref out) in ia.outputs.iter() {
               check_expr(fcx, &**out);
+          }
+          for &(_, ref input) in ia.inputs.iter() {
+              check_expr(fcx, &**input);
           }
           fcx.write_nil(id);
       }

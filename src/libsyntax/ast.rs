@@ -802,9 +802,9 @@ pub enum AsmDialect {
 pub struct InlineAsm {
     pub asm: InternedString,
     pub asm_str_style: StrStyle,
-    pub clobbers: InternedString,
-    pub inputs: Vec<(InternedString, Gc<Expr>)>,
     pub outputs: Vec<(InternedString, Gc<Expr>)>,
+    pub inputs: Vec<(InternedString, Gc<Expr>)>,
+    pub clobbers: InternedString,
     pub volatile: bool,
     pub alignstack: bool,
     pub dialect: AsmDialect

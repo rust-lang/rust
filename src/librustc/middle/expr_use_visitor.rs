@@ -318,12 +318,15 @@ impl<'d,'t,TYPER:mc::Typer> ExprUseVisitor<'d,'t,TYPER> {
             }
 
             ast::ExprInlineAsm(ref ia) => {
-                for &(_, ref input) in ia.inputs.iter() {
-                    self.consume_expr(&**input);
-                }
-
+                // FIXME(#14936): A read-write output should
+                // eventually be modelled as a single expression,
+                // which will then require updating this code.
                 for &(_, ref output) in ia.outputs.iter() {
                     self.mutate_expr(expr, &**output, JustWrite);
+                }
+
+                for &(_, ref input) in ia.inputs.iter() {
+                    self.consume_expr(&**input);
                 }
             }
 
