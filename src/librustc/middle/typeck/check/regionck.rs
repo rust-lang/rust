@@ -443,7 +443,10 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
 
     match expr.node {
         ast::ExprCall(ref callee, ref args) => {
-            if !has_method_map {
+            if has_method_map {
+                constrain_call(rcx, None, expr, Some(*callee),
+                               args.as_slice(), false);
+            } else {
                 constrain_callee(rcx, callee.id, expr, &**callee);
                 constrain_call(rcx,
                                Some(callee.id),
