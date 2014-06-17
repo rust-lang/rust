@@ -96,7 +96,7 @@ fn protect_last_page(stack: &MemoryMap) -> bool {
         // This may seem backwards: the start of the segment is the last page?
         // Yes! The stack grows from higher addresses (the end of the allocated
         // block) to lower addresses (the start of the allocated block).
-        let last_page = stack.data as *libc::c_void;
+        let last_page = stack.data as *mut libc::c_void;
         libc::mprotect(last_page, page_size() as libc::size_t,
                        libc::PROT_NONE) != -1
     }
