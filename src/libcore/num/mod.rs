@@ -388,7 +388,8 @@ pub trait Primitive: Copy
 
 trait_impl!(Primitive for uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64)
 
-/// A collection of traits relevant to primitive signed and unsigned integers
+/// A primitive signed or unsigned integer equipped with various bitwise
+/// operators, bit counting methods, and endian conversion functions.
 pub trait Int: Primitive
              + CheckedAdd
              + CheckedSub
