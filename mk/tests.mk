@@ -376,7 +376,8 @@ $(3)/stage$(1)/test/$(4)test-$(2)$$(X_$(2)):				\
 	@$$(call E, rustc: $$@)
 	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test	\
 		-L "$$(RT_OUTPUT_DIR_$(2))"		\
-		-L "$$(LLVM_LIBDIR_$(2))"
+		-L "$$(LLVM_LIBDIR_$(2))"		\
+		$$(RUSTFLAGS_$(4))
 
 endef
 
