@@ -1940,12 +1940,13 @@ interpreted:
   enum representation in C is undefined, and this may be incorrect when the C
   code is compiled with certain flags.
 - `simd` - on certain tuple structs, derive the arithmetic operators, which
-  lower to the target's SIMD instructions, if any.
+  lower to the target's SIMD instructions, if any; the `simd` feature gate
+  is necessary to use this attribute.
 - `static_assert` - on statics whose type is `bool`, terminates compilation
   with an error if it is not initialized to `true`.
 - `unsafe_destructor` - allow implementations of the "drop" language item
   where the type it is implemented for does not implement the "send" language
-  item.
+  item; the `unsafe_destructor` feature gate is needed to use this attribute
 - `unsafe_no_drop_flag` - on structs, remove the flag that prevents
   destructors from being run twice. Destructors might be run multiple times on
   the same object with this attribute.

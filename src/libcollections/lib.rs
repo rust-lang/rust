@@ -22,7 +22,9 @@
        html_playground_url = "http://play.rust-lang.org/")]
 
 #![feature(macro_rules, managed_boxes, default_type_params, phase, globs)]
+#![feature(unsafe_destructor)]
 #![no_std]
+#![allow(unknown_features)] // NOTE: remove after a stage0 snap
 
 #[phase(plugin, link)] extern crate core;
 extern crate alloc;

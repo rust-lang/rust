@@ -50,6 +50,7 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("log_syntax", Active),
     ("trace_macros", Active),
     ("concat_idents", Active),
+    ("unsafe_destructor", Active),
 
     ("simd", Active),
     ("default_type_params", Active),
@@ -217,6 +218,17 @@ impl<'a> Visitor<()> for Context<'a> {
                     self.gate_feature("struct_inherit", i.span,
                                       "struct inheritance (`virtual` keyword) is \
                                        experimental and possibly buggy");
+                }
+            }
+
+            ast::ItemImpl(..) => {
+                if attr::contains_name(i.attrs.as_slice(),
+                                       "unsafe_destructor") {
+                    self.gate_feature("unsafe_destructor",
+                                      i.span,
+                                      "`#[unsafe_destructor]` allows too \
+                                       many unsafe patterns and may be \
+                                       removed in the future");
                 }
             }
 
