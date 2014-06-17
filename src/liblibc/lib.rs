@@ -463,6 +463,7 @@ pub mod types {
         #[cfg(target_arch = "x86")]
         #[cfg(target_arch = "arm")]
         #[cfg(target_arch = "mips")]
+        #[cfg(target_arch = "mipsel")]
         pub mod arch {
             pub mod c95 {
                 pub type c_char = i8;
@@ -491,6 +492,7 @@ pub mod types {
             }
             #[cfg(target_arch = "x86")]
             #[cfg(target_arch = "mips")]
+            #[cfg(target_arch = "mipsel")]
             pub mod posix88 {
                 pub type off_t = i32;
                 pub type dev_t = u64;
@@ -599,6 +601,7 @@ pub mod types {
                 }
             }
             #[cfg(target_arch = "mips")]
+            #[cfg(target_arch = "mipsel")]
             pub mod posix01 {
                 use types::os::arch::c95::{c_long, c_ulong, time_t};
                 use types::os::arch::posix88::{gid_t, ino_t};
@@ -2209,6 +2212,7 @@ pub mod consts {
         }
 
         #[cfg(target_arch = "mips")]
+        #[cfg(target_arch = "mipsel")]
         pub mod posix88 {
             use types::os::arch::c95::c_int;
             use types::common::c95::c_void;
@@ -2483,6 +2487,7 @@ pub mod consts {
             pub static PTHREAD_STACK_MIN: size_t = 16384;
 
             #[cfg(target_arch = "mips", target_os = "linux")]
+            #[cfg(target_arch = "mipsel", target_os = "linux")]
             pub static PTHREAD_STACK_MIN: size_t = 131072;
 
             pub static CLOCK_REALTIME: c_int = 0;
@@ -2536,6 +2541,7 @@ pub mod consts {
             pub static SHUT_RDWR: c_int = 2;
         }
         #[cfg(target_arch = "mips")]
+        #[cfg(target_arch = "mipsel")]
         pub mod bsd44 {
             use types::os::arch::c95::c_int;
 
@@ -2604,6 +2610,7 @@ pub mod consts {
             pub static MAP_STACK : c_int = 0x020000;
         }
         #[cfg(target_arch = "mips")]
+        #[cfg(target_arch = "mipsel")]
         pub mod extra {
             use types::os::arch::c95::c_int;
 
@@ -2976,6 +2983,7 @@ pub mod consts {
             pub static PTHREAD_STACK_MIN: size_t = 4096;
 
             #[cfg(target_arch = "mips")]
+            #[cfg(target_arch = "mipsel")]
             #[cfg(target_arch = "x86")]
             #[cfg(target_arch = "x86_64")]
             pub static PTHREAD_STACK_MIN: size_t = 2048;

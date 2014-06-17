@@ -135,6 +135,7 @@ pub fn trans_inline_asm<'a>(bcx: &'a Block<'a>, ia: &ast::InlineAsm)
 
 #[cfg(target_arch = "arm")]
 #[cfg(target_arch = "mips")]
+#[cfg(target_arch = "mipsel")]
 fn get_clobbers() -> String {
     "".to_string()
 }
