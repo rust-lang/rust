@@ -2365,7 +2365,8 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                     ty::ty_struct(base_id, ref substs) => {
                         debug!("struct named {}", ppaux::ty_to_str(tcx, base_t));
                         let fields = ty::lookup_struct_fields(tcx, base_id);
-                        lookup_field_ty(tcx, base_id, fields.as_slice(), field.node.name, &(*substs))
+                        lookup_field_ty(tcx, base_id, fields.as_slice(),
+                                        field.node.name, &(*substs))
                     }
                     _ => None
                 }
