@@ -1463,7 +1463,7 @@ fn trans_overloaded_call<'a>(
     // Evaluate and tuple the arguments.
     let tuple_type = ty::mk_tup(bcx.tcx(),
                                 args.iter()
-                                    .map(|e| expr_ty(bcx, &**e))
+                                    .map(|e| ty::expr_ty_adjusted(bcx.tcx(), &**e))
                                     .collect());
     let repr = adt::represent_type(bcx.ccx(), tuple_type);
     let numbered_fields: Vec<(uint, Gc<ast::Expr>)> =
