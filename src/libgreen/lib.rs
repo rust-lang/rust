@@ -159,16 +159,19 @@
 //!
 //! # Using a scheduler pool
 //!
+//! This library adds a `GreenTaskBuilder` trait that extends the methods
+//! available on `std::task::TaskBuilder` to allow spawning a green task,
+//! possibly pinned to a particular scheduler thread:
+//!
 //! ```rust
-//! use std::rt::task::TaskOpts;
-//! use green::{SchedPool, PoolConfig};
-//! use green::sched::{PinnedTask, TaskFromFriend};
+//! use std::task::TaskBuilder;
+//! use green::{SchedPool, PoolConfig, GreenTaskBuilder};
 //!
 //! let config = PoolConfig::new();
 //! let mut pool = SchedPool::new(config);
 //!
 //! // Spawn tasks into the pool of schedulers
-//! pool.spawn(TaskOpts::new(), proc() {
+//! TaskBuilder::new().green(&mut pool).spawn(proc() {
 //!     // this code is running inside the pool of schedulers
 //!
 //!     spawn(proc() {
@@ -181,12 +184,9 @@
 //! let mut handle = pool.spawn_sched();
 //!
 //! // Pin a task to the spawned scheduler
-//! let task = pool.task(TaskOpts::new(), proc() { /* ... */ });
-//! handle.send(PinnedTask(task));
-//!
-//! // Schedule a task on this new scheduler
-//! let task = pool.task(TaskOpts::new(), proc() { /* ... */ });
-//! handle.send(TaskFromFriend(task));
+//! TaskBuilder::new().green_pinned(&mut pool, &mut handle).spawn(proc() {
+//!     /* ... */
+//! });
 //!
 //! // Handles keep schedulers alive, so be sure to drop all handles before
 //! // destroying the sched pool
@@ -209,6 +209,8 @@
 // NB this does *not* include globs, please keep it that way.
 #![feature(macro_rules, phase)]
 #![allow(visible_private_types)]
+#![allow(deprecated)]
+#![feature(default_type_params)]
 
 #[cfg(test)] #[phase(plugin, link)] extern crate log;
 #[cfg(test)] extern crate rustuv;
@@ -224,8 +226,9 @@ use std::rt::task::TaskOpts;
 use std::rt;
 use std::sync::atomics::{SeqCst, AtomicUint, INIT_ATOMIC_UINT};
 use std::sync::deque;
+use std::task::{TaskBuilder, Spawner};
 
-use sched::{Shutdown, Scheduler, SchedHandle, TaskFromFriend, NewNeighbor};
+use sched::{Shutdown, Scheduler, SchedHandle, TaskFromFriend, PinnedTask, NewNeighbor};
 use sleeper_list::SleeperList;
 use stack::StackPool;
 use task::GreenTask;
@@ -444,6 +447,7 @@ impl SchedPool {
     /// This is useful to create a task which can then be sent to a specific
     /// scheduler created by `spawn_sched` (and possibly pin it to that
     /// scheduler).
+    #[deprecated = "use the green and green_pinned methods of GreenTaskBuilder instead"]
     pub fn task(&mut self, opts: TaskOpts, f: proc():Send) -> Box<GreenTask> {
         GreenTask::configure(&mut self.stack_pool, opts, f)
     }
@@ -454,6 +458,7 @@ impl SchedPool {
     /// New tasks are spawned in a round-robin fashion to the schedulers in this
     /// pool, but tasks can certainly migrate among schedulers once they're in
     /// the pool.
+    #[deprecated = "use the green and green_pinned methods of GreenTaskBuilder instead"]
     pub fn spawn(&mut self, opts: TaskOpts, f: proc():Send) {
         let task = self.task(opts, f);
 
@@ -561,5 +566,56 @@ impl Drop for SchedPool {
         if self.threads.len() > 0 {
             fail!("dropping a M:N scheduler pool that wasn't shut down");
         }
+    }
+}
+
+/// A spawner for green tasks
+pub struct GreenSpawner<'a>{
+    pool: &'a mut SchedPool,
+    handle: Option<&'a mut SchedHandle>
+}
+
+impl<'a> Spawner for GreenSpawner<'a> {
+    #[inline]
+    fn spawn(self, opts: TaskOpts, f: proc():Send) {
+        let GreenSpawner { pool, handle } = self;
+        match handle {
+            None    => pool.spawn(opts, f),
+            Some(h) => h.send(PinnedTask(pool.task(opts, f)))
+        }
+    }
+}
+
+/// An extension trait adding `green` configuration methods to `TaskBuilder`.
+pub trait GreenTaskBuilder {
+    fn green<'a>(self, &'a mut SchedPool) -> TaskBuilder<GreenSpawner<'a>>;
+    fn green_pinned<'a>(self, &'a mut SchedPool, &'a mut SchedHandle)
+                        -> TaskBuilder<GreenSpawner<'a>>;
+}
+
+impl<S: Spawner> GreenTaskBuilder for TaskBuilder<S> {
+    fn green<'a>(self, pool: &'a mut SchedPool) -> TaskBuilder<GreenSpawner<'a>> {
+        self.spawner(GreenSpawner {pool: pool, handle: None})
+    }
+
+    fn green_pinned<'a>(self, pool: &'a mut SchedPool, handle: &'a mut SchedHandle)
+                        -> TaskBuilder<GreenSpawner<'a>> {
+        self.spawner(GreenSpawner {pool: pool, handle: Some(handle)})
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use std::task::TaskBuilder;
+    use super::{SchedPool, PoolConfig, GreenTaskBuilder};
+
+    #[test]
+    fn test_green_builder() {
+        let mut pool = SchedPool::new(PoolConfig::new());
+        let res = TaskBuilder::new().green(&mut pool).try(proc() {
+            "Success!".to_string()
+        });
+        assert_eq!(res.ok().unwrap(), "Success!".to_string());
+        pool.shutdown();
     }
 }
