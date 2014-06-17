@@ -104,7 +104,7 @@ macro_rules! impl_hash {
             #[inline]
             fn hash(&self, state: &mut S) {
                 let a: [u8, ..::core::$ty::BYTES] = unsafe {
-                    mem::transmute((*self as $uty).to_little_endian() as $ty)
+                    mem::transmute((*self as $uty).to_le() as $ty)
                 };
                 state.write(a.as_slice())
             }
