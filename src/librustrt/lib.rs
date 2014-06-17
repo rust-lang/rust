@@ -15,10 +15,12 @@
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/")]
-#![feature(macro_rules, phase, globs, thread_local, managed_boxes, asm,
-           linkage)]
+
+#![feature(macro_rules, phase, globs, thread_local, managed_boxes, asm)]
+#![feature(linkage, unsafe_destructor)]
 #![no_std]
 #![experimental]
+#![allow(unknown_features)] // NOTE: remove after a stage0 snap
 
 #[phase(plugin, link)] extern crate core;
 extern crate alloc;

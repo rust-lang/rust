@@ -11,6 +11,8 @@
 #![crate_id="issue_2526#0.2"]
 #![crate_type = "lib"]
 
+#![feature(unsafe_destructor)]
+
 struct arc_destruct<T> {
   _data: int,
 }

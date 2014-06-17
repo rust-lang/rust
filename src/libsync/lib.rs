@@ -26,10 +26,11 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/",
        html_playground_url = "http://play.rust-lang.org/")]
-#![feature(phase, globs, macro_rules)]
 
+#![feature(phase, globs, macro_rules, unsafe_destructor)]
 #![deny(missing_doc)]
 #![no_std]
+#![allow(unknown_features)] // NOTE: remove after a stage0 snap
 
 #[phase(plugin, link)] extern crate core;
 extern crate alloc;
