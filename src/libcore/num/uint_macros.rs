@@ -98,25 +98,25 @@ mod tests {
     }
 
     #[test]
-    fn test_little_endian() {
-        assert_eq!(Int::from_little_endian(A.to_little_endian()), A);
-        assert_eq!(Int::from_little_endian(B.to_little_endian()), B);
-        assert_eq!(Int::from_little_endian(C.to_little_endian()), C);
-        assert_eq!(Int::from_little_endian(_0), _0);
-        assert_eq!(Int::from_little_endian(_1), _1);
-        assert_eq!(_0.to_little_endian(), _0);
-        assert_eq!(_1.to_little_endian(), _1);
+    fn test_le() {
+        assert_eq!(Int::from_le(A.to_le()), A);
+        assert_eq!(Int::from_le(B.to_le()), B);
+        assert_eq!(Int::from_le(C.to_le()), C);
+        assert_eq!(Int::from_le(_0), _0);
+        assert_eq!(Int::from_le(_1), _1);
+        assert_eq!(_0.to_le(), _0);
+        assert_eq!(_1.to_le(), _1);
     }
 
     #[test]
-    fn test_big_endian() {
-        assert_eq!(Int::from_big_endian(A.to_big_endian()), A);
-        assert_eq!(Int::from_big_endian(B.to_big_endian()), B);
-        assert_eq!(Int::from_big_endian(C.to_big_endian()), C);
-        assert_eq!(Int::from_big_endian(_0), _0);
-        assert_eq!(Int::from_big_endian(_1), _1);
-        assert_eq!(_0.to_big_endian(), _0);
-        assert_eq!(_1.to_big_endian(), _1);
+    fn test_be() {
+        assert_eq!(Int::from_be(A.to_be()), A);
+        assert_eq!(Int::from_be(B.to_be()), B);
+        assert_eq!(Int::from_be(C.to_be()), C);
+        assert_eq!(Int::from_be(_0), _0);
+        assert_eq!(Int::from_be(_1), _1);
+        assert_eq!(_0.to_be(), _0);
+        assert_eq!(_1.to_be(), _1);
     }
 
     #[test]

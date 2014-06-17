@@ -217,9 +217,9 @@ impl Uuid {
                 data4: [0, ..8]
         };
 
-        fields.data1 = d1.to_big_endian();
-        fields.data2 = d2.to_big_endian();
-        fields.data3 = d3.to_big_endian();
+        fields.data1 = d1.to_be();
+        fields.data2 = d2.to_be();
+        fields.data3 = d3.to_be();
         slice::bytes::copy_memory(fields.data4, d4);
 
         unsafe {
@@ -339,9 +339,9 @@ impl Uuid {
         unsafe {
             uf = transmute_copy(&self.bytes);
         }
-        uf.data1 = uf.data1.to_big_endian();
-        uf.data2 = uf.data2.to_big_endian();
-        uf.data3 = uf.data3.to_big_endian();
+        uf.data1 = uf.data1.to_be();
+        uf.data2 = uf.data2.to_be();
+        uf.data3 = uf.data3.to_be();
         let s = format!("{:08x}-{:04x}-{:04x}-{:02x}{:02x}-\
                          {:02x}{:02x}{:02x}{:02x}{:02x}{:02x}",
             uf.data1,
