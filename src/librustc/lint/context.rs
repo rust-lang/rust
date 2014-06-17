@@ -167,7 +167,7 @@ impl LintStore {
 
 /// Context for lint checking.
 pub struct Context<'a> {
-    /// Type context we're checking in (used to access fields like sess).
+    /// Type context we're checking in.
     pub tcx: &'a ty::ctxt,
 
     /// The store of registered lints.
