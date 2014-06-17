@@ -22,7 +22,7 @@ If you don't have enough time for a search, then don't worry about that. Just su
 the bug. If it's a duplicate, somebody will notice that and close it during triage.
 
 If you have the time for it, it would be useful to type the text of the error
-message you got [into the issue tracker search box](https://github.com/mozilla/rust/issues)
+message you got [into the issue tracker search box](https://github.com/rust-lang/rust/issues)
 to see if there's an existing bug that resembles your problem. If there is,
 and it's an open bug, you can comment on that issue and say you are also affected.
 This will encourage the devs to fix it. But again, don't let this stop you from

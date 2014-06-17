@@ -303,7 +303,7 @@ impl<'a> Visitor<()> for EmbargoVisitor<'a> {
                 match ty.node {
                     ast::TyPath(_, _, id) => {
                         match self.tcx.def_map.borrow().get_copy(&id) {
-                            def::DefPrimTy(..) => {},
+                            def::DefPrimTy(..) | def::DefTyParam(..) => {},
                             def => {
                                 let did = def.def_id();
                                 if is_local(did) {
@@ -801,7 +801,7 @@ impl<'a> Visitor<()> for PrivacyVisitor<'a> {
             ast::ExprField(ref base, ident, _) => {
                 match ty::get(ty::expr_ty_adjusted(self.tcx, &**base)).sty {
                     ty::ty_struct(id, _) => {
-                        self.check_field(expr.span, id, NamedField(ident));
+                        self.check_field(expr.span, id, NamedField(ident.node));
                     }
                     _ => {}
                 }

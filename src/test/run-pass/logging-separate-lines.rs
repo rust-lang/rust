@@ -10,6 +10,7 @@
 
 // ignore-android
 // ignore-win32
+// exec-env:RUST_LOG=debug
 
 #![feature(phase)]
 
@@ -29,9 +30,8 @@ fn main() {
         return
     }
 
-    let env = [("RUST_LOG".to_string(), "debug".to_string())];
     let p = Command::new(args[0].as_slice())
-                    .arg("child").env(env.as_slice())
+                    .arg("child")
                     .spawn().unwrap().wait_with_output().unwrap();
     assert!(p.status.success());
     let mut lines = str::from_utf8(p.error.as_slice()).unwrap().lines();

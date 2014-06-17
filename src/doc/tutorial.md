@@ -90,8 +90,8 @@ Snapshot binaries are currently built and tested on several platforms:
 You may find that other platforms work, but these are our "tier 1"
 supported build environments that are most likely to work.
 
-[wiki-start]: https://github.com/mozilla/rust/wiki/Note-getting-started-developing-Rust
-[git]: https://github.com/mozilla/rust.git
+[wiki-start]: https://github.com/rust-lang/rust/wiki/Note-getting-started-developing-Rust
+[git]: https://github.com/rust-lang/rust.git
 [rust-install]: http://www.rust-lang.org/install.html
 
 To build from source you will also need the following prerequisite
@@ -183,7 +183,7 @@ There is ctags support via `src/etc/ctags.rust`, but many other
 tools and editors are not yet supported. If you end up writing a Rust
 mode for your favorite editor, let us know so that we can link to it.
 
-[sublime]: http://github.com/dbp/sublime-rust
+[sublime]: http://github.com/jhasse/sublime-rust
 [sublime-pkg]: http://wbond.net/sublime_packages/package_control
 
 # Syntax basics
@@ -3345,6 +3345,6 @@ There is further documentation on the [wiki], however those tend to be even more
 [testing]: guide-testing.html
 [runtime]: guide-runtime.html
 [rustdoc]: rustdoc.html
-[wiki]: https://github.com/mozilla/rust/wiki/Docs
+[wiki]: https://github.com/rust-lang/rust/wiki/Docs
 
-[wiki-packages]: https://github.com/mozilla/rust/wiki/Doc-packages,-editors,-and-other-tools
+[wiki-packages]: https://github.com/rust-lang/rust/wiki/Doc-packages,-editors,-and-other-tools

@@ -237,7 +237,7 @@ impl TypeMap {
                                    metadata: DIType) {
         if !self.type_to_metadata.insert(ty::type_id(type_), metadata) {
             cx.sess().bug(format!("Type metadata for ty::t '{}' is already in the TypeMap!",
-                                  ppaux::ty_to_str(cx.tcx(), type_)).as_slice());
+                                   ppaux::ty_to_str(cx.tcx(), type_)).as_slice());
         }
     }
 
@@ -291,6 +291,8 @@ impl TypeMap {
         //                             :return-type-uid: : (:bounds:)*}
         // function             -> {<unsafe_> <abi_> fn( (:param-uid:)* <,_...> ) -> \
         //                             :return-type-uid:}
+        // unique vec box (~[]) -> {HEAP_VEC_BOX<:pointee-uid:>}
+        // gc box               -> {GC_BOX<:pointee-uid:>}
 
         match self.type_to_unique_id.find_copy(&ty::type_id(type_)) {
             Some(unique_type_id) => return unique_type_id,
@@ -550,6 +552,30 @@ impl TypeMap {
                                                .as_slice(),
                                            variant_name);
         let interner_key = self.unique_id_interner.intern(Rc::new(enum_variant_type_id));
+        UniqueTypeId(interner_key)
+    }
+
+    fn get_unique_type_id_of_heap_vec_box(&mut self,
+                                          cx: &CrateContext,
+                                          element_type: ty::t)
+                                       -> UniqueTypeId {
+        let element_type_id = self.get_unique_type_id_of_type(cx, element_type);
+        let heap_vec_box_type_id = format!("$$HEAP_VEC_BOX<{}>$$",
+                                           self.get_unique_type_id_as_string(element_type_id)
+                                               .as_slice());
+        let interner_key = self.unique_id_interner.intern(Rc::new(heap_vec_box_type_id));
+        UniqueTypeId(interner_key)
+    }
+
+    fn get_unique_type_id_of_gc_box(&mut self,
+                                    cx: &CrateContext,
+                                    element_type: ty::t)
+                                 -> UniqueTypeId {
+        let element_type_id = self.get_unique_type_id_of_type(cx, element_type);
+        let gc_box_type_id = format!("$$GC_BOX<{}>$$",
+                                     self.get_unique_type_id_as_string(element_type_id)
+                                         .as_slice());
+        let interner_key = self.unique_id_interner.intern(Rc::new(gc_box_type_id));
         UniqueTypeId(interner_key)
     }
 }
@@ -1677,9 +1703,9 @@ fn create_and_register_recursive_type_forward_declaration(
 impl RecursiveTypeDescription {
     // Finishes up the description of the type in question (mostly by providing descriptions of the
     // fields of the given type) and returns the final type metadata.
-    fn finalize(&self, cx: &CrateContext) -> DICompositeType {
+    fn finalize(&self, cx: &CrateContext) -> MetadataCreationResult {
         match *self {
-            FinalMetadata(metadata) => metadata,
+            FinalMetadata(metadata) => MetadataCreationResult::new(metadata, false),
             UnfinishedMetadata {
                 unfinished_type,
                 unique_type_id,
@@ -1713,7 +1739,7 @@ impl RecursiveTypeDescription {
                                               member_descriptions.as_slice(),
                                               file_metadata,
                                               codemap::DUMMY_SP);
-                return metadata_stub;
+                return MetadataCreationResult::new(metadata_stub, true);
             }
         }
     }
@@ -2459,14 +2485,22 @@ fn create_struct_stub(cx: &CrateContext,
 }
 
 fn at_box_metadata(cx: &CrateContext,
+                   at_pointer_type: ty::t,
                    content_type: ty::t,
-                   unique_type_id: UniqueTypeId) -> DIType {
+                   unique_type_id: UniqueTypeId)
+                -> MetadataCreationResult {
+    let content_type_metadata = type_metadata(cx, content_type, codemap::DUMMY_SP);
+
+    match debug_context(cx).type_map.borrow().find_metadata_for_unique_id(unique_type_id) {
+        Some(metadata) => return MetadataCreationResult::new(metadata, true),
+        None => { /* proceed */ }
+    };
+
     let content_type_name = ppaux::ty_to_str(cx.tcx(), content_type);
     let content_type_name = content_type_name.as_slice();
     let content_llvm_type = type_of::type_of(cx, content_type);
-    let content_type_metadata = type_metadata(cx, content_type, codemap::DUMMY_SP);
 
-    let box_type_name = format!("Boxed<{}>", content_type_name);
+    let box_type_name = format!("GcBox<{}>", content_type_name);
     let box_llvm_type = Type::at_box(cx, content_llvm_type);
     let member_llvm_types = box_llvm_type.field_types();
     assert!(box_layout_is_correct(cx,
@@ -2513,15 +2547,23 @@ fn at_box_metadata(cx: &CrateContext,
     let loc = span_start(cx, codemap::DUMMY_SP);
     let file_metadata = file_metadata(cx, loc.file.name.as_slice());
 
-    return composite_type_metadata(
+    let gc_box_unique_id = debug_context(cx).type_map
+                                            .borrow_mut()
+                                            .get_unique_type_id_of_gc_box(cx, content_type);
+
+    let gc_box_metadata = composite_type_metadata(
         cx,
         box_llvm_type,
         box_type_name.as_slice(),
-        unique_type_id,
+        gc_box_unique_id,
         member_descriptions,
         file_metadata,
         file_metadata,
         codemap::DUMMY_SP);
+
+    let gc_pointer_metadata = pointer_type_metadata(cx, at_pointer_type, gc_box_metadata);
+
+    return MetadataCreationResult::new(gc_pointer_metadata, false);
 
     // Unfortunately, we cannot assert anything but the correct types here---and not whether the
     // 'next' and 'prev' pointers are in the correct order.
@@ -2540,11 +2582,18 @@ fn at_box_metadata(cx: &CrateContext,
 
 
 fn fixed_vec_metadata(cx: &CrateContext,
+                      unique_type_id: UniqueTypeId,
                       element_type: ty::t,
                       len: uint,
                       span: Span)
-                   -> DIType {
+                   -> MetadataCreationResult {
     let element_type_metadata = type_metadata(cx, element_type, span);
+
+    match debug_context(cx).type_map.borrow().find_metadata_for_unique_id(unique_type_id) {
+        Some(metadata) => return MetadataCreationResult::new(metadata, true),
+        None => { /* proceed */ }
+    };
+
     let element_llvm_type = type_of::type_of(cx, element_type);
     let (element_type_size, element_type_align) = size_and_align_of(cx, element_llvm_type);
 
@@ -2556,7 +2605,7 @@ fn fixed_vec_metadata(cx: &CrateContext,
     };
 
     let subscripts = create_DIArray(DIB(cx), [subrange]);
-    return unsafe {
+    let metadata = unsafe {
         llvm::LLVMDIBuilderCreateArrayType(
             DIB(cx),
             bytes_to_bits(element_type_size * (len as u64)),
@@ -2564,24 +2613,30 @@ fn fixed_vec_metadata(cx: &CrateContext,
             element_type_metadata,
             subscripts)
     };
+
+    return MetadataCreationResult::new(metadata, false);
 }
 
 fn heap_vec_metadata(cx: &CrateContext,
-                     vec_type: ty::t,
+                     vec_pointer_type: ty::t,
                      element_type: ty::t,
                      unique_type_id: UniqueTypeId,
                      span: Span)
-                  -> DICompositeType {
-
+                  -> MetadataCreationResult {
     let element_type_metadata = type_metadata(cx, element_type, span);
     let element_llvm_type = type_of::type_of(cx, element_type);
     let (element_size, element_align) = size_and_align_of(cx, element_llvm_type);
 
-    let vec_llvm_type = Type::vec(cx, &element_llvm_type);
-    let vec_type_name = ppaux::ty_to_str(cx.tcx(), vec_type);
-    let vec_type_name = vec_type_name.as_slice();
+    match debug_context(cx).type_map.borrow().find_metadata_for_unique_id(unique_type_id) {
+        Some(metadata) => return MetadataCreationResult::new(metadata, true),
+        None => { /* proceed */ }
+    };
 
-    let member_llvm_types = vec_llvm_type.field_types();
+    let vecbox_llvm_type = Type::vec(cx, &element_llvm_type);
+    let vec_pointer_type_name = ppaux::ty_to_str(cx.tcx(), vec_pointer_type);
+    let vec_pointer_type_name = vec_pointer_type_name.as_slice();
+
+    let member_llvm_types = vecbox_llvm_type.field_types();
 
     let int_type_metadata = type_metadata(cx, ty::mk_int(), span);
     let array_type_metadata = unsafe {
@@ -2619,15 +2674,20 @@ fn heap_vec_metadata(cx: &CrateContext,
     let loc = span_start(cx, span);
     let file_metadata = file_metadata(cx, loc.file.name.as_slice());
 
-    composite_type_metadata(
-        cx,
-        vec_llvm_type,
-        vec_type_name,
-        unique_type_id,
-        member_descriptions,
-        file_metadata,
-        file_metadata,
-        span)
+    let vec_box_unique_id = debug_context(cx).type_map
+                                             .borrow_mut()
+                                             .get_unique_type_id_of_heap_vec_box(cx, element_type);
+
+    let vecbox_metadata = composite_type_metadata(cx,
+                                                  vecbox_llvm_type,
+                                                  vec_pointer_type_name,
+                                                  vec_box_unique_id,
+                                                  member_descriptions,
+                                                  file_metadata,
+                                                  file_metadata,
+                                                  span);
+
+    MetadataCreationResult::new(pointer_type_metadata(cx, vec_pointer_type, vecbox_metadata), false)
 }
 
 fn vec_slice_metadata(cx: &CrateContext,
@@ -2635,9 +2695,18 @@ fn vec_slice_metadata(cx: &CrateContext,
                       element_type: ty::t,
                       unique_type_id: UniqueTypeId,
                       span: Span)
-                   -> DICompositeType {
+                   -> MetadataCreationResult {
+    let data_ptr_type = ty::mk_ptr(cx.tcx(), ty::mt {
+        ty: element_type,
+        mutbl: ast::MutImmutable
+    });
 
-    debug!("vec_slice_metadata: {:?}", ty::get(vec_type));
+    let element_type_metadata = type_metadata(cx, data_ptr_type, span);
+
+    match debug_context(cx).type_map.borrow().find_metadata_for_unique_id(unique_type_id) {
+        Some(metadata) => return MetadataCreationResult::new(metadata, true),
+        None => { /* proceed */ }
+    };
 
     let slice_llvm_type = type_of::type_of(cx, vec_type);
     let slice_type_name = ppaux::ty_to_str(cx.tcx(), vec_type);
@@ -2646,17 +2715,11 @@ fn vec_slice_metadata(cx: &CrateContext,
     assert!(slice_layout_is_correct(cx,
                                     member_llvm_types.as_slice(),
                                     element_type));
-
-    let data_ptr_type = ty::mk_ptr(cx.tcx(), ty::mt {
-        ty: element_type,
-        mutbl: ast::MutImmutable
-    });
-
     let member_descriptions = [
         MemberDescription {
             name: "data_ptr".to_string(),
             llvm_type: *member_llvm_types.get(0),
-            type_metadata: type_metadata(cx, data_ptr_type, span),
+            type_metadata: element_type_metadata,
             offset: ComputedMemberOffset,
         },
         MemberDescription {
@@ -2672,15 +2735,15 @@ fn vec_slice_metadata(cx: &CrateContext,
     let loc = span_start(cx, span);
     let file_metadata = file_metadata(cx, loc.file.name.as_slice());
 
-    return composite_type_metadata(
-        cx,
-        slice_llvm_type,
-        slice_type_name.as_slice(),
-        unique_type_id,
-        member_descriptions,
-        file_metadata,
-        file_metadata,
-        span);
+    let metadata = composite_type_metadata(cx,
+                                           slice_llvm_type,
+                                           slice_type_name.as_slice(),
+                                           unique_type_id,
+                                           member_descriptions,
+                                           file_metadata,
+                                           file_metadata,
+                                           span);
+    return MetadataCreationResult::new(metadata, false);
 
     fn slice_layout_is_correct(cx: &CrateContext,
                                member_llvm_types: &[Type],
@@ -2693,12 +2756,12 @@ fn vec_slice_metadata(cx: &CrateContext,
 }
 
 fn subroutine_type_metadata(cx: &CrateContext,
+                            unique_type_id: UniqueTypeId,
                             signature: &ty::FnSig,
                             span: Span)
-                         -> DICompositeType {
+                         -> MetadataCreationResult {
     let loc = span_start(cx, span);
     let file_metadata = file_metadata(cx, loc.file.name.as_slice());
-
     let mut signature_metadata: Vec<DIType> = Vec::with_capacity(signature.inputs.len() + 1);
 
     // return type
@@ -2712,12 +2775,19 @@ fn subroutine_type_metadata(cx: &CrateContext,
         signature_metadata.push(type_metadata(cx, argument_type, span));
     }
 
-    return unsafe {
-        llvm::LLVMDIBuilderCreateSubroutineType(
-            DIB(cx),
-            file_metadata,
-            create_DIArray(DIB(cx), signature_metadata.as_slice()))
+    match debug_context(cx).type_map.borrow().find_metadata_for_unique_id(unique_type_id) {
+        Some(metadata) => return MetadataCreationResult::new(metadata, true),
+        None => { /* proceed */ }
     };
+
+    return MetadataCreationResult::new(
+        unsafe {
+            llvm::LLVMDIBuilderCreateSubroutineType(
+                DIB(cx),
+                file_metadata,
+                create_DIArray(DIB(cx), signature_metadata.as_slice()))
+        },
+        false);
 }
 
 fn trait_metadata(cx: &CrateContext,
@@ -2758,7 +2828,6 @@ fn trait_metadata(cx: &CrateContext,
                             definition_span)
 }
 
-
 fn type_metadata(cx: &CrateContext,
                  t: ty::t,
                  usage_site_span: Span)
@@ -2766,20 +2835,25 @@ fn type_metadata(cx: &CrateContext,
     // Get the unique type id of this type.
     let unique_type_id = {
         let mut type_map = debug_context(cx).type_map.borrow_mut();
+        // First, try to find the type in TypeMap. If we have seen it before, we can exit early here
         match type_map.find_metadata_for_type(t) {
             Some(metadata) => {
                 return metadata;
             },
             None => {
+                // The ty::t is not in the TypeMap but maybe we have already seen an equivalent type
+                // (e.g. only differing in region arguments). In order to find out, generate the
+                // unique type id and look that up.
                 let unique_type_id = type_map.get_unique_type_id_of_type(cx, t);
                 match type_map.find_metadata_for_unique_id(unique_type_id) {
                     Some(metadata) => {
+                        // There is already an equivalent type in the TypeMap. Register this ty::t
+                        // as an alias in the cache and return the cached metadata
                         type_map.register_type_with_metadata(cx, t, metadata);
                         return metadata;
                     },
                     None => {
-                        // There really is no type metadata for this type, so proceed by creating
-                        // it
+                        // There really is no type metadata for this type, so proceed by creating it
                         unique_type_id
                     }
                 }
@@ -2799,7 +2873,7 @@ fn type_metadata(cx: &CrateContext,
     )
 
     let sty = &ty::get(t).sty;
-    let (type_metadata, should_already_be_stored_in_typemap) = match *sty {
+    let MetadataCreationResult { metadata, already_stored_in_typemap } = match *sty {
         ty::ty_nil      |
         ty::ty_bot      |
         ty::ty_bool     |
@@ -2807,73 +2881,54 @@ fn type_metadata(cx: &CrateContext,
         ty::ty_int(_)   |
         ty::ty_uint(_)  |
         ty::ty_float(_) => {
-            (basic_type_metadata(cx, t), false)
+            MetadataCreationResult::new(basic_type_metadata(cx, t), false)
         }
         ty::ty_enum(def_id, _) => {
-            let is_c_style_enum = match *adt::represent_type(cx, t) {
-                adt::CEnum(..) => true,
-                _ => false
-            };
-
-            (prepare_enum_metadata(cx, t, def_id, unique_type_id, usage_site_span).finalize(cx),
-             !is_c_style_enum)
+            prepare_enum_metadata(cx, t, def_id, unique_type_id, usage_site_span).finalize(cx)
         }
         ty::ty_box(pointee_type) => {
-            let box_content_metadata = at_box_metadata(cx, pointee_type, unique_type_id);
-            return_if_created_in_meantime!();
-            (pointer_type_metadata(cx, t, box_content_metadata), false)
+            at_box_metadata(cx, t, pointee_type, unique_type_id)
         }
         ty::ty_vec(ref mt, Some(len)) => {
-            (fixed_vec_metadata(cx, mt.ty, len, usage_site_span), false)
+            fixed_vec_metadata(cx, unique_type_id, mt.ty, len, usage_site_span)
         }
         ty::ty_uniq(pointee_type) => {
-            (match ty::get(pointee_type).sty {
+            match ty::get(pointee_type).sty {
                 ty::ty_vec(ref mt, None) => {
-                    let vec_metadata = heap_vec_metadata(cx,
-                                                         pointee_type,
-                                                         mt.ty,
-                                                         unique_type_id,
-                                                         usage_site_span);
-                    return_if_created_in_meantime!();
-                    pointer_type_metadata(cx, t, vec_metadata)
+                    heap_vec_metadata(cx, pointee_type, mt.ty, unique_type_id, usage_site_span)
                 }
                 ty::ty_str => {
                     let i8_t = ty::mk_i8();
-                    let vec_metadata = heap_vec_metadata(cx,
-                                                         pointee_type,
-                                                         i8_t,
-                                                         unique_type_id,
-                                                         usage_site_span);
-                    pointer_type_metadata(cx, t, vec_metadata)
+                    heap_vec_metadata(cx, pointee_type, i8_t, unique_type_id, usage_site_span)
                 }
                 _ => {
                     let pointee_metadata = type_metadata(cx, pointee_type, usage_site_span);
                     return_if_created_in_meantime!();
-                    pointer_type_metadata(cx, t, pointee_metadata)
+                    MetadataCreationResult::new(pointer_type_metadata(cx, t, pointee_metadata),
+                                                false)
                 }
-            }, false)
+            }
         }
         ty::ty_ptr(ref mt) | ty::ty_rptr(_, ref mt) => {
-            (match ty::get(mt.ty).sty {
+            match ty::get(mt.ty).sty {
                 ty::ty_vec(ref mt, None) => {
                     vec_slice_metadata(cx, t, mt.ty, unique_type_id, usage_site_span)
                 }
                 ty::ty_str => {
-                    let i8_t = ty::mk_i8();
-                    vec_slice_metadata(cx, t, i8_t, unique_type_id, usage_site_span)
+                    vec_slice_metadata(cx, t, ty::mk_i8(), unique_type_id, usage_site_span)
                 }
                 _ => {
                     let pointee = type_metadata(cx, mt.ty, usage_site_span);
                     return_if_created_in_meantime!();
-                    pointer_type_metadata(cx, t, pointee)
+                    MetadataCreationResult::new(pointer_type_metadata(cx, t, pointee), false)
                 }
-            }, false)
+            }
         }
         ty::ty_bare_fn(ref barefnty) => {
-            (subroutine_type_metadata(cx, &barefnty.sig, usage_site_span), false)
+            subroutine_type_metadata(cx, unique_type_id, &barefnty.sig, usage_site_span)
         }
         ty::ty_closure(ref closurety) => {
-            (subroutine_type_metadata(cx, &closurety.sig, usage_site_span), false)
+            subroutine_type_metadata(cx, unique_type_id, &closurety.sig, usage_site_span)
         }
         ty::ty_trait(box ty::TyTrait {
                 def_id,
@@ -2881,24 +2936,24 @@ fn type_metadata(cx: &CrateContext,
                 store,
                 ref bounds
             }) => {
-            (trait_metadata(cx, def_id, t, substs, store, bounds, unique_type_id), false)
+            MetadataCreationResult::new(
+                trait_metadata(cx, def_id, t, substs, store, bounds, unique_type_id),
+                false)
         }
         ty::ty_struct(def_id, ref substs) => {
-            let struct_metadata = prepare_struct_metadata(cx,
-                                                          t,
-                                                          def_id,
-                                                          substs,
-                                                          unique_type_id,
-                                                          usage_site_span).finalize(cx);
-            (struct_metadata, true)
+            prepare_struct_metadata(cx,
+                                    t,
+                                    def_id,
+                                    substs,
+                                    unique_type_id,
+                                    usage_site_span).finalize(cx)
         }
         ty::ty_tup(ref elements) => {
-            let tuple_metadata = prepare_tuple_metadata(cx,
-                                                        t,
-                                                        elements.as_slice(),
-                                                        unique_type_id,
-                                                        usage_site_span).finalize(cx);
-            (tuple_metadata, true)
+            prepare_tuple_metadata(cx,
+                                   t,
+                                   elements.as_slice(),
+                                   unique_type_id,
+                                   usage_site_span).finalize(cx)
         }
         _ => {
             cx.sess().bug(format!("debuginfo: unexpected type in type_metadata: {:?}",
@@ -2909,33 +2964,57 @@ fn type_metadata(cx: &CrateContext,
     {
         let mut type_map = debug_context(cx).type_map.borrow_mut();
 
-        if should_already_be_stored_in_typemap {
-            // Make sure that we already have a TypeMap entry entry for the ty::t.
-            if type_map.find_metadata_for_type(t).is_none() {
-                let unique_type_id_str = type_map.get_unique_type_id_as_string(unique_type_id);
-                let error_message = format!("Expected type metadata for ty::t '{}' to already be in
-                                            the TypeMap but it was not (unique type id = {})",
-                                            ppaux::ty_to_str(cx.tcx(), t),
-                                            unique_type_id_str.as_slice());
-                cx.sess().span_bug(usage_site_span, error_message.as_slice());
-            }
-
+        if already_stored_in_typemap {
             // Also make sure that we already have a TypeMap entry entry for the unique type id.
-            if type_map.find_metadata_for_unique_id(unique_type_id).is_none() {
-                let unique_type_id_str = type_map.get_unique_type_id_as_string(unique_type_id);
-                let error_message = format!("Expected type metadata for unique type id '{}' to
-                                            already be in the TypeMap but it was not. (ty::t = {})",
-                                            unique_type_id_str.as_slice(),
-                                            ppaux::ty_to_str(cx.tcx(), t));
-                cx.sess().span_bug(usage_site_span, error_message.as_slice());
+            let metadata_for_uid = match type_map.find_metadata_for_unique_id(unique_type_id) {
+                Some(metadata) => metadata,
+                None => {
+                    let unique_type_id_str = type_map.get_unique_type_id_as_string(unique_type_id);
+                    let error_message = format!("Expected type metadata for unique type id '{}' to \
+                        already be in the debuginfo::TypeMap but it was not. (ty::t = {})",
+                        unique_type_id_str.as_slice(),
+                        ppaux::ty_to_str(cx.tcx(), t));
+                    cx.sess().span_bug(usage_site_span, error_message.as_slice());
+                }
+            };
+
+            match type_map.find_metadata_for_type(t) {
+                Some(metadata) => {
+                    if metadata != metadata_for_uid {
+                        let unique_type_id_str =
+                            type_map.get_unique_type_id_as_string(unique_type_id);
+                        let error_message = format!("Mismatch between ty::t and UniqueTypeId maps \
+                            in debuginfo::TypeMap. UniqueTypeId={}, ty::t={}",
+                            unique_type_id_str.as_slice(),
+                            ppaux::ty_to_str(cx.tcx(), t));
+                        cx.sess().span_bug(usage_site_span, error_message.as_slice());
+                    }
+                }
+                None => {
+                    type_map.register_type_with_metadata(cx, t, metadata);
+                }
             }
         } else {
-            type_map.register_type_with_metadata(cx, t, type_metadata);
-            type_map.register_unique_id_with_metadata(cx, unique_type_id, type_metadata);
+            type_map.register_type_with_metadata(cx, t, metadata);
+            type_map.register_unique_id_with_metadata(cx, unique_type_id, metadata);
         }
     }
 
-    type_metadata
+    metadata
+}
+
+struct MetadataCreationResult {
+    metadata: DIType,
+    already_stored_in_typemap: bool
+}
+
+impl MetadataCreationResult {
+    fn new(metadata: DIType, already_stored_in_typemap: bool) -> MetadataCreationResult {
+        MetadataCreationResult {
+            metadata: metadata,
+            already_stored_in_typemap: already_stored_in_typemap
+        }
+    }
 }
 
 #[deriving(PartialEq)]

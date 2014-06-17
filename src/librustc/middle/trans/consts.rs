@@ -419,7 +419,7 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr,
               let brepr = adt::represent_type(cx, bt);
               let (bv, inlineable) = const_expr(cx, &**base, is_local);
               expr::with_field_tys(cx.tcx(), bt, None, |discr, field_tys| {
-                  let ix = ty::field_idx_strict(cx.tcx(), field.name, field_tys);
+                  let ix = ty::field_idx_strict(cx.tcx(), field.node.name, field_tys);
                   (adt::const_get_field(cx, &*brepr, bv, discr, ix), inlineable)
               })
           }
