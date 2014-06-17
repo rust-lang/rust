@@ -3502,7 +3502,7 @@ pub fn type_fulfills_trait(cx: &ctxt, ty: ty::t, trait_ref: Rc<TraitRef>) -> boo
 
             let target_trait_ref = Rc::new(ty::TraitRef {
                 def_id: trait_ref.def_id,
-                substs: ty::substs {
+                substs: subst::Substs {
                     tps: trait_ref.substs.tps.clone(),
                     regions: trait_ref.substs.regions.clone(),
                     self_ty: Some(ty)
@@ -3545,10 +3545,7 @@ pub fn trait_ref_supertraits(cx: &ctxt, trait_ref: &ty::TraitRef) -> Vec<Rc<Trai
 }
 
 pub fn is_built_in_trait(cx: &ctxt, trait_ref: &ty::TraitRef) -> bool {
-    match cx.lang_items.to_builtin_kind(trait_ref.def_id) {
-        Some(_) => true,
-        None => false
-    }
+    cx.lang_items.to_builtin_kind(trait_ref.def_id).is_some()
 }
 
 fn lookup_locally_or_in_crate_store<V:Clone>(

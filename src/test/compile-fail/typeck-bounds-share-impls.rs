@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-tidy-linelength
 // Verify that `Share` bounds are correctly enforced.
 
 struct MyStruct;
@@ -20,7 +21,7 @@ struct NotShareStruct<'a> {
 }
 
 impl<'a> Share for NotShareStruct<'a> {}
-//~^ ERROR cannot implement a built-in trait on a type that doesn't fulfill such trait.
+//~^ ERROR cannot implement the trait `core::kinds::Share` on type `NotShareStruct<a>` because the field with type `MyStruct` doesn't fulfill such trait.
 
 enum Foo {
     Var(MyStruct)

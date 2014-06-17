@@ -21,7 +21,6 @@ use cmp;
 use cmp::{PartialEq, Eq};
 use collections::Collection;
 use default::Default;
-use kinds::{Share, Send, Copy};
 use iter::{Filter, Map, Iterator};
 use iter::{DoubleEndedIterator, ExactSize};
 use iter::range;
@@ -35,10 +34,6 @@ use uint;
 /*
 Section: Creating a string
 */
-
-impl Share for ~str {}
-impl Send for ~str {}
-impl Copy for ~str {}
 
 /// Converts a vector to a string slice without performing any allocations.
 ///

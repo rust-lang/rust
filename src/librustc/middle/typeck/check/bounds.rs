@@ -30,11 +30,8 @@ struct BoundContext<'a> {
 }
 
 impl<'a> BoundContext<'a> {
-    fn report_error(&self, i: &ast::Item, note_span: Span, msg: &str) {
-        self.tcx.sess.span_err(i.span,
-                               format!("cannot implement a built-in trait \
-                                        on a type that doesn't fulfill such trait."));
-
+    fn report_error(&self, i: &ast::Item, note_span: Span, error: &str, msg: &str) {
+        self.tcx.sess.span_err(i.span, error);
         self.tcx.sess.span_note(note_span, msg);
     }
 }
@@ -63,13 +60,17 @@ impl<'a> Visitor<()> for BoundContext<'a> {
                             let fty = ty::lookup_field_type(self.tcx, did, field.id, substs);
                             if !ty::type_fulfills_trait(self.tcx, fty, tref.clone()) {
                                 self.report_error(i, span,
-                                                  format!("field with type {} does not fulfill {}",
-                                                          ppaux::ty_to_str(self.tcx, fty),
-                                                          ppaux::trait_ref_to_str(self.tcx,
-                                                                                  &*tref)));
+                                        format!("cannot implement the trait `{}` \
+                                                 on type `{}` because the field with type \
+                                                 `{}` doesn't fulfill such trait.",
+                                                 ppaux::trait_ref_to_str(self.tcx,
+                                                                         &*tref),
+                                                ppaux::ty_to_str(self.tcx, nty),
+                                                ppaux::ty_to_str(self.tcx, fty)).as_slice(),
+                                        format!("field `{}`, declared in this struct",
+                                                   ppaux::ty_to_str(self.tcx, fty)).as_slice());
                             }
                         }
-
                     }
                     ty::ty_enum(did, ref substs) => {
                         let variants = ty::substd_enum_variants(self.tcx, did, substs);
@@ -78,18 +79,26 @@ impl<'a> Visitor<()> for BoundContext<'a> {
                             for arg in variant.args.iter() {
                                 if !ty::type_fulfills_trait(self.tcx, *arg, tref.clone()) {
                                     self.report_error(i, span,
-                                          format!("variant arg with type {} does not fulfill {}",
-                                                  ppaux::ty_to_str(self.tcx, *arg),
-                                                  ppaux::trait_ref_to_str(self.tcx,
-                                                                          &*tref)));
+                                          format!("cannot implement the trait `{}` \
+                                                   on type `{}` because variant arg with type \
+                                                   `{}` doesn't fulfill such trait.",
+                                                   ppaux::trait_ref_to_str(self.tcx,
+                                                                           &*tref),
+                                                  ppaux::ty_to_str(self.tcx, nty),
+                                                  ppaux::ty_to_str(self.tcx, *arg)).as_slice(),
+                                          format!("variant arg {}, declared here",
+                                                  ppaux::ty_to_str(self.tcx, *arg)).as_slice());
                                 }
                             }
                         }
                     }
                     _ => {
-                        self.tcx.sess.span_err(i.span, "cannot implement built-in traits \
-                                                        on types that are not struct / enum");
-                        //check_type_fulfills_trait(self.tcx, i, nty, tref);
+                        self.tcx.sess.span_err(i.span,
+                                             format!("can only implement built-in trait \
+                                                     `{}` on a struct or enum",
+                                                     ppaux::trait_ref_to_str(self.tcx,
+                                                                              &*tref)).as_slice());
+
                     }
                 }
             }

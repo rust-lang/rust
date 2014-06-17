@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-tidy-linelength
+
 // Verify that built-in trait implementations are enforced recursively on
 // a type.
 
@@ -28,7 +30,7 @@ impl DummyTrait for SendShareStruct {}
 impl Share for SendShareStruct {}
 
 impl Send for SendShareStruct {}
-//~^ ERROR cannot implement a built-in trait on a type that doesn't fulfill such trait
+//~^ ERROR cannot implement the trait `core::kinds::Send` on type `SendShareStruct` because the field with type `ShareStruct` doesn't fulfill such trait.
 
 enum ShareEnum {}
 impl Share for ShareEnum {}
@@ -45,9 +47,9 @@ enum SendShareEnum {
 
 impl Share for SendShareEnum {}
 impl Send for SendShareEnum {}
-//~^ ERROR cannot implement a built-in trait on a type that doesn't fulfill such trait
-//~^^ ERROR cannot implement a built-in trait on a type that doesn't fulfill such trait
-//~^^^ ERROR cannot implement a built-in trait on a type that doesn't fulfill such trait
+//~^ ERROR cannot implement the trait `core::kinds::Send` on type `SendShareEnum` because variant arg with type `ShareEnum` doesn't fulfill such trait.
+//~^^ ERROR cannot implement the trait `core::kinds::Send` on type `SendShareEnum` because variant arg with type `ShareStruct` doesn't fulfill such trait.
+//~^^^ ERROR cannot implement the trait `core::kinds::Send` on type `SendShareEnum` because variant arg with type `ShareEnum` doesn't fulfill such trait.
 
 virtual struct Base {
     a: ShareStruct
@@ -57,10 +59,10 @@ struct InheritedShareStruct: Base;
 
 impl Share for InheritedShareStruct {}
 impl Send for InheritedShareStruct {}
-//~^ Error cannot implement a built-in trait on a type that doesn't fulfill such trait
+//~^ ERROR cannot implement the trait `core::kinds::Send` on type `InheritedShareStruct` because the field with type `ShareStruct` doesn't fulfill such trait.
 
 #[deriving(Send)]
-//~^ Error cannot implement a built-in trait on a type that doesn't fulfill such trait
+//~^ ERROR cannot implement the trait `core::kinds::Send` on type `SendShareStruct2` because the field with type `ShareStruct` doesn't fulfill such trait.
 struct SendShareStruct2 {
     a: ShareStruct
 }
@@ -69,15 +71,14 @@ struct SendShareStruct2 {
 type MyType = ||:'static -> ShareStruct;
 
 impl Share for MyType {}
-//~^ ERROR cannot implement built-in traits on types that are not struct / enum
-
+//~^ ERROR can only implement built-in trait `core::kinds::Share` on a struct or enum
 
 struct ProcNoShareStruct {
     a: proc()
 }
 
 impl Share for ProcNoShareStruct {}
-//~^ Error cannot implement a built-in trait on a type that doesn't fulfill such trait
+//~^ ERROR cannot implement the trait `core::kinds::Share` on type `ProcNoShareStruct` because the field with type `proc()` doesn't fulfill such trait.
 
 struct ProcShareStruct {
     a: proc():Share
@@ -96,6 +97,6 @@ struct ClosureNotShareStruct {
 }
 
 impl Share for ClosureNotShareStruct {}
-//~^ Error cannot implement a built-in trait on a type that doesn't fulfill such trait
+//~^ ERROR cannot implement the trait `core::kinds::Share` on type `ClosureNotShareStruct` because the field with type `'static ||:'static` doesn't fulfill such trait.
 
 fn main() {}

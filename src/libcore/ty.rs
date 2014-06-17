@@ -53,7 +53,7 @@ pub struct Unsafe<T> {
     pub marker1: marker::InvariantType<T>
 }
 
-impl <T:Share> Share for Unsafe<T> {}
+impl <T> Share for Unsafe<T> {}
 
 impl<T> Unsafe<T> {
 
