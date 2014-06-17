@@ -3247,7 +3247,7 @@ fn main() { println!("hello {}", world::explore()); }
 Now compile and run like this (adjust to your platform if necessary):
 
 ~~~~console
-$ rustc --crate-type=lib world.rs  # compiles libworld-<HASH>-0.42.so
+$ rustc --crate-type=lib world.rs  # compiles libworld-<HASH>-0.42.rlib
 $ rustc main.rs -L .               # compiles main
 $ ./main
 "hello world"
