@@ -183,7 +183,7 @@ fn main() {
 
 ## Using `ToJson`
 
-This example use the ToJson impl to deserialize the JSON string.
+This example uses the ToJson impl to deserialize the JSON string.
 Example of `ToJson` trait implementation for TestStruct1.
 
 ```rust

@@ -132,7 +132,8 @@ impl<A:Send> Future<A> {
         let (tx, rx) = channel();
 
         spawn(proc() {
-            tx.send(blk());
+            // Don't fail if the other end has hung up
+            let _ = tx.send_opt(blk());
         });
 
         Future::from_receiver(rx)
@@ -144,6 +145,7 @@ mod test {
     use prelude::*;
     use sync::Future;
     use task;
+    use comm::{channel, Sender};
 
     #[test]
     fn test_from_value() {
@@ -205,5 +207,29 @@ mod test {
             let actual = f.get();
             assert_eq!(actual, expected);
         });
+    }
+
+    #[test]
+    fn test_dropped_future_doesnt_fail() {
+        struct Bomb(Sender<bool>);
+
+        local_data_key!(LOCAL: Bomb)
+
+        impl Drop for Bomb {
+            fn drop(&mut self) {
+                let Bomb(ref tx) = *self;
+                tx.send(task::failing());
+            }
+        }
+
+        // Spawn a future, but drop it immediately. When we receive the result
+        // later on, we should never view the task as having failed.
+        let (tx, rx) = channel();
+        drop(Future::spawn(proc() {
+            LOCAL.replace(Some(Bomb(tx)));
+        }));
+
+        // Make sure the future didn't fail the task.
+        assert!(!rx.recv());
     }
 }

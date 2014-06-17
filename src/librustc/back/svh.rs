@@ -44,7 +44,7 @@
 //!
 //! # Relevant links
 //!
-//! Original issue: https://github.com/mozilla/rust/issues/10207
+//! Original issue: https://github.com/rust-lang/rust/issues/10207
 
 use std::fmt;
 use std::hash::Hash;
@@ -270,7 +270,7 @@ mod svh_visitor {
             ExprBlock(..)            => SawExprBlock,
             ExprAssign(..)           => SawExprAssign,
             ExprAssignOp(op, _, _)   => SawExprAssignOp(op),
-            ExprField(_, id, _)      => SawExprField(content(id)),
+            ExprField(_, id, _)      => SawExprField(content(id.node)),
             ExprIndex(..)            => SawExprIndex,
             ExprPath(..)             => SawExprPath,
             ExprAddrOf(m, _)         => SawExprAddrOf(m),

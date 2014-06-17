@@ -2352,7 +2352,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                    expr: &ast::Expr,
                    lvalue_pref: LvaluePreference,
                    base: &ast::Expr,
-                   field: ast::Name,
+                   field: &ast::SpannedIdent,
                    tys: &[ast::P<ast::Ty>]) {
         let tcx = fcx.ccx.tcx;
         check_expr_with_lvalue_pref(fcx, base, lvalue_pref);
@@ -2365,7 +2365,8 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                     ty::ty_struct(base_id, ref substs) => {
                         debug!("struct named {}", ppaux::ty_to_str(tcx, base_t));
                         let fields = ty::lookup_struct_fields(tcx, base_id);
-                        lookup_field_ty(tcx, base_id, fields.as_slice(), field, &(*substs))
+                        lookup_field_ty(tcx, base_id, fields.as_slice(),
+                                        field.node.name, &(*substs))
                     }
                     _ => None
                 }
@@ -2383,7 +2384,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         match method::lookup(fcx,
                              expr,
                              base,
-                             field,
+                             field.node.name,
                              expr_t,
                              tps.as_slice(),
                              DontDerefArgs,
@@ -2392,14 +2393,14 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                              IgnoreStaticMethods) {
             Some(_) => {
                 fcx.type_error_message(
-                    expr.span,
+                    field.span,
                     |actual| {
                         format!("attempted to take value of method `{}` on type \
-                                 `{}`", token::get_name(field), actual)
+                                 `{}`", token::get_ident(field.node), actual)
                     },
                     expr_t, None);
 
-                tcx.sess.span_note(expr.span,
+                tcx.sess.span_note(field.span,
                     "maybe a missing `()` to call it? If not, try an anonymous function.");
             }
 
@@ -2410,7 +2411,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                         format!("attempted access of field `{}` on \
                                         type `{}`, but no field with that \
                                         name was found",
-                                       token::get_name(field),
+                                       token::get_ident(field.node),
                                        actual)
                     },
                     expr_t, None);
@@ -3214,7 +3215,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         }
       }
       ast::ExprField(ref base, ref field, ref tys) => {
-        check_field(fcx, expr, lvalue_pref, &**base, field.name, tys.as_slice());
+        check_field(fcx, expr, lvalue_pref, &**base, field, tys.as_slice());
       }
       ast::ExprIndex(ref base, ref idx) => {
           check_expr_with_lvalue_pref(fcx, &**base, lvalue_pref);

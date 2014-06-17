@@ -2592,7 +2592,7 @@ pub mod consts {
             pub static PROT_GROWSUP : c_int = 0x020000000;
 
             pub static MAP_TYPE : c_int = 0x000f;
-            pub static MAP_ANONONYMOUS : c_int = 0x0020;
+            pub static MAP_ANONYMOUS : c_int = 0x0020;
             pub static MAP_32BIT : c_int = 0x0040;
             pub static MAP_GROWSDOWN : c_int = 0x0100;
             pub static MAP_DENYWRITE : c_int = 0x0800;
@@ -2615,7 +2615,7 @@ pub mod consts {
             pub static PROT_GROWSUP : c_int = 0x02000000;
 
             pub static MAP_TYPE : c_int = 0x000f;
-            pub static MAP_ANONONYMOUS : c_int = 0x0800;
+            pub static MAP_ANONYMOUS : c_int = 0x0800;
             pub static MAP_GROWSDOWN : c_int = 0x01000;
             pub static MAP_DENYWRITE : c_int = 0x02000;
             pub static MAP_EXECUTABLE : c_int = 0x04000;

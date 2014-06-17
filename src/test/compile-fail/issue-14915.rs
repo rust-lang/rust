@@ -8,15 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(managed_boxes)]
+use std::gc::{GC,Gc};
 
-use std::gc::Gc;
+fn main() {
+    let x: Box<int> = box 0;
+    let y: Gc<int> = box (GC) 0;
 
-struct BarStruct;
-
-impl<'a> BarStruct {
-    fn foo(&'a mut self) -> Gc<BarStruct> { self }
-    //~^ ERROR: error: mismatched types: expected `Gc<BarStruct>` but found `&'a mut BarStruct
+    println!("{}", x + 1); //~ ERROR binary operation `+` cannot be applied to type `Box<int>`
+    //~^ ERROR cannot determine a type for this bounded type parameter: unconstrained type
+    println!("{}", y + 1);
+    //~^ ERROR binary operation `+` cannot be applied to type `Gc<int>`
 }
-
-fn main() {}

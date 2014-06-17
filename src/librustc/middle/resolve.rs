@@ -5241,7 +5241,7 @@ impl<'a> Resolver<'a> {
                 // field, we need to add any trait methods we find that match
                 // the field name so that we can do some nice error reporting
                 // later on in typeck.
-                let traits = self.search_for_traits_containing_method(ident.name);
+                let traits = self.search_for_traits_containing_method(ident.node.name);
                 self.trait_map.insert(expr.id, traits);
             }
             ExprMethodCall(ident, _, _) => {

@@ -1796,7 +1796,7 @@ impl<'a> Parser<'a> {
         ExprIndex(expr, idx)
     }
 
-    pub fn mk_field(&mut self, expr: Gc<Expr>, ident: Ident,
+    pub fn mk_field(&mut self, expr: Gc<Expr>, ident: ast::SpannedIdent,
                     tys: Vec<P<Ty>>) -> ast::Expr_ {
         ExprField(expr, ident, tys)
     }
@@ -2090,7 +2090,8 @@ impl<'a> Parser<'a> {
                             e = self.mk_expr(lo, hi, nd);
                         }
                         _ => {
-                            let field = self.mk_field(e, i, tys);
+                            let id = spanned(dot, hi, i);
+                            let field = self.mk_field(e, id, tys);
                             e = self.mk_expr(lo, hi, field)
                         }
                     }

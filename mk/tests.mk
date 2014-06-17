@@ -91,7 +91,8 @@ endif
 define DEF_TARGET_COMMANDS
 
 ifdef CFG_UNIXY_$(1)
-  CFG_RUN_TEST_$(1)=$$(call CFG_RUN_$(1),,$$(CFG_VALGRIND) $$(1))
+  CFG_RUN_TEST_$(1)=$$(TARGET_RPATH_VAR$$(2)_T_$$(3)_H_$$(4)) \
+	  $$(call CFG_RUN_$(1),,$$(CFG_VALGRIND) $$(1))
 endif
 
 ifdef CFG_WINDOWSY_$(1)
@@ -105,13 +106,13 @@ ifdef CFG_WINDOWSY_$(1)
                $$(if $$(findstring stage3,$$(1)), \
                     stage3/$$(CFG_LIBDIR_RELATIVE), \
                )))))/rustlib/$$(CFG_BUILD)/lib
-  CFG_RUN_TEST_$(1)=$$(call CFG_RUN_$(1),$$(call CFG_TESTLIB_$(1),$$(1),$$(3)),$$(1))
+  CFG_RUN_TEST_$(1)=$$(call CFG_RUN_$(1),$$(call CFG_TESTLIB_$(1),$$(1),$$(4)),$$(1))
 endif
 
 # Run the compiletest runner itself under valgrind
 ifdef CTEST_VALGRIND
 CFG_RUN_CTEST_$(1)=$$(RPATH_VAR$$(1)_T_$$(3)_H_$$(3)) \
-      $$(call CFG_RUN_TEST_$$(CFG_BUILD),$$(2),$$(3))
+      $$(call CFG_RUN_TEST_$$(CFG_BUILD),$$(3),$$(4))
 else
 CFG_RUN_CTEST_$(1)=$$(RPATH_VAR$$(1)_T_$$(3)_H_$$(3)) \
       $$(call CFG_RUN_$$(CFG_BUILD),$$(TLIB$$(1)_T_$$(3)_H_$$(3)),$$(2))
@@ -375,7 +376,8 @@ $(3)/stage$(1)/test/$(4)test-$(2)$$(X_$(2)):				\
 	@$$(call E, rustc: $$@)
 	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test	\
 		-L "$$(RT_OUTPUT_DIR_$(2))"		\
-		-L "$$(LLVM_LIBDIR_$(2))"
+		-L "$$(LLVM_LIBDIR_$(2))"		\
+		$$(RUSTFLAGS_$(4))
 
 endef
 
@@ -391,7 +393,7 @@ check-stage$(1)-T-$(2)-H-$(3)-$(4)-exec: $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4
 $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4)): \
 		$(3)/stage$(1)/test/$(4)test-$(2)$$(X_$(2))
 	@$$(call E, run: $$<)
-	$$(Q)$$(call CFG_RUN_TEST_$(2),$$<,$(2),$(3)) $$(TESTARGS) \
+	$$(Q)$$(call CFG_RUN_TEST_$(2),$$<,$(1),$(2),$(3)) $$(TESTARGS) \
 	    --logfile $$(call TEST_LOG_FILE,$(1),$(2),$(3),$(4)) \
 	    $$(call CRATE_TEST_EXTRA_ARGS,$(1),$(2),$(3),$(4)) \
 	    && touch $$@

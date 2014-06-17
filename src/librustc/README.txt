@@ -4,12 +4,12 @@ An informal guide to reading and working on the rustc compiler.
 If you wish to expand on this document, or have a more experienced
 Rust contributor add anything else to it, please get in touch:
 
-https://github.com/mozilla/rust/wiki/Note-development-policy
+https://github.com/rust-lang/rust/wiki/Note-development-policy
 ("Communication" subheading)
 
 or file a bug:
 
-https://github.com/mozilla/rust/issues
+https://github.com/rust-lang/rust/issues
 
 Your concerns are probably the same as someone else's.
 

@@ -111,14 +111,14 @@ match val.do_something() {
 [#3101][iss] is the issue that proposed making this the only behavior, with
 rationale and discussion.
 
-[iss]: https://github.com/mozilla/rust/issues/3101
+[iss]: https://github.com/rust-lang/rust/issues/3101
 
 ## No guaranteed tail-call optimization
 
-In general, tail-call optimization is not guaranteed: see for a detailed
-explanation with references. There is a [proposed extension][tce] that would
-allow tail-call elimination in certain contexts. The compiler is still free to
-optimize tail-calls [when it pleases][sco], however.
+In general, tail-call optimization is not guaranteed: see [here][tml] for a
+detailed explanation with references. There is a [proposed extension][tce] that
+would allow tail-call elimination in certain contexts. The compiler is still
+free to optimize tail-calls [when it pleases][sco], however.
 
 [tml]: https://mail.mozilla.org/pipermail/rust-dev/2013-April/003557.html
 [sco]: http://llvm.org/docs/CodeGenerator.html#sibling-call-optimization
