@@ -21,6 +21,7 @@ use mutex;
 ///
 /// > **Note**: This type is not recommended for general use. The mutex provided
 /// >           as part of `libsync` should almost always be favored.
+#[deriving(Share)]
 pub struct Exclusive<T> {
     lock: mutex::NativeMutex,
     data: Unsafe<T>,

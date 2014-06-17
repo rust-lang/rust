@@ -51,14 +51,15 @@ use slice::{Items, MutItems};
 /// vec.push(4);
 /// assert_eq!(vec, vec!(1, 2, 3, 4));
 /// ```
-#[deriving(Share,Send,Copy)]
-#[allow(raw_pointer_deriving)]
 #[unsafe_no_drop_flag]
 pub struct Vec<T> {
     len: uint,
     cap: uint,
     ptr: *mut T
 }
+
+impl <T: Send> Send for Vec<T> {}
+impl <T: Share> Share for Vec<T> {}
 
 impl<T> Vec<T> {
     /// Constructs a new, empty `Vec`.

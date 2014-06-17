@@ -76,5 +76,5 @@ mod lock;
 
 #[cfg(not(test))]
 mod std {
-    pub use core::{fmt, option, cmp, clone};
+    pub use core::{fmt, option, cmp, clone, kinds};
 }

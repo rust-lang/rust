@@ -37,6 +37,8 @@ enum Message {
     Decrement,
 }
 
+#[deriving(Share)]
+#[allow(raw_pointer_deriving)]
 struct State {
     handle: *uvll::uv_async_t,
     lock: NativeMutex, // see comments in async_cb for why this is needed
@@ -51,6 +53,8 @@ pub struct QueuePool {
 }
 
 /// This type is used to send messages back to the original event loop.
+#[deriving(Share)]
+#[allow(raw_pointer_deriving)]
 pub struct Queue {
     queue: Arc<State>,
 }

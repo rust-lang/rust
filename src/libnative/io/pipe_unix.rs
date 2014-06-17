@@ -56,6 +56,7 @@ fn addr_to_sockaddr_un(addr: &CString) -> IoResult<(libc::sockaddr_storage, uint
     return Ok((storage, len));
 }
 
+#[deriving(Share)]
 struct Inner {
     fd: fd_t,
 

@@ -267,6 +267,7 @@ mod std {
     pub use clone;
     pub use cmp;
     pub use hash;
+    pub use kinds;
 
     pub use comm; // used for select!()
     pub use fmt; // used for any formatting strings

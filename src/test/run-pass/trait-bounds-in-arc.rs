@@ -15,23 +15,27 @@
 use std::sync::Arc;
 use std::task;
 
+#[deriving(Share)]
 trait Pet {
     fn name(&self, blk: |&str|);
     fn num_legs(&self) -> uint;
     fn of_good_pedigree(&self) -> bool;
 }
 
+#[deriving(Share)]
 struct Catte {
     num_whiskers: uint,
     name: String,
 }
 
+#[deriving(Share)]
 struct Dogge {
     bark_decibels: uint,
     tricks_known: uint,
     name: String,
 }
 
+#[deriving(Share)]
 struct Goldfyshe {
     swim_speed: uint,
     name: String,

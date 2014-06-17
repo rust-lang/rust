@@ -196,6 +196,7 @@ mod std {
     pub use core::fmt;      // necessary for fail!()
     pub use core::option;   // necessary for fail!()
     pub use core::clone;    // deriving(Clone)
+    pub use core::kinds;    // deriving(Share,Send,Copy)
     pub use core::cmp;      // deriving(Eq, Ord, etc.)
     pub use hash;           // deriving(Hash)
 }

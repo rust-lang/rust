@@ -57,7 +57,7 @@ pub struct Arc<T> {
     _ptr: *mut ArcInner<T>,
 }
 
-impl<T> Share for Arc<T> {}
+impl<T: Share> Share for Arc<T> {}
 
 /// A weak pointer to an `Arc`.
 ///

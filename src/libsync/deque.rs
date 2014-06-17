@@ -74,6 +74,7 @@ static K: int = 4;
 // The size in question is 1 << MIN_BITS
 static MIN_BITS: int = 7;
 
+#[deriving(Share)]
 struct Deque<T> {
     bottom: AtomicInt,
     top: AtomicInt,

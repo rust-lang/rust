@@ -3485,7 +3485,7 @@ pub fn type_fulfills_trait(cx: &ctxt, ty: ty::t, trait_ref: Rc<TraitRef>) -> boo
                 type_fulfills_trait(cx, typ, trait_ref.clone())
             })
         }
-        ty_param(param_ty{def_id: did, ..}) => {
+        ty_param(ParamTy{def_id: did, ..}) => {
             // NOTE(flaper87): This will likely change. It's still unsure
             // what will happen w/ the BuiltinBounds but I'm leaning towards
             // completely getting rid of them.
@@ -3502,11 +3502,9 @@ pub fn type_fulfills_trait(cx: &ctxt, ty: ty::t, trait_ref: Rc<TraitRef>) -> boo
 
             let target_trait_ref = Rc::new(ty::TraitRef {
                 def_id: trait_ref.def_id,
-                substs: subst::Substs {
-                    tps: trait_ref.substs.tps.clone(),
-                    regions: trait_ref.substs.regions.clone(),
-                    self_ty: Some(ty)
-                }
+                substs: subst::Substs::new_trait(Vec::new(),
+                                                 Vec::new(),
+                                                 ty)
             });
 
             typeck::check::vtable::ty_trait_vtable(cx, ty, target_trait_ref).is_some()

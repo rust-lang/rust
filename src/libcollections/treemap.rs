@@ -50,8 +50,6 @@ pub struct TreeMap<K, V> {
 }
 
 impl<K: PartialEq + Ord, V: PartialEq> PartialEq for TreeMap<K, V> {
-
-impl<K: Eq + TotalOrd, V: Eq> Eq for TreeMap<K, V> {
     fn eq(&self, other: &TreeMap<K, V>) -> bool {
         self.len() == other.len() &&
             self.iter().zip(other.iter()).all(|(a, b)| a == b)

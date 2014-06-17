@@ -869,8 +869,8 @@ pub fn ty_trait_vtable(tcx: &ty::ctxt,
 
     let vcx = VtableContext {
         infcx: &infer::new_infer_ctxt(tcx),
-        param_env: &ty::construct_parameter_environment(tcx, None,
-                                                        [], [], [], [], trait_ref.def_id.node)
+        param_env: &ty::construct_parameter_environment(tcx, &ty::Generics::empty(),
+                                                        trait_ref.def_id.node)
     };
 
     lookup_vtable(&vcx, codemap::DUMMY_SP, ty, trait_ref, false)
