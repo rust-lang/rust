@@ -214,7 +214,7 @@
 
      ;; Attributes like `#[bar(baz)]` or `#![bar(baz)]` or `#[bar = "baz"]`
      (,(rust-re-grab (concat "#\\!?\\[" rust-re-ident "[^]]*\\]"))
-      1 font-lock-preprocessor-face t)
+      1 font-lock-preprocessor-face keep)
 
      ;; Syntax extension invocations like `foo!`, highlight including the !
      (,(concat (rust-re-grab (concat rust-re-ident "!")) "[({[:space:][]")
