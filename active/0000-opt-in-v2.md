@@ -30,14 +30,14 @@ These goals are achieved by two changes:
    indicating that all types are `Send` "by default".
    
    To counteract a default impl, one uses a *negative impl* that
-   explicit opts out for a given type `T` and any type that contains
-   `T`. For example, I propose in this RFC that unsafe pointers `*T`
-   will opt out of `Send` and `Share`. This implies that unsafe
-   pointers cannot be sent or shared between threads by default. It
-   also implies that any structs which contain an unsafe pointer
-   cannot be sent. In all examples I have devised thus far, the set of
-   negative impls is fixed and can easily be declared along with the
-   trait itself.
+   explicitly opts out for a given type `T` and any type that contains
+   `T`. For example, this RFC proposes that unsafe pointers `*T` will
+   opt out of `Send` and `Share`. This implies that unsafe pointers
+   cannot be sent or shared between threads by default. It also
+   implies that any structs which contain an unsafe pointer cannot be
+   sent. In all examples encountered thus far, the set of negative
+   impls is fixed and can easily be declared along with the trait
+   itself.
    
    Safe wrappers like `Arc`, `Atomic`, or `Mutex` can opt to implement
    `Send` and `Share` explicitly. This will then make them be
