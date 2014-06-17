@@ -235,11 +235,15 @@ pub fn trans_intrinsic(ccx: &CrateContext,
                     lib::llvm::SequentiallyConsistent =>
                         lib::llvm::SequentiallyConsistent,
                 };
-                let old = AtomicCmpXchg(bcx, get_param(decl, first_real_arg),
+                let res = AtomicCmpXchg(bcx, get_param(decl, first_real_arg),
                                         get_param(decl, first_real_arg + 1u),
                                         get_param(decl, first_real_arg + 2u),
                                         order, strongest_failure_ordering);
-                Ret(bcx, old);
+                if unsafe { lib::llvm::llvm::LLVMVersionMinor() >= 5 } {
+                    Ret(bcx, ExtractValue(bcx, res, 0));
+                } else {
+                    Ret(bcx, res);
+                }
             }
             "load" => {
                 let old = AtomicLoad(bcx, get_param(decl, first_real_arg),
