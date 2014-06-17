@@ -27,6 +27,7 @@ use std::rt;
 
 use io;
 use task;
+use std::task::{TaskBuilder, Spawner};
 
 /// Creates a new Task which is ready to execute as a 1:1 task.
 pub fn new(stack_bounds: (uint, uint)) -> Box<Task> {
@@ -48,12 +49,14 @@ fn ops() -> Box<Ops> {
 }
 
 /// Spawns a function with the default configuration
+#[deprecated = "use the native method of NativeTaskBuilder instead"]
 pub fn spawn(f: proc():Send) {
     spawn_opts(TaskOpts { name: None, stack_size: None, on_exit: None }, f)
 }
 
 /// Spawns a new task given the configuration options and a procedure to run
 /// inside the task.
+#[deprecated = "use the native method of NativeTaskBuilder instead"]
 pub fn spawn_opts(opts: TaskOpts, f: proc():Send) {
     let TaskOpts { name, stack_size, on_exit } = opts;
 
@@ -93,6 +96,26 @@ pub fn spawn_opts(opts: TaskOpts, f: proc():Send) {
         drop(t);
         bookkeeping::decrement();
     })
+}
+
+/// A spawner for native tasks
+pub struct NativeSpawner;
+
+impl Spawner for NativeSpawner {
+    fn spawn(self, opts: TaskOpts, f: proc():Send) {
+        spawn_opts(opts, f)
+    }
+}
+
+/// An extension trait adding a `native` configuration method to `TaskBuilder`.
+pub trait NativeTaskBuilder {
+    fn native(self) -> TaskBuilder<NativeSpawner>;
+}
+
+impl<S: Spawner> NativeTaskBuilder for TaskBuilder<S> {
+    fn native(self) -> TaskBuilder<NativeSpawner> {
+        self.spawner(NativeSpawner)
+    }
 }
 
 // This structure is the glue between channels and the 1:1 scheduling mode. This
@@ -259,7 +282,8 @@ mod tests {
     use std::rt::local::Local;
     use std::rt::task::{Task, TaskOpts};
     use std::task;
-    use super::{spawn, spawn_opts, Ops};
+    use std::task::TaskBuilder;
+    use super::{spawn, spawn_opts, Ops, NativeTaskBuilder};
 
     #[test]
     fn smoke() {
@@ -346,5 +370,13 @@ mod tests {
             });
         });
         rx.recv();
+    }
+
+    #[test]
+    fn test_native_builder() {
+        let res = TaskBuilder::new().native().try(proc() {
+            "Success!".to_string()
+        });
+        assert_eq!(res.ok().unwrap(), "Success!".to_string());
     }
 }
