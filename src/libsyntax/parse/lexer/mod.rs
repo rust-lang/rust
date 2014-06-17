@@ -90,7 +90,7 @@ impl<'a> Reader for TtReader<'a> {
     }
     fn next_token(&mut self) -> TokenAndSpan {
         let r = tt_next_token(self);
-        debug!("TtReader: r={:?}", r);
+        debug!("TtReader: r={}", r);
         r
     }
     fn fatal(&self, m: &str) -> ! {
