@@ -906,8 +906,9 @@ impl<'a> StringReader<'a> {
                     // Byte offsetting here is okay because the
                     // character before position `start` are an
                     // ascii single quote and ascii 'b'.
+                    let last_pos = self_.last_pos;
                     self_.fatal_span_verbose(
-                        start - BytePos(2), self_.last_pos,
+                        start - BytePos(2), last_pos,
                         "unterminated byte constant".to_string());
                 }
                 self_.bump(); // advance curr past token
@@ -920,7 +921,8 @@ impl<'a> StringReader<'a> {
                 let mut value = Vec::new();
                 while !self_.curr_is('"') {
                     if self_.is_eof() {
-                        self_.fatal_span(start, self_.last_pos,
+                        let last_pos = self_.last_pos;
+                        self_.fatal_span(start, last_pos,
                                          "unterminated double quote byte string");
                     }
 
@@ -944,20 +946,25 @@ impl<'a> StringReader<'a> {
                 }
 
                 if self_.is_eof() {
-                    self_.fatal_span(start_bpos, self_.last_pos, "unterminated raw string");
+                    let last_pos = self_.last_pos;
+                    self_.fatal_span(start_bpos, last_pos, "unterminated raw string");
                 } else if !self_.curr_is('"') {
-                    self_.fatal_span_char(start_bpos, self_.last_pos,
+                    let last_pos = self_.last_pos;
+                    let ch = self_.curr.unwrap();
+                    self_.fatal_span_char(start_bpos, last_pos,
                                     "only `#` is allowed in raw string delimitation; \
                                      found illegal character",
-                                    self_.curr.unwrap());
+                                    ch);
                 }
                 self_.bump();
                 let content_start_bpos = self_.last_pos;
                 let mut content_end_bpos;
                 'outer: loop {
                     match self_.curr {
-                        None => self_.fatal_span(start_bpos, self_.last_pos,
-                                                 "unterminated raw string"),
+                        None => {
+                            let last_pos = self_.last_pos;
+                            self_.fatal_span(start_bpos, last_pos, "unterminated raw string")
+                        },
                         Some('"') => {
                             content_end_bpos = self_.last_pos;
                             for _ in range(0, hash_count) {
@@ -969,8 +976,9 @@ impl<'a> StringReader<'a> {
                             break;
                         },
                         Some(c) => if c > '\x7F' {
-                            self_.err_span_char(self_.last_pos, self_.last_pos,
-                                                "raw byte string must be ASCII", c);
+                            let last_pos = self_.last_pos;
+                            self_.err_span_char(
+                                last_pos, last_pos, "raw byte string must be ASCII", c);
                         }
                     }
                     self_.bump();
