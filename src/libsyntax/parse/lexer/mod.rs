@@ -636,6 +636,67 @@ impl<'a> StringReader<'a> {
         }
     }
 
+    /// Scan for a single (possibly escaped) byte or char
+    /// in a byte, (non-raw) byte string, char, or (non-raw) string literal.
+    /// `start` is the position of `first_source_char`, which is already consumed.
+    fn scan_char_or_byte(&mut self, start: BytePos, first_source_char: char,
+                         ascii_only: bool, delim: char) -> Option<char> {
+        match first_source_char {
+            '\\' => {
+                // '\X' for some X must be a character constant:
+                let escaped = self.curr;
+                let escaped_pos = self.last_pos;
+                self.bump();
+                match escaped {
+                    None => {},  // EOF here is an error that will be checked later.
+                    Some(e) => {
+                        return Some(match e {
+                            'n' => '\n',
+                            'r' => '\r',
+                            't' => '\t',
+                            '\\' => '\\',
+                            '\'' => '\'',
+                            '"' => '"',
+                            '0' => '\x00',
+                            'x' => self.scan_numeric_escape(2u, delim),
+                            'u' if !ascii_only => self.scan_numeric_escape(4u, delim),
+                            'U' if !ascii_only => self.scan_numeric_escape(8u, delim),
+                            '\n' if delim == '"' => {
+                                self.consume_whitespace();
+                                return None
+                            },
+                            c => {
+                                let last_pos = self.last_pos;
+                                self.err_span_char(
+                                    escaped_pos, last_pos,
+                                    if ascii_only { "unknown byte escape" }
+                                    else { "unknown character escape" },
+                                    c);
+                                c
+                            }
+                        })
+                    }
+                }
+            }
+            '\t' | '\n' | '\r' | '\'' if delim == '\'' => {
+                let last_pos = self.last_pos;
+                self.err_span_char(
+                    start, last_pos,
+                    if ascii_only { "byte constant must be escaped" }
+                    else { "character constant must be escaped" },
+                    first_source_char);
+            }
+            _ => if ascii_only && first_source_char > '\x7F' {
+                let last_pos = self.last_pos;
+                self.err_span_char(
+                    start, last_pos,
+                    "byte constant must be ASCII. \
+                     Use a \\xHH escape for a non-ASCII byte", first_source_char);
+            }
+        }
+        Some(first_source_char)
+    }
+
     fn binop(&mut self, op: token::BinOp) -> token::Token {
         self.bump();
         if self.curr_is('=') {
@@ -810,43 +871,7 @@ impl<'a> StringReader<'a> {
             }
 
             // Otherwise it is a character constant:
-            match c2 {
-                '\\' => {
-                    // '\X' for some X must be a character constant:
-                    let escaped = self.curr;
-                    let escaped_pos = self.last_pos;
-                    self.bump();
-                    match escaped {
-                        None => {}
-                        Some(e) => {
-                            c2 = match e {
-                                'n' => '\n',
-                                'r' => '\r',
-                                't' => '\t',
-                                '\\' => '\\',
-                                '\'' => '\'',
-                                '"' => '"',
-                                '0' => '\x00',
-                                'x' => self.scan_numeric_escape(2u, '\''),
-                                'u' => self.scan_numeric_escape(4u, '\''),
-                                'U' => self.scan_numeric_escape(8u, '\''),
-                                c2 => {
-                                    let last_bpos = self.last_pos;
-                                    self.err_span_char(escaped_pos, last_bpos,
-                                                         "unknown character escape", c2);
-                                    c2
-                                }
-                            }
-                        }
-                    }
-                }
-                '\t' | '\n' | '\r' | '\'' => {
-                    let last_bpos = self.last_pos;
-                    self.err_span_char( start, last_bpos,
-                        "character constant must be escaped", c2);
-                }
-                _ => {}
-            }
+            c2 = self.scan_char_or_byte(start, c2, /* ascii_only = */ false, '\'').unwrap();
             if !self.curr_is('\'') {
                 let last_bpos = self.last_pos;
                 self.fatal_span_verbose(
@@ -876,44 +901,7 @@ impl<'a> StringReader<'a> {
                 let mut c2 = self_.curr.unwrap_or('\x00');
                 self_.bump();
 
-                match c2 {
-                    '\\' => {
-                        // '\X' for some X must be a character constant:
-                        let escaped = self_.curr;
-                        let escaped_pos = self_.last_pos;
-                        self_.bump();
-                        match escaped {
-                            None => {}
-                            Some(e) => {
-                                c2 = match e {
-                                    'n' => '\n',
-                                    'r' => '\r',
-                                    't' => '\t',
-                                    '\\' => '\\',
-                                    '\'' => '\'',
-                                    '"' => '"',
-                                    '0' => '\x00',
-                                    'x' => self_.scan_numeric_escape(2u, '\''),
-                                    c2 => {
-                                        self_.err_span_char(
-                                            escaped_pos, self_.last_pos,
-                                            "unknown byte escape", c2);
-                                        c2
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    '\t' | '\n' | '\r' | '\'' => {
-                        self_.err_span_char( start, self_.last_pos,
-                            "byte constant must be escaped", c2);
-                    }
-                    _ => if c2 > '\x7F' {
-                        self_.err_span_char( start, self_.last_pos,
-                            "byte constant must be ASCII. \
-                             Use a \\xHH escape for a non-ASCII byte", c2);
-                    }
-                }
+                c2 = self_.scan_char_or_byte(start, c2, /* ascii_only = */ true, '\'').unwrap();
                 if !self_.curr_is('\'') {
                     // Byte offsetting here is okay because the
                     // character before position `start` are an
@@ -936,46 +924,11 @@ impl<'a> StringReader<'a> {
                                          "unterminated double quote byte string");
                     }
 
+                    let ch_start = self_.last_pos;
                     let ch = self_.curr.unwrap();
                     self_.bump();
-                    match ch {
-                      '\\' => {
-                        if self_.is_eof() {
-                            self_.fatal_span(start, self_.last_pos,
-                                             "unterminated double quote byte string");
-                        }
-
-                        let escaped = self_.curr.unwrap();
-                        let escaped_pos = self_.last_pos;
-                        self_.bump();
-                        match escaped {
-                          'n' => value.push('\n' as u8),
-                          'r' => value.push('\r' as u8),
-                          't' => value.push('\t' as u8),
-                          '\\' => value.push('\\' as u8),
-                          '\'' => value.push('\'' as u8),
-                          '"' => value.push('"' as u8),
-                          '\n' => self_.consume_whitespace(),
-                          '0' => value.push(0),
-                          'x' => {
-                            value.push(self_.scan_numeric_escape(2u, '"') as u8);
-                          }
-                          c2 => {
-                            self_.err_span_char(escaped_pos, self_.last_pos,
-                                                "unknown byte string escape", c2);
-                          }
-                        }
-                      }
-                      _ => {
-                        if ch <= '\x7F' {
-                            value.push(ch as u8)
-                        } else {
-                            self_.err_span_char(self_.last_pos, self_.last_pos,
-                                "byte string must be ASCII. \
-                                 Use a \\xHH escape for a non-ASCII byte", ch);
-                        }
-                      }
-                    }
+                    self_.scan_char_or_byte(ch_start, ch, /* ascii_only = */ true, '"')
+                        .map(|ch| value.push(ch as u8));
                 }
                 self_.bump();
                 return token::LIT_BINARY(Rc::new(value));
@@ -1039,46 +992,11 @@ impl<'a> StringReader<'a> {
                     self.fatal_span(start_bpos, last_bpos, "unterminated double quote string");
                 }
 
+                let ch_start = self.last_pos;
                 let ch = self.curr.unwrap();
                 self.bump();
-                match ch {
-                  '\\' => {
-                    if self.is_eof() {
-                        let last_bpos = self.last_pos;
-                        self.fatal_span(start_bpos, last_bpos,
-                               "unterminated double quote string");
-                    }
-
-                    let escaped = self.curr.unwrap();
-                    let escaped_pos = self.last_pos;
-                    self.bump();
-                    match escaped {
-                      'n' => accum_str.push_char('\n'),
-                      'r' => accum_str.push_char('\r'),
-                      't' => accum_str.push_char('\t'),
-                      '\\' => accum_str.push_char('\\'),
-                      '\'' => accum_str.push_char('\''),
-                      '"' => accum_str.push_char('"'),
-                      '\n' => self.consume_whitespace(),
-                      '0' => accum_str.push_char('\x00'),
-                      'x' => {
-                        accum_str.push_char(self.scan_numeric_escape(2u, '"'));
-                      }
-                      'u' => {
-                        accum_str.push_char(self.scan_numeric_escape(4u, '"'));
-                      }
-                      'U' => {
-                        accum_str.push_char(self.scan_numeric_escape(8u, '"'));
-                      }
-                      c2 => {
-                        let last_bpos = self.last_pos;
-                        self.err_span_char(escaped_pos, last_bpos,
-                                        "unknown string escape", c2);
-                      }
-                    }
-                  }
-                  _ => accum_str.push_char(ch)
-                }
+                self.scan_char_or_byte(ch_start, ch, /* ascii_only = */ false, '"')
+                    .map(|ch| accum_str.push_char(ch));
             }
             self.bump();
             return token::LIT_STR(str_to_ident(accum_str.as_slice()));
