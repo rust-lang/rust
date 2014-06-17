@@ -235,7 +235,7 @@ impl<'a> Visitor<MarkSymbolVisitorContext> for MarkSymbolVisitor<'a> {
                 self.lookup_and_handle_method(expr.id, expr.span);
             }
             ast::ExprField(ref lhs, ref ident, _) => {
-                self.handle_field_access(&**lhs, ident);
+                self.handle_field_access(&**lhs, &ident.node);
             }
             _ => ()
         }

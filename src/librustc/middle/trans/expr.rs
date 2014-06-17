@@ -389,7 +389,7 @@ fn trans_datum_unadjusted<'a>(bcx: &'a Block<'a>,
             trans_def(bcx, expr, bcx.def(expr.id))
         }
         ast::ExprField(ref base, ident, _) => {
-            trans_rec_field(bcx, &**base, ident)
+            trans_rec_field(bcx, &**base, ident.node)
         }
         ast::ExprIndex(ref base, ref idx) => {
             trans_index(bcx, expr, &**base, &**idx)
