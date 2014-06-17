@@ -1238,9 +1238,6 @@ declare_lint!(MISSING_DOC, Allow,
     "detects missing documentation for public members")
 
 pub struct MissingDoc {
-    /// Set of nodes exported from this module.
-    exported_items: Option<ExportedItems>,
-
     /// Stack of IDs of struct definitions.
     struct_def_stack: Vec<ast::NodeId>,
 
@@ -1252,7 +1249,6 @@ pub struct MissingDoc {
 impl MissingDoc {
     pub fn new() -> MissingDoc {
         MissingDoc {
-            exported_items: None,
             struct_def_stack: vec!(),
             doc_hidden_stack: vec!(false),
         }
@@ -1278,9 +1274,8 @@ impl MissingDoc {
         // Only check publicly-visible items, using the result from the privacy pass.
         // It's an option so the crate root can also use this function (it doesn't
         // have a NodeId).
-        let exported = self.exported_items.as_ref().expect("exported_items not set");
         match id {
-            Some(ref id) if !exported.contains(id) => return,
+            Some(ref id) if !cx.exported_items.contains(id) => return,
             _ => ()
         }
 
@@ -1327,10 +1322,7 @@ impl LintPass for MissingDoc {
         assert!(popped == id);
     }
 
-    fn check_crate(&mut self, cx: &Context, exported: &ExportedItems, krate: &ast::Crate) {
-        // FIXME: clone to avoid lifetime trickiness
-        self.exported_items = Some(exported.clone());
-
+    fn check_crate(&mut self, cx: &Context, _: &ExportedItems, krate: &ast::Crate) {
         self.check_missing_doc_attrs(cx, None, krate.attrs.as_slice(),
             krate.span, "crate");
     }
