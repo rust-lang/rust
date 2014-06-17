@@ -9,5 +9,5 @@
 // except according to those terms.
 
 static s: &'static str =
-    "\●" //~ ERROR: unknown string escape
+    "\●" //~ ERROR: unknown character escape
 ;
