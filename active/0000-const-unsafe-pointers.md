@@ -136,10 +136,7 @@ the language, `const`.
   Here it can be seen that it is impossible for the C code to safely dereference
   the pointers passed in because lifetimes don't extend into the function call
   itself. The compiler could, in this case, *extend the lifetime* of a coerced
-  pointer to follow the otherwise applied temporary rules for expressions. In
-  layman's terms, this means that whenever the compiler detects a coerction of a
-  pointer, the pointer is modified to live to the end of the "innermost
-  enclosing statement".
+  pointer to follow the otherwise applied temporary rules for expressions.
 
   In the example above, the compiler's temporary lifetime rules would cause the
   first coercion to last for the entire lifetime of the call to `bar`, thereby
