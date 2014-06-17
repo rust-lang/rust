@@ -8,9 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[inline(never)]
 pub static global: int = 3;
 
+#[inline(never)]
 static global0: int = 4;
+
+#[inline(never)]
 pub static global2: &'static int = &global0;
 
 pub fn verify_same(a: &'static int) {
