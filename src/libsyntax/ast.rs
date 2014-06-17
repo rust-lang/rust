@@ -41,7 +41,7 @@ pub fn P<T: 'static>(value: T) -> P<T> {
 /// table) and a SyntaxContext to track renaming and
 /// macro expansion per Flatt et al., "Macros
 /// That Work Together"
-#[deriving(Clone, Hash, PartialOrd, Eq, Ord, Show)]
+#[deriving(Clone, Hash, PartialOrd, Eq, Ord)]
 pub struct Ident {
     pub name: Name,
     pub ctxt: SyntaxContext
@@ -50,6 +50,12 @@ pub struct Ident {
 impl Ident {
     /// Construct an identifier with the given name and an empty context:
     pub fn new(name: Name) -> Ident { Ident {name: name, ctxt: EMPTY_CTXT}}
+}
+
+impl Show for Ident {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "\"{}\"#{}", token::get_ident(*self).get(), self.ctxt)
+    }
 }
 
 impl PartialEq for Ident {
