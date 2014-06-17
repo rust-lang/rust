@@ -316,11 +316,8 @@ fn tybounds(w: &mut fmt::Formatter,
             typarams: &Option<Vec<clean::TyParamBound> >) -> fmt::Result {
     match *typarams {
         Some(ref params) => {
-            try!(write!(w, ":"));
-            for (i, param) in params.iter().enumerate() {
-                if i > 0 {
-                    try!(write!(w, " + "));
-                }
+            for param in params.iter() {
+                try!(write!(w, " + "));
                 try!(write!(w, "{}", *param));
             }
             Ok(())
@@ -432,8 +429,8 @@ impl fmt::Show for clean::Type {
                                format!("[{}, ..{}]", **t, *s).as_slice())
             }
             clean::Bottom => f.write("!".as_bytes()),
-            clean::Unique(ref t) => write!(f, "~{}", **t),
-            clean::Managed(ref t) => write!(f, "@{}", **t),
+            clean::Unique(ref t) => write!(f, "Box<{}>", **t),
+            clean::Managed(ref t) => write!(f, "Gc<{}>", **t),
             clean::RawPointer(m, ref t) => {
                 write!(f, "*{}{}", MutableSpace(m), **t)
             }
