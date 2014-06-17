@@ -25,10 +25,6 @@ struct foo3 { //~ ERROR type `foo3` should have a camel case name such as `Foo3`
 
 type foo4 = int; //~ ERROR type `foo4` should have a camel case name such as `Foo4`
 
-enum Foo5 {
-    bar //~ ERROR variant `bar` should have a camel case name such as `Bar`
-}
-
 trait foo6 { //~ ERROR trait `foo6` should have a camel case name such as `Foo6`
 }
 

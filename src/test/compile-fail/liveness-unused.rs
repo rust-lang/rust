@@ -11,6 +11,7 @@
 #![deny(unused_variable)]
 #![deny(dead_assignment)]
 #![allow(dead_code, non_camel_case_types)]
+#![allow(non_camel_case_enum_variants)]
 
 fn f1(x: int) {
     //~^ ERROR unused variable: `x`

@@ -24,6 +24,7 @@
 //     int) and rec(x=int, y=int, z=int) will have the same TypeRef.
 
 #![allow(non_camel_case_types)]
+#![allow(non_camel_case_enum_variants)]
 
 use back::link::{mangle_exported_name};
 use back::{link, abi};

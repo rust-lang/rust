@@ -33,7 +33,6 @@
 //! modify the Context visitor appropriately. If you're adding lints from the
 //! Context itself, span_lint should be used instead of add_lint.
 
-#![allow(non_camel_case_types)]
 
 use driver::session;
 use metadata::csearch;
@@ -84,6 +83,7 @@ pub enum Lint {
     PathStatement,
     UnrecognizedLint,
     NonCamelCaseTypes,
+    NonCamelCaseEnumVariants,
     NonUppercaseStatics,
     NonUppercasePatternStatics,
     NonSnakeCaseFunctions,
@@ -203,10 +203,16 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
     ("non_camel_case_types",
      LintSpec {
         lint: NonCamelCaseTypes,
-        desc: "types, variants and traits should have camel case names",
+        desc: "types and traits should have camel case names",
         default: Warn
      }),
 
+    ("non_camel_case_enum_variants",
+     LintSpec {
+        lint: NonCamelCaseEnumVariants,
+        desc: "enum variants should have camel case names",
+        default: Warn
+     }),
     ("non_uppercase_statics",
      LintSpec {
          lint: NonUppercaseStatics,
@@ -1220,7 +1226,7 @@ fn check_unused_result(cx: &Context, s: &ast::Stmt) {
     }
 }
 
-fn check_item_non_camel_case_types(cx: &Context, it: &ast::Item) {
+fn check_item_non_camel_case_names(cx: &Context, it: &ast::Item) {
     fn is_camel_case(ident: ast::Ident) -> bool {
         let ident = token::get_ident(ident);
         assert!(!ident.get().is_empty());
@@ -1238,12 +1244,12 @@ fn check_item_non_camel_case_types(cx: &Context, it: &ast::Item) {
         )).collect()
     }
 
-    fn check_case(cx: &Context, sort: &str, ident: ast::Ident, span: Span) {
+    fn check_case(cx: &Context, sort: &str, ident: ast::Ident, span: Span, lint: Lint) {
         let s = token::get_ident(ident);
 
         if !is_camel_case(ident) {
             cx.span_lint(
-                NonCamelCaseTypes, span,
+                lint, span,
                 format!("{} `{}` should have a camel case name such as `{}`",
                     sort, s, to_camel_case(s.get())).as_slice());
         }
@@ -1251,15 +1257,16 @@ fn check_item_non_camel_case_types(cx: &Context, it: &ast::Item) {
 
     match it.node {
         ast::ItemTy(..) | ast::ItemStruct(..) => {
-            check_case(cx, "type", it.ident, it.span)
+            check_case(cx, "type", it.ident, it.span, NonCamelCaseTypes)
         }
         ast::ItemTrait(..) => {
-            check_case(cx, "trait", it.ident, it.span)
+            check_case(cx, "trait", it.ident, it.span, NonCamelCaseTypes)
         }
         ast::ItemEnum(ref enum_definition, _) => {
-            check_case(cx, "type", it.ident, it.span);
+            check_case(cx, "type", it.ident, it.span, NonCamelCaseTypes);
             for variant in enum_definition.variants.iter() {
-                check_case(cx, "variant", variant.node.name, variant.span);
+                check_case(cx, "variant", variant.node.name, variant.span,
+                           NonCamelCaseEnumVariants);
             }
         }
         _ => ()
@@ -1770,7 +1777,7 @@ impl<'a> Visitor<()> for Context<'a> {
         self.with_lint_attrs(it.attrs.as_slice(), |cx| {
             check_enum_variant_sizes(cx, it);
             check_item_ctypes(cx, it);
-            check_item_non_camel_case_types(cx, it);
+            check_item_non_camel_case_names(cx, it);
             check_item_non_uppercase_statics(cx, it);
             check_heap_item(cx, it);
             check_missing_doc_item(cx, it);

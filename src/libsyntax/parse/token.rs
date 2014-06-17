@@ -23,7 +23,7 @@ use std::mem;
 use std::path::BytesContainer;
 use std::rc::Rc;
 
-#[allow(non_camel_case_types)]
+#[allow(non_camel_case_enum_variants)]
 #[deriving(Clone, Encodable, Decodable, PartialEq, Eq, Hash, Show)]
 pub enum BinOp {
     PLUS,
@@ -38,7 +38,7 @@ pub enum BinOp {
     SHR,
 }
 
-#[allow(non_camel_case_types)]
+#[allow(non_camel_case_enum_variants)]
 #[deriving(Clone, Encodable, Decodable, PartialEq, Eq, Hash, Show)]
 pub enum Token {
     /* Expression-operator symbols. */

@@ -11,6 +11,7 @@
 /*! See doc.rs for a thorough explanation of the borrow checker */
 
 #![allow(non_camel_case_types)]
+#![allow(non_camel_case_enum_variants)]
 
 use middle::dataflow::DataFlowContext;
 use middle::dataflow::DataFlowOperator;
