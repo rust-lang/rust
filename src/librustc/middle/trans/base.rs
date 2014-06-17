@@ -1994,7 +1994,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
             let sym = exported_name(ccx, id, ty, i.attrs.as_slice());
 
             let v = match i.node {
-                ast::ItemStatic(_, _, ref expr) => {
+                ast::ItemStatic(_, mutbl, ref expr) => {
                     // If this static came from an external crate, then
                     // we need to get the symbol from csearch instead of
                     // using the current crate's name/version
@@ -2029,20 +2029,16 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
 
                         // Apply the `unnamed_addr` attribute if
                         // requested
-                        if attr::contains_name(i.attrs.as_slice(),
-                                               "address_insignificant") {
-                            if ccx.reachable.contains(&id) {
-                                ccx.sess().span_bug(i.span,
-                                    "insignificant static is reachable");
-                            }
+                        if !ast_util::static_has_significant_address(
+                                mutbl,
+                                i.attrs.as_slice()) {
                             lib::llvm::SetUnnamedAddr(g, true);
 
                             // This is a curious case where we must make
                             // all of these statics inlineable. If a
-                            // global is tagged as
-                            // address_insignificant, then LLVM won't
-                            // coalesce globals unless they have an
-                            // internal linkage type. This means that
+                            // global is not tagged as `#[inline(never)]`,
+                            // then LLVM won't coalesce globals unless they
+                            // have an internal linkage type. This means that
                             // external crates cannot use this global.
                             // This is a problem for things like inner
                             // statics in generic functions, because the
@@ -2050,7 +2046,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                             // crate and then attempt to link to the
                             // static in the original crate, only to
                             // find that it's not there. On the other
-                            // side of inlininig, the crates knows to
+                            // side of inlining, the crates knows to
                             // not declare this static as
                             // available_externally (because it isn't)
                             inlineable = true;
