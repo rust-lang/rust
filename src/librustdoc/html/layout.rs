@@ -66,6 +66,7 @@ r##"<!DOCTYPE html>
             <div class="search-container">
                 <input class="search-input" name="search"
                        autocomplete="off"
+                       autofocus="autofocus"
                        placeholder="Search documentation..."
                        type="search">
             </div>
