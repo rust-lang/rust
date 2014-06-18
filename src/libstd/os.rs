@@ -1338,7 +1338,6 @@ impl MemoryMap {
     /// `ErrZeroLength`.
     pub fn new(min_len: uint, options: &[MapOption]) -> Result<MemoryMap, MapError> {
         use libc::off_t;
-        use cmp::Equiv;
 
         if min_len == 0 {
             return Err(ErrZeroLength)
@@ -1371,10 +1370,10 @@ impl MemoryMap {
         if fd == -1 && !custom_flags { flags |= libc::MAP_ANON; }
 
         let r = unsafe {
-            libc::mmap(addr as *c_void, len as libc::size_t, prot, flags, fd,
-                       offset)
+            libc::mmap(addr as *mut c_void, len as libc::size_t, prot, flags,
+                       fd, offset)
         };
-        if r.equiv(&libc::MAP_FAILED) {
+        if r == libc::MAP_FAILED {
             Err(match errno() as c_int {
                 libc::EACCES => ErrFdNotAvail,
                 libc::EBADF => ErrInvalidFd,
@@ -1410,8 +1409,8 @@ impl Drop for MemoryMap {
         if self.len == 0 { /* workaround for dummy_stack */ return; }
 
         unsafe {
-            // FIXME: what to do if this fails?
-            let _ = libc::munmap(self.data as *c_void, self.len as libc::size_t);
+            // `munmap` only fails due to logic errors
+            libc::munmap(self.data as *mut c_void, self.len as libc::size_t);
         }
     }
 }
