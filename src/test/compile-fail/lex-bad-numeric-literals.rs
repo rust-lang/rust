@@ -18,40 +18,18 @@ fn main() {
     0o7.0e7f64; //~ ERROR: octal float literal is not supported
     0x8.0e+9; //~ ERROR: hexadecimal float literal is not supported
     0x9.0e-9; //~ ERROR: hexadecimal float literal is not supported
+    0o; //~ ERROR: no valid digits
+    1e+; //~ ERROR: expected at least one digit in exponent
+    0x539.0; //~ ERROR: hexadecimal float literal is not supported
+    99999999999999999999999999999999; //~ ERROR: int literal is too large
+    99999999999999999999999999999999u32; //~ ERROR: int literal is too large
+    0x; //~ ERROR: no valid digits
+    0xu32; //~ ERROR: no valid digits
+    0ou32; //~ ERROR: no valid digits
+    0bu32; //~ ERROR: no valid digits
+    0b; //~ ERROR: no valid digits
+    0o123f64; //~ ERROR: octal float literal is not supported
+    0o123.456; //~ ERROR: octal float literal is not supported
+    0b101f64; //~ ERROR: binary float literal is not supported
+    0b111.101; //~ ERROR: binary float literal is not supported
 }
-
-static F: f32 =
-    1e+ //~ ERROR: scan_exponent: bad fp literal
-;
-
-
-static F: f32 =
-    0x539.0 //~ ERROR: hexadecimal float literal is not supported
-;
-
-static I: int =
-    99999999999999999999999999999999 //~ ERROR: int literal is too large
-;
-
-static J: int =
-    99999999999999999999999999999999u32 //~ ERROR: int literal is too large
-;
-
-static A: int =
-    0x //~ ERROR: no valid digits
-;
-static B: int =
-    0xu32 //~ ERROR: no valid digits
-;
-static C: int =
-    0ou32 //~ ERROR: no valid digits
-;
-static D: int =
-    0bu32 //~ ERROR: no valid digits
-;
-static E: int =
-    0b //~ ERROR: no valid digits
-;
-static F: int =
-    0o //~ ERROR: no valid digits
-;
