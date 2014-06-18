@@ -209,7 +209,9 @@ pub fn maketest(s: &str, cratename: Option<&str>, lints: bool) -> String {
 ");
     }
 
-    if !s.contains("extern crate") {
+    // Don't inject `extern crate std` because it's already injected by the
+    // compiler.
+    if !s.contains("extern crate") && cratename != Some("std") {
         match cratename {
             Some(cratename) => {
                 if s.contains(cratename) {
