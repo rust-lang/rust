@@ -86,8 +86,8 @@ pub fn run(input: &str,
     let mut v = RustdocVisitor::new(&*ctx, None);
     v.visit(&ctx.krate);
     let krate = v.clean();
-    let (krate, _) = passes::unindent_comments(krate);
     let (krate, _) = passes::collapse_docs(krate);
+    let (krate, _) = passes::unindent_comments(krate);
 
     let mut collector = Collector::new(krate.name.to_string(),
                                        libs,
@@ -209,7 +209,9 @@ pub fn maketest(s: &str, cratename: Option<&str>, lints: bool) -> String {
 ");
     }
 
-    if !s.contains("extern crate") {
+    // Don't inject `extern crate std` because it's already injected by the
+    // compiler.
+    if !s.contains("extern crate") && cratename != Some("std") {
         match cratename {
             Some(cratename) => {
                 if s.contains(cratename) {
