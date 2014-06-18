@@ -52,7 +52,7 @@ impl PipeStream {
     ///
     /// fn main() {
     ///     let mut pipe = PipeStream::open(libc::STDERR_FILENO);
-    ///     pipe.write(bytes!("Hello, stderr!"));
+    ///     pipe.write(b"Hello, stderr!");
     /// }
     /// ```
     pub fn open(fd: libc::c_int) -> IoResult<PipeStream> {

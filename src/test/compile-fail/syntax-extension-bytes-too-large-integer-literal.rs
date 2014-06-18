@@ -10,4 +10,5 @@
 
 fn main() {
     let vec = bytes!(1024); //~ ERROR too large integer literal in bytes!
+    //~^ WARN `bytes!` is deprecated
 }

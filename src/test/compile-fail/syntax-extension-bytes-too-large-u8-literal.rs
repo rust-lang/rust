@@ -10,4 +10,5 @@
 
 fn main() {
     let vec = bytes!(1024u8); //~ ERROR too large u8 literal in bytes!
+    //~^ WARN `bytes!` is deprecated
 }

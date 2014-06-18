@@ -1269,7 +1269,7 @@ fn make_out_name(config: &Config, testfile: &Path, extension: &str) -> Path {
 
 fn aux_output_dir_name(config: &Config, testfile: &Path) -> Path {
     let mut f = output_base_name(config, testfile);
-    match f.filename().map(|s| Vec::from_slice(s).append(bytes!(".libaux"))) {
+    match f.filename().map(|s| Vec::from_slice(s).append(b".libaux")) {
         Some(v) => f.set_filename(v),
         None => ()
     }
@@ -1490,7 +1490,7 @@ fn append_suffix_to_stem(p: &Path, suffix: &str) -> Path {
         (*p).clone()
     } else {
         let stem = p.filestem().unwrap();
-        p.with_filename(Vec::from_slice(stem).append(bytes!("-")).append(suffix.as_bytes()))
+        p.with_filename(Vec::from_slice(stem).append(b"-").append(suffix.as_bytes()))
     }
 }
 
