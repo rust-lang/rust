@@ -66,7 +66,7 @@ r##"<!DOCTYPE html>
             <div class="search-container">
                 <input class="search-input" name="search"
                        autocomplete="off"
-                       placeholder="Search documentation..."
+                       placeholder="Click or press 's' to search, '?' for more options..."
                        type="search">
             </div>
         </form>
