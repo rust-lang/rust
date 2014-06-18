@@ -3025,6 +3025,9 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                 _ if ty::type_is_trait(t_1) => {},
 
                 _ => {
+                    let t_1 = structurally_resolved_type(fcx, e.span, t_1);
+                    let t_e = structurally_resolved_type(fcx, e.span, t_e);
+
                     if ty::type_is_nil(t_e) {
                         fcx.type_error_message(expr.span, |actual| {
                             format!("cast from nil: `{}` as `{}`",
@@ -3039,21 +3042,14 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                         }, t_e, None);
                     }
 
-                    let t1 = structurally_resolved_type(fcx, e.span, t_1);
-                    let te = structurally_resolved_type(fcx, e.span, t_e);
-                    let t_1_is_scalar = type_is_scalar(fcx, expr.span, t_1);
-                    let t_1_is_char = type_is_char(fcx, expr.span, t_1);
-                    let t_1_is_bare_fn = type_is_bare_fn(fcx, expr.span, t_1);
-                    let t_1_is_float = type_is_floating_point(fcx,
-                                                              expr.span,
-                                                              t_1);
+                    let t_1_is_scalar = ty::type_is_scalar(t_1);
+                    let t_1_is_char = ty::type_is_char(t_1);
+                    let t_1_is_bare_fn = ty::type_is_bare_fn(t_1);
+                    let t_1_is_float = ty::type_is_floating_point(t_1);
 
                     // casts to scalars other than `char` and `bare fn` are trivial
-                    let t_1_is_trivial = t_1_is_scalar &&
-                        !t_1_is_char && !t_1_is_bare_fn;
-
-                    if type_is_c_like_enum(fcx, expr.span, t_e) &&
-                            t_1_is_trivial {
+                    let t_1_is_trivial = t_1_is_scalar && !t_1_is_char && !t_1_is_bare_fn;
+                    if ty::type_is_c_like_enum(fcx.tcx(), t_e) && t_1_is_trivial {
                         if t_1_is_float {
                             fcx.type_error_message(expr.span, |actual| {
                                 format!("illegal cast; cast through an \
@@ -3064,22 +3060,20 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                         }
                         // casts from C-like enums are allowed
                     } else if t_1_is_char {
-                        let te = fcx.infcx().resolve_type_vars_if_possible(te);
-                        if ty::get(te).sty != ty::ty_uint(ast::TyU8) {
+                        let t_e = fcx.infcx().resolve_type_vars_if_possible(t_e);
+                        if ty::get(t_e).sty != ty::ty_uint(ast::TyU8) {
                             fcx.type_error_message(expr.span, |actual| {
                                 format!("only `u8` can be cast as \
                                          `char`, not `{}`", actual)
                             }, t_e, None);
                         }
-                    } else if ty::get(t1).sty == ty::ty_bool {
+                    } else if ty::get(t_1).sty == ty::ty_bool {
                         fcx.tcx()
                            .sess
                            .span_err(expr.span,
                                      "cannot cast as `bool`, compare with \
                                       zero instead");
-                    } else if type_is_region_ptr(fcx, expr.span, t_e) &&
-                        type_is_unsafe_ptr(fcx, expr.span, t_1) {
-
+                    } else if ty::type_is_region_ptr(t_e) && ty::type_is_unsafe_ptr(t_1) {
                         fn is_vec(t: ty::t) -> bool {
                             match ty::get(t).sty {
                                 ty::ty_vec(..) => true,
@@ -3112,7 +3106,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
 
                         /* this cast is only allowed from &[T] to *T or
                         &T to *T. */
-                        match (&ty::get(te).sty, &ty::get(t_1).sty) {
+                        match (&ty::get(t_e).sty, &ty::get(t_1).sty) {
                             (&ty::ty_rptr(_, ty::mt { ty: mt1, mutbl: ast::MutImmutable }),
                              &ty::ty_ptr(ty::mt { ty: mt2, mutbl: ast::MutImmutable }))
                             if types_compatible(fcx, e.span, mt1, mt2) => {
@@ -3122,8 +3116,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                                 demand::coerce(fcx, e.span, t_1, &**e);
                             }
                         }
-                    } else if !(type_is_scalar(fcx,expr.span,t_e)
-                                && t_1_is_trivial) {
+                    } else if !(ty::type_is_scalar(t_e) && t_1_is_trivial) {
                         /*
                         If more type combinations should be supported than are
                         supported here, then file an enhancement issue and
@@ -4203,41 +4196,6 @@ pub fn type_is_integral(fcx: &FnCtxt, sp: Span, typ: ty::t) -> bool {
 pub fn type_is_uint(fcx: &FnCtxt, sp: Span, typ: ty::t) -> bool {
     let typ_s = structurally_resolved_type(fcx, sp, typ);
     return ty::type_is_uint(typ_s);
-}
-
-pub fn type_is_scalar(fcx: &FnCtxt, sp: Span, typ: ty::t) -> bool {
-    let typ_s = structurally_resolved_type(fcx, sp, typ);
-    return ty::type_is_scalar(typ_s);
-}
-
-pub fn type_is_char(fcx: &FnCtxt, sp: Span, typ: ty::t) -> bool {
-    let typ_s = structurally_resolved_type(fcx, sp, typ);
-    return ty::type_is_char(typ_s);
-}
-
-pub fn type_is_bare_fn(fcx: &FnCtxt, sp: Span, typ: ty::t) -> bool {
-    let typ_s = structurally_resolved_type(fcx, sp, typ);
-    return ty::type_is_bare_fn(typ_s);
-}
-
-pub fn type_is_floating_point(fcx: &FnCtxt, sp: Span, typ: ty::t) -> bool {
-    let typ_s = structurally_resolved_type(fcx, sp, typ);
-    return ty::type_is_floating_point(typ_s);
-}
-
-pub fn type_is_unsafe_ptr(fcx: &FnCtxt, sp: Span, typ: ty::t) -> bool {
-    let typ_s = structurally_resolved_type(fcx, sp, typ);
-    return ty::type_is_unsafe_ptr(typ_s);
-}
-
-pub fn type_is_region_ptr(fcx: &FnCtxt, sp: Span, typ: ty::t) -> bool {
-    let typ_s = structurally_resolved_type(fcx, sp, typ);
-    return ty::type_is_region_ptr(typ_s);
-}
-
-pub fn type_is_c_like_enum(fcx: &FnCtxt, sp: Span, typ: ty::t) -> bool {
-    let typ_s = structurally_resolved_type(fcx, sp, typ);
-    return ty::type_is_c_like_enum(fcx.ccx.tcx, typ_s);
 }
 
 pub fn ast_expr_vstore_to_ty(fcx: &FnCtxt,
