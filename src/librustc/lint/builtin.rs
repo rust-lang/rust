@@ -30,7 +30,6 @@ use middle::def::*;
 use middle::trans::adt; // for `adt::is_ffi_safe`
 use middle::typeck::astconv::ast_ty_to_ty;
 use middle::typeck::infer;
-use middle::privacy::ExportedItems;
 use middle::{typeck, ty, def, pat_util};
 use util::ppaux::{ty_to_str};
 use util::nodemap::NodeSet;
@@ -1322,7 +1321,7 @@ impl LintPass for MissingDoc {
         assert!(popped == id);
     }
 
-    fn check_crate(&mut self, cx: &Context, _: &ExportedItems, krate: &ast::Crate) {
+    fn check_crate(&mut self, cx: &Context, krate: &ast::Crate) {
         self.check_missing_doc_attrs(cx, None, krate.attrs.as_slice(),
             krate.span, "crate");
     }

@@ -641,7 +641,7 @@ pub fn check_crate(tcx: &ty::ctxt,
 
         // since the root module isn't visited as an item (because it isn't an
         // item), warn for it here.
-        run_lints!(cx, check_crate, exported_items, krate);
+        run_lints!(cx, check_crate, krate);
 
         visit::walk_crate(cx, krate, ());
     });
