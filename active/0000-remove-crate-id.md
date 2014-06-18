@@ -4,11 +4,12 @@
 
 # Summary
 
-Remove the `crate_id` attribute, knowledge of versions from rustc, and the
-`crate_type` attribute. Allow keywords in attributes, and add a `#[crate]`
-attribute similar to the old `#[link]` attribute. Filenames will no longer have
-versions, nor will symbols, and the compiler will grow a new flag, `--extern`,
-to override searching for external crates.
+* Remove the `crate_id` attribute, knowledge of versions from rustc, and the
+  `crate_type` attribute
+* Allow keywords in attributes
+* Add a `#[crate]` attribute similar to the old `#[link]` attribute
+* Filenames will no longer have versions, nor will symbols
+* A new flag, `--extern`, will be used to override searching for external crates
 
 # Motivation
 
@@ -76,18 +77,35 @@ naming scheme achieves a number of goals:
 * Rust libraries can have very privileged names such as `core` and `std` without
   worrying about polluting the global namespace of other system libraries.
 
+One drawback of this scheme is that the output filename of the compiler is
+unknown due to the `<hash>` component. One must query `rustc` itself to
+determine the name of the library output.
+
 Under this new scheme, the new filenames would be:
 
 ```
-lib<name>-<hash>.rlib
+lib<name>.rlib
 ```
 
-Where the new hash is defined to be the hash of the contents of the metadata.
-The metadata is a merging of the command line metadata as well as the contents
-of the `crate` attribute. All three of the original goals are still satisfied by
-this new naming scheme. The version would no longer be explicitly visible in the
-filename, but the hash would include the version and be distinct across two
-versions of the same library.
+Note that both the `<version>` and the `<hash>` are missing by default. The
+`<version>` was removed because the compiler no longer knows about the version,
+and the `<hash>` was removed to make the output filename predictable.
+
+The three original goals can still be satisfied with this simplified naming
+scheme. As explained in th enext section, the compiler's "glob pattern" when
+searching for a crate named `foo` will be `libfoo*.rlib`, which will help
+rationalize some of these conclusions.
+
+* Libraries of the same name can exist next to one another because they can be
+  manually renamed to have extra data after the `libfoo`, such as the version.
+* Libraries of the same name and version, but different source, can also exist
+  by modifing what comes after `libfoo`, such as including a hash.
+* Rust does not need to occupy a privileged namespace as the default rust
+  installation would include hashes in all the filenames as necessary. More on
+  this later.
+
+Additionally, with a predictable filename output external tooling should be
+easier to write.
 
 ## Loading crates
 
@@ -120,15 +138,21 @@ extern crate json = "super-fast-json";
 
 Notably, the CrateId is removed entirely, along with the version and path
 associated with it. The string value of the `extern crate` directive is still
-optional (defaulting to the identifier), and the string can only contain
-alphanumeric characters, `-`, and `_`. Note that the string is not a valid rust
-identifier due to its usage of the `-` character.
+optional (defaulting to the identifier), and the string must be a valid rust
+identifier with the exception that any character but the first can be a hyphen,
+`-`.
 
 The compiler's searching and file matching logic would be altered to only match
 crates based on name. If two versions of a crate are found, the compiler will
 unconditionally emit an error. It will be up to the user to move the two
 libraries on the filesystem and control the `-L` flags to the compiler to enable
 disambiguation.
+
+This imples that when the compiler is searching for the crate named `foo`, it
+will search all of the lookup paths for files which match the pattern
+`libfoo*.{so,rlib}`. This is likely to return many false positives, but they
+will be easily weeded out once the compiler realizes that there is no metadata
+in the library.
 
 This scheme is strictly less powerful than the previous, but it moves a good
 deal of logic from the compiler to cargo.
@@ -201,3 +225,6 @@ in the `crate` attribute or from the command line, however.
 
 * Does allowing keywords in attributes set an unusual precedent for other
   portions of the language?
+
+* Are the string literal parts of `extern crate` justified? Allowing a string
+  literal just for the `-` character may be overkill.
