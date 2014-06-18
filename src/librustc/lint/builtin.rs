@@ -1531,9 +1531,18 @@ pub struct HardwiredLints;
 impl LintPass for HardwiredLints {
     fn get_lints(&self) -> LintArray {
         lint_array!(
-            UNUSED_IMPORTS, UNNECESSARY_QUALIFICATION, UNRECOGNIZED_LINT,
-            UNUSED_VARIABLE, DEAD_ASSIGNMENT, DEAD_CODE, VISIBLE_PRIVATE_TYPES,
-            UNREACHABLE_CODE, WARNINGS, UNKNOWN_FEATURES, UNKNOWN_CRATE_TYPE,
-            VARIANT_SIZE_DIFFERENCE)
+            UNUSED_IMPORTS,
+            UNNECESSARY_QUALIFICATION,
+            UNRECOGNIZED_LINT,
+            UNUSED_VARIABLE,
+            DEAD_ASSIGNMENT,
+            DEAD_CODE,
+            VISIBLE_PRIVATE_TYPES,
+            UNREACHABLE_CODE,
+            WARNINGS,
+            UNKNOWN_FEATURES,
+            UNKNOWN_CRATE_TYPE,
+            VARIANT_SIZE_DIFFERENCE
+        )
     }
 }
