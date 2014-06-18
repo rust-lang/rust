@@ -44,9 +44,21 @@ Finally, inference for `as` will be modified to track the types
 a value is being cast *to* for cases where the value being cast
 is unconstrained, like `0 as u8`.
 
+Treatment of enum discriminants will need to change:
+
+```
+enum Color { Red = 0, Green = 1, Blue = 2 }
+```
+
+Currently, an unsuffixed integer defaults to `int`. Instead, we will
+only require enum descriminants primitive integers of unspecified
+type; assigning an integer to an enum will behave as if casting from
+from the type of the integer to an unsigned integer with the size of
+the enum discriminant.
+
 # Drawbacks
 
-This will force users to cast somewhat more often. In particular,
+This will force users to type hint somewhat more often. In particular,
 ranges of unsigned ints may need to be type-hinted:
 
 ```
@@ -61,13 +73,3 @@ Do none of this.
 
 * If we're putting new restrictions on shift operators, should we
   change the traits, or just make the primitives special?
-
-There is some question about how to treat enum discriminants:
-
-```
-enum Color { Red = 0, Green = 1, Blue = 2 }
-```
-
-Currently these default to `int`, but we need to change the
-behavior. Niko suggests just making discriminants always `int`, but
-how does that interact with `repr`?
