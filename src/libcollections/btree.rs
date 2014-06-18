@@ -107,8 +107,8 @@ impl<K: Ord, V: Eq> PartialEq for BTree<K, V> {
 impl<K: Ord, V: Eq> Eq for BTree<K, V> {}
 
 impl<K: Ord, V: Eq> PartialOrd for BTree<K, V> {
-    fn lt(&self, other: &BTree<K, V>) -> bool {
-        self.cmp(other) == Less
+    fn partial_cmp(&self, other: &BTree<K, V>) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }
 
@@ -229,8 +229,8 @@ impl<K: Ord, V: Eq> PartialEq for Node<K, V> {
 impl<K: Ord, V: Eq> Eq for Node<K, V> {}
 
 impl<K: Ord, V: Eq> PartialOrd for Node<K, V> {
-    fn lt(&self, other: &Node<K, V>) -> bool {
-        self.cmp(other) == Less
+    fn partial_cmp(&self, other: &Node<K, V>) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }
 
@@ -408,8 +408,8 @@ impl<K: Ord, V: Eq> PartialEq for Leaf<K, V> {
 impl<K: Ord, V: Eq> Eq for Leaf<K, V> {}
 
 impl<K: Ord, V: Eq> PartialOrd for Leaf<K, V> {
-    fn lt(&self, other: &Leaf<K, V>) -> bool {
-        self.cmp(other) == Less
+    fn partial_cmp(&self, other: &Leaf<K, V>) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }
 
@@ -638,8 +638,8 @@ impl<K: Ord, V: Eq> PartialEq for Branch<K, V> {
 impl<K: Ord, V: Eq> Eq for Branch<K, V> {}
 
 impl<K: Ord, V: Eq> PartialOrd for Branch<K, V> {
-    fn lt(&self, other: &Branch<K, V>) -> bool {
-        self.cmp(other) == Less
+    fn partial_cmp(&self, other: &Branch<K, V>) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }
 
@@ -706,8 +706,8 @@ impl<K: Ord, V: Eq> PartialEq for LeafElt<K, V> {
 impl<K: Ord, V: Eq> Eq for LeafElt<K, V> {}
 
 impl<K: Ord, V: Eq> PartialOrd for LeafElt<K, V> {
-    fn lt(&self, other: &LeafElt<K, V>) -> bool {
-        self.cmp(other) == Less
+    fn partial_cmp(&self, other: &LeafElt<K, V>) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }
 
@@ -755,8 +755,8 @@ impl<K: Ord, V: Eq> PartialEq for BranchElt<K, V>{
 impl<K: Ord, V: Eq> Eq for BranchElt<K, V>{}
 
 impl<K: Ord, V: Eq> PartialOrd for BranchElt<K, V> {
-    fn lt(&self, other: &BranchElt<K, V>) -> bool {
-        self.cmp(other) == Less
+    fn partial_cmp(&self, other: &BranchElt<K, V>) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }
 

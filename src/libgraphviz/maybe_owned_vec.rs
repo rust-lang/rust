@@ -73,8 +73,8 @@ impl<'a, T: PartialEq> PartialEq for MaybeOwnedVector<'a, T> {
 impl<'a, T: Eq> Eq for MaybeOwnedVector<'a, T> {}
 
 impl<'a, T: PartialOrd> PartialOrd for MaybeOwnedVector<'a, T> {
-    fn lt(&self, other: &MaybeOwnedVector<T>) -> bool {
-        self.as_slice().lt(&other.as_slice())
+    fn partial_cmp(&self, other: &MaybeOwnedVector<T>) -> Option<Ordering> {
+        self.as_slice().partial_cmp(&other.as_slice())
     }
 }
 

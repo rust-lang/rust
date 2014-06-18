@@ -931,7 +931,7 @@ pub mod traits {
     use cmp::{Ord, Ordering, Less, Equal, Greater, PartialEq, PartialOrd, Equiv, Eq};
     use collections::Collection;
     use iter::Iterator;
-    use option::{Some, None};
+    use option::{Option, Some, None};
     use str::{Str, StrSlice, eq_slice};
 
     impl<'a> Ord for &'a str {
@@ -962,7 +962,9 @@ pub mod traits {
 
     impl<'a> PartialOrd for &'a str {
         #[inline]
-        fn lt(&self, other: & &'a str) -> bool { self.cmp(other) == Less }
+        fn partial_cmp(&self, other: &&'a str) -> Option<Ordering> {
+            Some(self.cmp(other))
+        }
     }
 
     impl<'a, S: Str> Equiv<S> for &'a str {
