@@ -86,8 +86,8 @@ pub fn run(input: &str,
     let mut v = RustdocVisitor::new(&*ctx, None);
     v.visit(&ctx.krate);
     let krate = v.clean();
-    let (krate, _) = passes::unindent_comments(krate);
     let (krate, _) = passes::collapse_docs(krate);
+    let (krate, _) = passes::unindent_comments(krate);
 
     let mut collector = Collector::new(krate.name.to_string(),
                                        libs,
