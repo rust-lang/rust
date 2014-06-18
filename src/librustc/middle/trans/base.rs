@@ -1591,10 +1591,10 @@ fn enum_variant_size_lint(ccx: &CrateContext, enum_def: &ast::EnumDef, sp: Span,
         // Use lint::raw_emit_lint rather than sess.add_lint because the lint-printing
         // pass for the latter already ran.
         lint::raw_emit_lint(&ccx.tcx().sess, lint::builtin::VARIANT_SIZE_DIFFERENCE,
-            lvlsrc, Some(sp),
-            format!("enum variant is more than three times larger \
-                     ({} bytes) than the next largest (ignoring padding)",
-                    largest).as_slice());
+                            lvlsrc, Some(sp),
+                            format!("enum variant is more than three times larger \
+                                     ({} bytes) than the next largest (ignoring padding)",
+                                    largest).as_slice());
 
         ccx.sess().span_note(enum_def.variants.get(largest_index).span,
                              "this variant is the largest");

@@ -137,17 +137,17 @@ impl LintStore {
         ))
 
         add_builtin!(sess, HardwiredLints,
-            WhileTrue, UnusedCasts, CTypes, HeapMemory,
-            UnusedAttribute, PathStatement, UnusedResult,
-            DeprecatedOwnedVector, NonCamelCaseTypes,
-            NonSnakeCaseFunctions, NonUppercaseStatics,
-            NonUppercasePatternStatics, UppercaseVariables,
-            UnnecessaryParens, UnusedUnsafe, UnsafeBlock,
-            UnusedMut, UnnecessaryAllocation, Stability,
+                     WhileTrue, UnusedCasts, CTypes, HeapMemory,
+                     UnusedAttribute, PathStatement, UnusedResult,
+                     DeprecatedOwnedVector, NonCamelCaseTypes,
+                     NonSnakeCaseFunctions, NonUppercaseStatics,
+                     NonUppercasePatternStatics, UppercaseVariables,
+                     UnnecessaryParens, UnusedUnsafe, UnsafeBlock,
+                     UnusedMut, UnnecessaryAllocation, Stability,
         )
 
         add_builtin_with_new!(sess,
-            TypeLimits, RawPointerDeriving, MissingDoc,
+                              TypeLimits, RawPointerDeriving, MissingDoc,
         )
 
         // We have one lint pass defined in this module.
@@ -159,7 +159,7 @@ impl LintStore {
             match self.by_name.find_equiv(&lint_name.as_slice()) {
                 Some(&lint_id) => self.set_level(lint_id, (level, CommandLine)),
                 None => sess.err(format!("unknown {} flag: {}",
-                    level.as_str(), lint_name).as_slice()),
+                                         level.as_str(), lint_name).as_slice()),
             }
         }
     }
@@ -249,14 +249,14 @@ pub fn raw_emit_lint(sess: &Session, lint: &'static Lint,
     let msg = match source {
         Default => {
             format!("{}, #[{}({})] on by default", msg,
-                level.as_str(), name)
+                    level.as_str(), name)
         },
         CommandLine => {
             format!("{} [-{} {}]", msg,
-                match level {
-                    Warn => 'W', Deny => 'D', Forbid => 'F',
-                    Allow => fail!()
-                }, name.replace("_", "-"))
+                    match level {
+                        Warn => 'W', Deny => 'D', Forbid => 'F',
+                        Allow => fail!()
+                    }, name.replace("_", "-"))
         },
         Node(src) => {
             note = Some(src);
@@ -286,7 +286,7 @@ impl<'a> Context<'a> {
            exported_items: &'a ExportedItems) -> Context<'a> {
         // We want to own the lint store, so move it out of the session.
         let lint_store = mem::replace(&mut *tcx.sess.lint_store.borrow_mut(),
-            LintStore::new());
+                                      LintStore::new());
 
         Context {
             tcx: tcx,
@@ -363,8 +363,8 @@ impl<'a> Context<'a> {
             if now == Forbid && level != Forbid {
                 let lint_name = lint_id.as_str();
                 self.tcx.sess.span_err(span,
-                    format!("{}({}) overruled by outer forbid({})",
-                        level.as_str(), lint_name, lint_name).as_slice());
+                                       format!("{}({}) overruled by outer forbid({})",
+                                               level.as_str(), lint_name, lint_name).as_slice());
             } else if now != level {
                 let src = self.lints.get_level_source(lint_id).val1();
                 self.level_stack.push((lint_id, (now, src)));
@@ -651,9 +651,8 @@ pub fn check_crate(tcx: &ty::ctxt,
     for (id, v) in tcx.sess.lints.borrow().iter() {
         for &(lint, span, ref msg) in v.iter() {
             tcx.sess.span_bug(span,
-                format!("unprocessed lint {} at {}: {}",
-                    lint.as_str(), tcx.map.node_to_str(*id), *msg)
-                .as_slice())
+                              format!("unprocessed lint {} at {}: {}",
+                                      lint.as_str(), tcx.map.node_to_str(*id), *msg).as_slice())
         }
     }
 
