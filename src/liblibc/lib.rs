@@ -2057,7 +2057,7 @@ pub mod consts {
             pub static MAP_FIXED : c_int = 0x0010;
             pub static MAP_ANON : c_int = 0x0020;
 
-            pub static MAP_FAILED : *c_void = -1 as *c_void;
+            pub static MAP_FAILED : *mut c_void = -1 as *mut c_void;
 
             pub static MCL_CURRENT : c_int = 0x0001;
             pub static MCL_FUTURE : c_int = 0x0002;
@@ -2268,7 +2268,7 @@ pub mod consts {
             pub static MAP_FIXED : c_int = 0x0010;
             pub static MAP_ANON : c_int = 0x0800;
 
-            pub static MAP_FAILED : *c_void = -1 as *c_void;
+            pub static MAP_FAILED : *mut c_void = -1 as *mut c_void;
 
             pub static MCL_CURRENT : c_int = 0x0001;
             pub static MCL_FUTURE : c_int = 0x0002;
@@ -2804,7 +2804,7 @@ pub mod consts {
             pub static MAP_FIXED : c_int = 0x0010;
             pub static MAP_ANON : c_int = 0x1000;
 
-            pub static MAP_FAILED : *c_void = -1 as *c_void;
+            pub static MAP_FAILED : *mut c_void = -1 as *mut c_void;
 
             pub static MCL_CURRENT : c_int = 0x0001;
             pub static MCL_FUTURE : c_int = 0x0002;
@@ -3192,7 +3192,7 @@ pub mod consts {
             pub static MAP_FIXED : c_int = 0x0010;
             pub static MAP_ANON : c_int = 0x1000;
 
-            pub static MAP_FAILED : *c_void = -1 as *c_void;
+            pub static MAP_FAILED : *mut c_void = -1 as *mut c_void;
 
             pub static MCL_CURRENT : c_int = 0x0001;
             pub static MCL_FUTURE : c_int = 0x0002;
@@ -3951,19 +3951,19 @@ pub mod funcs {
                 pub fn mlockall(flags: c_int) -> c_int;
                 pub fn munlockall() -> c_int;
 
-                pub fn mmap(addr: *c_void,
+                pub fn mmap(addr: *mut c_void,
                             len: size_t,
                             prot: c_int,
                             flags: c_int,
                             fd: c_int,
                             offset: off_t)
                             -> *mut c_void;
-                pub fn munmap(addr: *c_void, len: size_t) -> c_int;
+                pub fn munmap(addr: *mut c_void, len: size_t) -> c_int;
 
-                pub fn mprotect(addr: *c_void, len: size_t, prot: c_int)
+                pub fn mprotect(addr: *mut c_void, len: size_t, prot: c_int)
                                 -> c_int;
 
-                pub fn msync(addr: *c_void, len: size_t, flags: c_int)
+                pub fn msync(addr: *mut c_void, len: size_t, flags: c_int)
                              -> c_int;
                 pub fn shm_open(name: *c_char, oflag: c_int, mode: mode_t)
                                 -> c_int;
@@ -4208,9 +4208,9 @@ pub mod funcs {
 
         extern {
             pub fn getdtablesize() -> c_int;
-            pub fn madvise(addr: *c_void, len: size_t, advice: c_int)
+            pub fn madvise(addr: *mut c_void, len: size_t, advice: c_int)
                            -> c_int;
-            pub fn mincore(addr: *c_void, len: size_t, vec: *c_uchar)
+            pub fn mincore(addr: *mut c_void, len: size_t, vec: *mut c_uchar)
                            -> c_int;
         }
     }
