@@ -254,6 +254,7 @@ impl<'a> CFGBuilder<'a> {
                 });
                 let body_exit = self.block(&**body, cond_exit);          // 4
                 self.add_contained_edge(body_exit, loopback);            // 5
+                self.loop_scopes.pop();
                 expr_exit
             }
 
@@ -427,8 +428,22 @@ impl<'a> CFGBuilder<'a> {
                 self.straightline(expr, pred, [e])
             }
 
+            ast::ExprInlineAsm(ref inline_asm) => {
+                let inputs = inline_asm.inputs.iter();
+                let outputs = inline_asm.outputs.iter();
+                fn extract_expr<A>(&(_, expr): &(A, Gc<ast::Expr>)) -> Gc<ast::Expr> { expr }
+                let post_inputs = self.exprs(inputs.map(|a| {
+                    debug!("cfg::construct InlineAsm id:{} input:{:?}", expr.id, a);
+                    extract_expr(a)
+                }), pred);
+                let post_outputs = self.exprs(outputs.map(|a| {
+                    debug!("cfg::construct InlineAsm id:{} output:{:?}", expr.id, a);
+                    extract_expr(a)
+                }), post_inputs);
+                self.add_node(expr.id, [post_outputs])
+            }
+
             ast::ExprMac(..) |
-            ast::ExprInlineAsm(..) |
             ast::ExprFnBlock(..) |
             ast::ExprProc(..) |
             ast::ExprLit(..) |
@@ -444,15 +459,22 @@ impl<'a> CFGBuilder<'a> {
             func_or_rcvr: Gc<ast::Expr>,
             args: &[Gc<ast::Expr>]) -> CFGIndex {
         let func_or_rcvr_exit = self.expr(func_or_rcvr, pred);
-        self.straightline(call_expr, func_or_rcvr_exit, args)
+        let ret = self.straightline(call_expr, func_or_rcvr_exit, args);
+
+        let return_ty = ty::node_id_to_type(self.tcx, call_expr.id);
+        let fails = ty::type_is_bot(return_ty);
+        if fails {
+            self.add_node(ast::DUMMY_NODE_ID, [])
+        } else {
+            ret
+        }
     }
 
-    fn exprs(&mut self,
-             exprs: &[Gc<ast::Expr>],
-             pred: CFGIndex) -> CFGIndex {
+    fn exprs<I:Iterator<Gc<ast::Expr>>>(&mut self,
+                                        mut exprs: I,
+                                        pred: CFGIndex) -> CFGIndex {
         //! Constructs graph for `exprs` evaluated in order
-
-        exprs.iter().fold(pred, |p, &e| self.expr(e, p))
+        exprs.fold(pred, |p, e| self.expr(e, p))
     }
 
     fn opt_expr(&mut self,
@@ -469,7 +491,7 @@ impl<'a> CFGBuilder<'a> {
                     subexprs: &[Gc<ast::Expr>]) -> CFGIndex {
         //! Handles case of an expression that evaluates `subexprs` in order
 
-        let subexprs_exit = self.exprs(subexprs, pred);
+        let subexprs_exit = self.exprs(subexprs.iter().map(|&e|e), pred);
         self.add_node(expr.id, [subexprs_exit])
     }
 

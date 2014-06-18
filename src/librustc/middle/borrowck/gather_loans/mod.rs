@@ -395,7 +395,8 @@ impl<'a> GatherLoanCtxt<'a> {
         //! from a local variable, mark the mutability decl as necessary.
 
         match *loan_path {
-            LpVar(local_id) => {
+            LpVar(local_id) |
+            LpUpvar(ty::UpvarId{ var_id: local_id, closure_expr_id: _ }) => {
                 self.tcx().used_mut_nodes.borrow_mut().insert(local_id);
             }
             LpExtend(ref base, mc::McInherited, _) => {
@@ -445,8 +446,8 @@ impl<'a> GatherLoanCtxt<'a> {
         //! with immutable `&` pointers, because borrows of such pointers
         //! do not require restrictions and hence do not cause a loan.
 
+        let lexical_scope = lp.kill_scope(self.bccx.tcx);
         let rm = &self.bccx.tcx.region_maps;
-        let lexical_scope = rm.var_scope(lp.node_id());
         if rm.is_subscope_of(lexical_scope, loan_scope) {
             lexical_scope
         } else {

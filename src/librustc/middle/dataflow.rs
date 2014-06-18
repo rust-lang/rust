@@ -17,22 +17,23 @@
  */
 
 
-use middle::def;
+use middle::cfg;
+use middle::cfg::CFGIndex;
 use middle::ty;
-use middle::typeck;
 use std::io;
-use std::gc::Gc;
 use std::uint;
 use syntax::ast;
-use syntax::ast_util;
 use syntax::ast_util::IdRange;
+use syntax::visit;
 use syntax::print::{pp, pprust};
-use util::ppaux::Repr;
 use util::nodemap::NodeMap;
 
 #[deriving(Clone)]
 pub struct DataFlowContext<'a, O> {
     tcx: &'a ty::ctxt,
+
+    /// a name for the analysis using this dataflow instance
+    analysis_name: &'static str,
 
     /// the data flow operator
     oper: O,
@@ -44,33 +45,39 @@ pub struct DataFlowContext<'a, O> {
     /// equal to bits_per_id/uint::BITS rounded up.
     words_per_id: uint,
 
-    // mapping from node to bitset index.
-    nodeid_to_bitset: NodeMap<uint>,
+    // mapping from cfg node index to bitset index.
+    index_to_bitset: Vec<Option<uint>>,
 
-    // Bit sets per id.  The following three fields (`gens`, `kills`,
+    // mapping from node to cfg node index
+    // FIXME (#6298): Shouldn't this go with CFG?
+    nodeid_to_index: NodeMap<CFGIndex>,
+
+    // Bit sets per cfg node.  The following three fields (`gens`, `kills`,
     // and `on_entry`) all have the same structure. For each id in
     // `id_range`, there is a range of words equal to `words_per_id`.
     // So, to access the bits for any given id, you take a slice of
     // the full vector (see the method `compute_id_range()`).
 
-    /// bits generated as we exit the scope `id`. Updated by `add_gen()`.
+    /// bits generated as we exit the cfg node. Updated by `add_gen()`.
     gens: Vec<uint>,
 
-    /// bits killed as we exit the scope `id`. Updated by `add_kill()`.
+    /// bits killed as we exit the cfg node. Updated by `add_kill()`.
     kills: Vec<uint>,
 
-    /// bits that are valid on entry to the scope `id`. Updated by
+    /// bits that are valid on entry to the cfg node. Updated by
     /// `propagate()`.
     on_entry: Vec<uint>,
 }
 
-/// Parameterization for the precise form of data flow that is used.
-pub trait DataFlowOperator {
-    /// Specifies the initial value for each bit in the `on_entry` set
-    fn initial_value(&self) -> bool;
-
+pub trait BitwiseOperator {
     /// Joins two predecessor bits together, typically either `|` or `&`
     fn join(&self, succ: uint, pred: uint) -> uint;
+}
+
+/// Parameterization for the precise form of data flow that is used.
+pub trait DataFlowOperator : BitwiseOperator {
+    /// Specifies the initial value for each bit in the `on_entry` set
+    fn initial_value(&self) -> bool;
 }
 
 struct PropagationContext<'a, 'b, O> {
@@ -78,9 +85,68 @@ struct PropagationContext<'a, 'b, O> {
     changed: bool
 }
 
-struct LoopScope<'a> {
-    loop_id: ast::NodeId,
-    break_bits: Vec<uint>
+fn to_cfgidx_or_die(id: ast::NodeId, index: &NodeMap<CFGIndex>) -> CFGIndex {
+    let opt_cfgindex = index.find(&id).map(|&i|i);
+    opt_cfgindex.unwrap_or_else(|| {
+        fail!("nodeid_to_index does not have entry for NodeId {}", id);
+    })
+}
+
+impl<'a, O:DataFlowOperator> DataFlowContext<'a, O> {
+    fn has_bitset(&self, n: ast::NodeId) -> bool {
+        assert!(n != ast::DUMMY_NODE_ID);
+        match self.nodeid_to_index.find(&n) {
+            None => false,
+            Some(&cfgidx) => {
+                let node_id = cfgidx.node_id();
+                node_id < self.index_to_bitset.len() &&
+                    self.index_to_bitset.get(node_id).is_some()
+            }
+        }
+    }
+    fn get_bitset_index(&self, cfgidx: CFGIndex) -> uint {
+        let node_id = cfgidx.node_id();
+        self.index_to_bitset.get(node_id).unwrap()
+    }
+    fn get_or_create_bitset_index(&mut self, cfgidx: CFGIndex) -> uint {
+        assert!(self.words_per_id > 0);
+        let len = self.gens.len() / self.words_per_id;
+        let expanded;
+        let n;
+        if self.index_to_bitset.len() <= cfgidx.node_id() {
+            self.index_to_bitset.grow_set(cfgidx.node_id(), &None, Some(len));
+            expanded = true;
+            n = len;
+        } else {
+            let entry = self.index_to_bitset.get_mut(cfgidx.node_id());
+            match *entry {
+                None => {
+                    *entry = Some(len);
+                    expanded = true;
+                    n = len;
+                }
+                Some(bitidx) => {
+                    expanded = false;
+                    n = bitidx;
+                }
+            }
+        }
+        if expanded {
+            let entry = if self.oper.initial_value() { uint::MAX } else {0};
+            for _ in range(0, self.words_per_id) {
+                self.gens.push(0);
+                self.kills.push(0);
+                self.on_entry.push(entry);
+            }
+        }
+
+        let start = n * self.words_per_id;
+        let end = start + self.words_per_id;
+        let len = self.gens.len();
+        assert!(start < len);
+        assert!(end <= len);
+        n
+    }
 }
 
 impl<'a, O:DataFlowOperator> pprust::PpAnn for DataFlowContext<'a, O> {
@@ -94,8 +160,9 @@ impl<'a, O:DataFlowOperator> pprust::PpAnn for DataFlowContext<'a, O> {
             pprust::NodePat(pat) => pat.id
         };
 
-        if self.nodeid_to_bitset.contains_key(&id) {
-            let (start, end) = self.compute_id_range_frozen(id);
+        if self.has_bitset(id) {
+            let cfgidx = to_cfgidx_or_die(id, &self.nodeid_to_index);
+            let (start, end) = self.compute_id_range_frozen(cfgidx);
             let on_entry = self.on_entry.slice(start, end);
             let entry_str = bits_to_str(on_entry);
 
@@ -121,24 +188,74 @@ impl<'a, O:DataFlowOperator> pprust::PpAnn for DataFlowContext<'a, O> {
     }
 }
 
+fn build_nodeid_to_index(decl: Option<&ast::FnDecl>,
+                         cfg: &cfg::CFG) -> NodeMap<CFGIndex> {
+    let mut index = NodeMap::new();
+
+    // FIXME (#6298): Would it be better to fold formals from decl
+    // into cfg itself?  i.e. introduce a fn-based flow-graph in
+    // addition to the current block-based flow-graph, rather than
+    // have to put traversals like this here?
+    match decl {
+        None => {}
+        Some(decl) => add_entries_from_fn_decl(&mut index, decl, cfg.entry)
+    }
+
+    cfg.graph.each_node(|node_idx, node| {
+        if node.data.id != ast::DUMMY_NODE_ID {
+            index.insert(node.data.id, node_idx);
+        }
+        true
+    });
+
+    return index;
+
+    fn add_entries_from_fn_decl(index: &mut NodeMap<CFGIndex>,
+                                decl: &ast::FnDecl,
+                                entry: CFGIndex) {
+        //! add mappings from the ast nodes for the formal bindings to
+        //! the entry-node in the graph.
+        struct Formals<'a> {
+            entry: CFGIndex,
+            index: &'a mut NodeMap<CFGIndex>,
+        }
+        let mut formals = Formals { entry: entry, index: index };
+        visit::walk_fn_decl(&mut formals, decl, ());
+        impl<'a> visit::Visitor<()> for Formals<'a> {
+            fn visit_pat(&mut self, p: &ast::Pat, e: ()) {
+                self.index.insert(p.id, self.entry);
+                visit::walk_pat(self, p, e)
+            }
+        }
+    }
+}
+
 impl<'a, O:DataFlowOperator> DataFlowContext<'a, O> {
     pub fn new(tcx: &'a ty::ctxt,
+               analysis_name: &'static str,
+               decl: Option<&ast::FnDecl>,
+               cfg: &cfg::CFG,
                oper: O,
                id_range: IdRange,
                bits_per_id: uint) -> DataFlowContext<'a, O> {
         let words_per_id = (bits_per_id + uint::BITS - 1) / uint::BITS;
 
-        debug!("DataFlowContext::new(id_range={:?}, bits_per_id={:?}, words_per_id={:?})",
-               id_range, bits_per_id, words_per_id);
+        debug!("DataFlowContext::new(analysis_name: {:s}, id_range={:?}, \
+                                     bits_per_id={:?}, words_per_id={:?})",
+               analysis_name, id_range, bits_per_id, words_per_id);
 
         let gens = Vec::new();
         let kills = Vec::new();
         let on_entry = Vec::new();
 
+        let nodeid_to_index = build_nodeid_to_index(decl, cfg);
+
         DataFlowContext {
             tcx: tcx,
+            analysis_name: analysis_name,
             words_per_id: words_per_id,
-            nodeid_to_bitset: NodeMap::new(),
+            index_to_bitset: Vec::new(),
+            nodeid_to_index: nodeid_to_index,
             bits_per_id: bits_per_id,
             oper: oper,
             gens: gens,
@@ -149,74 +266,50 @@ impl<'a, O:DataFlowOperator> DataFlowContext<'a, O> {
 
     pub fn add_gen(&mut self, id: ast::NodeId, bit: uint) {
         //! Indicates that `id` generates `bit`
-
-        debug!("add_gen(id={:?}, bit={:?})", id, bit);
-        let (start, end) = self.compute_id_range(id);
-        {
-            let gens = self.gens.mut_slice(start, end);
-            set_bit(gens, bit);
-        }
+        debug!("{:s} add_gen(id={:?}, bit={:?})",
+               self.analysis_name, id, bit);
+        assert!(self.nodeid_to_index.contains_key(&id));
+        let cfgidx = to_cfgidx_or_die(id, &self.nodeid_to_index);
+        let (start, end) = self.compute_id_range(cfgidx);
+        let gens = self.gens.mut_slice(start, end);
+        set_bit(gens, bit);
     }
 
     pub fn add_kill(&mut self, id: ast::NodeId, bit: uint) {
         //! Indicates that `id` kills `bit`
-
-        debug!("add_kill(id={:?}, bit={:?})", id, bit);
-        let (start, end) = self.compute_id_range(id);
-        {
-            let kills = self.kills.mut_slice(start, end);
-            set_bit(kills, bit);
-        }
+        debug!("{:s} add_kill(id={:?}, bit={:?})",
+               self.analysis_name, id, bit);
+        assert!(self.nodeid_to_index.contains_key(&id));
+        let cfgidx = to_cfgidx_or_die(id, &self.nodeid_to_index);
+        let (start, end) = self.compute_id_range(cfgidx);
+        let kills = self.kills.mut_slice(start, end);
+        set_bit(kills, bit);
     }
 
-    fn apply_gen_kill(&mut self, id: ast::NodeId, bits: &mut [uint]) {
+    fn apply_gen_kill(&mut self, cfgidx: CFGIndex, bits: &mut [uint]) {
         //! Applies the gen and kill sets for `id` to `bits`
-
-        debug!("apply_gen_kill(id={:?}, bits={}) [before]",
-               id, mut_bits_to_str(bits));
-        let (start, end) = self.compute_id_range(id);
+        debug!("{:s} apply_gen_kill(cfgidx={}, bits={}) [before]",
+               self.analysis_name, cfgidx, mut_bits_to_str(bits));
+        let (start, end) = self.compute_id_range(cfgidx);
         let gens = self.gens.slice(start, end);
-        bitwise(bits, gens, |a, b| a | b);
+        bitwise(bits, gens, &Union);
         let kills = self.kills.slice(start, end);
-        bitwise(bits, kills, |a, b| a & !b);
+        bitwise(bits, kills, &Subtract);
 
-        debug!("apply_gen_kill(id={:?}, bits={}) [after]",
-               id, mut_bits_to_str(bits));
+        debug!("{:s} apply_gen_kill(cfgidx={}, bits={}) [after]",
+               self.analysis_name, cfgidx, mut_bits_to_str(bits));
     }
 
-    fn apply_kill(&mut self, id: ast::NodeId, bits: &mut [uint]) {
-        debug!("apply_kill(id={:?}, bits={}) [before]",
-               id, mut_bits_to_str(bits));
-        let (start, end) = self.compute_id_range(id);
-        let kills = self.kills.slice(start, end);
-        bitwise(bits, kills, |a, b| a & !b);
-        debug!("apply_kill(id={:?}, bits={}) [after]",
-               id, mut_bits_to_str(bits));
-    }
-
-    fn compute_id_range_frozen(&self, id: ast::NodeId) -> (uint, uint) {
-        let n = *self.nodeid_to_bitset.get(&id);
+    fn compute_id_range_frozen(&self, cfgidx: CFGIndex) -> (uint, uint) {
+        let n = self.get_bitset_index(cfgidx);
         let start = n * self.words_per_id;
         let end = start + self.words_per_id;
         (start, end)
     }
 
-    fn compute_id_range(&mut self, id: ast::NodeId) -> (uint, uint) {
-        let mut expanded = false;
-        let len = self.nodeid_to_bitset.len();
-        let n = self.nodeid_to_bitset.find_or_insert_with(id, |_| {
-            expanded = true;
-            len
-        });
-        if expanded {
-            let entry = if self.oper.initial_value() { uint::MAX } else {0};
-            for _ in range(0, self.words_per_id) {
-                self.gens.push(0);
-                self.kills.push(0);
-                self.on_entry.push(entry);
-            }
-        }
-        let start = *n * self.words_per_id;
+    fn compute_id_range(&mut self, cfgidx: CFGIndex) -> (uint, uint) {
+        let n = self.get_or_create_bitset_index(cfgidx);
+        let start = n * self.words_per_id;
         let end = start + self.words_per_id;
 
         assert!(start < self.gens.len());
@@ -234,26 +327,28 @@ impl<'a, O:DataFlowOperator> DataFlowContext<'a, O> {
                                     -> bool {
         //! Iterates through each bit that is set on entry to `id`.
         //! Only useful after `propagate()` has been called.
-        if !self.nodeid_to_bitset.contains_key(&id) {
+        if !self.has_bitset(id) {
             return true;
         }
-        let (start, end) = self.compute_id_range_frozen(id);
+        let cfgidx = to_cfgidx_or_die(id, &self.nodeid_to_index);
+        let (start, end) = self.compute_id_range_frozen(cfgidx);
         let on_entry = self.on_entry.slice(start, end);
-        debug!("each_bit_on_entry_frozen(id={:?}, on_entry={})",
-               id, bits_to_str(on_entry));
+        debug!("{:s} each_bit_on_entry_frozen(id={:?}, on_entry={})",
+               self.analysis_name, id, bits_to_str(on_entry));
         self.each_bit(on_entry, f)
     }
 
     pub fn each_gen_bit_frozen(&self, id: ast::NodeId, f: |uint| -> bool)
                                -> bool {
         //! Iterates through each bit in the gen set for `id`.
-        if !self.nodeid_to_bitset.contains_key(&id) {
+        if !self.has_bitset(id) {
             return true;
         }
-        let (start, end) = self.compute_id_range_frozen(id);
+        let cfgidx = to_cfgidx_or_die(id, &self.nodeid_to_index);
+        let (start, end) = self.compute_id_range_frozen(cfgidx);
         let gens = self.gens.slice(start, end);
-        debug!("each_gen_bit(id={:?}, gens={})",
-               id, bits_to_str(gens));
+        debug!("{:s} each_gen_bit(id={:?}, gens={})",
+               self.analysis_name, id, bits_to_str(gens));
         self.each_bit(gens, f)
     }
 
@@ -287,11 +382,63 @@ impl<'a, O:DataFlowOperator> DataFlowContext<'a, O> {
         }
         return true;
     }
+
+    pub fn add_kills_from_flow_exits(&mut self, cfg: &cfg::CFG) {
+        //! Whenever you have a `break` or `continue` statement, flow
+        //! exits through any number of enclosing scopes on its way to
+        //! the new destination. This function infers the kill bits of
+        //! those control operators based on the kill bits associated
+        //! with those scopes.
+        //!
+        //! This is usually called (if it is called at all), after
+        //! all add_gen and add_kill calls, but before propagate.
+
+        debug!("{:s} add_kills_from_flow_exits", self.analysis_name);
+        if self.bits_per_id == 0 {
+            // Skip the surprisingly common degenerate case.  (Note
+            // compute_id_range requires self.words_per_id > 0.)
+            return;
+        }
+        cfg.graph.each_edge(|_edge_index, edge| {
+            let flow_exit = edge.source();
+            let (start, end) = self.compute_id_range(flow_exit);
+            let mut orig_kills = self.kills.slice(start, end).to_owned();
+
+            let mut changed = false;
+            for &node_id in edge.data.exiting_scopes.iter() {
+                let opt_cfg_idx = self.nodeid_to_index.find(&node_id).map(|&i|i);
+                match opt_cfg_idx {
+                    Some(cfg_idx) => {
+                        let (start, end) = self.compute_id_range(cfg_idx);
+                        let kills = self.kills.slice(start, end);
+                        if bitwise(orig_kills.as_mut_slice(), kills, &Union) {
+                            changed = true;
+                        }
+                    }
+                    None => {
+                        debug!("{:s} add_kills_from_flow_exits flow_exit={} \
+                                no cfg_idx for exiting_scope={:?}",
+                               self.analysis_name, flow_exit, node_id);
+                    }
+                }
+            }
+
+            if changed {
+                let bits = self.kills.mut_slice(start, end);
+                debug!("{:s} add_kills_from_flow_exits flow_exit={} bits={} [before]",
+                       self.analysis_name, flow_exit, mut_bits_to_str(bits));
+                bits.copy_from(orig_kills.as_slice());
+                debug!("{:s} add_kills_from_flow_exits flow_exit={} bits={} [after]",
+                       self.analysis_name, flow_exit, mut_bits_to_str(bits));
+            }
+            true
+        });
+    }
 }
 
 impl<'a, O:DataFlowOperator+Clone+'static> DataFlowContext<'a, O> {
 //                          ^^^^^^^^^^^^^ only needed for pretty printing
-    pub fn propagate(&mut self, blk: &ast::Block) {
+    pub fn propagate(&mut self, cfg: &cfg::CFG, blk: &ast::Block) {
         //! Performs the data flow analysis.
 
         if self.bits_per_id == 0 {
@@ -307,16 +454,14 @@ impl<'a, O:DataFlowOperator+Clone+'static> DataFlowContext<'a, O> {
             };
 
             let mut temp = Vec::from_elem(words_per_id, 0u);
-            let mut loop_scopes = Vec::new();
-
             while propcx.changed {
                 propcx.changed = false;
                 propcx.reset(temp.as_mut_slice());
-                propcx.walk_block(blk, temp.as_mut_slice(), &mut loop_scopes);
+                propcx.walk_cfg(cfg, temp.as_mut_slice());
             }
         }
 
-        debug!("Dataflow result:");
+        debug!("Dataflow result for {:s}:", self.analysis_name);
         debug!("{}", {
             self.pretty_print_to(box io::stderr(), blk).unwrap();
             ""
@@ -334,460 +479,28 @@ impl<'a, O:DataFlowOperator+Clone+'static> DataFlowContext<'a, O> {
 }
 
 impl<'a, 'b, O:DataFlowOperator> PropagationContext<'a, 'b, O> {
-    fn tcx(&self) -> &'b ty::ctxt {
-        self.dfcx.tcx
-    }
+    fn walk_cfg(&mut self,
+                cfg: &cfg::CFG,
+                in_out: &mut [uint]) {
+        debug!("DataFlowContext::walk_cfg(in_out={}) {:s}",
+               bits_to_str(in_out), self.dfcx.analysis_name);
+        cfg.graph.each_node(|node_index, node| {
+            debug!("DataFlowContext::walk_cfg idx={} id={} begin in_out={}",
+                   node_index, node.data.id, bits_to_str(in_out));
 
-    fn walk_block(&mut self,
-                  blk: &ast::Block,
-                  in_out: &mut [uint],
-                  loop_scopes: &mut Vec<LoopScope> ) {
-        debug!("DataFlowContext::walk_block(blk.id={}, in_out={})",
-               blk.id, bits_to_str(in_out));
+            let (start, end) = self.dfcx.compute_id_range(node_index);
 
-        self.merge_with_entry_set(blk.id, in_out);
+            // Initialize local bitvector with state on-entry.
+            in_out.copy_from(self.dfcx.on_entry.slice(start, end));
 
-        for stmt in blk.stmts.iter() {
-            self.walk_stmt(stmt.clone(), in_out, loop_scopes);
-        }
+            // Compute state on-exit by applying transfer function to
+            // state on-entry.
+            self.dfcx.apply_gen_kill(node_index, in_out);
 
-        self.walk_opt_expr(blk.expr, in_out, loop_scopes);
-
-        self.dfcx.apply_gen_kill(blk.id, in_out);
-    }
-
-    fn walk_stmt(&mut self,
-                 stmt: Gc<ast::Stmt>,
-                 in_out: &mut [uint],
-                 loop_scopes: &mut Vec<LoopScope> ) {
-        match stmt.node {
-            ast::StmtDecl(ref decl, _) => {
-                self.walk_decl(decl.clone(), in_out, loop_scopes);
-            }
-
-            ast::StmtExpr(ref expr, _) | ast::StmtSemi(ref expr, _) => {
-                self.walk_expr(&**expr, in_out, loop_scopes);
-            }
-
-            ast::StmtMac(..) => {
-                self.tcx().sess.span_bug(stmt.span, "unexpanded macro");
-            }
-        }
-    }
-
-    fn walk_decl(&mut self,
-                 decl: Gc<ast::Decl>,
-                 in_out: &mut [uint],
-                 loop_scopes: &mut Vec<LoopScope> ) {
-        match decl.node {
-            ast::DeclLocal(ref local) => {
-                self.walk_opt_expr(local.init, in_out, loop_scopes);
-                self.walk_pat(local.pat, in_out, loop_scopes);
-            }
-
-            ast::DeclItem(_) => {}
-        }
-    }
-
-    fn walk_expr(&mut self,
-                 expr: &ast::Expr,
-                 in_out: &mut [uint],
-                 loop_scopes: &mut Vec<LoopScope> ) {
-        debug!("DataFlowContext::walk_expr(expr={}, in_out={})",
-               expr.repr(self.dfcx.tcx), bits_to_str(in_out));
-
-        self.merge_with_entry_set(expr.id, in_out);
-
-        match expr.node {
-            ast::ExprFnBlock(..) | ast::ExprProc(..) => {
-            }
-
-            ast::ExprIf(cond, then, els) => {
-                //
-                //     (cond)
-                //       |
-                //       v
-                //      ( )
-                //     /   \
-                //    |     |
-                //    v     v
-                //  (then)(els)
-                //    |     |
-                //    v     v
-                //   (  succ  )
-                //
-                self.walk_expr(&*cond, in_out, loop_scopes);
-
-                let mut then_bits = in_out.to_owned();
-                self.walk_block(&*then, then_bits.as_mut_slice(), loop_scopes);
-
-                self.walk_opt_expr(els, in_out, loop_scopes);
-                join_bits(&self.dfcx.oper, then_bits.as_slice(), in_out);
-            }
-
-            ast::ExprWhile(cond, blk) => {
-                //
-                //     (expr) <--+
-                //       |       |
-                //       v       |
-                //  +--(cond)    |
-                //  |    |       |
-                //  |    v       |
-                //  v  (blk) ----+
-                //       |
-                //    <--+ (break)
-                //
-
-                self.walk_expr(&*cond, in_out, loop_scopes);
-
-                let mut body_bits = in_out.to_owned();
-                loop_scopes.push(LoopScope {
-                    loop_id: expr.id,
-                    break_bits: Vec::from_slice(in_out)
-                });
-                self.walk_block(&*blk, body_bits.as_mut_slice(), loop_scopes);
-                self.add_to_entry_set(expr.id, body_bits.as_slice());
-                let new_loop_scope = loop_scopes.pop().unwrap();
-                copy_bits(new_loop_scope.break_bits.as_slice(), in_out);
-            }
-
-            ast::ExprForLoop(..) => fail!("non-desugared expr_for_loop"),
-
-            ast::ExprLoop(ref blk, _) => {
-                //
-                //     (expr) <--+
-                //       |       |
-                //       v       |
-                //     (blk) ----+
-                //       |
-                //    <--+ (break)
-                //
-
-                let mut body_bits = in_out.to_owned();
-                self.reset(in_out);
-                loop_scopes.push(LoopScope {
-                    loop_id: expr.id,
-                    break_bits: Vec::from_slice(in_out)
-                });
-                self.walk_block(&**blk, body_bits.as_mut_slice(), loop_scopes);
-                self.add_to_entry_set(expr.id, body_bits.as_slice());
-
-                let new_loop_scope = loop_scopes.pop().unwrap();
-                assert_eq!(new_loop_scope.loop_id, expr.id);
-                copy_bits(new_loop_scope.break_bits.as_slice(), in_out);
-            }
-
-            ast::ExprMatch(ref discr, ref arms) => {
-                //
-                //    (discr)
-                //     / | \
-                //    |  |  |
-                //    v  v  v
-                //   (..arms..)
-                //    |  |  |
-                //    v  v  v
-                //   (  succ  )
-                //
-                //
-                self.walk_expr(&**discr, in_out, loop_scopes);
-
-                let mut guards = in_out.to_owned();
-
-                // We know that exactly one arm will be taken, so we
-                // can start out with a blank slate and just union
-                // together the bits from each arm:
-                self.reset(in_out);
-
-                for arm in arms.iter() {
-                    // in_out reflects the discr and all guards to date
-                    self.walk_opt_expr(arm.guard, guards.as_mut_slice(),
-                                       loop_scopes);
-
-                    // determine the bits for the body and then union
-                    // them into `in_out`, which reflects all bodies to date
-                    let mut body = guards.to_owned();
-                    self.walk_pat_alternatives(arm.pats.as_slice(),
-                                               body.as_mut_slice(),
-                                               loop_scopes);
-                    self.walk_expr(&*arm.body, body.as_mut_slice(), loop_scopes);
-                    join_bits(&self.dfcx.oper, body.as_slice(), in_out);
-                }
-            }
-
-            ast::ExprRet(o_e) => {
-                self.walk_opt_expr(o_e, in_out, loop_scopes);
-                self.reset(in_out);
-            }
-
-            ast::ExprBreak(label) => {
-                let scope = self.find_scope(expr, label, loop_scopes);
-                self.break_from_to(expr, scope, in_out);
-                self.reset(in_out);
-            }
-
-            ast::ExprAgain(label) => {
-                let scope = self.find_scope(expr, label, loop_scopes);
-                self.pop_scopes(expr, scope, in_out);
-                self.add_to_entry_set(scope.loop_id, in_out);
-                self.reset(in_out);
-            }
-
-            ast::ExprAssign(ref l, ref r) |
-            ast::ExprAssignOp(_, ref l, ref r) => {
-                self.walk_expr(&**r, in_out, loop_scopes);
-                self.walk_expr(&**l, in_out, loop_scopes);
-            }
-
-            ast::ExprVec(ref exprs) => {
-                self.walk_exprs(exprs.as_slice(), in_out, loop_scopes)
-            }
-
-            ast::ExprRepeat(ref l, ref r) => {
-                self.walk_expr(&**l, in_out, loop_scopes);
-                self.walk_expr(&**r, in_out, loop_scopes);
-            }
-
-            ast::ExprStruct(_, ref fields, with_expr) => {
-                for field in fields.iter() {
-                    self.walk_expr(&*field.expr, in_out, loop_scopes);
-                }
-                self.walk_opt_expr(with_expr, in_out, loop_scopes);
-            }
-
-            ast::ExprCall(ref f, ref args) => {
-                self.walk_expr(&**f, in_out, loop_scopes);
-                self.walk_call(expr.id, args.as_slice(), in_out, loop_scopes);
-            }
-
-            ast::ExprMethodCall(_, _, ref args) => {
-                self.walk_call(expr.id, args.as_slice(), in_out, loop_scopes);
-            }
-
-            ast::ExprIndex(l, r) |
-            ast::ExprBinary(_, l, r) if self.is_method_call(expr) => {
-                self.walk_call(expr.id, [l, r], in_out, loop_scopes);
-            }
-
-            ast::ExprUnary(_, e) if self.is_method_call(expr) => {
-                self.walk_call(expr.id, [e], in_out, loop_scopes);
-            }
-
-            ast::ExprTup(ref exprs) => {
-                self.walk_exprs(exprs.as_slice(), in_out, loop_scopes);
-            }
-
-            ast::ExprBinary(op, ref l, ref r) if ast_util::lazy_binop(op) => {
-                self.walk_expr(&**l, in_out, loop_scopes);
-                let temp = in_out.to_owned();
-                self.walk_expr(&**r, in_out, loop_scopes);
-                join_bits(&self.dfcx.oper, temp.as_slice(), in_out);
-            }
-
-            ast::ExprIndex(l, r) |
-            ast::ExprBinary(_, l, r) => {
-                self.walk_exprs([l, r], in_out, loop_scopes);
-            }
-
-            ast::ExprLit(..) |
-            ast::ExprPath(..) => {}
-
-            ast::ExprAddrOf(_, ref e) |
-            ast::ExprCast(ref e, _) |
-            ast::ExprUnary(_, ref e) |
-            ast::ExprParen(ref e) |
-            ast::ExprVstore(ref e, _) |
-            ast::ExprField(ref e, _, _) => {
-                self.walk_expr(&**e, in_out, loop_scopes);
-            }
-
-            ast::ExprBox(ref s, ref e) => {
-                self.walk_expr(&**s, in_out, loop_scopes);
-                self.walk_expr(&**e, in_out, loop_scopes);
-            }
-
-            ast::ExprInlineAsm(ref inline_asm) => {
-                for &(_, ref expr) in inline_asm.inputs.iter() {
-                    self.walk_expr(&**expr, in_out, loop_scopes);
-                }
-                for &(_, ref expr) in inline_asm.outputs.iter() {
-                    self.walk_expr(&**expr, in_out, loop_scopes);
-                }
-            }
-
-            ast::ExprBlock(ref blk) => {
-                self.walk_block(&**blk, in_out, loop_scopes);
-            }
-
-            ast::ExprMac(..) => {
-                self.tcx().sess.span_bug(expr.span, "unexpanded macro");
-            }
-        }
-
-        self.dfcx.apply_gen_kill(expr.id, in_out);
-    }
-
-    fn pop_scopes(&mut self,
-                  from_expr: &ast::Expr,
-                  to_scope: &mut LoopScope,
-                  in_out: &mut [uint]) {
-        //! Whenever you have a `break` or a `loop` statement, flow
-        //! exits through any number of enclosing scopes on its
-        //! way to the new destination. This function applies the kill
-        //! sets of those enclosing scopes to `in_out` (those kill sets
-        //! concern items that are going out of scope).
-
-        let tcx = self.tcx();
-
-        debug!("pop_scopes(from_expr={}, to_scope={:?}, in_out={})",
-               from_expr.repr(tcx), to_scope.loop_id,
-               bits_to_str(in_out));
-
-        let mut id = from_expr.id;
-        while id != to_scope.loop_id {
-            self.dfcx.apply_kill(id, in_out);
-
-            match tcx.region_maps.opt_encl_scope(id) {
-                Some(i) => { id = i; }
-                None => {
-                    tcx.sess.span_bug(
-                        from_expr.span,
-                        format!("pop_scopes(from_expr={}, to_scope={:?}) \
-                                 to_scope does not enclose from_expr",
-                                from_expr.repr(tcx),
-                                to_scope.loop_id).as_slice());
-                }
-            }
-        }
-    }
-
-    fn break_from_to(&mut self,
-                     from_expr: &ast::Expr,
-                     to_scope: &mut LoopScope,
-                     in_out: &mut [uint]) {
-        self.pop_scopes(from_expr, to_scope, in_out);
-        self.dfcx.apply_kill(from_expr.id, in_out);
-        join_bits(&self.dfcx.oper,
-                  in_out,
-                  to_scope.break_bits.as_mut_slice());
-        debug!("break_from_to(from_expr={}, to_scope={}) final break_bits={}",
-               from_expr.repr(self.tcx()),
-               to_scope.loop_id,
-               bits_to_str(in_out));
-    }
-
-    fn walk_exprs(&mut self,
-                  exprs: &[Gc<ast::Expr>],
-                  in_out: &mut [uint],
-                  loop_scopes: &mut Vec<LoopScope> ) {
-        for expr in exprs.iter() {
-            self.walk_expr(&**expr, in_out, loop_scopes);
-        }
-    }
-
-    fn walk_opt_expr(&mut self,
-                     opt_expr: Option<Gc<ast::Expr>>,
-                     in_out: &mut [uint],
-                     loop_scopes: &mut Vec<LoopScope> ) {
-        for expr in opt_expr.iter() {
-            self.walk_expr(&**expr, in_out, loop_scopes);
-        }
-    }
-
-    fn walk_call(&mut self,
-                 call_id: ast::NodeId,
-                 args: &[Gc<ast::Expr>],
-                 in_out: &mut [uint],
-                 loop_scopes: &mut Vec<LoopScope> ) {
-        self.walk_exprs(args, in_out, loop_scopes);
-
-        // FIXME(#6268) nested method calls
-        // self.merge_with_entry_set(in_out);
-        // self.dfcx.apply_gen_kill(in_out);
-
-        let return_ty = ty::node_id_to_type(self.tcx(), call_id);
-        let fails = ty::type_is_bot(return_ty);
-        if fails {
-            self.reset(in_out);
-        }
-    }
-
-    fn walk_pat(&mut self,
-                pat: Gc<ast::Pat>,
-                in_out: &mut [uint],
-                _loop_scopes: &mut Vec<LoopScope> ) {
-        debug!("DataFlowContext::walk_pat(pat={}, in_out={})",
-               pat.repr(self.dfcx.tcx), bits_to_str(in_out));
-
-        ast_util::walk_pat(&*pat, |p| {
-            debug!("  p.id={} in_out={}", p.id, bits_to_str(in_out));
-            self.merge_with_entry_set(p.id, in_out);
-            self.dfcx.apply_gen_kill(p.id, in_out);
-            true
+            // Propagate state on-exit from node into its successors.
+            self.propagate_bits_into_graph_successors_of(in_out, cfg, node_index);
+            true // continue to next node
         });
-    }
-
-    fn walk_pat_alternatives(&mut self,
-                             pats: &[Gc<ast::Pat>],
-                             in_out: &mut [uint],
-                             loop_scopes: &mut Vec<LoopScope> ) {
-        if pats.len() == 1 {
-            // Common special case:
-            return self.walk_pat(pats[0], in_out, loop_scopes);
-        }
-
-        // In the general case, the patterns in `pats` are
-        // alternatives, so we must treat this like an N-way select
-        // statement.
-        let initial_state = in_out.to_owned();
-        for &pat in pats.iter() {
-            let mut temp = initial_state.clone();
-            self.walk_pat(pat, temp.as_mut_slice(), loop_scopes);
-            join_bits(&self.dfcx.oper, temp.as_slice(), in_out);
-        }
-    }
-
-    fn find_scope<'a,'b>(
-                  &self,
-                  expr: &ast::Expr,
-                  label: Option<ast::Ident>,
-                  loop_scopes: &'a mut Vec<LoopScope<'b>>)
-                  -> &'a mut LoopScope<'b> {
-        let index = match label {
-            None => {
-                let len = loop_scopes.len();
-                len - 1
-            }
-
-            Some(_) => {
-                match self.tcx().def_map.borrow().find(&expr.id) {
-                    Some(&def::DefLabel(loop_id)) => {
-                        match loop_scopes.iter().position(|l| l.loop_id == loop_id) {
-                            Some(i) => i,
-                            None => {
-                                self.tcx().sess.span_bug(
-                                    expr.span,
-                                    format!("no loop scope for id {:?}",
-                                            loop_id).as_slice());
-                            }
-                        }
-                    }
-
-                    r => {
-                        self.tcx().sess.span_bug(
-                            expr.span,
-                            format!("bad entry `{:?}` in def_map for label",
-                                    r).as_slice());
-                    }
-                }
-            }
-        };
-
-        loop_scopes.get_mut(index)
-    }
-
-    fn is_method_call(&self, expr: &ast::Expr) -> bool {
-        let method_call = typeck::MethodCall::expr(expr.id);
-        self.dfcx.tcx.method_map.borrow().contains_key(&method_call)
     }
 
     fn reset(&mut self, bits: &mut [uint]) {
@@ -797,36 +510,33 @@ impl<'a, 'b, O:DataFlowOperator> PropagationContext<'a, 'b, O> {
         }
     }
 
-    fn add_to_entry_set(&mut self, id: ast::NodeId, pred_bits: &[uint]) {
-        debug!("add_to_entry_set(id={:?}, pred_bits={})",
-               id, bits_to_str(pred_bits));
-        let (start, end) = self.dfcx.compute_id_range(id);
-        let changed = { // FIXME(#5074) awkward construction
-            let on_entry = self.dfcx.on_entry.mut_slice(start, end);
-            join_bits(&self.dfcx.oper, pred_bits, on_entry)
-        };
-        if changed {
-            debug!("changed entry set for {:?} to {}",
-                   id, bits_to_str(self.dfcx.on_entry.slice(start, end)));
-            self.changed = true;
-        }
+    fn propagate_bits_into_graph_successors_of(&mut self,
+                                               pred_bits: &[uint],
+                                               cfg: &cfg::CFG,
+                                               cfgidx: CFGIndex) {
+        cfg.graph.each_outgoing_edge(cfgidx, |_e_idx, edge| {
+            self.propagate_bits_into_entry_set_for(pred_bits, edge);
+            true
+        });
     }
 
-    fn merge_with_entry_set(&mut self,
-                            id: ast::NodeId,
-                            pred_bits: &mut [uint]) {
-        debug!("merge_with_entry_set(id={:?}, pred_bits={})",
-               id, mut_bits_to_str(pred_bits));
-        let (start, end) = self.dfcx.compute_id_range(id);
-        let changed = { // FIXME(#5074) awkward construction
+    fn propagate_bits_into_entry_set_for(&mut self,
+                                         pred_bits: &[uint],
+                                         edge: &cfg::CFGEdge) {
+        let source = edge.source();
+        let cfgidx = edge.target();
+        debug!("{:s} propagate_bits_into_entry_set_for(pred_bits={}, {} to {})",
+               self.dfcx.analysis_name, bits_to_str(pred_bits), source, cfgidx);
+        let (start, end) = self.dfcx.compute_id_range(cfgidx);
+        let changed = {
+            // (scoping mutable borrow of self.dfcx.on_entry)
             let on_entry = self.dfcx.on_entry.mut_slice(start, end);
-            let changed = join_bits(&self.dfcx.oper, pred_bits, on_entry);
-            copy_bits(on_entry, pred_bits);
-            changed
+            bitwise(on_entry, pred_bits, &self.dfcx.oper)
         };
         if changed {
-            debug!("changed entry set for {:?} to {}",
-                   id, bits_to_str(self.dfcx.on_entry.slice(start, end)));
+            debug!("{:s} changed entry set for {:?} to {}",
+                   self.dfcx.analysis_name, cfgidx,
+                   bits_to_str(self.dfcx.on_entry.slice(start, end)));
             self.changed = true;
         }
     }
@@ -855,24 +565,15 @@ fn bits_to_str(words: &[uint]) -> String {
     return result
 }
 
-fn copy_bits(in_vec: &[uint], out_vec: &mut [uint]) -> bool {
-    bitwise(out_vec, in_vec, |_, b| b)
-}
-
-fn join_bits<O:DataFlowOperator>(oper: &O,
-                                 in_vec: &[uint],
-                                 out_vec: &mut [uint]) -> bool {
-    bitwise(out_vec, in_vec, |a, b| oper.join(a, b))
-}
-
 #[inline]
-fn bitwise(out_vec: &mut [uint], in_vec: &[uint], op: |uint, uint| -> uint)
-           -> bool {
+fn bitwise<Op:BitwiseOperator>(out_vec: &mut [uint],
+                               in_vec: &[uint],
+                               op: &Op) -> bool {
     assert_eq!(out_vec.len(), in_vec.len());
     let mut changed = false;
     for (out_elt, in_elt) in out_vec.mut_iter().zip(in_vec.iter()) {
         let old_val = *out_elt;
-        let new_val = op(old_val, *in_elt);
+        let new_val = op.join(old_val, *in_elt);
         *out_elt = new_val;
         changed |= old_val != new_val;
     }
@@ -896,4 +597,13 @@ fn bit_str(bit: uint) -> String {
     let byte = bit >> 8;
     let lobits = 1 << (bit & 0xFF);
     format!("[{}:{}-{:02x}]", bit, byte, lobits)
+}
+
+struct Union;
+impl BitwiseOperator for Union {
+    fn join(&self, a: uint, b: uint) -> uint { a | b }
+}
+struct Subtract;
+impl BitwiseOperator for Subtract {
+    fn join(&self, a: uint, b: uint) -> uint { a & !b }
 }

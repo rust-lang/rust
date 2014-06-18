@@ -8,15 +8,24 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn a() {
-    let mut v = vec!(1, 2, 3);
-    let vb: &mut [int] = v.as_mut_slice();
-    match vb {
-        [_a, ..tail] => {
-            v.push(tail[0] + tail[1]); //~ ERROR cannot borrow
-        }
-        _ => {}
-    };
-}
+#[allow(unreachable_code)]
+pub fn expr_while_23() {
+    let mut x = 23;
+    let mut y = 23;
+    let mut z = 23;
 
-fn main() {}
+    while x > 0 {
+        x -= 1;
+
+        while y > 0 {
+            y -= 1;
+
+            while z > 0 { z -= 1; }
+
+            if x > 10 {
+                return;
+                "unreachable";
+            }
+        }
+    }
+}

@@ -15,8 +15,6 @@ Uses `Graph` as the underlying representation.
 
 */
 
-#![allow(dead_code)] // still a WIP, #6298
-
 use middle::graph;
 use middle::ty;
 use syntax::ast;
@@ -47,11 +45,6 @@ pub type CFGGraph = graph::Graph<CFGNodeData, CFGEdgeData>;
 pub type CFGNode = graph::Node<CFGNodeData>;
 
 pub type CFGEdge = graph::Edge<CFGEdgeData>;
-
-pub struct CFGIndices {
-    entry: CFGIndex,
-    exit: CFGIndex,
-}
 
 impl CFG {
     pub fn new(tcx: &ty::ctxt,
