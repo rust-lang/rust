@@ -29,7 +29,6 @@
 
 #![macro_escape]
 
-use middle::privacy::ExportedItems;
 use std::hash;
 use std::ascii::StrAsciiExt;
 use syntax::codemap::Span;
@@ -122,7 +121,7 @@ pub trait LintPass {
     /// `Lint`, make it a private `static` item in its own module.
     fn get_lints(&self) -> LintArray;
 
-    fn check_crate(&mut self, _: &Context, _: &ExportedItems, _: &ast::Crate) { }
+    fn check_crate(&mut self, _: &Context, _: &ast::Crate) { }
     fn check_ident(&mut self, _: &Context, _: Span, _: ast::Ident) { }
     fn check_mod(&mut self, _: &Context, _: &ast::Mod, _: Span, _: ast::NodeId) { }
     fn check_view_item(&mut self, _: &Context, _: &ast::ViewItem) { }
