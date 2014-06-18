@@ -143,7 +143,9 @@ fn const_deref(cx: &CrateContext, v: ValueRef, t: ty::t, explicit: bool)
             let dv = match ty::get(t).sty {
                 ty::ty_ptr(mt) | ty::ty_rptr(_, mt) => {
                     match ty::get(mt.ty).sty {
-                        ty::ty_vec(_, None) | ty::ty_str => cx.sess().bug("unexpected slice"),
+                        ty::ty_vec(_, None) | ty::ty_str | ty::ty_trait(..) => {
+                            cx.sess().bug("unexpected unsized type")
+                        }
                         _ => const_deref_ptr(cx, v),
                     }
                 }

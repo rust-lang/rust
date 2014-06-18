@@ -67,7 +67,7 @@ pub fn type_is_immediate(ccx: &CrateContext, ty: ty::t) -> bool {
         ty::type_is_unique(ty) || ty::type_is_region_ptr(ty) ||
         type_is_newtype_immediate(ccx, ty) || ty::type_is_bot(ty) ||
         ty::type_is_simd(tcx, ty);
-    if simple {
+    if simple && !ty::type_is_trait(ty) {
         return true;
     }
     match ty::get(ty).sty {

@@ -3021,7 +3021,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         else {
             match ty::get(t_1).sty {
                 // This will be looked up later on
-                ty::ty_trait(..) => (),
+                _ if ty::type_is_trait(t_1) => {},
 
                 _ => {
                     if ty::type_is_nil(t_e) {

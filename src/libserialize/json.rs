@@ -233,7 +233,7 @@ use std::f64;
 use std::fmt;
 use std::io::MemWriter;
 use std::io;
-use std::mem::swap;
+use std::mem::{swap,transmute};
 use std::num;
 use std::str::ScalarValue;
 use std::str;
@@ -369,10 +369,11 @@ impl<'a> Encoder<'a> {
     pub fn buffer_encode<T:Encodable<Encoder<'a>, io::IoError>>(to_encode_object: &T) -> Vec<u8>  {
        //Serialize the object in a string using a writer
         let mut m = MemWriter::new();
-        {
+        // FIXME(14302) remove the transmute and unsafe block.
+        unsafe {
             let mut encoder = Encoder::new(&mut m as &mut io::Writer);
             // MemWriter never Errs
-            let _ = to_encode_object.encode(&mut encoder);
+            let _ = to_encode_object.encode(transmute(&mut encoder));
         }
         m.unwrap()
     }
@@ -543,8 +544,11 @@ impl<'a> ::Encoder<io::IoError> for Encoder<'a> {
         // ref #12967, make sure to wrap a key in double quotes,
         // in the event that its of a type that omits them (eg numbers)
         let mut buf = MemWriter::new();
-        let mut check_encoder = Encoder::new(&mut buf);
-        try!(f(&mut check_encoder));
+        // FIXME(14302) remove the transmute and unsafe block.
+        unsafe {
+            let mut check_encoder = Encoder::new(&mut buf);
+            try!(f(transmute(&mut check_encoder)));
+        }
         let buf = buf.unwrap();
         let out = from_utf8(buf.as_slice()).unwrap();
         let needs_wrapping = out.char_at(0) != '"' &&
@@ -778,8 +782,11 @@ impl<'a> ::Encoder<io::IoError> for PrettyEncoder<'a> {
         // ref #12967, make sure to wrap a key in double quotes,
         // in the event that its of a type that omits them (eg numbers)
         let mut buf = MemWriter::new();
-        let mut check_encoder = PrettyEncoder::new(&mut buf);
-        try!(f(&mut check_encoder));
+        // FIXME(14302) remove the transmute and unsafe block.
+        unsafe {
+            let mut check_encoder = PrettyEncoder::new(&mut buf);
+            try!(f(transmute(&mut check_encoder)));
+        }
         let buf = buf.unwrap();
         let out = from_utf8(buf.as_slice()).unwrap();
         let needs_wrapping = out.char_at(0) != '"' &&

@@ -100,7 +100,7 @@ impl<'f> Coerce<'f> {
         // Note: does not attempt to resolve type variables we encounter.
         // See above for details.
         match ty::get(b).sty {
-            ty::ty_rptr(_, mt_b) => {
+            ty::ty_rptr(r_b, mt_b) => {
                 match ty::get(mt_b.ty).sty {
                     ty::ty_vec(mt_b, None) => {
                         return self.unpack_actual_value(a, |sty_a| {
@@ -113,12 +113,59 @@ impl<'f> Coerce<'f> {
                             self.coerce_borrowed_string(a, sty_a, b)
                         });
                     }
+
+                    ty::ty_trait(box ty::TyTrait { def_id, ref substs, bounds }) => {
+                        let result = self.unpack_actual_value(a, |sty_a| {
+                            match *sty_a {
+                                ty::ty_rptr(_, mt_a) => match ty::get(mt_a.ty).sty {
+                                    ty::ty_trait(..) => {
+                                        self.coerce_borrowed_object(a, sty_a, b, mt_b.mutbl)
+                                    }
+                                    _ => self.coerce_object(a, sty_a, b, def_id, substs,
+                                                            ty::RegionTraitStore(r_b, mt_b.mutbl),
+                                                            bounds)
+                                },
+                                _ => self.coerce_borrowed_object(a, sty_a, b, mt_b.mutbl)
+                            }
+                        });
+
+                        match result {
+                            Ok(t) => return Ok(t),
+                            Err(..) => {}
+                        }
+                    }
+
                     _ => {
                         return self.unpack_actual_value(a, |sty_a| {
                             self.coerce_borrowed_pointer(a, sty_a, b, mt_b)
                         });
                     }
                 };
+            }
+
+            ty::ty_uniq(t_b) => {
+                match ty::get(t_b).sty {
+                    ty::ty_trait(box ty::TyTrait { def_id, ref substs, bounds }) => {
+                        let result = self.unpack_actual_value(a, |sty_a| {
+                            match *sty_a {
+                                ty::ty_uniq(t_a) => match ty::get(t_a).sty {
+                                    ty::ty_trait(..) => {
+                                        Err(ty::terr_mismatch)
+                                    }
+                                    _ => self.coerce_object(a, sty_a, b, def_id, substs,
+                                                            ty::UniqTraitStore, bounds)
+                                },
+                                _ => Err(ty::terr_mismatch)
+                            }
+                        });
+
+                        match result {
+                            Ok(t) => return Ok(t),
+                            Err(..) => {}
+                        }
+                    }
+                    _ => {}
+                }
             }
 
             ty::ty_closure(box ty::ClosureTy {
@@ -134,44 +181,6 @@ impl<'f> Coerce<'f> {
                 return self.unpack_actual_value(a, |sty_a| {
                     self.coerce_unsafe_ptr(a, sty_a, b, mt_b)
                 });
-            }
-
-            ty::ty_trait(box ty::TyTrait {
-                def_id, ref substs, store: ty::UniqTraitStore, bounds
-            }) => {
-                let result = self.unpack_actual_value(a, |sty_a| {
-                    match *sty_a {
-                        ty::ty_uniq(..) => {
-                            self.coerce_object(a, sty_a, b, def_id, substs,
-                                               ty::UniqTraitStore, bounds)
-                        }
-                        _ => Err(ty::terr_mismatch)
-                    }
-                });
-
-                match result {
-                    Ok(t) => return Ok(t),
-                    Err(..) => {}
-                }
-            }
-
-            ty::ty_trait(box ty::TyTrait {
-                def_id, ref substs, store: ty::RegionTraitStore(region, m), bounds
-            }) => {
-                let result = self.unpack_actual_value(a, |sty_a| {
-                    match *sty_a {
-                        ty::ty_rptr(..) => {
-                            self.coerce_object(a, sty_a, b, def_id, substs,
-                                               ty::RegionTraitStore(region, m), bounds)
-                        }
-                        _ => self.coerce_borrowed_object(a, sty_a, b, m)
-                    }
-                });
-
-                match result {
-                    Ok(t) => return Ok(t),
-                    Err(..) => {}
-                }
             }
 
             _ => {}
@@ -335,15 +344,20 @@ impl<'f> Coerce<'f> {
         let r_a = self.get_ref().infcx.next_region_var(coercion);
 
         let a_borrowed = match *sty_a {
-            ty::ty_trait(box ty::TyTrait {
-                    def_id,
-                    ref substs,
-                    bounds,
-                    ..
-                }) => {
-                ty::mk_trait(tcx, def_id, substs.clone(),
-                             ty::RegionTraitStore(r_a, b_mutbl), bounds)
-            }
+            ty::ty_uniq(ty) | ty::ty_rptr(_, ty::mt{ty, ..}) => match ty::get(ty).sty {
+                ty::ty_trait(box ty::TyTrait {
+                        def_id,
+                        ref substs,
+                        bounds,
+                        ..
+                    }) => {
+                    let tr = ty::mk_trait(tcx, def_id, substs.clone(), bounds);
+                    ty::mk_rptr(tcx, r_a, ty::mt{ mutbl: b_mutbl, ty: tr })
+                }
+                _ => {
+                    return self.subtype(a, b);
+                }
+            },
             _ => {
                 return self.subtype(a, b);
             }

@@ -277,14 +277,14 @@ fn construct_transformed_self_ty_for_object(
             match ty::get(transformed_self_ty).sty {
                 ty::ty_rptr(r, mt) => { // must be SelfRegion
                     let r = r.subst(tcx, rcvr_substs); // handle Early-Bound lifetime
-                    ty::mk_trait(tcx, trait_def_id, obj_substs,
-                                 RegionTraitStore(r, mt.mutbl),
-                                 ty::empty_builtin_bounds())
+                    let tr = ty::mk_trait(tcx, trait_def_id, obj_substs,
+                                          ty::empty_builtin_bounds());
+                    ty::mk_rptr(tcx, r, ty::mt{ ty: tr, mutbl: mt.mutbl })
                 }
                 ty::ty_uniq(_) => { // must be SelfUniq
-                    ty::mk_trait(tcx, trait_def_id, obj_substs,
-                                 UniqTraitStore,
-                                 ty::empty_builtin_bounds())
+                    let tr = ty::mk_trait(tcx, trait_def_id, obj_substs,
+                                          ty::empty_builtin_bounds());
+                    ty::mk_uniq(tcx, tr)
                 }
                 _ => {
                     tcx.sess.span_bug(span,
@@ -433,10 +433,13 @@ impl<'a> LookupContext<'a> {
         let span = self.self_expr.map_or(self.span, |e| e.span);
         check::autoderef(self.fcx, span, self_ty, None, PreferMutLvalue, |self_ty, _| {
             match get(self_ty).sty {
-                ty_trait(box TyTrait { def_id, ref substs, .. }) => {
-                    self.push_inherent_candidates_from_object(def_id, substs);
-                    self.push_inherent_impl_candidates_for_type(def_id);
-                }
+                ty_uniq(ty) | ty_rptr(_, mt {ty, ..}) => match get(ty).sty{
+                    ty_trait(box TyTrait { def_id, ref substs, .. }) => {
+                        self.push_inherent_candidates_from_object(def_id, substs);
+                        self.push_inherent_impl_candidates_for_type(def_id);
+                    }
+                    _ => {}
+                },
                 ty_enum(did, _) | ty_struct(did, _) => {
                     if self.check_traits == CheckTraitsAndInherentMethods {
                         self.push_inherent_impl_candidates_for_type(did);
@@ -774,24 +777,13 @@ impl<'a> LookupContext<'a> {
                 let (extra_derefs, auto) = match ty::get(self_mt.ty).sty {
                     ty::ty_vec(_, None) => (0, ty::AutoBorrowVec(region, self_mt.mutbl)),
                     ty::ty_str => (0, ty::AutoBorrowVec(region, self_mt.mutbl)),
+                    ty::ty_trait(..) => (0, ty::AutoBorrowObj(region, self_mt.mutbl)),
                     _ => (1, ty::AutoPtr(region, self_mt.mutbl)),
                 };
                 (ty::mk_rptr(tcx, region, self_mt),
                  ty::AutoDerefRef {
                      autoderefs: autoderefs + extra_derefs,
                      autoref: Some(auto)})
-            }
-
-            ty::ty_trait(box ty::TyTrait {
-                def_id, ref substs, store: ty::RegionTraitStore(_, mutbl), bounds
-            }) => {
-                let region =
-                    self.infcx().next_region_var(infer::Autoref(self.span));
-                (ty::mk_trait(tcx, def_id, substs.clone(),
-                              ty::RegionTraitStore(region, mutbl), bounds),
-                 ty::AutoDerefRef {
-                     autoderefs: autoderefs,
-                     autoref: Some(ty::AutoBorrowObj(region, mutbl))})
             }
             _ => {
                 (self_ty,
@@ -862,6 +854,26 @@ impl<'a> LookupContext<'a> {
             })
     }
 
+    // Coerce Box/&Trait instances to &Trait.
+    fn auto_slice_trait(&self, ty: ty::t, autoderefs: uint) -> Option<MethodCallee> {
+        match ty::get(ty).sty {
+            ty_trait(box ty::TyTrait {
+                    def_id: trt_did,
+                    substs: ref trt_substs,
+                    bounds: b,
+                    .. }) => {
+                let tcx = self.tcx();
+                self.search_for_some_kind_of_autorefd_method(
+                    AutoBorrowObj, autoderefs, [MutImmutable, MutMutable],
+                    |m, r| {
+                        let tr = ty::mk_trait(tcx, trt_did, trt_substs.clone(), b);
+                        ty::mk_rptr(tcx, r, ty::mt{ ty: tr, mutbl: m })
+                    })
+            }
+            _ => fail!("Expected ty_trait in auto_slice_trait")
+        }
+    }
+
     fn search_for_autosliced_method(&self,
                                     self_ty: ty::t,
                                     autoderefs: uint)
@@ -871,37 +883,22 @@ impl<'a> LookupContext<'a> {
          * `~[]` to `&[]`.
          */
 
-        let tcx = self.tcx();
-        debug!("search_for_autosliced_method {}", ppaux::ty_to_str(tcx, self_ty));
+        debug!("search_for_autosliced_method {}", ppaux::ty_to_str(self.tcx(), self_ty));
 
         let sty = ty::get(self_ty).sty.clone();
         match sty {
             ty_rptr(_, mt) => match ty::get(mt.ty).sty {
                 ty_vec(mt, None) => self.auto_slice_vec(mt, autoderefs),
+                ty_trait(..) => self.auto_slice_trait(mt.ty, autoderefs),
                 _ => None
             },
             ty_uniq(t) => match ty::get(t).sty {
                 ty_vec(mt, None) => self.auto_slice_vec(mt, autoderefs),
                 ty_str => self.auto_slice_str(autoderefs),
+                ty_trait(..) => self.auto_slice_trait(t, autoderefs),
                 _ => None
             },
             ty_vec(mt, Some(_)) => self.auto_slice_vec(mt, autoderefs),
-
-            ty_trait(box ty::TyTrait {
-                    def_id: trt_did,
-                    substs: trt_substs,
-                    bounds: b,
-                    ..
-                }) => {
-                // Coerce Box/&Trait instances to &Trait.
-
-                self.search_for_some_kind_of_autorefd_method(
-                    AutoBorrowObj, autoderefs, [MutImmutable, MutMutable],
-                    |m, r| {
-                        ty::mk_trait(tcx, trt_did, trt_substs.clone(),
-                                     RegionTraitStore(r, m), b)
-                    })
-            }
 
             ty_closure(..) => {
                 // This case should probably be handled similarly to
@@ -1313,17 +1310,15 @@ impl<'a> LookupContext<'a> {
                     ty::ty_rptr(_, mt) => {
                         match ty::get(mt.ty).sty {
                             ty::ty_vec(_, None) | ty::ty_str => false,
+                            ty::ty_trait(box ty::TyTrait { def_id: self_did, .. }) => {
+                                mutability_matches(mt.mutbl, m) &&
+                                rcvr_matches_object(self_did, candidate)
+                            }
                             _ => mutability_matches(mt.mutbl, m) &&
                                  rcvr_matches_ty(self.fcx, mt.ty, candidate),
                         }
                     }
 
-                    ty::ty_trait(box ty::TyTrait {
-                        def_id: self_did, store: RegionTraitStore(_, self_m), ..
-                    }) => {
-                        mutability_matches(self_m, m) &&
-                        rcvr_matches_object(self_did, candidate)
-                    }
 
                     _ => false
                 }
@@ -1335,14 +1330,11 @@ impl<'a> LookupContext<'a> {
                     ty::ty_uniq(typ) => {
                         match ty::get(typ).sty {
                             ty::ty_vec(_, None) | ty::ty_str => false,
+                            ty::ty_trait(box ty::TyTrait { def_id: self_did, .. }) => {
+                                rcvr_matches_object(self_did, candidate)
+                            }
                             _ => rcvr_matches_ty(self.fcx, typ, candidate),
                         }
-                    }
-
-                    ty::ty_trait(box ty::TyTrait {
-                        def_id: self_did, store: UniqTraitStore, ..
-                    }) => {
-                        rcvr_matches_object(self_did, candidate)
                     }
 
                     _ => false

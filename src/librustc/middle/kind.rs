@@ -361,9 +361,12 @@ fn check_bounds_on_type_parameters(cx: &mut Context, e: &Expr) {
 fn check_trait_cast(cx: &mut Context, source_ty: ty::t, target_ty: ty::t, span: Span) {
     check_cast_for_escaping_regions(cx, source_ty, target_ty, span);
     match ty::get(target_ty).sty {
-        ty::ty_trait(box ty::TyTrait { bounds, .. }) => {
-            check_trait_cast_bounds(cx, span, source_ty, bounds);
-        }
+        ty::ty_uniq(ty) | ty::ty_rptr(_, ty::mt{ ty, .. }) => match ty::get(ty).sty {
+            ty::ty_trait(box ty::TyTrait { bounds, .. }) => {
+                check_trait_cast_bounds(cx, span, source_ty, bounds);
+            }
+            _ => {}
+        },
         _ => {}
     }
 }
@@ -530,9 +533,8 @@ pub fn check_cast_for_escaping_regions(
 {
     // Determine what type we are casting to; if it is not a trait, then no
     // worries.
-    match ty::get(target_ty).sty {
-        ty::ty_trait(..) => {}
-        _ => { return; }
+    if !ty::type_is_trait(target_ty) {
+        return;
     }
 
     // Collect up the regions that appear in the target type.  We want to
