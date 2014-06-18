@@ -420,7 +420,7 @@ use str;
 use string;
 use slice::Vector;
 
-pub use core::fmt::{Formatter, Result, FormatWriter, Show, rt};
+pub use core::fmt::{Formatter, Result, FormatWriter, rt};
 pub use core::fmt::{Show, Bool, Char, Signed, Unsigned, Octal, Binary};
 pub use core::fmt::{LowerHex, UpperHex, String, Pointer};
 pub use core::fmt::{Float, LowerExp, UpperExp};

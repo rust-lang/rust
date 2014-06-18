@@ -24,7 +24,7 @@
 //!
 //! # Example
 //!
-//!     use std::rt::deque::BufferPool;
+//!     use std::sync::deque::BufferPool;
 //!
 //!     let mut pool = BufferPool::new();
 //!     let (mut worker, mut stealer) = pool.deque();
