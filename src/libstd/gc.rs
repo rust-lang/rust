@@ -24,6 +24,7 @@ use default::Default;
 use fmt;
 use hash;
 use kinds::marker;
+use option::Option;
 use ops::Deref;
 use raw;
 
@@ -58,6 +59,10 @@ impl<T: PartialEq + 'static> PartialEq for Gc<T> {
     fn ne(&self, other: &Gc<T>) -> bool { *(*self) != *(*other) }
 }
 impl<T: PartialOrd + 'static> PartialOrd for Gc<T> {
+    #[inline]
+    fn partial_cmp(&self, other: &Gc<T>) -> Option<Ordering> {
+        (**self).partial_cmp(&**other)
+    }
     #[inline]
     fn lt(&self, other: &Gc<T>) -> bool { *(*self) < *(*other) }
     #[inline]

@@ -595,17 +595,8 @@ impl<A: PartialEq> PartialEq for DList<A> {
 }
 
 impl<A: PartialOrd> PartialOrd for DList<A> {
-    fn lt(&self, other: &DList<A>) -> bool {
-        iter::order::lt(self.iter(), other.iter())
-    }
-    fn le(&self, other: &DList<A>) -> bool {
-        iter::order::le(self.iter(), other.iter())
-    }
-    fn gt(&self, other: &DList<A>) -> bool {
-        iter::order::gt(self.iter(), other.iter())
-    }
-    fn ge(&self, other: &DList<A>) -> bool {
-        iter::order::ge(self.iter(), other.iter())
+    fn partial_cmp(&self, other: &DList<A>) -> Option<Ordering> {
+        iter::order::partial_cmp(self.iter(), other.iter())
     }
 }
 

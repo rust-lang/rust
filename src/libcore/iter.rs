@@ -2183,7 +2183,7 @@ impl<A: Clone> RandomAccessIterator<A> for Repeat<A> {
 pub mod order {
     use cmp;
     use cmp::{Eq, Ord, PartialOrd, PartialEq};
-    use option::{Some, None};
+    use option::{Option, Some, None};
     use super::Iterator;
 
     /// Compare `a` and `b` for equality using `Eq`
@@ -2206,6 +2206,22 @@ pub mod order {
                 (_   , None) => return cmp::Greater,
                 (Some(x), Some(y)) => match x.cmp(&y) {
                     cmp::Equal => (),
+                    non_eq => return non_eq,
+                },
+            }
+        }
+    }
+
+    /// Order `a` and `b` lexicographically using `PartialOrd`
+    pub fn partial_cmp<A: PartialOrd, T: Iterator<A>, S: Iterator<A>>(mut a: T, mut b: S)
+            -> Option<cmp::Ordering> {
+        loop {
+            match (a.next(), b.next()) {
+                (None, None) => return Some(cmp::Equal),
+                (None, _   ) => return Some(cmp::Less),
+                (_   , None) => return Some(cmp::Greater),
+                (Some(x), Some(y)) => match x.partial_cmp(&y) {
+                    Some(cmp::Equal) => (),
                     non_eq => return non_eq,
                 },
             }

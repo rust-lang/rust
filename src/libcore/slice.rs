@@ -253,6 +253,7 @@ pub mod traits {
     use cmp::{PartialEq, PartialOrd, Eq, Ord, Ordering, Equiv};
     use iter::order;
     use collections::Collection;
+    use option::Option;
 
     impl<'a,T:PartialEq> PartialEq for &'a [T] {
         fn eq(&self, other: & &'a [T]) -> bool {
@@ -279,6 +280,11 @@ pub mod traits {
     }
 
     impl<'a, T: PartialOrd> PartialOrd for &'a [T] {
+        #[inline]
+        fn partial_cmp(&self, other: &&'a [T]) -> Option<Ordering> {
+            order::partial_cmp(self.iter(), other.iter())
+        }
+        #[inline]
         fn lt(&self, other: & &'a [T]) -> bool {
             order::lt(self.iter(), other.iter())
         }

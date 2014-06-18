@@ -55,12 +55,12 @@ pub enum Identifier {
 
 impl cmp::PartialOrd for Identifier {
     #[inline]
-    fn lt(&self, other: &Identifier) -> bool {
+    fn partial_cmp(&self, other: &Identifier) -> Option<Ordering> {
         match (self, other) {
-            (&Numeric(a), &Numeric(b)) => a < b,
-            (&Numeric(_), _) => true,
-            (&AlphaNumeric(ref a), &AlphaNumeric(ref b)) => *a < *b,
-            (&AlphaNumeric(_), _) => false
+            (&Numeric(a), &Numeric(ref b)) => a.partial_cmp(b),
+            (&Numeric(_), _) => Some(Less),
+            (&AlphaNumeric(ref a), &AlphaNumeric(ref b)) => a.partial_cmp(b),
+            (&AlphaNumeric(_), _) => Some(Greater)
         }
     }
 }
@@ -130,30 +130,31 @@ impl cmp::PartialEq for Version {
 
 impl cmp::PartialOrd for Version {
     #[inline]
-    fn lt(&self, other: &Version) -> bool {
+    fn partial_cmp(&self, other: &Version) -> Option<Ordering> {
+        match self.major.partial_cmp(&other.major) {
+            Some(Equal) => {}
+            r => return r,
+        }
 
-        self.major < other.major ||
+        match self.minor.partial_cmp(&other.minor) {
+            Some(Equal) => {}
+            r => return r,
+        }
 
-            (self.major == other.major &&
-             self.minor < other.minor) ||
+        match self.patch.partial_cmp(&other.patch) {
+            Some(Equal) => {}
+            r => return r,
+        }
 
-            (self.major == other.major &&
-             self.minor == other.minor &&
-             self.patch < other.patch) ||
-
-            (self.major == other.major &&
-             self.minor == other.minor &&
-             self.patch == other.patch &&
-             // NB: semver spec says 0.0.0-pre < 0.0.0
-             // but the version of ord defined for vec
-             // says that [] < [pre], so we alter it
-             // here.
-             (match (self.pre.len(), other.pre.len()) {
-                 (0, 0) => false,
-                 (0, _) => false,
-                 (_, 0) => true,
-                 (_, _) => self.pre < other.pre
-             }))
+        // NB: semver spec says 0.0.0-pre < 0.0.0
+        // but the version of ord defined for vec
+        // says that [] < [pre] so we alter it here
+        match (self.pre.len(), other.pre.len()) {
+            (0, 0) => Some(Equal),
+            (0, _) => Some(Greater),
+            (_, 0) => Some(Less),
+            (_, _) => self.pre.partial_cmp(&other.pre)
+        }
     }
 }
 

@@ -91,8 +91,8 @@ impl Eq for BigUint {}
 
 impl PartialOrd for BigUint {
     #[inline]
-    fn lt(&self, other: &BigUint) -> bool {
-        self.cmp(other) == Less
+    fn partial_cmp(&self, other: &BigUint) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }
 
@@ -816,8 +816,8 @@ impl Eq for BigInt {}
 
 impl PartialOrd for BigInt {
     #[inline]
-    fn lt(&self, other: &BigInt) -> bool {
-        self.cmp(other) == Less
+    fn partial_cmp(&self, other: &BigInt) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }
 

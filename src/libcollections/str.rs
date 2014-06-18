@@ -572,8 +572,8 @@ impl<'a> Eq for MaybeOwned<'a> {}
 
 impl<'a> PartialOrd for MaybeOwned<'a> {
     #[inline]
-    fn lt(&self, other: &MaybeOwned) -> bool {
-        self.as_slice().lt(&other.as_slice())
+    fn partial_cmp(&self, other: &MaybeOwned) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }
 
