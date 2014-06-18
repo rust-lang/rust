@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,10 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use foo::bar; //~ ERROR unresolved import. maybe a missing `extern crate foo`?
-              //~^ ERROR failed to resolve import `foo::bar`
-use x = bar::baz; //~ ERROR unresolved import: there is no `baz` in `bar`
-                  //~^ ERROR failed to resolve import `bar::baz`
+use foo::bar; //~ ERROR unresolved import `foo::bar`. Maybe a missing `extern crate foo`?
+
+use x = bar::baz; //~ ERROR unresolved import `bar::baz`. There is no `baz` in `bar`
 
 mod bar {
     struct bar;

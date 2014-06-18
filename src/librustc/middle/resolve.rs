@@ -206,10 +206,12 @@ impl ReducedGraphParent {
     }
 }
 
+type ErrorMessage = Option<(Span, String)>;
+
 enum ResolveResult<T> {
-    Failed,         // Failed to resolve the name.
-    Indeterminate,  // Couldn't determine due to unresolved globs.
-    Success(T)      // Successfully resolved the import.
+    Failed(ErrorMessage),   // Failed to resolve the name, optional helpful error message.
+    Indeterminate,          // Couldn't determine due to unresolved globs.
+    Success(T)              // Successfully resolved the import.
 }
 
 impl<T> ResolveResult<T> {
@@ -1485,26 +1487,22 @@ impl<'a> Resolver<'a> {
 
             ViewItemExternCrate(name, _, node_id) => {
                 // n.b. we don't need to look at the path option here, because cstore already did
-                match self.session.cstore.find_extern_mod_stmt_cnum(node_id) {
-                    Some(crate_id) => {
-                        let def_id = DefId { krate: crate_id, node: 0 };
-                        self.external_exports.insert(def_id);
-                        let parent_link = ModuleParentLink
-                            (parent.module().downgrade(), name);
-                        let external_module = Rc::new(Module::new(parent_link,
-                                                                  Some(def_id),
-                                                                  NormalModuleKind,
-                                                                  false,
-                                                                  true));
-
-                        parent.module().external_module_children
-                              .borrow_mut().insert(name.name,
-                                                   external_module.clone());
-
-                        self.build_reduced_graph_for_external_crate(
-                            external_module);
-                    }
-                    None => {}  // Ignore.
+                for &crate_id in self.session.cstore
+                                     .find_extern_mod_stmt_cnum(node_id).iter() {
+                    let def_id = DefId { krate: crate_id, node: 0 };
+                    self.external_exports.insert(def_id);
+                    let parent_link =
+                        ModuleParentLink(parent.module().downgrade(), name);
+                    let external_module = Rc::new(Module::new(parent_link,
+                                                              Some(def_id),
+                                                              NormalModuleKind,
+                                                              false,
+                                                              true));
+                    debug!("(build reduced graph for item) found extern `{}`",
+                            self.module_to_str(&*external_module));
+                    parent.module().external_module_children.borrow_mut()
+                                   .insert(name.name, external_module.clone());
+                    self.build_reduced_graph_for_external_crate(external_module);
                 }
             }
         }
@@ -1997,7 +1995,9 @@ impl<'a> Resolver<'a> {
     fn resolve_imports_for_module_subtree(&mut self, module_: Rc<Module>) {
         debug!("(resolving imports for module subtree) resolving {}",
                self.module_to_str(&*module_));
+        let orig_module = replace(&mut self.current_module, module_.clone());
         self.resolve_imports_for_module(module_.clone());
+        self.current_module = orig_module;
 
         self.populate_module_if_necessary(&module_);
         for (_, child_node) in module_.children.borrow().iter() {
@@ -2032,22 +2032,21 @@ impl<'a> Resolver<'a> {
             let import_directive = imports.get(import_index);
             match self.resolve_import_for_module(module.clone(),
                                                  import_directive) {
-                Failed => {
-                    // We presumably emitted an error. Continue.
-                    let msg = format!("failed to resolve import `{}`",
-                                   self.import_path_to_str(
-                                       import_directive.module_path
-                                                       .as_slice(),
-                                       import_directive.subclass));
-                    self.resolve_error(import_directive.span, msg.as_slice());
+                Failed(err) => {
+                    let (span, help) = match err {
+                        Some((span, msg)) => (span, format!(". {}", msg)),
+                        None => (import_directive.span, String::new())
+                    };
+                    let msg = format!("unresolved import `{}`{}",
+                                      self.import_path_to_str(
+                                          import_directive.module_path
+                                                          .as_slice(),
+                                          import_directive.subclass),
+                                      help);
+                    self.resolve_error(span, msg.as_slice());
                 }
-                Indeterminate => {
-                    // Bail out. We'll come around next time.
-                    break;
-                }
-                Success(()) => {
-                    // Good. Continue.
-                }
+                Indeterminate => break, // Bail out. We'll come around next time.
+                Success(()) => () // Good. Continue.
             }
 
             module.resolved_import_count
@@ -2111,7 +2110,7 @@ impl<'a> Resolver<'a> {
                                  module_: Rc<Module>,
                                  import_directive: &ImportDirective)
                                  -> ResolveResult<()> {
-        let mut resolution_result = Failed;
+        let mut resolution_result = Failed(None);
         let module_path = &import_directive.module_path;
 
         debug!("(resolving import for module) resolving import `{}::...` in \
@@ -2129,8 +2128,10 @@ impl<'a> Resolver<'a> {
                                            DontUseLexicalScope,
                                            import_directive.span,
                                            ImportSearch) {
-
-                Failed => None,
+                Failed(err) => {
+                    resolution_result = Failed(err);
+                    None
+                },
                 Indeterminate => {
                     resolution_result = Indeterminate;
                     None
@@ -2408,12 +2409,10 @@ impl<'a> Resolver<'a> {
         }
 
         if value_result.is_unbound() && type_result.is_unbound() {
-            let msg = format!("unresolved import: there is no \
-                               `{}` in `{}`",
+            let msg = format!("There is no `{}` in `{}`",
                               token::get_ident(source),
                               self.module_to_str(&*containing_module));
-            self.resolve_error(directive.span, msg.as_slice());
-            return Failed;
+            return Failed(Some((directive.span, msg)));
         }
         let value_used_public = value_used_reexport || value_used_public;
         let type_used_public = type_used_reexport || type_used_public;
@@ -2611,6 +2610,22 @@ impl<'a> Resolver<'a> {
                                      name_search_type: NameSearchType,
                                      lp: LastPrivate)
                                 -> ResolveResult<(Rc<Module>, LastPrivate)> {
+        fn search_parent_externals(needle: Name, module: &Rc<Module>)
+                                -> Option<Rc<Module>> {
+            module.external_module_children.borrow()
+                                            .find_copy(&needle)
+                                            .map(|_| module.clone())
+                                            .or_else(|| {
+                match module.parent_link.clone() {
+                    ModuleParentLink(parent, _) => {
+                        search_parent_externals(needle,
+                                                &parent.upgrade().unwrap())
+                    }
+                   _ => None
+                }
+            })
+        }
+
         let mut search_module = module_;
         let mut index = index;
         let module_path_len = module_path.len();
@@ -2626,29 +2641,41 @@ impl<'a> Resolver<'a> {
                                               TypeNS,
                                               name_search_type,
                                               false) {
-                Failed => {
+                Failed(None) => {
                     let segment_name = token::get_ident(name);
                     let module_name = self.module_to_str(&*search_module);
-                    if "???" == module_name.as_slice() {
-                        let span = Span {
-                            lo: span.lo,
-                            hi: span.lo + Pos::from_uint(segment_name.get().len()),
-                            expn_info: span.expn_info,
-                        };
-                        self.resolve_error(span,
-                                           format!("unresolved import. maybe \
-                                                    a missing `extern crate \
-                                                    {}`?",
-                                                   segment_name).as_slice());
-                        return Failed;
-                    }
-                    self.resolve_error(span,
-                                       format!("unresolved import: could not \
-                                                find `{}` in `{}`.",
-                                               segment_name,
-                                               module_name).as_slice());
-                    return Failed;
+                    let mut span = span;
+                    let msg = if "???" == module_name.as_slice() {
+                        span.hi = span.lo + Pos::from_uint(segment_name.get().len());
+
+                        match search_parent_externals(name.name,
+                                                     &self.current_module) {
+                            Some(module) => {
+                                let path_str = self.idents_to_str(module_path);
+                                let target_mod_str = self.module_to_str(&*module);
+                                let current_mod_str =
+                                    self.module_to_str(&*self.current_module);
+
+                                let prefix = if target_mod_str == current_mod_str {
+                                    "self::".to_string()
+                                } else {
+                                    format!("{}::", target_mod_str)
+                                };
+
+                                format!("Did you mean `{}{}`?", prefix, path_str)
+                            },
+                            None => format!("Maybe a missing `extern crate {}`?",
+                                            segment_name),
+                        }
+                    } else {
+                        format!("Could not find `{}` in `{}`.",
+                                segment_name,
+                                module_name)
+                    };
+
+                    return Failed(Some((span, msg)));
                 }
+                Failed(err) => return Failed(err),
                 Indeterminate => {
                     debug!("(resolving module path for import) module \
                             resolution is indeterminate: {}",
@@ -2662,13 +2689,10 @@ impl<'a> Resolver<'a> {
                         Some(ref type_def) => {
                             match type_def.module_def {
                                 None => {
-                                    // Not a module.
-                                    self.resolve_error(
-                                        span,
-                                        format!("not a module `{}`",
-                                                token::get_ident(name))
-                                                .as_slice());
-                                    return Failed;
+                                    let msg = format!("Not a module `{}`",
+                                                        token::get_ident(name));
+
+                                    return Failed(Some((span, msg)));
                                 }
                                 Some(ref module_def) => {
                                     // If we're doing the search for an
@@ -2678,11 +2702,10 @@ impl<'a> Resolver<'a> {
                                            module_def.kind.get()) {
                                         (ImportSearch, TraitModuleKind) |
                                         (ImportSearch, ImplModuleKind) => {
-                                            self.resolve_error(
-                                                span,
-                                                "cannot import from a trait \
-                                                 or type implementation");
-                                            return Failed;
+                                            let msg =
+                                                "Cannot import from a trait or \
+                                                type implementation".to_string();
+                                            return Failed(Some((span, msg)));
                                         }
                                         (_, _) => {
                                             search_module = module_def.clone();
@@ -2708,11 +2731,9 @@ impl<'a> Resolver<'a> {
                         }
                         None => {
                             // There are no type bindings at all.
-                            self.resolve_error(
-                                span,
-                                format!("not a module `{}`",
-                                        token::get_ident(name)).as_slice());
-                            return Failed;
+                            let msg = format!("Not a module `{}`",
+                                              token::get_ident(name));
+                            return Failed(Some((span, msg)));
                         }
                     }
                 }
@@ -2752,24 +2773,22 @@ impl<'a> Resolver<'a> {
         let start_index;
         let last_private;
         match module_prefix_result {
-            Failed => {
+            Failed(None) => {
                 let mpath = self.idents_to_str(module_path);
-                match mpath.as_slice().rfind(':') {
+                let mpath = mpath.as_slice();
+                match mpath.rfind(':') {
                     Some(idx) => {
-                        self.resolve_error(
-                            span,
-                            format!("unresolved import: could not find `{}` \
-                                     in `{}`",
-                                    // idx +- 1 to account for the colons on \
-                                    // either side
-                                    mpath.as_slice().slice_from(idx + 1),
-                                    mpath.as_slice()
-                                         .slice_to(idx - 1)).as_slice());
+                        let msg = format!("Could not find `{}` in `{}`",
+                                            // idx +- 1 to account for the
+                                            // colons on either side
+                                            mpath.slice_from(idx + 1),
+                                            mpath.slice_to(idx - 1));
+                        return Failed(Some((span, msg)));
                     },
-                    None => (),
-                };
-                return Failed;
+                    None => return Failed(None),
+                }
             }
+            Failed(err) => return Failed(err),
             Indeterminate => {
                 debug!("(resolving module path for import) indeterminate; \
                         bailing");
@@ -2791,14 +2810,10 @@ impl<'a> Resolver<'a> {
                         // This is not a crate-relative path. We resolve the
                         // first component of the path in the current lexical
                         // scope and then proceed to resolve below that.
-                        let result = self.resolve_module_in_lexical_scope(
-                            module_,
-                            module_path[0]);
-                        match result {
-                            Failed => {
-                                self.resolve_error(span, "unresolved name");
-                                return Failed;
-                            }
+                        match self.resolve_module_in_lexical_scope(
+                                                            module_,
+                                                            module_path[0]) {
+                            Failed(err) => return Failed(err),
                             Indeterminate => {
                                 debug!("(resolving module path for import) \
                                         indeterminate; bailing");
@@ -2905,7 +2920,7 @@ impl<'a> Resolver<'a> {
                     // No more parents. This module was unresolved.
                     debug!("(resolving item in lexical scope) unresolved \
                             module");
-                    return Failed;
+                    return Failed(None);
                 }
                 ModuleParentLink(parent_module_node, _) => {
                     match search_module.kind.get() {
@@ -2915,7 +2930,7 @@ impl<'a> Resolver<'a> {
                                     scope) unresolved module: not \
                                     searching through module \
                                     parents");
-                            return Failed;
+                            return Failed(None);
                         }
                         ExternModuleKind |
                         TraitModuleKind |
@@ -2936,9 +2951,10 @@ impl<'a> Resolver<'a> {
                                               namespace,
                                               PathSearch,
                                               true) {
-                Failed => {
-                    // Continue up the search chain.
-                }
+                Failed(Some((span, msg))) =>
+                    self.resolve_error(span, format!("failed to resolve. {}",
+                                                     msg)),
+                Failed(None) => (), // Continue up the search chain.
                 Indeterminate => {
                     // We couldn't see through the higher scope because of an
                     // unresolved import higher up. Bail.
@@ -2976,7 +2992,7 @@ impl<'a> Resolver<'a> {
                                 debug!("!!! (resolving module in lexical \
                                         scope) module wasn't actually a \
                                         module!");
-                                return Failed;
+                                return Failed(None);
                             }
                             Some(ref module_def) => {
                                 return Success(module_def.clone());
@@ -2986,7 +3002,7 @@ impl<'a> Resolver<'a> {
                     None => {
                         debug!("!!! (resolving module in lexical scope) module
                                 wasn't actually a module!");
-                        return Failed;
+                        return Failed(None);
                     }
                 }
             }
@@ -2995,10 +3011,9 @@ impl<'a> Resolver<'a> {
                         bailing");
                 return Indeterminate;
             }
-            Failed => {
-                debug!("(resolving module in lexical scope) failed to \
-                        resolve");
-                return Failed;
+            Failed(err) => {
+                debug!("(resolving module in lexical scope) failed to resolve");
+                return Failed(err);
             }
         }
     }
@@ -3076,7 +3091,7 @@ impl<'a> Resolver<'a> {
             debug!("(resolving module prefix) resolving `super` at {}",
                    self.module_to_str(&*containing_module));
             match self.get_nearest_normal_module_parent(containing_module) {
-                None => return Failed,
+                None => return Failed(None),
                 Some(new_module) => {
                     containing_module = new_module;
                     i += 1;
@@ -3173,7 +3188,7 @@ impl<'a> Resolver<'a> {
         // We're out of luck.
         debug!("(resolving name in module) failed to resolve `{}`",
                token::get_name(name).get());
-        return Failed;
+        return Failed(None);
     }
 
     fn report_unresolved_imports(&mut self, module_: Rc<Module>) {
@@ -4531,8 +4546,15 @@ impl<'a> Resolver<'a> {
             Indeterminate => {
                 fail!("unexpected indeterminate result");
             }
+            Failed(err) => {
+                match err {
+                    Some((span, msg)) => {
+                        self.resolve_error(span, format!("failed to resolve: {}",
+                                                         msg));
+                    }
+                    None => ()
+                }
 
-            Failed => {
                 debug!("(resolve bare identifier pattern) failed to find {}",
                         token::get_ident(name));
                 return BareIdentifierPatternUnresolved;
@@ -4697,17 +4719,22 @@ impl<'a> Resolver<'a> {
                                        UseLexicalScope,
                                        path.span,
                                        PathSearch) {
-            Failed => {
-                let msg = format!("use of undeclared module `{}`",
-                                  self.idents_to_str(module_path_idents.as_slice()));
-                self.resolve_error(path.span, msg.as_slice());
+            Failed(err) => {
+                let (span, msg) = match err {
+                    Some((span, msg)) => (span, msg),
+                    None => {
+                        let msg = format!("Use of undeclared module `{}`",
+                                          self.idents_to_str(
+                                               module_path_idents.as_slice()));
+                        (path.span, msg)
+                    }
+                };
+
+                self.resolve_error(span, format!("failed to resolve. {}",
+                                                 msg.as_slice()));
                 return None;
             }
-
-            Indeterminate => {
-                fail!("indeterminate unexpected");
-            }
-
+            Indeterminate => fail!("indeterminate unexpected"),
             Success((resulting_module, resulting_last_private)) => {
                 containing_module = resulting_module;
                 last_private = resulting_last_private;
@@ -4768,10 +4795,19 @@ impl<'a> Resolver<'a> {
                                                  path.span,
                                                  PathSearch,
                                                  LastMod(AllPublic)) {
-            Failed => {
-                let msg = format!("use of undeclared module `::{}`",
-                                  self.idents_to_str(module_path_idents.as_slice()));
-                self.resolve_error(path.span, msg.as_slice());
+            Failed(err) => {
+                let (span, msg) = match err {
+                    Some((span, msg)) => (span, msg),
+                    None => {
+                        let msg = format!("Use of undeclared module `::{}`",
+                                          self.idents_to_str(
+                                               module_path_idents.as_slice()));
+                        (path.span, msg)
+                    }
+                };
+
+                self.resolve_error(span, format!("failed to resolve. {}",
+                                                 msg.as_slice()));
                 return None;
             }
 
@@ -4864,7 +4900,13 @@ impl<'a> Resolver<'a> {
             Indeterminate => {
                 fail!("unexpected indeterminate result");
             }
-            Failed => {
+            Failed(err) => {
+                match err {
+                    Some((span, msg)) =>
+                        self.resolve_error(span, format!("failed to resolve. {}", msg)),
+                    None => ()
+                }
+
                 debug!("(resolving item path by identifier in lexical scope) \
                          failed to resolve {}", token::get_ident(ident));
                 return None;
@@ -4879,9 +4921,9 @@ impl<'a> Resolver<'a> {
         rs
     }
 
-    fn resolve_error(&self, span: Span, s: &str) {
+    fn resolve_error<T: Str>(&self, span: Span, s: T) {
         if self.emit_errors {
-            self.session.span_err(span, s);
+            self.session.span_err(span, s.as_slice());
         }
     }
 
@@ -5480,7 +5522,7 @@ impl<'a> Resolver<'a> {
     //
 
     /// A somewhat inefficient routine to obtain the name of a module.
-    fn module_to_str(&mut self, module: &Module) -> String {
+    fn module_to_str(&self, module: &Module) -> String {
         let mut idents = Vec::new();
 
         fn collect_mod(idents: &mut Vec<ast::Ident>, module: &Module) {

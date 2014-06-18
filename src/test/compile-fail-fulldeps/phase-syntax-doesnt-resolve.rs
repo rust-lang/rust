@@ -19,7 +19,6 @@ extern crate macro_crate_test;
 
 fn main() {
     macro_crate_test::foo();
-    //~^ ERROR unresolved name
-    //~^^ ERROR use of undeclared module `macro_crate_test`
-    //~^^^ ERROR unresolved name `macro_crate_test::foo`.
+    //~^ ERROR failed to resolve. Use of undeclared module `macro_crate_test`
+    //~^^ ERROR unresolved name `macro_crate_test::foo`.
 }
