@@ -179,8 +179,11 @@ syn region rustGenericLifetimeCandidate display start=/\%(<\|,\s*\)\@<='/ end=/[
 
 "rustLifetime must appear before rustCharacter, or chars will get the lifetime highlighting
 syn match     rustLifetime    display "\'\%([^[:cntrl:][:space:][:punct:][:digit:]]\|_\)\%([^[:cntrl:][:punct:][:space:]]\|_\)*"
-syn match   rustCharacter   /b'\([^'\\]\|\\\(.\|x\x\{2}\)\)'/ contains=rustEscape,rustEscapeError
-syn match   rustCharacter   /'\([^'\\]\|\\\(.\|x\x\{2}\|u\x\{4}\|U\x\{8}\)\)'/ contains=rustEscape,rustEscapeUnicode,rustEscapeError
+syn match   rustCharacterInvalid   display contained /b\?'\zs[\n\r\t']\ze'/
+" The groups negated here add up to 0-255 but nothing else (they do not seem to go beyond ASCII).
+syn match   rustCharacterInvalidUnicode   display contained /b'\zs[^[:cntrl:][:graph:][:alnum:][:space:]]\ze'/
+syn match   rustCharacter   /b'\([^\\]\|\\\(.\|x\x\{2}\)\)'/ contains=rustEscape,rustEscapeError,rustCharacterInvalid,rustCharacterInvalidUnicode
+syn match   rustCharacter   /'\([^\\]\|\\\(.\|x\x\{2}\|u\x\{4}\|U\x\{8}\)\)'/ contains=rustEscape,rustEscapeUnicode,rustEscapeError,rustCharacterInvalid
 
 syn region rustCommentLine                                        start="//"                      end="$"   contains=rustTodo,@Spell
 syn region rustCommentLineDoc                                     start="//\%(//\@!\|!\)"         end="$"   contains=rustTodo,@Spell
@@ -223,6 +226,8 @@ hi def link rustEscapeUnicode rustEscape
 hi def link rustEscapeError   Error
 hi def link rustStringContinuation Special
 hi def link rustString        String
+hi def link rustCharacterInvalid Error
+hi def link rustCharacterInvalidUnicode rustCharacterInvalid
 hi def link rustCharacter     Character
 hi def link rustNumber        Number
 hi def link rustBoolean       Boolean
