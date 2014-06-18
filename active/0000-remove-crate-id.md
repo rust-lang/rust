@@ -4,10 +4,8 @@
 
 # Summary
 
-* Remove the `crate_id` attribute, knowledge of versions from rustc, and the
-  `crate_type` attribute
-* Allow keywords in attributes
-* Add a `#[crate]` attribute similar to the old `#[link]` attribute
+* Remove the `crate_id` attribute and knowledge of versions from rustc.
+* Add a `#[crate_name]` attribute similar to the old `#[crate_id]` attribute
 * Filenames will no longer have versions, nor will symbols
 * A new flag, `--extern`, will be used to override searching for external crates
 
@@ -26,38 +24,19 @@ with a CrateId should still be supported.
 
 # Detailed design
 
-A new `crate` attribute will be accepted by the compiler. For example:
+A new `#[crate_name]` attribute will be accepted by the compiler, which is the
+equivalent of the old `#[crate_id]` attribute, except without the "crate id"
+support. This new attribute can have a string value describe a valid crate name.
+
+A crate name must be a valid rust identifier with the exception of allowing the
+`-` character after the first character.
 
 ```rust
-#![crate(name = "json", type = "dylib", type = "rlib", version = "1.0.2-pre")]
+#![crate_name = "foo"]
+#![crate_type = "lib"]
+
+pub fn foo() { /* ... */ }
 ```
-
-Breaking down this attribute:
-
-* `crate` - This is a new top-level attribute which has an inner list of meta
-            items which are intended to describe the current crate.
-* `name` - This meta item is recognized by the compiler to provide a name for
-           the crate being compiled. This will override the compiler's inference
-           of the crate name based on the file name being compiled. This is also
-           later used to match with when upstream crates link to this one.
-* `type` - This will supersede the `#[crate_type]` attribute. The `crate`
-           attribute can contain multiple `type` meta items, describing the type
-           of output of this crate. This is used to describe whether the output
-           is an rlib, dylib, executable, or staticlib.
-* `version` - This, and all other members of the `crate` attribute, are not
-              specially recognized by the compiler. These attributes are used as
-              controllers for the hashes used in the rest of the compiler.
-
-In addition to allowing data to hash being specified through the `crate`
-attribute, the compiler will also grow a new flag, `-C metadata=foo` to be able
-to specify arbitrary strings to hash via the command line. The usage of this
-hashed data is described below.
-
-## Keywords in attributes
-
-The compiler currently disallows keywords in attributes. This rule would be
-amended to allow any identifier an attribute names and attribute keys. This is
-primarily done to allow the `crate` and `type` attributes to exist.
 
 ## Naming library filenames
 
@@ -81,7 +60,7 @@ One drawback of this scheme is that the output filename of the compiler is
 unknown due to the `<hash>` component. One must query `rustc` itself to
 determine the name of the library output.
 
-Under this new scheme, the new filenames would be:
+Under this new scheme, the new output filenames by the compiler would be:
 
 ```
 lib<name>.rlib
@@ -138,9 +117,8 @@ extern crate json = "super-fast-json";
 
 Notably, the CrateId is removed entirely, along with the version and path
 associated with it. The string value of the `extern crate` directive is still
-optional (defaulting to the identifier), and the string must be a valid rust
-identifier with the exception that any character but the first can be a hyphen,
-`-`.
+optional (defaulting to the identifier), and the string must be a valid crate
+name (as defined above).
 
 The compiler's searching and file matching logic would be altered to only match
 crates based on name. If two versions of a crate are found, the compiler will
@@ -192,8 +170,15 @@ symbols, but in retrospect this is generally viewed as over-ambitious as the
 support is not currently there, nor does it work on windows or OSX.
 
 Symbols would no longer contain the version number anywhere within them. The
-hash at the end of each symbol would still include the symbol via the metadata
-in the `crate` attribute or from the command line, however.
+hash at the end of each symbol would only include the crate name and metadata
+from the command line.
+
+## The standard rust distribution
+
+The standard distribution would continue to put hashes in filenames manually
+because the libraries are intended to occupy a privileged space on the system.
+The build system would manually move a file after it was compiled to the correct
+destination filename.
 
 # Drawbacks
 
@@ -222,9 +207,6 @@ in the `crate` attribute or from the command line, however.
 * An implementation for the more advanced features of cargo does not currently
   exist, to it is unknown whether `--extern` will be powerful enough for cargo
   to satisfy all its use cases with.
-
-* Does allowing keywords in attributes set an unusual precedent for other
-  portions of the language?
 
 * Are the string literal parts of `extern crate` justified? Allowing a string
   literal just for the `-` character may be overkill.
