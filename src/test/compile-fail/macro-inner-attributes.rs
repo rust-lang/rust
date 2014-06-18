@@ -25,9 +25,8 @@ test!(b,
 #[qux]
 fn main() {
     a::bar();
-    //~^ ERROR use of undeclared module `a`
-    //~^^ ERROR unresolved name
-    //~^^^ ERROR unresolved name `a::bar`
+    //~^ ERROR failed to resolve. Use of undeclared module `a`
+    //~^^ ERROR unresolved name `a::bar`
     b::bar();
 }
 

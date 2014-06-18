@@ -12,10 +12,10 @@
 
 extern crate use_from_trait_xc;
 
-use use_from_trait_xc::Trait::foo;  //~ ERROR cannot import from a trait or type implementation
-//~^ ERROR failed to resolve import
-use use_from_trait_xc::Foo::new;    //~ ERROR cannot import from a trait or type implementation
-//~^ ERROR failed to resolve import
+use use_from_trait_xc::Trait::foo;
+//~^ ERROR unresolved import `use_from_trait_xc::Trait::foo`. Cannot import from a trait or type imp
 
-fn main() {
-}
+use use_from_trait_xc::Foo::new;
+//~^ ERROR unresolved import `use_from_trait_xc::Foo::new`. Cannot import from a trait or type imple
+
+fn main() {}

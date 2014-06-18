@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -12,8 +12,6 @@
 
 #![feature(globs)]
 
-use unresolved::*; //~ ERROR unresolved import. maybe a missing
-//~^ ERROR failed to resolve import
+use unresolved::*; //~ ERROR unresolved import `unresolved::*`. Maybe a missing `extern crate unres
 
-fn main() {
-}
+fn main() {}
