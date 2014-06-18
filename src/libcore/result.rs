@@ -572,13 +572,17 @@ impl<T: Show, E> Result<T, E> {
 /// Here is an example which increments every integer in a vector,
 /// checking for overflow:
 ///
-///     fn inc_conditionally(x: uint) -> Result<uint, &'static str> {
-///         if x == uint::MAX { return Err("overflow"); }
-///         else { return Ok(x+1u); }
-///     }
-///     let v = [1u, 2, 3];
-///     let res = collect(v.iter().map(|&x| inc_conditionally(x)));
-///     assert!(res == Ok(~[2u, 3, 4]));
+/// ```rust
+/// use std::result;
+/// use std::uint;
+///
+/// let v = vec!(1u, 2u);
+/// let res: Result<Vec<uint>, &'static str> = result::collect(v.iter().map(|x: &uint|
+///     if *x == uint::MAX { Err("Overflow!") }
+///     else { Ok(x + 1) }
+/// ));
+/// assert!(res == Ok(vec!(2u, 3u)));
+/// ```
 #[inline]
 pub fn collect<T, E, Iter: Iterator<Result<T, E>>, V: FromIterator<T>>(iter: Iter) -> Result<V, E> {
     // FIXME(#11084): This should be twice as fast once this bug is closed.
