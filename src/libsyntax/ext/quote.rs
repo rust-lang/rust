@@ -412,45 +412,14 @@ fn mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> Gc<ast::Expr> {
             return cx.expr_call(sp, mk_token_path(cx, sp, "LIT_CHAR"), vec!(e_char));
         }
 
-        LIT_INT(i, ity) => {
-            let s_ity = match ity {
-                ast::TyI => "TyI",
-                ast::TyI8 => "TyI8",
-                ast::TyI16 => "TyI16",
-                ast::TyI32 => "TyI32",
-                ast::TyI64 => "TyI64"
-            };
-            let e_ity = mk_ast_path(cx, sp, s_ity);
-            let e_i64 = cx.expr_lit(sp, ast::LitInt(i, ast::TyI64));
-            return cx.expr_call(sp, mk_token_path(cx, sp, "LIT_INT"), vec!(e_i64, e_ity));
+        LIT_INTEGER(i) => {
+            let e_int = mk_ident(cx, sp, i);
+            return cx.expr_call(sp, mk_token_path(cx, sp, "LIT_INTEGER"), vec!(e_int));
         }
 
-        LIT_UINT(u, uty) => {
-            let s_uty = match uty {
-                ast::TyU => "TyU",
-                ast::TyU8 => "TyU8",
-                ast::TyU16 => "TyU16",
-                ast::TyU32 => "TyU32",
-                ast::TyU64 => "TyU64"
-            };
-            let e_uty = mk_ast_path(cx, sp, s_uty);
-            let e_u64 = cx.expr_lit(sp, ast::LitUint(u, ast::TyU64));
-            return cx.expr_call(sp, mk_token_path(cx, sp, "LIT_UINT"), vec!(e_u64, e_uty));
-        }
-
-        LIT_INT_UNSUFFIXED(i) => {
-            let e_i64 = cx.expr_lit(sp, ast::LitInt(i, ast::TyI64));
-            return cx.expr_call(sp, mk_token_path(cx, sp, "LIT_INT_UNSUFFIXED"), vec!(e_i64));
-        }
-
-        LIT_FLOAT(fident, fty) => {
-            let s_fty = match fty {
-                ast::TyF32 => "TyF32",
-                ast::TyF64 => "TyF64",
-            };
-            let e_fty = mk_ast_path(cx, sp, s_fty);
+        LIT_FLOAT(fident) => {
             let e_fident = mk_ident(cx, sp, fident);
-            return cx.expr_call(sp, mk_token_path(cx, sp, "LIT_FLOAT"), vec!(e_fident, e_fty));
+            return cx.expr_call(sp, mk_token_path(cx, sp, "LIT_FLOAT"), vec!(e_fident));
         }
 
         LIT_STR(ident) => {

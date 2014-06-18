@@ -144,8 +144,7 @@ fn doit(sess: &parse::ParseSess, mut lexer: lexer::StringReader,
                 t::LIT_CHAR(..) | t::LIT_STR(..) | t::LIT_STR_RAW(..) => "string",
 
             // number literals
-            t::LIT_INT(..) | t::LIT_UINT(..) | t::LIT_INT_UNSUFFIXED(..) |
-                t::LIT_FLOAT(..) | t::LIT_FLOAT_UNSUFFIXED(..) => "number",
+            t::LIT_INTEGER(..) | t::LIT_FLOAT(..) => "number",
 
             // keywords are also included in the identifier set
             t::IDENT(ident, _is_mod_sep) => {

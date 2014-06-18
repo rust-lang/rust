@@ -18,7 +18,6 @@ use parse::token::{str_to_ident};
 
 use std::char;
 use std::mem::replace;
-use std::num::from_str_radix;
 use std::rc::Rc;
 use std::str;
 
@@ -491,204 +490,113 @@ impl<'a> StringReader<'a> {
         if res.is_some() { res } else { self.consume_whitespace_and_comments() }
     }
 
-    fn scan_exponent(&mut self, start_bpos: BytePos) -> Option<String> {
-        // \x00 hits the `return None` case immediately, so this is fine.
-        let mut c = self.curr.unwrap_or('\x00');
-        let mut rslt = String::new();
-        if c == 'e' || c == 'E' {
-            rslt.push_char(c);
-            self.bump();
-            c = self.curr.unwrap_or('\x00');
-            if c == '-' || c == '+' {
-                rslt.push_char(c);
-                self.bump();
-            }
-            let exponent = self.scan_digits(10u);
-            if exponent.len() > 0u {
-                rslt.push_str(exponent.as_slice());
-                return Some(rslt);
-            } else {
-                let last_bpos = self.last_pos;
-                self.err_span_(start_bpos, last_bpos, "scan_exponent: bad fp literal");
-                rslt.push_str("1"); // arbitrary placeholder exponent
-                return Some(rslt);
-            }
-        } else {
-            return None::<String>;
-        }
-    }
-
-    fn scan_digits(&mut self, radix: uint) -> String {
-        let mut rslt = String::new();
+    /// Scan through any digits (base `radix`) or underscores, and return how
+    /// many digits there were.
+    fn scan_digits(&mut self, radix: uint) -> uint {
+        let mut len = 0u;
         loop {
             let c = self.curr;
-            if c == Some('_') { self.bump(); continue; }
+            if c == Some('_') { debug!("skipping a _"); self.bump(); continue; }
             match c.and_then(|cc| char::to_digit(cc, radix)) {
-              Some(_) => {
-                rslt.push_char(c.unwrap());
-                self.bump();
-              }
-              _ => return rslt
+                Some(_) => {
+                    debug!("{} in scan_digits", c);
+                    len += 1;
+                    self.bump();
+                }
+                _ => return len
             }
         };
     }
 
-    fn check_float_base(&mut self, start_bpos: BytePos, last_bpos: BytePos, base: uint) {
-        match base {
-          16u => self.err_span_(start_bpos, last_bpos,
-                                "hexadecimal float literal is not supported"),
-          8u => self.err_span_(start_bpos, last_bpos, "octal float literal is not supported"),
-          2u => self.err_span_(start_bpos, last_bpos, "binary float literal is not supported"),
-          _ => ()
-        }
-    }
-
+    /// Lex a LIT_INTEGER or a LIT_FLOAT
     fn scan_number(&mut self, c: char) -> token::Token {
-        let mut num_str;
-        let mut base = 10u;
-        let mut c = c;
-        let mut n = self.nextch().unwrap_or('\x00');
+        let mut num_digits;
+        let mut base = 10;
         let start_bpos = self.last_pos;
-        if c == '0' && n == 'x' {
-            self.bump();
-            self.bump();
-            base = 16u;
-        } else if c == '0' && n == 'o' {
-            self.bump();
-            self.bump();
-            base = 8u;
-        } else if c == '0' && n == 'b' {
-            self.bump();
-            self.bump();
-            base = 2u;
-        }
-        num_str = self.scan_digits(base);
-        c = self.curr.unwrap_or('\x00');
-        self.nextch();
-        if c == 'u' || c == 'i' {
-            enum Result { Signed(ast::IntTy), Unsigned(ast::UintTy) }
-            let signed = c == 'i';
-            let mut tp = {
-                if signed { Signed(ast::TyI) }
-                else { Unsigned(ast::TyU) }
-            };
-            self.bump();
-            c = self.curr.unwrap_or('\x00');
-            if c == '8' {
-                self.bump();
-                tp = if signed { Signed(ast::TyI8) }
-                          else { Unsigned(ast::TyU8) };
-            }
-            n = self.nextch().unwrap_or('\x00');
-            if c == '1' && n == '6' {
-                self.bump();
-                self.bump();
-                tp = if signed { Signed(ast::TyI16) }
-                          else { Unsigned(ast::TyU16) };
-            } else if c == '3' && n == '2' {
-                self.bump();
-                self.bump();
-                tp = if signed { Signed(ast::TyI32) }
-                          else { Unsigned(ast::TyU32) };
-            } else if c == '6' && n == '4' {
-                self.bump();
-                self.bump();
-                tp = if signed { Signed(ast::TyI64) }
-                          else { Unsigned(ast::TyU64) };
-            }
-            if num_str.len() == 0u {
-                let last_bpos = self.last_pos;
-                self.err_span_(start_bpos, last_bpos, "no valid digits found for number");
-                num_str = "1".to_string();
-            }
-            let parsed = match from_str_radix::<u64>(num_str.as_slice(),
-                                                     base as uint) {
-                Some(p) => p,
-                None => {
-                    let last_bpos = self.last_pos;
-                    self.err_span_(start_bpos, last_bpos, "int literal is too large");
-                    1
+
+        self.bump();
+
+        if c == '0' {
+            match self.curr.unwrap_or('\0') {
+                'b' => { self.bump(); base = 2; num_digits = self.scan_digits(2); }
+                'o' => { self.bump(); base = 8; num_digits = self.scan_digits(8); }
+                'x' => { self.bump(); base = 16; num_digits = self.scan_digits(16); }
+                '0'..'9' | '_' | '.' => {
+                    num_digits = self.scan_digits(10) + 1;
                 }
-            };
-
-            match tp {
-              Signed(t) => return token::LIT_INT(parsed as i64, t),
-              Unsigned(t) => return token::LIT_UINT(parsed, t)
+                'u' | 'i' => {
+                    self.scan_int_suffix();
+                    return token::LIT_INTEGER(self.ident_from(start_bpos));
+                },
+                'f' => {
+                    let last_pos = self.last_pos;
+                    self.scan_float_suffix();
+                    self.check_float_base(start_bpos, last_pos, base);
+                    return token::LIT_FLOAT(self.ident_from(start_bpos));
+                }
+                _ => {
+                    // just a 0
+                    return token::LIT_INTEGER(self.ident_from(start_bpos));
+                }
             }
-        }
-        let mut is_float = false;
-        if self.curr_is('.') && !(ident_start(self.nextch()) || self.nextch_is('.')) {
-            is_float = true;
-            self.bump();
-            let dec_part = self.scan_digits(10u);
-            num_str.push_char('.');
-            num_str.push_str(dec_part.as_slice());
-        }
-        match self.scan_exponent(start_bpos) {
-          Some(ref s) => {
-            is_float = true;
-            num_str.push_str(s.as_slice());
-          }
-          None => ()
-        }
-
-        if self.curr_is('f') {
-            self.bump();
-            c = self.curr.unwrap_or('\x00');
-            n = self.nextch().unwrap_or('\x00');
-            if c == '3' && n == '2' {
-                self.bump();
-                self.bump();
-                let last_bpos = self.last_pos;
-                self.check_float_base(start_bpos, last_bpos, base);
-                return token::LIT_FLOAT(str_to_ident(num_str.as_slice()),
-                                        ast::TyF32);
-            } else if c == '6' && n == '4' {
-                self.bump();
-                self.bump();
-                let last_bpos = self.last_pos;
-                self.check_float_base(start_bpos, last_bpos, base);
-                return token::LIT_FLOAT(str_to_ident(num_str.as_slice()),
-                                        ast::TyF64);
-                /* FIXME (#2252): if this is out of range for either a
-                32-bit or 64-bit float, it won't be noticed till the
-                back-end.  */
-            }
-            let last_bpos = self.last_pos;
-            self.err_span_(start_bpos, last_bpos, "expected `f32` or `f64` suffix");
-        }
-        if is_float {
-            let last_bpos = self.last_pos;
-            self.check_float_base(start_bpos, last_bpos, base);
-            return token::LIT_FLOAT_UNSUFFIXED(str_to_ident(
-                    num_str.as_slice()));
+        } else if c.is_digit_radix(10) {
+            num_digits = self.scan_digits(10) + 1;
         } else {
-            if num_str.len() == 0u {
-                let last_bpos = self.last_pos;
-                self.err_span_(start_bpos, last_bpos, "no valid digits found for number");
-                num_str = "1".to_string();
-            }
-            let parsed = match from_str_radix::<u64>(num_str.as_slice(),
-                                                     base as uint) {
-                Some(p) => p,
-                None => {
-                    let last_bpos = self.last_pos;
-                    self.err_span_(start_bpos, last_bpos, "int literal is too large");
-                    1
-                }
-            };
+            num_digits = 0;
+        }
 
-            debug!("lexing {} as an unsuffixed integer literal",
-                   num_str.as_slice());
-            return token::LIT_INT_UNSUFFIXED(parsed as i64);
+        if num_digits == 0 {
+            self.err_span_(start_bpos, self.last_pos, "no valid digits found for number");
+            // eat any suffix
+            self.scan_int_suffix();
+            return token::LIT_INTEGER(str_to_ident("0"));
+        }
+
+        // might be a float, but don't be greedy if this is actually an
+        // integer literal followed by field/method access or a range pattern
+        // (`0..2` and `12.foo()`)
+        if self.curr_is('.') && !self.nextch_is('.') && !self.nextch().unwrap_or('\0')
+                                                             .is_XID_start() {
+            // might have stuff after the ., and if it does, it needs to start
+            // with a number
+            self.bump();
+            if self.curr.unwrap_or('\0').is_digit_radix(10) {
+                self.scan_digits(10);
+                self.scan_float_exponent();
+                self.scan_float_suffix();
+            }
+            let last_pos = self.last_pos;
+            self.check_float_base(start_bpos, last_pos, base);
+            return token::LIT_FLOAT(self.ident_from(start_bpos));
+        } else if self.curr_is('f') {
+            // or it might be an integer literal suffixed as a float
+            self.scan_float_suffix();
+            let last_pos = self.last_pos;
+            self.check_float_base(start_bpos, last_pos, base);
+            return token::LIT_FLOAT(self.ident_from(start_bpos));
+        } else {
+            // it might be a float if it has an exponent
+            if self.curr_is('e') || self.curr_is('E') {
+                self.scan_float_exponent();
+                self.scan_float_suffix();
+                let last_pos = self.last_pos;
+                self.check_float_base(start_bpos, last_pos, base);
+                return token::LIT_FLOAT(self.ident_from(start_bpos));
+            }
+            // but we certainly have an integer!
+            self.scan_int_suffix();
+            return token::LIT_INTEGER(self.ident_from(start_bpos));
         }
     }
 
-
-    fn scan_numeric_escape(&mut self, n_hex_digits: uint, delim: char) -> bool {
-        let mut accum_int = 0u32;
+    /// Scan over `n_digits` hex digits, stopping at `delim`, reporting an
+    /// error if too many or too few digits are encountered.
+    fn scan_hex_digits(&mut self, n_digits: uint, delim: char) -> bool {
+        debug!("scanning {} digits until {}", n_digits, delim);
         let start_bpos = self.last_pos;
-        for _ in range(0, n_hex_digits) {
+        let mut accum_int = 0;
+
+        for _ in range(0, n_digits) {
             if self.is_eof() {
                 let last_bpos = self.last_pos;
                 self.fatal_span_(start_bpos, last_bpos, "unterminated numeric character escape");
@@ -736,9 +644,9 @@ impl<'a> StringReader<'a> {
                     Some(e) => {
                         return match e {
                             'n' | 'r' | 't' | '\\' | '\'' | '"' | '0' => true,
-                            'x' => self.scan_numeric_escape(2u, delim),
-                            'u' if !ascii_only => self.scan_numeric_escape(4u, delim),
-                            'U' if !ascii_only => self.scan_numeric_escape(8u, delim),
+                            'x' => self.scan_hex_digits(2u, delim),
+                            'u' if !ascii_only => self.scan_hex_digits(4u, delim),
+                            'U' if !ascii_only => self.scan_hex_digits(8u, delim),
                             '\n' if delim == '"' => {
                                 self.consume_whitespace();
                                 true
@@ -789,6 +697,80 @@ impl<'a> StringReader<'a> {
             }
         }
         true
+    }
+
+    /// Scan over an int literal suffix.
+    fn scan_int_suffix(&mut self) {
+        match self.curr {
+            Some('i') | Some('u') => {
+                self.bump();
+
+                if self.curr_is('8') {
+                    self.bump();
+                } else if self.curr_is('1') {
+                    if !self.nextch_is('6') {
+                        self.err_span_(self.last_pos, self.pos,
+                                      "illegal int suffix");
+                    } else {
+                        self.bump(); self.bump();
+                    }
+                } else if self.curr_is('3') {
+                    if !self.nextch_is('2') {
+                        self.err_span_(self.last_pos, self.pos,
+                                      "illegal int suffix");
+                    } else {
+                        self.bump(); self.bump();
+                    }
+                } else if self.curr_is('6') {
+                    if !self.nextch_is('4') {
+                        self.err_span_(self.last_pos, self.pos,
+                                      "illegal int suffix");
+                    } else {
+                        self.bump(); self.bump();
+                    }
+                }
+            },
+            _ => { }
+        }
+    }
+
+    /// Scan over a float literal suffix
+    fn scan_float_suffix(&mut self) {
+        if self.curr_is('f') {
+            if (self.nextch_is('3') && self.nextnextch_is('2'))
+            || (self.nextch_is('6') && self.nextnextch_is('4')) {
+                self.bump();
+                self.bump();
+                self.bump();
+            } else {
+                self.err_span_(self.last_pos, self.pos, "illegal float suffix");
+            }
+        }
+    }
+
+    /// Scan over a float exponent.
+    fn scan_float_exponent(&mut self) {
+        if self.curr_is('e') || self.curr_is('E') {
+            self.bump();
+            if self.curr_is('-') || self.curr_is('+') {
+                self.bump();
+            }
+            if self.scan_digits(10) == 0 {
+                self.err_span_(self.last_pos, self.pos, "expected at least one digit in exponent")
+            }
+        }
+    }
+
+    /// Check that a base is valid for a floating literal, emitting a nice
+    /// error if it isn't.
+    fn check_float_base(&mut self, start_bpos: BytePos, last_bpos: BytePos, base: uint) {
+        match base {
+            16u => self.err_span_(start_bpos, last_bpos, "hexadecimal float literal is not \
+                                 supported"),
+            8u => self.err_span_(start_bpos, last_bpos, "octal float literal is not supported"),
+            2u => self.err_span_(start_bpos, last_bpos, "binary float literal is not supported"),
+            _ => ()
+        }
     }
 
     fn binop(&mut self, op: token::BinOp) -> token::Token {

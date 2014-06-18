@@ -10,7 +10,6 @@
 
 use ast;
 use ast::{P, Ident, Name, Mrk};
-use ast_util;
 use ext::mtwt;
 use parse::token;
 use util::interner::{RcStr, StrInterner};
@@ -81,11 +80,8 @@ pub enum Token {
     /* Literals */
     LIT_BYTE(Ident),
     LIT_CHAR(Ident),
-    LIT_INT(i64, ast::IntTy),
-    LIT_UINT(u64, ast::UintTy),
-    LIT_INT_UNSUFFIXED(i64),
-    LIT_FLOAT(Ident, ast::FloatTy),
-    LIT_FLOAT_UNSUFFIXED(Ident),
+    LIT_INTEGER(Ident),
+    LIT_FLOAT(Ident),
     LIT_STR(Ident),
     LIT_STR_RAW(Ident, uint), /* raw str delimited by n hash symbols */
     LIT_BINARY(Ident),
@@ -206,24 +202,10 @@ pub fn to_string(t: &Token) -> String {
       LIT_CHAR(c) => {
           format!("'{}'", get_ident(c).get())
       }
-      LIT_INT(i, t) => ast_util::int_ty_to_string(t, Some(i)),
-      LIT_UINT(u, t) => ast_util::uint_ty_to_string(t, Some(u)),
-      LIT_INT_UNSUFFIXED(i) => { (i as u64).to_string() }
-      LIT_FLOAT(s, t) => {
-        let mut body = String::from_str(get_ident(s).get());
-        if body.as_slice().ends_with(".") {
-            body.push_char('0');  // `10.f` is not a float literal
-        }
-        body.push_str(ast_util::float_ty_to_string(t).as_slice());
-        body
+      LIT_INTEGER(c) | LIT_FLOAT(c) => {
+          get_ident(c).get().to_string()
       }
-      LIT_FLOAT_UNSUFFIXED(s) => {
-        let mut body = String::from_str(get_ident(s).get());
-        if body.as_slice().ends_with(".") {
-            body.push_char('0');  // `10.f` is not a float literal
-        }
-        body
-      }
+
       LIT_STR(s) => {
           format!("\"{}\"", get_ident(s).get())
       }
@@ -285,11 +267,8 @@ pub fn can_begin_expr(t: &Token) -> bool {
       TILDE => true,
       LIT_BYTE(_) => true,
       LIT_CHAR(_) => true,
-      LIT_INT(_, _) => true,
-      LIT_UINT(_, _) => true,
-      LIT_INT_UNSUFFIXED(_) => true,
-      LIT_FLOAT(_, _) => true,
-      LIT_FLOAT_UNSUFFIXED(_) => true,
+      LIT_INTEGER(_) => true,
+      LIT_FLOAT(_) => true,
       LIT_STR(_) => true,
       LIT_STR_RAW(_, _) => true,
       LIT_BINARY(_) => true,
@@ -326,11 +305,8 @@ pub fn is_lit(t: &Token) -> bool {
     match *t {
       LIT_BYTE(_) => true,
       LIT_CHAR(_) => true,
-      LIT_INT(_, _) => true,
-      LIT_UINT(_, _) => true,
-      LIT_INT_UNSUFFIXED(_) => true,
-      LIT_FLOAT(_, _) => true,
-      LIT_FLOAT_UNSUFFIXED(_) => true,
+      LIT_INTEGER(_) => true,
+      LIT_FLOAT(_) => true,
       LIT_STR(_) => true,
       LIT_STR_RAW(_, _) => true,
       LIT_BINARY(_) => true,

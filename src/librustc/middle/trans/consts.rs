@@ -42,6 +42,7 @@ use syntax::{ast, ast_util};
 pub fn const_lit(cx: &CrateContext, e: &ast::Expr, lit: ast::Lit)
     -> ValueRef {
     let _icx = push_ctxt("trans_lit");
+    debug!("const_lit: {}", lit);
     match lit.node {
         ast::LitByte(b) => C_integral(Type::uint_from_ty(cx, ast::TyU8), b as u64, false),
         ast::LitChar(i) => C_integral(Type::char(cx), i as u64, false),

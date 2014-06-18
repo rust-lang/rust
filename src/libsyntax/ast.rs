@@ -619,7 +619,7 @@ pub enum Mac_ {
     MacInvocTT(Path, Vec<TokenTree> , SyntaxContext),   // new macro-invocation
 }
 
-#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
+#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum StrStyle {
     CookedStr,
     RawStr(uint)
@@ -627,7 +627,7 @@ pub enum StrStyle {
 
 pub type Lit = Spanned<Lit_>;
 
-#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
+#[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash, Show)]
 pub enum Lit_ {
     LitStr(InternedString, StrStyle),
     LitBinary(Rc<Vec<u8> >),
@@ -697,6 +697,16 @@ impl fmt::Show for IntTy {
     }
 }
 
+impl IntTy {
+    pub fn suffix_len(&self) -> uint {
+        match *self {
+            TyI => 1,
+            TyI8 => 2,
+            TyI16 | TyI32 | TyI64  => 3,
+        }
+    }
+}
+
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
 pub enum UintTy {
     TyU,
@@ -704,6 +714,16 @@ pub enum UintTy {
     TyU16,
     TyU32,
     TyU64,
+}
+
+impl UintTy {
+    pub fn suffix_len(&self) -> uint {
+        match *self {
+            TyU => 1,
+            TyU8 => 2,
+            TyU16 | TyU32 | TyU64  => 3,
+        }
+    }
 }
 
 impl fmt::Show for UintTy {
@@ -721,6 +741,14 @@ pub enum FloatTy {
 impl fmt::Show for FloatTy {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", ast_util::float_ty_to_string(*self))
+    }
+}
+
+impl FloatTy {
+    pub fn suffix_len(&self) -> uint {
+        match *self {
+            TyF32 | TyF64 => 3, // add F128 handling here
+        }
     }
 }
 

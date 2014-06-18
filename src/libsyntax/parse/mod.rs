@@ -506,6 +506,115 @@ pub fn binary_lit(lit: &str) -> Rc<Vec<u8>> {
     Rc::new(res)
 }
 
+pub fn integer_lit(s: &str, sd: &SpanHandler, sp: Span) -> ast::Lit_ {
+    // s can only be ascii, byte indexing is fine
+
+    let s2 = s.chars().filter(|&c| c != '_').collect::<String>();
+    let mut s = s2.as_slice();
+
+    debug!("parse_integer_lit: {}", s);
+
+    if s.len() == 1 {
+        return ast::LitIntUnsuffixed((s.char_at(0)).to_digit(10).unwrap() as i64);
+    }
+
+    let mut base = 10;
+    let orig = s;
+
+    #[deriving(Show)]
+    enum Result {
+        Nothing,
+        Signed(ast::IntTy),
+        Unsigned(ast::UintTy)
+    }
+
+    impl Result {
+        fn suffix_len(&self) -> uint {
+            match *self {
+                Nothing => 0,
+                Signed(s) => s.suffix_len(),
+                Unsigned(u) => u.suffix_len()
+            }
+        }
+    }
+
+    let mut ty = Nothing;
+
+
+    if s.char_at(0) == '0' {
+        match s.char_at(1) {
+            'x' => base = 16,
+            'o' => base = 8,
+            'b' => base = 2,
+            _ => { }
+        }
+    }
+
+    if base != 10 {
+        s = s.slice_from(2);
+    }
+
+    let last = s.len() - 1;
+    match s.char_at(last) {
+        'i' => ty = Signed(ast::TyI),
+        'u' => ty = Unsigned(ast::TyU),
+        '8' => {
+            if s.len() > 2 {
+                match s.char_at(last - 1) {
+                    'i' => ty = Signed(ast::TyI8),
+                    'u' => ty = Unsigned(ast::TyU8),
+                    _ => { }
+                }
+            }
+        },
+        '6' => {
+            if s.len() > 3 && s.char_at(last - 1) == '1' {
+                match s.char_at(last - 2) {
+                    'i' => ty = Signed(ast::TyI16),
+                    'u' => ty = Unsigned(ast::TyU16),
+                    _ => { }
+                }
+            }
+        },
+        '2' => {
+            if s.len() > 3 && s.char_at(last - 1) == '3' {
+                match s.char_at(last - 2) {
+                    'i' => ty = Signed(ast::TyI32),
+                    'u' => ty = Unsigned(ast::TyU32),
+                    _ => { }
+                }
+            }
+        },
+        '4' => {
+            if s.len() > 3 && s.char_at(last - 1) == '6' {
+                match s.char_at(last - 2) {
+                    'i' => ty = Signed(ast::TyI64),
+                    'u' => ty = Unsigned(ast::TyU64),
+                    _ => { }
+                }
+            }
+        },
+        _ => { }
+    }
+
+
+    s = s.slice_to(s.len() - ty.suffix_len());
+
+    debug!("The suffix is {}, base {}, the new string is {}, the original \
+           string was {}", ty, base, s, orig);
+
+    let res: u64 = match ::std::num::from_str_radix(s, base) {
+        Some(r) => r,
+        None => { sd.span_err(sp, "int literal is too large"); 0 }
+    };
+
+    match ty {
+        Nothing => ast::LitIntUnsuffixed(res as i64),
+        Signed(t) => ast::LitInt(res as i64, t),
+        Unsigned(t) => ast::LitUint(res, t)
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
