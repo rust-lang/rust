@@ -75,13 +75,13 @@ macro_rules! num_repr(($ty:ident, $suffix:expr) => (impl Repr for $ty {
     fn write_repr(&self, writer: &mut io::Writer) -> io::IoResult<()> {
         let s = self.to_str();
         writer.write(s.as_bytes()).and_then(|()| {
-            writer.write(bytes!($suffix))
+            writer.write($suffix)
         })
     }
 }))
 
-num_repr!(f32, "f32")
-num_repr!(f64, "f64")
+num_repr!(f32, b"f32")
+num_repr!(f64, b"f64")
 
 // New implementation using reflect::MovePtr
 

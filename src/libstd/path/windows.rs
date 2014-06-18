@@ -1123,15 +1123,6 @@ mod tests {
         )
     )
 
-    macro_rules! b(
-        ($($arg:expr),+) => (
-            {
-                static the_bytes: &'static [u8] = bytes!($($arg),+);
-                the_bytes
-            }
-        )
-    )
-
     #[test]
     fn test_parse_prefix() {
         macro_rules! t(
@@ -1196,9 +1187,9 @@ mod tests {
     #[test]
     fn test_paths() {
         let empty: &[u8] = [];
-        t!(v: Path::new(empty), b!("."));
-        t!(v: Path::new(b!("\\")), b!("\\"));
-        t!(v: Path::new(b!("a\\b\\c")), b!("a\\b\\c"));
+        t!(v: Path::new(empty), b".");
+        t!(v: Path::new(b"\\"), b"\\");
+        t!(v: Path::new(b"a\\b\\c"), b"a\\b\\c");
 
         t!(s: Path::new(""), ".");
         t!(s: Path::new("\\"), "\\");
@@ -1230,8 +1221,8 @@ mod tests {
         t!(s: Path::new("foo\\..\\..\\.."), "..\\..");
         t!(s: Path::new("foo\\..\\..\\bar"), "..\\bar");
 
-        assert_eq!(Path::new(b!("foo\\bar")).into_vec().as_slice(), b!("foo\\bar"));
-        assert_eq!(Path::new(b!("\\foo\\..\\..\\bar")).into_vec().as_slice(), b!("\\bar"));
+        assert_eq!(Path::new(b"foo\\bar").into_vec().as_slice(), b"foo\\bar");
+        assert_eq!(Path::new(b"\\foo\\..\\..\\bar").into_vec().as_slice(), b"\\bar");
 
         t!(s: Path::new("\\\\a"), "\\a");
         t!(s: Path::new("\\\\a\\"), "\\a");
@@ -1284,9 +1275,9 @@ mod tests {
 
     #[test]
     fn test_opt_paths() {
-        assert!(Path::new_opt(b!("foo\\bar", 0)) == None);
-        assert!(Path::new_opt(b!("foo\\bar", 0x80)) == None);
-        t!(v: Path::new_opt(b!("foo\\bar")).unwrap(), b!("foo\\bar"));
+        assert!(Path::new_opt(b"foo\\bar\0") == None);
+        assert!(Path::new_opt(b"foo\\bar\x80") == None);
+        t!(v: Path::new_opt(b"foo\\bar").unwrap(), b"foo\\bar");
         assert!(Path::new_opt("foo\\bar\0") == None);
         t!(s: Path::new_opt("foo\\bar").unwrap(), "foo\\bar");
     }
@@ -1295,17 +1286,17 @@ mod tests {
     fn test_null_byte() {
         use task;
         let result = task::try(proc() {
-            Path::new(b!("foo/bar", 0))
+            Path::new(b"foo/bar\0")
         });
         assert!(result.is_err());
 
         let result = task::try(proc() {
-            Path::new("test").set_filename(b!("f", 0, "o"))
+            Path::new("test").set_filename(b"f\0o")
         });
         assert!(result.is_err());
 
         let result = task::try(proc() {
-            Path::new("test").push(b!("f", 0, "o"));
+            Path::new("test").push(b"f\0o");
         });
         assert!(result.is_err());
     }
@@ -1313,20 +1304,20 @@ mod tests {
     #[test]
     #[should_fail]
     fn test_not_utf8_fail() {
-        Path::new(b!("hello", 0x80, ".txt"));
+        Path::new(b"hello\x80.txt");
     }
 
     #[test]
     fn test_display_str() {
         let path = Path::new("foo");
         assert_eq!(path.display().to_str(), "foo".to_string());
-        let path = Path::new(b!("\\"));
+        let path = Path::new(b"\\");
         assert_eq!(path.filename_display().to_str(), "".to_string());
 
         let path = Path::new("foo");
         let mo = path.display().as_maybe_owned();
         assert_eq!(mo.as_slice(), "foo");
-        let path = Path::new(b!("\\"));
+        let path = Path::new(b"\\");
         let mo = path.filename_display().as_maybe_owned();
         assert_eq!(mo.as_slice(), "");
     }
@@ -1377,7 +1368,7 @@ mod tests {
             )
         )
 
-        t!(v: b!("a\\b\\c"), filename, Some(b!("c")));
+        t!(v: b"a\\b\\c", filename, Some(b"c"));
         t!(s: "a\\b\\c", filename_str, "c");
         t!(s: "\\a\\b\\c", filename_str, "c");
         t!(s: "a", filename_str, "a");
@@ -1410,7 +1401,7 @@ mod tests {
         t!(s: "\\\\.\\", filename_str, None, opt);
         t!(s: "\\\\?\\a\\b\\", filename_str, "b");
 
-        t!(v: b!("a\\b\\c"), dirname, b!("a\\b"));
+        t!(v: b"a\\b\\c", dirname, b"a\\b");
         t!(s: "a\\b\\c", dirname_str, "a\\b");
         t!(s: "\\a\\b\\c", dirname_str, "\\a\\b");
         t!(s: "a", dirname_str, ".");
@@ -1441,7 +1432,7 @@ mod tests {
         t!(s: "\\\\.\\foo", dirname_str, "\\\\.\\foo");
         t!(s: "\\\\?\\a\\b\\", dirname_str, "\\\\?\\a");
 
-        t!(v: b!("hi\\there.txt"), filestem, Some(b!("there")));
+        t!(v: b"hi\\there.txt", filestem, Some(b"there"));
         t!(s: "hi\\there.txt", filestem_str, "there");
         t!(s: "hi\\there", filestem_str, "there");
         t!(s: "there.txt", filestem_str, "there");
@@ -1456,8 +1447,8 @@ mod tests {
         t!(s: "..\\..", filestem_str, None, opt);
         // filestem is based on filename, so we don't need the full set of prefix tests
 
-        t!(v: b!("hi\\there.txt"), extension, Some(b!("txt")));
-        t!(v: b!("hi\\there"), extension, None);
+        t!(v: b"hi\\there.txt", extension, Some(b"txt"));
+        t!(v: b"hi\\there", extension, None);
         t!(s: "hi\\there.txt", extension_str, Some("txt"), opt);
         t!(s: "hi\\there", extension_str, None, opt);
         t!(s: "there.txt", extension_str, Some("txt"), opt);
@@ -1583,10 +1574,10 @@ mod tests {
         t!(s: "a\\b\\c", ["d", "\\e"], "\\e");
         t!(s: "a\\b\\c", ["d", "\\e", "f"], "\\e\\f");
         t!(s: "a\\b\\c", ["d".to_string(), "e".to_string()], "a\\b\\c\\d\\e");
-        t!(v: b!("a\\b\\c"), [b!("d"), b!("e")], b!("a\\b\\c\\d\\e"));
-        t!(v: b!("a\\b\\c"), [b!("d"), b!("\\e"), b!("f")], b!("\\e\\f"));
-        t!(v: b!("a\\b\\c"), [Vec::from_slice(b!("d")), Vec::from_slice(b!("e"))],
-           b!("a\\b\\c\\d\\e"));
+        t!(v: b"a\\b\\c", [b"d", b"e"], b"a\\b\\c\\d\\e");
+        t!(v: b"a\\b\\c", [b"d", b"\\e", b"f"], b"\\e\\f");
+        t!(v: b"a\\b\\c", [Vec::from_slice(b"d"), Vec::from_slice(b"e")],
+           b"a\\b\\c\\d\\e");
     }
 
     #[test]
@@ -1604,11 +1595,11 @@ mod tests {
                     assert!(result == $right);
                 }
             );
-            (v: [$($path:expr),+], [$($left:expr),+], $right:expr) => (
+            (b: $path:expr, $left:expr, $right:expr) => (
                 {
-                    let mut p = Path::new(b!($($path),+));
+                    let mut p = Path::new($path);
                     let result = p.pop();
-                    assert_eq!(p.as_vec(), b!($($left),+));
+                    assert_eq!(p.as_vec(), $left);
                     assert!(result == $right);
                 }
             )
@@ -1619,11 +1610,11 @@ mod tests {
         t!(s: ".", ".", false);
         t!(s: "\\a", "\\", true);
         t!(s: "\\", "\\", false);
-        t!(v: ["a\\b\\c"], ["a\\b"], true);
-        t!(v: ["a"], ["."], true);
-        t!(v: ["."], ["."], false);
-        t!(v: ["\\a"], ["\\"], true);
-        t!(v: ["\\"], ["\\"], false);
+        t!(b: b"a\\b\\c", b"a\\b", true);
+        t!(b: b"a", b".", true);
+        t!(b: b".", b".", false);
+        t!(b: b"\\a", b"\\", true);
+        t!(b: b"\\", b"\\", false);
 
         t!(s: "C:\\a\\b", "C:\\a", true);
         t!(s: "C:\\a", "C:\\", true);
@@ -1672,8 +1663,8 @@ mod tests {
         t!(s: Path::new("a\\b").join("\\c\\d"), "\\c\\d");
         t!(s: Path::new(".").join("a\\b"), "a\\b");
         t!(s: Path::new("\\").join("a\\b"), "\\a\\b");
-        t!(v: Path::new(b!("a\\b\\c")).join(b!("..")), b!("a\\b"));
-        t!(v: Path::new(b!("\\a\\b\\c")).join(b!("d")), b!("\\a\\b\\c\\d"));
+        t!(v: Path::new(b"a\\b\\c").join(b".."), b"a\\b");
+        t!(v: Path::new(b"\\a\\b\\c").join(b"d"), b"\\a\\b\\c\\d");
         // full join testing is covered under test_push_path, so no need for
         // the full set of prefix tests
     }
@@ -1724,9 +1715,9 @@ mod tests {
         t!(s: "a\\b\\c", ["..", "d"], "a\\b\\d");
         t!(s: "a\\b\\c", ["d", "\\e", "f"], "\\e\\f");
         t!(s: "a\\b\\c", ["d".to_string(), "e".to_string()], "a\\b\\c\\d\\e");
-        t!(v: b!("a\\b\\c"), [b!("d"), b!("e")], b!("a\\b\\c\\d\\e"));
-        t!(v: b!("a\\b\\c"), [Vec::from_slice(b!("d")), Vec::from_slice(b!("e"))],
-           b!("a\\b\\c\\d\\e"));
+        t!(v: b"a\\b\\c", [b"d", b"e"], b"a\\b\\c\\d\\e");
+        t!(v: b"a\\b\\c", [Vec::from_slice(b"d"), Vec::from_slice(b"e")],
+           b"a\\b\\c\\d\\e");
     }
 
     #[test]
@@ -1839,15 +1830,15 @@ mod tests {
             )
         )
 
-        t!(v: b!("a\\b\\c"), set_filename, with_filename, b!("d"));
-        t!(v: b!("\\"), set_filename, with_filename, b!("foo"));
+        t!(v: b"a\\b\\c", set_filename, with_filename, b"d");
+        t!(v: b"\\", set_filename, with_filename, b"foo");
         t!(s: "a\\b\\c", set_filename, with_filename, "d");
         t!(s: "\\", set_filename, with_filename, "foo");
         t!(s: ".", set_filename, with_filename, "foo");
         t!(s: "a\\b", set_filename, with_filename, "");
         t!(s: "a", set_filename, with_filename, "");
 
-        t!(v: b!("hi\\there.txt"), set_extension, with_extension, b!("exe"));
+        t!(v: b"hi\\there.txt", set_extension, with_extension, b"exe");
         t!(s: "hi\\there.txt", set_extension, with_extension, "exe");
         t!(s: "hi\\there.", set_extension, with_extension, "txt");
         t!(s: "hi\\there", set_extension, with_extension, "txt");
@@ -1894,7 +1885,7 @@ mod tests {
             )
         )
 
-        t!(v: Path::new(b!("a\\b\\c")), Some(b!("c")), b!("a\\b"), Some(b!("c")), None);
+        t!(v: Path::new(b"a\\b\\c"), Some(b"c"), b"a\\b", Some(b"c"), None);
         t!(s: Path::new("a\\b\\c"), Some("c"), Some("a\\b"), Some("c"), None);
         t!(s: Path::new("."), None, Some("."), None, None);
         t!(s: Path::new("\\"), None, Some("\\"), None, None);
@@ -2250,21 +2241,9 @@ mod tests {
                     assert_eq!(comps, exp);
                 }
             );
-            (v: [$($arg:expr),+], $exp:expr) => (
-                {
-                    let path = Path::new(b!($($arg),+));
-                    let comps = path.str_components().map(|x|x.unwrap()).collect::<Vec<&str>>();
-                    let exp: &[&str] = $exp;
-                    assert_eq!(comps.as_slice(), exp);
-                    let comps = path.str_components().rev().map(|x|x.unwrap())
-                                .collect::<Vec<&str>>();
-                    let exp = exp.iter().rev().map(|&x|x).collect::<Vec<&str>>();
-                    assert_eq!(comps, exp);
-                }
-            )
         )
 
-        t!(v: ["a\\b\\c"], ["a", "b", "c"]);
+        t!(s: b"a\\b\\c", ["a", "b", "c"]);
         t!(s: "a\\b\\c", ["a", "b", "c"]);
         t!(s: "a\\b\\d", ["a", "b", "d"]);
         t!(s: "a\\b\\cd", ["a", "b", "cd"]);
@@ -2320,8 +2299,8 @@ mod tests {
             )
         )
 
-        t!(s: "a\\b\\c", [b!("a"), b!("b"), b!("c")]);
-        t!(s: ".", [b!(".")]);
+        t!(s: "a\\b\\c", [b"a", b"b", b"c"]);
+        t!(s: ".", [b"."]);
         // since this is really a wrapper around str_components, those tests suffice
     }
 

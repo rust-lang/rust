@@ -22,7 +22,8 @@ enum CantDeriveThose {}
 fn main() {
     doesnt_exist!(); //~ ERROR
 
-    bytes!(invalid); //~ ERROR
+    bytes!(invalid); //~ ERROR non-literal in bytes!
+    //~^ WARN `bytes!` is deprecated
 
     asm!(invalid); //~ ERROR
 

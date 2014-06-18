@@ -35,7 +35,7 @@ let path = Path::new("foo.txt");
 
 // create the file, whether it exists or not
 let mut file = File::create(&path);
-file.write(bytes!("foobar"));
+file.write(b"foobar");
 # drop(file);
 
 // open the file in read-only mode
@@ -186,7 +186,7 @@ impl File {
     /// use std::io::File;
     ///
     /// let mut f = File::create(&Path::new("foo.txt"));
-    /// f.write(bytes!("This is a sample file"));
+    /// f.write(b"This is a sample file");
     /// # drop(f);
     /// # ::std::io::fs::unlink(&Path::new("foo.txt"));
     /// ```
@@ -1141,7 +1141,7 @@ mod test {
     iotest!(fn file_test_fileinfo_check_exists_before_and_after_file_creation() {
         let tmpdir = tmpdir();
         let file = &tmpdir.join("fileinfo_check_exists_b_and_a.txt");
-        check!(File::create(file).write(bytes!("foo")));
+        check!(File::create(file).write(b"foo"));
         assert!(file.exists());
         check!(unlink(file));
         assert!(!file.exists());
@@ -1253,7 +1253,7 @@ mod test {
         let canary = d2.join("do_not_delete");
         check!(mkdir_recursive(&dtt, io::UserRWX));
         check!(mkdir_recursive(&d2, io::UserRWX));
-        check!(File::create(&canary).write(bytes!("foo")));
+        check!(File::create(&canary).write(b"foo"));
         check!(symlink(&d2, &dt.join("d2")));
         check!(rmdir_recursive(&d1));
 
@@ -1314,10 +1314,10 @@ mod test {
         let input = tmpdir.join("in.txt");
         let out = tmpdir.join("out.txt");
 
-        check!(File::create(&input).write(bytes!("hello")));
+        check!(File::create(&input).write(b"hello"));
         check!(copy(&input, &out));
         let contents = check!(File::open(&out).read_to_end());
-        assert_eq!(contents.as_slice(), bytes!("hello"));
+        assert_eq!(contents.as_slice(), b"hello");
 
         assert_eq!(check!(input.stat()).perm, check!(out.stat()).perm);
     })
@@ -1342,7 +1342,7 @@ mod test {
         check!(copy(&input, &output));
 
         assert_eq!(check!(File::open(&output).read_to_end()),
-                   (Vec::from_slice(bytes!("foo"))));
+                   (Vec::from_slice(b"foo")));
     })
 
     iotest!(fn copy_file_src_dir() {
@@ -1383,7 +1383,7 @@ mod test {
         }
         assert_eq!(check!(stat(&out)).size, check!(stat(&input)).size);
         assert_eq!(check!(File::open(&out).read_to_end()),
-                   (Vec::from_slice(bytes!("foobar"))));
+                   (Vec::from_slice(b"foobar")));
     })
 
     #[cfg(not(windows))] // apparently windows doesn't like symlinks
@@ -1418,7 +1418,7 @@ mod test {
         assert_eq!(check!(stat(&out)).size, check!(stat(&input)).size);
         assert_eq!(check!(stat(&out)).size, check!(input.stat()).size);
         assert_eq!(check!(File::open(&out).read_to_end()),
-                   (Vec::from_slice(bytes!("foobar"))));
+                   (Vec::from_slice(b"foobar")));
 
         // can't link to yourself
         match link(&input, &input) {
@@ -1456,7 +1456,7 @@ mod test {
         let mut file = check!(File::open_mode(&path, io::Open, io::ReadWrite));
         check!(file.fsync());
         check!(file.datasync());
-        check!(file.write(bytes!("foo")));
+        check!(file.write(b"foo"));
         check!(file.fsync());
         check!(file.datasync());
         drop(file);
@@ -1467,29 +1467,29 @@ mod test {
         let path = tmpdir.join("in.txt");
 
         let mut file = check!(File::open_mode(&path, io::Open, io::ReadWrite));
-        check!(file.write(bytes!("foo")));
+        check!(file.write(b"foo"));
         check!(file.fsync());
 
         // Do some simple things with truncation
         assert_eq!(check!(file.stat()).size, 3);
         check!(file.truncate(10));
         assert_eq!(check!(file.stat()).size, 10);
-        check!(file.write(bytes!("bar")));
+        check!(file.write(b"bar"));
         check!(file.fsync());
         assert_eq!(check!(file.stat()).size, 10);
         assert_eq!(check!(File::open(&path).read_to_end()),
-                   (Vec::from_slice(bytes!("foobar", 0, 0, 0, 0))));
+                   (Vec::from_slice(b"foobar\0\0\0\0")));
 
         // Truncate to a smaller length, don't seek, and then write something.
         // Ensure that the intermediate zeroes are all filled in (we're seeked
         // past the end of the file).
         check!(file.truncate(2));
         assert_eq!(check!(file.stat()).size, 2);
-        check!(file.write(bytes!("wut")));
+        check!(file.write(b"wut"));
         check!(file.fsync());
         assert_eq!(check!(file.stat()).size, 9);
         assert_eq!(check!(File::open(&path).read_to_end()),
-                   (Vec::from_slice(bytes!("fo", 0, 0, 0, 0, "wut"))));
+                   (Vec::from_slice(b"fo\0\0\0\0wut")));
         drop(file);
     })
 

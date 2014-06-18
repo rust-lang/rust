@@ -292,9 +292,9 @@ pub struct AsciiGenerator<'a, R> {
 impl<'a, R: Rng> Iterator<char> for AsciiGenerator<'a, R> {
     fn next(&mut self) -> Option<char> {
         static GEN_ASCII_STR_CHARSET: &'static [u8] =
-            bytes!("ABCDEFGHIJKLMNOPQRSTUVWXYZ\
-                    abcdefghijklmnopqrstuvwxyz\
-                    0123456789");
+            b"ABCDEFGHIJKLMNOPQRSTUVWXYZ\
+              abcdefghijklmnopqrstuvwxyz\
+              0123456789";
         Some(*self.rng.choose(GEN_ASCII_STR_CHARSET).unwrap() as char)
     }
 }
