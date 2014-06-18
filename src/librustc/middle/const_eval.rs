@@ -506,6 +506,7 @@ pub fn lit_to_const(lit: &Lit) -> const_val {
         LitBinary(ref data) => {
             const_binary(Rc::new(data.iter().map(|x| *x).collect()))
         }
+        LitByte(n) => const_uint(n as u64),
         LitChar(n) => const_uint(n as u64),
         LitInt(n, _) => const_int(n),
         LitUint(n, _) => const_uint(n),
@@ -528,6 +529,7 @@ pub fn compare_const_vals(a: &const_val, b: &const_val) -> Option<int> {
         (&const_float(a), &const_float(b)) => compare_vals(a, b),
         (&const_str(ref a), &const_str(ref b)) => compare_vals(a, b),
         (&const_bool(a), &const_bool(b)) => compare_vals(a, b),
+        (&const_binary(ref a), &const_binary(ref b)) => compare_vals(a, b),
         _ => None
     }
 }

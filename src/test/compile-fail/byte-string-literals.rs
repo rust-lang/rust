@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,6 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-static s: &'static str =
-    "\●" //~ ERROR: unknown character escape
-;
+
+// ignore-tidy-tab
+
+static FOO: &'static [u8] = b"\f";  //~ ERROR unknown byte escape
+
+pub fn main() {
+    b"\f";  //~ ERROR unknown byte escape
+    b"\x0Z";  //~ ERROR illegal character in numeric character escape: Z
+    b"é";  //~ ERROR byte constant must be ASCII
+    b"a  //~ ERROR unterminated double quote byte string
+}
+
+
