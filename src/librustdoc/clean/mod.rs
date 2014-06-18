@@ -1924,6 +1924,14 @@ fn lit_to_str(lit: &ast::Lit) -> String {
     match lit.node {
         ast::LitStr(ref st, _) => st.get().to_string(),
         ast::LitBinary(ref data) => format!("{:?}", data.as_slice()),
+        ast::LitByte(b) => {
+            let mut res = String::from_str("b'");
+            (b as char).escape_default(|c| {
+                res.push_char(c);
+            });
+            res.push_char('\'');
+            res
+        },
         ast::LitChar(c) => format!("'{}'", c),
         ast::LitInt(i, _t) => i.to_str(),
         ast::LitUint(u, _t) => u.to_str(),

@@ -805,6 +805,7 @@ fn check_type_limits(cx: &Context, e: &ast::Expr) {
                     } else { t };
                     let (min, max) = uint_ty_range(uint_type);
                     let lit_val: u64 = match lit.node {
+                        ast::LitByte(_v) => return,  // _v is u8, within range by definition
                         ast::LitInt(v, _) => v as u64,
                         ast::LitUint(v, _) => v,
                         ast::LitIntUnsuffixed(v) => v as u64,

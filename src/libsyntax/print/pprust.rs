@@ -2305,6 +2305,12 @@ impl<'a> State<'a> {
         }
         match lit.node {
             ast::LitStr(ref st, style) => self.print_string(st.get(), style),
+            ast::LitByte(byte) => {
+                let mut res = String::from_str("b'");
+                (byte as char).escape_default(|c| res.push_char(c));
+                res.push_char('\'');
+                word(&mut self.s, res.as_slice())
+            }
             ast::LitChar(ch) => {
                 let mut res = String::from_str("'");
                 ch.escape_default(|c| res.push_char(c));
@@ -2336,19 +2342,9 @@ impl<'a> State<'a> {
             ast::LitBool(val) => {
                 if val { word(&mut self.s, "true") } else { word(&mut self.s, "false") }
             }
-            ast::LitBinary(ref arr) => {
-                try!(self.ibox(indent_unit));
-                try!(word(&mut self.s, "["));
-                try!(self.commasep_cmnt(Inconsistent,
-                                        arr.as_slice(),
-                                        |s, u| {
-                                            word(&mut s.s,
-                                                 format!("{}",
-                                                         *u).as_slice())
-                                        },
-                                        |_| lit.span));
-                try!(word(&mut self.s, "]"));
-                self.end()
+            ast::LitBinary(ref v) => {
+                let escaped: String = v.iter().map(|&b| b as char).collect();
+                word(&mut self.s, format!("b\"{}\"", escaped.escape_default()).as_slice())
             }
         }
     }
