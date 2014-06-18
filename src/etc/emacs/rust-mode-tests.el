@@ -12,7 +12,7 @@
 (defun rust-test-explain-bad-manip (original point-pos manip-func expected got)
   (if (equal expected got)
       nil
-    (list 
+    (list
      ;; The (goto-char) and (insert) business here is just for
      ;; convenience--after an error, you can copy-paste that into emacs eval to
      ;; insert the bare strings into a buffer
@@ -66,13 +66,13 @@ Also, the result should be the same regardless of whether the code is at the beg
                        do (rust-test-manip-code
                            (concat padding-beginning unfilled padding-end)
                            pos
-                           (lambda () 
+                           (lambda ()
                              (let ((fill-column rust-test-fill-column))
                                (fill-paragraph)))
                            (concat padding-beginning expected padding-end)))))))
 
 (ert-deftest fill-paragraph-top-level-multi-line-style-doc-comment-second-line ()
-  (test-fill-paragraph 
+  (test-fill-paragraph
    "/**
  * This is a very very very very very very very long string
  */"
@@ -188,10 +188,10 @@ This is some more text.  Fee fie fo fum.  Humpty dumpty sat on a wall.
 
 (ert-deftest fill-paragraph-with-no-space-after-star-prefix ()
   (test-fill-paragraph
-   "/** 
+   "/**
  *This is a very very very very very very very long string
  */"
-   "/** 
+   "/**
  *This is a very very very very
  *very very very long string
  */"))
@@ -226,7 +226,7 @@ fn bar() { }"
 fn bar() { }" 14 67))
 
 (defun test-auto-fill (initial position inserted expected)
-  (rust-test-manip-code 
+  (rust-test-manip-code
    initial
    position
    (lambda ()
@@ -244,7 +244,7 @@ fn bar() { }" 14 67))
 (ert-deftest auto-fill-multi-line-doc-comment ()
   (test-auto-fill
    "/**
- * 
+ *
  */"
    8
    "This is a very very very very very very very long string"
@@ -301,7 +301,7 @@ struct Foo { bar: int,
 
 struct Blah {x:int,
              y:int,
-             z:~str}"))
+             z:String"))
 
 (ert-deftest indent-doc-comments ()
   (test-indent
@@ -317,7 +317,7 @@ fn foo() {
     /*!
      * this is a nested doc comment
      */
-    
+
     //! And so is this
 }"))
 
@@ -331,7 +331,7 @@ struct foo {
     b:char
 }
 
-fn bar(x:~int) {   // comment here should not affect the next indent
+fn bar(x:Box<int>) {   // comment here should not affect the next indent
     bla();
     bla();
 }"))
@@ -387,7 +387,7 @@ fn baz(   a:int,  // shoudl work with a comment here
    "
 fn args_on_the_next_line( // with a comment
     a:int,
-    b:~str) {
+    b:String) {
     let aaaaaa = [
         1,
         2,
@@ -456,7 +456,7 @@ fn foo() {
   (test-indent
    "
 fn foo() {
-    let x = 
+    let x =
         match blah {
             Pattern |
             Pattern2 => {
@@ -473,7 +473,7 @@ fn foo() {
   (test-indent
    "
 fn foo() {
-    let x = 
+    let x =
         foo(bar(|x| {
             only_one_indent_here();
         }));
@@ -572,7 +572,7 @@ fn indenting_middle_of_line() {
 }
 
 fn indented_already() {
-    
+
     // The previous line already has its spaces
 }
 "
@@ -654,91 +654,91 @@ All positions are position symbols found in `rust-test-positions-alist'."
                          (rust-get-buffer-pos reg-end))))))
 
 (ert-deftest rust-beginning-of-defun-from-middle-of-fn ()
-  (rust-test-motion 
+  (rust-test-motion
    rust-test-motion-string
    'middle-of-fn1
    'start-of-fn1
    #'beginning-of-defun))
 
 (ert-deftest rust-beginning-of-defun-from-end ()
-  (rust-test-motion 
+  (rust-test-motion
    rust-test-motion-string
    'end-of-fn1
    'start-of-fn1
    #'beginning-of-defun))
 
 (ert-deftest rust-beginning-of-defun-before-open-brace ()
-  (rust-test-motion 
+  (rust-test-motion
    rust-test-motion-string
    'start-of-fn1-middle-of-line
    'start-of-fn1
    #'beginning-of-defun))
 
 (ert-deftest rust-beginning-of-defun-between-fns ()
-  (rust-test-motion 
+  (rust-test-motion
    rust-test-motion-string
    'between-fn1-fn2
    'start-of-fn1
    #'beginning-of-defun))
 
 (ert-deftest rust-beginning-of-defun-with-arg ()
-  (rust-test-motion 
+  (rust-test-motion
    rust-test-motion-string
    'middle-of-fn2
    'start-of-fn1
    #'beginning-of-defun 2))
 
 (ert-deftest rust-beginning-of-defun-with-negative-arg ()
-  (rust-test-motion 
+  (rust-test-motion
    rust-test-motion-string
    'middle-of-fn1
    'beginning-of-fn3
    #'beginning-of-defun -2))
 
 (ert-deftest rust-beginning-of-defun-pub-fn ()
-  (rust-test-motion 
+  (rust-test-motion
    rust-test-motion-string
    'middle-of-fn3
    'beginning-of-fn3
    #'beginning-of-defun))
 
 (ert-deftest rust-end-of-defun-from-middle-of-fn ()
-  (rust-test-motion 
+  (rust-test-motion
    rust-test-motion-string
    'middle-of-fn1
    'between-fn1-fn2
    #'end-of-defun))
 
 (ert-deftest rust-end-of-defun-from-beg ()
-  (rust-test-motion 
+  (rust-test-motion
    rust-test-motion-string
    'start-of-fn1
    'between-fn1-fn2
    #'end-of-defun))
 
 (ert-deftest rust-end-of-defun-before-open-brace ()
-  (rust-test-motion 
+  (rust-test-motion
    rust-test-motion-string
    'start-of-fn1-middle-of-line
    'between-fn1-fn2
    #'end-of-defun))
 
 (ert-deftest rust-end-of-defun-between-fns ()
-  (rust-test-motion 
+  (rust-test-motion
    rust-test-motion-string
    'between-fn1-fn2
    'after-end-of-fn2
    #'end-of-defun))
 
 (ert-deftest rust-end-of-defun-with-arg ()
-  (rust-test-motion 
+  (rust-test-motion
    rust-test-motion-string
    'middle-of-fn1
    'after-end-of-fn2
    #'end-of-defun 2))
 
 (ert-deftest rust-end-of-defun-with-negative-arg ()
-  (rust-test-motion 
+  (rust-test-motion
    rust-test-motion-string
    'middle-of-fn3
    'between-fn1-fn2
@@ -752,14 +752,14 @@ All positions are position symbols found in `rust-test-positions-alist'."
    #'mark-defun))
 
 (ert-deftest rust-mark-defun-from-end ()
-  (rust-test-region 
+  (rust-test-region
    rust-test-region-string
    'end-of-fn1
    'before-start-of-fn1 'between-fn1-fn2
    #'mark-defun))
 
 (ert-deftest rust-mark-defun-start-of-defun ()
-  (rust-test-region 
+  (rust-test-region
    rust-test-region-string
    'start-of-fn2
    'between-fn1-fn2 'after-end-of-fn2
@@ -834,3 +834,63 @@ All positions are position symbols found in `rust-test-positions-alist'."
    'nonblank-line-indented-already-middle-start
    'nonblank-line-indented-already-middle-target
    #'indent-for-tab-command))
+
+(defun rust-test-fontify-string (str)
+  (with-temp-buffer
+    (rust-mode)
+    (insert str)
+    (font-lock-fontify-buffer)
+    (buffer-string)))
+
+(defun rust-test-group-str-by-face (str)
+  "Fontify `STR' in rust-mode and group it by face, returning a
+list of substrings of `STR' each followed by its face."
+  (cl-loop with fontified = (rust-test-fontify-string str)
+           for start = 0 then end
+           while start
+           for end   = (next-single-property-change start 'face fontified)
+           for prop  = (get-text-property start 'face fontified)
+           for text  = (substring-no-properties fontified start end)
+           if prop
+           append (list text prop)))
+
+(defun rust-test-font-lock (source face-groups)
+  "Test that `SOURCE' fontifies to the expected `FACE-GROUPS'"
+  (should (equal (rust-test-group-str-by-face source)
+                 face-groups)))
+
+(ert-deftest font-lock-attribute-simple ()
+  (rust-test-font-lock
+   "#[foo]"
+   '("#[foo]" font-lock-preprocessor-face)))
+
+(ert-deftest font-lock-attribute-inner ()
+  (rust-test-font-lock
+   "#![foo]"
+   '("#![foo]" font-lock-preprocessor-face)))
+
+(ert-deftest font-lock-attribute-key-value ()
+  (rust-test-font-lock
+   "#[foo = \"bar\"]"
+   '("#[foo = " font-lock-preprocessor-face
+     "\"bar\"" font-lock-string-face
+     "]" font-lock-preprocessor-face)))
+
+(ert-deftest font-lock-attribute-around-comment ()
+  (rust-test-font-lock
+   "#[foo /* bar */]"
+   '("#[foo " font-lock-preprocessor-face
+     "/* " font-lock-comment-delimiter-face
+     "bar */" font-lock-comment-face
+     "]" font-lock-preprocessor-face)))
+
+(ert-deftest font-lock-attribute-inside-string ()
+  (rust-test-font-lock
+   "\"#[foo]\""
+   '("\"#[foo]\"" font-lock-string-face)))
+
+(ert-deftest font-lock-attribute-inside-comment ()
+  (rust-test-font-lock
+   "/* #[foo] */"
+   '("/* " font-lock-comment-delimiter-face
+     "#[foo] */" font-lock-comment-face)))
