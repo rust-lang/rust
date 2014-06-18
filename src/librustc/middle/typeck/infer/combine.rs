@@ -378,17 +378,19 @@ pub fn super_tys<C:Combine>(this: &C, a: ty::t, b: ty::t) -> cres<ty::t> {
     // so, for example, &T and &[U] should not unify. In fact the only thing
     // &[U] should unify with is &[T]. We preserve that behaviour with this
     // check.
-    fn check_ptr_to_vec<C:Combine>(this: &C,
-                                   a: ty::t,
-                                   b: ty::t,
-                                   a_inner: ty::t,
-                                   b_inner: ty::t,
-                                   result: ty::t) -> cres<ty::t> {
+    fn check_ptr_to_unsized<C:Combine>(this: &C,
+                                       a: ty::t,
+                                       b: ty::t,
+                                       a_inner: ty::t,
+                                       b_inner: ty::t,
+                                       result: ty::t) -> cres<ty::t> {
         match (&ty::get(a_inner).sty, &ty::get(b_inner).sty) {
             (&ty::ty_vec(_, None), &ty::ty_vec(_, None)) |
-            (&ty::ty_str, &ty::ty_str) => Ok(result),
+            (&ty::ty_str, &ty::ty_str) |
+            (&ty::ty_trait(..), &ty::ty_trait(..)) => Ok(result),
             (&ty::ty_vec(_, None), _) | (_, &ty::ty_vec(_, None)) |
-            (&ty::ty_str, _) | (_, &ty::ty_str)
+            (&ty::ty_str, _) | (_, &ty::ty_str) |
+            (&ty::ty_trait(..), _) | (_, &ty::ty_trait(..))
                 => Err(ty::terr_sorts(expected_found(this, a, b))),
             _ => Ok(result),
         }
@@ -478,12 +480,10 @@ pub fn super_tys<C:Combine>(this: &C, a: ty::t, b: ty::t) -> cres<ty::t> {
       if a_.def_id == b_.def_id => {
           debug!("Trying to match traits {:?} and {:?}", a, b);
           let substs = if_ok!(this.substs(a_.def_id, &a_.substs, &b_.substs));
-          let s = if_ok!(this.trait_stores(ty::terr_trait, a_.store, b_.store));
           let bounds = if_ok!(this.bounds(a_.bounds, b_.bounds));
           Ok(ty::mk_trait(tcx,
                           a_.def_id,
                           substs.clone(),
-                          s,
                           bounds))
       }
 
@@ -499,18 +499,28 @@ pub fn super_tys<C:Combine>(this: &C, a: ty::t, b: ty::t) -> cres<ty::t> {
 
       (&ty::ty_uniq(a_inner), &ty::ty_uniq(b_inner)) => {
             let typ = if_ok!(this.tys(a_inner, b_inner));
-            check_ptr_to_vec(this, a, b, a_inner, b_inner, ty::mk_uniq(tcx, typ))
+            check_ptr_to_unsized(this, a, b, a_inner, b_inner, ty::mk_uniq(tcx, typ))
       }
 
       (&ty::ty_ptr(ref a_mt), &ty::ty_ptr(ref b_mt)) => {
             let mt = if_ok!(this.mts(a_mt, b_mt));
-            check_ptr_to_vec(this, a, b, a_mt.ty, b_mt.ty, ty::mk_ptr(tcx, mt))
+            check_ptr_to_unsized(this, a, b, a_mt.ty, b_mt.ty, ty::mk_ptr(tcx, mt))
       }
 
       (&ty::ty_rptr(a_r, ref a_mt), &ty::ty_rptr(b_r, ref b_mt)) => {
             let r = if_ok!(this.contraregions(a_r, b_r));
-            let mt = if_ok!(this.mts(a_mt, b_mt));
-            check_ptr_to_vec(this, a, b, a_mt.ty, b_mt.ty, ty::mk_rptr(tcx, r, mt))
+            // FIXME(14985)  If we have mutable references to trait objects, we
+            // used to use covariant subtyping. I have preserved this behaviour,
+            // even though it is probably incorrect. So don't go down the usual
+            // path which would require invariance.
+            let mt = match (&ty::get(a_mt.ty).sty, &ty::get(b_mt.ty).sty) {
+                (&ty::ty_trait(..), &ty::ty_trait(..)) if a_mt.mutbl == b_mt.mutbl => {
+                    let ty = if_ok!(this.tys(a_mt.ty, b_mt.ty));
+                    ty::mt { ty: ty, mutbl: a_mt.mutbl }
+                }
+                _ => if_ok!(this.mts(a_mt, b_mt))
+            };
+            check_ptr_to_unsized(this, a, b, a_mt.ty, b_mt.ty, ty::mk_rptr(tcx, r, mt))
       }
 
       (&ty::ty_vec(ref a_mt, sz_a), &ty::ty_vec(ref b_mt, sz_b)) => {

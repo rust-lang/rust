@@ -725,10 +725,10 @@ pub fn check_pointer_pat(pcx: &pat_ctxt,
         fcx.write_ty(pat_id, expected);
     };
     match *structure_of(fcx, span, expected) {
-        ty::ty_uniq(e_inner) if pointer_kind == Send => {
+        ty::ty_uniq(e_inner) if pointer_kind == Send && !ty::type_is_trait(e_inner) => {
             check_inner(e_inner);
         }
-        ty::ty_rptr(_, e_inner) if pointer_kind == Borrowed => {
+        ty::ty_rptr(_, e_inner) if pointer_kind == Borrowed && !ty::type_is_trait(e_inner.ty) => {
             check_inner(e_inner.ty);
         }
         _ => {
