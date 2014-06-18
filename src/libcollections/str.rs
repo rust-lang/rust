@@ -382,7 +382,7 @@ static TAG_CONT_U8: u8 = 128u8;
 /// # Example
 ///
 /// ```rust
-/// let input = bytes!("Hello ", 0xF0, 0x90, 0x80, "World");
+/// let input = b"Hello \xF0\x90\x80World";
 /// let output = std::str::from_utf8_lossy(input);
 /// assert_eq!(output.as_slice(), "Hello \uFFFDWorld");
 /// ```
@@ -391,7 +391,7 @@ pub fn from_utf8_lossy<'a>(v: &'a [u8]) -> MaybeOwned<'a> {
         return Slice(unsafe { mem::transmute(v) })
     }
 
-    static REPLACEMENT: &'static [u8] = bytes!(0xEF, 0xBF, 0xBD); // U+FFFD in UTF-8
+    static REPLACEMENT: &'static [u8] = b"\xEF\xBF\xBD"; // U+FFFD in UTF-8
     let mut i = 0;
     let total = v.len();
     fn unsafe_get(xs: &[u8], i: uint) -> u8 {
@@ -994,7 +994,7 @@ mod tests {
     fn test_into_bytes() {
         let data = "asdf".to_string();
         let buf = data.into_bytes();
-        assert_eq!(bytes!("asdf"), buf.as_slice());
+        assert_eq!(b"asdf", buf.as_slice());
     }
 
     #[test]
@@ -2050,58 +2050,58 @@ mod tests {
 
     #[test]
     fn test_str_from_utf8() {
-        let xs = bytes!("hello");
+        let xs = b"hello";
         assert_eq!(from_utf8(xs), Some("hello"));
 
-        let xs = bytes!("ศไทย中华Việt Nam");
+        let xs = "ศไทย中华Việt Nam".as_bytes();
         assert_eq!(from_utf8(xs), Some("ศไทย中华Việt Nam"));
 
-        let xs = bytes!("hello", 0xff);
+        let xs = b"hello\xFF";
         assert_eq!(from_utf8(xs), None);
     }
 
     #[test]
     fn test_str_from_utf8_owned() {
-        let xs = Vec::from_slice(bytes!("hello"));
+        let xs = Vec::from_slice(b"hello");
         assert_eq!(from_utf8_owned(xs), Ok("hello".to_string()));
 
-        let xs = Vec::from_slice(bytes!("ศไทย中华Việt Nam"));
+        let xs = Vec::from_slice("ศไทย中华Việt Nam".as_bytes());
         assert_eq!(from_utf8_owned(xs), Ok("ศไทย中华Việt Nam".to_string()));
 
-        let xs = Vec::from_slice(bytes!("hello", 0xff));
+        let xs = Vec::from_slice(b"hello\xFF");
         assert_eq!(from_utf8_owned(xs),
-                   Err(Vec::from_slice(bytes!("hello", 0xff))));
+                   Err(Vec::from_slice(b"hello\xFF")));
     }
 
     #[test]
     fn test_str_from_utf8_lossy() {
-        let xs = bytes!("hello");
+        let xs = b"hello";
         assert_eq!(from_utf8_lossy(xs), Slice("hello"));
 
-        let xs = bytes!("ศไทย中华Việt Nam");
+        let xs = "ศไทย中华Việt Nam".as_bytes();
         assert_eq!(from_utf8_lossy(xs), Slice("ศไทย中华Việt Nam"));
 
-        let xs = bytes!("Hello", 0xC2, " There", 0xFF, " Goodbye");
+        let xs = b"Hello\xC2 There\xFF Goodbye";
         assert_eq!(from_utf8_lossy(xs), Owned("Hello\uFFFD There\uFFFD Goodbye".to_string()));
 
-        let xs = bytes!("Hello", 0xC0, 0x80, " There", 0xE6, 0x83, " Goodbye");
+        let xs = b"Hello\xC0\x80 There\xE6\x83 Goodbye";
         assert_eq!(from_utf8_lossy(xs), Owned("Hello\uFFFD\uFFFD There\uFFFD Goodbye".to_string()));
 
-        let xs = bytes!(0xF5, "foo", 0xF5, 0x80, "bar");
+        let xs = b"\xF5foo\xF5\x80bar";
         assert_eq!(from_utf8_lossy(xs), Owned("\uFFFDfoo\uFFFD\uFFFDbar".to_string()));
 
-        let xs = bytes!(0xF1, "foo", 0xF1, 0x80, "bar", 0xF1, 0x80, 0x80, "baz");
+        let xs = b"\xF1foo\xF1\x80bar\xF1\x80\x80baz";
         assert_eq!(from_utf8_lossy(xs), Owned("\uFFFDfoo\uFFFDbar\uFFFDbaz".to_string()));
 
-        let xs = bytes!(0xF4, "foo", 0xF4, 0x80, "bar", 0xF4, 0xBF, "baz");
+        let xs = b"\xF4foo\xF4\x80bar\xF4\xBFbaz";
         assert_eq!(from_utf8_lossy(xs), Owned("\uFFFDfoo\uFFFDbar\uFFFD\uFFFDbaz".to_string()));
 
-        let xs = bytes!(0xF0, 0x80, 0x80, 0x80, "foo", 0xF0, 0x90, 0x80, 0x80, "bar");
+        let xs = b"\xF0\x80\x80\x80foo\xF0\x90\x80\x80bar";
         assert_eq!(from_utf8_lossy(xs), Owned("\uFFFD\uFFFD\uFFFD\uFFFD\
                                                foo\U00010000bar".to_string()));
 
         // surrogates
-        let xs = bytes!(0xED, 0xA0, 0x80, "foo", 0xED, 0xBF, 0xBF, "bar");
+        let xs = b"\xED\xA0\x80foo\xED\xBF\xBFbar";
         assert_eq!(from_utf8_lossy(xs), Owned("\uFFFD\uFFFD\uFFFDfoo\
                                                \uFFFD\uFFFD\uFFFDbar".to_string()));
     }
@@ -2298,8 +2298,8 @@ mod bench {
     #[bench]
     fn is_utf8_100_ascii(b: &mut Bencher) {
 
-        let s = bytes!("Hello there, the quick brown fox jumped over the lazy dog! \
-                        Lorem ipsum dolor sit amet, consectetur. ");
+        let s = b"Hello there, the quick brown fox jumped over the lazy dog! \
+                  Lorem ipsum dolor sit amet, consectetur. ";
 
         assert_eq!(100, s.len());
         b.iter(|| {
@@ -2309,7 +2309,7 @@ mod bench {
 
     #[bench]
     fn is_utf8_100_multibyte(b: &mut Bencher) {
-        let s = bytes!("𐌀𐌖𐌋𐌄𐌑𐌉ปรدولة الكويتทศไทย中华𐍅𐌿𐌻𐍆𐌹𐌻𐌰");
+        let s = "𐌀𐌖𐌋𐌄𐌑𐌉ปรدولة الكويتทศไทย中华𐍅𐌿𐌻𐍆𐌹𐌻𐌰".as_bytes();
         assert_eq!(100, s.len());
         b.iter(|| {
             is_utf8(s)
@@ -2318,8 +2318,8 @@ mod bench {
 
     #[bench]
     fn from_utf8_lossy_100_ascii(b: &mut Bencher) {
-        let s = bytes!("Hello there, the quick brown fox jumped over the lazy dog! \
-                        Lorem ipsum dolor sit amet, consectetur. ");
+        let s = b"Hello there, the quick brown fox jumped over the lazy dog! \
+                  Lorem ipsum dolor sit amet, consectetur. ";
 
         assert_eq!(100, s.len());
         b.iter(|| {
@@ -2329,7 +2329,7 @@ mod bench {
 
     #[bench]
     fn from_utf8_lossy_100_multibyte(b: &mut Bencher) {
-        let s = bytes!("𐌀𐌖𐌋𐌄𐌑𐌉ปรدولة الكويتทศไทย中华𐍅𐌿𐌻𐍆𐌹𐌻𐌰");
+        let s = "𐌀𐌖𐌋𐌄𐌑𐌉ปรدولة الكويتทศไทย中华𐍅𐌿𐌻𐍆𐌹𐌻𐌰".as_bytes();
         assert_eq!(100, s.len());
         b.iter(|| {
             let _ = from_utf8_lossy(s);
@@ -2338,7 +2338,7 @@ mod bench {
 
     #[bench]
     fn from_utf8_lossy_invalid(b: &mut Bencher) {
-        let s = bytes!("Hello", 0xC0, 0x80, " There", 0xE6, 0x83, " Goodbye");
+        let s = b"Hello\xC0\x80 There\xE6\x83 Goodbye";
         b.iter(|| {
             let _ = from_utf8_lossy(s);
         });

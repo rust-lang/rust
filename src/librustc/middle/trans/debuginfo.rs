@@ -1411,7 +1411,7 @@ fn compile_unit_metadata(cx: &CrateContext) {
                 match abs_path.path_relative_from(work_dir) {
                     Some(ref p) if p.is_relative() => {
                             // prepend "./" if necessary
-                            let dotdot = bytes!("..");
+                            let dotdot = b"..";
                             let prefix = &[dotdot[0], ::std::path::SEP_BYTE];
                             let mut path_bytes = Vec::from_slice(p.as_vec());
 
