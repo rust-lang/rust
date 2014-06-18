@@ -285,8 +285,8 @@ impl TypeMap {
         // unique ptr (~)       -> {~ :pointee-uid:}
         // @-ptr (@)            -> {@ :pointee-uid:}
         // sized vec ([T, ..x]) -> {[:size:] :element-uid:}
-        // vec slice (&[T])     -> {&<mut> [] :element-uid:}
-        // trait (~ | &[mut] T) -> {:sigil: trait_:svh: / :node-id:_<(:param-uid:),*> }
+        // unsized vec ([T])    -> {[] :element-uid:}
+        // trait (T)            -> {trait_:svh: / :node-id:_<(:param-uid:),*> }
         // closure              -> {<unsafe_> <once_> :store-sigil: |(:param-uid:),* <,_...>| -> \
         //                             :return-type-uid: : (:bounds:)*}
         // function             -> {<unsafe_> <abi_> fn( (:param-uid:)* <,_...> ) -> \
@@ -361,18 +361,12 @@ impl TypeMap {
                 let inner_type_id = self.get_unique_type_id_as_string(inner_type_id);
                 unique_type_id.push_str(inner_type_id.as_slice());
             },
-            ty::ty_vec(ty::mt { ty: inner_type, mutbl }, optional_length) => {
+            ty::ty_vec(ty::mt { ty: inner_type, .. }, optional_length) => {
                 match optional_length {
                     Some(len) => {
                         unique_type_id.push_str(format!("[{}]", len).as_slice());
                     }
                     None => {
-                        unique_type_id.push_char('&');
-
-                        if mutbl == ast::MutMutable {
-                           unique_type_id.push_str("mut");
-                        }
-
                         unique_type_id.push_str("[]");
                     }
                 };
@@ -382,12 +376,6 @@ impl TypeMap {
                 unique_type_id.push_str(inner_type_id.as_slice());
             },
             ty::ty_trait(ref trait_data) => {
-                match trait_data.store {
-                    ty::UniqTraitStore => unique_type_id.push_char('~'),
-                    ty::RegionTraitStore(_, ast::MutMutable) => unique_type_id.push_str("&mut"),
-                    ty::RegionTraitStore(_, ast::MutImmutable) => unique_type_id.push_char('&'),
-                };
-
                 unique_type_id.push_str("trait ");
 
                 from_def_id_and_substs(self,
@@ -2901,6 +2889,16 @@ fn type_metadata(cx: &CrateContext,
                     let i8_t = ty::mk_i8();
                     heap_vec_metadata(cx, pointee_type, i8_t, unique_type_id, usage_site_span)
                 }
+                ty::ty_trait(box ty::TyTrait {
+                        def_id,
+                        ref substs,
+                        ref bounds
+                    }) => {
+                    MetadataCreationResult::new(
+                        trait_metadata(cx, def_id, t, substs, ty::UniqTraitStore,
+                                       bounds, unique_type_id),
+                    false)
+                }
                 _ => {
                     let pointee_metadata = type_metadata(cx, pointee_type, usage_site_span);
                     return_if_created_in_meantime!();
@@ -2917,6 +2915,17 @@ fn type_metadata(cx: &CrateContext,
                 ty::ty_str => {
                     vec_slice_metadata(cx, t, ty::mk_i8(), unique_type_id, usage_site_span)
                 }
+                ty::ty_trait(box ty::TyTrait {
+                        def_id,
+                        ref substs,
+                        ref bounds
+                    }) => {
+                    MetadataCreationResult::new(
+                        trait_metadata(cx, def_id, t, substs,
+                                       ty::RegionTraitStore(ty::ReStatic, mt.mutbl),
+                                       bounds, unique_type_id),
+                    false)
+                }
                 _ => {
                     let pointee = type_metadata(cx, mt.ty, usage_site_span);
                     return_if_created_in_meantime!();
@@ -2929,16 +2938,6 @@ fn type_metadata(cx: &CrateContext,
         }
         ty::ty_closure(ref closurety) => {
             subroutine_type_metadata(cx, unique_type_id, &closurety.sig, usage_site_span)
-        }
-        ty::ty_trait(box ty::TyTrait {
-                def_id,
-                ref substs,
-                store,
-                ref bounds
-            }) => {
-            MetadataCreationResult::new(
-                trait_metadata(cx, def_id, t, substs, store, bounds, unique_type_id),
-                false)
         }
         ty::ty_struct(def_id, ref substs) => {
             prepare_struct_metadata(cx,

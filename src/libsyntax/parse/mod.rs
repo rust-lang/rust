@@ -281,6 +281,7 @@ mod test {
     use serialize::{json, Encodable};
     use std::io;
     use std::io::MemWriter;
+    use std::mem::transmute;
     use std::str;
     use std::gc::GC;
     use codemap::{Span, BytePos, Spanned};
@@ -295,8 +296,11 @@ mod test {
 
     fn to_json_str<'a, E: Encodable<json::Encoder<'a>, io::IoError>>(val: &E) -> String {
         let mut writer = MemWriter::new();
-        let mut encoder = json::Encoder::new(&mut writer as &mut io::Writer);
-        let _ = val.encode(&mut encoder);
+        // FIXME(14302) remove the transmute and unsafe block.
+        unsafe {
+            let mut encoder = json::Encoder::new(&mut writer as &mut io::Writer);
+            let _ = val.encode(transmute(&mut encoder));
+        }
         str::from_utf8(writer.unwrap().as_slice()).unwrap().to_string()
     }
 

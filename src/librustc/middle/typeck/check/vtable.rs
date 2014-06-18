@@ -302,6 +302,7 @@ fn search_for_vtable(vcx: &VtableContext,
                      trait_ref: Rc<ty::TraitRef>,
                      is_early: bool)
                      -> Option<vtable_origin> {
+    debug!("nrc - search_for_vtable");
     let tcx = vcx.tcx();
 
     let mut found = Vec::new();
@@ -464,7 +465,6 @@ fn fixup_substs(vcx: &VtableContext,
     // use a dummy type just to package up the substs that need fixing up
     let t = ty::mk_trait(tcx,
                          id, substs,
-                         ty::RegionTraitStore(ty::ReStatic, ast::MutImmutable),
                          ty::empty_builtin_bounds());
     fixup_ty(vcx, span, t, is_early).map(|t_f| {
         match ty::get(t_f).sty {
@@ -518,43 +518,50 @@ fn insert_vtables(fcx: &FnCtxt, vtable_key: MethodCall, vtables: vtable_res) {
 }
 
 pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
+    fn mutability_allowed(a_mutbl: ast::Mutability,
+                          b_mutbl: ast::Mutability) -> bool {
+        a_mutbl == b_mutbl ||
+        (a_mutbl == ast::MutMutable && b_mutbl == ast::MutImmutable)
+    }
+
     debug!("vtable: early_resolve_expr() ex with id {:?} (early: {}): {}",
            ex.id, is_early, expr_to_str(ex));
     let _indent = indenter();
 
     let cx = fcx.ccx;
     let resolve_object_cast = |src: &ast::Expr, target_ty: ty::t| {
-      match ty::get(target_ty).sty {
-          // Bounds of type's contents are not checked here, but in kind.rs.
-          ty::ty_trait(box ty::TyTrait {
-              def_id: target_def_id, substs: ref target_substs, store, ..
-          }) => {
-              fn mutability_allowed(a_mutbl: ast::Mutability,
-                                    b_mutbl: ast::Mutability) -> bool {
-                  a_mutbl == b_mutbl ||
-                  (a_mutbl == ast::MutMutable && b_mutbl == ast::MutImmutable)
-              }
-              // Look up vtables for the type we're casting to,
-              // passing in the source and target type.  The source
-              // must be a pointer type suitable to the object sigil,
-              // e.g.: `&x as &Trait` or `box x as Box<Trait>`
-              let ty = structurally_resolved_type(fcx, ex.span,
-                                                  fcx.expr_ty(src));
-              match (&ty::get(ty).sty, store) {
-                  (&ty::ty_rptr(_, mt), ty::RegionTraitStore(_, mutbl))
-                    if !mutability_allowed(mt.mutbl, mutbl) => {
+      // Look up vtables for the type we're casting to,
+      // passing in the source and target type.  The source
+      // must be a pointer type suitable to the object sigil,
+      // e.g.: `&x as &Trait` or `box x as Box<Trait>`
+      // Bounds of type's contents are not checked here, but in kind.rs.
+      let src_ty = structurally_resolved_type(fcx, ex.span,
+                                              fcx.expr_ty(src));
+      match (&ty::get(target_ty).sty, &ty::get(src_ty).sty) {
+          (&ty::ty_rptr(_, ty::mt{ty, mutbl}), &ty::ty_rptr(_, mt))
+            if !mutability_allowed(mt.mutbl, mutbl) => {
+              match ty::get(ty).sty {
+                  ty::ty_trait(..) => {
                       fcx.tcx()
                          .sess
                          .span_err(ex.span, "types differ in mutability");
                   }
+                  _ => {}
+              }
+          }
 
-                  (&ty::ty_uniq(..), ty::UniqTraitStore) |
-                  (&ty::ty_rptr(..), ty::RegionTraitStore(..)) => {
-                    let typ = match &ty::get(ty).sty {
-                        &ty::ty_box(typ) | &ty::ty_uniq(typ) => typ,
-                        &ty::ty_rptr(_, mt) => mt.ty,
-                        _ => fail!("shouldn't get here"),
-                    };
+          (&ty::ty_uniq(ty), &ty::ty_uniq(..) ) |
+          (&ty::ty_rptr(_, ty::mt{ty, ..}), &ty::ty_rptr(..)) => {
+              match ty::get(ty).sty {
+                  ty::ty_trait(box ty::TyTrait {
+                      def_id: target_def_id, substs: ref target_substs, ..
+                  }) => {
+                      debug!("nrc correct path");
+                      let typ = match &ty::get(src_ty).sty {
+                          &ty::ty_uniq(typ) => typ,
+                          &ty::ty_rptr(_, mt) => mt.ty,
+                          _ => fail!("shouldn't get here"),
+                      };
 
                       let vcx = fcx.vtable_context();
 
@@ -594,38 +601,49 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
 
                       // Now, if this is &trait, we need to link the
                       // regions.
-                      match (&ty::get(ty).sty, store) {
-                          (&ty::ty_rptr(ra, _),
-                           ty::RegionTraitStore(rb, _)) => {
+                      match (&ty::get(src_ty).sty, &ty::get(target_ty).sty) {
+                          (&ty::ty_rptr(ra, _), &ty::ty_rptr(rb, _)) => {
+                              debug!("nrc - make subr");
                               infer::mk_subr(fcx.infcx(),
                                              false,
-                                             infer::RelateObjectBound(
-                                                 ex.span),
+                                             infer::RelateObjectBound(ex.span),
                                              rb,
                                              ra);
                           }
                           _ => {}
                       }
                   }
+                  _ => {}
+              }
+          }
 
-                  (_, ty::UniqTraitStore) => {
+          (&ty::ty_uniq(ty), _) => {
+              match ty::get(ty).sty {
+                  ty::ty_trait(..) => {
                       fcx.ccx.tcx.sess.span_err(
                           ex.span,
                           format!("can only cast an boxed pointer \
                                    to a boxed object, not a {}",
-                               ty::ty_sort_str(fcx.tcx(), ty)).as_slice());
+                               ty::ty_sort_str(fcx.tcx(), src_ty)).as_slice());
                   }
+                  _ => {}
+              }
 
-                  (_, ty::RegionTraitStore(..)) => {
+          }
+          (&ty::ty_rptr(_, ty::mt{ty, ..}), _) => {
+              match ty::get(ty).sty {
+                  ty::ty_trait(..) => {
                       fcx.ccx.tcx.sess.span_err(
                           ex.span,
                           format!("can only cast an &-pointer \
                                    to an &-object, not a {}",
-                                  ty::ty_sort_str(fcx.tcx(), ty)).as_slice());
+                                  ty::ty_sort_str(fcx.tcx(), src_ty)).as_slice());
                   }
+                  _ => {}
               }
           }
-          _ => { /* not a cast to a trait; ignore */ }
+
+          _ => {}
       }
     };
     match ex.node {
@@ -716,9 +734,17 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
                            ex.repr(fcx.tcx()),
                            is_early);
 
-                    let object_ty = ty::mk_trait(cx.tcx, def_id,
-                                                 substs.clone(),
-                                                 store, bounds);
+                    let trait_ty = ty::mk_trait(cx.tcx,
+                                                def_id,
+                                                substs.clone(),
+                                                bounds);
+                    let object_ty = match store {
+                        ty::UniqTraitStore => ty::mk_uniq(cx.tcx, trait_ty),
+                        ty::RegionTraitStore(r, m) => {
+                            ty::mk_rptr(cx.tcx, r, ty::mt {ty: trait_ty, mutbl: m})
+                        }
+                    };
+
                     resolve_object_cast(ex, object_ty);
                 }
                 AutoAddEnv(..) => {}
