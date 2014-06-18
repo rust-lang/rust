@@ -934,21 +934,16 @@ pub fn lltype_for_foreign_fn(ccx: &CrateContext, ty: ty::t) -> Type {
 
 fn add_argument_attributes(tys: &ForeignTypes,
                            llfn: ValueRef) {
-    let mut i = 0;
+    let mut i = if tys.fn_ty.ret_ty.is_indirect() { 1 } else { 0 };
 
-    if tys.fn_ty.ret_ty.is_indirect() {
-        match tys.fn_ty.ret_ty.attr {
-            Some(attr) => {
-                let llarg = get_param(llfn, i);
-                unsafe {
-                    llvm::LLVMAddAttribute(llarg, attr as c_uint);
-                }
-            }
-            None => {}
-        }
-
-        i += 1;
+    match tys.fn_ty.ret_ty.attr {
+        Some(attr) => unsafe {
+            llvm::LLVMAddFunctionAttribute(llfn, i as c_uint, attr as u64);
+        },
+        None => {}
     }
+
+    i += 1;
 
     for &arg_ty in tys.fn_ty.arg_tys.iter() {
         if arg_ty.is_ignore() {
@@ -958,12 +953,9 @@ fn add_argument_attributes(tys: &ForeignTypes,
         if arg_ty.pad.is_some() { i += 1; }
 
         match arg_ty.attr {
-            Some(attr) => {
-                let llarg = get_param(llfn, i);
-                unsafe {
-                    llvm::LLVMAddAttribute(llarg, attr as c_uint);
-                }
-            }
+            Some(attr) => unsafe {
+                llvm::LLVMAddFunctionAttribute(llfn, i as c_uint, attr as u64);
+            },
             None => ()
         }
 
