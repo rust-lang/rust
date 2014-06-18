@@ -175,7 +175,7 @@ Available lint options:
         for lint in lints.move_iter() {
             let name = lint.name_lower().replace("_", "-");
             println!("    {}  {:7.7s}  {}",
-                padded(name.as_slice()), lint.default_level.as_str(), lint.desc);
+                     padded(name.as_slice()), lint.default_level.as_str(), lint.desc);
         }
         println!("\n");
     };
