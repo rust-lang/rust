@@ -948,7 +948,7 @@ The borrow checker is also in charge of ensuring that:
 
 These are two separate dataflow analyses built on the same
 framework. Let's look at checking that memory is initialized first;
-the checking of immutable local variabe assignments works in a very
+the checking of immutable local variable assignments works in a very
 similar way.
 
 To track the initialization of memory, we actually track all the
