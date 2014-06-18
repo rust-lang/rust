@@ -1732,7 +1732,9 @@ impl<'a> StrSlice<'a> for &'a str {
 
     #[inline]
     fn slice(&self, begin: uint, end: uint) -> &'a str {
-        assert!(self.is_char_boundary(begin) && self.is_char_boundary(end));
+        assert!(self.is_char_boundary(begin) && self.is_char_boundary(end),
+                "index {} or {} in `{}` do not lie on character boundary", begin,
+                end, *self);
         unsafe { raw::slice_bytes(*self, begin, end) }
     }
 
@@ -1743,7 +1745,8 @@ impl<'a> StrSlice<'a> for &'a str {
 
     #[inline]
     fn slice_to(&self, end: uint) -> &'a str {
-        assert!(self.is_char_boundary(end));
+        assert!(self.is_char_boundary(end), "index {} in `{}` does not lie on \
+                a character boundary", end, *self);
         unsafe { raw::slice_bytes(*self, 0, end) }
     }
 
