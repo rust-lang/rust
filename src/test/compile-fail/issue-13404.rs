@@ -10,8 +10,7 @@
 
 use a::f;
 use b::f;
-//~^ ERROR: unresolved import
-//~^^ ERROR: failed to resolve import
+//~^ ERROR: unresolved import `b::f`. There is no `f` in `b`
 
 mod a { pub fn f() {} }
 mod b { }
