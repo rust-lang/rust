@@ -97,6 +97,7 @@ pub enum categorization {
 pub struct CopiedUpvar {
     pub upvar_id: ast::NodeId,
     pub onceness: ast::Onceness,
+    pub capturing_proc: ast::NodeId,
 }
 
 // different kinds of pointers:
@@ -559,7 +560,9 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
                               span:span,
                               cat:cat_copied_upvar(CopiedUpvar {
                                   upvar_id: var_id,
-                                  onceness: closure_ty.onceness}),
+                                  onceness: closure_ty.onceness,
+                                  capturing_proc: fn_node_id,
+                              }),
                               mutbl:McImmutable,
                               ty:expr_ty
                           }))

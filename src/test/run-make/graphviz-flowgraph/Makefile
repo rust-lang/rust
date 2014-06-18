@@ -2,7 +2,8 @@
 
 FILES=f00.rs f01.rs f02.rs f03.rs f04.rs f05.rs f06.rs f07.rs \
       f08.rs f09.rs f10.rs f11.rs f12.rs f13.rs f14.rs f15.rs \
-      f16.rs f17.rs f18.rs f19.rs f20.rs f21.rs f22.rs
+      f16.rs f17.rs f18.rs f19.rs f20.rs f21.rs f22.rs f23.rs \
+      f24.rs f25.rs
 
 
 # all: $(patsubst %.rs,$(TMPDIR)/%.dot,$(FILES)) $(patsubst %.rs,$(TMPDIR)/%.pp,$(FILES))
