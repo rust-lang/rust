@@ -25,8 +25,12 @@ use core::result::{Ok, Err, Result};
 ///
 /// The following two examples are equivalent:
 ///
-///     let foo = box(HEAP) Bar::new(...);
-///     let foo = box Bar::new(...);
+///     use std::owned::HEAP;
+///
+///     # struct Bar;
+///     # impl Bar { fn new(_a: int) { } }
+///     let foo = box(HEAP) Bar::new(2);
+///     let foo = box Bar::new(2);
 #[lang="exchange_heap"]
 pub static HEAP: () = ();
 
