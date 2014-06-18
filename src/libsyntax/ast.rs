@@ -616,6 +616,7 @@ pub type Lit = Spanned<Lit_>;
 pub enum Lit_ {
     LitStr(InternedString, StrStyle),
     LitBinary(Rc<Vec<u8> >),
+    LitByte(u8),
     LitChar(char),
     LitInt(i64, IntTy),
     LitUint(u64, UintTy),

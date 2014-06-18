@@ -1273,13 +1273,24 @@ fn compare_values<'a>(
                     val: bool_to_i1(result.bcx, result.val)
                 }
             }
-            _ => cx.sess().bug("only scalars and strings supported in compare_values"),
+            _ => cx.sess().bug("only strings supported in compare_values"),
         },
         ty::ty_rptr(_, mt) => match ty::get(mt.ty).sty {
             ty::ty_str => compare_str(cx, lhs, rhs, rhs_t),
-            _ => cx.sess().bug("only scalars and strings supported in compare_values"),
+            ty::ty_vec(mt, _) => match ty::get(mt.ty).sty {
+                ty::ty_uint(ast::TyU8) => {
+                    // NOTE: cast &[u8] to &str and abuse the str_eq lang item,
+                    // which calls memcmp().
+                    let t = ty::mk_str_slice(cx.tcx(), ty::ReStatic, ast::MutImmutable);
+                    let lhs = BitCast(cx, lhs, type_of::type_of(cx.ccx(), t).ptr_to());
+                    let rhs = BitCast(cx, rhs, type_of::type_of(cx.ccx(), t).ptr_to());
+                    compare_str(cx, lhs, rhs, rhs_t)
+                },
+                _ => cx.sess().bug("only byte strings supported in compare_values"),
+            },
+            _ => cx.sess().bug("on string and byte strings supported in compare_values"),
         },
-        _ => cx.sess().bug("only scalars and strings supported in compare_values"),
+        _ => cx.sess().bug("only scalars, byte strings, and strings supported in compare_values"),
     }
 }
 

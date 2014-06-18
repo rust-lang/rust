@@ -182,7 +182,7 @@ fn exec<'t>(which: ::regex::native::MatchKind, input: &'t str,
         #[allow(unused_variable)]
         fn run(&mut self, start: uint, end: uint) -> Vec<Option<uint>> {
             let mut matched = false;
-            let prefix_bytes: &[u8] = &$prefix_bytes;
+            let prefix_bytes: &[u8] = $prefix_bytes;
             let mut clist = &mut Threads::new(self.which);
             let mut nlist = &mut Threads::new(self.which);
 
