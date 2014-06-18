@@ -136,18 +136,33 @@ impl LintStore {
             )*}
         ))
 
-        add_builtin!(sess, HardwiredLints,
-                     WhileTrue, UnusedCasts, CTypes, HeapMemory,
-                     UnusedAttribute, PathStatement, UnusedResult,
-                     DeprecatedOwnedVector, NonCamelCaseTypes,
-                     NonSnakeCaseFunctions, NonUppercaseStatics,
-                     NonUppercasePatternStatics, UppercaseVariables,
-                     UnnecessaryParens, UnusedUnsafe, UnsafeBlock,
-                     UnusedMut, UnnecessaryAllocation, Stability,
+        add_builtin!(sess,
+                     HardwiredLints,
+                     WhileTrue,
+                     UnusedCasts,
+                     CTypes,
+                     HeapMemory,
+                     UnusedAttribute,
+                     PathStatement,
+                     UnusedResult,
+                     DeprecatedOwnedVector,
+                     NonCamelCaseTypes,
+                     NonSnakeCaseFunctions,
+                     NonUppercaseStatics,
+                     NonUppercasePatternStatics,
+                     UppercaseVariables,
+                     UnnecessaryParens,
+                     UnusedUnsafe,
+                     UnsafeBlock,
+                     UnusedMut,
+                     UnnecessaryAllocation,
+                     Stability,
         )
 
         add_builtin_with_new!(sess,
-                              TypeLimits, RawPointerDeriving, MissingDoc,
+                              TypeLimits,
+                              RawPointerDeriving,
+                              MissingDoc,
         )
 
         // We have one lint pass defined in this module.
