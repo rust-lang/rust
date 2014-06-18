@@ -15,11 +15,11 @@
 //! generated instead.
 
 #![crate_id = "fmt_macros#0.11.0-pre"]
+#![experimental]
 #![license = "MIT/ASL2"]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![feature(macro_rules, globs)]
-#![experimental]
 
 use std::char;
 use std::str;

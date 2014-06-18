@@ -18,6 +18,7 @@
 //! through `std::sync`.
 
 #![crate_id = "sync#0.11.0-pre"]
+#![experimental]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![license = "MIT/ASL2"]

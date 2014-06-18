@@ -11,6 +11,7 @@
 //! Simple time handling.
 
 #![crate_id = "time#0.11.0-pre"]
+#![experimental]
 
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]

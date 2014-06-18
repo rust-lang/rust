@@ -29,6 +29,7 @@
 //! `0.8.1-rc.3.0+20130922.linux`.
 
 #![crate_id = "semver#0.11.0-pre"]
+#![experimental]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![license = "MIT/ASL2"]
