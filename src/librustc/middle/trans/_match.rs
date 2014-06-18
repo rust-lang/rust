@@ -518,8 +518,7 @@ fn enter_default<'a, 'b>(
                  dm: &DefMap,
                  m: &'a [Match<'a, 'b>],
                  col: uint,
-                 val: ValueRef,
-                 chk: &FailureHandler)
+                 val: ValueRef)
                  -> Vec<Match<'a, 'b>> {
     debug!("enter_default(bcx={}, m={}, col={}, val={})",
            bcx.to_str(),
@@ -529,35 +528,13 @@ fn enter_default<'a, 'b>(
     let _indenter = indenter();
 
     // Collect all of the matches that can match against anything.
-    let matches = enter_match(bcx, dm, m, col, val, |p| {
+    enter_match(bcx, dm, m, col, val, |p| {
         match p.node {
           ast::PatWild | ast::PatWildMulti => Some(Vec::new()),
           ast::PatIdent(_, _, None) if pat_is_binding(dm, &*p) => Some(Vec::new()),
           _ => None
         }
-    });
-
-    // Ok, now, this is pretty subtle. A "default" match is a match
-    // that needs to be considered if none of the actual checks on the
-    // value being considered succeed. The subtlety lies in that sometimes
-    // identifier/wildcard matches are *not* default matches. Consider:
-    // "match x { _ if something => foo, true => bar, false => baz }".
-    // There is a wildcard match, but it is *not* a default case. The boolean
-    // case on the value being considered is exhaustive. If the case is
-    // exhaustive, then there are no defaults.
-    //
-    // We detect whether the case is exhaustive in the following
-    // somewhat kludgy way: if the last wildcard/binding match has a
-    // guard, then by non-redundancy, we know that there aren't any
-    // non guarded matches, and thus by exhaustiveness, we know that
-    // we don't need any default cases. If the check *isn't* nonexhaustive
-    // (because chk is Some), then we need the defaults anyways.
-    let is_exhaustive = match matches.last() {
-        Some(m) if m.data.arm.guard.is_some() && chk.is_infallible() => true,
-        _ => false
-    };
-
-    if is_exhaustive { Vec::new() } else { matches }
+    })
 }
 
 // <pcwalton> nmatsakis: what does enter_opt do?
@@ -1448,15 +1425,12 @@ fn compile_submatch<'a, 'b>(
            m.repr(bcx.tcx()),
            vec_map_to_str(vals, |v| bcx.val_to_str(*v)));
     let _indenter = indenter();
-
-    /*
-      For an empty match, a fall-through case must exist
-     */
-    assert!((m.len() > 0u || chk.is_fallible()));
     let _icx = push_ctxt("match::compile_submatch");
     let mut bcx = bcx;
     if m.len() == 0u {
-        Br(bcx, chk.handle_fail());
+        if chk.is_fallible() {
+            Br(bcx, chk.handle_fail());
+        }
         return;
     }
     if m[0].pats.len() == 0u {
@@ -1658,7 +1632,7 @@ fn compile_submatch_continue<'a, 'b>(
         C_int(ccx, 0) // Placeholder for when not using a switch
     };
 
-    let defaults = enter_default(else_cx, dm, m, col, val, chk);
+    let defaults = enter_default(else_cx, dm, m, col, val);
     let exhaustive = chk.is_infallible() && defaults.len() == 0u;
     let len = opts.len();
 
@@ -1947,18 +1921,14 @@ fn trans_match_inner<'a>(scope_cx: &'a Block<'a>,
 
     // `compile_submatch` works one column of arm patterns a time and
     // then peels that column off. So as we progress, it may become
-    // impossible to know whether we have a genuine default arm, i.e.
+    // impossible to tell whether we have a genuine default arm, i.e.
     // `_ => foo` or not. Sometimes it is important to know that in order
     // to decide whether moving on to the next condition or falling back
     // to the default arm.
-    let has_default = arms.len() > 0 && {
-        let ref pats = arms.last().unwrap().pats;
-
-        pats.len() == 1
-        && match pats.last().unwrap().node {
-            ast::PatWild => true, _ => false
-        }
-    };
+    let has_default = arms.last().map_or(false, |arm| {
+        arm.pats.len() == 1
+        && arm.pats.last().unwrap().node == ast::PatWild
+    });
 
     compile_submatch(bcx, matches.as_slice(), [discr_datum.val], &chk, has_default);
 
