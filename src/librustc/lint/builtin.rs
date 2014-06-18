@@ -45,6 +45,7 @@ use std::u16;
 use std::u32;
 use std::u64;
 use std::u8;
+use std::gc::Gc;
 use syntax::abi;
 use syntax::ast_map;
 use syntax::attr::AttrMetaMethods;
@@ -98,8 +99,8 @@ impl LintPass for UnusedCasts {
     fn check_expr(&mut self, cx: &Context, e: &ast::Expr) {
         match e.node {
             ast::ExprCast(expr, ty) => {
-                let t_t = ast_ty_to_ty(cx, &infer::new_infer_ctxt(cx.tcx), ty);
-                if ty::get(ty::expr_ty(cx.tcx, expr)).sty == ty::get(t_t).sty {
+                let t_t = ast_ty_to_ty(cx, &infer::new_infer_ctxt(cx.tcx), &*ty);
+                if ty::get(ty::expr_ty(cx.tcx, &*expr)).sty == ty::get(t_t).sty {
                     cx.span_lint(UNNECESSARY_TYPECAST, ty.span, "unnecessary type cast");
                 }
             }
@@ -150,7 +151,7 @@ impl LintPass for TypeLimits {
                         }
                     },
                     _ => {
-                        let t = ty::expr_ty(cx.tcx, expr);
+                        let t = ty::expr_ty(cx.tcx, &*expr);
                         match ty::get(t).sty {
                             ty::ty_uint(_) => {
                                 cx.span_lint(UNSIGNED_NEGATE, e.span,
@@ -170,7 +171,7 @@ impl LintPass for TypeLimits {
                 self.negated_expr_id = expr.id;
             },
             ast::ExprBinary(binop, l, r) => {
-                if is_comparison(binop) && !check_limits(cx.tcx, binop, l, r) {
+                if is_comparison(binop) && !check_limits(cx.tcx, binop, &*l, &*r) {
                     cx.span_lint(TYPE_LIMITS, e.span,
                                  "comparison is useless due to type limits");
                 }
@@ -202,6 +203,7 @@ impl LintPass for TypeLimits {
                         } else { t };
                         let (min, max) = uint_ty_range(uint_type);
                         let lit_val: u64 = match lit.node {
+                            ast::LitByte(_v) => return,  // _v is u8, within range by definition
                             ast::LitInt(v, _) => v as u64,
                             ast::LitUint(v, _) => v,
                             ast::LitIntUnsuffixed(v) => v as u64,
@@ -350,24 +352,24 @@ impl LintPass for CTypes {
                         _ => ()
                     }
                 }
-                ast::TyPtr(ref mt) => { check_ty(cx, mt.ty) }
+                ast::TyPtr(ref mt) => { check_ty(cx, &*mt.ty) }
                 _ => {}
             }
         }
 
         fn check_foreign_fn(cx: &Context, decl: &ast::FnDecl) {
             for input in decl.inputs.iter() {
-                check_ty(cx, input.ty);
+                check_ty(cx, &*input.ty);
             }
-            check_ty(cx, decl.output)
+            check_ty(cx, &*decl.output)
         }
 
         match it.node {
           ast::ItemForeignMod(ref nmod) if nmod.abi != abi::RustIntrinsic => {
             for ni in nmod.items.iter() {
                 match ni.node {
-                    ast::ForeignItemFn(decl, _) => check_foreign_fn(cx, decl),
-                    ast::ForeignItemStatic(t, _) => check_ty(cx, t)
+                    ast::ForeignItemFn(decl, _) => check_foreign_fn(cx, &*decl),
+                    ast::ForeignItemStatic(t, _) => check_ty(cx, &*t)
                 }
             }
           }
@@ -397,9 +399,6 @@ impl HeapMemory {
                     n_box += 1;
                 }
                 ty::ty_uniq(_) |
-                ty::ty_trait(box ty::TyTrait {
-                    store: ty::UniqTraitStore, ..
-                }) |
                 ty::ty_closure(box ty::ClosureTy {
                     store: ty::UniqTraitStore,
                     ..
@@ -523,7 +522,7 @@ impl LintPass for RawPointerDeriving {
         match item.node {
             ast::ItemStruct(..) | ast::ItemEnum(..) => {
                 let mut visitor = RawPtrDerivingVisitor { cx: cx };
-                visit::walk_item(&mut visitor, item, ());
+                visit::walk_item(&mut visitor, &*item, ());
             }
             _ => {}
         }
@@ -547,7 +546,6 @@ impl LintPass for UnusedAttribute {
 
             // FIXME: #14406 these are processed in trans, which happens after the
             // lint pass
-            "address_insignificant",
             "cold",
             "inline",
             "link",
@@ -653,7 +651,7 @@ impl LintPass for UnusedResult {
             ast::StmtSemi(expr, _) => expr,
             _ => return
         };
-        let t = ty::expr_ty(cx.tcx, expr);
+        let t = ty::expr_ty(cx.tcx, &*expr);
         match ty::get(t).sty {
             ty::ty_nil | ty::ty_bot | ty::ty_bool => return,
             _ => {}
@@ -663,7 +661,7 @@ impl LintPass for UnusedResult {
             _ => {}
         }
 
-        let t = ty::expr_ty(cx.tcx, expr);
+        let t = ty::expr_ty(cx.tcx, &*expr);
         let mut warned = false;
         match ty::get(t).sty {
             ty::ty_struct(did, _) |
@@ -694,31 +692,6 @@ impl LintPass for UnusedResult {
         }
         if !warned {
             cx.span_lint(UNUSED_RESULT, s.span, "unused result");
-        }
-    }
-}
-
-declare_lint!(DEPRECATED_OWNED_VECTOR, Allow,
-              "use of a `~[T]` vector")
-
-pub struct DeprecatedOwnedVector;
-
-impl LintPass for DeprecatedOwnedVector {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(DEPRECATED_OWNED_VECTOR)
-    }
-
-    fn check_expr(&mut self, cx: &Context, e: &ast::Expr) {
-        let t = ty::expr_ty(cx.tcx, e);
-        match ty::get(t).sty {
-            ty::ty_uniq(t) => match ty::get(t).sty {
-                ty::ty_vec(_, None) => {
-                    cx.span_lint(DEPRECATED_OWNED_VECTOR, e.span,
-                                 "use of deprecated `~[]` vector; replaced by `std::vec::Vec`")
-                }
-                _ => {}
-            },
-            _ => {}
         }
     }
 }
@@ -1028,7 +1001,7 @@ impl LintPass for UnnecessaryParens {
             ast::ExprAssignOp(_, _, value) => (value, "assigned value"),
             _ => return
         };
-        self.check_unnecessary_parens_core(cx, value, msg);
+        self.check_unnecessary_parens_core(cx, &*value, msg);
     }
 
     fn check_stmt(&mut self, cx: &Context, s: &ast::Stmt) {
@@ -1042,7 +1015,7 @@ impl LintPass for UnnecessaryParens {
             },
             _ => return
         };
-        self.check_unnecessary_parens_core(cx, value, msg);
+        self.check_unnecessary_parens_core(cx, &*value, msg);
     }
 }
 
@@ -1097,12 +1070,12 @@ declare_lint!(UNUSED_MUT, Warn,
 pub struct UnusedMut;
 
 impl UnusedMut {
-    fn check_unused_mut_pat(&self, cx: &Context, pats: &[@ast::Pat]) {
+    fn check_unused_mut_pat(&self, cx: &Context, pats: &[Gc<ast::Pat>]) {
         // collect all mutable pattern and group their NodeIDs by their Identifier to
         // avoid false warnings in match arms with multiple patterns
         let mut mutables = HashMap::new();
         for &p in pats.iter() {
-            pat_util::pat_bindings(&cx.tcx.def_map, p, |mode, id, _, path| {
+            pat_util::pat_bindings(&cx.tcx.def_map, &*p, |mode, id, _, path| {
                 match mode {
                     ast::BindByValue(ast::MutMutable) => {
                         if path.segments.len() != 1 {

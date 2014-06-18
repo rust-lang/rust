@@ -145,7 +145,6 @@ impl LintStore {
                      UnusedAttribute,
                      PathStatement,
                      UnusedResult,
-                     DeprecatedOwnedVector,
                      NonCamelCaseTypes,
                      NonSnakeCaseFunctions,
                      NonUppercaseStatics,
