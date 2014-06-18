@@ -574,13 +574,17 @@ impl<A> ExactSize<A> for Item<A> {}
 /// Here is an example which increments every integer in a vector,
 /// checking for overflow:
 ///
-///     fn inc_conditionally(x: uint) -> Option<uint> {
-///         if x == uint::MAX { return None; }
-///         else { return Some(x+1u); }
-///     }
-///     let v = [1u, 2, 3];
-///     let res = collect(v.iter().map(|&x| inc_conditionally(x)));
-///     assert!(res == Some(~[2u, 3, 4]));
+/// ```rust
+/// use std::option;
+/// use std::uint;
+///
+/// let v = vec!(1u, 2u);
+/// let res: Option<Vec<uint>> = option::collect(v.iter().map(|x: &uint|
+///     if *x == uint::MAX { None }
+///     else { Some(x + 1) }
+/// ));
+/// assert!(res == Some(vec!(2u, 3u)));
+/// ```
 #[inline]
 pub fn collect<T, Iter: Iterator<Option<T>>, V: FromIterator<T>>(iter: Iter) -> Option<V> {
     // FIXME(#11084): This should be twice as fast once this bug is closed.
