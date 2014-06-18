@@ -627,8 +627,8 @@ impl LintPass for GatherNodeLevels {
 ///
 /// Consumes the `lint_store` field of the `Session`.
 pub fn check_crate(tcx: &ty::ctxt,
-                   exported_items: &ExportedItems,
-                   krate: &ast::Crate) {
+                   krate: &ast::Crate,
+                   exported_items: &ExportedItems) {
     let mut cx = Context::new(tcx, krate, exported_items);
 
     // Visit the whole crate.
