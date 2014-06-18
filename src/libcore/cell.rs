@@ -426,7 +426,18 @@ mod test {
 
         let refcell_ref = refcell.borrow();
         assert!(format!("{}", refcell_ref).as_slice().contains("foo"));
-        drop(refcell_ref);
+    }
+
+    #[test]
+    fn refcell_has_sensible_show() {
+        use str::StrSlice;
+        use realstd::str::Str;
+
+        let rc = RefCell::new("foo");
+        assert!(format!("{}", rc).as_slice().contains("foo"));
+
+        let _rc_mut = rc.borrow_mut();
+        assert!(format!("{}", rc).as_slice().contains("RefCell (borrowed)"));
     }
 
     #[test]
