@@ -33,8 +33,8 @@ use ast::{ForeignItem, ForeignItemStatic, ForeignItemFn, ForeignMod};
 use ast::{Ident, NormalFn, Inherited, Item, Item_, ItemStatic};
 use ast::{ItemEnum, ItemFn, ItemForeignMod, ItemImpl};
 use ast::{ItemMac, ItemMod, ItemStruct, ItemTrait, ItemTy, Lit, Lit_};
-use ast::{LitBool, LitFloat, LitFloatUnsuffixed, LitInt, LitChar, LitByte, LitBinary};
-use ast::{LitIntUnsuffixed, LitNil, LitStr, LitUint, Local, LocalLet};
+use ast::{LitBool, LitChar, LitByte, LitBinary};
+use ast::{LitNil, LitStr, LitUint, Local, LocalLet};
 use ast::{MutImmutable, MutMutable, Mac_, MacInvocTT, Matcher, MatchNonterminal};
 use ast::{MatchSeq, MatchTok, Method, MutTy, BiMul, Mutability};
 use ast::{NamedField, UnNeg, NoReturn, UnNot, P, Pat, PatEnum};
@@ -1541,20 +1541,14 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Matches token_lit = LIT_INT | ...
+    /// Matches token_lit = LIT_INTEGER | ...
     pub fn lit_from_token(&mut self, tok: &token::Token) -> Lit_ {
         match *tok {
             token::LIT_BYTE(i) => LitByte(parse::byte_lit(i.as_str()).val0()),
             token::LIT_CHAR(i) => LitChar(parse::char_lit(i.as_str()).val0()),
-            token::LIT_INT(i, it) => LitInt(i, it),
-            token::LIT_UINT(u, ut) => LitUint(u, ut),
-            token::LIT_INT_UNSUFFIXED(i) => LitIntUnsuffixed(i),
-            token::LIT_FLOAT(s, ft) => {
-                LitFloat(self.id_to_interned_str(s), ft)
-            }
-            token::LIT_FLOAT_UNSUFFIXED(s) => {
-                LitFloatUnsuffixed(self.id_to_interned_str(s))
-            }
+            token::LIT_INTEGER(s) => parse::integer_lit(self.id_to_interned_str(s).get(),
+                                                       &self.sess.span_diagnostic, self.span),
+            token::LIT_FLOAT(s) => parse::float_lit(s.as_str()),
             token::LIT_STR(s) => {
                 LitStr(token::intern_and_get_ident(parse::str_lit(s.as_str()).as_slice()),
                        ast::CookedStr)
@@ -5398,3 +5392,4 @@ impl<'a> Parser<'a> {
         }
     }
 }
+
