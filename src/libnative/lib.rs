@@ -45,6 +45,7 @@
 //! ```
 
 #![crate_id = "native#0.11.0-pre"]
+#![experimental]
 #![license = "MIT/ASL2"]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]

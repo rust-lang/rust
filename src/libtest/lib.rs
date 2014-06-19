@@ -24,6 +24,7 @@
 // build off of.
 
 #![crate_id = "test#0.11.0-pre"]
+#![experimental]
 #![comment = "Rust internal test library only used by rustc"]
 #![license = "MIT/ASL2"]
 #![crate_type = "rlib"]

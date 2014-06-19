@@ -46,6 +46,7 @@
 //!
 
 #![crate_id = "core#0.11.0-pre"]
+#![experimental]
 #![license = "MIT/ASL2"]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
