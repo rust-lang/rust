@@ -275,7 +275,7 @@ dd {
 
 nav ul {
     list-style-type: none;
-    margin: 0;
+    margin: 0 0 20px 0;
     padding-left: 0px;
 }
 
