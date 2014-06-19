@@ -8,6 +8,7 @@
 * Add a `#[crate_name]` attribute similar to the old `#[crate_id]` attribute
 * Filenames will no longer have versions, nor will symbols
 * A new flag, `--extern`, will be used to override searching for external crates
+* A new flag, `-C metadata=foo`, used when hashing symbols
 
 # Motivation
 
@@ -171,7 +172,8 @@ support is not currently there, nor does it work on windows or OSX.
 
 Symbols would no longer contain the version number anywhere within them. The
 hash at the end of each symbol would only include the crate name and metadata
-from the command line.
+from the command line. Metadata from the command line will be passed via a new
+command line flag, `-C metadata=foo`, which specifies a string to hash.
 
 ## The standard rust distribution
 
