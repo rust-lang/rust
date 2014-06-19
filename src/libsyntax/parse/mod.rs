@@ -288,6 +288,8 @@ mod test {
     use owned_slice::OwnedSlice;
     use ast;
     use abi;
+    use attr;
+    use attr::AttrMetaMethods;
     use parse::parser::Parser;
     use parse::token::{str_to_ident};
     use util::parser_testing::{string_to_tts, string_to_parser};
@@ -726,4 +728,24 @@ mod test {
 }".to_string());
     }
 
+    #[test] fn crlf_doc_comments() {
+        let sess = new_parse_sess();
+
+        let name = "<source>".to_string();
+        let source = "/// doc comment\r\nfn foo() {}".to_string();
+        let item = parse_item_from_source_str(name.clone(), source, Vec::new(), &sess).unwrap();
+        let doc = attr::first_attr_value_str_by_name(item.attrs.as_slice(), "doc").unwrap();
+        assert_eq!(doc.get(), "/// doc comment");
+
+        let source = "/// doc comment\r\n/// line 2\r\nfn foo() {}".to_string();
+        let item = parse_item_from_source_str(name.clone(), source, Vec::new(), &sess).unwrap();
+        let docs = item.attrs.iter().filter(|a| a.name().get() == "doc")
+                    .map(|a| a.value_str().unwrap().get().to_string()).collect::<Vec<_>>();
+        assert_eq!(docs.as_slice(), &["/// doc comment".to_string(), "/// line 2".to_string()]);
+
+        let source = "/** doc comment\r\n *  with CRLF */\r\nfn foo() {}".to_string();
+        let item = parse_item_from_source_str(name, source, Vec::new(), &sess).unwrap();
+        let doc = attr::first_attr_value_str_by_name(item.attrs.as_slice(), "doc").unwrap();
+        assert_eq!(doc.get(), "/** doc comment\n *  with CRLF */");
+    }
 }
