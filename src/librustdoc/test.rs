@@ -102,8 +102,10 @@ pub fn run(input: &str,
 }
 
 fn runtest(test: &str, cratename: &str, libs: HashSet<Path>, should_fail: bool,
-           no_run: bool) {
-    let test = maketest(test, Some(cratename), true);
+           no_run: bool, as_test_harness: bool) {
+    // the test harness wants its own `main` & top level functions, so
+    // never wrap the test in `fn main() { ... }`
+    let test = maketest(test, Some(cratename), true, as_test_harness);
     let input = driver::StrInput(test.to_string());
 
     let sessopts = config::Options {
@@ -116,6 +118,7 @@ fn runtest(test: &str, cratename: &str, libs: HashSet<Path>, should_fail: bool,
             prefer_dynamic: true,
             .. config::basic_codegen_options()
         },
+        test: as_test_harness,
         ..config::basic_options().clone()
     };
 
@@ -200,7 +203,7 @@ fn runtest(test: &str, cratename: &str, libs: HashSet<Path>, should_fail: bool,
     }
 }
 
-pub fn maketest(s: &str, cratename: Option<&str>, lints: bool) -> String {
+pub fn maketest(s: &str, cratename: Option<&str>, lints: bool, dont_insert_main: bool) -> String {
     let mut prog = String::new();
     if lints {
         prog.push_str(r"
@@ -222,7 +225,7 @@ pub fn maketest(s: &str, cratename: Option<&str>, lints: bool) -> String {
             None => {}
         }
     }
-    if s.contains("fn main") {
+    if dont_insert_main || s.contains("fn main") {
         prog.push_str(s);
     } else {
         prog.push_str("fn main() {\n    ");
@@ -257,7 +260,8 @@ impl Collector {
         }
     }
 
-    pub fn add_test(&mut self, test: String, should_fail: bool, no_run: bool, should_ignore: bool) {
+    pub fn add_test(&mut self, test: String,
+                    should_fail: bool, no_run: bool, should_ignore: bool, as_test_harness: bool) {
         let name = if self.use_headers {
             let s = self.current_header.as_ref().map(|s| s.as_slice()).unwrap_or("");
             format!("{}_{}", s, self.cnt)
@@ -279,7 +283,8 @@ impl Collector {
                         cratename.as_slice(),
                         libs,
                         should_fail,
-                        no_run);
+                        no_run,
+                        as_test_harness);
             }),
         });
     }

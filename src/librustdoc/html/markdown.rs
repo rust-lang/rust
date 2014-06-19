@@ -174,8 +174,7 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
                     slice::raw::buf_as_slice((*lang).data,
                                            (*lang).size as uint, |rlang| {
                         let rlang = str::from_utf8(rlang).unwrap();
-                        let (_,_,_,notrust) = parse_lang_string(rlang);
-                        if notrust {
+                        if LangString::parse(rlang).notrust {
                             (my_opaque.dfltblk)(ob, &buf, lang,
                                                 opaque as *mut libc::c_void);
                             true
@@ -196,7 +195,7 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
                             stripped_filtered_line(l).unwrap_or(l)
                         }).collect::<Vec<&str>>().connect("\n");
                         let krate = krate.as_ref().map(|s| s.as_slice());
-                        let test = test::maketest(test.as_slice(), krate, false);
+                        let test = test::maketest(test.as_slice(), krate, false, false);
                         s.push_str(format!("<span id='rust-example-raw-{}' \
                                              class='rusttest'>{}</span>",
                                            i, Escape(test.as_slice())).as_slice());
@@ -309,16 +308,16 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
                     lang: *hoedown_buffer, opaque: *mut libc::c_void) {
         unsafe {
             if text.is_null() { return }
-            let (should_fail, no_run, ignore, notrust) = if lang.is_null() {
-                (false, false, false, false)
+            let block_info = if lang.is_null() {
+                LangString::all_false()
             } else {
                 slice::raw::buf_as_slice((*lang).data,
                                        (*lang).size as uint, |lang| {
                     let s = str::from_utf8(lang).unwrap();
-                    parse_lang_string(s)
+                    LangString::parse(s)
                 })
             };
-            if notrust { return }
+            if block_info.notrust { return }
             slice::raw::buf_as_slice((*text).data, (*text).size as uint, |text| {
                 let opaque = opaque as *mut hoedown_html_renderer_state;
                 let tests = &mut *((*opaque).opaque as *mut ::test::Collector);
@@ -327,7 +326,9 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
                     stripped_filtered_line(l).unwrap_or(l)
                 });
                 let text = lines.collect::<Vec<&str>>().connect("\n");
-                tests.add_test(text.to_string(), should_fail, no_run, ignore);
+                tests.add_test(text.to_string(),
+                               block_info.should_fail, block_info.no_run,
+                               block_info.ignore, block_info.test_harness);
             })
         }
     }
@@ -365,33 +366,52 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
     }
 }
 
-fn parse_lang_string(string: &str) -> (bool,bool,bool,bool) {
-    let mut seen_rust_tags = false;
-    let mut seen_other_tags = false;
-    let mut should_fail = false;
-    let mut no_run = false;
-    let mut ignore = false;
-    let mut notrust = false;
+#[deriving(Eq, PartialEq, Clone, Show)]
+struct LangString {
+    should_fail: bool,
+    no_run: bool,
+    ignore: bool,
+    notrust: bool,
+    test_harness: bool,
+}
 
-    let mut tokens = string.as_slice().split(|c: char|
-      !(c == '_' || c == '-' || c.is_alphanumeric())
-    );
-
-    for token in tokens {
-        match token {
-            "" => {},
-            "should_fail" => { should_fail = true; seen_rust_tags = true; },
-            "no_run" => { no_run = true; seen_rust_tags = true; },
-            "ignore" => { ignore = true; seen_rust_tags = true; },
-            "notrust" => { notrust = true; seen_rust_tags = true; },
-            "rust" => { notrust = false; seen_rust_tags = true; },
-            _ => { seen_other_tags = true }
+impl LangString {
+    fn all_false() -> LangString {
+        LangString {
+            should_fail: false,
+            no_run: false,
+            ignore: false,
+            notrust: false,
+            test_harness: false,
         }
     }
 
-    let notrust = notrust || (seen_other_tags && !seen_rust_tags);
+    fn parse(string: &str) -> LangString {
+        let mut seen_rust_tags = false;
+        let mut seen_other_tags = false;
+        let mut data = LangString::all_false();
 
-    (should_fail, no_run, ignore, notrust)
+        let mut tokens = string.as_slice().split(|c: char|
+            !(c == '_' || c == '-' || c.is_alphanumeric())
+        );
+
+        for token in tokens {
+            match token {
+                "" => {},
+                "should_fail" => { data.should_fail = true; seen_rust_tags = true; },
+                "no_run" => { data.no_run = true; seen_rust_tags = true; },
+                "ignore" => { data.ignore = true; seen_rust_tags = true; },
+                "notrust" => { data.notrust = true; seen_rust_tags = true; },
+                "rust" => { data.notrust = false; seen_rust_tags = true; },
+                "test_harness" => { data.test_harness = true; seen_rust_tags = true; }
+                _ => { seen_other_tags = true }
+            }
+        }
+
+        data.notrust |= seen_other_tags && !seen_rust_tags;
+
+        data
+    }
 }
 
 /// By default this markdown renderer generates anchors for each header in the
@@ -425,19 +445,32 @@ impl<'a> fmt::Show for MarkdownWithToc<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::parse_lang_string;
+    use super::LangString;
 
     #[test]
-    fn test_parse_lang_string() {
-        assert_eq!(parse_lang_string(""), (false,false,false,false))
-        assert_eq!(parse_lang_string("rust"), (false,false,false,false))
-        assert_eq!(parse_lang_string("sh"), (false,false,false,true))
-        assert_eq!(parse_lang_string("notrust"), (false,false,false,true))
-        assert_eq!(parse_lang_string("ignore"), (false,false,true,false))
-        assert_eq!(parse_lang_string("should_fail"), (true,false,false,false))
-        assert_eq!(parse_lang_string("no_run"), (false,true,false,false))
-        assert_eq!(parse_lang_string("{.no_run .example}"), (false,true,false,false))
-        assert_eq!(parse_lang_string("{.sh .should_fail}"), (true,false,false,false))
-        assert_eq!(parse_lang_string("{.example .rust}"), (false,false,false,false))
+    fn test_lang_string_parse() {
+        fn t(s: &str,
+             should_fail: bool, no_run: bool, ignore: bool, notrust: bool, test_harness: bool) {
+            assert_eq!(LangString::parse(s), LangString {
+                should_fail: should_fail,
+                no_run: no_run,
+                ignore: ignore,
+                notrust: notrust,
+                test_harness: test_harness,
+            })
+        }
+
+        t("", false,false,false,false,false);
+        t("rust", false,false,false,false,false);
+        t("sh", false,false,false,true,false);
+        t("notrust", false,false,false,true,false);
+        t("ignore", false,false,true,false,false);
+        t("should_fail", true,false,false,false,false);
+        t("no_run", false,true,false,false,false);
+        t("test_harness", false,false,false,false,true);
+        t("{.no_run .example}", false,true,false,false,false);
+        t("{.sh .should_fail}", true,false,false,false,false);
+        t("{.example .rust}", false,false,false,false,false);
+        t("{.test_harness .rust}", false,false,false,false,true);
     }
 }
