@@ -3894,8 +3894,31 @@ impl<'a> Resolver<'a> {
                 self.resolve_error(trait_reference.path.span, msg.as_slice());
             }
             Some(def) => {
-                debug!("(resolving trait) found trait def: {:?}", def);
-                self.record_def(trait_reference.ref_id, def);
+                match def {
+                    (DefTrait(_), _) => {
+                        debug!("(resolving trait) found trait def: {:?}", def);
+                        self.record_def(trait_reference.ref_id, def);
+                    }
+                    (def, _) => {
+                        self.resolve_error(trait_reference.path.span,
+                                           format!("`{}` is not a trait",
+                                                   self.path_idents_to_str(
+                                                        &trait_reference.path)));
+
+                        // If it's a typedef, give a note
+                        match def {
+                            DefTy(_) => {
+                                self.session.span_note(
+                                                trait_reference.path.span,
+                                                format!("`type` aliases cannot \
+                                                        be used for traits")
+                                                        .as_slice());
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+
             }
         }
     }
