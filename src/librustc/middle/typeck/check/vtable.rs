@@ -529,7 +529,7 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
     let _indent = indenter();
 
     let cx = fcx.ccx;
-    let resolve_object_cast = |src: &ast::Expr, target_ty: ty::t| {
+    let resolve_object_cast = |src: &ast::Expr, target_ty: ty::t, key: MethodCall| {
       // Look up vtables for the type we're casting to,
       // passing in the source and target type.  The source
       // must be a pointer type suitable to the object sigil,
@@ -596,7 +596,7 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
                       if !is_early {
                           let mut r = VecPerParamSpace::empty();
                           r.push(subst::SelfSpace, vtables);
-                          insert_vtables(fcx, MethodCall::expr(ex.id), r);
+                          insert_vtables(fcx, key, r);
                       }
 
                       // Now, if this is &trait, we need to link the
@@ -694,7 +694,8 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
       ast::ExprCast(ref src, _) => {
           debug!("vtable resolution on expr {}", ex.repr(fcx.tcx()));
           let target_ty = fcx.expr_ty(ex);
-          resolve_object_cast(&**src, target_ty);
+          let key = MethodCall::expr(ex.id);
+          resolve_object_cast(&**src, target_ty, key);
       }
       _ => ()
     }
@@ -705,7 +706,7 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
             match *adjustment {
                 AutoDerefRef(adj) => {
                     for autoderef in range(0, adj.autoderefs) {
-                        let method_call = MethodCall::autoderef(ex.id, autoderef as u32);
+                        let method_call = MethodCall::autoderef(ex.id, autoderef);
                         match fcx.inh.method_map.borrow().find(&method_call) {
                             Some(method) => {
                                 debug!("vtable resolution on parameter bounds for autoderef {}",
@@ -745,7 +746,8 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
                         }
                     };
 
-                    resolve_object_cast(ex, object_ty);
+                    let key = MethodCall::autoobject(ex.id);
+                    resolve_object_cast(ex, object_ty, key);
                 }
                 AutoAddEnv(..) => {}
             }

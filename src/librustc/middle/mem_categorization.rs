@@ -700,9 +700,14 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
                              base_cmt: cmt,
                              deref_cnt: uint)
                              -> cmt {
+        let adjustment = match self.typer.adjustments().borrow().find(&node.id()) {
+            Some(&ty::AutoObject(..)) => typeck::AutoObject,
+            _ if deref_cnt != 0 => typeck::AutoDeref(deref_cnt),
+            _ => typeck::NoAdjustment
+        };
         let method_call = typeck::MethodCall {
             expr_id: node.id(),
-            autoderef: deref_cnt as u32
+            adjustment: adjustment
         };
         let method_ty = self.typer.node_method_ty(method_call);
 
