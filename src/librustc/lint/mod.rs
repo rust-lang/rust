@@ -19,6 +19,7 @@
 //! Most lints can be written as `LintPass` instances. These run just before
 //! translation to LLVM bytecode. The `LintPass`es built into rustc are defined
 //! within `builtin.rs`, which has further comments on how to add such a lint.
+//! rustc can also load user-defined lint plugins via the plugin mechanism.
 //!
 //! Some of rustc's lints are defined elsewhere in the compiler and work by
 //! calling `add_lint()` on the overall `Session` object. This works when

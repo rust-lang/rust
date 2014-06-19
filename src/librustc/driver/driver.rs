@@ -216,12 +216,18 @@ pub fn phase_2_configure_and_expand(sess: &Session,
         }
     });
 
-    let Registry { syntax_exts, .. } = registry;
+    let Registry { syntax_exts, lint_passes, .. } = registry;
 
-    // Process command line flags for lints.
-    // Do this here because we will have lint plugins eventually.
+    {
+        let mut ls = sess.lint_store.borrow_mut();
+        for pass in lint_passes.move_iter() {
+            ls.register_pass(Some(sess), true, pass);
+        }
+    }
+
+    // Lint plugins are registered; now we can process command line flags.
     if sess.opts.describe_lints {
-        super::describe_lints(&*sess.lint_store.borrow());
+        super::describe_lints(&*sess.lint_store.borrow(), true);
         return None;
     }
     sess.lint_store.borrow_mut().process_command_line(sess);
