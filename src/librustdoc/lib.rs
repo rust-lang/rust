@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![crate_id = "rustdoc#0.11.0-pre"]
+#![experimental]
 #![desc = "rustdoc, the Rust documentation extractor"]
 #![license = "MIT/ASL2"]
 #![crate_type = "dylib"]
