@@ -10,7 +10,7 @@
 
 fn foo(a: Option<uint>, b: Option<uint>) {
   match (a,b) {
-  //~^ ERROR: non-exhaustive patterns: (core::option::None, core::option::None) not covered
+  //~^ ERROR: non-exhaustive patterns: `(None, None)` not covered
     (Some(a), Some(b)) if a == b => { }
     (Some(_), None) |
     (None, Some(_)) => { }
