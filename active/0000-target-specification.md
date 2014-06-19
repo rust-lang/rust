@@ -18,7 +18,8 @@ One of Rust's important use cases is embedded, OS, or otherwise "bare metal"
 software. At the moment, we still depend on LLVM's split-stack prologue for
 stack safety. In certain situations, it is impossible or undesirable to
 support what LLVM requires to enable this (on x86, a certain thread-local
-storage setup).
+storage setup). Additionally, porting `rustc` to a new platform requires
+modifying the compiler, adding a new OS manually.
 
 # Detailed design
 
@@ -36,9 +37,8 @@ dynamic linking, threads/thread-local storage, IO, etc).
 Rather than listing specific targets for special treatment, introduce a
 general mechanism for specifying certain characteristics of a target triple.
 Redesign how targets are handled around this specification, including for the
-built-in targets. Add a `T` family of flags, similar to `C`, for target
-specification, as well as `-T from-file=targ.json` which will load the
-configuration from a JSON file. A table of the flags and their meaning:
+built-in targets. Extend the `--target` flag to accept a file name of a target
+specificatoin. A table of the target specification flags and their meaning:
 
 * `data-layout`: The [LLVM data
 layout](http://llvm.org/docs/LangRef.html#data-layout) to use. Mostly included
@@ -50,21 +50,32 @@ for completeness; changing this is unlikely to be used.
 * `dynamic-linking-available`: Whether the `dylib` crate type is allowed.
 * `split-stacks-supported`: Whether there is runtime support that will allow
   LLVM's split stack prologue to function as intended.
-* `target-name`: What name to use for `targ_os` for use in `cfg`.
+* `target-name`: What name to use for `targ_os` for use in `cfg` and for
+  passing to LLVM.
+* `relocation-model`: What relocation model to use by default.
 
 Rather than hardcoding a specific set of behaviors per-target, with no
 recourse for escaping them, the compiler would also use this mechanism when
 deciding how to build for a given target. The process would look like:
 
 1. Look up the target triple in an internal map, and load that configuration
-   if it exists.
-2. If `-T from-file` is given, load any options from that file.
-3. For every other `-T` flag, let it override both of the above.
-4. If `-C target-cpu` is specified, replace the `cpu` with it.
-5. If `-C features` is specified, add those to the ones specified by `-T`.
+   if it exists. If that fails, check if the target name exists as a file, and
+   try loading that.
+2. If `-C linker` is specified, use that instead of the target-specified
+   linker.
+3. If `-C link-args` is given, add those to the ones specified by the target.
+4. If `-C target-cpu` is specified, replace the target `cpu` with it.
+5. If `-C target-feature` is specified, add those to the ones specified by the
+   target.
+6. If `-C relocation-model` is specified, replace the target
+   `relocation-model` with it.
+
 
 Then during compilation, this information is used at the proper places rather
 than matching against an enum listing the OSes we recognize.
+
+The complete set of target configuration flags would be mixed into the SVH
+for that crate, but would not include modifications given with `-C`.
 
 # Drawbacks
 
@@ -73,9 +84,6 @@ a new or non-standard target *incredibly easy*, without having to modify the
 compiler. rustc is the only compiler I know of that would allow that.
 
 # Alternatives
-
-One possible extension is to load `<target>.json` from some directory, rather
-than having to require `-T from-file`.
 
 A less holistic approach would be to just allow disabling split stacks on a
 per-crate basis. Another solution could be adding a family of targets,
