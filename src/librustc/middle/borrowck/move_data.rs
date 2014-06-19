@@ -163,7 +163,7 @@ pub type AssignDataFlow<'a> = DataFlowContext<'a, AssignDataFlowOperator>;
 
 fn loan_path_is_precise(loan_path: &LoanPath) -> bool {
     match *loan_path {
-        LpVar(_) => {
+        LpVar(_) | LpUpvar(_) => {
             true
         }
         LpExtend(_, _, LpInterior(mc::InteriorElement(_))) => {
