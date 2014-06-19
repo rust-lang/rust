@@ -39,6 +39,7 @@
 //! [ti]: https://en.wikipedia.org/wiki/Terminfo
 
 #![crate_id = "term#0.11.0-pre"]
+#![experimental]
 #![comment = "Simple ANSI color library"]
 #![license = "MIT/ASL2"]
 #![crate_type = "rlib"]

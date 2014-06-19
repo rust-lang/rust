@@ -19,6 +19,7 @@ This API is completely unstable and subject to change.
 */
 
 #![crate_id = "syntax#0.11.0-pre"]
+#![experimental]
 #![license = "MIT/ASL2"]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
