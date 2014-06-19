@@ -56,7 +56,7 @@ fn run_compiler(args: &[String]) {
             if sopts.describe_lints {
                 let mut ls = lint::LintStore::new();
                 ls.register_builtin(None);
-                describe_lints(&ls);
+                describe_lints(&ls, false);
                 return;
             }
             early_error("no input filename given");
@@ -132,7 +132,7 @@ Additional help:
                              config::optgroups().as_slice()));
 }
 
-fn describe_lints(lint_store: &lint::LintStore) {
+fn describe_lints(lint_store: &lint::LintStore, loaded_plugins: bool) {
     println!("
 Available lint options:
     -W <foo>           Warn about <foo>
@@ -154,13 +154,13 @@ Available lint options:
         lints
     }
 
-    let (_plugin, builtin) = lint_store.get_lints().partitioned(|&(_, p)| p);
-    // let plugin = sort_lints(plugin);
+    let (plugin, builtin) = lint_store.get_lints().partitioned(|&(_, p)| p);
+    let plugin = sort_lints(plugin);
     let builtin = sort_lints(builtin);
 
     // FIXME (#7043): We should use the width in character cells rather than
     // the number of codepoints.
-    let max_name_len = builtin.iter()
+    let max_name_len = plugin.iter().chain(builtin.iter())
         .map(|&s| s.name.char_len())
         .max().unwrap_or(0);
     let padded = |x: &str| {
@@ -182,7 +182,18 @@ Available lint options:
 
     print_lints(builtin);
 
-    // Describe lint plugins here once they exist.
+    match (loaded_plugins, plugin.len()) {
+        (false, 0) => {
+            println!("Compiler plugins can provide additional lints. To see a listing of these, \
+                      re-run `rustc -W help` with a crate filename.");
+        }
+        (false, _) => fail!("didn't load lint plugins but got them anyway!"),
+        (true, 0) => println!("This crate does not load any lint plugins."),
+        (true, _) => {
+            println!("Lint checks provided by plugins loaded by this crate:\n");
+            print_lints(plugin);
+        }
+    }
 }
 
 fn describe_debug_flags() {
