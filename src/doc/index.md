@@ -69,8 +69,12 @@ li {list-style-type: none; }
 
 # External documentation
 
-* [Rust for Rubyists] - An excellent introduction for Rust; not just for Rubyists.
-* [Rust by Example] - Short examples of common tasks in Rust.
+*Note: While these are great resources for learning Rust, they may
+track a particular version of Rust that is likely not exactly the same
+as that for which this documentation was generated.*
+
+* [Rust for Rubyists] - An excellent introduction for Rust; not just for Rubyists (tracks the most recent release).
+* [Rust by Example] - Short examples of common tasks in Rust (tracks the master branch).
 * [The Rust wiki](http://github.com/rust-lang/rust/wiki)
 
 [Rust for Rubyists]: http://www.rustforrubyists.com/
