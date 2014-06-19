@@ -12,5 +12,5 @@ use std::io;
 
 pub fn main() {
     let stdout = &mut io::stdout() as &mut io::Writer;
-    stdout.write(bytes!("Hello!"));
+    stdout.write(b"Hello!");
 }

@@ -25,6 +25,7 @@ use middle::dataflow::DataFlowContext;
 use middle::dataflow::BitwiseOperator;
 use middle::dataflow::DataFlowOperator;
 use euv = middle::expr_use_visitor;
+use mc = middle::mem_categorization;
 use middle::ty;
 use syntax::ast;
 use syntax::ast_util;
@@ -159,6 +160,22 @@ pub type MoveDataFlow<'a> = DataFlowContext<'a, MoveDataFlowOperator>;
 pub struct AssignDataFlowOperator;
 
 pub type AssignDataFlow<'a> = DataFlowContext<'a, AssignDataFlowOperator>;
+
+fn loan_path_is_precise(loan_path: &LoanPath) -> bool {
+    match *loan_path {
+        LpVar(_) | LpUpvar(_) => {
+            true
+        }
+        LpExtend(_, _, LpInterior(mc::InteriorElement(_))) => {
+            // Paths involving element accesses do not refer to a unique
+            // location, as there is no accurate tracking of the indices.
+            false
+        }
+        LpExtend(ref lp_base, _, _) => {
+            loan_path_is_precise(&**lp_base)
+        }
+    }
+}
 
 impl MoveData {
     pub fn new() -> MoveData {
@@ -500,10 +517,17 @@ impl MoveData {
                   path: MovePathIndex,
                   kill_id: ast::NodeId,
                   dfcx_moves: &mut MoveDataFlow) {
-        self.each_applicable_move(path, |move_index| {
-            dfcx_moves.add_kill(kill_id, move_index.get());
-            true
-        });
+        // We can only perform kills for paths that refer to a unique location,
+        // since otherwise we may kill a move from one location with an
+        // assignment referring to another location.
+
+        let loan_path = self.path_loan_path(path);
+        if loan_path_is_precise(&*loan_path) {
+            self.each_applicable_move(path, |move_index| {
+                dfcx_moves.add_kill(kill_id, move_index.get());
+                true
+            });
+        }
     }
 }
 

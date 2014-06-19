@@ -30,8 +30,8 @@ use uvll;
 /// Generic functions related to dealing with sockaddr things
 ////////////////////////////////////////////////////////////////////////////////
 
-pub fn htons(u: u16) -> u16 { mem::to_be16(u) }
-pub fn ntohs(u: u16) -> u16 { mem::from_be16(u) }
+pub fn htons(u: u16) -> u16 { u.to_be() }
+pub fn ntohs(u: u16) -> u16 { Int::from_be(u) }
 
 pub fn sockaddr_to_addr(storage: &libc::sockaddr_storage,
                         len: uint) -> rtio::SocketAddr {
@@ -41,7 +41,7 @@ pub fn sockaddr_to_addr(storage: &libc::sockaddr_storage,
             let storage: &libc::sockaddr_in = unsafe {
                 mem::transmute(storage)
             };
-            let ip = mem::to_be32(storage.sin_addr.s_addr as u32);
+            let ip = (storage.sin_addr.s_addr as u32).to_be();
             let a = (ip >> 24) as u8;
             let b = (ip >> 16) as u8;
             let c = (ip >>  8) as u8;
@@ -89,7 +89,8 @@ fn addr_to_sockaddr(addr: rtio::SocketAddr) -> (libc::sockaddr_storage, uint) {
                 (*storage).sin_family = libc::AF_INET as libc::sa_family_t;
                 (*storage).sin_port = htons(addr.port);
                 (*storage).sin_addr = libc::in_addr {
-                    s_addr: mem::from_be32(ip)
+                    s_addr: Int::from_be(ip),
+
                 };
                 mem::size_of::<libc::sockaddr_in>()
             }

@@ -60,9 +60,7 @@ fn main() {
     let (tx, rx) = channel();
     for _ in range(0, 1000) {
         let tx = tx.clone();
-        let mut builder = TaskBuilder::new();
-        builder.opts.stack_size = Some(64 * 1024);
-        builder.spawn(proc() {
+        TaskBuilder::new().stack_size(64 * 1024).spawn(proc() {
             let host = addr.ip.to_str();
             let port = addr.port;
             match TcpStream::connect(host.as_slice(), port) {

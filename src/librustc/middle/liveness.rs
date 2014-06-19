@@ -701,15 +701,10 @@ impl<'a> Liveness<'a> {
                 if self.loop_scope.len() == 0 {
                     self.ir.tcx.sess.span_bug(sp, "break outside loop");
                 } else {
-                    // FIXME(#5275): this shouldn't have to be a method...
-                    self.last_loop_scope()
+                    *self.loop_scope.last().unwrap()
                 }
             }
         }
-    }
-
-    fn last_loop_scope(&self) -> NodeId {
-        *self.loop_scope.last().unwrap()
     }
 
     #[allow(unused_must_use)]

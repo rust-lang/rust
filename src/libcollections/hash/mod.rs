@@ -98,46 +98,30 @@ pub trait Writer {
 
 //////////////////////////////////////////////////////////////////////////////
 
-fn id<T>(t: T) -> T { t }
-
-macro_rules! impl_hash(
-    ( $($ty:ident, $uty:ident, $f:path;)* ) => (
-        $(
-            impl<S: Writer> Hash<S> for $ty {
-                #[inline]
-                fn hash(&self, state: &mut S) {
-                    let a: [u8, ..::core::$ty::BYTES] = unsafe {
-                        mem::transmute($f(*self as $uty) as $ty)
-                    };
-                    state.write(a.as_slice())
-                }
+macro_rules! impl_hash {
+    ($ty:ident, $uty:ident) => {
+        impl<S: Writer> Hash<S> for $ty {
+            #[inline]
+            fn hash(&self, state: &mut S) {
+                let a: [u8, ..::core::$ty::BYTES] = unsafe {
+                    mem::transmute((*self as $uty).to_le() as $ty)
+                };
+                state.write(a.as_slice())
             }
-        )*
-    )
-)
+        }
+    }
+}
 
-impl_hash!(
-    u8, u8, id;
-    u16, u16, mem::to_le16;
-    u32, u32, mem::to_le32;
-    u64, u64, mem::to_le64;
-    i8, u8, id;
-    i16, u16, mem::to_le16;
-    i32, u32, mem::to_le32;
-    i64, u64, mem::to_le64;
-)
-
-#[cfg(target_word_size = "32")]
-impl_hash!(
-    uint, u32, mem::to_le32;
-    int, u32, mem::to_le32;
-)
-
-#[cfg(target_word_size = "64")]
-impl_hash!(
-    uint, u64, mem::to_le64;
-    int, u64, mem::to_le64;
-)
+impl_hash!(u8, u8)
+impl_hash!(u16, u16)
+impl_hash!(u32, u32)
+impl_hash!(u64, u64)
+impl_hash!(uint, uint)
+impl_hash!(i8, u8)
+impl_hash!(i16, u16)
+impl_hash!(i32, u32)
+impl_hash!(i64, u64)
+impl_hash!(int, uint)
 
 impl<S: Writer> Hash<S> for bool {
     #[inline]

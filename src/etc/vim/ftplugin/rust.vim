@@ -1,12 +1,18 @@
-" Vim syntax file
 " Language:     Rust
+" Description:  Vim syntax file for Rust
 " Maintainer:   Chris Morgan <me@chrismorgan.info>
-" Last Change:  2014 Feb 27
+" Maintainer:   Kevin Ballard <kevin@sb.org>
+" Last Change:  May 27, 2014
 
 if exists("b:did_ftplugin")
 	finish
 endif
 let b:did_ftplugin = 1
+
+let s:save_cpo = &cpo
+set cpo&vim
+
+" Variables {{{1
 
 " The rust source code at present seems to typically omit a leader on /*!
 " comments, so we'll use that as our default, but make it easy to switch.
@@ -42,22 +48,59 @@ if exists("g:loaded_delimitMate")
 	let b:delimitMate_excluded_regions = delimitMate#Get("excluded_regions") . ',rustLifetimeCandidate,rustGenericLifetimeCandidate'
 endif
 
+" Motion Commands {{{1
+
 " Bind motion commands to support hanging indents
-nnoremap <silent> <buffer> [[ :call <SID>Rust_Jump('n', 'Back')<CR>
-nnoremap <silent> <buffer> ]] :call <SID>Rust_Jump('n', 'Forward')<CR>
-xnoremap <silent> <buffer> [[ :call <SID>Rust_Jump('v', 'Back')<CR>
-xnoremap <silent> <buffer> ]] :call <SID>Rust_Jump('v', 'Forward')<CR>
-onoremap <silent> <buffer> [[ :call <SID>Rust_Jump('o', 'Back')<CR>
-onoremap <silent> <buffer> ]] :call <SID>Rust_Jump('o', 'Forward')<CR>
+nnoremap <silent> <buffer> [[ :call rust#Jump('n', 'Back')<CR>
+nnoremap <silent> <buffer> ]] :call rust#Jump('n', 'Forward')<CR>
+xnoremap <silent> <buffer> [[ :call rust#Jump('v', 'Back')<CR>
+xnoremap <silent> <buffer> ]] :call rust#Jump('v', 'Forward')<CR>
+onoremap <silent> <buffer> [[ :call rust#Jump('o', 'Back')<CR>
+onoremap <silent> <buffer> ]] :call rust#Jump('o', 'Forward')<CR>
+
+" Commands {{{1
+
+" See |:RustRun| for docs
+command! -nargs=* -complete=file -bang -bar -buffer RustRun call rust#Run(<bang>0, [<f-args>])
+
+" See |:RustExpand| for docs
+command! -nargs=* -complete=customlist,rust#CompleteExpand -bang -bar -buffer RustExpand call rust#Expand(<bang>0, [<f-args>])
+
+" See |:RustEmitIr| for docs
+command! -nargs=* -bar -buffer RustEmitIr call rust#Emit("ir", [<f-args>])
+
+" See |:RustEmitAsm| for docs
+command! -nargs=* -bar -buffer RustEmitAsm call rust#Emit("asm", [<f-args>])
+
+" Mappings {{{1
+
+" Bind ⌘R in MacVim to :RustRun
+nnoremap <silent> <buffer> <D-r> :RustRun<CR>
+" Bind ⌘⇧R in MacVim to :RustRun! pre-filled with the last args
+nnoremap <buffer> <D-R> :RustRun! <C-r>=join(b:rust_last_rustc_args)<CR><C-\>erust#AppendCmdLine(' -- ' . join(b:rust_last_args))<CR>
+
+if !exists("b:rust_last_rustc_args") || !exists("b:rust_last_args")
+	let b:rust_last_rustc_args = []
+	let b:rust_last_args = []
+endif
+
+" Cleanup {{{1
 
 let b:undo_ftplugin = "
 		\setlocal formatoptions< comments< commentstring< includeexpr< suffixesadd<
 		\|if exists('b:rust_original_delimitMate_excluded_regions')
 		  \|let b:delimitMate_excluded_regions = b:rust_original_delimitMate_excluded_regions
 		  \|unlet b:rust_original_delimitMate_excluded_regions
-		\|elseif exists('b:delimitMate_excluded_regions')
-		  \|unlet b:delimitMate_excluded_regions
+		\|else
+		  \|unlet! b:delimitMate_excluded_regions
 		\|endif
+		\|unlet! b:rust_last_rustc_args b:rust_last_args
+		\|delcommand RustRun
+		\|delcommand RustExpand
+		\|delcommand RustEmitIr
+		\|delcommand RustEmitAsm
+		\|nunmap <buffer> <D-r>
+		\|nunmap <buffer> <D-R>
 		\|nunmap <buffer> [[
 		\|nunmap <buffer> ]]
 		\|xunmap <buffer> [[
@@ -66,31 +109,9 @@ let b:undo_ftplugin = "
 		\|ounmap <buffer> ]]
 		\"
 
-if exists('*<SID>Rust_Jump') | finish | endif
+" }}}1
 
-function! <SID>Rust_Jump(mode, function) range
-	let cnt = v:count1
-	normal! m'
-	if a:mode ==# 'v'
-		norm! gv
-	endif
-	let foldenable = &foldenable
-	set nofoldenable
-	while cnt > 0
-		execute "call <SID>Rust_Jump_" . a:function . "()"
-		let cnt = cnt - 1
-	endwhile
-	let &foldenable = foldenable
-endfunction
+let &cpo = s:save_cpo
+unlet s:save_cpo
 
-function! <SID>Rust_Jump_Back()
-	call search('{', 'b')
-	keepjumps normal! w99[{
-endfunction
-
-function! <SID>Rust_Jump_Forward()
-	normal! j0
-	call search('{', 'b')
-	keepjumps normal! w99[{%
-	call search('{')
-endfunction
+" vim: set noet sw=4 ts=4:

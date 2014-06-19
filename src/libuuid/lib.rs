@@ -209,8 +209,6 @@ impl Uuid {
     /// * `d3` A 16-bit word
     /// * `d4` Array of 8 octets
     pub fn from_fields(d1: u32, d2: u16, d3: u16, d4: &[u8]) -> Uuid {
-        use std::mem::{to_be16, to_be32};
-
         // First construct a temporary field-based struct
         let mut fields = UuidFields {
                 data1: 0,
@@ -219,9 +217,9 @@ impl Uuid {
                 data4: [0, ..8]
         };
 
-        fields.data1 = to_be32(d1);
-        fields.data2 = to_be16(d2);
-        fields.data3 = to_be16(d3);
+        fields.data1 = d1.to_be();
+        fields.data2 = d2.to_be();
+        fields.data3 = d3.to_be();
         slice::bytes::copy_memory(fields.data4, d4);
 
         unsafe {
@@ -335,16 +333,15 @@ impl Uuid {
     ///
     /// Example: `550e8400-e29b-41d4-a716-446655440000`
     pub fn to_hyphenated_str(&self) -> String {
-        use std::mem::{to_be16, to_be32};
         // Convert to field-based struct as it matches groups in output.
         // Ensure fields are in network byte order, as per RFC.
         let mut uf: UuidFields;
         unsafe {
             uf = transmute_copy(&self.bytes);
         }
-        uf.data1 = to_be32(uf.data1);
-        uf.data2 = to_be16(uf.data2);
-        uf.data3 = to_be16(uf.data3);
+        uf.data1 = uf.data1.to_be();
+        uf.data2 = uf.data2.to_be();
+        uf.data3 = uf.data3.to_be();
         let s = format!("{:08x}-{:04x}-{:04x}-{:02x}{:02x}-\
                          {:02x}{:02x}{:02x}{:02x}{:02x}{:02x}",
             uf.data1,

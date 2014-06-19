@@ -360,7 +360,7 @@ pub fn readdir(p: &CString) -> IoResult<Vec<CString>> {
         let root = Path::new(root);
 
         dirs.move_iter().filter(|path| {
-            path.as_vec() != bytes!(".") && path.as_vec() != bytes!("..")
+            path.as_vec() != b"." && path.as_vec() != b".."
         }).map(|path| root.join(path).to_c_str()).collect()
     }
 
@@ -529,7 +529,7 @@ mod tests {
         let mut reader = FileDesc::new(reader, true);
         let mut writer = FileDesc::new(writer, true);
 
-        writer.inner_write(bytes!("test")).ok().unwrap();
+        writer.inner_write(b"test").ok().unwrap();
         let mut buf = [0u8, ..4];
         match reader.inner_read(buf) {
             Ok(4) => {
@@ -552,7 +552,7 @@ mod tests {
             assert!(!f.is_null());
             let mut file = CFile::new(f);
 
-            file.write(bytes!("test")).ok().unwrap();
+            file.write(b"test").ok().unwrap();
             let mut buf = [0u8, ..4];
             let _ = file.seek(0, SeekSet).ok().unwrap();
             match file.read(buf) {

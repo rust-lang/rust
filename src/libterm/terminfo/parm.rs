@@ -106,7 +106,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
         *dst = (*src).clone();
     }
 
-    for c in cap.iter().map(|&x| x) {
+    for &c in cap.iter() {
         let cur = c as char;
         let mut old_state = state;
         match state {
@@ -575,25 +575,25 @@ mod test {
 
     #[test]
     fn test_basic_setabf() {
-        let s = bytes!("\\E[48;5;%p1%dm");
+        let s = b"\\E[48;5;%p1%dm";
         assert_eq!(expand(s, [Number(1)], &mut Variables::new()).unwrap(),
-                   bytes!("\\E[48;5;1m").iter().map(|x| *x).collect());
+                   "\\E[48;5;1m".bytes().collect());
     }
 
     #[test]
     fn test_multiple_int_constants() {
-        assert_eq!(expand(bytes!("%{1}%{2}%d%d"), [], &mut Variables::new()).unwrap(),
-                   bytes!("21").iter().map(|x| *x).collect());
+        assert_eq!(expand(b"%{1}%{2}%d%d", [], &mut Variables::new()).unwrap(),
+                   "21".bytes().collect());
     }
 
     #[test]
     fn test_op_i() {
         let mut vars = Variables::new();
-        assert_eq!(expand(bytes!("%p1%d%p2%d%p3%d%i%p1%d%p2%d%p3%d"),
+        assert_eq!(expand(b"%p1%d%p2%d%p3%d%i%p1%d%p2%d%p3%d",
                           [Number(1),Number(2),Number(3)], &mut vars),
-                   Ok(bytes!("123233").iter().map(|x| *x).collect()));
-        assert_eq!(expand(bytes!("%p1%d%p2%d%i%p1%d%p2%d"), [], &mut vars),
-                   Ok(bytes!("0011").iter().map(|x| *x).collect()));
+                   Ok("123233".bytes().collect()));
+        assert_eq!(expand(b"%p1%d%p2%d%i%p1%d%p2%d", [], &mut vars),
+                   Ok("0011".bytes().collect()));
     }
 
     #[test]
@@ -610,7 +610,7 @@ mod test {
             } else {
                 Number(97)
             };
-            let res = expand(bytes!("%p1").iter().map(|x| *x).collect::<Vec<_>>()
+            let res = expand("%p1".bytes().collect::<Vec<_>>()
                              .append(cap.as_bytes()).as_slice(),
                              [p],
                              vars);
@@ -622,13 +622,13 @@ mod test {
             let res = expand(cap.as_bytes(), [], vars);
             assert!(res.is_err(),
                     "Binop {} succeeded incorrectly with 0 stack entries", *cap);
-            let res = expand(bytes!("%{1}").iter().map(|x| *x).collect::<Vec<_>>()
+            let res = expand("%{1}".bytes().collect::<Vec<_>>()
                              .append(cap.as_bytes()).as_slice(),
                               [],
                               vars);
             assert!(res.is_err(),
                     "Binop {} succeeded incorrectly with 1 stack entry", *cap);
-            let res = expand(bytes!("%{1}%{2}").iter().map(|x| *x).collect::<Vec<_>>()
+            let res = expand("%{1}%{2}".bytes().collect::<Vec<_>>()
                              .append(cap.as_bytes()).as_slice(),
                              [],
                              vars);
@@ -639,7 +639,7 @@ mod test {
 
     #[test]
     fn test_push_bad_param() {
-        assert!(expand(bytes!("%pa"), [], &mut Variables::new()).is_err());
+        assert!(expand(b"%pa", [], &mut Variables::new()).is_err());
     }
 
     #[test]
@@ -664,39 +664,37 @@ mod test {
     #[test]
     fn test_conditionals() {
         let mut vars = Variables::new();
-        let s = bytes!("\\E[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m");
+        let s = b"\\E[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m";
         let res = expand(s, [Number(1)], &mut vars);
         assert!(res.is_ok(), res.unwrap_err());
         assert_eq!(res.unwrap(),
-                   bytes!("\\E[31m").iter().map(|x| *x).collect());
+                   "\\E[31m".bytes().collect());
         let res = expand(s, [Number(8)], &mut vars);
         assert!(res.is_ok(), res.unwrap_err());
         assert_eq!(res.unwrap(),
-                   bytes!("\\E[90m").iter().map(|x| *x).collect());
+                   "\\E[90m".bytes().collect());
         let res = expand(s, [Number(42)], &mut vars);
         assert!(res.is_ok(), res.unwrap_err());
         assert_eq!(res.unwrap(),
-                   bytes!("\\E[38;5;42m").iter().map(|x| *x).collect());
+                   "\\E[38;5;42m".bytes().collect());
     }
 
     #[test]
     fn test_format() {
         let mut varstruct = Variables::new();
         let vars = &mut varstruct;
-        assert_eq!(expand(bytes!("%p1%s%p2%2s%p3%2s%p4%.2s"),
+        assert_eq!(expand(b"%p1%s%p2%2s%p3%2s%p4%.2s",
                           [String("foo".to_string()),
                            String("foo".to_string()),
                            String("f".to_string()),
                            String("foo".to_string())], vars),
-                   Ok(bytes!("foofoo ffo").iter().map(|x| *x).collect()));
-        assert_eq!(expand(bytes!("%p1%:-4.2s"), [String("foo".to_string())], vars),
-                   Ok(bytes!("fo  ").iter().map(|x| *x).collect()));
+                   Ok("foofoo ffo".bytes().collect()));
+        assert_eq!(expand(b"%p1%:-4.2s", [String("foo".to_string())], vars),
+                   Ok("fo  ".bytes().collect()));
 
-        assert_eq!(expand(bytes!("%p1%d%p1%.3d%p1%5d%p1%:+d"), [Number(1)], vars),
-                   Ok(bytes!("1001    1+1").iter().map(|x| *x).collect()));
-        assert_eq!(expand(bytes!("%p1%o%p1%#o%p2%6.4x%p2%#6.4X"), [Number(15), Number(27)], vars),
-                   Ok(bytes!("17017  001b0X001B").iter()
-                                                 .map(|x| *x)
-                                                 .collect()));
+        assert_eq!(expand(b"%p1%d%p1%.3d%p1%5d%p1%:+d", [Number(1)], vars),
+                   Ok("1001    1+1".bytes().collect()));
+        assert_eq!(expand(b"%p1%o%p1%#o%p2%6.4x%p2%#6.4X", [Number(15), Number(27)], vars),
+                   Ok("17017  001b0X001B".bytes().collect()));
     }
 }

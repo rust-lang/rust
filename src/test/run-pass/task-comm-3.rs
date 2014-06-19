@@ -10,7 +10,7 @@
 
 extern crate debug;
 
-use std::task::TaskBuilder;
+use std::task;
 
 pub fn main() { println!("===== WITHOUT THREADS ====="); test00(); }
 
@@ -39,14 +39,12 @@ fn test00() {
     let mut results = Vec::new();
     while i < number_of_tasks {
         let tx = tx.clone();
-        let mut builder = TaskBuilder::new();
-        results.push(builder.future_result());
-        builder.spawn({
+        results.push(task::try_future({
             let i = i;
             proc() {
                 test00_start(&tx, i, number_of_messages)
             }
-        });
+        }));
         i = i + 1;
     }
 
@@ -62,7 +60,7 @@ fn test00() {
     }
 
     // Join spawned tasks...
-    for r in results.iter() { r.recv(); }
+    for r in results.mut_iter() { r.get_ref(); }
 
     println!("Completed: Final number is: ");
     println!("{:?}", sum);
