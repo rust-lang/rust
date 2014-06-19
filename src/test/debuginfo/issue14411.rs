@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,7 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-    let vec = bytes!(1024u8); //~ ERROR too large u8 literal in bytes!
-    //~^ WARN `bytes!` is deprecated
+// ignore-android: FIXME(#10381)
+
+// compile-flags:-g
+
+// No debugger interaction required: just make sure it compiles without
+// crashing.
+
+fn test(a: &Vec<u8>) {
+  print!("{}", a.len());
+}
+
+pub fn main() {
+  let data = vec!();
+  test(&data);
 }

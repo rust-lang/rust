@@ -19,7 +19,6 @@ extern crate debug;
 
 use std::os;
 use std::task;
-use std::task::TaskBuilder;
 use std::uint;
 
 fn move_out<T>(_x: T) {}
@@ -58,29 +57,25 @@ fn run(args: &[String]) {
     let mut worker_results = Vec::new();
     let from_parent = if workers == 1 {
         let (to_child, from_parent) = channel();
-        let mut builder = TaskBuilder::new();
-        worker_results.push(builder.future_result());
-        builder.spawn(proc() {
+        worker_results.push(task::try_future(proc() {
             for _ in range(0u, size / workers) {
                 //println!("worker {:?}: sending {:?} bytes", i, num_bytes);
                 to_child.send(bytes(num_bytes));
             }
             //println!("worker {:?} exiting", i);
-        });
+        }));
         from_parent
     } else {
         let (to_child, from_parent) = channel();
         for _ in range(0u, workers) {
             let to_child = to_child.clone();
-            let mut builder = TaskBuilder::new();
-            worker_results.push(builder.future_result());
-            builder.spawn(proc() {
+            worker_results.push(task::try_future(proc() {
                 for _ in range(0u, size / workers) {
                     //println!("worker {:?}: sending {:?} bytes", i, num_bytes);
                     to_child.send(bytes(num_bytes));
                 }
                 //println!("worker {:?} exiting", i);
-            });
+            }));
         }
         from_parent
     };
@@ -88,8 +83,8 @@ fn run(args: &[String]) {
         server(&from_parent, &to_parent);
     });
 
-    for r in worker_results.iter() {
-        r.recv();
+    for r in worker_results.move_iter() {
+        r.unwrap();
     }
 
     //println!("sending stop message");

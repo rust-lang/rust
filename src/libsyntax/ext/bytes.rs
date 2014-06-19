@@ -19,6 +19,14 @@ use ext::build::AstBuilder;
 
 pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                          -> Box<base::MacResult> {
+    cx.span_warn(sp, "`bytes!` is deprecated, use `b\"foo\"` literals instead");
+    cx.parse_sess.span_diagnostic.span_note(sp,
+        "see http://doc.rust-lang.org/rust.html#byte-and-byte-string-literals \
+         for documentation");
+    cx.parse_sess.span_diagnostic.span_note(sp,
+        "see https://github.com/rust-lang/rust/blob/master/src/etc/2014-06-rewrite-bytes-macros.py \
+         for an automated migration");
+
     // Gather all argument expressions
     let exprs = match get_exprs_from_tts(cx, sp, tts) {
         None => return DummyResult::expr(sp),

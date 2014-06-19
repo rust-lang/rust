@@ -32,10 +32,13 @@
 //! ```rust
 //! extern crate native;
 //!
+//! use std::task::TaskBuilder;
+//! use native::NativeTaskBuilder;
+//!
 //! fn main() {
 //!     // We're not sure whether this main function is run in 1:1 or M:N mode.
 //!
-//!     native::task::spawn(proc() {
+//!     TaskBuilder::new().native().spawn(proc() {
 //!         // this code is guaranteed to be run on a native thread
 //!     });
 //! }
@@ -50,7 +53,8 @@
        html_root_url = "http://doc.rust-lang.org/")]
 #![deny(unused_result, unused_must_use)]
 #![allow(non_camel_case_types)]
-#![feature(macro_rules)]
+#![allow(deprecated)]
+#![feature(default_type_params)]
 
 // NB this crate explicitly does *not* allow glob imports, please seriously
 //    consider whether they're needed before adding that feature here (the
@@ -64,6 +68,8 @@ extern crate libc;
 use std::os;
 use std::rt;
 use std::str;
+
+pub use task::NativeTaskBuilder;
 
 pub mod io;
 pub mod task;

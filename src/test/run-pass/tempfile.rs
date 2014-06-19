@@ -29,7 +29,7 @@ fn test_tempdir() {
     let path = {
         let p = TempDir::new_in(&Path::new("."), "foobar").unwrap();
         let p = p.path();
-        assert!(p.as_vec().ends_with(bytes!("foobar")));
+        assert!(p.as_vec().ends_with(b"foobar"));
         p.clone()
     };
     assert!(!path.exists());

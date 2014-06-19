@@ -474,7 +474,7 @@ mod test {
 
     #[test]
     fn test_read_char() {
-        let b = bytes!("Việt");
+        let b = b"Vi\xE1\xBB\x87t";
         let mut r = BufReader::new(b);
         assert_eq!(r.read_char(), Ok('V'));
         assert_eq!(r.read_char(), Ok('i'));
@@ -485,7 +485,7 @@ mod test {
 
     #[test]
     fn test_read_bad_char() {
-        let b = bytes!(0x80);
+        let b = b"\x80";
         let mut r = BufReader::new(b);
         assert!(r.read_char().is_err());
     }

@@ -351,7 +351,7 @@ pub fn readdir(p: &CString) -> IoResult<Vec<CString>> {
         let root = Path::new(root);
 
         dirs.move_iter().filter(|path| {
-            path.as_vec() != bytes!(".") && path.as_vec() != bytes!("..")
+            path.as_vec() != b"." && path.as_vec() != b".."
         }).map(|path| root.join(path).to_c_str()).collect()
     }
 

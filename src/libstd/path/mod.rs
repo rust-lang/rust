@@ -219,7 +219,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
                 let dot = '.' as u8;
                 match name.rposition_elem(&dot) {
                     None | Some(0) => name,
-                    Some(1) if name == bytes!("..") => name,
+                    Some(1) if name == b".." => name,
                     Some(pos) => name.slice_to(pos)
                 }
             })
@@ -242,7 +242,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
                 let dot = '.' as u8;
                 match name.rposition_elem(&dot) {
                     None | Some(0) => None,
-                    Some(1) if name == bytes!("..") => None,
+                    Some(1) if name == b".." => None,
                     Some(pos) => Some(name.slice_from(pos+1))
                 }
             }

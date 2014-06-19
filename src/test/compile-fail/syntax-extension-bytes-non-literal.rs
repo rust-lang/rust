@@ -10,4 +10,5 @@
 
 fn main() {
     let vec = bytes!(foo); //~ ERROR non-literal in bytes!
+    //~^ WARN `bytes!` is deprecated
 }

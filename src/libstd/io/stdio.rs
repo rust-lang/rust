@@ -22,7 +22,7 @@ about the stream or terminal to which it is attached.
 use std::io;
 
 let mut out = io::stdout();
-out.write(bytes!("Hello, world!"));
+out.write(b"Hello, world!");
 ```
 
 */

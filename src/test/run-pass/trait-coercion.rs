@@ -26,7 +26,7 @@ impl Trait for Struct {
 }
 
 fn foo(mut a: Box<Writer>) {
-    a.write(bytes!("Hello\n"));
+    a.write(b"Hello\n");
 }
 
 pub fn main() {

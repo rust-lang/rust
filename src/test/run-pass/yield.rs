@@ -9,18 +9,15 @@
 // except according to those terms.
 
 use std::task;
-use std::task::TaskBuilder;
 
 pub fn main() {
-    let mut builder = TaskBuilder::new();
-    let mut result = builder.future_result();
-    builder.spawn(child);
+    let mut result = task::try_future(child);
     println!("1");
     task::deschedule();
     println!("2");
     task::deschedule();
     println!("3");
-    result.recv();
+    result.unwrap();
 }
 
 fn child() {

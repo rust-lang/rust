@@ -1957,30 +1957,30 @@ mod tests {
 
     #[test]
     fn test_starts_with() {
-        assert!(bytes!("foobar").starts_with(bytes!("foo")));
-        assert!(!bytes!("foobar").starts_with(bytes!("oob")));
-        assert!(!bytes!("foobar").starts_with(bytes!("bar")));
-        assert!(!bytes!("foo").starts_with(bytes!("foobar")));
-        assert!(!bytes!("bar").starts_with(bytes!("foobar")));
-        assert!(bytes!("foobar").starts_with(bytes!("foobar")));
+        assert!(b"foobar".starts_with(b"foo"));
+        assert!(!b"foobar".starts_with(b"oob"));
+        assert!(!b"foobar".starts_with(b"bar"));
+        assert!(!b"foo".starts_with(b"foobar"));
+        assert!(!b"bar".starts_with(b"foobar"));
+        assert!(b"foobar".starts_with(b"foobar"));
         let empty: &[u8] = [];
         assert!(empty.starts_with(empty));
-        assert!(!empty.starts_with(bytes!("foo")));
-        assert!(bytes!("foobar").starts_with(empty));
+        assert!(!empty.starts_with(b"foo"));
+        assert!(b"foobar".starts_with(empty));
     }
 
     #[test]
     fn test_ends_with() {
-        assert!(bytes!("foobar").ends_with(bytes!("bar")));
-        assert!(!bytes!("foobar").ends_with(bytes!("oba")));
-        assert!(!bytes!("foobar").ends_with(bytes!("foo")));
-        assert!(!bytes!("foo").ends_with(bytes!("foobar")));
-        assert!(!bytes!("bar").ends_with(bytes!("foobar")));
-        assert!(bytes!("foobar").ends_with(bytes!("foobar")));
+        assert!(b"foobar".ends_with(b"bar"));
+        assert!(!b"foobar".ends_with(b"oba"));
+        assert!(!b"foobar".ends_with(b"foo"));
+        assert!(!b"foo".ends_with(b"foobar"));
+        assert!(!b"bar".ends_with(b"foobar"));
+        assert!(b"foobar".ends_with(b"foobar"));
         let empty: &[u8] = [];
         assert!(empty.ends_with(empty));
-        assert!(!empty.ends_with(bytes!("foo")));
-        assert!(bytes!("foobar").ends_with(empty));
+        assert!(!empty.ends_with(b"foo"));
+        assert!(b"foobar".ends_with(empty));
     }
 
     #[test]

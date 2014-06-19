@@ -19,7 +19,7 @@ pub trait ToHex {
     fn to_hex(&self) -> String;
 }
 
-static CHARS: &'static[u8] = bytes!("0123456789abcdef");
+static CHARS: &'static[u8] = b"0123456789abcdef";
 
 impl<'a> ToHex for &'a [u8] {
     /**

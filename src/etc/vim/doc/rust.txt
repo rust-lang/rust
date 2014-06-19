@@ -1,0 +1,150 @@
+*rust.txt*      Filetype plugin for Rust
+
+==============================================================================
+CONTENTS                                                                *rust*
+
+1. Introduction                                                   |rust-intro|
+2. Settings                                                    |rust-settings|
+3. Commands                                                    |rust-commands|
+4. Mappings                                                    |rust-mappings|
+
+==============================================================================
+INTRODUCTION                                                      *rust-intro*
+
+This plugin provides syntax and supporting functionality for the Rust
+filetype.
+
+==============================================================================
+SETTINGS                                                       *rust-settings*
+
+This plugin has a few variables you can define in your vimrc that change the
+behavior of the plugin.
+
+                                                                *g:rustc_path*
+g:rustc_path~
+	Set this option to the path to rustc for use in the |:RustRun| and
+	|:RustExpand| commands. If unset, "rustc" will be located in $PATH: >
+	    let g:rustc_path = $HOME."/bin/rustc"
+<
+
+                                                  *g:rustc_makeprg_no_percent*
+g:rustc_makeprg_no_percent~
+	Set this option to 1 to have 'makeprg' default to "rustc" instead of
+	"rustc %": >
+	    let g:rustc_makeprg_no_percent = 1
+<
+
+                                                              *g:rust_conceal*
+g:rust_conceal~
+	Set this option to turn on the basic |conceal| support: >
+	    let g:rust_conceal = 1
+<
+
+                                                     *g:rust_conceal_mod_path*
+g:rust_conceal_mod_path~
+	Set this option to turn on |conceal| for the path connecting token
+	"::": >
+	    let g:rust_conceal_mod_path = 1
+<
+
+                                                          *g:rust_conceal_pub*
+g:rust_conceal_pub~
+	Set this option to turn on |conceal| for the "pub" token: >
+	    let g:rust_conceal_pub = 1
+<
+
+                                                  *g:rust_bang_comment_leader*
+g:rust_bang_comment_leader~
+	Set this option to 1 to preserve the leader on multi-line doc comments
+	using the /*! syntax: >
+	    let g:rust_bang_comment_leader = 1
+<
+
+                                                 *g:ftplugin_rust_source_path*
+g:ftplugin_rust_source_path~
+	Set this option to a path that should be prepended to 'path' for Rust
+	source files: >
+	    let g:ftplugin_rust_source_path = $HOME.'/dev/rust'
+<
+
+==============================================================================
+COMMANDS                                                       *rust-commands*
+
+:RustRun  [args]                                                    *:RustRun*
+:RustRun! [rustc-args] [--] [args]
+		Compiles and runs the current file. If it has unsaved changes,
+		it will be saved first using |:update|. If the current file is
+		an unnamed buffer, it will be written to a temporary file
+		first. The compiled binary is always placed in a temporary
+		directory, but is run from the current directory.
+
+		The arguments given to |:RustRun| will be passed to the
+		compiled binary.
+
+		If ! is specified, the arguments are passed to rustc instead.
+		A "--" argument will separate the rustc arguments from the
+		arguments passed to the binary.
+
+		If |g:rustc_path| is defined, it is used as the path to rustc.
+		Otherwise it is assumed rustc can be found in $PATH.
+
+:RustExpand  [args]                                              *:RustExpand*
+:RustExpand! [TYPE] [args]
+		Expands the current file using --pretty and displays the
+		results in a new split. If the current file has unsaved
+		changes, it will be saved first using |:update|. If the
+		current file is an unnamed buffer, it will be written to a
+		temporary file first.
+
+		The arguments given to |:RustExpand| will be passed to rustc.
+		This is largely intended for specifying various --cfg
+		configurations.
+
+		If ! is specified, the first argument is the expansion type to
+		pass to rustc --pretty. Otherwise it will default to
+		"expanded".
+
+		If |g:rustc_path| is defined, it is used as the path to rustc.
+		Otherwise it is assumed rustc can be found in $PATH.
+
+:RustEmitIr [args]                                               *:RustEmitIr*
+		Compiles the current file to LLVM IR and displays the results
+		in a new split. If the current file has unsaved changes, it
+		will be saved first using |:update|. If the current file is an
+		unnamed buffer, it will be written to a temporary file first.
+
+		The arguments given to |:RustEmitIr| will be passed to rustc.
+
+		If |g:rustc_path| is defined, it is used as the path to rustc.
+		Otherwise it is assumed rustc can be found in $PATH.
+
+:RustEmitAsm [args]                                             *:RustEmitAsm*
+		Compiles the current file to assembly and displays the results
+		in a new split. If the current file has unsaved changes, it
+		will be saved first using |:update|. If the current file is an
+		unnamed buffer, it will be written to a temporary file first.
+
+		The arguments given to |:RustEmitAsm| will be passed to rustc.
+
+		If |g:rustc_path| is defined, it is used as the path to rustc.
+		Otherwise it is assumed rustc can be found in $PATH.
+
+==============================================================================
+MAPPINGS                                                       *rust-mappings*
+
+This plugin defines mappings for |[[| and |]]| to support hanging indents.
+
+It also has a few other mappings:
+
+							*rust_<D-r>*
+<D-r>			Executes |:RustRun| with no arguments.
+			Note: This binding is only available in MacVim.
+
+							*rust_<D-R>*
+<D-R>			Populates the command line with |:RustRun|! using the
+			arguments given to the last invocation, but does not
+			execute it.
+			Note: This binding is only available in MacVim.
+
+==============================================================================
+ vim:tw=78:sw=4:noet:ts=8:ft=help:norl:

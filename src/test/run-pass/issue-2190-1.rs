@@ -13,9 +13,7 @@ use std::task::TaskBuilder;
 static generations: uint = 1024+256+128+49;
 
 fn spawn(f: proc():Send) {
-    let mut t = TaskBuilder::new();
-    t.opts.stack_size = Some(32 * 1024);
-    t.spawn(f);
+    TaskBuilder::new().stack_size(32 * 1024).spawn(f)
 }
 
 fn child_no(x: uint) -> proc():Send {

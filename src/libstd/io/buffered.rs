@@ -535,7 +535,7 @@ mod test {
 
     #[test]
     fn test_read_line() {
-        let in_buf = MemReader::new(Vec::from_slice(bytes!("a\nb\nc")));
+        let in_buf = MemReader::new(Vec::from_slice(b"a\nb\nc"));
         let mut reader = BufferedReader::with_capacity(2, in_buf);
         assert_eq!(reader.read_line(), Ok("a\n".to_string()));
         assert_eq!(reader.read_line(), Ok("b\n".to_string()));
@@ -545,7 +545,7 @@ mod test {
 
     #[test]
     fn test_lines() {
-        let in_buf = MemReader::new(Vec::from_slice(bytes!("a\nb\nc")));
+        let in_buf = MemReader::new(Vec::from_slice(b"a\nb\nc"));
         let mut reader = BufferedReader::with_capacity(2, in_buf);
         let mut it = reader.lines();
         assert_eq!(it.next(), Some(Ok("a\n".to_string())));

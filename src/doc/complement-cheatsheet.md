@@ -76,7 +76,7 @@ character.
 ~~~
 use std::str;
 
-let x = bytes!(72u8,"ello ",0xF0,0x90,0x80,"World!");
+let x = b"Hello \xF0\x90\x80World!";
 let y = str::from_utf8_lossy(x);
 ~~~
 
