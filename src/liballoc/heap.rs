@@ -132,7 +132,7 @@ unsafe fn closure_exchange_malloc(drop_glue: fn(*mut u8), size: uint,
 mod imp {
     use core::option::{None, Option};
     use core::ptr::{RawPtr, mut_null, null};
-    use core::num::Bitwise;
+    use core::num::Int;
     use libc::{c_char, c_int, c_void, size_t};
 
     #[link(name = "jemalloc", kind = "static")]

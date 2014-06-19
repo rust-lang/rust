@@ -463,7 +463,7 @@ mod tests {
     #[test]
     fn test_str_multistring_parsing() {
         unsafe {
-            let input = bytes!("zero", "\x00", "one", "\x00", "\x00");
+            let input = b"zero\0one\0\0";
             let ptr = input.as_ptr();
             let expected = ["zero", "one"];
             let mut it = expected.iter();
@@ -505,7 +505,7 @@ mod tests {
             }
         });
 
-        let _ = bytes!("hello").to_c_str().with_ref(|buf| {
+        let _ = b"hello".to_c_str().with_ref(|buf| {
             unsafe {
                 assert_eq!(*buf.offset(0), 'h' as libc::c_char);
                 assert_eq!(*buf.offset(1), 'e' as libc::c_char);
@@ -516,7 +516,7 @@ mod tests {
             }
         });
 
-        let _ = bytes!("foo", 0xff).to_c_str().with_ref(|buf| {
+        let _ = b"foo\xFF".to_c_str().with_ref(|buf| {
             unsafe {
                 assert_eq!(*buf.offset(0), 'f' as libc::c_char);
                 assert_eq!(*buf.offset(1), 'o' as libc::c_char);
@@ -595,22 +595,22 @@ mod tests {
     #[test]
     fn test_as_bytes() {
         let c_str = "hello".to_c_str();
-        assert_eq!(c_str.as_bytes(), bytes!("hello", 0));
+        assert_eq!(c_str.as_bytes(), b"hello\0");
         let c_str = "".to_c_str();
-        assert_eq!(c_str.as_bytes(), bytes!(0));
-        let c_str = bytes!("foo", 0xff).to_c_str();
-        assert_eq!(c_str.as_bytes(), bytes!("foo", 0xff, 0));
+        assert_eq!(c_str.as_bytes(), b"\0");
+        let c_str = b"foo\xFF".to_c_str();
+        assert_eq!(c_str.as_bytes(), b"foo\xFF\0");
     }
 
     #[test]
     fn test_as_bytes_no_nul() {
         let c_str = "hello".to_c_str();
-        assert_eq!(c_str.as_bytes_no_nul(), bytes!("hello"));
+        assert_eq!(c_str.as_bytes_no_nul(), b"hello");
         let c_str = "".to_c_str();
         let exp: &[u8] = [];
         assert_eq!(c_str.as_bytes_no_nul(), exp);
-        let c_str = bytes!("foo", 0xff).to_c_str();
-        assert_eq!(c_str.as_bytes_no_nul(), bytes!("foo", 0xff));
+        let c_str = b"foo\xFF".to_c_str();
+        assert_eq!(c_str.as_bytes_no_nul(), b"foo\xFF");
     }
 
     #[test]
@@ -633,7 +633,7 @@ mod tests {
         assert_eq!(c_str.as_str(), Some("hello"));
         let c_str = "".to_c_str();
         assert_eq!(c_str.as_str(), Some(""));
-        let c_str = bytes!("foo", 0xff).to_c_str();
+        let c_str = b"foo\xFF".to_c_str();
         assert_eq!(c_str.as_str(), None);
     }
 

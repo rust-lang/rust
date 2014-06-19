@@ -13,9 +13,9 @@
 //! This module contains functions for querying the size and alignment of
 //! types, initializing and manipulating memory.
 
-use ptr;
 use intrinsics;
-use intrinsics::{bswap16, bswap32, bswap64};
+use num::Int;
+use ptr;
 
 pub use intrinsics::transmute;
 
@@ -172,153 +172,89 @@ pub unsafe fn move_val_init<T>(dst: &mut T, src: T) {
 /// Convert an u16 to little endian from the target's endianness.
 ///
 /// On little endian, this is a no-op.  On big endian, the bytes are swapped.
-#[cfg(target_endian = "little")] #[inline] pub fn to_le16(x: u16) -> u16 { x }
-
-/// Convert an u16 to little endian from the target's endianness.
-///
-/// On little endian, this is a no-op.  On big endian, the bytes are swapped.
-#[cfg(target_endian = "big")] #[inline] #[stable]
-pub fn to_le16(x: u16) -> u16 { unsafe { bswap16(x) } }
+#[inline]
+#[deprecated = "use `Int::to_le` instead"]
+pub fn to_le16(x: u16) -> u16 { x.to_le() }
 
 /// Convert an u32 to little endian from the target's endianness.
 ///
 /// On little endian, this is a no-op.  On big endian, the bytes are swapped.
-#[cfg(target_endian = "little")] #[inline] #[stable]
-pub fn to_le32(x: u32) -> u32 { x }
-
-/// Convert an u32 to little endian from the target's endianness.
-///
-/// On little endian, this is a no-op.  On big endian, the bytes are swapped.
-#[cfg(target_endian = "big")] #[inline] #[stable]
-pub fn to_le32(x: u32) -> u32 { unsafe { bswap32(x) } }
+#[inline]
+#[deprecated = "use `Int::to_le` instead"]
+pub fn to_le32(x: u32) -> u32 { x.to_le() }
 
 /// Convert an u64 to little endian from the target's endianness.
 ///
 /// On little endian, this is a no-op.  On big endian, the bytes are swapped.
-#[cfg(target_endian = "little")] #[inline] #[stable]
-pub fn to_le64(x: u64) -> u64 { x }
-
-/// Convert an u64 to little endian from the target's endianness.
-///
-/// On little endian, this is a no-op.  On big endian, the bytes are swapped.
-#[cfg(target_endian = "big")] #[inline] #[stable]
-pub fn to_le64(x: u64) -> u64 { unsafe { bswap64(x) } }
-
+#[inline]
+#[deprecated = "use `Int::to_le` instead"]
+pub fn to_le64(x: u64) -> u64 { x.to_le() }
 
 /// Convert an u16 to big endian from the target's endianness.
 ///
 /// On big endian, this is a no-op.  On little endian, the bytes are swapped.
-#[cfg(target_endian = "little")] #[inline] #[stable]
-pub fn to_be16(x: u16) -> u16 { unsafe { bswap16(x) } }
-
-/// Convert an u16 to big endian from the target's endianness.
-///
-/// On big endian, this is a no-op.  On little endian, the bytes are swapped.
-#[cfg(target_endian = "big")] #[inline] #[stable]
-pub fn to_be16(x: u16) -> u16 { x }
+#[inline]
+#[deprecated = "use `Int::to_be` instead"]
+pub fn to_be16(x: u16) -> u16 { x.to_be() }
 
 /// Convert an u32 to big endian from the target's endianness.
 ///
 /// On big endian, this is a no-op.  On little endian, the bytes are swapped.
-#[cfg(target_endian = "little")] #[inline] #[stable]
-pub fn to_be32(x: u32) -> u32 { unsafe { bswap32(x) } }
-
-/// Convert an u32 to big endian from the target's endianness.
-///
-/// On big endian, this is a no-op.  On little endian, the bytes are swapped.
-#[cfg(target_endian = "big")] #[inline] #[stable]
-pub fn to_be32(x: u32) -> u32 { x }
+#[inline]
+#[deprecated = "use `Int::to_be` instead"]
+pub fn to_be32(x: u32) -> u32 { x.to_be() }
 
 /// Convert an u64 to big endian from the target's endianness.
 ///
 /// On big endian, this is a no-op.  On little endian, the bytes are swapped.
-#[cfg(target_endian = "little")] #[inline] #[stable]
-pub fn to_be64(x: u64) -> u64 { unsafe { bswap64(x) } }
-
-/// Convert an u64 to big endian from the target's endianness.
-///
-/// On big endian, this is a no-op.  On little endian, the bytes are swapped.
-#[cfg(target_endian = "big")] #[inline] #[stable]
-pub fn to_be64(x: u64) -> u64 { x }
-
+#[inline]
+#[deprecated = "use `Int::to_be` instead"]
+pub fn to_be64(x: u64) -> u64 { x.to_be() }
 
 /// Convert an u16 from little endian to the target's endianness.
 ///
 /// On little endian, this is a no-op.  On big endian, the bytes are swapped.
-#[cfg(target_endian = "little")] #[inline] #[stable]
-pub fn from_le16(x: u16) -> u16 { x }
-
-/// Convert an u16 from little endian to the target's endianness.
-///
-/// On little endian, this is a no-op.  On big endian, the bytes are swapped.
-#[cfg(target_endian = "big")] #[inline] #[stable]
-pub fn from_le16(x: u16) -> u16 { unsafe { bswap16(x) } }
+#[inline]
+#[deprecated = "use `Int::from_le` instead"]
+pub fn from_le16(x: u16) -> u16 { Int::from_le(x) }
 
 /// Convert an u32 from little endian to the target's endianness.
 ///
 /// On little endian, this is a no-op.  On big endian, the bytes are swapped.
-#[cfg(target_endian = "little")] #[inline] #[stable]
-pub fn from_le32(x: u32) -> u32 { x }
-
-/// Convert an u32 from little endian to the target's endianness.
-///
-/// On little endian, this is a no-op.  On big endian, the bytes are swapped.
-#[cfg(target_endian = "big")] #[inline] #[stable]
-pub fn from_le32(x: u32) -> u32 { unsafe { bswap32(x) } }
+#[inline]
+#[deprecated = "use `Int::from_le` instead"]
+pub fn from_le32(x: u32) -> u32 { Int::from_le(x) }
 
 /// Convert an u64 from little endian to the target's endianness.
 ///
 /// On little endian, this is a no-op.  On big endian, the bytes are swapped.
-#[cfg(target_endian = "little")] #[inline] #[stable]
-pub fn from_le64(x: u64) -> u64 { x }
-
-/// Convert an u64 from little endian to the target's endianness.
-///
-/// On little endian, this is a no-op.  On big endian, the bytes are swapped.
-#[cfg(target_endian = "big")] #[inline] #[stable]
-pub fn from_le64(x: u64) -> u64 { unsafe { bswap64(x) } }
-
+#[inline]
+#[deprecated = "use `Int::from_le` instead"]
+pub fn from_le64(x: u64) -> u64 { Int::from_le(x) }
 
 /// Convert an u16 from big endian to the target's endianness.
 ///
 /// On big endian, this is a no-op.  On little endian, the bytes are swapped.
-#[cfg(target_endian = "little")] #[inline] #[stable]
-pub fn from_be16(x: u16) -> u16 { unsafe { bswap16(x) } }
-
-/// Convert an u16 from big endian to the target's endianness.
-///
-/// On big endian, this is a no-op.  On little endian, the bytes are swapped.
-#[cfg(target_endian = "big")] #[inline] #[stable]
-pub fn from_be16(x: u16) -> u16 { x }
+#[inline]
+#[deprecated = "use `Int::from_be` instead"]
+pub fn from_be16(x: u16) -> u16 { Int::from_be(x) }
 
 /// Convert an u32 from big endian to the target's endianness.
 ///
 /// On big endian, this is a no-op.  On little endian, the bytes are swapped.
-#[cfg(target_endian = "little")] #[inline] #[stable]
-pub fn from_be32(x: u32) -> u32 { unsafe { bswap32(x) } }
-
-/// Convert an u32 from big endian to the target's endianness.
-///
-/// On big endian, this is a no-op.  On little endian, the bytes are swapped.
-#[cfg(target_endian = "big")] #[inline] #[stable]
-pub fn from_be32(x: u32) -> u32 { x }
+#[inline]
+#[deprecated = "use `Int::from_be` instead"]
+pub fn from_be32(x: u32) -> u32 { Int::from_be(x) }
 
 /// Convert an u64 from big endian to the target's endianness.
 ///
 /// On big endian, this is a no-op.  On little endian, the bytes are swapped.
-#[cfg(target_endian = "little")] #[inline] #[stable]
-pub fn from_be64(x: u64) -> u64 { unsafe { bswap64(x) } }
+#[inline]
+#[deprecated = "use `Int::from_be` instead"]
+pub fn from_be64(x: u64) -> u64 { Int::from_be(x) }
 
-/// Convert an u64 from big endian to the target's endianness.
-///
-/// On big endian, this is a no-op.  On little endian, the bytes are swapped.
-#[cfg(target_endian = "big")] #[inline] #[stable]
-pub fn from_be64(x: u64) -> u64 { x }
-
-/**
- * Swap the values at two mutable locations of the same type, without
- * deinitialising or copying either one.
- */
+/// Swap the values at two mutable locations of the same type, without
+/// deinitialising or copying either one.
 #[inline]
 #[stable]
 pub fn swap<T>(x: &mut T, y: &mut T) {
@@ -337,42 +273,40 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
     }
 }
 
-/**
- * Replace the value at a mutable location with a new one, returning the old
- * value, without deinitialising or copying either one.
- *
- * This is primarily used for transferring and swapping ownership of a value
- * in a mutable location. For example, this function allows consumption of
- * one field of a struct by replacing it with another value. The normal approach
- * doesn't always work:
- *
- * ```rust,ignore
- * struct Buffer<T> { buf: Vec<T> }
- *
- * impl<T> Buffer<T> {
- *     fn get_and_reset(&mut self) -> Vec<T> {
- *         // error: cannot move out of dereference of `&mut`-pointer
- *         let buf = self.buf;
- *         self.buf = Vec::new();
- *         buf
- *     }
- * }
- * ```
- *
- * Note that `T` does not necessarily implement `Clone`, so it can't even
- * clone and reset `self.buf`. But `replace` can be used to disassociate
- * the original value of `self.buf` from `self`, allowing it to be returned:
- *
- * ```rust
- * # struct Buffer<T> { buf: Vec<T> }
- * impl<T> Buffer<T> {
- *     fn get_and_reset(&mut self) -> Vec<T> {
- *         use std::mem::replace;
- *         replace(&mut self.buf, Vec::new())
- *     }
- * }
- * ```
- */
+/// Replace the value at a mutable location with a new one, returning the old
+/// value, without deinitialising or copying either one.
+///
+/// This is primarily used for transferring and swapping ownership of a value
+/// in a mutable location. For example, this function allows consumption of
+/// one field of a struct by replacing it with another value. The normal approach
+/// doesn't always work:
+///
+/// ```rust,ignore
+/// struct Buffer<T> { buf: Vec<T> }
+///
+/// impl<T> Buffer<T> {
+///     fn get_and_reset(&mut self) -> Vec<T> {
+///         // error: cannot move out of dereference of `&mut`-pointer
+///         let buf = self.buf;
+///         self.buf = Vec::new();
+///         buf
+///     }
+/// }
+/// ```
+///
+/// Note that `T` does not necessarily implement `Clone`, so it can't even
+/// clone and reset `self.buf`. But `replace` can be used to disassociate
+/// the original value of `self.buf` from `self`, allowing it to be returned:
+///
+/// ```rust
+/// # struct Buffer<T> { buf: Vec<T> }
+/// impl<T> Buffer<T> {
+///     fn get_and_reset(&mut self) -> Vec<T> {
+///         use std::mem::replace;
+///         replace(&mut self.buf, Vec::new())
+///     }
+/// }
+/// ```
 #[inline]
 #[stable]
 pub fn replace<T>(dest: &mut T, mut src: T) -> T {

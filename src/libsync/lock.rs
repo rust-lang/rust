@@ -459,7 +459,7 @@ mod tests {
     use std::prelude::*;
     use std::comm::Empty;
     use std::task;
-    use std::task::TaskBuilder;
+    use std::task::try_future;
 
     use Arc;
     use super::{Mutex, Barrier, RWLock};
@@ -629,17 +629,15 @@ mod tests {
         let mut children = Vec::new();
         for _ in range(0, 5) {
             let arc3 = arc.clone();
-            let mut builder = TaskBuilder::new();
-            children.push(builder.future_result());
-            builder.spawn(proc() {
+            children.push(try_future(proc() {
                 let lock = arc3.read();
                 assert!(*lock >= 0);
-            });
+            }));
         }
 
         // Wait for children to pass their asserts
         for r in children.mut_iter() {
-            assert!(r.recv().is_ok());
+            assert!(r.get_ref().is_ok());
         }
 
         // Wait for writer to finish

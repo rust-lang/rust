@@ -46,7 +46,6 @@
 #![allow(unsigned_negate)]
 
 use libc::c_ulonglong;
-use std::num::{Bitwise};
 use std::rc::Rc;
 
 use lib::llvm::{ValueRef, True, IntEQ, IntNE};

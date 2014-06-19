@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,7 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+enum X {
+    Foo(uint),
+    Bar(bool)
+}
+
 fn main() {
-    let vec = bytes!(1024u8); //~ ERROR too large u8 literal in bytes!
-    //~^ WARN `bytes!` is deprecated
+    let x = match Foo(42) {
+        Foo(..) => 1,
+        _ if true => 0,
+        Bar(..) => fail!("Oh dear")
+    };
+    assert_eq!(x, 1);
+
+    let x = match Foo(42) {
+        _ if true => 0,
+        Foo(..) => 1,
+        Bar(..) => fail!("Oh dear")
+    };
+    assert_eq!(x, 0);
 }

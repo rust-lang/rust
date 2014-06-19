@@ -10,4 +10,5 @@
 
 fn main() {
     let vec = bytes!('λ'); //~ ERROR non-ascii char literal in bytes!
+    //~^ WARN `bytes!` is deprecated
 }

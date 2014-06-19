@@ -376,196 +376,6 @@ bounded_impl!(i64, i64::MIN, i64::MAX)
 bounded_impl!(f32, f32::MIN_VALUE, f32::MAX_VALUE)
 bounded_impl!(f64, f64::MIN_VALUE, f64::MAX_VALUE)
 
-/// Numbers with a fixed binary representation.
-pub trait Bitwise: Bounded
-                 + Not<Self>
-                 + BitAnd<Self,Self>
-                 + BitOr<Self,Self>
-                 + BitXor<Self,Self>
-                 + Shl<Self,Self>
-                 + Shr<Self,Self> {
-    /// Returns the number of ones in the binary representation of the number.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use std::num::Bitwise;
-    ///
-    /// let n = 0b01001100u8;
-    /// assert_eq!(n.count_ones(), 3);
-    /// ```
-    fn count_ones(&self) -> Self;
-
-    /// Returns the number of zeros in the binary representation of the number.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use std::num::Bitwise;
-    ///
-    /// let n = 0b01001100u8;
-    /// assert_eq!(n.count_zeros(), 5);
-    /// ```
-    #[inline]
-    fn count_zeros(&self) -> Self {
-        (!*self).count_ones()
-    }
-
-    /// Returns the number of leading zeros in the in the binary representation
-    /// of the number.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use std::num::Bitwise;
-    ///
-    /// let n = 0b0101000u16;
-    /// assert_eq!(n.leading_zeros(), 10);
-    /// ```
-    fn leading_zeros(&self) -> Self;
-
-    /// Returns the number of trailing zeros in the in the binary representation
-    /// of the number.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use std::num::Bitwise;
-    ///
-    /// let n = 0b0101000u16;
-    /// assert_eq!(n.trailing_zeros(), 3);
-    /// ```
-    fn trailing_zeros(&self) -> Self;
-
-    /// Reverses the byte order of a binary number.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use std::num::Bitwise;
-    ///
-    /// let n = 0x0123456789ABCDEFu64;
-    /// let m = 0xEFCDAB8967452301u64;
-    /// assert_eq!(n.swap_bytes(), m);
-    /// ```
-    fn swap_bytes(&self) -> Self;
-
-    /// Shifts the bits to the left by a specified amount amount, `r`, wrapping
-    /// the truncated bits to the end of the resulting value.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use std::num::Bitwise;
-    ///
-    /// let n = 0x0123456789ABCDEFu64;
-    /// let m = 0x3456789ABCDEF012u64;
-    /// assert_eq!(n.rotate_left(12), m);
-    /// ```
-    fn rotate_left(&self, r: uint) -> Self;
-
-    /// Shifts the bits to the right by a specified amount amount, `r`, wrapping
-    /// the truncated bits to the beginning of the resulting value.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use std::num::Bitwise;
-    ///
-    /// let n = 0x0123456789ABCDEFu64;
-    /// let m = 0xDEF0123456789ABCu64;
-    /// assert_eq!(n.rotate_right(12), m);
-    /// ```
-    fn rotate_right(&self, r: uint) -> Self;
-}
-
-/// Swapping a single byte does nothing. This is unsafe to be consistent with
-/// the other `bswap` intrinsics.
-#[inline]
-unsafe fn bswap8(x: u8) -> u8 { x }
-
-macro_rules! bitwise_impl(
-    ($t:ty, $bits:expr, $co:ident, $lz:ident, $tz:ident, $bs:path) => {
-        impl Bitwise for $t {
-            #[inline]
-            fn count_ones(&self) -> $t { unsafe { intrinsics::$co(*self) } }
-
-            #[inline]
-            fn leading_zeros(&self) -> $t { unsafe { intrinsics::$lz(*self) } }
-
-            #[inline]
-            fn trailing_zeros(&self) -> $t { unsafe { intrinsics::$tz(*self) } }
-
-            #[inline]
-            fn swap_bytes(&self) -> $t { unsafe { $bs(*self) } }
-
-            #[inline]
-            fn rotate_left(&self, r: uint) -> $t {
-                // Protect against undefined behaviour for overlong bit shifts
-                let r = r % $bits;
-                (*self << r) | (*self >> ($bits - r))
-            }
-
-            #[inline]
-            fn rotate_right(&self, r: uint) -> $t {
-                // Protect against undefined behaviour for overlong bit shifts
-                let r = r % $bits;
-                (*self >> r) | (*self << ($bits - r))
-            }
-        }
-    }
-)
-
-macro_rules! bitwise_cast_impl(
-    ($t:ty, $t_cast:ty, $bits:expr,  $co:ident, $lz:ident, $tz:ident, $bs:path) => {
-        impl Bitwise for $t {
-            #[inline]
-            fn count_ones(&self) -> $t { unsafe { intrinsics::$co(*self as $t_cast) as $t } }
-
-            #[inline]
-            fn leading_zeros(&self) -> $t { unsafe { intrinsics::$lz(*self as $t_cast) as $t } }
-
-            #[inline]
-            fn trailing_zeros(&self) -> $t { unsafe { intrinsics::$tz(*self as $t_cast) as $t } }
-
-            #[inline]
-            fn swap_bytes(&self) -> $t { unsafe { $bs(*self as $t_cast) as $t } }
-
-            #[inline]
-            fn rotate_left(&self, r: uint) -> $t {
-                // cast to prevent the sign bit from being corrupted
-                (*self as $t_cast).rotate_left(r) as $t
-            }
-
-            #[inline]
-            fn rotate_right(&self, r: uint) -> $t {
-                // cast to prevent the sign bit from being corrupted
-                (*self as $t_cast).rotate_right(r) as $t
-            }
-        }
-    }
-)
-
-#[cfg(target_word_size = "32")]
-bitwise_cast_impl!(uint, u32, 32, ctpop32, ctlz32, cttz32, intrinsics::bswap32)
-#[cfg(target_word_size = "64")]
-bitwise_cast_impl!(uint, u64, 64, ctpop64, ctlz64, cttz64, intrinsics::bswap64)
-
-bitwise_impl!(u8, 8, ctpop8, ctlz8, cttz8, bswap8)
-bitwise_impl!(u16, 16, ctpop16, ctlz16, cttz16, intrinsics::bswap16)
-bitwise_impl!(u32, 32, ctpop32, ctlz32, cttz32, intrinsics::bswap32)
-bitwise_impl!(u64, 64, ctpop64, ctlz64, cttz64, intrinsics::bswap64)
-
-#[cfg(target_word_size = "32")]
-bitwise_cast_impl!(int, u32, 32, ctpop32, ctlz32, cttz32, intrinsics::bswap32)
-#[cfg(target_word_size = "64")]
-bitwise_cast_impl!(int, u64, 64, ctpop64, ctlz64, cttz64, intrinsics::bswap64)
-
-bitwise_cast_impl!(i8, u8, 8, ctpop8, ctlz8, cttz8, bswap8)
-bitwise_cast_impl!(i16, u16, 16, ctpop16, ctlz16, cttz16, intrinsics::bswap16)
-bitwise_cast_impl!(i32, u32, 32, ctpop32, ctlz32, cttz32, intrinsics::bswap32)
-bitwise_cast_impl!(i64, u64, 64, ctpop64, ctlz64, cttz64, intrinsics::bswap64)
-
 /// Specifies the available operations common to all of Rust's core numeric primitives.
 /// These may not always make sense from a purely mathematical point of view, but
 /// may be useful for systems programming.
@@ -578,15 +388,281 @@ pub trait Primitive: Copy
 
 trait_impl!(Primitive for uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64)
 
-/// A collection of traits relevant to primitive signed and unsigned integers
+/// A primitive signed or unsigned integer equipped with various bitwise
+/// operators, bit counting methods, and endian conversion functions.
 pub trait Int: Primitive
-             + Bitwise
              + CheckedAdd
              + CheckedSub
              + CheckedMul
-             + CheckedDiv {}
+             + CheckedDiv
+             + Bounded
+             + Not<Self>
+             + BitAnd<Self,Self>
+             + BitOr<Self,Self>
+             + BitXor<Self,Self>
+             + Shl<Self,Self>
+             + Shr<Self,Self> {
+    /// Returns the number of ones in the binary representation of the integer.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let n = 0b01001100u8;
+    ///
+    /// assert_eq!(n.count_ones(), 3);
+    /// ```
+    fn count_ones(self) -> Self;
 
-trait_impl!(Int for uint u8 u16 u32 u64 int i8 i16 i32 i64)
+    /// Returns the number of zeros in the binary representation of the integer.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let n = 0b01001100u8;
+    ///
+    /// assert_eq!(n.count_zeros(), 5);
+    /// ```
+    #[inline]
+    fn count_zeros(self) -> Self {
+        (!self).count_ones()
+    }
+
+    /// Returns the number of leading zeros in the in the binary representation
+    /// of the integer.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let n = 0b0101000u16;
+    ///
+    /// assert_eq!(n.leading_zeros(), 10);
+    /// ```
+    fn leading_zeros(self) -> Self;
+
+    /// Returns the number of trailing zeros in the in the binary representation
+    /// of the integer.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let n = 0b0101000u16;
+    ///
+    /// assert_eq!(n.trailing_zeros(), 3);
+    /// ```
+    fn trailing_zeros(self) -> Self;
+
+    /// Shifts the bits to the left by a specified amount amount, `n`, wrapping
+    /// the truncated bits to the end of the resulting integer.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let n = 0x0123456789ABCDEFu64;
+    /// let m = 0x3456789ABCDEF012u64;
+    ///
+    /// assert_eq!(n.rotate_left(12), m);
+    /// ```
+    fn rotate_left(self, n: uint) -> Self;
+
+    /// Shifts the bits to the right by a specified amount amount, `n`, wrapping
+    /// the truncated bits to the beginning of the resulting integer.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let n = 0x0123456789ABCDEFu64;
+    /// let m = 0xDEF0123456789ABCu64;
+    ///
+    /// assert_eq!(n.rotate_right(12), m);
+    /// ```
+    fn rotate_right(self, n: uint) -> Self;
+
+    /// Reverses the byte order of the integer.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let n = 0x0123456789ABCDEFu64;
+    /// let m = 0xEFCDAB8967452301u64;
+    ///
+    /// assert_eq!(n.swap_bytes(), m);
+    /// ```
+    fn swap_bytes(self) -> Self;
+
+    /// Convert a integer from big endian to the target's endianness.
+    ///
+    /// On big endian this is a no-op. On little endian the bytes are swapped.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let n = 0x0123456789ABCDEFu64;
+    ///
+    /// if cfg!(target_endian = "big") {
+    ///     assert_eq!(Int::from_be(n), n)
+    /// } else {
+    ///     assert_eq!(Int::from_be(n), n.swap_bytes())
+    /// }
+    /// ```
+    #[inline]
+    fn from_be(x: Self) -> Self {
+        if cfg!(target_endian = "big") { x } else { x.swap_bytes() }
+    }
+
+    /// Convert a integer from little endian to the target's endianness.
+    ///
+    /// On little endian this is a no-op. On big endian the bytes are swapped.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let n = 0x0123456789ABCDEFu64;
+    ///
+    /// if cfg!(target_endian = "little") {
+    ///     assert_eq!(Int::from_le(n), n)
+    /// } else {
+    ///     assert_eq!(Int::from_le(n), n.swap_bytes())
+    /// }
+    /// ```
+    #[inline]
+    fn from_le(x: Self) -> Self {
+        if cfg!(target_endian = "little") { x } else { x.swap_bytes() }
+    }
+
+    /// Convert the integer to big endian from the target's endianness.
+    ///
+    /// On big endian this is a no-op. On little endian the bytes are swapped.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let n = 0x0123456789ABCDEFu64;
+    ///
+    /// if cfg!(target_endian = "big") {
+    ///     assert_eq!(n.to_be(), n)
+    /// } else {
+    ///     assert_eq!(n.to_be(), n.swap_bytes())
+    /// }
+    /// ```
+    #[inline]
+    fn to_be(self) -> Self { // or not to be?
+        if cfg!(target_endian = "big") { self } else { self.swap_bytes() }
+    }
+
+    /// Convert the integer to little endian from the target's endianness.
+    ///
+    /// On little endian this is a no-op. On big endian the bytes are swapped.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let n = 0x0123456789ABCDEFu64;
+    ///
+    /// if cfg!(target_endian = "little") {
+    ///     assert_eq!(n.to_le(), n)
+    /// } else {
+    ///     assert_eq!(n.to_le(), n.swap_bytes())
+    /// }
+    /// ```
+    #[inline]
+    fn to_le(self) -> Self {
+        if cfg!(target_endian = "little") { self } else { self.swap_bytes() }
+    }
+}
+
+macro_rules! int_impl {
+    ($T:ty, $BITS:expr, $ctpop:path, $ctlz:path, $cttz:path, $bswap:path) => {
+        impl Int for $T {
+            #[inline]
+            fn count_ones(self) -> $T { unsafe { $ctpop(self) } }
+
+            #[inline]
+            fn leading_zeros(self) -> $T { unsafe { $ctlz(self) } }
+
+            #[inline]
+            fn trailing_zeros(self) -> $T { unsafe { $cttz(self) } }
+
+            #[inline]
+            fn rotate_left(self, n: uint) -> $T {
+                // Protect against undefined behaviour for over-long bit shifts
+                let n = n % $BITS;
+                (self << n) | (self >> ($BITS - n))
+            }
+
+            #[inline]
+            fn rotate_right(self, n: uint) -> $T {
+                // Protect against undefined behaviour for over-long bit shifts
+                let n = n % $BITS;
+                (self >> n) | (self << ($BITS - n))
+            }
+
+            #[inline]
+            fn swap_bytes(self) -> $T { unsafe { $bswap(self) } }
+        }
+    }
+}
+
+/// Swapping a single byte is a no-op. This is marked as `unsafe` for
+/// consistency with the other `bswap` intrinsics.
+unsafe fn bswap8(x: u8) -> u8 { x }
+
+int_impl!(u8, 8,
+    intrinsics::ctpop8,
+    intrinsics::ctlz8,
+    intrinsics::cttz8,
+    bswap8)
+
+int_impl!(u16, 16,
+    intrinsics::ctpop16,
+    intrinsics::ctlz16,
+    intrinsics::cttz16,
+    intrinsics::bswap16)
+
+int_impl!(u32, 32,
+    intrinsics::ctpop32,
+    intrinsics::ctlz32,
+    intrinsics::cttz32,
+    intrinsics::bswap32)
+
+int_impl!(u64, 64,
+    intrinsics::ctpop64,
+    intrinsics::ctlz64,
+    intrinsics::cttz64,
+    intrinsics::bswap64)
+
+macro_rules! int_cast_impl {
+    ($T:ty, $U:ty) => {
+        impl Int for $T {
+            #[inline]
+            fn count_ones(self) -> $T { (self as $U).count_ones() as $T }
+
+            #[inline]
+            fn leading_zeros(self) -> $T { (self as $U).leading_zeros() as $T }
+
+            #[inline]
+            fn trailing_zeros(self) -> $T { (self as $U).trailing_zeros() as $T }
+
+            #[inline]
+            fn rotate_left(self, n: uint) -> $T { (self as $U).rotate_left(n) as $T }
+
+            #[inline]
+            fn rotate_right(self, n: uint) -> $T { (self as $U).rotate_right(n) as $T }
+
+            #[inline]
+            fn swap_bytes(self) -> $T { (self as $U).swap_bytes() as $T }
+        }
+    }
+}
+
+int_cast_impl!(i8, u8)
+int_cast_impl!(i16, u16)
+int_cast_impl!(i32, u32)
+int_cast_impl!(i64, u64)
+
+#[cfg(target_word_size = "32")] int_cast_impl!(uint, u32)
+#[cfg(target_word_size = "64")] int_cast_impl!(uint, u64)
+#[cfg(target_word_size = "32")] int_cast_impl!(int, u32)
+#[cfg(target_word_size = "64")] int_cast_impl!(int, u64)
 
 /// Returns the smallest power of 2 greater than or equal to `n`.
 #[inline]
