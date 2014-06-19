@@ -51,13 +51,13 @@ impl Usefulness {
 }
 
 fn def_to_path(tcx: &ty::ctxt, id: DefId) -> Path {
-    ty::with_path(tcx, id, |path| Path {
+    ty::with_path(tcx, id, |mut path| Path {
         global: false,
-        segments: path.map(|elem| PathSegment {
+        segments: path.last().map(|elem| PathSegment {
             identifier: Ident::new(elem.name()),
             lifetimes: vec!(),
             types: OwnedSlice::empty()
-        }).collect(),
+        }).move_iter().collect(),
         span: DUMMY_SP,
     })
 }
@@ -100,10 +100,11 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &Expr) {
                                                 arm.pats.as_slice());
             }
 
+            // Second, check for unreachable arms.
             check_arms(cx, arms.as_slice());
-            /* Check for exhaustiveness */
-             // Check for empty enum, because is_useful only works on inhabited
-             // types.
+
+            // Finally, check if the whole match expression is exhaustive.
+            // Check for empty enum, because is_useful only works on inhabited types.
             let pat_ty = node_id_to_type(cx.tcx, scrut.id);
             if (*arms).is_empty() {
                if !type_is_empty(cx.tcx, pat_ty) {
@@ -180,11 +181,11 @@ fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, m: &Matrix) {
         }
         Useful(pats) => {
             let witness = match pats.as_slice() {
-                [ref witness] => witness.clone(),
+                [witness] => witness,
                 [] => wild(),
                 _ => unreachable!()
             };
-            let msg = format!("non-exhaustive patterns: {0} not covered", pat_to_str(&*witness));
+            let msg = format!("non-exhaustive patterns: `{0}` not covered", pat_to_str(&*witness));
             cx.tcx.sess.span_err(sp, msg.as_slice());
         }
     }
@@ -193,7 +194,7 @@ fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, m: &Matrix) {
 #[deriving(Clone, PartialEq)]
 enum ctor {
     single,
-    variant(DefId),
+    variant(DefId /* variant */, bool /* is_structure */),
     val(const_val),
     range(const_val, const_val),
     vec(uint)
@@ -215,23 +216,23 @@ fn construct_witness(cx: &MatchCheckCtxt, ctor: &ctor, pats: Vec<Gc<Pat>>, lty: 
     let pat = match ty::get(lty).sty {
         ty::ty_tup(_) => PatTup(pats),
 
-        ty::ty_enum(_, _) => {
-            let vid = match ctor {
-                &variant(vid) => vid,
-                _ => unreachable!()
+        ty::ty_enum(cid, _) | ty::ty_struct(cid, _)  => {
+            let (vid, is_structure) = match ctor {
+                &variant(vid, is_structure) => (vid, is_structure),
+                _ => (cid, true)
             };
-            PatEnum(def_to_path(cx.tcx, vid), Some(pats))
-        },
-
-        ty::ty_struct(cid, _) => {
-            let fields = ty::lookup_struct_fields(cx.tcx, cid);
-            let field_pats = fields.move_iter()
-                .zip(pats.iter())
-                .map(|(field, pat)| FieldPat {
-                    ident: Ident::new(field.name),
-                    pat: pat.clone()
-                }).collect();
-            PatStruct(def_to_path(cx.tcx, cid), field_pats, false)
+            if is_structure {
+                let fields = ty::lookup_struct_fields(cx.tcx, vid);
+                let field_pats = fields.move_iter()
+                    .zip(pats.iter())
+                    .map(|(field, pat)| FieldPat {
+                        ident: Ident::new(field.name),
+                        pat: pat.clone()
+                    }).collect();
+                PatStruct(def_to_path(cx.tcx, vid), field_pats, false)
+            } else {
+                PatEnum(def_to_path(cx.tcx, vid), Some(pats))
+            }
         },
 
         ty::ty_rptr(_, ty::mt { ty: ty, .. }) => {
@@ -307,7 +308,10 @@ fn all_constructors(cx: &MatchCheckCtxt, m: &Matrix, left_ty: ty::t) -> Vec<ctor
         },
 
         ty::ty_enum(eid, _) =>
-            ty::enum_variants(cx.tcx, eid).iter().map(|va| variant(va.id)).collect(),
+            ty::enum_variants(cx.tcx, eid)
+                .iter()
+                .map(|va| variant(va.id, va.arg_names.is_some()))
+                .collect(),
 
         ty::ty_vec(_, None) =>
             vec_constructors(m),
@@ -389,8 +393,8 @@ fn is_useful(cx: &MatchCheckCtxt, m: &Matrix, v: &[Gc<Pat>],
             },
 
             Some(ctor) => {
-                let matrix = &m.iter().filter_map(|r| default(cx, r.as_slice())).collect();
-                match is_useful(cx, matrix, v.tail(), witness) {
+                let matrix = m.iter().filter_map(|r| default(cx, r.as_slice())).collect();
+                match is_useful(cx, &matrix, v.tail(), witness) {
                     Useful(pats) => Useful(match witness {
                         ConstructWitness => {
                             let arity = constructor_arity(cx, &ctor, left_ty);
@@ -424,19 +428,28 @@ fn is_useful_specialized(cx: &MatchCheckCtxt, m: &Matrix, v: &[Gc<Pat>],
 fn pat_ctor_id(cx: &MatchCheckCtxt, left_ty: ty::t, p: Gc<Pat>) -> Option<ctor> {
     let pat = raw_pat(p);
     match pat.node {
-        PatIdent(..) | PatEnum(..) | PatStruct(..) =>
+        PatIdent(..) =>
             match cx.tcx.def_map.borrow().find(&pat.id) {
                 Some(&DefStatic(did, false)) => {
                     let const_expr = lookup_const_by_id(cx.tcx, did).unwrap();
                     Some(val(eval_const_expr(cx.tcx, &*const_expr)))
                 },
-                Some(&DefVariant(_, id, _)) =>
-                    Some(variant(id)),
-                _ => match pat.node {
-                    PatEnum(..) | PatStruct(..) => Some(single),
-                    PatIdent(..) => None,
-                    _ => unreachable!()
-                }
+                Some(&DefVariant(_, id, is_structure)) => Some(variant(id, is_structure)),
+                _ => None
+            },
+        PatEnum(..) =>
+            match cx.tcx.def_map.borrow().find(&pat.id) {
+                Some(&DefStatic(did, false)) => {
+                    let const_expr = lookup_const_by_id(cx.tcx, did).unwrap();
+                    Some(val(eval_const_expr(cx.tcx, &*const_expr)))
+                },
+                Some(&DefVariant(_, id, is_structure)) => Some(variant(id, is_structure)),
+                _ => Some(single)
+            },
+        PatStruct(..) =>
+            match cx.tcx.def_map.borrow().find(&pat.id) {
+                Some(&DefVariant(_, id, is_structure)) => Some(variant(id, is_structure)),
+                _ => Some(single)
             },
         PatLit(expr) =>
             Some(val(eval_const_expr(cx.tcx, &*expr))),
@@ -485,7 +498,7 @@ fn constructor_arity(cx: &MatchCheckCtxt, ctor: &ctor, ty: ty::t) -> uint {
         },
         ty::ty_enum(eid, _) => {
             match *ctor {
-                variant(id) => enum_variant_with_id(cx.tcx, eid, id).args.len(),
+                variant(id, _) => enum_variant_with_id(cx.tcx, eid, id).args.len(),
                 _ => unreachable!()
             }
         }
@@ -532,13 +545,10 @@ fn specialize(cx: &MatchCheckCtxt, r: &[Gc<Pat>],
         &PatIdent(_, _, _) => {
             let opt_def = cx.tcx.def_map.borrow().find_copy(pat_id);
             match opt_def {
-                Some(DefVariant(_, id, _)) => {
-                    if variant(id) == *ctor_id {
-                        Some(vec!())
-                    } else {
-                        None
-                    }
-                }
+                Some(DefVariant(_, id, _)) => match *ctor_id {
+                    variant(vid, _) if vid == id => Some(vec!()),
+                    _ => None
+                },
                 Some(DefStatic(did, _)) => {
                     let const_expr = lookup_const_by_id(cx.tcx, did).unwrap();
                     let e_v = eval_const_expr(cx.tcx, &*const_expr);
@@ -571,7 +581,7 @@ fn specialize(cx: &MatchCheckCtxt, r: &[Gc<Pat>],
                         }
                     }
                 }
-                DefVariant(_, id, _) if variant(id) != *ctor_id => None,
+                DefVariant(_, id, _) if variant(id, false) != *ctor_id => None,
                 DefVariant(..) | DefFn(..) | DefStruct(..) => {
                     Some(match args {
                         &Some(ref args) => args.clone(),
@@ -586,7 +596,7 @@ fn specialize(cx: &MatchCheckCtxt, r: &[Gc<Pat>],
             // Is this a struct or an enum variant?
             let def = cx.tcx.def_map.borrow().get_copy(pat_id);
             let class_id = match def {
-                DefVariant(_, variant_id, _) => if variant(variant_id) == *ctor_id {
+                DefVariant(_, variant_id, _) => if *ctor_id == variant(variant_id, true) {
                     Some(variant_id)
                 } else {
                     None
@@ -687,7 +697,7 @@ fn check_local(cx: &mut MatchCheckCtxt, loc: &Local) {
     match is_refutable(cx, loc.pat) {
         Some(pat) => {
             let msg = format!(
-                "refutable pattern in {} binding: {} not covered",
+                "refutable pattern in {} binding: `{}` not covered",
                 name, pat_to_str(&*pat)
             );
             cx.tcx.sess.span_err(loc.pat.span, msg.as_slice());
@@ -709,7 +719,7 @@ fn check_fn(cx: &mut MatchCheckCtxt,
         match is_refutable(cx, input.pat) {
             Some(pat) => {
                 let msg = format!(
-                    "refutable pattern in function argument: {} not covered",
+                    "refutable pattern in function argument: `{}` not covered",
                     pat_to_str(&*pat)
                 );
                 cx.tcx.sess.span_err(input.pat.span, msg.as_slice());

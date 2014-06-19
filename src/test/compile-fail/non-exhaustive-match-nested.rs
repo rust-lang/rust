@@ -13,7 +13,7 @@ enum u { c, d }
 
 fn main() {
   let x = a(c);
-  match x { //~ ERROR non-exhaustive patterns: a(c) not covered
+  match x { //~ ERROR non-exhaustive patterns: `a(c)` not covered
       a(d) => { fail!("hello"); }
       b => { fail!("goodbye"); }
     }

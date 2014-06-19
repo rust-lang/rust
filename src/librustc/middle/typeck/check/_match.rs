@@ -701,10 +701,7 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
                 Some(format!("a fixed vector pattern of size {}", min_len)),
 
             _ => None
-        }).and_then(|message| {
-            check_err(message);
-            Some(())
-        });
+        }).map(check_err);
 
         for elt in before.iter() {
             check_pat(pcx, &**elt, elt_type);

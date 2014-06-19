@@ -27,4 +27,10 @@ fn main() {
     let [a, _, _, d] = bar("baz", "foo");
     assert_eq!(a, "baz");
     assert_eq!(d, "baz");
+
+    let out = bar("baz", "foo");
+    let [a, ..xs, d] = out;
+    assert_eq!(a, "baz");
+    assert!(xs == ["foo", "foo"]);
+    assert_eq!(d, "baz");
 }
