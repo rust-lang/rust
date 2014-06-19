@@ -71,10 +71,10 @@
             return;
         }
 
-        if (e.keyCode === 188 && $('#help').hasClass('hidden')) { // question mark
+        if (e.which === 191 && $('#help').hasClass('hidden')) { // question mark
             e.preventDefault();
             $('#help').removeClass('hidden');
-        } else if (e.keyCode === 27) { // esc
+        } else if (e.which === 27) { // esc
             if (!$('#help').hasClass('hidden')) {
                 e.preventDefault();
                 $('#help').addClass('hidden');
@@ -83,7 +83,7 @@
                 $('#search').addClass('hidden');
                 $('#main').removeClass('hidden');
             }
-        } else if (e.keyCode === 83) { // S
+        } else if (e.which === 83) { // S
             e.preventDefault();
             $('.search-input').focus();
         }
@@ -361,7 +361,7 @@
             $(document).on('keypress.searchnav', function(e) {
                 var $active = $results.filter('.highlighted');
 
-                if (e.keyCode === 38) { // up
+                if (e.which === 38) { // up
                     e.preventDefault();
                     if (!$active.length || !$active.prev()) {
                         return;
@@ -369,7 +369,7 @@
 
                     $active.prev().addClass('highlighted');
                     $active.removeClass('highlighted');
-                } else if (e.keyCode === 40) { // down
+                } else if (e.which === 40) { // down
                     e.preventDefault();
                     if (!$active.length) {
                         $results.first().addClass('highlighted');
@@ -377,7 +377,7 @@
                         $active.next().addClass('highlighted');
                         $active.removeClass('highlighted');
                     }
-                } else if (e.keyCode === 13) { // return
+                } else if (e.which === 13) { // return
                     e.preventDefault();
                     if ($active.length) {
                         document.location.href = $active.find('a').prop('href');
