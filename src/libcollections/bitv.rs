@@ -376,27 +376,6 @@ impl Bitv {
       }
     }
 
-    /**
-     * Compares two bitvectors
-     *
-     * Both bitvectors must be the same length. Returns `true` if both
-     * bitvectors contain identical elements.
-     */
-    #[inline]
-    pub fn equal(&self, v1: &Bitv) -> bool {
-      if self.nbits != v1.nbits { return false; }
-      match self.rep {
-        Small(ref b) => match v1.rep {
-          Small(ref b1) => b.equals(b1, self.nbits),
-          _ => false
-        },
-        Big(ref s) => match v1.rep {
-          Big(ref s1) => s.equals(s1, self.nbits),
-          Small(_) => return false
-        }
-      }
-    }
-
     /// Set all bits to 0
     #[inline]
     pub fn clear(&mut self) {
@@ -612,6 +591,25 @@ impl<S: hash::Writer> hash::Hash<S> for Bitv {
         }
     }
 }
+
+impl cmp::PartialEq for Bitv {
+    #[inline]
+    fn eq(&self, other: &Bitv) -> bool {
+        if self.nbits != other.nbits { return false; }
+        match self.rep {
+            Small(ref b) => match other.rep {
+                Small(ref b1) => b.equals(b1, self.nbits),
+                _ => false
+            },
+            Big(ref s) => match other.rep {
+                Big(ref s1) => s.equals(s1, self.nbits),
+                Small(_) => return false
+            }
+        }
+    }
+}
+
+impl cmp::Eq for Bitv {}
 
 #[inline]
 fn iterate_bits(base: uint, bits: uint, f: |uint| -> bool) -> bool {
@@ -840,6 +838,8 @@ impl cmp::PartialEq for BitvSet {
 
     fn ne(&self, other: &BitvSet) -> bool { !self.eq(other) }
 }
+
+impl cmp::Eq for BitvSet {}
 
 impl fmt::Show for BitvSet {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
