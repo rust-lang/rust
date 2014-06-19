@@ -248,7 +248,7 @@ impl<'cx> WritebackCx<'cx> {
 
                     ty::AutoDerefRef(adj) => {
                         for autoderef in range(0, adj.autoderefs) {
-                            let method_call = MethodCall::autoderef(id, autoderef as u32);
+                            let method_call = MethodCall::autoderef(id, autoderef);
                             self.visit_method_map_entry(reason, method_call);
                             self.visit_vtable_map_entry(reason, method_call);
                         }
@@ -260,6 +260,10 @@ impl<'cx> WritebackCx<'cx> {
                     }
 
                     ty::AutoObject(trait_store, bb, def_id, substs) => {
+                        let method_call = MethodCall::autoobject(id);
+                        self.visit_method_map_entry(reason, method_call);
+                        self.visit_vtable_map_entry(reason, method_call);
+
                         ty::AutoObject(
                             self.resolve(&trait_store, reason),
                             self.resolve(&bb, reason),

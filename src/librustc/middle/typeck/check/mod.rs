@@ -1331,8 +1331,7 @@ pub fn autoderef<T>(fcx: &FnCtxt, sp: Span, base_ty: ty::t,
         let mt = match ty::deref(resolved_t, false) {
             Some(mt) => Some(mt),
             None => {
-                let method_call =
-                    expr_id.map(|id| MethodCall::autoderef(id, autoderefs as u32));
+                let method_call = expr_id.map(|id| MethodCall::autoderef(id, autoderefs));
                 try_overloaded_deref(fcx, sp, method_call, None, resolved_t, lvalue_pref)
             }
         };
