@@ -171,6 +171,18 @@ You can specify that the code block should be compiled but not run with the
 ```
 ~~~
 
+Lastly, you can specify that a code block be compiled as if `--test`
+were passed to the compiler using the `test_harness` directive.
+
+~~~md
+```test_harness
+#[test]
+fn foo() {
+    fail!("oops! (will run & register as failure)")
+}
+```
+~~~
+
 Rustdoc also supplies some extra sugar for helping with some tedious
 documentation examples. If a line is prefixed with `# `, then the line
 will not show up in the HTML documentation, but it will be used when

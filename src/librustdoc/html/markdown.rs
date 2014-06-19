@@ -195,7 +195,7 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
                             stripped_filtered_line(l).unwrap_or(l)
                         }).collect::<Vec<&str>>().connect("\n");
                         let krate = krate.as_ref().map(|s| s.as_slice());
-                        let test = test::maketest(test.as_slice(), krate, false);
+                        let test = test::maketest(test.as_slice(), krate, false, false);
                         s.push_str(format!("<span id='rust-example-raw-{}' \
                                              class='rusttest'>{}</span>",
                                            i, Escape(test.as_slice())).as_slice());
@@ -328,7 +328,7 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
                 let text = lines.collect::<Vec<&str>>().connect("\n");
                 tests.add_test(text.to_string(),
                                block_info.should_fail, block_info.no_run,
-                               block_info.ignore);
+                               block_info.ignore, block_info.test_harness);
             })
         }
     }
@@ -372,6 +372,7 @@ struct LangString {
     no_run: bool,
     ignore: bool,
     notrust: bool,
+    test_harness: bool,
 }
 
 impl LangString {
@@ -381,6 +382,7 @@ impl LangString {
             no_run: false,
             ignore: false,
             notrust: false,
+            test_harness: false,
         }
     }
 
@@ -401,6 +403,7 @@ impl LangString {
                 "ignore" => { data.ignore = true; seen_rust_tags = true; },
                 "notrust" => { data.notrust = true; seen_rust_tags = true; },
                 "rust" => { data.notrust = false; seen_rust_tags = true; },
+                "test_harness" => { data.test_harness = true; seen_rust_tags = true; }
                 _ => { seen_other_tags = true }
             }
         }
@@ -446,24 +449,28 @@ mod tests {
 
     #[test]
     fn test_lang_string_parse() {
-        fn t(s: &str, should_fail: bool, no_run: bool, ignore: bool, notrust: bool) {
+        fn t(s: &str,
+             should_fail: bool, no_run: bool, ignore: bool, notrust: bool, test_harness: bool) {
             assert_eq!(LangString::parse(s), LangString {
                 should_fail: should_fail,
                 no_run: no_run,
                 ignore: ignore,
                 notrust: notrust,
+                test_harness: test_harness,
             })
         }
 
-        t("", false,false,false,false);
-        t("rust", false,false,false,false);
-        t("sh", false,false,false,true);
-        t("notrust", false,false,false,true);
-        t("ignore", false,false,true,false);
-        t("should_fail", true,false,false,false);
-        t("no_run", false,true,false,false);
-        t("{.no_run .example}", false,true,false,false);
-        t("{.sh .should_fail}", true,false,false,false);
-        t("{.example .rust}", false,false,false,false);
+        t("", false,false,false,false,false);
+        t("rust", false,false,false,false,false);
+        t("sh", false,false,false,true,false);
+        t("notrust", false,false,false,true,false);
+        t("ignore", false,false,true,false,false);
+        t("should_fail", true,false,false,false,false);
+        t("no_run", false,true,false,false,false);
+        t("test_harness", false,false,false,false,true);
+        t("{.no_run .example}", false,true,false,false,false);
+        t("{.sh .should_fail}", true,false,false,false,false);
+        t("{.example .rust}", false,false,false,false,false);
+        t("{.test_harness .rust}", false,false,false,false,true);
     }
 }
