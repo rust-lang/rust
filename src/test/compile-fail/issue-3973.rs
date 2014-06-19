@@ -31,7 +31,6 @@ impl NewTrait for Point {
 fn main() {
     let p = Point::new(0.0, 0.0);
     //~^ ERROR unresolved name `Point::new`
-    //~^^ ERROR unresolved name
-    //~^^^ ERROR use of undeclared module `Point`
+    //~^^ ERROR failed to resolve. Use of undeclared module `Point`
     println!("{}", p.a());
 }
