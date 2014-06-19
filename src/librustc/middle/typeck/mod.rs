@@ -149,24 +149,52 @@ pub struct MethodCallee {
     pub substs: subst::Substs
 }
 
+/**
+ * With method calls, we store some extra information in
+ * side tables (i.e method_map, vtable_map). We use
+ * MethodCall as a key to index into these tables instead of
+ * just directly using the expression's NodeId. The reason
+ * for this being that we may apply adjustments (coercions)
+ * with the resulting expression also needing to use the
+ * side tables. The problem with this is that we don't
+ * assign a separate NodeId to this new expression
+ * and so it would clash with the base expression if both
+ * needed to add to the side tables. Thus to disambiguate
+ * we also keep track of whether there's an adjustment in
+ * our key.
+ */
 #[deriving(Clone, PartialEq, Eq, Hash, Show)]
 pub struct MethodCall {
     pub expr_id: ast::NodeId,
-    pub autoderef: u32
+    pub adjustment: ExprAdjustment
+}
+
+#[deriving(Clone, PartialEq, Eq, Hash, Show, Encodable, Decodable)]
+pub enum ExprAdjustment {
+    NoAdjustment,
+    AutoDeref(uint),
+    AutoObject
 }
 
 impl MethodCall {
     pub fn expr(id: ast::NodeId) -> MethodCall {
         MethodCall {
             expr_id: id,
-            autoderef: 0
+            adjustment: NoAdjustment
         }
     }
 
-    pub fn autoderef(expr_id: ast::NodeId, autoderef: u32) -> MethodCall {
+    pub fn autoobject(id: ast::NodeId) -> MethodCall {
+        MethodCall {
+            expr_id: id,
+            adjustment: AutoObject
+        }
+    }
+
+    pub fn autoderef(expr_id: ast::NodeId, autoderef: uint) -> MethodCall {
         MethodCall {
             expr_id: expr_id,
-            autoderef: 1 + autoderef
+            adjustment: AutoDeref(1 + autoderef)
         }
     }
 }

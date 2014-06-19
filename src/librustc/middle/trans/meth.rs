@@ -538,9 +538,13 @@ pub fn trans_trait_cast<'a>(bcx: &'a Block<'a>,
     // Store the vtable into the second half of pair.
     let origins = {
         let vtable_map = ccx.tcx.vtable_map.borrow();
-        resolve_param_vtables_under_param_substs(ccx.tcx(),
-            bcx.fcx.param_substs,
-            vtable_map.get(&MethodCall::expr(id)).get_self().unwrap())
+        // This trait cast might be because of implicit coercion
+        let method_call = match ccx.tcx.adjustments.borrow().find(&id) {
+            Some(&ty::AutoObject(..)) => MethodCall::autoobject(id),
+            _ => MethodCall::expr(id)
+        };
+        let vres = vtable_map.get(&method_call).get_self().unwrap();
+        resolve_param_vtables_under_param_substs(ccx.tcx(), bcx.fcx.param_substs, vres)
     };
     let vtable = get_vtable(bcx, v_ty, origins);
     let llvtabledest = GEPi(bcx, lldest, [0u, abi::trt_field_vtable]);

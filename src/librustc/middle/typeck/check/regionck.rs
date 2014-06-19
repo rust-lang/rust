@@ -879,7 +879,7 @@ fn constrain_autoderefs(rcx: &mut Rcx,
                rcx.fcx.infcx().ty_to_str(derefd_ty),
                i, derefs);
 
-        let method_call = MethodCall::autoderef(deref_expr.id, i as u32);
+        let method_call = MethodCall::autoderef(deref_expr.id, i);
         derefd_ty = match rcx.fcx.inh.method_map.borrow().find(&method_call) {
             Some(method) => {
                 // Treat overloaded autoderefs as if an AutoRef adjustment
