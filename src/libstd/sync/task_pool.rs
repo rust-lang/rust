@@ -8,10 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(missing_doc)]
-
-/// A task pool abstraction. Useful for achieving predictable CPU
-/// parallelism.
+//! Abstraction of a task pool for basic parallelism.
 
 use core::prelude::*;
 
@@ -25,6 +22,7 @@ enum Msg<T> {
     Quit
 }
 
+/// A task pool used to execute functions in parallel.
 pub struct TaskPool<T> {
     channels: Vec<Sender<Msg<T>>>,
     next_index: uint,
@@ -40,11 +38,13 @@ impl<T> Drop for TaskPool<T> {
 }
 
 impl<T> TaskPool<T> {
-    /// Spawns a new task pool with `n_tasks` tasks. If the `sched_mode`
-    /// is None, the tasks run on this scheduler; otherwise, they run on a
-    /// new scheduler with the given mode. The provided `init_fn_factory`
-    /// returns a function which, given the index of the task, should return
-    /// local data to be kept around in that task.
+    /// Spawns a new task pool with `n_tasks` tasks. The provided
+    /// `init_fn_factory` returns a function which, given the index of the
+    /// task, should return local data to be kept around in that task.
+    ///
+    /// # Failure
+    ///
+    /// This function will fail if `n_tasks` is less than 1.
     pub fn new(n_tasks: uint,
                init_fn_factory: || -> proc(uint):Send -> T)
                -> TaskPool<T> {
@@ -87,12 +87,16 @@ impl<T> TaskPool<T> {
 
 #[test]
 fn test_task_pool() {
-    let f: || -> proc(uint):Send -> uint = || {
-        let g: proc(uint):Send -> uint = proc(i) i;
-        g
-    };
+    let f: || -> proc(uint):Send -> uint = || { proc(i) i };
     let mut pool = TaskPool::new(4, f);
     for _ in range(0, 8) {
         pool.execute(proc(i) println!("Hello from thread {}!", *i));
     }
+}
+
+#[test]
+#[should_fail]
+fn test_zero_tasks_failure() {
+    let f: || -> proc(uint):Send -> uint = || { proc(i) i };
+    TaskPool::new(0, f);
 }
