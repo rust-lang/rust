@@ -451,6 +451,7 @@ in the same format as a C:
 
 ```
 #![no_std]
+#![feature(lang_items)]
 
 // Pull in the system libc library for what crt0.o likely requires
 extern crate libc;
@@ -477,6 +478,7 @@ compiler's name mangling too:
 ```ignore
 #![no_std]
 #![no_main]
+#![feature(lang_items)]
 
 extern crate libc;
 
@@ -528,6 +530,7 @@ vectors provided from C, using idiomatic Rust practices.
 ```
 #![no_std]
 #![feature(globs)]
+#![feature(lang_items)]
 
 # extern crate libc;
 extern crate core;
@@ -619,6 +622,9 @@ perform efficient pointer arithmetic, one would import those functions
 via a declaration like
 
 ```
+# #![feature(intrinsics)]
+# fn main() {}
+
 extern "rust-intrinsic" {
     fn transmute<T, U>(x: T) -> U;
 
@@ -647,6 +653,7 @@ sugar for dynamic allocations via `malloc` and `free`:
 
 ```
 #![no_std]
+#![feature(lang_items)]
 
 extern crate libc;
 

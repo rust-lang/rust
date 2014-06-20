@@ -104,13 +104,14 @@
        html_root_url = "http://doc.rust-lang.org/",
        html_playground_url = "http://play.rust-lang.org/")]
 
-#![feature(macro_rules, globs, managed_boxes)]
-#![feature(linkage, default_type_params, phase, unsafe_destructor)]
+#![feature(macro_rules, globs, managed_boxes, linkage)]
+#![feature(default_type_params, phase, lang_items, unsafe_destructor)]
 
 // Don't link to std. We are std.
 #![no_std]
 
 #![allow(deprecated)]
+#![allow(unknown_features)] // NOTE: remove after stage0 snapshot
 #![deny(missing_doc)]
 
 // When testing libstd, bring in libuv as the I/O backend so tests can print

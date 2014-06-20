@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![no_std]
+#![feature(lang_items)]
 
 #[lang="fail_"]
 fn fail(_: &'static str, _: &'static str, _: uint) -> ! { loop {} }
