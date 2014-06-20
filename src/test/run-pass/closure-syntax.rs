@@ -59,7 +59,6 @@ fn bar<'b>() {
     foo::< <'a>|int, f32, &'a int|:'b + Share -> &'a int>();
     foo::<proc()>();
     foo::<proc() -> ()>();
-    foo::<proc():>();
     foo::<proc():'static>();
     foo::<proc():Share>();
     foo::<proc<'a>(int, f32, &'a int):'static + Share -> &'a int>();
