@@ -19,7 +19,7 @@ fn c(x: Box<Foo+Share+Send>) {
     a(x);
 }
 
-fn d(x: Box<Foo+>) {
+fn d(x: Box<Foo>) {
     a(x); //~ ERROR found no bounds
 }
 

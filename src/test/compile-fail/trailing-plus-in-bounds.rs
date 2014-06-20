@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,23 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::fmt::Show;
 
-trait Foo {
+fn main() {
+    let x: Box<Show+> = box 3 as Box<Show+>;
+    //~^ ERROR at least one type parameter bound must be specified
+    //~^^ ERROR at least one type parameter bound must be specified
 }
 
-fn b(_x: Box<Foo+Send>) {
-}
-
-fn c(x: Box<Foo+Share+Send>) {
-    e(x);
-}
-
-fn d(x: Box<Foo+Send>) {
-    e(x);
-}
-
-fn e(x: Box<Foo>) {
-    e(x);
-}
-
-pub fn main() { }
