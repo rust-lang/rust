@@ -850,17 +850,23 @@ impl CLike for BuiltinBound {
 }
 
 #[deriving(Clone, PartialEq, Eq, Hash)]
-pub struct TyVid(pub uint);
+pub struct TyVid {
+    pub index: uint
+}
 
 #[deriving(Clone, PartialEq, Eq, Hash)]
-pub struct IntVid(pub uint);
+pub struct IntVid {
+    pub index: uint
+}
 
 #[deriving(Clone, PartialEq, Eq, Hash)]
-pub struct FloatVid(pub uint);
+pub struct FloatVid {
+    pub index: uint
+}
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
 pub struct RegionVid {
-    pub id: uint
+    pub index: uint
 }
 
 #[deriving(Clone, PartialEq, Eq, Hash)]
@@ -893,47 +899,27 @@ impl cmp::PartialEq for InferRegion {
     }
 }
 
-pub trait Vid {
-    fn to_uint(&self) -> uint;
-}
-
-impl Vid for TyVid {
-    fn to_uint(&self) -> uint { let TyVid(v) = *self; v }
-}
-
 impl fmt::Show for TyVid {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result{
-        write!(f, "<generic #{}>", self.to_uint())
+        write!(f, "<generic #{}>", self.index)
     }
-}
-
-impl Vid for IntVid {
-    fn to_uint(&self) -> uint { let IntVid(v) = *self; v }
 }
 
 impl fmt::Show for IntVid {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "<generic integer #{}>", self.to_uint())
+        write!(f, "<generic integer #{}>", self.index)
     }
-}
-
-impl Vid for FloatVid {
-    fn to_uint(&self) -> uint { let FloatVid(v) = *self; v }
 }
 
 impl fmt::Show for FloatVid {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "<generic float #{}>", self.to_uint())
+        write!(f, "<generic float #{}>", self.index)
     }
-}
-
-impl Vid for RegionVid {
-    fn to_uint(&self) -> uint { self.id }
 }
 
 impl fmt::Show for RegionVid {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.id.fmt(f)
+        write!(f, "'<generic lifetime #{}>", self.index)
     }
 }
 
