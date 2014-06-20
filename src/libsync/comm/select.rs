@@ -132,7 +132,7 @@ impl Select {
     /// event could either be that data is available or the corresponding
     /// channel has been closed.
     pub fn wait(&self) -> uint {
-        self.wait2(false)
+        self.wait2(true)
     }
 
     /// Helper method for skipping the preflight checks during testing
