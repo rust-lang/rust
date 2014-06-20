@@ -1323,14 +1323,14 @@ mod tests {
     fn test_equal_differing_sizes() {
         let v0 = Bitv::new(10u, false);
         let v1 = Bitv::new(11u, false);
-        assert!(!v0.equal(&v1));
+        assert!(v0 != v1);
     }
 
     #[test]
     fn test_equal_greatly_differing_sizes() {
         let v0 = Bitv::new(10u, false);
         let v1 = Bitv::new(110u, false);
-        assert!(!v0.equal(&v1));
+        assert!(v0 != v1);
     }
 
     #[test]
@@ -1341,7 +1341,7 @@ mod tests {
         let mut b = bitv::Bitv::new(1, true);
         b.set(0, true);
 
-        assert!(a.equal(&b));
+        assert_eq!(a, b);
     }
 
     #[test]
@@ -1356,7 +1356,7 @@ mod tests {
             b.set(i, true);
         }
 
-        assert!(a.equal(&b));
+        assert_eq!(a, b);
     }
 
     #[test]
