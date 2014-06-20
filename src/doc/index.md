@@ -67,12 +67,26 @@ li {list-style-type: none; }
 
 * [The `rustdoc` manual](rustdoc.html)
 
-# External resources
+# External documentation
 
-* The Rust IRC channels on [irc.mozilla.org](http://irc.mozilla.org/)
+*Note: While these are great resources for learning Rust, they may
+track a particular version of Rust that is likely not exactly the same
+as that for which this documentation was generated.*
+
+* [Rust for Rubyists] - An excellent introduction for Rust; not just for Rubyists (tracks the most recent release).
+* [Rust by Example] - Short examples of common tasks in Rust (tracks the master branch).
+* [The Rust wiki](http://github.com/rust-lang/rust/wiki)
+
+[Rust for Rubyists]: http://www.rustforrubyists.com/
+[Rust by Example]: http://rustbyexample.com/
+
+# Community
+
+* [Reddit](http://reddit.com/r/rust)
+* [Stack Overflow](http://stackoverflow.com/questions/tagged/rust)
+* The Rust IRC channels on [irc.mozilla.org](http://irc.mozilla.org/):
     * [`#rust`](http://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust) - general discussion
     * [`#rust-gamedev`](http://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust-gamedev) - game development
     * [`#rust-internals`](http://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust-internals) - compiler and libraries
     * [`#rust-osdev`](http://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust-osdev) - operating system development
-* The Rust community on [Reddit](http://reddit.com/r/rust)
-* The Rust [wiki](http://github.com/rust-lang/rust/wiki)
+
