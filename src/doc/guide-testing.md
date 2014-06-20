@@ -4,7 +4,7 @@
 
 To create test functions, add a `#[test]` attribute like this:
 
-~~~
+~~~test_harness
 fn return_two() -> int {
     2
 }
@@ -37,7 +37,7 @@ test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured
 Rust has built in support for simple unit testing. Functions can be
 marked as unit tests using the `test` attribute.
 
-~~~
+~~~test_harness
 #[test]
 fn return_none_if_empty() {
     // ... test code ...
@@ -55,7 +55,7 @@ other (`assert_eq`, ...) means, then the test fails.
 When compiling a crate with the `--test` flag `--cfg test` is also
 implied, so that tests can be conditionally compiled.
 
-~~~
+~~~test_harness
 #[cfg(test)]
 mod tests {
     #[test]
@@ -80,11 +80,11 @@ Tests that are intended to fail can be annotated with the
 task to fail then the test will be counted as successful; otherwise it
 will be counted as a failure. For example:
 
-~~~
+~~~test_harness
 #[test]
 #[should_fail]
 fn test_out_of_bounds_failure() {
-    let v: [int] = [];
+    let v: &[int] = [];
     v[0];
 }
 ~~~
@@ -204,26 +204,22 @@ amount.
 
 For example:
 
-~~~
-# #![allow(unused_imports)]
+~~~test_harness
 extern crate test;
 
-use std::slice;
 use test::Bencher;
 
 #[bench]
 fn bench_sum_1024_ints(b: &mut Bencher) {
-    let v = slice::from_fn(1024, |n| n);
-    b.iter(|| {v.iter().fold(0, |old, new| old + *new);} );
+    let v = Vec::from_fn(1024, |n| n);
+    b.iter(|| v.iter().fold(0, |old, new| old + *new));
 }
 
 #[bench]
 fn initialise_a_vector(b: &mut Bencher) {
-    b.iter(|| {slice::from_elem(1024, 0u64);} );
+    b.iter(|| Vec::from_elem(1024, 0u64));
     b.bytes = 1024 * 8;
 }
-
-# fn main() {}
 ~~~
 
 The benchmark runner will calibrate measurement of the benchmark
@@ -266,19 +262,16 @@ benchmarking what one expects. For example, the compiler might
 recognize that some calculation has no external effects and remove
 it entirely.
 
-~~~
-# #![allow(unused_imports)]
+~~~test_harness
 extern crate test;
 use test::Bencher;
 
 #[bench]
 fn bench_xor_1000_ints(b: &mut Bencher) {
     b.iter(|| {
-            range(0, 1000).fold(0, |old, new| old ^ new);
-        });
+        range(0, 1000).fold(0, |old, new| old ^ new);
+    });
 }
-
-# fn main() {}
 ~~~
 
 gives the following results
@@ -297,8 +290,11 @@ cannot remove the computation entirely. This could be done for the
 example above by adjusting the `bh.iter` call to
 
 ~~~
-# struct X; impl X { fn iter<T>(&self, _: || -> T) {} } let bh = X;
-bh.iter(|| range(0, 1000).fold(0, |old, new| old ^ new))
+# struct X; impl X { fn iter<T>(&self, _: || -> T) {} } let b = X;
+b.iter(|| {
+    // note lack of `;` (could also use an explicit `return`).
+    range(0, 1000).fold(0, |old, new| old ^ new)
+});
 ~~~
 
 Or, the other option is to call the generic `test::black_box`
@@ -309,10 +305,10 @@ forces it to consider any argument as used.
 extern crate test;
 
 # fn main() {
-# struct X; impl X { fn iter<T>(&self, _: || -> T) {} } let bh = X;
-bh.iter(|| {
-        test::black_box(range(0, 1000).fold(0, |old, new| old ^ new));
-    });
+# struct X; impl X { fn iter<T>(&self, _: || -> T) {} } let b = X;
+b.iter(|| {
+    test::black_box(range(0, 1000).fold(0, |old, new| old ^ new));
+});
 # }
 ~~~
 
