@@ -8,17 +8,33 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Utilities for managing and scheduling tasks
+//! Task creation
 //!
-//! An executing Rust program consists of a collection of lightweight tasks,
-//! each with their own stack. Tasks communicate with each other using channels
-//! (see `std::comm`) or other forms of synchronization (see `std::sync`) that
-//! ensure data-race freedom.
+//! An executing Rust program consists of a collection of tasks, each
+//! with their own stack and local state. A Rust task is typically
+//! backed by an operating system thread, making tasks 'just threads',
+//! but may also be implemented via other strategies as well
+//! (e.g. Rust comes with the [`green`](../../green/index.html)
+//! scheduling crate for creating tasks backed by green threads).
 //!
-//! Failure in one task does immediately propagate to any others (not to parent,
-//! not to child). Failure propagation is instead handled as part of task
-//! synchronization. For example, the channel `send()` and `recv()` methods will
-//! fail if the other end has hung up already.
+//! Tasks generally have their memory *isolated* from each other by
+//! virtue of Rust's owned types (which of course may only be owned by
+//! a single task at a time). Communication between tasks is primarily
+//! done through [channels](../../std/comm/index.html), Rust's
+//! message-passing types, though [other forms of task
+//! synchronization](../../std/sync/index.html) are often employed to
+//! achieve particular performance goals. In particular, types that
+//! are guaranteed to be threadsafe are easily shared between threads
+//! using the atomically-reference-counted container,
+//! [`Arc`](../../std/sync/struct.Arc.html).
+//!
+//! Fatal logic errors in Rust cause *task failure*, during which
+//! a task will unwind the stack, running destructors and freeing
+//! owned resources. Task failure is unrecoverable from within
+//! the failing task (i.e. there is no 'try/catch' in Rust), but
+//! failure may optionally be detected from a different task. If
+//! the main task fails the application will exit with a non-zero
+//! exit code.
 //!
 //! # Basic task scheduling
 //!
