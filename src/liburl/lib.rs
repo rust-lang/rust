@@ -54,22 +54,16 @@ pub struct Url {
     pub host: String,
     /// A TCP port number, for example `8080`.
     pub port: Option<String>,
-    /// The path component of a URL, for example `/foo/bar`.
-    pub path: String,
-    /// The query component of a URL.
-    /// `vec!(("baz".to_string(), "qux".to_string()))` represents the fragment
-    /// `baz=qux` in the above example.
-    pub query: Query,
-    /// The fragment component, such as `quz`. Not including the leading `#` character.
-    pub fragment: Option<String>
+    /// The path component of a URL, for example `/foo/bar?baz=qux#quz`.
+    pub path: Path,
 }
 
-#[deriving(Clone, PartialEq)]
+#[deriving(Clone, PartialEq, Eq)]
 pub struct Path {
     /// The path component of a URL, for example `/foo/bar`.
     pub path: String,
     /// The query component of a URL.
-    /// `vec!(("baz".to_string(), "qux".to_string()))` represents the fragment
+    /// `vec![("baz".to_string(), "qux".to_string())]` represents the fragment
     /// `baz=qux` in the above example.
     pub query: Query,
     /// The fragment component, such as `quz`. Not including the leading `#` character.
@@ -102,9 +96,7 @@ impl Url {
             user: user,
             host: host,
             port: port,
-            path: path,
-            query: query,
-            fragment: fragment,
+            path: Path::new(path, query, fragment)
         }
     }
 
@@ -836,18 +828,7 @@ impl fmt::Show for Url {
             }
         }
 
-        try!(write!(f, "{}", self.path));
-
-        if !self.query.is_empty() {
-            try!(write!(f, "?{}", query_to_str(&self.query)));
-        }
-
-        match self.fragment {
-            Some(ref fragment) => {
-                write!(f, "#{}", encode_component(fragment.as_slice()))
-            }
-            None => Ok(()),
-        }
+        write!(f, "{}", self.path)
     }
 }
 
@@ -855,7 +836,7 @@ impl fmt::Show for Path {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(f, "{}", self.path));
         if !self.query.is_empty() {
-            try!(write!(f, "?{}", self.query))
+            try!(write!(f, "?{}", query_to_str(&self.query)))
         }
 
         match self.fragment {
@@ -981,9 +962,9 @@ mod tests {
         assert_eq!(&u.user, &Some(UserInfo::new("user".to_string(), Some("pass".to_string()))));
         assert_eq!(&u.host, &"rust-lang.org".to_string());
         assert_eq!(&u.port, &Some("8080".to_string()));
-        assert_eq!(&u.path, &"/doc/~u".to_string());
-        assert_eq!(&u.query, &vec!(("s".to_string(), "v".to_string())));
-        assert_eq!(&u.fragment, &Some("something".to_string()));
+        assert_eq!(&u.path.path, &"/doc/~u".to_string());
+        assert_eq!(&u.path.query, &vec!(("s".to_string(), "v".to_string())));
+        assert_eq!(&u.path.fragment, &Some("something".to_string()));
     }
 
     #[test]
@@ -1002,7 +983,7 @@ mod tests {
         let urlstr = "http://0.42.42.42/";
         let url = from_str::<Url>(urlstr).unwrap();
         assert!(url.host == "0.42.42.42".to_string());
-        assert!(url.path == "/".to_string());
+        assert!(url.path.path == "/".to_string());
     }
 
     #[test]
@@ -1020,20 +1001,20 @@ mod tests {
         assert_eq!(&url.host, &"host".to_string());
         assert_eq!(&url.port, &Some("1234".to_string()));
         // is empty path really correct? Other tests think so
-        assert_eq!(&url.path, &"".to_string());
+        assert_eq!(&url.path.path, &"".to_string());
         let urlstr = "scheme://host:1234/";
         let url = from_str::<Url>(urlstr).unwrap();
         assert_eq!(&url.scheme, &"scheme".to_string());
         assert_eq!(&url.host, &"host".to_string());
         assert_eq!(&url.port, &Some("1234".to_string()));
-        assert_eq!(&url.path, &"/".to_string());
+        assert_eq!(&url.path.path, &"/".to_string());
     }
 
     #[test]
     fn test_url_with_underscores() {
         let urlstr = "http://dotcom.com/file_name.html";
         let url = from_str::<Url>(urlstr).unwrap();
-        assert!(url.path == "/file_name.html".to_string());
+        assert!(url.path.path == "/file_name.html".to_string());
     }
 
     #[test]
@@ -1047,7 +1028,7 @@ mod tests {
     fn test_url_with_dashes() {
         let urlstr = "http://dotcom.com/file-name.html";
         let url = from_str::<Url>(urlstr).unwrap();
-        assert!(url.path == "/file-name.html".to_string());
+        assert!(url.path.path == "/file-name.html".to_string());
     }
 
     #[test]
@@ -1133,8 +1114,8 @@ mod tests {
     fn test_url_component_encoding() {
         let url = "http://rust-lang.org/doc%20uments?ba%25d%20=%23%26%2B";
         let u = from_str::<Url>(url).unwrap();
-        assert!(u.path == "/doc uments".to_string());
-        assert!(u.query == vec!(("ba%d ".to_string(), "#&+".to_string())));
+        assert!(u.path.path == "/doc uments".to_string());
+        assert!(u.path.query == vec!(("ba%d ".to_string(), "#&+".to_string())));
     }
 
     #[test]
