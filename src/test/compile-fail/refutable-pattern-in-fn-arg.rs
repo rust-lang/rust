@@ -9,6 +9,7 @@
 // except according to those terms.
 
 fn main() {
-    let f = |3: int| println!("hello");  //~ ERROR refutable pattern
+    let f = |3: int| println!("hello");
+    //~^ ERROR refutable pattern in function argument: `_` not covered
     f(4);
 }
