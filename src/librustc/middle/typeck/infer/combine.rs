@@ -57,8 +57,7 @@ use middle::typeck::infer::{ToUres};
 use middle::typeck::infer::glb::Glb;
 use middle::typeck::infer::lub::Lub;
 use middle::typeck::infer::sub::Sub;
-use middle::typeck::infer::to_str::InferStr;
-use middle::typeck::infer::unify::InferCtxtMethods;
+use middle::typeck::infer::unify::InferCtxtMethodsForSimplyUnifiableTypes;
 use middle::typeck::infer::{InferCtxt, cres, ures};
 use middle::typeck::infer::{TypeTrace};
 use util::common::indent;
@@ -263,7 +262,7 @@ pub trait Combine {
                     a: ty::TraitStore,
                     b: ty::TraitStore)
                     -> cres<ty::TraitStore> {
-        debug!("{}.trait_stores(a={:?}, b={:?})", self.tag(), a, b);
+        debug!("{}.trait_stores(a={}, b={})", self.tag(), a, b);
 
         match (a, b) {
             (ty::RegionTraitStore(a_r, a_m),
@@ -409,8 +408,8 @@ pub fn super_tys<C:Combine>(this: &C, a: ty::t, b: ty::t) -> cres<ty::t> {
         tcx.sess.bug(
             format!("{}: bot and var types should have been handled ({},{})",
                     this.tag(),
-                    a.inf_str(this.infcx()),
-                    b.inf_str(this.infcx())).as_slice());
+                    a.repr(this.infcx().tcx),
+                    b.repr(this.infcx().tcx)).as_slice());
       }
 
         // Relate integral variables to other types
