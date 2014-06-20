@@ -126,7 +126,6 @@ pub enum FieldName {
 #[deriving(Clone, PartialEq, Eq, Hash)]
 pub enum ElementKind {
     VecElement,
-    StrElement,
     OtherElement,
 }
 
@@ -794,7 +793,7 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
         //! - `derefs`: the deref number to be used for
         //!   the implicit index deref, if any (see above)
 
-        let element_ty = match ty::index(base_cmt.ty) {
+        let element_ty = match ty::array_element_ty(base_cmt.ty) {
           Some(ref mt) => mt.ty,
           None => {
             self.tcx().sess.span_bug(
@@ -1137,9 +1136,6 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
           cat_interior(_, InteriorElement(VecElement)) => {
               "vec content".to_string()
           }
-          cat_interior(_, InteriorElement(StrElement)) => {
-              "str content".to_string()
-          }
           cat_interior(_, InteriorElement(OtherElement)) => {
               "indexed content".to_string()
           }
@@ -1320,7 +1316,6 @@ fn element_kind(t: ty::t) -> ElementKind {
         ty::ty_rptr(_, ty::mt{ty:ty, ..}) |
         ty::ty_uniq(ty) => match ty::get(ty).sty {
             ty::ty_vec(_, None) => VecElement,
-            ty::ty_str => StrElement,
             _ => OtherElement
         },
         ty::ty_vec(..) => VecElement,

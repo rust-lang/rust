@@ -183,7 +183,7 @@ fn main() {
 
        if line.len() == 0u { continue; }
 
-       match (line.as_slice()[0] as char, proc_mode) {
+       match (line.as_bytes()[0] as char, proc_mode) {
 
            // start processing if this is the one
            ('>', false) => {
