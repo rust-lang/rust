@@ -25,8 +25,6 @@ use std::collections::HashMap;
 use std::fmt;
 use std::from_str::FromStr;
 use std::hash;
-use std::io::BufReader;
-use std::string::String;
 use std::uint;
 
 /// A Uniform Resource Locator (URL).  A URL is a form of URI (Uniform Resource
@@ -110,7 +108,7 @@ impl Url {
     /// `Err(e)` if the string did not represent a valid URL, where `e` is a
     /// `String` error message. Otherwise, `Ok(u)` where `u` is a `Url` struct
     /// representing the URL.
-    pub fn parse(rawurl: &str) -> Result<Url, String> {
+    pub fn parse(rawurl: &str) -> DecodeResult<Url> {
         // scheme
         let (scheme, rest) = try!(get_scheme(rawurl));
 
@@ -155,7 +153,7 @@ impl Path {
     /// `Err(e)` if the string did not represent a valid URL path, where `e` is a
     /// `String` error message. Otherwise, `Ok(p)` where `p` is a `Path` struct
     /// representing the URL path.
-    pub fn parse(rawpath: &str) -> Result<Path, String> {
+    pub fn parse(rawpath: &str) -> DecodeResult<Path> {
         let (path, rest) = try!(get_path(rawpath, false));
 
         // query and fragment
@@ -178,293 +176,220 @@ impl UserInfo {
 }
 
 fn encode_inner(s: &str, full_url: bool) -> String {
-    let mut rdr = BufReader::new(s.as_bytes());
-    let mut out = String::new();
+    s.bytes().fold(String::new(), |mut out, b| {
+        match b as char {
+            // unreserved:
+            'A' .. 'Z'
+            | 'a' .. 'z'
+            | '0' .. '9'
+            | '-' | '.' | '_' | '~' => out.push_char(b as char),
 
-    loop {
-        let mut buf = [0];
-        let ch = match rdr.read(buf) {
-            Err(..) => break,
-            Ok(..) => buf[0] as char,
+            // gen-delims:
+            ':' | '/' | '?' | '#' | '[' | ']' | '@' |
+            // sub-delims:
+            '!' | '$' | '&' | '"' | '(' | ')' | '*' |
+            '+' | ',' | ';' | '='
+                if full_url => out.push_char(b as char),
+
+            ch => out.push_str(format!("%{:02X}", ch as uint).as_slice()),
         };
 
-        match ch {
-          // unreserved:
-          'A' .. 'Z' |
-          'a' .. 'z' |
-          '0' .. '9' |
-          '-' | '.' | '_' | '~' => {
-            out.push_char(ch);
-          }
-          _ => {
-              if full_url {
-                match ch {
-                  // gen-delims:
-                  ':' | '/' | '?' | '#' | '[' | ']' | '@' |
-
-                  // sub-delims:
-                  '!' | '$' | '&' | '"' | '(' | ')' | '*' |
-                  '+' | ',' | ';' | '=' => {
-                    out.push_char(ch);
-                  }
-
-                  _ => out.push_str(format!("%{:02X}", ch as uint).as_slice())
-                }
-            } else {
-                out.push_str(format!("%{:02X}", ch as uint).as_slice());
-            }
-          }
-        }
-    }
-
-    out
+        out
+    })
 }
 
-/**
- * Encodes a URI by replacing reserved characters with percent-encoded
- * character sequences.
- *
- * This function is compliant with RFC 3986.
- *
- * # Example
- *
- * ```rust
- * use url::encode;
- *
- * let url = encode("https://example.com/Rust (programming language)");
- * println!("{}", url); // https://example.com/Rust%20(programming%20language)
- * ```
- */
+/// Encodes a URI by replacing reserved characters with percent-encoded
+/// character sequences.
+///
+/// This function is compliant with RFC 3986.
+///
+/// # Example
+///
+/// ```rust
+/// use url::encode;
+///
+/// let url = encode("https://example.com/Rust (programming language)");
+/// println!("{}", url); // https://example.com/Rust%20(programming%20language)
+/// ```
 pub fn encode(s: &str) -> String {
     encode_inner(s, true)
 }
 
-/**
- * Encodes a URI component by replacing reserved characters with percent-
- * encoded character sequences.
- *
- * This function is compliant with RFC 3986.
- */
 
+/// Encodes a URI component by replacing reserved characters with percent-
+/// encoded character sequences.
+///
+/// This function is compliant with RFC 3986.
 pub fn encode_component(s: &str) -> String {
     encode_inner(s, false)
 }
 
-fn decode_inner(s: &str, full_url: bool) -> String {
-    let mut rdr = BufReader::new(s.as_bytes());
-    let mut out = String::new();
+pub type DecodeResult<T> = Result<T, String>;
 
-    loop {
-        let mut buf = [0];
-        let ch = match rdr.read(buf) {
-            Err(..) => break,
-            Ok(..) => buf[0] as char
-        };
-        match ch {
-          '%' => {
-            let mut bytes = [0, 0];
-            match rdr.read(bytes) {
-                Ok(2) => {}
-                _ => fail!() // FIXME: malformed url?
-            }
-            let ch = uint::parse_bytes(bytes, 16u).unwrap() as u8 as char;
-
-            if full_url {
-                // Only decode some characters:
-                match ch {
-                  // gen-delims:
-                  ':' | '/' | '?' | '#' | '[' | ']' | '@' |
-
-                  // sub-delims:
-                  '!' | '$' | '&' | '"' | '(' | ')' | '*' |
-                  '+' | ',' | ';' | '=' => {
-                    out.push_char('%');
-                    out.push_char(bytes[0u] as char);
-                    out.push_char(bytes[1u] as char);
-                  }
-
-                  ch => out.push_char(ch)
-                }
-            } else {
-                  out.push_char(ch);
-            }
-          }
-          ch => out.push_char(ch)
-        }
-    }
-
-    out
-}
-
-/**
- * Decodes a percent-encoded string representing a URI.
- *
- * This will only decode escape sequences generated by `encode`.
- *
- * # Example
- *
- * ```rust
- * use url::decode;
- *
- * let url = decode("https://example.com/Rust%20(programming%20language)");
- * println!("{}", url); // https://example.com/Rust (programming language)
- * ```
- */
-pub fn decode(s: &str) -> String {
+/// Decodes a percent-encoded string representing a URI.
+///
+/// This will only decode escape sequences generated by `encode`.
+///
+/// # Example
+///
+/// ```rust
+/// use url::decode;
+///
+/// let url = decode("https://example.com/Rust%20(programming%20language)");
+/// println!("{}", url); // https://example.com/Rust (programming language)
+/// ```
+pub fn decode(s: &str) -> DecodeResult<String> {
     decode_inner(s, true)
 }
 
-/**
- * Decode a string encoded with percent encoding.
- */
-pub fn decode_component(s: &str) -> String {
+/// Decode a string encoded with percent encoding.
+pub fn decode_component(s: &str) -> DecodeResult<String> {
     decode_inner(s, false)
 }
 
-fn encode_plus(s: &str) -> String {
-    let mut rdr = BufReader::new(s.as_bytes());
+fn decode_inner(s: &str, full_url: bool) -> DecodeResult<String> {
     let mut out = String::new();
+    let mut iter = s.bytes();
 
     loop {
-        let mut buf = [0];
-        let ch = match rdr.read(buf) {
-            Ok(..) => buf[0] as char,
-            Err(..) => break,
-        };
-        match ch {
-          'A' .. 'Z' | 'a' .. 'z' | '0' .. '9' | '_' | '.' | '-' => {
-            out.push_char(ch);
-          }
-          ' ' => out.push_char('+'),
-          _ => out.push_str(format!("%{:X}", ch as uint).as_slice())
+        match iter.next() {
+            Some(b) => match b as char {
+                '%' => {
+                    let bytes = match (iter.next(), iter.next()) {
+                        (Some(one), Some(two)) => [one as u8, two as u8],
+                        _ => return Err(format!("Malformed input: found '%' \
+                                                without two trailing bytes")),
+                    };
+
+                    // Only decode some characters if full_url:
+                    match uint::parse_bytes(bytes, 16u).unwrap() as u8 as char {
+                        // gen-delims:
+                        ':' | '/' | '?' | '#' | '[' | ']' | '@' |
+
+                        // sub-delims:
+                        '!' | '$' | '&' | '"' | '(' | ')' | '*' |
+                        '+' | ',' | ';' | '='
+                            if full_url => {
+                            out.push_char('%');
+                            out.push_char(bytes[0u] as char);
+                            out.push_char(bytes[1u] as char);
+                        }
+
+                        ch => out.push_char(ch)
+                    }
+                }
+                ch => out.push_char(ch)
+            },
+            None => return Ok(out),
         }
     }
-
-    out
 }
 
-/**
- * Encode a hashmap to the 'application/x-www-form-urlencoded' media type.
- */
+/// Encode a hashmap to the 'application/x-www-form-urlencoded' media type.
 pub fn encode_form_urlencoded(m: &HashMap<String, Vec<String>>) -> String {
-    let mut out = String::new();
-    let mut first = true;
+    fn encode_plus<T: Str>(s: &T) -> String {
+        s.as_slice().bytes().fold(String::new(), |mut out, b| {
+            match b as char {
+              'A' .. 'Z'
+              | 'a' .. 'z'
+              | '0' .. '9'
+              | '_' | '.' | '-' => out.push_char(b as char),
+              ' ' => out.push_char('+'),
+              ch => out.push_str(format!("%{:X}", ch as uint).as_slice())
+            }
 
-    for (key, values) in m.iter() {
-        let key = encode_plus(key.as_slice());
+            out
+        })
+    }
+
+    let mut first = true;
+    m.iter().fold(String::new(), |mut out, (key, values)| {
+        let key = encode_plus(key);
 
         for value in values.iter() {
             if first {
                 first = false;
             } else {
                 out.push_char('&');
-                first = false;
             }
 
-            out.push_str(format!("{}={}",
-                                 key,
-                                 encode_plus(value.as_slice())).as_slice());
+            out.push_str(key.as_slice());
+            out.push_char('=');
+            out.push_str(encode_plus(value).as_slice());
+        }
+
+        out
+    })
+}
+
+/// Decode a string encoded with the 'application/x-www-form-urlencoded' media
+/// type into a hashmap.
+pub fn decode_form_urlencoded(s: &[u8])
+                            -> DecodeResult<HashMap<String, Vec<String>>> {
+    fn maybe_push_value(map: &mut HashMap<String, Vec<String>>,
+                        key: String,
+                        value: String) {
+        if key.len() > 0 && value.len() > 0 {
+            let values = map.find_or_insert_with(key, |_| vec!());
+            values.push(value);
         }
     }
 
-    out
-}
+    let mut out = HashMap::new();
+    let mut iter = s.iter().map(|&x| x);
 
-/**
- * Decode a string encoded with the 'application/x-www-form-urlencoded' media
- * type into a hashmap.
- */
-#[allow(experimental)]
-pub fn decode_form_urlencoded(s: &[u8]) -> HashMap<String, Vec<String>> {
-    let mut rdr = BufReader::new(s);
-    let mut m: HashMap<String,Vec<String>> = HashMap::new();
     let mut key = String::new();
     let mut value = String::new();
     let mut parsing_key = true;
 
     loop {
-        let mut buf = [0];
-        let ch = match rdr.read(buf) {
-            Ok(..) => buf[0] as char,
-            Err(..) => break,
-        };
-        match ch {
-            '&' | ';' => {
-                if key.len() > 0 && value.len() > 0 {
-                    let mut values = match m.pop_equiv(&key.as_slice()) {
-                        Some(values) => values,
-                        None => vec!(),
+        match iter.next() {
+            Some(b) => match b as char {
+                '&' | ';' => {
+                    maybe_push_value(&mut out, key, value);
+
+                    parsing_key = true;
+                    key = String::new();
+                    value = String::new();
+                }
+                '=' => parsing_key = false,
+                ch => {
+                    let ch = match ch {
+                        '%' => {
+                            let bytes = match (iter.next(), iter.next()) {
+                                (Some(one), Some(two)) => [one as u8, two as u8],
+                                _ => return Err(format!("Malformed input: found \
+                                                '%' without two trailing bytes"))
+                            };
+
+                            uint::parse_bytes(bytes, 16u).unwrap() as u8 as char
+                        }
+                        '+' => ' ',
+                        ch => ch
                     };
 
-                    values.push(value);
-                    m.insert(key, values);
-                }
-
-                parsing_key = true;
-                key = String::new();
-                value = String::new();
-            }
-            '=' => parsing_key = false,
-            ch => {
-                let ch = match ch {
-                    '%' => {
-                        let mut bytes = [0, 0];
-                        match rdr.read(bytes) {
-                            Ok(2) => {}
-                            _ => fail!() // FIXME: malformed?
-                        }
-                        uint::parse_bytes(bytes, 16u).unwrap() as u8 as char
+                    if parsing_key {
+                        key.push_char(ch)
+                    } else {
+                        value.push_char(ch)
                     }
-                    '+' => ' ',
-                    ch => ch
-                };
-
-                if parsing_key {
-                    key.push_char(ch)
-                } else {
-                    value.push_char(ch)
                 }
+            },
+            None => {
+                maybe_push_value(&mut out, key, value);
+                return Ok(out)
             }
         }
     }
-
-    if key.len() > 0 && value.len() > 0 {
-        let mut values = match m.pop_equiv(&key.as_slice()) {
-            Some(values) => values,
-            None => vec!(),
-        };
-
-        values.push(value);
-        m.insert(key, values);
-    }
-
-    m
 }
 
+fn split_char_first<'a>(s: &'a str, c: char) -> (&'a str, &'a str) {
+    let mut iter = s.splitn(c, 1);
 
-fn split_char_first(s: &str, c: char) -> (String, String) {
-    let len = s.len();
-    let mut index = len;
-    let mut mat = 0;
-    let mut rdr = BufReader::new(s.as_bytes());
-    loop {
-        let mut buf = [0];
-        let ch = match rdr.read(buf) {
-            Ok(..) => buf[0] as char,
-            Err(..) => break,
-        };
-        if ch == c {
-            // found a match, adjust markers
-            index = (rdr.tell().unwrap() as uint) - 1;
-            mat = 1;
-            break;
-        }
-    }
-    if index+mat == len {
-        return (s.slice(0, index).to_string(), "".to_string());
-    } else {
-        return (s.slice(0, index).to_string(),
-                s.slice(index + mat, s.len()).to_string());
+    match (iter.next(), iter.next()) {
+        (Some(a), Some(b)) => (a, b),
+        (Some(a), None) => (a, ""),
+        (None, _) => unreachable!(),
     }
 }
 
@@ -477,42 +402,40 @@ impl fmt::Show for UserInfo {
     }
 }
 
-fn query_from_str(rawquery: &str) -> Query {
+fn query_from_str(rawquery: &str) -> DecodeResult<Query> {
     let mut query: Query = vec!();
     if !rawquery.is_empty() {
         for p in rawquery.split('&') {
             let (k, v) = split_char_first(p, '=');
-            query.push((decode_component(k.as_slice()),
-                        decode_component(v.as_slice())));
-        };
+            query.push((try!(decode_component(k)),
+                        try!(decode_component(v))));
+        }
     }
-    return query;
+
+    Ok(query)
 }
 
-/**
- * Converts an instance of a URI `Query` type to a string.
- *
- * # Example
- *
- * ```rust
- * let query = vec!(("title".to_string(), "The Village".to_string()),
- *                  ("north".to_string(), "52.91".to_string()),
- *                  ("west".to_string(), "4.10".to_string()));
- * println!("{}", url::query_to_str(&query));  // title=The%20Village&north=52.91&west=4.10
- * ```
- */
-#[allow(unused_must_use)]
+/// Converts an instance of a URI `Query` type to a string.
+///
+/// # Example
+///
+/// ```rust
+/// let query = vec!(("title".to_string(), "The Village".to_string()),
+///                  ("north".to_string(), "52.91".to_string()),
+///                  ("west".to_string(), "4.10".to_string()));
+/// println!("{}", url::query_to_str(&query));  // title=The%20Village&north=52.91&west=4.10
+/// ```
 pub fn query_to_str(query: &Query) -> String {
-    use std::io::MemWriter;
-    use std::str;
+    query.iter().enumerate().fold(String::new(), |mut out, (i, &(ref k, ref v))| {
+        if i != 0 {
+            out.push_char('&');
+        }
 
-    let mut writer = MemWriter::new();
-    for (i, &(ref k, ref v)) in query.iter().enumerate() {
-        if i != 0 { write!(&mut writer, "&"); }
-        write!(&mut writer, "{}={}", encode_component(k.as_slice()),
-               encode_component(v.as_slice()));
-    }
-    str::from_utf8_lossy(writer.unwrap().as_slice()).to_string()
+        out.push_str(encode_component(k.as_slice()).as_slice());
+        out.push_char('=');
+        out.push_str(encode_component(v.as_slice()).as_slice());
+        out
+    })
 }
 
 /**
@@ -532,7 +455,7 @@ pub fn query_to_str(query: &Query) -> String {
  * println!("Scheme in use: {}.", scheme); // Scheme in use: https.
  * ```
  */
-pub fn get_scheme(rawurl: &str) -> Result<(String, String), String> {
+pub fn get_scheme(rawurl: &str) -> DecodeResult<(String, String)> {
     for (i,c) in rawurl.chars().enumerate() {
         match c {
           'A' .. 'Z' | 'a' .. 'z' => continue,
@@ -568,7 +491,7 @@ enum Input {
 
 // returns userinfo, host, port, and unparsed part, or an error
 fn get_authority(rawurl: &str) ->
-    Result<(Option<UserInfo>, String, Option<String>, String), String> {
+    DecodeResult<(Option<UserInfo>, String, Option<String>, String)> {
     if !rawurl.starts_with("//") {
         // there is no authority.
         return Ok((None, "".to_string(), None, rawurl.to_str()));
@@ -727,8 +650,7 @@ fn get_authority(rawurl: &str) ->
 
 
 // returns the path and unparsed part of url, or an error
-fn get_path(rawurl: &str, authority: bool) ->
-    Result<(String, String), String> {
+fn get_path(rawurl: &str, authority: bool) -> DecodeResult<(String, String)> {
     let len = rawurl.len();
     let mut end = len;
     for (i,c) in rawurl.chars().enumerate() {
@@ -746,25 +668,20 @@ fn get_path(rawurl: &str, authority: bool) ->
         }
     }
 
-    if authority {
-        if end != 0 && !rawurl.starts_with("/") {
-            return Err("Non-empty path must begin with\
-                              '/' in presence of authority.".to_string());
-        }
+    if authority && end != 0 && !rawurl.starts_with("/") {
+        Err("Non-empty path must begin with \
+            '/' in presence of authority.".to_string())
+    } else {
+        Ok((try!(decode_component(rawurl.slice(0, end))),
+            rawurl.slice(end, len).to_string()))
     }
-
-    return Ok((decode_component(rawurl.slice(0, end)),
-                    rawurl.slice(end, len).to_string()));
 }
 
 // returns the parsed query and the fragment, if present
-fn get_query_fragment(rawurl: &str) ->
-    Result<(Query, Option<String>), String> {
+fn get_query_fragment(rawurl: &str) -> DecodeResult<(Query, Option<String>)> {
     if !rawurl.starts_with("?") {
         if rawurl.starts_with("#") {
-            let f = decode_component(rawurl.slice(
-                                                1,
-                                                rawurl.len()));
+            let f = try!(decode_component(rawurl.slice(1, rawurl.len())));
             return Ok((vec!(), Some(f)));
         } else {
             return Ok((vec!(), None));
@@ -772,11 +689,12 @@ fn get_query_fragment(rawurl: &str) ->
     }
     let (q, r) = split_char_first(rawurl.slice(1, rawurl.len()), '#');
     let f = if r.len() != 0 {
-        Some(decode_component(r.as_slice()))
+        Some(try!(decode_component(r)))
     } else {
         None
     };
-    return Ok((query_from_str(q.as_slice()), f));
+
+    Ok((try!(query_from_str(q)), f))
 }
 
 impl FromStr for Url {
@@ -866,12 +784,12 @@ impl<S: hash::Writer> hash::Hash<S> for Path {
 #[test]
 fn test_split_char_first() {
     let (u,v) = split_char_first("hello, sweet world", ',');
-    assert_eq!(u, "hello".to_string());
-    assert_eq!(v, " sweet world".to_string());
+    assert_eq!(u, "hello");
+    assert_eq!(v, " sweet world");
 
     let (u,v) = split_char_first("hello sweet world", ',');
-    assert_eq!(u, "hello sweet world".to_string());
-    assert_eq!(v, "".to_string());
+    assert_eq!(u, "hello sweet world");
+    assert_eq!(v, "");
 }
 
 #[test]
@@ -1195,58 +1113,70 @@ mod tests {
 
     #[test]
     fn test_decode() {
-        assert_eq!(decode(""), "".to_string());
-        assert_eq!(decode("abc/def 123"), "abc/def 123".to_string());
-        assert_eq!(decode("abc%2Fdef%20123"), "abc%2Fdef 123".to_string());
-        assert_eq!(decode("%20"), " ".to_string());
-        assert_eq!(decode("%21"), "%21".to_string());
-        assert_eq!(decode("%22"), "%22".to_string());
-        assert_eq!(decode("%23"), "%23".to_string());
-        assert_eq!(decode("%24"), "%24".to_string());
-        assert_eq!(decode("%25"), "%".to_string());
-        assert_eq!(decode("%26"), "%26".to_string());
-        assert_eq!(decode("%27"), "'".to_string());
-        assert_eq!(decode("%28"), "%28".to_string());
-        assert_eq!(decode("%29"), "%29".to_string());
-        assert_eq!(decode("%2A"), "%2A".to_string());
-        assert_eq!(decode("%2B"), "%2B".to_string());
-        assert_eq!(decode("%2C"), "%2C".to_string());
-        assert_eq!(decode("%2F"), "%2F".to_string());
-        assert_eq!(decode("%3A"), "%3A".to_string());
-        assert_eq!(decode("%3B"), "%3B".to_string());
-        assert_eq!(decode("%3D"), "%3D".to_string());
-        assert_eq!(decode("%3F"), "%3F".to_string());
-        assert_eq!(decode("%40"), "%40".to_string());
-        assert_eq!(decode("%5B"), "%5B".to_string());
-        assert_eq!(decode("%5D"), "%5D".to_string());
+        fn t(input: &str, expected: &str) {
+            assert_eq!(decode(input), Ok(expected.to_string()))
+        }
+
+        assert!(decode("sadsadsda%").is_err());
+        assert!(decode("waeasd%4").is_err());
+        t("", "");
+        t("abc/def 123", "abc/def 123");
+        t("abc%2Fdef%20123", "abc%2Fdef 123");
+        t("%20", " ");
+        t("%21", "%21");
+        t("%22", "%22");
+        t("%23", "%23");
+        t("%24", "%24");
+        t("%25", "%");
+        t("%26", "%26");
+        t("%27", "'");
+        t("%28", "%28");
+        t("%29", "%29");
+        t("%2A", "%2A");
+        t("%2B", "%2B");
+        t("%2C", "%2C");
+        t("%2F", "%2F");
+        t("%3A", "%3A");
+        t("%3B", "%3B");
+        t("%3D", "%3D");
+        t("%3F", "%3F");
+        t("%40", "%40");
+        t("%5B", "%5B");
+        t("%5D", "%5D");
     }
 
     #[test]
     fn test_decode_component() {
-        assert_eq!(decode_component(""), "".to_string());
-        assert_eq!(decode_component("abc/def 123"), "abc/def 123".to_string());
-        assert_eq!(decode_component("abc%2Fdef%20123"), "abc/def 123".to_string());
-        assert_eq!(decode_component("%20"), " ".to_string());
-        assert_eq!(decode_component("%21"), "!".to_string());
-        assert_eq!(decode_component("%22"), "\"".to_string());
-        assert_eq!(decode_component("%23"), "#".to_string());
-        assert_eq!(decode_component("%24"), "$".to_string());
-        assert_eq!(decode_component("%25"), "%".to_string());
-        assert_eq!(decode_component("%26"), "&".to_string());
-        assert_eq!(decode_component("%27"), "'".to_string());
-        assert_eq!(decode_component("%28"), "(".to_string());
-        assert_eq!(decode_component("%29"), ")".to_string());
-        assert_eq!(decode_component("%2A"), "*".to_string());
-        assert_eq!(decode_component("%2B"), "+".to_string());
-        assert_eq!(decode_component("%2C"), ",".to_string());
-        assert_eq!(decode_component("%2F"), "/".to_string());
-        assert_eq!(decode_component("%3A"), ":".to_string());
-        assert_eq!(decode_component("%3B"), ";".to_string());
-        assert_eq!(decode_component("%3D"), "=".to_string());
-        assert_eq!(decode_component("%3F"), "?".to_string());
-        assert_eq!(decode_component("%40"), "@".to_string());
-        assert_eq!(decode_component("%5B"), "[".to_string());
-        assert_eq!(decode_component("%5D"), "]".to_string());
+        fn t(input: &str, expected: &str) {
+            assert_eq!(decode_component(input), Ok(expected.to_string()))
+        }
+
+        assert!(decode_component("asacsa%").is_err());
+        assert!(decode_component("acsas%4").is_err());
+        t("", "");
+        t("abc/def 123", "abc/def 123");
+        t("abc%2Fdef%20123", "abc/def 123");
+        t("%20", " ");
+        t("%21", "!");
+        t("%22", "\"");
+        t("%23", "#");
+        t("%24", "$");
+        t("%25", "%");
+        t("%26", "&");
+        t("%27", "'");
+        t("%28", "(");
+        t("%29", ")");
+        t("%2A", "*");
+        t("%2B", "+");
+        t("%2C", ",");
+        t("%2F", "/");
+        t("%3A", ":");
+        t("%3B", ";");
+        t("%3D", "=");
+        t("%3F", "?");
+        t("%40", "@");
+        t("%5B", "[");
+        t("%5D", "]");
     }
 
     #[test]
@@ -1270,10 +1200,10 @@ mod tests {
 
     #[test]
     fn test_decode_form_urlencoded() {
-        assert_eq!(decode_form_urlencoded([]).len(), 0);
+        assert_eq!(decode_form_urlencoded([]).unwrap().len(), 0);
 
         let s = "a=1&foo+bar=abc&foo+bar=12+%3D+34".as_bytes();
-        let form = decode_form_urlencoded(s);
+        let form = decode_form_urlencoded(s).unwrap();
         assert_eq!(form.len(), 2);
         assert_eq!(form.get(&"a".to_string()), &vec!("1".to_string()));
         assert_eq!(form.get(&"foo bar".to_string()),
