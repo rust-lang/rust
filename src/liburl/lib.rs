@@ -60,7 +60,7 @@ pub struct Url {
     /// `vec!(("baz".to_string(), "qux".to_string()))` represents the fragment
     /// `baz=qux` in the above example.
     pub query: Query,
-    /// The fragment component, such as `quz`.  Doesn't include the leading `#` character.
+    /// The fragment component, such as `quz`. Not including the leading `#` character.
     pub fragment: Option<String>
 }
 
@@ -72,7 +72,7 @@ pub struct Path {
     /// `vec!(("baz".to_string(), "qux".to_string()))` represents the fragment
     /// `baz=qux` in the above example.
     pub query: Query,
-    /// The fragment component, such as `quz`.  Doesn't include the leading `#` character.
+    /// The fragment component, such as `quz`. Not including the leading `#` character.
     pub fragment: Option<String>
 }
 
@@ -152,6 +152,30 @@ impl Path {
             fragment: fragment,
         }
     }
+
+    /// Parses a URL path, converting it from a string to a `Path` representation.
+    ///
+    /// # Arguments
+    /// * rawpath - a string representing the path component of a URL.
+    ///
+    /// # Return value
+    ///
+    /// `Err(e)` if the string did not represent a valid URL path, where `e` is a
+    /// `String` error message. Otherwise, `Ok(p)` where `p` is a `Path` struct
+    /// representing the URL path.
+    pub fn parse(rawpath: &str) -> Result<Path, String> {
+        let (path, rest) = try!(get_path(rawpath, false));
+
+        // query and fragment
+        let (query, fragment) = try!(get_query_fragment(rest.as_slice()));
+
+        Ok(Path{ path: path, query: query, fragment: fragment })
+    }
+}
+
+#[deprecated="use `Path::parse`"]
+pub fn path_from_str(s: &str) -> Result<Path, String> {
+    Path::parse(s)
 }
 
 impl UserInfo {
@@ -763,21 +787,6 @@ fn get_query_fragment(rawurl: &str) ->
     return Ok((query_from_str(q.as_slice()), f));
 }
 
-pub fn path_from_str(rawpath: &str) -> Result<Path, String> {
-    let (path, rest) = match get_path(rawpath, false) {
-        Ok(val) => val,
-        Err(e) => return Err(e)
-    };
-
-    // query and fragment
-    let (query, fragment) = match get_query_fragment(rest.as_slice()) {
-        Ok(val) => val,
-        Err(e) => return Err(e),
-    };
-
-    Ok(Path{ path: path, query: query, fragment: fragment })
-}
-
 impl FromStr for Url {
     fn from_str(s: &str) -> Option<Url> {
         match Url::parse(s) {
@@ -789,7 +798,7 @@ impl FromStr for Url {
 
 impl FromStr for Path {
     fn from_str(s: &str) -> Option<Path> {
-        match path_from_str(s) {
+        match Path::parse(s) {
             Ok(path) => Some(path),
             Err(_) => None
         }
@@ -957,9 +966,8 @@ fn test_get_path() {
 
 #[cfg(test)]
 mod tests {
-    use {encode_form_urlencoded, decode_form_urlencoded,
-         decode, encode, encode_component, decode_component,
-         path_from_str, UserInfo, get_scheme, Url};
+    use {encode_form_urlencoded, decode_form_urlencoded, decode, encode,
+        encode_component, decode_component, UserInfo, get_scheme, Url, Path};
 
     use std::collections::HashMap;
 
@@ -982,7 +990,7 @@ mod tests {
     fn test_path_parse() {
         let path = "/doc/~u?s=v#something";
 
-        let up = path_from_str(path);
+        let up = from_str::<Path>(path);
         let u = up.unwrap();
         assert_eq!(&u.path, &"/doc/~u".to_string());
         assert_eq!(&u.query, &vec!(("s".to_string(), "v".to_string())));
@@ -1000,7 +1008,7 @@ mod tests {
     #[test]
     fn test_path_parse_host_slash() {
         let pathstr = "/";
-        let path = path_from_str(pathstr).unwrap();
+        let path = from_str::<Path>(pathstr).unwrap();
         assert!(path.path == "/".to_string());
     }
 
@@ -1031,7 +1039,7 @@ mod tests {
     #[test]
     fn test_path_with_underscores() {
         let pathstr = "/file_name.html";
-        let path = path_from_str(pathstr).unwrap();
+        let path = from_str::<Path>(pathstr).unwrap();
         assert!(path.path == "/file_name.html".to_string());
     }
 
@@ -1045,7 +1053,7 @@ mod tests {
     #[test]
     fn test_path_with_dashes() {
         let pathstr = "/file-name.html";
-        let path = path_from_str(pathstr).unwrap();
+        let path = from_str::<Path>(pathstr).unwrap();
         assert!(path.path == "/file-name.html".to_string());
     }
 
@@ -1132,7 +1140,7 @@ mod tests {
     #[test]
     fn test_path_component_encoding() {
         let path = "/doc%20uments?ba%25d%20=%23%26%2B";
-        let p = path_from_str(path).unwrap();
+        let p = from_str::<Path>(path).unwrap();
         assert!(p.path == "/doc uments".to_string());
         assert!(p.query == vec!(("ba%d ".to_string(), "#&+".to_string())));
     }
