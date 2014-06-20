@@ -40,7 +40,7 @@ via `close` and `delete` methods.
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 
-#![feature(macro_rules)]
+#![feature(macro_rules, unsafe_destructor)]
 #![deny(unused_result, unused_must_use)]
 #![allow(visible_private_types)]
 

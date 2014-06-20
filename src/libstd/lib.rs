@@ -103,14 +103,16 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/",
        html_playground_url = "http://play.rust-lang.org/")]
-#![feature(macro_rules, globs, managed_boxes,
-           linkage, default_type_params, phase)]
+
+#![feature(macro_rules, globs, managed_boxes)]
+#![feature(linkage, default_type_params, phase, unsafe_destructor)]
 
 // Don't link to std. We are std.
 #![no_std]
 
 #![allow(deprecated)]
 #![deny(missing_doc)]
+#![allow(unknown_features)] // NOTE: remove after a stage0 snap
 
 // When testing libstd, bring in libuv as the I/O backend so tests can print
 // things and all of the std::io tests have an I/O interface to run on top

@@ -192,6 +192,8 @@ As an example, we give a reimplementation of owned boxes by wrapping
 reimplementation is as safe as the `Box` type.
 
 ```
+#![feature(unsafe_destructor)]
+
 extern crate libc;
 use libc::{c_void, size_t, malloc, free};
 use std::mem;
@@ -242,10 +244,12 @@ impl<T: Send> Unique<T> {
 // A key ingredient for safety, we associate a destructor with
 // Unique<T>, making the struct manage the raw pointer: when the
 // struct goes out of scope, it will automatically free the raw pointer.
+//
 // NB: This is an unsafe destructor, because rustc will not normally
-// allow destructors to be associated with parametrized types, due to
+// allow destructors to be associated with parameterized types, due to
 // bad interaction with managed boxes. (With the Send restriction,
-// we don't have this problem.)
+// we don't have this problem.) Note that the `#[unsafe_destructor]`
+// feature gate is required to use unsafe destructors.
 #[unsafe_destructor]
 impl<T: Send> Drop for Unique<T> {
     fn drop(&mut self) {
