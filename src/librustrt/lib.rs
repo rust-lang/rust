@@ -17,7 +17,8 @@
        html_root_url = "http://doc.rust-lang.org/")]
 
 #![feature(macro_rules, phase, globs, thread_local, managed_boxes, asm)]
-#![feature(linkage, unsafe_destructor)]
+#![feature(linkage, lang_items, unsafe_destructor)]
+#![allow(unknown_features)] // NOTE: remove after stage0 snapshot
 #![no_std]
 #![experimental]
 

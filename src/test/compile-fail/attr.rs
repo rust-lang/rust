@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(lang_items)]
+
 fn main() {}
 
 #![lang(foo)] //~ ERROR an inner attribute is not permitted in this context
