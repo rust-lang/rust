@@ -36,16 +36,13 @@ use std::uint;
 /// # Example
 ///
 /// ```rust
-/// use url::{Url, UserInfo};
+/// use url::Url;
 ///
-/// let url = Url { scheme: "https".to_string(),
-///                 user: Some(UserInfo { user: "username".to_string(), pass: None }),
-///                 host: "example.com".to_string(),
-///                 port: Some("8080".to_string()),
-///                 path: "/foo/bar".to_string(),
-///                 query: vec!(("baz".to_string(), "qux".to_string())),
-///                 fragment: Some("quz".to_string()) };
-/// // https://username@example.com:8080/foo/bar?baz=qux#quz
+/// let raw = "https://username@example.com:8080/foo/bar?baz=qux#quz";
+/// match Url::parse(raw) {
+///     Ok(u) => println!("Parsed '{}'", u),
+///     Err(e) => println!("Couldn't parse '{}': {}", raw, e),
+/// }
 /// ```
 #[deriving(Clone, PartialEq, Eq)]
 pub struct Url {
@@ -110,6 +107,38 @@ impl Url {
             fragment: fragment,
         }
     }
+
+    /// Parses a URL, converting it from a string to a `Url` representation.
+    ///
+    /// # Arguments
+    /// * rawurl - a string representing the full URL, including scheme.
+    ///
+    /// # Return value
+    ///
+    /// `Err(e)` if the string did not represent a valid URL, where `e` is a
+    /// `String` error message. Otherwise, `Ok(u)` where `u` is a `Url` struct
+    /// representing the URL.
+    pub fn parse(rawurl: &str) -> Result<Url, String> {
+        // scheme
+        let (scheme, rest) = try!(get_scheme(rawurl));
+
+        // authority
+        let (userinfo, host, port, rest) = try!(get_authority(rest.as_slice()));
+
+        // path
+        let has_authority = host.len() > 0;
+        let (path, rest) = try!(get_path(rest.as_slice(), has_authority));
+
+        // query and fragment
+        let (query, fragment) = try!(get_query_fragment(rest.as_slice()));
+
+        Ok(Url::new(scheme, userinfo, host, port, path, query, fragment))
+    }
+}
+
+#[deprecated="use `Url::parse`"]
+pub fn from_str(s: &str) -> Result<Url, String> {
+    Url::parse(s)
 }
 
 impl Path {
@@ -734,46 +763,6 @@ fn get_query_fragment(rawurl: &str) ->
     return Ok((query_from_str(q.as_slice()), f));
 }
 
-/**
- * Parses a URL, converting it from a string to `Url` representation.
- *
- * # Arguments
- *
- * `rawurl` - a string representing the full URL, including scheme.
- *
- * # Returns
- *
- * A `Url` struct type representing the URL.
- */
-pub fn from_str(rawurl: &str) -> Result<Url, String> {
-    // scheme
-    let (scheme, rest) = match get_scheme(rawurl) {
-        Ok(val) => val,
-        Err(e) => return Err(e),
-    };
-
-    // authority
-    let (userinfo, host, port, rest) = match get_authority(rest.as_slice()) {
-        Ok(val) => val,
-        Err(e) => return Err(e),
-    };
-
-    // path
-    let has_authority = host.len() > 0;
-    let (path, rest) = match get_path(rest.as_slice(), has_authority) {
-        Ok(val) => val,
-        Err(e) => return Err(e),
-    };
-
-    // query and fragment
-    let (query, fragment) = match get_query_fragment(rest.as_slice()) {
-        Ok(val) => val,
-        Err(e) => return Err(e),
-    };
-
-    Ok(Url::new(scheme, userinfo, host, port, path, query, fragment))
-}
-
 pub fn path_from_str(rawpath: &str) -> Result<Path, String> {
     let (path, rest) = match get_path(rawpath, false) {
         Ok(val) => val,
@@ -791,7 +780,7 @@ pub fn path_from_str(rawpath: &str) -> Result<Path, String> {
 
 impl FromStr for Url {
     fn from_str(s: &str) -> Option<Url> {
-        match from_str(s) {
+        match Url::parse(s) {
             Ok(url) => Some(url),
             Err(_) => None
         }
@@ -969,8 +958,8 @@ fn test_get_path() {
 #[cfg(test)]
 mod tests {
     use {encode_form_urlencoded, decode_form_urlencoded,
-         decode, encode, from_str, encode_component, decode_component,
-         path_from_str, UserInfo, get_scheme};
+         decode, encode, encode_component, decode_component,
+         path_from_str, UserInfo, get_scheme, Url};
 
     use std::collections::HashMap;
 
@@ -978,7 +967,7 @@ mod tests {
     fn test_url_parse() {
         let url = "http://user:pass@rust-lang.org:8080/doc/~u?s=v#something";
 
-        let up = from_str(url);
+        let up = from_str::<Url>(url);
         let u = up.unwrap();
         assert_eq!(&u.scheme, &"http".to_string());
         assert_eq!(&u.user, &Some(UserInfo::new("user".to_string(), Some("pass".to_string()))));
@@ -1003,7 +992,7 @@ mod tests {
     #[test]
     fn test_url_parse_host_slash() {
         let urlstr = "http://0.42.42.42/";
-        let url = from_str(urlstr).unwrap();
+        let url = from_str::<Url>(urlstr).unwrap();
         assert!(url.host == "0.42.42.42".to_string());
         assert!(url.path == "/".to_string());
     }
@@ -1018,14 +1007,14 @@ mod tests {
     #[test]
     fn test_url_host_with_port() {
         let urlstr = "scheme://host:1234";
-        let url = from_str(urlstr).unwrap();
+        let url = from_str::<Url>(urlstr).unwrap();
         assert_eq!(&url.scheme, &"scheme".to_string());
         assert_eq!(&url.host, &"host".to_string());
         assert_eq!(&url.port, &Some("1234".to_string()));
         // is empty path really correct? Other tests think so
         assert_eq!(&url.path, &"".to_string());
         let urlstr = "scheme://host:1234/";
-        let url = from_str(urlstr).unwrap();
+        let url = from_str::<Url>(urlstr).unwrap();
         assert_eq!(&url.scheme, &"scheme".to_string());
         assert_eq!(&url.host, &"host".to_string());
         assert_eq!(&url.port, &Some("1234".to_string()));
@@ -1035,7 +1024,7 @@ mod tests {
     #[test]
     fn test_url_with_underscores() {
         let urlstr = "http://dotcom.com/file_name.html";
-        let url = from_str(urlstr).unwrap();
+        let url = from_str::<Url>(urlstr).unwrap();
         assert!(url.path == "/file_name.html".to_string());
     }
 
@@ -1049,7 +1038,7 @@ mod tests {
     #[test]
     fn test_url_with_dashes() {
         let urlstr = "http://dotcom.com/file-name.html";
-        let url = from_str(urlstr).unwrap();
+        let url = from_str::<Url>(urlstr).unwrap();
         assert!(url.path == "/file-name.html".to_string());
     }
 
@@ -1067,75 +1056,75 @@ mod tests {
 
     #[test]
     fn test_invalid_scheme_errors() {
-        assert!(from_str("99://something").is_err());
-        assert!(from_str("://something").is_err());
+        assert!(Url::parse("99://something").is_err());
+        assert!(Url::parse("://something").is_err());
     }
 
     #[test]
     fn test_full_url_parse_and_format() {
         let url = "http://user:pass@rust-lang.org/doc?s=v#something";
-        assert_eq!(from_str(url).unwrap().to_str().as_slice(), url);
+        assert_eq!(from_str::<Url>(url).unwrap().to_str().as_slice(), url);
     }
 
     #[test]
     fn test_userless_url_parse_and_format() {
         let url = "http://rust-lang.org/doc?s=v#something";
-        assert_eq!(from_str(url).unwrap().to_str().as_slice(), url);
+        assert_eq!(from_str::<Url>(url).unwrap().to_str().as_slice(), url);
     }
 
     #[test]
     fn test_queryless_url_parse_and_format() {
         let url = "http://user:pass@rust-lang.org/doc#something";
-        assert_eq!(from_str(url).unwrap().to_str().as_slice(), url);
+        assert_eq!(from_str::<Url>(url).unwrap().to_str().as_slice(), url);
     }
 
     #[test]
     fn test_empty_query_url_parse_and_format() {
         let url = "http://user:pass@rust-lang.org/doc?#something";
         let should_be = "http://user:pass@rust-lang.org/doc#something";
-        assert_eq!(from_str(url).unwrap().to_str().as_slice(), should_be);
+        assert_eq!(from_str::<Url>(url).unwrap().to_str().as_slice(), should_be);
     }
 
     #[test]
     fn test_fragmentless_url_parse_and_format() {
         let url = "http://user:pass@rust-lang.org/doc?q=v";
-        assert_eq!(from_str(url).unwrap().to_str().as_slice(), url);
+        assert_eq!(from_str::<Url>(url).unwrap().to_str().as_slice(), url);
     }
 
     #[test]
     fn test_minimal_url_parse_and_format() {
         let url = "http://rust-lang.org/doc";
-        assert_eq!(from_str(url).unwrap().to_str().as_slice(), url);
+        assert_eq!(from_str::<Url>(url).unwrap().to_str().as_slice(), url);
     }
 
     #[test]
     fn test_url_with_port_parse_and_format() {
         let url = "http://rust-lang.org:80/doc";
-        assert_eq!(from_str(url).unwrap().to_str().as_slice(), url);
+        assert_eq!(from_str::<Url>(url).unwrap().to_str().as_slice(), url);
     }
 
     #[test]
     fn test_scheme_host_only_url_parse_and_format() {
         let url = "http://rust-lang.org";
-        assert_eq!(from_str(url).unwrap().to_str().as_slice(), url);
+        assert_eq!(from_str::<Url>(url).unwrap().to_str().as_slice(), url);
     }
 
     #[test]
     fn test_pathless_url_parse_and_format() {
         let url = "http://user:pass@rust-lang.org?q=v#something";
-        assert_eq!(from_str(url).unwrap().to_str().as_slice(), url);
+        assert_eq!(from_str::<Url>(url).unwrap().to_str().as_slice(), url);
     }
 
     #[test]
     fn test_scheme_host_fragment_only_url_parse_and_format() {
         let url = "http://rust-lang.org#something";
-        assert_eq!(from_str(url).unwrap().to_str().as_slice(), url);
+        assert_eq!(from_str::<Url>(url).unwrap().to_str().as_slice(), url);
     }
 
     #[test]
     fn test_url_component_encoding() {
         let url = "http://rust-lang.org/doc%20uments?ba%25d%20=%23%26%2B";
-        let u = from_str(url).unwrap();
+        let u = from_str::<Url>(url).unwrap();
         assert!(u.path == "/doc uments".to_string());
         assert!(u.query == vec!(("ba%d ".to_string(), "#&+".to_string())));
     }
@@ -1151,7 +1140,7 @@ mod tests {
     #[test]
     fn test_url_without_authority() {
         let url = "mailto:test@email.com";
-        assert_eq!(from_str(url).unwrap().to_str().as_slice(), url);
+        assert_eq!(from_str::<Url>(url).unwrap().to_str().as_slice(), url);
     }
 
     #[test]
