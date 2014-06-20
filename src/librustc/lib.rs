@@ -29,8 +29,9 @@ This API is completely unstable and subject to change.
       html_root_url = "http://doc.rust-lang.org/")]
 
 #![allow(deprecated)]
-#![feature(macro_rules, globs, struct_variant, managed_boxes, quote,
-           default_type_params, phase)]
+#![allow(unknown_features)] // NOTE: remove after a stage0 snap
+#![feature(macro_rules, globs, struct_variant, managed_boxes, quote)]
+#![feature(default_type_params, phase, unsafe_destructor)]
 
 extern crate arena;
 extern crate debug;
