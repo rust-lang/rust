@@ -248,7 +248,6 @@ lets_do_this! {
     OrdTraitLangItem,                "ord",                     ord_trait;
 
     StrEqFnLangItem,                 "str_eq",                  str_eq_fn;
-    UniqStrEqFnLangItem,             "uniq_str_eq",             uniq_str_eq_fn;
 
     // A number of failure-related lang items. The `fail_` item corresponds to
     // divide-by-zero and various failure cases with `match`. The
