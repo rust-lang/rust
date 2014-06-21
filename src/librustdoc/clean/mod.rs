@@ -40,7 +40,7 @@ use visit_ast;
 
 /// A stable identifier to the particular version of JSON output.
 /// Increment this when the `Crate` and related structures change.
-pub static SCHEMA_VERSION: &'static str = "0.8.2";
+pub static SCHEMA_VERSION: &'static str = "0.8.3";
 
 mod inline;
 
@@ -449,6 +449,7 @@ pub struct TyParam {
     pub name: String,
     pub did: ast::DefId,
     pub bounds: Vec<TyParamBound>,
+    pub default: Option<Type>
 }
 
 impl Clean<TyParam> for ast::TyParam {
@@ -457,6 +458,7 @@ impl Clean<TyParam> for ast::TyParam {
             name: self.ident.clean(),
             did: ast::DefId { krate: ast::LOCAL_CRATE, node: self.id },
             bounds: self.bounds.clean().move_iter().collect(),
+            default: self.default.clean()
         }
     }
 }
@@ -470,6 +472,7 @@ impl Clean<TyParam> for ty::TypeParameterDef {
             name: self.ident.clean(),
             did: self.def_id,
             bounds: self.bounds.clean(),
+            default: self.default.clean()
         }
     }
 }
