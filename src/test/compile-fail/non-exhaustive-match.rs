@@ -12,21 +12,21 @@ enum t { a, b, }
 
 fn main() {
     let x = a;
-    match x { b => { } } //~ ERROR non-exhaustive patterns
-    match true { //~ ERROR non-exhaustive patterns
+    match x { b => { } } //~ ERROR non-exhaustive patterns: `a` not covered
+    match true { //~ ERROR non-exhaustive patterns: `false` not covered
       true => {}
     }
-    match Some(10) { //~ ERROR non-exhaustive patterns
+    match Some(10) { //~ ERROR non-exhaustive patterns: `Some(_)` not covered
       None => {}
     }
-    match (2, 3, 4) { //~ ERROR non-exhaustive patterns
+    match (2, 3, 4) { //~ ERROR non-exhaustive patterns: `(_, _, _)` not covered
       (_, _, 4) => {}
     }
-    match (a, a) { //~ ERROR non-exhaustive patterns
+    match (a, a) { //~ ERROR non-exhaustive patterns: `(a, a)` not covered
       (a, b) => {}
       (b, a) => {}
     }
-    match a { //~ ERROR b not covered
+    match a { //~ ERROR non-exhaustive patterns: `b` not covered
       a => {}
     }
     // This is exhaustive, though the algorithm got it wrong at one point
@@ -37,8 +37,7 @@ fn main() {
     }
     let vec = vec!(Some(42), None, Some(21));
     let vec: &[Option<int>] = vec.as_slice();
-    match vec {
-        //~^ ERROR non-exhaustive patterns: vectors of length 0 not covered
+    match vec { //~ ERROR non-exhaustive patterns: `[]` not covered
         [Some(..), None, ..tail] => {}
         [Some(..), Some(..), ..tail] => {}
         [None] => {}
@@ -51,7 +50,7 @@ fn main() {
     }
     let vec = vec!(0.5);
     let vec: &[f32] = vec.as_slice();
-    match vec { //~ ERROR non-exhaustive patterns: vectors of length 4 not covered
+    match vec { //~ ERROR non-exhaustive patterns: `[_, _, _, _]` not covered
         [0.1, 0.2, 0.3] => (),
         [0.1, 0.2] => (),
         [0.1] => (),

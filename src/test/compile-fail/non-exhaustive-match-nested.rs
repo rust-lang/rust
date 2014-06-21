@@ -8,13 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: non-exhaustive patterns
 enum t { a(u), b }
 enum u { c, d }
 
 fn main() {
   let x = a(c);
-  match x {
+  match x { //~ ERROR non-exhaustive patterns: `a(c)` not covered
       a(d) => { fail!("hello"); }
       b => { fail!("goodbye"); }
     }
