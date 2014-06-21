@@ -82,6 +82,11 @@ impl fmt::Show for clean::Generics {
                         try!(write!(f, "{}", *bound));
                     }
                 }
+
+                match tp.default {
+                    Some(ref ty) => { try!(write!(f, " = {}", ty)); },
+                    None => {}
+                };
             }
         }
         try!(f.write("&gt;".as_bytes()));
