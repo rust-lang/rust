@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo(a: Option<uint>, b: Option<uint>) {
-  match (a,b) {
-  //~^ ERROR: non-exhaustive patterns: `(None, None)` not covered
-    (Some(a), Some(b)) if a == b => { }
-    (Some(_), None) |
-    (None, Some(_)) => { }
-  }
-}
+
+fn func((1, (Some(1), 2..3)): (int, (Option<int>, int))) { }
+//~^ ERROR refutable pattern in function argument: `(_, _)` not covered
 
 fn main() {
-  foo(None, None);
+    let (1, (Some(1), 2..3)) = (1, (None, 2));
+    //~^ ERROR refutable pattern in local binding: `(_, _)` not covered
 }
