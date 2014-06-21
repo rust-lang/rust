@@ -726,22 +726,38 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
 }
 
 // Helper function to check gc, box and & patterns
-pub fn check_pointer_pat(pcx: &pat_ctxt,
-                         pointer_kind: PointerKind,
-                         inner: &ast::Pat,
-                         pat_id: ast::NodeId,
-                         span: Span,
-                         expected: ty::t) {
+fn check_pointer_pat(pcx: &pat_ctxt,
+                     pointer_kind: PointerKind,
+                     inner: &ast::Pat,
+                     pat_id: ast::NodeId,
+                     span: Span,
+                     expected: ty::t) {
     let fcx = pcx.fcx;
+    let tcx = fcx.ccx.tcx;
     let check_inner: |ty::t| = |e_inner| {
-        check_pat(pcx, inner, e_inner);
-        fcx.write_ty(pat_id, expected);
+        match ty::get(e_inner).sty {
+            ty::ty_trait(_) if pat_is_binding(&tcx.def_map, inner) => {
+                // This is "x = SomeTrait" being reduced from
+                // "let &x = &SomeTrait" or "let box x = Box<SomeTrait>", an error.
+                check_pat(pcx, inner, ty::mk_err());
+                tcx.sess.span_err(
+                    span,
+                    format!("type `{}` cannot be dereferenced",
+                            fcx.infcx().ty_to_str(expected)).as_slice());
+                fcx.write_error(pat_id);
+            }
+            _ => {
+                check_pat(pcx, inner, e_inner);
+                fcx.write_ty(pat_id, expected);
+            }
+        }
     };
+
     match *structure_of(fcx, span, expected) {
-        ty::ty_uniq(e_inner) if pointer_kind == Send && !ty::type_is_trait(e_inner) => {
+        ty::ty_uniq(e_inner) if pointer_kind == Send => {
             check_inner(e_inner);
         }
-        ty::ty_rptr(_, e_inner) if pointer_kind == Borrowed && !ty::type_is_trait(e_inner.ty) => {
+        ty::ty_rptr(_, e_inner) if pointer_kind == Borrowed => {
             check_inner(e_inner.ty);
         }
         _ => {
