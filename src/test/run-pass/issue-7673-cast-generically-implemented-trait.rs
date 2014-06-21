@@ -20,6 +20,5 @@ pub fn main() {}
 trait A {}
 impl<T: 'static> A for T {}
 
-fn owned1<T: 'static>(a: T) { box a as Box<A+>; } /* note `:` */
 fn owned2<T: 'static>(a: Box<T>) { a as Box<A>; }
 fn owned3<T: 'static>(a: Box<T>) { box a as Box<A>; }

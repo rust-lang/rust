@@ -28,7 +28,7 @@ pub fn main() {
 
 
     let a = 3;
-    bar::<proc():>(proc() {
+    bar::<proc()>(proc() {
         let b = &a;
         println!("{}", *b);
     });
