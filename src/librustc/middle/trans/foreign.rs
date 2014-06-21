@@ -11,7 +11,7 @@
 
 use back::{link};
 use lib::llvm::llvm;
-use lib::llvm::{ValueRef, CallConv, StructRetAttribute, Linkage};
+use lib::llvm::{ValueRef, CallConv, Linkage};
 use lib;
 use middle::weak_lang_items;
 use middle::trans::base::push_ctxt;
@@ -373,18 +373,41 @@ pub fn trans_native_call<'a>(
     };
 
     // A function pointer is called without the declaration available, so we have to apply
-    // any attributes with ABI implications directly to the call instruction. Right now, the
-    // only attribute we need to worry about is `sret`.
+    // any attributes with ABI implications directly to the call instruction.
     let mut attrs = Vec::new();
-    if fn_type.ret_ty.is_indirect() {
-        attrs.push((1, lib::llvm::StructRetAttribute as u64));
 
+    // Add attributes that are always applicable, independent of the concrete foreign ABI
+    if fn_type.ret_ty.is_indirect() {
         // The outptr can be noalias and nocapture because it's entirely
         // invisible to the program. We can also mark it as nonnull
         attrs.push((1, lib::llvm::NoAliasAttribute as u64));
         attrs.push((1, lib::llvm::NoCaptureAttribute as u64));
         attrs.push((1, lib::llvm::NonNullAttribute as u64));
     };
+
+    // Add attributes that depend on the concrete foreign ABI
+    let mut arg_idx = if fn_type.ret_ty.is_indirect() { 1 } else { 0 };
+    match fn_type.ret_ty.attr {
+        Some(attr) => attrs.push((arg_idx, attr as u64)),
+        _ => ()
+    }
+
+    arg_idx += 1;
+    for arg_ty in fn_type.arg_tys.iter() {
+        if arg_ty.is_ignore() {
+            continue;
+        }
+        // skip padding
+        if arg_ty.pad.is_some() { arg_idx += 1; }
+
+        match arg_ty.attr {
+            Some(attr) => attrs.push((arg_idx, attr as u64)),
+            _ => {}
+        }
+
+        arg_idx += 1;
+    }
+
     let llforeign_retval = CallWithConv(bcx,
                                         llfn,
                                         llargs_foreign.as_slice(),
@@ -934,21 +957,16 @@ pub fn lltype_for_foreign_fn(ccx: &CrateContext, ty: ty::t) -> Type {
 
 fn add_argument_attributes(tys: &ForeignTypes,
                            llfn: ValueRef) {
-    let mut i = 0;
+    let mut i = if tys.fn_ty.ret_ty.is_indirect() { 1 } else { 0 };
 
-    if tys.fn_ty.ret_ty.is_indirect() {
-        match tys.fn_ty.ret_ty.attr {
-            Some(attr) => {
-                let llarg = get_param(llfn, i);
-                unsafe {
-                    llvm::LLVMAddAttribute(llarg, attr as c_uint);
-                }
-            }
-            None => {}
-        }
-
-        i += 1;
+    match tys.fn_ty.ret_ty.attr {
+        Some(attr) => unsafe {
+            llvm::LLVMAddFunctionAttribute(llfn, i as c_uint, attr as u64);
+        },
+        None => {}
     }
+
+    i += 1;
 
     for &arg_ty in tys.fn_ty.arg_tys.iter() {
         if arg_ty.is_ignore() {
@@ -958,12 +976,9 @@ fn add_argument_attributes(tys: &ForeignTypes,
         if arg_ty.pad.is_some() { i += 1; }
 
         match arg_ty.attr {
-            Some(attr) => {
-                let llarg = get_param(llfn, i);
-                unsafe {
-                    llvm::LLVMAddAttribute(llarg, attr as c_uint);
-                }
-            }
+            Some(attr) => unsafe {
+                llvm::LLVMAddFunctionAttribute(llfn, i as c_uint, attr as u64);
+            },
             None => ()
         }
 
