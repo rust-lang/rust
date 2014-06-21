@@ -58,7 +58,7 @@ use std::i64;
 use std::i8;
 use std::rc::Rc;
 use std::gc::Gc;
-use std::to_str::ToStr;
+use std::to_str::ToString;
 use std::u16;
 use std::u32;
 use std::u64;

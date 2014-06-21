@@ -12,7 +12,7 @@ extern crate collections;
 
 use std::collections::{ Map, MutableMap};
 use std::str::{SendStr, Owned, Slice};
-use std::to_str::ToStr;
+use std::to_str::ToString;
 use self::collections::TreeMap;
 use std::option::Some;
 

@@ -597,14 +597,14 @@ extern "C" void LLVMDICompositeTypeSetTypeArray(
     unwrapDI<DICompositeType>(CompositeType).setTypeArray(unwrapDI<DIArray>(TypeArray));
 }
 
-extern "C" char *LLVMTypeToString(LLVMTypeRef Type) {
+extern "C" char *LLVMTypeToStringing(LLVMTypeRef Type) {
     std::string s;
     llvm::raw_string_ostream os(s);
     unwrap<llvm::Type>(Type)->print(os);
     return strdup(os.str().data());
 }
 
-extern "C" char *LLVMValueToString(LLVMValueRef Value) {
+extern "C" char *LLVMValueToStringing(LLVMValueRef Value) {
     std::string s;
     llvm::raw_string_ostream os(s);
     os << "(";

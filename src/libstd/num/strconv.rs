@@ -819,7 +819,7 @@ mod bench {
     mod uint {
         use super::test::Bencher;
         use rand::{weak_rng, Rng};
-        use num::ToStrRadix;
+        use num::ToStringRadix;
 
         #[bench]
         fn to_str_bin(b: &mut Bencher) {
@@ -855,7 +855,7 @@ mod bench {
     mod int {
         use super::test::Bencher;
         use rand::{weak_rng, Rng};
-        use num::ToStrRadix;
+        use num::ToStringRadix;
 
         #[bench]
         fn to_str_bin(b: &mut Bencher) {

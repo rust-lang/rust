@@ -30,14 +30,14 @@ itself (note that inherent impls can only be defined in the same
 module as the type itself).
 
 Inherent candidates are not always derived from impls.  If you have a
-trait instance, such as a value of type `Box<ToStr>`, then the trait
+trait instance, such as a value of type `Box<ToString>`, then the trait
 methods (`to_string()`, in this case) are inherently associated with it.
 Another case is type parameters, in which case the methods of their
 bounds are inherent.
 
 Extension candidates are derived from imported traits.  If I have the
-trait `ToStr` imported, and I call `to_string()` on a value of type `T`,
-then we will go off to find out whether there is an impl of `ToStr`
+trait `ToString` imported, and I call `to_string()` on a value of type `T`,
+then we will go off to find out whether there is an impl of `ToString`
 for `T`.  These kinds of method calls are called "extension methods".
 They can be defined in any module, not only the one that defined `T`.
 Furthermore, you must import the trait to call such a method.

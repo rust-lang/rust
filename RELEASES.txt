@@ -80,7 +80,7 @@ Version 0.10 (April 2014)
       `slice::last()`) now return `Option<T>` instead of `T` + failing.
     * std: `fmt::Default` has been renamed to `fmt::Show`, and it now has a new
       deriving mode: `#[deriving(Show)]`.
-    * std: `ToStr` is now implemented for all types implementing `Show`.
+    * std: `ToString` is now implemented for all types implementing `Show`.
     * std: The formatting trait methods now take `&self` instead of `&T`
     * std: The `invert()` method on iterators has been renamed to `rev()`
     * std: `std::num` has seen a reduction in the genericity of its traits,
@@ -528,7 +528,7 @@ Version 0.7 (July 2013)
       * `fail!` and `assert!` accept `~str`, `&'static str` or `fmt!`-style
         argument list.
       * `Encodable`, `Decodable`, `Ord`, `TotalOrd`, `TotalEq`, `DeepClone`,
-        `Rand`, `Zero` and `ToStr` can all be automatically derived with
+        `Rand`, `Zero` and `ToString` can all be automatically derived with
         `#[deriving(...)]`.
       * The `bytes!` macro returns a vector of bytes for string, u8, char,
         and unsuffixed integer literals.

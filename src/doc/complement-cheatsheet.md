@@ -4,7 +4,7 @@
 
 **Int to string**
 
-Use [`ToStr`](std/to_str/trait.ToStr.html).
+Use [`ToString`](std/to_str/trait.ToString.html).
 
 ~~~
 let x: int = 42;

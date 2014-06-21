@@ -3986,7 +3986,7 @@ impl<'a> Parser<'a> {
 
     // Parses two variants (with the region/type params always optional):
     //    impl<T> Foo { ... }
-    //    impl<T> ToStr for ~[T] { ... }
+    //    impl<T> ToString for ~[T] { ... }
     fn parse_item_impl(&mut self) -> ItemInfo {
         // First, parse type parameters if necessary.
         let generics = self.parse_generics();

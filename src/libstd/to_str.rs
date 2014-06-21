@@ -10,7 +10,7 @@
 
 /*!
 
-The `ToStr` trait for converting to strings
+The `ToString` trait for converting to strings
 
 */
 
@@ -18,7 +18,7 @@ use fmt;
 use string::String;
 
 /// A generic trait for converting a value to a string
-pub trait ToStr {
+pub trait ToString {
     /// Converts the value of `self` to an owned string
     fn to_string(&self) -> String;
 }
@@ -29,7 +29,7 @@ pub trait IntoStr {
     fn into_string(self) -> String;
 }
 
-impl<T: fmt::Show> ToStr for T {
+impl<T: fmt::Show> ToString for T {
     fn to_string(&self) -> String {
         format!("{}", *self)
     }

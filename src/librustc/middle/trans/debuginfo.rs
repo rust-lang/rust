@@ -517,7 +517,7 @@ impl TypeMap {
                                   def_id: ast::DefId,
                                   substs: &subst::Substs,
                                   output: &mut String) {
-            use std::num::ToStrRadix;
+            use std::num::ToStringRadix;
 
             // First, find out the 'real' def_id of the type. Items inlined from
             // other crates have to be mapped back to their source.

@@ -75,7 +75,7 @@ pub fn to_str_bytes<U>(n: $T, radix: uint, f: |v: &[u8]| -> U) -> U {
     f(buf.slice(0, amt))
 }
 
-impl ToStrRadix for $T {
+impl ToStringRadix for $T {
     /// Convert to a string in a given base.
     #[inline]
     fn to_str_radix(&self, radix: uint) -> String {
@@ -88,7 +88,7 @@ mod tests {
     use prelude::*;
     use super::*;
 
-    use num::ToStrRadix;
+    use num::ToStringRadix;
     use str::StrSlice;
     use u16;
 

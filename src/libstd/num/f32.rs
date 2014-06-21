@@ -333,7 +333,7 @@ pub fn to_str_exp_digits(num: f32, dig: uint, upper: bool) -> String {
     r
 }
 
-impl num::ToStrRadix for f32 {
+impl num::ToStringRadix for f32 {
     /// Converts a float to a string in a given radix
     ///
     /// # Arguments

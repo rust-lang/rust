@@ -776,7 +776,7 @@ impl Repr for ty::ItemVariances {
 impl Repr for ty::Variance {
     fn repr(&self, _: &ctxt) -> String {
         // The first `.to_string()` returns a &'static str (it is not an implementation
-        // of the ToStr trait). Because of that, we need to call `.to_string()` again
+        // of the ToString trait). Because of that, we need to call `.to_string()` again
         // if we want to have a `String`.
         self.to_string().to_string()
     }

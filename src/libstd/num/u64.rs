@@ -13,7 +13,7 @@
 #![doc(primitive = "u64")]
 
 use from_str::FromStr;
-use num::{ToStrRadix, FromStrRadix};
+use num::{ToStringRadix, FromStrRadix};
 use num::strconv;
 use option::Option;
 use slice::ImmutableVector;

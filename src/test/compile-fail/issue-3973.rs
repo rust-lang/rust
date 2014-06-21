@@ -17,7 +17,7 @@ struct Point {
     y: f64,
 }
 
-impl ToStr for Point { //~ ERROR implements a method not defined in the trait
+impl ToString for Point { //~ ERROR implements a method not defined in the trait
     fn new(x: f64, y: f64) -> Point {
         Point { x: x, y: y }
     }
