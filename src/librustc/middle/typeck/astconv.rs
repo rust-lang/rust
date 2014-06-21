@@ -66,7 +66,7 @@ use syntax::abi;
 use syntax::{ast, ast_util};
 use syntax::codemap::Span;
 use syntax::owned_slice::OwnedSlice;
-use syntax::print::pprust::{lifetime_to_str, path_to_str};
+use syntax::print::pprust::{lifetime_to_string, path_to_string};
 
 pub trait AstConv {
     fn tcx<'a>(&'a self) -> &'a ty::ctxt;
@@ -108,7 +108,7 @@ pub fn ast_region_to_region(tcx: &ty::ctxt, lifetime: &ast::Lifetime)
     };
 
     debug!("ast_region_to_region(lifetime={} id={}) yields {}",
-            lifetime_to_str(lifetime),
+            lifetime_to_string(lifetime),
             lifetime.id, r.repr(tcx));
 
     r
@@ -142,7 +142,7 @@ pub fn opt_ast_region_to_region<AC:AstConv,RS:RegionScope>(
     };
 
     debug!("opt_ast_region_to_region(opt_lifetime={:?}) yields {}",
-            opt_lifetime.as_ref().map(|e| lifetime_to_str(e)),
+            opt_lifetime.as_ref().map(|e| lifetime_to_string(e)),
             r.repr(this.tcx()));
 
     r
@@ -331,7 +331,7 @@ pub fn ast_ty_to_prim_ty(tcx: &ty::ctxt, ast_ty: &ast::Ty) -> Option<ty::t> {
                 None => {
                     tcx.sess.span_bug(ast_ty.span,
                                       format!("unbound path {}",
-                                              path_to_str(path)).as_slice())
+                                              path_to_string(path)).as_slice())
                 }
                 Some(&d) => d
             };
@@ -394,7 +394,7 @@ pub fn ast_ty_to_builtin_ty<AC:AstConv,
                         .sess
                         .span_bug(ast_ty.span,
                                   format!("unbound path {}",
-                                          path_to_str(path)).as_slice())
+                                          path_to_string(path)).as_slice())
                 }
                 Some(&d) => d
             };
@@ -793,7 +793,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                         tcx.sess
                            .span_bug(ast_ty.span,
                                      format!("unbound path {}",
-                                             path_to_str(path)).as_slice())
+                                             path_to_string(path)).as_slice())
                     }
                     Some(&d) => d
                 };
@@ -808,7 +808,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                 }
                 match a_def {
                     def::DefTrait(_) => {
-                        let path_str = path_to_str(path);
+                        let path_str = path_to_string(path);
                         tcx.sess.span_err(
                             ast_ty.span,
                             format!("reference to trait `{name}` where a \
@@ -835,7 +835,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                     def::DefMod(id) => {
                         tcx.sess.span_fatal(ast_ty.span,
                             format!("found module name used as a type: {}",
-                                    tcx.map.node_to_str(id.node)).as_slice());
+                                    tcx.map.node_to_string(id.node)).as_slice());
                     }
                     def::DefPrimTy(_) => {
                         fail!("DefPrimTy arm missed in previous ast_ty_to_prim_ty call");

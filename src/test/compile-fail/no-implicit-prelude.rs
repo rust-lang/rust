@@ -20,7 +20,7 @@ struct Test;
 impl Add for Test {} //~ ERROR: attempt to implement a nonexistent trait
 impl Clone for Test {} //~ ERROR: attempt to implement a nonexistent trait
 impl Iterator for Test {} //~ ERROR: attempt to implement a nonexistent trait
-impl ToStr for Test {} //~ ERROR: attempt to implement a nonexistent trait
+impl ToString for Test {} //~ ERROR: attempt to implement a nonexistent trait
 impl Writer for Test {} //~ ERROR: attempt to implement a nonexistent trait
 
 fn main() {

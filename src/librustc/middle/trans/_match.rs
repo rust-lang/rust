@@ -214,7 +214,7 @@ use middle::trans::type_of;
 use middle::trans::debuginfo;
 use middle::ty;
 use util::common::indenter;
-use util::ppaux::{Repr, vec_map_to_str};
+use util::ppaux::{Repr, vec_map_to_string};
 
 use std;
 use std::collections::HashMap;
@@ -409,7 +409,7 @@ fn expand_nested_bindings<'a, 'b>(
            bcx.to_str(),
            m.repr(bcx.tcx()),
            col,
-           bcx.val_to_str(val));
+           bcx.val_to_string(val));
     let _indenter = indenter();
 
     m.iter().map(|br| {
@@ -449,7 +449,7 @@ fn enter_match<'a, 'b>(
            bcx.to_str(),
            m.repr(bcx.tcx()),
            col,
-           bcx.val_to_str(val));
+           bcx.val_to_string(val));
     let _indenter = indenter();
 
     m.iter().filter_map(|br| {
@@ -485,7 +485,7 @@ fn enter_default<'a, 'b>(
            bcx.to_str(),
            m.repr(bcx.tcx()),
            col,
-           bcx.val_to_str(val));
+           bcx.val_to_string(val));
     let _indenter = indenter();
 
     // Collect all of the matches that can match against anything.
@@ -541,7 +541,7 @@ fn enter_opt<'a, 'b>(
            m.repr(bcx.tcx()),
            *opt,
            col,
-           bcx.val_to_str(val));
+           bcx.val_to_string(val));
     let _indenter = indenter();
 
     let ctor = match opt {
@@ -922,7 +922,7 @@ fn compare_values<'a>(
         let did = langcall(cx,
                            None,
                            format!("comparison of `{}`",
-                                   cx.ty_to_str(rhs_t)).as_slice(),
+                                   cx.ty_to_string(rhs_t)).as_slice(),
                            StrEqFnLangItem);
         callee::trans_lang_call(cx, did, [lhs, rhs], None)
     }
@@ -988,7 +988,7 @@ fn insert_lllocals<'a>(mut bcx: &'a Block<'a>, bindings_map: &BindingsMap,
 
         debug!("binding {:?} to {}",
                binding_info.id,
-               bcx.val_to_str(llval));
+               bcx.val_to_string(llval));
         bcx.fcx.lllocals.borrow_mut().insert(binding_info.id, datum);
 
         if bcx.sess().opts.debuginfo == FullDebugInfo {
@@ -1011,9 +1011,9 @@ fn compile_guard<'a, 'b>(
                  -> &'b Block<'b> {
     debug!("compile_guard(bcx={}, guard_expr={}, m={}, vals={})",
            bcx.to_str(),
-           bcx.expr_to_str(guard_expr),
+           bcx.expr_to_string(guard_expr),
            m.repr(bcx.tcx()),
-           vec_map_to_str(vals, |v| bcx.val_to_str(*v)));
+           vec_map_to_string(vals, |v| bcx.val_to_string(*v)));
     let _indenter = indenter();
 
     let mut bcx = insert_lllocals(bcx, &data.bindings_map, None);
@@ -1050,7 +1050,7 @@ fn compile_submatch<'a, 'b>(
     debug!("compile_submatch(bcx={}, m={}, vals={})",
            bcx.to_str(),
            m.repr(bcx.tcx()),
-           vec_map_to_str(vals, |v| bcx.val_to_str(*v)));
+           vec_map_to_string(vals, |v| bcx.val_to_string(*v)));
     let _indenter = indenter();
     let _icx = push_ctxt("match::compile_submatch");
     let mut bcx = bcx;
@@ -1155,7 +1155,7 @@ fn compile_submatch_continue<'a, 'b>(
     debug!("options={:?}", opts);
     let mut kind = no_branch;
     let mut test_val = val;
-    debug!("test_val={}", bcx.val_to_str(test_val));
+    debug!("test_val={}", bcx.val_to_string(test_val));
     if opts.len() > 0u {
         match *opts.get(0) {
             var(_, ref repr, _) => {

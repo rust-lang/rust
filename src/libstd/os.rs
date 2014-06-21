@@ -223,8 +223,8 @@ fn with_env_lock<T>(f: || -> T) -> T {
 /// ```
 pub fn env() -> Vec<(String,String)> {
     env_as_bytes().move_iter().map(|(k,v)| {
-        let k = str::from_utf8_lossy(k.as_slice()).to_string();
-        let v = str::from_utf8_lossy(v.as_slice()).to_string();
+        let k = String::from_str(str::from_utf8_lossy(k.as_slice()).as_slice());
+        let v = String::from_str(str::from_utf8_lossy(v.as_slice()).as_slice());
         (k,v)
     }).collect()
 }
@@ -334,7 +334,7 @@ pub fn env_as_bytes() -> Vec<(Vec<u8>,Vec<u8>)> {
 /// }
 /// ```
 pub fn getenv(n: &str) -> Option<String> {
-    getenv_as_bytes(n).map(|v| str::from_utf8_lossy(v.as_slice()).to_string())
+    getenv_as_bytes(n).map(|v| String::from_str(str::from_utf8_lossy(v.as_slice()).as_slice()))
 }
 
 #[cfg(unix)]

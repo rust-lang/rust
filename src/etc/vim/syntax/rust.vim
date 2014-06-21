@@ -100,7 +100,7 @@ syn keyword rustTrait RawPtr
 syn keyword rustTrait Buffer Writer Reader Seek
 syn keyword rustTrait Str StrVector StrSlice OwnedStr
 syn keyword rustTrait IntoMaybeOwned StrAllocating
-syn keyword rustTrait ToStr IntoStr
+syn keyword rustTrait ToString IntoStr
 syn keyword rustTrait Tuple1 Tuple2 Tuple3 Tuple4
 syn keyword rustTrait Tuple5 Tuple6 Tuple7 Tuple8
 syn keyword rustTrait Tuple9 Tuple10 Tuple11 Tuple12

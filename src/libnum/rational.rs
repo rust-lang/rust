@@ -17,6 +17,7 @@ use std::fmt;
 use std::from_str::FromStr;
 use std::num;
 use std::num::{Zero, One, ToStrRadix, FromStrRadix};
+
 use bigint::{BigInt, BigUint, Sign, Plus, Minus};
 
 /// Represents the ratio between 2 numbers.
@@ -603,7 +604,7 @@ mod test {
     fn test_to_from_str() {
         fn test(r: Rational, s: String) {
             assert_eq!(FromStr::from_str(s.as_slice()), Some(r));
-            assert_eq!(r.to_str(), s);
+            assert_eq!(r.to_string(), s);
         }
         test(_1, "1".to_string());
         test(_0, "0".to_string());

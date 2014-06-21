@@ -75,7 +75,7 @@ use middle::trans::type_::Type;
 
 use syntax::ast;
 use syntax::codemap;
-use syntax::print::pprust::{expr_to_str};
+use syntax::print::pprust::{expr_to_string};
 
 use std::gc::Gc;
 
@@ -91,9 +91,9 @@ pub enum Dest {
 }
 
 impl Dest {
-    pub fn to_str(&self, ccx: &CrateContext) -> String {
+    pub fn to_string(&self, ccx: &CrateContext) -> String {
         match *self {
-            SaveIn(v) => format!("SaveIn({})", ccx.tn.val_to_str(v)),
+            SaveIn(v) => format!("SaveIn({})", ccx.tn.val_to_string(v)),
             Ignore => "Ignore".to_string()
         }
     }
@@ -148,7 +148,7 @@ pub fn trans<'a>(bcx: &'a Block<'a>,
      * the stack.
      */
 
-    debug!("trans(expr={})", bcx.expr_to_str(expr));
+    debug!("trans(expr={})", bcx.expr_to_string(expr));
 
     let mut bcx = bcx;
     let fcx = bcx.fcx;
@@ -178,7 +178,7 @@ fn apply_adjustments<'a>(bcx: &'a Block<'a>,
         Some(adj) => { adj }
     };
     debug!("unadjusted datum for expr {}: {}",
-           expr.id, datum.to_str(bcx.ccx()));
+           expr.id, datum.to_string(bcx.ccx()));
     match adjustment {
         AutoAddEnv(..) => {
             datum = unpack_datum!(bcx, add_env(bcx, expr, datum));
@@ -216,7 +216,7 @@ fn apply_adjustments<'a>(bcx: &'a Block<'a>,
             datum = scratch.to_expr_datum();
         }
     }
-    debug!("after adjustments, datum={}", datum.to_str(bcx.ccx()));
+    debug!("after adjustments, datum={}", datum.to_string(bcx.ccx()));
     return DatumBlock {bcx: bcx, datum: datum};
 
     fn auto_slice<'a>(
@@ -325,7 +325,7 @@ fn trans_unadjusted<'a>(bcx: &'a Block<'a>,
 
     let mut bcx = bcx;
 
-    debug!("trans_unadjusted(expr={})", bcx.expr_to_str(expr));
+    debug!("trans_unadjusted(expr={})", bcx.expr_to_string(expr));
     let _indenter = indenter();
 
     debuginfo::set_source_location(bcx.fcx, expr.id, expr.span);
@@ -545,8 +545,8 @@ fn trans_index<'a>(bcx: &'a Block<'a>,
 
             let (base, len) = base_datum.get_vec_base_and_len(bcx);
 
-            debug!("trans_index: base {}", bcx.val_to_str(base));
-            debug!("trans_index: len {}", bcx.val_to_str(len));
+            debug!("trans_index: base {}", bcx.val_to_string(base));
+            debug!("trans_index: len {}", bcx.val_to_string(len));
 
             let bounds_check = ICmp(bcx, lib::llvm::IntUGE, ix_val, len);
             let expect = ccx.get_intrinsic(&("llvm.expect.i1"));
@@ -780,7 +780,7 @@ fn trans_rvalue_dps_unadjusted<'a>(bcx: &'a Block<'a>,
             let expr_ty = expr_ty(bcx, expr);
             let store = ty::ty_closure_store(expr_ty);
             debug!("translating block function {} with type {}",
-                   expr_to_str(expr), expr_ty.repr(tcx));
+                   expr_to_string(expr), expr_ty.repr(tcx));
             closure::trans_expr_fn(bcx, store, &**decl, &**body, expr.id, dest)
         }
         ast::ExprCall(ref f, ref args) => {
@@ -893,7 +893,7 @@ fn trans_def_dps_unadjusted<'a>(
         _ => {
             bcx.tcx().sess.span_bug(ref_expr.span, format!(
                 "Non-DPS def {:?} referened by {}",
-                def, bcx.node_id_to_str(ref_expr.id)).as_slice());
+                def, bcx.node_id_to_string(ref_expr.id)).as_slice());
         }
     }
 }
@@ -974,7 +974,7 @@ pub fn trans_local_var<'a>(bcx: &'a Block<'a>,
             }
         };
         debug!("take_local(nid={:?}, v={}, ty={})",
-               nid, bcx.val_to_str(datum.val), bcx.ty_to_str(datum.ty));
+               nid, bcx.val_to_string(datum.val), bcx.ty_to_string(datum.ty));
         datum
     }
 }
@@ -1462,13 +1462,13 @@ fn trans_binary<'a>(bcx: &'a Block<'a>,
 
             debug!("trans_binary (expr {}): lhs_datum={}",
                    expr.id,
-                   lhs_datum.to_str(ccx));
+                   lhs_datum.to_string(ccx));
             let lhs_ty = lhs_datum.ty;
             let lhs = lhs_datum.to_llscalarish(bcx);
 
             debug!("trans_binary (expr {}): rhs_datum={}",
                    expr.id,
-                   rhs_datum.to_str(ccx));
+                   rhs_datum.to_string(ccx));
             let rhs_ty = rhs_datum.ty;
             let rhs = rhs_datum.to_llscalarish(bcx);
             trans_eager_binop(bcx, expr, binop_ty, op,
@@ -1729,7 +1729,7 @@ fn trans_assign_op<'a>(
     let _icx = push_ctxt("trans_assign_op");
     let mut bcx = bcx;
 
-    debug!("trans_assign_op(expr={})", bcx.expr_to_str(expr));
+    debug!("trans_assign_op(expr={})", bcx.expr_to_string(expr));
 
     // User-defined operator methods cannot be used with `+=` etc right now
     assert!(!bcx.tcx().method_map.borrow().contains_key(&MethodCall::expr(expr.id)));
@@ -1799,7 +1799,7 @@ fn deref_once<'a>(bcx: &'a Block<'a>,
 
     debug!("deref_once(expr={}, datum={}, method_call={})",
            expr.repr(bcx.tcx()),
-           datum.to_str(ccx),
+           datum.to_string(ccx),
            method_call);
 
     let mut bcx = bcx;
@@ -1877,7 +1877,7 @@ fn deref_once<'a>(bcx: &'a Block<'a>,
     };
 
     debug!("deref_once(expr={}, method_call={}, result={})",
-           expr.id, method_call, r.datum.to_str(ccx));
+           expr.id, method_call, r.datum.to_string(ccx));
 
     return r;
 

@@ -90,7 +90,7 @@ use syntax::codemap;
 use syntax::parse::token;
 use syntax::print::pprust;
 use util::ppaux::UserString;
-use util::ppaux::bound_region_to_str;
+use util::ppaux::bound_region_to_string;
 use util::ppaux::note_and_explain_region;
 
 pub trait ErrorReporting {
@@ -442,7 +442,7 @@ impl<'a> ErrorReporting for InferCtxt<'a> {
                             ty::local_var_name_str(self.tcx,
                                                    upvar_id.var_id)
                                 .get()
-                                .to_str()).as_slice());
+                                .to_string()).as_slice());
                 note_and_explain_region(
                     self.tcx,
                     "...the borrowed pointer is valid for ",
@@ -454,7 +454,7 @@ impl<'a> ErrorReporting for InferCtxt<'a> {
                             ty::local_var_name_str(self.tcx,
                                                    upvar_id.var_id)
                                 .get()
-                                .to_str()).as_slice(),
+                                .to_string()).as_slice(),
                     sup,
                     "");
             }
@@ -500,7 +500,7 @@ impl<'a> ErrorReporting for InferCtxt<'a> {
                             outlive the enclosing closure",
                             ty::local_var_name_str(self.tcx,
                                                    id).get()
-                                                      .to_str()).as_slice());
+                                                      .to_string()).as_slice());
                 note_and_explain_region(
                     self.tcx,
                     "captured variable is valid for ",
@@ -1046,7 +1046,7 @@ impl<'a> Rebuilder<'a> {
                                 .sess
                                 .fatal(format!(
                                         "unbound path {}",
-                                        pprust::path_to_str(path)).as_slice())
+                                        pprust::path_to_string(path)).as_slice())
                         }
                         Some(&d) => d
                     };
@@ -1231,7 +1231,7 @@ impl<'a> ErrorReportingHelpers for InferCtxt<'a> {
                                 opt_explicit_self: Option<ast::ExplicitSelf_>,
                                 generics: &ast::Generics,
                                 span: codemap::Span) {
-        let suggested_fn = pprust::fun_to_str(decl, fn_style, ident,
+        let suggested_fn = pprust::fun_to_string(decl, fn_style, ident,
                                               opt_explicit_self, generics);
         let msg = format!("consider using an explicit lifetime \
                            parameter as shown: {}", suggested_fn);
@@ -1249,11 +1249,11 @@ impl<'a> ErrorReportingHelpers for InferCtxt<'a> {
             infer::Coercion(_) => " for automatic coercion".to_string(),
             infer::LateBoundRegion(_, br) => {
                 format!(" for {}in function call",
-                        bound_region_to_str(self.tcx, "lifetime parameter ", true, br))
+                        bound_region_to_string(self.tcx, "lifetime parameter ", true, br))
             }
             infer::BoundRegionInFnType(_, br) => {
                 format!(" for {}in function type",
-                        bound_region_to_str(self.tcx, "lifetime parameter ", true, br))
+                        bound_region_to_string(self.tcx, "lifetime parameter ", true, br))
             }
             infer::EarlyBoundRegion(_, name) => {
                 format!(" for lifetime parameter `{}",
@@ -1265,7 +1265,7 @@ impl<'a> ErrorReportingHelpers for InferCtxt<'a> {
             }
             infer::UpvarRegion(ref upvar_id, _) => {
                 format!(" for capture of `{}` by closure",
-                        ty::local_var_name_str(self.tcx, upvar_id.var_id).get().to_str())
+                        ty::local_var_name_str(self.tcx, upvar_id.var_id).get().to_string())
             }
         };
 
@@ -1334,7 +1334,7 @@ impl<'a> ErrorReportingHelpers for InferCtxt<'a> {
                         "...so that closure can access `{}`",
                         ty::local_var_name_str(self.tcx, upvar_id.var_id)
                             .get()
-                            .to_str()).as_slice())
+                            .to_string()).as_slice())
             }
             infer::InfStackClosure(span) => {
                 self.tcx.sess.span_note(
@@ -1359,7 +1359,7 @@ impl<'a> ErrorReportingHelpers for InferCtxt<'a> {
                             does not outlive the enclosing closure",
                             ty::local_var_name_str(
                                 self.tcx,
-                                id).get().to_str()).as_slice());
+                                id).get().to_string()).as_slice());
             }
             infer::IndexSlice(span) => {
                 self.tcx.sess.span_note(
@@ -1508,7 +1508,7 @@ impl LifeGiver {
         let mut lifetime;
         loop {
             let mut s = String::from_str("'");
-            s.push_str(num_to_str(self.counter.get()).as_slice());
+            s.push_str(num_to_string(self.counter.get()).as_slice());
             if !self.taken.contains(&s) {
                 lifetime = name_to_dummy_lifetime(
                                     token::str_to_ident(s.as_slice()).name);
@@ -1521,7 +1521,7 @@ impl LifeGiver {
         return lifetime;
 
         // 0 .. 25 generates a .. z, 26 .. 51 generates aa .. zz, and so on
-        fn num_to_str(counter: uint) -> String {
+        fn num_to_string(counter: uint) -> String {
             let mut s = String::new();
             let (n, r) = (counter/26 + 1, counter % 26);
             let letter: char = from_u32((r+97) as u32).unwrap();

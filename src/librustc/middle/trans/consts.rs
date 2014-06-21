@@ -31,7 +31,7 @@ use middle::trans::type_::Type;
 use middle::trans::type_of;
 use middle::trans::debuginfo;
 use middle::ty;
-use util::ppaux::{Repr, ty_to_str};
+use util::ppaux::{Repr, ty_to_string};
 
 use std::c_str::ToCStr;
 use std::gc::Gc;
@@ -59,7 +59,7 @@ pub fn const_lit(cx: &CrateContext, e: &ast::Expr, lit: ast::Lit)
                 _ => cx.sess().span_bug(lit.span,
                         format!("integer literal has type {} (expected int \
                                  or uint)",
-                                ty_to_str(cx.tcx(), lit_int_ty)).as_slice())
+                                ty_to_string(cx.tcx(), lit_int_ty)).as_slice())
             }
         }
         ast::LitFloat(ref fs, t) => {
@@ -155,14 +155,14 @@ fn const_deref(cx: &CrateContext, v: ValueRef, t: ty::t, explicit: bool)
                 }
                 _ => {
                     cx.sess().bug(format!("unexpected dereferenceable type {}",
-                                          ty_to_str(cx.tcx(), t)).as_slice())
+                                          ty_to_string(cx.tcx(), t)).as_slice())
                 }
             };
             (dv, mt.ty)
         }
         None => {
             cx.sess().bug(format!("can't dereference const of type {}",
-                                  ty_to_str(cx.tcx(), t)).as_slice())
+                                  ty_to_string(cx.tcx(), t)).as_slice())
         }
     }
 }
@@ -285,7 +285,7 @@ pub fn const_expr(cx: &CrateContext, e: &ast::Expr, is_local: bool) -> (ValueRef
             llvm::LLVMDumpValue(C_undef(llty));
         }
         cx.sess().bug(format!("const {} of type {} has size {} instead of {}",
-                         e.repr(cx.tcx()), ty_to_str(cx.tcx(), ety),
+                         e.repr(cx.tcx()), ty_to_string(cx.tcx(), ety),
                          csize, tsize).as_slice());
     }
     (llconst, inlineable)

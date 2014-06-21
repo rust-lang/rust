@@ -31,7 +31,7 @@ use middle::trans::adt; // for `adt::is_ffi_safe`
 use middle::typeck::astconv::ast_ty_to_ty;
 use middle::typeck::infer;
 use middle::{typeck, ty, def, pat_util, stability};
-use util::ppaux::{ty_to_str};
+use util::ppaux::{ty_to_string};
 use util::nodemap::NodeSet;
 use lint::{Context, LintPass, LintArray};
 
@@ -412,14 +412,14 @@ impl HeapMemory {
         });
 
         if n_uniq > 0 {
-            let s = ty_to_str(cx.tcx, ty);
+            let s = ty_to_string(cx.tcx, ty);
             let m = format!("type uses owned (Box type) pointers: {}", s);
             cx.span_lint(OWNED_HEAP_MEMORY, span, m.as_slice());
             cx.span_lint(HEAP_MEMORY, span, m.as_slice());
         }
 
         if n_box > 0 {
-            let s = ty_to_str(cx.tcx, ty);
+            let s = ty_to_string(cx.tcx, ty);
             let m = format!("type uses managed (@ type) pointers: {}", s);
             cx.span_lint(MANAGED_HEAP_MEMORY, span, m.as_slice());
             cx.span_lint(HEAP_MEMORY, span, m.as_slice());

@@ -479,7 +479,7 @@ impl rtio::RtioPipe for UnixStream {
                             Err(IoError {
                                 code: libc::ERROR_OPERATION_ABORTED as uint,
                                 extra: amt,
-                                detail: Some("short write during write".to_str()),
+                                detail: Some("short write during write".to_string()),
                             })
                         } else {
                             Err(util::timeout("write timed out"))

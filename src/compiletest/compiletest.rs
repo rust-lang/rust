@@ -187,7 +187,7 @@ pub fn log_config(config: &Config) {
                     opt_str(&config.filter
                                    .as_ref()
                                    .map(|re| {
-                                       re.to_str().into_string()
+                                       re.to_string().into_string()
                                    }))));
     logv(c, format!("runtool: {}", opt_str(&config.runtool)));
     logv(c, format!("host-rustcflags: {}",

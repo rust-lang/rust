@@ -70,7 +70,7 @@ static DIGIT_E_RADIX: uint = ('e' as uint) - ('a' as uint) + 11u;
 /**
  * Converts a number to its string representation as a byte vector.
  * This is meant to be a common base implementation for all numeric string
- * conversion functions like `to_str()` or `to_str_radix()`.
+ * conversion functions like `to_string()` or `to_str_radix()`.
  *
  * # Arguments
  * - `num`           - The number to convert. Accepts any number that

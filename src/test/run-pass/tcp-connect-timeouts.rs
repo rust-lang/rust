@@ -54,7 +54,7 @@ macro_rules! iotest (
 iotest!(fn eventual_timeout() {
     use native;
     let addr = next_test_ip4();
-    let host = addr.ip.to_str();
+    let host = addr.ip.to_string();
     let port = addr.port;
 
     // Use a native task to receive connections because it turns out libuv is
@@ -82,7 +82,7 @@ iotest!(fn eventual_timeout() {
 
 iotest!(fn timeout_success() {
     let addr = next_test_ip4();
-    let host = addr.ip.to_str();
+    let host = addr.ip.to_string();
     let port = addr.port;
     let _l = TcpListener::bind(host.as_slice(), port).unwrap().listen();
 

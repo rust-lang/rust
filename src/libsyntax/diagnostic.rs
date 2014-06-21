@@ -269,7 +269,7 @@ fn print_diagnostic(dst: &mut EmitterWriter,
     }
 
     try!(print_maybe_styled(dst,
-                            format!("{}: ", lvl.to_str()).as_slice(),
+                            format!("{}: ", lvl.to_string()).as_slice(),
                             term::attr::ForegroundColor(lvl.color())));
     try!(print_maybe_styled(dst,
                             format!("{}\n", msg).as_slice(),
@@ -349,14 +349,14 @@ impl Emitter for EmitterWriter {
 fn emit(dst: &mut EmitterWriter, cm: &codemap::CodeMap, rsp: RenderSpan,
         msg: &str, lvl: Level, custom: bool) -> io::IoResult<()> {
     let sp = rsp.span();
-    let ss = cm.span_to_str(sp);
+    let ss = cm.span_to_string(sp);
     let lines = cm.span_to_lines(sp);
     if custom {
         // we want to tell compiletest/runtest to look at the last line of the
         // span (since `custom_highlight_lines` displays an arrow to the end of
         // the span)
         let span_end = Span { lo: sp.hi, hi: sp.hi, expn_info: sp.expn_info};
-        let ses = cm.span_to_str(span_end);
+        let ses = cm.span_to_string(span_end);
         try!(print_diagnostic(dst, ses.as_slice(), lvl, msg));
         if rsp.is_full_span() {
             try!(custom_highlight_lines(dst, cm, sp, lvl, lines));
@@ -493,7 +493,7 @@ fn print_macro_backtrace(w: &mut EmitterWriter,
         let ss = ei.callee
                    .span
                    .as_ref()
-                   .map_or("".to_string(), |span| cm.span_to_str(*span));
+                   .map_or("".to_string(), |span| cm.span_to_string(*span));
         let (pre, post) = match ei.callee.format {
             codemap::MacroAttribute => ("#[", "]"),
             codemap::MacroBang => ("", "!")
@@ -502,7 +502,7 @@ fn print_macro_backtrace(w: &mut EmitterWriter,
                               format!("in expansion of {}{}{}", pre,
                                       ei.callee.name,
                                       post).as_slice()));
-        let ss = cm.span_to_str(ei.call_site);
+        let ss = cm.span_to_string(ei.call_site);
         try!(print_diagnostic(w, ss.as_slice(), Note, "expansion site"));
         try!(print_macro_backtrace(w, cm, ei.call_site));
     }

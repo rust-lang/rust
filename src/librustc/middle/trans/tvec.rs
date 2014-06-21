@@ -29,7 +29,7 @@ use middle::trans::machine::{llsize_of, nonzero_llsize_of, llsize_of_alloc};
 use middle::trans::type_::Type;
 use middle::trans::type_of;
 use middle::ty;
-use util::ppaux::ty_to_str;
+use util::ppaux::ty_to_string;
 
 use syntax::ast;
 use syntax::parse::token::InternedString;
@@ -73,12 +73,12 @@ pub struct VecTypes {
 }
 
 impl VecTypes {
-    pub fn to_str(&self, ccx: &CrateContext) -> String {
+    pub fn to_string(&self, ccx: &CrateContext) -> String {
         format!("VecTypes {{unit_ty={}, llunit_ty={}, \
                  llunit_size={}, llunit_alloc_size={}}}",
-                ty_to_str(ccx.tcx(), self.unit_ty),
-                ccx.tn.type_to_str(self.llunit_ty),
-                ccx.tn.val_to_str(self.llunit_size),
+                ty_to_string(ccx.tcx(), self.unit_ty),
+                ccx.tn.type_to_string(self.llunit_ty),
+                ccx.tn.val_to_string(self.llunit_size),
                 self.llunit_alloc_size)
     }
 }
@@ -97,7 +97,7 @@ pub fn trans_fixed_vstore<'a>(
     // generate the content.
 
     debug!("trans_fixed_vstore(vstore_expr={}, dest={:?})",
-           bcx.expr_to_str(vstore_expr), dest.to_str(bcx.ccx()));
+           bcx.expr_to_string(vstore_expr), dest.to_string(bcx.ccx()));
 
     let vt = vec_types_from_expr(bcx, vstore_expr);
 
@@ -129,7 +129,7 @@ pub fn trans_slice_vstore<'a>(
     let mut bcx = bcx;
 
     debug!("trans_slice_vstore(vstore_expr={}, dest={})",
-           bcx.expr_to_str(vstore_expr), dest.to_str(ccx));
+           bcx.expr_to_string(vstore_expr), dest.to_string(ccx));
 
     // Handle the &"..." case:
     match content_expr.node {
@@ -150,7 +150,7 @@ pub fn trans_slice_vstore<'a>(
     // Handle the &[...] case:
     let vt = vec_types_from_expr(bcx, vstore_expr);
     let count = elements_required(bcx, content_expr);
-    debug!("vt={}, count={:?}", vt.to_str(ccx), count);
+    debug!("vt={}, count={:?}", vt.to_string(ccx), count);
 
     let llcount = C_uint(ccx, count);
     let llfixed;
@@ -202,8 +202,8 @@ pub fn trans_lit_str<'a>(
      */
 
     debug!("trans_lit_str(lit_expr={}, dest={})",
-           bcx.expr_to_str(lit_expr),
-           dest.to_str(bcx.ccx()));
+           bcx.expr_to_string(lit_expr),
+           dest.to_string(bcx.ccx()));
 
     match dest {
         Ignore => bcx,
@@ -233,7 +233,7 @@ pub fn trans_uniq_vstore<'a>(bcx: &'a Block<'a>,
      * the array elements into them.
      */
 
-    debug!("trans_uniq_vstore(vstore_expr={})", bcx.expr_to_str(vstore_expr));
+    debug!("trans_uniq_vstore(vstore_expr={})", bcx.expr_to_string(vstore_expr));
     let fcx = bcx.fcx;
     let ccx = fcx.ccx;
 
@@ -297,7 +297,7 @@ pub fn trans_uniq_vstore<'a>(bcx: &'a Block<'a>,
     let dataptr = get_dataptr(bcx, val);
 
     debug!("alloc_uniq_vec() returned val={}, dataptr={}",
-           bcx.val_to_str(val), bcx.val_to_str(dataptr));
+           bcx.val_to_string(val), bcx.val_to_string(dataptr));
 
     let bcx = write_content(bcx, &vt, vstore_expr,
                             content_expr, SaveIn(dataptr));
@@ -319,9 +319,9 @@ pub fn write_content<'a>(
     let mut bcx = bcx;
 
     debug!("write_content(vt={}, dest={}, vstore_expr={:?})",
-           vt.to_str(bcx.ccx()),
-           dest.to_str(bcx.ccx()),
-           bcx.expr_to_str(vstore_expr));
+           vt.to_string(bcx.ccx()),
+           dest.to_string(bcx.ccx()),
+           bcx.expr_to_string(vstore_expr));
 
     match content_expr.node {
         ast::ExprLit(lit) => {
@@ -361,7 +361,7 @@ pub fn write_content<'a>(
                     for (i, element) in elements.iter().enumerate() {
                         let lleltptr = GEPi(bcx, lldest, [i]);
                         debug!("writing index {:?} with lleltptr={:?}",
-                               i, bcx.val_to_str(lleltptr));
+                               i, bcx.val_to_string(lleltptr));
                         bcx = expr::trans_into(bcx, &**element,
                                                SaveIn(lleltptr));
                         fcx.schedule_drop_mem(
