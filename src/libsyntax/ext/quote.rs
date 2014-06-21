@@ -32,6 +32,7 @@ use std::gc::Gc;
 
 pub mod rt {
     use ast;
+    use codemap::Spanned;
     use ext::base::ExtCtxt;
     use parse::token;
     use parse;
@@ -48,9 +49,22 @@ pub mod rt {
         fn to_tokens(&self, _cx: &ExtCtxt) -> Vec<TokenTree> ;
     }
 
+    impl ToTokens for TokenTree {
+        fn to_tokens(&self, _cx: &ExtCtxt) -> Vec<TokenTree> {
+            vec!(self.clone())
+        }
+    }
+
     impl ToTokens for Vec<TokenTree> {
         fn to_tokens(&self, _cx: &ExtCtxt) -> Vec<TokenTree> {
             (*self).clone()
+        }
+    }
+
+    impl<T: ToTokens> ToTokens for Spanned<T> {
+        fn to_tokens(&self, cx: &ExtCtxt) -> Vec<TokenTree> {
+            // FIXME: use the span?
+            self.node.to_tokens(cx)
         }
     }
 
@@ -121,6 +135,7 @@ pub mod rt {
     impl_to_source!(Generics, generics_to_str)
     impl_to_source!(Gc<ast::Item>, item_to_str)
     impl_to_source!(Gc<ast::Expr>, expr_to_str)
+    impl_to_source!(Gc<ast::Pat>, pat_to_str)
     impl_to_source_slice!(ast::Ty, ", ")
     impl_to_source_slice!(Gc<ast::Item>, "\n\n")
 
@@ -207,6 +222,7 @@ pub mod rt {
 
     impl_to_tokens!(ast::Ident)
     impl_to_tokens!(Gc<ast::Item>)
+    impl_to_tokens!(Gc<ast::Pat>)
     impl_to_tokens_lifetime!(&'a [Gc<ast::Item>])
     impl_to_tokens!(ast::Ty)
     impl_to_tokens_lifetime!(&'a [ast::Ty])
