@@ -281,21 +281,27 @@ fn missing_constructor(cx: &MatchCheckCtxt, m: &Matrix, left_ty: ty::t) -> Optio
 }
 
 fn all_constructors(cx: &MatchCheckCtxt, m: &Matrix, left_ty: ty::t) -> Vec<ctor> {
+    // This produces a list of all vector constructors that we would expect to appear
+    // in an exhaustive set of patterns. Because such a list would normally be infinite,
+    // we narrow it down to only those constructors that actually appear in the inspected
+    // column, plus, any that are missing and not covered by a pattern with a destructured slice.
     fn vec_constructors(m: &Matrix) -> Vec<ctor> {
         let max_vec_len = m.iter().map(|r| match r.get(0).node {
             PatVec(ref before, _, ref after) => before.len() + after.len(),
             _ => 0u
         }).max().unwrap_or(0u);
-        let contains_slice = m.iter().any(|r| match r.get(0).node {
-            PatVec(_, ref slice, _) => slice.is_some(),
-            _ => false
-        });
-        let lengths = iter::range_inclusive(0u, if contains_slice {
-            max_vec_len
-        } else {
-            max_vec_len + 1
-        });
-        lengths.map(|len| vec(len)).collect()
+        let min_vec_len_with_slice = m.iter().map(|r| match r.get(0).node {
+            PatVec(ref before, Some(_), ref after) => before.len() + after.len(),
+            _ => max_vec_len + 1
+        }).min().unwrap_or(max_vec_len + 1);
+        let other_lengths = m.iter().map(|r| match r.get(0).node {
+            PatVec(ref before, _, ref after) => before.len() + after.len(),
+            _ => 0u
+        }).filter(|&len| len > min_vec_len_with_slice);
+        iter::range_inclusive(0u, min_vec_len_with_slice)
+            .chain(other_lengths)
+            .map(|len| vec(len))
+            .collect()
     }
 
     match ty::get(left_ty).sty {
