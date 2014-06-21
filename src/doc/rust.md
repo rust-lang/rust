@@ -2155,8 +2155,6 @@ These are functions:
 
 * `str_eq`
   : Compare two strings (`&str`) for equality.
-* `uniq_str_eq`
-  : Compare two owned strings (`String`) for equality.
 * `strdup_uniq`
   : Return a new unique string
     containing a copy of the contents of a unique string.

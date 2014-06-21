@@ -74,12 +74,12 @@ impl fmt::Show for Matrix {
     }
 }
 
-struct MatchCheckCtxt<'a> {
-    tcx: &'a ty::ctxt
+pub struct MatchCheckCtxt<'a> {
+    pub tcx: &'a ty::ctxt
 }
 
 #[deriving(Clone, PartialEq)]
-enum Constructor {
+pub enum Constructor {
     /// The constructor of all patterns that don't vary by constructor,
     /// e.g. struct patterns and fixed-length arrays.
     Single,
@@ -492,9 +492,9 @@ fn is_useful_specialized(cx: &MatchCheckCtxt, &Matrix(ref m): &Matrix, v: &[Gc<P
                          ctor: Constructor, lty: ty::t, witness: WitnessPreference) -> Usefulness {
     let arity = constructor_arity(cx, &ctor, lty);
     let matrix = Matrix(m.iter().filter_map(|r| {
-        specialize(cx, r.as_slice(), &ctor, arity)
+        specialize(cx, r.as_slice(), &ctor, 0u, arity)
     }).collect());
-    match specialize(cx, v, &ctor, arity) {
+    match specialize(cx, v, &ctor, 0u, arity) {
         Some(v) => is_useful(cx, &matrix, v.as_slice(), witness),
         None => NotUseful
     }
@@ -580,7 +580,7 @@ fn is_wild(cx: &MatchCheckCtxt, p: Gc<Pat>) -> bool {
 ///
 /// For instance, a tuple pattern (_, 42u, Some([])) has the arity of 3.
 /// A struct pattern's arity is the number of fields it contains, etc.
-fn constructor_arity(cx: &MatchCheckCtxt, ctor: &Constructor, ty: ty::t) -> uint {
+pub fn constructor_arity(cx: &MatchCheckCtxt, ctor: &Constructor, ty: ty::t) -> uint {
     match ty::get(ty).sty {
         ty::ty_tup(ref fs) => fs.len(),
         ty::ty_box(_) | ty::ty_uniq(_) => 1u,
@@ -628,11 +628,11 @@ fn range_covered_by_constructor(ctor: &Constructor,
 /// different patterns.
 /// Structure patterns with a partial wild pattern (Foo { a: 42, .. }) have their missing
 /// fields filled with wild patterns.
-fn specialize(cx: &MatchCheckCtxt, r: &[Gc<Pat>],
-              constructor: &Constructor, arity: uint) -> Option<Vec<Gc<Pat>>> {
+pub fn specialize(cx: &MatchCheckCtxt, r: &[Gc<Pat>],
+                  constructor: &Constructor, col: uint, arity: uint) -> Option<Vec<Gc<Pat>>> {
     let &Pat {
         id: pat_id, node: ref node, span: pat_span
-    } = &(*raw_pat(r[0]));
+    } = &(*raw_pat(r[col]));
     let head: Option<Vec<Gc<Pat>>> = match node {
         &PatWild =>
             Some(Vec::from_elem(arity, wild())),
@@ -776,7 +776,7 @@ fn specialize(cx: &MatchCheckCtxt, r: &[Gc<Pat>],
             None
         }
     };
-    head.map(|head| head.append(r.tail()))
+    head.map(|head| head.append(r.slice_to(col)).append(r.slice_from(col + 1)))
 }
 
 fn default(cx: &MatchCheckCtxt, r: &[Gc<Pat>]) -> Option<Vec<Gc<Pat>>> {
