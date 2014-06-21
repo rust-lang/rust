@@ -11,8 +11,12 @@
 // aux-build:struct_variant_xc_aux.rs
 extern crate struct_variant_xc_aux;
 
-use struct_variant_xc_aux::StructVariant;
+use struct_variant_xc_aux::{StructVariant, Variant};
 
 pub fn main() {
-    let _ = StructVariant { arg: 1 };
+    let arg = match StructVariant { arg: 42 } {
+        Variant(_) => unreachable!(),
+        StructVariant { arg } => arg
+    };
+    assert_eq!(arg, 42);
 }
