@@ -40,7 +40,7 @@ fn test<'a,T,U:Send>(_: &'a int) {
     assert_send::<&'static Dummy>(); //~ ERROR does not fulfill `Send`
     assert_send::<&'a Dummy>(); //~ ERROR does not fulfill `Send`
     assert_send::<&'a Dummy+Send>(); //~ ERROR does not fulfill `Send`
-    assert_send::<Box<Dummy+>>(); //~ ERROR does not fulfill `Send`
+    assert_send::<Box<Dummy>>(); //~ ERROR does not fulfill `Send`
 
     // ...unless they are properly bounded
     assert_send::<&'static Dummy+Send>();

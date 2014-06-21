@@ -1658,6 +1658,12 @@ impl<'a> Parser<'a> {
             let bounds = {
                 if self.eat(&token::BINOP(token::PLUS)) {
                     let (_, bounds) = self.parse_ty_param_bounds(false);
+                    if bounds.len() == 0 {
+                        let last_span = self.last_span;
+                        self.span_err(last_span,
+                                      "at least one type parameter bound \
+                                       must be specified after the `+`");
+                    }
                     Some(bounds)
                 } else {
                     None
