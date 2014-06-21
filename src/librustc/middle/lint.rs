@@ -372,7 +372,8 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
      LintSpec {
         lint: Experimental,
         desc: "detects use of #[experimental] items",
-        default: Warn
+        // FIXME #6875: Change to Warn after std library stabilization is complete
+        default: Allow
     }),
 
     ("unstable",
@@ -1661,6 +1662,8 @@ fn check_missing_doc_variant(cx: &Context, v: &ast::Variant) {
 /// Checks for use of items with #[deprecated], #[experimental] and
 /// #[unstable] (or none of them) attributes.
 fn check_stability(cx: &Context, e: &ast::Expr) {
+    let tcx = cx.tcx;
+
     let id = match e.node {
         ast::ExprPath(..) | ast::ExprStruct(..) => {
             match cx.tcx.def_map.borrow().find(&e.id) {
@@ -1670,7 +1673,7 @@ fn check_stability(cx: &Context, e: &ast::Expr) {
         }
         ast::ExprMethodCall(..) => {
             let method_call = typeck::MethodCall::expr(e.id);
-            match cx.tcx.method_map.borrow().find(&method_call) {
+            match tcx.method_map.borrow().find(&method_call) {
                 Some(method) => {
                     match method.origin {
                         typeck::MethodStatic(def_id) => {
@@ -1678,8 +1681,8 @@ fn check_stability(cx: &Context, e: &ast::Expr) {
                             // of the method inside trait definition.
                             // Otherwise, use the current def_id (which refers
                             // to the method inside impl).
-                            ty::trait_method_of_method(
-                                cx.tcx, def_id).unwrap_or(def_id)
+                            ty::trait_method_of_method(cx.tcx, def_id)
+                               .unwrap_or(def_id)
                         }
                         typeck::MethodParam(typeck::MethodParam {
                             trait_id: trait_id,
@@ -1699,32 +1702,11 @@ fn check_stability(cx: &Context, e: &ast::Expr) {
         _ => return
     };
 
-    let stability = if ast_util::is_local(id) {
-        // this crate
-        let s = cx.tcx.map.with_attrs(id.node, |attrs| {
-            attrs.map(|a| attr::find_stability(a.as_slice()))
-        });
-        match s {
-            Some(s) => s,
+    // stability attributes are promises made across crates; do not
+    // check anything for crate-local usage.
+    if ast_util::is_local(id) { return }
 
-            // no possibility of having attributes
-            // (e.g. it's a local variable), so just
-            // ignore it.
-            None => return
-        }
-    } else {
-        // cross-crate
-
-        let mut s = None;
-        // run through all the attributes and take the first
-        // stability one.
-        csearch::get_item_attrs(&cx.tcx.sess.cstore, id, |attrs| {
-            if s.is_none() {
-                s = attr::find_stability(attrs.as_slice())
-            }
-        });
-        s
-    };
+    let stability = tcx.stability.borrow_mut().lookup(&tcx.sess.cstore, id);
 
     let (lint, label) = match stability {
         // no stability attributes == Unstable
