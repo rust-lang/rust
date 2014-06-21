@@ -210,6 +210,9 @@ pub static tag_method_argument_name: uint = 0x8f;
 pub static tag_reachable_extern_fns: uint = 0x90;
 pub static tag_reachable_extern_fn_id: uint = 0x91;
 
+pub static tag_items_data_item_stability: uint = 0x92;
+
+
 #[deriving(Clone, Show)]
 pub struct LinkMeta {
     pub crateid: CrateId,

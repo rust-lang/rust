@@ -361,13 +361,14 @@ pub fn test_cfg<AM: AttrMetaMethods, It: Iterator<AM>>
 }
 
 /// Represents the #[deprecated="foo"] and friends attributes.
+#[deriving(Encodable,Decodable,Clone,Show)]
 pub struct Stability {
     pub level: StabilityLevel,
     pub text: Option<InternedString>
 }
 
 /// The available stability levels.
-#[deriving(PartialEq,PartialOrd,Clone,Show)]
+#[deriving(Encodable,Decodable,PartialEq,PartialOrd,Clone,Show)]
 pub enum StabilityLevel {
     Deprecated,
     Experimental,
