@@ -1552,8 +1552,11 @@ pub mod raw {
 
 #[cfg(test)]
 mod tests {
+    extern crate test;
+
     use std::prelude::*;
     use std::mem::size_of;
+    use test::Bencher;
     use super::{unzip, raw, Vec};
 
     #[test]
