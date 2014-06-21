@@ -127,7 +127,7 @@ impl<'a> UnifyInferCtxtMethods for InferCtxt<'a> {
          */
 
         debug!("Updating variable {} to {}",
-               vid.to_str(), new_v.inf_str(self));
+               vid.to_string(), new_v.inf_str(self));
 
         let vb = UnifyVid::appropriate_vals_and_bindings(self);
         let mut vb = vb.borrow_mut();

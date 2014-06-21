@@ -25,7 +25,7 @@ pub trait InferStr {
 
 impl InferStr for ty::t {
     fn inf_str(&self, cx: &InferCtxt) -> String {
-        ty_to_str(cx.tcx, *self)
+        ty_to_string(cx.tcx, *self)
     }
 }
 
@@ -41,7 +41,7 @@ impl InferStr for FnSig {
 
 impl InferStr for ty::mt {
     fn inf_str(&self, cx: &InferCtxt) -> String {
-        mt_to_str(cx.tcx, self)
+        mt_to_string(cx.tcx, self)
     }
 }
 
@@ -69,7 +69,7 @@ impl<T:InferStr> InferStr for Bounds<T> {
 impl<V:Vid + ToStr,T:InferStr> InferStr for VarValue<V, T> {
     fn inf_str(&self, cx: &InferCtxt) -> String {
         match *self {
-          Redirect(ref vid) => format!("Redirect({})", vid.to_str()),
+          Redirect(ref vid) => format!("Redirect({})", vid.to_string()),
           Root(ref pt, rk) => {
               format!("Root({}, {})", pt.inf_str(cx), rk)
           }
@@ -79,18 +79,18 @@ impl<V:Vid + ToStr,T:InferStr> InferStr for VarValue<V, T> {
 
 impl InferStr for IntVarValue {
     fn inf_str(&self, _cx: &InferCtxt) -> String {
-        self.to_str()
+        self.to_string()
     }
 }
 
 impl InferStr for ast::FloatTy {
     fn inf_str(&self, _cx: &InferCtxt) -> String {
-        self.to_str()
+        self.to_string()
     }
 }
 
 impl InferStr for ty::TraitRef {
     fn inf_str(&self, cx: &InferCtxt) -> String {
-        trait_ref_to_str(cx.tcx, self)
+        trait_ref_to_string(cx.tcx, self)
     }
 }

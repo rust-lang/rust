@@ -131,7 +131,7 @@ fn report_cannot_move_out_of(bccx: &BorrowckCtxt, move_from: mc::cmt) {
             bccx.span_err(
                 move_from.span,
                 format!("cannot move out of {}",
-                        bccx.cmt_to_str(&*move_from)).as_slice());
+                        bccx.cmt_to_string(&*move_from)).as_slice());
         }
 
         mc::cat_downcast(ref b) |
@@ -156,7 +156,7 @@ fn note_move_destination(bccx: &BorrowckCtxt,
                          move_to_span: codemap::Span,
                          pat_ident_path: &ast::Path,
                          is_first_note: bool) {
-    let pat_name = pprust::path_to_str(pat_ident_path);
+    let pat_name = pprust::path_to_string(pat_ident_path);
     if is_first_note {
         bccx.span_note(
             move_to_span,

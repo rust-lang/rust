@@ -48,7 +48,7 @@ impl<'a> ParserAnyMacro<'a> {
             parser.bump()
         }
         if parser.token != EOF {
-            let token_str = parser.this_token_to_str();
+            let token_str = parser.this_token_to_string();
             let msg = format!("macro expansion ignores token `{}` and any \
                                following",
                               token_str);
@@ -131,7 +131,7 @@ fn generic_extension(cx: &ExtCtxt,
         println!("{}! {} {} {}",
                  token::get_ident(name),
                  "{",
-                 print::pprust::tt_to_str(&TTDelim(Rc::new(arg.iter()
+                 print::pprust::tt_to_string(&TTDelim(Rc::new(arg.iter()
                                                               .map(|x| (*x).clone())
                                                               .collect()))),
                  "}");
@@ -254,7 +254,7 @@ pub fn add_new_extension(cx: &mut ExtCtxt,
 
     box MacroRulesDefiner {
         def: RefCell::new(Some(MacroDef {
-            name: token::get_ident(name).to_str(),
+            name: token::get_ident(name).to_string(),
             ext: NormalTT(exp, Some(sp))
         }))
     } as Box<MacResult>

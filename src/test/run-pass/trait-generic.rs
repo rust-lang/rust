@@ -14,7 +14,7 @@ trait to_str {
     fn to_string(&self) -> String;
 }
 impl to_str for int {
-    fn to_string(&self) -> String { self.to_str() }
+    fn to_string(&self) -> String { self.to_string() }
 }
 impl to_str for String {
     fn to_string(&self) -> String { self.clone() }

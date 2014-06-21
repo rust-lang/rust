@@ -24,7 +24,7 @@ fn main() {
     let n = from_str::<uint>(args.get(1).as_slice()).unwrap();
 
     for i in range(0u, n) {
-        let x = i.to_str();
+        let x = i.to_string();
         println!("{}", x);
     }
 }

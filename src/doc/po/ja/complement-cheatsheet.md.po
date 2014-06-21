@@ -34,7 +34,7 @@ msgstr ""
 #, fuzzy
 #| msgid ""
 #| "~~~~ let x: f64 = 4.0; let y: uint = x as uint; assert!(y == 4u); ~~~~"
-msgid "~~~ let x: int = 42; let y: String = x.to_str(); ~~~"
+msgid "~~~ let x: int = 42; let y: String = x.to_string(); ~~~"
 msgstr ""
 "~~~~\n"
 "let x: f64 = 4.0;\n"

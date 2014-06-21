@@ -769,9 +769,9 @@ mod test {
     }
 
     #[test]
-    fn test_to_str() {
+    fn test_to_string() {
         use realstd::to_str::ToStr;
-        let s = 't'.to_str();
+        let s = 't'.to_string();
         assert_eq!(s.as_slice(), "t");
     }
 

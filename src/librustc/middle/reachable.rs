@@ -336,7 +336,7 @@ impl<'a> ReachableContext<'a> {
                     .bug(format!("found unexpected thingy in worklist: {}",
                                  self.tcx
                                      .map
-                                     .node_to_str(search_item)).as_slice())
+                                     .node_to_string(search_item)).as_slice())
             }
         }
     }

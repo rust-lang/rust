@@ -376,12 +376,12 @@ pub fn check_struct_pat(pcx: &pat_ctxt, pat_id: ast::NodeId, span: Span,
             // OK.
         }
         Some(&def::DefStruct(..)) | Some(&def::DefVariant(..)) => {
-            let name = pprust::path_to_str(path);
+            let name = pprust::path_to_string(path);
             tcx.sess
                .span_err(span,
                          format!("mismatched types: expected `{}` but found \
                                   `{}`",
-                                 fcx.infcx().ty_to_str(expected),
+                                 fcx.infcx().ty_to_string(expected),
                                  name).as_slice());
         }
         _ => {
@@ -416,11 +416,11 @@ pub fn check_struct_like_enum_variant_pat(pcx: &pat_ctxt,
                                     variant_id, substitutions, etc);
         }
         Some(&def::DefStruct(..)) | Some(&def::DefVariant(..)) => {
-            let name = pprust::path_to_str(path);
+            let name = pprust::path_to_string(path);
             tcx.sess.span_err(span,
                               format!("mismatched types: expected `{}` but \
                                        found `{}`",
-                                      fcx.infcx().ty_to_str(expected),
+                                      fcx.infcx().ty_to_string(expected),
                                       name).as_slice());
         }
         _ => {

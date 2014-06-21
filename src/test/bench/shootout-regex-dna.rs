@@ -67,7 +67,7 @@ fn main() {
     } else {
         box io::stdin() as Box<io::Reader>
     };
-    let mut seq = rdr.read_to_str().unwrap();
+    let mut seq = rdr.read_to_string().unwrap();
     let ilen = seq.len();
 
     seq = regex!(">[^\n]*\n|\n").replace_all(seq.as_slice(), NoExpand(""));
@@ -109,7 +109,7 @@ fn main() {
     let (mut variant_strs, mut counts) = (vec!(), vec!());
     for variant in variants.move_iter() {
         let seq_arc_copy = seq_arc.clone();
-        variant_strs.push(variant.to_str().to_owned());
+        variant_strs.push(variant.to_string().to_owned());
         counts.push(Future::spawn(proc() {
             count_matches(seq_arc_copy.as_slice(), &variant)
         }));

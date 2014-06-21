@@ -126,7 +126,7 @@ pub enum Lint {
     RawPointerDeriving,
 }
 
-pub fn level_to_str(lv: Level) -> &'static str {
+pub fn level_to_string(lv: Level) -> &'static str {
     match lv {
       Allow => "allow",
       Warn => "warn",
@@ -487,7 +487,7 @@ pub fn emit_lint(level: Level, src: LintSource, msg: &str, span: Span,
     let msg = match src {
         Default => {
             format!("{}, #[{}({})] on by default", msg,
-                level_to_str(level), lint_str)
+                level_to_string(level), lint_str)
         },
         CommandLine => {
             format!("{} [-{} {}]", msg,
@@ -498,7 +498,7 @@ pub fn emit_lint(level: Level, src: LintSource, msg: &str, span: Span,
         },
         Node(src) => {
             note = Some(src);
-            msg.to_str()
+            msg.to_string()
         }
     };
 
@@ -513,7 +513,7 @@ pub fn emit_lint(level: Level, src: LintSource, msg: &str, span: Span,
     }
 }
 
-pub fn lint_to_str(lint: Lint) -> &'static str {
+pub fn lint_to_string(lint: Lint) -> &'static str {
     for &(name, lspec) in lint_table.iter() {
         if lspec.lint == lint {
             return name;
@@ -546,7 +546,7 @@ impl<'a> Context<'a> {
         }
     }
 
-    fn lint_to_str(&self, lint: Lint) -> &'static str {
+    fn lint_to_string(&self, lint: Lint) -> &'static str {
         for (k, v) in self.dict.iter() {
             if v.lint == lint {
                 return *k;
@@ -562,7 +562,7 @@ impl<'a> Context<'a> {
             Some(&pair) => pair,
         };
 
-        emit_lint(level, src, msg, span, self.lint_to_str(lint), self.tcx);
+        emit_lint(level, src, msg, span, self.lint_to_string(lint), self.tcx);
     }
 
     /**
@@ -585,7 +585,7 @@ impl<'a> Context<'a> {
                         UnrecognizedLint,
                         meta.span,
                         format!("unknown `{}` attribute: `{}`",
-                                level_to_str(level), lintname).as_slice());
+                                level_to_string(level), lintname).as_slice());
                 }
                 Some(lint) => {
                     let lint = lint.lint;
@@ -593,7 +593,7 @@ impl<'a> Context<'a> {
                     if now == Forbid && level != Forbid {
                         self.tcx.sess.span_err(meta.span,
                         format!("{}({}) overruled by outer forbid({})",
-                                level_to_str(level),
+                                level_to_string(level),
                                 lintname,
                                 lintname).as_slice());
                     } else if now != level {
@@ -649,7 +649,7 @@ pub fn each_lint(sess: &session::Session,
                  -> bool {
     let xs = [Allow, Warn, Deny, Forbid];
     for &level in xs.iter() {
-        let level_name = level_to_str(level);
+        let level_name = level_to_string(level);
         for attr in attrs.iter().filter(|m| m.check_name(level_name)) {
             let meta = attr.node.value;
             let metas = match meta.node {
@@ -682,7 +682,7 @@ pub fn contains_lint(attrs: &[ast::Attribute],
                      level: Level,
                      lintname: &'static str)
                      -> bool {
-    let level_name = level_to_str(level);
+    let level_name = level_to_string(level);
     for attr in attrs.iter().filter(|m| m.name().equiv(&level_name)) {
         if attr.meta_item_list().is_none() {
             continue
@@ -995,13 +995,13 @@ fn check_heap_type(cx: &Context, span: Span, ty: ty::t) {
         });
 
         if n_uniq > 0 && lint != ManagedHeapMemory {
-            let s = ty_to_str(cx.tcx, ty);
+            let s = ty_to_string(cx.tcx, ty);
             let m = format!("type uses owned (Box type) pointers: {}", s);
             cx.span_lint(lint, span, m.as_slice());
         }
 
         if n_box > 0 && lint != OwnedHeapMemory {
-            let s = ty_to_str(cx.tcx, ty);
+            let s = ty_to_string(cx.tcx, ty);
             let m = format!("type uses managed (@ type) pointers: {}", s);
             cx.span_lint(lint, span, m.as_slice());
         }
@@ -1979,7 +1979,7 @@ pub fn check_crate(tcx: &ty::ctxt,
     for (id, v) in tcx.sess.lints.borrow().iter() {
         for &(lint, span, ref msg) in v.iter() {
             tcx.sess.span_bug(span, format!("unprocessed lint {} at {}: {}",
-                                            lint, tcx.map.node_to_str(*id), *msg).as_slice())
+                                            lint, tcx.map.node_to_string(*id), *msg).as_slice())
         }
     }
 

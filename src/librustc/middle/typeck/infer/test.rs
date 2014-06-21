@@ -60,7 +60,7 @@ fn setup_env(test_name: &str, source_string: &str) -> Env {
 
     let parse_sess = parse::new_parse_sess(None);
     let krate = parse_crate_from_source_str(
-        test_name.to_str(), @source_string.to_str(),
+        test_name.to_string(), @source_string.to_string(),
         cfg, parse_sess);
 
     let tcx = ty::mk_ctxt(sess, dm, amap, freevars, region_map,
@@ -151,16 +151,16 @@ impl Env {
     pub fn assert_subtype(&self, a: ty::t, b: ty::t) {
         if !self.is_subtype(a, b) {
             fail!("%s is not a subtype of %s, but it should be",
-                  self.ty_to_str(a),
-                  self.ty_to_str(b));
+                  self.ty_to_string(a),
+                  self.ty_to_string(b));
         }
     }
 
     pub fn assert_not_subtype(&self, a: ty::t, b: ty::t) {
         if self.is_subtype(a, b) {
             fail!("%s is a subtype of %s, but it shouldn't be",
-                  self.ty_to_str(a),
-                  self.ty_to_str(b));
+                  self.ty_to_string(a),
+                  self.ty_to_string(b));
         }
     }
 
@@ -174,8 +174,8 @@ impl Env {
         self.assert_subtype(b, a);
     }
 
-    pub fn ty_to_str(&self, a: ty::t) -> String {
-        ty_to_str(self.tcx, a)
+    pub fn ty_to_string(&self, a: ty::t) -> String {
+        ty_to_string(self.tcx, a)
     }
 
     pub fn t_fn(&self, input_tys: &[ty::t], output_ty: ty::t) -> ty::t {
@@ -257,9 +257,9 @@ impl Env {
     /// Checks that `GLB(t1,t2) == t_glb`
     pub fn check_glb(&self, t1: ty::t, t2: ty::t, t_glb: ty::t) {
         debug!("check_glb(t1=%s, t2=%s, t_glb=%s)",
-               self.ty_to_str(t1),
-               self.ty_to_str(t2),
-               self.ty_to_str(t_glb));
+               self.ty_to_string(t1),
+               self.ty_to_string(t2),
+               self.ty_to_string(t_glb));
         match self.glb().tys(t1, t2) {
             Err(e) => {
                 fail!("unexpected error computing LUB: %?", e)
@@ -281,7 +281,7 @@ impl Env {
         match self.lub().tys(t1, t2) {
             Err(_) => {}
             Ok(t) => {
-                fail!("unexpected success computing LUB: %?", self.ty_to_str(t))
+                fail!("unexpected success computing LUB: %?", self.ty_to_string(t))
             }
         }
     }
@@ -291,7 +291,7 @@ impl Env {
         match self.glb().tys(t1, t2) {
             Err(_) => {}
             Ok(t) => {
-                fail!("unexpected success computing GLB: %?", self.ty_to_str(t))
+                fail!("unexpected success computing GLB: %?", self.ty_to_string(t))
             }
         }
     }

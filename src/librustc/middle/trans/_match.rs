@@ -432,10 +432,10 @@ fn expand_nested_bindings<'a, 'b>(
                           val: ValueRef)
                           -> Vec<Match<'a, 'b>> {
     debug!("expand_nested_bindings(bcx={}, m={}, col={}, val={})",
-           bcx.to_str(),
+           bcx.to_string(),
            m.repr(bcx.tcx()),
            col,
-           bcx.val_to_str(val));
+           bcx.val_to_string(val));
     let _indenter = indenter();
 
     m.iter().map(|br| {
@@ -482,10 +482,10 @@ fn enter_match<'a, 'b>(
                e: enter_pat)
                -> Vec<Match<'a, 'b>> {
     debug!("enter_match(bcx={}, m={}, col={}, val={})",
-           bcx.to_str(),
+           bcx.to_string(),
            m.repr(bcx.tcx()),
            col,
-           bcx.val_to_str(val));
+           bcx.val_to_string(val));
     let _indenter = indenter();
 
     m.iter().filter_map(|br| {
@@ -521,10 +521,10 @@ fn enter_default<'a, 'b>(
                  val: ValueRef)
                  -> Vec<Match<'a, 'b>> {
     debug!("enter_default(bcx={}, m={}, col={}, val={})",
-           bcx.to_str(),
+           bcx.to_string(),
            m.repr(bcx.tcx()),
            col,
-           bcx.val_to_str(val));
+           bcx.val_to_string(val));
     let _indenter = indenter();
 
     // Collect all of the matches that can match against anything.
@@ -570,11 +570,11 @@ fn enter_opt<'a, 'b>(
              val: ValueRef)
              -> Vec<Match<'a, 'b>> {
     debug!("enter_opt(bcx={}, m={}, opt={:?}, col={}, val={})",
-           bcx.to_str(),
+           bcx.to_string(),
            m.repr(bcx.tcx()),
            *opt,
            col,
-           bcx.val_to_str(val));
+           bcx.val_to_string(val));
     let _indenter = indenter();
 
     let tcx = bcx.tcx();
@@ -711,10 +711,10 @@ fn enter_rec_or_struct<'a, 'b>(
                        val: ValueRef)
                        -> Vec<Match<'a, 'b>> {
     debug!("enter_rec_or_struct(bcx={}, m={}, col={}, val={})",
-           bcx.to_str(),
+           bcx.to_string(),
            m.repr(bcx.tcx()),
            col,
-           bcx.val_to_str(val));
+           bcx.val_to_string(val));
     let _indenter = indenter();
 
     let dummy = box(GC) ast::Pat {id: 0, node: ast::PatWild, span: DUMMY_SP};
@@ -747,10 +747,10 @@ fn enter_tup<'a, 'b>(
              n_elts: uint)
              -> Vec<Match<'a, 'b>> {
     debug!("enter_tup(bcx={}, m={}, col={}, val={})",
-           bcx.to_str(),
+           bcx.to_string(),
            m.repr(bcx.tcx()),
            col,
-           bcx.val_to_str(val));
+           bcx.val_to_string(val));
     let _indenter = indenter();
 
     let dummy = box(GC) ast::Pat {id: 0, node: ast::PatWild, span: DUMMY_SP};
@@ -780,10 +780,10 @@ fn enter_tuple_struct<'a, 'b>(
                       n_elts: uint)
                       -> Vec<Match<'a, 'b>> {
     debug!("enter_tuple_struct(bcx={}, m={}, col={}, val={})",
-           bcx.to_str(),
+           bcx.to_string(),
            m.repr(bcx.tcx()),
            col,
-           bcx.val_to_str(val));
+           bcx.val_to_string(val));
     let _indenter = indenter();
 
     let dummy = box(GC) ast::Pat {id: 0, node: ast::PatWild, span: DUMMY_SP};
@@ -811,10 +811,10 @@ fn enter_uniq<'a, 'b>(
               val: ValueRef)
               -> Vec<Match<'a, 'b>> {
     debug!("enter_uniq(bcx={}, m={}, col={}, val={})",
-           bcx.to_str(),
+           bcx.to_string(),
            m.repr(bcx.tcx()),
            col,
-           bcx.val_to_str(val));
+           bcx.val_to_string(val));
     let _indenter = indenter();
 
     let dummy = box(GC) ast::Pat {id: 0, node: ast::PatWild, span: DUMMY_SP};
@@ -839,10 +839,10 @@ fn enter_region<'a, 'b>(
                 val: ValueRef)
                 -> Vec<Match<'a, 'b>> {
     debug!("enter_region(bcx={}, m={}, col={}, val={})",
-           bcx.to_str(),
+           bcx.to_string(),
            m.repr(bcx.tcx()),
            col,
-           bcx.val_to_str(val));
+           bcx.val_to_string(val));
     let _indenter = indenter();
 
     let dummy = box(GC) ast::Pat { id: 0, node: ast::PatWild, span: DUMMY_SP };
@@ -1216,7 +1216,7 @@ fn compare_values<'a>(
         let did = langcall(cx,
                            None,
                            format!("comparison of `{}`",
-                                   cx.ty_to_str(rhs_t)).as_slice(),
+                                   cx.ty_to_string(rhs_t)).as_slice(),
                            StrEqFnLangItem);
         let result = callee::trans_lang_call(cx, did, [lhs, rhs], None);
         Result {
@@ -1241,7 +1241,7 @@ fn compare_values<'a>(
                 let did = langcall(cx,
                                    None,
                                    format!("comparison of `{}`",
-                                           cx.ty_to_str(rhs_t)).as_slice(),
+                                           cx.ty_to_string(rhs_t)).as_slice(),
                                    UniqStrEqFnLangItem);
                 let result = callee::trans_lang_call(cx, did, [scratch_lhs, scratch_rhs], None);
                 Result {
@@ -1331,7 +1331,7 @@ fn insert_lllocals<'a>(bcx: &'a Block<'a>,
 
         debug!("binding {:?} to {}",
                binding_info.id,
-               bcx.val_to_str(llval));
+               bcx.val_to_string(llval));
         bcx.fcx.lllocals.borrow_mut().insert(binding_info.id, datum);
 
         if bcx.sess().opts.debuginfo == FullDebugInfo {
@@ -1355,10 +1355,10 @@ fn compile_guard<'a, 'b>(
                  has_genuine_default: bool)
                  -> &'b Block<'b> {
     debug!("compile_guard(bcx={}, guard_expr={}, m={}, vals={})",
-           bcx.to_str(),
-           bcx.expr_to_str(guard_expr),
+           bcx.to_string(),
+           bcx.expr_to_string(guard_expr),
            m.repr(bcx.tcx()),
-           vec_map_to_str(vals, |v| bcx.val_to_str(*v)));
+           vec_map_to_string(vals, |v| bcx.val_to_string(*v)));
     let _indenter = indenter();
 
     // Lest the guard itself should fail, introduce a temporary cleanup
@@ -1420,9 +1420,9 @@ fn compile_submatch<'a, 'b>(
                     chk: &FailureHandler,
                     has_genuine_default: bool) {
     debug!("compile_submatch(bcx={}, m={}, vals={})",
-           bcx.to_str(),
+           bcx.to_string(),
            m.repr(bcx.tcx()),
-           vec_map_to_str(vals, |v| bcx.val_to_str(*v)));
+           vec_map_to_string(vals, |v| bcx.val_to_string(*v)));
     let _indenter = indenter();
     let _icx = push_ctxt("match::compile_submatch");
     let mut bcx = bcx;
@@ -1589,7 +1589,7 @@ fn compile_submatch_continue<'a, 'b>(
     debug!("options={:?}", opts);
     let mut kind = no_branch;
     let mut test_val = val;
-    debug!("test_val={}", bcx.val_to_str(test_val));
+    debug!("test_val={}", bcx.val_to_string(test_val));
     if opts.len() > 0u {
         match *opts.get(0) {
             var(_, ref repr) => {
@@ -2140,7 +2140,7 @@ fn bind_irrefutable_pat<'a>(
      */
 
     debug!("bind_irrefutable_pat(bcx={}, pat={}, binding_mode={:?})",
-           bcx.to_str(),
+           bcx.to_string(),
            pat.repr(bcx.tcx()),
            binding_mode);
 

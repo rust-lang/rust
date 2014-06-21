@@ -459,7 +459,7 @@ impl<'a> Context<'a> {
 }
 
 pub fn note_crateid_attr(diag: &SpanHandler, crateid: &CrateId) {
-    diag.handler().note(format!("crate_id: {}", crateid.to_str()).as_slice());
+    diag.handler().note(format!("crate_id: {}", crateid.to_string()).as_slice());
 }
 
 impl ArchiveMetadata {

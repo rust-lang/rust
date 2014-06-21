@@ -792,7 +792,7 @@ impl PrimitiveTypeTable {
 }
 
 
-fn namespace_error_to_str(ns: NamespaceError) -> &'static str {
+fn namespace_error_to_string(ns: NamespaceError) -> &'static str {
     match ns {
         NoError     => "",
         ModuleError => "module",
@@ -1071,14 +1071,14 @@ impl<'a> Resolver<'a> {
                     let ns = ns.unwrap();
                     self.resolve_error(sp,
                         format!("duplicate definition of {} `{}`",
-                             namespace_error_to_str(duplicate_type),
+                             namespace_error_to_string(duplicate_type),
                              token::get_ident(name)).as_slice());
                     {
                         let r = child.span_for_namespace(ns);
                         for sp in r.iter() {
                             self.session.span_note(*sp,
                                  format!("first definition of {} `{}` here",
-                                      namespace_error_to_str(duplicate_type),
+                                      namespace_error_to_string(duplicate_type),
                                       token::get_ident(name)).as_slice());
                         }
                     }
@@ -1499,7 +1499,7 @@ impl<'a> Resolver<'a> {
                                                               false,
                                                               true));
                     debug!("(build reduced graph for item) found extern `{}`",
-                            self.module_to_str(&*external_module));
+                            self.module_to_string(&*external_module));
                     parent.module().external_module_children.borrow_mut()
                                    .insert(name.name, external_module.clone());
                     self.build_reduced_graph_for_external_crate(external_module);
@@ -1853,7 +1853,7 @@ impl<'a> Resolver<'a> {
     /// Builds the reduced graph rooted at the given external module.
     fn populate_external_module(&mut self, module: Rc<Module>) {
         debug!("(populating external module) attempting to populate {}",
-               self.module_to_str(&*module));
+               self.module_to_string(&*module));
 
         let def_id = match module.def_id.get() {
             None => {
@@ -1921,7 +1921,7 @@ impl<'a> Resolver<'a> {
             SingleImport(target, _) => {
                 debug!("(building import directive) building import \
                         directive: {}::{}",
-                       self.idents_to_str(module_.imports.borrow().last().unwrap()
+                       self.idents_to_string(module_.imports.borrow().last().unwrap()
                                                  .module_path.as_slice()),
                        token::get_ident(target));
 
@@ -1994,7 +1994,7 @@ impl<'a> Resolver<'a> {
     /// submodules.
     fn resolve_imports_for_module_subtree(&mut self, module_: Rc<Module>) {
         debug!("(resolving imports for module subtree) resolving {}",
-               self.module_to_str(&*module_));
+               self.module_to_string(&*module_));
         let orig_module = replace(&mut self.current_module, module_.clone());
         self.resolve_imports_for_module(module_.clone());
         self.current_module = orig_module;
@@ -2021,7 +2021,7 @@ impl<'a> Resolver<'a> {
         if module.all_imports_resolved() {
             debug!("(resolving imports for module) all imports resolved for \
                    {}",
-                   self.module_to_str(&*module));
+                   self.module_to_string(&*module));
             return;
         }
 
@@ -2038,7 +2038,7 @@ impl<'a> Resolver<'a> {
                         None => (import_directive.span, String::new())
                     };
                     let msg = format!("unresolved import `{}`{}",
-                                      self.import_path_to_str(
+                                      self.import_path_to_string(
                                           import_directive.module_path
                                                           .as_slice(),
                                           import_directive.subclass),
@@ -2054,7 +2054,7 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    fn idents_to_str(&self, idents: &[Ident]) -> String {
+    fn idents_to_string(&self, idents: &[Ident]) -> String {
         let mut first = true;
         let mut result = String::new();
         for ident in idents.iter() {
@@ -2068,15 +2068,15 @@ impl<'a> Resolver<'a> {
         result
     }
 
-    fn path_idents_to_str(&self, path: &Path) -> String {
+    fn path_idents_to_string(&self, path: &Path) -> String {
         let identifiers: Vec<ast::Ident> = path.segments
                                              .iter()
                                              .map(|seg| seg.identifier)
                                              .collect();
-        self.idents_to_str(identifiers.as_slice())
+        self.idents_to_string(identifiers.as_slice())
     }
 
-    fn import_directive_subclass_to_str(&mut self,
+    fn import_directive_subclass_to_string(&mut self,
                                         subclass: ImportDirectiveSubclass)
                                         -> String {
         match subclass {
@@ -2087,16 +2087,16 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    fn import_path_to_str(&mut self,
+    fn import_path_to_string(&mut self,
                           idents: &[Ident],
                           subclass: ImportDirectiveSubclass)
                           -> String {
         if idents.is_empty() {
-            self.import_directive_subclass_to_str(subclass)
+            self.import_directive_subclass_to_string(subclass)
         } else {
             (format!("{}::{}",
-                     self.idents_to_str(idents),
-                     self.import_directive_subclass_to_str(
+                     self.idents_to_string(idents),
+                     self.import_directive_subclass_to_string(
                          subclass))).to_string()
         }
     }
@@ -2115,8 +2115,8 @@ impl<'a> Resolver<'a> {
 
         debug!("(resolving import for module) resolving import `{}::...` in \
                 `{}`",
-               self.idents_to_str(module_path.as_slice()),
-               self.module_to_str(&*module_));
+               self.idents_to_string(module_path.as_slice()),
+               self.module_to_string(&*module_));
 
         // First, resolve the module path for the directive, if necessary.
         let container = if module_path.len() == 0 {
@@ -2222,9 +2222,9 @@ impl<'a> Resolver<'a> {
         debug!("(resolving single import) resolving `{}` = `{}::{}` from \
                 `{}` id {}, last private {:?}",
                token::get_ident(target),
-               self.module_to_str(&*containing_module),
+               self.module_to_string(&*containing_module),
                token::get_ident(source),
-               self.module_to_str(module_),
+               self.module_to_string(module_),
                directive.id,
                lp);
 
@@ -2411,7 +2411,7 @@ impl<'a> Resolver<'a> {
         if value_result.is_unbound() && type_result.is_unbound() {
             let msg = format!("There is no `{}` in `{}`",
                               token::get_ident(source),
-                              self.module_to_str(&*containing_module));
+                              self.module_to_string(&*containing_module));
             return Failed(Some((directive.span, msg)));
         }
         let value_used_public = value_used_reexport || value_used_public;
@@ -2485,7 +2485,7 @@ impl<'a> Resolver<'a> {
             debug!("(resolving glob import) writing module resolution \
                     {:?} into `{}`",
                    target_import_resolution.type_target.is_none(),
-                   self.module_to_str(module_));
+                   self.module_to_string(module_));
 
             if !target_import_resolution.is_public {
                 debug!("(resolving glob import) nevermind, just kidding");
@@ -2581,9 +2581,9 @@ impl<'a> Resolver<'a> {
 
         debug!("(resolving glob import) writing resolution `{}` in `{}` \
                to `{}`",
-               token::get_name(name).get().to_str(),
-               self.module_to_str(&*containing_module),
-               self.module_to_str(module_));
+               token::get_name(name).get().to_string(),
+               self.module_to_string(&*containing_module),
+               self.module_to_string(module_));
 
         // Merge the child item into the import resolution.
         if name_bindings.defined_in_public_namespace(ValueNS) {
@@ -2643,7 +2643,7 @@ impl<'a> Resolver<'a> {
                                               false) {
                 Failed(None) => {
                     let segment_name = token::get_ident(name);
-                    let module_name = self.module_to_str(&*search_module);
+                    let module_name = self.module_to_string(&*search_module);
                     let mut span = span;
                     let msg = if "???" == module_name.as_slice() {
                         span.hi = span.lo + Pos::from_uint(segment_name.get().len());
@@ -2651,10 +2651,10 @@ impl<'a> Resolver<'a> {
                         match search_parent_externals(name.name,
                                                      &self.current_module) {
                             Some(module) => {
-                                let path_str = self.idents_to_str(module_path);
-                                let target_mod_str = self.module_to_str(&*module);
+                                let path_str = self.idents_to_string(module_path);
+                                let target_mod_str = self.module_to_string(&*module);
                                 let current_mod_str =
-                                    self.module_to_str(&*self.current_module);
+                                    self.module_to_string(&*self.current_module);
 
                                 let prefix = if target_mod_str == current_mod_str {
                                     "self::".to_string()
@@ -2762,8 +2762,8 @@ impl<'a> Resolver<'a> {
 
         debug!("(resolving module path for import) processing `{}` rooted at \
                `{}`",
-               self.idents_to_str(module_path),
-               self.module_to_str(&*module_));
+               self.idents_to_string(module_path),
+               self.module_to_string(&*module_));
 
         // Resolve the module prefix, if any.
         let module_prefix_result = self.resolve_module_prefix(module_.clone(),
@@ -2774,7 +2774,7 @@ impl<'a> Resolver<'a> {
         let last_private;
         match module_prefix_result {
             Failed(None) => {
-                let mpath = self.idents_to_str(module_path);
+                let mpath = self.idents_to_string(module_path);
                 let mpath = mpath.as_slice();
                 match mpath.rfind(':') {
                     Some(idx) => {
@@ -2856,7 +2856,7 @@ impl<'a> Resolver<'a> {
                 namespace {:?} in `{}`",
                token::get_ident(name),
                namespace,
-               self.module_to_str(&*module_));
+               self.module_to_string(&*module_));
 
         // The current module node is handled specially. First, check for
         // its immediate children.
@@ -3089,7 +3089,7 @@ impl<'a> Resolver<'a> {
                 break
             }
             debug!("(resolving module prefix) resolving `super` at {}",
-                   self.module_to_str(&*containing_module));
+                   self.module_to_string(&*containing_module));
             match self.get_nearest_normal_module_parent(containing_module) {
                 None => return Failed(None),
                 Some(new_module) => {
@@ -3100,7 +3100,7 @@ impl<'a> Resolver<'a> {
         }
 
         debug!("(resolving module prefix) finished resolving prefix at {}",
-               self.module_to_str(&*containing_module));
+               self.module_to_string(&*containing_module));
 
         return Success(PrefixFound(containing_module, i));
     }
@@ -3120,7 +3120,7 @@ impl<'a> Resolver<'a> {
                               -> ResolveResult<(Target, bool)> {
         debug!("(resolving name in module) resolving `{}` in `{}`",
                token::get_name(name).get(),
-               self.module_to_str(&*module_));
+               self.module_to_string(&*module_));
 
         // First, check the direct children of the module.
         self.populate_module_if_necessary(&module_);
@@ -3253,19 +3253,19 @@ impl<'a> Resolver<'a> {
                 // OK. Continue.
                 debug!("(recording exports for module subtree) recording \
                         exports for local module `{}`",
-                       self.module_to_str(&*module_));
+                       self.module_to_string(&*module_));
             }
             None => {
                 // Record exports for the root module.
                 debug!("(recording exports for module subtree) recording \
                         exports for root module `{}`",
-                       self.module_to_str(&*module_));
+                       self.module_to_string(&*module_));
             }
             Some(_) => {
                 // Bail out.
                 debug!("(recording exports for module subtree) not recording \
                         exports for `{}`",
-                       self.module_to_str(&*module_));
+                       self.module_to_string(&*module_));
                 return;
             }
         }
@@ -3381,7 +3381,7 @@ impl<'a> Resolver<'a> {
                     None => {
                         debug!("!!! (with scope) didn't find `{}` in `{}`",
                                token::get_ident(name),
-                               self.module_to_str(&*orig_module));
+                               self.module_to_string(&*orig_module));
                     }
                     Some(name_bindings) => {
                         match (*name_bindings).get_module_if_available() {
@@ -3389,7 +3389,7 @@ impl<'a> Resolver<'a> {
                                 debug!("!!! (with scope) didn't find module \
                                         for `{}` in `{}`",
                                        token::get_ident(name),
-                                       self.module_to_str(&*orig_module));
+                                       self.module_to_string(&*orig_module));
                             }
                             Some(module_) => {
                                 self.current_module = module_;
@@ -3883,7 +3883,7 @@ impl<'a> Resolver<'a> {
                                    reference_type: TraitReferenceType) {
         match self.resolve_path(id, &trait_reference.path, TypeNS, true) {
             None => {
-                let path_str = self.path_idents_to_str(&trait_reference.path);
+                let path_str = self.path_idents_to_string(&trait_reference.path);
                 let usage_str = match reference_type {
                     TraitBoundingTypeParameter => "bound type parameter with",
                     TraitImplementation        => "implement",
@@ -3927,7 +3927,7 @@ impl<'a> Resolver<'a> {
                                                             .identifier),
                                        def);
                                 debug!("(resolving struct) writing resolution for `{}` (id {})",
-                                       this.path_idents_to_str(path),
+                                       this.path_idents_to_string(path),
                                        path_id);
                                 this.record_def(path_id, (def, lp));
                             }
@@ -4231,13 +4231,13 @@ impl<'a> Resolver<'a> {
                         // Write the result into the def map.
                         debug!("(resolving type) writing resolution for `{}` \
                                 (id {})",
-                               self.path_idents_to_str(path),
+                               self.path_idents_to_string(path),
                                path_id);
                         self.record_def(path_id, def);
                     }
                     None => {
                         let msg = format!("use of undeclared type name `{}`",
-                                          self.path_idents_to_str(path));
+                                          self.path_idents_to_string(path));
                         self.resolve_error(ty.span, msg.as_slice());
                     }
                 }
@@ -4376,7 +4376,7 @@ impl<'a> Resolver<'a> {
                                     format!("identifier `{}` is bound \
                                              more than once in the same \
                                              pattern",
-                                            path_to_str(path)).as_slice());
+                                            path_to_string(path)).as_slice());
                             }
                             // Else, not bound in the same pattern: do
                             // nothing.
@@ -4494,7 +4494,7 @@ impl<'a> Resolver<'a> {
                             debug!("(resolving pattern) didn't find struct \
                                     def: {:?}", result);
                             let msg = format!("`{}` does not name a structure",
-                                              self.path_idents_to_str(path));
+                                              self.path_idents_to_string(path));
                             self.resolve_error(path.span, msg.as_slice());
                         }
                     }
@@ -4724,7 +4724,7 @@ impl<'a> Resolver<'a> {
                     Some((span, msg)) => (span, msg),
                     None => {
                         let msg = format!("Use of undeclared module `{}`",
-                                          self.idents_to_str(
+                                          self.idents_to_string(
                                                module_path_idents.as_slice()));
                         (path.span, msg)
                     }
@@ -4800,7 +4800,7 @@ impl<'a> Resolver<'a> {
                     Some((span, msg)) => (span, msg),
                     None => {
                         let msg = format!("Use of undeclared module `::{}`",
-                                          self.idents_to_str(
+                                          self.idents_to_string(
                                                module_path_idents.as_slice()));
                         (path.span, msg)
                     }
@@ -5005,7 +5005,7 @@ impl<'a> Resolver<'a> {
         match get_module(self, path.span, ident_path.as_slice()) {
             Some(module) => match module.children.borrow().find(&name) {
                 Some(binding) => {
-                    let p_str = self.path_idents_to_str(&path);
+                    let p_str = self.path_idents_to_string(&path);
                     match binding.def_for_namespace(ValueNS) {
                         Some(DefStaticMethod(_, provenance, _)) => {
                             match provenance {
@@ -5027,7 +5027,7 @@ impl<'a> Resolver<'a> {
         let method_map = self.method_map.borrow();
         match self.current_trait_ref {
             Some((did, ref trait_ref)) => {
-                let path_str = self.path_idents_to_str(&trait_ref.path);
+                let path_str = self.path_idents_to_string(&trait_ref.path);
 
                 match method_map.find(&(name, did)) {
                     Some(&SelfStatic) => return StaticTraitMethod(path_str),
@@ -5100,7 +5100,7 @@ impl<'a> Resolver<'a> {
                     Some(def) => {
                         // Write the result into the def map.
                         debug!("(resolving expr) resolved `{}`",
-                               self.path_idents_to_str(path));
+                               self.path_idents_to_string(path));
 
                         // First-class methods are not supported yet; error
                         // out here.
@@ -5120,7 +5120,7 @@ impl<'a> Resolver<'a> {
                         self.record_def(expr.id, def);
                     }
                     None => {
-                        let wrong_name = self.path_idents_to_str(path);
+                        let wrong_name = self.path_idents_to_string(path);
                         // Be helpful if the name refers to a struct
                         // (The pattern matching def_tys where the id is in self.structs
                         // matches on regular structs while excluding tuple- and enum-like
@@ -5222,7 +5222,7 @@ impl<'a> Resolver<'a> {
                         debug!("(resolving expression) didn't find struct \
                                 def: {:?}", result);
                         let msg = format!("`{}` does not name a structure",
-                                          self.path_idents_to_str(path));
+                                          self.path_idents_to_string(path));
                         self.resolve_error(path.span, msg.as_slice());
                     }
                 }
@@ -5522,7 +5522,7 @@ impl<'a> Resolver<'a> {
     //
 
     /// A somewhat inefficient routine to obtain the name of a module.
-    fn module_to_str(&self, module: &Module) -> String {
+    fn module_to_string(&self, module: &Module) -> String {
         let mut idents = Vec::new();
 
         fn collect_mod(idents: &mut Vec<ast::Ident>, module: &Module) {
@@ -5543,14 +5543,14 @@ impl<'a> Resolver<'a> {
         if idents.len() == 0 {
             return "???".to_string();
         }
-        self.idents_to_str(idents.move_iter().rev()
+        self.idents_to_string(idents.move_iter().rev()
                                  .collect::<Vec<ast::Ident>>()
                                  .as_slice())
     }
 
     #[allow(dead_code)]   // useful for debugging
     fn dump_module(&mut self, module_: Rc<Module>) {
-        debug!("Dump of module `{}`:", self.module_to_str(&*module_));
+        debug!("Dump of module `{}`:", self.module_to_string(&*module_));
 
         debug!("Children:");
         self.populate_module_if_necessary(&module_);

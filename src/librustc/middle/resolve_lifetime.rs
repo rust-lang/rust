@@ -372,7 +372,7 @@ impl<'a> LifetimeContext<'a> {
         }
 
         debug!("lifetime_ref={} id={} resolved to {:?}",
-                lifetime_to_str(lifetime_ref),
+                lifetime_to_string(lifetime_ref),
                 lifetime_ref.id,
                 def);
         self.named_region_map.insert(lifetime_ref.id, def);

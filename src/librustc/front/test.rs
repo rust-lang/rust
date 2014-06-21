@@ -350,7 +350,7 @@ fn mk_test_module(cx: &TestCtxt) -> Gc<ast::Item> {
         span: DUMMY_SP,
      };
 
-    debug!("Synthetic test module:\n{}\n", pprust::item_to_str(&item));
+    debug!("Synthetic test module:\n{}\n", pprust::item_to_string(&item));
 
     box(GC) item
 }

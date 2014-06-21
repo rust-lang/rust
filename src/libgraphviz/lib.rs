@@ -666,7 +666,7 @@ mod tests {
         let mut writer = MemWriter::new();
         render(&g, &mut writer).unwrap();
         let mut r = BufReader::new(writer.get_ref());
-        match r.read_to_str() {
+        match r.read_to_string() {
             Ok(string) => Ok(string.to_string()),
             Err(err) => Err(err),
         }
@@ -768,7 +768,7 @@ r#"digraph hasse_diagram {
 
         render(&g, &mut writer).unwrap();
         let mut r = BufReader::new(writer.get_ref());
-        let r = r.read_to_str();
+        let r = r.read_to_string();
 
         assert_eq!(r.unwrap().as_slice(),
 r#"digraph syntax_tree {

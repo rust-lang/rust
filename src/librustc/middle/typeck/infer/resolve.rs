@@ -118,7 +118,7 @@ impl<'a> ResolveState<'a> {
         self.err = None;
 
         debug!("Resolving {} (modes={:x})",
-               ty_to_str(self.infcx.tcx, typ),
+               ty_to_string(self.infcx.tcx, typ),
                self.modes);
 
         // n.b. This is a hokey mess because the current fold doesn't
@@ -130,8 +130,8 @@ impl<'a> ResolveState<'a> {
         match self.err {
           None => {
             debug!("Resolved to {} + {} (modes={:x})",
-                   ty_to_str(self.infcx.tcx, rty),
-                   ty_to_str(self.infcx.tcx, rty),
+                   ty_to_string(self.infcx.tcx, rty),
+                   ty_to_string(self.infcx.tcx, rty),
                    self.modes);
             return Ok(rty);
           }

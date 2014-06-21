@@ -48,8 +48,8 @@ impl<'f> Combine for Lub<'f> {
 
         debug!("{}.mts({}, {})",
                self.tag(),
-               mt_to_str(tcx, a),
-               mt_to_str(tcx, b));
+               mt_to_string(tcx, a),
+               mt_to_string(tcx, b));
 
         if a.mutbl != b.mutbl {
             return Err(ty::terr_mutability)

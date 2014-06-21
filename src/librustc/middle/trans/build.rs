@@ -25,7 +25,7 @@ use middle::trans::type_::Type;
 use libc::{c_uint, c_ulonglong, c_char};
 
 pub fn terminate(cx: &Block, _: &str) {
-    debug!("terminate({})", cx.to_str());
+    debug!("terminate({})", cx.to_string());
     cx.terminated.set(true);
 }
 
@@ -122,8 +122,8 @@ pub fn Invoke(cx: &Block,
     check_not_terminated(cx);
     terminate(cx, "Invoke");
     debug!("Invoke({} with arguments ({}))",
-           cx.val_to_str(fn_),
-           args.iter().map(|a| cx.val_to_str(*a)).collect::<Vec<String>>().connect(", "));
+           cx.val_to_string(fn_),
+           args.iter().map(|a| cx.val_to_string(*a)).collect::<Vec<String>>().connect(", "));
     B(cx).invoke(fn_, args, then, catch, attributes)
 }
 

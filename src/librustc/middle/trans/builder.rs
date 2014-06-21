@@ -489,8 +489,8 @@ impl<'a> Builder<'a> {
 
     pub fn store(&self, val: ValueRef, ptr: ValueRef) {
         debug!("Store {} -> {}",
-               self.ccx.tn.val_to_str(val),
-               self.ccx.tn.val_to_str(ptr));
+               self.ccx.tn.val_to_string(val),
+               self.ccx.tn.val_to_string(ptr));
         assert!(self.llbuilder.is_not_null());
         self.count_insn("store");
         unsafe {
@@ -500,8 +500,8 @@ impl<'a> Builder<'a> {
 
     pub fn volatile_store(&self, val: ValueRef, ptr: ValueRef) {
         debug!("Store {} -> {}",
-               self.ccx.tn.val_to_str(val),
-               self.ccx.tn.val_to_str(ptr));
+               self.ccx.tn.val_to_string(val),
+               self.ccx.tn.val_to_string(ptr));
         assert!(self.llbuilder.is_not_null());
         self.count_insn("store.volatile");
         unsafe {
@@ -512,8 +512,8 @@ impl<'a> Builder<'a> {
 
     pub fn atomic_store(&self, val: ValueRef, ptr: ValueRef, order: AtomicOrdering) {
         debug!("Store {} -> {}",
-               self.ccx.tn.val_to_str(val),
-               self.ccx.tn.val_to_str(ptr));
+               self.ccx.tn.val_to_string(val),
+               self.ccx.tn.val_to_string(ptr));
         self.count_insn("store.atomic");
         unsafe {
             let ty = Type::from_ref(llvm::LLVMTypeOf(ptr));
@@ -752,7 +752,7 @@ impl<'a> Builder<'a> {
         if self.ccx.sess().asm_comments() {
             let s = format!("{} ({})",
                             text,
-                            self.ccx.sess().codemap().span_to_str(sp));
+                            self.ccx.sess().codemap().span_to_string(sp));
             debug!("{}", s.as_slice());
             self.add_comment(s.as_slice());
         }
@@ -786,11 +786,11 @@ impl<'a> Builder<'a> {
                          else          { lib::llvm::False };
 
         let argtys = inputs.iter().map(|v| {
-            debug!("Asm Input Type: {:?}", self.ccx.tn.val_to_str(*v));
+            debug!("Asm Input Type: {:?}", self.ccx.tn.val_to_string(*v));
             val_ty(*v)
         }).collect::<Vec<_>>();
 
-        debug!("Asm Output Type: {:?}", self.ccx.tn.type_to_str(output));
+        debug!("Asm Output Type: {:?}", self.ccx.tn.type_to_string(output));
         let fty = Type::func(argtys.as_slice(), &output);
         unsafe {
             let v = llvm::LLVMInlineAsm(
@@ -804,9 +804,9 @@ impl<'a> Builder<'a> {
         self.count_insn("call");
 
         debug!("Call {} with args ({})",
-               self.ccx.tn.val_to_str(llfn),
+               self.ccx.tn.val_to_string(llfn),
                args.iter()
-                   .map(|&v| self.ccx.tn.val_to_str(v))
+                   .map(|&v| self.ccx.tn.val_to_string(v))
                    .collect::<Vec<String>>()
                    .connect(", "));
 

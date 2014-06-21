@@ -29,7 +29,7 @@ fn main() {
         f(&s, |hellothere| {
             match hellothere.x { //~ ERROR cannot move out
                 box Foo(_) => {}
-                box Bar(x) => println!("{}", x.to_str()), //~ NOTE attempting to move value to here
+                box Bar(x) => println!("{}", x.to_string()), //~ NOTE attempting to move value to here
                 box Baz => {}
             }
         })

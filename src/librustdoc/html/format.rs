@@ -342,7 +342,7 @@ impl fmt::Show for clean::Type {
                 tybounds(f, typarams)
             }
             clean::Self(..) => f.write("Self".as_bytes()),
-            clean::Primitive(prim) => primitive_link(f, prim, prim.to_str()),
+            clean::Primitive(prim) => primitive_link(f, prim, prim.to_string()),
             clean::Closure(ref decl, ref region) => {
                 write!(f, "{style}{lifetimes}|{args}|{bounds}{arrow}",
                        style = FnStyleSpace(decl.fn_style),
@@ -396,7 +396,7 @@ impl fmt::Show for clean::Type {
                        } else {
                            let mut m = decl.bounds
                                            .iter()
-                                           .map(|s| s.to_str());
+                                           .map(|s| s.to_string());
                            format!(
                                ": {}",
                                m.collect::<Vec<String>>().connect(" + "))

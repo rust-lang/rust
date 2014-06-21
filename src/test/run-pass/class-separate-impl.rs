@@ -58,7 +58,7 @@ impl fmt::Show for cat {
 }
 
 fn print_out(thing: Box<ToStr>, expected: String) {
-  let actual = thing.to_str();
+  let actual = thing.to_string();
   println!("{}", actual);
   assert_eq!(actual.to_string(), expected);
 }

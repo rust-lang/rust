@@ -417,7 +417,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> io::IoResult<String> 
         }
         try!(write!(&mut w, r#"[{:u},"{}","{}",{}"#,
                     item.ty, item.name, path,
-                    item.desc.to_json().to_str()));
+                    item.desc.to_json().to_string()));
         match item.parent {
             Some(nodeid) => {
                 let pathid = *nodeid_to_pathid.find(&nodeid).unwrap();
@@ -1250,7 +1250,7 @@ impl<'a> fmt::Show for Item<'a> {
             Some((ref stability, _)) => {
                 try!(write!(fmt,
                        "<a class='stability {lvl}' title='{reason}'>{lvl}</a>",
-                       lvl = stability.level.to_str(),
+                       lvl = stability.level.to_string(),
                        reason = match stability.text {
                            Some(ref s) => (*s).clone(),
                            None => InternedString::new(""),

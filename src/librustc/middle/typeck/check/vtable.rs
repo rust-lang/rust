@@ -153,8 +153,8 @@ fn lookup_vtables_for_param(vcx: &VtableContext,
                 vcx.tcx().sess.span_fatal(span,
                     format!("failed to find an implementation of \
                           trait {} for {}",
-                         vcx.infcx.trait_ref_to_str(&*trait_ref),
-                         vcx.infcx.ty_to_str(ty)).as_slice());
+                         vcx.infcx.trait_ref_to_string(&*trait_ref),
+                         vcx.infcx.ty_to_string(ty)).as_slice());
             }
         }
         true
@@ -204,9 +204,9 @@ fn relate_trait_refs(vcx: &VtableContext,
                 let tcx = vcx.tcx();
                 tcx.sess.span_err(span,
                     format!("expected {}, but found {} ({})",
-                            ppaux::trait_ref_to_str(tcx, &r_exp_trait_ref),
-                            ppaux::trait_ref_to_str(tcx, &r_act_trait_ref),
-                            ty::type_err_to_str(tcx, err)).as_slice());
+                            ppaux::trait_ref_to_string(tcx, &r_exp_trait_ref),
+                            ppaux::trait_ref_to_string(tcx, &r_act_trait_ref),
+                            ty::type_err_to_string(tcx, err)).as_slice());
             }
         }
     }
@@ -386,8 +386,8 @@ fn search_for_vtable(vcx: &VtableContext,
 
         debug!("(checking vtable) num 2 relating trait \
                 ty {} to of_trait_ref {}",
-               vcx.infcx.trait_ref_to_str(&*trait_ref),
-               vcx.infcx.trait_ref_to_str(&*of_trait_ref));
+               vcx.infcx.trait_ref_to_string(&*trait_ref),
+               vcx.infcx.trait_ref_to_string(&*of_trait_ref));
 
         relate_trait_refs(vcx, span, of_trait_ref, trait_ref.clone());
 
@@ -486,7 +486,7 @@ fn fixup_ty(vcx: &VtableContext,
             tcx.sess.span_fatal(span,
                 format!("cannot determine a type for this bounded type \
                          parameter: {}",
-                        fixup_err_to_str(e)).as_slice())
+                        fixup_err_to_string(e)).as_slice())
         }
         Err(_) => {
             None
@@ -525,7 +525,7 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
     }
 
     debug!("vtable: early_resolve_expr() ex with id {:?} (early: {}): {}",
-           ex.id, is_early, expr_to_str(ex));
+           ex.id, is_early, expr_to_string(ex));
     let _indent = indenter();
 
     let cx = fcx.ccx;
@@ -655,7 +655,7 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
             let did = def.def_id();
             let item_ty = ty::lookup_item_type(cx.tcx, did);
             debug!("early resolve expr: def {:?} {:?}, {:?}, {}", ex.id, did, def,
-                   fcx.infcx().ty_to_str(item_ty.ty));
+                   fcx.infcx().ty_to_string(item_ty.ty));
             debug!("early_resolve_expr: looking up vtables for type params {}",
                    item_ty.generics.types.repr(fcx.tcx()));
             let vcx = fcx.vtable_context();
