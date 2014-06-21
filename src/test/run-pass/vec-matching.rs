@@ -68,9 +68,17 @@ fn d() {
     assert_eq!(branch, 1);
 }
 
+fn e() {
+    match &[1, 2, 3] {
+        [1, 2] => (),
+        [..] => ()
+    }
+}
+
 pub fn main() {
     a();
     b();
     c();
     d();
+    e();
 }
