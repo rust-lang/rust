@@ -2651,7 +2651,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                     let error = if vst == ast::ExprVstoreSlice {
                         "`&\"string\"` has been removed; use `\"string\"` instead"
                     } else {
-                        "`~\"string\"` has been removed; use `\"string\".to_string()` instead"
+                        "`box \"string\"` has been removed; use `\"string\".to_string()` instead"
                     };
                     tcx.sess.span_err(expr.span, error);
                     ty::mk_err()
