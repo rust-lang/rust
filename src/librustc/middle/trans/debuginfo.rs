@@ -187,8 +187,8 @@ use metadata::csearch;
 use middle::subst;
 use middle::trans::adt;
 use middle::trans::common::*;
-use middle::trans::datum::{Datum, Lvalue};
 use middle::trans::machine;
+use middle::trans::_match::{BindingInfo, TrByValue, TrByRef};
 use middle::trans::type_of;
 use middle::trans::type_::Type;
 use middle::trans;
@@ -938,22 +938,36 @@ pub fn create_captured_var_metadata(bcx: &Block,
 /// Adds the created metadata nodes directly to the crate's IR.
 pub fn create_match_binding_metadata(bcx: &Block,
                                      variable_ident: ast::Ident,
-                                     node_id: ast::NodeId,
-                                     span: Span,
-                                     datum: Datum<Lvalue>) {
+                                     binding: BindingInfo) {
     if fn_should_be_ignored(bcx.fcx) {
         return;
     }
 
-    let scope_metadata = scope_metadata(bcx.fcx, node_id, span);
+    let scope_metadata = scope_metadata(bcx.fcx, binding.id, binding.span);
+    let aops = unsafe {
+        [llvm::LLVMDIBuilderCreateOpDeref(bcx.ccx().int_type.to_ref())]
+    };
+    // Regardless of the actual type (`T`) we're always passed the stack slot (alloca)
+    // for the binding. For ByRef bindings that's a `T*` but for ByValue bindings we
+    // actually have `T**`. So to get the actual variable we need to dereference once
+    // more.
+    let var_type = match binding.trmode {
+        TrByValue => IndirectVariable {
+            alloca: binding.llmatch,
+            address_operations: aops
+        },
+        TrByRef => DirectVariable {
+            alloca: binding.llmatch
+        }
+    };
 
     declare_local(bcx,
                   variable_ident,
-                  datum.ty,
+                  binding.ty,
                   scope_metadata,
-                  DirectVariable { alloca: datum.val },
+                  var_type,
                   LocalVariable,
-                  span);
+                  binding.span);
 }
 
 /// Creates debug information for the given function argument.
