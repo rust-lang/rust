@@ -59,11 +59,13 @@ pub struct MemWriter {
 
 impl MemWriter {
     /// Create a new `MemWriter`.
+    #[inline]
     pub fn new() -> MemWriter {
         MemWriter::with_capacity(128)
     }
     /// Create a new `MemWriter`, allocating at least `n` bytes for
     /// the internal buffer.
+    #[inline]
     pub fn with_capacity(n: uint) -> MemWriter {
         MemWriter { buf: Vec::with_capacity(n), pos: 0 }
     }
@@ -73,13 +75,16 @@ impl MemWriter {
     ///
     /// No method is exposed for acquiring a mutable reference to the buffer
     /// because it could corrupt the state of this `MemWriter`.
+    #[inline]
     pub fn get_ref<'a>(&'a self) -> &'a [u8] { self.buf.as_slice() }
 
     /// Unwraps this `MemWriter`, returning the underlying buffer
+    #[inline]
     pub fn unwrap(self) -> Vec<u8> { self.buf }
 }
 
 impl Writer for MemWriter {
+    #[inline]
     fn write(&mut self, buf: &[u8]) -> IoResult<()> {
         // Make sure the internal buffer is as least as big as where we
         // currently are
@@ -112,7 +117,10 @@ impl Writer for MemWriter {
 }
 
 impl Seek for MemWriter {
+    #[inline]
     fn tell(&self) -> IoResult<u64> { Ok(self.pos as u64) }
+
+    #[inline]
     fn seek(&mut self, pos: i64, style: SeekStyle) -> IoResult<()> {
         let new = try!(combine(style, self.pos, self.buf.len(), pos));
         self.pos = new as uint;
@@ -140,6 +148,7 @@ pub struct MemReader {
 impl MemReader {
     /// Creates a new `MemReader` which will read the buffer given. The buffer
     /// can be re-acquired through `unwrap`
+    #[inline]
     pub fn new(buf: Vec<u8>) -> MemReader {
         MemReader {
             buf: buf,
@@ -150,6 +159,7 @@ impl MemReader {
     /// Tests whether this reader has read all bytes in its buffer.
     ///
     /// If `true`, then this will no longer return bytes from `read`.
+    #[inline]
     pub fn eof(&self) -> bool { self.pos >= self.buf.len() }
 
     /// Acquires an immutable reference to the underlying buffer of this
@@ -157,13 +167,16 @@ impl MemReader {
     ///
     /// No method is exposed for acquiring a mutable reference to the buffer
     /// because it could corrupt the state of this `MemReader`.
+    #[inline]
     pub fn get_ref<'a>(&'a self) -> &'a [u8] { self.buf.as_slice() }
 
     /// Unwraps this `MemReader`, returning the underlying buffer
+    #[inline]
     pub fn unwrap(self) -> Vec<u8> { self.buf }
 }
 
 impl Reader for MemReader {
+    #[inline]
     fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
         if self.eof() { return Err(io::standard_error(io::EndOfFile)) }
 
@@ -182,7 +195,10 @@ impl Reader for MemReader {
 }
 
 impl Seek for MemReader {
+    #[inline]
     fn tell(&self) -> IoResult<u64> { Ok(self.pos as u64) }
+
+    #[inline]
     fn seek(&mut self, pos: i64, style: SeekStyle) -> IoResult<()> {
         let new = try!(combine(style, self.pos, self.buf.len(), pos));
         self.pos = new as uint;
@@ -191,6 +207,7 @@ impl Seek for MemReader {
 }
 
 impl Buffer for MemReader {
+    #[inline]
     fn fill_buf<'a>(&'a mut self) -> IoResult<&'a [u8]> {
         if self.pos < self.buf.len() {
             Ok(self.buf.slice_from(self.pos))
@@ -198,6 +215,8 @@ impl Buffer for MemReader {
             Err(io::standard_error(io::EndOfFile))
         }
     }
+
+    #[inline]
     fn consume(&mut self, amt: uint) { self.pos += amt; }
 }
 
@@ -227,6 +246,7 @@ pub struct BufWriter<'a> {
 impl<'a> BufWriter<'a> {
     /// Creates a new `BufWriter` which will wrap the specified buffer. The
     /// writer initially starts at position 0.
+    #[inline]
     pub fn new<'a>(buf: &'a mut [u8]) -> BufWriter<'a> {
         BufWriter {
             buf: buf,
@@ -236,6 +256,7 @@ impl<'a> BufWriter<'a> {
 }
 
 impl<'a> Writer for BufWriter<'a> {
+    #[inline]
     fn write(&mut self, buf: &[u8]) -> IoResult<()> {
         // return an error if the entire write does not fit in the buffer
         let max_size = self.buf.len();
@@ -254,7 +275,10 @@ impl<'a> Writer for BufWriter<'a> {
 }
 
 impl<'a> Seek for BufWriter<'a> {
+    #[inline]
     fn tell(&self) -> IoResult<u64> { Ok(self.pos as u64) }
+
+    #[inline]
     fn seek(&mut self, pos: i64, style: SeekStyle) -> IoResult<()> {
         let new = try!(combine(style, self.pos, self.buf.len(), pos));
         self.pos = new as uint;
@@ -282,6 +306,7 @@ pub struct BufReader<'a> {
 
 impl<'a> BufReader<'a> {
     /// Creates a new buffered reader which will read the specified buffer
+    #[inline]
     pub fn new<'a>(buf: &'a [u8]) -> BufReader<'a> {
         BufReader {
             buf: buf,
@@ -292,10 +317,12 @@ impl<'a> BufReader<'a> {
     /// Tests whether this reader has read all bytes in its buffer.
     ///
     /// If `true`, then this will no longer return bytes from `read`.
+    #[inline]
     pub fn eof(&self) -> bool { self.pos >= self.buf.len() }
 }
 
 impl<'a> Reader for BufReader<'a> {
+    #[inline]
     fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
         if self.eof() { return Err(io::standard_error(io::EndOfFile)) }
 
@@ -314,7 +341,10 @@ impl<'a> Reader for BufReader<'a> {
 }
 
 impl<'a> Seek for BufReader<'a> {
+    #[inline]
     fn tell(&self) -> IoResult<u64> { Ok(self.pos as u64) }
+
+    #[inline]
     fn seek(&mut self, pos: i64, style: SeekStyle) -> IoResult<()> {
         let new = try!(combine(style, self.pos, self.buf.len(), pos));
         self.pos = new as uint;
@@ -323,6 +353,7 @@ impl<'a> Seek for BufReader<'a> {
 }
 
 impl<'a> Buffer for BufReader<'a> {
+    #[inline]
     fn fill_buf<'a>(&'a mut self) -> IoResult<&'a [u8]> {
         if self.pos < self.buf.len() {
             Ok(self.buf.slice_from(self.pos))
@@ -330,15 +361,19 @@ impl<'a> Buffer for BufReader<'a> {
             Err(io::standard_error(io::EndOfFile))
         }
     }
+
+    #[inline]
     fn consume(&mut self, amt: uint) { self.pos += amt; }
 }
 
 #[cfg(test)]
 mod test {
+    extern crate test;
     use prelude::*;
     use super::*;
     use io::*;
     use io;
+    use self::test::Bencher;
     use str::StrSlice;
 
     #[test]
@@ -570,5 +605,60 @@ mod test {
         assert_eq!(buf.as_slice(), &[4, 5, 6]);
         assert!(r.read_at_least(buf.len(), buf).is_err());
         assert_eq!(buf.as_slice(), &[7, 8, 6]);
+    }
+
+    #[bench]
+    fn bench_mem_writer(b: &mut Bencher) {
+        b.iter(|| {
+            let mut wr = MemWriter::new();
+            for _i in range(0, 10) {
+                wr.write([5, .. 10]).unwrap();
+            }
+            assert_eq!(wr.unwrap().as_slice(), [5, .. 100].as_slice());
+        });
+    }
+
+    #[bench]
+    fn bench_mem_reader(b: &mut Bencher) {
+        b.iter(|| {
+            let buf = Vec::from_slice([5 as u8, ..100]);
+            {
+                let mut rdr = MemReader::new(buf);
+                for _i in range(0, 10) {
+                    let mut buf = [0 as u8, .. 10];
+                    rdr.read(buf).unwrap();
+                    assert_eq!(buf.as_slice(), [5, .. 10].as_slice());
+                }
+            }
+        });
+    }
+
+    #[bench]
+    fn bench_buf_writer(b: &mut Bencher) {
+        b.iter(|| {
+            let mut buf = [0 as u8, ..100];
+            {
+                let mut wr = BufWriter::new(buf);
+                for _i in range(0, 10) {
+                    wr.write([5, .. 10]).unwrap();
+                }
+            }
+            assert_eq!(buf.as_slice(), [5, .. 100].as_slice());
+        });
+    }
+
+    #[bench]
+    fn bench_buf_reader(b: &mut Bencher) {
+        b.iter(|| {
+            let buf = [5 as u8, ..100];
+            {
+                let mut rdr = BufReader::new(buf);
+                for _i in range(0, 10) {
+                    let mut buf = [0 as u8, .. 10];
+                    rdr.read(buf).unwrap();
+                    assert_eq!(buf.as_slice(), [5, .. 10].as_slice());
+                }
+            }
+        });
     }
 }

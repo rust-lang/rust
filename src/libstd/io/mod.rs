@@ -1084,6 +1084,7 @@ pub trait Writer {
     /// If other encodings are desired, it is recommended to compose this stream
     /// with another performing the conversion, or to use `write` with a
     /// converted byte-array instead.
+    #[inline]
     fn write_str(&mut self, s: &str) -> IoResult<()> {
         self.write(s.as_bytes())
     }
@@ -1095,11 +1096,13 @@ pub trait Writer {
     ///
     /// If other encodings or line ending flavors are desired, it is recommended
     /// that the `write` method is used specifically instead.
+    #[inline]
     fn write_line(&mut self, s: &str) -> IoResult<()> {
         self.write_str(s).and_then(|()| self.write(['\n' as u8]))
     }
 
     /// Write a single char, encoded as UTF-8.
+    #[inline]
     fn write_char(&mut self, c: char) -> IoResult<()> {
         let mut buf = [0u8, ..4];
         let n = c.encode_utf8(buf.as_mut_slice());
@@ -1107,66 +1110,79 @@ pub trait Writer {
     }
 
     /// Write the result of passing n through `int::to_str_bytes`.
+    #[inline]
     fn write_int(&mut self, n: int) -> IoResult<()> {
         write!(self, "{:d}", n)
     }
 
     /// Write the result of passing n through `uint::to_str_bytes`.
+    #[inline]
     fn write_uint(&mut self, n: uint) -> IoResult<()> {
         write!(self, "{:u}", n)
     }
 
     /// Write a little-endian uint (number of bytes depends on system).
+    #[inline]
     fn write_le_uint(&mut self, n: uint) -> IoResult<()> {
         extensions::u64_to_le_bytes(n as u64, uint::BYTES, |v| self.write(v))
     }
 
     /// Write a little-endian int (number of bytes depends on system).
+    #[inline]
     fn write_le_int(&mut self, n: int) -> IoResult<()> {
         extensions::u64_to_le_bytes(n as u64, int::BYTES, |v| self.write(v))
     }
 
     /// Write a big-endian uint (number of bytes depends on system).
+    #[inline]
     fn write_be_uint(&mut self, n: uint) -> IoResult<()> {
         extensions::u64_to_be_bytes(n as u64, uint::BYTES, |v| self.write(v))
     }
 
     /// Write a big-endian int (number of bytes depends on system).
+    #[inline]
     fn write_be_int(&mut self, n: int) -> IoResult<()> {
         extensions::u64_to_be_bytes(n as u64, int::BYTES, |v| self.write(v))
     }
 
     /// Write a big-endian u64 (8 bytes).
+    #[inline]
     fn write_be_u64(&mut self, n: u64) -> IoResult<()> {
         extensions::u64_to_be_bytes(n, 8u, |v| self.write(v))
     }
 
     /// Write a big-endian u32 (4 bytes).
+    #[inline]
     fn write_be_u32(&mut self, n: u32) -> IoResult<()> {
         extensions::u64_to_be_bytes(n as u64, 4u, |v| self.write(v))
     }
 
     /// Write a big-endian u16 (2 bytes).
+    #[inline]
     fn write_be_u16(&mut self, n: u16) -> IoResult<()> {
         extensions::u64_to_be_bytes(n as u64, 2u, |v| self.write(v))
     }
 
     /// Write a big-endian i64 (8 bytes).
+    #[inline]
     fn write_be_i64(&mut self, n: i64) -> IoResult<()> {
         extensions::u64_to_be_bytes(n as u64, 8u, |v| self.write(v))
     }
 
     /// Write a big-endian i32 (4 bytes).
+    #[inline]
     fn write_be_i32(&mut self, n: i32) -> IoResult<()> {
         extensions::u64_to_be_bytes(n as u64, 4u, |v| self.write(v))
     }
 
     /// Write a big-endian i16 (2 bytes).
+    #[inline]
     fn write_be_i16(&mut self, n: i16) -> IoResult<()> {
         extensions::u64_to_be_bytes(n as u64, 2u, |v| self.write(v))
     }
 
     /// Write a big-endian IEEE754 double-precision floating-point (8 bytes).
+    #[inline]
     fn write_be_f64(&mut self, f: f64) -> IoResult<()> {
         unsafe {
             self.write_be_u64(transmute(f))
@@ -1174,6 +1190,7 @@ pub trait Writer {
     }
 
     /// Write a big-endian IEEE754 single-precision floating-point (4 bytes).
+    #[inline]
     fn write_be_f32(&mut self, f: f32) -> IoResult<()> {
         unsafe {
             self.write_be_u32(transmute(f))
@@ -1181,37 +1198,44 @@ pub trait Writer {
     }
 
     /// Write a little-endian u64 (8 bytes).
+    #[inline]
     fn write_le_u64(&mut self, n: u64) -> IoResult<()> {
         extensions::u64_to_le_bytes(n, 8u, |v| self.write(v))
     }
 
     /// Write a little-endian u32 (4 bytes).
+    #[inline]
     fn write_le_u32(&mut self, n: u32) -> IoResult<()> {
         extensions::u64_to_le_bytes(n as u64, 4u, |v| self.write(v))
     }
 
     /// Write a little-endian u16 (2 bytes).
+    #[inline]
     fn write_le_u16(&mut self, n: u16) -> IoResult<()> {
         extensions::u64_to_le_bytes(n as u64, 2u, |v| self.write(v))
     }
 
     /// Write a little-endian i64 (8 bytes).
+    #[inline]
     fn write_le_i64(&mut self, n: i64) -> IoResult<()> {
         extensions::u64_to_le_bytes(n as u64, 8u, |v| self.write(v))
     }
 
     /// Write a little-endian i32 (4 bytes).
+    #[inline]
     fn write_le_i32(&mut self, n: i32) -> IoResult<()> {
         extensions::u64_to_le_bytes(n as u64, 4u, |v| self.write(v))
     }
 
     /// Write a little-endian i16 (2 bytes).
+    #[inline]
     fn write_le_i16(&mut self, n: i16) -> IoResult<()> {
         extensions::u64_to_le_bytes(n as u64, 2u, |v| self.write(v))
     }
 
     /// Write a little-endian IEEE754 double-precision floating-point
     /// (8 bytes).
+    #[inline]
     fn write_le_f64(&mut self, f: f64) -> IoResult<()> {
         unsafe {
             self.write_le_u64(transmute(f))
@@ -1220,6 +1244,7 @@ pub trait Writer {
 
     /// Write a little-endian IEEE754 single-precision floating-point
     /// (4 bytes).
+    #[inline]
     fn write_le_f32(&mut self, f: f32) -> IoResult<()> {
         unsafe {
             self.write_le_u32(transmute(f))
@@ -1227,11 +1252,13 @@ pub trait Writer {
     }
 
     /// Write a u8 (1 byte).
+    #[inline]
     fn write_u8(&mut self, n: u8) -> IoResult<()> {
         self.write([n])
     }
 
     /// Write an i8 (1 byte).
+    #[inline]
     fn write_i8(&mut self, n: i8) -> IoResult<()> {
         self.write([n as u8])
     }
@@ -1240,18 +1267,25 @@ pub trait Writer {
     ///
     /// This is useful to allow applying wrappers while still
     /// retaining ownership of the original value.
+    #[inline]
     fn by_ref<'a>(&'a mut self) -> RefWriter<'a, Self> {
         RefWriter { inner: self }
     }
 }
 
 impl Writer for Box<Writer> {
+    #[inline]
     fn write(&mut self, buf: &[u8]) -> IoResult<()> { self.write(buf) }
+
+    #[inline]
     fn flush(&mut self) -> IoResult<()> { self.flush() }
 }
 
 impl<'a> Writer for &'a mut Writer {
+    #[inline]
     fn write(&mut self, buf: &[u8]) -> IoResult<()> { self.write(buf) }
+
+    #[inline]
     fn flush(&mut self) -> IoResult<()> { self.flush() }
 }
 
@@ -1285,7 +1319,10 @@ pub struct RefWriter<'a, W> {
 }
 
 impl<'a, W: Writer> Writer for RefWriter<'a, W> {
+    #[inline]
     fn write(&mut self, buf: &[u8]) -> IoResult<()> { self.inner.write(buf) }
+
+    #[inline]
     fn flush(&mut self) -> IoResult<()> { self.inner.flush() }
 }
 
