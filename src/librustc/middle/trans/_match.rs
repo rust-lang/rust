@@ -65,7 +65,11 @@
  * per-arm `ArmData` struct.  There is a mapping from identifiers to
  * `BindingInfo` structs.  These structs contain the mode/id/type of the
  * binding, but they also contain an LLVM value which points at an alloca
- * called `llmatch`.
+ * called `llmatch`. For by value bindings that are Copy, we also create
+ * an extra alloca that we copy the matched value to so that any changes
+ * we do to our copy is not reflected in the original and vice-versa.
+ * We don't do this if it's a move since the original value can't be used
+ * and thus allowing us to cheat in not creating an extra alloca.
  *
  * The `llmatch` binding always stores a pointer into the value being matched
  * which points at the data for the binding.  If the value being matched has
@@ -352,7 +356,8 @@ fn variant_opt(bcx: &Block, pat_id: ast::NodeId) -> Opt {
 
 #[deriving(Clone)]
 pub enum TransBindingMode {
-    TrByValue,
+    TrByCopy(/* llbinding */ ValueRef),
+    TrByMove,
     TrByRef,
 }
 
@@ -1249,7 +1254,7 @@ fn compare_values<'a>(
     }
 }
 
-fn insert_lllocals<'a>(bcx: &'a Block<'a>,
+fn insert_lllocals<'a>(mut bcx: &'a Block<'a>,
                        bindings_map: &BindingsMap,
                        cleanup_scope: cleanup::ScopeId)
                        -> &'a Block<'a> {
@@ -1262,8 +1267,18 @@ fn insert_lllocals<'a>(bcx: &'a Block<'a>,
 
     for (&ident, &binding_info) in bindings_map.iter() {
         let llval = match binding_info.trmode {
-            // By value bindings: load from the ptr into the matched value
-            TrByValue => Load(bcx, binding_info.llmatch),
+            // By value mut binding for a copy type: load from the ptr
+            // into the matched value and copy to our alloca
+            TrByCopy(llbinding) => {
+                let llval = Load(bcx, binding_info.llmatch);
+                let datum = Datum::new(llval, binding_info.ty, Lvalue);
+                bcx = datum.store_to(bcx, llbinding);
+
+                llbinding
+            },
+
+            // By value move bindings: load from the ptr into the matched value
+            TrByMove => Load(bcx, binding_info.llmatch),
 
             // By ref binding: use the ptr into the matched value
             TrByRef => binding_info.llmatch
@@ -1762,10 +1777,20 @@ fn create_bindings_map(bcx: &Block, pat: Gc<ast::Pat>) -> BindingsMap {
         let ident = path_to_ident(path);
         let variable_ty = node_id_type(bcx, p_id);
         let llvariable_ty = type_of::type_of(ccx, variable_ty);
+        let tcx = bcx.tcx();
 
         let llmatch;
         let trmode;
         match bm {
+            ast::BindByValue(_)
+                if !ty::type_moves_by_default(tcx, variable_ty) => {
+                llmatch = alloca(bcx,
+                                 llvariable_ty.ptr_to(),
+                                 "__llmatch");
+                trmode = TrByCopy(alloca(bcx,
+                                         llvariable_ty,
+                                         bcx.ident(ident).as_slice()));
+            }
             ast::BindByValue(_) => {
                 // in this case, the final type of the variable will be T,
                 // but during matching we need to store a *T as explained
@@ -1773,7 +1798,7 @@ fn create_bindings_map(bcx: &Block, pat: Gc<ast::Pat>) -> BindingsMap {
                 llmatch = alloca(bcx,
                                  llvariable_ty.ptr_to(),
                                  bcx.ident(ident).as_slice());
-                trmode = TrByValue;
+                trmode = TrByMove;
             }
             ast::BindByRef(_) => {
                 llmatch = alloca(bcx,
