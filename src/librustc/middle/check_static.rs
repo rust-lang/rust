@@ -75,7 +75,7 @@ impl<'a> CheckStaticVisitor<'a> {
 impl<'a> Visitor<bool> for CheckStaticVisitor<'a> {
 
     fn visit_item(&mut self, i: &ast::Item, _is_const: bool) {
-        debug!("visit_item(item={})", pprust::item_to_str(i));
+        debug!("visit_item(item={})", pprust::item_to_string(i));
         match i.node {
             ast::ItemStatic(_, mutability, ref expr) => {
                 match mutability {
@@ -99,7 +99,7 @@ impl<'a> Visitor<bool> for CheckStaticVisitor<'a> {
     /// of a static item, this method does nothing but walking
     /// down through it.
     fn visit_expr(&mut self, e: &ast::Expr, is_const: bool) {
-        debug!("visit_expr(expr={})", pprust::expr_to_str(e));
+        debug!("visit_expr(expr={})", pprust::expr_to_string(e));
 
         if !is_const {
             return visit::walk_expr(self, e, is_const);

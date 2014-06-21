@@ -31,7 +31,7 @@ use std::cell::Cell;
 
 use syntax::ast;
 use syntax::codemap::Span;
-use syntax::print::pprust::pat_to_str;
+use syntax::print::pprust::pat_to_string;
 use syntax::visit;
 use syntax::visit::Visitor;
 
@@ -159,7 +159,7 @@ impl<'cx> Visitor<()> for WritebackCx<'cx> {
         self.visit_node_id(ResolvingPattern(p.span), p.id);
 
         debug!("Type for pattern binding {} (id {}) resolved to {}",
-               pat_to_str(p),
+               pat_to_string(p),
                p.id,
                ty::node_id_to_type(self.tcx(), p.id).repr(self.tcx()));
 
@@ -403,7 +403,7 @@ impl<'cx> Resolver<'cx> {
                         span,
                         format!("cannot determine a type for \
                                  this expression: {}",
-                                infer::fixup_err_to_str(e)).as_slice())
+                                infer::fixup_err_to_string(e)).as_slice())
                 }
 
                 ResolvingLocal(span) => {
@@ -411,7 +411,7 @@ impl<'cx> Resolver<'cx> {
                         span,
                         format!("cannot determine a type for \
                                  this local variable: {}",
-                                infer::fixup_err_to_str(e)).as_slice())
+                                infer::fixup_err_to_string(e)).as_slice())
                 }
 
                 ResolvingPattern(span) => {
@@ -419,7 +419,7 @@ impl<'cx> Resolver<'cx> {
                         span,
                         format!("cannot determine a type for \
                                  this pattern binding: {}",
-                                infer::fixup_err_to_str(e)).as_slice())
+                                infer::fixup_err_to_string(e)).as_slice())
                 }
 
                 ResolvingUpvar(upvar_id) => {
@@ -430,8 +430,8 @@ impl<'cx> Resolver<'cx> {
                                  captured variable `{}`: {}",
                                 ty::local_var_name_str(
                                     self.tcx,
-                                    upvar_id.var_id).get().to_str(),
-                                infer::fixup_err_to_str(e)).as_slice());
+                                    upvar_id.var_id).get().to_string(),
+                                infer::fixup_err_to_string(e)).as_slice());
                 }
 
                 ResolvingImplRes(span) => {

@@ -233,7 +233,7 @@ use owned::Box;
 use result::{Ok, Err, Result};
 use rt::rtio;
 use slice::{Vector, MutableVector, ImmutableVector};
-use str::{Str, StrSlice, StrAllocating};
+use str::{Str, StrSlice};
 use str;
 use string::String;
 use uint;
@@ -566,7 +566,7 @@ pub trait Reader {
     fn read_at_least(&mut self, min: uint, buf: &mut [u8]) -> IoResult<uint> {
         if min > buf.len() {
             return Err(IoError {
-                detail: Some("the buffer is too short".to_string()),
+                detail: Some(String::from_str("the buffer is too short")),
                 ..standard_error(InvalidInput)
             });
         }
@@ -634,7 +634,7 @@ pub trait Reader {
     fn push_at_least(&mut self, min: uint, len: uint, buf: &mut Vec<u8>) -> IoResult<uint> {
         if min > len {
             return Err(IoError {
-                detail: Some("the buffer is too short".to_string()),
+                detail: Some(String::from_str("the buffer is too short")),
                 ..standard_error(InvalidInput)
             });
         }
@@ -702,10 +702,10 @@ pub trait Reader {
     /// This function returns all of the same errors as `read_to_end` with an
     /// additional error if the reader's contents are not a valid sequence of
     /// UTF-8 bytes.
-    fn read_to_str(&mut self) -> IoResult<String> {
+    fn read_to_string(&mut self) -> IoResult<String> {
         self.read_to_end().and_then(|s| {
             match str::from_utf8(s.as_slice()) {
-                Some(s) => Ok(s.to_string()),
+                Some(s) => Ok(String::from_str(s)),
                 None => Err(standard_error(InvalidInput)),
             }
         })
@@ -1440,7 +1440,7 @@ pub trait Buffer: Reader {
     fn read_line(&mut self) -> IoResult<String> {
         self.read_until('\n' as u8).and_then(|line|
             match str::from_utf8(line.as_slice()) {
-                Some(s) => Ok(s.to_string()),
+                Some(s) => Ok(String::from_str(s)),
                 None => Err(standard_error(InvalidInput)),
             }
         )

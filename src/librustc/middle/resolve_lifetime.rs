@@ -24,7 +24,7 @@ use syntax::codemap::Span;
 use syntax::owned_slice::OwnedSlice;
 use syntax::parse::token::special_idents;
 use syntax::parse::token;
-use syntax::print::pprust::{lifetime_to_str};
+use syntax::print::pprust::{lifetime_to_string};
 use syntax::visit;
 use syntax::visit::Visitor;
 use util::nodemap::NodeMap;
@@ -372,7 +372,7 @@ impl<'a> LifetimeContext<'a> {
         }
 
         debug!("lifetime_ref={} id={} resolved to {:?}",
-                lifetime_to_str(lifetime_ref),
+                lifetime_to_string(lifetime_ref),
                 lifetime_ref.id,
                 def);
         self.named_region_map.insert(lifetime_ref.id, def);

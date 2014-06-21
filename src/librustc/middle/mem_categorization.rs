@@ -66,7 +66,7 @@ use middle::def;
 use middle::ty;
 use middle::typeck;
 use util::nodemap::NodeMap;
-use util::ppaux::{ty_to_str, Repr};
+use util::ppaux::{ty_to_string, Repr};
 
 use syntax::ast::{MutImmutable, MutMutable};
 use syntax::ast;
@@ -217,7 +217,7 @@ pub fn deref_kind(tcx: &ty::ctxt, t: ty::t) -> deref_kind {
       None => {
         tcx.sess.bug(
             format!("deref_cat() invoked on non-derefable type {}",
-                    ty_to_str(tcx, t)).as_slice());
+                    ty_to_string(tcx, t)).as_slice());
       }
     }
 }
@@ -980,7 +980,7 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
         // get the type of the *subpattern* and use that.
 
         debug!("cat_pattern: id={} pat={} cmt={}",
-               pat.id, pprust::pat_to_str(pat),
+               pat.id, pprust::pat_to_string(pat),
                cmt.repr(self.tcx()));
 
         op(self, cmt.clone(), pat);
@@ -1105,7 +1105,7 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
         Ok(())
     }
 
-    pub fn cmt_to_str(&self, cmt: &cmt_) -> String {
+    pub fn cmt_to_string(&self, cmt: &cmt_) -> String {
         match cmt.cat {
           cat_static_item => {
               "static item".to_string()
@@ -1151,10 +1151,10 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
               "captured outer variable".to_string()
           }
           cat_discr(ref cmt, _) => {
-            self.cmt_to_str(&**cmt)
+            self.cmt_to_string(&**cmt)
           }
           cat_downcast(ref cmt) => {
-            self.cmt_to_str(&**cmt)
+            self.cmt_to_string(&**cmt)
           }
         }
     }
@@ -1311,7 +1311,7 @@ impl Repr for InteriorKind {
     fn repr(&self, _tcx: &ty::ctxt) -> String {
         match *self {
             InteriorField(NamedField(fld)) => {
-                token::get_name(fld).get().to_str()
+                token::get_name(fld).get().to_string()
             }
             InteriorField(PositionalField(i)) => format!("#{:?}", i),
             InteriorElement(_) => "[]".to_string(),

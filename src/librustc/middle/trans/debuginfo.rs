@@ -270,7 +270,7 @@ impl TypeMap {
                                    metadata: DIType) {
         if !self.type_to_metadata.insert(ty::type_id(type_), metadata) {
             cx.sess().bug(format!("Type metadata for ty::t '{}' is already in the TypeMap!",
-                                   ppaux::ty_to_str(cx.tcx(), type_)).as_slice());
+                                   ppaux::ty_to_string(cx.tcx(), type_)).as_slice());
         }
     }
 
@@ -504,7 +504,7 @@ impl TypeMap {
             },
             _ => {
                 cx.sess().bug(format!("get_unique_type_id_of_type() - unexpected type: {}, {:?}",
-                                      ppaux::ty_to_str(cx.tcx(), type_).as_slice(),
+                                      ppaux::ty_to_string(cx.tcx(), type_).as_slice(),
                                       ty::get(type_).sty).as_slice())
             }
         };
@@ -808,7 +808,7 @@ pub fn create_global_var_metadata(cx: &CrateContext,
     let type_metadata = type_metadata(cx, variable_type, span);
 
     let namespace_node = namespace_for_item(cx, ast_util::local_def(node_id));
-    let var_name = token::get_ident(ident).get().to_str();
+    let var_name = token::get_ident(ident).get().to_string();
     let linkage_name =
         namespace_node.mangled_name_of_contained_item(var_name.as_slice());
     let var_scope = namespace_node.scope;
@@ -1056,7 +1056,7 @@ pub fn set_source_location(fcx: &FunctionContext,
         FunctionDebugContext(box ref function_debug_context) => {
             let cx = fcx.ccx;
 
-            debug!("set_source_location: {}", cx.sess().codemap().span_to_str(span));
+            debug!("set_source_location: {}", cx.sess().codemap().span_to_string(span));
 
             if function_debug_context.source_locations_enabled.get() {
                 let loc = span_start(cx, span);
@@ -1812,7 +1812,7 @@ impl RecursiveTypeDescription {
                        type_map.find_metadata_for_type(unfinished_type).is_none() {
                         cx.sess().bug(format!("Forward declaration of potentially recursive type \
                                               '{}' was not found in TypeMap!",
-                                              ppaux::ty_to_str(cx.tcx(), unfinished_type))
+                                              ppaux::ty_to_string(cx.tcx(), unfinished_type))
                                       .as_slice());
                     }
                 }
@@ -2245,7 +2245,7 @@ fn describe_enum_variant(cx: &CrateContext,
         Some(ref names) => {
             names.iter()
                  .map(|ident| {
-                     token::get_ident(*ident).get().to_str().into_string()
+                     token::get_ident(*ident).get().to_string().into_string()
                  }).collect()
         }
         None => variant_info.args.iter().map(|_| "".to_string()).collect()
@@ -2872,7 +2872,7 @@ fn trait_pointer_metadata(cx: &CrateContext,
         ty::ty_uniq(pointee_type) => pointee_type,
         ty::ty_rptr(_, ty::mt { ty, .. }) => ty,
         _ => {
-            let pp_type_name = ppaux::ty_to_str(cx.tcx(), trait_pointer_type);
+            let pp_type_name = ppaux::ty_to_string(cx.tcx(), trait_pointer_type);
             cx.sess().bug(format!("debuginfo: Unexpected trait-pointer type in \
                                    trait_pointer_metadata(): {}",
                                    pp_type_name.as_slice()).as_slice());
@@ -2882,7 +2882,7 @@ fn trait_pointer_metadata(cx: &CrateContext,
     let def_id = match ty::get(trait_object_type).sty {
         ty::ty_trait(box ty::TyTrait { def_id, .. }) => def_id,
         _ => {
-            let pp_type_name = ppaux::ty_to_str(cx.tcx(), trait_object_type);
+            let pp_type_name = ppaux::ty_to_string(cx.tcx(), trait_object_type);
             cx.sess().bug(format!("debuginfo: Unexpected trait-object type in \
                                    trait_pointer_metadata(): {}",
                                    pp_type_name.as_slice()).as_slice());
@@ -3064,7 +3064,7 @@ fn type_metadata(cx: &CrateContext,
                                                  the debuginfo::TypeMap but it \
                                                  was not. (ty::t = {})",
                                                 unique_type_id_str.as_slice(),
-                                                ppaux::ty_to_str(cx.tcx(), t));
+                                                ppaux::ty_to_string(cx.tcx(), t));
                     cx.sess().span_bug(usage_site_span, error_message.as_slice());
                 }
             };
@@ -3079,7 +3079,7 @@ fn type_metadata(cx: &CrateContext,
                                                      debuginfo::TypeMap. \
                                                      UniqueTypeId={}, ty::t={}",
                             unique_type_id_str.as_slice(),
-                            ppaux::ty_to_str(cx.tcx(), t));
+                            ppaux::ty_to_string(cx.tcx(), t));
                         cx.sess().span_bug(usage_site_span, error_message.as_slice());
                     }
                 }
@@ -3879,7 +3879,7 @@ fn push_debuginfo_type_name(cx: &CrateContext,
         ty::ty_infer(_) |
         ty::ty_param(_) => {
             cx.sess().bug(format!("debuginfo: Trying to create type name for \
-                unexpected type: {}", ppaux::ty_to_str(cx.tcx(), t)).as_slice());
+                unexpected type: {}", ppaux::ty_to_string(cx.tcx(), t)).as_slice());
         }
     }
 

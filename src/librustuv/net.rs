@@ -676,7 +676,7 @@ impl rtio::RtioUdpSocket for UdpWatcher {
     fn join_multicast(&mut self, multi: rtio::IpAddr) -> Result<(), IoError> {
         let _m = self.fire_homing_missile();
         status_to_io_result(unsafe {
-            multi.to_str().with_c_str(|m_addr| {
+            multi.to_string().with_c_str(|m_addr| {
                 uvll::uv_udp_set_membership(self.handle,
                                             m_addr, ptr::null(),
                                             uvll::UV_JOIN_GROUP)
@@ -687,7 +687,7 @@ impl rtio::RtioUdpSocket for UdpWatcher {
     fn leave_multicast(&mut self, multi: rtio::IpAddr) -> Result<(), IoError> {
         let _m = self.fire_homing_missile();
         status_to_io_result(unsafe {
-            multi.to_str().with_c_str(|m_addr| {
+            multi.to_string().with_c_str(|m_addr| {
                 uvll::uv_udp_set_membership(self.handle,
                                             m_addr, ptr::null(),
                                             uvll::UV_LEAVE_GROUP)

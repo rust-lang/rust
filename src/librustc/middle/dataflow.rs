@@ -164,18 +164,18 @@ impl<'a, O:DataFlowOperator> pprust::PpAnn for DataFlowContext<'a, O> {
             let cfgidx = to_cfgidx_or_die(id, &self.nodeid_to_index);
             let (start, end) = self.compute_id_range_frozen(cfgidx);
             let on_entry = self.on_entry.slice(start, end);
-            let entry_str = bits_to_str(on_entry);
+            let entry_str = bits_to_string(on_entry);
 
             let gens = self.gens.slice(start, end);
             let gens_str = if gens.iter().any(|&u| u != 0) {
-                format!(" gen: {}", bits_to_str(gens))
+                format!(" gen: {}", bits_to_string(gens))
             } else {
                 "".to_string()
             };
 
             let kills = self.kills.slice(start, end);
             let kills_str = if kills.iter().any(|&u| u != 0) {
-                format!(" kill: {}", bits_to_str(kills))
+                format!(" kill: {}", bits_to_string(kills))
             } else {
                 "".to_string()
             };
@@ -289,7 +289,7 @@ impl<'a, O:DataFlowOperator> DataFlowContext<'a, O> {
     fn apply_gen_kill(&mut self, cfgidx: CFGIndex, bits: &mut [uint]) {
         //! Applies the gen and kill sets for `id` to `bits`
         debug!("{:s} apply_gen_kill(cfgidx={}, bits={}) [before]",
-               self.analysis_name, cfgidx, mut_bits_to_str(bits));
+               self.analysis_name, cfgidx, mut_bits_to_string(bits));
         let (start, end) = self.compute_id_range(cfgidx);
         let gens = self.gens.slice(start, end);
         bitwise(bits, gens, &Union);
@@ -297,7 +297,7 @@ impl<'a, O:DataFlowOperator> DataFlowContext<'a, O> {
         bitwise(bits, kills, &Subtract);
 
         debug!("{:s} apply_gen_kill(cfgidx={}, bits={}) [after]",
-               self.analysis_name, cfgidx, mut_bits_to_str(bits));
+               self.analysis_name, cfgidx, mut_bits_to_string(bits));
     }
 
     fn compute_id_range_frozen(&self, cfgidx: CFGIndex) -> (uint, uint) {
@@ -334,7 +334,7 @@ impl<'a, O:DataFlowOperator> DataFlowContext<'a, O> {
         let (start, end) = self.compute_id_range_frozen(cfgidx);
         let on_entry = self.on_entry.slice(start, end);
         debug!("{:s} each_bit_on_entry_frozen(id={:?}, on_entry={})",
-               self.analysis_name, id, bits_to_str(on_entry));
+               self.analysis_name, id, bits_to_string(on_entry));
         self.each_bit(on_entry, f)
     }
 
@@ -348,7 +348,7 @@ impl<'a, O:DataFlowOperator> DataFlowContext<'a, O> {
         let (start, end) = self.compute_id_range_frozen(cfgidx);
         let gens = self.gens.slice(start, end);
         debug!("{:s} each_gen_bit(id={:?}, gens={})",
-               self.analysis_name, id, bits_to_str(gens));
+               self.analysis_name, id, bits_to_string(gens));
         self.each_bit(gens, f)
     }
 
@@ -426,10 +426,10 @@ impl<'a, O:DataFlowOperator> DataFlowContext<'a, O> {
             if changed {
                 let bits = self.kills.mut_slice(start, end);
                 debug!("{:s} add_kills_from_flow_exits flow_exit={} bits={} [before]",
-                       self.analysis_name, flow_exit, mut_bits_to_str(bits));
+                       self.analysis_name, flow_exit, mut_bits_to_string(bits));
                 bits.copy_from(orig_kills.as_slice());
                 debug!("{:s} add_kills_from_flow_exits flow_exit={} bits={} [after]",
-                       self.analysis_name, flow_exit, mut_bits_to_str(bits));
+                       self.analysis_name, flow_exit, mut_bits_to_string(bits));
             }
             true
         });
@@ -483,10 +483,10 @@ impl<'a, 'b, O:DataFlowOperator> PropagationContext<'a, 'b, O> {
                 cfg: &cfg::CFG,
                 in_out: &mut [uint]) {
         debug!("DataFlowContext::walk_cfg(in_out={}) {:s}",
-               bits_to_str(in_out), self.dfcx.analysis_name);
+               bits_to_string(in_out), self.dfcx.analysis_name);
         cfg.graph.each_node(|node_index, node| {
             debug!("DataFlowContext::walk_cfg idx={} id={} begin in_out={}",
-                   node_index, node.data.id, bits_to_str(in_out));
+                   node_index, node.data.id, bits_to_string(in_out));
 
             let (start, end) = self.dfcx.compute_id_range(node_index);
 
@@ -526,7 +526,7 @@ impl<'a, 'b, O:DataFlowOperator> PropagationContext<'a, 'b, O> {
         let source = edge.source();
         let cfgidx = edge.target();
         debug!("{:s} propagate_bits_into_entry_set_for(pred_bits={}, {} to {})",
-               self.dfcx.analysis_name, bits_to_str(pred_bits), source, cfgidx);
+               self.dfcx.analysis_name, bits_to_string(pred_bits), source, cfgidx);
         let (start, end) = self.dfcx.compute_id_range(cfgidx);
         let changed = {
             // (scoping mutable borrow of self.dfcx.on_entry)
@@ -536,17 +536,17 @@ impl<'a, 'b, O:DataFlowOperator> PropagationContext<'a, 'b, O> {
         if changed {
             debug!("{:s} changed entry set for {:?} to {}",
                    self.dfcx.analysis_name, cfgidx,
-                   bits_to_str(self.dfcx.on_entry.slice(start, end)));
+                   bits_to_string(self.dfcx.on_entry.slice(start, end)));
             self.changed = true;
         }
     }
 }
 
-fn mut_bits_to_str(words: &mut [uint]) -> String {
-    bits_to_str(words)
+fn mut_bits_to_string(words: &mut [uint]) -> String {
+    bits_to_string(words)
 }
 
-fn bits_to_str(words: &[uint]) -> String {
+fn bits_to_string(words: &[uint]) -> String {
     let mut result = String::new();
     let mut sep = '[';
 
@@ -582,7 +582,7 @@ fn bitwise<Op:BitwiseOperator>(out_vec: &mut [uint],
 
 fn set_bit(words: &mut [uint], bit: uint) -> bool {
     debug!("set_bit: words={} bit={}",
-           mut_bits_to_str(words), bit_str(bit));
+           mut_bits_to_string(words), bit_str(bit));
     let word = bit / uint::BITS;
     let bit_in_word = bit % uint::BITS;
     let bit_mask = 1 << bit_in_word;

@@ -765,13 +765,13 @@ impl fmt::Show for Path {
 
 impl<S: hash::Writer> hash::Hash<S> for Url {
     fn hash(&self, state: &mut S) {
-        self.to_str().hash(state)
+        self.to_string().hash(state)
     }
 }
 
 impl<S: hash::Writer> hash::Hash<S> for Path {
     fn hash(&self, state: &mut S) {
-        self.to_str().hash(state)
+        self.to_string().hash(state)
     }
 }
 

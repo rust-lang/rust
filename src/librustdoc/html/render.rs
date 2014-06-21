@@ -428,7 +428,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> io::IoResult<String> 
         }
         try!(write!(&mut w, r#"[{:u},"{}","{}",{}"#,
                     item.ty, item.name, path,
-                    item.desc.to_json().to_str()));
+                    item.desc.to_json().to_string()));
         match item.parent {
             Some(nodeid) => {
                 let pathid = *nodeid_to_pathid.find(&nodeid).unwrap();

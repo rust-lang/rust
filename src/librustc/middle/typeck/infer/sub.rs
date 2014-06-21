@@ -22,7 +22,7 @@ use middle::typeck::infer::lub::Lub;
 use middle::typeck::infer::then;
 use middle::typeck::infer::{TypeTrace, Subtype};
 use util::common::{indenter};
-use util::ppaux::{bound_region_to_str, Repr};
+use util::ppaux::{bound_region_to_string, Repr};
 
 use syntax::ast::{Onceness, FnStyle, MutImmutable, MutMutable};
 
@@ -176,7 +176,7 @@ impl<'f> Combine for Sub<'f> {
             replace_late_bound_regions_in_fn_sig(self.get_ref().infcx.tcx, b, |br| {
                 let skol = self.get_ref().infcx.region_vars.new_skolemized(br);
                 debug!("Bound region {} skolemized to {:?}",
-                       bound_region_to_str(self.get_ref().infcx.tcx, "", false, br),
+                       bound_region_to_string(self.get_ref().infcx.tcx, "", false, br),
                        skol);
                 skol
             })

@@ -196,13 +196,13 @@ impl param_substs {
     }
 }
 
-fn param_substs_to_str(this: &param_substs, tcx: &ty::ctxt) -> String {
+fn param_substs_to_string(this: &param_substs, tcx: &ty::ctxt) -> String {
     format!("param_substs({})", this.substs.repr(tcx))
 }
 
 impl Repr for param_substs {
     fn repr(&self, tcx: &ty::ctxt) -> String {
-        param_substs_to_str(self, tcx)
+        param_substs_to_string(self, tcx)
     }
 }
 
@@ -436,11 +436,11 @@ impl<'a> Block<'a> {
         token::get_ident(ident).get().to_string()
     }
 
-    pub fn node_id_to_str(&self, id: ast::NodeId) -> String {
-        self.tcx().map.node_to_str(id).to_string()
+    pub fn node_id_to_string(&self, id: ast::NodeId) -> String {
+        self.tcx().map.node_to_string(id).to_string()
     }
 
-    pub fn expr_to_str(&self, e: &ast::Expr) -> String {
+    pub fn expr_to_string(&self, e: &ast::Expr) -> String {
         e.repr(self.tcx())
     }
 
@@ -454,15 +454,15 @@ impl<'a> Block<'a> {
         }
     }
 
-    pub fn val_to_str(&self, val: ValueRef) -> String {
-        self.ccx().tn.val_to_str(val)
+    pub fn val_to_string(&self, val: ValueRef) -> String {
+        self.ccx().tn.val_to_string(val)
     }
 
     pub fn llty_str(&self, ty: Type) -> String {
-        self.ccx().tn.type_to_str(ty)
+        self.ccx().tn.type_to_string(ty)
     }
 
-    pub fn ty_to_str(&self, t: ty::t) -> String {
+    pub fn ty_to_string(&self, t: ty::t) -> String {
         t.repr(self.tcx())
     }
 
@@ -645,7 +645,7 @@ pub fn const_get_elt(cx: &CrateContext, v: ValueRef, us: &[c_uint])
         let r = llvm::LLVMConstExtractValue(v, us.as_ptr(), us.len() as c_uint);
 
         debug!("const_get_elt(v={}, us={:?}, r={})",
-               cx.tn.val_to_str(v), us, cx.tn.val_to_str(r));
+               cx.tn.val_to_string(v), us, cx.tn.val_to_string(r));
 
         return r;
     }

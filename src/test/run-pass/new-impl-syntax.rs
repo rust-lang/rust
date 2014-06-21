@@ -32,6 +32,6 @@ impl<T:fmt::Show> fmt::Show for PolymorphicThingy<T> {
 }
 
 pub fn main() {
-    println!("{}", Thingy { x: 1, y: 2 }.to_str());
-    println!("{}", PolymorphicThingy { x: Thingy { x: 1, y: 2 } }.to_str());
+    println!("{}", Thingy { x: 1, y: 2 }.to_string());
+    println!("{}", PolymorphicThingy { x: Thingy { x: 1, y: 2 } }.to_string());
 }

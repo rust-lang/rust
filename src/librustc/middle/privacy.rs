@@ -375,7 +375,7 @@ enum FieldName {
 impl<'a> PrivacyVisitor<'a> {
     // used when debugging
     fn nodestr(&self, id: ast::NodeId) -> String {
-        self.tcx.map.node_to_str(id).to_string()
+        self.tcx.map.node_to_string(id).to_string()
     }
 
     // Determines whether the given definition is public from the point of view
@@ -423,7 +423,7 @@ impl<'a> PrivacyVisitor<'a> {
         }
 
         debug!("privacy - local {} not public all the way down",
-               self.tcx.map.node_to_str(did.node));
+               self.tcx.map.node_to_string(did.node));
         // return quickly for things in the same module
         if self.parents.find(&did.node) == self.parents.find(&self.curitem) {
             debug!("privacy - same parent, we're done here");

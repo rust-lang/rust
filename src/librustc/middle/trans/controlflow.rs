@@ -126,8 +126,8 @@ pub fn trans_if<'a>(bcx: &'a Block<'a>,
                     dest: expr::Dest)
                     -> &'a Block<'a> {
     debug!("trans_if(bcx={}, if_id={}, cond={}, thn={:?}, dest={})",
-           bcx.to_str(), if_id, bcx.expr_to_str(cond), thn.id,
-           dest.to_str(bcx.ccx()));
+           bcx.to_str(), if_id, bcx.expr_to_string(cond), thn.id,
+           dest.to_string(bcx.ccx()));
     let _icx = push_ctxt("trans_if");
     let mut bcx = bcx;
 

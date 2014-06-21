@@ -259,7 +259,7 @@ pub fn to_utf16(s: &CString) -> IoResult<Vec<u16>> {
         None => Err(IoError {
             code: libc::ERROR_INVALID_NAME as uint,
             extra: 0,
-            detail: Some("valid unicode input required".to_str()),
+            detail: Some("valid unicode input required".to_string()),
         })
     }
 }

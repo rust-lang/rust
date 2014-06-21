@@ -251,7 +251,7 @@ pub fn handle_options(mut args: Vec<String>) -> Option<getopts::Matches> {
         match getopts::getopts(args.as_slice(), config::optgroups().as_slice()) {
             Ok(m) => m,
             Err(f) => {
-                early_error(f.to_str().as_slice());
+                early_error(f.to_string().as_slice());
             }
         };
 
@@ -450,7 +450,7 @@ fn monitor(f: proc():Send) {
                     emitter.emit(None, note.as_slice(), diagnostic::Note)
                 }
 
-                match r.read_to_str() {
+                match r.read_to_string() {
                     Ok(s) => println!("{}", s),
                     Err(e) => {
                         emitter.emit(None,

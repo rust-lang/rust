@@ -23,7 +23,7 @@ use middle::trans::glue;
 use middle::trans::tvec;
 use middle::trans::type_of;
 use middle::ty;
-use util::ppaux::{ty_to_str};
+use util::ppaux::{ty_to_string};
 
 use syntax::ast;
 
@@ -596,10 +596,10 @@ impl<K:KindOps> Datum<K> {
     }
 
     #[allow(dead_code)] // useful for debugging
-    pub fn to_str(&self, ccx: &CrateContext) -> String {
+    pub fn to_string(&self, ccx: &CrateContext) -> String {
         format!("Datum({}, {}, {:?})",
-                ccx.tn.val_to_str(self.val),
-                ty_to_str(ccx.tcx(), self.ty),
+                ccx.tn.val_to_string(self.val),
+                ty_to_string(ccx.tcx(), self.ty),
                 self.kind)
     }
 

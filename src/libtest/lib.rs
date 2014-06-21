@@ -370,7 +370,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
     let matches =
         match getopts::getopts(args_.as_slice(), optgroups().as_slice()) {
           Ok(m) => m,
-          Err(f) => return Some(Err(f.to_str()))
+          Err(f) => return Some(Err(f.to_string()))
         };
 
     if matches.opt_present("h") { usage(args[0].as_slice()); return None; }
@@ -634,7 +634,7 @@ impl<T: Writer> ConsoleTestState<T> {
         let mut failures = Vec::new();
         let mut fail_out = String::new();
         for &(ref f, ref stdout) in self.failures.iter() {
-            failures.push(f.name.to_str());
+            failures.push(f.name.to_string());
             if stdout.len() > 0 {
                 fail_out.push_str(format!("---- {} stdout ----\n\t",
                                           f.name.as_slice()).as_slice());
@@ -1522,7 +1522,7 @@ mod tests {
         let filtered = filter_tests(&opts, tests);
 
         assert_eq!(filtered.len(), 1);
-        assert_eq!(filtered.get(0).desc.name.to_str(),
+        assert_eq!(filtered.get(0).desc.name.to_string(),
                    "1".to_string());
         assert!(filtered.get(0).desc.ignore == false);
     }
@@ -1573,7 +1573,7 @@ mod tests {
                  "test::sort_tests".to_string());
 
         for (a, b) in expected.iter().zip(filtered.iter()) {
-            assert!(*a == b.desc.name.to_str());
+            assert!(*a == b.desc.name.to_string());
         }
     }
 

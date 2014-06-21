@@ -340,13 +340,13 @@ mod svh_visitor {
                 // trees might be faster. Implementing this is far
                 // easier in short term.
                 let macro_defn_as_string =
-                    pprust::to_str(|pp_state| pp_state.print_mac(macro));
+                    pprust::to_string(|pp_state| pp_state.print_mac(macro));
                 macro_defn_as_string.hash(self.st);
             } else {
                 // It is not possible to observe any kind of macro
                 // invocation at this stage except `macro_rules!`.
                 fail!("reached macro somehow: {}",
-                      pprust::to_str(|pp_state| pp_state.print_mac(macro)));
+                      pprust::to_string(|pp_state| pp_state.print_mac(macro)));
             }
 
             visit::walk_mac(self, macro, e);

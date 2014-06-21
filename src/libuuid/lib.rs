@@ -33,7 +33,7 @@ use uuid::Uuid;
 
 fn main() {
     let uuid1 = Uuid::new_v4();
-    println!("{}", uuid1.to_str());
+    println!("{}", uuid1.to_string());
 }
 ```
 
@@ -622,7 +622,7 @@ mod test {
 
         // Round-trip
         let uuid_orig = Uuid::new_v4();
-        let orig_str = uuid_orig.to_str();
+        let orig_str = uuid_orig.to_string();
         let uuid_out = Uuid::parse_string(orig_str.as_slice()).unwrap();
         assert!(uuid_orig == uuid_out);
 
@@ -650,9 +650,9 @@ mod test {
     }
 
     #[test]
-    fn test_to_str() {
+    fn test_to_string() {
         let uuid1 = Uuid::new_v4();
-        let s = uuid1.to_str();
+        let s = uuid1.to_string();
 
         assert!(s.len() == 32);
         assert!(s.as_slice().chars().all(|c| c.is_digit_radix(16)));
@@ -685,7 +685,7 @@ mod test {
         let uuid1 = Uuid::new_v4();
 
         let hs = uuid1.to_hyphenated_str();
-        let ss = uuid1.to_str();
+        let ss = uuid1.to_string();
 
         let hsn = str::from_chars(hs.as_slice()
                                     .chars()
@@ -704,7 +704,7 @@ mod test {
         let uuid_hs = Uuid::parse_string(hs.as_slice()).unwrap();
         assert!(uuid_hs == uuid);
 
-        let ss = uuid.to_str();
+        let ss = uuid.to_string();
         let uuid_ss = Uuid::parse_string(ss.as_slice()).unwrap();
         assert!(uuid_ss == uuid);
     }
@@ -833,10 +833,10 @@ mod bench {
     }
 
     #[bench]
-    pub fn uuid_to_str(b: &mut Bencher) {
+    pub fn uuid_to_string(b: &mut Bencher) {
         let u = Uuid::new_v4();
         b.iter(|| {
-            u.to_str();
+            u.to_string();
         })
     }
 
