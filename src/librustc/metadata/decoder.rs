@@ -439,6 +439,14 @@ pub fn get_type(cdata: Cmd, id: ast::NodeId, tcx: &ty::ctxt)
     }
 }
 
+pub fn get_stability(cdata: Cmd, id: ast::NodeId) -> Option<attr::Stability> {
+    let item = lookup_item(id, cdata.data());
+    reader::maybe_get_doc(item, tag_items_data_item_stability).map(|doc| {
+        let mut decoder = reader::Decoder::new(doc);
+        Decodable::decode(&mut decoder).unwrap()
+    })
+}
+
 pub fn get_impl_trait(cdata: Cmd,
                       id: ast::NodeId,
                       tcx: &ty::ctxt) -> Option<Rc<ty::TraitRef>>

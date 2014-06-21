@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,14 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags:-F experimental -D unstable
-// aux-build:lint_output_format.rs
+#![crate_id="lint_output_format#0.1"]
+#![crate_type = "lib"]
 
-extern crate lint_output_format;
-use lint_output_format::{foo, bar, baz};
+#[deprecated]
+pub fn foo() -> uint {
+    20
+}
 
-fn main() {
-    let _x = foo(); //~ WARNING #[warn(deprecated)] on by default
-    let _y = bar(); //~ ERROR [-F experimental]
-    let _z = baz(); //~ ERROR [-D unstable]
+#[experimental]
+pub fn bar() -> uint {
+    40
+}
+
+#[unstable]
+pub fn baz() -> uint {
+    30
 }

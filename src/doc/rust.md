@@ -2301,28 +2301,43 @@ One can indicate the stability of an API using the following attributes:
 These levels are directly inspired by
 [Node.js' "stability index"](http://nodejs.org/api/documentation.html).
 
-There are lints for disallowing items marked with certain levels:
-`deprecated`, `experimental` and `unstable`; the first two will warn
-by default. Items with not marked with a stability are considered to
-be unstable for the purposes of the lint. One can give an optional
+Stability levels are inherited, so an items's stability attribute is the
+default stability for everything nested underneath it.
+
+There are lints for disallowing items marked with certain levels: `deprecated`,
+`experimental` and `unstable`. For now, only `deprecated` warns by default, but
+this will change once the standard library has been stabilized.
+Stability levels are meant to be promises at the crate
+ level, so these lints only apply when referencing
+items from an _external_ crate, not to items defined within the
+current crate. Items with no stability level are considered
+to be unstable for the purposes of the lint. One can give an optional
 string that will be displayed when the lint flags the use of an item.
 
-~~~~ {.ignore}
-#![warn(unstable)]
+For example, if we define one crate called `stability_levels`:
 
+~~~~ {.ignore}
 #[deprecated="replaced by `best`"]
-fn bad() {
+pub fn bad() {
     // delete everything
 }
 
-fn better() {
+pub fn better() {
     // delete fewer things
 }
 
 #[stable]
-fn best() {
+pub fn best() {
     // delete nothing
 }
+~~~~
+
+then the lints will work as follows for a client crate:
+
+~~~~ {.ignore}
+#![warn(unstable)]
+extern crate stability_levels;
+use stability_levels::{bad, better, best};
 
 fn main() {
     bad(); // "warning: use of deprecated item: replaced by `best`"

@@ -20,7 +20,7 @@ use metadata::common::LinkMeta;
 use metadata::creader;
 use middle::cfg;
 use middle::cfg::graphviz::LabelledCFG;
-use middle::{trans, freevars, kind, ty, typeck, lint, reachable};
+use middle::{trans, freevars, stability, kind, ty, typeck, lint, reachable};
 use middle::dependency_format;
 use middle;
 use plugin::load::Plugins;
@@ -312,8 +312,11 @@ pub fn phase_3_run_analysis_passes(sess: Session,
     time(time_passes, "loop checking", (), |_|
          middle::check_loop::check_crate(&sess, krate));
 
+    let stability_index = time(time_passes, "stability index", (), |_|
+                               stability::Index::build(krate));
+
     let ty_cx = ty::mk_ctxt(sess, def_map, named_region_map, ast_map,
-                            freevars, region_map, lang_items);
+                            freevars, region_map, lang_items, stability_index);
 
     // passes are timed inside typeck
     typeck::check_crate(&ty_cx, trait_map, krate);
