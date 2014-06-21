@@ -35,6 +35,13 @@ need_ok() {
     fi
 }
 
+need_cmd() {
+    if command -v $1 >/dev/null 2>&1
+    then msg "found $1"
+    else err "need $1"
+    fi
+}
+
 putvar() {
     local T
     eval T=\$$1
@@ -198,6 +205,15 @@ absolutify() {
     ABSOLUTIFIED="${FILE_PATH}"
 }
 
+msg "looking for install programs"
+need_cmd mkdir
+need_cmd printf
+need_cmd cut
+need_cmd grep
+need_cmd uname
+need_cmd tr
+need_cmd sed
+
 CFG_SRC_DIR="$(cd $(dirname $0) && pwd)/"
 CFG_SELF="$0"
 CFG_ARGS="$@"
@@ -216,16 +232,65 @@ else
     step_msg "processing $CFG_SELF args"
 fi
 
+# Check for mingw or cygwin in order to special case $CFG_LIBDIR_RELATIVE.
+# This logic is duplicated from configure in order to get the correct libdir
+# for Windows installs.
+CFG_OSTYPE=$(uname -s)
+
+case $CFG_OSTYPE in
+
+    MINGW32*)
+        CFG_OSTYPE=pc-mingw32
+        ;;
+
+    MINGW64*)
+        # msys2, MSYSTEM=MINGW64
+        CFG_OSTYPE=w64-mingw32
+        ;;
+
+# Thad's Cygwin identifers below
+
+#   Vista 32 bit
+    CYGWIN_NT-6.0)
+        CFG_OSTYPE=pc-mingw32
+        ;;
+
+#   Vista 64 bit
+    CYGWIN_NT-6.0-WOW64)
+        CFG_OSTYPE=w64-mingw32
+        ;;
+
+#   Win 7 32 bit
+    CYGWIN_NT-6.1)
+        CFG_OSTYPE=pc-mingw32
+        ;;
+
+#   Win 7 64 bit
+    CYGWIN_NT-6.1-WOW64)
+        CFG_OSTYPE=w64-mingw32
+        ;;
+esac
+
 OPTIONS=""
 BOOL_OPTIONS=""
 VAL_OPTIONS=""
+
+# On windows we just store the libraries in the bin directory because
+# there's no rpath. This is where the build system itself puts libraries;
+# --libdir is used to configure the installation directory.
+# FIXME: Thise needs to parameterized over target triples. Do it in platform.mk
+CFG_LIBDIR_RELATIVE=lib
+if [ "$CFG_OSTYPE" = "pc-mingw32" ] || [ "$CFG_OSTYPE" = "w64-mingw32" ]
+then
+    CFG_LIBDIR_RELATIVE=bin
+fi
 
 flag uninstall "only uninstall from the installation prefix"
 opt verify 1 "verify that the installed binaries run correctly"
 valopt prefix "/usr/local" "set installation prefix"
 # NB This isn't quite the same definition as in `configure`.
 # just using 'lib' instead of CFG_LIBDIR_RELATIVE
-valopt libdir "${CFG_PREFIX}/lib" "install libraries"
+valopt libdir "${CFG_PREFIX}/${CFG_LIBDIR_RELATIVE}" "install libraries"
 valopt mandir "${CFG_PREFIX}/share/man" "install man pages in PATH"
 
 if [ $HELP -eq 1 ]
@@ -384,7 +449,7 @@ while read p; do
     need_ok "failed to update manifest"
 
 # The manifest lists all files to install
-done < "${CFG_SRC_DIR}/lib/rustlib/manifest.in"
+done < "${CFG_SRC_DIR}/${CFG_LIBDIR_RELATIVE}/rustlib/manifest.in"
 
 # Sanity check: can we run the installed binaries?
 if [ -z "${CFG_DISABLE_VERIFY}" ]
