@@ -1026,21 +1026,16 @@ pub struct ParameterEnvironment {
 
 /// A polytype.
 ///
-/// - `bounds`: The list of bounds for each type parameter.  The length of the
-///   list also tells you how many type parameters there are.
-///
-/// - `rp`: true if the type is region-parameterized.  Types can have at
-///   most one region parameter, always called `&self`.
-///
-/// - `ty`: the base type.  May have reference to the (unsubstituted) bound
-///   region `&self` or to (unsubstituted) ty_param types
+/// - `generics`: the set of type parameters and their bounds
+/// - `ty`: the base types, which may reference the parameters defined
+///   in `generics`
 #[deriving(Clone)]
-pub struct ty_param_bounds_and_ty {
+pub struct Polytype {
     pub generics: Generics,
     pub ty: t
 }
 
-/// As `ty_param_bounds_and_ty` but for a trait ref.
+/// As `Polytype` but for a trait ref.
 pub struct TraitDef {
     pub generics: Generics,
     pub bounds: BuiltinBounds,
@@ -1054,12 +1049,7 @@ pub struct ItemSubsts {
     pub substs: Substs,
 }
 
-pub struct ty_param_substs_and_ty {
-    pub substs: Substs,
-    pub ty: ty::t
-}
-
-pub type type_cache = RefCell<DefIdMap<ty_param_bounds_and_ty>>;
+pub type type_cache = RefCell<DefIdMap<Polytype>>;
 
 pub type node_type_table = RefCell<HashMap<uint,t>>;
 
@@ -3848,7 +3838,7 @@ pub fn enum_variant_with_id(cx: &ctxt,
 // the type cache. Returns the type parameters and type.
 pub fn lookup_item_type(cx: &ctxt,
                         did: ast::DefId)
-                     -> ty_param_bounds_and_ty {
+                     -> Polytype {
     lookup_locally_or_in_crate_store(
         "tcache", did, &mut *cx.tcache.borrow_mut(),
         || csearch::get_type(cx, did))
@@ -3946,7 +3936,7 @@ pub fn lookup_field_type(tcx: &ctxt,
     } else {
         let mut tcache = tcx.tcache.borrow_mut();
         match tcache.find(&id) {
-           Some(&ty_param_bounds_and_ty {ty, ..}) => ty,
+           Some(&Polytype {ty, ..}) => ty,
            None => {
                let tpt = csearch::get_field_type(tcx, struct_id, id);
                tcache.insert(id, tpt.clone());

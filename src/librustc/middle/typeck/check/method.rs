@@ -93,6 +93,7 @@ use middle::typeck::{MethodOrigin, MethodParam};
 use middle::typeck::{MethodStatic, MethodObject};
 use middle::typeck::{param_index};
 use middle::typeck::check::regionmanip::replace_late_bound_regions_in_fn_sig;
+use middle::typeck::TypeAndSubsts;
 use util::common::indenter;
 use util::ppaux;
 use util::ppaux::Repr;
@@ -688,7 +689,7 @@ impl<'a> LookupContext<'a> {
         // variables for each parameter:
         let span = self.self_expr.map_or(self.span, |e| e.span);
         let vcx = self.fcx.vtable_context();
-        let ty::ty_param_substs_and_ty {
+        let TypeAndSubsts {
             substs: impl_substs,
             ty: impl_ty
         } = impl_self_ty(&vcx, span, impl_did);
