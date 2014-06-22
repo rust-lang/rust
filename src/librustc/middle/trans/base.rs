@@ -501,7 +501,6 @@ pub fn maybe_name_value(cx: &CrateContext, v: ValueRef, s: &str) {
 // Used only for creating scalar comparison glue.
 pub enum scalar_type { nil_type, signed_int, unsigned_int, floating_point, }
 
-// NB: This produces an i1, not a Rust bool (i8).
 pub fn compare_scalar_types<'a>(
                             cx: &'a Block<'a>,
                             lhs: ValueRef,
@@ -1815,6 +1814,13 @@ pub fn get_fn_llvm_attributes(ccx: &CrateContext, fn_ty: ty::t) -> Vec<(uint, u6
             }
             _ => {}
         }
+
+        match ty::get(ret_ty).sty {
+            ty::ty_bool => {
+                attrs.push((lib::llvm::ReturnIndex as uint, lib::llvm::ZExtAttribute as u64));
+            }
+            _ => {}
+        }
     }
 
     for (idx, &t) in fn_sig.inputs.iter().enumerate().map(|(i, v)| (i + first_arg_offset, v)) {
@@ -1827,6 +1833,9 @@ pub fn get_fn_llvm_attributes(ccx: &CrateContext, fn_ty: ty::t) -> Vec<(uint, u6
                 attrs.push((idx, lib::llvm::NoAliasAttribute as u64));
                 attrs.push((idx, lib::llvm::NoCaptureAttribute as u64));
                 attrs.push((idx, lib::llvm::NonNullAttribute as u64));
+            }
+            ty::ty_bool => {
+                attrs.push((idx, lib::llvm::ZExtAttribute as u64));
             }
             // `~` pointer parameters never alias because ownership is transferred
             ty::ty_uniq(_) => {

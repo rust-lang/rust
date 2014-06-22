@@ -818,11 +818,6 @@ pub fn find_vtable(tcx: &ty::ctxt,
     param_bounds.get(n_bound).clone()
 }
 
-// Casts a Rust bool value to an i1.
-pub fn bool_to_i1(bcx: &Block, llval: ValueRef) -> ValueRef {
-    build::ICmp(bcx, lib::llvm::IntNE, llval, C_bool(bcx.ccx(), false))
-}
-
 pub fn langcall(bcx: &Block,
                 span: Option<Span>,
                 msg: &str,
