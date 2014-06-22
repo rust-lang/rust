@@ -385,8 +385,8 @@ pub fn write_boxplot<T: Float + Show + FromPrimitive>(
 
     let range = hi - lo;
 
-    let lostr = lo.to_str();
-    let histr = hi.to_str();
+    let lostr = lo.to_string();
+    let histr = hi.to_string();
 
     let overhead_width = lostr.len() + histr.len() + 4;
     let range_width = width_hint - overhead_width;

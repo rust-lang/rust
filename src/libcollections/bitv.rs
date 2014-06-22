@@ -243,17 +243,17 @@ enum Op {Union, Intersect, Assign, Difference}
 /// bv.set(3, true);
 /// bv.set(5, true);
 /// bv.set(7, true);
-/// println!("{}", bv.to_str());
+/// println!("{}", bv.to_string());
 /// println!("total bits set to true: {}", bv.iter().filter(|x| *x).count());
 ///
 /// // flip all values in bitvector, producing non-primes less than 10
 /// bv.negate();
-/// println!("{}", bv.to_str());
+/// println!("{}", bv.to_string());
 /// println!("total bits set to true: {}", bv.iter().filter(|x| *x).count());
 ///
 /// // reset bitvector to empty
 /// bv.clear();
-/// println!("{}", bv.to_str());
+/// println!("{}", bv.to_string());
 /// println!("total bits set to true: {}", bv.iter().filter(|x| *x).count());
 /// ```
 #[deriving(Clone)]
@@ -1024,12 +1024,12 @@ mod tests {
     static BENCH_BITS : uint = 1 << 14;
 
     #[test]
-    fn test_to_str() {
+    fn test_to_string() {
         let zerolen = Bitv::new(0u, false);
-        assert_eq!(zerolen.to_str().as_slice(), "");
+        assert_eq!(zerolen.to_string().as_slice(), "");
 
         let eightbits = Bitv::new(8u, false);
-        assert_eq!(eightbits.to_str().as_slice(), "00000000")
+        assert_eq!(eightbits.to_string().as_slice(), "00000000")
     }
 
     #[test]
@@ -1052,7 +1052,7 @@ mod tests {
         let mut b = bitv::Bitv::new(2, false);
         b.set(0, true);
         b.set(1, false);
-        assert_eq!(b.to_str().as_slice(), "10");
+        assert_eq!(b.to_string().as_slice(), "10");
     }
 
     #[test]
@@ -1363,7 +1363,7 @@ mod tests {
     fn test_from_bytes() {
         let bitv = from_bytes([0b10110110, 0b00000000, 0b11111111]);
         let str = format!("{}{}{}", "10110110", "00000000", "11111111");
-        assert_eq!(bitv.to_str().as_slice(), str.as_slice());
+        assert_eq!(bitv.to_string().as_slice(), str.as_slice());
     }
 
     #[test]
@@ -1380,7 +1380,7 @@ mod tests {
 
     #[test]
     fn test_from_bools() {
-        assert!(from_bools([true, false, true, true]).to_str().as_slice() ==
+        assert!(from_bools([true, false, true, true]).to_string().as_slice() ==
                 "1011");
     }
 
@@ -1674,7 +1674,7 @@ mod tests {
         s.insert(10);
         s.insert(50);
         s.insert(2);
-        assert_eq!("{1, 2, 10, 50}".to_string(), s.to_str());
+        assert_eq!("{1, 2, 10, 50}".to_string(), s.to_string());
     }
 
     fn rng() -> rand::IsaacRng {

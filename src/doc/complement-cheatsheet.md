@@ -4,11 +4,11 @@
 
 **Int to string**
 
-Use [`ToStr`](std/to_str/trait.ToStr.html).
+Use [`ToString`](std/to_str/trait.ToString.html).
 
 ~~~
 let x: int = 42;
-let y: String = x.to_str();
+let y: String = x.to_string();
 ~~~
 
 **String to int**

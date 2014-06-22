@@ -57,12 +57,12 @@ pub trait UnifyInferCtxtMethods {
            vid: V)
            -> Node<V, T>;
     fn set<T:Clone + InferStr,
-           V:Clone + Vid + ToStr + UnifyVid<T>>(
+           V:Clone + Vid + ToString + UnifyVid<T>>(
            &self,
            vid: V,
            new_v: VarValue<V, T>);
     fn unify<T:Clone + InferStr,
-             V:Clone + Vid + ToStr + UnifyVid<T>>(
+             V:Clone + Vid + ToString + UnifyVid<T>>(
              &self,
              node_a: &Node<V, T>,
              node_b: &Node<V, T>)
@@ -117,7 +117,7 @@ impl<'a> UnifyInferCtxtMethods for InferCtxt<'a> {
     }
 
     fn set<T:Clone + InferStr,
-           V:Clone + Vid + ToStr + UnifyVid<T>>(
+           V:Clone + Vid + ToString + UnifyVid<T>>(
            &self,
            vid: V,
            new_v: VarValue<V, T>) {
@@ -127,7 +127,7 @@ impl<'a> UnifyInferCtxtMethods for InferCtxt<'a> {
          */
 
         debug!("Updating variable {} to {}",
-               vid.to_str(), new_v.inf_str(self));
+               vid.to_string(), new_v.inf_str(self));
 
         let vb = UnifyVid::appropriate_vals_and_bindings(self);
         let mut vb = vb.borrow_mut();
@@ -137,7 +137,7 @@ impl<'a> UnifyInferCtxtMethods for InferCtxt<'a> {
     }
 
     fn unify<T:Clone + InferStr,
-             V:Clone + Vid + ToStr + UnifyVid<T>>(
+             V:Clone + Vid + ToString + UnifyVid<T>>(
              &self,
              node_a: &Node<V, T>,
              node_b: &Node<V, T>)
@@ -192,14 +192,14 @@ pub fn mk_err<T:SimplyUnifiable>(a_is_expected: bool,
 
 pub trait InferCtxtMethods {
     fn simple_vars<T:Clone + PartialEq + InferStr + SimplyUnifiable,
-                   V:Clone + PartialEq + Vid + ToStr + UnifyVid<Option<T>>>(
+                   V:Clone + PartialEq + Vid + ToString + UnifyVid<Option<T>>>(
                    &self,
                    a_is_expected: bool,
                    a_id: V,
                    b_id: V)
                    -> ures;
     fn simple_var_t<T:Clone + PartialEq + InferStr + SimplyUnifiable,
-                    V:Clone + PartialEq + Vid + ToStr + UnifyVid<Option<T>>>(
+                    V:Clone + PartialEq + Vid + ToString + UnifyVid<Option<T>>>(
                     &self,
                     a_is_expected: bool,
                     a_id: V,
@@ -209,7 +209,7 @@ pub trait InferCtxtMethods {
 
 impl<'a> InferCtxtMethods for InferCtxt<'a> {
     fn simple_vars<T:Clone + PartialEq + InferStr + SimplyUnifiable,
-                   V:Clone + PartialEq + Vid + ToStr + UnifyVid<Option<T>>>(
+                   V:Clone + PartialEq + Vid + ToString + UnifyVid<Option<T>>>(
                    &self,
                    a_is_expected: bool,
                    a_id: V,
@@ -249,7 +249,7 @@ impl<'a> InferCtxtMethods for InferCtxt<'a> {
     }
 
     fn simple_var_t<T:Clone + PartialEq + InferStr + SimplyUnifiable,
-                    V:Clone + PartialEq + Vid + ToStr + UnifyVid<Option<T>>>(
+                    V:Clone + PartialEq + Vid + ToString + UnifyVid<Option<T>>>(
                     &self,
                     a_is_expected: bool,
                     a_id: V,

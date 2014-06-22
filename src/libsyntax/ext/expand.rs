@@ -1166,7 +1166,7 @@ mod test {
     //}
     //fn expand_and_resolve_and_pretty_print (crate_str: @str) -> String {
         //let resolved_ast = expand_and_resolve(crate_str);
-        //pprust::to_str(&resolved_ast,fake_print_crate,get_ident_interner())
+        //pprust::to_string(&resolved_ast,fake_print_crate,get_ident_interner())
     //}
 
     #[test] fn macro_tokens_should_match(){
@@ -1301,7 +1301,7 @@ mod test {
     }
 
     #[test] fn fmt_in_macro_used_inside_module_macro() {
-        let crate_str = "macro_rules! fmt_wrap(($b:expr)=>($b.to_str()))
+        let crate_str = "macro_rules! fmt_wrap(($b:expr)=>($b.to_string()))
 macro_rules! foo_module (() => (mod generated { fn a() { let xx = 147; fmt_wrap!(xx);}}))
 foo_module!()
 ".to_string();

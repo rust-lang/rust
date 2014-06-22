@@ -135,7 +135,7 @@ pub fn represent_node(bcx: &Block, node: ast::NodeId) -> Rc<Repr> {
 
 /// Decides how to represent a given type.
 pub fn represent_type(cx: &CrateContext, t: ty::t) -> Rc<Repr> {
-    debug!("Representing: {}", ty_to_str(cx.tcx(), t));
+    debug!("Representing: {}", ty_to_string(cx.tcx(), t));
     match cx.adt_reprs.borrow().find(&t) {
         Some(repr) => return repr.clone(),
         None => {}

@@ -115,7 +115,7 @@ fn main() {
 
                 let elapsed = stop - start;
 
-                println!("{}\t{}\t{}", n, fibn, elapsed.to_str());
+                println!("{}\t{}\t{}", n, fibn, elapsed.to_string());
             }
         }
     }

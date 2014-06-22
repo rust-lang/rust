@@ -91,7 +91,7 @@ impl<'a> ParserAttr for Parser<'a> {
                 (mk_sp(lo, hi), meta_item, style)
             }
             _ => {
-                let token_str = self.this_token_to_str();
+                let token_str = self.this_token_to_string();
                 self.fatal(format!("expected `#` but found `{}`",
                                    token_str).as_slice());
             }

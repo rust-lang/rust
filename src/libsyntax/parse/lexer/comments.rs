@@ -369,7 +369,7 @@ pub fn gather_comments_and_literals(span_diagnostic: &diagnostic::SpanHandler,
                 literals.push(Literal {lit: s.to_string(), pos: sp.lo});
             })
         } else {
-            debug!("tok: {}", token::to_str(&tok));
+            debug!("tok: {}", token::to_string(&tok));
         }
         first_read = false;
     }

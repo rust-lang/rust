@@ -1737,8 +1737,8 @@ pub mod llvm {
                                             -> ValueRef;
 
         pub fn LLVMDICompositeTypeSetTypeArray(CompositeType: ValueRef, TypeArray: ValueRef);
-        pub fn LLVMTypeToString(Type: TypeRef) -> *c_char;
-        pub fn LLVMValueToString(value_ref: ValueRef) -> *c_char;
+        pub fn LLVMTypeToStringing(Type: TypeRef) -> *c_char;
+        pub fn LLVMValueToStringing(value_ref: ValueRef) -> *c_char;
 
         pub fn LLVMIsAArgument(value_ref: ValueRef) -> ValueRef;
 
@@ -1883,23 +1883,23 @@ impl TypeNames {
         self.named_types.borrow().find_equiv(&s).map(|x| Type::from_ref(*x))
     }
 
-    pub fn type_to_str(&self, ty: Type) -> String {
+    pub fn type_to_string(&self, ty: Type) -> String {
         unsafe {
-            let s = llvm::LLVMTypeToString(ty.to_ref());
+            let s = llvm::LLVMTypeToStringing(ty.to_ref());
             let ret = from_c_str(s);
             free(s as *mut c_void);
             ret.to_string()
         }
     }
 
-    pub fn types_to_str(&self, tys: &[Type]) -> String {
-        let strs: Vec<String> = tys.iter().map(|t| self.type_to_str(*t)).collect();
+    pub fn types_to_string(&self, tys: &[Type]) -> String {
+        let strs: Vec<String> = tys.iter().map(|t| self.type_to_string(*t)).collect();
         format!("[{}]", strs.connect(",").to_string())
     }
 
-    pub fn val_to_str(&self, val: ValueRef) -> String {
+    pub fn val_to_string(&self, val: ValueRef) -> String {
         unsafe {
-            let s = llvm::LLVMValueToString(val);
+            let s = llvm::LLVMValueToStringing(val);
             let ret = from_c_str(s);
             free(s as *mut c_void);
             ret.to_string()

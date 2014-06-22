@@ -244,7 +244,7 @@ impl FloatMath for f32 {
 ///
 /// * num - The float value
 #[inline]
-pub fn to_str(num: f32) -> String {
+pub fn to_string(num: f32) -> String {
     let (r, _) = strconv::float_to_str_common(
         num, 10u, true, strconv::SignNeg, strconv::DigAll, strconv::ExpNone, false);
     r
@@ -333,7 +333,7 @@ pub fn to_str_exp_digits(num: f32, dig: uint, upper: bool) -> String {
     r
 }
 
-impl num::ToStrRadix for f32 {
+impl num::ToStringRadix for f32 {
     /// Converts a float to a string in a given radix
     ///
     /// # Arguments

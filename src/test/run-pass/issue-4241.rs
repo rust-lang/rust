@@ -96,19 +96,19 @@ priv fn parse_response(io: @io::Reader) -> Result {
     }
 }
 
-priv fn cmd_to_str(cmd: ~[String]) -> String {
+priv fn cmd_to_string(cmd: ~[String]) -> String {
   let mut res = "*".to_string();
-  res.push_str(cmd.len().to_str());
+  res.push_str(cmd.len().to_string());
   res.push_str("\r\n");
     for s in cmd.iter() {
-    res.push_str(["$".to_string(), s.len().to_str(), "\r\n".to_string(),
+    res.push_str(["$".to_string(), s.len().to_string(), "\r\n".to_string(),
                   (*s).clone(), "\r\n".to_string()].concat() );
     }
   res
 }
 
 fn query(cmd: ~[String], sb: TcpSocketBuf) -> Result {
-  let cmd = cmd_to_str(cmd);
+  let cmd = cmd_to_string(cmd);
   //println!("{}", cmd);
   sb.write_str(cmd);
   let res = parse_response(@sb as @io::Reader);
@@ -116,7 +116,7 @@ fn query(cmd: ~[String], sb: TcpSocketBuf) -> Result {
 }
 
 fn query2(cmd: ~[String]) -> Result {
-  let _cmd = cmd_to_str(cmd);
+  let _cmd = cmd_to_string(cmd);
     io::with_str_reader("$3\r\nXXX\r\n".to_string())(|sb| {
     let res = parse_response(@sb as @io::Reader);
     println!("{:?}", res);

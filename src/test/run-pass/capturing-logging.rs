@@ -45,7 +45,7 @@ fn main() {
         debug!("debug");
         info!("info");
     });
-    let s = r.read_to_str().unwrap();
+    let s = r.read_to_string().unwrap();
     assert!(s.as_slice().contains("info"));
     assert!(!s.as_slice().contains("debug"));
 }

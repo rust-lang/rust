@@ -2117,7 +2117,7 @@ mod tests {
         let s = Slice("abcde");
         assert_eq!(s.len(), 5);
         assert_eq!(s.as_slice(), "abcde");
-        assert_eq!(s.to_str().as_slice(), "abcde");
+        assert_eq!(s.to_string().as_slice(), "abcde");
         assert_eq!(format!("{}", s).as_slice(), "abcde");
         assert!(s.lt(&Owned("bcdef".to_string())));
         assert_eq!(Slice(""), Default::default());
@@ -2125,7 +2125,7 @@ mod tests {
         let o = Owned("abcde".to_string());
         assert_eq!(o.len(), 5);
         assert_eq!(o.as_slice(), "abcde");
-        assert_eq!(o.to_str().as_slice(), "abcde");
+        assert_eq!(o.to_string().as_slice(), "abcde");
         assert_eq!(format!("{}", o).as_slice(), "abcde");
         assert!(o.lt(&Slice("bcdef")));
         assert_eq!(Owned("".to_string()), Default::default());

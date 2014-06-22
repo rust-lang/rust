@@ -100,10 +100,10 @@ mod tests {
     }
 
     #[test]
-    fn test_to_str() {
-        let s = false.to_str();
+    fn test_to_string() {
+        let s = false.to_string();
         assert_eq!(s.as_slice(), "false");
-        let s = true.to_str();
+        let s = true.to_string();
         assert_eq!(s.as_slice(), "true");
     }
 

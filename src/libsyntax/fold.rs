@@ -989,7 +989,7 @@ mod test {
         assert_pred!(
             matches_codepattern,
             "matches_codepattern",
-            pprust::to_str(|s| fake_print_crate(s, &folded_crate)),
+            pprust::to_string(|s| fake_print_crate(s, &folded_crate)),
             "#[a]mod zz{fn zz(zz:zz,zz:zz){zz!(zz,zz,zz);zz;zz}}".to_string());
     }
 
@@ -1003,7 +1003,7 @@ mod test {
         assert_pred!(
             matches_codepattern,
             "matches_codepattern",
-            pprust::to_str(|s| fake_print_crate(s, &folded_crate)),
+            pprust::to_string(|s| fake_print_crate(s, &folded_crate)),
             "zz!zz((zz$zz:zz$(zz $zz:zz)zz+=>(zz$(zz$zz$zz)+)))".to_string());
     }
 }

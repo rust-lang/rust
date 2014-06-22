@@ -15,7 +15,7 @@ use Integer;
 use std::cmp;
 use std::fmt;
 use std::from_str::FromStr;
-use std::num::{Zero, One, ToStrRadix, FromStrRadix};
+use std::num::{Zero, One, ToStringRadix, FromStrRadix};
 use bigint::{BigInt, BigUint, Sign, Plus, Minus};
 
 /// Represents the ratio between 2 numbers.
@@ -279,7 +279,7 @@ impl<T: fmt::Show> fmt::Show for Ratio<T> {
         write!(f, "{}/{}", self.numer, self.denom)
     }
 }
-impl<T: ToStrRadix> ToStrRadix for Ratio<T> {
+impl<T: ToStringRadix> ToStringRadix for Ratio<T> {
     /// Renders as `numer/denom` where the numbers are in base `radix`.
     fn to_str_radix(&self, radix: uint) -> String {
         format!("{}/{}",
@@ -331,7 +331,7 @@ impl<T: FromStrRadix + Clone + Integer + PartialOrd>
 mod test {
 
     use super::{Ratio, Rational, BigRational};
-    use std::num::{Zero, One, FromStrRadix, FromPrimitive, ToStrRadix};
+    use std::num::{Zero, One, FromStrRadix, FromPrimitive, ToStringRadix};
     use std::from_str::FromStr;
 
     pub static _0 : Rational = Ratio { numer: 0, denom: 1};
@@ -559,7 +559,7 @@ mod test {
     fn test_to_from_str() {
         fn test(r: Rational, s: String) {
             assert_eq!(FromStr::from_str(s.as_slice()), Some(r));
-            assert_eq!(r.to_str(), s);
+            assert_eq!(r.to_string(), s);
         }
         test(_1, "1/1".to_string());
         test(_0, "0/1".to_string());

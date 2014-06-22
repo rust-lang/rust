@@ -24,7 +24,7 @@ use std::default::Default;
 use std::from_str::FromStr;
 use std::num::CheckedDiv;
 use std::num::{ToPrimitive, FromPrimitive};
-use std::num::{Zero, One, ToStrRadix, FromStrRadix};
+use std::num::{Zero, One, ToStringRadix, FromStrRadix};
 use std::string::String;
 use std::{uint, i64, u64};
 
@@ -601,7 +601,7 @@ impl_to_biguint!(u16,  FromPrimitive::from_u16)
 impl_to_biguint!(u32,  FromPrimitive::from_u32)
 impl_to_biguint!(u64,  FromPrimitive::from_u64)
 
-impl ToStrRadix for BigUint {
+impl ToStringRadix for BigUint {
     fn to_str_radix(&self, radix: uint) -> String {
         assert!(1 < radix && radix <= 16, "The radix must be within (1, 16]");
         let (base, max_len) = get_radix_base(radix);
@@ -1205,7 +1205,7 @@ impl_to_bigint!(u16,  FromPrimitive::from_u16)
 impl_to_bigint!(u32,  FromPrimitive::from_u32)
 impl_to_bigint!(u64,  FromPrimitive::from_u64)
 
-impl ToStrRadix for BigInt {
+impl ToStringRadix for BigInt {
     #[inline]
     fn to_str_radix(&self, radix: uint) -> String {
         match self.sign {
@@ -1368,7 +1368,7 @@ mod biguint_tests {
     use std::cmp::{Less, Equal, Greater};
     use std::from_str::FromStr;
     use std::i64;
-    use std::num::{Zero, One, FromStrRadix, ToStrRadix};
+    use std::num::{Zero, One, FromStrRadix, ToStringRadix};
     use std::num::{ToPrimitive, FromPrimitive};
     use std::num::CheckedDiv;
     use std::rand::task_rng;
@@ -2217,7 +2217,7 @@ mod bigint_tests {
     use std::cmp::{Less, Equal, Greater};
     use std::i64;
     use std::num::CheckedDiv;
-    use std::num::{Zero, One, FromStrRadix, ToStrRadix};
+    use std::num::{Zero, One, FromStrRadix, ToStringRadix};
     use std::num::{ToPrimitive, FromPrimitive};
     use std::rand::task_rng;
     use std::u64;
@@ -2737,7 +2737,7 @@ mod bigint_tests {
         // attempt to allocate a vector of size (-1u) == huge.
         let x: BigInt =
             from_str(format!("1{}", "0".repeat(36)).as_slice()).unwrap();
-        let _y = x.to_str();
+        let _y = x.to_string();
     }
 
     #[test]
@@ -2842,14 +2842,14 @@ mod bench {
     }
 
     #[bench]
-    fn to_str(b: &mut Bencher) {
+    fn to_string(b: &mut Bencher) {
         let fac = factorial(100);
         let fib = fib(100);
         b.iter(|| {
-            fac.to_str();
+            fac.to_string();
         });
         b.iter(|| {
-            fib.to_str();
+            fib.to_string();
         });
     }
 

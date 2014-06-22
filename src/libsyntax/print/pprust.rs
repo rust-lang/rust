@@ -128,7 +128,7 @@ pub fn print_crate<'a>(cm: &'a CodeMap,
     eof(&mut s.s)
 }
 
-pub fn to_str(f: |&mut State| -> IoResult<()>) -> String {
+pub fn to_string(f: |&mut State| -> IoResult<()>) -> String {
     let mut s = rust_printer(box MemWriter::new());
     f(&mut s).unwrap();
     eof(&mut s.s).unwrap();
@@ -144,62 +144,62 @@ pub fn to_str(f: |&mut State| -> IoResult<()>) -> String {
     }
 }
 
-pub fn ty_to_str(ty: &ast::Ty) -> String {
-    to_str(|s| s.print_type(ty))
+pub fn ty_to_string(ty: &ast::Ty) -> String {
+    to_string(|s| s.print_type(ty))
 }
 
-pub fn pat_to_str(pat: &ast::Pat) -> String {
-    to_str(|s| s.print_pat(pat))
+pub fn pat_to_string(pat: &ast::Pat) -> String {
+    to_string(|s| s.print_pat(pat))
 }
 
-pub fn expr_to_str(e: &ast::Expr) -> String {
-    to_str(|s| s.print_expr(e))
+pub fn expr_to_string(e: &ast::Expr) -> String {
+    to_string(|s| s.print_expr(e))
 }
 
-pub fn lifetime_to_str(e: &ast::Lifetime) -> String {
-    to_str(|s| s.print_lifetime(e))
+pub fn lifetime_to_string(e: &ast::Lifetime) -> String {
+    to_string(|s| s.print_lifetime(e))
 }
 
-pub fn tt_to_str(tt: &ast::TokenTree) -> String {
-    to_str(|s| s.print_tt(tt))
+pub fn tt_to_string(tt: &ast::TokenTree) -> String {
+    to_string(|s| s.print_tt(tt))
 }
 
-pub fn tts_to_str(tts: &[ast::TokenTree]) -> String {
-    to_str(|s| s.print_tts(tts))
+pub fn tts_to_string(tts: &[ast::TokenTree]) -> String {
+    to_string(|s| s.print_tts(tts))
 }
 
-pub fn stmt_to_str(stmt: &ast::Stmt) -> String {
-    to_str(|s| s.print_stmt(stmt))
+pub fn stmt_to_string(stmt: &ast::Stmt) -> String {
+    to_string(|s| s.print_stmt(stmt))
 }
 
-pub fn item_to_str(i: &ast::Item) -> String {
-    to_str(|s| s.print_item(i))
+pub fn item_to_string(i: &ast::Item) -> String {
+    to_string(|s| s.print_item(i))
 }
 
-pub fn generics_to_str(generics: &ast::Generics) -> String {
-    to_str(|s| s.print_generics(generics))
+pub fn generics_to_string(generics: &ast::Generics) -> String {
+    to_string(|s| s.print_generics(generics))
 }
 
-pub fn ty_method_to_str(p: &ast::TypeMethod) -> String {
-    to_str(|s| s.print_ty_method(p))
+pub fn ty_method_to_string(p: &ast::TypeMethod) -> String {
+    to_string(|s| s.print_ty_method(p))
 }
 
-pub fn method_to_str(p: &ast::Method) -> String {
-    to_str(|s| s.print_method(p))
+pub fn method_to_string(p: &ast::Method) -> String {
+    to_string(|s| s.print_method(p))
 }
 
-pub fn fn_block_to_str(p: &ast::FnDecl) -> String {
-    to_str(|s| s.print_fn_block_args(p))
+pub fn fn_block_to_string(p: &ast::FnDecl) -> String {
+    to_string(|s| s.print_fn_block_args(p))
 }
 
-pub fn path_to_str(p: &ast::Path) -> String {
-    to_str(|s| s.print_path(p, false))
+pub fn path_to_string(p: &ast::Path) -> String {
+    to_string(|s| s.print_path(p, false))
 }
 
-pub fn fun_to_str(decl: &ast::FnDecl, fn_style: ast::FnStyle, name: ast::Ident,
+pub fn fun_to_string(decl: &ast::FnDecl, fn_style: ast::FnStyle, name: ast::Ident,
                   opt_explicit_self: Option<ast::ExplicitSelf_>,
                   generics: &ast::Generics) -> String {
-    to_str(|s| {
+    to_string(|s| {
         try!(s.print_fn(decl, Some(fn_style), abi::Rust,
                         name, generics, opt_explicit_self, ast::Inherited));
         try!(s.end()); // Close the head box
@@ -207,8 +207,8 @@ pub fn fun_to_str(decl: &ast::FnDecl, fn_style: ast::FnStyle, name: ast::Ident,
     })
 }
 
-pub fn block_to_str(blk: &ast::Block) -> String {
-    to_str(|s| {
+pub fn block_to_string(blk: &ast::Block) -> String {
+    to_string(|s| {
         // containing cbox, will be closed by print-block at }
         try!(s.cbox(indent_unit));
         // head-ibox, will be closed by print-block after {
@@ -217,28 +217,28 @@ pub fn block_to_str(blk: &ast::Block) -> String {
     })
 }
 
-pub fn meta_item_to_str(mi: &ast::MetaItem) -> String {
-    to_str(|s| s.print_meta_item(mi))
+pub fn meta_item_to_string(mi: &ast::MetaItem) -> String {
+    to_string(|s| s.print_meta_item(mi))
 }
 
-pub fn attribute_to_str(attr: &ast::Attribute) -> String {
-    to_str(|s| s.print_attribute(attr))
+pub fn attribute_to_string(attr: &ast::Attribute) -> String {
+    to_string(|s| s.print_attribute(attr))
 }
 
-pub fn lit_to_str(l: &ast::Lit) -> String {
-    to_str(|s| s.print_literal(l))
+pub fn lit_to_string(l: &ast::Lit) -> String {
+    to_string(|s| s.print_literal(l))
 }
 
-pub fn explicit_self_to_str(explicit_self: ast::ExplicitSelf_) -> String {
-    to_str(|s| s.print_explicit_self(explicit_self, ast::MutImmutable).map(|_| {}))
+pub fn explicit_self_to_string(explicit_self: ast::ExplicitSelf_) -> String {
+    to_string(|s| s.print_explicit_self(explicit_self, ast::MutImmutable).map(|_| {}))
 }
 
-pub fn variant_to_str(var: &ast::Variant) -> String {
-    to_str(|s| s.print_variant(var))
+pub fn variant_to_string(var: &ast::Variant) -> String {
+    to_string(|s| s.print_variant(var))
 }
 
-pub fn arg_to_str(arg: &ast::Arg) -> String {
-    to_str(|s| s.print_arg(arg))
+pub fn arg_to_string(arg: &ast::Arg) -> String {
+    to_string(|s| s.print_arg(arg))
 }
 
 pub fn visibility_qualified(vis: ast::Visibility, s: &str) -> String {
@@ -666,7 +666,7 @@ impl<'a> State<'a> {
             }
             ast::ItemForeignMod(ref nmod) => {
                 try!(self.head("extern"));
-                try!(self.word_nbsp(nmod.abi.to_str().as_slice()));
+                try!(self.word_nbsp(nmod.abi.to_string().as_slice()));
                 try!(self.bopen());
                 try!(self.print_foreign_mod(nmod, item.attrs.as_slice()));
                 try!(self.bclose(item.span));
@@ -885,7 +885,7 @@ impl<'a> State<'a> {
         match *tt {
             ast::TTDelim(ref tts) => self.print_tts(tts.as_slice()),
             ast::TTTok(_, ref tk) => {
-                try!(word(&mut self.s, parse::token::to_str(tk).as_slice()));
+                try!(word(&mut self.s, parse::token::to_string(tk).as_slice()));
                 match *tk {
                     parse::token::DOC_COMMENT(..) => {
                         hardbreak(&mut self.s)
@@ -902,7 +902,7 @@ impl<'a> State<'a> {
                 match *sep {
                     Some(ref tk) => {
                         try!(word(&mut self.s,
-                                  parse::token::to_str(tk).as_slice()));
+                                  parse::token::to_string(tk).as_slice()));
                     }
                     None => ()
                 }
@@ -1300,11 +1300,11 @@ impl<'a> State<'a> {
             ast::ExprBinary(op, ref lhs, ref rhs) => {
                 try!(self.print_expr(&**lhs));
                 try!(space(&mut self.s));
-                try!(self.word_space(ast_util::binop_to_str(op)));
+                try!(self.word_space(ast_util::binop_to_string(op)));
                 try!(self.print_expr(&**rhs));
             }
             ast::ExprUnary(op, ref expr) => {
-                try!(word(&mut self.s, ast_util::unop_to_str(op)));
+                try!(word(&mut self.s, ast_util::unop_to_string(op)));
                 try!(self.print_expr_maybe_paren(&**expr));
             }
             ast::ExprAddrOf(m, ref expr) => {
@@ -1480,7 +1480,7 @@ impl<'a> State<'a> {
             ast::ExprAssignOp(op, ref lhs, ref rhs) => {
                 try!(self.print_expr(&**lhs));
                 try!(space(&mut self.s));
-                try!(word(&mut self.s, ast_util::binop_to_str(op)));
+                try!(word(&mut self.s, ast_util::binop_to_string(op)));
                 try!(self.word_space("="));
                 try!(self.print_expr(&**rhs));
             }
@@ -2319,12 +2319,12 @@ impl<'a> State<'a> {
             }
             ast::LitInt(i, t) => {
                 word(&mut self.s,
-                     ast_util::int_ty_to_str(t, Some(i),
+                     ast_util::int_ty_to_string(t, Some(i),
                                              ast_util::AutoSuffix).as_slice())
             }
             ast::LitUint(u, t) => {
                 word(&mut self.s,
-                     ast_util::uint_ty_to_str(t, Some(u),
+                     ast_util::uint_ty_to_string(t, Some(u),
                                               ast_util::ForceSuffix).as_slice())
             }
             ast::LitIntUnsuffixed(i) => {
@@ -2335,7 +2335,7 @@ impl<'a> State<'a> {
                      format!(
                          "{}{}",
                          f.get(),
-                         ast_util::float_ty_to_str(t).as_slice()).as_slice())
+                         ast_util::float_ty_to_string(t).as_slice()).as_slice())
             }
             ast::LitFloatUnsuffixed(ref f) => word(&mut self.s, f.get()),
             ast::LitNil => word(&mut self.s, "()"),
@@ -2473,7 +2473,7 @@ impl<'a> State<'a> {
             Some(abi::Rust) => Ok(()),
             Some(abi) => {
                 try!(self.word_nbsp("extern"));
-                self.word_nbsp(abi.to_str().as_slice())
+                self.word_nbsp(abi.to_string().as_slice())
             }
             None => Ok(())
         }
@@ -2484,7 +2484,7 @@ impl<'a> State<'a> {
         match opt_abi {
             Some(abi) => {
                 try!(self.word_nbsp("extern"));
-                self.word_nbsp(abi.to_str().as_slice())
+                self.word_nbsp(abi.to_string().as_slice())
             }
             None => Ok(())
         }
@@ -2500,7 +2500,7 @@ impl<'a> State<'a> {
 
         if abi != abi::Rust {
             try!(self.word_nbsp("extern"));
-            try!(self.word_nbsp(abi.to_str().as_slice()));
+            try!(self.word_nbsp(abi.to_string().as_slice()));
         }
 
         word(&mut self.s, "fn")
@@ -2531,7 +2531,7 @@ mod test {
     use parse::token;
 
     #[test]
-    fn test_fun_to_str() {
+    fn test_fun_to_string() {
         let abba_ident = token::str_to_ident("abba");
 
         let decl = ast::FnDecl {
@@ -2543,13 +2543,13 @@ mod test {
             variadic: false
         };
         let generics = ast_util::empty_generics();
-        assert_eq!(&fun_to_str(&decl, ast::NormalFn, abba_ident,
+        assert_eq!(&fun_to_string(&decl, ast::NormalFn, abba_ident,
                                None, &generics),
                    &"fn abba()".to_string());
     }
 
     #[test]
-    fn test_variant_to_str() {
+    fn test_variant_to_string() {
         let ident = token::str_to_ident("principal_skinner");
 
         let var = codemap::respan(codemap::DUMMY_SP, ast::Variant_ {
@@ -2562,7 +2562,7 @@ mod test {
             vis: ast::Public,
         });
 
-        let varstr = variant_to_str(&var);
+        let varstr = variant_to_string(&var);
         assert_eq!(&varstr,&"pub principal_skinner".to_string());
     }
 }

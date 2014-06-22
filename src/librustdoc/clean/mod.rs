@@ -406,7 +406,7 @@ impl Clean<Attribute> for ast::MetaItem {
                 List(s.get().to_string(), l.clean().move_iter().collect())
             }
             ast::MetaNameValue(ref s, ref v) => {
-                NameValue(s.get().to_string(), lit_to_str(v))
+                NameValue(s.get().to_string(), lit_to_string(v))
             }
         }
     }
@@ -534,7 +534,7 @@ impl Clean<TyParamBound> for ty::BuiltinBound {
                  external_path("Share", &empty)),
         };
         let fqn = csearch::get_item_path(tcx, did);
-        let fqn = fqn.move_iter().map(|i| i.to_str()).collect();
+        let fqn = fqn.move_iter().map(|i| i.to_string()).collect();
         cx.external_paths.borrow_mut().get_mut_ref().insert(did,
                                                             (fqn, TypeTrait));
         TraitBound(ResolvedPath {
@@ -553,7 +553,7 @@ impl Clean<TyParamBound> for ty::TraitRef {
             core::NotTyped(_) => return RegionBound,
         };
         let fqn = csearch::get_item_path(tcx, self.def_id);
-        let fqn = fqn.move_iter().map(|i| i.to_str())
+        let fqn = fqn.move_iter().map(|i| i.to_string())
                      .collect::<Vec<String>>();
         let path = external_path(fqn.last().unwrap().as_slice(),
                                  &self.substs);
@@ -1136,7 +1136,7 @@ impl Primitive {
         return None
     }
 
-    pub fn to_str(&self) -> &'static str {
+    pub fn to_string(&self) -> &'static str {
         match *self {
             Int => "int",
             I8 => "i8",
@@ -1163,7 +1163,7 @@ impl Primitive {
     pub fn to_url_str(&self) -> &'static str {
         match *self {
             Nil => "nil",
-            other => other.to_str(),
+            other => other.to_string(),
         }
     }
 
@@ -1243,7 +1243,7 @@ impl Clean<Type> for ty::t {
                     lifetimes: Vec::new(), type_params: Vec::new()
                 },
                 decl: (ast_util::local_def(0), &fty.sig).clean(),
-                abi: fty.abi.to_str(),
+                abi: fty.abi.to_string(),
             }),
             ty::ty_closure(ref fty) => {
                 let decl = box ClosureDecl {
@@ -1268,14 +1268,14 @@ impl Clean<Type> for ty::t {
                 };
                 let fqn = csearch::get_item_path(tcx, did);
                 let fqn: Vec<String> = fqn.move_iter().map(|i| {
-                    i.to_str()
+                    i.to_string()
                 }).collect();
                 let kind = match ty::get(*self).sty {
                     ty::ty_struct(..) => TypeStruct,
                     ty::ty_trait(..) => TypeTrait,
                     _ => TypeEnum,
                 };
-                let path = external_path(fqn.last().unwrap().to_str().as_slice(),
+                let path = external_path(fqn.last().unwrap().to_string().as_slice(),
                                          substs);
                 cx.external_paths.borrow_mut().get_mut_ref().insert(did,
                                                                     (fqn, kind));
@@ -1584,7 +1584,7 @@ impl Clean<PathSegment> for ast::PathSegment {
     }
 }
 
-fn path_to_str(p: &ast::Path) -> String {
+fn path_to_string(p: &ast::Path) -> String {
     use syntax::parse::token;
 
     let mut s = String::new();
@@ -1651,7 +1651,7 @@ impl Clean<BareFunctionDecl> for ast::BareFnTy {
                 type_params: Vec::new(),
             },
             decl: self.decl.clean(),
-            abi: self.abi.to_str(),
+            abi: self.abi.to_string(),
         }
     }
 }
@@ -1920,7 +1920,7 @@ impl ToSource for syntax::codemap::Span {
     }
 }
 
-fn lit_to_str(lit: &ast::Lit) -> String {
+fn lit_to_string(lit: &ast::Lit) -> String {
     match lit.node {
         ast::LitStr(ref st, _) => st.get().to_string(),
         ast::LitBinary(ref data) => format!("{:?}", data.as_slice()),
@@ -1933,12 +1933,12 @@ fn lit_to_str(lit: &ast::Lit) -> String {
             res
         },
         ast::LitChar(c) => format!("'{}'", c),
-        ast::LitInt(i, _t) => i.to_str(),
-        ast::LitUint(u, _t) => u.to_str(),
-        ast::LitIntUnsuffixed(i) => i.to_str(),
+        ast::LitInt(i, _t) => i.to_string(),
+        ast::LitUint(u, _t) => u.to_string(),
+        ast::LitIntUnsuffixed(i) => i.to_string(),
         ast::LitFloat(ref f, _t) => f.get().to_string(),
         ast::LitFloatUnsuffixed(ref f) => f.get().to_string(),
-        ast::LitBool(b) => b.to_str(),
+        ast::LitBool(b) => b.to_string(),
         ast::LitNil => "".to_string(),
     }
 }
@@ -1950,8 +1950,8 @@ fn name_from_pat(p: &ast::Pat) -> String {
     match p.node {
         PatWild => "_".to_string(),
         PatWildMulti => "..".to_string(),
-        PatIdent(_, ref p, _) => path_to_str(p),
-        PatEnum(ref p, _) => path_to_str(p),
+        PatIdent(_, ref p, _) => path_to_string(p),
+        PatEnum(ref p, _) => path_to_string(p),
         PatStruct(..) => fail!("tried to get argument name from pat_struct, \
                                 which is not allowed in function arguments"),
         PatTup(..) => "(tuple arg NYI)".to_string(),

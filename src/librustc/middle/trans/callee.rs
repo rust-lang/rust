@@ -108,7 +108,7 @@ fn trans<'a>(bcx: &'a Block<'a>, expr: &ast::Expr) -> Callee<'a> {
                     expr.span,
                     format!("type of callee is neither bare-fn nor closure: \
                              {}",
-                            bcx.ty_to_str(datum.ty)).as_slice());
+                            bcx.ty_to_string(datum.ty)).as_slice());
             }
         }
     }
@@ -254,7 +254,7 @@ pub fn trans_fn_ref_with_vtables(
 
     debug!("trans_fn_ref_with_vtables(bcx={}, def_id={}, node={:?}, \
             substs={}, vtables={})",
-           bcx.to_str(),
+           bcx.to_string(),
            def_id.repr(tcx),
            node,
            substs.repr(tcx),
@@ -780,7 +780,7 @@ pub fn trans_arg_datum<'a>(
 
     let arg_datum_ty = arg_datum.ty;
 
-    debug!("   arg datum: {}", arg_datum.to_str(bcx.ccx()));
+    debug!("   arg datum: {}", arg_datum.to_string(bcx.ccx()));
 
     let mut val;
     if ty::type_is_bot(arg_datum_ty) {
@@ -824,11 +824,11 @@ pub fn trans_arg_datum<'a>(
             // this could happen due to e.g. subtyping
             let llformal_arg_ty = type_of::type_of_explicit_arg(ccx, formal_arg_ty);
             debug!("casting actual type ({}) to match formal ({})",
-                   bcx.val_to_str(val), bcx.llty_str(llformal_arg_ty));
+                   bcx.val_to_string(val), bcx.llty_str(llformal_arg_ty));
             val = PointerCast(bcx, val, llformal_arg_ty);
         }
     }
 
-    debug!("--- trans_arg_datum passing {}", bcx.val_to_str(val));
+    debug!("--- trans_arg_datum passing {}", bcx.val_to_string(val));
     Result::new(bcx, val)
 }

@@ -155,7 +155,7 @@ Available lint options:
         let name = name.replace("_", "-");
         println!("    {}  {:7.7s}  {}",
                  padded(max_key, name.as_slice()),
-                 lint::level_to_str(spec.default),
+                 lint::level_to_string(spec.default),
                  spec.desc);
     }
     println!("");
@@ -205,7 +205,7 @@ pub fn handle_options(mut args: Vec<String>) -> Option<getopts::Matches> {
         match getopts::getopts(args.as_slice(), config::optgroups().as_slice()) {
             Ok(m) => m,
             Err(f) => {
-                early_error(f.to_str().as_slice());
+                early_error(f.to_string().as_slice());
             }
         };
 
@@ -264,7 +264,7 @@ fn print_crate_info(sess: &Session,
                                      t_outputs.out_filestem.as_slice());
 
         if crate_id {
-            println!("{}", id.to_str());
+            println!("{}", id.to_string());
         }
         if crate_name {
             println!("{}", id.name);
@@ -404,7 +404,7 @@ fn monitor(f: proc():Send) {
                     emitter.emit(None, note.as_slice(), diagnostic::Note)
                 }
 
-                match r.read_to_str() {
+                match r.read_to_string() {
                     Ok(s) => println!("{}", s),
                     Err(e) => {
                         emitter.emit(None,

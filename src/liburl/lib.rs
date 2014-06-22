@@ -453,11 +453,11 @@ fn query_from_str(rawquery: &str) -> Query {
  * let query = vec!(("title".to_string(), "The Village".to_string()),
  *                  ("north".to_string(), "52.91".to_string()),
  *                  ("west".to_string(), "4.10".to_string()));
- * println!("{}", url::query_to_str(&query));  // title=The%20Village&north=52.91&west=4.10
+ * println!("{}", url::query_to_string(&query));  // title=The%20Village&north=52.91&west=4.10
  * ```
  */
 #[allow(unused_must_use)]
-pub fn query_to_str(query: &Query) -> String {
+pub fn query_to_string(query: &Query) -> String {
     use std::io::MemWriter;
     use std::str;
 
@@ -526,7 +526,7 @@ fn get_authority(rawurl: &str) ->
     Result<(Option<UserInfo>, String, Option<String>, String), String> {
     if !rawurl.starts_with("//") {
         // there is no authority.
-        return Ok((None, "".to_string(), None, rawurl.to_str()));
+        return Ok((None, "".to_string(), None, rawurl.to_string()));
     }
 
     enum State {
@@ -841,7 +841,7 @@ impl fmt::Show for Url {
         try!(write!(f, "{}", self.path));
 
         if !self.query.is_empty() {
-            try!(write!(f, "?{}", query_to_str(&self.query)));
+            try!(write!(f, "?{}", query_to_string(&self.query)));
         }
 
         match self.fragment {
@@ -871,13 +871,13 @@ impl fmt::Show for Path {
 
 impl<S: hash::Writer> hash::Hash<S> for Url {
     fn hash(&self, state: &mut S) {
-        self.to_str().hash(state)
+        self.to_string().hash(state)
     }
 }
 
 impl<S: hash::Writer> hash::Hash<S> for Path {
     fn hash(&self, state: &mut S) {
-        self.to_str().hash(state)
+        self.to_string().hash(state)
     }
 }
 
@@ -1074,62 +1074,62 @@ mod tests {
     #[test]
     fn test_full_url_parse_and_format() {
         let url = "http://user:pass@rust-lang.org/doc?s=v#something";
-        assert_eq!(from_str(url).unwrap().to_str().as_slice(), url);
+        assert_eq!(from_str(url).unwrap().to_string().as_slice(), url);
     }
 
     #[test]
     fn test_userless_url_parse_and_format() {
         let url = "http://rust-lang.org/doc?s=v#something";
-        assert_eq!(from_str(url).unwrap().to_str().as_slice(), url);
+        assert_eq!(from_str(url).unwrap().to_string().as_slice(), url);
     }
 
     #[test]
     fn test_queryless_url_parse_and_format() {
         let url = "http://user:pass@rust-lang.org/doc#something";
-        assert_eq!(from_str(url).unwrap().to_str().as_slice(), url);
+        assert_eq!(from_str(url).unwrap().to_string().as_slice(), url);
     }
 
     #[test]
     fn test_empty_query_url_parse_and_format() {
         let url = "http://user:pass@rust-lang.org/doc?#something";
         let should_be = "http://user:pass@rust-lang.org/doc#something";
-        assert_eq!(from_str(url).unwrap().to_str().as_slice(), should_be);
+        assert_eq!(from_str(url).unwrap().to_string().as_slice(), should_be);
     }
 
     #[test]
     fn test_fragmentless_url_parse_and_format() {
         let url = "http://user:pass@rust-lang.org/doc?q=v";
-        assert_eq!(from_str(url).unwrap().to_str().as_slice(), url);
+        assert_eq!(from_str(url).unwrap().to_string().as_slice(), url);
     }
 
     #[test]
     fn test_minimal_url_parse_and_format() {
         let url = "http://rust-lang.org/doc";
-        assert_eq!(from_str(url).unwrap().to_str().as_slice(), url);
+        assert_eq!(from_str(url).unwrap().to_string().as_slice(), url);
     }
 
     #[test]
     fn test_url_with_port_parse_and_format() {
         let url = "http://rust-lang.org:80/doc";
-        assert_eq!(from_str(url).unwrap().to_str().as_slice(), url);
+        assert_eq!(from_str(url).unwrap().to_string().as_slice(), url);
     }
 
     #[test]
     fn test_scheme_host_only_url_parse_and_format() {
         let url = "http://rust-lang.org";
-        assert_eq!(from_str(url).unwrap().to_str().as_slice(), url);
+        assert_eq!(from_str(url).unwrap().to_string().as_slice(), url);
     }
 
     #[test]
     fn test_pathless_url_parse_and_format() {
         let url = "http://user:pass@rust-lang.org?q=v#something";
-        assert_eq!(from_str(url).unwrap().to_str().as_slice(), url);
+        assert_eq!(from_str(url).unwrap().to_string().as_slice(), url);
     }
 
     #[test]
     fn test_scheme_host_fragment_only_url_parse_and_format() {
         let url = "http://rust-lang.org#something";
-        assert_eq!(from_str(url).unwrap().to_str().as_slice(), url);
+        assert_eq!(from_str(url).unwrap().to_string().as_slice(), url);
     }
 
     #[test]
@@ -1151,7 +1151,7 @@ mod tests {
     #[test]
     fn test_url_without_authority() {
         let url = "mailto:test@email.com";
-        assert_eq!(from_str(url).unwrap().to_str().as_slice(), url);
+        assert_eq!(from_str(url).unwrap().to_string().as_slice(), url);
     }
 
     #[test]

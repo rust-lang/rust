@@ -701,7 +701,7 @@ pub trait Reader {
     /// This function returns all of the same errors as `read_to_end` with an
     /// additional error if the reader's contents are not a valid sequence of
     /// UTF-8 bytes.
-    fn read_to_str(&mut self) -> IoResult<String> {
+    fn read_to_string(&mut self) -> IoResult<String> {
         self.read_to_end().and_then(|s| {
             match str::from_utf8(s.as_slice()) {
                 Some(s) => Ok(s.to_string()),

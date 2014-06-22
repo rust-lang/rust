@@ -586,10 +586,10 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     let mut lint_opts = Vec::new();
     let lint_dict = lint::get_lint_dict();
     for level in lint_levels.iter() {
-        let level_name = lint::level_to_str(*level);
+        let level_name = lint::level_to_string(*level);
 
         let level_short = level_name.slice_chars(0, 1);
-        let level_short = level_short.to_ascii().to_upper().into_str();
+        let level_short = level_short.to_ascii().to_upper().into_string();
         let flags = matches.opt_strs(level_short.as_slice())
                            .move_iter()
                            .collect::<Vec<_>>()

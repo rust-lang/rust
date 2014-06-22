@@ -111,7 +111,7 @@ pub trait FloatMath: Float {
 }
 
 /// A generic trait for converting a value to a string with a radix (base)
-pub trait ToStrRadix {
+pub trait ToStringRadix {
     fn to_str_radix(&self, radix: uint) -> String;
 }
 

@@ -263,7 +263,7 @@ impl TypeMap {
                                    metadata: DIType) {
         if !self.type_to_metadata.insert(ty::type_id(type_), metadata) {
             cx.sess().bug(format!("Type metadata for ty::t '{}' is already in the TypeMap!",
-                                   ppaux::ty_to_str(cx.tcx(), type_)).as_slice());
+                                   ppaux::ty_to_string(cx.tcx(), type_)).as_slice());
         }
     }
 
@@ -338,7 +338,7 @@ impl TypeMap {
             ty::ty_int(_)             |
             ty::ty_uint(_)            |
             ty::ty_float(_) => {
-                unique_type_id.push_str(ppaux::ty_to_str(cx.tcx(), type_).as_slice());
+                unique_type_id.push_str(ppaux::ty_to_string(cx.tcx(), type_).as_slice());
             },
             ty::ty_enum(def_id, ref substs) => {
                 unique_type_id.push_str("enum ");
@@ -497,7 +497,7 @@ impl TypeMap {
             },
             _ => {
                 cx.sess().bug(format!("get_unique_type_id_of_type() - unexpected type: {}, {:?}",
-                                      ppaux::ty_to_str(cx.tcx(), type_).as_slice(),
+                                      ppaux::ty_to_string(cx.tcx(), type_).as_slice(),
                                       ty::get(type_).sty).as_slice())
             }
         };
@@ -517,7 +517,7 @@ impl TypeMap {
                                   def_id: ast::DefId,
                                   substs: &subst::Substs,
                                   output: &mut String) {
-            use std::num::ToStrRadix;
+            use std::num::ToStringRadix;
 
             // First, find out the 'real' def_id of the type. Items inlined from
             // other crates have to be mapped back to their source.
@@ -788,7 +788,7 @@ pub fn create_global_var_metadata(cx: &CrateContext,
     let type_metadata = type_metadata(cx, variable_type, span);
 
     let namespace_node = namespace_for_item(cx, ast_util::local_def(node_id));
-    let var_name = token::get_ident(ident).get().to_str();
+    let var_name = token::get_ident(ident).get().to_string();
     let linkage_name =
         namespace_node.mangled_name_of_contained_item(var_name.as_slice());
     let var_scope = namespace_node.scope;
@@ -1021,7 +1021,7 @@ pub fn set_source_location(fcx: &FunctionContext,
         FunctionDebugContext(box ref function_debug_context) => {
             let cx = fcx.ccx;
 
-            debug!("set_source_location: {}", cx.sess().codemap().span_to_str(span));
+            debug!("set_source_location: {}", cx.sess().codemap().span_to_string(span));
 
             if function_debug_context.source_locations_enabled.get() {
                 let loc = span_start(cx, span);
@@ -1304,7 +1304,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
         if has_self_type {
             let actual_self_type = self_type.unwrap();
             // Add self type name to <...> clause of function name
-            let actual_self_type_name = ppaux::ty_to_str(cx.tcx(), actual_self_type);
+            let actual_self_type_name = ppaux::ty_to_string(cx.tcx(), actual_self_type);
             name_to_append_suffix_to.push_str(
                 actual_self_type_name.as_slice());
 
@@ -1343,7 +1343,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
         for (index, &ast::TyParam{ ident: ident, .. }) in generics.ty_params.iter().enumerate() {
             let actual_type = *actual_types.get(index);
             // Add actual type name to <...> clause of function name
-            let actual_type_name = ppaux::ty_to_str(cx.tcx(), actual_type);
+            let actual_type_name = ppaux::ty_to_string(cx.tcx(), actual_type);
             name_to_append_suffix_to.push_str(actual_type_name.as_slice());
 
             if index != generics.ty_params.len() - 1 {
@@ -1648,7 +1648,7 @@ fn pointer_type_metadata(cx: &CrateContext,
                       -> DIType {
     let pointer_llvm_type = type_of::type_of(cx, pointer_type);
     let (pointer_size, pointer_align) = size_and_align_of(cx, pointer_llvm_type);
-    let name = ppaux::ty_to_str(cx.tcx(), pointer_type);
+    let name = ppaux::ty_to_string(cx.tcx(), pointer_type);
     let ptr_metadata = name.as_slice().with_c_str(|name| {
         unsafe {
             llvm::LLVMDIBuilderCreatePointerType(
@@ -1777,7 +1777,7 @@ impl RecursiveTypeDescription {
                        type_map.find_metadata_for_type(unfinished_type).is_none() {
                         cx.sess().bug(format!("Forward declaration of potentially recursive type \
                                               '{}' was not found in TypeMap!",
-                                              ppaux::ty_to_str(cx.tcx(), unfinished_type))
+                                              ppaux::ty_to_string(cx.tcx(), unfinished_type))
                                       .as_slice());
                     }
                 }
@@ -1854,7 +1854,7 @@ fn prepare_struct_metadata(cx: &CrateContext,
                            unique_type_id: UniqueTypeId,
                            span: Span)
                         -> RecursiveTypeDescription {
-    let struct_name = ppaux::ty_to_str(cx.tcx(), struct_type);
+    let struct_name = ppaux::ty_to_string(cx.tcx(), struct_type);
     let struct_llvm_type = type_of::type_of(cx, struct_type);
 
     let (containing_scope, definition_span) = get_namespace_and_span_for_item(cx, def_id);
@@ -1918,7 +1918,7 @@ fn prepare_tuple_metadata(cx: &CrateContext,
                           unique_type_id: UniqueTypeId,
                           span: Span)
                        -> RecursiveTypeDescription {
-    let tuple_name = ppaux::ty_to_str(cx.tcx(), tuple_type);
+    let tuple_name = ppaux::ty_to_string(cx.tcx(), tuple_type);
     let tuple_llvm_type = type_of::type_of(cx, tuple_type);
 
     let loc = span_start(cx, span);
@@ -2237,7 +2237,7 @@ fn describe_enum_variant(cx: &CrateContext,
         Some(ref names) => {
             names.iter()
                  .map(|ident| {
-                     token::get_ident(*ident).get().to_str().into_string()
+                     token::get_ident(*ident).get().to_string().into_string()
                  }).collect()
         }
         None => variant_info.args.iter().map(|_| "".to_string()).collect()
@@ -2276,7 +2276,7 @@ fn prepare_enum_metadata(cx: &CrateContext,
                          unique_type_id: UniqueTypeId,
                          span: Span)
                       -> RecursiveTypeDescription {
-    let enum_name = ppaux::ty_to_str(cx.tcx(), enum_type);
+    let enum_name = ppaux::ty_to_string(cx.tcx(), enum_type);
 
     let (containing_scope, definition_span) = get_namespace_and_span_for_item(cx, enum_def_id);
     let loc = span_start(cx, definition_span);
@@ -2577,7 +2577,7 @@ fn at_box_metadata(cx: &CrateContext,
         None => { /* proceed */ }
     };
 
-    let content_type_name = ppaux::ty_to_str(cx.tcx(), content_type);
+    let content_type_name = ppaux::ty_to_string(cx.tcx(), content_type);
     let content_type_name = content_type_name.as_slice();
     let content_llvm_type = type_of::type_of(cx, content_type);
 
@@ -2718,7 +2718,7 @@ fn heap_vec_metadata(cx: &CrateContext,
     };
 
     let vecbox_llvm_type = Type::vec(cx, &element_llvm_type);
-    let vec_pointer_type_name = ppaux::ty_to_str(cx.tcx(), vec_pointer_type);
+    let vec_pointer_type_name = ppaux::ty_to_string(cx.tcx(), vec_pointer_type);
     let vec_pointer_type_name = vec_pointer_type_name.as_slice();
 
     let member_llvm_types = vecbox_llvm_type.field_types();
@@ -2797,7 +2797,7 @@ fn vec_slice_metadata(cx: &CrateContext,
     };
 
     let slice_llvm_type = type_of::type_of(cx, vec_type);
-    let slice_type_name = ppaux::ty_to_str(cx.tcx(), vec_type);
+    let slice_type_name = ppaux::ty_to_string(cx.tcx(), vec_type);
 
     let member_llvm_types = slice_llvm_type.field_types();
     assert!(slice_layout_is_correct(cx,
@@ -2891,7 +2891,7 @@ fn trait_metadata(cx: &CrateContext,
     // But it does not describe the trait's methods.
     let last = ty::with_path(cx.tcx(), def_id, |mut path| path.last().unwrap());
     let ident_string = token::get_name(last.name());
-    let mut name = ppaux::trait_store_to_str(cx.tcx(), trait_store);
+    let mut name = ppaux::trait_store_to_string(cx.tcx(), trait_store);
     name.push_str(ident_string.get());
 
     // Add type and region parameters
@@ -3079,7 +3079,7 @@ fn type_metadata(cx: &CrateContext,
                                                  the debuginfo::TypeMap but it \
                                                  was not. (ty::t = {})",
                                                 unique_type_id_str.as_slice(),
-                                                ppaux::ty_to_str(cx.tcx(), t));
+                                                ppaux::ty_to_string(cx.tcx(), t));
                     cx.sess().span_bug(usage_site_span, error_message.as_slice());
                 }
             };
@@ -3094,7 +3094,7 @@ fn type_metadata(cx: &CrateContext,
                                                      debuginfo::TypeMap. \
                                                      UniqueTypeId={}, ty::t={}",
                             unique_type_id_str.as_slice(),
-                            ppaux::ty_to_str(cx.tcx(), t));
+                            ppaux::ty_to_string(cx.tcx(), t));
                         cx.sess().span_bug(usage_site_span, error_message.as_slice());
                     }
                 }

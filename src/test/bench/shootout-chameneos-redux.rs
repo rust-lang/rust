@@ -48,7 +48,7 @@ fn show_color_list(set: Vec<Color>) -> String {
     let mut out = String::new();
     for col in set.iter() {
         out.push_char(' ');
-        out.push_str(col.to_str().as_slice());
+        out.push_str(col.to_string().as_slice());
     }
     out
 }

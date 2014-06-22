@@ -248,11 +248,11 @@ mod tests {
 
     #[test]
     fn test_show() {
-        use realstd::to_str::ToStr;
+        use realstd::to_str::ToString;
         let a = box 8u as Box<::realstd::any::Any>;
         let b = box Test as Box<::realstd::any::Any>;
-        let a_str = a.to_str();
-        let b_str = b.to_str();
+        let a_str = a.to_string();
+        let b_str = b.to_string();
         assert_eq!(a_str.as_slice(), "Box<Any>");
         assert_eq!(b_str.as_slice(), "Box<Any>");
 

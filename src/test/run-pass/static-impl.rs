@@ -31,7 +31,7 @@ trait uint_utils {
 
 impl uint_utils for uint {
     fn str(&self) -> String {
-        self.to_str()
+        self.to_string()
     }
     fn multi(&self, f: |uint|) {
         let mut c = 0u;

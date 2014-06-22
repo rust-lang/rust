@@ -45,7 +45,7 @@ impl<T> Poly for T {
             // If we have a specified width for formatting, then we have to make
             // this allocation of a new string
             _ => {
-                let s = repr::repr_to_str(self);
+                let s = repr::repr_to_string(self);
                 f.pad(s.as_slice())
             }
         }

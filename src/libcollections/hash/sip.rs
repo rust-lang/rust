@@ -271,7 +271,7 @@ pub fn hash_with_keys<T: Hash<SipState>>(k0: u64, k1: u64, value: &T) -> u64 {
 mod tests {
     use test::Bencher;
     use std::prelude::*;
-    use std::num::ToStrRadix;
+    use std::num::ToStringRadix;
 
     use str::Str;
     use string::String;

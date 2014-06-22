@@ -17,17 +17,17 @@ struct Point {
     y: f64,
 }
 
-impl ToStr for Point { //~ ERROR implements a method not defined in the trait
+impl ToString for Point { //~ ERROR implements a method not defined in the trait
     fn new(x: f64, y: f64) -> Point {
         Point { x: x, y: y }
     }
 
-    fn to_str(&self) -> String {
+    fn to_string(&self) -> String {
         format!("({}, {})", self.x, self.y)
     }
 }
 
 fn main() {
     let p = Point::new(0.0, 0.0);
-    println!("{}", p.to_str());
+    println!("{}", p.to_string());
 }
