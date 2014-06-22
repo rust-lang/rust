@@ -1255,15 +1255,12 @@ fn compare_values<'a>(
 }
 
 fn insert_lllocals<'a>(mut bcx: &'a Block<'a>,
-                       bindings_map: &BindingsMap,
-                       cleanup_scope: cleanup::ScopeId)
+                       bindings_map: &BindingsMap)
                        -> &'a Block<'a> {
     /*!
      * For each binding in `data.bindings_map`, adds an appropriate entry into
-     * the `fcx.lllocals` map, scheduling cleanup in `cleanup_scope`.
+     * the `fcx.lllocals` map
      */
-
-    let fcx = bcx.fcx;
 
     for (&ident, &binding_info) in bindings_map.iter() {
         let llval = match binding_info.trmode {
@@ -1285,7 +1282,6 @@ fn insert_lllocals<'a>(mut bcx: &'a Block<'a>,
         };
 
         let datum = Datum::new(llval, binding_info.ty, Lvalue);
-        fcx.schedule_drop_mem(cleanup_scope, llval, binding_info.ty);
 
         debug!("binding {:?} to {}",
                binding_info.id,
@@ -1317,20 +1313,10 @@ fn compile_guard<'a, 'b>(
            vec_map_to_str(vals, |v| bcx.val_to_str(*v)));
     let _indenter = indenter();
 
-    // Lest the guard itself should fail, introduce a temporary cleanup
-    // scope for any non-ref bindings we create.
-    let temp_scope = bcx.fcx.push_custom_cleanup_scope();
-
-    let mut bcx = insert_lllocals(bcx, &data.bindings_map,
-                                  cleanup::CustomScope(temp_scope));
+    let mut bcx = insert_lllocals(bcx, &data.bindings_map);
 
     let val = unpack_datum!(bcx, expr::trans(bcx, guard_expr));
     let val = val.to_llbool(bcx);
-
-    // Cancel cleanups now that the guard successfully executed.  If
-    // the guard was false, we will drop the values explicitly
-    // below. Otherwise, we'll add lvalue cleanups at the end.
-    bcx.fcx.pop_custom_cleanup_scope(temp_scope);
 
     return with_cond(bcx, Not(bcx, val), |bcx| {
         // Guard does not match: remove all bindings from the lllocals table
@@ -1884,12 +1870,9 @@ fn trans_match_inner<'a>(scope_cx: &'a Block<'a>,
     for arm_data in arm_datas.iter() {
         let mut bcx = arm_data.bodycx;
 
-        // insert bindings into the lllocals map and add cleanups
-        let cleanup_scope = fcx.push_custom_cleanup_scope();
-        bcx = insert_lllocals(bcx, &arm_data.bindings_map,
-                              cleanup::CustomScope(cleanup_scope));
+        // insert bindings into the lllocals map
+        bcx = insert_lllocals(bcx, &arm_data.bindings_map);
         bcx = expr::trans_into(bcx, &*arm_data.arm.body, dest);
-        bcx = fcx.pop_and_trans_custom_cleanup_scope(bcx, cleanup_scope);
         arm_cxs.push(bcx);
     }
 
