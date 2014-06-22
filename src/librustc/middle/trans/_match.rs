@@ -1200,8 +1200,6 @@ fn pick_col(m: &[Match]) -> uint {
 pub enum branch_kind { no_branch, single, switch, compare, compare_vec_len, }
 
 // Compiles a comparison between two things.
-//
-// NB: This must produce an i1, not a Rust bool (i8).
 fn compare_values<'a>(
                   cx: &'a Block<'a>,
                   lhs: ValueRef,
@@ -1218,11 +1216,7 @@ fn compare_values<'a>(
                            format!("comparison of `{}`",
                                    cx.ty_to_str(rhs_t)).as_slice(),
                            StrEqFnLangItem);
-        let result = callee::trans_lang_call(cx, did, [lhs, rhs], None);
-        Result {
-            bcx: result.bcx,
-            val: bool_to_i1(result.bcx, result.val)
-        }
+        callee::trans_lang_call(cx, did, [lhs, rhs], None)
     }
 
     let _icx = push_ctxt("compare_values");
@@ -1243,11 +1237,7 @@ fn compare_values<'a>(
                                    format!("comparison of `{}`",
                                            cx.ty_to_str(rhs_t)).as_slice(),
                                    UniqStrEqFnLangItem);
-                let result = callee::trans_lang_call(cx, did, [scratch_lhs, scratch_rhs], None);
-                Result {
-                    bcx: result.bcx,
-                    val: bool_to_i1(result.bcx, result.val)
-                }
+                callee::trans_lang_call(cx, did, [scratch_lhs, scratch_rhs], None)
             }
             _ => cx.sess().bug("only strings supported in compare_values"),
         },

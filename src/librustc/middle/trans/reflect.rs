@@ -107,7 +107,6 @@ impl<'a, 'b> Reflector<'a, 'b> {
                                                          mth_idx,
                                                          v),
             ArgVals(args), None));
-        let result = bool_to_i1(bcx, result);
         let next_bcx = fcx.new_temp_block("next");
         CondBr(bcx, result, next_bcx.llbb, self.final_bcx.llbb);
         self.bcx = next_bcx
