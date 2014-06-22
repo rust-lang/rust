@@ -53,10 +53,9 @@ use middle::const_eval;
 use middle::def;
 use middle::lang_items::FnMutTraitLangItem;
 use rl = middle::resolve_lifetime;
-use middle::subst::{Subst, Substs};
-use middle::subst;
-use middle::ty::ty_param_substs_and_ty;
+use middle::subst::{FnSpace, TypeSpace, SelfSpace, Subst, Substs};
 use middle::ty;
+use middle::typeck::TypeAndSubsts;
 use middle::typeck::lookup_def_tcx;
 use middle::typeck::rscope::RegionScope;
 use middle::typeck::rscope;
@@ -71,7 +70,7 @@ use syntax::print::pprust::{lifetime_to_str, path_to_str};
 
 pub trait AstConv {
     fn tcx<'a>(&'a self) -> &'a ty::ctxt;
-    fn get_item_ty(&self, id: ast::DefId) -> ty::ty_param_bounds_and_ty;
+    fn get_item_ty(&self, id: ast::DefId) -> ty::Polytype;
     fn get_trait_def(&self, id: ast::DefId) -> Rc<ty::TraitDef>;
 
     // what type should we use when a type is omitted?
@@ -154,7 +153,7 @@ fn ast_path_substs<AC:AstConv,RS:RegionScope>(
     rscope: &RS,
     decl_generics: &ty::Generics,
     self_ty: Option<ty::t>,
-    path: &ast::Path) -> subst::Substs
+    path: &ast::Path) -> Substs
 {
     /*!
      * Given a path `path` that refers to an item `I` with the
@@ -172,13 +171,13 @@ fn ast_path_substs<AC:AstConv,RS:RegionScope>(
     // Note: in the case of traits, the self parameter is also
     // defined, but we don't currently create a `type_param_def` for
     // `Self` because it is implicit.
-    assert!(decl_generics.regions.all(|d| d.space == subst::TypeSpace));
-    assert!(decl_generics.types.all(|d| d.space != subst::FnSpace));
+    assert!(decl_generics.regions.all(|d| d.space == TypeSpace));
+    assert!(decl_generics.types.all(|d| d.space != FnSpace));
 
     // If the type is parameterized by the this region, then replace this
     // region with the current anon region binding (in other words,
     // whatever & would get replaced with).
-    let expected_num_region_params = decl_generics.regions.len(subst::TypeSpace);
+    let expected_num_region_params = decl_generics.regions.len(TypeSpace);
     let supplied_num_region_params = path.segments.last().unwrap().lifetimes.len();
     let regions = if expected_num_region_params == supplied_num_region_params {
         path.segments.last().unwrap().lifetimes.iter().map(
@@ -204,7 +203,7 @@ fn ast_path_substs<AC:AstConv,RS:RegionScope>(
     };
 
     // Convert the type parameters supplied by the user.
-    let ty_param_defs = decl_generics.types.get_vec(subst::TypeSpace);
+    let ty_param_defs = decl_generics.types.get_vec(TypeSpace);
     let supplied_ty_param_count = path.segments.iter().flat_map(|s| s.types.iter()).count();
     let formal_ty_param_count = ty_param_defs.len();
     let required_ty_param_count = ty_param_defs.iter()
@@ -246,7 +245,7 @@ fn ast_path_substs<AC:AstConv,RS:RegionScope>(
                             .map(|a_t| ast_ty_to_ty(this, rscope, &**a_t))
                             .collect();
 
-    let mut substs = subst::Substs::new_type(tps, regions);
+    let mut substs = Substs::new_type(tps, regions);
 
     match self_ty {
         None => {
@@ -258,14 +257,14 @@ fn ast_path_substs<AC:AstConv,RS:RegionScope>(
             // "declared" (in other words, this should be a
             // trait-ref).
             assert!(decl_generics.types.get_self().is_some());
-            substs.types.push(subst::SelfSpace, ty);
+            substs.types.push(SelfSpace, ty);
         }
     }
 
     for param in ty_param_defs.slice_from(supplied_ty_param_count).iter() {
         let default = param.default.unwrap();
         let default = default.subst_spanned(tcx, &substs, Some(path.span));
-        substs.types.push(subst::TypeSpace, default);
+        substs.types.push(TypeSpace, default);
     }
 
     substs
@@ -289,17 +288,17 @@ pub fn ast_path_to_ty<AC:AstConv,RS:RegionScope>(
         rscope: &RS,
         did: ast::DefId,
         path: &ast::Path)
-     -> ty_param_substs_and_ty
+     -> TypeAndSubsts
 {
     let tcx = this.tcx();
-    let ty::ty_param_bounds_and_ty {
+    let ty::Polytype {
         generics: generics,
         ty: decl_ty
     } = this.get_item_ty(did);
 
     let substs = ast_path_substs(this, rscope, &generics, None, path);
     let ty = decl_ty.subst(tcx, &substs);
-    ty_param_substs_and_ty { substs: substs, ty: ty }
+    TypeAndSubsts { substs: substs, ty: ty }
 }
 
 pub static NO_REGIONS: uint = 1;
@@ -547,11 +546,11 @@ pub fn trait_ref_for_unboxed_function<AC:AstConv,
     let output_type = ast_ty_to_ty(this,
                                    rscope,
                                    &*unboxed_function.decl.output);
-    let mut substs = subst::Substs::new_type(vec!(input_tuple, output_type),
+    let mut substs = Substs::new_type(vec!(input_tuple, output_type),
                                              Vec::new());
 
     match self_ty {
-        Some(s) => substs.types.push(subst::SelfSpace, s),
+        Some(s) => substs.types.push(SelfSpace, s),
         None => ()
     }
 

@@ -721,7 +721,7 @@ fn check_while_true_expr(cx: &Context, e: &ast::Expr) {
 impl<'a> AstConv for Context<'a>{
     fn tcx<'a>(&'a self) -> &'a ty::ctxt { self.tcx }
 
-    fn get_item_ty(&self, id: ast::DefId) -> ty::ty_param_bounds_and_ty {
+    fn get_item_ty(&self, id: ast::DefId) -> ty::Polytype {
         ty::lookup_item_type(self.tcx, id)
     }
 

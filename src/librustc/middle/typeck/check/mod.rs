@@ -85,7 +85,7 @@ use middle::pat_util;
 use middle::subst;
 use middle::subst::{Subst, Substs, VecPerParamSpace, ParamSpace};
 use middle::ty::{FnSig, VariantInfo};
-use middle::ty::{ty_param_bounds_and_ty, ty_param_substs_and_ty};
+use middle::ty::{Polytype};
 use middle::ty::{ParamTy, Disr, ExprTyProvider};
 use middle::ty;
 use middle::ty_fold::TypeFolder;
@@ -109,6 +109,7 @@ use middle::typeck::{lookup_def_ccx};
 use middle::typeck::no_params;
 use middle::typeck::{require_same_types, vtable_map};
 use middle::typeck::{MethodCall, MethodMap};
+use middle::typeck::{TypeAndSubsts};
 use middle::lang_items::TypeIdLangItem;
 use util::common::{block_query, indenter, loop_query};
 use util::ppaux;
@@ -644,20 +645,20 @@ pub fn check_item(ccx: &CrateCtxt, it: &ast::Item) {
                             it.id);
       }
       ast::ItemFn(ref decl, _, _, _, ref body) => {
-        let fn_tpt = ty::lookup_item_type(ccx.tcx, ast_util::local_def(it.id));
+        let fn_pty = ty::lookup_item_type(ccx.tcx, ast_util::local_def(it.id));
 
         let param_env = ty::construct_parameter_environment(ccx.tcx,
-                                                            &fn_tpt.generics,
+                                                            &fn_pty.generics,
                                                             body.id);
 
-        check_bare_fn(ccx, &**decl, &**body, it.id, fn_tpt.ty, param_env);
+        check_bare_fn(ccx, &**decl, &**body, it.id, fn_pty.ty, param_env);
       }
       ast::ItemImpl(_, ref opt_trait_ref, _, ref ms) => {
         debug!("ItemImpl {} with id {}", token::get_ident(it.ident), it.id);
 
-        let impl_tpt = ty::lookup_item_type(ccx.tcx, ast_util::local_def(it.id));
+        let impl_pty = ty::lookup_item_type(ccx.tcx, ast_util::local_def(it.id));
         for m in ms.iter() {
-            check_method_body(ccx, &impl_tpt.generics, &**m);
+            check_method_body(ccx, &impl_pty.generics, &**m);
         }
 
         match *opt_trait_ref {
@@ -669,7 +670,7 @@ pub fn check_item(ccx: &CrateCtxt, it: &ast::Item) {
                                              ast_trait_ref,
                                              &*impl_trait_ref,
                                              ms.as_slice());
-                vtable::resolve_impl(ccx.tcx, it, &impl_tpt.generics, &*impl_trait_ref);
+                vtable::resolve_impl(ccx.tcx, it, &impl_pty.generics, &*impl_trait_ref);
             }
             None => { }
         }
@@ -693,8 +694,8 @@ pub fn check_item(ccx: &CrateCtxt, it: &ast::Item) {
         check_struct(ccx, it.id, it.span);
       }
       ast::ItemTy(ref t, ref generics) => {
-        let tpt_ty = ty::node_id_to_type(ccx.tcx, it.id);
-        check_bounds_are_used(ccx, t.span, &generics.ty_params, tpt_ty);
+        let pty_ty = ty::node_id_to_type(ccx.tcx, it.id);
+        check_bounds_are_used(ccx, t.span, &generics.ty_params, pty_ty);
       }
       ast::ItemForeignMod(ref m) => {
         if m.abi == abi::RustIntrinsic {
@@ -703,8 +704,8 @@ pub fn check_item(ccx: &CrateCtxt, it: &ast::Item) {
             }
         } else {
             for item in m.items.iter() {
-                let tpt = ty::lookup_item_type(ccx.tcx, local_def(item.id));
-                if !tpt.generics.types.is_empty() {
+                let pty = ty::lookup_item_type(ccx.tcx, local_def(item.id));
+                if !pty.generics.types.is_empty() {
                     ccx.tcx.sess.span_err(item.span, "foreign items may not have type parameters");
                 }
 
@@ -1048,7 +1049,7 @@ fn compare_impl_method(tcx: &ty::ctxt,
 impl<'a> AstConv for FnCtxt<'a> {
     fn tcx<'a>(&'a self) -> &'a ty::ctxt { self.ccx.tcx }
 
-    fn get_item_ty(&self, id: ast::DefId) -> ty::ty_param_bounds_and_ty {
+    fn get_item_ty(&self, id: ast::DefId) -> ty::Polytype {
         ty::lookup_item_type(self.tcx(), id)
     }
 
@@ -1791,7 +1792,7 @@ fn check_expr_with_lvalue_pref(fcx: &FnCtxt, expr: &ast::Expr,
 pub fn impl_self_ty(vcx: &VtableContext,
                     span: Span, // (potential) receiver for this impl
                     did: ast::DefId)
-                 -> ty_param_substs_and_ty {
+                    -> TypeAndSubsts {
     let tcx = vcx.tcx();
 
     let ity = ty::lookup_item_type(tcx, did);
@@ -1805,7 +1806,7 @@ pub fn impl_self_ty(vcx: &VtableContext,
     let substs = subst::Substs::new_type(tps, rps);
     let substd_ty = raw_ty.subst(tcx, &substs);
 
-    ty_param_substs_and_ty { substs: substs, ty: substd_ty }
+    TypeAndSubsts { substs: substs, ty: substd_ty }
 }
 
 // Only for fields! Returns <none> for methods>
@@ -2855,8 +2856,8 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
       }
       ast::ExprPath(ref pth) => {
         let defn = lookup_def(fcx, pth.span, id);
-        let tpt = ty_param_bounds_and_ty_for_def(fcx, expr.span, defn);
-        instantiate_path(fcx, pth, tpt, defn, expr.span, expr.id);
+        let pty = polytype_for_def(fcx, expr.span, defn);
+        instantiate_path(fcx, pth, pty, defn, expr.span, expr.id);
       }
       ast::ExprInlineAsm(ref ia) => {
           for &(_, ref input) in ia.inputs.iter() {
@@ -3751,10 +3752,10 @@ pub fn lookup_def(fcx: &FnCtxt, sp: Span, id: ast::NodeId) -> def::Def {
 }
 
 // Returns the type parameter count and the type for the given definition.
-pub fn ty_param_bounds_and_ty_for_def(fcx: &FnCtxt,
-                                      sp: Span,
-                                      defn: def::Def)
-                                   -> ty_param_bounds_and_ty {
+pub fn polytype_for_def(fcx: &FnCtxt,
+                        sp: Span,
+                        defn: def::Def)
+                        -> Polytype {
     match defn {
       def::DefArg(nid, _) | def::DefLocal(nid, _) |
       def::DefBinding(nid, _) => {
@@ -3767,7 +3768,7 @@ pub fn ty_param_bounds_and_ty_for_def(fcx: &FnCtxt,
         return ty::lookup_item_type(fcx.ccx.tcx, id);
       }
       def::DefUpvar(_, inner, _, _) => {
-        return ty_param_bounds_and_ty_for_def(fcx, sp, *inner);
+        return polytype_for_def(fcx, sp, *inner);
       }
       def::DefTrait(_) |
       def::DefTy(_) |
@@ -3803,7 +3804,7 @@ pub fn ty_param_bounds_and_ty_for_def(fcx: &FnCtxt,
 // number of type parameters and type.
 pub fn instantiate_path(fcx: &FnCtxt,
                         path: &ast::Path,
-                        polytype: ty_param_bounds_and_ty,
+                        polytype: Polytype,
                         def: def::Def,
                         span: Span,
                         node_id: ast::NodeId) {
