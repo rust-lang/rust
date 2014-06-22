@@ -2619,8 +2619,8 @@ fn main() {
 }
 ~~~
 
-The full list of derivable traits is `PartialEq`, `TotalEq`, `Ord`,
-`TotalOrd`, `Encodable`, `Decodable`, `Clone`,
+The full list of derivable traits is `PartialEq`, `Eq`, `PartialOrd`,
+`Ord`, `Encodable`, `Decodable`, `Clone`,
 `Hash`, `Rand`, `Default`, `Zero`, `FromPrimitive` and `Show`.
 
 # Crates and the module system

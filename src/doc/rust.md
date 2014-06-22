@@ -2270,7 +2270,7 @@ impl<T: PartialEq> PartialEq for Foo<T> {
 
 Supported traits for `deriving` are:
 
-* Comparison traits: `PartialEq`, `TotalEq`, `PartialOrd`, `TotalOrd`.
+* Comparison traits: `PartialEq`, `Eq`, `PartialOrd`, `Ord`.
 * Serialization: `Encodable`, `Decodable`. These require `serialize`.
 * `Clone`, to create `T` from `&T` via a copy.
 * `Hash`, to iterate over the bytes in a data type.

@@ -119,8 +119,8 @@ for (trait, supers, errs) in [('Rand', [], 1),
                               ('Clone', [], 1),
                               ('PartialEq', [], 2),
                               ('PartialOrd', ['PartialEq'], 8),
-                              ('TotalEq', ['PartialEq'], 1),
-                              ('TotalOrd', ['TotalEq', 'PartialOrd', 'PartialEq'], 1),
+                              ('Eq', ['PartialEq'], 1),
+                              ('Ord', ['Eq', 'PartialOrd', 'PartialEq'], 1),
                               ('Show', [], 1),
                               ('Hash', [], 1)]:
     traits[trait] = (ALL, supers, errs)

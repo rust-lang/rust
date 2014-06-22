@@ -26,7 +26,7 @@ The standard library provides three owned map/set types:
   implement `Eq` and `Hash`
 * `collections::TrieMap` and `collections::TrieSet`, requiring the keys to be `uint`
 * `collections::TreeMap` and `collections::TreeSet`, requiring the keys
-  to implement `TotalOrd`
+  to implement `Ord`
 
 These maps do not use managed pointers so they can be sent between tasks as
 long as the key and value types are sendable. Neither the key or value type has
