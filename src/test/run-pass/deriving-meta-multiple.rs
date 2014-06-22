@@ -11,7 +11,10 @@
 
 use std::hash::hash;
 
-#[deriving(PartialEq, Clone, Hash)]
+// testing mulptiple separate deriving attributes
+#[deriving(PartialEq)]
+#[deriving(Clone)]
+#[deriving(Hash)]
 struct Foo {
     bar: uint,
     baz: int
