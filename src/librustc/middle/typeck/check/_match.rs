@@ -133,10 +133,10 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: &ast::Pat, path: &ast::Path,
             match v_def.variant_def_ids() {
                 Some((enm, var)) => {
                     // Assign the pattern the type of the *enum*, not the variant.
-                    let enum_tpt = ty::lookup_item_type(tcx, enm);
+                    let enum_pty = ty::lookup_item_type(tcx, enm);
                     instantiate_path(pcx.fcx,
                                      path,
-                                     enum_tpt,
+                                     enum_pty,
                                      v_def,
                                      pat.span,
                                      pat.id);
@@ -190,16 +190,16 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: &ast::Pat, path: &ast::Path,
             let s_def_id = s_def.def_id();
 
             // Assign the pattern the type of the struct.
-            let ctor_tpt = ty::lookup_item_type(tcx, s_def_id);
-            let struct_tpt = if ty::is_fn_ty(ctor_tpt.ty) {
-                ty::ty_param_bounds_and_ty {ty: ty::ty_fn_ret(ctor_tpt.ty),
-                                        ..ctor_tpt}
+            let ctor_pty = ty::lookup_item_type(tcx, s_def_id);
+            let struct_pty = if ty::is_fn_ty(ctor_pty.ty) {
+                ty::Polytype {ty: ty::ty_fn_ret(ctor_pty.ty),
+                              ..ctor_pty}
             } else {
-                ctor_tpt
+                ctor_pty
             };
             instantiate_path(pcx.fcx,
                              path,
-                             struct_tpt,
+                             struct_pty,
                              s_def,
                              pat.span,
                              pat.id);
@@ -478,9 +478,9 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
       ast::PatEnum(..) |
       ast::PatIdent(..) if pat_is_const(&tcx.def_map, pat) => {
         let const_did = tcx.def_map.borrow().get_copy(&pat.id).def_id();
-        let const_tpt = ty::lookup_item_type(tcx, const_did);
-        demand::suptype(fcx, pat.span, expected, const_tpt.ty);
-        fcx.write_ty(pat.id, const_tpt.ty);
+        let const_pty = ty::lookup_item_type(tcx, const_did);
+        demand::suptype(fcx, pat.span, expected, const_pty.ty);
+        fcx.write_ty(pat.id, const_pty.ty);
       }
       ast::PatIdent(bm, ref name, sub) if pat_is_binding(&tcx.def_map, pat) => {
         let typ = fcx.local_ty(pat.span, pat.id);

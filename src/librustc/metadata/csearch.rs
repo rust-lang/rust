@@ -193,7 +193,7 @@ pub fn get_struct_fields(cstore: &cstore::CStore,
 
 pub fn get_type(tcx: &ty::ctxt,
                 def: ast::DefId)
-             -> ty::ty_param_bounds_and_ty {
+             -> ty::Polytype {
     let cstore = &tcx.sess.cstore;
     let cdata = cstore.get_crate_data(def.krate);
     decoder::get_type(&*cdata, def.node, tcx)
@@ -206,7 +206,7 @@ pub fn get_trait_def(tcx: &ty::ctxt, def: ast::DefId) -> ty::TraitDef {
 }
 
 pub fn get_field_type(tcx: &ty::ctxt, class_id: ast::DefId,
-                      def: ast::DefId) -> ty::ty_param_bounds_and_ty {
+                      def: ast::DefId) -> ty::Polytype {
     let cstore = &tcx.sess.cstore;
     let cdata = cstore.get_crate_data(class_id.krate);
     let all_items = reader::get_doc(ebml::Doc::new(cdata.data()), tag_items);
@@ -224,7 +224,7 @@ pub fn get_field_type(tcx: &ty::ctxt, class_id: ast::DefId,
                     def)).to_string()
         });
     let ty = decoder::item_type(def, the_field, tcx, &*cdata);
-    ty::ty_param_bounds_and_ty {
+    ty::Polytype {
         generics: ty::Generics {types: VecPerParamSpace::empty(),
                                 regions: VecPerParamSpace::empty()},
         ty: ty

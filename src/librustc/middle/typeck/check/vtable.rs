@@ -23,6 +23,7 @@ use middle::typeck::{vtable_origin, vtable_res, vtable_param_res};
 use middle::typeck::{vtable_static, vtable_param, vtable_error};
 use middle::typeck::{param_index};
 use middle::typeck::MethodCall;
+use middle::typeck::TypeAndSubsts;
 use middle::subst;
 use middle::subst::{Subst, VecPerParamSpace};
 use util::common::indenter;
@@ -353,7 +354,7 @@ fn search_for_vtable(vcx: &VtableContext,
         // FIXME: document a bit more what this means
         //
         // FIXME(#5781) this should be mk_eqty not mk_subty
-        let ty::ty_param_substs_and_ty {
+        let TypeAndSubsts {
             substs: substs,
             ty: for_ty
         } = impl_self_ty(vcx, span, impl_did);
