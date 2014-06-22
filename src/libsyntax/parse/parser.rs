@@ -4116,6 +4116,11 @@ impl<'a> Parser<'a> {
                 };
                 spanned(lo, p.span.hi, struct_field_)
             });
+            if fields.len() == 0 {
+                self.fatal(format!("unit-like struct definition should be \
+                                    written as `struct {};`",
+                                   token::get_ident(class_name)).as_slice());
+            }
             self.expect(&token::SEMI);
         } else if self.eat(&token::SEMI) {
             // It's a unit-like struct.
