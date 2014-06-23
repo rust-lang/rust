@@ -8,8 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait I {}
-type K = I;
-impl K for int {} //~ ERROR: `K` is not a trait
-//~^ NOTE: `type` aliases cannot be used for traits
+// aux-build:issue_3907.rs
+extern crate issue_3907;
+
+type Foo = issue_3907::Foo; //~ ERROR: reference to trait
+
+struct S {
+    name: int
+}
+
 fn main() {}

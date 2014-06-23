@@ -3894,8 +3894,31 @@ impl<'a> Resolver<'a> {
                 self.resolve_error(trait_reference.path.span, msg.as_slice());
             }
             Some(def) => {
-                debug!("(resolving trait) found trait def: {:?}", def);
-                self.record_def(trait_reference.ref_id, def);
+                match def {
+                    (DefTrait(_), _) => {
+                        debug!("(resolving trait) found trait def: {:?}", def);
+                        self.record_def(trait_reference.ref_id, def);
+                    }
+                    (def, _) => {
+                        self.resolve_error(trait_reference.path.span,
+                                           format!("`{}` is not a trait",
+                                                   self.path_idents_to_str(
+                                                        &trait_reference.path)));
+
+                        // If it's a typedef, give a note
+                        match def {
+                            DefTy(_) => {
+                                self.session.span_note(
+                                                trait_reference.path.span,
+                                                format!("`type` aliases cannot \
+                                                        be used for traits")
+                                                        .as_slice());
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+
             }
         }
     }
@@ -4021,6 +4044,9 @@ impl<'a> Resolver<'a> {
 
                 this.with_current_self_type(self_type, |this| {
                     for method in methods.iter() {
+                        // If this is a trait impl, ensure the method exists in trait
+                        this.check_trait_method(&**method);
+
                         // We also need a new scope for the method-specific type parameters.
                         this.resolve_method(MethodRibKind(id, Provided(method.id)),
                                             &**method);
@@ -4028,6 +4054,21 @@ impl<'a> Resolver<'a> {
                 });
             });
         });
+    }
+
+    fn check_trait_method(&self, method: &Method) {
+        // If there is a TraitRef in scope for an impl, then the method must be in the trait.
+        for &(did, ref trait_ref) in self.current_trait_ref.iter() {
+            let method_name = method.ident.name;
+
+            if self.method_map.borrow().find(&(method_name, did)).is_none() {
+                let path_str = self.path_idents_to_str(&trait_ref.path);
+                self.resolve_error(method.span,
+                                    format!("method `{}` is not a member of trait `{}`",
+                                            token::get_name(method_name),
+                                            path_str).as_slice());
+            }
+        }
     }
 
     fn resolve_module(&mut self, module: &Mod, _span: Span,

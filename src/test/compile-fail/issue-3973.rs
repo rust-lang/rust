@@ -8,26 +8,29 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-test
-
-use std::io;
-
 struct Point {
     x: f64,
     y: f64,
 }
 
-impl ToStr for Point { //~ ERROR implements a method not defined in the trait
+trait NewTrait {
+    fn a(&self) -> String;
+}
+
+impl NewTrait for Point {
     fn new(x: f64, y: f64) -> Point {
+    //~^ ERROR method `new` is not a member of trait `NewTrait`
         Point { x: x, y: y }
     }
 
-    fn to_str(&self) -> String {
+    fn a(&self) -> String {
         format!("({}, {})", self.x, self.y)
     }
 }
 
 fn main() {
     let p = Point::new(0.0, 0.0);
-    println!("{}", p.to_str());
+    //~^ ERROR unresolved name `Point::new`
+    //~^^ ERROR failed to resolve. Use of undeclared module `Point`
+    println!("{}", p.a());
 }
