@@ -54,15 +54,12 @@
        html_root_url = "http://doc.rust-lang.org/")]
 
 #![deny(unused_result, unused_must_use)]
-#![allow(non_camel_case_types)]
-#![allow(deprecated)]
-#![allow(unknown_features)] // NOTE: remove after a stage0 snap
-#![feature(default_type_params)]
+#![allow(non_camel_case_types, deprecated)]
 
 // NB this crate explicitly does *not* allow glob imports, please seriously
 //    consider whether they're needed before adding that feature here (the
 //    answer is that you don't need them)
-#![feature(macro_rules, unsafe_destructor)]
+#![feature(macro_rules, unsafe_destructor, default_type_params)]
 
 extern crate alloc;
 extern crate libc;

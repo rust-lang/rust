@@ -20,7 +20,6 @@
 #![feature(linkage, unsafe_destructor)]
 #![no_std]
 #![experimental]
-#![allow(unknown_features)] // NOTE: remove after a stage0 snap
 
 #[phase(plugin, link)] extern crate core;
 extern crate alloc;
