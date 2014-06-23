@@ -8,32 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Operations on boolean values (`bool` type)
-//!
-//! A `to_bit` conversion function.
+//! The boolean type
 
 #![doc(primitive = "bool")]
-
-use num::{Int, one, zero};
-
-/////////////////////////////////////////////////////////////////////////////
-// Freestanding functions
-/////////////////////////////////////////////////////////////////////////////
-
-/// Convert a `bool` to an integer.
-///
-/// # Examples
-///
-/// ```rust
-/// use std::bool;
-///
-/// assert_eq!(bool::to_bit::<u8>(true), 1u8);
-/// assert_eq!(bool::to_bit::<u8>(false), 0u8);
-/// ```
-#[inline]
-pub fn to_bit<N: Int>(p: bool) -> N {
-    if p { one() } else { zero() }
-}
 
 #[cfg(test)]
 mod tests {
