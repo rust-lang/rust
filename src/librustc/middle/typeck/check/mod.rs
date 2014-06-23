@@ -784,7 +784,8 @@ fn check_impl_methods_against_trait(ccx: &CrateCtxt,
                                     &impl_trait_ref.substs);
             }
             None => {
-                tcx.sess.span_err(
+                // This is span_bug as it should have already been caught in resolve.
+                tcx.sess.span_bug(
                     impl_method.span,
                     format!(
                         "method `{}` is not a member of trait `{}`",
