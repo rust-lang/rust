@@ -16,15 +16,13 @@ use collections::{Collection, Mutable, Set, MutableSet, Map, MutableMap};
 use default::Default;
 use fmt::Show;
 use fmt;
-use hash::{Hash, Hasher, sip};
+use hash::{Hash, Hasher, RandomSipHasher};
 use iter::{Iterator, FilterMap, Chain, Repeat, Zip, Extendable};
 use iter::{range, range_inclusive, FromIterator};
 use iter;
 use mem::replace;
 use num;
 use option::{Some, None, Option};
-use rand::Rng;
-use rand;
 use result::{Ok, Err};
 
 mod table {
@@ -733,7 +731,7 @@ impl DefaultResizePolicy {
 /// }
 /// ```
 #[deriving(Clone)]
-pub struct HashMap<K, V, H = sip::SipHasher> {
+pub struct HashMap<K, V, H = RandomSipHasher> {
     // All hashes are keyed on these values, to prevent hash collision attacks.
     hasher: H,
 
@@ -1033,18 +1031,15 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> MutableMap<K, V> for HashMap<K, V, H> 
 
 }
 
-impl<K: Hash + Eq, V> HashMap<K, V, sip::SipHasher> {
+impl<K: Hash + Eq, V> HashMap<K, V, RandomSipHasher> {
     /// Create an empty HashMap.
-    pub fn new() -> HashMap<K, V, sip::SipHasher> {
+    pub fn new() -> HashMap<K, V, RandomSipHasher> {
         HashMap::with_capacity(INITIAL_CAPACITY)
     }
 
     /// Creates an empty hash map with the given initial capacity.
-    pub fn with_capacity(capacity: uint) -> HashMap<K, V, sip::SipHasher> {
-        let mut r = rand::task_rng();
-        let r0 = r.gen();
-        let r1 = r.gen();
-        let hasher = sip::SipHasher::new_with_keys(r0, r1);
+    pub fn with_capacity(capacity: uint) -> HashMap<K, V, RandomSipHasher> {
+        let hasher = RandomSipHasher::new();
         HashMap::with_capacity_and_hasher(capacity, hasher)
     }
 }
@@ -1489,7 +1484,7 @@ pub type SetMoveItems<K> =
 /// HashMap where the value is (). As with the `HashMap` type, a `HashSet`
 /// requires that the elements implement the `Eq` and `Hash` traits.
 #[deriving(Clone)]
-pub struct HashSet<T, H = sip::SipHasher> {
+pub struct HashSet<T, H = RandomSipHasher> {
     map: HashMap<T, (), H>
 }
 
@@ -1529,15 +1524,15 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> MutableSet<T> for HashSet<T, H> {
     fn remove(&mut self, value: &T) -> bool { self.map.remove(value) }
 }
 
-impl<T: Hash + Eq> HashSet<T, sip::SipHasher> {
+impl<T: Hash + Eq> HashSet<T, RandomSipHasher> {
     /// Create an empty HashSet
-    pub fn new() -> HashSet<T, sip::SipHasher> {
+    pub fn new() -> HashSet<T, RandomSipHasher> {
         HashSet::with_capacity(INITIAL_CAPACITY)
     }
 
     /// Create an empty HashSet with space for at least `n` elements in
     /// the hash table.
-    pub fn with_capacity(capacity: uint) -> HashSet<T, sip::SipHasher> {
+    pub fn with_capacity(capacity: uint) -> HashSet<T, RandomSipHasher> {
         HashSet { map: HashMap::with_capacity(capacity) }
     }
 }
