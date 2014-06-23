@@ -27,7 +27,6 @@ use codemap::Span;
 use parse;
 use owned_slice::OwnedSlice;
 
-<<<<<<< HEAD
 use std::gc::Gc;
 
 pub enum FnKind<'a> {

@@ -2678,14 +2678,6 @@ impl<'a> Parser<'a> {
         self.mk_expr(lo, hi, ExprLoop(body, opt_ident))
     }
 
-    /// For distinguishing between struct literals and blocks
-    fn looking_at_struct_literal(&mut self) -> bool {
-        self.token == token::LBRACE &&
-        ((self.look_ahead(1, |t| token::is_plain_ident(t)) &&
-          self.look_ahead(2, |t| *t == token::COLON))
-         || self.look_ahead(1, |t| *t == token::DOTDOT))
-    }
-
     fn parse_match_expr(&mut self) -> Gc<Expr> {
         let lo = self.last_span.lo;
         let discriminant = self.parse_expr_res(RESTRICT_NO_STRUCT_LITERAL);
@@ -3517,10 +3509,6 @@ impl<'a> Parser<'a> {
     fn parse_ty_param_bounds(&mut self, allow_any_lifetime: bool)
                              -> (Option<ast::Lifetime>,
                                  OwnedSlice<TyParamBound>) {
-        if !self.eat(&token::COLON) {
-            return (None, None);
-        }
-
         let mut ret_lifetime = None;
         let mut result = vec!();
         loop {

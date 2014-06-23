@@ -15,7 +15,6 @@ use parse::{new_parser_from_source_str};
 use parse::parser::Parser;
 use parse::token;
 
-<<<<<<< HEAD
 use std::gc::Gc;
 
 /// Map a string to tts, using a made-up filename:

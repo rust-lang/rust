@@ -26,7 +26,7 @@ use serialize::{Encodable, Decodable, Encoder, Decoder};
 
 /// A pointer abstraction.
 // FIXME(eddyb) #10676 use Rc<T> in the future.
-pub type P<T> = @T;
+pub type P<T> = Gc<T>;
 
 #[allow(non_snake_case_functions)]
 /// Construct a P<T> from a T value.
@@ -216,7 +216,7 @@ impl Generics {
 
 /// The set of MetaItems that define the compilation environment of the crate,
 /// used to drive conditional compilation
-pub type CrateConfig = Vec<@MetaItem> ;
+pub type CrateConfig = Vec<Gc<MetaItem>> ;
 
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
 pub struct Crate {
@@ -1130,7 +1130,6 @@ pub enum Item_ {
              Option<TraitRef>, // (optional) trait this impl implements
              P<Ty>, // self
              Vec<Gc<Method>>),
-             Vec<@Method> ),
     /// A macro invocation (which includes macro definition)
     ItemMac(Mac),
 }
