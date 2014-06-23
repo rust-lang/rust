@@ -10,6 +10,7 @@
 
 //! Operations and constants for signed 32-bits integers (`i32` type)
 
+#![unstable]
 #![doc(primitive = "i32")]
 
 int_module!(i32, 32)

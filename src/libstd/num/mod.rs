@@ -111,16 +111,19 @@ pub trait FloatMath: Float {
 }
 
 /// A generic trait for converting a value to a string with a radix (base)
+#[deprecated = "use fmt::radix"]
 pub trait ToStrRadix {
     fn to_str_radix(&self, radix: uint) -> String;
 }
 
 /// A generic trait for converting a string with a radix (base) to a value
+#[experimental = "might need to return Result"]
 pub trait FromStrRadix {
     fn from_str_radix(str: &str, radix: uint) -> Option<Self>;
 }
 
 /// A utility function that just calls FromStrRadix::from_str_radix.
+#[experimental = "might need to return Result"]
 pub fn from_str_radix<T: FromStrRadix>(str: &str, radix: uint) -> Option<T> {
     FromStrRadix::from_str_radix(str, radix)
 }
