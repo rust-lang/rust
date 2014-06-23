@@ -95,19 +95,17 @@ mod test_stmt_multi_attr_outer {
         #[attr2 = "val"]
         fn f() { }
 
-        /* FIXME: Issue #493
         #[attr1 = "val"]
         #[attr2 = "val"]
         mod mod1 {
         }
 
-        pub mod rustrt {
+        mod rustrt {
             #[attr1 = "val"]
             #[attr2 = "val"]
             extern {
             }
         }
-        */
     }
 }
 

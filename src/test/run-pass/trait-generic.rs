@@ -29,9 +29,8 @@ trait map<T> {
 impl<T> map<T> for Vec<T> {
     fn map<U>(&self, f: |&T| -> U) -> Vec<U> {
         let mut r = Vec::new();
-        // FIXME: #7355 generates bad code with VecIterator
-        for i in range(0u, self.len()) {
-            r.push(f(self.get(i)));
+        for i in self.iter() {
+            r.push(f(i));
         }
         r
     }
