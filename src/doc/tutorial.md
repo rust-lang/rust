@@ -1488,9 +1488,10 @@ For a more in-depth explanation of references and lifetimes, read the
 
 ## Freezing
 
-Lending an &-pointer to an object freezes it and prevents mutation—even if the object was declared as `mut`.
-`Freeze` objects have freezing enforced statically at compile-time. An example
-of a non-`Freeze` type is [`RefCell<T>`][refcell].
+Lending an &-pointer to an object freezes the pointed-to object and prevents
+mutation—even if the object was declared as `mut`.  `Freeze` objects have
+freezing enforced statically at compile-time. An example of a non-`Freeze` type
+is [`RefCell<T>`][refcell].
 
 ~~~~
 let mut x = 5;
