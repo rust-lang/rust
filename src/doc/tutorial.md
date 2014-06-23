@@ -1,5 +1,12 @@
 % The Rust Language Tutorial
 
+<div style="border: 2px solid red; padding:5px;">
+The tutorial is undergoing a complete re-write as <a href="guide.html">the Guide</a>.
+Until it's ready, this tutorial is the right place to come to start learning
+Rust.  Please submit improvements as pull requests, but understand that
+eventually it will be going away.
+</div>
+
 # Introduction
 
 Rust is a programming language with a focus on type safety, memory
