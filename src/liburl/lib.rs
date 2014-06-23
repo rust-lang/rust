@@ -51,7 +51,7 @@ pub struct Url {
     /// A domain name or IP address.  For example, `example.com`.
     pub host: String,
     /// A TCP port number, for example `8080`.
-    pub port: Option<String>,
+    pub port: Option<u16>,
     /// The path component of a URL, for example `/foo/bar?baz=qux#quz`.
     pub path: Path,
 }
@@ -84,7 +84,7 @@ impl Url {
     pub fn new(scheme: String,
                user: Option<UserInfo>,
                host: String,
-               port: Option<String>,
+               port: Option<u16>,
                path: String,
                query: Query,
                fragment: Option<String>)
@@ -113,16 +113,23 @@ impl Url {
         let (scheme, rest) = try!(get_scheme(rawurl));
 
         // authority
-        let (userinfo, host, port, rest) = try!(get_authority(rest.as_slice()));
+        let (userinfo, host, port, rest) = try!(get_authority(rest));
 
         // path
         let has_authority = host.len() > 0;
-        let (path, rest) = try!(get_path(rest.as_slice(), has_authority));
+        let (path, rest) = try!(get_path(rest, has_authority));
 
         // query and fragment
-        let (query, fragment) = try!(get_query_fragment(rest.as_slice()));
+        let (query, fragment) = try!(get_query_fragment(rest));
 
-        Ok(Url::new(scheme, userinfo, host, port, path, query, fragment))
+        let url = Url::new(scheme.to_string(),
+                            userinfo,
+                            host.to_string(),
+                            port,
+                            path,
+                            query,
+                            fragment);
+        Ok(url)
     }
 }
 
@@ -438,65 +445,50 @@ pub fn query_to_str(query: &Query) -> String {
     })
 }
 
-/**
- * Returns a tuple of the URI scheme and the rest of the URI, or a parsing error.
- *
- * Does not include the separating `:` character.
- *
- * # Example
- *
- * ```rust
- * use url::get_scheme;
- *
- * let scheme = match get_scheme("https://example.com/") {
- *     Ok((sch, _)) => sch,
- *     Err(_) => "(None)".to_string(),
- * };
- * println!("Scheme in use: {}.", scheme); // Scheme in use: https.
- * ```
- */
-pub fn get_scheme(rawurl: &str) -> DecodeResult<(String, String)> {
+/// Returns a tuple of the URI scheme and the rest of the URI, or a parsing error.
+///
+/// Does not include the separating `:` character.
+///
+/// # Example
+///
+/// ```rust
+/// use url::get_scheme;
+///
+/// let scheme = match get_scheme("https://example.com/") {
+///     Ok((sch, _)) => sch,
+///     Err(_) => "(None)",
+/// };
+/// println!("Scheme in use: {}.", scheme); // Scheme in use: https.
+/// ```
+pub fn get_scheme<'a>(rawurl: &'a str) -> DecodeResult<(&'a str, &'a str)> {
     for (i,c) in rawurl.chars().enumerate() {
-        match c {
-          'A' .. 'Z' | 'a' .. 'z' => continue,
-          '0' .. '9' | '+' | '-' | '.' => {
-            if i == 0 {
-                return Err("url: Scheme must begin with a \
-                            letter.".to_string());
-            }
-            continue;
-          }
-          ':' => {
-            if i == 0 {
-                return Err("url: Scheme cannot be empty.".to_string());
-            } else {
-                return Ok((rawurl.slice(0,i).to_string(),
-                           rawurl.slice(i+1,rawurl.len()).to_string()));
-            }
-          }
-          _ => {
-            return Err("url: Invalid character in scheme.".to_string());
-          }
-        }
-    };
-    return Err("url: Scheme must be terminated with a colon.".to_string());
-}
+        let result = match c {
+            'A' .. 'Z'
+            | 'a' .. 'z' => continue,
+            '0' .. '9' | '+' | '-' | '.' => {
+                if i != 0 { continue }
 
-#[deriving(Clone, PartialEq)]
-enum Input {
-    Digit, // all digits
-    Hex, // digits and letters a-f
-    Unreserved // all other legal characters
+                Err("url: Scheme must begin with a letter.".to_string())
+            }
+            ':' => {
+                if i == 0 {
+                    Err("url: Scheme cannot be empty.".to_string())
+                } else {
+                    Ok((rawurl.slice(0,i), rawurl.slice(i+1,rawurl.len())))
+                }
+            }
+            _ => Err("url: Invalid character in scheme.".to_string()),
+        };
+
+        return result;
+    }
+
+    Err("url: Scheme must be terminated with a colon.".to_string())
 }
 
 // returns userinfo, host, port, and unparsed part, or an error
-fn get_authority(rawurl: &str) ->
-    DecodeResult<(Option<UserInfo>, String, Option<String>, String)> {
-    if !rawurl.starts_with("//") {
-        // there is no authority.
-        return Ok((None, "".to_string(), None, rawurl.to_str()));
-    }
-
+fn get_authority<'a>(rawurl: &'a str) ->
+    DecodeResult<(Option<UserInfo>, &'a str, Option<u16>, &'a str)> {
     enum State {
         Start, // starting state
         PassHostPort, // could be in user or port
@@ -506,12 +498,24 @@ fn get_authority(rawurl: &str) ->
         InPort // are in port
     }
 
+    #[deriving(Clone, PartialEq)]
+    enum Input {
+        Digit, // all digits
+        Hex, // digits and letters a-f
+        Unreserved // all other legal characters
+    }
+
+    if !rawurl.starts_with("//") {
+        // there is no authority.
+        return Ok((None, "", None, rawurl));
+    }
+
     let len = rawurl.len();
     let mut st = Start;
     let mut input = Digit; // most restricted, start here.
 
     let mut userinfo = None;
-    let mut host = "".to_string();
+    let mut host = "";
     let mut port = None;
 
     let mut colon_count = 0u;
@@ -519,27 +523,27 @@ fn get_authority(rawurl: &str) ->
     let mut begin = 2;
     let mut end = len;
 
-    for (i,c) in rawurl.chars().enumerate() {
-        if i < 2 { continue; } // ignore the leading //
-
+    for (i,c) in rawurl.chars().enumerate()
+                               // ignore the leading '//' handled by early return
+                               .skip(2) {
         // deal with input class first
         match c {
-          '0' .. '9' => (),
-          'A' .. 'F' | 'a' .. 'f' => {
-            if input == Digit {
-                input = Hex;
+            '0' .. '9' => (),
+            'A' .. 'F'
+            | 'a' .. 'f' => {
+                if input == Digit {
+                    input = Hex;
+                }
             }
-          }
-          'G' .. 'Z' | 'g' .. 'z' | '-' | '.' | '_' | '~' | '%' |
-          '&' |'\'' | '(' | ')' | '+' | '!' | '*' | ',' | ';' | '=' => {
-            input = Unreserved;
-          }
-          ':' | '@' | '?' | '#' | '/' => {
-            // separators, don't change anything
-          }
-          _ => {
-            return Err("Illegal character in authority".to_string());
-          }
+            'G' .. 'Z'
+            | 'g' .. 'z'
+            | '-' | '.' | '_' | '~' | '%'
+            | '&' |'\'' | '(' | ')' | '+'
+            | '!' | '*' | ',' | ';' | '=' => input = Unreserved,
+            ':' | '@' | '?' | '#' | '/' => {
+                // separators, don't change anything
+            }
+            _ => return Err("Illegal character in authority".to_string()),
         }
 
         // now process states
@@ -563,7 +567,7 @@ fn get_authority(rawurl: &str) ->
                 pos = i;
                 if input == Unreserved {
                     // must be port
-                    host = rawurl.slice(begin, i).to_string();
+                    host = rawurl.slice(begin, i);
                     st = InPort;
                 } else {
                     // can't be sure whether this is an ipv6 address or a port
@@ -572,21 +576,18 @@ fn get_authority(rawurl: &str) ->
               }
               Ip6Port => {
                 if input == Unreserved {
-                    return Err("Illegal characters in \
-                                authority.".to_string());
+                    return Err("Illegal characters in authority.".to_string());
                 }
                 st = Ip6Host;
               }
               Ip6Host => {
                 if colon_count > 7 {
-                    host = rawurl.slice(begin, i).to_string();
+                    host = rawurl.slice(begin, i);
                     pos = i;
                     st = InPort;
                 }
               }
-              _ => {
-                return Err("Invalid ':' in authority.".to_string());
-              }
+              _ => return Err("Invalid ':' in authority.".to_string()),
             }
             input = Digit; // reset input class
           }
@@ -606,9 +607,7 @@ fn get_authority(rawurl: &str) ->
                 userinfo = Some(UserInfo::new(user, Some(pass)));
                 st = InHost;
               }
-              _ => {
-                return Err("Invalid '@' in authority.".to_string());
-              }
+              _ => return Err("Invalid '@' in authority.".to_string()),
             }
             begin = i+1;
           }
@@ -623,43 +622,53 @@ fn get_authority(rawurl: &str) ->
 
     // finish up
     match st {
-      Start => {
-        host = rawurl.slice(begin, end).to_string();
-      }
-      PassHostPort | Ip6Port => {
+      Start => host = rawurl.slice(begin, end),
+      PassHostPort
+      | Ip6Port => {
         if input != Digit {
             return Err("Non-digit characters in port.".to_string());
         }
-        host = rawurl.slice(begin, pos).to_string();
-        port = Some(rawurl.slice(pos+1, end).to_string());
+        host = rawurl.slice(begin, pos);
+        port = Some(rawurl.slice(pos+1, end));
       }
-      Ip6Host | InHost => {
-        host = rawurl.slice(begin, end).to_string();
-      }
+      Ip6Host
+      | InHost => host = rawurl.slice(begin, end),
       InPort => {
         if input != Digit {
             return Err("Non-digit characters in port.".to_string());
         }
-        port = Some(rawurl.slice(pos+1, end).to_string());
+        port = Some(rawurl.slice(pos+1, end));
       }
     }
 
-    let rest = rawurl.slice(end, len).to_string();
-    return Ok((userinfo, host, port, rest));
+    let rest = rawurl.slice(end, len);
+    // If we have a port string, ensure it parses to u16.
+    let port = match port {
+        None => None,
+        opt => match opt.and_then(|p| FromStr::from_str(p)) {
+            None => return Err(format!("Failed to parse port: {}", port)),
+            opt => opt
+        }
+    };
+
+    Ok((userinfo, host, port, rest))
 }
 
 
 // returns the path and unparsed part of url, or an error
-fn get_path(rawurl: &str, authority: bool) -> DecodeResult<(String, String)> {
+fn get_path<'a>(rawurl: &'a str, is_authority: bool)
+                                            -> DecodeResult<(String, &'a str)> {
     let len = rawurl.len();
     let mut end = len;
     for (i,c) in rawurl.chars().enumerate() {
         match c {
-          'A' .. 'Z' | 'a' .. 'z' | '0' .. '9' | '&' |'\'' | '(' | ')' | '.'
-          | '@' | ':' | '%' | '/' | '+' | '!' | '*' | ',' | ';' | '='
-          | '_' | '-' | '~' => {
-            continue;
-          }
+          'A' .. 'Z'
+          | 'a' .. 'z'
+          | '0' .. '9'
+          | '&' |'\'' | '(' | ')' | '.'
+          | '@' | ':' | '%' | '/' | '+'
+          | '!' | '*' | ',' | ';' | '='
+          | '_' | '-' | '~' => continue,
           '?' | '#' => {
             end = i;
             break;
@@ -668,68 +677,53 @@ fn get_path(rawurl: &str, authority: bool) -> DecodeResult<(String, String)> {
         }
     }
 
-    if authority && end != 0 && !rawurl.starts_with("/") {
+    if is_authority && end != 0 && !rawurl.starts_with("/") {
         Err("Non-empty path must begin with \
             '/' in presence of authority.".to_string())
     } else {
         Ok((try!(decode_component(rawurl.slice(0, end))),
-            rawurl.slice(end, len).to_string()))
+            rawurl.slice(end, len)))
     }
 }
 
 // returns the parsed query and the fragment, if present
 fn get_query_fragment(rawurl: &str) -> DecodeResult<(Query, Option<String>)> {
-    if !rawurl.starts_with("?") {
-        if rawurl.starts_with("#") {
-            let f = try!(decode_component(rawurl.slice(1, rawurl.len())));
-            return Ok((vec!(), Some(f)));
-        } else {
-            return Ok((vec!(), None));
-        }
-    }
-    let (q, r) = split_char_first(rawurl.slice(1, rawurl.len()), '#');
-    let f = if r.len() != 0 {
-        Some(try!(decode_component(r)))
-    } else {
-        None
+    let (before_fragment, raw_fragment) = split_char_first(rawurl, '#');
+
+    // Parse the fragment if available
+    let fragment = match raw_fragment {
+        "" => None,
+        raw => Some(try!(decode_component(raw)))
     };
 
-    Ok((try!(query_from_str(q)), f))
+    match before_fragment.slice_shift_char() {
+        (Some('?'), rest) => Ok((try!(query_from_str(rest)), fragment)),
+        (None, "") => Ok((vec!(), fragment)),
+        _ => Err(format!("Query didn't start with '?': '{}..'", before_fragment)),
+    }
 }
 
 impl FromStr for Url {
     fn from_str(s: &str) -> Option<Url> {
-        match Url::parse(s) {
-            Ok(url) => Some(url),
-            Err(_) => None
-        }
+        Url::parse(s).ok()
     }
 }
 
 impl FromStr for Path {
     fn from_str(s: &str) -> Option<Path> {
-        match Path::parse(s) {
-            Ok(path) => Some(path),
-            Err(_) => None
-        }
+        Path::parse(s).ok()
     }
 }
 
 impl fmt::Show for Url {
-    /**
-     * Converts a URL from `Url` to string representation.
-     *
-     * # Arguments
-     *
-     * `url` - a URL.
-     *
-     * # Returns
-     *
-     * A string that contains the formatted URL. Note that this will usually
-     * be an inverse of `from_str` but might strip out unneeded separators;
-     * for example, "http://somehost.com?", when parsed and formatted, will
-     * result in just "http://somehost.com".
-     */
+    /// Converts a URL from `Url` to string representation.
+    ///
+    /// # Returns
+    ///
+    /// A string that contains the formatted URL. Note that this will usually
+    /// be an inverse of `from_str` but might strip out unneeded separators;
+    /// for example, "http://somehost.com?", when parsed and formatted, will
+    /// result in just "http://somehost.com".
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(f, "{}:", self.scheme));
 
@@ -797,40 +791,39 @@ fn test_get_authority() {
     let (u, h, p, r) = get_authority(
         "//user:pass@rust-lang.org/something").unwrap();
     assert_eq!(u, Some(UserInfo::new("user".to_string(), Some("pass".to_string()))));
-    assert_eq!(h, "rust-lang.org".to_string());
+    assert_eq!(h, "rust-lang.org");
     assert!(p.is_none());
-    assert_eq!(r, "/something".to_string());
+    assert_eq!(r, "/something");
 
     let (u, h, p, r) = get_authority(
         "//rust-lang.org:8000?something").unwrap();
     assert!(u.is_none());
-    assert_eq!(h, "rust-lang.org".to_string());
-    assert_eq!(p, Some("8000".to_string()));
-    assert_eq!(r, "?something".to_string());
+    assert_eq!(h, "rust-lang.org");
+    assert_eq!(p, Some(8000));
+    assert_eq!(r, "?something");
 
-    let (u, h, p, r) = get_authority(
-        "//rust-lang.org#blah").unwrap();
+    let (u, h, p, r) = get_authority("//rust-lang.org#blah").unwrap();
     assert!(u.is_none());
-    assert_eq!(h, "rust-lang.org".to_string());
+    assert_eq!(h, "rust-lang.org");
     assert!(p.is_none());
-    assert_eq!(r, "#blah".to_string());
+    assert_eq!(r, "#blah");
 
     // ipv6 tests
     let (_, h, _, _) = get_authority(
         "//2001:0db8:85a3:0042:0000:8a2e:0370:7334#blah").unwrap();
-    assert_eq!(h, "2001:0db8:85a3:0042:0000:8a2e:0370:7334".to_string());
+    assert_eq!(h, "2001:0db8:85a3:0042:0000:8a2e:0370:7334");
 
     let (_, h, p, _) = get_authority(
         "//2001:0db8:85a3:0042:0000:8a2e:0370:7334:8000#blah").unwrap();
-    assert_eq!(h, "2001:0db8:85a3:0042:0000:8a2e:0370:7334".to_string());
-    assert_eq!(p, Some("8000".to_string()));
+    assert_eq!(h, "2001:0db8:85a3:0042:0000:8a2e:0370:7334");
+    assert_eq!(p, Some(8000));
 
     let (u, h, p, _) = get_authority(
         "//us:p@2001:0db8:85a3:0042:0000:8a2e:0370:7334:8000#blah"
     ).unwrap();
     assert_eq!(u, Some(UserInfo::new("us".to_string(), Some("p".to_string()))));
-    assert_eq!(h, "2001:0db8:85a3:0042:0000:8a2e:0370:7334".to_string());
-    assert_eq!(p, Some("8000".to_string()));
+    assert_eq!(h, "2001:0db8:85a3:0042:0000:8a2e:0370:7334");
+    assert_eq!(p, Some(8000));
 
     // invalid authorities;
     assert!(get_authority("//user:pass@rust-lang:something").is_err());
@@ -839,25 +832,27 @@ fn test_get_authority() {
         "//2001:0db8:85a3:0042:0000:8a2e:0370:7334:800a").is_err());
     assert!(get_authority(
         "//2001:0db8:85a3:0042:0000:8a2e:0370:7334:8000:00").is_err());
+    // outside u16 range
+    assert!(get_authority("//user:pass@rust-lang:65536").is_err());
 
     // these parse as empty, because they don't start with '//'
     let (_, h, _, _) = get_authority("user:pass@rust-lang").unwrap();
-    assert_eq!(h, "".to_string());
+    assert_eq!(h, "");
     let (_, h, _, _) = get_authority("rust-lang.org").unwrap();
-    assert_eq!(h, "".to_string());
+    assert_eq!(h, "");
 }
 
 #[test]
 fn test_get_path() {
     let (p, r) = get_path("/something+%20orother", true).unwrap();
     assert_eq!(p, "/something+ orother".to_string());
-    assert_eq!(r, "".to_string());
+    assert_eq!(r, "");
     let (p, r) = get_path("test@email.com#fragment", false).unwrap();
     assert_eq!(p, "test@email.com".to_string());
-    assert_eq!(r, "#fragment".to_string());
+    assert_eq!(r, "#fragment");
     let (p, r) = get_path("/gen/:addr=?q=v", false).unwrap();
     assert_eq!(p, "/gen/:addr=".to_string());
-    assert_eq!(r, "?q=v".to_string());
+    assert_eq!(r, "?q=v");
 
     //failure cases
     assert!(get_path("something?q", true).is_err());
@@ -879,7 +874,7 @@ mod tests {
         assert_eq!(&u.scheme, &"http".to_string());
         assert_eq!(&u.user, &Some(UserInfo::new("user".to_string(), Some("pass".to_string()))));
         assert_eq!(&u.host, &"rust-lang.org".to_string());
-        assert_eq!(&u.port, &Some("8080".to_string()));
+        assert_eq!(&u.port, &Some(8080));
         assert_eq!(&u.path.path, &"/doc/~u".to_string());
         assert_eq!(&u.path.query, &vec!(("s".to_string(), "v".to_string())));
         assert_eq!(&u.path.fragment, &Some("something".to_string()));
@@ -917,14 +912,14 @@ mod tests {
         let url = from_str::<Url>(urlstr).unwrap();
         assert_eq!(&url.scheme, &"scheme".to_string());
         assert_eq!(&url.host, &"host".to_string());
-        assert_eq!(&url.port, &Some("1234".to_string()));
+        assert_eq!(&url.port, &Some(1234));
         // is empty path really correct? Other tests think so
         assert_eq!(&url.path.path, &"".to_string());
         let urlstr = "scheme://host:1234/";
         let url = from_str::<Url>(urlstr).unwrap();
         assert_eq!(&url.scheme, &"scheme".to_string());
         assert_eq!(&url.host, &"host".to_string());
-        assert_eq!(&url.port, &Some("1234".to_string()));
+        assert_eq!(&url.port, &Some(1234));
         assert_eq!(&url.path.path, &"/".to_string());
     }
 
