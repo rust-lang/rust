@@ -316,6 +316,7 @@ impl<T: Clone> Vec<T> {
     }
 }
 
+#[unstable]
 impl<T:Clone> Clone for Vec<T> {
     fn clone(&self) -> Vec<T> {
         let len = self.len;

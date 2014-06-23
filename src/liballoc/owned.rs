@@ -42,6 +42,7 @@ impl<T: Default> Default for Box<T> {
     fn default() -> Box<T> { box Default::default() }
 }
 
+#[unstable]
 impl<T: Clone> Clone for Box<T> {
     /// Return a copy of the owned box.
     #[inline]

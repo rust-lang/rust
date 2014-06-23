@@ -143,6 +143,7 @@ impl<T> Drop for Rc<T> {
     }
 }
 
+#[unstable]
 impl<T> Clone for Rc<T> {
     #[inline]
     fn clone(&self) -> Rc<T> {
@@ -224,6 +225,7 @@ impl<T> Drop for Weak<T> {
     }
 }
 
+#[unstable]
 impl<T> Clone for Weak<T> {
     #[inline]
     fn clone(&self) -> Weak<T> {
