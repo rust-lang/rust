@@ -4064,43 +4064,19 @@ impl<'a> Parser<'a> {
 
     // parse struct Foo { ... }
     fn parse_item_struct(&mut self, is_virtual: bool) -> ItemInfo {
+        let name_span = self.span;
         let class_name = self.parse_ident();
         let generics = self.parse_generics();
 
-        let super_struct = if self.eat(&token::COLON) {
-            let ty = self.parse_ty(true);
-            match ty.node {
-                TyPath(_, None, _) => {
-                    Some(ty)
-                }
-                _ => {
-                    self.span_err(ty.span, "not a struct");
-                    None
-                }
-            }
-        } else {
-            None
-        };
+        let super_struct;
 
         let mut fields: Vec<StructField>;
         let is_tuple_like;
 
-        if self.eat(&token::LBRACE) {
-            // It's a record-like struct.
-            is_tuple_like = false;
-            fields = Vec::new();
-            while self.token != token::RBRACE {
-                fields.push(self.parse_struct_decl_field());
-            }
-            if fields.len() == 0 {
-                self.fatal(format!("unit-like struct definition should be \
-                                    written as `struct {};`",
-                                   token::get_ident(class_name)).as_slice());
-            }
-            self.bump();
-        } else if self.token == token::LPAREN {
+        if self.token == token::LPAREN {
             // It's a tuple-like struct.
             is_tuple_like = true;
+            super_struct = None;
             fields = self.parse_unspanned_seq(
                 &token::LPAREN,
                 &token::RPAREN,
@@ -4125,12 +4101,53 @@ impl<'a> Parser<'a> {
         } else if self.eat(&token::SEMI) {
             // It's a unit-like struct.
             is_tuple_like = true;
+            super_struct = None;
             fields = Vec::new();
         } else {
-            let token_str = self.this_token_to_str();
-            self.fatal(format!("expected `{}`, `(`, or `;` after struct \
-                                name but found `{}`", "{",
-                               token_str).as_slice())
+            // It can only be a record-like struct now.
+            is_tuple_like = false;
+            super_struct = if self.eat(&token::COLON) {
+                let ty = self.parse_ty(true);
+                match ty.node {
+                    TyPath(_, None, _) => {
+                        Some(ty)
+                    }
+                    _ => {
+                        self.span_err(ty.span, "not a struct");
+                        None
+                    }
+                }
+            } else {
+                None
+            };
+
+            if !self.eat(&token::LBRACE) {
+                let token_str = self.this_token_to_str();
+                let expected = if super_struct.is_some() {
+                    "`{` after super-struct path"
+                } else {
+                    // not advertising struct inheritance here
+                    "`{`, `(`, or `;` after struct name"
+                };
+                self.fatal(format!("expected {} but found `{}`",
+                                   expected, token_str).as_slice())
+            }
+
+            fields = Vec::new();
+            while self.token != token::RBRACE {
+                fields.push(self.parse_struct_decl_field());
+            }
+            if fields.len() == 0 {
+                self.fatal(format!("unit-like struct definition should be \
+                                    written as `struct {};`",
+                                   token::get_ident(class_name)).as_slice());
+            }
+            self.bump();
+        }
+
+        if is_virtual && is_tuple_like {
+            self.span_err(name_span,
+                          "unit-like and tuple structs cannot be virtual");
         }
 
         let _ = ast::DUMMY_NODE_ID;  // FIXME: Workaround for crazy bug.

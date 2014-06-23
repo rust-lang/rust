@@ -14,7 +14,7 @@
 // aux-build:inherit_struct_lib.rs
 extern crate inherit_struct_lib;
 
-struct S3 : inherit_struct_lib::S1; //~ ERROR super-struct is defined in a different crate
+struct S3 : inherit_struct_lib::S1 { x: () } //~ ERROR super-struct is defined in a different crate
 
 pub fn main() {
 }
