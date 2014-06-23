@@ -265,8 +265,6 @@ pub fn hash_with_keys<T: Hash<SipState>>(k0: u64, k1: u64, value: &T) -> u64 {
     state.result()
 }
 
-
-
 #[cfg(test)]
 mod tests {
     use test::Bencher;
