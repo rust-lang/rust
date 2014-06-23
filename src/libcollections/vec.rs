@@ -85,6 +85,7 @@ impl<T> Vec<T> {
     /// # use std::vec::Vec;
     /// let vec: Vec<int> = Vec::with_capacity(10);
     /// ```
+    #[inline]
     pub fn with_capacity(capacity: uint) -> Vec<T> {
         if mem::size_of::<T>() == 0 {
             Vec { len: 0, cap: uint::MAX, ptr: 0 as *mut T }
@@ -110,6 +111,7 @@ impl<T> Vec<T> {
     /// let vec = Vec::from_fn(3, |idx| idx * 2);
     /// assert_eq!(vec, vec!(0, 2, 4));
     /// ```
+    #[inline]
     pub fn from_fn(length: uint, op: |uint| -> T) -> Vec<T> {
         unsafe {
             let mut xs = Vec::with_capacity(length);
@@ -193,6 +195,7 @@ impl<T: Clone> Vec<T> {
     /// let slice = [1, 2, 3];
     /// let vec = Vec::from_slice(slice);
     /// ```
+    #[inline]
     pub fn from_slice(values: &[T]) -> Vec<T> {
         values.iter().map(|x| x.clone()).collect()
     }
@@ -207,6 +210,7 @@ impl<T: Clone> Vec<T> {
     /// let vec = Vec::from_elem(3, "hi");
     /// println!("{}", vec); // prints [hi, hi, hi]
     /// ```
+    #[inline]
     pub fn from_elem(length: uint, value: T) -> Vec<T> {
         unsafe {
             let mut xs = Vec::with_capacity(length);
@@ -353,6 +357,7 @@ impl<T:Clone> Clone for Vec<T> {
 }
 
 impl<T> FromIterator<T> for Vec<T> {
+    #[inline]
     fn from_iter<I:Iterator<T>>(mut iterator: I) -> Vec<T> {
         let (lower, _) = iterator.size_hint();
         let mut vector = Vec::with_capacity(lower);
@@ -364,6 +369,7 @@ impl<T> FromIterator<T> for Vec<T> {
 }
 
 impl<T> Extendable<T> for Vec<T> {
+    #[inline]
     fn extend<I: Iterator<T>>(&mut self, mut iterator: I) {
         let (lower, _) = iterator.size_hint();
         self.reserve_additional(lower);
@@ -1029,6 +1035,7 @@ impl<T> Vec<T> {
     /// vec.push_all_move(vec!(box 2, box 3, box 4));
     /// assert_eq!(vec, vec!(box 1, box 2, box 3, box 4));
     /// ```
+    #[inline]
     pub fn push_all_move(&mut self, other: Vec<T>) {
         self.extend(other.move_iter());
     }
@@ -1306,6 +1313,7 @@ impl<T:PartialEq> Vec<T> {
     /// let vec = vec!(1, 2, 3);
     /// assert!(vec.contains(&1));
     /// ```
+    #[inline]
     pub fn contains(&self, x: &T) -> bool {
         self.as_slice().contains(x)
     }
@@ -1544,8 +1552,11 @@ pub mod raw {
 
 #[cfg(test)]
 mod tests {
+    extern crate test;
+
     use std::prelude::*;
     use std::mem::size_of;
+    use test::Bencher;
     use super::{unzip, raw, Vec};
 
     #[test]
@@ -1835,5 +1846,112 @@ mod tests {
 
         let mut v = vec![BadElem(1), BadElem(2), BadElem(0xbadbeef), BadElem(4)];
         v.truncate(0);
+    }
+
+    #[bench]
+    fn bench_new(b: &mut Bencher) {
+        b.iter(|| {
+            let v: Vec<int> = Vec::new();
+            assert_eq!(v.capacity(), 0);
+            assert!(v.as_slice() == []);
+        })
+    }
+
+    #[bench]
+    fn bench_with_capacity_0(b: &mut Bencher) {
+        b.iter(|| {
+            let v: Vec<int> = Vec::with_capacity(0);
+            assert_eq!(v.capacity(), 0);
+            assert!(v.as_slice() == []);
+        })
+    }
+
+
+    #[bench]
+    fn bench_with_capacity_5(b: &mut Bencher) {
+        b.iter(|| {
+            let v: Vec<int> = Vec::with_capacity(5);
+            assert_eq!(v.capacity(), 5);
+            assert!(v.as_slice() == []);
+        })
+    }
+
+    #[bench]
+    fn bench_with_capacity_100(b: &mut Bencher) {
+        b.iter(|| {
+            let v: Vec<int> = Vec::with_capacity(100);
+            assert_eq!(v.capacity(), 100);
+            assert!(v.as_slice() == []);
+        })
+    }
+
+    #[bench]
+    fn bench_from_fn_0(b: &mut Bencher) {
+        b.iter(|| {
+            let v: Vec<int> = Vec::from_fn(0, |_| 5);
+            assert!(v.as_slice() == []);
+        })
+    }
+
+    #[bench]
+    fn bench_from_fn_5(b: &mut Bencher) {
+        b.iter(|| {
+            let v: Vec<int> = Vec::from_fn(5, |_| 5);
+            assert!(v.as_slice() == [5, 5, 5, 5, 5]);
+        })
+    }
+
+    #[bench]
+    fn bench_from_slice_0(b: &mut Bencher) {
+        b.iter(|| {
+            let v: Vec<int> = Vec::from_slice([]);
+            assert!(v.as_slice() == []);
+        })
+    }
+
+    #[bench]
+    fn bench_from_slice_5(b: &mut Bencher) {
+        b.iter(|| {
+            let v: Vec<int> = Vec::from_slice([1, 2, 3, 4, 5]);
+            assert!(v.as_slice() == [1, 2, 3, 4, 5]);
+        })
+    }
+
+    #[bench]
+    fn bench_from_iter_0(b: &mut Bencher) {
+        b.iter(|| {
+            let v0: Vec<int> = vec!();
+            let v1: Vec<int> = FromIterator::from_iter(v0.move_iter());
+            assert!(v1.as_slice() == []);
+        })
+    }
+
+    #[bench]
+    fn bench_from_iter_5(b: &mut Bencher) {
+        b.iter(|| {
+            let v0: Vec<int> = vec!(1, 2, 3, 4, 5);
+            let v1: Vec<int> = FromIterator::from_iter(v0.move_iter());
+            assert!(v1.as_slice() == [1, 2, 3, 4, 5]);
+        })
+    }
+
+    #[bench]
+    fn bench_extend_0(b: &mut Bencher) {
+        b.iter(|| {
+            let v0: Vec<int> = vec!();
+            let mut v1: Vec<int> = vec!(1, 2, 3, 4, 5);
+            v1.extend(v0.move_iter());
+            assert!(v1.as_slice() == [1, 2, 3, 4, 5]);
+        })
+    }
+
+    #[bench]
+    fn bench_extend_5(b: &mut Bencher) {
+        b.iter(|| {
+            let v0: Vec<int> = vec!(1, 2, 3, 4, 5);
+            let mut v1: Vec<int> = vec!(1, 2, 3, 4, 5);
+            v1.extend(v0.move_iter());
+            assert!(v1.as_slice() == [1, 2, 3, 4, 5, 1, 2, 3, 4, 5]);
+        })
     }
 }
