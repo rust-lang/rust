@@ -57,7 +57,6 @@
 #![no_std]
 #![feature(globs, macro_rules, managed_boxes, phase, simd, unsafe_destructor)]
 #![deny(missing_doc)]
-#![allow(unknown_features)] // NOTE: remove after a stage0 snap
 
 #[cfg(test)] extern crate realcore = "core";
 #[cfg(test)] extern crate libc;

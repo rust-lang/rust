@@ -30,7 +30,6 @@
 
 #![feature(unsafe_destructor)]
 #![allow(missing_doc)]
-#![allow(unknown_features)] // NOTE: remove after a stage0 snap
 
 use std::cell::{Cell, RefCell};
 use std::cmp;
