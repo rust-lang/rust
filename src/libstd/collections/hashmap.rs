@@ -1033,11 +1033,13 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> MutableMap<K, V> for HashMap<K, V, H> 
 
 impl<K: Hash + Eq, V> HashMap<K, V, RandomSipHasher> {
     /// Create an empty HashMap.
+    #[inline]
     pub fn new() -> HashMap<K, V, RandomSipHasher> {
         HashMap::with_capacity(INITIAL_CAPACITY)
     }
 
     /// Creates an empty hash map with the given initial capacity.
+    #[inline]
     pub fn with_capacity(capacity: uint) -> HashMap<K, V, RandomSipHasher> {
         let hasher = RandomSipHasher::new();
         HashMap::with_capacity_and_hasher(capacity, hasher)
@@ -1048,6 +1050,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// Creates an empty hashmap which will use the given hasher to hash keys.
     ///
     /// The creates map has the default initial capacity.
+    #[inline]
     pub fn with_hasher(hasher: H) -> HashMap<K, V, H> {
         HashMap::with_capacity_and_hasher(INITIAL_CAPACITY, hasher)
     }
@@ -1059,6 +1062,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// is designed to allow HashMaps to be resistant to attacks that
     /// cause many collisions and very poor performance. Setting it
     /// manually using this function can expose a DoS attack vector.
+    #[inline]
     pub fn with_capacity_and_hasher(capacity: uint, hasher: H) -> HashMap<K, V, H> {
         let cap = num::next_power_of_two(max(INITIAL_CAPACITY, capacity));
         HashMap {
@@ -1526,12 +1530,14 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> MutableSet<T> for HashSet<T, H> {
 
 impl<T: Hash + Eq> HashSet<T, RandomSipHasher> {
     /// Create an empty HashSet
+    #[inline]
     pub fn new() -> HashSet<T, RandomSipHasher> {
         HashSet::with_capacity(INITIAL_CAPACITY)
     }
 
     /// Create an empty HashSet with space for at least `n` elements in
     /// the hash table.
+    #[inline]
     pub fn with_capacity(capacity: uint) -> HashSet<T, RandomSipHasher> {
         HashSet { map: HashMap::with_capacity(capacity) }
     }
@@ -1542,6 +1548,7 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// keys.
     ///
     /// The hash set is also created with the default initial capacity.
+    #[inline]
     pub fn with_hasher(hasher: H) -> HashSet<T, H> {
         HashSet::with_capacity_and_hasher(INITIAL_CAPACITY, hasher)
     }
@@ -1553,6 +1560,7 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// is designed to allow `HashSet`s to be resistant to attacks that
     /// cause many collisions and very poor performance. Setting it
     /// manually using this function can expose a DoS attack vector.
+    #[inline]
     pub fn with_capacity_and_hasher(capacity: uint, hasher: H) -> HashSet<T, H> {
         HashSet { map: HashMap::with_capacity_and_hasher(capacity, hasher) }
     }
