@@ -8,25 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn env<'a>(_: &'a uint, blk: |p: ||: 'a|) {
+fn env<'a>(blk: |p: ||: 'a|) {
     // Test that the closure here cannot be assigned
     // the lifetime `'a`, which outlives the current
     // block.
-    //
-    // FIXME(#4846): The `&'a uint` parameter is needed to ensure that `'a`
-    // is a free and not bound region name.
 
     let mut state = 0;
     let statep = &mut state;
     blk(|| *statep = 1); //~ ERROR cannot infer
 }
 
-fn no_env_no_for<'a>(_: &'a uint, blk: |p: |||: 'a) {
+fn no_env_no_for<'a>(blk: |p: |||: 'a) {
     // Test that a closure with no free variables CAN
     // outlive the block in which it is created.
-    //
-    // FIXME(#4846): The `&'a uint` parameter is needed to ensure that `'a`
-    // is a free and not bound region name.
 
     blk(|| ())
 }

@@ -8,10 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-test FIXME: #13992
-
 struct A { foo: int }
 
 fn main() {
-    let A { foo, foo } = A { foo: 3 }; //~ ERROR: field `foo` bound twice
+    let A { foo, foo } = A { foo: 3 };
+    //~^ ERROR: identifier `foo` is bound more than once in the same pattern
 }
