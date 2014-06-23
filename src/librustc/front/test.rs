@@ -276,7 +276,7 @@ fn add_test_module(cx: &TestCtxt, m: &ast::Mod) -> ast::Mod {
 We're going to be building a module that looks more or less like:
 
 mod __test {
-  #![!resolve_unexported]
+  #![resolve_unexported]
   extern crate test (name = "test", vers = "...");
   fn main() {
     test::test_main_static(::os::args().as_slice(), tests)
@@ -336,7 +336,7 @@ fn mk_test_module(cx: &TestCtxt) -> Gc<ast::Item> {
     let item_ = ast::ItemMod(testmod);
 
     // This attribute tells resolve to let us call unexported functions
-    let resolve_unexported_str = InternedString::new("!resolve_unexported");
+    let resolve_unexported_str = InternedString::new("resolve_unexported");
     let resolve_unexported_attr =
         attr::mk_attr_inner(attr::mk_attr_id(),
                             attr::mk_word_item(resolve_unexported_str));
