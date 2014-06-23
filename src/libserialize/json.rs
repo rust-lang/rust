@@ -71,7 +71,7 @@ fn main() {
     let to_encode_object = TestStruct{data_str:"example of string to encode".to_string()};
     let mut m = io::MemWriter::new();
     {
-        let mut encoder = json::Encoder::new(&mut m as &mut std::io::Writer);
+        let mut encoder = json::Encoder::new(&mut m as &mut Writer);
         match to_encode_object.encode(&mut encoder) {
             Ok(()) => (),
             Err(e) => fail!("json encoding error: {}", e)
