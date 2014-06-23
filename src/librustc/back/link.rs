@@ -1170,26 +1170,39 @@ fn link_args(cmd: &mut Command,
     // The default library location, we need this to find the runtime.
     // The location of crates will be determined as needed.
     let lib_path = sess.target_filesearch().get_lib_path();
-    cmd.arg("-L").arg(lib_path);
+    cmd.arg("-L").arg(&lib_path);
 
     cmd.arg("-o").arg(out_filename).arg(obj_filename);
 
     // Stack growth requires statically linking a __morestack function. Note
-    // that this is listed *before* all other libraries, even though it may be
-    // used to resolve symbols in other libraries. The only case that this
-    // wouldn't be pulled in by the object file is if the object file had no
-    // functions.
+    // that this is listed *before* all other libraries. Due to the usage of the
+    // --as-needed flag below, the standard library may only be useful for its
+    // rust_stack_exhausted function. In this case, we must ensure that the
+    // libmorestack.a file appears *before* the standard library (so we put it
+    // at the very front).
     //
-    // If we're building an executable, there must be at least one function (the
-    // main function), and if we're building a dylib then we don't need it for
-    // later libraries because they're all dylibs (not rlibs).
+    // Most of the time this is sufficient, except for when LLVM gets super
+    // clever. If, for example, we have a main function `fn main() {}`, LLVM
+    // will optimize out calls to `__morestack` entirely because the function
+    // doesn't need any stack at all!
     //
-    // I'm honestly not entirely sure why this needs to come first. Apparently
-    // the --as-needed flag above sometimes strips out libstd from the command
-    // line, but inserting this farther to the left makes the
-    // "rust_stack_exhausted" symbol an outstanding undefined symbol, which
-    // flags libstd as a required library (or whatever provides the symbol).
-    cmd.arg("-lmorestack");
+    // To get around this snag, we specially tell the linker to always include
+    // all contents of this library. This way we're guaranteed that the linker
+    // will include the __morestack symbol 100% of the time, always resolving
+    // references to it even if the object above didn't use it.
+    match sess.targ_cfg.os {
+        abi::OsMacos | abi::OsiOS => {
+            let morestack = lib_path.join("libmorestack.a");
+
+            let mut v = "-Wl,-force_load,".as_bytes().to_owned();
+            v.push_all(morestack.as_vec());
+            cmd.arg(v.as_slice());
+        }
+        _ => {
+            cmd.args(["-Wl,--whole-archive", "-lmorestack",
+                      "-Wl,--no-whole-archive"]);
+        }
+    }
 
     // When linking a dynamic library, we put the metadata into a section of the
     // executable. This metadata is in a separate object file from the main
