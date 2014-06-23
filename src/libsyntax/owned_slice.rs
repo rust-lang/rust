@@ -96,6 +96,7 @@ impl<T> OwnedSlice<T> {
 }
 
 impl<T> Default for OwnedSlice<T> {
+    #[inline]
     fn default() -> OwnedSlice<T> {
         OwnedSlice::empty()
     }

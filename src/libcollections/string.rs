@@ -327,6 +327,7 @@ impl StrAllocating for String {
 }
 
 impl Default for String {
+    #[inline]
     fn default() -> String {
         String::new()
     }

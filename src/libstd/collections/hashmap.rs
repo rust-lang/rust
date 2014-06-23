@@ -1437,6 +1437,7 @@ impl<K: Eq + Hash<S> + Show, V: Show, S, H: Hasher<S>> Show for HashMap<K, V, H>
 }
 
 impl<K: Eq + Hash<S>, V, S, H: Hasher<S> + Default> Default for HashMap<K, V, H> {
+    #[inline]
     fn default() -> HashMap<K, V, H> {
         HashMap::with_hasher(Default::default())
     }
@@ -1647,6 +1648,7 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S> + Default> Extendable<T> for HashSet<T, H>
 }
 
 impl<T: Eq + Hash<S>, S, H: Hasher<S> + Default> Default for HashSet<T, H> {
+    #[inline]
     fn default() -> HashSet<T, H> {
         HashSet::with_hasher(Default::default())
     }
