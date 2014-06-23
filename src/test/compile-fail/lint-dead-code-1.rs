@@ -37,7 +37,7 @@ static USED_STATIC: int = 0;
 static STATIC_USED_IN_ENUM_DISCRIMINANT: uint = 10;
 
 pub type typ = *UsedStruct4;
-pub struct PubStruct();
+pub struct PubStruct;
 struct PrivStruct; //~ ERROR: code is never used
 struct UsedStruct1 {
     #[allow(dead_code)]
