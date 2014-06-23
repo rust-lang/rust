@@ -104,6 +104,7 @@ macro_rules! tuple_impls {
                 )+
             }
 
+            #[unstable]
             impl<$($T:Clone),+> Clone for ($($T,)+) {
                 fn clone(&self) -> ($($T,)+) {
                     ($(self.$refN().clone(),)+)

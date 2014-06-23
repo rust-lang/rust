@@ -192,6 +192,7 @@ impl<T:Copy> Cell<T> {
     }
 }
 
+#[unstable]
 impl<T:Copy> Clone for Cell<T> {
     fn clone(&self) -> Cell<T> {
         Cell::new(self.get())
@@ -298,6 +299,7 @@ impl<T> RefCell<T> {
     }
 }
 
+#[unstable]
 impl<T: Clone> Clone for RefCell<T> {
     fn clone(&self) -> RefCell<T> {
         RefCell::new(self.borrow().clone())

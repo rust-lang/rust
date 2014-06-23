@@ -110,6 +110,7 @@ impl<T: Share + Send> Arc<T> {
     }
 }
 
+#[unstable]
 impl<T: Share + Send> Clone for Arc<T> {
     /// Duplicate an atomically reference counted wrapper.
     ///
@@ -236,6 +237,7 @@ impl<T: Share + Send> Weak<T> {
     }
 }
 
+#[unstable]
 impl<T: Share + Send> Clone for Weak<T> {
     #[inline]
     fn clone(&self) -> Weak<T> {
