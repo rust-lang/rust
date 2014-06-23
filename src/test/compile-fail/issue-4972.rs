@@ -17,7 +17,7 @@ pub enum TraitWrapper {
 
 fn get_tw_map<'lt>(tw: &'lt TraitWrapper) -> &'lt MyTrait {
     match *tw {
-        A(box ref map) => map, //~ ERROR found a box pattern
+        A(box ref map) => map, //~ ERROR cannot be dereferenced
     }
 }
 
