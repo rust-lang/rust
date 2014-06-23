@@ -194,7 +194,7 @@ fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, m: &Matrix) {
 #[deriving(Clone, PartialEq)]
 enum ctor {
     single,
-    variant(DefId /* variant */, bool /* is_structure */),
+    variant(DefId),
     val(const_val),
     range(const_val, const_val),
     vec(uint)
@@ -218,7 +218,8 @@ fn construct_witness(cx: &MatchCheckCtxt, ctor: &ctor, pats: Vec<Gc<Pat>>, lty: 
 
         ty::ty_enum(cid, _) | ty::ty_struct(cid, _)  => {
             let (vid, is_structure) = match ctor {
-                &variant(vid, is_structure) => (vid, is_structure),
+                &variant(vid) => (vid,
+                    ty::enum_variant_with_id(cx.tcx, cid, vid).arg_names.is_some()),
                 _ => (cid, true)
             };
             if is_structure {
@@ -316,7 +317,7 @@ fn all_constructors(cx: &MatchCheckCtxt, m: &Matrix, left_ty: ty::t) -> Vec<ctor
         ty::ty_enum(eid, _) =>
             ty::enum_variants(cx.tcx, eid)
                 .iter()
-                .map(|va| variant(va.id, va.arg_names.is_some()))
+                .map(|va| variant(va.id))
                 .collect(),
 
         ty::ty_vec(_, None) =>
@@ -440,7 +441,7 @@ fn pat_ctor_id(cx: &MatchCheckCtxt, left_ty: ty::t, p: Gc<Pat>) -> Option<ctor> 
                     let const_expr = lookup_const_by_id(cx.tcx, did).unwrap();
                     Some(val(eval_const_expr(cx.tcx, &*const_expr)))
                 },
-                Some(&DefVariant(_, id, is_structure)) => Some(variant(id, is_structure)),
+                Some(&DefVariant(_, id, _)) => Some(variant(id)),
                 _ => None
             },
         PatEnum(..) =>
@@ -449,12 +450,12 @@ fn pat_ctor_id(cx: &MatchCheckCtxt, left_ty: ty::t, p: Gc<Pat>) -> Option<ctor> 
                     let const_expr = lookup_const_by_id(cx.tcx, did).unwrap();
                     Some(val(eval_const_expr(cx.tcx, &*const_expr)))
                 },
-                Some(&DefVariant(_, id, is_structure)) => Some(variant(id, is_structure)),
+                Some(&DefVariant(_, id, _)) => Some(variant(id)),
                 _ => Some(single)
             },
         PatStruct(..) =>
             match cx.tcx.def_map.borrow().find(&pat.id) {
-                Some(&DefVariant(_, id, is_structure)) => Some(variant(id, is_structure)),
+                Some(&DefVariant(_, id, _)) => Some(variant(id)),
                 _ => Some(single)
             },
         PatLit(expr) =>
@@ -504,7 +505,7 @@ fn constructor_arity(cx: &MatchCheckCtxt, ctor: &ctor, ty: ty::t) -> uint {
         },
         ty::ty_enum(eid, _) => {
             match *ctor {
-                variant(id, _) => enum_variant_with_id(cx.tcx, eid, id).args.len(),
+                variant(id) => enum_variant_with_id(cx.tcx, eid, id).args.len(),
                 _ => unreachable!()
             }
         }
@@ -551,9 +552,10 @@ fn specialize(cx: &MatchCheckCtxt, r: &[Gc<Pat>],
         &PatIdent(_, _, _) => {
             let opt_def = cx.tcx.def_map.borrow().find_copy(pat_id);
             match opt_def {
-                Some(DefVariant(_, id, _)) => match *ctor_id {
-                    variant(vid, _) if vid == id => Some(vec!()),
-                    _ => None
+                Some(DefVariant(_, id, _)) => if *ctor_id == variant(id) {
+                    Some(vec!())
+                } else {
+                    None
                 },
                 Some(DefStatic(did, _)) => {
                     let const_expr = lookup_const_by_id(cx.tcx, did).unwrap();
@@ -587,7 +589,7 @@ fn specialize(cx: &MatchCheckCtxt, r: &[Gc<Pat>],
                         }
                     }
                 }
-                DefVariant(_, id, _) if variant(id, false) != *ctor_id => None,
+                DefVariant(_, id, _) if *ctor_id != variant(id) => None,
                 DefVariant(..) | DefFn(..) | DefStruct(..) => {
                     Some(match args {
                         &Some(ref args) => args.clone(),
@@ -602,7 +604,7 @@ fn specialize(cx: &MatchCheckCtxt, r: &[Gc<Pat>],
             // Is this a struct or an enum variant?
             let def = cx.tcx.def_map.borrow().get_copy(pat_id);
             let class_id = match def {
-                DefVariant(_, variant_id, _) => if *ctor_id == variant(variant_id, true) {
+                DefVariant(_, variant_id, _) => if *ctor_id == variant(variant_id) {
                     Some(variant_id)
                 } else {
                     None
