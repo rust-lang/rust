@@ -10,6 +10,7 @@
 
 //! Operations and constants for unsigned 16-bits integers (`u16` type)
 
+#![unstable]
 #![doc(primitive = "u16")]
 
 use from_str::FromStr;
