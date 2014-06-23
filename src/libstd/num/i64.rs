@@ -10,6 +10,7 @@
 
 //! Operations and constants for signed 64-bits integers (`i64` type)
 
+#![unstable]
 #![doc(primitive = "i64")]
 
 use from_str::FromStr;

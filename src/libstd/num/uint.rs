@@ -10,6 +10,7 @@
 
 //! Operations and constants for architecture-sized unsigned integers (`uint` type)
 
+#![unstable]
 #![doc(primitive = "uint")]
 
 use from_str::FromStr;
