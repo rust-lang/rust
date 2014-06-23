@@ -15,6 +15,7 @@ use middle::subst::VecPerParamSpace;
 use middle::ty;
 use middle::typeck;
 use std::rc::Rc;
+use syntax::ast;
 use syntax::owned_slice::OwnedSlice;
 use util::ppaux::Repr;
 
@@ -449,10 +450,23 @@ impl<'a> TypeFolder for BottomUpFolder<'a> {
 ///////////////////////////////////////////////////////////////////////////
 // Region folder
 
+/// Folds over the substructure of a type, visiting its component
+/// types and all regions that occur *free* within it.
+///
+/// That is, `ty::t` can contain function or method types that bind
+/// regions at the call site (`ReLateBound`), and occurrences of
+/// regions (aka "lifetimes") that are bound within a type are not
+/// visited by this folder; only regions that occur free will be
+/// visited by `fld_r`.
+///
+/// (The distinction between "free" and "bound" is represented by
+/// keeping track of each `FnSig` in the lexical context of the
+/// current position of the fold.)
 pub struct RegionFolder<'a> {
     tcx: &'a ty::ctxt,
     fld_t: |ty::t|: 'a -> ty::t,
     fld_r: |ty::Region|: 'a -> ty::Region,
+    within_binder_ids: Vec<ast::NodeId>,
 }
 
 impl<'a> RegionFolder<'a> {
@@ -463,7 +477,8 @@ impl<'a> RegionFolder<'a> {
         RegionFolder {
             tcx: tcx,
             fld_t: fld_t,
-            fld_r: fld_r
+            fld_r: fld_r,
+            within_binder_ids: vec![],
         }
     }
 
@@ -474,8 +489,19 @@ impl<'a> RegionFolder<'a> {
         RegionFolder {
             tcx: tcx,
             fld_t: noop,
-            fld_r: fld_r
+            fld_r: fld_r,
+            within_binder_ids: vec![],
         }
+    }
+}
+
+/// If `ty` has `FnSig` (i.e. closure or fn), return its binder_id;
+/// else None.
+fn opt_binder_id_of_function(t: ty::t) -> Option<ast::NodeId> {
+    match ty::get(t).sty {
+        ty::ty_closure(ref f) => Some(f.sig.binder_id),
+        ty::ty_bare_fn(ref f) => Some(f.sig.binder_id),
+        _                     => None,
     }
 }
 
@@ -484,12 +510,32 @@ impl<'a> TypeFolder for RegionFolder<'a> {
 
     fn fold_ty(&mut self, ty: ty::t) -> ty::t {
         debug!("RegionFolder.fold_ty({})", ty.repr(self.tcx()));
+        let opt_binder_id = opt_binder_id_of_function(ty);
+        match opt_binder_id {
+            Some(binder_id) => self.within_binder_ids.push(binder_id),
+            None => {}
+        }
+
         let t1 = super_fold_ty(self, ty);
-        (self.fld_t)(t1)
+        let ret = (self.fld_t)(t1);
+
+        if opt_binder_id.is_some() {
+            self.within_binder_ids.pop();
+        }
+
+        ret
     }
 
     fn fold_region(&mut self, r: ty::Region) -> ty::Region {
-        debug!("RegionFolder.fold_region({})", r.repr(self.tcx()));
-        (self.fld_r)(r)
+        match r {
+            ty::ReLateBound(binder_id, _) if self.within_binder_ids.contains(&binder_id) => {
+                debug!("RegionFolder.fold_region({}) skipped bound region", r.repr(self.tcx()));
+                r
+            }
+            _ => {
+                debug!("RegionFolder.fold_region({}) folding free region", r.repr(self.tcx()));
+                (self.fld_r)(r)
+            }
+        }
     }
 }
