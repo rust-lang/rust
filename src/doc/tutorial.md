@@ -2522,7 +2522,7 @@ fn sendable_foo(f: Box<Foo + Send>) { /* ... */ }
 fn shareable_bar<T: Share>(b: &Bar<T> + Share) { /* ... */ }
 ~~~
 
-When no colon is specified (such as the type `~Foo`), it is inferred that the
+When no colon is specified (such as the type `Box<Foo>`), it is inferred that the
 value ascribes to no bounds. They must be added manually if any bounds are
 necessary for usage.
 
@@ -2579,7 +2579,7 @@ fn radius_times_area<T: Circle>(c: T) -> f64 {
 
 Likewise, supertrait methods may also be called on trait objects.
 
-~~~ {.ignore}
+~~~
 use std::f64::consts::PI;
 # trait Shape { fn area(&self) -> f64; }
 # trait Circle : Shape { fn radius(&self) -> f64; }
@@ -2587,9 +2587,10 @@ use std::f64::consts::PI;
 # struct CircleStruct { center: Point, radius: f64 }
 # impl Circle for CircleStruct { fn radius(&self) -> f64 { (self.area() / PI).sqrt() } }
 # impl Shape for CircleStruct { fn area(&self) -> f64 { PI * square(self.radius) } }
+# fn square(x: f64) -> f64 { x * x }
 
-let concrete = ~CircleStruct{center:Point{x:3.0,y:4.0},radius:5.0};
-let mycircle: ~Circle = concrete as ~Circle;
+let concrete = box CircleStruct{center:Point{x:3.0,y:4.0},radius:5.0};
+let mycircle: Box<Circle> = concrete as Box<Circle>;
 let nonsense = mycircle.radius() * mycircle.area();
 ~~~
 
