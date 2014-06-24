@@ -28,6 +28,15 @@ pub static MIN: $T = (-1 as $T) << (BITS - 1);
 // calling the `Bounded::max_value` function.
 pub static MAX: $T = !MIN;
 
+#[cfg(not(stage0))]
+impl Send for $T { }
+
+#[cfg(not(stage0))]
+impl Share for $T { }
+
+#[cfg(not(stage0))]
+impl Copy for $T { }
+
 #[cfg(test)]
 mod tests {
     use prelude::*;

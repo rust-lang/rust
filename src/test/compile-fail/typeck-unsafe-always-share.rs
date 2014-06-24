@@ -19,6 +19,8 @@ struct MyShare<T> {
     u: Unsafe<T>
 }
 
+impl<T:Share> Share for MyShare<T> {}
+
 struct NoShare {
     m: marker::NoShare
 }

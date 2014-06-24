@@ -252,6 +252,7 @@ pub struct TcpStream {
     write_deadline: u64,
 }
 
+#[deriving(Share)]
 struct Inner {
     fd: sock_t,
 

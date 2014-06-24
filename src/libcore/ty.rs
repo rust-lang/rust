@@ -10,7 +10,7 @@
 
 //! Types dealing with unsafe actions.
 
-use kinds::marker;
+use kinds::{Share,marker};
 
 /// Unsafe type that wraps a type T and indicates unsafe interior operations on the
 /// wrapped type. Types with an `Unsafe<T>` field are considered to have an *unsafe
@@ -52,6 +52,8 @@ pub struct Unsafe<T> {
     /// Invariance marker
     pub marker1: marker::InvariantType<T>
 }
+
+impl <T> Share for Unsafe<T> {}
 
 impl<T> Unsafe<T> {
 

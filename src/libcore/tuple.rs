@@ -64,6 +64,7 @@
 use clone::Clone;
 #[cfg(not(test))] use cmp::*;
 #[cfg(not(test))] use default::Default;
+use kinds::{Copy, Send, Share};
 
 // macro for implementing n-ary tuple functions and operations
 macro_rules! tuple_impls {
@@ -81,6 +82,10 @@ macro_rules! tuple_impls {
                 $(fn $refN<'a>(&'a self) -> &'a $T;)+
                 $(fn $mutN<'a>(&'a mut self) -> &'a mut $T;)+
             }
+
+            impl<$($T:Copy),+> Copy for ($($T,)+) {}
+            impl<$($T:Send),+> Send for ($($T,)+) {}
+            impl<$($T:Share),+> Share for ($($T,)+) {}
 
             impl<$($T),+> $Tuple<$($T),+> for ($($T,)+) {
                 $(

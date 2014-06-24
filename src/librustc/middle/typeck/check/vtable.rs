@@ -34,6 +34,7 @@ use std::rc::Rc;
 use std::collections::HashSet;
 use syntax::ast;
 use syntax::ast_util;
+use syntax::codemap;
 use syntax::codemap::Span;
 use syntax::print::pprust::expr_to_str;
 use syntax::visit;
@@ -856,6 +857,24 @@ pub fn trans_resolve_method(tcx: &ty::ctxt, id: ast::NodeId,
                    &generics.types,
                    substs,
                    false)
+}
+
+
+/// Resolve vtables for an `ty::t` after typeck has finished.
+/// This is used by the built-in trait impl checker to verify
+/// that a type `T` implements a built-in trait `B`.
+pub fn ty_trait_vtable(tcx: &ty::ctxt,
+                       ty: ty::t,
+                       trait_ref: Rc<ty::TraitRef>) -> Option<vtable_origin> {
+
+
+    let vcx = VtableContext {
+        infcx: &infer::new_infer_ctxt(tcx),
+        param_env: &ty::construct_parameter_environment(tcx, &ty::Generics::empty(),
+                                                        trait_ref.def_id.node)
+    };
+
+    lookup_vtable(&vcx, codemap::DUMMY_SP, ty, trait_ref, false)
 }
 
 impl<'a, 'b> visit::Visitor<()> for &'a FnCtxt<'b> {

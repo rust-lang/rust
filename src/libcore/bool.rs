@@ -14,6 +14,9 @@
 
 #![doc(primitive = "bool")]
 
+#[cfg(not(stage0))]
+use kinds::{Send, Share, Copy};
+
 use num::{Int, one, zero};
 
 /////////////////////////////////////////////////////////////////////////////
@@ -34,6 +37,19 @@ use num::{Int, one, zero};
 pub fn to_bit<N: Int>(p: bool) -> N {
     if p { one() } else { zero() }
 }
+
+/////////////////////////////////////////////////////////////////////////////
+// Trait impls on `bool`
+/////////////////////////////////////////////////////////////////////////////
+
+#[cfg(not(stage0))]
+impl Send for bool { }
+
+#[cfg(not(stage0))]
+impl Share for bool { }
+
+#[cfg(not(stage0))]
+impl Copy for bool { }
 
 #[cfg(test)]
 mod tests {

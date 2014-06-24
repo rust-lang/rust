@@ -12,5 +12,8 @@
 
 #![doc(primitive = "i16")]
 
+#[cfg(not(stage0))]
+use kinds::{Share, Send, Copy};
+
 int_module!(i16, 16)
 

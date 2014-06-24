@@ -137,6 +137,7 @@ use syntax::visit;
 use syntax::visit::Visitor;
 use syntax;
 
+pub mod bounds;
 pub mod _match;
 pub mod vtable;
 pub mod writeback;

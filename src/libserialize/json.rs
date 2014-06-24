@@ -243,7 +243,7 @@ use std::vec::Vec;
 use Encodable;
 
 /// Represents a json value
-#[deriving(Clone, PartialEq)]
+#[deriving(Clone, PartialEq, Share)]
 pub enum Json {
     Number(f64),
     String(String),

@@ -12,4 +12,7 @@
 
 #![doc(primitive = "u16")]
 
+#[cfg(not(stage0))]
+use kinds::{Share, Send, Copy};
+
 uint_module!(u16, i16, 16)

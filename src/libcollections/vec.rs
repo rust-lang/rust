@@ -58,6 +58,9 @@ pub struct Vec<T> {
     ptr: *mut T
 }
 
+impl <T: Send> Send for Vec<T> {}
+impl <T: Share> Share for Vec<T> {}
+
 impl<T> Vec<T> {
     /// Constructs a new, empty `Vec`.
     ///

@@ -15,24 +15,28 @@ use std::kinds::marker;
 use ty::Unsafe;
 
 /// An atomic boolean type.
+#[deriving(Share)]
 pub struct AtomicBool {
     v: Unsafe<uint>,
     nocopy: marker::NoCopy
 }
 
 /// A signed atomic integer type, supporting basic atomic arithmetic operations
+#[deriving(Share)]
 pub struct AtomicInt {
     v: Unsafe<int>,
     nocopy: marker::NoCopy
 }
 
 /// An unsigned atomic integer type, supporting basic atomic arithmetic operations
+#[deriving(Share)]
 pub struct AtomicUint {
     v: Unsafe<uint>,
     nocopy: marker::NoCopy
 }
 
 /// An unsafe atomic pointer. Only supports basic atomic operations
+#[deriving(Share)]
 pub struct AtomicPtr<T> {
     p: Unsafe<uint>,
     nocopy: marker::NoCopy

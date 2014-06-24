@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Operations and constants for unsigned 64-bits integer (`u64` type)
+// Checks for built-in traits implementation
 
-#![doc(primitive = "u64")]
+#[deriving(Share, Send, Copy)]
+struct Struct;
 
-#[cfg(not(stage0))]
-use kinds::{Share, Send, Copy};
+#[deriving(Share, Send, Copy)]
+struct SendShareStruct2 {
+    a: Struct
+}
 
-uint_module!(u64, i64, 64)
+struct ManualImpl;
 
+impl Share for ManualImpl {}
+
+fn main() {}

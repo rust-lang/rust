@@ -13,10 +13,10 @@
 
 trait Foo : Send+Share { }
 
-impl <T: Share> Foo for (T,) { } //~ ERROR cannot implement this trait
+impl <T:Share> Foo for (T,) { } //~ ERROR cannot implement this trait
 
-impl <T: Send> Foo for (T,T) { } //~ ERROR cannot implement this trait
+impl <T:Send> Foo for (T,T) { } //~ ERROR cannot implement this trait
 
-impl <T: Send+Share> Foo for (T,T,T) { } // (ok)
+impl <T:Send+Share> Foo for (T,T,T) { } // (ok)
 
 fn main() { }

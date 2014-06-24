@@ -23,6 +23,7 @@ use io::util;
 
 pub type fd_t = libc::c_int;
 
+#[deriving(Share)]
 struct Inner {
     fd: fd_t,
     close_on_drop: bool,

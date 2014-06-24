@@ -43,7 +43,7 @@ use vec::Vec;
 // These would be convenient since the methods work like `each`
 
 #[allow(missing_doc)]
-#[deriving(Clone)]
+#[deriving(Clone, Share)]
 pub struct TreeMap<K, V> {
     root: Option<Box<TreeNode<K, V>>>,
     length: uint

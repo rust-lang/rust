@@ -73,7 +73,7 @@ pub type Components<'a> = Map<'a, Option<&'a str>, &'a [u8],
 //
 // The only error condition imposed here is valid utf-8. All other invalid paths are simply
 // preserved by the data structure; let the Windows API error out on them.
-#[deriving(Clone)]
+#[deriving(Clone,Share)]
 pub struct Path {
     repr: String, // assumed to never be empty
     prefix: Option<PathPrefix>,

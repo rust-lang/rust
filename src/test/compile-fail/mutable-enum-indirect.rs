@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-test
+
 // Tests that an `&` pointer to something inherently mutable is itself
 // to be considered mutable.
 
@@ -15,9 +17,15 @@ use std::kinds::marker;
 
 enum Foo { A(marker::NoShare) }
 
-fn bar<T: Share>(_: T) {}
+trait Test {}
+
+impl<'a> Test for &'a Foo {}
+
+fn bar<T: Test+Share>(_: T) {}
 
 fn main() {
     let x = A(marker::NoShare);
-    bar(&x); //~ ERROR type parameter with an incompatible type
+    bar(&x);
+    //FIXME(flaper87): Not yet
+    // ERROR type parameter with an incompatible type
 }

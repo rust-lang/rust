@@ -44,6 +44,7 @@ struct Node<T> {
     value: Option<T>,
 }
 
+#[deriving(Share)]
 struct State<T> {
     pad0: [u8, ..64],
     buffer: Vec<Unsafe<Node<T>>>,
@@ -55,6 +56,7 @@ struct State<T> {
     pad3: [u8, ..64],
 }
 
+#[deriving(Share)]
 pub struct Queue<T> {
     state: Arc<State<T>>,
 }
