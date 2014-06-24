@@ -735,6 +735,7 @@ fn check_fn(cx: &mut MatchCheckCtxt,
             },
             None => ()
         }
+        check_legality_of_move_bindings(cx, false, [input.pat]);
     }
 }
 
