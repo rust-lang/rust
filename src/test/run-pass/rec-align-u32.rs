@@ -10,6 +10,8 @@
 
 // Issue #2303
 
+#![feature(intrinsics)]
+
 extern crate debug;
 
 use std::mem;

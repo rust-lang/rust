@@ -55,8 +55,10 @@
        html_playground_url = "http://play.rust-lang.org/")]
 
 #![no_std]
-#![feature(globs, macro_rules, managed_boxes, phase, simd, unsafe_destructor)]
+#![feature(globs, intrinsics, lang_items, macro_rules, managed_boxes, phase)]
+#![feature(simd, unsafe_destructor)]
 #![deny(missing_doc)]
+#![allow(unknown_features)] // NOTE: remove after stage0 snapshot
 
 #[cfg(test)] extern crate realcore = "core";
 #[cfg(test)] extern crate libc;
