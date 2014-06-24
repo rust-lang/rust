@@ -1,9 +1,9 @@
 # These deliberately use `=` and not `:=` so that client makefiles can
 # augment HOST_RPATH_DIR / TARGET_RPATH_DIR.
 HOST_RPATH_ENV = \
-    $(LD_LIB_PATH_ENVVAR)="$(HOST_RPATH_DIR):$($(LD_LIB_PATH_ENVVAR))"
+    $(LD_LIB_PATH_ENVVAR)="$(TMPDIR):$(HOST_RPATH_DIR):$($(LD_LIB_PATH_ENVVAR))"
 TARGET_RPATH_ENV = \
-    $(LD_LIB_PATH_ENVVAR)="$(TARGET_RPATH_DIR):$($(LD_LIB_PATH_ENVVAR))"
+    $(LD_LIB_PATH_ENVVAR)="$(TMPDIR):$(TARGET_RPATH_DIR):$($(LD_LIB_PATH_ENVVAR))"
 
 RUSTC := $(HOST_RPATH_ENV) $(RUSTC) --out-dir $(TMPDIR) -L $(TMPDIR)
 CC := $(CC) -L $(TMPDIR)
