@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(intrinsics)]
+#[lang="foo"]   //~ ERROR language items are subject to change
+trait Foo {}
 
-mod rusti {
-    extern "rust-intrinsic" {
-        pub fn uninit<T>() -> T;
-    }
+extern "rust-intrinsic" {   //~ ERROR intrinsics are subject to change
+    fn bar();
 }
-pub fn main() {
-    let _a : int = unsafe {rusti::uninit()};
+
+extern "rust-intrinsic" fn baz() {  //~ ERROR intrinsics are subject to change
 }
+
+fn main() {
+}
+

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(intrinsics)]
+
 pub mod rusti {
     extern "rust-intrinsic" {
         pub fn atomic_xchg<T>(dst: *mut T, src: T) -> T;

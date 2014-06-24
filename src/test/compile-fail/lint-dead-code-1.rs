@@ -13,6 +13,7 @@
 #![allow(non_camel_case_types)]
 #![allow(visible_private_types)]
 #![deny(dead_code)]
+#![feature(lang_items)]
 
 #![crate_type="lib"]
 

@@ -11,6 +11,7 @@
 // ignore-tidy-linelength
 
 #![no_std]
+#![feature(lang_items)]
 
 #[lang="sized"]
 pub trait Sized {}
