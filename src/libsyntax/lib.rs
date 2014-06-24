@@ -30,7 +30,6 @@ This API is completely unstable and subject to change.
 #![feature(macro_rules, globs, managed_boxes, default_type_params, phase)]
 #![feature(quote, unsafe_destructor)]
 #![allow(deprecated)]
-#![allow(unknown_features)] // NOTE: remove after a stage0 snap
 
 extern crate serialize;
 extern crate term;
