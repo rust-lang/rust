@@ -99,6 +99,7 @@ pub mod back {
     pub mod link;
     pub mod lto;
     pub mod mips;
+    pub mod mipsel;
     pub mod rpath;
     pub mod svh;
     pub mod target_strs;

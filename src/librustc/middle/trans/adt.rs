@@ -59,7 +59,7 @@ use middle::trans::type_::Type;
 use middle::trans::type_of;
 use middle::ty;
 use middle::ty::Disr;
-use syntax::abi::{X86, X86_64, Arm, Mips};
+use syntax::abi::{X86, X86_64, Arm, Mips, Mipsel};
 use syntax::ast;
 use syntax::attr;
 use syntax::attr::IntType;
@@ -365,6 +365,7 @@ fn range_to_inttype(cx: &CrateContext, hint: Hint, bounds: &IntBounds) -> IntTyp
                 // corresponding to `choose_shortest`.  However, we don't run on those yet...?
                 Arm => at_least_32,
                 Mips => at_least_32,
+                Mipsel => at_least_32,
             }
         }
         attr::ReprAny => {

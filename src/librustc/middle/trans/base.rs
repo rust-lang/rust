@@ -83,7 +83,7 @@ use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::{i8, i16, i32, i64};
 use std::gc::Gc;
-use syntax::abi::{X86, X86_64, Arm, Mips, Rust, RustIntrinsic};
+use syntax::abi::{X86, X86_64, Arm, Mips, Mipsel, Rust, RustIntrinsic};
 use syntax::ast_util::{local_def, is_local};
 use syntax::attr::AttrMetaMethods;
 use syntax::attr;
@@ -1006,7 +1006,7 @@ pub fn call_memcpy(cx: &Block, dst: ValueRef, src: ValueRef, n_bytes: ValueRef, 
     let _icx = push_ctxt("call_memcpy");
     let ccx = cx.ccx();
     let key = match ccx.sess().targ_cfg.arch {
-        X86 | Arm | Mips => "llvm.memcpy.p0i8.p0i8.i32",
+        X86 | Arm | Mips | Mipsel => "llvm.memcpy.p0i8.p0i8.i32",
         X86_64 => "llvm.memcpy.p0i8.p0i8.i64"
     };
     let memcpy = ccx.get_intrinsic(&key);
@@ -1050,7 +1050,7 @@ fn memzero(b: &Builder, llptr: ValueRef, ty: Type) {
     let ccx = b.ccx;
 
     let intrinsic_key = match ccx.sess().targ_cfg.arch {
-        X86 | Arm | Mips => "llvm.memset.p0i8.i32",
+        X86 | Arm | Mips | Mipsel => "llvm.memset.p0i8.i32",
         X86_64 => "llvm.memset.p0i8.i64"
     };
 

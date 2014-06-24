@@ -217,6 +217,7 @@ pub unsafe fn record_sp_limit(limit: uint) {
     // mips, arm - Some brave soul can port these to inline asm, but it's over
     //             my head personally
     #[cfg(target_arch = "mips")]
+    #[cfg(target_arch = "mipsel")]
     #[cfg(target_arch = "arm", not(target_os = "ios"))] #[inline(always)]
     unsafe fn target_record_sp_limit(limit: uint) {
         use libc::c_void;
@@ -298,6 +299,7 @@ pub unsafe fn get_sp_limit() -> uint {
     // mips, arm - Some brave soul can port these to inline asm, but it's over
     //             my head personally
     #[cfg(target_arch = "mips")]
+    #[cfg(target_arch = "mipsel")]
     #[cfg(target_arch = "arm", not(target_os = "ios"))] #[inline(always)]
     unsafe fn target_get_sp_limit() -> uint {
         use libc::c_void;
