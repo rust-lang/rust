@@ -20,6 +20,8 @@
 
 use middle::lint;
 
+use syntax::abi::RustIntrinsic;
+use syntax::ast::NodeId;
 use syntax::ast;
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
@@ -51,6 +53,8 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("trace_macros", Active),
     ("concat_idents", Active),
     ("unsafe_destructor", Active),
+    ("intrinsics", Active),
+    ("lang_items", Active),
 
     ("simd", Active),
     ("default_type_params", Active),
@@ -187,12 +191,17 @@ impl<'a> Visitor<()> for Context<'a> {
                 }
             }
 
-            ast::ItemForeignMod(..) => {
+            ast::ItemForeignMod(ref foreign_module) => {
                 if attr::contains_name(i.attrs.as_slice(), "link_args") {
                     self.gate_feature("link_args", i.span,
                                       "the `link_args` attribute is not portable \
                                        across platforms, it is recommended to \
                                        use `#[link(name = \"foo\")]` instead")
+                }
+                if foreign_module.abi == RustIntrinsic {
+                    self.gate_feature("intrinsics",
+                                      i.span,
+                                      "intrinsics are subject to change")
                 }
             }
 
@@ -283,14 +292,10 @@ impl<'a> Visitor<()> for Context<'a> {
     }
 
     fn visit_foreign_item(&mut self, i: &ast::ForeignItem, _: ()) {
-        match i.node {
-            ast::ForeignItemFn(..) | ast::ForeignItemStatic(..) => {
-                if attr::contains_name(i.attrs.as_slice(), "linkage") {
-                    self.gate_feature("linkage", i.span,
-                                      "the `linkage` attribute is experimental \
-                                       and not portable across platforms")
-                }
-            }
+        if attr::contains_name(i.attrs.as_slice(), "linkage") {
+            self.gate_feature("linkage", i.span,
+                              "the `linkage` attribute is experimental \
+                               and not portable across platforms")
         }
         visit::walk_foreign_item(self, i, ())
     }
@@ -337,6 +342,32 @@ impl<'a> Visitor<()> for Context<'a> {
             }
         }
         visit::walk_generics(self, generics, ());
+    }
+
+    fn visit_attribute(&mut self, attr: &ast::Attribute, _: ()) {
+        if attr::contains_name([*attr], "lang") {
+            self.gate_feature("lang_items",
+                              attr.span,
+                              "language items are subject to change");
+        }
+    }
+
+    fn visit_fn(&mut self,
+                fn_kind: &visit::FnKind,
+                fn_decl: &ast::FnDecl,
+                block: &ast::Block,
+                span: Span,
+                _: NodeId,
+                (): ()) {
+        match *fn_kind {
+            visit::FkItemFn(_, _, _, ref abi) if *abi == RustIntrinsic => {
+                self.gate_feature("intrinsics",
+                                  span,
+                                  "intrinsics are subject to change")
+            }
+            _ => {}
+        }
+        visit::walk_fn(self, fn_kind, fn_decl, block, span, ());
     }
 }
 
