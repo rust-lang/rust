@@ -1121,7 +1121,10 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
                       "captured outer variable".to_string()
                   }
                   _ => {
-                      format!("dereference of `{}`-pointer", ptr_sigil(pk))
+                      match pk {
+                          OwnedPtr | GcPtr => format!("dereference of `{}`", ptr_sigil(pk)),
+                          _ => format!("dereference of `{}`-pointer", ptr_sigil(pk))
+                      }
                   }
               }
           }
@@ -1291,8 +1294,8 @@ impl Repr for categorization {
 
 pub fn ptr_sigil(ptr: PointerKind) -> &'static str {
     match ptr {
-        OwnedPtr => "~",
-        GcPtr => "@",
+        OwnedPtr => "Box",
+        GcPtr => "Gc",
         BorrowedPtr(ty::ImmBorrow, _) => "&",
         BorrowedPtr(ty::MutBorrow, _) => "&mut",
         BorrowedPtr(ty::UniqueImmBorrow, _) => "&unique",
