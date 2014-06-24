@@ -3343,7 +3343,7 @@ guides on individual topics.
 * [Testing Rust code][testing]
 * [The Rust Runtime][runtime]
 
-There is further documentation on the [wiki], however those tend to be even more out of date as this document.
+There is further documentation on the [wiki], however those tend to be even more out of date than this document.
 
 [pointers]: guide-pointers.html
 [lifetimes]: guide-lifetimes.html
