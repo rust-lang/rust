@@ -698,10 +698,6 @@ impl Visitor<()> for NewNameFinderContext {
         }
     }
 
-    fn visit_ty(&mut self, typ: &ast::Ty, _: ()) {
-        visit::walk_ty(self, typ, ())
-    }
-
 }
 
 // return a visitor that extracts the pat_ident paths
@@ -1051,11 +1047,6 @@ mod test {
                 _ => visit::walk_expr(self,expr,())
             }
         }
-
-        fn visit_ty(&mut self, typ: &ast::Ty, _: ()) {
-            visit::walk_ty(self, typ, ())
-        }
-
     }
 
     // return a visitor that extracts the paths
