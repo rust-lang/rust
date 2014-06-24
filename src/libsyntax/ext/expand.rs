@@ -1070,7 +1070,7 @@ mod test {
     // these following tests are quite fragile, in that they don't test what
     // *kind* of failure occurs.
 
-    // make sure that macros can leave scope
+    // make sure that macros can't escape fns
     #[should_fail]
     #[test] fn macros_cant_escape_fns_test () {
         let src = "fn bogus() {macro_rules! z (() => (3+4))}\
@@ -1088,7 +1088,7 @@ mod test {
         expand_crate(&sess,cfg,vec!(),vec!(),crate_ast);
     }
 
-    // make sure that macros can leave scope for modules
+    // make sure that macros can't escape modules
     #[should_fail]
     #[test] fn macros_cant_escape_mods_test () {
         let src = "mod foo {macro_rules! z (() => (3+4))}\
@@ -1105,7 +1105,7 @@ mod test {
         expand_crate(&sess,cfg,vec!(),vec!(),crate_ast);
     }
 
-    // macro_escape modules shouldn't cause macros to leave scope
+    // macro_escape modules should allow macros to escape
     #[test] fn macros_can_escape_flattened_mods_test () {
         let src = "#[macro_escape] mod foo {macro_rules! z (() => (3+4))}\
                    fn inty() -> int { z!() }".to_string();
@@ -1114,7 +1114,6 @@ mod test {
             "<test>".to_string(),
             src,
             Vec::new(), &sess);
-        // should fail:
         let cfg = ::syntax::ext::expand::ExpansionConfig {
             deriving_hash_type_parameter: false,
             crate_id: from_str("test").unwrap(),
@@ -1184,6 +1183,12 @@ mod test {
     // three varrefs, the array ~[~[1,2],~[0]] would indicate that the first
     // binding should match the second two varrefs, and the second binding
     // should match the first varref.
+    //
+    // Put differently; this is a sparse representation of a boolean matrix
+    // indicating which bindings capture which identifiers.
+    //
+    // Note also that this matrix is dependent on the implicit ordering of
+    // the bindings and the varrefs discovered by the name-finder and the path-finder.
     //
     // The comparisons are done post-mtwt-resolve, so we're comparing renamed
     // names; differences in marks don't matter any more.
