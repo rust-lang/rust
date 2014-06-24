@@ -770,7 +770,6 @@ impl PrimitiveTypeTable {
         table.intern("char",    TyChar);
         table.intern("f32",     TyFloat(TyF32));
         table.intern("f64",     TyFloat(TyF64));
-        table.intern("f128",    TyFloat(TyF128));
         table.intern("int",     TyInt(TyI));
         table.intern("i8",      TyInt(TyI8));
         table.intern("i16",     TyInt(TyI16));

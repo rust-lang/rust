@@ -330,7 +330,6 @@ fn parse_ty(st: &mut PState, conv: conv_did) -> ty::t {
           'D' => return ty::mk_mach_int(ast::TyI64),
           'f' => return ty::mk_mach_float(ast::TyF32),
           'F' => return ty::mk_mach_float(ast::TyF64),
-          'Q' => return ty::mk_mach_float(ast::TyF128),
           _ => fail!("parse_ty: bad numeric type")
         }
       }
