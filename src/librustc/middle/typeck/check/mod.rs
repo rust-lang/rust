@@ -79,7 +79,6 @@ type parameter).
 
 use middle::const_eval;
 use middle::def;
-use middle::lint::UnreachableCode;
 use middle::pat_util::pat_id_map;
 use middle::pat_util;
 use middle::subst;
@@ -111,6 +110,7 @@ use middle::typeck::{require_same_types, vtable_map};
 use middle::typeck::{MethodCall, MethodMap};
 use middle::typeck::{TypeAndSubsts};
 use middle::lang_items::TypeIdLangItem;
+use lint;
 use util::common::{block_query, indenter, loop_query};
 use util::ppaux;
 use util::ppaux::{UserString, Repr};
@@ -3416,7 +3416,7 @@ pub fn check_block_with_expected(fcx: &FnCtxt,
                 fcx.ccx
                    .tcx
                    .sess
-                   .add_lint(UnreachableCode,
+                   .add_lint(lint::builtin::UNREACHABLE_CODE,
                              s_id,
                              s.span,
                              "unreachable statement".to_string());
@@ -3443,7 +3443,7 @@ pub fn check_block_with_expected(fcx: &FnCtxt,
                 fcx.ccx
                    .tcx
                    .sess
-                   .add_lint(UnreachableCode,
+                   .add_lint(lint::builtin::UNREACHABLE_CODE,
                              e.id,
                              e.span,
                              "unreachable expression".to_string());
