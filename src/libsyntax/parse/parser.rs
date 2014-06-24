@@ -1365,7 +1365,7 @@ impl<'a> Parser<'a> {
         } else if self.token == token::BINOP(token::STAR) {
             // STAR POINTER (bare pointer?)
             self.bump();
-            TyPtr(self.parse_mt())
+            TyPtr(self.parse_ptr())
         } else if self.token == token::LBRACKET {
             // VECTOR
             self.expect(&token::LBRACKET);
@@ -1440,6 +1440,19 @@ impl<'a> Parser<'a> {
 
         let mt = self.parse_mt();
         return TyRptr(opt_lifetime, mt);
+    }
+
+    pub fn parse_ptr(&mut self) -> MutTy {
+        let mutbl = if self.eat_keyword(keywords::Mut) {
+            MutMutable
+        } else if self.eat_keyword(keywords::Const) {
+            MutImmutable
+        } else {
+            // NOTE: after a stage0 snap this should turn into a span_err.
+            MutImmutable
+        };
+        let t = self.parse_ty(true);
+        MutTy { ty: t, mutbl: mutbl }
     }
 
     pub fn is_named_argument(&mut self) -> bool {
