@@ -448,7 +448,7 @@ impl<'a> PluginMetadataReader<'a> {
             macros: macros.move_iter().map(|x| x.to_string()).collect(),
             registrar_symbol: registrar,
         };
-        if should_link {
+        if should_link && existing_match(&self.env, &info.crate_id, None).is_none() {
             // register crate now to avoid double-reading metadata
             register_crate(&mut self.env, &None, info.ident.as_slice(),
                            &info.crate_id, krate.span, library);
