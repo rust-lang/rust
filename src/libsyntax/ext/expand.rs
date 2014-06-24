@@ -1406,13 +1406,19 @@ foo_module!()
                    strs_to_idents(vec!("a","c","b","d")));
     }
 
+    // test the list of identifier patterns gathered by the visitor. Note that
+    // 'None' is listed as an identifier pattern because we don't yet know that
+    // it's the name of a 0-ary variant, and that 'i' appears twice in succession.
     #[test]
-    fn pat_idents_2(){
-        let the_crate = string_to_crate("fn main (a : int) -> int {|b| {a + b} }".to_string());
-        let mut pat_idents = new_name_finder(Vec::new());
-        pat_idents.visit_mod(&the_crate.module, the_crate.span, ast::CRATE_NODE_ID, ());
-        assert_eq!(pat_idents.ident_accumulator,
-                   strs_to_idents(vec!("a","b")));
+    fn crate_idents(){
+        let the_crate = string_to_crate("fn main (a : int) -> int {|b| {
+        match 34 {None => 3, Some(i) | i => j, Foo{k:z,l:y} => \"banana\"}} }".to_string());
+        let mut idents = new_name_finder(Vec::new());
+        //visit::walk_crate(&mut idents, &the_crate, ());
+        idents.visit_mod(&the_crate.module, the_crate.span, ast::CRATE_NODE_ID, ());
+        assert_eq!(idents.ident_accumulator,
+                   strs_to_idents(vec!("a","b","None","i","i","z","y")));
     }
+
 
 }
