@@ -464,6 +464,62 @@ impl Bitv {
         !self.none()
     }
 
+    /// Shorten a Bitv, dropping excess elements.
+    ///
+    /// If `len` is greater than the vector's current length, this has no
+    /// effect.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let mut bvec = Bitv::from_bools(vec!(false, true, true, false));
+    /// bvec.truncate(2);
+    /// assert_eq!(bvec, Bitv::from_bools(vec!(false, true)));
+    /// ```
+    pub fn truncate(&mut self, len: uint) {
+        if len < self.len() {
+          self.nbits = len;
+        }
+    }
+
+    /// Shorten a Bitv by one, returning the removed element
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let mut bvec = Bitv::from_bools(vec!(false, true, true, false));
+    /// let popped = bvec.pop();
+    /// assert_eq!(popped, false)));
+    /// assert_eq!(bvec, Bitv::from_bools(vec!(false, true, true)));
+    /// ```
+    pub fn pop(&mut self) -> bool {
+        let ret = self.get(self.nbits - 1);
+        self.nbits -= 1;
+        ret
+    }
+
+    /// Add an element to the end of a Bitv
+    pub fn push(&mut self, elem: bool) {
+        let mut newrep = None;
+        self.nbits += 1;
+        match self.rep {
+            Small(ref mut s) => {
+                if self.nbits > uint::BITS {
+                    newrep = Some(Big(BigBitv::new(vec![s.bits, if elem { 1 } else { 0 }])));
+                } else {
+                    s.set(self.nbits - 1, elem);
+                }
+            }
+            Big(ref mut b) => {
+               if self.nbits > b.storage.len() * 8 {
+                 b.storage.push(0);
+               }
+               b.set(self.nbits - 1, elem);
+            }
+        }
+        newrep.map(|rep| self.rep = rep);
+    }
+
     /**
      * Converts `self` to a vector of `uint` with the same length.
      *
@@ -529,6 +585,16 @@ impl Bitv {
         range(0u, self.nbits).advance(|i| !self.get(i) || f(i))
     }
 
+}
+
+impl FromIterator<bool> for Bitv {
+    fn from_iter<I:Iterator<bool>>(mut iterator: I) -> Bitv {
+        let mut ret = Bitv::new(0, false);
+        for b in iterator {
+            ret.push(b);
+        }
+        ret
+    }
 }
 
 /**
@@ -610,6 +676,11 @@ impl cmp::PartialEq for Bitv {
 }
 
 impl cmp::Eq for Bitv {}
+
+impl Collection for Bitv {
+    #[inline]
+    fn len(&self) -> uint { self.nbits }
+}
 
 #[inline]
 fn iterate_bits(base: uint, bits: uint, f: |uint| -> bool) -> bool {
@@ -1665,6 +1736,46 @@ mod tests {
         assert!(v.all());
         assert!(v.any());
         assert!(!v.none());
+    }
+
+    #[test]
+    fn test_bitv_push_small_to_big() {
+        let mut s = Bitv::new(uint::BITS - 3, false);
+        assert_eq!(s.get(uint::BITS - 5), false);
+        assert_eq!(s.get(uint::BITS - 4), false);
+        s.push(true);
+        assert_eq!(s.get(uint::BITS - 3), true);
+        s.push(false);
+        assert_eq!(s.get(uint::BITS - 2), false);
+        // Here the internal rep will change from Small to Big
+        s.push(true);
+        assert_eq!(s.get(uint::BITS - 1), true);
+        s.push(false);
+        assert_eq!(s.get(uint::BITS), false);
+        s.push(false);
+        s.push(false);
+        assert_eq!(s.get(uint::BITS + 1), false);
+        assert_eq!(s.get(uint::BITS + 2), false);
+        // pop
+        s.push(false);
+        s.push(true);
+        assert_eq!(s.pop(), true);
+        assert_eq!(s.pop(), false);
+    }
+
+    #[test]
+    fn test_bitv_push_big_to_big() {
+        let mut s = Bitv::new(5 * uint::BITS - 2, false);
+        assert_eq!(s.get(5 * uint::BITS - 3), false);
+        s.push(true);
+        s.push(true);
+        assert_eq!(s.get(5 * uint::BITS - 2), true);
+        assert_eq!(s.get(5 * uint::BITS - 1), true);
+        // Here the internal vector will need to be extended
+        s.push(false);
+        assert_eq!(s.get(5 * uint::BITS), false);
+        s.push(false);
+        assert_eq!(s.get(5 * uint::BITS + 1), false);
     }
 
     #[test]
