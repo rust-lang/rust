@@ -1,4 +1,4 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,17 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(non_camel_case_types)]
-#![allow(non_camel_case_enum_variants)]
+#![forbid(non_camel_case_enum_variants)]
+#![allow(dead_code)]
 
-pub fn main() {
-    let one: || -> uint = || {
-        enum r { a };
-        a as uint
-    };
-    let two: || -> uint = || {
-        enum r { a };
-        a as uint
-    };
-    one(); two();
+enum Foo {
+    bar //~ ERROR variant `bar` should have a camel case name such as `Bar`
 }
+
+fn main() { }

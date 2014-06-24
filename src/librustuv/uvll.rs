@@ -28,6 +28,7 @@
  */
 
 #![allow(non_camel_case_types)] // C types
+#![allow(non_camel_case_enum_variants)]
 
 use libc::{size_t, c_int, c_uint, c_void, c_char, c_double};
 use libc::{ssize_t, sockaddr, free, addrinfo};

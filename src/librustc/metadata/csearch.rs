@@ -11,6 +11,7 @@
 // Searching for information from the cstore
 
 #![allow(non_camel_case_types)]
+#![allow(non_camel_case_enum_variants)]
 
 use metadata::common::*;
 use metadata::cstore;

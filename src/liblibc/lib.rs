@@ -70,6 +70,7 @@
 */
 
 #![allow(non_camel_case_types)]
+#![allow(non_camel_case_enum_variants)]
 #![allow(non_snake_case_functions)]
 #![allow(non_uppercase_statics)]
 #![allow(missing_doc)]

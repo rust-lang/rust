@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![allow(non_camel_case_types)]
+#![allow(non_camel_case_enum_variants)]
 
 use middle::subst;
 use middle::trans::adt;

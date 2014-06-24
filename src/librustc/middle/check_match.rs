@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![allow(non_camel_case_types)]
+#![allow(non_camel_case_enum_variants)]
 
 use middle::const_eval::{compare_const_vals, const_bool, const_float, const_val};
 use middle::const_eval::{eval_const_expr, lookup_const_by_id};

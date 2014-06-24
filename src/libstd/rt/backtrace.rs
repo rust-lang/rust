@@ -11,6 +11,7 @@
 //! Simple backtrace functionality (to print on failure)
 
 #![allow(non_camel_case_types)]
+#![allow(non_camel_case_enum_variants)]
 
 use char::Char;
 use collections::Collection;

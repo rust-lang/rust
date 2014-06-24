@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![allow(non_camel_case_types)]
+#![allow(non_camel_case_enum_variants)]
 
 use std::mem;
 use syntax::crateid::CrateId;

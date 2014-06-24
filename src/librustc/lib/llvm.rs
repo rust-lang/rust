@@ -10,6 +10,7 @@
 
 #![allow(non_uppercase_pattern_statics)]
 #![allow(non_camel_case_types)]
+#![allow(non_camel_case_enum_variants)]
 #![allow(non_snake_case_functions)]
 #![allow(dead_code)]
 

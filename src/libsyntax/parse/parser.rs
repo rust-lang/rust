@@ -82,6 +82,7 @@ use std::rc::Rc;
 use std::gc::{Gc, GC};
 
 #[allow(non_camel_case_types)]
+#[allow(non_camel_case_enum_variants)]
 #[deriving(PartialEq)]
 pub enum restriction {
     UNRESTRICTED,

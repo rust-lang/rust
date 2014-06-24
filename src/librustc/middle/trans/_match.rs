@@ -193,6 +193,7 @@
  */
 
 #![allow(non_camel_case_types)]
+#![allow(non_camel_case_enum_variants)]
 
 use back::abi;
 use driver::config::FullDebugInfo;
