@@ -17,7 +17,7 @@ use std::mem::replace;
 
 use metadata::csearch;
 use middle::def;
-use middle::lint;
+use lint;
 use middle::resolve;
 use middle::ty;
 use middle::typeck::{MethodCall, MethodMap, MethodOrigin, MethodParam};
@@ -1394,7 +1394,7 @@ impl<'a> Visitor<()> for VisiblePrivateTypesVisitor<'a> {
             ast::TyPath(ref p, _, path_id) => {
                 if self.path_is_private_type(path_id) {
                     self.tcx.sess.add_lint(
-                        lint::VisiblePrivateTypes,
+                        lint::builtin::VISIBLE_PRIVATE_TYPES,
                         path_id, p.span,
                         "private type in exported type \
                          signature".to_string());

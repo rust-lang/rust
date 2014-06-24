@@ -13,11 +13,11 @@ pub use syntax::diagnostic;
 use back::link;
 use driver::driver::{Input, FileInput, StrInput};
 use driver::session::{Session, build_session};
-use middle::lint;
+use lint::Lint;
+use lint;
 use metadata;
 
 use std::any::AnyRefExt;
-use std::cmp;
 use std::io;
 use std::os;
 use std::str;
@@ -49,9 +49,18 @@ fn run_compiler(args: &[String]) {
         Some(matches) => matches,
         None => return
     };
+    let sopts = config::build_session_options(&matches);
 
     let (input, input_file_path) = match matches.free.len() {
-        0u => early_error("no input filename given"),
+        0u => {
+            if sopts.describe_lints {
+                let mut ls = lint::LintStore::new();
+                ls.register_builtin(None);
+                describe_lints(&ls, false);
+                return;
+            }
+            early_error("no input filename given");
+        }
         1u => {
             let ifile = matches.free.get(0).as_slice();
             if ifile == "-" {
@@ -66,7 +75,6 @@ fn run_compiler(args: &[String]) {
         _ => early_error("multiple input filenames provided")
     };
 
-    let sopts = config::build_session_options(&matches);
     let sess = build_session(sopts, input_file_path);
     let cfg = config::build_configuration(&sess);
     let odir = matches.opt_str("out-dir").map(|o| Path::new(o));
@@ -124,41 +132,68 @@ Additional help:
                              config::optgroups().as_slice()));
 }
 
-fn describe_warnings() {
+fn describe_lints(lint_store: &lint::LintStore, loaded_plugins: bool) {
     println!("
 Available lint options:
     -W <foo>           Warn about <foo>
     -A <foo>           Allow <foo>
     -D <foo>           Deny <foo>
     -F <foo>           Forbid <foo> (deny, and deny all overrides)
+
 ");
 
-    let lint_dict = lint::get_lint_dict();
-    let mut lint_dict = lint_dict.move_iter()
-                                 .map(|(k, v)| (v, k))
-                                 .collect::<Vec<(lint::LintSpec, &'static str)> >();
-    lint_dict.as_mut_slice().sort();
+    fn sort_lints(lints: Vec<(&'static Lint, bool)>) -> Vec<&'static Lint> {
+        let mut lints: Vec<_> = lints.move_iter().map(|(x, _)| x).collect();
+        lints.sort_by(|x: &&Lint, y: &&Lint| {
+            match x.default_level.cmp(&y.default_level) {
+                // The sort doesn't case-fold but it's doubtful we care.
+                Equal => x.name.cmp(&y.name),
+                r => r,
+            }
+        });
+        lints
+    }
 
-    let mut max_key = 0;
-    for &(_, name) in lint_dict.iter() {
-        max_key = cmp::max(name.len(), max_key);
+    let (plugin, builtin) = lint_store.get_lints().partitioned(|&(_, p)| p);
+    let plugin = sort_lints(plugin);
+    let builtin = sort_lints(builtin);
+
+    // FIXME (#7043): We should use the width in character cells rather than
+    // the number of codepoints.
+    let max_name_len = plugin.iter().chain(builtin.iter())
+        .map(|&s| s.name.char_len())
+        .max().unwrap_or(0);
+    let padded = |x: &str| {
+        " ".repeat(max_name_len - x.char_len()).append(x)
+    };
+
+    println!("Lint checks provided by rustc:\n");
+    println!("    {}  {:7.7s}  {}", padded("name"), "default", "meaning");
+    println!("    {}  {:7.7s}  {}", padded("----"), "-------", "-------");
+
+    let print_lints = |lints: Vec<&Lint>| {
+        for lint in lints.move_iter() {
+            let name = lint.name_lower().replace("_", "-");
+            println!("    {}  {:7.7s}  {}",
+                     padded(name.as_slice()), lint.default_level.as_str(), lint.desc);
+        }
+        println!("\n");
+    };
+
+    print_lints(builtin);
+
+    match (loaded_plugins, plugin.len()) {
+        (false, 0) => {
+            println!("Compiler plugins can provide additional lints. To see a listing of these, \
+                      re-run `rustc -W help` with a crate filename.");
+        }
+        (false, _) => fail!("didn't load lint plugins but got them anyway!"),
+        (true, 0) => println!("This crate does not load any lint plugins."),
+        (true, _) => {
+            println!("Lint checks provided by plugins loaded by this crate:\n");
+            print_lints(plugin);
+        }
     }
-    fn padded(max: uint, s: &str) -> String {
-        format!("{}{}", " ".repeat(max - s.len()), s)
-    }
-    println!("\nAvailable lint checks:\n");
-    println!("    {}  {:7.7s}  {}",
-             padded(max_key, "name"), "default", "meaning");
-    println!("    {}  {:7.7s}  {}\n",
-             padded(max_key, "----"), "-------", "-------");
-    for (spec, name) in lint_dict.move_iter() {
-        let name = name.replace("_", "-");
-        println!("    {}  {:7.7s}  {}",
-                 padded(max_key, name.as_slice()),
-                 lint::level_to_str(spec.default),
-                 spec.desc);
-    }
-    println!("");
 }
 
 fn describe_debug_flags() {
@@ -214,12 +249,7 @@ pub fn handle_options(mut args: Vec<String>) -> Option<getopts::Matches> {
         return None;
     }
 
-    let lint_flags = matches.opt_strs("W").move_iter().collect::<Vec<_>>().append(
-                                    matches.opt_strs("warn").as_slice());
-    if lint_flags.iter().any(|x| x.as_slice() == "help") {
-        describe_warnings();
-        return None;
-    }
+    // Don't handle -W help here, because we might first load plugins.
 
     let r = matches.opt_strs("Z");
     if r.iter().any(|x| x.as_slice() == "help") {

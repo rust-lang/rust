@@ -18,7 +18,7 @@
 //! Features are enabled in programs via the crate-level attributes of
 //! `#![feature(...)]` with a comma-separated list of features.
 
-use middle::lint;
+use lint;
 
 use syntax::abi::RustIntrinsic;
 use syntax::ast::NodeId;
@@ -409,7 +409,7 @@ pub fn check_crate(sess: &Session, krate: &ast::Crate) {
                                                      directive not necessary");
                         }
                         None => {
-                            sess.add_lint(lint::UnknownFeatures,
+                            sess.add_lint(lint::builtin::UNKNOWN_FEATURES,
                                           ast::CRATE_NODE_ID,
                                           mi.span,
                                           "unknown feature".to_string());

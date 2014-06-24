@@ -36,7 +36,7 @@ use lib::llvm::{ModuleRef, ValueRef, BasicBlockRef};
 use lib::llvm::{llvm, Vector};
 use lib;
 use metadata::{csearch, encoder, loader};
-use middle::lint;
+use lint;
 use middle::astencode;
 use middle::lang_items::{LangItem, ExchangeMallocFnLangItem, StartFnLangItem};
 use middle::weak_lang_items;
@@ -1552,49 +1552,52 @@ fn trans_enum_def(ccx: &CrateContext, enum_definition: &ast::EnumDef,
 fn enum_variant_size_lint(ccx: &CrateContext, enum_def: &ast::EnumDef, sp: Span, id: ast::NodeId) {
     let mut sizes = Vec::new(); // does no allocation if no pushes, thankfully
 
-    let (lvl, src) = ccx.tcx.node_lint_levels.borrow()
-                        .find(&(id, lint::VariantSizeDifference))
-                        .map_or((lint::Allow, lint::Default), |&(lvl,src)| (lvl, src));
+    let levels = ccx.tcx.node_lint_levels.borrow();
+    let lint_id = lint::LintId::of(lint::builtin::VARIANT_SIZE_DIFFERENCE);
+    let lvlsrc = match levels.find(&(id, lint_id)) {
+        None | Some(&(lint::Allow, _)) => return,
+        Some(&lvlsrc) => lvlsrc,
+    };
 
-    if lvl != lint::Allow {
-        let avar = adt::represent_type(ccx, ty::node_id_to_type(ccx.tcx(), id));
-        match *avar {
-            adt::General(_, ref variants) => {
-                for var in variants.iter() {
-                    let mut size = 0;
-                    for field in var.fields.iter().skip(1) {
-                        // skip the discriminant
-                        size += llsize_of_real(ccx, sizing_type_of(ccx, *field));
-                    }
-                    sizes.push(size);
+    let avar = adt::represent_type(ccx, ty::node_id_to_type(ccx.tcx(), id));
+    match *avar {
+        adt::General(_, ref variants) => {
+            for var in variants.iter() {
+                let mut size = 0;
+                for field in var.fields.iter().skip(1) {
+                    // skip the discriminant
+                    size += llsize_of_real(ccx, sizing_type_of(ccx, *field));
                 }
-            },
-            _ => { /* its size is either constant or unimportant */ }
-        }
+                sizes.push(size);
+            }
+        },
+        _ => { /* its size is either constant or unimportant */ }
+    }
 
-        let (largest, slargest, largest_index) = sizes.iter().enumerate().fold((0, 0, 0),
-            |(l, s, li), (idx, &size)|
-                if size > l {
-                    (size, l, idx)
-                } else if size > s {
-                    (l, size, li)
-                } else {
-                    (l, s, li)
-                }
-        );
+    let (largest, slargest, largest_index) = sizes.iter().enumerate().fold((0, 0, 0),
+        |(l, s, li), (idx, &size)|
+            if size > l {
+                (size, l, idx)
+            } else if size > s {
+                (l, size, li)
+            } else {
+                (l, s, li)
+            }
+    );
 
-        // we only warn if the largest variant is at least thrice as large as
-        // the second-largest.
-        if largest > slargest * 3 && slargest > 0 {
-            lint::emit_lint(lvl, src,
+    // we only warn if the largest variant is at least thrice as large as
+    // the second-largest.
+    if largest > slargest * 3 && slargest > 0 {
+        // Use lint::raw_emit_lint rather than sess.add_lint because the lint-printing
+        // pass for the latter already ran.
+        lint::raw_emit_lint(&ccx.tcx().sess, lint::builtin::VARIANT_SIZE_DIFFERENCE,
+                            lvlsrc, Some(sp),
                             format!("enum variant is more than three times larger \
-                                    ({} bytes) than the next largest (ignoring padding)",
-                                    largest).as_slice(),
-                            sp, lint::lint_to_str(lint::VariantSizeDifference), ccx.tcx());
+                                     ({} bytes) than the next largest (ignoring padding)",
+                                    largest).as_slice());
 
-            ccx.sess().span_note(enum_def.variants.get(largest_index).span,
-                                 "this variant is the largest");
-        }
+        ccx.sess().span_note(enum_def.variants.get(largest_index).span,
+                             "this variant is the largest");
     }
 }
 

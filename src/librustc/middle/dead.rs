@@ -13,7 +13,7 @@
 // from live codes are live, and everything else is dead.
 
 use middle::def;
-use middle::lint::{Allow, contains_lint, DeadCode};
+use lint;
 use middle::privacy;
 use middle::ty;
 use middle::typeck;
@@ -23,13 +23,12 @@ use std::collections::HashSet;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util::{local_def, is_local};
+use syntax::attr::AttrMetaMethods;
 use syntax::attr;
 use syntax::codemap;
 use syntax::parse::token;
 use syntax::visit::Visitor;
 use syntax::visit;
-
-pub static DEAD_CODE_LINT_STR: &'static str = "dead_code";
 
 // Any local node that may call something in its body block should be
 // explored. For example, if it's a live NodeItem that is a
@@ -266,8 +265,19 @@ impl<'a> Visitor<MarkSymbolVisitorContext> for MarkSymbolVisitor<'a> {
 }
 
 fn has_allow_dead_code_or_lang_attr(attrs: &[ast::Attribute]) -> bool {
-    contains_lint(attrs, Allow, DEAD_CODE_LINT_STR)
-    || attr::contains_name(attrs.as_slice(), "lang")
+    if attr::contains_name(attrs.as_slice(), "lang") {
+        return true;
+    }
+
+    let dead_code = lint::builtin::DEAD_CODE.name_lower();
+    for attr in lint::gather_attrs(attrs).move_iter() {
+        match attr {
+            Ok((ref name, lint::Allow, _))
+                if name.get() == dead_code.as_slice() => return true,
+            _ => (),
+        }
+    }
+    false
 }
 
 // This visitor seeds items that
@@ -446,7 +456,7 @@ impl<'a> DeadVisitor<'a> {
                       ident: ast::Ident) {
         self.tcx
             .sess
-            .add_lint(DeadCode,
+            .add_lint(lint::builtin::DEAD_CODE,
                       id,
                       span,
                       format!("code is never used: `{}`",

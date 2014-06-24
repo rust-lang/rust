@@ -14,7 +14,7 @@ use back::svh::Svh;
 use driver::session::Session;
 use metadata::csearch;
 use mc = middle::mem_categorization;
-use middle::lint;
+use lint;
 use middle::const_eval;
 use middle::def;
 use middle::dependency_format;
@@ -367,8 +367,8 @@ pub struct ctxt {
 
     pub dependency_formats: RefCell<dependency_format::Dependencies>,
 
-    pub node_lint_levels: RefCell<HashMap<(ast::NodeId, lint::Lint),
-                                          (lint::Level, lint::LintSource)>>,
+    pub node_lint_levels: RefCell<HashMap<(ast::NodeId, lint::LintId),
+                                          lint::LevelSource>>,
 
     /// The types that must be asserted to be the same size for `transmute`
     /// to be valid. We gather up these restrictions in the intrinsicck pass
