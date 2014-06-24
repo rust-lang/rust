@@ -1358,7 +1358,8 @@ impl LintPass for MissingDoc {
 declare_lint!(DEPRECATED, Warn,
               "detects use of #[deprecated] items")
 
-declare_lint!(EXPERIMENTAL, Warn,
+// FIXME #6875: Change to Warn after std library stabilization is complete
+declare_lint!(EXPERIMENTAL, Allow,
               "detects use of #[experimental] items")
 
 declare_lint!(UNSTABLE, Allow,
@@ -1411,32 +1412,11 @@ impl LintPass for Stability {
             _ => return
         };
 
-        let stability = if ast_util::is_local(id) {
-            // this crate
-            let s = cx.tcx.map.with_attrs(id.node, |attrs| {
-                attrs.map(|a| attr::find_stability(a.as_slice()))
-            });
-            match s {
-                Some(s) => s,
+        // stability attributes are promises made across crates; do not
+        // check anything for crate-local usage.
+        if ast_util::is_local(id) { return }
 
-                // no possibility of having attributes
-                // (e.g. it's a local variable), so just
-                // ignore it.
-                None => return
-            }
-        } else {
-            // cross-crate
-
-            let mut s = None;
-            // run through all the attributes and take the first
-            // stability one.
-            csearch::get_item_attrs(&cx.sess().cstore, id, |attrs| {
-                if s.is_none() {
-                    s = attr::find_stability(attrs.as_slice())
-                }
-            });
-            s
-        };
+        let stability = cx.tcx.stability.borrow_mut().lookup(&cx.tcx.sess.cstore, id);
 
         let (lint, label) = match stability {
             // no stability attributes == Unstable
