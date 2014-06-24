@@ -1254,6 +1254,18 @@ mod test {
             0)
     }
 
+    // FIXME #9384, match variable hygiene. Should expand into
+    // fn z() {match 8 {x_1 => {match 9 {x_2 | x_2 => x_2 + x_1}}}}
+    #[test] fn issue_9384(){
+        run_renaming_test(
+            &("macro_rules! bad_macro (($ex:expr) => ({match 9 {x | x => x + $ex}}))
+              fn z() {match 8 {x => bad_macro!(_x)}}",
+              // NB: the third "binding" is the repeat of the second one.
+              vec!(vec!(1),vec!(0),vec!(0)),
+              true),
+            0)
+    }
+
     // create a really evil test case where a $x appears inside a binding of $x
     // but *shouldnt* bind because it was inserted by a different macro....
     // can't write this test case until we have macro-generating macros.
