@@ -53,10 +53,9 @@ use middle::ty;
 use middle::ty_fold;
 use middle::typeck::infer::{Bounds, cyclic_ty, fixup_err, fres, InferCtxt};
 use middle::typeck::infer::unresolved_ty;
-use middle::typeck::infer::to_str::InferStr;
-use middle::typeck::infer::unify::{Root, UnifyInferCtxtMethods};
-use util::common::{indent, indenter};
-use util::ppaux::ty_to_str;
+use middle::typeck::infer::unify::Root;
+use util::common::{indent};
+use util::ppaux::{ty_to_str, Repr};
 
 use syntax::ast;
 
@@ -150,8 +149,7 @@ impl<'a> ResolveState<'a> {
     }
 
     pub fn resolve_type(&mut self, typ: ty::t) -> ty::t {
-        debug!("resolve_type({})", typ.inf_str(self.infcx));
-        let _i = indenter();
+        debug!("resolve_type({})", typ.repr(self.infcx.tcx));
 
         if !ty::type_needs_infer(typ) {
             return typ;
@@ -188,7 +186,7 @@ impl<'a> ResolveState<'a> {
     }
 
     pub fn resolve_region(&mut self, orig: ty::Region) -> ty::Region {
-        debug!("Resolve_region({})", orig.inf_str(self.infcx));
+        debug!("Resolve_region({})", orig.repr(self.infcx.tcx));
         match orig {
           ty::ReInfer(ty::ReVar(rid)) => self.resolve_region_var(rid),
           _ => orig
@@ -216,14 +214,15 @@ impl<'a> ResolveState<'a> {
             // tend to carry more restrictions or higher
             // perf. penalties, so it pays to know more.
 
-            let nde = self.infcx.get(vid);
-            let bounds = nde.possible_types;
-
-            let t1 = match bounds {
-              Bounds { ub:_, lb:Some(t) } if !type_is_bot(t)
-                => self.resolve_type(t),
-              Bounds { ub:Some(t), lb:_ } => self.resolve_type(t),
-              Bounds { ub:_, lb:Some(t) } => self.resolve_type(t),
+            let node =
+                self.infcx.type_unification_table.borrow_mut().get(tcx, vid);
+            let t1 = match node.value {
+              Bounds { ub:_, lb:Some(t) } if !type_is_bot(t) => {
+                  self.resolve_type(t)
+              }
+              Bounds { ub:Some(t), lb:_ } | Bounds { ub:_, lb:Some(t) } => {
+                  self.resolve_type(t)
+              }
               Bounds { ub:None, lb:None } => {
                 if self.should(force_tvar) {
                     self.err = Some(unresolved_ty(vid));
@@ -241,15 +240,18 @@ impl<'a> ResolveState<'a> {
             return ty::mk_int_var(self.infcx.tcx, vid);
         }
 
-        let node = self.infcx.get(vid);
-        match node.possible_types {
+        let tcx = self.infcx.tcx;
+        let table = &self.infcx.int_unification_table;
+        let node = table.borrow_mut().get(tcx, vid);
+        match node.value {
           Some(IntType(t)) => ty::mk_mach_int(t),
           Some(UintType(t)) => ty::mk_mach_uint(t),
           None => {
             if self.should(force_ivar) {
                 // As a last resort, default to int.
                 let ty = ty::mk_int();
-                self.infcx.set(vid, Root(Some(IntType(ast::TyI)), node.rank));
+                table.borrow_mut().set(
+                    tcx, node.key, Root(Some(IntType(ast::TyI)), node.rank));
                 ty
             } else {
                 ty::mk_int_var(self.infcx.tcx, vid)
@@ -263,14 +265,17 @@ impl<'a> ResolveState<'a> {
             return ty::mk_float_var(self.infcx.tcx, vid);
         }
 
-        let node = self.infcx.get(vid);
-        match node.possible_types {
+        let tcx = self.infcx.tcx;
+        let table = &self.infcx.float_unification_table;
+        let node = table.borrow_mut().get(tcx, vid);
+        match node.value {
           Some(t) => ty::mk_mach_float(t),
           None => {
             if self.should(force_fvar) {
                 // As a last resort, default to f64.
                 let ty = ty::mk_f64();
-                self.infcx.set(vid, Root(Some(ast::TyF64), node.rank));
+                table.borrow_mut().set(
+                    tcx, node.key, Root(Some(ast::TyF64), node.rank));
                 ty
             } else {
                 ty::mk_float_var(self.infcx.tcx, vid)
