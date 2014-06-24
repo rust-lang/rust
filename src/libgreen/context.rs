@@ -268,12 +268,15 @@ fn initialize_call_frame(regs: &mut Registers, fptr: InitFn, arg: uint,
 }
 
 #[cfg(target_arch = "mips")]
+#[cfg(target_arch = "mipsel")]
 type Registers = [uint, ..32];
 
 #[cfg(target_arch = "mips")]
+#[cfg(target_arch = "mipsel")]
 fn new_regs() -> Box<Registers> { box {[0, .. 32]} }
 
 #[cfg(target_arch = "mips")]
+#[cfg(target_arch = "mipsel")]
 fn initialize_call_frame(regs: &mut Registers, fptr: InitFn, arg: uint,
                          procedure: raw::Procedure, sp: *mut uint) {
     let sp = align_down(sp);

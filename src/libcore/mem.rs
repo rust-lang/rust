@@ -404,6 +404,7 @@ mod tests {
     #[cfg(target_arch = "x86")]
     #[cfg(target_arch = "arm")]
     #[cfg(target_arch = "mips")]
+    #[cfg(target_arch = "mipsel")]
     fn size_of_32() {
         assert_eq!(size_of::<uint>(), 4u);
         assert_eq!(size_of::<*uint>(), 4u);
@@ -435,6 +436,7 @@ mod tests {
     #[cfg(target_arch = "x86")]
     #[cfg(target_arch = "arm")]
     #[cfg(target_arch = "mips")]
+    #[cfg(target_arch = "mipsel")]
     fn align_of_32() {
         assert_eq!(align_of::<uint>(), 4u);
         assert_eq!(align_of::<*uint>(), 4u);

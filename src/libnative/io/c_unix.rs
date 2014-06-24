@@ -23,20 +23,26 @@ use libc;
 #[cfg(target_os = "ios")]
 #[cfg(target_os = "freebsd")]
 pub static FIONBIO: libc::c_ulong = 0x8004667e;
-#[cfg(target_os = "linux", not(target_arch = "mips"))]
+#[cfg(target_os = "linux", target_arch = "x86")]
+#[cfg(target_os = "linux", target_arch = "x86_64")]
+#[cfg(target_os = "linux", target_arch = "arm")]
 #[cfg(target_os = "android")]
 pub static FIONBIO: libc::c_ulong = 0x5421;
 #[cfg(target_os = "linux", target_arch = "mips")]
+#[cfg(target_os = "linux", target_arch = "mipsel")]
 pub static FIONBIO: libc::c_ulong = 0x667e;
 
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "ios")]
 #[cfg(target_os = "freebsd")]
 pub static FIOCLEX: libc::c_ulong = 0x20006601;
-#[cfg(target_os = "linux", not(target_arch = "mips"))]
+#[cfg(target_os = "linux", target_arch = "x86")]
+#[cfg(target_os = "linux", target_arch = "x86_64")]
+#[cfg(target_os = "linux", target_arch = "arm")]
 #[cfg(target_os = "android")]
 pub static FIOCLEX: libc::c_ulong = 0x5451;
 #[cfg(target_os = "linux", target_arch = "mips")]
+#[cfg(target_os = "linux", target_arch = "mipsel")]
 pub static FIOCLEX: libc::c_ulong = 0x6601;
 
 #[cfg(target_os = "macos")]
@@ -109,7 +115,9 @@ mod select {
     }
 }
 
-#[cfg(target_os = "linux", not(target_arch = "mips"))]
+#[cfg(target_os = "linux", target_arch = "x86")]
+#[cfg(target_os = "linux", target_arch = "x86_64")]
+#[cfg(target_os = "linux", target_arch = "arm")]
 #[cfg(target_os = "android")]
 mod signal {
     use libc;
@@ -153,6 +161,7 @@ mod signal {
 }
 
 #[cfg(target_os = "linux", target_arch = "mips")]
+#[cfg(target_os = "linux", target_arch = "mipsel")]
 mod signal {
     use libc;
 

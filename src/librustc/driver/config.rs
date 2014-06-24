@@ -18,7 +18,7 @@ use driver::session::Session;
 use back;
 use back::link;
 use back::target_strs;
-use back::{arm, x86, x86_64, mips};
+use back::{arm, x86, x86_64, mips, mipsel};
 use middle::lint;
 
 use syntax::abi;
@@ -373,7 +373,8 @@ pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
         abi::X86 =>    ("little", "x86",    "32"),
         abi::X86_64 => ("little", "x86_64", "64"),
         abi::Arm =>    ("little", "arm",    "32"),
-        abi::Mips =>   ("big",    "mips",   "32")
+        abi::Mips =>   ("big",    "mips",   "32"),
+        abi::Mipsel => ("little", "mipsel", "32")
     };
 
     let fam = match sess.targ_cfg.os {
@@ -452,6 +453,7 @@ static architecture_abis : &'static [(&'static str, abi::Architecture)] = &'stat
     ("xscale", abi::Arm),
     ("thumb",  abi::Arm),
 
+    ("mipsel", abi::Mipsel),
     ("mips",   abi::Mips)];
 
 pub fn build_target_config(sopts: &Options) -> Config {
@@ -470,14 +472,16 @@ pub fn build_target_config(sopts: &Options) -> Config {
       abi::X86 => (ast::TyI32, ast::TyU32),
       abi::X86_64 => (ast::TyI64, ast::TyU64),
       abi::Arm => (ast::TyI32, ast::TyU32),
-      abi::Mips => (ast::TyI32, ast::TyU32)
+      abi::Mips => (ast::TyI32, ast::TyU32),
+      abi::Mipsel => (ast::TyI32, ast::TyU32)
     };
     let target_triple = sopts.target_triple.clone();
     let target_strs = match arch {
       abi::X86 => x86::get_target_strs(target_triple, os),
       abi::X86_64 => x86_64::get_target_strs(target_triple, os),
       abi::Arm => arm::get_target_strs(target_triple, os),
-      abi::Mips => mips::get_target_strs(target_triple, os)
+      abi::Mips => mips::get_target_strs(target_triple, os),
+      abi::Mipsel => mipsel::get_target_strs(target_triple, os)
     };
     Config {
         os: os,
