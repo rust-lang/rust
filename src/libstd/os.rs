@@ -1746,6 +1746,10 @@ mod arch_consts {
     pub static ARCH: &'static str = "mips";
 }
 
+#[cfg(target_arch = "mipsel")]
+mod arch_consts {
+    pub static ARCH: &'static str = "mipsel";
+}
 
 #[cfg(test)]
 mod tests {

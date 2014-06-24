@@ -41,7 +41,8 @@ pub enum Architecture {
     X86,
     X86_64,
     Arm,
-    Mips
+    Mips,
+    Mipsel
 }
 
 static IntelBits: u32 = (1 << (X86 as uint)) | (1 << (X86_64 as uint));

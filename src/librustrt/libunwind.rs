@@ -69,6 +69,7 @@ pub static unwinder_private_data_size: int = 20;
 pub static unwinder_private_data_size: int = 5;
 
 #[cfg(target_arch = "mips")]
+#[cfg(target_arch = "mipsel")]
 pub static unwinder_private_data_size: int = 2;
 
 pub struct _Unwind_Exception {

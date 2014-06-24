@@ -16,7 +16,7 @@ use middle::trans::cabi_x86_64;
 use middle::trans::cabi_arm;
 use middle::trans::cabi_mips;
 use middle::trans::type_::Type;
-use syntax::abi::{X86, X86_64, Arm, Mips};
+use syntax::abi::{X86, X86_64, Arm, Mips, Mipsel};
 
 #[deriving(Clone, PartialEq)]
 pub enum ArgKind {
@@ -110,5 +110,6 @@ pub fn compute_abi_info(ccx: &CrateContext,
         X86_64 => cabi_x86_64::compute_abi_info(ccx, atys, rty, ret_def),
         Arm => cabi_arm::compute_abi_info(ccx, atys, rty, ret_def),
         Mips => cabi_mips::compute_abi_info(ccx, atys, rty, ret_def),
+        Mipsel => cabi_mips::compute_abi_info(ccx, atys, rty, ret_def),
     }
 }
