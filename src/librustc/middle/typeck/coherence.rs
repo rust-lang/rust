@@ -519,7 +519,8 @@ impl<'a> CoherenceChecker<'a> {
     fn can_unify_universally_quantified<'a>(&self,
                                             a: &'a UniversalQuantificationResult,
                                             b: &'a UniversalQuantificationResult)
-                                            -> bool {
+                                            -> bool
+    {
         infer::can_mk_subty(&self.inference_context,
                             a.monotype,
                             b.monotype).is_ok()

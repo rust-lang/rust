@@ -24,6 +24,10 @@ use middle::ty::{ty_nil, ty_param, ty_ptr, ty_rptr, ty_tup};
 use middle::ty::{ty_uniq, ty_trait, ty_int, ty_uint, ty_infer};
 use middle::ty;
 use middle::typeck;
+use middle::typeck::infer;
+use middle::typeck::infer::unify;
+use VV = middle::typeck::infer::unify::VarValue;
+use middle::typeck::infer::region_inference;
 
 use std::rc::Rc;
 use std::gc::Gc;
@@ -574,6 +578,12 @@ impl Repr for ty::t {
     }
 }
 
+impl Repr for ty::mt {
+    fn repr(&self, tcx: &ctxt) -> String {
+        mt_to_str(tcx, self)
+    }
+}
+
 impl Repr for subst::Substs {
     fn repr(&self, tcx: &ctxt) -> String {
         format!("Substs[types={}, regions={}]",
@@ -707,7 +717,7 @@ impl Repr for ty::Region {
             }
 
             ty::ReInfer(ReVar(ref vid)) => {
-                format!("ReInfer({})", vid.id)
+                format!("ReInfer({})", vid.index)
             }
 
             ty::ReInfer(ReSkolemized(id, ref bound_region)) => {
@@ -878,13 +888,6 @@ impl Repr for typeck::MethodObject {
     }
 }
 
-
-impl Repr for ty::RegionVid {
-    fn repr(&self, _tcx: &ctxt) -> String {
-        format!("{:?}", *self)
-    }
-}
-
 impl Repr for ty::TraitStore {
     fn repr(&self, tcx: &ctxt) -> String {
         trait_store_to_str(tcx, *self)
@@ -996,5 +999,85 @@ impl Repr for ty::UpvarBorrow {
         format!("UpvarBorrow({}, {})",
                 self.kind.repr(tcx),
                 self.region.repr(tcx))
+    }
+}
+
+impl Repr for ty::IntVid {
+    fn repr(&self, _tcx: &ctxt) -> String {
+        format!("{}", self)
+    }
+}
+
+impl Repr for ty::FloatVid {
+    fn repr(&self, _tcx: &ctxt) -> String {
+        format!("{}", self)
+    }
+}
+
+impl Repr for ty::RegionVid {
+    fn repr(&self, _tcx: &ctxt) -> String {
+        format!("{}", self)
+    }
+}
+
+impl Repr for ty::TyVid {
+    fn repr(&self, _tcx: &ctxt) -> String {
+        format!("{}", self)
+    }
+}
+
+impl Repr for ty::IntVarValue {
+    fn repr(&self, _tcx: &ctxt) -> String {
+        format!("{:?}", *self)
+    }
+}
+
+impl Repr for ast::IntTy {
+    fn repr(&self, _tcx: &ctxt) -> String {
+        format!("{:?}", *self)
+    }
+}
+
+impl Repr for ast::UintTy {
+    fn repr(&self, _tcx: &ctxt) -> String {
+        format!("{:?}", *self)
+    }
+}
+
+impl Repr for ast::FloatTy {
+    fn repr(&self, _tcx: &ctxt) -> String {
+        format!("{:?}", *self)
+    }
+}
+
+impl<T:Repr> Repr for infer::Bounds<T> {
+    fn repr(&self, tcx: &ctxt) -> String {
+        format!("({} <= {})",
+                self.lb.repr(tcx),
+                self.ub.repr(tcx))
+    }
+}
+
+impl<K:Repr,V:Repr> Repr for VV<K,V> {
+    fn repr(&self, tcx: &ctxt) -> String {
+        match *self {
+            unify::Redirect(ref k) =>
+                format!("Redirect({})", k.repr(tcx)),
+            unify::Root(ref v, r) =>
+                format!("Root({}, {})", v.repr(tcx), r)
+        }
+    }
+}
+
+impl Repr for region_inference::VarValue {
+    fn repr(&self, tcx: &ctxt) -> String {
+        match *self {
+            infer::region_inference::NoValue =>
+                format!("NoValue"),
+            infer::region_inference::Value(r) =>
+                format!("Value({})", r.repr(tcx)),
+            infer::region_inference::ErrorValue =>
+                format!("ErrorValue"),
+        }
     }
 }
