@@ -12,7 +12,7 @@ struct Foo;
 
 fn g3() {
     let _mid_tuple    = (Foo { }, 2);
-    //~^ ERROR: unit-like struct construction is written with no trailing `{ }`
+    //~^ ERROR: structure literal must either have at least one field
 }
 
 fn main() {}
