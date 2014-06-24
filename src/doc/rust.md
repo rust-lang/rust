@@ -3004,7 +3004,7 @@ ten_times(|j| println!("hello, {}", j));
 ### While loops
 
 ~~~~ {.ebnf .gram}
-while_expr : "while" expr '{' block '}' ;
+while_expr : "while" no_struct_literal_expr '{' block '}' ;
 ~~~~
 
 A `while` loop begins by evaluating the boolean loop conditional expression.
@@ -3071,7 +3071,7 @@ A `continue` expression is only permitted in the body of a loop.
 ### For expressions
 
 ~~~~ {.ebnf .gram}
-for_expr : "for" pat "in" expr '{' block '}' ;
+for_expr : "for" pat "in" no_struct_literal_expr '{' block '}' ;
 ~~~~
 
 A `for` expression is a syntactic construct for looping over elements
@@ -3105,7 +3105,7 @@ for i in range(0u, 256) {
 ### If expressions
 
 ~~~~ {.ebnf .gram}
-if_expr : "if" expr '{' block '}'
+if_expr : "if" no_struct_literal_expr '{' block '}'
           else_tail ? ;
 
 else_tail : "else" [ if_expr
@@ -3126,7 +3126,7 @@ then any `else` block is executed.
 ### Match expressions
 
 ~~~~ {.ebnf .gram}
-match_expr : "match" expr '{' match_arm * '}' ;
+match_expr : "match" no_struct_literal_expr '{' match_arm * '}' ;
 
 match_arm : attribute * match_pat "=>" [ expr "," | '{' block '}' ] ;
 

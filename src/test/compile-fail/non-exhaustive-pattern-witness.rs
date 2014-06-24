@@ -22,7 +22,7 @@ enum Color {
 }
 
 fn struct_with_a_nested_enum_and_vector() {
-    match Foo { first: true, second: None } {
+    match (Foo { first: true, second: None }) {
     //~^ ERROR non-exhaustive patterns: `Foo{first: false, second: Some([_, _, _, _])}` not covered
         Foo { first: true, second: None } => (),
         Foo { first: true, second: Some(_) } => (),

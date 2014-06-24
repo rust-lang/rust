@@ -105,7 +105,7 @@ fn main() {
         _ => {}
     }
 
-    match Struct { x: 237, y: 238 } {
+    match (Struct { x: 237, y: 238 }) {
         Struct { x: shadowed, y: local_to_arm } => {
 
             zzz();
@@ -113,7 +113,7 @@ fn main() {
         }
     }
 
-    match Struct { x: 239, y: 240 } {
+    match (Struct { x: 239, y: 240 }) {
         // ignored field
         Struct { x: shadowed, .. } => {
 
@@ -122,7 +122,7 @@ fn main() {
         }
     }
 
-    match Struct { x: 241, y: 242 } {
+    match (Struct { x: 241, y: 242 }) {
         // with literal
         Struct { x: shadowed, y: 242 } => {
 
