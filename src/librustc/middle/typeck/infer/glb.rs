@@ -17,16 +17,17 @@ use middle::typeck::infer::combine::*;
 use middle::typeck::infer::lattice::*;
 use middle::typeck::infer::lub::Lub;
 use middle::typeck::infer::sub::Sub;
-use middle::typeck::infer::to_str::InferStr;
 use middle::typeck::infer::{cres, InferCtxt};
 use middle::typeck::infer::{TypeTrace, Subtype};
 use middle::typeck::infer::fold_regions_in_sig;
+use middle::typeck::infer::region_inference::RegionMark;
 use syntax::ast::{Many, Once, MutImmutable, MutMutable};
 use syntax::ast::{NormalFn, UnsafeFn, NodeId};
 use syntax::ast::{Onceness, FnStyle};
 use std::collections::HashMap;
 use util::common::{indenter};
 use util::ppaux::mt_to_str;
+use util::ppaux::Repr;
 
 pub struct Glb<'f>(pub CombineFields<'f>);  // "greatest lower bound" (common subtype)
 
@@ -104,8 +105,8 @@ impl<'f> Combine for Glb<'f> {
     fn regions(&self, a: ty::Region, b: ty::Region) -> cres<ty::Region> {
         debug!("{}.regions({:?}, {:?})",
                self.tag(),
-               a.inf_str(self.get_ref().infcx),
-               b.inf_str(self.get_ref().infcx));
+               a.repr(self.get_ref().infcx.tcx),
+               b.repr(self.get_ref().infcx.tcx));
 
         Ok(self.get_ref().infcx.region_vars.glb_regions(Subtype(self.trace()), a, b))
     }
@@ -124,14 +125,12 @@ impl<'f> Combine for Glb<'f> {
         // please see the large comment in `region_inference.rs`.
 
         debug!("{}.fn_sigs({:?}, {:?})",
-               self.tag(), a.inf_str(self.get_ref().infcx), b.inf_str(self.get_ref().infcx));
+               self.tag(), a.repr(self.get_ref().infcx.tcx), b.repr(self.get_ref().infcx.tcx));
         let _indenter = indenter();
 
-        // Take a snapshot.  We'll never roll this back, but in later
-        // phases we do want to be able to examine "all bindings that
-        // were created as part of this type comparison", and making a
-        // snapshot is a convenient way to do that.
-        let snapshot = self.get_ref().infcx.region_vars.start_snapshot();
+        // Make a mark so we can examine "all bindings that were
+        // created as part of this type comparison".
+        let mark = self.get_ref().infcx.region_vars.mark();
 
         // Instantiate each bound region with a fresh region variable.
         let (a_with_fresh, a_map) =
@@ -145,18 +144,18 @@ impl<'f> Combine for Glb<'f> {
 
         // Collect constraints.
         let sig0 = if_ok!(super_fn_sigs(self, &a_with_fresh, &b_with_fresh));
-        debug!("sig0 = {}", sig0.inf_str(self.get_ref().infcx));
+        debug!("sig0 = {}", sig0.repr(self.get_ref().infcx.tcx));
 
         // Generalize the regions appearing in fn_ty0 if possible
         let new_vars =
-            self.get_ref().infcx.region_vars.vars_created_since_snapshot(snapshot);
+            self.get_ref().infcx.region_vars.vars_created_since_mark(mark);
         let sig1 =
             fold_regions_in_sig(
                 self.get_ref().infcx.tcx,
                 &sig0,
                 |r| {
                 generalize_region(self,
-                                  snapshot,
+                                  mark,
                                   new_vars.as_slice(),
                                   sig0.binder_id,
                                   &a_map,
@@ -164,11 +163,11 @@ impl<'f> Combine for Glb<'f> {
                                   b_vars.as_slice(),
                                   r)
             });
-        debug!("sig1 = {}", sig1.inf_str(self.get_ref().infcx));
+        debug!("sig1 = {}", sig1.repr(self.get_ref().infcx.tcx));
         return Ok(sig1);
 
         fn generalize_region(this: &Glb,
-                             snapshot: uint,
+                             mark: RegionMark,
                              new_vars: &[RegionVid],
                              new_binder_id: NodeId,
                              a_map: &HashMap<ty::BoundRegion, ty::Region>,
@@ -180,7 +179,7 @@ impl<'f> Combine for Glb<'f> {
                 return r0;
             }
 
-            let tainted = this.get_ref().infcx.region_vars.tainted(snapshot, r0);
+            let tainted = this.get_ref().infcx.region_vars.tainted(mark, r0);
 
             let mut a_r = None;
             let mut b_r = None;
