@@ -694,7 +694,6 @@ mod primitives {
     def_prim_ty!(TY_U64,    super::ty_uint(ast::TyU64),     12)
     def_prim_ty!(TY_F32,    super::ty_float(ast::TyF32),    14)
     def_prim_ty!(TY_F64,    super::ty_float(ast::TyF64),    15)
-    def_prim_ty!(TY_F128,   super::ty_float(ast::TyF128),   16)
 
     pub static TY_BOT: t_box_ = t_box_ {
         sty: super::ty_bot,
@@ -1273,9 +1272,6 @@ pub fn mk_f32() -> t { mk_prim_t(&primitives::TY_F32) }
 pub fn mk_f64() -> t { mk_prim_t(&primitives::TY_F64) }
 
 #[inline]
-pub fn mk_f128() -> t { mk_prim_t(&primitives::TY_F128) }
-
-#[inline]
 pub fn mk_uint() -> t { mk_prim_t(&primitives::TY_UINT) }
 
 #[inline]
@@ -1314,7 +1310,6 @@ pub fn mk_mach_float(tm: ast::FloatTy) -> t {
     match tm {
         ast::TyF32  => mk_f32(),
         ast::TyF64  => mk_f64(),
-        ast::TyF128 => mk_f128()
     }
 }
 
