@@ -512,11 +512,11 @@ declare_special_idents_and_keywords! {
         (40,                         Continue,   "continue");
         (41,                         Proc,       "proc");
         (42,                         Box,        "box");
+        (43,                         Const,      "const");
 
         'reserved:
-        (43,                         Alignof,    "alignof");
-        (44,                         Be,         "be");
-        (45,                         Const,      "const");
+        (44,                         Alignof,    "alignof");
+        (45,                         Be,         "be");
         (46,                         Offsetof,   "offsetof");
         (47,                         Priv,       "priv");
         (48,                         Pure,       "pure");

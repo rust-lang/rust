@@ -160,7 +160,7 @@ block_comment_body : [block_comment | character] * ;
 line_comment : "//" non_eol * ;
 ~~~~
 
-Comments in Rust code follow the general C++ style of line and block-comment forms. 
+Comments in Rust code follow the general C++ style of line and block-comment forms.
 Nested block comments are supported.
 
 Line comments beginning with exactly _three_ slashes (`///`), and block
@@ -3563,10 +3563,11 @@ There are four varieties of pointer in Rust:
 
 * Raw pointers (`*`)
   : Raw pointers are pointers without safety or liveness guarantees.
-    Raw pointers are written `*content`,
-    for example `*int` means a raw pointer to an integer.
-    Copying or dropping a raw pointer has no effect on the lifecycle of any other value.
-    Dereferencing a raw pointer or converting it to any other pointer type is an [`unsafe` operation](#unsafe-functions).
+    Raw pointers are written as `*const T` or `*mut T`,
+    for example `*const int` means a raw pointer to an integer.
+    Copying or dropping a raw pointer has no effect on the lifecycle of any
+    other value.  Dereferencing a raw pointer or converting it to any other
+    pointer type is an [`unsafe` operation](#unsafe-functions).
     Raw pointers are generally discouraged in Rust code;
     they exist to support interoperability with foreign code,
     and writing performance-critical or low-level functions.
