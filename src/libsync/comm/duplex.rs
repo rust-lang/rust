@@ -14,7 +14,6 @@ Higher level communication abstractions.
 
 */
 
-#![allow(missing_doc)]
 
 use core::prelude::*;
 
@@ -56,7 +55,7 @@ impl<S:Send,R:Send> DuplexStream<S, R> {
         self.tx.send(x)
     }
 
-    /// Send optionnaly data to the channel.
+    /// Optionally send data to the channel.
     pub fn send_opt(&self, x: S) -> Result<(), S> {
         self.tx.send_opt(x)
     }
@@ -71,7 +70,7 @@ impl<S:Send,R:Send> DuplexStream<S, R> {
         self.rx.try_recv()
     }
 
-    /// Receive optionnaly data from the channel.
+    /// Optionally receive data from the channel.
     pub fn recv_opt(&self) -> Result<R, ()> {
         self.rx.recv_opt()
     }
