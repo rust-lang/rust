@@ -27,7 +27,7 @@ pub fn main() {
     is_static::<proc():'static>();
 
 
-    let a = 3;
+    let a = 3i;
     bar::<proc()>(proc() {
         let b = &a;
         println!("{}", *b);

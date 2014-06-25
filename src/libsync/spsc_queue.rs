@@ -237,7 +237,7 @@ mod test {
     #[test]
     fn smoke() {
         let q = Queue::new(0);
-        q.push(1);
+        q.push(1i);
         q.push(2);
         assert_eq!(q.pop(), Some(1));
         assert_eq!(q.pop(), Some(2));
@@ -259,7 +259,7 @@ mod test {
     #[test]
     fn smoke_bound() {
         let q = Queue::new(1);
-        q.push(1);
+        q.push(1i);
         q.push(2);
         assert_eq!(q.pop(), Some(1));
         assert_eq!(q.pop(), Some(2));
@@ -281,7 +281,7 @@ mod test {
             let b = a.clone();
             let (tx, rx) = channel();
             native::task::spawn(proc() {
-                for _ in range(0, 100000) {
+                for _ in range(0u, 100000) {
                     loop {
                         match b.pop() {
                             Some(1) => break,
@@ -292,7 +292,7 @@ mod test {
                 }
                 tx.send(());
             });
-            for _ in range(0, 100000) {
+            for _ in range(0i, 100000) {
                 a.push(1);
             }
             rx.recv();

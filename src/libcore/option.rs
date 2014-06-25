@@ -505,8 +505,8 @@ impl<T: Default> Option<T> {
     /// let good_year = from_str(good_year_from_input).unwrap_or_default();
     /// let bad_year = from_str(bad_year_from_input).unwrap_or_default();
     ///
-    /// assert_eq!(1909, good_year);
-    /// assert_eq!(0, bad_year);
+    /// assert_eq!(1909i, good_year);
+    /// assert_eq!(0i, bad_year);
     /// ```
     #[inline]
     pub fn unwrap_or_default(self) -> T {
@@ -675,7 +675,7 @@ mod tests {
             t.clone()
         }
 
-        let i = Rc::new(RefCell::new(0));
+        let i = Rc::new(RefCell::new(0i));
         {
             let x = r(realclone(&i));
             let opt = Some(x);
@@ -687,7 +687,7 @@ mod tests {
     #[test]
     fn test_option_dance() {
         let x = Some(());
-        let mut y = Some(5);
+        let mut y = Some(5i);
         let mut y2 = 0;
         for _x in x.iter() {
             y2 = y.take_unwrap();
@@ -705,12 +705,12 @@ mod tests {
 
     #[test]
     fn test_and() {
-        let x: Option<int> = Some(1);
-        assert_eq!(x.and(Some(2)), Some(2));
+        let x: Option<int> = Some(1i);
+        assert_eq!(x.and(Some(2i)), Some(2));
         assert_eq!(x.and(None::<int>), None);
 
         let x: Option<int> = None;
-        assert_eq!(x.and(Some(2)), None);
+        assert_eq!(x.and(Some(2i)), None);
         assert_eq!(x.and(None::<int>), None);
     }
 
@@ -749,7 +749,7 @@ mod tests {
 
     #[test]
     fn test_option_while_some() {
-        let mut i = 0;
+        let mut i = 0i;
         Some(10).while_some(|j| {
             i += 1;
             if j > 0 {
@@ -763,7 +763,7 @@ mod tests {
 
     #[test]
     fn test_unwrap() {
-        assert_eq!(Some(1).unwrap(), 1);
+        assert_eq!(Some(1i).unwrap(), 1);
         let s = Some("hello".to_string()).unwrap();
         assert_eq!(s.as_slice(), "hello");
     }
@@ -802,7 +802,7 @@ mod tests {
 
     #[test]
     fn test_filtered() {
-        let some_stuff = Some(42);
+        let some_stuff = Some(42i);
         let modified_stuff = some_stuff.filtered(|&x| {x < 10});
         assert_eq!(some_stuff.unwrap(), 42);
         assert!(modified_stuff.is_none());
@@ -810,7 +810,7 @@ mod tests {
 
     #[test]
     fn test_iter() {
-        let val = 5;
+        let val = 5i;
 
         let x = Some(val);
         let mut it = x.iter();
@@ -823,8 +823,8 @@ mod tests {
 
     #[test]
     fn test_mut_iter() {
-        let val = 5;
-        let new_val = 11;
+        let val = 5i;
+        let new_val = 11i;
 
         let mut x = Some(val);
         {
@@ -848,9 +848,9 @@ mod tests {
 
     #[test]
     fn test_ord() {
-        let small = Some(1.0);
-        let big = Some(5.0);
-        let nan = Some(0.0/0.0);
+        let small = Some(1.0f64);
+        let big = Some(5.0f64);
+        let nan = Some(0.0f64/0.0);
         assert!(!(nan < big));
         assert!(!(nan > big));
         assert!(small < big);
@@ -874,15 +874,15 @@ mod tests {
 
     #[test]
     fn test_collect() {
-        let v: Option<Vec<int>> = collect(range(0, 0)
-                                          .map(|_| Some(0)));
+        let v: Option<Vec<int>> = collect(range(0i, 0)
+                                          .map(|_| Some(0i)));
         assert!(v == Some(vec![]));
 
-        let v: Option<Vec<int>> = collect(range(0, 3)
+        let v: Option<Vec<int>> = collect(range(0i, 3)
                                           .map(|x| Some(x)));
         assert!(v == Some(vec![0, 1, 2]));
 
-        let v: Option<Vec<int>> = collect(range(0, 3)
+        let v: Option<Vec<int>> = collect(range(0i, 3)
                                           .map(|x| if x > 1 { None } else { Some(x) }));
         assert!(v == None);
 

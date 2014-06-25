@@ -123,7 +123,10 @@ impl CString {
     }
 
     /// Unwraps the wrapped `*libc::c_char` from the `CString` wrapper.
-    /// Any ownership of the buffer by the `CString` wrapper is forgotten.
+    ///
+    /// The original object is destructed after this method is called, and if
+    /// the underlying pointer was previously allocated, care must be taken to
+    /// ensure that it is deallocated properly.
     pub unsafe fn unwrap(self) -> *libc::c_char {
         let mut c_str = self;
         c_str.owns_buffer_ = false;

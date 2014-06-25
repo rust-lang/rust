@@ -10,7 +10,7 @@
 
 #![allow(non_camel_case_types)]
 
-use middle::const_eval::{compare_const_vals, const_bool, const_float, const_val};
+use middle::const_eval::{compare_const_vals, const_bool, const_float, const_nil, const_val};
 use middle::const_eval::{eval_const_expr, lookup_const_by_id};
 use middle::def::*;
 use middle::pat_util::*;
@@ -203,6 +203,7 @@ enum ctor {
 fn const_val_to_expr(value: &const_val) -> Gc<Expr> {
     let node = match value {
         &const_bool(b) => LitBool(b),
+        &const_nil => LitNil,
         _ => unreachable!()
     };
     box(GC) Expr {
@@ -309,6 +310,9 @@ fn all_constructors(cx: &MatchCheckCtxt, m: &Matrix, left_ty: ty::t) -> Vec<ctor
         ty::ty_bool =>
             [true, false].iter().map(|b| val(const_bool(*b))).collect(),
 
+        ty::ty_nil =>
+            vec!(val(const_nil)),
+
         ty::ty_rptr(_, ty::mt { ty: ty, .. }) => match ty::get(ty).sty {
             ty::ty_vec(_, None) => vec_constructors(m),
             _ => vec!(single)
@@ -325,9 +329,6 @@ fn all_constructors(cx: &MatchCheckCtxt, m: &Matrix, left_ty: ty::t) -> Vec<ctor
 
         ty::ty_vec(_, Some(n)) =>
             vec!(vec(n)),
-
-        ty::ty_nil if !m.iter().all(|r| is_wild(cx, *r.get(0))) =>
-            vec!(),
 
         _ =>
             vec!(single)
@@ -734,6 +735,7 @@ fn check_fn(cx: &mut MatchCheckCtxt,
             },
             None => ()
         }
+        check_legality_of_move_bindings(cx, false, [input.pat]);
     }
 }
 

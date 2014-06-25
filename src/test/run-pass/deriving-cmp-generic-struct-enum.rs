@@ -18,7 +18,17 @@ enum ES<T> {
 
 
 pub fn main() {
-    let (es11, es12, es21, es22) = (ES1 {x: 1}, ES1 {x: 2}, ES2 {x: 1, y: 1}, ES2 {x: 1, y: 2});
+    let (es11, es12, es21, es22) = (ES1 {
+        x: 1i
+    }, ES1 {
+        x: 2i
+    }, ES2 {
+        x: 1i,
+        y: 1i
+    }, ES2 {
+        x: 1i,
+        y: 2i
+    });
 
     // in order for both PartialOrd and Ord
     let ess = [es11, es12, es21, es22];

@@ -12,5 +12,5 @@
 
 
 fn main() {
-    fail!(box 413 as Box<::std::any::Any+Send>);
+    fail!(box 413i as Box<::std::any::Any+Send>);
 }

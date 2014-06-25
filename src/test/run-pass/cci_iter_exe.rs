@@ -15,7 +15,7 @@ extern crate cci_iter_lib;
 pub fn main() {
     //let bt0 = sys::rusti::frame_address(1u32);
     //println!("%?", bt0);
-    cci_iter_lib::iter([1, 2, 3], |i| {
+    cci_iter_lib::iter([1i, 2, 3], |i| {
         println!("{}", *i);
         //assert!(bt0 == sys::rusti::frame_address(2u32));
     })

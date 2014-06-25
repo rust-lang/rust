@@ -77,9 +77,9 @@
 //! // Create a simple streaming channel
 //! let (tx, rx) = channel();
 //! spawn(proc() {
-//!     tx.send(10);
+//!     tx.send(10i);
 //! });
-//! assert_eq!(rx.recv(), 10);
+//! assert_eq!(rx.recv(), 10i);
 //! ```
 //!
 //! Shared usage:
@@ -87,14 +87,14 @@
 //! ```
 //! // Create a shared channel which can be sent along from many tasks
 //! let (tx, rx) = channel();
-//! for i in range(0, 10) {
+//! for i in range(0i, 10i) {
 //!     let tx = tx.clone();
 //!     spawn(proc() {
 //!         tx.send(i);
 //!     })
 //! }
 //!
-//! for _ in range(0, 10) {
+//! for _ in range(0i, 10i) {
 //!     let j = rx.recv();
 //!     assert!(0 <= j && j < 10);
 //! }
@@ -113,7 +113,7 @@
 //! Synchronous channels:
 //!
 //! ```
-//! let (tx, rx) = sync_channel(0);
+//! let (tx, rx) = sync_channel::<int>(0);
 //! spawn(proc() {
 //!     // This will wait for the parent task to start receiving
 //!     tx.send(53);
@@ -504,15 +504,15 @@ pub fn channel<T: Send>() -> (Sender<T>, Receiver<T>) {
 /// let (tx, rx) = sync_channel(1);
 ///
 /// // this returns immediately
-/// tx.send(1);
+/// tx.send(1i);
 ///
 /// spawn(proc() {
 ///     // this will block until the previous message has been received
-///     tx.send(2);
+///     tx.send(2i);
 /// });
 ///
-/// assert_eq!(rx.recv(), 1);
-/// assert_eq!(rx.recv(), 2);
+/// assert_eq!(rx.recv(), 1i);
+/// assert_eq!(rx.recv(), 2i);
 /// ```
 pub fn sync_channel<T: Send>(bound: uint) -> (SyncSender<T>, Receiver<T>) {
     let a = Arc::new(Unsafe::new(sync::Packet::new(bound)));
@@ -577,11 +577,11 @@ impl<T: Send> Sender<T> {
     /// let (tx, rx) = channel();
     ///
     /// // This send is always successful
-    /// assert_eq!(tx.send_opt(1), Ok(()));
+    /// assert_eq!(tx.send_opt(1i), Ok(()));
     ///
     /// // This send will fail because the receiver is gone
     /// drop(rx);
-    /// assert_eq!(tx.send_opt(1), Err(1));
+    /// assert_eq!(tx.send_opt(1i), Err(1));
     /// ```
     pub fn send_opt(&self, t: T) -> Result<(), T> {
         // In order to prevent starvation of other tasks in situations where
@@ -1041,25 +1041,25 @@ mod test {
     }
 
     test!(fn smoke() {
-        let (tx, rx) = channel();
+        let (tx, rx) = channel::<int>();
         tx.send(1);
         assert_eq!(rx.recv(), 1);
     })
 
     test!(fn drop_full() {
         let (tx, _rx) = channel();
-        tx.send(box 1);
+        tx.send(box 1i);
     })
 
     test!(fn drop_full_shared() {
         let (tx, _rx) = channel();
         drop(tx.clone());
         drop(tx.clone());
-        tx.send(box 1);
+        tx.send(box 1i);
     })
 
     test!(fn smoke_shared() {
-        let (tx, rx) = channel();
+        let (tx, rx) = channel::<int>();
         tx.send(1);
         assert_eq!(rx.recv(), 1);
         let tx = tx.clone();
@@ -1068,7 +1068,7 @@ mod test {
     })
 
     test!(fn smoke_threads() {
-        let (tx, rx) = channel();
+        let (tx, rx) = channel::<int>();
         spawn(proc() {
             tx.send(1);
         });
@@ -1076,19 +1076,19 @@ mod test {
     })
 
     test!(fn smoke_port_gone() {
-        let (tx, rx) = channel();
+        let (tx, rx) = channel::<int>();
         drop(rx);
         tx.send(1);
     } #[should_fail])
 
     test!(fn smoke_shared_port_gone() {
-        let (tx, rx) = channel();
+        let (tx, rx) = channel::<int>();
         drop(rx);
         tx.send(1);
     } #[should_fail])
 
     test!(fn smoke_shared_port_gone2() {
-        let (tx, rx) = channel();
+        let (tx, rx) = channel::<int>();
         drop(rx);
         let tx2 = tx.clone();
         drop(tx);
@@ -1096,7 +1096,7 @@ mod test {
     } #[should_fail])
 
     test!(fn port_gone_concurrent() {
-        let (tx, rx) = channel();
+        let (tx, rx) = channel::<int>();
         spawn(proc() {
             rx.recv();
         });
@@ -1104,7 +1104,7 @@ mod test {
     } #[should_fail])
 
     test!(fn port_gone_concurrent_shared() {
-        let (tx, rx) = channel();
+        let (tx, rx) = channel::<int>();
         let tx2 = tx.clone();
         spawn(proc() {
             rx.recv();
@@ -1130,7 +1130,7 @@ mod test {
     } #[should_fail])
 
     test!(fn chan_gone_concurrent() {
-        let (tx, rx) = channel();
+        let (tx, rx) = channel::<int>();
         spawn(proc() {
             tx.send(1);
             tx.send(1);
@@ -1139,11 +1139,11 @@ mod test {
     } #[should_fail])
 
     test!(fn stress() {
-        let (tx, rx) = channel();
+        let (tx, rx) = channel::<int>();
         spawn(proc() {
-            for _ in range(0, 10000) { tx.send(1); }
+            for _ in range(0u, 10000) { tx.send(1i); }
         });
-        for _ in range(0, 10000) {
+        for _ in range(0u, 10000) {
             assert_eq!(rx.recv(), 1);
         }
     })
@@ -1183,14 +1183,14 @@ mod test {
         let tx4 = tx3.clone();
         spawn(proc() {
             tx1.send(());
-            for _ in range(0, 40) {
+            for _ in range(0i, 40) {
                 assert_eq!(rx2.recv(), 1);
             }
             tx3.send(());
         });
         rx1.recv();
         native::task::spawn(proc() {
-            for _ in range(0, 40) {
+            for _ in range(0i, 40) {
                 tx2.send(1);
             }
             tx4.send(());
@@ -1204,12 +1204,12 @@ mod test {
         let (tx, rx) = channel::<int>();
         let (dtx, drx) = channel();
         native::task::spawn(proc() {
-            for _ in range(0, 40) {
+            for _ in range(0i, 40) {
                 assert_eq!(rx.recv(), 1);
             }
             dtx.send(());
         });
-        for _ in range(0, 40) {
+        for _ in range(0u, 40) {
             tx.send(1);
         }
         drx.recv();
@@ -1377,10 +1377,10 @@ mod test {
         for _ in range(0, stress_factor()) {
             let (tx, rx) = channel();
             spawn(proc() {
-                tx.send(box 10);
+                tx.send(box 10i);
             });
             spawn(proc() {
-                assert!(rx.recv() == box 10);
+                assert!(rx.recv() == box 10i);
             });
         }
     })
@@ -1415,8 +1415,8 @@ mod test {
     test!(fn recv_a_lot() {
         // Regression test that we don't run out of stack in scheduler context
         let (tx, rx) = channel();
-        for _ in range(0, 10000) { tx.send(()); }
-        for _ in range(0, 10000) { rx.recv(); }
+        for _ in range(0i, 10000) { tx.send(()); }
+        for _ in range(0i, 10000) { rx.recv(); }
     })
 
     test!(fn shared_chan_stress() {
@@ -1511,7 +1511,7 @@ mod test {
             tx2.send(());
         });
         // make sure the other task has gone to sleep
-        for _ in range(0, 5000) { task::deschedule(); }
+        for _ in range(0u, 5000) { task::deschedule(); }
 
         // upgrade to a shared chan and send a message
         let t = tx.clone();
@@ -1527,11 +1527,11 @@ mod test {
 
         let (tx, rx) = channel();
         let t = Thread::start(proc() {
-            for _ in range(0, 1000) {
+            for _ in range(0u, 1000) {
                 tx.send(());
             }
         });
-        for _ in range(0, 1000) {
+        for _ in range(0u, 1000) {
             rx.recv();
         }
         t.join();
@@ -1553,7 +1553,7 @@ mod test {
             }
             cdone.send(());
         });
-        for _ in range(0, 10) {
+        for _ in range(0u, 10) {
             tx.send(());
         }
         t.join();
@@ -1574,18 +1574,18 @@ mod sync_tests {
     }
 
     test!(fn smoke() {
-        let (tx, rx) = sync_channel(1);
+        let (tx, rx) = sync_channel::<int>(1);
         tx.send(1);
         assert_eq!(rx.recv(), 1);
     })
 
     test!(fn drop_full() {
         let (tx, _rx) = sync_channel(1);
-        tx.send(box 1);
+        tx.send(box 1i);
     })
 
     test!(fn smoke_shared() {
-        let (tx, rx) = sync_channel(1);
+        let (tx, rx) = sync_channel::<int>(1);
         tx.send(1);
         assert_eq!(rx.recv(), 1);
         let tx = tx.clone();
@@ -1594,7 +1594,7 @@ mod sync_tests {
     })
 
     test!(fn smoke_threads() {
-        let (tx, rx) = sync_channel(0);
+        let (tx, rx) = sync_channel::<int>(0);
         spawn(proc() {
             tx.send(1);
         });
@@ -1602,13 +1602,13 @@ mod sync_tests {
     })
 
     test!(fn smoke_port_gone() {
-        let (tx, rx) = sync_channel(0);
+        let (tx, rx) = sync_channel::<int>(0);
         drop(rx);
         tx.send(1);
     } #[should_fail])
 
     test!(fn smoke_shared_port_gone2() {
-        let (tx, rx) = sync_channel(0);
+        let (tx, rx) = sync_channel::<int>(0);
         drop(rx);
         let tx2 = tx.clone();
         drop(tx);
@@ -1616,7 +1616,7 @@ mod sync_tests {
     } #[should_fail])
 
     test!(fn port_gone_concurrent() {
-        let (tx, rx) = sync_channel(0);
+        let (tx, rx) = sync_channel::<int>(0);
         spawn(proc() {
             rx.recv();
         });
@@ -1624,7 +1624,7 @@ mod sync_tests {
     } #[should_fail])
 
     test!(fn port_gone_concurrent_shared() {
-        let (tx, rx) = sync_channel(0);
+        let (tx, rx) = sync_channel::<int>(0);
         let tx2 = tx.clone();
         spawn(proc() {
             rx.recv();
@@ -1650,7 +1650,7 @@ mod sync_tests {
     } #[should_fail])
 
     test!(fn chan_gone_concurrent() {
-        let (tx, rx) = sync_channel(0);
+        let (tx, rx) = sync_channel::<int>(0);
         spawn(proc() {
             tx.send(1);
             tx.send(1);
@@ -1659,11 +1659,11 @@ mod sync_tests {
     } #[should_fail])
 
     test!(fn stress() {
-        let (tx, rx) = sync_channel(0);
+        let (tx, rx) = sync_channel::<int>(0);
         spawn(proc() {
-            for _ in range(0, 10000) { tx.send(1); }
+            for _ in range(0u, 10000) { tx.send(1); }
         });
-        for _ in range(0, 10000) {
+        for _ in range(0u, 10000) {
             assert_eq!(rx.recv(), 1);
         }
     })
@@ -1840,19 +1840,19 @@ mod sync_tests {
 
     test!(fn oneshot_multi_thread_send_recv_stress() {
         for _ in range(0, stress_factor()) {
-            let (tx, rx) = sync_channel(0);
+            let (tx, rx) = sync_channel::<Box<int>>(0);
             spawn(proc() {
-                tx.send(box 10);
+                tx.send(box 10i);
             });
             spawn(proc() {
-                assert!(rx.recv() == box 10);
+                assert!(rx.recv() == box 10i);
             });
         }
     })
 
     test!(fn stream_send_recv_stress() {
         for _ in range(0, stress_factor()) {
-            let (tx, rx) = sync_channel(0);
+            let (tx, rx) = sync_channel::<Box<int>>(0);
 
             send(tx, 0);
             recv(rx, 0);
@@ -1880,8 +1880,8 @@ mod sync_tests {
     test!(fn recv_a_lot() {
         // Regression test that we don't run out of stack in scheduler context
         let (tx, rx) = sync_channel(10000);
-        for _ in range(0, 10000) { tx.send(()); }
-        for _ in range(0, 10000) { rx.recv(); }
+        for _ in range(0u, 10000) { tx.send(()); }
+        for _ in range(0u, 10000) { rx.recv(); }
     })
 
     test!(fn shared_chan_stress() {
@@ -1968,15 +1968,15 @@ mod sync_tests {
     // This bug used to end up in a livelock inside of the Receiver destructor
     // because the internal state of the Shared packet was corrupted
     test!(fn destroy_upgraded_shared_port_when_sender_still_active() {
-        let (tx, rx) = sync_channel(0);
-        let (tx2, rx2) = sync_channel(0);
+        let (tx, rx) = sync_channel::<()>(0);
+        let (tx2, rx2) = sync_channel::<()>(0);
         spawn(proc() {
             rx.recv(); // wait on a oneshot
             drop(rx);  // destroy a shared
             tx2.send(());
         });
         // make sure the other task has gone to sleep
-        for _ in range(0, 5000) { task::deschedule(); }
+        for _ in range(0u, 5000) { task::deschedule(); }
 
         // upgrade to a shared chan and send a message
         let t = tx.clone();
@@ -1990,7 +1990,7 @@ mod sync_tests {
     test!(fn try_recvs_off_the_runtime() {
         use std::rt::thread::Thread;
 
-        let (tx, rx) = sync_channel(0);
+        let (tx, rx) = sync_channel::<()>(0);
         let (cdone, pdone) = channel();
         let t = Thread::start(proc() {
             let mut hits = 0;
@@ -2003,7 +2003,7 @@ mod sync_tests {
             }
             cdone.send(());
         });
-        for _ in range(0, 10) {
+        for _ in range(0u, 10) {
             tx.send(());
         }
         t.join();
@@ -2011,26 +2011,26 @@ mod sync_tests {
     })
 
     test!(fn send_opt1() {
-        let (tx, rx) = sync_channel(0);
+        let (tx, rx) = sync_channel::<int>(0);
         spawn(proc() { rx.recv(); });
         assert_eq!(tx.send_opt(1), Ok(()));
     })
 
     test!(fn send_opt2() {
-        let (tx, rx) = sync_channel(0);
+        let (tx, rx) = sync_channel::<int>(0);
         spawn(proc() { drop(rx); });
         assert_eq!(tx.send_opt(1), Err(1));
     })
 
     test!(fn send_opt3() {
-        let (tx, rx) = sync_channel(1);
+        let (tx, rx) = sync_channel::<int>(1);
         assert_eq!(tx.send_opt(1), Ok(()));
         spawn(proc() { drop(rx); });
         assert_eq!(tx.send_opt(1), Err(1));
     })
 
     test!(fn send_opt4() {
-        let (tx, rx) = sync_channel(0);
+        let (tx, rx) = sync_channel::<int>(0);
         let tx2 = tx.clone();
         let (done, donerx) = channel();
         let done2 = done.clone();
@@ -2048,27 +2048,27 @@ mod sync_tests {
     })
 
     test!(fn try_send1() {
-        let (tx, _rx) = sync_channel(0);
+        let (tx, _rx) = sync_channel::<int>(0);
         assert_eq!(tx.try_send(1), Err(Full(1)));
     })
 
     test!(fn try_send2() {
-        let (tx, _rx) = sync_channel(1);
+        let (tx, _rx) = sync_channel::<int>(1);
         assert_eq!(tx.try_send(1), Ok(()));
         assert_eq!(tx.try_send(1), Err(Full(1)));
     })
 
     test!(fn try_send3() {
-        let (tx, rx) = sync_channel(1);
+        let (tx, rx) = sync_channel::<int>(1);
         assert_eq!(tx.try_send(1), Ok(()));
         drop(rx);
         assert_eq!(tx.try_send(1), Err(RecvDisconnected(1)));
     })
 
     test!(fn try_send4() {
-        let (tx, rx) = sync_channel(0);
+        let (tx, rx) = sync_channel::<int>(0);
         spawn(proc() {
-            for _ in range(0, 1000) { task::deschedule(); }
+            for _ in range(0u, 1000) { task::deschedule(); }
             assert_eq!(tx.try_send(1), Ok(()));
         });
         assert_eq!(rx.recv(), 1);

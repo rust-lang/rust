@@ -19,5 +19,5 @@ fn bitv_test() {
 }
 
 pub fn main() {
-    for _ in range(0, 10000) { bitv_test(); }
+    for _ in range(0i, 10000) { bitv_test(); }
 }

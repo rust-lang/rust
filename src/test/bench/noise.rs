@@ -101,7 +101,7 @@ fn main() {
     let mut pixels = [0f32, ..256*256];
     let n2d = Noise2DContext::new();
 
-    for _ in range(0, 100) {
+    for _ in range(0u, 100) {
         for y in range(0u, 256) {
             for x in range(0u, 256) {
                 let v = n2d.get(x as f32 * 0.1, y as f32 * 0.1);

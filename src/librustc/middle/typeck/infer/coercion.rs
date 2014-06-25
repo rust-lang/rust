@@ -213,7 +213,8 @@ impl<'f> Coerce<'f> {
 
     pub fn unpack_actual_value(&self, a: ty::t, f: |&ty::sty| -> CoerceResult)
                                -> CoerceResult {
-        match resolve_type(self.get_ref().infcx, a, try_resolve_tvar_shallow) {
+        match resolve_type(self.get_ref().infcx, None,
+                           a, try_resolve_tvar_shallow) {
             Ok(t) => {
                 f(&ty::get(t).sty)
             }

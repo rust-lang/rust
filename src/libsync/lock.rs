@@ -259,7 +259,7 @@ impl<'a, T: Send> DerefMut<T> for MutexGuard<'a, T> {
 /// ```
 /// use sync::{RWLock, Arc};
 ///
-/// let lock1 = Arc::new(RWLock::new(1));
+/// let lock1 = Arc::new(RWLock::new(1i));
 /// let lock2 = lock1.clone();
 ///
 /// spawn(proc() {
@@ -396,7 +396,7 @@ impl<'a, T: Send + Share> DerefMut<T> for RWLockWriteGuard<'a, T> {
 /// use sync::{Arc, Barrier};
 ///
 /// let barrier = Arc::new(Barrier::new(10));
-/// for _ in range(0, 10) {
+/// for _ in range(0u, 10) {
 ///     let c = barrier.clone();
 ///     // The same messages will be printed together.
 ///     // You will NOT see any interleaving.
@@ -508,7 +508,7 @@ mod tests {
 
     #[test] #[should_fail]
     fn test_mutex_arc_poison() {
-        let arc = Arc::new(Mutex::new(1));
+        let arc = Arc::new(Mutex::new(1i));
         let arc2 = arc.clone();
         let _ = task::try(proc() {
             let lock = arc2.lock();
@@ -522,7 +522,7 @@ mod tests {
     fn test_mutex_arc_nested() {
         // Tests nested mutexes and access
         // to underlying data.
-        let arc = Arc::new(Mutex::new(1));
+        let arc = Arc::new(Mutex::new(1i));
         let arc2 = Arc::new(Mutex::new(arc));
         task::spawn(proc() {
             let lock = arc2.lock();
@@ -554,7 +554,7 @@ mod tests {
 
     #[test] #[should_fail]
     fn test_rw_arc_poison_wr() {
-        let arc = Arc::new(RWLock::new(1));
+        let arc = Arc::new(RWLock::new(1i));
         let arc2 = arc.clone();
         let _ = task::try(proc() {
             let lock = arc2.write();
@@ -565,7 +565,7 @@ mod tests {
     }
     #[test] #[should_fail]
     fn test_rw_arc_poison_ww() {
-        let arc = Arc::new(RWLock::new(1));
+        let arc = Arc::new(RWLock::new(1i));
         let arc2 = arc.clone();
         let _ = task::try(proc() {
             let lock = arc2.write();
@@ -576,7 +576,7 @@ mod tests {
     }
     #[test]
     fn test_rw_arc_no_poison_rr() {
-        let arc = Arc::new(RWLock::new(1));
+        let arc = Arc::new(RWLock::new(1i));
         let arc2 = arc.clone();
         let _ = task::try(proc() {
             let lock = arc2.read();
@@ -587,7 +587,7 @@ mod tests {
     }
     #[test]
     fn test_rw_arc_no_poison_rw() {
-        let arc = Arc::new(RWLock::new(1));
+        let arc = Arc::new(RWLock::new(1i));
         let arc2 = arc.clone();
         let _ = task::try(proc() {
             let lock = arc2.read();
@@ -598,7 +598,7 @@ mod tests {
     }
     #[test]
     fn test_rw_arc_no_poison_dr() {
-        let arc = Arc::new(RWLock::new(1));
+        let arc = Arc::new(RWLock::new(1i));
         let arc2 = arc.clone();
         let _ = task::try(proc() {
             let lock = arc2.write().downgrade();
@@ -610,13 +610,13 @@ mod tests {
 
     #[test]
     fn test_rw_arc() {
-        let arc = Arc::new(RWLock::new(0));
+        let arc = Arc::new(RWLock::new(0i));
         let arc2 = arc.clone();
         let (tx, rx) = channel();
 
         task::spawn(proc() {
             let mut lock = arc2.write();
-            for _ in range(0, 10) {
+            for _ in range(0u, 10) {
                 let tmp = *lock;
                 *lock = -1;
                 task::deschedule();
@@ -627,7 +627,7 @@ mod tests {
 
         // Readers try to catch the writer in the act
         let mut children = Vec::new();
-        for _ in range(0, 5) {
+        for _ in range(0u, 5) {
             let arc3 = arc.clone();
             children.push(try_future(proc() {
                 let lock = arc3.read();
@@ -675,11 +675,11 @@ mod tests {
         // (4) tells writer and all other readers to contend as it downgrades.
         // (5) Writer attempts to set state back to 42, while downgraded task
         //     and all reader tasks assert that it's 31337.
-        let arc = Arc::new(RWLock::new(0));
+        let arc = Arc::new(RWLock::new(0i));
 
         // Reader tasks
         let mut reader_convos = Vec::new();
-        for _ in range(0, 10) {
+        for _ in range(0u, 10) {
             let ((tx1, rx1), (tx2, rx2)) = (channel(), channel());
             reader_convos.push((tx1, rx2));
             let arcn = arc.clone();
@@ -777,7 +777,7 @@ mod tests {
         let lock = lock.downgrade();
         // if writer mistakenly got in, make sure it mutates state
         // before we assert on it
-        for _ in range(0, 5) { task::deschedule(); }
+        for _ in range(0u, 5) { task::deschedule(); }
         // make sure writer didn't get in.
         assert!(*lock);
     }
@@ -788,7 +788,7 @@ mod tests {
         // deschedules in the intuitively-right locations made it even less
         // likely, and I wasn't sure why :( . This is a mediocre "next best"
         // option.
-        for _ in range(0, 8) {
+        for _ in range(0u, 8) {
             test_rw_write_cond_downgrade_read_race_helper();
         }
     }
@@ -801,7 +801,7 @@ mod tests {
         let barrier = Arc::new(Barrier::new(10));
         let (tx, rx) = channel();
 
-        for _ in range(0, 9) {
+        for _ in range(0u, 9) {
             let c = barrier.clone();
             let tx = tx.clone();
             spawn(proc() {
@@ -819,7 +819,7 @@ mod tests {
 
         barrier.wait();
         // Now, the barrier is cleared and we should get data.
-        for _ in range(0, 9) {
+        for _ in range(0u, 9) {
             rx.recv();
         }
     }

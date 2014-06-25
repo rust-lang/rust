@@ -52,8 +52,8 @@ fn outer<TA: Clone>(a: TA) {
 }
 
 fn main() {
-    outer(-1);
-    outer(-2.5);
+    outer(-1i);
+    outer(-2.5f64);
 }
 
 fn zzz() {()}

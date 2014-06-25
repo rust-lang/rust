@@ -11,12 +11,12 @@
 #![feature(macro_rules)]
 
 #[cfg(foo)]
-macro_rules! foo( () => (1) )
+macro_rules! foo( () => (1i) )
 
 #[cfg(not(foo))]
-macro_rules! foo( () => (2) )
+macro_rules! foo( () => (2i) )
 
 pub fn main() {
-    assert_eq!(foo!(), 2);
+    assert_eq!(foo!(), 2i);
 }
 

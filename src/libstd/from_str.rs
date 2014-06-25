@@ -16,6 +16,7 @@ use str::StrAllocating;
 
 /// A trait to abstract the idea of creating a new instance of a type from a
 /// string.
+#[experimental = "might need to return Result"]
 pub trait FromStr {
     /// Parses a string `s` to return an optional value of this type. If the
     /// string is ill-formatted, the None is returned.

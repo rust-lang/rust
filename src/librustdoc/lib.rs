@@ -95,7 +95,7 @@ pub fn opts() -> Vec<getopts::OptGroup> {
     use getopts::*;
     vec!(
         optflag("h", "help", "show this help message"),
-        optflag("", "version", "print rustdoc's version"),
+        optflagopt("", "version", "print rustdoc's version", "verbose"),
         optopt("r", "input-format", "the input type of the specified file",
                "[rust|json]"),
         optopt("w", "output-format", "the output type to write",
@@ -150,8 +150,13 @@ pub fn main_args(args: &[String]) -> int {
         usage(args[0].as_slice());
         return 0;
     } else if matches.opt_present("version") {
-        rustc::driver::version("rustdoc");
-        return 0;
+        match rustc::driver::version("rustdoc", &matches) {
+            Some(err) => {
+                println!("{}", err);
+                return 1
+            },
+            None => return 0
+        }
     }
 
     if matches.free.len() == 0 {

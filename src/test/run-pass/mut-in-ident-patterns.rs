@@ -20,7 +20,7 @@ struct X;
 impl Foo for X {}
 
 pub fn main() {
-    let (a, mut b) = (23, 4);
+    let (a, mut b) = (23i, 4i);
     assert_eq!(a, 23);
     assert_eq!(b, 4);
     b = a + b;
@@ -34,7 +34,7 @@ pub fn main() {
        Baz(f32, u8)
     }
 
-    let (x, mut y) = (32, Foo(21));
+    let (x, mut y) = (32i, Foo(21));
 
     match x {
         mut z @ 32 => {

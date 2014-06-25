@@ -61,6 +61,7 @@ fn get_base_type(inference_context: &InferCtxt,
                  -> Option<t> {
     let resolved_type;
     match resolve_type(inference_context,
+                       Some(span),
                        original_type,
                        resolve_ivar) {
         Ok(resulting_type) if !type_is_ty_var(resulting_type) => {

@@ -13,7 +13,7 @@
 use std::gc::GC;
 
 pub fn main() {
-    assert!((box(GC) 1 < box(GC) 3));
+    assert!((box(GC) 1i < box(GC) 3i));
     assert!((box(GC) box(GC) "hello ".to_string() >
              box(GC) box(GC) "hello".to_string()));
     assert!((box(GC) box(GC) box(GC) "hello".to_string() !=

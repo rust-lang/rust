@@ -18,39 +18,39 @@ enum Foo {
 
 fn main() {
     let r = match (FooNullary, 'a') {
-        (FooUint(..), 'a'..'z') => 1,
-        (FooNullary, 'x') => 2,
+        (FooUint(..), 'a'..'z') => 1i,
+        (FooNullary, 'x') => 2i,
         _ => 0
     };
     assert_eq!(r, 0);
 
     let r = match (FooUint(0), 'a') {
-        (FooUint(1), 'a'..'z') => 1,
-        (FooUint(..), 'x') => 2,
-        (FooNullary, 'a') => 3,
+        (FooUint(1), 'a'..'z') => 1i,
+        (FooUint(..), 'x') => 2i,
+        (FooNullary, 'a') => 3i,
         _ => 0
     };
     assert_eq!(r, 0);
 
     let r = match ('a', FooUint(0)) {
-        ('a'..'z', FooUint(1)) => 1,
-        ('x', FooUint(..)) => 2,
-        ('a', FooNullary) => 3,
+        ('a'..'z', FooUint(1)) => 1i,
+        ('x', FooUint(..)) => 2i,
+        ('a', FooNullary) => 3i,
         _ => 0
     };
     assert_eq!(r, 0);
 
     let r = match ('a', 'a') {
-        ('a'..'z', 'b') => 1,
-        ('x', 'a'..'z') => 2,
+        ('a'..'z', 'b') => 1i,
+        ('x', 'a'..'z') => 2i,
         _ => 0
     };
     assert_eq!(r, 0);
 
     let r = match ('a', 'a') {
-        ('a'..'z', 'b') => 1,
-        ('x', 'a'..'z') => 2,
-        ('a', 'a') => 3,
+        ('a'..'z', 'b') => 1i,
+        ('x', 'a'..'z') => 2i,
+        ('a', 'a') => 3i,
         _ => 0
     };
     assert_eq!(r, 3);

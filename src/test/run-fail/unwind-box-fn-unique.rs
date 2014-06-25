@@ -21,7 +21,7 @@ fn failfn() {
 }
 
 fn main() {
-    let y = box 0;
+    let y = box 0i;
     let x: Gc<proc():Send> = box(GC) (proc() {
         println!("{:?}", y.clone());
     });

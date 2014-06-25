@@ -364,7 +364,8 @@ impl TwoWaySearcher {
             period = period2;
         }
 
-        let byteset = needle.iter().fold(0, |a, &b| (1 << (b & 0x3f)) | a);
+        let byteset = needle.iter()
+                            .fold(0, |a, &b| (1 << ((b & 0x3f) as uint)) | a);
 
         if needle.slice_to(critPos) == needle.slice_from(needle.len() - critPos) {
             TwoWaySearcher {
@@ -396,7 +397,9 @@ impl TwoWaySearcher {
             }
 
             // Quickly skip by large portions unrelated to our substring
-            if (self.byteset >> (haystack[self.position + needle.len() - 1] & 0x3f)) & 1 == 0 {
+            if (self.byteset >>
+                    ((haystack[self.position + needle.len() - 1] & 0x3f)
+                     as uint)) & 1 == 0 {
                 self.position += needle.len();
                 continue 'search;
             }

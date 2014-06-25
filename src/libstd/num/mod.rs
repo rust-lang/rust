@@ -111,16 +111,19 @@ pub trait FloatMath: Float {
 }
 
 /// A generic trait for converting a value to a string with a radix (base)
+#[deprecated = "use fmt::radix"]
 pub trait ToStrRadix {
     fn to_str_radix(&self, radix: uint) -> String;
 }
 
 /// A generic trait for converting a string with a radix (base) to a value
+#[experimental = "might need to return Result"]
 pub trait FromStrRadix {
     fn from_str_radix(str: &str, radix: uint) -> Option<Self>;
 }
 
 /// A utility function that just calls FromStrRadix::from_str_radix.
+#[experimental = "might need to return Result"]
 pub fn from_str_radix<T: FromStrRadix>(str: &str, radix: uint) -> Option<T> {
     FromStrRadix::from_str_radix(str, radix)
 }
@@ -128,11 +131,11 @@ pub fn from_str_radix<T: FromStrRadix>(str: &str, radix: uint) -> Option<T> {
 /// Helper function for testing numeric operations
 #[cfg(test)]
 pub fn test_num<T:Num + NumCast + Show>(ten: T, two: T) {
-    assert_eq!(ten.add(&two),  cast(12).unwrap());
-    assert_eq!(ten.sub(&two),  cast(8).unwrap());
-    assert_eq!(ten.mul(&two),  cast(20).unwrap());
-    assert_eq!(ten.div(&two),  cast(5).unwrap());
-    assert_eq!(ten.rem(&two),  cast(0).unwrap());
+    assert_eq!(ten.add(&two),  cast(12i).unwrap());
+    assert_eq!(ten.sub(&two),  cast(8i).unwrap());
+    assert_eq!(ten.mul(&two),  cast(20i).unwrap());
+    assert_eq!(ten.div(&two),  cast(5i).unwrap());
+    assert_eq!(ten.rem(&two),  cast(0i).unwrap());
 
     assert_eq!(ten.add(&two),  ten + two);
     assert_eq!(ten.sub(&two),  ten - two);
@@ -760,14 +763,14 @@ mod tests {
                 assert_eq!(result, naive_pow($num, $exp));
             }}
         )
-        assert_pow!((3,    0 ) => 1);
-        assert_pow!((5,    1 ) => 5);
-        assert_pow!((-4,   2 ) => 16);
-        assert_pow!((0.5,  5 ) => 0.03125);
-        assert_pow!((8,    3 ) => 512);
-        assert_pow!((8.0,  5 ) => 32768.0);
-        assert_pow!((8.5,  5 ) => 44370.53125);
-        assert_pow!((2u64, 50) => 1125899906842624);
+        assert_pow!((3i,     0 ) => 1);
+        assert_pow!((5i,     1 ) => 5);
+        assert_pow!((-4i,    2 ) => 16);
+        assert_pow!((0.5f64, 5 ) => 0.03125);
+        assert_pow!((8i,     3 ) => 512);
+        assert_pow!((8.0f64, 5 ) => 32768.0);
+        assert_pow!((8.5f64, 5 ) => 44370.53125);
+        assert_pow!((2u64,   50) => 1125899906842624);
     }
 }
 
@@ -781,7 +784,7 @@ mod bench {
 
     #[bench]
     fn bench_pow_function(b: &mut Bencher) {
-        let v = Vec::from_fn(1024, |n| n);
-        b.iter(|| {v.iter().fold(0, |old, new| num::pow(old, *new));});
+        let v = Vec::from_fn(1024u, |n| n);
+        b.iter(|| {v.iter().fold(0u, |old, new| num::pow(old, *new));});
     }
 }

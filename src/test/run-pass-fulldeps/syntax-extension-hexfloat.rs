@@ -17,7 +17,7 @@ extern crate hexfloat;
 
 pub fn main() {
     let a = hexfloat!("0x1.999999999999ap-4");
-    assert_eq!(a, 0.1);
+    assert_eq!(a, 0.1f64);
     let b = hexfloat!("-0x1.fffp-4", f32);
     assert_eq!(b, -0.12498474_f32);
     let c = hexfloat!("0x.12345p5", f64);

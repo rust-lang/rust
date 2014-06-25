@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn a() {
-    let x = [1];
+    let x = [1i];
     match x {
         [a] => {
             assert_eq!(a, 1);
@@ -18,7 +18,7 @@ fn a() {
 }
 
 fn b() {
-    let x = [1, 2, 3];
+    let x = [1i, 2, 3];
     match x {
         [a, b, ..c] => {
             assert_eq!(a, 1);
@@ -50,7 +50,7 @@ fn b() {
 }
 
 fn c() {
-    let x = [1];
+    let x = [1i];
     match x {
         [2, ..] => fail!(),
         [..] => ()
@@ -58,11 +58,11 @@ fn c() {
 }
 
 fn d() {
-    let x = [1, 2, 3];
+    let x = [1i, 2, 3];
     let branch = match x {
-        [1, 1, ..] => 0,
-        [1, 2, 3, ..] => 1,
-        [1, 2, ..] => 2,
+        [1, 1, ..] => 0i,
+        [1, 2, 3, ..] => 1i,
+        [1, 2, ..] => 2i,
         _ => 3
     };
     assert_eq!(branch, 1);

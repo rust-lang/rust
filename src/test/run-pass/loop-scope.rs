@@ -9,8 +9,8 @@
 // except according to those terms.
 
 pub fn main() {
-    let x = vec!(10, 20, 30);
-    let mut sum = 0;
+    let x = vec!(10i, 20i, 30i);
+    let mut sum = 0i;
     for x in x.iter() { sum += *x; }
     assert_eq!(sum, 60);
 }

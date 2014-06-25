@@ -611,7 +611,7 @@ mod test {
     fn bench_mem_writer(b: &mut Bencher) {
         b.iter(|| {
             let mut wr = MemWriter::new();
-            for _i in range(0, 10) {
+            for _i in range(0u, 10) {
                 wr.write([5, .. 10]).unwrap();
             }
             assert_eq!(wr.unwrap().as_slice(), [5, .. 100].as_slice());
@@ -624,7 +624,7 @@ mod test {
             let buf = Vec::from_slice([5 as u8, ..100]);
             {
                 let mut rdr = MemReader::new(buf);
-                for _i in range(0, 10) {
+                for _i in range(0u, 10) {
                     let mut buf = [0 as u8, .. 10];
                     rdr.read(buf).unwrap();
                     assert_eq!(buf.as_slice(), [5, .. 10].as_slice());
@@ -639,7 +639,7 @@ mod test {
             let mut buf = [0 as u8, ..100];
             {
                 let mut wr = BufWriter::new(buf);
-                for _i in range(0, 10) {
+                for _i in range(0u, 10) {
                     wr.write([5, .. 10]).unwrap();
                 }
             }
@@ -653,7 +653,7 @@ mod test {
             let buf = [5 as u8, ..100];
             {
                 let mut rdr = BufReader::new(buf);
-                for _i in range(0, 10) {
+                for _i in range(0u, 10) {
                     let mut buf = [0 as u8, .. 10];
                     rdr.read(buf).unwrap();
                     assert_eq!(buf.as_slice(), [5, .. 10].as_slice());

@@ -654,11 +654,11 @@ mod tests {
 
     #[test]
     pub fn test_and() {
-        assert_eq!(op1().and(Ok(667)).unwrap(), 667);
+        assert_eq!(op1().and(Ok(667i)).unwrap(), 667);
         assert_eq!(op1().and(Err::<(), &'static str>("bad")).unwrap_err(),
                    "bad");
 
-        assert_eq!(op2().and(Ok(667)).unwrap_err(), "sadface");
+        assert_eq!(op2().and(Ok(667i)).unwrap_err(), "sadface");
         assert_eq!(op2().and(Err::<(),&'static str>("bad")).unwrap_err(),
                    "sadface");
     }
@@ -708,18 +708,18 @@ mod tests {
 
     #[test]
     fn test_collect() {
-        let v: Result<Vec<int>, ()> = collect(range(0, 0).map(|_| Ok::<int, ()>(0)));
+        let v: Result<Vec<int>, ()> = collect(range(0i, 0).map(|_| Ok::<int, ()>(0)));
         assert!(v == Ok(vec![]));
 
-        let v: Result<Vec<int>, ()> = collect(range(0, 3).map(|x| Ok::<int, ()>(x)));
+        let v: Result<Vec<int>, ()> = collect(range(0i, 3).map(|x| Ok::<int, ()>(x)));
         assert!(v == Ok(vec![0, 1, 2]));
 
-        let v: Result<Vec<int>, int> = collect(range(0, 3)
+        let v: Result<Vec<int>, int> = collect(range(0i, 3)
                                                .map(|x| if x > 1 { Err(x) } else { Ok(x) }));
         assert!(v == Err(2));
 
         // test that it does not take more elements than it needs
-        let mut functions = [|| Ok(()), || Err(1), || fail!()];
+        let mut functions = [|| Ok(()), || Err(1i), || fail!()];
 
         let v: Result<Vec<()>, int> = collect(functions.mut_iter().map(|f| (*f)()));
         assert!(v == Err(1));
@@ -727,19 +727,19 @@ mod tests {
 
     #[test]
     fn test_fold() {
-        assert_eq!(fold_(range(0, 0)
+        assert_eq!(fold_(range(0i, 0)
                         .map(|_| Ok::<(), ()>(()))),
                    Ok(()));
-        assert_eq!(fold(range(0, 3)
+        assert_eq!(fold(range(0i, 3)
                         .map(|x| Ok::<int, ()>(x)),
                         0, |a, b| a + b),
                    Ok(3));
-        assert_eq!(fold_(range(0, 3)
+        assert_eq!(fold_(range(0i, 3)
                         .map(|x| if x > 1 { Err(x) } else { Ok(()) })),
                    Err(2));
 
         // test that it does not take more elements than it needs
-        let mut functions = [|| Ok(()), || Err(1), || fail!()];
+        let mut functions = [|| Ok(()), || Err(1i), || fail!()];
 
         assert_eq!(fold_(functions.mut_iter()
                         .map(|f| (*f)())),
@@ -759,7 +759,7 @@ mod tests {
 
     #[test]
     pub fn test_unwrap_or() {
-        let ok: Result<int, &'static str> = Ok(100);
+        let ok: Result<int, &'static str> = Ok(100i);
         let ok_err: Result<int, &'static str> = Err("Err");
 
         assert_eq!(ok.unwrap_or(50), 100);
@@ -770,7 +770,7 @@ mod tests {
     pub fn test_unwrap_or_else() {
         fn handler(msg: &'static str) -> int {
             if msg == "I got this." {
-                50
+                50i
             } else {
                 fail!("BadBad")
             }
@@ -788,7 +788,7 @@ mod tests {
     pub fn test_unwrap_or_else_failure() {
         fn handler(msg: &'static str) -> int {
             if msg == "I got this." {
-                50
+                50i
             } else {
                 fail!("BadBad")
             }

@@ -12,5 +12,5 @@ fn f<T:PartialEq + PartialOrd>(_: T) {
 }
 
 pub fn main() {
-    f(3);
+    f(3i);
 }

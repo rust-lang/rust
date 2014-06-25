@@ -94,7 +94,7 @@ fn main() {
 
     let mut messages = range_step(min_depth, max_depth + 1, 2).map(|depth| {
             use std::num::pow;
-            let iterations = pow(2, (max_depth - depth + min_depth) as uint);
+            let iterations = pow(2i, (max_depth - depth + min_depth) as uint);
             Future::spawn(proc() {
                 let mut chk = 0;
                 for i in range(1, iterations + 1) {

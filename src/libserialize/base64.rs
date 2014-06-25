@@ -336,7 +336,7 @@ mod tests {
     fn test_base64_random() {
         use std::rand::{task_rng, random, Rng};
 
-        for _ in range(0, 1000) {
+        for _ in range(0u, 1000) {
             let times = task_rng().gen_range(1u, 100);
             let v = Vec::from_fn(times, |_| random::<u8>());
             assert_eq!(v.as_slice()

@@ -1688,7 +1688,7 @@ mod test_map {
     fn test_create_capacity_zero() {
         let mut m = HashMap::with_capacity(0);
 
-        assert!(m.insert(1, 1));
+        assert!(m.insert(1i, 1i));
 
         assert!(m.contains_key(&1));
         assert!(!m.contains_key(&0));
@@ -1698,9 +1698,9 @@ mod test_map {
     fn test_insert() {
         let mut m = HashMap::new();
         assert_eq!(m.len(), 0);
-        assert!(m.insert(1, 2));
+        assert!(m.insert(1i, 2i));
         assert_eq!(m.len(), 1);
-        assert!(m.insert(2, 4));
+        assert!(m.insert(2i, 4i));
         assert_eq!(m.len(), 2);
         assert_eq!(*m.find(&1).unwrap(), 2);
         assert_eq!(*m.find(&2).unwrap(), 4);
@@ -1732,7 +1732,7 @@ mod test_map {
 
     #[test]
     fn test_drops() {
-        drop_vector.replace(Some(RefCell::new(Vec::from_elem(200, 0))));
+        drop_vector.replace(Some(RefCell::new(Vec::from_elem(200, 0i))));
 
         {
             let mut m = HashMap::new();
@@ -1796,10 +1796,10 @@ mod test_map {
 
         // Try this a few times to make sure we never screw up the hashmap's
         // internal state.
-        for _ in range(0, 10) {
+        for _ in range(0i, 10) {
             assert!(m.is_empty());
 
-            for i in range_inclusive(1, 1000) {
+            for i in range_inclusive(1i, 1000) {
                 assert!(m.insert(i, i));
 
                 for j in range_inclusive(1, i) {
@@ -1813,12 +1813,12 @@ mod test_map {
                 }
             }
 
-            for i in range_inclusive(1001, 2000) {
+            for i in range_inclusive(1001i, 2000) {
                 assert!(!m.contains_key(&i));
             }
 
             // remove forwards
-            for i in range_inclusive(1, 1000) {
+            for i in range_inclusive(1i, 1000) {
                 assert!(m.remove(&i));
 
                 for j in range_inclusive(1, i) {
@@ -1830,16 +1830,16 @@ mod test_map {
                 }
             }
 
-            for i in range_inclusive(1, 1000) {
+            for i in range_inclusive(1i, 1000) {
                 assert!(!m.contains_key(&i));
             }
 
-            for i in range_inclusive(1, 1000) {
+            for i in range_inclusive(1i, 1000) {
                 assert!(m.insert(i, i));
             }
 
             // remove backwards
-            for i in range_step_inclusive(1000, 1, -1) {
+            for i in range_step_inclusive(1000i, 1, -1) {
                 assert!(m.remove(&i));
 
                 for j in range_inclusive(i, 1000) {
@@ -1856,9 +1856,9 @@ mod test_map {
     #[test]
     fn test_find_mut() {
         let mut m = HashMap::new();
-        assert!(m.insert(1, 12));
-        assert!(m.insert(2, 8));
-        assert!(m.insert(5, 14));
+        assert!(m.insert(1i, 12i));
+        assert!(m.insert(2i, 8i));
+        assert!(m.insert(5i, 14i));
         let new = 100;
         match m.find_mut(&5) {
             None => fail!(), Some(x) => *x = new
@@ -1869,18 +1869,18 @@ mod test_map {
     #[test]
     fn test_insert_overwrite() {
         let mut m = HashMap::new();
-        assert!(m.insert(1, 2));
+        assert!(m.insert(1i, 2i));
         assert_eq!(*m.find(&1).unwrap(), 2);
-        assert!(!m.insert(1, 3));
+        assert!(!m.insert(1i, 3i));
         assert_eq!(*m.find(&1).unwrap(), 3);
     }
 
     #[test]
     fn test_insert_conflicts() {
         let mut m = HashMap::with_capacity(4);
-        assert!(m.insert(1, 2));
-        assert!(m.insert(5, 3));
-        assert!(m.insert(9, 4));
+        assert!(m.insert(1i, 2i));
+        assert!(m.insert(5i, 3i));
+        assert!(m.insert(9i, 4i));
         assert_eq!(*m.find(&9).unwrap(), 4);
         assert_eq!(*m.find(&5).unwrap(), 3);
         assert_eq!(*m.find(&1).unwrap(), 2);
@@ -1889,7 +1889,7 @@ mod test_map {
     #[test]
     fn test_conflict_remove() {
         let mut m = HashMap::with_capacity(4);
-        assert!(m.insert(1, 2));
+        assert!(m.insert(1i, 2i));
         assert_eq!(*m.find(&1).unwrap(), 2);
         assert!(m.insert(5, 3));
         assert_eq!(*m.find(&1).unwrap(), 2);
@@ -1906,7 +1906,7 @@ mod test_map {
     #[test]
     fn test_is_empty() {
         let mut m = HashMap::with_capacity(4);
-        assert!(m.insert(1, 2));
+        assert!(m.insert(1i, 2i));
         assert!(!m.is_empty());
         assert!(m.remove(&1));
         assert!(m.is_empty());
@@ -1915,7 +1915,7 @@ mod test_map {
     #[test]
     fn test_pop() {
         let mut m = HashMap::new();
-        m.insert(1, 2);
+        m.insert(1i, 2i);
         assert_eq!(m.pop(&1), Some(2));
         assert_eq!(m.pop(&1), None);
     }
@@ -1924,7 +1924,7 @@ mod test_map {
     #[allow(experimental)]
     fn test_pop_equiv() {
         let mut m = HashMap::new();
-        m.insert(1, 2);
+        m.insert(1i, 2i);
         assert_eq!(m.pop_equiv(&KindaIntLike(1)), Some(2));
         assert_eq!(m.pop_equiv(&KindaIntLike(1)), None);
     }
@@ -1932,9 +1932,9 @@ mod test_map {
     #[test]
     fn test_swap() {
         let mut m = HashMap::new();
-        assert_eq!(m.swap(1, 2), None);
-        assert_eq!(m.swap(1, 3), Some(2));
-        assert_eq!(m.swap(1, 4), Some(3));
+        assert_eq!(m.swap(1i, 2i), None);
+        assert_eq!(m.swap(1i, 3i), Some(2));
+        assert_eq!(m.swap(1i, 4i), Some(3));
     }
 
     #[test]
@@ -1942,8 +1942,8 @@ mod test_map {
         let hm = {
             let mut hm = HashMap::new();
 
-            hm.insert('a', 1);
-            hm.insert('b', 2);
+            hm.insert('a', 1i);
+            hm.insert('b', 2i);
 
             hm
         };
@@ -1971,7 +1971,7 @@ mod test_map {
 
     #[test]
     fn test_keys() {
-        let vec = vec![(1, 'a'), (2, 'b'), (3, 'c')];
+        let vec = vec![(1i, 'a'), (2i, 'b'), (3i, 'c')];
         let map = vec.move_iter().collect::<HashMap<int, char>>();
         let keys = map.keys().map(|&k| k).collect::<Vec<int>>();
         assert_eq!(keys.len(), 3);
@@ -1982,7 +1982,7 @@ mod test_map {
 
     #[test]
     fn test_values() {
-        let vec = vec![(1, 'a'), (2, 'b'), (3, 'c')];
+        let vec = vec![(1i, 'a'), (2i, 'b'), (3i, 'c')];
         let map = vec.move_iter().collect::<HashMap<int, char>>();
         let values = map.values().map(|&v| v).collect::<Vec<char>>();
         assert_eq!(values.len(), 3);
@@ -1994,8 +1994,8 @@ mod test_map {
     #[test]
     fn test_find() {
         let mut m = HashMap::new();
-        assert!(m.find(&1).is_none());
-        m.insert(1, 2);
+        assert!(m.find(&1i).is_none());
+        m.insert(1i, 2i);
         match m.find(&1) {
             None => fail!(),
             Some(v) => assert_eq!(*v, 2)
@@ -2005,17 +2005,17 @@ mod test_map {
     #[test]
     fn test_eq() {
         let mut m1 = HashMap::new();
-        m1.insert(1, 2);
-        m1.insert(2, 3);
-        m1.insert(3, 4);
+        m1.insert(1i, 2i);
+        m1.insert(2i, 3i);
+        m1.insert(3i, 4i);
 
         let mut m2 = HashMap::new();
-        m2.insert(1, 2);
-        m2.insert(2, 3);
+        m2.insert(1i, 2i);
+        m2.insert(2i, 3i);
 
         assert!(m1 != m2);
 
-        m2.insert(3, 4);
+        m2.insert(3i, 4i);
 
         assert_eq!(m1, m2);
     }
@@ -2025,8 +2025,8 @@ mod test_map {
         let mut map: HashMap<int, int> = HashMap::new();
         let empty: HashMap<int, int> = HashMap::new();
 
-        map.insert(1, 2);
-        map.insert(3, 4);
+        map.insert(1i, 2i);
+        map.insert(3i, 4i);
 
         let map_str = format!("{}", map);
 
@@ -2102,7 +2102,7 @@ mod test_map {
     fn test_find_equiv() {
         let mut m = HashMap::new();
 
-        let (foo, bar, baz) = (1,2,3);
+        let (foo, bar, baz) = (1i,2i,3i);
         m.insert("foo".to_string(), foo);
         m.insert("bar".to_string(), bar);
         m.insert("baz".to_string(), baz);
@@ -2117,7 +2117,7 @@ mod test_map {
 
     #[test]
     fn test_from_iter() {
-        let xs = [(1, 1), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6)];
+        let xs = [(1i, 1i), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6)];
 
         let map: HashMap<int, int> = xs.iter().map(|&x| x).collect();
 
@@ -2128,7 +2128,7 @@ mod test_map {
 
     #[test]
     fn test_size_hint() {
-        let xs = [(1, 1), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6)];
+        let xs = [(1i, 1i), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6)];
 
         let map: HashMap<int, int> = xs.iter().map(|&x| x).collect();
 
@@ -2141,7 +2141,7 @@ mod test_map {
 
     #[test]
     fn test_mut_size_hint() {
-        let xs = [(1, 1), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6)];
+        let xs = [(1i, 1i), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6)];
 
         let mut map: HashMap<int, int> = xs.iter().map(|&x| x).collect();
 
@@ -2167,8 +2167,8 @@ mod test_set {
         let mut ys = HashSet::new();
         assert!(xs.is_disjoint(&ys));
         assert!(ys.is_disjoint(&xs));
-        assert!(xs.insert(5));
-        assert!(ys.insert(11));
+        assert!(xs.insert(5i));
+        assert!(ys.insert(11i));
         assert!(xs.is_disjoint(&ys));
         assert!(ys.is_disjoint(&xs));
         assert!(xs.insert(7));
@@ -2186,13 +2186,13 @@ mod test_set {
     #[test]
     fn test_subset_and_superset() {
         let mut a = HashSet::new();
-        assert!(a.insert(0));
+        assert!(a.insert(0i));
         assert!(a.insert(5));
         assert!(a.insert(11));
         assert!(a.insert(7));
 
         let mut b = HashSet::new();
-        assert!(b.insert(0));
+        assert!(b.insert(0i));
         assert!(b.insert(7));
         assert!(b.insert(19));
         assert!(b.insert(250));
@@ -2230,7 +2230,7 @@ mod test_set {
         let mut a = HashSet::new();
         let mut b = HashSet::new();
 
-        assert!(a.insert(11));
+        assert!(a.insert(11i));
         assert!(a.insert(1));
         assert!(a.insert(3));
         assert!(a.insert(77));
@@ -2238,7 +2238,7 @@ mod test_set {
         assert!(a.insert(5));
         assert!(a.insert(-5));
 
-        assert!(b.insert(2));
+        assert!(b.insert(2i));
         assert!(b.insert(11));
         assert!(b.insert(77));
         assert!(b.insert(-9));
@@ -2260,13 +2260,13 @@ mod test_set {
         let mut a = HashSet::new();
         let mut b = HashSet::new();
 
-        assert!(a.insert(1));
+        assert!(a.insert(1i));
         assert!(a.insert(3));
         assert!(a.insert(5));
         assert!(a.insert(9));
         assert!(a.insert(11));
 
-        assert!(b.insert(3));
+        assert!(b.insert(3i));
         assert!(b.insert(9));
 
         let mut i = 0;
@@ -2283,13 +2283,13 @@ mod test_set {
         let mut a = HashSet::new();
         let mut b = HashSet::new();
 
-        assert!(a.insert(1));
+        assert!(a.insert(1i));
         assert!(a.insert(3));
         assert!(a.insert(5));
         assert!(a.insert(9));
         assert!(a.insert(11));
 
-        assert!(b.insert(-2));
+        assert!(b.insert(-2i));
         assert!(b.insert(3));
         assert!(b.insert(9));
         assert!(b.insert(14));
@@ -2309,7 +2309,7 @@ mod test_set {
         let mut a = HashSet::new();
         let mut b = HashSet::new();
 
-        assert!(a.insert(1));
+        assert!(a.insert(1i));
         assert!(a.insert(3));
         assert!(a.insert(5));
         assert!(a.insert(9));
@@ -2318,7 +2318,7 @@ mod test_set {
         assert!(a.insert(19));
         assert!(a.insert(24));
 
-        assert!(b.insert(-2));
+        assert!(b.insert(-2i));
         assert!(b.insert(1));
         assert!(b.insert(5));
         assert!(b.insert(9));
@@ -2336,7 +2336,7 @@ mod test_set {
 
     #[test]
     fn test_from_iter() {
-        let xs = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+        let xs = [1i, 2, 3, 4, 5, 6, 7, 8, 9];
 
         let set: HashSet<int> = xs.iter().map(|&x| x).collect();
 
@@ -2366,13 +2366,13 @@ mod test_set {
         // I'm keeping them around to prevent a regression.
         let mut s1 = HashSet::new();
 
-        s1.insert(1);
+        s1.insert(1i);
         s1.insert(2);
         s1.insert(3);
 
         let mut s2 = HashSet::new();
 
-        s2.insert(1);
+        s2.insert(1i);
         s2.insert(2);
 
         assert!(s1 != s2);
@@ -2387,7 +2387,7 @@ mod test_set {
         let mut set: HashSet<int> = HashSet::new();
         let empty: HashSet<int> = HashSet::new();
 
-        set.insert(1);
+        set.insert(1i);
         set.insert(2);
 
         let set_str = format!("{}", set);
@@ -2421,7 +2421,7 @@ mod bench {
 
         b.iter(|| {
             let mut m = HashMap::new();
-            m.insert(0, 0);
+            m.insert(0i, 0i);
             assert_eq!(m.len(), 1);
         })
     }
@@ -2432,7 +2432,7 @@ mod bench {
 
         let mut m = HashMap::new();
 
-        for i in range_inclusive(1, 1000) {
+        for i in range_inclusive(1i, 1000) {
             m.insert(i, i);
         }
 
@@ -2450,12 +2450,12 @@ mod bench {
 
         let mut m = HashMap::new();
 
-        for i in range_inclusive(1, 1000) {
+        for i in range_inclusive(1i, 1000) {
             m.insert(i, i);
         }
 
         b.iter(|| {
-            for i in range_inclusive(1, 1000) {
+            for i in range_inclusive(1i, 1000) {
                 m.contains_key(&i);
             }
         });
@@ -2467,12 +2467,12 @@ mod bench {
 
         let mut m = HashMap::new();
 
-        for i in range_inclusive(1, 1000) {
+        for i in range_inclusive(1i, 1000) {
             m.insert(i, i);
         }
 
         b.iter(|| {
-            for i in range_inclusive(1001, 2000) {
+            for i in range_inclusive(1001i, 2000) {
                 m.contains_key(&i);
             }
         });
@@ -2484,11 +2484,11 @@ mod bench {
 
         let mut m = HashMap::new();
 
-        for i in range_inclusive(1, 1000) {
+        for i in range_inclusive(1i, 1000) {
             m.insert(i, i);
         }
 
-        let mut k = 1;
+        let mut k = 1i;
 
         b.iter(|| {
             m.pop(&k);
@@ -2503,11 +2503,11 @@ mod bench {
 
         let mut m = HashMap::new();
 
-        for i in range_inclusive(1, 1000) {
+        for i in range_inclusive(1i, 1000) {
             m.insert(i, i);
         }
 
-        let mut k = 1;
+        let mut k = 1i;
 
         b.iter(|| {
             m.find(&(k + 400));

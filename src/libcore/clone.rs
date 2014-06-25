@@ -21,6 +21,8 @@ the `clone` method.
 
 */
 
+#![unstable]
+
 /// A common trait for cloning an object.
 pub trait Clone {
     /// Returns a copy of the value. The contents of owned pointers
@@ -34,6 +36,7 @@ pub trait Clone {
     /// but can be overridden to reuse the resources of `a` to avoid unnecessary
     /// allocations.
     #[inline(always)]
+    #[experimental = "this function is mostly unused"]
     fn clone_from(&mut self, source: &Self) {
         *self = source.clone()
     }
@@ -88,6 +91,7 @@ clone_impl!(char)
 
 macro_rules! extern_fn_clone(
     ($($A:ident),*) => (
+        #[experimental = "this may not be sufficient for fns with region parameters"]
         impl<$($A,)* ReturnType> Clone for extern "Rust" fn($($A),*) -> ReturnType {
             /// Return a copy of a function pointer
             #[inline]
@@ -146,8 +150,8 @@ mod test {
 
     #[test]
     fn test_clone_from() {
-        let a = box 5;
-        let mut b = box 10;
+        let a = box 5i;
+        let mut b = box 10i;
         realclone_from(&mut b, &a);
         assert_eq!(*b, 5);
     }

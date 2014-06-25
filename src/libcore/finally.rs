@@ -122,7 +122,7 @@ mod test {
 
     #[test]
     fn test_success() {
-        let mut i = 0;
+        let mut i = 0i;
         try_finally(
             &mut i, (),
             |i, ()| {
@@ -139,7 +139,7 @@ mod test {
     #[test]
     #[should_fail]
     fn test_fail() {
-        let mut i = 0;
+        let mut i = 0i;
         try_finally(
             &mut i, (),
             |i, ()| {

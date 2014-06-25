@@ -577,7 +577,7 @@ This is equivalent to the previous definition.
 Named lifetime notation can also be used to control the flow of execution:
 
 ~~~
-'h: for i in range(0,10) {
+'h: for i in range(0u, 10) {
     'g: loop {
         if i % 2 == 0 { continue 'h; }
         if i == 9 { break 'h; }

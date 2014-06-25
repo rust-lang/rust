@@ -22,7 +22,7 @@ fn start(argc: int, argv: **u8) -> int {
 }
 
 fn main() {
-    for _ in range(1, 100_000) {
+    for _ in range(1u32, 100_000) {
         spawn(proc() {})
     }
 }

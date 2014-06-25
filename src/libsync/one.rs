@@ -129,7 +129,7 @@ mod test {
     #[test]
     fn smoke_once() {
         static mut o: Once = ONCE_INIT;
-        let mut a = 0;
+        let mut a = 0i;
         unsafe { o.doit(|| a += 1); }
         assert_eq!(a, 1);
         unsafe { o.doit(|| a += 1); }
@@ -142,10 +142,10 @@ mod test {
         static mut run: bool = false;
 
         let (tx, rx) = channel();
-        for _ in range(0, 10) {
+        for _ in range(0u, 10) {
             let tx = tx.clone();
             spawn(proc() {
-                for _ in range(0, 4) { task::deschedule() }
+                for _ in range(0u, 4) { task::deschedule() }
                 unsafe {
                     o.doit(|| {
                         assert!(!run);
@@ -165,7 +165,7 @@ mod test {
             assert!(run);
         }
 
-        for _ in range(0, 10) {
+        for _ in range(0u, 10) {
             rx.recv();
         }
     }
