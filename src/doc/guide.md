@@ -264,26 +264,139 @@ projects.
 
 ## Hello, Cargo!
 
+[Cargo](http://crates.io) is a tool that Rustaceans use to help manage their
+Rust projects. Cargo is currently in an alpha state, just like Rust, and so it
+is still a work in progress. However, it is already good enough to use for many
+Rust projects, and so it is assumed that Rust projects will use Cargo from the
+beginning.
 
+Programmers love car analogies, so I've got a good one for you to think about
+the relationship between `cargo` and `rustc`: `rustc` is like a car, and
+`cargo` is like a robotic driver. You can drive your car yourself, of course,
+but isn't it just easier to let a computer drive it for you?
 
+Anyway, Cargo manages three things: building your code, downloading the
+dependencies your code needs, and building the dependencies your code needs.
+At first, your program doesn't have any dependencies, so we'll only be using
+the first part of its functionality. Eventually, we'll add more. Since we
+started off by using Cargo, it'll be easy to add later.
 
+Let's convert Hello World to Cargo. The first thing we need to do is install
+it. To do this, we need to build it from source. There are no binaries yet.
 
+First, let's go back to our projects directory. We don't want Cargo to
+live in our project!
 
+```{bash}
+$ cd ..
+```
 
+Next, we need these commands:
 
+```{bash}
+$ git clone --recursive https://github.com/rust-lang/cargo
+$ cd cargo
+$ make
+$ make install # may need sudo or admin permissions
+```
 
+The `--recursive` downloads Cargo's own dependencies. You can't use Cargo to
+fetch dependencies until you have Cargo installed!
 
+Let's see if that worked. Try this:
 
+```{bash}
+$ cargo
+Commands:
+  build          # compile the current project
 
+Options (for all commands):
 
+-v, [--verbose]
+-h, [--help]
+```
 
+If you see this output when you run `cargo`, congrats! Cargo is working. If
+not, please [open an Issue](https://github.com/rust-lang/cargo/issues/new) or
+drop by the Rust IRC, and we can help you out.
 
+Let's move back into our `hello_world` directory now:
 
+```{bash}
+$ cd ..              # move back up into projects
+$ cd hello_world     # move into hello_world
+```
 
+To Cargo-ify our project, we need to do two things: Make a `Cargo.toml`
+configuration file, and put our source file in the right place. Let's
+do that part first:
 
+```{bash}
+$ mkdir src
+$ mv hello_world.rs src/hello_world.rs
+```
 
+Cargo expects your source files to live inside a `src` directory. That leaves
+the top level for other things, like READMEs, licence information, and anything
+not related to your code. Cargo helps us keep our projects nice and tidy. A
+place for everything, and everything in its place.
 
+Next, our configuration file:
 
+```{bash}
+$ editor Cargo.toml
+```
 
+Make sure to get this name right: you need the capital `C`!
 
+Put this inside:
 
+```
+[package]
+
+name = "hello_world"
+version = "0.1.0"
+authors = [ "someone@example.com" ]
+
+[[bin]]
+
+name = "hello_world"
+```
+
+This file is in the [TOML](https://github.com/toml-lang/toml) format. Let's let
+it explain itself to you:
+
+> TOML aims to be a minimal configuration file format that's easy to read due
+> to obvious semantics. TOML is designed to map unambiguously to a hash table.
+> TOML should be easy to parse into data structures in a wide variety of
+> languages.
+
+TOML is very similar to INI, but with some extra goodies.
+
+Anyway, there are two **table**s in this file: `package` and `bin`. The first
+tells Cargo metadata about your package. The second tells Cargo that we're
+interested in building a binary, not a library (though we could do both!), as
+well as what it is named.
+
+Once you have this file in place, we should be ready to build! Try this:
+
+```{bash}
+$ cargo build
+   Compiling hello_world v0.1.0 (file:/home/yourname/projects/hello_world)
+$ ./target/hello_world 
+Hello, world!
+```
+
+Bam! We build our project with `cargo build`, and run it with
+`./target/hello_world`. This hasn't bought us a whole lot over our simple use
+of `rustc`, but think about the future: when our project has more tha one file,
+we would need to call `rustc` twice, and pass it a bunch of options to tell it
+to build everything together. With Cargo, as our project grows, we can just
+`cargo build` and it'll work the right way.
+
+That's it! We've successfully built `hello_world` with Cargo. Even though our
+program is simple, it's using all of the real tooling that you'll use for the
+rest of your Rust career.
+
+Next, we'll learn more about Rust itself, by starting to write a more complicated
+program. We hope you want to do more with Rust than just print "Hello, world!"
