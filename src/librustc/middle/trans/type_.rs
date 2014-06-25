@@ -88,10 +88,6 @@ impl Type {
         ty!(llvm::LLVMDoubleTypeInContext(ccx.llcx))
     }
 
-    pub fn f128(ccx: &CrateContext) -> Type {
-        ty!(llvm::LLVMFP128TypeInContext(ccx.llcx))
-    }
-
     pub fn bool(ccx: &CrateContext) -> Type {
         Type::i1(ccx)
     }
@@ -135,7 +131,6 @@ impl Type {
         match t {
             ast::TyF32 => Type::f32(ccx),
             ast::TyF64 => Type::f64(ccx),
-            ast::TyF128 => Type::f128(ccx)
         }
     }
 

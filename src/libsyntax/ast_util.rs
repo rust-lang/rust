@@ -168,7 +168,6 @@ pub fn float_ty_to_str(t: FloatTy) -> String {
     match t {
         TyF32 => "f32".to_string(),
         TyF64 => "f64".to_string(),
-        TyF128 => "f128".to_string(),
     }
 }
 
