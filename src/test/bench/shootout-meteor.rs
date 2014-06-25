@@ -136,7 +136,7 @@ fn mask(dy: int, dx: int, id: uint, p: &Vec<(int, int)>) -> Option<u64> {
         if x < 0 || x > 4 {return None;}
         let y = y + dy;
         if y < 0 || y > 9 {return None;}
-        m |= 1 << (y * 5 + x);
+        m |= 1 << (y * 5 + x) as uint;
     }
     Some(m)
 }
@@ -146,16 +146,16 @@ fn mask(dy: int, dx: int, id: uint, p: &Vec<(int, int)>) -> Option<u64> {
 // (i/5, i%5).
 fn make_masks() -> Vec<Vec<Vec<u64> > > {
     let pieces = vec!(
-        vec!((0,0),(0,1),(0,2),(0,3),(1,3)),
-        vec!((0,0),(0,2),(0,3),(1,0),(1,1)),
-        vec!((0,0),(0,1),(0,2),(1,2),(2,1)),
-        vec!((0,0),(0,1),(0,2),(1,1),(2,1)),
-        vec!((0,0),(0,2),(1,0),(1,1),(2,1)),
-        vec!((0,0),(0,1),(0,2),(1,1),(1,2)),
-        vec!((0,0),(0,1),(1,1),(1,2),(2,1)),
-        vec!((0,0),(0,1),(0,2),(1,0),(1,2)),
-        vec!((0,0),(0,1),(0,2),(1,2),(1,3)),
-        vec!((0,0),(0,1),(0,2),(0,3),(1,2)));
+        vec!((0i,0i),(0,1),(0,2),(0,3),(1,3)),
+        vec!((0i,0i),(0,2),(0,3),(1,0),(1,1)),
+        vec!((0i,0i),(0,1),(0,2),(1,2),(2,1)),
+        vec!((0i,0i),(0,1),(0,2),(1,1),(2,1)),
+        vec!((0i,0i),(0,2),(1,0),(1,1),(2,1)),
+        vec!((0i,0i),(0,1),(0,2),(1,1),(1,2)),
+        vec!((0i,0i),(0,1),(1,1),(1,2),(2,1)),
+        vec!((0i,0i),(0,1),(0,2),(1,0),(1,2)),
+        vec!((0i,0i),(0,1),(0,2),(1,2),(1,3)),
+        vec!((0i,0i),(0,1),(0,2),(0,3),(1,2)));
 
     // To break the central symetry of the problem, every
     // transformation must be taken except for one piece (piece 3
@@ -165,7 +165,7 @@ fn make_masks() -> Vec<Vec<Vec<u64> > > {
         .map(|(id, p)| transform(p, id != 3))
         .collect();
 
-    range(0, 50).map(|yx| {
+    range(0i, 50).map(|yx| {
         transforms.iter().enumerate().map(|(id, t)| {
             t.iter().filter_map(|p| mask(yx / 5, yx % 5, id, p)).collect()
         }).collect()
@@ -208,7 +208,7 @@ fn filter_masks(masks: &mut Vec<Vec<Vec<u64>>>) {
 // Gets the identifier of a mask.
 fn get_id(m: u64) -> u8 {
     for id in range(0u8, 10) {
-        if m & (1 << (id + 50)) != 0 {return id;}
+        if m & (1 << (id + 50) as uint) != 0 {return id;}
     }
     fail!("{:016x} does not have a valid identifier", m);
 }

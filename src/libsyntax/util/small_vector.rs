@@ -173,7 +173,7 @@ mod test {
     #[test]
     fn test_push_get() {
         let mut v = SmallVector::zero();
-        v.push(1);
+        v.push(1i);
         assert_eq!(1, v.len());
         assert_eq!(&1, v.get(0));
         v.push(2);
@@ -186,7 +186,7 @@ mod test {
 
     #[test]
     fn test_from_iter() {
-        let v: SmallVector<int> = (vec!(1, 2, 3)).move_iter().collect();
+        let v: SmallVector<int> = (vec!(1i, 2, 3)).move_iter().collect();
         assert_eq!(3, v.len());
         assert_eq!(&1, v.get(0));
         assert_eq!(&2, v.get(1));
@@ -199,11 +199,11 @@ mod test {
         let v: Vec<int> = v.move_iter().collect();
         assert_eq!(Vec::new(), v);
 
-        let v = SmallVector::one(1);
-        assert_eq!(vec!(1), v.move_iter().collect());
+        let v = SmallVector::one(1i);
+        assert_eq!(vec!(1i), v.move_iter().collect());
 
-        let v = SmallVector::many(vec!(1, 2, 3));
-        assert_eq!(vec!(1, 2, 3), v.move_iter().collect());
+        let v = SmallVector::many(vec!(1i, 2i, 3i));
+        assert_eq!(vec!(1i, 2i, 3i), v.move_iter().collect());
     }
 
     #[test]
@@ -220,7 +220,7 @@ mod test {
 
     #[test]
     fn test_expect_one_one() {
-        assert_eq!(1, SmallVector::one(1).expect_one(""));
-        assert_eq!(1, SmallVector::many(vec!(1)).expect_one(""));
+        assert_eq!(1i, SmallVector::one(1i).expect_one(""));
+        assert_eq!(1i, SmallVector::many(vec!(1i)).expect_one(""));
     }
 }

@@ -658,11 +658,11 @@ impl<T: Writer> ConsoleTestState<T> {
     }
 
     pub fn write_metric_diff(&mut self, diff: &MetricDiff) -> io::IoResult<()> {
-        let mut noise = 0;
-        let mut improved = 0;
-        let mut regressed = 0;
-        let mut added = 0;
-        let mut removed = 0;
+        let mut noise = 0u;
+        let mut improved = 0u;
+        let mut regressed = 0u;
+        let mut added = 0u;
+        let mut removed = 0u;
 
         for (k, v) in diff.iter() {
             match *v {

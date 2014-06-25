@@ -1030,16 +1030,16 @@ mod test_treemap {
     #[test]
     fn find_not_found() {
         let mut m = TreeMap::new();
-        assert!(m.insert(1, 2));
-        assert!(m.insert(5, 3));
-        assert!(m.insert(9, 3));
+        assert!(m.insert(1i, 2i));
+        assert!(m.insert(5i, 3i));
+        assert!(m.insert(9i, 3i));
         assert_eq!(m.find(&2), None);
     }
 
     #[test]
     fn test_find_mut() {
         let mut m = TreeMap::new();
-        assert!(m.insert(1, 12));
+        assert!(m.insert(1i, 12i));
         assert!(m.insert(2, 8));
         assert!(m.insert(5, 14));
         let new = 100;
@@ -1052,7 +1052,7 @@ mod test_treemap {
     #[test]
     fn insert_replace() {
         let mut m = TreeMap::new();
-        assert!(m.insert(5, 2));
+        assert!(m.insert(5i, 2i));
         assert!(m.insert(2, 9));
         assert!(!m.insert(2, 11));
         assert_eq!(m.find(&2).unwrap(), &11);
@@ -1062,7 +1062,7 @@ mod test_treemap {
     fn test_clear() {
         let mut m = TreeMap::new();
         m.clear();
-        assert!(m.insert(5, 11));
+        assert!(m.insert(5i, 11i));
         assert!(m.insert(12, -3));
         assert!(m.insert(19, 2));
         m.clear();
@@ -1159,8 +1159,8 @@ mod test_treemap {
 
         let mut rng: rand::IsaacRng = rand::SeedableRng::from_seed(&[42]);
 
-        for _ in range(0, 3) {
-            for _ in range(0, 90) {
+        for _ in range(0u, 3) {
+            for _ in range(0u, 90) {
                 let k = rng.gen();
                 let v = rng.gen();
                 if !ctrl.iter().any(|x| x == &(k, v)) {
@@ -1171,7 +1171,7 @@ mod test_treemap {
                 }
             }
 
-            for _ in range(0, 30) {
+            for _ in range(0u, 30) {
                 let r = rng.gen_range(0, ctrl.len());
                 let (key, _) = ctrl.remove(r).unwrap();
                 assert!(map.remove(&key));
@@ -1184,7 +1184,7 @@ mod test_treemap {
     #[test]
     fn test_len() {
         let mut m = TreeMap::new();
-        assert!(m.insert(3, 6));
+        assert!(m.insert(3i, 6i));
         assert_eq!(m.len(), 1);
         assert!(m.insert(0, 0));
         assert_eq!(m.len(), 2);
@@ -1204,7 +1204,7 @@ mod test_treemap {
     fn test_iterator() {
         let mut m = TreeMap::new();
 
-        assert!(m.insert(3, 6));
+        assert!(m.insert(3i, 6i));
         assert!(m.insert(0, 0));
         assert!(m.insert(4, 8));
         assert!(m.insert(2, 4));
@@ -1222,11 +1222,11 @@ mod test_treemap {
     #[test]
     fn test_interval_iteration() {
         let mut m = TreeMap::new();
-        for i in range(1, 100) {
+        for i in range(1i, 100i) {
             assert!(m.insert(i * 2, i * 4));
         }
 
-        for i in range(1, 198) {
+        for i in range(1i, 198i) {
             let mut lb_it = m.lower_bound(&i);
             let (&k, &v) = lb_it.next().unwrap();
             let lb = i + i % 2;
@@ -1247,7 +1247,7 @@ mod test_treemap {
     fn test_rev_iter() {
         let mut m = TreeMap::new();
 
-        assert!(m.insert(3, 6));
+        assert!(m.insert(3i, 6i));
         assert!(m.insert(0, 0));
         assert!(m.insert(4, 8));
         assert!(m.insert(2, 4));
@@ -1296,19 +1296,19 @@ mod test_treemap {
     fn test_mut_interval_iter() {
         let mut m_lower = TreeMap::new();
         let mut m_upper = TreeMap::new();
-        for i in range(1, 100) {
+        for i in range(1i, 100i) {
             assert!(m_lower.insert(i * 2, i * 4));
             assert!(m_upper.insert(i * 2, i * 4));
         }
 
-        for i in range(1, 199) {
+        for i in range(1i, 199) {
             let mut lb_it = m_lower.mut_lower_bound(&i);
             let (&k, v) = lb_it.next().unwrap();
             let lb = i + i % 2;
             assert_eq!(lb, k);
             *v -= k;
         }
-        for i in range(0, 198) {
+        for i in range(0i, 198) {
             let mut ub_it = m_upper.mut_upper_bound(&i);
             let (&k, v) = ub_it.next().unwrap();
             let ub = i + 2 - i % 2;
@@ -1330,7 +1330,7 @@ mod test_treemap {
         let mut b = TreeMap::new();
 
         assert!(a == b);
-        assert!(a.insert(0, 5));
+        assert!(a.insert(0i, 5i));
         assert!(a != b);
         assert!(b.insert(0, 4));
         assert!(a != b);
@@ -1348,7 +1348,7 @@ mod test_treemap {
         let mut b = TreeMap::new();
 
         assert!(!(a < b) && !(b < a));
-        assert!(b.insert(0, 5));
+        assert!(b.insert(0i, 5i));
         assert!(a < b);
         assert!(a.insert(0, 7));
         assert!(!(a < b) && b < a);
@@ -1366,7 +1366,7 @@ mod test_treemap {
         let mut b = TreeMap::new();
 
         assert!(a <= b && a >= b);
-        assert!(a.insert(1, 1));
+        assert!(a.insert(1i, 1i));
         assert!(a > b && a >= b);
         assert!(b < a && b <= a);
         assert!(b.insert(2, 2));
@@ -1391,7 +1391,7 @@ mod test_treemap {
     #[test]
     fn test_lazy_iterator() {
         let mut m = TreeMap::new();
-        let (x1, y1) = (2, 5);
+        let (x1, y1) = (2i, 5i);
         let (x2, y2) = (9, 12);
         let (x3, y3) = (20, -3);
         let (x4, y4) = (29, 5);
@@ -1437,7 +1437,7 @@ mod test_treemap {
 
     #[test]
     fn test_from_iter() {
-        let xs = [(1, 1), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6)];
+        let xs = [(1i, 1i), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6)];
 
         let map: TreeMap<int, int> = xs.iter().map(|&x| x).collect();
 
@@ -1519,7 +1519,7 @@ mod test_set {
     fn test_clear() {
         let mut s = TreeSet::new();
         s.clear();
-        assert!(s.insert(5));
+        assert!(s.insert(5i));
         assert!(s.insert(12));
         assert!(s.insert(19));
         s.clear();
@@ -1535,8 +1535,8 @@ mod test_set {
         let mut ys = TreeSet::new();
         assert!(xs.is_disjoint(&ys));
         assert!(ys.is_disjoint(&xs));
-        assert!(xs.insert(5));
-        assert!(ys.insert(11));
+        assert!(xs.insert(5i));
+        assert!(ys.insert(11i));
         assert!(xs.is_disjoint(&ys));
         assert!(ys.is_disjoint(&xs));
         assert!(xs.insert(7));
@@ -1554,13 +1554,13 @@ mod test_set {
     #[test]
     fn test_subset_and_superset() {
         let mut a = TreeSet::new();
-        assert!(a.insert(0));
+        assert!(a.insert(0i));
         assert!(a.insert(5));
         assert!(a.insert(11));
         assert!(a.insert(7));
 
         let mut b = TreeSet::new();
-        assert!(b.insert(0));
+        assert!(b.insert(0i));
         assert!(b.insert(7));
         assert!(b.insert(19));
         assert!(b.insert(250));
@@ -1584,7 +1584,7 @@ mod test_set {
     fn test_iterator() {
         let mut m = TreeSet::new();
 
-        assert!(m.insert(3));
+        assert!(m.insert(3i));
         assert!(m.insert(0));
         assert!(m.insert(4));
         assert!(m.insert(2));
@@ -1601,7 +1601,7 @@ mod test_set {
     fn test_rev_iter() {
         let mut m = TreeSet::new();
 
-        assert!(m.insert(3));
+        assert!(m.insert(3i));
         assert!(m.insert(0));
         assert!(m.insert(4));
         assert!(m.insert(2));
@@ -1616,7 +1616,7 @@ mod test_set {
 
     #[test]
     fn test_move_iter() {
-        let s: TreeSet<int> = range(0, 5).collect();
+        let s: TreeSet<int> = range(0i, 5).collect();
 
         let mut n = 0;
         for x in s.move_iter() {
@@ -1627,7 +1627,7 @@ mod test_set {
 
     #[test]
     fn test_move_iter_size_hint() {
-        let s: TreeSet<int> = vec!(0, 1).move_iter().collect();
+        let s: TreeSet<int> = vec!(0i, 1).move_iter().collect();
 
         let mut it = s.move_iter();
 
@@ -1645,7 +1645,7 @@ mod test_set {
     fn test_clone_eq() {
       let mut m = TreeSet::new();
 
-      m.insert(1);
+      m.insert(1i);
       m.insert(2);
 
       assert!(m.clone() == m);
@@ -1762,22 +1762,22 @@ mod test_set {
     #[test]
     fn test_swap() {
         let mut m = TreeMap::new();
-        assert_eq!(m.swap(1, 2), None);
-        assert_eq!(m.swap(1, 3), Some(2));
-        assert_eq!(m.swap(1, 4), Some(3));
+        assert_eq!(m.swap(1u, 2i), None);
+        assert_eq!(m.swap(1u, 3i), Some(2));
+        assert_eq!(m.swap(1u, 4i), Some(3));
     }
 
     #[test]
     fn test_pop() {
         let mut m = TreeMap::new();
-        m.insert(1, 2);
+        m.insert(1u, 2i);
         assert_eq!(m.pop(&1), Some(2));
         assert_eq!(m.pop(&1), None);
     }
 
     #[test]
     fn test_from_iter() {
-        let xs = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+        let xs = [1i, 2, 3, 4, 5, 6, 7, 8, 9];
 
         let set: TreeSet<int> = xs.iter().map(|&x| x).collect();
 

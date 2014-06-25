@@ -15,23 +15,23 @@
 use std::gc::GC;
 
 fn testfn(cond: bool) {
-    let mut x = box(GC) 3;
-    let mut y = box(GC) 4;
+    let mut x = box(GC) 3i;
+    let mut y = box(GC) 4i;
 
     let mut a = &*x;
 
-    let mut exp = 3;
+    let mut exp = 3i;
     if cond {
         a = &*y;
 
         exp = 4;
     }
 
-    x = box(GC) 5; //~ERROR cannot assign to `x` because it is borrowed
-    y = box(GC) 6; //~ERROR cannot assign to `y` because it is borrowed
+    x = box(GC) 5i; //~ERROR cannot assign to `x` because it is borrowed
+    y = box(GC) 6i; //~ERROR cannot assign to `y` because it is borrowed
     assert_eq!(*a, exp);
-    assert_eq!(x, box(GC) 5);
-    assert_eq!(y, box(GC) 6);
+    assert_eq!(x, box(GC) 5i);
+    assert_eq!(y, box(GC) 6i);
 }
 
 pub fn main() {}

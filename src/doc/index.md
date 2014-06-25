@@ -28,7 +28,6 @@ li {list-style-type: none; }
 * [Language Design FAQ](complement-design-faq.html)
 * [Language FAQ](complement-lang-faq.html)
 * [Project FAQ](complement-project-faq.html)
-* [Code cheatsheet](complement-cheatsheet.html) - "How do I do X?"
 * [How to submit a bug report](complement-bugreport.html)
 
 # Libraries

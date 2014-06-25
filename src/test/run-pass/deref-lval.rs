@@ -16,7 +16,7 @@ use std::cell::Cell;
 use std::gc::GC;
 
 pub fn main() {
-    let x = box(GC) Cell::new(5);
-    x.set(1000);
+    let x = box(GC) Cell::new(5i);
+    x.set(1000i);
     println!("{:?}", x.get());
 }

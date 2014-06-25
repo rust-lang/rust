@@ -10,6 +10,7 @@
 
 //! Operations and constants for unsigned 8-bits integers (`u8` type)
 
+#![unstable]
 #![doc(primitive = "u8")]
 
 use from_str::FromStr;

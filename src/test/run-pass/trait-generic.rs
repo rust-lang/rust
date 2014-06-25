@@ -29,9 +29,8 @@ trait map<T> {
 impl<T> map<T> for Vec<T> {
     fn map<U>(&self, f: |&T| -> U) -> Vec<U> {
         let mut r = Vec::new();
-        // FIXME: #7355 generates bad code with VecIterator
-        for i in range(0u, self.len()) {
-            r.push(f(self.get(i)));
+        for i in self.iter() {
+            r.push(f(i));
         }
         r
     }
@@ -45,7 +44,7 @@ fn bar<U:to_str,T:map<U>>(x: T) -> Vec<String> {
 }
 
 pub fn main() {
-    assert_eq!(foo(vec!(1)), vec!("hi".to_string()));
+    assert_eq!(foo(vec!(1i)), vec!("hi".to_string()));
     assert_eq!(bar::<int, Vec<int> >(vec!(4, 5)), vec!("4".to_string(), "5".to_string()));
     assert_eq!(bar::<String, Vec<String> >(vec!("x".to_string(), "y".to_string())),
                vec!("x".to_string(), "y".to_string()));

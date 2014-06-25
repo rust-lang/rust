@@ -624,7 +624,7 @@ pub mod test {
     #[test]
     fn test_ptr_addition() {
         unsafe {
-            let xs = Vec::from_elem(16, 5);
+            let xs = Vec::from_elem(16, 5i);
             let mut ptr = xs.as_ptr();
             let end = ptr.offset(16);
 
@@ -642,7 +642,7 @@ pub mod test {
                 m_ptr = m_ptr.offset(1);
             }
 
-            assert!(xs_mut == Vec::from_elem(16, 10));
+            assert!(xs_mut == Vec::from_elem(16, 10i));
         }
     }
 
@@ -719,8 +719,8 @@ pub mod test {
             ];
 
             let arr_ptr = arr.as_ptr();
-            let mut ctr = 0;
-            let mut iteration_count = 0;
+            let mut ctr = 0u;
+            let mut iteration_count = 0u;
             array_each(arr_ptr, |e| {
                     let actual = str::raw::from_c_str(e);
                     let expected = expected_arr[ctr].with_ref(|buf| {

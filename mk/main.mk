@@ -42,9 +42,9 @@ SPACE :=
 SPACE +=
 ifneq ($(wildcard $(subst $(SPACE),\$(SPACE),$(CFG_GIT))),)
 ifneq ($(wildcard $(subst $(SPACE),\$(SPACE),$(CFG_GIT_DIR))),)
-    CFG_VERSION += $(shell git --git-dir='$(CFG_GIT_DIR)' log -1 \
-                     --pretty=format:'(%h %ci)')
+    CFG_VER_DATE = $(shell git --git-dir='$(CFG_GIT_DIR)' log -1 --pretty=format:'%ci')
     CFG_VER_HASH = $(shell git --git-dir='$(CFG_GIT_DIR)' rev-parse HEAD)
+    CFG_VERSION += ($(CFG_VER_HASH) $(CFG_VER_DATE))
 endif
 endif
 
@@ -272,6 +272,12 @@ $(foreach host,$(CFG_HOST), \
 
 export CFG_SRC_DIR
 export CFG_BUILD_DIR
+ifdef CFG_VER_DATE
+export CFG_VER_DATE
+endif
+ifdef CFG_VER_HASH
+export CFG_VER_HASH
+endif
 export CFG_VERSION
 export CFG_VERSION_WIN
 export CFG_RELEASE

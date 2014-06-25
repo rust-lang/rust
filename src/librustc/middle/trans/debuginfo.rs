@@ -2095,7 +2095,9 @@ impl EnumMemberDescriptionFactory {
                 let null_variant_index = (1 - non_null_variant_index) as uint;
                 let null_variant_ident = self.variants.get(null_variant_index).name;
                 let null_variant_name = token::get_ident(null_variant_ident);
-                let union_member_name = format!("RUST$ENCODED$ENUM${}${}", 0, null_variant_name);
+                let union_member_name = format!("RUST$ENCODED$ENUM${}${}",
+                                                0u,
+                                                null_variant_name);
 
                 // Finally create the (singleton) list of descriptions of union
                 // members.
@@ -3150,7 +3152,7 @@ fn set_debug_location(cx: &CrateContext, debug_location: DebugLocation) {
 
     match debug_location {
         KnownLocation { scope, line, .. } => {
-            let col = 0; // Always set the column to zero like Clang and GCC
+            let col = 0u; // Always set the column to zero like Clang and GCC
             debug!("setting debug location to {} {}", line, col);
             let elements = [C_i32(cx, line as i32), C_i32(cx, col as i32), scope, ptr::null()];
             unsafe {

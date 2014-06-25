@@ -481,7 +481,7 @@ fn fixup_ty(vcx: &VtableContext,
             is_early: bool)
             -> Option<ty::t> {
     let tcx = vcx.tcx();
-    match resolve_type(vcx.infcx, ty, resolve_and_force_all_but_regions) {
+    match resolve_type(vcx.infcx, Some(span), ty, resolve_and_force_all_but_regions) {
         Ok(new_type) => Some(new_type),
         Err(e) if !is_early => {
             tcx.sess.span_fatal(span,

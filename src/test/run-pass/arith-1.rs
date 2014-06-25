@@ -22,7 +22,7 @@ pub fn main() {
     assert_eq!(i32_a * i32_a * i32_a, 1000);
     assert_eq!(i32_a * i32_a * i32_a * i32_a, 10000);
     assert_eq!(i32_a * i32_a / i32_a * i32_a, 100);
-    assert_eq!(i32_a * (i32_a - 1) << 2 + i32_a, 368640);
+    assert_eq!(i32_a * (i32_a - 1) << (2 + i32_a as uint), 368640);
     let i32_b: int = 0x10101010;
     assert_eq!(i32_b + 1 - 1, i32_b);
     assert_eq!(i32_b << 1, i32_b << 1);

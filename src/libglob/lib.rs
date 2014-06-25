@@ -686,13 +686,13 @@ mod test {
     fn test_range_pattern() {
 
         let pat = Pattern::new("a[0-9]b");
-        for i in range(0, 10) {
+        for i in range(0u, 10) {
             assert!(pat.matches(format!("a{}b", i).as_slice()));
         }
         assert!(!pat.matches("a_b"));
 
         let pat = Pattern::new("a[!0-9]b");
-        for i in range(0, 10) {
+        for i in range(0u, 10) {
             assert!(!pat.matches(format!("a{}b", i).as_slice()));
         }
         assert!(pat.matches("a_b"));

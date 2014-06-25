@@ -38,9 +38,9 @@
 //! Using methods:
 //!
 //! ```
-//! let pair = ("pi", 3.14);
+//! let pair = ("pi", 3.14f64);
 //! assert_eq!(pair.val0(), "pi");
-//! assert_eq!(pair.val1(), 3.14);
+//! assert_eq!(pair.val1(), 3.14f64);
 //! ```
 //!
 //! Using traits implemented for tuples:
@@ -48,8 +48,8 @@
 //! ```
 //! use std::default::Default;
 //!
-//! let a = (1, 2);
-//! let b = (3, 4);
+//! let a = (1i, 2i);
+//! let b = (3i, 4i);
 //! assert!(a != b);
 //!
 //! let c = b.clone();
@@ -104,6 +104,7 @@ macro_rules! tuple_impls {
                 )+
             }
 
+            #[unstable]
             impl<$($T:Clone),+> Clone for ($($T,)+) {
                 fn clone(&self) -> ($($T,)+) {
                     ($(self.$refN().clone(),)+)
@@ -300,7 +301,7 @@ mod tests {
 
     #[test]
     fn test_clone() {
-        let a = (1, "2");
+        let a = (1i, "2");
         let b = a.clone();
         assert_eq!(a, b);
     }
@@ -335,7 +336,7 @@ mod tests {
     fn test_tuple_cmp() {
         let (small, big) = ((1u, 2u, 3u), (3u, 2u, 1u));
 
-        let nan = 0.0/0.0;
+        let nan = 0.0f64/0.0;
 
         // PartialEq
         assert_eq!(small, small);
@@ -357,12 +358,12 @@ mod tests {
         assert!(big >= small);
         assert!(big >= big);
 
-        assert!(!((1.0, 2.0) < (nan, 3.0)));
-        assert!(!((1.0, 2.0) <= (nan, 3.0)));
-        assert!(!((1.0, 2.0) > (nan, 3.0)));
-        assert!(!((1.0, 2.0) >= (nan, 3.0)));
-        assert!(((1.0, 2.0) < (2.0, nan)));
-        assert!(!((2.0, 2.0) < (2.0, nan)));
+        assert!(!((1.0f64, 2.0f64) < (nan, 3.0)));
+        assert!(!((1.0f64, 2.0f64) <= (nan, 3.0)));
+        assert!(!((1.0f64, 2.0f64) > (nan, 3.0)));
+        assert!(!((1.0f64, 2.0f64) >= (nan, 3.0)));
+        assert!(((1.0f64, 2.0f64) < (2.0, nan)));
+        assert!(!((2.0f64, 2.0f64) < (2.0, nan)));
 
         // Ord
         assert!(small.cmp(&small) == Equal);
@@ -373,11 +374,11 @@ mod tests {
 
     #[test]
     fn test_show() {
-        let s = format!("{}", (1,));
+        let s = format!("{}", (1i,));
         assert_eq!(s.as_slice(), "(1,)");
-        let s = format!("{}", (1, true));
+        let s = format!("{}", (1i, true));
         assert_eq!(s.as_slice(), "(1, true)");
-        let s = format!("{}", (1, "hi", true));
+        let s = format!("{}", (1i, "hi", true));
         assert_eq!(s.as_slice(), "(1, hi, true)");
     }
 }

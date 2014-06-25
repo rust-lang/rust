@@ -140,7 +140,7 @@ pub struct RadixFmt<T, R>(T, R);
 ///
 /// ~~~
 /// use std::fmt::radix;
-/// assert_eq!(format!("{}", radix(55, 36)), "1j".to_string());
+/// assert_eq!(format!("{}", radix(55i, 36)), "1j".to_string());
 /// ~~~
 pub fn radix<T>(x: T, base: u8) -> RadixFmt<T, Radix> {
     RadixFmt(x, Radix::new(base))
@@ -309,11 +309,11 @@ mod tests {
         assert!(format!("{:o}", 1u64).as_slice() == "1");
 
         // Test a larger number
-        assert!(format!("{:t}", 55).as_slice() == "110111");
-        assert!(format!("{:o}", 55).as_slice() == "67");
-        assert!(format!("{:d}", 55).as_slice() == "55");
-        assert!(format!("{:x}", 55).as_slice() == "37");
-        assert!(format!("{:X}", 55).as_slice() == "37");
+        assert!(format!("{:t}", 55i).as_slice() == "110111");
+        assert!(format!("{:o}", 55i).as_slice() == "67");
+        assert!(format!("{:d}", 55i).as_slice() == "55");
+        assert!(format!("{:x}", 55i).as_slice() == "37");
+        assert!(format!("{:X}", 55i).as_slice() == "37");
     }
 
     #[test]
@@ -335,21 +335,21 @@ mod tests {
 
     #[test]
     fn test_format_int_flags() {
-        assert!(format!("{:3d}", 1).as_slice() == "  1");
-        assert!(format!("{:>3d}", 1).as_slice() == "  1");
-        assert!(format!("{:>+3d}", 1).as_slice() == " +1");
-        assert!(format!("{:<3d}", 1).as_slice() == "1  ");
-        assert!(format!("{:#d}", 1).as_slice() == "1");
-        assert!(format!("{:#x}", 10).as_slice() == "0xa");
-        assert!(format!("{:#X}", 10).as_slice() == "0xA");
-        assert!(format!("{:#5x}", 10).as_slice() == "  0xa");
-        assert!(format!("{:#o}", 10).as_slice() == "0o12");
-        assert!(format!("{:08x}", 10).as_slice() == "0000000a");
-        assert!(format!("{:8x}", 10).as_slice() == "       a");
-        assert!(format!("{:<8x}", 10).as_slice() == "a       ");
-        assert!(format!("{:>8x}", 10).as_slice() == "       a");
-        assert!(format!("{:#08x}", 10).as_slice() == "0x00000a");
-        assert!(format!("{:08d}", -10).as_slice() == "-0000010");
+        assert!(format!("{:3d}", 1i).as_slice() == "  1");
+        assert!(format!("{:>3d}", 1i).as_slice() == "  1");
+        assert!(format!("{:>+3d}", 1i).as_slice() == " +1");
+        assert!(format!("{:<3d}", 1i).as_slice() == "1  ");
+        assert!(format!("{:#d}", 1i).as_slice() == "1");
+        assert!(format!("{:#x}", 10i).as_slice() == "0xa");
+        assert!(format!("{:#X}", 10i).as_slice() == "0xA");
+        assert!(format!("{:#5x}", 10i).as_slice() == "  0xa");
+        assert!(format!("{:#o}", 10i).as_slice() == "0o12");
+        assert!(format!("{:08x}", 10i).as_slice() == "0000000a");
+        assert!(format!("{:8x}", 10i).as_slice() == "       a");
+        assert!(format!("{:<8x}", 10i).as_slice() == "a       ");
+        assert!(format!("{:>8x}", 10i).as_slice() == "       a");
+        assert!(format!("{:#08x}", 10i).as_slice() == "0x00000a");
+        assert!(format!("{:08d}", -10i).as_slice() == "-0000010");
         assert!(format!("{:x}", -1u8).as_slice() == "ff");
         assert!(format!("{:X}", -1u8).as_slice() == "FF");
         assert!(format!("{:t}", -1u8).as_slice() == "11111111");
@@ -362,12 +362,12 @@ mod tests {
 
     #[test]
     fn test_format_int_sign_padding() {
-        assert!(format!("{:+5d}", 1).as_slice() == "   +1");
-        assert!(format!("{:+5d}", -1).as_slice() == "   -1");
-        assert!(format!("{:05d}", 1).as_slice() == "00001");
-        assert!(format!("{:05d}", -1).as_slice() == "-0001");
-        assert!(format!("{:+05d}", 1).as_slice() == "+0001");
-        assert!(format!("{:+05d}", -1).as_slice() == "-0001");
+        assert!(format!("{:+5d}", 1i).as_slice() == "   +1");
+        assert!(format!("{:+5d}", -1i).as_slice() == "   -1");
+        assert!(format!("{:05d}", 1i).as_slice() == "00001");
+        assert!(format!("{:05d}", -1i).as_slice() == "-0001");
+        assert!(format!("{:+05d}", 1i).as_slice() == "+0001");
+        assert!(format!("{:+05d}", -1i).as_slice() == "-0001");
     }
 
     #[test]
@@ -381,8 +381,8 @@ mod tests {
 
     #[test]
     fn test_format_radix() {
-        assert!(format!("{:04}", radix(3, 2)).as_slice() == "0011");
-        assert!(format!("{}", radix(55, 36)).as_slice() == "1j");
+        assert!(format!("{:04}", radix(3i, 2)).as_slice() == "0011");
+        assert!(format!("{}", radix(55i, 36)).as_slice() == "1j");
     }
 
     #[test]

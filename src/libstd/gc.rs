@@ -37,6 +37,7 @@ pub struct Gc<T> {
     marker: marker::NoSend,
 }
 
+#[unstable]
 impl<T> Clone for Gc<T> {
     /// Clone the pointer only
     #[inline]

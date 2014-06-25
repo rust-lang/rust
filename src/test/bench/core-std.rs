@@ -63,7 +63,7 @@ fn maybe_run_test(argv: &[String], name: String, test: ||) {
 }
 
 fn shift_push() {
-    let mut v1 = Vec::from_elem(30000, 1);
+    let mut v1 = Vec::from_elem(30000, 1i);
     let mut v2 = Vec::new();
 
     while v1.len() > 0 {
@@ -77,7 +77,7 @@ fn read_line() {
     let mut path = Path::new(env!("CFG_SRC_DIR"));
     path.push("src/test/bench/shootout-k-nucleotide.data");
 
-    for _ in range(0, 3) {
+    for _ in range(0u, 3) {
         let mut reader = BufferedReader::new(File::open(&path).unwrap());
         for _line in reader.lines() {
         }

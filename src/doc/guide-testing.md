@@ -269,7 +269,7 @@ use test::Bencher;
 #[bench]
 fn bench_xor_1000_ints(b: &mut Bencher) {
     b.iter(|| {
-        range(0, 1000).fold(0, |old, new| old ^ new);
+        range(0u, 1000).fold(0, |old, new| old ^ new);
     });
 }
 ~~~
@@ -293,7 +293,7 @@ example above by adjusting the `bh.iter` call to
 # struct X; impl X { fn iter<T>(&self, _: || -> T) {} } let b = X;
 b.iter(|| {
     // note lack of `;` (could also use an explicit `return`).
-    range(0, 1000).fold(0, |old, new| old ^ new)
+    range(0u, 1000).fold(0, |old, new| old ^ new)
 });
 ~~~
 
@@ -307,7 +307,7 @@ extern crate test;
 # fn main() {
 # struct X; impl X { fn iter<T>(&self, _: || -> T) {} } let b = X;
 b.iter(|| {
-    test::black_box(range(0, 1000).fold(0, |old, new| old ^ new));
+    test::black_box(range(0u, 1000).fold(0, |old, new| old ^ new));
 });
 # }
 ~~~

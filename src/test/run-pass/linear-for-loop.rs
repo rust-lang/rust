@@ -11,8 +11,8 @@
 extern crate debug;
 
 pub fn main() {
-    let x = vec!(1, 2, 3);
-    let mut y = 0;
+    let x = vec!(1i, 2i, 3i);
+    let mut y = 0i;
     for i in x.iter() { println!("{:?}", *i); y += *i; }
     println!("{:?}", y);
     assert_eq!(y, 6);

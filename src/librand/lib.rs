@@ -180,7 +180,7 @@ pub trait Rng {
     /// let mut rng = task_rng();
     /// let n: uint = rng.gen_range(0u, 10);
     /// println!("{}", n);
-    /// let m: f64 = rng.gen_range(-40.0, 1.3e5);
+    /// let m: f64 = rng.gen_range(-40.0f64, 1.3e5f64);
     /// println!("{}", m);
     /// ```
     fn gen_range<T: PartialOrd + SampleRange>(&mut self, low: T, high: T) -> T {
@@ -225,7 +225,7 @@ pub trait Rng {
     /// ```
     /// use std::rand::{task_rng, Rng};
     ///
-    /// let choices = [1, 2, 4, 8, 16, 32];
+    /// let choices = [1i, 2, 4, 8, 16, 32];
     /// let mut rng = task_rng();
     /// println!("{}", rng.choose(choices));
     /// assert_eq!(rng.choose(choices.slice_to(0)), None);
@@ -252,7 +252,7 @@ pub trait Rng {
     /// use std::rand::{task_rng, Rng};
     ///
     /// let mut rng = task_rng();
-    /// let mut y = [1,2,3];
+    /// let mut y = [1i, 2, 3];
     /// rng.shuffle(y);
     /// println!("{}", y.as_slice());
     /// rng.shuffle(y);

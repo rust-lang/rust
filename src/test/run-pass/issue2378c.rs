@@ -18,6 +18,6 @@ use issue2378a::{just};
 use issue2378b::{two_maybes};
 
 pub fn main() {
-    let x = two_maybes{a: just(3), b: just(5)};
+    let x = two_maybes{a: just(3i), b: just(5i)};
     assert_eq!(x[0u], (3, 5));
 }

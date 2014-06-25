@@ -54,6 +54,8 @@
        html_root_url = "http://doc.rust-lang.org/",
        html_playground_url = "http://play.rust-lang.org/")]
 
+#![allow(deprecated)] // from_str_radix
+
 extern crate rand;
 
 pub use bigint::{BigInt, BigUint};

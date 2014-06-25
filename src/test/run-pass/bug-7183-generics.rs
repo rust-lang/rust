@@ -34,11 +34,11 @@ impl<T: Speak> Speak for Option<T> {
 
 
 pub fn main() {
-    assert_eq!(3.hi(), "hello: 3".to_string());
-    assert_eq!(Some(Some(3)).hi(),
+    assert_eq!(3i.hi(), "hello: 3".to_string());
+    assert_eq!(Some(Some(3i)).hi(),
                "something!something!hello: 3".to_string());
     assert_eq!(None::<int>.hi(), "hello - none".to_string());
 
     assert_eq!(Some(None::<int>).hi(), "something!hello - none".to_string());
-    assert_eq!(Some(3).hi(), "something!hello: 3".to_string());
+    assert_eq!(Some(3i).hi(), "something!hello: 3".to_string());
 }
