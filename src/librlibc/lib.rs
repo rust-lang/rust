@@ -27,7 +27,6 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/")]
 #![feature(intrinsics)]
-#![allow(unknown_features)] // NOTE: remove after stage0 snapshot
 
 #![no_std]
 #![experimental]
