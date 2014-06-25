@@ -48,9 +48,7 @@ fn start(argc: int, argv: **u8) -> int {
 
 pub fn main() {
     let args = os::args();
-    let config = parse_config(args.move_iter()
-                                  .map(|x| x.to_string())
-                                  .collect());
+    let config = parse_config(args);
     log_config(&config);
     run_tests(&config);
 }
@@ -131,17 +129,15 @@ pub fn parse_config(args: Vec<String> ) -> Config {
     };
 
     Config {
-        compile_lib_path: matches.opt_str("compile-lib-path")
-                                 .unwrap()
-                                 .to_string(),
-        run_lib_path: matches.opt_str("run-lib-path").unwrap().to_string(),
+        compile_lib_path: matches.opt_str("compile-lib-path").unwrap(),
+        run_lib_path: matches.opt_str("run-lib-path").unwrap(),
         rustc_path: opt_path(matches, "rustc-path"),
         clang_path: matches.opt_str("clang-path").map(|s| Path::new(s)),
         llvm_bin_path: matches.opt_str("llvm-bin-path").map(|s| Path::new(s)),
         src_base: opt_path(matches, "src-base"),
         build_base: opt_path(matches, "build-base"),
         aux_base: opt_path(matches, "aux-base"),
-        stage_id: matches.opt_str("stage-id").unwrap().to_string(),
+        stage_id: matches.opt_str("stage-id").unwrap(),
         mode: FromStr::from_str(matches.opt_str("mode")
                                        .unwrap()
                                        .as_slice()).expect("invalid mode"),
@@ -155,32 +151,23 @@ pub fn parse_config(args: Vec<String> ) -> Config {
         ratchet_noise_percent:
             matches.opt_str("ratchet-noise-percent")
                    .and_then(|s| from_str::<f64>(s.as_slice())),
-        runtool: matches.opt_str("runtool").map(|x| x.to_string()),
-        host_rustcflags: matches.opt_str("host-rustcflags")
-                                .map(|x| x.to_string()),
-        target_rustcflags: matches.opt_str("target-rustcflags")
-                                  .map(|x| x.to_string()),
+        runtool: matches.opt_str("runtool"),
+        host_rustcflags: matches.opt_str("host-rustcflags"),
+        target_rustcflags: matches.opt_str("target-rustcflags"),
         jit: matches.opt_present("jit"),
-        target: opt_str2(matches.opt_str("target").map(|x| x.to_string())),
-        host: opt_str2(matches.opt_str("host").map(|x| x.to_string())),
+        target: opt_str2(matches.opt_str("target")),
+        host: opt_str2(matches.opt_str("host")),
         android_cross_path: opt_path(matches, "android-cross-path"),
-        adb_path: opt_str2(matches.opt_str("adb-path")
-                                  .map(|x| x.to_string())),
-        adb_test_dir: opt_str2(matches.opt_str("adb-test-dir")
-                                      .map(|x| x.to_string())),
+        adb_path: opt_str2(matches.opt_str("adb-path")),
+        adb_test_dir: opt_str2(matches.opt_str("adb-test-dir")),
         adb_device_status:
             "arm-linux-androideabi" ==
-                opt_str2(matches.opt_str("target")
-                                .map(|x| x.to_string())).as_slice() &&
+                opt_str2(matches.opt_str("target")).as_slice() &&
             "(none)" !=
-                opt_str2(matches.opt_str("adb-test-dir")
-                                .map(|x| x.to_string())).as_slice() &&
-            !opt_str2(matches.opt_str("adb-test-dir")
-                             .map(|x| x.to_string())).is_empty(),
-        lldb_python_dir: matches.opt_str("lldb-python-dir")
-                                .map(|x| x.to_string()),
-        test_shard: test::opt_shard(matches.opt_str("test-shard")
-                                           .map(|x| x.to_string())),
+                opt_str2(matches.opt_str("adb-test-dir")).as_slice() &&
+            !opt_str2(matches.opt_str("adb-test-dir")).is_empty(),
+        lldb_python_dir: matches.opt_str("lldb-python-dir"),
+        test_shard: test::opt_shard(matches.opt_str("test-shard")),
         verbose: matches.opt_present("verbose")
     }
 }

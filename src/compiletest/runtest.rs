@@ -73,7 +73,7 @@ fn run_cfail_test(config: &Config, props: &TestProps, testfile: &Path) {
     let proc_res = compile_test(config, props, testfile);
 
     if proc_res.status.success() {
-        fatal_proc_rec("compile-fail test compiled successfully!".to_string(),
+        fatal_proc_rec("compile-fail test compiled successfully!",
                       &proc_res);
     }
 
@@ -82,8 +82,7 @@ fn run_cfail_test(config: &Config, props: &TestProps, testfile: &Path) {
     let expected_errors = errors::load_errors(&config.cfail_regex, testfile);
     if !expected_errors.is_empty() {
         if !props.error_patterns.is_empty() {
-            fatal("both error pattern and expected errors \
-                   specified".to_string());
+            fatal("both error pattern and expected errors specified");
         }
         check_expected_errors(expected_errors, testfile, &proc_res);
     } else {
@@ -97,7 +96,7 @@ fn run_rfail_test(config: &Config, props: &TestProps, testfile: &Path) {
         let proc_res = compile_test(config, props, testfile);
 
         if !proc_res.status.success() {
-            fatal_proc_rec("compilation failed!".to_string(), &proc_res);
+            fatal_proc_rec("compilation failed!", &proc_res);
         }
 
         exec_compiled_test(config, props, testfile)
@@ -108,8 +107,7 @@ fn run_rfail_test(config: &Config, props: &TestProps, testfile: &Path) {
     // The value our Makefile configures valgrind to return on failure
     static VALGRIND_ERR: int = 100;
     if proc_res.status.matches_exit_status(VALGRIND_ERR) {
-        fatal_proc_rec("run-fail test isn't valgrind-clean!".to_string(),
-                      &proc_res);
+        fatal_proc_rec("run-fail test isn't valgrind-clean!", &proc_res);
     }
 
     check_correct_failure_status(&proc_res);
@@ -121,7 +119,8 @@ fn check_correct_failure_status(proc_res: &ProcRes) {
     static RUST_ERR: int = 101;
     if !proc_res.status.matches_exit_status(RUST_ERR) {
         fatal_proc_rec(
-            format!("failure produced the wrong error: {}", proc_res.status),
+            format!("failure produced the wrong error: {}",
+                    proc_res.status).as_slice(),
             proc_res);
     }
 }
@@ -131,19 +130,19 @@ fn run_rpass_test(config: &Config, props: &TestProps, testfile: &Path) {
         let mut proc_res = compile_test(config, props, testfile);
 
         if !proc_res.status.success() {
-            fatal_proc_rec("compilation failed!".to_string(), &proc_res);
+            fatal_proc_rec("compilation failed!", &proc_res);
         }
 
         proc_res = exec_compiled_test(config, props, testfile);
 
         if !proc_res.status.success() {
-            fatal_proc_rec("test run failed!".to_string(), &proc_res);
+            fatal_proc_rec("test run failed!", &proc_res);
         }
     } else {
         let proc_res = jit_test(config, props, testfile);
 
         if !proc_res.status.success() {
-            fatal_proc_rec("jit failed!".to_string(), &proc_res);
+            fatal_proc_rec("jit failed!", &proc_res);
         }
     }
 }
@@ -172,7 +171,8 @@ fn run_pretty_test(config: &Config, props: &TestProps, testfile: &Path) {
                                     "normal");
 
         if !proc_res.status.success() {
-            fatal_proc_rec(format!("pretty-printing failed in round {}", round),
+            fatal_proc_rec(format!("pretty-printing failed in round {}",
+                                   round).as_slice(),
                           &proc_res);
         }
 
@@ -204,22 +204,20 @@ fn run_pretty_test(config: &Config, props: &TestProps, testfile: &Path) {
     let proc_res = typecheck_source(config, props, testfile, actual);
 
     if !proc_res.status.success() {
-        fatal_proc_rec("pretty-printed source does not typecheck".to_string(),
-                      &proc_res);
+        fatal_proc_rec("pretty-printed source does not typecheck", &proc_res);
     }
     if props.no_pretty_expanded { return }
 
     // additionally, run `--pretty expanded` and try to build it.
     let proc_res = print_source(config, props, testfile, (*srcs.get(round)).clone(), "expanded");
     if !proc_res.status.success() {
-        fatal_proc_rec(format!("pretty-printing (expanded) failed"), &proc_res);
+        fatal_proc_rec("pretty-printing (expanded) failed", &proc_res);
     }
 
     let ProcRes{ stdout: expanded_src, .. } = proc_res;
     let proc_res = typecheck_source(config, props, testfile, expanded_src);
     if !proc_res.status.success() {
-        fatal_proc_rec(format!("pretty-printed source (expanded) does \
-                               not typecheck"),
+        fatal_proc_rec("pretty-printed source (expanded) does not typecheck",
                       &proc_res);
     }
 
@@ -265,8 +263,7 @@ fn run_pretty_test(config: &Config, props: &TestProps, testfile: &Path) {
 
     fn compare_source(expected: &str, actual: &str) {
         if expected != actual {
-            error("pretty-printed source does not match expected \
-                   source".to_string());
+            error("pretty-printed source does not match expected source");
             println!("\n\
 expected:\n\
 ------------------------------------------\n\
@@ -328,7 +325,7 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
     // compile test file (it shoud have 'compile-flags:-g' in the header)
     let compiler_run_result = compile_test(config, props, testfile);
     if !compiler_run_result.status.success() {
-        fatal_proc_rec("compilation failed!".to_string(), &compiler_run_result);
+        fatal_proc_rec("compilation failed!", &compiler_run_result);
     }
 
     let exe_file = make_exe_name(config, testfile);
@@ -412,7 +409,7 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
 
             let tool_path = match config.android_cross_path.as_str() {
                 Some(x) => x.to_string(),
-                None => fatal("cannot find android cross path".to_string())
+                None => fatal("cannot find android cross path")
             };
 
             let debugger_script = make_out_name(config, testfile, "debugger.script");
@@ -499,7 +496,7 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
     }
 
     if !debugger_run_result.status.success() {
-        fatal("gdb failed to execute".to_string());
+        fatal("gdb failed to execute");
     }
 
     check_debugger_output(&debugger_run_result, check_lines.as_slice());
@@ -509,8 +506,7 @@ fn run_debuginfo_lldb_test(config: &Config, props: &TestProps, testfile: &Path) 
     use std::io::process::{Command, ProcessOutput};
 
     if config.lldb_python_dir.is_none() {
-        fatal("Can't run LLDB test because LLDB's python path is not \
-               set.".to_string());
+        fatal("Can't run LLDB test because LLDB's python path is not set.");
     }
 
     let mut config = Config {
@@ -524,7 +520,7 @@ fn run_debuginfo_lldb_test(config: &Config, props: &TestProps, testfile: &Path) 
     // compile test file (it shoud have 'compile-flags:-g' in the header)
     let compile_result = compile_test(config, props, testfile);
     if !compile_result.status.success() {
-        fatal_proc_rec("compilation failed!".to_string(), &compile_result);
+        fatal_proc_rec("compilation failed!", &compile_result);
     }
 
     let exe_file = make_exe_name(config, testfile);
@@ -567,8 +563,7 @@ fn run_debuginfo_lldb_test(config: &Config, props: &TestProps, testfile: &Path) 
     let debugger_run_result = run_lldb(config, &exe_file, &debugger_script);
 
     if !debugger_run_result.status.success() {
-        fatal_proc_rec("Error while running LLDB".to_string(),
-                      &debugger_run_result);
+        fatal_proc_rec("Error while running LLDB", &debugger_run_result);
     }
 
     check_debugger_output(&debugger_run_result, check_lines.as_slice());
@@ -592,7 +587,7 @@ fn run_debuginfo_lldb_test(config: &Config, props: &TestProps, testfile: &Path) 
             },
             Err(e) => {
                 fatal(format!("Failed to setup Python process for \
-                               LLDB script: {}", e))
+                               LLDB script: {}", e).as_slice())
             }
         };
 
@@ -633,18 +628,19 @@ fn parse_debugger_commands(file_path: &Path, debugger_prefix: &str)
 
                 header::parse_name_value_directive(
                         line.as_slice(),
-                        command_directive.to_string()).map(|cmd| {
+                        command_directive.as_slice()).map(|cmd| {
                     commands.push(cmd)
                 });
 
                 header::parse_name_value_directive(
                         line.as_slice(),
-                        check_directive.to_string()).map(|cmd| {
+                        check_directive.as_slice()).map(|cmd| {
                     check_lines.push(cmd)
                 });
             }
             Err(e) => {
-                fatal(format!("Error while parsing debugger commands: {}", e))
+                fatal(format!("Error while parsing debugger commands: {}",
+                              e).as_slice())
             }
         }
         counter += 1;
@@ -672,8 +668,7 @@ fn cleanup_debug_info_options(options: &Option<String>) -> Option<String> {
         split_maybe_args(options).move_iter()
                                  .filter(|x| !options_to_remove.contains(x))
                                  .collect::<Vec<String>>()
-                                 .connect(" ")
-                                 .to_string();
+                                 .connect(" ");
     Some(new_options)
 }
 
@@ -728,7 +723,7 @@ fn check_debugger_output(debugger_run_result: &ProcRes, check_lines: &[String]) 
         }
         if i != num_check_lines {
             fatal_proc_rec(format!("line not found in debugger output: {}",
-                                  check_lines.get(i).unwrap()),
+                                  check_lines.get(i).unwrap()).as_slice(),
                           debugger_run_result);
         }
     }
@@ -739,11 +734,11 @@ fn check_error_patterns(props: &TestProps,
                         proc_res: &ProcRes) {
     if props.error_patterns.is_empty() {
         fatal(format!("no error pattern specified in {}",
-                      testfile.display().as_maybe_owned().as_slice()));
+                      testfile.display()).as_slice());
     }
 
     if proc_res.status.success() {
-        fatal("process did not return an error status".to_string());
+        fatal("process did not return an error status");
     }
 
     let mut next_err_idx = 0u;
@@ -772,21 +767,21 @@ fn check_error_patterns(props: &TestProps,
         props.error_patterns.slice(next_err_idx, props.error_patterns.len());
     if missing_patterns.len() == 1u {
         fatal_proc_rec(format!("error pattern '{}' not found!",
-                              missing_patterns[0]),
+                              missing_patterns[0]).as_slice(),
                       proc_res);
     } else {
         for pattern in missing_patterns.iter() {
-            error(format!("error pattern '{}' not found!", *pattern));
+            error(format!("error pattern '{}' not found!",
+                          *pattern).as_slice());
         }
-        fatal_proc_rec("multiple error patterns not found".to_string(),
-                      proc_res);
+        fatal_proc_rec("multiple error patterns not found", proc_res);
     }
 }
 
 fn check_no_compiler_crash(proc_res: &ProcRes) {
     for line in proc_res.stderr.as_slice().lines() {
         if line.starts_with("error: internal compiler error:") {
-            fatal_proc_rec("compiler encountered internal error".to_string(),
+            fatal_proc_rec("compiler encountered internal error",
                           proc_res);
         }
     }
@@ -801,7 +796,7 @@ fn check_expected_errors(expected_errors: Vec<errors::ExpectedError> ,
         expected_errors.len(), false);
 
     if proc_res.status.success() {
-        fatal("process did not return an error status".to_string());
+        fatal("process did not return an error status");
     }
 
     let prefixes = expected_errors.iter().map(|ee| {
@@ -865,7 +860,7 @@ fn check_expected_errors(expected_errors: Vec<errors::ExpectedError> ,
 
         if !was_expected && is_compiler_error_or_warning(line) {
             fatal_proc_rec(format!("unexpected compiler error or warning: '{}'",
-                                  line),
+                                  line).as_slice(),
                           proc_res);
         }
     }
@@ -874,7 +869,7 @@ fn check_expected_errors(expected_errors: Vec<errors::ExpectedError> ,
         if !flag {
             let ee = expected_errors.get(i);
             fatal_proc_rec(format!("expected {} on line {} not found: {}",
-                                  ee.kind, ee.line, ee.msg),
+                                  ee.kind, ee.line, ee.msg).as_slice(),
                           proc_res);
         }
     }
@@ -1059,7 +1054,7 @@ fn compose_and_run_compiler(
         if !auxres.status.success() {
             fatal_proc_rec(
                 format!("auxiliary build of {} failed to compile: ",
-                        abs_ab.display()),
+                        abs_ab.display()).as_slice(),
                 &auxres);
         }
 
@@ -1296,11 +1291,11 @@ fn maybe_dump_to_stdout(config: &Config, out: &str, err: &str) {
     }
 }
 
-fn error(err: String) { println!("\nerror: {}", err); }
+fn error(err: &str) { println!("\nerror: {}", err); }
 
-fn fatal(err: String) -> ! { error(err); fail!(); }
+fn fatal(err: &str) -> ! { error(err); fail!(); }
 
-fn fatal_proc_rec(err: String, proc_res: &ProcRes) -> ! {
+fn fatal_proc_rec(err: &str, proc_res: &ProcRes) -> ! {
     print!("\n\
 error: {}\n\
 status: {}\n\
@@ -1573,44 +1568,44 @@ fn run_codegen_test(config: &Config, props: &TestProps,
                     testfile: &Path, mm: &mut MetricMap) {
 
     if config.llvm_bin_path.is_none() {
-        fatal("missing --llvm-bin-path".to_string());
+        fatal("missing --llvm-bin-path");
     }
 
     if config.clang_path.is_none() {
-        fatal("missing --clang-path".to_string());
+        fatal("missing --clang-path");
     }
 
     let mut proc_res = compile_test_and_save_bitcode(config, props, testfile);
     if !proc_res.status.success() {
-        fatal_proc_rec("compilation failed!".to_string(), &proc_res);
+        fatal_proc_rec("compilation failed!", &proc_res);
     }
 
     proc_res = extract_function_from_bitcode(config, props, "test", testfile, "");
     if !proc_res.status.success() {
-        fatal_proc_rec("extracting 'test' function failed".to_string(),
+        fatal_proc_rec("extracting 'test' function failed",
                       &proc_res);
     }
 
     proc_res = disassemble_extract(config, props, testfile, "");
     if !proc_res.status.success() {
-        fatal_proc_rec("disassembling extract failed".to_string(), &proc_res);
+        fatal_proc_rec("disassembling extract failed", &proc_res);
     }
 
 
     let mut proc_res = compile_cc_with_clang_and_save_bitcode(config, props, testfile);
     if !proc_res.status.success() {
-        fatal_proc_rec("compilation failed!".to_string(), &proc_res);
+        fatal_proc_rec("compilation failed!", &proc_res);
     }
 
     proc_res = extract_function_from_bitcode(config, props, "test", testfile, "clang");
     if !proc_res.status.success() {
-        fatal_proc_rec("extracting 'test' function failed".to_string(),
+        fatal_proc_rec("extracting 'test' function failed",
                       &proc_res);
     }
 
     proc_res = disassemble_extract(config, props, testfile, "clang");
     if !proc_res.status.success() {
-        fatal_proc_rec("disassembling extract failed".to_string(), &proc_res);
+        fatal_proc_rec("disassembling extract failed", &proc_res);
     }
 
     let base = output_base_name(config, testfile);
