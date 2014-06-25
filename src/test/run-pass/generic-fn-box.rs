@@ -16,4 +16,4 @@ use std::gc::{Gc, GC};
 
 fn f<T>(x: Gc<T>) -> Gc<T> { return x; }
 
-pub fn main() { let x = f(box(GC) 3); println!("{:?}", *x); }
+pub fn main() { let x = f(box(GC) 3i); println!("{:?}", *x); }

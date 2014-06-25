@@ -14,8 +14,8 @@ use std::gc::GC;
 
 // Tests for match as expressions resulting in boxed types
 fn test_box() {
-    let res = match true { true => { box(GC) 100 } _ => fail!("wat") };
-    assert_eq!(*res, 100);
+    let res = match true { true => { box(GC) 100i } _ => fail!("wat") };
+    assert_eq!(*res, 100i);
 }
 
 fn test_str() {

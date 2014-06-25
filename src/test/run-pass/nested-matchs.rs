@@ -16,7 +16,7 @@ fn foo() {
     match Some::<int>(5) {
       Some::<int>(_x) => {
         let mut bar;
-        match None::<int> { None::<int> => { bar = 5; } _ => { baz(); } }
+        match None::<int> { None::<int> => { bar = 5i; } _ => { baz(); } }
         println!("{:?}", bar);
       }
       None::<int> => { println!("hello"); }

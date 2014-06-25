@@ -107,19 +107,11 @@ pub fn is_path(e: Gc<Expr>) -> bool {
     return match e.node { ExprPath(_) => true, _ => false };
 }
 
-pub enum SuffixMode {
-    ForceSuffix,
-    AutoSuffix,
-}
-
 // Get a string representation of a signed int type, with its value.
 // We want to avoid "45int" and "-3int" in favor of "45" and "-3"
-pub fn int_ty_to_str(t: IntTy, val: Option<i64>, mode: SuffixMode) -> String {
+pub fn int_ty_to_str(t: IntTy, val: Option<i64>) -> String {
     let s = match t {
-        TyI if val.is_some() => match mode {
-            AutoSuffix => "",
-            ForceSuffix => "i",
-        },
+        TyI if val.is_some() => "i",
         TyI => "int",
         TyI8 => "i8",
         TyI16 => "i16",
@@ -147,12 +139,9 @@ pub fn int_ty_max(t: IntTy) -> u64 {
 
 // Get a string representation of an unsigned int type, with its value.
 // We want to avoid "42uint" in favor of "42u"
-pub fn uint_ty_to_str(t: UintTy, val: Option<u64>, mode: SuffixMode) -> String {
+pub fn uint_ty_to_str(t: UintTy, val: Option<u64>) -> String {
     let s = match t {
-        TyU if val.is_some() => match mode {
-            AutoSuffix => "",
-            ForceSuffix => "u",
-        },
+        TyU if val.is_some() => "u",
         TyU => "uint",
         TyU8 => "u8",
         TyU16 => "u16",

@@ -245,7 +245,7 @@ mod test {
             event_loop_factory: basic::event_loop,
         });
 
-        for _ in range(0, 20) {
+        for _ in range(0u, 20) {
             pool.spawn(TaskOpts::new(), proc() {
                 let (tx, rx) = channel();
                 spawn(proc() {

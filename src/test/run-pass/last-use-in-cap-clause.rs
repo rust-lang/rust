@@ -14,7 +14,7 @@
 struct A { a: Box<int> }
 
 fn foo() -> ||: 'static -> int {
-    let k = box 22;
+    let k = box 22i;
     let _u = A {a: k.clone()};
     let result: ||: 'static -> int = || 22;
     result

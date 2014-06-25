@@ -16,7 +16,7 @@ pub trait NumExt: Num + NumCast + PartialEq + PartialOrd {}
 
 pub trait FloatExt: NumExt {}
 
-fn greater_than_one<T:NumExt>(n: &T) -> bool { *n > NumCast::from(1).unwrap() }
-fn greater_than_one_float<T:FloatExt>(n: &T) -> bool { *n > NumCast::from(1).unwrap() }
+fn greater_than_one<T:NumExt>(n: &T) -> bool { *n > NumCast::from(1i).unwrap() }
+fn greater_than_one_float<T:FloatExt>(n: &T) -> bool { *n > NumCast::from(1i).unwrap() }
 
 pub fn main() {}

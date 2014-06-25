@@ -16,14 +16,14 @@ fn get<'r, T>(opt: &'r Option<T>) -> &'r T {
 }
 
 pub fn main() {
-    let mut x = Some(23);
+    let mut x = Some(23i);
 
     {
         let y = get(&x);
         assert_eq!(*y, 23);
     }
 
-    x = Some(24);
+    x = Some(24i);
 
     {
         let y = get(&x);

@@ -58,7 +58,7 @@ fn main() {
     let addr = rx.recv();
 
     let (tx, rx) = channel();
-    for _ in range(0, 1000) {
+    for _ in range(0u, 1000) {
         let tx = tx.clone();
         TaskBuilder::new().stack_size(64 * 1024).spawn(proc() {
             let host = addr.ip.to_str();
@@ -79,7 +79,7 @@ fn main() {
     // Wait for all clients to exit, but don't wait for the server to exit. The
     // server just runs infinitely.
     drop(tx);
-    for _ in range(0, 1000) {
+    for _ in range(0u, 1000) {
         rx.recv();
     }
     unsafe { libc::exit(0) }

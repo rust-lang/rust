@@ -1,5 +1,12 @@
 % The Rust Language Tutorial
 
+<div style="border: 2px solid red; padding:5px;">
+The tutorial is undergoing a complete re-write as <a href="guide.html">the Guide</a>.
+Until it's ready, this tutorial is the right place to come to start learning
+Rust.  Please submit improvements as pull requests, but understand that
+eventually it will be going away.
+</div>
+
 # Introduction
 
 Rust is a programming language with a focus on type safety, memory
@@ -220,7 +227,7 @@ mut` instead.
 
 ~~~~
 let hi = "hi";
-let mut count = 0;
+let mut count = 0i;
 
 while count < 10 {
     println!("count is {}", count);
@@ -407,7 +414,7 @@ error when the types of the directives don't match the types of the arguments.
 
 ~~~
 // `{}` will print the "default format" of a type
-println!("{} is {}", "the answer", 43);
+println!("{} is {}", "the answer", 43i);
 ~~~
 
 ~~~~
@@ -535,7 +542,7 @@ A subpattern can also be bound to a variable, using `variable @ pattern`. For
 example:
 
 ~~~~
-# let age = 23;
+# let age = 23i;
 match age {
     a @ 0..20 => println!("{} years old", a),
     _ => println!("older than 21")
@@ -594,7 +601,7 @@ it finds one that can be divided by five.
 There is also a for-loop that can be used to iterate over a range of numbers:
 
 ~~~~
-for n in range(0, 5) {
+for n in range(0u, 5) {
     println!("{}", n);
 }
 ~~~~
@@ -1124,7 +1131,7 @@ as it is only called a single time.
 Avoiding a move can be done with the library-defined `clone` method:
 
 ~~~~
-let x = box 5;
+let x = box 5i;
 let y = x.clone(); // `y` is a newly allocated box
 let z = x; // no new memory allocated, `x` can no longer be used
 ~~~~
@@ -1356,8 +1363,8 @@ impl<T: PartialEq> PartialEq for List<T> {
     }
 }
 
-let xs = Cons(5, box Cons(10, box Nil));
-let ys = Cons(5, box Cons(10, box Nil));
+let xs = Cons(5i, box Cons(10i, box Nil));
+let ys = Cons(5i, box Cons(10i, box Nil));
 // The methods below are part of the PartialEq trait,
 // which we implemented on our linked list.
 assert!(xs.eq(&ys));
@@ -1488,9 +1495,10 @@ For a more in-depth explanation of references and lifetimes, read the
 
 ## Freezing
 
-Lending an &-pointer to an object freezes it and prevents mutation—even if the object was declared as `mut`.
-`Freeze` objects have freezing enforced statically at compile-time. An example
-of a non-`Freeze` type is [`RefCell<T>`][refcell].
+Lending an &-pointer to an object freezes the pointed-to object and prevents
+mutation—even if the object was declared as `mut`.  `Freeze` objects have
+freezing enforced statically at compile-time. An example of a non-`Freeze` type
+is [`RefCell<T>`][refcell].
 
 ~~~~
 let mut x = 5;
@@ -1584,7 +1592,7 @@ elements are mutable if the vector is mutable. Fixed-size strings do not exist.
 
 ~~~
 // A fixed-size vector
-let numbers = [1, 2, 3];
+let numbers = [1i, 2, 3];
 let more_numbers = numbers;
 
 // The type of a fixed-size vector is written as `[Type, ..length]`
@@ -1599,7 +1607,7 @@ the elements are mutable if the vector is mutable.
 use std::string::String;
 
 // A dynamically sized vector (unique vector)
-let mut numbers = vec![1, 2, 3];
+let mut numbers = vec![1i, 2, 3];
 numbers.push(4);
 numbers.push(5);
 
@@ -1694,11 +1702,11 @@ contained value are destroyed.
 use std::rc::Rc;
 
 // A fixed-size array allocated in a reference-counted box
-let x = Rc::new([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+let x = Rc::new([1i, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
 let y = x.clone(); // a new owner
 let z = x; // this moves `x` into `z`, rather than creating a new owner
 
-assert!(*z == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+assert!(*z == [1i, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
 
 // the variable is mutable, but not the contents of the box
 let mut a = Rc::new([10, 9, 8, 7, 6, 5, 4, 3, 2, 1]);
@@ -1713,11 +1721,11 @@ not have a destructor.
 use std::gc::GC;
 
 // A fixed-size array allocated in a garbage-collected box
-let x = box(GC) [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+let x = box(GC) [1i, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 let y = x; // does not perform a move, unlike with `Rc`
 let z = x;
 
-assert!(*z == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+assert!(*z == [1i, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
 ~~~
 
 With shared ownership, mutability cannot be inherited so the boxes are always immutable. However,
@@ -3130,7 +3138,7 @@ extern crate num;
 
 fn main() {
     // The rational number '1/2':
-    let one_half = ::num::rational::Ratio::new(1, 2);
+    let one_half = ::num::rational::Ratio::new(1i, 2);
 }
 ~~~
 
@@ -3165,7 +3173,7 @@ mod farm {
 
 fn main() {
     farm::dog();
-    let a_third = Ratio::new(1, 3);
+    let a_third = Ratio::new(1i, 3);
 }
 ~~~
 
@@ -3292,13 +3300,13 @@ use iter_range = std::iter::range;
 
 fn main() {
     // `range` is imported by default
-    for _ in range(0, 10) {}
+    for _ in range(0u, 10) {}
 
     // Doesn't hinder you from importing it under a different name yourself
-    for _ in iter_range(0, 10) {}
+    for _ in iter_range(0u, 10) {}
 
     // Or from not using the automatic import.
-    for _ in ::std::iter::range(0, 10) {}
+    for _ in ::std::iter::range(0u, 10) {}
 }
 ~~~
 
@@ -3335,7 +3343,7 @@ guides on individual topics.
 * [Testing Rust code][testing]
 * [The Rust Runtime][runtime]
 
-There is further documentation on the [wiki], however those tend to be even more out of date as this document.
+There is further documentation on the [wiki], however those tend to be even more out of date than this document.
 
 [pointers]: guide-pointers.html
 [lifetimes]: guide-lifetimes.html

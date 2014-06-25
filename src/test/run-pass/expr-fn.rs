@@ -22,7 +22,7 @@ fn test_vec() {
 
 fn test_generic() {
     fn f<T>(t: T) -> T { t }
-    assert_eq!(f(10), 10);
+    assert_eq!(f(10i), 10);
 }
 
 fn test_alt() {

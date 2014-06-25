@@ -353,10 +353,10 @@ mod test {
         // check our constants are what Ratio::new etc. would make.
         assert_eq!(_0, Zero::zero());
         assert_eq!(_1, One::one());
-        assert_eq!(_2, Ratio::from_integer(2));
-        assert_eq!(_1_2, Ratio::new(1,2));
-        assert_eq!(_3_2, Ratio::new(3,2));
-        assert_eq!(_neg1_2, Ratio::new(-1,2));
+        assert_eq!(_2, Ratio::from_integer(2i));
+        assert_eq!(_1_2, Ratio::new(1i,2i));
+        assert_eq!(_3_2, Ratio::new(3i,2i));
+        assert_eq!(_neg1_2, Ratio::new(-1i,2i));
     }
 
     #[test]
@@ -368,7 +368,7 @@ mod test {
     #[test]
     #[should_fail]
     fn test_new_zero() {
-        let _a = Ratio::new(1,0);
+        let _a = Ratio::new(1i,0);
     }
 
 
@@ -466,8 +466,8 @@ mod test {
             }
 
             test(_1, _1_2, _1_2);
-            test(_1_2, _3_2, Ratio::new(3,4));
-            test(_1_2, _neg1_2, Ratio::new(-1, 4));
+            test(_1_2, _3_2, Ratio::new(3i,4i));
+            test(_1_2, _neg1_2, Ratio::new(-1i, 4i));
         }
 
         #[test]
@@ -606,7 +606,7 @@ mod test {
         test16(_2, "2/1".to_string());
         test16(_neg1_2, "-1/2".to_string());
         test16(_neg1_2 / _2, "-1/4".to_string());
-        test16(Ratio::new(13,15), "d/f".to_string());
+        test16(Ratio::new(13i,15i), "d/f".to_string());
         test16(_1_2*_1_2*_1_2*_1_2, "1/10".to_string());
     }
 
@@ -645,7 +645,7 @@ mod test {
         test(2f64.powf(100.), ("1267650600228229401496703205376", "1"));
         test(-2f64.powf(100.), ("-1267650600228229401496703205376", "1"));
         test(684729.48391f64, ("367611342500051", "536870912"));
-        test(-8573.5918555, ("-4713381968463931", "549755813888"));
+        test(-8573.5918555f64, ("-4713381968463931", "549755813888"));
         test(1.0 / 2f64.powf(100.), ("1", "1267650600228229401496703205376"));
     }
 

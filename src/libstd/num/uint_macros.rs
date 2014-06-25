@@ -27,11 +27,13 @@ macro_rules! uint_module (($T:ty) => (
 /// assert!(num == Some(123456789));
 /// ```
 #[inline]
+#[experimental = "might need to return Result"]
 pub fn parse_bytes(buf: &[u8], radix: uint) -> Option<$T> {
     strconv::from_str_bytes_common(buf, radix, false, false, false,
                                    strconv::ExpNone, false, false)
 }
 
+#[experimental = "might need to return Result"]
 impl FromStr for $T {
     #[inline]
     fn from_str(s: &str) -> Option<$T> {
@@ -40,6 +42,7 @@ impl FromStr for $T {
     }
 }
 
+#[experimental = "might need to return Result"]
 impl FromStrRadix for $T {
     #[inline]
     fn from_str_radix(s: &str, radix: uint) -> Option<$T> {
@@ -57,11 +60,14 @@ impl FromStrRadix for $T {
 /// # Examples
 ///
 /// ```
+/// #![allow(deprecated)]
+///
 /// std::uint::to_str_bytes(123, 10, |v| {
 ///     assert!(v == "123".as_bytes());
 /// });
 /// ```
 #[inline]
+#[deprecated = "just use .to_string(), or a BufWriter with write! if you mustn't allocate"]
 pub fn to_str_bytes<U>(n: $T, radix: uint, f: |v: &[u8]| -> U) -> U {
     use io::{Writer, Seek};
     // The radix can be as low as 2, so we need at least 64 characters for a
@@ -75,6 +81,7 @@ pub fn to_str_bytes<U>(n: $T, radix: uint, f: |v: &[u8]| -> U) -> U {
     f(buf.slice(0, amt))
 }
 
+#[deprecated = "use fmt::radix"]
 impl ToStrRadix for $T {
     /// Convert to a string in a given base.
     #[inline]

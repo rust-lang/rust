@@ -11,7 +11,7 @@
 extern crate debug;
 
 pub fn main() {
-    match box 100 {
+    match box 100i {
       box x => {
         println!("{:?}", x);
         assert_eq!(x, 100);

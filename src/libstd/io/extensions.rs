@@ -93,7 +93,7 @@ pub fn u64_to_le_bytes<T>(n: u64, size: uint, f: |v: &[u8]| -> T) -> T {
         let mut n = n;
         while i > 0u {
             bytes.push((n & 255_u64) as u8);
-            n >>= 8_u64;
+            n >>= 8;
             i -= 1u;
         }
         f(bytes.as_slice())
@@ -130,7 +130,7 @@ pub fn u64_to_be_bytes<T>(n: u64, size: uint, f: |v: &[u8]| -> T) -> T {
         let mut bytes = vec!();
         let mut i = size;
         while i > 0u {
-            let shift = ((i - 1u) * 8u) as u64;
+            let shift = (i - 1u) * 8u;
             bytes.push((n >> shift) as u8);
             i -= 1u;
         }

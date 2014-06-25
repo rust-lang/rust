@@ -30,12 +30,12 @@ fn general() {
     println!("{}", b);
     assert_eq!(b, 1);
     assert_eq!(a, 2);
-    assert_eq!(!0xf0 & 0xff, 0xf);
-    assert_eq!(0xf0 | 0xf, 0xff);
-    assert_eq!(0xf << 4, 0xf0);
-    assert_eq!(0xf0 >> 4, 0xf);
-    assert_eq!(-16 >> 2, -4);
-    assert_eq!(0b1010_1010 | 0b0101_0101, 0xff);
+    assert_eq!(!0xf0i & 0xff, 0xf);
+    assert_eq!(0xf0i | 0xf, 0xff);
+    assert_eq!(0xfi << 4, 0xf0);
+    assert_eq!(0xf0i >> 4, 0xf);
+    assert_eq!(-16i >> 2, -4);
+    assert_eq!(0b1010_1010i | 0b0101_0101, 0xff);
 }
 
 pub fn main() {

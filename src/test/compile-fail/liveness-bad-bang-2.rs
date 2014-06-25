@@ -11,6 +11,6 @@
 // Tests that a function with a ! annotation always actually fails
 // error-pattern: some control paths may return
 
-fn bad_bang(i: uint) -> ! { println!("{}", 3); }
+fn bad_bang(i: uint) -> ! { println!("{}", 3i); }
 
 fn main() { bad_bang(5u); }

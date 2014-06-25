@@ -682,9 +682,9 @@ mod test_map {
     #[test]
     fn test_find_mut() {
         let mut m = TrieMap::new();
-        assert!(m.insert(1, 12));
-        assert!(m.insert(2, 8));
-        assert!(m.insert(5, 14));
+        assert!(m.insert(1u, 12i));
+        assert!(m.insert(2u, 8i));
+        assert!(m.insert(5u, 14i));
         let new = 100;
         match m.find_mut(&5) {
             None => fail!(), Some(x) => *x = new
@@ -696,7 +696,7 @@ mod test_map {
     fn test_find_mut_missing() {
         let mut m = TrieMap::new();
         assert!(m.find_mut(&0).is_none());
-        assert!(m.insert(1, 12));
+        assert!(m.insert(1u, 12i));
         assert!(m.find_mut(&0).is_none());
         assert!(m.insert(2, 8));
         assert!(m.find_mut(&0).is_none());
@@ -781,15 +781,15 @@ mod test_map {
     #[test]
     fn test_swap() {
         let mut m = TrieMap::new();
-        assert_eq!(m.swap(1, 2), None);
-        assert_eq!(m.swap(1, 3), Some(2));
-        assert_eq!(m.swap(1, 4), Some(3));
+        assert_eq!(m.swap(1u, 2i), None);
+        assert_eq!(m.swap(1u, 3i), Some(2));
+        assert_eq!(m.swap(1u, 4i), Some(3));
     }
 
     #[test]
     fn test_pop() {
         let mut m = TrieMap::new();
-        m.insert(1, 2);
+        m.insert(1u, 2i);
         assert_eq!(m.pop(&1), Some(2));
         assert_eq!(m.pop(&1), None);
     }
@@ -943,7 +943,7 @@ mod bench_map {
     fn bench_iter_small(b: &mut Bencher) {
         let mut m = TrieMap::<uint>::new();
         let mut rng = weak_rng();
-        for _ in range(0, 20) {
+        for _ in range(0u, 20) {
             m.insert(rng.gen(), rng.gen());
         }
 
@@ -954,7 +954,7 @@ mod bench_map {
     fn bench_iter_large(b: &mut Bencher) {
         let mut m = TrieMap::<uint>::new();
         let mut rng = weak_rng();
-        for _ in range(0, 1000) {
+        for _ in range(0u, 1000) {
             m.insert(rng.gen(), rng.gen());
         }
 
@@ -965,12 +965,12 @@ mod bench_map {
     fn bench_lower_bound(b: &mut Bencher) {
         let mut m = TrieMap::<uint>::new();
         let mut rng = weak_rng();
-        for _ in range(0, 1000) {
+        for _ in range(0u, 1000) {
             m.insert(rng.gen(), rng.gen());
         }
 
         b.iter(|| {
-                for _ in range(0, 10) {
+                for _ in range(0u, 10) {
                     m.lower_bound(rng.gen());
                 }
             });
@@ -980,12 +980,12 @@ mod bench_map {
     fn bench_upper_bound(b: &mut Bencher) {
         let mut m = TrieMap::<uint>::new();
         let mut rng = weak_rng();
-        for _ in range(0, 1000) {
+        for _ in range(0u, 1000) {
             m.insert(rng.gen(), rng.gen());
         }
 
         b.iter(|| {
-                for _ in range(0, 10) {
+                for _ in range(0u, 10) {
                     m.upper_bound(rng.gen());
                 }
             });
@@ -997,7 +997,7 @@ mod bench_map {
         let mut rng = weak_rng();
 
         b.iter(|| {
-                for _ in range(0, 1000) {
+                for _ in range(0u, 1000) {
                     m.insert(rng.gen(), [1, .. 10]);
                 }
             })
@@ -1008,7 +1008,7 @@ mod bench_map {
         let mut rng = weak_rng();
 
         b.iter(|| {
-                for _ in range(0, 1000) {
+                for _ in range(0u, 1000) {
                     // only have the last few bits set.
                     m.insert(rng.gen::<uint>() & 0xff_ff, [1, .. 10]);
                 }
@@ -1021,7 +1021,7 @@ mod bench_map {
         let mut rng = weak_rng();
 
         b.iter(|| {
-                for _ in range(0, 1000) {
+                for _ in range(0u, 1000) {
                     m.insert(rng.gen(), ());
                 }
             })
@@ -1032,7 +1032,7 @@ mod bench_map {
         let mut rng = weak_rng();
 
         b.iter(|| {
-                for _ in range(0, 1000) {
+                for _ in range(0u, 1000) {
                     // only have the last few bits set.
                     m.insert(rng.gen::<uint>() & 0xff_ff, ());
                 }

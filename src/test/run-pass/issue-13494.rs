@@ -30,7 +30,7 @@ fn test() {
     let (tx, rx) = channel();
     spawn(proc() { helper(rx) });
     let (snd, rcv) = channel();
-    for _ in range(1, 100000) {
+    for _ in range(1i, 100000i) {
         snd.send(1);
         let (tx2, rx2) = channel();
         tx.send(tx2);

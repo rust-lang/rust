@@ -376,7 +376,7 @@ pub trait ImmutableVector<'a, T> {
      * `[3,4]`):
      *
      * ```rust
-     * let v = &[1,2,3,4];
+     * let v = &[1i, 2, 3, 4];
      * for win in v.windows(2) {
      *     println!("{}", win);
      * }
@@ -401,7 +401,7 @@ pub trait ImmutableVector<'a, T> {
      * `[3,4]`, `[5]`):
      *
      * ```rust
-     * let v = &[1,2,3,4,5];
+     * let v = &[1i, 2, 3, 4, 5];
      * for win in v.chunks(2) {
      *     println!("{}", win);
      * }
@@ -830,24 +830,24 @@ pub trait MutableVector<'a, T> {
     /// # Example
     ///
     /// ```rust
-    /// let mut v = [1, 2, 3, 4, 5, 6];
+    /// let mut v = [1i, 2, 3, 4, 5, 6];
     ///
     /// // scoped to restrict the lifetime of the borrows
     /// {
     ///    let (left, right) = v.mut_split_at(0);
     ///    assert!(left == &mut []);
-    ///    assert!(right == &mut [1, 2, 3, 4, 5, 6]);
+    ///    assert!(right == &mut [1i, 2, 3, 4, 5, 6]);
     /// }
     ///
     /// {
     ///     let (left, right) = v.mut_split_at(2);
-    ///     assert!(left == &mut [1, 2]);
-    ///     assert!(right == &mut [3, 4, 5, 6]);
+    ///     assert!(left == &mut [1i, 2]);
+    ///     assert!(right == &mut [3i, 4, 5, 6]);
     /// }
     ///
     /// {
     ///     let (left, right) = v.mut_split_at(6);
-    ///     assert!(left == &mut [1, 2, 3, 4, 5, 6]);
+    ///     assert!(left == &mut [1i, 2, 3, 4, 5, 6]);
     ///     assert!(right == &mut []);
     /// }
     /// ```
@@ -858,9 +858,9 @@ pub trait MutableVector<'a, T> {
     /// # Example
     ///
     /// ```rust
-    /// let mut v = [1, 2, 3];
+    /// let mut v = [1i, 2, 3];
     /// v.reverse();
-    /// assert!(v == [3, 2, 1]);
+    /// assert!(v == [3i, 2, 1]);
     /// ```
     fn reverse(self);
 
@@ -1080,15 +1080,15 @@ pub trait MutableCloneableVector<T> {
     /// ```rust
     /// use std::slice::MutableCloneableVector;
     ///
-    /// let mut dst = [0, 0, 0];
-    /// let src = [1, 2];
+    /// let mut dst = [0i, 0, 0];
+    /// let src = [1i, 2];
     ///
     /// assert!(dst.copy_from(src) == 2);
     /// assert!(dst == [1, 2, 0]);
     ///
-    /// let src2 = [3, 4, 5, 6];
+    /// let src2 = [3i, 4, 5, 6];
     /// assert!(dst.copy_from(src2) == 3);
-    /// assert!(dst == [3, 4, 5]);
+    /// assert!(dst == [3i, 4, 5]);
     /// ```
     fn copy_from(self, &[T]) -> uint;
 }

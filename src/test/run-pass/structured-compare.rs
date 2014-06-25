@@ -21,14 +21,14 @@ impl PartialEq for foo {
 }
 
 pub fn main() {
-    let a = (1, 2, 3);
-    let b = (1, 2, 3);
+    let a = (1i, 2i, 3i);
+    let b = (1i, 2i, 3i);
     assert_eq!(a, b);
     assert!((a != (1, 2, 4)));
     assert!((a < (1, 2, 4)));
     assert!((a <= (1, 2, 4)));
-    assert!(((1, 2, 4) > a));
-    assert!(((1, 2, 4) >= a));
+    assert!(((1i, 2i, 4i) > a));
+    assert!(((1i, 2i, 4i) >= a));
     let x = large;
     let y = small;
     assert!((x != y));

@@ -8,7 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-    let foo = ['h' as u8, 'i' as u8, 0 as u8];
-    let bar = &foo as *u8; //~ ERROR mismatched types
+// ignore-test #9737
+
+#![feature(macro_rules)]
+
+macro_rules! f((v: $x:expr) => ( println!("{:?}", $x) ))
+
+fn main () {
+    let v = 5;
+    f!(v: 3);
 }

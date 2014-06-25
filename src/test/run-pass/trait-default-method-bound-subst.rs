@@ -21,6 +21,6 @@ fn f<T, U, V: A<T>>(i: V, j: T, k: U) -> (T, U) {
 }
 
 pub fn main () {
-    assert_eq!(f(0, 1, 2), (1, 2));
-    assert_eq!(f(0u, 1, 2), (1, 2));
+    assert_eq!(f(0i, 1i, 2i), (1, 2));
+    assert_eq!(f(0u, 1i, 2i), (1, 2));
 }

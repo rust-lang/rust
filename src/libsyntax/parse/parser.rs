@@ -2721,7 +2721,7 @@ impl<'a> Parser<'a> {
     }
 
     // parse an expression, subject to the given restriction
-    fn parse_expr_res(&mut self, r: restriction) -> Gc<Expr> {
+    pub fn parse_expr_res(&mut self, r: restriction) -> Gc<Expr> {
         let old = self.restriction;
         self.restriction = r;
         let e = self.parse_assign_expr();

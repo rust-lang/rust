@@ -25,6 +25,6 @@ struct Bar<T> {
 impl<T> Foo for Bar<T> { }
 
 pub fn main() {
-    let a = Bar { x: 1 };
+    let a = Bar { x: 1u };
     let b = &a as &Foo;
 }

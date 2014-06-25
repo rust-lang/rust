@@ -15,6 +15,6 @@ fn foo<T:Clone>(x: &T) -> T{
 }
 
 pub fn main() {
-    assert_eq!(foo(&3), 3);
+    assert_eq!(foo(&3i), 3i);
     assert_eq!(foo(&'a'), 'a');
 }

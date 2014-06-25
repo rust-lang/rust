@@ -27,7 +27,7 @@
 /// # fn main() {
 /// log!(log::DEBUG, "this is a debug message");
 /// log!(log::WARN, "this is a warning {}", "message");
-/// log!(6, "this is a custom logging level: {level}", level=6);
+/// log!(6, "this is a custom logging level: {level}", level=6u);
 /// # }
 /// ```
 #[macro_export]
@@ -54,7 +54,7 @@ macro_rules! log(
 /// #[phase(plugin, link)] extern crate log;
 ///
 /// # fn main() {
-/// # let error = 3;
+/// # let error = 3u;
 /// error!("the build has failed with error code: {}", error);
 /// # }
 /// ```
@@ -72,7 +72,7 @@ macro_rules! error(
 /// #[phase(plugin, link)] extern crate log;
 ///
 /// # fn main() {
-/// # let code = 3;
+/// # let code = 3u;
 /// warn!("you may like to know that a process exited with: {}", code);
 /// # }
 /// ```
@@ -90,7 +90,7 @@ macro_rules! warn(
 /// #[phase(plugin, link)] extern crate log;
 ///
 /// # fn main() {
-/// # let ret = 3;
+/// # let ret = 3i;
 /// info!("this function is about to return: {}", ret);
 /// # }
 /// ```
@@ -110,7 +110,7 @@ macro_rules! info(
 /// #[phase(plugin, link)] extern crate log;
 ///
 /// # fn main() {
-/// debug!("x = {x}, y = {y}", x=10, y=20);
+/// debug!("x = {x}, y = {y}", x=10i, y=20i);
 /// # }
 /// ```
 #[macro_export]

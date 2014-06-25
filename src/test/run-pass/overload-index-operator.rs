@@ -46,8 +46,8 @@ pub fn main() {
     let bar = "bar".to_string();
 
     let mut list = AssociationList {pairs: Vec::new()};
-    list.push(foo.clone(), 22);
-    list.push(bar.clone(), 44);
+    list.push(foo.clone(), 22i);
+    list.push(bar.clone(), 44i);
 
     assert!(list[foo] == 22)
     assert!(list[bar] == 44)

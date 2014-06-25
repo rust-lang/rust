@@ -192,6 +192,7 @@ impl<T:Copy> Cell<T> {
     }
 }
 
+#[unstable]
 impl<T:Copy> Clone for Cell<T> {
     fn clone(&self) -> Cell<T> {
         Cell::new(self.get())
@@ -298,6 +299,7 @@ impl<T> RefCell<T> {
     }
 }
 
+#[unstable]
 impl<T: Clone> Clone for RefCell<T> {
     fn clone(&self) -> RefCell<T> {
         RefCell::new(self.borrow().clone())
@@ -389,14 +391,14 @@ mod test {
 
     #[test]
     fn smoketest_cell() {
-        let x = Cell::new(10);
+        let x = Cell::new(10i);
         assert!(x == Cell::new(10));
         assert!(x.get() == 10);
         x.set(20);
         assert!(x == Cell::new(20));
         assert!(x.get() == 20);
 
-        let y = Cell::new((30, 40));
+        let y = Cell::new((30i, 40i));
         assert!(y == Cell::new((30, 40)));
         assert!(y.get() == (30, 40));
     }

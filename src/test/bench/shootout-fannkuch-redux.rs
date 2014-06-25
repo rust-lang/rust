@@ -48,7 +48,7 @@ fn fannkuch(n: uint, i: uint) -> (int, int) {
     let mut perm = Vec::from_fn(n, |e| ((n + e - i) % n + 1) as i32);
     let mut tperm = perm.clone();
     let mut count = Vec::from_elem(n, 0u);
-    let mut perm_count = 0;
+    let mut perm_count = 0i;
     let mut checksum = 0;
 
     for countdown in range(1, fact(n - 1) + 1).rev() {

@@ -328,7 +328,7 @@ mod tests {
     fn yield_test() {
         let (tx, rx) = channel();
         spawn(proc() {
-            for _ in range(0, 10) { task::deschedule(); }
+            for _ in range(0u, 10) { task::deschedule(); }
             tx.send(());
         });
         rx.recv();

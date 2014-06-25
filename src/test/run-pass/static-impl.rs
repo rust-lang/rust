@@ -61,10 +61,10 @@ pub fn main() {
     assert_eq!(10u.plus(), 30);
     assert_eq!(("hi".to_string()).plus(), 200);
 
-    assert_eq!((vec!(1)).length_().str(), "1".to_string());
-    let vect = vec!(3, 4).map_(|a| *a + 4);
+    assert_eq!((vec!(1i)).length_().str(), "1".to_string());
+    let vect = vec!(3i, 4).map_(|a| *a + 4);
     assert_eq!(*vect.get(0), 7);
-    let vect = (vec!(3, 4)).map_::<uint>(|a| *a as uint + 4u);
+    let vect = (vec!(3i, 4)).map_::<uint>(|a| *a as uint + 4u);
     assert_eq!(*vect.get(0), 7u);
     let mut x = 0u;
     10u.multi(|_n| x += 2u );

@@ -352,6 +352,14 @@ impl<'a, S: Str> Equiv<S> for String {
     }
 }
 
+impl<S: Str> Add<S, String> for String {
+    fn add(&self, other: &S) -> String {
+        let mut s = self.to_string();
+        s.push_str(other.as_slice());
+        return s;
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::prelude::*;
@@ -468,5 +476,14 @@ mod tests {
         s.clear();
         assert_eq!(s.len(), 0);
         assert_eq!(s.as_slice(), "");
+    }
+
+    #[test]
+    fn test_str_add() {
+        let a = String::from_str("12345");
+        let b = a + "2";
+        let b = b + String::from_str("2");
+        assert_eq!(b.len(), 7);
+        assert_eq!(b.as_slice(), "1234522");
     }
 }

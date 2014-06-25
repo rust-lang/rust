@@ -135,7 +135,7 @@ invalidation*. As long as an iterator is still in scope, the compiler will preve
 modification of the container through another handle.
 
 ~~~
-let mut xs = [1, 2, 3];
+let mut xs = [1i, 2, 3];
 {
     let _it = xs.iter();
 
@@ -155,7 +155,7 @@ example, the `fold` method will accumulate the items yielded by an `Iterator`
 into a single value:
 
 ~~~
-let xs = [1, 9, 2, 3, 14, 12];
+let xs = [1i, 9, 2, 3, 14, 12];
 let result = xs.iter().fold(0, |accumulator, item| accumulator - *item);
 assert_eq!(result, -41);
 ~~~
@@ -163,8 +163,8 @@ assert_eq!(result, -41);
 Most adaptors return an adaptor object implementing the `Iterator` trait itself:
 
 ~~~
-let xs = [1, 9, 2, 3, 14, 12];
-let ys = [5, 2, 1, 8];
+let xs = [1i, 9, 2, 3, 14, 12];
+let ys = [5i, 2, 1, 8];
 let sum = xs.iter().chain(ys.iter()).fold(0, |a, b| a + *b);
 assert_eq!(sum, 57);
 ~~~
@@ -180,8 +180,8 @@ iterator adaptor named `fuse()` is provided. This returns an iterator that will
 never call its underlying iterator again once `None` has been returned:
 
 ~~~
-let xs = [1,2,3,4,5];
-let mut calls = 0;
+let xs = [1i,2,3,4,5];
+let mut calls = 0i;
 
 {
     let it = xs.iter().scan((), |_, x| {
@@ -209,11 +209,11 @@ assert_eq!(calls, 3);
 The function `range` (or `range_inclusive`) allows to simply iterate through a given range:
 
 ~~~
-for i in range(0, 5) {
+for i in range(0i, 5) {
   print!("{} ", i) // prints "0 1 2 3 4"
 }
 
-for i in std::iter::range_inclusive(0, 5) { // needs explicit import
+for i in std::iter::range_inclusive(0i, 5) { // needs explicit import
   print!("{} ", i) // prints "0 1 2 3 4 5"
 }
 ~~~
@@ -238,7 +238,7 @@ For loops are *often* used with a temporary iterator object, as above. They can
 also advance the state of an iterator in a mutable location:
 
 ~~~
-let xs = [1, 2, 3, 4, 5];
+let xs = [1i, 2, 3, 4, 5];
 let ys = ["foo", "bar", "baz", "foobar"];
 
 // create an iterator yielding tuples of elements from both vectors
@@ -265,7 +265,7 @@ assert!(it.next().is_none());
 Iterators offer generic conversion to containers with the `collect` adaptor:
 
 ~~~
-let xs = [0, 1, 1, 2, 3, 5, 8];
+let xs = [0i, 1, 1, 2, 3, 5, 8];
 let ys = xs.iter().rev().skip(1).map(|&x| x * 2).collect::<Vec<int>>();
 assert_eq!(ys, vec![10, 6, 4, 2, 2, 0]);
 ~~~
@@ -347,7 +347,7 @@ A `DoubleEndedIterator` can have its direction changed with the `rev` adaptor,
 returning another `DoubleEndedIterator` with `next` and `next_back` exchanged.
 
 ~~~
-let xs = [1, 2, 3, 4, 5, 6];
+let xs = [1i, 2, 3, 4, 5, 6];
 let mut it = xs.iter();
 println!("{}", it.next()); // prints `Some(1)`
 println!("{}", it.next()); // prints `Some(2)`
@@ -363,8 +363,8 @@ The `chain`, `map`, `filter`, `filter_map` and `inspect` adaptors are
 `DoubleEndedIterator` implementations if the underlying iterators are.
 
 ~~~
-let xs = [1, 2, 3, 4];
-let ys = [5, 6, 7, 8];
+let xs = [1i, 2, 3, 4];
+let ys = [5i, 6, 7, 8];
 let mut it = xs.iter().chain(ys.iter()).map(|&x| x * 2);
 
 println!("{}", it.next()); // prints `Some(2)`
@@ -380,9 +380,9 @@ mutable references. It can be used to reverse a container in-place. Note that
 the trailing underscore is a workaround for issue #5898 and will be removed.
 
 ~~~
-let mut ys = [1, 2, 3, 4, 5];
+let mut ys = [1i, 2, 3, 4, 5];
 ys.mut_iter().reverse_();
-assert!(ys == [5, 4, 3, 2, 1]);
+assert!(ys == [5i, 4, 3, 2, 1]);
 ~~~
 
 ## Random-access iterators
@@ -395,8 +395,8 @@ The `chain` adaptor is an implementation of `RandomAccessIterator` if the
 underlying iterators are.
 
 ~~~
-let xs = [1, 2, 3, 4, 5];
-let ys = [7, 9, 11];
+let xs = [1i, 2, 3, 4, 5];
+let ys = [7i, 9, 11];
 let mut it = xs.iter().chain(ys.iter());
 println!("{}", it.idx(0)); // prints `Some(1)`
 println!("{}", it.idx(5)); // prints `Some(7)`

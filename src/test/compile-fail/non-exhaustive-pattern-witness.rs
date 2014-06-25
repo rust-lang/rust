@@ -67,8 +67,11 @@ fn vectors_with_nested_enums() {
     }
 }
 
-fn main() {
-    struct_with_a_nested_enum_and_vector();
-    enum_with_multiple_missing_variants();
-    enum_struct_variant();
+fn missing_nil() {
+    match ((), false) {
+    //~^ ERROR non-exhaustive patterns: `((), false)` not covered
+        ((), true) => ()
+    }
 }
+
+fn main() {}

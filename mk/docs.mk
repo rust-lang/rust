@@ -26,9 +26,9 @@
 # L10N_LANGS are the languages for which the docs have been
 # translated.
 ######################################################################
-DOCS := index intro tutorial guide-ffi guide-macros guide-lifetimes \
+DOCS := index intro tutorial guide guide-ffi guide-macros guide-lifetimes \
 	guide-tasks guide-container guide-pointers guide-testing \
-	guide-runtime complement-bugreport complement-cheatsheet \
+	guide-runtime complement-bugreport \
 	complement-lang-faq complement-design-faq complement-project-faq rust \
     rustdoc guide-unsafe
 

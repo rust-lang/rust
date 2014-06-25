@@ -8,12 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 fn f(i: Box<int>) {
     assert_eq!(*i, 100);
 }
 
 pub fn main() {
-    let i = box 100;
+    let i = box 100i;
     f(i);
 }

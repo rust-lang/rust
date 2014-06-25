@@ -9,7 +9,7 @@
 // except according to those terms.
 
 pub fn main() {
-    let i = box 100;
+    let i = box 100i;
     let mut j;
     j = i;
     assert_eq!(*j, 100);

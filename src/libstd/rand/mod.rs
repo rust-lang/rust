@@ -252,7 +252,7 @@ pub fn random<T: Rand>() -> T {
 /// use std::rand::{task_rng, sample};
 ///
 /// let mut rng = task_rng();
-/// let sample = sample(&mut rng, range(1, 100), 5);
+/// let sample = sample(&mut rng, range(1i, 100), 5);
 /// println!("{}", sample);
 /// ```
 pub fn sample<T, I: Iterator<T>, R: Rng>(rng: &mut R,
@@ -305,17 +305,17 @@ mod test {
     #[test]
     fn test_gen_range() {
         let mut r = task_rng();
-        for _ in range(0, 1000) {
+        for _ in range(0u, 1000) {
             let a = r.gen_range(-3i, 42);
             assert!(a >= -3 && a < 42);
-            assert_eq!(r.gen_range(0, 1), 0);
-            assert_eq!(r.gen_range(-12, -11), -12);
+            assert_eq!(r.gen_range(0i, 1), 0);
+            assert_eq!(r.gen_range(-12i, -11), -12);
         }
 
-        for _ in range(0, 1000) {
-            let a = r.gen_range(10, 42);
+        for _ in range(0u, 1000) {
+            let a = r.gen_range(10i, 42);
             assert!(a >= 10 && a < 42);
-            assert_eq!(r.gen_range(0, 1), 0);
+            assert_eq!(r.gen_range(0i, 1), 0);
             assert_eq!(r.gen_range(3_000_000u, 3_000_001), 3_000_000);
         }
 
@@ -369,7 +369,7 @@ mod test {
     #[test]
     fn test_choose() {
         let mut r = task_rng();
-        assert_eq!(r.choose([1, 1, 1]).map(|&x|x), Some(1));
+        assert_eq!(r.choose([1i, 1, 1]).map(|&x|x), Some(1));
 
         let v: &[int] = &[];
         assert_eq!(r.choose(v), None);
@@ -380,15 +380,15 @@ mod test {
         let mut r = task_rng();
         let empty: &mut [int] = &mut [];
         r.shuffle(empty);
-        let mut one = [1];
+        let mut one = [1i];
         r.shuffle(one);
         assert_eq!(one.as_slice(), &[1]);
 
-        let mut two = [1, 2];
+        let mut two = [1i, 2];
         r.shuffle(two);
         assert!(two == [1, 2] || two == [2, 1]);
 
-        let mut x = [1, 1, 1];
+        let mut x = [1i, 1, 1];
         r.shuffle(x);
         assert_eq!(x.as_slice(), &[1, 1, 1]);
     }
@@ -397,7 +397,7 @@ mod test {
     fn test_task_rng() {
         let mut r = task_rng();
         r.gen::<int>();
-        let mut v = [1, 1, 1];
+        let mut v = [1i, 1, 1];
         r.shuffle(v);
         assert_eq!(v.as_slice(), &[1, 1, 1]);
         assert_eq!(r.gen_range(0u, 1u), 0u);
@@ -419,8 +419,8 @@ mod test {
 
     #[test]
     fn test_sample() {
-        let min_val = 1;
-        let max_val = 100;
+        let min_val = 1i;
+        let max_val = 100i;
 
         let mut r = task_rng();
         let vals = range(min_val, max_val).collect::<Vec<int>>();

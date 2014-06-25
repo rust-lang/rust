@@ -869,6 +869,7 @@ do
     make_dir $h/test/debuginfo-lldb
     make_dir $h/test/codegen
     make_dir $h/test/doc-tutorial
+    make_dir $h/test/doc-guide
     make_dir $h/test/doc-guide-ffi
     make_dir $h/test/doc-guide-runtime
     make_dir $h/test/doc-guide-macros
@@ -876,7 +877,6 @@ do
     make_dir $h/test/doc-guide-pointers
     make_dir $h/test/doc-guide-container
     make_dir $h/test/doc-guide-tasks
-    make_dir $h/test/doc-complement-cheatsheet
     make_dir $h/test/doc-rust
 done
 

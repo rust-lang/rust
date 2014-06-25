@@ -610,7 +610,6 @@ fn trans_rvalue_stmt_unadjusted<'a>(bcx: &'a Block<'a>,
             controlflow::trans_loop(bcx, expr.id, &**body)
         }
         ast::ExprAssign(ref dst, ref src) => {
-            let src_datum = unpack_datum!(bcx, trans(bcx, &**src));
             let dst_datum = unpack_datum!(bcx, trans_to_lvalue(bcx, &**dst, "assign"));
 
             if ty::type_needs_drop(bcx.tcx(), dst_datum.ty) {
@@ -630,12 +629,13 @@ fn trans_rvalue_stmt_unadjusted<'a>(bcx: &'a Block<'a>,
                 //
                 // We could avoid this intermediary with some analysis
                 // to determine whether `dst` may possibly own `src`.
+                let src_datum = unpack_datum!(bcx, trans(bcx, &**src));
                 let src_datum = unpack_datum!(
                     bcx, src_datum.to_rvalue_datum(bcx, "ExprAssign"));
                 bcx = glue::drop_ty(bcx, dst_datum.val, dst_datum.ty);
                 src_datum.store_to(bcx, dst_datum.val)
             } else {
-                src_datum.store_to(bcx, dst_datum.val)
+                trans_into(bcx, &**src, SaveIn(dst_datum.to_llref()))
             }
         }
         ast::ExprAssignOp(op, ref dst, ref src) => {

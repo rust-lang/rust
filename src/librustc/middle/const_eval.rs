@@ -299,7 +299,8 @@ pub enum const_val {
     const_uint(u64),
     const_str(InternedString),
     const_binary(Rc<Vec<u8> >),
-    const_bool(bool)
+    const_bool(bool),
+    const_nil
 }
 
 pub fn eval_const_expr(tcx: &ty::ctxt, e: &Expr) -> const_val {
@@ -367,8 +368,8 @@ pub fn eval_const_expr_partial<T: ty::ExprTyProvider>(tcx: &T, e: &Expr)
               BiAnd | BiBitAnd => Ok(const_int(a & b)),
               BiOr | BiBitOr => Ok(const_int(a | b)),
               BiBitXor => Ok(const_int(a ^ b)),
-              BiShl => Ok(const_int(a << b)),
-              BiShr => Ok(const_int(a >> b)),
+              BiShl => Ok(const_int(a << b as uint)),
+              BiShr => Ok(const_int(a >> b as uint)),
               BiEq => fromb(a == b),
               BiLt => fromb(a < b),
               BiLe => fromb(a <= b),
@@ -394,8 +395,8 @@ pub fn eval_const_expr_partial<T: ty::ExprTyProvider>(tcx: &T, e: &Expr)
               BiAnd | BiBitAnd => Ok(const_uint(a & b)),
               BiOr | BiBitOr => Ok(const_uint(a | b)),
               BiBitXor => Ok(const_uint(a ^ b)),
-              BiShl => Ok(const_uint(a << b)),
-              BiShr => Ok(const_uint(a >> b)),
+              BiShl => Ok(const_uint(a << b as uint)),
+              BiShr => Ok(const_uint(a >> b as uint)),
               BiEq => fromb(a == b),
               BiLt => fromb(a < b),
               BiLe => fromb(a <= b),
@@ -407,15 +408,15 @@ pub fn eval_const_expr_partial<T: ty::ExprTyProvider>(tcx: &T, e: &Expr)
           // shifts can have any integral type as their rhs
           (Ok(const_int(a)), Ok(const_uint(b))) => {
             match op {
-              BiShl => Ok(const_int(a << b)),
-              BiShr => Ok(const_int(a >> b)),
+              BiShl => Ok(const_int(a << b as uint)),
+              BiShr => Ok(const_int(a >> b as uint)),
               _ => Err("can't do this op on an int and uint".to_string())
             }
           }
           (Ok(const_uint(a)), Ok(const_int(b))) => {
             match op {
-              BiShl => Ok(const_uint(a << b)),
-              BiShr => Ok(const_uint(a >> b)),
+              BiShl => Ok(const_uint(a << b as uint)),
+              BiShr => Ok(const_uint(a >> b as uint)),
               _ => Err("can't do this op on a uint and int".to_string())
             }
           }
@@ -514,7 +515,7 @@ pub fn lit_to_const(lit: &Lit) -> const_val {
         LitFloat(ref n, _) | LitFloatUnsuffixed(ref n) => {
             const_float(from_str::<f64>(n.get()).unwrap() as f64)
         }
-        LitNil => const_int(0i64),
+        LitNil => const_nil,
         LitBool(b) => const_bool(b)
     }
 }
@@ -530,6 +531,7 @@ pub fn compare_const_vals(a: &const_val, b: &const_val) -> Option<int> {
         (&const_str(ref a), &const_str(ref b)) => compare_vals(a, b),
         (&const_bool(a), &const_bool(b)) => compare_vals(a, b),
         (&const_binary(ref a), &const_binary(ref b)) => compare_vals(a, b),
+        (&const_nil, &const_nil) => compare_vals((), ()),
         _ => None
     }
 }

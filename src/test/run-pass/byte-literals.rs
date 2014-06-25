@@ -25,8 +25,6 @@ pub fn main() {
     assert_eq!(b'\xF0', 240u8);
     assert_eq!(FOO, 240u8);
 
-    assert_eq!([42, ..b'\t'].as_slice(), &[42, 42, 42, 42, 42, 42, 42, 42, 42]);
-
     match 42 {
         b'*' => {},
         _ => fail!()

@@ -28,7 +28,7 @@ fn foo<T: RequiresRequiresShareAndSend>(val: T, chan: Sender<T>) {
 }
 
 pub fn main() {
-    let (tx, rx) = channel();
-    foo(X(31337), tx);
-    assert!(rx.recv() == X(31337));
+    let (tx, rx): (Sender<X<int>>, Receiver<X<int>>) = channel();
+    foo(X(31337i), tx);
+    assert!(rx.recv() == X(31337i));
 }

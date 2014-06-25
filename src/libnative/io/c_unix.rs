@@ -93,7 +93,7 @@ mod select {
     }
 
     pub fn fd_set(set: &mut fd_set, fd: i32) {
-        set.fds_bits[(fd / 32) as uint] |= 1 << (fd % 32);
+        set.fds_bits[(fd / 32) as uint] |= 1 << ((fd % 32) as uint);
     }
 }
 

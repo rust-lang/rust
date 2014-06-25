@@ -112,13 +112,24 @@ fn run_compiler(args: &[String]) {
     driver::compile_input(sess, cfg, &input, &odir, &ofile);
 }
 
-pub fn version(command: &str) {
-    let vers = match option_env!("CFG_VERSION") {
-        Some(vers) => vers,
-        None => "unknown version"
+/// Prints version information and returns None on success or an error
+/// message on failure.
+pub fn version(binary: &str, matches: &getopts::Matches) -> Option<String> {
+    let verbose = match matches.opt_str("version").as_ref().map(|s| s.as_slice()) {
+        None => false,
+        Some("verbose") => true,
+        Some(s) => return Some(format!("Unrecognized argument: {}", s))
     };
-    println!("{} {}", command, vers);
-    println!("host: {}", driver::host_triple());
+
+    println!("{} {}", binary, env!("CFG_VERSION"));
+    if verbose {
+        println!("binary: {}", binary);
+        println!("commit-hash: {}", option_env!("CFG_VER_HASH").unwrap_or("unknown"));
+        println!("commit-date: {}", option_env!("CFG_VER_DATE").unwrap_or("unknown"));
+        println!("host: {}", driver::host_triple());
+        println!("release: {}", env!("CFG_RELEASE"));
+    }
+    None
 }
 
 fn usage() {
@@ -268,9 +279,11 @@ pub fn handle_options(mut args: Vec<String>) -> Option<getopts::Matches> {
         return None;
     }
 
-    if matches.opt_present("v") || matches.opt_present("version") {
-        version("rustc");
-        return None;
+    if matches.opt_present("version") {
+        match version("rustc", &matches) {
+            Some(err) => early_error(err.as_slice()),
+            None => return None
+        }
     }
 
     Some(matches)

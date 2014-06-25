@@ -32,6 +32,7 @@ use std::gc::Gc;
 
 pub mod rt {
     use ast;
+    use codemap::Spanned;
     use ext::base::ExtCtxt;
     use parse::token;
     use parse;
@@ -48,9 +49,22 @@ pub mod rt {
         fn to_tokens(&self, _cx: &ExtCtxt) -> Vec<TokenTree> ;
     }
 
+    impl ToTokens for TokenTree {
+        fn to_tokens(&self, _cx: &ExtCtxt) -> Vec<TokenTree> {
+            vec!(self.clone())
+        }
+    }
+
     impl ToTokens for Vec<TokenTree> {
         fn to_tokens(&self, _cx: &ExtCtxt) -> Vec<TokenTree> {
             (*self).clone()
+        }
+    }
+
+    impl<T: ToTokens> ToTokens for Spanned<T> {
+        fn to_tokens(&self, cx: &ExtCtxt) -> Vec<TokenTree> {
+            // FIXME: use the span?
+            self.node.to_tokens(cx)
         }
     }
 
@@ -68,10 +82,46 @@ pub mod rt {
 
     */
 
+    // FIXME: Move this trait to pprust and get rid of *_to_str?
     pub trait ToSource {
         // Takes a thing and generates a string containing rust code for it.
         fn to_source(&self) -> String;
     }
+
+    macro_rules! impl_to_source(
+        (Gc<$t:ty>, $pp:ident) => (
+            impl ToSource for Gc<$t> {
+                fn to_source(&self) -> String {
+                    pprust::$pp(&**self)
+                }
+            }
+        );
+        ($t:ty, $pp:ident) => (
+            impl ToSource for $t {
+                fn to_source(&self) -> String {
+                    pprust::$pp(self)
+                }
+            }
+        );
+    )
+
+    fn slice_to_source<'a, T: ToSource>(sep: &'static str, xs: &'a [T]) -> String {
+        xs.iter()
+            .map(|i| i.to_source())
+            .collect::<Vec<String>>()
+            .connect(sep)
+            .to_string()
+    }
+
+    macro_rules! impl_to_source_slice(
+        ($t:ty, $sep:expr) => (
+            impl<'a> ToSource for &'a [$t] {
+                fn to_source(&self) -> String {
+                    slice_to_source($sep, *self)
+                }
+            }
+        )
+    )
 
     impl ToSource for ast::Ident {
         fn to_source(&self) -> String {
@@ -79,61 +129,15 @@ pub mod rt {
         }
     }
 
-    impl ToSource for Gc<ast::Item> {
-        fn to_source(&self) -> String {
-            pprust::item_to_str(&**self)
-        }
-    }
-
-    impl<'a> ToSource for &'a [Gc<ast::Item>] {
-        fn to_source(&self) -> String {
-            self.iter()
-                .map(|i| i.to_source())
-                .collect::<Vec<String>>()
-                .connect("\n\n")
-                .to_string()
-        }
-    }
-
-    impl ToSource for ast::Ty {
-        fn to_source(&self) -> String {
-            pprust::ty_to_str(self)
-        }
-    }
-
-    impl<'a> ToSource for &'a [ast::Ty] {
-        fn to_source(&self) -> String {
-            self.iter()
-                .map(|i| i.to_source())
-                .collect::<Vec<String>>()
-                .connect(", ")
-                .to_string()
-        }
-    }
-
-    impl ToSource for Generics {
-        fn to_source(&self) -> String {
-            pprust::generics_to_str(self)
-        }
-    }
-
-    impl ToSource for Gc<ast::Expr> {
-        fn to_source(&self) -> String {
-            pprust::expr_to_str(&**self)
-        }
-    }
-
-    impl ToSource for ast::Block {
-        fn to_source(&self) -> String {
-            pprust::block_to_str(self)
-        }
-    }
-
-    impl ToSource for ast::Arg {
-        fn to_source(&self) -> String {
-            pprust::arg_to_str(self)
-        }
-    }
+    impl_to_source!(ast::Ty, ty_to_str)
+    impl_to_source!(ast::Block, block_to_str)
+    impl_to_source!(ast::Arg, arg_to_str)
+    impl_to_source!(Generics, generics_to_str)
+    impl_to_source!(Gc<ast::Item>, item_to_str)
+    impl_to_source!(Gc<ast::Expr>, expr_to_str)
+    impl_to_source!(Gc<ast::Pat>, pat_to_str)
+    impl_to_source_slice!(ast::Ty, ", ")
+    impl_to_source_slice!(Gc<ast::Item>, "\n\n")
 
     impl<'a> ToSource for &'a str {
         fn to_source(&self) -> String {
@@ -163,76 +167,36 @@ pub mod rt {
         }
     }
 
-    impl ToSource for int {
-        fn to_source(&self) -> String {
-            let lit = dummy_spanned(ast::LitInt(*self as i64, ast::TyI));
-            pprust::lit_to_str(&lit)
-        }
-    }
+    macro_rules! impl_to_source_int(
+        (signed, $t:ty, $tag:ident) => (
+            impl ToSource for $t {
+                fn to_source(&self) -> String {
+                    let lit = dummy_spanned(ast::LitInt(*self as i64, ast::$tag));
+                    pprust::lit_to_str(&lit)
+                }
+            }
+        );
+        (unsigned, $t:ty, $tag:ident) => (
+            impl ToSource for $t {
+                fn to_source(&self) -> String {
+                    let lit = dummy_spanned(ast::LitUint(*self as u64, ast::$tag));
+                    pprust::lit_to_str(&lit)
+                }
+            }
+        );
+    )
 
-    impl ToSource for i8 {
-        fn to_source(&self) -> String {
-            let lit = dummy_spanned(ast::LitInt(*self as i64, ast::TyI8));
-            pprust::lit_to_str(&lit)
-        }
-    }
+    impl_to_source_int!(signed, int, TyI)
+    impl_to_source_int!(signed, i8,  TyI8)
+    impl_to_source_int!(signed, i16, TyI16)
+    impl_to_source_int!(signed, i32, TyI32)
+    impl_to_source_int!(signed, i64, TyI64)
 
-    impl ToSource for i16 {
-        fn to_source(&self) -> String {
-            let lit = dummy_spanned(ast::LitInt(*self as i64, ast::TyI16));
-            pprust::lit_to_str(&lit)
-        }
-    }
-
-
-    impl ToSource for i32 {
-        fn to_source(&self) -> String {
-            let lit = dummy_spanned(ast::LitInt(*self as i64, ast::TyI32));
-            pprust::lit_to_str(&lit)
-        }
-    }
-
-    impl ToSource for i64 {
-        fn to_source(&self) -> String {
-            let lit = dummy_spanned(ast::LitInt(*self as i64, ast::TyI64));
-            pprust::lit_to_str(&lit)
-        }
-    }
-
-    impl ToSource for uint {
-        fn to_source(&self) -> String {
-            let lit = dummy_spanned(ast::LitUint(*self as u64, ast::TyU));
-            pprust::lit_to_str(&lit)
-        }
-    }
-
-    impl ToSource for u8 {
-        fn to_source(&self) -> String {
-            let lit = dummy_spanned(ast::LitUint(*self as u64, ast::TyU8));
-            pprust::lit_to_str(&lit)
-        }
-    }
-
-    impl ToSource for u16 {
-        fn to_source(&self) -> String {
-            let lit = dummy_spanned(ast::LitUint(*self as u64, ast::TyU16));
-            pprust::lit_to_str(&lit)
-        }
-    }
-
-    impl ToSource for u32 {
-        fn to_source(&self) -> String {
-            let lit = dummy_spanned(ast::LitUint(*self as u64, ast::TyU32));
-            pprust::lit_to_str(&lit)
-        }
-    }
-
-    impl ToSource for u64 {
-        fn to_source(&self) -> String {
-            let lit = dummy_spanned(ast::LitUint(*self as u64, ast::TyU64));
-            pprust::lit_to_str(&lit)
-        }
-    }
+    impl_to_source_int!(unsigned, uint, TyU)
+    impl_to_source_int!(unsigned, u8,   TyU8)
+    impl_to_source_int!(unsigned, u16,  TyU16)
+    impl_to_source_int!(unsigned, u32,  TyU32)
+    impl_to_source_int!(unsigned, u64,  TyU64)
 
     // Alas ... we write these out instead. All redundant.
 
@@ -246,7 +210,7 @@ pub mod rt {
         )
     )
 
-    macro_rules! impl_to_tokens_self(
+    macro_rules! impl_to_tokens_lifetime(
         ($t:ty) => (
             impl<'a> ToTokens for $t {
                 fn to_tokens(&self, cx: &ExtCtxt) -> Vec<TokenTree> {
@@ -258,14 +222,15 @@ pub mod rt {
 
     impl_to_tokens!(ast::Ident)
     impl_to_tokens!(Gc<ast::Item>)
-    impl_to_tokens_self!(&'a [Gc<ast::Item>])
+    impl_to_tokens!(Gc<ast::Pat>)
+    impl_to_tokens_lifetime!(&'a [Gc<ast::Item>])
     impl_to_tokens!(ast::Ty)
-    impl_to_tokens_self!(&'a [ast::Ty])
+    impl_to_tokens_lifetime!(&'a [ast::Ty])
     impl_to_tokens!(Generics)
     impl_to_tokens!(Gc<ast::Expr>)
     impl_to_tokens!(ast::Block)
     impl_to_tokens!(ast::Arg)
-    impl_to_tokens_self!(&'a str)
+    impl_to_tokens_lifetime!(&'a str)
     impl_to_tokens!(())
     impl_to_tokens!(char)
     impl_to_tokens!(bool)
