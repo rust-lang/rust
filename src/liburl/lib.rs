@@ -427,9 +427,9 @@ fn query_from_str(rawquery: &str) -> DecodeResult<Query> {
 /// # Example
 ///
 /// ```rust
-/// let query = vec!(("title".to_string(), "The Village".to_string()),
+/// let query = vec![("title".to_string(), "The Village".to_string()),
 ///                  ("north".to_string(), "52.91".to_string()),
-///                  ("west".to_string(), "4.10".to_string()));
+///                  ("west".to_string(), "4.10".to_string())];
 /// println!("{}", url::query_to_str(&query));  // title=The%20Village&north=52.91&west=4.10
 /// ```
 pub fn query_to_str(query: &Query) -> String {
@@ -868,87 +868,86 @@ mod tests {
     #[test]
     fn test_url_parse() {
         let url = "http://user:pass@rust-lang.org:8080/doc/~u?s=v#something";
+        let u = from_str::<Url>(url).unwrap();
 
-        let up = from_str::<Url>(url);
-        let u = up.unwrap();
-        assert_eq!(&u.scheme, &"http".to_string());
-        assert_eq!(&u.user, &Some(UserInfo::new("user".to_string(), Some("pass".to_string()))));
-        assert_eq!(&u.host, &"rust-lang.org".to_string());
-        assert_eq!(&u.port, &Some(8080));
-        assert_eq!(&u.path.path, &"/doc/~u".to_string());
-        assert_eq!(&u.path.query, &vec!(("s".to_string(), "v".to_string())));
-        assert_eq!(&u.path.fragment, &Some("something".to_string()));
+        assert_eq!(u.scheme, "http".to_string());
+        assert_eq!(u.user, Some(UserInfo::new("user".to_string(), Some("pass".to_string()))));
+        assert_eq!(u.host, "rust-lang.org".to_string());
+        assert_eq!(u.port, Some(8080));
+        assert_eq!(u.path.path, "/doc/~u".to_string());
+        assert_eq!(u.path.query, vec!(("s".to_string(), "v".to_string())));
+        assert_eq!(u.path.fragment, Some("something".to_string()));
     }
 
     #[test]
     fn test_path_parse() {
         let path = "/doc/~u?s=v#something";
+        let u = from_str::<Path>(path).unwrap();
 
-        let up = from_str::<Path>(path);
-        let u = up.unwrap();
-        assert_eq!(&u.path, &"/doc/~u".to_string());
-        assert_eq!(&u.query, &vec!(("s".to_string(), "v".to_string())));
-        assert_eq!(&u.fragment, &Some("something".to_string()));
+        assert_eq!(u.path, "/doc/~u".to_string());
+        assert_eq!(u.query, vec!(("s".to_string(), "v".to_string())));
+        assert_eq!(u.fragment, Some("something".to_string()));
     }
 
     #[test]
     fn test_url_parse_host_slash() {
         let urlstr = "http://0.42.42.42/";
         let url = from_str::<Url>(urlstr).unwrap();
-        assert!(url.host == "0.42.42.42".to_string());
-        assert!(url.path.path == "/".to_string());
+        assert_eq!(url.host, "0.42.42.42".to_string());
+        assert_eq!(url.path.path, "/".to_string());
     }
 
     #[test]
     fn test_path_parse_host_slash() {
         let pathstr = "/";
         let path = from_str::<Path>(pathstr).unwrap();
-        assert!(path.path == "/".to_string());
+        assert_eq!(path.path, "/".to_string());
     }
 
     #[test]
     fn test_url_host_with_port() {
         let urlstr = "scheme://host:1234";
         let url = from_str::<Url>(urlstr).unwrap();
-        assert_eq!(&url.scheme, &"scheme".to_string());
-        assert_eq!(&url.host, &"host".to_string());
-        assert_eq!(&url.port, &Some(1234));
+        assert_eq!(url.scheme, "scheme".to_string());
+        assert_eq!(url.host, "host".to_string());
+        assert_eq!(url.port, Some(1234));
         // is empty path really correct? Other tests think so
-        assert_eq!(&url.path.path, &"".to_string());
+        assert_eq!(url.path.path, "".to_string());
+
         let urlstr = "scheme://host:1234/";
         let url = from_str::<Url>(urlstr).unwrap();
-        assert_eq!(&url.scheme, &"scheme".to_string());
-        assert_eq!(&url.host, &"host".to_string());
-        assert_eq!(&url.port, &Some(1234));
-        assert_eq!(&url.path.path, &"/".to_string());
+        assert_eq!(url.scheme, "scheme".to_string());
+        assert_eq!(url.host, "host".to_string());
+        assert_eq!(url.port, Some(1234));
+        assert_eq!(url.path.path, "/".to_string());
     }
 
     #[test]
     fn test_url_with_underscores() {
         let urlstr = "http://dotcom.com/file_name.html";
         let url = from_str::<Url>(urlstr).unwrap();
-        assert!(url.path.path == "/file_name.html".to_string());
+        assert_eq!(url.path.path, "/file_name.html".to_string());
     }
 
     #[test]
     fn test_path_with_underscores() {
         let pathstr = "/file_name.html";
         let path = from_str::<Path>(pathstr).unwrap();
-        assert!(path.path == "/file_name.html".to_string());
+        assert_eq!(path.path, "/file_name.html".to_string());
     }
 
     #[test]
     fn test_url_with_dashes() {
         let urlstr = "http://dotcom.com/file-name.html";
         let url = from_str::<Url>(urlstr).unwrap();
-        assert!(url.path.path == "/file-name.html".to_string());
+        assert_eq!(url.path.path, "/file-name.html".to_string());
     }
 
     #[test]
     fn test_path_with_dashes() {
         let pathstr = "/file-name.html";
         let path = from_str::<Path>(pathstr).unwrap();
-        assert!(path.path == "/file-name.html".to_string());
+        assert_eq!(path.path, "/file-name.html".to_string());
     }
 
     #[test]
@@ -965,62 +964,72 @@ mod tests {
     #[test]
     fn test_full_url_parse_and_format() {
         let url = "http://user:pass@rust-lang.org/doc?s=v#something";
-        assert_eq!(from_str::<Url>(url).unwrap().to_str().as_slice(), url);
+        let u = from_str::<Url>(url).unwrap();
+        assert_eq!(format!("{}", u).as_slice(), url);
     }
 
     #[test]
     fn test_userless_url_parse_and_format() {
         let url = "http://rust-lang.org/doc?s=v#something";
-        assert_eq!(from_str::<Url>(url).unwrap().to_str().as_slice(), url);
+        let u = from_str::<Url>(url).unwrap();
+        assert_eq!(format!("{}", u).as_slice(), url);
     }
 
     #[test]
     fn test_queryless_url_parse_and_format() {
         let url = "http://user:pass@rust-lang.org/doc#something";
-        assert_eq!(from_str::<Url>(url).unwrap().to_str().as_slice(), url);
+        let u = from_str::<Url>(url).unwrap();
+        assert_eq!(format!("{}", u).as_slice(), url);
     }
 
     #[test]
     fn test_empty_query_url_parse_and_format() {
         let url = "http://user:pass@rust-lang.org/doc?#something";
         let should_be = "http://user:pass@rust-lang.org/doc#something";
-        assert_eq!(from_str::<Url>(url).unwrap().to_str().as_slice(), should_be);
+        let u = from_str::<Url>(url).unwrap();
+        assert_eq!(format!("{}", u).as_slice(), should_be);
     }
 
     #[test]
     fn test_fragmentless_url_parse_and_format() {
         let url = "http://user:pass@rust-lang.org/doc?q=v";
-        assert_eq!(from_str::<Url>(url).unwrap().to_str().as_slice(), url);
+        let u = from_str::<Url>(url).unwrap();
+        assert_eq!(format!("{}", u).as_slice(), url);
     }
 
     #[test]
     fn test_minimal_url_parse_and_format() {
         let url = "http://rust-lang.org/doc";
-        assert_eq!(from_str::<Url>(url).unwrap().to_str().as_slice(), url);
+        let u = from_str::<Url>(url).unwrap();
+        assert_eq!(format!("{}", u).as_slice(), url);
     }
 
     #[test]
     fn test_url_with_port_parse_and_format() {
         let url = "http://rust-lang.org:80/doc";
-        assert_eq!(from_str::<Url>(url).unwrap().to_str().as_slice(), url);
+        let u = from_str::<Url>(url).unwrap();
+        assert_eq!(format!("{}", u).as_slice(), url);
     }
 
     #[test]
     fn test_scheme_host_only_url_parse_and_format() {
         let url = "http://rust-lang.org";
-        assert_eq!(from_str::<Url>(url).unwrap().to_str().as_slice(), url);
+        let u = from_str::<Url>(url).unwrap();
+        assert_eq!(format!("{}", u).as_slice(), url);
     }
 
     #[test]
     fn test_pathless_url_parse_and_format() {
         let url = "http://user:pass@rust-lang.org?q=v#something";
-        assert_eq!(from_str::<Url>(url).unwrap().to_str().as_slice(), url);
+        let u = from_str::<Url>(url).unwrap();
+        assert_eq!(format!("{}", u).as_slice(), url);
     }
 
     #[test]
     fn test_scheme_host_fragment_only_url_parse_and_format() {
         let url = "http://rust-lang.org#something";
-        assert_eq!(from_str::<Url>(url).unwrap().to_str().as_slice(), url);
+        let u = from_str::<Url>(url).unwrap();
+        assert_eq!(format!("{}", u).as_slice(), url);
     }
 
     #[test]
@@ -1042,68 +1051,75 @@ mod tests {
     #[test]
     fn test_url_without_authority() {
         let url = "mailto:test@email.com";
-        assert_eq!(from_str::<Url>(url).unwrap().to_str().as_slice(), url);
+        let u = from_str::<Url>(url).unwrap();
+        assert_eq!(format!("{}", u).as_slice(), url);
     }
 
     #[test]
     fn test_encode() {
-        assert_eq!(encode(""), "".to_string());
-        assert_eq!(encode("http://example.com"), "http://example.com".to_string());
-        assert_eq!(encode("foo bar% baz"), "foo%20bar%25%20baz".to_string());
-        assert_eq!(encode(" "), "%20".to_string());
-        assert_eq!(encode("!"), "!".to_string());
-        assert_eq!(encode("\""), "\"".to_string());
-        assert_eq!(encode("#"), "#".to_string());
-        assert_eq!(encode("$"), "$".to_string());
-        assert_eq!(encode("%"), "%25".to_string());
-        assert_eq!(encode("&"), "&".to_string());
-        assert_eq!(encode("'"), "%27".to_string());
-        assert_eq!(encode("("), "(".to_string());
-        assert_eq!(encode(")"), ")".to_string());
-        assert_eq!(encode("*"), "*".to_string());
-        assert_eq!(encode("+"), "+".to_string());
-        assert_eq!(encode(","), ",".to_string());
-        assert_eq!(encode("/"), "/".to_string());
-        assert_eq!(encode(":"), ":".to_string());
-        assert_eq!(encode(";"), ";".to_string());
-        assert_eq!(encode("="), "=".to_string());
-        assert_eq!(encode("?"), "?".to_string());
-        assert_eq!(encode("@"), "@".to_string());
-        assert_eq!(encode("["), "[".to_string());
-        assert_eq!(encode("]"), "]".to_string());
-        assert_eq!(encode("\0"), "%00".to_string());
-        assert_eq!(encode("\n"), "%0A".to_string());
+        fn t(input: &str, expected: &str) {
+            assert_eq!(encode(input), expected.to_string())
+        }
+
+        t("", "");
+        t("http://example.com", "http://example.com");
+        t("foo bar% baz", "foo%20bar%25%20baz");
+        t(" ", "%20");
+        t("!", "!");
+        t("\"", "\"");
+        t("#", "#");
+        t("$", "$");
+        t("%", "%25");
+        t("&", "&");
+        t("'", "%27");
+        t("(", "(");
+        t(")", ")");
+        t("*", "*");
+        t("+", "+");
+        t(",", ",");
+        t("/", "/");
+        t(":", ":");
+        t(";", ";");
+        t("=", "=");
+        t("?", "?");
+        t("@", "@");
+        t("[", "[");
+        t("]", "]");
+        t("\0", "%00");
+        t("\n", "%0A");
     }
 
     #[test]
     fn test_encode_component() {
-        assert_eq!(encode_component(""), "".to_string());
-        assert!(encode_component("http://example.com") ==
-            "http%3A%2F%2Fexample.com".to_string());
-        assert!(encode_component("foo bar% baz") ==
-            "foo%20bar%25%20baz".to_string());
-        assert_eq!(encode_component(" "), "%20".to_string());
-        assert_eq!(encode_component("!"), "%21".to_string());
-        assert_eq!(encode_component("#"), "%23".to_string());
-        assert_eq!(encode_component("$"), "%24".to_string());
-        assert_eq!(encode_component("%"), "%25".to_string());
-        assert_eq!(encode_component("&"), "%26".to_string());
-        assert_eq!(encode_component("'"), "%27".to_string());
-        assert_eq!(encode_component("("), "%28".to_string());
-        assert_eq!(encode_component(")"), "%29".to_string());
-        assert_eq!(encode_component("*"), "%2A".to_string());
-        assert_eq!(encode_component("+"), "%2B".to_string());
-        assert_eq!(encode_component(","), "%2C".to_string());
-        assert_eq!(encode_component("/"), "%2F".to_string());
-        assert_eq!(encode_component(":"), "%3A".to_string());
-        assert_eq!(encode_component(";"), "%3B".to_string());
-        assert_eq!(encode_component("="), "%3D".to_string());
-        assert_eq!(encode_component("?"), "%3F".to_string());
-        assert_eq!(encode_component("@"), "%40".to_string());
-        assert_eq!(encode_component("["), "%5B".to_string());
-        assert_eq!(encode_component("]"), "%5D".to_string());
-        assert_eq!(encode_component("\0"), "%00".to_string());
-        assert_eq!(encode_component("\n"), "%0A".to_string());
+        fn t(input: &str, expected: &str) {
+            assert_eq!(encode_component(input), expected.to_string())
+        }
+
+        t("", "");
+        t("http://example.com", "http%3A%2F%2Fexample.com");
+        t("foo bar% baz", "foo%20bar%25%20baz");
+        t(" ", "%20");
+        t("!", "%21");
+        t("#", "%23");
+        t("$", "%24");
+        t("%", "%25");
+        t("&", "%26");
+        t("'", "%27");
+        t("(", "%28");
+        t(")", "%29");
+        t("*", "%2A");
+        t("+", "%2B");
+        t(",", "%2C");
+        t("/", "%2F");
+        t(":", "%3A");
+        t(";", "%3B");
+        t("=", "%3D");
+        t("?", "%3F");
+        t("@", "%40");
+        t("[", "%5B");
+        t("]", "%5D");
+        t("\0", "%00");
+        t("\n", "%0A");
     }
 
     #[test]
@@ -1189,8 +1205,8 @@ mod tests {
 
         let mut m = HashMap::new();
         m.insert("foo bar".to_string(), vec!("abc".to_string(), "12 = 34".to_string()));
-        assert!(encode_form_urlencoded(&m) ==
-            "foo+bar=abc&foo+bar=12+%3D+34".to_string());
+        assert_eq!(encode_form_urlencoded(&m),
+                    "foo+bar=abc&foo+bar=12+%3D+34".to_string());
     }
 
     #[test]
