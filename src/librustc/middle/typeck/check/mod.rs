@@ -1060,6 +1060,164 @@ fn compare_impl_method(tcx: &ty::ctxt,
     }
 }
 
+fn check_cast(fcx: &FnCtxt,
+              e: &ast::Expr,
+              t: &ast::Ty,
+              id: ast::NodeId,
+              span: Span) {
+    // Find the type of `e`. Supply hints based on the type we are casting to,
+    // if appropriate.
+    let t_1 = fcx.to_ty(t);
+    let t_1 = structurally_resolved_type(fcx, span, t_1);
+
+    if ty::type_is_scalar(t_1) {
+        // Supply the type as a hint so as to influence integer
+        // literals and other things that might care.
+        check_expr_with_hint(fcx, e, t_1)
+    } else {
+        check_expr(fcx, e)
+    }
+
+    let t_e = fcx.expr_ty(e);
+
+    debug!("t_1={}", fcx.infcx().ty_to_str(t_1));
+    debug!("t_e={}", fcx.infcx().ty_to_str(t_e));
+
+    if ty::type_is_error(t_e) {
+        fcx.write_error(id);
+        return
+    }
+    if ty::type_is_bot(t_e) {
+        fcx.write_bot(id);
+        return
+    }
+
+    if ty::type_is_trait(t_1) {
+        // This will be looked up later on.
+        fcx.write_ty(id, t_1);
+        return
+    }
+
+    let t_1 = structurally_resolved_type(fcx, span, t_1);
+    let t_e = structurally_resolved_type(fcx, span, t_e);
+
+    if ty::type_is_nil(t_e) {
+        fcx.type_error_message(span, |actual| {
+            format!("cast from nil: `{}` as `{}`",
+                    actual,
+                    fcx.infcx().ty_to_str(t_1))
+        }, t_e, None);
+    } else if ty::type_is_nil(t_1) {
+        fcx.type_error_message(span, |actual| {
+            format!("cast to nil: `{}` as `{}`",
+                    actual,
+                    fcx.infcx().ty_to_str(t_1))
+        }, t_e, None);
+    }
+
+    let t_1_is_scalar = ty::type_is_scalar(t_1);
+    let t_1_is_char = ty::type_is_char(t_1);
+    let t_1_is_bare_fn = ty::type_is_bare_fn(t_1);
+    let t_1_is_float = ty::type_is_floating_point(t_1);
+
+    // casts to scalars other than `char` and `bare fn` are trivial
+    let t_1_is_trivial = t_1_is_scalar && !t_1_is_char && !t_1_is_bare_fn;
+    if ty::type_is_c_like_enum(fcx.tcx(), t_e) && t_1_is_trivial {
+        if t_1_is_float {
+            fcx.type_error_message(span, |actual| {
+                format!("illegal cast; cast through an \
+                         integer first: `{}` as `{}`",
+                        actual,
+                        fcx.infcx().ty_to_str(t_1))
+            }, t_e, None);
+        }
+        // casts from C-like enums are allowed
+    } else if t_1_is_char {
+        let t_e = fcx.infcx().resolve_type_vars_if_possible(t_e);
+        if ty::get(t_e).sty != ty::ty_uint(ast::TyU8) {
+            fcx.type_error_message(span, |actual| {
+                format!("only `u8` can be cast as \
+                         `char`, not `{}`", actual)
+            }, t_e, None);
+        }
+    } else if ty::get(t_1).sty == ty::ty_bool {
+        fcx.tcx()
+           .sess
+           .span_err(span,
+                     "cannot cast as `bool`, compare with zero instead");
+    } else if ty::type_is_region_ptr(t_e) && ty::type_is_unsafe_ptr(t_1) {
+        fn is_vec(t: ty::t) -> bool {
+            match ty::get(t).sty {
+                ty::ty_vec(..) => true,
+                ty::ty_ptr(ty::mt{ty: t, ..}) |
+                ty::ty_rptr(_, ty::mt{ty: t, ..}) |
+                ty::ty_box(t) |
+                ty::ty_uniq(t) => {
+                    match ty::get(t).sty {
+                        ty::ty_vec(_, None) => true,
+                        _ => false,
+                    }
+                }
+                _ => false
+            }
+        }
+        fn types_compatible(fcx: &FnCtxt, sp: Span,
+                            t1: ty::t, t2: ty::t) -> bool {
+            if !is_vec(t1) {
+                // If the type being casted from is not a vector, this special
+                // case does not apply.
+                return false
+            }
+            if ty::type_needs_infer(t2) {
+                // This prevents this special case from going off when casting
+                // to a type that isn't fully specified; e.g. `as *_`. (Issue
+                // #14893.)
+                return false
+            }
+
+            let el = ty::sequence_element_type(fcx.tcx(), t1);
+            infer::mk_eqty(fcx.infcx(),
+                           false,
+                           infer::Misc(sp),
+                           el,
+                           t2).is_ok()
+        }
+
+        // Due to the limitations of LLVM global constants,
+        // region pointers end up pointing at copies of
+        // vector elements instead of the original values.
+        // To allow unsafe pointers to work correctly, we
+        // need to special-case obtaining an unsafe pointer
+        // from a region pointer to a vector.
+
+        /* this cast is only allowed from &[T] to *T or
+        &T to *T. */
+        match (&ty::get(t_e).sty, &ty::get(t_1).sty) {
+            (&ty::ty_rptr(_, ty::mt { ty: mt1, mutbl: ast::MutImmutable }),
+             &ty::ty_ptr(ty::mt { ty: mt2, mutbl: ast::MutImmutable }))
+            if types_compatible(fcx, e.span, mt1, mt2) => {
+                /* this case is allowed */
+            }
+            _ => {
+                demand::coerce(fcx, e.span, t_1, &*e);
+            }
+        }
+    } else if !(ty::type_is_scalar(t_e) && t_1_is_trivial) {
+        /*
+        If more type combinations should be supported than are
+        supported here, then file an enhancement issue and
+        record the issue number in this comment.
+        */
+        fcx.type_error_message(span, |actual| {
+            format!("non-scalar cast: `{}` as `{}`",
+                    actual,
+                    fcx.infcx().ty_to_str(t_1))
+        }, t_e, None);
+    }
+
+    fcx.write_ty(id, t_1);
+}
+
 impl<'a> AstConv for FnCtxt<'a> {
     fn tcx<'a>(&'a self) -> &'a ty::ctxt { self.ccx.tcx }
 
@@ -3049,11 +3207,8 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
             fcx.write_bot(id);
         }
       }
-      ast::ExprCast(expr_from, t) => {
-        let ty_to = fcx.to_ty(t);
-        debug!("ExprCast ty_to={}", fcx.infcx().ty_to_str(ty_to));
-        check_cast(fcx, expr_from, ty_to);
-        fcx.write_ty(id, ty_to);
+      ast::ExprCast(ref e, ref t) => {
+        check_cast(fcx, &**e, &**t, id, expr.span);
       }
       ast::ExprVec(ref args) => {
         let t: ty::t = fcx.infcx().next_ty_var();
@@ -3245,130 +3400,6 @@ impl Repr for Expectation {
             ExpectCastableToType(t) => format!("ExpectCastableToType({})",
                                                t.repr(tcx)),
         }
-    }
-}
-
-fn check_cast(fcx: &FnCtxt, expr_from: Gc<ast::Expr>, ty_to: ty::t) {
-    // Find the type of `expr_from`. Supply hints based on the type
-    // we are casting to, if appropriate.
-    let ty_to = structurally_resolved_type(fcx, expr_from.span, ty_to);
-    if ty::type_is_scalar(ty_to) {
-        // Supply the type as a hint so as to influence integer
-        // literals and other things that might care.
-        check_expr_with_hint(fcx, expr_from, ty_to)
-    } else {
-        check_expr(fcx, expr_from)
-    }
-    let ty_from = fcx.expr_ty(expr_from);
-
-    // Object creation is checked during the vtable phase.
-    if ty::type_is_trait(ty_to) {
-        check_expr(fcx, expr_from);
-        return;
-    }
-
-    let ty_from = fcx.infcx().resolve_type_vars_if_possible(ty_from);
-
-    if ty::type_is_nil(ty_from) {
-        fcx.type_error_message(expr_from.span, |actual| {
-            format!("cast from nil: `{}` as `{}`", actual,
-                    fcx.infcx().ty_to_str(ty_to))
-        }, ty_from, None);
-        return;
-    }
-
-    if ty::type_is_nil(ty_to) {
-        fcx.type_error_message(expr_from.span, |actual| {
-            format!("cast to nil: `{}` as `{}`", actual,
-                    fcx.infcx().ty_to_str(ty_to))
-        }, ty_from, None);
-        return;
-    }
-
-    let t_e = structurally_resolved_type(fcx, expr_from.span, ty_from);
-    let t_1 = structurally_resolved_type(fcx, expr_from.span, ty_to);
-
-    let to_is_scalar = ty::type_is_scalar(t_1);
-    let to_is_float = ty::type_is_floating_point(t_1);
-    let to_is_char = ty::type_is_char(t_1);
-    let to_is_bare_fn = ty::type_is_bare_fn(t_1);
-
-    // casts to scalars other than `char` and `bare fn` are trivial
-    let to_is_trivial = to_is_scalar &&
-        !to_is_char && !to_is_bare_fn;
-
-    if ty::type_is_c_like_enum(fcx.tcx(), t_e) && to_is_trivial {
-        if to_is_float {
-            fcx.type_error_message(expr_from.span, |actual| {
-                format!("illegal cast; cast through an integer first: `{}` \
-                         as `{}`",
-                        actual,
-                        fcx.infcx().ty_to_str(t_1))
-            }, ty_from, None);
-        }
-        // casts from C-like enums are allowed
-    } else if to_is_char {
-        if ty::get(ty_from).sty != ty::ty_uint(ast::TyU8) {
-            fcx.type_error_message(expr_from.span, |actual| {
-                format!("only `u8` can be cast as `char`, not `{}`", actual)
-            }, ty_from, None);
-        }
-    } else if ty::type_is_bool(t_1) {
-        fcx.tcx().sess.span_err(expr_from.span,
-                                "cannot cast as `bool`, compare with zero instead");
-    } else if ty::type_is_region_ptr(t_e) && ty::type_is_unsafe_ptr(t_1) {
-        fn is_vec(t: ty::t) -> bool {
-            match ty::get(t).sty {
-                ty::ty_vec(..) => true,
-                ty::ty_ptr(ty::mt{ty: t, ..}) |
-                ty::ty_rptr(_, ty::mt{ty: t, ..}) |
-                ty::ty_box(t) |
-                ty::ty_uniq(t) => match ty::get(t).sty {
-                    ty::ty_vec(_, None) => true,
-                    _ => false,
-                },
-                _ => false
-            }
-        }
-        fn types_compatible(fcx: &FnCtxt, sp: Span,
-                            t1: ty::t, t2: ty::t) -> bool {
-            if !is_vec(t1) {
-                false
-            } else {
-                let el = ty::sequence_element_type(fcx.tcx(),
-                                                   t1);
-                infer::mk_eqty(fcx.infcx(), false,
-                               infer::Misc(sp), el, t2).is_ok()
-            }
-        }
-
-        // Due to the limitations of LLVM global constants,
-        // region pointers end up pointing at copies of
-        // vector elements instead of the original values.
-        // To allow unsafe pointers to work correctly, we
-        // need to special-case obtaining an unsafe pointer
-        // from a region pointer to a vector.
-
-        /* this cast is only allowed from &[T] to *T or
-        &T to *T. */
-        match (&ty::get(t_e).sty, &ty::get(t_1).sty) {
-            (&ty::ty_rptr(_, ty::mt { ty: mt1, mutbl: ast::MutImmutable }),
-             &ty::ty_ptr(ty::mt { ty: mt2, mutbl: ast::MutImmutable }))
-                if types_compatible(fcx, expr_from.span, mt1, mt2) => {
-                    /* this case is allowed */
-                }
-            _ => {
-                demand::coerce(fcx, expr_from.span, ty_to, expr_from);
-            }
-        }
-    } else if !(ty::type_is_scalar(t_e) && to_is_trivial) {
-        // If more type combinations should be supported than are
-        // supported here, then file an enhancement issue and
-        // record the issue number in this comment.
-        fcx.type_error_message(expr_from.span, |actual| {
-            format!("non-scalar cast: `{}` as `{}`", actual,
-                    fcx.infcx().ty_to_str(ty_to))
-        }, ty_from, None);
     }
 }
 
