@@ -156,7 +156,7 @@ pub fn expand_expr(e: Gc<ast::Expr>, fld: &mut MacroExpander) -> Gc<ast::Expr> {
             // (The use of the `let` is to give better error messages
             // when the pattern is refutable.)
 
-            let local_ident = token::gensym_ident("__i"); // FIXME #13573
+            let local_ident = token::gensym_ident("i");
             let next_ident = fld.cx.ident_of("next");
             let none_ident = fld.cx.ident_of("None");
 
@@ -171,7 +171,8 @@ pub fn expand_expr(e: Gc<ast::Expr>, fld: &mut MacroExpander) -> Gc<ast::Expr> {
             };
 
             // let <src_pat> = value;
-            let value_ident = token::gensym_ident("__value");
+            // use underscore to suppress lint error:
+            let value_ident = token::gensym_ident("_value");
             // this is careful to use src_pat.span so that error
             // messages point exact at that.
             let local = box(GC) ast::Local {
