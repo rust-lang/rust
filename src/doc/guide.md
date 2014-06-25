@@ -33,6 +33,9 @@ Linux or a Mac, All you need to do is this:
 $ curl -s http://www.rust-lang.org/rustup.sh | sudo sh
 ```
 
+(If you're concerned about `curl | sudo sh`, please keep reading. Disclaimer
+below.)
+
 If you're on Windows, please [download this .exe and run
 it](http://static.rust-lang.org/dist/rust-nightly-install.exe).
 
@@ -56,9 +59,10 @@ very upset when we tell you to `curl | sudo sh`. And they should be! Basically,
 when you do this, you are trusting that the good people who maintain Rust
 aren't going to hack your computer and do bad things. That's a good instinct!
 If you're one of those people, please check out the documentation on [building
-Rust from Source](https://github.com/rust-lang/rust#building-from-source). And
-we promise that this method will not be the way to install Rust forever: it's
-just the easiest way to keep people updated while Rust is in its alpha state.
+Rust from Source](https://github.com/rust-lang/rust#building-from-source), or
+[the official binary downloads](http://www.rust-lang.org/install.html). And we
+promise that this method will not be the way to install Rust forever: it's just
+the easiest way to keep people updated while Rust is in its alpha state.
 
 Oh, we should also mention the officially supported platforms:
 
