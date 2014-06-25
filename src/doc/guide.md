@@ -29,7 +29,7 @@ The first step to using Rust is to install it! There are a number of ways to
 install Rust, but the easiest is to use the the `rustup` script. If you're on
 Linux or a Mac, All you need to do is this:
 
-```
+```{ignore}
 $ curl -s http://www.rust-lang.org/rustup.sh | sudo sh
 ```
 
@@ -43,7 +43,7 @@ If you decide you don't want Rust anymore, we'll be a bit sad, but that's okay.
 Not every programming language is great for everyone. Just pass an argument to
 the script:
 
-```
+```{ignore}
 $ curl -s http://www.rust-lang.org/rustup.sh | sudo sh -s -- --uninstall
 ```
 
@@ -82,13 +82,13 @@ commit is tested against Windows just like any other platform.
 
 If you've got Rust installed, you can open up a shell, and type this:
 
-```
+```{ignore}
 $ rustc --version
 ```
 
 You should see some output that looks something like this:
 
-```
+```{ignore}
 rustc 0.11.0-pre (443a1cd 2014-06-08 14:56:52 -0700)
 host: x86_64-unknown-linux-gnu
 ```
