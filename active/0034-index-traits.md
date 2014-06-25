@@ -1,10 +1,10 @@
 - Start Date: 2014-06-09
-- RFC PR #: (leave this empty)
+- RFC PR #: #111
 - Rust Issue #: #6515
 
 # Summary
 
-`Index` should be split into `Index`, `IndexMut`, and `IndexAssign`
+`Index` should be split into `Index` and `IndexMut`.
 
 # Motivation
 
@@ -14,7 +14,7 @@ Additionally, this simply follows the `Deref`/`DerefMut` split that has been imp
 
 # Detailed design
 
-We split `Index` into three traits (borrowed from @nikomatsakis):
+We split `Index` into two traits (borrowed from @nikomatsakis):
 
     // self[element] -- if used as rvalue, implicitly a deref of the result
     trait Index<E,R> {
@@ -26,16 +26,13 @@ We split `Index` into three traits (borrowed from @nikomatsakis):
         fn index_mut<'a>(&'a mut self, element: &E) -> &'a mut R;
     }
 
-    // self[element] = value
-    trait IndexSet<E,V> {
-        fn index_set(&mut self, element: E, value: V);
-    }
-
 # Drawbacks
 
 * The number of lang. items increases.
 
-* This design doesn't support moving out of a vector-like object.
+* This design doesn't support moving out of a vector-like object. This can be added backwards compatibly.
+
+* This design doesn't support hash tables because there is no assignment operator. This can be added backwards compatibly.
 
 # Alternatives
 
