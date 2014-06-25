@@ -217,6 +217,20 @@ impl<'a> StringReader<'a> {
         self.with_str_from_to(start, self.last_pos, f)
     }
 
+    /// Create an Ident from a given offset to the current offset, each
+    /// adjusted 1 towards each other (assumes that on either side there is a
+    /// single-byte delimiter).
+    pub fn ident_from(&self, start: BytePos) -> ast::Ident {
+        debug!("taking an ident from {} to {}", start, self.last_pos);
+        self.with_str_from(start, str_to_ident)
+    }
+
+    /// As ident_from, with an explicit endpoint.
+    pub fn ident_from_to(&self, start: BytePos, end: BytePos) -> ast::Ident {
+        debug!("taking an ident from {} to {}", start, end);
+        self.with_str_from_to(start, end, str_to_ident)
+    }
+
     /// Calls `f` with a string slice of the source text spanning from `start`
     /// up to but excluding `end`.
     fn with_str_from_to<T>(&self, start: BytePos, end: BytePos, f: |s: &str| -> T) -> T {
