@@ -221,7 +221,6 @@ fn enc_sty(w: &mut MemWriter, cx: &ctxt, st: &ty::sty) {
             match t {
                 TyF32 => mywrite!(w, "Mf"),
                 TyF64 => mywrite!(w, "MF"),
-                TyF128 => mywrite!(w, "MQ")
             }
         }
         ty::ty_enum(def, ref substs) => {

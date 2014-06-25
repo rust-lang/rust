@@ -25,7 +25,7 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/")]
 #![experimental]
-#![feature(managed_boxes, macro_rules, quad_precision_float)]
+#![feature(managed_boxes, macro_rules)]
 #![allow(experimental)]
 
 pub mod fmt;

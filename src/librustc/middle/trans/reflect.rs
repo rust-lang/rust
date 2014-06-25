@@ -148,7 +148,6 @@ impl<'a, 'b> Reflector<'a, 'b> {
           ty::ty_uint(ast::TyU64) => self.leaf("u64"),
           ty::ty_float(ast::TyF32) => self.leaf("f32"),
           ty::ty_float(ast::TyF64) => self.leaf("f64"),
-          ty::ty_float(ast::TyF128) => self.leaf("f128"),
 
           // Should rename to vec_*.
           ty::ty_vec(ref mt, Some(sz)) => {

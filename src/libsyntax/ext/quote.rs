@@ -448,7 +448,6 @@ fn mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> Gc<ast::Expr> {
             let s_fty = match fty {
                 ast::TyF32 => "TyF32",
                 ast::TyF64 => "TyF64",
-                ast::TyF128 => "TyF128"
             };
             let e_fty = mk_ast_path(cx, sp, s_fty);
             let e_fident = mk_ident(cx, sp, fident);
