@@ -170,23 +170,23 @@ fn iter_header(testfile: &Path, it: |&str| -> bool) -> bool {
 }
 
 fn parse_error_pattern(line: &str) -> Option<String> {
-    parse_name_value_directive(line, "error-pattern".to_string())
+    parse_name_value_directive(line, "error-pattern")
 }
 
 fn parse_aux_build(line: &str) -> Option<String> {
-    parse_name_value_directive(line, "aux-build".to_string())
+    parse_name_value_directive(line, "aux-build")
 }
 
 fn parse_compile_flags(line: &str) -> Option<String> {
-    parse_name_value_directive(line, "compile-flags".to_string())
+    parse_name_value_directive(line, "compile-flags")
 }
 
 fn parse_run_flags(line: &str) -> Option<String> {
-    parse_name_value_directive(line, "run-flags".to_string())
+    parse_name_value_directive(line, "run-flags")
 }
 
 fn parse_check_line(line: &str) -> Option<String> {
-    parse_name_value_directive(line, "check".to_string())
+    parse_name_value_directive(line, "check")
 }
 
 fn parse_force_host(line: &str) -> bool {
@@ -206,7 +206,7 @@ fn parse_no_pretty_expanded(line: &str) -> bool {
 }
 
 fn parse_exec_env(line: &str) -> Option<(String, String)> {
-    parse_name_value_directive(line, "exec-env".to_string()).map(|nv| {
+    parse_name_value_directive(line, "exec-env").map(|nv| {
         // nv is either FOO or FOO=BAR
         let mut strs: Vec<String> = nv.as_slice()
                                       .splitn('=', 1)
@@ -225,7 +225,7 @@ fn parse_exec_env(line: &str) -> Option<(String, String)> {
 }
 
 fn parse_pp_exact(line: &str, testfile: &Path) -> Option<Path> {
-    match parse_name_value_directive(line, "pp-exact".to_string()) {
+    match parse_name_value_directive(line, "pp-exact") {
       Some(s) => Some(Path::new(s)),
       None => {
         if parse_name_directive(line, "pp-exact") {
@@ -241,7 +241,7 @@ fn parse_name_directive(line: &str, directive: &str) -> bool {
     line.contains(directive)
 }
 
-pub fn parse_name_value_directive(line: &str, directive: String)
+pub fn parse_name_value_directive(line: &str, directive: &str)
                                   -> Option<String> {
     let keycolon = format!("{}:", directive);
     match line.find_str(keycolon.as_slice()) {
