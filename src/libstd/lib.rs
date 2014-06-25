@@ -111,7 +111,6 @@
 #![no_std]
 
 #![allow(deprecated)]
-#![allow(unknown_features)] // NOTE: remove after stage0 snapshot
 #![deny(missing_doc)]
 
 // When testing libstd, bring in libuv as the I/O backend so tests can print

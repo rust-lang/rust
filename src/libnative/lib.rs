@@ -55,7 +55,6 @@
 
 #![deny(unused_result, unused_must_use)]
 #![allow(non_camel_case_types, deprecated)]
-#![allow(unknown_features)] // NOTE: remove after a stage0 snap
 #![feature(default_type_params, lang_items)]
 
 // NB this crate explicitly does *not* allow glob imports, please seriously

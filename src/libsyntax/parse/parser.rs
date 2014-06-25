@@ -1448,7 +1448,11 @@ impl<'a> Parser<'a> {
         } else if self.eat_keyword(keywords::Const) {
             MutImmutable
         } else {
-            // NOTE: after a stage0 snap this should turn into a span_err.
+            let span = self.last_span;
+            self.span_err(span,
+                          "bare raw pointers are no longer allowed, you should \
+                           likely use `*mut T`, but otherwise `*T` is now \
+                           known as `*const T`");
             MutImmutable
         };
         let t = self.parse_ty(true);
