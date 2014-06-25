@@ -34,7 +34,7 @@ fn pre_freeze_cond() {
     if cond() {
         _w = &v;
     }
-    borrow_mut(v); //~ ERROR cannot borrow
+    borrow_mut(&mut *v); //~ ERROR cannot borrow
 }
 
 fn pre_freeze_else() {
@@ -46,7 +46,7 @@ fn pre_freeze_else() {
     if cond() {
         _w = &v;
     } else {
-        borrow_mut(v);
+        borrow_mut(&mut *v);
     }
 }
 

@@ -899,7 +899,7 @@ mod tests {
             });
         }
         {
-            access_shared(sharedstate, &x, mode2, 10);
+            access_shared(&mut *sharedstate, &x, mode2, 10);
             let _ = rx.recv();
 
             assert_eq!(*sharedstate, 20);

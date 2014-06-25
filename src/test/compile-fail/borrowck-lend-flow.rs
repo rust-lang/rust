@@ -30,14 +30,14 @@ fn pre_freeze() {
 
     let mut v = box 3;
     let _w = &v;
-    borrow_mut(v); //~ ERROR cannot borrow
+    borrow_mut(&mut *v); //~ ERROR cannot borrow
 }
 
 fn post_freeze() {
     // In this instance, the const alias starts after the borrow.
 
     let mut v = box 3;
-    borrow_mut(v);
+    borrow_mut(&mut *v);
     let _w = &v;
 }
 
