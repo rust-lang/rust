@@ -662,11 +662,11 @@ fn expand_non_macro_stmt(s: &Stmt, fld: &mut MacroExpander)
 // from a given thingy and puts them in a mutable
 // array (passed in to the traversal).
 #[deriving(Clone)]
-pub struct NewNameFinderContext {
+struct NameFinderContext {
     ident_accumulator: Vec<ast::Ident> ,
 }
 
-impl Visitor<()> for NewNameFinderContext {
+impl Visitor<()> for NameFinderContext {
     fn visit_pat(&mut self, pattern: &ast::Pat, _: ()) {
         match *pattern {
             // we found a pat_ident!
@@ -703,8 +703,8 @@ impl Visitor<()> for NewNameFinderContext {
 // return a visitor that extracts the pat_ident paths
 // from a given thingy and puts them in a mutable
 // array (passed in to the traversal)
-pub fn new_name_finder(idents: Vec<ast::Ident> ) -> NewNameFinderContext {
-    NewNameFinderContext {
+fn new_name_finder(idents: Vec<ast::Ident> ) -> NameFinderContext {
+    NameFinderContext {
         ident_accumulator: idents,
     }
 }
@@ -1012,7 +1012,7 @@ fn original_span(cx: &ExtCtxt) -> Gc<codemap::ExpnInfo> {
 
 #[cfg(test)]
 mod test {
-    use super::*;
+    use super::{new_name_finder, expand_crate, contains_macro_escape};
     use ast;
     use ast::{Attribute_, AttrOuter, MetaWord};
     use attr;
@@ -1032,11 +1032,11 @@ mod test {
     // from a given thingy and puts them in a mutable
     // array (passed in to the traversal)
     #[deriving(Clone)]
-    struct NewPathExprFinderContext {
+    struct PathExprFinderContext {
         path_accumulator: Vec<ast::Path> ,
     }
 
-    impl Visitor<()> for NewPathExprFinderContext {
+    impl Visitor<()> for PathExprFinderContext {
 
         fn visit_expr(&mut self, expr: &ast::Expr, _: ()) {
             match *expr {
@@ -1052,8 +1052,8 @@ mod test {
     // return a visitor that extracts the paths
     // from a given thingy and puts them in a mutable
     // array (passed in to the traversal)
-    pub fn new_path_finder(paths: Vec<ast::Path> ) -> NewPathExprFinderContext {
-        NewPathExprFinderContext {
+    fn new_path_finder(paths: Vec<ast::Path> ) -> PathExprFinderContext {
+        PathExprFinderContext {
             path_accumulator: paths
         }
     }
