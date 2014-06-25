@@ -185,7 +185,7 @@ struct. In order to help with this, the `Formatter` struct also provides some
 helper methods.
 
 Additionally, the return value of this function is `fmt::Result` which is a
-typedef to `Result<(), IoError>` (also known as `IoError<()>`). Formatting
+typedef to `Result<(), IoError>` (also known as `IoResult<()>`). Formatting
 implementations should ensure that they return errors from `write!` correctly
 (propagating errors upward).
 
