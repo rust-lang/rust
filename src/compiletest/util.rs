@@ -37,7 +37,7 @@ pub fn make_new_path(path: &str) -> String {
 
     // Windows just uses PATH as the library search path, so we have to
     // maintain the current value while adding our own
-    match getenv(lib_path_env_var().as_slice()) {
+    match getenv(lib_path_env_var()) {
       Some(curr) => {
         format!("{}{}{}", path, path_div(), curr)
       }
@@ -46,10 +46,10 @@ pub fn make_new_path(path: &str) -> String {
 }
 
 #[cfg(target_os = "win32")]
-pub fn lib_path_env_var() -> String { "PATH".to_string() }
+pub fn lib_path_env_var() -> &'static str { "PATH" }
 
 #[cfg(target_os = "win32")]
-pub fn path_div() -> String { ";".to_string() }
+pub fn path_div() -> &'static str { ";" }
 
 pub fn logv(config: &Config, s: String) {
     debug!("{}", s);
