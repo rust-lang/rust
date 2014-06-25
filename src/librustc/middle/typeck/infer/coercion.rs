@@ -248,7 +248,12 @@ impl<'f> Coerce<'f> {
         let r_borrow = self.get_ref().infcx.next_region_var(coercion);
 
         let inner_ty = match *sty_a {
-            ty::ty_box(typ) | ty::ty_uniq(typ) => typ,
+            ty::ty_box(typ) | ty::ty_uniq(typ) => {
+                if mt_b.mutbl == ast::MutMutable {
+                    return Err(ty::terr_mutability)
+                }
+                typ
+            }
             ty::ty_rptr(_, mt_a) => mt_a.ty,
             _ => {
                 return self.subtype(a, b);

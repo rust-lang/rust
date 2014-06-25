@@ -53,7 +53,7 @@ fn loop_aliased_mut() {
     let mut w = box 4;
     let mut _x = &w;
     loop {
-        borrow_mut(v); //~ ERROR cannot borrow
+        borrow_mut(&mut *v); //~ ERROR cannot borrow
         _x = &v;
     }
 }
@@ -65,7 +65,7 @@ fn while_aliased_mut() {
     let mut w = box 4;
     let mut _x = &w;
     while cond() {
-        borrow_mut(v); //~ ERROR cannot borrow
+        borrow_mut(&mut *v); //~ ERROR cannot borrow
         _x = &v;
     }
 }
@@ -78,11 +78,11 @@ fn loop_aliased_mut_break() {
     let mut w = box 4;
     let mut _x = &w;
     loop {
-        borrow_mut(v);
+        borrow_mut(&mut *v);
         _x = &v;
         break;
     }
-    borrow_mut(v); //~ ERROR cannot borrow
+    borrow_mut(&mut *v); //~ ERROR cannot borrow
 }
 
 fn while_aliased_mut_break() {
@@ -92,11 +92,11 @@ fn while_aliased_mut_break() {
     let mut w = box 4;
     let mut _x = &w;
     while cond() {
-        borrow_mut(v);
+        borrow_mut(&mut *v);
         _x = &v;
         break;
     }
-    borrow_mut(v); //~ ERROR cannot borrow
+    borrow_mut(&mut *v); //~ ERROR cannot borrow
 }
 
 fn while_aliased_mut_cond(cond: bool, cond2: bool) {

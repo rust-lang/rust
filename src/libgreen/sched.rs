@@ -641,7 +641,7 @@ impl Scheduler {
             };
 
             let (current_task_context, next_task_context) =
-                Scheduler::get_contexts(current_task, next_task);
+                Scheduler::get_contexts(current_task, &mut *next_task);
 
             // Done with everything - put the next task in TLS. This
             // works because due to transmute the borrow checker
