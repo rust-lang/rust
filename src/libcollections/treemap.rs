@@ -482,7 +482,7 @@ fn mut_deref<K, V>(x: &mut Option<Box<TreeNode<K, V>>>)
              -> *mut TreeNode<K, V> {
     match *x {
         Some(ref mut n) => {
-            let n: &mut TreeNode<K, V> = *n;
+            let n: &mut TreeNode<K, V> = &mut **n;
             n as *mut TreeNode<K, V>
         }
         None => ptr::mut_null()

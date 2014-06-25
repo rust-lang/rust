@@ -599,7 +599,7 @@ mod tests {
 
         let mut sh = box Sha256::new();
 
-        test_hash(sh, tests.as_slice());
+        test_hash(&mut *sh, tests.as_slice());
     }
 
     /// Feed 1,000,000 'a's into the digest with varying input sizes and check that the result is

@@ -138,7 +138,7 @@ impl Sudoku {
             let mut avail = box Colors::new(start_color);
 
             // drop colors already in use in neighbourhood
-            self.drop_colors(avail, row, col);
+            self.drop_colors(&mut *avail, row, col);
 
             // find first remaining color that is available
             let next = avail.next();
