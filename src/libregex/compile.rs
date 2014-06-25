@@ -133,7 +133,7 @@ impl Program {
     }
 }
 
-struct Compiler<'r> {
+struct Compiler {
     insts: Vec<Inst>,
     names: Vec<Option<String>>,
 }
@@ -142,7 +142,7 @@ struct Compiler<'r> {
 // in this crate is in the parser or the VM.
 // The only tricky thing here is patching jump/split instructions to point to
 // the right instruction.
-impl<'r> Compiler<'r> {
+impl Compiler {
     fn compile(&mut self, ast: parse::Ast) {
         match ast {
             Nothing => {},

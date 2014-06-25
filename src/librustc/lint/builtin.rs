@@ -36,7 +36,7 @@ use util::nodemap::NodeSet;
 use lint::{Context, LintPass, LintArray};
 
 use std::cmp;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::i16;
 use std::i32;
 use std::i64;
@@ -1243,6 +1243,141 @@ impl LintPass for UnnecessaryAllocation {
             }
             _ => ()
         }
+    }
+}
+
+declare_lint!(UNUSED_LIFETIMES, Warn, "detects lifetimes that were not used by the compiler")
+
+pub struct UnusedLifetimes;
+
+impl UnusedLifetimes {
+    fn check_unused_lifetimes(&self, cx: &Context, generics: &ast::Generics,
+                              checked: &HashSet<ast::Name>, sort: &str) {
+        for lt in generics.lifetimes.iter() {
+            if !checked.contains(&lt.name) {
+                cx.span_lint(UNUSED_LIFETIMES, lt.span,
+                             format!("unused lifetime in {}", sort).as_slice());
+            }
+        }
+    }
+
+    fn walk_generics_without_lifetimes<E: Clone, V: visit::Visitor<E>>(visitor: &mut V,
+                                                                    generics: &ast::Generics,
+                                                                    env: E) {
+        for type_parameter in generics.ty_params.iter() {
+            visit::walk_ty_param_bounds(visitor, &type_parameter.bounds, env.clone());
+            match type_parameter.default {
+                Some(ref ty) => visitor.visit_ty(&**ty, env.clone()),
+                None => {}
+            }
+        }
+    }
+}
+
+impl LintPass for UnusedLifetimes {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(UNUSED_LIFETIMES)
+    }
+
+    fn check_item(&mut self, cx: &Context, it: &ast::Item) {
+        match it.node {
+            ast::ItemStruct(ref def, ref generics) => {
+                if !generics.is_lt_parameterized() { return }
+                let mut checked: HashSet<ast::Name> = HashSet::new();
+
+                {
+                    let mut visitor = LifetimeCollector { checked: &mut checked };
+                    visit::walk_struct_def(&mut visitor, *def, ());
+                }
+
+                self.check_unused_lifetimes(cx, generics, &checked, "struct");
+            }
+
+            ast::ItemImpl(ref generics, ref trait_reference, typ, ref methods) => {
+                if !generics.is_lt_parameterized() { return }
+                let mut checked: HashSet<ast::Name> = HashSet::new();
+
+                {
+                    let mut visitor = LifetimeCollector { checked: &mut checked };
+
+                    UnusedLifetimes::walk_generics_without_lifetimes(&mut visitor, generics, ());
+                    match *trait_reference {
+                        Some(ref trait_reference) => visit::walk_trait_ref_helper(&mut visitor,
+                                                                           trait_reference, ()),
+                        None => ()
+                    }
+                    visit::walk_ty(&mut visitor, &*typ, ());
+                    for method in methods.iter() {
+                        visit::walk_method_helper(&mut visitor, &**method, ())
+                    }
+                }
+
+                self.check_unused_lifetimes(cx, generics, &checked, "impl");
+            }
+
+            ast::ItemTrait(ref generics, _, ref trait_paths, ref methods) => {
+                if !generics.is_lt_parameterized() { return }
+                let mut checked: HashSet<ast::Name> = HashSet::new();
+
+                {
+                    let mut visitor = LifetimeCollector { checked: &mut checked };
+
+                    UnusedLifetimes::walk_generics_without_lifetimes(&mut visitor, generics, ());
+                    for trait_path in trait_paths.iter() {
+                        visit::walk_path(&mut visitor, &trait_path.path, ())
+                    }
+                    for method in methods.iter() {
+                        visit::walk_trait_method(&mut visitor, method, ())
+                    }
+                }
+
+                self.check_unused_lifetimes(cx, generics, &checked, "trait");
+            }
+            _ => {}
+        }
+    }
+
+    fn check_fn(&mut self, cx: &Context, fk: &visit::FnKind, fd: &ast::FnDecl,
+                _: &ast::Block, _: Span, _: ast::NodeId) {
+        let generics = visit::generics_of_fn(fk);
+        if !generics.is_lt_parameterized() { return }
+        let mut checked: HashSet<ast::Name> = HashSet::new();
+
+        {
+            let mut visitor = LifetimeCollector { checked: &mut checked };
+
+            visit::walk_fn_decl(&mut visitor, fd, ());
+            match *fk {
+                visit::FkMethod(_, generics, ref method) => {
+                    UnusedLifetimes::walk_generics_without_lifetimes(&mut visitor, generics, ());
+                    visit::walk_explicit_self(&mut visitor, &method.explicit_self, ());
+                }
+                visit::FkItemFn(_, generics, _ ,_) => {
+                    UnusedLifetimes::walk_generics_without_lifetimes(&mut visitor, generics, ());
+                }
+                _ => {}
+            }
+        }
+
+        let sort = match *fk {
+            visit::FkMethod(_, _, _) => "method",
+            _ => "function"
+        };
+        self.check_unused_lifetimes(cx, &generics, &checked, sort);
+    }
+}
+
+struct LifetimeCollector<'a> {
+    checked: &'a mut HashSet<ast::Name>
+}
+
+impl<'a> visit::Visitor<()> for LifetimeCollector<'a> {
+    fn visit_lifetime_ref(&mut self, lifetime: &ast::Lifetime, _: ()) {
+        self.checked.insert(lifetime.name);
+    }
+
+    fn visit_lifetime_decl(&mut self, lifetime: &ast::Lifetime, _: ()) {
+        self.checked.insert(lifetime.name);
     }
 }
 

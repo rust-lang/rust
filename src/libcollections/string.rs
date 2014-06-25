@@ -345,7 +345,7 @@ impl<H: hash::Writer> hash::Hash<H> for String {
     }
 }
 
-impl<'a, S: Str> Equiv<S> for String {
+impl<S: Str> Equiv<S> for String {
     #[inline]
     fn equiv(&self, other: &S) -> bool {
         self.as_slice() == other.as_slice()

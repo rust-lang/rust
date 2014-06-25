@@ -1001,7 +1001,7 @@ impl DocFolder for Cache {
     }
 }
 
-impl<'a> Cache {
+impl Cache {
     fn generics(&mut self, generics: &clean::Generics) {
         for typ in generics.type_params.iter() {
             self.typarams.insert(typ.did, typ.name.clone());

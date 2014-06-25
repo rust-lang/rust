@@ -131,10 +131,10 @@ fn inject_crates_ref(sess: &Session, krate: ast::Crate) -> ast::Crate {
     fold.fold_crate(krate)
 }
 
-struct PreludeInjector<'a>;
+struct PreludeInjector;
 
 
-impl<'a> fold::Folder for PreludeInjector<'a> {
+impl fold::Folder for PreludeInjector {
     fn fold_crate(&mut self, mut krate: ast::Crate) -> ast::Crate {
         // Add #![no_std] here, so we don't re-inject when compiling pretty-printed source.
         // This must happen here and not in StandardLibraryInjector because this

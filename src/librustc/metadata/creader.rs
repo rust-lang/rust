@@ -279,7 +279,7 @@ fn existing_match(e: &Env, crate_id: &CrateId,
     return ret;
 }
 
-fn register_crate<'a>(e: &mut Env,
+fn register_crate(e: &mut Env,
                   root: &Option<CratePaths>,
                   ident: &str,
                   crate_id: &CrateId,
@@ -327,7 +327,7 @@ fn register_crate<'a>(e: &mut Env,
     (cnum, cmeta, source)
 }
 
-fn resolve_crate<'a>(e: &mut Env,
+fn resolve_crate(e: &mut Env,
                  root: &Option<CratePaths>,
                  ident: &str,
                  crate_id: &CrateId,

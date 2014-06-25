@@ -536,7 +536,7 @@ fn merge_sort<T>(v: &mut [T], compare: |&T, &T| -> Ordering) {
 
 /// Extension methods for vectors such that their elements are
 /// mutable.
-pub trait MutableVectorAllocating<'a, T> {
+pub trait MutableVectorAllocating<T> {
     /// Sort the vector, in place, using `compare` to compare
     /// elements.
     ///
@@ -572,7 +572,7 @@ pub trait MutableVectorAllocating<'a, T> {
     fn move_from(self, src: Vec<T>, start: uint, end: uint) -> uint;
 }
 
-impl<'a,T> MutableVectorAllocating<'a, T> for &'a mut [T] {
+impl<'a,T> MutableVectorAllocating<T> for &'a mut [T] {
     #[inline]
     fn sort_by(self, compare: |&T, &T| -> Ordering) {
         merge_sort(self, compare)
