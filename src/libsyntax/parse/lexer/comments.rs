@@ -24,10 +24,14 @@ use std::uint;
 
 #[deriving(Clone, PartialEq)]
 pub enum CommentStyle {
-    Isolated, // No code on either side of each line of the comment
-    Trailing, // Code exists to the left of the comment
-    Mixed, // Code before /* foo */ and after the comment
-    BlankLine, // Just a manual blank line "\n\n", for layout
+    /// No code on either side of each line of the comment
+    Isolated,
+    /// Code exists to the left of the comment
+    Trailing,
+    /// Code before /* foo */ and after the comment
+    Mixed,
+    /// Just a manual blank line "\n\n", for layout
+    BlankLine,
 }
 
 #[deriving(Clone)]
@@ -198,9 +202,9 @@ fn read_line_comments(rdr: &mut StringReader, code_to_the_left: bool,
     }
 }
 
-// Returns None if the first col chars of s contain a non-whitespace char.
-// Otherwise returns Some(k) where k is first char offset after that leading
-// whitespace.  Note k may be outside bounds of s.
+/// Returns None if the first col chars of s contain a non-whitespace char.
+/// Otherwise returns Some(k) where k is first char offset after that leading
+/// whitespace.  Note k may be outside bounds of s.
 fn all_whitespace(s: &str, col: CharPos) -> Option<uint> {
     let len = s.len();
     let mut col = col.to_uint();

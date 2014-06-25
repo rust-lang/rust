@@ -60,9 +60,12 @@ pub struct AbiData {
 }
 
 pub enum AbiArchitecture {
-    RustArch,   // Not a real ABI (e.g., intrinsic)
-    AllArch,    // An ABI that specifies cross-platform defaults (e.g., "C")
-    Archs(u32)  // Multiple architectures (bitset)
+    /// Not a real ABI (e.g., intrinsic)
+    RustArch,
+    /// An ABI that specifies cross-platform defaults (e.g., "C")
+    AllArch,
+    /// Multiple architectures (bitset)
+    Archs(u32)
 }
 
 static AbiDatas: &'static [AbiData] = &[
@@ -84,21 +87,13 @@ static AbiDatas: &'static [AbiData] = &[
     AbiData {abi: RustIntrinsic, name: "rust-intrinsic", abi_arch: RustArch},
 ];
 
+/// Iterates through each of the defined ABIs.
 fn each_abi(op: |abi: Abi| -> bool) -> bool {
-    /*!
-     *
-     * Iterates through each of the defined ABIs.
-     */
-
     AbiDatas.iter().advance(|abi_data| op(abi_data.abi))
 }
 
+/// Returns the ABI with the given name (if any).
 pub fn lookup(name: &str) -> Option<Abi> {
-    /*!
-     *
-     * Returns the ABI with the given name (if any).
-     */
-
     let mut res = None;
 
     each_abi(|abi| {

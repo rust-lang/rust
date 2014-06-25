@@ -28,7 +28,7 @@ use std::str;
 // the column/row/filename of the expression, or they include
 // a given file into the current one.
 
-/* line!(): expands to the current line number */
+/// line!(): expands to the current line number
 pub fn expand_line(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                    -> Box<base::MacResult> {
     base::check_zero_tts(cx, sp, tts, "line!");
@@ -49,9 +49,9 @@ pub fn expand_col(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     base::MacExpr::new(cx.expr_uint(topmost.call_site, loc.col.to_uint()))
 }
 
-/* file!(): expands to the current filename */
-/* The filemap (`loc.file`) contains a bunch more information we could spit
- * out if we wanted. */
+/// file!(): expands to the current filename */
+/// The filemap (`loc.file`) contains a bunch more information we could spit
+/// out if we wanted.
 pub fn expand_file(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                    -> Box<base::MacResult> {
     base::check_zero_tts(cx, sp, tts, "file!");
@@ -82,9 +82,9 @@ pub fn expand_mod(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
             token::intern_and_get_ident(string.as_slice())))
 }
 
-// include! : parse the given file as an expr
-// This is generally a bad idea because it's going to behave
-// unhygienically.
+/// include! : parse the given file as an expr
+/// This is generally a bad idea because it's going to behave
+/// unhygienically.
 pub fn expand_include(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                       -> Box<base::MacResult> {
     let file = match get_single_str_from_tts(cx, sp, tts, "include!") {

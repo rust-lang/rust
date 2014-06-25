@@ -83,25 +83,25 @@ pub enum Token {
     LIT_INT(i64, ast::IntTy),
     LIT_UINT(u64, ast::UintTy),
     LIT_INT_UNSUFFIXED(i64),
-    LIT_FLOAT(ast::Ident, ast::FloatTy),
-    LIT_FLOAT_UNSUFFIXED(ast::Ident),
-    LIT_STR(ast::Ident),
-    LIT_STR_RAW(ast::Ident, uint), /* raw str delimited by n hash symbols */
+    LIT_FLOAT(Ident, ast::FloatTy),
+    LIT_FLOAT_UNSUFFIXED(Ident),
+    LIT_STR(Ident),
+    LIT_STR_RAW(Ident, uint), /* raw str delimited by n hash symbols */
     LIT_BINARY(Rc<Vec<u8>>),
     LIT_BINARY_RAW(Rc<Vec<u8>>, uint), /* raw binary str delimited by n hash symbols */
 
     /* Name components */
-    // an identifier contains an "is_mod_name" boolean,
-    // indicating whether :: follows this token with no
-    // whitespace in between.
-    IDENT(ast::Ident, bool),
+    /// An identifier contains an "is_mod_name" boolean,
+    /// indicating whether :: follows this token with no
+    /// whitespace in between.
+    IDENT(Ident, bool),
     UNDERSCORE,
-    LIFETIME(ast::Ident),
+    LIFETIME(Ident),
 
     /* For interpolation */
     INTERPOLATED(Nonterminal),
 
-    DOC_COMMENT(ast::Ident),
+    DOC_COMMENT(Ident),
     EOF,
 }
 
@@ -114,7 +114,7 @@ pub enum Nonterminal {
     NtPat( Gc<ast::Pat>),
     NtExpr(Gc<ast::Expr>),
     NtTy(  P<ast::Ty>),
-    NtIdent(Box<ast::Ident>, bool),
+    NtIdent(Box<Ident>, bool),
     NtMeta(Gc<ast::MetaItem>), // stuff inside brackets for attributes
     NtPath(Box<ast::Path>),
     NtTT(  Gc<ast::TokenTree>), // needs @ed to break a circularity
@@ -681,20 +681,20 @@ pub fn gensym(s: &str) -> Name {
 
 /// Maps a string to an identifier with an empty syntax context.
 #[inline]
-pub fn str_to_ident(s: &str) -> ast::Ident {
-    ast::Ident::new(intern(s))
+pub fn str_to_ident(s: &str) -> Ident {
+    Ident::new(intern(s))
 }
 
 /// Maps a string to a gensym'ed identifier.
 #[inline]
-pub fn gensym_ident(s: &str) -> ast::Ident {
-    ast::Ident::new(gensym(s))
+pub fn gensym_ident(s: &str) -> Ident {
+    Ident::new(gensym(s))
 }
 
 // create a fresh name that maps to the same string as the old one.
 // note that this guarantees that str_ptr_eq(ident_to_str(src),interner_get(fresh_name(src)));
 // that is, that the new name and the old one are connected to ptr_eq strings.
-pub fn fresh_name(src: &ast::Ident) -> Name {
+pub fn fresh_name(src: &Ident) -> Name {
     let interner = get_ident_interner();
     interner.gensym_copy(src.name)
     // following: debug version. Could work in final except that it's incompatible with
@@ -765,8 +765,8 @@ mod test {
     use ast;
     use ext::mtwt;
 
-    fn mark_ident(id : ast::Ident, m : ast::Mrk) -> ast::Ident {
-        ast::Ident{name:id.name,ctxt:mtwt::new_mark(m,id.ctxt)}
+    fn mark_ident(id : Ident, m : ast::Mrk) -> Ident {
+        Ident{name:id.name,ctxt:mtwt::new_mark(m,id.ctxt)}
     }
 
     #[test] fn mtwt_token_eq_test() {
