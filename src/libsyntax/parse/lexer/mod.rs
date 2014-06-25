@@ -639,16 +639,9 @@ impl<'a> StringReader<'a> {
                 /* FIXME (#2252): if this is out of range for either a
                 32-bit or 64-bit float, it won't be noticed till the
                 back-end.  */
-            } else if c == '1' && n == '2' && self.nextnextch().unwrap_or('\x00') == '8' {
-                self.bump();
-                self.bump();
-                self.bump();
-                let last_bpos = self.last_pos;
-                self.check_float_base(start_bpos, last_bpos, base);
-                return token::LIT_FLOAT(str_to_ident(num_str.as_slice()), ast::TyF128);
             }
             let last_bpos = self.last_pos;
-            self.err_span_(start_bpos, last_bpos, "expected `f32`, `f64` or `f128` suffix");
+            self.err_span_(start_bpos, last_bpos, "expected `f32` or `f64` suffix");
         }
         if is_float {
             let last_bpos = self.last_pos;

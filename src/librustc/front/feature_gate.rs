@@ -64,7 +64,7 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("overloaded_calls", Active),
     ("unboxed_closure_sugar", Active),
 
-    ("quad_precision_float", Active),
+    ("quad_precision_float", Removed),
 
     // A temporary feature gate used to enable parser extensions needed
     // to bootstrap fix for #5723.
@@ -91,7 +91,6 @@ enum Status {
 /// A set of features to be used by later passes.
 pub struct Features {
     pub default_type_params: Cell<bool>,
-    pub quad_precision_float: Cell<bool>,
     pub issue_5723_bootstrap: Cell<bool>,
     pub overloaded_calls: Cell<bool>,
 }
@@ -100,7 +99,6 @@ impl Features {
     pub fn new() -> Features {
         Features {
             default_type_params: Cell::new(false),
-            quad_precision_float: Cell::new(false),
             issue_5723_bootstrap: Cell::new(false),
             overloaded_calls: Cell::new(false),
         }
@@ -425,7 +423,6 @@ pub fn check_crate(sess: &Session, krate: &ast::Crate) {
     sess.abort_if_errors();
 
     sess.features.default_type_params.set(cx.has_feature("default_type_params"));
-    sess.features.quad_precision_float.set(cx.has_feature("quad_precision_float"));
     sess.features.issue_5723_bootstrap.set(cx.has_feature("issue_5723_bootstrap"));
     sess.features.overloaded_calls.set(cx.has_feature("overloaded_calls"));
 }
