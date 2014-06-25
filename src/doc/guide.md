@@ -48,7 +48,7 @@ $ curl -s http://www.rust-lang.org/rustup.sh | sudo sh -s -- --uninstall
 ```
 
 If you used the Windows installer, just re-run the `.exe` and it will give you
-an unisntall option.
+an uninstall option.
 
 You can re-run this script any time you want to update Rust. Which, at this
 point, is often. Rust is still pre-1.0, and so people assume that you're using
