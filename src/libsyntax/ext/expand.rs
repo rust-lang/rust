@@ -31,6 +31,7 @@ use util::small_vector::SmallVector;
 
 use std::gc::{Gc, GC};
 
+
 pub fn expand_expr(e: Gc<ast::Expr>, fld: &mut MacroExpander) -> Gc<ast::Expr> {
     match e.node {
         // expr_mac should really be expr_ext or something; it's the
@@ -130,8 +131,6 @@ pub fn expand_expr(e: Gc<ast::Expr>, fld: &mut MacroExpander) -> Gc<ast::Expr> {
         // From: `['<ident>:] for <src_pat> in <src_expr> <src_loop_block>`
         // FIXME #6993: change type of opt_ident to Option<Name>
         ast::ExprForLoop(src_pat, src_expr, src_loop_block, opt_ident) => {
-            // Expand any interior macros etc.
-            // NB: we don't fold pats yet. Curious.
 
             let span = e.span;
 
@@ -281,7 +280,7 @@ macro_rules! with_exts_frame (
 )
 
 // When we enter a module, record it, for the sake of `module!`
-pub fn expand_item(it: Gc<ast::Item>, fld: &mut MacroExpander)
+fn expand_item(it: Gc<ast::Item>, fld: &mut MacroExpander)
                    -> SmallVector<Gc<ast::Item>> {
     let it = expand_item_modifiers(it, fld);
 
@@ -386,13 +385,13 @@ fn expand_item_modifiers(mut it: Gc<ast::Item>, fld: &mut MacroExpander)
 }
 
 // does this attribute list contain "macro_escape" ?
-pub fn contains_macro_escape(attrs: &[ast::Attribute]) -> bool {
+fn contains_macro_escape(attrs: &[ast::Attribute]) -> bool {
     attr::contains_name(attrs, "macro_escape")
 }
 
 // Support for item-position macro invocations, exactly the same
 // logic as for expression-position macro invocations.
-pub fn expand_item_mac(it: Gc<ast::Item>, fld: &mut MacroExpander)
+fn expand_item_mac(it: Gc<ast::Item>, fld: &mut MacroExpander)
                        -> SmallVector<Gc<ast::Item>> {
     let (pth, tts) = match it.node {
         ItemMac(codemap::Spanned {
@@ -498,7 +497,7 @@ pub fn expand_item_mac(it: Gc<ast::Item>, fld: &mut MacroExpander)
 }
 
 // expand a stmt
-pub fn expand_stmt(s: &Stmt, fld: &mut MacroExpander) -> SmallVector<Gc<Stmt>> {
+fn expand_stmt(s: &Stmt, fld: &mut MacroExpander) -> SmallVector<Gc<Stmt>> {
     // why the copying here and not in expand_expr?
     // looks like classic changed-in-only-one-place
     let (pth, tts, semi) = match s.node {
@@ -659,6 +658,42 @@ fn expand_non_macro_stmt(s: &Stmt, fld: &mut MacroExpander)
     }
 }
 
+fn expand_arm(arm: &ast::Arm, fld: &mut MacroExpander) -> ast::Arm {
+    if a.pats.len() == 0 {
+        fail!("encountered match arm with 0 patterns");
+    }
+    let first_pat = match a.pats.get(0) {
+        
+    }
+    // code duplicated from 'let', above. Perhaps this can be lifted
+    // into a separate function:
+    let expanded_pat = fld.fold_pat(pat);
+    let mut name_finder = new_name_finder(Vec::new());
+    name_finder.visit_pat(&*expanded_pat,());
+    let mut new_pending_renames = Vec::new();
+    for ident in name_finder.ident_accumulator.iter() {
+        let new_name = fresh_name(ident);
+        new_pending_renames.push((*ident,new_name));
+    }
+    let rewritten_pat = {
+        let mut rename_fld =
+            renames_to_fold(&mut new_pending_renames);
+        // rewrite the pattern using the new names (the old
+        // ones have already been applied):
+        rename_fld.fold_pat(expanded_pat)
+    };
+    
+    let bound_names
+        ast::Arm {
+        attrs: a.attrs.iter().map(|x| self.fold_attribute(*x)).collect(),
+        pats: a.pats.iter().map(|x| self.fold_pat(*x)).collect(),
+        guard: a.guard.map(|x| self.fold_expr(x)),
+        body: self.fold_expr(a.body),
+    }    
+}
+
+
+
 // a visitor that extracts the pat_ident (binding) paths
 // from a given thingy and puts them in a mutable
 // array (passed in to the traversal).
@@ -711,14 +746,14 @@ fn new_name_finder(idents: Vec<ast::Ident> ) -> NameFinderContext {
 }
 
 // expand a block. pushes a new exts_frame, then calls expand_block_elts
-pub fn expand_block(blk: &Block, fld: &mut MacroExpander) -> P<Block> {
+fn expand_block(blk: &Block, fld: &mut MacroExpander) -> P<Block> {
     // see note below about treatment of exts table
     with_exts_frame!(fld.extsbox,false,
                      expand_block_elts(blk, fld))
 }
 
 // expand the elements of a block.
-pub fn expand_block_elts(b: &Block, fld: &mut MacroExpander) -> P<Block> {
+fn expand_block_elts(b: &Block, fld: &mut MacroExpander) -> P<Block> {
     let new_view_items = b.view_items.iter().map(|x| fld.fold_view_item(x)).collect();
     let new_stmts =
         b.stmts.iter().flat_map(|x| {
@@ -747,7 +782,7 @@ pub fn expand_block_elts(b: &Block, fld: &mut MacroExpander) -> P<Block> {
     })
 }
 
-pub fn expand_pat(p: Gc<ast::Pat>, fld: &mut MacroExpander) -> Gc<ast::Pat> {
+fn expand_pat(p: Gc<ast::Pat>, fld: &mut MacroExpander) -> Gc<ast::Pat> {
     let (pth, tts) = match p.node {
         PatMac(ref mac) => {
             match mac.node {
@@ -842,13 +877,13 @@ impl<'a> Folder for IdentRenamer<'a> {
 
 // given a mutable list of renames, return a tree-folder that applies those
 // renames.
-pub fn renames_to_fold<'a>(renames: &'a mut RenameList) -> IdentRenamer<'a> {
+fn renames_to_fold<'a>(renames: &'a mut RenameList) -> IdentRenamer<'a> {
     IdentRenamer {
         renames: renames,
     }
 }
 
-pub fn new_span(cx: &ExtCtxt, sp: Span) -> Span {
+fn new_span(cx: &ExtCtxt, sp: Span) -> Span {
     /* this discards information in the case of macro-defining macros */
     Span {
         lo: sp.lo,
@@ -881,6 +916,10 @@ impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
 
     fn fold_block(&mut self, block: P<Block>) -> P<Block> {
         expand_block(&*block, self)
+    }
+
+    fn fold_arm(&mut self, arm: &ast::Arm) -> ast::Arm {
+        expand_arm(arm, self)
     }
 
     fn new_span(&mut self, span: Span) -> Span {
@@ -1248,7 +1287,6 @@ mod test {
 
     // FIXME #9384, match variable hygiene. Should expand into
     // fn z() {match 8 {x_1 => {match 9 {x_2 | x_2 => x_2 + x_1}}}}
-    #[ignore]
     #[test] fn issue_9384(){
         run_renaming_test(
             &("macro_rules! bad_macro (($ex:expr) => ({match 9 {x | x => x + $ex}}))
