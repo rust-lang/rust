@@ -183,7 +183,7 @@ mod tests {
         let mut b = box 7u;
 
         let a_r = &mut a as &mut Any;
-        let tmp: &mut uint = b;
+        let tmp: &mut uint = &mut *b;
         let b_r = tmp as &mut Any;
 
         match a_r.as_mut::<uint>() {

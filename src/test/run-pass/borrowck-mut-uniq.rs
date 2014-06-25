@@ -29,8 +29,8 @@ fn iter_ints(x: &Ints, f: |x: &int| -> bool) -> bool {
 
 pub fn main() {
     let mut ints = box Ints {sum: box 0, values: Vec::new()};
-    add_int(ints, 22);
-    add_int(ints, 44);
+    add_int(&mut *ints, 22);
+    add_int(&mut *ints, 44);
 
     iter_ints(ints, |i| {
         println!("int = {}", *i);
