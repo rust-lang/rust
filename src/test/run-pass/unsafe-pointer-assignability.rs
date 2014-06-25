@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn f(x: *int) {
+fn f(x: *const int) {
     unsafe {
         assert_eq!(*x, 3);
     }

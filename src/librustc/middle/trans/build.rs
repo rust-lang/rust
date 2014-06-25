@@ -453,7 +453,7 @@ pub fn StructGEP(cx: &Block, pointer: ValueRef, idx: uint) -> ValueRef {
     }
 }
 
-pub fn GlobalString(cx: &Block, _str: *c_char) -> ValueRef {
+pub fn GlobalString(cx: &Block, _str: *const c_char) -> ValueRef {
     unsafe {
         if cx.unreachable.get() {
             return llvm::LLVMGetUndef(Type::i8p(cx.ccx()).to_ref());
@@ -462,7 +462,7 @@ pub fn GlobalString(cx: &Block, _str: *c_char) -> ValueRef {
     }
 }
 
-pub fn GlobalStringPtr(cx: &Block, _str: *c_char) -> ValueRef {
+pub fn GlobalStringPtr(cx: &Block, _str: *const c_char) -> ValueRef {
     unsafe {
         if cx.unreachable.get() {
             return llvm::LLVMGetUndef(Type::i8p(cx.ccx()).to_ref());
@@ -577,7 +577,8 @@ pub fn TruncOrBitCast(cx: &Block, val: ValueRef, dest_ty: Type) -> ValueRef {
     }
 }
 
-pub fn Cast(cx: &Block, op: Opcode, val: ValueRef, dest_ty: Type, _: *u8)
+pub fn Cast(cx: &Block, op: Opcode, val: ValueRef, dest_ty: Type,
+            _: *const u8)
      -> ValueRef {
     unsafe {
         if cx.unreachable.get() { return llvm::LLVMGetUndef(dest_ty.to_ref()); }
@@ -636,7 +637,8 @@ pub fn EmptyPhi(cx: &Block, ty: Type) -> ValueRef {
     }
 }
 
-pub fn Phi(cx: &Block, ty: Type, vals: &[ValueRef], bbs: &[BasicBlockRef]) -> ValueRef {
+pub fn Phi(cx: &Block, ty: Type, vals: &[ValueRef],
+           bbs: &[BasicBlockRef]) -> ValueRef {
     unsafe {
         if cx.unreachable.get() { return llvm::LLVMGetUndef(ty.to_ref()); }
         B(cx).phi(ty, vals, bbs)
@@ -672,7 +674,7 @@ pub fn add_comment(cx: &Block, text: &str) {
     B(cx).add_comment(text)
 }
 
-pub fn InlineAsmCall(cx: &Block, asm: *c_char, cons: *c_char,
+pub fn InlineAsmCall(cx: &Block, asm: *const c_char, cons: *const c_char,
                      inputs: &[ValueRef], output: Type,
                      volatile: bool, alignstack: bool,
                      dia: AsmDialect) -> ValueRef {

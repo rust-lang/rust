@@ -79,7 +79,7 @@ let ref_2: &mut u8 = unsafe { mem::transmute(&mut *ref_1) };
 ## Raw pointers
 
 Rust offers two additional pointer types "raw pointers", written as
-`*T` and `*mut T`. They're an approximation of C's `const T*` and `T*`
+`*const T` and `*mut T`. They're an approximation of C's `const T*` and `T*`
 respectively; indeed, one of their most common uses is for FFI,
 interfacing with external C libraries.
 
@@ -100,7 +100,7 @@ offered by the Rust language and libraries. For example, they
 - lack any form of lifetimes, unlike `&`, and so the compiler cannot
   reason about dangling pointers; and
 - have no guarantees about aliasing or mutability other than mutation
-  not being allowed directly through a `*T`.
+  not being allowed directly through a `*const T`.
 
 Fortunately, they come with a redeeming feature: the weaker guarantees
 mean weaker restrictions. The missing restrictions make raw pointers
@@ -131,13 +131,13 @@ unsafe, and neither is converting to an integer.
 
 At runtime, a raw pointer `*` and a reference pointing to the same
 piece of data have an identical representation. In fact, an `&T`
-reference will implicitly coerce to an `*T` raw pointer in safe code
+reference will implicitly coerce to an `*const T` raw pointer in safe code
 and similarly for the `mut` variants (both coercions can be performed
-explicitly with, respectively, `value as *T` and `value as *mut T`).
+explicitly with, respectively, `value as *const T` and `value as *mut T`).
 
-Going the opposite direction, from `*` to a reference `&`, is not
+Going the opposite direction, from `*const` to a reference `&`, is not
 safe. A `&T` is always valid, and so, at a minimum, the raw pointer
-`*T` has to be a valid to a valid instance of type `T`. Furthermore,
+`*const T` has to be a valid to a valid instance of type `T`. Furthermore,
 the resulting pointer must satisfy the aliasing and mutability laws of
 references. The compiler assumes these properties are true for any
 references, no matter how they are created, and so any conversion from
@@ -149,7 +149,7 @@ The recommended method for the conversion is
 ```
 let i: u32 = 1;
 // explicit cast
-let p_imm: *u32 = &i as *u32;
+let p_imm: *const u32 = &i as *const u32;
 let mut m: u32 = 2;
 // implicit coercion
 let p_mut: *mut u32 = &mut m;
@@ -256,7 +256,7 @@ impl<T: Send> Drop for Unique<T> {
             // Copy the object out from the pointer onto the stack,
             // where it is covered by normal Rust destructor semantics
             // and cleans itself up, if necessary
-            ptr::read(self.ptr as *T);
+            ptr::read(self.ptr as *const T);
 
             // clean-up our allocation
             free(self.ptr as *mut c_void)
@@ -457,7 +457,7 @@ extern crate libc;
 
 // Entry point for this program
 #[start]
-fn start(_argc: int, _argv: **u8) -> int {
+fn start(_argc: int, _argv: *const *const u8) -> int {
     0
 }
 
@@ -482,7 +482,7 @@ compiler's name mangling too:
 extern crate libc;
 
 #[no_mangle] // ensure that this symbol is called `main` in the output
-pub extern fn main(argc: int, argv: **u8) -> int {
+pub extern fn main(argc: int, argv: *const *const u8) -> int {
     0
 }
 
@@ -540,8 +540,8 @@ use core::mem;
 use core::raw::Slice;
 
 #[no_mangle]
-pub extern fn dot_product(a: *u32, a_len: u32,
-                          b: *u32, b_len: u32) -> u32 {
+pub extern fn dot_product(a: *const u32, a_len: u32,
+                          b: *const u32, b_len: u32) -> u32 {
     // Convert the provided arrays into Rust slices.
     // The core::raw module guarantees that the Slice
     // structure has the same memory layout as a &[T]
@@ -573,7 +573,7 @@ extern fn begin_unwind(args: &core::fmt::Arguments,
 
 #[lang = "stack_exhausted"] extern fn stack_exhausted() {}
 #[lang = "eh_personality"] extern fn eh_personality() {}
-# #[start] fn start(argc: int, argv: **u8) -> int { 0 }
+# #[start] fn start(argc: int, argv: *const *const u8) -> int { 0 }
 # fn main() {}
 ```
 
@@ -595,7 +595,7 @@ standard library itself.
 > parts of the language may never be full specified and so details may
 > differ wildly between implementations (and even versions of `rustc`
 > itself).
-> 
+>
 > Furthermore, this is just an overview; the best form of
 > documentation for specific instances of these features are their
 > definitions and uses in `std`.
@@ -627,7 +627,7 @@ via a declaration like
 extern "rust-intrinsic" {
     fn transmute<T, U>(x: T) -> U;
 
-    fn offset<T>(dst: *T, offset: int) -> *T;
+    fn offset<T>(dst: *const T, offset: int) -> *const T;
 }
 ```
 
@@ -677,7 +677,7 @@ unsafe fn deallocate(ptr: *mut u8, _size: uint, _align: uint) {
 }
 
 #[start]
-fn main(argc: int, argv: **u8) -> int {
+fn main(argc: int, argv: *const *const u8) -> int {
     let x = box 1;
 
     0

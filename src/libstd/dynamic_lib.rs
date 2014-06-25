@@ -33,7 +33,7 @@ use str;
 use string::String;
 use vec::Vec;
 
-pub struct DynamicLibrary { handle: *u8}
+pub struct DynamicLibrary { handle: *mut u8 }
 
 impl Drop for DynamicLibrary {
     fn drop(&mut self) {
@@ -134,7 +134,7 @@ impl DynamicLibrary {
     }
 
     /// Access the value at the symbol of the dynamic library
-    pub unsafe fn symbol<T>(&self, symbol: &str) -> Result<*T, String> {
+    pub unsafe fn symbol<T>(&self, symbol: &str) -> Result<*mut T, String> {
         // This function should have a lifetime constraint of 'a on
         // T but that feature is still unimplemented
 
@@ -175,7 +175,7 @@ mod test {
         let cosine: extern fn(libc::c_double) -> libc::c_double = unsafe {
             match libm.symbol("cos") {
                 Err(error) => fail!("Could not load function cos: {}", error),
-                Ok(cosine) => mem::transmute::<*u8, _>(cosine)
+                Ok(cosine) => mem::transmute::<*mut u8, _>(cosine)
             }
         };
 
@@ -218,14 +218,14 @@ pub mod dl {
     use str::StrAllocating;
     use string::String;
 
-    pub unsafe fn open_external<T: ToCStr>(filename: T) -> *u8 {
+    pub unsafe fn open_external<T: ToCStr>(filename: T) -> *mut u8 {
         filename.with_c_str(|raw_name| {
-            dlopen(raw_name, Lazy as libc::c_int) as *u8
+            dlopen(raw_name, Lazy as libc::c_int) as *mut u8
         })
     }
 
-    pub unsafe fn open_internal() -> *u8 {
-        dlopen(ptr::null(), Lazy as libc::c_int) as *u8
+    pub unsafe fn open_internal() -> *mut u8 {
+        dlopen(ptr::null(), Lazy as libc::c_int) as *mut u8
     }
 
     pub fn check_for_errors_in<T>(f: || -> T) -> Result<T, String> {
@@ -239,7 +239,7 @@ pub mod dl {
 
             let result = f();
 
-            let last_error = dlerror();
+            let last_error = dlerror() as *const _;
             let ret = if ptr::null() == last_error {
                 Ok(result)
             } else {
@@ -252,11 +252,12 @@ pub mod dl {
         }
     }
 
-    pub unsafe fn symbol(handle: *u8, symbol: *libc::c_char) -> *u8 {
-        dlsym(handle as *libc::c_void, symbol) as *u8
+    pub unsafe fn symbol(handle: *mut u8,
+                         symbol: *const libc::c_char) -> *mut u8 {
+        dlsym(handle as *mut libc::c_void, symbol) as *mut u8
     }
-    pub unsafe fn close(handle: *u8) {
-        dlclose(handle as *libc::c_void); ()
+    pub unsafe fn close(handle: *mut u8) {
+        dlclose(handle as *mut libc::c_void); ()
     }
 
     pub enum RTLD {
@@ -268,10 +269,12 @@ pub mod dl {
 
     #[link_name = "dl"]
     extern {
-        fn dlopen(filename: *libc::c_char, flag: libc::c_int) -> *libc::c_void;
-        fn dlerror() -> *libc::c_char;
-        fn dlsym(handle: *libc::c_void, symbol: *libc::c_char) -> *libc::c_void;
-        fn dlclose(handle: *libc::c_void) -> libc::c_int;
+        fn dlopen(filename: *const libc::c_char,
+                  flag: libc::c_int) -> *mut libc::c_void;
+        fn dlerror() -> *mut libc::c_char;
+        fn dlsym(handle: *mut libc::c_void,
+                 symbol: *const libc::c_char) -> *mut libc::c_void;
+        fn dlclose(handle: *mut libc::c_void) -> libc::c_int;
     }
 }
 
@@ -286,18 +289,18 @@ pub mod dl {
     use str;
     use string::String;
 
-    pub unsafe fn open_external<T: ToCStr>(filename: T) -> *u8 {
+    pub unsafe fn open_external<T: ToCStr>(filename: T) -> *mut u8 {
         // Windows expects Unicode data
         let filename_cstr = filename.to_c_str();
         let filename_str = str::from_utf8(filename_cstr.as_bytes_no_nul()).unwrap();
         let filename_str = filename_str.to_utf16().append_one(0);
-        LoadLibraryW(filename_str.as_ptr() as *libc::c_void) as *u8
+        LoadLibraryW(filename_str.as_ptr() as *const libc::c_void) as *mut u8
     }
 
-    pub unsafe fn open_internal() -> *u8 {
-        let handle = ptr::null();
-        GetModuleHandleExW(0 as libc::DWORD, ptr::null(), &handle as **libc::c_void);
-        handle as *u8
+    pub unsafe fn open_internal() -> *mut u8 {
+        let mut handle = ptr::mut_null();
+        GetModuleHandleExW(0 as libc::DWORD, ptr::null(), &mut handle);
+        handle as *mut u8
     }
 
     pub fn check_for_errors_in<T>(f: || -> T) -> Result<T, String> {
@@ -315,20 +318,22 @@ pub mod dl {
         }
     }
 
-    pub unsafe fn symbol(handle: *u8, symbol: *libc::c_char) -> *u8 {
-        GetProcAddress(handle as *libc::c_void, symbol) as *u8
+    pub unsafe fn symbol(handle: *mut u8, symbol: *const libc::c_char) -> *mut u8 {
+        GetProcAddress(handle as *mut libc::c_void, symbol) as *mut u8
     }
-    pub unsafe fn close(handle: *u8) {
-        FreeLibrary(handle as *libc::c_void); ()
+    pub unsafe fn close(handle: *mut u8) {
+        FreeLibrary(handle as *mut libc::c_void); ()
     }
 
     #[allow(non_snake_case_functions)]
     extern "system" {
         fn SetLastError(error: libc::size_t);
-        fn LoadLibraryW(name: *libc::c_void) -> *libc::c_void;
-        fn GetModuleHandleExW(dwFlags: libc::DWORD, name: *u16,
-                              handle: **libc::c_void) -> *libc::c_void;
-        fn GetProcAddress(handle: *libc::c_void, name: *libc::c_char) -> *libc::c_void;
-        fn FreeLibrary(handle: *libc::c_void);
+        fn LoadLibraryW(name: *const libc::c_void) -> *mut libc::c_void;
+        fn GetModuleHandleExW(dwFlags: libc::DWORD, name: *const u16,
+                              handle: *mut *mut libc::c_void)
+                              -> *mut libc::c_void;
+        fn GetProcAddress(handle: *mut libc::c_void,
+                          name: *const libc::c_char) -> *mut libc::c_void;
+        fn FreeLibrary(handle: *mut libc::c_void);
     }
 }

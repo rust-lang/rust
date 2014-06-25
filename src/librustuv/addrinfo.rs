@@ -11,7 +11,7 @@
 use libc::c_int;
 use libc;
 use std::mem;
-use std::ptr::null;
+use std::ptr::{null, mut_null};
 use std::rt::task::BlockedTask;
 use std::rt::rtio;
 
@@ -20,7 +20,7 @@ use super::{Loop, UvError, Request, wait_until_woken_after, wakeup};
 use uvll;
 
 struct Addrinfo {
-    handle: *libc::addrinfo,
+    handle: *const libc::addrinfo,
 }
 
 struct Ctx {
@@ -62,12 +62,14 @@ impl GetAddrInfoRequest {
                 ai_socktype: 0,
                 ai_protocol: 0,
                 ai_addrlen: 0,
-                ai_canonname: null(),
-                ai_addr: null(),
-                ai_next: null(),
+                ai_canonname: mut_null(),
+                ai_addr: mut_null(),
+                ai_next: mut_null(),
             }
         });
-        let hint_ptr = hint.as_ref().map_or(null(), |x| x as *libc::addrinfo);
+        let hint_ptr = hint.as_ref().map_or(null(), |x| {
+            x as *const libc::addrinfo
+        });
         let mut req = Request::new(uvll::UV_GETADDRINFO);
 
         return match unsafe {
@@ -80,7 +82,7 @@ impl GetAddrInfoRequest {
                 let mut cx = Ctx { slot: None, status: 0, addrinfo: None };
 
                 wait_until_woken_after(&mut cx.slot, loop_, || {
-                    req.set_data(&cx);
+                    req.set_data(&mut cx);
                 });
 
                 match cx.status {
@@ -92,9 +94,9 @@ impl GetAddrInfoRequest {
         };
 
 
-        extern fn getaddrinfo_cb(req: *uvll::uv_getaddrinfo_t,
+        extern fn getaddrinfo_cb(req: *mut uvll::uv_getaddrinfo_t,
                                  status: c_int,
-                                 res: *libc::addrinfo) {
+                                 res: *const libc::addrinfo) {
             let req = Request::wrap(req);
             assert!(status != uvll::ECANCELED);
             let cx: &mut Ctx = unsafe { req.get_data() };
@@ -108,7 +110,7 @@ impl GetAddrInfoRequest {
 
 impl Drop for Addrinfo {
     fn drop(&mut self) {
-        unsafe { uvll::uv_freeaddrinfo(self.handle) }
+        unsafe { uvll::uv_freeaddrinfo(self.handle as *mut _) }
     }
 }
 
@@ -130,7 +132,7 @@ pub fn accum_addrinfo(addr: &Addrinfo) -> Vec<rtio::AddrinfoInfo> {
                 flags: 0,
             });
             if (*addr).ai_next.is_not_null() {
-                addr = (*addr).ai_next;
+                addr = (*addr).ai_next as *const _;
             } else {
                 break;
             }

@@ -116,7 +116,7 @@
 //! extern crate green;
 //!
 //! #[start]
-//! fn start(argc: int, argv: **u8) -> int {
+//! fn start(argc: int, argv: *const *const u8) -> int {
 //!     green::start(argc, argv, green::basic::event_loop, main)
 //! }
 //!
@@ -135,7 +135,7 @@
 //! extern crate rustuv;
 //!
 //! #[start]
-//! fn start(argc: int, argv: **u8) -> int {
+//! fn start(argc: int, argv: *const *const u8) -> int {
 //!     green::start(argc, argv, rustuv::event_loop, main)
 //! }
 //!
@@ -267,7 +267,7 @@ macro_rules! green_start( ($f:ident) => (
         extern crate rustuv;
 
         #[start]
-        fn start(argc: int, argv: **u8) -> int {
+        fn start(argc: int, argv: *const *const u8) -> int {
             green::start(argc, argv, rustuv::event_loop, super::$f)
         }
     }
@@ -291,7 +291,7 @@ macro_rules! green_start( ($f:ident) => (
 ///
 /// The return value is used as the process return code. 0 on success, 101 on
 /// error.
-pub fn start(argc: int, argv: **u8,
+pub fn start(argc: int, argv: *const *const u8,
              event_loop_factory: fn() -> Box<rtio::EventLoop + Send>,
              main: proc():Send) -> int {
     rt::init(argc, argv);

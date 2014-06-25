@@ -611,13 +611,13 @@ impl Scheduler {
     // old task as inputs.
 
     pub fn change_task_context(mut ~self,
-                               current_task: Box<GreenTask>,
+                               mut current_task: Box<GreenTask>,
                                mut next_task: Box<GreenTask>,
                                f: |&mut Scheduler, Box<GreenTask>|)
                                -> Box<GreenTask> {
         let f_opaque = ClosureConverter::from_fn(f);
 
-        let current_task_dupe = &*current_task as *GreenTask;
+        let current_task_dupe = &mut *current_task as *mut GreenTask;
 
         // The current task is placed inside an enum with the cleanup
         // function. This enum is then placed inside the scheduler.
@@ -871,7 +871,7 @@ impl Scheduler {
 
     // * Utility Functions
 
-    pub fn sched_id(&self) -> uint { self as *Scheduler as uint }
+    pub fn sched_id(&self) -> uint { self as *const Scheduler as uint }
 
     pub fn run_cleanup_job(&mut self) {
         let cleanup_job = self.cleanup_job.take_unwrap();

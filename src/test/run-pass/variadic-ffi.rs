@@ -15,7 +15,7 @@ use libc::{c_char, c_int};
 // ignore-fast doesn't like extern crate
 
 extern {
-    fn sprintf(s: *mut c_char, format: *c_char, ...) -> c_int;
+    fn sprintf(s: *mut c_char, format: *const c_char, ...) -> c_int;
 }
 
 unsafe fn check<T>(expected: &str, f: |*mut c_char| -> T) {
@@ -41,10 +41,10 @@ pub fn main() {
         });
 
         // Make a function pointer
-        let x: unsafe extern "C" fn(*mut c_char, *c_char, ...) -> c_int = sprintf;
+        let x: unsafe extern "C" fn(*mut c_char, *const c_char, ...) -> c_int = sprintf;
 
         // A function that takes a function pointer
-        unsafe fn call(p: unsafe extern "C" fn(*mut c_char, *c_char, ...) -> c_int) {
+        unsafe fn call(p: unsafe extern "C" fn(*mut c_char, *const c_char, ...) -> c_int) {
             // Call with just the named parameter via fn pointer
             "Hello World\n".with_c_str(|c| {
                 check("Hello World\n", |s| p(s, c));

@@ -17,7 +17,7 @@ use uvll;
 use uvio::UvIoFactory;
 
 pub struct SignalWatcher {
-    handle: *uvll::uv_signal_t,
+    handle: *mut uvll::uv_signal_t,
     home: HomeHandle,
 
     cb: Box<Callback + Send>,
@@ -45,7 +45,7 @@ impl SignalWatcher {
     }
 }
 
-extern fn signal_cb(handle: *uvll::uv_signal_t, _signum: c_int) {
+extern fn signal_cb(handle: *mut uvll::uv_signal_t, _signum: c_int) {
     let s: &mut SignalWatcher = unsafe { UvHandle::from_uv_handle(&handle) };
     let _ = s.cb.call();
 }
@@ -55,7 +55,7 @@ impl HomingIO for SignalWatcher {
 }
 
 impl UvHandle<uvll::uv_signal_t> for SignalWatcher {
-    fn uv_handle(&self) -> *uvll::uv_signal_t { self.handle }
+    fn uv_handle(&self) -> *mut uvll::uv_signal_t { self.handle }
 }
 
 impl RtioSignal for SignalWatcher {}

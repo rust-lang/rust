@@ -14,7 +14,7 @@
 use std::ops::Deref;
 
 struct Rc<T> {
-    value: *T
+    value: *const T
 }
 
 impl<T> Deref<T> for Rc<T> {

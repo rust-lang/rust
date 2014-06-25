@@ -25,11 +25,11 @@ impl BarTy {
 }
 
 // If these fail, it's necessary to update middle::resolve and the cfail tests.
-impl Foo for *BarTy {
+impl Foo for *const BarTy {
     fn bar(&self) {
         self.baz();
         BarTy::a();
-        Foo::bah(None::<*BarTy>);
+        Foo::bah(None::<*const BarTy>);
     }
 }
 
@@ -66,10 +66,10 @@ impl Foo for Box<BarTy> {
 }
 
 // If these fail, it's necessary to update middle::resolve and the cfail tests.
-impl Foo for *int {
+impl Foo for *const int {
     fn bar(&self) {
         self.baz();
-        Foo::bah(None::<*int>);
+        Foo::bah(None::<*const int>);
     }
 }
 

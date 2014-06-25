@@ -652,7 +652,7 @@ mod tests {
                 (None   , None      ) => {}
                 (None   , _         ) => fail!("prev link for list_head"),
                 (Some(p), Some(pptr)) => {
-                    assert_eq!(p as *Node<T>, pptr as *Node<T>);
+                    assert_eq!(p as *const Node<T>, pptr as *const Node<T>);
                 }
                 _ => fail!("prev link is none, not good"),
             }

@@ -11,7 +11,7 @@
 #![feature(linkage)]
 
 extern {
-    #[linkage = "foo"] static foo: *i32;
+    #[linkage = "foo"] static foo: *const i32;
     //~^ ERROR: invalid linkage specified
 }
 

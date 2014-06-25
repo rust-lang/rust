@@ -361,8 +361,8 @@ mod table {
                 *self.hashes.offset(idx) = EMPTY_BUCKET;
 
                 // Drop the mutable constraint.
-                let keys = self.keys as *K;
-                let vals = self.vals as *V;
+                let keys = self.keys as *const K;
+                let vals = self.vals as *const V;
 
                 let k = ptr::read(keys.offset(idx));
                 let v = ptr::read(vals.offset(idx));

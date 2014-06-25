@@ -38,7 +38,7 @@ impl fmt::FormatWriter for Stdio {
         unsafe {
             let Stdio(fd) = *self;
             libc::write(fd,
-                        data.as_ptr() as *libc::c_void,
+                        data.as_ptr() as *const libc::c_void,
                         data.len() as WriteLen);
         }
         Ok(()) // yes, we're lying

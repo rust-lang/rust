@@ -471,7 +471,7 @@ impl<'a> Block<'a> {
     }
 
     pub fn to_str(&self) -> String {
-        let blk: *Block = self;
+        let blk: *const Block = self;
         format!("[block {}]", blk)
     }
 }
@@ -568,7 +568,7 @@ pub fn C_cstr(cx: &CrateContext, s: InternedString, null_terminated: bool) -> Va
         }
 
         let sc = llvm::LLVMConstStringInContext(cx.llcx,
-                                                s.get().as_ptr() as *c_char,
+                                                s.get().as_ptr() as *const c_char,
                                                 s.get().len() as c_uint,
                                                 !null_terminated as Bool);
 
@@ -636,7 +636,7 @@ pub fn C_array(ty: Type, elts: &[ValueRef]) -> ValueRef {
 
 pub fn C_bytes(ccx: &CrateContext, bytes: &[u8]) -> ValueRef {
     unsafe {
-        let ptr = bytes.as_ptr() as *c_char;
+        let ptr = bytes.as_ptr() as *const c_char;
         return llvm::LLVMConstStringInContext(ccx.llcx, ptr, bytes.len() as c_uint, True);
     }
 }

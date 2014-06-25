@@ -28,7 +28,7 @@ use std::gc::Gc;
  * as `TyVisitor`; then build a MovePtrAdaptor wrapped around your struct.
  */
 pub trait MovePtr {
-    fn move_ptr(&mut self, adjustment: |*u8| -> *u8);
+    fn move_ptr(&mut self, adjustment: |*const u8| -> *const u8);
     fn push_ptr(&mut self);
     fn pop_ptr(&mut self);
 }
@@ -51,12 +51,12 @@ impl<V:TyVisitor + MovePtr> MovePtrAdaptor<V> {
 
     #[inline]
     pub fn bump(&mut self, sz: uint) {
-        self.inner.move_ptr(|p| ((p as uint) + sz) as *u8)
+        self.inner.move_ptr(|p| ((p as uint) + sz) as *const u8)
     }
 
     #[inline]
     pub fn align(&mut self, a: uint) {
-        self.inner.move_ptr(|p| align(p as uint, a) as *u8)
+        self.inner.move_ptr(|p| align(p as uint, a) as *const u8)
     }
 
     #[inline]
@@ -202,35 +202,35 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
         true
     }
 
-    fn visit_box(&mut self, mtbl: uint, inner: *TyDesc) -> bool {
+    fn visit_box(&mut self, mtbl: uint, inner: *const TyDesc) -> bool {
         self.align_to::<Gc<u8>>();
         if ! self.inner.visit_box(mtbl, inner) { return false; }
         self.bump_past::<Gc<u8>>();
         true
     }
 
-    fn visit_uniq(&mut self, mtbl: uint, inner: *TyDesc) -> bool {
+    fn visit_uniq(&mut self, mtbl: uint, inner: *const TyDesc) -> bool {
         self.align_to::<Box<u8>>();
         if ! self.inner.visit_uniq(mtbl, inner) { return false; }
         self.bump_past::<Box<u8>>();
         true
     }
 
-    fn visit_ptr(&mut self, mtbl: uint, inner: *TyDesc) -> bool {
-        self.align_to::<*u8>();
+    fn visit_ptr(&mut self, mtbl: uint, inner: *const TyDesc) -> bool {
+        self.align_to::<*const u8>();
         if ! self.inner.visit_ptr(mtbl, inner) { return false; }
-        self.bump_past::<*u8>();
+        self.bump_past::<*const u8>();
         true
     }
 
-    fn visit_rptr(&mut self, mtbl: uint, inner: *TyDesc) -> bool {
+    fn visit_rptr(&mut self, mtbl: uint, inner: *const TyDesc) -> bool {
         self.align_to::<&'static u8>();
         if ! self.inner.visit_rptr(mtbl, inner) { return false; }
         self.bump_past::<&'static u8>();
         true
     }
 
-    fn visit_evec_slice(&mut self, mtbl: uint, inner: *TyDesc) -> bool {
+    fn visit_evec_slice(&mut self, mtbl: uint, inner: *const TyDesc) -> bool {
         self.align_to::<&'static [u8]>();
         if ! self.inner.visit_evec_slice(mtbl, inner) { return false; }
         self.bump_past::<&'static [u8]>();
@@ -238,7 +238,7 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
     }
 
     fn visit_evec_fixed(&mut self, n: uint, sz: uint, align: uint,
-                        mtbl: uint, inner: *TyDesc) -> bool {
+                        mtbl: uint, inner: *const TyDesc) -> bool {
         self.align(align);
         if ! self.inner.visit_evec_fixed(n, sz, align, mtbl, inner) {
             return false;
@@ -254,7 +254,7 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
     }
 
     fn visit_rec_field(&mut self, i: uint, name: &str,
-                       mtbl: uint, inner: *TyDesc) -> bool {
+                       mtbl: uint, inner: *const TyDesc) -> bool {
         unsafe { self.align((*inner).align); }
         if ! self.inner.visit_rec_field(i, name, mtbl, inner) {
             return false;
@@ -278,7 +278,7 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
     }
 
     fn visit_class_field(&mut self, i: uint, name: &str, named: bool, mtbl: uint,
-                         inner: *TyDesc) -> bool {
+                         inner: *const TyDesc) -> bool {
         unsafe { self.align((*inner).align); }
         if ! self.inner.visit_class_field(i, name, named, mtbl, inner) {
             return false;
@@ -301,7 +301,7 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
         true
     }
 
-    fn visit_tup_field(&mut self, i: uint, inner: *TyDesc) -> bool {
+    fn visit_tup_field(&mut self, i: uint, inner: *const TyDesc) -> bool {
         unsafe { self.align((*inner).align); }
         if ! self.inner.visit_tup_field(i, inner) { return false; }
         unsafe { self.bump((*inner).size); }
@@ -321,12 +321,14 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
         true
     }
 
-    fn visit_fn_input(&mut self, i: uint, mode: uint, inner: *TyDesc) -> bool {
+    fn visit_fn_input(&mut self, i: uint, mode: uint,
+                      inner: *const TyDesc) -> bool {
         if ! self.inner.visit_fn_input(i, mode, inner) { return false; }
         true
     }
 
-    fn visit_fn_output(&mut self, retstyle: uint, variadic: bool, inner: *TyDesc) -> bool {
+    fn visit_fn_output(&mut self, retstyle: uint, variadic: bool,
+                       inner: *const TyDesc) -> bool {
         if ! self.inner.visit_fn_output(retstyle, variadic, inner) { return false; }
         true
     }
@@ -340,7 +342,7 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
     }
 
     fn visit_enter_enum(&mut self, n_variants: uint,
-                        get_disr: unsafe extern fn(ptr: *Opaque) -> Disr,
+                        get_disr: unsafe extern fn(ptr: *const Opaque) -> Disr,
                         sz: uint, align: uint)
                      -> bool {
         self.align(align);
@@ -361,7 +363,8 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
         true
     }
 
-    fn visit_enum_variant_field(&mut self, i: uint, offset: uint, inner: *TyDesc) -> bool {
+    fn visit_enum_variant_field(&mut self, i: uint, offset: uint,
+                                inner: *const TyDesc) -> bool {
         self.inner.push_ptr();
         self.bump(offset);
         if ! self.inner.visit_enum_variant_field(i, offset, inner) { return false; }
@@ -381,7 +384,7 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
     }
 
     fn visit_leave_enum(&mut self, n_variants: uint,
-                        get_disr: unsafe extern fn(ptr: *Opaque) -> Disr,
+                        get_disr: unsafe extern fn(ptr: *const Opaque) -> Disr,
                         sz: uint, align: uint) -> bool {
         if ! self.inner.visit_leave_enum(n_variants, get_disr, sz, align) {
             return false;

@@ -26,7 +26,7 @@ struct Pointy {
 }
 
 fn make_uniq_closure<A:Send>(a: A) -> proc():Send -> uint {
-    proc() { &a as *A as uint }
+    proc() { &a as *const A as uint }
 }
 
 fn empty_pointy() -> Gc<RefCell<Pointy>> {

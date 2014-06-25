@@ -66,13 +66,13 @@ type hoedown_document = libc::c_void;  // this is opaque to us
 
 struct hoedown_renderer {
     opaque: *mut hoedown_html_renderer_state,
-    blockcode: Option<extern "C" fn(*mut hoedown_buffer, *hoedown_buffer,
-                                    *hoedown_buffer, *mut libc::c_void)>,
-    blockquote: Option<extern "C" fn(*mut hoedown_buffer, *hoedown_buffer,
+    blockcode: Option<extern "C" fn(*mut hoedown_buffer, *const hoedown_buffer,
+                                    *const hoedown_buffer, *mut libc::c_void)>,
+    blockquote: Option<extern "C" fn(*mut hoedown_buffer, *const hoedown_buffer,
                                      *mut libc::c_void)>,
-    blockhtml: Option<extern "C" fn(*mut hoedown_buffer, *hoedown_buffer,
+    blockhtml: Option<extern "C" fn(*mut hoedown_buffer, *const hoedown_buffer,
                                     *mut libc::c_void)>,
-    header: Option<extern "C" fn(*mut hoedown_buffer, *hoedown_buffer,
+    header: Option<extern "C" fn(*mut hoedown_buffer, *const hoedown_buffer,
                                  libc::c_int, *mut libc::c_void)>,
     other: [libc::size_t, ..28],
 }
@@ -81,7 +81,8 @@ struct hoedown_html_renderer_state {
     opaque: *mut libc::c_void,
     toc_data: html_toc_data,
     flags: libc::c_uint,
-    link_attributes: Option<extern "C" fn(*mut hoedown_buffer, *hoedown_buffer,
+    link_attributes: Option<extern "C" fn(*mut hoedown_buffer,
+                                          *const hoedown_buffer,
                                           *mut libc::c_void)>,
 }
 
@@ -93,13 +94,13 @@ struct html_toc_data {
 }
 
 struct MyOpaque {
-    dfltblk: extern "C" fn(*mut hoedown_buffer, *hoedown_buffer,
-                           *hoedown_buffer, *mut libc::c_void),
+    dfltblk: extern "C" fn(*mut hoedown_buffer, *const hoedown_buffer,
+                           *const hoedown_buffer, *mut libc::c_void),
     toc_builder: Option<TocBuilder>,
 }
 
 struct hoedown_buffer {
-    data: *u8,
+    data: *const u8,
     size: libc::size_t,
     asize: libc::size_t,
     unit: libc::size_t,
@@ -118,12 +119,12 @@ extern {
                             max_nesting: libc::size_t) -> *mut hoedown_document;
     fn hoedown_document_render(doc: *mut hoedown_document,
                                ob: *mut hoedown_buffer,
-                               document: *u8,
+                               document: *const u8,
                                doc_size: libc::size_t);
     fn hoedown_document_free(md: *mut hoedown_document);
 
     fn hoedown_buffer_new(unit: libc::size_t) -> *mut hoedown_buffer;
-    fn hoedown_buffer_puts(b: *mut hoedown_buffer, c: *libc::c_char);
+    fn hoedown_buffer_puts(b: *mut hoedown_buffer, c: *const libc::c_char);
     fn hoedown_buffer_free(b: *mut hoedown_buffer);
 
 }
@@ -147,13 +148,13 @@ local_data_key!(test_idx: Cell<uint>)
 local_data_key!(pub playground_krate: Option<String>)
 
 pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
-    extern fn block(ob: *mut hoedown_buffer, text: *hoedown_buffer,
-                    lang: *hoedown_buffer, opaque: *mut libc::c_void) {
+    extern fn block(ob: *mut hoedown_buffer, text: *const hoedown_buffer,
+                    lang: *const hoedown_buffer, opaque: *mut libc::c_void) {
         unsafe {
             if text.is_null() { return }
 
             let opaque = opaque as *mut hoedown_html_renderer_state;
-            let my_opaque: &MyOpaque = &*((*opaque).opaque as *MyOpaque);
+            let my_opaque: &MyOpaque = &*((*opaque).opaque as *const MyOpaque);
             slice::raw::buf_as_slice((*text).data, (*text).size as uint, |text| {
                 let origtext = str::from_utf8(text).unwrap();
                 debug!("docblock: ==============\n{}\n=======", text);
@@ -213,7 +214,7 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
         }
     }
 
-    extern fn header(ob: *mut hoedown_buffer, text: *hoedown_buffer,
+    extern fn header(ob: *mut hoedown_buffer, text: *const hoedown_buffer,
                      level: libc::c_int, opaque: *mut libc::c_void) {
         // hoedown does this, we may as well too
         "\n".with_c_str(|p| unsafe { hoedown_buffer_puts(ob, p) });
@@ -304,8 +305,10 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
 }
 
 pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
-    extern fn block(_ob: *mut hoedown_buffer, text: *hoedown_buffer,
-                    lang: *hoedown_buffer, opaque: *mut libc::c_void) {
+    extern fn block(_ob: *mut hoedown_buffer,
+                    text: *const hoedown_buffer,
+                    lang: *const hoedown_buffer,
+                    opaque: *mut libc::c_void) {
         unsafe {
             if text.is_null() { return }
             let block_info = if lang.is_null() {
@@ -333,7 +336,8 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
         }
     }
 
-    extern fn header(_ob: *mut hoedown_buffer, text: *hoedown_buffer,
+    extern fn header(_ob: *mut hoedown_buffer,
+                     text: *const hoedown_buffer,
                      level: libc::c_int, opaque: *mut libc::c_void) {
         unsafe {
             let opaque = opaque as *mut hoedown_html_renderer_state;

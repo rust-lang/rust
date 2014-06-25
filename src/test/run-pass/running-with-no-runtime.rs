@@ -18,7 +18,7 @@ use std::rt::unwind::try;
 local_data_key!(foo: int)
 
 #[start]
-fn start(argc: int, argv: **u8) -> int {
+fn start(argc: int, argv: *const *const u8) -> int {
     if argc > 1 {
         unsafe {
             match **argv.offset(1) {
