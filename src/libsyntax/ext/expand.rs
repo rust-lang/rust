@@ -132,8 +132,6 @@ pub fn expand_expr(e: Gc<ast::Expr>, fld: &mut MacroExpander) -> Gc<ast::Expr> {
         ast::ExprForLoop(src_pat, src_expr, src_loop_block, opt_ident) => {
             // Expand any interior macros etc.
             // NB: we don't fold pats yet. Curious.
-            let src_expr = fld.fold_expr(src_expr).clone();
-            let (src_loop_block, opt_ident) = expand_loop_block(src_loop_block, opt_ident, fld);
 
             let span = e.span;
 
@@ -143,7 +141,7 @@ pub fn expand_expr(e: Gc<ast::Expr>, fld: &mut MacroExpander) -> Gc<ast::Expr> {
             //     i => {
             //       ['<ident>:] loop {
             //         match i.next() {
-            //           None => break,
+            //           None => break ['<ident>],
             //           Some(mut value) => {
             //             let <src_pat> = value;
             //             <src_loop_block>
@@ -163,7 +161,7 @@ pub fn expand_expr(e: Gc<ast::Expr>, fld: &mut MacroExpander) -> Gc<ast::Expr> {
             let local_path = fld.cx.path_ident(span, local_ident);
             let some_path = fld.cx.path_ident(span, fld.cx.ident_of("Some"));
 
-            // `None => break ['<ident>];`
+            // `None => break ['<ident>],`
             let none_arm = {
                 let break_expr = fld.cx.expr(span, ast::ExprBreak(opt_ident));
                 let none_pat = fld.cx.pat_ident(span, none_ident);
@@ -222,7 +220,9 @@ pub fn expand_expr(e: Gc<ast::Expr>, fld: &mut MacroExpander) -> Gc<ast::Expr> {
             let discrim = fld.cx.expr_mut_addr_of(span, src_expr);
             let i_pattern = fld.cx.pat_ident(span, local_ident);
             let arm = fld.cx.arm(span, vec!(i_pattern), loop_expr);
-            fld.cx.expr_match(span, discrim, vec!(arm))
+            // why these clone()'s everywhere? I guess I'll follow the pattern....
+            let match_expr = fld.cx.expr_match(span, discrim, vec!(arm));
+            fld.fold_expr(match_expr).clone()
         }
 
         ast::ExprLoop(loop_block, opt_ident) => {
@@ -1248,6 +1248,7 @@ mod test {
 
     // FIXME #9384, match variable hygiene. Should expand into
     // fn z() {match 8 {x_1 => {match 9 {x_2 | x_2 => x_2 + x_1}}}}
+    #[ignore]
     #[test] fn issue_9384(){
         run_renaming_test(
             &("macro_rules! bad_macro (($ex:expr) => ({match 9 {x | x => x + $ex}}))
