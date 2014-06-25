@@ -11,6 +11,7 @@ AR_i386-apple-ios = $(shell xcrun -find -sdk iphonesimulator ar)
 endif
 CFG_LIB_NAME_i386-apple-ios = lib$(1).a
 CFG_LIB_GLOB_i386-apple-ios = lib$(1)-*.dylib
+CFG_INSTALL_ONLY_RLIB_i386-apple-ios = 1
 CFG_STATIC_LIB_NAME_i386-apple-ios=lib$(1).a
 CFG_LIB_DSYM_GLOB_i386-apple-ios = lib$(1)-*.dylib.dSYM
 CFG_GCCISH_CFLAGS_i386-apple-ios := -Wall -Werror -g -fPIC -m32 $(CFG_IOSSIM_FLAGS_i386-apple-ios)
