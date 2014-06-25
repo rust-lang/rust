@@ -21,13 +21,27 @@ use core::prelude::*;
 use comm;
 use comm::{Sender, Receiver, channel};
 
-/// An extension of `pipes::stream` that allows both sending and receiving.
+/// An extension of `pipes::stream` that allows both sending and receiving
+/// data over two channels
 pub struct DuplexStream<S, R> {
     tx: Sender<S>,
     rx: Receiver<R>,
 }
 
 /// Creates a bidirectional stream.
+///
+/// # Example
+/// ```
+/// use std::comm;
+///
+/// let (left, right) = comm::duplex();
+///
+/// left.send(("ABC").to_string());
+/// right.send(123);
+///
+/// assert!(left.recv() == 123);
+/// assert!(right.recv() == "ABC".to_string());
+/// ```
 pub fn duplex<S: Send, R: Send>() -> (DuplexStream<S, R>, DuplexStream<R, S>) {
     let (tx1, rx1) = channel();
     let (tx2, rx2) = channel();
@@ -37,18 +51,27 @@ pub fn duplex<S: Send, R: Send>() -> (DuplexStream<S, R>, DuplexStream<R, S>) {
 
 // Allow these methods to be used without import:
 impl<S:Send,R:Send> DuplexStream<S, R> {
+    /// Send data over the channel.
     pub fn send(&self, x: S) {
         self.tx.send(x)
     }
+
+    /// Send optionnaly data to the channel.
     pub fn send_opt(&self, x: S) -> Result<(), S> {
         self.tx.send_opt(x)
     }
+
+    /// Receive data from the channel.
     pub fn recv(&self) -> R {
         self.rx.recv()
     }
+
+    /// Try to receive data from the channel.
     pub fn try_recv(&self) -> Result<R, comm::TryRecvError> {
         self.rx.try_recv()
     }
+
+    /// Receive optionnaly data from the channel.
     pub fn recv_opt(&self) -> Result<R, ()> {
         self.rx.recv_opt()
     }
