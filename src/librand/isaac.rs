@@ -130,37 +130,39 @@ impl IsaacRng {
         macro_rules! ind (($x:expr) => {
             self.mem[(($x >> 2) as uint & ((RAND_SIZE - 1) as uint))]
         });
-        macro_rules! rngstepp(
-            ($j:expr, $shift:expr) => {{
-                let base = $j;
-                let mix = a << $shift as uint;
-
-                let x = self.mem[base  + mr_offset];
-                a = (a ^ mix) + self.mem[base + m2_offset];
-                let y = ind!(x) + a + b;
-                self.mem[base + mr_offset] = y;
-
-                b = ind!(y >> RAND_SIZE_LEN as uint) + x;
-                self.rsl[base + mr_offset] = b;
-            }}
-        );
-        macro_rules! rngstepn(
-            ($j:expr, $shift:expr) => {{
-                let base = $j;
-                let mix = a >> $shift as uint;
-
-                let x = self.mem[base  + mr_offset];
-                a = (a ^ mix) + self.mem[base + m2_offset];
-                let y = ind!(x) + a + b;
-                self.mem[base + mr_offset] = y;
-
-                b = ind!(y >> RAND_SIZE_LEN as uint) + x;
-                self.rsl[base + mr_offset] = b;
-            }}
-        );
 
         let r = [(0, MIDPOINT), (MIDPOINT, 0)];
         for &(mr_offset, m2_offset) in r.iter() {
+
+            macro_rules! rngstepp(
+                ($j:expr, $shift:expr) => {{
+                        let base = $j;
+                        let mix = a << $shift as uint;
+
+                        let x = self.mem[base  + mr_offset];
+                        a = (a ^ mix) + self.mem[base + m2_offset];
+                        let y = ind!(x) + a + b;
+                        self.mem[base + mr_offset] = y;
+
+                        b = ind!(y >> RAND_SIZE_LEN as uint) + x;
+                        self.rsl[base + mr_offset] = b;
+                    }}
+                );
+            macro_rules! rngstepn(
+                ($j:expr, $shift:expr) => {{
+                        let base = $j;
+                        let mix = a >> $shift as uint;
+
+                        let x = self.mem[base  + mr_offset];
+                        a = (a ^ mix) + self.mem[base + m2_offset];
+                        let y = ind!(x) + a + b;
+                        self.mem[base + mr_offset] = y;
+
+                        b = ind!(y >> RAND_SIZE_LEN as uint) + x;
+                        self.rsl[base + mr_offset] = b;
+                    }}
+                );
+
             for i in range_step(0u, MIDPOINT, 4) {
                 rngstepp!(i + 0, 13);
                 rngstepn!(i + 1, 6);
@@ -349,43 +351,44 @@ impl Isaac64Rng {
                 *self.mem.unsafe_ref(($x as uint >> 3) & (RAND_SIZE_64 - 1))
             }
         );
-        macro_rules! rngstepp(
-            ($j:expr, $shift:expr) => {{
-                let base = base + $j;
-                let mix = a ^ (a << $shift as uint);
-                let mix = if $j == 0 {!mix} else {mix};
-
-                unsafe {
-                    let x = *self.mem.unsafe_ref(base + mr_offset);
-                    a = mix + *self.mem.unsafe_ref(base + m2_offset);
-                    let y = ind!(x) + a + b;
-                    self.mem.unsafe_set(base + mr_offset, y);
-
-                    b = ind!(y >> RAND_SIZE_64_LEN) + x;
-                    self.rsl.unsafe_set(base + mr_offset, b);
-                }
-            }}
-        );
-        macro_rules! rngstepn(
-            ($j:expr, $shift:expr) => {{
-                let base = base + $j;
-                let mix = a ^ (a >> $shift as uint);
-                let mix = if $j == 0 {!mix} else {mix};
-
-                unsafe {
-                    let x = *self.mem.unsafe_ref(base + mr_offset);
-                    a = mix + *self.mem.unsafe_ref(base + m2_offset);
-                    let y = ind!(x) + a + b;
-                    self.mem.unsafe_set(base + mr_offset, y);
-
-                    b = ind!(y >> RAND_SIZE_64_LEN) + x;
-                    self.rsl.unsafe_set(base + mr_offset, b);
-                }
-            }}
-        );
 
         for &(mr_offset, m2_offset) in MP_VEC.iter() {
             for base in range(0, MIDPOINT / 4).map(|i| i * 4) {
+
+                macro_rules! rngstepp(
+                    ($j:expr, $shift:expr) => {{
+                            let base = base + $j;
+                            let mix = a ^ (a << $shift as uint);
+                            let mix = if $j == 0 {!mix} else {mix};
+
+                            unsafe {
+                                let x = *self.mem.unsafe_ref(base + mr_offset);
+                                a = mix + *self.mem.unsafe_ref(base + m2_offset);
+                                let y = ind!(x) + a + b;
+                                self.mem.unsafe_set(base + mr_offset, y);
+
+                                b = ind!(y >> RAND_SIZE_64_LEN) + x;
+                                self.rsl.unsafe_set(base + mr_offset, b);
+                            }
+                        }}
+                    );
+                macro_rules! rngstepn(
+                    ($j:expr, $shift:expr) => {{
+                            let base = base + $j;
+                            let mix = a ^ (a >> $shift as uint);
+                            let mix = if $j == 0 {!mix} else {mix};
+
+                            unsafe {
+                                let x = *self.mem.unsafe_ref(base + mr_offset);
+                                a = mix + *self.mem.unsafe_ref(base + m2_offset);
+                                let y = ind!(x) + a + b;
+                                self.mem.unsafe_set(base + mr_offset, y);
+
+                                b = ind!(y >> RAND_SIZE_64_LEN) + x;
+                                self.rsl.unsafe_set(base + mr_offset, b);
+                            }
+                        }}
+                    );
                 rngstepp!(0, 21);
                 rngstepn!(1, 5);
                 rngstepp!(2, 12);
