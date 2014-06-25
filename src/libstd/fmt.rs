@@ -101,8 +101,8 @@ format!("{a:s} {c:d} {b:?}", a="a", b=(), c=3i); // => "a 3 ()"
 ```
 
 It is illegal to put positional parameters (those without names) after arguments
-which have names. Like positional parameters, it is illegal to provided named
-parameters that are unused by the format string.
+which have names. Like with positional parameters, it is illegal to provide
+named parameters that are unused by the format string.
 
 ### Argument types
 
@@ -185,7 +185,7 @@ struct. In order to help with this, the `Formatter` struct also provides some
 helper methods.
 
 Additionally, the return value of this function is `fmt::Result` which is a
-typedef to `Result<(), IoError>` (also known as `IoError<()>`). Formatting
+typedef to `Result<(), IoError>` (also known as `IoResult<()>`). Formatting
 implementations should ensure that they return errors from `write!` correctly
 (propagating errors upward).
 
