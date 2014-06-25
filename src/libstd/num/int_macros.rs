@@ -59,6 +59,8 @@ impl FromStrRadix for $T {
 /// # Examples
 ///
 /// ```
+/// #![allow(deprecated)]
+///
 /// std::int::to_str_bytes(123, 10, |v| {
 ///     assert!(v == "123".as_bytes());
 /// });
