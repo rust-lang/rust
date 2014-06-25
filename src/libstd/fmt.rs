@@ -101,8 +101,8 @@ format!("{a:s} {c:d} {b:?}", a="a", b=(), c=3i); // => "a 3 ()"
 ```
 
 It is illegal to put positional parameters (those without names) after arguments
-which have names. Like positional parameters, it is illegal to provided named
-parameters that are unused by the format string.
+which have names. Like with positional parameters, it is illegal to provide
+named parameters that are unused by the format string.
 
 ### Argument types
 
