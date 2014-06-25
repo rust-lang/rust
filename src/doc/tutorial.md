@@ -566,9 +566,14 @@ tuple, introducing two variables at once: `a` and `b`.
 let (a, b) = get_tuple_of_two_ints();
 ~~~~
 
-Let bindings only work with _irrefutable_ patterns: that is, patterns
-that can never fail to match. This excludes `let` from matching
-literals and most `enum` variants.
+Let bindings only work with _irrefutable_ patterns: that is, patterns that can
+never fail to match. This excludes `let` from matching literals and most `enum`
+variants as binding patterns, since most such patterns are not irrefutable. For
+example, this will not compile:
+
+~~~~{ignore}
+let (a, 2) = (1, 2);
+~~~~
 
 ## Loops
 
