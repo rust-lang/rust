@@ -115,16 +115,16 @@ impl Table {
                     count: 0,
                     next: None,
                 };
-                c.f(entry);
+                c.f(&mut *entry);
                 item.next = Some(entry);
             }
             Some(ref mut entry) => {
                 if entry.code == key {
-                    c.f(*entry);
+                    c.f(&mut **entry);
                     return;
                 }
 
-                Table::search_remainder(*entry, key, c)
+                Table::search_remainder(&mut **entry, key, c)
             }
         }
     }
@@ -139,7 +139,7 @@ impl Table {
                     count: 0,
                     next: None,
                 };
-                c.f(entry);
+                c.f(&mut *entry);
                 *self.items.get_mut(index as uint) = Some(entry);
                 return;
             }
@@ -148,11 +148,11 @@ impl Table {
         {
             let entry = &mut *self.items.get_mut(index as uint).get_mut_ref();
             if entry.code == key {
-                c.f(*entry);
+                c.f(&mut **entry);
                 return;
             }
 
-            Table::search_remainder(*entry, key, c)
+            Table::search_remainder(&mut **entry, key, c)
         }
     }
 

@@ -156,12 +156,12 @@ impl<T> DList<T> {
     fn push_front_node(&mut self, mut new_head: Box<Node<T>>) {
         match self.list_head {
             None => {
-                self.list_tail = Rawlink::some(new_head);
+                self.list_tail = Rawlink::some(&mut *new_head);
                 self.list_head = link_with_prev(new_head, Rawlink::none());
             }
             Some(ref mut head) => {
                 new_head.prev = Rawlink::none();
-                head.prev = Rawlink::some(new_head);
+                head.prev = Rawlink::some(&mut *new_head);
                 mem::swap(head, &mut new_head);
                 head.next = Some(new_head);
             }
@@ -188,7 +188,7 @@ impl<T> DList<T> {
         match self.list_tail.resolve() {
             None => return self.push_front_node(new_tail),
             Some(tail) => {
-                self.list_tail = Rawlink::some(new_tail);
+                self.list_tail = Rawlink::some(&mut *new_tail);
                 tail.next = link_with_prev(new_tail, Rawlink::some(tail));
             }
         }
@@ -379,7 +379,7 @@ impl<T> DList<T> {
     #[inline]
     pub fn mut_iter<'a>(&'a mut self) -> MutItems<'a, T> {
         let head_raw = match self.list_head {
-            Some(ref mut h) => Rawlink::some(*h),
+            Some(ref mut h) => Rawlink::some(&mut **h),
             None => Rawlink::none(),
         };
         MutItems{
@@ -530,7 +530,7 @@ impl<'a, A> MutItems<'a, A> {
                     Some(prev) => prev,
                 };
                 let node_own = prev_node.next.take_unwrap();
-                ins_node.next = link_with_prev(node_own, Rawlink::some(ins_node));
+                ins_node.next = link_with_prev(node_own, Rawlink::some(&mut *ins_node));
                 prev_node.next = link_with_prev(ins_node, Rawlink::some(prev_node));
                 self.list.length += 1;
             }
