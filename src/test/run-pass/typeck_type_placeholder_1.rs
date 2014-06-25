@@ -11,7 +11,7 @@
 // This test checks that the `_` type placeholder works
 // correctly for enabling type inference.
 
-static CONSTEXPR: *int = &'static 413 as *_;
+static CONSTEXPR: *const int = &'static 413 as *const _;
 
 pub fn main() {
     let x: Vec<_> = range(0u, 5).collect();
@@ -24,7 +24,7 @@ pub fn main() {
     assert_eq!(y.len(), 5);
 
     let ptr = &5u;
-    let ptr2 = ptr as *_;
+    let ptr2 = ptr as *const _;
 
-    assert_eq!(ptr as *uint as uint, ptr2 as uint);
+    assert_eq!(ptr as *const uint as uint, ptr2 as uint);
 }

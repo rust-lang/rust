@@ -16,8 +16,8 @@ mod mlibc {
     use libc::{c_char, c_long, c_longlong};
 
     extern {
-        pub fn atol(x: *c_char) -> c_long;
-        pub fn atoll(x: *c_char) -> c_longlong;
+        pub fn atol(x: *const c_char) -> c_long;
+        pub fn atoll(x: *const c_char) -> c_longlong;
     }
 }
 

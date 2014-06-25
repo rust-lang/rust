@@ -87,11 +87,12 @@ mod imp {
 
     struct SecRandom;
 
-    static kSecRandomDefault: *SecRandom = 0 as *SecRandom;
+    static kSecRandomDefault: *const SecRandom = 0 as *const SecRandom;
 
     #[link(name = "Security", kind = "framework")]
     extern "C" {
-        fn SecRandomCopyBytes(rnd: *SecRandom, count: size_t, bytes: *mut u8) -> c_int;
+        fn SecRandomCopyBytes(rnd: *const SecRandom,
+                              count: size_t, bytes: *mut u8) -> c_int;
     }
 
     impl OsRng {

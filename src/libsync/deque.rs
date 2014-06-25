@@ -137,7 +137,7 @@ pub struct BufferPool<T> {
 ///   2. We can certainly avoid bounds checks using *T instead of Vec<T>, although
 ///      LLVM is probably pretty good at doing this already.
 struct Buffer<T> {
-    storage: *T,
+    storage: *const T,
     log_size: uint,
 }
 
@@ -354,7 +354,7 @@ impl<T: Send> Buffer<T> {
         let size = buffer_alloc_size::<T>(log_size);
         let buffer = allocate(size, min_align_of::<T>());
         Buffer {
-            storage: buffer as *T,
+            storage: buffer as *const T,
             log_size: log_size,
         }
     }
@@ -364,7 +364,9 @@ impl<T: Send> Buffer<T> {
     // Apparently LLVM cannot optimize (foo % (1 << bar)) into this implicitly
     fn mask(&self) -> int { (1 << self.log_size) - 1 }
 
-    unsafe fn elem(&self, i: int) -> *T { self.storage.offset(i & self.mask()) }
+    unsafe fn elem(&self, i: int) -> *const T {
+        self.storage.offset(i & self.mask())
+    }
 
     // This does not protect against loading duplicate values of the same cell,
     // nor does this clear out the contents contained within. Hence, this is a
@@ -610,7 +612,8 @@ mod tests {
             let s = s.clone();
             let unique_box = box AtomicUint::new(0);
             let thread_box = unsafe {
-                *mem::transmute::<&Box<AtomicUint>, **mut AtomicUint>(&unique_box)
+                *mem::transmute::<&Box<AtomicUint>,
+                                  *const *mut AtomicUint>(&unique_box)
             };
             (Thread::start(proc() {
                 unsafe {

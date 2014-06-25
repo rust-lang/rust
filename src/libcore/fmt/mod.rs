@@ -314,11 +314,11 @@ impl<'a> Formatter<'a> {
             rt::CountImplied => { None }
             rt::CountIsParam(i) => {
                 let v = self.args[i].value;
-                unsafe { Some(*(v as *any::Void as *uint)) }
+                unsafe { Some(*(v as *const _ as *const uint)) }
             }
             rt::CountIsNextParam => {
                 let v = self.curarg.next().unwrap().value;
-                unsafe { Some(*(v as *any::Void as *uint)) }
+                unsafe { Some(*(v as *const _ as *const uint)) }
             }
         }
     }
@@ -565,7 +565,7 @@ impl Char for char {
     }
 }
 
-impl<T> Pointer for *T {
+impl<T> Pointer for *const T {
     fn fmt(&self, f: &mut Formatter) -> Result {
         f.flags |= 1 << (rt::FlagAlternate as uint);
         secret_lower_hex::<uint>(&(*self as uint), f)
@@ -573,17 +573,17 @@ impl<T> Pointer for *T {
 }
 impl<T> Pointer for *mut T {
     fn fmt(&self, f: &mut Formatter) -> Result {
-        secret_pointer::<*T>(&(*self as *T), f)
+        secret_pointer::<*const T>(&(*self as *const T), f)
     }
 }
 impl<'a, T> Pointer for &'a T {
     fn fmt(&self, f: &mut Formatter) -> Result {
-        secret_pointer::<*T>(&(&**self as *T), f)
+        secret_pointer::<*const T>(&(&**self as *const T), f)
     }
 }
 impl<'a, T> Pointer for &'a mut T {
     fn fmt(&self, f: &mut Formatter) -> Result {
-        secret_pointer::<*T>(&(&**self as *T), f)
+        secret_pointer::<*const T>(&(&**self as *const T), f)
     }
 }
 
@@ -669,7 +669,7 @@ delegate!(char to char)
 delegate!(f32 to float)
 delegate!(f64 to float)
 
-impl<T> Show for *T {
+impl<T> Show for *const T {
     fn fmt(&self, f: &mut Formatter) -> Result { secret_pointer(self, f) }
 }
 impl<T> Show for *mut T {

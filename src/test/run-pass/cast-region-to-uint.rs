@@ -10,5 +10,5 @@
 
 pub fn main() {
     let x = 3;
-    println!("&x={:x}", (&x as *int as uint));
+    println!("&x={:x}", (&x as *const int as uint));
 }

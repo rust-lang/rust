@@ -890,7 +890,7 @@ mod tests {
         let x2 = x.clone();
         let mut sharedstate = box 0;
         {
-            let ptr: *int = &*sharedstate;
+            let ptr: *const int = &*sharedstate;
             task::spawn(proc() {
                 let sharedstate: &mut int =
                     unsafe { mem::transmute(ptr) };

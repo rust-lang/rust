@@ -94,7 +94,7 @@ impl AtomicBool {
     /// Load the value
     #[inline]
     pub fn load(&self, order: Ordering) -> bool {
-        unsafe { atomic_load(self.v.get() as *uint, order) > 0 }
+        unsafe { atomic_load(self.v.get() as *const uint, order) > 0 }
     }
 
     /// Store the value
@@ -295,7 +295,7 @@ impl AtomicInt {
     /// Load the value
     #[inline]
     pub fn load(&self, order: Ordering) -> int {
-        unsafe { atomic_load(self.v.get() as *int, order) }
+        unsafe { atomic_load(self.v.get() as *const int, order) }
     }
 
     /// Store the value
@@ -407,7 +407,7 @@ impl AtomicUint {
     /// Load the value
     #[inline]
     pub fn load(&self, order: Ordering) -> uint {
-        unsafe { atomic_load(self.v.get() as *uint, order) }
+        unsafe { atomic_load(self.v.get() as *const uint, order) }
     }
 
     /// Store the value
@@ -520,7 +520,7 @@ impl<T> AtomicPtr<T> {
     #[inline]
     pub fn load(&self, order: Ordering) -> *mut T {
         unsafe {
-            atomic_load(self.p.get() as **mut T, order) as *mut T
+            atomic_load(self.p.get() as *const *mut T, order) as *mut T
         }
     }
 
@@ -560,7 +560,7 @@ unsafe fn atomic_store<T>(dst: *mut T, val: T, order:Ordering) {
 }
 
 #[inline]
-unsafe fn atomic_load<T>(dst: *T, order:Ordering) -> T {
+unsafe fn atomic_load<T>(dst: *const T, order:Ordering) -> T {
     match order {
         Acquire => intrinsics::atomic_load_acq(dst),
         Relaxed => intrinsics::atomic_load_relaxed(dst),

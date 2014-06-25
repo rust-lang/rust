@@ -150,8 +150,8 @@ impl Unwinder {
 ///   run.
 pub unsafe fn try(f: ||) -> ::core::result::Result<(), Box<Any + Send>> {
     let closure: Closure = mem::transmute(f);
-    let ep = rust_try(try_fn, closure.code as *c_void,
-                      closure.env as *c_void);
+    let ep = rust_try(try_fn, closure.code as *mut c_void,
+                      closure.env as *mut c_void);
     return if ep.is_null() {
         Ok(())
     } else {
@@ -162,11 +162,11 @@ pub unsafe fn try(f: ||) -> ::core::result::Result<(), Box<Any + Send>> {
         Err(cause.unwrap())
     };
 
-    extern fn try_fn(code: *c_void, env: *c_void) {
+    extern fn try_fn(code: *mut c_void, env: *mut c_void) {
         unsafe {
             let closure: || = mem::transmute(Closure {
-                code: code as *(),
-                env: env as *(),
+                code: code as *mut (),
+                env: env as *mut (),
             });
             closure();
         }
@@ -178,9 +178,9 @@ pub unsafe fn try(f: ||) -> ::core::result::Result<(), Box<Any + Send>> {
         // When f(...) returns normally, the return value is null.
         // When f(...) throws, the return value is a pointer to the caught
         // exception object.
-        fn rust_try(f: extern "C" fn(*c_void, *c_void),
-                    code: *c_void,
-                    data: *c_void) -> *uw::_Unwind_Exception;
+        fn rust_try(f: extern "C" fn(*mut c_void, *mut c_void),
+                    code: *mut c_void,
+                    data: *mut c_void) -> *mut uw::_Unwind_Exception;
     }
 }
 
@@ -204,7 +204,7 @@ fn rust_fail(cause: Box<Any + Send>) -> ! {
     }
 
     extern fn exception_cleanup(_unwind_code: uw::_Unwind_Reason_Code,
-                                exception: *uw::_Unwind_Exception) {
+                                exception: *mut uw::_Unwind_Exception) {
         rtdebug!("exception_cleanup()");
         unsafe {
             let _: Box<Exception> = mem::transmute(exception);
@@ -249,8 +249,8 @@ pub mod eabi {
         fn __gcc_personality_v0(version: c_int,
                                 actions: uw::_Unwind_Action,
                                 exception_class: uw::_Unwind_Exception_Class,
-                                ue_header: *uw::_Unwind_Exception,
-                                context: *uw::_Unwind_Context)
+                                ue_header: *mut uw::_Unwind_Exception,
+                                context: *mut uw::_Unwind_Context)
             -> uw::_Unwind_Reason_Code;
     }
 
@@ -259,8 +259,8 @@ pub mod eabi {
         version: c_int,
         actions: uw::_Unwind_Action,
         exception_class: uw::_Unwind_Exception_Class,
-        ue_header: *uw::_Unwind_Exception,
-        context: *uw::_Unwind_Context
+        ue_header: *mut uw::_Unwind_Exception,
+        context: *mut uw::_Unwind_Context
     ) -> uw::_Unwind_Reason_Code
     {
         unsafe {
@@ -274,8 +274,8 @@ pub mod eabi {
         version: c_int,
         actions: uw::_Unwind_Action,
         exception_class: uw::_Unwind_Exception_Class,
-        ue_header: *uw::_Unwind_Exception,
-        context: *uw::_Unwind_Context
+        ue_header: *mut uw::_Unwind_Exception,
+        context: *mut uw::_Unwind_Context
     ) -> uw::_Unwind_Reason_Code
     {
         if (actions as c_int & uw::_UA_SEARCH_PHASE as c_int) != 0 { // search phase
@@ -304,8 +304,8 @@ pub mod eabi {
         fn __gcc_personality_sj0(version: c_int,
                                 actions: uw::_Unwind_Action,
                                 exception_class: uw::_Unwind_Exception_Class,
-                                ue_header: *uw::_Unwind_Exception,
-                                context: *uw::_Unwind_Context)
+                                ue_header: *mut uw::_Unwind_Exception,
+                                context: *mut uw::_Unwind_Context)
             -> uw::_Unwind_Reason_Code;
     }
 
@@ -315,8 +315,8 @@ pub mod eabi {
         version: c_int,
         actions: uw::_Unwind_Action,
         exception_class: uw::_Unwind_Exception_Class,
-        ue_header: *uw::_Unwind_Exception,
-        context: *uw::_Unwind_Context
+        ue_header: *mut uw::_Unwind_Exception,
+        context: *mut uw::_Unwind_Context
     ) -> uw::_Unwind_Reason_Code
     {
         unsafe {
@@ -330,8 +330,8 @@ pub mod eabi {
         version: c_int,
         actions: uw::_Unwind_Action,
         exception_class: uw::_Unwind_Exception_Class,
-        ue_header: *uw::_Unwind_Exception,
-        context: *uw::_Unwind_Context
+        ue_header: *mut uw::_Unwind_Exception,
+        context: *mut uw::_Unwind_Context
     ) -> uw::_Unwind_Reason_Code
     {
         if (actions as c_int & uw::_UA_SEARCH_PHASE as c_int) != 0 { // search phase
@@ -357,16 +357,16 @@ pub mod eabi {
 
     extern "C" {
         fn __gcc_personality_v0(state: uw::_Unwind_State,
-                                ue_header: *uw::_Unwind_Exception,
-                                context: *uw::_Unwind_Context)
+                                ue_header: *mut uw::_Unwind_Exception,
+                                context: *mut uw::_Unwind_Context)
             -> uw::_Unwind_Reason_Code;
     }
 
     #[lang="eh_personality"]
     extern "C" fn eh_personality(
         state: uw::_Unwind_State,
-        ue_header: *uw::_Unwind_Exception,
-        context: *uw::_Unwind_Context
+        ue_header: *mut uw::_Unwind_Exception,
+        context: *mut uw::_Unwind_Context
     ) -> uw::_Unwind_Reason_Code
     {
         unsafe {
@@ -377,8 +377,8 @@ pub mod eabi {
     #[no_mangle] // referenced from rust_try.ll
     pub extern "C" fn rust_eh_personality_catch(
         state: uw::_Unwind_State,
-        ue_header: *uw::_Unwind_Exception,
-        context: *uw::_Unwind_Context
+        ue_header: *mut uw::_Unwind_Exception,
+        context: *mut uw::_Unwind_Context
     ) -> uw::_Unwind_Reason_Code
     {
         if (state as c_int & uw::_US_ACTION_MASK as c_int)

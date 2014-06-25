@@ -158,7 +158,7 @@ pub struct creader_cache_key {
 pub type creader_cache = RefCell<HashMap<creader_cache_key, t>>;
 
 pub struct intern_key {
-    sty: *sty,
+    sty: *const sty,
 }
 
 // NB: Do not replace this with #[deriving(PartialEq)]. The automatically-derived
@@ -409,7 +409,7 @@ enum t_opaque {}
 
 #[allow(raw_pointer_deriving)]
 #[deriving(Clone, PartialEq, Eq, Hash)]
-pub struct t { inner: *t_opaque }
+pub struct t { inner: *const t_opaque }
 
 impl fmt::Show for t {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -1216,7 +1216,7 @@ pub fn mk_t(cx: &ctxt, st: sty) -> t {
         flags: flags,
     };
 
-    let sty_ptr = &t.sty as *sty;
+    let sty_ptr = &t.sty as *const sty;
 
     let key = intern_key {
         sty: sty_ptr,
@@ -1227,7 +1227,7 @@ pub fn mk_t(cx: &ctxt, st: sty) -> t {
     cx.next_id.set(cx.next_id.get() + 1);
 
     unsafe {
-        mem::transmute::<*sty, t>(sty_ptr)
+        mem::transmute::<*const sty, t>(sty_ptr)
     }
 }
 

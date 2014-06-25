@@ -38,7 +38,7 @@ enum Message {
 }
 
 struct State {
-    handle: *uvll::uv_async_t,
+    handle: *mut uvll::uv_async_t,
     lock: NativeMutex, // see comments in async_cb for why this is needed
     queue: mpsc::Queue<Message>,
 }
@@ -55,7 +55,7 @@ pub struct Queue {
     queue: Arc<State>,
 }
 
-extern fn async_cb(handle: *uvll::uv_async_t) {
+extern fn async_cb(handle: *mut uvll::uv_async_t) {
     let pool: &mut QueuePool = unsafe {
         mem::transmute(uvll::get_data_for_uv_handle(handle))
     };
@@ -114,7 +114,7 @@ impl QueuePool {
             lock: unsafe {NativeMutex::new()},
             queue: mpsc::Queue::new(),
         });
-        let q = box QueuePool {
+        let mut q = box QueuePool {
             refcnt: 0,
             queue: state,
         };
@@ -122,7 +122,7 @@ impl QueuePool {
         unsafe {
             assert_eq!(uvll::uv_async_init(loop_.handle, handle, async_cb), 0);
             uvll::uv_unref(handle);
-            let data = &*q as *QueuePool as *c_void;
+            let data = &mut *q as *mut QueuePool as *mut c_void;
             uvll::set_data_for_uv_handle(handle, data);
         }
 
@@ -139,7 +139,7 @@ impl QueuePool {
         Queue { queue: self.queue.clone() }
     }
 
-    pub fn handle(&self) -> *uvll::uv_async_t { self.queue.handle }
+    pub fn handle(&self) -> *mut uvll::uv_async_t { self.queue.handle }
 }
 
 impl Queue {

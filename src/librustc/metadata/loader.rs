@@ -545,14 +545,15 @@ fn get_metadata_section_imp(os: abi::Os, filename: &Path) -> Result<MetadataBlob
         while llvm::LLVMIsSectionIteratorAtEnd(of.llof, si.llsi) == False {
             let mut name_buf = ptr::null();
             let name_len = llvm::LLVMRustGetSectionName(si.llsi, &mut name_buf);
-            let name = str::raw::from_buf_len(name_buf as *u8, name_len as uint);
+            let name = str::raw::from_buf_len(name_buf as *const u8,
+                                              name_len as uint);
             debug!("get_metadata_section: name {}", name);
             if read_meta_section_name(os).as_slice() == name.as_slice() {
                 let cbuf = llvm::LLVMGetSectionContents(si.llsi);
                 let csz = llvm::LLVMGetSectionSize(si.llsi) as uint;
                 let mut found =
                     Err(format!("metadata not found: '{}'", filename.display()));
-                let cvbuf: *u8 = mem::transmute(cbuf);
+                let cvbuf: *const u8 = mem::transmute(cbuf);
                 let vlen = encoder::metadata_encoding_version.len();
                 debug!("checking {} bytes of metadata-version stamp",
                        vlen);

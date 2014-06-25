@@ -22,7 +22,7 @@ fn failfn() {
 }
 
 struct r {
-  v: *int,
+  v: *const int,
 }
 
 impl Drop for r {
@@ -33,7 +33,7 @@ impl Drop for r {
     }
 }
 
-fn r(v: *int) -> r {
+fn r(v: *const int) -> r {
     r {
         v: v
     }

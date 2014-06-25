@@ -82,7 +82,7 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
              (),
              |()| unsafe {
             if !llvm::LLVMRustLinkInExternalBitcode(llmod,
-                                                    ptr as *libc::c_char,
+                                                    ptr as *const libc::c_char,
                                                     bc.len() as libc::size_t) {
                 link::llvm_err(sess,
                                format!("failed to load bc of `{}`",
@@ -94,10 +94,11 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
     // Internalize everything but the reachable symbols of the current module
     let cstrs: Vec<::std::c_str::CString> =
         reachable.iter().map(|s| s.as_slice().to_c_str()).collect();
-    let arr: Vec<*i8> = cstrs.iter().map(|c| c.with_ref(|p| p)).collect();
+    let arr: Vec<*const i8> = cstrs.iter().map(|c| c.with_ref(|p| p)).collect();
     let ptr = arr.as_ptr();
     unsafe {
-        llvm::LLVMRustRunRestrictionPass(llmod, ptr as **libc::c_char,
+        llvm::LLVMRustRunRestrictionPass(llmod,
+                                         ptr as *const *const libc::c_char,
                                          arr.len() as libc::size_t);
     }
 

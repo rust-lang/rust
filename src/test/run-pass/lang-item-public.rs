@@ -33,6 +33,6 @@ extern {}
 extern {}
 
 #[start]
-fn main(_: int, _: **u8) -> int {
+fn main(_: int, _: *const *const u8) -> int {
     1 % 1
 }

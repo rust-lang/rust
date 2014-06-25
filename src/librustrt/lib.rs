@@ -104,7 +104,7 @@ pub static DEFAULT_ERROR_CODE: int = 101;
 /// Initializes global state, including frobbing
 /// the crate's logging flags, registering GC
 /// metadata, and storing the process arguments.
-pub fn init(argc: int, argv: **u8) {
+pub fn init(argc: int, argv: *const *const u8) {
     // FIXME: Derefing these pointers is not safe.
     // Need to propagate the unsafety to `start`.
     unsafe {

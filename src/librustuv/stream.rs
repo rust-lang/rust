@@ -23,7 +23,7 @@ use uvll;
 // uv_stream_t instance, and all I/O operations assume that it's already located
 // on the appropriate scheduler.
 pub struct StreamWatcher {
-    pub handle: *uvll::uv_stream_t,
+    pub handle: *mut uvll::uv_stream_t,
 
     // Cache the last used uv_write_t so we don't have to allocate a new one on
     // every call to uv_write(). Ideally this would be a stack-allocated
@@ -59,8 +59,8 @@ impl StreamWatcher {
     // will be manipulated on each of the methods called on this watcher.
     // Wrappers should ensure to always reset the field to an appropriate value
     // if they rely on the field to perform an action.
-    pub fn new(stream: *uvll::uv_stream_t) -> StreamWatcher {
-        unsafe { uvll::set_data_for_uv_handle(stream, 0 as *int) }
+    pub fn new(stream: *mut uvll::uv_stream_t) -> StreamWatcher {
+        unsafe { uvll::set_data_for_uv_handle(stream, 0 as *mut int) }
         StreamWatcher {
             handle: stream,
             last_write_req: None,
@@ -85,7 +85,7 @@ impl StreamWatcher {
         // we must be ready for this to happen (by setting the data in the uv
         // handle). In theory this otherwise doesn't need to happen until after
         // the read is succesfully started.
-        unsafe { uvll::set_data_for_uv_handle(self.handle, &rcx) }
+        unsafe { uvll::set_data_for_uv_handle(self.handle, &mut rcx) }
 
         // Send off the read request, but don't block until we're sure that the
         // read request is queued.
@@ -103,7 +103,7 @@ impl StreamWatcher {
             n => Err(UvError(n))
         };
         // Make sure a read cancellation sees that there's no pending read
-        unsafe { uvll::set_data_for_uv_handle(self.handle, 0 as *int) }
+        unsafe { uvll::set_data_for_uv_handle(self.handle, 0 as *mut int) }
         return ret;
     }
 
@@ -115,7 +115,7 @@ impl StreamWatcher {
         let data = unsafe {
             let data = uvll::get_data_for_uv_handle(self.handle);
             if data.is_null() { return None }
-            uvll::set_data_for_uv_handle(self.handle, 0 as *int);
+            uvll::set_data_for_uv_handle(self.handle, 0 as *mut int);
             &mut *(data as *mut ReadContext)
         };
         data.result = reason;
@@ -133,7 +133,7 @@ impl StreamWatcher {
         let mut req = match self.last_write_req.take() {
             Some(req) => req, None => Request::new(uvll::UV_WRITE),
         };
-        req.set_data(ptr::null::<()>());
+        req.set_data(ptr::mut_null::<()>());
 
         // And here's where timeouts get a little interesting. Currently, libuv
         // does not support canceling an in-flight write request. Consequently,
@@ -180,7 +180,7 @@ impl StreamWatcher {
                 let loop_ = unsafe { uvll::get_loop_for_uv_handle(self.handle) };
                 wait_until_woken_after(&mut self.blocked_writer,
                                        &Loop::wrap(loop_), || {
-                    req.set_data(&wcx);
+                    req.set_data(&mut wcx);
                 });
 
                 if wcx.result != uvll::ECANCELED {
@@ -205,13 +205,13 @@ impl StreamWatcher {
                 // Note that we don't cache this write request back in the
                 // stream watcher because we no longer have ownership of it, and
                 // we never will.
-                let new_wcx = box WriteContext {
+                let mut new_wcx = box WriteContext {
                     result: 0,
                     stream: 0 as *mut StreamWatcher,
                     data: wcx.data.take(),
                 };
                 unsafe {
-                    req.set_data(&*new_wcx);
+                    req.set_data(&mut *new_wcx);
                     mem::forget(new_wcx);
                 }
                 Err(UvError(wcx.result))
@@ -228,7 +228,7 @@ impl StreamWatcher {
 // This allocation callback expects to be invoked once and only once. It will
 // unwrap the buffer in the ReadContext stored in the stream and return it. This
 // will fail if it is called more than once.
-extern fn alloc_cb(stream: *uvll::uv_stream_t, _hint: size_t, buf: *mut Buf) {
+extern fn alloc_cb(stream: *mut uvll::uv_stream_t, _hint: size_t, buf: *mut Buf) {
     uvdebug!("alloc_cb");
     unsafe {
         let rcx: &mut ReadContext =
@@ -239,7 +239,8 @@ extern fn alloc_cb(stream: *uvll::uv_stream_t, _hint: size_t, buf: *mut Buf) {
 
 // When a stream has read some data, we will always forcibly stop reading and
 // return all the data read (even if it didn't fill the whole buffer).
-extern fn read_cb(handle: *uvll::uv_stream_t, nread: ssize_t, _buf: *Buf) {
+extern fn read_cb(handle: *mut uvll::uv_stream_t, nread: ssize_t,
+                  _buf: *const Buf) {
     uvdebug!("read_cb {}", nread);
     assert!(nread != uvll::ECANCELED as ssize_t);
     let rcx: &mut ReadContext = unsafe {
@@ -258,7 +259,7 @@ extern fn read_cb(handle: *uvll::uv_stream_t, nread: ssize_t, _buf: *Buf) {
 // Unlike reading, the WriteContext is stored in the uv_write_t request. Like
 // reading, however, all this does is wake up the blocked task after squirreling
 // away the error code as a result.
-extern fn write_cb(req: *uvll::uv_write_t, status: c_int) {
+extern fn write_cb(req: *mut uvll::uv_write_t, status: c_int) {
     let mut req = Request::wrap(req);
     // Remember to not free the request because it is re-used between writes on
     // the same stream.

@@ -11,8 +11,8 @@
 extern crate libc;
 
 fn main() {
-    let x : *Vec<int> = &vec!(1,2,3);
-    let y : *libc::c_void = x as *libc::c_void;
+    let x : *const Vec<int> = &vec!(1,2,3);
+    let y : *const libc::c_void = x as *const libc::c_void;
     unsafe {
         let _z = (*y).clone();
         //~^ ERROR does not implement any method in scope

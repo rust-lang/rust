@@ -31,20 +31,20 @@ pub struct Box<T> {
 
 /// The representation of a Rust slice
 pub struct Slice<T> {
-    pub data: *T,
+    pub data: *const T,
     pub len: uint,
 }
 
 /// The representation of a Rust closure
 pub struct Closure {
-    pub code: *(),
-    pub env: *(),
+    pub code: *mut (),
+    pub env: *mut (),
 }
 
 /// The representation of a Rust procedure (`proc()`)
 pub struct Procedure {
-    pub code: *(),
-    pub env: *(),
+    pub code: *mut (),
+    pub env: *mut (),
 }
 
 /// The representation of a Rust trait object.
@@ -52,8 +52,8 @@ pub struct Procedure {
 /// This struct does not have a `Repr` implementation
 /// because there is no way to refer to all trait objects generically.
 pub struct TraitObject {
-    pub vtable: *(),
-    pub data: *(),
+    pub vtable: *mut (),
+    pub data: *mut (),
 }
 
 /// This trait is meant to map equivalences between raw structs and their

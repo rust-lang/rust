@@ -90,7 +90,7 @@ impl<T: 'static> LocalData for T {}
 // n.b. If TLS is used heavily in future, this could be made more efficient with
 //      a proper map.
 #[doc(hidden)]
-pub type Map = Vec<Option<(*u8, TLSValue, uint)>>;
+pub type Map = Vec<Option<(*const u8, TLSValue, uint)>>;
 type TLSValue = Box<LocalData + Send>;
 
 // Gets the map from the runtime. Lazily initialises if not done so already.
@@ -116,8 +116,8 @@ unsafe fn get_local_map() -> Option<&mut Map> {
     }
 }
 
-fn key_to_key_value<T: 'static>(key: Key<T>) -> *u8 {
-    key as *KeyValue<T> as *u8
+fn key_to_key_value<T: 'static>(key: Key<T>) -> *const u8 {
+    key as *const KeyValue<T> as *const u8
 }
 
 /// An RAII immutable reference to a task-local value.
@@ -236,7 +236,8 @@ impl<T: 'static> KeyValue<T> {
             // pointer part of the trait, (as ~T), and then use
             // compiler coercions to achieve a '&' pointer.
             let ptr = unsafe {
-                let data = data as *Box<LocalData + Send> as *raw::TraitObject;
+                let data = data as *const Box<LocalData + Send>
+                                as *const raw::TraitObject;
                 &mut *((*data).data as *mut T)
             };
             Ref { _ptr: ptr, _index: pos, _nosend: marker::NoSend, _key: self }

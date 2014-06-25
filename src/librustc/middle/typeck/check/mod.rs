@@ -1262,7 +1262,7 @@ impl<'a> RegionScope for infer::InferCtxt<'a> {
 
 impl<'a> FnCtxt<'a> {
     pub fn tag(&self) -> String {
-        format!("{}", self as *FnCtxt)
+        format!("{}", self as *const FnCtxt)
     }
 
     pub fn local_ty(&self, span: Span, nid: ast::NodeId) -> ty::t {

@@ -183,7 +183,7 @@ pub use core_sync::comm;
 //        threading mode than the default by reaching into the auto-generated
 //        '__test' module.
 #[cfg(test)] #[start]
-fn start(argc: int, argv: **u8) -> int {
+fn start(argc: int, argv: *const *const u8) -> int {
     green::start(argc, argv, rustuv::event_loop, __test::main)
 }
 

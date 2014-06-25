@@ -15,8 +15,8 @@
 // pattern.
 
 
-fn getaddr(box ref x: Box<uint>) -> *uint {
-    let addr: *uint = &*x;
+fn getaddr(box ref x: Box<uint>) -> *const uint {
+    let addr: *const uint = &*x;
     addr
 }
 
@@ -26,7 +26,7 @@ fn checkval(box ref x: Box<uint>) -> uint {
 
 pub fn main() {
     let obj = box 1;
-    let objptr: *uint = &*obj;
+    let objptr: *const uint = &*obj;
     let xptr = getaddr(obj);
     assert_eq!(objptr, xptr);
 

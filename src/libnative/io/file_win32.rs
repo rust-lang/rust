@@ -357,7 +357,7 @@ pub fn readdir(p: &CString) -> IoResult<Vec<CString>> {
 
     extern {
         fn rust_list_dir_wfd_size() -> libc::size_t;
-        fn rust_list_dir_wfd_fp_buf(wfd: *libc::c_void) -> *u16;
+        fn rust_list_dir_wfd_fp_buf(wfd: *mut libc::c_void) -> *const u16;
     }
     let star = Path::new(unsafe {
         CString::new(p.with_ref(|p| p), false)
@@ -366,12 +366,13 @@ pub fn readdir(p: &CString) -> IoResult<Vec<CString>> {
 
     unsafe {
         let wfd_ptr = malloc_raw(rust_list_dir_wfd_size() as uint);
-        let find_handle = libc::FindFirstFileW(path.as_ptr(), wfd_ptr as libc::HANDLE);
+        let find_handle = libc::FindFirstFileW(path.as_ptr(),
+                                               wfd_ptr as libc::HANDLE);
         if find_handle as libc::c_int != libc::INVALID_HANDLE_VALUE {
             let mut paths = vec!();
             let mut more_files = 1 as libc::c_int;
             while more_files != 0 {
-                let fp_buf = rust_list_dir_wfd_fp_buf(wfd_ptr as *c_void);
+                let fp_buf = rust_list_dir_wfd_fp_buf(wfd_ptr as *mut c_void);
                 if fp_buf as uint == 0 {
                     fail!("os::list_dir() failure: got null ptr from wfd");
                 } else {
@@ -446,7 +447,7 @@ pub fn readlink(p: &CString) -> IoResult<CString> {
     // without the null pointer
     let ret = fill_utf16_buf_and_decode(|buf, sz| unsafe {
         GetFinalPathNameByHandleW(handle,
-                                  buf as *u16,
+                                  buf as *const u16,
                                   sz - 1,
                                   libc::VOLUME_NAME_DOS)
     });
@@ -514,12 +515,12 @@ pub fn lstat(_p: &CString) -> IoResult<rtio::FileStat> {
 }
 
 pub fn utime(p: &CString, atime: u64, mtime: u64) -> IoResult<()> {
-    let buf = libc::utimbuf {
+    let mut buf = libc::utimbuf {
         actime: (atime / 1000) as libc::time64_t,
         modtime: (mtime / 1000) as libc::time64_t,
     };
     let p = try!(to_utf16(p));
     super::mkerr_libc(unsafe {
-        libc::wutime(p.as_ptr(), &buf)
+        libc::wutime(p.as_ptr(), &mut buf)
     })
 }

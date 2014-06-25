@@ -79,7 +79,7 @@ mod util;
 /// the crate's logging flags, registering GC
 /// metadata, and storing the process arguments.
 #[allow(experimental)]
-pub fn init(argc: int, argv: **u8) {
+pub fn init(argc: int, argv: *const *const u8) {
     rustrt::init(argc, argv);
     unsafe { unwind::register(failure::on_fail); }
 }

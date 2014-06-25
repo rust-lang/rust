@@ -28,7 +28,7 @@ pub struct WSADATA {
     pub szSystemStatus: [u8, ..WSASYS_STATUS_LEN + 1],
     pub iMaxSockets: u16,
     pub iMaxUdpDg: u16,
-    pub lpVendorInfo: *u8,
+    pub lpVendorInfo: *mut u8,
 }
 
 pub type LPWSADATA = *mut WSADATA;
@@ -53,10 +53,10 @@ extern "system" {
     pub fn ioctlsocket(s: libc::SOCKET, cmd: libc::c_long,
                        argp: *mut libc::c_ulong) -> libc::c_int;
     pub fn select(nfds: libc::c_int,
-                  readfds: *fd_set,
-                  writefds: *fd_set,
-                  exceptfds: *fd_set,
-                  timeout: *libc::timeval) -> libc::c_int;
+                  readfds: *mut fd_set,
+                  writefds: *mut fd_set,
+                  exceptfds: *mut fd_set,
+                  timeout: *mut libc::timeval) -> libc::c_int;
     pub fn getsockopt(sockfd: libc::SOCKET,
                       level: libc::c_int,
                       optname: libc::c_int,

@@ -132,7 +132,7 @@ fn retry(f: || -> libc::c_int) -> libc::c_int {
     }
 }
 
-fn keep_going(data: &[u8], f: |*u8, uint| -> i64) -> i64 {
+fn keep_going(data: &[u8], f: |*const u8, uint| -> i64) -> i64 {
     let origamt = data.len();
     let mut data = data.as_ptr();
     let mut amt = origamt;

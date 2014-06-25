@@ -48,7 +48,7 @@ impl PluginManager {
         let lib = lib_result.unwrap();
         unsafe {
             let plugin = lib.symbol("rustdoc_plugin_entrypoint").unwrap();
-            self.callbacks.push(mem::transmute::<*u8,PluginCallback>(plugin));
+            self.callbacks.push(mem::transmute::<*mut u8,PluginCallback>(plugin));
         }
         self.dylibs.push(lib);
     }

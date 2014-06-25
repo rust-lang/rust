@@ -287,7 +287,7 @@ pub struct Entries<'a, K, V> {
     // See the comment on MutEntries; this is just to allow
     // code-sharing (for this immutable-values iterator it *could* very
     // well be Option<&'a TreeNode<K,V>>).
-    node: *TreeNode<K, V>,
+    node: *const TreeNode<K, V>,
     remaining_min: uint,
     remaining_max: uint
 }
@@ -468,11 +468,11 @@ define_iterator! {
     addr_mut = mut
 }
 
-fn deref<'a, K, V>(node: &'a Option<Box<TreeNode<K, V>>>) -> *TreeNode<K, V> {
+fn deref<'a, K, V>(node: &'a Option<Box<TreeNode<K, V>>>) -> *const TreeNode<K, V> {
     match *node {
         Some(ref n) => {
             let n: &TreeNode<K, V> = *n;
-            n as *TreeNode<K, V>
+            n as *const TreeNode<K, V>
         }
         None => ptr::null()
     }

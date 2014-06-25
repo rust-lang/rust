@@ -57,12 +57,12 @@ pub static WNOHANG: libc::c_int = 1;
 
 extern {
     pub fn gettimeofday(timeval: *mut libc::timeval,
-                        tzp: *libc::c_void) -> libc::c_int;
+                        tzp: *mut libc::c_void) -> libc::c_int;
     pub fn select(nfds: libc::c_int,
-                  readfds: *fd_set,
-                  writefds: *fd_set,
-                  errorfds: *fd_set,
-                  timeout: *libc::timeval) -> libc::c_int;
+                  readfds: *mut fd_set,
+                  writefds: *mut fd_set,
+                  errorfds: *mut fd_set,
+                  timeout: *mut libc::timeval) -> libc::c_int;
     pub fn getsockopt(sockfd: libc::c_int,
                       level: libc::c_int,
                       optname: libc::c_int,
@@ -75,7 +75,7 @@ extern {
                    options: libc::c_int) -> libc::pid_t;
 
     pub fn sigaction(signum: libc::c_int,
-                     act: *sigaction,
+                     act: *const sigaction,
                      oldact: *mut sigaction) -> libc::c_int;
 
     pub fn sigaddset(set: *mut sigset_t, signum: libc::c_int) -> libc::c_int;
