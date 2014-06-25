@@ -474,7 +474,7 @@ often convenient to use a block expression for each case, in which case
 the commas are optional as shown below. Literals are valid patterns and
 match only their own value. A single arm may match multiple different
 patterns by combining them with the pipe operator (`|`), so long as every
-pattern binds the same set of variables. Ranges of numeric literal
+pattern binds the same set of variables (see "destructuring" below). Ranges of numeric literal
 patterns can be expressed with two dots, as in `M..N`. The underscore
 (`_`) is a wildcard pattern that matches any single value. (`..`) is a
 different wildcard that can match one or more fields in an `enum` variant.
