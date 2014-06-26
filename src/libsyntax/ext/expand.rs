@@ -251,7 +251,7 @@ fn expand_loop_block(loop_block: P<Block>,
             // the same context will pick that up in the deferred renaming pass
             // and be renamed incorrectly.
             let mut rename_list = vec!(rename);
-            let mut rename_fld = renames_to_fold(&mut rename_list);
+            let mut rename_fld = IdentRenamer{renames: &mut rename_list};
             let renamed_ident = rename_fld.fold_ident(label);
 
             // The rename *must* be added to the enclosed syntax context for
@@ -624,7 +624,7 @@ fn expand_non_macro_stmt(s: &Stmt, fld: &mut MacroExpander)
                     }
                     let rewritten_pat = {
                         let mut rename_fld =
-                            renames_to_fold(&mut new_pending_renames);
+                            IdentRenamer{renames: &mut new_pending_renames};
                         // rewrite the pattern using the new names (the old
                         // ones have already been applied):
                         rename_fld.fold_pat(expanded_pat)
@@ -676,8 +676,7 @@ fn expand_arm(arm: &ast::Arm, fld: &mut MacroExpander) -> ast::Arm {
         new_pending_renames.push((*ident,new_name));
     }
     let rewritten_pat = {
-        let mut rename_fld =
-            renames_to_fold(&mut new_pending_renames);
+        let mut rename_fld = IdentRenamer{renames:&mut new_pending_renames};
         // rewrite the pattern using the new names (the old
         // ones have already been applied):
         rename_fld.fold_pat(expanded_pat)
@@ -757,17 +756,19 @@ fn expand_block_elts(b: &Block, fld: &mut MacroExpander) -> P<Block> {
     let new_view_items = b.view_items.iter().map(|x| fld.fold_view_item(x)).collect();
     let new_stmts =
         b.stmts.iter().flat_map(|x| {
+            // perform all pending renames
             let renamed_stmt = {
                 let pending_renames = &mut fld.extsbox.info().pending_renames;
-                let mut rename_fld = renames_to_fold(pending_renames);
+                let mut rename_fld = IdentRenamer{renames:pending_renames};
                 rename_fld.fold_stmt(&**x).expect_one("rename_fold didn't return one value")
             };
+            // expand macros in the statement
             fld.fold_stmt(&*renamed_stmt).move_iter()
         }).collect();
     let new_expr = b.expr.map(|x| {
         let expr = {
             let pending_renames = &mut fld.extsbox.info().pending_renames;
-            let mut rename_fld = renames_to_fold(pending_renames);
+            let mut rename_fld = IdentRenamer{renames:pending_renames};
             rename_fld.fold_expr(x)
         };
         fld.fold_expr(expr)
@@ -859,6 +860,7 @@ fn expand_pat(p: Gc<ast::Pat>, fld: &mut MacroExpander) -> Gc<ast::Pat> {
     }
 }
 
+// a tree-folder that applies every rename in its (mutable) list
 pub struct IdentRenamer<'a> {
     renames: &'a mut RenameList,
 }
@@ -872,14 +874,6 @@ impl<'a> Folder for IdentRenamer<'a> {
             name: id.name,
             ctxt: new_ctxt,
         }
-    }
-}
-
-// given a mutable list of renames, return a tree-folder that applies those
-// renames.
-fn renames_to_fold<'a>(renames: &'a mut RenameList) -> IdentRenamer<'a> {
-    IdentRenamer {
-        renames: renames,
     }
 }
 
