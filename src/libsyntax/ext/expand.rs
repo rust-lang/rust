@@ -132,8 +132,6 @@ pub fn expand_expr(e: Gc<ast::Expr>, fld: &mut MacroExpander) -> Gc<ast::Expr> {
         ast::ExprForLoop(src_pat, src_expr, src_loop_block, opt_ident) => {
             // Expand any interior macros etc.
             // NB: we don't fold pats yet. Curious.
-            let src_expr = fld.fold_expr(src_expr).clone();
-            let (src_loop_block, opt_ident) = expand_loop_block(src_loop_block, opt_ident, fld);
 
             let span = e.span;
 
@@ -143,7 +141,7 @@ pub fn expand_expr(e: Gc<ast::Expr>, fld: &mut MacroExpander) -> Gc<ast::Expr> {
             //     i => {
             //       ['<ident>:] loop {
             //         match i.next() {
-            //           None => break,
+            //           None => break ['<ident>],
             //           Some(mut value) => {
             //             let <src_pat> = value;
             //             <src_loop_block>
@@ -156,14 +154,14 @@ pub fn expand_expr(e: Gc<ast::Expr>, fld: &mut MacroExpander) -> Gc<ast::Expr> {
             // (The use of the `let` is to give better error messages
             // when the pattern is refutable.)
 
-            let local_ident = token::gensym_ident("__i"); // FIXME #13573
+            let local_ident = token::gensym_ident("i");
             let next_ident = fld.cx.ident_of("next");
             let none_ident = fld.cx.ident_of("None");
 
             let local_path = fld.cx.path_ident(span, local_ident);
             let some_path = fld.cx.path_ident(span, fld.cx.ident_of("Some"));
 
-            // `None => break ['<ident>];`
+            // `None => break ['<ident>],`
             let none_arm = {
                 let break_expr = fld.cx.expr(span, ast::ExprBreak(opt_ident));
                 let none_pat = fld.cx.pat_ident(span, none_ident);
@@ -171,7 +169,8 @@ pub fn expand_expr(e: Gc<ast::Expr>, fld: &mut MacroExpander) -> Gc<ast::Expr> {
             };
 
             // let <src_pat> = value;
-            let value_ident = token::gensym_ident("__value");
+            // use underscore to suppress lint error:
+            let value_ident = token::gensym_ident("_value");
             // this is careful to use src_pat.span so that error
             // messages point exact at that.
             let local = box(GC) ast::Local {
@@ -221,7 +220,9 @@ pub fn expand_expr(e: Gc<ast::Expr>, fld: &mut MacroExpander) -> Gc<ast::Expr> {
             let discrim = fld.cx.expr_mut_addr_of(span, src_expr);
             let i_pattern = fld.cx.pat_ident(span, local_ident);
             let arm = fld.cx.arm(span, vec!(i_pattern), loop_expr);
-            fld.cx.expr_match(span, discrim, vec!(arm))
+            // why these clone()'s everywhere? I guess I'll follow the pattern....
+            let match_expr = fld.cx.expr_match(span, discrim, vec!(arm));
+            fld.fold_expr(match_expr).clone()
         }
 
         ast::ExprLoop(loop_block, opt_ident) => {
@@ -658,15 +659,15 @@ fn expand_non_macro_stmt(s: &Stmt, fld: &mut MacroExpander)
     }
 }
 
-// a visitor that extracts the pat_ident paths
+// a visitor that extracts the pat_ident (binding) paths
 // from a given thingy and puts them in a mutable
-// array (passed in to the traversal)
+// array (passed in to the traversal).
 #[deriving(Clone)]
-pub struct NewNameFinderContext {
+struct NameFinderContext {
     ident_accumulator: Vec<ast::Ident> ,
 }
 
-impl Visitor<()> for NewNameFinderContext {
+impl Visitor<()> for NameFinderContext {
     fn visit_pat(&mut self, pattern: &ast::Pat, _: ()) {
         match *pattern {
             // we found a pat_ident!
@@ -698,17 +699,13 @@ impl Visitor<()> for NewNameFinderContext {
         }
     }
 
-    fn visit_ty(&mut self, typ: &ast::Ty, _: ()) {
-        visit::walk_ty(self, typ, ())
-    }
-
 }
 
 // return a visitor that extracts the pat_ident paths
 // from a given thingy and puts them in a mutable
 // array (passed in to the traversal)
-pub fn new_name_finder(idents: Vec<ast::Ident> ) -> NewNameFinderContext {
-    NewNameFinderContext {
+fn new_name_finder(idents: Vec<ast::Ident> ) -> NameFinderContext {
+    NameFinderContext {
         ident_accumulator: idents,
     }
 }
@@ -1016,7 +1013,7 @@ fn original_span(cx: &ExtCtxt) -> Gc<codemap::ExpnInfo> {
 
 #[cfg(test)]
 mod test {
-    use super::*;
+    use super::{new_name_finder, expand_crate, contains_macro_escape};
     use ast;
     use ast::{Attribute_, AttrOuter, MetaWord};
     use attr;
@@ -1026,7 +1023,7 @@ mod test {
     use parse;
     use parse::token;
     use util::parser_testing::{string_to_parser};
-    use util::parser_testing::{string_to_pat, strs_to_idents};
+    use util::parser_testing::{string_to_pat, string_to_crate, strs_to_idents};
     use visit;
     use visit::Visitor;
 
@@ -1036,11 +1033,11 @@ mod test {
     // from a given thingy and puts them in a mutable
     // array (passed in to the traversal)
     #[deriving(Clone)]
-    struct NewPathExprFinderContext {
+    struct PathExprFinderContext {
         path_accumulator: Vec<ast::Path> ,
     }
 
-    impl Visitor<()> for NewPathExprFinderContext {
+    impl Visitor<()> for PathExprFinderContext {
 
         fn visit_expr(&mut self, expr: &ast::Expr, _: ()) {
             match *expr {
@@ -1051,18 +1048,13 @@ mod test {
                 _ => visit::walk_expr(self,expr,())
             }
         }
-
-        fn visit_ty(&mut self, typ: &ast::Ty, _: ()) {
-            visit::walk_ty(self, typ, ())
-        }
-
     }
 
     // return a visitor that extracts the paths
-    // from a given pattern and puts them in a mutable
+    // from a given thingy and puts them in a mutable
     // array (passed in to the traversal)
-    pub fn new_path_finder(paths: Vec<ast::Path> ) -> NewPathExprFinderContext {
-        NewPathExprFinderContext {
+    fn new_path_finder(paths: Vec<ast::Path> ) -> PathExprFinderContext {
+        PathExprFinderContext {
             path_accumulator: paths
         }
     }
@@ -1070,7 +1062,7 @@ mod test {
     // these following tests are quite fragile, in that they don't test what
     // *kind* of failure occurs.
 
-    // make sure that macros can leave scope
+    // make sure that macros can't escape fns
     #[should_fail]
     #[test] fn macros_cant_escape_fns_test () {
         let src = "fn bogus() {macro_rules! z (() => (3+4))}\
@@ -1088,7 +1080,7 @@ mod test {
         expand_crate(&sess,cfg,vec!(),vec!(),crate_ast);
     }
 
-    // make sure that macros can leave scope for modules
+    // make sure that macros can't escape modules
     #[should_fail]
     #[test] fn macros_cant_escape_mods_test () {
         let src = "mod foo {macro_rules! z (() => (3+4))}\
@@ -1105,7 +1097,7 @@ mod test {
         expand_crate(&sess,cfg,vec!(),vec!(),crate_ast);
     }
 
-    // macro_escape modules shouldn't cause macros to leave scope
+    // macro_escape modules should allow macros to escape
     #[test] fn macros_can_escape_flattened_mods_test () {
         let src = "#[macro_escape] mod foo {macro_rules! z (() => (3+4))}\
                    fn inty() -> int { z!() }".to_string();
@@ -1114,7 +1106,6 @@ mod test {
             "<test>".to_string(),
             src,
             Vec::new(), &sess);
-        // should fail:
         let cfg = ::syntax::ext::expand::ExpansionConfig {
             deriving_hash_type_parameter: false,
             crate_id: from_str("test").unwrap(),
@@ -1185,10 +1176,16 @@ mod test {
     // binding should match the second two varrefs, and the second binding
     // should match the first varref.
     //
+    // Put differently; this is a sparse representation of a boolean matrix
+    // indicating which bindings capture which identifiers.
+    //
+    // Note also that this matrix is dependent on the implicit ordering of
+    // the bindings and the varrefs discovered by the name-finder and the path-finder.
+    //
     // The comparisons are done post-mtwt-resolve, so we're comparing renamed
     // names; differences in marks don't matter any more.
     //
-    // oog... I also want tests that check "binding-identifier-=?". That is,
+    // oog... I also want tests that check "bound-identifier-=?". That is,
     // not just "do these have the same name", but "do they have the same
     // name *and* the same marks"? Understanding this is really pretty painful.
     // in principle, you might want to control this boolean on a per-varref basis,
@@ -1217,11 +1214,67 @@ mod test {
                 ("macro_rules! letty(($x:ident) => (let $x = 15;))
                   macro_rules! user(($x:ident) => ({letty!($x); $x}))
                   fn main() -> int {user!(z)}",
-                 vec!(vec!(0)), false));
+                 vec!(vec!(0)), false)
+                );
         for (idx,s) in tests.iter().enumerate() {
             run_renaming_test(s,idx);
         }
     }
+
+    // no longer a fixme #8062: this test exposes a *potential* bug; our system does
+    // not behave exactly like MTWT, but a conversation with Matthew Flatt
+    // suggests that this can only occur in the presence of local-expand, which
+    // we have no plans to support. ... unless it's needed for item hygiene....
+    #[ignore]
+    #[test] fn issue_8062(){
+        run_renaming_test(
+            &("fn main() {let hrcoo = 19; macro_rules! getx(()=>(hrcoo)); getx!();}",
+              vec!(vec!(0)), true), 0)
+    }
+
+    // FIXME #6994:
+    // the z flows into and out of two macros (g & f) along one path, and one
+    // (just g) along the other, so the result of the whole thing should
+    // be "let z_123 = 3; z_123"
+    #[ignore]
+    #[test] fn issue_6994(){
+        run_renaming_test(
+            &("macro_rules! g (($x:ident) =>
+              ({macro_rules! f(($y:ident)=>({let $y=3;$x}));f!($x)}))
+              fn a(){g!(z)}",
+              vec!(vec!(0)),false),
+            0)
+    }
+
+    // FIXME #9384, match variable hygiene. Should expand into
+    // fn z() {match 8 {x_1 => {match 9 {x_2 | x_2 => x_2 + x_1}}}}
+    #[ignore]
+    #[test] fn issue_9384(){
+        run_renaming_test(
+            &("macro_rules! bad_macro (($ex:expr) => ({match 9 {x | x => x + $ex}}))
+              fn z() {match 8 {x => bad_macro!(_x)}}",
+              // NB: the third "binding" is the repeat of the second one.
+              vec!(vec!(1),vec!(0),vec!(0)),
+              true),
+            0)
+    }
+
+    // create a really evil test case where a $x appears inside a binding of $x
+    // but *shouldnt* bind because it was inserted by a different macro....
+    // can't write this test case until we have macro-generating macros.
+
+    // FIXME #9383 : lambda var hygiene
+    // interesting... can't even write this test, yet, because the name-finder
+    // only finds pattern vars. Time to upgrade test framework.
+    /*#[test]
+    fn issue_9383(){
+        run_renaming_test(
+            &("macro_rules! bad_macro (($ex:expr) => ({(|_x| { $ex }) (9) }))
+              fn takes_x(_x : int) { assert_eq!(bad_macro!(_x),8); }
+              fn main() { takes_x(8); }",
+              vec!(vec!()),false),
+            0)
+    }*/
 
     // run one of the renaming tests
     fn run_renaming_test(t: &RenamingTest, test_idx: uint) {
@@ -1357,5 +1410,20 @@ foo_module!()
         assert_eq!(pat_idents.ident_accumulator,
                    strs_to_idents(vec!("a","c","b","d")));
     }
+
+    // test the list of identifier patterns gathered by the visitor. Note that
+    // 'None' is listed as an identifier pattern because we don't yet know that
+    // it's the name of a 0-ary variant, and that 'i' appears twice in succession.
+    #[test]
+    fn crate_idents(){
+        let the_crate = string_to_crate("fn main (a : int) -> int {|b| {
+        match 34 {None => 3, Some(i) | i => j, Foo{k:z,l:y} => \"banana\"}} }".to_string());
+        let mut idents = new_name_finder(Vec::new());
+        //visit::walk_crate(&mut idents, &the_crate, ());
+        idents.visit_mod(&the_crate.module, the_crate.span, ast::CRATE_NODE_ID, ());
+        assert_eq!(idents.ident_accumulator,
+                   strs_to_idents(vec!("a","b","None","i","i","z","y")));
+    }
+
 
 }

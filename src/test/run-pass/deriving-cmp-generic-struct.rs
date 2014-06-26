@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-pretty FIXME #15189
+
 #[deriving(PartialEq, Eq, PartialOrd, Ord)]
 struct S<T> {
     x: T,
