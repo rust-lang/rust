@@ -687,7 +687,7 @@ fn expand_arm(arm: &ast::Arm, fld: &mut MacroExpander) -> ast::Arm {
         pats: rewritten_pats,
         guard: rewritten_guard,
         body: rewritten_body,
-    }    
+    }
 }
 
 
