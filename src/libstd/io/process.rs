@@ -476,8 +476,8 @@ impl Process {
     ///
     /// ```no_run
     /// # #![allow(experimental)]
-    /// use std::io::process::{Command, ProcessExit};
-    /// use std::io::IoResult;
+    /// use std::io::{Command, IoResult};
+    /// use std::io::process::ProcessExit;
     ///
     /// fn run_gracefully(prog: &str) -> IoResult<ProcessExit> {
     ///     let mut p = try!(Command::new("long-running-process").spawn());
