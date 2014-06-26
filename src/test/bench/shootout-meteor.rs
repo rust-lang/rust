@@ -38,7 +38,7 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 // OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// ignore-pretty FIXME #15189
+// no-pretty-expanded FIXME #15189
 
 #![feature(phase)]
 #[phase(plugin)] extern crate green;
