@@ -659,7 +659,7 @@ pub fn sanitize(s: &str) -> String {
     if result.len() > 0u &&
         result.as_slice()[0] != '_' as u8 &&
         ! char::is_XID_start(result.as_slice()[0] as char) {
-        return format!("_{}", result.as_slice()).to_string();
+        return format!("_{}", result.as_slice());
     }
 
     return result;

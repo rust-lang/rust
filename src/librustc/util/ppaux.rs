@@ -629,7 +629,7 @@ impl Repr for ty::ParamBounds {
         for t in self.trait_bounds.iter() {
             res.push(t.repr(tcx));
         }
-        res.connect("+").to_string()
+        res.connect("+")
     }
 }
 

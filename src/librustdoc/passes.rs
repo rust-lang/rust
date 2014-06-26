@@ -348,7 +348,7 @@ pub fn unindent(s: &str) -> String {
                 line.slice_from(min_indent).to_string()
             }
         }).collect::<Vec<_>>().as_slice());
-        unindented.connect("\n").to_string()
+        unindented.connect("\n")
     } else {
         s.to_string()
     }

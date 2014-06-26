@@ -93,19 +93,10 @@ pub fn render(input: &str, mut output: Path, matches: &getopts::Matches) -> int 
 
     let (in_header, before_content, after_content) =
         match (load_external_files(matches.opt_strs("markdown-in-header")
-                                          .move_iter()
-                                          .map(|x| x.to_string())
-                                          .collect::<Vec<_>>()
                                           .as_slice()),
                load_external_files(matches.opt_strs("markdown-before-content")
-                                          .move_iter()
-                                          .map(|x| x.to_string())
-                                          .collect::<Vec<_>>()
                                           .as_slice()),
                load_external_files(matches.opt_strs("markdown-after-content")
-                                          .move_iter()
-                                          .map(|x| x.to_string())
-                                          .collect::<Vec<_>>()
                                           .as_slice())) {
         (Some(a), Some(b), Some(c)) => (a,b,c),
         _ => return 3
