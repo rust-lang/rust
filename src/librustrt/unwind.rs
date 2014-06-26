@@ -78,7 +78,6 @@ use uw = libunwind;
 
 pub struct Unwinder {
     unwinding: bool,
-    cause: Option<Box<Any + Send>>
 }
 
 struct Exception {
@@ -107,24 +106,11 @@ impl Unwinder {
     pub fn new() -> Unwinder {
         Unwinder {
             unwinding: false,
-            cause: None,
         }
     }
 
     pub fn unwinding(&self) -> bool {
         self.unwinding
-    }
-
-    pub fn try(&mut self, f: ||) {
-        self.cause = unsafe { try(f) }.err();
-    }
-
-    pub fn result(&mut self) -> Result {
-        if self.unwinding {
-            Err(self.cause.take().unwrap())
-        } else {
-            Ok(())
-        }
     }
 }
 

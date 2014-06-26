@@ -110,7 +110,12 @@ impl LocalHeap {
         self.memory_region.free(alloc);
     }
 
-    pub unsafe fn annihilate(&mut self) {
+    /// Immortalize all pending allocations, forcing them to live forever.
+    ///
+    /// This function will freeze all allocations to prevent all pending
+    /// allocations from being deallocated. This is used in preparation for when
+    /// a task is about to destroy TLD.
+    pub unsafe fn immortalize(&mut self) {
         let mut n_total_boxes = 0u;
 
         // Pass 1: Make all boxes immortal.
@@ -122,6 +127,17 @@ impl LocalHeap {
             (*alloc).ref_count = RC_IMMORTAL;
         });
 
+        if debug_mem() {
+            // We do logging here w/o allocation.
+            rterrln!("total boxes annihilated: {}", n_total_boxes);
+        }
+    }
+
+    /// Continues deallocation of the all pending allocations in this arena.
+    ///
+    /// This is invoked from the destructor, and requires that `immortalize` has
+    /// been called previously.
+    unsafe fn annihilate(&mut self) {
         // Pass 2: Drop all boxes.
         //
         // In this pass, unique-managed boxes may get freed, but not
@@ -142,11 +158,6 @@ impl LocalHeap {
         self.each_live_alloc(true, |me, alloc| {
             me.free(alloc);
         });
-
-        if debug_mem() {
-            // We do logging here w/o allocation.
-            rterrln!("total boxes annihilated: {}", n_total_boxes);
-        }
     }
 
     unsafe fn each_live_alloc(&mut self, read_next_before: bool,
@@ -170,6 +181,7 @@ impl LocalHeap {
 
 impl Drop for LocalHeap {
     fn drop(&mut self) {
+        unsafe { self.annihilate() }
         assert!(self.live_allocs.is_null());
     }
 }
