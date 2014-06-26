@@ -160,7 +160,7 @@ Save the file, and then type this into your terminal window:
 
 ```{bash}
 $ rustc hello_world.rs
-$ ./hello_world  # on Windows, this is ./hello_world.exe
+$ ./hello_world
 Hello, world
 ```
 
