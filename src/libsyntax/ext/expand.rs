@@ -608,7 +608,7 @@ fn expand_non_macro_stmt(s: &Stmt, fld: &mut MacroExpander)
                         span: span,
                         source: source,
                     } = **local;
-                    // expand the pat (it might contain exprs... #:(o)>
+                    // expand the pat (it might contain macro uses):
                     let expanded_pat = fld.fold_pat(pat);
                     // find the pat_idents in the pattern:
                     // oh dear heaven... this is going to include the enum
@@ -618,11 +618,11 @@ fn expand_non_macro_stmt(s: &Stmt, fld: &mut MacroExpander)
                     let idents = pattern_bindings(expanded_pat);
                     let mut new_pending_renames =
                         idents.iter().map(|ident| (*ident, fresh_name(ident))).collect();
+                    // rewrite the pattern using the new names (the old
+                    // ones have already been applied):
                     let rewritten_pat = {
-                        let mut rename_fld =
-                            IdentRenamer{renames: &mut new_pending_renames};
-                        // rewrite the pattern using the new names (the old
-                        // ones have already been applied):
+                        // nested binding to allow borrow to expire:
+                        let mut rename_fld = IdentRenamer{renames: &mut new_pending_renames};
                         rename_fld.fold_pat(expanded_pat)
                     };
                     // add them to the existing pending renames:
@@ -655,31 +655,38 @@ fn expand_non_macro_stmt(s: &Stmt, fld: &mut MacroExpander)
 }
 
 fn expand_arm(arm: &ast::Arm, fld: &mut MacroExpander) -> ast::Arm {
-    if arm.pats.len() == 0 {
+    // expand pats... they might contain macro uses:
+    let expanded_pats : Vec<Gc<ast::Pat>> = arm.pats.iter().map(|pat| fld.fold_pat(*pat)).collect();
+    if expanded_pats.len() == 0 {
         fail!("encountered match arm with 0 patterns");
     }
     // all of the pats must have the same set of bindings, so use the
     // first one to extract them and generate new names:
-    let first_pat = arm.pats.get(0);
+    let first_pat = expanded_pats.get(0);
     // code duplicated from 'let', above. Perhaps this can be lifted
     // into a separate function:
-    let expanded_pat = fld.fold_pat(*first_pat);
-    let mut new_pending_renames = Vec::new();
-    for ident in pattern_bindings(expanded_pat).iter() {
-        let new_name = fresh_name(ident);
-        new_pending_renames.push((*ident,new_name));
-    }
-    let rewritten_pat = {
-        let mut rename_fld = IdentRenamer{renames:&mut new_pending_renames};
-        // rewrite the pattern using the new names (the old
-        // ones have already been applied):
-        rename_fld.fold_pat(expanded_pat)
-    };
+    let idents = pattern_bindings(*first_pat);
+    let mut new_pending_renames =
+        idents.iter().map(|id| (*id,fresh_name(id))).collect();
+    // rewrite all of the patterns using the new names (the old
+    // ones have already been applied). Note that we depend here
+    // on the guarantee that after expansion, there can't be any
+    // Path expressions (a.k.a. varrefs) left in the pattern. If
+    // this were false, we'd need to apply this renaming only to
+    // the bindings, and not to the varrefs, using a more targeted
+    // fold-er.
+    let mut rename_fld = IdentRenamer{renames:&mut new_pending_renames};
+    let rewritten_pats =
+        expanded_pats.iter().map(|pat| rename_fld.fold_pat(*pat)).collect();
+    // apply renaming and then expansion to the guard and the body:
+    let rewritten_guard =
+        arm.guard.map(|g| fld.fold_expr(rename_fld.fold_expr(g)));
+    let rewritten_body = fld.fold_expr(rename_fld.fold_expr(arm.body));
     ast::Arm {
         attrs: arm.attrs.iter().map(|x| fld.fold_attribute(*x)).collect(),
-        pats: arm.pats.iter().map(|x| fld.fold_pat(*x)).collect(),
-        guard: arm.guard.map(|x| fld.fold_expr(x)),
-        body: fld.fold_expr(arm.body),
+        pats: rewritten_pats,
+        guard: rewritten_guard,
+        body: rewritten_body,
     }    
 }
 
@@ -851,6 +858,8 @@ fn expand_pat(p: Gc<ast::Pat>, fld: &mut MacroExpander) -> Gc<ast::Pat> {
 }
 
 // a tree-folder that applies every rename in its (mutable) list
+// to every identifier, including both bindings and varrefs
+// (and lots of things that will turn out to be neither)
 pub struct IdentRenamer<'a> {
     renames: &'a mut RenameList,
 }
@@ -1335,8 +1344,8 @@ mod test {
                                                      invalid_name);
                     if !(varref_name==binding_name) {
                         println!("uh oh, should match but doesn't:");
-                        println!("varref: {:?}",varref);
-                        println!("binding: {:?}", *bindings.get(binding_idx));
+                        println!("varref #{:?}: {:?}",idx, varref);
+                        println!("binding #{:?}: {:?}", binding_idx, *bindings.get(binding_idx));
                         mtwt::with_sctable(|x| mtwt::display_sctable(x));
                     }
                     assert_eq!(varref_name,binding_name);
