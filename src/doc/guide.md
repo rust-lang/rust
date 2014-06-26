@@ -239,8 +239,8 @@ $ dir
 hello_world.exe  hello_world.rs
 ```
 
-There are now two files: our source code, with the `.rs`, and the executable.
-We ran the executable like this:
+There are now two files: our source code, with the `.rs` extension, and the
+executable (`hello_world.exe` on Windows, `hello_world` everywhere else)
 
 ```{bash}
 $ ./hello_world  # or ./hello_world.exe on Windows
