@@ -301,7 +301,14 @@ $ make install # may need sudo or admin permissions
 ```
 
 The `--recursive` downloads Cargo's own dependencies. You can't use Cargo to
-fetch dependencies until you have Cargo installed!
+fetch dependencies until you have Cargo installed! Also, you will need to have
+`git` installed. Much of the Rust world assumes `git` usage, so it's a good
+thing to have around. Please check out [the git
+documentation](http://git-scm.com/book/en/Getting-Started-Installing-Git) for
+more on installing `git`.
+
+We hope to give Cargo a binary installer, similar to Rust's own, so that
+this will not be necessary in the future.
 
 Let's see if that worked. Try this:
 
