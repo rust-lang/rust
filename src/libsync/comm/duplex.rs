@@ -14,7 +14,6 @@ Higher level communication abstractions.
 
 */
 
-
 use core::prelude::*;
 
 use comm;
@@ -56,6 +55,23 @@ impl<S:Send,R:Send> DuplexStream<S, R> {
     }
 
     /// Optionally send data to the channel.
+    ///
+    /// # Example
+    /// ```
+    /// use std::comm;
+    /// let (left, right) = comm::duplex();
+    /// left.send("ABC".to_string());
+    /// spawn(proc() {
+    ///     right.send(123);
+    ///     assert!(right.recv() == "ABC".to_string());
+    ///     drop(right);
+    /// });
+    /// assert!(left.recv() == 123);
+    /// // I force this task to wait because the other have to drop.
+    /// std::io::timer::sleep(1000);
+    /// assert_eq!(left.send_opt("ABC".to_string()),
+    ///                          Err("ABC".to_string()));
+    /// ```
     pub fn send_opt(&self, x: S) -> Result<(), S> {
         self.tx.send_opt(x)
     }
