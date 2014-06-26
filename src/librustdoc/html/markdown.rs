@@ -228,12 +228,12 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
         };
 
         // Transform the contents of the header into a hyphenated string
-        let id = (s.as_slice().words().map(|s| {
+        let id = s.as_slice().words().map(|s| {
             match s.to_ascii_opt() {
                 Some(s) => s.to_lower().into_str(),
                 None => s.to_string()
             }
-        }).collect::<Vec<String>>().connect("-")).to_string();
+        }).collect::<Vec<String>>().connect("-");
 
         // This is a terrible hack working around how hoedown gives us rendered
         // html for text rather than the raw text.
@@ -252,7 +252,7 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
 
         let sec = match opaque.toc_builder {
             Some(ref mut builder) => {
-                builder.push(level as u32, s.to_string(), id.clone())
+                builder.push(level as u32, s.clone(), id.clone())
             }
             None => {""}
         };

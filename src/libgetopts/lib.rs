@@ -49,9 +49,7 @@
 //! }
 //!
 //! fn main() {
-//!     let args: Vec<String> = os::args().iter()
-//!                                       .map(|x| x.to_string())
-//!                                       .collect();
+//!     let args: Vec<String> = os::args();
 //!
 //!     let program = args.get(0).clone();
 //!

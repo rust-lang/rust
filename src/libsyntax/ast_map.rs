@@ -680,61 +680,55 @@ fn node_id_to_str(map: &Map, id: NodeId) -> String {
                 ItemImpl(..) => "impl",
                 ItemMac(..) => "macro"
             };
-            (format!("{} {} (id={})", item_str, path_str, id)).to_string()
+            format!("{} {} (id={})", item_str, path_str, id)
         }
         Some(NodeForeignItem(item)) => {
             let path_str = map.path_to_str_with_ident(id, item.ident);
-            (format!("foreign item {} (id={})", path_str, id)).to_string()
+            format!("foreign item {} (id={})", path_str, id)
         }
         Some(NodeMethod(m)) => {
-            (format!("method {} in {} (id={})",
+            format!("method {} in {} (id={})",
                     token::get_ident(m.ident),
-                    map.path_to_str(id), id)).to_string()
+                    map.path_to_str(id), id)
         }
         Some(NodeTraitMethod(ref tm)) => {
             let m = ast_util::trait_method_to_ty_method(&**tm);
-            (format!("method {} in {} (id={})",
+            format!("method {} in {} (id={})",
                     token::get_ident(m.ident),
-                    map.path_to_str(id), id)).to_string()
+                    map.path_to_str(id), id)
         }
         Some(NodeVariant(ref variant)) => {
-            (format!("variant {} in {} (id={})",
+            format!("variant {} in {} (id={})",
                     token::get_ident(variant.node.name),
-                    map.path_to_str(id), id)).to_string()
+                    map.path_to_str(id), id)
         }
         Some(NodeExpr(ref expr)) => {
-            (format!("expr {} (id={})",
-                    pprust::expr_to_str(&**expr), id)).to_string()
+            format!("expr {} (id={})", pprust::expr_to_str(&**expr), id)
         }
         Some(NodeStmt(ref stmt)) => {
-            (format!("stmt {} (id={})",
-                    pprust::stmt_to_str(&**stmt), id)).to_string()
+            format!("stmt {} (id={})", pprust::stmt_to_str(&**stmt), id)
         }
         Some(NodeArg(ref pat)) => {
-            (format!("arg {} (id={})",
-                    pprust::pat_to_str(&**pat), id)).to_string()
+            format!("arg {} (id={})", pprust::pat_to_str(&**pat), id)
         }
         Some(NodeLocal(ref pat)) => {
-            (format!("local {} (id={})",
-                    pprust::pat_to_str(&**pat), id)).to_string()
+            format!("local {} (id={})", pprust::pat_to_str(&**pat), id)
         }
         Some(NodePat(ref pat)) => {
-            (format!("pat {} (id={})", pprust::pat_to_str(&**pat), id)).to_string()
+            format!("pat {} (id={})", pprust::pat_to_str(&**pat), id)
         }
         Some(NodeBlock(ref block)) => {
-            (format!("block {} (id={})",
-                    pprust::block_to_str(&**block), id)).to_string()
+            format!("block {} (id={})", pprust::block_to_str(&**block), id)
         }
         Some(NodeStructCtor(_)) => {
-            (format!("struct_ctor {} (id={})",
-                    map.path_to_str(id), id)).to_string()
+            format!("struct_ctor {} (id={})", map.path_to_str(id), id)
         }
         Some(NodeLifetime(ref l)) => {
-            (format!("lifetime {} (id={})",
-                    pprust::lifetime_to_str(&**l), id)).to_string()
+            format!("lifetime {} (id={})",
+                    pprust::lifetime_to_str(&**l), id)
         }
         None => {
-            (format!("unknown node (id={})", id)).to_string()
+            format!("unknown node (id={})", id)
         }
     }
 }
