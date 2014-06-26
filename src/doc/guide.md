@@ -324,7 +324,7 @@ Options (for all commands):
 ```
 
 If you see this output when you run `cargo`, congrats! Cargo is working. If
-not, please [open an Issue](https://github.com/rust-lang/cargo/issues/new) or
+not, please [open an issue](https://github.com/rust-lang/cargo/issues/new) or
 drop by the Rust IRC, and we can help you out.
 
 Let's move back into our `hello_world` directory now:
