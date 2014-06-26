@@ -96,8 +96,9 @@ host: x86_64-unknown-linux-gnu
 If you did, Rust has been installed successfully! Congrats!
 
 If not, there are a number of places where you can get help. The easiest is
-IRC, which you can access
-[here](http://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust). Click
+[the #rust IRC channel on irc.mozilla.org](irc://irc.mozilla.org/#rust), which
+you can access through
+[Mibbit](http://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust). Click
 that link, and you'll be chatting with other Rustaceans (a silly nickname we
 call ourselves), and we can help you out. Other great resources include our
 [mailing list](https://mail.mozilla.org/listinfo/rust-dev),
