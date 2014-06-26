@@ -659,15 +659,15 @@ fn expand_non_macro_stmt(s: &Stmt, fld: &mut MacroExpander)
 }
 
 fn expand_arm(arm: &ast::Arm, fld: &mut MacroExpander) -> ast::Arm {
-    if a.pats.len() == 0 {
+    if arm.pats.len() == 0 {
         fail!("encountered match arm with 0 patterns");
     }
-    let first_pat = match a.pats.get(0) {
-        
-    }
+    // all of the pats must have the same set of bindings, so use the
+    // first one to extract them and generate new names:
+    let first_pat = arm.pats.get(0);
     // code duplicated from 'let', above. Perhaps this can be lifted
     // into a separate function:
-    let expanded_pat = fld.fold_pat(pat);
+    let expanded_pat = fld.fold_pat(*first_pat);
     let mut name_finder = new_name_finder(Vec::new());
     name_finder.visit_pat(&*expanded_pat,());
     let mut new_pending_renames = Vec::new();
@@ -681,13 +681,13 @@ fn expand_arm(arm: &ast::Arm, fld: &mut MacroExpander) -> ast::Arm {
         // ones have already been applied):
         rename_fld.fold_pat(expanded_pat)
     };
-    
-    let bound_names
-        ast::Arm {
-        attrs: a.attrs.iter().map(|x| self.fold_attribute(*x)).collect(),
-        pats: a.pats.iter().map(|x| self.fold_pat(*x)).collect(),
-        guard: a.guard.map(|x| self.fold_expr(x)),
-        body: self.fold_expr(a.body),
+    /*
+    */
+    ast::Arm {
+        attrs: arm.attrs.iter().map(|x| fld.fold_attribute(*x)).collect(),
+        pats: arm.pats.iter().map(|x| fld.fold_pat(*x)).collect(),
+        guard: arm.guard.map(|x| fld.fold_expr(x)),
+        body: fld.fold_expr(arm.body),
     }    
 }
 
