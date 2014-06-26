@@ -201,11 +201,11 @@ would look like this: `println()`. For our purposes, we don't need to worry
 about this difference. Just know that sometimes, you'll see a `!`, and that
 means that you're calling a macro instead of a normal function.
 
-Next, `"Hello, world"` is a **string**. Strings are a surprisingly
-complicated topic in a systems programming language, and this is a **staticly
-allocated** string. We will talk more about different kinds of allocation
-later. We pass this string as an argument to `println!`, which prints the
-string to the screen. Easy enough!
+Next, `"Hello, world"` is a **string**. Strings are a surprisingly complicated
+topic in a systems programming language, and this is a **statically allocated**
+string. We will talk more about different kinds of allocation later. We pass
+this string as an argument to `println!`, which prints the string to the
+screen. Easy enough!
 
 Finally, the line ends with a semicolon (`;`). Rust is an **expression
 oriented** language, which means that most things are expressions. The `;` is
