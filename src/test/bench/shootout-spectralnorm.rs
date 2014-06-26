@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-pretty FIXME #15189
+
 #![feature(phase)]
 #![allow(non_snake_case_functions)]
 #[phase(plugin)] extern crate green;
