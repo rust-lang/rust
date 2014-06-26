@@ -103,7 +103,7 @@ that link, and you'll be chatting with other Rustaceans (a silly nickname we
 call ourselves), and we can help you out. Other great resources include our
 [mailing list](https://mail.mozilla.org/listinfo/rust-dev),
 [subreddit](http://www.reddit.com/r/rust), and
-[StackOverflow](http://stackoverflow.com/questions/tagged/rust).
+[Stack Overflow](http://stackoverflow.com/questions/tagged/rust).
 
 ## Hello, world!
 
