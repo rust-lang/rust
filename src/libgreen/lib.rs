@@ -299,7 +299,7 @@ pub fn start(argc: int, argv: **u8,
     let mut ret = None;
     simple::task().run(|| {
         ret = Some(run(event_loop_factory, main.take_unwrap()));
-    });
+    }).destroy();
     // unsafe is ok b/c we're sure that the runtime is gone
     unsafe { rt::cleanup() }
     ret.unwrap()
