@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-pretty FIXME #15189
+
 pub fn main() {
     let yen: char = '¥'; // 0xa5
     let c_cedilla: char = 'ç'; // 0xe7

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-pretty FIXME #15189
+
 use std::iter::Unfold;
 
 // Unfold had a bug with 'a that mean it didn't work
