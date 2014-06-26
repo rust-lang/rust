@@ -18,6 +18,7 @@ use rustc::metadata::csearch;
 use rustc::metadata::decoder;
 use rustc::middle::def;
 use rustc::middle::ty;
+use rustc::middle::stability;
 
 use core;
 use doctree;
@@ -102,6 +103,7 @@ fn try_inline_def(cx: &core::DocContext,
         attrs: load_attrs(tcx, did),
         inner: inner,
         visibility: Some(ast::Public),
+        stability: stability::lookup(tcx, did).clean(),
         def_id: did,
     });
     Some(ret)
@@ -317,6 +319,7 @@ fn build_impl(cx: &core::DocContext,
         name: None,
         attrs: attrs,
         visibility: Some(ast::Inherited),
+        stability: stability::lookup(tcx, did).clean(),
         def_id: did,
     })
 }

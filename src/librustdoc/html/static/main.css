@@ -258,8 +258,9 @@ nav.sub {
 .content .multi-column li { width: 100%; display: inline-block; }
 
 .content .method { font-size: 1em; }
-.content .methods { margin-left: 20px; }
-.content .methods .docblock { margin-left: 20px; }
+.content .methods .docblock { margin-left: 40px; }
+
+.content .impl-methods .docblock { margin-left: 40px; }
 
 nav {
     border-bottom: 1px solid #e0e0e0;
@@ -372,20 +373,29 @@ p a:hover { text-decoration: underline; }
 }
 
 .stability {
-    border-left: 6px solid #000;
+    border-left: 6px solid;
+    padding: 3px 6px;
     border-radius: 3px;
-    font-weight: 400;
-    padding: 4px 10px;
-    text-transform: lowercase;
-    margin-left: 14px;
 }
 
-.stability.Deprecated { border-color: #D60027; color: #880017; }
-.stability.Experimental { border-color: #EC5315; color: #a53c0e; }
-.stability.Unstable { border-color: #FFD700; color: #b39800; }
-.stability.Stable { border-color: #AEC516; color: #7c8b10; }
+h1 .stability {
+    text-transform: lowercase;
+    font-weight: 400;
+    margin-left: 14px;
+    padding: 4px 10px;
+}
+
+.impl-methods .stability {
+    margin-right: 20px;
+}
+
+.stability.Deprecated { border-color: #A071A8; color: #82478C; }
+.stability.Experimental { border-color: #D46D6A; color: #AA3C39; }
+.stability.Unstable { border-color: #D4B16A; color: #AA8439; }
+.stability.Stable { border-color: #54A759; color: #2D8632; }
 .stability.Frozen { border-color: #009431; color: #007726; }
 .stability.Locked { border-color: #0084B6; color: #00668c; }
+.stability.Unmarked { border-color: #FFFFFF; }
 
 :target { background: #FDFFD3; }
 
