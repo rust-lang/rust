@@ -988,35 +988,30 @@ impl Folder for Marker {
     }
 }
 
-// just a convenience:
-fn new_mark_folder(m: Mrk) -> Marker {
-    Marker {mark: m}
-}
-
 // apply a given mark to the given token trees. Used prior to expansion of a macro.
 fn mark_tts(tts: &[TokenTree], m: Mrk) -> Vec<TokenTree> {
-    fold_tts(tts, &mut new_mark_folder(m))
+    fold_tts(tts, &mut Marker{mark:m})
 }
 
 // apply a given mark to the given expr. Used following the expansion of a macro.
 fn mark_expr(expr: Gc<ast::Expr>, m: Mrk) -> Gc<ast::Expr> {
-    new_mark_folder(m).fold_expr(expr)
+    Marker{mark:m}.fold_expr(expr)
 }
 
 // apply a given mark to the given pattern. Used following the expansion of a macro.
 fn mark_pat(pat: Gc<ast::Pat>, m: Mrk) -> Gc<ast::Pat> {
-    new_mark_folder(m).fold_pat(pat)
+    Marker{mark:m}.fold_pat(pat)
 }
 
 // apply a given mark to the given stmt. Used following the expansion of a macro.
 fn mark_stmt(expr: &ast::Stmt, m: Mrk) -> Gc<ast::Stmt> {
-    new_mark_folder(m).fold_stmt(expr)
+    Marker{mark:m}.fold_stmt(expr)
             .expect_one("marking a stmt didn't return a stmt")
 }
 
 // apply a given mark to the given item. Used following the expansion of a macro.
 fn mark_item(expr: Gc<ast::Item>, m: Mrk) -> SmallVector<Gc<ast::Item>> {
-    new_mark_folder(m).fold_item(expr)
+    Marker{mark:m}.fold_item(expr)
 }
 
 fn original_span(cx: &ExtCtxt) -> Gc<codemap::ExpnInfo> {
