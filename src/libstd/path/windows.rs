@@ -588,7 +588,7 @@ impl GenericPath for Path {
                     }
                 }
             }
-            Some(Path::new(comps.connect("\\").into_string()))
+            Some(Path::new(comps.connect("\\")))
         }
     }
 

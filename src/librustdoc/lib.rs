@@ -85,10 +85,7 @@ local_data_key!(pub analysiskey: core::CrateAnalysis)
 type Output = (clean::Crate, Vec<plugins::PluginJson> );
 
 pub fn main() {
-    std::os::set_exit_status(main_args(std::os::args().iter()
-                                                      .map(|x| x.to_string())
-                                                      .collect::<Vec<_>>()
-                                                      .as_slice()));
+    std::os::set_exit_status(main_args(std::os::args().as_slice()));
 }
 
 pub fn opts() -> Vec<getopts::OptGroup> {
@@ -184,17 +181,10 @@ pub fn main_args(args: &[String]) -> int {
 
     match (should_test, markdown_input) {
         (true, true) => {
-            return markdown::test(input,
-                                  libs,
-                                  test_args.move_iter().collect())
+            return markdown::test(input, libs, test_args)
         }
         (true, false) => {
-            return test::run(input,
-                             cfgs.move_iter()
-                                 .map(|x| x.to_string())
-                                 .collect(),
-                             libs,
-                             test_args)
+            return test::run(input, cfgs, libs, test_args)
         }
         (false, true) => return markdown::render(input, output.unwrap_or(Path::new("doc")),
                                                  &matches),
@@ -273,10 +263,7 @@ fn acquire_input(input: &str,
 fn rust_input(cratefile: &str, matches: &getopts::Matches) -> Output {
     let mut default_passes = !matches.opt_present("no-defaults");
     let mut passes = matches.opt_strs("passes");
-    let mut plugins = matches.opt_strs("plugins")
-                             .move_iter()
-                             .map(|x| x.to_string())
-                             .collect::<Vec<_>>();
+    let mut plugins = matches.opt_strs("plugins");
 
     // First, parse the crate and extract all relevant information.
     let libs: Vec<Path> = matches.opt_strs("L")
@@ -289,7 +276,7 @@ fn rust_input(cratefile: &str, matches: &getopts::Matches) -> Output {
     let (krate, analysis) = std::task::try(proc() {
         let cr = cr;
         core::run_core(libs.move_iter().map(|x| x.clone()).collect(),
-                       cfgs.move_iter().map(|x| x.to_string()).collect(),
+                       cfgs,
                        &cr)
     }).map_err(|boxed_any|format!("{:?}", boxed_any)).unwrap();
     info!("finished with rustc");

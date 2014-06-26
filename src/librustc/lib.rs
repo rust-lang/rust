@@ -137,8 +137,6 @@ mod rustc {
 }
 
 pub fn main() {
-    let args = std::os::args().iter()
-                              .map(|x| x.to_string())
-                              .collect::<Vec<_>>();
+    let args = std::os::args();
     std::os::set_exit_status(driver::main_args(args.as_slice()));
 }

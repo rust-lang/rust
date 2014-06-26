@@ -243,7 +243,7 @@ pub fn arg_to_str(arg: &ast::Arg) -> String {
 
 pub fn visibility_qualified(vis: ast::Visibility, s: &str) -> String {
     match vis {
-        ast::Public => format!("pub {}", s).to_string(),
+        ast::Public => format!("pub {}", s),
         ast::Inherited => s.to_string()
     }
 }

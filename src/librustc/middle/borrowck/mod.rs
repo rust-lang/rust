@@ -801,13 +801,13 @@ impl DataFlowOperator for LoanDataFlowOperator {
 
 impl Repr for Loan {
     fn repr(&self, tcx: &ty::ctxt) -> String {
-        (format!("Loan_{:?}({}, {:?}, {:?}-{:?}, {})",
+        format!("Loan_{:?}({}, {:?}, {:?}-{:?}, {})",
                  self.index,
                  self.loan_path.repr(tcx),
                  self.kind,
                  self.gen_scope,
                  self.kill_scope,
-                 self.restricted_paths.repr(tcx))).to_string()
+                 self.restricted_paths.repr(tcx))
     }
 }
 
@@ -815,23 +815,20 @@ impl Repr for LoanPath {
     fn repr(&self, tcx: &ty::ctxt) -> String {
         match self {
             &LpVar(id) => {
-                (format!("$({})", tcx.map.node_to_str(id))).to_string()
+                format!("$({})", tcx.map.node_to_str(id))
             }
 
             &LpUpvar(ty::UpvarId{ var_id, closure_expr_id }) => {
                 let s = tcx.map.node_to_str(var_id);
-                let s = format!("$({} captured by id={})", s, closure_expr_id);
-                s.to_string()
+                format!("$({} captured by id={})", s, closure_expr_id)
             }
 
             &LpExtend(ref lp, _, LpDeref(_)) => {
-                (format!("{}.*", lp.repr(tcx))).to_string()
+                format!("{}.*", lp.repr(tcx))
             }
 
             &LpExtend(ref lp, _, LpInterior(ref interior)) => {
-                (format!("{}.{}",
-                         lp.repr(tcx),
-                         interior.repr(tcx))).to_string()
+                format!("{}.{}", lp.repr(tcx), interior.repr(tcx))
             }
         }
     }

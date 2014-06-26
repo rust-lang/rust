@@ -112,7 +112,7 @@ impl CrateId {
     }
 
     pub fn short_name_with_version(&self) -> String {
-        (format!("{}-{}", self.name, self.version_or_default())).to_string()
+        format!("{}-{}", self.name, self.version_or_default())
     }
 
     pub fn matches(&self, other: &CrateId) -> bool {

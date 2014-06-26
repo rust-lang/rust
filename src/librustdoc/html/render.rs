@@ -370,8 +370,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> io::IoResult<String> 
                     search_index.push(IndexItem {
                         ty: shortty(item),
                         name: item.name.clone().unwrap(),
-                        path: fqp.slice_to(fqp.len() - 1).connect("::")
-                                                         .to_string(),
+                        path: fqp.slice_to(fqp.len() - 1).connect("::"),
                         desc: shorter(item.doc_value()).to_string(),
                         parent: Some(did),
                     });

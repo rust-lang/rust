@@ -24,7 +24,7 @@ use std::vec;
 use std::io::File;
 
 fn main() {
-    let argv = os::args().move_iter().map(|x| x.to_string()).collect::<Vec<String>>();
+    let argv = os::args();
     let _tests = argv.slice(1, argv.len());
 
     macro_rules! bench (

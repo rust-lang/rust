@@ -441,11 +441,11 @@ impl<'a> PluginMetadataReader<'a> {
         };
         let macros = decoder::get_exported_macros(library.metadata.as_slice());
         let registrar = decoder::get_plugin_registrar_fn(library.metadata.as_slice()).map(|id| {
-            decoder::get_symbol(library.metadata.as_slice(), id).to_string()
+            decoder::get_symbol(library.metadata.as_slice(), id)
         });
         let pc = PluginMetadata {
             lib: library.dylib.clone(),
-            macros: macros.move_iter().map(|x| x.to_string()).collect(),
+            macros: macros,
             registrar_symbol: registrar,
         };
         if should_link && existing_match(&self.env, &info.crate_id, None).is_none() {
