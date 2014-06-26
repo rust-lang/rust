@@ -181,8 +181,8 @@ entirely.  We'll get to it later.
 
 You'll also note that the function is wrapped in curly braces (`{` and `}`).
 Rust requires these around all function bodies. It is also considered good
-style to put the curly brace on the same line as the function declaration, with
-one space in between.
+style to put the opening curly brace on the same line as the function
+declaration, with one space in between.
 
 Next up is this line:
 
