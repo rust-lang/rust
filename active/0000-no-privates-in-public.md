@@ -49,7 +49,8 @@ able to click it to see its documentation in turn.
 Again, it's surely possible to formulate rules such that answers to these
 questions can be deduced from them mechanically. But even thinking about it
 gives me the creeps. If the results arrived at are absurd, then our assumptions
-should be revisited. In this case, it's cleaner to just say "don't do that".
+should be revisited. In these cases, it would be cleaner to simply say,
+"don't do that".
 
 
 # Detailed design
@@ -266,6 +267,10 @@ pub trait MyClosedTrait { ... }
 ````
 pub closed trait MyClosedTrait { ... }
 ````
+
+Adding this is not an integral part of this RFC, and my preference would be to
+discuss it separately. It's only an option in case the mentioned functionality
+is considered too valuable to lose even temporarily, which I personally doubt.
 
 # Alternatives
 
