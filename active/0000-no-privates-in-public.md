@@ -27,8 +27,8 @@ able to click it to see its documentation in turn.
  * Being able to use a given type but not *write* the type is disconcerting.
    For example:
 
-       struct Foo { ... }
-       pub fn foo() -> Foo { ... }
+        struct Foo { ... }
+        pub fn foo() -> Foo { ... }
 
    As a client of this module, I can write `let my_foo = foo();`, but not
    `let my_foo: Foo = foo();`. This is a logical consequence of the rules, but
@@ -36,8 +36,8 @@ able to click it to see its documentation in turn.
 
  * Can I access public fields of a private type? For instance:
  
-       struct Foo { pub x: int, ... }
-       pub fn foo() -> Foo { ... }
+        struct Foo { pub x: int, ... }
+        pub fn foo() -> Foo { ... }
 
    Can I now write `foo().x`, even though the struct `Foo` itself is not visible
    to me, and in rust-doc, I couldn't see its documentation? In other words,
