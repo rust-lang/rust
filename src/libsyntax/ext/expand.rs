@@ -1274,13 +1274,13 @@ mod test {
     }
 
     // FIXME #9384, match variable hygiene. Should expand into
-    // fn z() {match 8 {x_1 => {match 9 {x_2 | x_2 => x_2 + x_1}}}}
+    // fn z() {match 8 {x_1 => {match 9 {x_2 | x_2 if x_2 == x_1 => x_2 + x_1}}}}
     #[test] fn issue_9384(){
         run_renaming_test(
-            &("macro_rules! bad_macro (($ex:expr) => ({match 9 {x | x => x + $ex}}))
-              fn z() {match 8 {x => bad_macro!(_x)}}",
+            &("macro_rules! bad_macro (($ex:expr) => ({match 9 {x | x if x == $ex => x + $ex}}))
+              fn z() {match 8 {x => bad_macro!(x)}}",
               // NB: the third "binding" is the repeat of the second one.
-              vec!(vec!(1),vec!(0),vec!(0)),
+              vec!(vec!(1,3),vec!(0,2),vec!(0,2)),
               true),
             0)
     }
