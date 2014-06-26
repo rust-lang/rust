@@ -402,7 +402,7 @@ tell it to build everything together. With Cargo, as our project grows, we can
 just `cargo build` and it'll work the right way.
 
 That's it! We've successfully built `hello_world` with Cargo. Even though our
-program is simple, it's using all of the real tooling that you'll use for the
+program is simple, it's using much of the real tooling that you'll use for the
 rest of your Rust career.
 
 Next, we'll learn more about Rust itself, by starting to write a more complicated
