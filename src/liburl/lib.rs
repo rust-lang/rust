@@ -26,6 +26,7 @@ use std::fmt;
 use std::from_str::FromStr;
 use std::hash;
 use std::uint;
+use std::path::BytesContainer;
 
 /// A Uniform Resource Locator (URL).  A URL is a form of URI (Uniform Resource
 /// Identifier) that includes network location information, such as hostname or
@@ -182,8 +183,8 @@ impl UserInfo {
     }
 }
 
-fn encode_inner(s: &str, full_url: bool) -> String {
-    s.bytes().fold(String::new(), |mut out, b| {
+fn encode_inner<T: BytesContainer>(c: T, full_url: bool) -> String {
+    c.container_as_bytes().iter().fold(String::new(), |mut out, &b| {
         match b as char {
             // unreserved:
             'A' .. 'Z'
@@ -218,8 +219,8 @@ fn encode_inner(s: &str, full_url: bool) -> String {
 /// let url = encode("https://example.com/Rust (programming language)");
 /// println!("{}", url); // https://example.com/Rust%20(programming%20language)
 /// ```
-pub fn encode(s: &str) -> String {
-    encode_inner(s, true)
+pub fn encode<T: BytesContainer>(container: T) -> String {
+    encode_inner(container, true)
 }
 
 
@@ -227,8 +228,8 @@ pub fn encode(s: &str) -> String {
 /// encoded character sequences.
 ///
 /// This function is compliant with RFC 3986.
-pub fn encode_component(s: &str) -> String {
-    encode_inner(s, false)
+pub fn encode_component<T: BytesContainer>(container: T) -> String {
+    encode_inner(container, false)
 }
 
 pub type DecodeResult<T> = Result<T, String>;
@@ -245,18 +246,18 @@ pub type DecodeResult<T> = Result<T, String>;
 /// let url = decode("https://example.com/Rust%20(programming%20language)");
 /// println!("{}", url); // https://example.com/Rust (programming language)
 /// ```
-pub fn decode(s: &str) -> DecodeResult<String> {
-    decode_inner(s, true)
+pub fn decode<T: BytesContainer>(container: T) -> DecodeResult<String> {
+    decode_inner(container, true)
 }
 
 /// Decode a string encoded with percent encoding.
-pub fn decode_component(s: &str) -> DecodeResult<String> {
-    decode_inner(s, false)
+pub fn decode_component<T: BytesContainer>(container: T) -> DecodeResult<String> {
+    decode_inner(container, false)
 }
 
-fn decode_inner(s: &str, full_url: bool) -> DecodeResult<String> {
+fn decode_inner<T: BytesContainer>(c: T, full_url: bool) -> DecodeResult<String> {
     let mut out = String::new();
-    let mut iter = s.bytes();
+    let mut iter = c.container_as_bytes().iter().map(|&b| b);
 
     loop {
         match iter.next() {
@@ -864,6 +865,7 @@ mod tests {
         encode_component, decode_component, UserInfo, get_scheme, Url, Path};
 
     use std::collections::HashMap;
+    use std::path::BytesContainer;
 
     #[test]
     fn test_url_parse() {
@@ -1057,7 +1059,7 @@ mod tests {
 
     #[test]
     fn test_encode() {
-        fn t(input: &str, expected: &str) {
+        fn t<T: BytesContainer>(input: T, expected: &str) {
             assert_eq!(encode(input), expected.to_string())
         }
 
@@ -1087,11 +1089,13 @@ mod tests {
         t("]", "]");
         t("\0", "%00");
         t("\n", "%0A");
+
+        t(&[0u8, 10, 37], "%00%0A%25");
     }
 
     #[test]
     fn test_encode_component() {
-        fn t(input: &str, expected: &str) {
+        fn t<T: BytesContainer>(input: T, expected: &str) {
             assert_eq!(encode_component(input), expected.to_string())
         }
 
@@ -1120,11 +1124,13 @@ mod tests {
         t("]", "%5D");
         t("\0", "%00");
         t("\n", "%0A");
+
+        t(&[0u8, 10, 37], "%00%0A%25");
     }
 
     #[test]
     fn test_decode() {
-        fn t(input: &str, expected: &str) {
+        fn t<T: BytesContainer>(input: T, expected: &str) {
             assert_eq!(decode(input), Ok(expected.to_string()))
         }
 
@@ -1154,11 +1160,13 @@ mod tests {
         t("%40", "%40");
         t("%5B", "%5B");
         t("%5D", "%5D");
+
+        t("%00%0A%25".as_bytes(), "\0\n%");
     }
 
     #[test]
     fn test_decode_component() {
-        fn t(input: &str, expected: &str) {
+        fn t<T: BytesContainer>(input: T, expected: &str) {
             assert_eq!(decode_component(input), Ok(expected.to_string()))
         }
 
@@ -1188,6 +1196,8 @@ mod tests {
         t("%40", "@");
         t("%5B", "[");
         t("%5D", "]");
+
+        t("%00%0A%25".as_bytes(), "\0\n%");
     }
 
     #[test]
