@@ -396,10 +396,10 @@ Hello, world!
 
 Bam! We build our project with `cargo build`, and run it with
 `./target/hello_world`. This hasn't bought us a whole lot over our simple use
-of `rustc`, but think about the future: when our project has more tha one file,
-we would need to call `rustc` twice, and pass it a bunch of options to tell it
-to build everything together. With Cargo, as our project grows, we can just
-`cargo build` and it'll work the right way.
+of `rustc`, but think about the future: when our project has more than one
+file, we would need to call `rustc` twice, and pass it a bunch of options to
+tell it to build everything together. With Cargo, as our project grows, we can
+just `cargo build` and it'll work the right way.
 
 That's it! We've successfully built `hello_world` with Cargo. Even though our
 program is simple, it's using all of the real tooling that you'll use for the
