@@ -533,6 +533,10 @@ fn spawn_process_os(cfg: ProcessConfig,
 
     let dirp = cfg.cwd.map(|c| c.with_ref(|p| p)).unwrap_or(ptr::null());
 
+    let cfg = unsafe {
+        mem::transmute::<ProcessConfig,ProcessConfig<'static>>(cfg)
+    };
+
     with_envp(cfg.env, proc(envp) {
         with_argv(cfg.program, cfg.args, proc(argv) unsafe {
             let (mut input, mut output) = try!(pipe());
