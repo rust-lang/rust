@@ -346,7 +346,7 @@ enclosed within two `U+0022` (double-quote) characters,
 with the exception of `U+0022` itself,
 which must be _escaped_ by a preceding `U+005C` character (`\`),
 or a _raw byte string literal_.
-It is equivalent to a `&'static [u8]` borrowed vectior unsigned 8-bit integers.
+It is equivalent to a `&'static [u8]` borrowed vector of unsigned 8-bit integers.
 
 Some additional _escapes_ are available in either byte or non-raw byte string
 literals. An escape starts with a `U+005C` (`\`) and continues with one of
