@@ -20,6 +20,37 @@ choose to, but not make them more restrictive.
 If I see an item mentioned in rust-doc generated documentation, I should be 
 able to click it to see its documentation in turn.
 
+## Examples
+
+(See also https://github.com/rust-lang/rust/issues/10573.)
+
+ * Being able to use a given type but not *write* the type is disconcerting.
+   For example:
+
+       struct Foo { ... }
+       pub fn foo() -> Foo { ... }
+
+   As a client of this module, I can write `let my_foo = foo();`, but not
+   `let my_foo: Foo = foo();`. This is a logical consequence of the rules, but
+   it doesn't make any sense.
+
+ * Can I access public fields of a private type? For instance:
+ 
+       struct Foo { pub x: int, ... }
+       pub fn foo() -> Foo { ... }
+
+   Can I now write `foo().x`, even though the struct `Foo` itself is not visible
+   to me, and in rust-doc, I couldn't see its documentation? In other words,
+   when the only way I could learn about the field `x` is by looking at the
+   source code for the module?
+
+ * Can I call methods on a private type? Can I "know about" its trait `impl`s?
+
+Again, it's surely possible to formulate rules such that answers to these
+questions can be deduced from them mechanically. But even thinking about it
+gives me the creeps. If the results arrived at are absurd, then our assumptions
+should be revisited. In this case, it's cleaner to just say "don't do that".
+
 
 # Detailed design
 
@@ -208,10 +239,33 @@ Requires effort to implement.
 
 May break existing code.
 
-It may turn out that there are use cases which become inexpressible. I don't
-expect this, but if there are, we should consider solutions to them on a
-case-by-case basis.
+It may turn out that there are use cases which become inexpressible. If there
+are, we should consider solutions to them on a case-by-case basis.
 
+One such use case is constraining types in the public interface to a trait, 
+but not permitting anyone outside the module to implement the trait. For
+instance:
+
+    trait Private {}
+    pub fn public<T: Private>() { ... }
+
+Similarly, you may want a public trait which is closed to external 
+implementations:
+
+    pub trait MyClosedTrait: Private { ... }
+
+I believe that if these use cases are deemed important, then they should be
+addressed directly, by allowing traits to be declared closed to external
+implementations explicitly. Possible syntaxes include:
+
+````
+#[no_external_impls]
+pub trait MyClosedTrait { ... }
+````
+
+````
+pub closed trait MyClosedTrait { ... }
+````
 
 # Alternatives
 
