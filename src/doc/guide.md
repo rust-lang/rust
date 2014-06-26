@@ -27,7 +27,8 @@ Sound good? Let's go!
 
 The first step to using Rust is to install it! There are a number of ways to
 install Rust, but the easiest is to use the the `rustup` script. If you're on
-Linux or a Mac, All you need to do is this:
+Linux or a Mac, all you need to do is this (note that you don't need to type
+in the `$`s, they just indicate the start of each command):
 
 ```{ignore}
 $ curl -s http://www.rust-lang.org/rustup.sh | sudo sh
@@ -124,8 +125,7 @@ require that you know a whole ton about the command line, but until the
 language is in a more finished state, IDE support is spotty. Rust makes no
 specific demands on your editing tooling, or where your code lives.
 
-With that said, let's make a directory in our projects directory. Note that you
-don't need to type in the `$`s, they just indicate the start of each command:
+With that said, let's make a directory in our projects directory.
 
 ```{bash}
 $ mkdir ~/projects
