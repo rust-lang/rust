@@ -614,14 +614,10 @@ fn expand_non_macro_stmt(s: &Stmt, fld: &mut MacroExpander)
                     // oh dear heaven... this is going to include the enum
                     // names, as well... but that should be okay, as long as
                     // the new names are gensyms for the old ones.
-                    let mut name_finder = new_name_finder(Vec::new());
-                    name_finder.visit_pat(&*expanded_pat,());
                     // generate fresh names, push them to a new pending list
-                    let mut new_pending_renames = Vec::new();
-                    for ident in name_finder.ident_accumulator.iter() {
-                        let new_name = fresh_name(ident);
-                        new_pending_renames.push((*ident,new_name));
-                    }
+                    let idents = pattern_bindings(expanded_pat);
+                    let mut new_pending_renames =
+                        idents.iter().map(|ident| (*ident, fresh_name(ident))).collect();
                     let rewritten_pat = {
                         let mut rename_fld =
                             IdentRenamer{renames: &mut new_pending_renames};
@@ -668,10 +664,8 @@ fn expand_arm(arm: &ast::Arm, fld: &mut MacroExpander) -> ast::Arm {
     // code duplicated from 'let', above. Perhaps this can be lifted
     // into a separate function:
     let expanded_pat = fld.fold_pat(*first_pat);
-    let mut name_finder = new_name_finder(Vec::new());
-    name_finder.visit_pat(&*expanded_pat,());
     let mut new_pending_renames = Vec::new();
-    for ident in name_finder.ident_accumulator.iter() {
+    for ident in pattern_bindings(expanded_pat).iter() {
         let new_name = fresh_name(ident);
         new_pending_renames.push((*ident,new_name));
     }
@@ -681,8 +675,6 @@ fn expand_arm(arm: &ast::Arm, fld: &mut MacroExpander) -> ast::Arm {
         // ones have already been applied):
         rename_fld.fold_pat(expanded_pat)
     };
-    /*
-    */
     ast::Arm {
         attrs: arm.attrs.iter().map(|x| fld.fold_attribute(*x)).collect(),
         pats: arm.pats.iter().map(|x| fld.fold_pat(*x)).collect(),
@@ -695,7 +687,7 @@ fn expand_arm(arm: &ast::Arm, fld: &mut MacroExpander) -> ast::Arm {
 
 // a visitor that extracts the pat_ident (binding) paths
 // from a given thingy and puts them in a mutable
-// array (passed in to the traversal).
+// array
 #[deriving(Clone)]
 struct NameFinderContext {
     ident_accumulator: Vec<ast::Ident> ,
@@ -735,13 +727,11 @@ impl Visitor<()> for NameFinderContext {
 
 }
 
-// return a visitor that extracts the pat_ident paths
-// from a given thingy and puts them in a mutable
-// array (passed in to the traversal)
-fn new_name_finder(idents: Vec<ast::Ident> ) -> NameFinderContext {
-    NameFinderContext {
-        ident_accumulator: idents,
-    }
+// find the pat_ident paths in a pattern
+fn pattern_bindings(pat : &ast::Pat) -> Vec<ast::Ident> {
+    let mut name_finder = NameFinderContext{ident_accumulator:Vec::new()};
+    name_finder.visit_pat(pat,());
+    name_finder.ident_accumulator
 }
 
 // expand a block. pushes a new exts_frame, then calls expand_block_elts
@@ -1046,7 +1036,8 @@ fn original_span(cx: &ExtCtxt) -> Gc<codemap::ExpnInfo> {
 
 #[cfg(test)]
 mod test {
-    use super::{new_name_finder, expand_crate, contains_macro_escape};
+    use super::{pattern_bindings, expand_crate, contains_macro_escape};
+    use super::{NameFinderContext};
     use ast;
     use ast::{Attribute_, AttrOuter, MetaWord};
     use attr;
@@ -1076,21 +1067,21 @@ mod test {
             match *expr {
                 ast::Expr{id:_,span:_,node:ast::ExprPath(ref p)} => {
                     self.path_accumulator.push(p.clone());
-                    // not calling visit_path, should be fine.
+                    // not calling visit_path, but it should be fine.
                 }
                 _ => visit::walk_expr(self,expr,())
             }
         }
     }
 
-    // return a visitor that extracts the paths
-    // from a given thingy and puts them in a mutable
-    // array (passed in to the traversal)
-    fn new_path_finder(paths: Vec<ast::Path> ) -> PathExprFinderContext {
-        PathExprFinderContext {
-            path_accumulator: paths
-        }
+    // find the variable references in a crate
+    fn crate_varrefs(the_crate : &ast::Crate) -> Vec<ast::Path> {
+        let mut path_finder = PathExprFinderContext{path_accumulator:Vec::new()};
+        visit::walk_crate(&mut path_finder, the_crate, ());
+        path_finder.path_accumulator
     }
+
+
 
     // these following tests are quite fragile, in that they don't test what
     // *kind* of failure occurs.
@@ -1182,6 +1173,14 @@ mod test {
         };
         expand_crate(&ps,cfg,vec!(),vec!(),crate_ast)
     }
+
+    // find the pat_ident paths in a crate
+    fn crate_bindings(the_crate : &ast::Crate) -> Vec<ast::Ident> {
+        let mut name_finder = NameFinderContext{ident_accumulator:Vec::new()};
+        visit::walk_crate(&mut name_finder, the_crate, ());
+        name_finder.ident_accumulator
+    }
+
 
     //fn expand_and_resolve(crate_str: @str) -> ast::crate {
         //let expanded_ast = expand_crate_str(crate_str);
@@ -1315,15 +1314,8 @@ mod test {
             (ref str,ref conns, bic) => (str.to_owned(), conns.clone(), bic)
         };
         let cr = expand_crate_str(teststr.to_string());
-        // find the bindings:
-        let mut name_finder = new_name_finder(Vec::new());
-        visit::walk_crate(&mut name_finder,&cr,());
-        let bindings = name_finder.ident_accumulator;
-
-        // find the varrefs:
-        let mut path_finder = new_path_finder(Vec::new());
-        visit::walk_crate(&mut path_finder,&cr,());
-        let varrefs = path_finder.path_accumulator;
+        let bindings = crate_bindings(&cr);
+        let varrefs = crate_varrefs(&cr);
 
         // must be one check clause for each binding:
         assert_eq!(bindings.len(),bound_connections.len());
@@ -1392,10 +1384,7 @@ foo_module!()
 ".to_string();
         let cr = expand_crate_str(crate_str);
         // find the xx binding
-        let mut name_finder = new_name_finder(Vec::new());
-        visit::walk_crate(&mut name_finder, &cr, ());
-        let bindings = name_finder.ident_accumulator;
-
+        let bindings = crate_bindings(&cr);
         let cxbinds: Vec<&ast::Ident> =
             bindings.iter().filter(|b| {
                 let ident = token::get_ident(**b);
@@ -1408,10 +1397,7 @@ foo_module!()
             _ => fail!("expected just one binding for ext_cx")
         };
         let resolved_binding = mtwt::resolve(*cxbind);
-        // find all the xx varrefs:
-        let mut path_finder = new_path_finder(Vec::new());
-        visit::walk_crate(&mut path_finder, &cr, ());
-        let varrefs = path_finder.path_accumulator;
+        let varrefs = crate_varrefs(&cr);
 
         // the xx binding should bind all of the xx varrefs:
         for (idx,v) in varrefs.iter().filter(|p| {
@@ -1437,10 +1423,8 @@ foo_module!()
     fn pat_idents(){
         let pat = string_to_pat(
             "(a,Foo{x:c @ (b,9),y:Bar(4,d)})".to_string());
-        let mut pat_idents = new_name_finder(Vec::new());
-        pat_idents.visit_pat(pat, ());
-        assert_eq!(pat_idents.ident_accumulator,
-                   strs_to_idents(vec!("a","c","b","d")));
+        let idents = pattern_bindings(pat);
+        assert_eq!(idents, strs_to_idents(vec!("a","c","b","d")));
     }
 
     // test the list of identifier patterns gathered by the visitor. Note that
@@ -1450,11 +1434,8 @@ foo_module!()
     fn crate_idents(){
         let the_crate = string_to_crate("fn main (a : int) -> int {|b| {
         match 34 {None => 3, Some(i) | i => j, Foo{k:z,l:y} => \"banana\"}} }".to_string());
-        let mut idents = new_name_finder(Vec::new());
-        //visit::walk_crate(&mut idents, &the_crate, ());
-        idents.visit_mod(&the_crate.module, the_crate.span, ast::CRATE_NODE_ID, ());
-        assert_eq!(idents.ident_accumulator,
-                   strs_to_idents(vec!("a","b","None","i","i","z","y")));
+        let idents = crate_bindings(&the_crate);
+        assert_eq!(idents, strs_to_idents(vec!("a","b","None","i","i","z","y")));
     }
 
 
