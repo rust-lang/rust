@@ -16,6 +16,7 @@ use core::cmp::{PartialEq, PartialOrd, Eq, Ord, Ordering};
 use core::default::Default;
 use core::fmt;
 use core::intrinsics;
+use core::kinds::Send;
 use core::mem;
 use core::raw::TraitObject;
 use core::result::{Ok, Err, Result};
@@ -93,6 +94,34 @@ impl AnyOwnExt for Box<Any> {
                 // Get the raw representation of the trait object
                 let to: TraitObject =
                     *mem::transmute::<&Box<Any>, &TraitObject>(&self);
+
+                // Prevent destructor on self being run
+                intrinsics::forget(self);
+
+                // Extract the data pointer
+                Ok(mem::transmute(to.data))
+            }
+        } else {
+            Err(self)
+        }
+    }
+}
+
+/// Extension methods for an owning `Any+Send` trait object
+pub trait AnySendOwnExt {
+    /// Returns the boxed value if it is of type `T`, or
+    /// `Err(Self)` if it isn't.
+    fn move_send<T: 'static>(self) -> Result<Box<T>, Self>;
+}
+
+impl AnySendOwnExt for Box<Any+Send> {
+    #[inline]
+    fn move_send<T: 'static>(self) -> Result<Box<T>, Box<Any+Send>> {
+        if self.is::<T>() {
+            unsafe {
+                // Get the raw representation of the trait object
+                let to: TraitObject =
+                    *mem::transmute::<&Box<Any+Send>, &TraitObject>(&self);
 
                 // Prevent destructor on self being run
                 intrinsics::forget(self);
