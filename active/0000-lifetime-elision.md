@@ -9,7 +9,7 @@ This RFC proposes to
 1. Expand the rules for eliding lifetimes in `fn` definitions, and
 2. Follow the same rules in `impl` headers.
 
-By doing so, we can avoid writing lifetime annotations ~87% of the time that
+By doing so, we can avoid writing lifetime annotations ~89% of the time that
 they are currently required, based on a survey of the standard library.
 
 # Motivation
@@ -30,7 +30,7 @@ In the vast majority of cases, however, the lifetimes follow a very simple
 pattern.
 
 By codifying this pattern into simple rules for filling in elided lifetimes, we
-can avoid writing any lifetimes in ~87% of the cases where they are currently
+can avoid writing any lifetimes in ~89% of the cases where they are currently
 required.
 
 Doing so is a clear ergonomic win.
@@ -39,21 +39,21 @@ Doing so is a clear ergonomic win.
 
 ## Today's lifetime elision rules
 
-Rust currently supports eliding lifetimes in functions, so that
+Rust currently supports eliding lifetimes in functions, so that you can write
 
 ```rust
 fn print(s: &str);
 fn get_str() -> &str;
 ```
 
-become
+instead of
 
 ```rust
 fn print<'a>(s: &'a str);
 fn get_str<'a>() -> &'a str;
 ```
 
-The ellision rules work well for functions that consume references, but not for
+The elision rules work well for functions that consume references, but not for
 functions that produce them. The `get_str` signature above, for example,
 promises to produce a string slice that lives arbitrarily long, and is
 either incorrect or should be replaced by
@@ -195,7 +195,7 @@ large and central enough to be representative, but small enough to easily
 analyze.
 
 We found that of the 169 lifetimes that currently require annotation for
-`libstd`, 147 would be elidable under the new rules, or 87%.
+`libstd`, 147 would be elidable under the new rules, or 89%.
 
 _Note: this percentage does not include the large number of lifetimes that are
 already elided with today's rules._
@@ -226,7 +226,7 @@ encountering lifetimes in signatures, which may be confusing. Counterpoints:
   reasonably gentle path toward using and understanding explicit lifetimes.
 
 Programmers learn lifetimes once, but will use them many times. Better to favor
-long-term ergonomics, if a simple elision rule can cover 87% of current lifetime
+long-term ergonomics, if a simple elision rule can cover 89% of current lifetime
 uses (let alone the currently elided cases).
 
 ## Subtlety for non-`&` types
