@@ -86,7 +86,7 @@ pub trait Folder {
                 kind: sf.node.kind,
                 id: id,
                 ty: self.fold_ty(sf.node.ty),
-                attrs: sf.node.attrs.iter().map(|e| fold_attribute_(*e, self)).collect()
+                attrs: sf.node.attrs.iter().map(|e| self.fold_attribute(*e)).collect()
             },
             span: self.new_span(sf.span)
         }
@@ -118,7 +118,7 @@ pub trait Folder {
 
     fn fold_arm(&mut self, a: &Arm) -> Arm {
         Arm {
-            attrs: a.attrs.iter().map(|x| fold_attribute_(*x, self)).collect(),
+            attrs: a.attrs.iter().map(|x| self.fold_attribute(*x)).collect(),
             pats: a.pats.iter().map(|x| self.fold_pat(*x)).collect(),
             guard: a.guard.map(|x| self.fold_expr(x)),
             body: self.fold_expr(a.body),
@@ -251,7 +251,7 @@ pub trait Folder {
             }
         }
 
-        let attrs = v.node.attrs.iter().map(|x| fold_attribute_(*x, self)).collect();
+        let attrs = v.node.attrs.iter().map(|x| self.fold_attribute(*x)).collect();
 
         let de = match v.node.disr_expr {
           Some(e) => Some(self.fold_expr(e)),
@@ -344,6 +344,21 @@ pub trait Folder {
     fn fold_lifetime(&mut self, l: &Lifetime) -> Lifetime {
         noop_fold_lifetime(l, self)
     }
+
+    //used in noop_fold_item and noop_fold_crate
+    fn fold_attribute(&mut self, at: Attribute) -> Attribute {
+        Spanned {
+            span: self.new_span(at.span),
+            node: ast::Attribute_ {
+                id: at.node.id,
+                style: at.node.style,
+                value: fold_meta_item_(at.node.value, self),
+                is_sugared_doc: at.node.is_sugared_doc
+            }
+        }
+    }
+
+
 }
 
 /* some little folds that probably aren't useful to have in Folder itself*/
@@ -362,19 +377,6 @@ fn fold_meta_item_<T: Folder>(mi: Gc<MetaItem>, fld: &mut T) -> Gc<MetaItem> {
                 }
             },
         span: fld.new_span(mi.span) }
-}
-
-//used in noop_fold_item and noop_fold_crate
-fn fold_attribute_<T: Folder>(at: Attribute, fld: &mut T) -> Attribute {
-    Spanned {
-        span: fld.new_span(at.span),
-        node: ast::Attribute_ {
-            id: at.node.id,
-            style: at.node.style,
-            value: fold_meta_item_(at.node.value, fld),
-            is_sugared_doc: at.node.is_sugared_doc
-        }
-    }
 }
 
 //used in noop_fold_foreign_item and noop_fold_fn_decl
@@ -526,7 +528,7 @@ fn fold_struct_field<T: Folder>(f: &StructField, fld: &mut T) -> StructField {
             kind: f.node.kind,
             id: id,
             ty: fld.fold_ty(f.node.ty),
-            attrs: f.node.attrs.iter().map(|a| fold_attribute_(*a, fld)).collect(),
+            attrs: f.node.attrs.iter().map(|a| fld.fold_attribute(*a)).collect(),
         },
         span: fld.new_span(f.span),
     }
@@ -578,7 +580,7 @@ pub fn noop_fold_view_item<T: Folder>(vi: &ViewItem, folder: &mut T)
     };
     ViewItem {
         node: inner_view_item,
-        attrs: vi.attrs.iter().map(|a| fold_attribute_(*a, folder)).collect(),
+        attrs: vi.attrs.iter().map(|a| folder.fold_attribute(*a)).collect(),
         vis: vi.vis,
         span: folder.new_span(vi.span),
     }
@@ -658,7 +660,7 @@ pub fn noop_fold_type_method<T: Folder>(m: &TypeMethod, fld: &mut T) -> TypeMeth
     TypeMethod {
         id: id,
         ident: fld.fold_ident(m.ident),
-        attrs: m.attrs.iter().map(|a| fold_attribute_(*a, fld)).collect(),
+        attrs: m.attrs.iter().map(|a| fld.fold_attribute(*a)).collect(),
         fn_style: m.fn_style,
         decl: fld.fold_fn_decl(&*m.decl),
         generics: fold_generics(&m.generics, fld),
@@ -681,7 +683,7 @@ pub fn noop_fold_mod<T: Folder>(m: &Mod, folder: &mut T) -> Mod {
 pub fn noop_fold_crate<T: Folder>(c: Crate, folder: &mut T) -> Crate {
     Crate {
         module: folder.fold_mod(&c.module),
-        attrs: c.attrs.iter().map(|x| fold_attribute_(*x, folder)).collect(),
+        attrs: c.attrs.iter().map(|x| folder.fold_attribute(*x)).collect(),
         config: c.config.iter().map(|x| fold_meta_item_(*x, folder)).collect(),
         span: folder.new_span(c.span),
     }
@@ -702,7 +704,7 @@ pub fn noop_fold_item<T: Folder>(i: &Item,
     SmallVector::one(box(GC) Item {
         id: id,
         ident: folder.fold_ident(ident),
-        attrs: i.attrs.iter().map(|e| fold_attribute_(*e, folder)).collect(),
+        attrs: i.attrs.iter().map(|e| folder.fold_attribute(*e)).collect(),
         node: node,
         vis: i.vis,
         span: folder.new_span(i.span)
@@ -715,7 +717,7 @@ pub fn noop_fold_foreign_item<T: Folder>(ni: &ForeignItem,
     box(GC) ForeignItem {
         id: id,
         ident: folder.fold_ident(ni.ident),
-        attrs: ni.attrs.iter().map(|x| fold_attribute_(*x, folder)).collect(),
+        attrs: ni.attrs.iter().map(|x| folder.fold_attribute(*x)).collect(),
         node: match ni.node {
             ForeignItemFn(ref fdec, ref generics) => {
                 ForeignItemFn(P(FnDecl {
@@ -739,7 +741,7 @@ pub fn noop_fold_method<T: Folder>(m: &Method, folder: &mut T) -> Gc<Method> {
     box(GC) Method {
         id: id,
         ident: folder.fold_ident(m.ident),
-        attrs: m.attrs.iter().map(|a| fold_attribute_(*a, folder)).collect(),
+        attrs: m.attrs.iter().map(|a| folder.fold_attribute(*a)).collect(),
         generics: fold_generics(&m.generics, folder),
         explicit_self: folder.fold_explicit_self(&m.explicit_self),
         fn_style: m.fn_style,
