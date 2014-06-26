@@ -19,7 +19,7 @@ trait Barks {
 
 impl Barks for Dog {
     fn bark(&self) -> String {
-        return format!("woof! (I'm {})", self.name).to_string();
+        return format!("woof! (I'm {})", self.name);
     }
 }
 

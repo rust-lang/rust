@@ -111,7 +111,7 @@ impl Token {
 
 pub fn tok_str(t: Token) -> String {
     match t {
-        String(s, len) => return format!("STR({},{})", s, len).to_string(),
+        String(s, len) => return format!("STR({},{})", s, len),
         Break(_) => return "BREAK".to_string(),
         Begin(_) => return "BEGIN".to_string(),
         End => return "END".to_string(),

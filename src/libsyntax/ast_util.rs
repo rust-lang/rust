@@ -30,7 +30,7 @@ pub fn path_name_i(idents: &[Ident]) -> String {
     // FIXME: Bad copies (#2543 -- same for everything else that says "bad")
     idents.iter().map(|i| {
         token::get_ident(*i).get().to_string()
-    }).collect::<Vec<String>>().connect("::").to_string()
+    }).collect::<Vec<String>>().connect("::")
 }
 
 // totally scary function: ignores all but the last element, should have
@@ -123,7 +123,7 @@ pub fn int_ty_to_str(t: IntTy, val: Option<i64>) -> String {
         // cast to a u64 so we can correctly print INT64_MIN. All integral types
         // are parsed as u64, so we wouldn't want to print an extra negative
         // sign.
-        Some(n) => format!("{}{}", n as u64, s).to_string(),
+        Some(n) => format!("{}{}", n as u64, s),
         None => s.to_string()
     }
 }
@@ -150,7 +150,7 @@ pub fn uint_ty_to_str(t: UintTy, val: Option<u64>) -> String {
     };
 
     match val {
-        Some(n) => format!("{}{}", n, s).to_string(),
+        Some(n) => format!("{}{}", n, s),
         None => s.to_string()
     }
 }
