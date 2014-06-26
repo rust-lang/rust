@@ -18,6 +18,7 @@ use std::fmt;
 use std::io;
 use std::iter::range;
 use std::string::String;
+use term::WriterWrapper;
 use term;
 
 // maximum number of lines we will print for each error; arbitrary.
@@ -281,7 +282,7 @@ pub struct EmitterWriter {
 }
 
 enum Destination {
-    Terminal(Box<term::Terminal<Box<Writer + Send>> + Send>),
+    Terminal(Box<term::Terminal<WriterWrapper> + Send>),
     Raw(Box<Writer + Send>),
 }
 

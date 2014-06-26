@@ -352,17 +352,15 @@ fn search_for_vtable(vcx: &VtableContext,
         // the next impl.
         //
         // FIXME: document a bit more what this means
-        //
-        // FIXME(#5781) this should be mk_eqty not mk_subty
         let TypeAndSubsts {
             substs: substs,
             ty: for_ty
         } = impl_self_ty(vcx, span, impl_did);
-        match infer::mk_subty(vcx.infcx,
-                              false,
-                              infer::RelateSelfType(span),
-                              ty,
-                              for_ty) {
+        match infer::mk_eqty(vcx.infcx,
+                             false,
+                             infer::RelateSelfType(span),
+                             ty,
+                             for_ty) {
             Err(_) => continue,
             Ok(()) => ()
         }
