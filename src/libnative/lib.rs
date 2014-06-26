@@ -134,13 +134,12 @@ pub fn start(argc: int, argv: **u8, main: proc()) -> int {
     let mut main = Some(main);
     let mut task = task::new((my_stack_bottom, my_stack_top));
     task.name = Some(str::Slice("<main>"));
-    let t = task.run(|| {
+    drop(task.run(|| {
         unsafe {
             rt::stack::record_stack_bounds(my_stack_bottom, my_stack_top);
         }
         exit_code = Some(run(main.take_unwrap()));
-    });
-    drop(t);
+    }).destroy());
     unsafe { rt::cleanup(); }
     // If the exit code wasn't set, then the task block must have failed.
     return exit_code.unwrap_or(rt::DEFAULT_ERROR_CODE);

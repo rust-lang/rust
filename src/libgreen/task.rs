@@ -110,7 +110,7 @@ extern fn bootstrap_green_task(task: uint, code: *(), env: *()) -> ! {
     // requested. This is the "try/catch" block for this green task and
     // is the wrapper for *all* code run in the task.
     let mut start = Some(start);
-    let task = task.swap().run(|| start.take_unwrap()());
+    let task = task.swap().run(|| start.take_unwrap()()).destroy();
 
     // Once the function has exited, it's time to run the termination
     // routine. This means we need to context switch one more time but
@@ -120,7 +120,7 @@ extern fn bootstrap_green_task(task: uint, code: *(), env: *()) -> ! {
     // this we could add a `terminate` function to the `Runtime` trait
     // in libstd, but that seems less appropriate since the coversion
     // method exists.
-    GreenTask::convert(task).terminate()
+    GreenTask::convert(task).terminate();
 }
 
 impl GreenTask {
