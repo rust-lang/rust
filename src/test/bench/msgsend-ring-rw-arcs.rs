@@ -15,7 +15,7 @@
 
 // This also serves as a pipes test, because Arcs are implemented with pipes.
 
-// ignore-pretty FIXME #15189
+// no-pretty-expanded FIXME #15189
 
 extern crate time;
 

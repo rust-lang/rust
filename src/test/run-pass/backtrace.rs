@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-pretty FIXME #15189
+// no-pretty-expanded FIXME #15189
 // ignore-win32 FIXME #13259
 extern crate native;
 
