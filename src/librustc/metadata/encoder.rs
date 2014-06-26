@@ -24,6 +24,7 @@ use middle::ty::{node_id_to_type, lookup_item_type};
 use middle::astencode;
 use middle::ty;
 use middle::typeck;
+use middle::stability;
 use middle;
 use util::nodemap::{NodeMap, NodeSet};
 
@@ -328,7 +329,7 @@ fn encode_enum_variant_info(ecx: &EncodeContext,
         encode_visibility(ebml_w, variant.node.vis);
         encode_attributes(ebml_w, variant.node.attrs.as_slice());
 
-        let stab = ecx.tcx.stability.borrow().lookup_local(variant.node.id);
+        let stab = stability::lookup(ecx.tcx, ast_util::local_def(variant.node.id));
         encode_stability(ebml_w, stab);
 
         match variant.node.kind {
@@ -592,7 +593,9 @@ fn encode_info_for_mod(ecx: &EncodeContext,
 
     encode_path(ebml_w, path.clone());
     encode_visibility(ebml_w, vis);
-    encode_stability(ebml_w, ecx.tcx.stability.borrow().lookup_local(id));
+
+    let stab = stability::lookup(ecx.tcx, ast_util::local_def(id));
+    encode_stability(ebml_w, stab);
 
     // Encode the reexports of this module, if this module is public.
     if vis == Public {
@@ -722,7 +725,8 @@ fn encode_info_for_struct_ctor(ecx: &EncodeContext,
         encode_symbol(ecx, ebml_w, ctor_id);
     }
 
-    encode_stability(ebml_w, ecx.tcx.stability.borrow().lookup_local(ctor_id));
+    let stab = stability::lookup(ecx.tcx, ast_util::local_def(ctor_id));
+    encode_stability(ebml_w, stab);
 
     // indicate that this is a tuple struct ctor, because downstream users will normally want
     // the tuple struct definition, but without this there is no way for them to tell that
@@ -768,7 +772,7 @@ fn encode_info_for_method(ecx: &EncodeContext,
     encode_method_ty_fields(ecx, ebml_w, m);
     encode_parent_item(ebml_w, local_def(parent_id));
 
-    let stab = ecx.tcx.stability.borrow().lookup_local(m.def_id.node);
+    let stab = stability::lookup(ecx.tcx, m.def_id);
     encode_stability(ebml_w, stab);
 
     // The type for methods gets encoded twice, which is unfortunate.
@@ -915,10 +919,10 @@ fn encode_info_for_item(ecx: &EncodeContext,
     }
 
     debug!("encoding info for item at {}",
-           ecx.tcx.sess.codemap().span_to_str(item.span));
+           tcx.sess.codemap().span_to_str(item.span));
 
     let def_id = local_def(item.id);
-    let stab = tcx.stability.borrow().lookup_local(item.id);
+    let stab = stability::lookup(tcx, ast_util::local_def(item.id));
 
     match item.node {
       ItemStatic(_, m, _) => {
@@ -1206,7 +1210,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
             encode_method_ty_fields(ecx, ebml_w, &*method_ty);
             encode_parent_item(ebml_w, def_id);
 
-            let stab = tcx.stability.borrow().lookup_local(method_def_id.node);
+            let stab = stability::lookup(tcx, method_def_id);
             encode_stability(ebml_w, stab);
 
             let elem = ast_map::PathName(method_ty.ident.name);

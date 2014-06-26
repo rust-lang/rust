@@ -30,7 +30,7 @@ use middle::def::*;
 use middle::trans::adt; // for `adt::is_ffi_safe`
 use middle::typeck::astconv::ast_ty_to_ty;
 use middle::typeck::infer;
-use middle::{typeck, ty, def, pat_util};
+use middle::{typeck, ty, def, pat_util, stability};
 use util::ppaux::{ty_to_str};
 use util::nodemap::NodeSet;
 use lint::{Context, LintPass, LintArray};
@@ -1426,11 +1426,7 @@ impl LintPass for Stability {
                     Some(method) => {
                         match method.origin {
                             typeck::MethodStatic(def_id) => {
-                                // If this implements a trait method, get def_id
-                                // of the method inside trait definition.
-                                // Otherwise, use the current def_id (which refers
-                                // to the method inside impl).
-                                ty::trait_method_of_method(cx.tcx, def_id).unwrap_or(def_id)
+                                def_id
                             }
                             typeck::MethodParam(typeck::MethodParam {
                                 trait_id: trait_id,
@@ -1454,8 +1450,7 @@ impl LintPass for Stability {
         // check anything for crate-local usage.
         if ast_util::is_local(id) { return }
 
-        let stability = cx.tcx.stability.borrow_mut().lookup(&cx.tcx.sess.cstore, id);
-
+        let stability = stability::lookup(cx.tcx, id);
         let (lint, label) = match stability {
             // no stability attributes == Unstable
             None => (UNSTABLE, "unmarked"),
