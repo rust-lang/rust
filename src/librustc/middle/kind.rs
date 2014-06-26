@@ -198,8 +198,14 @@ fn with_appropriate_checker(cx: &Context,
     let fty = ty::node_id_to_type(cx.tcx, id);
     match ty::get(fty).sty {
         ty::ty_closure(box ty::ClosureTy {
-            store: ty::UniqTraitStore, bounds, ..
-        }) => b(|cx, fv| check_for_uniq(cx, fv, bounds)),
+            store: ty::UniqTraitStore,
+            bounds: mut bounds, ..
+        }) => {
+            // Procs can't close over non-static references!
+            bounds.add(ty::BoundStatic);
+
+            b(|cx, fv| check_for_uniq(cx, fv, bounds))
+        }
 
         ty::ty_closure(box ty::ClosureTy {
             store: ty::RegionTraitStore(region, _), bounds, ..
