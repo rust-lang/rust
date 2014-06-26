@@ -59,18 +59,15 @@ impl<S:Send,R:Send> DuplexStream<S, R> {
     /// # Example
     /// ```
     /// use std::comm;
+    ///
     /// let (left, right) = comm::duplex();
+    ///
     /// left.send("ABC".to_string());
-    /// spawn(proc() {
-    ///     right.send(123);
-    ///     assert!(right.recv() == "ABC".to_string());
-    ///     drop(right);
-    /// });
+    /// right.send(123);
+    /// assert!(right.recv() == "ABC".to_string());
+    /// drop(right);
     /// assert!(left.recv() == 123);
-    /// // I force this task to wait because the other have to drop.
-    /// std::io::timer::sleep(1000);
-    /// assert_eq!(left.send_opt("ABC".to_string()),
-    ///                          Err("ABC".to_string()));
+    /// assert_eq!(left.send_opt("ABC".to_string()), Err("ABC".to_string()));
     /// ```
     pub fn send_opt(&self, x: S) -> Result<(), S> {
         self.tx.send_opt(x)
@@ -82,6 +79,23 @@ impl<S:Send,R:Send> DuplexStream<S, R> {
     }
 
     /// Try to receive data from the channel.
+    ///
+    /// # Example
+    /// ```
+    /// use std::comm;
+    ///
+    /// let (left, right) = comm::duplex();
+    /// let a = "ABC".to_string();
+    /// let b:u32 = 123;
+    ///
+    /// left.send(a.clone());
+    /// assert_eq!(right.recv(), a);
+    /// right.send(b);
+    /// assert_eq!(left.recv(), b);
+    /// // Here the channel is empty so it return an error.
+    /// assert_eq!(left.try_recv(), Err(comm::Empty));
+    /// ```
+}
     pub fn try_recv(&self) -> Result<R, comm::TryRecvError> {
         self.rx.try_recv()
     }
