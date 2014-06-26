@@ -100,10 +100,10 @@ If not, there are a number of places where you can get help. The easiest is
 you can access through
 [Mibbit](http://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust). Click
 that link, and you'll be chatting with other Rustaceans (a silly nickname we
-call ourselves), and we can help you out. Other great resources include our
-[mailing list](https://mail.mozilla.org/listinfo/rust-dev),
-[subreddit](http://www.reddit.com/r/rust), and
-[Stack Overflow](http://stackoverflow.com/questions/tagged/rust).
+call ourselves), and we can help you out. Other great resources include [our
+mailing list](https://mail.mozilla.org/listinfo/rust-dev), [the /r/rust
+subreddit](http://www.reddit.com/r/rust), and [Stack
+Overflow](http://stackoverflow.com/questions/tagged/rust).
 
 ## Hello, world!
 
