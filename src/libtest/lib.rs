@@ -403,7 +403,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
     let save_metrics = save_metrics.map(|s| Path::new(s));
 
     let test_shard = matches.opt_str("test-shard");
-    let test_shard = opt_shard(test_shard.map(|x| x.to_string()));
+    let test_shard = opt_shard(test_shard);
 
     let mut nocapture = matches.opt_present("nocapture");
     if !nocapture {
@@ -756,7 +756,7 @@ pub fn fmt_metrics(mm: &MetricMap) -> String {
         .map(|(k,v)| format!("{}: {} (+/- {})", *k,
                              v.value as f64, v.noise as f64))
         .collect();
-    v.connect(", ").to_string()
+    v.connect(", ")
 }
 
 pub fn fmt_bench_samples(bs: &BenchSamples) -> String {

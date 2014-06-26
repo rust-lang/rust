@@ -650,10 +650,8 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     }
 
     let sysroot_opt = matches.opt_str("sysroot").map(|m| Path::new(m));
-    let target = match matches.opt_str("target") {
-        Some(supplied_target) => supplied_target.to_string(),
-        None => driver::host_triple().to_string(),
-    };
+    let target = matches.opt_str("target").unwrap_or(
+        driver::host_triple().to_string());
     let opt_level = {
         if (debugging_opts & NO_OPT) != 0 {
             No
@@ -705,10 +703,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         Path::new(s.as_slice())
     }).collect();
 
-    let cfg = parse_cfgspecs(matches.opt_strs("cfg")
-                                    .move_iter()
-                                    .map(|x| x.to_string())
-                                    .collect());
+    let cfg = parse_cfgspecs(matches.opt_strs("cfg"));
     let test = matches.opt_present("test");
     let write_dependency_info = (matches.opt_present("dep-info"),
                                  matches.opt_str("dep-info")

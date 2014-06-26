@@ -595,7 +595,7 @@ impl pprust::PpAnn for IdentifiedAnnotation {
             }
             pprust::NodeBlock(blk) => {
                 try!(pp::space(&mut s.s));
-                s.synth_comment((format!("block {}", blk.id)).to_string())
+                s.synth_comment(format!("block {}", blk.id))
             }
             pprust::NodeExpr(expr) => {
                 try!(pp::space(&mut s.s));
@@ -604,7 +604,7 @@ impl pprust::PpAnn for IdentifiedAnnotation {
             }
             pprust::NodePat(pat) => {
                 try!(pp::space(&mut s.s));
-                s.synth_comment((format!("pat {}", pat.id)).to_string())
+                s.synth_comment(format!("pat {}", pat.id))
             }
         }
     }
@@ -752,7 +752,7 @@ fn print_flowgraph<W:io::Writer>(analysis: CrateAnalysis,
     let cfg = cfg::CFG::new(ty_cx, &*block);
     let lcfg = LabelledCFG { ast_map: &ty_cx.map,
                              cfg: &cfg,
-                             name: format!("block{}", block.id).to_string(), };
+                             name: format!("block{}", block.id), };
     debug!("cfg: {:?}", cfg);
     let r = dot::render(&lcfg, &mut out);
     return expand_err_details(r);

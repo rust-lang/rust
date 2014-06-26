@@ -320,7 +320,7 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
 
     let config = &mut config;
     let DebuggerCommands { commands, check_lines, .. } = parse_debugger_commands(testfile, "gdb");
-    let mut cmds = commands.connect("\n").to_string();
+    let mut cmds = commands.connect("\n");
 
     // compile test file (it shoud have 'compile-flags:-g' in the header)
     let compiler_run_result = compile_test(config, props, testfile);
@@ -1035,10 +1035,7 @@ fn compose_and_run_compiler(
             make_compile_args(config,
                               &aux_props,
                               crate_type.append(
-                                  extra_link_args.iter()
-                                                 .map(|x| x.to_string())
-                                                 .collect::<Vec<_>>()
-                                                 .as_slice()),
+                                  extra_link_args.as_slice()),
                               |a,b| {
                                   let f = make_lib_name(a, b, testfile);
                                   ThisDirectory(f.dir_path())
