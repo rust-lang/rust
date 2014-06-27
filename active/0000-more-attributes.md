@@ -5,7 +5,7 @@
 # Summary
 
 Allow attributes on more places inside functions, such as statements,
-blocks and (possibly) expressions.
+blocks and expressions.
 
 # Motivation
 
@@ -45,7 +45,7 @@ for relatively precise attribute handling.
 
 # Detailed design
 
-Normal attribute syntax on `let` statements and blocks.
+Normal attribute syntax on `let` statements, blocks and expressions.
 
 ```rust
 fn foo() {
@@ -61,45 +61,75 @@ fn foo() {
     unsafe {
         // code
     }
-}
-```
-
-## Extension to arbitrary expressions
-
-It would also be theoretically possible to extend this to support
-arbitrary expressions (rather than just blocks, which are themselves
-expressions). This would allow writing
-
-```rust
-fn foo() {
     #[attr4] foo();
 
-    #[attr5] if cond {
+    #[attr5]
+    if cond {
         bar()
-    } else #[attr6] {
+    } else #[attr6] if cond {
         baz()
-    }
+    } else #[attr7] {
 
-    let x = #[attr7] 1;
+    };
 
-    qux(3 + #[attr8] 2);
+    let x = #[attr8] 1;
 
-    foo(x, #[attr9] y, z);
+    qux(3 + #[attr9] 2);
+
+    foo(x, #[attr10] y, z);
 }
 ```
 
-These last examples indicate a possible difficulty: what happens with
-say `1 + #[cfg(foo)] 2`? This should be an error, i.e. `#[cfg]` is
-only allowed on the "exterior" of expressions, that is, legal in all
-examples above except `#[attr7]` and `#[attr8]`. `#[attr9]` is
-questionable: if it were a `cfg`, then it could reasonably be
-interpreted as meaning `foo(x, z)` or `foo(x, y, z)` conditional on
-the `cfg`.
+## `cfg`
 
-Allowing attributes there would also require considering
-precedence. There are two sensible options, `#[...]` binds tighter
-than everything else, i.e. `#[attr] 1 + 2` is `(#[attr] 1) + 2`, or it
-is weaker, so `#[attr] 1 + 2` is `#[attr] (1 + 2)`.
+It is an error to place a `#[cfg]` attribute on a non-statement
+expressions, including `if`s/blocks inside an `if`/`else` chain, that
+is, `attr1`--`attr7` can legally be `#[cfg(foo)]`, but
+`attr8`--`attr10` cannot, since it makes little sense to strip code
+down to `let x = ;`.
+
+Attributes bind tighter than any operator, that is `#[attr] x op y` is
+always parsed as `(#[attr] x) op y`.
+
+## Inner attributes
+
+Inner attributes can be placed at the top of blocks (and other
+structure incorporating a block) and apply to that block.
+
+```rust
+{
+    #![attr11]
+
+    foo()
+}
+
+match bar {
+    #![attr12]
+
+    _ => {}
+}
+
+if cond {
+    #![attr13]
+}
+
+// are the same as
+
+#[attr11]
+{
+    foo()
+}
+
+#[attr12]
+match bar {
+    _ => {}
+}
+
+#[attr13]
+if cond {
+}
+```
+
 
 # Alternatives
 
@@ -107,9 +137,34 @@ These instances could possibly be approximated with macros and helper
 functions, but to a low degree degree (e.g. how would one annotate a
 general `unsafe` block).
 
+Only allowing attributes on "statement expressions" that is,
+expressions at the top level of a block,
+
 # Unresolved questions
 
-- Are the complications of allowing attributes on arbitrary
-  expressions worth the benefits?
+Are the complications of allowing attributes on arbitrary
+expressions worth the benefits?
 
-- Which precedence should attributes have on arbitrary expressions?
+The interaction with `if`/`else` chains are somewhat subtle, and it
+may be worth introducing "interior" and "exterior" attributes on `if`, or
+just disallowing them entirely.
+
+```rust
+#[cfg(not(foo))]
+if cond1 {
+} else #[cfg(not(bar))] if cond2 {
+} else #[cfg(not(baz))] {
+}
+```
+
+- `--cfg foo`: could be either removing the whole chain ("exterior") or
+  equivalent to `if cond2 {} else {}` ("interior").
+- `--cfg bar`: could be either `if cond1 {}` or `if cond1 {} else {}`
+- `--cfg baz`: equivalent to `if cond1 {} else if cond2 {}` (no subtlety).
+- `--cfg foo --cfg bar`: could be removing the whole chain or just
+  the `else` branch (i.e. both `if` branches removed).
+
+This can be addressed by having `#[attr] if cond { ...` be an exterior
+attribute (applying to the whole `if`/`else` chain) and `if cond
+#[attr] { ... ` be an interior attribute (applying to only the current
+`if` branch).
