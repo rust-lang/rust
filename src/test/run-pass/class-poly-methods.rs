@@ -36,7 +36,7 @@ pub fn main() {
   let mut kitty = cat(1000u, 2, vec!("tabby".to_string()));
   assert_eq!(nyan.how_hungry, 99);
   assert_eq!(kitty.how_hungry, 2);
-  nyan.speak(vec!(1,2,3));
+  nyan.speak(vec!(1i,2,3));
   assert_eq!(nyan.meow_count(), 55u);
   kitty.speak(vec!("meow".to_string(), "mew".to_string(), "purr".to_string(), "chirp".to_string()));
   assert_eq!(kitty.meow_count(), 1004u);

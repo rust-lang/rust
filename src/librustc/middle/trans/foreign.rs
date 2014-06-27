@@ -957,7 +957,11 @@ pub fn lltype_for_foreign_fn(ccx: &CrateContext, ty: ty::t) -> Type {
 
 fn add_argument_attributes(tys: &ForeignTypes,
                            llfn: ValueRef) {
-    let mut i = if tys.fn_ty.ret_ty.is_indirect() { 1 } else { 0 };
+    let mut i = if tys.fn_ty.ret_ty.is_indirect() {
+        1i
+    } else {
+        0i
+    };
 
     match tys.fn_ty.ret_ty.attr {
         Some(attr) => unsafe {

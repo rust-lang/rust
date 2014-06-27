@@ -11,7 +11,7 @@
 use std::task;
 
 fn f() {
-    let _a = box 0;
+    let _a = box 0i;
     fail!();
 }
 

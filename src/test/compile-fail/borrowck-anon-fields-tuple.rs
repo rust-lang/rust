@@ -12,7 +12,7 @@
 // anonymous fields of a tuple vs the same anonymous field.
 
 fn distinct_variant() {
-    let mut y = (1, 2);
+    let mut y = (1i, 2i);
 
     let a = match y {
         (ref mut a, _) => a
@@ -27,7 +27,7 @@ fn distinct_variant() {
 }
 
 fn same_variant() {
-    let mut y = (1, 2);
+    let mut y = (1i, 2i);
 
     let a = match y {
         (ref mut a, _) => a

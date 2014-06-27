@@ -8,6 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+fn foo(_: *const ()) {}
 
+fn main() {
+    let a = 3;  //~ ERROR cannot determine a type for this local variable
+    foo(&a as *const _ as *const ());
+}
 
-pub fn main() { let x: int = 10; while x == 10 && x == 11 { let _y = 0xf00u; } }

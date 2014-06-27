@@ -13,4 +13,4 @@
 use std::gc::GC;
 
 // Regression test for issue #388
-pub fn main() { let _x = { { box(GC) 10 } }; }
+pub fn main() { let _x = { { box(GC) 10i } }; }

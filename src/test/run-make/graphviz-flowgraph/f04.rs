@@ -9,5 +9,5 @@
 // except according to those terms.
 
 pub fn pat_id_4() {
-    let _x = 4;
+    let _x = 4i;
 }

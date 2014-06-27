@@ -10,20 +10,20 @@
 
 #[allow(unreachable_code)]
 pub fn expr_break_label_21() {
-    let mut x = 15;
-    let mut y = 151;
+    let mut x = 15i;
+    let mut y = 151i;
     'outer: loop {
         'inner: loop {
-            if x == 1 {
+            if x == 1i {
                 continue 'outer;
                 "unreachable";
             }
-            if y >= 2 {
+            if y >= 2i {
                 return;
                 "unreachable";
             }
-            x -= 1;
-            y -= 3;
+            x -= 1i;
+            y -= 3i;
         }
         "unreachable";
     }

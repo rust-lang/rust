@@ -25,7 +25,7 @@ fn main() {
     task::try(proc() {
         let _a = A;
         lib::callback(|| fail!());
-        1
+        1i
     });
 
     unsafe {

@@ -389,10 +389,10 @@ impl Isaac64Rng {
                             }
                         }}
                     );
-                rngstepp!(0, 21);
-                rngstepn!(1, 5);
-                rngstepp!(2, 12);
-                rngstepn!(3, 33);
+                rngstepp!(0u, 21);
+                rngstepn!(1u, 5);
+                rngstepp!(2u, 12);
+                rngstepn!(3u, 33);
             }
         }
 

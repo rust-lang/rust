@@ -1543,7 +1543,7 @@ mod test {
         let (tx, rx) = channel();
         let (cdone, pdone) = channel();
         let t = Thread::start(proc() {
-            let mut hits = 0;
+            let mut hits = 0u;
             while hits < 10 {
                 match rx.try_recv() {
                     Ok(()) => { hits += 1; }
@@ -1993,7 +1993,7 @@ mod sync_tests {
         let (tx, rx) = sync_channel::<()>(0);
         let (cdone, pdone) = channel();
         let t = Thread::start(proc() {
-            let mut hits = 0;
+            let mut hits = 0u;
             while hits < 10 {
                 match rx.try_recv() {
                     Ok(()) => { hits += 1; }

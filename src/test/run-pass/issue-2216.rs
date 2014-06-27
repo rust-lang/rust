@@ -16,7 +16,7 @@ pub fn main() {
     'foo: loop {
         'bar: loop {
             'quux: loop {
-                if 1 == 2 {
+                if 1i == 2 {
                     break 'foo;
                 }
                 else {

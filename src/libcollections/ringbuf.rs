@@ -572,7 +572,7 @@ mod tests {
     fn bench_push_back(b: &mut test::Bencher) {
         let mut deq = RingBuf::new();
         b.iter(|| {
-            deq.push_back(0);
+            deq.push_back(0i);
         })
     }
 
@@ -580,7 +580,7 @@ mod tests {
     fn bench_push_front(b: &mut test::Bencher) {
         let mut deq = RingBuf::new();
         b.iter(|| {
-            deq.push_front(0);
+            deq.push_front(0i);
         })
     }
 
@@ -589,7 +589,7 @@ mod tests {
         let mut deq = RingBuf::new();
         b.iter(|| {
             for _ in range(0i, 65) {
-                deq.push_front(1);
+                deq.push_front(1i);
             }
         })
     }
@@ -651,10 +651,10 @@ mod tests {
     #[test]
     fn test_with_capacity() {
         let mut d = RingBuf::with_capacity(0);
-        d.push_back(1);
+        d.push_back(1i);
         assert_eq!(d.len(), 1);
         let mut d = RingBuf::with_capacity(50);
-        d.push_back(1);
+        d.push_back(1i);
         assert_eq!(d.len(), 1);
     }
 

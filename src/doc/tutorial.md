@@ -262,7 +262,7 @@ write function, variable, and module names with lowercase letters, using
 underscores where they help readability, while writing types in camel case.
 
 ~~~
-let my_variable = 100;
+let my_variable = 100i;
 type MyType = int;     // primitive types are _not_ camel case
 ~~~
 
@@ -276,7 +276,7 @@ write a piece of code like this:
 
 ~~~~
 # let item = "salad";
-let price;
+let price: f64;
 if item == "salad" {
     price = 3.50;
 } else if item == "muffin" {
@@ -290,7 +290,7 @@ But, in Rust, you don't have to repeat the name `price`:
 
 ~~~~
 # let item = "salad";
-let price =
+let price: f64 =
     if item == "salad" {
         3.50
     } else if item == "muffin" {
@@ -337,11 +337,10 @@ suffix that can be used to indicate the type of a literal: `i` for `int`,
 In the absence of an integer literal suffix, Rust will infer the
 integer type based on type annotations and function signatures in the
 surrounding program. In the absence of any type information at all,
-Rust will assume that an unsuffixed integer literal has type
-`int`.
+Rust will report an error and request that the type be specified explicitly.
 
 ~~~~
-let a = 1;       // `a` is an `int`
+let a: int = 1;  // `a` is an `int`
 let b = 10i;     // `b` is an `int`, due to the `i` suffix
 let c = 100u;    // `c` is a `uint`
 let d = 1000i32; // `d` is an `i32`
@@ -475,7 +474,7 @@ against each pattern in order until one matches. The matching pattern
 executes its corresponding arm.
 
 ~~~~
-let my_number = 1;
+let my_number = 1i;
 match my_number {
   0     => println!("zero"),
   1 | 2 => println!("one or two"),
@@ -501,7 +500,7 @@ matches any single value. (`..`) is a different wildcard that can match
 one or more fields in an `enum` variant.
 
 ~~~
-# let my_number = 1;
+# let my_number = 1i;
 match my_number {
   0 => { println!("zero") }
   _ => { println!("something else") }
@@ -584,7 +583,7 @@ keyword `break` aborts the loop, and `continue` aborts the current
 iteration and continues with the next.
 
 ~~~~
-let mut cake_amount = 8;
+let mut cake_amount = 8i;
 while cake_amount > 0 {
     cake_amount -= 1;
 }
@@ -944,7 +943,7 @@ The `box` operator performs memory allocation on the heap:
 ~~~~
 {
     // an integer allocated on the heap
-    let y = box 10;
+    let y = box 10i;
 }
 // the destructor frees the heap memory as soon as `y` goes out of scope
 ~~~~
@@ -1165,7 +1164,7 @@ let z = x;
 The mutability of a value may be changed by moving it to a new owner:
 
 ~~~~
-let r = box 13;
+let r = box 13i;
 let mut s = r; // box becomes mutable
 *s += 1;
 let t = s; // box becomes immutable
@@ -1285,9 +1284,9 @@ Using the generic `List<T>` works much like before, thanks to type inference:
 #     Cons(value, box xs)
 # }
 let mut xs = Nil; // Unknown type! This is a `List<T>`, but `T` can be anything.
-xs = prepend(xs, 10); // Here the compiler infers `xs`'s type as `List<int>`.
-xs = prepend(xs, 15);
-xs = prepend(xs, 20);
+xs = prepend(xs, 10i); // Here the compiler infers `xs`'s type as `List<int>`.
+xs = prepend(xs, 15i);
+xs = prepend(xs, 20i);
 ~~~
 
 The code sample above demonstrates type inference making most type annotations optional. It is
@@ -1410,12 +1409,12 @@ Beyond the properties granted by the size, an owned box behaves as a regular
 value by inheriting the mutability and lifetime of the owner:
 
 ~~~~
-let x = 5; // immutable
-let mut y = 5; // mutable
+let x = 5i; // immutable
+let mut y = 5i; // mutable
 y += 2;
 
-let x = box 5; // immutable
-let mut y = box 5; // mutable
+let x = box 5i; // immutable
+let mut y = box 5i; // mutable
 *y += 2; // the `*` operator is needed to access the contained value
 ~~~~
 
@@ -1507,7 +1506,7 @@ freezing enforced statically at compile-time. An example of a non-`Freeze` type
 is [`RefCell<T>`][refcell].
 
 ~~~~
-let mut x = 5;
+let mut x = 5i;
 {
     let y = &x; // `x` is now frozen. It cannot be modified or re-assigned.
 }
@@ -1523,8 +1522,8 @@ Rust uses the unary star operator (`*`) to access the contents of a
 box or pointer, similarly to C.
 
 ~~~
-let owned = box 10;
-let borrowed = &20;
+let owned = box 10i;
+let borrowed = &20i;
 
 let sum = *owned + *borrowed;
 ~~~
@@ -1534,9 +1533,9 @@ assignments. Such an assignment modifies the value that the pointer
 points to.
 
 ~~~
-let mut owned = box 10;
+let mut owned = box 10i;
 
-let mut value = 20;
+let mut value = 20i;
 let borrowed = &mut value;
 
 *owned = *borrowed + 100;
@@ -1654,12 +1653,12 @@ Unicode code points, so they cannot be freely mutated without the ability to
 alter the length.
 
 ~~~
-let mut xs = [1, 2, 3];
+let mut xs = [1i, 2i, 3i];
 let view = xs.mut_slice(0, 2);
 view[0] = 5;
 
 // The type of a mutable slice is written as `&mut [T]`
-let ys: &mut [int] = &mut [1, 2, 3];
+let ys: &mut [int] = &mut [1i, 2i, 3i];
 ~~~
 
 Square brackets denote indexing into a slice or fixed-size vector:

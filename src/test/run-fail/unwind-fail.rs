@@ -15,6 +15,6 @@
 use std::gc::GC;
 
 fn main() {
-    box(GC) 0;
+    box(GC) 0i;
     fail!();
 }

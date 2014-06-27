@@ -17,7 +17,7 @@ macro_rules! outer (
     ($e:pat ) => (inner!($e)))
 
 fn main() {
-    let outer!(g1) = 13;
+    let outer!(g1) = 13i;
     g1;
 }
 

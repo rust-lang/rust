@@ -1,13 +1,13 @@
 digraph block {
     N0[label="entry"];
     N1[label="exit"];
-    N2[label="expr 5"];
-    N3[label="expr 55"];
-    N4[label="expr (5, 55)"];
+    N2[label="expr 5i"];
+    N3[label="expr 55i"];
+    N4[label="expr (5i, 55i)"];
     N5[label="local _x"];
     N6[label="local _y"];
     N7[label="pat (_x, _y)"];
-    N8[label="block { let (_x, _y) = (5, 55); }"];
+    N8[label="block { let (_x, _y) = (5i, 55i); }"];
     N0 -> N2;
     N2 -> N3;
     N3 -> N4;

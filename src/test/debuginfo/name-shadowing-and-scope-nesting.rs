@@ -63,25 +63,25 @@ fn main() {
     zzz();
     sentinel();
 
-    let x = 10;
+    let x = 10i;
 
     zzz();
     sentinel();
 
-    let x = 10.5;
-    let y = 20;
+    let x = 10.5f64;
+    let y = 20i;
 
     zzz();
     sentinel();
 
     {
         let x = true;
-        let y = 2220;
+        let y = 2220i;
 
         zzz();
         sentinel();
 
-        let x = 203203.5;
+        let x = 203203.5f64;
 
         zzz();
         sentinel();

@@ -43,8 +43,8 @@
 // gdb-command:continue
 
 fn outer<TA: Clone>(a: TA) {
-    inner(a.clone(), 1);
-    inner(a.clone(), 2.5);
+    inner(a.clone(), 1i);
+    inner(a.clone(), 2.5f64);
 
     fn inner<TX, TY>(x: TX, y: TY) {
         zzz();

@@ -20,8 +20,8 @@ use std::gc::{Gc, GC};
 
 enum List<X> { Nil, Cons(X, Gc<List<X>>) }
 pub fn main() {
-    match Cons(10, box(GC) Nil) {
-        Cons(10, _) => {}
+    match Cons(10i, box(GC) Nil) {
+        Cons(10i, _) => {}
         Nil => {}
         _ => fail!()
     }

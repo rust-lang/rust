@@ -9,5 +9,5 @@
 // except according to those terms.
 
 pub fn expr_vec_17() {
-    let _v = [1, 7, 17];
+    let _v = [1i, 7i, 17i];
 }

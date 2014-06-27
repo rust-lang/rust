@@ -627,7 +627,7 @@ mod tests {
     #[test]
     fn test_get_ptr() {
         unsafe {
-            let x = box 0;
+            let x = box 0i;
             let addr_x: *const int = ::mem::transmute(&*x);
             let opt = Some(x);
             let y = opt.unwrap();
@@ -750,7 +750,7 @@ mod tests {
     #[test]
     fn test_option_while_some() {
         let mut i = 0i;
-        Some(10).while_some(|j| {
+        Some(10i).while_some(|j| {
             i += 1;
             if j > 0 {
                 Some(j-1)

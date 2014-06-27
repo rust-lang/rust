@@ -29,9 +29,9 @@ fn helper(rx: Receiver<Sender<()>>) {
 fn test() {
     let (tx, rx) = channel();
     spawn(proc() { helper(rx) });
-    let (snd, rcv) = channel();
+    let (snd, rcv) = channel::<int>();
     for _ in range(1i, 100000i) {
-        snd.send(1);
+        snd.send(1i);
         let (tx2, rx2) = channel();
         tx.send(tx2);
         select! {

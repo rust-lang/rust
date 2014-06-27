@@ -16,7 +16,7 @@
 // error-pattern:so long
 fn main() {
     let mut x = Vec::new();
-    let y = vec!(3);
+    let y = vec!(3i);
     fail!("so long");
     x.push_all_move(y);
 }

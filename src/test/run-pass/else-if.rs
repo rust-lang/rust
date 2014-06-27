@@ -11,20 +11,20 @@
 
 
 pub fn main() {
-    if 1 == 2 {
+    if 1i == 2 {
         assert!((false));
-    } else if 2 == 3 {
+    } else if 2i == 3 {
         assert!((false));
-    } else if 3 == 4 { assert!((false)); } else { assert!((true)); }
-    if 1 == 2 { assert!((false)); } else if 2 == 2 { assert!((true)); }
-    if 1 == 2 {
+    } else if 3i == 4 { assert!((false)); } else { assert!((true)); }
+    if 1i == 2 { assert!((false)); } else if 2i == 2 { assert!((true)); }
+    if 1i == 2 {
         assert!((false));
-    } else if 2 == 2 {
-        if 1 == 1 {
+    } else if 2i == 2 {
+        if 1i == 1 {
             assert!((true));
-        } else { if 2 == 1 { assert!((false)); } else { assert!((false)); } }
+        } else { if 2i == 1 { assert!((false)); } else { assert!((false)); } }
     }
-    if 1 == 2 {
+    if 1i == 2 {
         assert!((false));
-    } else { if 1 == 2 { assert!((false)); } else { assert!((true)); } }
+    } else { if 1i == 2 { assert!((false)); } else { assert!((true)); } }
 }

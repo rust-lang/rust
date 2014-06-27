@@ -11,7 +11,7 @@
 pub fn main() {
     // Make sure we properly handle repeated self-appends.
     let mut a: String = "A".to_string();
-    let mut i = 20;
+    let mut i = 20i;
     let mut expected_len = 1u;
     while i > 0 {
         println!("{}", a.len());

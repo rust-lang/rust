@@ -14,7 +14,7 @@ use std::task;
 use std::gc::GC;
 
 fn f() {
-    let _a = box(GC) 0;
+    let _a = box(GC) 0i;
     fail!();
 }
 

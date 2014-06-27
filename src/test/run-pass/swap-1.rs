@@ -11,7 +11,7 @@
 use std::mem::swap;
 
 pub fn main() {
-    let mut x = 3; let mut y = 7;
+    let mut x = 3i; let mut y = 7i;
     swap(&mut x, &mut y);
     assert!((x == 7)); assert!((y == 3));
 }

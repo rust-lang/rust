@@ -14,11 +14,11 @@
 use std::rc::Rc;
 
 pub fn main() {
-   let mut x = box 3;
+   let mut x = box 3i;
    x = x;
    assert!(*x == 3);
 
-   let mut x = Rc::new(3);
+   let mut x = Rc::new(3i);
    x = x;
    assert!(*x == 3);
 }
