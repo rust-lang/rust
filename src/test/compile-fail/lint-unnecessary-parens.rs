@@ -10,18 +10,41 @@
 
 #![deny(unnecessary_parens)]
 
+#[deriving(Eq, PartialEq)]
+struct X { y: bool }
+impl X {
+    fn foo(&self) -> bool { self.y }
+}
+
 fn foo() -> int {
     return (1); //~ ERROR unnecessary parentheses around `return` value
+}
+fn bar() -> X {
+    return (X { y: true }); //~ ERROR unnecessary parentheses around `return` value
 }
 
 fn main() {
     foo();
+    bar();
 
     if (true) {} //~ ERROR unnecessary parentheses around `if` condition
     while (true) {} //~ ERROR unnecessary parentheses around `while` condition
     match (true) { //~ ERROR unnecessary parentheses around `match` head expression
         _ => {}
     }
+    let v = X { y: false };
+    // struct lits needs parens, so these shouldn't warn.
+    if (v == X { y: true }) {}
+    if (X { y: true } == v) {}
+    if (X { y: false }.y) {}
+
+    while (X { y: false }.foo()) {}
+    while (true | X { y: false }.y) {}
+
+    match (X { y: false }) {
+        _ => {}
+    }
+
     let mut _a = (0); //~ ERROR unnecessary parentheses around assigned value
     _a = (0); //~ ERROR unnecessary parentheses around assigned value
     _a += (1); //~ ERROR unnecessary parentheses around assigned value
