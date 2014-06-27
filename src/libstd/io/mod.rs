@@ -83,7 +83,7 @@ Some examples of obvious things you might want to do
 
     ```rust
     # #![allow(unused_must_use)]
-    use std::io::net::tcp::TcpStream;
+    use std::io::TcpStream;
 
     # // connection doesn't fail if a server is running on 8080
     # // locally, we still want to be type checking this code, so lets
