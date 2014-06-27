@@ -36,14 +36,14 @@ fn main() {
 
 */
 
-#![crate_id = "hexfloat#0.11.0-pre"]
+#![crate_id = "hexfloat#0.11.0"]
 #![experimental]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![license = "MIT/ASL2"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
-       html_root_url = "http://doc.rust-lang.org/")]
+       html_root_url = "http://doc.rust-lang.org/0.11.0/")]
 #![feature(plugin_registrar, managed_boxes)]
 
 extern crate syntax;

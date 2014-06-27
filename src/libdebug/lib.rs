@@ -16,14 +16,14 @@
 //! Additionally, it is not guaranteed that functionality such as reflection
 //! will persist into the future.
 
-#![crate_id = "debug#0.11.0-pre"]
+#![crate_id = "debug#0.11.0"]
 #![experimental]
 #![license = "MIT/ASL2"]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
-       html_root_url = "http://doc.rust-lang.org/")]
+       html_root_url = "http://doc.rust-lang.org/0.11.0/")]
 #![experimental]
 #![feature(managed_boxes, macro_rules)]
 #![allow(experimental)]

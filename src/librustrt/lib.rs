@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_id = "rustrt#0.11.0-pre"]
+#![crate_id = "rustrt#0.11.0"]
 #![license = "MIT/ASL2"]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
-       html_root_url = "http://doc.rust-lang.org/")]
+       html_root_url = "http://doc.rust-lang.org/0.11.0/")]
 
 #![feature(macro_rules, phase, globs, thread_local, managed_boxes, asm)]
 #![feature(linkage, lang_items, unsafe_destructor)]
