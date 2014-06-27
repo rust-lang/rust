@@ -362,7 +362,7 @@ Make sure to get this name right: you need the capital `C`!
 
 Put this inside:
 
-```
+```{ignore}
 [package]
 
 name = "hello_world"
