@@ -27,7 +27,8 @@ Sound good? Let's go!
 
 The first step to using Rust is to install it! There are a number of ways to
 install Rust, but the easiest is to use the the `rustup` script. If you're on
-Linux or a Mac, All you need to do is this:
+Linux or a Mac, all you need to do is this (note that you don't need to type
+in the `$`s, they just indicate the start of each command):
 
 ```{ignore}
 $ curl -s http://www.rust-lang.org/rustup.sh | sudo sh
@@ -96,13 +97,14 @@ host: x86_64-unknown-linux-gnu
 If you did, Rust has been installed successfully! Congrats!
 
 If not, there are a number of places where you can get help. The easiest is
-IRC, which you can access
-[here](http://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust). Click
+[the #rust IRC channel on irc.mozilla.org](irc://irc.mozilla.org/#rust), which
+you can access through
+[Mibbit](http://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust). Click
 that link, and you'll be chatting with other Rustaceans (a silly nickname we
-call ourselves), and we can help you out. Other great resources include our
-[mailing list](https://mail.mozilla.org/listinfo/rust-dev),
-[subreddit](http://www.reddit.com/r/rust), and
-[StackOverflow](http://stackoverflow.com/questions/tagged/rust).
+call ourselves), and we can help you out. Other great resources include [our
+mailing list](https://mail.mozilla.org/listinfo/rust-dev), [the /r/rust
+subreddit](http://www.reddit.com/r/rust), and [Stack
+Overflow](http://stackoverflow.com/questions/tagged/rust).
 
 ## Hello, world!
 
@@ -123,8 +125,7 @@ require that you know a whole ton about the command line, but until the
 language is in a more finished state, IDE support is spotty. Rust makes no
 specific demands on your editing tooling, or where your code lives.
 
-With that said, let's make a directory in our projects directory. Note that you
-don't need to type in the `$`s, they just indicate the start of each command:
+With that said, let's make a directory in our projects directory.
 
 ```{bash}
 $ mkdir ~/projects
@@ -159,7 +160,7 @@ Save the file, and then type this into your terminal window:
 
 ```{bash}
 $ rustc hello_world.rs
-$ ./hello_world  # on Windows, this is ./hello_world.exe
+$ ./hello_world # just 'hello_world' on Windows
 Hello, world
 ```
 
@@ -180,8 +181,8 @@ entirely.  We'll get to it later.
 
 You'll also note that the function is wrapped in curly braces (`{` and `}`).
 Rust requires these around all function bodies. It is also considered good
-style to put the curly brace on the same line as the function declaration, with
-one space in between.
+style to put the opening curly brace on the same line as the function
+declaration, with one space in between.
 
 Next up is this line:
 
@@ -199,13 +200,16 @@ The second point is the `println!()` part. This is calling a Rust **macro**,
 which is how metaprogramming is done in Rust. If it were a function instead, it
 would look like this: `println()`. For our purposes, we don't need to worry
 about this difference. Just know that sometimes, you'll see a `!`, and that
-means that you're calling a macro instead of a normal function.
+means that you're calling a macro instead of a normal function. One last thing
+to mention: Rust's macros are significantly different than C macros, if you've
+used those. Don't be scared of using macros. We'll get to the details
+eventually, you'll just have to trust us for now.
 
-Next, `"Hello, world"` is a **string**. Strings are a surprisingly
-complicated topic in a systems programming language, and this is a **staticly
-allocated** string. We will talk more about different kinds of allocation
-later. We pass this string as an argument to `println!`, which prints the
-string to the screen. Easy enough!
+Next, `"Hello, world"` is a **string**. Strings are a surprisingly complicated
+topic in a systems programming language, and this is a **statically allocated**
+string. We will talk more about different kinds of allocation later. We pass
+this string as an argument to `println!`, which prints the string to the
+screen. Easy enough!
 
 Finally, the line ends with a semicolon (`;`). Rust is an **expression
 oriented** language, which means that most things are expressions. The `;` is
@@ -235,8 +239,8 @@ $ dir
 hello_world.exe  hello_world.rs
 ```
 
-There are now two files: our source code, with the `.rs`, and the executable.
-We ran the executable like this:
+There are now two files: our source code, with the `.rs` extension, and the
+executable (`hello_world.exe` on Windows, `hello_world` everywhere else)
 
 ```{bash}
 $ ./hello_world  # or ./hello_world.exe on Windows
@@ -264,26 +268,146 @@ projects.
 
 ## Hello, Cargo!
 
+[Cargo](http://crates.io) is a tool that Rustaceans use to help manage their
+Rust projects. Cargo is currently in an alpha state, just like Rust, and so it
+is still a work in progress. However, it is already good enough to use for many
+Rust projects, and so it is assumed that Rust projects will use Cargo from the
+beginning.
 
+Programmers love car analogies, so I've got a good one for you to think about
+the relationship between `cargo` and `rustc`: `rustc` is like a car, and
+`cargo` is like a robotic driver. You can drive your car yourself, of course,
+but isn't it just easier to let a computer drive it for you?
 
+Anyway, Cargo manages three things: building your code, downloading the
+dependencies your code needs, and building the dependencies your code needs.
+At first, your program doesn't have any dependencies, so we'll only be using
+the first part of its functionality. Eventually, we'll add more. Since we
+started off by using Cargo, it'll be easy to add later.
 
+Let's convert Hello World to Cargo. The first thing we need to do is install
+it. To do this, we need to build it from source. There are no binaries yet.
 
+First, let's go back to our projects directory. We don't want Cargo to
+live in our project!
 
+```{bash}
+$ cd ..
+```
 
+Next, we need these commands:
 
+```{bash}
+$ git clone --recursive https://github.com/rust-lang/cargo
+$ cd cargo
+$ make
+$ make install # may need sudo or admin permissions
+```
 
+The `--recursive` downloads Cargo's own dependencies. You can't use Cargo to
+fetch dependencies until you have Cargo installed! Also, you will need to have
+`git` installed. Much of the Rust world assumes `git` usage, so it's a good
+thing to have around. Please check out [the git
+documentation](http://git-scm.com/book/en/Getting-Started-Installing-Git) for
+more on installing `git`.
 
+We hope to give Cargo a binary installer, similar to Rust's own, so that
+this will not be necessary in the future.
 
+Let's see if that worked. Try this:
 
+```{bash}
+$ cargo
+Commands:
+  build          # compile the current project
 
+Options (for all commands):
 
+-v, [--verbose]
+-h, [--help]
+```
 
+If you see this output when you run `cargo`, congrats! Cargo is working. If
+not, please [open an issue](https://github.com/rust-lang/cargo/issues/new) or
+drop by the Rust IRC, and we can help you out.
 
+Let's move back into our `hello_world` directory now:
 
+```{bash}
+$ cd ..              # move back up into projects
+$ cd hello_world     # move into hello_world
+```
 
+To Cargo-ify our project, we need to do two things: Make a `Cargo.toml`
+configuration file, and put our source file in the right place. Let's
+do that part first:
 
+```{bash}
+$ mkdir src
+$ mv hello_world.rs src/hello_world.rs
+```
 
+Cargo expects your source files to live inside a `src` directory. That leaves
+the top level for other things, like READMEs, licence information, and anything
+not related to your code. Cargo helps us keep our projects nice and tidy. A
+place for everything, and everything in its place.
 
+Next, our configuration file:
 
+```{bash}
+$ editor Cargo.toml
+```
 
+Make sure to get this name right: you need the capital `C`!
 
+Put this inside:
+
+```{ignore}
+[package]
+
+name = "hello_world"
+version = "0.1.0"
+authors = [ "someone@example.com" ]
+
+[[bin]]
+
+name = "hello_world"
+```
+
+This file is in the [TOML](https://github.com/toml-lang/toml) format. Let's let
+it explain itself to you:
+
+> TOML aims to be a minimal configuration file format that's easy to read due
+> to obvious semantics. TOML is designed to map unambiguously to a hash table.
+> TOML should be easy to parse into data structures in a wide variety of
+> languages.
+
+TOML is very similar to INI, but with some extra goodies.
+
+Anyway, there are two **table**s in this file: `package` and `bin`. The first
+tells Cargo metadata about your package. The second tells Cargo that we're
+interested in building a binary, not a library (though we could do both!), as
+well as what it is named.
+
+Once you have this file in place, we should be ready to build! Try this:
+
+```{bash}
+$ cargo build
+   Compiling hello_world v0.1.0 (file:/home/yourname/projects/hello_world)
+$ ./target/hello_world 
+Hello, world!
+```
+
+Bam! We build our project with `cargo build`, and run it with
+`./target/hello_world`. This hasn't bought us a whole lot over our simple use
+of `rustc`, but think about the future: when our project has more than one
+file, we would need to call `rustc` twice, and pass it a bunch of options to
+tell it to build everything together. With Cargo, as our project grows, we can
+just `cargo build` and it'll work the right way.
+
+That's it! We've successfully built `hello_world` with Cargo. Even though our
+program is simple, it's using much of the real tooling that you'll use for the
+rest of your Rust career.
+
+Next, we'll learn more about Rust itself, by starting to write a more complicated
+program. We hope you want to do more with Rust than just print "Hello, world!"
