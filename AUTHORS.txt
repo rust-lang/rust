@@ -487,7 +487,6 @@ TyOverby <ty@pre-alpha.com>
 Tycho Sci <tychosci@gmail.com>
 Tyler Bindon <martica@martica.org>
 U-NOV2010\eugals
-User Jyyou <jyyou@plaslab.cs.nctu.edu.tw>
 Utkarsh Kukreti <utkarshkukreti@gmail.com>
 Uwe Dauernheim <uwe@dauernheim.net>
 Vadim Chugunov <vadimcn@gmail.com>
