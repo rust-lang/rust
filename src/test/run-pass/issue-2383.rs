@@ -15,5 +15,5 @@ use std::collections::Deque;
 
 pub fn main() {
     let mut q = RingBuf::new();
-    q.push_back(10);
+    q.push_back(10i);
 }

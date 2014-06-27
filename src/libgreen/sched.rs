@@ -1413,7 +1413,7 @@ mod test {
 
             impl Drop for S {
                 fn drop(&mut self) {
-                    let _foo = box 0;
+                    let _foo = box 0i;
                 }
             }
 

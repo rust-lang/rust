@@ -227,8 +227,8 @@ fn a_function(x: int) -> int {
 
 fn main() {
 
-    let val = -1;
-    let ten = 10;
+    let val = -1i;
+    let ten = 10i;
 
     // surrounded by struct expression
     let point = Point {
@@ -280,7 +280,7 @@ fn main() {
         sentinel();
 
         val
-    }, 0);
+    }, 0i);
 
     zzz();
     sentinel();
@@ -355,7 +355,7 @@ fn main() {
     sentinel();
 
     // index expression
-    let a_vector = [10, ..20];
+    let a_vector = [10i, ..20];
     let _ = a_vector[{
         zzz();
         sentinel();

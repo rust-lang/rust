@@ -172,7 +172,7 @@ pub mod compiled {
         rtassert!(!ptr.is_null());
         let ptr: Box<T> = mem::transmute(ptr);
         // can't use `as`, due to type not matching with `cfg(test)`
-        RT_TLS_PTR = mem::transmute(0);
+        RT_TLS_PTR = mem::transmute(0u);
         ptr
     }
 
@@ -189,7 +189,7 @@ pub mod compiled {
         } else {
             let ptr: Box<T> = mem::transmute(ptr);
             // can't use `as`, due to type not matching with `cfg(test)`
-            RT_TLS_PTR = mem::transmute(0);
+            RT_TLS_PTR = mem::transmute(0u);
             Some(ptr)
         }
     }

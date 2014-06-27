@@ -9,9 +9,9 @@
 // except according to those terms.
 
 fn f() {
-    let mut a = [box 0, box 1];
+    let mut a = [box 0i, box 1i];
     drop(a[0]);
-    a[1] = box 2;
+    a[1] = box 2i;
     drop(a[0]); //~ ERROR use of moved value: `a[..]`
 }
 

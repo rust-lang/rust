@@ -24,10 +24,10 @@ fn foo<'a>(x: &'a Gc<int>) -> &'a int {
 }
 
 fn bar() {
-    let a = 3;
+    let a = 3i;
     let mut y = &a;
     if true {
-        let x = box(GC) 3;
+        let x = box(GC) 3i;
         y = &*x; //~ ERROR `*x` does not live long enough
     }
 }

@@ -12,12 +12,12 @@
 #![allow(unused_variable)]
 
 fn f() {
-    let x = 10; let mut y = 11;
+    let x = 10i; let mut y = 11i;
     if true { match x { _ => { y = x; } } } else { }
 }
 
 pub fn main() {
-    let x = 10;
-    let mut y = 11;
+    let x = 10i;
+    let mut y = 11i;
     if true { while false { y = x; } } else { }
 }

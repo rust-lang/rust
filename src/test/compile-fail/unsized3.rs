@@ -51,8 +51,8 @@ fn f8<type X>(x1: &S<X>, x2: &S<X>) {
 
 // Test some tuples.
 fn f9<type X>(x1: Box<S<X>>, x2: Box<E<X>>) {
-    f5(&(*x1, 34)); //~ERROR instantiating a type parameter with an incompatible type `(S<X>,int)`,
-    f5(&(32, *x2)); //~ERROR instantiating a type parameter with an incompatible type `(int,E<X>)`,
+    f5(&(*x1, 34i)); //~ERROR instantiating a type parameter with an incompatible type `(S<X>,int)`,
+    f5(&(32i, *x2)); //~ERROR instantiating a type parameter with an incompatible type `(int,E<X>)`,
 }
 
 // I would like these to fail eventually.

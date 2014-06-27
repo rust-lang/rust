@@ -19,5 +19,5 @@ fn fold_local() -> Gc<Vec<int>> {
 }
 
 fn main() {
-    let _lss = (fold_local(), 0);
+    let _lss = (fold_local(), 0i);
 }

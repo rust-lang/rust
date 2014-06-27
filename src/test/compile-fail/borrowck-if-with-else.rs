@@ -14,7 +14,7 @@ fn foo(x: int) { println!("{:?}", x); }
 
 fn main() {
     let x: int;
-    if 1 > 2 {
+    if 1i > 2 {
         println!("whoops");
     } else {
         x = 10;

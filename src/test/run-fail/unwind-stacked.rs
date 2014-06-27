@@ -15,16 +15,16 @@
 use std::gc::GC;
 
 fn f() {
-    let _a = box(GC) 0;
+    let _a = box(GC) 0i;
     fail!();
 }
 
 fn g() {
-    let _b = box(GC) 0;
+    let _b = box(GC) 0i;
     f();
 }
 
 fn main() {
-    let _a = box(GC) 0;
+    let _a = box(GC) 0i;
     g();
 }

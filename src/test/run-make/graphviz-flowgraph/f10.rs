@@ -9,8 +9,8 @@
 // except according to those terms.
 
 pub fn expr_while_10() {
-    let mut x = 10;
-    while x > 0 {
-        x -= 1;
+    let mut x = 10i;
+    while x > 0i {
+        x -= 1i;
     }
 }

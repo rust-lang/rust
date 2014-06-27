@@ -998,7 +998,7 @@ impl<'a> State<'a> {
 
     pub fn print_outer_attributes(&mut self,
                                   attrs: &[ast::Attribute]) -> IoResult<()> {
-        let mut count = 0;
+        let mut count = 0u;
         for attr in attrs.iter() {
             match attr.node.style {
                 ast::AttrOuter => {
@@ -1016,7 +1016,7 @@ impl<'a> State<'a> {
 
     pub fn print_inner_attributes(&mut self,
                                   attrs: &[ast::Attribute]) -> IoResult<()> {
-        let mut count = 0;
+        let mut count = 0u;
         for attr in attrs.iter() {
             match attr.node.style {
                 ast::AttrInner => {

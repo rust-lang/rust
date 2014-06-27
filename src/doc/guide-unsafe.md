@@ -267,12 +267,12 @@ impl<T: Send> Drop for Unique<T> {
 // A comparison between the built-in `Box` and this reimplementation
 fn main() {
     {
-        let mut x = box 5;
+        let mut x = box 5i;
         *x = 10;
     } // `x` is freed here
 
     {
-        let mut y = Unique::new(5);
+        let mut y = Unique::new(5i);
         *y.borrow_mut() = 10;
     } // `y` is freed here
 }
@@ -678,7 +678,7 @@ unsafe fn deallocate(ptr: *mut u8, _size: uint, _align: uint) {
 
 #[start]
 fn main(argc: int, argv: *const *const u8) -> int {
-    let x = box 1;
+    let x = box 1i;
 
     0
 }

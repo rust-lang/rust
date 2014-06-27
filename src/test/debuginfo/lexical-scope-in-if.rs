@@ -80,8 +80,8 @@
 
 fn main() {
 
-    let x = 999;
-    let y = -1;
+    let x = 999i;
+    let y = -1i;
 
     zzz();
     sentinel();
@@ -90,13 +90,13 @@ fn main() {
         zzz();
         sentinel();
 
-        let x = 1001;
+        let x = 1001i;
 
         zzz();
         sentinel();
 
-        let x = 1002;
-        let y = 1003;
+        let x = 1002i;
+        let y = 1003i;
         zzz();
         sentinel();
     } else {
@@ -112,8 +112,8 @@ fn main() {
         zzz();
         sentinel();
 
-        let x = 1004;
-        let y = 1005;
+        let x = 1004i;
+        let y = 1005i;
         zzz();
         sentinel();
     }

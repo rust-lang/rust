@@ -9,7 +9,7 @@
 // except according to those terms.
 
 pub fn main() {
-    let (x, y) = (10, 20);
+    let (x, y) = (10i, 20i);
     let z = x + y;
     assert!((z == 30));
 }

@@ -67,7 +67,7 @@ fn main() {
     let f32: f32 = 2.5;
     let f64: f64 = 3.5;
     _zzz();
-    if 1 == 1 { _yyy(); }
+    if 1i == 1 { _yyy(); }
 }
 
 fn _zzz() {()}

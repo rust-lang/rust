@@ -39,13 +39,13 @@ fn a_function(x: bool, y: bool) {
     zzz();
     sentinel();
 
-    let x = 10;
+    let x = 10i;
 
     zzz();
     sentinel();
 
-    let x = 10.5;
-    let y = 20;
+    let x = 10.5f64;
+    let y = 20i;
 
     zzz();
     sentinel();

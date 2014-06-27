@@ -17,7 +17,7 @@ Vectors are Rust's list type. Vectors contain zero or more values of
 homogeneous types:
 
 ```rust
-let int_vector = [1,2,3];
+let int_vector = [1i, 2i, 3i];
 let str_vector = ["one", "two", "three"];
 ```
 
@@ -41,9 +41,9 @@ An example is the method `.slice(a, b)` that returns an immutable "view" into
 a vector or a vector slice from the index interval `[a, b)`:
 
 ```rust
-let numbers = [0, 1, 2];
+let numbers = [0i, 1i, 2i];
 let last_numbers = numbers.slice(1, 3);
-// last_numbers is now &[1, 2]
+// last_numbers is now &[1i, 2i]
 ```
 
 Traits defined for the `~[T]` type, like `OwnedVector`, can only be called
@@ -54,9 +54,9 @@ An example is the method `.push(element)` that will add an element at the end
 of the vector:
 
 ```rust
-let mut numbers = vec![0, 1, 2];
+let mut numbers = vec![0i, 1i, 2i];
 numbers.push(7);
-// numbers is now vec![0, 1, 2, 7];
+// numbers is now vec![0i, 1i, 2i, 7i];
 ```
 
 ## Implementations of other traits
@@ -779,7 +779,7 @@ mod tests {
     fn test_is_empty() {
         let xs: [int, ..0] = [];
         assert!(xs.is_empty());
-        assert!(![0].is_empty());
+        assert!(![0i].is_empty());
     }
 
     #[test]
@@ -1528,7 +1528,7 @@ mod tests {
     fn test_permute_fail() {
         let v = [(box 0i, Rc::new(0i)), (box 0i, Rc::new(0i)),
                  (box 0i, Rc::new(0i)), (box 0i, Rc::new(0i))];
-        let mut i = 0;
+        let mut i = 0u;
         for _ in v.permutations() {
             if i == 2 {
                 fail!()
@@ -1870,16 +1870,16 @@ mod tests {
     fn test_overflow_does_not_cause_segfault() {
         let mut v = vec![];
         v.reserve_exact(-1);
-        v.push(1);
+        v.push(1i);
         v.push(2);
     }
 
     #[test]
     #[should_fail]
     fn test_overflow_does_not_cause_segfault_managed() {
-        let mut v = vec![Rc::new(1)];
+        let mut v = vec![Rc::new(1i)];
         v.reserve_exact(-1);
-        v.push(Rc::new(2));
+        v.push(Rc::new(2i));
     }
 
     #[test]
@@ -2279,7 +2279,7 @@ mod bench {
                 v.set_len(1024);
             }
             for x in v.mut_iter() {
-                *x = 0;
+                *x = 0i;
             }
             v
         });

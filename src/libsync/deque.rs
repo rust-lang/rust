@@ -30,15 +30,15 @@
 //!     let (mut worker, mut stealer) = pool.deque();
 //!
 //!     // Only the worker may push/pop
-//!     worker.push(1);
+//!     worker.push(1i);
 //!     worker.pop();
 //!
 //!     // Stealers take data from the other end of the deque
-//!     worker.push(1);
+//!     worker.push(1i);
 //!     stealer.steal();
 //!
 //!     // Stealers can be cloned to have many stealers stealing in parallel
-//!     worker.push(1);
+//!     worker.push(1i);
 //!     let mut stealer2 = stealer.clone();
 //!     stealer2.steal();
 

@@ -3805,7 +3805,15 @@ pub fn check_enum_variants(ccx: &CrateCtxt,
 
                     let inh = blank_inherited_fields(ccx);
                     let fcx = blank_fn_ctxt(ccx, &inh, rty, e.id);
-                    let declty = ty::mk_int_var(ccx.tcx, fcx.infcx().next_int_var_id());
+                    let declty = match hint {
+                        attr::ReprAny | attr::ReprExtern => ty::mk_int(),
+                        attr::ReprInt(_, attr::SignedInt(ity)) => {
+                            ty::mk_mach_int(ity)
+                        }
+                        attr::ReprInt(_, attr::UnsignedInt(ity)) => {
+                            ty::mk_mach_uint(ity)
+                        }
+                    };
                     check_const_with_ty(&fcx, e.span, &*e, declty);
                     // check_expr (from check_const pass) doesn't guarantee
                     // that the expression is in a form that eval_const_expr can

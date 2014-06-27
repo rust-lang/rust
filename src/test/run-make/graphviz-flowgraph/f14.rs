@@ -10,8 +10,8 @@
 
 #[allow(unreachable_code)]
 pub fn expr_ret_14() {
-    let x = 14;
-    if x > 1 {
+    let x = 14i;
+    if x > 1i {
         return;
         "unreachable";
     }

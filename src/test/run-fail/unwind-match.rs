@@ -16,7 +16,7 @@
 use std::gc::GC;
 
 fn test_box() {
-    box(GC) 0;
+    box(GC) 0i;
 }
 fn test_str() {
   let res = match false { true => { "happy".to_string() },

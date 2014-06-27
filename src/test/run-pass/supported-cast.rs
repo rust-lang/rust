@@ -11,7 +11,7 @@
 extern crate libc;
 
 pub fn main() {
-  let f = 1 as *const libc::FILE;
+  let f = 1u as *const libc::FILE;
   println!("{}", f as int);
   println!("{}", f as uint);
   println!("{}", f as i8);
@@ -34,8 +34,8 @@ pub fn main() {
   println!("{}", 1 as u16);
   println!("{}", 1 as u32);
   println!("{}", 1 as u64);
-  println!("{}", 1 as f32);
-  println!("{}", 1 as f64);
+  println!("{}", 1i as f32);
+  println!("{}", 1i as f64);
 
   println!("{}", 1u as int);
   println!("{}", 1u as uint);
@@ -190,19 +190,6 @@ pub fn main() {
   println!("{}", true as u64);
   println!("{}", true as f32);
   println!("{}", true as f64);
-
-  println!("{}", 1. as int);
-  println!("{}", 1. as uint);
-  println!("{}", 1. as i8);
-  println!("{}", 1. as i16);
-  println!("{}", 1. as i32);
-  println!("{}", 1. as i64);
-  println!("{}", 1. as u8);
-  println!("{}", 1. as u16);
-  println!("{}", 1. as u32);
-  println!("{}", 1. as u64);
-  println!("{}", 1. as f32);
-  println!("{}", 1. as f64);
 
   println!("{}", 1f32 as int);
   println!("{}", 1f32 as uint);

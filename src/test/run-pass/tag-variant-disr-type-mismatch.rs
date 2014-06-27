@@ -9,7 +9,7 @@
 // except according to those terms.
 
 enum color {
-    red = 1u,
+    red = 1i,
     blue = 2,
 }
 
