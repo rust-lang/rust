@@ -110,7 +110,7 @@ impl Timer {
     /// # Example
     ///
     /// ```rust
-    /// use std::io::timer::Timer;
+    /// use std::io::Timer;
     ///
     /// let mut timer = Timer::new().unwrap();
     /// let ten_milliseconds = timer.oneshot(10);
@@ -122,7 +122,7 @@ impl Timer {
     /// ```
     ///
     /// ```rust
-    /// use std::io::timer::Timer;
+    /// use std::io::Timer;
     ///
     /// // Incorrect, method chaining-style:
     /// let mut five_ms = Timer::new().unwrap().oneshot(5);
@@ -152,7 +152,7 @@ impl Timer {
     /// # Example
     ///
     /// ```rust
-    /// use std::io::timer::Timer;
+    /// use std::io::Timer;
     ///
     /// let mut timer = Timer::new().unwrap();
     /// let ten_milliseconds = timer.periodic(10);
@@ -170,7 +170,7 @@ impl Timer {
     /// ```
     ///
     /// ```rust
-    /// use std::io::timer::Timer;
+    /// use std::io::Timer;
     ///
     /// // Incorrect, method chaining-style.
     /// let mut five_ms = Timer::new().unwrap().periodic(5);

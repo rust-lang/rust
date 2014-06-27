@@ -41,7 +41,7 @@ use rt::rtio;
 ///
 /// ```no_run
 /// # #![allow(unused_must_use)]
-/// use std::io::net::tcp::TcpStream;
+/// use std::io::TcpStream;
 ///
 /// let mut stream = TcpStream::connect("127.0.0.1", 34254);
 ///
@@ -162,7 +162,7 @@ impl TcpStream {
     /// ```no_run
     /// # #![allow(unused_must_use)]
     /// use std::io::timer;
-    /// use std::io::net::tcp::TcpStream;
+    /// use std::io::TcpStream;
     ///
     /// let mut stream = TcpStream::connect("127.0.0.1", 34254).unwrap();
     /// let stream2 = stream.clone();
@@ -406,7 +406,7 @@ impl TcpAcceptor {
     ///
     /// ```no_run
     /// # #![allow(experimental)]
-    /// use std::io::net::tcp::TcpListener;
+    /// use std::io::TcpListener;
     /// use std::io::{Listener, Acceptor, TimedOut};
     ///
     /// let mut a = TcpListener::bind("127.0.0.1", 8482).listen().unwrap();
