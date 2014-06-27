@@ -10,13 +10,14 @@
 
 #![feature(macro_rules)]
 
-macro_rules! inner_bind (
-    ( $p:pat, $id:ident) => ({let $p = 13; $id}))
+macro_rules! inner (
+    ($e:pat ) => ($e))
 
-macro_rules! outer_bind (
-    ($p:pat, $id:ident ) => (inner_bind!($p, $id)))
+macro_rules! outer (
+    ($e:pat ) => (inner!($e)))
 
 fn main() {
-    outer_bind!(g1,g1);
+    let outer!(g1) = 13;
+    g1;
 }
 
