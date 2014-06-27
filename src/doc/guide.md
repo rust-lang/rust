@@ -411,3 +411,64 @@ rest of your Rust career.
 
 Next, we'll learn more about Rust itself, by starting to write a more complicated
 program. We hope you want to do more with Rust than just print "Hello, world!"
+
+## If
+
+## Functions
+
+return
+
+comments
+
+## Testing
+
+attributes
+
+stability markers
+
+## Crates and Modules
+
+visibility
+
+## Compound Data Types
+
+Tuples
+
+Structs
+
+Enums
+
+## Match
+
+## Looping
+
+for
+
+while
+
+loop
+
+break/continue
+
+iterators
+
+## Lambdas
+
+## Generics
+
+## Traits
+
+## Operators and built-in Traits
+
+## Ownership and Lifetimes
+
+Move vs. Copy
+
+Allocation
+
+## Tasks
+
+## Macros
+
+## Unsafe
+
