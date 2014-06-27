@@ -165,6 +165,6 @@ if cond1 {
   the `else` branch (i.e. both `if` branches removed).
 
 This can be addressed by having `#[attr] if cond { ...` be an exterior
-attribute (applying to the whole `if`/`else` chain) and `if cond
-#[attr] { ... ` be an interior attribute (applying to only the current
-`if` branch).
+attribute (applying to the whole `if`/`else` chain) and
+`if cond #[attr] { ... ` be an interior attribute (applying to only
+the current `if` branch).
