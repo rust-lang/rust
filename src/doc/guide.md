@@ -421,16 +421,6 @@ return
 
 comments
 
-## Testing
-
-attributes
-
-stability markers
-
-## Crates and Modules
-
-visibility
-
 ## Compound Data Types
 
 Tuples
@@ -451,9 +441,20 @@ loop
 
 break/continue
 
-iterators
+## iterators
 
 ## Lambdas
+
+## Testing
+
+attributes
+
+stability markers
+
+## Crates and Modules
+
+visibility
+
 
 ## Generics
 
