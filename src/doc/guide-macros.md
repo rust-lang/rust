@@ -355,6 +355,7 @@ macro_rules! biased_match_rec (
             _ => { $err }
         }
     );
+    // Produce the requested values
     ( binds $( $bind_res:ident ),* ) => ( ($( $bind_res ),*) )
 )
 
@@ -364,7 +365,7 @@ macro_rules! biased_match (
     ( $( ($e:expr) ~ ($p:pat) else $err:stmt ; )*
       binds $bind_res:ident
     ) => (
-        let ( $( $bind_res ),* ) = biased_match_rec!(
+        let $bind_res = biased_match_rec!(
             $( ($e) ~ ($p) else $err ; )*
             binds $bind_res
         );
