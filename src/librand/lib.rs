@@ -16,12 +16,12 @@
 //! is not recommended to use this library directly, but rather the official
 //! interface through `std::rand`.
 
-#![crate_id = "rand#0.11.0-pre"]
+#![crate_id = "rand#0.11.0"]
 #![license = "MIT/ASL2"]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk.png",
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
-       html_root_url = "http://doc.rust-lang.org/",
+       html_root_url = "http://doc.rust-lang.org/0.11.0/",
        html_playground_url = "http://play.rust-lang.org/")]
 
 #![feature(macro_rules, phase, globs)]
