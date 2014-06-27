@@ -389,33 +389,77 @@ fn fold_arg_<T: Folder>(a: &Arg, fld: &mut T) -> Arg {
     }
 }
 
-// build a new vector of tts by appling the Folder's fold_ident to
-// all of the identifiers in the token trees.
-pub fn fold_tts<T: Folder>(tts: &[TokenTree], fld: &mut T) -> Vec<TokenTree> {
-    tts.iter().map(|tt| {
-        match *tt {
-            TTTok(span, ref tok) =>
-            TTTok(span,maybe_fold_ident(tok,fld)),
-            TTDelim(ref tts) => TTDelim(Rc::new(fold_tts(tts.as_slice(), fld))),
-            TTSeq(span, ref pattern, ref sep, is_optional) =>
+pub fn fold_tt<T: Folder>(tt: &TokenTree, fld: &mut T) -> TokenTree {
+    match *tt {
+        TTTok(span, ref tok) =>
+            TTTok(span, fold_token(tok,fld)),
+        TTDelim(ref tts) => TTDelim(Rc::new(fold_tts(tts.as_slice(), fld))),
+        TTSeq(span, ref pattern, ref sep, is_optional) =>
             TTSeq(span,
                   Rc::new(fold_tts(pattern.as_slice(), fld)),
-                  sep.as_ref().map(|tok|maybe_fold_ident(tok,fld)),
+                  sep.as_ref().map(|tok| fold_token(tok,fld)),
                   is_optional),
-            TTNonterminal(sp,ref ident) =>
+        TTNonterminal(sp,ref ident) =>
             TTNonterminal(sp,fld.fold_ident(*ident))
-        }
-    }).collect()
+    }
 }
 
-// apply ident folder if it's an ident, otherwise leave it alone
-fn maybe_fold_ident<T: Folder>(t: &token::Token, fld: &mut T) -> token::Token {
+pub fn fold_tts<T: Folder>(tts: &[TokenTree], fld: &mut T) -> Vec<TokenTree> {
+    tts.iter().map(|tt| fold_tt(tt,fld)).collect()
+}
+
+
+// apply ident folder if it's an ident, apply other folds to interpolated nodes
+fn fold_token<T: Folder>(t: &token::Token, fld: &mut T) -> token::Token {
     match *t {
         token::IDENT(id, followed_by_colons) => {
             token::IDENT(fld.fold_ident(id), followed_by_colons)
         }
         token::LIFETIME(id) => token::LIFETIME(fld.fold_ident(id)),
+        token::INTERPOLATED(ref nt) => token::INTERPOLATED(fold_interpolated(nt,fld)),
         _ => (*t).clone()
+    }
+}
+
+// apply folder to elements of interpolated nodes
+//
+// NB: this can occur only when applying a fold to partially expanded code, where
+// parsed pieces have gotten implanted ito *other* macro invocations. This is relevant
+// for macro hygiene, but possibly not elsewhere.
+//
+// One problem here occurs because the types for fold_item, fold_stmt, etc. allow the
+// folder to return *multiple* items; this is a problem for the nodes here, because
+// they insist on having exactly one piece. One solution would be to mangle the fold
+// trait to include one-to-many and one-to-one versions of these entry points, but that
+// would probably confuse a lot of people and help very few. Instead, I'm just going
+// to put in dynamic checks. I think the performance impact of this will be pretty much
+// nonexistent. The danger is that someone will apply a fold to a partially expanded
+// node, and will be confused by the fact that their "fold_item" or "fold_stmt" isn't
+// getting called on NtItem or NtStmt nodes. Hopefully they'll wind up reading this
+// comment, and doing something appropriate.
+//
+// BTW, design choice: I considered just changing the type of, e.g., NtItem to contain
+// multiple items, but decided against it when I looked at parse_item_or_view_item and
+// tried to figure out what I would do with multiple items there....
+fn fold_interpolated<T: Folder>(nt : &token::Nonterminal, fld: &mut T) -> token::Nonterminal {
+    match *nt {
+        token::NtItem(item) =>
+            token::NtItem(fld.fold_item(item)
+                          .expect_one("expected fold to produce exactly one item")),
+        token::NtBlock(block) => token::NtBlock(fld.fold_block(block)),
+        token::NtStmt(stmt) =>
+            token::NtStmt(fld.fold_stmt(stmt)
+                          .expect_one("expected fold to produce exactly one statement")),
+        token::NtPat(pat) => token::NtPat(fld.fold_pat(pat)),
+        token::NtExpr(expr) => token::NtExpr(fld.fold_expr(expr)),
+        token::NtTy(ty) => token::NtTy(fld.fold_ty(ty)),
+        token::NtIdent(ref id, is_mod_name) =>
+            token::NtIdent(box fld.fold_ident(**id),is_mod_name),
+        token::NtMeta(meta_item) => token::NtMeta(fold_meta_item_(meta_item,fld)),
+        token::NtPath(ref path) => token::NtPath(box fld.fold_path(*path)),
+        token::NtTT(tt) => token::NtTT(box (GC) fold_tt(tt,fld)),
+        // it looks to me like we can leave out the matchers: token::NtMatchers(matchers)
+        _ => (*nt).clone()
     }
 }
 
@@ -672,8 +716,15 @@ pub fn noop_fold_crate<T: Folder>(c: Crate, folder: &mut T) -> Crate {
     }
 }
 
+// fold one item into possibly many items
 pub fn noop_fold_item<T: Folder>(i: &Item,
                                  folder: &mut T) -> SmallVector<Gc<Item>> {
+    SmallVector::one(box(GC) noop_fold_item_(i,folder))
+}
+
+
+// fold one item into exactly one item
+pub fn noop_fold_item_<T: Folder>(i: &Item, folder: &mut T) -> Item {
     let id = folder.new_id(i.id); // Needs to be first, for ast_map.
     let node = folder.fold_item_underscore(&i.node);
     let ident = match node {
@@ -684,14 +735,14 @@ pub fn noop_fold_item<T: Folder>(i: &Item,
         _ => i.ident
     };
 
-    SmallVector::one(box(GC) Item {
+    Item {
         id: id,
         ident: folder.fold_ident(ident),
         attrs: i.attrs.iter().map(|e| folder.fold_attribute(*e)).collect(),
         node: node,
         vis: i.vis,
         span: folder.new_span(i.span)
-    })
+    }
 }
 
 pub fn noop_fold_foreign_item<T: Folder>(ni: &ForeignItem,
