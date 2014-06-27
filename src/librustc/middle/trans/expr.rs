@@ -277,7 +277,7 @@ fn apply_adjustments<'a>(bcx: &'a Block<'a>,
         auto_ref(bcx, datum, expr)
     }
 
-    fn auto_borrow_obj<'a>(bcx: &'a Block<'a>,
+    fn auto_borrow_obj<'a>(mut bcx: &'a Block<'a>,
                            expr: &ast::Expr,
                            source_datum: Datum<Expr>)
                            -> DatumBlock<'a, Expr> {
@@ -285,7 +285,11 @@ fn apply_adjustments<'a>(bcx: &'a Block<'a>,
         let target_obj_ty = expr_ty_adjusted(bcx, expr);
         debug!("auto_borrow_obj(target={})", target_obj_ty.repr(tcx));
 
-        let mut datum = source_datum.to_expr_datum();
+        // Arrange cleanup, if not already done. This is needed in
+        // case we are auto-borrowing a Box<Trait> to &Trait
+        let datum = unpack_datum!(
+            bcx, source_datum.to_lvalue_datum(bcx, "autoborrowobj", expr.id));
+        let mut datum = datum.to_expr_datum();
         datum.ty = target_obj_ty;
         DatumBlock::new(bcx, datum)
     }
