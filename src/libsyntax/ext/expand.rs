@@ -54,7 +54,6 @@ pub fn expand_expr(e: Gc<ast::Expr>, fld: &mut MacroExpander) -> Gc<ast::Expr> {
                     }
                     let extname = pth.segments.get(0).identifier;
                     let extnamestr = token::get_ident(extname);
-                    // leaving explicit deref here to highlight unbox op:
                     let marked_after = match fld.extsbox.find(&extname.name) {
                         None => {
                             fld.cx.span_err(
@@ -1294,6 +1293,19 @@ mod test {
             0)
     }
 
+    // FIXME #15221, somehow pats aren't getting labeled correctly?
+    // should expand into
+    // fn main(){let g1_1 = 13; g1_1}}
+    #[test] fn pat_expand_issue_15221(){
+        run_renaming_test(
+            &("macro_rules! inner ( ($e:pat ) => ($e))
+              macro_rules! outer ( ($e:pat ) => (inner!($e)))
+              fn main() { let outer!(g) = 13; g;}",
+              vec!(vec!(0)),
+              true),
+            0)
+    }
+
     // create a really evil test case where a $x appears inside a binding of $x
     // but *shouldnt* bind because it was inserted by a different macro....
     // can't write this test case until we have macro-generating macros.
@@ -1343,9 +1355,13 @@ mod test {
                                                            .ctxt,
                                                      invalid_name);
                     if !(varref_name==binding_name) {
+                        let varref_idents : Vec<ast::Ident>
+                            = varref.segments.iter().map(|s|
+                                                         s.identifier)
+                            .collect();
                         println!("uh oh, should match but doesn't:");
-                        println!("varref #{:?}: {:?}",idx, varref);
-                        println!("binding #{:?}: {:?}", binding_idx, *bindings.get(binding_idx));
+                        println!("varref #{}: {}",idx, varref_idents);
+                        println!("binding #{}: {}", binding_idx, *bindings.get(binding_idx));
                         mtwt::with_sctable(|x| mtwt::display_sctable(x));
                     }
                     assert_eq!(varref_name,binding_name);
@@ -1360,11 +1376,15 @@ mod test {
                             == binding_name);
                     // temp debugging:
                     if fail {
+                        let varref_idents : Vec<ast::Ident>
+                            = varref.segments.iter().map(|s|
+                                                         s.identifier)
+                            .collect();
                         println!("failure on test {}",test_idx);
                         println!("text of test case: \"{}\"", teststr);
                         println!("");
                         println!("uh oh, matches but shouldn't:");
-                        println!("varref: {:?}",varref);
+                        println!("varref: {}",varref_idents);
                         // good lord, you can't make a path with 0 segments, can you?
                         let string = token::get_ident(varref.segments
                                                             .get(0)
@@ -1372,7 +1392,7 @@ mod test {
                         println!("varref's first segment's uint: {}, and string: \"{}\"",
                                  varref.segments.get(0).identifier.name,
                                  string.get());
-                        println!("binding: {:?}", *bindings.get(binding_idx));
+                        println!("binding: {}", *bindings.get(binding_idx));
                         mtwt::with_sctable(|x| mtwt::display_sctable(x));
                     }
                     assert!(!fail);
@@ -1442,5 +1462,6 @@ foo_module!()
         assert_eq!(idents, strs_to_idents(vec!("a","b","None","i","i","z","y")));
     }
 
+    //
 
 }
