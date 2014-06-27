@@ -160,7 +160,7 @@ fn with_resolve_table_mut<T>(op: |&mut ResolveTable| -> T) -> T {
 }
 
 // Resolve a syntax object to a name, per MTWT.
-// adding memorization to possibly resolve 500+ seconds in resolve for librustc (!)
+// adding memoization to possibly resolve 500+ seconds in resolve for librustc (!)
 fn resolve_internal(id: Ident,
                     table: &SCTable,
                     resolve_table: &mut ResolveTable) -> Name {
