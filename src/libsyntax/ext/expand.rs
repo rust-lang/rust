@@ -1281,7 +1281,7 @@ mod test {
             0)
     }
 
-    // FIXME #9384, match variable hygiene. Should expand into
+    // match variable hygiene. Should expand into
     // fn z() {match 8 {x_1 => {match 9 {x_2 | x_2 if x_2 == x_1 => x_2 + x_1}}}}
     #[test] fn issue_9384(){
         run_renaming_test(
@@ -1293,7 +1293,7 @@ mod test {
             0)
     }
 
-    // FIXME #15221, somehow pats aren't getting labeled correctly?
+    // interpolated nodes weren't getting labeled.
     // should expand into
     // fn main(){let g1_1 = 13; g1_1}}
     #[test] fn pat_expand_issue_15221(){
