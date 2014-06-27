@@ -275,11 +275,41 @@ impl File {
 /// user lacks permissions to remove the file, or if some other filesystem-level
 /// error occurs.
 pub fn unlink(path: &Path) -> IoResult<()> {
-    let err = LocalIo::maybe_raise(|io| {
-        io.fs_unlink(&path.to_c_str())
-    }).map_err(IoError::from_rtio_error);
-    err.update_err("couldn't unlink path",
-                   |e| format!("{}; path={}", e, path.display()))
+    return match do_unlink(path) {
+        Ok(()) => Ok(()),
+        Err(e) => {
+            // On unix, a readonly file can be successfully removed. On windows,
+            // however, it cannot. To keep the two platforms in line with
+            // respect to their behavior, catch this case on windows, attempt to
+            // change it to read-write, and then remove the file.
+            if cfg!(windows) && e.kind == io::PermissionDenied {
+                let stat = match stat(path) {
+                    Ok(stat) => stat,
+                    Err(..) => return Err(e),
+                };
+                if stat.perm.intersects(io::UserWrite) { return Err(e) }
+
+                match chmod(path, stat.perm | io::UserWrite) {
+                    Ok(()) => do_unlink(path),
+                    Err(..) => {
+                        // Try to put it back as we found it
+                        let _ = chmod(path, stat.perm);
+                        Err(e)
+                    }
+                }
+            } else {
+                Err(e)
+            }
+        }
+    };
+
+    fn do_unlink(path: &Path) -> IoResult<()> {
+        let err = LocalIo::maybe_raise(|io| {
+            io.fs_unlink(&path.to_c_str())
+        }).map_err(IoError::from_rtio_error);
+        err.update_err("couldn't unlink path",
+                       |e| format!("{}; path={}", e, path.display()))
+    }
 }
 
 /// Given a path, query the file system to get information about a file,
@@ -1590,5 +1620,13 @@ mod test {
         check!(File::create(&tmpdir.join("test")).write(bytes));
         let actual = check!(File::open(&tmpdir.join("test")).read_to_end());
         assert!(actual.as_slice() == bytes);
+    })
+
+    iotest!(fn unlink_readonly() {
+        let tmpdir = tmpdir();
+        let path = tmpdir.join("file");
+        check!(File::create(&path));
+        check!(chmod(&path, io::UserRead));
+        check!(unlink(&path));
     })
 }

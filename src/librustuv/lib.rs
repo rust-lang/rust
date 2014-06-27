@@ -420,6 +420,7 @@ pub fn uv_error_to_io_error(uverr: UvError) -> IoError {
             uvll::EADDRNOTAVAIL => libc::WSAEADDRNOTAVAIL,
             uvll::ECANCELED => libc::ERROR_OPERATION_ABORTED,
             uvll::EADDRINUSE => libc::WSAEADDRINUSE,
+            uvll::EPERM => libc::ERROR_ACCESS_DENIED,
             err => {
                 uvdebug!("uverr.code {}", err as int);
                 // FIXME: Need to map remaining uv error types
