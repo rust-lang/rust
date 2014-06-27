@@ -335,10 +335,18 @@ macro_rules! vec(
 /// ```
 #[macro_export]
 macro_rules! matches(
-    ($e: expr, $($p:pat)|*) => (match $e {
-        $($p: pat)|+ => true,
-        _ => false
-    });
+    ($expression: expr, $($pattern:pat)|*) => (
+        match $expression {
+            $($pattern: pat)|+ => true,
+            _ => false
+        }
+    );
+    ($expression: expr, $($pattern:pat)|* if $guard: expr) => (
+        match $expression {
+            $($pattern: pat)|+ if $guard => true,
+            _ => false
+        }
+    );
 )
 
 /// A macro to select an event from a number of receivers.
