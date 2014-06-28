@@ -314,6 +314,23 @@ pub fn error_str(error: ErrorCode) -> &'static str {
     }
 }
 
+/// Shortcut function to decode a JSON `&str` into an object
+pub fn decode<T: ::Decodable<Decoder, DecoderError>>(s: &str) -> DecodeResult<T> {
+    let json = match from_str(s) {
+        Ok(x) => x,
+        Err(e) => return Err(ParseError(e))
+    };
+
+    let mut decoder = Decoder::new(json);
+    ::Decodable::decode(&mut decoder)
+}
+
+/// Shortcut function to encode a `T` into a JSON `String`
+pub fn encode<'a, T: Encodable<Encoder<'a>, io::IoError>>(object: &T) -> String {
+    let buff = Encoder::buffer_encode(object);
+    str::from_utf8_owned(buff).unwrap()
+}
+
 impl fmt::Show for ErrorCode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         error_str(*self).fmt(f)
@@ -382,9 +399,11 @@ impl<'a> Encoder<'a> {
     }
 
     /// Encode the specified struct into a json str
+    ///
+    /// Note: this function is deprecated. Consider using `json::encode` instead.
+    #[deprecated = "Replaced by `json::encode`"]
     pub fn str_encode<T: Encodable<Encoder<'a>, io::IoError>>(object: &T) -> String {
-        let buff = Encoder::buffer_encode(object);
-        str::from_utf8_owned(buff).unwrap()
+        encode(object)
     }
 }
 
@@ -2456,16 +2475,13 @@ mod tests {
 
     #[test]
     fn test_decode_identifiers() {
-        let mut decoder = Decoder::new(from_str("null").unwrap());
-        let v: () = Decodable::decode(&mut decoder).unwrap();
+        let v: () = super::decode("null").unwrap();
         assert_eq!(v, ());
 
-        let mut decoder = Decoder::new(from_str("true").unwrap());
-        let v: bool = Decodable::decode(&mut decoder).unwrap();
+        let v: bool = super::decode("true").unwrap();
         assert_eq!(v, true);
 
-        let mut decoder = Decoder::new(from_str("false").unwrap());
-        let v: bool = Decodable::decode(&mut decoder).unwrap();
+        let v: bool = super::decode("false").unwrap();
         assert_eq!(v, false);
     }
 
@@ -2492,32 +2508,25 @@ mod tests {
 
     #[test]
     fn test_decode_numbers() {
-        let mut decoder = Decoder::new(from_str("3").unwrap());
-        let v: f64 = Decodable::decode(&mut decoder).unwrap();
+        let v: f64 = super::decode("3").unwrap();
         assert_eq!(v, 3.0);
 
-        let mut decoder = Decoder::new(from_str("3.1").unwrap());
-        let v: f64 = Decodable::decode(&mut decoder).unwrap();
+        let v: f64 = super::decode("3.1").unwrap();
         assert_eq!(v, 3.1);
 
-        let mut decoder = Decoder::new(from_str("-1.2").unwrap());
-        let v: f64 = Decodable::decode(&mut decoder).unwrap();
+        let v: f64 = super::decode("-1.2").unwrap();
         assert_eq!(v, -1.2);
 
-        let mut decoder = Decoder::new(from_str("0.4").unwrap());
-        let v: f64 = Decodable::decode(&mut decoder).unwrap();
+        let v: f64 = super::decode("0.4").unwrap();
         assert_eq!(v, 0.4);
 
-        let mut decoder = Decoder::new(from_str("0.4e5").unwrap());
-        let v: f64 = Decodable::decode(&mut decoder).unwrap();
+        let v: f64 = super::decode("0.4e5").unwrap();
         assert_eq!(v, 0.4e5);
 
-        let mut decoder = Decoder::new(from_str("0.4e15").unwrap());
-        let v: f64 = Decodable::decode(&mut decoder).unwrap();
+        let v: f64 = super::decode("0.4e15").unwrap();
         assert_eq!(v, 0.4e15);
 
-        let mut decoder = Decoder::new(from_str("0.4e-01").unwrap());
-        let v: f64 = Decodable::decode(&mut decoder).unwrap();
+        let v: f64 = super::decode("0.4e-01").unwrap();
         assert_eq!(v, 0.4e-01);
     }
 
@@ -2551,13 +2560,8 @@ mod tests {
                  ("\"\\uAB12\"", "\uAB12")];
 
         for &(i, o) in s.iter() {
-            let mut decoder = Decoder::new(from_str(i).unwrap());
-            let v: String = Decodable::decode(&mut decoder).unwrap();
+            let v: String = super::decode(i).unwrap();
             assert_eq!(v.as_slice(), o);
-
-            let mut decoder = Decoder::new(from_str(i).unwrap());
-            let v: String = Decodable::decode(&mut decoder).unwrap();
-            assert_eq!(v, o.to_string());
         }
     }
 
@@ -2584,28 +2588,19 @@ mod tests {
 
     #[test]
     fn test_decode_list() {
-        let mut decoder = Decoder::new(from_str("[]").unwrap());
-        let v: Vec<()> = Decodable::decode(&mut decoder).unwrap();
+        let v: Vec<()> = super::decode("[]").unwrap();
         assert_eq!(v, vec![]);
 
-        let mut decoder = Decoder::new(from_str("[null]").unwrap());
-        let v: Vec<()> = Decodable::decode(&mut decoder).unwrap();
+        let v: Vec<()> = super::decode("[null]").unwrap();
         assert_eq!(v, vec![()]);
 
-        let mut decoder = Decoder::new(from_str("[true]").unwrap());
-        let v: Vec<bool> = Decodable::decode(&mut decoder).unwrap();
+        let v: Vec<bool> = super::decode("[true]").unwrap();
         assert_eq!(v, vec![true]);
 
-        let mut decoder = Decoder::new(from_str("[true]").unwrap());
-        let v: Vec<bool> = Decodable::decode(&mut decoder).unwrap();
-        assert_eq!(v, vec![true]);
-
-        let mut decoder = Decoder::new(from_str("[3, 1]").unwrap());
-        let v: Vec<int> = Decodable::decode(&mut decoder).unwrap();
+        let v: Vec<int> = super::decode("[3, 1]").unwrap();
         assert_eq!(v, vec![3, 1]);
 
-        let mut decoder = Decoder::new(from_str("[[3], [1, 2]]").unwrap());
-        let v: Vec<Vec<uint>> = Decodable::decode(&mut decoder).unwrap();
+        let v: Vec<Vec<uint>> = super::decode("[[3], [1, 2]]").unwrap();
         assert_eq!(v, vec![vec![3], vec![1, 2]]);
     }
 
@@ -2671,8 +2666,8 @@ mod tests {
                 { \"a\": null, \"b\": 2, \"c\": [\"abc\", \"xyz\"] }
             ]
         }";
-        let mut decoder = Decoder::new(from_str(s).unwrap());
-        let v: Outer = Decodable::decode(&mut decoder).unwrap();
+
+        let v: Outer = super::decode(s).unwrap();
         assert_eq!(
             v,
             Outer {
@@ -2690,35 +2685,29 @@ mod tests {
     }
     #[test]
     fn test_decode_struct_with_nan() {
-        let encoded_str = "{\"f\":null,\"a\":[null,123]}";
-        let json_object = from_str(encoded_str.as_slice());
-        let mut decoder = Decoder::new(json_object.unwrap());
-        let after: FloatStruct = Decodable::decode(&mut decoder).unwrap();
-        assert!(after.f.is_nan());
-        assert!(after.a.get(0).is_nan());
-        assert_eq!(after.a.get(1), &123f64);
+        let s = "{\"f\":null,\"a\":[null,123]}";
+        let obj: FloatStruct = super::decode(s).unwrap();
+        assert!(obj.f.is_nan());
+        assert!(obj.a.get(0).is_nan());
+        assert_eq!(obj.a.get(1), &123f64);
     }
 
     #[test]
     fn test_decode_option() {
-        let mut decoder = Decoder::new(from_str("null").unwrap());
-        let value: Option<String> = Decodable::decode(&mut decoder).unwrap();
+        let value: Option<String> = super::decode("null").unwrap();
         assert_eq!(value, None);
 
-        let mut decoder = Decoder::new(from_str("\"jodhpurs\"").unwrap());
-        let value: Option<String> = Decodable::decode(&mut decoder).unwrap();
+        let value: Option<String> = super::decode("\"jodhpurs\"").unwrap();
         assert_eq!(value, Some("jodhpurs".to_string()));
     }
 
     #[test]
     fn test_decode_enum() {
-        let mut decoder = Decoder::new(from_str("\"Dog\"").unwrap());
-        let value: Animal = Decodable::decode(&mut decoder).unwrap();
+        let value: Animal = super::decode("\"Dog\"").unwrap();
         assert_eq!(value, Dog);
 
         let s = "{\"variant\":\"Frog\",\"fields\":[\"Henry\",349]}";
-        let mut decoder = Decoder::new(from_str(s).unwrap());
-        let value: Animal = Decodable::decode(&mut decoder).unwrap();
+        let value: Animal = super::decode(s).unwrap();
         assert_eq!(value, Frog("Henry".to_string(), 349));
     }
 
@@ -2726,8 +2715,7 @@ mod tests {
     fn test_decode_map() {
         let s = "{\"a\": \"Dog\", \"b\": {\"variant\":\"Frog\",\
                   \"fields\":[\"Henry\", 349]}}";
-        let mut decoder = Decoder::new(from_str(s).unwrap());
-        let mut map: TreeMap<String, Animal> = Decodable::decode(&mut decoder).unwrap();
+        let mut map: TreeMap<String, Animal> = super::decode(s).unwrap();
 
         assert_eq!(map.pop(&"a".to_string()), Some(Dog));
         assert_eq!(map.pop(&"b".to_string()), Some(Frog("Henry".to_string(), 349)));
