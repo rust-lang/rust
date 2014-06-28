@@ -49,7 +49,25 @@ pub fn duplex<S: Send, R: Send>() -> (DuplexStream<S, R>, DuplexStream<R, S>) {
 
 // Allow these methods to be used without import:
 impl<S:Send,R:Send> DuplexStream<S, R> {
-    /// Send data over the channel.
+    /// Sends a value along this duplex to be received by the corresponding
+    /// receiver.
+    ///
+    /// Rust duplexes are infinitely buffered so this method will never block.
+    ///
+    /// # Failure
+    ///
+    /// This function will fail if the other end of the duplex has hung up.
+    /// This means that if the corresponding receiver has fallen out of scope,
+    /// this function will trigger a fail message saying that a message is being
+    /// sent on a closed duplex.
+    ///
+    /// Note that if this function does not fail, it does not mean that the data
+    /// will be successfully received. All sends are placed into a queue, so it
+    /// is possible for a send to succeed (the other end is alive), but then the
+    /// other end could immediately disconnect.
+    ///
+    /// The purpose of this functionality is to propagate failure among tasks.
+    /// If failure is not desired, then consider using the send_opt method.
     pub fn send(&self, x: S) {
         self.tx.send(x)
     }
