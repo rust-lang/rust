@@ -31,11 +31,10 @@
 #![allow(dead_code, missing_doc)]
 
 use fmt;
-#[cfg(not(test))] use intrinsics;
+use intrinsics;
 
 #[cold] #[inline(never)] // this is the slow path, always
 #[lang="fail_"]
-#[cfg(not(test))]
 fn fail_(expr: &'static str, file: &'static str, line: uint) -> ! {
     format_args!(|args| -> () {
         begin_unwind(args, file, line);
@@ -46,7 +45,6 @@ fn fail_(expr: &'static str, file: &'static str, line: uint) -> ! {
 
 #[cold]
 #[lang="fail_bounds_check"]
-#[cfg(not(test))]
 fn fail_bounds_check(file: &'static str, line: uint,
                      index: uint, len: uint) -> ! {
     format_args!(|args| -> () {

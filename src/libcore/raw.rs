@@ -70,32 +70,3 @@ pub trait Repr<T> {
 impl<'a, T> Repr<Slice<T>> for &'a [T] {}
 impl<'a> Repr<Slice<u8>> for &'a str {}
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    use mem;
-
-    #[test]
-    fn synthesize_closure() {
-        unsafe {
-            let x = 10;
-            let f: |int| -> int = |y| x + y;
-
-            assert_eq!(f(20), 30);
-
-            let original_closure: Closure = mem::transmute(f);
-
-            let actual_function_pointer = original_closure.code;
-            let environment = original_closure.env;
-
-            let new_closure = Closure {
-                code: actual_function_pointer,
-                env: environment
-            };
-
-            let new_f: |int| -> int = mem::transmute(new_closure);
-            assert_eq!(new_f(20), 30);
-        }
-    }
-}
