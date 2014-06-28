@@ -114,6 +114,7 @@ pub enum Nonterminal {
     NtPat( Gc<ast::Pat>),
     NtExpr(Gc<ast::Expr>),
     NtTy(  P<ast::Ty>),
+    // see IDENT, above, for meaning of bool in NtIdent:
     NtIdent(Box<ast::Ident>, bool),
     NtMeta(Gc<ast::MetaItem>), // stuff inside brackets for attributes
     NtPath(Box<ast::Path>),
