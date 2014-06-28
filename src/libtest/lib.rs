@@ -1104,7 +1104,7 @@ fn calc_result(desc: &TestDesc, task_succeeded: bool) -> TestResult {
 
 impl ToJson for Metric {
     fn to_json(&self) -> json::Json {
-        let mut map = box TreeMap::new();
+        let mut map = TreeMap::new();
         map.insert("value".to_string(), json::Number(self.value));
         map.insert("noise".to_string(), json::Number(self.noise));
         json::Object(map)
