@@ -956,7 +956,8 @@ impl<T> Vec<T> {
     ///
     /// # Failure
     ///
-    /// Fails if `index` is out of bounds of the vector.
+    /// Fails if `index` is not between `0` and the vector's length (both
+    /// bounds inclusive).
     ///
     /// # Example
     ///
@@ -964,6 +965,8 @@ impl<T> Vec<T> {
     /// let mut vec = vec!(1i, 2, 3);
     /// vec.insert(1, 4);
     /// assert_eq!(vec, vec!(1, 4, 2, 3));
+    /// vec.insert(4, 5);
+    /// assert_eq!(vec, vec!(1, 4, 2, 3, 5));
     /// ```
     pub fn insert(&mut self, index: uint, element: T) {
         let len = self.len();
