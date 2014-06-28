@@ -630,9 +630,11 @@ mod test {
         let mut reader = ChanReader::new(rx);
         let stdout = ChanWriter::new(tx);
 
-        TaskBuilder::new().stdout(box stdout as Box<Writer + Send>).try(proc() {
-            print!("Hello, world!");
-        }).unwrap();
+        let r = TaskBuilder::new().stdout(box stdout as Box<Writer + Send>)
+                                  .try(proc() {
+                print!("Hello, world!");
+            });
+        assert!(r.is_ok());
 
         let output = reader.read_to_str().unwrap();
         assert_eq!(output, "Hello, world!".to_string());

@@ -78,8 +78,8 @@ receiver position from being called via an object.)
 #### Trait variance and vtable resolution
 
 But traits aren't only used with objects. They're also used when
-deciding whether a given impl satisfies a given trait bound (or should
-be -- FIXME #5781). To set the scene here, imagine I had a function:
+deciding whether a given impl satisfies a given trait bound. To set the
+scene here, imagine I had a function:
 
     fn convertAll<A,T:ConvertTo<A>>(v: &[T]) {
         ...
