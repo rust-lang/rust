@@ -18,7 +18,7 @@ mod mlibc {
 
     extern {
         #[link_name = "strlen"]
-        pub fn my_strlen(str: *c_char) -> size_t;
+        pub fn my_strlen(str: *const c_char) -> size_t;
     }
 }
 

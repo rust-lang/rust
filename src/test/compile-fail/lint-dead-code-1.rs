@@ -37,7 +37,7 @@ pub static used_static2: int = used_static;
 static USED_STATIC: int = 0;
 static STATIC_USED_IN_ENUM_DISCRIMINANT: uint = 10;
 
-pub type typ = *UsedStruct4;
+pub type typ = *const UsedStruct4;
 pub struct PubStruct;
 struct PrivStruct; //~ ERROR: code is never used
 struct UsedStruct1 {
@@ -58,11 +58,11 @@ struct StructUsedInEnum;
 struct StructUsedInGeneric;
 pub struct PubStruct2 {
     #[allow(dead_code)]
-    struct_used_as_field: *StructUsedAsField
+    struct_used_as_field: *const StructUsedAsField
 }
 
 pub enum pub_enum { foo1, bar1 }
-pub enum pub_enum2 { a(*StructUsedInEnum) }
+pub enum pub_enum2 { a(*const StructUsedInEnum) }
 pub enum pub_enum3 { Foo = STATIC_USED_IN_ENUM_DISCRIMINANT }
 enum priv_enum { foo2, bar2 } //~ ERROR: code is never used
 enum used_enum { foo3, bar3 }
@@ -106,4 +106,4 @@ fn h() {}
 
 // Similarly, lang items are live
 #[lang="fail_"]
-fn fail(_: *u8, _: *u8, _: uint) -> ! { loop {} }
+fn fail(_: *const u8, _: *const u8, _: uint) -> ! { loop {} }

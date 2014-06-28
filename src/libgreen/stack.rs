@@ -78,14 +78,14 @@ impl Stack {
     }
 
     /// Point to the low end of the allocated stack
-    pub fn start(&self) -> *uint {
-        self.buf.data as *uint
+    pub fn start(&self) -> *const uint {
+        self.buf.data as *const uint
     }
 
     /// Point one uint beyond the high end of the allocated stack
-    pub fn end(&self) -> *uint {
+    pub fn end(&self) -> *const uint {
         unsafe {
-            self.buf.data.offset(self.buf.len as int) as *uint
+            self.buf.data.offset(self.buf.len as int) as *const uint
         }
     }
 }
@@ -168,8 +168,8 @@ fn max_cached_stacks() -> uint {
 }
 
 extern {
-    fn rust_valgrind_stack_register(start: *libc::uintptr_t,
-                                    end: *libc::uintptr_t) -> libc::c_uint;
+    fn rust_valgrind_stack_register(start: *const libc::uintptr_t,
+                                    end: *const libc::uintptr_t) -> libc::c_uint;
     fn rust_valgrind_stack_deregister(id: libc::c_uint);
 }
 

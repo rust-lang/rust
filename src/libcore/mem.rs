@@ -363,7 +363,7 @@ pub unsafe fn forget<T>(thing: T) { intrinsics::forget(thing) }
 #[inline]
 #[stable]
 pub unsafe fn transmute_copy<T, U>(src: &T) -> U {
-    ptr::read(src as *T as *U)
+    ptr::read(src as *const T as *const U)
 }
 
 /// Transforms lifetime of the second pointer to match the first.
@@ -407,14 +407,14 @@ mod tests {
     #[cfg(target_arch = "mipsel")]
     fn size_of_32() {
         assert_eq!(size_of::<uint>(), 4u);
-        assert_eq!(size_of::<*uint>(), 4u);
+        assert_eq!(size_of::<*const uint>(), 4u);
     }
 
     #[test]
     #[cfg(target_arch = "x86_64")]
     fn size_of_64() {
         assert_eq!(size_of::<uint>(), 8u);
-        assert_eq!(size_of::<*uint>(), 8u);
+        assert_eq!(size_of::<*const uint>(), 8u);
     }
 
     #[test]
@@ -439,14 +439,14 @@ mod tests {
     #[cfg(target_arch = "mipsel")]
     fn align_of_32() {
         assert_eq!(align_of::<uint>(), 4u);
-        assert_eq!(align_of::<*uint>(), 4u);
+        assert_eq!(align_of::<*const uint>(), 4u);
     }
 
     #[test]
     #[cfg(target_arch = "x86_64")]
     fn align_of_64() {
         assert_eq!(align_of::<uint>(), 8u);
-        assert_eq!(align_of::<*uint>(), 8u);
+        assert_eq!(align_of::<*const uint>(), 8u);
     }
 
     #[test]
@@ -486,7 +486,7 @@ mod tests {
         let a = box 100i as Box<Foo>;
         unsafe {
             let x: raw::TraitObject = transmute(a);
-            assert!(*(x.data as *int) == 100);
+            assert!(*(x.data as *const int) == 100);
             let _x: Box<Foo> = transmute(x);
         }
 

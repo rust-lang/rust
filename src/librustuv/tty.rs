@@ -19,7 +19,7 @@ use uvio::UvIoFactory;
 use uvll;
 
 pub struct TtyWatcher{
-    tty: *uvll::uv_tty_t,
+    tty: *mut uvll::uv_tty_t,
     stream: StreamWatcher,
     home: HomeHandle,
     fd: libc::c_int,
@@ -70,7 +70,7 @@ impl TtyWatcher {
                 // handle, so our only cleanup is to free the handle itself
                 if cfg!(windows) {
                     unsafe { uvll::free_handle(handle); }
-                    watcher.tty = ptr::null();
+                    watcher.tty = ptr::mut_null();
                 }
                 Err(UvError(n))
             }
@@ -102,8 +102,8 @@ impl RtioTTY for TtyWatcher {
     fn get_winsize(&mut self) -> IoResult<(int, int)> {
         let mut width: libc::c_int = 0;
         let mut height: libc::c_int = 0;
-        let widthptr: *libc::c_int = &width;
-        let heightptr: *libc::c_int = &width;
+        let widthptr: *mut libc::c_int = &mut width;
+        let heightptr: *mut libc::c_int = &mut width;
 
         let _m = self.fire_homing_missile();
         match unsafe { uvll::uv_tty_get_winsize(self.tty,
@@ -119,7 +119,7 @@ impl RtioTTY for TtyWatcher {
 }
 
 impl UvHandle<uvll::uv_tty_t> for TtyWatcher {
-    fn uv_handle(&self) -> *uvll::uv_tty_t { self.tty }
+    fn uv_handle(&self) -> *mut uvll::uv_tty_t { self.tty }
 }
 
 impl HomingIO for TtyWatcher {

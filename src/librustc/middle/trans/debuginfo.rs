@@ -805,7 +805,7 @@ pub fn create_global_var_metadata(cx: &CrateContext,
                                                         type_metadata,
                                                         is_local_to_unit,
                                                         global,
-                                                        ptr::null());
+                                                        ptr::mut_null());
             }
         })
     });
@@ -980,7 +980,7 @@ pub fn create_argument_metadata(bcx: &Block, arg: &ast::Arg) {
             }
         };
 
-        if unsafe { llvm::LLVMIsAAllocaInst(llarg.val) } == ptr::null() {
+        if unsafe { llvm::LLVMIsAAllocaInst(llarg.val) } == ptr::mut_null() {
             cx.sess().span_bug(span, "debuginfo::create_argument_metadata() - \
                                     Referenced variable location is not an alloca!");
         }
@@ -1221,7 +1221,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
                     cx.sess().opts.optimize != config::No,
                     llfn,
                     template_parameters,
-                    ptr::null())
+                    ptr::mut_null())
             }
         })
     });
@@ -1257,7 +1257,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
         // Return type -- llvm::DIBuilder wants this at index 0
         match fn_decl.output.node {
             ast::TyNil => {
-                signature.push(ptr::null());
+                signature.push(ptr::mut_null());
             }
             _ => {
                 assert_type_for_node_id(cx, fn_ast_id, error_span);
@@ -1328,7 +1328,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
                             file_metadata,
                             name,
                             actual_self_type_metadata,
-                            ptr::null(),
+                            ptr::mut_null(),
                             0,
                             0)
                     }
@@ -1361,7 +1361,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
                             file_metadata,
                             name,
                             actual_type_metadata,
-                            ptr::null(),
+                            ptr::mut_null(),
                             0,
                             0)
                     }
@@ -2374,7 +2374,7 @@ fn prepare_enum_metadata(cx: &CrateContext,
                 bytes_to_bits(enum_type_size),
                 bytes_to_bits(enum_type_align),
                 0, // Flags
-                ptr::null(),
+                ptr::mut_null(),
                 0, // RuntimeLang
                 unique_type_id_str)
             }
@@ -2554,10 +2554,10 @@ fn create_struct_stub(cx: &CrateContext,
                     bytes_to_bits(struct_size),
                     bytes_to_bits(struct_align),
                     0,
-                    ptr::null(),
+                    ptr::mut_null(),
                     empty_array,
                     0,
-                    ptr::null(),
+                    ptr::mut_null(),
                     unique_type_id)
             })
         })
@@ -2855,7 +2855,7 @@ fn subroutine_type_metadata(cx: &CrateContext,
 
     // return type
     signature_metadata.push(match ty::get(signature.output).sty {
-        ty::ty_nil => ptr::null(),
+        ty::ty_nil => ptr::mut_null(),
         _ => type_metadata(cx, signature.output, span)
     });
 
@@ -3153,7 +3153,8 @@ fn set_debug_location(cx: &CrateContext, debug_location: DebugLocation) {
         KnownLocation { scope, line, .. } => {
             let col = 0u; // Always set the column to zero like Clang and GCC
             debug!("setting debug location to {} {}", line, col);
-            let elements = [C_i32(cx, line as i32), C_i32(cx, col as i32), scope, ptr::null()];
+            let elements = [C_i32(cx, line as i32), C_i32(cx, col as i32),
+                            scope, ptr::mut_null()];
             unsafe {
                 metadata_node = llvm::LLVMMDNodeInContext(debug_context(cx).llcontext,
                                                           elements.as_ptr(),
@@ -3162,7 +3163,7 @@ fn set_debug_location(cx: &CrateContext, debug_location: DebugLocation) {
         }
         UnknownLocation => {
             debug!("clearing debug location ");
-            metadata_node = ptr::null();
+            metadata_node = ptr::mut_null();
         }
     };
 
@@ -3771,7 +3772,7 @@ fn namespace_for_item(cx: &CrateContext, def_id: ast::DefId) -> Rc<NamespaceTree
                     // create and insert
                     let parent_scope = match parent_node {
                         Some(ref node) => node.scope,
-                        None => ptr::null()
+                        None => ptr::mut_null()
                     };
                     let namespace_name = token::get_name(name);
                     let scope = namespace_name.get().with_c_str(|namespace_name| {
@@ -3781,7 +3782,7 @@ fn namespace_for_item(cx: &CrateContext, def_id: ast::DefId) -> Rc<NamespaceTree
                                 parent_scope,
                                 namespace_name,
                                 // cannot reconstruct file ...
-                                ptr::null(),
+                                ptr::mut_null(),
                                 // ... or line information, but that's not so important.
                                 0)
                         }

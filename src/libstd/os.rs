@@ -276,7 +276,7 @@ pub fn env_as_bytes() -> Vec<(Vec<u8>,Vec<u8>)> {
             use c_str::CString;
 
             extern {
-                fn rust_env_pairs() -> **c_char;
+                fn rust_env_pairs() -> *const *const c_char;
             }
             let environ = rust_env_pairs();
             if environ as uint == 0 {
@@ -351,7 +351,7 @@ pub fn getenv_as_bytes(n: &str) -> Option<Vec<u8>> {
             if s.is_null() {
                 None
             } else {
-                Some(Vec::from_slice(CString::new(s,
+                Some(Vec::from_slice(CString::new(s as *const i8,
                                                   false).as_bytes_no_nul()))
             }
         })
@@ -598,19 +598,20 @@ pub fn self_exe_name() -> Option<Path> {
         unsafe {
             use libc::funcs::bsd44::*;
             use libc::consts::os::extra::*;
-            let mib = vec![CTL_KERN as c_int,
-                        KERN_PROC as c_int,
-                        KERN_PROC_PATHNAME as c_int, -1 as c_int];
+            let mut mib = vec![CTL_KERN as c_int,
+                               KERN_PROC as c_int,
+                               KERN_PROC_PATHNAME as c_int,
+                               -1 as c_int];
             let mut sz: libc::size_t = 0;
-            let err = sysctl(mib.as_ptr(), mib.len() as ::libc::c_uint,
-                             ptr::mut_null(), &mut sz, ptr::null(),
+            let err = sysctl(mib.as_mut_ptr(), mib.len() as ::libc::c_uint,
+                             ptr::mut_null(), &mut sz, ptr::mut_null(),
                              0u as libc::size_t);
             if err != 0 { return None; }
             if sz == 0 { return None; }
             let mut v: Vec<u8> = Vec::with_capacity(sz as uint);
-            let err = sysctl(mib.as_ptr(), mib.len() as ::libc::c_uint,
-                             v.as_mut_ptr() as *mut c_void, &mut sz, ptr::null(),
-                             0u as libc::size_t);
+            let err = sysctl(mib.as_mut_ptr(), mib.len() as ::libc::c_uint,
+                             v.as_mut_ptr() as *mut c_void, &mut sz,
+                             ptr::mut_null(), 0u as libc::size_t);
             if err != 0 { return None; }
             if sz == 0 { return None; }
             v.set_len(sz as uint - 1); // chop off trailing NUL
@@ -827,9 +828,9 @@ pub fn errno() -> int {
     #[cfg(target_os = "macos")]
     #[cfg(target_os = "ios")]
     #[cfg(target_os = "freebsd")]
-    fn errno_location() -> *c_int {
+    fn errno_location() -> *const c_int {
         extern {
-            fn __error() -> *c_int;
+            fn __error() -> *const c_int;
         }
         unsafe {
             __error()
@@ -838,9 +839,9 @@ pub fn errno() -> int {
 
     #[cfg(target_os = "linux")]
     #[cfg(target_os = "android")]
-    fn errno_location() -> *c_int {
+    fn errno_location() -> *const c_int {
         extern {
-            fn __errno_location() -> *c_int;
+            fn __errno_location() -> *const c_int;
         }
         unsafe {
             __errno_location()
@@ -913,7 +914,7 @@ pub fn error_string(errnum: uint) -> String {
                 fail!("strerror_r failure");
             }
 
-            str::raw::from_c_str(p as *c_char).into_string()
+            str::raw::from_c_str(p as *const c_char).into_string()
         }
     }
 
@@ -932,7 +933,7 @@ pub fn error_string(errnum: uint) -> String {
                               langId: DWORD,
                               buf: LPWSTR,
                               nsize: DWORD,
-                              args: *c_void)
+                              args: *const c_void)
                               -> DWORD;
         }
 
@@ -997,7 +998,8 @@ pub fn get_exit_status() -> int {
 }
 
 #[cfg(target_os = "macos")]
-unsafe fn load_argc_and_argv(argc: int, argv: **c_char) -> Vec<Vec<u8>> {
+unsafe fn load_argc_and_argv(argc: int,
+                             argv: *const *const c_char) -> Vec<Vec<u8>> {
     use c_str::CString;
 
     Vec::from_fn(argc as uint, |i| {
@@ -1015,7 +1017,7 @@ unsafe fn load_argc_and_argv(argc: int, argv: **c_char) -> Vec<Vec<u8>> {
 fn real_args_as_bytes() -> Vec<Vec<u8>> {
     unsafe {
         let (argc, argv) = (*_NSGetArgc() as int,
-                            *_NSGetArgv() as **c_char);
+                            *_NSGetArgv() as *const *const c_char);
         load_argc_and_argv(argc, argv)
     }
 }
@@ -1040,16 +1042,16 @@ fn real_args_as_bytes() -> Vec<Vec<u8>> {
 
     #[link(name = "objc")]
     extern {
-        fn sel_registerName(name: *libc::c_uchar) -> Sel;
+        fn sel_registerName(name: *const libc::c_uchar) -> Sel;
         fn objc_msgSend(obj: NsId, sel: Sel, ...) -> NsId;
-        fn objc_getClass(class_name: *libc::c_uchar) -> NsId;
+        fn objc_getClass(class_name: *const libc::c_uchar) -> NsId;
     }
 
     #[link(name = "Foundation", kind = "framework")]
     extern {}
 
-    type Sel = *libc::c_void;
-    type NsId = *libc::c_void;
+    type Sel = *const libc::c_void;
+    type NsId = *const libc::c_void;
 
     let mut res = Vec::new();
 
@@ -1067,7 +1069,8 @@ fn real_args_as_bytes() -> Vec<Vec<u8>> {
         let cnt: int = mem::transmute(objc_msgSend(args, countSel));
         for i in range(0, cnt) {
             let tmp = objc_msgSend(args, objectAtSel, i);
-            let utf_c_str: *libc::c_char = mem::transmute(objc_msgSend(tmp, utf8Sel));
+            let utf_c_str: *const libc::c_char =
+                mem::transmute(objc_msgSend(tmp, utf8Sel));
             let s = CString::new(utf_c_str, false);
             if s.is_not_null() {
                 res.push(Vec::from_slice(s.as_bytes_no_nul()))
@@ -1114,14 +1117,14 @@ fn real_args() -> Vec<String> {
         while *ptr.offset(len as int) != 0 { len += 1; }
 
         // Push it onto the list.
-        let opt_s = slice::raw::buf_as_slice(ptr, len, |buf| {
+        let opt_s = slice::raw::buf_as_slice(ptr as *const _, len, |buf| {
             str::from_utf16(str::truncate_utf16_at_nul(buf))
         });
         opt_s.expect("CommandLineToArgvW returned invalid UTF-16")
     });
 
     unsafe {
-        LocalFree(szArgList as *c_void);
+        LocalFree(szArgList as *mut c_void);
     }
 
     return args
@@ -1132,19 +1135,20 @@ fn real_args_as_bytes() -> Vec<Vec<u8>> {
     real_args().move_iter().map(|s| s.into_bytes()).collect()
 }
 
-type LPCWSTR = *u16;
+type LPCWSTR = *const u16;
 
 #[cfg(windows)]
 #[link_name="kernel32"]
 extern "system" {
     fn GetCommandLineW() -> LPCWSTR;
-    fn LocalFree(ptr: *c_void);
+    fn LocalFree(ptr: *mut c_void);
 }
 
 #[cfg(windows)]
 #[link_name="shell32"]
 extern "system" {
-    fn CommandLineToArgvW(lpCmdLine: LPCWSTR, pNumArgs: *mut c_int) -> **u16;
+    fn CommandLineToArgvW(lpCmdLine: LPCWSTR,
+                          pNumArgs: *mut c_int) -> *mut *mut u16;
 }
 
 /// Returns the arguments which this program was started with (normally passed
@@ -1165,8 +1169,8 @@ pub fn args_as_bytes() -> Vec<Vec<u8>> {
 #[cfg(target_os = "macos")]
 extern {
     // These functions are in crt_externs.h.
-    pub fn _NSGetArgc() -> *c_int;
-    pub fn _NSGetArgv() -> ***c_char;
+    pub fn _NSGetArgc() -> *mut c_int;
+    pub fn _NSGetArgv() -> *mut *mut *mut c_char;
 }
 
 // Round up `from` to be divisible by `to`
@@ -1224,7 +1228,7 @@ pub struct MemoryMap {
 pub enum MemoryMapKind {
     /// Virtual memory map. Usually used to change the permissions of a given
     /// chunk of memory.  Corresponds to `VirtualAlloc` on Windows.
-    MapFile(*u8),
+    MapFile(*const u8),
     /// Virtual memory map. Usually used to change the permissions of a given
     /// chunk of memory, or for allocation. Corresponds to `VirtualAlloc` on
     /// Windows.
@@ -1241,7 +1245,7 @@ pub enum MapOption {
     MapExecutable,
     /// Create a map for a specific address range. Corresponds to `MAP_FIXED` on
     /// POSIX.
-    MapAddr(*u8),
+    MapAddr(*const u8),
     /// Create a memory mapping for a file with a given fd.
     MapFd(c_int),
     /// When using `MapFd`, the start of the map is `uint` bytes from the start
@@ -1342,7 +1346,7 @@ impl MemoryMap {
         if min_len == 0 {
             return Err(ErrZeroLength)
         }
-        let mut addr: *u8 = ptr::null();
+        let mut addr: *const u8 = ptr::null();
         let mut prot = 0;
         let mut flags = libc::MAP_PRIVATE;
         let mut fd = -1;
@@ -1502,7 +1506,7 @@ impl MemoryMap {
                     _ => Ok(MemoryMap {
                        data: r as *mut u8,
                        len: len,
-                       kind: MapFile(mapping as *u8)
+                       kind: MapFile(mapping as *const u8)
                     })
                 }
             }
@@ -1990,7 +1994,7 @@ mod tests {
                 open(path, O_CREAT | O_RDWR | O_TRUNC, S_IRUSR | S_IWUSR)
             });
             lseek_(fd, size);
-            "x".with_c_str(|x| assert!(write(fd, x as *c_void, 1) == 1));
+            "x".with_c_str(|x| assert!(write(fd, x as *const c_void, 1) == 1));
             fd
         };
         let chunk = match MemoryMap::new(size / 2, [

@@ -81,7 +81,7 @@ pub fn spawn_opts(opts: TaskOpts, f: proc():Send) {
     // which our stack started).
     Thread::spawn_stack(stack, proc() {
         let something_around_the_top_of_the_stack = 1;
-        let addr = &something_around_the_top_of_the_stack as *int;
+        let addr = &something_around_the_top_of_the_stack as *const int;
         let my_stack = addr as uint;
         unsafe {
             stack::record_stack_bounds(my_stack - stack + 1024, my_stack);
@@ -198,7 +198,7 @@ impl rt::Runtime for Ops {
         cur_task.put_runtime(self);
 
         unsafe {
-            let cur_task_dupe = &*cur_task as *Task;
+            let cur_task_dupe = &mut *cur_task as *mut Task;
             let task = BlockedTask::block(cur_task);
 
             if times == 1 {

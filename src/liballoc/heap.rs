@@ -99,7 +99,7 @@ pub static mut EMPTY: uint = 12345;
 #[inline]
 unsafe fn exchange_malloc(size: uint, align: uint) -> *mut u8 {
     if size == 0 {
-        &EMPTY as *uint as *mut u8
+        &EMPTY as *const uint as *mut u8
     } else {
         allocate(size, align)
     }
@@ -144,9 +144,10 @@ mod imp {
                       flags: c_int) -> size_t;
         fn je_dallocx(ptr: *mut c_void, flags: c_int);
         fn je_nallocx(size: size_t, flags: c_int) -> size_t;
-        fn je_malloc_stats_print(write_cb: Option<extern "C" fn(cbopaque: *mut c_void, *c_char)>,
+        fn je_malloc_stats_print(write_cb: Option<extern "C" fn(cbopaque: *mut c_void,
+                                                                *const c_char)>,
                                  cbopaque: *mut c_void,
-                                 opts: *c_char);
+                                 opts: *const c_char);
     }
 
     // -lpthread needs to occur after -ljemalloc, the earlier argument isn't enough
@@ -226,7 +227,7 @@ mod imp {
         // a block of memory, so we special case everything under `*uint` to
         // just pass it to malloc, which is guaranteed to align to at least the
         // size of `*uint`.
-        if align < mem::size_of::<*uint>() {
+        if align < mem::size_of::<uint>() {
             libc_heap::malloc_raw(size)
         } else {
             let mut out = 0 as *mut libc::c_void;
@@ -244,7 +245,7 @@ mod imp {
     pub unsafe fn reallocate(ptr: *mut u8, size: uint, align: uint,
                              old_size: uint) -> *mut u8 {
         let new_ptr = allocate(size, align);
-        ptr::copy_memory(new_ptr, ptr as *u8, old_size);
+        ptr::copy_memory(new_ptr, ptr as *const u8, old_size);
         deallocate(ptr, old_size, align);
         return new_ptr;
     }

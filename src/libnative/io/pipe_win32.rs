@@ -152,7 +152,7 @@ impl Drop for Inner {
     }
 }
 
-unsafe fn pipe(name: *u16, init: bool) -> libc::HANDLE {
+unsafe fn pipe(name: *const u16, init: bool) -> libc::HANDLE {
     libc::CreateNamedPipeW(
         name,
         libc::PIPE_ACCESS_DUPLEX |
@@ -210,7 +210,7 @@ pub struct UnixStream {
 }
 
 impl UnixStream {
-    fn try_connect(p: *u16) -> Option<libc::HANDLE> {
+    fn try_connect(p: *const u16) -> Option<libc::HANDLE> {
         // Note that most of this is lifted from the libuv implementation.
         // The idea is that if we fail to open a pipe in read/write mode
         // that we try afterwards in just read or just write

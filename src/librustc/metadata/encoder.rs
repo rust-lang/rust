@@ -1308,7 +1308,7 @@ fn my_visit_expr(_e: &Expr) { }
 
 fn my_visit_item(i: &Item,
                  ebml_w: &mut Encoder,
-                 ecx_ptr: *int,
+                 ecx_ptr: *const int,
                  index: &mut Vec<entry<i64>>) {
     let mut ebml_w = unsafe { ebml_w.unsafe_clone() };
     // See above
@@ -1320,7 +1320,7 @@ fn my_visit_item(i: &Item,
 
 fn my_visit_foreign_item(ni: &ForeignItem,
                          ebml_w: &mut Encoder,
-                         ecx_ptr:*int,
+                         ecx_ptr:*const int,
                          index: &mut Vec<entry<i64>>) {
     // See above
     let ecx: &EncodeContext = unsafe { mem::transmute(ecx_ptr) };
@@ -1341,7 +1341,7 @@ fn my_visit_foreign_item(ni: &ForeignItem,
 
 struct EncodeVisitor<'a,'b> {
     ebml_w_for_visit_item: &'a mut Encoder<'b>,
-    ecx_ptr:*int,
+    ecx_ptr:*const int,
     index: &'a mut Vec<entry<i64>>,
 }
 
@@ -1386,7 +1386,7 @@ fn encode_info_for_items(ecx: &EncodeContext,
                         Public);
 
     // See comment in `encode_side_tables_for_ii` in astencode
-    let ecx_ptr: *int = unsafe { mem::transmute(ecx) };
+    let ecx_ptr: *const int = unsafe { mem::transmute(ecx) };
     visit::walk_crate(&mut EncodeVisitor {
         index: &mut index,
         ecx_ptr: ecx_ptr,

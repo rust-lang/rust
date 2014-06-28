@@ -18,7 +18,7 @@ use libc::{c_uint, uint32_t, c_void};
 struct KEYGEN {
     hash_algorithm: [c_uint, ..2],
     count: uint32_t,
-    salt: *c_void,
+    salt: *const c_void,
     salt_size: uint32_t,
 }
 

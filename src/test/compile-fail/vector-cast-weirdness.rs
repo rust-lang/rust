@@ -18,9 +18,9 @@ struct X {
 fn main() {
     let x1 = X { y: [0, 0] };
 
-    let p1: *u8 = &x1.y as *_;  //~ ERROR mismatched types
-    let t1: *[u8, ..2] = &x1.y as *_;
-    let h1: *[u8, ..2] = &x1.y as *[u8, ..2];
+    let p1: *const u8 = &x1.y as *const _;  //~ ERROR mismatched types
+    let t1: *const [u8, ..2] = &x1.y as *const _;
+    let h1: *const [u8, ..2] = &x1.y as *const [u8, ..2];
 
     let mut x1 = X { y: [0, 0] };
 

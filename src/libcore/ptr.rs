@@ -10,7 +10,7 @@
 
 // FIXME: talk about offset, copy_memory, copy_nonoverlapping_memory
 
-//! Operations on unsafe pointers, `*T`, and `*mut T`.
+//! Operations on unsafe pointers, `*const T`, and `*mut T`.
 //!
 //! Working with unsafe pointers in Rust is uncommon,
 //! typically limited to a few patterns.
@@ -29,7 +29,7 @@
 //!
 //! ```
 //! let my_num: int = 10;
-//! let my_num_ptr: *int = &my_num;
+//! let my_num_ptr: *const int = &my_num;
 //! let mut my_speed: int = 88;
 //! let my_speed_ptr: *mut int = &mut my_speed;
 //! ```
@@ -42,7 +42,7 @@
 //!
 //! The `transmute` function takes, by value, whatever it's given
 //! and returns it as whatever type is requested, as long as the
-//! types are the same size. Because `Box<T>` and `*T` have the same
+//! types are the same size. Because `Box<T>` and `*mut T` have the same
 //! representation they can be trivially,
 //! though unsafely, transformed from one type to the other.
 //!
@@ -51,7 +51,7 @@
 //!
 //! unsafe {
 //!     let my_num: Box<int> = box 10;
-//!     let my_num: *int = mem::transmute(my_num);
+//!     let my_num: *const int = mem::transmute(my_num);
 //!     let my_speed: Box<int> = box 88;
 //!     let my_speed: *mut int = mem::transmute(my_speed);
 //!
@@ -102,12 +102,12 @@ use option::{Some, None, Option};
 /// ```
 /// use std::ptr;
 ///
-/// let p: *int = ptr::null();
+/// let p: *const int = ptr::null();
 /// assert!(p.is_null());
 /// ```
 #[inline]
 #[unstable = "may need a different name after pending changes to pointer types"]
-pub fn null<T>() -> *T { 0 as *T }
+pub fn null<T>() -> *const T { 0 as *const T }
 
 /// Create an unsafe mutable null pointer.
 ///
@@ -137,7 +137,7 @@ pub fn mut_null<T>() -> *mut T { 0 as *mut T }
 /// ```
 /// use std::ptr;
 ///
-/// unsafe fn from_buf_raw<T>(ptr: *T, elts: uint) -> Vec<T> {
+/// unsafe fn from_buf_raw<T>(ptr: *const T, elts: uint) -> Vec<T> {
 ///     let mut dst = Vec::with_capacity(elts);
 ///     dst.set_len(elts);
 ///     ptr::copy_memory(dst.as_mut_ptr(), ptr, elts);
@@ -147,7 +147,7 @@ pub fn mut_null<T>() -> *mut T { 0 as *mut T }
 ///
 #[inline]
 #[unstable]
-pub unsafe fn copy_memory<T>(dst: *mut T, src: *T, count: uint) {
+pub unsafe fn copy_memory<T>(dst: *mut T, src: *const T, count: uint) {
     intrinsics::copy_memory(dst, src, count)
 }
 
@@ -190,7 +190,7 @@ pub unsafe fn copy_memory<T>(dst: *mut T, src: *T, count: uint) {
 #[inline]
 #[unstable]
 pub unsafe fn copy_nonoverlapping_memory<T>(dst: *mut T,
-                                            src: *T,
+                                            src: *const T,
                                             count: uint) {
     intrinsics::copy_nonoverlapping_memory(dst, src, count)
 }
@@ -242,7 +242,7 @@ pub unsafe fn replace<T>(dest: *mut T, mut src: T) -> T {
 /// Reads the value from `*src` and returns it.
 #[inline(always)]
 #[unstable]
-pub unsafe fn read<T>(src: *T) -> T {
+pub unsafe fn read<T>(src: *const T) -> T {
     let mut tmp: T = mem::uninitialized();
     copy_nonoverlapping_memory(&mut tmp, src, 1);
     tmp
@@ -275,11 +275,12 @@ pub unsafe fn write<T>(dst: *mut T, src: T) {
     intrinsics::move_val_init(&mut *dst, src)
 }
 
-/// Given a **T (pointer to an array of pointers),
-/// iterate through each *T, up to the provided `len`,
+/// Given a *const *const T (pointer to an array of pointers),
+/// iterate through each *const T, up to the provided `len`,
 /// passing to the provided callback function
 #[deprecated = "old-style iteration. use a loop and RawPtr::offset"]
-pub unsafe fn array_each_with_len<T>(arr: **T, len: uint, cb: |*T|) {
+pub unsafe fn array_each_with_len<T>(arr: *const *const T, len: uint,
+                                     cb: |*const T|) {
     if arr.is_null() {
         fail!("ptr::array_each_with_len failure: arr input is null pointer");
     }
@@ -290,8 +291,8 @@ pub unsafe fn array_each_with_len<T>(arr: **T, len: uint, cb: |*T|) {
     }
 }
 
-/// Given a null-pointer-terminated **T (pointer to
-/// an array of pointers), iterate through each *T,
+/// Given a null-pointer-terminated *const *const T (pointer to
+/// an array of pointers), iterate through each *const T,
 /// passing to the provided callback function
 ///
 /// # Safety Note
@@ -300,7 +301,7 @@ pub unsafe fn array_each_with_len<T>(arr: **T, len: uint, cb: |*T|) {
 /// pointer array.
 #[deprecated = "old-style iteration. use a loop and RawPtr::offset"]
 #[allow(deprecated)]
-pub unsafe fn array_each<T>(arr: **T, cb: |*T|) {
+pub unsafe fn array_each<T>(arr: *const  *const T, cb: |*const T|) {
     if arr.is_null()  {
         fail!("ptr::array_each_with_len failure: arr input is null pointer");
     }
@@ -312,14 +313,14 @@ pub unsafe fn array_each<T>(arr: **T, cb: |*T|) {
 #[inline]
 #[deprecated = "use a loop and RawPtr::offset"]
 #[allow(deprecated)]
-pub unsafe fn buf_len<T>(buf: **T) -> uint {
+pub unsafe fn buf_len<T>(buf: *const *const T) -> uint {
     position(buf, |i| *i == null())
 }
 
 /// Return the first offset `i` such that `f(buf[i]) == true`.
 #[inline]
 #[deprecated = "old-style iteration. use a loop and RawPtr::offset"]
-pub unsafe fn position<T>(buf: *T, f: |&T| -> bool) -> uint {
+pub unsafe fn position<T>(buf: *const T, f: |&T| -> bool) -> uint {
     let mut i = 0;
     loop {
         if f(&(*buf.offset(i as int))) { return i; }
@@ -352,9 +353,9 @@ pub trait RawPtr<T> {
     unsafe fn offset(self, count: int) -> Self;
 }
 
-impl<T> RawPtr<T> for *T {
+impl<T> RawPtr<T> for *const T {
     #[inline]
-    fn null() -> *T { null() }
+    fn null() -> *const T { null() }
 
     #[inline]
     fn is_null(&self) -> bool { *self == RawPtr::null() }
@@ -363,7 +364,9 @@ impl<T> RawPtr<T> for *T {
     fn to_uint(&self) -> uint { *self as uint }
 
     #[inline]
-    unsafe fn offset(self, count: int) -> *T { intrinsics::offset(self, count) }
+    unsafe fn offset(self, count: int) -> *const T {
+        intrinsics::offset(self, count)
+    }
 
     #[inline]
     unsafe fn to_option(&self) -> Option<&T> {
@@ -387,7 +390,7 @@ impl<T> RawPtr<T> for *mut T {
 
     #[inline]
     unsafe fn offset(self, count: int) -> *mut T {
-        intrinsics::offset(self as *T, count) as *mut T
+        intrinsics::offset(self as *const T, count) as *mut T
     }
 
     #[inline]
@@ -402,17 +405,17 @@ impl<T> RawPtr<T> for *mut T {
 
 // Equality for pointers
 #[cfg(not(test))]
-impl<T> PartialEq for *T {
+impl<T> PartialEq for *const T {
     #[inline]
-    fn eq(&self, other: &*T) -> bool {
+    fn eq(&self, other: &*const T) -> bool {
         *self == *other
     }
     #[inline]
-    fn ne(&self, other: &*T) -> bool { !self.eq(other) }
+    fn ne(&self, other: &*const T) -> bool { !self.eq(other) }
 }
 
 #[cfg(not(test))]
-impl<T> Eq for *T {}
+impl<T> Eq for *const T {}
 
 #[cfg(not(test))]
 impl<T> PartialEq for *mut T {
@@ -429,22 +432,22 @@ impl<T> Eq for *mut T {}
 
 // Equivalence for pointers
 #[cfg(not(test))]
-impl<T> Equiv<*mut T> for *T {
+impl<T> Equiv<*mut T> for *const T {
     fn equiv(&self, other: &*mut T) -> bool {
         self.to_uint() == other.to_uint()
     }
 }
 
 #[cfg(not(test))]
-impl<T> Equiv<*T> for *mut T {
-    fn equiv(&self, other: &*T) -> bool {
+impl<T> Equiv<*const T> for *mut T {
+    fn equiv(&self, other: &*const T) -> bool {
         self.to_uint() == other.to_uint()
     }
 }
 
-impl<T> Clone for *T {
+impl<T> Clone for *const T {
     #[inline]
-    fn clone(&self) -> *T {
+    fn clone(&self) -> *const T {
         *self
     }
 }
@@ -465,8 +468,8 @@ mod externfnpointers {
     impl<_R> PartialEq for extern "C" fn() -> _R {
         #[inline]
         fn eq(&self, other: &extern "C" fn() -> _R) -> bool {
-            let self_: *() = unsafe { mem::transmute(*self) };
-            let other_: *() = unsafe { mem::transmute(*other) };
+            let self_: *const () = unsafe { mem::transmute(*self) };
+            let other_: *const () = unsafe { mem::transmute(*other) };
             self_ == other_
         }
     }
@@ -475,8 +478,9 @@ mod externfnpointers {
             impl<_R,$($p),*> PartialEq for extern "C" fn($($p),*) -> _R {
                 #[inline]
                 fn eq(&self, other: &extern "C" fn($($p),*) -> _R) -> bool {
-                    let self_: *() = unsafe { mem::transmute(*self) };
-                    let other_: *() = unsafe { mem::transmute(*other) };
+                    let self_: *const () = unsafe { mem::transmute(*self) };
+
+                    let other_: *const () = unsafe { mem::transmute(*other) };
                     self_ == other_
                 }
             }
@@ -491,9 +495,9 @@ mod externfnpointers {
 
 // Comparison for pointers
 #[cfg(not(test))]
-impl<T> PartialOrd for *T {
+impl<T> PartialOrd for *const T {
     #[inline]
-    fn lt(&self, other: &*T) -> bool { *self < *other }
+    fn lt(&self, other: &*const T) -> bool { *self < *other }
 }
 
 #[cfg(not(test))]
@@ -587,7 +591,7 @@ pub mod test {
 
     #[test]
     fn test_is_null() {
-        let p: *int = null();
+        let p: *const int = null();
         assert!(p.is_null());
         assert!(!p.is_not_null());
 
@@ -607,10 +611,10 @@ pub mod test {
     #[test]
     fn test_to_option() {
         unsafe {
-            let p: *int = null();
+            let p: *const int = null();
             assert_eq!(p.to_option(), None);
 
-            let q: *int = &2;
+            let q: *const int = &2;
             assert_eq!(q.to_option().unwrap(), &2);
 
             let p: *mut int = mut_null();
@@ -738,7 +742,7 @@ pub mod test {
     #[should_fail]
     fn test_ptr_array_each_with_len_null_ptr() {
         unsafe {
-            array_each_with_len(0 as **libc::c_char, 1, |e| {
+            array_each_with_len(0 as *const *const libc::c_char, 1, |e| {
                 str::raw::from_c_str(e);
             });
         }
@@ -747,7 +751,7 @@ pub mod test {
     #[should_fail]
     fn test_ptr_array_each_null_ptr() {
         unsafe {
-            array_each(0 as **libc::c_char, |e| {
+            array_each(0 as *const *const libc::c_char, |e| {
                 str::raw::from_c_str(e);
             });
         }

@@ -155,7 +155,7 @@ mod darwin_fd_limit {
                   oldp: *mut libc::c_void, oldlenp: *mut libc::size_t,
                   newp: *mut libc::c_void, newlen: libc::size_t) -> libc::c_int;
         fn getrlimit(resource: libc::c_int, rlp: *mut rlimit) -> libc::c_int;
-        fn setrlimit(resource: libc::c_int, rlp: *rlimit) -> libc::c_int;
+        fn setrlimit(resource: libc::c_int, rlp: *const rlimit) -> libc::c_int;
     }
     static CTL_KERN: libc::c_int = 1;
     static KERN_MAXFILESPERPROC: libc::c_int = 29;

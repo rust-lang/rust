@@ -49,7 +49,7 @@ use owned::Box;
 use ptr;
 use result::{Ok, Err};
 
-struct KeyRef<K> { k: *K }
+struct KeyRef<K> { k: *const K }
 
 struct LruEntry<K, V> {
     next: *mut LruEntry<K, V>,

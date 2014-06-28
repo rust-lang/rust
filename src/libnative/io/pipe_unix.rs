@@ -78,7 +78,7 @@ fn connect(addr: &CString, ty: libc::c_int,
            timeout: Option<u64>) -> IoResult<Inner> {
     let (addr, len) = try!(addr_to_sockaddr_un(addr));
     let inner = Inner::new(try!(unix_socket(ty)));
-    let addrp = &addr as *_ as *libc::sockaddr;
+    let addrp = &addr as *const _ as *const libc::sockaddr;
     let len = len as libc::socklen_t;
 
     match timeout {
@@ -98,9 +98,9 @@ fn connect(addr: &CString, ty: libc::c_int,
 fn bind(addr: &CString, ty: libc::c_int) -> IoResult<Inner> {
     let (addr, len) = try!(addr_to_sockaddr_un(addr));
     let inner = Inner::new(try!(unix_socket(ty)));
-    let addrp = &addr as *libc::sockaddr_storage;
+    let addrp = &addr as *const _;
     match unsafe {
-        libc::bind(inner.fd, addrp as *libc::sockaddr, len as libc::socklen_t)
+        libc::bind(inner.fd, addrp as *const _, len as libc::socklen_t)
     } {
         -1 => Err(super::last_error()),
         _  => Ok(inner)
@@ -166,7 +166,7 @@ impl rtio::RtioPipe for UnixStream {
     fn write(&mut self, buf: &[u8]) -> IoResult<()> {
         let fd = self.fd();
         let dolock = || self.lock_nonblocking();
-        let dowrite = |nb: bool, buf: *u8, len: uint| unsafe {
+        let dowrite = |nb: bool, buf: *const u8, len: uint| unsafe {
             let flags = if nb {c::MSG_DONTWAIT} else {0};
             libc::send(fd,
                        buf as *mut libc::c_void,

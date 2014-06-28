@@ -69,9 +69,9 @@ impl<T> OwnedSlice<T> {
         static PTR_MARKER: u8 = 0;
         let ptr = if self.data.is_null() {
             // length zero, i.e. this will never be read as a T.
-            &PTR_MARKER as *u8 as *T
+            &PTR_MARKER as *const u8 as *const T
         } else {
-            self.data as *T
+            self.data as *const T
         };
 
         let slice: &[T] = unsafe {mem::transmute(raw::Slice {

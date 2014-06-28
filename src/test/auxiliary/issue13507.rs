@@ -64,7 +64,7 @@ pub mod testtypes {
     // As with ty_str, what type should be used for ty_vec?
 
     // Tests ty_ptr
-    pub type FooPtr = *u8;
+    pub type FooPtr = *const u8;
 
     // Skipping ty_rptr
 

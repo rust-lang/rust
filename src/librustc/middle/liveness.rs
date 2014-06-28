@@ -360,7 +360,8 @@ fn visit_fn(ir: &mut IrMaps,
     let mut fn_maps = IrMaps::new(ir.tcx);
 
     unsafe {
-        debug!("creating fn_maps: {}", transmute::<&IrMaps, *IrMaps>(&fn_maps));
+        debug!("creating fn_maps: {}",
+               transmute::<&IrMaps, *const IrMaps>(&fn_maps));
     }
 
     for arg in decl.inputs.iter() {

@@ -12,7 +12,7 @@ struct Rec {
     f: int
 }
 
-fn f(p: *Rec) -> int {
+fn f(p: *const Rec) -> int {
 
     // Test that * ptrs do not autoderef.  There is a deeper reason for
     // prohibiting this, beyond making unsafe things annoying (which doesn't
@@ -26,7 +26,7 @@ fn f(p: *Rec) -> int {
     // are prohibited by various checks, such as that the enum is
     // instantiable and so forth).
 
-    return p.f; //~ ERROR attempted access of field `f` on type `*Rec`
+    return p.f; //~ ERROR attempted access of field `f` on type `*const Rec`
 }
 
 fn main() {

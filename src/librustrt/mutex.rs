@@ -351,8 +351,8 @@ mod imp {
     mod os {
         use libc;
 
-        pub type pthread_mutex_t = *libc::c_void;
-        pub type pthread_cond_t = *libc::c_void;
+        pub type pthread_mutex_t = *mut libc::c_void;
+        pub type pthread_cond_t = *mut libc::c_void;
 
         pub static PTHREAD_MUTEX_INITIALIZER: pthread_mutex_t =
             0 as pthread_mutex_t;

@@ -225,8 +225,8 @@ impl MemoryRegion {
     #[inline]
     fn malloc(&mut self, size: uint) -> *mut Box {
         let total_size = size + AllocHeader::size();
-        let alloc: *AllocHeader = unsafe {
-            libc_heap::malloc_raw(total_size) as *AllocHeader
+        let alloc: *mut AllocHeader = unsafe {
+            libc_heap::malloc_raw(total_size) as *mut AllocHeader
         };
 
         let alloc: &mut AllocHeader = unsafe { mem::transmute(alloc) };
@@ -244,14 +244,14 @@ impl MemoryRegion {
         unsafe { (*orig_alloc).assert_sane(); }
 
         let total_size = size + AllocHeader::size();
-        let alloc: *AllocHeader = unsafe {
-            libc_heap::realloc_raw(orig_alloc as *mut u8, total_size) as *AllocHeader
+        let alloc: *mut AllocHeader = unsafe {
+            libc_heap::realloc_raw(orig_alloc as *mut u8, total_size) as *mut AllocHeader
         };
 
         let alloc: &mut AllocHeader = unsafe { mem::transmute(alloc) };
         alloc.assert_sane();
         alloc.update_size(size as u32);
-        self.update(alloc, orig_alloc as *AllocHeader);
+        self.update(alloc, orig_alloc as *mut AllocHeader);
         return alloc.as_box();
     }
 
@@ -273,7 +273,7 @@ impl MemoryRegion {
     #[inline]
     fn release(&mut self, _alloc: &AllocHeader) {}
     #[inline]
-    fn update(&mut self, _alloc: &mut AllocHeader, _orig: *AllocHeader) {}
+    fn update(&mut self, _alloc: &mut AllocHeader, _orig: *mut AllocHeader) {}
 }
 
 impl Drop for MemoryRegion {
@@ -287,17 +287,19 @@ impl Drop for MemoryRegion {
 #[cfg(not(test))]
 #[lang="malloc"]
 #[inline]
-pub unsafe fn local_malloc_(drop_glue: fn(*mut u8), size: uint, align: uint) -> *u8 {
+pub unsafe fn local_malloc_(drop_glue: fn(*mut u8), size: uint,
+                            align: uint) -> *mut u8 {
     local_malloc(drop_glue, size, align)
 }
 
 #[inline]
-pub unsafe fn local_malloc(drop_glue: fn(*mut u8), size: uint, align: uint) -> *u8 {
+pub unsafe fn local_malloc(drop_glue: fn(*mut u8), size: uint,
+                           align: uint) -> *mut u8 {
     // FIXME: Unsafe borrow for speed. Lame.
     let task: Option<*mut Task> = Local::try_unsafe_borrow();
     match task {
         Some(task) => {
-            (*task).heap.alloc(drop_glue, size, align) as *u8
+            (*task).heap.alloc(drop_glue, size, align) as *mut u8
         }
         None => rtabort!("local malloc outside of task")
     }
@@ -306,7 +308,7 @@ pub unsafe fn local_malloc(drop_glue: fn(*mut u8), size: uint, align: uint) -> *
 #[cfg(not(test))]
 #[lang="free"]
 #[inline]
-pub unsafe fn local_free_(ptr: *u8) {
+pub unsafe fn local_free_(ptr: *mut u8) {
     local_free(ptr)
 }
 
@@ -314,7 +316,7 @@ pub unsafe fn local_free_(ptr: *u8) {
 // inside a landing pad may corrupt the state of the exception handler. If a
 // problem occurs, call exit instead.
 #[inline]
-pub unsafe fn local_free(ptr: *u8) {
+pub unsafe fn local_free(ptr: *mut u8) {
     // FIXME: Unsafe borrow for speed. Lame.
     let task_ptr: Option<*mut Task> = Local::try_unsafe_borrow();
     match task_ptr {

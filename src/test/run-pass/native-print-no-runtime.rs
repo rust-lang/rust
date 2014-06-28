@@ -10,7 +10,7 @@
 
 
 #[start]
-pub fn main(_: int, _: **u8) -> int {
+pub fn main(_: int, _: *const *const u8) -> int {
     println!("hello");
     0
 }

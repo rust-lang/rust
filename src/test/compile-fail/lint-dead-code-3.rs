@@ -54,8 +54,8 @@ mod blah {
     enum c_void {}
 
     extern {
-        fn free(p: *c_void);
-        fn malloc(size: size_t) -> *c_void;
+        fn free(p: *const c_void);
+        fn malloc(size: size_t) -> *const c_void;
     }
 
     pub fn baz() {
@@ -65,7 +65,7 @@ mod blah {
 
 enum c_void {} //~ ERROR: code is never used
 extern {
-    fn free(p: *c_void); //~ ERROR: code is never used
+    fn free(p: *const c_void); //~ ERROR: code is never used
 }
 
 // Check provided method
