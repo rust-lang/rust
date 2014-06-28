@@ -135,7 +135,8 @@ pub trait Iterator<A> {
     /// let a = [0i];
     /// let b = [1i];
     /// let mut it = a.iter().zip(b.iter());
-    /// assert_eq!(it.next().unwrap(), (&0, &1));
+    /// let (x0, x1) = (0i, 1i);
+    /// assert_eq!(it.next().unwrap(), (&x0, &x1));
     /// assert!(it.next().is_none());
     /// ```
     #[inline]
@@ -202,8 +203,9 @@ pub trait Iterator<A> {
     /// ```rust
     /// let a = [100i, 200];
     /// let mut it = a.iter().enumerate();
-    /// assert_eq!(it.next().unwrap(), (0, &100));
-    /// assert_eq!(it.next().unwrap(), (1, &200));
+    /// let (x100, x200) = (100i, 200i);
+    /// assert_eq!(it.next().unwrap(), (0, &x100));
+    /// assert_eq!(it.next().unwrap(), (1, &x200));
     /// assert!(it.next().is_none());
     /// ```
     #[inline]
@@ -220,11 +222,11 @@ pub trait Iterator<A> {
     /// ```rust
     /// let xs = [100i, 200, 300];
     /// let mut it = xs.iter().map(|x| *x).peekable();
-    /// assert_eq!(it.peek().unwrap(), &100);
+    /// assert_eq!(*it.peek().unwrap(), 100);
     /// assert_eq!(it.next().unwrap(), 100);
     /// assert_eq!(it.next().unwrap(), 200);
-    /// assert_eq!(it.peek().unwrap(), &300);
-    /// assert_eq!(it.peek().unwrap(), &300);
+    /// assert_eq!(*it.peek().unwrap(), 300);
+    /// assert_eq!(*it.peek().unwrap(), 300);
     /// assert_eq!(it.next().unwrap(), 300);
     /// assert!(it.peek().is_none());
     /// assert!(it.next().is_none());

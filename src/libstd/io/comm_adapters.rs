@@ -183,7 +183,10 @@ mod test {
         writer.write_be_u32(42).unwrap();
 
         let wanted = vec![0u8, 0u8, 0u8, 42u8];
-        let got = task::try(proc() { rx.recv() }).unwrap();
+        let got = match task::try(proc() { rx.recv() }) {
+            Ok(got) => got,
+            Err(_) => fail!(),
+        };
         assert_eq!(wanted, got);
 
         match writer.write_u8(1) {

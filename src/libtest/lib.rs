@@ -474,7 +474,7 @@ pub enum TestResult {
 }
 
 enum OutputLocation<T> {
-    Pretty(Box<term::Terminal<Box<Writer + Send>> + Send>),
+    Pretty(Box<term::Terminal<term::WriterWrapper> + Send>),
     Raw(T),
 }
 
