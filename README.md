@@ -58,6 +58,23 @@ documentation.
 3. Read the [tutorial].
 4. Enjoy!
 
+### Building on Windows
+
+To easily build on windows we can use [MSYS2](http://sourceforge.net/projects/msys2/):
+
+1. Grab the latest MSYS2 installer and go through the installer.
+2. Now from the MSYS2 terminal we want to install the mingw64 toolchain and the other
+   tools we need.
+
+        $ pacman -S mingw-w64-i686-toolchain
+        $ pacman -S base-devel
+
+3. With that now start `mingw32_shell.bat` from where you installed MSYS2 (i.e. `C:\msys`).
+4. From there just navigate to where you have Rust's source code, configure and build it:
+
+        $ ./configure --build=i686-pc-mingw32
+        $ make && make install
+
 [repo]: https://github.com/rust-lang/rust
 [tarball]: http://static.rust-lang.org/dist/rust-nightly.tar.gz
 [tutorial]: http://doc.rust-lang.org/tutorial.html
