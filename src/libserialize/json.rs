@@ -2166,6 +2166,12 @@ impl fmt::Show for Json {
     }
 }
 
+impl std::from_str::FromStr for Json {
+    fn from_str(s: &str) -> Option<Json> {
+        from_str(s).ok()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     extern crate test;
@@ -2180,9 +2186,7 @@ mod tests {
                 InvalidSyntax, InvalidNumber, EOFWhileParsingObject, EOFWhileParsingList,
                 EOFWhileParsingValue, EOFWhileParsingString, KeyMustBeAString, ExpectedColon,
                 TrailingCharacters};
-    use std::f32;
-    use std::f64;
-    use std::io;
+    use std::{f32, f64, io};
     use std::collections::TreeMap;
 
     #[deriving(PartialEq, Encodable, Decodable, Show)]
@@ -2213,6 +2217,12 @@ mod tests {
         };
 
         Object(d)
+    }
+
+    #[test]
+    fn test_from_str_trait() {
+        let s = "null";
+        assert!(::std::from_str::from_str::<Json>(s).unwrap() == from_str(s).unwrap());
     }
 
     #[test]
