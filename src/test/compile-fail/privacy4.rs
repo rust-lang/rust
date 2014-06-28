@@ -29,4 +29,4 @@ fn test2() {
     gpriv();
 }
 
-#[start] fn main(_: int, _: **u8) -> int { 3 }
+#[start] fn main(_: int, _: *const *const u8) -> int { 3 }

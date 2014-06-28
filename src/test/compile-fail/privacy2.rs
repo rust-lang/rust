@@ -33,5 +33,5 @@ fn test2() {
     //~^ ERROR unresolved import `bar::glob::foo`. There is no `foo` in `bar::glob`
 }
 
-#[start] fn main(_: int, _: **u8) -> int { 3 }
+#[start] fn main(_: int, _: *const *const u8) -> int { 3 }
 

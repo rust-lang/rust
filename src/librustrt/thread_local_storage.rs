@@ -50,7 +50,7 @@ type pthread_key_t = ::libc::c_uint;
 
 #[cfg(unix)]
 extern {
-    fn pthread_key_create(key: *mut pthread_key_t, dtor: *u8) -> c_int;
+    fn pthread_key_create(key: *mut pthread_key_t, dtor: *const u8) -> c_int;
     fn pthread_key_delete(key: pthread_key_t) -> c_int;
     fn pthread_getspecific(key: pthread_key_t) -> *mut u8;
     fn pthread_setspecific(key: pthread_key_t, value: *mut u8) -> c_int;

@@ -13,11 +13,11 @@ extern crate libc;
 extern fn foo() {}
 
 static x: extern "C" fn() = foo;
-static y: *libc::c_void = x as *libc::c_void;
+static y: *const libc::c_void = x as *const libc::c_void;
 static a: &'static int = &10;
-static b: *int = a as *int;
+static b: *const int = a as *const int;
 
 pub fn main() {
-    assert_eq!(x as *libc::c_void, y);
-    assert_eq!(a as *int, b);
+    assert_eq!(x as *const libc::c_void, y);
+    assert_eq!(a as *const int, b);
 }

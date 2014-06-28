@@ -479,7 +479,11 @@ impl<'a> State<'a> {
             }
             ast::TyPtr(ref mt) => {
                 try!(word(&mut self.s, "*"));
-                try!(self.print_mt(mt));
+                match mt.mutbl {
+                    ast::MutMutable => try!(self.word_nbsp("mut")),
+                    ast::MutImmutable => try!(self.word_nbsp("const")),
+                }
+                try!(self.print_type(&*mt.ty));
             }
             ast::TyRptr(ref lifetime, ref mt) => {
                 try!(word(&mut self.s, "&"));

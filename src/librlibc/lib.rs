@@ -27,7 +27,6 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/")]
 #![feature(intrinsics)]
-#![allow(unknown_features)] // NOTE: remove after stage0 snapshot
 
 #![no_std]
 #![experimental]
@@ -43,31 +42,36 @@
 // implementations below. If pointer arithmetic is done through integers the
 // optimizations start to break down.
 extern "rust-intrinsic" {
-    fn offset<T>(dst: *T, offset: int) -> *T;
+    fn offset<T>(dst: *const T, offset: int) -> *const T;
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn memcpy(dest: *mut u8, src: *u8, n: uint) -> *mut u8 {
+pub unsafe extern "C" fn memcpy(dest: *mut u8, src: *const u8,
+                                n: uint) -> *mut u8 {
     let mut i = 0;
     while i < n {
-        *(offset(dest as *u8, i as int) as *mut u8) = *offset(src, i as int);
+        *(offset(dest as *const u8, i as int) as *mut u8) =
+            *offset(src, i as int);
         i += 1;
     }
     return dest;
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn memmove(dest: *mut u8, src: *u8, n: uint) -> *mut u8 {
-    if src < dest as *u8 { // copy from end
+pub unsafe extern "C" fn memmove(dest: *mut u8, src: *const u8,
+                                 n: uint) -> *mut u8 {
+    if src < dest as *const u8 { // copy from end
         let mut i = n;
         while i != 0 {
             i -= 1;
-            *(offset(dest as *u8, i as int) as *mut u8) = *offset(src, i as int);
+            *(offset(dest as *const u8, i as int) as *mut u8) =
+                *offset(src, i as int);
         }
     } else { // copy from beginning
         let mut i = 0;
         while i < n {
-            *(offset(dest as *u8, i as int) as *mut u8) = *offset(src, i as int);
+            *(offset(dest as *const u8, i as int) as *mut u8) =
+                *offset(src, i as int);
             i += 1;
         }
     }
@@ -78,14 +82,14 @@ pub unsafe extern "C" fn memmove(dest: *mut u8, src: *u8, n: uint) -> *mut u8 {
 pub unsafe extern "C" fn memset(s: *mut u8, c: i32, n: uint) -> *mut u8 {
     let mut i = 0;
     while i < n {
-        *(offset(s as *u8, i as int) as *mut u8) = c as u8;
+        *(offset(s as *const u8, i as int) as *mut u8) = c as u8;
         i += 1;
     }
     return s;
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn memcmp(s1: *u8, s2: *u8, n: uint) -> i32 {
+pub unsafe extern "C" fn memcmp(s1: *const u8, s2: *const u8, n: uint) -> i32 {
     let mut i = 0;
     while i < n {
         let a = *offset(s1, i as int);

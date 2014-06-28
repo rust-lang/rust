@@ -32,7 +32,7 @@ impl Runtime for SimpleTask {
         assert!(times == 1);
 
         let me = &mut *self as *mut SimpleTask;
-        let cur_dupe = &*cur_task as *Task;
+        let cur_dupe = &mut *cur_task as *mut Task;
         cur_task.put_runtime(self);
         let task = BlockedTask::block(cur_task);
 

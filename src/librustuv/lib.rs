@@ -53,7 +53,6 @@ extern crate alloc;
 use libc::{c_int, c_void};
 use std::fmt;
 use std::mem;
-use std::ptr::null;
 use std::ptr;
 use std::rt::local::Local;
 use std::rt::rtio;
@@ -78,7 +77,7 @@ pub use self::tty::TtyWatcher;
 //        threading mode than the default by reaching into the auto-generated
 //        '__test' module.
 #[cfg(test)] #[start]
-fn start(argc: int, argv: **u8) -> int {
+fn start(argc: int, argv: *const *const u8) -> int {
     green::start(argc, argv, event_loop, __test::main)
 }
 
@@ -118,7 +117,7 @@ pub mod stream;
 /// extern crate green;
 ///
 /// #[start]
-/// fn start(argc: int, argv: **u8) -> int {
+/// fn start(argc: int, argv: *const *const u8) -> int {
 ///     green::start(argc, argv, rustuv::event_loop, main)
 /// }
 ///
@@ -132,28 +131,28 @@ pub fn event_loop() -> Box<rtio::EventLoop + Send> {
 
 /// A type that wraps a uv handle
 pub trait UvHandle<T> {
-    fn uv_handle(&self) -> *T;
+    fn uv_handle(&self) -> *mut T;
 
     fn uv_loop(&self) -> Loop {
         Loop::wrap(unsafe { uvll::get_loop_for_uv_handle(self.uv_handle()) })
     }
 
     // FIXME(#8888) dummy self
-    fn alloc(_: Option<Self>, ty: uvll::uv_handle_type) -> *T {
+    fn alloc(_: Option<Self>, ty: uvll::uv_handle_type) -> *mut T {
         unsafe {
             let handle = uvll::malloc_handle(ty);
             assert!(!handle.is_null());
-            handle as *T
+            handle as *mut T
         }
     }
 
-    unsafe fn from_uv_handle<'a>(h: &'a *T) -> &'a mut Self {
+    unsafe fn from_uv_handle<'a>(h: &'a *mut T) -> &'a mut Self {
         mem::transmute(uvll::get_data_for_uv_handle(*h))
     }
 
     fn install(~self) -> Box<Self> {
         unsafe {
-            let myptr = mem::transmute::<&Box<Self>, &*u8>(&self);
+            let myptr = mem::transmute::<&Box<Self>, &*mut u8>(&self);
             uvll::set_data_for_uv_handle(self.uv_handle(), *myptr);
         }
         self
@@ -162,13 +161,13 @@ pub trait UvHandle<T> {
     fn close_async_(&mut self) {
         // we used malloc to allocate all handles, so we must always have at
         // least a callback to free all the handles we allocated.
-        extern fn close_cb(handle: *uvll::uv_handle_t) {
+        extern fn close_cb(handle: *mut uvll::uv_handle_t) {
             unsafe { uvll::free_handle(handle) }
         }
 
         unsafe {
-            uvll::set_data_for_uv_handle(self.uv_handle(), null::<()>());
-            uvll::uv_close(self.uv_handle() as *uvll::uv_handle_t, close_cb)
+            uvll::set_data_for_uv_handle(self.uv_handle(), ptr::mut_null::<()>());
+            uvll::uv_close(self.uv_handle() as *mut uvll::uv_handle_t, close_cb)
         }
     }
 
@@ -176,19 +175,20 @@ pub trait UvHandle<T> {
         let mut slot = None;
 
         unsafe {
-            uvll::uv_close(self.uv_handle() as *uvll::uv_handle_t, close_cb);
-            uvll::set_data_for_uv_handle(self.uv_handle(), ptr::null::<()>());
+            uvll::uv_close(self.uv_handle() as *mut uvll::uv_handle_t, close_cb);
+            uvll::set_data_for_uv_handle(self.uv_handle(),
+                                         ptr::mut_null::<()>());
 
             wait_until_woken_after(&mut slot, &self.uv_loop(), || {
-                uvll::set_data_for_uv_handle(self.uv_handle(), &slot);
+                uvll::set_data_for_uv_handle(self.uv_handle(), &mut slot);
             })
         }
 
-        extern fn close_cb(handle: *uvll::uv_handle_t) {
+        extern fn close_cb(handle: *mut uvll::uv_handle_t) {
             unsafe {
                 let data = uvll::get_data_for_uv_handle(handle);
                 uvll::free_handle(handle);
-                if data == ptr::null() { return }
+                if data == ptr::mut_null() { return }
                 let slot: &mut Option<BlockedTask> = mem::transmute(data);
                 wakeup(slot);
             }
@@ -261,7 +261,7 @@ fn wakeup(slot: &mut Option<BlockedTask>) {
 }
 
 pub struct Request {
-    pub handle: *uvll::uv_req_t,
+    pub handle: *mut uvll::uv_req_t,
     defused: bool,
 }
 
@@ -269,22 +269,22 @@ impl Request {
     pub fn new(ty: uvll::uv_req_type) -> Request {
         unsafe {
             let handle = uvll::malloc_req(ty);
-            uvll::set_data_for_req(handle, null::<()>());
+            uvll::set_data_for_req(handle, ptr::mut_null::<()>());
             Request::wrap(handle)
         }
     }
 
-    pub fn wrap(handle: *uvll::uv_req_t) -> Request {
+    pub fn wrap(handle: *mut uvll::uv_req_t) -> Request {
         Request { handle: handle, defused: false }
     }
 
-    pub fn set_data<T>(&self, t: *T) {
+    pub fn set_data<T>(&self, t: *mut T) {
         unsafe { uvll::set_data_for_req(self.handle, t) }
     }
 
     pub unsafe fn get_data<T>(&self) -> &'static mut T {
         let data = uvll::get_data_for_req(self.handle);
-        assert!(data != null());
+        assert!(data != ptr::mut_null());
         mem::transmute(data)
     }
 
@@ -313,18 +313,18 @@ impl Drop for Request {
 /// with dtors may not be destructured, but tuple structs can,
 /// but the results are not correct.
 pub struct Loop {
-    handle: *uvll::uv_loop_t
+    handle: *mut uvll::uv_loop_t
 }
 
 impl Loop {
     pub fn new() -> Loop {
         let handle = unsafe { uvll::loop_new() };
         assert!(handle.is_not_null());
-        unsafe { uvll::set_data_for_uv_loop(handle, 0 as *c_void) }
+        unsafe { uvll::set_data_for_uv_loop(handle, 0 as *mut c_void) }
         Loop::wrap(handle)
     }
 
-    pub fn wrap(handle: *uvll::uv_loop_t) -> Loop { Loop { handle: handle } }
+    pub fn wrap(handle: *mut uvll::uv_loop_t) -> Loop { Loop { handle: handle } }
 
     pub fn run(&mut self) {
         assert_eq!(unsafe { uvll::uv_run(self.handle, uvll::RUN_DEFAULT) }, 0);
@@ -339,7 +339,7 @@ impl Loop {
     fn modify_blockers(&self, amt: uint) {
         unsafe {
             let cur = uvll::get_data_for_uv_loop(self.handle) as uint;
-            uvll::set_data_for_uv_loop(self.handle, (cur + amt) as *c_void)
+            uvll::set_data_for_uv_loop(self.handle, (cur + amt) as *mut c_void)
         }
     }
 
@@ -445,7 +445,7 @@ pub type Buf = uvll::uv_buf_t;
 
 pub fn empty_buf() -> Buf {
     uvll::uv_buf_t {
-        base: null(),
+        base: ptr::mut_null(),
         len: 0,
     }
 }
@@ -453,7 +453,7 @@ pub fn empty_buf() -> Buf {
 /// Borrow a slice to a Buf
 pub fn slice_to_uv_buf(v: &[u8]) -> Buf {
     let data = v.as_ptr();
-    uvll::uv_buf_t { base: data, len: v.len() as uvll::uv_buf_len_t }
+    uvll::uv_buf_t { base: data as *mut u8, len: v.len() as uvll::uv_buf_len_t }
 }
 
 // This function is full of lies!
@@ -512,7 +512,7 @@ mod test {
         assert_eq!(buf.len, 20);
 
         unsafe {
-            let base = transmute::<*u8, *mut u8>(buf.base);
+            let base = transmute::<*mut u8, *mut u8>(buf.base);
             (*base) = 1;
             (*base.offset(1)) = 2;
         }

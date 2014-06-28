@@ -18,7 +18,9 @@ use std::finally::Finally;
 use std::str;
 
 #[start]
-fn start(argc: int, argv: **u8) -> int { native::start(argc, argv, main) }
+fn start(argc: int, argv: *const *const u8) -> int {
+    native::start(argc, argv, main)
+}
 
 #[inline(never)]
 fn foo() {

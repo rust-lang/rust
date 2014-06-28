@@ -126,7 +126,7 @@ pub struct UvIoFactory {
 }
 
 impl UvIoFactory {
-    pub fn uv_loop<'a>(&mut self) -> *uvll::uv_loop_t { self.loop_.handle }
+    pub fn uv_loop<'a>(&mut self) -> *mut uvll::uv_loop_t { self.loop_.handle }
 
     pub fn make_handle(&mut self) -> HomeHandle {
         // It's understood by the homing code that the "local id" is just the

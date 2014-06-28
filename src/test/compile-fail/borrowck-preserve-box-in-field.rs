@@ -28,12 +28,12 @@ pub fn main() {
     borrow(x.f, |b_x| {
     //~^ ERROR cannot borrow `x` as mutable because `*x.f` is also borrowed as immutable
         assert_eq!(*b_x, 3);
-        assert_eq!(&(*x.f) as *int, &(*b_x) as *int);
+        assert_eq!(&(*x.f) as *const int, &(*b_x) as *const int);
         //~^ NOTE borrow occurs due to use of `x` in closure
         x = box(GC) F {f: box 4};
 
         println!("&*b_x = {:p}", &(*b_x));
         assert_eq!(*b_x, 3);
-        assert!(&(*x.f) as *int != &(*b_x) as *int);
+        assert!(&(*x.f) as *const int != &(*b_x) as *const int);
     })
 }

@@ -16,8 +16,8 @@ mod rusti {
         pub fn atomic_cxchg_acq<T>(dst: *mut T, old: T, src: T) -> T;
         pub fn atomic_cxchg_rel<T>(dst: *mut T, old: T, src: T) -> T;
 
-        pub fn atomic_load<T>(src: *T) -> T;
-        pub fn atomic_load_acq<T>(src: *T) -> T;
+        pub fn atomic_load<T>(src: *const T) -> T;
+        pub fn atomic_load_acq<T>(src: *const T) -> T;
 
         pub fn atomic_store<T>(dst: *mut T, val: T);
         pub fn atomic_store_rel<T>(dst: *mut T, val: T);

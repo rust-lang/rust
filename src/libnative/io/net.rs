@@ -105,7 +105,7 @@ fn socket(addr: rtio::SocketAddr, ty: libc::c_int) -> IoResult<sock_t> {
 fn setsockopt<T>(fd: sock_t, opt: libc::c_int, val: libc::c_int,
                  payload: T) -> IoResult<()> {
     unsafe {
-        let payload = &payload as *T as *libc::c_void;
+        let payload = &payload as *const T as *const libc::c_void;
         let ret = libc::setsockopt(fd, opt, val,
                                    payload,
                                    mem::size_of::<T>() as libc::socklen_t);
@@ -278,7 +278,7 @@ impl TcpStream {
         let ret = TcpStream::new(Inner::new(fd));
 
         let (addr, len) = addr_to_sockaddr(addr);
-        let addrp = &addr as *_ as *libc::sockaddr;
+        let addrp = &addr as *const _ as *const libc::sockaddr;
         let len = len as libc::socklen_t;
 
         match timeout {
@@ -369,7 +369,7 @@ impl rtio::RtioTcpStream for TcpStream {
     fn write(&mut self, buf: &[u8]) -> IoResult<()> {
         let fd = self.fd();
         let dolock = || self.lock_nonblocking();
-        let dowrite = |nb: bool, buf: *u8, len: uint| unsafe {
+        let dowrite = |nb: bool, buf: *const u8, len: uint| unsafe {
             let flags = if nb {c::MSG_DONTWAIT} else {0};
             libc::send(fd,
                        buf as *mut libc::c_void,
@@ -456,7 +456,7 @@ impl TcpListener {
         let ret = TcpListener { inner: Inner::new(fd) };
 
         let (addr, len) = addr_to_sockaddr(addr);
-        let addrp = &addr as *_ as *libc::sockaddr;
+        let addrp = &addr as *const _ as *const libc::sockaddr;
         let len = len as libc::socklen_t;
 
         // On platforms with Berkeley-derived sockets, this allows
@@ -564,7 +564,7 @@ impl UdpSocket {
         };
 
         let (addr, len) = addr_to_sockaddr(addr);
-        let addrp = &addr as *_ as *libc::sockaddr;
+        let addrp = &addr as *const _ as *const libc::sockaddr;
         let len = len as libc::socklen_t;
 
         match unsafe { libc::bind(fd, addrp, len) } {
@@ -654,15 +654,15 @@ impl rtio::RtioUdpSocket for UdpSocket {
 
     fn sendto(&mut self, buf: &[u8], dst: rtio::SocketAddr) -> IoResult<()> {
         let (dst, dstlen) = addr_to_sockaddr(dst);
-        let dstp = &dst as *_ as *libc::sockaddr;
+        let dstp = &dst as *const _ as *const libc::sockaddr;
         let dstlen = dstlen as libc::socklen_t;
 
         let fd = self.fd();
         let dolock = || self.lock_nonblocking();
-        let dowrite = |nb, buf: *u8, len: uint| unsafe {
+        let dowrite = |nb, buf: *const u8, len: uint| unsafe {
             let flags = if nb {c::MSG_DONTWAIT} else {0};
             libc::sendto(fd,
-                         buf as *libc::c_void,
+                         buf as *const libc::c_void,
                          len as msglen_t,
                          flags,
                          dstp,
@@ -842,7 +842,7 @@ pub fn write<T>(fd: sock_t,
                 buf: &[u8],
                 write_everything: bool,
                 lock: || -> T,
-                write: |bool, *u8, uint| -> i64) -> IoResult<uint> {
+                write: |bool, *const u8, uint| -> i64) -> IoResult<uint> {
     let mut ret = -1;
     let mut written = 0;
     if deadline == 0 {

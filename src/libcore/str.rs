@@ -568,10 +568,10 @@ Section: Comparing strings
 #[inline]
 fn eq_slice_(a: &str, b: &str) -> bool {
     #[allow(ctypes)]
-    extern { fn memcmp(s1: *i8, s2: *i8, n: uint) -> i32; }
+    extern { fn memcmp(s1: *const i8, s2: *const i8, n: uint) -> i32; }
     a.len() == b.len() && unsafe {
-        memcmp(a.as_ptr() as *i8,
-               b.as_ptr() as *i8,
+        memcmp(a.as_ptr() as *const i8,
+               b.as_ptr() as *const i8,
                a.len()) == 0
     }
 }
@@ -888,8 +888,8 @@ pub mod raw {
     /// Form a slice from a C string. Unsafe because the caller must ensure the
     /// C string has the static lifetime, or else the return value may be
     /// invalidated later.
-    pub unsafe fn c_str_to_static_slice(s: *i8) -> &'static str {
-        let s = s as *u8;
+    pub unsafe fn c_str_to_static_slice(s: *const i8) -> &'static str {
+        let s = s as *const u8;
         let mut curr = s;
         let mut len = 0u;
         while *curr != 0u8 {
@@ -1618,7 +1618,7 @@ pub trait StrSlice<'a> {
     /// The caller must ensure that the string outlives this pointer,
     /// and that it is not reallocated (e.g. by pushing to the
     /// string).
-    fn as_ptr(&self) -> *u8;
+    fn as_ptr(&self) -> *const u8;
 }
 
 impl<'a> StrSlice<'a> for &'a str {
@@ -1964,7 +1964,7 @@ impl<'a> StrSlice<'a> for &'a str {
     }
 
     #[inline]
-    fn as_ptr(&self) -> *u8 {
+    fn as_ptr(&self) -> *const u8 {
         self.repr().data
     }
 }

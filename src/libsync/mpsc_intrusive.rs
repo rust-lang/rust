@@ -104,7 +104,7 @@ impl<T: Send> Queue<T> {
             mem::transmute(&self.stub)
         };
         let mut next = (*tail).next(atomics::Relaxed);
-        if tail as uint == &self.stub as *DummyNode as uint {
+        if tail as uint == &self.stub as *const DummyNode as uint {
             if next.is_null() {
                 return None;
             }

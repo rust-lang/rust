@@ -44,7 +44,7 @@ pub fn ref_slice<'a, A>(s: &'a A) -> &'a [A] {
  */
 pub fn mut_ref_slice<'a, A>(s: &'a mut A) -> &'a mut [A] {
     unsafe {
-        let ptr: *A = transmute(s);
+        let ptr: *const A = transmute(s);
         transmute(Slice { data: ptr, len: 1 })
     }
 }
@@ -439,7 +439,7 @@ pub trait ImmutableVector<'a, T> {
      * Modifying the vector may cause its buffer to be reallocated, which
      * would also make any pointers to it invalid.
      */
-    fn as_ptr(&self) -> *T;
+    fn as_ptr(&self) -> *const T;
 
     /**
      * Binary search a sorted vector with a comparator function.
@@ -520,7 +520,7 @@ impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
             let p = self.as_ptr();
             if mem::size_of::<T>() == 0 {
                 Items{ptr: p,
-                      end: (p as uint + self.len()) as *T,
+                      end: (p as uint + self.len()) as *const T,
                       marker: marker::ContravariantLifetime::<'a>}
             } else {
                 Items{ptr: p,
@@ -606,7 +606,7 @@ impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
     }
 
     #[inline]
-    fn as_ptr(&self) -> *T {
+    fn as_ptr(&self) -> *const T {
         self.repr().data
     }
 
@@ -936,7 +936,7 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
         assert!(end <= self.len());
         unsafe {
             transmute(Slice {
-                    data: self.as_mut_ptr().offset(start as int) as *T,
+                    data: self.as_mut_ptr().offset(start as int) as *const T,
                     len: (end - start)
                 })
         }
@@ -1115,7 +1115,7 @@ pub mod raw {
      * not bytes).
      */
     #[inline]
-    pub unsafe fn buf_as_slice<T,U>(p: *T, len: uint, f: |v: &[T]| -> U)
+    pub unsafe fn buf_as_slice<T,U>(p: *const T, len: uint, f: |v: &[T]| -> U)
                                -> U {
         f(transmute(Slice {
             data: p,
@@ -1135,7 +1135,7 @@ pub mod raw {
                                    f: |v: &mut [T]| -> U)
                                    -> U {
         f(transmute(Slice {
-            data: p as *T,
+            data: p as *const T,
             len: len
         }))
     }
@@ -1146,9 +1146,9 @@ pub mod raw {
      * if the slice is empty. O(1).
      */
      #[inline]
-    pub unsafe fn shift_ptr<T>(slice: &mut Slice<T>) -> Option<*T> {
+    pub unsafe fn shift_ptr<T>(slice: &mut Slice<T>) -> Option<*const T> {
         if slice.len == 0 { return None; }
-        let head: *T = slice.data;
+        let head: *const T = slice.data;
         slice.data = slice.data.offset(1);
         slice.len -= 1;
         Some(head)
@@ -1160,9 +1160,9 @@ pub mod raw {
      * if the slice is empty. O(1).
      */
      #[inline]
-    pub unsafe fn pop_ptr<T>(slice: &mut Slice<T>) -> Option<*T> {
+    pub unsafe fn pop_ptr<T>(slice: &mut Slice<T>) -> Option<*const T> {
         if slice.len == 0 { return None; }
-        let tail: *T = slice.data.offset((slice.len - 1) as int);
+        let tail: *const T = slice.data.offset((slice.len - 1) as int);
         slice.len -= 1;
         Some(tail)
     }
@@ -1201,8 +1201,8 @@ pub mod bytes {
 
 /// Immutable slice iterator
 pub struct Items<'a, T> {
-    ptr: *T,
-    end: *T,
+    ptr: *const T,
+    end: *const T,
     marker: marker::ContravariantLifetime<'a>
 }
 
@@ -1289,7 +1289,7 @@ impl<'a, T> RandomAccessIterator<&'a T> for Items<'a, T> {
     }
 }
 
-iterator!{struct Items -> *T, &'a T}
+iterator!{struct Items -> *const T, &'a T}
 
 impl<'a, T> ExactSize<&'a T> for Items<'a, T> {}
 impl<'a, T> ExactSize<&'a mut T> for MutItems<'a, T> {}

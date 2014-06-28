@@ -15,7 +15,7 @@ extern crate rustuv;
 extern crate green;
 
 #[no_mangle] // this needs to get called from C
-pub extern "C" fn foo(argc: int, argv: **u8) -> int {
+pub extern "C" fn foo(argc: int, argv: *const *const u8) -> int {
     green::start(argc, argv, rustuv::event_loop, proc() {
         spawn(proc() {
             println!("hello");

@@ -19,7 +19,7 @@ use super::{Loop, UvHandle};
 // The entire point of async is to call into a loop from other threads so it
 // does not need to home.
 pub struct AsyncWatcher {
-    handle: *uvll::uv_async_t,
+    handle: *mut uvll::uv_async_t,
 
     // A flag to tell the callback to exit, set from the dtor. This is
     // almost never contested - only in rare races with the dtor.
@@ -40,7 +40,7 @@ impl AsyncWatcher {
         let flag = Arc::new(Exclusive::new(false));
         let payload = box Payload { callback: cb, exit_flag: flag.clone() };
         unsafe {
-            let payload: *u8 = mem::transmute(payload);
+            let payload: *mut u8 = mem::transmute(payload);
             uvll::set_data_for_uv_handle(handle, payload);
         }
         return AsyncWatcher { handle: handle, exit_flag: flag, };
@@ -48,13 +48,13 @@ impl AsyncWatcher {
 }
 
 impl UvHandle<uvll::uv_async_t> for AsyncWatcher {
-    fn uv_handle(&self) -> *uvll::uv_async_t { self.handle }
-    unsafe fn from_uv_handle<'a>(_: &'a *uvll::uv_async_t) -> &'a mut AsyncWatcher {
+    fn uv_handle(&self) -> *mut uvll::uv_async_t { self.handle }
+    unsafe fn from_uv_handle<'a>(_: &'a *mut uvll::uv_async_t) -> &'a mut AsyncWatcher {
         fail!("async watchers can't be built from their handles");
     }
 }
 
-extern fn async_cb(handle: *uvll::uv_async_t) {
+extern fn async_cb(handle: *mut uvll::uv_async_t) {
     let payload: &mut Payload = unsafe {
         mem::transmute(uvll::get_data_for_uv_handle(handle))
     };
@@ -90,7 +90,7 @@ extern fn async_cb(handle: *uvll::uv_async_t) {
     }
 }
 
-extern fn close_cb(handle: *uvll::uv_handle_t) {
+extern fn close_cb(handle: *mut uvll::uv_handle_t) {
     // drop the payload
     let _payload: Box<Payload> = unsafe {
         mem::transmute(uvll::get_data_for_uv_handle(handle))

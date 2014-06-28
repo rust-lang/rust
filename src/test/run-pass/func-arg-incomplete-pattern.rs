@@ -17,14 +17,14 @@ struct Foo {
     y: Box<uint>,
 }
 
-fn foo(Foo {x, ..}: Foo) -> *uint {
-    let addr: *uint = &*x;
+fn foo(Foo {x, ..}: Foo) -> *const uint {
+    let addr: *const uint = &*x;
     addr
 }
 
 pub fn main() {
     let obj = box 1;
-    let objptr: *uint = &*obj;
+    let objptr: *const uint = &*obj;
     let f = Foo {x: obj, y: box 2};
     let xptr = foo(f);
     assert_eq!(objptr, xptr);

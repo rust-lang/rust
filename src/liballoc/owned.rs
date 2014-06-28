@@ -37,7 +37,7 @@ pub static HEAP: () = ();
 
 /// A type that represents a uniquely-owned value.
 #[lang="owned_box"]
-pub struct Box<T>(*T);
+pub struct Box<T>(*mut T);
 
 impl<T: Default> Default for Box<T> {
     fn default() -> Box<T> { box Default::default() }

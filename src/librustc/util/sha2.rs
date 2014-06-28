@@ -34,7 +34,7 @@ fn read_u32v_be(dst: &mut[u32], input: &[u8]) {
     assert!(dst.len() * 4 == input.len());
     unsafe {
         let mut x = dst.unsafe_mut_ref(0) as *mut _ as *mut u32;
-        let mut y = input.unsafe_ref(0) as *_ as *u32;
+        let mut y = input.unsafe_ref(0) as *const _ as *const u32;
         for _ in range(0, dst.len()) {
             *x = to_be32(*y);
             x = x.offset(1);

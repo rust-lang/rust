@@ -615,7 +615,7 @@ impl<T> Vec<T> {
         }
 
         unsafe {
-            let end = (self.ptr as *T).offset(self.len as int) as *mut T;
+            let end = (self.ptr as *const T).offset(self.len as int) as *mut T;
             ptr::write(&mut *end, value);
             self.len += 1;
         }
@@ -674,7 +674,10 @@ impl<T> Vec<T> {
     #[inline]
     pub fn as_mut_slice<'a>(&'a mut self) -> &'a mut [T] {
         unsafe {
-            mem::transmute(Slice { data: self.as_mut_ptr() as *T, len: self.len })
+            mem::transmute(Slice {
+                data: self.as_mut_ptr() as *const T,
+                len: self.len,
+            })
         }
     }
 
@@ -1014,7 +1017,7 @@ impl<T> Vec<T> {
                     let ptr = self.as_mut_ptr().offset(index as int);
                     // copy it out, unsafely having a copy of the value on
                     // the stack and in the vector at the same time.
-                    ret = Some(ptr::read(ptr as *T));
+                    ret = Some(ptr::read(ptr as *const T));
 
                     // Shift everything down to fill in that spot.
                     ptr::copy_memory(ptr, &*ptr.offset(1), len - index - 1);
@@ -1203,15 +1206,15 @@ impl<T> Vec<T> {
     /// Modifying the vector may cause its buffer to be reallocated, which
     /// would also make any pointers to it invalid.
     #[inline]
-    pub fn as_ptr(&self) -> *T {
+    pub fn as_ptr(&self) -> *const T {
         // If we have a 0-sized vector, then the base pointer should not be NULL
         // because an iterator over the slice will attempt to yield the base
         // pointer as the first element in the vector, but this will end up
         // being Some(NULL) which is optimized to None.
         if mem::size_of::<T>() == 0 {
-            1 as *T
+            1 as *const T
         } else {
-            self.ptr as *T
+            self.ptr as *const T
         }
     }
 
@@ -1545,7 +1548,7 @@ pub mod raw {
     /// The elements of the buffer are copied into the vector without cloning,
     /// as if `ptr::read()` were called on them.
     #[inline]
-    pub unsafe fn from_buf<T>(ptr: *T, elts: uint) -> Vec<T> {
+    pub unsafe fn from_buf<T>(ptr: *const T, elts: uint) -> Vec<T> {
         let mut dst = Vec::with_capacity(elts);
         dst.set_len(elts);
         ptr::copy_nonoverlapping_memory(dst.as_mut_ptr(), ptr, elts);

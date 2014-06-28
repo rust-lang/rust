@@ -9,8 +9,8 @@
 // except according to those terms.
 
 static a: &'static str = "foo";
-static b: *u8 = a as *u8; //~ ERROR non-scalar cast
-static c: *u8 = &a as *u8; //~ ERROR mismatched types
+static b: *const u8 = a as *const u8; //~ ERROR non-scalar cast
+static c: *const u8 = &a as *const u8; //~ ERROR mismatched types
 
 fn main() {
 }

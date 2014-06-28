@@ -30,7 +30,7 @@ pub fn main() {
 
 extern fn callback(data: libc::uintptr_t) {
     unsafe {
-        let data: *int = mem::transmute(data);
+        let data: *const int = mem::transmute(data);
         assert_eq!(*data, 100);
     }
 }

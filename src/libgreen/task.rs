@@ -89,7 +89,7 @@ pub enum Home {
 ///
 /// The goal for having this weird-looking function is to reduce the number of
 /// allocations done on a green-task startup as much as possible.
-extern fn bootstrap_green_task(task: uint, code: *(), env: *()) -> ! {
+extern fn bootstrap_green_task(task: uint, code: *mut (), env: *mut ()) -> ! {
     // Acquire ownership of the `proc()`
     let start: proc() = unsafe {
         mem::transmute(raw::Procedure { code: code, env: env })
@@ -256,7 +256,7 @@ impl GreenTask {
     // context switches
 
     pub fn as_uint(&self) -> uint {
-        self as *GreenTask as uint
+        self as *const GreenTask as uint
     }
 
     pub unsafe fn from_uint(val: uint) -> Box<GreenTask> {
