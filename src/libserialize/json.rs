@@ -246,7 +246,7 @@ pub enum Json {
     String(String),
     Boolean(bool),
     List(List),
-    Object(Box<Object>),
+    Object(Object),
     Null,
 }
 
@@ -888,7 +888,7 @@ impl Json {
     /// Returns None otherwise.
     pub fn as_object<'a>(&'a self) -> Option<&'a Object> {
         match self {
-            &Object(ref map) => Some(&**map),
+            &Object(ref map) => Some(map),
             _ => None
         }
     }
@@ -1720,7 +1720,7 @@ impl<T: Iterator<char>> Builder<T> {
     fn build_object(&mut self) -> Result<Json, BuilderError> {
         self.bump();
 
-        let mut values = box TreeMap::new();
+        let mut values = TreeMap::new();
 
         loop {
             match self.token {
@@ -2117,7 +2117,7 @@ impl<A: ToJson> ToJson for TreeMap<String, A> {
         for (key, value) in self.iter() {
             d.insert((*key).clone(), value.to_json());
         }
-        Object(box d)
+        Object(d)
     }
 }
 
@@ -2127,7 +2127,7 @@ impl<A: ToJson> ToJson for HashMap<String, A> {
         for (key, value) in self.iter() {
             d.insert((*key).clone(), value.to_json());
         }
-        Object(box d)
+        Object(d)
     }
 }
 
@@ -2185,7 +2185,7 @@ mod tests {
     }
 
     fn mk_object(items: &[(String, Json)]) -> Json {
-        let mut d = box TreeMap::new();
+        let mut d = TreeMap::new();
 
         for item in items.iter() {
             match *item {
@@ -3252,7 +3252,7 @@ mod tests {
             let mut tree_map = TreeMap::new();
             tree_map.insert("a".to_string(), Number(1.0_f64));
             tree_map.insert("b".to_string(), Number(2.0_f64));
-            Object(box tree_map)
+            Object(tree_map)
         };
 
         assert_eq!(list2.to_json(), list2);
