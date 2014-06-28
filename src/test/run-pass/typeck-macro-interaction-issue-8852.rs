@@ -15,19 +15,24 @@ enum T {
     B(f64)
 }
 
+// after fixing #9384 and implementing hygiene for match bindings,
+// this now fails because the insertion of the 'y' into the match
+// doesn't cause capture. Making this macro hygienic (as I've done)
+// could very well make this test case completely pointless....
+
 macro_rules! test(
-    ($e:expr) => (
+    ($id1:ident, $id2:ident, $e:expr) => (
         fn foo(a:T, b:T) -> T {
             match (a, b) {
-                (A(x), A(y)) => A($e),
-                (B(x), B(y)) => B($e),
+                (A($id1), A($id2)) => A($e),
+                (B($id1), B($id2)) => B($e),
                 _ => fail!()
             }
         }
     )
 )
 
-test!(x + y)
+test!(x,y,x + y)
 
 pub fn main() {
     foo(A(1), A(2));

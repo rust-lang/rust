@@ -401,6 +401,7 @@ pub enum Decl_ {
     DeclItem(Gc<Item>),
 }
 
+/// represents one arm of a 'match'
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
 pub struct Arm {
     pub attrs: Vec<Attribute>,
