@@ -8,8 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::collections::Collection;
+use std::default::Default;
 use std::fmt;
 use std::iter::FromIterator;
+use std::path::BytesContainer;
 use std::slice;
 
 // Note 1: It is not clear whether the flexibility of providing both
@@ -61,6 +64,32 @@ impl<'a,T> MaybeOwnedVector<'a,T> {
     }
 }
 
+impl<'a, T: PartialEq> PartialEq for MaybeOwnedVector<'a, T> {
+    fn eq(&self, other: &MaybeOwnedVector<T>) -> bool {
+        self.as_slice() == other.as_slice()
+    }
+}
+
+impl<'a, T: Eq> Eq for MaybeOwnedVector<'a, T> {}
+
+impl<'a, T: PartialOrd> PartialOrd for MaybeOwnedVector<'a, T> {
+    fn lt(&self, other: &MaybeOwnedVector<T>) -> bool {
+        self.as_slice().lt(&other.as_slice())
+    }
+}
+
+impl<'a, T: Ord> Ord for MaybeOwnedVector<'a, T> {
+    fn cmp(&self, other: &MaybeOwnedVector<T>) -> Ordering {
+        self.as_slice().cmp(&other.as_slice())
+    }
+}
+
+impl<'a, T: PartialEq, V: Vector<T>> Equiv<V> for MaybeOwnedVector<'a, T> {
+    fn equiv(&self, other: &V) -> bool {
+        self.as_slice() == other.as_slice()
+    }
+}
+
 // The `Vector` trait is provided in the prelude and is implemented on
 // both `&'a [T]` and `Vec<T>`, so it makes sense to try to support it
 // seamlessly.  The other vector related traits from the prelude do
@@ -105,6 +134,34 @@ impl<'a,T:Clone> CloneableVector<T> for MaybeOwnedVector<'a,T> {
             Growable(v) => v.as_slice().to_owned(),
             Borrowed(v) => v.to_owned(),
         }
+    }
+}
+
+impl<'a, T: Clone> Clone for MaybeOwnedVector<'a, T> {
+    fn clone(&self) -> MaybeOwnedVector<'a, T> {
+        match *self {
+            Growable(ref v) => Growable(v.to_owned()),
+            Borrowed(v) => Borrowed(v)
+        }
+    }
+}
+
+
+impl<'a, T> Default for MaybeOwnedVector<'a, T> {
+    fn default() -> MaybeOwnedVector<'a, T> {
+        Growable(Vec::new())
+    }
+}
+
+impl<'a, T> Collection for MaybeOwnedVector<'a, T> {
+    fn len(&self) -> uint {
+        self.as_slice().len()
+    }
+}
+
+impl<'a> BytesContainer for MaybeOwnedVector<'a, u8> {
+    fn container_as_bytes<'a>(&'a self) -> &'a [u8] {
+        self.as_slice()
     }
 }
 
