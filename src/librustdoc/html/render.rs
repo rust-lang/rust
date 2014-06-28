@@ -41,6 +41,8 @@ use std::str;
 use std::string::String;
 use std::sync::Arc;
 
+use externalfiles::ExternalHtml;
+
 use serialize::json::ToJson;
 use syntax::ast;
 use syntax::ast_util;
@@ -78,7 +80,7 @@ pub struct Context {
     /// This changes as the context descends into the module hierarchy.
     pub dst: Path,
     /// This describes the layout of each page, and is not modified after
-    /// creation of the context (contains info like the favicon)
+    /// creation of the context (contains info like the favicon and added html).
     pub layout: layout::Layout,
     /// This map is a list of what should be displayed on the sidebar of the
     /// current page. The key is the section header (traits, modules,
@@ -220,7 +222,7 @@ local_data_key!(pub cache_key: Arc<Cache>)
 local_data_key!(pub current_location_key: Vec<String> )
 
 /// Generates the documentation for `crate` into the directory `dst`
-pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
+pub fn run(mut krate: clean::Crate, external_html: &ExternalHtml, dst: Path) -> io::IoResult<()> {
     let mut cx = Context {
         dst: dst,
         current: Vec::new(),
@@ -229,12 +231,14 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
         layout: layout::Layout {
             logo: "".to_string(),
             favicon: "".to_string(),
+            external_html: external_html.clone(),
             krate: krate.name.clone(),
             playground_url: "".to_string(),
         },
         include_sources: true,
         render_redirect_pages: false,
     };
+
     try!(mkdir(&cx.dst));
 
     // Crawl the crate attributes looking for attributes which control how we're
