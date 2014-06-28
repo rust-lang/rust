@@ -20,12 +20,19 @@ JSON parsing and serialization
 # What is JSON?
 
 JSON (JavaScript Object Notation) is a way to write data in Javascript.
-Like XML it allows one to encode structured data in a text format that can be read by humans easily.
-Its native compatibility with JavaScript and its simple syntax make it used widely.
+Like XML, it allows to encode structured data in a text format that can be easily read by humans.
+Its simple syntax and native compatibility with JavaScript have made it a widely used format.
 
-Json data are encoded in a form of "key":"value".
-Data types that can be encoded are JavaScript types :
-boolean (`true` or `false`), number (`f64`), string, array, object, null.
+Data types that can be encoded are JavaScript types (see the `Json` enum for more details):
+
+* `Boolean`: equivalent to rust's `bool`
+* `Number`: equivalent to rust's `f64`
+* `String`: equivalent to rust's `String`
+* `Array`: equivalent to rust's `Vec<T>`, but also allowing objects of different types in the same
+array
+* `Object`: equivalent to rust's `Treemap<String, json::Json>`
+* `Null`
+
 An object is a series of string keys mapping to values, in `"key": value` format.
 Arrays are enclosed in square brackets ([ ... ]) and objects in curly brackets ({ ... }).
 A simple JSON document encoding a person, his/her age, address and phone numbers could look like:
@@ -49,104 +56,19 @@ A simple JSON document encoding a person, his/her age, address and phone numbers
 
 # Rust Type-based Encoding and Decoding
 
-Rust provides a mechanism for low boilerplate encoding & decoding
-of values to and from JSON via the serialization API.
+Rust provides a mechanism for low boilerplate encoding & decoding of values to and from JSON via
+the serialization API.
 To be able to encode a piece of data, it must implement the `serialize::Encodable` trait.
 To be able to decode a piece of data, it must implement the `serialize::Decodable` trait.
-The Rust compiler provides an annotation to automatically generate
-the code for these traits: `#[deriving(Decodable, Encodable)]`
+The Rust compiler provides an annotation to automatically generate the code for these traits:
+`#[deriving(Decodable, Encodable)]`
 
-To encode using Encodable :
-
-```rust
-use std::io;
-use serialize::{json, Encodable};
-
- #[deriving(Encodable)]
- pub struct TestStruct   {
-    data_str: String,
- }
-
-fn main() {
-    let to_encode_object = TestStruct{data_str:"example of string to encode".to_string()};
-    let mut m = io::MemWriter::new();
-    {
-        let mut encoder = json::Encoder::new(&mut m as &mut Writer);
-        match to_encode_object.encode(&mut encoder) {
-            Ok(()) => (),
-            Err(e) => fail!("json encoding error: {}", e)
-        };
-    }
-}
-```
-
-Two wrapper functions are provided to encode a Encodable object
-into a string (String) or buffer (vec![u8]): `str_encode(&m)` and `buffer_encode(&m)`.
-
-```rust
-use serialize::json;
-let to_encode_object = "example of string to encode".to_string();
-let encoded_str: String = json::Encoder::str_encode(&to_encode_object);
-```
-
-JSON API provide an enum `json::Json` and a trait `ToJson` to encode object.
-The trait `ToJson` encode object into a container `json::Json` and the API provide writer
-to encode them into a stream or a string ...
+The JSON API provides an enum `json::Json` and a trait `ToJson` to encode objects.
+The `ToJson` trait provides a `to_json` method to convert an object into a `json::Json` value.
+A `json::Json` value can be encoded as a string or buffer using the functions described above.
+You can also use the `json::Encoder` object, which implements the `Encoder` trait.
 
 When using `ToJson` the `Encodable` trait implementation is not mandatory.
-
-A basic `ToJson` example using a TreeMap of attribute name / attribute value:
-
-
-```rust
-use std::collections::TreeMap;
-use serialize::json;
-use serialize::json::ToJson;
-
-pub struct MyStruct  {
-    attr1: u8,
-    attr2: String,
-}
-
-impl ToJson for MyStruct {
-    fn to_json( &self ) -> json::Json {
-        let mut d = box TreeMap::new();
-        d.insert("attr1".to_string(), self.attr1.to_json());
-        d.insert("attr2".to_string(), self.attr2.to_json());
-        json::Object(d)
-    }
-}
-
-fn main() {
-    let test2: MyStruct = MyStruct {attr1: 1, attr2:"test".to_string()};
-    let tjson: json::Json = test2.to_json();
-    let json_str: String = tjson.to_str().into_string();
-}
-```
-
-To decode a JSON string using `Decodable` trait :
-
-```rust
-extern crate serialize;
-use serialize::{json, Decodable};
-
-#[deriving(Decodable)]
-pub struct MyStruct  {
-     attr1: u8,
-     attr2: String,
-}
-
-fn main() {
-    let json_str_to_decode: String =
-            "{\"attr1\":1,\"attr2\":\"toto\"}".to_string();
-    let json_object = json::from_str(json_str_to_decode.as_slice());
-    let mut decoder = json::Decoder::new(json_object.unwrap());
-    let decoded_object: MyStruct = match Decodable::decode(&mut decoder) {
-        Ok(v) => v,
-        Err(e) => fail!("Decoding error: {}", e)
-    }; // create the final object
-}
-```
 
 # Examples of use
 
@@ -157,41 +79,37 @@ using the serialization API, using the derived serialization code.
 
 ```rust
 extern crate serialize;
-use serialize::{json, Encodable, Decodable};
+use serialize::json;
 
- #[deriving(Decodable, Encodable)] //generate Decodable, Encodable impl.
- pub struct TestStruct1  {
+#[deriving(Decodable, Encodable)] //generate Decodable, Encodable impl.
+pub struct TestStruct1  {
     data_int: u8,
     data_str: String,
     data_vector: Vec<u8>,
- }
+}
 
-// To serialize use the `json::str_encode` to encode an object in a string.
-// It calls the generated `Encodable` impl.
 fn main() {
-    let to_encode_object = TestStruct1
+    let object = TestStruct1
          {data_int: 1, data_str:"toto".to_string(), data_vector:vec![2,3,4,5]};
-    let encoded_str: String = json::Encoder::str_encode(&to_encode_object);
 
-    // To deserialize use the `json::from_str` and `json::Decoder`
+    // Serialize using `json::encode`
+    let encoded = json::encode(&object);
 
-    let json_object = json::from_str(encoded_str.as_slice());
-    let mut decoder = json::Decoder::new(json_object.unwrap());
-    let decoded1: TestStruct1 = Decodable::decode(&mut decoder).unwrap(); // create the final object
+    // Deserialize using `json::decode`
+    let decoded: TestStruct1 = json::decode(encoded.as_slice()).unwrap();
 }
 ```
 
 ## Using `ToJson`
 
-This example uses the ToJson impl to deserialize the JSON string.
-Example of `ToJson` trait implementation for TestStruct1.
+This example uses the `ToJson` trait to generate the JSON string.
 
 ```rust
 use std::collections::TreeMap;
 use serialize::json::ToJson;
-use serialize::{json, Encodable, Decodable};
+use serialize::json;
 
-#[deriving(Decodable, Encodable)] // generate Decodable, Encodable impl.
+#[deriving(Decodable)]
 pub struct TestStruct1  {
     data_int: u8,
     data_str: String,
@@ -200,7 +118,7 @@ pub struct TestStruct1  {
 
 impl ToJson for TestStruct1 {
     fn to_json( &self ) -> json::Json {
-        let mut d = box TreeMap::new();
+        let mut d = TreeMap::new();
         d.insert("data_int".to_string(), self.data_int.to_json());
         d.insert("data_str".to_string(), self.data_str.to_json());
         d.insert("data_vector".to_string(), self.data_vector.to_json());
@@ -209,19 +127,13 @@ impl ToJson for TestStruct1 {
 }
 
 fn main() {
-    // Serialization using our impl of to_json
-
-    let test2: TestStruct1 = TestStruct1 {data_int: 1, data_str:"toto".to_string(),
-                                          data_vector:vec![2,3,4,5]};
+    // Serialize using `ToJson`
+    let test2 = TestStruct1 {data_int: 1, data_str:"toto".to_string(), data_vector:vec![2,3,4,5]};
     let tjson: json::Json = test2.to_json();
-    let json_str: String = tjson.to_str().into_string();
+    let json_str: String = tjson.to_str();
 
-    // Deserialize like before.
-
-    let mut decoder =
-        json::Decoder::new(json::from_str(json_str.as_slice()).unwrap());
-    // create the final object
-    let decoded2: TestStruct1 = Decodable::decode(&mut decoder).unwrap();
+    // Deserialize like before
+    let decoded: TestStruct1 = json::decode(json_str.as_slice()).unwrap();
 }
 ```
 
@@ -1058,7 +970,8 @@ impl Stack {
         match *self.stack.get(idx) {
             InternalIndex(i) => { Index(i) }
             InternalKey(start, size) => {
-                Key(str::from_utf8(self.str_buffer.slice(start as uint, (start+size) as uint)).unwrap())
+                Key(str::from_utf8(
+                    self.str_buffer.slice(start as uint, start as uint + size as uint)).unwrap())
             }
         }
     }
