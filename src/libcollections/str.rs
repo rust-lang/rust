@@ -661,7 +661,7 @@ pub mod raw {
     pub use core::str::raw::{slice_unchecked};
 
     /// Create a Rust string from a *u8 buffer of the given length
-    pub unsafe fn from_buf_len(buf: *u8, len: uint) -> String {
+    pub unsafe fn from_buf_len(buf: *const u8, len: uint) -> String {
         let mut result = String::new();
         result.push_bytes(mem::transmute(Slice {
             data: buf,
@@ -671,7 +671,7 @@ pub mod raw {
     }
 
     /// Create a Rust string from a null-terminated C string
-    pub unsafe fn from_c_str(c_string: *i8) -> String {
+    pub unsafe fn from_c_str(c_string: *const i8) -> String {
         let mut buf = String::new();
         let mut len = 0;
         while *c_string.offset(len) != 0 {

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 extern {
-    pub fn free(p: *u8);
+    pub fn free(p: *const u8);
 }
 
 pub fn main() {

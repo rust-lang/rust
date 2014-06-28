@@ -221,9 +221,9 @@ pub unsafe fn record_sp_limit(limit: uint) {
     #[cfg(target_arch = "arm", not(target_os = "ios"))] #[inline(always)]
     unsafe fn target_record_sp_limit(limit: uint) {
         use libc::c_void;
-        return record_sp_limit(limit as *c_void);
+        return record_sp_limit(limit as *const c_void);
         extern {
-            fn record_sp_limit(limit: *c_void);
+            fn record_sp_limit(limit: *const c_void);
         }
     }
 
@@ -305,7 +305,7 @@ pub unsafe fn get_sp_limit() -> uint {
         use libc::c_void;
         return get_sp_limit() as uint;
         extern {
-            fn get_sp_limit() -> *c_void;
+            fn get_sp_limit() -> *const c_void;
         }
     }
 

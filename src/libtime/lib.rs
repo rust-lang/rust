@@ -1091,7 +1091,7 @@ mod tests {
         // `SetEnvironmentVariable`, which `os::setenv` internally uses.
         // It is why we use `putenv` here.
         extern {
-            fn _putenv(envstring: *libc::c_char) -> libc::c_int;
+            fn _putenv(envstring: *const libc::c_char) -> libc::c_int;
         }
 
         unsafe {

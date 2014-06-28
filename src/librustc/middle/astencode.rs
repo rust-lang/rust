@@ -943,7 +943,7 @@ impl<'a> write_tag_and_id for Encoder<'a> {
 }
 
 struct SideTableEncodingIdVisitor<'a,'b> {
-    ecx_ptr: *libc::c_void,
+    ecx_ptr: *const libc::c_void,
     new_ebml_w: &'a mut Encoder<'b>,
 }
 

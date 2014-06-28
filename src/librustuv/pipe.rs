@@ -37,7 +37,7 @@ pub struct PipeWatcher {
 
 pub struct PipeListener {
     home: HomeHandle,
-    pipe: *uvll::uv_pipe_t,
+    pipe: *mut uvll::uv_pipe_t,
     outgoing: Sender<IoResult<Box<rtio::RtioPipe + Send>>>,
     incoming: Receiver<IoResult<Box<rtio::RtioPipe + Send>>>,
 }
@@ -100,11 +100,11 @@ impl PipeWatcher {
         })
     }
 
-    pub fn handle(&self) -> *uvll::uv_pipe_t { self.stream.handle }
+    pub fn handle(&self) -> *mut uvll::uv_pipe_t { self.stream.handle }
 
     // Unwraps the underlying uv pipe. This cancels destruction of the pipe and
     // allows the pipe to get moved elsewhere
-    fn unwrap(mut self) -> *uvll::uv_pipe_t {
+    fn unwrap(mut self) -> *mut uvll::uv_pipe_t {
         self.defused = true;
         return self.stream.handle;
     }
@@ -181,7 +181,7 @@ impl rtio::RtioPipe for PipeWatcher {
         let _m = self.fire_homing_missile();
         let loop_ = self.uv_loop();
         self.read_access.set_timeout(ms, &self.home, &loop_, cancel_read,
-                                     &self.stream as *_ as uint);
+                                     &self.stream as *const _ as uint);
 
         fn cancel_read(stream: uint) -> Option<BlockedTask> {
             let stream: &mut StreamWatcher = unsafe { mem::transmute(stream) };
@@ -193,7 +193,7 @@ impl rtio::RtioPipe for PipeWatcher {
         let _m = self.fire_homing_missile();
         let loop_ = self.uv_loop();
         self.write_access.set_timeout(ms, &self.home, &loop_, cancel_write,
-                                      &self.stream as *_ as uint);
+                                      &self.stream as *const _ as uint);
 
         fn cancel_write(stream: uint) -> Option<BlockedTask> {
             let stream: &mut StreamWatcher = unsafe { mem::transmute(stream) };
@@ -207,7 +207,7 @@ impl HomingIO for PipeWatcher {
 }
 
 impl UvHandle<uvll::uv_pipe_t> for PipeWatcher {
-    fn uv_handle(&self) -> *uvll::uv_pipe_t { self.stream.handle }
+    fn uv_handle(&self) -> *mut uvll::uv_pipe_t { self.stream.handle }
 }
 
 impl Drop for PipeWatcher {
@@ -269,10 +269,10 @@ impl HomingIO for PipeListener {
 }
 
 impl UvHandle<uvll::uv_pipe_t> for PipeListener {
-    fn uv_handle(&self) -> *uvll::uv_pipe_t { self.pipe }
+    fn uv_handle(&self) -> *mut uvll::uv_pipe_t { self.pipe }
 }
 
-extern fn listen_cb(server: *uvll::uv_stream_t, status: libc::c_int) {
+extern fn listen_cb(server: *mut uvll::uv_stream_t, status: libc::c_int) {
     assert!(status != uvll::ECANCELED);
 
     let pipe: &mut PipeListener = unsafe { UvHandle::from_uv_handle(&server) };

@@ -19,7 +19,7 @@ extern crate other = "linkage1";
 
 extern {
     #[linkage = "extern_weak"]
-    static foo: *int;
+    static foo: *const int;
     #[linkage = "extern_weak"]
     static something_that_should_never_exist: *mut int;
 }

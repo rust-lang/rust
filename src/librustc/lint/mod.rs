@@ -176,7 +176,7 @@ pub struct LintId {
 
 impl PartialEq for LintId {
     fn eq(&self, other: &LintId) -> bool {
-        (self.lint as *Lint) == (other.lint as *Lint)
+        (self.lint as *const Lint) == (other.lint as *const Lint)
     }
 }
 
@@ -184,7 +184,7 @@ impl Eq for LintId { }
 
 impl<S: hash::Writer> hash::Hash<S> for LintId {
     fn hash(&self, state: &mut S) {
-        let ptr = self.lint as *Lint;
+        let ptr = self.lint as *const Lint;
         ptr.hash(state);
     }
 }

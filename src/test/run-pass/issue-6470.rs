@@ -14,7 +14,7 @@ pub mod Bar {
     }
 
     extern {
-        pub fn foo(v: *Foo) -> Foo;
+        pub fn foo(v: *const Foo) -> Foo;
     }
 }
 

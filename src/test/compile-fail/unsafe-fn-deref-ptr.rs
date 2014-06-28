@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-fn f(p: *u8) -> u8 {
+fn f(p: *const u8) -> u8 {
     return *p; //~ ERROR dereference of unsafe pointer requires unsafe function or block
 }
 

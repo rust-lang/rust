@@ -15,17 +15,17 @@ extern crate libc;
 use std::mem::transmute;
 use libc::c_void;
 
-struct NonCopyable(*c_void);
+struct NonCopyable(*const c_void);
 
 impl Drop for NonCopyable {
     fn drop(&mut self) {
         let NonCopyable(p) = *self;
-        let _v = unsafe { transmute::<*c_void, Box<int>>(p) };
+        let _v = unsafe { transmute::<*const c_void, Box<int>>(p) };
     }
 }
 
 pub fn main() {
     let t = box 0;
-    let p = unsafe { transmute::<Box<int>, *c_void>(t) };
+    let p = unsafe { transmute::<Box<int>, *const c_void>(t) };
     let _z = NonCopyable(p);
 }

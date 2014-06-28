@@ -25,7 +25,7 @@ use uvio::UvIoFactory;
 use uvll;
 
 pub struct Process {
-    handle: *uvll::uv_process_t,
+    handle: *mut uvll::uv_process_t,
     home: HomeHandle,
 
     /// Task to wake up (may be null) for when the process exits
@@ -60,8 +60,8 @@ impl Process {
         let mut ret_io = Vec::with_capacity(io.len());
         unsafe {
             stdio.set_len(io.len());
-            for (slot, other) in stdio.iter().zip(io.iter()) {
-                let io = set_stdio(slot as *uvll::uv_stdio_container_t, other,
+            for (slot, other) in stdio.mut_iter().zip(io.iter()) {
+                let io = set_stdio(slot as *mut uvll::uv_stdio_container_t, other,
                                    io_loop);
                 ret_io.push(io);
             }
@@ -79,7 +79,7 @@ impl Process {
                 if cfg.detach {
                     flags |= uvll::PROCESS_DETACHED;
                 }
-                let options = uvll::uv_process_options_t {
+                let mut options = uvll::uv_process_options_t {
                     exit_cb: on_exit,
                     file: unsafe { *argv },
                     args: argv,
@@ -90,7 +90,7 @@ impl Process {
                     },
                     flags: flags as libc::c_uint,
                     stdio_count: stdio.len() as libc::c_int,
-                    stdio: stdio.as_ptr(),
+                    stdio: stdio.as_mut_ptr(),
                     uid: cfg.uid.unwrap_or(0) as uvll::uv_uid_t,
                     gid: cfg.gid.unwrap_or(0) as uvll::uv_gid_t,
                 };
@@ -105,7 +105,7 @@ impl Process {
                     timeout_state: NoTimeout,
                 };
                 match unsafe {
-                    uvll::uv_spawn(io_loop.uv_loop(), handle, &options)
+                    uvll::uv_spawn(io_loop.uv_loop(), handle, &mut options)
                 } {
                     0 => Ok(process.install()),
                     err => Err(UvError(err)),
@@ -129,7 +129,7 @@ impl Process {
     }
 }
 
-extern fn on_exit(handle: *uvll::uv_process_t,
+extern fn on_exit(handle: *mut uvll::uv_process_t,
                   exit_status: i64,
                   term_signal: libc::c_int) {
     let p: &mut Process = unsafe { UvHandle::from_uv_handle(&handle) };
@@ -144,7 +144,7 @@ extern fn on_exit(handle: *uvll::uv_process_t,
     wakeup(&mut p.to_wake);
 }
 
-unsafe fn set_stdio(dst: *uvll::uv_stdio_container_t,
+unsafe fn set_stdio(dst: *mut uvll::uv_stdio_container_t,
                     io: &rtio::StdioContainer,
                     io_loop: &mut UvIoFactory) -> Option<PipeWatcher> {
     match *io {
@@ -174,8 +174,9 @@ unsafe fn set_stdio(dst: *uvll::uv_stdio_container_t,
 }
 
 /// Converts the program and arguments to the argv array expected by libuv.
-fn with_argv<T>(prog: &CString, args: &[CString], cb: |**libc::c_char| -> T) -> T {
-    let mut ptrs: Vec<*libc::c_char> = Vec::with_capacity(args.len()+1);
+fn with_argv<T>(prog: &CString, args: &[CString],
+                cb: |*const *const libc::c_char| -> T) -> T {
+    let mut ptrs: Vec<*const libc::c_char> = Vec::with_capacity(args.len()+1);
 
     // Convert the CStrings into an array of pointers. Note: the
     // lifetime of the various CStrings involved is guaranteed to be
@@ -192,7 +193,8 @@ fn with_argv<T>(prog: &CString, args: &[CString], cb: |**libc::c_char| -> T) -> 
 }
 
 /// Converts the environment to the env array expected by libuv
-fn with_env<T>(env: Option<&[(CString, CString)]>, cb: |**libc::c_char| -> T) -> T {
+fn with_env<T>(env: Option<&[(CString, CString)]>,
+               cb: |*const *const libc::c_char| -> T) -> T {
     // We can pass a char** for envp, which is a null-terminated array
     // of "k=v\0" strings. Since we must create these strings locally,
     // yet expose a raw pointer to them, we create a temporary vector
@@ -210,9 +212,9 @@ fn with_env<T>(env: Option<&[(CString, CString)]>, cb: |**libc::c_char| -> T) ->
             }
 
             // As with `with_argv`, this is unsafe, since cb could leak the pointers.
-            let mut ptrs: Vec<*libc::c_char> =
+            let mut ptrs: Vec<*const libc::c_char> =
                 tmps.iter()
-                    .map(|tmp| tmp.as_ptr() as *libc::c_char)
+                    .map(|tmp| tmp.as_ptr() as *const libc::c_char)
                     .collect();
             ptrs.push(ptr::null());
 
@@ -227,7 +229,7 @@ impl HomingIO for Process {
 }
 
 impl UvHandle<uvll::uv_process_t> for Process {
-    fn uv_handle(&self) -> *uvll::uv_process_t { self.handle }
+    fn uv_handle(&self) -> *mut uvll::uv_process_t { self.handle }
 }
 
 impl rtio::RtioProcess for Process {
@@ -290,7 +292,7 @@ impl rtio::RtioProcess for Process {
             });
             let mut timer = box TimerWatcher::new_home(&loop_, self.home().clone());
             unsafe {
-                timer.set_data(self as *mut _ as *Process);
+                timer.set_data(self as *mut _);
             }
             self.timer = Some(timer);
         }
@@ -300,7 +302,7 @@ impl rtio::RtioProcess for Process {
         timer.start(timer_cb, ms, 0);
         self.timeout_state = TimeoutPending;
 
-        extern fn timer_cb(timer: *uvll::uv_timer_t) {
+        extern fn timer_cb(timer: *mut uvll::uv_timer_t) {
             let p: &mut Process = unsafe {
                 &mut *(uvll::get_data_for_uv_handle(timer) as *mut Process)
             };

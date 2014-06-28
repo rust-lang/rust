@@ -341,7 +341,7 @@ fn insertion_sort<T>(v: &mut [T], compare: |&T, &T| -> Ordering) {
         let mut j = i;
         unsafe {
             // `i` is in bounds.
-            let read_ptr = buf_v.offset(i) as *T;
+            let read_ptr = buf_v.offset(i) as *const T;
 
             // find where to insert, we need to do strict <,
             // rather than <=, to maintain stability.
@@ -365,7 +365,7 @@ fn insertion_sort<T>(v: &mut [T], compare: |&T, &T| -> Ordering) {
                                  &*buf_v.offset(j),
                                  (i - j) as uint);
                 ptr::copy_nonoverlapping_memory(buf_v.offset(j),
-                                                &tmp as *T,
+                                                &tmp as *const T,
                                                 1);
                 mem::forget(tmp);
             }

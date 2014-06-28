@@ -35,7 +35,7 @@ pub use self::compiled::{init, cleanup, put, take, try_take, unsafe_take, exists
 /// Encapsulates a borrowed value. When this value goes out of scope, the
 /// pointer is returned.
 pub struct Borrowed<T> {
-    val: *(),
+    val: *const (),
 }
 
 #[unsafe_destructor]
@@ -54,7 +54,7 @@ impl<T> Drop for Borrowed<T> {
 
 impl<T> Deref<T> for Borrowed<T> {
     fn deref<'a>(&'a self) -> &'a T {
-        unsafe { &*(self.val as *T) }
+        unsafe { &*(self.val as *const T) }
     }
 }
 
@@ -72,7 +72,7 @@ impl<T> DerefMut<T> for Borrowed<T> {
 /// Does not validate the pointer type.
 #[inline]
 pub unsafe fn borrow<T>() -> Borrowed<T> {
-    let val: *() = mem::transmute(take::<T>());
+    let val: *const () = mem::transmute(take::<T>());
     Borrowed {
         val: val,
     }

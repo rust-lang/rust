@@ -247,7 +247,7 @@ impl<S: Writer, T: Hash<S>> Hash<S> for Option<T> {
     }
 }
 
-impl<S: Writer, T> Hash<S> for *T {
+impl<S: Writer, T> Hash<S> for *const T {
     #[inline]
     fn hash(&self, state: &mut S) {
         // NB: raw-pointer Hash does _not_ dereference
@@ -342,7 +342,7 @@ mod tests {
         assert_eq!(hasher.hash(& &[1u8, 2u8, 3u8]), 9);
 
         unsafe {
-            let ptr: *int = mem::transmute(5);
+            let ptr: *const int = mem::transmute(5);
             assert_eq!(hasher.hash(&ptr), 5);
         }
 

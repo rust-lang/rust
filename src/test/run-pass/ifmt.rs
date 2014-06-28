@@ -69,7 +69,7 @@ pub fn main() {
     t!(format!("{:X}", 10u), "A");
     t!(format!("{:s}", "foo"), "foo");
     t!(format!("{:s}", "foo".to_string()), "foo");
-    t!(format!("{:p}", 0x1234 as *int), "0x1234");
+    t!(format!("{:p}", 0x1234 as *const int), "0x1234");
     t!(format!("{:p}", 0x1234 as *mut int), "0x1234");
     t!(format!("{:d}", A), "aloha");
     t!(format!("{:d}", B), "adios");

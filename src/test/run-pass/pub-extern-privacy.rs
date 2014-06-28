@@ -12,7 +12,7 @@ use std::mem::transmute;
 
 mod a {
     extern {
-        pub fn free(x: *u8);
+        pub fn free(x: *const u8);
     }
 }
 

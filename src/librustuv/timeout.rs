@@ -119,13 +119,13 @@ impl AccessTimeout {
         // to fire when the timeout runs out.
         if self.timer.is_none() {
             let mut timer = box TimerWatcher::new_home(loop_, home.clone());
-            let cx = box TimerContext {
+            let mut cx = box TimerContext {
                 timeout: self as *mut _,
                 callback: cb,
                 payload: data,
             };
             unsafe {
-                timer.set_data(&*cx);
+                timer.set_data(&mut *cx);
                 mem::forget(cx);
             }
             self.timer = Some(timer);
@@ -142,9 +142,9 @@ impl AccessTimeout {
         timer.start(timer_cb, ms, 0);
         self.state = TimeoutPending(NoWaiter);
 
-        extern fn timer_cb(timer: *uvll::uv_timer_t) {
+        extern fn timer_cb(timer: *mut uvll::uv_timer_t) {
             let cx: &TimerContext = unsafe {
-                &*(uvll::get_data_for_uv_handle(timer) as *TimerContext)
+                &*(uvll::get_data_for_uv_handle(timer) as *const TimerContext)
             };
             let me = unsafe { &mut *cx.timeout };
 
@@ -240,7 +240,7 @@ impl ConnectCtx {
                     None => {}
                 }
                 wait_until_woken_after(&mut self.task, &io.loop_, || {
-                    let data = &self as *_;
+                    let data = &self as *const _ as *mut ConnectCtx;
                     match self.timer {
                         Some(ref mut timer) => unsafe { timer.set_data(data) },
                         None => {}
@@ -249,7 +249,7 @@ impl ConnectCtx {
                 });
                 // Make sure an erroneously fired callback doesn't have access
                 // to the context any more.
-                req.set_data(0 as *int);
+                req.set_data(0 as *mut int);
 
                 // If we failed because of a timeout, drop the TcpWatcher as
                 // soon as possible because it's data is now set to null and we
@@ -262,7 +262,7 @@ impl ConnectCtx {
             n => Err(UvError(n))
         };
 
-        extern fn timer_cb(handle: *uvll::uv_timer_t) {
+        extern fn timer_cb(handle: *mut uvll::uv_timer_t) {
             // Don't close the corresponding tcp request, just wake up the task
             // and let RAII take care of the pending watcher.
             let cx: &mut ConnectCtx = unsafe {
@@ -272,7 +272,7 @@ impl ConnectCtx {
             wakeup(&mut cx.task);
         }
 
-        extern fn connect_cb(req: *uvll::uv_connect_t, status: c_int) {
+        extern fn connect_cb(req: *mut uvll::uv_connect_t, status: c_int) {
             // This callback can be invoked with ECANCELED if the watcher is
             // closed by the timeout callback. In that case we just want to free
             // the request and be along our merry way.
@@ -367,7 +367,7 @@ impl AcceptTimeout {
             });
             let mut timer = TimerWatcher::new_home(&loop_, t.home().clone());
             unsafe {
-                timer.set_data(self as *mut _ as *AcceptTimeout);
+                timer.set_data(self as *mut _);
             }
             self.timer = Some(timer);
         }
@@ -381,7 +381,7 @@ impl AcceptTimeout {
         self.timeout_tx = Some(tx);
         self.timeout_rx = Some(rx);
 
-        extern fn timer_cb(timer: *uvll::uv_timer_t) {
+        extern fn timer_cb(timer: *mut uvll::uv_timer_t) {
             let acceptor: &mut AcceptTimeout = unsafe {
                 &mut *(uvll::get_data_for_uv_handle(timer) as *mut AcceptTimeout)
             };

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn bad (p: *int) {
+fn bad (p: *const int) {
     let _q: &int = p as &int; //~ ERROR non-scalar cast
 }
 

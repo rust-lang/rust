@@ -511,10 +511,10 @@ mod test {
         let (tx, rx) = channel::<uint>();
 
         let x = box 1;
-        let x_in_parent = (&*x) as *int as uint;
+        let x_in_parent = (&*x) as *const int as uint;
 
         spawnfn(proc() {
-            let x_in_child = (&*x) as *int as uint;
+            let x_in_child = (&*x) as *const int as uint;
             tx.send(x_in_child);
         });
 
