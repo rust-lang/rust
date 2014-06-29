@@ -2015,25 +2015,37 @@ impl ToJson for String {
     fn to_json(&self) -> Json { String((*self).clone()) }
 }
 
-impl<A: ToJson, B: ToJson> ToJson for (A, B) {
-    fn to_json(&self) -> Json {
-        match *self {
-            (ref a, ref b) => {
-                List(vec![a.to_json(), b.to_json()])
+macro_rules! tuple_impl {
+    // use variables to indicate the arity of the tuple
+    ($($tyvar:ident),* ) => {
+        // the trailing commas are for the 1 tuple
+        impl<
+            $( $tyvar : ToJson ),*
+            > ToJson for ( $( $tyvar ),* , ) {
+
+            #[inline]
+            #[allow(uppercase_variables)]
+            fn to_json(&self) -> Json {
+                match *self {
+                    ($(ref $tyvar),*,) => List(vec![$($tyvar.to_json()),*])
+                }
             }
         }
     }
 }
 
-impl<A: ToJson, B: ToJson, C: ToJson> ToJson for (A, B, C) {
-    fn to_json(&self) -> Json {
-        match *self {
-            (ref a, ref b, ref c) => {
-                List(vec![a.to_json(), b.to_json(), c.to_json()])
-            }
-        }
-    }
-}
+tuple_impl!{A}
+tuple_impl!{A, B}
+tuple_impl!{A, B, C}
+tuple_impl!{A, B, C, D}
+tuple_impl!{A, B, C, D, E}
+tuple_impl!{A, B, C, D, E, F}
+tuple_impl!{A, B, C, D, E, F, G}
+tuple_impl!{A, B, C, D, E, F, G, H}
+tuple_impl!{A, B, C, D, E, F, G, H, I}
+tuple_impl!{A, B, C, D, E, F, G, H, I, J}
+tuple_impl!{A, B, C, D, E, F, G, H, I, J, K}
+tuple_impl!{A, B, C, D, E, F, G, H, I, J, K, L}
 
 impl<'a, A: ToJson> ToJson for &'a [A] {
     fn to_json(&self) -> Json { List(self.iter().map(|elt| elt.to_json()).collect()) }
