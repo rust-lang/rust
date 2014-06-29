@@ -496,31 +496,6 @@ pub fn argument<'a, T>(f: extern "Rust" fn(&T, &mut Formatter) -> Result,
     }
 }
 
-#[cfg(test)]
-pub fn format(args: &Arguments) -> ::realstd::string::String {
-    use str;
-    use realstd::io::MemWriter;
-
-    fn mywrite<T: ::realstd::io::Writer>(t: &mut T, b: &[u8]) {
-        use realstd::io::Writer;
-        let _ = t.write(b);
-    }
-
-    impl FormatWriter for MemWriter {
-        fn write(&mut self, bytes: &[u8]) -> Result {
-            mywrite(self, bytes);
-            Ok(())
-        }
-    }
-
-    let mut i = MemWriter::new();
-    let _ = write(&mut i, args);
-
-    let mut result = ::realstd::string::String::new();
-    result.push_str(str::from_utf8(i.get_ref()).unwrap());
-    result
-}
-
 /// When the compiler determines that the type of an argument *must* be a string
 /// (such as for select), then it invokes this method.
 #[doc(hidden)] #[inline]

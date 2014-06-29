@@ -192,7 +192,6 @@ pub fn max<T: Ord>(v1: T, v2: T) -> T {
 }
 
 // Implementation of PartialEq, Eq, PartialOrd and Ord for primitive types
-#[cfg(not(test))]
 mod impls {
     use cmp::{PartialOrd, Ord, PartialEq, Eq, Ordering,
               Less, Greater, Equal};
@@ -326,67 +325,4 @@ mod impls {
         fn cmp(&self, other: &&'a mut T) -> Ordering { (**self).cmp(*other) }
     }
     impl<'a, T: Eq> Eq for &'a mut T {}
-}
-
-#[cfg(test)]
-mod test {
-    use super::lexical_ordering;
-
-    #[test]
-    fn test_int_totalord() {
-        assert_eq!(5u.cmp(&10), Less);
-        assert_eq!(10u.cmp(&5), Greater);
-        assert_eq!(5u.cmp(&5), Equal);
-        assert_eq!((-5u).cmp(&12), Less);
-        assert_eq!(12u.cmp(-5), Greater);
-    }
-
-    #[test]
-    fn test_mut_int_totalord() {
-        assert_eq!((&mut 5u).cmp(&10), Less);
-        assert_eq!((&mut 10u).cmp(&5), Greater);
-        assert_eq!((&mut 5u).cmp(&5), Equal);
-        assert_eq!((&mut -5u).cmp(&12), Less);
-        assert_eq!((&mut 12u).cmp(-5), Greater);
-    }
-
-    #[test]
-    fn test_ordering_order() {
-        assert!(Less < Equal);
-        assert_eq!(Greater.cmp(&Less), Greater);
-    }
-
-    #[test]
-    fn test_lexical_ordering() {
-        fn t(o1: Ordering, o2: Ordering, e: Ordering) {
-            assert_eq!(lexical_ordering(o1, o2), e);
-        }
-
-        let xs = [Less, Equal, Greater];
-        for &o in xs.iter() {
-            t(Less, o, Less);
-            t(Equal, o, o);
-            t(Greater, o, Greater);
-         }
-    }
-
-    #[test]
-    fn test_user_defined_eq() {
-        // Our type.
-        struct SketchyNum {
-            num : int
-        }
-
-        // Our implementation of `PartialEq` to support `==` and `!=`.
-        impl PartialEq for SketchyNum {
-            // Our custom eq allows numbers which are near each other to be equal! :D
-            fn eq(&self, other: &SketchyNum) -> bool {
-                (self.num - other.num).abs() < 5
-            }
-        }
-
-        // Now these binary operators will work when applied!
-        assert!(SketchyNum {num: 37} == SketchyNum {num: 34});
-        assert!(SketchyNum {num: 25} != SketchyNum {num: 57});
-    }
 }

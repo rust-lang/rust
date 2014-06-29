@@ -44,14 +44,9 @@ A quick refresher on memory ordering:
 #![experimental]
 #![allow(missing_doc)]
 
-// This is needed to prevent duplicate lang item definitions.
-#[cfg(test)]
-pub use realcore::intrinsics::{TyDesc, Opaque, TyVisitor, TypeId};
-
 pub type GlueFn = extern "Rust" fn(*const i8);
 
 #[lang="ty_desc"]
-#[cfg(not(test))]
 pub struct TyDesc {
     // sizeof(T)
     pub size: uint,
@@ -70,13 +65,11 @@ pub struct TyDesc {
 }
 
 #[lang="opaque"]
-#[cfg(not(test))]
 pub enum Opaque { }
 
 pub type Disr = u64;
 
 #[lang="ty_visitor"]
-#[cfg(not(test))]
 pub trait TyVisitor {
     fn visit_bot(&mut self) -> bool;
     fn visit_nil(&mut self) -> bool;
@@ -564,12 +557,10 @@ extern "rust-intrinsic" {
 #[lang="type_id"] // This needs to be kept in lockstep with the code in trans/intrinsic.rs and
                   // middle/lang_items.rs
 #[deriving(PartialEq, Eq, Show)]
-#[cfg(not(test))]
 pub struct TypeId {
     t: u64,
 }
 
-#[cfg(not(test))]
 impl TypeId {
     /// Returns the `TypeId` of the type this generic function has been instantiated with
     pub fn of<T: 'static>() -> TypeId {
