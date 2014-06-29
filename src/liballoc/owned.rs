@@ -40,6 +40,7 @@ pub static HEAP: () = ();
 pub struct Box<T>(*mut T);
 
 impl<T: Default> Default for Box<T> {
+    #[inline]
     fn default() -> Box<T> { box Default::default() }
 }
 

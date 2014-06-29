@@ -1970,5 +1970,6 @@ impl<'a> StrSlice<'a> for &'a str {
 }
 
 impl<'a> Default for &'a str {
+    #[inline]
     fn default() -> &'a str { "" }
 }

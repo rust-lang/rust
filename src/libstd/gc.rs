@@ -74,10 +74,12 @@ impl<T: Ord + 'static> Ord for Gc<T> {
 impl<T: Eq + 'static> Eq for Gc<T> {}
 
 impl<T: 'static> Deref<T> for Gc<T> {
+    #[inline]
     fn deref<'a>(&'a self) -> &'a T { &**self }
 }
 
 impl<T: Default + 'static> Default for Gc<T> {
+    #[inline]
     fn default() -> Gc<T> {
         box(GC) Default::default()
     }
@@ -86,6 +88,7 @@ impl<T: Default + 'static> Default for Gc<T> {
 impl<T: 'static> raw::Repr<*const raw::Box<T>> for Gc<T> {}
 
 impl<S: hash::Writer, T: hash::Hash<S> + 'static> hash::Hash<S> for Gc<T> {
+    #[inline]
     fn hash(&self, s: &mut S) {
         (**self).hash(s)
     }

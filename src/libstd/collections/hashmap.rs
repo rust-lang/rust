@@ -975,6 +975,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> MutableMap<K, V> for HashMap<K, V, H> 
         }
     }
 
+    #[inline]
     fn swap(&mut self, k: K, v: V) -> Option<V> {
         let hash = self.make_hash(&k);
         let potential_new_size = self.table.size() + 1;
@@ -1437,6 +1438,7 @@ impl<K: Eq + Hash<S> + Show, V: Show, S, H: Hasher<S>> Show for HashMap<K, V, H>
 }
 
 impl<K: Eq + Hash<S>, V, S, H: Hasher<S> + Default> Default for HashMap<K, V, H> {
+    #[inline]
     fn default() -> HashMap<K, V, H> {
         HashMap::with_hasher(Default::default())
     }
@@ -1461,6 +1463,7 @@ pub type Values<'a, K, V> =
     iter::Map<'static, (&'a K, &'a V), &'a V, Entries<'a, K, V>>;
 
 impl<K: Eq + Hash<S>, V, S, H: Hasher<S> + Default> FromIterator<(K, V)> for HashMap<K, V, H> {
+    #[inline]
     fn from_iter<T: Iterator<(K, V)>>(iter: T) -> HashMap<K, V, H> {
         let (lower, _) = iter.size_hint();
         let mut map = HashMap::with_capacity_and_hasher(lower, Default::default());
@@ -1470,6 +1473,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S> + Default> FromIterator<(K, V)> for Has
 }
 
 impl<K: Eq + Hash<S>, V, S, H: Hasher<S> + Default> Extendable<(K, V)> for HashMap<K, V, H> {
+    #[inline]
     fn extend<T: Iterator<(K, V)>>(&mut self, mut iter: T) {
         for (k, v) in iter {
             self.insert(k, v);
@@ -1647,6 +1651,7 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S> + Default> Extendable<T> for HashSet<T, H>
 }
 
 impl<T: Eq + Hash<S>, S, H: Hasher<S> + Default> Default for HashSet<T, H> {
+    #[inline]
     fn default() -> HashSet<T, H> {
         HashSet::with_hasher(Default::default())
     }

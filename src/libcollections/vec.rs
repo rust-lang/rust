@@ -471,6 +471,7 @@ impl<T> Vec<T> {
      /// vec.reserve_additional(10);
      /// assert!(vec.capacity() >= 11);
      /// ```
+    #[inline]
     pub fn reserve_additional(&mut self, extra: uint) {
         if self.cap - self.len < extra {
             match self.len.checked_add(&extra) {
@@ -496,6 +497,7 @@ impl<T> Vec<T> {
     /// vec.reserve(10);
     /// assert!(vec.capacity() >= 10);
     /// ```
+    #[inline]
     pub fn reserve(&mut self, capacity: uint) {
         if capacity >= self.len {
             self.reserve_exact(num::next_power_of_two(capacity))
@@ -515,6 +517,7 @@ impl<T> Vec<T> {
     /// vec.reserve_exact(11);
     /// assert_eq!(vec.capacity(), 11);
     /// ```
+    #[inline]
     pub fn reserve_exact(&mut self, capacity: uint) {
         if mem::size_of::<T>() == 0 { return }
 
@@ -1465,6 +1468,7 @@ impl<T> Drop for Vec<T> {
 }
 
 impl<T> Default for Vec<T> {
+    #[inline]
     fn default() -> Vec<T> {
         Vec::new()
     }

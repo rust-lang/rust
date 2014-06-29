@@ -1418,5 +1418,6 @@ impl<'a, T> DoubleEndedIterator<&'a mut [T]> for MutChunks<'a, T> {
 }
 
 impl<'a, T> Default for &'a [T] {
+    #[inline]
     fn default() -> &'a [T] { &[] }
 }

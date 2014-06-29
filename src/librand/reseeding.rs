@@ -141,6 +141,7 @@ impl<R: Rng + Default> Reseeder<R> for ReseedWithDefault {
     }
 }
 impl Default for ReseedWithDefault {
+    #[inline]
     fn default() -> ReseedWithDefault { ReseedWithDefault }
 }
 
