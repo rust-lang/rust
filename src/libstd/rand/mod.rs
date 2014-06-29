@@ -244,7 +244,7 @@ pub fn random<T: Rand>() -> T {
     task_rng().gen()
 }
 
-/// Randomly sample up to `n` elements from an iterator.
+/// Randomly sample up to `amount` elements from an iterator.
 ///
 /// # Example
 ///
@@ -257,11 +257,11 @@ pub fn random<T: Rand>() -> T {
 /// ```
 pub fn sample<T, I: Iterator<T>, R: Rng>(rng: &mut R,
                                          mut iter: I,
-                                         amt: uint) -> Vec<T> {
-    let mut reservoir: Vec<T> = iter.by_ref().take(amt).collect();
+                                         amount: uint) -> Vec<T> {
+    let mut reservoir: Vec<T> = iter.by_ref().take(amount).collect();
     for (i, elem) in iter.enumerate() {
-        let k = rng.gen_range(0, i + 1 + amt);
-        if k < amt {
+        let k = rng.gen_range(0, i + 1 + amount);
+        if k < amount {
             *reservoir.get_mut(k) = elem;
         }
     }
