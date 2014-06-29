@@ -8,7 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn test_if_fail() { let x = if false { fail!() } else { 10 }; assert!((x == 10)); }
+fn test_if_fail() {
+    let x = if false { fail!() } else { 10i };
+    assert!((x == 10));
+}
 
 fn test_else_fail() {
     let x = if true { 10i } else { fail!() };
@@ -16,7 +19,7 @@ fn test_else_fail() {
 }
 
 fn test_elseif_fail() {
-    let x = if false { 0 } else if false { fail!() } else { 10i };
+    let x = if false { 0i } else if false { fail!() } else { 10i };
     assert_eq!(x, 10i);
 }
 

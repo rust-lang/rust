@@ -13,4 +13,4 @@
 use std::gc::{Gc, GC};
 
 fn f<T>(_v: Gc<T>) { }
-pub fn main() { f(box(GC) vec!(1, 2, 3, 4, 5)); }
+pub fn main() { f(box(GC) vec!(1i, 2, 3, 4, 5)); }

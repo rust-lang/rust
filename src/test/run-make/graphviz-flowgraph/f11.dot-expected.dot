@@ -1,16 +1,16 @@
 digraph block {
     N0[label="entry"];
     N1[label="exit"];
-    N2[label="expr 11"];
+    N2[label="expr 11i"];
     N3[label="local mut _x"];
     N4[label="(dummy_node)"];
-    N5[label="expr loop  { _x -= 1; }"];
-    N6[label="expr 1"];
+    N5[label="expr loop  { _x -= 1i; }"];
+    N6[label="expr 1i"];
     N7[label="expr _x"];
-    N8[label="expr _x -= 1"];
-    N9[label="block { _x -= 1; }"];
+    N8[label="expr _x -= 1i"];
+    N9[label="block { _x -= 1i; }"];
     N10[label="expr \"unreachable\""];
-    N11[label="block { let mut _x = 11; loop  { _x -= 1; } \"unreachable\"; }"];
+    N11[label="block { let mut _x = 11i; loop  { _x -= 1i; } \"unreachable\"; }"];
     N0 -> N2;
     N2 -> N3;
     N3 -> N4;

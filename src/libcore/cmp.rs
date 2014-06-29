@@ -86,11 +86,11 @@ pub trait Eq: PartialEq {
 #[deriving(Clone, PartialEq, Show)]
 pub enum Ordering {
    /// An ordering where a compared value is less [than another].
-   Less = -1,
+   Less = -1i,
    /// An ordering where a compared value is equal [to another].
-   Equal = 0,
+   Equal = 0i,
    /// An ordering where a compared value is greater [than another].
-   Greater = 1
+   Greater = 1i,
 }
 
 /// Trait for types that form a [total order](

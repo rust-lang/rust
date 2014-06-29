@@ -14,6 +14,6 @@ use std::uint;
 use std::mem::size_of;
 
 fn main() {
-    let xs = [1, 2, 3];
+    let xs = [1i, 2, 3];
     xs[uint::MAX / size_of::<int>() + 1];
 }

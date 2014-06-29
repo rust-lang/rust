@@ -546,7 +546,7 @@ fn get_authority(rawurl: &str) ->
     let mut host = "".to_string();
     let mut port = None;
 
-    let mut colon_count = 0;
+    let mut colon_count = 0u;
     let mut pos = 0;
     let mut begin = 2;
     let mut end = len;

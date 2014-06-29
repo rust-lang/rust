@@ -185,7 +185,7 @@ fn path(w: &mut fmt::Formatter, path: &clean::Path, print_all: bool,
     let mut generics = String::new();
     let last = path.segments.last().unwrap();
     if last.lifetimes.len() > 0 || last.types.len() > 0 {
-        let mut counter = 0;
+        let mut counter = 0u;
         generics.push_str("&lt;");
         for lifetime in last.lifetimes.iter() {
             if counter > 0 { generics.push_str(", "); }

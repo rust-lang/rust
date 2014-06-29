@@ -442,17 +442,14 @@ of integer literal suffix:
 The type of an _unsuffixed_ integer literal is determined by type inference.
 If an integer type can be _uniquely_ determined from the surrounding program
 context, the unsuffixed integer literal has that type.  If the program context
-underconstrains the type, the unsuffixed integer literal's type is `int`; if
-the program context overconstrains the type, it is considered a static type
-error.
+underconstrains the type, it is considered a static type error;
+if the program context overconstrains the type,
+it is also considered a static type error.
 
 Examples of integer literals of various forms:
 
 ~~~~
-123; 0xff00;                       // type determined by program context
-                                   // defaults to int in absence of type
-                                   // information
-
+123i;                              // type int
 123u;                              // type uint
 123_u;                             // type uint
 0xff_u8;                           // type u8
@@ -469,8 +466,10 @@ A _floating-point literal_ has one of two forms:
   second decimal literal.
 * A single _decimal literal_ followed by an _exponent_.
 
-By default, a floating-point literal has a generic type, but will fall back to
-`f64`. A floating-point literal may be followed (immediately, without any
+By default, a floating-point literal has a generic type,
+and, like integer literals, the type must be uniquely determined
+from the context.
+A floating-point literal may be followed (immediately, without any
 spaces) by a _floating-point suffix_, which changes the type of the literal.
 There are two floating-point suffixes: `f32`, and `f64` (the 32-bit and 64-bit
 floating point types).
@@ -478,8 +477,8 @@ floating point types).
 Examples of floating-point literals of various forms:
 
 ~~~~
-123.0;                             // type f64
-0.1;                               // type f64
+123.0f64;                          // type f64
+0.1f64;                            // type f64
 0.1f32;                            // type f32
 12E+99_f64;                        // type f64
 ~~~~
@@ -2700,9 +2699,9 @@ must be a constant expression that can be evaluated at compile time, such
 as a [literal](#literals) or a [static item](#static-items).
 
 ~~~~
-[1, 2, 3, 4];
+[1i, 2, 3, 4];
 ["a", "b", "c", "d"];
-[0, ..128];             // vector with 128 zeros
+[0i, ..128];             // vector with 128 zeros
 [0u8, 0u8, 0u8, 0u8];
 ~~~~
 
@@ -2881,7 +2880,7 @@ equals sign (`=`) and an [rvalue](#lvalues-rvalues-and-temporaries) expression.
 Evaluating an assignment expression [either copies or moves](#moved-and-copied-types) its right-hand operand to its left-hand operand.
 
 ~~~~
-# let mut x = 0;
+# let mut x = 0i;
 # let y = 0;
 
 x = y;
@@ -2932,7 +2931,7 @@ paren_expr : '(' expr ')' ;
 An example of a parenthesized expression:
 
 ~~~~
-let x = (2 + 3) * 4;
+let x: int = (2 + 3) * 4;
 ~~~~
 
 
@@ -3016,7 +3015,7 @@ conditional expression evaluates to `false`, the `while` expression completes.
 An example:
 
 ~~~~
-let mut i = 0;
+let mut i = 0u;
 
 while i < 10 {
     println!("hello");
@@ -3262,7 +3261,7 @@ Patterns can also dereference pointers by using the `&`,
 on `x: &int` are equivalent:
 
 ~~~~
-# let x = &3;
+# let x = &3i;
 let y = match *x { 0 => "zero", _ => "some" };
 let z = match x { &0 => "zero", _ => "some" };
 
@@ -3285,7 +3284,7 @@ A range of values may be specified with `..`.
 For example:
 
 ~~~~
-# let x = 2;
+# let x = 2i;
 
 let message = match x {
   0 | 1  => "not many",

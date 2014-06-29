@@ -15,25 +15,25 @@ fn main() {
     let _v1 =
         [
          // Comment
-         0,
+         0i,
          // Comment
-         1,
+         1i,
          // Comment
-         2];
+         2i];
     let _v2 =
-        [0, // Comment
-         1, // Comment
-         2]; // Comment
+        [0i, // Comment
+         1i, // Comment
+         2i]; // Comment
     let _v3 =
         [
          /* Comment */
-         0,
+         0i,
          /* Comment */
-         1,
+         1i,
          /* Comment */
-         2];
+         2i];
     let _v4 =
-        [0, /* Comment */
-         1, /* Comment */
-         2]; /* Comment */
+        [0i, /* Comment */
+         1i, /* Comment */
+         2i]; /* Comment */
 }

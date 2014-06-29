@@ -16,5 +16,5 @@ fn forever() -> ! {
 }
 
 pub fn main() {
-  if (1 == 2) { forever(); }
+  if (1i == 2) { forever(); }
 }

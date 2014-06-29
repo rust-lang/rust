@@ -3424,7 +3424,7 @@ mod tests {
         hash_map.insert("a".to_string(), 1i);
         hash_map.insert("b".to_string(), 2);
         assert_eq!(hash_map.to_json(), object);
-        assert_eq!(Some(15i).to_json(), Number(15 as f64));
+        assert_eq!(Some(15i).to_json(), Number(15f64));
         assert_eq!(None::<int>.to_json(), Null);
     }
 

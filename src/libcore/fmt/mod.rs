@@ -686,7 +686,7 @@ macro_rules! tuple (
             fn fmt(&self, f: &mut Formatter) -> Result {
                 try!(write!(f, "("));
                 let ($(ref $name,)*) = *self;
-                let mut n = 0;
+                let mut n = 0i;
                 $(
                     if n > 0 {
                         try!(write!(f, ", "));

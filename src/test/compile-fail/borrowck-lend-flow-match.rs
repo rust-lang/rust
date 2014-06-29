@@ -35,20 +35,20 @@ fn guard() {
     // Here the guard performs a borrow. This borrow "infects" all
     // subsequent arms (but not the prior ones).
 
-    let mut a = box 3;
-    let mut b = box 4;
+    let mut a = box 3u;
+    let mut b = box 4u;
     let mut w = &*a;
-    match 22 {
+    match 22i {
         _ if cond() => {
-            b = box 5;
+            b = box 5u;
         }
 
         _ if link(&*b, &mut w) => {
-            b = box 6; //~ ERROR cannot assign
+            b = box 6u; //~ ERROR cannot assign
         }
 
         _ => {
-            b = box 7; //~ ERROR cannot assign
+            b = box 7u; //~ ERROR cannot assign
         }
     }
 

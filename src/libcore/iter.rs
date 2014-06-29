@@ -2649,10 +2649,10 @@ mod tests {
         assert_eq!(c.enumerate().size_hint(), (uint::MAX, None));
         assert_eq!(c.chain(vi.map(|&i| i)).size_hint(), (uint::MAX, None));
         assert_eq!(c.zip(vi).size_hint(), (10, Some(10)));
-        assert_eq!(c.scan(0, |_,_| Some(0)).size_hint(), (0, None));
+        assert_eq!(c.scan(0i, |_,_| Some(0i)).size_hint(), (0, None));
         assert_eq!(c.filter(|_| false).size_hint(), (0, None));
-        assert_eq!(c.map(|_| 0).size_hint(), (uint::MAX, None));
-        assert_eq!(c.filter_map(|_| Some(0)).size_hint(), (0, None));
+        assert_eq!(c.map(|_| 0i).size_hint(), (uint::MAX, None));
+        assert_eq!(c.filter_map(|_| Some(0i)).size_hint(), (0, None));
 
         assert_eq!(vi.take(5).size_hint(), (5, Some(5)));
         assert_eq!(vi.take(12).size_hint(), (10, Some(10)));
@@ -2663,10 +2663,10 @@ mod tests {
         assert_eq!(vi.enumerate().size_hint(), (10, Some(10)));
         assert_eq!(vi.chain(v2.iter()).size_hint(), (13, Some(13)));
         assert_eq!(vi.zip(v2.iter()).size_hint(), (3, Some(3)));
-        assert_eq!(vi.scan(0, |_,_| Some(0)).size_hint(), (0, Some(10)));
+        assert_eq!(vi.scan(0i, |_,_| Some(0i)).size_hint(), (0, Some(10)));
         assert_eq!(vi.filter(|_| false).size_hint(), (0, Some(10)));
         assert_eq!(vi.map(|i| i+1).size_hint(), (10, Some(10)));
-        assert_eq!(vi.filter_map(|_| Some(0)).size_hint(), (0, Some(10)));
+        assert_eq!(vi.filter_map(|_| Some(0i)).size_hint(), (0, Some(10)));
     }
 
     #[test]

@@ -29,12 +29,12 @@ fn f2<type X: T>(x: &X) {
 fn f3<type X>(x1: Box<X>, x2: Box<X>, x3: Box<X>) {
     let y: X = *x1; //~ERROR variable `y` has dynamically sized type `X`
     let y = *x2; //~ERROR variable `y` has dynamically sized type `X`
-    let (y, z) = (*x3, 4); //~ERROR variable `y` has dynamically sized type `X`
+    let (y, z) = (*x3, 4i); //~ERROR variable `y` has dynamically sized type `X`
 }
 fn f4<type X: T>(x1: Box<X>, x2: Box<X>, x3: Box<X>) {
     let y: X = *x1;         //~ERROR variable `y` has dynamically sized type `X`
     let y = *x2;            //~ERROR variable `y` has dynamically sized type `X`
-    let (y, z) = (*x3, 4); //~ERROR variable `y` has dynamically sized type `X`
+    let (y, z) = (*x3, 4i); //~ERROR variable `y` has dynamically sized type `X`
 }
 
 fn g1<type X>(x: X) {} //~ERROR variable `x` has dynamically sized type `X`

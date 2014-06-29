@@ -17,7 +17,7 @@ impl X {
 }
 
 fn foo() -> int {
-    return (1); //~ ERROR unnecessary parentheses around `return` value
+    return (1i); //~ ERROR unnecessary parentheses around `return` value
 }
 fn bar() -> X {
     return (X { y: true }); //~ ERROR unnecessary parentheses around `return` value
@@ -45,7 +45,7 @@ fn main() {
         _ => {}
     }
 
-    let mut _a = (0); //~ ERROR unnecessary parentheses around assigned value
-    _a = (0); //~ ERROR unnecessary parentheses around assigned value
-    _a += (1); //~ ERROR unnecessary parentheses around assigned value
+    let mut _a = (0i); //~ ERROR unnecessary parentheses around assigned value
+    _a = (0i); //~ ERROR unnecessary parentheses around assigned value
+    _a += (1i); //~ ERROR unnecessary parentheses around assigned value
 }

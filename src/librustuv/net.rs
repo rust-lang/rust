@@ -1160,7 +1160,7 @@ mod test {
 
         let expected = 32;
         let mut current = 0;
-        let mut reads = 0;
+        let mut reads = 0u;
 
         while current < expected {
             let nread = stream.read(buf).ok().unwrap();

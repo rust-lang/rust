@@ -19,7 +19,7 @@ fn assert_repr_eq<T>(obj : T, expected : String) {
 }
 
 pub fn main() {
-    let abc = [1, 2, 3];
+    let abc = [1i, 2, 3];
     let tf = [true, false];
     let x  = [(), ()];
     let slice = x.slice(0,1);

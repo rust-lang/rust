@@ -342,12 +342,12 @@ mod tests {
         assert_eq!(hasher.hash(& &[1u8, 2u8, 3u8]), 9);
 
         unsafe {
-            let ptr: *const int = mem::transmute(5);
+            let ptr: *const int = mem::transmute(5i);
             assert_eq!(hasher.hash(&ptr), 5);
         }
 
         unsafe {
-            let ptr: *mut int = mem::transmute(5);
+            let ptr: *mut int = mem::transmute(5i);
             assert_eq!(hasher.hash(&ptr), 5);
         }
     }

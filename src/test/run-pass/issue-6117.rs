@@ -15,7 +15,7 @@ use std::gc::GC;
 enum Either<T, U> { Left(T), Right(U) }
 
 pub fn main() {
-    match Left(box(GC) 17) {
+    match Left(box(GC) 17i) {
         Right(()) => {}
         _ => {}
     }

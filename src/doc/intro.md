@@ -133,7 +133,7 @@ Check it out:
 ```
 
 fn dangling() -> Box<int> {
-    let i = box 1234;
+    let i = box 1234i;
     return i;
 }
 
@@ -143,8 +143,8 @@ fn add_one() -> int {
 }
 ```
 
-Now instead of a stack allocated `1234`,
-we have a heap allocated `box 1234`.
+Now instead of a stack allocated `1234i`,
+we have a heap allocated `box 1234i`.
 Whereas `&` borrows a pointer to existing memory,
 creating an owned box allocates memory on the heap and places a value in it,
 giving you the sole pointer to that memory.
@@ -152,7 +152,7 @@ You can roughly compare these two lines:
 
 ```
 // Rust
-let i = box 1234;
+let i = box 1234i;
 ```
 
 ```cpp

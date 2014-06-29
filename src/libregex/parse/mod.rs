@@ -770,7 +770,7 @@ impl<'a> Parser<'a> {
         }
         let start = self.chari;
         let mut flags = self.flags;
-        let mut sign = 1;
+        let mut sign = 1i;
         let mut saw_flag = false;
         loop {
             try!(self.noteof("expected non-empty set of flags or closing ')'"))
