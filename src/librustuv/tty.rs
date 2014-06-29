@@ -56,7 +56,7 @@ impl TtyWatcher {
         let handle = UvHandle::alloc(None::<TtyWatcher>, uvll::UV_TTY);
         let mut watcher = TtyWatcher {
             tty: handle,
-            stream: StreamWatcher::new(handle),
+            stream: StreamWatcher::new(handle, true),
             home: io.make_handle(),
             fd: fd,
         };
