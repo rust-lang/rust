@@ -31,10 +31,13 @@ struct AGenericStruct<TKey, TValue> {
 
 fn main() {
 
-    let int_int = AGenericStruct { key: 0, value: 1 };
-    let int_float = AGenericStruct { key: 2, value: 3.5 };
-    let float_int = AGenericStruct { key: 4.5, value: 5 };
-    let float_int_float = AGenericStruct { key: 6.5, value: AGenericStruct { key: 7, value: 8.5 } };
+    let int_int = AGenericStruct { key: 0i, value: 1i };
+    let int_float = AGenericStruct { key: 2i, value: 3.5f64 };
+    let float_int = AGenericStruct { key: 4.5f64, value: 5i };
+    let float_int_float = AGenericStruct {
+        key: 6.5f64,
+        value: AGenericStruct { key: 7i, value: 8.5f64 },
+    };
 
     zzz();
 }

@@ -61,8 +61,8 @@ impl Enum {
 }
 
 fn main() {
-    Struct::static_method(1, 2);
-    Enum::static_method(-3, 4.5, 5);
+    Struct::static_method(1i, 2i);
+    Enum::static_method(-3i, 4.5f64, 5i);
 }
 
 fn zzz() {()}

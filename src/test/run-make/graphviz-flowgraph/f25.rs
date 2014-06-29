@@ -10,24 +10,24 @@
 
 #[allow(unreachable_code)]
 pub fn expr_while_25() {
-    let mut x = 25;
-    let mut y = 25;
-    let mut z = 25;
+    let mut x = 25i;
+    let mut y = 25i;
+    let mut z = 25i;
 
     'a: loop {
-        if x == 0 { break; "unreachable"; }
-        x -= 1;
+        if x == 0i { break; "unreachable"; }
+        x -= 1i;
 
         'a: loop {
-            if y == 0 { break; "unreachable"; }
-            y -= 1;
+            if y == 0i { break; "unreachable"; }
+            y -= 1i;
 
             'a: loop {
-                if z == 0 { break; "unreachable"; }
-                z -= 1;
+                if z == 0i { break; "unreachable"; }
+                z -= 1i;
             }
 
-            if x > 10 {
+            if x > 10i {
                 continue 'a;
                 "unreachable";
             }

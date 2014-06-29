@@ -16,7 +16,7 @@ fn main() {
     let r: Result<int,_> = TaskBuilder::new().named("owned name".to_string())
                                              .try(proc() {
         fail!("test");
-        1
+        1i
     });
     assert!(r.is_ok());
 }

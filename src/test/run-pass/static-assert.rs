@@ -12,13 +12,13 @@
 static b: bool = true;
 
 #[static_assert]
-static c: bool = 1 == 1;
+static c: bool = 1i == 1;
 
 #[static_assert]
-static d: bool = 1 != 2;
+static d: bool = 1i != 2;
 
 #[static_assert]
-static f: bool = (4/2) == 2;
+static f: bool = (4i/2) == 2;
 
 pub fn main() {
 }

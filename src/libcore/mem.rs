@@ -475,7 +475,7 @@ mod tests {
 
     #[test]
     fn test_transmute_copy() {
-        assert_eq!(1u, unsafe { ::mem::transmute_copy(&1) });
+        assert_eq!(1u, unsafe { ::mem::transmute_copy(&1i) });
     }
 
     #[test]
@@ -541,7 +541,7 @@ mod bench {
 
     #[bench]
     fn match_option_some(b: &mut Bencher) {
-        let x = Some(10);
+        let x = Some(10i);
         b.iter(|| {
             match x {
                 Some(y) => y,
@@ -552,11 +552,11 @@ mod bench {
 
     #[bench]
     fn match_vec_pattern(b: &mut Bencher) {
-        let x = [1,2,3,4,5,6];
+        let x = [1i,2,3,4,5,6];
         b.iter(|| {
             match x {
-                [1,2,3,..] => 10,
-                _ => 11
+                [1,2,3,..] => 10i,
+                _ => 11i,
             }
         });
     }

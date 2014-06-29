@@ -100,15 +100,15 @@ mod test {
         use std::mem::transmute;
         unsafe {
             let mut key = 0;
-            let value = box 20;
+            let value = box 20i;
             create(&mut key);
             set(key, transmute(value));
             let value: Box<int> = transmute(get(key));
-            assert_eq!(value, box 20);
-            let value = box 30;
+            assert_eq!(value, box 20i);
+            let value = box 30i;
             set(key, transmute(value));
             let value: Box<int> = transmute(get(key));
-            assert_eq!(value, box 30);
+            assert_eq!(value, box 30i);
         }
     }
 }

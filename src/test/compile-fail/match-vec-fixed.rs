@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn a() {
-    let v = [1, 2, 3];
+    let v = [1i, 2, 3];
     match v {
         [_, _, _] => {}
         [_, _, _] => {} //~ ERROR unreachable pattern

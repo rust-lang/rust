@@ -22,6 +22,6 @@ fn x(it: |int|) {
 }
 
 fn main() {
-    let a = box(GC) 0;
+    let a = box(GC) 0i;
     x(|_i| { } );
 }

@@ -37,9 +37,9 @@ struct ContainsManaged {
 }
 
 fn main() {
-    let ordinary_unique = box() (-1, -2);
+    let ordinary_unique = box() (-1i, -2i);
 
-    let managed_within_unique = box ContainsManaged { x: -3, y: box(GC) -4 };
+    let managed_within_unique = box ContainsManaged { x: -3, y: box(GC) -4i };
 
     zzz();
 }

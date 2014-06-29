@@ -13,7 +13,7 @@
 
 // error-pattern:wooooo
 fn main() {
-    let mut a = 1;
-    if 1 == 1 { a = 2; }
+    let mut a = 1i;
+    if 1i == 1 { a = 2; }
     fail!(format!("woooo{}", "o"));
 }

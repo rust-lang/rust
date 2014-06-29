@@ -21,37 +21,37 @@ fn set(x: &mut int) {
 }
 
 fn a() {
-    let mut x = 3;
+    let mut x = 3i;
     let c1 = || x = 4;
     let c2 = || x * 5; //~ ERROR cannot borrow `x`
 }
 
 fn b() {
-    let mut x = 3;
+    let mut x = 3i;
     let c1 = || set(&mut x);
     let c2 = || get(&x); //~ ERROR cannot borrow `x`
 }
 
 fn c() {
-    let mut x = 3;
+    let mut x = 3i;
     let c1 = || set(&mut x);
     let c2 = || x * 5; //~ ERROR cannot borrow `x`
 }
 
 fn d() {
-    let mut x = 3;
+    let mut x = 3i;
     let c2 = || x * 5;
     x = 5; //~ ERROR cannot assign
 }
 
 fn e() {
-    let mut x = 3;
+    let mut x = 3i;
     let c1 = || get(&x);
     x = 5; //~ ERROR cannot assign
 }
 
 fn f() {
-    let mut x = box 3;
+    let mut x = box 3i;
     let c1 = || get(&*x);
     *x = 5; //~ ERROR cannot assign
 }

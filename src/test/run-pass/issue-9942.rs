@@ -9,5 +9,5 @@
 // except according to those terms.
 
 pub fn main() {
-    static S: uint = 23 as uint; [0, ..S]; ()
+    static S: uint = 23 as uint; [0i, ..S]; ()
 }

@@ -14,7 +14,7 @@
 
 
 fn a() {
-    let mut x = 3;
+    let mut x = 3i;
     let c1 = || x = 4;
     let c2 = || x = 5; //~ ERROR cannot borrow `x` as mutable more than once
 }
@@ -24,19 +24,19 @@ fn set(x: &mut int) {
 }
 
 fn b() {
-    let mut x = 3;
+    let mut x = 3i;
     let c1 = || set(&mut x);
     let c2 = || set(&mut x); //~ ERROR cannot borrow `x` as mutable more than once
 }
 
 fn c() {
-    let mut x = 3;
+    let mut x = 3i;
     let c1 = || x = 5;
     let c2 = || set(&mut x); //~ ERROR cannot borrow `x` as mutable more than once
 }
 
 fn d() {
-    let mut x = 3;
+    let mut x = 3i;
     let c1 = || x = 5;
     let c2 = || { let _y = || set(&mut x); }; // (nested closure)
     //~^ ERROR cannot borrow `x` as mutable more than once

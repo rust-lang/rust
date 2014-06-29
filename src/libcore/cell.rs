@@ -67,10 +67,10 @@
 //!
 //! fn main() {
 //!     let shared_map: Rc<RefCell<_>> = Rc::new(RefCell::new(HashMap::new()));
-//!     shared_map.borrow_mut().insert("africa", 92388);
-//!     shared_map.borrow_mut().insert("kyoto", 11837);
-//!     shared_map.borrow_mut().insert("piccadilly", 11826);
-//!     shared_map.borrow_mut().insert("marbles", 38);
+//!     shared_map.borrow_mut().insert("africa", 92388i);
+//!     shared_map.borrow_mut().insert("kyoto", 11837i);
+//!     shared_map.borrow_mut().insert("piccadilly", 11826i);
+//!     shared_map.borrow_mut().insert("marbles", 38i);
 //! }
 //! ```
 //!
@@ -433,35 +433,35 @@ mod test {
 
     #[test]
     fn double_imm_borrow() {
-        let x = RefCell::new(0);
+        let x = RefCell::new(0i);
         let _b1 = x.borrow();
         x.borrow();
     }
 
     #[test]
     fn no_mut_then_imm_borrow() {
-        let x = RefCell::new(0);
+        let x = RefCell::new(0i);
         let _b1 = x.borrow_mut();
         assert!(x.try_borrow().is_none());
     }
 
     #[test]
     fn no_imm_then_borrow_mut() {
-        let x = RefCell::new(0);
+        let x = RefCell::new(0i);
         let _b1 = x.borrow();
         assert!(x.try_borrow_mut().is_none());
     }
 
     #[test]
     fn no_double_borrow_mut() {
-        let x = RefCell::new(0);
+        let x = RefCell::new(0i);
         let _b1 = x.borrow_mut();
         assert!(x.try_borrow_mut().is_none());
     }
 
     #[test]
     fn imm_release_borrow_mut() {
-        let x = RefCell::new(0);
+        let x = RefCell::new(0i);
         {
             let _b1 = x.borrow();
         }
@@ -470,7 +470,7 @@ mod test {
 
     #[test]
     fn mut_release_borrow_mut() {
-        let x = RefCell::new(0);
+        let x = RefCell::new(0i);
         {
             let _b1 = x.borrow_mut();
         }
@@ -479,7 +479,7 @@ mod test {
 
     #[test]
     fn double_borrow_single_release_no_borrow_mut() {
-        let x = RefCell::new(0);
+        let x = RefCell::new(0i);
         let _b1 = x.borrow();
         {
             let _b2 = x.borrow();
@@ -490,7 +490,7 @@ mod test {
     #[test]
     #[should_fail]
     fn discard_doesnt_unborrow() {
-        let x = RefCell::new(0);
+        let x = RefCell::new(0i);
         let _b = x.borrow();
         let _ = _b;
         let _b = x.borrow_mut();
@@ -499,7 +499,7 @@ mod test {
     #[test]
     #[allow(experimental)]
     fn clone_ref_updates_flag() {
-        let x = RefCell::new(0);
+        let x = RefCell::new(0i);
         {
             let b1 = x.borrow();
             assert!(x.try_borrow_mut().is_none());

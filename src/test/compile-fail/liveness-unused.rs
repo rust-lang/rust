@@ -29,40 +29,40 @@ fn f1d() {
 }
 
 fn f2() {
-    let x = 3;
+    let x = 3i;
     //~^ ERROR unused variable: `x`
 }
 
 fn f3() {
-    let mut x = 3;
+    let mut x = 3i;
     //~^ ERROR variable `x` is assigned to, but never used
-    x += 4;
+    x += 4i;
     //~^ ERROR value assigned to `x` is never read
 }
 
 fn f3b() {
-    let mut z = 3;
+    let mut z = 3i;
     //~^ ERROR variable `z` is assigned to, but never used
     loop {
-        z += 4;
+        z += 4i;
     }
 }
 
 #[allow(unused_variable)]
 fn f3c() {
-    let mut z = 3;
-    loop { z += 4; }
+    let mut z = 3i;
+    loop { z += 4i; }
 }
 
 #[allow(unused_variable)]
 #[allow(dead_assignment)]
 fn f3d() {
-    let mut x = 3;
-    x += 4;
+    let mut x = 3i;
+    x += 4i;
 }
 
 fn f4() {
-    match Some(3) {
+    match Some(3i) {
       Some(i) => {
         //~^ ERROR unused variable: `i`
       }
@@ -75,7 +75,7 @@ enum tri {
 }
 
 fn f4b() -> int {
-    match a(3) {
+    match a(3i) {
       a(i) | b(i) | c(i) => {
         i
       }

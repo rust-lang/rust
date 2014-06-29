@@ -1,9 +1,9 @@
 digraph block {
     N0[label="entry"];
     N1[label="exit"];
-    N2[label="expr 4"];
+    N2[label="expr 4i"];
     N3[label="local _x"];
-    N4[label="block { let _x = 4; }"];
+    N4[label="block { let _x = 4i; }"];
     N0 -> N2;
     N2 -> N3;
     N3 -> N4;

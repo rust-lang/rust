@@ -17,7 +17,7 @@ fn my_fail() -> ! { loop {} }
 
 pub fn step(f: bool) {
     let mut g = S;
-    let mut i = 0;
+    let mut i = 0i;
     loop
     {
         if i > 10 { break; } else { i += 1; }

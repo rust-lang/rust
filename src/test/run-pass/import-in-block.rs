@@ -12,11 +12,11 @@
 
 pub fn main() {
     use std::mem::replace;
-    let mut x = 5;
+    let mut x = 5i;
     replace(&mut x, 6);
     {
         use std::mem::*;
-        let mut y = 6;
+        let mut y = 6i;
         swap(&mut x, &mut y);
     }
 }

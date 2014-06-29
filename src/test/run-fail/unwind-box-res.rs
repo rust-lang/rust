@@ -41,7 +41,7 @@ fn r(v: *const int) -> r {
 
 fn main() {
     unsafe {
-        let i1 = box 0;
+        let i1 = box 0i;
         let i1p = mem::transmute_copy(&i1);
         mem::forget(i1);
         let x = box(GC) r(i1p);

@@ -18,6 +18,6 @@ mod a {
 
 pub fn main() {
     unsafe {
-        a::free(transmute(0));
+        a::free(transmute(0u));
     }
 }

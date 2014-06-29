@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn main() {
-    let x = 3;
+    let x = 3i;
 
     // Here, the variable `p` gets inferred to a type with a lifetime
     // of the loop body.  The regionck then determines that this type
@@ -17,7 +17,7 @@ fn main() {
     let mut p = &x;
 
     loop {
-        let x = 1 + *p;
+        let x = 1i + *p;
         p = &x; //~ ERROR `x` does not live long enough
     }
 }

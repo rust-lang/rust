@@ -35,7 +35,7 @@ static priv_static: int = 0; //~ ERROR: code is never used
 static used_static: int = 0;
 pub static used_static2: int = used_static;
 static USED_STATIC: int = 0;
-static STATIC_USED_IN_ENUM_DISCRIMINANT: uint = 10;
+static STATIC_USED_IN_ENUM_DISCRIMINANT: int = 10;
 
 pub type typ = *const UsedStruct4;
 pub struct PubStruct;
@@ -77,7 +77,7 @@ pub fn pub_fn() {
     let e = foo3;
     SemiUsedStruct::la_la_la();
 
-    let i = 1;
+    let i = 1i;
     match i {
         USED_STATIC => (),
         _ => ()

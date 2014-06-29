@@ -11,7 +11,7 @@
 // pp-exact
 
 fn main() {
-    let x = Some(3);
+    let x = Some(3i);
     let _y =
         match x {
             Some(_) =>

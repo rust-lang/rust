@@ -11,6 +11,6 @@
 // This file must never have a trailing newline
 
 fn main() {
-    let x = Some(3);
-    let y = x.as_ref().unwrap_or(&5); //~ ERROR: borrowed value does not live long enough
+    let x = Some(3i);
+    let y = x.as_ref().unwrap_or(&5i); //~ ERROR: borrowed value does not live long enough
 }

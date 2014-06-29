@@ -14,5 +14,5 @@
 fn main() {
   loop{}
 
-  let a = 3; //~ ERROR: unreachable statement
+  let a = 3i; //~ ERROR: unreachable statement
 }
