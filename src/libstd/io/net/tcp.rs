@@ -1360,4 +1360,44 @@ mod test {
 
         rx2.recv();
     })
+
+    iotest!(fn clone_while_reading() {
+        let addr = next_test_ip6();
+        let listen = TcpListener::bind(addr.ip.to_str().as_slice(), addr.port);
+        let mut accept = listen.listen().unwrap();
+
+        // Enqueue a task to write to a socket
+        let (tx, rx) = channel();
+        let (txdone, rxdone) = channel();
+        let txdone2 = txdone.clone();
+        spawn(proc() {
+            let mut tcp = TcpStream::connect(addr.ip.to_str().as_slice(),
+                                             addr.port).unwrap();
+            rx.recv();
+            tcp.write_u8(0).unwrap();
+            txdone2.send(());
+        });
+
+        // Spawn off a reading clone
+        let tcp = accept.accept().unwrap();
+        let tcp2 = tcp.clone();
+        let txdone3 = txdone.clone();
+        spawn(proc() {
+            let mut tcp2 = tcp2;
+            tcp2.read_u8().unwrap();
+            txdone3.send(());
+        });
+
+        // Try to ensure that the reading clone is indeed reading
+        for _ in range(0i, 50) {
+            ::task::deschedule();
+        }
+
+        // clone the handle again while it's reading, then let it finish the
+        // read.
+        let _ = tcp.clone();
+        tx.send(());
+        rxdone.recv();
+        rxdone.recv();
+    })
 }

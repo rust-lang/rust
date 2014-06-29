@@ -67,7 +67,7 @@ impl PipeWatcher {
             handle
         };
         PipeWatcher {
-            stream: StreamWatcher::new(handle),
+            stream: StreamWatcher::new(handle, true),
             home: home,
             defused: false,
             refcount: Refcount::new(),
@@ -131,7 +131,7 @@ impl rtio::RtioPipe for PipeWatcher {
 
     fn clone(&self) -> Box<rtio::RtioPipe + Send> {
         box PipeWatcher {
-            stream: StreamWatcher::new(self.stream.handle),
+            stream: StreamWatcher::new(self.stream.handle, false),
             defused: false,
             home: self.home.clone(),
             refcount: self.refcount.clone(),

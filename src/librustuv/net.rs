@@ -191,7 +191,7 @@ impl TcpWatcher {
         TcpWatcher {
             home: home,
             handle: handle,
-            stream: StreamWatcher::new(handle),
+            stream: StreamWatcher::new(handle, true),
             refcount: Refcount::new(),
             read_access: AccessTimeout::new(),
             write_access: AccessTimeout::new(),
@@ -278,7 +278,7 @@ impl rtio::RtioTcpStream for TcpWatcher {
     fn clone(&self) -> Box<rtio::RtioTcpStream + Send> {
         box TcpWatcher {
             handle: self.handle,
-            stream: StreamWatcher::new(self.handle),
+            stream: StreamWatcher::new(self.handle, false),
             home: self.home.clone(),
             refcount: self.refcount.clone(),
             read_access: self.read_access.clone(),
