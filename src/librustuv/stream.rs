@@ -59,8 +59,11 @@ impl StreamWatcher {
     // will be manipulated on each of the methods called on this watcher.
     // Wrappers should ensure to always reset the field to an appropriate value
     // if they rely on the field to perform an action.
-    pub fn new(stream: *mut uvll::uv_stream_t) -> StreamWatcher {
-        unsafe { uvll::set_data_for_uv_handle(stream, 0 as *mut int) }
+    pub fn new(stream: *mut uvll::uv_stream_t,
+               init: bool) -> StreamWatcher {
+        if init {
+            unsafe { uvll::set_data_for_uv_handle(stream, 0 as *mut int) }
+        }
         StreamWatcher {
             handle: stream,
             last_write_req: None,
