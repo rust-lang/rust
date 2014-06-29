@@ -40,7 +40,7 @@ impl GetAddrInfoRequest {
         let (_c_node, c_node_ptr) = match node {
             Some(n) => {
                 let c_node = n.to_c_str();
-                let c_node_ptr = c_node.with_ref(|r| r);
+                let c_node_ptr = c_node.as_ptr();
                 (Some(c_node), c_node_ptr)
             }
             None => (None, null())
@@ -49,7 +49,7 @@ impl GetAddrInfoRequest {
         let (_c_service, c_service_ptr) = match service {
             Some(s) => {
                 let c_service = s.to_c_str();
-                let c_service_ptr = c_service.with_ref(|r| r);
+                let c_service_ptr = c_service.as_ptr();
                 (Some(c_service), c_service_ptr)
             }
             None => (None, null())

@@ -206,9 +206,7 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
                     s.push_str(highlight::highlight(text.as_slice(), None, id)
                                          .as_slice());
                     let output = s.to_c_str();
-                    output.with_ref(|r| {
-                        hoedown_buffer_puts(ob, r)
-                    })
+                    hoedown_buffer_puts(ob, output.as_ptr());
                 }
             })
         }

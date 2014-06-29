@@ -85,7 +85,7 @@ impl Process {
                     args: argv,
                     env: envp,
                     cwd: match cfg.cwd {
-                        Some(cwd) => cwd.with_ref(|p| p),
+                        Some(cwd) => cwd.as_ptr(),
                         None => ptr::null(),
                     },
                     flags: flags as libc::c_uint,
@@ -183,8 +183,8 @@ fn with_argv<T>(prog: &CString, args: &[CString],
     // larger than the lifetime of our invocation of cb, but this is
     // technically unsafe as the callback could leak these pointers
     // out of our scope.
-    ptrs.push(prog.with_ref(|buf| buf));
-    ptrs.extend(args.iter().map(|tmp| tmp.with_ref(|buf| buf)));
+    ptrs.push(prog.as_ptr());
+    ptrs.extend(args.iter().map(|tmp| tmp.as_ptr()));
 
     // Add a terminating null pointer (required by libc).
     ptrs.push(ptr::null());
