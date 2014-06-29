@@ -682,9 +682,9 @@ pub mod test {
             let two = "twoTwo".to_c_str();
             let three = "threeThree".to_c_str();
             let arr = vec![
-                one.with_ref(|buf| buf),
-                two.with_ref(|buf| buf),
-                three.with_ref(|buf| buf)
+                one.as_ptr(),
+                two.as_ptr(),
+                three.as_ptr()
             ];
             let expected_arr = [
                 one, two, three
@@ -694,9 +694,7 @@ pub mod test {
             let mut iteration_count = 0;
             array_each_with_len(arr.as_ptr(), arr.len(), |e| {
                     let actual = str::raw::from_c_str(e);
-                    let expected = expected_arr[ctr].with_ref(|buf| {
-                            str::raw::from_c_str(buf)
-                        });
+                    let expected = str::raw::from_c_str(expected_arr[ctr].as_ptr());
                     assert_eq!(actual.as_slice(), expected.as_slice());
                     ctr += 1;
                     iteration_count += 1;
@@ -712,9 +710,9 @@ pub mod test {
             let two = "twoTwo".to_c_str();
             let three = "threeThree".to_c_str();
             let arr = vec![
-                one.with_ref(|buf| buf),
-                two.with_ref(|buf| buf),
-                three.with_ref(|buf| buf),
+                one.as_ptr(),
+                two.as_ptr(),
+                three.as_ptr(),
                 // fake a null terminator
                 null()
             ];
@@ -727,9 +725,7 @@ pub mod test {
             let mut iteration_count = 0u;
             array_each(arr_ptr, |e| {
                     let actual = str::raw::from_c_str(e);
-                    let expected = expected_arr[ctr].with_ref(|buf| {
-                        str::raw::from_c_str(buf)
-                    });
+                    let expected = str::raw::from_c_str(expected_arr[ctr].as_ptr());
                     assert_eq!(actual.as_slice(), expected.as_slice());
                     ctr += 1;
                     iteration_count += 1;
