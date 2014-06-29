@@ -160,7 +160,7 @@ Save the file, and then type this into your terminal window:
 
 ```{bash}
 $ rustc hello_world.rs
-$ ./hello_world # just 'hello_world' on Windows
+$ ./hello_world # or hello_world.exe on Windows
 Hello, world
 ```
 
@@ -243,7 +243,7 @@ There are now two files: our source code, with the `.rs` extension, and the
 executable (`hello_world.exe` on Windows, `hello_world` everywhere else)
 
 ```{bash}
-$ ./hello_world  # or ./hello_world.exe on Windows
+$ ./hello_world  # or hello_world.exe on Windows
 ```
 
 This prints out our `Hello, world!` text to our terminal.
