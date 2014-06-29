@@ -104,6 +104,13 @@ mod tests {
     use cell::RefCell;
 
     #[test]
+    fn test_managed_clone() {
+        let a = box(GC) 5i;
+        let b: Gc<int> = a.clone();
+        assert!(a == b);
+    }
+
+    #[test]
     fn test_clone() {
         let x = Gc::new(RefCell::new(5));
         let y = x.clone();

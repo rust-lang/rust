@@ -117,7 +117,6 @@ pub trait Add<RHS,Result> {
 
 macro_rules! add_impl(
     ($($t:ty)*) => ($(
-        #[cfg(not(test))]
         impl Add<$t, $t> for $t {
             #[inline]
             fn add(&self, other: &$t) -> $t { (*self) + (*other) }
@@ -159,7 +158,6 @@ pub trait Sub<RHS,Result> {
 
 macro_rules! sub_impl(
     ($($t:ty)*) => ($(
-        #[cfg(not(test))]
         impl Sub<$t, $t> for $t {
             #[inline]
             fn sub(&self, other: &$t) -> $t { (*self) - (*other) }
@@ -201,7 +199,6 @@ pub trait Mul<RHS,Result> {
 
 macro_rules! mul_impl(
     ($($t:ty)*) => ($(
-        #[cfg(not(test))]
         impl Mul<$t, $t> for $t {
             #[inline]
             fn mul(&self, other: &$t) -> $t { (*self) * (*other) }
@@ -243,7 +240,6 @@ pub trait Div<RHS,Result> {
 
 macro_rules! div_impl(
     ($($t:ty)*) => ($(
-        #[cfg(not(test))]
         impl Div<$t, $t> for $t {
             #[inline]
             fn div(&self, other: &$t) -> $t { (*self) / (*other) }
@@ -285,7 +281,6 @@ pub trait Rem<RHS,Result> {
 
 macro_rules! rem_impl(
     ($($t:ty)*) => ($(
-        #[cfg(not(test))]
         impl Rem<$t, $t> for $t {
             #[inline]
             fn rem(&self, other: &$t) -> $t { (*self) % (*other) }
@@ -295,7 +290,6 @@ macro_rules! rem_impl(
 
 macro_rules! rem_float_impl(
     ($t:ty, $fmod:ident) => {
-        #[cfg(not(test))]
         impl Rem<$t, $t> for $t {
             #[inline]
             fn rem(&self, other: &$t) -> $t {
@@ -342,7 +336,6 @@ pub trait Neg<Result> {
 
 macro_rules! neg_impl(
     ($($t:ty)*) => ($(
-        #[cfg(not(test))]
         impl Neg<$t> for $t {
             #[inline]
             fn neg(&self) -> $t { -*self }
@@ -352,7 +345,6 @@ macro_rules! neg_impl(
 
 macro_rules! neg_uint_impl(
     ($t:ty, $t_signed:ty) => {
-        #[cfg(not(test))]
         impl Neg<$t> for $t {
             #[inline]
             fn neg(&self) -> $t { -(*self as $t_signed) as $t }
@@ -402,7 +394,6 @@ pub trait Not<Result> {
 
 macro_rules! not_impl(
     ($($t:ty)*) => ($(
-        #[cfg(not(test))]
         impl Not<$t> for $t {
             #[inline]
             fn not(&self) -> $t { !*self }
@@ -444,7 +435,6 @@ pub trait BitAnd<RHS,Result> {
 
 macro_rules! bitand_impl(
     ($($t:ty)*) => ($(
-        #[cfg(not(test))]
         impl BitAnd<$t, $t> for $t {
             #[inline]
             fn bitand(&self, rhs: &$t) -> $t { (*self) & (*rhs) }
@@ -486,7 +476,6 @@ pub trait BitOr<RHS,Result> {
 
 macro_rules! bitor_impl(
     ($($t:ty)*) => ($(
-        #[cfg(not(test))]
         impl BitOr<$t,$t> for $t {
             #[inline]
             fn bitor(&self, rhs: &$t) -> $t { (*self) | (*rhs) }
@@ -528,7 +517,6 @@ pub trait BitXor<RHS,Result> {
 
 macro_rules! bitxor_impl(
     ($($t:ty)*) => ($(
-        #[cfg(not(test))]
         impl BitXor<$t, $t> for $t {
             #[inline]
             fn bitxor(&self, other: &$t) -> $t { (*self) ^ (*other) }
@@ -745,29 +733,4 @@ pub trait FnMut<Args,Result> {
 pub trait FnOnce<Args,Result> {
     /// This is called when the call operator is used.
     fn call_once(self, args: Args) -> Result;
-}
-
-#[cfg(test)]
-mod bench {
-    extern crate test;
-    use self::test::Bencher;
-    use ops::Drop;
-
-    // Overhead of dtors
-
-    struct HasDtor {
-        x: int
-    }
-
-    impl Drop for HasDtor {
-        fn drop(&mut self) {
-        }
-    }
-
-    #[bench]
-    fn alloc_obj_with_dtor(b: &mut Bencher) {
-        b.iter(|| {
-            HasDtor { x : 10 };
-        })
-    }
 }
