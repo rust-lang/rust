@@ -246,7 +246,6 @@ impl<'a, T> RandomAccessIterator<&'a [T]> for Chunks<'a, T> {
 
 // Equality
 
-#[cfg(not(test))]
 #[allow(missing_doc)]
 pub mod traits {
     use super::*;
@@ -297,9 +296,6 @@ pub mod traits {
         }
     }
 }
-
-#[cfg(test)]
-pub mod traits {}
 
 /// Any vector that can be represented as a slice.
 pub trait Vector<T> {

@@ -579,15 +579,7 @@ fn eq_slice_(a: &str, b: &str) -> bool {
 /// Bytewise slice equality
 /// NOTE: This function is (ab)used in rustc::middle::trans::_match
 /// to compare &[u8] byte slices that are not necessarily valid UTF-8.
-#[cfg(not(test))]
 #[lang="str_eq"]
-#[inline]
-pub fn eq_slice(a: &str, b: &str) -> bool {
-    eq_slice_(a, b)
-}
-
-/// Bytewise slice equality
-#[cfg(test)]
 #[inline]
 pub fn eq_slice(a: &str, b: &str) -> bool {
     eq_slice_(a, b)
@@ -934,7 +926,6 @@ pub mod raw {
 Section: Trait implementations
 */
 
-#[cfg(not(test))]
 #[allow(missing_doc)]
 pub mod traits {
     use cmp::{Ord, Ordering, Less, Equal, Greater, PartialEq, PartialOrd, Equiv, Eq};
@@ -979,9 +970,6 @@ pub mod traits {
         fn equiv(&self, other: &S) -> bool { eq_slice(*self, other.as_slice()) }
     }
 }
-
-#[cfg(test)]
-pub mod traits {}
 
 /// Any string that can be represented as a slice
 pub trait Str {
