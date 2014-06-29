@@ -9,5 +9,5 @@
 // except according to those terms.
 
 // n.b. This was only ever failing with optimization disabled.
-fn a() -> int { match return 1 { 2 => 3, _ => fail!() } }
+fn a() -> int { match return 1i { 2i => 3i, _ => fail!() } }
 pub fn main() { a(); }

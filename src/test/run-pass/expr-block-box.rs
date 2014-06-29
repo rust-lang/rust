@@ -12,4 +12,4 @@
 
 use std::gc::GC;
 
-pub fn main() { let x = { box(GC) 100 }; assert!((*x == 100)); }
+pub fn main() { let x = { box(GC) 100i }; assert!((*x == 100)); }

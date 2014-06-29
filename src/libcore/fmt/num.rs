@@ -388,7 +388,7 @@ mod tests {
     #[test]
     #[should_fail]
     fn test_radix_base_too_large() {
-        let _ = radix(55, 37);
+        let _ = radix(55i, 37);
     }
 }
 

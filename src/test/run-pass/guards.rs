@@ -12,14 +12,14 @@ struct Pair { x: int, y: int }
 
 pub fn main() {
     let a: int =
-        match 10 { x if x < 7 => { 1 } x if x < 11 => { 2 } 10 => { 3 } _ => { 4 } };
+        match 10i { x if x < 7 => { 1i } x if x < 11 => { 2i } 10 => { 3i } _ => { 4i } };
     assert_eq!(a, 2);
 
     let b: int =
         match (Pair {x: 10, y: 20}) {
-          x if x.x < 5 && x.y < 5 => { 1 }
-          Pair {x: x, y: y} if x == 10 && y == 20 => { 2 }
-          Pair {x: _x, y: _y} => { 3 }
+          x if x.x < 5 && x.y < 5 => { 1i }
+          Pair {x: x, y: y} if x == 10 && y == 20 => { 2i }
+          Pair {x: _x, y: _y} => { 3i }
         };
     assert_eq!(b, 2);
 }

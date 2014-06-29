@@ -176,7 +176,7 @@ impl Drop for Queue {
 impl Drop for State {
     fn drop(&mut self) {
         unsafe {
-            uvll::uv_close(self.handle, mem::transmute(0));
+            uvll::uv_close(self.handle, mem::transmute(0u));
             // Note that this does *not* free the handle, that is the
             // responsibility of the caller because the uv loop must be closed
             // before we deallocate this uv handle.

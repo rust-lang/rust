@@ -10,5 +10,5 @@
 
 
 pub fn main() {
-    {|i| if 1 == i { }};
+    {|i| if 1i == i { }};
 }

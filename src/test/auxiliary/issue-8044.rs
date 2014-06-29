@@ -23,5 +23,5 @@ pub fn leaf<V>(value: V) -> TreeItem<V> {
 }
 
 fn main() {
-    BTree::<int> { node: leaf(1) };
+    BTree::<int> { node: leaf(1i) };
 }

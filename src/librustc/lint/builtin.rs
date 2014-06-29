@@ -391,8 +391,8 @@ pub struct HeapMemory;
 
 impl HeapMemory {
     fn check_heap_type(&self, cx: &Context, span: Span, ty: ty::t) {
-        let mut n_box = 0;
-        let mut n_uniq = 0;
+        let mut n_box = 0i;
+        let mut n_uniq = 0i;
         ty::fold_ty(cx.tcx, ty, |t| {
             match ty::get(t).sty {
                 ty::ty_box(_) => {

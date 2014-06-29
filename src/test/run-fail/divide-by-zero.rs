@@ -10,6 +10,6 @@
 
 // error-pattern:attempted to divide by zero
 fn main() {
-    let y = 0;
-    let _z = 1 / y;
+    let y = 0i;
+    let _z = 1i / y;
 }

@@ -155,7 +155,7 @@ fn non_immediate_args(a: BigStruct, b: BigStruct) {
 }
 
 fn binding(a: i64, b: u64, c: f64) {
-    let x = 0;
+    let x = 0i;
 }
 
 fn assignment(mut a: u64, b: u64, c: f64) {

@@ -64,7 +64,7 @@ mod test {
         let (left, right) = duplex();
 
         left.send("abc".to_string());
-        right.send(123);
+        right.send(123i);
 
         assert!(left.recv() == 123);
         assert!(right.recv() == "abc".to_string());

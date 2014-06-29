@@ -12,7 +12,7 @@
 // expression results in fail.
 pub fn main() {
     let _x = if true {
-        10
+        10i
     } else {
         if true { fail!() } else { fail!() }
     };

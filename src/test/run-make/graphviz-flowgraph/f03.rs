@@ -9,5 +9,5 @@
 // except according to those terms.
 
 pub fn expr_add_3() {
-    3 + 33;
+    3i + 33i;
 }

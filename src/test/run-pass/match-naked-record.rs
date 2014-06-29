@@ -11,7 +11,7 @@
 struct X { x: int }
 
 pub fn main() {
-    let _x = match 0 {
+    let _x = match 0i {
       _ => X {
         x: 0
       }

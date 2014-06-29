@@ -11,6 +11,6 @@
 // compile-flags: -D path-statement
 fn main() {
 
-    let x = 10;
+    let x = 10i;
     x; //~ ERROR path statement with no effect
 }

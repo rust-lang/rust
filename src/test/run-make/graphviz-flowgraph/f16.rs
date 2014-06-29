@@ -10,22 +10,22 @@
 
 #[allow(unreachable_code)]
 pub fn expr_continue_label_16() {
-    let mut x = 16;
-    let mut y = 16;
+    let mut x = 16i;
+    let mut y = 16i;
     'outer: loop {
         'inner: loop {
-            if x == 1 {
+            if x == 1i {
                 continue 'outer;
                 "unreachable"
             }
-            if y >= 1 {
+            if y >= 1i {
                 break;
                 "unreachable"
             }
-            y -= 1;
+            y -= 1i;
         }
-        y -= 1;
-        x -= 1;
+        y -= 1i;
+        x -= 1i;
     }
     "unreachable";
 }

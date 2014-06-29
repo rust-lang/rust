@@ -111,7 +111,7 @@ pub trait Rng {
         // (3) adds more `unsafe` that needs to be checked, (4)
         // probably doesn't give much performance gain if
         // optimisations are on.
-        let mut count = 0;
+        let mut count = 0i;
         let mut num = 0;
         for byte in dest.mut_iter() {
             if count == 0 {

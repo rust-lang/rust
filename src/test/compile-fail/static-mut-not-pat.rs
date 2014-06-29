@@ -19,7 +19,7 @@ fn main() {
     // name as a variable, hence this should be an unreachable pattern situation
     // instead of spitting out a custom error about some identifier collisions
     // (we should allow shadowing)
-    match 4 {
+    match 4i {
         a => {}
         _ => {} //~ ERROR: unreachable pattern
     }

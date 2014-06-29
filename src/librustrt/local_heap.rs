@@ -335,11 +335,11 @@ mod bench {
 
     #[bench]
     fn alloc_managed_small(b: &mut Bencher) {
-        b.iter(|| { box(GC) 10 });
+        b.iter(|| { box(GC) 10i });
     }
 
     #[bench]
     fn alloc_managed_big(b: &mut Bencher) {
-        b.iter(|| { box(GC) ([10, ..1000]) });
+        b.iter(|| { box(GC) ([10i, ..1000]) });
     }
 }

@@ -9,5 +9,5 @@
 // except according to those terms.
 
 pub fn main() {
-    let _i = box 100;
+    let _i = box 100i;
 }

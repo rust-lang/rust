@@ -55,7 +55,7 @@ fn main() {
         zzz();
         sentinel();
 
-        let x = 2.5;
+        let x = 2.5f64;
 
         zzz();
         sentinel();

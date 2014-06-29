@@ -90,7 +90,7 @@ impl<'a> SpanUtils<'a> {
         let mut result = None;
 
         let mut toks = self.retokenise_span(span);
-        let mut bracket_count = 0;
+        let mut bracket_count = 0u;
         loop {
             let ts = toks.next_token();
             if ts.tok == token::EOF {
@@ -113,7 +113,7 @@ impl<'a> SpanUtils<'a> {
     // Return the span for the first identifier in the path.
     pub fn span_for_first_ident(&self, span: Span) -> Option<Span> {
         let mut toks = self.retokenise_span(span);
-        let mut bracket_count = 0;
+        let mut bracket_count = 0u;
         loop {
             let ts = toks.next_token();
             if ts.tok == token::EOF {
@@ -139,7 +139,7 @@ impl<'a> SpanUtils<'a> {
         let mut toks = self.retokenise_span(span);
         let mut prev = toks.next_token();
         let mut result = None;
-        let mut bracket_count = 0;
+        let mut bracket_count = 0u;
         let mut last_span = None;
         while prev.tok != token::EOF {
             last_span = None;
@@ -187,7 +187,7 @@ impl<'a> SpanUtils<'a> {
         let mut toks = self.retokenise_span(span);
         let mut prev = toks.next_token();
         let mut result = None;
-        let mut bracket_count = 0;
+        let mut bracket_count = 0u;
         loop {
             let next = toks.next_token();
 
@@ -232,7 +232,7 @@ impl<'a> SpanUtils<'a> {
 
         let mut toks = self.retokenise_span(span);
         // We keep track of how many brackets we're nested in
-        let mut bracket_count = 0;
+        let mut bracket_count = 0i;
         loop {
             let ts = toks.next_token();
             if ts.tok == token::EOF {
@@ -291,7 +291,7 @@ impl<'a> SpanUtils<'a> {
         let mut next = toks.next_token();
         let mut stored_val = false;
         let mut found_val = false;
-        let mut bracket_count = 0;
+        let mut bracket_count = 0u;
         while next.tok != token::EOF {
             if bracket_count == 1 {
                 if next.tok == tok2 {

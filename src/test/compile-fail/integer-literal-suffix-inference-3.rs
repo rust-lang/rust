@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+fn main() {
+    println!("{}", std::mem::size_of_val(&1));
+    //~^ ERROR cannot determine a type for this expression
+}
 
-
-pub fn main() { let x: int = 10; while x == 10 && x == 11 { let _y = 0xf00u; } }

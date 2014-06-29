@@ -252,8 +252,8 @@ mod test {
     #[test]
     fn drop_full() {
         let q = Queue::new(0);
-        q.push(box 1);
-        q.push(box 2);
+        q.push(box 1i);
+        q.push(box 2i);
     }
 
     #[test]
@@ -284,7 +284,7 @@ mod test {
                 for _ in range(0u, 100000) {
                     loop {
                         match b.pop() {
-                            Some(1) => break,
+                            Some(1i) => break,
                             Some(_) => fail!(),
                             None => {}
                         }
