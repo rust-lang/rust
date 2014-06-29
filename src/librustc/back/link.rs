@@ -412,7 +412,7 @@ pub mod write {
         {
             let add = |arg: &str| {
                 let s = arg.to_c_str();
-                llvm_args.push(s.with_ref(|p| p));
+                llvm_args.push(s.as_ptr());
                 llvm_c_strs.push(s);
             };
             add("rustc"); // fake program name

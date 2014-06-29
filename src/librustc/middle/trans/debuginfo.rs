@@ -1433,24 +1433,23 @@ fn compile_unit_metadata(cx: &CrateContext) {
     let producer = format!("rustc version {}",
                            (option_env!("CFG_VERSION")).expect("CFG_VERSION"));
 
-    compile_unit_name.with_ref(|compile_unit_name| {
-        work_dir.as_vec().with_c_str(|work_dir| {
-            producer.with_c_str(|producer| {
-                "".with_c_str(|flags| {
-                    "".with_c_str(|split_name| {
-                        unsafe {
-                            llvm::LLVMDIBuilderCreateCompileUnit(
-                                debug_context(cx).builder,
-                                DW_LANG_RUST,
-                                compile_unit_name,
-                                work_dir,
-                                producer,
-                                cx.sess().opts.optimize != config::No,
-                                flags,
-                                0,
-                                split_name);
-                        }
-                    })
+    let compile_unit_name = compile_unit_name.as_ptr();
+    work_dir.as_vec().with_c_str(|work_dir| {
+        producer.with_c_str(|producer| {
+            "".with_c_str(|flags| {
+                "".with_c_str(|split_name| {
+                    unsafe {
+                        llvm::LLVMDIBuilderCreateCompileUnit(
+                            debug_context(cx).builder,
+                            DW_LANG_RUST,
+                            compile_unit_name,
+                            work_dir,
+                            producer,
+                            cx.sess().opts.optimize != config::No,
+                            flags,
+                            0,
+                            split_name);
+                    }
                 })
             })
         })

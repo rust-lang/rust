@@ -347,7 +347,7 @@ pub fn readdir(p: &CString) -> IoResult<Vec<CString>> {
     use std::rt::libc_heap::malloc_raw;
 
     fn prune(root: &CString, dirs: Vec<Path>) -> Vec<CString> {
-        let root = unsafe { CString::new(root.with_ref(|p| p), false) };
+        let root = unsafe { CString::new(root.as_ptr(), false) };
         let root = Path::new(root);
 
         dirs.move_iter().filter(|path| {
@@ -360,7 +360,7 @@ pub fn readdir(p: &CString) -> IoResult<Vec<CString>> {
         fn rust_list_dir_wfd_fp_buf(wfd: *mut libc::c_void) -> *const u16;
     }
     let star = Path::new(unsafe {
-        CString::new(p.with_ref(|p| p), false)
+        CString::new(p.as_ptr(), false)
     }).join("*");
     let path = try!(to_utf16(&star.to_c_str()));
 

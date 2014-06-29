@@ -50,8 +50,8 @@ impl GetAddrInfoRequest {
 
         // Make the call
         let s = unsafe {
-            let ch = if c_host.is_null() { null() } else { c_host.with_ref(|x| x) };
-            let cs = if c_serv.is_null() { null() } else { c_serv.with_ref(|x| x) };
+            let ch = if c_host.is_null() { null() } else { c_host.as_ptr() };
+            let cs = if c_serv.is_null() { null() } else { c_serv.as_ptr() };
             getaddrinfo(ch, cs, hint_ptr, &mut res)
         };
 
