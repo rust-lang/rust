@@ -138,7 +138,7 @@ pub fn to_string(f: |&mut State| -> IoResult<()>) -> String {
         // downcasts.
         let (_, wr): (uint, Box<MemWriter>) = mem::transmute_copy(&s.s.out);
         let result =
-            str::from_utf8_owned(Vec::from_slice(wr.get_ref())).unwrap();
+            String::from_utf8(Vec::from_slice(wr.get_ref())).unwrap();
         mem::forget(wr);
         result.to_string()
     }

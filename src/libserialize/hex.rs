@@ -45,7 +45,7 @@ impl<'a> ToHex for &'a [u8] {
         }
 
         unsafe {
-            str::raw::from_utf8(v.as_slice()).to_string()
+            str::raw::from_utf8_owned(v)
         }
     }
 }

@@ -575,7 +575,6 @@ struct P {a: int, b: f64}
 
 #[test]
 fn test_repr() {
-    use std::str;
     use std::io::stdio::println;
     use std::char::is_alphabetic;
     use std::mem::swap;
@@ -584,7 +583,7 @@ fn test_repr() {
     fn exact_test<T>(t: &T, e:&str) {
         let mut m = io::MemWriter::new();
         write_repr(&mut m as &mut io::Writer, t).unwrap();
-        let s = str::from_utf8(m.unwrap().as_slice()).unwrap().to_string();
+        let s = String::from_utf8(m.unwrap()).unwrap();
         assert_eq!(s.as_slice(), e);
     }
 

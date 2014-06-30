@@ -240,7 +240,7 @@ pub fn decode<T: ::Decodable<Decoder, DecoderError>>(s: &str) -> DecodeResult<T>
 /// Shortcut function to encode a `T` into a JSON `String`
 pub fn encode<'a, T: Encodable<Encoder<'a>, io::IoError>>(object: &T) -> String {
     let buff = Encoder::buffer_encode(object);
-    str::from_utf8_owned(buff).unwrap()
+    String::from_utf8(buff).unwrap()
 }
 
 impl fmt::Show for ErrorCode {
@@ -517,8 +517,7 @@ impl<'a> ::Encoder<io::IoError> for Encoder<'a> {
             let mut check_encoder = Encoder::new(&mut buf);
             try!(f(transmute(&mut check_encoder)));
         }
-        let out = str::from_utf8_owned(buf.unwrap()).unwrap();
-        let out = out.as_slice();
+        let out = str::from_utf8(buf.get_ref()).unwrap();
         let needs_wrapping = out.char_at(0) != '"' && out.char_at_reverse(out.len()) != '"';
         if needs_wrapping { try!(write!(self.writer, "\"")); }
         try!(f(self));
@@ -762,8 +761,7 @@ impl<'a> ::Encoder<io::IoError> for PrettyEncoder<'a> {
             let mut check_encoder = PrettyEncoder::new(&mut buf);
             try!(f(transmute(&mut check_encoder)));
         }
-        let out = str::from_utf8_owned(buf.unwrap()).unwrap();
-        let out = out.as_slice();
+        let out = str::from_utf8(buf.get_ref()).unwrap();
         let needs_wrapping = out.char_at(0) != '"' && out.char_at_reverse(out.len()) != '"';
         if needs_wrapping { try!(write!(self.writer, "\"")); }
         try!(f(self));
@@ -810,7 +808,7 @@ impl Json {
     pub fn to_pretty_str(&self) -> String {
         let mut s = MemWriter::new();
         self.to_pretty_writer(&mut s as &mut io::Writer).unwrap();
-        str::from_utf8_owned(s.unwrap()).unwrap()
+        String::from_utf8(s.unwrap()).unwrap()
     }
 
      /// If the Json value is an Object, returns the value associated with the provided key.
@@ -1728,14 +1726,14 @@ impl<T: Iterator<char>> Builder<T> {
 /// Decodes a json value from an `&mut io::Reader`
 pub fn from_reader(rdr: &mut io::Reader) -> Result<Json, BuilderError> {
     let contents = match rdr.read_to_end() {
-        Ok(c) => c,
+        Ok(c)  => c,
         Err(e) => return Err(io_error_to_error(e))
     };
-    let s = match str::from_utf8_owned(contents) {
-        Ok(s) => s,
-        _ => return Err(SyntaxError(NotUtf8, 0, 0))
+    let s = match str::from_utf8(contents.as_slice()) {
+        Some(s) => s,
+        _       => return Err(SyntaxError(NotUtf8, 0, 0))
     };
-    let mut builder = Builder::new(s.as_slice().chars());
+    let mut builder = Builder::new(s.chars());
     builder.build()
 }
 

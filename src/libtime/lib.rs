@@ -1086,7 +1086,7 @@ pub fn strftime(format: &str, tm: &Tm) -> String {
         }
     }
 
-    str::from_utf8(buf.as_slice()).unwrap().to_string()
+    String::from_utf8(buf).unwrap()
 }
 
 #[cfg(test)]

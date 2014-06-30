@@ -438,7 +438,7 @@ unsafe fn str_map_bytes(string: String, map: &'static [u8]) -> String {
         *b = map[*b as uint];
     }
 
-    String::from_str(str::from_utf8(bytes.as_slice()).unwrap())
+    String::from_utf8(bytes).unwrap()
 }
 
 #[inline]
