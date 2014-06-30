@@ -125,6 +125,12 @@ rules above; the elided form is just a shorthand.
 fn print(s: &str);                                      // elided
 fn print<'a>(s: &'a str);                               // expanded
 
+fn debug(lvl: uint, s: &str);                           // elided
+fn debug<'a>(lvl: uint, s: &'a str);                    // expanded
+
+fn substr(s: &str, until: uint) -> &str;                // elided
+fn substr<'a>(s: &'a str, until: uint) -> &'a str;      // expanded
+
 fn get_str() -> &str;                                   // ILLEGAL
 
 fn frob(s: &str, t: &str) -> &str;                      // ILLEGAL
