@@ -460,7 +460,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> io::IoResult<String> 
 
     try!(write!(&mut w, "]}};"));
 
-    Ok(str::from_utf8(w.unwrap().as_slice()).unwrap().to_string())
+    Ok(String::from_utf8(w.unwrap()).unwrap())
 }
 
 fn write_shared(cx: &Context,

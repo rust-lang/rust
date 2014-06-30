@@ -464,7 +464,7 @@ pub use core::fmt::{secret_pointer};
 pub fn format(args: &Arguments) -> string::String{
     let mut output = io::MemWriter::new();
     let _ = write!(&mut output, "{}", args);
-    str::from_utf8(output.unwrap().as_slice()).unwrap().into_string()
+    String::from_utf8(output.unwrap()).unwrap()
 }
 
 impl<'a> Writer for Formatter<'a> {

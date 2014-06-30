@@ -107,6 +107,7 @@ Section: Creating a string
 /// let string = str::from_utf8_owned(hello_vec);
 /// assert_eq!(string, Ok("hello".to_string()));
 /// ```
+#[deprecated = "Replaced by `String::from_utf8`"]
 pub fn from_utf8_owned(vv: Vec<u8>) -> Result<String, Vec<u8>> {
     String::from_utf8(vv)
 }
@@ -139,9 +140,7 @@ pub fn from_byte(b: u8) -> String {
 /// assert_eq!(string.as_slice(), "b");
 /// ```
 pub fn from_char(ch: char) -> String {
-    let mut buf = String::new();
-    buf.push_char(ch);
-    buf
+    String::from_char(ch)
 }
 
 /// Convert a vector of chars to a string
@@ -2173,19 +2172,6 @@ String::from_str("\u1111\u1171\u11b6"));
 
         let xs = b"hello\xFF";
         assert_eq!(from_utf8(xs), None);
-    }
-
-    #[test]
-    fn test_str_from_utf8_owned() {
-        let xs = Vec::from_slice(b"hello");
-        assert_eq!(from_utf8_owned(xs), Ok(String::from_str("hello")));
-
-        let xs = Vec::from_slice("ศไทย中华Việt Nam".as_bytes());
-        assert_eq!(from_utf8_owned(xs), Ok(String::from_str("ศไทย中华Việt Nam")));
-
-        let xs = Vec::from_slice(b"hello\xFF");
-        assert_eq!(from_utf8_owned(xs),
-                   Err(Vec::from_slice(b"hello\xFF")));
     }
 
     #[test]

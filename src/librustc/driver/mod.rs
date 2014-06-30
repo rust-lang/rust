@@ -82,8 +82,7 @@ fn run_compiler(args: &[String]) {
             let ifile = matches.free.get(0).as_slice();
             if ifile == "-" {
                 let contents = io::stdin().read_to_end().unwrap();
-                let src = str::from_utf8(contents.as_slice()).unwrap()
-                                                             .to_string();
+                let src = String::from_utf8(contents).unwrap();
                 (StrInput(src), None)
             } else {
                 (FileInput(Path::new(ifile)), Some(Path::new(ifile)))

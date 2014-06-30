@@ -1922,5 +1922,5 @@ pub fn encoded_ty(tcx: &ty::ctxt, t: ty::t) -> String {
         tcx: tcx,
         abbrevs: &RefCell::new(HashMap::new())
     }, t);
-    str::from_utf8_owned(Vec::from_slice(wr.get_ref())).unwrap().to_string()
+    str::from_utf8(wr.get_ref()).unwrap().to_string()
 }

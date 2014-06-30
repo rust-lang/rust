@@ -75,6 +75,14 @@ impl String {
     ///
     /// Returns `Err` with the original vector if the vector contains invalid
     /// UTF-8.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let hello_vec = vec![104, 101, 108, 108, 111];
+    /// let string = String::from_utf8(hello_vec);
+    /// assert_eq!(string, Ok("hello".to_string()));
+    /// ```
     #[inline]
     pub fn from_utf8(vec: Vec<u8>) -> Result<String, Vec<u8>> {
         if str::is_utf8(vec.as_slice()) {
@@ -389,6 +397,19 @@ mod tests {
             let mut r = String::new();
             r.push_str(s);
         });
+    }
+
+    #[test]
+    fn test_str_from_utf8() {
+        let xs = Vec::from_slice(b"hello");
+        assert_eq!(String::from_utf8(xs), Ok("hello".to_string()));
+
+        let xs = Vec::from_slice("à¸¨à¹„à¸—à¸¢ä¸­åŽViá»‡t Nam".as_bytes());
+        assert_eq!(String::from_utf8(xs), Ok("à¸¨à¹„à¸—à¸¢ä¸­åŽViá»‡t Nam".to_string()));
+
+        let xs = Vec::from_slice(b"hello\xFF");
+        assert_eq!(String::from_utf8(xs),
+                   Err(Vec::from_slice(b"hello\xFF")));
     }
 
     #[test]

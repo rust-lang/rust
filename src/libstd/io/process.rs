@@ -813,8 +813,7 @@ mod tests {
         use os;
         let prog = pwd_cmd().spawn().unwrap();
 
-        let output = str::from_utf8(prog.wait_with_output().unwrap()
-                                        .output.as_slice()).unwrap().to_string();
+        let output = String::from_utf8(prog.wait_with_output().unwrap().output).unwrap();
         let parent_dir = os::getcwd();
         let child_dir = Path::new(output.as_slice().trim());
 
@@ -832,8 +831,7 @@ mod tests {
         let parent_dir = os::getcwd().dir_path();
         let prog = pwd_cmd().cwd(&parent_dir).spawn().unwrap();
 
-        let output = str::from_utf8(prog.wait_with_output().unwrap()
-                                        .output.as_slice()).unwrap().to_string();
+        let output = String::from_utf8(prog.wait_with_output().unwrap().output).unwrap();
         let child_dir = Path::new(output.as_slice().trim().into_string());
 
         let parent_stat = parent_dir.stat().unwrap();
@@ -867,8 +865,7 @@ mod tests {
         if running_on_valgrind() { return; }
 
         let prog = env_cmd().spawn().unwrap();
-        let output = str::from_utf8(prog.wait_with_output().unwrap()
-                                        .output.as_slice()).unwrap().to_string();
+        let output = String::from_utf8(prog.wait_with_output().unwrap().output).unwrap();
 
         let r = os::env();
         for &(ref k, ref v) in r.iter() {
@@ -884,9 +881,7 @@ mod tests {
         if running_on_valgrind() { return; }
 
         let mut prog = env_cmd().spawn().unwrap();
-        let output = str::from_utf8(prog.wait_with_output()
-                                        .unwrap().output.as_slice())
-                                   .unwrap().to_string();
+        let output = String::from_utf8(prog.wait_with_output().unwrap().output).unwrap();
 
         let r = os::env();
         for &(ref k, ref v) in r.iter() {
