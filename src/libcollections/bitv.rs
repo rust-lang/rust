@@ -51,7 +51,6 @@ use vec::Vec;
 /// println!("{}", bv.to_str());
 /// println!("total bits set to true: {}", bv.iter().filter(|x| *x).count());
 /// ```
-#[deriving(Clone)]
 pub struct Bitv {
     /// Internal representation of the bit vector
     storage: Vec<uint>,
@@ -159,17 +158,6 @@ impl Bitv {
         self.process(other, |w1, w2| w1 & w2)
     }
 
-    /**
-     * Assigns the value of `v1` to `self`
-     *
-     * Both bitvectors must be the same length. Returns `true` if `self` was
-     * changed
-     */
-    #[inline]
-    pub fn assign(&mut self, other: &Bitv) -> bool {
-        self.process(other, |_, w| w)
-    }
-
     /// Retrieve the value at index `i`
     #[inline]
     pub fn get(&self, i: uint) -> bool {
@@ -193,12 +181,6 @@ impl Bitv {
         let flag = 1 << b;
         *self.storage.get_mut(w) = if x { *self.storage.get(w) | flag }
                           else { *self.storage.get(w) & !flag };
-    }
-
-    /// Set all bits to 0
-    #[inline]
-    pub fn clear(&mut self) {
-        for w in self.storage.mut_iter() { *w = 0u; }
     }
 
     /// Set all bits to 1
@@ -313,6 +295,132 @@ impl Bitv {
         }
         true
     }
+
+    /// Shorten a Bitv, dropping excess elements.
+    ///
+    /// If `len` is greater than the vector's current length, this has no
+    /// effect.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use collections::bitv::Bitv;
+    /// let mut bvec: Bitv = vec![false, true, true, false].iter().map(|n| *n).collect();
+    /// let expected: Bitv = vec![false, true].iter().map(|n| *n).collect();
+    /// bvec.truncate(2);
+    /// assert_eq!(bvec, expected);
+    /// ```
+    pub fn truncate(&mut self, len: uint) {
+        if len < self.len() {
+            self.nbits = len;
+            let word_len = (len + uint::BITS - 1) / uint::BITS;
+            self.storage.truncate(word_len);
+            if len % uint::BITS > 0 {
+                let mask = (1 << len % uint::BITS) - 1;
+                *self.storage.get_mut(word_len - 1) &= mask;
+            }
+        }
+    }
+
+    /// Grows the vector to be able to store `size` bits without resizing
+    pub fn reserve(&mut self, size: uint) {
+        let old_size = self.storage.len();
+        let size = (size + uint::BITS - 1) / uint::BITS;
+        if old_size < size {
+            self.storage.grow(size - old_size, &0);
+        }
+    }
+
+    /// Returns the capacity in bits for this bit vector. Inserting any
+    /// element less than this amount will not trigger a resizing.
+    #[inline]
+    pub fn capacity(&self) -> uint {
+        self.storage.len() * uint::BITS
+    }
+
+    /// Grows the `Bitv` in-place.
+    ///
+    /// Adds `n` copies of `value` to the `Bitv`.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use collections::bitv::Bitv;
+    /// let mut bvec: Bitv = vec![false, true, true, false].iter().map(|n| *n).collect();
+    /// bvec.grow(2, true);
+    /// assert_eq!(bvec, vec![false, true, true, false, true, true].iter().map(|n| *n).collect());
+    /// ```
+    pub fn grow(&mut self, n: uint, value: bool) {
+        let new_nbits = self.nbits + n;
+        let new_nwords = (new_nbits + uint::BITS - 1) / uint::BITS;
+        let full_value = if value { !0 } else { 0 };
+        // Correct the old tail word
+        let old_last_word = (self.nbits + uint::BITS - 1) / uint::BITS - 1;
+        if self.nbits % uint::BITS > 0 {
+            let overhang = self.nbits % uint::BITS; // # of already-used bits
+            let mask = !((1 << overhang) - 1);  // e.g. 5 unused bits => 111110....0
+            if value {
+                *self.storage.get_mut(old_last_word) |= mask;
+            } else {
+                *self.storage.get_mut(old_last_word) &= !mask;
+            }
+        }
+        // Fill in words after the old tail word
+        let stop_idx = cmp::min(self.storage.len(), new_nwords);
+        for idx in range(old_last_word + 1, stop_idx) {
+            *self.storage.get_mut(idx) = full_value;
+        }
+        // Allocate new words, if needed
+        if new_nwords > self.storage.len() {
+          let to_add = new_nwords - self.storage.len();
+          self.storage.grow(to_add, &full_value);
+        }
+        // Adjust internal bit count
+        self.nbits = new_nbits;
+    }
+
+    /// Shorten a `Bitv` by one, returning the removed element
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use collections::bitv::Bitv;
+    /// let mut bvec: Bitv = vec![false, true, true, false].iter().map(|n| *n).collect();
+    /// let expected: Bitv = vec![false, true, true].iter().map(|n| *n).collect();
+    /// let popped = bvec.pop();
+    /// assert_eq!(popped, false);
+    /// assert_eq!(bvec, expected);
+    /// ```
+    pub fn pop(&mut self) -> bool {
+        let ret = self.get(self.nbits - 1);
+        // If we are unusing a whole word, make sure it is zeroed out
+        if self.nbits % uint::BITS == 1 {
+            *self.storage.get_mut(self.nbits / uint::BITS) = 0;
+        }
+        self.nbits -= 1;
+        ret
+    }
+
+    /// Pushes a `bool` onto the `Bitv`
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use collections::bitv::Bitv;
+    /// let prototype: Bitv = vec![false, true, true, false].iter().map(|n| *n).collect();
+    /// let mut bvec: Bitv = vec![false, true].iter().map(|n| *n).collect();
+    /// bvec.push(true);
+    /// bvec.push(false);
+    /// assert_eq!(prototype, bvec);
+    /// ```
+    pub fn push(&mut self, elem: bool) {
+        let insert_pos = self.nbits;
+        self.nbits += 1;
+        if self.storage.len() * uint::BITS < self.nbits {
+            self.storage.push(0);
+        }
+        self.set(insert_pos, elem);
+    }
 }
 
 /**
@@ -329,13 +437,6 @@ pub fn from_bytes(bytes: &[u8]) -> Bitv {
 }
 
 /**
- * Transform a `[bool]` into a `Bitv` by converting each `bool` into a bit.
- */
-pub fn from_bools(bools: &[bool]) -> Bitv {
-    from_fn(bools.len(), |i| bools[i])
-}
-
-/**
  * Create a `Bitv` of the specified length where the value at each
  * index is `f(index)`.
  */
@@ -345,6 +446,57 @@ pub fn from_fn(len: uint, f: |index: uint| -> bool) -> Bitv {
         bitv.set(i, f(i));
     }
     bitv
+}
+
+impl Default for Bitv {
+    #[inline]
+    fn default() -> Bitv { Bitv::new(0, false) }
+}
+
+impl Collection for Bitv {
+    #[inline]
+    fn len(&self) -> uint { self.nbits }
+}
+
+impl Mutable for Bitv {
+    #[inline]
+    fn clear(&mut self) {
+        for w in self.storage.mut_iter() { *w = 0u; }
+    }
+}
+
+impl FromIterator<bool> for Bitv {
+    fn from_iter<I:Iterator<bool>>(iterator: I) -> Bitv {
+        let mut ret = Bitv::new(0, false);
+        ret.extend(iterator);
+        ret
+    }
+}
+
+impl Extendable<bool> for Bitv {
+    #[inline]
+    fn extend<I: Iterator<bool>>(&mut self, mut iterator: I) {
+        let (min, _) = iterator.size_hint();
+        let nbits = self.nbits;
+        self.reserve(nbits + min);
+        for element in iterator {
+            self.push(element)
+        }
+    }
+}
+
+impl Clone for Bitv {
+    #[inline]
+    fn clone(&self) -> Bitv {
+        Bitv { storage: self.storage.clone(), nbits: self.nbits }
+    }
+
+    #[inline]
+    fn clone_from(&mut self, source: &Bitv) {
+        self.nbits = source.nbits;
+        self.storage.reserve(source.storage.len());
+        for (i, w) in self.storage.mut_iter().enumerate() { *w = *source.storage.get(i); }
+    }
 }
 
 impl ops::Index<uint,bool> for Bitv {
@@ -471,7 +623,13 @@ impl BitvSet {
     #[inline]
     pub fn capacity(&self) -> uint {
         let &BitvSet(ref bitv) = self;
-        bitv.storage.len() * uint::BITS
+        bitv.capacity()
+    }
+
+    /// Grows the underlying vector to be able to store `size` bits
+    pub fn reserve(&mut self, size: uint) {
+        let &BitvSet(ref mut bitv) = self;
+        bitv.reserve(size)
     }
 
     /// Consumes this set to return the underlying bit vector
@@ -481,24 +639,28 @@ impl BitvSet {
         bitv
     }
 
+    /// Returns a reference to the underlying bit vector
     #[inline]
-    /// Grows the vector to be able to store bits with indices `[0, size - 1]`
-    fn grow(&mut self, size: uint) {
+    pub fn get_ref<'a>(&'a self) -> &'a Bitv {
+        let &BitvSet(ref bitv) = self;
+        bitv
+    }
+
+    /// Returns a mutable reference to the underlying bit vector
+    #[inline]
+    pub fn get_mut_ref<'a>(&'a mut self) -> &'a mut Bitv {
         let &BitvSet(ref mut bitv) = self;
-        let old_size = bitv.storage.len();
-        let size = (size + uint::BITS - 1) / uint::BITS;
-        if old_size < size {
-            bitv.storage.grow(size - old_size, &0);
-        }
+        bitv
     }
 
     #[inline]
     fn other_op(&mut self, other: &BitvSet, f: |uint, uint| -> uint) {
-        // Expand the vector if necessary
-        self.grow(other.capacity());
         // Unwrap Bitvs
         let &BitvSet(ref mut self_bitv) = self;
         let &BitvSet(ref other_bitv) = other;
+        // Expand the vector if necessary
+        self_bitv.reserve(other_bitv.capacity());
+        // Apply values
         for (i, w) in other_bitv.mask_words(0) {
             let old = *self_bitv.storage.get(i);
             let new = f(old, w);
@@ -683,7 +845,7 @@ impl MutableSet<uint> for BitvSet {
         }
         if value >= self.capacity() {
             let new_cap = cmp::max(value + 1, self.capacity() * 2);
-            self.grow(new_cap);
+            self.reserve(new_cap);
         }
         let &BitvSet(ref mut bitv) = self;
         if value >= bitv.nbits {
@@ -824,7 +986,7 @@ mod tests {
     use test::Bencher;
 
     use {Set, Mutable, MutableSet};
-    use bitv::{Bitv, BitvSet, from_bools, from_fn, from_bytes};
+    use bitv::{Bitv, BitvSet, from_fn, from_bytes};
     use bitv;
     use vec::Vec;
 
@@ -1187,8 +1349,9 @@ mod tests {
 
     #[test]
     fn test_from_bools() {
-        assert!(from_bools([true, false, true, true]).to_str().as_slice() ==
-                "1011");
+        let bools = vec![true, false, true, true];
+        let bitv: Bitv = bools.iter().map(|n| *n).collect();
+        assert_eq!(bitv.to_str().as_slice(), "1011");
     }
 
     #[test]
@@ -1200,7 +1363,7 @@ mod tests {
     #[test]
     fn test_bitv_iterator() {
         let bools = [true, false, true, true];
-        let bitv = from_bools(bools);
+        let bitv: Bitv = bools.iter().map(|n| *n).collect();
 
         for (act, &ex) in bitv.iter().zip(bools.iter()) {
             assert_eq!(ex, act);
@@ -1210,7 +1373,7 @@ mod tests {
     #[test]
     fn test_bitv_set_iterator() {
         let bools = [true, false, true, true];
-        let bitv = BitvSet::from_bitv(from_bools(bools));
+        let bitv = BitvSet::from_bitv(bools.iter().map(|n| *n).collect());
 
         let idxs: Vec<uint> = bitv.iter().collect();
         assert_eq!(idxs, vec!(0, 2, 3));
@@ -1497,6 +1660,97 @@ mod tests {
         assert!(v.all());
         assert!(v.any());
         assert!(!v.none());
+    }
+
+    #[test]
+    fn test_bitv_push_pop() {
+        let mut s = Bitv::new(5 * uint::BITS - 2, false);
+        assert_eq!(s.len(), 5 * uint::BITS - 2);
+        assert_eq!(s.get(5 * uint::BITS - 3), false);
+        s.push(true);
+        s.push(true);
+        assert_eq!(s.get(5 * uint::BITS - 2), true);
+        assert_eq!(s.get(5 * uint::BITS - 1), true);
+        // Here the internal vector will need to be extended
+        s.push(false);
+        assert_eq!(s.get(5 * uint::BITS), false);
+        s.push(false);
+        assert_eq!(s.get(5 * uint::BITS + 1), false);
+        assert_eq!(s.len(), 5 * uint::BITS + 2);
+        // Pop it all off
+        assert_eq!(s.pop(), false);
+        assert_eq!(s.pop(), false);
+        assert_eq!(s.pop(), true);
+        assert_eq!(s.pop(), true);
+        assert_eq!(s.len(), 5 * uint::BITS - 2);
+    }
+
+    #[test]
+    fn test_bitv_truncate() {
+        let mut s = Bitv::new(5 * uint::BITS, true);
+
+        assert_eq!(s, Bitv::new(5 * uint::BITS, true));
+        assert_eq!(s.len(), 5 * uint::BITS);
+        s.truncate(4 * uint::BITS);
+        assert_eq!(s, Bitv::new(4 * uint::BITS, true));
+        assert_eq!(s.len(), 4 * uint::BITS);
+        // Truncating to a size > s.len() should be a noop
+        s.truncate(5 * uint::BITS);
+        assert_eq!(s, Bitv::new(4 * uint::BITS, true));
+        assert_eq!(s.len(), 4 * uint::BITS);
+        s.truncate(3 * uint::BITS - 10);
+        assert_eq!(s, Bitv::new(3 * uint::BITS - 10, true));
+        assert_eq!(s.len(), 3 * uint::BITS - 10);
+        s.truncate(0);
+        assert_eq!(s, Bitv::new(0, true));
+        assert_eq!(s.len(), 0);
+    }
+
+    #[test]
+    fn test_bitv_reserve() {
+        let mut s = Bitv::new(5 * uint::BITS, true);
+        // Check capacity
+        assert_eq!(s.capacity(), 5 * uint::BITS);
+        s.reserve(2 * uint::BITS);
+        assert_eq!(s.capacity(), 5 * uint::BITS);
+        s.reserve(7 * uint::BITS);
+        assert_eq!(s.capacity(), 7 * uint::BITS);
+        s.reserve(7 * uint::BITS);
+        assert_eq!(s.capacity(), 7 * uint::BITS);
+        s.reserve(7 * uint::BITS + 1);
+        assert_eq!(s.capacity(), 8 * uint::BITS);
+        // Check that length hasn't changed
+        assert_eq!(s.len(), 5 * uint::BITS);
+        s.push(true);
+        s.push(false);
+        s.push(true);
+        assert_eq!(s.get(5 * uint::BITS - 1), true);
+        assert_eq!(s.get(5 * uint::BITS - 0), true);
+        assert_eq!(s.get(5 * uint::BITS + 1), false);
+        assert_eq!(s.get(5 * uint::BITS + 2), true);
+    }
+
+    #[test]
+    fn test_bitv_grow() {
+        let mut bitv = from_bytes([0b10110110, 0b00000000, 0b10101010]);
+        bitv.grow(32, true);
+        assert_eq!(bitv, from_bytes([0b10110110, 0b00000000, 0b10101010,
+                                     0xFF, 0xFF, 0xFF, 0xFF]));
+        bitv.grow(64, false);
+        assert_eq!(bitv, from_bytes([0b10110110, 0b00000000, 0b10101010,
+                                     0xFF, 0xFF, 0xFF, 0xFF, 0, 0, 0, 0, 0, 0, 0, 0]));
+        bitv.grow(16, true);
+        assert_eq!(bitv, from_bytes([0b10110110, 0b00000000, 0b10101010,
+                                     0xFF, 0xFF, 0xFF, 0xFF, 0, 0, 0, 0, 0, 0, 0, 0, 0xFF, 0xFF]));
+    }
+
+    #[test]
+    fn test_bitv_extend() {
+        let mut bitv = from_bytes([0b10110110, 0b00000000, 0b11111111]);
+        let ext = from_bytes([0b01001001, 0b10010010, 0b10111101]);
+        bitv.extend(ext.iter());
+        assert_eq!(bitv, from_bytes([0b10110110, 0b00000000, 0b11111111,
+                                     0b01001001, 0b10010010, 0b10111101]));
     }
 
     #[test]
