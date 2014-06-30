@@ -294,6 +294,8 @@ fn spawn_process_os(cfg: ProcessConfig,
     use libc::funcs::extra::msvcrt::get_osfhandle;
 
     use std::mem;
+    use std::iter::Iterator;
+    use std::str::StrSlice;
 
     if cfg.gid.is_some() || cfg.uid.is_some() {
         return Err(IoError {
@@ -328,7 +330,8 @@ fn spawn_process_os(cfg: ProcessConfig,
                         lpSecurityDescriptor: ptr::mut_null(),
                         bInheritHandle: 1,
                     };
-                    let filename = "NUL".to_utf16().append_one(0);
+                    let filename: Vec<u16> = "NUL".utf16_units().collect();
+                    let filename = filename.append_one(0);
                     *slot = libc::CreateFileW(filename.as_ptr(),
                                               access,
                                               libc::FILE_SHARE_READ |
@@ -371,7 +374,8 @@ fn spawn_process_os(cfg: ProcessConfig,
 
         with_envp(cfg.env, |envp| {
             with_dirp(cfg.cwd, |dirp| {
-                let mut cmd_str = cmd_str.to_utf16().append_one(0);
+                let mut cmd_str: Vec<u16> = cmd_str.as_slice().utf16_units().collect();
+                cmd_str = cmd_str.append_one(0);
                 let created = CreateProcessW(ptr::null(),
                                              cmd_str.as_mut_ptr(),
                                              ptr::mut_null(),
@@ -770,7 +774,7 @@ fn with_envp<T>(env: Option<&[(CString, CString)]>, cb: |*mut c_void| -> T) -> T
                 let kv = format!("{}={}",
                                  pair.ref0().as_str().unwrap(),
                                  pair.ref1().as_str().unwrap());
-                blk.push_all(kv.to_utf16().as_slice());
+                blk.extend(kv.as_slice().utf16_units());
                 blk.push(0);
             }
 
@@ -788,7 +792,9 @@ fn with_dirp<T>(d: Option<&CString>, cb: |*const u16| -> T) -> T {
       Some(dir) => {
           let dir_str = dir.as_str()
                            .expect("expected workingdirectory to be utf-8 encoded");
-          let dir_str = dir_str.to_utf16().append_one(0);
+          let dir_str: Vec<u16> = dir_str.utf16_units().collect();
+          let dir_str = dir_str.append_one(0);
+
           cb(dir_str.as_ptr())
       },
       None => cb(ptr::null())

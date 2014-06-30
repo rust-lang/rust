@@ -16,6 +16,7 @@
 
 use mem;
 use char;
+use char::Char;
 use clone::Clone;
 use cmp;
 use cmp::{PartialEq, Eq};
@@ -24,7 +25,7 @@ use default::Default;
 use iter::{Filter, Map, Iterator};
 use iter::{DoubleEndedIterator, ExactSize};
 use iter::range;
-use num::Saturating;
+use num::{CheckedMul, Saturating};
 use option::{None, Option, Some};
 use raw::Repr;
 use slice::ImmutableVector;
@@ -554,6 +555,41 @@ impl<'a> Iterator<&'a str> for StrSplits<'a> {
                 Some(self.it.haystack.slice(self.last_end, self.it.haystack.len()))
             }
         }
+    }
+}
+
+/// External iterator for a string's UTF16 codeunits.
+/// Use with the `std::iter` module.
+#[deriving(Clone)]
+pub struct Utf16CodeUnits<'a> {
+    chars: Chars<'a>,
+    extra: u16
+}
+
+impl<'a> Iterator<u16> for Utf16CodeUnits<'a> {
+    #[inline]
+    fn next(&mut self) -> Option<u16> {
+        if self.extra != 0 {
+            let tmp = self.extra;
+            self.extra = 0;
+            return Some(tmp);
+        }
+
+        let mut buf = [0u16, ..2];
+        self.chars.next().map(|ch| {
+            let n = ch.encode_utf16(buf /* as mut slice! */);
+            if n == 2 { self.extra = buf[1]; }
+            buf[0]
+        })
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        let (low, high) = self.chars.size_hint();
+        // every char gets either one u16 or two u16,
+        // so this iterator is between 1 or 2 times as
+        // long as the underlying iterator.
+        (low, high.and_then(|n| n.checked_mul(&2)))
     }
 }
 
@@ -1609,6 +1645,9 @@ pub trait StrSlice<'a> {
     /// and that it is not reallocated (e.g. by pushing to the
     /// string).
     fn as_ptr(&self) -> *const u8;
+
+    /// Return an iterator of `u16` over the string encoded as UTF-16.
+    fn utf16_units(&self) -> Utf16CodeUnits<'a>;
 }
 
 impl<'a> StrSlice<'a> for &'a str {
@@ -1956,6 +1995,11 @@ impl<'a> StrSlice<'a> for &'a str {
     #[inline]
     fn as_ptr(&self) -> *const u8 {
         self.repr().data
+    }
+
+    #[inline]
+    fn utf16_units(&self) -> Utf16CodeUnits<'a> {
+        Utf16CodeUnits{ chars: self.chars(), extra: 0}
     }
 }
 
