@@ -1172,7 +1172,6 @@ mod test {
         name_finder.ident_accumulator
     }
 
-
     //fn expand_and_resolve(crate_str: @str) -> ast::crate {
         //let expanded_ast = expand_crate_str(crate_str);
         // println!("expanded: {:?}\n",expanded_ast);
@@ -1299,17 +1298,15 @@ mod test {
     // can't write this test case until we have macro-generating macros.
 
     // FIXME #9383 : lambda var hygiene
-    // interesting... can't even write this test, yet, because the name-finder
-    // only finds pattern vars. Time to upgrade test framework.
-    /*#[test]
+    // expands to fn q(x_1:int){fn g(x_2:int){x_2 + x_1};}
+    #[test]
     fn issue_9383(){
         run_renaming_test(
-            &("macro_rules! bad_macro (($ex:expr) => ({(|_x| { $ex }) (9) }))
-              fn takes_x(_x : int) { assert_eq!(bad_macro!(_x),8); }
-              fn main() { takes_x(8); }",
-              vec!(vec!()),false),
+            &("macro_rules! bad_macro (($ex:expr) => (fn g(x:int){ x + $ex }))
+              fn q(x:int) { bad_macro!(x); }",
+              vec!(vec!(1),vec!(0)),true),
             0)
-    }*/
+    }
 
     // run one of the renaming tests
     fn run_renaming_test(t: &RenamingTest, test_idx: uint) {
