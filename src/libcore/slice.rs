@@ -36,7 +36,7 @@
 use mem::transmute;
 use clone::Clone;
 use collections::Collection;
-use cmp::{PartialEq, Ord, Ordering, Less, Equal, Greater};
+use cmp::{PartialEq, PartialOrd, Eq, Ord, Ordering, Less, Equal, Greater, Equiv};
 use cmp;
 use default::Default;
 use iter::*;
@@ -1422,59 +1422,49 @@ pub mod bytes {
 // Boilerplate traits
 //
 
-#[allow(missing_doc)]
-pub mod traits {
-    use super::*;
-
-    use cmp::{PartialEq, PartialOrd, Eq, Ord, Ordering, Equiv};
-    use iter::order;
-    use collections::Collection;
-    use option::Option;
-
-    impl<'a,T:PartialEq> PartialEq for &'a [T] {
-        fn eq(&self, other: & &'a [T]) -> bool {
-            self.len() == other.len() &&
-                order::eq(self.iter(), other.iter())
-        }
-        fn ne(&self, other: & &'a [T]) -> bool {
-            self.len() != other.len() ||
-                order::ne(self.iter(), other.iter())
-        }
+impl<'a,T:PartialEq> PartialEq for &'a [T] {
+    fn eq(&self, other: & &'a [T]) -> bool {
+        self.len() == other.len() &&
+            order::eq(self.iter(), other.iter())
     }
-
-    impl<'a,T:Eq> Eq for &'a [T] {}
-
-    impl<'a,T:PartialEq, V: Vector<T>> Equiv<V> for &'a [T] {
-        #[inline]
-        fn equiv(&self, other: &V) -> bool { self.as_slice() == other.as_slice() }
+    fn ne(&self, other: & &'a [T]) -> bool {
+        self.len() != other.len() ||
+            order::ne(self.iter(), other.iter())
     }
+}
 
-    impl<'a,T:Ord> Ord for &'a [T] {
-        fn cmp(&self, other: & &'a [T]) -> Ordering {
-            order::cmp(self.iter(), other.iter())
-        }
+impl<'a,T:Eq> Eq for &'a [T] {}
+
+impl<'a,T:PartialEq, V: Vector<T>> Equiv<V> for &'a [T] {
+    #[inline]
+    fn equiv(&self, other: &V) -> bool { self.as_slice() == other.as_slice() }
+}
+
+impl<'a,T:Ord> Ord for &'a [T] {
+    fn cmp(&self, other: & &'a [T]) -> Ordering {
+        order::cmp(self.iter(), other.iter())
     }
+}
 
-    impl<'a, T: PartialOrd> PartialOrd for &'a [T] {
-        #[inline]
-        fn partial_cmp(&self, other: &&'a [T]) -> Option<Ordering> {
-            order::partial_cmp(self.iter(), other.iter())
-        }
-        #[inline]
-        fn lt(&self, other: & &'a [T]) -> bool {
-            order::lt(self.iter(), other.iter())
-        }
-        #[inline]
-        fn le(&self, other: & &'a [T]) -> bool {
-            order::le(self.iter(), other.iter())
-        }
-        #[inline]
-        fn ge(&self, other: & &'a [T]) -> bool {
-            order::ge(self.iter(), other.iter())
-        }
-        #[inline]
-        fn gt(&self, other: & &'a [T]) -> bool {
-            order::gt(self.iter(), other.iter())
-        }
+impl<'a, T: PartialOrd> PartialOrd for &'a [T] {
+    #[inline]
+    fn partial_cmp(&self, other: &&'a [T]) -> Option<Ordering> {
+        order::partial_cmp(self.iter(), other.iter())
+    }
+    #[inline]
+    fn lt(&self, other: & &'a [T]) -> bool {
+        order::lt(self.iter(), other.iter())
+    }
+    #[inline]
+    fn le(&self, other: & &'a [T]) -> bool {
+        order::le(self.iter(), other.iter())
+    }
+    #[inline]
+    fn ge(&self, other: & &'a [T]) -> bool {
+        order::ge(self.iter(), other.iter())
+    }
+    #[inline]
+    fn gt(&self, other: & &'a [T]) -> bool {
+        order::gt(self.iter(), other.iter())
     }
 }
