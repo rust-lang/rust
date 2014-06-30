@@ -162,7 +162,8 @@ mod imp {
 
     impl Lock {
         pub fn new(p: &Path) -> Lock {
-            let p_16 = p.as_str().unwrap().to_utf16().append_one(0);
+            let p_16: Vec<u16> = p.as_str().unwrap().utf16_units().collect();
+            let p_16 = p_16.append_one(0);
             let handle = unsafe {
                 libc::CreateFileW(p_16.as_ptr(),
                                   libc::FILE_GENERIC_READ |
