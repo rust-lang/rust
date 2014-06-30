@@ -585,20 +585,32 @@ impl<T: Show, E> Result<T, E> {
 /// ```
 #[inline]
 pub fn collect<T, E, Iter: Iterator<Result<T, E>>, V: FromIterator<T>>(iter: Iter) -> Result<V, E> {
-    // FIXME(#11084): This should be twice as fast once this bug is closed.
-    let mut iter = iter.scan(None, |state, x| {
-        match x {
-            Ok(x) => Some(x),
-            Err(err) => {
-                *state = Some(err);
-                None
+    // FIXME(#11084): This could be replaced with Iterator::scan when this
+    // performance bug is closed.
+
+    struct Adapter<Iter, E> {
+        iter: Iter,
+        err: Option<E>,
+    }
+
+    impl<T, E, Iter: Iterator<Result<T, E>>> Iterator<T> for Adapter<Iter, E> {
+        #[inline]
+        fn next(&mut self) -> Option<T> {
+            match self.iter.next() {
+                Some(Ok(value)) => Some(value),
+                Some(Err(err)) => {
+                    self.err = Some(err);
+                    None
+                }
+                None => None,
             }
         }
-    });
+    }
 
-    let v: V = FromIterator::from_iter(iter.by_ref());
+    let mut adapter = Adapter { iter: iter, err: None };
+    let v: V = FromIterator::from_iter(adapter.by_ref());
 
-    match iter.state {
+    match adapter.err {
         Some(err) => Err(err),
         None => Ok(v),
     }
