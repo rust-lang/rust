@@ -15,7 +15,7 @@ use core::prelude::*;
 use core::cmp;
 use core::default::Default;
 use core::fmt;
-use core::iter::{Map, Zip};
+use core::iter::{Map, Take, Zip};
 use core::ops;
 use core::slice;
 use core::uint;
@@ -382,21 +382,6 @@ impl cmp::PartialEq for Bitv {
 
 impl cmp::Eq for Bitv {}
 
-#[inline]
-fn iterate_bits(base: uint, bits: uint, f: |uint| -> bool) -> bool {
-    if bits == 0 {
-        return true;
-    }
-    for i in range(0u, uint::BITS) {
-        if bits & (1 << i) != 0 {
-            if !f(base + i) {
-                return false;
-            }
-        }
-    }
-    return true;
-}
-
 /// An iterator for `Bitv`.
 pub struct Bits<'a> {
     bitv: &'a Bitv,
@@ -553,39 +538,45 @@ impl BitvSet {
         BitPositions {set: self, next_idx: 0}
     }
 
-    pub fn difference(&self, other: &BitvSet, f: |&uint| -> bool) -> bool {
-        for (i, w1, w2) in self.commons(other) {
-            if !iterate_bits(i, w1 & !w2, |b| f(&b)) {
-                return false
-            }
-        };
-        /* everything we have that they don't also shows up */
-        self.outliers(other).advance(|(mine, i, w)|
-            !mine || iterate_bits(i, w, |b| f(&b))
-        )
+    pub fn difference<'a>(&'a self, other: &'a BitvSet) -> TwoBitPositions<'a> {
+        TwoBitPositions {
+            set: self,
+            other: other,
+            merge: |w1, w2| w1 & !w2,
+            current_word: 0,
+            next_idx: 0
+        }
     }
 
-    pub fn symmetric_difference(&self, other: &BitvSet, f: |&uint| -> bool)
-                                -> bool {
-        for (i, w1, w2) in self.commons(other) {
-            if !iterate_bits(i, w1 ^ w2, |b| f(&b)) {
-                return false
-            }
-        };
-        self.outliers(other).advance(|(_, i, w)| iterate_bits(i, w, |b| f(&b)))
+    pub fn symmetric_difference<'a>(&'a self, other: &'a BitvSet) -> TwoBitPositions<'a> {
+        TwoBitPositions {
+            set: self,
+            other: other,
+            merge: |w1, w2| w1 ^ w2,
+            current_word: 0,
+            next_idx: 0
+        }
     }
 
-    pub fn intersection(&self, other: &BitvSet, f: |&uint| -> bool) -> bool {
-        self.commons(other).advance(|(i, w1, w2)| iterate_bits(i, w1 & w2, |b| f(&b)))
+    pub fn intersection<'a>(&'a self, other: &'a BitvSet) -> Take<TwoBitPositions<'a>> {
+        let min = cmp::min(self.capacity(), other.capacity());
+        TwoBitPositions {
+            set: self,
+            other: other,
+            merge: |w1, w2| w1 & w2,
+            current_word: 0,
+            next_idx: 0
+        }.take(min)
     }
 
-    pub fn union(&self, other: &BitvSet, f: |&uint| -> bool) -> bool {
-        for (i, w1, w2) in self.commons(other) {
-            if !iterate_bits(i, w1 | w2, |b| f(&b)) {
-                return false
-            }
-        };
-        self.outliers(other).advance(|(_, i, w)| iterate_bits(i, w, |b| f(&b)))
+    pub fn union<'a>(&'a self, other: &'a BitvSet) -> TwoBitPositions<'a> {
+        TwoBitPositions {
+            set: self,
+            other: other,
+            merge: |w1, w2| w1 | w2,
+            current_word: 0,
+            next_idx: 0
+        }
     }
 }
 
@@ -634,7 +625,7 @@ impl Set<uint> for BitvSet {
     }
 
     fn is_disjoint(&self, other: &BitvSet) -> bool {
-        self.intersection(other, |_| false)
+        self.intersection(other).count() > 0
     }
 
     fn is_subset(&self, other: &BitvSet) -> bool {
@@ -737,6 +728,14 @@ pub struct BitPositions<'a> {
     next_idx: uint
 }
 
+pub struct TwoBitPositions<'a> {
+    set: &'a BitvSet,
+    other: &'a BitvSet,
+    merge: |uint, uint|: 'a -> uint,
+    current_word: uint,
+    next_idx: uint
+}
+
 impl<'a> Iterator<uint> for BitPositions<'a> {
     #[inline]
     fn next(&mut self) -> Option<uint> {
@@ -754,6 +753,41 @@ impl<'a> Iterator<uint> for BitPositions<'a> {
 
     fn size_hint(&self) -> (uint, Option<uint>) {
         (0, Some(self.set.capacity() - self.next_idx))
+    }
+}
+
+impl<'a> Iterator<uint> for TwoBitPositions<'a> {
+    #[inline]
+    fn next(&mut self) -> Option<uint> {
+        while self.next_idx < self.set.capacity() ||
+              self.next_idx < self.other.capacity() {
+            let bit_idx = self.next_idx % uint::BITS;
+            if bit_idx == 0 {
+                let &BitvSet(ref s_bitv) = self.set;
+                let &BitvSet(ref o_bitv) = self.other;
+                // Merging the two words is a bit of an awkward dance since
+                // one Bitv might be longer than the other
+                let word_idx = self.next_idx / uint::BITS;
+                let w1 = if word_idx < s_bitv.storage.len() {
+                             *s_bitv.storage.get(word_idx)
+                         } else { 0 };
+                let w2 = if word_idx < o_bitv.storage.len() {
+                             *o_bitv.storage.get(word_idx)
+                         } else { 0 };
+                self.current_word = (self.merge)(w1, w2);
+            }
+
+            self.next_idx += 1;
+            if self.current_word & (1 << bit_idx) != 0 {
+                return Some(self.next_idx - 1);
+            }
+        }
+        return None;
+    }
+
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        let cap = cmp::max(self.set.capacity(), self.other.capacity());
+        (0, Some(cap - self.next_idx))
     }
 }
 
@@ -1274,8 +1308,8 @@ mod tests {
 
         let mut i = 0;
         let expected = [3, 5, 11, 77];
-        a.intersection(&b, |x| {
-            assert_eq!(*x, expected[i]);
+        a.intersection(&b).advance(|x| {
+            assert_eq!(x, expected[i]);
             i += 1;
             true
         });
@@ -1298,8 +1332,8 @@ mod tests {
 
         let mut i = 0;
         let expected = [1, 5, 500];
-        a.difference(&b, |x| {
-            assert_eq!(*x, expected[i]);
+        a.difference(&b).advance(|x| {
+            assert_eq!(x, expected[i]);
             i += 1;
             true
         });
@@ -1324,8 +1358,8 @@ mod tests {
 
         let mut i = 0;
         let expected = [1, 5, 11, 14, 220];
-        a.symmetric_difference(&b, |x| {
-            assert_eq!(*x, expected[i]);
+        a.symmetric_difference(&b).advance(|x| {
+            assert_eq!(x, expected[i]);
             i += 1;
             true
         });
@@ -1353,8 +1387,8 @@ mod tests {
 
         let mut i = 0;
         let expected = [1, 3, 5, 9, 11, 13, 19, 24, 160];
-        a.union(&b, |x| {
-            assert_eq!(*x, expected[i]);
+        a.union(&b).advance(|x| {
+            assert_eq!(x, expected[i]);
             i += 1;
             true
         });
