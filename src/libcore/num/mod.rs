@@ -1495,24 +1495,50 @@ pub trait Float: Signed + Primitive {
     // FIXME (#5527): These should be associated constants
 
     /// Archimedes' constant.
-    fn pi() -> Self;
-    /// 2.0 * pi.
+    fn tau() -> Self;
+    /// 2.0 * pi = tau.
     fn two_pi() -> Self;
-    /// pi / 2.0.
+    /// tau / 2.0 = pi.
+    fn frac_tau_2() -> Self;
+    /// pi = tau / 2.0.
+    fn pi() -> Self;
+    /// tau / 3.0 = 2.0 * pi / 3.0.
+    fn frac_tau_3() -> Self;
+    /// 2.0 * pi / 3.0 = tau / 3.0.
+    fn frac_2pi_3() -> Self;
+    /// tau / 4.0 = pi / 2.0.
+    fn frac_tau_4() -> Self;
+    /// pi / 2.0 = tau / 4.0.
     fn frac_pi_2() -> Self;
-    /// pi / 3.0.
+    /// tau / 6.0 = pi / 3.0.
+    fn frac_tau_6() -> Self;
+    /// pi / 3.0 = tau / 6.0.
     fn frac_pi_3() -> Self;
-    /// pi / 4.0.
+    /// tau / 8.0 = pi / 4.0.
+    fn frac_tau_8() -> Self;
+    /// pi / 4.0 = tau / 8.0.
     fn frac_pi_4() -> Self;
-    /// pi / 6.0.
+    /// tau / 12.0 = pi / 6.0.
+    fn frac_tau_12() -> Self;
+    /// pi / 6.0 = tau / 12.0.
     fn frac_pi_6() -> Self;
-    /// pi / 8.0.
+    /// tau / 16.0 = pi / 8.0.
+    fn frac_tau_16() -> Self;
+    /// pi / 8.0 = tau / 16.0.
     fn frac_pi_8() -> Self;
-    /// 1.0 / pi.
+    /// 1.0 / tau = 1.0 / (pi * 2.0).
+    fn frac_1_tau() -> Self;
+    /// 1.0 / (pi * 2.0) = 1.0 / tau.
+    fn frac_1_2pi() -> Self;
+    /// 2.0 / tau = 1.0 / pi.
+    fn frac_2_tau() -> Self;
+    /// 1.0 / pi = 2.0 / tau.
     fn frac_1_pi() -> Self;
-    /// 2.0 / pi.
+    /// 4.0 / tau = 2.0 / pi.
+    fn frac_4_tau() -> Self;
+    /// 2.0 / pi = 4.0 / tau.
     fn frac_2_pi() -> Self;
-    /// 2.0 / sqrt(pi).
+    /// 2.0 / sqrt(pi) = 2.0 * sqrt(2.0 / tau).
     fn frac_2_sqrtpi() -> Self;
 
     /// Euler's number.
