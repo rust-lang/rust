@@ -31,10 +31,10 @@ impl PartialEq for Int {
 }
 
 impl PartialOrd for Int {
-    fn lt(&self, other: &Int) -> bool {
+    fn partial_cmp(&self, other: &Int) -> Option<Ordering> {
         let Int(this) = *self;
         let Int(other) = *other;
-        this < other
+        this.partial_cmp(&other)
     }
 }
 
@@ -49,10 +49,10 @@ impl PartialEq for RevInt {
 }
 
 impl PartialOrd for RevInt {
-    fn lt(&self, other: &RevInt) -> bool {
+    fn partial_cmp(&self, other: &RevInt) -> Option<Ordering> {
         let RevInt(this) = *self;
         let RevInt(other) = *other;
-        this > other
+        other.partial_cmp(&this)
     }
 }
 

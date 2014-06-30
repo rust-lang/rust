@@ -171,6 +171,11 @@ impl<T: Eq> Eq for Rc<T> {}
 
 impl<T: PartialOrd> PartialOrd for Rc<T> {
     #[inline(always)]
+    fn partial_cmp(&self, other: &Rc<T>) -> Option<Ordering> {
+        (**self).partial_cmp(&**other)
+    }
+
+    #[inline(always)]
     fn lt(&self, other: &Rc<T>) -> bool { **self < **other }
 
     #[inline(always)]
