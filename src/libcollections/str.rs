@@ -106,6 +106,14 @@ pub fn from_utf8_owned(vv: Vec<u8>) -> Result<String, Vec<u8>> {
 /// # Failure
 ///
 /// Fails if invalid UTF-8
+///
+/// # Example
+///
+/// ```rust
+/// use std::str;
+/// let string = str::from_byte(66u8);
+/// assert_eq!(string.as_slice(), "B");
+/// ```
 pub fn from_byte(b: u8) -> String {
     assert!(b < 128u8);
     String::from_char(1, b as char)
