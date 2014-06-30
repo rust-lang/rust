@@ -19,7 +19,7 @@ desired semantics, such as hash functions.
 The semantics of the basic arithmetic operators on the built-in fixed-size
 integer types are currently defined to wrap around on overflow. Wrapping around
 on overflow is well-defined behavior, which means that it's better than C. Yet
-we should avoid falling prey to the soft bigotry of low expections.
+we should avoid falling prey to the soft bigotry of low expectations.
 
 In the large majority of cases, wrapping around on overflow is not an
 appropriate semantics: programs will generally not work correctly with the
