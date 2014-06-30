@@ -27,6 +27,7 @@ enum Enum {
 //~^^^^^ ERROR
 //~^^^^^^ ERROR
 //~^^^^^^^ ERROR
+//~^^^^^^^^ ERROR
      )
 }
 

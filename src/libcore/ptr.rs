@@ -93,7 +93,7 @@ use intrinsics;
 use iter::{range, Iterator};
 use option::{Some, None, Option};
 
-use cmp::{PartialEq, Eq, PartialOrd, Equiv};
+use cmp::{PartialEq, Eq, PartialOrd, Equiv, Ordering, Less, Equal, Greater};
 
 /// Create a null pointer.
 ///
@@ -489,10 +489,50 @@ mod externfnpointers {
 // Comparison for pointers
 impl<T> PartialOrd for *const T {
     #[inline]
+    fn partial_cmp(&self, other: &*const T) -> Option<Ordering> {
+        if self < other {
+            Some(Less)
+        } else if self == other {
+            Some(Equal)
+        } else {
+            Some(Greater)
+        }
+    }
+
+    #[inline]
     fn lt(&self, other: &*const T) -> bool { *self < *other }
+
+    #[inline]
+    fn le(&self, other: &*const T) -> bool { *self <= *other }
+
+    #[inline]
+    fn gt(&self, other: &*const T) -> bool { *self > *other }
+
+    #[inline]
+    fn ge(&self, other: &*const T) -> bool { *self >= *other }
 }
 
 impl<T> PartialOrd for *mut T {
     #[inline]
+    fn partial_cmp(&self, other: &*mut T) -> Option<Ordering> {
+        if self < other {
+            Some(Less)
+        } else if self == other {
+            Some(Equal)
+        } else {
+            Some(Greater)
+        }
+    }
+
+    #[inline]
     fn lt(&self, other: &*mut T) -> bool { *self < *other }
+
+    #[inline]
+    fn le(&self, other: &*mut T) -> bool { *self <= *other }
+
+    #[inline]
+    fn gt(&self, other: &*mut T) -> bool { *self > *other }
+
+    #[inline]
+    fn ge(&self, other: &*mut T) -> bool { *self >= *other }
 }

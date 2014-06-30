@@ -18,7 +18,7 @@ impl PartialEq for FailCmp {
 }
 
 impl PartialOrd for FailCmp {
-    fn lt(&self, _: &FailCmp) -> bool { fail!("lt") }
+    fn partial_cmp(&self, _: &FailCmp) -> Option<Ordering> { fail!("partial_cmp") }
 }
 
 impl Eq for FailCmp {}

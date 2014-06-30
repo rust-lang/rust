@@ -707,8 +707,8 @@ fn test_range() {
     }
 
     impl PartialOrd for Foo {
-        fn lt(&self, _: &Foo) -> bool {
-            false
+        fn partial_cmp(&self, _: &Foo) -> Option<Ordering> {
+            None
         }
     }
 
