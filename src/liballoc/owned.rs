@@ -18,6 +18,7 @@ use core::fmt;
 use core::intrinsics;
 use core::kinds::Send;
 use core::mem;
+use core::option::Option;
 use core::raw::TraitObject;
 use core::result::{Ok, Err, Result};
 
@@ -64,6 +65,10 @@ impl<T:PartialEq> PartialEq for Box<T> {
     fn ne(&self, other: &Box<T>) -> bool { *(*self) != *(*other) }
 }
 impl<T:PartialOrd> PartialOrd for Box<T> {
+    #[inline]
+    fn partial_cmp(&self, other: &Box<T>) -> Option<Ordering> {
+        (**self).partial_cmp(*other)
+    }
     #[inline]
     fn lt(&self, other: &Box<T>) -> bool { *(*self) < *(*other) }
     #[inline]

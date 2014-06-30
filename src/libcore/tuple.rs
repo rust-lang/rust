@@ -64,6 +64,7 @@
 use clone::Clone;
 use cmp::*;
 use default::Default;
+use option::{Option, Some};
 
 // macro for implementing n-ary tuple functions and operations
 macro_rules! tuple_impls {
@@ -126,6 +127,10 @@ macro_rules! tuple_impls {
 
             impl<$($T:PartialOrd + PartialEq),+> PartialOrd for ($($T,)+) {
                 #[inline]
+                fn partial_cmp(&self, other: &($($T,)+)) -> Option<Ordering> {
+                    lexical_partial_cmp!($(self.$refN(), other.$refN()),+)
+                }
+                #[inline]
                 fn lt(&self, other: &($($T,)+)) -> bool {
                     lexical_ord!(lt, $(self.$refN(), other.$refN()),+)
                 }
@@ -170,6 +175,16 @@ macro_rules! lexical_ord {
         else { lexical_ord!($rel, $($rest_a, $rest_b),+) }
     };
     ($rel: ident, $a:expr, $b:expr) => { (*$a) . $rel ($b) };
+}
+
+macro_rules! lexical_partial_cmp {
+    ($a:expr, $b:expr, $($rest_a:expr, $rest_b:expr),+) => {
+        match ($a).partial_cmp($b) {
+            Some(Equal) => lexical_partial_cmp!($($rest_a, $rest_b),+),
+            ordering   => ordering
+        }
+    };
+    ($a:expr, $b:expr) => { ($a).partial_cmp($b) };
 }
 
 macro_rules! lexical_cmp {

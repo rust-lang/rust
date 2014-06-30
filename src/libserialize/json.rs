@@ -244,7 +244,7 @@ use std::vec::Vec;
 use Encodable;
 
 /// Represents a json value
-#[deriving(Clone, PartialEq)]
+#[deriving(Clone, PartialEq, PartialOrd)]
 pub enum Json {
     Number(f64),
     String(String),
@@ -2084,62 +2084,6 @@ impl ::Decoder<DecoderError> for Decoder {
                            -> DecodeResult<T> {
         debug!("read_map_elt_val(idx={})", idx);
         f(self)
-    }
-}
-
-/// Test if two json values are less than one another
-impl PartialOrd for Json {
-    fn lt(&self, other: &Json) -> bool {
-        match *self {
-            Number(f0) => {
-                match *other {
-                    Number(f1) => f0 < f1,
-                    String(_) | Boolean(_) | List(_) | Object(_) |
-                    Null => true
-                }
-            }
-
-            String(ref s0) => {
-                match *other {
-                    Number(_) => false,
-                    String(ref s1) => s0 < s1,
-                    Boolean(_) | List(_) | Object(_) | Null => true
-                }
-            }
-
-            Boolean(b0) => {
-                match *other {
-                    Number(_) | String(_) => false,
-                    Boolean(b1) => b0 < b1,
-                    List(_) | Object(_) | Null => true
-                }
-            }
-
-            List(ref l0) => {
-                match *other {
-                    Number(_) | String(_) | Boolean(_) => false,
-                    List(ref l1) => (*l0) < (*l1),
-                    Object(_) | Null => true
-                }
-            }
-
-            Object(ref d0) => {
-                match *other {
-                    Number(_) | String(_) | Boolean(_) | List(_) => false,
-                    Object(ref d1) => d0 < d1,
-                    Null => true
-                }
-            }
-
-            Null => {
-                match *other {
-                    Number(_) | String(_) | Boolean(_) | List(_) |
-                    Object(_) =>
-                        false,
-                    Null => true
-                }
-            }
-        }
     }
 }
 

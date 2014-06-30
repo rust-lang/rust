@@ -56,23 +56,11 @@ impl<K: PartialEq + Ord, V: PartialEq> PartialEq for TreeMap<K, V> {
     }
 }
 
-// Lexicographical comparison
-fn lt<K: PartialOrd + Ord, V: PartialOrd>(a: &TreeMap<K, V>,
-                                 b: &TreeMap<K, V>) -> bool {
-    // the Zip iterator is as long as the shortest of a and b.
-    for ((key_a, value_a), (key_b, value_b)) in a.iter().zip(b.iter()) {
-        if *key_a < *key_b { return true; }
-        if *key_a > *key_b { return false; }
-        if *value_a < *value_b { return true; }
-        if *value_a > *value_b { return false; }
-    }
-
-    a.len() < b.len()
-}
-
-impl<K: PartialOrd + Ord, V: PartialOrd> PartialOrd for TreeMap<K, V> {
+impl<K: Ord, V: PartialOrd> PartialOrd for TreeMap<K, V> {
     #[inline]
-    fn lt(&self, other: &TreeMap<K, V>) -> bool { lt(self, other) }
+    fn partial_cmp(&self, other: &TreeMap<K, V>) -> Option<Ordering> {
+        iter::order::partial_cmp(self.iter(), other.iter())
+    }
 }
 
 impl<K: Ord + Show, V: Show> Show for TreeMap<K, V> {
@@ -568,9 +556,11 @@ impl<T: PartialEq + Ord> PartialEq for TreeSet<T> {
     fn eq(&self, other: &TreeSet<T>) -> bool { self.map == other.map }
 }
 
-impl<T: PartialOrd + Ord> PartialOrd for TreeSet<T> {
+impl<T: Ord> PartialOrd for TreeSet<T> {
     #[inline]
-    fn lt(&self, other: &TreeSet<T>) -> bool { self.map < other.map }
+    fn partial_cmp(&self, other: &TreeSet<T>) -> Option<Ordering> {
+        self.map.partial_cmp(&other.map)
+    }
 }
 
 impl<T: Ord + Show> Show for TreeSet<T> {

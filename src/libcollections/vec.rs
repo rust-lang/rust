@@ -389,8 +389,8 @@ impl<T: PartialEq> PartialEq for Vec<T> {
 
 impl<T: PartialOrd> PartialOrd for Vec<T> {
     #[inline]
-    fn lt(&self, other: &Vec<T>) -> bool {
-        self.as_slice() < other.as_slice()
+    fn partial_cmp(&self, other: &Vec<T>) -> Option<Ordering> {
+        self.as_slice().partial_cmp(&other.as_slice())
     }
 }
 
