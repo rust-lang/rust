@@ -35,8 +35,8 @@ code, `Path` should be used to refer to the platform-native path.
 Creation of a path is typically done with either `Path::new(some_str)` or
 `Path::new(some_vec)`. This path can be modified with `.push()` and
 `.pop()` (and other setters). The resulting Path can either be passed to another
-API that expects a path, or can be turned into a &[u8] with `.as_vec()` or a
-Option<&str> with `.as_str()`. Similarly, attributes of the path can be queried
+API that expects a path, or can be turned into a `&[u8]` with `.as_vec()` or a
+`Option<&str>` with `.as_str()`. Similarly, attributes of the path can be queried
 with methods such as `.filename()`. There are also methods that return a new
 path instead of modifying the receiver, such as `.join()` or `.dir_path()`.
 
