@@ -68,6 +68,7 @@ struct MaskWords<'a> {
 
 impl<'a> Iterator<(uint, uint)> for MaskWords<'a> {
     /// Returns (offset, word)
+    #[inline]
     fn next<'a>(&'a mut self) -> Option<(uint, uint)> {
         let ret = self.next_word;
         match ret {
@@ -347,6 +348,7 @@ pub fn from_fn(len: uint, f: |index: uint| -> bool) -> Bitv {
 }
 
 impl ops::Index<uint,bool> for Bitv {
+    #[inline]
     fn index(&self, i: &uint) -> bool {
         self.get(*i)
     }
@@ -453,23 +455,27 @@ impl Default for BitvSet {
 
 impl BitvSet {
     /// Creates a new bit vector set with initially no contents
+    #[inline]
     pub fn new() -> BitvSet {
         BitvSet(Bitv::new(0, false))
     }
 
     /// Creates a new bit vector set from the given bit vector
+    #[inline]
     pub fn from_bitv(bitv: Bitv) -> BitvSet {
         BitvSet(bitv)
     }
 
     /// Returns the capacity in bits for this bit vector. Inserting any
     /// element less than this amount will not trigger a resizing.
+    #[inline]
     pub fn capacity(&self) -> uint {
         let &BitvSet(ref bitv) = self;
         bitv.storage.len() * uint::BITS
     }
 
     /// Consumes this set to return the underlying bit vector
+    #[inline]
     pub fn unwrap(self) -> Bitv {
         let BitvSet(bitv) = self;
         bitv
@@ -515,29 +521,37 @@ impl BitvSet {
     }
 
     /// Union in-place with the specified other bit vector
+    #[inline]
     pub fn union_with(&mut self, other: &BitvSet) {
         self.other_op(other, |w1, w2| w1 | w2);
     }
 
     /// Intersect in-place with the specified other bit vector
+    #[inline]
     pub fn intersect_with(&mut self, other: &BitvSet) {
         self.other_op(other, |w1, w2| w1 & w2);
     }
 
     /// Difference in-place with the specified other bit vector
+    #[inline]
     pub fn difference_with(&mut self, other: &BitvSet) {
         self.other_op(other, |w1, w2| w1 & !w2);
     }
 
     /// Symmetric difference in-place with the specified other bit vector
+    #[inline]
     pub fn symmetric_difference_with(&mut self, other: &BitvSet) {
         self.other_op(other, |w1, w2| w1 ^ w2);
     }
 
+    /// Iterator over each uint stored in the BitvSet
+    #[inline]
     pub fn iter<'a>(&'a self) -> BitPositions<'a> {
         BitPositions {set: self, next_idx: 0}
     }
 
+    /// Iterator over each uint stored in the `self` setminus `other`
+    #[inline]
     pub fn difference<'a>(&'a self, other: &'a BitvSet) -> TwoBitPositions<'a> {
         TwoBitPositions {
             set: self,
@@ -548,6 +562,8 @@ impl BitvSet {
         }
     }
 
+    /// Iterator over each uint stored in the symmetric difference of `self` and `other`
+    #[inline]
     pub fn symmetric_difference<'a>(&'a self, other: &'a BitvSet) -> TwoBitPositions<'a> {
         TwoBitPositions {
             set: self,
@@ -558,6 +574,8 @@ impl BitvSet {
         }
     }
 
+    /// Iterator over each uint stored in `self` intersect `other`
+    #[inline]
     pub fn intersection<'a>(&'a self, other: &'a BitvSet) -> Take<TwoBitPositions<'a>> {
         let min = cmp::min(self.capacity(), other.capacity());
         TwoBitPositions {
@@ -569,6 +587,8 @@ impl BitvSet {
         }.take(min)
     }
 
+    /// Iterator over each uint stored in `self` union `other`
+    #[inline]
     pub fn union<'a>(&'a self, other: &'a BitvSet) -> TwoBitPositions<'a> {
         TwoBitPositions {
             set: self,
@@ -612,6 +632,7 @@ impl Collection for BitvSet {
 }
 
 impl Mutable for BitvSet {
+    #[inline]
     fn clear(&mut self) {
         let &BitvSet(ref mut bitv) = self;
         bitv.clear();
@@ -619,11 +640,13 @@ impl Mutable for BitvSet {
 }
 
 impl Set<uint> for BitvSet {
+    #[inline]
     fn contains(&self, value: &uint) -> bool {
         let &BitvSet(ref bitv) = self;
         *value < bitv.nbits && bitv.get(*value)
     }
 
+    #[inline]
     fn is_disjoint(&self, other: &BitvSet) -> bool {
         self.intersection(other).count() > 0
     }
@@ -647,6 +670,7 @@ impl Set<uint> for BitvSet {
         return true;
     }
 
+    #[inline]
     fn is_superset(&self, other: &BitvSet) -> bool {
         other.is_subset(self)
     }
@@ -737,7 +761,6 @@ pub struct TwoBitPositions<'a> {
 }
 
 impl<'a> Iterator<uint> for BitPositions<'a> {
-    #[inline]
     fn next(&mut self) -> Option<uint> {
         while self.next_idx < self.set.capacity() {
             let idx = self.next_idx;
@@ -751,13 +774,13 @@ impl<'a> Iterator<uint> for BitPositions<'a> {
         return None;
     }
 
+    #[inline]
     fn size_hint(&self) -> (uint, Option<uint>) {
         (0, Some(self.set.capacity() - self.next_idx))
     }
 }
 
 impl<'a> Iterator<uint> for TwoBitPositions<'a> {
-    #[inline]
     fn next(&mut self) -> Option<uint> {
         while self.next_idx < self.set.capacity() ||
               self.next_idx < self.other.capacity() {
@@ -785,6 +808,7 @@ impl<'a> Iterator<uint> for TwoBitPositions<'a> {
         return None;
     }
 
+    #[inline]
     fn size_hint(&self) -> (uint, Option<uint>) {
         let cap = cmp::max(self.set.capacity(), self.other.capacity());
         (0, Some(cap - self.next_idx))
