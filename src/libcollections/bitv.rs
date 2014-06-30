@@ -16,7 +16,6 @@ use core::cmp;
 use core::default::Default;
 use core::fmt;
 use core::iter::{Map, Zip};
-use core::option;
 use core::ops;
 use core::slice;
 use core::uint;
@@ -25,110 +24,14 @@ use std::hash;
 use {Collection, Mutable, Set, MutableSet};
 use vec::Vec;
 
-#[deriving(Clone)]
-struct SmallBitv {
-    /// only the lowest nbits of this value are used. the rest is undefined.
-    bits: uint
-}
-
-/// a mask that has a 1 for each defined bit in a small_bitv, assuming n bits
-#[inline]
-fn small_mask(nbits: uint) -> uint {
-    (1 << nbits) - 1
-}
-
-impl SmallBitv {
-    fn new(bits: uint) -> SmallBitv {
-        SmallBitv {bits: bits}
-    }
-
-    #[inline]
-    fn bits_op(&mut self,
-                   right_bits: uint,
-                   nbits: uint,
-                   f: |uint, uint| -> uint)
-                   -> bool {
-        let mask = small_mask(nbits);
-        let old_b: uint = self.bits;
-        let new_b = f(old_b, right_bits);
-        self.bits = new_b;
-        mask & old_b != mask & new_b
-    }
-
-    #[inline]
-    fn union(&mut self, s: &SmallBitv, nbits: uint) -> bool {
-        self.bits_op(s.bits, nbits, |u1, u2| u1 | u2)
-    }
-
-    #[inline]
-    fn intersect(&mut self, s: &SmallBitv, nbits: uint) -> bool {
-        self.bits_op(s.bits, nbits, |u1, u2| u1 & u2)
-    }
-
-    #[inline]
-    fn become(&mut self, s: &SmallBitv, nbits: uint) -> bool {
-        self.bits_op(s.bits, nbits, |_u1, u2| u2)
-    }
-
-    #[inline]
-    fn difference(&mut self, s: &SmallBitv, nbits: uint) -> bool {
-        self.bits_op(s.bits, nbits, |u1, u2| u1 & !u2)
-    }
-
-    #[inline]
-    fn get(&self, i: uint) -> bool {
-        (self.bits & (1 << i)) != 0
-    }
-
-    #[inline]
-    fn set(&mut self, i: uint, x: bool) {
-        if x {
-            self.bits |= 1<<i;
-        }
-        else {
-            self.bits &= !(1<<i);
-        }
-    }
-
-    #[inline]
-    fn equals(&self, b: &SmallBitv, nbits: uint) -> bool {
-        let mask = small_mask(nbits);
-        mask & self.bits == mask & b.bits
-    }
-
-    #[inline]
-    fn clear(&mut self) { self.bits = 0; }
-
-    #[inline]
-    fn set_all(&mut self) { self.bits = !0; }
-
-    #[inline]
-    fn all(&self, nbits: uint) -> bool {
-        small_mask(nbits) & !self.bits == 0
-    }
-
-    #[inline]
-    fn none(&self, nbits: uint) -> bool {
-        small_mask(nbits) & self.bits == 0
-    }
-
-    #[inline]
-    fn negate(&mut self) { self.bits = !self.bits; }
-}
-
-#[deriving(Clone)]
-struct BigBitv {
-    storage: Vec<uint>
-}
-
 /**
- * A mask that has a 1 for each defined bit in the n'th element of a `BigBitv`,
+ * A mask that has a 1 for each defined bit in the n'th element of a `Bitv`,
  * assuming n bits.
  */
 #[inline]
 fn big_mask(nbits: uint, elem: uint) -> uint {
     let rmd = nbits % uint::BITS;
-    let nelems = nbits/uint::BITS + if rmd == 0 {0} else {1};
+    let nelems = (nbits + uint::BITS - 1) / uint::BITS;
 
     if elem < nelems - 1 || rmd == 0 {
         !0
@@ -136,99 +39,6 @@ fn big_mask(nbits: uint, elem: uint) -> uint {
         (1 << rmd) - 1
     }
 }
-
-impl BigBitv {
-    fn new(storage: Vec<uint>) -> BigBitv {
-        BigBitv {storage: storage}
-    }
-
-    #[inline]
-    fn process(&mut self,
-                   b: &BigBitv,
-                   nbits: uint,
-                   op: |uint, uint| -> uint)
-                   -> bool {
-        let len = b.storage.len();
-        assert_eq!(self.storage.len(), len);
-        let mut changed = false;
-        for (i, (a, b)) in self.storage.mut_iter()
-                               .zip(b.storage.iter())
-                               .enumerate() {
-            let mask = big_mask(nbits, i);
-            let w0 = *a & mask;
-            let w1 = *b & mask;
-            let w = op(w0, w1) & mask;
-            if w0 != w {
-                changed = true;
-                *a = w;
-            }
-        }
-        changed
-    }
-
-    #[inline]
-    fn each_storage(&mut self, op: |v: &mut uint| -> bool) -> bool {
-        self.storage.mut_iter().advance(|elt| op(elt))
-    }
-
-    #[inline]
-    fn negate(&mut self) {
-        self.each_storage(|w| { *w = !*w; true });
-    }
-
-    #[inline]
-    fn union(&mut self, b: &BigBitv, nbits: uint) -> bool {
-        self.process(b, nbits, |w1, w2| w1 | w2)
-    }
-
-    #[inline]
-    fn intersect(&mut self, b: &BigBitv, nbits: uint) -> bool {
-        self.process(b, nbits, |w1, w2| w1 & w2)
-    }
-
-    #[inline]
-    fn become(&mut self, b: &BigBitv, nbits: uint) -> bool {
-        self.process(b, nbits, |_, w| w)
-    }
-
-    #[inline]
-    fn difference(&mut self, b: &BigBitv, nbits: uint) -> bool {
-        self.process(b, nbits, |w1, w2| w1 & !w2)
-    }
-
-    #[inline]
-    fn get(&self, i: uint) -> bool {
-        let w = i / uint::BITS;
-        let b = i % uint::BITS;
-        let x = 1 & self.storage.get(w) >> b;
-        x == 1
-    }
-
-    #[inline]
-    fn set(&mut self, i: uint, x: bool) {
-        let w = i / uint::BITS;
-        let b = i % uint::BITS;
-        let flag = 1 << b;
-        *self.storage.get_mut(w) = if x { *self.storage.get(w) | flag }
-                          else { *self.storage.get(w) & !flag };
-    }
-
-    #[inline]
-    fn equals(&self, b: &BigBitv, nbits: uint) -> bool {
-        for (i, elt) in b.storage.iter().enumerate() {
-            let mask = big_mask(nbits, i);
-            if mask & *self.storage.get(i) != mask & *elt {
-                return false;
-            }
-        }
-        true
-    }
-}
-
-#[deriving(Clone)]
-enum BitvVariant { Big(BigBitv), Small(SmallBitv) }
-
-enum Op {Union, Intersect, Assign, Difference}
 
 /// The bitvector type
 ///
@@ -259,108 +69,72 @@ enum Op {Union, Intersect, Assign, Difference}
 /// ```
 #[deriving(Clone)]
 pub struct Bitv {
-    /// Internal representation of the bit vector (small or large)
-    rep: BitvVariant,
+    /// Internal representation of the bit vector
+    storage: Vec<uint>,
     /// The number of valid bits in the internal representation
     nbits: uint
 }
 
-fn die() -> ! {
-    fail!("Tried to do operation on bit vectors with different sizes");
-}
-
-enum WordsVariant<'a> {
-    NoneIter,
-    OneIter(option::Item<uint>),
-    VecIter(slice::Items<'a, uint>)
-}
-
 struct Words<'a> {
-    rep: WordsVariant<'a>,
+    iter: slice::Items<'a, uint>,
     offset: uint
 }
 
 impl<'a> Iterator<(uint, uint)> for Words<'a> {
     /// Returns (offset, word)
     fn next<'a>(&'a mut self) -> Option<(uint, uint)> {
-        let ret = match self.rep {
-            NoneIter => None,
-            OneIter(ref mut it) => it.next(),
-            VecIter(ref mut it) => it.next().map(|n| *n)
-        };
+        let ret = self.iter.next().map(|&n| (self.offset, n));
         self.offset += 1;
-        match ret {
-            Some(n) => Some((self.offset - 1, n)),
-            None => None
-        }
+        ret
     }
 }
 
 impl Bitv {
     #[inline]
-    fn do_op(&mut self, op: Op, other: &Bitv) -> bool {
-        if self.nbits != other.nbits {
-            die();
-        }
-        match self.rep {
-          Small(ref mut s) => match other.rep {
-            Small(ref s1) => match op {
-              Union      => s.union(s1,      self.nbits),
-              Intersect  => s.intersect(s1,  self.nbits),
-              Assign     => s.become(s1,     self.nbits),
-              Difference => s.difference(s1, self.nbits)
-            },
-            Big(_) => die()
-          },
-          Big(ref mut s) => match other.rep {
-            Small(_) => die(),
-            Big(ref s1) => match op {
-              Union      => s.union(s1,      self.nbits),
-              Intersect  => s.intersect(s1,  self.nbits),
-              Assign     => s.become(s1,     self.nbits),
-              Difference => s.difference(s1, self.nbits)
+    fn process(&mut self, other: &Bitv, nbits: uint,
+               op: |uint, uint| -> uint) -> bool {
+        let len = other.storage.len();
+        assert_eq!(self.storage.len(), len);
+        let mut changed = false;
+        for (i, (a, b)) in self.storage.mut_iter()
+                               .zip(other.storage.iter())
+                               .enumerate() {
+            let mask = big_mask(nbits, i);
+            let w0 = *a & mask;
+            let w1 = *b & mask;
+            let w = op(w0, w1) & mask;
+            if w0 != w {
+                changed = true;
+                *a = w;
             }
-          }
         }
+        changed
     }
 
+    #[inline]
     #[inline]
     fn words<'a>(&'a self, start: uint) -> Words<'a> {
         Words {
-          rep: match self.rep {
-              Small(_) if start > 0 => NoneIter,
-              Small(ref s) => OneIter(Some(s.bits).move_iter()),
-              Big(ref b) => VecIter(b.storage.slice_from(start).iter())
-          },
+          iter: self.storage.slice_from(start).iter(),
           offset: start
         }
     }
-}
 
-impl Bitv {
     /// Creates an empty Bitv that holds `nbits` elements, setting each element
     /// to `init`.
     pub fn new(nbits: uint, init: bool) -> Bitv {
-        let rep = if nbits < uint::BITS {
-            Small(SmallBitv::new(if init {(1<<nbits)-1} else {0}))
-        } else if nbits == uint::BITS {
-            Small(SmallBitv::new(if init {!0} else {0}))
-        } else {
-            let exact = nbits % uint::BITS == 0;
-            let nelems = nbits/uint::BITS + if exact {0} else {1};
-            let s =
-                if init {
-                    if exact {
-                        Vec::from_elem(nelems, !0u)
-                    } else {
-                        let mut v = Vec::from_elem(nelems-1, !0u);
-                        v.push((1<<nbits % uint::BITS)-1);
-                        v
-                    }
-                } else { Vec::from_elem(nelems, 0u)};
-            Big(BigBitv::new(s))
-        };
-        Bitv {rep: rep, nbits: nbits}
+        Bitv {
+            storage: {
+                let nelems = (nbits + uint::BITS - 1) / uint::BITS;
+                let mut v = Vec::from_elem(nelems, if init { !0u } else { 0u });
+                // Zero out any remainder bits
+                if nbits % uint::BITS > 0 {
+                    *v.get_mut(nelems - 1) &= (1 << nbits % uint::BITS) - 1;
+                }
+                v
+            },
+            nbits: nbits
+        }
     }
 
     /**
@@ -370,7 +144,10 @@ impl Bitv {
      * the same length. Returns `true` if `self` changed.
     */
     #[inline]
-    pub fn union(&mut self, v1: &Bitv) -> bool { self.do_op(Union, v1) }
+    pub fn union(&mut self, other: &Bitv) -> bool {
+        let nbits = self.nbits;
+        self.process(other, nbits, |w1, w2| w1 | w2)
+    }
 
     /**
      * Calculates the intersection of two bitvectors
@@ -379,8 +156,9 @@ impl Bitv {
      * must be the same length. Returns `true` if `self` changed.
     */
     #[inline]
-    pub fn intersect(&mut self, v1: &Bitv) -> bool {
-        self.do_op(Intersect, v1)
+    pub fn intersect(&mut self, other: &Bitv) -> bool {
+        let nbits = self.nbits;
+        self.process(other, nbits, |w1, w2| w1 & w2)
     }
 
     /**
@@ -390,16 +168,19 @@ impl Bitv {
      * changed
      */
     #[inline]
-    pub fn assign(&mut self, v: &Bitv) -> bool { self.do_op(Assign, v) }
+    pub fn assign(&mut self, other: &Bitv) -> bool {
+        let nbits = self.nbits;
+        self.process(other, nbits, |_, w| w)
+    }
 
     /// Retrieve the value at index `i`
     #[inline]
     pub fn get(&self, i: uint) -> bool {
-        assert!((i < self.nbits));
-        match self.rep {
-            Big(ref b)   => b.get(i),
-            Small(ref s) => s.get(i)
-        }
+        assert!(i < self.nbits);
+        let w = i / uint::BITS;
+        let b = i % uint::BITS;
+        let x = self.storage.get(w) & (1 << b);
+        x != 0
     }
 
     /**
@@ -409,42 +190,30 @@ impl Bitv {
      */
     #[inline]
     pub fn set(&mut self, i: uint, x: bool) {
-      assert!((i < self.nbits));
-      match self.rep {
-        Big(ref mut b)   => b.set(i, x),
-        Small(ref mut s) => s.set(i, x)
-      }
+        assert!(i < self.nbits);
+        let w = i / uint::BITS;
+        let b = i % uint::BITS;
+        let flag = 1 << b;
+        *self.storage.get_mut(w) = if x { *self.storage.get(w) | flag }
+                          else { *self.storage.get(w) & !flag };
     }
 
     /// Set all bits to 0
     #[inline]
     pub fn clear(&mut self) {
-        match self.rep {
-            Small(ref mut b) => b.clear(),
-            Big(ref mut s) => {
-                s.each_storage(|w| { *w = 0u; true });
-            }
-        }
+        for w in self.storage.mut_iter() { *w = 0u; }
     }
 
     /// Set all bits to 1
     #[inline]
     pub fn set_all(&mut self) {
-        match self.rep {
-            Small(ref mut b) => b.set_all(),
-            Big(ref mut s) => {
-                s.each_storage(|w| { *w = !0u; true });
-            }
-        }
+        for w in self.storage.mut_iter() { *w = !0u; }
     }
 
     /// Flip all bits
     #[inline]
     pub fn negate(&mut self) {
-        match self.rep {
-            Small(ref mut s) => s.negate(),
-            Big(ref mut b) => b.negate(),
-        }
+        for w in self.storage.mut_iter() { *w = !*w; }
     }
 
     /**
@@ -457,17 +226,21 @@ impl Bitv {
      * Returns `true` if `v0` was changed.
      */
     #[inline]
-    pub fn difference(&mut self, v: &Bitv) -> bool {
-        self.do_op(Difference, v)
+    pub fn difference(&mut self, other: &Bitv) -> bool {
+        let nbits = self.nbits;
+        self.process(other, nbits, |w1, w2| w1 & !w2)
     }
 
     /// Returns `true` if all bits are 1
     #[inline]
     pub fn all(&self) -> bool {
-      match self.rep {
-        Small(ref b) => b.all(self.nbits),
-        _ => self.iter().all(|x| x)
-      }
+        for (i, &elem) in self.storage.iter().enumerate() {
+            let mask = big_mask(self.nbits, i);
+            if elem & mask != mask {
+                return false;
+            }
+        }
+        true
     }
 
     /// Returns an iterator over the elements of the vector in order.
@@ -492,10 +265,13 @@ impl Bitv {
 
     /// Returns `true` if all bits are 0
     pub fn none(&self) -> bool {
-      match self.rep {
-        Small(ref b) => b.none(self.nbits),
-        _ => self.iter().all(|x| !x)
-      }
+        for (i, &elem) in self.storage.iter().enumerate() {
+            let mask = big_mask(self.nbits, i);
+            if elem & mask != 0 {
+                return false;
+            }
+        }
+        true
     }
 
     #[inline]
@@ -621,13 +397,8 @@ impl fmt::Show for Bitv {
 impl<S: hash::Writer> hash::Hash<S> for Bitv {
     fn hash(&self, state: &mut S) {
         self.nbits.hash(state);
-        match self.rep {
-            Small(ref s) => (s.bits & small_mask(self.nbits)).hash(state),
-            Big(ref b) => {
-                for (i, ele) in b.storage.iter().enumerate() {
-                    (ele & big_mask(self.nbits, i)).hash(state);
-                }
-            }
+        for (i, elem) in self.storage.iter().enumerate() {
+            (elem & big_mask(self.nbits, i)).hash(state);
         }
     }
 }
@@ -635,17 +406,16 @@ impl<S: hash::Writer> hash::Hash<S> for Bitv {
 impl cmp::PartialEq for Bitv {
     #[inline]
     fn eq(&self, other: &Bitv) -> bool {
-        if self.nbits != other.nbits { return false; }
-        match self.rep {
-            Small(ref b) => match other.rep {
-                Small(ref b1) => b.equals(b1, self.nbits),
-                _ => false
-            },
-            Big(ref s) => match other.rep {
-                Big(ref s1) => s.equals(s1, self.nbits),
-                Small(_) => return false
+        if self.nbits != other.nbits {
+            return false;
+        }
+        for (i, (&w1, &w2)) in self.storage.iter().zip(other.storage.iter()).enumerate() {
+            let mask = big_mask(self.nbits, i);
+            if w1 & mask != w2 & mask {
+                return false;
             }
         }
+        true
     }
 }
 
@@ -750,10 +520,7 @@ impl BitvSet {
     /// element less than this amount will not trigger a resizing.
     pub fn capacity(&self) -> uint {
         let &BitvSet(ref bitv) = self;
-        match bitv.rep {
-            Small(_) => uint::BITS,
-            Big(ref s) => s.storage.len() * uint::BITS
-        }
+        bitv.storage.len() * uint::BITS
     }
 
     /// Consumes this set to return the underlying bit vector
@@ -766,19 +533,10 @@ impl BitvSet {
     /// Grows the vector to be able to store bits with indices `[0, size - 1]`
     fn grow(&mut self, size: uint) {
         let &BitvSet(ref mut bitv) = self;
-        let small_to_big = match bitv.rep { Small(s) if size >= uint::BITS => Some(s.bits), _ => None };
-        if small_to_big.is_some() {
-            bitv.rep = Big(BigBitv { storage: vec![small_to_big.unwrap()]  });
+        let size = (size + uint::BITS - 1) / uint::BITS;
+        if bitv.storage.len() < size {
+            bitv.storage.grow(size, &0);
         }
-        match bitv.rep {
-            Small(_) => {},
-            Big(ref mut b) => {
-                let size = (size + uint::BITS - 1) / uint::BITS;
-                if b.storage.len() < size {
-                    b.storage.grow(size, &0);
-                }
-            }
-        };
     }
 
     #[inline]
@@ -789,15 +547,9 @@ impl BitvSet {
         let &BitvSet(ref mut self_bitv) = self;
         let &BitvSet(ref other_bitv) = other;
         for (i, w) in other_bitv.words(0) {
-            match self_bitv.rep {
-                Small(ref mut s) => { s.bits = f(s.bits, w); }
-                Big(ref mut b) => {
-                    let old = *b.storage.get(i);
-                    let new = f(old, w);
-                    *b.storage.get_mut(i) = new;
-                    *b.storage.get_mut(i) = f(*b.storage.get(i), w);
-                }
-            }
+            let old = *self_bitv.storage.get(i);
+            let new = f(old, w);
+            *self_bitv.storage.get_mut(i) = new;
         }
     }
 
@@ -805,21 +557,14 @@ impl BitvSet {
     /// Truncate the underlying vector to the least length required
     pub fn shrink_to_fit(&mut self) {
         let &BitvSet(ref mut bitv) = self;
-        // Two steps: we borrow b as immutable to get the length...
-        let old_len = match bitv.rep {
-            Small(_) => 1,
-            Big(ref b) => b.storage.len()
-        };
-        // ...and as mutable to change it.
-        match bitv.rep {
-            Small(_) => {},
-            Big(ref mut b) => {
-                let n = b.storage.iter().rev().take_while(|&&n| n == 0).count();
-                let trunc_len = cmp::max(old_len - n, 1);
-                b.storage.truncate(trunc_len);
-                bitv.nbits = trunc_len * uint::BITS;
-            }
-        }
+        // Obtain original length
+        let old_len = bitv.storage.len();
+        // Obtain coarse trailing zero length
+        let n = bitv.storage.iter().rev().take_while(|&&n| n == 0).count();
+        // Truncate
+        let trunc_len = cmp::max(old_len - n, 1);
+        bitv.storage.truncate(cmp::max(old_len - n, 1));
+        bitv.nbits = trunc_len * uint::BITS;
     }
 
     /// Union in-place with the specified other bit vector
@@ -909,10 +654,7 @@ impl Collection for BitvSet {
     #[inline]
     fn len(&self) -> uint  {
         let &BitvSet(ref bitv) = self;
-        match bitv.rep {
-            Small(ref s) => s.bits.count_ones(),
-            Big(ref b) => b.storage.iter().fold(0, |acc, &n| acc + n.count_ones())
-        }
+        bitv.storage.iter().fold(0, |acc, &n| acc + n.count_ones())
     }
 }
 
@@ -1056,8 +798,7 @@ mod tests {
     use test::Bencher;
 
     use {Set, Mutable, MutableSet};
-    use bitv::{Bitv, SmallBitv, BigBitv, BitvSet, from_bools, from_fn,
-               from_bytes};
+    use bitv::{Bitv, BitvSet, from_bools, from_fn, from_bytes};
     use bitv;
     use vec::Vec;
 
@@ -1729,38 +1470,6 @@ mod tests {
         let mut bitv = 0 as uint;
         b.iter(|| {
             bitv |= 1 << ((r.next_u32() as uint) % uint::BITS);
-            &bitv
-        })
-    }
-
-    #[bench]
-    fn bench_small_bitv_small(b: &mut Bencher) {
-        let mut r = rng();
-        let mut bitv = SmallBitv::new(uint::BITS);
-        b.iter(|| {
-            bitv.set((r.next_u32() as uint) % uint::BITS, true);
-            &bitv
-        })
-    }
-
-    #[bench]
-    fn bench_big_bitv_small(b: &mut Bencher) {
-        let mut r = rng();
-        let mut bitv = BigBitv::new(vec!(0));
-        b.iter(|| {
-            bitv.set((r.next_u32() as uint) % uint::BITS, true);
-            &bitv
-        })
-    }
-
-    #[bench]
-    fn bench_big_bitv_big(b: &mut Bencher) {
-        let mut r = rng();
-        let mut storage = vec!();
-        storage.grow(BENCH_BITS / uint::BITS, &0u);
-        let mut bitv = BigBitv::new(storage);
-        b.iter(|| {
-            bitv.set((r.next_u32() as uint) % BENCH_BITS, true);
             &bitv
         })
     }
