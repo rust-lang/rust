@@ -24,6 +24,7 @@ use option::{Option, Some, None};
 use slice::{Vector, ImmutableVector};
 use str::{CharSplits, Str, StrAllocating, StrVector, StrSlice};
 use string::String;
+use unicode::UnicodeChar;
 use vec::Vec;
 
 use super::{contains_nul, BytesContainer, GenericPath, GenericPathUnsafe};
@@ -997,7 +998,7 @@ fn parse_prefix<'a>(mut path: &'a str) -> Option<PathPrefix> {
                 let idx = path.find('\\');
                 if idx == Some(2) && path.as_bytes()[1] == ':' as u8 {
                     let c = path.as_bytes()[0];
-                    if c.is_ascii() && ::char::is_alphabetic(c as char) {
+                    if c.is_ascii() && (c as char).is_alphabetic() {
                         // \\?\C:\ path
                         return Some(VerbatimDiskPrefix);
                     }
@@ -1021,7 +1022,7 @@ fn parse_prefix<'a>(mut path: &'a str) -> Option<PathPrefix> {
     } else if path.len() > 1 && path.as_bytes()[1] == ':' as u8 {
         // C:
         let c = path.as_bytes()[0];
-        if c.is_ascii() && ::char::is_alphabetic(c as char) {
+        if c.is_ascii() && (c as char).is_alphabetic() {
             return Some(DiskPrefix);
         }
     }

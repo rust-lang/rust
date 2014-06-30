@@ -16,9 +16,7 @@ use std::num;
 use std::str;
 
 /// Static data containing Unicode ranges for general categories and scripts.
-use self::unicode::{UNICODE_CLASSES, PERLD, PERLS, PERLW};
-#[allow(visible_private_types)]
-pub mod unicode;
+use unicode::regex::{UNICODE_CLASSES, PERLD, PERLS, PERLW};
 
 /// The maximum number of repetitions allowed with the `{n,m}` syntax.
 static MAX_REPEAT: uint = 1000;

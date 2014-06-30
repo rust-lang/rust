@@ -12,7 +12,6 @@
 
 #![allow(non_camel_case_types)]
 
-use char::Char;
 use collections::Collection;
 use from_str::from_str;
 use io::{IoResult, Writer};
@@ -22,6 +21,7 @@ use os;
 use result::{Ok, Err};
 use str::StrSlice;
 use sync::atomics;
+use unicode::UnicodeChar;
 
 pub use self::imp::write;
 
