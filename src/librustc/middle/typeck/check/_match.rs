@@ -318,6 +318,9 @@ pub fn check_struct_pat_fields(pcx: &pat_ctxt,
     for field in fields.iter() {
         match field_map.find_mut(&field.ident.name) {
             Some(&(_, true)) => {
+                // Check the pattern anyway, so that attempts to look
+                // up its type won't fail
+                check_pat(pcx, &*field.pat, ty::mk_err());
                 tcx.sess.span_err(span,
                     format!("field `{}` bound twice in pattern",
                             token::get_ident(field.ident)).as_slice());
