@@ -123,6 +123,9 @@ the changes proposed by this RFC, e.g.
 [Rust issue #14684](https://github.com/mozilla/rust/issues/14684). The general
 approach to resolving that issue should also work with these proposed changes.
 
+This would be implemented behind a `feature(bind_by_move_pattern_guards)` gate
+until we have enough experience with the feature to remove the feature gate.
+
 # Drawbacks
 
 The current error message makes it more clear what the user is doing wrong, but
