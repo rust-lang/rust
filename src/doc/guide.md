@@ -285,8 +285,9 @@ At first, your program doesn't have any dependencies, so we'll only be using
 the first part of its functionality. Eventually, we'll add more. Since we
 started off by using Cargo, it'll be easy to add later.
 
-Let's convert Hello World to Cargo. The first thing we need to do is install
-it. To do this, we need to build it from source. There are no binaries yet.
+Let's convert Hello World to Cargo. The first thing we need to do to begin using Cargo
+is to install Cargo. To do this, we need to build it from source. There are no binaries
+yet.
 
 First, let's go back to our projects directory. We don't want Cargo to
 live in our project!
