@@ -269,15 +269,6 @@ impl Bitv {
     }
 
     /**
-     * Converts `self` to a vector of `uint` with the same length.
-     *
-     * Each `uint` in the resulting vector has either value `0u` or `1u`.
-     */
-    pub fn to_vec(&self) -> Vec<uint> {
-        Vec::from_fn(self.nbits, |i| if self.get(i) { 1 } else { 0 })
-    }
-
-    /**
      * Organise the bits into bytes, such that the first bit in the
      * `Bitv` becomes the high-order bit of the first byte. If the
      * size of the `Bitv` is not a multiple of 8 then trailing bits
@@ -308,13 +299,6 @@ impl Bitv {
     }
 
     /**
-     * Transform `self` into a `Vec<bool>` by turning each bit into a `bool`.
-     */
-    pub fn to_bools(&self) -> Vec<bool> {
-        Vec::from_fn(self.nbits, |i| self[i])
-    }
-
-    /**
      * Compare a bitvector to a vector of `bool`.
      *
      * Both the bitvector and vector must have the same length.
@@ -328,11 +312,6 @@ impl Bitv {
         }
         true
     }
-
-    pub fn ones(&self, f: |uint| -> bool) -> bool {
-        range(0u, self.nbits).advance(|i| !self.get(i) || f(i))
-    }
-
 }
 
 /**
@@ -1157,7 +1136,7 @@ mod tests {
     #[test]
     fn test_to_bools() {
         let bools = vec!(false, false, true, false, false, true, true, false);
-        assert_eq!(from_bytes([0b00100110]).to_bools(), bools);
+        assert_eq!(from_bytes([0b00100110]).iter().collect::<Vec<bool>>(), bools);
     }
 
     #[test]
@@ -1225,7 +1204,7 @@ mod tests {
     fn test_small_clear() {
         let mut b = Bitv::new(14, true);
         b.clear();
-        b.ones(|i| {
+        BitvSet::from_bitv(b).iter().advance(|i| {
             fail!("found 1 at {:?}", i)
         });
     }
@@ -1234,7 +1213,7 @@ mod tests {
     fn test_big_clear() {
         let mut b = Bitv::new(140, true);
         b.clear();
-        b.ones(|i| {
+        BitvSet::from_bitv(b).iter().advance(|i| {
             fail!("found 1 at {:?}", i)
         });
     }
