@@ -69,30 +69,10 @@ pub mod consts {
     /// 2.0 * pi / 3.0 = tau / 3.0
     pub static FRAC_2PI_3: f64 = FRAC_TAU_3;
 
-    /// tau / 4.0 = pi / 2.0
-    pub static FRAC_TAU_4: f64 = 1.57079632679489661923132169163975144_f64;
-    /// pi / 2.0 = tau / 4.0
-    pub static FRAC_PI_2: f64 = FRAC_TAU_4;
-
     /// tau / 6.0 = pi / 3.0
     pub static FRAC_TAU_6: f64 = 1.04719755119659774615421446109316763_f64;
     /// pi / 3.0 = tau / 6.0
     pub static FRAC_PI_3: f64 = FRAC_TAU_6;
-
-    /// tau / 8.0 = pi / 4.0
-    pub static FRAC_TAU_8: f64 = 0.785398163397448309615660845819875721_f64;
-    /// pi / 4.0 = tau / 8.0
-    pub static FRAC_PI_4: f64 = FRAC_TAU_8;
-
-    /// tau / 12.0 = pi / 6.0
-    pub static FRAC_TAU_12: f64 = 0.52359877559829887307710723054658381_f64;
-    /// pi / 6.0 = tau / 12.0
-    pub static FRAC_PI_6: f64 = FRAC_TAU_12;
-
-    /// tau / 16.0 = pi / 8.0
-    pub static FRAC_TAU_16: f64 = 0.39269908169872415480783042290993786_f64;
-    /// pi / 8.0 = tau / 16.0
-    pub static FRAC_PI_8: f64 = FRAC_TAU_16;
 
     /// 1.0 / tau = 1.0 / (pi * 2.0)
     pub static FRAC_1_TAU: f64 = 0.159154943091895335768883763372514362_f64;
@@ -103,14 +83,6 @@ pub mod consts {
     pub static FRAC_2_TAU: f64 = 0.318309886183790671537767526745028724_f64;
     /// 1.0 / pi = 2.0 / tau
     pub static FRAC_1_PI: f64 = FRAC_2_TAU;
-
-    /// 4.0 / tau = 2.0 / pi
-    pub static FRAC_4_TAU: f64 = 0.636619772367581343075535053490057448_f64;
-    /// 2.0 / pi = 4.0 / tau
-    pub static FRAC_2_PI: f64 = FRAC_4_TAU;
-
-    /// 2.0 / sqrt(pi)
-    pub static FRAC_2_SQRTPI: f64 = 1.12837916709551257389615890312154517_f64;
 
     /// sqrt(2.0)
     pub static SQRT2: f64 = 1.41421356237309504880168872420969808_f64;
@@ -317,40 +289,12 @@ impl Float for f64 {
     #[inline]
     fn frac_2pi_3() -> f64 { consts::FRAC_2PI_3 }
 
-    /// tau / 4.0 = pi / 2.0
-    #[inline]
-    fn frac_tau_4() -> f64 { consts::FRAC_TAU_4 }
-    /// pi / 2.0
-    #[inline]
-    fn frac_pi_2() -> f64 { consts::FRAC_PI_2 }
-
     /// tau / 6.0 = pi / 3.0
     #[inline]
     fn frac_tau_6() -> f64 { consts::FRAC_TAU_6 }
     /// pi / 3.0 = tau / 6.0
     #[inline]
     fn frac_pi_3() -> f64 { consts::FRAC_PI_3 }
-
-    /// tau / 8.0 = pi / 4.0
-    #[inline]
-    fn frac_tau_8() -> f64 { consts::FRAC_TAU_8 }
-    /// pi / 4.0 = tau / 8.0
-    #[inline]
-    fn frac_pi_4() -> f64 { consts::FRAC_PI_4 }
-
-    /// tau / 12.0 = pi / 6.0
-    #[inline]
-    fn frac_tau_12() -> f64 { consts::FRAC_TAU_12 }
-    /// pi / 6.0 = tau / 12.0
-    #[inline]
-    fn frac_pi_6() -> f64 { consts::FRAC_PI_6 }
-
-    /// tau / 16.0 = pi / 8.0
-    #[inline]
-    fn frac_tau_16() -> f64 { consts::FRAC_TAU_16 }
-    /// pi / 8.0 = tau / 16.0
-    #[inline]
-    fn frac_pi_8() -> f64 { consts::FRAC_PI_8 }
 
     /// 1.0 / tau = 1.0 / (pi * 2.0)
     #[inline]
@@ -365,17 +309,6 @@ impl Float for f64 {
     /// 1.0 / pi = 2.0 / tau
     #[inline]
     fn frac_1_pi() -> f64 { consts::FRAC_1_PI }
-
-    /// 4.0 / tau = 2.0 / pi
-    #[inline]
-    fn frac_4_tau() -> f64 { consts::FRAC_4_TAU }
-    /// 2.0 / pi = 4.0 / tau
-    #[inline]
-    fn frac_2_pi() -> f64 { consts::FRAC_2_PI }
-
-    /// 2.0 / sqrt(pi)
-    #[inline]
-    fn frac_2_sqrtpi() -> f64 { consts::FRAC_2_SQRTPI }
 
     /// Euler's number
     #[inline]

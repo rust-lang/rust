@@ -600,27 +600,16 @@ mod tests {
         let tau: f64 = Float::tau();
         let frac_tau_2: f64 = Float::frac_tau_2();
         let frac_tau_3: f64 = Float::frac_tau_3();
-        let frac_tau_4: f64 = Float::frac_tau_4();
         let frac_tau_6: f64 = Float::frac_tau_6();
-        let frac_tau_8: f64 = Float::frac_tau_8();
-        let frac_tau_12: f64 = Float::frac_tau_12();
-        let frac_tau_16: f64 = Float::frac_tau_16();
         let frac_1_tau: f64 = Float::frac_1_tau();
         let frac_2_tau: f64 = Float::frac_2_tau();
-        let frac_4_tau: f64 = Float::frac_4_tau();
 
         let pi: f64 = Float::pi();
         let two_pi: f64 = Float::two_pi();
         let frac_2pi_3: f64 = Float::frac_pi_2();
-        let frac_pi_2: f64 = Float::frac_pi_2();
         let frac_pi_3: f64 = Float::frac_pi_3();
-        let frac_pi_4: f64 = Float::frac_pi_4();
-        let frac_pi_6: f64 = Float::frac_pi_6();
-        let frac_pi_8: f64 = Float::frac_pi_8();
         let frac_1_2pi: f64 = Float::frac_1_2pi();
         let frac_1_pi: f64 = Float::frac_1_pi();
-        let frac_2_pi: f64 = Float::frac_2_pi();
-        let frac_2_sqrtpi: f64 = Float::frac_2_sqrtpi();
 
         let sqrt2: f64 = Float::sqrt2();
         let frac_1_sqrt2: f64 = Float::frac_1_sqrt2();
@@ -632,26 +621,16 @@ mod tests {
 
         assert_approx_eq!(frac_tau_2, tau / 2f64);
         assert_approx_eq!(frac_tau_3, tau / 3f64);
-        assert_approx_eq!(frac_tau_4, tau / 4f64);
         assert_approx_eq!(frac_tau_6, tau / 6f64);
-        assert_approx_eq!(frac_tau_8, tau / 8f64);
-        assert_approx_eq!(frac_tau_12, tau / 12f64);
-        assert_approx_eq!(frac_tau_16, tau / 16f64);
         assert_approx_eq!(frac_1_tau, 1f64 / tau);
         assert_approx_eq!(frac_2_tau, 2f64 / tau);
-        assert_approx_eq!(frac_4_tau, 4f64 / tau);
 
         assert_approx_eq!(two_pi, 2f64 * pi);
         assert_approx_eq!(frac_2pi_3, 2f64 * pi / 3f64);
-        assert_approx_eq!(frac_pi_2, pi / 2f64);
         assert_approx_eq!(frac_pi_3, pi / 3f64);
-        assert_approx_eq!(frac_pi_4, pi / 4f64);
-        assert_approx_eq!(frac_pi_6, pi / 6f64);
-        assert_approx_eq!(frac_pi_8, pi / 8f64);
         assert_approx_eq!(frac_1_2pi, 1f64 / (2f64 * pi));
         assert_approx_eq!(frac_1_pi, 1f64 / pi);
-        assert_approx_eq!(frac_2_pi, 2f64 / pi);
-        assert_approx_eq!(frac_2_sqrtpi, 2f64 / pi.sqrt());
+
         assert_approx_eq!(sqrt2, 2f64.sqrt());
         assert_approx_eq!(frac_1_sqrt2, 1f64 / 2f64.sqrt());
         assert_approx_eq!(log2_e, e.log2());
