@@ -587,20 +587,32 @@ impl<A> ExactSize<A> for Item<A> {}
 /// ```
 #[inline]
 pub fn collect<T, Iter: Iterator<Option<T>>, V: FromIterator<T>>(iter: Iter) -> Option<V> {
-    // FIXME(#11084): This should be twice as fast once this bug is closed.
-    let mut iter = iter.scan(false, |state, x| {
-        match x {
-            Some(x) => Some(x),
-            None => {
-                *state = true;
-                None
+    // FIXME(#11084): This could be replaced with Iterator::scan when this
+    // performance bug is closed.
+
+    struct Adapter<Iter> {
+        iter: Iter,
+        found_none: bool,
+    }
+
+    impl<T, Iter: Iterator<Option<T>>> Iterator<T> for Adapter<Iter> {
+        #[inline]
+        fn next(&mut self) -> Option<T> {
+            match self.iter.next() {
+                Some(Some(value)) => Some(value),
+                Some(None) => {
+                    self.found_none = true;
+                    None
+                }
+                None => None,
             }
         }
-    });
+    }
 
-    let v: V = FromIterator::from_iter(iter.by_ref());
+    let mut adapter = Adapter { iter: iter, found_none: false };
+    let v: V = FromIterator::from_iter(adapter.by_ref());
 
-    if iter.state {
+    if adapter.found_none {
         None
     } else {
         Some(v)

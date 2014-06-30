@@ -27,6 +27,7 @@ use core::mem::transmute;
 use core::cell::Cell;
 use core::clone::Clone;
 use core::cmp::{PartialEq, PartialOrd, Eq, Ord, Ordering};
+use core::default::Default;
 use core::kinds::marker;
 use core::ops::{Deref, Drop};
 use core::option::{Option, Some, None};
@@ -149,6 +150,13 @@ impl<T> Clone for Rc<T> {
     fn clone(&self) -> Rc<T> {
         self.inc_strong();
         Rc { _ptr: self._ptr, _nosend: marker::NoSend, _noshare: marker::NoShare }
+    }
+}
+
+impl<T: Default> Default for Rc<T> {
+    #[inline]
+    fn default() -> Rc<T> {
+        Rc::new(Default::default())
     }
 }
 
