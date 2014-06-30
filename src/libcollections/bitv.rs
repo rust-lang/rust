@@ -515,9 +515,10 @@ impl BitvSet {
     /// Grows the vector to be able to store bits with indices `[0, size - 1]`
     fn grow(&mut self, size: uint) {
         let &BitvSet(ref mut bitv) = self;
+        let old_size = bitv.storage.len();
         let size = (size + uint::BITS - 1) / uint::BITS;
-        if bitv.storage.len() < size {
-            bitv.storage.grow(size, &0);
+        if old_size < size {
+            bitv.storage.grow(size - old_size, &0);
         }
     }
 
@@ -1253,14 +1254,22 @@ mod tests {
 
     #[test]
     fn test_bitv_set_basic() {
+        // calculate nbits with uint::BITS granularity
+        fn calc_nbits(bits: uint) -> uint {
+            uint::BITS * ((bits + uint::BITS - 1) / uint::BITS)
+        }
+
         let mut b = BitvSet::new();
+        assert_eq!(b.capacity(), calc_nbits(0));
         assert!(b.insert(3));
+        assert_eq!(b.capacity(), calc_nbits(3));
         assert!(!b.insert(3));
         assert!(b.contains(&3));
         assert!(b.insert(4));
         assert!(!b.insert(4));
         assert!(b.contains(&3));
         assert!(b.insert(400));
+        assert_eq!(b.capacity(), calc_nbits(400));
         assert!(!b.insert(400));
         assert!(b.contains(&400));
         assert_eq!(b.len(), 3);
