@@ -1479,25 +1479,17 @@ pub trait Float: Signed + Primitive {
     // FIXME (#5527): These should be associated constants
 
     /// Archimedes' constant.
+    fn tau() -> Self;
+    /// pi = tau / 2.0.
     fn pi() -> Self;
-    /// 2.0 * pi.
-    fn two_pi() -> Self;
-    /// pi / 2.0.
-    fn frac_pi_2() -> Self;
-    /// pi / 3.0.
+    /// tau / 3.0 = 2.0 * pi / 3.0.
+    fn frac_tau_3() -> Self;
+    /// pi / 3.0 = tau / 6.0.
     fn frac_pi_3() -> Self;
-    /// pi / 4.0.
-    fn frac_pi_4() -> Self;
-    /// pi / 6.0.
-    fn frac_pi_6() -> Self;
-    /// pi / 8.0.
-    fn frac_pi_8() -> Self;
-    /// 1.0 / pi.
+    /// 1.0 / tau = 1.0 / (pi * 2.0).
+    fn frac_1_tau() -> Self;
+    /// 1.0 / pi = 2.0 / tau.
     fn frac_1_pi() -> Self;
-    /// 2.0 / pi.
-    fn frac_2_pi() -> Self;
-    /// 2.0 / sqrt(pi).
-    fn frac_2_sqrtpi() -> Self;
 
     /// Euler's number.
     fn e() -> Self;
