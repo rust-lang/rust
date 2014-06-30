@@ -28,6 +28,7 @@
 #![allow(unused_attribute)] // NOTE: remove after stage0
 
 #[phase(plugin, link)] extern crate core;
+extern crate unicode;
 extern crate alloc;
 
 #[cfg(test)] extern crate native;
@@ -68,9 +69,6 @@ pub mod str;
 pub mod string;
 pub mod vec;
 pub mod hash;
-
-// Internal unicode fiddly bits for the str module
-mod unicode;
 
 mod deque;
 
