@@ -595,17 +595,10 @@ mod tests {
     #[test]
     fn test_real_consts() {
         let tau: f32 = Float::tau();
-        let frac_tau_2: f32 = Float::frac_tau_2();
         let frac_tau_3: f32 = Float::frac_tau_3();
-        let frac_tau_6: f32 = Float::frac_tau_6();
         let frac_1_tau: f32 = Float::frac_1_tau();
-        let frac_2_tau: f32 = Float::frac_2_tau();
-
         let pi: f32 = Float::pi();
-        let two_pi: f32 = Float::two_pi();
-        let frac_2pi_3: f32 = Float::frac_2pi_3();
         let frac_pi_3: f32 = Float::frac_pi_3();
-        let frac_1_2pi: f32 = Float::frac_1_2pi();
         let frac_1_pi: f32 = Float::frac_1_pi();
 
         let sqrt2: f32 = Float::sqrt2();
@@ -616,16 +609,9 @@ mod tests {
         let ln_2: f32 = Float::ln_2();
         let ln_10: f32 = Float::ln_10();
 
-        assert_approx_eq!(frac_tau_2, tau / 2f32);
         assert_approx_eq!(frac_tau_3, tau / 3f32);
-        assert_approx_eq!(frac_tau_6, tau / 6f32);
         assert_approx_eq!(frac_1_tau, 1f32 / tau);
-        assert_approx_eq!(frac_2_tau, 2f32 / tau);
-
-        assert_approx_eq!(two_pi, 2f32 * pi);
-        assert_approx_eq!(frac_2pi_3, 2f32 * pi / 3f32);
         assert_approx_eq!(frac_pi_3, pi / 3f32);
-        assert_approx_eq!(frac_1_2pi, 1f32 / (2f32 * pi));
         assert_approx_eq!(frac_1_pi, 1f32 / pi);
 
         assert_approx_eq!(sqrt2, 2f32.sqrt());
