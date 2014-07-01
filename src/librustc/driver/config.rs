@@ -30,7 +30,7 @@ use syntax::diagnostic::{ColorConfig, Auto, Always, Never};
 use syntax::parse;
 use syntax::parse::token::InternedString;
 
-use std::collections::HashSet;
+use std::collections::{HashSet, HashMap};
 use getopts::{optopt, optmulti, optflag, optflagopt};
 use getopts;
 use lib::llvm::llvm;
@@ -95,6 +95,7 @@ pub struct Options {
     pub print_metas: (bool, bool),
     pub cg: CodegenOptions,
     pub color: ColorConfig,
+    pub externs: HashMap<String, Vec<String>>,
 }
 
 /// Some reasonable defaults
@@ -120,6 +121,7 @@ pub fn basic_options() -> Options {
         print_metas: (false, false),
         cg: basic_codegen_options(),
         color: Auto,
+        externs: HashMap::new(),
     }
 }
 
@@ -551,7 +553,9 @@ pub fn optgroups() -> Vec<getopts::OptGroup> {
         optopt("", "color", "Configure coloring of output:
             auto   = colorize, if output goes to a tty (default);
             always = always colorize output;
-            never  = never colorize output", "auto|always|never")
+            never  = never colorize output", "auto|always|never"),
+        optmulti("", "extern", "Specify where an external rust library is located",
+                 "PATH"),
     )
 }
 
@@ -730,6 +734,21 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         }
     };
 
+    let mut externs = HashMap::new();
+    for arg in matches.opt_strs("extern").iter() {
+        let mut parts = arg.as_slice().splitn('=', 1);
+        let name = match parts.next() {
+            Some(s) => s,
+            None => early_error("--extern value must not be empty"),
+        };
+        let location = match parts.next() {
+            Some(s) => s,
+            None => early_error("--extern value must be of the format `foo=bar`"),
+        };
+        let locs = externs.find_or_insert(name.to_string(), Vec::new());
+        locs.push(location.to_string());
+    }
+
     Options {
         crate_types: crate_types,
         gc: gc,
@@ -750,7 +769,8 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         write_dependency_info: write_dependency_info,
         print_metas: print_metas,
         cg: cg,
-        color: color
+        color: color,
+        externs: externs,
     }
 }
 

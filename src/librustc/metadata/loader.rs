@@ -9,6 +9,208 @@
 // except according to those terms.
 
 //! Finds crate binaries and loads their metadata
+//!
+//! Might I be the first to welcome you to a world of platform differences,
+//! version requirements, dependency graphs, conficting desires, and fun! This
+//! is the major guts (along with metadata::creader) of the compiler for loading
+//! crates and resolving dependencies. Let's take a tour!
+//!
+//! # The problem
+//!
+//! Each invocation of the compiler is immediately concerned with one primary
+//! problem, to connect a set of crates to resolved crates on the filesystem.
+//! Concretely speaking, the compiler follows roughly these steps to get here:
+//!
+//! 1. Discover a set of `extern crate` statements.
+//! 2. Transform these directives into crate names. If the directive does not
+//!    have an explicit name, then the identifier is the name.
+//! 3. For each of these crate names, find a corresponding crate on the
+//!    filesystem.
+//!
+//! Sounds easy, right? Let's walk into some of the nuances.
+//!
+//! ## Transitive Dependencies
+//!
+//! Let's say we've got three crates: A, B, and C. A depends on B, and B depends
+//! on C. When we're compiling A, we primarily need to find and locate B, but we
+//! also end up needing to find and locate C as well.
+//!
+//! The reason for this is that any of B's types could be composed of C's types,
+//! any function in B could return a type from C, etc. To be able to guarantee
+//! that we can always typecheck/translate any function, we have to have
+//! complete knowledge of the whole ecosystem, not just our immediate
+//! dependencies.
+//!
+//! So now as part of the "find a corresponding crate on the filesystem" step
+//! above, this involves also finding all crates for *all upstream
+//! dependencies*. This includes all dependencies transitively.
+//!
+//! ## Rlibs and Dylibs
+//!
+//! The compiler has two forms of intermediate dependencies. These are dubbed
+//! rlibs and dylibs for the static and dynamic variants, respectively. An rlib
+//! is a rustc-defined file format (currently just an ar archive) while a dylib
+//! is a platform-defined dynamic library. Each library has a metadata somewhere
+//! inside of it.
+//!
+//! When translating a crate name to a crate on the filesystem, we all of a
+//! sudden need to take into account both rlibs and dylibs! Linkage later on may
+//! use either one of these files, as each has their pros/cons. The job of crate
+//! loading is to discover what's possible by finding all candidates.
+//!
+//! Most parts of this loading systems keep the dylib/rlib as just separate
+//! variables.
+//!
+//! ## Where to look?
+//!
+//! We can't exactly scan your whole hard drive when looking for dependencies,
+//! so we need to places to look. Currently the compiler will implicitly add the
+//! target lib search path ($prefix/lib/rustlib/$target/lib) to any compilation,
+//! and otherwise all -L flags are added to the search paths.
+//!
+//! ## What criterion to select on?
+//!
+//! This a pretty tricky area of loading crates. Given a file, how do we know
+//! whether it's the right crate? Currently, the rules look along these lines:
+//!
+//! 1. Does the filename match an rlib/dylib pattern? That is to say, does the
+//!    filename have the right prefix/suffix?
+//! 2. Does the filename have the right prefix for the crate name being queried?
+//!    This is filtering for files like `libfoo*.rlib` and such.
+//! 3. Is the file an actual rust library? This is done by loading the metadata
+//!    from the library and making sure it's actually there.
+//! 4. Does the name in the metadata agree with the name of the library?
+//! 5. Does the target in the metadata agree with the current target?
+//! 6. Does the SVH match? (more on this later)
+//!
+//! If the file answeres `yes` to all these questions, then the file is
+//! considered as being *candidate* for being accepted. It is illegal to have
+//! more than two candidates as the compiler has no method by which to resolve
+//! this conflict. Additionally, rlib/dylib candidates are considered
+//! separately.
+//!
+//! After all this has happened, we have 1 or two files as candidates. These
+//! represent the rlib/dylib file found for a library, and they're returned as
+//! being found.
+//!
+//! ### What about versions?
+//!
+//! A lot of effort has been put forth to remove versioning from the compiler.
+//! There have been forays in the past to have versioning baked in, but it was
+//! largely always deemed insufficient to the point that it was recognized that
+//! it's probably something the compiler shouldn't do anyway due to its
+//! complicated nature and the state of the half-baked solutions.
+//!
+//! With a departure from versioning, the primary criterion for loading crates
+//! is just the name of a crate. If we stopped here, it would imply that you
+//! could never link two crates of the same name from different sources
+//! together, which is clearly a bad state to be in.
+//!
+//! To resolve this problem, we come to the next section!
+//!
+//! # Expert Mode
+//!
+//! A number of flags have been added to the compiler to solve the "version
+//! problem" in the previous section, as well as generally enabling more
+//! powerful usage of the crate loading system of the compiler. The goal of
+//! these flags and options are to enable third-party tools to drive the
+//! compiler with prior knowledge about how the world should look.
+//!
+//! ## The `--extern` flag
+//!
+//! The compiler accepts a flag of this form a number of times:
+//!
+//! ```notrust
+//! --extern crate-name=path/to/the/crate.rlib
+//! ```
+//!
+//! This flag is basically the following letter to the compiler:
+//!
+//! > Dear rustc,
+//! >
+//! > When you are attempting to load the immediate dependency `crate-name`, I
+//! > would like you too assume that the library is located at
+//! > `path/to/the/crate.rlib`, and look nowhere else. Also, please do not
+//! > assume that the path I specified has the name `crate-name`.
+//!
+//! This flag basically overrides most matching logic except for validating that
+//! the file is indeed a rust library. The same `crate-name` can be specified
+//! twice to specify the rlib/dylib pair.
+//!
+//! ## Enabling "multiple versions"
+//!
+//! This basically boils down to the ability to specify arbitrary packages to
+//! the compiler. For example, if crate A wanted to use Bv1 and Bv2, then it
+//! would look something like:
+//!
+//! ```ignore
+//! extern crate b1;
+//! extern crate b2;
+//!
+//! fn main() {}
+//! ```
+//!
+//! and the compiler would be invoked as:
+//!
+//! ```notrust
+//! rustc a.rs --extern b1=path/to/libb1.rlib --extern b2=path/to/libb2.rlib
+//! ```
+//!
+//! In this scenario there are two crates named `b` and the compiler must be
+//! manually driven to be informed where each crate is.
+//!
+//! ## Frobbing symbols
+//!
+//! One of the immediate problems with linking the same library together twice
+//! in the same problem is dealing with duplicate symbols. The primary way to
+//! deal with this in rustc is to add hashes to the end of each symbol.
+//!
+//! In order to force hashes to change between versions of a library, if
+//! desired, the compiler exposes an option `-C metadata=foo`, which is used to
+//! initially seed each symbol hash. The string `foo` is prepended to each
+//! string-to-hash to ensure that symbols change over time.
+//!
+//! ## Loading transitive dependencies
+//!
+//! Dealing with same-named-but-distinct crates is not just a local problem, but
+//! one that also needs to be dealt with for transitive dependences. Note that
+//! in the letter above `--extern` flags only apply to the *local* set of
+//! dependencies, not the upstream transitive dependencies. Consider this
+//! dependency graph:
+//!
+//! ```notrust
+//! A.1   A.2
+//! |     |
+//! |     |
+//! B     C
+//!  \   /
+//!   \ /
+//!    D
+//! ```
+//!
+//! In this scenario, when we compile `D`, we need to be able to distinctly
+//! resolve `A.1` and `A.2`, but an `--extern` flag cannot apply to these
+//! transitive dependencies.
+//!
+//! Note that the key idea here is that `B` and `C` are both *already compiled*.
+//! That is, they have already resolved their dependencies. Due to unrelated
+//! technical reasons, when a library is compiled, it is only compatible with
+//! the *exact same* version of the upstream libraries it was compiled against.
+//! We use the "Strict Version Hash" to identify the exact copy of an upstream
+//! library.
+//!
+//! With this knowledge, we know that `B` and `C` will depend on `A` with
+//! different SVH values, so we crawl the normal `-L` paths looking for
+//! `liba*.rlib` and filter based on the contained SVH.
+//!
+//! In the end, this ends up not needing `--extern` to specify upstream
+//! transitive dependencies.
+//!
+//! # Wrapping up
+//!
+//! That's the general overview of loading crates in the compiler, but it's by
+//! no means all of the necessary details. Take a look at the rest of
+//! metadata::loader or metadata::creader for all the juicy details!
 
 use back::archive::{ArchiveRO, METADATA_FILENAME};
 use back::svh::Svh;
@@ -67,6 +269,7 @@ pub struct Context<'a> {
     pub root: &'a Option<CratePaths>,
     pub rejected_via_hash: Vec<CrateMismatch>,
     pub rejected_via_triple: Vec<CrateMismatch>,
+    pub should_match_name: bool,
 }
 
 pub struct Library {
@@ -164,6 +367,17 @@ impl<'a> Context<'a> {
     }
 
     fn find_library_crate(&mut self) -> Option<Library> {
+        // If an SVH is specified, then this is a transitive dependency that
+        // must be loaded via -L plus some filtering.
+        if self.hash.is_none() {
+            self.should_match_name = false;
+            match self.find_commandline_library() {
+                Some(l) => return Some(l),
+                None => {}
+            }
+            self.should_match_name = true;
+        }
+
         let dypair = self.dylibname();
 
         // want: crate_name.dir_part() + prefix + crate_name.file_part + "-"
@@ -348,9 +562,11 @@ impl<'a> Context<'a> {
     }
 
     fn crate_matches(&mut self, crate_data: &[u8], libpath: &Path) -> bool {
-        match decoder::maybe_get_crate_name(crate_data) {
-            Some(ref name) if self.crate_name == name.as_slice() => {}
-            _ => { info!("Rejecting via crate name"); return false }
+        if self.should_match_name {
+            match decoder::maybe_get_crate_name(crate_data) {
+                Some(ref name) if self.crate_name == name.as_slice() => {}
+                _ => { info!("Rejecting via crate name"); return false }
+            }
         }
         let hash = match decoder::maybe_get_crate_hash(crate_data) {
             Some(hash) => hash, None => {
@@ -403,6 +619,68 @@ impl<'a> Context<'a> {
         }
     }
 
+    fn find_commandline_library(&mut self) -> Option<Library> {
+        let locs = match self.sess.opts.externs.find_equiv(&self.crate_name) {
+            Some(s) => s,
+            None => return None,
+        };
+
+        // First, filter out all libraries that look suspicious. We only accept
+        // files which actually exist that have the correct naming scheme for
+        // rlibs/dylibs.
+        let sess = self.sess;
+        let dylibname = self.dylibname();
+        let mut locs = locs.iter().map(|l| Path::new(l.as_slice())).filter(|loc| {
+            if !loc.exists() {
+                sess.err(format!("extern location does not exist: {}",
+                                 loc.display()).as_slice());
+                return false;
+            }
+            let file = loc.filename_str().unwrap();
+            if file.starts_with("lib") && file.ends_with(".rlib") {
+                return true
+            } else {
+                match dylibname {
+                    Some((prefix, suffix)) => {
+                        if file.starts_with(prefix) && file.ends_with(suffix) {
+                            return true
+                        }
+                    }
+                    None => {}
+                }
+            }
+            sess.err(format!("extern location is of an unknown type: {}",
+                             loc.display()).as_slice());
+            false
+        });
+
+        // Now that we have an itertor of good candidates, make sure there's at
+        // most one rlib and at most one dylib.
+        let mut rlibs = HashSet::new();
+        let mut dylibs = HashSet::new();
+        for loc in locs {
+            if loc.filename_str().unwrap().ends_with(".rlib") {
+                rlibs.insert(loc.clone());
+            } else {
+                dylibs.insert(loc.clone());
+            }
+        }
+
+        // Extract the rlib/dylib pair.
+        let mut metadata = None;
+        let rlib = self.extract_one(rlibs, "rlib", &mut metadata);
+        let dylib = self.extract_one(dylibs, "dylib", &mut metadata);
+
+        if rlib.is_none() && dylib.is_none() { return None }
+        match metadata {
+            Some(metadata) => Some(Library {
+                dylib: dylib,
+                rlib: rlib,
+                metadata: metadata,
+            }),
+            None => None,
+        }
+    }
 }
 
 pub fn note_crate_name(diag: &SpanHandler, name: &str) {
