@@ -492,14 +492,24 @@ fn emit_vtable_methods(bcx: &Block,
                m.repr(tcx),
                substs.repr(tcx));
         if m.generics.has_type_params(subst::FnSpace) ||
-           ty::type_has_self(ty::mk_bare_fn(tcx, m.fty.clone()))
-        {
+           ty::type_has_self(ty::mk_bare_fn(tcx, m.fty.clone())) {
             debug!("(making impl vtable) method has self or type params: {}",
                    token::get_ident(ident));
             C_null(Type::nil(ccx).ptr_to())
         } else {
-            trans_fn_ref_with_vtables(bcx, m_id, ExprId(0),
-                                      substs.clone(), vtables.clone())
+            let mut fn_ref = trans_fn_ref_with_vtables(bcx,
+                                                       m_id,
+                                                       ExprId(0),
+                                                       substs.clone(),
+                                                       vtables.clone());
+            if m.explicit_self == ast::SelfValue {
+                fn_ref = trans_unboxing_shim(bcx,
+                                             fn_ref,
+                                             &*m,
+                                             m_id,
+                                             substs.clone());
+            }
+            fn_ref
         }
     }).collect()
 }

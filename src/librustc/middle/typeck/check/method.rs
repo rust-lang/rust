@@ -271,7 +271,9 @@ fn construct_transformed_self_ty_for_object(
             tcx.sess.span_bug(span, "static method for object type receiver");
         }
         ast::SelfValue => {
-            ty::mk_err() // error reported in `enforce_object_limitations()`
+            let tr = ty::mk_trait(tcx, trait_def_id, obj_substs,
+                                  ty::empty_builtin_bounds());
+            ty::mk_uniq(tcx, tr)
         }
         ast::SelfRegion(..) | ast::SelfUniq => {
             let transformed_self_ty = *method_ty.fty.sig.inputs.get(0);
@@ -1225,14 +1227,7 @@ impl<'a> LookupContext<'a> {
                      through an object");
             }
 
-            ast::SelfValue => { // reason (a) above
-                self.tcx().sess.span_err(
-                    self.span,
-                    "cannot call a method with a by-value receiver \
-                     through an object");
-            }
-
-            ast::SelfRegion(..) | ast::SelfUniq => {}
+            ast::SelfValue | ast::SelfRegion(..) | ast::SelfUniq => {}
         }
 
         // reason (a) above
@@ -1302,7 +1297,26 @@ impl<'a> LookupContext<'a> {
             }
 
             SelfValue => {
-                rcvr_matches_ty(self.fcx, rcvr_ty, candidate)
+                debug!("(is relevant?) explicit self is by-value");
+                match ty::get(rcvr_ty).sty {
+                    ty::ty_uniq(typ) => {
+                        match ty::get(typ).sty {
+                            ty::ty_trait(box ty::TyTrait {
+                                def_id: self_did,
+                                ..
+                            }) => {
+                                rcvr_matches_object(self_did, candidate) ||
+                                    rcvr_matches_ty(self.fcx,
+                                                    rcvr_ty,
+                                                    candidate)
+                            }
+                            _ => {
+                                rcvr_matches_ty(self.fcx, rcvr_ty, candidate)
+                            }
+                        }
+                    }
+                    _ => rcvr_matches_ty(self.fcx, rcvr_ty, candidate)
+                }
             }
 
             SelfRegion(_, m) => {
