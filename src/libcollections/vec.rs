@@ -1710,9 +1710,6 @@ pub mod raw {
     }
 }
 
-// TODO: Find some way to statically assert that `T` and `U` have the same
-// size.
-//
 /// An owned, partially type-converted vector.
 ///
 /// No allocations are performed by usage, only a deallocation happens in the
@@ -1734,7 +1731,7 @@ pub mod raw {
 /// assert_eq!(pv.pop(), None);
 /// pv.push(2u);
 /// pv.push(3);
-/// assert_eq!(pv.unwrap(), vec![2, 3]);
+/// assert_eq!(pv.into_vec(), vec![2, 3]);
 /// ```
 //
 // Upheld invariants:
@@ -1767,7 +1764,7 @@ pub struct PartialVec<T,U> {
 impl<T,U> PartialVec<T,U> {
     /// Creates a `PartialVec` from a `Vec`.
     pub fn new(mut vec: Vec<T>) -> PartialVec<T,U> {
-        // TODO: do this statically
+        // FIXME: Assert that the types `T` and `U` have the same size.
         assert!(mem::size_of::<T>() != 0);
         assert!(mem::size_of::<U>() != 0);
         assert!(mem::size_of::<T>() == mem::size_of::<U>());
@@ -1872,7 +1869,7 @@ impl<T,U> PartialVec<T,U> {
     ///
     /// Fails if not all `T`s were popped, also fails if not the same amount of
     /// `U`s was pushed before calling `unwrap`.
-    pub fn unwrap(self) -> Vec<U> {
+    pub fn into_vec(self) -> Vec<U> {
         // If `self.end_u == self.end_t`, we know from (e) that there are no
         // more `T`s in `vec`, we also know that the whole length of `vec` is
         // now used by `U`s, thus we can just transmute `vec` from a vector of
@@ -1945,11 +1942,10 @@ impl<T> Vec<T> {
     pub fn map_inplace<U>(self, f: |T| -> U) -> Vec<U> {
         let mut pv = PartialVec::new(self);
         loop {
-            // TODO: need this extra assignment for borrowck to pass
             let maybe_t = pv.pop();
             match maybe_t {
                 Some(t) => pv.push(f(t)),
-                None => return pv.unwrap(),
+                None => return pv.into_vec(),
             };
         }
     }
