@@ -97,6 +97,15 @@ Section: Creating a string
 ///
 /// Returns `Err` with the original vector if the vector contains invalid
 /// UTF-8.
+///
+/// # Example
+///
+/// ```rust
+/// use std::str;
+/// let hello_vec = vec![104, 101, 108, 108, 111];
+/// let string = str::from_utf8_owned(hello_vec);
+/// assert_eq!(string, Ok("hello".to_string()));
+/// ```
 pub fn from_utf8_owned(vv: Vec<u8>) -> Result<String, Vec<u8>> {
     String::from_utf8(vv)
 }
@@ -111,8 +120,8 @@ pub fn from_utf8_owned(vv: Vec<u8>) -> Result<String, Vec<u8>> {
 ///
 /// ```rust
 /// use std::str;
-/// let string = str::from_byte(66u8);
-/// assert_eq!(string.as_slice(), "B");
+/// let string = str::from_byte(104);
+/// assert_eq!(string.as_slice(), "h");
 /// ```
 pub fn from_byte(b: u8) -> String {
     assert!(b < 128u8);
@@ -120,6 +129,14 @@ pub fn from_byte(b: u8) -> String {
 }
 
 /// Convert a char to a string
+///
+/// # Example
+///
+/// ```rust
+/// use std::str;
+/// let string = str::from_char('b');
+/// assert_eq!(string.as_slice(), "b");
+/// ```
 pub fn from_char(ch: char) -> String {
     let mut buf = String::new();
     buf.push_char(ch);
@@ -127,6 +144,15 @@ pub fn from_char(ch: char) -> String {
 }
 
 /// Convert a vector of chars to a string
+///
+/// # Example
+///
+/// ```rust
+/// use std::str;
+/// let chars = ['h', 'e', 'l', 'l', 'o'];
+/// let string = str::from_chars(chars);
+/// assert_eq!(string.as_slice(), "hello");
+/// ```
 pub fn from_chars(chs: &[char]) -> String {
     chs.iter().map(|c| *c).collect()
 }
