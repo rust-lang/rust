@@ -37,6 +37,10 @@ pub struct FnStyleSpace(pub ast::FnStyle);
 pub struct Method<'a>(pub &'a clean::SelfTy, pub &'a clean::FnDecl);
 /// Similar to VisSpace, but used for mutability
 pub struct MutableSpace(pub clean::Mutability);
+/// Wrapper struct for properly emitting the stability level.
+pub struct Stability<'a>(pub &'a Option<clean::Stability>);
+/// Wrapper struct for emitting the stability level concisely.
+pub struct ConciseStability<'a>(pub &'a Option<clean::Stability>);
 
 impl VisSpace {
     pub fn get(&self) -> Option<ast::Visibility> {
@@ -593,6 +597,37 @@ impl fmt::Show for MutableSpace {
         match *self {
             MutableSpace(clean::Immutable) => Ok(()),
             MutableSpace(clean::Mutable) => write!(f, "mut "),
+        }
+    }
+}
+
+impl<'a> fmt::Show for Stability<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let Stability(stab) = *self;
+        match *stab {
+            Some(ref stability) => {
+                write!(f, "<a class='stability {lvl}' title='{reason}'>{lvl}</a>",
+                       lvl = stability.level.to_str(),
+                       reason = stability.text)
+            }
+            None => Ok(())
+        }
+    }
+}
+
+impl<'a> fmt::Show for ConciseStability<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let ConciseStability(stab) = *self;
+        match *stab {
+            Some(ref stability) => {
+                write!(f, "<a class='stability {lvl}' title='{lvl}{colon}{reason}'></a>",
+                       lvl = stability.level.to_str(),
+                       colon = if stability.text.len() > 0 { ": " } else { "" },
+                       reason = stability.text)
+            }
+            None => {
+                write!(f, "<a class='stability Unmarked' title='No stability level'></a>")
+            }
         }
     }
 }

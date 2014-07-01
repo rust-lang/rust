@@ -29,6 +29,7 @@ use rustc::middle::def;
 use rustc::middle::subst;
 use rustc::middle::subst::VecPerParamSpace;
 use rustc::middle::ty;
+use rustc::middle::stability;
 
 use std::rc::Rc;
 use std::u32;
@@ -43,6 +44,17 @@ use visit_ast;
 pub static SCHEMA_VERSION: &'static str = "0.8.3";
 
 mod inline;
+
+// load the current DocContext from TLD
+fn get_cx() -> Gc<core::DocContext> {
+    *super::ctxtkey.get().unwrap()
+}
+
+// extract the stability index for a node from TLD, if possible
+fn get_stability(def_id: ast::DefId) -> Option<Stability> {
+    get_cx().tcx_opt().and_then(|tcx| stability::lookup(tcx, def_id))
+            .map(|stab| stab.clean())
+}
 
 pub trait Clean<T> {
     fn clean(&self) -> T;
@@ -97,7 +109,7 @@ pub struct Crate {
 
 impl<'a> Clean<Crate> for visit_ast::RustdocVisitor<'a> {
     fn clean(&self) -> Crate {
-        let cx = super::ctxtkey.get().unwrap();
+        let cx = get_cx();
 
         let mut externs = Vec::new();
         cx.sess().cstore.iter_crate_data(|n, meta| {
@@ -158,6 +170,7 @@ impl<'a> Clean<Crate> for visit_ast::RustdocVisitor<'a> {
                     name: Some(prim.to_url_str().to_string()),
                     attrs: Vec::new(),
                     visibility: None,
+                    stability: None,
                     def_id: ast_util::local_def(prim.to_node_id()),
                     inner: PrimitiveItem(prim),
                 };
@@ -193,25 +206,18 @@ pub struct ExternalCrate {
 impl Clean<ExternalCrate> for cstore::crate_metadata {
     fn clean(&self) -> ExternalCrate {
         let mut primitives = Vec::new();
-        let cx = super::ctxtkey.get().unwrap();
-        match cx.maybe_typed {
-            core::Typed(ref tcx) => {
-                csearch::each_top_level_item_of_crate(&tcx.sess.cstore,
-                                                      self.cnum,
-                                                      |def, _, _| {
-                    let did = match def {
-                        decoder::DlDef(def::DefMod(did)) => did,
-                        _ => return
-                    };
-                    let attrs = inline::load_attrs(tcx, did);
-                    match Primitive::find(attrs.as_slice()) {
-                        Some(prim) => primitives.push(prim),
-                        None => {}
-                    }
-                });
-            }
-            core::NotTyped(..) => {}
-        }
+        get_cx().tcx_opt().map(|tcx| {
+            csearch::each_top_level_item_of_crate(&tcx.sess.cstore,
+                                                  self.cnum,
+                                                  |def, _, _| {
+                let did = match def {
+                    decoder::DlDef(def::DefMod(did)) => did,
+                    _ => return
+                };
+                let attrs = inline::load_attrs(tcx, did);
+                Primitive::find(attrs.as_slice()).map(|prim| primitives.push(prim));
+            })
+        });
         ExternalCrate {
             name: self.name.to_string(),
             attrs: decoder::get_crate_attributes(self.data()).clean(),
@@ -233,6 +239,7 @@ pub struct Item {
     pub inner: ItemEnum,
     pub visibility: Option<Visibility>,
     pub def_id: ast::DefId,
+    pub stability: Option<Stability>,
 }
 
 impl Item {
@@ -380,6 +387,7 @@ impl Clean<Item> for doctree::Module {
             attrs: self.attrs.clean(),
             source: where.clean(),
             visibility: self.vis.clean(),
+            stability: self.stab.clean(),
             def_id: ast_util::local_def(self.id),
             inner: ModuleItem(Module {
                is_crate: self.is_crate,
@@ -465,9 +473,8 @@ impl Clean<TyParam> for ast::TyParam {
 
 impl Clean<TyParam> for ty::TypeParameterDef {
     fn clean(&self) -> TyParam {
-        let cx = super::ctxtkey.get().unwrap();
-        cx.external_typarams.borrow_mut().get_mut_ref().insert(self.def_id,
-                                                               self.ident.clean());
+        get_cx().external_typarams.borrow_mut().get_mut_ref()
+                .insert(self.def_id, self.ident.clean());
         TyParam {
             name: self.ident.clean(),
             did: self.def_id,
@@ -515,7 +522,7 @@ fn external_path(name: &str, substs: &subst::Substs) -> Path {
 
 impl Clean<TyParamBound> for ty::BuiltinBound {
     fn clean(&self) -> TyParamBound {
-        let cx = super::ctxtkey.get().unwrap();
+        let cx = get_cx();
         let tcx = match cx.maybe_typed {
             core::Typed(ref tcx) => tcx,
             core::NotTyped(_) => return RegionBound,
@@ -550,7 +557,7 @@ impl Clean<TyParamBound> for ty::BuiltinBound {
 
 impl Clean<TyParamBound> for ty::TraitRef {
     fn clean(&self) -> TyParamBound {
-        let cx = super::ctxtkey.get().unwrap();
+        let cx = get_cx();
         let tcx = match cx.maybe_typed {
             core::Typed(ref tcx) => tcx,
             core::NotTyped(_) => return RegionBound,
@@ -709,8 +716,9 @@ impl Clean<Item> for ast::Method {
             name: Some(self.ident.clean()),
             attrs: self.attrs.clean().move_iter().collect(),
             source: self.span.clean(),
-            def_id: ast_util::local_def(self.id.clone()),
+            def_id: ast_util::local_def(self.id),
             visibility: self.vis.clean(),
+            stability: get_stability(ast_util::local_def(self.id)),
             inner: MethodItem(Method {
                 generics: self.generics.clean(),
                 self_: self.explicit_self.node.clean(),
@@ -749,6 +757,7 @@ impl Clean<Item> for ast::TypeMethod {
             source: self.span.clean(),
             def_id: ast_util::local_def(self.id),
             visibility: None,
+            stability: get_stability(ast_util::local_def(self.id)),
             inner: TyMethodItem(TyMethod {
                 fn_style: self.fn_style.clone(),
                 decl: decl,
@@ -792,6 +801,7 @@ impl Clean<Item> for doctree::Function {
             attrs: self.attrs.clean(),
             source: self.where.clean(),
             visibility: self.vis.clean(),
+            stability: self.stab.clean(),
             def_id: ast_util::local_def(self.id),
             inner: FunctionItem(Function {
                 decl: self.decl.clean(),
@@ -854,14 +864,10 @@ impl Clean<FnDecl> for ast::FnDecl {
 
 impl<'a> Clean<FnDecl> for (ast::DefId, &'a ty::FnSig) {
     fn clean(&self) -> FnDecl {
-        let cx = super::ctxtkey.get().unwrap();
-        let tcx = match cx.maybe_typed {
-            core::Typed(ref tcx) => tcx,
-            core::NotTyped(_) => unreachable!(),
-        };
+        let cx = get_cx();
         let (did, sig) = *self;
         let mut names = if did.node != 0 {
-            csearch::get_method_arg_names(&tcx.sess.cstore, did).move_iter()
+            csearch::get_method_arg_names(&cx.tcx().sess.cstore, did).move_iter()
         } else {
             Vec::new().move_iter()
         }.peekable();
@@ -932,6 +938,7 @@ impl Clean<Item> for doctree::Trait {
             source: self.where.clean(),
             def_id: ast_util::local_def(self.id),
             visibility: self.vis.clean(),
+            stability: self.stab.clean(),
             inner: TraitItem(Trait {
                 methods: self.methods.clean(),
                 generics: self.generics.clean(),
@@ -985,11 +992,7 @@ impl Clean<TraitMethod> for ast::TraitMethod {
 
 impl Clean<Item> for ty::Method {
     fn clean(&self) -> Item {
-        let cx = super::ctxtkey.get().unwrap();
-        let tcx = match cx.maybe_typed {
-            core::Typed(ref tcx) => tcx,
-            core::NotTyped(_) => unreachable!(),
-        };
+        let cx = get_cx();
         let (self_, sig) = match self.explicit_self {
             ast::SelfStatic => (ast::SelfStatic.clean(), self.fty.sig.clone()),
             s => {
@@ -1015,8 +1018,9 @@ impl Clean<Item> for ty::Method {
         Item {
             name: Some(self.ident.clean()),
             visibility: Some(ast::Inherited),
+            stability: get_stability(self.def_id),
             def_id: self.def_id,
-            attrs: inline::load_attrs(tcx, self.def_id),
+            attrs: inline::load_attrs(cx.tcx(), self.def_id),
             source: Span::empty(),
             inner: TyMethodItem(TyMethod {
                 fn_style: self.fty.fn_style,
@@ -1261,12 +1265,7 @@ impl Clean<Type> for ty::t {
             ty::ty_struct(did, ref substs) |
             ty::ty_enum(did, ref substs) |
             ty::ty_trait(box ty::TyTrait { def_id: did, ref substs, .. }) => {
-                let cx = super::ctxtkey.get().unwrap();
-                let tcx = match cx.maybe_typed {
-                    core::Typed(ref tycx) => tycx,
-                    core::NotTyped(_) => unreachable!(),
-                };
-                let fqn = csearch::get_item_path(tcx, did);
+                let fqn = csearch::get_item_path(get_cx().tcx(), did);
                 let fqn: Vec<String> = fqn.move_iter().map(|i| {
                     i.to_str()
                 }).collect();
@@ -1277,8 +1276,8 @@ impl Clean<Type> for ty::t {
                 };
                 let path = external_path(fqn.last().unwrap().to_str().as_slice(),
                                          substs);
-                cx.external_paths.borrow_mut().get_mut_ref().insert(did,
-                                                                    (fqn, kind));
+                get_cx().external_paths.borrow_mut().get_mut_ref()
+                                       .insert(did, (fqn, kind));
                 ResolvedPath {
                     path: path,
                     typarams: None,
@@ -1318,6 +1317,7 @@ impl Clean<Item> for ast::StructField {
             attrs: self.node.attrs.clean().move_iter().collect(),
             source: self.span.clean(),
             visibility: Some(vis),
+            stability: get_stability(ast_util::local_def(self.node.id)),
             def_id: ast_util::local_def(self.node.id),
             inner: StructFieldItem(TypedStructField(self.node.ty.clean())),
         }
@@ -1332,17 +1332,14 @@ impl Clean<Item> for ty::field_ty {
         } else {
             Some(self.name)
         };
-        let cx = super::ctxtkey.get().unwrap();
-        let tcx = match cx.maybe_typed {
-            core::Typed(ref tycx) => tycx,
-            core::NotTyped(_) => unreachable!(),
-        };
-        let ty = ty::lookup_item_type(tcx, self.id);
+        let cx = get_cx();
+        let ty = ty::lookup_item_type(cx.tcx(), self.id);
         Item {
             name: name.clean(),
-            attrs: inline::load_attrs(tcx, self.id),
+            attrs: inline::load_attrs(cx.tcx(), self.id),
             source: Span::empty(),
             visibility: Some(self.vis),
+            stability: get_stability(self.id),
             def_id: self.id,
             inner: StructFieldItem(TypedStructField(ty.ty.clean())),
         }
@@ -1373,6 +1370,7 @@ impl Clean<Item> for doctree::Struct {
             source: self.where.clean(),
             def_id: ast_util::local_def(self.id),
             visibility: self.vis.clean(),
+            stability: self.stab.clean(),
             inner: StructItem(Struct {
                 struct_type: self.struct_type,
                 generics: self.generics.clean(),
@@ -1418,6 +1416,7 @@ impl Clean<Item> for doctree::Enum {
             source: self.where.clean(),
             def_id: ast_util::local_def(self.id),
             visibility: self.vis.clean(),
+            stability: self.stab.clean(),
             inner: EnumItem(Enum {
                 variants: self.variants.clean(),
                 generics: self.generics.clean(),
@@ -1439,6 +1438,7 @@ impl Clean<Item> for doctree::Variant {
             attrs: self.attrs.clean(),
             source: self.where.clean(),
             visibility: self.vis.clean(),
+            stability: self.stab.clean(),
             def_id: ast_util::local_def(self.id),
             inner: VariantItem(Variant {
                 kind: self.kind.clean(),
@@ -1450,11 +1450,7 @@ impl Clean<Item> for doctree::Variant {
 impl Clean<Item> for ty::VariantInfo {
     fn clean(&self) -> Item {
         // use syntax::parse::token::special_idents::unnamed_field;
-        let cx = super::ctxtkey.get().unwrap();
-        let tcx = match cx.maybe_typed {
-            core::Typed(ref tycx) => tycx,
-            core::NotTyped(_) => fail!("tcx not present"),
-        };
+        let cx = get_cx();
         let kind = match self.arg_names.as_ref().map(|s| s.as_slice()) {
             None | Some([]) if self.args.len() == 0 => CLikeVariant,
             None | Some([]) => {
@@ -1470,6 +1466,7 @@ impl Clean<Item> for ty::VariantInfo {
                             name: Some(name.clean()),
                             attrs: Vec::new(),
                             visibility: Some(ast::Public),
+                            stability: get_stability(self.id),
                             // FIXME: this is not accurate, we need an id for
                             //        the specific field but we're using the id
                             //        for the whole variant. Nothing currently
@@ -1485,11 +1482,12 @@ impl Clean<Item> for ty::VariantInfo {
         };
         Item {
             name: Some(self.name.clean()),
-            attrs: inline::load_attrs(tcx, self.id),
+            attrs: inline::load_attrs(cx.tcx(), self.id),
             source: Span::empty(),
             visibility: Some(ast::Public),
             def_id: self.id,
             inner: VariantItem(Variant { kind: kind }),
+            stability: None,
         }
     }
 }
@@ -1626,6 +1624,7 @@ impl Clean<Item> for doctree::Typedef {
             source: self.where.clean(),
             def_id: ast_util::local_def(self.id.clone()),
             visibility: self.vis.clean(),
+            stability: self.stab.clean(),
             inner: TypedefItem(Typedef {
                 type_: self.ty.clean(),
                 generics: self.gen.clean(),
@@ -1675,6 +1674,7 @@ impl Clean<Item> for doctree::Static {
             source: self.where.clean(),
             def_id: ast_util::local_def(self.id),
             visibility: self.vis.clean(),
+            stability: self.stab.clean(),
             inner: StaticItem(Static {
                 type_: self.type_.clean(),
                 mutability: self.mutability.clean(),
@@ -1720,6 +1720,7 @@ impl Clean<Item> for doctree::Impl {
             source: self.where.clean(),
             def_id: ast_util::local_def(self.id),
             visibility: self.vis.clean(),
+            stability: self.stab.clean(),
             inner: ImplItem(Impl {
                 generics: self.generics.clean(),
                 trait_: self.trait_.clean(),
@@ -1754,6 +1755,7 @@ impl Clean<Vec<Item>> for ast::ViewItem {
                 source: self.span.clean(),
                 def_id: ast_util::local_def(0),
                 visibility: self.vis.clean(),
+                stability: None,
                 inner: ViewItemItem(ViewItem { inner: node.clean() }),
             }
         };
@@ -1895,6 +1897,7 @@ impl Clean<Item> for ast::ForeignItem {
             source: self.span.clean(),
             def_id: ast_util::local_def(self.id),
             visibility: self.vis.clean(),
+            stability: None,
             inner: inner,
         }
     }
@@ -1977,7 +1980,7 @@ fn name_from_pat(p: &ast::Pat) -> String {
 /// Given a Type, resolve it using the def_map
 fn resolve_type(path: Path, tpbs: Option<Vec<TyParamBound>>,
                 id: ast::NodeId) -> Type {
-    let cx = super::ctxtkey.get().unwrap();
+    let cx = get_cx();
     let tycx = match cx.maybe_typed {
         core::Typed(ref tycx) => tycx,
         // If we're extracting tests, this return value doesn't matter.
@@ -2012,7 +2015,7 @@ fn resolve_type(path: Path, tpbs: Option<Vec<TyParamBound>>,
         def::DefTyParamBinder(i) => return TyParamBinder(i),
         _ => {}
     };
-    let did = register_def(&**cx, def);
+    let did = register_def(&*cx, def);
     ResolvedPath { path: path, typarams: tpbs, did: did }
 }
 
@@ -2051,13 +2054,9 @@ fn resolve_use_source(path: Path, id: ast::NodeId) -> ImportSource {
 }
 
 fn resolve_def(id: ast::NodeId) -> Option<ast::DefId> {
-    let cx = super::ctxtkey.get().unwrap();
-    match cx.maybe_typed {
-        core::Typed(ref tcx) => {
-            tcx.def_map.borrow().find(&id).map(|&def| register_def(&**cx, def))
-        }
-        core::NotTyped(_) => None
-    }
+    get_cx().tcx_opt().and_then(|tcx| {
+        tcx.def_map.borrow().find(&id).map(|&def| register_def(&*get_cx(), def))
+    })
 }
 
 #[deriving(Clone, Encodable, Decodable)]
@@ -2072,10 +2071,27 @@ impl Clean<Item> for doctree::Macro {
             attrs: self.attrs.clean(),
             source: self.where.clean(),
             visibility: ast::Public.clean(),
+            stability: self.stab.clean(),
             def_id: ast_util::local_def(self.id),
             inner: MacroItem(Macro {
                 source: self.where.to_src(),
             }),
+        }
+    }
+}
+
+#[deriving(Clone, Encodable, Decodable)]
+pub struct Stability {
+    pub level: attr::StabilityLevel,
+    pub text: String
+}
+
+impl Clean<Stability> for attr::Stability {
+    fn clean(&self) -> Stability {
+        Stability {
+            level: self.level,
+            text: self.text.as_ref().map_or("".to_string(),
+                                            |interned| interned.get().to_string()),
         }
     }
 }
