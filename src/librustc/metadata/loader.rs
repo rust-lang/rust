@@ -21,8 +21,6 @@ use metadata::filesearch::{FileSearch, FileMatches, FileDoesntMatch};
 use syntax::abi;
 use syntax::codemap::Span;
 use syntax::diagnostic::SpanHandler;
-use syntax::crateid::CrateId;
-use syntax::attr::AttrMetaMethods;
 use util::fs;
 
 use std::c_str::ToCStr;
@@ -61,8 +59,7 @@ pub struct Context<'a> {
     pub sess: &'a Session,
     pub span: Span,
     pub ident: &'a str,
-    pub crate_id: &'a CrateId,
-    pub id_hash: &'a str,
+    pub crate_name: &'a str,
     pub hash: Option<&'a Svh>,
     pub triple: &'a str,
     pub os: abi::Os,
@@ -171,15 +168,15 @@ impl<'a> Context<'a> {
 
         // want: crate_name.dir_part() + prefix + crate_name.file_part + "-"
         let dylib_prefix = dypair.map(|(prefix, _)| {
-            format!("{}{}-", prefix, self.crate_id.name)
+            format!("{}{}", prefix, self.crate_name)
         });
-        let rlib_prefix = format!("lib{}-", self.crate_id.name);
+        let rlib_prefix = format!("lib{}", self.crate_name);
 
         let mut candidates = HashMap::new();
 
         // First, find all possible candidate rlibs and dylibs purely based on
         // the name of the files themselves. We're trying to match against an
-        // exact crate_id and a possibly an exact hash.
+        // exact crate name and a possibly an exact hash.
         //
         // During this step, we can filter all found libraries based on the
         // name and id found in the crate id (we ignore the path portion for
@@ -195,49 +192,32 @@ impl<'a> Context<'a> {
                 None => return FileDoesntMatch,
                 Some(file) => file,
             };
-            if file.starts_with(rlib_prefix.as_slice()) &&
+            let (hash, rlib) = if file.starts_with(rlib_prefix.as_slice()) &&
                     file.ends_with(".rlib") {
-                info!("rlib candidate: {}", path.display());
-                match self.try_match(file, rlib_prefix.as_slice(), ".rlib") {
-                    Some(hash) => {
-                        info!("rlib accepted, hash: {}", hash);
-                        let slot = candidates.find_or_insert_with(hash, |_| {
-                            (HashSet::new(), HashSet::new())
-                        });
-                        let (ref mut rlibs, _) = *slot;
-                        rlibs.insert(fs::realpath(path).unwrap());
-                        FileMatches
-                    }
-                    None => {
-                        info!("rlib rejected");
-                        FileDoesntMatch
-                    }
-                }
+                (file.slice(rlib_prefix.len(), file.len() - ".rlib".len()),
+                 true)
             } else if dypair.map_or(false, |(_, suffix)| {
                 file.starts_with(dylib_prefix.get_ref().as_slice()) &&
                 file.ends_with(suffix)
             }) {
                 let (_, suffix) = dypair.unwrap();
                 let dylib_prefix = dylib_prefix.get_ref().as_slice();
-                info!("dylib candidate: {}", path.display());
-                match self.try_match(file, dylib_prefix, suffix) {
-                    Some(hash) => {
-                        info!("dylib accepted, hash: {}", hash);
-                        let slot = candidates.find_or_insert_with(hash, |_| {
-                            (HashSet::new(), HashSet::new())
-                        });
-                        let (_, ref mut dylibs) = *slot;
-                        dylibs.insert(fs::realpath(path).unwrap());
-                        FileMatches
-                    }
-                    None => {
-                        info!("dylib rejected");
-                        FileDoesntMatch
-                    }
-                }
+                (file.slice(dylib_prefix.len(), file.len() - suffix.len()),
+                 false)
             } else {
-                FileDoesntMatch
+                return FileDoesntMatch
+            };
+            info!("lib candidate: {}", path.display());
+            let slot = candidates.find_or_insert_with(hash.to_string(), |_| {
+                (HashSet::new(), HashSet::new())
+            });
+            let (ref mut rlibs, ref mut dylibs) = *slot;
+            if rlib {
+                rlibs.insert(fs::realpath(path).unwrap());
+            } else {
+                dylibs.insert(fs::realpath(path).unwrap());
             }
+            FileMatches
         });
 
         // We have now collected all known libraries into a set of candidates
@@ -274,7 +254,7 @@ impl<'a> Context<'a> {
             _ => {
                 self.sess.span_err(self.span,
                     format!("multiple matching crates for `{}`",
-                            self.crate_id.name).as_slice());
+                            self.crate_name).as_slice());
                 self.sess.note("candidates:");
                 for lib in libraries.iter() {
                     match lib.dylib {
@@ -292,47 +272,11 @@ impl<'a> Context<'a> {
                         None => {}
                     }
                     let data = lib.metadata.as_slice();
-                    let crate_id = decoder::get_crate_id(data);
-                    note_crateid_attr(self.sess.diagnostic(), &crate_id);
+                    let name = decoder::get_crate_name(data);
+                    note_crate_name(self.sess.diagnostic(), name.as_slice());
                 }
                 None
             }
-        }
-    }
-
-    // Attempts to match the requested version of a library against the file
-    // specified. The prefix/suffix are specified (disambiguates between
-    // rlib/dylib).
-    //
-    // The return value is `None` if `file` doesn't look like a rust-generated
-    // library, or if a specific version was requested and it doesn't match the
-    // apparent file's version.
-    //
-    // If everything checks out, then `Some(hash)` is returned where `hash` is
-    // the listed hash in the filename itself.
-    fn try_match(&self, file: &str, prefix: &str, suffix: &str) -> Option<String>{
-        let middle = file.slice(prefix.len(), file.len() - suffix.len());
-        debug!("matching -- {}, middle: {}", file, middle);
-        let mut parts = middle.splitn('-', 1);
-        let hash = match parts.next() { Some(h) => h, None => return None };
-        debug!("matching -- {}, hash: {} (want {})", file, hash, self.id_hash);
-        let vers = match parts.next() { Some(v) => v, None => return None };
-        debug!("matching -- {}, vers: {} (want {})", file, vers,
-               self.crate_id.version);
-        match self.crate_id.version {
-            Some(ref version) if version.as_slice() != vers => return None,
-            Some(..) => {} // check the hash
-
-            // hash is irrelevant, no version specified
-            None => return Some(hash.to_string())
-        }
-        debug!("matching -- {}, vers ok", file);
-        // hashes in filenames are prefixes of the "true hash"
-        if self.id_hash == hash.as_slice() {
-            debug!("matching -- {}, hash ok", file);
-            Some(hash.to_string())
-        } else {
-            None
         }
     }
 
@@ -382,7 +326,7 @@ impl<'a> Context<'a> {
                                    format!("multiple {} candidates for `{}` \
                                             found",
                                            flavor,
-                                           self.crate_id.name).as_slice());
+                                           self.crate_name).as_slice());
                 self.sess.span_note(self.span,
                                     format!(r"candidate #1: {}",
                                             ret.get_ref()
@@ -404,9 +348,9 @@ impl<'a> Context<'a> {
     }
 
     fn crate_matches(&mut self, crate_data: &[u8], libpath: &Path) -> bool {
-        match decoder::maybe_get_crate_id(crate_data) {
-            Some(ref id) if self.crate_id.matches(id) => {}
-            _ => { info!("Rejecting via crate_id"); return false }
+        match decoder::maybe_get_crate_name(crate_data) {
+            Some(ref name) if self.crate_name == name.as_slice() => {}
+            _ => { info!("Rejecting via crate name"); return false }
         }
         let hash = match decoder::maybe_get_crate_hash(crate_data) {
             Some(hash) => hash, None => {
@@ -415,7 +359,10 @@ impl<'a> Context<'a> {
             }
         };
 
-        let triple = decoder::get_crate_triple(crate_data);
+        let triple = match decoder::get_crate_triple(crate_data) {
+            None => { debug!("triple not present"); return false }
+            Some(t) => t,
+        };
         if triple.as_slice() != self.triple {
             info!("Rejecting via crate triple: expected {} got {}", self.triple, triple);
             self.rejected_via_triple.push(CrateMismatch {
@@ -458,8 +405,8 @@ impl<'a> Context<'a> {
 
 }
 
-pub fn note_crateid_attr(diag: &SpanHandler, crateid: &CrateId) {
-    diag.handler().note(format!("crate_id: {}", crateid.to_str()).as_slice());
+pub fn note_crate_name(diag: &SpanHandler, name: &str) {
+    diag.handler().note(format!("crate name: {}", name).as_slice());
 }
 
 impl ArchiveMetadata {
