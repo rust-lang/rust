@@ -34,7 +34,8 @@ via `close` and `delete` methods.
 
 */
 
-#![crate_id = "rustuv#0.11.0"]
+#![crate_id = "rustuv#0.11.0"] // NOTE: remove after stage0
+#![crate_name = "rustuv"]
 #![experimental]
 #![license = "MIT/ASL2"]
 #![crate_type = "rlib"]
@@ -47,6 +48,7 @@ via `close` and `delete` methods.
 #![feature(macro_rules, unsafe_destructor)]
 #![deny(unused_result, unused_must_use)]
 #![allow(visible_private_types)]
+#![allow(unused_attribute)] // NOTE: remove after stage0
 
 #[cfg(test)] extern crate green;
 #[cfg(test)] extern crate debug;

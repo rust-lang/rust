@@ -16,7 +16,8 @@
 //! is not recommended to use this library directly, but rather the official
 //! interface through `std::rand`.
 
-#![crate_id = "rand#0.11.0"]
+#![crate_id = "rand#0.11.0"] // NOTE: remove after a stage0 snap
+#![crate_name = "rand"]
 #![license = "MIT/ASL2"]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk.png",
@@ -25,6 +26,7 @@
        html_playground_url = "http://play.rust-lang.org/")]
 
 #![feature(macro_rules, phase, globs)]
+#![allow(unused_attribute)] // NOTE: remove after stage0
 #![no_std]
 #![experimental]
 
