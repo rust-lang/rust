@@ -49,7 +49,7 @@ RUSTDOC_HTML_OPTS_NO_CSS = --markdown-before-content=doc/version_info.html \
 
 RUSTDOC_HTML_OPTS = $(RUSTDOC_HTML_OPTS_NO_CSS) --markdown-css rust.css
 
-PANDOC_BASE_OPTS := --standalone --toc --number-sections
+PANDOC_BASE_OPTS := --standalone --toc --number-sections -f markdown+tex_math_dollars
 PANDOC_TEX_OPTS = $(PANDOC_BASE_OPTS) --include-before-body=doc/version.tex \
 	--from=markdown --include-before-body=doc/footer.tex --to=latex
 PANDOC_EPUB_OPTS = $(PANDOC_BASE_OPTS) --to=epub
