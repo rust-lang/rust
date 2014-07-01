@@ -320,6 +320,8 @@ cgoptions!(
          "choose the relocation model to use (llc -relocation-model for details)"),
     metadata: Vec<String> = (Vec::new(), parse_list,
          "metadata to mangle symbol names with"),
+    extra_filename: String = ("".to_string(), parse_string,
+         "extra data to put in each output filename"),
 )
 
 pub fn build_codegen_options(matches: &getopts::Matches) -> CodegenOptions

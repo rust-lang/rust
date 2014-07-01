@@ -903,13 +903,11 @@ pub fn build_output_filenames(input: &Input,
                 None => Path::new(".")
             };
 
-            let mut stem = input.filestem();
-
             // If a crate name is present, we use it as the link name
-            match attr::find_crate_name(attrs) {
-                None => {}
-                Some(name) => stem = name.get().to_string(),
-            }
+           let stem = match attr::find_crate_name(attrs) {
+                None => input.filestem(),
+                Some(name) => name.get().to_string(),
+            };
             OutputFilenames {
                 out_directory: dirpath,
                 out_filestem: stem,
