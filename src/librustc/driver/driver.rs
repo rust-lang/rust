@@ -186,6 +186,8 @@ pub fn phase_2_configure_and_expand(sess: &Session,
 
     *sess.crate_types.borrow_mut() =
         collect_crate_types(sess, krate.attrs.as_slice());
+    *sess.crate_metadata.borrow_mut() =
+        collect_crate_metadata(sess, krate.attrs.as_slice());
 
     time(time_passes, "gated feature checking", (), |_|
          front::feature_gate::check_crate(sess, &krate));
@@ -846,6 +848,11 @@ pub fn collect_crate_types(session: &Session,
 
         res
     }).collect()
+}
+
+pub fn collect_crate_metadata(session: &Session,
+                              _attrs: &[ast::Attribute]) -> Vec<String> {
+    session.opts.cg.metadata.clone()
 }
 
 pub struct OutputFilenames {
