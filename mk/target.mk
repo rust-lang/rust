@@ -44,6 +44,13 @@ $(foreach host,$(CFG_HOST),						    \
    $(foreach crate,$(CRATES),						    \
     $(eval $(call RUST_CRATE_FULLDEPS,$(stage),$(target),$(host),$(crate)))))))
 
+# NOTE: after a stage0 snap this should be just EXTRA_FILENAME, not with a stage
+# bound
+EXTRA_FILENAME_0 =
+EXTRA_FILENAME_1 = -C extra-filename=-$(CFG_FILENAME_EXTRA)
+EXTRA_FILENAME_2 = -C extra-filename=-$(CFG_FILENAME_EXTRA)
+EXTRA_FILENAME_3 = -C extra-filename=-$(CFG_FILENAME_EXTRA)
+
 # RUST_TARGET_STAGE_N template: This defines how target artifacts are built
 # for all stage/target architecture combinations. This is one giant rule which
 # works as follows:
@@ -85,7 +92,9 @@ $$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$(4):				    \
 		-L "$$(LLVM_LIBDIR_$(2))" \
 		-L "$$(dir $$(LLVM_STDCPP_LOCATION_$(2)))" \
 		$$(RUSTFLAGS_$(4)) \
-		--out-dir $$(@D) $$<
+		--out-dir $$(@D) \
+		$$(EXTRA_FILENAME_$(1)) \
+		$$<
 	@touch $$@
 	$$(call LIST_ALL_OLD_GLOB_MATCHES,\
 	    $$(dir $$@)$$(call CFG_LIB_GLOB_$(2),$(4)))

@@ -588,18 +588,6 @@ pub fn find_crate_name(sess: Option<&Session>,
     }), None)
 }
 
-pub fn crate_name_hash(sess: &Session, crate_name: &str) -> String {
-    // This calculates CMH as defined above. Note that we don't use the path of
-    // the crate id in the hash because lookups are only done by (name/vers),
-    // not by path.
-    let mut s = Sha256::new();
-    s.input_str(crate_name);
-    for meta in sess.crate_metadata.borrow().iter() {
-        s.input_str(meta.as_slice());
-    }
-    truncated_hash_result(&mut s).as_slice().slice_to(8).to_string()
-}
-
 pub fn build_link_meta(krate: &ast::Crate, name: String) -> LinkMeta {
     let r = LinkMeta {
         crate_name: name,
@@ -880,7 +868,7 @@ pub fn filename_for_input(sess: &Session,
                           crate_type: config::CrateType,
                           name: &str,
                           out_filename: &Path) -> Path {
-    let libname = format!("{}-{}", name, crate_name_hash(sess, name));
+    let libname = format!("{}{}", name, sess.opts.cg.extra_filename);
     match crate_type {
         config::CrateTypeRlib => {
             out_filename.with_filename(format!("lib{}.rlib", libname))
