@@ -252,7 +252,7 @@ fn main() {
 }
 ```
 
-This will result an error indicating that the value is no longer in scope:
+The compiler will produce an error indicating that the value is no longer in scope:
 
 ```text
 concurrency.rs:12:20: 12:27 error: use of moved value: 'numbers'
