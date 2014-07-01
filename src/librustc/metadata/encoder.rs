@@ -809,9 +809,8 @@ fn encode_method_argument_names(ebml_w: &mut Encoder,
     for arg in decl.inputs.iter() {
         ebml_w.start_tag(tag_method_argument_name);
         match arg.pat.node {
-            ast::PatIdent(_, ref name, _) => {
-                let name = name.segments.last().unwrap().identifier;
-                let name = token::get_ident(name);
+            ast::PatIdent(_, ref path1, _) => {
+                let name = token::get_ident(path1.node);
                 ebml_w.writer.write(name.get().as_bytes());
             }
             _ => {}
@@ -1106,8 +1105,9 @@ fn encode_info_for_item(ecx: &EncodeContext,
         match ty.node {
             ast::TyPath(ref path, ref bounds, _) if path.segments
                                                         .len() == 1 => {
+                let ident = path.segments.last().unwrap().identifier;
                 assert!(bounds.is_none());
-                encode_impl_type_basename(ebml_w, ast_util::path_to_ident(path));
+                encode_impl_type_basename(ebml_w, ident);
             }
             _ => {}
         }

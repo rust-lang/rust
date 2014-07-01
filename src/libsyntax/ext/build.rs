@@ -759,8 +759,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                               span: Span,
                               ident: ast::Ident,
                               bm: ast::BindingMode) -> Gc<ast::Pat> {
-        let path = self.path_ident(span, ident);
-        let pat = ast::PatIdent(bm, path, None);
+        let pat = ast::PatIdent(bm, Spanned{span: span, node: ident}, None);
         self.pat(span, pat)
     }
     fn pat_enum(&self, span: Span, path: ast::Path, subpats: Vec<Gc<ast::Pat>> ) -> Gc<ast::Pat> {
