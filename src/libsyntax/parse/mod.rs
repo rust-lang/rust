@@ -594,23 +594,15 @@ mod test {
     #[test] fn parse_ident_pat () {
         let sess = new_parse_sess();
         let mut parser = string_to_parser(&sess, "b".to_string());
-        assert!(parser.parse_pat() ==
-                   box(GC) ast::Pat{id: ast::DUMMY_NODE_ID,
-                             node: ast::PatIdent(
-                                ast::BindByValue(ast::MutImmutable),
-                                ast::Path {
-                                    span:sp(0,1),
-                                    global:false,
-                                    segments: vec!(
-                                        ast::PathSegment {
-                                            identifier: str_to_ident("b"),
-                                            lifetimes: Vec::new(),
-                                            types: OwnedSlice::empty(),
-                                        }
-                                    ),
-                                },
-                                None /* no idea */),
-                             span: sp(0,1)});
+        assert!(parser.parse_pat()
+                == box(GC) ast::Pat{
+                id: ast::DUMMY_NODE_ID,
+                node: ast::PatIdent(ast::BindByValue(ast::MutImmutable),
+                                    Spanned{ span:sp(0, 1),
+                                             node: str_to_ident("b")
+                    },
+                                    None),
+                span: sp(0,1)});
         parser_done(parser);
     }
 
@@ -643,24 +635,15 @@ mod test {
                                         id: ast::DUMMY_NODE_ID,
                                         node: ast::PatIdent(
                                             ast::BindByValue(ast::MutImmutable),
-                                            ast::Path {
-                                                span:sp(6,7),
-                                                global:false,
-                                                segments: vec!(
-                                                    ast::PathSegment {
-                                                        identifier:
-                                                            str_to_ident("b"),
-                                                        lifetimes: Vec::new(),
-                                                        types: OwnedSlice::empty(),
-                                                    }
-                                                ),
-                                            },
-                                            None // no idea
-                                        ),
-                                        span: sp(6,7)
-                                    },
-                                    id: ast::DUMMY_NODE_ID
-                                }),
+                                                Spanned{
+                                                    span: sp(6,7),
+                                                    node: str_to_ident("b")},
+                                                None
+                                                    ),
+                                            span: sp(6,7)
+                                        },
+                                        id: ast::DUMMY_NODE_ID
+                                    }),
                                 output: ast::P(ast::Ty{id: ast::DUMMY_NODE_ID,
                                                        node: ast::TyNil,
                                                        span:sp(15,15)}), // not sure

@@ -926,7 +926,7 @@ impl <'l> DxrVisitor<'l> {
                 self.collected_paths.push((p.id, path.clone(), false, recorder::VarRef));
                 visit::walk_pat(self, p, e);
             }
-            ast::PatIdent(bm, ref path, ref optional_subpattern) => {
+            ast::PatIdent(bm, ref path1, ref optional_subpattern) => {
                 let immut = match bm {
                     // Even if the ref is mut, you can't change the ref, only
                     // the data pointed at, so showing the initialising expression
@@ -940,7 +940,8 @@ impl <'l> DxrVisitor<'l> {
                     }
                 };
                 // collect path for either visit_local or visit_arm
-                self.collected_paths.push((p.id, path.clone(), immut, recorder::VarRef));
+                let path = ast_util::ident_to_path(path1.span,path1.node);
+                self.collected_paths.push((p.id, path, immut, recorder::VarRef));
                 match *optional_subpattern {
                     None => {}
                     Some(subpattern) => self.visit_pat(&*subpattern, e),

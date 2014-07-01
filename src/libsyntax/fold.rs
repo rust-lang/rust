@@ -791,9 +791,10 @@ pub fn noop_fold_pat<T: Folder>(p: Gc<Pat>, folder: &mut T) -> Gc<Pat> {
     let node = match p.node {
         PatWild => PatWild,
         PatWildMulti => PatWildMulti,
-        PatIdent(binding_mode, ref pth, ref sub) => {
+        PatIdent(binding_mode, ref pth1, ref sub) => {
             PatIdent(binding_mode,
-                     folder.fold_path(pth),
+                     Spanned{span: folder.new_span(pth1.span),
+                                       node: folder.fold_ident(pth1.node)},
                      sub.map(|x| folder.fold_pat(x)))
         }
         PatLit(e) => PatLit(folder.fold_expr(e)),

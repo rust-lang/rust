@@ -14,7 +14,7 @@ use middle::resolve;
 use std::collections::HashMap;
 use std::gc::{Gc, GC};
 use syntax::ast::*;
-use syntax::ast_util::{path_to_ident, walk_pat};
+use syntax::ast_util::{walk_pat};
 use syntax::codemap::{Span, DUMMY_SP};
 
 pub type PatIdMap = HashMap<Ident, NodeId>;
@@ -23,8 +23,8 @@ pub type PatIdMap = HashMap<Ident, NodeId>;
 // use the NodeId of their namesake in the first pattern.
 pub fn pat_id_map(dm: &resolve::DefMap, pat: &Pat) -> PatIdMap {
     let mut map = HashMap::new();
-    pat_bindings(dm, pat, |_bm, p_id, _s, n| {
-      map.insert(path_to_ident(n), p_id);
+    pat_bindings(dm, pat, |_bm, p_id, _s, path1| {
+      map.insert(path1.node, p_id);
     });
     map
 }
@@ -75,7 +75,7 @@ pub fn pat_is_binding_or_wild(dm: &resolve::DefMap, pat: &Pat) -> bool {
 /// `match foo() { Some(a) => (), None => () }`
 pub fn pat_bindings(dm: &resolve::DefMap,
                     pat: &Pat,
-                    it: |BindingMode, NodeId, Span, &Path|) {
+                    it: |BindingMode, NodeId, Span, &SpannedIdent|) {
     walk_pat(pat, |p| {
         match p.node {
           PatIdent(binding_mode, ref pth, _) if pat_is_binding(dm, p) => {
@@ -102,10 +102,10 @@ pub fn pat_contains_bindings(dm: &resolve::DefMap, pat: &Pat) -> bool {
     contains_bindings
 }
 
-pub fn simple_identifier<'a>(pat: &'a Pat) -> Option<&'a Path> {
+pub fn simple_identifier<'a>(pat: &'a Pat) -> Option<&'a Ident> {
     match pat.node {
-        PatIdent(BindByValue(_), ref path, None) => {
-            Some(path)
+        PatIdent(BindByValue(_), ref path1, None) => {
+            Some(&path1.node)
         }
         _ => {
             None

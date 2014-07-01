@@ -20,7 +20,7 @@ use util::ppaux::UserString;
 use syntax::ast::*;
 use syntax::attr;
 use syntax::codemap::Span;
-use syntax::print::pprust::{expr_to_str,path_to_str};
+use syntax::print::pprust::{expr_to_str, ident_to_str};
 use syntax::{visit};
 use syntax::visit::Visitor;
 
@@ -627,7 +627,7 @@ fn check_sized(tcx: &ty::ctxt, ty: ty::t, name: String, sp: Span) {
 fn check_pat(cx: &mut Context, pat: &Pat) {
     let var_name = match pat.node {
         PatWild => Some("_".to_string()),
-        PatIdent(_, ref path, _) => Some(path_to_str(path).to_string()),
+        PatIdent(_, ref path1, _) => Some(ident_to_str(&path1.node).to_string()),
         _ => None
     };
 
