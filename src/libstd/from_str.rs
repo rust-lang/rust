@@ -10,6 +10,8 @@
 
 //! The `FromStr` trait for types that can be created from strings
 
+#![experimental]
+
 use option::{Option, Some, None};
 use string::String;
 use str::StrAllocating;

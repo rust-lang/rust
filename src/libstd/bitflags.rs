@@ -105,6 +105,7 @@
 //! - `insert`: inserts the specified flags in-place
 //! - `remove`: removes the specified flags in-place
 
+#![experimental]
 #![macro_escape]
 
 #[macro_export]

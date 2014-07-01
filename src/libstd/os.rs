@@ -26,6 +26,8 @@
  * to write OS-ignorant code by default.
  */
 
+#![experimental]
+
 #![allow(missing_doc)]
 #![allow(non_snake_case_functions)]
 
