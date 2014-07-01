@@ -593,7 +593,10 @@ pub fn crate_name_hash(sess: &Session, crate_name: &str) -> String {
     // the crate id in the hash because lookups are only done by (name/vers),
     // not by path.
     let mut s = Sha256::new();
-    s.input_str(crate_id.short_name_with_version().as_slice());
+    s.input_str(crate_name);
+    for meta in sess.crate_metadata.borrow().iter() {
+        s.input_str(meta.as_slice());
+    }
     truncated_hash_result(&mut s).as_slice().slice_to(8).to_string()
 }
 
@@ -626,6 +629,9 @@ fn symbol_hash(tcx: &ty::ctxt,
     symbol_hasher.input_str(link_meta.crate_name.as_slice());
     symbol_hasher.input_str("-");
     symbol_hasher.input_str(link_meta.crate_hash.as_str());
+    for meta in tcx.sess.crate_metadata.borrow().iter() {
+        symbol_hasher.input_str(meta.as_slice());
+    }
     symbol_hasher.input_str("-");
     symbol_hasher.input_str(encoder::encoded_ty(tcx, t).as_slice());
     // Prefix with 'h' so that it never blends into adjacent digits

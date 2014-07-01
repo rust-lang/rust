@@ -318,6 +318,8 @@ cgoptions!(
         "use an external assembler rather than LLVM's integrated one"),
     relocation_model: String = ("pic".to_string(), parse_string,
          "choose the relocation model to use (llc -relocation-model for details)"),
+    metadata: Vec<String> = (Vec::new(), parse_list,
+         "metadata to mangle symbol names with"),
 )
 
 pub fn build_codegen_options(matches: &getopts::Matches) -> CodegenOptions

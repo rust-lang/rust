@@ -311,6 +311,8 @@ fn print_crate_info(sess: &Session,
         }
         if crate_file_name {
             let crate_types = driver::collect_crate_types(sess, attrs.as_slice());
+            let metadata = driver::collect_crate_metadata(sess, attrs.as_slice());
+            *sess.crate_metadata.borrow_mut() = metadata;
             for &style in crate_types.iter() {
                 let fname = link::filename_for_input(sess, style, id.as_slice(),
                                                      &t_outputs.with_extension(""));
