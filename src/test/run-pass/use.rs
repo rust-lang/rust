@@ -15,13 +15,11 @@
 #![no_std]
 extern crate std;
 extern crate zed = "std";
-extern crate bar = "std#0.11.0";
 
 
 use std::str;
 use x = zed::str;
 mod baz {
-    pub use bar::str;
     pub use x = std::str;
 }
 
