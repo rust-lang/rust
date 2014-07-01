@@ -216,6 +216,7 @@ responding to errors that may occur while attempting to read the numbers.
 
 */
 
+#![experimental]
 #![deny(unused_must_use)]
 
 use char::Char;

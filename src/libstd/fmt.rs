@@ -412,6 +412,8 @@ the `}` character is escaped with `}}`.
 
 */
 
+#![experimental]
+
 use io::Writer;
 use io;
 use result::{Ok, Err};

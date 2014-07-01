@@ -63,6 +63,8 @@ println!("path exists: {}", path.exists());
 
 */
 
+#![experimental]
+
 use collections::Collection;
 use c_str::CString;
 use clone::Clone;
