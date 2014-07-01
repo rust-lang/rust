@@ -16,7 +16,9 @@
  * closure.
  */
 
+use arena::TypedArena;
 use back::abi;
+use back::link;
 use driver::session;
 use lib::llvm::ValueRef;
 use lib::llvm::llvm;
@@ -33,27 +35,25 @@ use middle::trans::cleanup::CleanupMethods;
 use middle::trans::common;
 use middle::trans::common::*;
 use middle::trans::datum::*;
-use middle::trans::datum::Datum;
+use middle::trans::datum::{Datum, KindOps};
 use middle::trans::expr;
 use middle::trans::glue;
 use middle::trans::inline;
+use middle::trans::foreign;
 use middle::trans::meth;
 use middle::trans::monomorphize;
+use middle::trans::type_::Type;
 use middle::trans::type_of;
-use middle::trans::foreign;
 use middle::ty;
 use middle::typeck;
 use middle::typeck::coherence::make_substs_for_receiver_types;
 use middle::typeck::MethodCall;
 use util::ppaux::Repr;
 
-use middle::trans::type_::Type;
-
+use std::gc::Gc;
 use syntax::ast;
 use synabi = syntax::abi;
 use syntax::ast_map;
-
-use std::gc::Gc;
 
 pub struct MethodData {
     pub llfn: ValueRef,
@@ -224,6 +224,134 @@ fn resolve_default_method_vtables(bcx: &Block,
     param_vtables
 }
 
+/// Translates the adapter that deconstructs a `Box<Trait>` object into
+/// `Trait` so that a by-value self method can be called.
+pub fn trans_unboxing_shim(bcx: &Block,
+                           llshimmedfn: ValueRef,
+                           method: &ty::Method,
+                           method_id: ast::DefId,
+                           substs: subst::Substs)
+                           -> ValueRef {
+    let _icx = push_ctxt("trans_unboxing_shim");
+    let ccx = bcx.ccx();
+    let tcx = bcx.tcx();
+
+    // Transform the self type to `Box<self_type>`.
+    let self_type = *method.fty.sig.inputs.get(0);
+    let boxed_self_type = ty::mk_uniq(tcx, self_type);
+    let boxed_function_type = ty::FnSig {
+        binder_id: method.fty.sig.binder_id,
+        inputs: method.fty.sig.inputs.iter().enumerate().map(|(i, typ)| {
+            if i == 0 {
+                boxed_self_type
+            } else {
+                *typ
+            }
+        }).collect(),
+        output: method.fty.sig.output,
+        variadic: false,
+    };
+    let boxed_function_type = ty::BareFnTy {
+        fn_style: method.fty.fn_style,
+        abi: method.fty.abi,
+        sig: boxed_function_type,
+    };
+    let boxed_function_type =
+        ty::mk_bare_fn(tcx, boxed_function_type).subst(tcx, &substs);
+    let function_type =
+        ty::mk_bare_fn(tcx, method.fty.clone()).subst(tcx, &substs);
+
+    let function_name = tcx.map.with_path(method_id.node, |path| {
+        link::mangle_internal_name_by_path_and_seq(path, "unboxing_shim")
+    });
+    let llfn = decl_internal_rust_fn(ccx,
+                                     boxed_function_type,
+                                     function_name.as_slice());
+
+    let block_arena = TypedArena::new();
+    let empty_param_substs = param_substs::empty();
+    let return_type = ty::ty_fn_ret(boxed_function_type);
+    let fcx = new_fn_ctxt(ccx,
+                          llfn,
+                          -1,
+                          false,
+                          return_type,
+                          &empty_param_substs,
+                          None,
+                          &block_arena);
+    init_function(&fcx, false, return_type);
+
+    // Create the substituted versions of the self type.
+    let mut bcx = fcx.entry_bcx.borrow().clone().unwrap();
+    let arg_scope = fcx.push_custom_cleanup_scope();
+    let arg_scope_id = cleanup::CustomScope(arg_scope);
+    let boxed_arg_types = ty::ty_fn_args(boxed_function_type);
+    let boxed_self_type = *boxed_arg_types.get(0);
+    let arg_types = ty::ty_fn_args(function_type);
+    let self_type = *arg_types.get(0);
+    let boxed_self_kind = arg_kind(&fcx, boxed_self_type);
+
+    // Create a datum for self.
+    let llboxedself = unsafe {
+        llvm::LLVMGetParam(fcx.llfn, fcx.arg_pos(0) as u32)
+    };
+    let llboxedself = Datum::new(llboxedself,
+                                 boxed_self_type,
+                                 boxed_self_kind);
+    let boxed_self =
+        unpack_datum!(bcx,
+                      llboxedself.to_lvalue_datum_in_scope(bcx,
+                                                           "boxedself",
+                                                           arg_scope_id));
+
+    // This `Load` is needed because lvalue data are always by-ref.
+    let llboxedself = Load(bcx, boxed_self.val);
+
+    let llself = if type_is_immediate(ccx, self_type) {
+        let llboxedself = Load(bcx, llboxedself);
+        immediate_rvalue(llboxedself, self_type)
+    } else {
+        let llself = rvalue_scratch_datum(bcx, self_type, "self");
+        memcpy_ty(bcx, llself.val, llboxedself, self_type);
+        llself
+    };
+
+    // Make sure we don't free the box twice!
+    boxed_self.kind.post_store(bcx, boxed_self.val, boxed_self_type);
+
+    // Schedule a cleanup to free the box.
+    fcx.schedule_free_value(arg_scope_id,
+                            llboxedself,
+                            cleanup::HeapExchange,
+                            self_type);
+
+    // Now call the function.
+    let mut llshimmedargs = vec!(llself.val);
+    for i in range(1, arg_types.len()) {
+        llshimmedargs.push(unsafe {
+            llvm::LLVMGetParam(fcx.llfn, fcx.arg_pos(i) as u32)
+        });
+    }
+    bcx = trans_call_inner(bcx,
+                           None,
+                           function_type,
+                           |bcx, _| {
+                               Callee {
+                                   bcx: bcx,
+                                   data: Fn(llshimmedfn),
+                               }
+                           },
+                           ArgVals(llshimmedargs.as_slice()),
+                           match fcx.llretptr.get() {
+                               None => None,
+                               Some(llretptr) => Some(expr::SaveIn(llretptr)),
+                           }).bcx;
+
+    bcx = fcx.pop_and_trans_custom_cleanup_scope(bcx, arg_scope);
+    finish_fn(&fcx, bcx);
+
+    llfn
+}
 
 pub fn trans_fn_ref_with_vtables(
     bcx: &Block,                 //

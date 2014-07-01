@@ -159,6 +159,14 @@ impl<'a> Builder<'a> {
                   attributes: &[(uint, u64)])
                   -> ValueRef {
         self.count_insn("invoke");
+
+        debug!("Invoke {} with args ({})",
+               self.ccx.tn.val_to_str(llfn),
+               args.iter()
+                   .map(|&v| self.ccx.tn.val_to_str(v))
+                   .collect::<Vec<String>>()
+                   .connect(", "));
+
         unsafe {
             let v = llvm::LLVMBuildInvoke(self.llbuilder,
                                           llfn,
