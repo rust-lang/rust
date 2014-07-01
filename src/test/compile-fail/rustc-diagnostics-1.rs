@@ -8,11 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-    print!(test!());
-    //~^ ERROR: macro undefined: 'test!'
-    //~^^ ERROR: format argument must be a string literal
+#![feature(rustc_diagnostic_macros)]
 
-    concat!(test!());
-    //~^ ERROR: macro undefined: 'test!'
+__register_diagnostic!(E0001)
+__register_diagnostic!(E0003)
+
+fn main() {
+    __diagnostic_used!(E0002);
+    //~^ ERROR unknown diagnostic code E0002
+
+    __diagnostic_used!(E0001);
+    //~^ NOTE previous invocation
+
+    __diagnostic_used!(E0001);
+    //~^ WARNING diagnostic code E0001 already used
 }
+
+__build_diagnostic_array!(DIAGNOSTICS)
+//~^ WARN diagnostic code E0003 never used

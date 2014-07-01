@@ -101,7 +101,7 @@ fn get_ast_and_resolve(cpath: &Path, libs: HashSet<Path>, cfgs: Vec<String>)
 
 
     let codemap = syntax::codemap::CodeMap::new();
-    let diagnostic_handler = syntax::diagnostic::default_handler(syntax::diagnostic::Auto);
+    let diagnostic_handler = syntax::diagnostic::default_handler(syntax::diagnostic::Auto, None);
     let span_diagnostic_handler =
         syntax::diagnostic::mk_span_handler(diagnostic_handler, codemap);
 

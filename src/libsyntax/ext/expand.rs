@@ -58,7 +58,7 @@ pub fn expand_expr(e: Gc<ast::Expr>, fld: &mut MacroExpander) -> Gc<ast::Expr> {
                         None => {
                             fld.cx.span_err(
                                 pth.span,
-                                format!("macro undefined: '{}'",
+                                format!("macro undefined: '{}!'",
                                         extnamestr.get()).as_slice());
 
                             // let compilation continue
@@ -567,7 +567,7 @@ fn expand_stmt(s: &Stmt, fld: &mut MacroExpander) -> SmallVector<Gc<Stmt>> {
     let marked_after = match fld.extsbox.find(&extname.name) {
         None => {
             fld.cx.span_err(pth.span,
-                            format!("macro undefined: '{}'",
+                            format!("macro undefined: '{}!'",
                                     extnamestr).as_slice());
             return SmallVector::zero();
         }
