@@ -46,14 +46,13 @@ use externalfiles::ExternalHtml;
 use serialize::json::ToJson;
 use syntax::ast;
 use syntax::ast_util;
-use syntax::attr;
-use syntax::parse::token::InternedString;
 use rustc::util::nodemap::NodeSet;
 
 use clean;
 use doctree;
 use fold::DocFolder;
-use html::format::{VisSpace, Method, FnStyleSpace, MutableSpace};
+use html::format::{VisSpace, Method, FnStyleSpace, MutableSpace, Stability};
+use html::format::{ConciseStability};
 use html::highlight;
 use html::item_type::{ItemType, shortty};
 use html::item_type;
@@ -114,6 +113,15 @@ pub struct Implementor {
     generics: clean::Generics,
     trait_: clean::Type,
     for_: clean::Type,
+    stability: Option<clean::Stability>,
+}
+
+/// Metadata about implementations for a type.
+#[deriving(Clone)]
+pub struct Impl {
+    impl_: clean::Impl,
+    dox: Option<String>,
+    stability: Option<clean::Stability>,
 }
 
 /// This cache is used to store information about the `clean::Crate` being
@@ -137,7 +145,7 @@ pub struct Cache {
     ///
     /// The values of the map are a list of implementations and documentation
     /// found on that implementation.
-    pub impls: HashMap<ast::DefId, Vec<(clean::Impl, Option<String>)>>,
+    pub impls: HashMap<ast::DefId, Vec<Impl>>,
 
     /// Maintains a mapping of local crate node ids to the fully qualified name
     /// and "short type description" of that node. This is used when generating
@@ -550,7 +558,8 @@ fn write_shared(cx: &Context,
             // going on). If they're in different crates then the crate defining
             // the trait will be interested in our implementation.
             if imp.def_id.krate == did.krate { continue }
-            try!(write!(&mut f, r#""impl{} {} for {}","#,
+            try!(write!(&mut f, r#""{}impl{} {} for {}","#,
+                        ConciseStability(&imp.stability),
                         imp.generics, imp.trait_, imp.for_));
         }
         try!(writeln!(&mut f, r"];"));
@@ -782,6 +791,7 @@ impl DocFolder for Cache {
                             generics: i.generics.clone(),
                             trait_: i.trait_.get_ref().clone(),
                             for_: i.for_.clone(),
+                            stability: item.stability.clone(),
                         });
                     }
                     Some(..) | None => {}
@@ -967,7 +977,11 @@ impl DocFolder for Cache {
                                 let v = self.impls.find_or_insert_with(did, |_| {
                                     Vec::new()
                                 });
-                                v.push((i, dox));
+                                v.push(Impl {
+                                    impl_: i,
+                                    dox: dox,
+                                    stability: item.stability.clone(),
+                                });
                             }
                             None => {}
                         }
@@ -1248,19 +1262,8 @@ impl<'a> fmt::Show for Item<'a> {
         try!(write!(fmt, "<a class='{}' href=''>{}</a>",
                     shortty(self.item), self.item.name.get_ref().as_slice()));
 
-        // Write stability attributes
-        match attr::find_stability_generic(self.item.attrs.iter()) {
-            Some((ref stability, _)) => {
-                try!(write!(fmt,
-                       "<a class='stability {lvl}' title='{reason}'>{lvl}</a>",
-                       lvl = stability.level.to_str(),
-                       reason = match stability.text {
-                           Some(ref s) => (*s).clone(),
-                           None => InternedString::new(""),
-                       }));
-            }
-            None => {}
-        }
+        // Write stability level
+        try!(write!(fmt, "{}", Stability(&self.item.stability)));
 
         // Write `src` tag
         //
@@ -1454,10 +1457,11 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
 
                 try!(write!(w, "
                     <tr>
-                        <td><code>{}static {}{}: {}</code>{}</td>
+                        <td>{}<code>{}static {}{}: {}</code>{}</td>
                         <td class='docblock'>{}&nbsp;</td>
                     </tr>
                 ",
+                ConciseStability(&myitem.stability),
                 VisSpace(myitem.visibility),
                 MutableSpace(s.mutability),
                 *myitem.name.get_ref(),
@@ -1492,7 +1496,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                 if myitem.name.is_none() { continue }
                 try!(write!(w, "
                     <tr>
-                        <td><a class='{class}' href='{href}'
+                        <td>{stab}<a class='{class}' href='{href}'
                                title='{title}'>{}</a></td>
                         <td class='docblock short'>{}</td>
                     </tr>
@@ -1501,7 +1505,8 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                 Markdown(shorter(myitem.doc_value())),
                 class = shortty(myitem),
                 href = item_path(myitem),
-                title = full_path(cx, myitem)));
+                title = full_path(cx, myitem),
+                stab = ConciseStability(&myitem.stability)));
             }
         }
     }
@@ -1565,9 +1570,10 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     try!(document(w, it));
 
     fn meth(w: &mut fmt::Formatter, m: &clean::TraitMethod) -> fmt::Result {
-        try!(write!(w, "<h3 id='{}.{}' class='method'><code>",
-                      shortty(m.item()),
-                      *m.item().name.get_ref()));
+        try!(write!(w, "<h3 id='{}.{}' class='method'>{}<code>",
+                    shortty(m.item()),
+                    *m.item().name.get_ref(),
+                    ConciseStability(&m.item().stability)));
         try!(render_method(w, m.item()));
         try!(write!(w, "</code></h3>"));
         try!(document(w, m.item()));
@@ -1604,7 +1610,8 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     match cache.implementors.find(&it.def_id) {
         Some(implementors) => {
             for i in implementors.iter() {
-                try!(writeln!(w, "<li><code>impl{} {} for {}</code></li>",
+                try!(writeln!(w, "<li>{}<code>impl{} {} for {}</code></li>",
+                              ConciseStability(&i.stability),
                               i.generics, i.trait_, i.for_));
             }
         }
@@ -1677,7 +1684,8 @@ fn item_struct(w: &mut fmt::Formatter, it: &clean::Item,
             try!(write!(w, "<h2 class='fields'>Fields</h2>\n<table>"));
             for field in fields {
                 try!(write!(w, "<tr><td id='structfield.{name}'>\
-                                  <code>{name}</code></td><td>",
+                                  {stab}<code>{name}</code></td><td>",
+                              stab = ConciseStability(&field.stability),
                               name = field.name.get_ref().as_slice()));
                 try!(document(w, field));
                 try!(write!(w, "</td></tr>"));
@@ -1743,7 +1751,8 @@ fn item_enum(w: &mut fmt::Formatter, it: &clean::Item,
     if e.variants.len() > 0 {
         try!(write!(w, "<h2 class='variants'>Variants</h2>\n<table>"));
         for variant in e.variants.iter() {
-            try!(write!(w, "<tr><td id='variant.{name}'><code>{name}</code></td><td>",
+            try!(write!(w, "<tr><td id='variant.{name}'>{stab}<code>{name}</code></td><td>",
+                          stab = ConciseStability(&variant.stability),
                           name = variant.name.get_ref().as_slice()));
             try!(document(w, variant));
             match variant.inner {
@@ -1853,39 +1862,25 @@ fn render_struct(w: &mut fmt::Formatter, it: &clean::Item,
 fn render_methods(w: &mut fmt::Formatter, it: &clean::Item) -> fmt::Result {
     match cache_key.get().unwrap().impls.find(&it.def_id) {
         Some(v) => {
-            let mut non_trait = v.iter().filter(|p| {
-                p.ref0().trait_.is_none()
-            });
-            let non_trait = non_trait.collect::<Vec<&(clean::Impl, Option<String>)>>();
-            let mut traits = v.iter().filter(|p| {
-                p.ref0().trait_.is_some()
-            });
-            let traits = traits.collect::<Vec<&(clean::Impl, Option<String>)>>();
-
+            let (non_trait, traits) = v.partitioned(|i| i.impl_.trait_.is_none());
             if non_trait.len() > 0 {
                 try!(write!(w, "<h2 id='methods'>Methods</h2>"));
-                for &(ref i, ref dox) in non_trait.move_iter() {
-                    try!(render_impl(w, i, dox));
+                for i in non_trait.iter() {
+                    try!(render_impl(w, i));
                 }
             }
             if traits.len() > 0 {
                 try!(write!(w, "<h2 id='implementations'>Trait \
                                   Implementations</h2>"));
-                let mut any_derived = false;
-                for & &(ref i, ref dox) in traits.iter() {
-                    if !i.derived {
-                        try!(render_impl(w, i, dox));
-                    } else {
-                        any_derived = true;
-                    }
+                let (derived, manual) = traits.partition(|i| i.impl_.derived);
+                for i in manual.iter() {
+                    try!(render_impl(w, i));
                 }
-                if any_derived {
+                if derived.len() > 0 {
                     try!(write!(w, "<h3 id='derived_implementations'>Derived Implementations \
                                 </h3>"));
-                    for &(ref i, ref dox) in traits.move_iter() {
-                        if i.derived {
-                            try!(render_impl(w, i, dox));
-                        }
+                    for i in derived.iter() {
+                        try!(render_impl(w, i));
                     }
                 }
             }
@@ -1895,15 +1890,16 @@ fn render_methods(w: &mut fmt::Formatter, it: &clean::Item) -> fmt::Result {
     Ok(())
 }
 
-fn render_impl(w: &mut fmt::Formatter, i: &clean::Impl,
-               dox: &Option<String>) -> fmt::Result {
-    try!(write!(w, "<h3 class='impl'><code>impl{} ", i.generics));
-    match i.trait_ {
+fn render_impl(w: &mut fmt::Formatter, i: &Impl) -> fmt::Result {
+    try!(write!(w, "<h3 class='impl'>{}<code>impl{} ",
+                ConciseStability(&i.stability),
+                i.impl_.generics));
+    match i.impl_.trait_ {
         Some(ref ty) => try!(write!(w, "{} for ", *ty)),
         None => {}
     }
-    try!(write!(w, "{}</code></h3>", i.for_));
-    match *dox {
+    try!(write!(w, "{}</code></h3>", i.impl_.for_));
+    match i.dox {
         Some(ref dox) => {
             try!(write!(w, "<div class='docblock'>{}</div>",
                           Markdown(dox.as_slice())));
@@ -1913,8 +1909,9 @@ fn render_impl(w: &mut fmt::Formatter, i: &clean::Impl,
 
     fn docmeth(w: &mut fmt::Formatter, item: &clean::Item,
                dox: bool) -> fmt::Result {
-        try!(write!(w, "<h4 id='method.{}' class='method'><code>",
-                      *item.name.get_ref()));
+        try!(write!(w, "<h4 id='method.{}' class='method'>{}<code>",
+                    *item.name.get_ref(),
+                    ConciseStability(&item.stability)));
         try!(render_method(w, item));
         try!(write!(w, "</code></h4>\n"));
         match item.doc_value() {
@@ -1926,8 +1923,8 @@ fn render_impl(w: &mut fmt::Formatter, i: &clean::Impl,
         }
     }
 
-    try!(write!(w, "<div class='methods'>"));
-    for meth in i.methods.iter() {
+    try!(write!(w, "<div class='impl-methods'>"));
+    for meth in i.impl_.methods.iter() {
         try!(docmeth(w, meth, true));
     }
 
@@ -1948,11 +1945,11 @@ fn render_impl(w: &mut fmt::Formatter, i: &clean::Impl,
 
     // If we've implemented a trait, then also emit documentation for all
     // default methods which weren't overridden in the implementation block.
-    match i.trait_ {
+    match i.impl_.trait_ {
         Some(clean::ResolvedPath { did, .. }) => {
             try!({
                 match cache_key.get().unwrap().traits.find(&did) {
-                    Some(t) => try!(render_default_methods(w, t, i)),
+                    Some(t) => try!(render_default_methods(w, t, &i.impl_)),
                     None => {}
                 }
                 Ok(())
