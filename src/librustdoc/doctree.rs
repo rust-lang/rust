@@ -14,6 +14,7 @@
 use syntax;
 use syntax::codemap::Span;
 use syntax::ast;
+use syntax::attr;
 use syntax::ast::{Ident, NodeId};
 
 use std::gc::Gc;
@@ -32,6 +33,7 @@ pub struct Module {
     pub statics: Vec<Static>,
     pub traits: Vec<Trait>,
     pub vis: ast::Visibility,
+    pub stab: Option<attr::Stability>,
     pub impls: Vec<Impl>,
     pub foreigns: Vec<ast::ForeignMod>,
     pub view_items: Vec<ast::ViewItem>,
@@ -45,6 +47,7 @@ impl Module {
             name       : name,
             id: 0,
             vis: ast::Inherited,
+            stab: None,
             where_outer: syntax::codemap::DUMMY_SP,
             where_inner: syntax::codemap::DUMMY_SP,
             attrs      : Vec::new(),
@@ -83,6 +86,7 @@ pub enum TypeBound {
 
 pub struct Struct {
     pub vis: ast::Visibility,
+    pub stab: Option<attr::Stability>,
     pub id: NodeId,
     pub struct_type: StructType,
     pub name: Ident,
@@ -94,6 +98,7 @@ pub struct Struct {
 
 pub struct Enum {
     pub vis: ast::Visibility,
+    pub stab: Option<attr::Stability>,
     pub variants: Vec<Variant>,
     pub generics: ast::Generics,
     pub attrs: Vec<ast::Attribute>,
@@ -108,6 +113,7 @@ pub struct Variant {
     pub kind: ast::VariantKind,
     pub id: ast::NodeId,
     pub vis: ast::Visibility,
+    pub stab: Option<attr::Stability>,
     pub where: Span,
 }
 
@@ -117,6 +123,7 @@ pub struct Function {
     pub id: NodeId,
     pub name: Ident,
     pub vis: ast::Visibility,
+    pub stab: Option<attr::Stability>,
     pub fn_style: ast::FnStyle,
     pub where: Span,
     pub generics: ast::Generics,
@@ -130,6 +137,7 @@ pub struct Typedef {
     pub attrs: Vec<ast::Attribute>,
     pub where: Span,
     pub vis: ast::Visibility,
+    pub stab: Option<attr::Stability>,
 }
 
 pub struct Static {
@@ -139,6 +147,7 @@ pub struct Static {
     pub name: Ident,
     pub attrs: Vec<ast::Attribute>,
     pub vis: ast::Visibility,
+    pub stab: Option<attr::Stability>,
     pub id: ast::NodeId,
     pub where: Span,
 }
@@ -152,6 +161,7 @@ pub struct Trait {
     pub id: ast::NodeId,
     pub where: Span,
     pub vis: ast::Visibility,
+    pub stab: Option<attr::Stability>,
 }
 
 pub struct Impl {
@@ -162,6 +172,7 @@ pub struct Impl {
     pub attrs: Vec<ast::Attribute>,
     pub where: Span,
     pub vis: ast::Visibility,
+    pub stab: Option<attr::Stability>,
     pub id: ast::NodeId,
 }
 
@@ -170,6 +181,7 @@ pub struct Macro {
     pub id: ast::NodeId,
     pub attrs: Vec<ast::Attribute>,
     pub where: Span,
+    pub stab: Option<attr::Stability>,
 }
 
 pub fn struct_type_from_def(sd: &ast::StructDef) -> StructType {

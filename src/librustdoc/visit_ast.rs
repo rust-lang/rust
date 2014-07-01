@@ -15,8 +15,11 @@ use syntax::abi;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::ast_map;
+use syntax::attr;
 use syntax::attr::AttrMetaMethods;
 use syntax::codemap::Span;
+
+use rustc::middle::stability;
 
 use std::gc::{Gc, GC};
 
@@ -39,6 +42,14 @@ impl<'a> RustdocVisitor<'a> {
             cx: cx,
             analysis: analysis,
         }
+    }
+
+    fn stability(&self, id: ast::NodeId) -> Option<attr::Stability> {
+        let tcx = match self.cx.maybe_typed {
+            core::Typed(ref tcx) => tcx,
+            core::NotTyped(_) => return None
+        };
+        stability::lookup(tcx, ast_util::local_def(id))
     }
 
     pub fn visit(&mut self, krate: &ast::Crate) {
@@ -65,6 +76,7 @@ impl<'a> RustdocVisitor<'a> {
             struct_type: struct_type,
             name: item.ident,
             vis: item.vis,
+            stab: self.stability(item.id),
             attrs: item.attrs.iter().map(|x| *x).collect(),
             generics: generics.clone(),
             fields: sd.fields.iter().map(|x| (*x).clone()).collect(),
@@ -81,6 +93,7 @@ impl<'a> RustdocVisitor<'a> {
                 name: x.node.name,
                 attrs: x.node.attrs.iter().map(|x| *x).collect(),
                 vis: x.node.vis,
+                stab: self.stability(x.node.id),
                 id: x.node.id,
                 kind: x.node.kind.clone(),
                 where: x.span,
@@ -90,6 +103,7 @@ impl<'a> RustdocVisitor<'a> {
             name: it.ident,
             variants: vars,
             vis: it.vis,
+            stab: self.stability(it.id),
             generics: params.clone(),
             attrs: it.attrs.iter().map(|x| *x).collect(),
             id: it.id,
@@ -104,6 +118,7 @@ impl<'a> RustdocVisitor<'a> {
         Function {
             id: item.id,
             vis: item.vis,
+            stab: self.stability(item.id),
             attrs: item.attrs.iter().map(|x| *x).collect(),
             decl: fd.clone(),
             name: item.ident,
@@ -125,6 +140,7 @@ impl<'a> RustdocVisitor<'a> {
         om.where_inner = m.inner;
         om.attrs = attrs;
         om.vis = vis;
+        om.stab = self.stability(id);
         om.id = id;
         for i in m.items.iter() {
             self.visit_item(&**i, &mut om);
@@ -258,6 +274,7 @@ impl<'a> RustdocVisitor<'a> {
                     attrs: item.attrs.iter().map(|x| *x).collect(),
                     where: item.span,
                     vis: item.vis,
+                    stab: self.stability(item.id),
                 };
                 om.typedefs.push(t);
             },
@@ -271,6 +288,7 @@ impl<'a> RustdocVisitor<'a> {
                     attrs: item.attrs.iter().map(|x| *x).collect(),
                     where: item.span,
                     vis: item.vis,
+                    stab: self.stability(item.id),
                 };
                 om.statics.push(s);
             },
@@ -284,6 +302,7 @@ impl<'a> RustdocVisitor<'a> {
                     attrs: item.attrs.iter().map(|x| *x).collect(),
                     where: item.span,
                     vis: item.vis,
+                    stab: self.stability(item.id),
                 };
                 om.traits.push(t);
             },
@@ -297,6 +316,7 @@ impl<'a> RustdocVisitor<'a> {
                     id: item.id,
                     where: item.span,
                     vis: item.vis,
+                    stab: self.stability(item.id),
                 };
                 om.impls.push(i);
             },
@@ -309,6 +329,7 @@ impl<'a> RustdocVisitor<'a> {
                     attrs: item.attrs.iter().map(|x| *x).collect(),
                     name: item.ident,
                     where: item.span,
+                    stab: self.stability(item.id),
                 })
             }
         }
