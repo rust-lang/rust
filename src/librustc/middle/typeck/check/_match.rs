@@ -485,7 +485,7 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
         demand::suptype(fcx, pat.span, expected, const_pty.ty);
         fcx.write_ty(pat.id, const_pty.ty);
       }
-      ast::PatIdent(bm, ref name, sub) if pat_is_binding(&tcx.def_map, pat) => {
+      ast::PatIdent(bm, ref path1, sub) if pat_is_binding(&tcx.def_map, pat) => {
         let typ = fcx.local_ty(pat.span, pat.id);
 
         match bm {
@@ -507,7 +507,7 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
           }
         }
 
-        let canon_id = *pcx.map.get(&ast_util::path_to_ident(name));
+        let canon_id = *pcx.map.get(&path1.node);
         if canon_id != pat.id {
             let ct = fcx.local_ty(pat.span, canon_id);
             demand::eqtype(fcx, pat.span, ct, typ);
@@ -521,8 +521,10 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
           _ => ()
         }
       }
-      ast::PatIdent(_, ref path, _) => {
-        check_pat_variant(pcx, pat, path, &Some(Vec::new()), expected);
+      // it's not a binding, it's an enum in disguise:
+      ast::PatIdent(_, ref path1, _) => {
+        let path = ast_util::ident_to_path(path1.span,path1.node);
+        check_pat_variant(pcx, pat, &path, &Some(Vec::new()), expected);
       }
       ast::PatEnum(ref path, ref subpats) => {
         check_pat_variant(pcx, pat, path, subpats, expected);

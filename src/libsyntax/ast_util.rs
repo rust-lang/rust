@@ -33,12 +33,6 @@ pub fn path_name_i(idents: &[Ident]) -> String {
     }).collect::<Vec<String>>().connect("::")
 }
 
-// totally scary function: ignores all but the last element, should have
-// a different name
-pub fn path_to_ident(path: &Path) -> Ident {
-    path.segments.last().unwrap().identifier
-}
-
 pub fn local_def(id: NodeId) -> DefId {
     ast::DefId { krate: LOCAL_CRATE, node: id }
 }
@@ -186,6 +180,8 @@ pub fn block_from_expr(e: Gc<Expr>) -> P<Block> {
     })
 }
 
+// convert a span and an identifier to the corresponding
+// 1-segment path
 pub fn ident_to_path(s: Span, identifier: Ident) -> Path {
     ast::Path {
         span: s,
@@ -202,7 +198,7 @@ pub fn ident_to_path(s: Span, identifier: Ident) -> Path {
 
 pub fn ident_to_pat(id: NodeId, s: Span, i: Ident) -> Gc<Pat> {
     box(GC) ast::Pat { id: id,
-                node: PatIdent(BindByValue(MutImmutable), ident_to_path(s, i), None),
+                node: PatIdent(BindByValue(MutImmutable), codemap::Spanned{span:s, node:i}, None),
                 span: s }
 }
 

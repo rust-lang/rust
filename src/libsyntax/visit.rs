@@ -454,8 +454,8 @@ pub fn walk_pat<E: Clone, V: Visitor<E>>(visitor: &mut V, pattern: &Pat, env: E)
         PatRegion(ref subpattern) => {
             visitor.visit_pat(&**subpattern, env)
         }
-        PatIdent(_, ref path, ref optional_subpattern) => {
-            visitor.visit_path(path, pattern.id, env.clone());
+        PatIdent(_, ref pth1, ref optional_subpattern) => {
+            visitor.visit_ident(pth1.span, pth1.node, env.clone());
             match *optional_subpattern {
                 None => {}
                 Some(ref subpattern) => visitor.visit_pat(&**subpattern, env),
