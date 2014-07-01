@@ -73,6 +73,8 @@ println!("{}", tuple)
 ```
 */
 
+#![experimental]
+
 use cell::RefCell;
 use clone::Clone;
 use io::IoResult;

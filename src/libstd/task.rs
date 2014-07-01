@@ -91,6 +91,8 @@
 //! # }
 //! ```
 
+#![experimental]
+
 use any::Any;
 use comm::channel;
 use io::{Writer, stdio};

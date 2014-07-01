@@ -16,6 +16,7 @@ collector is task-local so `Gc<T>` is not sendable.
 
 */
 
+#![experimental]
 #![allow(experimental)]
 
 use clone::Clone;

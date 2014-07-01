@@ -10,6 +10,7 @@
 
 //! Operations and constants for 32-bits floats (`f32` type)
 
+#![experimental]
 #![allow(missing_doc)]
 #![allow(unsigned_negate)]
 #![doc(primitive = "f32")]

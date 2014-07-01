@@ -14,6 +14,8 @@ The `ToStr` trait for converting to strings
 
 */
 
+#![experimental]
+
 use fmt;
 use string::String;
 

@@ -33,6 +33,8 @@
 //! handled correctly, i.e. that allocated memory is eventually freed
 //! if necessary.
 
+#![experimental]
+
 use collections::Collection;
 use kinds::Send;
 use mem;
