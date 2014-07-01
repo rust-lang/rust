@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_id = "rustrt#0.11.0"]
+#![crate_id = "rustrt#0.11.0"] // NOTE: remove after stage0
+#![crate_name = "rustrt"]
 #![license = "MIT/ASL2"]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
@@ -20,6 +21,7 @@
 #![feature(linkage, lang_items, unsafe_destructor)]
 #![no_std]
 #![experimental]
+#![allow(unused_attribute)] // NOTE: remove after stage0
 
 #[phase(plugin, link)] extern crate core;
 extern crate alloc;

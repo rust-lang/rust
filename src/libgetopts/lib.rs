@@ -76,7 +76,8 @@
 //! }
 //! ~~~
 
-#![crate_id = "getopts#0.11.0"]
+#![crate_id = "getopts#0.11.0"] // NOTE: remove after stage0
+#![crate_name = "getopts"]
 #![experimental]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
@@ -87,6 +88,7 @@
        html_playground_url = "http://play.rust-lang.org/")]
 #![feature(globs, phase)]
 #![deny(missing_doc)]
+#![allow(unused_attribute)] // NOTE: remove after stage0
 
 #[cfg(test)] extern crate debug;
 #[cfg(test)] #[phase(plugin, link)] extern crate log;

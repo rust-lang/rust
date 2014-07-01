@@ -17,7 +17,8 @@
 //! use this crate specifically. Instead, its functionality is reexported
 //! through `std::sync`.
 
-#![crate_id = "sync#0.11.0"]
+#![crate_id = "sync#0.11.0"] // NOTE: remove after stage0 snap
+#![crate_name = "sync"]
 #![experimental]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
@@ -30,6 +31,7 @@
 #![feature(phase, globs, macro_rules, unsafe_destructor)]
 #![deny(missing_doc)]
 #![no_std]
+#![allow(unused_attribute)] // NOTE: remove after stage0
 
 #[phase(plugin, link)] extern crate core;
 extern crate alloc;

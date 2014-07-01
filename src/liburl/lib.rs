@@ -10,7 +10,8 @@
 
 //! Types/fns concerning URLs (see RFC 3986)
 
-#![crate_id = "url#0.11.0"]
+#![crate_id = "url#0.11.0"] // NOTE: remove after stage0
+#![crate_name = "url"]
 #![experimental]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
@@ -20,6 +21,7 @@
        html_root_url = "http://doc.rust-lang.org/0.11.0/",
        html_playground_url = "http://play.rust-lang.org/")]
 #![feature(default_type_params)]
+#![allow(unused_attribute)] // NOTE: remove after stage0
 
 use std::collections::HashMap;
 use std::fmt;

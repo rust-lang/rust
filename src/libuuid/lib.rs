@@ -54,7 +54,8 @@ Examples of string representations:
 
 */
 
-#![crate_id = "uuid#0.11.0"]
+#![crate_id = "uuid#0.11.0"] // NOTE: remove after stage0
+#![crate_name = "uuid"]
 #![experimental]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
@@ -63,6 +64,7 @@ Examples of string representations:
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/0.11.0/",
        html_playground_url = "http://play.rust-lang.org/")]
+#![allow(unused_attribute)] // NOTE: remove after stage0
 
 #![feature(default_type_params)]
 
