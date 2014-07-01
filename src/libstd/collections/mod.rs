@@ -12,6 +12,8 @@
  * Collection types.
  */
 
+#![experimental]
+
 pub use core_collections::{Collection, Mutable, Map, MutableMap};
 pub use core_collections::{Set, MutableSet, Deque};
 pub use core_collections::{Bitv, BitvSet, BTree, DList, EnumSet};

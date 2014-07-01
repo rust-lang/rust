@@ -10,6 +10,8 @@
 
 //! Operations on ASCII strings and characters
 
+#![experimental]
+
 use collections::Collection;
 use fmt;
 use iter::Iterator;
