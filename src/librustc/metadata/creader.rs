@@ -280,12 +280,32 @@ fn existing_match(e: &Env, name: &str,
                   hash: Option<&Svh>) -> Option<ast::CrateNum> {
     let mut ret = None;
     e.sess.cstore.iter_crate_data(|cnum, data| {
-        if data.name().as_slice() == name {
-            let other_hash = data.hash();
-            match hash {
-                Some(hash) if *hash != other_hash => {}
-                Some(..) | None => { ret = Some(cnum); }
+        if data.name().as_slice() != name { return }
+
+        match hash {
+            Some(hash) if *hash == data.hash() => { ret = Some(cnum); return }
+            Some(..) => return,
+            None => {}
+        }
+
+        // When the hash is None we're dealing with a top-level dependency in
+        // which case we may have a specification on the command line for this
+        // library. Even though an upstream library may have loaded something of
+        // the same name, we have to make sure it was loaded from the exact same
+        // location as well.
+        let source = e.sess.cstore.get_used_crate_source(cnum).unwrap();
+        let dylib = source.dylib.as_ref().map(|p| p.as_vec());
+        let rlib = source.rlib.as_ref().map(|p| p.as_vec());
+        match e.sess.opts.externs.find_equiv(&name) {
+            Some(locs) => {
+                let found = locs.iter().any(|l| {
+                    Some(l.as_bytes()) == dylib || Some(l.as_bytes()) == rlib
+                });
+                if found {
+                    ret = Some(cnum);
+                }
             }
+            None => ret = Some(cnum),
         }
     });
     return ret;
@@ -361,6 +381,7 @@ fn resolve_crate<'a>(e: &mut Env,
                 root: root,
                 rejected_via_hash: vec!(),
                 rejected_via_triple: vec!(),
+                should_match_name: true,
             };
             let library = load_ctxt.load_library_crate();
             register_crate(e, root, ident, name, span, library)
@@ -422,6 +443,7 @@ impl<'a> PluginMetadataReader<'a> {
             root: &None,
             rejected_via_hash: vec!(),
             rejected_via_triple: vec!(),
+            should_match_name: true,
         };
         let library = match load_ctxt.maybe_load_library_crate() {
             Some (l) => l,
