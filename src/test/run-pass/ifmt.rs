@@ -81,6 +81,9 @@ pub fn main() {
     t!(format!("{foo_bar}", foo_bar=1i), "1");
     t!(format!("{:d}", 5i + 5i), "10");
 
+    let a: &fmt::Show = &1i;
+    t!(format!("{}", a), "1");
+
     // Formatting strings and their arguments
     t!(format!("{:s}", "a"), "a");
     t!(format!("{:4s}", "a"), "a   ");
