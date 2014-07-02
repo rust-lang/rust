@@ -31,7 +31,7 @@ use vec::Vec;
 /// ```rust
 /// use collections::bitv::Bitv;
 ///
-/// let mut bv = Bitv::new(10, false);
+/// let mut bv = Bitv::with_capacity(10, false);
 ///
 /// // insert all primes less than 10
 /// bv.set(2, true);
@@ -126,9 +126,14 @@ impl Bitv {
         }
     }
 
-    /// Creates an empty Bitv that holds `nbits` elements, setting each element
+    /// Creates an empty Bitv
+    pub fn new() -> Bitv {
+        Bitv { storage: Vec::new(), nbits: 0 }
+    }
+
+    /// Creates a Bitv that holds `nbits` elements, setting each element
     /// to `init`.
-    pub fn new(nbits: uint, init: bool) -> Bitv {
+    pub fn with_capacity(nbits: uint, init: bool) -> Bitv {
         Bitv {
             storage: Vec::from_elem((nbits + uint::BITS - 1) / uint::BITS,
                                     if init { !0u } else { 0u }),
@@ -226,7 +231,7 @@ impl Bitv {
     ///
     /// ```rust
     /// use collections::bitv::Bitv;
-    /// let mut bv = Bitv::new(10, false);
+    /// let mut bv = Bitv::with_capacity(10, false);
     /// bv.set(1, true);
     /// bv.set(2, true);
     /// bv.set(3, true);
@@ -441,7 +446,7 @@ pub fn from_bytes(bytes: &[u8]) -> Bitv {
  * index is `f(index)`.
  */
 pub fn from_fn(len: uint, f: |index: uint| -> bool) -> Bitv {
-    let mut bitv = Bitv::new(len, false);
+    let mut bitv = Bitv::with_capacity(len, false);
     for i in range(0u, len) {
         bitv.set(i, f(i));
     }
@@ -450,7 +455,7 @@ pub fn from_fn(len: uint, f: |index: uint| -> bool) -> Bitv {
 
 impl Default for Bitv {
     #[inline]
-    fn default() -> Bitv { Bitv::new(0, false) }
+    fn default() -> Bitv { Bitv::new() }
 }
 
 impl Collection for Bitv {
@@ -467,7 +472,7 @@ impl Mutable for Bitv {
 
 impl FromIterator<bool> for Bitv {
     fn from_iter<I:Iterator<bool>>(iterator: I) -> Bitv {
-        let mut ret = Bitv::new(0, false);
+        let mut ret = Bitv::new();
         ret.extend(iterator);
         ret
     }
@@ -609,7 +614,14 @@ impl BitvSet {
     /// Creates a new bit vector set with initially no contents
     #[inline]
     pub fn new() -> BitvSet {
-        BitvSet(Bitv::new(0, false))
+        BitvSet(Bitv::new())
+    }
+
+    /// Creates a new bit vector set with initially no contents, able to
+    /// hold `nbits` elements without resizing
+    #[inline]
+    pub fn with_capacity(nbits: uint) -> BitvSet {
+        BitvSet(Bitv::with_capacity(nbits, false))
     }
 
     /// Creates a new bit vector set from the given bit vector
@@ -994,31 +1006,31 @@ mod tests {
 
     #[test]
     fn test_to_str() {
-        let zerolen = Bitv::new(0u, false);
+        let zerolen = Bitv::new();
         assert_eq!(zerolen.to_str().as_slice(), "");
 
-        let eightbits = Bitv::new(8u, false);
+        let eightbits = Bitv::with_capacity(8u, false);
         assert_eq!(eightbits.to_str().as_slice(), "00000000")
     }
 
     #[test]
     fn test_0_elements() {
-        let act = Bitv::new(0u, false);
+        let act = Bitv::new();
         let exp = Vec::from_elem(0u, false);
         assert!(act.eq_vec(exp.as_slice()));
     }
 
     #[test]
     fn test_1_element() {
-        let mut act = Bitv::new(1u, false);
+        let mut act = Bitv::with_capacity(1u, false);
         assert!(act.eq_vec([false]));
-        act = Bitv::new(1u, true);
+        act = Bitv::with_capacity(1u, true);
         assert!(act.eq_vec([true]));
     }
 
     #[test]
     fn test_2_elements() {
-        let mut b = bitv::Bitv::new(2, false);
+        let mut b = bitv::Bitv::with_capacity(2, false);
         b.set(0, true);
         b.set(1, false);
         assert_eq!(b.to_str().as_slice(), "10");
@@ -1029,16 +1041,16 @@ mod tests {
         let mut act;
         // all 0
 
-        act = Bitv::new(10u, false);
+        act = Bitv::with_capacity(10u, false);
         assert!((act.eq_vec(
                     [false, false, false, false, false, false, false, false, false, false])));
         // all 1
 
-        act = Bitv::new(10u, true);
+        act = Bitv::with_capacity(10u, true);
         assert!((act.eq_vec([true, true, true, true, true, true, true, true, true, true])));
         // mixed
 
-        act = Bitv::new(10u, false);
+        act = Bitv::with_capacity(10u, false);
         act.set(0u, true);
         act.set(1u, true);
         act.set(2u, true);
@@ -1047,7 +1059,7 @@ mod tests {
         assert!((act.eq_vec([true, true, true, true, true, false, false, false, false, false])));
         // mixed
 
-        act = Bitv::new(10u, false);
+        act = Bitv::with_capacity(10u, false);
         act.set(5u, true);
         act.set(6u, true);
         act.set(7u, true);
@@ -1056,7 +1068,7 @@ mod tests {
         assert!((act.eq_vec([false, false, false, false, false, true, true, true, true, true])));
         // mixed
 
-        act = Bitv::new(10u, false);
+        act = Bitv::with_capacity(10u, false);
         act.set(0u, true);
         act.set(3u, true);
         act.set(6u, true);
@@ -1069,21 +1081,21 @@ mod tests {
         let mut act;
         // all 0
 
-        act = Bitv::new(31u, false);
+        act = Bitv::with_capacity(31u, false);
         assert!(act.eq_vec(
                 [false, false, false, false, false, false, false, false, false, false, false,
                 false, false, false, false, false, false, false, false, false, false, false, false,
                 false, false, false, false, false, false, false, false]));
         // all 1
 
-        act = Bitv::new(31u, true);
+        act = Bitv::with_capacity(31u, true);
         assert!(act.eq_vec(
                 [true, true, true, true, true, true, true, true, true, true, true, true, true,
                 true, true, true, true, true, true, true, true, true, true, true, true, true, true,
                 true, true, true, true]));
         // mixed
 
-        act = Bitv::new(31u, false);
+        act = Bitv::with_capacity(31u, false);
         act.set(0u, true);
         act.set(1u, true);
         act.set(2u, true);
@@ -1098,7 +1110,7 @@ mod tests {
                 false, false, false, false, false, false]));
         // mixed
 
-        act = Bitv::new(31u, false);
+        act = Bitv::with_capacity(31u, false);
         act.set(16u, true);
         act.set(17u, true);
         act.set(18u, true);
@@ -1113,7 +1125,7 @@ mod tests {
                 false, false, false, false, false, false, false]));
         // mixed
 
-        act = Bitv::new(31u, false);
+        act = Bitv::with_capacity(31u, false);
         act.set(24u, true);
         act.set(25u, true);
         act.set(26u, true);
@@ -1127,7 +1139,7 @@ mod tests {
                 false, true, true, true, true, true, true, true]));
         // mixed
 
-        act = Bitv::new(31u, false);
+        act = Bitv::with_capacity(31u, false);
         act.set(3u, true);
         act.set(17u, true);
         act.set(30u, true);
@@ -1142,21 +1154,21 @@ mod tests {
         let mut act;
         // all 0
 
-        act = Bitv::new(32u, false);
+        act = Bitv::with_capacity(32u, false);
         assert!(act.eq_vec(
                 [false, false, false, false, false, false, false, false, false, false, false,
                 false, false, false, false, false, false, false, false, false, false, false, false,
                 false, false, false, false, false, false, false, false, false]));
         // all 1
 
-        act = Bitv::new(32u, true);
+        act = Bitv::with_capacity(32u, true);
         assert!(act.eq_vec(
                 [true, true, true, true, true, true, true, true, true, true, true, true, true,
                 true, true, true, true, true, true, true, true, true, true, true, true, true, true,
                 true, true, true, true, true]));
         // mixed
 
-        act = Bitv::new(32u, false);
+        act = Bitv::with_capacity(32u, false);
         act.set(0u, true);
         act.set(1u, true);
         act.set(2u, true);
@@ -1171,7 +1183,7 @@ mod tests {
                 false, false, false, false, false, false, false]));
         // mixed
 
-        act = Bitv::new(32u, false);
+        act = Bitv::with_capacity(32u, false);
         act.set(16u, true);
         act.set(17u, true);
         act.set(18u, true);
@@ -1186,7 +1198,7 @@ mod tests {
                 false, false, false, false, false, false, false, false]));
         // mixed
 
-        act = Bitv::new(32u, false);
+        act = Bitv::with_capacity(32u, false);
         act.set(24u, true);
         act.set(25u, true);
         act.set(26u, true);
@@ -1201,7 +1213,7 @@ mod tests {
                 false, true, true, true, true, true, true, true, true]));
         // mixed
 
-        act = Bitv::new(32u, false);
+        act = Bitv::with_capacity(32u, false);
         act.set(3u, true);
         act.set(17u, true);
         act.set(30u, true);
@@ -1217,21 +1229,21 @@ mod tests {
         let mut act;
         // all 0
 
-        act = Bitv::new(33u, false);
+        act = Bitv::with_capacity(33u, false);
         assert!(act.eq_vec(
                 [false, false, false, false, false, false, false, false, false, false, false,
                 false, false, false, false, false, false, false, false, false, false, false, false,
                 false, false, false, false, false, false, false, false, false, false]));
         // all 1
 
-        act = Bitv::new(33u, true);
+        act = Bitv::with_capacity(33u, true);
         assert!(act.eq_vec(
                 [true, true, true, true, true, true, true, true, true, true, true, true, true,
                 true, true, true, true, true, true, true, true, true, true, true, true, true, true,
                 true, true, true, true, true, true]));
         // mixed
 
-        act = Bitv::new(33u, false);
+        act = Bitv::with_capacity(33u, false);
         act.set(0u, true);
         act.set(1u, true);
         act.set(2u, true);
@@ -1246,7 +1258,7 @@ mod tests {
                 false, false, false, false, false, false, false, false]));
         // mixed
 
-        act = Bitv::new(33u, false);
+        act = Bitv::with_capacity(33u, false);
         act.set(16u, true);
         act.set(17u, true);
         act.set(18u, true);
@@ -1261,7 +1273,7 @@ mod tests {
                 false, false, false, false, false, false, false, false, false]));
         // mixed
 
-        act = Bitv::new(33u, false);
+        act = Bitv::with_capacity(33u, false);
         act.set(24u, true);
         act.set(25u, true);
         act.set(26u, true);
@@ -1276,7 +1288,7 @@ mod tests {
                 false, true, true, true, true, true, true, true, true, false]));
         // mixed
 
-        act = Bitv::new(33u, false);
+        act = Bitv::with_capacity(33u, false);
         act.set(3u, true);
         act.set(17u, true);
         act.set(30u, true);
@@ -1290,24 +1302,24 @@ mod tests {
 
     #[test]
     fn test_equal_differing_sizes() {
-        let v0 = Bitv::new(10u, false);
-        let v1 = Bitv::new(11u, false);
+        let v0 = Bitv::with_capacity(10u, false);
+        let v1 = Bitv::with_capacity(11u, false);
         assert!(v0 != v1);
     }
 
     #[test]
     fn test_equal_greatly_differing_sizes() {
-        let v0 = Bitv::new(10u, false);
-        let v1 = Bitv::new(110u, false);
+        let v0 = Bitv::with_capacity(10u, false);
+        let v1 = Bitv::with_capacity(110u, false);
         assert!(v0 != v1);
     }
 
     #[test]
     fn test_equal_sneaky_small() {
-        let mut a = bitv::Bitv::new(1, false);
+        let mut a = bitv::Bitv::with_capacity(1, false);
         a.set(0, true);
 
-        let mut b = bitv::Bitv::new(1, true);
+        let mut b = bitv::Bitv::with_capacity(1, true);
         b.set(0, true);
 
         assert_eq!(a, b);
@@ -1315,12 +1327,12 @@ mod tests {
 
     #[test]
     fn test_equal_sneaky_big() {
-        let mut a = bitv::Bitv::new(100, false);
+        let mut a = bitv::Bitv::with_capacity(100, false);
         for i in range(0u, 100) {
             a.set(i, true);
         }
 
-        let mut b = bitv::Bitv::new(100, true);
+        let mut b = bitv::Bitv::with_capacity(100, true);
         for i in range(0u, 100) {
             b.set(i, true);
         }
@@ -1337,11 +1349,11 @@ mod tests {
 
     #[test]
     fn test_to_bytes() {
-        let mut bv = Bitv::new(3, true);
+        let mut bv = Bitv::with_capacity(3, true);
         bv.set(1, false);
         assert_eq!(bv.to_bytes(), vec!(0b10100000));
 
-        let mut bv = Bitv::new(9, false);
+        let mut bv = Bitv::with_capacity(9, false);
         bv.set(2, true);
         bv.set(8, true);
         assert_eq!(bv.to_bytes(), vec!(0b00100000, 0b10000000));
@@ -1385,7 +1397,7 @@ mod tests {
         let lengths = [10, 64, 100];
         for &b in bools.iter() {
             for &l in lengths.iter() {
-                let bitset = BitvSet::from_bitv(Bitv::new(l, b));
+                let bitset = BitvSet::from_bitv(Bitv::with_capacity(l, b));
                 assert_eq!(bitset.contains(&1u), b)
                 assert_eq!(bitset.contains(&(l-1u)), b)
                 assert!(!bitset.contains(&l))
@@ -1395,8 +1407,8 @@ mod tests {
 
     #[test]
     fn test_small_difference() {
-        let mut b1 = Bitv::new(3, false);
-        let mut b2 = Bitv::new(3, false);
+        let mut b1 = Bitv::with_capacity(3, false);
+        let mut b2 = Bitv::with_capacity(3, false);
         b1.set(0, true);
         b1.set(1, true);
         b2.set(1, true);
@@ -1409,8 +1421,8 @@ mod tests {
 
     #[test]
     fn test_big_difference() {
-        let mut b1 = Bitv::new(100, false);
-        let mut b2 = Bitv::new(100, false);
+        let mut b1 = Bitv::with_capacity(100, false);
+        let mut b2 = Bitv::with_capacity(100, false);
         b1.set(0, true);
         b1.set(40, true);
         b2.set(40, true);
@@ -1423,7 +1435,7 @@ mod tests {
 
     #[test]
     fn test_small_clear() {
-        let mut b = Bitv::new(14, true);
+        let mut b = Bitv::with_capacity(14, true);
         b.clear();
         BitvSet::from_bitv(b).iter().advance(|i| {
             fail!("found 1 at {:?}", i)
@@ -1432,7 +1444,7 @@ mod tests {
 
     #[test]
     fn test_big_clear() {
-        let mut b = Bitv::new(140, true);
+        let mut b = Bitv::with_capacity(140, true);
         b.clear();
         BitvSet::from_bitv(b).iter().advance(|i| {
             fail!("found 1 at {:?}", i)
@@ -1441,7 +1453,7 @@ mod tests {
 
     #[test]
     fn test_bitv_masking() {
-        let b = Bitv::new(140, true); 
+        let b = Bitv::with_capacity(140, true);
         let mut bs = BitvSet::from_bitv(b);
         assert!(bs.contains(&139));
         assert!(!bs.contains(&140));
@@ -1664,7 +1676,7 @@ mod tests {
 
     #[test]
     fn test_bitv_push_pop() {
-        let mut s = Bitv::new(5 * uint::BITS - 2, false);
+        let mut s = Bitv::with_capacity(5 * uint::BITS - 2, false);
         assert_eq!(s.len(), 5 * uint::BITS - 2);
         assert_eq!(s.get(5 * uint::BITS - 3), false);
         s.push(true);
@@ -1687,28 +1699,28 @@ mod tests {
 
     #[test]
     fn test_bitv_truncate() {
-        let mut s = Bitv::new(5 * uint::BITS, true);
+        let mut s = Bitv::with_capacity(5 * uint::BITS, true);
 
-        assert_eq!(s, Bitv::new(5 * uint::BITS, true));
+        assert_eq!(s, Bitv::with_capacity(5 * uint::BITS, true));
         assert_eq!(s.len(), 5 * uint::BITS);
         s.truncate(4 * uint::BITS);
-        assert_eq!(s, Bitv::new(4 * uint::BITS, true));
+        assert_eq!(s, Bitv::with_capacity(4 * uint::BITS, true));
         assert_eq!(s.len(), 4 * uint::BITS);
         // Truncating to a size > s.len() should be a noop
         s.truncate(5 * uint::BITS);
-        assert_eq!(s, Bitv::new(4 * uint::BITS, true));
+        assert_eq!(s, Bitv::with_capacity(4 * uint::BITS, true));
         assert_eq!(s.len(), 4 * uint::BITS);
         s.truncate(3 * uint::BITS - 10);
-        assert_eq!(s, Bitv::new(3 * uint::BITS - 10, true));
+        assert_eq!(s, Bitv::with_capacity(3 * uint::BITS - 10, true));
         assert_eq!(s.len(), 3 * uint::BITS - 10);
         s.truncate(0);
-        assert_eq!(s, Bitv::new(0, true));
+        assert_eq!(s, Bitv::with_capacity(0, true));
         assert_eq!(s.len(), 0);
     }
 
     #[test]
     fn test_bitv_reserve() {
-        let mut s = Bitv::new(5 * uint::BITS, true);
+        let mut s = Bitv::with_capacity(5 * uint::BITS, true);
         // Check capacity
         assert_eq!(s.capacity(), 5 * uint::BITS);
         s.reserve(2 * uint::BITS);
@@ -1781,7 +1793,7 @@ mod tests {
     #[bench]
     fn bench_bitv_big(b: &mut Bencher) {
         let mut r = rng();
-        let mut bitv = Bitv::new(BENCH_BITS, false);
+        let mut bitv = Bitv::with_capacity(BENCH_BITS, false);
         b.iter(|| {
             bitv.set((r.next_u32() as uint) % BENCH_BITS, true);
             &bitv
@@ -1791,7 +1803,7 @@ mod tests {
     #[bench]
     fn bench_bitv_small(b: &mut Bencher) {
         let mut r = rng();
-        let mut bitv = Bitv::new(uint::BITS, false);
+        let mut bitv = Bitv::with_capacity(uint::BITS, false);
         b.iter(|| {
             bitv.set((r.next_u32() as uint) % uint::BITS, true);
             &bitv
@@ -1820,8 +1832,8 @@ mod tests {
 
     #[bench]
     fn bench_bitv_big_union(b: &mut Bencher) {
-        let mut b1 = Bitv::new(BENCH_BITS, false);
-        let b2 = Bitv::new(BENCH_BITS, false);
+        let mut b1 = Bitv::with_capacity(BENCH_BITS, false);
+        let b2 = Bitv::with_capacity(BENCH_BITS, false);
         b.iter(|| {
             b1.union(&b2);
         })
@@ -1829,7 +1841,7 @@ mod tests {
 
     #[bench]
     fn bench_btv_small_iter(b: &mut Bencher) {
-        let bitv = Bitv::new(uint::BITS, false);
+        let bitv = Bitv::with_capacity(uint::BITS, false);
         b.iter(|| {
             let mut _sum = 0;
             for pres in bitv.iter() {
@@ -1840,7 +1852,7 @@ mod tests {
 
     #[bench]
     fn bench_bitv_big_iter(b: &mut Bencher) {
-        let bitv = Bitv::new(BENCH_BITS, false);
+        let bitv = Bitv::with_capacity(BENCH_BITS, false);
         b.iter(|| {
             let mut _sum = 0;
             for pres in bitv.iter() {
