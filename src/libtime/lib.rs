@@ -375,7 +375,7 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, String> {
     fn match_str(s: &str, pos: uint, needle: &str) -> bool {
         let mut i = pos;
         for ch in needle.bytes() {
-            if s[i] != ch {
+            if s.as_bytes()[i] != ch {
                 return false;
             }
             i += 1u;

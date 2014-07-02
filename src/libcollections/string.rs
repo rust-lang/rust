@@ -222,7 +222,7 @@ impl String {
             return None
         }
 
-        let byte = self.as_slice()[len - 1];
+        let byte = self.as_bytes()[len - 1];
         self.vec.set_len(len - 1);
         Some(byte)
     }

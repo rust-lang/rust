@@ -1206,8 +1206,8 @@ mod test {
         let mut cur = [0u8, .. 2];
         for f in files {
             let stem = f.filestem_str().unwrap();
-            let root = stem[0] - ('0' as u8);
-            let name = stem[1] - ('0' as u8);
+            let root = stem.as_bytes()[0] - ('0' as u8);
+            let name = stem.as_bytes()[1] - ('0' as u8);
             assert!(cur[root as uint] < name);
             cur[root as uint] = name;
         }

@@ -17,8 +17,8 @@ pub fn main() {
     println!("{}", x);
     println!("{}", y);
 
-    assert_eq!(x[0], 'h' as u8);
-    assert_eq!(x[4], 'o' as u8);
+    assert_eq!(x.as_bytes()[0], 'h' as u8);
+    assert_eq!(x.as_bytes()[4], 'o' as u8);
 
     let z : &str = "thing";
     assert_eq!(v, x);
