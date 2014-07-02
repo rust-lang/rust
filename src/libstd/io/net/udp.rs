@@ -45,12 +45,12 @@ use rt::rtio;
 /// };
 ///
 /// let mut buf = [0, ..10];
-/// match socket.recvfrom(buf) {
+/// match socket.recv_from(buf) {
 ///     Ok((amt, src)) => {
 ///         // Send a reply to the socket we received data from
 ///         let buf = buf.mut_slice_to(amt);
 ///         buf.reverse();
-///         socket.sendto(buf, src);
+///         socket.send_to(buf, src);
 ///     }
 ///     Err(e) => println!("couldn't receive a datagram: {}", e)
 /// }
@@ -72,9 +72,9 @@ impl UdpSocket {
 
     /// Receives data from the socket. On success, returns the number of bytes
     /// read and the address from whence the data came.
-    pub fn recvfrom(&mut self, buf: &mut [u8])
+    pub fn recv_from(&mut self, buf: &mut [u8])
                     -> IoResult<(uint, SocketAddr)> {
-        match self.obj.recvfrom(buf) {
+        match self.obj.recv_from(buf) {
             Ok((amt, rtio::SocketAddr { ip, port })) => {
                 Ok((amt, SocketAddr { ip: super::from_rtio(ip), port: port }))
             }
@@ -82,13 +82,26 @@ impl UdpSocket {
         }
     }
 
+    #[allow(missing_doc)]
+    #[deprecated = "renamed to `recv_from`"]
+    pub fn recvfrom(&mut self, buf: &mut [u8])
+                    -> IoResult<(uint, SocketAddr)> {
+        self.recv_from(buf)
+    }
+
     /// Sends data on the socket to the given address. Returns nothing on
     /// success.
-    pub fn sendto(&mut self, buf: &[u8], dst: SocketAddr) -> IoResult<()> {
-        self.obj.sendto(buf, rtio::SocketAddr {
+    pub fn send_to(&mut self, buf: &[u8], dst: SocketAddr) -> IoResult<()> {
+        self.obj.send_to(buf, rtio::SocketAddr {
             ip: super::to_rtio(dst.ip),
             port: dst.port,
         }).map_err(IoError::from_rtio_error)
+    }
+
+    #[allow(missing_doc)]
+    #[deprecated = "renamed to `send_to`"]
+    pub fn sendto(&mut self, buf: &[u8], dst: SocketAddr) -> IoResult<()> {
+        self.send_to(buf, dst)
     }
 
     /// Creates a `UdpStream`, which allows use of the `Reader` and `Writer`
@@ -225,7 +238,7 @@ impl Reader for UdpStream {
     fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
         let peer = self.connected_to;
         self.as_socket(|sock| {
-            match sock.recvfrom(buf) {
+            match sock.recv_from(buf) {
                 Ok((_nread, src)) if src != peer => Ok(0),
                 Ok((nread, _src)) => Ok(nread),
                 Err(e) => Err(e),
@@ -237,7 +250,7 @@ impl Reader for UdpStream {
 impl Writer for UdpStream {
     fn write(&mut self, buf: &[u8]) -> IoResult<()> {
         let connected_to = self.connected_to;
-        self.as_socket(|sock| sock.sendto(buf, connected_to))
+        self.as_socket(|sock| sock.send_to(buf, connected_to))
     }
 }
 
@@ -266,7 +279,7 @@ mod test {
             match UdpSocket::bind(client_ip) {
                 Ok(ref mut client) => {
                     rx1.recv();
-                    client.sendto([99], server_ip).unwrap()
+                    client.send_to([99], server_ip).unwrap()
                 }
                 Err(..) => fail!()
             }
@@ -277,7 +290,7 @@ mod test {
             Ok(ref mut server) => {
                 tx1.send(());
                 let mut buf = [0];
-                match server.recvfrom(buf) {
+                match server.recv_from(buf) {
                     Ok((nread, src)) => {
                         assert_eq!(nread, 1);
                         assert_eq!(buf[0], 99);
@@ -300,7 +313,7 @@ mod test {
             match UdpSocket::bind(client_ip) {
                 Ok(ref mut client) => {
                     rx.recv();
-                    client.sendto([99], server_ip).unwrap()
+                    client.send_to([99], server_ip).unwrap()
                 }
                 Err(..) => fail!()
             }
@@ -310,7 +323,7 @@ mod test {
             Ok(ref mut server) => {
                 tx.send(());
                 let mut buf = [0];
-                match server.recvfrom(buf) {
+                match server.recv_from(buf) {
                     Ok((nread, src)) => {
                         assert_eq!(nread, 1);
                         assert_eq!(buf[0], 99);
@@ -429,9 +442,9 @@ mod test {
         spawn(proc() {
             let mut sock2 = sock2;
             let mut buf = [0, 0];
-            assert_eq!(sock2.recvfrom(buf), Ok((1, addr1)));
+            assert_eq!(sock2.recv_from(buf), Ok((1, addr1)));
             assert_eq!(buf[0], 1);
-            sock2.sendto([2], addr1).unwrap();
+            sock2.send_to([2], addr1).unwrap();
         });
 
         let sock3 = sock1.clone();
@@ -441,12 +454,12 @@ mod test {
         spawn(proc() {
             let mut sock3 = sock3;
             rx1.recv();
-            sock3.sendto([1], addr2).unwrap();
+            sock3.send_to([1], addr2).unwrap();
             tx2.send(());
         });
         tx1.send(());
         let mut buf = [0, 0];
-        assert_eq!(sock1.recvfrom(buf), Ok((1, addr2)));
+        assert_eq!(sock1.recv_from(buf), Ok((1, addr2)));
         rx2.recv();
     })
 
@@ -460,9 +473,9 @@ mod test {
 
         spawn(proc() {
             let mut sock2 = sock2;
-            sock2.sendto([1], addr1).unwrap();
+            sock2.send_to([1], addr1).unwrap();
             rx.recv();
-            sock2.sendto([2], addr1).unwrap();
+            sock2.send_to([2], addr1).unwrap();
             rx.recv();
         });
 
@@ -472,12 +485,12 @@ mod test {
         spawn(proc() {
             let mut sock3 = sock3;
             let mut buf = [0, 0];
-            sock3.recvfrom(buf).unwrap();
+            sock3.recv_from(buf).unwrap();
             tx2.send(());
             done.send(());
         });
         let mut buf = [0, 0];
-        sock1.recvfrom(buf).unwrap();
+        sock1.recv_from(buf).unwrap();
         tx1.send(());
 
         rx.recv();
@@ -497,7 +510,7 @@ mod test {
             let mut buf = [0, 1];
 
             rx.recv();
-            match sock2.recvfrom(buf) {
+            match sock2.recv_from(buf) {
                 Ok(..) => {}
                 Err(e) => fail!("failed receive: {}", e),
             }
@@ -510,13 +523,13 @@ mod test {
         let tx2 = tx.clone();
         spawn(proc() {
             let mut sock3 = sock3;
-            match sock3.sendto([1], addr2) {
+            match sock3.send_to([1], addr2) {
                 Ok(..) => { let _ = tx2.send_opt(()); }
                 Err(..) => {}
             }
             done.send(());
         });
-        match sock1.sendto([2], addr2) {
+        match sock1.send_to([2], addr2) {
             Ok(..) => { let _ = tx.send_opt(()); }
             Err(..) => {}
         }
@@ -526,7 +539,7 @@ mod test {
         serv_rx.recv();
     })
 
-    iotest!(fn recvfrom_timeout() {
+    iotest!(fn recv_from_timeout() {
         let addr1 = next_test_ip4();
         let addr2 = next_test_ip4();
         let mut a = UdpSocket::bind(addr1).unwrap();
@@ -535,34 +548,34 @@ mod test {
         let (tx2, rx2) = channel();
         spawn(proc() {
             let mut a = UdpSocket::bind(addr2).unwrap();
-            assert_eq!(a.recvfrom([0]), Ok((1, addr1)));
-            assert_eq!(a.sendto([0], addr1), Ok(()));
+            assert_eq!(a.recv_from([0]), Ok((1, addr1)));
+            assert_eq!(a.send_to([0], addr1), Ok(()));
             rx.recv();
-            assert_eq!(a.sendto([0], addr1), Ok(()));
+            assert_eq!(a.send_to([0], addr1), Ok(()));
 
             tx2.send(());
         });
 
         // Make sure that reads time out, but writes can continue
         a.set_read_timeout(Some(20));
-        assert_eq!(a.recvfrom([0]).err().unwrap().kind, TimedOut);
-        assert_eq!(a.recvfrom([0]).err().unwrap().kind, TimedOut);
-        assert_eq!(a.sendto([0], addr2), Ok(()));
+        assert_eq!(a.recv_from([0]).err().unwrap().kind, TimedOut);
+        assert_eq!(a.recv_from([0]).err().unwrap().kind, TimedOut);
+        assert_eq!(a.send_to([0], addr2), Ok(()));
 
         // Cloned handles should be able to block
         let mut a2 = a.clone();
-        assert_eq!(a2.recvfrom([0]), Ok((1, addr2)));
+        assert_eq!(a2.recv_from([0]), Ok((1, addr2)));
 
         // Clearing the timeout should allow for receiving
         a.set_timeout(None);
         tx.send(());
-        assert_eq!(a2.recvfrom([0]), Ok((1, addr2)));
+        assert_eq!(a2.recv_from([0]), Ok((1, addr2)));
 
         // Make sure the child didn't die
         rx2.recv();
     })
 
-    iotest!(fn sendto_timeout() {
+    iotest!(fn send_to_timeout() {
         let addr1 = next_test_ip4();
         let addr2 = next_test_ip4();
         let mut a = UdpSocket::bind(addr1).unwrap();
@@ -570,7 +583,7 @@ mod test {
 
         a.set_write_timeout(Some(1000));
         for _ in range(0u, 100) {
-            match a.sendto([0, ..4*1024], addr2) {
+            match a.send_to([0, ..4*1024], addr2) {
                 Ok(()) | Err(IoError { kind: ShortWrite(..), .. }) => {},
                 Err(IoError { kind: TimedOut, .. }) => break,
                 Err(e) => fail!("other error: {}", e),
