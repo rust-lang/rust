@@ -269,8 +269,8 @@ pub trait RtioSocket {
 }
 
 pub trait RtioUdpSocket : RtioSocket {
-    fn recvfrom(&mut self, buf: &mut [u8]) -> IoResult<(uint, SocketAddr)>;
-    fn sendto(&mut self, buf: &[u8], dst: SocketAddr) -> IoResult<()>;
+    fn recv_from(&mut self, buf: &mut [u8]) -> IoResult<(uint, SocketAddr)>;
+    fn send_to(&mut self, buf: &[u8], dst: SocketAddr) -> IoResult<()>;
 
     fn join_multicast(&mut self, multi: IpAddr) -> IoResult<()>;
     fn leave_multicast(&mut self, multi: IpAddr) -> IoResult<()>;
