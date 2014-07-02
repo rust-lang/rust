@@ -413,6 +413,202 @@ rest of your Rust career.
 Next, we'll learn more about Rust itself, by starting to write a more complicated
 program. We hope you want to do more with Rust than just print "Hello, world!"
 
+## Guessing Game
+
+Let's write a bigger program in Rust. We could just go through a laundry list
+of Rust features, but that's boring. Instead, we'll learn more about how to
+code in Rust by writing a few example projects.
+
+For our first project, we'll implement a classic beginner programming problem:
+the guessing game. Here's how it works: Our program will generate a random
+integer between one and a hundred. It will then prompt us to enter a guess.
+Upon entering our guess, it will tell us if we're too low or too high. Once we
+guess correctly, it will congratulate us, and print the number of guesses we've
+taken to the screen. Sound good? It sounds easy, but it'll end up showing off a
+number of basic features of Rust.
+
+### Set up
+
+Let's set up a new project. Go to your projects directory, and make a new
+directory for the project, as well as a `src` directory for our code:
+
+```{bash}
+$ cd ~/projects
+$ mkdir guessing_game
+$ cd guessing_game
+$ mkdir src
+```
+
+Great. Next, let's make a `Cargo.toml` file so Cargo knows how to build our
+project:
+
+```{ignore}
+[package]
+
+name = "guessing_game"
+version = "0.1.0"
+authors = [ "someone@example.com" ]
+
+[[bin]]
+
+name = "guessing_game"
+```
+
+Finally, we need our source file. Let's just make it hello world for now, so we
+can check that our setup works. In `src/guessing_game.rs`:
+
+```{rust}
+fn main() {
+    println!("Hello world!");
+}
+```
+
+Let's make sure that worked:
+
+```{bash}
+$ cargo build
+   Compiling guessing_game v0.1.0 (file:/home/you/projects/guessing_game)
+$
+```
+
+Excellent! Open up your `src/guessing_game.rs` again. We'll be writing all of
+our code in this file. The next section of the tutorial will show you how to
+build multiple-file projects.
+
+## Variable bindings
+
+The first thing we'll learn about are 'variable bindings.' They look like this:
+
+```{rust}
+let x = 5i;
+```
+
+In many languages, this is called a 'variable.' But Rust's variable bindings
+have a few tricks up their sleeves. Rust has a very powerful feature called
+'pattern matching' that we'll get into detail with later, but the left
+hand side of a `let` expression is a full pattern, not just a variable name.
+This means we can do things like:
+
+```{rust}
+let (x, y) = (1i, 2i);
+```
+
+After this expression is evaluated, `x` will be one, and `y` will be two.
+Patterns are really powerful, but this is about all we can do with them so far.
+So let's just keep this in the back of our minds as we go forward.
+
+By the way, in these examples, `i` indicates that the number is an integer.
+
+Rust is a statically typed language, which means that we specify our types up
+front. So why does our first example compile? Well, Rust has this thing called
+"[Hindley-Milner type
+inference](http://en.wikipedia.org/wiki/Hindley%E2%80%93Milner_type_system)",
+named after some really smart type theorists. If you clicked that link, don't
+be scared: what this means for you is that Rust will attempt to infer the types
+in your program, and it's pretty good at it. If it can infer the type, Rust
+doesn't require you to actually type it out.
+
+We can add the type if we want to. Types come after a colon (`:`):
+
+```{rust}
+let x: int = 5;
+```
+
+If I asked you to read this out loud to the rest of the class, you'd say "`x`
+is a binding with the type `int` and the value `five`." Rust requires you to
+initialize the binding with a value before you're allowed to use it. If
+we try...
+
+```{ignore}
+let x;
+```
+
+...we'll get an error:
+
+```{ignore}
+src/guessing_game.rs:2:9: 2:10 error: cannot determine a type for this local variable: unconstrained type
+src/guessing_game.rs:2     let x;
+                               ^
+```
+
+Giving it a type will compile, though:
+
+```{ignore}
+let x: int;
+```
+
+Let's try it out. Change your `src/guessing_game.rs` file to look like this:
+
+```{rust}
+fn main() {
+    let x: int;
+
+    println!("Hello world!");
+}
+```
+
+You can use `cargo build` on the command line to build it. You'll get a warning,
+but it will still print "Hello, world!":
+
+```{ignore,notrust}
+   Compiling guessing_game v0.1.0 (file:/home/you/projects/guessing_game)
+src/guessing_game.rs:2:9: 2:10 warning: unused variable: `x`, #[warn(unused_variable)] on by default
+src/guessing_game.rs:2     let x: int;
+                               ^
+```
+
+Rust warns us that we never use the variable binding, but since we never use it,
+no harm, no foul. Things change if we try to actually use this `x`, however. Let's
+do that. Change your program to look like this:
+
+```{rust,ignore}
+fn main() {
+    let x: int;
+
+    println!("The value of x is: {}", x);
+}
+```
+
+And try to build it. You'll get an error:
+
+```{bash}
+$ cargo build
+   Compiling guessing_game v0.1.0 (file:/home/you/projects/guessing_game)
+src/guessing_game.rs:4:39: 4:40 error: use of possibly uninitialized variable: `x`
+src/guessing_game.rs:4     println!("The value of x is: {}", x);
+                                                             ^
+note: in expansion of format_args!
+<std macros>:2:23: 2:77 note: expansion site
+<std macros>:1:1: 3:2 note: in expansion of println!
+src/guessing_game.rs:4:5: 4:42 note: expansion site
+error: aborting due to previous error
+Could not execute process `rustc src/guessing_game.rs --crate-type bin --out-dir /home/you/projects/guessing_game/target -L /home/you/projects/guessing_game/target -L /home/you/projects/guessing_game/target/deps` (status=101)
+```
+
+Rust will not let us use a value that has not been initialized. So why let us
+declare a binding without initializing it? You'd think our first example would
+have errored. Well, Rust is smarter than that. Before we get to that, let's talk
+about this stuff we've added to `println!`.
+
+If you include two curly braces (`{}`, some call them moustaches...) in your
+string to print, Rust will interpret this as a request to interpolate some sort
+of value. **String interpolation** is a computer science term that means "stick
+in the middle of a string." We add a comma, and then `x`, to indicate that we
+want `x` to be the value we're interpolating. The comma is used to separate
+arguments we pass to functions and macros, if you're passing more than one.
+
+When you just use the double curly braces, Rust will attempt to display the
+value in a meaningful way by checking out its type. If you want to specify the
+format in a more detailed manner, there are a [wide number of options
+available](/std/fmt/index.html). Fow now, we'll just stick to the default:
+integers aren't very complicated to print.
+
+So, we've cleared up all of the confusion around bindings, with one exception:
+why does Rust let us declare a variable binding without an initial value if we
+must initialize the binding before we use it? And how does it know that we have
+or have not initialized the binding? For that, we need to learn our next
+concept: `if`.
+
 ## If
 
 ## Functions
@@ -420,16 +616,6 @@ program. We hope you want to do more with Rust than just print "Hello, world!"
 return
 
 comments
-
-## Testing
-
-attributes
-
-stability markers
-
-## Crates and Modules
-
-visibility
 
 ## Compound Data Types
 
@@ -451,9 +637,34 @@ loop
 
 break/continue
 
-iterators
+## Guessing Game: complete
+
+At this point, you have successfully built the Guessing Game! Congratulations!
+For reference, [We've placed the sample code on
+GitHub](https://github.com/steveklabnik/guessing_game).
+
+You've now learned the basic syntax of Rust. All of this is relatively close to
+various other programming languages you have used in the past. These
+fundamental syntactical and semantic elements will form the foundation for the
+rest of your Rust education.
+
+Now that you're an expert at the basics, it's time to learn about some of
+Rust's more unique features.
+
+## iterators
 
 ## Lambdas
+
+## Testing
+
+attributes
+
+stability markers
+
+## Crates and Modules
+
+visibility
+
 
 ## Generics
 
