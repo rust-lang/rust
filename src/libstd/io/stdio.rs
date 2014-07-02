@@ -27,6 +27,7 @@ out.write(b"Hello, world!");
 
 */
 
+use cell::RefCell;
 use failure::local_stderr;
 use fmt;
 use io::{Reader, Writer, IoResult, IoError, OtherIoError,
@@ -87,7 +88,7 @@ fn src<T>(fd: libc::c_int, readable: bool, f: |StdSource| -> T) -> T {
     }).map_err(IoError::from_rtio_error).unwrap()
 }
 
-local_data_key!(local_stdout: Box<Writer + Send>)
+local_data_key!(local_stdout: RefCell<Box<Writer + Send>>)
 
 /// Creates a new non-blocking handle to the stdin of the current process.
 ///
@@ -167,9 +168,9 @@ pub fn stderr_raw() -> StdWriter {
 /// Note that this does not need to be called for all new tasks; the default
 /// output handle is to the process's stdout stream.
 pub fn set_stdout(stdout: Box<Writer + Send>) -> Option<Box<Writer + Send>> {
-    local_stdout.replace(Some(stdout)).and_then(|mut s| {
-        let _ = s.flush();
-        Some(s)
+    local_stdout.replace(Some(RefCell::new(stdout))).and_then(|s| {
+        let _ = s.borrow_mut().flush();
+        Some(s.unwrap())
     })
 }
 
@@ -190,22 +191,29 @@ pub fn set_stderr(stderr: Box<Writer + Send>) -> Option<Box<Writer + Send>> {
 
 // Helper to access the local task's stdout handle
 //
-// Note that this is not a safe function to expose because you can create an
-// aliased pointer very easily:
-//
-//  with_task_stdout(|io1| {
-//      with_task_stdout(|io2| {
-//          // io1 aliases io2
-//      })
-//  })
+// Note that when nesting this function it will incur extra cost by creating
+// temporary stdout Writers every invocation.
 fn with_task_stdout(f: |&mut Writer| -> IoResult<()>) {
     let result = if Local::exists(None::<Task>) {
-        let mut my_stdout = local_stdout.replace(None).unwrap_or_else(|| {
-            box stdout() as Box<Writer + Send>
-        });
-        let result = f(my_stdout);
-        local_stdout.replace(Some(my_stdout));
-        result
+        match local_stdout.get() {
+            None => {
+                set_stdout(box stdout());
+                with_task_stdout(f);
+                return
+            }
+            Some(stdout_tls) => match stdout_tls.try_borrow_mut() {
+                Some(mut stdout_ref) => {
+                    let mut_deref = &mut *stdout_ref;
+                    f(*mut_deref)
+                }
+                None => {
+                    // Nested: Create a temporary stdout
+                    let mut writer = stdout();
+                    let result = f(&mut writer);
+                    result.and(writer.flush())
+                }
+            }
+        }
     } else {
         let mut io = rt::Stdout;
         f(&mut io as &mut Writer)
