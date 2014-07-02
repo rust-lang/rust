@@ -24,6 +24,8 @@ use std::gc::{Gc, GC};
 use std::iter;
 use std::slice;
 
+pub mod blocks;
+
 #[deriving(Clone, PartialEq)]
 pub enum PathElem {
     PathMod(Name),

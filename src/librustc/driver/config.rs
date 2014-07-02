@@ -179,7 +179,11 @@ debugging_opts!(
         AST_JSON,
         AST_JSON_NOEXPAND,
         LS,
-        SAVE_ANALYSIS
+        SAVE_ANALYSIS,
+        FLOWGRAPH_PRINT_LOANS,
+        FLOWGRAPH_PRINT_MOVES,
+        FLOWGRAPH_PRINT_ASSIGNS,
+        FLOWGRAPH_PRINT_ALL
     ]
     0
 )
@@ -215,7 +219,15 @@ pub fn debugging_opts_map() -> Vec<(&'static str, &'static str, u64)> {
      ("ast-json-noexpand", "Print the pre-expansion AST as JSON and halt", AST_JSON_NOEXPAND),
      ("ls", "List the symbols defined by a library crate", LS),
      ("save-analysis", "Write syntax and type analysis information \
-                        in addition to normal output", SAVE_ANALYSIS))
+                        in addition to normal output", SAVE_ANALYSIS),
+     ("flowgraph-print-loans", "Include loan analysis data in \
+                       --pretty flowgraph output", FLOWGRAPH_PRINT_LOANS),
+     ("flowgraph-print-moves", "Include move analysis data in \
+                       --pretty flowgraph output", FLOWGRAPH_PRINT_MOVES),
+     ("flowgraph-print-assigns", "Include assignment analysis data in \
+                       --pretty flowgraph output", FLOWGRAPH_PRINT_ASSIGNS),
+     ("flowgraph-print-all", "Include all dataflow analysis data in \
+                       --pretty flowgraph output", FLOWGRAPH_PRINT_ALL))
 }
 
 /// Declare a macro that will define all CodegenOptions fields and parsers all
