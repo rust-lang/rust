@@ -370,6 +370,7 @@ static RESCHED_FREQ: int = 256;
 
 /// The receiving-half of Rust's channel type. This half can only be owned by
 /// one task
+#[unstable]
 pub struct Receiver<T> {
     inner: Unsafe<Flavor<T>>,
     receives: Cell<uint>,
@@ -380,12 +381,14 @@ pub struct Receiver<T> {
 /// An iterator over messages on a receiver, this iterator will block
 /// whenever `next` is called, waiting for a new message, and `None` will be
 /// returned when the corresponding channel has hung up.
+#[unstable]
 pub struct Messages<'a, T> {
     rx: &'a Receiver<T>
 }
 
 /// The sending-half of Rust's asynchronous channel type. This half can only be
 /// owned by one task, but it can be cloned to send to other tasks.
+#[unstable]
 pub struct Sender<T> {
     inner: Unsafe<Flavor<T>>,
     sends: Cell<uint>,
@@ -395,6 +398,7 @@ pub struct Sender<T> {
 
 /// The sending-half of Rust's synchronous channel type. This half can only be
 /// owned by one task, but it can be cloned to send to other tasks.
+#[unstable = "this type may be renamed, but it will always exist"]
 pub struct SyncSender<T> {
     inner: Arc<Unsafe<sync::Packet<T>>>,
     // can't share in an arc
@@ -404,6 +408,7 @@ pub struct SyncSender<T> {
 /// This enumeration is the list of the possible reasons that try_recv could not
 /// return data when called.
 #[deriving(PartialEq, Clone, Show)]
+#[experimental = "this is likely to be removed in changing try_recv()"]
 pub enum TryRecvError {
     /// This channel is currently empty, but the sender(s) have not yet
     /// disconnected, so data may yet become available.
@@ -416,6 +421,7 @@ pub enum TryRecvError {
 /// This enumeration is the list of the possible error outcomes for the
 /// `SyncSender::try_send` method.
 #[deriving(PartialEq, Clone, Show)]
+#[experimental = "this is likely to be removed in changing try_send()"]
 pub enum TrySendError<T> {
     /// The data could not be sent on the channel because it would require that
     /// the callee block to send the data.
@@ -478,6 +484,7 @@ impl<T> UnsafeFlavor<T> for Receiver<T> {
 /// // Let's see what that answer was
 /// println!("{}", rx.recv());
 /// ```
+#[unstable]
 pub fn channel<T: Send>() -> (Sender<T>, Receiver<T>) {
     let a = Arc::new(Unsafe::new(oneshot::Packet::new()));
     (Sender::new(Oneshot(a.clone())), Receiver::new(Oneshot(a)))
@@ -514,6 +521,8 @@ pub fn channel<T: Send>() -> (Sender<T>, Receiver<T>) {
 /// assert_eq!(rx.recv(), 1i);
 /// assert_eq!(rx.recv(), 2i);
 /// ```
+#[unstable = "this function may be renamed to more accurately reflect the type \
+              of channel that is is creating"]
 pub fn sync_channel<T: Send>(bound: uint) -> (SyncSender<T>, Receiver<T>) {
     let a = Arc::new(Unsafe::new(sync::Packet::new(bound)));
     (SyncSender::new(a.clone()), Receiver::new(Sync(a)))
@@ -547,6 +556,8 @@ impl<T: Send> Sender<T> {
     ///
     /// The purpose of this functionality is to propagate failure among tasks.
     /// If failure is not desired, then consider using the `send_opt` method
+    #[experimental = "this function is being considered candidate for removal \
+                      to adhere to the general guidelines of rust"]
     pub fn send(&self, t: T) {
         if self.send_opt(t).is_err() {
             fail!("sending on a closed channel");
@@ -583,6 +594,7 @@ impl<T: Send> Sender<T> {
     /// drop(rx);
     /// assert_eq!(tx.send_opt(1i), Err(1));
     /// ```
+    #[unstable = "this function may be renamed to send() in the future"]
     pub fn send_opt(&self, t: T) -> Result<(), T> {
         // In order to prevent starvation of other tasks in situations where
         // a task sends repeatedly without ever receiving, we occasionally
@@ -638,6 +650,7 @@ impl<T: Send> Sender<T> {
     }
 }
 
+#[unstable]
 impl<T: Send> Clone for Sender<T> {
     fn clone(&self) -> Sender<T> {
         let (packet, sleeper) = match *unsafe { self.inner() } {
@@ -719,6 +732,8 @@ impl<T: Send> SyncSender<T> {
     /// If failure is not desired, you can achieve the same semantics with the
     /// `SyncSender::send_opt` method which will not fail if the receiver
     /// disconnects.
+    #[experimental = "this function is being considered candidate for removal \
+                      to adhere to the general guidelines of rust"]
     pub fn send(&self, t: T) {
         if self.send_opt(t).is_err() {
             fail!("sending on a closed channel");
@@ -736,6 +751,7 @@ impl<T: Send> SyncSender<T> {
     /// # Failure
     ///
     /// This function cannot fail.
+    #[unstable = "this function may be renamed to send() in the future"]
     pub fn send_opt(&self, t: T) -> Result<(), T> {
         unsafe { (*self.inner.get()).send(t) }
     }
@@ -753,11 +769,14 @@ impl<T: Send> SyncSender<T> {
     /// # Failure
     ///
     /// This function cannot fail
+    #[unstable = "the return type of this function is candidate for \
+                  modification"]
     pub fn try_send(&self, t: T) -> Result<(), TrySendError<T>> {
         unsafe { (*self.inner.get()).try_send(t) }
     }
 }
 
+#[unstable]
 impl<T: Send> Clone for SyncSender<T> {
     fn clone(&self) -> SyncSender<T> {
         unsafe { (*self.inner.get()).clone_chan(); }
@@ -800,6 +819,8 @@ impl<T: Send> Receiver<T> {
     ///
     /// * If blocking is not desired, then the `try_recv` method will attempt to
     ///   peek at a value on this receiver.
+    #[experimental = "this function is being considered candidate for removal \
+                      to adhere to the general guidelines of rust"]
     pub fn recv(&self) -> T {
         match self.recv_opt() {
             Ok(t) => t,
@@ -817,6 +838,7 @@ impl<T: Send> Receiver<T> {
     /// block on a receiver.
     ///
     /// This function cannot fail.
+    #[unstable = "the return type of this function may be altered"]
     pub fn try_recv(&self) -> Result<T, TryRecvError> {
         // If a thread is spinning in try_recv, we should take the opportunity
         // to reschedule things occasionally. See notes above in scheduling on
@@ -881,6 +903,7 @@ impl<T: Send> Receiver<T> {
     ///
     /// If the channel has hung up, then `Err` is returned. Otherwise `Ok` of
     /// the value found on the receiver is returned.
+    #[unstable = "this function may be renamed to recv()"]
     pub fn recv_opt(&self) -> Result<T, ()> {
         loop {
             let new_port = match *unsafe { self.inner() } {
@@ -917,6 +940,7 @@ impl<T: Send> Receiver<T> {
 
     /// Returns an iterator which will block waiting for messages, but never
     /// `fail!`. It will return `None` when the channel has hung up.
+    #[unstable]
     pub fn iter<'a>(&'a self) -> Messages<'a, T> {
         Messages { rx: self }
     }
@@ -1009,6 +1033,7 @@ impl<T: Send> select::Packet for Receiver<T> {
     }
 }
 
+#[unstable]
 impl<'a, T: Send> Iterator<T> for Messages<'a, T> {
     fn next(&mut self) -> Option<T> { self.rx.recv_opt().ok() }
 }
