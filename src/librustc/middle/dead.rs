@@ -399,7 +399,7 @@ struct DeadVisitor<'a> {
 impl<'a> DeadVisitor<'a> {
     fn should_warn_about_field(&mut self, node: &ast::StructField_) -> bool {
         let (is_named, has_leading_underscore) = match node.ident() {
-            Some(ref ident) => (true, token::get_ident(*ident).get()[0] == ('_' as u8)),
+            Some(ref ident) => (true, token::get_ident(*ident).get().as_bytes()[0] == ('_' as u8)),
             _ => (false, false)
         };
         let field_type = ty::node_id_to_type(self.tcx, node.id);

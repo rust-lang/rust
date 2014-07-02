@@ -415,7 +415,7 @@ fn highlight_lines(err: &mut EmitterWriter,
         }
         let orig = fm.get_line(*lines.lines.get(0) as int);
         for pos in range(0u, left-skip) {
-            let cur_char = orig.as_slice()[pos] as char;
+            let cur_char = orig.as_bytes()[pos] as char;
             // Whenever a tab occurs on the previous line, we insert one on
             // the error-point-squiggly-line as well (instead of a space).
             // That way the squiggly line will usually appear in the correct

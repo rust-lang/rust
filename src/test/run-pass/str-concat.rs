@@ -16,5 +16,5 @@ pub fn main() {
     let b: String = "world".to_string();
     let s: String = format!("{}{}", a, b);
     println!("{}", s.clone());
-    assert_eq!(s.as_slice()[9], 'd' as u8);
+    assert_eq!(s.as_bytes()[9], 'd' as u8);
 }
