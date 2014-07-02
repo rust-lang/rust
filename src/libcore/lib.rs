@@ -122,6 +122,10 @@ pub mod simd;
 pub mod slice;
 pub mod str;
 pub mod tuple;
+// FIXME #15320: primitive documentation needs top-level modules, this
+// should be `core::tuple::unit`.
+#[path = "tuple/unit.rs"]
+pub mod unit;
 pub mod fmt;
 
 #[doc(hidden)]
