@@ -8,17 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(non_camel_case_types)]
-
 use middle::const_eval::{compare_const_vals, const_bool, const_float, const_nil, const_val};
 use middle::const_eval::{eval_const_expr, lookup_const_by_id};
 use middle::def::*;
 use middle::pat_util::*;
 use middle::ty::*;
 use middle::ty;
-
+use std::fmt;
 use std::gc::{Gc, GC};
-use std::iter;
+use std::iter::AdditiveIterator;
+use std::iter::range_inclusive;
 use syntax::ast::*;
 use syntax::ast_util::{is_unguarded, walk_pat};
 use syntax::codemap::{Span, Spanned, DUMMY_SP};
@@ -28,7 +27,71 @@ use syntax::visit;
 use syntax::visit::{Visitor, FnKind};
 use util::ppaux::ty_to_str;
 
-type Matrix = Vec<Vec<Gc<Pat>>>;
+struct Matrix(Vec<Vec<Gc<Pat>>>);
+
+/// Pretty-printer for matrices of patterns, example:
+/// ++++++++++++++++++++++++++
+/// + _     + []             +
+/// ++++++++++++++++++++++++++
+/// + true  + [First]        +
+/// ++++++++++++++++++++++++++
+/// + true  + [Second(true)] +
+/// ++++++++++++++++++++++++++
+/// + false + [_]            +
+/// ++++++++++++++++++++++++++
+/// + _     + [_, _, ..tail] +
+/// ++++++++++++++++++++++++++
+impl fmt::Show for Matrix {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        try!(write!(f, "\n"));
+
+        let &Matrix(ref m) = self;
+        let pretty_printed_matrix: Vec<Vec<String>> = m.iter().map(|row| {
+            row.iter().map(|&pat| pat_to_str(pat)).collect::<Vec<String>>()
+        }).collect();
+
+        let column_count = m.iter().map(|row| row.len()).max().unwrap_or(0u);
+        assert!(m.iter().all(|row| row.len() == column_count));
+        let column_widths: Vec<uint> = range(0, column_count).map(|col| {
+            pretty_printed_matrix.iter().map(|row| row.get(col).len()).max().unwrap_or(0u)
+        }).collect();
+
+        let total_width = column_widths.iter().map(|n| *n).sum() + column_count * 3 + 1;
+        let br = String::from_char(total_width, '+');
+        try!(write!(f, "{}\n", br));
+        for row in pretty_printed_matrix.move_iter() {
+            try!(write!(f, "+"));
+            for (column, pat_str) in row.move_iter().enumerate() {
+                try!(write!(f, " "));
+                f.width = Some(*column_widths.get(column));
+                try!(f.pad(pat_str.as_slice()));
+                try!(write!(f, " +"));
+            }
+            try!(write!(f, "\n"));
+            try!(write!(f, "{}\n", br));
+        }
+        Ok(())
+    }
+}
+
+struct MatchCheckCtxt<'a> {
+    tcx: &'a ty::ctxt
+}
+
+#[deriving(Clone, PartialEq)]
+enum Constructor {
+    /// The constructor of all patterns that don't vary by constructor,
+    /// e.g. struct patterns and fixed-length arrays.
+    Single,
+    /// Enum variants.
+    Variant(DefId),
+    /// Literal values.
+    ConstantValue(const_val),
+    /// Ranges of literal values (2..5).
+    ConstantRange(const_val, const_val),
+    /// Array patterns of length n.
+    Slice(uint)
+}
 
 #[deriving(Clone)]
 enum Usefulness {
@@ -50,22 +113,6 @@ impl Usefulness {
     }
 }
 
-fn def_to_path(tcx: &ty::ctxt, id: DefId) -> Path {
-    ty::with_path(tcx, id, |mut path| Path {
-        global: false,
-        segments: path.last().map(|elem| PathSegment {
-            identifier: Ident::new(elem.name()),
-            lifetimes: vec!(),
-            types: OwnedSlice::empty()
-        }).move_iter().collect(),
-        span: DUMMY_SP,
-    })
-}
-
-struct MatchCheckCtxt<'a> {
-    tcx: &'a ty::ctxt,
-}
-
 impl<'a> Visitor<()> for MatchCheckCtxt<'a> {
     fn visit_expr(&mut self, ex: &Expr, _: ()) {
         check_expr(self, ex);
@@ -78,11 +125,8 @@ impl<'a> Visitor<()> for MatchCheckCtxt<'a> {
     }
 }
 
-pub fn check_crate(tcx: &ty::ctxt,
-                   krate: &Crate) {
-    let mut cx = MatchCheckCtxt {
-        tcx: tcx,
-    };
+pub fn check_crate(tcx: &ty::ctxt, krate: &Crate) {
+    let mut cx = MatchCheckCtxt { tcx: tcx, };
 
     visit::walk_crate(&mut cx, krate, ());
 
@@ -116,12 +160,12 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &Expr) {
                // If the type *is* empty, it's vacuously exhaustive
                return;
             }
-            let m: Matrix = arms
+            let m: Matrix = Matrix(arms
                 .iter()
                 .filter(|&arm| is_unguarded(arm))
                 .flat_map(|arm| arm.pats.iter())
                 .map(|pat| vec!(pat.clone()))
-                .collect();
+                .collect());
             check_exhaustive(cx, ex.span, &m);
         },
         _ => ()
@@ -130,7 +174,7 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &Expr) {
 
 // Check for unreachable patterns
 fn check_arms(cx: &MatchCheckCtxt, arms: &[Arm]) {
-    let mut seen = Vec::new();
+    let mut seen = Matrix(vec!());
     for arm in arms.iter() {
         for pat in arm.pats.iter() {
             // Check that we do not match against a static NaN (#6804)
@@ -161,7 +205,11 @@ fn check_arms(cx: &MatchCheckCtxt, arms: &[Arm]) {
                 NotUseful => cx.tcx.sess.span_err(pat.span, "unreachable pattern"),
                 _ => ()
             }
-            if arm.guard.is_none() { seen.push(v); }
+            if arm.guard.is_none() {
+                let Matrix(mut rows) = seen;
+                rows.push(v);
+                seen = Matrix(rows);
+            }
         }
     }
 }
@@ -175,10 +223,6 @@ fn raw_pat(p: Gc<Pat>) -> Gc<Pat> {
 
 fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, m: &Matrix) {
     match is_useful(cx, m, [wild()], ConstructWitness) {
-        NotUseful => {
-            // This is good, wildcard pattern isn't reachable
-            return;
-        }
         Useful(pats) => {
             let witness = match pats.as_slice() {
                 [witness] => witness,
@@ -188,16 +232,10 @@ fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, m: &Matrix) {
             let msg = format!("non-exhaustive patterns: `{0}` not covered", pat_to_str(&*witness));
             cx.tcx.sess.span_err(sp, msg.as_slice());
         }
+        NotUseful => {
+            // This is good, wildcard pattern isn't reachable
+        }
     }
-}
-
-#[deriving(Clone, PartialEq)]
-enum ctor {
-    single,
-    variant(DefId),
-    val(const_val),
-    range(const_val, const_val),
-    vec(uint)
 }
 
 fn const_val_to_expr(value: &const_val) -> Gc<Expr> {
@@ -206,20 +244,46 @@ fn const_val_to_expr(value: &const_val) -> Gc<Expr> {
         &const_nil => LitNil,
         _ => unreachable!()
     };
-    box(GC) Expr {
+    box (GC) Expr {
         id: 0,
         node: ExprLit(box(GC) Spanned { node: node, span: DUMMY_SP }),
         span: DUMMY_SP
     }
 }
 
-fn construct_witness(cx: &MatchCheckCtxt, ctor: &ctor, pats: Vec<Gc<Pat>>, lty: ty::t) -> Gc<Pat> {
-    let pat = match ty::get(lty).sty {
+fn def_to_path(tcx: &ty::ctxt, id: DefId) -> Path {
+    ty::with_path(tcx, id, |mut path| Path {
+        global: false,
+        segments: path.last().map(|elem| PathSegment {
+            identifier: Ident::new(elem.name()),
+            lifetimes: vec!(),
+            types: OwnedSlice::empty()
+        }).move_iter().collect(),
+        span: DUMMY_SP,
+    })
+}
+
+/// Constructs a partial witness for a pattern given a list of
+/// patterns expanded by the specialization step.
+///
+/// When a pattern P is discovered to be useful, this function is used bottom-up
+/// to reconstruct a complete witness, e.g. a pattern P' that covers a subset
+/// of values, V, where each value in that set is not covered by any previously
+/// used patterns and is covered by the pattern P'. Examples:
+///
+/// left_ty: tuple of 3 elements
+/// pats: [10, 20, _]           => (10, 20, _)
+///
+/// left_ty: struct X { a: (bool, &'static str), b: uint}
+/// pats: [(false, "foo"), 42]  => X { a: (false, "foo"), b: 42 }
+fn construct_witness(cx: &MatchCheckCtxt, ctor: &Constructor,
+                     pats: Vec<Gc<Pat>>, left_ty: ty::t) -> Gc<Pat> {
+    let pat = match ty::get(left_ty).sty {
         ty::ty_tup(_) => PatTup(pats),
 
         ty::ty_enum(cid, _) | ty::ty_struct(cid, _)  => {
             let (vid, is_structure) = match ctor {
-                &variant(vid) => (vid,
+                &Variant(vid) => (vid,
                     ty::enum_variant_with_id(cx.tcx, cid, vid).arg_names.is_some()),
                 _ => (cid, true)
             };
@@ -235,103 +299,95 @@ fn construct_witness(cx: &MatchCheckCtxt, ctor: &ctor, pats: Vec<Gc<Pat>>, lty: 
             } else {
                 PatEnum(def_to_path(cx.tcx, vid), Some(pats))
             }
-        },
+        }
 
         ty::ty_rptr(_, ty::mt { ty: ty, .. }) => {
             match ty::get(ty).sty {
+               ty::ty_vec(_, Some(n)) => match ctor {
+                    &Single => {
+                        assert_eq!(pats.len(), n);
+                        PatVec(pats, None, vec!())
+                    },
+                    _ => unreachable!()
+                },
                 ty::ty_vec(_, None) => match ctor {
-                    &vec(_) => PatVec(pats, None, vec!()),
+                    &Slice(n) => {
+                        assert_eq!(pats.len(), n);
+                        PatVec(pats, None, vec!())
+                    },
                     _ => unreachable!()
                 },
                 ty::ty_str => PatWild,
+
                 _ => {
                     assert_eq!(pats.len(), 1);
                     PatRegion(pats.get(0).clone())
                 }
             }
-        },
+        }
 
         ty::ty_box(_) => {
             assert_eq!(pats.len(), 1);
             PatBox(pats.get(0).clone())
-        },
+        }
+
+        ty::ty_vec(_, Some(len)) => {
+            assert_eq!(pats.len(), len);
+            PatVec(pats, None, vec!())
+        }
 
         _ => {
-            match ctor {
-                &vec(_) => PatVec(pats, None, vec!()),
-                &val(ref v) => PatLit(const_val_to_expr(v)),
+            match *ctor {
+                ConstantValue(ref v) => PatLit(const_val_to_expr(v)),
                 _ => PatWild
             }
         }
     };
 
-    box(GC) Pat {
+    box (GC) Pat {
         id: 0,
         node: pat,
         span: DUMMY_SP
     }
 }
 
-fn missing_constructor(cx: &MatchCheckCtxt, m: &Matrix, left_ty: ty::t) -> Option<ctor> {
-    let used_constructors: Vec<ctor> = m.iter()
-        .filter_map(|r| pat_ctor_id(cx, left_ty, *r.get(0)))
+fn missing_constructor(cx: &MatchCheckCtxt, &Matrix(ref rows): &Matrix,
+                       left_ty: ty::t, max_slice_length: uint) -> Option<Constructor> {
+    let used_constructors: Vec<Constructor> = rows.iter()
+        .flat_map(|row| pat_constructors(cx, *row.get(0), left_ty, max_slice_length).move_iter())
         .collect();
-
-    all_constructors(cx, m, left_ty)
+    all_constructors(cx, left_ty, max_slice_length)
         .move_iter()
         .find(|c| !used_constructors.contains(c))
 }
 
-fn all_constructors(cx: &MatchCheckCtxt, m: &Matrix, left_ty: ty::t) -> Vec<ctor> {
-    // This produces a list of all vector constructors that we would expect to appear
-    // in an exhaustive set of patterns. Because such a list would normally be infinite,
-    // we narrow it down to only those constructors that actually appear in the inspected
-    // column, plus, any that are missing and not covered by a pattern with a destructured slice.
-    fn vec_constructors(m: &Matrix) -> Vec<ctor> {
-        let max_vec_len = m.iter().map(|r| match r.get(0).node {
-            PatVec(ref before, _, ref after) => before.len() + after.len(),
-            _ => 0u
-        }).max().unwrap_or(0u);
-        let min_vec_len_with_slice = m.iter().map(|r| match r.get(0).node {
-            PatVec(ref before, Some(_), ref after) => before.len() + after.len(),
-            _ => max_vec_len + 1
-        }).min().unwrap_or(max_vec_len + 1);
-        let other_lengths = m.iter().map(|r| match r.get(0).node {
-            PatVec(ref before, _, ref after) => before.len() + after.len(),
-            _ => 0u
-        }).filter(|&len| len > min_vec_len_with_slice);
-        iter::range_inclusive(0u, min_vec_len_with_slice)
-            .chain(other_lengths)
-            .map(|len| vec(len))
-            .collect()
-    }
-
+/// This determines the set of all possible constructors of a pattern matching
+/// values of type `left_ty`. For vectors, this would normally be an infinite set
+/// but is instead bounded by the maximum fixed length of slice patterns in
+/// the column of patterns being analyzed.
+fn all_constructors(cx: &MatchCheckCtxt, left_ty: ty::t,
+                    max_slice_length: uint) -> Vec<Constructor> {
     match ty::get(left_ty).sty {
         ty::ty_bool =>
-            [true, false].iter().map(|b| val(const_bool(*b))).collect(),
+            [true, false].iter().map(|b| ConstantValue(const_bool(*b))).collect(),
 
         ty::ty_nil =>
-            vec!(val(const_nil)),
+            vec!(ConstantValue(const_nil)),
 
         ty::ty_rptr(_, ty::mt { ty: ty, .. }) => match ty::get(ty).sty {
-            ty::ty_vec(_, None) => vec_constructors(m),
-            _ => vec!(single)
+            ty::ty_vec(_, None) =>
+                range_inclusive(0, max_slice_length).map(|length| Slice(length)).collect(),
+            _ => vec!(Single)
         },
 
         ty::ty_enum(eid, _) =>
             ty::enum_variants(cx.tcx, eid)
                 .iter()
-                .map(|va| variant(va.id))
+                .map(|va| Variant(va.id))
                 .collect(),
 
-        ty::ty_vec(_, None) =>
-            vec_constructors(m),
-
-        ty::ty_vec(_, Some(n)) =>
-            vec!(vec(n)),
-
         _ =>
-            vec!(single)
+            vec!(Single)
     }
 }
 
@@ -348,15 +404,16 @@ fn all_constructors(cx: &MatchCheckCtxt, m: &Matrix, left_ty: ty::t) -> Vec<ctor
 
 // Note: is_useful doesn't work on empty types, as the paper notes.
 // So it assumes that v is non-empty.
-fn is_useful(cx: &MatchCheckCtxt, m: &Matrix, v: &[Gc<Pat>],
-             witness: WitnessPreference) -> Usefulness {
-    if m.len() == 0u {
+fn is_useful(cx: &MatchCheckCtxt, m @ &Matrix(ref rows): &Matrix,
+             v: &[Gc<Pat>], witness: WitnessPreference) -> Usefulness {
+    debug!("{:}", m);
+    if rows.len() == 0u {
         return Useful(vec!());
     }
-    if m.get(0).len() == 0u {
+    if rows.get(0).len() == 0u {
         return NotUseful;
     }
-    let real_pat = match m.iter().find(|r| r.get(0).id != 0) {
+    let real_pat = match rows.iter().find(|r| r.get(0).id != 0) {
         Some(r) => {
             match r.get(0).node {
                 // An arm of the form `ref x @ sub_pat` has type
@@ -374,10 +431,16 @@ fn is_useful(cx: &MatchCheckCtxt, m: &Matrix, v: &[Gc<Pat>],
         ty::pat_ty(cx.tcx, &*real_pat)
     };
 
-    match pat_ctor_id(cx, left_ty, v[0]) {
-        None => match missing_constructor(cx, m, left_ty) {
+    let max_slice_length = rows.iter().filter_map(|row| match row.get(0).node {
+        PatVec(ref before, _, ref after) => Some(before.len() + after.len()),
+        _ => None
+    }).max().map_or(0, |v| v + 1);
+
+    let constructors = pat_constructors(cx, v[0], left_ty, max_slice_length);
+    if constructors.is_empty() {
+        match missing_constructor(cx, m, left_ty, max_slice_length) {
             None => {
-                all_constructors(cx, m, left_ty).move_iter().filter_map(|c| {
+                all_constructors(cx, left_ty, max_slice_length).move_iter().filter_map(|c| {
                     is_useful_specialized(cx, m, v, c.clone(),
                                           left_ty, witness).useful().map(|pats| {
                         Useful(match witness {
@@ -400,14 +463,15 @@ fn is_useful(cx: &MatchCheckCtxt, m: &Matrix, v: &[Gc<Pat>],
                 }).nth(0).unwrap_or(NotUseful)
             },
 
-            Some(ctor) => {
-                let matrix = m.iter().filter_map(|r| default(cx, r.as_slice())).collect();
+            Some(constructor) => {
+                let matrix = Matrix(rows.iter().filter_map(|r|
+                    default(cx, r.as_slice())).collect());
                 match is_useful(cx, &matrix, v.tail(), witness) {
                     Useful(pats) => Useful(match witness {
                         ConstructWitness => {
-                            let arity = constructor_arity(cx, &ctor, left_ty);
+                            let arity = constructor_arity(cx, &constructor, left_ty);
                             let wild_pats = Vec::from_elem(arity, wild());
-                            let enum_pat = construct_witness(cx, &ctor, wild_pats, left_ty);
+                            let enum_pat = construct_witness(cx, &constructor, wild_pats, left_ty);
                             (vec!(enum_pat)).append(pats.as_slice())
                         }
                         LeaveOutWitness => vec!()
@@ -415,64 +479,82 @@ fn is_useful(cx: &MatchCheckCtxt, m: &Matrix, v: &[Gc<Pat>],
                     result => result
                 }
             }
-        },
-
-        Some(v0_ctor) => is_useful_specialized(cx, m, v, v0_ctor, left_ty, witness)
+        }
+    } else {
+        constructors.move_iter().filter_map(|c| {
+            is_useful_specialized(cx, m, v, c.clone(), left_ty, witness)
+                .useful().map(|pats| Useful(pats))
+        }).nth(0).unwrap_or(NotUseful)
     }
 }
 
-fn is_useful_specialized(cx: &MatchCheckCtxt, m: &Matrix, v: &[Gc<Pat>],
-                         ctor: ctor, lty: ty::t, witness: WitnessPreference) -> Usefulness {
+fn is_useful_specialized(cx: &MatchCheckCtxt, &Matrix(ref m): &Matrix, v: &[Gc<Pat>],
+                         ctor: Constructor, lty: ty::t, witness: WitnessPreference) -> Usefulness {
     let arity = constructor_arity(cx, &ctor, lty);
-    let matrix = m.iter().filter_map(|r| {
+    let matrix = Matrix(m.iter().filter_map(|r| {
         specialize(cx, r.as_slice(), &ctor, arity)
-    }).collect();
+    }).collect());
     match specialize(cx, v, &ctor, arity) {
         Some(v) => is_useful(cx, &matrix, v.as_slice(), witness),
         None => NotUseful
     }
 }
 
-fn pat_ctor_id(cx: &MatchCheckCtxt, left_ty: ty::t, p: Gc<Pat>) -> Option<ctor> {
+/// Determines the constructors that the given pattern can be specialized to.
+///
+/// In most cases, there's only one constructor that a specific pattern
+/// represents, such as a specific enum variant or a specific literal value.
+/// Slice patterns, however, can match slices of different lengths. For instance,
+/// `[a, b, ..tail]` can match a slice of length 2, 3, 4 and so on.
+///
+/// On the other hand, a wild pattern and an identifier pattern cannot be
+/// specialized in any way.
+fn pat_constructors(cx: &MatchCheckCtxt, p: Gc<Pat>,
+                    left_ty: ty::t, max_slice_length: uint) -> Vec<Constructor> {
     let pat = raw_pat(p);
     match pat.node {
         PatIdent(..) =>
             match cx.tcx.def_map.borrow().find(&pat.id) {
                 Some(&DefStatic(did, false)) => {
                     let const_expr = lookup_const_by_id(cx.tcx, did).unwrap();
-                    Some(val(eval_const_expr(cx.tcx, &*const_expr)))
+                    vec!(ConstantValue(eval_const_expr(cx.tcx, &*const_expr)))
                 },
-                Some(&DefVariant(_, id, _)) => Some(variant(id)),
-                _ => None
+                Some(&DefVariant(_, id, _)) => vec!(Variant(id)),
+                _ => vec!()
             },
         PatEnum(..) =>
             match cx.tcx.def_map.borrow().find(&pat.id) {
                 Some(&DefStatic(did, false)) => {
                     let const_expr = lookup_const_by_id(cx.tcx, did).unwrap();
-                    Some(val(eval_const_expr(cx.tcx, &*const_expr)))
+                    vec!(ConstantValue(eval_const_expr(cx.tcx, &*const_expr)))
                 },
-                Some(&DefVariant(_, id, _)) => Some(variant(id)),
-                _ => Some(single)
+                Some(&DefVariant(_, id, _)) => vec!(Variant(id)),
+                _ => vec!(Single)
             },
         PatStruct(..) =>
             match cx.tcx.def_map.borrow().find(&pat.id) {
-                Some(&DefVariant(_, id, _)) => Some(variant(id)),
-                _ => Some(single)
+                Some(&DefVariant(_, id, _)) => vec!(Variant(id)),
+                _ => vec!(Single)
             },
         PatLit(expr) =>
-            Some(val(eval_const_expr(cx.tcx, &*expr))),
+            vec!(ConstantValue(eval_const_expr(cx.tcx, &*expr))),
         PatRange(lo, hi) =>
-            Some(range(eval_const_expr(cx.tcx, &*lo), eval_const_expr(cx.tcx, &*hi))),
-        PatVec(ref before, _, ref after) => match ty::get(left_ty).sty {
-            ty::ty_vec(_, Some(n)) =>
-                Some(vec(n)),
-            _ =>
-                Some(vec(before.len() + after.len()))
-        },
+            vec!(ConstantRange(eval_const_expr(cx.tcx, &*lo), eval_const_expr(cx.tcx, &*hi))),
+        PatVec(ref before, ref slice, ref after) =>
+            match ty::get(left_ty).sty {
+                ty::ty_vec(_, Some(_)) => vec!(Single),
+                _                      => if slice.is_some() {
+                    range_inclusive(before.len() + after.len(), max_slice_length)
+                        .map(|length| Slice(length))
+                        .collect()
+                } else {
+                    vec!(Slice(before.len() + after.len()))
+                }
+            },
         PatBox(_) | PatTup(_) | PatRegion(..) =>
-            Some(single),
+            vec!(Single),
         PatWild | PatWildMulti =>
-            None,
+            vec!(),
         PatMac(_) =>
             cx.tcx.sess.bug("unexpanded macro")
     }
@@ -482,53 +564,53 @@ fn is_wild(cx: &MatchCheckCtxt, p: Gc<Pat>) -> bool {
     let pat = raw_pat(p);
     match pat.node {
         PatWild | PatWildMulti => true,
-        PatIdent(_, _, _) => {
+        PatIdent(_, _, _) =>
             match cx.tcx.def_map.borrow().find(&pat.id) {
                 Some(&DefVariant(_, _, _)) | Some(&DefStatic(..)) => false,
                 _ => true
-            }
-        }
+            },
+        PatVec(ref before, Some(_), ref after) =>
+            before.is_empty() && after.is_empty(),
         _ => false
     }
 }
 
-fn constructor_arity(cx: &MatchCheckCtxt, ctor: &ctor, ty: ty::t) -> uint {
+/// This computes the arity of a constructor. The arity of a constructor
+/// is how many subpattern patterns of that constructor should be expanded to.
+///
+/// For instance, a tuple pattern (_, 42u, Some([])) has the arity of 3.
+/// A struct pattern's arity is the number of fields it contains, etc.
+fn constructor_arity(cx: &MatchCheckCtxt, ctor: &Constructor, ty: ty::t) -> uint {
     match ty::get(ty).sty {
         ty::ty_tup(ref fs) => fs.len(),
         ty::ty_box(_) | ty::ty_uniq(_) => 1u,
         ty::ty_rptr(_, ty::mt { ty: ty, .. }) => match ty::get(ty).sty {
             ty::ty_vec(_, None) => match *ctor {
-                vec(n) => n,
-                _ => 0u
+                Slice(length) => length,
+                _ => unreachable!()
             },
             ty::ty_str => 0u,
             _ => 1u
         },
         ty::ty_enum(eid, _) => {
             match *ctor {
-                variant(id) => enum_variant_with_id(cx.tcx, eid, id).args.len(),
+                Variant(id) => enum_variant_with_id(cx.tcx, eid, id).args.len(),
                 _ => unreachable!()
             }
         }
         ty::ty_struct(cid, _) => ty::lookup_struct_fields(cx.tcx, cid).len(),
-        ty::ty_vec(_, _) => match *ctor {
-            vec(n) => n,
-            _ => 0u
-        },
+        ty::ty_vec(_, Some(n)) => n,
         _ => 0u
     }
 }
 
-fn wild() -> Gc<Pat> {
-    box(GC) Pat {id: 0, node: PatWild, span: DUMMY_SP}
-}
-
-fn range_covered_by_constructor(ctor_id: &ctor, from: &const_val, to: &const_val) -> Option<bool> {
-    let (c_from, c_to) = match *ctor_id {
-        val(ref value)          => (value, value),
-        range(ref from, ref to) => (from, to),
-        single                  => return Some(true),
-        _                       => unreachable!()
+fn range_covered_by_constructor(ctor: &Constructor,
+                                from: &const_val,to: &const_val) -> Option<bool> {
+    let (c_from, c_to) = match *ctor {
+        ConstantValue(ref value)        => (value, value),
+        ConstantRange(ref from, ref to) => (from, to),
+        Single                          => return Some(true),
+        _                               => unreachable!()
     };
     let cmp_from = compare_const_vals(c_from, from);
     let cmp_to = compare_const_vals(c_to, to);
@@ -538,22 +620,30 @@ fn range_covered_by_constructor(ctor_id: &ctor, from: &const_val, to: &const_val
     }
 }
 
+/// This is the main specialization step. It expands the first pattern in the given row
+/// into `arity` patterns based on the constructor. For most patterns, the step is trivial,
+/// for instance tuple patterns are flattened and box patterns expand into their inner pattern.
+///
+/// OTOH, slice patterns with a subslice pattern (..tail) can be expanded into multiple
+/// different patterns.
+/// Structure patterns with a partial wild pattern (Foo { a: 42, .. }) have their missing
+/// fields filled with wild patterns.
 fn specialize(cx: &MatchCheckCtxt, r: &[Gc<Pat>],
-              ctor_id: &ctor, arity: uint) -> Option<Vec<Gc<Pat>>> {
+              constructor: &Constructor, arity: uint) -> Option<Vec<Gc<Pat>>> {
     let &Pat {
-        id: ref pat_id, node: ref n, span: ref pat_span
+        id: pat_id, node: ref node, span: pat_span
     } = &(*raw_pat(r[0]));
-    let head: Option<Vec<Gc<Pat>>> = match n {
-        &PatWild => {
-            Some(Vec::from_elem(arity, wild()))
-        }
-        &PatWildMulti => {
-            Some(Vec::from_elem(arity, wild()))
-        }
+    let head: Option<Vec<Gc<Pat>>> = match node {
+        &PatWild =>
+            Some(Vec::from_elem(arity, wild())),
+
+        &PatWildMulti =>
+            Some(Vec::from_elem(arity, wild())),
+
         &PatIdent(_, _, _) => {
-            let opt_def = cx.tcx.def_map.borrow().find_copy(pat_id);
+            let opt_def = cx.tcx.def_map.borrow().find_copy(&pat_id);
             match opt_def {
-                Some(DefVariant(_, id, _)) => if *ctor_id == variant(id) {
+                Some(DefVariant(_, id, _)) => if *constructor == Variant(id) {
                     Some(vec!())
                 } else {
                     None
@@ -561,11 +651,11 @@ fn specialize(cx: &MatchCheckCtxt, r: &[Gc<Pat>],
                 Some(DefStatic(did, _)) => {
                     let const_expr = lookup_const_by_id(cx.tcx, did).unwrap();
                     let e_v = eval_const_expr(cx.tcx, &*const_expr);
-                    match range_covered_by_constructor(ctor_id, &e_v, &e_v) {
+                    match range_covered_by_constructor(constructor, &e_v, &e_v) {
                         Some(true) => Some(vec!()),
                         Some(false) => None,
                         None => {
-                            cx.tcx.sess.span_err(*pat_span, "mismatched types between arms");
+                            cx.tcx.sess.span_err(pat_span, "mismatched types between arms");
                             None
                         }
                     }
@@ -575,22 +665,23 @@ fn specialize(cx: &MatchCheckCtxt, r: &[Gc<Pat>],
                 }
             }
         }
+
         &PatEnum(_, ref args) => {
-            let def = cx.tcx.def_map.borrow().get_copy(pat_id);
+            let def = cx.tcx.def_map.borrow().get_copy(&pat_id);
             match def {
                 DefStatic(did, _) => {
                     let const_expr = lookup_const_by_id(cx.tcx, did).unwrap();
                     let e_v = eval_const_expr(cx.tcx, &*const_expr);
-                    match range_covered_by_constructor(ctor_id, &e_v, &e_v) {
+                    match range_covered_by_constructor(constructor, &e_v, &e_v) {
                         Some(true) => Some(vec!()),
                         Some(false) => None,
                         None => {
-                            cx.tcx.sess.span_err(*pat_span, "mismatched types between arms");
+                            cx.tcx.sess.span_err(pat_span, "mismatched types between arms");
                             None
                         }
                     }
                 }
-                DefVariant(_, id, _) if *ctor_id != variant(id) => None,
+                DefVariant(_, id, _) if *constructor != Variant(id) => None,
                 DefVariant(..) | DefFn(..) | DefStruct(..) => {
                     Some(match args {
                         &Some(ref args) => args.clone(),
@@ -603,9 +694,9 @@ fn specialize(cx: &MatchCheckCtxt, r: &[Gc<Pat>],
 
         &PatStruct(_, ref pattern_fields, _) => {
             // Is this a struct or an enum variant?
-            let def = cx.tcx.def_map.borrow().get_copy(pat_id);
+            let def = cx.tcx.def_map.borrow().get_copy(&pat_id);
             let class_id = match def {
-                DefVariant(_, variant_id, _) => if *ctor_id == variant(variant_id) {
+                DefVariant(_, variant_id, _) => if *constructor == Variant(variant_id) {
                     Some(variant_id)
                 } else {
                     None
@@ -633,11 +724,11 @@ fn specialize(cx: &MatchCheckCtxt, r: &[Gc<Pat>],
 
         &PatLit(ref expr) => {
             let expr_value = eval_const_expr(cx.tcx, &**expr);
-            match range_covered_by_constructor(ctor_id, &expr_value, &expr_value) {
+            match range_covered_by_constructor(constructor, &expr_value, &expr_value) {
                 Some(true) => Some(vec!()),
                 Some(false) => None,
                 None => {
-                    cx.tcx.sess.span_err(*pat_span, "mismatched types between arms");
+                    cx.tcx.sess.span_err(pat_span, "mismatched types between arms");
                     None
                 }
             }
@@ -646,41 +737,42 @@ fn specialize(cx: &MatchCheckCtxt, r: &[Gc<Pat>],
         &PatRange(ref from, ref to) => {
             let from_value = eval_const_expr(cx.tcx, &**from);
             let to_value = eval_const_expr(cx.tcx, &**to);
-            match range_covered_by_constructor(ctor_id, &from_value, &to_value) {
+            match range_covered_by_constructor(constructor, &from_value, &to_value) {
                 Some(true) => Some(vec!()),
                 Some(false) => None,
                 None => {
-                    cx.tcx.sess.span_err(*pat_span, "mismatched types between arms");
+                    cx.tcx.sess.span_err(pat_span, "mismatched types between arms");
                     None
                 }
             }
         }
 
         &PatVec(ref before, ref slice, ref after) => {
-            match *ctor_id {
-                vec(_) => {
-                    let num_elements = before.len() + after.len();
-                    if num_elements < arity && slice.is_some() {
-                        let mut result = Vec::new();
-                        result.push_all(before.as_slice());
-                        result.grow_fn(arity - num_elements, |_| wild());
-                        result.push_all(after.as_slice());
-                        Some(result)
-                    } else if num_elements == arity {
-                        let mut result = Vec::new();
-                        result.push_all(before.as_slice());
-                        result.push_all(after.as_slice());
-                        Some(result)
-                    } else {
-                        None
-                    }
-                }
+            match *constructor {
+                // Fixed-length vectors.
+                Single => {
+                    let mut pats = before.clone();
+                    pats.grow_fn(arity - before.len() - after.len(), |_| wild());
+                    pats.push_all(after.as_slice());
+                    Some(pats)
+                },
+                Slice(length) if before.len() + after.len() <= length && slice.is_some() => {
+                    let mut pats = before.clone();
+                    pats.grow_fn(arity - before.len() - after.len(), |_| wild());
+                    pats.push_all(after.as_slice());
+                    Some(pats)
+                },
+                Slice(length) if before.len() + after.len() == length => {
+                    let mut pats = before.clone();
+                    pats.push_all(after.as_slice());
+                    Some(pats)
+                },
                 _ => None
             }
         }
 
         &PatMac(_) => {
-            cx.tcx.sess.span_err(*pat_span, "unexpanded macro");
+            cx.tcx.sess.span_err(pat_span, "unexpanded macro");
             None
         }
     };
@@ -740,7 +832,7 @@ fn check_fn(cx: &mut MatchCheckCtxt,
 }
 
 fn is_refutable(cx: &MatchCheckCtxt, pat: Gc<Pat>) -> Option<Gc<Pat>> {
-    let pats = vec!(vec!(pat));
+    let pats = Matrix(vec!(vec!(pat)));
     is_useful(cx, &pats, [wild()], ConstructWitness)
         .useful()
         .map(|pats| {
