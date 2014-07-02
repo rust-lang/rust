@@ -197,13 +197,13 @@ mod test {
             let listener = UdpWatcher::bind(local_loop(), addr2);
             tx.send((listener.unwrap(), addr1));
             let mut listener = UdpWatcher::bind(local_loop(), addr1).unwrap();
-            listener.sendto([1, 2, 3, 4], addr2).ok().unwrap();
+            listener.send_to([1, 2, 3, 4], addr2).ok().unwrap();
         });
 
         let task = pool.task(TaskOpts::new(), proc() {
             let (mut watcher, addr) = rx.recv();
             let mut buf = [0, ..10];
-            assert!(watcher.recvfrom(buf).ok().unwrap() == (4, addr));
+            assert!(watcher.recv_from(buf).ok().unwrap() == (4, addr));
         });
         pool.spawn_sched().send(sched::TaskFromFriend(task));
 
