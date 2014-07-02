@@ -15,6 +15,10 @@ Higher level communication abstractions.
 */
 
 #![allow(missing_doc)]
+#![deprecated = "This type is replaced by having a pair of channels. This type \
+                 is not fully composable with other channels in terms of \
+                 or possible semantics on a duplex stream. It will be removed \
+                 soon"]
 
 use core::prelude::*;
 
