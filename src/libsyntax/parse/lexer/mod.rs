@@ -969,108 +969,12 @@ impl<'a> StringReader<'a> {
           'b' => {
             self.bump();
             return match self.curr {
-                Some('\'') => parse_byte(self),
-                Some('"') => parse_byte_string(self),
-                Some('r') => parse_raw_byte_string(self),
+                Some('\'') => self.scan_byte(),
+                Some('"') => self.scan_byte_string(),
+                Some('r') => self.scan_raw_byte_string(),
                 _ => unreachable!()  // Should have been a token::IDENT above.
             };
 
-            fn parse_byte(self_: &mut StringReader) -> token::Token {
-                self_.bump();
-                let start = self_.last_pos;
-
-                // the eof will be picked up by the final `'` check below
-                let mut c2 = self_.curr.unwrap_or('\x00');
-                self_.bump();
-
-                c2 = self_.scan_char_or_byte(start, c2, /* ascii_only = */ true, '\'').unwrap();
-                if !self_.curr_is('\'') {
-                    // Byte offsetting here is okay because the
-                    // character before position `start` are an
-                    // ascii single quote and ascii 'b'.
-                    let last_pos = self_.last_pos;
-                    self_.fatal_span_verbose(
-                        start - BytePos(2), last_pos,
-                        "unterminated byte constant".to_string());
-                }
-                self_.bump(); // advance curr past token
-                return token::LIT_BYTE(c2 as u8);
-            }
-
-            fn parse_byte_string(self_: &mut StringReader) -> token::Token {
-                self_.bump();
-                let start = self_.last_pos;
-                let mut value = Vec::new();
-                while !self_.curr_is('"') {
-                    if self_.is_eof() {
-                        let last_pos = self_.last_pos;
-                        self_.fatal_span_(start, last_pos,
-                                          "unterminated double quote byte string");
-                    }
-
-                    let ch_start = self_.last_pos;
-                    let ch = self_.curr.unwrap();
-                    self_.bump();
-                    self_.scan_char_or_byte(ch_start, ch, /* ascii_only = */ true, '"')
-                        .map(|ch| value.push(ch as u8));
-                }
-                self_.bump();
-                return token::LIT_BINARY(Rc::new(value));
-            }
-
-            fn parse_raw_byte_string(self_: &mut StringReader) -> token::Token {
-                let start_bpos = self_.last_pos;
-                self_.bump();
-                let mut hash_count = 0u;
-                while self_.curr_is('#') {
-                    self_.bump();
-                    hash_count += 1;
-                }
-
-                if self_.is_eof() {
-                    let last_pos = self_.last_pos;
-                    self_.fatal_span_(start_bpos, last_pos, "unterminated raw string");
-                } else if !self_.curr_is('"') {
-                    let last_pos = self_.last_pos;
-                    let ch = self_.curr.unwrap();
-                    self_.fatal_span_char(start_bpos, last_pos,
-                                    "only `#` is allowed in raw string delimitation; \
-                                     found illegal character",
-                                    ch);
-                }
-                self_.bump();
-                let content_start_bpos = self_.last_pos;
-                let mut content_end_bpos;
-                'outer: loop {
-                    match self_.curr {
-                        None => {
-                            let last_pos = self_.last_pos;
-                            self_.fatal_span_(start_bpos, last_pos, "unterminated raw string")
-                        },
-                        Some('"') => {
-                            content_end_bpos = self_.last_pos;
-                            for _ in range(0, hash_count) {
-                                self_.bump();
-                                if !self_.curr_is('#') {
-                                    continue 'outer;
-                                }
-                            }
-                            break;
-                        },
-                        Some(c) => if c > '\x7F' {
-                            let last_pos = self_.last_pos;
-                            self_.err_span_char(
-                                last_pos, last_pos, "raw byte string must be ASCII", c);
-                        }
-                    }
-                    self_.bump();
-                }
-                self_.bump();
-                let bytes = self_.with_str_from_to(content_start_bpos,
-                                                   content_end_bpos,
-                                                   |s| s.as_bytes().to_owned());
-                return token::LIT_BINARY_RAW(Rc::new(bytes), hash_count);
-            }
           }
           '"' => {
             let mut accum_str = String::new();
@@ -1220,6 +1124,103 @@ impl<'a> StringReader<'a> {
      || (self.curr_is('/') && self.nextch_is('*'))
      // consider shebangs comments, but not inner attributes
      || (self.curr_is('#') && self.nextch_is('!') && !self.nextnextch_is('['))
+    }
+
+    fn scan_byte(&mut self) -> token::Token {
+        self.bump();
+        let start = self.last_pos;
+
+        // the eof will be picked up by the final `'` check below
+        let mut c2 = self.curr.unwrap_or('\x00');
+        self.bump();
+
+        c2 = self.scan_char_or_byte(start, c2, /* ascii_only = */ true, '\'').unwrap();
+        if !self.curr_is('\'') {
+            // Byte offsetting here is okay because the
+            // character before position `start` are an
+            // ascii single quote and ascii 'b'.
+            let last_pos = self.last_pos;
+            self.fatal_span_verbose(
+                start - BytePos(2), last_pos,
+                "unterminated byte constant".to_string());
+        }
+        self.bump(); // advance curr past token
+        return token::LIT_BYTE(c2 as u8);
+    }
+
+    fn scan_byte_string(&mut self) -> token::Token {
+        self.bump();
+        let start = self.last_pos;
+        let mut value = Vec::new();
+        while !self.curr_is('"') {
+            if self.is_eof() {
+                let last_pos = self.last_pos;
+                self.fatal_span_(start, last_pos,
+                                  "unterminated double quote byte string");
+            }
+
+            let ch_start = self.last_pos;
+            let ch = self.curr.unwrap();
+            self.bump();
+            self.scan_char_or_byte(ch_start, ch, /* ascii_only = */ true, '"')
+                .map(|ch| value.push(ch as u8));
+        }
+        self.bump();
+        return token::LIT_BINARY(Rc::new(value));
+    }
+
+    fn scan_raw_byte_string(&mut self) -> token::Token {
+        let start_bpos = self.last_pos;
+        self.bump();
+        let mut hash_count = 0u;
+        while self.curr_is('#') {
+            self.bump();
+            hash_count += 1;
+        }
+
+        if self.is_eof() {
+            let last_pos = self.last_pos;
+            self.fatal_span_(start_bpos, last_pos, "unterminated raw string");
+        } else if !self.curr_is('"') {
+            let last_pos = self.last_pos;
+            let ch = self.curr.unwrap();
+            self.fatal_span_char(start_bpos, last_pos,
+                            "only `#` is allowed in raw string delimitation; \
+                             found illegal character",
+                            ch);
+        }
+        self.bump();
+        let content_start_bpos = self.last_pos;
+        let mut content_end_bpos;
+        'outer: loop {
+            match self.curr {
+                None => {
+                    let last_pos = self.last_pos;
+                    self.fatal_span_(start_bpos, last_pos, "unterminated raw string")
+                },
+                Some('"') => {
+                    content_end_bpos = self.last_pos;
+                    for _ in range(0, hash_count) {
+                        self.bump();
+                        if !self.curr_is('#') {
+                            continue 'outer;
+                        }
+                    }
+                    break;
+                },
+                Some(c) => if c > '\x7F' {
+                    let last_pos = self.last_pos;
+                    self.err_span_char(
+                        last_pos, last_pos, "raw byte string must be ASCII", c);
+                }
+            }
+            self.bump();
+        }
+        self.bump();
+        let bytes = self.with_str_from_to(content_start_bpos,
+                                           content_end_bpos,
+                                           |s| s.as_bytes().to_owned());
+        return token::LIT_BINARY_RAW(Rc::new(bytes), hash_count);
     }
 }
 
