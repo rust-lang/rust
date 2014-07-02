@@ -15,7 +15,7 @@ use core::prelude::*;
 use core::cmp;
 use core::default::Default;
 use core::fmt;
-use core::iter::{Map, Take, Zip};
+use core::iter::Take;
 use core::ops;
 use core::slice;
 use core::uint;
@@ -825,23 +825,16 @@ impl Set<uint> for BitvSet {
         self.intersection(other).count() > 0
     }
 
+    #[inline]
     fn is_subset(&self, other: &BitvSet) -> bool {
-        for (_, w1, w2) in self.commons(other) {
-            if w1 & w2 != w1 {
-                return false;
-            }
-        }
-        /* If anything is not ours, then everything is not ours so we're
-           definitely a subset in that case. Otherwise if there's any stray
-           ones that 'other' doesn't have, we're not a subset. */
-        for (mine, _, w) in self.outliers(other) {
-            if !mine {
-                return true;
-            } else if w != 0 {
-                return false;
-            }
-        }
-        return true;
+        let &BitvSet(ref self_bitv) = self;
+        let &BitvSet(ref other_bitv) = other;
+
+        // Check that `self` intersect `other` is self
+        self_bitv.mask_words(0).zip(other_bitv.mask_words(0))
+                               .all(|((_, w1), (_, w2))| w1 & w2 == w1) &&
+        // Check that `self` setminus `other` is empty
+        self_bitv.mask_words(other_bitv.storage.len()).all(|(_, w)| w == 0)
     }
 
     #[inline]
@@ -880,44 +873,6 @@ impl MutableSet<uint> for BitvSet {
         let &BitvSet(ref mut bitv) = self;
         bitv.set(*value, false);
         return true;
-    }
-}
-
-impl BitvSet {
-    /// Visits each of the words that the two bit vectors (`self` and `other`)
-    /// both have in common. The three yielded arguments are (bit location,
-    /// w1, w2) where the bit location is the number of bits offset so far,
-    /// and w1/w2 are the words coming from the two vectors self, other.
-    fn commons<'a>(&'a self, other: &'a BitvSet)
-        -> Map<((uint, uint), (uint, uint)), (uint, uint, uint),
-               Zip<MaskWords<'a>, MaskWords<'a>>> {
-        let &BitvSet(ref self_bitv) = self;
-        let &BitvSet(ref other_bitv) = other;
-        self_bitv.mask_words(0).zip(other_bitv.mask_words(0))
-            .map(|((i, w1), (_, w2))| (i * uint::BITS, w1, w2))
-    }
-
-    /// Visits each word in `self` or `other` that extends beyond the other. This
-    /// will only iterate through one of the vectors, and it only iterates
-    /// over the portion that doesn't overlap with the other one.
-    ///
-    /// The yielded arguments are a `bool`, the bit offset, and a word. The `bool`
-    /// is true if the word comes from `self`, and `false` if it comes from
-    /// `other`.
-    fn outliers<'a>(&'a self, other: &'a BitvSet)
-        -> Map<(uint, uint), (bool, uint, uint), MaskWords<'a>> {
-        let slen = self.capacity() / uint::BITS;
-        let olen = other.capacity() / uint::BITS;
-        let &BitvSet(ref self_bitv) = self;
-        let &BitvSet(ref other_bitv) = other;
-
-        if olen < slen {
-            self_bitv.mask_words(olen)
-                .map(|(i, w)| (true, i * uint::BITS, w))
-        } else {
-            other_bitv.mask_words(slen)
-                .map(|(i, w)| (false, i * uint::BITS, w))
-        }
     }
 }
 
@@ -1592,6 +1547,32 @@ mod tests {
             true
         });
         assert_eq!(i, expected.len());
+    }
+
+    #[test]
+    fn test_bitv_set_subset() {
+        let mut set1 = BitvSet::new();
+        let mut set2 = BitvSet::new();
+
+        assert!(set1.is_subset(&set2)); //  {}  {}
+        set2.insert(100);
+        assert!(set1.is_subset(&set2)); //  {}  { 1 }
+        set2.insert(200);
+        assert!(set1.is_subset(&set2)); //  {}  { 1, 2 }
+        set1.insert(200);
+        assert!(set1.is_subset(&set2)); //  { 2 }  { 1, 2 }
+        set1.insert(300);
+        assert!(!set1.is_subset(&set2)); // { 2, 3 }  { 1, 2 }
+        set2.insert(300);
+        assert!(set1.is_subset(&set2)); // { 2, 3 }  { 1, 2, 3 }
+        set2.insert(400);
+        assert!(set1.is_subset(&set2)); // { 2, 3 }  { 1, 2, 3, 4 }
+        set2.remove(&100);
+        assert!(set1.is_subset(&set2)); // { 2, 3 }  { 2, 3, 4 }
+        set2.remove(&300);
+        assert!(!set1.is_subset(&set2)); // { 2, 3 }  { 2, 4 }
+        set1.remove(&300);
+        assert!(set1.is_subset(&set2)); // { 2 }  { 2, 4 }
     }
 
     #[test]
