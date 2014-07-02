@@ -12,9 +12,9 @@
 
 Task local data management
 
-Allows storing arbitrary types inside task-local-storage (TLS), to be accessed
+Allows storing arbitrary types inside task-local-data (TLD), to be accessed
 anywhere within a task, keyed by a global pointer parameterized over the type of
-the TLS slot.  Useful for dynamic variables, singletons, and interfacing with
+the TLD slot. Useful for dynamic variables, singletons, and interfacing with
 foreign code with bad callback interfaces.
 
 To declare a new key for storing local data of a particular type, use the
@@ -70,16 +70,16 @@ pub enum KeyValue<T> { Key }
 trait LocalData {}
 impl<T: 'static> LocalData for T {}
 
-// The task-local-map stores all TLS information for the currently running task.
+// The task-local-map stores all TLD information for the currently running task.
 // It is stored as an owned pointer into the runtime, and it's only allocated
-// when TLS is used for the first time. This map must be very carefully
+// when TLD is used for the first time. This map must be very carefully
 // constructed because it has many mutable loans unsoundly handed out on it to
-// the various invocations of TLS requests.
+// the various invocations of TLD requests.
 //
 // One of the most important operations is loaning a value via `get` to a
-// caller. In doing so, the slot that the TLS entry is occupying cannot be
+// caller. In doing so, the slot that the TLD entry is occupying cannot be
 // invalidated because upon returning its loan state must be updated. Currently
-// the TLS map is a vector, but this is possibly dangerous because the vector
+// the TLD map is a vector, but this is possibly dangerous because the vector
 // can be reallocated/moved when new values are pushed onto it.
 //
 // This problem currently isn't solved in a very elegant way. Inside the `get`
@@ -88,11 +88,11 @@ impl<T: 'static> LocalData for T {}
 // pointers from being moved under our feet so long as LLVM doesn't go too crazy
 // with the optimizations.
 //
-// n.b. If TLS is used heavily in future, this could be made more efficient with
+// n.b. If TLD is used heavily in future, this could be made more efficient with
 //      a proper map.
 #[doc(hidden)]
-pub type Map = Vec<Option<(*const u8, TLSValue, uint)>>;
-type TLSValue = Box<LocalData + Send>;
+pub type Map = Vec<Option<(*const u8, TLDValue, uint)>>;
+type TLDValue = Box<LocalData + Send>;
 
 // Gets the map from the runtime. Lazily initialises if not done so already.
 unsafe fn get_local_map<'a>() -> Option<&'a mut Map> {
@@ -101,11 +101,11 @@ unsafe fn get_local_map<'a>() -> Option<&'a mut Map> {
     let task: *mut Task = Local::unsafe_borrow();
     match &mut (*task).storage {
         // If the at_exit function is already set, then we just need to take
-        // a loan out on the TLS map stored inside
+        // a loan out on the TLD map stored inside
         &LocalStorage(Some(ref mut map_ptr)) => {
             return Some(map_ptr);
         }
-        // If this is the first time we've accessed TLS, perform similar
+        // If this is the first time we've accessed TLD, perform similar
         // actions to the oldsched way of doing things.
         &LocalStorage(ref mut slot) => {
             *slot = Some(Vec::new());
@@ -135,14 +135,14 @@ pub struct Ref<T> {
 }
 
 impl<T: 'static> KeyValue<T> {
-    /// Replaces a value in task local storage.
+    /// Replaces a value in task local data.
     ///
-    /// If this key is already present in TLS, then the previous value is
+    /// If this key is already present in TLD, then the previous value is
     /// replaced with the provided data, and then returned.
     ///
     /// # Failure
     ///
-    /// This function will fail if this key is present in TLS and currently on
+    /// This function will fail if this key is present in TLD and currently on
     /// loan with the `get` method.
     ///
     /// # Example
@@ -171,7 +171,7 @@ impl<T: 'static> KeyValue<T> {
         //
         // Additionally, the type of the local data map must ascribe to Send, so
         // we do the transmute here to add the Send bound back on. This doesn't
-        // actually matter because TLS will always own the data (until its moved
+        // actually matter because TLD will always own the data (until its moved
         // out) and we're not actually sending it to other schedulers or
         // anything.
         let newval = data.map(|d| {
@@ -182,7 +182,7 @@ impl<T: 'static> KeyValue<T> {
 
         let pos = match self.find(map) {
             Some((i, _, &0)) => Some(i),
-            Some((_, _, _)) => fail!("TLS value cannot be replaced because it \
+            Some((_, _, _)) => fail!("TLD value cannot be replaced because it \
                                       is already borrowed"),
             None => map.iter().position(|entry| entry.is_none()),
         };
@@ -207,11 +207,11 @@ impl<T: 'static> KeyValue<T> {
         }
     }
 
-    /// Borrows a value from TLS.
+    /// Borrows a value from TLD.
     ///
-    /// If `None` is returned, then this key is not present in TLS. If `Some` is
+    /// If `None` is returned, then this key is not present in TLD. If `Some` is
     /// returned, then the returned data is a smart pointer representing a new
-    /// loan on this TLS key. While on loan, this key cannot be altered via the
+    /// loan on this TLD key. While on loan, this key cannot be altered via the
     /// `replace` method.
     ///
     /// # Example
@@ -246,7 +246,7 @@ impl<T: 'static> KeyValue<T> {
     }
 
     fn find<'a>(&'static self,
-                map: &'a mut Map) -> Option<(uint, &'a TLSValue, &'a mut uint)>{
+                map: &'a mut Map) -> Option<(uint, &'a TLDValue, &'a mut uint)>{
         let key_value = key_to_key_value(self);
         map.mut_iter().enumerate().filter_map(|(i, entry)| {
             match *entry {
@@ -285,7 +285,7 @@ mod tests {
         static my_key: Key<String> = &Key;
         my_key.replace(Some("parent data".to_string()));
         task::spawn(proc() {
-            // TLS shouldn't carry over.
+            // TLD shouldn't carry over.
             assert!(my_key.get().is_none());
             my_key.replace(Some("child data".to_string()));
             assert!(my_key.get().get_ref().as_slice() == "child data");
