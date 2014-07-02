@@ -1146,24 +1146,9 @@ fn check_cast(fcx: &FnCtxt,
            .span_err(span,
                      "cannot cast as `bool`, compare with zero instead");
     } else if ty::type_is_region_ptr(t_e) && ty::type_is_unsafe_ptr(t_1) {
-        fn is_vec(t: ty::t) -> bool {
-            match ty::get(t).sty {
-                ty::ty_vec(..) => true,
-                ty::ty_ptr(ty::mt{ty: t, ..}) |
-                ty::ty_rptr(_, ty::mt{ty: t, ..}) |
-                ty::ty_box(t) |
-                ty::ty_uniq(t) => {
-                    match ty::get(t).sty {
-                        ty::ty_vec(_, None) => true,
-                        _ => false,
-                    }
-                }
-                _ => false
-            }
-        }
         fn types_compatible(fcx: &FnCtxt, sp: Span,
                             t1: ty::t, t2: ty::t) -> bool {
-            if !is_vec(t1) {
+            if !ty::type_is_vec(t1) {
                 // If the type being casted from is not a vector, this special
                 // case does not apply.
                 return false
@@ -2779,10 +2764,30 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         fcx.write_ty(id, enum_type);
     }
 
+    type ExprCheckerWithTy = fn(&FnCtxt, &ast::Expr, ty::t);
+
+    fn check_fn_for_vec_elements_expected(fcx: &FnCtxt,
+                                          expected: Expectation)
+                                         -> (ExprCheckerWithTy, ty::t) {
+        let tcx = fcx.ccx.tcx;
+        let (coerce, t) = match expected {
+            // If we're given an expected type, we can try to coerce to it
+            ExpectHasType(t) if ty::type_is_vec(t) => (true, ty::sequence_element_type(tcx, t)),
+            // Otherwise we just leave the type to be resolved later
+            _ => (false, fcx.infcx().next_ty_var())
+        };
+        if coerce {
+            (check_expr_coercable_to_type, t)
+        } else {
+            (check_expr_has_type, t)
+        }
+    }
+
     let tcx = fcx.ccx.tcx;
     let id = expr.id;
     match expr.node {
         ast::ExprVstore(ev, vst) => {
+            let (check, t) = check_fn_for_vec_elements_expected(fcx, expected);
             let typ = match ev.node {
                 ast::ExprVec(ref args) => {
                     let mutability = match vst {
@@ -2791,9 +2796,8 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                     };
                     let mut any_error = false;
                     let mut any_bot = false;
-                    let t: ty::t = fcx.infcx().next_ty_var();
                     for e in args.iter() {
-                        check_expr_has_type(fcx, &**e, t);
+                        check(fcx, &**e, t);
                         let arg_t = fcx.expr_ty(&**e);
                         if ty::type_is_error(arg_t) {
                             any_error = true;
@@ -2821,8 +2825,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                         ast::ExprVstoreMutSlice => ast::MutMutable,
                         _ => ast::MutImmutable,
                     };
-                    let t = fcx.infcx().next_ty_var();
-                    check_expr_has_type(fcx, &**element, t);
+                    check(fcx, &**element, t);
                     let arg_t = fcx.expr_ty(&**element);
                     if ty::type_is_error(arg_t) {
                         ty::mk_err()
@@ -3211,9 +3214,9 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         check_cast(fcx, &**e, &**t, id, expr.span);
       }
       ast::ExprVec(ref args) => {
-        let t: ty::t = fcx.infcx().next_ty_var();
+        let (check, t) = check_fn_for_vec_elements_expected(fcx, expected);
         for e in args.iter() {
-            check_expr_has_type(fcx, &**e, t);
+            check(fcx, &**e, t);
         }
         let typ = ty::mk_vec(tcx, ty::mt {ty: t, mutbl: ast::MutImmutable},
                              Some(args.len()));
@@ -3222,8 +3225,8 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
       ast::ExprRepeat(ref element, ref count_expr) => {
         check_expr_has_type(fcx, &**count_expr, ty::mk_uint());
         let count = ty::eval_repeat_count(fcx, &**count_expr);
-        let t: ty::t = fcx.infcx().next_ty_var();
-        check_expr_has_type(fcx, &**element, t);
+        let (check, t) = check_fn_for_vec_elements_expected(fcx, expected);
+        check(fcx, &**element, t);
         let element_ty = fcx.expr_ty(&**element);
         if ty::type_is_error(element_ty) {
             fcx.write_error(id);
