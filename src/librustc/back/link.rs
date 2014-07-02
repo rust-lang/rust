@@ -556,6 +556,16 @@ pub fn find_crate_name(sess: Option<&Session>,
         s
     };
 
+    match sess {
+        Some(sess) => {
+            match sess.opts.crate_name {
+                Some(ref s) => return validate(s.clone(), None),
+                None => {}
+            }
+        }
+        None => {}
+    }
+
     let crate_name = attrs.iter().find(|at| at.check_name("crate_name"))
                           .and_then(|at| at.value_str().map(|s| (at, s)));
     match crate_name {

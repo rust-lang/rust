@@ -389,6 +389,11 @@ pub fn early_error(msg: &str) -> ! {
     fail!(diagnostic::FatalError);
 }
 
+pub fn early_warn(msg: &str) {
+    let mut emitter = diagnostic::EmitterWriter::stderr(diagnostic::Auto);
+    emitter.emit(None, msg, diagnostic::Warning);
+}
+
 pub fn list_metadata(sess: &Session, path: &Path,
                      out: &mut io::Writer) -> io::IoResult<()> {
     metadata::loader::list_file_metadata(sess.targ_cfg.os, path, out)
