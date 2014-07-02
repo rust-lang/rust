@@ -193,7 +193,7 @@ fn with_argv<T>(prog: &CString, args: &[CString],
 }
 
 /// Converts the environment to the env array expected by libuv
-fn with_env<T>(env: Option<&[(CString, CString)]>,
+fn with_env<T>(env: Option<&[(&CString, &CString)]>,
                cb: |*const *const libc::c_char| -> T) -> T {
     // We can pass a char** for envp, which is a null-terminated array
     // of "k=v\0" strings. Since we must create these strings locally,
