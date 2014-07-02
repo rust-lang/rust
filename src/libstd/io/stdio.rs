@@ -191,8 +191,8 @@ pub fn set_stderr(stderr: Box<Writer + Send>) -> Option<Box<Writer + Send>> {
 
 // Helper to access the local task's stdout handle
 //
-// Note that this function cannot be nested; it will cause failure in
-// trying to borrow_mut the RefCell multiple times.
+// Note that when nesting this function it will incur extra cost by creating
+// temporary stdout Writers every invocation.
 fn with_task_stdout(f: |&mut Writer| -> IoResult<()>) {
     let result = if Local::exists(None::<Task>) {
         match local_stdout.get() {
@@ -201,9 +201,17 @@ fn with_task_stdout(f: |&mut Writer| -> IoResult<()>) {
                 with_task_stdout(f);
                 return
             }
-            Some(my_stdout) => {
-                let mut_deref = &mut *my_stdout.borrow_mut();
-                f(*mut_deref)
+            Some(stdout_tls) => match stdout_tls.try_borrow_mut() {
+                Some(mut stdout_ref) => {
+                    let mut_deref = &mut *stdout_ref;
+                    f(*mut_deref)
+                }
+                None => {
+                    // Nested: Create a temporary stdout
+                    let mut writer = stdout();
+                    let result = f(&mut writer);
+                    result.and(writer.flush())
+                }
             }
         }
     } else {
