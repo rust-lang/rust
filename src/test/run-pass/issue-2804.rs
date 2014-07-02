@@ -22,11 +22,11 @@ enum object {
     int_value(i64),
 }
 
-fn lookup(table: Box<json::Object>, key: String, default: String) -> String
+fn lookup(table: json::Object, key: String, default: String) -> String
 {
     match table.find(&key.to_string()) {
         option::Some(&json::String(ref s)) => {
-            (*s).to_string()
+            s.to_string()
         }
         option::Some(value) => {
             println!("{} was expected to be a string but is a {:?}", key, value);
@@ -42,7 +42,7 @@ fn add_interface(_store: int, managed_ip: String, data: json::Json) -> (String, 
 {
     match &data {
         &json::Object(ref interface) => {
-            let name = lookup((*interface).clone(),
+            let name = lookup(interface.clone(),
                               "ifDescr".to_string(),
                               "".to_string());
             let label = format!("{}-{}", managed_ip, name);

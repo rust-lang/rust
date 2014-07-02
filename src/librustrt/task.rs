@@ -560,7 +560,7 @@ mod test {
 
     #[test]
     fn local_heap() {
-        let a = box(GC) 5;
+        let a = box(GC) 5i;
         let b = a;
         assert!(*a == 5);
         assert!(*b == 5);
@@ -596,14 +596,14 @@ mod test {
     #[test]
     fn comm_stream() {
         let (tx, rx) = channel();
-        tx.send(10);
+        tx.send(10i);
         assert!(rx.recv() == 10);
     }
 
     #[test]
     fn comm_shared_chan() {
         let (tx, rx) = channel();
-        tx.send(10);
+        tx.send(10i);
         assert!(rx.recv() == 10);
     }
 

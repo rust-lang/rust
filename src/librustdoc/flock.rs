@@ -104,7 +104,7 @@ mod imp {
                 l_sysid: 0,
             };
             let ret = unsafe {
-                libc::fcntl(fd, os::F_SETLKW, &flock as *os::flock)
+                libc::fcntl(fd, os::F_SETLKW, &flock as *const os::flock)
             };
             if ret == -1 {
                 unsafe { libc::close(fd); }
@@ -125,7 +125,7 @@ mod imp {
                 l_sysid: 0,
             };
             unsafe {
-                libc::fcntl(self.fd, os::F_SETLK, &flock as *os::flock);
+                libc::fcntl(self.fd, os::F_SETLK, &flock as *const os::flock);
                 libc::close(self.fd);
             }
         }
@@ -162,7 +162,8 @@ mod imp {
 
     impl Lock {
         pub fn new(p: &Path) -> Lock {
-            let p_16 = p.as_str().unwrap().to_utf16().append_one(0);
+            let p_16: Vec<u16> = p.as_str().unwrap().utf16_units().collect();
+            let p_16 = p_16.append_one(0);
             let handle = unsafe {
                 libc::CreateFileW(p_16.as_ptr(),
                                   libc::FILE_GENERIC_READ |

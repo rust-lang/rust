@@ -25,7 +25,7 @@ use libc;
 
 use stack;
 
-type StartFn = extern "C" fn(*libc::c_void) -> imp::rust_thread_return;
+type StartFn = extern "C" fn(*mut libc::c_void) -> imp::rust_thread_return;
 
 /// This struct represents a native thread's state. This is used to join on an
 /// existing thread created in the join-able state.
@@ -42,7 +42,7 @@ static DEFAULT_STACK_SIZE: uint = 1024 * 1024;
 // no_split_stack annotation), and then we extract the main function
 // and invoke it.
 #[no_split_stack]
-extern fn thread_start(main: *libc::c_void) -> imp::rust_thread_return {
+extern fn thread_start(main: *mut libc::c_void) -> imp::rust_thread_return {
     unsafe {
         stack::record_stack_bounds(0, uint::MAX);
         let f: Box<proc()> = mem::transmute(main);
@@ -82,7 +82,7 @@ impl Thread<()> {
         // so.
         let packet = box None;
         let packet2: *mut Option<T> = unsafe {
-            *mem::transmute::<&Box<Option<T>>, **mut Option<T>>(&packet)
+            *mem::transmute::<&Box<Option<T>>, *const *mut Option<T>>(&packet)
         };
         let main = proc() unsafe { *packet2 = Some(main()); };
         let native = unsafe { imp::create(stack, box main) };
@@ -225,7 +225,7 @@ mod imp {
     use stack::RED_ZONE;
 
     pub type rust_thread = libc::pthread_t;
-    pub type rust_thread_return = *u8;
+    pub type rust_thread_return = *mut u8;
 
     pub unsafe fn create(stack: uint, p: Box<proc():Send>) -> rust_thread {
         let mut native: libc::pthread_t = mem::zeroed();
@@ -255,7 +255,7 @@ mod imp {
             },
         };
 
-        let arg: *libc::c_void = mem::transmute(p);
+        let arg: *mut libc::c_void = mem::transmute(p);
         let ret = pthread_create(&mut native, &attr, super::thread_start, arg);
         assert_eq!(pthread_attr_destroy(&mut attr), 0);
 
@@ -268,7 +268,7 @@ mod imp {
     }
 
     pub unsafe fn join(native: rust_thread) {
-        assert_eq!(pthread_join(native, ptr::null()), 0);
+        assert_eq!(pthread_join(native, ptr::mut_null()), 0);
     }
 
     pub unsafe fn detach(native: rust_thread) {
@@ -287,33 +287,33 @@ mod imp {
     // currently always the case.  Note that you need to check that the symbol
     // is non-null before calling it!
     #[cfg(target_os = "linux")]
-    fn min_stack_size(attr: *libc::pthread_attr_t) -> libc::size_t {
-        type F = unsafe extern "C" fn(*libc::pthread_attr_t) -> libc::size_t;
+    fn min_stack_size(attr: *const libc::pthread_attr_t) -> libc::size_t {
+        type F = unsafe extern "C" fn(*const libc::pthread_attr_t) -> libc::size_t;
         extern {
             #[linkage = "extern_weak"]
-            static __pthread_get_minstack: *();
+            static __pthread_get_minstack: *const ();
         }
         if __pthread_get_minstack.is_null() {
             PTHREAD_STACK_MIN
         } else {
-            unsafe { mem::transmute::<*(), F>(__pthread_get_minstack)(attr) }
+            unsafe { mem::transmute::<*const (), F>(__pthread_get_minstack)(attr) }
         }
     }
 
     // __pthread_get_minstack() is marked as weak but extern_weak linkage is
     // not supported on OS X, hence this kludge...
     #[cfg(not(target_os = "linux"))]
-    fn min_stack_size(_: *libc::pthread_attr_t) -> libc::size_t {
+    fn min_stack_size(_: *const libc::pthread_attr_t) -> libc::size_t {
         PTHREAD_STACK_MIN
     }
 
     extern {
         fn pthread_create(native: *mut libc::pthread_t,
-                          attr: *libc::pthread_attr_t,
+                          attr: *const libc::pthread_attr_t,
                           f: super::StartFn,
-                          value: *libc::c_void) -> libc::c_int;
+                          value: *mut libc::c_void) -> libc::c_int;
         fn pthread_join(native: libc::pthread_t,
-                        value: **libc::c_void) -> libc::c_int;
+                        value: *mut *mut libc::c_void) -> libc::c_int;
         fn pthread_attr_init(attr: *mut libc::pthread_attr_t) -> libc::c_int;
         fn pthread_attr_destroy(attr: *mut libc::pthread_attr_t) -> libc::c_int;
         fn pthread_attr_setstacksize(attr: *mut libc::pthread_attr_t,

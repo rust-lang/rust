@@ -16,6 +16,7 @@
 
 use mem;
 use char;
+use char::Char;
 use clone::Clone;
 use cmp;
 use cmp::{PartialEq, Eq};
@@ -24,7 +25,7 @@ use default::Default;
 use iter::{Filter, Map, Iterator};
 use iter::{DoubleEndedIterator, ExactSize};
 use iter::range;
-use num::Saturating;
+use num::{CheckedMul, Saturating};
 use option::{None, Option, Some};
 use raw::Repr;
 use slice::ImmutableVector;
@@ -557,6 +558,41 @@ impl<'a> Iterator<&'a str> for StrSplits<'a> {
     }
 }
 
+/// External iterator for a string's UTF16 codeunits.
+/// Use with the `std::iter` module.
+#[deriving(Clone)]
+pub struct Utf16CodeUnits<'a> {
+    chars: Chars<'a>,
+    extra: u16
+}
+
+impl<'a> Iterator<u16> for Utf16CodeUnits<'a> {
+    #[inline]
+    fn next(&mut self) -> Option<u16> {
+        if self.extra != 0 {
+            let tmp = self.extra;
+            self.extra = 0;
+            return Some(tmp);
+        }
+
+        let mut buf = [0u16, ..2];
+        self.chars.next().map(|ch| {
+            let n = ch.encode_utf16(buf /* as mut slice! */);
+            if n == 2 { self.extra = buf[1]; }
+            buf[0]
+        })
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        let (low, high) = self.chars.size_hint();
+        // every char gets either one u16 or two u16,
+        // so this iterator is between 1 or 2 times as
+        // long as the underlying iterator.
+        (low, high.and_then(|n| n.checked_mul(&2)))
+    }
+}
+
 /*
 Section: Comparing strings
 */
@@ -568,10 +604,10 @@ Section: Comparing strings
 #[inline]
 fn eq_slice_(a: &str, b: &str) -> bool {
     #[allow(ctypes)]
-    extern { fn memcmp(s1: *i8, s2: *i8, n: uint) -> i32; }
+    extern { fn memcmp(s1: *const i8, s2: *const i8, n: uint) -> i32; }
     a.len() == b.len() && unsafe {
-        memcmp(a.as_ptr() as *i8,
-               b.as_ptr() as *i8,
+        memcmp(a.as_ptr() as *const i8,
+               b.as_ptr() as *const i8,
                a.len()) == 0
     }
 }
@@ -579,15 +615,7 @@ fn eq_slice_(a: &str, b: &str) -> bool {
 /// Bytewise slice equality
 /// NOTE: This function is (ab)used in rustc::middle::trans::_match
 /// to compare &[u8] byte slices that are not necessarily valid UTF-8.
-#[cfg(not(test))]
 #[lang="str_eq"]
-#[inline]
-pub fn eq_slice(a: &str, b: &str) -> bool {
-    eq_slice_(a, b)
-}
-
-/// Bytewise slice equality
-#[cfg(test)]
 #[inline]
 pub fn eq_slice(a: &str, b: &str) -> bool {
     eq_slice_(a, b)
@@ -888,8 +916,8 @@ pub mod raw {
     /// Form a slice from a C string. Unsafe because the caller must ensure the
     /// C string has the static lifetime, or else the return value may be
     /// invalidated later.
-    pub unsafe fn c_str_to_static_slice(s: *i8) -> &'static str {
-        let s = s as *u8;
+    pub unsafe fn c_str_to_static_slice(s: *const i8) -> &'static str {
+        let s = s as *const u8;
         let mut curr = s;
         let mut len = 0u;
         while *curr != 0u8 {
@@ -934,13 +962,12 @@ pub mod raw {
 Section: Trait implementations
 */
 
-#[cfg(not(test))]
 #[allow(missing_doc)]
 pub mod traits {
     use cmp::{Ord, Ordering, Less, Equal, Greater, PartialEq, PartialOrd, Equiv, Eq};
     use collections::Collection;
     use iter::Iterator;
-    use option::{Some, None};
+    use option::{Option, Some, None};
     use str::{Str, StrSlice, eq_slice};
 
     impl<'a> Ord for &'a str {
@@ -971,7 +998,9 @@ pub mod traits {
 
     impl<'a> PartialOrd for &'a str {
         #[inline]
-        fn lt(&self, other: & &'a str) -> bool { self.cmp(other) == Less }
+        fn partial_cmp(&self, other: &&'a str) -> Option<Ordering> {
+            Some(self.cmp(other))
+        }
     }
 
     impl<'a, S: Str> Equiv<S> for &'a str {
@@ -979,9 +1008,6 @@ pub mod traits {
         fn equiv(&self, other: &S) -> bool { eq_slice(*self, other.as_slice()) }
     }
 }
-
-#[cfg(test)]
-pub mod traits {}
 
 /// Any string that can be represented as a slice
 pub trait Str {
@@ -1618,7 +1644,10 @@ pub trait StrSlice<'a> {
     /// The caller must ensure that the string outlives this pointer,
     /// and that it is not reallocated (e.g. by pushing to the
     /// string).
-    fn as_ptr(&self) -> *u8;
+    fn as_ptr(&self) -> *const u8;
+
+    /// Return an iterator of `u16` over the string encoded as UTF-16.
+    fn utf16_units(&self) -> Utf16CodeUnits<'a>;
 }
 
 impl<'a> StrSlice<'a> for &'a str {
@@ -1714,7 +1743,7 @@ impl<'a> StrSlice<'a> for &'a str {
     fn lines_any(&self) -> AnyLines<'a> {
         self.lines().map(|line| {
             let l = line.len();
-            if l > 0 && line[l - 1] == '\r' as u8 { line.slice(0, l - 1) }
+            if l > 0 && line.as_bytes()[l - 1] == '\r' as u8 { line.slice(0, l - 1) }
             else { line }
         })
     }
@@ -1838,26 +1867,26 @@ impl<'a> StrSlice<'a> for &'a str {
     fn is_char_boundary(&self, index: uint) -> bool {
         if index == self.len() { return true; }
         if index > self.len() { return false; }
-        let b = self[index];
+        let b = self.as_bytes()[index];
         return b < 128u8 || b >= 192u8;
     }
 
     #[inline]
     fn char_range_at(&self, i: uint) -> CharRange {
-        if self[i] < 128u8 {
-            return CharRange {ch: self[i] as char, next: i + 1 };
+        if self.as_bytes()[i] < 128u8 {
+            return CharRange {ch: self.as_bytes()[i] as char, next: i + 1 };
         }
 
         // Multibyte case is a fn to allow char_range_at to inline cleanly
         fn multibyte_char_range_at(s: &str, i: uint) -> CharRange {
-            let mut val = s[i] as u32;
+            let mut val = s.as_bytes()[i] as u32;
             let w = UTF8_CHAR_WIDTH[val as uint] as uint;
             assert!((w != 0));
 
             val = utf8_first_byte!(val, w);
-            val = utf8_acc_cont_byte!(val, s[i + 1]);
-            if w > 2 { val = utf8_acc_cont_byte!(val, s[i + 2]); }
-            if w > 3 { val = utf8_acc_cont_byte!(val, s[i + 3]); }
+            val = utf8_acc_cont_byte!(val, s.as_bytes()[i + 1]);
+            if w > 2 { val = utf8_acc_cont_byte!(val, s.as_bytes()[i + 2]); }
+            if w > 3 { val = utf8_acc_cont_byte!(val, s.as_bytes()[i + 3]); }
 
             return CharRange {ch: unsafe { mem::transmute(val) }, next: i + w};
         }
@@ -1870,23 +1899,25 @@ impl<'a> StrSlice<'a> for &'a str {
         let mut prev = start;
 
         prev = prev.saturating_sub(1);
-        if self[prev] < 128 { return CharRange{ch: self[prev] as char, next: prev} }
+        if self.as_bytes()[prev] < 128 {
+            return CharRange{ch: self.as_bytes()[prev] as char, next: prev}
+        }
 
         // Multibyte case is a fn to allow char_range_at_reverse to inline cleanly
         fn multibyte_char_range_at_reverse(s: &str, mut i: uint) -> CharRange {
             // while there is a previous byte == 10......
-            while i > 0 && s[i] & 192u8 == TAG_CONT_U8 {
+            while i > 0 && s.as_bytes()[i] & 192u8 == TAG_CONT_U8 {
                 i -= 1u;
             }
 
-            let mut val = s[i] as u32;
+            let mut val = s.as_bytes()[i] as u32;
             let w = UTF8_CHAR_WIDTH[val as uint] as uint;
             assert!((w != 0));
 
             val = utf8_first_byte!(val, w);
-            val = utf8_acc_cont_byte!(val, s[i + 1]);
-            if w > 2 { val = utf8_acc_cont_byte!(val, s[i + 2]); }
-            if w > 3 { val = utf8_acc_cont_byte!(val, s[i + 3]); }
+            val = utf8_acc_cont_byte!(val, s.as_bytes()[i + 1]);
+            if w > 2 { val = utf8_acc_cont_byte!(val, s.as_bytes()[i + 2]); }
+            if w > 3 { val = utf8_acc_cont_byte!(val, s.as_bytes()[i + 3]); }
 
             return CharRange {ch: unsafe { mem::transmute(val) }, next: i};
         }
@@ -1964,8 +1995,13 @@ impl<'a> StrSlice<'a> for &'a str {
     }
 
     #[inline]
-    fn as_ptr(&self) -> *u8 {
+    fn as_ptr(&self) -> *const u8 {
         self.repr().data
+    }
+
+    #[inline]
+    fn utf16_units(&self) -> Utf16CodeUnits<'a> {
+        Utf16CodeUnits{ chars: self.chars(), extra: 0}
     }
 }
 

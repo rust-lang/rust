@@ -35,15 +35,15 @@ pub fn main() {
     p_foo(box(GC) r(10));
 
     p_foo(box r(10));
-    p_foo(box(GC) 10);
-    p_foo(box 10);
-    p_foo(10);
+    p_foo(box(GC) 10i);
+    p_foo(box 10i);
+    p_foo(10i);
 
     s_foo(box(GC) r(10));
-    s_foo(box(GC) 10);
-    s_foo(box 10);
-    s_foo(10);
+    s_foo(box(GC) 10i);
+    s_foo(box 10i);
+    s_foo(10i);
 
-    u_foo(box 10);
-    u_foo(10);
+    u_foo(box 10i);
+    u_foo(10i);
 }

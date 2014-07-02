@@ -99,7 +99,7 @@ fn check_legs(arc: Arc<Vec<Box<Pet+Share+Send>>>) {
 fn check_names(arc: Arc<Vec<Box<Pet+Share+Send>>>) {
     for pet in arc.iter() {
         pet.name(|name| {
-            assert!(name[0] == 'a' as u8 && name[1] == 'l' as u8);
+            assert!(name.as_bytes()[0] == 'a' as u8 && name.as_bytes()[1] == 'l' as u8);
         })
     }
 }

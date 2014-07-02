@@ -21,7 +21,7 @@ fn test00() {
     });
 
     // Sleep long enough for the task to finish.
-    let mut i = 0;
+    let mut i = 0u;
     while i < 10000 {
         task::deschedule();
         i += 1;

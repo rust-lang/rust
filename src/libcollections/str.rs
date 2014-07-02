@@ -97,6 +97,15 @@ Section: Creating a string
 ///
 /// Returns `Err` with the original vector if the vector contains invalid
 /// UTF-8.
+///
+/// # Example
+///
+/// ```rust
+/// use std::str;
+/// let hello_vec = vec![104, 101, 108, 108, 111];
+/// let string = str::from_utf8_owned(hello_vec);
+/// assert_eq!(string, Ok("hello".to_string()));
+/// ```
 pub fn from_utf8_owned(vv: Vec<u8>) -> Result<String, Vec<u8>> {
     String::from_utf8(vv)
 }
@@ -106,12 +115,28 @@ pub fn from_utf8_owned(vv: Vec<u8>) -> Result<String, Vec<u8>> {
 /// # Failure
 ///
 /// Fails if invalid UTF-8
+///
+/// # Example
+///
+/// ```rust
+/// use std::str;
+/// let string = str::from_byte(104);
+/// assert_eq!(string.as_slice(), "h");
+/// ```
 pub fn from_byte(b: u8) -> String {
     assert!(b < 128u8);
     String::from_char(1, b as char)
 }
 
 /// Convert a char to a string
+///
+/// # Example
+///
+/// ```rust
+/// use std::str;
+/// let string = str::from_char('b');
+/// assert_eq!(string.as_slice(), "b");
+/// ```
 pub fn from_char(ch: char) -> String {
     let mut buf = String::new();
     buf.push_char(ch);
@@ -119,6 +144,15 @@ pub fn from_char(ch: char) -> String {
 }
 
 /// Convert a vector of chars to a string
+///
+/// # Example
+///
+/// ```rust
+/// use std::str;
+/// let chars = ['h', 'e', 'l', 'l', 'o'];
+/// let string = str::from_chars(chars);
+/// assert_eq!(string.as_slice(), "hello");
+/// ```
 pub fn from_chars(chs: &[char]) -> String {
     chs.iter().map(|c| *c).collect()
 }
@@ -572,8 +606,8 @@ impl<'a> Eq for MaybeOwned<'a> {}
 
 impl<'a> PartialOrd for MaybeOwned<'a> {
     #[inline]
-    fn lt(&self, other: &MaybeOwned) -> bool {
-        self.as_slice().lt(&other.as_slice())
+    fn partial_cmp(&self, other: &MaybeOwned) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }
 
@@ -661,7 +695,7 @@ pub mod raw {
     pub use core::str::raw::{slice_unchecked};
 
     /// Create a Rust string from a *u8 buffer of the given length
-    pub unsafe fn from_buf_len(buf: *u8, len: uint) -> String {
+    pub unsafe fn from_buf_len(buf: *const u8, len: uint) -> String {
         let mut result = String::new();
         result.push_bytes(mem::transmute(Slice {
             data: buf,
@@ -671,7 +705,7 @@ pub mod raw {
     }
 
     /// Create a Rust string from a null-terminated C string
-    pub unsafe fn from_c_str(c_string: *i8) -> String {
+    pub unsafe fn from_c_str(c_string: *const i8) -> String {
         let mut buf = String::new();
         let mut len = 0;
         while *c_string.offset(len) != 0 {
@@ -803,15 +837,9 @@ pub trait StrAllocating: Str {
     }
 
     /// Converts to a vector of `u16` encoded as UTF-16.
+    #[deprecated = "use `utf16_units` instead"]
     fn to_utf16(&self) -> Vec<u16> {
-        let me = self.as_slice();
-        let mut u = Vec::new();
-        for ch in me.chars() {
-            let mut buf = [0u16, ..2];
-            let n = ch.encode_utf16(buf /* as mut slice! */);
-            u.push_all(buf.slice_to(n));
-        }
-        u
+        self.as_slice().utf16_units().collect::<Vec<u16>>()
     }
 
     /// Given a string, make a new string with repeated copies of it.
@@ -1103,7 +1131,7 @@ mod tests {
         assert_eq!("bc", unsafe {raw::slice_bytes("abc", 1, 3)});
         assert_eq!("", unsafe {raw::slice_bytes("abc", 1, 1)});
         fn a_million_letter_a() -> String {
-            let mut i = 0;
+            let mut i = 0u;
             let mut rs = String::new();
             while i < 100000 {
                 rs.push_str("aaaaaaaaaa");
@@ -1112,7 +1140,7 @@ mod tests {
             rs
         }
         fn half_a_million_letter_a() -> String {
-            let mut i = 0;
+            let mut i = 0u;
             let mut rs = String::new();
             while i < 100000 {
                 rs.push_str("aaaaa");
@@ -1220,7 +1248,7 @@ mod tests {
         assert_eq!("华", data.slice(30, 33));
 
         fn a_million_letter_x() -> String {
-            let mut i = 0;
+            let mut i = 0u;
             let mut rs = String::new();
             while i < 100000 {
                 rs.push_str("华华华华华华华华华华");
@@ -1229,7 +1257,7 @@ mod tests {
             rs
         }
         fn half_a_million_letter_x() -> String {
-            let mut i = 0;
+            let mut i = 0u;
             let mut rs = String::new();
             while i < 100000 {
                 rs.push_str("华华华华华");
@@ -1541,8 +1569,8 @@ mod tests {
         let n2: uint = v.len();
         assert_eq!(n1, n2);
         while i < n1 {
-            let a: u8 = s1.as_slice()[i];
-            let b: u8 = s2.as_slice()[i];
+            let a: u8 = s1.as_bytes()[i];
+            let b: u8 = s2.as_bytes()[i];
             debug!("{}", a);
             debug!("{}", b);
             assert_eq!(a, b);
@@ -1619,14 +1647,17 @@ mod tests {
 
         for p in pairs.iter() {
             let (s, u) = (*p).clone();
-            assert!(is_utf16(u.as_slice()));
-            assert_eq!(s.to_utf16(), u);
+            let s_as_utf16 = s.as_slice().utf16_units().collect::<Vec<u16>>();
+            let u_as_string = from_utf16(u.as_slice()).unwrap();
 
-            assert_eq!(from_utf16(u.as_slice()).unwrap(), s);
+            assert!(is_utf16(u.as_slice()));
+            assert_eq!(s_as_utf16, u);
+
+            assert_eq!(u_as_string, s);
             assert_eq!(from_utf16_lossy(u.as_slice()), s);
 
-            assert_eq!(from_utf16(s.to_utf16().as_slice()).unwrap(), s);
-            assert_eq!(from_utf16(u.as_slice()).unwrap().to_utf16(), u);
+            assert_eq!(from_utf16(s_as_utf16.as_slice()).unwrap(), s);
+            assert_eq!(u_as_string.as_slice().utf16_units().collect::<Vec<u16>>(), u);
         }
     }
 

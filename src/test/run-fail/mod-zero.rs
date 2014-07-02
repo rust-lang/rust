@@ -10,6 +10,6 @@
 
 // error-pattern:attempted remainder with a divisor of zero
 fn main() {
-    let y = 0;
-    let _z = 1 % y;
+    let y = 0i;
+    let _z = 1i % y;
 }

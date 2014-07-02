@@ -25,13 +25,13 @@ fn f10() {
 
 fn f20() {
     let x = "hi".to_string();
-    let _y = (x, 3);
+    let _y = (x, 3i);
     touch(&x); //~ ERROR use of moved value: `x`
 }
 
 fn f21() {
-    let x = vec!(1, 2, 3);
-    let _y = (*x.get(0), 3);
+    let x = vec!(1i, 2, 3);
+    let _y = (*x.get(0), 3i);
     touch(&x);
 }
 
@@ -62,9 +62,9 @@ fn f50(cond: bool) {
     let x = "hi".to_string();
     let y = "ho".to_string();
     let _y = match cond {
-        _ if guard(x) => 10,
-        true => 10,
-        false => 20,
+        _ if guard(x) => 10i,
+        true => 10i,
+        false => 20i,
     };
     touch(&x); //~ ERROR use of moved value: `x`
     touch(&y);

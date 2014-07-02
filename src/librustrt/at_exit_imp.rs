@@ -43,7 +43,7 @@ pub fn push(f: proc():Send) {
         rtassert!(!RUNNING.load(atomics::SeqCst));
         let queue = QUEUE.load(atomics::SeqCst);
         rtassert!(queue != 0);
-        (*(queue as *Queue)).lock().push(f);
+        (*(queue as *const Queue)).lock().push(f);
     }
 }
 

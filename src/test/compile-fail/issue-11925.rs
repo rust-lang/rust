@@ -10,7 +10,7 @@
 
 fn main() {
     let r = {
-        let x = box 42;
+        let x = box 42i;
         let f = proc() &x; //~ ERROR: `x` does not live long enough
         f()
     };

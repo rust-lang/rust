@@ -36,7 +36,7 @@ fn r(i: Gc<Cell<int>>) -> r {
 }
 
 fn test_box() {
-    let i = box(GC) Cell::new(0);
+    let i = box(GC) Cell::new(0i);
     {
         let _a = box(GC) r(i);
     }
@@ -44,7 +44,7 @@ fn test_box() {
 }
 
 fn test_rec() {
-    let i = box(GC) Cell::new(0);
+    let i = box(GC) Cell::new(0i);
     {
         let _a = Box {x: r(i)};
     }
@@ -56,7 +56,7 @@ fn test_tag() {
         t0(r),
     }
 
-    let i = box(GC) Cell::new(0);
+    let i = box(GC) Cell::new(0i);
     {
         let _a = t0(r(i));
     }
@@ -64,15 +64,15 @@ fn test_tag() {
 }
 
 fn test_tup() {
-    let i = box(GC) Cell::new(0);
+    let i = box(GC) Cell::new(0i);
     {
-        let _a = (r(i), 0);
+        let _a = (r(i), 0i);
     }
     assert_eq!(i.get(), 1);
 }
 
 fn test_unique() {
-    let i = box(GC) Cell::new(0);
+    let i = box(GC) Cell::new(0i);
     {
         let _a = box r(i);
     }
@@ -80,7 +80,7 @@ fn test_unique() {
 }
 
 fn test_box_rec() {
-    let i = box(GC) Cell::new(0);
+    let i = box(GC) Cell::new(0i);
     {
         let _a = box(GC) Box {
             x: r(i)

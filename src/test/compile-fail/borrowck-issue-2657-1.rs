@@ -9,11 +9,11 @@
 // except according to those terms.
 
 fn main() {
-let x = Some(box 1);
-match x {
-  Some(ref _y) => {
-    let _a = x; //~ ERROR cannot move
-  }
-  _ => {}
-}
+    let x = Some(box 1i);
+    match x {
+      Some(ref _y) => {
+        let _a = x; //~ ERROR cannot move
+      }
+      _ => {}
+    }
 }

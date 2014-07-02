@@ -23,7 +23,7 @@ use core::prelude::*;
 use collections::vec::Vec;
 
 /// One-time global initialization.
-pub unsafe fn init(argc: int, argv: **u8) { imp::init(argc, argv) }
+pub unsafe fn init(argc: int, argv: *const *const u8) { imp::init(argc, argv) }
 
 /// One-time global cleanup.
 pub unsafe fn cleanup() { imp::cleanup() }
@@ -55,7 +55,7 @@ mod imp {
     static mut global_args_ptr: uint = 0;
     static mut lock: StaticNativeMutex = NATIVE_MUTEX_INIT;
 
-    pub unsafe fn init(argc: int, argv: **u8) {
+    pub unsafe fn init(argc: int, argv: *const *const u8) {
         let args = load_argc_and_argv(argc, argv);
         put(args);
     }
@@ -99,7 +99,7 @@ mod imp {
         unsafe { mem::transmute(&global_args_ptr) }
     }
 
-    unsafe fn load_argc_and_argv(argc: int, argv: **u8) -> Vec<Vec<u8>> {
+    unsafe fn load_argc_and_argv(argc: int, argv: *const *const u8) -> Vec<Vec<u8>> {
         Vec::from_fn(argc as uint, |i| {
             let base = *argv.offset(i as int);
             let mut len = 0;
@@ -151,7 +151,7 @@ mod imp {
     use core::prelude::*;
     use collections::vec::Vec;
 
-    pub unsafe fn init(_argc: int, _argv: **u8) {
+    pub unsafe fn init(_argc: int, _argv: *const *const u8) {
     }
 
     pub fn cleanup() {

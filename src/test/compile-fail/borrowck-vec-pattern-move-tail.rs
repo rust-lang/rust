@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn main() {
-    let mut a = [1, 2, 3, 4];
+    let mut a = [1i, 2, 3, 4];
     let t = match a {
         [1, 2, ..tail] => tail,
         _ => unreachable!()

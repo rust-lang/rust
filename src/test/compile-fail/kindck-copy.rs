@@ -60,8 +60,8 @@ fn test<'a,T,U:Copy>(_: &'a int) {
     assert_copy::<||>(); //~ ERROR does not fulfill
 
     // unsafe ptrs are ok
-    assert_copy::<*int>();
-    assert_copy::<*&'a mut int>();
+    assert_copy::<*const int>();
+    assert_copy::<*const &'a mut int>();
 
     // regular old ints and such are ok
     assert_copy::<int>();

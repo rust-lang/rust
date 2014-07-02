@@ -8,6 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn f() { if (1 == fail!()) { } else { } }
+fn f() { if (1i == fail!()) { } else { } }
 
 fn main() { }

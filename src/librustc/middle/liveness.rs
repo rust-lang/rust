@@ -360,7 +360,8 @@ fn visit_fn(ir: &mut IrMaps,
     let mut fn_maps = IrMaps::new(ir.tcx);
 
     unsafe {
-        debug!("creating fn_maps: {}", transmute::<&IrMaps, *IrMaps>(&fn_maps));
+        debug!("creating fn_maps: {}",
+               transmute::<&IrMaps, *const IrMaps>(&fn_maps));
     }
 
     for arg in decl.inputs.iter() {
@@ -1510,7 +1511,7 @@ impl<'a> Liveness<'a> {
 
     fn should_warn(&self, var: Variable) -> Option<String> {
         let name = self.ir.variable_name(var);
-        if name.len() == 0 || name.as_slice()[0] == ('_' as u8) {
+        if name.len() == 0 || name.as_bytes()[0] == ('_' as u8) {
             None
         } else {
             Some(name)

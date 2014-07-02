@@ -21,7 +21,7 @@ impl Foo for Struct {}
 
 pub fn main() {
     match A(box Struct as Box<Foo>) {
-        A(_a) => 0,
+        A(_a) => 0i,
     };
 }
 

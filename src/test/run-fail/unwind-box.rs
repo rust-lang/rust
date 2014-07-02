@@ -19,6 +19,6 @@ fn failfn() {
 }
 
 fn main() {
-    box(GC) 0;
+    box(GC) 0i;
     failfn();
 }

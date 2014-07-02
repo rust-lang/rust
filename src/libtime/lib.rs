@@ -375,7 +375,7 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, String> {
     fn match_str(s: &str, pos: uint, needle: &str) -> bool {
         let mut i = pos;
         for ch in needle.bytes() {
-            if s[i] != ch {
+            if s.as_bytes()[i] != ch {
                 return false;
             }
             i += 1u;
@@ -1091,7 +1091,7 @@ mod tests {
         // `SetEnvironmentVariable`, which `os::setenv` internally uses.
         // It is why we use `putenv` here.
         extern {
-            fn _putenv(envstring: *libc::c_char) -> libc::c_int;
+            fn _putenv(envstring: *const libc::c_char) -> libc::c_int;
         }
 
         unsafe {

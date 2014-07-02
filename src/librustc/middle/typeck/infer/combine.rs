@@ -84,16 +84,13 @@ pub trait Combine {
     fn tys(&self, a: ty::t, b: ty::t) -> cres<ty::t>;
 
     fn tps(&self,
-           space: subst::ParamSpace,
+           _: subst::ParamSpace,
            as_: &[ty::t],
            bs: &[ty::t])
-           -> cres<Vec<ty::t>>
-    {
-        // FIXME(#5781) -- In general, we treat variance a bit wrong
-        // here. For historical reasons, we treat Self as
-        // contravariant and other tps as invariant. Both are wrong:
-        // Self may or may not be contravariant, and other tps do not
-        // need to be invariant.
+           -> cres<Vec<ty::t>> {
+        // FIXME -- In general, we treat variance a bit wrong
+        // here. For historical reasons, we treat tps and Self
+        // as invariant. This is overly conservative.
 
         if as_.len() != bs.len() {
             return Err(ty::terr_ty_param_size(expected_found(self,
@@ -101,24 +98,11 @@ pub trait Combine {
                                                              bs.len())));
         }
 
-        match space {
-            subst::SelfSpace => {
-                result::fold(as_
-                             .iter()
-                             .zip(bs.iter())
-                             .map(|(a, b)| self.contratys(*a, *b)),
-                             Vec::new(),
-                             |mut v, a| { v.push(a); v })
-            }
-
-            subst::TypeSpace | subst::FnSpace => {
-                try!(result::fold_(as_
-                                  .iter()
-                                  .zip(bs.iter())
-                                  .map(|(a, b)| eq_tys(self, *a, *b))));
-                Ok(Vec::from_slice(as_))
-            }
-        }
+        try!(result::fold_(as_
+                          .iter()
+                          .zip(bs.iter())
+                          .map(|(a, b)| eq_tys(self, *a, *b))));
+        Ok(Vec::from_slice(as_))
     }
 
     fn substs(&self,

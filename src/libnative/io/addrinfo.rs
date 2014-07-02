@@ -37,19 +37,21 @@ impl GetAddrInfoRequest {
                 ai_socktype: 0,
                 ai_protocol: 0,
                 ai_addrlen: 0,
-                ai_canonname: null(),
-                ai_addr: null(),
-                ai_next: null()
+                ai_canonname: mut_null(),
+                ai_addr: mut_null(),
+                ai_next: mut_null()
             }
         });
 
-        let hint_ptr = hint.as_ref().map_or(null(), |x| x as *libc::addrinfo);
+        let hint_ptr = hint.as_ref().map_or(null(), |x| {
+            x as *const libc::addrinfo
+        });
         let mut res = mut_null();
 
         // Make the call
         let s = unsafe {
-            let ch = if c_host.is_null() { null() } else { c_host.with_ref(|x| x) };
-            let cs = if c_serv.is_null() { null() } else { c_serv.with_ref(|x| x) };
+            let ch = if c_host.is_null() { null() } else { c_host.as_ptr() };
+            let cs = if c_serv.is_null() { null() } else { c_serv.as_ptr() };
             getaddrinfo(ch, cs, hint_ptr, &mut res)
         };
 
@@ -87,11 +89,12 @@ impl GetAddrInfoRequest {
 }
 
 extern "system" {
-    fn getaddrinfo(node: *c_char, service: *c_char,
-                   hints: *libc::addrinfo, res: *mut *mut libc::addrinfo) -> c_int;
+    fn getaddrinfo(node: *const c_char, service: *const c_char,
+                   hints: *const libc::addrinfo,
+                   res: *mut *mut libc::addrinfo) -> c_int;
     fn freeaddrinfo(res: *mut libc::addrinfo);
     #[cfg(not(windows))]
-    fn gai_strerror(errcode: c_int) -> *c_char;
+    fn gai_strerror(errcode: c_int) -> *const c_char;
 }
 
 #[cfg(windows)]

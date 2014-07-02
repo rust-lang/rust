@@ -28,7 +28,7 @@ fn test<T: Share>(s: T){
 }
 
 fn main() {
-    let us = Unsafe::new(MyShare{u: Unsafe::new(0)});
+    let us = Unsafe::new(MyShare{u: Unsafe::new(0i)});
     test(us);
 
     let uns = Unsafe::new(NoShare{m: marker::NoShare});

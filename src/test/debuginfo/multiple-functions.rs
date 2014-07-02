@@ -31,18 +31,18 @@
 #![allow(unused_variable)]
 
 fn function_one() {
-    let a = 10101;
+    let a = 10101i;
     zzz();
 }
 
 fn function_two() {
-    let b = 20202;
+    let b = 20202i;
     zzz();
 }
 
 
 fn function_three() {
-    let c = 30303;
+    let c = 30303i;
     zzz();
 }
 

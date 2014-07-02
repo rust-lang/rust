@@ -12,9 +12,9 @@ extern crate libc;
 
 extern {
     #[link_name = "malloc"]
-    fn malloc1(len: libc::c_int) -> *libc::c_void;
+    fn malloc1(len: libc::c_int) -> *const libc::c_void;
     #[link_name = "malloc"]
-    fn malloc2(len: libc::c_int, foo: libc::c_int) -> *libc::c_void;
+    fn malloc2(len: libc::c_int, foo: libc::c_int) -> *const libc::c_void;
 }
 
 pub fn main () {}

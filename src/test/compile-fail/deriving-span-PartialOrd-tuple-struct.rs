@@ -26,6 +26,7 @@ struct Struct(
 //~^^^^^ ERROR
 //~^^^^^^ ERROR
 //~^^^^^^^ ERROR
+//~^^^^^^^^ ERROR
 );
 
 fn main() {}

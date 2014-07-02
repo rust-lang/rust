@@ -13,7 +13,7 @@ mod a {
     pub mod rustrt {
         use super::rust_task;
         extern {
-            pub fn rust_task_is_unwinding(rt: *rust_task) -> bool;
+            pub fn rust_task_is_unwinding(rt: *const rust_task) -> bool;
         }
     }
 }
@@ -23,7 +23,7 @@ mod b {
     pub mod rustrt {
         use super::rust_task;
         extern {
-            pub fn rust_task_is_unwinding(rt: *rust_task) -> bool;
+            pub fn rust_task_is_unwinding(rt: *const rust_task) -> bool;
         }
     }
 }

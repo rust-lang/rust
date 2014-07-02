@@ -193,7 +193,8 @@ macro_rules! cmp_impl {
     };
 }
 cmp_impl!(impl PartialEq, eq, ne)
-cmp_impl!(impl PartialOrd, lt, gt, le, ge)
+cmp_impl!(impl PartialOrd, lt -> bool, gt -> bool, le -> bool, ge -> bool,
+          partial_cmp -> Option<cmp::Ordering>)
 cmp_impl!(impl Eq, )
 cmp_impl!(impl Ord, cmp -> cmp::Ordering)
 

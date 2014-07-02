@@ -20,7 +20,9 @@
 //! extern crate native;
 //!
 //! #[start]
-//! fn start(argc: int, argv: **u8) -> int { native::start(argc, argv, main) }
+//! fn start(argc: int, argv: *const *const u8) -> int {
+//!     native::start(argc, argv, main)
+//! }
 //!
 //! fn main() {
 //!     // this code is running on the main OS thread
@@ -55,7 +57,6 @@
 
 #![deny(unused_result, unused_must_use)]
 #![allow(non_camel_case_types, deprecated)]
-#![allow(unknown_features)] // NOTE: remove after a stage0 snap
 #![feature(default_type_params, lang_items)]
 
 // NB this crate explicitly does *not* allow glob imports, please seriously
@@ -84,7 +85,7 @@ static OS_DEFAULT_STACK_ESTIMATE: uint = 2 * (1 << 20);
 
 #[lang = "start"]
 #[cfg(not(test))]
-pub fn lang_start(main: *u8, argc: int, argv: **u8) -> int {
+pub fn lang_start(main: *const u8, argc: int, argv: *const *const u8) -> int {
     use std::mem;
     start(argc, argv, proc() {
         let main: extern "Rust" fn() = unsafe { mem::transmute(main) };
@@ -101,9 +102,9 @@ pub fn lang_start(main: *u8, argc: int, argv: **u8) -> int {
 ///
 /// This function will only return once *all* native threads in the system have
 /// exited.
-pub fn start(argc: int, argv: **u8, main: proc()) -> int {
+pub fn start(argc: int, argv: *const *const u8, main: proc()) -> int {
     let something_around_the_top_of_the_stack = 1;
-    let addr = &something_around_the_top_of_the_stack as *int;
+    let addr = &something_around_the_top_of_the_stack as *const int;
     let my_stack_top = addr as uint;
 
     // FIXME #11359 we just assume that this thread has a stack of a

@@ -55,15 +55,15 @@
 
 fn main() {
 
-    let range = [1, 2, 3];
+    let range = [1i, 2, 3];
 
-    let x = 1000000; // wan meeeljen doollaars!
+    let x = 1000000i; // wan meeeljen doollaars!
 
     for &x in range.iter() {
         zzz();
         sentinel();
 
-        let x = -1 * x;
+        let x = -1i * x;
 
         zzz();
         sentinel();

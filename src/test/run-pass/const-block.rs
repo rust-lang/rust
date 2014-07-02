@@ -13,7 +13,7 @@
 
 struct Foo {
     a: uint,
-    b: *()
+    b: *const ()
 }
 
 fn foo<T>(a: T) -> T {
@@ -25,7 +25,7 @@ static BLOCK_EXPLICIT_UNIT: () = { () };
 static BLOCK_IMPLICIT_UNIT: () = { };
 static BLOCK_FLOAT: f64 = { 1.0 };
 static BLOCK_ENUM: Option<uint> = { Some(100) };
-static BLOCK_STRUCT: Foo = { Foo { a: 12, b: 0 as *() } };
+static BLOCK_STRUCT: Foo = { Foo { a: 12, b: 0 as *const () } };
 static BLOCK_UNSAFE: uint = unsafe { 1000 };
 
 // FIXME: #13970
@@ -50,7 +50,7 @@ pub fn main() {
     assert_eq!(BLOCK_IMPLICIT_UNIT, ());
     assert_eq!(BLOCK_FLOAT, 1.0_f64);
     assert_eq!(BLOCK_STRUCT.a, 12);
-    assert_eq!(BLOCK_STRUCT.b, 0 as *());
+    assert_eq!(BLOCK_STRUCT.b, 0 as *const ());
     assert_eq!(BLOCK_ENUM, Some(100));
     assert_eq!(BLOCK_UNSAFE, 1000);
 

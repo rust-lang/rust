@@ -19,7 +19,7 @@ fn f() -> Vec<int> { fail!(); }
 // Voodoo. In unwind-alt we had to do this to trigger the bug. Might
 // have been to do with memory allocation patterns.
 fn prime() {
-    box(GC) 0;
+    box(GC) 0i;
 }
 
 fn partial() {

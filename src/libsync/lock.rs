@@ -158,7 +158,7 @@ impl<'a> Condvar<'a> {
 /// ```
 /// use sync::{Mutex, Arc};
 ///
-/// let mutex = Arc::new(Mutex::new(1));
+/// let mutex = Arc::new(Mutex::new(1i));
 /// let mutex2 = mutex.clone();
 ///
 /// spawn(proc() {
@@ -487,7 +487,7 @@ mod tests {
 
     #[test] #[should_fail]
     fn test_arc_condvar_poison() {
-        let arc = Arc::new(Mutex::new(1));
+        let arc = Arc::new(Mutex::new(1i));
         let arc2 = arc.clone();
         let (tx, rx) = channel();
 

@@ -1220,7 +1220,7 @@ pub fn init_function<'a>(fcx: &'a FunctionContext<'a>,
 //  - new_fn_ctxt
 //  - trans_args
 
-fn arg_kind(cx: &FunctionContext, t: ty::t) -> datum::Rvalue {
+pub fn arg_kind(cx: &FunctionContext, t: ty::t) -> datum::Rvalue {
     use middle::trans::datum::{ByRef, ByValue};
 
     datum::Rvalue {

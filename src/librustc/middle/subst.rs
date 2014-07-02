@@ -44,7 +44,7 @@ impl<T> HomogeneousTuple3<T> for (T, T, T) {
 
     fn as_slice<'a>(&'a self) -> &'a [T] {
         unsafe {
-            let ptr: *T = mem::transmute(self);
+            let ptr: *const T = mem::transmute(self);
             let slice = raw::Slice { data: ptr, len: 3 };
             mem::transmute(slice)
         }
@@ -52,7 +52,7 @@ impl<T> HomogeneousTuple3<T> for (T, T, T) {
 
     fn as_mut_slice<'a>(&'a mut self) -> &'a mut [T] {
         unsafe {
-            let ptr: *T = mem::transmute(self);
+            let ptr: *const T = mem::transmute(self);
             let slice = raw::Slice { data: ptr, len: 3 };
             mem::transmute(slice)
         }

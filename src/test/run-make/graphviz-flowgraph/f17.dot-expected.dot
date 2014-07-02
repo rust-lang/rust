@@ -1,12 +1,12 @@
 digraph block {
     N0[label="entry"];
     N1[label="exit"];
-    N2[label="expr 1"];
-    N3[label="expr 7"];
-    N4[label="expr 17"];
-    N5[label="expr [1, 7, 17]"];
+    N2[label="expr 1i"];
+    N3[label="expr 7i"];
+    N4[label="expr 17i"];
+    N5[label="expr [1i, 7i, 17i]"];
     N6[label="local _v"];
-    N7[label="block { let _v = [1, 7, 17]; }"];
+    N7[label="block { let _v = [1i, 7i, 17i]; }"];
     N0 -> N2;
     N2 -> N3;
     N3 -> N4;

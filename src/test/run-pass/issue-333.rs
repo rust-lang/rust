@@ -12,4 +12,4 @@ fn quux<T>(x: T) -> T { let f = id::<T>; return f(x); }
 
 fn id<T>(x: T) -> T { return x; }
 
-pub fn main() { assert!((quux(10) == 10)); }
+pub fn main() { assert!((quux(10i) == 10i)); }

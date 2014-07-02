@@ -19,5 +19,5 @@ macro_rules! vec [
 ]
 
 pub fn main() {
-    let my_vec = vec![1, 2, 3, 4, 5];
+    let my_vec = vec![1i, 2, 3, 4, 5];
 }

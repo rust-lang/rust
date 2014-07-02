@@ -11,14 +11,14 @@
 fn foo() -> int {
     let x: int;
 
-    while 1 != 2  {
+    while 1i != 2  {
         break;
         x = 0;
     }
 
     println!("{}", x); //~ ERROR use of possibly uninitialized variable: `x`
 
-    return 17;
+    return 17i;
 }
 
 fn main() { println!("{}", foo()); }

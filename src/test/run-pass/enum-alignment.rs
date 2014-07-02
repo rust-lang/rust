@@ -11,7 +11,7 @@
 use std::mem;
 
 fn addr_of<T>(ptr: &T) -> uint {
-    ptr as *T as uint
+    ptr as *const T as uint
 }
 
 fn is_aligned<T>(ptr: &T) -> bool {

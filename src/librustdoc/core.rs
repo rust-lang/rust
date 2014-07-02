@@ -10,7 +10,7 @@
 
 use rustc;
 use rustc::{driver, middle};
-use rustc::middle::privacy;
+use rustc::middle::{privacy, ty};
 use rustc::lint;
 
 use syntax::ast;
@@ -26,6 +26,7 @@ use visit_ast::RustdocVisitor;
 use clean;
 use clean::Clean;
 
+/// Are we generating documentation (`Typed`) or tests (`NotTyped`)?
 pub enum MaybeTyped {
     Typed(middle::ty::ctxt),
     NotTyped(driver::session::Session)
@@ -51,6 +52,18 @@ impl DocContext {
             Typed(ref tcx) => &tcx.sess,
             NotTyped(ref sess) => sess
         }
+    }
+
+    pub fn tcx_opt<'a>(&'a self) -> Option<&'a ty::ctxt> {
+        match self.maybe_typed {
+            Typed(ref tcx) => Some(tcx),
+            NotTyped(_) => None
+        }
+    }
+
+    pub fn tcx<'a>(&'a self) -> &'a ty::ctxt {
+        let tcx_opt = self.tcx_opt();
+        tcx_opt.expect("tcx not present")
     }
 }
 

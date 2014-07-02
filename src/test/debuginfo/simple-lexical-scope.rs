@@ -60,7 +60,7 @@ fn main() {
         zzz();
         sentinel();
 
-        let x = 10;
+        let x = 10i;
 
         zzz();
         sentinel();
@@ -69,7 +69,7 @@ fn main() {
             zzz();
             sentinel();
 
-            let x = 10.5;
+            let x = 10.5f64;
 
             zzz();
             sentinel();

@@ -15,8 +15,8 @@ fn a() { }
 fn b() { fail!(); }
 
 fn main() {
-    let _x = vec!(0);
+    let _x = vec!(0i);
     a();
-    let _y = vec!(0);
+    let _y = vec!(0i);
     b();
 }

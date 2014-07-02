@@ -95,6 +95,7 @@
 //! and `format!`, also available to all Rust code.
 
 #![crate_id = "std#0.11.0"]
+#![unstable]
 #![comment = "The Rust standard library"]
 #![license = "MIT/ASL2"]
 #![crate_type = "rlib"]
@@ -111,7 +112,6 @@
 #![no_std]
 
 #![allow(deprecated)]
-#![allow(unknown_features)] // NOTE: remove after stage0 snapshot
 #![deny(missing_doc)]
 
 // When testing libstd, bring in libuv as the I/O backend so tests can print
@@ -167,7 +167,6 @@ pub use core::option;
 pub use alloc::owned;
 pub use alloc::rc;
 
-pub use core_collections::hash;
 pub use core_collections::slice;
 pub use core_collections::str;
 pub use core_collections::string;
@@ -184,7 +183,7 @@ pub use core_sync::comm;
 //        threading mode than the default by reaching into the auto-generated
 //        '__test' module.
 #[cfg(test)] #[start]
-fn start(argc: int, argv: **u8) -> int {
+fn start(argc: int, argv: *const *const u8) -> int {
     green::start(argc, argv, rustuv::event_loop, __test::main)
 }
 
@@ -237,6 +236,7 @@ pub mod to_str;
 /* Common data structures */
 
 pub mod collections;
+pub mod hash;
 
 /* Tasks and communication */
 

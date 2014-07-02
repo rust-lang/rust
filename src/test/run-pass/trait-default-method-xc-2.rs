@@ -20,8 +20,8 @@ use aux2::{a_struct, welp};
 
 pub fn main () {
 
-    let a = a_struct { x: 0 };
-    let b = a_struct { x: 1 };
+    let a = a_struct { x: 0i };
+    let b = a_struct { x: 1i };
 
     assert_eq!(0i.g(), 10);
     assert_eq!(a.g(), 10);
@@ -30,5 +30,5 @@ pub fn main () {
     assert_eq!(b.h(), 11);
     assert_eq!(A::lurr(&a, &b), 21);
 
-    welp(&0);
+    welp(&0i);
 }

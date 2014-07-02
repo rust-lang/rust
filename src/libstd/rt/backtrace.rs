@@ -261,7 +261,8 @@ mod imp {
         use slice::{MutableVector};
 
         extern {
-            fn backtrace(buf: *mut *libc::c_void, sz: libc::c_int) -> libc::c_int;
+            fn backtrace(buf: *mut *const libc::c_void,
+                         sz: libc::c_int) -> libc::c_int;
         }
 
         // while it doesn't requires lock for work as everything is
@@ -273,7 +274,7 @@ mod imp {
         try!(writeln!(w, "stack backtrace:"));
         // 100 lines should be enough
         static SIZE: libc::c_int = 100;
-        let mut buf: [*libc::c_void, ..SIZE] = unsafe {mem::zeroed()};
+        let mut buf: [*const libc::c_void, ..SIZE] = unsafe {mem::zeroed()};
         let cnt = unsafe { backtrace(buf.as_mut_ptr(), SIZE) as uint};
 
         // skipping the first one as it is write itself
@@ -307,7 +308,7 @@ mod imp {
         let mut cx = Context { writer: w, last_error: None, idx: 0 };
         return match unsafe {
             uw::_Unwind_Backtrace(trace_fn,
-                                  &mut cx as *mut Context as *libc::c_void)
+                                  &mut cx as *mut Context as *mut libc::c_void)
         } {
             uw::_URC_NO_REASON => {
                 match cx.last_error {
@@ -318,10 +319,10 @@ mod imp {
             _ => Ok(()),
         };
 
-        extern fn trace_fn(ctx: *uw::_Unwind_Context,
-                           arg: *libc::c_void) -> uw::_Unwind_Reason_Code {
+        extern fn trace_fn(ctx: *mut uw::_Unwind_Context,
+                           arg: *mut libc::c_void) -> uw::_Unwind_Reason_Code {
             let cx: &mut Context = unsafe { mem::transmute(arg) };
-            let ip = unsafe { uw::_Unwind_GetIP(ctx) as *libc::c_void };
+            let ip = unsafe { uw::_Unwind_GetIP(ctx) as *mut libc::c_void };
             // dladdr() on osx gets whiny when we use FindEnclosingFunction, and
             // it appears to work fine without it, so we only use
             // FindEnclosingFunction on non-osx platforms. In doing so, we get a
@@ -365,22 +366,22 @@ mod imp {
 
     #[cfg(target_os = "macos")]
     #[cfg(target_os = "ios")]
-    fn print(w: &mut Writer, idx: int, addr: *libc::c_void) -> IoResult<()> {
+    fn print(w: &mut Writer, idx: int, addr: *mut libc::c_void) -> IoResult<()> {
         use intrinsics;
         #[repr(C)]
         struct Dl_info {
-            dli_fname: *libc::c_char,
-            dli_fbase: *libc::c_void,
-            dli_sname: *libc::c_char,
-            dli_saddr: *libc::c_void,
+            dli_fname: *const libc::c_char,
+            dli_fbase: *mut libc::c_void,
+            dli_sname: *const libc::c_char,
+            dli_saddr: *mut libc::c_void,
         }
         extern {
-            fn dladdr(addr: *libc::c_void,
+            fn dladdr(addr: *const libc::c_void,
                       info: *mut Dl_info) -> libc::c_int;
         }
 
         let mut info: Dl_info = unsafe { intrinsics::init() };
-        if unsafe { dladdr(addr, &mut info) == 0 } {
+        if unsafe { dladdr(addr as *const libc::c_void, &mut info) == 0 } {
             output(w, idx,addr, None)
         } else {
             output(w, idx, addr, Some(unsafe {
@@ -390,7 +391,7 @@ mod imp {
     }
 
     #[cfg(not(target_os = "macos"), not(target_os = "ios"))]
-    fn print(w: &mut Writer, idx: int, addr: *libc::c_void) -> IoResult<()> {
+    fn print(w: &mut Writer, idx: int, addr: *mut libc::c_void) -> IoResult<()> {
         use collections::Collection;
         use iter::Iterator;
         use os;
@@ -405,17 +406,17 @@ mod imp {
         type backtrace_syminfo_callback =
             extern "C" fn(data: *mut libc::c_void,
                           pc: libc::uintptr_t,
-                          symname: *libc::c_char,
+                          symname: *const libc::c_char,
                           symval: libc::uintptr_t,
                           symsize: libc::uintptr_t);
         type backtrace_error_callback =
             extern "C" fn(data: *mut libc::c_void,
-                          msg: *libc::c_char,
+                          msg: *const libc::c_char,
                           errnum: libc::c_int);
         enum backtrace_state {}
         #[link(name = "backtrace", kind = "static")]
         extern {
-            fn backtrace_create_state(filename: *libc::c_char,
+            fn backtrace_create_state(filename: *const libc::c_char,
                                       threaded: libc::c_int,
                                       error: backtrace_error_callback,
                                       data: *mut libc::c_void)
@@ -431,16 +432,16 @@ mod imp {
         // helper callbacks
         ////////////////////////////////////////////////////////////////////////
 
-        extern fn error_cb(_data: *mut libc::c_void, _msg: *libc::c_char,
+        extern fn error_cb(_data: *mut libc::c_void, _msg: *const libc::c_char,
                            _errnum: libc::c_int) {
             // do nothing for now
         }
         extern fn syminfo_cb(data: *mut libc::c_void,
                              _pc: libc::uintptr_t,
-                             symname: *libc::c_char,
+                             symname: *const libc::c_char,
                              _symval: libc::uintptr_t,
                              _symsize: libc::uintptr_t) {
-            let slot = data as *mut *libc::c_char;
+            let slot = data as *mut *const libc::c_char;
             unsafe { *slot = symname; }
         }
 
@@ -502,8 +503,8 @@ mod imp {
         if state.is_null() {
             return output(w, idx, addr, None)
         }
-        let mut data = 0 as *libc::c_char;
-        let data_addr = &mut data as *mut *libc::c_char;
+        let mut data = 0 as *const libc::c_char;
+        let data_addr = &mut data as *mut *const libc::c_char;
         let ret = unsafe {
             backtrace_syminfo(state, addr as libc::uintptr_t,
                               syminfo_cb, error_cb,
@@ -517,7 +518,7 @@ mod imp {
     }
 
     // Finally, after all that work above, we can emit a symbol.
-    fn output(w: &mut Writer, idx: int, addr: *libc::c_void,
+    fn output(w: &mut Writer, idx: int, addr: *mut libc::c_void,
               s: Option<CString>) -> IoResult<()> {
         try!(write!(w, "  {:2}: {:2$} - ", idx, addr, super::HEX_WIDTH));
         match s.as_ref().and_then(|c| c.as_str()) {
@@ -557,23 +558,23 @@ mod imp {
         pub enum _Unwind_Context {}
 
         pub type _Unwind_Trace_Fn =
-                extern fn(ctx: *_Unwind_Context,
-                          arg: *libc::c_void) -> _Unwind_Reason_Code;
+                extern fn(ctx: *mut _Unwind_Context,
+                          arg: *mut libc::c_void) -> _Unwind_Reason_Code;
 
         extern {
             // No native _Unwind_Backtrace on iOS
             #[cfg(not(target_os = "ios", target_arch = "arm"))]
             pub fn _Unwind_Backtrace(trace: _Unwind_Trace_Fn,
-                                     trace_argument: *libc::c_void)
+                                     trace_argument: *mut libc::c_void)
                         -> _Unwind_Reason_Code;
 
             #[cfg(not(target_os = "android"),
                   not(target_os = "linux", target_arch = "arm"))]
-            pub fn _Unwind_GetIP(ctx: *_Unwind_Context) -> libc::uintptr_t;
+            pub fn _Unwind_GetIP(ctx: *mut _Unwind_Context) -> libc::uintptr_t;
             #[cfg(not(target_os = "android"),
                   not(target_os = "linux", target_arch = "arm"))]
-            pub fn _Unwind_FindEnclosingFunction(pc: *libc::c_void)
-                -> *libc::c_void;
+            pub fn _Unwind_FindEnclosingFunction(pc: *mut libc::c_void)
+                -> *mut libc::c_void;
         }
 
         // On android, the function _Unwind_GetIP is a macro, and this is the
@@ -581,7 +582,7 @@ mod imp {
         // header file with the definition of _Unwind_GetIP.
         #[cfg(target_os = "android")]
         #[cfg(target_os = "linux", target_arch = "arm")]
-        pub unsafe fn _Unwind_GetIP(ctx: *_Unwind_Context) -> libc::uintptr_t {
+        pub unsafe fn _Unwind_GetIP(ctx: *mut _Unwind_Context) -> libc::uintptr_t {
             #[repr(C)]
             enum _Unwind_VRS_Result {
                 _UVRSR_OK = 0,
@@ -608,7 +609,7 @@ mod imp {
 
             type _Unwind_Word = libc::c_uint;
             extern {
-                fn _Unwind_VRS_Get(ctx: *_Unwind_Context,
+                fn _Unwind_VRS_Get(ctx: *mut _Unwind_Context,
                                    klass: _Unwind_VRS_RegClass,
                                    word: _Unwind_Word,
                                    repr: _Unwind_VRS_DataRepresentation,
@@ -627,8 +628,8 @@ mod imp {
         // a no-op
         #[cfg(target_os = "android")]
         #[cfg(target_os = "linux", target_arch = "arm")]
-        pub unsafe fn _Unwind_FindEnclosingFunction(pc: *libc::c_void)
-            -> *libc::c_void
+        pub unsafe fn _Unwind_FindEnclosingFunction(pc: *mut libc::c_void)
+            -> *mut libc::c_void
         {
             pc
         }
@@ -677,7 +678,7 @@ mod imp {
         extern "system" fn(libc::HANDLE, u64, *mut u64,
                            *mut SYMBOL_INFO) -> libc::BOOL;
     type SymInitializeFn =
-        extern "system" fn(libc::HANDLE, *libc::c_void,
+        extern "system" fn(libc::HANDLE, *mut libc::c_void,
                            libc::BOOL) -> libc::BOOL;
     type SymCleanupFn =
         extern "system" fn(libc::HANDLE) -> libc::BOOL;
@@ -685,8 +686,8 @@ mod imp {
     type StackWalk64Fn =
         extern "system" fn(libc::DWORD, libc::HANDLE, libc::HANDLE,
                            *mut STACKFRAME64, *mut arch::CONTEXT,
-                           *libc::c_void, *libc::c_void,
-                           *libc::c_void, *libc::c_void) -> libc::BOOL;
+                           *mut libc::c_void, *mut libc::c_void,
+                           *mut libc::c_void, *mut libc::c_void) -> libc::BOOL;
 
     static MAX_SYM_NAME: uint = 2000;
     static IMAGE_FILE_MACHINE_I386: libc::DWORD = 0x014c;
@@ -735,7 +736,7 @@ mod imp {
         AddrFrame: ADDRESS64,
         AddrStack: ADDRESS64,
         AddrBStore: ADDRESS64,
-        FuncTableEntry: *libc::c_void,
+        FuncTableEntry: *mut libc::c_void,
         Params: [u64, ..4],
         Far: libc::BOOL,
         Virtual: libc::BOOL,
@@ -924,7 +925,7 @@ mod imp {
 
         macro_rules! sym( ($e:expr, $t:ident) => (unsafe {
             match lib.symbol($e) {
-                Ok(f) => mem::transmute::<*u8, $t>(f),
+                Ok(f) => mem::transmute::<*mut u8, $t>(f),
                 Err(..) => return Ok(())
             }
         }) )
@@ -944,7 +945,7 @@ mod imp {
         let image = arch::init_frame(&mut frame, &context);
 
         // Initialize this process's symbols
-        let ret = SymInitialize(process, 0 as *libc::c_void, libc::TRUE);
+        let ret = SymInitialize(process, 0 as *mut libc::c_void, libc::TRUE);
         if ret != libc::TRUE { return Ok(()) }
         let _c = Cleanup { handle: process, SymCleanup: SymCleanup };
 
@@ -952,8 +953,10 @@ mod imp {
         let mut i = 0i;
         try!(write!(w, "stack backtrace:\n"));
         while StackWalk64(image, process, thread, &mut frame, &mut context,
-                          0 as *libc::c_void, 0 as *libc::c_void,
-                          0 as *libc::c_void, 0 as *libc::c_void) == libc::TRUE{
+                          0 as *mut libc::c_void,
+                          0 as *mut libc::c_void,
+                          0 as *mut libc::c_void,
+                          0 as *mut libc::c_void) == libc::TRUE{
             let addr = frame.AddrPC.Offset;
             if addr == frame.AddrReturn.Offset || addr == 0 ||
                frame.AddrReturn.Offset == 0 { break }

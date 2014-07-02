@@ -16,6 +16,6 @@ fn main() {
     fn f(_: proc()) {}
     fn eat<T>(_: T) {}
 
-    let x = box(GC) 1;
+    let x = box(GC) 1i;
     f(proc() { eat(x) });
 }

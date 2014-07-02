@@ -30,7 +30,7 @@ use middle::def::*;
 use middle::trans::adt; // for `adt::is_ffi_safe`
 use middle::typeck::astconv::ast_ty_to_ty;
 use middle::typeck::infer;
-use middle::{typeck, ty, def, pat_util};
+use middle::{typeck, ty, def, pat_util, stability};
 use util::ppaux::{ty_to_str};
 use util::nodemap::NodeSet;
 use lint::{Context, LintPass, LintArray};
@@ -391,8 +391,8 @@ pub struct HeapMemory;
 
 impl HeapMemory {
     fn check_heap_type(&self, cx: &Context, span: Span, ty: ty::t) {
-        let mut n_box = 0;
-        let mut n_uniq = 0;
+        let mut n_box = 0i;
+        let mut n_uniq = 0i;
         ty::fold_ty(cx.tcx, ty, |t| {
             match ty::get(t).sty {
                 ty::ty_box(_) => {
@@ -975,13 +975,51 @@ declare_lint!(UNNECESSARY_PARENS, Warn,
 pub struct UnnecessaryParens;
 
 impl UnnecessaryParens {
-    fn check_unnecessary_parens_core(&self, cx: &Context, value: &ast::Expr, msg: &str) {
+    fn check_unnecessary_parens_core(&self, cx: &Context, value: &ast::Expr, msg: &str,
+                                     struct_lit_needs_parens: bool) {
         match value.node {
-            ast::ExprParen(_) => {
-                cx.span_lint(UNNECESSARY_PARENS, value.span,
-                    format!("unnecessary parentheses around {}", msg).as_slice())
+            ast::ExprParen(ref inner) => {
+                let necessary = struct_lit_needs_parens && contains_exterior_struct_lit(&**inner);
+                if !necessary {
+                    cx.span_lint(UNNECESSARY_PARENS, value.span,
+                                 format!("unnecessary parentheses around {}",
+                                         msg).as_slice())
+                }
             }
             _ => {}
+        }
+
+        /// Expressions that syntatically contain an "exterior" struct
+        /// literal i.e. not surrounded by any parens or other
+        /// delimiters, e.g. `X { y: 1 }`, `X { y: 1 }.method()`, `foo
+        /// == X { y: 1 }` and `X { y: 1 } == foo` all do, but `(X {
+        /// y: 1 }) == foo` does not.
+        fn contains_exterior_struct_lit(value: &ast::Expr) -> bool {
+            match value.node {
+                ast::ExprStruct(..) => true,
+
+                ast::ExprAssign(ref lhs, ref rhs) |
+                ast::ExprAssignOp(_, ref lhs, ref rhs) |
+                ast::ExprBinary(_, ref lhs, ref rhs) => {
+                    // X { y: 1 } + X { y: 2 }
+                    contains_exterior_struct_lit(&**lhs) ||
+                        contains_exterior_struct_lit(&**rhs)
+                }
+                ast::ExprUnary(_, ref x) |
+                ast::ExprCast(ref x, _) |
+                ast::ExprField(ref x, _, _) |
+                ast::ExprIndex(ref x, _) => {
+                    // &X { y: 1 }, X { y: 1 }.y
+                    contains_exterior_struct_lit(&**x)
+                }
+
+                ast::ExprMethodCall(_, _, ref exprs) => {
+                    // X { y: 1 }.bar(...)
+                    contains_exterior_struct_lit(&**exprs.get(0))
+                }
+
+                _ => false
+            }
         }
     }
 }
@@ -992,16 +1030,16 @@ impl LintPass for UnnecessaryParens {
     }
 
     fn check_expr(&mut self, cx: &Context, e: &ast::Expr) {
-        let (value, msg) = match e.node {
-            ast::ExprIf(cond, _, _) => (cond, "`if` condition"),
-            ast::ExprWhile(cond, _) => (cond, "`while` condition"),
-            ast::ExprMatch(head, _) => (head, "`match` head expression"),
-            ast::ExprRet(Some(value)) => (value, "`return` value"),
-            ast::ExprAssign(_, value) => (value, "assigned value"),
-            ast::ExprAssignOp(_, _, value) => (value, "assigned value"),
+        let (value, msg, struct_lit_needs_parens) = match e.node {
+            ast::ExprIf(cond, _, _) => (cond, "`if` condition", true),
+            ast::ExprWhile(cond, _) => (cond, "`while` condition", true),
+            ast::ExprMatch(head, _) => (head, "`match` head expression", true),
+            ast::ExprRet(Some(value)) => (value, "`return` value", false),
+            ast::ExprAssign(_, value) => (value, "assigned value", false),
+            ast::ExprAssignOp(_, _, value) => (value, "assigned value", false),
             _ => return
         };
-        self.check_unnecessary_parens_core(cx, &*value, msg);
+        self.check_unnecessary_parens_core(cx, &*value, msg, struct_lit_needs_parens);
     }
 
     fn check_stmt(&mut self, cx: &Context, s: &ast::Stmt) {
@@ -1015,7 +1053,7 @@ impl LintPass for UnnecessaryParens {
             },
             _ => return
         };
-        self.check_unnecessary_parens_core(cx, &*value, msg);
+        self.check_unnecessary_parens_core(cx, &*value, msg, false);
     }
 }
 
@@ -1388,11 +1426,7 @@ impl LintPass for Stability {
                     Some(method) => {
                         match method.origin {
                             typeck::MethodStatic(def_id) => {
-                                // If this implements a trait method, get def_id
-                                // of the method inside trait definition.
-                                // Otherwise, use the current def_id (which refers
-                                // to the method inside impl).
-                                ty::trait_method_of_method(cx.tcx, def_id).unwrap_or(def_id)
+                                def_id
                             }
                             typeck::MethodParam(typeck::MethodParam {
                                 trait_id: trait_id,
@@ -1416,8 +1450,7 @@ impl LintPass for Stability {
         // check anything for crate-local usage.
         if ast_util::is_local(id) { return }
 
-        let stability = cx.tcx.stability.borrow_mut().lookup(&cx.tcx.sess.cstore, id);
-
+        let stability = stability::lookup(cx.tcx, id);
         let (lint, label) = match stability {
             // no stability attributes == Unstable
             None => (UNSTABLE, "unmarked"),

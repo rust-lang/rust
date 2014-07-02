@@ -143,7 +143,7 @@ impl<T> AtomicOption<T> {
     /// Remove the value, leaving the `AtomicOption` empty.
     #[inline]
     pub fn take(&self, order: Ordering) -> Option<Box<T>> {
-        unsafe { self.swap(mem::transmute(0), order) }
+        unsafe { self.swap(mem::transmute(0u), order) }
     }
 
     /// Replace an empty value with a non-empty value.
@@ -155,7 +155,7 @@ impl<T> AtomicOption<T> {
     pub fn fill(&self, val: Box<T>, order: Ordering) -> Option<Box<T>> {
         unsafe {
             let val = mem::transmute(val);
-            let expected = mem::transmute(0);
+            let expected = mem::transmute(0u);
             let oldval = self.p.compare_and_swap(expected, val, order);
             if oldval == expected {
                 None

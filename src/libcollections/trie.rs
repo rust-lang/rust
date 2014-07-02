@@ -189,7 +189,9 @@ macro_rules! bound {
             // We like sharing code so much that even a little unsafe won't
             // stop us.
             let this = $this;
-            let mut node = addr!(& $($mut_)* this.root as * $($mut_)* TrieNode<T>);
+            let mut node = unsafe {
+                mem::transmute::<_, uint>(&this.root) as *mut TrieNode<T>
+            };
 
             let key = $key;
 
@@ -205,7 +207,10 @@ macro_rules! bound {
                     let child_id = chunk(key, it.length);
                     let (slice_idx, ret) = match children[child_id] {
                         Internal(ref $($mut_)* n) => {
-                            node = addr!(& $($mut_)* **n as * $($mut_)* TrieNode<T>);
+                            node = unsafe {
+                                mem::transmute::<_, uint>(&**n)
+                                    as *mut TrieNode<T>
+                            };
                             (child_id + 1, false)
                         }
                         External(stored, _) => {

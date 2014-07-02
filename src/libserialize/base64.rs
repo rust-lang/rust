@@ -208,7 +208,7 @@ impl<'a> FromBase64 for &'a str {
     fn from_base64(&self) -> Result<Vec<u8>, FromBase64Error> {
         let mut r = Vec::new();
         let mut buf: u32 = 0;
-        let mut modulus = 0;
+        let mut modulus = 0i;
 
         let mut it = self.bytes().enumerate();
         for (idx, byte) in it {

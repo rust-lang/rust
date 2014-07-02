@@ -15,9 +15,9 @@
 use std::gc::GC;
 
 fn main() {
-    let _a = box(GC) 0;
+    let _a = box(GC) 0i;
     {
-        let _b = box(GC) 0;
+        let _b = box(GC) 0i;
         {
             fail!();
         }

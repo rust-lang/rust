@@ -1051,7 +1051,7 @@ mod test {
         let initial_msg =   "food-is-yummy";
         let overwrite_msg =    "-the-bar!!";
         let final_msg =     "foo-the-bar!!";
-        let seek_idx = 3;
+        let seek_idx = 3i;
         let mut read_mem = [0, .. 13];
         let tmpdir = tmpdir();
         let filename = &tmpdir.join("file_rt_io_file_test_seek_and_write.txt");
@@ -1206,8 +1206,8 @@ mod test {
         let mut cur = [0u8, .. 2];
         for f in files {
             let stem = f.filestem_str().unwrap();
-            let root = stem[0] - ('0' as u8);
-            let name = stem[1] - ('0' as u8);
+            let root = stem.as_bytes()[0] - ('0' as u8);
+            let name = stem.as_bytes()[1] - ('0' as u8);
             assert!(cur[root as uint] < name);
             cur[root as uint] = name;
         }

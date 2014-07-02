@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn main() {
-    let x = box 1;
+    let x = box 1i;
     let f: proc() = proc() {
         let _a = x;
         drop(x);

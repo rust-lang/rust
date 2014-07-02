@@ -19,7 +19,7 @@ mod foo {
 }
 
 fn bar() -> int {
-    match 0 {
-      _ => { 0 }
+    match 0i {
+      _ => { 0i }
     }
 }

@@ -1,18 +1,18 @@
 digraph block {
     N0[label="entry"];
     N1[label="exit"];
-    N2[label="expr 10"];
+    N2[label="expr 10i"];
     N3[label="local mut x"];
     N4[label="(dummy_node)"];
     N5[label="expr x"];
-    N6[label="expr 0"];
-    N7[label="expr x > 0"];
-    N8[label="expr while x > 0 { x -= 1; }"];
-    N9[label="expr 1"];
+    N6[label="expr 0i"];
+    N7[label="expr x > 0i"];
+    N8[label="expr while x > 0i { x -= 1i; }"];
+    N9[label="expr 1i"];
     N10[label="expr x"];
-    N11[label="expr x -= 1"];
-    N12[label="block { x -= 1; }"];
-    N13[label="block { let mut x = 10; while x > 0 { x -= 1; } }"];
+    N11[label="expr x -= 1i"];
+    N12[label="block { x -= 1i; }"];
+    N13[label="block { let mut x = 10i; while x > 0i { x -= 1i; } }"];
     N0 -> N2;
     N2 -> N3;
     N3 -> N4;

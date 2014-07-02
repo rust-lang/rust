@@ -10,7 +10,7 @@
 
 #![feature(macro_rules)]
 
-static A: uint = { 1; 2 };
+static A: uint = { 1u; 2 };
 //~^ ERROR: blocks in constants are limited to items and tail expressions
 
 static B: uint = { { } 2 };
@@ -21,7 +21,7 @@ macro_rules! foo {
 }
 static C: uint = { foo!() 2 };
 
-static D: uint = { let x = 4; 2 };
+static D: uint = { let x = 4u; 2 };
 //~^ ERROR: blocks in constants are limited to items and tail expressions
 
 pub fn main() {
