@@ -3243,7 +3243,7 @@ impl<'a> Parser<'a> {
                 None      => {
                     // we only expect an ident if we didn't parse one
                     // above.
-                    let ident_str = if id == token::special_idents::invalid {
+                    let ident_str = if id.name == token::special_idents::invalid.name {
                         "identifier, "
                     } else {
                         ""
@@ -3263,7 +3263,7 @@ impl<'a> Parser<'a> {
             );
             let hi = self.span.hi;
 
-            if id == token::special_idents::invalid {
+            if id.name == token::special_idents::invalid.name {
                 return box(GC) spanned(lo, hi, StmtMac(
                     spanned(lo, hi, MacInvocTT(pth, tts, EMPTY_CTXT)), false));
             } else {
