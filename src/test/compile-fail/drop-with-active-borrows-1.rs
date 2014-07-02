@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,14 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![experimental]
-#![macro_escape]
-#![doc(hidden)]
+fn main() {
+    let a = "".to_string();
+    let b: Vec<&str> = a.as_slice().lines().collect();
+    drop(a);    //~ ERROR cannot move out of `a` because it is borrowed
+    for s in b.iter() {
+        println!("{}", *s);
+    }
+}
 
-macro_rules! assert_approx_eq(
-    ($a:expr, $b:expr) => ({
-        let (a, b) = (&$a, &$b);
-        assert!((*a - *b).abs() < 1.0e-6,
-                "{} is not approximately equal to {}", *a, *b);
-    })
-)

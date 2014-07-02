@@ -540,7 +540,7 @@ impl rtio::RtioSocket for UdpWatcher {
 }
 
 impl rtio::RtioUdpSocket for UdpWatcher {
-    fn recvfrom(&mut self, buf: &mut [u8])
+    fn recv_from(&mut self, buf: &mut [u8])
         -> Result<(uint, rtio::SocketAddr), IoError>
     {
         let loop_ = self.uv_loop();
@@ -607,7 +607,7 @@ impl rtio::RtioUdpSocket for UdpWatcher {
         }
     }
 
-    fn sendto(&mut self, buf: &[u8], dst: rtio::SocketAddr) -> Result<(), IoError> {
+    fn send_to(&mut self, buf: &[u8], dst: rtio::SocketAddr) -> Result<(), IoError> {
         let m = self.fire_homing_missile();
         let loop_ = self.uv_loop();
         let guard = try!(self.write_access.grant(m));
@@ -960,7 +960,7 @@ mod test {
                 Ok(mut w) => {
                     tx.send(());
                     let mut buf = [0u8, ..10];
-                    match w.recvfrom(buf) {
+                    match w.recv_from(buf) {
                         Ok((10, addr)) => assert!(addr == client),
                         e => fail!("{:?}", e),
                     }
@@ -976,7 +976,7 @@ mod test {
         let mut w = match UdpWatcher::bind(local_loop(), client) {
             Ok(w) => w, Err(e) => fail!("{:?}", e)
         };
-        match w.sendto([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], server) {
+        match w.send_to([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], server) {
             Ok(()) => {}, Err(e) => fail!("{:?}", e)
         }
     }
@@ -992,7 +992,7 @@ mod test {
                 Ok(mut w) => {
                     tx.send(());
                     let mut buf = [0u8, ..10];
-                    match w.recvfrom(buf) {
+                    match w.recv_from(buf) {
                         Ok((10, addr)) => assert!(addr == client),
                         e => fail!("{:?}", e),
                     }
@@ -1008,7 +1008,7 @@ mod test {
         let mut w = match UdpWatcher::bind(local_loop(), client) {
             Ok(w) => w, Err(e) => fail!("{:?}", e)
         };
-        match w.sendto([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], server) {
+        match w.send_to([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], server) {
             Ok(()) => {}, Err(e) => fail!("{:?}", e)
         }
     }
@@ -1057,16 +1057,16 @@ mod test {
         spawn(proc() {
             let mut client = UdpWatcher::bind(local_loop(), client_addr).unwrap();
             rx.recv();
-            assert!(client.sendto([1], server_addr).is_ok());
-            assert!(client.sendto([2], server_addr).is_ok());
+            assert!(client.send_to([1], server_addr).is_ok());
+            assert!(client.send_to([2], server_addr).is_ok());
         });
 
         let mut server = UdpWatcher::bind(local_loop(), server_addr).unwrap();
         tx.send(());
         let mut buf1 = [0];
         let mut buf2 = [0];
-        let (nread1, src1) = server.recvfrom(buf1).ok().unwrap();
-        let (nread2, src2) = server.recvfrom(buf2).ok().unwrap();
+        let (nread1, src1) = server.recv_from(buf1).ok().unwrap();
+        let (nread2, src2) = server.recv_from(buf2).ok().unwrap();
         assert_eq!(nread1, 1);
         assert_eq!(nread2, 1);
         assert!(src1 == client_addr);
@@ -1098,10 +1098,10 @@ mod test {
             let mut buf = [1];
             while buf[0] == 1 {
                 // send more data
-                assert!(server_out.sendto(msg, client_in_addr).is_ok());
+                assert!(server_out.send_to(msg, client_in_addr).is_ok());
                 total_bytes_sent += msg.len();
                 // check if the client has received enough
-                let res = server_in.recvfrom(buf);
+                let res = server_in.recv_from(buf);
                 assert!(res.is_ok());
                 let (nread, src) = res.ok().unwrap();
                 assert_eq!(nread, 1);
@@ -1120,9 +1120,9 @@ mod test {
         let mut buf = [0, .. 2048];
         while total_bytes_recv < MAX {
             // ask for more
-            assert!(client_out.sendto([1], server_in_addr).is_ok());
+            assert!(client_out.send_to([1], server_in_addr).is_ok());
             // wait for data
-            let res = client_in.recvfrom(buf);
+            let res = client_in.recv_from(buf);
             assert!(res.is_ok());
             let (nread, src) = res.ok().unwrap();
             assert!(src == server_out_addr);
@@ -1132,7 +1132,7 @@ mod test {
             }
         }
         // tell the server we're done
-        assert!(client_out.sendto([0], server_in_addr).is_ok());
+        assert!(client_out.send_to([0], server_in_addr).is_ok());
     }
 
     #[test]

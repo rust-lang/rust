@@ -181,7 +181,7 @@ fn item_sized(item: ebml::Doc) -> ast::Sized {
 fn item_method_sort(item: ebml::Doc) -> char {
     let mut ret = 'r';
     reader::tagged_docs(item, tag_item_trait_method_sort, |doc| {
-        ret = doc.as_str_slice()[0] as char;
+        ret = doc.as_str_slice().as_bytes()[0] as char;
         false
     });
     ret
@@ -757,13 +757,13 @@ fn get_explicit_self(item: ebml::Doc) -> ast::ExplicitSelf_ {
     let explicit_self_doc = reader::get_doc(item, tag_item_trait_method_explicit_self);
     let string = explicit_self_doc.as_str_slice();
 
-    let explicit_self_kind = string[0];
+    let explicit_self_kind = string.as_bytes()[0];
     match explicit_self_kind as char {
         's' => ast::SelfStatic,
         'v' => ast::SelfValue,
         '~' => ast::SelfUniq,
         // FIXME(#4846) expl. region
-        '&' => ast::SelfRegion(None, get_mutability(string[1])),
+        '&' => ast::SelfRegion(None, get_mutability(string.as_bytes()[1])),
         _ => fail!("unknown self type code: `{}`", explicit_self_kind as char)
     }
 }

@@ -95,6 +95,7 @@
 //! and `format!`, also available to all Rust code.
 
 #![crate_id = "std#0.11.0-pre"]
+#![unstable]
 #![comment = "The Rust standard library"]
 #![license = "MIT/ASL2"]
 #![crate_type = "rlib"]
@@ -166,7 +167,6 @@ pub use core::option;
 pub use alloc::owned;
 pub use alloc::rc;
 
-pub use core_collections::hash;
 pub use core_collections::slice;
 pub use core_collections::str;
 pub use core_collections::string;
@@ -236,6 +236,7 @@ pub mod to_str;
 /* Common data structures */
 
 pub mod collections;
+pub mod hash;
 
 /* Tasks and communication */
 

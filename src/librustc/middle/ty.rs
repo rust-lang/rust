@@ -1533,11 +1533,23 @@ pub fn type_is_self(ty: t) -> bool {
     }
 }
 
-fn type_is_slice(ty:t) -> bool {
+fn type_is_slice(ty: t) -> bool {
     match get(ty).sty {
         ty_rptr(_, mt) => match get(mt.ty).sty {
             ty_vec(_, None) | ty_str => true,
             _ => false,
+        },
+        _ => false
+    }
+}
+
+pub fn type_is_vec(ty: t) -> bool {
+    match get(ty).sty {
+        ty_vec(..) => true,
+        ty_ptr(mt{ty: t, ..}) | ty_rptr(_, mt{ty: t, ..}) |
+        ty_box(t) | ty_uniq(t) => match get(t).sty {
+            ty_vec(_, None) => true,
+            _ => false
         },
         _ => false
     }
@@ -1560,7 +1572,7 @@ pub fn type_is_simd(cx: &ctxt, ty: t) -> bool {
 
 pub fn sequence_element_type(cx: &ctxt, ty: t) -> t {
     match get(ty).sty {
-        ty_vec(mt, Some(_)) => mt.ty,
+        ty_vec(mt, _) => mt.ty,
         ty_ptr(mt{ty: t, ..}) | ty_rptr(_, mt{ty: t, ..}) |
         ty_box(t) | ty_uniq(t) => match get(t).sty {
             ty_vec(mt, None) => mt.ty,
@@ -2551,6 +2563,21 @@ pub fn deref(t: t, explicit: bool) -> Option<mt> {
 
 // Returns the type of t[i]
 pub fn index(t: t) -> Option<mt> {
+    match get(t).sty {
+        ty_vec(mt, Some(_)) => Some(mt),
+        ty_ptr(mt{ty: t, ..}) | ty_rptr(_, mt{ty: t, ..}) |
+        ty_box(t) | ty_uniq(t) => match get(t).sty {
+            ty_vec(mt, None) => Some(mt),
+            _ => None,
+        },
+        _ => None
+    }
+}
+
+// Returns the type of elements contained within an 'array-like' type.
+// This is exactly the same as the above, except it supports strings,
+// which can't actually be indexed.
+pub fn array_element_ty(t: t) -> Option<mt> {
     match get(t).sty {
         ty_vec(mt, Some(_)) => Some(mt),
         ty_ptr(mt{ty: t, ..}) | ty_rptr(_, mt{ty: t, ..}) |

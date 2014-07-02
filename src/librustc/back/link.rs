@@ -657,8 +657,8 @@ pub fn sanitize(s: &str) -> String {
 
     // Underscore-qualify anything that didn't start as an ident.
     if result.len() > 0u &&
-        result.as_slice()[0] != '_' as u8 &&
-        ! char::is_XID_start(result.as_slice()[0] as char) {
+        result.as_bytes()[0] != '_' as u8 &&
+        ! char::is_XID_start(result.as_bytes()[0] as char) {
         return format!("_{}", result.as_slice());
     }
 
@@ -737,9 +737,9 @@ pub fn mangle_exported_name(ccx: &CrateContext, path: PathElems,
     let extra2 = id % EXTRA_CHARS.len();
     let id = id / EXTRA_CHARS.len();
     let extra3 = id % EXTRA_CHARS.len();
-    hash.push_char(EXTRA_CHARS[extra1] as char);
-    hash.push_char(EXTRA_CHARS[extra2] as char);
-    hash.push_char(EXTRA_CHARS[extra3] as char);
+    hash.push_char(EXTRA_CHARS.as_bytes()[extra1] as char);
+    hash.push_char(EXTRA_CHARS.as_bytes()[extra2] as char);
+    hash.push_char(EXTRA_CHARS.as_bytes()[extra3] as char);
 
     exported_name(path,
                   hash.as_slice(),
