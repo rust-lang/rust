@@ -1079,7 +1079,7 @@ pub enum Primitive {
     F32, F64,
     Char,
     Bool,
-    Nil,
+    Unit,
     Str,
     Slice,
     PrimitiveTuple,
@@ -1110,7 +1110,7 @@ impl Primitive {
             "u32" => Some(U32),
             "u64" => Some(U64),
             "bool" => Some(Bool),
-            "nil" => Some(Nil),
+            "unit" => Some(Unit),
             "char" => Some(Char),
             "str" => Some(Str),
             "f32" => Some(F32),
@@ -1159,7 +1159,7 @@ impl Primitive {
             Str => "str",
             Bool => "bool",
             Char => "char",
-            Nil => "()",
+            Unit => "()",
             Slice => "slice",
             PrimitiveTuple => "tuple",
         }
@@ -1167,7 +1167,7 @@ impl Primitive {
 
     pub fn to_url_str(&self) -> &'static str {
         match *self {
-            Nil => "nil",
+            Unit => "unit",
             other => other.to_str(),
         }
     }
@@ -1184,7 +1184,7 @@ impl Clean<Type> for ast::Ty {
     fn clean(&self) -> Type {
         use syntax::ast::*;
         match self.node {
-            TyNil => Primitive(Nil),
+            TyNil => Primitive(Unit),
             TyPtr(ref m) => RawPointer(m.mutbl.clean(), box m.ty.clean()),
             TyRptr(ref l, ref m) =>
                 BorrowedRef {lifetime: l.clean(), mutability: m.mutbl.clean(),
@@ -1214,7 +1214,7 @@ impl Clean<Type> for ty::t {
     fn clean(&self) -> Type {
         match ty::get(*self).sty {
             ty::ty_bot => Bottom,
-            ty::ty_nil => Primitive(Nil),
+            ty::ty_nil => Primitive(Unit),
             ty::ty_bool => Primitive(Bool),
             ty::ty_char => Primitive(Char),
             ty::ty_int(ast::TyI) => Primitive(Int),
