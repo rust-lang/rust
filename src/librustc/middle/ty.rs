@@ -1533,11 +1533,23 @@ pub fn type_is_self(ty: t) -> bool {
     }
 }
 
-fn type_is_slice(ty:t) -> bool {
+fn type_is_slice(ty: t) -> bool {
     match get(ty).sty {
         ty_rptr(_, mt) => match get(mt.ty).sty {
             ty_vec(_, None) | ty_str => true,
             _ => false,
+        },
+        _ => false
+    }
+}
+
+pub fn type_is_vec(ty: t) -> bool {
+    match get(ty).sty {
+        ty_vec(..) => true,
+        ty_ptr(mt{ty: t, ..}) | ty_rptr(_, mt{ty: t, ..}) |
+        ty_box(t) | ty_uniq(t) => match get(t).sty {
+            ty_vec(_, None) => true,
+            _ => false
         },
         _ => false
     }
@@ -1560,7 +1572,7 @@ pub fn type_is_simd(cx: &ctxt, ty: t) -> bool {
 
 pub fn sequence_element_type(cx: &ctxt, ty: t) -> t {
     match get(ty).sty {
-        ty_vec(mt, Some(_)) => mt.ty,
+        ty_vec(mt, _) => mt.ty,
         ty_ptr(mt{ty: t, ..}) | ty_rptr(_, mt{ty: t, ..}) |
         ty_box(t) | ty_uniq(t) => match get(t).sty {
             ty_vec(mt, None) => mt.ty,
