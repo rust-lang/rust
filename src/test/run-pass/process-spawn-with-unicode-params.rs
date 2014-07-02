@@ -58,7 +58,7 @@ fn main() {
         let p = Command::new(&child_path)
                         .arg(arg)
                         .cwd(&cwd)
-                        .env(my_env.append_one(env).as_slice())
+                        .env_set_all(my_env.append_one(env).as_slice())
                         .spawn().unwrap().wait_with_output().unwrap();
 
         // display the output

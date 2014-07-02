@@ -176,26 +176,15 @@ fn runtest(test: &str, cratename: &str, libs: HashSet<Path>, should_fail: bool,
     // environment to ensure that the target loads the right libraries at
     // runtime. It would be a sad day if the *host* libraries were loaded as a
     // mistake.
-    let exe = outdir.path().join("rust_out");
-    let env = {
+    let mut cmd = Command::new(outdir.path().join("rust_out"));
+    let newpath = {
         let mut path = DynamicLibrary::search_path();
         path.insert(0, libdir.clone());
-
-        // Remove the previous dylib search path var
-        let var = DynamicLibrary::envvar();
-        let mut env: Vec<(String,String)> = os::env().move_iter().collect();
-        match env.iter().position(|&(ref k, _)| k.as_slice() == var) {
-            Some(i) => { env.remove(i); }
-            None => {}
-        };
-
-        // Add the new dylib search path var
-        let newpath = DynamicLibrary::create_path(path.as_slice());
-        env.push((var.to_string(),
-                  str::from_utf8(newpath.as_slice()).unwrap().to_string()));
-        env
+        DynamicLibrary::create_path(path.as_slice())
     };
-    match Command::new(exe).env(env.as_slice()).output() {
+    cmd.env(DynamicLibrary::envvar(), newpath.as_slice());
+
+    match cmd.output() {
         Err(e) => fail!("couldn't run the test: {}{}", e,
                         if e.kind == io::PermissionDenied {
                             " - maybe your tempdir is mounted with noexec?"

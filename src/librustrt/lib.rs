@@ -17,7 +17,7 @@
        html_root_url = "http://doc.rust-lang.org/0.11.0/")]
 
 #![feature(macro_rules, phase, globs, thread_local, managed_boxes, asm)]
-#![feature(linkage, lang_items, unsafe_destructor)]
+#![feature(linkage, lang_items, unsafe_destructor, default_type_params)]
 #![no_std]
 #![experimental]
 
