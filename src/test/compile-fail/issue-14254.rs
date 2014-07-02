@@ -24,7 +24,7 @@ impl BarTy {
     fn b(&self) {}
 }
 
-impl Foo for *BarTy {
+impl Foo for *const BarTy {
     fn bar(&self) {
         baz();
         //~^ ERROR: unresolved name `baz`. Did you mean to call `self.baz`?
@@ -76,7 +76,7 @@ impl Foo for Box<BarTy> {
     }
 }
 
-impl Foo for *int {
+impl Foo for *const int {
     fn bar(&self) {
         baz();
         //~^ ERROR: unresolved name `baz`. Did you mean to call `self.baz`?

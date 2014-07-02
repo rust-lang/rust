@@ -36,7 +36,7 @@ fn dead_fn2() {} //~ ERROR: code is never used
 fn used_fn() {}
 
 #[start]
-fn start(_: int, _: **u8) -> int {
+fn start(_: int, _: *const *const u8) -> int {
     used_fn();
     let foo = Foo;
     foo.bar2();

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-pretty FIXME #15189
+// no-pretty-expanded FIXME #15189
 // ignore-win32 FIXME #13259
 extern crate native;
 
@@ -18,7 +18,9 @@ use std::finally::Finally;
 use std::str;
 
 #[start]
-fn start(argc: int, argv: **u8) -> int { native::start(argc, argv, main) }
+fn start(argc: int, argv: *const *const u8) -> int {
+    native::start(argc, argv, main)
+}
 
 #[inline(never)]
 fn foo() {

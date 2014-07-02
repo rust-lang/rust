@@ -8,5 +8,5 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn wsucc(n: int) -> int { 0 + { return n + 1 } }
+fn wsucc(n: int) -> int { 0i + { return n + 1 } }
 pub fn main() { }

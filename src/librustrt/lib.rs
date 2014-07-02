@@ -18,7 +18,6 @@
 
 #![feature(macro_rules, phase, globs, thread_local, managed_boxes, asm)]
 #![feature(linkage, lang_items, unsafe_destructor)]
-#![allow(unknown_features)] // NOTE: remove after stage0 snapshot
 #![no_std]
 #![experimental]
 
@@ -105,7 +104,7 @@ pub static DEFAULT_ERROR_CODE: int = 101;
 /// Initializes global state, including frobbing
 /// the crate's logging flags, registering GC
 /// metadata, and storing the process arguments.
-pub fn init(argc: int, argv: **u8) {
+pub fn init(argc: int, argv: *const *const u8) {
     // FIXME: Derefing these pointers is not safe.
     // Need to propagate the unsafety to `start`.
     unsafe {

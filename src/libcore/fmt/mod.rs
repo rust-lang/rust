@@ -314,11 +314,11 @@ impl<'a> Formatter<'a> {
             rt::CountImplied => { None }
             rt::CountIsParam(i) => {
                 let v = self.args[i].value;
-                unsafe { Some(*(v as *any::Void as *uint)) }
+                unsafe { Some(*(v as *const _ as *const uint)) }
             }
             rt::CountIsNextParam => {
                 let v = self.curarg.next().unwrap().value;
-                unsafe { Some(*(v as *any::Void as *uint)) }
+                unsafe { Some(*(v as *const _ as *const uint)) }
             }
         }
     }
@@ -496,31 +496,6 @@ pub fn argument<'a, T>(f: extern "Rust" fn(&T, &mut Formatter) -> Result,
     }
 }
 
-#[cfg(test)]
-pub fn format(args: &Arguments) -> ::realstd::string::String {
-    use str;
-    use realstd::io::MemWriter;
-
-    fn mywrite<T: ::realstd::io::Writer>(t: &mut T, b: &[u8]) {
-        use realstd::io::Writer;
-        let _ = t.write(b);
-    }
-
-    impl FormatWriter for MemWriter {
-        fn write(&mut self, bytes: &[u8]) -> Result {
-            mywrite(self, bytes);
-            Ok(())
-        }
-    }
-
-    let mut i = MemWriter::new();
-    let _ = write(&mut i, args);
-
-    let mut result = ::realstd::string::String::new();
-    result.push_str(str::from_utf8(i.get_ref()).unwrap());
-    result
-}
-
 /// When the compiler determines that the type of an argument *must* be a string
 /// (such as for select), then it invokes this method.
 #[doc(hidden)] #[inline]
@@ -542,6 +517,9 @@ impl<'a, T: Show> Show for &'a T {
 }
 impl<'a, T: Show> Show for &'a mut T {
     fn fmt(&self, f: &mut Formatter) -> Result { secret_show(&**self, f) }
+}
+impl<'a> Show for &'a Show {
+    fn fmt(&self, f: &mut Formatter) -> Result { (*self).fmt(f) }
 }
 
 impl Bool for bool {
@@ -565,7 +543,7 @@ impl Char for char {
     }
 }
 
-impl<T> Pointer for *T {
+impl<T> Pointer for *const T {
     fn fmt(&self, f: &mut Formatter) -> Result {
         f.flags |= 1 << (rt::FlagAlternate as uint);
         secret_lower_hex::<uint>(&(*self as uint), f)
@@ -573,17 +551,17 @@ impl<T> Pointer for *T {
 }
 impl<T> Pointer for *mut T {
     fn fmt(&self, f: &mut Formatter) -> Result {
-        secret_pointer::<*T>(&(*self as *T), f)
+        secret_pointer::<*const T>(&(*self as *const T), f)
     }
 }
 impl<'a, T> Pointer for &'a T {
     fn fmt(&self, f: &mut Formatter) -> Result {
-        secret_pointer::<*T>(&(&**self as *T), f)
+        secret_pointer::<*const T>(&(&**self as *const T), f)
     }
 }
 impl<'a, T> Pointer for &'a mut T {
     fn fmt(&self, f: &mut Formatter) -> Result {
-        secret_pointer::<*T>(&(&**self as *T), f)
+        secret_pointer::<*const T>(&(&**self as *const T), f)
     }
 }
 
@@ -669,7 +647,7 @@ delegate!(char to char)
 delegate!(f32 to float)
 delegate!(f64 to float)
 
-impl<T> Show for *T {
+impl<T> Show for *const T {
     fn fmt(&self, f: &mut Formatter) -> Result { secret_pointer(self, f) }
 }
 impl<T> Show for *mut T {
@@ -686,7 +664,7 @@ macro_rules! tuple (
             fn fmt(&self, f: &mut Formatter) -> Result {
                 try!(write!(f, "("));
                 let ($(ref $name,)*) = *self;
-                let mut n = 0;
+                let mut n = 0i;
                 $(
                     if n > 0 {
                         try!(write!(f, ", "));

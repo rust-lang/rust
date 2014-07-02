@@ -141,7 +141,7 @@ impl rtio::RtioTimer for Timer {
         // 100ns intervals, so we multiply by 10^4.
         let due = -(msecs as i64 * 10000) as libc::LARGE_INTEGER;
         assert_eq!(unsafe {
-            imp::SetWaitableTimer(self.obj, &due, 0, ptr::null(),
+            imp::SetWaitableTimer(self.obj, &due, 0, ptr::mut_null(),
                                   ptr::mut_null(), 0)
         }, 1);
 
@@ -154,7 +154,7 @@ impl rtio::RtioTimer for Timer {
         // see above for the calculation
         let due = -(msecs as i64 * 10000) as libc::LARGE_INTEGER;
         assert_eq!(unsafe {
-            imp::SetWaitableTimer(self.obj, &due, 0, ptr::null(),
+            imp::SetWaitableTimer(self.obj, &due, 0, ptr::mut_null(),
                                   ptr::mut_null(), 0)
         }, 1);
 
@@ -169,7 +169,7 @@ impl rtio::RtioTimer for Timer {
         let due = -(msecs as i64 * 10000) as libc::LARGE_INTEGER;
         assert_eq!(unsafe {
             imp::SetWaitableTimer(self.obj, &due, msecs as libc::LONG,
-                                  ptr::null(), ptr::mut_null(), 0)
+                                  ptr::mut_null(), ptr::mut_null(), 0)
         }, 1);
 
         unsafe { HELPER.send(NewTimer(self.obj, cb, false)) }
@@ -188,20 +188,20 @@ mod imp {
     use libc::{LPSECURITY_ATTRIBUTES, BOOL, LPCSTR, HANDLE, LARGE_INTEGER,
                     LONG, LPVOID, DWORD, c_void};
 
-    pub type PTIMERAPCROUTINE = *c_void;
+    pub type PTIMERAPCROUTINE = *mut c_void;
 
     extern "system" {
         pub fn CreateWaitableTimerA(lpTimerAttributes: LPSECURITY_ATTRIBUTES,
                                     bManualReset: BOOL,
                                     lpTimerName: LPCSTR) -> HANDLE;
         pub fn SetWaitableTimer(hTimer: HANDLE,
-                                pDueTime: *LARGE_INTEGER,
+                                pDueTime: *const LARGE_INTEGER,
                                 lPeriod: LONG,
                                 pfnCompletionRoutine: PTIMERAPCROUTINE,
                                 lpArgToCompletionRoutine: LPVOID,
                                 fResume: BOOL) -> BOOL;
         pub fn WaitForMultipleObjects(nCount: DWORD,
-                                      lpHandles: *HANDLE,
+                                      lpHandles: *const HANDLE,
                                       bWaitAll: BOOL,
                                       dwMilliseconds: DWORD) -> DWORD;
         pub fn WaitForSingleObject(hHandle: HANDLE,

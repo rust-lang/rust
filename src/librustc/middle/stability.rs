@@ -20,7 +20,8 @@ use syntax::ast::{Generics, StructDef, Ident};
 use syntax::ast_util::is_local;
 use syntax::attr::Stability;
 use syntax::visit::{FnKind, FkMethod, Visitor};
-use metadata::{cstore, csearch};
+use middle::ty;
+use metadata::csearch;
 
 /// A stability index, giving the stability level for items and methods.
 pub struct Index {
@@ -105,21 +106,24 @@ impl Index {
                           attr::find_stability(krate.attrs.as_slice()));
         annotator.index
     }
+}
 
-    /// Lookup the stability for a node, loading external crate
-    /// metadata as necessary.
-    pub fn lookup(&mut self, cstore: &cstore::CStore, id: DefId) -> Option<Stability> {
-        if is_local(id) {
-            self.lookup_local(id.node)
-        } else {
-            let stab = csearch::get_stability(cstore, id);
-            self.extern_cache.insert(id, stab.clone());
+/// Lookup the stability for a node, loading external crate
+/// metadata as necessary.
+pub fn lookup(tcx: &ty::ctxt,  id: DefId) -> Option<Stability> {
+    // is this definition the implementation of a trait method?
+    match ty::trait_method_of_method(tcx, id) {
+        Some(trait_method_id) if trait_method_id != id => {
+            lookup(tcx, trait_method_id)
+        }
+        _ if is_local(id) => {
+            tcx.stability.borrow().local.find_copy(&id.node)
+        }
+        _ => {
+            let stab = csearch::get_stability(&tcx.sess.cstore, id);
+            let mut index = tcx.stability.borrow_mut();
+            (*index).extern_cache.insert(id, stab.clone());
             stab
         }
-    }
-
-    /// Lookup the stability for a local node without loading any external crates
-    pub fn lookup_local(&self, id: NodeId) -> Option<Stability> {
-        self.local.find_copy(&id)
     }
 }

@@ -9,10 +9,10 @@
 // except according to those terms.
 
 enum Animal {
-    Cat = 0u,
-    Dog = 1u,
-    Horse = 2u,
-    Snake = 3u
+    Cat = 0,
+    Dog = 1,
+    Horse = 2,
+    Snake = 3,
 }
 
 enum Hero {

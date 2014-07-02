@@ -50,7 +50,7 @@ type pthread_key_t = ::libc::c_uint;
 
 #[cfg(unix)]
 extern {
-    fn pthread_key_create(key: *mut pthread_key_t, dtor: *u8) -> c_int;
+    fn pthread_key_create(key: *mut pthread_key_t, dtor: *const u8) -> c_int;
     fn pthread_key_delete(key: pthread_key_t) -> c_int;
     fn pthread_getspecific(key: pthread_key_t) -> *mut u8;
     fn pthread_setspecific(key: pthread_key_t, value: *mut u8) -> c_int;
@@ -100,15 +100,15 @@ mod test {
         use std::mem::transmute;
         unsafe {
             let mut key = 0;
-            let value = box 20;
+            let value = box 20i;
             create(&mut key);
             set(key, transmute(value));
             let value: Box<int> = transmute(get(key));
-            assert_eq!(value, box 20);
-            let value = box 30;
+            assert_eq!(value, box 20i);
+            let value = box 30i;
             set(key, transmute(value));
             let value: Box<int> = transmute(get(key));
-            assert_eq!(value, box 30);
+            assert_eq!(value, box 30i);
         }
     }
 }

@@ -26,15 +26,15 @@ pub fn main() {
       'a'..'z' => {}
       _ => fail!("should suppport char ranges")
     }
-    match -3 {
+    match -3i {
       -7..5 => {}
       _ => fail!("should match signed range")
     }
-    match 3.0 {
+    match 3.0f64 {
       1.0..5.0 => {}
       _ => fail!("should match float range")
     }
-    match -1.5 {
+    match -1.5f64 {
       -3.6..3.6 => {}
       _ => fail!("should match negative float range")
     }

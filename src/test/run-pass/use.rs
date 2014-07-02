@@ -26,4 +26,4 @@ mod baz {
 }
 
 #[start]
-pub fn start(_: int, _: **u8) -> int { 0 }
+pub fn start(_: int, _: *const *const u8) -> int { 0 }

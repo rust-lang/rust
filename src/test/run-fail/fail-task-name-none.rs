@@ -13,8 +13,9 @@
 use std::task;
 
 fn main() {
-    task::try(proc() {
+    let r: Result<int,_> = task::try(proc() {
         fail!("test");
-        1
-    }).unwrap()
+        1i
+    });
+    assert!(r.is_ok());
 }

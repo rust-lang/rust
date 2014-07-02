@@ -22,7 +22,7 @@ fn failfn() {
 }
 
 struct r {
-  v: *int,
+  v: *const int,
 }
 
 impl Drop for r {
@@ -33,7 +33,7 @@ impl Drop for r {
     }
 }
 
-fn r(v: *int) -> r {
+fn r(v: *const int) -> r {
     r {
         v: v
     }
@@ -41,7 +41,7 @@ fn r(v: *int) -> r {
 
 fn main() {
     unsafe {
-        let i1 = box 0;
+        let i1 = box 0i;
         let i1p = mem::transmute_copy(&i1);
         mem::forget(i1);
         let x = box(GC) r(i1p);

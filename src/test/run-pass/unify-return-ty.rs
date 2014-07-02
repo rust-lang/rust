@@ -14,9 +14,9 @@
 
 use std::mem;
 
-fn null<T>() -> *T {
+fn null<T>() -> *const T {
     unsafe {
-        mem::transmute(0)
+        mem::transmute(0u)
     }
 }
 

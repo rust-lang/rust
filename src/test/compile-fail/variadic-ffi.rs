@@ -9,7 +9,7 @@
 // except according to those terms.
 
 extern "stdcall" {
-    fn printf(_: *u8, ...); //~ ERROR: variadic function must have C calling convention
+    fn printf(_: *const u8, ...); //~ ERROR: variadic function must have C calling convention
 }
 
 extern {

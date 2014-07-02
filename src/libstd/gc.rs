@@ -16,6 +16,7 @@ collector is task-local so `Gc<T>` is not sendable.
 
 */
 
+#![experimental]
 #![allow(experimental)]
 
 use clone::Clone;
@@ -24,6 +25,7 @@ use default::Default;
 use fmt;
 use hash;
 use kinds::marker;
+use option::Option;
 use ops::Deref;
 use raw;
 
@@ -33,7 +35,7 @@ use raw;
                   task annihilation. For now, cycles need to be broken manually by using `Rc<T>` \
                   with a non-owning `Weak<T>` pointer. A tracing garbage collector is planned."]
 pub struct Gc<T> {
-    _ptr: *T,
+    _ptr: *mut T,
     marker: marker::NoSend,
 }
 
@@ -59,6 +61,10 @@ impl<T: PartialEq + 'static> PartialEq for Gc<T> {
 }
 impl<T: PartialOrd + 'static> PartialOrd for Gc<T> {
     #[inline]
+    fn partial_cmp(&self, other: &Gc<T>) -> Option<Ordering> {
+        (**self).partial_cmp(&**other)
+    }
+    #[inline]
     fn lt(&self, other: &Gc<T>) -> bool { *(*self) < *(*other) }
     #[inline]
     fn le(&self, other: &Gc<T>) -> bool { *(*self) <= *(*other) }
@@ -83,7 +89,7 @@ impl<T: Default + 'static> Default for Gc<T> {
     }
 }
 
-impl<T: 'static> raw::Repr<*raw::Box<T>> for Gc<T> {}
+impl<T: 'static> raw::Repr<*const raw::Box<T>> for Gc<T> {}
 
 impl<S: hash::Writer, T: hash::Hash<S> + 'static> hash::Hash<S> for Gc<T> {
     fn hash(&self, s: &mut S) {
@@ -102,6 +108,13 @@ mod tests {
     use prelude::*;
     use super::*;
     use cell::RefCell;
+
+    #[test]
+    fn test_managed_clone() {
+        let a = box(GC) 5i;
+        let b: Gc<int> = a.clone();
+        assert!(a == b);
+    }
 
     #[test]
     fn test_clone() {

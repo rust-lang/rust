@@ -32,6 +32,7 @@ use std::io::{File, MemWriter};
 use std::str;
 use std::gc::Gc;
 use serialize::{json, Decodable, Encodable};
+use externalfiles::ExternalHtml;
 
 // reexported from `clean` so it can be easily updated with the mod itself
 pub use clean::SCHEMA_VERSION;
@@ -39,6 +40,8 @@ pub use clean::SCHEMA_VERSION;
 pub mod clean;
 pub mod core;
 pub mod doctree;
+#[macro_escape]
+pub mod externalfiles;
 pub mod fold;
 pub mod html {
     pub mod highlight;
@@ -113,16 +116,17 @@ pub fn opts() -> Vec<getopts::OptGroup> {
                  "ARGS"),
         optmulti("", "markdown-css", "CSS files to include via <link> in a rendered Markdown file",
                  "FILES"),
-        optmulti("", "markdown-in-header",
-                 "files to include inline in the <head> section of a rendered Markdown file",
+        optmulti("", "html-in-header",
+                 "files to include inline in the <head> section of a rendered Markdown file \
+                 or generated documentation",
                  "FILES"),
-        optmulti("", "markdown-before-content",
+        optmulti("", "html-before-content",
                  "files to include inline between <body> and the content of a rendered \
-                 Markdown file",
+                 Markdown file or generated documentation",
                  "FILES"),
-        optmulti("", "markdown-after-content",
+        optmulti("", "html-after-content",
                  "files to include inline between the content and </body> of a rendered \
-                 Markdown file",
+                 Markdown file or generated documentation",
                  "FILES"),
         optopt("", "markdown-playground-url",
                "URL to send code snippets to", "URL")
@@ -179,6 +183,14 @@ pub fn main_args(args: &[String]) -> int {
     let output = matches.opt_str("o").map(|s| Path::new(s));
     let cfgs = matches.opt_strs("cfg");
 
+    let external_html = match ExternalHtml::load(
+            matches.opt_strs("html-in-header").as_slice(),
+            matches.opt_strs("html-before-content").as_slice(),
+            matches.opt_strs("html-after-content").as_slice()) {
+        Some(eh) => eh,
+        None => return 3
+    };
+
     match (should_test, markdown_input) {
         (true, true) => {
             return markdown::test(input, libs, test_args)
@@ -187,7 +199,7 @@ pub fn main_args(args: &[String]) -> int {
             return test::run(input, cfgs, libs, test_args)
         }
         (false, true) => return markdown::render(input, output.unwrap_or(Path::new("doc")),
-                                                 &matches),
+                                                 &matches, &external_html),
         (false, false) => {}
     }
 
@@ -215,7 +227,7 @@ pub fn main_args(args: &[String]) -> int {
     let started = time::precise_time_ns();
     match matches.opt_str("w").as_ref().map(|s| s.as_slice()) {
         Some("html") | None => {
-            match html::render::run(krate, output.unwrap_or(Path::new("doc"))) {
+            match html::render::run(krate, &external_html, output.unwrap_or(Path::new("doc"))) {
                 Ok(()) => {}
                 Err(e) => fail!("failed to generate documentation: {}", e),
             }
@@ -396,18 +408,17 @@ fn json_output(krate: clean::Crate, res: Vec<plugins::PluginJson> ,
     //   "crate": { parsed crate ... },
     //   "plugins": { output of plugins ... }
     // }
-    let mut json = box std::collections::TreeMap::new();
-    json.insert("schema".to_string(),
-                json::String(SCHEMA_VERSION.to_string()));
-    let plugins_json = box res.move_iter()
-                              .filter_map(|opt| {
-                                  match opt {
-                                      None => None,
-                                      Some((string, json)) => {
-                                          Some((string.to_string(), json))
-                                      }
+    let mut json = std::collections::TreeMap::new();
+    json.insert("schema".to_string(), json::String(SCHEMA_VERSION.to_string()));
+    let plugins_json = res.move_iter()
+                          .filter_map(|opt| {
+                              match opt {
+                                  None => None,
+                                  Some((string, json)) => {
+                                      Some((string.to_string(), json))
                                   }
-                              }).collect();
+                              }
+                          }).collect();
 
     // FIXME #8335: yuck, Rust -> str -> JSON round trip! No way to .encode
     // straight to the Rust JSON representation.
@@ -417,7 +428,7 @@ fn json_output(krate: clean::Crate, res: Vec<plugins::PluginJson> ,
             let mut encoder = json::Encoder::new(&mut w as &mut io::Writer);
             krate.encode(&mut encoder).unwrap();
         }
-        str::from_utf8(w.unwrap().as_slice()).unwrap().to_string()
+        str::from_utf8_owned(w.unwrap()).unwrap()
     };
     let crate_json = match json::from_str(crate_json_str.as_slice()) {
         Ok(j) => j,
@@ -428,6 +439,5 @@ fn json_output(krate: clean::Crate, res: Vec<plugins::PluginJson> ,
     json.insert("plugins".to_string(), json::Object(plugins_json));
 
     let mut file = try!(File::create(&dst));
-    try!(json::Object(json).to_writer(&mut file));
-    Ok(())
+    json::Object(json).to_writer(&mut file)
 }

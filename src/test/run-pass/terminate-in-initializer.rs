@@ -18,7 +18,7 @@ use std::gc::{Gc};
 
 fn test_break() { loop { let _x: Gc<int> = break; } }
 
-fn test_cont() { let mut i = 0; while i < 1 { i += 1; let _x: Gc<int> = continue; } }
+fn test_cont() { let mut i = 0i; while i < 1 { i += 1; let _x: Gc<int> = continue; } }
 
 fn test_ret() { let _x: Gc<int> = return; }
 

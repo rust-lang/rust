@@ -37,6 +37,8 @@
 //! particularly useful standalone functions, like `from_str`, `range`, and
 //! `drop`, `spawn`, and `channel`.
 
+#![experimental]
+
 // Reexported core operators
 #[doc(no_inline)] pub use kinds::{Copy, Send, Sized, Share};
 #[doc(no_inline)] pub use ops::{Add, Sub, Mul, Div, Rem, Neg, Not};

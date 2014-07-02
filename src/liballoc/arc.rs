@@ -376,14 +376,14 @@ mod tests {
 
     #[test]
     fn test_live() {
-        let x = Arc::new(5);
+        let x = Arc::new(5i);
         let y = x.downgrade();
         assert!(y.upgrade().is_some());
     }
 
     #[test]
     fn test_dead() {
-        let x = Arc::new(5);
+        let x = Arc::new(5i);
         let y = x.downgrade();
         drop(x);
         assert!(y.upgrade().is_none());

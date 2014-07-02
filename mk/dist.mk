@@ -54,6 +54,7 @@ PKG_FILES := \
       driver                                   \
       etc                                      \
       $(foreach crate,$(CRATES),lib$(crate))   \
+      libcoretest                              \
       libbacktrace                             \
       rt                                       \
       rustllvm                                 \

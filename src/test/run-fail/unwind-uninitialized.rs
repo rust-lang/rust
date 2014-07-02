@@ -20,5 +20,5 @@ fn f() {
 
 fn main() {
     f();
-    let _a = box(GC) 0;
+    let _a = box(GC) 0i;
 }

@@ -91,6 +91,8 @@
 //! # }
 //! ```
 
+#![experimental]
+
 use any::Any;
 use comm::channel;
 use io::{Writer, stdio};
@@ -511,10 +513,10 @@ mod test {
         let (tx, rx) = channel::<uint>();
 
         let x = box 1;
-        let x_in_parent = (&*x) as *int as uint;
+        let x_in_parent = (&*x) as *const int as uint;
 
         spawnfn(proc() {
-            let x_in_child = (&*x) as *int as uint;
+            let x_in_child = (&*x) as *const int as uint;
             tx.send(x_in_child);
         });
 
@@ -630,9 +632,11 @@ mod test {
         let mut reader = ChanReader::new(rx);
         let stdout = ChanWriter::new(tx);
 
-        TaskBuilder::new().stdout(box stdout as Box<Writer + Send>).try(proc() {
-            print!("Hello, world!");
-        }).unwrap();
+        let r = TaskBuilder::new().stdout(box stdout as Box<Writer + Send>)
+                                  .try(proc() {
+                print!("Hello, world!");
+            });
+        assert!(r.is_ok());
 
         let output = reader.read_to_str().unwrap();
         assert_eq!(output, "Hello, world!".to_string());
@@ -647,7 +651,7 @@ fn task_abort_no_kill_runtime() {
     use std::io::timer;
     use mem;
 
-    let mut tb = TaskBuilder::new();
+    let tb = TaskBuilder::new();
     let rx = tb.try_future(proc() {});
     mem::drop(rx);
     timer::sleep(1000);

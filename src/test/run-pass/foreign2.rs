@@ -24,7 +24,7 @@ mod mlibc {
     use libc::{c_int, c_void, size_t, ssize_t};
 
     extern {
-        pub fn write(fd: c_int, buf: *c_void, count: size_t) -> ssize_t;
+        pub fn write(fd: c_int, buf: *const c_void, count: size_t) -> ssize_t;
     }
 }
 

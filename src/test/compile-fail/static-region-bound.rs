@@ -15,8 +15,8 @@ use std::gc::GC;
 fn f<T:'static>(_: T) {}
 
 fn main() {
-    let x = box(GC) 3;
+    let x = box(GC) 3i;
     f(x);
-    let x = &3;
+    let x = &3i;
     f(x);   //~ ERROR instantiating a type parameter with an incompatible type
 }

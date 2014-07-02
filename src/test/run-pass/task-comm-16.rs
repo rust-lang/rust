@@ -39,10 +39,10 @@ fn test_str() {
     let s0 = "test".to_string();
     tx.send(s0);
     let s1 = rx.recv();
-    assert_eq!(s1.as_slice()[0], 't' as u8);
-    assert_eq!(s1.as_slice()[1], 'e' as u8);
-    assert_eq!(s1.as_slice()[2], 's' as u8);
-    assert_eq!(s1.as_slice()[3], 't' as u8);
+    assert_eq!(s1.as_bytes()[0], 't' as u8);
+    assert_eq!(s1.as_bytes()[1], 'e' as u8);
+    assert_eq!(s1.as_bytes()[2], 's' as u8);
+    assert_eq!(s1.as_bytes()[3], 't' as u8);
 }
 
 #[deriving(Show)]

@@ -53,28 +53,28 @@ static V: int = 1 << 3;
 static W: int = 1024 >> 4;
 static X: uint = 1024 >> 4;
 
-static Y: bool = 1 == 1;
-static Z: bool = 1.0 == 1.0;
+static Y: bool = 1i == 1;
+static Z: bool = 1.0f64 == 1.0;
 
-static AA: bool = 1 <= 2;
-static AB: bool = -1 <= 2;
-static AC: bool = 1.0 <= 2.0;
+static AA: bool = 1i <= 2;
+static AB: bool = -1i <= 2;
+static AC: bool = 1.0f64 <= 2.0;
 
-static AD: bool = 1 < 2;
-static AE: bool = -1 < 2;
-static AF: bool = 1.0 < 2.0;
+static AD: bool = 1i < 2;
+static AE: bool = -1i < 2;
+static AF: bool = 1.0f64 < 2.0;
 
-static AG: bool = 1 != 2;
-static AH: bool = -1 != 2;
-static AI: bool = 1.0 != 2.0;
+static AG: bool = 1i != 2;
+static AH: bool = -1i != 2;
+static AI: bool = 1.0f64 != 2.0;
 
-static AJ: bool = 2 >= 1;
-static AK: bool = 2 >= -2;
-static AL: bool = 1.0 >= -2.0;
+static AJ: bool = 2i >= 1;
+static AK: bool = 2i >= -2;
+static AL: bool = 1.0f64 >= -2.0;
 
-static AM: bool = 2 > 1;
-static AN: bool = 2 > -2;
-static AO: bool = 1.0 > -2.0;
+static AM: bool = 2i > 1;
+static AN: bool = 2i > -2;
+static AO: bool = 1.0f64 > -2.0;
 
 pub fn main() {
     assert_eq!(A, -1);

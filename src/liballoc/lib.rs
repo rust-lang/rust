@@ -70,7 +70,6 @@
 
 #![no_std]
 #![feature(lang_items, phase, unsafe_destructor)]
-#![allow(unknown_features)] // NOTE: remove after a stage0 snap
 
 #[phase(plugin, link)]
 extern crate core;

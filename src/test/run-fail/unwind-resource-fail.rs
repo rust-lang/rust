@@ -25,6 +25,6 @@ impl Drop for r {
 fn r(i: int) -> r { r { i: i } }
 
 fn main() {
-    box(GC) 0;
+    box(GC) 0i;
     let _r = r(0);
 }

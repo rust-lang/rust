@@ -479,7 +479,11 @@ impl<'a> State<'a> {
             }
             ast::TyPtr(ref mt) => {
                 try!(word(&mut self.s, "*"));
-                try!(self.print_mt(mt));
+                match mt.mutbl {
+                    ast::MutMutable => try!(self.word_nbsp("mut")),
+                    ast::MutImmutable => try!(self.word_nbsp("const")),
+                }
+                try!(self.print_type(&*mt.ty));
             }
             ast::TyRptr(ref lifetime, ref mt) => {
                 try!(word(&mut self.s, "&"));
@@ -994,7 +998,7 @@ impl<'a> State<'a> {
 
     pub fn print_outer_attributes(&mut self,
                                   attrs: &[ast::Attribute]) -> IoResult<()> {
-        let mut count = 0;
+        let mut count = 0u;
         for attr in attrs.iter() {
             match attr.node.style {
                 ast::AttrOuter => {
@@ -1012,7 +1016,7 @@ impl<'a> State<'a> {
 
     pub fn print_inner_attributes(&mut self,
                                   attrs: &[ast::Attribute]) -> IoResult<()> {
-        let mut count = 0;
+        let mut count = 0u;
         for attr in attrs.iter() {
             match attr.node.style {
                 ast::AttrInner => {

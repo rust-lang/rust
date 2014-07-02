@@ -24,7 +24,7 @@ use uvio::UvIoFactory;
 use uvll;
 
 pub struct FsRequest {
-    req: *uvll::uv_fs_t,
+    req: *mut uvll::uv_fs_t,
     fired: bool,
 }
 
@@ -41,7 +41,7 @@ impl FsRequest {
     {
         execute(|req, cb| unsafe {
             uvll::uv_fs_open(io.uv_loop(),
-                             req, path.with_ref(|p| p), flags as c_int,
+                             req, path.as_ptr(), flags as c_int,
                              mode as c_int, cb)
         }).map(|req|
             FileWatcher::new(io, req.get_result() as c_int,
@@ -51,7 +51,7 @@ impl FsRequest {
 
     pub fn unlink(loop_: &Loop, path: &CString) -> Result<(), UvError> {
         execute_nop(|req, cb| unsafe {
-            uvll::uv_fs_unlink(loop_.handle, req, path.with_ref(|p| p),
+            uvll::uv_fs_unlink(loop_.handle, req, path.as_ptr(),
                                cb)
         })
     }
@@ -60,14 +60,14 @@ impl FsRequest {
         -> Result<rtio::FileStat, UvError>
     {
         execute(|req, cb| unsafe {
-            uvll::uv_fs_lstat(loop_.handle, req, path.with_ref(|p| p),
+            uvll::uv_fs_lstat(loop_.handle, req, path.as_ptr(),
                               cb)
         }).map(|req| req.mkstat())
     }
 
     pub fn stat(loop_: &Loop, path: &CString) -> Result<rtio::FileStat, UvError> {
         execute(|req, cb| unsafe {
-            uvll::uv_fs_stat(loop_.handle, req, path.with_ref(|p| p),
+            uvll::uv_fs_stat(loop_.handle, req, path.as_ptr(),
                              cb)
         }).map(|req| req.mkstat())
     }
@@ -94,7 +94,7 @@ impl FsRequest {
                 offset + written as i64
             };
             let uvbuf = uvll::uv_buf_t {
-                base: buf.slice_from(written as uint).as_ptr(),
+                base: buf.slice_from(written as uint).as_ptr() as *mut _,
                 len: (buf.len() - written) as uvll::uv_buf_len_t,
             };
             match execute(|req, cb| unsafe {
@@ -111,11 +111,11 @@ impl FsRequest {
         -> Result<int, UvError>
     {
         execute(|req, cb| unsafe {
-            let uvbuf = uvll::uv_buf_t {
-                base: buf.as_ptr(),
+            let mut uvbuf = uvll::uv_buf_t {
+                base: buf.as_mut_ptr(),
                 len: buf.len() as uvll::uv_buf_len_t,
             };
-            uvll::uv_fs_read(loop_.handle, req, fd, &uvbuf, 1, offset, cb)
+            uvll::uv_fs_read(loop_.handle, req, fd, &mut uvbuf, 1, offset, cb)
         }).map(|req| {
             req.get_result() as int
         })
@@ -125,14 +125,14 @@ impl FsRequest {
         -> Result<(), UvError>
     {
         execute_nop(|req, cb| unsafe {
-            uvll::uv_fs_mkdir(loop_.handle, req, path.with_ref(|p| p),
+            uvll::uv_fs_mkdir(loop_.handle, req, path.as_ptr(),
                               mode, cb)
         })
     }
 
     pub fn rmdir(loop_: &Loop, path: &CString) -> Result<(), UvError> {
         execute_nop(|req, cb| unsafe {
-            uvll::uv_fs_rmdir(loop_.handle, req, path.with_ref(|p| p),
+            uvll::uv_fs_rmdir(loop_.handle, req, path.as_ptr(),
                               cb)
         })
     }
@@ -143,8 +143,8 @@ impl FsRequest {
         execute_nop(|req, cb| unsafe {
             uvll::uv_fs_rename(loop_.handle,
                                req,
-                               path.with_ref(|p| p),
-                               to.with_ref(|p| p),
+                               path.as_ptr(),
+                               to.as_ptr(),
                                cb)
         })
     }
@@ -153,7 +153,7 @@ impl FsRequest {
         -> Result<(), UvError>
     {
         execute_nop(|req, cb| unsafe {
-            uvll::uv_fs_chmod(loop_.handle, req, path.with_ref(|p| p),
+            uvll::uv_fs_chmod(loop_.handle, req, path.as_ptr(),
                               mode, cb)
         })
     }
@@ -163,12 +163,12 @@ impl FsRequest {
     {
         execute(|req, cb| unsafe {
             uvll::uv_fs_readdir(loop_.handle,
-                                req, path.with_ref(|p| p), flags, cb)
+                                req, path.as_ptr(), flags, cb)
         }).map(|req| unsafe {
             let mut paths = vec!();
-            let path = CString::new(path.with_ref(|p| p), false);
+            let path = CString::new(path.as_ptr(), false);
             let parent = Path::new(path);
-            let _ = c_str::from_c_multistring(req.get_ptr() as *libc::c_char,
+            let _ = c_str::from_c_multistring(req.get_ptr() as *const libc::c_char,
                                               Some(req.get_result() as uint),
                                               |rel| {
                 let p = rel.as_bytes();
@@ -181,12 +181,12 @@ impl FsRequest {
     pub fn readlink(loop_: &Loop, path: &CString) -> Result<CString, UvError> {
         execute(|req, cb| unsafe {
             uvll::uv_fs_readlink(loop_.handle, req,
-                                 path.with_ref(|p| p), cb)
+                                 path.as_ptr(), cb)
         }).map(|req| {
             // Be sure to clone the cstring so we get an independently owned
             // allocation to work with and return.
             unsafe {
-                CString::new(req.get_ptr() as *libc::c_char, false).clone()
+                CString::new(req.get_ptr() as *const libc::c_char, false).clone()
             }
         })
     }
@@ -196,7 +196,7 @@ impl FsRequest {
     {
         execute_nop(|req, cb| unsafe {
             uvll::uv_fs_chown(loop_.handle,
-                              req, path.with_ref(|p| p),
+                              req, path.as_ptr(),
                               uid as uvll::uv_uid_t,
                               gid as uvll::uv_gid_t,
                               cb)
@@ -216,8 +216,8 @@ impl FsRequest {
     {
         execute_nop(|req, cb| unsafe {
             uvll::uv_fs_link(loop_.handle, req,
-                             src.with_ref(|p| p),
-                             dst.with_ref(|p| p),
+                             src.as_ptr(),
+                             dst.as_ptr(),
                              cb)
         })
     }
@@ -227,8 +227,8 @@ impl FsRequest {
     {
         execute_nop(|req, cb| unsafe {
             uvll::uv_fs_symlink(loop_.handle, req,
-                                src.with_ref(|p| p),
-                                dst.with_ref(|p| p),
+                                src.as_ptr(),
+                                dst.as_ptr(),
                                 0, cb)
         })
     }
@@ -252,7 +252,7 @@ impl FsRequest {
         let atime = atime as libc::c_double / 1000.0;
         let mtime = mtime as libc::c_double / 1000.0;
         execute_nop(|req, cb| unsafe {
-            uvll::uv_fs_utime(loop_.handle, req, path.with_ref(|p| p),
+            uvll::uv_fs_utime(loop_.handle, req, path.as_ptr(),
                               atime, mtime, cb)
         })
     }
@@ -262,12 +262,12 @@ impl FsRequest {
     }
 
     pub fn get_stat(&self) -> uvll::uv_stat_t {
-        let stat = uvll::uv_stat_t::new();
-        unsafe { uvll::populate_stat(self.req, &stat); }
+        let mut stat = uvll::uv_stat_t::new();
+        unsafe { uvll::populate_stat(self.req, &mut stat); }
         stat
     }
 
-    pub fn get_ptr(&self) -> *libc::c_void {
+    pub fn get_ptr(&self) -> *mut libc::c_void {
         unsafe { uvll::get_ptr_from_fs_req(self.req) }
     }
 
@@ -310,7 +310,7 @@ impl Drop for FsRequest {
     }
 }
 
-fn execute(f: |*uvll::uv_fs_t, uvll::uv_fs_cb| -> c_int)
+fn execute(f: |*mut uvll::uv_fs_t, uvll::uv_fs_cb| -> c_int)
     -> Result<FsRequest, UvError>
 {
     let mut req = FsRequest {
@@ -323,7 +323,7 @@ fn execute(f: |*uvll::uv_fs_t, uvll::uv_fs_cb| -> c_int)
             let mut slot = None;
             let loop_ = unsafe { uvll::get_loop_from_fs_req(req.req) };
             wait_until_woken_after(&mut slot, &Loop::wrap(loop_), || {
-                unsafe { uvll::set_data_for_req(req.req, &slot) }
+                unsafe { uvll::set_data_for_req(req.req, &mut slot) }
             });
             match req.get_result() {
                 n if n < 0 => Err(UvError(n as i32)),
@@ -333,7 +333,7 @@ fn execute(f: |*uvll::uv_fs_t, uvll::uv_fs_cb| -> c_int)
         n => Err(UvError(n))
     };
 
-    extern fn fs_cb(req: *uvll::uv_fs_t) {
+    extern fn fs_cb(req: *mut uvll::uv_fs_t) {
         let slot: &mut Option<BlockedTask> = unsafe {
             mem::transmute(uvll::get_data_for_req(req))
         };
@@ -341,7 +341,7 @@ fn execute(f: |*uvll::uv_fs_t, uvll::uv_fs_cb| -> c_int)
     }
 }
 
-fn execute_nop(f: |*uvll::uv_fs_t, uvll::uv_fs_cb| -> c_int)
+fn execute_nop(f: |*mut uvll::uv_fs_t, uvll::uv_fs_cb| -> c_int)
     -> Result<(), UvError> {
     execute(f).map(|_| {})
 }
@@ -397,7 +397,7 @@ impl Drop for FileWatcher {
                                                  self.fd, close_cb), 0);
                 }
 
-                extern fn close_cb(req: *uvll::uv_fs_t) {
+                extern fn close_cb(req: *mut uvll::uv_fs_t) {
                     unsafe {
                         uvll::uv_fs_req_cleanup(req);
                         uvll::free_req(req);

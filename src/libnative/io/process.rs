@@ -43,7 +43,7 @@ pub struct Process {
     /// A handle to the process - on unix this will always be NULL, but on
     /// windows it will be a HANDLE to the process, which will prevent the
     /// pid being re-used until the handle is closed.
-    handle: *(),
+    handle: *mut (),
 
     /// None until finish() is called.
     exit_code: Option<rtio::ProcessExit>,
@@ -269,7 +269,7 @@ unsafe fn killpid(pid: pid_t, signal: int) -> IoResult<()> {
 
 struct SpawnProcessResult {
     pid: pid_t,
-    handle: *(),
+    handle: *mut (),
 }
 
 #[cfg(windows)]
@@ -294,6 +294,8 @@ fn spawn_process_os(cfg: ProcessConfig,
     use libc::funcs::extra::msvcrt::get_osfhandle;
 
     use std::mem;
+    use std::iter::Iterator;
+    use std::str::StrSlice;
 
     if cfg.gid.is_some() || cfg.uid.is_some() {
         return Err(IoError {
@@ -328,7 +330,8 @@ fn spawn_process_os(cfg: ProcessConfig,
                         lpSecurityDescriptor: ptr::mut_null(),
                         bInheritHandle: 1,
                     };
-                    let filename = "NUL".to_utf16().append_one(0);
+                    let filename: Vec<u16> = "NUL".utf16_units().collect();
+                    let filename = filename.append_one(0);
                     *slot = libc::CreateFileW(filename.as_ptr(),
                                               access,
                                               libc::FILE_SHARE_READ |
@@ -371,7 +374,8 @@ fn spawn_process_os(cfg: ProcessConfig,
 
         with_envp(cfg.env, |envp| {
             with_dirp(cfg.cwd, |dirp| {
-                let mut cmd_str = cmd_str.to_utf16().append_one(0);
+                let mut cmd_str: Vec<u16> = cmd_str.as_slice().utf16_units().collect();
+                cmd_str = cmd_str.append_one(0);
                 let created = CreateProcessW(ptr::null(),
                                              cmd_str.as_mut_ptr(),
                                              ptr::mut_null(),
@@ -403,7 +407,7 @@ fn spawn_process_os(cfg: ProcessConfig,
 
         Ok(SpawnProcessResult {
             pid: pi.dwProcessId as pid_t,
-            handle: pi.hProcess as *()
+            handle: pi.hProcess as *mut ()
         })
     }
 }
@@ -515,14 +519,14 @@ fn spawn_process_os(cfg: ProcessConfig,
     }
 
     #[cfg(target_os = "macos")]
-    unsafe fn set_environ(envp: *c_void) {
-        extern { fn _NSGetEnviron() -> *mut *c_void; }
+    unsafe fn set_environ(envp: *const c_void) {
+        extern { fn _NSGetEnviron() -> *mut *const c_void; }
 
         *_NSGetEnviron() = envp;
     }
     #[cfg(not(target_os = "macos"))]
-    unsafe fn set_environ(envp: *c_void) {
-        extern { static mut environ: *c_void; }
+    unsafe fn set_environ(envp: *const c_void) {
+        extern { static mut environ: *const c_void; }
         environ = envp;
     }
 
@@ -531,7 +535,7 @@ fn spawn_process_os(cfg: ProcessConfig,
         assert_eq!(ret, 0);
     }
 
-    let dirp = cfg.cwd.map(|c| c.with_ref(|p| p)).unwrap_or(ptr::null());
+    let dirp = cfg.cwd.map(|c| c.as_ptr()).unwrap_or(ptr::null());
 
     let cfg = unsafe {
         mem::transmute::<ProcessConfig,ProcessConfig<'static>>(cfg)
@@ -568,7 +572,7 @@ fn spawn_process_os(cfg: ProcessConfig,
                     Err(..) => {
                         Ok(SpawnProcessResult {
                             pid: pid,
-                            handle: ptr::null()
+                            handle: ptr::mut_null()
                         })
                     }
                     Ok(..) => fail!("short read on the cloexec pipe"),
@@ -633,7 +637,7 @@ fn spawn_process_os(cfg: ProcessConfig,
                         } else {
                             libc::O_RDWR
                         };
-                        devnull.with_ref(|p| libc::open(p, flags, 0))
+                        libc::open(devnull.as_ptr(), flags, 0)
                     }
                     Some(obj) => {
                         let fd = obj.fd();
@@ -668,17 +672,18 @@ fn spawn_process_os(cfg: ProcessConfig,
             }
             match cfg.uid {
                 Some(u) => {
-                    // When dropping privileges from root, the `setgroups` call will
-                    // remove any extraneous groups. If we don't call this, then
-                    // even though our uid has dropped, we may still have groups
-                    // that enable us to do super-user things. This will fail if we
-                    // aren't root, so don't bother checking the return value, this
-                    // is just done as an optimistic privilege dropping function.
+                    // When dropping privileges from root, the `setgroups` call
+                    // will remove any extraneous groups. If we don't call this,
+                    // then even though our uid has dropped, we may still have
+                    // groups that enable us to do super-user things. This will
+                    // fail if we aren't root, so don't bother checking the
+                    // return value, this is just done as an optimistic
+                    // privilege dropping function.
                     extern {
                         fn setgroups(ngroups: libc::c_int,
-                                     ptr: *libc::c_void) -> libc::c_int;
+                                     ptr: *const libc::c_void) -> libc::c_int;
                     }
-                    let _ = setgroups(0, 0 as *libc::c_void);
+                    let _ = setgroups(0, 0 as *const libc::c_void);
 
                     if libc::setuid(u as libc::uid_t) != 0 {
                         fail(&mut output);
@@ -698,23 +703,24 @@ fn spawn_process_os(cfg: ProcessConfig,
             if !envp.is_null() {
                 set_environ(envp);
             }
-            let _ = execvp(*argv, argv);
+            let _ = execvp(*argv, argv as *mut _);
             fail(&mut output);
         })
     })
 }
 
 #[cfg(unix)]
-fn with_argv<T>(prog: &CString, args: &[CString], cb: proc(**libc::c_char) -> T) -> T {
-    let mut ptrs: Vec<*libc::c_char> = Vec::with_capacity(args.len()+1);
+fn with_argv<T>(prog: &CString, args: &[CString],
+                cb: proc(*const *const libc::c_char) -> T) -> T {
+    let mut ptrs: Vec<*const libc::c_char> = Vec::with_capacity(args.len()+1);
 
     // Convert the CStrings into an array of pointers. Note: the
     // lifetime of the various CStrings involved is guaranteed to be
     // larger than the lifetime of our invocation of cb, but this is
     // technically unsafe as the callback could leak these pointers
     // out of our scope.
-    ptrs.push(prog.with_ref(|buf| buf));
-    ptrs.extend(args.iter().map(|tmp| tmp.with_ref(|buf| buf)));
+    ptrs.push(prog.as_ptr());
+    ptrs.extend(args.iter().map(|tmp| tmp.as_ptr()));
 
     // Add a terminating null pointer (required by libc).
     ptrs.push(ptr::null());
@@ -723,7 +729,8 @@ fn with_argv<T>(prog: &CString, args: &[CString], cb: proc(**libc::c_char) -> T)
 }
 
 #[cfg(unix)]
-fn with_envp<T>(env: Option<&[(CString, CString)]>, cb: proc(*c_void) -> T) -> T {
+fn with_envp<T>(env: Option<&[(CString, CString)]>,
+                cb: proc(*const c_void) -> T) -> T {
     // On posixy systems we can pass a char** for envp, which is a
     // null-terminated array of "k=v\0" strings. Since we must create
     // these strings locally, yet expose a raw pointer to them, we
@@ -742,13 +749,13 @@ fn with_envp<T>(env: Option<&[(CString, CString)]>, cb: proc(*c_void) -> T) -> T
             }
 
             // As with `with_argv`, this is unsafe, since cb could leak the pointers.
-            let mut ptrs: Vec<*libc::c_char> =
+            let mut ptrs: Vec<*const libc::c_char> =
                 tmps.iter()
-                    .map(|tmp| tmp.as_ptr() as *libc::c_char)
+                    .map(|tmp| tmp.as_ptr() as *const libc::c_char)
                     .collect();
             ptrs.push(ptr::null());
 
-            cb(ptrs.as_ptr() as *c_void)
+            cb(ptrs.as_ptr() as *const c_void)
         }
         _ => cb(ptr::null())
     }
@@ -767,7 +774,7 @@ fn with_envp<T>(env: Option<&[(CString, CString)]>, cb: |*mut c_void| -> T) -> T
                 let kv = format!("{}={}",
                                  pair.ref0().as_str().unwrap(),
                                  pair.ref1().as_str().unwrap());
-                blk.push_all(kv.to_utf16().as_slice());
+                blk.extend(kv.as_slice().utf16_units());
                 blk.push(0);
             }
 
@@ -780,12 +787,14 @@ fn with_envp<T>(env: Option<&[(CString, CString)]>, cb: |*mut c_void| -> T) -> T
 }
 
 #[cfg(windows)]
-fn with_dirp<T>(d: Option<&CString>, cb: |*u16| -> T) -> T {
+fn with_dirp<T>(d: Option<&CString>, cb: |*const u16| -> T) -> T {
     match d {
       Some(dir) => {
           let dir_str = dir.as_str()
                            .expect("expected workingdirectory to be utf-8 encoded");
-          let dir_str = dir_str.to_utf16().append_one(0);
+          let dir_str: Vec<u16> = dir_str.utf16_units().collect();
+          let dir_str = dir_str.append_one(0);
+
           cb(dir_str.as_ptr())
       },
       None => cb(ptr::null())
@@ -793,14 +802,14 @@ fn with_dirp<T>(d: Option<&CString>, cb: |*u16| -> T) -> T {
 }
 
 #[cfg(windows)]
-fn free_handle(handle: *()) {
+fn free_handle(handle: *mut ()) {
     assert!(unsafe {
         libc::CloseHandle(mem::transmute(handle)) != 0
     })
 }
 
 #[cfg(unix)]
-fn free_handle(_handle: *()) {
+fn free_handle(_handle: *mut ()) {
     // unix has no process handle object, just a pid
 }
 
@@ -1014,15 +1023,16 @@ fn waitpid(pid: pid_t, deadline: u64) -> IoResult<rtio::ProcessExit> {
                     let now = ::io::timer::now();
                     let ms = if now < deadline {deadline - now} else {0};
                     tv = util::ms_to_timeval(ms);
-                    (&tv as *_, idx)
+                    (&mut tv as *mut _, idx)
                 }
-                None => (ptr::null(), -1),
+                None => (ptr::mut_null(), -1),
             };
 
             // Wait for something to happen
             c::fd_set(&mut set, input);
             c::fd_set(&mut set, read_fd);
-            match unsafe { c::select(max, &set, ptr::null(), ptr::null(), p) } {
+            match unsafe { c::select(max, &mut set, ptr::mut_null(),
+                                     ptr::mut_null(), p) } {
                 // interrupted, retry
                 -1 if os::errno() == libc::EINTR as int => continue,
 
@@ -1132,9 +1142,9 @@ fn waitpid(pid: pid_t, deadline: u64) -> IoResult<rtio::ProcessExit> {
     // which will wake up the other end at some point, so we just allow this
     // signal to be coalesced with the pending signals on the pipe.
     extern fn sigchld_handler(_signum: libc::c_int) {
-        let mut msg = 1;
+        let msg = 1i;
         match unsafe {
-            libc::write(WRITE_FD, &mut msg as *mut _ as *libc::c_void, 1)
+            libc::write(WRITE_FD, &msg as *const _ as *const libc::c_void, 1)
         } {
             1 => {}
             -1 if util::wouldblock() => {} // see above comments

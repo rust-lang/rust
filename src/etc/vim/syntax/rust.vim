@@ -77,34 +77,39 @@ syn keyword   rustEnumVariant Ok Err
 "syn keyword rustFunction drop
 
 " Types and traits {{{3
-syn keyword rustTrait Ascii AsciiCast OwnedAsciiCast AsciiStr IntoBytes
+syn keyword rustTrait Ascii AsciiCast OwnedAsciiCast AsciiStr
+syn keyword rustTrait IntoBytes
 syn keyword rustTrait ToCStr
 syn keyword rustTrait Char
 syn keyword rustTrait Clone
-syn keyword rustTrait Eq Ord PartialEq PartialOrd Ordering Equiv
+syn keyword rustTrait PartialEq PartialOrd Eq Ord Equiv
+syn keyword rustEnum Ordering
 syn keyword rustEnumVariant Less Equal Greater
-syn keyword rustTrait Container Mutable Map MutableMap Set MutableSet
-syn keyword rustTrait FromIterator Extendable
-syn keyword rustTrait Iterator DoubleEndedIterator RandomAccessIterator CloneableIterator
-syn keyword rustTrait OrdIterator MutableDoubleEndedIterator ExactSize
-syn keyword rustTrait Num NumCast CheckedAdd CheckedSub CheckedMul
-syn keyword rustTrait Signed Unsigned
-syn keyword rustTrait Primitive Int Float FloatMath ToPrimitive FromPrimitive
-"syn keyword rustTrait Expect
+syn keyword rustTrait Collection Mutable Map MutableMap
+syn keyword rustTrait Set MutableSet
+syn keyword rustTrait FromIterator Extendable ExactSize
+syn keyword rustTrait Iterator DoubleEndedIterator
+syn keyword rustTrait RandomAccessIterator CloneableIterator
+syn keyword rustTrait OrdIterator MutableDoubleEndedIterator
+syn keyword rustTrait Num NumCast CheckedAdd CheckedSub CheckedMul CheckedDiv
+syn keyword rustTrait Signed Unsigned Primitive Int Float
+syn keyword rustTrait FloatMath ToPrimitive FromPrimitive
 syn keyword rustTrait Box
 syn keyword rustTrait GenericPath Path PosixPath WindowsPath
 syn keyword rustTrait RawPtr
 syn keyword rustTrait Buffer Writer Reader Seek
-syn keyword rustTrait Str StrVector StrSlice OwnedStr IntoMaybeOwned
-syn keyword rustTrait StrAllocating
+syn keyword rustTrait Str StrVector StrSlice OwnedStr
+syn keyword rustTrait IntoMaybeOwned StrAllocating
 syn keyword rustTrait ToStr IntoStr
 syn keyword rustTrait Tuple1 Tuple2 Tuple3 Tuple4
 syn keyword rustTrait Tuple5 Tuple6 Tuple7 Tuple8
 syn keyword rustTrait Tuple9 Tuple10 Tuple11 Tuple12
-syn keyword rustTrait CloneableVector ImmutableCloneableVector MutableCloneableVector
+syn keyword rustTrait CloneableVector ImmutableCloneableVector
+syn keyword rustTrait MutableCloneableVector MutableOrdVector
 syn keyword rustTrait ImmutableVector MutableVector
-syn keyword rustTrait ImmutableEqVector ImmutableOrdVector MutableOrdVector
-syn keyword rustTrait Vector VectorVector OwnedVector MutableVectorAllocating
+syn keyword rustTrait ImmutableEqVector ImmutableOrdVector
+syn keyword rustTrait Vector VectorVector
+syn keyword rustTrait MutableVectorAllocating
 syn keyword rustTrait String
 syn keyword rustTrait Vec
 

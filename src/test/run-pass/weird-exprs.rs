@@ -38,7 +38,7 @@ fn zombiejesus() {
         while (return) {
             if (return) {
                 match (return) {
-                    1 => {
+                    1i => {
                         if (return) {
                             return
                         } else {
@@ -56,7 +56,7 @@ fn zombiejesus() {
 }
 
 fn notsure() {
-    let mut _x;
+    let mut _x: int;
     let mut _y = (_x = 0) == (_x = 0);
     let mut _z = (_x = 0) < (_x = 0);
     let _a = (_x += 0) == (_x = 0);
@@ -72,8 +72,8 @@ fn canttouchthis() -> uint {
 
 fn angrydome() {
     loop { if break { } }
-    let mut i = 0;
-    loop { i += 1; if i == 1 { match (continue) { 1 => { }, _ => fail!("wat") } }
+    let mut i = 0i;
+    loop { i += 1; if i == 1 { match (continue) { 1i => { }, _ => fail!("wat") } }
       break; }
 }
 

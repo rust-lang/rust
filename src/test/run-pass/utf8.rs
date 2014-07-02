@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-pretty FIXME #15189
+// no-pretty-expanded FIXME #15189
 
 pub fn main() {
     let yen: char = '¥'; // 0xa5
@@ -46,7 +46,7 @@ pub fn main() {
         for ab in a.as_slice().bytes() {
             println!("{}", i);
             println!("{}", ab);
-            let bb: u8 = b.as_slice()[i as uint];
+            let bb: u8 = b.as_bytes()[i as uint];
             println!("{}", bb);
             assert_eq!(ab, bb);
             i += 1;

@@ -166,7 +166,7 @@ pub fn u64_from_be_bytes(data: &[u8], start: uint, size: uint) -> u64 {
         let ptr = data.as_ptr().offset(start as int);
         let out = buf.as_mut_ptr();
         copy_nonoverlapping_memory(out.offset((8 - size) as int), ptr, size);
-        from_be64(*(out as *u64))
+        from_be64(*(out as *const u64))
     }
 }
 

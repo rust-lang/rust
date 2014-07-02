@@ -10,9 +10,9 @@
 
 #[allow(unreachable_code)]
 pub fn expr_loop_12() {
-    let mut x = 12;
+    let mut x = 12i;
     loop {
-        x -= 1;
-        if x == 2 { break; "unreachable"; }
+        x -= 1i;
+        if x == 2i { break; "unreachable"; }
     }
 }

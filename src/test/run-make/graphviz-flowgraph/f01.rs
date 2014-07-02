@@ -9,5 +9,5 @@
 // except according to those terms.
 
 pub fn lit_1() {
-    1;
+    1i;
 }

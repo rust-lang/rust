@@ -389,8 +389,8 @@ impl<T: PartialEq> PartialEq for Vec<T> {
 
 impl<T: PartialOrd> PartialOrd for Vec<T> {
     #[inline]
-    fn lt(&self, other: &Vec<T>) -> bool {
-        self.as_slice() < other.as_slice()
+    fn partial_cmp(&self, other: &Vec<T>) -> Option<Ordering> {
+        self.as_slice().partial_cmp(&other.as_slice())
     }
 }
 
@@ -615,7 +615,7 @@ impl<T> Vec<T> {
         }
 
         unsafe {
-            let end = (self.ptr as *T).offset(self.len as int) as *mut T;
+            let end = (self.ptr as *const T).offset(self.len as int) as *mut T;
             ptr::write(&mut *end, value);
             self.len += 1;
         }
@@ -674,7 +674,10 @@ impl<T> Vec<T> {
     #[inline]
     pub fn as_mut_slice<'a>(&'a mut self) -> &'a mut [T] {
         unsafe {
-            mem::transmute(Slice { data: self.as_mut_ptr() as *T, len: self.len })
+            mem::transmute(Slice {
+                data: self.as_mut_ptr() as *const T,
+                len: self.len,
+            })
         }
     }
 
@@ -956,7 +959,8 @@ impl<T> Vec<T> {
     ///
     /// # Failure
     ///
-    /// Fails if `index` is out of bounds of the vector.
+    /// Fails if `index` is not between `0` and the vector's length (both
+    /// bounds inclusive).
     ///
     /// # Example
     ///
@@ -964,6 +968,8 @@ impl<T> Vec<T> {
     /// let mut vec = vec!(1i, 2, 3);
     /// vec.insert(1, 4);
     /// assert_eq!(vec, vec!(1, 4, 2, 3));
+    /// vec.insert(4, 5);
+    /// assert_eq!(vec, vec!(1, 4, 2, 3, 5));
     /// ```
     pub fn insert(&mut self, index: uint, element: T) {
         let len = self.len();
@@ -1011,7 +1017,7 @@ impl<T> Vec<T> {
                     let ptr = self.as_mut_ptr().offset(index as int);
                     // copy it out, unsafely having a copy of the value on
                     // the stack and in the vector at the same time.
-                    ret = Some(ptr::read(ptr as *T));
+                    ret = Some(ptr::read(ptr as *const T));
 
                     // Shift everything down to fill in that spot.
                     ptr::copy_memory(ptr, &*ptr.offset(1), len - index - 1);
@@ -1200,15 +1206,15 @@ impl<T> Vec<T> {
     /// Modifying the vector may cause its buffer to be reallocated, which
     /// would also make any pointers to it invalid.
     #[inline]
-    pub fn as_ptr(&self) -> *T {
+    pub fn as_ptr(&self) -> *const T {
         // If we have a 0-sized vector, then the base pointer should not be NULL
         // because an iterator over the slice will attempt to yield the base
         // pointer as the first element in the vector, but this will end up
         // being Some(NULL) which is optimized to None.
         if mem::size_of::<T>() == 0 {
-            1 as *T
+            1 as *const T
         } else {
-            self.ptr as *T
+            self.ptr as *const T
         }
     }
 
@@ -1542,7 +1548,7 @@ pub mod raw {
     /// The elements of the buffer are copied into the vector without cloning,
     /// as if `ptr::read()` were called on them.
     #[inline]
-    pub unsafe fn from_buf<T>(ptr: *T, elts: uint) -> Vec<T> {
+    pub unsafe fn from_buf<T>(ptr: *const T, elts: uint) -> Vec<T> {
         let mut dst = Vec::with_capacity(elts);
         dst.set_len(elts);
         ptr::copy_nonoverlapping_memory(dst.as_mut_ptr(), ptr, elts);

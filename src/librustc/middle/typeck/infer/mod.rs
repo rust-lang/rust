@@ -247,9 +247,13 @@ pub enum fixup_err {
 
 pub fn fixup_err_to_str(f: fixup_err) -> String {
     match f {
-      unresolved_int_ty(_) => "unconstrained integral type".to_string(),
+      unresolved_int_ty(_) => {
+          "cannot determine the type of this integer; add a suffix to \
+           specify the type explicitly".to_string()
+      }
       unresolved_float_ty(_) => {
-          "unconstrained floating point type".to_string()
+          "cannot determine the type of this number; add a suffix to specify \
+           the type explicitly".to_string()
       }
       unresolved_ty(_) => "unconstrained type".to_string(),
       cyclic_ty(_) => "cyclic type of infinite size".to_string(),

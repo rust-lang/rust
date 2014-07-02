@@ -166,8 +166,8 @@ mod test {
         let v: SmallVector<int> = SmallVector::zero();
         assert_eq!(0, v.len());
 
-        assert_eq!(1, SmallVector::one(1).len());
-        assert_eq!(5, SmallVector::many(vec!(1, 2, 3, 4, 5)).len());
+        assert_eq!(1, SmallVector::one(1i).len());
+        assert_eq!(5, SmallVector::many(vec!(1i, 2, 3, 4, 5)).len());
     }
 
     #[test]
@@ -215,7 +215,7 @@ mod test {
     #[test]
     #[should_fail]
     fn test_expect_one_many() {
-        SmallVector::many(vec!(1, 2)).expect_one("");
+        SmallVector::many(vec!(1i, 2)).expect_one("");
     }
 
     #[test]

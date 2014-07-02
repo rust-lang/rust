@@ -69,7 +69,7 @@ pub fn main() {
     t!(format!("{:X}", 10u), "A");
     t!(format!("{:s}", "foo"), "foo");
     t!(format!("{:s}", "foo".to_string()), "foo");
-    t!(format!("{:p}", 0x1234 as *int), "0x1234");
+    t!(format!("{:p}", 0x1234 as *const int), "0x1234");
     t!(format!("{:p}", 0x1234 as *mut int), "0x1234");
     t!(format!("{:d}", A), "aloha");
     t!(format!("{:d}", B), "adios");
@@ -80,6 +80,9 @@ pub fn main() {
     t!(format!("{} {0}", "a"), "a a");
     t!(format!("{foo_bar}", foo_bar=1i), "1");
     t!(format!("{:d}", 5i + 5i), "10");
+
+    let a: &fmt::Show = &1i;
+    t!(format!("{}", a), "1");
 
     // Formatting strings and their arguments
     t!(format!("{:s}", "a"), "a");

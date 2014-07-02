@@ -13,6 +13,6 @@ pub fn main() {
     ////////////////// still not a doc comment
     /////**** nope, me neither */
     /*** And neither am I! */
-    5;
+    5i;
     /*****! certainly not I */
 }

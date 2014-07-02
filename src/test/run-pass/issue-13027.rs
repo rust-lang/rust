@@ -27,80 +27,80 @@ pub fn main() {
 }
 
 fn lit_shadow_range() {
-    assert_eq!(2i, match 1 {
-        1 if false => 1,
+    assert_eq!(2i, match 1i {
+        1 if false => 1i,
         1..2 => 2,
         _ => 3
     });
 
     let x = 0i;
     assert_eq!(2i, match x+1 {
-        0 => 0,
+        0 => 0i,
         1 if false => 1,
         1..2 => 2,
         _ => 3
     });
 
     assert_eq!(2i, match val() {
-        1 if false => 1,
+        1 if false => 1i,
         1..2 => 2,
         _ => 3
     });
 
     assert_eq!(2i, match CONST {
-        0 => 0,
+        0 => 0i,
         1 if false => 1,
         1..2 => 2,
         _ => 3
     });
 
     // value is out of the range of second arm, should match wildcard pattern
-    assert_eq!(3i, match 3 {
-        1 if false => 1,
+    assert_eq!(3i, match 3i {
+        1 if false => 1i,
         1..2 => 2,
         _ => 3
     });
 }
 
 fn range_shadow_lit() {
-    assert_eq!(2i, match 1 {
-        1..2 if false => 1,
+    assert_eq!(2i, match 1i {
+        1..2 if false => 1i,
         1 => 2,
         _ => 3
     });
 
     let x = 0i;
     assert_eq!(2i, match x+1 {
-        0 => 0,
+        0 => 0i,
         1..2 if false => 1,
         1 => 2,
         _ => 3
     });
 
     assert_eq!(2i, match val() {
-        1..2 if false => 1,
+        1..2 if false => 1i,
         1 => 2,
         _ => 3
     });
 
     assert_eq!(2i, match CONST {
-        0 => 0,
+        0 => 0i,
         1..2 if false => 1,
         1 => 2,
         _ => 3
     });
 
     // ditto
-    assert_eq!(3i, match 3 {
-        1..2 if false => 1,
+    assert_eq!(3i, match 3i {
+        1..2 if false => 1i,
         1 => 2,
         _ => 3
     });
 }
 
 fn range_shadow_range() {
-    assert_eq!(2i, match 1 {
-        0..2 if false => 1,
+    assert_eq!(2i, match 1i {
+        0..2 if false => 1i,
         1..3 => 2,
         _ => 3,
     });
@@ -127,16 +127,16 @@ fn range_shadow_range() {
     });
 
     // ditto
-    assert_eq!(3i, match 5 {
-        0..2 if false => 1,
+    assert_eq!(3i, match 5i {
+        0..2 if false => 1i,
         1..3 => 2,
         _ => 3,
     });
 }
 
 fn multi_pats_shadow_lit() {
-    assert_eq!(2i, match 1 {
-        100 => 0,
+    assert_eq!(2i, match 1i {
+        100 => 0i,
         0 | 1..10 if false => 1,
         1 => 2,
         _ => 3,
@@ -144,8 +144,8 @@ fn multi_pats_shadow_lit() {
 }
 
 fn multi_pats_shadow_range() {
-    assert_eq!(2i, match 1 {
-        100 => 0,
+    assert_eq!(2i, match 1i {
+        100 => 0i,
         0 | 1..10 if false => 1,
         1..3 => 2,
         _ => 3,
@@ -153,8 +153,8 @@ fn multi_pats_shadow_range() {
 }
 
 fn lit_shadow_multi_pats() {
-    assert_eq!(2i, match 1 {
-        100 => 0,
+    assert_eq!(2i, match 1i {
+        100 => 0i,
         1 if false => 1,
         0 | 1..10 => 2,
         _ => 3,
@@ -162,8 +162,8 @@ fn lit_shadow_multi_pats() {
 }
 
 fn range_shadow_multi_pats() {
-    assert_eq!(2i, match 1 {
-        100 => 0,
+    assert_eq!(2i, match 1i {
+        100 => 0i,
         1..3 if false => 1,
         0 | 1..10 => 2,
         _ => 3,
@@ -182,5 +182,5 @@ fn misc() {
         [Bar(_, pred)] if !pred => 2i,
         _ => 0i,
     };
-    assert_eq!(2, r);
+    assert_eq!(2i, r);
 }

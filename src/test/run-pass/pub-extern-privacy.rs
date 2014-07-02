@@ -12,12 +12,12 @@ use std::mem::transmute;
 
 mod a {
     extern {
-        pub fn free(x: *u8);
+        pub fn free(x: *const u8);
     }
 }
 
 pub fn main() {
     unsafe {
-        a::free(transmute(0));
+        a::free(transmute(0u));
     }
 }

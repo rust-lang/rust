@@ -91,8 +91,8 @@ impl Eq for BigUint {}
 
 impl PartialOrd for BigUint {
     #[inline]
-    fn lt(&self, other: &BigUint) -> bool {
-        self.cmp(other) == Less
+    fn partial_cmp(&self, other: &BigUint) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }
 
@@ -215,7 +215,7 @@ impl Sub<BigUint, BigUint> for BigUint {
         let zeros = ZERO_VEC.iter().cycle();
         let (a, b) = (self.data.iter().chain(zeros.clone()), other.data.iter().chain(zeros));
 
-        let mut borrow = 0;
+        let mut borrow = 0i;
         let diff: Vec<BigDigit> =  a.take(new_len).zip(b).map(|(ai, bi)| {
             let (hi, lo) = BigDigit::from_doublebigdigit(
                 BigDigit::base
@@ -816,8 +816,8 @@ impl Eq for BigInt {}
 
 impl PartialOrd for BigInt {
     #[inline]
-    fn lt(&self, other: &BigInt) -> bool {
-        self.cmp(other) == Less
+    fn partial_cmp(&self, other: &BigInt) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }
 

@@ -16,7 +16,9 @@ use core::cmp::{PartialEq, PartialOrd, Eq, Ord, Ordering};
 use core::default::Default;
 use core::fmt;
 use core::intrinsics;
+use core::kinds::Send;
 use core::mem;
+use core::option::Option;
 use core::raw::TraitObject;
 use core::result::{Ok, Err, Result};
 
@@ -36,7 +38,7 @@ pub static HEAP: () = ();
 
 /// A type that represents a uniquely-owned value.
 #[lang="owned_box"]
-pub struct Box<T>(*T);
+pub struct Box<T>(*mut T);
 
 impl<T: Default> Default for Box<T> {
     fn default() -> Box<T> { box Default::default() }
@@ -63,6 +65,10 @@ impl<T:PartialEq> PartialEq for Box<T> {
     fn ne(&self, other: &Box<T>) -> bool { *(*self) != *(*other) }
 }
 impl<T:PartialOrd> PartialOrd for Box<T> {
+    #[inline]
+    fn partial_cmp(&self, other: &Box<T>) -> Option<Ordering> {
+        (**self).partial_cmp(*other)
+    }
     #[inline]
     fn lt(&self, other: &Box<T>) -> bool { *(*self) < *(*other) }
     #[inline]
@@ -106,6 +112,34 @@ impl AnyOwnExt for Box<Any> {
     }
 }
 
+/// Extension methods for an owning `Any+Send` trait object
+pub trait AnySendOwnExt {
+    /// Returns the boxed value if it is of type `T`, or
+    /// `Err(Self)` if it isn't.
+    fn move_send<T: 'static>(self) -> Result<Box<T>, Self>;
+}
+
+impl AnySendOwnExt for Box<Any+Send> {
+    #[inline]
+    fn move_send<T: 'static>(self) -> Result<Box<T>, Box<Any+Send>> {
+        if self.is::<T>() {
+            unsafe {
+                // Get the raw representation of the trait object
+                let to: TraitObject =
+                    *mem::transmute::<&Box<Any+Send>, &TraitObject>(&self);
+
+                // Prevent destructor on self being run
+                intrinsics::forget(self);
+
+                // Extract the data pointer
+                Ok(mem::transmute(to.data))
+            }
+        } else {
+            Err(self)
+        }
+    }
+}
+
 impl<T: fmt::Show> fmt::Show for Box<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         (**self).fmt(f)
@@ -115,5 +149,53 @@ impl<T: fmt::Show> fmt::Show for Box<T> {
 impl fmt::Show for Box<Any> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("Box<Any>")
+    }
+}
+
+#[cfg(test)]
+mod test {
+    #[test]
+    fn test_owned_clone() {
+        let a = box 5i;
+        let b: Box<int> = a.clone();
+        assert!(a == b);
+    }
+
+    #[test]
+    fn any_move() {
+        let a = box 8u as Box<Any>;
+        let b = box Test as Box<Any>;
+
+        match a.move::<uint>() {
+            Ok(a) => { assert!(a == box 8u); }
+            Err(..) => fail!()
+        }
+        match b.move::<Test>() {
+            Ok(a) => { assert!(a == box Test); }
+            Err(..) => fail!()
+        }
+
+        let a = box 8u as Box<Any>;
+        let b = box Test as Box<Any>;
+
+        assert!(a.move::<Box<Test>>().is_err());
+        assert!(b.move::<Box<uint>>().is_err());
+    }
+
+    #[test]
+    fn test_show() {
+        let a = box 8u as Box<Any>;
+        let b = box Test as Box<Any>;
+        let a_str = a.to_str();
+        let b_str = b.to_str();
+        assert_eq!(a_str.as_slice(), "Box<Any>");
+        assert_eq!(b_str.as_slice(), "Box<Any>");
+
+        let a = &8u as &Any;
+        let b = &Test as &Any;
+        let s = format!("{}", a);
+        assert_eq!(s.as_slice(), "&Any");
+        let s = format!("{}", b);
+        assert_eq!(s.as_slice(), "&Any");
     }
 }

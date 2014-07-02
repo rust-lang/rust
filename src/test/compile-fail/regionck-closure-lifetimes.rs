@@ -13,9 +13,9 @@ fn env<'a>(blk: |p: ||: 'a|) {
     // the lifetime `'a`, which outlives the current
     // block.
 
-    let mut state = 0;
+    let mut state = 0i;
     let statep = &mut state;
-    blk(|| *statep = 1); //~ ERROR cannot infer
+    blk(|| *statep = 1i); //~ ERROR cannot infer
 }
 
 fn no_env_no_for<'a>(blk: |p: |||: 'a) {
@@ -31,7 +31,7 @@ fn repeating_loop() {
     // external to the loop.
 
     let closure;
-    let state = 0;
+    let state = 0i;
 
     loop {
         closure = || state; //~ ERROR cannot infer
@@ -47,7 +47,7 @@ fn repeating_while() {
     // external to the loop.
 
     let closure;
-    let state = 0;
+    let state = 0i;
 
     while true {
         closure = || state; //~ ERROR cannot infer

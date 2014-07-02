@@ -27,7 +27,7 @@ pub struct Context {
     stack_bounds: Option<(uint, uint)>,
 }
 
-pub type InitFn = extern "C" fn(uint, *(), *()) -> !;
+pub type InitFn = extern "C" fn(uint, *mut (), *mut ()) -> !;
 
 impl Context {
     pub fn empty() -> Context {
@@ -49,7 +49,7 @@ impl Context {
     pub fn new(init: InitFn, arg: uint, start: proc():Send,
                stack: &mut Stack) -> Context {
 
-        let sp: *uint = stack.end();
+        let sp: *const uint = stack.end();
         let sp: *mut uint = sp as *mut uint;
         // Save and then immediately load the current context,
         // which we will then modify to call the given function when restored
@@ -66,7 +66,7 @@ impl Context {
         // them in terms of the code running on them (and hopefully they don't
         // overflow). Additionally, their coroutine stacks are listed as being
         // zero-length, so that's how we detect what's what here.
-        let stack_base: *uint = stack.start();
+        let stack_base: *const uint = stack.start();
         let bounds = if sp as uint == stack_base as uint {
             None
         } else {
@@ -116,7 +116,7 @@ impl Context {
 
 #[link(name = "context_switch", kind = "static")]
 extern {
-    fn rust_swap_registers(out_regs: *mut Registers, in_regs: *Registers);
+    fn rust_swap_registers(out_regs: *mut Registers, in_regs: *const Registers);
 }
 
 // Register contexts used in various architectures

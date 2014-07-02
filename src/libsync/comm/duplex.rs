@@ -15,6 +15,10 @@ Higher level communication abstractions.
 */
 
 #![allow(missing_doc)]
+#![deprecated = "This type is replaced by having a pair of channels. This type \
+                 is not fully composable with other channels in terms of \
+                 or possible semantics on a duplex stream. It will be removed \
+                 soon"]
 
 use core::prelude::*;
 
@@ -64,7 +68,7 @@ mod test {
         let (left, right) = duplex();
 
         left.send("abc".to_string());
-        right.send(123);
+        right.send(123i);
 
         assert!(left.recv() == 123);
         assert!(right.recv() == "abc".to_string());

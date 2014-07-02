@@ -14,5 +14,5 @@ extern crate testmod = "issue-9906";
 
 pub fn main() {
     testmod::foo();
-    testmod::FooBar::new(1);
+    testmod::FooBar::new(1i);
 }

@@ -112,16 +112,6 @@ macro_rules! writeln(
     )
 )
 
-#[cfg(test)]
-macro_rules! vec( ($($e:expr),*) => ({
-    let mut _v = ::std::vec::Vec::new();
-    $(_v.push($e);)*
-    _v
-}) )
-
-#[cfg(test)]
-macro_rules! format( ($($arg:tt)*) => (format_args!(::fmt::format, $($arg)*)) )
-
 /// Write some formatted data into a stream.
 ///
 /// Identical to the macro in `std::macros`

@@ -369,14 +369,14 @@ pub mod types {
 
                 pub struct glob_t {
                     pub gl_pathc: size_t,
-                    pub gl_pathv: **c_char,
+                    pub gl_pathv: *mut *mut c_char,
                     pub gl_offs:  size_t,
 
-                    pub __unused1: *c_void,
-                    pub __unused2: *c_void,
-                    pub __unused3: *c_void,
-                    pub __unused4: *c_void,
-                    pub __unused5: *c_void,
+                    pub __unused1: *mut c_void,
+                    pub __unused2: *mut c_void,
+                    pub __unused3: *mut c_void,
+                    pub __unused4: *mut c_void,
+                    pub __unused5: *mut c_void,
                 }
 
                 pub struct timeval {
@@ -444,18 +444,18 @@ pub mod types {
                     pub ai_addrlen: socklen_t,
 
                     #[cfg(target_os = "linux")]
-                    pub ai_addr: *sockaddr,
+                    pub ai_addr: *mut sockaddr,
 
                     #[cfg(target_os = "linux")]
-                    pub ai_canonname: *c_char,
+                    pub ai_canonname: *mut c_char,
 
                     #[cfg(target_os = "android")]
-                    pub ai_canonname: *c_char,
+                    pub ai_canonname: *mut c_char,
 
                     #[cfg(target_os = "android")]
-                    pub ai_addr: *sockaddr,
+                    pub ai_addr: *mut sockaddr,
 
-                    pub ai_next: *addrinfo,
+                    pub ai_next: *mut addrinfo,
                 }
                 pub struct sockaddr_un {
                     pub sun_family: sa_family_t,
@@ -755,15 +755,15 @@ pub mod types {
                     pub __unused1: size_t,
                     pub gl_offs:   size_t,
                     pub __unused2: c_int,
-                    pub gl_pathv:  **c_char,
+                    pub gl_pathv:  *mut *mut c_char,
 
-                    pub __unused3: *c_void,
+                    pub __unused3: *mut c_void,
 
-                    pub __unused4: *c_void,
-                    pub __unused5: *c_void,
-                    pub __unused6: *c_void,
-                    pub __unused7: *c_void,
-                    pub __unused8: *c_void,
+                    pub __unused4: *mut c_void,
+                    pub __unused5: *mut c_void,
+                    pub __unused6: *mut c_void,
+                    pub __unused7: *mut c_void,
+                    pub __unused8: *mut c_void,
                 }
 
                 pub struct timeval {
@@ -834,9 +834,9 @@ pub mod types {
                     pub ai_socktype: c_int,
                     pub ai_protocol: c_int,
                     pub ai_addrlen: socklen_t,
-                    pub ai_canonname: *c_char,
-                    pub ai_addr: *sockaddr,
-                    pub ai_next: *addrinfo,
+                    pub ai_canonname: *mut c_char,
+                    pub ai_addr: *mut sockaddr,
+                    pub ai_next: *mut addrinfo,
                 }
                 pub struct sockaddr_un {
                     pub sun_len: u8,
@@ -926,7 +926,7 @@ pub mod types {
                     pub modtime: time_t,
                 }
 
-                pub type pthread_attr_t = *c_void;
+                pub type pthread_attr_t = *mut c_void;
             }
             pub mod posix08 {
             }
@@ -1032,9 +1032,9 @@ pub mod types {
                     pub ai_socktype: c_int,
                     pub ai_protocol: c_int,
                     pub ai_addrlen: size_t,
-                    pub ai_canonname: *c_char,
-                    pub ai_addr: *sockaddr,
-                    pub ai_next: *addrinfo,
+                    pub ai_canonname: *mut c_char,
+                    pub ai_addr: *mut sockaddr,
+                    pub ai_next: *mut addrinfo,
                 }
                 pub struct sockaddr_un {
                     pub sun_family: sa_family_t,
@@ -1146,8 +1146,8 @@ pub mod types {
                 pub type LARGE_INTEGER = c_longlong;
                 pub type PLARGE_INTEGER = *mut c_longlong;
 
-                pub type LPCWSTR = *WCHAR;
-                pub type LPCSTR = *CHAR;
+                pub type LPCWSTR = *const WCHAR;
+                pub type LPCSTR = *const CHAR;
 
                 pub type LPWSTR = *mut WCHAR;
                 pub type LPSTR = *mut CHAR;
@@ -1163,7 +1163,7 @@ pub mod types {
                 pub type LPSECURITY_ATTRIBUTES = *mut SECURITY_ATTRIBUTES;
 
                 pub type LPVOID = *mut c_void;
-                pub type LPCVOID = *c_void;
+                pub type LPCVOID = *const c_void;
                 pub type LPBYTE = *mut BYTE;
                 pub type LPWORD = *mut WORD;
                 pub type LPDWORD = *mut DWORD;
@@ -1235,8 +1235,8 @@ pub mod types {
                 pub type LPMEMORY_BASIC_INFORMATION = *mut MEMORY_BASIC_INFORMATION;
 
                 pub struct OVERLAPPED {
-                    pub Internal: *c_ulong,
-                    pub InternalHigh: *c_ulong,
+                    pub Internal: *mut c_ulong,
+                    pub InternalHigh: *mut c_ulong,
                     pub Offset: DWORD,
                     pub OffsetHigh: DWORD,
                     pub hEvent: HANDLE,
@@ -1312,15 +1312,15 @@ pub mod types {
                     pub __unused1: c_int,
                     pub gl_offs:   size_t,
                     pub __unused2: c_int,
-                    pub gl_pathv:  **c_char,
+                    pub gl_pathv:  *mut *mut c_char,
 
-                    pub __unused3: *c_void,
+                    pub __unused3: *mut c_void,
 
-                    pub __unused4: *c_void,
-                    pub __unused5: *c_void,
-                    pub __unused6: *c_void,
-                    pub __unused7: *c_void,
-                    pub __unused8: *c_void,
+                    pub __unused4: *mut c_void,
+                    pub __unused5: *mut c_void,
+                    pub __unused6: *mut c_void,
+                    pub __unused7: *mut c_void,
+                    pub __unused8: *mut c_void,
                 }
 
                 pub struct timeval {
@@ -1392,9 +1392,9 @@ pub mod types {
                     pub ai_socktype: c_int,
                     pub ai_protocol: c_int,
                     pub ai_addrlen: socklen_t,
-                    pub ai_canonname: *c_char,
-                    pub ai_addr: *sockaddr,
-                    pub ai_next: *addrinfo,
+                    pub ai_canonname: *mut c_char,
+                    pub ai_addr: *mut sockaddr,
+                    pub ai_next: *mut addrinfo,
                 }
                 pub struct sockaddr_un {
                     pub sun_len: u8,
@@ -3543,53 +3543,56 @@ pub mod funcs {
             use types::os::arch::c95::{c_char, c_int, c_long, size_t};
 
             extern {
-                pub fn fopen(filename: *c_char, mode: *c_char) -> *FILE;
-                pub fn freopen(filename: *c_char, mode: *c_char, file: *FILE)
-                               -> *FILE;
-                pub fn fflush(file: *FILE) -> c_int;
-                pub fn fclose(file: *FILE) -> c_int;
-                pub fn remove(filename: *c_char) -> c_int;
-                pub fn rename(oldname: *c_char, newname: *c_char) -> c_int;
-                pub fn tmpfile() -> *FILE;
-                pub fn setvbuf(stream: *FILE,
-                               buffer: *c_char,
+                pub fn fopen(filename: *const c_char,
+                             mode: *const c_char) -> *mut FILE;
+                pub fn freopen(filename: *const c_char, mode: *const c_char,
+                               file: *mut FILE)
+                               -> *mut FILE;
+                pub fn fflush(file: *mut FILE) -> c_int;
+                pub fn fclose(file: *mut FILE) -> c_int;
+                pub fn remove(filename: *const c_char) -> c_int;
+                pub fn rename(oldname: *const c_char,
+                              newname: *const c_char) -> c_int;
+                pub fn tmpfile() -> *mut FILE;
+                pub fn setvbuf(stream: *mut FILE,
+                               buffer: *mut c_char,
                                mode: c_int,
                                size: size_t)
                                -> c_int;
-                pub fn setbuf(stream: *FILE, buf: *c_char);
+                pub fn setbuf(stream: *mut FILE, buf: *mut c_char);
                 // Omitted: printf and scanf variants.
-                pub fn fgetc(stream: *FILE) -> c_int;
-                pub fn fgets(buf: *mut c_char, n: c_int, stream: *FILE)
-                             -> *c_char;
-                pub fn fputc(c: c_int, stream: *FILE) -> c_int;
-                pub fn fputs(s: *c_char, stream: *FILE) -> *c_char;
+                pub fn fgetc(stream: *mut FILE) -> c_int;
+                pub fn fgets(buf: *mut c_char, n: c_int, stream: *mut FILE)
+                             -> *mut c_char;
+                pub fn fputc(c: c_int, stream: *mut FILE) -> c_int;
+                pub fn fputs(s: *const c_char, stream: *mut FILE)-> c_int;
                 // Omitted: getc, getchar (might be macros).
 
                 // Omitted: gets, so ridiculously unsafe that it should not
                 // survive.
 
                 // Omitted: putc, putchar (might be macros).
-                pub fn puts(s: *c_char) -> c_int;
-                pub fn ungetc(c: c_int, stream: *FILE) -> c_int;
+                pub fn puts(s: *const c_char) -> c_int;
+                pub fn ungetc(c: c_int, stream: *mut FILE) -> c_int;
                 pub fn fread(ptr: *mut c_void,
                              size: size_t,
                              nobj: size_t,
-                             stream: *FILE)
+                             stream: *mut FILE)
                              -> size_t;
-                pub fn fwrite(ptr: *c_void,
+                pub fn fwrite(ptr: *const c_void,
                               size: size_t,
                               nobj: size_t,
-                              stream: *FILE)
+                              stream: *mut FILE)
                               -> size_t;
-                pub fn fseek(stream: *FILE, offset: c_long, whence: c_int)
+                pub fn fseek(stream: *mut FILE, offset: c_long, whence: c_int)
                              -> c_int;
-                pub fn ftell(stream: *FILE) -> c_long;
-                pub fn rewind(stream: *FILE);
-                pub fn fgetpos(stream: *FILE, ptr: *fpos_t) -> c_int;
-                pub fn fsetpos(stream: *FILE, ptr: *fpos_t) -> c_int;
-                pub fn feof(stream: *FILE) -> c_int;
-                pub fn ferror(stream: *FILE) -> c_int;
-                pub fn perror(s: *c_char);
+                pub fn ftell(stream: *mut FILE) -> c_long;
+                pub fn rewind(stream: *mut FILE);
+                pub fn fgetpos(stream: *mut FILE, ptr: *mut fpos_t) -> c_int;
+                pub fn fsetpos(stream: *mut FILE, ptr: *mut fpos_t) -> c_int;
+                pub fn feof(stream: *mut FILE) -> c_int;
+                pub fn ferror(stream: *mut FILE) -> c_int;
+                pub fn perror(s: *const c_char);
             }
         }
 
@@ -3603,22 +3606,23 @@ pub mod funcs {
                 pub fn abs(i: c_int) -> c_int;
                 pub fn labs(i: c_long) -> c_long;
                 // Omitted: div, ldiv (return pub type incomplete).
-                pub fn atof(s: *c_char) -> c_double;
-                pub fn atoi(s: *c_char) -> c_int;
-                pub fn strtod(s: *c_char, endp: **c_char) -> c_double;
-                pub fn strtol(s: *c_char, endp: **c_char, base: c_int)
-                              -> c_long;
-                pub fn strtoul(s: *c_char, endp: **c_char, base: c_int)
-                               -> c_ulong;
-                pub fn calloc(nobj: size_t, size: size_t) -> *c_void;
+                pub fn atof(s: *const c_char) -> c_double;
+                pub fn atoi(s: *const c_char) -> c_int;
+                pub fn strtod(s: *const c_char,
+                              endp: *mut *mut c_char) -> c_double;
+                pub fn strtol(s: *const c_char,
+                              endp: *mut *mut c_char, base: c_int) -> c_long;
+                pub fn strtoul(s: *const c_char, endp: *mut *mut c_char,
+                               base: c_int) -> c_ulong;
+                pub fn calloc(nobj: size_t, size: size_t) -> *mut c_void;
                 pub fn malloc(size: size_t) -> *mut c_void;
                 pub fn realloc(p: *mut c_void, size: size_t) -> *mut c_void;
                 pub fn free(p: *mut c_void);
                 pub fn exit(status: c_int) -> !;
                 pub fn _exit(status: c_int) -> !;
                 // Omitted: atexit.
-                pub fn system(s: *c_char) -> c_int;
-                pub fn getenv(s: *c_char) -> *c_char;
+                pub fn system(s: *const c_char) -> c_int;
+                pub fn getenv(s: *const c_char) -> *mut c_char;
                 // Omitted: bsearch, qsort
                 pub fn rand() -> c_int;
                 pub fn srand(seed: c_uint);
@@ -3631,32 +3635,40 @@ pub mod funcs {
             use types::os::arch::c95::{wchar_t};
 
             extern {
-                pub fn strcpy(dst: *c_char, src: *c_char) -> *c_char;
-                pub fn strncpy(dst: *c_char, src: *c_char, n: size_t)
-                               -> *c_char;
-                pub fn strcat(s: *c_char, ct: *c_char) -> *c_char;
-                pub fn strncat(s: *c_char, ct: *c_char, n: size_t) -> *c_char;
-                pub fn strcmp(cs: *c_char, ct: *c_char) -> c_int;
-                pub fn strncmp(cs: *c_char, ct: *c_char, n: size_t) -> c_int;
-                pub fn strcoll(cs: *c_char, ct: *c_char) -> c_int;
-                pub fn strchr(cs: *c_char, c: c_int) -> *c_char;
-                pub fn strrchr(cs: *c_char, c: c_int) -> *c_char;
-                pub fn strspn(cs: *c_char, ct: *c_char) -> size_t;
-                pub fn strcspn(cs: *c_char, ct: *c_char) -> size_t;
-                pub fn strpbrk(cs: *c_char, ct: *c_char) -> *c_char;
-                pub fn strstr(cs: *c_char, ct: *c_char) -> *c_char;
-                pub fn strlen(cs: *c_char) -> size_t;
-                pub fn strerror(n: c_int) -> *c_char;
-                pub fn strtok(s: *c_char, t: *c_char) -> *c_char;
-                pub fn strxfrm(s: *c_char, ct: *c_char, n: size_t) -> size_t;
-                pub fn wcslen(buf: *wchar_t) -> size_t;
+                pub fn strcpy(dst: *mut c_char,
+                              src: *const c_char) -> *mut c_char;
+                pub fn strncpy(dst: *mut c_char, src: *const c_char, n: size_t)
+                               -> *mut c_char;
+                pub fn strcat(s: *mut c_char, ct: *const c_char) -> *mut c_char;
+                pub fn strncat(s: *mut c_char, ct: *const c_char,
+                               n: size_t) -> *mut c_char;
+                pub fn strcmp(cs: *const c_char, ct: *const c_char) -> c_int;
+                pub fn strncmp(cs: *const c_char, ct: *const c_char,
+                               n: size_t) -> c_int;
+                pub fn strcoll(cs: *const c_char, ct: *const c_char) -> c_int;
+                pub fn strchr(cs: *const c_char, c: c_int) -> *mut c_char;
+                pub fn strrchr(cs: *const c_char, c: c_int) -> *mut c_char;
+                pub fn strspn(cs: *const c_char, ct: *const c_char) -> size_t;
+                pub fn strcspn(cs: *const c_char, ct: *const c_char) -> size_t;
+                pub fn strpbrk(cs: *const c_char,
+                               ct: *const c_char) -> *mut c_char;
+                pub fn strstr(cs: *const c_char,
+                              ct: *const c_char) -> *mut c_char;
+                pub fn strlen(cs: *const c_char) -> size_t;
+                pub fn strerror(n: c_int) -> *mut c_char;
+                pub fn strtok(s: *mut c_char, t: *const c_char) -> *mut c_char;
+                pub fn strxfrm(s: *mut c_char, ct: *const c_char,
+                               n: size_t) -> size_t;
+                pub fn wcslen(buf: *const wchar_t) -> size_t;
 
                 // Omitted: memcpy, memmove, memset (provided by LLVM)
 
                 // These are fine to execute on the Rust stack. They must be,
                 // in fact, because LLVM generates calls to them!
-                pub fn memcmp(cx: *c_void, ct: *c_void, n: size_t) -> c_int;
-                pub fn memchr(cx: *c_void, c: c_int, n: size_t) -> *c_void;
+                pub fn memcmp(cx: *const c_void, ct: *const c_void,
+                              n: size_t) -> c_int;
+                pub fn memchr(cx: *const c_void, c: c_int,
+                              n: size_t) -> *mut c_void;
             }
         }
     }
@@ -3675,21 +3687,21 @@ pub mod funcs {
 
             extern {
                 #[link_name = "_chmod"]
-                pub fn chmod(path: *c_char, mode: c_int) -> c_int;
+                pub fn chmod(path: *const c_char, mode: c_int) -> c_int;
                 #[link_name = "_wchmod"]
-                pub fn wchmod(path: *wchar_t, mode: c_int) -> c_int;
+                pub fn wchmod(path: *const wchar_t, mode: c_int) -> c_int;
                 #[link_name = "_mkdir"]
-                pub fn mkdir(path: *c_char) -> c_int;
+                pub fn mkdir(path: *const c_char) -> c_int;
                 #[link_name = "_wrmdir"]
-                pub fn wrmdir(path: *wchar_t) -> c_int;
+                pub fn wrmdir(path: *const wchar_t) -> c_int;
                 #[link_name = "_fstat64"]
                 pub fn fstat(fildes: c_int, buf: *mut stat) -> c_int;
                 #[link_name = "_stat64"]
-                pub fn stat(path: *c_char, buf: *mut stat) -> c_int;
+                pub fn stat(path: *const c_char, buf: *mut stat) -> c_int;
                 #[link_name = "_wstat64"]
-                pub fn wstat(path: *wchar_t, buf: *mut stat) -> c_int;
+                pub fn wstat(path: *const wchar_t, buf: *mut stat) -> c_int;
                 #[link_name = "_wutime64"]
-                pub fn wutime(file: *wchar_t, buf: *utimbuf) -> c_int;
+                pub fn wutime(file: *const wchar_t, buf: *mut utimbuf) -> c_int;
             }
         }
 
@@ -3699,13 +3711,14 @@ pub mod funcs {
 
             extern {
                 #[link_name = "_popen"]
-                pub fn popen(command: *c_char, mode: *c_char) -> *FILE;
+                pub fn popen(command: *const c_char,
+                             mode: *const c_char) -> *mut FILE;
                 #[link_name = "_pclose"]
-                pub fn pclose(stream: *FILE) -> c_int;
+                pub fn pclose(stream: *mut FILE) -> c_int;
                 #[link_name = "_fdopen"]
-                pub fn fdopen(fd: c_int, mode: *c_char) -> *FILE;
+                pub fn fdopen(fd: c_int, mode: *const c_char) -> *mut FILE;
                 #[link_name = "_fileno"]
-                pub fn fileno(stream: *FILE) -> c_int;
+                pub fn fileno(stream: *mut FILE) -> c_int;
             }
         }
 
@@ -3713,13 +3726,13 @@ pub mod funcs {
             use types::os::arch::c95::{c_int, c_char, wchar_t};
             extern {
                 #[link_name = "_open"]
-                pub fn open(path: *c_char, oflag: c_int, mode: c_int)
+                pub fn open(path: *const c_char, oflag: c_int, mode: c_int)
                             -> c_int;
                 #[link_name = "_wopen"]
-                pub fn wopen(path: *wchar_t, oflag: c_int, mode: c_int)
+                pub fn wopen(path: *const wchar_t, oflag: c_int, mode: c_int)
                             -> c_int;
                 #[link_name = "_creat"]
-                pub fn creat(path: *c_char, mode: c_int) -> c_int;
+                pub fn creat(path: *const c_char, mode: c_int) -> c_int;
             }
         }
 
@@ -3735,9 +3748,9 @@ pub mod funcs {
 
             extern {
                 #[link_name = "_access"]
-                pub fn access(path: *c_char, amode: c_int) -> c_int;
+                pub fn access(path: *const c_char, amode: c_int) -> c_int;
                 #[link_name = "_chdir"]
-                pub fn chdir(dir: *c_char) -> c_int;
+                pub fn chdir(dir: *const c_char) -> c_int;
                 #[link_name = "_close"]
                 pub fn close(fd: c_int) -> c_int;
                 #[link_name = "_dup"]
@@ -3745,17 +3758,20 @@ pub mod funcs {
                 #[link_name = "_dup2"]
                 pub fn dup2(src: c_int, dst: c_int) -> c_int;
                 #[link_name = "_execv"]
-                pub fn execv(prog: *c_char, argv: **c_char) -> intptr_t;
+                pub fn execv(prog: *const c_char,
+                             argv: *mut *const c_char) -> intptr_t;
                 #[link_name = "_execve"]
-                pub fn execve(prog: *c_char, argv: **c_char, envp: **c_char)
+                pub fn execve(prog: *const c_char, argv: *mut *const c_char,
+                              envp: *mut *const c_char)
                               -> c_int;
                 #[link_name = "_execvp"]
-                pub fn execvp(c: *c_char, argv: **c_char) -> c_int;
+                pub fn execvp(c: *const c_char,
+                              argv: *mut *const c_char) -> c_int;
                 #[link_name = "_execvpe"]
-                pub fn execvpe(c: *c_char, argv: **c_char, envp: **c_char)
-                               -> c_int;
+                pub fn execvpe(c: *const c_char, argv: *mut *const c_char,
+                               envp: *mut *const c_char) -> c_int;
                 #[link_name = "_getcwd"]
-                pub fn getcwd(buf: *mut c_char, size: size_t) -> *c_char;
+                pub fn getcwd(buf: *mut c_char, size: size_t) -> *mut c_char;
                 #[link_name = "_getpid"]
                 pub fn getpid() -> c_int;
                 #[link_name = "_isatty"]
@@ -3770,11 +3786,12 @@ pub mod funcs {
                 pub fn read(fd: c_int, buf: *mut c_void, count: c_uint)
                             -> c_int;
                 #[link_name = "_rmdir"]
-                pub fn rmdir(path: *c_char) -> c_int;
+                pub fn rmdir(path: *const c_char) -> c_int;
                 #[link_name = "_unlink"]
-                pub fn unlink(c: *c_char) -> c_int;
+                pub fn unlink(c: *const c_char) -> c_int;
                 #[link_name = "_write"]
-                pub fn write(fd: c_int, buf: *c_void, count: c_uint) -> c_int;
+                pub fn write(fd: c_int, buf: *const c_void,
+                             count: c_uint) -> c_int;
             }
         }
 
@@ -3795,7 +3812,7 @@ pub mod funcs {
             use types::os::arch::posix88::mode_t;
 
             extern {
-                pub fn chmod(path: *c_char, mode: mode_t) -> c_int;
+                pub fn chmod(path: *const c_char, mode: mode_t) -> c_int;
                 pub fn fchmod(fd: c_int, mode: mode_t) -> c_int;
 
                 #[cfg(target_os = "linux")]
@@ -3808,18 +3825,18 @@ pub mod funcs {
                 #[link_name = "fstat64"]
                 pub fn fstat(fildes: c_int, buf: *mut stat) -> c_int;
 
-                pub fn mkdir(path: *c_char, mode: mode_t) -> c_int;
-                pub fn mkfifo(path: *c_char, mode: mode_t) -> c_int;
+                pub fn mkdir(path: *const c_char, mode: mode_t) -> c_int;
+                pub fn mkfifo(path: *const c_char, mode: mode_t) -> c_int;
 
                 #[cfg(target_os = "linux")]
                 #[cfg(target_os = "freebsd")]
                 #[cfg(target_os = "android")]
                 #[cfg(target_os = "ios")]
-                pub fn stat(path: *c_char, buf: *mut stat) -> c_int;
+                pub fn stat(path: *const c_char, buf: *mut stat) -> c_int;
 
                 #[cfg(target_os = "macos")]
                 #[link_name = "stat64"]
-                pub fn stat(path: *c_char, buf: *mut stat) -> c_int;
+                pub fn stat(path: *const c_char, buf: *mut stat) -> c_int;
             }
         }
 
@@ -3828,10 +3845,11 @@ pub mod funcs {
             use types::os::arch::c95::{c_char, c_int};
 
             extern {
-                pub fn popen(command: *c_char, mode: *c_char) -> *FILE;
-                pub fn pclose(stream: *FILE) -> c_int;
-                pub fn fdopen(fd: c_int, mode: *c_char) -> *FILE;
-                pub fn fileno(stream: *FILE) -> c_int;
+                pub fn popen(command: *const c_char,
+                             mode: *const c_char) -> *mut FILE;
+                pub fn pclose(stream: *mut FILE) -> c_int;
+                pub fn fdopen(fd: c_int, mode: *const c_char) -> *mut FILE;
+                pub fn fileno(stream: *mut FILE) -> c_int;
             }
         }
 
@@ -3840,9 +3858,9 @@ pub mod funcs {
             use types::os::arch::posix88::mode_t;
 
             extern {
-                pub fn open(path: *c_char, oflag: c_int, mode: c_int)
+                pub fn open(path: *const c_char, oflag: c_int, mode: c_int)
                             -> c_int;
-                pub fn creat(path: *c_char, mode: mode_t) -> c_int;
+                pub fn creat(path: *const c_char, mode: mode_t) -> c_int;
                 pub fn fcntl(fd: c_int, cmd: c_int, ...) -> c_int;
             }
         }
@@ -3860,17 +3878,17 @@ pub mod funcs {
 
             extern {
                 #[link_name="rust_opendir"]
-                pub fn opendir(dirname: *c_char) -> *DIR;
+                pub fn opendir(dirname: *const c_char) -> *mut DIR;
                 #[link_name="rust_readdir_r"]
-                pub fn readdir_r(dirp: *DIR, entry: *mut dirent_t,
+                pub fn readdir_r(dirp: *mut DIR, entry: *mut dirent_t,
                                   result: *mut *mut dirent_t) -> c_int;
             }
 
             extern {
-                pub fn closedir(dirp: *DIR) -> c_int;
-                pub fn rewinddir(dirp: *DIR);
-                pub fn seekdir(dirp: *DIR, loc: c_long);
-                pub fn telldir(dirp: *DIR) -> c_long;
+                pub fn closedir(dirp: *mut DIR) -> c_int;
+                pub fn rewinddir(dirp: *mut DIR);
+                pub fn seekdir(dirp: *mut DIR, loc: c_long);
+                pub fn telldir(dirp: *mut DIR) -> c_long;
             }
         }
 
@@ -3886,60 +3904,65 @@ pub mod funcs {
             pub static _PC_NAME_MAX: c_int = 4;
 
             extern {
-                pub fn access(path: *c_char, amode: c_int) -> c_int;
+                pub fn access(path: *const c_char, amode: c_int) -> c_int;
                 pub fn alarm(seconds: c_uint) -> c_uint;
-                pub fn chdir(dir: *c_char) -> c_int;
-                pub fn chown(path: *c_char, uid: uid_t, gid: gid_t) -> c_int;
+                pub fn chdir(dir: *const c_char) -> c_int;
+                pub fn chown(path: *const c_char, uid: uid_t,
+                             gid: gid_t) -> c_int;
                 pub fn close(fd: c_int) -> c_int;
                 pub fn dup(fd: c_int) -> c_int;
                 pub fn dup2(src: c_int, dst: c_int) -> c_int;
-                pub fn execv(prog: *c_char, argv: **c_char) -> c_int;
-                pub fn execve(prog: *c_char, argv: **c_char, envp: **c_char)
+                pub fn execv(prog: *const c_char,
+                             argv: *mut *const c_char) -> c_int;
+                pub fn execve(prog: *const c_char, argv: *mut *const c_char,
+                              envp: *mut *const c_char)
                               -> c_int;
-                pub fn execvp(c: *c_char, argv: **c_char) -> c_int;
+                pub fn execvp(c: *const c_char,
+                              argv: *mut *const c_char) -> c_int;
                 pub fn fork() -> pid_t;
                 pub fn fpathconf(filedes: c_int, name: c_int) -> c_long;
-                pub fn getcwd(buf: *mut c_char, size: size_t) -> *c_char;
+                pub fn getcwd(buf: *mut c_char, size: size_t) -> *mut c_char;
                 pub fn getegid() -> gid_t;
                 pub fn geteuid() -> uid_t;
                 pub fn getgid() -> gid_t ;
                 pub fn getgroups(ngroups_max: c_int, groups: *mut gid_t)
                                  -> c_int;
-                pub fn getlogin() -> *c_char;
-                pub fn getopt(argc: c_int, argv: **c_char, optstr: *c_char)
-                              -> c_int;
+                pub fn getlogin() -> *mut c_char;
+                pub fn getopt(argc: c_int, argv: *mut *const c_char,
+                              optstr: *const c_char) -> c_int;
                 pub fn getpgrp() -> pid_t;
                 pub fn getpid() -> pid_t;
                 pub fn getppid() -> pid_t;
                 pub fn getuid() -> uid_t;
                 pub fn isatty(fd: c_int) -> c_int;
-                pub fn link(src: *c_char, dst: *c_char) -> c_int;
+                pub fn link(src: *const c_char, dst: *const c_char) -> c_int;
                 pub fn lseek(fd: c_int, offset: off_t, whence: c_int)
                              -> off_t;
-                pub fn pathconf(path: *c_char, name: c_int) -> c_long;
+                pub fn pathconf(path: *mut c_char, name: c_int) -> c_long;
                 pub fn pause() -> c_int;
                 pub fn pipe(fds: *mut c_int) -> c_int;
                 pub fn read(fd: c_int, buf: *mut c_void, count: size_t)
                             -> ssize_t;
-                pub fn rmdir(path: *c_char) -> c_int;
+                pub fn rmdir(path: *const c_char) -> c_int;
                 pub fn setgid(gid: gid_t) -> c_int;
                 pub fn setpgid(pid: pid_t, pgid: pid_t) -> c_int;
                 pub fn setsid() -> pid_t;
                 pub fn setuid(uid: uid_t) -> c_int;
                 pub fn sleep(secs: c_uint) -> c_uint;
                 pub fn usleep(secs: c_uint) -> c_int;
-                pub fn nanosleep(rqtp: *timespec, rmtp: *mut timespec) -> c_int;
+                pub fn nanosleep(rqtp: *const timespec,
+                                 rmtp: *mut timespec) -> c_int;
                 pub fn sysconf(name: c_int) -> c_long;
                 pub fn tcgetpgrp(fd: c_int) -> pid_t;
-                pub fn ttyname(fd: c_int) -> *c_char;
-                pub fn unlink(c: *c_char) -> c_int;
-                pub fn write(fd: c_int, buf: *c_void, count: size_t)
+                pub fn ttyname(fd: c_int) -> *mut c_char;
+                pub fn unlink(c: *const c_char) -> c_int;
+                pub fn write(fd: c_int, buf: *const c_void, count: size_t)
                              -> ssize_t;
-                pub fn pread(fd: c_int, buf: *c_void, count: size_t,
+                pub fn pread(fd: c_int, buf: *mut c_void, count: size_t,
                              offset: off_t) -> ssize_t;
-                pub fn pwrite(fd: c_int, buf: *c_void, count: size_t,
+                pub fn pwrite(fd: c_int, buf: *const c_void, count: size_t,
                               offset: off_t) -> ssize_t;
-                pub fn utime(file: *c_char, buf: *utimbuf) -> c_int;
+                pub fn utime(file: *const c_char, buf: *const utimbuf) -> c_int;
             }
         }
 
@@ -3958,8 +3981,8 @@ pub mod funcs {
             use types::os::arch::posix88::{mode_t, off_t};
 
             extern {
-                pub fn mlock(addr: *c_void, len: size_t) -> c_int;
-                pub fn munlock(addr: *c_void, len: size_t) -> c_int;
+                pub fn mlock(addr: *const c_void, len: size_t) -> c_int;
+                pub fn munlock(addr: *const c_void, len: size_t) -> c_int;
                 pub fn mlockall(flags: c_int) -> c_int;
                 pub fn munlockall() -> c_int;
 
@@ -3977,9 +4000,9 @@ pub mod funcs {
 
                 pub fn msync(addr: *mut c_void, len: size_t, flags: c_int)
                              -> c_int;
-                pub fn shm_open(name: *c_char, oflag: c_int, mode: mode_t)
+                pub fn shm_open(name: *const c_char, oflag: c_int, mode: mode_t)
                                 -> c_int;
-                pub fn shm_unlink(name: *c_char) -> c_int;
+                pub fn shm_unlink(name: *const c_char) -> c_int;
             }
         }
     }
@@ -3999,11 +4022,11 @@ pub mod funcs {
                 #[cfg(target_os = "freebsd")]
                 #[cfg(target_os = "android")]
                 #[cfg(target_os = "ios")]
-                pub fn lstat(path: *c_char, buf: *mut stat) -> c_int;
+                pub fn lstat(path: *const c_char, buf: *mut stat) -> c_int;
 
                 #[cfg(target_os = "macos")]
                 #[link_name = "lstat64"]
-                pub fn lstat(path: *c_char, buf: *mut stat) -> c_int;
+                pub fn lstat(path: *const c_char, buf: *mut stat) -> c_int;
             }
         }
 
@@ -4012,7 +4035,7 @@ pub mod funcs {
             use types::os::arch::posix88::{ssize_t, off_t};
 
             extern {
-                pub fn readlink(path: *c_char,
+                pub fn readlink(path: *const c_char,
                                 buf: *mut c_char,
                                 bufsz: size_t)
                                 -> ssize_t;
@@ -4023,12 +4046,13 @@ pub mod funcs {
                 #[cfg(target_os = "android")]
                 pub fn fdatasync(fd: c_int) -> c_int;
 
-                pub fn setenv(name: *c_char, val: *c_char, overwrite: c_int)
-                              -> c_int;
-                pub fn unsetenv(name: *c_char) -> c_int;
-                pub fn putenv(string: *c_char) -> c_int;
+                pub fn setenv(name: *const c_char, val: *const c_char,
+                              overwrite: c_int) -> c_int;
+                pub fn unsetenv(name: *const c_char) -> c_int;
+                pub fn putenv(string: *mut c_char) -> c_int;
 
-                pub fn symlink(path1: *c_char, path2: *c_char) -> c_int;
+                pub fn symlink(path1: *const c_char,
+                               path2: *const c_char) -> c_int;
 
                 pub fn ftruncate(fd: c_int, length: off_t) -> c_int;
             }
@@ -4057,9 +4081,10 @@ pub mod funcs {
             use types::os::common::posix01::{glob_t};
 
             extern {
-                pub fn glob(pattern: *c_char,
+                pub fn glob(pattern: *const c_char,
                             flags: c_int,
-                            errfunc: ::Nullable<extern "C" fn(epath: *c_char, errno: int) -> int>,
+                            errfunc: ::Nullable<extern "C" fn(epath: *const c_char,
+                                                              errno: int) -> int>,
                             pglob: *mut glob_t);
                 pub fn globfree(pglob: *mut glob_t);
             }
@@ -4070,7 +4095,7 @@ pub mod funcs {
             use types::os::arch::c95::{c_int, size_t};
 
             extern {
-                pub fn posix_madvise(addr: *c_void,
+                pub fn posix_madvise(addr: *mut c_void,
                                      len: size_t,
                                      advice: c_int)
                                      -> c_int;
@@ -4114,9 +4139,9 @@ pub mod funcs {
 
         extern "system" {
             pub fn socket(domain: c_int, ty: c_int, protocol: c_int) -> c_int;
-            pub fn connect(socket: c_int, address: *sockaddr,
+            pub fn connect(socket: c_int, address: *const sockaddr,
                            len: socklen_t) -> c_int;
-            pub fn bind(socket: c_int, address: *sockaddr,
+            pub fn bind(socket: c_int, address: *const sockaddr,
                         address_len: socklen_t) -> c_int;
             pub fn listen(socket: c_int, backlog: c_int) -> c_int;
             pub fn accept(socket: c_int, address: *mut sockaddr,
@@ -4126,7 +4151,8 @@ pub mod funcs {
             pub fn getsockname(socket: c_int, address: *mut sockaddr,
                                address_len: *mut socklen_t) -> c_int;
             pub fn setsockopt(socket: c_int, level: c_int, name: c_int,
-                              value: *c_void, option_len: socklen_t) -> c_int;
+                              value: *const c_void,
+                              option_len: socklen_t) -> c_int;
             pub fn recv(socket: c_int, buf: *mut c_void, len: size_t,
                         flags: c_int) -> ssize_t;
             pub fn send(socket: c_int, buf: *mut c_void, len: size_t,
@@ -4134,8 +4160,8 @@ pub mod funcs {
             pub fn recvfrom(socket: c_int, buf: *mut c_void, len: size_t,
                             flags: c_int, addr: *mut sockaddr,
                             addrlen: *mut socklen_t) -> ssize_t;
-            pub fn sendto(socket: c_int, buf: *c_void, len: size_t,
-                          flags: c_int, addr: *sockaddr,
+            pub fn sendto(socket: c_int, buf: *const c_void, len: size_t,
+                          flags: c_int, addr: *const sockaddr,
                           addrlen: socklen_t) -> ssize_t;
             pub fn shutdown(socket: c_int, how: c_int) -> c_int;
         }
@@ -4150,9 +4176,9 @@ pub mod funcs {
 
         extern "system" {
             pub fn socket(domain: c_int, ty: c_int, protocol: c_int) -> SOCKET;
-            pub fn connect(socket: SOCKET, address: *sockaddr,
+            pub fn connect(socket: SOCKET, address: *const sockaddr,
                            len: socklen_t) -> c_int;
-            pub fn bind(socket: SOCKET, address: *sockaddr,
+            pub fn bind(socket: SOCKET, address: *const sockaddr,
                         address_len: socklen_t) -> c_int;
             pub fn listen(socket: SOCKET, backlog: c_int) -> c_int;
             pub fn accept(socket: SOCKET, address: *mut sockaddr,
@@ -4162,7 +4188,8 @@ pub mod funcs {
             pub fn getsockname(socket: SOCKET, address: *mut sockaddr,
                                address_len: *mut socklen_t) -> c_int;
             pub fn setsockopt(socket: SOCKET, level: c_int, name: c_int,
-                              value: *c_void, option_len: socklen_t) -> c_int;
+                              value: *const c_void,
+                              option_len: socklen_t) -> c_int;
             pub fn closesocket(socket: SOCKET) -> c_int;
             pub fn recv(socket: SOCKET, buf: *mut c_void, len: c_int,
                         flags: c_int) -> c_int;
@@ -4171,8 +4198,8 @@ pub mod funcs {
             pub fn recvfrom(socket: SOCKET, buf: *mut c_void, len: c_int,
                             flags: c_int, addr: *mut sockaddr,
                             addrlen: *mut c_int) -> ssize_t;
-            pub fn sendto(socket: SOCKET, buf: *c_void, len: c_int,
-                          flags: c_int, addr: *sockaddr,
+            pub fn sendto(socket: SOCKET, buf: *const c_void, len: c_int,
+                          flags: c_int, addr: *const sockaddr,
                           addrlen: c_int) -> c_int;
             pub fn shutdown(socket: SOCKET, how: c_int) -> c_int;
         }
@@ -4186,27 +4213,27 @@ pub mod funcs {
         use types::os::arch::c95::{c_char, c_uchar, c_int, c_uint, size_t};
 
         extern {
-            pub fn sysctl(name: *c_int,
+            pub fn sysctl(name: *mut c_int,
                           namelen: c_uint,
                           oldp: *mut c_void,
                           oldlenp: *mut size_t,
-                          newp: *c_void,
+                          newp: *mut c_void,
                           newlen: size_t)
                           -> c_int;
-            pub fn sysctlbyname(name: *c_char,
+            pub fn sysctlbyname(name: *const c_char,
                                 oldp: *mut c_void,
                                 oldlenp: *mut size_t,
-                                newp: *c_void,
+                                newp: *mut c_void,
                                 newlen: size_t)
                                 -> c_int;
-            pub fn sysctlnametomib(name: *c_char,
+            pub fn sysctlnametomib(name: *const c_char,
                                    mibp: *mut c_int,
                                    sizep: *mut size_t)
                                    -> c_int;
             pub fn getdtablesize() -> c_int;
-            pub fn madvise(addr: *c_void, len: size_t, advice: c_int)
+            pub fn madvise(addr: *mut c_void, len: size_t, advice: c_int)
                            -> c_int;
-            pub fn mincore(addr: *c_void, len: size_t, vec: *c_uchar)
+            pub fn mincore(addr: *mut c_void, len: size_t, vec: *mut c_uchar)
                            -> c_int;
         }
     }
@@ -4298,7 +4325,7 @@ pub mod funcs {
                                             -> DWORD;
                 pub fn SetCurrentDirectoryW(lpPathName: LPCWSTR) -> BOOL;
                 pub fn GetLastError() -> DWORD;
-                pub fn FindFirstFileW(fileName: *u16, findFileData: HANDLE)
+                pub fn FindFirstFileW(fileName: LPCWSTR, findFileData: HANDLE)
                                       -> HANDLE;
                 pub fn FindNextFileW(findFile: HANDLE, findFileData: HANDLE)
                                      -> BOOL;

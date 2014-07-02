@@ -28,7 +28,7 @@ pub struct WSADATA {
     pub szSystemStatus: [u8, ..WSASYS_STATUS_LEN + 1],
     pub iMaxSockets: u16,
     pub iMaxUdpDg: u16,
-    pub lpVendorInfo: *u8,
+    pub lpVendorInfo: *mut u8,
 }
 
 pub type LPWSADATA = *mut WSADATA;
@@ -53,10 +53,10 @@ extern "system" {
     pub fn ioctlsocket(s: libc::SOCKET, cmd: libc::c_long,
                        argp: *mut libc::c_ulong) -> libc::c_int;
     pub fn select(nfds: libc::c_int,
-                  readfds: *fd_set,
-                  writefds: *fd_set,
-                  exceptfds: *fd_set,
-                  timeout: *libc::timeval) -> libc::c_int;
+                  readfds: *mut fd_set,
+                  writefds: *mut fd_set,
+                  exceptfds: *mut fd_set,
+                  timeout: *mut libc::timeval) -> libc::c_int;
     pub fn getsockopt(sockfd: libc::SOCKET,
                       level: libc::c_int,
                       optname: libc::c_int,
@@ -70,6 +70,7 @@ extern "system" {
 
 pub mod compat {
     use std::intrinsics::{atomic_store_relaxed, transmute};
+    use std::iter::Iterator;
     use libc::types::os::arch::extra::{LPCWSTR, HMODULE, LPCSTR, LPVOID};
 
     extern "system" {
@@ -82,7 +83,8 @@ pub mod compat {
     // layer (after it's loaded) shouldn't be any slower than a regular DLL
     // call.
     unsafe fn store_func(ptr: *mut uint, module: &str, symbol: &str, fallback: uint) {
-        let module = module.to_utf16().append_one(0);
+        let module: Vec<u16> = module.utf16_units().collect();
+        let module = module.append_one(0);
         symbol.with_c_str(|symbol| {
             let handle = GetModuleHandleW(module.as_ptr());
             let func: uint = transmute(GetProcAddress(handle, symbol));

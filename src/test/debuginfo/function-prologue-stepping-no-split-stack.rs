@@ -152,7 +152,7 @@ fn non_immediate_args(a: BigStruct, b: BigStruct) {
 
 #[no_split_stack]
 fn binding(a: i64, b: u64, c: f64) {
-    let x = 0;
+    let x = 0i;
 }
 
 #[no_split_stack]

@@ -50,19 +50,19 @@ use libc::{c_int, size_t};
 
 #[link(name = "snappy")]
 extern {
-    fn snappy_compress(input: *u8,
+    fn snappy_compress(input: *const u8,
                        input_length: size_t,
                        compressed: *mut u8,
                        compressed_length: *mut size_t) -> c_int;
-    fn snappy_uncompress(compressed: *u8,
+    fn snappy_uncompress(compressed: *const u8,
                          compressed_length: size_t,
                          uncompressed: *mut u8,
                          uncompressed_length: *mut size_t) -> c_int;
     fn snappy_max_compressed_length(source_length: size_t) -> size_t;
-    fn snappy_uncompressed_length(compressed: *u8,
+    fn snappy_uncompressed_length(compressed: *const u8,
                                   compressed_length: size_t,
                                   result: *mut size_t) -> c_int;
-    fn snappy_validate_compressed_buffer(compressed: *u8,
+    fn snappy_validate_compressed_buffer(compressed: *const u8,
                                          compressed_length: size_t) -> c_int;
 }
 # fn main() {}
@@ -82,7 +82,7 @@ the allocated memory. The length is less than or equal to the capacity.
 ~~~~
 # extern crate libc;
 # use libc::{c_int, size_t};
-# unsafe fn snappy_validate_compressed_buffer(_: *u8, _: size_t) -> c_int { 0 }
+# unsafe fn snappy_validate_compressed_buffer(_: *const u8, _: size_t) -> c_int { 0 }
 # fn main() {}
 pub fn validate_compressed_buffer(src: &[u8]) -> bool {
     unsafe {
@@ -106,7 +106,7 @@ the true length after compression for setting the length.
 ~~~~
 # extern crate libc;
 # use libc::{size_t, c_int};
-# unsafe fn snappy_compress(a: *u8, b: size_t, c: *mut u8,
+# unsafe fn snappy_compress(a: *const u8, b: size_t, c: *mut u8,
 #                           d: *mut size_t) -> c_int { 0 }
 # unsafe fn snappy_max_compressed_length(a: size_t) -> size_t { a }
 # fn main() {}
@@ -132,11 +132,11 @@ format and `snappy_uncompressed_length` will retrieve the exact buffer size requ
 ~~~~
 # extern crate libc;
 # use libc::{size_t, c_int};
-# unsafe fn snappy_uncompress(compressed: *u8,
+# unsafe fn snappy_uncompress(compressed: *const u8,
 #                             compressed_length: size_t,
 #                             uncompressed: *mut u8,
 #                             uncompressed_length: *mut size_t) -> c_int { 0 }
-# unsafe fn snappy_uncompressed_length(compressed: *u8,
+# unsafe fn snappy_uncompressed_length(compressed: *const u8,
 #                                      compressed_length: size_t,
 #                                      result: *mut size_t) -> c_int { 0 }
 # fn main() {}
@@ -418,7 +418,7 @@ Unsafe functions, on the other hand, advertise it to the world. An unsafe functi
 this:
 
 ~~~~
-unsafe fn kaboom(ptr: *int) -> int { *ptr }
+unsafe fn kaboom(ptr: *const int) -> int { *ptr }
 ~~~~
 
 This function can only be called from an `unsafe` block or another `unsafe` function.
@@ -453,7 +453,7 @@ use std::ptr;
 
 #[link(name = "readline")]
 extern {
-    static mut rl_prompt: *libc::c_char;
+    static mut rl_prompt: *const libc::c_char;
 }
 
 fn main() {
@@ -478,7 +478,7 @@ extern crate libc;
 #[link(name = "kernel32")]
 #[allow(non_snake_case_functions)]
 extern "stdcall" {
-    fn SetEnvironmentVariableA(n: *u8, v: *u8) -> libc::c_int;
+    fn SetEnvironmentVariableA(n: *const u8, v: *const u8) -> libc::c_int;
 }
 # fn main() { }
 ~~~~

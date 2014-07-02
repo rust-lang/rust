@@ -12,7 +12,7 @@
 
 fn f() {
     let _x = match true {
-        true => { 10 }
+        true => { 10i }
         false => { return }
     };
 }
