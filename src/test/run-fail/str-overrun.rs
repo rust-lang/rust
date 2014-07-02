@@ -14,5 +14,5 @@ fn main() {
     let s: String = "hello".to_string();
 
     // Bounds-check failure.
-    assert_eq!(s.as_slice()[5], 0x0 as u8);
+    assert_eq!(s.as_bytes()[5], 0x0 as u8);
 }

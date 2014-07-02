@@ -2568,6 +2568,21 @@ pub fn index(t: t) -> Option<mt> {
         ty_ptr(mt{ty: t, ..}) | ty_rptr(_, mt{ty: t, ..}) |
         ty_box(t) | ty_uniq(t) => match get(t).sty {
             ty_vec(mt, None) => Some(mt),
+            _ => None,
+        },
+        _ => None
+    }
+}
+
+// Returns the type of elements contained within an 'array-like' type.
+// This is exactly the same as the above, except it supports strings,
+// which can't actually be indexed.
+pub fn array_element_ty(t: t) -> Option<mt> {
+    match get(t).sty {
+        ty_vec(mt, Some(_)) => Some(mt),
+        ty_ptr(mt{ty: t, ..}) | ty_rptr(_, mt{ty: t, ..}) |
+        ty_box(t) | ty_uniq(t) => match get(t).sty {
+            ty_vec(mt, None) => Some(mt),
             ty_str => Some(mt {ty: mk_u8(), mutbl: ast::MutImmutable}),
             _ => None,
         },

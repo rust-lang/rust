@@ -1511,7 +1511,7 @@ impl<'a> Liveness<'a> {
 
     fn should_warn(&self, var: Variable) -> Option<String> {
         let name = self.ir.variable_name(var);
-        if name.len() == 0 || name.as_slice()[0] == ('_' as u8) {
+        if name.len() == 0 || name.as_bytes()[0] == ('_' as u8) {
             None
         } else {
             Some(name)
