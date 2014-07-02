@@ -515,9 +515,45 @@ let x: int = 5;
 ```
 
 If I asked you to read this out loud to the rest of the class, you'd say "`x`
-is a binding with the type `int` and the value `five`." Rust requires you to
-initialize the binding with a value before you're allowed to use it. If
-we try...
+is a binding with the type `int` and the value `five`."
+
+By default, bindings are **immutable**. This code will not compile:
+
+```{ignore}
+let x = 5i;
+x = 10i;
+```
+
+It will give you this error:
+
+```{ignore,notrust}
+error: re-assignment of immutable variable `x`
+     x = 10i;
+     ^~~~~~~
+```
+
+If you want a binding to be mutable, you can use `mut`:
+
+```{rust}
+let mut x = 5i;
+x = 10i;
+```
+
+There is no single reason that bindings are immutable by default, but we can
+think about it through one of Rust's primary focuses: safety. If you forget to
+say `mut`, the compiler will catch it, and let you know that you have mutated
+something you may not have cared to mutate. If bindings were mutable by
+default, the compiler would not be able to tell you this. If you _did_ intend
+mutation, then the solution is quite easy: add `mut`.
+
+There are other good reasons to avoid mutable state when possible, but they're
+out of the scope of this guide. In general, you can often avoid explicit
+mutation, and so it is preferable in Rust. That said, sometimes, mutation is
+what you need, so it's not verboten.
+
+Let's get back to bindings. Rust variable bindings have one more aspect that
+differs from other languages: bindings are required to be initialized with a
+value before you're allowed to use it. If we try...
 
 ```{ignore}
 let x;
