@@ -19,13 +19,14 @@ use middle::def;
 use middle::freevars;
 use middle::pat_util;
 use middle::ty;
-use middle::typeck::MethodCall;
+use middle::typeck::{MethodCall, MethodObject, MethodOrigin, MethodParam};
+use middle::typeck::{MethodStatic};
 use middle::typeck;
-use syntax::ast;
-use syntax::codemap::{Span};
 use util::ppaux::Repr;
 
 use std::gc::Gc;
+use syntax::ast;
+use syntax::codemap::Span;
 
 ///////////////////////////////////////////////////////////////////////////
 // The Delegate trait
@@ -99,6 +100,74 @@ pub enum MutateMode {
     Init,
     JustWrite,    // x = y
     WriteAndRead, // x += y
+}
+
+enum OverloadedCallType {
+    FnOverloadedCall,
+    FnMutOverloadedCall,
+    FnOnceOverloadedCall,
+}
+
+impl OverloadedCallType {
+    fn from_trait_id(tcx: &ty::ctxt, trait_id: ast::DefId)
+                     -> OverloadedCallType {
+        for &(maybe_function_trait, overloaded_call_type) in [
+            (tcx.lang_items.fn_once_trait(), FnOnceOverloadedCall),
+            (tcx.lang_items.fn_mut_trait(), FnMutOverloadedCall),
+            (tcx.lang_items.fn_trait(), FnOverloadedCall)
+        ].iter() {
+            match maybe_function_trait {
+                Some(function_trait) if function_trait == trait_id => {
+                    return overloaded_call_type
+                }
+                _ => continue,
+            }
+        }
+
+        tcx.sess.bug("overloaded call didn't map to known function trait")
+    }
+
+    fn from_method_id(tcx: &ty::ctxt, method_id: ast::DefId)
+                      -> OverloadedCallType {
+        let method_descriptor =
+            match tcx.methods.borrow_mut().find(&method_id) {
+                None => {
+                    tcx.sess.bug("overloaded call method wasn't in method \
+                                  map")
+                }
+                Some(ref method_descriptor) => (*method_descriptor).clone(),
+            };
+        let impl_id = match method_descriptor.container {
+            ty::TraitContainer(_) => {
+                tcx.sess.bug("statically resolved overloaded call method \
+                              belonged to a trait?!")
+            }
+            ty::ImplContainer(impl_id) => impl_id,
+        };
+        let trait_ref = match ty::impl_trait_ref(tcx, impl_id) {
+            None => {
+                tcx.sess.bug("statically resolved overloaded call impl \
+                              didn't implement a trait?!")
+            }
+            Some(ref trait_ref) => (*trait_ref).clone(),
+        };
+        OverloadedCallType::from_trait_id(tcx, trait_ref.def_id)
+    }
+
+    fn from_method_origin(tcx: &ty::ctxt, origin: &MethodOrigin)
+                          -> OverloadedCallType {
+        match *origin {
+            MethodStatic(def_id) => {
+                OverloadedCallType::from_method_id(tcx, def_id)
+            }
+            MethodParam(ref method_param) => {
+                OverloadedCallType::from_trait_id(tcx, method_param.trait_id)
+            }
+            MethodObject(ref method_object) => {
+                OverloadedCallType::from_trait_id(tcx, method_object.trait_id)
+            }
+        }
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -413,19 +482,37 @@ impl<'d,'t,TYPER:mc::Typer> ExprUseVisitor<'d,'t,TYPER> {
                 }
             }
             _ => {
-                match self.tcx()
-                          .method_map
-                          .borrow()
-                          .find(&MethodCall::expr(call.id)) {
-                    Some(_) => {
-                        // FIXME(#14774, pcwalton): Implement this.
+                let overloaded_call_type =
+                    match self.tcx()
+                              .method_map
+                              .borrow()
+                              .find(&MethodCall::expr(call.id)) {
+                    Some(ref method_callee) => {
+                        OverloadedCallType::from_method_origin(
+                            self.tcx(),
+                            &method_callee.origin)
                     }
                     None => {
                         self.tcx().sess.span_bug(
                             callee.span,
                             format!("unexpected callee type {}",
-                                    callee_ty.repr(self.tcx())).as_slice());
+                                    callee_ty.repr(self.tcx())).as_slice())
                     }
+                };
+                match overloaded_call_type {
+                    FnMutOverloadedCall => {
+                        self.borrow_expr(callee,
+                                         ty::ReScope(call.id),
+                                         ty::MutBorrow,
+                                         ClosureInvocation);
+                    }
+                    FnOverloadedCall => {
+                        self.borrow_expr(callee,
+                                         ty::ReScope(call.id),
+                                         ty::ImmBorrow,
+                                         ClosureInvocation);
+                    }
+                    FnOnceOverloadedCall => self.consume_expr(callee),
                 }
             }
         }
