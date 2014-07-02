@@ -457,6 +457,8 @@ the string in response.  The child terminates when it receives `0`.
 Here is the function that implements the child task:
 
 ~~~
+#![allow(deprecated)]
+
 use std::comm::DuplexStream;
 # fn main() {
 fn stringifier(channel: &DuplexStream<String, uint>) {
@@ -481,6 +483,8 @@ response itself is simply the stringified version of the received value,
 Here is the code for the parent task:
 
 ~~~
+#![allow(deprecated)]
+
 use std::comm::duplex;
 # use std::task::spawn;
 # use std::comm::DuplexStream;
