@@ -11,7 +11,7 @@
 //! Contains infrastructure for configuring the compiler, including parsing
 //! command line options.
 
-use driver::early_error;
+use driver::{early_error, early_warn};
 use driver::driver;
 use driver::session::Session;
 
@@ -96,6 +96,7 @@ pub struct Options {
     pub cg: CodegenOptions,
     pub color: ColorConfig,
     pub externs: HashMap<String, Vec<String>>,
+    pub crate_name: Option<String>,
 }
 
 /// Some reasonable defaults
@@ -122,6 +123,7 @@ pub fn basic_options() -> Options {
         cg: basic_codegen_options(),
         color: Auto,
         externs: HashMap::new(),
+        crate_name: None,
     }
 }
 
@@ -511,9 +513,12 @@ pub fn optgroups() -> Vec<getopts::OptGroup> {
                  "[bin|lib|rlib|dylib|staticlib]"),
         optmulti("", "emit", "Comma separated list of types of output for the compiler to emit",
                  "[asm|bc|ir|obj|link]"),
-        optflag("", "crate-name", "Output the crate name and exit"),
-        optflag("", "crate-file-name", "Output the file(s) that would be written if compilation \
+        optopt("", "crate-name", "Specify the name of the crate being built",
+               "NAME"),
+        optflag("", "print-crate-name", "Output the crate name and exit"),
+        optflag("", "print-file-name", "Output the file(s) that would be written if compilation \
               continued and exit"),
+        optflag("", "crate-file-name", "deprecated in favor of --print-file-name"),
         optflag("g",  "",  "Equivalent to --debuginfo=2"),
         optopt("",  "debuginfo",  "Emit DWARF debug info to the objects created:
              0 = no debug info,
@@ -716,8 +721,13 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
                                  matches.opt_str("dep-info")
                                         .map(|p| Path::new(p)));
 
-    let print_metas = (matches.opt_present("crate-name"),
+    let print_metas = (matches.opt_present("print-crate-name"),
+                       matches.opt_present("print-file-name") ||
                        matches.opt_present("crate-file-name"));
+    if matches.opt_present("crate-file-name") {
+        early_warn("the --crate-file-name argument has been renamed to \
+                    --print-file-name");
+    }
     let cg = build_codegen_options(matches);
 
     let color = match matches.opt_str("color").as_ref().map(|s| s.as_slice()) {
@@ -749,6 +759,8 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         locs.push(location.to_string());
     }
 
+    let crate_name = matches.opt_str("crate-name");
+
     Options {
         crate_types: crate_types,
         gc: gc,
@@ -771,6 +783,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         cg: cg,
         color: color,
         externs: externs,
+        crate_name: crate_name,
     }
 }
 
