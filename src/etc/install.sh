@@ -214,7 +214,7 @@ need_cmd uname
 need_cmd tr
 need_cmd sed
 
-CFG_SRC_DIR="$(cd $(dirname $0) && pwd)/"
+CFG_SRC_DIR="$(cd $(dirname $0) && pwd)"
 CFG_SELF="$0"
 CFG_ARGS="$@"
 
