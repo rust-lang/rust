@@ -841,9 +841,9 @@ fn expand_pat(p: Gc<ast::Pat>, fld: &mut MacroExpander) -> Gc<ast::Pat> {
     }
 }
 
-// a tree-folder that applies every rename in its (mutable) list
-// to every identifier, including both bindings and varrefs
-// (and lots of things that will turn out to be neither)
+/// A tree-folder that applies every rename in its (mutable) list
+/// to every identifier, including both bindings and varrefs
+/// (and lots of things that will turn out to be neither)
 pub struct IdentRenamer<'a> {
     renames: &'a mtwt::RenameList,
 }
