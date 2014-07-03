@@ -77,7 +77,7 @@ impl RtioTimer for TimerWatcher {
     fn sleep(&mut self, msecs: u64) {
         // As with all of the below functions, we must be extra careful when
         // destroying the previous action. If the previous action was a channel,
-        // destroying it could invoke a context switch. For these situtations,
+        // destroying it could invoke a context switch. For these situations,
         // we must temporarily un-home ourselves, then destroy the action, and
         // then re-home again.
         let missile = self.fire_homing_missile();

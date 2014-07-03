@@ -266,7 +266,7 @@ mod imp {
         }
 
         // while it doesn't requires lock for work as everything is
-        // local, it still displays much nicier backtraces when a
+        // local, it still displays much nicer backtraces when a
         // couple of tasks fail simultaneously
         static mut LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;
         let _g = unsafe { LOCK.lock() };

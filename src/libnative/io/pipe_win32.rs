@@ -376,7 +376,7 @@ impl rtio::RtioPipe for UnixStream {
         if ret != 0 { return Ok(bytes_read as uint) }
 
         // If our errno doesn't say that the I/O is pending, then we hit some
-        // legitimate error and reeturn immediately.
+        // legitimate error and return immediately.
         if os::errno() != libc::ERROR_IO_PENDING as uint {
             return Err(super::last_error())
         }

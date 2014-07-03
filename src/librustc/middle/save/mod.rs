@@ -484,7 +484,7 @@ impl <'l> DxrVisitor<'l> {
     {
         let qualname = self.analysis.ty_cx.map.path_to_str(item.id);
 
-        // If the variable is immutable, save the initialising expresion.
+        // If the variable is immutable, save the initialising expression.
         let value = match mt {
             ast::MutMutable => String::from_str("<mutable>"),
             ast::MutImmutable => self.span.snippet(expr.span),
@@ -845,7 +845,7 @@ impl <'l> DxrVisitor<'l> {
                 let decl_id = ty::trait_method_of_method(&self.analysis.ty_cx, def_id);
 
                 // This incantation is required if the method referenced is a trait's
-                // defailt implementation.
+                // default implementation.
                 let def_id = ty::method(&self.analysis.ty_cx, def_id).provided_source
                                     .unwrap_or(def_id);
                 (Some(def_id), decl_id)
@@ -1403,7 +1403,7 @@ pub fn process_crate(sess: &Session,
         info!("Writing output to {}", disp);
     }
 
-    // Create ouput file.
+    // Create output file.
     let mut out_name = cratename.clone();
     out_name.push_str(".csv");
     root_path.push(out_name);

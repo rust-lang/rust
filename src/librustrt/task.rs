@@ -170,7 +170,7 @@ impl Task {
     /// This function can be used as an emulated "try/catch" to interoperate
     /// with the rust runtime at the outermost boundary. It is not possible to
     /// use this function in a nested fashion (a try/catch inside of another
-    /// try/catch). Invoking this funciton is quite cheap.
+    /// try/catch). Invoking this function is quite cheap.
     ///
     /// If the closure `f` succeeds, then the returned task can be used again
     /// for another invocation of `run`. If the closure `f` fails then `self`
@@ -276,7 +276,7 @@ impl Task {
         // 1. If TLD destruction fails, heap destruction will be attempted.
         //    There is a test for this at fail-during-tld-destroy.rs. Sadly the
         //    other way can't be tested due to point 2 above. Note that we must
-        //    immortalize the heap first becuase if any deallocations are
+        //    immortalize the heap first because if any deallocations are
         //    attempted while TLD is being dropped it will attempt to free the
         //    allocation from the wrong heap (because the current one has been
         //    replaced).

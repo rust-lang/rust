@@ -985,7 +985,7 @@ impl UnnecessaryParens {
             _ => {}
         }
 
-        /// Expressions that syntatically contain an "exterior" struct
+        /// Expressions that syntactically contain an "exterior" struct
         /// literal i.e. not surrounded by any parens or other
         /// delimiters, e.g. `X { y: 1 }`, `X { y: 1 }.method()`, `foo
         /// == X { y: 1 }` and `X { y: 1 } == foo` all do, but `(X {

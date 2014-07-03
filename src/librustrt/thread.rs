@@ -243,7 +243,7 @@ mod imp {
                 // EINVAL means |stack_size| is either too small or not a
                 // multiple of the system page size.  Because it's definitely
                 // >= PTHREAD_STACK_MIN, it must be an alignment issue.
-                // Round up to the neareast page and try again.
+                // Round up to the nearest page and try again.
                 let page_size = libc::sysconf(libc::_SC_PAGESIZE) as uint;
                 let stack_size = (stack_size + page_size - 1) &
                                  (-(page_size as int - 1) as uint - 1);

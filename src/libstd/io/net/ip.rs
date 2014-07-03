@@ -410,7 +410,7 @@ mod test {
         // colon after v4
         let none: Option<IpAddr> = FromStr::from_str("::127.0.0.1:");
         assert_eq!(None, none);
-        // not enought groups
+        // not enough groups
         let none: Option<IpAddr> = FromStr::from_str("1.2.3.4.5:127.0.0.1");
         assert_eq!(None, none);
         // too many groups
