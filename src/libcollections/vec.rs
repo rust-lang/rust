@@ -496,7 +496,7 @@ impl<T> Vec<T> {
     /// assert!(vec.capacity() >= 10);
     /// ```
     pub fn reserve(&mut self, capacity: uint) {
-        if capacity >= self.len {
+        if capacity > self.cap {
             self.reserve_exact(num::next_power_of_two(capacity))
         }
     }
