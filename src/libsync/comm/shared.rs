@@ -81,7 +81,7 @@ impl<T: Send> Packet<T> {
 
     // This function should be used after newly created Packet
     // was wrapped with an Arc
-    // In other case mutex data will be duplicated while clonning
+    // In other case mutex data will be duplicated while cloning
     // and that could cause problems on platforms where it is
     // represented by opaque data structure
     pub fn postinit_lock(&mut self) {
@@ -140,7 +140,7 @@ impl<T: Send> Packet<T> {
         // See Port::drop for what's going on
         if self.port_dropped.load(atomics::SeqCst) { return Err(t) }
 
-        // Note that the multiple sender case is a little tricker
+        // Note that the multiple sender case is a little trickier
         // semantically than the single sender case. The logic for
         // incrementing is "add and if disconnected store disconnected".
         // This could end up leading some senders to believe that there

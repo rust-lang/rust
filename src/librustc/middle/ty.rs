@@ -2771,8 +2771,8 @@ pub fn local_var_name_str(cx: &ctxt, id: NodeId) -> InternedString {
     match cx.map.find(id) {
         Some(ast_map::NodeLocal(pat)) => {
             match pat.node {
-                ast::PatIdent(_, ref path, _) => {
-                    token::get_ident(ast_util::path_to_ident(path))
+                ast::PatIdent(_, ref path1, _) => {
+                    token::get_ident(path1.node)
                 }
                 _ => {
                     cx.sess.bug(

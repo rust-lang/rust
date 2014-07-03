@@ -1583,8 +1583,6 @@ impl Clean<PathSegment> for ast::PathSegment {
 }
 
 fn path_to_str(p: &ast::Path) -> String {
-    use syntax::parse::token;
-
     let mut s = String::new();
     let mut first = true;
     for i in p.segments.iter().map(|x| token::get_ident(x.identifier)) {
@@ -1739,7 +1737,7 @@ pub struct ViewItem {
 
 impl Clean<Vec<Item>> for ast::ViewItem {
     fn clean(&self) -> Vec<Item> {
-        // We consider inlining the documentation of `pub use` statments, but we
+        // We consider inlining the documentation of `pub use` statements, but we
         // forcefully don't inline if this is not public or if the
         // #[doc(no_inline)] attribute is present.
         let denied = self.vis != ast::Public || self.attrs.iter().any(|a| {
@@ -1953,7 +1951,7 @@ fn name_from_pat(p: &ast::Pat) -> String {
     match p.node {
         PatWild => "_".to_string(),
         PatWildMulti => "..".to_string(),
-        PatIdent(_, ref p, _) => path_to_str(p),
+        PatIdent(_, ref p, _) => token::get_ident(p.node).get().to_string(),
         PatEnum(ref p, _) => path_to_str(p),
         PatStruct(..) => fail!("tried to get argument name from pat_struct, \
                                 which is not allowed in function arguments"),

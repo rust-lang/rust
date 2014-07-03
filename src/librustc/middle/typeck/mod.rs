@@ -216,9 +216,9 @@ pub type vtable_res = VecPerParamSpace<vtable_param_res>;
 #[deriving(Clone)]
 pub enum vtable_origin {
     /*
-      Statically known vtable. def_id gives the class or impl item
+      Statically known vtable. def_id gives the impl item
       from whence comes the vtable, and tys are the type substs.
-      vtable_res is the vtable itself
+      vtable_res is the vtable itself.
      */
     vtable_static(ast::DefId, subst::Substs, vtable_res),
 

@@ -13,6 +13,7 @@ use middle::freevars::freevar_entry;
 use middle::freevars;
 use middle::subst;
 use middle::ty;
+use middle::typeck::{MethodCall, NoAdjustment};
 use middle::typeck;
 use util::ppaux::{Repr, ty_to_str};
 use util::ppaux::UserString;
@@ -20,7 +21,7 @@ use util::ppaux::UserString;
 use syntax::ast::*;
 use syntax::attr;
 use syntax::codemap::Span;
-use syntax::print::pprust::{expr_to_str,path_to_str};
+use syntax::print::pprust::{expr_to_str, ident_to_str};
 use syntax::{visit};
 use syntax::visit::Visitor;
 
@@ -261,7 +262,15 @@ pub fn check_expr(cx: &mut Context, e: &Expr) {
         ExprCast(ref source, _) => {
             let source_ty = ty::expr_ty(cx.tcx, &**source);
             let target_ty = ty::expr_ty(cx.tcx, e);
-            check_trait_cast(cx, source_ty, target_ty, source.span);
+            let method_call = MethodCall {
+                expr_id: e.id,
+                adjustment: NoAdjustment,
+            };
+            check_trait_cast(cx,
+                             source_ty,
+                             target_ty,
+                             source.span,
+                             method_call);
         }
         ExprRepeat(ref element, ref count_expr) => {
             let count = ty::eval_repeat_count(cx.tcx, &**count_expr);
@@ -281,7 +290,15 @@ pub fn check_expr(cx: &mut Context, e: &Expr) {
                 ty::AutoObject(..) => {
                     let source_ty = ty::expr_ty(cx.tcx, e);
                     let target_ty = ty::expr_ty_adjusted(cx.tcx, e);
-                    check_trait_cast(cx, source_ty, target_ty, e.span);
+                    let method_call = MethodCall {
+                        expr_id: e.id,
+                        adjustment: typeck::AutoObject,
+                    };
+                    check_trait_cast(cx,
+                                     source_ty,
+                                     target_ty,
+                                     e.span,
+                                     method_call);
                 }
                 ty::AutoAddEnv(..) |
                 ty::AutoDerefRef(..) => {}
@@ -364,15 +381,62 @@ fn check_bounds_on_type_parameters(cx: &mut Context, e: &Expr) {
     }
 }
 
-fn check_trait_cast(cx: &mut Context, source_ty: ty::t, target_ty: ty::t, span: Span) {
+fn check_type_parameter_bounds_in_vtable_result(
+        cx: &mut Context,
+        span: Span,
+        vtable_res: &typeck::vtable_res) {
+    for origins in vtable_res.iter() {
+        for origin in origins.iter() {
+            let (type_param_defs, substs) = match *origin {
+                typeck::vtable_static(def_id, ref tys, _) => {
+                    let type_param_defs =
+                        ty::lookup_item_type(cx.tcx, def_id).generics
+                                                            .types
+                                                            .clone();
+                    (type_param_defs, (*tys).clone())
+                }
+                _ => {
+                    // Nothing to do here.
+                    continue
+                }
+            };
+            for type_param_def in type_param_defs.iter() {
+                let typ = substs.types.get(type_param_def.space,
+                                           type_param_def.index);
+                check_typaram_bounds(cx, span, *typ, type_param_def)
+            }
+        }
+    }
+}
+
+fn check_trait_cast(cx: &mut Context,
+                    source_ty: ty::t,
+                    target_ty: ty::t,
+                    span: Span,
+                    method_call: MethodCall) {
     check_cast_for_escaping_regions(cx, source_ty, target_ty, span);
     match ty::get(target_ty).sty {
-        ty::ty_uniq(ty) | ty::ty_rptr(_, ty::mt{ ty, .. }) => match ty::get(ty).sty {
-            ty::ty_trait(box ty::TyTrait { bounds, .. }) => {
-                check_trait_cast_bounds(cx, span, source_ty, bounds);
+        ty::ty_uniq(ty) | ty::ty_rptr(_, ty::mt{ ty, .. }) => {
+            match ty::get(ty).sty {
+                ty::ty_trait(box ty::TyTrait { bounds, .. }) => {
+                     match cx.tcx.vtable_map.borrow().find(&method_call) {
+                        None => {
+                            cx.tcx.sess.span_bug(span,
+                                                 "trait cast not in vtable \
+                                                  map?!")
+                        }
+                        Some(vtable_res) => {
+                            check_type_parameter_bounds_in_vtable_result(
+                                cx,
+                                span,
+                                vtable_res)
+                        }
+                    };
+                    check_trait_cast_bounds(cx, span, source_ty, bounds);
+                }
+                _ => {}
             }
-            _ => {}
-        },
+        }
         _ => {}
     }
 }
@@ -627,7 +691,7 @@ fn check_sized(tcx: &ty::ctxt, ty: ty::t, name: String, sp: Span) {
 fn check_pat(cx: &mut Context, pat: &Pat) {
     let var_name = match pat.node {
         PatWild => Some("_".to_string()),
-        PatIdent(_, ref path, _) => Some(path_to_str(path).to_string()),
+        PatIdent(_, ref path1, _) => Some(ident_to_str(&path1.node).to_string()),
         _ => None
     };
 

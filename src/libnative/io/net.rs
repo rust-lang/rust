@@ -877,7 +877,7 @@ pub fn write<T>(fd: sock_t,
             }
 
             // Also as with read(), we use MSG_DONTWAIT to guard ourselves
-            // against unforseen circumstances.
+            // against unforeseen circumstances.
             let _guard = lock();
             let ptr = buf.slice_from(written).as_ptr();
             let len = buf.len() - written;

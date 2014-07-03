@@ -215,7 +215,7 @@ impl StaticMutex {
             None => {}
         }
 
-        // After we've failed the fast path, then we delegate to the differnet
+        // After we've failed the fast path, then we delegate to the different
         // locking protocols for green/native tasks. This will select two tasks
         // to continue further (one native, one green).
         let t: Box<Task> = Local::take();

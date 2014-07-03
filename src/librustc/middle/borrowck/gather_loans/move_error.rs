@@ -56,19 +56,8 @@ impl MoveError {
 
 #[deriving(Clone)]
 pub struct MoveSpanAndPath {
-    span: codemap::Span,
-    path: ast::Path
-}
-
-impl MoveSpanAndPath {
-    pub fn with_span_and_path(span: codemap::Span,
-                              path: ast::Path)
-                              -> MoveSpanAndPath {
-        MoveSpanAndPath {
-            span: span,
-            path: path,
-        }
-    }
+    pub span: codemap::Span,
+    pub ident: ast::Ident
 }
 
 pub struct GroupedMoveErrors {
@@ -83,7 +72,7 @@ fn report_move_errors(bccx: &BorrowckCtxt, errors: &Vec<MoveError>) {
         let mut is_first_note = true;
         for move_to in error.move_to_places.iter() {
             note_move_destination(bccx, move_to.span,
-                                  &move_to.path, is_first_note);
+                                  &move_to.ident, is_first_note);
             is_first_note = false;
         }
     }
@@ -154,9 +143,9 @@ fn report_cannot_move_out_of(bccx: &BorrowckCtxt, move_from: mc::cmt) {
 
 fn note_move_destination(bccx: &BorrowckCtxt,
                          move_to_span: codemap::Span,
-                         pat_ident_path: &ast::Path,
+                         pat_ident: &ast::Ident,
                          is_first_note: bool) {
-    let pat_name = pprust::path_to_str(pat_ident_path);
+    let pat_name = pprust::ident_to_str(pat_ident);
     if is_first_note {
         bccx.span_note(
             move_to_span,

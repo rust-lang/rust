@@ -293,8 +293,8 @@ pub enum Pat_ {
     // In the nullary enum case, the parser can't determine
     // which it is. The resolver determines this, and
     // records this pattern's NodeId in an auxiliary
-    // set (of "pat_idents that refer to nullary enums")
-    PatIdent(BindingMode, Path, Option<Gc<Pat>>),
+    // set (of "PatIdents that refer to nullary enums")
+    PatIdent(BindingMode, SpannedIdent, Option<Gc<Pat>>),
     PatEnum(Path, Option<Vec<Gc<Pat>>>), /* "none" means a * pattern where
                                      * we don't bind the fields to names */
     PatStruct(Path, Vec<FieldPat>, bool),
@@ -818,7 +818,7 @@ pub struct Arg {
 
 impl Arg {
     pub fn new_self(span: Span, mutability: Mutability) -> Arg {
-        let path = ast_util::ident_to_path(span, special_idents::self_);
+        let path = Spanned{span:span,node:special_idents::self_};
         Arg {
             // HACK(eddyb) fake type for the self argument.
             ty: P(Ty {
