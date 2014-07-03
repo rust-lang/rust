@@ -132,6 +132,7 @@ nav {
     -moz-column-count: 2;
     -webkit-column-count: 2;
     font-size: 15px;
+    margin: 0 0 1em 0;
 }
 p {
     margin: 0 0 1em 0;
@@ -275,7 +276,7 @@ dd {
 
 nav ul {
     list-style-type: none;
-    margin: 0 0 20px 0;
+    margin: 0;
     padding-left: 0px;
 }
 
