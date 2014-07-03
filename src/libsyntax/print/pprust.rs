@@ -196,6 +196,10 @@ pub fn path_to_str(p: &ast::Path) -> String {
     to_str(|s| s.print_path(p, false))
 }
 
+pub fn ident_to_str(id: &ast::Ident) -> String {
+    to_str(|s| s.print_ident(*id))
+}
+
 pub fn fun_to_str(decl: &ast::FnDecl, fn_style: ast::FnStyle, name: ast::Ident,
                   opt_explicit_self: Option<ast::ExplicitSelf_>,
                   generics: &ast::Generics) -> String {
@@ -1705,7 +1709,7 @@ impl<'a> State<'a> {
         match pat.node {
             ast::PatWild => try!(word(&mut self.s, "_")),
             ast::PatWildMulti => try!(word(&mut self.s, "..")),
-            ast::PatIdent(binding_mode, ref path, sub) => {
+            ast::PatIdent(binding_mode, ref path1, sub) => {
                 match binding_mode {
                     ast::BindByRef(mutbl) => {
                         try!(self.word_nbsp("ref"));
@@ -1716,7 +1720,7 @@ impl<'a> State<'a> {
                         try!(self.word_nbsp("mut"));
                     }
                 }
-                try!(self.print_path(path, true));
+                try!(self.print_ident(path1.node));
                 match sub {
                     Some(ref p) => {
                         try!(word(&mut self.s, "@"));
@@ -2148,9 +2152,8 @@ impl<'a> State<'a> {
             ast::TyInfer => try!(self.print_pat(&*input.pat)),
             _ => {
                 match input.pat.node {
-                    ast::PatIdent(_, ref path, _) if
-                        path.segments.len() == 1 &&
-                        path.segments.get(0).identifier.name ==
+                    ast::PatIdent(_, ref path1, _) if
+                        path1.node.name ==
                             parse::token::special_idents::invalid.name => {
                         // Do nothing.
                     }

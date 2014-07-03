@@ -515,9 +515,45 @@ let x: int = 5;
 ```
 
 If I asked you to read this out loud to the rest of the class, you'd say "`x`
-is a binding with the type `int` and the value `five`." Rust requires you to
-initialize the binding with a value before you're allowed to use it. If
-we try...
+is a binding with the type `int` and the value `five`."
+
+By default, bindings are **immutable**. This code will not compile:
+
+```{ignore}
+let x = 5i;
+x = 10i;
+```
+
+It will give you this error:
+
+```{ignore,notrust}
+error: re-assignment of immutable variable `x`
+     x = 10i;
+     ^~~~~~~
+```
+
+If you want a binding to be mutable, you can use `mut`:
+
+```{rust}
+let mut x = 5i;
+x = 10i;
+```
+
+There is no single reason that bindings are immutable by default, but we can
+think about it through one of Rust's primary focuses: safety. If you forget to
+say `mut`, the compiler will catch it, and let you know that you have mutated
+something you may not have cared to mutate. If bindings were mutable by
+default, the compiler would not be able to tell you this. If you _did_ intend
+mutation, then the solution is quite easy: add `mut`.
+
+There are other good reasons to avoid mutable state when possible, but they're
+out of the scope of this guide. In general, you can often avoid explicit
+mutation, and so it is preferable in Rust. That said, sometimes, mutation is
+what you need, so it's not verboten.
+
+Let's get back to bindings. Rust variable bindings have one more aspect that
+differs from other languages: bindings are required to be initialized with a
+value before you're allowed to use it. If we try...
 
 ```{ignore}
 let x;
@@ -611,7 +647,300 @@ concept: `if`.
 
 ## If
 
+Rust's take on `if` is not particularly complex, but it's much more like the
+`if` you'll find in a dynamically typed language than in a more traditional
+systems language. So let's talk about it, to make sure you grasp the nuances.
+
+`if` is a specific form of a more general concept, the 'branch.' The name comes
+from a branch in a tree: a decision point, where depending on a choice,
+multiple paths can be taken.
+
+In the case of `if`, there is one choice that leads down two paths:
+
+```rust
+let x = 5i;
+
+if x == 5i {
+    println!("x is five!");
+}
+```
+
+If we changed the value of `x` to something else, this line would not print.
+More specifically, if the expression after the `if` evaluates to `true`, then
+the block is executed. If it's `false`, then it is not.
+
+If you want something to happen in the `false` case, use an `else`:
+
+```
+let x = 5i;
+
+if x == 5i {
+    println!("x is five!");
+} else {
+    println!("x is not five :(");
+}
+```
+
+This is all pretty standard. However, you can also do this:
+
+
+```
+let x = 5i;
+
+let y = if x == 5i {
+    10i
+} else {
+    15i
+};
+```
+
+Which we can (and probably should) write like this:
+
+```
+let x = 5i;
+
+let y = if x == 5i { 10i } else { 15i };
+```
+
+This reveals two interesting things about Rust: it is an expression-based
+language, and semicolons are different than in other 'curly brace and
+semicolon'-based languages. These two things are related.
+
+### Expressions vs. Statements
+
+Rust is primarily an expression based language. There are only two kinds of
+statements, and everything else is an expression.
+
+So what's the difference? Expressions return a value, and statements do not.
+In many languages, `if` is a statement, and therefore, `let x = if ...` would
+make no sense. But in Rust, `if` is an expression, which means that it returns
+a value. We can then use this value to initialize the binding.
+
+Speaking of which, bindings are a kind of the first of Rust's two statements.
+The proper name is a **declaration statement**. So far, `let` is the only kind
+of declaration statement we've seen. Let's talk about that some more.
+
+In some languages, variable bindings can be written as expressions, not just
+statements. Like Ruby:
+
+```{ruby}
+x = y = 5
+```
+
+In Rust, however, using `let` to introduce a binding is _not_ an expression. The
+following will produce a compile-time error:
+
+```{ignore}
+let x = (let y = 5i); // found `let` in ident position
+```
+
+The compiler is telling us here that it was expecting to see the beginning of
+an expression, and a `let` can only begin a statement, not an expression.
+
+However, re-assigning to a mutable binding is an expression:
+
+```{rust}
+let mut x = 0i;
+let y = x = 5i;
+```
+
+In this case, we have an assignment expression (`x = 5`) whose value is
+being used as part of a `let` declaration statement (`let y = ...`).
+
+The second kind of statement in Rust is the **expression statement**. Its
+purpose is to turn any expression into a statement. In practical terms, Rust's
+grammar expects statements to follow other statements. This means that you use
+semicolons to separate expressions from each other. This means that Rust
+looks a lot like most other languages that require you to use semicolons
+at the end of every line, and you will see semicolons at the end of almost
+every line of Rust code you see.
+
+What is this exception that makes us say 'almost?' You saw it already, in this
+code:
+
+```
+let x = 5i;
+
+let y: int = if x == 5i { 10i } else { 15i };
+```
+
+Note that I've added the type annotation to `y`, to specify explicitly that I
+want `y` to be an integer.
+
+This is not the same as this, which won't compile:
+
+```{ignore}
+let x = 5i;
+
+let y: int = if x == 5 { 10i; } else { 15i; };
+```
+
+Note the semicolons after the 10 and 15. Rust will give us the following error:
+
+```{ignore,notrust}
+error: mismatched types: expected `int` but found `()` (expected int but found ())
+```
+
+We expected an integer, but we got `()`. `()` is pronounced 'unit', and is a
+special type in Rust's type system. `()` is different than `null` in other
+languages, because `()` is distinct from other types. For example, in C, `null`
+is a valid value for a variable of type `int`. In Rust, `()` is _not_ a valid
+value for a variable of type `int`. It's only a valid value for variables of
+the type `()`, which aren't very useful. Remember how we said statements don't
+return a value? Well, that's the purpose of unit in this case. The semicolon
+turns any expression into a statement by throwing away its value and returning
+unit instead.
+
+There's one more time in which you won't see a semicolon at the end of a line
+of Rust code. For that, we'll need our next concept: functions.
+
 ## Functions
+
+You've already seen one function so far, the `main` function:
+
+```{rust}
+fn main() {
+}
+```
+
+This is the simplest possible function declaration. As we mentioned before,
+`fn` says 'this is a function,' followed by the name, some parenthesis because
+this function takes no arguments, and then some curly braces to indicate the
+body. Here's a function named `foo`:
+
+```{rust}
+fn foo() {
+}
+```
+
+So, what about taking arguments? Here's a function that prints a number:
+
+```{rust}
+fn print_number(x: int) {
+    println!("x is: {}", x);
+}
+```
+
+Here's a complete program that uses `print_number`:
+
+```{rust}
+fn main() {
+    print_number(5);
+}
+
+fn print_number(x: int) {
+    println!("x is: {}", x);
+}
+```
+
+As you can see, function arguments work very similar to `let` declarations:
+you add a type to the argument name, after a colon.
+
+Here's a complete program that adds two numbers together and prints them:
+
+```{rust}
+fn main() {
+    print_sum(5, 6);
+}
+
+fn print_sum(x: int, y: int) {
+    println!("sum is: {}", x + y);
+}
+```
+
+You separate arguments with a comma, both when you call the function, as well
+as when you declare it.
+
+Unlike `let`, you _must_ declare the types of function arguments. This does
+not work:
+
+```{ignore}
+fn print_number(x, y) {
+    println!("x is: {}", x + y);
+}
+```
+
+You get this error:
+
+```{ignore,notrust}
+hello.rs:5:18: 5:19 error: expected `:` but found `,`
+hello.rs:5 fn print_number(x, y) {
+```
+
+This is a deliberate design decision. While full-program inference is possible,
+languages which have it, like Haskell, often suggest that documenting your
+types explicitly is a best-practice. We agree that forcing functions to declare
+types while allowing for inference inside of function bodies is a wonderful
+compromise between full inference and no inference.
+
+What about returning a value? Here's a function that adds one to an integer:
+
+```{rust}
+fn add_one(x: int) -> int {
+    x + 1
+}
+```
+
+Rust functions return exactly one value, and you declare the type after an
+'arrow', which is a dash (`-`) followed by a greater-than sign (`>`).
+
+You'll note the lack of a semicolon here. If we added it in:
+
+```{ignore}
+fn add_one(x: int) -> int {
+    x + 1;
+}
+```
+
+We would get an error:
+
+```{ignore,notrust}
+note: consider removing this semicolon:
+     x + 1;
+          ^
+error: not all control paths return a value
+fn add_one(x: int) -> int {
+     x + 1;
+}
+```
+
+Remember our earlier discussions about semicolons and `()`? Our function claims
+to return an `int`, but with a semicolon, it would return `()` instead. Rust
+realizes this probably isn't what we want, and suggests removing the semicolon.
+
+This is very much like our `if` statement before: the result of the block
+(`{}`) is the value of the expression. Other expression-oriented languages,
+such as Ruby, work like this, but it's a bit unusual in the systems programming
+world. When people first learn about this, they usually assume that it
+introduces bugs. But because Rust's type system is so strong, and because unit
+is its own unique type, we have never seen an issue where adding or removing a
+semicolon in a return position would cause a bug.
+
+But what about early returns? Rust does have a keyword for that, `return`:
+
+```{rust}
+fn foo(x: int) -> int {
+    if x < 5 { return x; }
+
+    x + 1
+}
+```
+
+Using a `return` as the last line of a function works, but is considered poor
+style:
+
+```{rust}
+fn foo(x: int) -> int {
+    if x < 5 { return x; }
+
+    return x + 1;
+}
+```
+
+There are some additional ways to define functions, but they involve features
+that we haven't learned about yet, so let's just leave it at that for now.
+
+## Comments
 
 return
 

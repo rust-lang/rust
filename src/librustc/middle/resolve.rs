@@ -23,11 +23,10 @@ use util::nodemap::{NodeMap, DefIdSet, FnvHashMap};
 use syntax::ast::*;
 use syntax::ast;
 use syntax::ast_util::{local_def};
-use syntax::ast_util::{path_to_ident, walk_pat, trait_method_to_ty_method};
+use syntax::ast_util::{walk_pat, trait_method_to_ty_method};
 use syntax::ext::mtwt;
 use syntax::parse::token::special_idents;
 use syntax::parse::token;
-use syntax::print::pprust::path_to_str;
 use syntax::codemap::{Span, DUMMY_SP, Pos};
 use syntax::owned_slice::OwnedSlice;
 use syntax::visit;
@@ -1247,7 +1246,7 @@ impl<'a> Resolver<'a> {
                 // Create the module and add all methods.
                 match ty.node {
                     TyPath(ref path, _, _) if path.segments.len() == 1 => {
-                        let name = path_to_ident(path);
+                        let name = path.segments.last().unwrap().identifier;
 
                         let parent_opt = parent.module().children.borrow()
                                                .find_copy(&name.name);
@@ -4104,8 +4103,8 @@ impl<'a> Resolver<'a> {
     // user and one 'x' came from the macro.
     fn binding_mode_map(&mut self, pat: &Pat) -> BindingMap {
         let mut result = HashMap::new();
-        pat_bindings(&self.def_map, pat, |binding_mode, _id, sp, path| {
-            let name = mtwt::resolve(path_to_ident(path));
+        pat_bindings(&self.def_map, pat, |binding_mode, _id, sp, path1| {
+            let name = mtwt::resolve(path1.node);
             result.insert(name,
                           binding_info {span: sp,
                                         binding_mode: binding_mode});
@@ -4314,8 +4313,7 @@ impl<'a> Resolver<'a> {
         let pat_id = pattern.id;
         walk_pat(pattern, |pattern| {
             match pattern.node {
-                PatIdent(binding_mode, ref path, _)
-                        if !path.global && path.segments.len() == 1 => {
+                PatIdent(binding_mode, ref path1, _) => {
 
                     // The meaning of pat_ident with no type parameters
                     // depends on whether an enum variant or unit-like struct
@@ -4326,7 +4324,7 @@ impl<'a> Resolver<'a> {
                     // such a value is simply disallowed (since it's rarely
                     // what you want).
 
-                    let ident = path.segments.get(0).identifier;
+                    let ident = path1.node;
                     let renamed = mtwt::resolve(ident);
 
                     match self.resolve_bare_identifier_pattern(ident) {
@@ -4416,56 +4414,11 @@ impl<'a> Resolver<'a> {
                                     format!("identifier `{}` is bound \
                                              more than once in the same \
                                              pattern",
-                                            path_to_str(path)).as_slice());
+                                            token::get_ident(ident)).as_slice());
                             }
                             // Else, not bound in the same pattern: do
                             // nothing.
                         }
-                    }
-
-                    // Check the types in the path pattern.
-                    for ty in path.segments
-                                  .iter()
-                                  .flat_map(|seg| seg.types.iter()) {
-                        self.resolve_type(&**ty);
-                    }
-                }
-
-                PatIdent(binding_mode, ref path, _) => {
-                    // This must be an enum variant, struct, or constant.
-                    match self.resolve_path(pat_id, path, ValueNS, false) {
-                        Some(def @ (DefVariant(..), _)) |
-                        Some(def @ (DefStruct(..), _)) => {
-                            self.record_def(pattern.id, def);
-                        }
-                        Some(def @ (DefStatic(..), _)) => {
-                            self.enforce_default_binding_mode(
-                                pattern,
-                                binding_mode,
-                                "a constant");
-                            self.record_def(pattern.id, def);
-                        }
-                        Some(_) => {
-                            self.resolve_error(
-                                path.span,
-                                format!("`{}` is not an enum variant or constant",
-                                        token::get_ident(
-                                            path.segments
-                                                .last()
-                                                .unwrap()
-                                                .identifier)).as_slice())
-                        }
-                        None => {
-                            self.resolve_error(path.span,
-                                                  "unresolved enum variant");
-                        }
-                    }
-
-                    // Check the types in the path pattern.
-                    for ty in path.segments
-                                  .iter()
-                                  .flat_map(|s| s.types.iter()) {
-                        self.resolve_type(&**ty);
                     }
                 }
 
@@ -5202,8 +5155,8 @@ impl<'a> Resolver<'a> {
                                              in a static method. Maybe a \
                                              `self` argument is missing?");
                                 } else {
-                                    let name = path_to_ident(path).name;
-                                    let mut msg = match self.find_fallback_in_self_type(name) {
+                                    let last_name = path.segments.last().unwrap().identifier.name;
+                                    let mut msg = match self.find_fallback_in_self_type(last_name) {
                                         NoSuggestion => {
                                             // limit search to 5 to reduce the number
                                             // of stupid suggestions

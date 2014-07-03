@@ -842,8 +842,8 @@ pub fn create_local_var_metadata(bcx: &Block, local: &ast::Local) {
     let cx = bcx.ccx();
     let def_map = &cx.tcx.def_map;
 
-    pat_util::pat_bindings(def_map, &*local.pat, |_, node_id, span, path_ref| {
-        let var_ident = ast_util::path_to_ident(path_ref);
+    pat_util::pat_bindings(def_map, &*local.pat, |_, node_id, span, path1| {
+        let var_ident = path1.node;
 
         let datum = match bcx.fcx.lllocals.borrow().find_copy(&node_id) {
             Some(datum) => datum,
@@ -890,8 +890,8 @@ pub fn create_captured_var_metadata(bcx: &Block,
         }
         Some(ast_map::NodeLocal(pat)) | Some(ast_map::NodeArg(pat)) => {
             match pat.node {
-                ast::PatIdent(_, ref path, _) => {
-                    ast_util::path_to_ident(path)
+                ast::PatIdent(_, ref path1, _) => {
+                    path1.node
                 }
                 _ => {
                     cx.sess()
@@ -1007,7 +1007,7 @@ pub fn create_argument_metadata(bcx: &Block, arg: &ast::Arg) {
     let def_map = &cx.tcx.def_map;
     let scope_metadata = bcx.fcx.debug_context.get_ref(cx, arg.pat.span).fn_metadata;
 
-    pat_util::pat_bindings(def_map, &*arg.pat, |_, node_id, span, path_ref| {
+    pat_util::pat_bindings(def_map, &*arg.pat, |_, node_id, span, path1| {
         let llarg = match bcx.fcx.llargs.borrow().find_copy(&node_id) {
             Some(v) => v,
             None => {
@@ -1022,8 +1022,6 @@ pub fn create_argument_metadata(bcx: &Block, arg: &ast::Arg) {
                                     Referenced variable location is not an alloca!");
         }
 
-        let argument_ident = ast_util::path_to_ident(path_ref);
-
         let argument_index = {
             let counter = &fcx.debug_context.get_ref(cx, span).argument_counter;
             let argument_index = counter.get();
@@ -1032,7 +1030,7 @@ pub fn create_argument_metadata(bcx: &Block, arg: &ast::Arg) {
         };
 
         declare_local(bcx,
-                      argument_ident,
+                      path1.node,
                       llarg.ty,
                       scope_metadata,
                       DirectVariable { alloca: llarg.val },
@@ -3237,10 +3235,9 @@ fn populate_scope_map(cx: &CrateContext,
     // Push argument identifiers onto the stack so arguments integrate nicely
     // with variable shadowing.
     for &arg_pat in arg_pats.iter() {
-        pat_util::pat_bindings(def_map, &*arg_pat, |_, _, _, path_ref| {
-            let ident = ast_util::path_to_ident(path_ref);
+        pat_util::pat_bindings(def_map, &*arg_pat, |_, _, _, path1| {
             scope_stack.push(ScopeStackEntry { scope_metadata: fn_metadata,
-                                               ident: Some(ident) });
+                                               ident: Some(path1.node) });
         })
     }
 
@@ -3348,13 +3345,13 @@ fn populate_scope_map(cx: &CrateContext,
         // ast_util::walk_pat() here because we have to visit *all* nodes in
         // order to put them into the scope map. The above functions don't do that.
         match pat.node {
-            ast::PatIdent(_, ref path_ref, ref sub_pat_opt) => {
+            ast::PatIdent(_, ref path1, ref sub_pat_opt) => {
 
                 // Check if this is a binding. If so we need to put it on the
                 // scope stack and maybe introduce an artificial scope
                 if pat_util::pat_is_binding(def_map, &*pat) {
 
-                    let ident = ast_util::path_to_ident(path_ref);
+                    let ident = path1.node;
 
                     // LLVM does not properly generate 'DW_AT_start_scope' fields
                     // for variable DIEs. For this reason we have to introduce

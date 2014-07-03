@@ -59,7 +59,6 @@ use syntax::codemap::{Span, mk_sp};
 use syntax::ext::base;
 use syntax::ext::base::{ExtCtxt, MacExpr};
 use syntax::ext::build::AstBuilder;
-use syntax::parse;
 use syntax::parse::token;
 use syntax::parse::token::InternedString;
 use rustc::plugin::Registry;
@@ -135,11 +134,7 @@ struct Ident {
 
 fn parse_tts(cx: &ExtCtxt,
              tts: &[ast::TokenTree]) -> (Gc<ast::Expr>, Option<Ident>) {
-    let p = &mut parse::new_parser_from_tts(cx.parse_sess(),
-                                            cx.cfg(),
-                                            tts.iter()
-                                               .map(|x| (*x).clone())
-                                               .collect());
+    let p = &mut cx.new_parser_from_tts(tts);
     let ex = p.parse_expr();
     let id = if p.token == token::EOF {
         None

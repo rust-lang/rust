@@ -1267,7 +1267,7 @@ impl<'a> Visitor<()> for VisiblePrivateTypesVisitor<'a> {
             // error messages without (too many) false positives
             // (i.e. we could just return here to not check them at
             // all, or some worse estimation of whether an impl is
-            // publically visible.
+            // publicly visible.
             ast::ItemImpl(ref g, ref trait_ref, self_, ref methods) => {
                 // `impl [... for] Private` is never visible.
                 let self_contains_private;

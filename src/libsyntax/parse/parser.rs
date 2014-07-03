@@ -58,7 +58,7 @@ use ast::{UnsafeFn, ViewItem, ViewItem_, ViewItemExternCrate, ViewItemUse};
 use ast::{ViewPath, ViewPathGlob, ViewPathList, ViewPathSimple};
 use ast::Visibility;
 use ast;
-use ast_util::{as_prec, lit_is_str, operator_prec};
+use ast_util::{as_prec, ident_to_path, lit_is_str, operator_prec};
 use ast_util;
 use codemap::{Span, BytePos, Spanned, spanned, mk_sp};
 use codemap;
@@ -2854,8 +2854,7 @@ impl<'a> Parser<'a> {
                 self.bump();
                 self.parse_pat()
             } else {
-                let fieldpath = ast_util::ident_to_path(self.last_span,
-                                                        fieldname);
+                let fieldpath = codemap::Spanned{span:self.last_span, node: fieldname};
                 box(GC) ast::Pat {
                     id: ast::DUMMY_NODE_ID,
                     node: PatIdent(bind_type, fieldpath, None),
@@ -2961,6 +2960,7 @@ impl<'a> Parser<'a> {
           }
           _ => {}
         }
+        // at this point, token != _, ~, &, &&, (, [
 
         if (!is_ident_or_path(&self.token) && self.token != token::MOD_SEP)
                 || self.is_keyword(keywords::True)
@@ -3017,7 +3017,9 @@ impl<'a> Parser<'a> {
                 let end = self.parse_expr_res(RESTRICT_NO_BAR_OP);
                 pat = PatRange(start, end);
             } else if is_plain_ident(&self.token) && !can_be_enum_or_struct {
-                let name = self.parse_path(NoTypesAllowed).path;
+                let id = self.parse_ident();
+                let id_span = self.last_span;
+                let pth1 = codemap::Spanned{span:id_span, node: id};
                 if self.eat(&token::NOT) {
                     // macro invocation
                     let ket = token::close_delimiter_for(&self.token)
@@ -3028,7 +3030,7 @@ impl<'a> Parser<'a> {
                                                     seq_sep_none(),
                                                     |p| p.parse_token_tree());
 
-                    let mac = MacInvocTT(name, tts, EMPTY_CTXT);
+                    let mac = MacInvocTT(ident_to_path(id_span,id), tts, EMPTY_CTXT);
                     pat = ast::PatMac(codemap::Spanned {node: mac, span: self.span});
                 } else {
                     let sub = if self.eat(&token::AT) {
@@ -3038,7 +3040,7 @@ impl<'a> Parser<'a> {
                         // or just foo
                         None
                     };
-                    pat = PatIdent(BindByValue(MutImmutable), name, sub);
+                    pat = PatIdent(BindByValue(MutImmutable), pth1, sub);
                 }
             } else {
                 // parse an enum pat
@@ -3084,8 +3086,11 @@ impl<'a> Parser<'a> {
                                   // or an identifier pattern, resolve
                                   // will sort it out:
                                   pat = PatIdent(BindByValue(MutImmutable),
-                                                  enum_path,
-                                                  None);
+                                                 codemap::Spanned{
+                                                    span: enum_path.span,
+                                                    node: enum_path.segments.get(0)
+                                                           .identifier},
+                                                 None);
                               } else {
                                   pat = PatEnum(enum_path, Some(args));
                               }
@@ -3115,7 +3120,7 @@ impl<'a> Parser<'a> {
                             "expected identifier, found path");
         }
         // why a path here, and not just an identifier?
-        let name = self.parse_path(NoTypesAllowed).path;
+        let name = codemap::Spanned{span: self.last_span, node: self.parse_ident()};
         let sub = if self.eat(&token::AT) {
             Some(self.parse_pat())
         } else {
@@ -3243,7 +3248,7 @@ impl<'a> Parser<'a> {
                 None      => {
                     // we only expect an ident if we didn't parse one
                     // above.
-                    let ident_str = if id == token::special_idents::invalid {
+                    let ident_str = if id.name == token::special_idents::invalid.name {
                         "identifier, "
                     } else {
                         ""
@@ -3263,7 +3268,7 @@ impl<'a> Parser<'a> {
             );
             let hi = self.span.hi;
 
-            if id == token::special_idents::invalid {
+            if id.name == token::special_idents::invalid.name {
                 return box(GC) spanned(lo, hi, StmtMac(
                     spanned(lo, hi, MacInvocTT(pth, tts, EMPTY_CTXT)), false));
             } else {

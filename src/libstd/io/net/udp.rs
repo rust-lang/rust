@@ -165,12 +165,18 @@ impl UdpSocket {
 
     /// Sets the broadcast flag on or off
     #[experimental]
-    pub fn set_broadast(&mut self, broadcast: bool) -> IoResult<()> {
+    pub fn set_broadcast(&mut self, broadcast: bool) -> IoResult<()> {
         if broadcast {
             self.obj.hear_broadcasts()
         } else {
             self.obj.ignore_broadcasts()
         }.map_err(IoError::from_rtio_error)
+    }
+
+    /// Sets the broadcast flag on or off
+    #[deprecated="renamed to `set_broadcast`"]
+    pub fn set_broadast(&mut self, broadcast: bool) -> IoResult<()> {
+        self.set_broadcast(broadcast)
     }
 
     /// Sets the read/write timeout for this socket.
