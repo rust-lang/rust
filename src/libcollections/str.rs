@@ -160,9 +160,27 @@ pub fn from_chars(chs: &[char]) -> String {
 /// Methods for vectors of strings
 pub trait StrVector {
     /// Concatenate a vector of strings.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let first = "Restaurant at the End of the".to_string();
+    /// let second = " Universe".to_string();
+    /// let string_vec = vec![first, second];
+    /// assert_eq!(string_vec.concat(), "Restaurant at the End of the Universe".to_string());
+    /// ```
     fn concat(&self) -> String;
 
     /// Concatenate a vector of strings, placing a given separator between each.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let first = "Roast".to_string();
+    /// let second = "Sirloin Steak".to_string();
+    /// let string_vec = vec![first, second];
+    /// assert_eq!(string_vec.connect(", "), "Roast, Sirloin Steak".to_string());
+    /// ```
     fn connect(&self, sep: &str) -> String;
 }
 
@@ -172,7 +190,7 @@ impl<'a, S: Str> StrVector for &'a [S] {
             return String::new();
         }
 
-        // `len` calculation may overflow but push_str but will check boundaries
+        // `len` calculation may overflow but push_str will check boundaries
         let len = self.iter().map(|s| s.as_slice().len()).sum();
 
         let mut result = String::with_capacity(len);
