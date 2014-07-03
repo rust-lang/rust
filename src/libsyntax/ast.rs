@@ -50,6 +50,13 @@ pub struct Ident {
 impl Ident {
     /// Construct an identifier with the given name and an empty context:
     pub fn new(name: Name) -> Ident { Ident {name: name, ctxt: EMPTY_CTXT}}
+
+    pub fn as_str<'a>(&'a self) -> &'a str {
+        unsafe {
+            // FIXME #12938: can't use copy_lifetime since &str isn't a &T
+            ::std::mem::transmute(token::get_ident(*self).get())
+        }
+    }
 }
 
 impl Show for Ident {
