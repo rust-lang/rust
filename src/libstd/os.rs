@@ -482,7 +482,7 @@ pub fn split_paths<T: BytesContainer>(unparsed: T) -> Vec<Path> {
     }
 
     #[cfg(windows)]
-    pub fn _split_paths<T: BytesContainer>(unparsed: T) -> Vec<Path> {
+    fn _split_paths<T: BytesContainer>(unparsed: T) -> Vec<Path> {
         // On Windows, the PATH environment variable is semicolon separated.  Double
         // quotes are used as a way of introducing literal semicolons (since
         // c:\some;dir is a valid Windows path). Double quotes are not themselves
