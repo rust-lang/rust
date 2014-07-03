@@ -65,7 +65,7 @@ syn keyword   rustTrait       Copy Send Sized Share
 syn keyword   rustTrait       Add Sub Mul Div Rem Neg Not
 syn keyword   rustTrait       BitAnd BitOr BitXor
 syn keyword   rustTrait       Drop Deref DerefMut
-syn keyword   rustTrait       Shl Shr Index
+syn keyword   rustTrait       Shl Shr Index IndexMut
 syn keyword   rustEnum        Option
 syn keyword   rustEnumVariant Some None
 syn keyword   rustEnum        Result
