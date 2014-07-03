@@ -25,7 +25,7 @@ use syntax::util::small_vector::SmallVector;
 use std::mem;
 use std::gc::{Gc, GC};
 
-pub static VERSION: &'static str = "0.11.0-pre";
+pub static VERSION: &'static str = "0.11.0";
 
 pub fn maybe_inject_crates_ref(sess: &Session, krate: ast::Crate)
                                -> ast::Crate {
