@@ -114,6 +114,15 @@ mod tests {
         assert_eq!(_1.rotate_left(124), _1);
         assert_eq!(_0.rotate_right(124), _0);
         assert_eq!(_1.rotate_right(124), _1);
+
+        // Rotating by 0 should have no effect
+        assert_eq!(A.rotate_left(0), A);
+        assert_eq!(B.rotate_left(0), B);
+        assert_eq!(C.rotate_left(0), C);
+        // Rotating by a multiple of word size should also have no effect
+        assert_eq!(A.rotate_left(64), A);
+        assert_eq!(B.rotate_left(64), B);
+        assert_eq!(C.rotate_left(64), C);
     }
 
     #[test]
