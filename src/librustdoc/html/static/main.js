@@ -112,8 +112,11 @@
         document.location.href = url;
     });
     /**
-     * Code from Stackoverflow to compute the Levenshtein distance between two strings
-     * Written by Marco de Wit at http://stackoverflow.com/a/18514751/745719
+     * A function to compute the Levenshtein distance between two strings
+     * Licensed under the Creative Commons Attribution-ShareAlike 3.0 Unported
+     * Full License can be found at http://creativecommons.org/licenses/by-sa/3.0/legalcode
+     * This code is an unmodified version of the code written by Marco de Wit 
+     * and was found at http://stackoverflow.com/a/18514751/745719
      */
     var levenshtein = (function() {
         var row2 = [];
