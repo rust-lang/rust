@@ -47,7 +47,7 @@ use c_str::CString;
 /// # Example
 ///
 /// ```should_fail
-/// use std::io::Command;
+/// use std::io::process::Command;
 ///
 /// let mut child = match Command::new("/bin/cat").arg("file.txt").spawn() {
 ///     Ok(child) => child,
@@ -85,7 +85,7 @@ pub struct Process {
 /// to be changed (for example, by adding arguments) prior to spawning:
 ///
 /// ```
-/// use std::io::Command;
+/// use std::io::process::Command;
 ///
 /// let mut process = match Command::new("sh").arg("-c").arg("echo hello").spawn() {
 ///   Ok(p) => p,
@@ -279,7 +279,7 @@ impl Command {
     /// # Example
     ///
     /// ```
-    /// use std::io::Command;
+    /// use std::io::process::Command;
     /// use std::str;
     ///
     /// let output = match Command::new("cat").arg("foot.txt").output() {
@@ -301,7 +301,7 @@ impl Command {
     /// # Example
     ///
     /// ```
-    /// use std::io::Command;
+    /// use std::io::process::Command;
     ///
     /// let status = match Command::new("ls").status() {
     ///     Ok(status) => status,
@@ -476,8 +476,8 @@ impl Process {
     ///
     /// ```no_run
     /// # #![allow(experimental)]
-    /// use std::io::{Command, IoResult};
-    /// use std::io::process::ProcessExit;
+    /// use std::io::IoResult;
+    /// use std::io::process::{Command, ProcessExit};
     ///
     /// fn run_gracefully(prog: &str) -> IoResult<ProcessExit> {
     ///     let mut p = try!(Command::new("long-running-process").spawn());
