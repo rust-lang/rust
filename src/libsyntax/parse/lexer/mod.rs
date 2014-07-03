@@ -685,7 +685,7 @@ impl<'a> StringReader<'a> {
     }
 
 
-    fn scan_numeric_escape(&mut self, n_hex_digits: uint, delim: char) -> char {
+    fn scan_numeric_escape(&mut self, n_hex_digits: uint, delim: char) -> bool {
         let mut accum_int = 0u32;
         let start_bpos = self.last_pos;
         for _ in range(0, n_hex_digits) {
@@ -709,11 +709,11 @@ impl<'a> StringReader<'a> {
         }
 
         match char::from_u32(accum_int) {
-            Some(x) => x,
+            Some(_) => true,
             None => {
                 let last_bpos = self.last_pos;
                 self.err_span_(start_bpos, last_bpos, "illegal numeric character escape");
-                '?'
+                false
             }
         }
     }
@@ -721,8 +721,10 @@ impl<'a> StringReader<'a> {
     /// Scan for a single (possibly escaped) byte or char
     /// in a byte, (non-raw) byte string, char, or (non-raw) string literal.
     /// `start` is the position of `first_source_char`, which is already consumed.
+    ///
+    /// Returns true if there was a valid char/byte, false otherwise.
     fn scan_char_or_byte(&mut self, start: BytePos, first_source_char: char,
-                         ascii_only: bool, delim: char) -> Option<char> {
+                         ascii_only: bool, delim: char) -> bool {
         match first_source_char {
             '\\' => {
                 // '\X' for some X must be a character constant:
@@ -732,24 +734,18 @@ impl<'a> StringReader<'a> {
                 match escaped {
                     None => {},  // EOF here is an error that will be checked later.
                     Some(e) => {
-                        return Some(match e {
-                            'n' => '\n',
-                            'r' => '\r',
-                            't' => '\t',
-                            '\\' => '\\',
-                            '\'' => '\'',
-                            '"' => '"',
-                            '0' => '\x00',
+                        return match e {
+                            'n' | 'r' | 't' | '\\' | '\'' | '"' | '0' => true,
                             'x' => self.scan_numeric_escape(2u, delim),
                             'u' if !ascii_only => self.scan_numeric_escape(4u, delim),
                             'U' if !ascii_only => self.scan_numeric_escape(8u, delim),
                             '\n' if delim == '"' => {
                                 self.consume_whitespace();
-                                return None
+                                true
                             },
                             '\r' if delim == '"' && self.curr_is('\n') => {
                                 self.consume_whitespace();
-                                return None
+                                true
                             }
                             c => {
                                 let last_pos = self.last_pos;
@@ -758,9 +754,9 @@ impl<'a> StringReader<'a> {
                                     if ascii_only { "unknown byte escape" }
                                     else { "unknown character escape" },
                                     c);
-                                c
+                                false
                             }
-                        })
+                        }
                     }
                 }
             }
@@ -771,14 +767,16 @@ impl<'a> StringReader<'a> {
                     if ascii_only { "byte constant must be escaped" }
                     else { "character constant must be escaped" },
                     first_source_char);
+                return false;
             }
             '\r' => {
                 if self.curr_is('\n') {
                     self.bump();
-                    return Some('\n');
+                    return true;
                 } else {
                     self.err_span_(start, self.last_pos,
                                    "bare CR not allowed in string, use \\r instead");
+                    return false;
                 }
             }
             _ => if ascii_only && first_source_char > '\x7F' {
@@ -787,9 +785,10 @@ impl<'a> StringReader<'a> {
                     start, last_pos,
                     "byte constant must be ASCII. \
                      Use a \\xHH escape for a non-ASCII byte", first_source_char);
+                return false;
             }
         }
-        Some(first_source_char)
+        true
     }
 
     fn binop(&mut self, op: token::BinOp) -> token::Token {
@@ -924,7 +923,7 @@ impl<'a> StringReader<'a> {
             let start = self.last_pos;
 
             // the eof will be picked up by the final `'` check below
-            let mut c2 = self.curr.unwrap_or('\x00');
+            let c2 = self.curr.unwrap_or('\x00');
             self.bump();
 
             // If the character is an ident start not followed by another single
@@ -967,7 +966,7 @@ impl<'a> StringReader<'a> {
             }
 
             // Otherwise it is a character constant:
-            c2 = self.scan_char_or_byte(start, c2, /* ascii_only = */ false, '\'').unwrap();
+            let valid = self.scan_char_or_byte(start, c2, /* ascii_only = */ false, '\'');
             if !self.curr_is('\'') {
                 let last_bpos = self.last_pos;
                 self.fatal_span_verbose(
@@ -977,8 +976,9 @@ impl<'a> StringReader<'a> {
                                    start - BytePos(1), last_bpos,
                                    "unterminated character constant".to_string());
             }
+            let id = if valid { self.ident_from(start) } else { str_to_ident("0") };
             self.bump(); // advance curr past token
-            return token::LIT_CHAR(c2);
+            return token::LIT_CHAR(id);
           }
           'b' => {
             self.bump();
@@ -991,8 +991,8 @@ impl<'a> StringReader<'a> {
 
           }
           '"' => {
-            let mut accum_str = String::new();
             let start_bpos = self.last_pos;
+            let mut valid = true;
             self.bump();
             while !self.curr_is('"') {
                 if self.is_eof() {
@@ -1003,11 +1003,13 @@ impl<'a> StringReader<'a> {
                 let ch_start = self.last_pos;
                 let ch = self.curr.unwrap();
                 self.bump();
-                self.scan_char_or_byte(ch_start, ch, /* ascii_only = */ false, '"')
-                    .map(|ch| accum_str.push_char(ch));
+                valid &= self.scan_char_or_byte(ch_start, ch, /* ascii_only = */ false, '"');
             }
+            // adjust for the ACSII " at the start of the literal
+            let id = if valid { self.ident_from(start_bpos + BytePos(1)) }
+                     else { str_to_ident("??") };
             self.bump();
-            return token::LIT_STR(str_to_ident(accum_str.as_slice()));
+            return token::LIT_STR(id);
           }
           'r' => {
             let start_bpos = self.last_pos;
@@ -1032,7 +1034,7 @@ impl<'a> StringReader<'a> {
             self.bump();
             let content_start_bpos = self.last_pos;
             let mut content_end_bpos;
-            let mut has_cr = false;
+            let mut valid = true;
             'outer: loop {
                 if self.is_eof() {
                     let last_bpos = self.last_pos;
@@ -1055,23 +1057,26 @@ impl<'a> StringReader<'a> {
                             }
                         }
                         break;
-                    }
+                    },
                     '\r' => {
-                        has_cr = true;
+                        if !self.nextch_is('\n') {
+                            let last_bpos = self.last_pos;
+                            self.err_span_(start_bpos, last_bpos, "bare CR not allowed in raw \
+                                           string, use \\r instead");
+                            valid = false;
+                        }
                     }
                     _ => ()
                 }
                 self.bump();
             }
             self.bump();
-            let str_content = self.with_str_from_to(content_start_bpos, content_end_bpos, |string| {
-                let string = if has_cr {
-                    self.translate_crlf(content_start_bpos, string,
-                                        "bare CR not allowed in raw string")
-                } else { string.into_maybe_owned() };
-                str_to_ident(string.as_slice())
-            });
-            return token::LIT_STR_RAW(str_content, hash_count);
+            let id = if valid {
+                self.ident_from_to(content_start_bpos, content_end_bpos)
+            } else {
+                str_to_ident("??")
+            };
+            return token::LIT_STR_RAW(id, hash_count);
           }
           '-' => {
             if self.nextch_is('>') {
@@ -1145,10 +1150,10 @@ impl<'a> StringReader<'a> {
         let start = self.last_pos;
 
         // the eof will be picked up by the final `'` check below
-        let mut c2 = self.curr.unwrap_or('\x00');
+        let c2 = self.curr.unwrap_or('\x00');
         self.bump();
 
-        c2 = self.scan_char_or_byte(start, c2, /* ascii_only = */ true, '\'').unwrap();
+        let valid = self.scan_char_or_byte(start, c2, /* ascii_only = */ true, '\'');
         if !self.curr_is('\'') {
             // Byte offsetting here is okay because the
             // character before position `start` are an
@@ -1158,14 +1163,17 @@ impl<'a> StringReader<'a> {
                 start - BytePos(2), last_pos,
                 "unterminated byte constant".to_string());
         }
+
+        let id = if valid { self.ident_from(start) } else { str_to_ident("??") };
         self.bump(); // advance curr past token
-        return token::LIT_BYTE(c2 as u8);
+        return token::LIT_BYTE(id);
     }
 
     fn scan_byte_string(&mut self) -> token::Token {
         self.bump();
         let start = self.last_pos;
-        let mut value = Vec::new();
+        let mut valid = true;
+
         while !self.curr_is('"') {
             if self.is_eof() {
                 let last_pos = self.last_pos;
@@ -1176,11 +1184,11 @@ impl<'a> StringReader<'a> {
             let ch_start = self.last_pos;
             let ch = self.curr.unwrap();
             self.bump();
-            self.scan_char_or_byte(ch_start, ch, /* ascii_only = */ true, '"')
-                .map(|ch| value.push(ch as u8));
+            valid &= self.scan_char_or_byte(ch_start, ch, /* ascii_only = */ true, '"');
         }
+        let id = if valid { self.ident_from(start) } else { str_to_ident("??") };
         self.bump();
-        return token::LIT_BINARY(Rc::new(value));
+        return token::LIT_BINARY(id);
     }
 
     fn scan_raw_byte_string(&mut self) -> token::Token {
@@ -1231,10 +1239,8 @@ impl<'a> StringReader<'a> {
             self.bump();
         }
         self.bump();
-        let bytes = self.with_str_from_to(content_start_bpos,
-                                           content_end_bpos,
-                                           |s| s.as_bytes().to_owned());
-        return token::LIT_BINARY_RAW(Rc::new(bytes), hash_count);
+        return token::LIT_BINARY_RAW(self.ident_from_to(content_start_bpos, content_end_bpos),
+                                     hash_count);
     }
 }
 

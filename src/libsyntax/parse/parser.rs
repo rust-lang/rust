@@ -61,6 +61,7 @@ use ast_util::{as_prec, ident_to_path, lit_is_str, operator_prec};
 use ast_util;
 use codemap::{Span, BytePos, Spanned, spanned, mk_sp};
 use codemap;
+use parse;
 use parse::attr::ParserAttr;
 use parse::classify;
 use parse::common::{SeqSep, seq_sep_none};
@@ -1543,8 +1544,8 @@ impl<'a> Parser<'a> {
     /// Matches token_lit = LIT_INT | ...
     pub fn lit_from_token(&mut self, tok: &token::Token) -> Lit_ {
         match *tok {
-            token::LIT_BYTE(i) => LitByte(i),
-            token::LIT_CHAR(i) => LitChar(i),
+            token::LIT_BYTE(i) => LitByte(parse::byte_lit(i.as_str()).val0()),
+            token::LIT_CHAR(i) => LitChar(parse::char_lit(i.as_str()).val0()),
             token::LIT_INT(i, it) => LitInt(i, it),
             token::LIT_UINT(u, ut) => LitUint(u, ut),
             token::LIT_INT_UNSUFFIXED(i) => LitIntUnsuffixed(i),
@@ -1555,13 +1556,17 @@ impl<'a> Parser<'a> {
                 LitFloatUnsuffixed(self.id_to_interned_str(s))
             }
             token::LIT_STR(s) => {
-                LitStr(self.id_to_interned_str(s), ast::CookedStr)
+                LitStr(token::intern_and_get_ident(parse::str_lit(s.as_str()).as_slice()),
+                       ast::CookedStr)
             }
             token::LIT_STR_RAW(s, n) => {
-                LitStr(self.id_to_interned_str(s), ast::RawStr(n))
+                LitStr(token::intern_and_get_ident(parse::raw_str_lit(s.as_str()).as_slice()),
+                       ast::RawStr(n))
             }
-            token::LIT_BINARY_RAW(ref v, _) |
-            token::LIT_BINARY(ref v) => LitBinary(v.clone()),
+            token::LIT_BINARY(i) =>
+                LitBinary(parse::binary_lit(self.id_to_interned_str(i).get())),
+            token::LIT_BINARY_RAW(i, _) =>
+                LitBinary(Rc::new(i.as_str().as_bytes().iter().map(|&x| x).collect())),
             token::LPAREN => { self.expect(&token::RPAREN); LitNil },
             _ => { self.unexpected_last(tok); }
         }

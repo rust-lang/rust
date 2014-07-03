@@ -272,7 +272,239 @@ pub fn maybe_aborted<T>(result: T, mut p: Parser) -> T {
     result
 }
 
+/// Parse a string representing a character literal into its final form.
+/// Rather than just accepting/rejecting a given literal, unescapes it as
+/// well. Can take any slice prefixed by a character escape. Returns the
+/// character and the number of characters consumed.
+pub fn char_lit(lit: &str) -> (char, int) {
+    use std::{num, char};
 
+    let mut chars = lit.chars();
+    let c = match (chars.next(), chars.next()) {
+        (Some(c), None) if c != '\\' => return (c, 1),
+        (Some('\\'), Some(c)) => match c {
+            '"' => Some('"'),
+            'n' => Some('\n'),
+            'r' => Some('\r'),
+            't' => Some('\t'),
+            '\\' => Some('\\'),
+            '\'' => Some('\''),
+            '0' => Some('\0'),
+            _ => { None }
+        },
+        _ => fail!("lexer accepted invalid char escape `{}`", lit)
+    };
+
+    match c {
+        Some(x) => return (x, 2),
+        None => { }
+    }
+
+    let msg = format!("lexer should have rejected a bad character escape {}", lit);
+    let msg2 = msg.as_slice();
+
+    let esc: |uint| -> Option<(char, int)> = |len|
+        num::from_str_radix(lit.slice(2, len), 16)
+        .and_then(char::from_u32)
+        .map(|x| (x, len as int));
+
+    // Unicode escapes
+    return match lit.as_bytes()[1] as char {
+        'x' | 'X' => esc(4),
+        'u' => esc(6),
+        'U' => esc(10),
+        _ => None,
+    }.expect(msg2);
+}
+
+/// Parse a string representing a string literal into its final form. Does
+/// unescaping.
+pub fn str_lit(lit: &str) -> String {
+    debug!("parse_str_lit: given {}", lit.escape_default());
+    let mut res = String::with_capacity(lit.len());
+
+    // FIXME #8372: This could be a for-loop if it didn't borrow the iterator
+    let error = |i| format!("lexer should have rejected {} at {}", lit, i);
+
+    /// Eat everything up to a non-whitespace
+    fn eat<'a>(it: &mut ::std::iter::Peekable<(uint, char), ::std::str::CharOffsets<'a>>) {
+        loop {
+            match it.peek().map(|x| x.val1()) {
+                Some(' ') | Some('\n') | Some('\r') | Some('\t') => {
+                    it.next();
+                },
+                _ => { break; }
+            }
+        }
+    }
+
+    let mut chars = lit.char_indices().peekable();
+    loop {
+        match chars.next() {
+            Some((i, c)) => {
+                let em = error(i);
+                match c {
+                    '\\' => {
+                        if chars.peek().expect(em.as_slice()).val1() == '\n' {
+                            eat(&mut chars);
+                        } else if chars.peek().expect(em.as_slice()).val1() == '\r' {
+                            chars.next();
+                            if chars.peek().expect(em.as_slice()).val1() != '\n' {
+                                fail!("lexer accepted bare CR");
+                            }
+                            eat(&mut chars);
+                        } else {
+                            // otherwise, a normal escape
+                            let (c, n) = char_lit(lit.slice_from(i));
+                            for _ in range(0, n - 1) { // we don't need to move past the first \
+                                chars.next();
+                            }
+                            res.push_char(c);
+                        }
+                    },
+                    '\r' => {
+                        if chars.peek().expect(em.as_slice()).val1() != '\n' {
+                            fail!("lexer accepted bare CR");
+                        }
+                        chars.next();
+                        res.push_char('\n');
+                    }
+                    c => res.push_char(c),
+                }
+            },
+            None => break
+        }
+    }
+
+    res.shrink_to_fit(); // probably not going to do anything, unless there was an escape.
+    debug!("parse_str_lit: returning {}", res);
+    res
+}
+
+/// Parse a string representing a raw string literal into its final form. The
+/// only operation this does is convert embedded CRLF into a single LF.
+pub fn raw_str_lit(lit: &str) -> String {
+    debug!("raw_str_lit: given {}", lit.escape_default());
+    let mut res = String::with_capacity(lit.len());
+
+    // FIXME #8372: This could be a for-loop if it didn't borrow the iterator
+    let mut chars = lit.chars().peekable();
+    loop {
+        match chars.next() {
+            Some(c) => {
+                if c == '\r' {
+                    if *chars.peek().unwrap() != '\n' {
+                        fail!("lexer accepted bare CR");
+                    }
+                    chars.next();
+                    res.push_char('\n');
+                } else {
+                    res.push_char(c);
+                }
+            },
+            None => break
+        }
+    }
+
+    res.shrink_to_fit();
+    res
+}
+
+pub fn float_lit(s: &str) -> ast::Lit_ {
+    debug!("float_lit: {}", s);
+    // FIXME #2252: bounds checking float literals is defered until trans
+    let s2 = s.chars().filter(|&c| c != '_').collect::<String>();
+    let s = s2.as_slice();
+
+    let mut ty = None;
+
+    if s.ends_with("f32") {
+        ty = Some(ast::TyF32);
+    } else if s.ends_with("f64") {
+        ty = Some(ast::TyF64);
+    }
+
+
+    match ty {
+        Some(t) => {
+            ast::LitFloat(token::intern_and_get_ident(s.slice_to(s.len() - t.suffix_len())), t)
+        },
+        None => ast::LitFloatUnsuffixed(token::intern_and_get_ident(s))
+    }
+}
+
+/// Parse a string representing a byte literal into its final form. Similar to `char_lit`
+pub fn byte_lit(lit: &str) -> (u8, uint) {
+    let err = |i| format!("lexer accepted invalid byte literal {} step {}", lit, i);
+
+    if lit.len() == 1 {
+        (lit.as_bytes()[0], 1)
+    } else {
+        assert!(lit.as_bytes()[0] == b'\\', err(0i));
+        let b = match lit.as_bytes()[1] {
+            b'"' => b'"',
+            b'n' => b'\n',
+            b'r' => b'\r',
+            b't' => b'\t',
+            b'\\' => b'\\',
+            b'\'' => b'\'',
+            b'0' => b'\0',
+            _ => {
+                match ::std::num::from_str_radix::<u64>(lit.slice(2, 4), 16) {
+                    Some(c) =>
+                        if c > 0xFF {
+                            fail!(err(2))
+                        } else {
+                            return (c as u8, 4)
+                        },
+                    None => fail!(err(3))
+                }
+            }
+        };
+        return (b, 2);
+    }
+}
+
+pub fn binary_lit(lit: &str) -> Rc<Vec<u8>> {
+    let mut res = Vec::with_capacity(lit.len());
+
+    // FIXME #8372: This could be a for-loop if it didn't borrow the iterator
+    let error = |i| format!("lexer should have rejected {} at {}", lit, i);
+
+    // binary literals *must* be ASCII, but the escapes don't have to be
+    let mut chars = lit.as_bytes().iter().enumerate().peekable();
+    loop {
+        match chars.next() {
+            Some((i, &c)) => {
+                if c == b'\\' {
+                    if *chars.peek().expect(error(i).as_slice()).val1() == b'\n' {
+                        loop {
+                            // eat everything up to a non-whitespace
+                            match chars.peek().map(|x| *x.val1()) {
+                                Some(b' ') | Some(b'\n') | Some(b'\r') | Some(b'\t') => {
+                                    chars.next();
+                                },
+                                _ => { break; }
+                            }
+                        }
+                    } else {
+                        // otherwise, a normal escape
+                        let (c, n) = byte_lit(lit.slice_from(i));
+                        for _ in range(0, n - 1) { // we don't need to move past the first \
+                            chars.next();
+                        }
+                        res.push(c);
+                    }
+                } else {
+                    res.push(c);
+                }
+            },
+            None => { break; }
+        }
+    }
+
+    Rc::new(res)
+}
 
 #[cfg(test)]
 mod test {
