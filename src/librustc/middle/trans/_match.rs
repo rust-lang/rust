@@ -64,10 +64,12 @@
  * We store information about the bound variables for each arm as part of the
  * per-arm `ArmData` struct.  There is a mapping from identifiers to
  * `BindingInfo` structs.  These structs contain the mode/id/type of the
- * binding, but they also contain up to two LLVM values, called `llmatch` and
- * `llbinding` respectively (the `llbinding`, as will be described shortly, is
- * optional and only present for by-value bindings---therefore it is bundled
- * up as part of the `TransBindingMode` type).  Both point at allocas.
+ * binding, but they also contain an LLVM value which points at an alloca
+ * called `llmatch`. For by value bindings that are Copy, we also create
+ * an extra alloca that we copy the matched value to so that any changes
+ * we do to our copy is not reflected in the original and vice-versa.
+ * We don't do this if it's a move since the original value can't be used
+ * and thus allowing us to cheat in not creating an extra alloca.
  *
  * The `llmatch` binding always stores a pointer into the value being matched
  * which points at the data for the binding.  If the value being matched has
@@ -83,18 +85,12 @@
  * up against an identifier, we store the current pointer into the
  * corresponding alloca.
  *
- * In addition, for each by-value binding (copy or move), we will create a
- * second alloca (`llbinding`) that will hold the final value.  In this
- * example, that means that `d` would have this second alloca of type `D` (and
- * hence `llbinding` has type `D*`).
- *
  * Once a pattern is completely matched, and assuming that there is no guard
  * pattern, we will branch to a block that leads to the body itself.  For any
  * by-value bindings, this block will first load the ptr from `llmatch` (the
- * one of type `D*`) and copy/move the value into `llbinding` (the one of type
- * `D`).  The second alloca then becomes the value of the local variable.  For
- * by ref bindings, the value of the local variable is simply the first
- * alloca.
+ * one of type `D*`) and then load a second time to get the actual value (the
+ * one of type `D`). For by ref bindings, the value of the local variable is
+ * simply the first alloca.
  *
  * So, for the example above, we would generate a setup kind of like this:
  *
@@ -102,13 +98,13 @@
  *        | Entry |
  *        +-------+
  *            |
- *        +-------------------------------------------+
- *        | llmatch_c = (addr of first half of tuple) |
- *        | llmatch_d = (addr of first half of tuple) |
- *        +-------------------------------------------+
+ *        +--------------------------------------------+
+ *        | llmatch_c = (addr of first half of tuple)  |
+ *        | llmatch_d = (addr of second half of tuple) |
+ *        +--------------------------------------------+
  *            |
  *        +--------------------------------------+
- *        | *llbinding_d = **llmatch_dlbinding_d |
+ *        | *llbinding_d = **llmatch_d           |
  *        +--------------------------------------+
  *
  * If there is a guard, the situation is slightly different, because we must
@@ -127,22 +123,20 @@
  *        +-------------------------------------------+
  *            |
  *        +-------------------------------------------------+
- *        | *llbinding_d = **llmatch_dlbinding_d            |
+ *        | *llbinding_d = **llmatch_d                      |
  *        | check condition                                 |
- *        | if false { free *llbinding_d, goto next case }  |
+ *        | if false { goto next case }                     |
  *        | if true { goto body }                           |
  *        +-------------------------------------------------+
  *
  * The handling for the cleanups is a bit... sensitive.  Basically, the body
  * is the one that invokes `add_clean()` for each binding.  During the guard
  * evaluation, we add temporary cleanups and revoke them after the guard is
- * evaluated (it could fail, after all).  Presuming the guard fails, we drop
- * the various values we copied explicitly.  Note that guards and moves are
+ * evaluated (it could fail, after all). Note that guards and moves are
  * just plain incompatible.
  *
  * Some relevant helper functions that manage bindings:
  * - `create_bindings_map()`
- * - `store_non_ref_bindings()`
  * - `insert_lllocals()`
  *
  *
@@ -216,7 +210,6 @@ use middle::trans::datum;
 use middle::trans::datum::*;
 use middle::trans::expr::Dest;
 use middle::trans::expr;
-use middle::trans::glue;
 use middle::trans::tvec;
 use middle::trans::type_of;
 use middle::trans::debuginfo;
@@ -357,8 +350,9 @@ fn variant_opt(bcx: &Block, pat_id: ast::NodeId) -> Opt {
 }
 
 #[deriving(Clone)]
-enum TransBindingMode {
-    TrByValue(/*llbinding:*/ ValueRef),
+pub enum TransBindingMode {
+    TrByCopy(/* llbinding */ ValueRef),
+    TrByMove,
     TrByRef,
 }
 
@@ -371,12 +365,12 @@ enum TransBindingMode {
  * - `id` is the node id of the binding
  * - `ty` is the Rust type of the binding */
  #[deriving(Clone)]
-struct BindingInfo {
-    llmatch: ValueRef,
-    trmode: TransBindingMode,
-    id: ast::NodeId,
-    span: Span,
-    ty: ty::t,
+pub struct BindingInfo {
+    pub llmatch: ValueRef,
+    pub trmode: TransBindingMode,
+    pub id: ast::NodeId,
+    pub span: Span,
+    pub ty: ty::t,
 }
 
 type BindingsMap = HashMap<Ident, BindingInfo>;
@@ -970,64 +964,34 @@ fn compare_values<'a>(
     }
 }
 
-fn store_non_ref_bindings<'a>(
-                          bcx: &'a Block<'a>,
-                          bindings_map: &BindingsMap,
-                          opt_cleanup_scope: Option<cleanup::ScopeId>)
-                          -> &'a Block<'a>
-{
-    /*!
-     * For each copy/move binding, copy the value from the value being
-     * matched into its final home.  This code executes once one of
-     * the patterns for a given arm has completely matched.  It adds
-     * cleanups to the `opt_cleanup_scope`, if one is provided.
-     */
-
-    let fcx = bcx.fcx;
-    let mut bcx = bcx;
-    for (_, &binding_info) in bindings_map.iter() {
-        match binding_info.trmode {
-            TrByValue(lldest) => {
-                let llval = Load(bcx, binding_info.llmatch); // get a T*
-                let datum = Datum::new(llval, binding_info.ty, Lvalue);
-                bcx = datum.store_to(bcx, lldest);
-
-                match opt_cleanup_scope {
-                    None => {}
-                    Some(s) => {
-                        fcx.schedule_drop_mem(s, lldest, binding_info.ty);
-                    }
-                }
-            }
-            TrByRef => {}
-        }
-    }
-    return bcx;
-}
-
-fn insert_lllocals<'a>(bcx: &'a Block<'a>,
-                       bindings_map: &BindingsMap,
-                       cleanup_scope: cleanup::ScopeId)
+fn insert_lllocals<'a>(mut bcx: &'a Block<'a>,
+                       bindings_map: &BindingsMap)
                        -> &'a Block<'a> {
     /*!
      * For each binding in `data.bindings_map`, adds an appropriate entry into
-     * the `fcx.lllocals` map, scheduling cleanup in `cleanup_scope`.
+     * the `fcx.lllocals` map
      */
-
-    let fcx = bcx.fcx;
 
     for (&ident, &binding_info) in bindings_map.iter() {
         let llval = match binding_info.trmode {
-            // By value bindings: use the stack slot that we
-            // copied/moved the value into
-            TrByValue(lldest) => lldest,
+            // By value mut binding for a copy type: load from the ptr
+            // into the matched value and copy to our alloca
+            TrByCopy(llbinding) => {
+                let llval = Load(bcx, binding_info.llmatch);
+                let datum = Datum::new(llval, binding_info.ty, Lvalue);
+                bcx = datum.store_to(bcx, llbinding);
+
+                llbinding
+            },
+
+            // By value move bindings: load from the ptr into the matched value
+            TrByMove => Load(bcx, binding_info.llmatch),
 
             // By ref binding: use the ptr into the matched value
             TrByRef => binding_info.llmatch
         };
 
         let datum = Datum::new(llval, binding_info.ty, Lvalue);
-        fcx.schedule_drop_mem(cleanup_scope, llval, binding_info.ty);
 
         debug!("binding {:?} to {}",
                binding_info.id,
@@ -1037,9 +1001,7 @@ fn insert_lllocals<'a>(bcx: &'a Block<'a>,
         if bcx.sess().opts.debuginfo == FullDebugInfo {
             debuginfo::create_match_binding_metadata(bcx,
                                                      ident,
-                                                     binding_info.id,
-                                                     binding_info.span,
-                                                     datum);
+                                                     binding_info);
         }
     }
     bcx
@@ -1061,28 +1023,16 @@ fn compile_guard<'a, 'b>(
            vec_map_to_str(vals, |v| bcx.val_to_str(*v)));
     let _indenter = indenter();
 
-    // Lest the guard itself should fail, introduce a temporary cleanup
-    // scope for any non-ref bindings we create.
-    let temp_scope = bcx.fcx.push_custom_cleanup_scope();
-
-    let mut bcx = bcx;
-    bcx = store_non_ref_bindings(bcx, &data.bindings_map,
-                                 Some(cleanup::CustomScope(temp_scope)));
-    bcx = insert_lllocals(bcx, &data.bindings_map,
-                          cleanup::CustomScope(temp_scope));
+    let mut bcx = insert_lllocals(bcx, &data.bindings_map);
 
     let val = unpack_datum!(bcx, expr::trans(bcx, guard_expr));
     let val = val.to_llbool(bcx);
 
-    // Cancel cleanups now that the guard successfully executed.  If
-    // the guard was false, we will drop the values explicitly
-    // below. Otherwise, we'll add lvalue cleanups at the end.
-    bcx.fcx.pop_custom_cleanup_scope(temp_scope);
-
     return with_cond(bcx, Not(bcx, val), |bcx| {
-        // Guard does not match: free the values we copied,
-        // and remove all bindings from the lllocals table
-        let bcx = drop_bindings(bcx, data);
+        // Guard does not match: remove all bindings from the lllocals table
+        for (_, &binding_info) in data.bindings_map.iter() {
+            bcx.fcx.lllocals.borrow_mut().remove(&binding_info.id);
+        }
         match chk {
             // If the default arm is the only one left, move on to the next
             // condition explicitly rather than (possibly) falling back to
@@ -1096,21 +1046,6 @@ fn compile_guard<'a, 'b>(
         };
         bcx
     });
-
-    fn drop_bindings<'a>(bcx: &'a Block<'a>, data: &ArmData)
-                     -> &'a Block<'a> {
-        let mut bcx = bcx;
-        for (_, &binding_info) in data.bindings_map.iter() {
-            match binding_info.trmode {
-                TrByValue(llval) => {
-                    bcx = glue::drop_ty(bcx, llval, binding_info.ty);
-                }
-                TrByRef => {}
-            }
-            bcx.fcx.lllocals.borrow_mut().remove(&binding_info.id);
-        }
-        return bcx;
-    }
 }
 
 fn compile_submatch<'a, 'b>(
@@ -1435,18 +1370,28 @@ fn create_bindings_map(bcx: &Block, pat: Gc<ast::Pat>) -> BindingsMap {
         let ident = path_to_ident(path);
         let variable_ty = node_id_type(bcx, p_id);
         let llvariable_ty = type_of::type_of(ccx, variable_ty);
+        let tcx = bcx.tcx();
 
         let llmatch;
         let trmode;
         match bm {
+            ast::BindByValue(_)
+                if !ty::type_moves_by_default(tcx, variable_ty) => {
+                llmatch = alloca(bcx,
+                                 llvariable_ty.ptr_to(),
+                                 "__llmatch");
+                trmode = TrByCopy(alloca(bcx,
+                                         llvariable_ty,
+                                         bcx.ident(ident).as_slice()));
+            }
             ast::BindByValue(_) => {
                 // in this case, the final type of the variable will be T,
                 // but during matching we need to store a *T as explained
                 // above
-                llmatch = alloca(bcx, llvariable_ty.ptr_to(), "__llmatch");
-                trmode = TrByValue(alloca(bcx,
-                                          llvariable_ty,
-                                          bcx.ident(ident).as_slice()));
+                llmatch = alloca(bcx,
+                                 llvariable_ty.ptr_to(),
+                                 bcx.ident(ident).as_slice());
+                trmode = TrByMove;
             }
             ast::BindByRef(_) => {
                 llmatch = alloca(bcx,
@@ -1532,20 +1477,9 @@ fn trans_match_inner<'a>(scope_cx: &'a Block<'a>,
     for arm_data in arm_datas.iter() {
         let mut bcx = arm_data.bodycx;
 
-        // If this arm has a guard, then the various by-value bindings have
-        // already been copied into their homes.  If not, we do it here.  This
-        // is just to reduce code space.  See extensive comment at the start
-        // of the file for more details.
-        if arm_data.arm.guard.is_none() {
-            bcx = store_non_ref_bindings(bcx, &arm_data.bindings_map, None);
-        }
-
-        // insert bindings into the lllocals map and add cleanups
-        let cleanup_scope = fcx.push_custom_cleanup_scope();
-        bcx = insert_lllocals(bcx, &arm_data.bindings_map,
-                              cleanup::CustomScope(cleanup_scope));
+        // insert bindings into the lllocals map
+        bcx = insert_lllocals(bcx, &arm_data.bindings_map);
         bcx = expr::trans_into(bcx, &*arm_data.arm.body, dest);
-        bcx = fcx.pop_and_trans_custom_cleanup_scope(bcx, cleanup_scope);
         arm_cxs.push(bcx);
     }
 
