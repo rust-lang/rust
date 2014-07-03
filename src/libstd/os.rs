@@ -469,7 +469,7 @@ pub fn unsetenv(n: &str) {
 ///             println!("'{}'", path.display());
 ///         }
 ///     }
-///     None => println!("{} is not defined in the environnement.", key)
+///     None => println!("{} is not defined in the environment.", key)
 /// }
 /// ```
 pub fn split_paths<T: BytesContainer>(unparsed: T) -> Vec<Path> {

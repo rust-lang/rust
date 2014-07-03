@@ -834,7 +834,7 @@ impl<'a> MethodDef<'a> {
                                 generic `deriving`");
             }
 
-            // `ref` inside let matches is buggy. Causes havoc wih rusc.
+            // `ref` inside let matches is buggy. Causes havoc with rusc.
             // let (variant_index, ref self_vec) = matches_so_far[0];
             let (variant, self_vec) = match matches_so_far.get(0) {
                 &(_, v, ref s) => (v, s)

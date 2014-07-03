@@ -93,7 +93,7 @@ pub struct UnificationTable<K,V> {
 
 /**
  * At any time, users may snapshot a unification table.  The changes
- * made during the snapshot may either be *commited* or *rolled back*.
+ * made during the snapshot may either be *committed* or *rolled back*.
  */
 pub struct Snapshot<K> {
     // Ensure that this snapshot is keyed to the table type.
@@ -152,7 +152,7 @@ impl<V:PartialEq+Clone+Repr,K:UnifyKey<V>> UnificationTable<K,V> {
 
     /**
      * Starts a new snapshot. Each snapshot must be either
-     * rolled back or commited in a "LIFO" (stack) order.
+     * rolled back or committed in a "LIFO" (stack) order.
      */
     pub fn snapshot(&mut self) -> Snapshot<K> {
         let length = self.undo_log.len();
@@ -188,12 +188,12 @@ impl<V:PartialEq+Clone+Repr,K:UnifyKey<V>> UnificationTable<K,V> {
             match self.undo_log.pop().unwrap() {
                 OpenSnapshot => {
                     // This indicates a failure to obey the stack discipline.
-                    tcx.sess.bug("Cannot rollback an uncommited snapshot");
+                    tcx.sess.bug("Cannot rollback an uncommitted snapshot");
                 }
 
                 CommittedSnapshot => {
                     // This occurs when there are nested snapshots and
-                    // the inner is commited but outer is rolled back.
+                    // the inner is committed but outer is rolled back.
                 }
 
                 NewVar(i) => {
