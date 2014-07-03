@@ -180,7 +180,7 @@ pub fn validate_crate_name(sess: Option<&Session>, s: &str, sp: Option<Span>) {
     for c in s.chars() {
         if c.is_alphanumeric() { continue }
         if c == '_' || c == '-' { continue }
-        err(format!("invalid character in crate name: `{}`", c).as_slice());
+        err(format!("invalid character `{}` in crate name: `{}`", c, s).as_slice());
     }
     match sess {
         Some(sess) => sess.abort_if_errors(),
