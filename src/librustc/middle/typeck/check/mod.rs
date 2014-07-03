@@ -920,49 +920,6 @@ fn compare_impl_method(tcx: &ty::ctxt,
     let it = trait_m.generics.types.get_vec(subst::FnSpace).iter()
         .zip(impl_m.generics.types.get_vec(subst::FnSpace).iter());
 
-    for (i, (trait_param_def, impl_param_def)) in it.enumerate() {
-        // Check that the impl does not require any builtin-bounds
-        // that the trait does not guarantee:
-        let extra_bounds =
-            impl_param_def.bounds.builtin_bounds -
-            trait_param_def.bounds.builtin_bounds;
-        if !extra_bounds.is_empty() {
-           tcx.sess.span_err(
-               impl_m_span,
-               format!("in method `{}`, \
-                       type parameter {} requires `{}`, \
-                       which is not required by \
-                       the corresponding type parameter \
-                       in the trait declaration",
-                       token::get_ident(trait_m.ident),
-                       i,
-                       extra_bounds.user_string(tcx)).as_slice());
-           return;
-        }
-
-        // FIXME(#2687)---we should be checking that the bounds of the
-        // trait imply the bounds of the subtype, but it appears we
-        // are...not checking this.
-        if impl_param_def.bounds.trait_bounds.len() !=
-            trait_param_def.bounds.trait_bounds.len()
-        {
-            let found = impl_param_def.bounds.trait_bounds.len();
-            let expected =  trait_param_def.bounds.trait_bounds.len();
-            tcx.sess.span_err(
-                impl_m_span,
-                format!("in method `{}`, type parameter {} has {} trait \
-                         bound{}, but the corresponding type parameter in \
-                         the trait declaration has {} trait bound{}",
-                        token::get_ident(trait_m.ident),
-                        i,
-                        found,
-                        if found == 1 {""} else {"s"},
-                        expected,
-                        if expected == 1 {""} else {"s"}).as_slice());
-            return;
-        }
-    }
-
     // This code is best explained by example. Consider a trait:
     //
     //     trait Trait<T> {
@@ -1036,6 +993,70 @@ fn compare_impl_method(tcx: &ty::ctxt,
                      skol_regions.get_vec(subst::FnSpace).clone());
     let trait_fty = ty::mk_bare_fn(tcx, trait_m.fty.clone());
     let trait_fty = trait_fty.subst(tcx, &trait_to_skol_substs);
+
+    // Check bounds.
+    for (i, (trait_param_def, impl_param_def)) in it.enumerate() {
+        // Check that the impl does not require any builtin-bounds
+        // that the trait does not guarantee:
+        let extra_bounds =
+            impl_param_def.bounds.builtin_bounds -
+            trait_param_def.bounds.builtin_bounds;
+        if !extra_bounds.is_empty() {
+           tcx.sess.span_err(
+               impl_m_span,
+               format!("in method `{}`, \
+                       type parameter {} requires `{}`, \
+                       which is not required by \
+                       the corresponding type parameter \
+                       in the trait declaration",
+                       token::get_ident(trait_m.ident),
+                       i,
+                       extra_bounds.user_string(tcx)).as_slice());
+           return;
+        }
+
+        // Check that the trait bounds of the trait imply the bounds of its
+        // implementation.
+        //
+        // FIXME(pcwalton): We could be laxer here regarding sub- and super-
+        // traits, but I doubt that'll be wanted often, so meh.
+        for impl_trait_bound in impl_param_def.bounds.trait_bounds.iter() {
+            let impl_trait_bound =
+                impl_trait_bound.subst(tcx, &impl_to_skol_substs);
+
+            let mut ok = false;
+            for trait_bound in trait_param_def.bounds.trait_bounds.iter() {
+                let trait_bound =
+                    trait_bound.subst(tcx, &trait_to_skol_substs);
+                let infcx = infer::new_infer_ctxt(tcx);
+                match infer::mk_sub_trait_refs(&infcx,
+                                               true,
+                                               infer::Misc(impl_m_span),
+                                               trait_bound,
+                                               impl_trait_bound.clone()) {
+                    Ok(_) => {
+                        ok = true;
+                        break
+                    }
+                    Err(_) => continue,
+                }
+            }
+
+            if !ok {
+                tcx.sess.span_err(impl_m_span,
+                                  format!("in method `{}`, type parameter {} \
+                                           requires bound `{}`, which is not \
+                                           required by the corresponding \
+                                           type parameter in the trait \
+                                           declaration",
+                                          token::get_ident(trait_m.ident),
+                                          i,
+                                          ppaux::trait_ref_to_str(
+                                              tcx,
+                                              &*impl_trait_bound)).as_slice())
+            }
+        }
+    }
 
     // Check the impl method type IM is a subtype of the trait method
     // type TM. To see why this makes sense, think of a vtable. The

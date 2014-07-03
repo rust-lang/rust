@@ -261,7 +261,7 @@ pub fn trans_unboxing_shim(bcx: &Block,
     let function_type =
         ty::mk_bare_fn(tcx, method.fty.clone()).subst(tcx, &substs);
 
-    let function_name = tcx.map.with_path(method_id.node, |path| {
+    let function_name = ty::with_path(tcx, method_id, |path| {
         link::mangle_internal_name_by_path_and_seq(path, "unboxing_shim")
     });
     let llfn = decl_internal_rust_fn(ccx,
