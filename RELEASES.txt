@@ -1,7 +1,7 @@
-Version 0.11 (July 2014)
+Version 0.11.0 (July 2014)
 -------------------------
 
-  * ~1700 cahnges, numerous bugfixes
+  * ~1700 changes, numerous bugfixes
 
   * Language
     * ~[T] has been removed from the language. This type is superseded by
@@ -13,15 +13,15 @@ Version 0.11 (July 2014)
     * @T has been removed from the language. This type is superseded by the
       standard library's std::gc::Gc<T> type.
     * Struct fields are now all private by default.
-    * Vector indices and shift amounts are both required to be a `uint` now
+    * Vector indices and shift amounts are both required to be a `uint`
       instead of any integral type.
     * Byte character, byte string, and raw byte string literals are now all
       supported by prefixing the normal literal with a `b`.
     * Multiple ABIs are no longer allowed in an ABI string
-    * The syntax for lifetimes on clousres/procedures has been tweaked
-      slightly.
-    * Floating point modulus has been removed from the language, it is still
-      provided by a library implementation, however.
+    * The syntax for lifetimes on closures/procedures has been tweaked
+      slightly: `<'a>|A, B|: 'b + K -> T`
+    * Floating point modulus has been removed from the language; however it
+      is still provided by a library implementation.
     * Private enum variants are now disallowed.
     * The `priv` keyword has been removed from the language.
     * A closure can no longer be invoked through a &-pointer.
@@ -29,10 +29,9 @@ Version 0.11 (July 2014)
     * The transmute intrinsic no longer works on type parameters.
     * Statics now allow blocks/items in their definition.
     * Trait bounds are separated from objects with + instead of : now.
-    * Mutably borrowed objects can no longer be read while they are
-      borrowed.
+    * Objects can no longer be read while they are mutably borrowed.
     * The address of a static is now marked as insignificant unless the
-      #[inline(never)] attribute is placed on a static.
+      #[inline(never)] attribute is placed it.
     * The #[unsafe_destructor] attribute is now behind a feature gate.
     * Struct literals are no longer allowed in ambiguous positions such as
       if, while, match, and for..in.
@@ -48,13 +47,13 @@ Version 0.11 (July 2014)
   * Libraries
     * The standard library is now a "facade" over a number of underlying
       libraries. This means that development on the standard library should
-      be speeder due to less to compile, as well as a clearer line between
+      be speeder due to smaller crates, as well as a clearer line between
       all dependencies.
     * A new library, libcore, lives under the standard library's facade
       which is Rust's "0-assumption" library, suitable for embedded and
       kernel development for example.
     * A regex crate has been added to the standard distribution. This crate
-      includes statically compiled regulard expressions.
+      includes statically compiled regular expressions.
     * The unwrap/unwrap_err methods on Result require a Show bound for
       better error messages.
     * The return types of the std::comm primitives have been centralized
@@ -72,11 +71,11 @@ Version 0.11 (July 2014)
     * A graphviz crate has been added for creating .dot files.
     * The std::cast module has been migrated into std::mem.
     * The std::local_data api has been migrated from freestanding functions
-      to based on methods.
+      to being based on methods.
     * The Pod trait has been renamed to Copy.
     * jemalloc has been added as the default allocator for types.
-    * The api for allocating memory in rust has been modified for sized
-      deallocation as well as using proper alignment.
+    * The API for allocating memory has been changed to use proper alignment
+      and sized deallocation
     * Connecting a TcpStream or binding a TcpListener is now based on a
       string address and a u16 port. This allows connecting to a hostname as
       opposed to an IP.
@@ -100,11 +99,11 @@ Version 0.11 (July 2014)
       discovery of breaking changes.
     * The compiler will now try to suggest how to annotate lifetimes if a
       lifetime-related error occurs.
-    * Debug info continues to be improved greatly with better support for
-      situations such as LTO and general bug fixes.
+    * Debug info continues to be improved greatly with general bug fixes and
+      better support for situations like link time optimization (LTO).
     * Usage of syntax extensions when cross-compiling has been fixed.
-    * The equivalent of ffunction-sections and fdata-sections have been
-      enabled by default with the equivalent of --gc-sections.
+    * Functionality equivalent to GCC & Clang's -ffunction-sections,
+      -fdata-sections and --gc-sections has been enabled by default
     * The compiler is now stricter about where it will load module files
       from when a module is declared via `mod foo;`.
     * The #[phase(syntax)] attribute has been renamed to #[phase(plugin)].
@@ -128,7 +127,7 @@ Version 0.11 (July 2014)
     * Cross-compiling to mipsel is now supported.
     * Stability attributes are now inherited by default and no longer apply
       to intra-crate usage, only inter-crate usage.
-    * Error message related to non-exhaustive match statements have been
+    * Error message related to non-exhaustive match expressions have been
       greatly improved.
 
 Version 0.10 (April 2014)
