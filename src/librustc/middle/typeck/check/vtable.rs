@@ -398,6 +398,9 @@ fn search_for_vtable(vcx: &VtableContext,
         // Resolve any sub bounds. Note that there still may be free
         // type variables in substs. This might still be OK: the
         // process of looking up bounds might constrain some of them.
+        //
+        // This does not check built-in traits because those are handled
+        // later in the kind checking pass.
         let im_generics =
             ty::lookup_item_type(tcx, impl_did).generics;
         let subres = lookup_vtables(vcx,

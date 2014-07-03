@@ -45,7 +45,7 @@ use path::{Path, GenericPath, BytesContainer};
 use ptr::RawPtr;
 use ptr;
 use result::{Err, Ok, Result};
-use slice::{Vector, ImmutableVector, MutableVector};
+use slice::{Vector, ImmutableVector, MutableVector, ImmutableEqVector};
 use str::{Str, StrSlice, StrAllocating};
 use str;
 use string::String;
@@ -398,9 +398,9 @@ pub fn getenv_as_bytes(n: &str) -> Option<Vec<u8>> {
 ///     None => println!("{} is not defined in the environment.", key)
 /// }
 /// ```
-pub fn setenv(n: &str, v: &str) {
+pub fn setenv<T: BytesContainer>(n: &str, v: T) {
     #[cfg(unix)]
-    fn _setenv(n: &str, v: &str) {
+    fn _setenv(n: &str, v: &[u8]) {
         unsafe {
             with_env_lock(|| {
                 n.with_c_str(|nbuf| {
@@ -413,18 +413,20 @@ pub fn setenv(n: &str, v: &str) {
     }
 
     #[cfg(windows)]
-    fn _setenv(n: &str, v: &str) {
+    fn _setenv(n: &str, v: &[u8]) {
         let n: Vec<u16> = n.utf16_units().collect();
         let n = n.append_one(0);
-        let v: Vec<u16> = v.utf16_units().collect();
+        let v: Vec<u16> = str::from_utf8(v).unwrap().utf16_units().collect();
         let v = v.append_one(0);
+
         unsafe {
             with_env_lock(|| {
                 libc::SetEnvironmentVariableW(n.as_ptr(), v.as_ptr());
             })
         }
     }
-    _setenv(n, v)
+
+    _setenv(n, v.container_as_bytes())
 }
 
 /// Remove a variable from the environment entirely.
@@ -453,77 +455,130 @@ pub fn unsetenv(n: &str) {
     _unsetenv(n);
 }
 
-#[cfg(unix)]
-/// Parse a string or vector according to the platform's conventions
-/// for the `PATH` environment variable and return a Vec<Path>.
-/// Drops empty paths.
+/// Parses input according to platform conventions for the `PATH`
+/// environment variable.
 ///
 /// # Example
 /// ```rust
 /// use std::os;
 ///
 /// let key = "PATH";
-/// match os::getenv(key) {
+/// match os::getenv_as_bytes(key) {
 ///     Some(paths) => {
 ///         for path in os::split_paths(paths).iter() {
 ///             println!("'{}'", path.display());
 ///         }
 ///     }
-///     None => println!("{} is not defined in the environnement.", key)
+///     None => println!("{} is not defined in the environment.", key)
 /// }
 /// ```
 pub fn split_paths<T: BytesContainer>(unparsed: T) -> Vec<Path> {
-    unparsed.container_as_bytes()
-            .split(|b| *b == ':' as u8)
-            .filter(|s| s.len() > 0)
-            .map(Path::new)
-            .collect()
-}
+    #[cfg(unix)]
+    fn _split_paths<T: BytesContainer>(unparsed: T) -> Vec<Path> {
+        unparsed.container_as_bytes()
+                .split(|b| *b == b':')
+                .map(Path::new)
+                .collect()
+    }
 
-#[cfg(windows)]
-/// Parse a string or vector according to the platform's conventions
-/// for the `PATH` environment variable. Drops empty paths.
-pub fn split_paths<T: BytesContainer>(unparsed: T) -> Vec<Path> {
-    // On Windows, the PATH environment variable is semicolon separated.  Double
-    // quotes are used as a way of introducing literal semicolons (since
-    // c:\some;dir is a valid Windows path). Double quotes are not themselves
-    // permitted in path names, so there is no way to escape a double quote.
-    // Quoted regions can appear in arbitrary locations, so
-    //
-    //   c:\foo;c:\som"e;di"r;c:\bar
-    //
-    // Should parse as [c:\foo, c:\some;dir, c:\bar].
-    //
-    // (The above is based on testing; there is no clear reference available
-    // for the grammar.)
+    #[cfg(windows)]
+    fn _split_paths<T: BytesContainer>(unparsed: T) -> Vec<Path> {
+        // On Windows, the PATH environment variable is semicolon separated.  Double
+        // quotes are used as a way of introducing literal semicolons (since
+        // c:\some;dir is a valid Windows path). Double quotes are not themselves
+        // permitted in path names, so there is no way to escape a double quote.
+        // Quoted regions can appear in arbitrary locations, so
+        //
+        //   c:\foo;c:\som"e;di"r;c:\bar
+        //
+        // Should parse as [c:\foo, c:\some;dir, c:\bar].
+        //
+        // (The above is based on testing; there is no clear reference available
+        // for the grammar.)
 
-    let mut parsed = Vec::new();
-    let mut in_progress = Vec::new();
-    let mut in_quote = false;
+        let mut parsed = Vec::new();
+        let mut in_progress = Vec::new();
+        let mut in_quote = false;
 
-    for b in unparsed.container_as_bytes().iter() {
-        match *b as char {
-            ';' if !in_quote => {
-                // ignore zero-length path strings
-                if in_progress.len() > 0 {
+        for b in unparsed.container_as_bytes().iter() {
+            match *b {
+                b';' if !in_quote => {
                     parsed.push(Path::new(in_progress.as_slice()));
+                    in_progress.truncate(0)
                 }
-                in_progress.truncate(0)
-            }
-            '\"' => {
-                in_quote = !in_quote;
-            }
-            _  => {
-                in_progress.push(*b);
+                b'"' => {
+                    in_quote = !in_quote;
+                }
+                _  => {
+                    in_progress.push(*b);
+                }
             }
         }
-    }
-
-    if in_progress.len() > 0 {
         parsed.push(Path::new(in_progress));
+        parsed
     }
 
-    parsed
+    _split_paths(unparsed)
+}
+
+/// Joins a collection of `Path`s appropriately for the `PATH`
+/// environment variable.
+///
+/// Returns a `Vec<u8>` on success, since `Path`s are not utf-8
+/// encoded on all platforms.
+///
+/// Returns an `Err` (containing an error message) if one of the input
+/// `Path`s contains an invalid character for constructing the `PATH`
+/// variable (a double quote on Windows or a colon on Unix).
+///
+/// # Example
+///
+/// ```rust
+/// use std::os;
+/// use std::path::Path;
+///
+/// let key = "PATH";
+/// let mut paths = os::getenv_as_bytes(key).map_or(Vec::new(), os::split_paths);
+/// paths.push(Path::new("/home/xyz/bin"));
+/// os::setenv(key, os::join_paths(paths.as_slice()).unwrap());
+/// ```
+pub fn join_paths<T: BytesContainer>(paths: &[T]) -> Result<Vec<u8>, &'static str> {
+    #[cfg(windows)]
+    fn _join_paths<T: BytesContainer>(paths: &[T]) -> Result<Vec<u8>, &'static str> {
+        let mut joined = Vec::new();
+        let sep = b';';
+
+        for (i, path) in paths.iter().map(|p| p.container_as_bytes()).enumerate() {
+            if i > 0 { joined.push(sep) }
+            if path.contains(&b'"') {
+                return Err("path segment contains `\"`");
+            } else if path.contains(&sep) {
+                joined.push(b'"');
+                joined.push_all(path);
+                joined.push(b'"');
+            } else {
+                joined.push_all(path);
+            }
+        }
+
+        Ok(joined)
+    }
+
+    #[cfg(unix)]
+    fn _join_paths<T: BytesContainer>(paths: &[T]) -> Result<Vec<u8>, &'static str> {
+        let mut joined = Vec::new();
+        let sep = b':';
+
+        for (i, path) in paths.iter().map(|p| p.container_as_bytes()).enumerate() {
+            if i > 0 { joined.push(sep) }
+            if path.contains(&sep) { return Err("path segment contains separator `:`") }
+            joined.push_all(path);
+        }
+
+        Ok(joined)
+    }
+
+    _join_paths(paths)
 }
 
 /// A low-level OS in-memory pipe.
@@ -1767,7 +1822,7 @@ mod tests {
     use c_str::ToCStr;
     use option;
     use os::{env, getcwd, getenv, make_absolute};
-    use os::{split_paths, setenv, unsetenv};
+    use os::{split_paths, join_paths, setenv, unsetenv};
     use os;
     use rand::Rng;
     use rand;
@@ -2032,11 +2087,11 @@ mod tests {
                 parsed.iter().map(|s| Path::new(*s)).collect()
         }
 
-        assert!(check_parse("", []));
-        assert!(check_parse(r#""""#, []));
-        assert!(check_parse(";;", []));
+        assert!(check_parse("", [""]));
+        assert!(check_parse(r#""""#, [""]));
+        assert!(check_parse(";;", ["", "", ""]));
         assert!(check_parse(r"c:\", [r"c:\"]));
-        assert!(check_parse(r"c:\;", [r"c:\"]));
+        assert!(check_parse(r"c:\;", [r"c:\", ""]));
         assert!(check_parse(r"c:\;c:\Program Files\",
                             [r"c:\", r"c:\Program Files\"]));
         assert!(check_parse(r#"c:\;c:\"foo"\"#, [r"c:\", r"c:\foo\"]));
@@ -2052,11 +2107,43 @@ mod tests {
                 parsed.iter().map(|s| Path::new(*s)).collect()
         }
 
-        assert!(check_parse("", []));
-        assert!(check_parse("::", []));
+        assert!(check_parse("", [""]));
+        assert!(check_parse("::", ["", "", ""]));
         assert!(check_parse("/", ["/"]));
-        assert!(check_parse("/:", ["/"]));
+        assert!(check_parse("/:", ["/", ""]));
         assert!(check_parse("/:/usr/local", ["/", "/usr/local"]));
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn join_paths_unix() {
+        fn test_eq(input: &[&str], output: &str) -> bool {
+            join_paths(input).unwrap().as_slice() == output.as_bytes()
+        }
+
+        assert!(test_eq([], ""));
+        assert!(test_eq(["/bin", "/usr/bin", "/usr/local/bin"],
+                        "/bin:/usr/bin:/usr/local/bin"));
+        assert!(test_eq(["", "/bin", "", "", "/usr/bin", ""],
+                        ":/bin:::/usr/bin:"));
+        assert!(join_paths(["/te:st"]).is_err());
+    }
+
+    #[test]
+    #[cfg(windows)]
+    fn join_paths_windows() {
+        fn test_eq(input: &[&str], output: &str) -> bool {
+            join_paths(input).unwrap().as_slice() == output.as_bytes()
+        }
+
+        assert!(test_eq([], ""));
+        assert!(test_eq([r"c:\windows", r"c:\"],
+                        r"c:\windows;c:\"));
+        assert!(test_eq(["", r"c:\windows", "", "", r"c:\", ""],
+                        r";c:\windows;;;c:\;"));
+        assert!(test_eq([r"c:\te;st", r"c:\"],
+                        r#""c:\te;st";c:\"#));
+        assert!(join_paths([r#"c:\te"st"#]).is_err());
     }
 
     // More recursive_mkdir tests are in extra::tempfile

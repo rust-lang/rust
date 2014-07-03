@@ -406,11 +406,11 @@ impl<'a> Visitor<()> for GatherLocalsVisitor<'a> {
     // Add pattern bindings.
     fn visit_pat(&mut self, p: &ast::Pat, _: ()) {
             match p.node {
-              ast::PatIdent(_, ref path, _)
+              ast::PatIdent(_, ref path1, _)
                   if pat_util::pat_is_binding(&self.fcx.ccx.tcx.def_map, p) => {
                 self.assign(p.id, None);
                 debug!("Pattern binding {} is assigned to {}",
-                       token::get_ident(path.segments.get(0).identifier),
+                       token::get_ident(path1.node),
                        self.fcx.infcx().ty_to_str(
                            self.fcx.inh.locals.borrow().get_copy(&p.id)));
               }

@@ -31,7 +31,7 @@
 #![no_std]
 #![experimental]
 
-// This library is definining the builtin functions, so it would be a shame for
+// This library defines the builtin functions, so it would be a shame for
 // LLVM to optimize these function calls to themselves!
 #![no_builtins]
 

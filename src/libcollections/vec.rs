@@ -253,8 +253,7 @@ impl<T: Clone> Vec<T> {
     /// assert_eq!(vec, vec!("hello", "world", "world"));
     /// ```
     pub fn grow(&mut self, n: uint, value: &T) {
-        let new_len = self.len() + n;
-        self.reserve(new_len);
+        self.reserve_additional(n);
         let mut i: uint = 0u;
 
         while i < n {
@@ -497,7 +496,7 @@ impl<T> Vec<T> {
     /// assert!(vec.capacity() >= 10);
     /// ```
     pub fn reserve(&mut self, capacity: uint) {
-        if capacity >= self.len {
+        if capacity > self.cap {
             self.reserve_exact(num::next_power_of_two(capacity))
         }
     }

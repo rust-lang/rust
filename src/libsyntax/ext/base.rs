@@ -15,6 +15,7 @@ use codemap::{CodeMap, Span, ExpnInfo};
 use ext;
 use ext::expand;
 use parse;
+use parse::parser;
 use parse::token;
 use parse::token::{InternedString, intern, str_to_ident};
 use util::small_vector::SmallVector;
@@ -433,6 +434,11 @@ impl<'a> ExtCtxt<'a> {
         }
     }
 
+    pub fn new_parser_from_tts(&self, tts: &[ast::TokenTree])
+        -> parser::Parser<'a> {
+        parse::tts_to_parser(self.parse_sess, Vec::from_slice(tts), self.cfg())
+    }
+
     pub fn codemap(&self) -> &'a CodeMap { &self.parse_sess.span_diagnostic.cm }
     pub fn parse_sess(&self) -> &'a parse::ParseSess { self.parse_sess }
     pub fn cfg(&self) -> ast::CrateConfig { self.cfg.clone() }
@@ -472,7 +478,7 @@ impl<'a> ExtCtxt<'a> {
     }
     /// Emit `msg` attached to `sp`, and stop compilation immediately.
     ///
-    /// `span_err` should be strongly prefered where-ever possible:
+    /// `span_err` should be strongly preferred where-ever possible:
     /// this should *only* be used when
     /// - continuing has a high risk of flow-on errors (e.g. errors in
     ///   declaring a macro would cause all uses of that macro to
@@ -586,11 +592,7 @@ pub fn get_single_str_from_tts(cx: &ExtCtxt,
 pub fn get_exprs_from_tts(cx: &mut ExtCtxt,
                           sp: Span,
                           tts: &[ast::TokenTree]) -> Option<Vec<Gc<ast::Expr>>> {
-    let mut p = parse::new_parser_from_tts(cx.parse_sess(),
-                                           cx.cfg(),
-                                           tts.iter()
-                                              .map(|x| (*x).clone())
-                                              .collect());
+    let mut p = cx.new_parser_from_tts(tts);
     let mut es = Vec::new();
     while p.token != token::EOF {
         es.push(cx.expand_expr(p.parse_expr()));

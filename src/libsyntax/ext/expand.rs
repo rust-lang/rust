@@ -705,22 +705,10 @@ impl Visitor<()> for NameFinderContext {
             // we found a pat_ident!
             ast::Pat {
                 id: _,
-                node: ast::PatIdent(_, ref path, ref inner),
+                node: ast::PatIdent(_, ref path1, ref inner),
                 span: _
             } => {
-                match path {
-                    // a path of length one:
-                    &ast::Path {
-                        global: false,
-                        span: _,
-                        segments: ref segments
-                    } if segments.len() == 1 => {
-                        self.ident_accumulator.push(segments.get(0)
-                                                            .identifier)
-                    }
-                    // I believe these must be enums...
-                    _ => ()
-                }
+                self.ident_accumulator.push(path1.node);
                 // visit optional subpattern of pat_ident:
                 for subpat in inner.iter() {
                     self.visit_pat(&**subpat, ())
@@ -1307,7 +1295,7 @@ mod test {
     }
 
     // create a really evil test case where a $x appears inside a binding of $x
-    // but *shouldnt* bind because it was inserted by a different macro....
+    // but *shouldn't* bind because it was inserted by a different macro....
     // can't write this test case until we have macro-generating macros.
 
     // FIXME #9383 : lambda var hygiene

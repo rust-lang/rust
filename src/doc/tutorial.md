@@ -469,7 +469,7 @@ fn signum(x: int) -> int {
 
 Rust's `match` construct is a generalized, cleaned-up version of C's
 `switch` construct. You provide it with a value and a number of
-*arms*, each labelled with a pattern, and the code compares the value
+*arms*, each labeled with a pattern, and the code compares the value
 against each pattern in order until one matches. The matching pattern
 executes its corresponding arm.
 
@@ -2524,7 +2524,7 @@ of the components of types. By design, trait objects don't know the exact type
 of their contents and so the compiler cannot reason about those properties.
 
 You can instruct the compiler, however, that the contents of a trait object must
-acribe to a particular bound with a trailing colon (`:`). These are examples of
+ascribe to a particular bound with a trailing colon (`:`). These are examples of
 valid types:
 
 ~~~rust
@@ -2579,7 +2579,7 @@ This is a silly way to compute the radius of a circle
 
 In type-parameterized functions,
 methods of the supertrait may be called on values of subtrait-bound type parameters.
-Refering to the previous example of `trait Circle : Shape`:
+Referring to the previous example of `trait Circle : Shape`:
 
 ~~~
 # trait Shape { fn area(&self) -> f64; }

@@ -367,9 +367,9 @@ fn visit_fn(ir: &mut IrMaps,
     for arg in decl.inputs.iter() {
         pat_util::pat_bindings(&ir.tcx.def_map,
                                &*arg.pat,
-                               |_bm, arg_id, _x, path| {
+                               |_bm, arg_id, _x, path1| {
             debug!("adding argument {}", arg_id);
-            let ident = ast_util::path_to_ident(path);
+            let ident = path1.node;
             fn_maps.add_variable(Arg(arg_id, ident));
         })
     };
@@ -399,9 +399,9 @@ fn visit_fn(ir: &mut IrMaps,
 }
 
 fn visit_local(ir: &mut IrMaps, local: &Local) {
-    pat_util::pat_bindings(&ir.tcx.def_map, &*local.pat, |_, p_id, sp, path| {
+    pat_util::pat_bindings(&ir.tcx.def_map, &*local.pat, |_, p_id, sp, path1| {
         debug!("adding local variable {}", p_id);
-        let name = ast_util::path_to_ident(path);
+        let name = path1.node;
         ir.add_live_node_for_node(p_id, VarDefNode(sp));
         ir.add_variable(Local(LocalInfo {
           id: p_id,
@@ -413,10 +413,10 @@ fn visit_local(ir: &mut IrMaps, local: &Local) {
 
 fn visit_arm(ir: &mut IrMaps, arm: &Arm) {
     for pat in arm.pats.iter() {
-        pat_util::pat_bindings(&ir.tcx.def_map, &**pat, |bm, p_id, sp, path| {
+        pat_util::pat_bindings(&ir.tcx.def_map, &**pat, |bm, p_id, sp, path1| {
             debug!("adding local variable {} from match with bm {:?}",
                    p_id, bm);
-            let name = ast_util::path_to_ident(path);
+            let name = path1.node;
             ir.add_live_node_for_node(p_id, VarDefNode(sp));
             ir.add_variable(Local(LocalInfo {
                 id: p_id,
@@ -1522,10 +1522,10 @@ impl<'a> Liveness<'a> {
         for arg in decl.inputs.iter() {
             pat_util::pat_bindings(&self.ir.tcx.def_map,
                                    &*arg.pat,
-                                   |_bm, p_id, sp, path| {
+                                   |_bm, p_id, sp, path1| {
                 let var = self.variable(p_id, sp);
                 // Ignore unused self.
-                let ident = ast_util::path_to_ident(path);
+                let ident = path1.node;
                 if ident.name != special_idents::self_.name {
                     self.warn_about_unused(sp, p_id, entry_ln, var);
                 }

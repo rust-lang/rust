@@ -902,12 +902,10 @@ impl LintPass for NonUppercasePatternStatics {
     fn check_pat(&mut self, cx: &Context, p: &ast::Pat) {
         // Lint for constants that look like binding identifiers (#7526)
         match (&p.node, cx.tcx.def_map.borrow().find(&p.id)) {
-            (&ast::PatIdent(_, ref path, _), Some(&def::DefStatic(_, false))) => {
-                // last identifier alone is right choice for this lint.
-                let ident = path.segments.last().unwrap().identifier;
-                let s = token::get_ident(ident);
+            (&ast::PatIdent(_, ref path1, _), Some(&def::DefStatic(_, false))) => {
+                let s = token::get_ident(path1.node);
                 if s.get().chars().any(|c| c.is_lowercase()) {
-                    cx.span_lint(NON_UPPERCASE_PATTERN_STATICS, path.span,
+                    cx.span_lint(NON_UPPERCASE_PATTERN_STATICS, path1.span,
                         format!("static constant in pattern `{}` should have an uppercase \
                                  name such as `{}`",
                                 s.get(), s.get().chars().map(|c| c.to_uppercase())
@@ -931,15 +929,13 @@ impl LintPass for UppercaseVariables {
 
     fn check_pat(&mut self, cx: &Context, p: &ast::Pat) {
         match &p.node {
-            &ast::PatIdent(_, ref path, _) => {
+            &ast::PatIdent(_, ref path1, _) => {
                 match cx.tcx.def_map.borrow().find(&p.id) {
                     Some(&def::DefLocal(_, _)) | Some(&def::DefBinding(_, _)) |
                             Some(&def::DefArg(_, _)) => {
-                        // last identifier alone is right choice for this lint.
-                        let ident = path.segments.last().unwrap().identifier;
-                        let s = token::get_ident(ident);
+                        let s = token::get_ident(path1.node);
                         if s.get().len() > 0 && s.get().char_at(0).is_uppercase() {
-                            cx.span_lint(UPPERCASE_VARIABLES, path.span,
+                            cx.span_lint(UPPERCASE_VARIABLES, path1.span,
                                          "variable names should start with \
                                           a lowercase character");
                         }
@@ -989,7 +985,7 @@ impl UnnecessaryParens {
             _ => {}
         }
 
-        /// Expressions that syntatically contain an "exterior" struct
+        /// Expressions that syntactically contain an "exterior" struct
         /// literal i.e. not surrounded by any parens or other
         /// delimiters, e.g. `X { y: 1 }`, `X { y: 1 }.method()`, `foo
         /// == X { y: 1 }` and `X { y: 1 } == foo` all do, but `(X {
@@ -1113,15 +1109,10 @@ impl UnusedMut {
         // avoid false warnings in match arms with multiple patterns
         let mut mutables = HashMap::new();
         for &p in pats.iter() {
-            pat_util::pat_bindings(&cx.tcx.def_map, &*p, |mode, id, _, path| {
+            pat_util::pat_bindings(&cx.tcx.def_map, &*p, |mode, id, _, path1| {
+                let ident = path1.node;
                 match mode {
                     ast::BindByValue(ast::MutMutable) => {
-                        if path.segments.len() != 1 {
-                            cx.sess().span_bug(p.span,
-                                               "mutable binding that doesn't consist \
-                                                of exactly one segment");
-                        }
-                        let ident = path.segments.get(0).identifier;
                         if !token::get_ident(ident).get().starts_with("_") {
                             mutables.insert_or_update_with(ident.name as uint,
                                 vec!(id), |_, old| { old.push(id); });

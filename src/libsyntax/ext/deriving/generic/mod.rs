@@ -834,7 +834,7 @@ impl<'a> MethodDef<'a> {
                                 generic `deriving`");
             }
 
-            // `ref` inside let matches is buggy. Causes havoc wih rusc.
+            // `ref` inside let matches is buggy. Causes havoc with rusc.
             // let (variant_index, ref self_vec) = matches_so_far[0];
             let (variant, self_vec) = match matches_so_far.get(0) {
                 &(_, v, ref s) => (v, s)
@@ -1049,7 +1049,7 @@ impl<'a> TraitDef<'a> {
 
     fn create_subpatterns(&self,
                           cx: &mut ExtCtxt,
-                          field_paths: Vec<ast::Path> ,
+                          field_paths: Vec<ast::SpannedIdent> ,
                           mutbl: ast::Mutability)
                           -> Vec<Gc<ast::Pat>> {
         field_paths.iter().map(|path| {
@@ -1095,15 +1095,10 @@ impl<'a> TraitDef<'a> {
                     cx.span_bug(sp, "a struct with named and unnamed fields in `deriving`");
                 }
             };
-            let path =
-                cx.path_ident(sp,
-                              cx.ident_of(format!("{}_{}",
-                                                  prefix,
-                                                  i).as_slice()));
-            paths.push(path.clone());
+            let ident = cx.ident_of(format!("{}_{}", prefix, i).as_slice());
+            paths.push(codemap::Spanned{span: sp, node: ident});
             let val = cx.expr(
-                sp, ast::ExprParen(
-                    cx.expr_deref(sp, cx.expr_path(path))));
+                sp, ast::ExprParen(cx.expr_deref(sp, cx.expr_path(cx.path_ident(sp,ident)))));
             ident_expr.push((sp, opt_id, val));
         }
 
@@ -1145,15 +1140,11 @@ impl<'a> TraitDef<'a> {
                 let mut ident_expr = Vec::new();
                 for (i, va) in variant_args.iter().enumerate() {
                     let sp = self.set_expn_info(cx, va.ty.span);
-                    let path =
-                        cx.path_ident(sp,
-                                      cx.ident_of(format!("{}_{}",
-                                                          prefix,
-                                                          i).as_slice()));
-
-                    paths.push(path.clone());
-                    let val = cx.expr(
-                        sp, ast::ExprParen(cx.expr_deref(sp, cx.expr_path(path))));
+                    let ident = cx.ident_of(format!("{}_{}", prefix, i).as_slice());
+                    let path1 = codemap::Spanned{span: sp, node: ident};
+                    paths.push(path1);
+                    let expr_path = cx.expr_path(cx.path_ident(sp, ident));
+                    let val = cx.expr(sp, ast::ExprParen(cx.expr_deref(sp, expr_path)));
                     ident_expr.push((sp, None, val));
                 }
 

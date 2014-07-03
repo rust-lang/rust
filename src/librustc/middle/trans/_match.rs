@@ -224,8 +224,6 @@ use std::rc::Rc;
 use std::gc::{Gc};
 use syntax::ast;
 use syntax::ast::Ident;
-use syntax::ast_util::path_to_ident;
-use syntax::ast_util;
 use syntax::codemap::Span;
 use syntax::parse::token::InternedString;
 
@@ -429,13 +427,13 @@ fn expand_nested_bindings<'a, 'b>(
 
     m.iter().map(|br| {
         match br.pats.get(col).node {
-            ast::PatIdent(_, ref path, Some(inner)) => {
+            ast::PatIdent(_, ref path1, Some(inner)) => {
                 let pats = Vec::from_slice(br.pats.slice(0u, col))
                            .append((vec!(inner))
                                    .append(br.pats.slice(col + 1u, br.pats.len())).as_slice());
 
                 let mut bound_ptrs = br.bound_ptrs.clone();
-                bound_ptrs.push((path_to_ident(path), val));
+                bound_ptrs.push((path1.node, val));
                 Match {
                     pats: pats,
                     data: &*br.data,
@@ -473,9 +471,9 @@ fn enter_match<'a, 'b>(
             let this = *br.pats.get(col);
             let mut bound_ptrs = br.bound_ptrs.clone();
             match this.node {
-                ast::PatIdent(_, ref path, None) => {
+                ast::PatIdent(_, ref path1, None) => {
                     if pat_is_binding(dm, &*this) {
-                        bound_ptrs.push((path_to_ident(path), val));
+                        bound_ptrs.push((path1.node, val));
                     }
                 }
                 _ => {}
@@ -1366,8 +1364,8 @@ fn create_bindings_map(bcx: &Block, pat: Gc<ast::Pat>) -> BindingsMap {
     let ccx = bcx.ccx();
     let tcx = bcx.tcx();
     let mut bindings_map = HashMap::new();
-    pat_bindings(&tcx.def_map, &*pat, |bm, p_id, span, path| {
-        let ident = path_to_ident(path);
+    pat_bindings(&tcx.def_map, &*pat, |bm, p_id, span, path1| {
+        let ident = path1.node;
         let variable_ty = node_id_type(bcx, p_id);
         let llvariable_ty = type_of::type_of(ccx, variable_ty);
         let tcx = bcx.tcx();
@@ -1520,10 +1518,10 @@ pub fn store_local<'a>(bcx: &'a Block<'a>,
             // In such cases, the more general path is unsafe, because
             // it assumes it is matching against a valid value.
             match simple_identifier(&*pat) {
-                Some(path) => {
+                Some(ident) => {
                     let var_scope = cleanup::var_scope(tcx, local.id);
                     return mk_binding_alloca(
-                        bcx, pat.id, path, BindLocal, var_scope, (),
+                        bcx, pat.id, ident, BindLocal, var_scope, (),
                         |(), bcx, v, _| expr::trans_into(bcx, &*init_expr,
                                                          expr::SaveIn(v)));
                 }
@@ -1555,10 +1553,10 @@ pub fn store_local<'a>(bcx: &'a Block<'a>,
         // create dummy memory for the variables if we have no
         // value to store into them immediately
         let tcx = bcx.tcx();
-        pat_bindings(&tcx.def_map, &*pat, |_, p_id, _, path| {
+        pat_bindings(&tcx.def_map, &*pat, |_, p_id, _, path1| {
                 let scope = cleanup::var_scope(tcx, p_id);
                 bcx = mk_binding_alloca(
-                    bcx, p_id, path, BindLocal, scope, (),
+                    bcx, p_id, &path1.node, BindLocal, scope, (),
                     |(), bcx, llval, ty| { zero_mem(bcx, llval, ty); bcx });
             });
         bcx
@@ -1586,7 +1584,7 @@ pub fn store_arg<'a>(mut bcx: &'a Block<'a>,
     let _icx = push_ctxt("match::store_arg");
 
     match simple_identifier(&*pat) {
-        Some(path) => {
+        Some(ident) => {
             // Generate nicer LLVM for the common case of fn a pattern
             // like `x: T`
             let arg_ty = node_id_type(bcx, pat.id);
@@ -1601,7 +1599,7 @@ pub fn store_arg<'a>(mut bcx: &'a Block<'a>,
                 bcx
             } else {
                 mk_binding_alloca(
-                    bcx, pat.id, path, BindArgument, arg_scope, arg,
+                    bcx, pat.id, ident, BindArgument, arg_scope, arg,
                     |arg, bcx, llval, _| arg.store_to(bcx, llval))
             }
         }
@@ -1619,17 +1617,16 @@ pub fn store_arg<'a>(mut bcx: &'a Block<'a>,
 
 fn mk_binding_alloca<'a,A>(bcx: &'a Block<'a>,
                            p_id: ast::NodeId,
-                           path: &ast::Path,
+                           ident: &ast::Ident,
                            binding_mode: IrrefutablePatternBindingMode,
                            cleanup_scope: cleanup::ScopeId,
                            arg: A,
                            populate: |A, &'a Block<'a>, ValueRef, ty::t| -> &'a Block<'a>)
                          -> &'a Block<'a> {
     let var_ty = node_id_type(bcx, p_id);
-    let ident = ast_util::path_to_ident(path);
 
     // Allocate memory on stack for the binding.
-    let llval = alloc_ty(bcx, var_ty, bcx.ident(ident).as_slice());
+    let llval = alloc_ty(bcx, var_ty, bcx.ident(*ident).as_slice());
 
     // Subtle: be sure that we *populate* the memory *before*
     // we schedule the cleanup.
@@ -1687,13 +1684,13 @@ fn bind_irrefutable_pat<'a>(
     let tcx = bcx.tcx();
     let ccx = bcx.ccx();
     match pat.node {
-        ast::PatIdent(pat_binding_mode, ref path, inner) => {
+        ast::PatIdent(pat_binding_mode, ref path1, inner) => {
             if pat_is_binding(&tcx.def_map, &*pat) {
                 // Allocate the stack slot where the value of this
                 // binding will live and place it into the appropriate
                 // map.
                 bcx = mk_binding_alloca(
-                    bcx, pat.id, path, binding_mode, cleanup_scope, (),
+                    bcx, pat.id, &path1.node, binding_mode, cleanup_scope, (),
                     |(), bcx, llval, ty| {
                         match pat_binding_mode {
                             ast::BindByValue(_) => {

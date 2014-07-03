@@ -376,7 +376,7 @@ pub trait ToCStr {
 // (without forcing an additional & around &str). So we are instead
 // temporarily adding an instance for ~str and String, so that we can
 // take ToCStr as owned. When DST lands, the string instances should
-// be revisted, and arguments bound by ToCStr should be passed by
+// be revisited, and arguments bound by ToCStr should be passed by
 // reference.
 
 impl<'a> ToCStr for &'a str {

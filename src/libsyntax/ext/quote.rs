@@ -15,7 +15,6 @@ use ext::base;
 use ext::build::AstBuilder;
 use parse::token::*;
 use parse::token;
-use parse;
 
 use std::gc::Gc;
 
@@ -583,11 +582,7 @@ fn expand_tts(cx: &ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     // it has to do with transition away from supporting old-style macros, so
     // try removing it when enough of them are gone.
 
-    let mut p = parse::new_parser_from_tts(cx.parse_sess(),
-                                           cx.cfg(),
-                                           tts.iter()
-                                              .map(|x| (*x).clone())
-                                              .collect());
+    let mut p = cx.new_parser_from_tts(tts);
     p.quote_depth += 1u;
 
     let cx_expr = p.parse_expr();

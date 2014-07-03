@@ -247,6 +247,10 @@ impl<'a> Visitor<MarkSymbolVisitorContext> for MarkSymbolVisitor<'a> {
             ast::PatStruct(_, ref fields, _) => {
                 self.handle_field_pattern_match(pat, fields.as_slice());
             }
+            ast::PatIdent(_, _, _) => {
+                // it might be the only use of a static:
+                self.lookup_and_handle_definition(&pat.id)
+            }
             _ => ()
         }
 

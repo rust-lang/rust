@@ -288,7 +288,7 @@ pub fn mod_enabled(level: u32, module: &str) -> bool {
     unsafe { INIT.doit(init); }
 
     // It's possible for many threads are in this function, only one of them
-    // will peform the global initialization, but all of them will need to check
+    // will perform the global initialization, but all of them will need to check
     // again to whether they should really be here or not. Hence, despite this
     // check being expanded manually in the logging macro, this function checks
     // the log level again.
