@@ -852,7 +852,7 @@ impl<'a> Folder for IdentRenamer<'a> {
     fn fold_ident(&mut self, id: Ident) -> Ident {
         Ident {
             name: id.name,
-            ctxt: mtwt::new_renames(self.renames, id.ctxt),
+            ctxt: mtwt::apply_renames(self.renames, id.ctxt),
         }
     }
 }
@@ -870,7 +870,7 @@ impl<'a> Folder for PatIdentRenamer<'a> {
         match pat.node {
             ast::PatIdent(binding_mode, Spanned{span: ref sp, node: id}, ref sub) => {
                 let new_ident = Ident{name: id.name,
-                                      ctxt: mtwt::new_renames(self.renames, id.ctxt)};
+                                      ctxt: mtwt::apply_renames(self.renames, id.ctxt)};
                 let new_node =
                     ast::PatIdent(binding_mode,
                                   Spanned{span: self.new_span(*sp), node: new_ident},
@@ -990,7 +990,7 @@ impl Folder for Marker {
     fn fold_ident(&mut self, id: Ident) -> Ident {
         ast::Ident {
             name: id.name,
-            ctxt: mtwt::new_mark(self.mark, id.ctxt)
+            ctxt: mtwt::apply_mark(self.mark, id.ctxt)
         }
     }
     fn fold_mac(&mut self, m: &ast::Mac) -> ast::Mac {
@@ -998,7 +998,7 @@ impl Folder for Marker {
             MacInvocTT(ref path, ref tts, ctxt) => {
                 MacInvocTT(self.fold_path(path),
                            fold_tts(tts.as_slice(), self),
-                           mtwt::new_mark(self.mark, ctxt))
+                           mtwt::apply_mark(self.mark, ctxt))
             }
         };
         Spanned {

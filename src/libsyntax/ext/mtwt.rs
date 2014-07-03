@@ -58,12 +58,12 @@ pub enum SyntaxContext_ {
 pub type RenameList = Vec<(Ident, Name)>;
 
 /// Extend a syntax context with a given mark
-pub fn new_mark(m: Mrk, ctxt: SyntaxContext) -> SyntaxContext {
-    with_sctable(|table| new_mark_internal(m, ctxt, table))
+pub fn apply_mark(m: Mrk, ctxt: SyntaxContext) -> SyntaxContext {
+    with_sctable(|table| apply_mark_internal(m, ctxt, table))
 }
 
 // Extend a syntax context with a given mark and sctable (explicit memoization)
-fn new_mark_internal(m: Mrk, ctxt: SyntaxContext, table: &SCTable) -> SyntaxContext {
+fn apply_mark_internal(m: Mrk, ctxt: SyntaxContext, table: &SCTable) -> SyntaxContext {
     let key = (ctxt, m);
     let new_ctxt = |_: &(SyntaxContext, Mrk)|
                    idx_push(&mut *table.table.borrow_mut(), Mark(m, ctxt));
@@ -72,13 +72,13 @@ fn new_mark_internal(m: Mrk, ctxt: SyntaxContext, table: &SCTable) -> SyntaxCont
 }
 
 /// Extend a syntax context with a given rename
-pub fn new_rename(id: Ident, to:Name,
+pub fn apply_rename(id: Ident, to:Name,
                   ctxt: SyntaxContext) -> SyntaxContext {
-    with_sctable(|table| new_rename_internal(id, to, ctxt, table))
+    with_sctable(|table| apply_rename_internal(id, to, ctxt, table))
 }
 
 // Extend a syntax context with a given rename and sctable (explicit memoization)
-fn new_rename_internal(id: Ident,
+fn apply_rename_internal(id: Ident,
                        to: Name,
                        ctxt: SyntaxContext,
                        table: &SCTable) -> SyntaxContext {
@@ -93,10 +93,10 @@ fn new_rename_internal(id: Ident,
 // if these rename lists get long, it would make sense
 // to consider memoizing this fold. This may come up
 // when we add hygiene to item names.
-pub fn new_renames(renames: &RenameList, ctxt: SyntaxContext) -> SyntaxContext {
+pub fn apply_renames(renames: &RenameList, ctxt: SyntaxContext) -> SyntaxContext {
     renames.iter().fold(ctxt, |ctxt, &(from, to)| {
-            new_rename(from, to, ctxt)
-        })
+        apply_rename(from, to, ctxt)
+    })
 }
 
 /// Fetch the SCTable from TLS, create one if it doesn't yet exist.
@@ -277,8 +277,8 @@ fn xor_push(marks: &mut Vec<Mrk>, mark: Mrk) {
 #[cfg(test)]
 mod tests {
     use ast::{EMPTY_CTXT, Ident, Mrk, Name, SyntaxContext};
-    use super::{resolve, xor_push, new_mark_internal, new_sctable_internal};
-    use super::{new_rename_internal, new_renames, marksof_internal, resolve_internal};
+    use super::{resolve, xor_push, apply_mark_internal, new_sctable_internal};
+    use super::{apply_rename_internal, apply_renames, marksof_internal, resolve_internal};
     use super::{SCTable, EmptyCtxt, Mark, Rename, IllegalCtxt};
     use std::collections::HashMap;
 
@@ -319,8 +319,8 @@ mod tests {
         -> SyntaxContext {
         tscs.iter().rev().fold(tail, |tail : SyntaxContext, tsc : &TestSC|
                   {match *tsc {
-                      M(mrk) => new_mark_internal(mrk,tail,table),
-                      R(ident,name) => new_rename_internal(ident,name,tail,table)}})
+                      M(mrk) => apply_mark_internal(mrk,tail,table),
+                      R(ident,name) => apply_rename_internal(ident,name,tail,table)}})
     }
 
     // gather a SyntaxContext back into a vector of TestSCs
@@ -365,7 +365,7 @@ mod tests {
     fn unfold_marks(mrks: Vec<Mrk> , tail: SyntaxContext, table: &SCTable)
                     -> SyntaxContext {
         mrks.iter().rev().fold(tail, |tail:SyntaxContext, mrk:&Mrk|
-                   {new_mark_internal(*mrk,tail,table)})
+                   {apply_mark_internal(*mrk,tail,table)})
     }
 
     #[test] fn unfold_marks_test() {
@@ -397,13 +397,13 @@ mod tests {
         // rename where stop doesn't match:
         { let chain = vec!(M(9),
                         R(id(name1,
-                             new_mark_internal (4, EMPTY_CTXT,&mut t)),
+                             apply_mark_internal (4, EMPTY_CTXT,&mut t)),
                           100101102),
                         M(14));
          let ans = unfold_test_sc(chain,EMPTY_CTXT,&mut t);
          assert_eq! (marksof_internal (ans, stopname, &t), vec!(9,14));}
         // rename where stop does match
-        { let name1sc = new_mark_internal(4, EMPTY_CTXT, &mut t);
+        { let name1sc = apply_mark_internal(4, EMPTY_CTXT, &mut t);
          let chain = vec!(M(9),
                        R(id(name1, name1sc),
                          stopname),
@@ -427,7 +427,7 @@ mod tests {
         { let sc = unfold_test_sc(vec!(R(id(50,EMPTY_CTXT),51),M(12)),EMPTY_CTXT,&mut t);
          assert_eq!(resolve_internal(id(a,sc),&mut t, &mut rt),a);}
         // - rename where names do match, but marks don't
-        { let sc1 = new_mark_internal(1,EMPTY_CTXT,&mut t);
+        { let sc1 = apply_mark_internal(1,EMPTY_CTXT,&mut t);
          let sc = unfold_test_sc(vec!(R(id(a,sc1),50),
                                    M(1),
                                    M(2)),
@@ -450,11 +450,11 @@ mod tests {
                                   EMPTY_CTXT,&mut t);
          assert_eq!(resolve_internal(id(a,sc),&mut t, &mut rt), 51); }
         // the simplest double-rename:
-        { let a_to_a50 = new_rename_internal(id(a,EMPTY_CTXT),50,EMPTY_CTXT,&mut t);
-         let a50_to_a51 = new_rename_internal(id(a,a_to_a50),51,a_to_a50,&mut t);
+        { let a_to_a50 = apply_rename_internal(id(a,EMPTY_CTXT),50,EMPTY_CTXT,&mut t);
+         let a50_to_a51 = apply_rename_internal(id(a,a_to_a50),51,a_to_a50,&mut t);
          assert_eq!(resolve_internal(id(a,a50_to_a51),&mut t, &mut rt),51);
          // mark on the outside doesn't stop rename:
-         let sc = new_mark_internal(9,a50_to_a51,&mut t);
+         let sc = apply_mark_internal(9,a50_to_a51,&mut t);
          assert_eq!(resolve_internal(id(a,sc),&mut t, &mut rt),51);
          // but mark on the inside does:
          let a50_to_a51_b = unfold_test_sc(vec!(R(id(a,a_to_a50),51),
@@ -474,10 +474,10 @@ mod tests {
     #[test]
     fn hashing_tests () {
         let mut t = new_sctable_internal();
-        assert_eq!(new_mark_internal(12,EMPTY_CTXT,&mut t),2);
-        assert_eq!(new_mark_internal(13,EMPTY_CTXT,&mut t),3);
+        assert_eq!(apply_mark_internal(12,EMPTY_CTXT,&mut t),2);
+        assert_eq!(apply_mark_internal(13,EMPTY_CTXT,&mut t),3);
         // using the same one again should result in the same index:
-        assert_eq!(new_mark_internal(12,EMPTY_CTXT,&mut t),2);
+        assert_eq!(apply_mark_internal(12,EMPTY_CTXT,&mut t),2);
         // I'm assuming that the rename table will behave the same....
     }
 
@@ -498,7 +498,7 @@ mod tests {
     fn new_resolves_test() {
         let renames = vec!((Ident{name:23,ctxt:EMPTY_CTXT},24),
                            (Ident{name:29,ctxt:EMPTY_CTXT},29));
-        let new_ctxt1 = new_renames(&renames,EMPTY_CTXT);
+        let new_ctxt1 = apply_renames(&renames,EMPTY_CTXT);
         assert_eq!(resolve(Ident{name:23,ctxt:new_ctxt1}),24);
         assert_eq!(resolve(Ident{name:29,ctxt:new_ctxt1}),29);
     }
