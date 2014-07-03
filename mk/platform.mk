@@ -461,6 +461,7 @@ CFG_PATH_MUNGE_i686-pc-mingw32 :=
 CFG_LDPATH_i686-pc-mingw32 :=$(CFG_LDPATH_i686-pc-mingw32):$(PATH)
 CFG_RUN_i686-pc-mingw32=PATH="$(CFG_LDPATH_i686-pc-mingw32):$(1)" $(2)
 CFG_RUN_TARG_i686-pc-mingw32=$(call CFG_RUN_i686-pc-mingw32,$(HLIB$(1)_H_$(CFG_BUILD)),$(2))
+RUSTC_FLAGS_i686-pc-mingw32=-C link-args="-Wl,--large-address-aware"
 
 # i586-mingw32msvc configuration
 CC_i586-mingw32msvc=$(CFG_MINGW32_CROSS_PATH)/bin/i586-mingw32msvc-gcc
