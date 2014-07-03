@@ -586,14 +586,14 @@ macro_rules! int_impl {
             fn rotate_left(self, n: uint) -> $T {
                 // Protect against undefined behaviour for over-long bit shifts
                 let n = n % $BITS;
-                (self << n) | (self >> ($BITS - n))
+                (self << n) | (self >> (($BITS - n) % $BITS))
             }
 
             #[inline]
             fn rotate_right(self, n: uint) -> $T {
                 // Protect against undefined behaviour for over-long bit shifts
                 let n = n % $BITS;
-                (self >> n) | (self << ($BITS - n))
+                (self >> n) | (self << (($BITS - n) % $BITS))
             }
 
             #[inline]
