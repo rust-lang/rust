@@ -10,12 +10,14 @@
 all:
 	mkdir $(TMPDIR)/other
 	$(RUSTC) foo.rs --crate-type=dylib
-	$(RUSTC) foo.rs --crate-type=dylib -o $(TMPDIR)/other/libfoo.so
+	mv $(call DYLIB,foo) $(TMPDIR)/other
+	$(RUSTC) foo.rs --crate-type=dylib
 	$(RUSTC) bar.rs -L $(TMPDIR)/other 2>&1 | \
 		grep "multiple dylib candidates"
 	rm -rf $(TMPDIR)
 	mkdir -p $(TMPDIR)/other
 	$(RUSTC) foo.rs --crate-type=rlib
-	$(RUSTC) foo.rs --crate-type=rlib -o $(TMPDIR)/other/libfoo.rlib
+	mv $(TMPDIR)/libfoo.rlib $(TMPDIR)/other
+	$(RUSTC) foo.rs --crate-type=rlib
 	$(RUSTC) bar.rs -L $(TMPDIR)/other 2>&1 | \
 		grep "multiple rlib candidates"
