@@ -113,7 +113,7 @@ use vec::Vec;
 pub use core::slice::{ref_slice, mut_ref_slice, Splits, Windows};
 pub use core::slice::{Chunks, Vector, ImmutableVector, ImmutableEqVector};
 pub use core::slice::{ImmutableOrdVector, MutableVector, Items, MutItems};
-pub use core::slice::{MutSplits, MutChunks};
+pub use core::slice::{MutableOrdVector, MutSplits, MutChunks};
 pub use core::slice::{bytes, MutableCloneableVector};
 
 // Functional utilities
@@ -589,7 +589,7 @@ impl<'a,T> MutableVectorAllocating<'a, T> for &'a mut [T] {
 
 /// Methods for mutable vectors with orderable elements, such as
 /// in-place sorting.
-pub trait MutableOrdVector<T> {
+pub trait MutableOrdVectorAllocating<T> {
     /// Sort the vector, in place.
     ///
     /// This is equivalent to `self.sort_by(|a, b| a.cmp(b))`.
@@ -635,7 +635,7 @@ pub trait MutableOrdVector<T> {
     fn prev_permutation(self) -> bool;
 }
 
-impl<'a, T: Ord> MutableOrdVector<T> for &'a mut [T] {
+impl<'a, T: Ord> MutableOrdVectorAllocating<T> for &'a mut [T] {
     #[inline]
     fn sort(self) {
         self.sort_by(|a,b| a.cmp(b))
