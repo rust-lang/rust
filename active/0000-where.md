@@ -8,7 +8,8 @@ Add `where` clauses, which provide a more expressive means of
 specifying trait parameter bounds. A `where` clause comes after a
 declaration of a generic item (e.g., an impl or struct definition) and
 specifies a list of bounds that must be proven once precise values are
-known for the type parameters in question.
+known for the type parameters in question. The existing bounds
+notation would remain as syntactic sugar for where clauses.
 
 So, for example, the `impl` for `HashMap` could be changed from this:
 
