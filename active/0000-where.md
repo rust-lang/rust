@@ -385,29 +385,28 @@ The grammar for a `where` clause would be as follows (BNF):
 
 The meaning of a where clause is fairly straightforward. Each bound in
 the where clause must be proven by the caller after substitution of
-the parameter types.
-
-One interesting point is what to do for "trivial" where clauses where
-the self-type does not refer to any of the type parameters:
+the parameter types. This is true even for "trivial" cases where the
+self-type does not refer to any of the type parameters:
 
     fn foo()
         where int : Eq
     { ... }
 
-In such cases, the bound will be checked in the callee, not the
-caller, and is not included in the list of things that the caller must
-prove. Therefore, given the following two functions, an error
-is reported in `foo()`, not `bar()`:
+In this case, `foo()` will assume that `int : Eq`, even if it does
+not.  The caller is then responsibile for checking that this clause
+holds.  Therefore, given the following two functions, an error is
+reported in `bar()`, not `foo()`:
 
     fn foo()
-        // Error: no impl of Copy for Box<int>
-        where Box<int> : Copy
+        where Box<int> : Copy // Not true, but oh well.
     { ... }
     
     fn bar() {
-        foo(); // No error.
+        foo(); // Error: no impl of Copy for Box<int>
     }
     
+The reason for verifying such cases at the caller is to support the
+"role reversal" patterns described below for multidispatch traits.
 
 # Discussion
 
@@ -612,6 +611,14 @@ the use of `:` as a trait-bound separator:
     }
 
 # Unresolved questions
+
+- Should we remove support for `where` clauses where the self type
+  contains no type parameters?
+
+Currently such bounds are permitted in order to support patterns like
+`() : Add<int,T,T>`, where `T` is really acting like an input type
+parameter even though it appears in output position. Such patterns are
+a bit confusing but potentially useful.
 
 [bp]: http://smallcultfollowing.com/babysteps/blog/2012/10/04/refining-traits-slash-impls/
 [comparison]: http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.110.122
