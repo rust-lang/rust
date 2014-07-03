@@ -54,36 +54,49 @@ pub enum SyntaxContext_ {
     IllegalCtxt
 }
 
+/// A list of ident->name renamings
+pub type RenameList = Vec<(Ident, Name)>;
+
 /// Extend a syntax context with a given mark
-pub fn new_mark(m: Mrk, tail: SyntaxContext) -> SyntaxContext {
-    with_sctable(|table| new_mark_internal(m, tail, table))
+pub fn new_mark(m: Mrk, ctxt: SyntaxContext) -> SyntaxContext {
+    with_sctable(|table| new_mark_internal(m, ctxt, table))
 }
 
-// Extend a syntax context with a given mark and table
-fn new_mark_internal(m: Mrk, tail: SyntaxContext, table: &SCTable) -> SyntaxContext {
-    let key = (tail, m);
+// Extend a syntax context with a given mark and sctable (explicit memoization)
+fn new_mark_internal(m: Mrk, ctxt: SyntaxContext, table: &SCTable) -> SyntaxContext {
+    let key = (ctxt, m);
     let new_ctxt = |_: &(SyntaxContext, Mrk)|
-                   idx_push(&mut *table.table.borrow_mut(), Mark(m, tail));
+                   idx_push(&mut *table.table.borrow_mut(), Mark(m, ctxt));
 
     *table.mark_memo.borrow_mut().find_or_insert_with(key, new_ctxt)
 }
 
 /// Extend a syntax context with a given rename
 pub fn new_rename(id: Ident, to:Name,
-                  tail: SyntaxContext) -> SyntaxContext {
-    with_sctable(|table| new_rename_internal(id, to, tail, table))
+                  ctxt: SyntaxContext) -> SyntaxContext {
+    with_sctable(|table| new_rename_internal(id, to, ctxt, table))
 }
 
-// Extend a syntax context with a given rename and sctable
+// Extend a syntax context with a given rename and sctable (explicit memoization)
 fn new_rename_internal(id: Ident,
                        to: Name,
-                       tail: SyntaxContext,
+                       ctxt: SyntaxContext,
                        table: &SCTable) -> SyntaxContext {
-    let key = (tail,id,to);
+    let key = (ctxt,id,to);
     let new_ctxt = |_: &(SyntaxContext, Ident, Mrk)|
-                   idx_push(&mut *table.table.borrow_mut(), Rename(id, to, tail));
+                   idx_push(&mut *table.table.borrow_mut(), Rename(id, to, ctxt));
 
     *table.rename_memo.borrow_mut().find_or_insert_with(key, new_ctxt)
+}
+
+/// Apply a list of renamings to a context
+// if these rename lists get long, it would make sense
+// to consider memoizing this fold. This may come up
+// when we add hygiene to item names.
+pub fn new_renames(renames: &RenameList, ctxt: SyntaxContext) -> SyntaxContext {
+    renames.iter().fold(ctxt, |ctxt, &(from, to)| {
+            new_rename(from, to, ctxt)
+        })
 }
 
 /// Fetch the SCTable from TLS, create one if it doesn't yet exist.
@@ -263,9 +276,9 @@ fn xor_push(marks: &mut Vec<Mrk>, mark: Mrk) {
 
 #[cfg(test)]
 mod tests {
-    use ast::*;
+    use ast::{EMPTY_CTXT, Ident, Mrk, Name, SyntaxContext};
     use super::{resolve, xor_push, new_mark_internal, new_sctable_internal};
-    use super::{new_rename_internal, marksof_internal, resolve_internal};
+    use super::{new_rename_internal, new_renames, marksof_internal, resolve_internal};
     use super::{SCTable, EmptyCtxt, Mark, Rename, IllegalCtxt};
     use std::collections::HashMap;
 
@@ -479,5 +492,14 @@ mod tests {
         assert_eq!(rt.len(),2);
         resolve_internal(id(30,EMPTY_CTXT),&mut t, &mut rt);
         assert_eq!(rt.len(),2);
+    }
+
+    #[test]
+    fn new_resolves_test() {
+        let renames = vec!((Ident{name:23,ctxt:EMPTY_CTXT},24),
+                           (Ident{name:29,ctxt:EMPTY_CTXT},29));
+        let new_ctxt1 = new_renames(&renames,EMPTY_CTXT);
+        assert_eq!(resolve(Ident{name:23,ctxt:new_ctxt1}),24);
+        assert_eq!(resolve(Ident{name:29,ctxt:new_ctxt1}),29);
     }
 }

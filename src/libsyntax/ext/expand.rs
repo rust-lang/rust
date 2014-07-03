@@ -844,17 +844,14 @@ fn expand_pat(p: Gc<ast::Pat>, fld: &mut MacroExpander) -> Gc<ast::Pat> {
 // to every identifier, including both bindings and varrefs
 // (and lots of things that will turn out to be neither)
 pub struct IdentRenamer<'a> {
-    renames: &'a mut RenameList,
+    renames: &'a mtwt::RenameList,
 }
 
 impl<'a> Folder for IdentRenamer<'a> {
     fn fold_ident(&mut self, id: Ident) -> Ident {
-        let new_ctxt = self.renames.iter().fold(id.ctxt, |ctxt, &(from, to)| {
-            mtwt::new_rename(from, to, ctxt)
-        });
         Ident {
             name: id.name,
-            ctxt: new_ctxt,
+            ctxt: mtwt::new_renames(self.renames, id.ctxt),
         }
     }
 }
