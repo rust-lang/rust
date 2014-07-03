@@ -384,6 +384,84 @@ impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
     }
 }
 
+// FIXME(SimonSapin): Make `compare` a by-ref closure when that’s supported,
+// and remove the return value.
+fn quicksort_helper<'a, T>(arr: &mut [T], left: int, right: int,
+                           compare: |&T, &T|: 'a -> Ordering)
+                           -> |&T, &T|: 'a -> Ordering {
+    if right <= left {
+        return compare
+    }
+
+    let mut i: int = left - 1;
+    let mut j: int = right;
+    let mut p: int = i;
+    let mut q: int = j;
+    unsafe {
+        let v: *mut T = &mut arr[right as uint];
+        loop {
+            i += 1;
+            while compare(&arr[i as uint], &*v) == Less {
+                i += 1
+            }
+            j -= 1;
+            while compare(&*v, &arr[j as uint]) == Less {
+                if j == left {
+                    break
+                }
+                j -= 1;
+            }
+            if i >= j {
+                break
+            }
+            arr.swap(i as uint, j as uint);
+            if compare(&arr[i as uint], &*v) == Equal {
+                p += 1;
+                arr.swap(p as uint, i as uint)
+            }
+            if compare(&*v, &arr[j as uint]) == Equal {
+                q -= 1;
+                arr.swap(j as uint, q as uint)
+            }
+        }
+    }
+
+    arr.swap(i as uint, right as uint);
+    j = i - 1;
+    i += 1;
+    let mut k: int = left;
+    while k < p {
+        arr.swap(k as uint, j as uint);
+        k += 1;
+        j -= 1;
+        assert!(k < arr.len() as int);
+    }
+    k = right - 1;
+    while k > q {
+        arr.swap(i as uint, k as uint);
+        k -= 1;
+        i += 1;
+        assert!(k != 0);
+    }
+
+    let compare = quicksort_helper(arr, left, j, compare);
+    let compare = quicksort_helper(arr, i, right, compare);
+    compare
+}
+
+/// An in-place quicksort.
+///
+/// The algorithm is from Sedgewick and Bentley, "Quicksort is Optimal":
+///     http://www.cs.princeton.edu/~rs/talks/QuicksortIsOptimal.pdf
+fn quicksort<T>(arr: &mut [T], compare: |&T, &T| -> Ordering) {
+    if arr.len() <= 1 {
+        return
+    }
+
+    let len = arr.len();
+    quicksort_helper(arr, 0, (len - 1) as int, compare);
+}
+
 /// Extension methods for vectors such that their elements are
 /// mutable.
 pub trait MutableVector<'a, T> {
@@ -533,6 +611,26 @@ pub trait MutableVector<'a, T> {
     /// assert!(v == [3i, 2, 1]);
     /// ```
     fn reverse(self);
+
+    /// Sort the vector, in place, using `compare` to compare elements,
+    /// using the Quicksort algorithm.
+    ///
+    /// This sort is `O(n log n)` average-case and does not allocate memory,
+    /// but is `O(n^2)` worst-case and is *not* stable.
+    /// See the `sort_by` method for a stable alternative.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let mut v = [5i, 4, 1, 3, 2];
+    /// v.quicksort_by(|a, b| a.cmp(b));
+    /// assert!(v == [1, 2, 3, 4, 5]);
+    ///
+    /// // reverse sorting
+    /// v.quicksort_by(|a, b| b.cmp(a));
+    /// assert!(v == [5, 4, 3, 2, 1]);
+    /// ```
+    fn quicksort_by(self, compare: |&T, &T| -> Ordering);
 
     /// Returns an unsafe mutable pointer to the element in index
     unsafe fn unsafe_mut_ref(self, index: uint) -> &'a mut T;
@@ -712,6 +810,11 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
     }
 
     #[inline]
+    fn quicksort_by(self, compare: |&T, &T| -> Ordering) {
+        quicksort(self, compare)
+    }
+
+    #[inline]
     unsafe fn unsafe_mut_ref(self, index: uint) -> &'a mut T {
         transmute((self.repr().data as *mut T).offset(index as int))
     }
@@ -736,6 +839,31 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
         let len_src = src.len();
         assert!(self.len() >= len_src);
         ptr::copy_nonoverlapping_memory(self.as_mut_ptr(), src.as_ptr(), len_src)
+    }
+}
+
+/// Methods for mutable vectors with orderable elements, such as
+/// in-place sorting.
+pub trait MutableOrdVector<T> {
+    /// Sort the vector, in place, using the Quicksort algorithm.
+    ///
+    /// This is equivalent to `self.quicksort_by(|a, b| a.cmp(b))`.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let mut v = [-5i, 4, 1, -3, 2];
+    ///
+    /// v.quicksort();
+    /// assert!(v == [-5i, -3, 1, 2, 4]);
+    /// ```
+    fn quicksort(self);
+}
+
+impl<'a, T: Ord> MutableOrdVector<T> for &'a mut [T] {
+    #[inline]
+    fn quicksort(self) {
+        self.quicksort_by(|a, b| a.cmp(b))
     }
 }
 

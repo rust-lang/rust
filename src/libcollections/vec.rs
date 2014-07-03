@@ -24,7 +24,8 @@ use core::ptr;
 use core::uint;
 
 use {Collection, Mutable};
-use slice::{MutableOrdVector, MutableVectorAllocating, CloneableVector};
+use slice::{MutableOrdVector, MutableOrdVectorAllocating};
+use slice::{MutableVectorAllocating, CloneableVector};
 use slice::{Items, MutItems};
 
 /// An owned, growable vector.
@@ -805,6 +806,29 @@ impl<T> Vec<T> {
         self.as_mut_slice().sort_by(compare)
     }
 
+    /// Sort the vector, in place, using `compare` to compare elements,
+    /// using the Quicksort algorithm.
+    ///
+    /// This sort is `O(n log n)` average-case and does not allocate memory,
+    /// but is `O(n^2)` worst-case and is *not* stable.
+    /// See the `sort_by` method for a stable alternative.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let mut v = vec!(5i, 4, 1, 3, 2);
+    /// v.quicksort_by(|a, b| a.cmp(b));
+    /// assert_eq!(v, vec!(1i, 2, 3, 4, 5));
+    ///
+    /// // reverse sorting
+    /// v.quicksort_by(|a, b| b.cmp(a));
+    /// assert_eq!(v, vec!(5i, 4, 3, 2, 1));
+    /// ```
+    #[inline]
+    pub fn quicksort_by(&mut self, compare: |&T, &T| -> Ordering) {
+        self.as_mut_slice().quicksort_by(compare)
+    }
+
     /// Returns a slice of self spanning the interval [`start`, `end`).
     ///
     /// # Failure
@@ -1301,6 +1325,21 @@ impl<T:Ord> Vec<T> {
     /// ```
     pub fn sort(&mut self) {
         self.as_mut_slice().sort()
+    }
+
+    /// Sort the vector, in place, using the Quicksort algorithm.
+    ///
+    /// This is equivalent to `self.quicksort_by(|a, b| a.cmp(b))`.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let mut vec = vec!(3i, 1, 2);
+    /// vec.quicksort();
+    /// assert_eq!(vec, vec!(1, 2, 3));
+    /// ```
+    pub fn quicksort(&mut self) {
+        self.as_mut_slice().quicksort()
     }
 }
 
