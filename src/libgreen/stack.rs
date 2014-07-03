@@ -124,7 +124,7 @@ impl Drop for Stack {
 }
 
 pub struct StackPool {
-    // Ideally this would be some datastructure that preserved ordering on
+    // Ideally this would be some data structure that preserved ordering on
     // Stack.min_size.
     stacks: Vec<Stack>,
 }

@@ -1295,7 +1295,7 @@ mod test {
     }
 
     // create a really evil test case where a $x appears inside a binding of $x
-    // but *shouldnt* bind because it was inserted by a different macro....
+    // but *shouldn't* bind because it was inserted by a different macro....
     // can't write this test case until we have macro-generating macros.
 
     // FIXME #9383 : lambda var hygiene

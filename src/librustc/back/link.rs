@@ -119,7 +119,7 @@ pub mod write {
     // get all hardware potential via VFP3 (hardware floating point)
     // and NEON (SIMD) instructions supported by LLVM.
     // Note that without those flags various linking errors might
-    // arise as some of intrinsicts are converted into function calls
+    // arise as some of intrinsics are converted into function calls
     // and nobody provides implementations those functions
     fn target_feature<'a>(sess: &'a Session) -> &'a str {
         match sess.targ_cfg.os {

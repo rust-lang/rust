@@ -97,7 +97,7 @@ extern {}
 
 extern "C" {
     // iOS on armv7 uses SjLj exceptions and requires to link
-    // agains corresponding routine (..._SjLj_...)
+    // against corresponding routine (..._SjLj_...)
     #[cfg(not(target_os = "ios", target_arch = "arm"))]
     pub fn _Unwind_RaiseException(exception: *mut _Unwind_Exception)
                                   -> _Unwind_Reason_Code;

@@ -1737,7 +1737,7 @@ pub struct ViewItem {
 
 impl Clean<Vec<Item>> for ast::ViewItem {
     fn clean(&self) -> Vec<Item> {
-        // We consider inlining the documentation of `pub use` statments, but we
+        // We consider inlining the documentation of `pub use` statements, but we
         // forcefully don't inline if this is not public or if the
         // #[doc(no_inline)] attribute is present.
         let denied = self.vis != ast::Public || self.attrs.iter().any(|a| {
