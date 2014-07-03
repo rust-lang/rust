@@ -79,8 +79,8 @@ pub enum Token {
     QUESTION,
 
     /* Literals */
-    LIT_BYTE(u8),
-    LIT_CHAR(char),
+    LIT_BYTE(Ident),
+    LIT_CHAR(Ident),
     LIT_INT(i64, ast::IntTy),
     LIT_UINT(u64, ast::UintTy),
     LIT_INT_UNSUFFIXED(i64),
@@ -88,8 +88,8 @@ pub enum Token {
     LIT_FLOAT_UNSUFFIXED(Ident),
     LIT_STR(Ident),
     LIT_STR_RAW(Ident, uint), /* raw str delimited by n hash symbols */
-    LIT_BINARY(Rc<Vec<u8>>),
-    LIT_BINARY_RAW(Rc<Vec<u8>>, uint), /* raw binary str delimited by n hash symbols */
+    LIT_BINARY(Ident),
+    LIT_BINARY_RAW(Ident, uint), /* raw binary str delimited by n hash symbols */
 
     /* Name components */
     /// An identifier contains an "is_mod_name" boolean,
@@ -201,20 +201,10 @@ pub fn to_string(t: &Token) -> String {
 
       /* Literals */
       LIT_BYTE(b) => {
-          let mut res = String::from_str("b'");
-          (b as char).escape_default(|c| {
-              res.push_char(c);
-          });
-          res.push_char('\'');
-          res
+          format!("b'{}'", get_ident(b).get())
       }
       LIT_CHAR(c) => {
-          let mut res = String::from_str("'");
-          c.escape_default(|c| {
-              res.push_char(c);
-          });
-          res.push_char('\'');
-          res
+          format!("'{}'", get_ident(c).get())
       }
       LIT_INT(i, t) => ast_util::int_ty_to_string(t, Some(i)),
       LIT_UINT(u, t) => ast_util::uint_ty_to_string(t, Some(u)),
@@ -235,20 +225,18 @@ pub fn to_string(t: &Token) -> String {
         body
       }
       LIT_STR(s) => {
-          format!("\"{}\"", get_ident(s).get().escape_default())
+          format!("\"{}\"", get_ident(s).get())
       }
       LIT_STR_RAW(s, n) => {
         format!("r{delim}\"{string}\"{delim}",
                  delim="#".repeat(n), string=get_ident(s))
       }
-      LIT_BINARY(ref v) => {
-          format!(
-            "b\"{}\"",
-            v.iter().map(|&b| b as char).collect::<String>().escape_default())
+      LIT_BINARY(v) => {
+          format!("b\"{}\"", get_ident(v).get())
       }
-      LIT_BINARY_RAW(ref s, n) => {
+      LIT_BINARY_RAW(s, n) => {
         format!("br{delim}\"{string}\"{delim}",
-                 delim="#".repeat(n), string=s.as_slice().to_ascii().as_str_ascii())
+                 delim="#".repeat(n), string=get_ident(s).get())
       }
 
       /* Name components */
