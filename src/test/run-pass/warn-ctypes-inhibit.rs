@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags:-D ctypes
+// compile-flags:-D ffi_rust_types
 
-#![allow(ctypes)]
+#![allow(ffi_rust_types)]
 
 mod libc {
     extern {

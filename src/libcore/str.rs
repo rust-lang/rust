@@ -603,7 +603,7 @@ Section: Comparing strings
 /// to compare &[u8] byte slices that are not necessarily valid UTF-8.
 #[inline]
 fn eq_slice_(a: &str, b: &str) -> bool {
-    #[allow(ctypes)]
+    #[allow(ffi_rust_types)]
     extern { fn memcmp(s1: *const i8, s2: *const i8, n: uint) -> i32; }
     a.len() == b.len() && unsafe {
         memcmp(a.as_ptr() as *const i8,
