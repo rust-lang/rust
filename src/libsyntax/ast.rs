@@ -190,6 +190,8 @@ pub struct TyParam {
     pub span: Span
 }
 
+/// Represents lifetimes and type parameters attached to a declaration
+/// of a function, enum, trait, etc.
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
 pub struct Generics {
     pub lifetimes: Vec<Lifetime>,
@@ -288,7 +290,7 @@ pub enum Pat_ {
     PatWild,
     PatWildMulti,
     // A PatIdent may either be a new bound variable,
-    // or a nullary enum (in which case the second field
+    // or a nullary enum (in which case the third field
     // is None).
     // In the nullary enum case, the parser can't determine
     // which it is. The resolver determines this, and
