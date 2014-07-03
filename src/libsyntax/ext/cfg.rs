@@ -24,17 +24,11 @@ use attr::*;
 use parse::attr::ParserAttr;
 use parse::token::InternedString;
 use parse::token;
-use parse;
 
 
 pub fn expand_cfg(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                   -> Box<base::MacResult> {
-    let mut p = parse::new_parser_from_tts(cx.parse_sess(),
-                                           cx.cfg(),
-                                           tts.iter()
-                                              .map(|x| (*x).clone())
-                                              .collect());
-
+    let mut p = cx.new_parser_from_tts(tts);
     let mut cfgs = Vec::new();
     // parse `cfg!(meta_item, meta_item(x,y), meta_item="foo", ...)`
     while p.token != token::EOF {

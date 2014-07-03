@@ -16,7 +16,6 @@ use ast;
 use codemap::Span;
 use ext::base;
 use ext::base::*;
-use parse;
 use parse::token::InternedString;
 use parse::token;
 
@@ -48,12 +47,7 @@ static OPTIONS: &'static [&'static str] = &["volatile", "alignstack", "intel"];
 
 pub fn expand_asm(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                   -> Box<base::MacResult> {
-    let mut p = parse::new_parser_from_tts(cx.parse_sess(),
-                                           cx.cfg(),
-                                           tts.iter()
-                                              .map(|x| (*x).clone())
-                                              .collect());
-
+    let mut p = cx.new_parser_from_tts(tts);
     let mut asm = InternedString::new("");
     let mut asm_str_style = None;
     let mut outputs = Vec::new();

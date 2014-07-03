@@ -16,7 +16,6 @@ use ext::base;
 use ext::build::AstBuilder;
 use parse::token::InternedString;
 use parse::token;
-use rsparse = parse;
 
 use parse = fmt_macros;
 use std::collections::HashMap;
@@ -81,11 +80,7 @@ fn parse_args(ecx: &mut ExtCtxt, sp: Span, allow_method: bool,
     let mut names = HashMap::<String, Gc<ast::Expr>>::new();
     let mut order = Vec::new();
 
-    let mut p = rsparse::new_parser_from_tts(ecx.parse_sess(),
-                                             ecx.cfg(),
-                                             tts.iter()
-                                                .map(|x| (*x).clone())
-                                                .collect());
+    let mut p = ecx.new_parser_from_tts(tts);
     // Parse the leading function expression (maybe a block, maybe a path)
     let invocation = if allow_method {
         let e = p.parse_expr();
