@@ -274,12 +274,17 @@ impl<T: Clone + Integer + PartialOrd>
     Num for Ratio<T> {}
 
 /* String conversions */
-impl<T: fmt::Show> fmt::Show for Ratio<T> {
-    /// Renders as `numer/denom`.
+impl<T: fmt::Show + Eq + One> fmt::Show for Ratio<T> {
+    /// Renders as `numer/denom`. If denom=1, renders as numer.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}/{}", self.numer, self.denom)
+        if self.denom == One::one() {
+            write!(f, "{}", self.numer)
+        } else {
+            write!(f, "{}/{}", self.numer, self.denom)
+        }
     }
 }
+
 impl<T: ToStrRadix> ToStrRadix for Ratio<T> {
     /// Renders as `numer/denom` where the numbers are in base `radix`.
     fn to_str_radix(&self, radix: uint) -> String {
@@ -291,21 +296,20 @@ impl<T: ToStrRadix> ToStrRadix for Ratio<T> {
 
 impl<T: FromStr + Clone + Integer + PartialOrd>
     FromStr for Ratio<T> {
-    /// Parses `numer/denom`.
+    /// Parses `numer/denom` or just `numer`
     fn from_str(s: &str) -> Option<Ratio<T>> {
-        let split: Vec<&str> = s.splitn('/', 1).collect();
-        if split.len() < 2 {
-            return None
+        let mut split = s.splitn('/', 1);
+
+        let num = split.next().and_then(|n| FromStr::from_str(n));
+        let den = split.next().or(Some("1")).and_then(|d| FromStr::from_str(d));
+
+        match (num, den) {
+            (Some(n), Some(d)) => Some(Ratio::new(n, d)),
+            _ => None
         }
-        let a_option: Option<T> = FromStr::from_str(*split.get(0));
-        a_option.and_then(|a| {
-            let b_option: Option<T> = FromStr::from_str(*split.get(1));
-            b_option.and_then(|b| {
-                Some(Ratio::new(a.clone(), b.clone()))
-            })
-        })
     }
 }
+
 impl<T: FromStrRadix + Clone + Integer + PartialOrd>
     FromStrRadix for Ratio<T> {
     /// Parses `numer/denom` where the numbers are in base `radix`.
@@ -429,6 +433,13 @@ mod test {
         assert!(!_neg1_2.is_integer());
     }
 
+    #[test]
+    fn test_show() {
+        assert_eq!(format!("{}", _2), "2".to_string());
+        assert_eq!(format!("{}", _1_2), "1/2".to_string());
+        assert_eq!(format!("{}", _0), "0".to_string());
+        assert_eq!(format!("{}", Ratio::from_integer(-2i)), "-2".to_string());
+    }
 
     mod arith {
         use super::{_0, _1, _2, _1_2, _3_2, _neg1_2, to_big};
@@ -562,11 +573,11 @@ mod test {
             assert_eq!(FromStr::from_str(s.as_slice()), Some(r));
             assert_eq!(r.to_str(), s);
         }
-        test(_1, "1/1".to_string());
-        test(_0, "0/1".to_string());
+        test(_1, "1".to_string());
+        test(_0, "0".to_string());
         test(_1_2, "1/2".to_string());
         test(_3_2, "3/2".to_string());
-        test(_2, "2/1".to_string());
+        test(_2, "2".to_string());
         test(_neg1_2, "-1/2".to_string());
     }
     #[test]
