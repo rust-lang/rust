@@ -8,10 +8,10 @@
 Change the semantics of the built-in fixed-size integer types from being defined
 as wrapping around on overflow to either returning an unspecified result or not
 returning at all. Allow overflow checks to be turned on or off per-scope with an
-attribute. Add a compiler option to force checking for testing and debugging 
-purposes. Add `Wrapping` traits to the standard library, with operations defined
-as wrapping on overflow, for the limited number of cases where this is the 
-desired semantics, such as hash functions.
+attribute. Add a compiler option to force checking for testing and debugging
+purposes. Add a `WrappingOps` trait to the standard library, with operations
+defined as wrapping on overflow, for the limited number of cases where this is
+the desired semantics, such as hash functions.
 
 
 # Motivation
@@ -127,7 +127,7 @@ In general:
 
 ## Semantics of overflow with the built-in types
 
-Currently, the built-in arithmetic operators `+`, `-`, `*`, and `/` on the
+Currently, the built-in arithmetic operators `+`, `-`, `*`, `/`, and `%` on the
 built-in types `i8`..`i64`, `u8`..`u64`, `int`, and `uint` are defined as
 wrapping around on overflow. Change this to define them, on overflow, as either
 returning an unspecified result, or not returning at all (i.e. terminating
@@ -237,52 +237,53 @@ somewhat analogous to the behavior of our current `--ndebug` flag and
 `debug_assert!` macros.
 
 
-## Traits for wrapping arithmetic
+## `WrappingOps` trait for explicit wrapping arithmetic
 
 For those use cases where explicit wraparound on overflow is required, such as
 hash functions, we must provide operations with such semantics. Accomplish this
-by providing the following traits in the `prelude`:
+by providing the following trait and impls in the `prelude`:
 
-    pub trait WrappingAdd {
+    pub trait WrappingOps {
         fn wrapping_add(self, rhs: Self) -> Self;
-    }
-
-    pub trait WrappingSub {
         fn wrapping_sub(self, rhs: Self) -> Self;
-    }
-
-    pub trait WrappingMul {
         fn wrapping_mul(self, rhs: Self) -> Self;
-    }
-
-    pub trait WrappingDiv {
         fn wrapping_div(self, rhs: Self) -> Self;
+        fn wrapping_rem(self, rhs: Self) -> Self;
     }
 
-Provide `impl`s of each of these traits for each of the built-in fixed-size
-integer types, with the operations implemented to wrap around on overflow
-unconditionally.
+    impl WrappingOps for int
+    impl WrappingOps for uint
+    impl WrappingOps for i8
+    impl WrappingOps for u8
+    impl WrappingOps for i16
+    impl WrappingOps for u16
+    impl WrappingOps for i32
+    impl WrappingOps for u32
+    impl WrappingOps for i64
+    impl WrappingOps for u64
+
+These are implemented to wrap around on overflow unconditionally.
 
 
-### `Wrapping<T>`
+### `Wrapping<T>` type for convenience
 
 For convenience, also provide a `Wrapping<T>` newtype for which the operator
-overloads are implemented using the `Wrapping` traits:
+overloads are implemented using the `WrappingOps` trait:
 
     pub struct Wrapping<T>(pub T);
 
-    impl<T: WrappingAdd> Add<Wrapping<T>, Wrapping<T>> for Wrapping<T> {
+    impl<T: WrappingOps> Add<Wrapping<T>, Wrapping<T>> for Wrapping<T> {
         fn add(&self, other: &Wrapping<T>) -> Wrapping<T> {
             self.wrapping_add(*other)
         }
     }
 
-    // Likewise for `Sub`, `Mul`, and `Div`
+    // Likewise for `Sub`, `Mul`, `Div`, and `Rem`
 
 Note that this is only for potential convenience. The type-based approach has the
 drawback that e.g. `Vec<int>` and `Vec<Wrapping<int>>` are incompatible types.
 The recommendation is to not use `Vec<Wrapping<int>>`, but to use `Vec<int>` and
-the `wrapping_*` methods directly, instead.
+the `wrapping_`* methods directly, instead.
 
 
 # Drawbacks
@@ -294,7 +295,7 @@ the `wrapping_*` methods directly, instead.
    * Implement the `overflow_checks` attribute.
 
    * Port existing code which relies on wraparound semantics (primarily hash
-     functions) to use the `Wrapping` traits.
+     functions) to use the `wrapping_`* methods.
 
  * Code where `overflow_checks(off)` is in effect could end up accidentally
    relying on overflow. Given the relative scarcity of cases where overflow is a
@@ -320,7 +321,7 @@ the `wrapping_*` methods directly, instead.
    a Pareto-improvement. Under the status quo, neither the built-in types nor 
    user-defined types can have overflow checks controlled by scoped attributes.
    Under this proposal, the situation is improved with built-in types gaining 
-   this capability. Under this light, making further improvements, namely 
+   this capability. In light of this, making further improvements, namely 
    extending the capability to user-defined types, can be left to future work.
 
  * Someone may conduct a benchmark of Rust with overflow checks turned on, post
@@ -334,7 +335,7 @@ the `wrapping_*` methods directly, instead.
 
 Defer any action until later, as suggested by:
 
-* [Patrick Walton on June 22][PW22]
+ * [Patrick Walton on June 22][PW22]
 
 Reasons this was not pursued: The proposed changes are relatively well-contained.
 Doing this after 1.0 would require either breaking existing programs which rely
@@ -348,7 +349,7 @@ if better options aren't available.
 
 Where overflow checks are turned off, instead of defining overflow as returning
 an unspecified result, define it to wrap around. This would allow us to do
-without the `Wrapping` traits and to avoid having unspecified results. See:
+without the `WrappingOps` trait and to avoid having unspecified results. See:
 
  * [Daniel Micay on June 24][DM24_2]
 
