@@ -3030,6 +3030,9 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
             // the deref method invoked for `*a` always yields an `&T`
             ast::ExprUnary(ast::UnDeref, _) => LvalueExpr,
 
+            // the index method invoked for `a[i]` always yields an `&T`
+            ast::ExprIndex(..) => LvalueExpr,
+
             // in the general case, result could be any type, use DPS
             _ => RvalueDpsExpr
         };

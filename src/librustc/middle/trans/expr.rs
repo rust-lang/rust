@@ -396,7 +396,7 @@ fn trans_datum_unadjusted<'a>(bcx: &'a Block<'a>,
             trans_rec_field(bcx, &**base, ident.node)
         }
         ast::ExprIndex(ref base, ref idx) => {
-            trans_index(bcx, expr, &**base, &**idx)
+            trans_index(bcx, expr, &**base, &**idx, MethodCall::expr(expr.id))
         }
         ast::ExprVstore(ref contents, ast::ExprVstoreUniq) => {
             fcx.push_ast_cleanup_scope(contents.id);
@@ -467,7 +467,8 @@ fn trans_rec_field<'a>(bcx: &'a Block<'a>,
 fn trans_index<'a>(bcx: &'a Block<'a>,
                    index_expr: &ast::Expr,
                    base: &ast::Expr,
-                   idx: &ast::Expr)
+                   idx: &ast::Expr,
+                   method_call: MethodCall)
                    -> DatumBlock<'a, Expr> {
     //! Translates `base[idx]`.
 
@@ -475,43 +476,97 @@ fn trans_index<'a>(bcx: &'a Block<'a>,
     let ccx = bcx.ccx();
     let mut bcx = bcx;
 
-    let base_datum = unpack_datum!(bcx, trans_to_lvalue(bcx, base, "index"));
+    // Check for overloaded index.
+    let method_ty = ccx.tcx
+                       .method_map
+                       .borrow()
+                       .find(&method_call)
+                       .map(|method| method.ty);
+    let elt_datum = match method_ty {
+        Some(method_ty) => {
+            let base_datum = unpack_datum!(bcx, trans(bcx, base));
 
-    // Translate index expression and cast to a suitable LLVM integer.
-    // Rust is less strict than LLVM in this regard.
-    let ix_datum = unpack_datum!(bcx, trans(bcx, idx));
-    let ix_val = ix_datum.to_llscalarish(bcx);
-    let ix_size = machine::llbitsize_of_real(bcx.ccx(), val_ty(ix_val));
-    let int_size = machine::llbitsize_of_real(bcx.ccx(), ccx.int_type);
-    let ix_val = {
-        if ix_size < int_size {
-            if ty::type_is_signed(expr_ty(bcx, idx)) {
-                SExt(bcx, ix_val, ccx.int_type)
-            } else { ZExt(bcx, ix_val, ccx.int_type) }
-        } else if ix_size > int_size {
-            Trunc(bcx, ix_val, ccx.int_type)
-        } else {
-            ix_val
+            // Translate index expression.
+            let ix_datum = unpack_datum!(bcx, trans(bcx, idx));
+
+            // Overloaded. Evaluate `trans_overloaded_op`, which will
+            // invoke the user's index() method, which basically yields
+            // a `&T` pointer.  We can then proceed down the normal
+            // path (below) to dereference that `&T`.
+            let val =
+                unpack_result!(bcx,
+                               trans_overloaded_op(bcx,
+                                                   index_expr,
+                                                   method_call,
+                                                   base_datum,
+                                                   Some((ix_datum, idx.id)),
+                                                   None));
+            let ref_ty = ty::ty_fn_ret(monomorphize_type(bcx, method_ty));
+            let elt_ty = match ty::deref(ref_ty, true) {
+                None => {
+                    bcx.tcx().sess.span_bug(index_expr.span,
+                                            "index method didn't return a \
+                                             dereferenceable type?!")
+                }
+                Some(elt_tm) => elt_tm.ty,
+            };
+            Datum::new(val, elt_ty, LvalueExpr)
+        }
+        None => {
+            let base_datum = unpack_datum!(bcx, trans_to_lvalue(bcx,
+                                                                base,
+                                                                "index"));
+
+            // Translate index expression and cast to a suitable LLVM integer.
+            // Rust is less strict than LLVM in this regard.
+            let ix_datum = unpack_datum!(bcx, trans(bcx, idx));
+            let ix_val = ix_datum.to_llscalarish(bcx);
+            let ix_size = machine::llbitsize_of_real(bcx.ccx(),
+                                                     val_ty(ix_val));
+            let int_size = machine::llbitsize_of_real(bcx.ccx(),
+                                                      ccx.int_type);
+            let ix_val = {
+                if ix_size < int_size {
+                    if ty::type_is_signed(expr_ty(bcx, idx)) {
+                        SExt(bcx, ix_val, ccx.int_type)
+                    } else { ZExt(bcx, ix_val, ccx.int_type) }
+                } else if ix_size > int_size {
+                    Trunc(bcx, ix_val, ccx.int_type)
+                } else {
+                    ix_val
+                }
+            };
+
+            let vt =
+                tvec::vec_types(bcx,
+                                ty::sequence_element_type(bcx.tcx(),
+                                                          base_datum.ty));
+            base::maybe_name_value(bcx.ccx(), vt.llunit_size, "unit_sz");
+
+            let (base, len) = base_datum.get_vec_base_and_len(bcx);
+
+            debug!("trans_index: base {}", bcx.val_to_str(base));
+            debug!("trans_index: len {}", bcx.val_to_str(len));
+
+            let bounds_check = ICmp(bcx, lib::llvm::IntUGE, ix_val, len);
+            let expect = ccx.get_intrinsic(&("llvm.expect.i1"));
+            let expected = Call(bcx,
+                                expect,
+                                [bounds_check, C_bool(ccx, false)],
+                                []);
+            bcx = with_cond(bcx, expected, |bcx| {
+                controlflow::trans_fail_bounds_check(bcx,
+                                                     index_expr.span,
+                                                     ix_val,
+                                                     len)
+            });
+            let elt = InBoundsGEP(bcx, base, [ix_val]);
+            let elt = PointerCast(bcx, elt, vt.llunit_ty.ptr_to());
+            Datum::new(elt, vt.unit_ty, LvalueExpr)
         }
     };
 
-    let vt = tvec::vec_types(bcx, ty::sequence_element_type(bcx.tcx(), base_datum.ty));
-    base::maybe_name_value(bcx.ccx(), vt.llunit_size, "unit_sz");
-
-    let (base, len) = base_datum.get_vec_base_and_len(bcx);
-
-    debug!("trans_index: base {}", bcx.val_to_str(base));
-    debug!("trans_index: len {}", bcx.val_to_str(len));
-
-    let bounds_check = ICmp(bcx, lib::llvm::IntUGE, ix_val, len);
-    let expect = ccx.get_intrinsic(&("llvm.expect.i1"));
-    let expected = Call(bcx, expect, [bounds_check, C_bool(ccx, false)], []);
-    let bcx = with_cond(bcx, expected, |bcx| {
-            controlflow::trans_fail_bounds_check(bcx, index_expr.span, ix_val, len)
-        });
-    let elt = InBoundsGEP(bcx, base, [ix_val]);
-    let elt = PointerCast(bcx, elt, vt.llunit_ty.ptr_to());
-    DatumBlock::new(bcx, Datum::new(elt, vt.unit_ty, LvalueExpr))
+    DatumBlock::new(bcx, elt_datum)
 }
 
 fn trans_def<'a>(bcx: &'a Block<'a>,
@@ -1756,7 +1811,7 @@ fn deref_once<'a>(bcx: &'a Block<'a>,
         Some(method_ty) => {
             // Overloaded. Evaluate `trans_overloaded_op`, which will
             // invoke the user's deref() method, which basically
-            // converts from the `Shaht<T>` pointer that we have into
+            // converts from the `Smaht<T>` pointer that we have into
             // a `&T` pointer.  We can then proceed down the normal
             // path (below) to dereference that `&T`.
             let datum = match method_call.adjustment {
