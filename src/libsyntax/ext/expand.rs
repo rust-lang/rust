@@ -21,6 +21,7 @@ use codemap;
 use codemap::{Span, Spanned, ExpnInfo, NameAndSpan, MacroBang, MacroAttribute};
 use crateid::CrateId;
 use ext::base::*;
+use fold;
 use fold::*;
 use parse;
 use parse::token::{fresh_mark, fresh_name, intern};
@@ -856,15 +857,36 @@ impl<'a> Folder for IdentRenamer<'a> {
     }
 }
 
-fn new_span(cx: &ExtCtxt, sp: Span) -> Span {
-    /* this discards information in the case of macro-defining macros */
-    Span {
-        lo: sp.lo,
-        hi: sp.hi,
-        expn_info: cx.backtrace(),
+/// A tree-folder that applies every rename in its list to
+/// the idents that are in PatIdent patterns. This is more narrowly
+/// focused than IdentRenamer, and is needed for FnDecl,
+/// where we want to rename the args but not the fn name or the generics etc.
+pub struct PatIdentRenamer<'a> {
+    renames: &'a mtwt::RenameList,
+}
+
+impl<'a> Folder for PatIdentRenamer<'a> {
+    fn fold_pat(&mut self, pat: Gc<ast::Pat>) -> Gc<ast::Pat> {
+        match pat.node {
+            ast::PatIdent(binding_mode, Spanned{span: ref sp, node: id}, ref sub) => {
+                let new_ident = Ident{name: id.name,
+                                      ctxt: mtwt::new_renames(self.renames, id.ctxt)};
+                let new_node =
+                    ast::PatIdent(binding_mode,
+                                  Spanned{span: self.new_span(*sp), node: new_ident},
+                                  sub.map(|p| self.fold_pat(p)));
+                box(GC) ast::Pat {
+                    id: pat.id,
+                    span: self.new_span(pat.span),
+                    node: new_node,
+                }
+            },
+            _ => noop_fold_pat(pat, self)
+        }
     }
 }
 
+/// A tree-folder that performs macro expansion
 pub struct MacroExpander<'a, 'b> {
     pub extsbox: SyntaxEnv,
     pub cx: &'a mut ExtCtxt<'b>,
@@ -897,6 +919,15 @@ impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
 
     fn new_span(&mut self, span: Span) -> Span {
         new_span(self.cx, span)
+    }
+}
+
+fn new_span(cx: &ExtCtxt, sp: Span) -> Span {
+    /* this discards information in the case of macro-defining macros */
+    Span {
+        lo: sp.lo,
+        hi: sp.hi,
+        expn_info: cx.backtrace(),
     }
 }
 
