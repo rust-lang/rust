@@ -344,15 +344,16 @@ fn expand_item(it: Gc<ast::Item>, fld: &mut MacroExpander)
 
 fn expand_item_modifiers(mut it: Gc<ast::Item>, fld: &mut MacroExpander)
                          -> Gc<ast::Item> {
-    let (modifiers, attrs) = it.attrs.partitioned(|attr| {
+    // partition the attributes into ItemModifiers and others
+    let (modifiers, other_attrs) = it.attrs.partitioned(|attr| {
         match fld.extsbox.find(&intern(attr.name().get())) {
             Some(&ItemModifier(_)) => true,
             _ => false
         }
     });
-
+    // update the attrs, leave everything else alone. Is this mutation really a good idea?
     it = box(GC) ast::Item {
-        attrs: attrs,
+        attrs: other_attrs,
         ..(*it).clone()
     };
 
@@ -1047,13 +1048,14 @@ fn original_span(cx: &ExtCtxt) -> Gc<codemap::ExpnInfo> {
 #[cfg(test)]
 mod test {
     use super::{pattern_bindings, expand_crate, contains_macro_escape};
-    use super::{PatIdentFinder};
+    use super::{PatIdentFinder, IdentRenamer, PatIdentRenamer};
     use ast;
     use ast::{Attribute_, AttrOuter, MetaWord};
     use attr;
     use codemap;
     use codemap::Spanned;
     use ext::mtwt;
+    use fold::Folder;
     use parse;
     use parse::token;
     use util::parser_testing::{string_to_parser};
@@ -1091,7 +1093,24 @@ mod test {
         path_finder.path_accumulator
     }
 
+    /// A Visitor that extracts the identifiers from a thingy.
+    // as a side note, I'm starting to want to abstract over these....
+    struct IdentFinder{
+        ident_accumulator: Vec<ast::Ident>
+    }
 
+    impl Visitor<()> for IdentFinder {
+        fn visit_ident(&mut self, _: codemap::Span, id: ast::Ident, _: ()){
+            self.ident_accumulator.push(id);
+        }
+    }
+
+    /// Find the idents in a crate
+    fn crate_idents(the_crate: &ast::Crate) -> Vec<ast::Ident> {
+        let mut ident_finder = IdentFinder{ident_accumulator: Vec::new()};
+        visit::walk_crate(&mut ident_finder, the_crate, ());
+        ident_finder.ident_accumulator
+    }
 
     // these following tests are quite fragile, in that they don't test what
     // *kind* of failure occurs.
@@ -1316,7 +1335,7 @@ mod test {
     // but *shouldn't* bind because it was inserted by a different macro....
     // can't write this test case until we have macro-generating macros.
 
-    // FIXME #9383 : lambda var hygiene
+    // lambda var hygiene
     // expands to fn q(x_1:int){fn g(x_2:int){x_2 + x_1};}
     #[test]
     fn issue_9383(){
@@ -1375,9 +1394,9 @@ mod test {
                         assert_eq!(varref_marks,binding_marks.clone());
                     }
                 } else {
+                    let varref_name = mtwt::resolve(varref.segments.get(0).identifier);
                     let fail = (varref.segments.len() == 1)
-                        && (mtwt::resolve(varref.segments.get(0).identifier)
-                            == binding_name);
+                        && (varref_name == binding_name);
                     // temp debugging:
                     if fail {
                         let varref_idents : Vec<ast::Ident>
@@ -1388,7 +1407,8 @@ mod test {
                         println!("text of test case: \"{}\"", teststr);
                         println!("");
                         println!("uh oh, matches but shouldn't:");
-                        println!("varref: {}",varref_idents);
+                        println!("varref #{}: {}, resolves to {}",idx, varref_idents,
+                                 varref_name);
                         // good lord, you can't make a path with 0 segments, can you?
                         let string = token::get_ident(varref.segments
                                                             .get(0)
@@ -1396,7 +1416,9 @@ mod test {
                         println!("varref's first segment's uint: {}, and string: \"{}\"",
                                  varref.segments.get(0).identifier.name,
                                  string.get());
-                        println!("binding: {}", *bindings.get(binding_idx));
+                        println!("binding #{}: {}, resolves to {}",
+                                 binding_idx, *bindings.get(binding_idx),
+                                 binding_name);
                         mtwt::with_sctable(|x| mtwt::display_sctable(x));
                     }
                     assert!(!fail);
@@ -1459,13 +1481,43 @@ foo_module!()
     // 'None' is listed as an identifier pattern because we don't yet know that
     // it's the name of a 0-ary variant, and that 'i' appears twice in succession.
     #[test]
-    fn crate_idents(){
+    fn crate_bindings_test(){
         let the_crate = string_to_crate("fn main (a : int) -> int {|b| {
         match 34 {None => 3, Some(i) | i => j, Foo{k:z,l:y} => \"banana\"}} }".to_string());
         let idents = crate_bindings(&the_crate);
         assert_eq!(idents, strs_to_idents(vec!("a","b","None","i","i","z","y")));
     }
 
-    //
+    // test the IdentRenamer directly
+    #[test]
+    fn ident_renamer_test () {
+        let the_crate = string_to_crate("fn f(x : int){let x = x; x}".to_string());
+        let f_ident = token::str_to_ident("f");
+        let x_ident = token::str_to_ident("x");
+        let int_ident = token::str_to_ident("int");
+        let renames = vec!((x_ident,16));
+        let mut renamer = IdentRenamer{renames: &renames};
+        let renamed_crate = renamer.fold_crate(the_crate);
+        let idents = crate_idents(&renamed_crate);
+        let resolved : Vec<ast::Name> = idents.iter().map(|id| mtwt::resolve(*id)).collect();
+        assert_eq!(resolved,vec!(f_ident.name,16,int_ident.name,16,16,16));
+    }
+
+    // test the PatIdentRenamer; only PatIdents get renamed
+    #[test]
+    fn pat_ident_renamer_test () {
+        let the_crate = string_to_crate("fn f(x : int){let x = x; x}".to_string());
+        let f_ident = token::str_to_ident("f");
+        let x_ident = token::str_to_ident("x");
+        let int_ident = token::str_to_ident("int");
+        let renames = vec!((x_ident,16));
+        let mut renamer = PatIdentRenamer{renames: &renames};
+        let renamed_crate = renamer.fold_crate(the_crate);
+        let idents = crate_idents(&renamed_crate);
+        let resolved : Vec<ast::Name> = idents.iter().map(|id| mtwt::resolve(*id)).collect();
+        let x_name = x_ident.name;
+        assert_eq!(resolved,vec!(f_ident.name,16,int_ident.name,16,x_name,x_name));
+    }
+
 
 }
