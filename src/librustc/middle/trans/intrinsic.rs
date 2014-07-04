@@ -188,11 +188,10 @@ pub fn trans_intrinsic(ccx: &CrateContext,
     let arena = TypedArena::new();
     let fcx = new_fn_ctxt(ccx, decl, item.id, false, output_type,
                           substs, Some(item.span), &arena);
-    init_function(&fcx, true, output_type);
+    let mut bcx = init_function(&fcx, true, output_type);
 
     set_always_inline(fcx.llfn);
 
-    let mut bcx = fcx.entry_bcx.borrow().clone().unwrap();
     let first_real_arg = fcx.arg_pos(0u);
 
     let name = token::get_ident(item.ident);

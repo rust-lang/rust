@@ -239,8 +239,6 @@ pub struct FunctionContext<'a> {
     // always be Some.
     pub llretptr: Cell<Option<ValueRef>>,
 
-    pub entry_bcx: RefCell<Option<&'a Block<'a>>>,
-
     // These pub elements: "hoisted basic blocks" containing
     // administrative activities that have to happen in only one place in
     // the function, due to LLVM's quirks.
@@ -322,8 +320,6 @@ impl<'a> FunctionContext<'a> {
                                                      .get()
                                                      .unwrap());
         }
-        // Remove the cycle between fcx and bcx, so memory can be freed
-        *self.entry_bcx.borrow_mut() = None;
     }
 
     pub fn get_llreturn(&self) -> BasicBlockRef {

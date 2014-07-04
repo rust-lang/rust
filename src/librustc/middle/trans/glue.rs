@@ -490,7 +490,7 @@ fn make_generic_glue(ccx: &CrateContext,
     let fcx = new_fn_ctxt(ccx, llfn, -1, false, ty::mk_nil(),
                           &empty_param_substs, None, &arena);
 
-    init_function(&fcx, false, ty::mk_nil());
+    let bcx = init_function(&fcx, false, ty::mk_nil());
 
     lib::llvm::SetLinkage(llfn, lib::llvm::InternalLinkage);
     ccx.stats.n_glues_created.set(ccx.stats.n_glues_created.get() + 1u);
@@ -502,7 +502,6 @@ fn make_generic_glue(ccx: &CrateContext,
     // llfn is expected be declared to take a parameter of the appropriate
     // type, so we don't need to explicitly cast the function parameter.
 
-    let bcx = fcx.entry_bcx.borrow().clone().unwrap();
     let llrawptr0 = unsafe { llvm::LLVMGetParam(llfn, fcx.arg_pos(0) as c_uint) };
     let bcx = helper(bcx, llrawptr0, t);
     finish_fn(&fcx, bcx);
