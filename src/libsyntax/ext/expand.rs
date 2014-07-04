@@ -229,6 +229,20 @@ pub fn expand_expr(e: Gc<ast::Expr>, fld: &mut MacroExpander) -> Gc<ast::Expr> {
             fld.cx.expr(e.span, ast::ExprLoop(loop_block, opt_ident))
         }
 
+        ast::ExprFnBlock(fn_decl, block) => {
+            let (rewritten_fn_decl, rewritten_block)
+                = expand_and_rename_fn_decl_and_block(fn_decl, block, fld);
+            let new_node = ast::ExprFnBlock(rewritten_fn_decl, rewritten_block);
+            box(GC) ast::Expr{id:e.id, node: new_node, span: fld.new_span(e.span)}
+        }
+
+        ast::ExprProc(fn_decl, block) => {
+            let (rewritten_fn_decl, rewritten_block)
+                = expand_and_rename_fn_decl_and_block(fn_decl, block, fld);
+            let new_node = ast::ExprProc(rewritten_fn_decl, rewritten_block);
+            box(GC) ast::Expr{id:e.id, node: new_node, span: fld.new_span(e.span)}
+        }
+
         _ => noop_fold_expr(e, fld)
     }
 }
@@ -1387,7 +1401,7 @@ mod test {
             0)
     }
 
-    // closure arg hygiene
+    // closure arg hygiene (ExprFnBlock)
     // expands to fn f(){(|x_1 : int| {(x_2 + x_1)})(3);}
     #[test] fn closure_arg_hygiene(){
         run_renaming_test(
