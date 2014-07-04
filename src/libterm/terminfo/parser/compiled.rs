@@ -14,7 +14,6 @@
 
 use std::collections::HashMap;
 use std::io;
-use std::str;
 use super::super::TermInfo;
 
 // These are the orders ncurses uses in its compiled format (as of 5.9). Not sure if portable.

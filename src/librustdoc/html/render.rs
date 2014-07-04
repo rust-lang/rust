@@ -723,9 +723,9 @@ impl<'a> SourceCollector<'a> {
 
         // Remove the utf-8 BOM if any
         let contents = if contents.starts_with("\ufeff") {
-            contents.as_slice().slice_from(3)
+            contents.slice_from(3)
         } else {
-            contents.as_slice()
+            contents
         };
 
         // Create the intermediate directories

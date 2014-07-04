@@ -31,7 +31,6 @@ extern crate libc;
 use std::io::BufReader;
 use std::num;
 use std::string::String;
-use std::str;
 
 static NSEC_PER_SEC: i32 = 1_000_000_000_i32;
 

@@ -99,7 +99,7 @@ impl String {
     ///
     /// ```rust
     /// let input = b"Hello \xF0\x90\x80World";
-    /// let output = std::str::from_utf8_lossy(input);
+    /// let output = String::from_utf8_lossy(input);
     /// assert_eq!(output.as_slice(), "Hello \uFFFDWorld");
     /// ```
     pub fn from_utf8_lossy<'a>(v: &'a [u8]) -> MaybeOwned<'a> {
@@ -218,18 +218,18 @@ impl String {
         Owned(res.into_string())
     }
 
-    /// Decode a UTF-16 encoded vector `v` into a string, returning `None`
+    /// Decode a UTF-16 encoded vector `v` into a `String`, returning `None`
     /// if `v` contains any invalid data.
     ///
     /// # Example
     ///
     /// ```rust
-    /// // ð„žmusic
+    /// // 𝄞music
     /// let mut v = [0xD834, 0xDD1E, 0x006d, 0x0075,
     ///              0x0073, 0x0069, 0x0063];
-    /// assert_eq!(String::from_utf16(v), Some("ð„žmusic".to_string()));
+    /// assert_eq!(String::from_utf16(v), Some("𝄞music".to_string()));
     ///
-    /// // ð„žmu<invalid>ic
+    /// // 𝄞mu<invalid>ic
     /// v[4] = 0xD800;
     /// assert_eq!(String::from_utf16(v), None);
     /// ```
@@ -249,13 +249,13 @@ impl String {
     ///
     /// # Example
     /// ```rust
-    /// // ð„žmus<invalid>ic<invalid>
+    /// // 𝄞mus<invalid>ic<invalid>
     /// let v = [0xD834, 0xDD1E, 0x006d, 0x0075,
     ///          0x0073, 0xDD1E, 0x0069, 0x0063,
     ///          0xD834];
     ///
     /// assert_eq!(String::from_utf16_lossy(v),
-    ///            "ð„žmus\uFFFDic\uFFFD".to_string());
+    ///            "𝄞mus\uFFFDic\uFFFD".to_string());
     /// ```
     pub fn from_utf16_lossy(v: &[u16]) -> String {
         str::utf16_items(v).map(|c| c.to_char_lossy()).collect()
@@ -575,8 +575,9 @@ mod tests {
 
     use Mutable;
     use str;
-    use str::{Str, StrSlice, MaybeOwned, Owned, Slice};
+    use str::{Str, StrSlice, Owned, Slice};
     use super::String;
+    use vec::Vec;
 
     #[test]
     fn test_from_str() {
@@ -587,10 +588,10 @@ mod tests {
     #[test]
     fn test_from_utf8() {
         let xs = Vec::from_slice(b"hello");
-        assert_eq!(String::from_utf8(xs), Ok("hello".to_string()));
+        assert_eq!(String::from_utf8(xs), Ok(String::from_str("hello")));
 
-        let xs = Vec::from_slice("à¸¨à¹„à¸—à¸¢ä¸­åŽViá»‡t Nam".as_bytes());
-        assert_eq!(String::from_utf8(xs), Ok("à¸¨à¹„à¸—à¸¢ä¸­åŽViá»‡t Nam".to_string()));
+        let xs = Vec::from_slice("ศไทย中华Việt Nam".as_bytes());
+        assert_eq!(String::from_utf8(xs), Ok(String::from_str("ศไทย中华Việt Nam")));
 
         let xs = Vec::from_slice(b"hello\xFF");
         assert_eq!(String::from_utf8(xs),
@@ -602,21 +603,24 @@ mod tests {
         let xs = b"hello";
         assert_eq!(String::from_utf8_lossy(xs), Slice("hello"));
 
-        let xs = "à¸¨à¹„à¸—à¸¢ä¸­åŽViá»‡t Nam".as_bytes();
-        assert_eq!(String::from_utf8_lossy(xs), Slice("à¸¨à¹„à¸—à¸¢ä¸­åŽViá»‡t Nam"));
+        let xs = "ศไทย中华Việt Nam".as_bytes();
+        assert_eq!(String::from_utf8_lossy(xs), Slice("ศไทย中华Việt Nam"));
 
         let xs = b"Hello\xC2 There\xFF Goodbye";
-        assert_eq!(String::from_utf8_lossy(xs), Owned(String::from_str("Hello\uFFFD There\uFFFD Goodbye")));
+        assert_eq!(String::from_utf8_lossy(xs),
+                   Owned(String::from_str("Hello\uFFFD There\uFFFD Goodbye")));
 
         let xs = b"Hello\xC0\x80 There\xE6\x83 Goodbye";
         assert_eq!(String::from_utf8_lossy(xs),
                    Owned(String::from_str("Hello\uFFFD\uFFFD There\uFFFD Goodbye")));
 
         let xs = b"\xF5foo\xF5\x80bar";
-        assert_eq!(String::from_utf8_lossy(xs), Owned(String::from_str("\uFFFDfoo\uFFFD\uFFFDbar")));
+        assert_eq!(String::from_utf8_lossy(xs),
+                   Owned(String::from_str("\uFFFDfoo\uFFFD\uFFFDbar")));
 
         let xs = b"\xF1foo\xF1\x80bar\xF1\x80\x80baz";
-        assert_eq!(String::from_utf8_lossy(xs), Owned(String::from_str("\uFFFDfoo\uFFFDbar\uFFFDbaz")));
+        assert_eq!(String::from_utf8_lossy(xs),
+                   Owned(String::from_str("\uFFFDfoo\uFFFDbar\uFFFDbaz")));
 
         let xs = b"\xF4foo\xF4\x80bar\xF4\xBFbaz";
         assert_eq!(String::from_utf8_lossy(xs),
@@ -635,13 +639,13 @@ mod tests {
     #[test]
     fn test_from_utf16() {
         let pairs =
-            [(String::from_str("ð…ðŒ¿ðŒ»ð†ðŒ¹ðŒ»ðŒ°\n"),
+            [(String::from_str("𐍅𐌿𐌻𐍆𐌹𐌻𐌰\n"),
               vec![0xd800_u16, 0xdf45_u16, 0xd800_u16, 0xdf3f_u16,
                 0xd800_u16, 0xdf3b_u16, 0xd800_u16, 0xdf46_u16,
                 0xd800_u16, 0xdf39_u16, 0xd800_u16, 0xdf3b_u16,
                 0xd800_u16, 0xdf30_u16, 0x000a_u16]),
 
-             (String::from_str("ð’ð‘‰ð®ð‘€ð²ð‘‹ ðð²ð‘\n"),
+             (String::from_str("𐐒𐑉𐐮𐑀𐐲𐑋 𐐏𐐲𐑍\n"),
               vec![0xd801_u16, 0xdc12_u16, 0xd801_u16,
                 0xdc49_u16, 0xd801_u16, 0xdc2e_u16, 0xd801_u16,
                 0xdc40_u16, 0xd801_u16, 0xdc32_u16, 0xd801_u16,
@@ -649,7 +653,7 @@ mod tests {
                 0xd801_u16, 0xdc32_u16, 0xd801_u16, 0xdc4d_u16,
                 0x000a_u16]),
 
-             (String::from_str("ðŒ€ðŒ–ðŒ‹ðŒ„ðŒ‘ðŒ‰Â·ðŒŒðŒ„ðŒ•ðŒ„ðŒ‹ðŒ‰ðŒ‘\n"),
+             (String::from_str("𐌀𐌖𐌋𐌄𐌑𐌉·𐌌𐌄𐌕𐌄𐌋𐌉𐌑\n"),
               vec![0xd800_u16, 0xdf00_u16, 0xd800_u16, 0xdf16_u16,
                 0xd800_u16, 0xdf0b_u16, 0xd800_u16, 0xdf04_u16,
                 0xd800_u16, 0xdf11_u16, 0xd800_u16, 0xdf09_u16,
@@ -658,7 +662,7 @@ mod tests {
                 0xdf04_u16, 0xd800_u16, 0xdf0b_u16, 0xd800_u16,
                 0xdf09_u16, 0xd800_u16, 0xdf11_u16, 0x000a_u16 ]),
 
-             (String::from_str("ð’‹ð’˜ð’ˆð’‘ð’›ð’’ ð’•ð’“ ð’ˆð’šð’ ð’ð’œð’’ð’–ð’† ð’•ð’†\n"),
+             (String::from_str("𐒋𐒘𐒈𐒑𐒛𐒒 𐒕𐒓 𐒈𐒚𐒍 𐒏𐒜𐒒𐒖𐒆 𐒕𐒆\n"),
               vec![0xd801_u16, 0xdc8b_u16, 0xd801_u16, 0xdc98_u16,
                 0xd801_u16, 0xdc88_u16, 0xd801_u16, 0xdc91_u16,
                 0xd801_u16, 0xdc9b_u16, 0xd801_u16, 0xdc92_u16,
@@ -718,7 +722,7 @@ mod tests {
 
         // general
         assert_eq!(String::from_utf16_lossy([0xD800, 0xd801, 0xdc8b, 0xD800]),
-                   String::from_str("\uFFFDð’‹\uFFFD"));
+                   String::from_str("\uFFFD𐒋\uFFFD"));
     }
 
     #[test]
@@ -852,7 +856,8 @@ mod tests {
 
     #[bench]
     fn from_utf8_lossy_100_multibyte(b: &mut Bencher) {
-        let s = "ðŒ€ðŒ–ðŒ‹ðŒ„ðŒ‘ðŒ‰à¸›à¸£Ø¯ÙˆÙ„Ø© Ø§Ù„ÙƒÙˆÙŠØªà¸—à¸¨à¹„à¸—à¸¢ä¸­åŽð…ðŒ¿ðŒ»ð†ðŒ¹ðŒ»ðŒ°".as_bytes();
+        let s = "ðŒ€ðŒ–ðŒ‹ðŒ„ðŒ‘ðŒ‰à¸›à¸£Ø¯ÙˆÙ„Ø©\
+            Ø§Ù„ÙƒÙˆÙŠØªà¸—à¸¨à¹„à¸—à¸¢ä¸­åŽð…ðŒ¿ðŒ»ð†ðŒ¹ðŒ»ðŒ°".as_bytes();
         assert_eq!(100, s.len());
         b.iter(|| {
             let _ = String::from_utf8_lossy(s);

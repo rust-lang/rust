@@ -13,7 +13,6 @@ use std::cmp;
 use std::fmt;
 use std::iter;
 use std::num;
-use std::str;
 
 /// Static data containing Unicode ranges for general categories and scripts.
 use unicode::regex::{UNICODE_CLASSES, PERLD, PERLS, PERLW};

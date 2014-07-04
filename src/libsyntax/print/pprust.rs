@@ -30,7 +30,6 @@ use std::gc::Gc;
 use std::io::{IoResult, MemWriter};
 use std::io;
 use std::mem;
-use std::str;
 
 pub enum AnnNode<'a> {
     NodeBlock(&'a ast::Block),

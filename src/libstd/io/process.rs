@@ -14,7 +14,6 @@
 
 use prelude::*;
 
-use str;
 use fmt;
 use os;
 use io::{IoResult, IoError};

@@ -94,66 +94,26 @@ pub use unicode::{Words, UnicodeStrSlice};
 Section: Creating a string
 */
 
-/// Consumes a vector of bytes to create a new utf-8 string.
-///
-/// Returns `Err` with the original vector if the vector contains invalid
-/// UTF-8.
-///
-/// # Example
-///
-/// ```rust
-/// use std::str;
-/// let hello_vec = vec![104, 101, 108, 108, 111];
-/// let string = str::from_utf8_owned(hello_vec);
-/// assert_eq!(string, Ok("hello".to_string()));
-/// ```
+/// Deprecated. Replaced by `String::from_utf8`
 #[deprecated = "Replaced by `String::from_utf8`"]
 pub fn from_utf8_owned(vv: Vec<u8>) -> Result<String, Vec<u8>> {
     String::from_utf8(vv)
 }
 
-/// Convert a byte to a UTF-8 string
-///
-/// # Failure
-///
-/// Fails if invalid UTF-8
-///
-/// # Example
-///
-/// ```rust
-/// use std::str;
-/// let string = str::from_byte(104);
-/// assert_eq!(string.as_slice(), "h");
-/// ```
+/// Deprecated. Replaced by `String::from_byte`
 #[deprecated = "Replaced by String::from_byte"]
 pub fn from_byte(b: u8) -> String {
     assert!(b < 128u8);
     String::from_char(1, b as char)
 }
 
-/// Convert a char to a string
-///
-/// # Example
-///
-/// ```rust
-/// use std::str;
-/// let string = str::from_char('b');
-/// assert_eq!(string.as_slice(), "b");
-/// ```
+/// Deprecated. Use `String::from_char` or `char::to_string()` instead
 #[deprecated = "use String::from_char or char.to_string()"]
 pub fn from_char(ch: char) -> String {
     String::from_char(1, ch)
 }
 
-/// Convert a vector of chars to a string
-///
-/// # Example
-///
-/// ```rust
-/// let chars = ['h', 'e', 'l', 'l', 'o'];
-/// let string = String::from_chars(chars);
-/// assert_eq!(string.as_slice(), "hello");
-/// ```
+/// Deprecated. Replaced by `String::from_chars`
 #[deprecated = "use String::from_chars instead"]
 pub fn from_chars(chs: &[char]) -> String {
     chs.iter().map(|c| *c).collect()
@@ -649,7 +609,6 @@ pub mod raw {
     #[test]
     fn test_from_buf_len() {
         use slice::ImmutableVector;
-        use str::StrAllocating;
 
         unsafe {
             let a = vec![65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 0u8];
@@ -854,8 +813,7 @@ mod tests {
     use std::default::Default;
     use std::char::Char;
     use std::clone::Clone;
-    use std::cmp::{Equal, Greater, Less, Ord, Eq, PartialOrd, PartialEq, Equiv};
-    use std::result::{Ok, Err};
+    use std::cmp::{Equal, Greater, Less, Ord, PartialOrd, Equiv};
     use std::option::{Some, None};
     use std::ptr::RawPtr;
     use std::iter::{Iterator, DoubleEndedIterator};
@@ -1546,7 +1504,7 @@ mod tests {
         let mut pos = 0;
         for ch in v.iter() {
             assert!(s.char_at(pos) == *ch);
-            pos += from_char(*ch).len();
+            pos += String::from_char(1, *ch).len();
         }
     }
 
@@ -1557,7 +1515,7 @@ mod tests {
         let mut pos = s.len();
         for ch in v.iter().rev() {
             assert!(s.char_at_reverse(pos) == *ch);
-            pos -= from_char(*ch).len();
+            pos -= String::from_char(1, *ch).len();
         }
     }
 
@@ -1996,10 +1954,8 @@ String::from_str("\u1111\u1171\u11b6"));
 mod bench {
     use test::Bencher;
     use super::*;
-    use vec::Vec;
     use std::iter::{Iterator, DoubleEndedIterator};
     use std::collections::Collection;
-    use std::slice::Vector;
 
     #[bench]
     fn char_iterator(b: &mut Bencher) {

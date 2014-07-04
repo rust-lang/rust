@@ -457,7 +457,6 @@ mod tests {
     use stats::write_5_number_summary;
     use stats::write_boxplot;
     use std::io;
-    use std::str;
     use std::f64;
 
     macro_rules! assert_approx_eq(

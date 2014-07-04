@@ -29,7 +29,6 @@ extern crate time;
 
 use std::io;
 use std::io::{File, MemWriter};
-use std::str;
 use std::gc::Gc;
 use serialize::{json, Decodable, Encodable};
 use externalfiles::ExternalHtml;

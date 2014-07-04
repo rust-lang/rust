@@ -151,7 +151,6 @@ pub mod win32 {
     use slice::{MutableVector, ImmutableVector};
     use string::String;
     use str::StrSlice;
-    use str;
     use vec::Vec;
 
     pub fn fill_utf16_buf_and_decode(f: |*mut u16, DWORD| -> DWORD)
