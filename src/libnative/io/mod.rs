@@ -69,6 +69,10 @@ pub mod pipe;
 #[path = "pipe_win32.rs"]
 pub mod pipe;
 
+#[cfg(windows)]
+#[path = "tty_win32.rs"]
+mod tty;
+
 #[cfg(unix)]    #[path = "c_unix.rs"]  mod c;
 #[cfg(windows)] #[path = "c_win32.rs"] mod c;
 
@@ -280,15 +284,27 @@ impl rtio::IoFactory for IoFactory {
     fn pipe_open(&mut self, fd: c_int) -> IoResult<Box<rtio::RtioPipe + Send>> {
         Ok(box file::FileDesc::new(fd, true) as Box<rtio::RtioPipe + Send>)
     }
+    #[cfg(unix)]
     fn tty_open(&mut self, fd: c_int, _readable: bool)
                 -> IoResult<Box<rtio::RtioTTY + Send>> {
-        #[cfg(unix)] use ERROR = libc::ENOTTY;
-        #[cfg(windows)] use ERROR = libc::ERROR_INVALID_HANDLE;
         if unsafe { libc::isatty(fd) } != 0 {
             Ok(box file::FileDesc::new(fd, true) as Box<rtio::RtioTTY + Send>)
         } else {
             Err(IoError {
-                code: ERROR as uint,
+                code: libc::ENOTTY as uint,
+                extra: 0,
+                detail: None,
+            })
+        }
+    }
+    #[cfg(windows)]
+    fn tty_open(&mut self, fd: c_int, _readable: bool)
+                -> IoResult<Box<rtio::RtioTTY + Send>> {
+        if tty::is_tty(fd) {
+            Ok(box tty::WindowsTTY::new(fd) as Box<rtio::RtioTTY + Send>)
+        } else {
+            Err(IoError {
+                code: libc::ERROR_INVALID_HANDLE as uint,
                 extra: 0,
                 detail: None,
             })
