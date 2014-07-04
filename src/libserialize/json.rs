@@ -299,11 +299,20 @@ fn escape_char(writer: &mut io::Writer, v: char) -> Result<(), io::IoError> {
     escape_bytes(writer, buf)
 }
 
-fn spaces(writer: &mut io::Writer, n: uint) -> Result<(), io::IoError> {
-    for _ in range(0, n) {
-        try!(writer.write_str(" "));
+fn spaces(wr: &mut io::Writer, mut n: uint) -> Result<(), io::IoError> {
+    static len: uint = 16;
+    static buf: [u8, ..len] = [b' ', ..len];
+
+    while n >= len {
+        try!(wr.write(buf));
+        n -= len;
     }
-    Ok(())
+
+    if n > 0 {
+        wr.write(buf.slice_to(n))
+    } else {
+        Ok(())
+    }
 }
 
 fn fmt_number_or_null(v: f64) -> String {
