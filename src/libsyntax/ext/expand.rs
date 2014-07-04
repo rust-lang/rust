@@ -386,6 +386,19 @@ fn expand_item_modifiers(mut it: Gc<ast::Item>, fld: &mut MacroExpander)
     expand_item_modifiers(it, fld)
 }
 
+/// Expand item_underscore
+fn expand_item_underscore(item: &ast::Item_, fld: &mut MacroExpander) -> ast::Item_ {
+    match *item {
+        ast::ItemFn(decl, fn_style, abi, ref generics, body) => {
+            let (rewritten_fn_decl, rewritten_body)
+                = expand_and_rename_fn_decl_and_block(decl,body,fld);
+            let expanded_generics = fold::fold_generics(generics,fld);
+            ast::ItemFn(rewritten_fn_decl, fn_style, abi, expanded_generics, rewritten_body)
+        }
+        _ => noop_fold_item_underscore(&*item, fld)
+    }
+}
+
 // does this attribute list contain "macro_escape" ?
 fn contains_macro_escape(attrs: &[ast::Attribute]) -> bool {
     attr::contains_name(attrs, "macro_escape")
@@ -656,6 +669,7 @@ fn expand_non_macro_stmt(s: &Stmt, fld: &mut MacroExpander)
     }
 }
 
+// expand the arm of a 'match', renaming for macro hygiene
 fn expand_arm(arm: &ast::Arm, fld: &mut MacroExpander) -> ast::Arm {
     // expand pats... they might contain macro uses:
     let expanded_pats : Vec<Gc<ast::Pat>> = arm.pats.iter().map(|pat| fld.fold_pat(*pat)).collect();
@@ -665,17 +679,15 @@ fn expand_arm(arm: &ast::Arm, fld: &mut MacroExpander) -> ast::Arm {
     // all of the pats must have the same set of bindings, so use the
     // first one to extract them and generate new names:
     let first_pat = expanded_pats.get(0);
-    // code duplicated from 'let', above. Perhaps this can be lifted
-    // into a separate function:
     let idents = pattern_bindings(*first_pat);
-    let new_pending_renames =
+    let new_renames =
         idents.iter().map(|id| (*id,fresh_name(id))).collect();
     // apply the renaming, but only to the PatIdents:
-    let mut rename_pats_fld = PatIdentRenamer{renames:&new_pending_renames};
+    let mut rename_pats_fld = PatIdentRenamer{renames:&new_renames};
     let rewritten_pats =
         expanded_pats.iter().map(|pat| rename_pats_fld.fold_pat(*pat)).collect();
     // apply renaming and then expansion to the guard and the body:
-    let mut rename_fld = IdentRenamer{renames:&new_pending_renames};
+    let mut rename_fld = IdentRenamer{renames:&new_renames};
     let rewritten_guard =
         arm.guard.map(|g| fld.fold_expr(rename_fld.fold_expr(g)));
     let rewritten_body = fld.fold_expr(rename_fld.fold_expr(arm.body));
@@ -686,8 +698,6 @@ fn expand_arm(arm: &ast::Arm, fld: &mut MacroExpander) -> ast::Arm {
         body: rewritten_body,
     }
 }
-
-
 
 /// A visitor that extracts the PatIdent (binding) paths
 /// from a given thingy and puts them in a mutable
@@ -719,6 +729,15 @@ fn pattern_bindings(pat : &ast::Pat) -> Vec<ast::Ident> {
     let mut name_finder = PatIdentFinder{ident_accumulator:Vec::new()};
     name_finder.visit_pat(pat,());
     name_finder.ident_accumulator
+}
+
+/// find the PatIdent paths in a
+fn fn_decl_arg_bindings(fn_decl: &ast::FnDecl) -> Vec<ast::Ident> {
+    let mut pat_idents = PatIdentFinder{ident_accumulator:Vec::new()};
+    for arg in fn_decl.inputs.iter() {
+        pat_idents.visit_pat(arg.pat,());
+    }
+    pat_idents.ident_accumulator
 }
 
 // expand a block. pushes a new exts_frame, then calls expand_block_elts
@@ -882,6 +901,25 @@ impl<'a> Folder for PatIdentRenamer<'a> {
     }
 }
 
+/// Given a fn_decl and a block and a MacroExpander, expand the fn_decl, then use the
+/// PatIdents in its arguments to perform renaming in the FnDecl and
+/// the block, returning both the new FnDecl and the new Block.
+fn expand_and_rename_fn_decl_and_block(fn_decl: &ast::FnDecl, block: Gc<ast::Block>,
+                                       fld: &mut MacroExpander)
+    -> (Gc<ast::FnDecl>, Gc<ast::Block>) {
+    let expanded_decl = fld.fold_fn_decl(fn_decl);
+    let idents = fn_decl_arg_bindings(expanded_decl);
+    let renames =
+        idents.iter().map(|id : &ast::Ident| (*id,fresh_name(id))).collect();
+    // first, a renamer for the PatIdents, for the fn_decl:
+    let mut rename_pat_fld = PatIdentRenamer{renames: &renames};
+    let rewritten_fn_decl = rename_pat_fld.fold_fn_decl(expanded_decl);
+    // now, a renamer for *all* idents, for the body:
+    let mut rename_fld = IdentRenamer{renames: &renames};
+    let rewritten_body = fld.fold_block(rename_fld.fold_block(block));
+    (rewritten_fn_decl,rewritten_body)
+}
+
 /// A tree-folder that performs macro expansion
 pub struct MacroExpander<'a, 'b> {
     pub extsbox: SyntaxEnv,
@@ -899,6 +937,10 @@ impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
 
     fn fold_item(&mut self, item: Gc<ast::Item>) -> SmallVector<Gc<ast::Item>> {
         expand_item(item, self)
+    }
+
+    fn fold_item_underscore(&mut self, item: &ast::Item_) -> ast::Item_ {
+        expand_item_underscore(item, self)
     }
 
     fn fold_stmt(&mut self, stmt: &ast::Stmt) -> SmallVector<Gc<ast::Stmt>> {
