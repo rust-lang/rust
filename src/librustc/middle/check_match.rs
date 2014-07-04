@@ -93,24 +93,16 @@ pub enum Constructor {
     Slice(uint)
 }
 
-#[deriving(Clone)]
+#[deriving(Clone, PartialEq)]
 enum Usefulness {
-    Useful(Vec<Gc<Pat>>),
+    Useful,
+    UsefulWithWitness(Vec<Gc<Pat>>),
     NotUseful
 }
 
 enum WitnessPreference {
     ConstructWitness,
     LeaveOutWitness
-}
-
-impl Usefulness {
-    fn useful(self) -> Option<Vec<Gc<Pat>>> {
-        match self {
-            Useful(pats) => Some(pats),
-            _ => None
-        }
-    }
 }
 
 impl<'a> Visitor<()> for MatchCheckCtxt<'a> {
@@ -203,7 +195,8 @@ fn check_arms(cx: &MatchCheckCtxt, arms: &[Arm]) {
             let v = vec!(*pat);
             match is_useful(cx, &seen, v.as_slice(), LeaveOutWitness) {
                 NotUseful => cx.tcx.sess.span_err(pat.span, "unreachable pattern"),
-                _ => ()
+                Useful => (),
+                UsefulWithWitness(_) => unreachable!()
             }
             if arm.guard.is_none() {
                 let Matrix(mut rows) = seen;
@@ -223,7 +216,7 @@ fn raw_pat(p: Gc<Pat>) -> Gc<Pat> {
 
 fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, m: &Matrix) {
     match is_useful(cx, m, [wild()], ConstructWitness) {
-        Useful(pats) => {
+        UsefulWithWitness(pats) => {
             let witness = match pats.as_slice() {
                 [witness] => witness,
                 [] => wild(),
@@ -234,7 +227,8 @@ fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, m: &Matrix) {
         }
         NotUseful => {
             // This is good, wildcard pattern isn't reachable
-        }
+        },
+        _ => unreachable!()
     }
 }
 
@@ -404,11 +398,14 @@ fn all_constructors(cx: &MatchCheckCtxt, left_ty: ty::t,
 
 // Note: is_useful doesn't work on empty types, as the paper notes.
 // So it assumes that v is non-empty.
-fn is_useful(cx: &MatchCheckCtxt, m @ &Matrix(ref rows): &Matrix,
+fn is_useful(cx: &MatchCheckCtxt, matrix @ &Matrix(ref rows): &Matrix,
              v: &[Gc<Pat>], witness: WitnessPreference) -> Usefulness {
-    debug!("{:}", m);
+    debug!("{:}", matrix);
     if rows.len() == 0u {
-        return Useful(vec!());
+        return match witness {
+            ConstructWitness => UsefulWithWitness(vec!()),
+            LeaveOutWitness => Useful
+        };
     }
     if rows.get(0).len() == 0u {
         return NotUseful;
@@ -438,53 +435,46 @@ fn is_useful(cx: &MatchCheckCtxt, m @ &Matrix(ref rows): &Matrix,
 
     let constructors = pat_constructors(cx, v[0], left_ty, max_slice_length);
     if constructors.is_empty() {
-        match missing_constructor(cx, m, left_ty, max_slice_length) {
+        match missing_constructor(cx, matrix, left_ty, max_slice_length) {
             None => {
-                all_constructors(cx, left_ty, max_slice_length).move_iter().filter_map(|c| {
-                    is_useful_specialized(cx, m, v, c.clone(),
-                                          left_ty, witness).useful().map(|pats| {
-                        Useful(match witness {
-                            ConstructWitness => {
-                                let arity = constructor_arity(cx, &c, left_ty);
-                                let subpats = {
-                                    let pat_slice = pats.as_slice();
-                                    Vec::from_fn(arity, |i| {
-                                        pat_slice.get(i).map(|p| p.clone())
-                                            .unwrap_or_else(|| wild())
-                                    })
-                                };
-                                let mut result = vec!(construct_witness(cx, &c, subpats, left_ty));
-                                result.extend(pats.move_iter().skip(arity));
-                                result
-                            }
-                            LeaveOutWitness => vec!()
-                        })
-                    })
-                }).nth(0).unwrap_or(NotUseful)
+                all_constructors(cx, left_ty, max_slice_length).move_iter().map(|c| {
+                    match is_useful_specialized(cx, matrix, v, c.clone(), left_ty, witness) {
+                        UsefulWithWitness(pats) => UsefulWithWitness({
+                            let arity = constructor_arity(cx, &c, left_ty);
+                            let subpats = {
+                                let pat_slice = pats.as_slice();
+                                Vec::from_fn(arity, |i| {
+                                    pat_slice.get(i).map(|p| p.clone())
+                                        .unwrap_or_else(|| wild())
+                                })
+                            };
+                            let mut result = vec!(construct_witness(cx, &c, subpats, left_ty));
+                            result.extend(pats.move_iter().skip(arity));
+                            result
+                        }),
+                        result => result
+                    }
+                }).find(|result| result != &NotUseful).unwrap_or(NotUseful)
             },
 
             Some(constructor) => {
                 let matrix = Matrix(rows.iter().filter_map(|r|
                     default(cx, r.as_slice())).collect());
                 match is_useful(cx, &matrix, v.tail(), witness) {
-                    Useful(pats) => Useful(match witness {
-                        ConstructWitness => {
-                            let arity = constructor_arity(cx, &constructor, left_ty);
-                            let wild_pats = Vec::from_elem(arity, wild());
-                            let enum_pat = construct_witness(cx, &constructor, wild_pats, left_ty);
-                            (vec!(enum_pat)).append(pats.as_slice())
-                        }
-                        LeaveOutWitness => vec!()
-                    }),
+                    UsefulWithWitness(pats) => {
+                        let arity = constructor_arity(cx, &constructor, left_ty);
+                        let wild_pats = Vec::from_elem(arity, wild());
+                        let enum_pat = construct_witness(cx, &constructor, wild_pats, left_ty);
+                        UsefulWithWitness(vec!(enum_pat).append(pats.as_slice()))
+                    },
                     result => result
                 }
             }
         }
     } else {
-        constructors.move_iter().filter_map(|c| {
-            is_useful_specialized(cx, m, v, c.clone(), left_ty, witness)
-                .useful().map(|pats| Useful(pats))
-        }).nth(0).unwrap_or(NotUseful)
+        constructors.move_iter().map(|c|
+            is_useful_specialized(cx, matrix, v, c.clone(), left_ty, witness)
+        ).find(|result| result != &NotUseful).unwrap_or(NotUseful)
     }
 }
 
@@ -519,6 +509,7 @@ fn pat_constructors(cx: &MatchCheckCtxt, p: Gc<Pat>,
                     let const_expr = lookup_const_by_id(cx.tcx, did).unwrap();
                     vec!(ConstantValue(eval_const_expr(cx.tcx, &*const_expr)))
                 },
+                Some(&DefStruct(_)) => vec!(Single),
                 Some(&DefVariant(_, id, _)) => vec!(Variant(id)),
                 _ => vec!()
             },
@@ -557,21 +548,6 @@ fn pat_constructors(cx: &MatchCheckCtxt, p: Gc<Pat>,
             vec!(),
         PatMac(_) =>
             cx.tcx.sess.bug("unexpanded macro")
-    }
-}
-
-fn is_wild(cx: &MatchCheckCtxt, p: Gc<Pat>) -> bool {
-    let pat = raw_pat(p);
-    match pat.node {
-        PatWild | PatWildMulti => true,
-        PatIdent(_, _, _) =>
-            match cx.tcx.def_map.borrow().find(&pat.id) {
-                Some(&DefVariant(_, _, _)) | Some(&DefStatic(..)) => false,
-                _ => true
-            },
-        PatVec(ref before, Some(_), ref after) =>
-            before.is_empty() && after.is_empty(),
-        _ => false
     }
 }
 
@@ -780,7 +756,7 @@ pub fn specialize(cx: &MatchCheckCtxt, r: &[Gc<Pat>],
 }
 
 fn default(cx: &MatchCheckCtxt, r: &[Gc<Pat>]) -> Option<Vec<Gc<Pat>>> {
-    if is_wild(cx, r[0]) {
+    if pat_is_binding_or_wild(&cx.tcx.def_map, &*raw_pat(r[0])) {
         Some(Vec::from_slice(r.tail()))
     } else {
         None
@@ -833,12 +809,14 @@ fn check_fn(cx: &mut MatchCheckCtxt,
 
 fn is_refutable(cx: &MatchCheckCtxt, pat: Gc<Pat>) -> Option<Gc<Pat>> {
     let pats = Matrix(vec!(vec!(pat)));
-    is_useful(cx, &pats, [wild()], ConstructWitness)
-        .useful()
-        .map(|pats| {
+    match is_useful(cx, &pats, [wild()], ConstructWitness) {
+        UsefulWithWitness(pats) => {
             assert_eq!(pats.len(), 1);
-            pats.get(0).clone()
-        })
+            Some(pats.get(0).clone())
+        },
+        NotUseful => None,
+        Useful => unreachable!()
+    }
 }
 
 // Legality of move bindings checking
