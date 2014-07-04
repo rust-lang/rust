@@ -17,7 +17,6 @@ use middle::weak_lang_items;
 use middle::trans::base::push_ctxt;
 use middle::trans::base;
 use middle::trans::build::*;
-use middle::trans::builder::noname;
 use middle::trans::cabi;
 use middle::trans::common::*;
 use middle::trans::machine;
@@ -625,8 +624,8 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: &CrateContext,
             "the block".with_c_str(
                 |s| llvm::LLVMAppendBasicBlockInContext(ccx.llcx, llwrapfn, s));
 
-        let builder = ccx.builder.b;
-        llvm::LLVMPositionBuilderAtEnd(builder, the_block);
+        let builder = ccx.builder();
+        builder.position_at_end(the_block);
 
         // Array for the arguments we will pass to the rust function.
         let mut llrust_args = Vec::new();
@@ -666,10 +665,7 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: &CrateContext,
                     debug!("out pointer, foreign={}",
                            ccx.tn.val_to_str(llforeign_outptr));
                     let llrust_retptr =
-                        llvm::LLVMBuildBitCast(builder,
-                                               llforeign_outptr,
-                                               llrust_ret_ty.ptr_to().to_ref(),
-                                               noname());
+                        builder.bitcast(llforeign_outptr, llrust_ret_ty.ptr_to());
                     debug!("out pointer, foreign={} (casted)",
                            ccx.tn.val_to_str(llrust_retptr));
                     llrust_args.push(llrust_retptr);
@@ -677,12 +673,7 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: &CrateContext,
                 }
 
                 None => {
-                    let slot = {
-                        "return_alloca".with_c_str(
-                            |s| llvm::LLVMBuildAlloca(builder,
-                                                      llrust_ret_ty.to_ref(),
-                                                      s))
-                    };
+                    let slot = builder.alloca(llrust_ret_ty, "return_alloca");
                     debug!("out pointer, \
                             allocad={}, \
                             llrust_ret_ty={}, \
@@ -724,11 +715,8 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: &CrateContext,
             // pointer).  It makes adapting types easier, since we can
             // always just bitcast pointers.
             if !foreign_indirect {
-                let lltemp =
-                    llvm::LLVMBuildAlloca(
-                        builder, val_ty(llforeign_arg).to_ref(), noname());
-                llvm::LLVMBuildStore(
-                    builder, llforeign_arg, lltemp);
+                let lltemp = builder.alloca(val_ty(llforeign_arg), "");
+                builder.store(llforeign_arg, lltemp);
                 llforeign_arg = lltemp;
             }
 
@@ -737,15 +725,13 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: &CrateContext,
             // Rust expects.
             if llforeign_arg_ty.cast.is_some() {
                 assert!(!foreign_indirect);
-                llforeign_arg = llvm::LLVMBuildBitCast(
-                    builder, llforeign_arg,
-                    llrust_ty.ptr_to().to_ref(), noname());
+                llforeign_arg = builder.bitcast(llforeign_arg, llrust_ty.ptr_to());
             }
 
             let llrust_arg = if rust_indirect {
                 llforeign_arg
             } else {
-                llvm::LLVMBuildLoad(builder, llforeign_arg, noname())
+                builder.load(llforeign_arg)
             };
 
             debug!("llrust_arg {}{}: {}", "#",
@@ -755,13 +741,8 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: &CrateContext,
 
         // Perform the call itself
         debug!("calling llrustfn = {}, t = {}", ccx.tn.val_to_str(llrustfn), t.repr(ccx.tcx()));
-        let llrust_ret_val = llvm::LLVMBuildCall(builder, llrustfn, llrust_args.as_ptr(),
-                                                 llrust_args.len() as c_uint, noname());
-
         let attributes = base::get_fn_llvm_attributes(ccx, t);
-        for &(idx, attr) in attributes.iter() {
-            llvm::LLVMAddCallSiteAttribute(llrust_ret_val, idx as c_uint, attr);
-        }
+        let llrust_ret_val = builder.call(llrustfn, llrust_args.as_slice(), attributes.as_slice());
 
         // Get the return value where the foreign fn expects it.
         let llforeign_ret_ty = match tys.fn_ty.ret_ty.cast {
@@ -772,20 +753,16 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: &CrateContext,
             None if !tys.ret_def => {
                 // Function returns `()` or `bot`, which in Rust is the LLVM
                 // type "{}" but in foreign ABIs is "Void".
-                llvm::LLVMBuildRetVoid(builder);
+                builder.ret_void();
             }
 
             None if rust_uses_outptr => {
                 // Rust uses an outpointer, but the foreign ABI does not. Load.
                 let llrust_outptr = return_alloca.unwrap();
                 let llforeign_outptr_casted =
-                    llvm::LLVMBuildBitCast(builder,
-                                           llrust_outptr,
-                                           llforeign_ret_ty.ptr_to().to_ref(),
-                                           noname());
-                let llforeign_retval =
-                    llvm::LLVMBuildLoad(builder, llforeign_outptr_casted, noname());
-                llvm::LLVMBuildRet(builder, llforeign_retval);
+                    builder.bitcast(llrust_outptr, llforeign_ret_ty.ptr_to());
+                let llforeign_retval = builder.load(llforeign_outptr_casted);
+                builder.ret(llforeign_retval);
             }
 
             None if llforeign_ret_ty != llrust_ret_ty => {
@@ -795,43 +772,31 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: &CrateContext,
                 // right now we just use a temp memory location and
                 // bitcast the pointer, which is the same thing the
                 // old wrappers used to do.
-                let lltemp =
-                    llvm::LLVMBuildAlloca(
-                        builder, llforeign_ret_ty.to_ref(), noname());
-                let lltemp_casted =
-                    llvm::LLVMBuildBitCast(builder,
-                                           lltemp,
-                                           llrust_ret_ty.ptr_to().to_ref(),
-                                           noname());
-                llvm::LLVMBuildStore(
-                    builder, llrust_ret_val, lltemp_casted);
-                let llforeign_retval =
-                    llvm::LLVMBuildLoad(builder, lltemp, noname());
-                llvm::LLVMBuildRet(builder, llforeign_retval);
+                let lltemp = builder.alloca(llforeign_ret_ty, "");
+                let lltemp_casted = builder.bitcast(lltemp, llrust_ret_ty.ptr_to());
+                builder.store(llrust_ret_val, lltemp_casted);
+                let llforeign_retval = builder.load(lltemp);
+                builder.ret(llforeign_retval);
             }
 
             None => {
                 // Neither ABI uses an outpointer, and the types
                 // match. Easy peasy.
-                llvm::LLVMBuildRet(builder, llrust_ret_val);
+                builder.ret(llrust_ret_val);
             }
 
             Some(llforeign_outptr) if !rust_uses_outptr => {
                 // Foreign ABI requires an out pointer, but Rust doesn't.
                 // Store Rust return value.
                 let llforeign_outptr_casted =
-                    llvm::LLVMBuildBitCast(builder,
-                                           llforeign_outptr,
-                                           llrust_retptr_ty.to_ref(),
-                                           noname());
-                llvm::LLVMBuildStore(
-                    builder, llrust_ret_val, llforeign_outptr_casted);
-                llvm::LLVMBuildRetVoid(builder);
+                    builder.bitcast(llforeign_outptr, llrust_retptr_ty);
+                builder.store(llrust_ret_val, llforeign_outptr_casted);
+                builder.ret_void();
             }
 
             Some(_) => {
                 // Both ABIs use outpointers. Easy peasy.
-                llvm::LLVMBuildRetVoid(builder);
+                builder.ret_void();
             }
         }
     }
