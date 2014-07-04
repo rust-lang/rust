@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct vec2 { y: f32 }
-struct vec3 { y: f32, z: f32 }
-
-fn make(v: vec2) {
-    let vec3 { y: _, z: _ } = v;
-    //~^ ERROR `vec3` does not name the structure `vec2`
-    //~^^ ERROR struct `vec2` does not have a field named `z`
+pub struct S {
+    pub x: int,
+    pub y: int,
 }
 
-fn main() { }
+pub type S2 = S;
+
