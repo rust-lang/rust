@@ -992,7 +992,6 @@ mod imp {
 mod test {
     use prelude::*;
     use io::MemWriter;
-    use str;
 
     macro_rules! t( ($a:expr, $b:expr) => ({
         let mut m = MemWriter::new();

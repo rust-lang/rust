@@ -22,7 +22,6 @@ use print::pprust;
 use std::gc::Gc;
 use std::io::File;
 use std::rc::Rc;
-use std::str;
 
 // These macros all relate to the file system; they either return
 // the column/row/filename of the expression, or they include

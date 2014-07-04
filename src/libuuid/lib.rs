@@ -81,7 +81,6 @@ use std::num::FromStrRadix;
 use std::rand;
 use std::rand::Rng;
 use std::slice;
-use std::str;
 
 use serialize::{Encoder, Encodable, Decoder, Decodable};
 

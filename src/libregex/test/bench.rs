@@ -10,7 +10,6 @@
 #![allow(non_snake_case_functions)]
 
 use std::rand::{Rng, task_rng};
-use std::str;
 use stdtest::Bencher;
 
 use regex::{Regex, NoExpand};

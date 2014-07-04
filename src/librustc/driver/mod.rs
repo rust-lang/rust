@@ -20,7 +20,6 @@ use metadata;
 use std::any::AnyRefExt;
 use std::io;
 use std::os;
-use std::str;
 use std::task::TaskBuilder;
 
 use syntax::ast;

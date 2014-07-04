@@ -19,7 +19,6 @@ use mem;
 use option::{Option, Some, None};
 use slice::{ImmutableVector, MutableVector, Vector};
 use str::{OwnedStr, Str, StrAllocating, StrSlice};
-use str;
 use string::String;
 use to_str::{IntoStr};
 use vec::Vec;
@@ -676,8 +675,8 @@ mod tests {
         while i <= 500 {
             let upper = if 'a' as u32 <= i && i <= 'z' as u32 { i + 'A' as u32 - 'a' as u32 }
                         else { i };
-            assert_eq!((from_u32(i).unwrap()).to_str().as_slice().to_ascii_upper(),
-                       (from_u32(upper).unwrap()).to_str())
+            assert_eq!((from_u32(i).unwrap()).to_string().as_slice().to_ascii_upper(),
+                       (from_u32(upper).unwrap()).to_string())
             i += 1;
         }
     }
@@ -692,8 +691,8 @@ mod tests {
         while i <= 500 {
             let lower = if 'A' as u32 <= i && i <= 'Z' as u32 { i + 'a' as u32 - 'A' as u32 }
                         else { i };
-            assert_eq!((from_u32(i).unwrap()).to_str().as_slice().to_ascii_lower(),
-                       (from_u32(lower).unwrap()).to_str())
+            assert_eq!((from_u32(i).unwrap()).to_string().as_slice().to_ascii_lower(),
+                       (from_u32(lower).unwrap()).to_string())
             i += 1;
         }
     }
@@ -708,8 +707,8 @@ mod tests {
         while i <= 500 {
             let upper = if 'a' as u32 <= i && i <= 'z' as u32 { i + 'A' as u32 - 'a' as u32 }
                         else { i };
-            assert_eq!((from_u32(i).unwrap()).to_str().into_ascii_upper(),
-                       (from_u32(upper).unwrap()).to_str())
+            assert_eq!((from_u32(i).unwrap()).to_string().into_ascii_upper(),
+                       (from_u32(upper).unwrap()).to_string())
             i += 1;
         }
     }
@@ -725,8 +724,8 @@ mod tests {
         while i <= 500 {
             let lower = if 'A' as u32 <= i && i <= 'Z' as u32 { i + 'a' as u32 - 'A' as u32 }
                         else { i };
-            assert_eq!((from_u32(i).unwrap()).to_str().into_ascii_lower(),
-                       (from_u32(lower).unwrap()).to_str())
+            assert_eq!((from_u32(i).unwrap()).to_string().into_ascii_lower(),
+                       (from_u32(lower).unwrap()).to_string())
             i += 1;
         }
     }
@@ -746,8 +745,8 @@ mod tests {
             let c = i;
             let lower = if 'A' as u32 <= c && c <= 'Z' as u32 { c + 'a' as u32 - 'A' as u32 }
                         else { c };
-            assert!((from_u32(i).unwrap()).to_str().as_slice().eq_ignore_ascii_case(
-                    (from_u32(lower).unwrap()).to_str().as_slice()));
+            assert!((from_u32(i).unwrap()).to_string().as_slice().eq_ignore_ascii_case(
+                    (from_u32(lower).unwrap()).to_string().as_slice()));
             i += 1;
         }
     }
