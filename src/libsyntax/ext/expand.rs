@@ -1390,6 +1390,19 @@ mod test {
     // but *shouldn't* bind because it was inserted by a different macro....
     // can't write this test case until we have macro-generating macros.
 
+    // method arg hygiene
+    // method expands to fn get_x(&self_0, x_1:int) {self_0 + self_2 + x_3 + x_1}
+    #[test] fn method_arg_hygiene(){
+        run_renaming_test(
+            &("macro_rules! inject_x (()=>(x))
+              macro_rules! inject_self (()=>(self))
+              struct A;
+              impl A{fn get_x(&self, x: int) {self + inject_self!() + inject_x!() + x;} }",
+              vec!(vec!(0),vec!(3)),
+              true),
+            0)
+    }
+
     // item fn hygiene
     // expands to fn q(x_1:int){fn g(x_2:int){x_2 + x_1};}
     #[test] fn issue_9383(){
