@@ -294,8 +294,7 @@ mod table {
 
             unsafe {
                 debug_assert!(*self.hashes.offset(idx) != EMPTY_BUCKET);
-                (&'a *self.keys.offset(idx),
-                 &'a *self.vals.offset(idx))
+                (&*self.keys.offset(idx), &*self.vals.offset(idx))
             }
         }
 
@@ -306,8 +305,7 @@ mod table {
 
             unsafe {
                 debug_assert!(*self.hashes.offset(idx) != EMPTY_BUCKET);
-                (&'a     *self.keys.offset(idx),
-                 &'a mut *self.vals.offset(idx))
+                (&*self.keys.offset(idx), &mut *self.vals.offset(idx))
             }
         }
 
@@ -319,8 +317,7 @@ mod table {
             unsafe {
                 debug_assert!(*self.hashes.offset(idx) != EMPTY_BUCKET);
                 (transmute(self.hashes.offset(idx)),
-                 &'a mut *self.keys.offset(idx),
-                 &'a mut *self.vals.offset(idx))
+                 &mut *self.keys.offset(idx), &mut *self.vals.offset(idx))
             }
         }
 

@@ -43,7 +43,7 @@ fn default_instance() -> &'static Request {
         // size of struct may be not equal to size of struct, and
         // compiler crashes in internal assertion check.
     };
-    &'static instance
+    &instance
 }
 
 fn non_default_instance() -> &'static Request {
@@ -51,7 +51,7 @@ fn non_default_instance() -> &'static Request {
         foo: TestSome(0x1020304050607080),
         bar: 19,
     };
-    &'static instance
+    &instance
 }
 
 pub fn main() {

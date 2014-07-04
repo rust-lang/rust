@@ -17,7 +17,7 @@ impl<'a> UninterpretedOption_NamePart {
         static instance: UninterpretedOption_NamePart = UninterpretedOption_NamePart {
             name_part: None,
         };
-        &'static instance
+        &instance
     }
 }
 

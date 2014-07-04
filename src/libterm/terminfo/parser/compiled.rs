@@ -19,7 +19,7 @@ use super::super::TermInfo;
 
 // These are the orders ncurses uses in its compiled format (as of 5.9). Not sure if portable.
 
-pub static boolfnames: &'static[&'static str] = &'static["auto_left_margin", "auto_right_margin",
+pub static boolfnames: &'static[&'static str] = &["auto_left_margin", "auto_right_margin",
     "no_esc_ctlc", "ceol_standout_glitch", "eat_newline_glitch", "erase_overstrike", "generic_type",
     "hard_copy", "has_meta_key", "has_status_line", "insert_null_glitch", "memory_above",
     "memory_below", "move_insert_mode", "move_standout_mode", "over_strike", "status_line_esc_ok",
@@ -31,12 +31,12 @@ pub static boolfnames: &'static[&'static str] = &'static["auto_left_margin", "au
     "no_correctly_working_cr", "gnu_has_meta_key", "linefeed_is_newline", "has_hardware_tabs",
     "return_does_clr_eol"];
 
-pub static boolnames: &'static[&'static str] = &'static["bw", "am", "xsb", "xhp", "xenl", "eo",
+pub static boolnames: &'static[&'static str] = &["bw", "am", "xsb", "xhp", "xenl", "eo",
     "gn", "hc", "km", "hs", "in", "db", "da", "mir", "msgr", "os", "eslok", "xt", "hz", "ul", "xon",
     "nxon", "mc5i", "chts", "nrrmc", "npc", "ndscr", "ccc", "bce", "hls", "xhpa", "crxm", "daisy",
     "xvpa", "sam", "cpix", "lpix", "OTbs", "OTns", "OTnc", "OTMT", "OTNL", "OTpt", "OTxr"];
 
-pub static numfnames: &'static[&'static str] = &'static[ "columns", "init_tabs", "lines",
+pub static numfnames: &'static[&'static str] = &[ "columns", "init_tabs", "lines",
     "lines_of_memory", "magic_cookie_glitch", "padding_baud_rate", "virtual_terminal",
     "width_status_line", "num_labels", "label_height", "label_width", "max_attributes",
     "maximum_windows", "max_colors", "max_pairs", "no_color_video", "buffer_capacity",
@@ -46,12 +46,12 @@ pub static numfnames: &'static[&'static str] = &'static[ "columns", "init_tabs",
     "bit_image_entwining", "bit_image_type", "magic_cookie_glitch_ul", "carriage_return_delay",
     "new_line_delay", "backspace_delay", "horizontal_tab_delay", "number_of_function_keys"];
 
-pub static numnames: &'static[&'static str] = &'static[ "cols", "it", "lines", "lm", "xmc", "pb",
+pub static numnames: &'static[&'static str] = &[ "cols", "it", "lines", "lm", "xmc", "pb",
     "vt", "wsl", "nlab", "lh", "lw", "ma", "wnum", "colors", "pairs", "ncv", "bufsz", "spinv",
     "spinh", "maddr", "mjump", "mcs", "mls", "npins", "orc", "orl", "orhi", "orvi", "cps", "widcs",
     "btns", "bitwin", "bitype", "UTug", "OTdC", "OTdN", "OTdB", "OTdT", "OTkn"];
 
-pub static stringfnames: &'static[&'static str] = &'static[ "back_tab", "bell", "carriage_return",
+pub static stringfnames: &'static[&'static str] = &[ "back_tab", "bell", "carriage_return",
     "change_scroll_region", "clear_all_tabs", "clear_screen", "clr_eol", "clr_eos",
     "column_address", "command_character", "cursor_address", "cursor_down", "cursor_home",
     "cursor_invisible", "cursor_left", "cursor_mem_address", "cursor_normal", "cursor_right",
@@ -124,7 +124,7 @@ pub static stringfnames: &'static[&'static str] = &'static[ "back_tab", "bell", 
     "acs_lrcorner", "acs_ltee", "acs_rtee", "acs_btee", "acs_ttee", "acs_hline", "acs_vline",
     "acs_plus", "memory_lock", "memory_unlock", "box_chars_1"];
 
-pub static stringnames: &'static[&'static str] = &'static[ "cbt", "_", "cr", "csr", "tbc", "clear",
+pub static stringnames: &'static[&'static str] = &[ "cbt", "_", "cr", "csr", "tbc", "clear",
     "_", "_", "hpa", "cmdch", "cup", "cud1", "home", "civis", "cub1", "mrcup", "cnorm", "cuf1",
     "ll", "cuu1", "cvvis", "dch1", "dl1", "dsl", "hd", "smacs", "blink", "bold", "smcup", "smdc",
     "dim", "smir", "invis", "prot", "rev", "smso", "smul", "ech", "rmacs", "sgr0", "rmcup", "rmdc",
