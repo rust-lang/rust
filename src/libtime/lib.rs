@@ -316,10 +316,24 @@ impl Tm {
     }
 
     /**
-     * Return a string of the current time in the form
-     * "Thu Jan  1 00:00:00 1970".
+     * Returns a time string formatted according to the `asctime` format in ISO
+     * C, in the local timezone.
+     *
+     * Example: "Thu Jan  1 00:00:00 1970"
      */
-    pub fn ctime(&self) -> String { self.strftime("%c") }
+    pub fn ctime(&self) -> String {
+        self.to_local().asctime()
+    }
+
+    /**
+     * Returns a time string formatted according to the `asctime` format in ISO
+     * C.
+     *
+     * Example: "Thu Jan  1 00:00:00 1970"
+     */
+    pub fn asctime(&self) -> String {
+        self.strftime("%c")
+    }
 
     /// Formats the time according to the format string.
     pub fn strftime(&self, format: &str) -> String {
@@ -1372,6 +1386,19 @@ mod tests {
         assert_eq!(strptime("360", "%Y-%m-%d"), Err("Invalid year".to_string()))
     }
 
+    fn test_asctime() {
+        set_time_zone();
+
+        let time = Timespec::new(1234567890, 54321);
+        let utc   = at_utc(time);
+        let local = at(time);
+
+        debug!("test_ctime: {:?} {:?}", utc.asctime(), local.asctime());
+
+        assert_eq!(utc.asctime(), "Fri Feb 13 23:31:30 2009".to_string());
+        assert_eq!(local.asctime(), "Fri Feb 13 15:31:30 2009".to_string());
+    }
+
     fn test_ctime() {
         set_time_zone();
 
@@ -1381,7 +1408,7 @@ mod tests {
 
         debug!("test_ctime: {:?} {:?}", utc.ctime(), local.ctime());
 
-        assert_eq!(utc.ctime(), "Fri Feb 13 23:31:30 2009".to_string());
+        assert_eq!(utc.ctime(), "Fri Feb 13 15:31:30 2009".to_string());
         assert_eq!(local.ctime(), "Fri Feb 13 15:31:30 2009".to_string());
     }
 
@@ -1436,11 +1463,13 @@ mod tests {
         assert_eq!(local.strftime("%z"), "-0800".to_string());
         assert_eq!(local.strftime("%%"), "%".to_string());
 
+        assert_eq!(local.asctime(), "Fri Feb 13 15:31:30 2009".to_string());
         assert_eq!(local.ctime(), "Fri Feb 13 15:31:30 2009".to_string());
         assert_eq!(local.rfc822z(), "Fri, 13 Feb 2009 15:31:30 -0800".to_string());
         assert_eq!(local.rfc3339(), "2009-02-13T15:31:30-08:00".to_string());
 
-        assert_eq!(utc.ctime(), "Fri Feb 13 23:31:30 2009".to_string());
+        assert_eq!(utc.asctime(), "Fri Feb 13 23:31:30 2009".to_string());
+        assert_eq!(utc.ctime(), "Fri Feb 13 15:31:30 2009".to_string());
         assert_eq!(utc.rfc822(), "Fri, 13 Feb 2009 23:31:30 GMT".to_string());
         assert_eq!(utc.rfc822z(), "Fri, 13 Feb 2009 23:31:30 -0000".to_string());
         assert_eq!(utc.rfc3339(), "2009-02-13T23:31:30Z".to_string());
@@ -1489,6 +1518,7 @@ mod tests {
         test_to_timespec();
         test_conversions();
         test_strptime();
+        test_asctime();
         test_ctime();
         test_strftime();
         test_timespec_eq_ord();
