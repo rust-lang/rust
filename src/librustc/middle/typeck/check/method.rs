@@ -264,7 +264,7 @@ fn construct_transformed_self_ty_for_object(
     // The subst we get in has Err as the "Self" type. For an object
     // type, we don't put any type into the Self paramspace, so let's
     // make a copy of rcvr_substs that has the Self paramspace empty.
-    obj_substs.types.get_mut_vec(subst::SelfSpace).pop().unwrap();
+    obj_substs.types.pop(subst::SelfSpace).unwrap();
 
     match method_ty.explicit_self {
         ast::SelfStatic => {
@@ -1133,7 +1133,7 @@ impl<'a> LookupContext<'a> {
         let m_regions =
             self.fcx.infcx().region_vars_for_defs(
                 self.span,
-                candidate.method_ty.generics.regions.get_vec(subst::FnSpace));
+                candidate.method_ty.generics.regions.get_slice(subst::FnSpace));
 
         let all_substs = candidate.rcvr_substs.clone().with_method(m_types, m_regions);
 

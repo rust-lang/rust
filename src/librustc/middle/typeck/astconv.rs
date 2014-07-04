@@ -203,7 +203,7 @@ fn ast_path_substs<AC:AstConv,RS:RegionScope>(
     };
 
     // Convert the type parameters supplied by the user.
-    let ty_param_defs = decl_generics.types.get_vec(TypeSpace);
+    let ty_param_defs = decl_generics.types.get_slice(TypeSpace);
     let supplied_ty_param_count = path.segments.iter().flat_map(|s| s.types.iter()).count();
     let formal_ty_param_count = ty_param_defs.len();
     let required_ty_param_count = ty_param_defs.iter()

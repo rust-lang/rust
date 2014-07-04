@@ -810,7 +810,7 @@ fn encode_vec_per_param_space<T>(ebml_w: &mut Encoder,
                                  v: &subst::VecPerParamSpace<T>,
                                  f: |&mut Encoder, &T|) {
     for &space in subst::ParamSpace::all().iter() {
-        ebml_w.emit_from_vec(v.get_vec(space).as_slice(),
+        ebml_w.emit_from_vec(v.get_slice(space),
                              |ebml_w, n| Ok(f(ebml_w, n))).unwrap();
     }
 }

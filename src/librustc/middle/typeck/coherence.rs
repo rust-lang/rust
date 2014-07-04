@@ -735,12 +735,12 @@ pub fn make_substs_for_receiver_types(tcx: &ty::ctxt,
      */
 
     let meth_tps: Vec<ty::t> =
-        method.generics.types.get_vec(subst::FnSpace)
+        method.generics.types.get_slice(subst::FnSpace)
               .iter()
               .map(|def| ty::mk_param_from_def(tcx, def))
               .collect();
     let meth_regions: Vec<ty::Region> =
-        method.generics.regions.get_vec(subst::FnSpace)
+        method.generics.regions.get_slice(subst::FnSpace)
               .iter()
               .map(|def| ty::ReEarlyBound(def.def_id.node, def.space,
                                           def.index, def.name))
@@ -767,10 +767,12 @@ fn subst_receiver_types_in_method_ty(tcx: &ty::ctxt,
     // replace the type parameters declared on the trait with those
     // from the impl
     for &space in [subst::TypeSpace, subst::SelfSpace].iter() {
-        *method_generics.types.get_mut_vec(space) =
-            impl_poly_type.generics.types.get_vec(space).clone();
-        *method_generics.regions.get_mut_vec(space) =
-            impl_poly_type.generics.regions.get_vec(space).clone();
+        method_generics.types.replace(
+            space,
+            Vec::from_slice(impl_poly_type.generics.types.get_slice(space)));
+        method_generics.regions.replace(
+            space,
+            Vec::from_slice(impl_poly_type.generics.regions.get_slice(space)));
     }
 
     debug!("subst_receiver_types_in_method_ty: method_generics={}",
