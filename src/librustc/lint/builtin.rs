@@ -540,7 +540,7 @@ impl LintPass for UnusedAttribute {
     }
 
     fn check_attribute(&mut self, cx: &Context, attr: &ast::Attribute) {
-        static ATTRIBUTE_WHITELIST: &'static [&'static str] = &'static [
+        static ATTRIBUTE_WHITELIST: &'static [&'static str] = &[
             // FIXME: #14408 whitelist docs since rustdoc looks at them
             "doc",
 
@@ -574,7 +574,7 @@ impl LintPass for UnusedAttribute {
             "unstable",
         ];
 
-        static CRATE_ATTRS: &'static [&'static str] = &'static [
+        static CRATE_ATTRS: &'static [&'static str] = &[
             "crate_type",
             "feature",
             "no_start",
