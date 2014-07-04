@@ -43,6 +43,8 @@ use std::sync::Arc;
 
 use externalfiles::ExternalHtml;
 
+use serialize::json;
+use serialize::Encodable;
 use serialize::json::ToJson;
 use syntax::ast;
 use syntax::ast_util;
@@ -59,6 +61,7 @@ use html::item_type;
 use html::layout;
 use html::markdown::Markdown;
 use html::markdown;
+use stability_summary;
 
 /// Major driving force in all rustdoc rendering. This contains information
 /// about where in the tree-like hierarchy rendering is occurring and controls
@@ -249,6 +252,11 @@ pub fn run(mut krate: clean::Crate, external_html: &ExternalHtml, dst: Path) -> 
 
     try!(mkdir(&cx.dst));
 
+    // Crawl the crate, building a summary of the stability levels.  NOTE: this
+    // summary *must* be computed with the original `krate`; the folding below
+    // removes the impls from their modules.
+    let summary = stability_summary::build(&krate);
+
     // Crawl the crate attributes looking for attributes which control how we're
     // going to emit HTML
     match krate.module.as_ref().map(|m| m.doc_list().unwrap_or(&[])) {
@@ -361,7 +369,7 @@ pub fn run(mut krate: clean::Crate, external_html: &ExternalHtml, dst: Path) -> 
     let krate = try!(render_sources(&mut cx, krate));
 
     // And finally render the whole crate's documentation
-    cx.krate(krate)
+    cx.krate(krate, summary)
 }
 
 fn build_index(krate: &clean::Crate, cache: &mut Cache) -> io::IoResult<String> {
@@ -1045,13 +1053,34 @@ impl Context {
     ///
     /// This currently isn't parallelized, but it'd be pretty easy to add
     /// parallelization to this function.
-    fn krate(self, mut krate: clean::Crate) -> io::IoResult<()> {
+    fn krate(mut self, mut krate: clean::Crate,
+             stability: stability_summary::ModuleSummary) -> io::IoResult<()> {
         let mut item = match krate.module.take() {
             Some(i) => i,
             None => return Ok(())
         };
         item.name = Some(krate.name);
 
+        // render stability dashboard
+        try!(self.recurse(stability.name.clone(), |this| {
+            let json_dst = &this.dst.join("stability.json");
+            let mut json_out = BufferedWriter::new(try!(File::create(json_dst)));
+            try!(stability.encode(&mut json::Encoder::new(&mut json_out)));
+
+            let title = stability.name.clone().append(" - Stability dashboard");
+            let page = layout::Page {
+                ty: "mod",
+                root_path: this.root_path.as_slice(),
+                title: title.as_slice(),
+            };
+            let html_dst = &this.dst.join("stability.html");
+            let mut html_out = BufferedWriter::new(try!(File::create(html_dst)));
+            layout::render(&mut html_out, &this.layout, &page,
+                           &Sidebar{ cx: this, item: &item },
+                           &stability)
+        }));
+
+        // render the crate documentation
         let mut work = vec!((self, item));
         loop {
             match work.pop() {
@@ -1061,6 +1090,7 @@ impl Context {
                 None => break,
             }
         }
+
         Ok(())
     }
 
@@ -1233,6 +1263,8 @@ impl<'a> Item<'a> {
     }
 }
 
+
+
 impl<'a> fmt::Show for Item<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         // Write the breadcrumb trail header for the top
@@ -1269,6 +1301,17 @@ impl<'a> fmt::Show for Item<'a> {
         // Write stability level
         try!(write!(fmt, "{}", Stability(&self.item.stability)));
 
+        // Links to out-of-band information, i.e. src and stability dashboard
+        try!(write!(fmt, "<span class='out-of-band'>"));
+
+        // Write stability dashboard link
+        match self.item.inner {
+            clean::ModuleItem(ref m) if m.is_crate => {
+                try!(write!(fmt, "<a href='stability.html'>[stability dashboard]</a> "));
+            }
+            _ => {}
+        };
+
         // Write `src` tag
         //
         // When this item is part of a `pub use` in a downstream crate, the
@@ -1278,14 +1321,15 @@ impl<'a> fmt::Show for Item<'a> {
         if self.cx.include_sources && !is_primitive {
             match self.href() {
                 Some(l) => {
-                    try!(write!(fmt,
-                                "<a class='source' id='src-{}' \
-                                    href='{}'>[src]</a>",
+                    try!(write!(fmt, "<a id='src-{}' href='{}'>[src]</a>",
                                 self.item.def_id.node, l));
                 }
                 None => {}
             }
         }
+
+        try!(write!(fmt, "</span>"));
+
         try!(write!(fmt, "</h1>\n"));
 
         match self.item.inner {
@@ -1355,6 +1399,7 @@ fn document(w: &mut fmt::Formatter, item: &clean::Item) -> fmt::Result {
 fn item_module(w: &mut fmt::Formatter, cx: &Context,
                item: &clean::Item, items: &[clean::Item]) -> fmt::Result {
     try!(document(w, item));
+
     let mut indices = range(0, items.len()).filter(|i| {
         !ignore_private_item(&items[*i])
     }).collect::<Vec<uint>>();
@@ -1514,6 +1559,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
             }
         }
     }
+
     write!(w, "</table>")
 }
 
