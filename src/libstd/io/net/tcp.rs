@@ -623,7 +623,7 @@ mod test {
             Ok(..) => fail!(),
             Err(ref e) => {
                 assert!(e.kind == NotConnected || e.kind == EndOfFile,
-                        "unknown kind: {:?}", e.kind);
+                        "unknown kind: {}", e.kind);
             }
         }
     })
@@ -648,7 +648,7 @@ mod test {
             Ok(..) => fail!(),
             Err(ref e) => {
                 assert!(e.kind == NotConnected || e.kind == EndOfFile,
-                        "unknown kind: {:?}", e.kind);
+                        "unknown kind: {}", e.kind);
             }
         }
     })
@@ -673,7 +673,7 @@ mod test {
                     assert!(e.kind == ConnectionReset ||
                             e.kind == BrokenPipe ||
                             e.kind == ConnectionAborted,
-                            "unknown error: {:?}", e);
+                            "unknown error: {}", e);
                     break;
                 }
             }
@@ -700,7 +700,7 @@ mod test {
                     assert!(e.kind == ConnectionReset ||
                             e.kind == BrokenPipe ||
                             e.kind == ConnectionAborted,
-                            "unknown error: {:?}", e);
+                            "unknown error: {}", e);
                     break;
                 }
             }
