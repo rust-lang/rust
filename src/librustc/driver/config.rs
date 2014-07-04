@@ -427,7 +427,7 @@ pub fn get_os(triple: &str) -> Option<abi::Os> {
     }
     None
 }
-static os_names : &'static [(&'static str, abi::Os)] = &'static [
+static os_names : &'static [(&'static str, abi::Os)] = &[
     ("mingw32", abi::OsWin32),
     ("win32",   abi::OsWin32),
     ("darwin",  abi::OsMacos),
@@ -442,7 +442,7 @@ pub fn get_arch(triple: &str) -> Option<abi::Architecture> {
     }
     None
 }
-static architecture_abis : &'static [(&'static str, abi::Architecture)] = &'static [
+static architecture_abis : &'static [(&'static str, abi::Architecture)] = &[
     ("i386",   abi::X86),
     ("i486",   abi::X86),
     ("i586",   abi::X86),

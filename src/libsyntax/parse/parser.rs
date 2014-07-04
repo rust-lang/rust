@@ -2400,7 +2400,6 @@ impl<'a> Parser<'a> {
           }
           token::BINOP(token::AND) | token::ANDAND => {
             self.expect_and();
-            let _lt = self.parse_opt_lifetime();
             let m = self.parse_mutability();
             let e = self.parse_prefix_expr();
             hi = e.span.hi;
