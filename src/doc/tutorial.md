@@ -3038,7 +3038,7 @@ fn main() {
 ~~~{.ignore}
 // `b/mod.rs`
 pub mod c;
-pub fn foo() { println!("Foo!"; }
+pub fn foo() { println!("Foo!"); }
 ~~~
 
 ~~~{.ignore}
