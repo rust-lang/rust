@@ -75,12 +75,10 @@ impl<T> Vec<T> {
     /// ```
     #[inline]
     pub fn new() -> Vec<T> {
-        // If we have a 0-sized vector, then the base pointer should not be NULL
-        // because an iterator over the slice will attempt to yield the base
-        // pointer as the first element in the vector, but this will end up
-        // being Some(NULL) which is optimized to None. So instead we set ptr
-        // to some arbitrary non-null value which is fine since we never call
-        // deallocate on the ptr if cap is 0.
+        // We want ptr to never be NULL so instead we set it to some arbitrary
+        // non-null value which is fine since we never call deallocate on the ptr
+        // if cap is 0. The reason for this is because the pointer of a slice
+        // being NULL would break the null pointer optimization for enums.
         Vec { len: 0, cap: 0, ptr: &PTR_MARKER as *const _ as *mut T }
     }
 
