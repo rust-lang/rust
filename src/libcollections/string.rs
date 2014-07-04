@@ -91,6 +91,20 @@ impl String {
             Err(vec)
         }
     }
+    
+    /// Convert a vector of chars to a string
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let chars = ['h', 'e', 'l', 'l', 'o'];
+    /// let string = String::from_chars(chars);
+    /// assert_eq!(string.as_slice(), "hello");
+    /// ```
+    #[inline]
+    pub fn from_chars(chs: &[char]) -> String {
+        chs.iter().map(|c| *c).collect()
+    }
 
     /// Return the underlying byte buffer, encoded as UTF-8.
     #[inline]

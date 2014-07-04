@@ -813,7 +813,7 @@ fn check_expected_errors(expected_errors: Vec<errors::ExpectedError> ,
                 c
             }
         } ).collect();
-        str::from_chars(c.as_slice()).to_string()
+        String::from_chars(c.as_slice())
     }
 
     #[cfg(target_os = "win32")]
