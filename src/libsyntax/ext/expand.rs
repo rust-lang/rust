@@ -267,7 +267,8 @@ fn expand_loop_block(loop_block: P<Block>,
     }
 }
 
-// eval $e with a new exts frame:
+// eval $e with a new exts frame.
+// must be a macro so that $e isn't evaluated too early.
 macro_rules! with_exts_frame (
     ($extsboxexpr:expr,$macros_escape:expr,$e:expr) =>
     ({$extsboxexpr.push_frame();
@@ -609,7 +610,7 @@ fn expand_non_macro_stmt(s: &Stmt, fld: &mut MacroExpander)
                     } = **local;
                     // expand the pat (it might contain macro uses):
                     let expanded_pat = fld.fold_pat(pat);
-                    // find the pat_idents in the pattern:
+                    // find the PatIdents in the pattern:
                     // oh dear heaven... this is going to include the enum
                     // names, as well... but that should be okay, as long as
                     // the new names are gensyms for the old ones.
@@ -691,39 +692,34 @@ fn expand_arm(arm: &ast::Arm, fld: &mut MacroExpander) -> ast::Arm {
 
 
 
-// a visitor that extracts the pat_ident (binding) paths
-// from a given thingy and puts them in a mutable
-// array
+/// A visitor that extracts the PatIdent (binding) paths
+/// from a given thingy and puts them in a mutable
+/// array
 #[deriving(Clone)]
-struct NameFinderContext {
+struct PatIdentFinder {
     ident_accumulator: Vec<ast::Ident> ,
 }
 
-impl Visitor<()> for NameFinderContext {
+impl Visitor<()> for PatIdentFinder {
     fn visit_pat(&mut self, pattern: &ast::Pat, _: ()) {
         match *pattern {
-            // we found a pat_ident!
-            ast::Pat {
-                id: _,
-                node: ast::PatIdent(_, ref path1, ref inner),
-                span: _
-            } => {
+            ast::Pat { id: _, node: ast::PatIdent(_, ref path1, ref inner), span: _ } => {
                 self.ident_accumulator.push(path1.node);
-                // visit optional subpattern of pat_ident:
+                // visit optional subpattern of PatIdent:
                 for subpat in inner.iter() {
                     self.visit_pat(&**subpat, ())
                 }
             }
-            // use the default traversal for non-pat_idents
+            // use the default traversal for non-PatIdents
             _ => visit::walk_pat(self, pattern, ())
         }
     }
 
 }
 
-// find the pat_ident paths in a pattern
+/// find the PatIdent paths in a pattern
 fn pattern_bindings(pat : &ast::Pat) -> Vec<ast::Ident> {
-    let mut name_finder = NameFinderContext{ident_accumulator:Vec::new()};
+    let mut name_finder = PatIdentFinder{ident_accumulator:Vec::new()};
     name_finder.visit_pat(pat,());
     name_finder.ident_accumulator
 }
@@ -1028,7 +1024,7 @@ fn original_span(cx: &ExtCtxt) -> Gc<codemap::ExpnInfo> {
 #[cfg(test)]
 mod test {
     use super::{pattern_bindings, expand_crate, contains_macro_escape};
-    use super::{NameFinderContext};
+    use super::{PatIdentFinder};
     use ast;
     use ast::{Attribute_, AttrOuter, MetaWord};
     use attr;
@@ -1167,7 +1163,7 @@ mod test {
 
     // find the pat_ident paths in a crate
     fn crate_bindings(the_crate : &ast::Crate) -> Vec<ast::Ident> {
-        let mut name_finder = NameFinderContext{ident_accumulator:Vec::new()};
+        let mut name_finder = PatIdentFinder{ident_accumulator:Vec::new()};
         visit::walk_crate(&mut name_finder, the_crate, ());
         name_finder.ident_accumulator
     }

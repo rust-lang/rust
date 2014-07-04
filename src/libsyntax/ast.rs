@@ -453,10 +453,10 @@ pub enum Expr_ {
     ExprCast(Gc<Expr>, P<Ty>),
     ExprIf(Gc<Expr>, P<Block>, Option<Gc<Expr>>),
     ExprWhile(Gc<Expr>, P<Block>),
-    // FIXME #6993: change to Option<Name>
+    // FIXME #6993: change to Option<Name> ... or not, if these are hygienic.
     ExprForLoop(Gc<Pat>, Gc<Expr>, P<Block>, Option<Ident>),
     // Conditionless loop (can be exited with break, cont, or ret)
-    // FIXME #6993: change to Option<Name>
+    // FIXME #6993: change to Option<Name> ... or not, if these are hygienic.
     ExprLoop(P<Block>, Option<Ident>),
     ExprMatch(Gc<Expr>, Vec<Arm>),
     ExprFnBlock(P<FnDecl>, P<Block>),
@@ -468,9 +468,8 @@ pub enum Expr_ {
     ExprField(Gc<Expr>, SpannedIdent, Vec<P<Ty>>),
     ExprIndex(Gc<Expr>, Gc<Expr>),
 
-    /// Expression that looks like a "name". For example,
-    /// `std::slice::from_elem::<uint>` is an ExprPath that's the "name" part
-    /// of a function call.
+    /// Variable reference, possibly containing `::` and/or
+    /// type parameters, e.g. foo::bar::<baz>
     ExprPath(Path),
 
     ExprAddrOf(Mutability, Gc<Expr>),
@@ -643,6 +642,8 @@ pub struct TypeField {
     pub span: Span,
 }
 
+/// Represents a required method in a trait declaration,
+/// one without a default implementation
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
 pub struct TypeMethod {
     pub ident: Ident,
@@ -656,6 +657,8 @@ pub struct TypeMethod {
     pub vis: Visibility,
 }
 
+/// Represents a method declaration in a trait declaration, possibly
+/// including a default implementation
 // A trait method is either required (meaning it doesn't have an
 // implementation, just a signature) or provided (meaning it has a default
 // implementation).
@@ -741,6 +744,7 @@ impl fmt::Show for Onceness {
     }
 }
 
+/// Represents the type of a closure
 #[deriving(PartialEq, Eq, Encodable, Decodable, Hash)]
 pub struct ClosureTy {
     pub lifetimes: Vec<Lifetime>,
@@ -809,6 +813,7 @@ pub struct InlineAsm {
     pub dialect: AsmDialect
 }
 
+/// represents an argument in a function header
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
 pub struct Arg {
     pub ty: P<Ty>,
@@ -836,7 +841,7 @@ impl Arg {
     }
 }
 
-// represents the header (not the body) of a function declaration
+/// represents the header (not the body) of a function declaration
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
 pub struct FnDecl {
     pub inputs: Vec<Arg>,
@@ -1107,6 +1112,7 @@ pub enum Item_ {
     ItemTy(P<Ty>, Generics),
     ItemEnum(EnumDef, Generics),
     ItemStruct(Gc<StructDef>, Generics),
+    /// Represents a Trait Declaration
     ItemTrait(Generics, Sized, Vec<TraitRef> , Vec<TraitMethod> ),
     ItemImpl(Generics,
              Option<TraitRef>, // (optional) trait this impl implements
