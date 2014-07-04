@@ -285,6 +285,20 @@ impl<T: 'static> KeyValue<T> {
             None => None
         }
     }
+
+    // it's not clear if this is the right design for a public API, or if
+    // there's even a need for this as a public API, but our benchmarks need
+    // this to ensure consistent behavior on each run.
+    #[cfg(test)]
+    fn clear(&'static self) {
+        let map = match unsafe { get_local_map() } {
+            Some(map) => map,
+            None => return
+        };
+        let keyval = key_to_key_value(self);
+        self.replace(None); // ensure we have no outstanding borrows
+        map.remove(&keyval);
+    }
 }
 
 impl<T: 'static> Deref<T> for Ref<T> {
@@ -392,6 +406,8 @@ impl Drop for TLDValue {
 
 #[cfg(test)]
 mod tests {
+    extern crate test;
+
     use std::prelude::*;
     use std::gc::{Gc, GC};
     use super::*;
@@ -496,6 +512,26 @@ mod tests {
     }
 
     #[test]
+    fn test_cleanup_drops_values() {
+        let (tx, rx) = channel::<()>();
+        struct Dropper {
+            tx: Sender<()>
+        };
+        impl Drop for Dropper {
+            fn drop(&mut self) {
+                self.tx.send(());
+            }
+        }
+        static key: Key<Dropper> = &Key;
+        let _ = task::try(proc() {
+            key.replace(Some(Dropper{ tx: tx }));
+        });
+        // At this point the task has been cleaned up and the TLD dropped.
+        // If the channel doesn't have a value now, then the Sender was leaked.
+        assert_eq!(rx.try_recv(), Ok(()));
+    }
+
+    #[test]
     fn test_static_pointer() {
         static key: Key<&'static int> = &Key;
         static VALUE: int = 0;
@@ -543,9 +579,117 @@ mod tests {
     #[should_fail]
     fn test_nested_get_set1() {
         static key: Key<int> = &Key;
-        key.replace(Some(4));
+        assert_eq!(key.replace(Some(4)), None);
 
         let _k = key.get();
         key.replace(Some(4));
+    }
+
+    // ClearKey is a RAII class that ensures the keys are cleared from the map.
+    // This is so repeated runs of a benchmark don't bloat the map with extra
+    // keys and distort the measurements.
+    // It's not used on the tests because the tests run in separate tasks.
+    struct ClearKey<T>(Key<T>);
+    #[unsafe_destructor]
+    impl<T: 'static> Drop for ClearKey<T> {
+        fn drop(&mut self) {
+            let ClearKey(ref key) = *self;
+            key.clear();
+        }
+    }
+
+    #[bench]
+    fn bench_replace_none(b: &mut test::Bencher) {
+        static key: Key<uint> = &Key;
+        let _clear = ClearKey(key);
+        key.replace(None);
+        b.iter(|| {
+            key.replace(None)
+        });
+    }
+
+    #[bench]
+    fn bench_replace_some(b: &mut test::Bencher) {
+        static key: Key<uint> = &Key;
+        let _clear = ClearKey(key);
+        key.replace(Some(1u));
+        b.iter(|| {
+            key.replace(Some(2))
+        });
+    }
+
+    #[bench]
+    fn bench_replace_none_some(b: &mut test::Bencher) {
+        static key: Key<uint> = &Key;
+        let _clear = ClearKey(key);
+        key.replace(Some(0u));
+        b.iter(|| {
+            let old = key.replace(None).unwrap();
+            let new = old + 1;
+            key.replace(Some(new))
+        });
+    }
+
+    #[bench]
+    fn bench_100_keys_replace_last(b: &mut test::Bencher) {
+        static keys: [KeyValue<uint>, ..100] = [Key, ..100];
+        let _clear = keys.iter().map(ClearKey).collect::<Vec<ClearKey<uint>>>();
+        for (i, key) in keys.iter().enumerate() {
+            key.replace(Some(i));
+        }
+        b.iter(|| {
+            let key: Key<uint> = &keys[99];
+            key.replace(Some(42))
+        });
+    }
+
+    #[bench]
+    fn bench_1000_keys_replace_last(b: &mut test::Bencher) {
+        static keys: [KeyValue<uint>, ..1000] = [Key, ..1000];
+        let _clear = keys.iter().map(ClearKey).collect::<Vec<ClearKey<uint>>>();
+        for (i, key) in keys.iter().enumerate() {
+            key.replace(Some(i));
+        }
+        b.iter(|| {
+            let key: Key<uint> = &keys[999];
+            key.replace(Some(42))
+        });
+        for key in keys.iter() { key.clear(); }
+    }
+
+    #[bench]
+    fn bench_get(b: &mut test::Bencher) {
+        static key: Key<uint> = &Key;
+        let _clear = ClearKey(key);
+        key.replace(Some(42));
+        b.iter(|| {
+            key.get()
+        });
+    }
+
+    #[bench]
+    fn bench_100_keys_get_last(b: &mut test::Bencher) {
+        static keys: [KeyValue<uint>, ..100] = [Key, ..100];
+        let _clear = keys.iter().map(ClearKey).collect::<Vec<ClearKey<uint>>>();
+        for (i, key) in keys.iter().enumerate() {
+            key.replace(Some(i));
+        }
+        b.iter(|| {
+            let key: Key<uint> = &keys[99];
+            key.get()
+        });
+    }
+
+    #[bench]
+    fn bench_1000_keys_get_last(b: &mut test::Bencher) {
+        static keys: [KeyValue<uint>, ..1000] = [Key, ..1000];
+        let _clear = keys.iter().map(ClearKey).collect::<Vec<ClearKey<uint>>>();
+        for (i, key) in keys.iter().enumerate() {
+            key.replace(Some(i));
+        }
+        b.iter(|| {
+            let key: Key<uint> = &keys[999];
+            key.get()
+        });
     }
 }
