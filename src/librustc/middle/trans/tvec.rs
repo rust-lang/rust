@@ -155,8 +155,9 @@ pub fn trans_slice_vstore<'a>(
     let llcount = C_uint(ccx, count);
     let llfixed;
     if count == 0 {
-        // Zero-length array: just use NULL as the data pointer
-        llfixed = C_null(vt.llunit_ty.ptr_to());
+        // Just create a zero-sized alloca to preserve
+        // the non-null invariant of the inner slice ptr
+        llfixed = base::arrayalloca(bcx, vt.llunit_ty, llcount);
     } else {
         // Make a fixed-length backing array and allocate it on the stack.
         llfixed = base::arrayalloca(bcx, vt.llunit_ty, llcount);
