@@ -18,7 +18,7 @@ This API is completely unstable and subject to change.
 
 */
 
-#![crate_id = "rustc#0.11.0-pre"]
+#![crate_id = "rustc#0.11.0"]
 #![experimental]
 #![comment = "The Rust compiler"]
 #![license = "MIT/ASL2"]
@@ -26,7 +26,7 @@ This API is completely unstable and subject to change.
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
-      html_root_url = "http://doc.rust-lang.org/")]
+      html_root_url = "http://doc.rust-lang.org/0.11.0/")]
 
 #![allow(deprecated)]
 #![feature(macro_rules, globs, struct_variant, managed_boxes, quote)]

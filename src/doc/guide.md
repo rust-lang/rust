@@ -53,7 +53,7 @@ an uninstall option.
 
 You can re-run this script any time you want to update Rust. Which, at this
 point, is often. Rust is still pre-1.0, and so people assume that you're using
-a very recent Rust. 
+a very recent Rust.
 
 This brings me to one other point: some people, and somewhat rightfully so, get
 very upset when we tell you to `curl | sudo sh`. And they should be! Basically,
@@ -168,7 +168,7 @@ Success! Let's go over what just happened in detail.
 
 ```
 fn main() {
-   
+
 }
 ```
 
@@ -395,7 +395,7 @@ Once you have this file in place, we should be ready to build! Try this:
 ```{bash}
 $ cargo build
    Compiling hello_world v0.1.0 (file:/home/yourname/projects/hello_world)
-$ ./target/hello_world 
+$ ./target/hello_world
 Hello, world!
 ```
 
