@@ -445,7 +445,8 @@ pub fn super_tys<C:Combine>(this: &C, a: ty::t, b: ty::t) -> cres<ty::t> {
         }
       }
 
-      (&ty::ty_param(ref a_p), &ty::ty_param(ref b_p)) if a_p.idx == b_p.idx => {
+      (&ty::ty_param(ref a_p), &ty::ty_param(ref b_p)) if
+          a_p.idx == b_p.idx && a_p.space == b_p.space => {
         Ok(a)
       }
 
