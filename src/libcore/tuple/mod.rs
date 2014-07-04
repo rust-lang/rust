@@ -61,6 +61,8 @@
 
 #![doc(primitive = "tuple")]
 
+pub use unit;
+
 use clone::Clone;
 use cmp::*;
 use default::Default;
