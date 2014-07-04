@@ -91,7 +91,7 @@ impl String {
             Err(vec)
         }
     }
-    
+
     /// Convert a vector of chars to a string
     ///
     /// # Example
@@ -135,6 +135,23 @@ impl String {
             buf.push_char(ch)
         }
         buf
+    }
+
+    /// Convert a byte to a UTF-8 string
+    ///
+    /// # Failure
+    ///
+    /// Fails if invalid UTF-8
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let string = String::from_byte(104);
+    /// assert_eq!(string.as_slice(), "h");
+    /// ```
+    pub fn from_byte(b: u8) -> String {
+        assert!(b < 128u8);
+        String::from_char(1, b as char)
     }
 
     /// Pushes the given string onto this string buffer.
