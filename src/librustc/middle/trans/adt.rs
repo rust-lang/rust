@@ -111,7 +111,7 @@ pub enum Repr {
     StructWrappedNullablePointer {
         pub nonnull: Struct,
         pub nndiscr: Disr,
-        pub ptrfield: uint,
+        pub ptrfield: PointerField,
         pub nullfields: Vec<ty::t>,
     }
 }
@@ -211,24 +211,21 @@ fn represent_type_uncached(cx: &CrateContext, t: ty::t) -> Repr {
                 let mut discr = 0;
                 while discr < 2 {
                     if cases.get(1 - discr).is_zerolen(cx) {
+                        let st = mk_struct(cx, cases.get(discr).tys.as_slice(), false);
                         match cases.get(discr).find_ptr() {
+                            Some(ThinPointer(_)) if st.fields.len() == 1 => {
+                                return RawNullablePointer {
+                                    nndiscr: discr as Disr,
+                                    nnty: *st.fields.get(0),
+                                    nullfields: cases.get(1 - discr).tys.clone()
+                                };
+                            }
                             Some(ptrfield) => {
-                                let st = mk_struct(cx, cases.get(discr).tys.as_slice(),
-                                                   false);
-
-                                return if st.fields.len() == 1 {
-                                    RawNullablePointer {
-                                        nndiscr: discr as Disr,
-                                        nnty: *st.fields.get(0),
-                                        nullfields: cases.get(1 - discr).tys.clone()
-                                    }
-                                } else {
-                                    StructWrappedNullablePointer {
-                                        nndiscr: discr as Disr,
-                                        nonnull: st,
-                                        ptrfield: ptrfield,
-                                        nullfields: cases.get(1 - discr).tys.clone()
-                                    }
+                                return StructWrappedNullablePointer {
+                                    nndiscr: discr as Disr,
+                                    nonnull: st,
+                                    ptrfield: ptrfield,
+                                    nullfields: cases.get(1 - discr).tys.clone()
                                 };
                             }
                             None => { }
@@ -283,23 +280,67 @@ pub fn is_ffi_safe(tcx: &ty::ctxt, def_id: ast::DefId) -> bool {
 }
 
 // this should probably all be in ty
-struct Case { discr: Disr, tys: Vec<ty::t> }
+struct Case {
+    discr: Disr,
+    tys: Vec<ty::t>
+}
+
+
+#[deriving(Show)]
+pub enum PointerField {
+    ThinPointer(uint),
+    FatPointer(uint, uint)
+}
+
 impl Case {
     fn is_zerolen(&self, cx: &CrateContext) -> bool {
         mk_struct(cx, self.tys.as_slice(), false).size == 0
     }
-    fn find_ptr(&self) -> Option<uint> {
-        self.tys.iter().position(|&ty| {
+    fn find_ptr(&self) -> Option<PointerField> {
+        use back::abi::{fn_field_code, slice_elt_base, trt_field_box};
+
+        for (i, &ty) in self.tys.iter().enumerate() {
             match ty::get(ty).sty {
-                ty::ty_uniq(ty) | ty::ty_rptr(_, ty::mt{ty, ..}) => match ty::get(ty).sty {
-                    ty::ty_vec(_, None) | ty::ty_str| ty::ty_trait(..) => false,
-                    _ => true,
+                // &T/&mut T could either be a thin or fat pointer depending on T
+                ty::ty_rptr(_, ty::mt { ty, .. }) => match ty::get(ty).sty {
+                    // &[T] and &str are a pointer and length pair
+                    ty::ty_vec(_, None) | ty::ty_str => return Some(FatPointer(i, slice_elt_base)),
+
+                    // &Trait/&mut Trait are a pair of pointers: the actual object and a vtable
+                    ty::ty_trait(..) => return Some(FatPointer(i, trt_field_box)),
+
+                    // Any other &T/&mut T is just a pointer
+                    _ => return Some(ThinPointer(i))
                 },
-                ty::ty_box(..) | ty::ty_bare_fn(..) => true,
-                // Is that everything?  Would closures or slices qualify?
-                _ => false
+
+                // Box<T> could either be a thin or fat pointer depending on T
+                ty::ty_uniq(t) => match ty::get(t).sty {
+                    // Box<[T]>/Box<str> might be FatPointer in a post DST world
+                    ty::ty_vec(_, None) | ty::ty_str => continue,
+
+                    // Box<Trait> is a pair of pointers: the actual object and a vtable
+                    ty::ty_trait(..) => return Some(FatPointer(i, trt_field_box)),
+
+                    // Any other Box<T> is just a pointer
+                    _ => return Some(ThinPointer(i))
+                },
+
+                // Gc<T> is just a pointer
+                ty::ty_box(..) => return Some(ThinPointer(i)),
+
+                // Functions are just pointers
+                ty::ty_bare_fn(..) => return Some(ThinPointer(i)),
+
+                // Closures are a pair of pointers: the code and environment
+                ty::ty_closure(..) => return Some(FatPointer(i, fn_field_code)),
+
+                // Anything else is not a pointer
+                _ => continue
+
             }
-        })
+        }
+
+        None
     }
 }
 
@@ -552,8 +593,8 @@ pub fn trans_get_discr(bcx: &Block, r: &Repr, scrutinee: ValueRef, cast_to: Opti
             val = ICmp(bcx, cmp, Load(bcx, scrutinee), C_null(llptrty));
             signed = false;
         }
-        StructWrappedNullablePointer { nonnull: ref nonnull, nndiscr, ptrfield, .. } => {
-            val = struct_wrapped_nullable_bitdiscr(bcx, nonnull, nndiscr, ptrfield, scrutinee);
+        StructWrappedNullablePointer { nndiscr, ptrfield, .. } => {
+            val = struct_wrapped_nullable_bitdiscr(bcx, nndiscr, ptrfield, scrutinee);
             signed = false;
         }
     }
@@ -563,12 +604,15 @@ pub fn trans_get_discr(bcx: &Block, r: &Repr, scrutinee: ValueRef, cast_to: Opti
     }
 }
 
-fn struct_wrapped_nullable_bitdiscr(bcx: &Block, nonnull: &Struct, nndiscr: Disr, ptrfield: uint,
+fn struct_wrapped_nullable_bitdiscr(bcx: &Block, nndiscr: Disr, ptrfield: PointerField,
                                     scrutinee: ValueRef) -> ValueRef {
-    let llptr = Load(bcx, GEPi(bcx, scrutinee, [0, ptrfield]));
+    let llptrptr = match ptrfield {
+        ThinPointer(field) => GEPi(bcx, scrutinee, [0, field]),
+        FatPointer(field, pair) => GEPi(bcx, scrutinee, [0, field, pair])
+    };
+    let llptr = Load(bcx, llptrptr);
     let cmp = if nndiscr == 0 { IntEQ } else { IntNE };
-    let llptrty = type_of::type_of(bcx.ccx(), *nonnull.fields.get(ptrfield));
-    ICmp(bcx, cmp, llptr, C_null(llptrty))
+    ICmp(bcx, cmp, llptr, C_null(val_ty(llptr)))
 }
 
 /// Helper for cases where the discriminant is simply loaded.
@@ -655,9 +699,15 @@ pub fn trans_start_init(bcx: &Block, r: &Repr, val: ValueRef, discr: Disr) {
         }
         StructWrappedNullablePointer { nonnull: ref nonnull, nndiscr, ptrfield, .. } => {
             if discr != nndiscr {
-                let llptrptr = GEPi(bcx, val, [0, ptrfield]);
-                let llptrty = type_of::type_of(bcx.ccx(),
-                                               *nonnull.fields.get(ptrfield));
+                let (llptrptr, llptrty) = match ptrfield {
+                    ThinPointer(field) =>
+                        (GEPi(bcx, val, [0, field]),
+                         type_of::type_of(bcx.ccx(), *nonnull.fields.get(field))),
+                    FatPointer(field, pair) => {
+                        let v = GEPi(bcx, val, [0, field, pair]);
+                        (v, val_ty(v).element_type())
+                    }
+                };
                 Store(bcx, C_null(llptrty), llptrptr)
             }
         }
@@ -925,7 +975,11 @@ pub fn const_get_discrim(ccx: &CrateContext, r: &Repr, val: ValueRef)
             }
         }
         StructWrappedNullablePointer { nndiscr, ptrfield, .. } => {
-            if is_null(const_struct_field(ccx, val, ptrfield)) {
+            let (idx, sub_idx) = match ptrfield {
+                ThinPointer(field) => (field, None),
+                FatPointer(field, pair) => (field, Some(pair))
+            };
+            if is_null(const_struct_field(ccx, val, idx, sub_idx)) {
                 /* subtraction as uint is ok because nndiscr is either 0 or 1 */
                 (1 - nndiscr) as Disr
             } else {
@@ -946,18 +1000,18 @@ pub fn const_get_field(ccx: &CrateContext, r: &Repr, val: ValueRef,
                        _discr: Disr, ix: uint) -> ValueRef {
     match *r {
         CEnum(..) => ccx.sess().bug("element access in C-like enum const"),
-        Univariant(..) => const_struct_field(ccx, val, ix),
-        General(..) => const_struct_field(ccx, val, ix + 1),
+        Univariant(..) => const_struct_field(ccx, val, ix, None),
+        General(..) => const_struct_field(ccx, val, ix + 1, None),
         RawNullablePointer { .. } => {
             assert_eq!(ix, 0);
             val
         }
-        StructWrappedNullablePointer{ .. } => const_struct_field(ccx, val, ix)
+        StructWrappedNullablePointer{ .. } => const_struct_field(ccx, val, ix, None)
     }
 }
 
 /// Extract field of struct-like const, skipping our alignment padding.
-fn const_struct_field(ccx: &CrateContext, val: ValueRef, ix: uint)
+fn const_struct_field(ccx: &CrateContext, val: ValueRef, ix: uint, sub_idx: Option<uint>)
     -> ValueRef {
     // Get the ix-th non-undef element of the struct.
     let mut real_ix = 0; // actual position in the struct
@@ -965,7 +1019,10 @@ fn const_struct_field(ccx: &CrateContext, val: ValueRef, ix: uint)
     let mut field;
     loop {
         loop {
-            field = const_get_elt(ccx, val, [real_ix]);
+            field = match sub_idx {
+                Some(si) => const_get_elt(ccx, val, [real_ix, si as u32]),
+                None => const_get_elt(ccx, val, [real_ix])
+            };
             if !is_undef(field) {
                 break;
             }
