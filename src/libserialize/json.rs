@@ -1118,7 +1118,7 @@ impl<T: Iterator<char>> Parser<T> {
     /// Provides access to the current position in the logical structure of the
     /// JSON stream.
     pub fn stack<'l>(&'l self) -> &'l Stack {
-        return &'l self.stack;
+        return &self.stack;
     }
 
     fn eof(&self) -> bool { self.ch.is_none() }

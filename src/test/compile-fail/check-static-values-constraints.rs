@@ -113,12 +113,12 @@ static mut STATIC14: SafeStruct = SafeStruct {
     field2: Variant4("str".to_string())
 };
 
-static STATIC15: &'static [Box<MyOwned>] = &'static [box MyOwned, box MyOwned];
+static STATIC15: &'static [Box<MyOwned>] = &[box MyOwned, box MyOwned];
 //~^ ERROR static items are not allowed to have custom pointers
 //~^^ ERROR static items are not allowed to have custom pointers
 
 static STATIC16: (&'static Box<MyOwned>, &'static Box<MyOwned>) =
-    (&'static box MyOwned, &'static box MyOwned);
+    (&box MyOwned, &box MyOwned);
 //~^ ERROR static items are not allowed to have custom pointers
 //~^^ ERROR static items are not allowed to have custom pointers
 

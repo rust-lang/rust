@@ -316,7 +316,7 @@ fn exec<'t>(which: ::regex::native::MatchKind, input: &'t str,
 
         #[inline]
         fn groups<'r>(&'r mut self, i: uint) -> &'r mut Captures {
-            &'r mut self.queue[i].groups
+            &mut self.queue[i].groups
         }
     }
 }
