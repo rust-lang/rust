@@ -173,7 +173,7 @@ the same stack as the rust stack. This means that there is no extra
 stack-switching mechanism in place because it is assumed that the large stack
 for the rust task is plenty for the C function to have.
 
-A planned future improvement (net yet implemented at the time of this writing)
+A planned future improvement (not yet implemented at the time of this writing)
 is to have a guard page at the end of every rust stack. No rust function will
 hit this guard page (due to Rust's usage of LLVM's `__morestack`). The intention
 for this unmapped page is to prevent infinite recursion in C from overflowing
@@ -201,7 +201,7 @@ It is possible to pass functions defined in Rust to an external library.
 The requirement for this is that the callback function is marked as `extern`
 with the correct calling convention to make it callable from C code.
 
-The callback function that can then be sent to through a registration call
+The callback function can then be sent through a registration call
 to the C library and afterwards be invoked from there.
 
 A basic example is:
@@ -243,14 +243,14 @@ void trigger_callback() {
 }
 ~~~~
 
-In this example will Rust's `main()` will call `do_callback()` in C,
-which would call back to `callback()` in Rust.
+In this example Rust's `main()` will call `do_callback()` in C,
+which would, in turn, call back to `callback()` in Rust.
 
 
-## Targetting callbacks to Rust objects
+## Targeting callbacks to Rust objects
 
 The former example showed how a global function can be called from C code.
-However it is often desired that the callback is targetted to a special
+However it is often desired that the callback is targeted to a special
 Rust object. This could be the object that represents the wrapper for the
 respective C object.
 
@@ -334,7 +334,7 @@ it is also absolutely necessary that no more callbacks are performed by the
 C library after the respective Rust object gets destroyed.
 This can be achieved by unregistering the callback in the object's
 destructor and designing the library in a way that guarantees that no
-callback will be performed after unregistration.
+callback will be performed after deregistration.
 
 # Linking
 
