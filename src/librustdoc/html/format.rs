@@ -362,7 +362,7 @@ impl fmt::Show for clean::Type {
                        },
                        args = decl.decl.inputs,
                        arrow = match decl.decl.output {
-                           clean::Primitive(clean::Nil) => "".to_string(),
+                           clean::Primitive(clean::Unit) => "".to_string(),
                            _ => format!(" -&gt; {}", decl.decl.output),
                        },
                        bounds = {
@@ -411,7 +411,7 @@ impl fmt::Show for clean::Type {
                                m.collect::<Vec<String>>().connect(" + "))
                        },
                        arrow = match decl.decl.output {
-                           clean::Primitive(clean::Nil) => "".to_string(),
+                           clean::Primitive(clean::Unit) => "".to_string(),
                            _ => format!(" -&gt; {}", decl.decl.output)
                        })
             }
@@ -472,7 +472,7 @@ impl fmt::Show for clean::FnDecl {
         write!(f, "({args}){arrow}",
                args = self.inputs,
                arrow = match self.output {
-                   clean::Primitive(clean::Nil) => "".to_string(),
+                   clean::Primitive(clean::Unit) => "".to_string(),
                    _ => format!(" -&gt; {}", self.output),
                })
     }
@@ -505,7 +505,7 @@ impl<'a> fmt::Show for Method<'a> {
         write!(f, "({args}){arrow}",
                args = args,
                arrow = match d.output {
-                   clean::Primitive(clean::Nil) => "".to_string(),
+                   clean::Primitive(clean::Unit) => "".to_string(),
                    _ => format!(" -&gt; {}", d.output),
                })
     }
