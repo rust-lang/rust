@@ -2196,7 +2196,7 @@ impl VariantMemberDescriptionFactory {
 
 enum EnumDiscriminantInfo {
     RegularDiscriminant(DIType),
-    OptimizedDiscriminant(uint),
+    OptimizedDiscriminant(adt::PointerField),
     NoDiscriminant
 }
 
