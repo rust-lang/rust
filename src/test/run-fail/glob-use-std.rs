@@ -16,7 +16,7 @@
 use std::*;
 
 fn main() {
-    str::from_byte('a' as u8); // avoid an unused import message
+    String::from_byte(b'a'); // avoid an unused import message
 
     fail!("fail works")
 }
