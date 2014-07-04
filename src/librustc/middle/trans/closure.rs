@@ -424,8 +424,7 @@ pub fn get_wrapper_for_bare_fn(ccx: &CrateContext,
     let empty_param_substs = param_substs::empty();
     let fcx = new_fn_ctxt(ccx, llfn, -1, true, f.sig.output,
                           &empty_param_substs, None, &arena);
-    init_function(&fcx, true, f.sig.output);
-    let bcx = fcx.entry_bcx.borrow().clone().unwrap();
+    let bcx = init_function(&fcx, true, f.sig.output);
 
     let args = create_datums_for_fn_args(&fcx,
                                          ty::ty_fn_args(closure_ty)
