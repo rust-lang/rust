@@ -558,10 +558,10 @@ pub trait Shl<RHS,Result> {
 
 macro_rules! shl_impl(
     ($($t:ty)*) => ($(
-        impl Shl<$t, $t> for $t {
+        impl Shl<uint, $t> for $t {
             #[inline]
-            fn shl(&self, other: &$t) -> $t {
-                (*self) << (*other as uint)
+            fn shl(&self, other: &uint) -> $t {
+                (*self) << (*other)
             }
         }
     )*)
@@ -601,9 +601,9 @@ pub trait Shr<RHS,Result> {
 
 macro_rules! shr_impl(
     ($($t:ty)*) => ($(
-        impl Shr<$t, $t> for $t {
+        impl Shr<uint, $t> for $t {
             #[inline]
-            fn shr(&self, other: &$t) -> $t { (*self) >> (*other as uint) }
+            fn shr(&self, other: &uint) -> $t { (*self) >> (*other) }
         }
     )*)
 )
