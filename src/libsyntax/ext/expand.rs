@@ -667,19 +667,14 @@ fn expand_arm(arm: &ast::Arm, fld: &mut MacroExpander) -> ast::Arm {
     // code duplicated from 'let', above. Perhaps this can be lifted
     // into a separate function:
     let idents = pattern_bindings(*first_pat);
-    let mut new_pending_renames =
+    let new_pending_renames =
         idents.iter().map(|id| (*id,fresh_name(id))).collect();
-    // rewrite all of the patterns using the new names (the old
-    // ones have already been applied). Note that we depend here
-    // on the guarantee that after expansion, there can't be any
-    // Path expressions (a.k.a. varrefs) left in the pattern. If
-    // this were false, we'd need to apply this renaming only to
-    // the bindings, and not to the varrefs, using a more targeted
-    // fold-er.
-    let mut rename_fld = IdentRenamer{renames:&mut new_pending_renames};
+    // apply the renaming, but only to the PatIdents:
+    let mut rename_pats_fld = PatIdentRenamer{renames:&new_pending_renames};
     let rewritten_pats =
-        expanded_pats.iter().map(|pat| rename_fld.fold_pat(*pat)).collect();
+        expanded_pats.iter().map(|pat| rename_pats_fld.fold_pat(*pat)).collect();
     // apply renaming and then expansion to the guard and the body:
+    let mut rename_fld = IdentRenamer{renames:&new_pending_renames};
     let rewritten_guard =
         arm.guard.map(|g| fld.fold_expr(rename_fld.fold_expr(g)));
     let rewritten_body = fld.fold_expr(rename_fld.fold_expr(arm.body));
