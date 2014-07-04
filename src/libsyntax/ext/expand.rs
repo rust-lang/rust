@@ -1377,10 +1377,9 @@ mod test {
     // but *shouldn't* bind because it was inserted by a different macro....
     // can't write this test case until we have macro-generating macros.
 
-    // lambda var hygiene
+    // item fn hygiene
     // expands to fn q(x_1:int){fn g(x_2:int){x_2 + x_1};}
-    #[test]
-    fn issue_9383(){
+    #[test] fn issue_9383(){
         run_renaming_test(
             &("macro_rules! bad_macro (($ex:expr) => (fn g(x:int){ x + $ex }))
               fn q(x:int) { bad_macro!(x); }",
