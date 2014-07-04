@@ -619,7 +619,7 @@ fn encode_visibility(ebml_w: &mut Encoder, visibility: Visibility) {
         Public => 'y',
         Inherited => 'i',
     };
-    ebml_w.wr_str(str::from_char(ch).as_slice());
+    ebml_w.wr_str(ch.to_str().as_slice());
     ebml_w.end_tag();
 }
 

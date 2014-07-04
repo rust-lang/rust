@@ -486,9 +486,7 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, String> {
         if c == range.ch {
             Ok(range.next)
         } else {
-            Err(format!("Expected {}, found {}",
-                str::from_char(c),
-                str::from_char(range.ch)))
+            Err(format!("Expected {}, found {}", c, range.ch))
         }
     }
 
@@ -789,7 +787,7 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, String> {
           }
           '%' => parse_char(s, pos, '%'),
           ch => {
-            Err(format!("unknown formatting type: {}", str::from_char(ch)))
+            Err(format!("unknown formatting type: {}", ch))
           }
         }
     }

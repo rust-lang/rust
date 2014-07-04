@@ -125,6 +125,7 @@ pub fn from_utf8_owned(vv: Vec<u8>) -> Result<String, Vec<u8>> {
 /// let string = str::from_byte(104);
 /// assert_eq!(string.as_slice(), "h");
 /// ```
+#[deprecated = "Replaced by String::from_byte"]
 pub fn from_byte(b: u8) -> String {
     assert!(b < 128u8);
     String::from_char(1, b as char)
@@ -139,8 +140,9 @@ pub fn from_byte(b: u8) -> String {
 /// let string = str::from_char('b');
 /// assert_eq!(string.as_slice(), "b");
 /// ```
+#[deprecated = "use String::from_char or char.to_string()"]
 pub fn from_char(ch: char) -> String {
-    String::from_char(ch)
+    String::from_char(1, ch)
 }
 
 /// Convert a vector of chars to a string
