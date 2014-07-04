@@ -209,7 +209,7 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
         // avoids creating more than one copy of the enum when one
         // of the enum's variants refers to the enum itself.
         let repr = adt::represent_type(cx, t);
-        let tps = substs.types.get_vec(subst::TypeSpace);
+        let tps = substs.types.get_slice(subst::TypeSpace);
         let name = llvm_type_name(cx, an_enum, did, tps);
         adt::incomplete_type_of(cx, &*repr, name.as_slice())
       }
@@ -266,7 +266,7 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
               // in *after* placing it into the type cache. This prevents
               // infinite recursion with recursive struct types.
               let repr = adt::represent_type(cx, t);
-              let tps = substs.types.get_vec(subst::TypeSpace);
+              let tps = substs.types.get_slice(subst::TypeSpace);
               let name = llvm_type_name(cx, a_struct, did, tps);
               adt::incomplete_type_of(cx, &*repr, name.as_slice())
           }
@@ -305,7 +305,7 @@ pub enum named_ty { a_struct, an_enum }
 pub fn llvm_type_name(cx: &CrateContext,
                       what: named_ty,
                       did: ast::DefId,
-                      tps: &Vec<ty::t>)
+                      tps: &[ty::t])
                       -> String
 {
     let name = match what {

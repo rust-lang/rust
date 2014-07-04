@@ -749,15 +749,15 @@ impl<'a> ConstraintContext<'a> {
 
                 // All type parameters on enums and structs should be
                 // in the TypeSpace.
-                assert!(generics.types.get_vec(subst::SelfSpace).is_empty());
-                assert!(generics.types.get_vec(subst::FnSpace).is_empty());
-                assert!(generics.regions.get_vec(subst::SelfSpace).is_empty());
-                assert!(generics.regions.get_vec(subst::FnSpace).is_empty());
+                assert!(generics.types.is_empty_in(subst::SelfSpace));
+                assert!(generics.types.is_empty_in(subst::FnSpace));
+                assert!(generics.regions.is_empty_in(subst::SelfSpace));
+                assert!(generics.regions.is_empty_in(subst::FnSpace));
 
                 self.add_constraints_from_substs(
                     def_id,
-                    generics.types.get_vec(subst::TypeSpace),
-                    generics.regions.get_vec(subst::TypeSpace),
+                    generics.types.get_slice(subst::TypeSpace),
+                    generics.regions.get_slice(subst::TypeSpace),
                     substs,
                     variance);
             }
@@ -768,22 +768,22 @@ impl<'a> ConstraintContext<'a> {
 
                 // Traits DO have a Self type parameter, but it is
                 // erased from object types.
-                assert!(!generics.types.get_vec(subst::SelfSpace).is_empty() &&
-                        substs.types.get_vec(subst::SelfSpace).is_empty());
+                assert!(!generics.types.is_empty_in(subst::SelfSpace) &&
+                        substs.types.is_empty_in(subst::SelfSpace));
 
                 // Traits never declare region parameters in the self
                 // space.
-                assert!(generics.regions.get_vec(subst::SelfSpace).is_empty());
+                assert!(generics.regions.is_empty_in(subst::SelfSpace));
 
                 // Traits never declare type/region parameters in the
                 // fn space.
-                assert!(generics.types.get_vec(subst::FnSpace).is_empty());
-                assert!(generics.regions.get_vec(subst::FnSpace).is_empty());
+                assert!(generics.types.is_empty_in(subst::FnSpace));
+                assert!(generics.regions.is_empty_in(subst::FnSpace));
 
                 self.add_constraints_from_substs(
                     def_id,
-                    generics.types.get_vec(subst::TypeSpace),
-                    generics.regions.get_vec(subst::TypeSpace),
+                    generics.types.get_slice(subst::TypeSpace),
+                    generics.regions.get_slice(subst::TypeSpace),
                     substs,
                     variance);
             }
@@ -832,8 +832,8 @@ impl<'a> ConstraintContext<'a> {
     /// object, etc) appearing in a context with ambient variance `variance`
     fn add_constraints_from_substs(&mut self,
                                    def_id: ast::DefId,
-                                   type_param_defs: &Vec<ty::TypeParameterDef>,
-                                   region_param_defs: &Vec<ty::RegionParameterDef>,
+                                   type_param_defs: &[ty::TypeParameterDef],
+                                   region_param_defs: &[ty::RegionParameterDef],
                                    substs: &subst::Substs,
                                    variance: VarianceTermPtr<'a>) {
         debug!("add_constraints_from_substs(def_id={:?})", def_id);

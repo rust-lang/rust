@@ -264,6 +264,12 @@ pub struct VecPerParamSpace<T> {
     vecs: (Vec<T>, Vec<T>, Vec<T>)
 }
 
+impl<T:Clone> VecPerParamSpace<T> {
+    pub fn push_all(&mut self, space: ParamSpace, values: &[T]) {
+        self.get_mut_vec(space).push_all(values);
+    }
+}
+
 impl<T> VecPerParamSpace<T> {
     pub fn empty() -> VecPerParamSpace<T> {
         VecPerParamSpace {
@@ -293,6 +299,18 @@ impl<T> VecPerParamSpace<T> {
         self.get_mut_vec(space).push(value);
     }
 
+    pub fn pop(&mut self, space: ParamSpace) -> Option<T> {
+        self.get_mut_vec(space).pop()
+    }
+
+    pub fn truncate(&mut self, space: ParamSpace, len: uint) {
+        self.get_mut_vec(space).truncate(len)
+    }
+
+    pub fn replace(&mut self, space: ParamSpace, elems: Vec<T>) {
+        *self.get_mut_vec(space) = elems;
+    }
+
     pub fn get_self<'a>(&'a self) -> Option<&'a T> {
         let v = self.get_vec(SelfSpace);
         assert!(v.len() <= 1);
@@ -303,11 +321,19 @@ impl<T> VecPerParamSpace<T> {
         self.get_vec(space).len()
     }
 
-    pub fn get_vec<'a>(&'a self, space: ParamSpace) -> &'a Vec<T> {
+    pub fn is_empty_in(&self, space: ParamSpace) -> bool {
+        self.get_vec(space).len() == 0
+    }
+
+    pub fn get_slice<'a>(&'a self, space: ParamSpace) -> &'a [T] {
+        self.get_vec(space).as_slice()
+    }
+
+    fn get_vec<'a>(&'a self, space: ParamSpace) -> &'a Vec<T> {
         self.vecs.get(space as uint).unwrap()
     }
 
-    pub fn get_mut_vec<'a>(&'a mut self, space: ParamSpace) -> &'a mut Vec<T> {
+    fn get_mut_vec<'a>(&'a mut self, space: ParamSpace) -> &'a mut Vec<T> {
         self.vecs.get_mut(space as uint).unwrap()
     }
 
@@ -336,8 +362,8 @@ impl<T> VecPerParamSpace<T> {
         r.iter().chain(s.iter().chain(f.iter()))
     }
 
-    pub fn all_vecs(&self, pred: |&Vec<T>| -> bool) -> bool {
-        self.vecs.iter().all(pred)
+    pub fn all_vecs(&self, pred: |&[T]| -> bool) -> bool {
+        self.vecs.iter().map(|v|v.as_slice()).all(pred)
     }
 
     pub fn all(&self, pred: |&T| -> bool) -> bool {

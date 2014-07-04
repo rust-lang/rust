@@ -216,10 +216,8 @@ fn resolve_default_method_vtables(bcx: &Block,
         bcx.tcx(), &param_substs, &impl_res);
 
     // Now we pull any vtables for parameters on the actual method.
-    param_vtables
-        .get_mut_vec(subst::FnSpace)
-        .push_all(
-            impl_vtables.get_vec(subst::FnSpace).as_slice());
+    param_vtables.push_all(subst::FnSpace,
+                           impl_vtables.get_slice(subst::FnSpace));
 
     param_vtables
 }
