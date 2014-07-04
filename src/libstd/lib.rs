@@ -160,6 +160,9 @@ pub use core::ptr;
 pub use core::raw;
 pub use core::simd;
 pub use core::tuple;
+// FIXME #15320: primitive documentation needs top-level modules, this
+// should be `std::tuple::unit`.
+pub use core::unit;
 #[cfg(not(test))] pub use core::ty;
 pub use core::result;
 pub use core::option;
