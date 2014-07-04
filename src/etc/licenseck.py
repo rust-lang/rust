@@ -48,6 +48,7 @@ exceptions = [
     "test/bench/shootout-meteor.rs", # BSD
     "test/bench/shootout-pidigits.rs", # BSD
     "test/bench/shootout-regex-dna.rs", # BSD
+    "test/bench/shootout-threadring.rs", # BSD
 ]
 
 def check_license(name, contents):
