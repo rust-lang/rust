@@ -206,7 +206,6 @@ use middle::trans::cleanup::CleanupMethods;
 use middle::trans::common::*;
 use middle::trans::consts;
 use middle::trans::controlflow;
-use middle::trans::datum;
 use middle::trans::datum::*;
 use middle::trans::expr::Dest;
 use middle::trans::expr;
@@ -227,10 +226,8 @@ use syntax::ast::Ident;
 use syntax::codemap::Span;
 use syntax::parse::token::InternedString;
 
-// An option identifying a literal: either a unit-like struct or an
-// expression.
+// An option identifying a literal: either an expression or a DefId of a static expression.
 enum Lit {
-    UnitLikeStructLit(ast::NodeId),    // the node ID of the pattern
     ExprLit(Gc<ast::Expr>),
     ConstLit(ast::DefId),              // the def ID of the constant
 }
@@ -253,14 +250,12 @@ enum Opt {
 fn lit_to_expr(tcx: &ty::ctxt, a: &Lit) -> Gc<ast::Expr> {
     match *a {
         ExprLit(existing_a_expr) => existing_a_expr,
-        ConstLit(a_const) => const_eval::lookup_const_by_id(tcx, a_const).unwrap(),
-        UnitLikeStructLit(_) => fail!("lit_to_expr: unexpected struct lit"),
+        ConstLit(a_const) => const_eval::lookup_const_by_id(tcx, a_const).unwrap()
     }
 }
 
 fn opt_eq(tcx: &ty::ctxt, a: &Opt, b: &Opt) -> bool {
     match (a, b) {
-        (&lit(UnitLikeStructLit(a)), &lit(UnitLikeStructLit(b))) => a == b,
         (&lit(a), &lit(b)) => {
             let a_expr = lit_to_expr(tcx, &a);
             let b_expr = lit_to_expr(tcx, &b);
@@ -301,11 +296,6 @@ fn trans_opt<'a>(bcx: &'a Block<'a>, o: &Opt) -> opt_result<'a> {
             let lit_datum = unpack_datum!(bcx, lit_datum.to_appropriate_datum(bcx));
             return single_result(Result::new(bcx, lit_datum.val));
         }
-        lit(UnitLikeStructLit(pat_id)) => {
-            let struct_ty = ty::node_id_to_type(bcx.tcx(), pat_id);
-            let datum = datum::rvalue_scratch_datum(bcx, struct_ty, "");
-            return single_result(Result::new(bcx, datum.val));
-        }
         lit(l @ ConstLit(ref def_id)) => {
             let lit_ty = ty::node_id_to_type(bcx.tcx(), lit_to_expr(bcx.tcx(), &l).id);
             let (llval, _) = consts::get_const_val(bcx.ccx(), *def_id);
@@ -337,9 +327,6 @@ fn variant_opt(bcx: &Block, pat_id: ast::NodeId) -> Opt {
         def::DefVariant(enum_id, var_id, _) => {
             let variant = ty::enum_variant_with_id(ccx.tcx(), enum_id, var_id);
             var(variant.disr_val, adt::represent_node(bcx, pat_id), var_id)
-        }
-        def::DefFn(..) | def::DefStruct(_) => {
-            lit(UnitLikeStructLit(pat_id))
         }
         _ => {
             ccx.sess().bug("non-variant or struct in variant_opt()");
@@ -559,7 +546,6 @@ fn enter_opt<'a, 'b>(
     let _indenter = indenter();
 
     let ctor = match opt {
-        &lit(UnitLikeStructLit(_)) => check_match::Single,
         &lit(x) => check_match::ConstantValue(const_eval::eval_const_expr(
             bcx.tcx(), lit_to_expr(bcx.tcx(), &x))),
         &range(ref lo, ref hi) => check_match::ConstantRange(
@@ -664,11 +650,10 @@ fn get_options(bcx: &Block, m: &[Match], col: uint) -> Vec<Opt> {
                 add_to_set(ccx.tcx(), &mut found, lit(ExprLit(l)));
             }
             ast::PatIdent(..) => {
-                // This is one of: an enum variant, a unit-like struct, or a
-                // variable binding.
+                // This is either an enum variant or a variable binding.
                 let opt_def = ccx.tcx.def_map.borrow().find_copy(&cur.id);
                 match opt_def {
-                    Some(def::DefVariant(..)) | Some(def::DefStruct(..)) => {
+                    Some(def::DefVariant(..)) => {
                         add_to_set(ccx.tcx(), &mut found,
                                    variant_opt(bcx, cur.id));
                     }
@@ -819,7 +804,7 @@ fn any_irrefutable_adt_pat(bcx: &Block, m: &[Match], col: uint) -> bool {
         let pat = *br.pats.get(col);
         match pat.node {
             ast::PatTup(_) => true,
-            ast::PatStruct(_, _, _) | ast::PatEnum(_, _) =>
+            ast::PatEnum(..) | ast::PatIdent(_, _, None) | ast::PatStruct(..) =>
                 match bcx.tcx().def_map.borrow().find(&pat.id) {
                     Some(&def::DefFn(..)) |
                     Some(&def::DefStruct(..)) => true,
