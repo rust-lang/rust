@@ -2539,7 +2539,7 @@ A temporary's lifetime equals the largest lifetime of any reference that points 
 #### Moved and copied types
 
 When a [local variable](#memory-slots) is used
-as an [rvalue](#lvalues-rvalues-and-temporaries)
+as an [rvalue](#lvalues,-rvalues-and-temporaries)
 the variable will either be moved or copied, depending on its type.
 For types that contain [owning pointers](#pointer-types)
 or values that implement the special trait `Drop`,
@@ -2562,7 +2562,7 @@ string, boolean value, or the unit value.
 ### Path expressions
 
 A [path](#paths) used as an expression context denotes either a local variable or an item.
-Path expressions are [lvalues](#lvalues-rvalues-and-temporaries).
+Path expressions are [lvalues](#lvalues,-rvalues-and-temporaries).
 
 ### Tuple expressions
 
@@ -2675,7 +2675,7 @@ foo().x;
 (Struct {a: 10, b: 20}).a;
 ~~~~
 
-A field access is an [lvalue](#lvalues-rvalues-and-temporaries) referring to the value of that field.
+A field access is an [lvalue](#lvalues,-rvalues-and-temporaries) referring to the value of that field.
 When the type providing the field inherits mutabilty, it can be [assigned](#assignment-expressions) to.
 
 Also, if the type of the expression to the left of the dot is a pointer,
@@ -2711,7 +2711,7 @@ idx_expr : expr '[' expr ']' ;
 
 [Vector](#vector-types)-typed expressions can be indexed by writing a
 square-bracket-enclosed expression (the index) after them. When the
-vector is mutable, the resulting [lvalue](#lvalues-rvalues-and-temporaries) can be assigned to.
+vector is mutable, the resulting [lvalue](#lvalues,-rvalues-and-temporaries) can be assigned to.
 
 Indices are zero-based, and may be of any integral type. Vector access
 is bounds-checked at run-time. When the check fails, it will put the
@@ -2737,7 +2737,7 @@ before the expression they apply to.
   : Negation. May only be applied to numeric types.
 * `*`
   : Dereference. When applied to a [pointer](#pointer-types) it denotes the pointed-to location.
-    For pointers to mutable locations, the resulting [lvalue](#lvalues-rvalues-and-temporaries) can be assigned to.
+    For pointers to mutable locations, the resulting [lvalue](#lvalues,-rvalues-and-temporaries) can be assigned to.
     On non-pointer types, it calls the `deref` method of the `std::ops::Deref` trait, or the
     `deref_mut` method of the `std::ops::DerefMut` trait (if implemented by the type and required
     for an outer expression that will or could mutate the dereference), and produces the
@@ -2872,8 +2872,8 @@ fn avg(v: &[f64]) -> f64 {
 
 #### Assignment expressions
 
-An _assignment expression_ consists of an [lvalue](#lvalues-rvalues-and-temporaries) expression followed by an
-equals sign (`=`) and an [rvalue](#lvalues-rvalues-and-temporaries) expression.
+An _assignment expression_ consists of an [lvalue](#lvalues,-rvalues-and-temporaries) expression followed by an
+equals sign (`=`) and an [rvalue](#lvalues,-rvalues-and-temporaries) expression.
 
 Evaluating an assignment expression [either copies or moves](#moved-and-copied-types) its right-hand operand to its left-hand operand.
 
@@ -3186,7 +3186,7 @@ fn main() {
 ~~~~
 
 A `match` behaves differently depending on whether or not the head expression
-is an [lvalue or an rvalue](#lvalues-rvalues-and-temporaries).
+is an [lvalue or an rvalue](#lvalues,-rvalues-and-temporaries).
 If the head expression is an rvalue, it is
 first evaluated into a temporary location, and the resulting value
 is sequentially compared to the patterns in the arms until a match
@@ -3550,7 +3550,7 @@ There are four varieties of pointer in Rust:
   : These point to memory _owned by some other value_.
     References arise by (automatic) conversion from owning pointers, managed pointers,
     or by applying the borrowing operator `&` to some other value,
-    including [lvalues, rvalues or temporaries](#lvalues-rvalues-and-temporaries).
+    including [lvalues, rvalues or temporaries](#lvalues,-rvalues-and-temporaries).
     References are written `&content`, or in some cases `&'f content` for some lifetime-variable `f`,
     for example `&int` means a reference to an integer.
     Copying a reference is a "shallow" operation:
@@ -3852,7 +3852,7 @@ references to any boxes; the remainder of its heap is immediately freed.
 A task's stack contains slots.
 
 A _slot_ is a component of a stack frame, either a function parameter,
-a [temporary](#lvalues-rvalues-and-temporaries), or a local variable.
+a [temporary](#lvalues,-rvalues-and-temporaries), or a local variable.
 
 A _local variable_ (or *stack-local* allocation) holds a value directly,
 allocated within the stack's memory. The value is a part of the stack frame.
