@@ -17,6 +17,7 @@ Core encoding and decoding interfaces.
 use std::path;
 use std::rc::Rc;
 use std::gc::{Gc, GC};
+use std::cell::{Cell, RefCell};
 
 pub trait Encoder<E> {
     // Primitive types:
@@ -533,6 +534,35 @@ impl<E, D: Decoder<E>> Decodable<D, E> for path::windows::Path {
     fn decode(d: &mut D) -> Result<path::windows::Path, E> {
         let bytes: Vec<u8> = try!(Decodable::decode(d));
         Ok(path::windows::Path::new(bytes))
+    }
+}
+
+impl<E, S: Encoder<E>, T: Encodable<S, E> + Copy> Encodable<S, E> for Cell<T> {
+    fn encode(&self, s: &mut S) -> Result<(), E> {
+        self.get().encode(s)
+    }
+}
+
+impl<E, D: Decoder<E>, T: Decodable<D, E> + Copy> Decodable<D, E> for Cell<T> {
+    fn decode(d: &mut D) -> Result<Cell<T>, E> {
+        Ok(Cell::new(try!(Decodable::decode(d))))
+    }
+}
+
+// FIXME: #15036
+// Should use `try_borrow`, returning a
+// `encoder.error("attempting to Encode borrowed RefCell")`
+// from `encode` when `try_borrow` returns `None`.
+
+impl<E, S: Encoder<E>, T: Encodable<S, E>> Encodable<S, E> for RefCell<T> {
+    fn encode(&self, s: &mut S) -> Result<(), E> {
+        self.borrow().encode(s)
+    }
+}
+
+impl<E, D: Decoder<E>, T: Decodable<D, E>> Decodable<D, E> for RefCell<T> {
+    fn decode(d: &mut D) -> Result<RefCell<T>, E> {
+        Ok(RefCell::new(try!(Decodable::decode(d))))
     }
 }
 
