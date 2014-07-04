@@ -685,7 +685,7 @@ mod test {
         let hs = uuid1.to_hyphenated_str();
         let ss = uuid1.to_string();
 
-        let hsn = str::from_chars(hs.as_slice()
+        let hsn = String::from_chars(hs.as_slice()
                                     .chars()
                                     .filter(|&c| c != '-')
                                     .collect::<Vec<char>>()

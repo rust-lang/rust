@@ -148,11 +148,11 @@ pub fn from_char(ch: char) -> String {
 /// # Example
 ///
 /// ```rust
-/// use std::str;
 /// let chars = ['h', 'e', 'l', 'l', 'o'];
-/// let string = str::from_chars(chars);
+/// let string = String::from_chars(chars);
 /// assert_eq!(string.as_slice(), "hello");
 /// ```
+#[deprecated = "use String::from_chars instead"]
 pub fn from_chars(chs: &[char]) -> String {
     chs.iter().map(|c| *c).collect()
 }
