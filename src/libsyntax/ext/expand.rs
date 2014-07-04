@@ -1387,6 +1387,28 @@ mod test {
             0)
     }
 
+    // closure arg hygiene
+    // expands to fn f(){(|x_1 : int| {(x_2 + x_1)})(3);}
+    #[test] fn closure_arg_hygiene(){
+        run_renaming_test(
+            &("macro_rules! inject_x (()=>(x))
+            fn f(){(|x : int| {(inject_x!() + x)})(3);}",
+              vec!(vec!(1)),
+              true),
+            0)
+    }
+
+    // closure arg hygiene (ExprProc)
+    // expands to fn f(){(proc(x_1 : int) {(x_2 + x_1)})(3);}
+    #[test] fn closure_arg_hygiene_2(){
+        run_renaming_test(
+            &("macro_rules! inject_x (()=>(x))
+              fn f(){ (proc(x : int){(inject_x!() + x)})(3); }",
+              vec!(vec!(1)),
+              true),
+            0)
+    }
+
     // run one of the renaming tests
     fn run_renaming_test(t: &RenamingTest, test_idx: uint) {
         let invalid_name = token::special_idents::invalid.name;
