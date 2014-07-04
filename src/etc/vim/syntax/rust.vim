@@ -60,6 +60,10 @@ syn region    rustBoxPlacementBalance start="(" end=")" containedin=rustBoxPlace
 syn region    rustBoxPlacementBalance start="\[" end="\]" containedin=rustBoxPlacement transparent
 " {} are handled by rustFoldBraces
 
+syn region rustMacroRepeat matchgroup=rustMacroRepeatDelimiters start="$(" end=")" contains=TOP nextgroup=rustMacroRepeatCount
+syn match rustMacroRepeatCount ".\?[*+]" contained
+syn match rustMacroVariable "$\w\+"
+
 " Reserved (but not yet used) keywords {{{2
 syn keyword   rustReservedKeyword alignof be do offsetof priv pure sizeof typeof unsized yield
 
@@ -233,6 +237,9 @@ hi def link rustBinNumber       rustNumber
 hi def link rustIdentifierPrime rustIdentifier
 hi def link rustTrait           rustType
 
+hi def link rustMacroRepeatCount   rustMacroRepeatDelimiters
+hi def link rustMacroRepeatDelimiters   Macro
+hi def link rustMacroVariable Define
 hi def link rustSigil         StorageClass
 hi def link rustEscape        Special
 hi def link rustEscapeUnicode rustEscape
