@@ -449,8 +449,8 @@ pub fn parameterized(cx: &ctxt,
         }
     }
 
-    let tps = substs.types.get_vec(subst::TypeSpace);
-    let ty_params = generics.types.get_vec(subst::TypeSpace);
+    let tps = substs.types.get_slice(subst::TypeSpace);
+    let ty_params = generics.types.get_slice(subst::TypeSpace);
     let has_defaults = ty_params.last().map_or(false, |def| def.default.is_some());
     let num_defaults = if has_defaults && !cx.sess.verbose() {
         ty_params.iter().zip(tps.iter()).rev().take_while(|&(def, &actual)| {
@@ -468,7 +468,7 @@ pub fn parameterized(cx: &ctxt,
     }
 
     if cx.sess.verbose() {
-        for t in substs.types.get_vec(subst::SelfSpace).iter() {
+        for t in substs.types.get_slice(subst::SelfSpace).iter() {
             strs.push(format!("for {}", t.repr(cx)));
         }
     }
@@ -598,9 +598,9 @@ impl Repr for subst::Substs {
 impl<T:Repr> Repr for subst::VecPerParamSpace<T> {
     fn repr(&self, tcx: &ctxt) -> String {
         format!("[{};{};{}]",
-                       self.get_vec(subst::TypeSpace).repr(tcx),
-                       self.get_vec(subst::SelfSpace).repr(tcx),
-                       self.get_vec(subst::FnSpace).repr(tcx))
+                       self.get_slice(subst::TypeSpace).repr(tcx),
+                       self.get_slice(subst::SelfSpace).repr(tcx),
+                       self.get_slice(subst::FnSpace).repr(tcx))
     }
 }
 

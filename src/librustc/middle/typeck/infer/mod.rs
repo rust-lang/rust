@@ -624,7 +624,7 @@ impl<'a> InferCtxt<'a> {
 
     pub fn region_vars_for_defs(&self,
                                 span: Span,
-                                defs: &Vec<ty::RegionParameterDef>)
+                                defs: &[ty::RegionParameterDef])
                                 -> Vec<ty::Region> {
         defs.iter()
             .map(|d| self.next_region_var(EarlyBoundRegion(span, d.name)))
@@ -647,7 +647,7 @@ impl<'a> InferCtxt<'a> {
         assert!(generics.regions.len(subst::FnSpace) == 0);
 
         let type_parameter_count = generics.types.len(subst::TypeSpace);
-        let region_param_defs = generics.regions.get_vec(subst::TypeSpace);
+        let region_param_defs = generics.regions.get_slice(subst::TypeSpace);
         let regions = self.region_vars_for_defs(span, region_param_defs);
         let type_parameters = self.next_ty_vars(type_parameter_count);
         subst::Substs::new_type(type_parameters, regions)

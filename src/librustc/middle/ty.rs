@@ -981,7 +981,7 @@ impl Generics {
     }
 
     pub fn has_type_params(&self, space: subst::ParamSpace) -> bool {
-        !self.types.get_vec(space).is_empty()
+        !self.types.is_empty_in(space)
     }
 }
 
@@ -4644,14 +4644,14 @@ pub fn construct_parameter_environment(
     let mut types = VecPerParamSpace::empty();
     for &space in subst::ParamSpace::all().iter() {
         push_types_from_defs(tcx, &mut types, space,
-                             generics.types.get_vec(space));
+                             generics.types.get_slice(space));
     }
 
     // map bound 'a => free 'a
     let mut regions = VecPerParamSpace::empty();
     for &space in subst::ParamSpace::all().iter() {
         push_region_params(&mut regions, space, free_id,
-                           generics.regions.get_vec(space));
+                           generics.regions.get_slice(space));
     }
 
     let free_substs = Substs {
@@ -4666,7 +4666,7 @@ pub fn construct_parameter_environment(
     let mut bounds = VecPerParamSpace::empty();
     for &space in subst::ParamSpace::all().iter() {
         push_bounds_from_defs(tcx, &mut bounds, space, &free_substs,
-                              generics.types.get_vec(space));
+                              generics.types.get_slice(space));
     }
 
     debug!("construct_parameter_environment: free_id={} \
@@ -4684,7 +4684,7 @@ pub fn construct_parameter_environment(
     fn push_region_params(regions: &mut VecPerParamSpace<ty::Region>,
                           space: subst::ParamSpace,
                           free_id: ast::NodeId,
-                          region_params: &Vec<RegionParameterDef>)
+                          region_params: &[RegionParameterDef])
     {
         for r in region_params.iter() {
             regions.push(space, ty::free_region_from_def(free_id, r));
@@ -4694,7 +4694,7 @@ pub fn construct_parameter_environment(
     fn push_types_from_defs(tcx: &ty::ctxt,
                             types: &mut subst::VecPerParamSpace<ty::t>,
                             space: subst::ParamSpace,
-                            defs: &Vec<TypeParameterDef>) {
+                            defs: &[TypeParameterDef]) {
         for (i, def) in defs.iter().enumerate() {
             let ty = ty::mk_param(tcx, space, i, def.def_id);
             types.push(space, ty);
@@ -4705,7 +4705,7 @@ pub fn construct_parameter_environment(
                              bounds: &mut subst::VecPerParamSpace<ParamBounds>,
                              space: subst::ParamSpace,
                              free_substs: &subst::Substs,
-                             defs: &Vec<TypeParameterDef>) {
+                             defs: &[TypeParameterDef]) {
         for def in defs.iter() {
             let b = (*def.bounds).subst(tcx, free_substs);
             bounds.push(space, b);

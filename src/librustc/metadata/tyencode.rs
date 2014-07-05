@@ -100,7 +100,7 @@ fn enc_vec_per_param_space<T>(w: &mut MemWriter,
                               op: |&mut MemWriter, &ctxt, &T|) {
     for &space in subst::ParamSpace::all().iter() {
         mywrite!(w, "[");
-        for t in v.get_vec(space).iter() {
+        for t in v.get_slice(space).iter() {
             op(w, cx, t);
         }
         mywrite!(w, "]");

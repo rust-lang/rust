@@ -15,7 +15,6 @@ use middle::ty_fold;
 use middle::ty_fold::{TypeFoldable, TypeFolder};
 use util::ppaux::Repr;
 
-use std::iter::Chain;
 use std::mem;
 use std::raw;
 use std::slice::{Items, MutItems};
@@ -191,8 +190,8 @@ impl Substs {
     }
 
     pub fn with_method_from(self, substs: &Substs) -> Substs {
-        self.with_method((*substs.types.get_vec(FnSpace)).clone(),
-                         (*substs.regions().get_vec(FnSpace)).clone())
+        self.with_method(Vec::from_slice(substs.types.get_slice(FnSpace)),
+                         Vec::from_slice(substs.regions().get_slice(FnSpace)))
     }
 
     pub fn with_method(self,
@@ -261,13 +260,44 @@ impl ParamSpace {
  */
 #[deriving(PartialEq, Eq, Clone, Hash, Encodable, Decodable)]
 pub struct VecPerParamSpace<T> {
-    vecs: (Vec<T>, Vec<T>, Vec<T>)
+    // This was originally represented as a tuple with one Vec<T> for
+    // each variant of ParamSpace, and that remains the abstraction
+    // that it provides to its clients.
+    //
+    // Here is how the representation corresponds to the abstraction
+    // i.e. the "abstraction function" AF:
+    //
+    // AF(self) = (self.content.slice_to(self.type_limit),
+    //             self.content.slice(self.type_limit, self.self_limit),
+    //             self.content.slice_from(self.self_limit))
+    type_limit: uint,
+    self_limit: uint,
+    content: Vec<T>,
+}
+
+impl<T:Clone> VecPerParamSpace<T> {
+    pub fn push_all(&mut self, space: ParamSpace, values: &[T]) {
+        // FIXME (#15435): slow; O(n^2); could enhance vec to make it O(n).
+        for t in values.iter() {
+            self.push(space, t.clone());
+        }
+    }
 }
 
 impl<T> VecPerParamSpace<T> {
+    fn limits(&self, space: ParamSpace) -> (uint, uint) {
+        match space {
+            TypeSpace => (0, self.type_limit),
+            SelfSpace => (self.type_limit, self.self_limit),
+            FnSpace => (self.self_limit, self.content.len()),
+        }
+    }
+
     pub fn empty() -> VecPerParamSpace<T> {
         VecPerParamSpace {
-            vecs: (Vec::new(), Vec::new(), Vec::new())
+            type_limit: 0,
+            self_limit: 0,
+            content: Vec::new()
         }
     }
 
@@ -276,8 +306,15 @@ impl<T> VecPerParamSpace<T> {
     }
 
     pub fn new(t: Vec<T>, s: Vec<T>, f: Vec<T>) -> VecPerParamSpace<T> {
+        let type_limit = t.len();
+        let self_limit = t.len() + s.len();
+        let mut content = t;
+        content.push_all_move(s);
+        content.push_all_move(f);
         VecPerParamSpace {
-            vecs: (t, s, f)
+            type_limit: type_limit,
+            self_limit: self_limit,
+            content: content,
         }
     }
 
@@ -289,55 +326,98 @@ impl<T> VecPerParamSpace<T> {
         result
     }
 
+    /// Appends `value` to the vector associated with `space`.
+    ///
+    /// Unlike the `push` method in `Vec`, this should not be assumed
+    /// to be a cheap operation (even when amortized over many calls).
     pub fn push(&mut self, space: ParamSpace, value: T) {
-        self.get_mut_vec(space).push(value);
+        let (_, limit) = self.limits(space);
+        match space {
+            TypeSpace => { self.type_limit += 1; self.self_limit += 1; }
+            SelfSpace => { self.self_limit += 1; }
+            FnSpace   => {}
+        }
+        self.content.insert(limit, value);
+    }
+
+    pub fn pop(&mut self, space: ParamSpace) -> Option<T> {
+        let (start, limit) = self.limits(space);
+        if start == limit {
+            None
+        } else {
+            match space {
+                TypeSpace => { self.type_limit -= 1; self.self_limit -= 1; }
+                SelfSpace => { self.self_limit -= 1; }
+                FnSpace   => {}
+            }
+            self.content.remove(limit - 1)
+        }
+    }
+
+    pub fn truncate(&mut self, space: ParamSpace, len: uint) {
+        // FIXME (#15435): slow; O(n^2); could enhance vec to make it O(n).
+        while self.len(space) > len {
+            self.pop(space);
+        }
+    }
+
+    pub fn replace(&mut self, space: ParamSpace, elems: Vec<T>) {
+        // FIXME (#15435): slow; O(n^2); could enhance vec to make it O(n).
+        self.truncate(space, 0);
+        for t in elems.move_iter() {
+            self.push(space, t);
+        }
     }
 
     pub fn get_self<'a>(&'a self) -> Option<&'a T> {
-        let v = self.get_vec(SelfSpace);
+        let v = self.get_slice(SelfSpace);
         assert!(v.len() <= 1);
-        if v.len() == 0 { None } else { Some(v.get(0)) }
+        if v.len() == 0 { None } else { Some(&v[0]) }
     }
 
     pub fn len(&self, space: ParamSpace) -> uint {
-        self.get_vec(space).len()
+        self.get_slice(space).len()
     }
 
-    pub fn get_vec<'a>(&'a self, space: ParamSpace) -> &'a Vec<T> {
-        self.vecs.get(space as uint).unwrap()
+    pub fn is_empty_in(&self, space: ParamSpace) -> bool {
+        self.len(space) == 0
     }
 
-    pub fn get_mut_vec<'a>(&'a mut self, space: ParamSpace) -> &'a mut Vec<T> {
-        self.vecs.get_mut(space as uint).unwrap()
+    pub fn get_slice<'a>(&'a self, space: ParamSpace) -> &'a [T] {
+        let (start, limit) = self.limits(space);
+        self.content.slice(start, limit)
+    }
+
+    fn get_mut_slice<'a>(&'a mut self, space: ParamSpace) -> &'a mut [T] {
+        let (start, limit) = self.limits(space);
+        self.content.mut_slice(start, limit)
     }
 
     pub fn opt_get<'a>(&'a self,
                        space: ParamSpace,
                        index: uint)
                        -> Option<&'a T> {
-        let v = self.get_vec(space);
-        if index < v.len() { Some(v.get(index)) } else { None }
+        let v = self.get_slice(space);
+        if index < v.len() { Some(&v[index]) } else { None }
     }
 
     pub fn get<'a>(&'a self, space: ParamSpace, index: uint) -> &'a T {
-        self.get_vec(space).get(index)
+        &self.get_slice(space)[index]
     }
 
     pub fn get_mut<'a>(&'a mut self,
                        space: ParamSpace,
                        index: uint) -> &'a mut T {
-        self.get_mut_vec(space).get_mut(index)
+        &mut self.get_mut_slice(space)[index]
     }
 
-    pub fn iter<'a>(&'a self) -> Chain<Items<'a,T>,
-                                       Chain<Items<'a,T>,
-                                             Items<'a,T>>> {
-        let (ref r, ref s, ref f) = self.vecs;
-        r.iter().chain(s.iter().chain(f.iter()))
+    pub fn iter<'a>(&'a self) -> Items<'a,T> {
+        self.content.iter()
     }
 
-    pub fn all_vecs(&self, pred: |&Vec<T>| -> bool) -> bool {
-        self.vecs.iter().all(pred)
+    pub fn all_vecs(&self, pred: |&[T]| -> bool) -> bool {
+        let spaces = [TypeSpace, SelfSpace, FnSpace];
+        spaces.iter().all(|&space| { pred(self.get_slice(space)) })
     }
 
     pub fn all(&self, pred: |&T| -> bool) -> bool {
@@ -353,9 +433,13 @@ impl<T> VecPerParamSpace<T> {
     }
 
     pub fn map<U>(&self, pred: |&T| -> U) -> VecPerParamSpace<U> {
-        VecPerParamSpace::new(self.vecs.ref0().iter().map(|p| pred(p)).collect(),
-                              self.vecs.ref1().iter().map(|p| pred(p)).collect(),
-                              self.vecs.ref2().iter().map(|p| pred(p)).collect())
+        // FIXME (#15418): this could avoid allocating the intermediate
+        // Vec's, but note that the values of type_limit and self_limit
+        // also need to be kept in sync during construction.
+        VecPerParamSpace::new(
+            self.get_slice(TypeSpace).iter().map(|p| pred(p)).collect(),
+            self.get_slice(SelfSpace).iter().map(|p| pred(p)).collect(),
+            self.get_slice(FnSpace).iter().map(|p| pred(p)).collect())
     }
 
     pub fn map_rev<U>(&self, pred: |&T| -> U) -> VecPerParamSpace<U> {
@@ -368,29 +452,46 @@ impl<T> VecPerParamSpace<T> {
          * can be run to a fixed point
          */
 
-        let mut fns: Vec<U> = self.vecs.ref2().iter().rev().map(|p| pred(p)).collect();
+        let mut fns: Vec<U> = self.get_slice(FnSpace).iter().rev().map(|p| pred(p)).collect();
 
         // NB: Calling foo.rev().map().rev() causes the calls to map
         // to occur in the wrong order. This was somewhat surprising
         // to me, though it makes total sense.
         fns.reverse();
 
-        let mut selfs: Vec<U> = self.vecs.ref1().iter().rev().map(|p| pred(p)).collect();
+        let mut selfs: Vec<U> = self.get_slice(SelfSpace).iter().rev().map(|p| pred(p)).collect();
         selfs.reverse();
-        let mut tys: Vec<U> = self.vecs.ref0().iter().rev().map(|p| pred(p)).collect();
+        let mut tys: Vec<U> = self.get_slice(TypeSpace).iter().rev().map(|p| pred(p)).collect();
         tys.reverse();
         VecPerParamSpace::new(tys, selfs, fns)
     }
 
     pub fn split(self) -> (Vec<T>, Vec<T>, Vec<T>) {
-        self.vecs
+        // FIXME (#15418): this does two traversals when in principle
+        // one would suffice.  i.e. change to use `move_iter`.
+        let VecPerParamSpace { type_limit, self_limit, content } = self;
+        let mut i = 0;
+        let (prefix, fn_vec) = content.partition(|_| {
+            let on_left = i < self_limit;
+            i += 1;
+            on_left
+        });
+
+        let mut i = 0;
+        let (type_vec, self_vec) = prefix.partition(|_| {
+            let on_left = i < type_limit;
+            i += 1;
+            on_left
+        });
+
+        (type_vec, self_vec, fn_vec)
     }
 
     pub fn with_vec(mut self, space: ParamSpace, vec: Vec<T>)
                     -> VecPerParamSpace<T>
     {
-        assert!(self.get_vec(space).is_empty());
-        *self.get_mut_vec(space) = vec;
+        assert!(self.is_empty_in(space));
+        self.replace(space, vec);
         self
     }
 }
