@@ -34,7 +34,7 @@ impl<'a> ParserAttr for Parser<'a> {
     fn parse_outer_attributes(&mut self) -> Vec<ast::Attribute> {
         let mut attrs: Vec<ast::Attribute> = Vec::new();
         loop {
-            debug!("parse_outer_attributes: self.token={:?}",
+            debug!("parse_outer_attributes: self.token={}",
                    self.token);
             match self.token {
               token::POUND => {
