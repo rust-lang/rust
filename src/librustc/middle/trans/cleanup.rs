@@ -240,13 +240,41 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
             is_immediate: false,
             on_unwind: ty::type_needs_unwind_cleanup(self.ccx.tcx(), ty),
             val: val,
-            ty: ty
+            ty: ty,
+            zero: false
         };
 
         debug!("schedule_drop_mem({:?}, val={}, ty={})",
                cleanup_scope,
                self.ccx.tn.val_to_str(val),
                ty.repr(self.ccx.tcx()));
+
+        self.schedule_clean(cleanup_scope, drop as Box<Cleanup>);
+    }
+
+    fn schedule_drop_and_zero_mem(&self,
+                                  cleanup_scope: ScopeId,
+                                  val: ValueRef,
+                                  ty: ty::t) {
+        /*!
+         * Schedules a (deep) drop and zero-ing of `val`, which is a pointer
+         * to an instance of `ty`
+         */
+
+        if !ty::type_needs_drop(self.ccx.tcx(), ty) { return; }
+        let drop = box DropValue {
+            is_immediate: false,
+            on_unwind: ty::type_needs_unwind_cleanup(self.ccx.tcx(), ty),
+            val: val,
+            ty: ty,
+            zero: true
+        };
+
+        debug!("schedule_drop_and_zero_mem({:?}, val={}, ty={}, zero={})",
+               cleanup_scope,
+               self.ccx.tn.val_to_str(val),
+               ty.repr(self.ccx.tcx()),
+               true);
 
         self.schedule_clean(cleanup_scope, drop as Box<Cleanup>);
     }
@@ -264,7 +292,8 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
             is_immediate: true,
             on_unwind: ty::type_needs_unwind_cleanup(self.ccx.tcx(), ty),
             val: val,
-            ty: ty
+            ty: ty,
+            zero: false
         };
 
         debug!("schedule_drop_immediate({:?}, val={}, ty={})",
@@ -824,6 +853,7 @@ pub struct DropValue {
     on_unwind: bool,
     val: ValueRef,
     ty: ty::t,
+    zero: bool
 }
 
 impl Cleanup for DropValue {
@@ -832,11 +862,15 @@ impl Cleanup for DropValue {
     }
 
     fn trans<'a>(&self, bcx: &'a Block<'a>) -> &'a Block<'a> {
-        if self.is_immediate {
+        let bcx = if self.is_immediate {
             glue::drop_ty_immediate(bcx, self.val, self.ty)
         } else {
             glue::drop_ty(bcx, self.val, self.ty)
+        };
+        if self.zero {
+            base::zero_mem(bcx, self.val, self.ty);
         }
+        bcx
     }
 }
 
@@ -927,6 +961,10 @@ pub trait CleanupMethods<'a> {
                          cleanup_scope: ScopeId,
                          val: ValueRef,
                          ty: ty::t);
+    fn schedule_drop_and_zero_mem(&self,
+                                  cleanup_scope: ScopeId,
+                                  val: ValueRef,
+                                  ty: ty::t);
     fn schedule_drop_immediate(&self,
                                cleanup_scope: ScopeId,
                                val: ValueRef,
