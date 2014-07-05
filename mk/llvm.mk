@@ -57,7 +57,7 @@ $(foreach host,$(CFG_HOST), \
 $(foreach host,$(CFG_HOST), \
  $(eval LLVM_CONFIGS := $(LLVM_CONFIGS) $(LLVM_CONFIG_$(host))))
 
-$(S)src/librustc/lib/llvmdeps.rs: \
+$(S)src/librustc_llvm/llvmdeps.rs: \
 		    $(LLVM_CONFIGS) \
 		    $(S)src/etc/mklldeps.py \
 		    $(MKFILE_DEPS)
