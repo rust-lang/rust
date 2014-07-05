@@ -737,10 +737,10 @@ let x = (let y = 5i); // found `let` in ident position
 The compiler is telling us here that it was expecting to see the beginning of
 an expression, and a `let` can only begin a statement, not an expression.
 
-However, re-assigning to a mutable binding is an expression:
+However, assigning to a variable binding is an expression:
 
 ```{rust}
-let mut x = 0i;
+let x;
 let y = x = 5i;
 ```
 
