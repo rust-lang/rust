@@ -45,7 +45,7 @@ pub fn expand_deriving_from_primitive(cx: &mut ExtCtxt,
                                            true)),
                 // #[inline] liable to cause code-bloat
                 attributes: attrs.clone(),
-                const_nonmatching: false,
+                on_nonmatching: NonMatchHandlingIrrelevant,
                 combine_substructure: combine_substructure(|c, s, sub| {
                     cs_from("i64", c, s, sub)
                 }),
@@ -62,7 +62,7 @@ pub fn expand_deriving_from_primitive(cx: &mut ExtCtxt,
                                            true)),
                 // #[inline] liable to cause code-bloat
                 attributes: attrs,
-                const_nonmatching: false,
+                on_nonmatching: NonMatchHandlingIrrelevant,
                 combine_substructure: combine_substructure(|c, s, sub| {
                     cs_from("u64", c, s, sub)
                 }),

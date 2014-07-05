@@ -39,7 +39,7 @@
 //!   same variant of the enum (e.g. `Some(1)`, `Some(3)` and `Some(4)`)
 //! - `EnumNonMatching` when `Self` is an enum and the arguments are not
 //!   the same variant (e.g. `None`, `Some(1)` and `None`). If
-//!   `const_nonmatching` is true, this will contain an empty list.
+//!   `on_nonmatching == NonMatchesCollapse`, this will contain an empty list.
 //! - `StaticEnum` and `StaticStruct` for static methods, where the type
 //!   being derived upon is either an enum or struct respectively. (Any
 //!   argument with type Self is just grouped among the non-self
@@ -135,7 +135,7 @@
 //!               }])
 //! ~~~
 //!
-//! For `C1 {x}` and `C1 {x}`,
+//! For `C1 {x}` and `C1 {x}` ,
 //!
 //! ~~~text
 //! EnumMatching(1, <ast::Variant for C1>,
@@ -172,6 +172,7 @@
 //!                                   (<ident of C1>, <span of C1>,
 //!                                    Named(~[(<ident of x>, <span of x>)]))])
 //! ~~~
+//!
 
 use std::cell::RefCell;
 use std::gc::{Gc, GC};
@@ -212,6 +213,12 @@ pub struct TraitDef<'a> {
     pub methods: Vec<MethodDef<'a>>,
 }
 
+#[deriving(PartialEq, Eq)]
+pub enum HandleNonMatchingEnums {
+    NonMatchesCollapse, // handle all non-matches via one `_ => ..` clause
+    NonMatchesExplode, // handle via n^k cases for n variants and k self-args
+    NonMatchHandlingIrrelevant, // cannot encounter two enums of Self type
+}
 
 pub struct MethodDef<'a> {
     /// name of the method
@@ -232,9 +239,17 @@ pub struct MethodDef<'a> {
 
     pub attributes: Vec<ast::Attribute>,
 
-    /// if the value of the nonmatching enums is independent of the
-    /// actual enum variants, i.e. can use _ => .. match.
-    pub const_nonmatching: bool,
+    /// How to handle nonmatching enums; `NonMatchesCollapse`
+    /// indicates value is independent of the actual enum variants,
+    /// i.e. can use _ => .. match.
+    ///
+    /// Note that if this is `NonMatchesExplode`, then deriving will
+    /// generate `Omega(n^k)` code, where `n` is the number of
+    /// variants and `k` is the number of arguments of `Self` type for
+    /// the method (including the `self` argument, if any).  Strive to
+    /// avoid use of `NonMatchesExplode`, to avoid generating
+    /// quadratic amounts of code (#15375) or worse.
+    pub on_nonmatching: HandleNonMatchingEnums,
 
     pub combine_substructure: RefCell<CombineSubstructureFunc<'a>>,
 }
@@ -758,7 +773,7 @@ impl<'a> MethodDef<'a> {
         A2(int)
     }
 
-    // is equivalent to (with const_nonmatching == false)
+    // is equivalent to (with on_nonmatching == NonMatchesExplode)
 
     impl PartialEq for A {
         fn eq(&self, __arg_1: &A) {
@@ -893,7 +908,9 @@ impl<'a> MethodDef<'a> {
 
             // the code for nonmatching variants only matters when
             // we've seen at least one other variant already
-            if self.const_nonmatching && match_count > 0 {
+            assert!(match_count == 0 ||
+                    self.on_nonmatching != NonMatchHandlingIrrelevant);
+            if self.on_nonmatching == NonMatchesCollapse && match_count > 0 {
                 // make a matching-variant match, and a _ match.
                 let index = match matching {
                     Some(i) => i,
