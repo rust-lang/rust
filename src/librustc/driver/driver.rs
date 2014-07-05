@@ -894,6 +894,11 @@ pub fn build_output_filenames(input: &Input,
             };
 
             let mut stem = input.filestem();
+            
+             //Prevents damage to unstemmed source files
+            if stem == source_name(input){
+                sess.err(format!("File `{}` has a missing file extension", stem).as_slice());
+            }
 
             // If a crateid is present, we use it as the link name
             let crateid = attr::find_crateid(attrs);
