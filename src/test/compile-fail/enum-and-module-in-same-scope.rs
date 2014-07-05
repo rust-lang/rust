@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,8 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum a { b, c }
+mod Foo {
+    pub static X: int = 42;
+}
 
-enum a { d, e } //~ ERROR duplicate definition of type or module `a`
+enum Foo {  //~ ERROR duplicate definition of type or module `Foo`
+    X
+}
 
 fn main() {}
