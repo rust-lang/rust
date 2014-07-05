@@ -11,13 +11,13 @@
 //! This crate provides the `regex!` macro. Its use is documented in the
 //! `regex` crate.
 
-#![crate_id = "regex_macros#0.11.0"]
+#![crate_id = "regex_macros#0.12.0-pre"]
 #![crate_type = "dylib"]
 #![experimental]
 #![license = "MIT/ASL2"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
-       html_root_url = "http://doc.rust-lang.org/0.11.0/")]
+       html_root_url = "http://doc.rust-lang.org/0.12.0-pre/")]
 
 #![feature(plugin_registrar, managed_boxes, quote)]
 

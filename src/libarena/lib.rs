@@ -19,14 +19,14 @@
 //! arena but can only hold objects of a single type, and Arena, which is a
 //! more complex, slower Arena which can hold objects of any type.
 
-#![crate_id = "arena#0.11.0"]
+#![crate_id = "arena#0.12.0-pre"]
 #![experimental]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![license = "MIT/ASL2"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
-       html_root_url = "http://doc.rust-lang.org/0.11.0/")]
+       html_root_url = "http://doc.rust-lang.org/0.12.0-pre/")]
 
 #![feature(unsafe_destructor)]
 #![allow(missing_doc)]
