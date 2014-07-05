@@ -97,8 +97,18 @@ pub enum Token {
 
     /* For interpolation */
     INTERPOLATED(Nonterminal),
-
     DOC_COMMENT(Ident),
+
+    // Junk. These carry no data because we don't really care about the data
+    // they *would* carry, and don't really want to allocate a new ident for
+    // them. Instead, users could extract that from the associated span.
+
+    /// Whitespace
+    WS,
+    /// Comment
+    COMMENT,
+    SHEBANG(Ident),
+
     EOF,
 }
 
@@ -231,6 +241,10 @@ pub fn to_string(t: &Token) -> String {
       /* Other */
       DOC_COMMENT(s) => get_ident(s).get().to_string(),
       EOF => "<eof>".to_string(),
+      WS => " ".to_string(),
+      COMMENT => "/* */".to_string(),
+      SHEBANG(s) => format!("/* shebang: {}*/", s.as_str()),
+
       INTERPOLATED(ref nt) => {
         match nt {
             &NtExpr(ref e) => ::print::pprust::expr_to_string(&**e),

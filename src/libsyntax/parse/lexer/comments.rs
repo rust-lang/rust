@@ -13,7 +13,7 @@ use codemap::{BytePos, CharPos, CodeMap, Pos};
 use diagnostic;
 use parse::lexer::{is_whitespace, Reader};
 use parse::lexer::{StringReader, TokenAndSpan};
-use parse::lexer::{is_line_non_doc_comment, is_block_non_doc_comment};
+use parse::lexer::is_block_doc_comment;
 use parse::lexer;
 use parse::token;
 
@@ -42,9 +42,9 @@ pub struct Comment {
 }
 
 pub fn is_doc_comment(s: &str) -> bool {
-    (s.starts_with("///") && !is_line_non_doc_comment(s)) ||
+    (s.starts_with("///") && super::is_doc_comment(s)) ||
     s.starts_with("//!") ||
-    (s.starts_with("/**") && !is_block_non_doc_comment(s)) ||
+    (s.starts_with("/**") && is_block_doc_comment(s)) ||
     s.starts_with("/*!")
 }
 
@@ -260,7 +260,7 @@ fn read_block_comment(rdr: &mut StringReader,
             rdr.bump();
             rdr.bump();
         }
-        if !is_block_non_doc_comment(curr_line.as_slice()) {
+        if is_block_doc_comment(curr_line.as_slice()) {
             return
         }
         assert!(!curr_line.as_slice().contains_char('\n'));

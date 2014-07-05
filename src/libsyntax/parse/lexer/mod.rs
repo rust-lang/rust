@@ -187,7 +187,7 @@ impl<'a> StringReader<'a> {
     /// Advance peek_tok and peek_span to refer to the next token, and
     /// possibly update the interner.
     fn advance_token(&mut self) {
-        match self.consume_whitespace_and_comments() {
+        match self.scan_whitespace_or_comment() {
             Some(comment) => {
                 self.peek_span = comment.sp;
                 self.peek_tok = comment.tok;
@@ -339,8 +339,7 @@ impl<'a> StringReader<'a> {
 
     /// PRECONDITION: self.curr is not whitespace
     /// Eats any kind of comment.
-    /// Returns a Some(sugared-doc-attr) if one exists, None otherwise
-    fn consume_any_line_comment(&mut self) -> Option<TokenAndSpan> {
+    fn scan_comment(&mut self) -> Option<TokenAndSpan> {
         match self.curr {
             Some(c) => {
                 if c.is_whitespace() {
@@ -375,28 +374,32 @@ impl<'a> StringReader<'a> {
                             }
                             self.bump();
                         }
-                        let ret = self.with_str_from(start_bpos, |string| {
+                        return self.with_str_from(start_bpos, |string| {
                             // but comments with only more "/"s are not
-                            if !is_line_non_doc_comment(string) {
-                                Some(TokenAndSpan{
-                                    tok: token::DOC_COMMENT(str_to_ident(string)),
-                                    sp: codemap::mk_sp(start_bpos, self.last_pos)
-                                })
+                            let tok = if is_doc_comment(string) {
+                                token::DOC_COMMENT(str_to_ident(string))
                             } else {
-                                None
-                            }
-                        });
+                                token::COMMENT
+                            };
 
-                        if ret.is_some() {
-                            return ret;
-                        }
+                            return Some(TokenAndSpan{
+                                tok: tok,
+                                sp: codemap::mk_sp(start_bpos, self.last_pos)
+                            });
+                        });
                     } else {
+                        let start_bpos = self.last_pos - BytePos(2);
                         while !self.curr_is('\n') && !self.is_eof() { self.bump(); }
+                        return Some(TokenAndSpan {
+                            tok: token::COMMENT,
+                            sp: codemap::mk_sp(start_bpos, self.last_pos)
+                        });
                     }
-                    // Restart whitespace munch.
-                    self.consume_whitespace_and_comments()
                 }
-                Some('*') => { self.bump(); self.bump(); self.consume_block_comment() }
+                Some('*') => {
+                    self.bump(); self.bump();
+                    self.scan_block_comment()
+                }
                 _ => None
             }
         } else if self.curr_is('#') {
@@ -412,9 +415,15 @@ impl<'a> StringReader<'a> {
                 let cmap = CodeMap::new();
                 cmap.files.borrow_mut().push(self.filemap.clone());
                 let loc = cmap.lookup_char_pos_adj(self.last_pos);
+                debug!("Skipping a shebang");
                 if loc.line == 1u && loc.col == CharPos(0u) {
+                    // FIXME: Add shebang "token", return it
+                    let start = self.last_pos;
                     while !self.curr_is('\n') && !self.is_eof() { self.bump(); }
-                    return self.consume_whitespace_and_comments();
+                    return Some(TokenAndSpan {
+                        tok: token::SHEBANG(self.ident_from(start)),
+                        sp: codemap::mk_sp(start, self.last_pos)
+                    });
                 }
             }
             None
@@ -423,15 +432,33 @@ impl<'a> StringReader<'a> {
         }
     }
 
-    /// EFFECT: eats whitespace and comments.
-    /// Returns a Some(sugared-doc-attr) if one exists, None otherwise.
-    fn consume_whitespace_and_comments(&mut self) -> Option<TokenAndSpan> {
-        while is_whitespace(self.curr) { self.bump(); }
-        return self.consume_any_line_comment();
+    /// If there is whitespace, shebang, or a comment, scan it. Otherwise,
+    /// return None.
+    fn scan_whitespace_or_comment(&mut self) -> Option<TokenAndSpan> {
+        match self.curr.unwrap_or('\0') {
+            // # to handle shebang at start of file -- this is the entry point
+            // for skipping over all "junk"
+            '/' | '#' => {
+                let c = self.scan_comment();
+                debug!("scanning a comment {}", c);
+                c
+            },
+            c if is_whitespace(Some(c)) => {
+                let start_bpos = self.last_pos;
+                while is_whitespace(self.curr) { self.bump(); }
+                let c = Some(TokenAndSpan {
+                    tok: token::WS,
+                    sp: codemap::mk_sp(start_bpos, self.last_pos)
+                });
+                debug!("scanning whitespace: {}", c);
+                c
+            },
+            _ => None
+        }
     }
 
     /// Might return a sugared-doc-attr
-    fn consume_block_comment(&mut self) -> Option<TokenAndSpan> {
+    fn scan_block_comment(&mut self) -> Option<TokenAndSpan> {
         // block comments starting with "/**" or "/*!" are doc-comments
         let is_doc_comment = self.curr_is('*') || self.curr_is('!');
         let start_bpos = self.last_pos - BytePos(2);
@@ -466,28 +493,23 @@ impl<'a> StringReader<'a> {
             self.bump();
         }
 
-        let res = if is_doc_comment {
-            self.with_str_from(start_bpos, |string| {
-                // but comments with only "*"s between two "/"s are not
-                if !is_block_non_doc_comment(string) {
-                    let string = if has_cr {
-                        self.translate_crlf(start_bpos, string,
-                                            "bare CR not allowed in block doc-comment")
-                    } else { string.into_maybe_owned() };
-                    Some(TokenAndSpan{
-                            tok: token::DOC_COMMENT(str_to_ident(string.as_slice())),
-                            sp: codemap::mk_sp(start_bpos, self.last_pos)
-                        })
-                } else {
-                    None
-                }
-            })
-        } else {
-            None
-        };
+        self.with_str_from(start_bpos, |string| {
+            // but comments with only "*"s between two "/"s are not
+            let tok = if is_block_doc_comment(string) {
+                let string = if has_cr {
+                    self.translate_crlf(start_bpos, string,
+                                        "bare CR not allowed in block doc-comment")
+                } else { string.into_maybe_owned() };
+                token::DOC_COMMENT(str_to_ident(string.as_slice()))
+            } else {
+                token::COMMENT
+            };
 
-        // restart whitespace munch.
-        if res.is_some() { res } else { self.consume_whitespace_and_comments() }
+            Some(TokenAndSpan{
+                tok: tok,
+                sp: codemap::mk_sp(start_bpos, self.last_pos)
+            })
+        })
     }
 
     /// Scan through any digits (base `radix`) or underscores, and return how
@@ -1242,12 +1264,18 @@ fn in_range(c: Option<char>, lo: char, hi: char) -> bool {
 
 fn is_dec_digit(c: Option<char>) -> bool { return in_range(c, '0', '9'); }
 
-pub fn is_line_non_doc_comment(s: &str) -> bool {
-    s.starts_with("////")
+pub fn is_doc_comment(s: &str) -> bool {
+    let res = (s.starts_with("///") && *s.as_bytes().get(3).unwrap_or(&b' ') != b'/')
+              || s.starts_with("//!");
+    debug!("is `{}` a doc comment? {}", s, res);
+    res
 }
 
-pub fn is_block_non_doc_comment(s: &str) -> bool {
-    s.starts_with("/***")
+pub fn is_block_doc_comment(s: &str) -> bool {
+    let res = (s.starts_with("/**") && *s.as_bytes().get(3).unwrap_or(&b' ') != b'*')
+              || s.starts_with("/*!");
+    debug!("is `{}` a doc comment? {}", s, res);
+    res
 }
 
 fn ident_start(c: Option<char>) -> bool {
@@ -1383,9 +1411,9 @@ mod test {
     }
 
     #[test] fn line_doc_comments() {
-        assert!(!is_line_non_doc_comment("///"));
-        assert!(!is_line_non_doc_comment("/// blah"));
-        assert!(is_line_non_doc_comment("////"));
+        assert!(is_doc_comment("///"));
+        assert!(is_doc_comment("/// blah"));
+        assert!(!is_doc_comment("////"));
     }
 
     #[test] fn nested_block_comments() {
