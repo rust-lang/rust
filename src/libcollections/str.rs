@@ -351,6 +351,15 @@ impl<'a> Iterator<char> for Decompositions<'a> {
 /// # Return value
 ///
 /// The original string with all occurrences of `from` replaced with `to`
+///
+/// # Example
+///
+/// ```rust
+/// use std::str;
+/// let string = "orange";
+/// let new_string = str::replace(string, "or", "str");
+/// assert_eq!(new_string.as_slice(), "strange");
+/// ```
 pub fn replace(s: &str, from: &str, to: &str) -> String {
     let mut result = String::new();
     let mut last_end = 0;
@@ -572,6 +581,14 @@ pub type SendStr = MaybeOwned<'static>;
 
 impl<'a> MaybeOwned<'a> {
     /// Returns `true` if this `MaybeOwned` wraps an owned string
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let string = String::from_str("orange");
+    /// let maybe_owned_string = string.into_maybe_owned();
+    /// assert_eq!(true, maybe_owned_string.is_owned());
+    /// ```
     #[inline]
     pub fn is_owned(&self) -> bool {
         match *self {
@@ -581,6 +598,14 @@ impl<'a> MaybeOwned<'a> {
     }
 
     /// Returns `true` if this `MaybeOwned` wraps a borrowed string
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let string = "orange";
+    /// let maybe_owned_string = string.as_slice().into_maybe_owned();
+    /// assert_eq!(true, maybe_owned_string.is_slice());
+    /// ```
     #[inline]
     pub fn is_slice(&self) -> bool {
         match *self {
@@ -596,6 +621,13 @@ pub trait IntoMaybeOwned<'a> {
     fn into_maybe_owned(self) -> MaybeOwned<'a>;
 }
 
+/// # Example
+///
+/// ```rust
+/// let owned_string = String::from_str("orange");
+/// let maybe_owned_string = owned_string.into_maybe_owned();
+/// assert_eq!(true, maybe_owned_string.is_owned());
+/// ```
 impl<'a> IntoMaybeOwned<'a> for String {
     #[inline]
     fn into_maybe_owned(self) -> MaybeOwned<'a> {
@@ -603,11 +635,26 @@ impl<'a> IntoMaybeOwned<'a> for String {
     }
 }
 
+/// # Example
+///
+/// ```rust
+/// let string = "orange";
+/// let maybe_owned_str = string.as_slice().into_maybe_owned();
+/// assert_eq!(false, maybe_owned_str.is_owned());
+/// ```
 impl<'a> IntoMaybeOwned<'a> for &'a str {
     #[inline]
     fn into_maybe_owned(self) -> MaybeOwned<'a> { Slice(self) }
 }
 
+/// # Example
+///
+/// ```rust
+/// let str = "orange";
+/// let maybe_owned_str = str.as_slice().into_maybe_owned();
+/// let maybe_maybe_owned_str = maybe_owned_str.into_maybe_owned();
+/// assert_eq!(false, maybe_maybe_owned_str.is_owned());
+/// ```
 impl<'a> IntoMaybeOwned<'a> for MaybeOwned<'a> {
     #[inline]
     fn into_maybe_owned(self) -> MaybeOwned<'a> { self }
