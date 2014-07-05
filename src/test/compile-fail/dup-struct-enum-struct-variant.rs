@@ -11,9 +11,9 @@
 #![feature(struct_variant)]
 
 enum Foo { C { a: int, b: int } }
-struct C { a: int, b: int }         //~ ERROR error: duplicate definition of type `C`
+struct C { a: int, b: int }         //~ ERROR error: duplicate definition of type or module `C`
 
 struct A { x: int }
-enum Bar { A { x: int } }           //~ ERROR error: duplicate definition of type `A`
+enum Bar { A { x: int } }           //~ ERROR error: duplicate definition of type or module `A`
 
 fn main() {}
