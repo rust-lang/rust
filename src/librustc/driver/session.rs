@@ -47,6 +47,7 @@ pub struct Session {
     pub lints: RefCell<NodeMap<Vec<(lint::LintId, codemap::Span, String)>>>,
     pub node_id: Cell<ast::NodeId>,
     pub crate_types: RefCell<Vec<config::CrateType>>,
+    pub crate_metadata: RefCell<Vec<String>>,
     pub features: front::feature_gate::Features,
 
     /// The maximum recursion limit for potentially infinitely recursive
@@ -243,6 +244,7 @@ pub fn build_session_(sopts: config::Options,
         lints: RefCell::new(NodeMap::new()),
         node_id: Cell::new(1),
         crate_types: RefCell::new(Vec::new()),
+        crate_metadata: RefCell::new(Vec::new()),
         features: front::feature_gate::Features::new(),
         recursion_limit: Cell::new(64),
     };

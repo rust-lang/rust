@@ -11,7 +11,6 @@
 #![allow(non_camel_case_types)]
 
 use std::mem;
-use syntax::crateid::CrateId;
 use back::svh::Svh;
 
 // EBML enum definitions and utils shared by the encoder and decoder
@@ -71,9 +70,9 @@ pub static tag_crate_deps: uint = 0x18;
 pub static tag_crate_dep: uint = 0x19;
 
 pub static tag_crate_hash: uint = 0x1a;
-pub static tag_crate_crateid: uint = 0x1b;
+pub static tag_crate_crate_name: uint = 0x1b;
 
-pub static tag_crate_dep_crateid: uint = 0x1d;
+pub static tag_crate_dep_crate_name: uint = 0x1d;
 pub static tag_crate_dep_hash: uint = 0x1e;
 
 pub static tag_mod_impl: uint = 0x1f;
@@ -215,7 +214,7 @@ pub static tag_items_data_item_stability: uint = 0x92;
 
 #[deriving(Clone, Show)]
 pub struct LinkMeta {
-    pub crateid: CrateId,
+    pub crate_name: String,
     pub crate_hash: Svh,
 }
 

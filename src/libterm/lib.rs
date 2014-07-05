@@ -38,7 +38,8 @@
 //! [win]: http://msdn.microsoft.com/en-us/library/windows/desktop/ms682010%28v=vs.85%29.aspx
 //! [ti]: https://en.wikipedia.org/wiki/Terminfo
 
-#![crate_id = "term#0.11.0"]
+#![crate_id = "term#0.11.0"] // NOTE: remove after stage0
+#![crate_name = "term"]
 #![experimental]
 #![comment = "Simple ANSI color library"]
 #![license = "MIT/ASL2"]
@@ -48,6 +49,7 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/0.11.0/",
        html_playground_url = "http://play.rust-lang.org/")]
+#![allow(unused_attribute)] // NOTE: remove after stage0
 
 #![feature(macro_rules, phase)]
 

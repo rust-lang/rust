@@ -48,6 +48,7 @@
 // separate crate, libcoretest, to avoid bizarre issues.
 
 #![crate_id = "core#0.11.0"]
+#![crate_name = "core"]
 #![experimental]
 #![license = "MIT/ASL2"]
 #![crate_type = "rlib"]
@@ -60,6 +61,7 @@
 #![feature(globs, intrinsics, lang_items, macro_rules, managed_boxes, phase)]
 #![feature(simd, unsafe_destructor)]
 #![deny(missing_doc)]
+#![allow(unused_attribute)] // NOTE: remove after stage0
 
 mod macros;
 

@@ -1373,15 +1373,15 @@ pub fn process_crate(sess: &Session,
         return;
     }
 
-    let (cratename, crateid) = match attr::find_crateid(krate.attrs.as_slice()) {
-        Some(crateid) => (crateid.name.clone(), crateid.to_str()),
+    let cratename = match attr::find_crate_name(krate.attrs.as_slice()) {
+        Some(name) => name.get().to_string(),
         None => {
             info!("Could not find crate name, using 'unknown_crate'");
-            (String::from_str("unknown_crate"),"unknown_crate".to_owned())
+            String::from_str("unknown_crate")
         },
     };
 
-    info!("Dumping crate {} ({})", cratename, crateid);
+    info!("Dumping crate {}", cratename);
 
     // find a path to dump our data to
     let mut root_path = match os::getenv("DXR_RUST_TEMP_FOLDER") {

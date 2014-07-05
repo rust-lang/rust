@@ -353,7 +353,8 @@
 //! characters in the search text and `m` is the number of instructions in a
 //! compiled expression.
 
-#![crate_id = "regex#0.11.0"]
+#![crate_id = "regex#0.11.0"] // NOTE: remove after stage0
+#![crate_name = "regex"]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![experimental]
@@ -364,6 +365,7 @@
        html_playground_url = "http://play.rust-lang.org/")]
 
 #![feature(macro_rules, phase)]
+#![allow(unused_attribute)] // NOTE: remove after stage0
 #![deny(missing_doc)]
 
 #[cfg(test)]

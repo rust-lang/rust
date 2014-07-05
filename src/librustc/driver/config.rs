@@ -11,7 +11,7 @@
 //! Contains infrastructure for configuring the compiler, including parsing
 //! command line options.
 
-use driver::early_error;
+use driver::{early_error, early_warn};
 use driver::driver;
 use driver::session::Session;
 
@@ -30,7 +30,7 @@ use syntax::diagnostic::{ColorConfig, Auto, Always, Never};
 use syntax::parse;
 use syntax::parse::token::InternedString;
 
-use std::collections::HashSet;
+use std::collections::{HashSet, HashMap};
 use getopts::{optopt, optmulti, optflag, optflagopt};
 use getopts;
 use lib::llvm::llvm;
@@ -91,10 +91,12 @@ pub struct Options {
     pub debugging_opts: u64,
     /// Whether to write dependency files. It's (enabled, optional filename).
     pub write_dependency_info: (bool, Option<Path>),
-    /// Crate id-related things to maybe print. It's (crate_id, crate_name, crate_file_name).
-    pub print_metas: (bool, bool, bool),
+    /// Crate id-related things to maybe print. It's (crate_name, crate_file_name).
+    pub print_metas: (bool, bool),
     pub cg: CodegenOptions,
     pub color: ColorConfig,
+    pub externs: HashMap<String, Vec<String>>,
+    pub crate_name: Option<String>,
 }
 
 /// Some reasonable defaults
@@ -117,9 +119,11 @@ pub fn basic_options() -> Options {
         no_analysis: false,
         debugging_opts: 0,
         write_dependency_info: (false, None),
-        print_metas: (false, false, false),
+        print_metas: (false, false),
         cg: basic_codegen_options(),
         color: Auto,
+        externs: HashMap::new(),
+        crate_name: None,
     }
 }
 
@@ -318,6 +322,10 @@ cgoptions!(
         "use an external assembler rather than LLVM's integrated one"),
     relocation_model: String = ("pic".to_string(), parse_string,
          "choose the relocation model to use (llc -relocation-model for details)"),
+    metadata: Vec<String> = (Vec::new(), parse_list,
+         "metadata to mangle symbol names with"),
+    extra_filename: String = ("".to_string(), parse_string,
+         "extra data to put in each output filename"),
 )
 
 pub fn build_codegen_options(matches: &getopts::Matches) -> CodegenOptions
@@ -505,10 +513,12 @@ pub fn optgroups() -> Vec<getopts::OptGroup> {
                  "[bin|lib|rlib|dylib|staticlib]"),
         optmulti("", "emit", "Comma separated list of types of output for the compiler to emit",
                  "[asm|bc|ir|obj|link]"),
-        optflag("", "crate-id", "Output the crate id and exit"),
-        optflag("", "crate-name", "Output the crate name and exit"),
-        optflag("", "crate-file-name", "Output the file(s) that would be written if compilation \
+        optopt("", "crate-name", "Specify the name of the crate being built",
+               "NAME"),
+        optflag("", "print-crate-name", "Output the crate name and exit"),
+        optflag("", "print-file-name", "Output the file(s) that would be written if compilation \
               continued and exit"),
+        optflag("", "crate-file-name", "deprecated in favor of --print-file-name"),
         optflag("g",  "",  "Equivalent to --debuginfo=2"),
         optopt("",  "debuginfo",  "Emit DWARF debug info to the objects created:
              0 = no debug info,
@@ -548,7 +558,9 @@ pub fn optgroups() -> Vec<getopts::OptGroup> {
         optopt("", "color", "Configure coloring of output:
             auto   = colorize, if output goes to a tty (default);
             always = always colorize output;
-            never  = never colorize output", "auto|always|never")
+            never  = never colorize output", "auto|always|never"),
+        optmulti("", "extern", "Specify where an external rust library is located",
+                 "PATH"),
     )
 }
 
@@ -709,9 +721,13 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
                                  matches.opt_str("dep-info")
                                         .map(|p| Path::new(p)));
 
-    let print_metas = (matches.opt_present("crate-id"),
-                       matches.opt_present("crate-name"),
+    let print_metas = (matches.opt_present("print-crate-name"),
+                       matches.opt_present("print-file-name") ||
                        matches.opt_present("crate-file-name"));
+    if matches.opt_present("crate-file-name") {
+        early_warn("the --crate-file-name argument has been renamed to \
+                    --print-file-name");
+    }
     let cg = build_codegen_options(matches);
 
     let color = match matches.opt_str("color").as_ref().map(|s| s.as_slice()) {
@@ -727,6 +743,23 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
                                 arg).as_slice())
         }
     };
+
+    let mut externs = HashMap::new();
+    for arg in matches.opt_strs("extern").iter() {
+        let mut parts = arg.as_slice().splitn('=', 1);
+        let name = match parts.next() {
+            Some(s) => s,
+            None => early_error("--extern value must not be empty"),
+        };
+        let location = match parts.next() {
+            Some(s) => s,
+            None => early_error("--extern value must be of the format `foo=bar`"),
+        };
+        let locs = externs.find_or_insert(name.to_string(), Vec::new());
+        locs.push(location.to_string());
+    }
+
+    let crate_name = matches.opt_str("crate-name");
 
     Options {
         crate_types: crate_types,
@@ -748,7 +781,9 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         write_dependency_info: write_dependency_info,
         print_metas: print_metas,
         cg: cg,
-        color: color
+        color: color,
+        externs: externs,
+        crate_name: crate_name,
     }
 }
 

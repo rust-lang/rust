@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate foo = ""; //~ ERROR: malformed crate id
-extern crate bar = "#a"; //~ ERROR: malformed crate id
+extern crate foo = ""; //~ ERROR: crate name must not be empty
 
 fn main() {}
