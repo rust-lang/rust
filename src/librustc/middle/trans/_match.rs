@@ -947,8 +947,8 @@ fn compare_values<'a>(
     }
 }
 
-fn insert_lllocals<'a>(mut bcx: &'a Block<'a>,
-                       bindings_map: &BindingsMap)
+fn insert_lllocals<'a>(mut bcx: &'a Block<'a>, bindings_map: &BindingsMap,
+                       cs: Option<cleanup::ScopeId>)
                        -> &'a Block<'a> {
     /*!
      * For each binding in `data.bindings_map`, adds an appropriate entry into
@@ -975,6 +975,10 @@ fn insert_lllocals<'a>(mut bcx: &'a Block<'a>,
         };
 
         let datum = Datum::new(llval, binding_info.ty, Lvalue);
+        match cs {
+            Some(cs) => bcx.fcx.schedule_drop_and_zero_mem(cs, llval, binding_info.ty),
+            _ => {}
+        }
 
         debug!("binding {:?} to {}",
                binding_info.id,
@@ -1006,7 +1010,7 @@ fn compile_guard<'a, 'b>(
            vec_map_to_str(vals, |v| bcx.val_to_str(*v)));
     let _indenter = indenter();
 
-    let mut bcx = insert_lllocals(bcx, &data.bindings_map);
+    let mut bcx = insert_lllocals(bcx, &data.bindings_map, None);
 
     let val = unpack_datum!(bcx, expr::trans(bcx, guard_expr));
     let val = val.to_llbool(bcx);
@@ -1460,9 +1464,11 @@ fn trans_match_inner<'a>(scope_cx: &'a Block<'a>,
     for arm_data in arm_datas.iter() {
         let mut bcx = arm_data.bodycx;
 
-        // insert bindings into the lllocals map
-        bcx = insert_lllocals(bcx, &arm_data.bindings_map);
+        // insert bindings into the lllocals map and add cleanups
+        let cs = fcx.push_custom_cleanup_scope();
+        bcx = insert_lllocals(bcx, &arm_data.bindings_map, Some(cleanup::CustomScope(cs)));
         bcx = expr::trans_into(bcx, &*arm_data.arm.body, dest);
+        bcx = fcx.pop_and_trans_custom_cleanup_scope(bcx, cs);
         arm_cxs.push(bcx);
     }
 
