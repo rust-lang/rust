@@ -41,6 +41,7 @@ extern crate flate;
 extern crate getopts;
 extern crate graphviz;
 extern crate libc;
+extern crate llvm = "rustc_llvm";
 extern crate serialize;
 extern crate time;
 #[phase(plugin, link)] extern crate log;
@@ -128,8 +129,7 @@ pub mod util {
 }
 
 pub mod lib {
-    pub mod llvm;
-    pub mod llvmdeps;
+    pub use llvm;
 }
 
 __build_diagnostic_array!(DIAGNOSTICS)

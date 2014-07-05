@@ -11,7 +11,7 @@
 use driver::config::NoDebugInfo;
 use driver::session::Session;
 use lib::llvm::{ContextRef, ModuleRef, ValueRef};
-use lib::llvm::{llvm, TargetData, TypeNames};
+use lib::llvm::{llvm, TargetData};
 use lib::llvm::mk_target_data;
 use metadata::common::LinkMeta;
 use middle::resolve;
@@ -21,7 +21,7 @@ use middle::trans::builder::Builder;
 use middle::trans::common::{ExternMap,tydesc_info,BuilderRef_res};
 use middle::trans::debuginfo;
 use middle::trans::monomorphize::MonoId;
-use middle::trans::type_::Type;
+use middle::trans::type_::{Type, TypeNames};
 use middle::ty;
 use util::sha2::Sha256;
 use util::nodemap::{NodeMap, NodeSet, DefIdMap};
