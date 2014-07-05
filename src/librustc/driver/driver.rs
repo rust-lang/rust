@@ -77,7 +77,7 @@ pub fn compile_input(sess: Session,
                                                  krate.attrs.as_slice(),
                                                  &sess);
             let id = link::find_crate_name(Some(&sess), krate.attrs.as_slice(),
-                                           outputs.out_filestem.as_slice());
+                                           input);
             let (expanded_crate, ast_map)
                 = match phase_2_configure_and_expand(&sess, krate, id.as_slice()) {
                     None => return,
@@ -652,8 +652,7 @@ pub fn pretty_print_input(sess: Session,
                           ppm: PpMode,
                           ofile: Option<Path>) {
     let krate = phase_1_parse_input(&sess, cfg, input);
-    let id = link::find_crate_name(Some(&sess), krate.attrs.as_slice(),
-                                   input.filestem().as_slice());
+    let id = link::find_crate_name(Some(&sess), krate.attrs.as_slice(), input);
 
     let (krate, ast_map, is_expanded) = match ppm {
         PpmExpanded | PpmExpandedIdentified | PpmTyped | PpmFlowGraph(_) => {

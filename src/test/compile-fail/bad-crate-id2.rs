@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate bar = "#a"; //~ ERROR: invalid character in crate name: `#`
+extern crate bar = "#a"; //~ ERROR: invalid character `#` in crate name: `#a`
 
 fn main() {}
 

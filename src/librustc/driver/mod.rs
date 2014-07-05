@@ -303,8 +303,7 @@ fn print_crate_info(sess: &Session,
                                                        ofile,
                                                        attrs.as_slice(),
                                                        sess);
-        let id = link::find_crate_name(Some(sess), attrs.as_slice(),
-                                       t_outputs.out_filestem.as_slice());
+        let id = link::find_crate_name(Some(sess), attrs.as_slice(), input);
 
         if crate_name {
             println!("{}", id);
