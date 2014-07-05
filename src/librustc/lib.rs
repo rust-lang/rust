@@ -42,12 +42,31 @@ extern crate getopts;
 extern crate graphviz;
 extern crate libc;
 extern crate llvm = "rustc_llvm";
+extern crate rustc_back = "rustc_back";
 extern crate serialize;
 extern crate time;
 #[phase(plugin, link)] extern crate log;
 #[phase(plugin, link)] extern crate syntax;
 
 mod diagnostics;
+
+pub mod back {
+    pub use rustc_back::abi;
+    pub use rustc_back::arm;
+    pub use rustc_back::mips;
+    pub use rustc_back::mipsel;
+    pub use rustc_back::svh;
+    pub use rustc_back::target_strs;
+    pub use rustc_back::x86;
+    pub use rustc_back::x86_64;
+
+    pub mod archive;
+    pub mod link;
+    pub mod lto;
+    pub mod rpath;
+
+}
+>>>>>>> Extract librustc_back from librustc
 
 pub mod middle {
     pub mod def;
@@ -95,21 +114,6 @@ pub mod front {
     pub mod assign_node_ids_and_map;
     pub mod feature_gate;
     pub mod show_span;
-}
-
-pub mod back {
-    pub mod abi;
-    pub mod archive;
-    pub mod arm;
-    pub mod link;
-    pub mod lto;
-    pub mod mips;
-    pub mod mipsel;
-    pub mod rpath;
-    pub mod svh;
-    pub mod target_strs;
-    pub mod x86;
-    pub mod x86_64;
 }
 
 pub mod metadata;
