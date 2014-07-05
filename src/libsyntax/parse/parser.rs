@@ -3118,8 +3118,9 @@ impl<'a> Parser<'a> {
             self.span_fatal(last_span,
                             "expected identifier, found path");
         }
-        // why a path here, and not just an identifier?
-        let name = codemap::Spanned{span: self.last_span, node: self.parse_ident()};
+        let ident = self.parse_ident();
+        let last_span = self.last_span;
+        let name = codemap::Spanned{span: last_span, node: ident};
         let sub = if self.eat(&token::AT) {
             Some(self.parse_pat())
         } else {
