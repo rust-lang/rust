@@ -1503,7 +1503,7 @@ reference. We also call this _borrowing_ the local variable
 `on_the_stack`, because we are creating an alias: that is, another
 route to the same data.
 
-Likewise, in the case of `owned_box`,
+Likewise, in the case of `on_the_heap`,
 the `&` operator is used in conjunction with the `*` operator
 to take a reference to the contents of the box.
 
