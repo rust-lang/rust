@@ -676,10 +676,10 @@ impl<'a> ErrorReporting for InferCtxt<'a> {
                                var_origins: &[RegionVariableOrigin],
                                trace_origins: &[(TypeTrace, ty::type_err)],
                                same_regions: &[SameRegions]) {
-        self.give_suggestion(same_regions);
         for vo in var_origins.iter() {
             self.report_inference_failure(vo.clone());
         }
+        self.give_suggestion(same_regions);
         for &(ref trace, terr) in trace_origins.iter() {
             self.report_type_error(trace.clone(), &terr);
         }
