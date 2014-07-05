@@ -508,14 +508,15 @@ mod bench {
     use prelude::*;
     use self::test::Bencher;
 
+    // why is this a macro? wouldn't an inlined function work just as well?
     macro_rules! u64_from_be_bytes_bench_impl(
-        ($size:expr, $stride:expr, $start_index:expr) =>
+        ($b:expr, $size:expr, $stride:expr, $start_index:expr) =>
         ({
             use super::u64_from_be_bytes;
 
             let data = Vec::from_fn($stride*100+$start_index, |i| i as u8);
             let mut sum = 0u64;
-            b.iter(|| {
+            $b.iter(|| {
                 let mut i = $start_index;
                 while i < data.len() {
                     sum += u64_from_be_bytes(data.as_slice(), i, $size);
@@ -527,31 +528,31 @@ mod bench {
 
     #[bench]
     fn u64_from_be_bytes_4_aligned(b: &mut Bencher) {
-        u64_from_be_bytes_bench_impl!(4, 4, 0);
+        u64_from_be_bytes_bench_impl!(b, 4, 4, 0);
     }
 
     #[bench]
     fn u64_from_be_bytes_4_unaligned(b: &mut Bencher) {
-        u64_from_be_bytes_bench_impl!(4, 4, 1);
+        u64_from_be_bytes_bench_impl!(b, 4, 4, 1);
     }
 
     #[bench]
     fn u64_from_be_bytes_7_aligned(b: &mut Bencher) {
-        u64_from_be_bytes_bench_impl!(7, 8, 0);
+        u64_from_be_bytes_bench_impl!(b, 7, 8, 0);
     }
 
     #[bench]
     fn u64_from_be_bytes_7_unaligned(b: &mut Bencher) {
-        u64_from_be_bytes_bench_impl!(7, 8, 1);
+        u64_from_be_bytes_bench_impl!(b, 7, 8, 1);
     }
 
     #[bench]
     fn u64_from_be_bytes_8_aligned(b: &mut Bencher) {
-        u64_from_be_bytes_bench_impl!(8, 8, 0);
+        u64_from_be_bytes_bench_impl!(b, 8, 8, 0);
     }
 
     #[bench]
     fn u64_from_be_bytes_8_unaligned(b: &mut Bencher) {
-        u64_from_be_bytes_bench_impl!(8, 8, 1);
+        u64_from_be_bytes_bench_impl!(b, 8, 8, 1);
     }
 }
