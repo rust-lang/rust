@@ -256,22 +256,63 @@ fn io_error_to_error(io: io::IoError) -> ParserError {
 pub type EncodeResult = io::IoResult<()>;
 pub type DecodeResult<T> = Result<T, DecoderError>;
 
-fn escape_str(s: &str) -> String {
-    let mut escaped = String::from_str("\"");
-    for c in s.chars() {
-        match c {
-            '"' => escaped.push_str("\\\""),
-            '\\' => escaped.push_str("\\\\"),
-            '\x08' => escaped.push_str("\\b"),
-            '\x0c' => escaped.push_str("\\f"),
-            '\n' => escaped.push_str("\\n"),
-            '\r' => escaped.push_str("\\r"),
-            '\t' => escaped.push_str("\\t"),
-            _ => escaped.push_char(c),
+pub fn escape_bytes(wr: &mut io::Writer, bytes: &[u8]) -> Result<(), io::IoError> {
+    try!(wr.write_str("\""));
+
+    let mut start = 0;
+
+    for (i, byte) in bytes.iter().enumerate() {
+        let escaped = match *byte {
+            b'"' => "\\\"",
+            b'\\' => "\\\\",
+            b'\x08' => "\\b",
+            b'\x0c' => "\\f",
+            b'\n' => "\\n",
+            b'\r' => "\\r",
+            b'\t' => "\\t",
+            _ => { continue; }
+        };
+
+        if start < i {
+            try!(wr.write(bytes.slice(start, i)));
         }
-    };
-    escaped.push_char('"');
-    escaped
+
+        try!(wr.write_str(escaped));
+
+        start = i + 1;
+    }
+
+    if start != bytes.len() {
+        try!(wr.write(bytes.slice_from(start)));
+    }
+
+    wr.write_str("\"")
+}
+
+fn escape_str(writer: &mut io::Writer, v: &str) -> Result<(), io::IoError> {
+    escape_bytes(writer, v.as_bytes())
+}
+
+fn escape_char(writer: &mut io::Writer, v: char) -> Result<(), io::IoError> {
+    let mut buf = [0, .. 4];
+    v.encode_utf8(buf);
+    escape_bytes(writer, buf)
+}
+
+fn spaces(wr: &mut io::Writer, mut n: uint) -> Result<(), io::IoError> {
+    static len: uint = 16;
+    static buf: [u8, ..len] = [b' ', ..len];
+
+    while n >= len {
+        try!(wr.write(buf));
+        n -= len;
+    }
+
+    if n > 0 {
+        wr.write(buf.slice_to(n))
+    } else {
+        Ok(())
+    }
 }
 
 fn fmt_number_or_null(v: f64) -> String {
@@ -279,10 +320,6 @@ fn fmt_number_or_null(v: f64) -> String {
         FPNaN | FPInfinite => String::from_str("null"),
         _ => f64::to_str_digits(v, 6u)
     }
-}
-
-fn spaces(n: uint) -> String {
-    String::from_char(n, ' ')
 }
 
 /// A structure for implementing serialization to JSON.
@@ -348,10 +385,10 @@ impl<'a> ::Encoder<io::IoError> for Encoder<'a> {
     fn emit_f32(&mut self, v: f32) -> EncodeResult { self.emit_f64(v as f64) }
 
     fn emit_char(&mut self, v: char) -> EncodeResult {
-        self.emit_str(str::from_char(v).as_slice())
+        escape_char(self.writer, v)
     }
     fn emit_str(&mut self, v: &str) -> EncodeResult {
-        write!(self.writer, "{}", escape_str(v))
+        escape_str(self.writer, v)
     }
 
     fn emit_enum(&mut self, _name: &str, f: |&mut Encoder<'a>| -> EncodeResult) -> EncodeResult {
@@ -367,10 +404,10 @@ impl<'a> ::Encoder<io::IoError> for Encoder<'a> {
         // Bunny => "Bunny"
         // Kangaroo(34,"William") => {"variant": "Kangaroo", "fields": [34,"William"]}
         if cnt == 0 {
-            write!(self.writer, "{}", escape_str(name))
+            escape_str(self.writer, name)
         } else {
             try!(write!(self.writer, "{{\"variant\":"));
-            try!(write!(self.writer, "{}", escape_str(name)));
+            try!(escape_str(self.writer, name));
             try!(write!(self.writer, ",\"fields\":["));
             try!(f(self));
             write!(self.writer, "]}}")
@@ -415,7 +452,8 @@ impl<'a> ::Encoder<io::IoError> for Encoder<'a> {
                          idx: uint,
                          f: |&mut Encoder<'a>| -> EncodeResult) -> EncodeResult {
         if idx != 0 { try!(write!(self.writer, ",")); }
-        try!(write!(self.writer, "{}:", escape_str(name)));
+        try!(escape_str(self.writer, name));
+        try!(write!(self.writer, ":"));
         f(self)
     }
 
@@ -541,10 +579,10 @@ impl<'a> ::Encoder<io::IoError> for PrettyEncoder<'a> {
     }
 
     fn emit_char(&mut self, v: char) -> EncodeResult {
-        self.emit_str(str::from_char(v).as_slice())
+        escape_char(self.writer, v)
     }
     fn emit_str(&mut self, v: &str) -> EncodeResult {
-        write!(self.writer, "{}", escape_str(v))
+        escape_str(self.writer, v)
     }
 
     fn emit_enum(&mut self,
@@ -559,14 +597,18 @@ impl<'a> ::Encoder<io::IoError> for PrettyEncoder<'a> {
                          cnt: uint,
                          f: |&mut PrettyEncoder<'a>| -> EncodeResult) -> EncodeResult {
         if cnt == 0 {
-            write!(self.writer, "{}", escape_str(name))
+            escape_str(self.writer, name)
         } else {
             self.indent += 2;
-            try!(write!(self.writer, "[\n{}{},\n", spaces(self.indent),
-                          escape_str(name)));
+            try!(write!(self.writer, "[\n"));
+            try!(spaces(self.writer, self.indent));
+            try!(escape_str(self.writer, name));
+            try!(write!(self.writer, ",\n"));
             try!(f(self));
             self.indent -= 2;
-            write!(self.writer, "\n{}]", spaces(self.indent))
+            try!(write!(self.writer, "\n"));
+            try!(spaces(self.writer, self.indent));
+            write!(self.writer, "]")
         }
     }
 
@@ -576,7 +618,7 @@ impl<'a> ::Encoder<io::IoError> for PrettyEncoder<'a> {
         if idx != 0 {
             try!(write!(self.writer, ",\n"));
         }
-        try!(write!(self.writer, "{}", spaces(self.indent)));
+        try!(spaces(self.writer, self.indent));
         f(self)
     }
 
@@ -607,7 +649,9 @@ impl<'a> ::Encoder<io::IoError> for PrettyEncoder<'a> {
             self.indent += 2;
             try!(f(self));
             self.indent -= 2;
-            write!(self.writer, "\n{}}}", spaces(self.indent))
+            try!(write!(self.writer, "\n"));
+            try!(spaces(self.writer, self.indent));
+            write!(self.writer, "}}")
         }
     }
 
@@ -620,7 +664,9 @@ impl<'a> ::Encoder<io::IoError> for PrettyEncoder<'a> {
         } else {
             try!(write!(self.writer, ",\n"));
         }
-        try!(write!(self.writer, "{}{}: ", spaces(self.indent), escape_str(name)));
+        try!(spaces(self.writer, self.indent));
+        try!(escape_str(self.writer, name));
+        try!(write!(self.writer, ": "));
         f(self)
     }
 
@@ -665,7 +711,9 @@ impl<'a> ::Encoder<io::IoError> for PrettyEncoder<'a> {
             self.indent += 2;
             try!(f(self));
             self.indent -= 2;
-            write!(self.writer, "\n{}]", spaces(self.indent))
+            try!(write!(self.writer, "\n"));
+            try!(spaces(self.writer, self.indent));
+            write!(self.writer, "]")
         }
     }
 
@@ -677,7 +725,7 @@ impl<'a> ::Encoder<io::IoError> for PrettyEncoder<'a> {
         } else {
             try!(write!(self.writer, ",\n"));
         }
-        try!(write!(self.writer, "{}", spaces(self.indent)));
+        try!(spaces(self.writer, self.indent));
         f(self)
     }
 
@@ -691,7 +739,9 @@ impl<'a> ::Encoder<io::IoError> for PrettyEncoder<'a> {
             self.indent += 2;
             try!(f(self));
             self.indent -= 2;
-            write!(self.writer, "\n{}}}", spaces(self.indent))
+            try!(write!(self.writer, "\n"));
+            try!(spaces(self.writer, self.indent));
+            write!(self.writer, "}}")
         }
     }
 
@@ -703,7 +753,7 @@ impl<'a> ::Encoder<io::IoError> for PrettyEncoder<'a> {
         } else {
             try!(write!(self.writer, ",\n"));
         }
-        try!(write!(self.writer, "{}", spaces(self.indent)));
+        try!(spaces(self.writer, self.indent));
         // ref #12967, make sure to wrap a key in double quotes,
         // in the event that its of a type that omits them (eg numbers)
         let mut buf = MemWriter::new();
