@@ -618,7 +618,7 @@ pub fn trans_case<'a>(bcx: &'a Block<'a>, r: &Repr, discr: Disr)
         RawNullablePointer { .. } |
         StructWrappedNullablePointer { .. } => {
             assert!(discr == 0 || discr == 1);
-            _match::single_result(Result::new(bcx, C_i1(bcx.ccx(), discr != 0)))
+            _match::single_result(Result::new(bcx, C_bool(bcx.ccx(), discr != 0)))
         }
     }
 }

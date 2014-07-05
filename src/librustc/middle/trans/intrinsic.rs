@@ -150,7 +150,8 @@ pub fn trans_intrinsic(ccx: &CrateContext,
         let src_ptr = PointerCast(bcx, get_param(decl, first_real_arg + 1), Type::i8p(ccx));
         let count = get_param(decl, first_real_arg + 2);
         let llfn = ccx.get_intrinsic(&name);
-        Call(bcx, llfn, [dst_ptr, src_ptr, Mul(bcx, size, count), align, C_i1(ccx, volatile)], []);
+        Call(bcx, llfn,
+             [dst_ptr, src_ptr, Mul(bcx, size, count), align, C_bool(ccx, volatile)], []);
         RetVoid(bcx);
     }
 
@@ -171,13 +172,13 @@ pub fn trans_intrinsic(ccx: &CrateContext,
         let val = get_param(decl, first_real_arg + 1);
         let count = get_param(decl, first_real_arg + 2);
         let llfn = ccx.get_intrinsic(&name);
-        Call(bcx, llfn, [dst_ptr, val, Mul(bcx, size, count), align, C_i1(ccx, volatile)], []);
+        Call(bcx, llfn, [dst_ptr, val, Mul(bcx, size, count), align, C_bool(ccx, volatile)], []);
         RetVoid(bcx);
     }
 
     fn count_zeros_intrinsic(bcx: &Block, name: &'static str) {
         let x = get_param(bcx.fcx.llfn, bcx.fcx.arg_pos(0u));
-        let y = C_i1(bcx.ccx(), false);
+        let y = C_bool(bcx.ccx(), false);
         let llfn = bcx.ccx().get_intrinsic(&name);
         let llcall = Call(bcx, llfn, [x, y], []);
         Ret(bcx, llcall);
