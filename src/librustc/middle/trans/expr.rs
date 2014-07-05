@@ -1374,7 +1374,7 @@ fn trans_lazy_binop<'a>(
     }
 
     Br(past_rhs, join.llbb);
-    let phi = Phi(join, Type::bool(bcx.ccx()), [lhs, rhs],
+    let phi = Phi(join, Type::i1(bcx.ccx()), [lhs, rhs],
                   [past_lhs.llbb, past_rhs.llbb]);
 
     return immediate_rvalue_bcx(join, phi, binop_ty).to_expr_datumblock();
@@ -1591,8 +1591,8 @@ fn trans_imm_cast<'a>(bcx: &'a Block<'a>,
     let k_in = cast_type_kind(t_in);
     let k_out = cast_type_kind(t_out);
     let s_in = k_in == cast_integral && ty::type_is_signed(t_in);
-    let ll_t_in = type_of::type_of(ccx, t_in);
-    let ll_t_out = type_of::type_of(ccx, t_out);
+    let ll_t_in = type_of::arg_type_of(ccx, t_in);
+    let ll_t_out = type_of::arg_type_of(ccx, t_out);
 
     // Convert the value to be cast into a ValueRef, either by-ref or
     // by-value as appropriate given its type:
@@ -1683,7 +1683,7 @@ fn trans_assign_op<'a>(
     let dst_datum = unpack_datum!(bcx, trans_to_lvalue(bcx, dst, "assign_op"));
     assert!(!ty::type_needs_drop(bcx.tcx(), dst_datum.ty));
     let dst_ty = dst_datum.ty;
-    let dst = Load(bcx, dst_datum.val);
+    let dst = load_ty(bcx, dst_datum.val, dst_datum.ty);
 
     // Evaluate RHS
     let rhs_datum = unpack_datum!(bcx, trans(bcx, &*src));
