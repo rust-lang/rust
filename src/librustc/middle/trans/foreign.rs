@@ -325,7 +325,7 @@ pub fn trans_native_call<'a>(
                 base::alloca(bcx,
                              type_of::type_of(ccx, *passed_arg_tys.get(i)),
                              "__arg");
-            Store(bcx, llarg_rust, scratch);
+            base::store_ty(bcx, llarg_rust, scratch, *passed_arg_tys.get(i));
             llarg_rust = scratch;
         }
 
@@ -346,7 +346,12 @@ pub fn trans_native_call<'a>(
         let llarg_foreign = if foreign_indirect {
             llarg_rust
         } else {
-            Load(bcx, llarg_rust)
+            if ty::type_is_bool(*passed_arg_tys.get(i)) {
+                let val = LoadRangeAssert(bcx, llarg_rust, 0, 2, lib::llvm::False);
+                Trunc(bcx, val, Type::i1(bcx.ccx()))
+            } else {
+                Load(bcx, llarg_rust)
+            }
         };
 
         debug!("argument {}, llarg_foreign={}",
@@ -431,7 +436,7 @@ pub fn trans_native_call<'a>(
         debug!("llforeign_ret_ty={}", ccx.tn.type_to_str(llforeign_ret_ty));
 
         if llrust_ret_ty == llforeign_ret_ty {
-            Store(bcx, llforeign_retval, llretptr);
+            base::store_ty(bcx, llforeign_retval, llretptr, fn_sig.output)
         } else {
             // The actual return type is a struct, but the ABI
             // adaptation code has cast it into some scalar type.  The
@@ -715,9 +720,15 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: &CrateContext,
             // pointer).  It makes adapting types easier, since we can
             // always just bitcast pointers.
             if !foreign_indirect {
-                let lltemp = builder.alloca(val_ty(llforeign_arg), "");
-                builder.store(llforeign_arg, lltemp);
-                llforeign_arg = lltemp;
+                llforeign_arg = if ty::type_is_bool(rust_ty) {
+                    let lltemp = builder.alloca(Type::bool(ccx), "");
+                    builder.store(builder.zext(llforeign_arg, Type::bool(ccx)), lltemp);
+                    lltemp
+                } else {
+                    let lltemp = builder.alloca(val_ty(llforeign_arg), "");
+                    builder.store(llforeign_arg, lltemp);
+                    lltemp
+                }
             }
 
             // If the types in the ABI and the Rust types don't match,
@@ -731,7 +742,12 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: &CrateContext,
             let llrust_arg = if rust_indirect {
                 llforeign_arg
             } else {
-                builder.load(llforeign_arg)
+                if ty::type_is_bool(rust_ty) {
+                    let tmp = builder.load_range_assert(llforeign_arg, 0, 2, lib::llvm::False);
+                    builder.trunc(tmp, Type::i1(ccx))
+                } else {
+                    builder.load(llforeign_arg)
+                }
             };
 
             debug!("llrust_arg {}{}: {}", "#",
@@ -828,8 +844,8 @@ fn foreign_signature(ccx: &CrateContext, fn_sig: &ty::FnSig, arg_tys: &[ty::t])
      * values by pointer like we do.
      */
 
-    let llarg_tys = arg_tys.iter().map(|&arg| type_of(ccx, arg)).collect();
-    let llret_ty = type_of::type_of(ccx, fn_sig.output);
+    let llarg_tys = arg_tys.iter().map(|&arg| arg_type_of(ccx, arg)).collect();
+    let llret_ty = type_of::arg_type_of(ccx, fn_sig.output);
     LlvmSignature {
         llarg_tys: llarg_tys,
         llret_ty: llret_ty

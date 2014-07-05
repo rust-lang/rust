@@ -85,7 +85,7 @@ fn ty_size(ty: Type) -> uint {
 
 fn classify_ret_ty(ccx: &CrateContext, ty: Type) -> ArgType {
     if is_reg_ty(ty) {
-        let attr = if ty == Type::bool(ccx) { Some(ZExtAttribute) } else { None };
+        let attr = if ty == Type::i1(ccx) { Some(ZExtAttribute) } else { None };
         return ArgType::direct(ty, None, None, attr);
     }
     let size = ty_size(ty);
@@ -104,7 +104,7 @@ fn classify_ret_ty(ccx: &CrateContext, ty: Type) -> ArgType {
 
 fn classify_arg_ty(ccx: &CrateContext, ty: Type) -> ArgType {
     if is_reg_ty(ty) {
-        let attr = if ty == Type::bool(ccx) { Some(ZExtAttribute) } else { None };
+        let attr = if ty == Type::i1(ccx) { Some(ZExtAttribute) } else { None };
         return ArgType::direct(ty, None, None, attr);
     }
     let align = ty_align(ty);
