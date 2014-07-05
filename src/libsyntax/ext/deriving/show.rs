@@ -45,7 +45,7 @@ pub fn expand_deriving_show(cx: &mut ExtCtxt,
                 args: vec!(fmtr),
                 ret_ty: Literal(Path::new(vec!("std", "fmt", "Result"))),
                 attributes: Vec::new(),
-                const_nonmatching: false,
+                on_nonmatching: NonMatchHandlingIrrelevant,
                 combine_substructure: combine_substructure(|a, b, c| {
                     show_substructure(a, b, c)
                 })

@@ -41,7 +41,7 @@ pub fn expand_deriving_totalord(cx: &mut ExtCtxt,
                 args: vec!(borrowed_self()),
                 ret_ty: Literal(Path::new(vec!("std", "cmp", "Ordering"))),
                 attributes: attrs,
-                const_nonmatching: false,
+                on_nonmatching: NonMatchesExplode,
                 combine_substructure: combine_substructure(|a, b, c| {
                     cs_cmp(a, b, c)
                 }),

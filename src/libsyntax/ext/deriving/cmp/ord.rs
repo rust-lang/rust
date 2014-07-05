@@ -35,7 +35,7 @@ pub fn expand_deriving_ord(cx: &mut ExtCtxt,
                 args: vec!(borrowed_self()),
                 ret_ty: Literal(Path::new(vec!("bool"))),
                 attributes: attrs,
-                const_nonmatching: false,
+                on_nonmatching: NonMatchesExplode,
                 combine_substructure: combine_substructure(|cx, span, substr| {
                     cs_op($op, $equal, cx, span, substr)
                 })
@@ -59,7 +59,7 @@ pub fn expand_deriving_ord(cx: &mut ExtCtxt,
         args: vec![borrowed_self()],
         ret_ty: ret_ty,
         attributes: attrs,
-        const_nonmatching: false,
+        on_nonmatching: NonMatchesExplode,
         combine_substructure: combine_substructure(|cx, span, substr| {
             cs_partial_cmp(cx, span, substr)
         })
