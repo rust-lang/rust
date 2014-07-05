@@ -9,14 +9,14 @@
 // except according to those terms.
 
 #![feature(globs)]
-#![crate_id = "libc#0.11.0"]
+#![crate_id = "libc#0.12.0-pre"]
 #![experimental]
 #![no_std] // we don't need std, and we can't have std, since it doesn't exist
            // yet. std depends on us.
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
-       html_root_url = "http://doc.rust-lang.org/0.11.0/",
+       html_root_url = "http://doc.rust-lang.org/0.12.0-pre/",
        html_playground_url = "http://play.rust-lang.org/")]
 
 /*!
