@@ -19,6 +19,7 @@ use parse::parser;
 use parse::token;
 use parse::token::{InternedString, intern, str_to_ident};
 use util::small_vector::SmallVector;
+use ext::mtwt;
 
 use std::collections::HashMap;
 use std::gc::{Gc, GC};
@@ -273,7 +274,7 @@ pub struct BlockInfo {
     // should macros escape from this scope?
     pub macros_escape: bool,
     // what are the pending renames?
-    pub pending_renames: RenameList,
+    pub pending_renames: mtwt::RenameList,
 }
 
 impl BlockInfo {
@@ -284,9 +285,6 @@ impl BlockInfo {
         }
     }
 }
-
-// a list of ident->name renamings
-pub type RenameList = Vec<(ast::Ident, Name)>;
 
 // The base map of methods for expanding syntax extension
 // AST nodes into full ASTs

@@ -781,9 +781,9 @@ fn extract_vec_elems<'a>(
 // matches should fit that sort of pattern or NONE (however, some of the
 // matches may be wildcards like _ or identifiers).
 macro_rules! any_pat (
-    ($m:expr, $pattern:pat) => (
+    ($m:expr, $col:expr, $pattern:pat) => (
         ($m).iter().any(|br| {
-            match br.pats.get(col).node {
+            match br.pats.get($col).node {
                 $pattern => true,
                 _ => false
             }
@@ -792,11 +792,11 @@ macro_rules! any_pat (
 )
 
 fn any_uniq_pat(m: &[Match], col: uint) -> bool {
-    any_pat!(m, ast::PatBox(_))
+    any_pat!(m, col, ast::PatBox(_))
 }
 
 fn any_region_pat(m: &[Match], col: uint) -> bool {
-    any_pat!(m, ast::PatRegion(_))
+    any_pat!(m, col, ast::PatRegion(_))
 }
 
 fn any_irrefutable_adt_pat(bcx: &Block, m: &[Match], col: uint) -> bool {
