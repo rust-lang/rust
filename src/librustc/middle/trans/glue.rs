@@ -234,7 +234,7 @@ fn trans_struct_drop_flag<'a>(bcx: &'a Block<'a>,
                               -> &'a Block<'a> {
     let repr = adt::represent_type(bcx.ccx(), t);
     let drop_flag = adt::trans_drop_flag_ptr(bcx, &*repr, v0);
-    with_cond(bcx, IsNotNull(bcx, Load(bcx, drop_flag)), |cx| {
+    with_cond(bcx, Load(bcx, drop_flag), |cx| {
         trans_struct_drop(cx, t, v0, dtor_did, class_did, substs)
     })
 }

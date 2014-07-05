@@ -505,7 +505,7 @@ fn trans_index<'a>(bcx: &'a Block<'a>,
 
     let bounds_check = ICmp(bcx, lib::llvm::IntUGE, ix_val, len);
     let expect = ccx.get_intrinsic(&("llvm.expect.i1"));
-    let expected = Call(bcx, expect, [bounds_check, C_i1(ccx, false)], []);
+    let expected = Call(bcx, expect, [bounds_check, C_bool(ccx, false)], []);
     let bcx = with_cond(bcx, expected, |bcx| {
             controlflow::trans_fail_bounds_check(bcx, index_expr.span, ix_val, len)
         });
@@ -1149,13 +1149,7 @@ fn trans_unary<'a>(bcx: &'a Block<'a>,
     match op {
         ast::UnNot => {
             let datum = unpack_datum!(bcx, trans(bcx, sub_expr));
-            let llresult = if ty::type_is_bool(un_ty) {
-                let val = datum.to_llscalarish(bcx);
-                Xor(bcx, val, C_bool(ccx, true))
-            } else {
-                // Note: `Not` is bitwise, not suitable for logical not.
-                Not(bcx, datum.to_llscalarish(bcx))
-            };
+            let llresult = Not(bcx, datum.to_llscalarish(bcx));
             immediate_rvalue_bcx(bcx, llresult, un_ty).to_expr_datumblock()
         }
         ast::UnNeg => {

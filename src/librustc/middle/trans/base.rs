@@ -539,8 +539,8 @@ pub fn compare_scalar_values<'a>(
         // We don't need to do actual comparisons for nil.
         // () == () holds but () < () does not.
         match op {
-          ast::BiEq | ast::BiLe | ast::BiGe => return C_i1(cx.ccx(), true),
-          ast::BiNe | ast::BiLt | ast::BiGt => return C_i1(cx.ccx(), false),
+          ast::BiEq | ast::BiLe | ast::BiGe => return C_bool(cx.ccx(), true),
+          ast::BiNe | ast::BiLt | ast::BiGt => return C_bool(cx.ccx(), false),
           // refinements would be nice
           _ => die(cx)
         }
@@ -1014,7 +1014,7 @@ pub fn call_memcpy(cx: &Block, dst: ValueRef, src: ValueRef, n_bytes: ValueRef, 
     let dst_ptr = PointerCast(cx, dst, Type::i8p(ccx));
     let size = IntCast(cx, n_bytes, ccx.int_type);
     let align = C_i32(ccx, align as i32);
-    let volatile = C_i1(ccx, false);
+    let volatile = C_bool(ccx, false);
     Call(cx, memcpy, [dst_ptr, src_ptr, size, align, volatile], []);
 }
 
@@ -1059,7 +1059,7 @@ fn memzero(b: &Builder, llptr: ValueRef, ty: Type) {
     let llzeroval = C_u8(ccx, 0);
     let size = machine::llsize_of(ccx, ty);
     let align = C_i32(ccx, llalign_of_min(ccx, ty) as i32);
-    let volatile = C_i1(ccx, false);
+    let volatile = C_bool(ccx, false);
     b.call(llintrinsicfn, [llptr, llzeroval, size, align, volatile], []);
 }
 
