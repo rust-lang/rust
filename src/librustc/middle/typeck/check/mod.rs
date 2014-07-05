@@ -917,8 +917,8 @@ fn compare_impl_method(tcx: &ty::ctxt,
         return;
     }
 
-    let it = trait_m.generics.types.get_vec(subst::FnSpace).iter()
-        .zip(impl_m.generics.types.get_vec(subst::FnSpace).iter());
+    let it = trait_m.generics.types.get_slice(subst::FnSpace).iter()
+        .zip(impl_m.generics.types.get_slice(subst::FnSpace).iter());
 
     // This code is best explained by example. Consider a trait:
     //
@@ -989,8 +989,8 @@ fn compare_impl_method(tcx: &ty::ctxt,
     let trait_to_skol_substs =
         trait_to_impl_substs
         .subst(tcx, &impl_to_skol_substs)
-        .with_method(skol_tps.get_vec(subst::FnSpace).clone(),
-                     skol_regions.get_vec(subst::FnSpace).clone());
+        .with_method(Vec::from_slice(skol_tps.get_slice(subst::FnSpace)),
+                     Vec::from_slice(skol_regions.get_slice(subst::FnSpace)));
     let trait_fty = ty::mk_bare_fn(tcx, trait_m.fty.clone());
     let trait_fty = trait_fty.subst(tcx, &trait_to_skol_substs);
 
@@ -2002,7 +2002,7 @@ pub fn impl_self_ty(vcx: &VtableContext,
     let ity = ty::lookup_item_type(tcx, did);
     let (n_tps, rps, raw_ty) =
         (ity.generics.types.len(subst::TypeSpace),
-         ity.generics.regions.get_vec(subst::TypeSpace),
+         ity.generics.regions.get_slice(subst::TypeSpace),
          ity.ty);
 
     let rps = vcx.infcx.region_vars_for_defs(span, rps);
@@ -4126,12 +4126,10 @@ pub fn instantiate_path(fcx: &FnCtxt,
     // a problem.
     for &space in ParamSpace::all().iter() {
         adjust_type_parameters(fcx, span, space, type_defs, &mut substs);
-        assert_eq!(substs.types.get_vec(space).len(),
-                   type_defs.get_vec(space).len());
+        assert_eq!(substs.types.len(space), type_defs.len(space));
 
         adjust_region_parameters(fcx, span, space, region_defs, &mut substs);
-        assert_eq!(substs.regions().get_vec(space).len(),
-                   region_defs.get_vec(space).len());
+        assert_eq!(substs.regions().len(space), region_defs.len(space));
     }
 
     fcx.write_ty_substs(node_id, polytype.ty, ty::ItemSubsts {
@@ -4183,8 +4181,8 @@ pub fn instantiate_path(fcx: &FnCtxt,
          */
 
         {
-            let type_count = type_defs.get_vec(space).len();
-            assert_eq!(substs.types.get_vec(space).len(), 0);
+            let type_count = type_defs.len(space);
+            assert_eq!(substs.types.len(space), 0);
             for (i, &typ) in segment.types.iter().enumerate() {
                 let t = fcx.to_ty(&*typ);
                 if i < type_count {
@@ -4198,14 +4196,14 @@ pub fn instantiate_path(fcx: &FnCtxt,
                              but found {} parameter(s)",
                             type_count,
                             segment.types.len()).as_slice());
-                    substs.types.get_mut_vec(space).truncate(0);
+                    substs.types.truncate(space, 0);
                 }
             }
         }
 
         {
-            let region_count = region_defs.get_vec(space).len();
-            assert_eq!(substs.regions().get_vec(space).len(), 0);
+            let region_count = region_defs.len(space);
+            assert_eq!(substs.regions().len(space), 0);
             for (i, lifetime) in segment.lifetimes.iter().enumerate() {
                 let r = ast_region_to_region(fcx.tcx(), lifetime);
                 if i < region_count {
@@ -4218,7 +4216,7 @@ pub fn instantiate_path(fcx: &FnCtxt,
                              expected {} parameter(s) but found {} parameter(s)",
                             region_count,
                             segment.lifetimes.len()).as_slice());
-                    substs.mut_regions().get_mut_vec(space).truncate(0);
+                    substs.mut_regions().truncate(space, 0);
                 }
             }
         }
@@ -4231,8 +4229,8 @@ pub fn instantiate_path(fcx: &FnCtxt,
         defs: &VecPerParamSpace<ty::TypeParameterDef>,
         substs: &mut Substs)
     {
-        let provided_len = substs.types.get_vec(space).len();
-        let desired = defs.get_vec(space).as_slice();
+        let provided_len = substs.types.len(space);
+        let desired = defs.get_slice(space);
         let required_len = desired.iter()
                               .take_while(|d| d.default.is_none())
                               .count();
@@ -4252,8 +4250,8 @@ pub fn instantiate_path(fcx: &FnCtxt,
         // Nothing specified at all: supply inference variables for
         // everything.
         if provided_len == 0 {
-            let provided = substs.types.get_mut_vec(space);
-            *provided = fcx.infcx().next_ty_vars(desired.len());
+            substs.types.replace(space,
+                                 fcx.infcx().next_ty_vars(desired.len()));
             return;
         }
 
@@ -4270,8 +4268,8 @@ pub fn instantiate_path(fcx: &FnCtxt,
                             qualifier,
                             required_len,
                             provided_len).as_slice());
-            let provided = substs.types.get_mut_vec(space);
-            *provided = Vec::from_elem(desired.len(), ty::mk_err());
+            substs.types.replace(space,
+                                 Vec::from_elem(desired.len(), ty::mk_err()));
             return;
         }
 
@@ -4287,7 +4285,7 @@ pub fn instantiate_path(fcx: &FnCtxt,
             let default = default.subst_spanned(fcx.tcx(), substs, Some(span));
             substs.types.push(space, default);
         }
-        assert_eq!(substs.types.get_vec(space).len(), desired.len());
+        assert_eq!(substs.types.len(space), desired.len());
 
         debug!("Final substs: {}", substs.repr(fcx.tcx()));
     }
@@ -4299,20 +4297,22 @@ pub fn instantiate_path(fcx: &FnCtxt,
         defs: &VecPerParamSpace<ty::RegionParameterDef>,
         substs: &mut Substs)
     {
-        let provided = substs.mut_regions().get_mut_vec(space);
-        let desired = defs.get_vec(space);
+        let provided_len = substs.mut_regions().len(space);
+        let desired = defs.get_slice(space);
 
         // Enforced by `push_explicit_parameters_from_segment_to_substs()`.
-        assert!(provided.len() <= desired.len());
+        assert!(provided_len <= desired.len());
 
         // If nothing was provided, just use inference variables.
-        if provided.len() == 0 {
-            *provided = fcx.infcx().region_vars_for_defs(span, desired);
+        if provided_len == 0 {
+            substs.mut_regions().replace(
+                space,
+                fcx.infcx().region_vars_for_defs(span, desired));
             return;
         }
 
         // If just the right number were provided, everybody is happy.
-        if provided.len() == desired.len() {
+        if provided_len == desired.len() {
             return;
         }
 
@@ -4325,9 +4325,11 @@ pub fn instantiate_path(fcx: &FnCtxt,
                          expected {} parameter(s) \
                          but found {} parameter(s)",
                 desired.len(),
-                provided.len()).as_slice());
+                provided_len).as_slice());
 
-        *provided = fcx.infcx().region_vars_for_defs(span, desired);
+        substs.mut_regions().replace(
+            space,
+            fcx.infcx().region_vars_for_defs(span, desired));
     }
 }
 

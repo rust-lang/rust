@@ -115,32 +115,30 @@ pub trait Combine {
         let mut substs = subst::Substs::empty();
 
         for &space in subst::ParamSpace::all().iter() {
-            let a_tps = a_subst.types.get_vec(space);
-            let b_tps = b_subst.types.get_vec(space);
-            let tps = if_ok!(self.tps(space,
-                                      a_tps.as_slice(),
-                                      b_tps.as_slice()));
+            let a_tps = a_subst.types.get_slice(space);
+            let b_tps = b_subst.types.get_slice(space);
+            let tps = if_ok!(self.tps(space, a_tps, b_tps));
 
-            let a_regions = a_subst.regions().get_vec(space);
-            let b_regions = b_subst.regions().get_vec(space);
-            let r_variances = variances.regions.get_vec(space);
+            let a_regions = a_subst.regions().get_slice(space);
+            let b_regions = b_subst.regions().get_slice(space);
+            let r_variances = variances.regions.get_slice(space);
             let regions = if_ok!(relate_region_params(self,
                                                       item_def_id,
                                                       r_variances,
                                                       a_regions,
                                                       b_regions));
 
-            *substs.types.get_mut_vec(space) = tps;
-            *substs.mut_regions().get_mut_vec(space) = regions;
+            substs.types.replace(space, tps);
+            substs.mut_regions().replace(space, regions);
         }
 
         return Ok(substs);
 
         fn relate_region_params<C:Combine>(this: &C,
                                            item_def_id: ast::DefId,
-                                           variances: &Vec<ty::Variance>,
-                                           a_rs: &Vec<ty::Region>,
-                                           b_rs: &Vec<ty::Region>)
+                                           variances: &[ty::Variance],
+                                           a_rs: &[ty::Region],
+                                           b_rs: &[ty::Region])
                                            -> cres<Vec<ty::Region>>
         {
             let tcx = this.infcx().tcx;
@@ -160,9 +158,9 @@ pub trait Combine {
             assert_eq!(num_region_params, b_rs.len());
             let mut rs = vec!();
             for i in range(0, num_region_params) {
-                let a_r = *a_rs.get(i);
-                let b_r = *b_rs.get(i);
-                let variance = *variances.get(i);
+                let a_r = a_rs[i];
+                let b_r = b_rs[i];
+                let variance = variances[i];
                 let r = match variance {
                     ty::Invariant => {
                         eq_regions(this, a_r, b_r)
