@@ -895,13 +895,14 @@ fn add_one(x: int) -> int {
 We would get an error:
 
 ```{ignore,notrust}
-note: consider removing this semicolon:
-     x + 1;
-          ^
 error: not all control paths return a value
 fn add_one(x: int) -> int {
      x + 1;
 }
+
+note: consider removing this semicolon:
+     x + 1;
+          ^
 ```
 
 Remember our earlier discussions about semicolons and `()`? Our function claims

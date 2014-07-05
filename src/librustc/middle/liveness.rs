@@ -1458,6 +1458,8 @@ impl<'a> Liveness<'a> {
                         },
                     _ => false
                 };
+                self.ir.tcx.sess.span_err(
+                    sp, "not all control paths return a value");
                 if ends_with_stmt {
                     let last_stmt = body.stmts.last().unwrap();
                     let original_span = original_sp(last_stmt.span, sp);
@@ -1469,8 +1471,6 @@ impl<'a> Liveness<'a> {
                     self.ir.tcx.sess.span_note(
                         span_semicolon, "consider removing this semicolon:");
                 }
-                self.ir.tcx.sess.span_err(
-                    sp, "not all control paths return a value");
            }
         }
     }
