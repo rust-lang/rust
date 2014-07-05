@@ -12,7 +12,8 @@
  * Collection types.
  */
 
-#![crate_id = "collections#0.11.0"]
+#![crate_id = "collections#0.11.0"] // NOTE: remove after stage0
+#![crate_name = "collections"]
 #![experimental]
 #![crate_type = "rlib"]
 #![license = "MIT/ASL2"]
@@ -24,6 +25,7 @@
 #![feature(macro_rules, managed_boxes, default_type_params, phase, globs)]
 #![feature(unsafe_destructor)]
 #![no_std]
+#![allow(unused_attribute)] // NOTE: remove after stage0
 
 #[phase(plugin, link)] extern crate core;
 extern crate alloc;

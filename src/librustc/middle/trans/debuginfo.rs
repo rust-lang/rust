@@ -1496,7 +1496,7 @@ fn compile_unit_metadata(cx: &CrateContext) {
     });
 
     fn fallback_path(cx: &CrateContext) -> CString {
-        cx.link_meta.crateid.name.as_slice().to_c_str()
+        cx.link_meta.crate_name.as_slice().to_c_str()
     }
 }
 
@@ -3972,7 +3972,7 @@ impl NamespaceTreeNode {
 }
 
 fn crate_root_namespace<'a>(cx: &'a CrateContext) -> &'a str {
-    cx.link_meta.crateid.name.as_slice()
+    cx.link_meta.crate_name.as_slice()
 }
 
 fn namespace_for_item(cx: &CrateContext, def_id: ast::DefId) -> Rc<NamespaceTreeNode> {

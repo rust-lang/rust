@@ -14,12 +14,14 @@
 //! Parsing does not happen at runtime: structures of `std::fmt::rt` are
 //! generated instead.
 
-#![crate_id = "fmt_macros#0.11.0"]
+#![crate_id = "fmt_macros#0.11.0"] // NOTE: remove after stage0c
+#![crate_name = "fmt_macros"]
 #![experimental]
 #![license = "MIT/ASL2"]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![feature(macro_rules, globs)]
+#![allow(unused_attribute)] // NOTE: remove after stage0
 
 use std::char;
 use std::str;

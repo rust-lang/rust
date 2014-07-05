@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,17 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:crateresolve2-1.rs
-// aux-build:crateresolve2-2.rs
-// aux-build:crateresolve2-3.rs
-// error-pattern:using multiple versions of crate `crateresolve2`
+#![crate_name = "b"]
+#![crate_type = "rlib"]
 
-extern crate crateresolve2 = "crateresolve2#0.1";
+extern crate a;
 
-mod m {
-    pub extern crate crateresolve2 = "crateresolve2#0.2";
-}
+static FOO: uint = 3;
 
-fn main() {
-    let x: int = false;
-}
+pub fn token() -> &'static uint { &FOO }
+pub fn a_token() -> &'static uint { a::token() }

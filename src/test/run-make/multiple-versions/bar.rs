@@ -8,14 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:issue-11908-2.rs
-// no-prefer-dynamic
-// ignore-android this test is incompatible with the android test runner
-// error-pattern: multiple rlib candidates for `url` found
-
-// see comments in issue-11908-1 for what's going on here
-
-extern crate url;
+extern crate foo1;
+extern crate foo2;
 
 fn main() {}
-

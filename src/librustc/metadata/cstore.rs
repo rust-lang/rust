@@ -22,7 +22,6 @@ use std::c_vec::CVec;
 use std::rc::Rc;
 use std::collections::HashMap;
 use syntax::ast;
-use syntax::crateid::CrateId;
 use syntax::codemap::Span;
 use syntax::parse::token::IdentInterner;
 
@@ -220,7 +219,7 @@ impl CStore {
 
 impl crate_metadata {
     pub fn data<'a>(&'a self) -> &'a [u8] { self.data.as_slice() }
-    pub fn crate_id(&self) -> CrateId { decoder::get_crate_id(self.data()) }
+    pub fn name(&self) -> String { decoder::get_crate_name(self.data()) }
     pub fn hash(&self) -> Svh { decoder::get_crate_hash(self.data()) }
 }
 

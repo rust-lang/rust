@@ -30,7 +30,6 @@ use back::{link, abi};
 use driver::config;
 use driver::config::{NoDebugInfo, FullDebugInfo};
 use driver::session::Session;
-use driver::driver::OutputFilenames;
 use driver::driver::{CrateAnalysis, CrateTranslation};
 use lib::llvm::{ModuleRef, ValueRef, BasicBlockRef};
 use lib::llvm::{llvm, Vector};
@@ -2270,8 +2269,9 @@ pub fn write_metadata(cx: &CrateContext, krate: &ast::Crate) -> Vec<u8> {
                      }.as_slice());
     let llmeta = C_bytes(cx, compressed.as_slice());
     let llconst = C_struct(cx, [llmeta], false);
-    let name = format!("rust_metadata_{}_{}_{}", cx.link_meta.crateid.name,
-                       cx.link_meta.crateid.version_or_default(), cx.link_meta.crate_hash);
+    let name = format!("rust_metadata_{}_{}",
+                       cx.link_meta.crate_name,
+                       cx.link_meta.crate_hash);
     let llglobal = name.with_c_str(|buf| {
         unsafe {
             llvm::LLVMAddGlobal(cx.metadata_llmod, val_ty(llconst).to_ref(), buf)
@@ -2288,9 +2288,8 @@ pub fn write_metadata(cx: &CrateContext, krate: &ast::Crate) -> Vec<u8> {
 }
 
 pub fn trans_crate(krate: ast::Crate,
-                   analysis: CrateAnalysis,
-                   output: &OutputFilenames) -> (ty::ctxt, CrateTranslation) {
-    let CrateAnalysis { ty_cx: tcx, exp_map2, reachable, .. } = analysis;
+                   analysis: CrateAnalysis) -> (ty::ctxt, CrateTranslation) {
+    let CrateAnalysis { ty_cx: tcx, exp_map2, reachable, name, .. } = analysis;
 
     // Before we touch LLVM, make sure that multithreading is enabled.
     unsafe {
@@ -2310,8 +2309,7 @@ pub fn trans_crate(krate: ast::Crate,
         }
     }
 
-    let link_meta = link::build_link_meta(&krate,
-                                          output.out_filestem.as_slice());
+    let link_meta = link::build_link_meta(&tcx.sess, &krate, name);
 
     // Append ".rs" to crate name as LLVM module identifier.
     //
@@ -2321,7 +2319,7 @@ pub fn trans_crate(krate: ast::Crate,
     // crashes if the module identifier is same as other symbols
     // such as a function name in the module.
     // 1. http://llvm.org/bugs/show_bug.cgi?id=11479
-    let mut llmod_id = link_meta.crateid.name.clone();
+    let mut llmod_id = link_meta.crate_name.clone();
     llmod_id.push_str(".rs");
 
     let ccx = CrateContext::new(llmod_id.as_slice(), tcx, exp_map2,
