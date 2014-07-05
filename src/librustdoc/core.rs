@@ -12,6 +12,7 @@ use rustc;
 use rustc::{driver, middle};
 use rustc::middle::{privacy, ty};
 use rustc::lint;
+use rustc::back::link;
 
 use syntax::ast;
 use syntax::parse::token;
@@ -115,13 +116,17 @@ fn get_ast_and_resolve(cpath: &Path, libs: HashSet<Path>, cfgs: Vec<String>)
     }
 
     let krate = phase_1_parse_input(&sess, cfg, &input);
+
+    let name = link::find_crate_name(Some(&sess), krate.attrs.as_slice(),
+                                     &input);
+
     let (krate, ast_map)
-        = phase_2_configure_and_expand(&sess, krate, &from_str("rustdoc").unwrap())
+        = phase_2_configure_and_expand(&sess, krate, name.as_slice())
             .expect("phase_2_configure_and_expand aborted in rustdoc!");
 
     let driver::driver::CrateAnalysis {
         exported_items, public_items, ty_cx, ..
-    } = phase_3_run_analysis_passes(sess, &krate, ast_map);
+    } = phase_3_run_analysis_passes(sess, &krate, ast_map, name);
 
     debug!("crate: {:?}", krate);
     (DocContext {

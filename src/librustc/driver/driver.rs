@@ -41,7 +41,6 @@ use std::io::MemReader;
 use syntax::ast;
 use syntax::attr;
 use syntax::attr::{AttrMetaMethods};
-use syntax::crateid::CrateId;
 use syntax::parse;
 use syntax::parse::token;
 use syntax::print::{pp, pprust};
@@ -69,7 +68,7 @@ pub fn compile_input(sess: Session,
     // large chunks of memory alive and we want to free them as soon as
     // possible to keep the peak memory usage low
     let (outputs, trans, sess) = {
-        let (outputs, expanded_crate, ast_map) = {
+        let (outputs, expanded_crate, ast_map, id) = {
             let krate = phase_1_parse_input(&sess, cfg, input);
             if stop_after_phase_1(&sess) { return; }
             let outputs = build_output_filenames(input,
@@ -77,25 +76,25 @@ pub fn compile_input(sess: Session,
                                                  output,
                                                  krate.attrs.as_slice(),
                                                  &sess);
-            let id = link::find_crate_id(krate.attrs.as_slice(),
-                                         outputs.out_filestem.as_slice());
+            let id = link::find_crate_name(Some(&sess), krate.attrs.as_slice(),
+                                           input);
             let (expanded_crate, ast_map)
-                = match phase_2_configure_and_expand(&sess, krate, &id) {
+                = match phase_2_configure_and_expand(&sess, krate, id.as_slice()) {
                     None => return,
                     Some(p) => p,
                 };
 
-            (outputs, expanded_crate, ast_map)
+            (outputs, expanded_crate, ast_map, id)
         };
-        write_out_deps(&sess, input, &outputs, &expanded_crate);
+        write_out_deps(&sess, input, &outputs, id.as_slice());
 
         if stop_after_phase_2(&sess) { return; }
 
-        let analysis = phase_3_run_analysis_passes(sess, &expanded_crate, ast_map);
+        let analysis = phase_3_run_analysis_passes(sess, &expanded_crate,
+                                                   ast_map, id);
         phase_save_analysis(&analysis.ty_cx.sess, &expanded_crate, &analysis, outdir);
         if stop_after_phase_3(&analysis.ty_cx.sess) { return; }
-        let (tcx, trans) = phase_4_translate_to_llvm(expanded_crate,
-                                                     analysis, &outputs);
+        let (tcx, trans) = phase_4_translate_to_llvm(expanded_crate, analysis);
 
         // Discard interned strings as they are no longer required.
         token::get_ident_interner().clear();
@@ -181,11 +180,14 @@ pub fn phase_1_parse_input(sess: &Session, cfg: ast::CrateConfig, input: &Input)
 /// Returns `None` if we're aborting after handling -W help.
 pub fn phase_2_configure_and_expand(sess: &Session,
                                     mut krate: ast::Crate,
-                                    crate_id: &CrateId)
+                                    crate_name: &str)
                                     -> Option<(ast::Crate, syntax::ast_map::Map)> {
     let time_passes = sess.time_passes();
 
-    *sess.crate_types.borrow_mut() = collect_crate_types(sess, krate.attrs.as_slice());
+    *sess.crate_types.borrow_mut() =
+        collect_crate_types(sess, krate.attrs.as_slice());
+    *sess.crate_metadata.borrow_mut() =
+        collect_crate_metadata(sess, krate.attrs.as_slice());
 
     time(time_passes, "gated feature checking", (), |_|
          front::feature_gate::check_crate(sess, &krate));
@@ -247,7 +249,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
             }
             let cfg = syntax::ext::expand::ExpansionConfig {
                 deriving_hash_type_parameter: sess.features.default_type_params.get(),
-                crate_id: crate_id.clone(),
+                crate_name: crate_name.to_string(),
             };
             syntax::ext::expand::expand_crate(&sess.parse_sess,
                                               cfg,
@@ -286,6 +288,7 @@ pub struct CrateAnalysis {
     pub public_items: middle::privacy::PublicItems,
     pub ty_cx: ty::ctxt,
     pub reachable: NodeSet,
+    pub name: String,
 }
 
 /// Run the resolution, typechecking, region checking and other
@@ -293,7 +296,8 @@ pub struct CrateAnalysis {
 /// structures carrying the results of the analysis.
 pub fn phase_3_run_analysis_passes(sess: Session,
                                    krate: &ast::Crate,
-                                   ast_map: syntax::ast_map::Map) -> CrateAnalysis {
+                                   ast_map: syntax::ast_map::Map,
+                                   name: String) -> CrateAnalysis {
 
     let time_passes = sess.time_passes();
 
@@ -398,6 +402,7 @@ pub fn phase_3_run_analysis_passes(sess: Session,
         exported_items: exported_items,
         public_items: public_items,
         reachable: reachable_map,
+        name: name,
     }
 }
 
@@ -426,8 +431,7 @@ pub struct CrateTranslation {
 /// Run the translation phase to LLVM, after which the AST and analysis can
 /// be discarded.
 pub fn phase_4_translate_to_llvm(krate: ast::Crate,
-                                 analysis: CrateAnalysis,
-                                 outputs: &OutputFilenames) -> (ty::ctxt, CrateTranslation) {
+                                 analysis: CrateAnalysis) -> (ty::ctxt, CrateTranslation) {
     let time_passes = analysis.ty_cx.sess.time_passes();
 
     time(time_passes, "resolving dependency formats", (), |_|
@@ -435,7 +439,7 @@ pub fn phase_4_translate_to_llvm(krate: ast::Crate,
 
     // Option dance to work around the lack of stack once closures.
     time(time_passes, "translation", (krate, analysis), |(krate, analysis)|
-         trans::base::trans_crate(krate, analysis, outputs))
+         trans::base::trans_crate(krate, analysis))
 }
 
 /// Run LLVM itself, producing a bitcode file, assembly file or object file
@@ -473,7 +477,7 @@ pub fn phase_6_link_output(sess: &Session,
          link::link_binary(sess,
                            trans,
                            outputs,
-                           &trans.link.crateid));
+                           trans.link.crate_name.as_slice()));
 }
 
 pub fn stop_after_phase_3(sess: &Session) -> bool {
@@ -514,9 +518,7 @@ pub fn stop_after_phase_5(sess: &Session) -> bool {
 fn write_out_deps(sess: &Session,
                   input: &Input,
                   outputs: &OutputFilenames,
-                  krate: &ast::Crate) {
-    let id = link::find_crate_id(krate.attrs.as_slice(),
-                                 outputs.out_filestem.as_slice());
+                  id: &str) {
 
     let mut out_filenames = Vec::new();
     for output_type in sess.opts.output_types.iter() {
@@ -524,7 +526,8 @@ fn write_out_deps(sess: &Session,
         match *output_type {
             link::OutputTypeExe => {
                 for output in sess.crate_types.borrow().iter() {
-                    let p = link::filename_for_input(sess, *output, &id, &file);
+                    let p = link::filename_for_input(sess, *output,
+                                                     id, &file);
                     out_filenames.push(p);
                 }
             }
@@ -649,13 +652,13 @@ pub fn pretty_print_input(sess: Session,
                           ppm: PpMode,
                           ofile: Option<Path>) {
     let krate = phase_1_parse_input(&sess, cfg, input);
-    let id = link::find_crate_id(krate.attrs.as_slice(),
-                                 input.filestem().as_slice());
+    let id = link::find_crate_name(Some(&sess), krate.attrs.as_slice(), input);
 
     let (krate, ast_map, is_expanded) = match ppm {
         PpmExpanded | PpmExpandedIdentified | PpmTyped | PpmFlowGraph(_) => {
             let (krate, ast_map)
-                = match phase_2_configure_and_expand(&sess, krate, &id) {
+                = match phase_2_configure_and_expand(&sess, krate,
+                                                     id.as_slice()) {
                     None => return,
                     Some(p) => p,
                 };
@@ -695,7 +698,7 @@ pub fn pretty_print_input(sess: Session,
         }
         PpmTyped => {
             let ast_map = ast_map.expect("--pretty=typed missing ast_map");
-            let analysis = phase_3_run_analysis_passes(sess, &krate, ast_map);
+            let analysis = phase_3_run_analysis_passes(sess, &krate, ast_map, id);
             let annotation = TypedAnnotation {
                 analysis: analysis
             };
@@ -728,7 +731,8 @@ pub fn pretty_print_input(sess: Session,
                     }
                 }
             };
-            let analysis = phase_3_run_analysis_passes(sess, &krate, ast_map);
+            let analysis = phase_3_run_analysis_passes(sess, &krate,
+                                                       ast_map, id);
             print_flowgraph(analysis, block, out)
         }
         _ => {
@@ -845,6 +849,11 @@ pub fn collect_crate_types(session: &Session,
     }).collect()
 }
 
+pub fn collect_crate_metadata(session: &Session,
+                              _attrs: &[ast::Attribute]) -> Vec<String> {
+    session.opts.cg.metadata.clone()
+}
+
 pub struct OutputFilenames {
     pub out_directory: Path,
     pub out_filestem: String,
@@ -893,14 +902,11 @@ pub fn build_output_filenames(input: &Input,
                 None => Path::new(".")
             };
 
-            let mut stem = input.filestem();
-
-            // If a crateid is present, we use it as the link name
-            let crateid = attr::find_crateid(attrs);
-            match crateid {
-                None => {}
-                Some(crateid) => stem = crateid.name.to_string(),
-            }
+            // If a crate name is present, we use it as the link name
+           let stem = match attr::find_crate_name(attrs) {
+                None => input.filestem(),
+                Some(name) => name.get().to_string(),
+            };
             OutputFilenames {
                 out_directory: dirpath,
                 out_filestem: stem,

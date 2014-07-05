@@ -46,7 +46,6 @@ use syntax::parse::token;
 use syntax::print::pprust;
 use syntax::ast;
 use syntax::codemap;
-use syntax::crateid::CrateId;
 
 pub type Cmd<'a> = &'a crate_metadata;
 
@@ -1101,7 +1100,7 @@ pub fn get_crate_attributes(data: &[u8]) -> Vec<ast::Attribute> {
 #[deriving(Clone)]
 pub struct CrateDep {
     pub cnum: ast::CrateNum,
-    pub crate_id: CrateId,
+    pub name: String,
     pub hash: Svh,
 }
 
@@ -1115,13 +1114,11 @@ pub fn get_crate_deps(data: &[u8]) -> Vec<CrateDep> {
         d.as_str_slice().to_string()
     }
     reader::tagged_docs(depsdoc, tag_crate_dep, |depdoc| {
-        let crate_id =
-            from_str(docstr(depdoc,
-                            tag_crate_dep_crateid).as_slice()).unwrap();
+        let name = docstr(depdoc, tag_crate_dep_crate_name);
         let hash = Svh::new(docstr(depdoc, tag_crate_dep_hash).as_slice());
         deps.push(CrateDep {
             cnum: crate_num,
-            crate_id: crate_id,
+            name: name,
             hash: hash,
         });
         crate_num += 1;
@@ -1133,7 +1130,7 @@ pub fn get_crate_deps(data: &[u8]) -> Vec<CrateDep> {
 fn list_crate_deps(data: &[u8], out: &mut io::Writer) -> io::IoResult<()> {
     try!(write!(out, "=External Dependencies=\n"));
     for dep in get_crate_deps(data).iter() {
-        try!(write!(out, "{} {}-{}\n", dep.cnum, dep.crate_id, dep.hash));
+        try!(write!(out, "{} {}-{}\n", dep.cnum, dep.name, dep.hash));
     }
     try!(write!(out, "\n"));
     Ok(())
@@ -1152,23 +1149,21 @@ pub fn get_crate_hash(data: &[u8]) -> Svh {
     Svh::new(hashdoc.as_str_slice())
 }
 
-pub fn maybe_get_crate_id(data: &[u8]) -> Option<CrateId> {
+pub fn maybe_get_crate_name(data: &[u8]) -> Option<String> {
     let cratedoc = ebml::Doc::new(data);
-    reader::maybe_get_doc(cratedoc, tag_crate_crateid).map(|doc| {
-        from_str(doc.as_str_slice()).unwrap()
+    reader::maybe_get_doc(cratedoc, tag_crate_crate_name).map(|doc| {
+        doc.as_str_slice().to_string()
     })
 }
 
-pub fn get_crate_triple(data: &[u8]) -> String {
+pub fn get_crate_triple(data: &[u8]) -> Option<String> {
     let cratedoc = ebml::Doc::new(data);
     let triple_doc = reader::maybe_get_doc(cratedoc, tag_crate_triple);
-    triple_doc.expect("No triple in crate").as_str().to_string()
+    triple_doc.map(|s| s.as_str().to_string())
 }
 
-pub fn get_crate_id(data: &[u8]) -> CrateId {
-    let cratedoc = ebml::Doc::new(data);
-    let hashdoc = reader::get_doc(cratedoc, tag_crate_crateid);
-    from_str(hashdoc.as_str_slice()).unwrap()
+pub fn get_crate_name(data: &[u8]) -> String {
+    maybe_get_crate_name(data).expect("no crate name in crate")
 }
 
 pub fn list_crate_metadata(bytes: &[u8], out: &mut io::Writer) -> io::IoResult<()> {

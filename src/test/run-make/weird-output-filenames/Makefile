@@ -1,9 +1,12 @@
 -include ../tools.mk
 
 all:
-	$(RUSTC) foo.rs -o $(TMPDIR)/.foo
-	rm $(TMPDIR)/.foo
-	$(RUSTC) foo.rs -o $(TMPDIR)/.foo.bar
-	rm $(TMPDIR)/.foo.bar
-	$(RUSTC) foo.rs -o $(TMPDIR)/+foo+bar
-	rm $(TMPDIR)/$(call BIN,+foo+bar)
+	cp foo.rs $(TMPDIR)/.foo.rs
+	$(RUSTC) $(TMPDIR)/.foo.rs 2>&1 \
+		| grep "invalid character.*in crate name:"
+	cp foo.rs $(TMPDIR)/.foo.bar
+	$(RUSTC) $(TMPDIR)/.foo.bar 2>&1 \
+		| grep "invalid character.*in crate name:"
+	cp foo.rs $(TMPDIR)/+foo+bar
+	$(RUSTC) $(TMPDIR)/+foo+bar 2>&1 \
+		| grep "invalid character.*in crate name:"

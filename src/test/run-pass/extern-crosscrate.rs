@@ -10,7 +10,7 @@
 
 //aux-build:extern-crosscrate-source.rs
 
-extern crate externcallback = "externcallback#0.1";
+extern crate externcallback;
 
 fn fact(n: uint) -> uint {
     unsafe {

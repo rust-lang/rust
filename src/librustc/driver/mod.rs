@@ -294,28 +294,26 @@ fn print_crate_info(sess: &Session,
                     odir: &Option<Path>,
                     ofile: &Option<Path>)
                     -> bool {
-    let (crate_id, crate_name, crate_file_name) = sess.opts.print_metas;
+    let (crate_name, crate_file_name) = sess.opts.print_metas;
     // these nasty nested conditions are to avoid doing extra work
-    if crate_id || crate_name || crate_file_name {
+    if crate_name || crate_file_name {
         let attrs = parse_crate_attrs(sess, input);
         let t_outputs = driver::build_output_filenames(input,
                                                        odir,
                                                        ofile,
                                                        attrs.as_slice(),
                                                        sess);
-        let id = link::find_crate_id(attrs.as_slice(),
-                                     t_outputs.out_filestem.as_slice());
+        let id = link::find_crate_name(Some(sess), attrs.as_slice(), input);
 
-        if crate_id {
-            println!("{}", id.to_str());
-        }
         if crate_name {
-            println!("{}", id.name);
+            println!("{}", id);
         }
         if crate_file_name {
             let crate_types = driver::collect_crate_types(sess, attrs.as_slice());
+            let metadata = driver::collect_crate_metadata(sess, attrs.as_slice());
+            *sess.crate_metadata.borrow_mut() = metadata;
             for &style in crate_types.iter() {
-                let fname = link::filename_for_input(sess, style, &id,
+                let fname = link::filename_for_input(sess, style, id.as_slice(),
                                                      &t_outputs.with_extension(""));
                 println!("{}", fname.filename_display());
             }
@@ -388,6 +386,11 @@ pub fn early_error(msg: &str) -> ! {
     let mut emitter = diagnostic::EmitterWriter::stderr(diagnostic::Auto);
     emitter.emit(None, msg, diagnostic::Fatal);
     fail!(diagnostic::FatalError);
+}
+
+pub fn early_warn(msg: &str) {
+    let mut emitter = diagnostic::EmitterWriter::stderr(diagnostic::Auto);
+    emitter.emit(None, msg, diagnostic::Warning);
 }
 
 pub fn list_metadata(sess: &Session, path: &Path,

@@ -25,8 +25,6 @@ use syntax::util::small_vector::SmallVector;
 use std::mem;
 use std::gc::{Gc, GC};
 
-pub static VERSION: &'static str = "0.11.0";
-
 pub fn maybe_inject_crates_ref(sess: &Session, krate: ast::Crate)
                                -> ast::Crate {
     if use_std(&krate) {
@@ -60,24 +58,12 @@ struct StandardLibraryInjector<'a> {
     sess: &'a Session,
 }
 
-pub fn with_version(krate: &str) -> Option<(InternedString, ast::StrStyle)> {
-    match option_env!("CFG_DISABLE_INJECT_STD_VERSION") {
-        Some("1") => None,
-        _ => {
-            Some((token::intern_and_get_ident(format!("{}#{}",
-                                                      krate,
-                                                      VERSION).as_slice()),
-                  ast::CookedStr))
-        }
-    }
-}
-
 impl<'a> fold::Folder for StandardLibraryInjector<'a> {
     fn fold_crate(&mut self, mut krate: ast::Crate) -> ast::Crate {
         let mut vis = vec!(ast::ViewItem {
             node: ast::ViewItemExternCrate(token::str_to_ident("std"),
-                                         with_version("std"),
-                                         ast::DUMMY_NODE_ID),
+                                           None,
+                                           ast::DUMMY_NODE_ID),
             attrs: vec!(
                 attr::mk_attr_outer(attr::mk_attr_id(), attr::mk_list_item(
                         InternedString::new("phase"),
@@ -95,8 +81,8 @@ impl<'a> fold::Folder for StandardLibraryInjector<'a> {
         if use_start(&krate) && any_exe {
             vis.push(ast::ViewItem {
                 node: ast::ViewItemExternCrate(token::str_to_ident("native"),
-                                             with_version("native"),
-                                             ast::DUMMY_NODE_ID),
+                                               None,
+                                               ast::DUMMY_NODE_ID),
                 attrs: Vec::new(),
                 vis: ast::Inherited,
                 span: DUMMY_SP
