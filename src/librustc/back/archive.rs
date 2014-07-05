@@ -10,10 +10,10 @@
 
 //! A helper class for dealing with static archives
 
-use back::link::{get_ar_prog};
+use super::link::{get_ar_prog};
 use driver::session::Session;
 use metadata::filesearch;
-use lib::llvm::{ArchiveRef, llvm};
+use llvm::{ArchiveRef, llvm};
 
 use libc;
 use std::io::process::{Command, ProcessOutput};
