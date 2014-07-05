@@ -125,7 +125,7 @@ extern fn stack_exhausted() {
 }
 
 #[inline(always)]
-pub unsafe fn record_stack_bounds(stack_lo: uint, stack_hi: uint) {
+pub unsafe fn record_stack_bounds_green(stack_lo: uint, stack_hi: uint) {
     // When the old runtime had segmented stacks, it used a calculation that was
     // "limit + RED_ZONE + FUDGE". The red zone was for things like dynamic
     // symbol resolution, llvm function calls, etc. In theory this red zone
@@ -152,6 +152,11 @@ pub unsafe fn record_stack_bounds(stack_lo: uint, stack_hi: uint) {
         asm!("mov $0, %gs:0x08" :: "r"(stack_hi) :: "volatile");
         asm!("mov $0, %gs:0x10" :: "r"(stack_lo) :: "volatile");
     }
+}
+
+#[inline(always)]
+pub unsafe fn record_stack_bounds(stack_lo: uint, _stack_hi: uint) {
+    record_sp_limit(stack_lo + RED_ZONE);
 }
 
 /// Records the current limit of the stack as specified by `end`.
