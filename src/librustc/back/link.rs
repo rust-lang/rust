@@ -11,7 +11,7 @@
 use back::archive::{Archive, METADATA_FILENAME};
 use back::rpath;
 use back::svh::Svh;
-use driver::driver::{CrateTranslation, OutputFilenames};
+use driver::driver::{CrateTranslation, OutputFilenames, Input, FileInput};
 use driver::config::NoDebugInfo;
 use driver::session::Session;
 use driver::config;
@@ -545,10 +545,9 @@ pub mod write {
  *    system linkers understand.
  */
 
-// FIXME (#9639): This needs to handle non-utf8 `out_filestem` values
 pub fn find_crate_name(sess: Option<&Session>,
                        attrs: &[ast::Attribute],
-                       out_filestem: &str) -> String {
+                       input: &Input) -> String {
     use syntax::crateid::CrateId;
 
     let validate = |s: String, span: Option<Span>| {
@@ -591,11 +590,17 @@ pub fn find_crate_name(sess: Option<&Session>,
         }
         None => {}
     }
-    return validate(from_str(out_filestem).unwrap_or_else(|| {
-        let mut s = out_filestem.chars().filter(|c| c.is_XID_continue());
-        from_str(s.collect::<String>().as_slice())
-            .or(from_str("rust-out")).unwrap()
-    }), None)
+    match *input {
+        FileInput(ref path) => {
+            match path.filestem_str() {
+                Some(s) => return validate(s.to_string(), None),
+                None => {}
+            }
+        }
+        _ => {}
+    }
+
+    "rust-out".to_string()
 }
 
 pub fn build_link_meta(sess: &Session, krate: &ast::Crate,

@@ -84,8 +84,7 @@ fn get_ast_and_resolve(cpath: &Path, libs: HashSet<Path>, cfgs: Vec<String>)
     use rustc::driver::driver::{FileInput,
                                 phase_1_parse_input,
                                 phase_2_configure_and_expand,
-                                phase_3_run_analysis_passes,
-                                build_output_filenames};
+                                phase_3_run_analysis_passes};
     use rustc::driver::config::build_configuration;
 
     let input = FileInput(cpath.clone());
@@ -118,10 +117,8 @@ fn get_ast_and_resolve(cpath: &Path, libs: HashSet<Path>, cfgs: Vec<String>)
 
     let krate = phase_1_parse_input(&sess, cfg, &input);
 
-    let t_outputs = build_output_filenames(&input, &None, &None,
-                                           krate.attrs.as_slice(), &sess);
     let name = link::find_crate_name(Some(&sess), krate.attrs.as_slice(),
-                                     t_outputs.out_filestem.as_slice());
+                                     &input);
 
     let (krate, ast_map)
         = phase_2_configure_and_expand(&sess, krate, name.as_slice())
