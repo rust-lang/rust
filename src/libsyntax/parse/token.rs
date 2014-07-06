@@ -365,10 +365,6 @@ pub fn is_plain_ident(t: &Token) -> bool {
     match *t { IDENT(_, false) => true, _ => false }
 }
 
-pub fn is_bar(t: &Token) -> bool {
-    match *t { BINOP(OR) | OROR => true, _ => false }
-}
-
 // Get the first "argument"
 macro_rules! first {
     ( $first:expr, $( $remainder:expr, )* ) => ( $first )
@@ -447,7 +443,7 @@ macro_rules! declare_special_idents_and_keywords {(
 }}
 
 // If the special idents get renumbered, remember to modify these two as appropriate
-static SELF_KEYWORD_NAME: Name = 1;
+pub static SELF_KEYWORD_NAME: Name = 1;
 static STATIC_KEYWORD_NAME: Name = 2;
 
 // NB: leaving holes in the ident table is bad! a different ident will get
