@@ -64,14 +64,14 @@ the rest of the rust manuals.
 
 */
 
-use cmp;
-use num::{Zero, One, CheckedAdd, CheckedSub, Saturating, ToPrimitive, Int};
-use option::{Option, Some, None};
-use ops::{Add, Mul, Sub};
-use cmp::{PartialEq, PartialOrd, Ord};
 use clone::Clone;
-use uint;
+use cmp;
+use cmp::{PartialEq, PartialOrd, Ord};
 use mem;
+use num::{Zero, One, CheckedAdd, CheckedSub, Saturating, ToPrimitive, Int};
+use ops::{Add, Mul, Sub};
+use option::{Option, Some, None};
+use uint;
 
 /// Conversion from an `Iterator`
 pub trait FromIterator<A> {
@@ -2190,6 +2190,27 @@ impl<A: Clone> RandomAccessIterator<A> for Repeat<A> {
     fn indexable(&self) -> uint { uint::MAX }
     #[inline]
     fn idx(&mut self, _: uint) -> Option<A> { Some(self.element.clone()) }
+}
+
+type IterateState<'a, T> = (|T|: 'a -> T, Option<T>, bool);
+
+/// An iterator that repeatedly applies a given function, starting
+/// from a given seed value.
+pub type Iterate<'a, T> = Unfold<'a, T, IterateState<'a, T>>;
+
+/// Creates a new iterator that produces an infinite sequence of
+/// repeated applications of the given function `f`.
+#[allow(visible_private_types)]
+pub fn iterate<'a, T: Clone>(f: |T|: 'a -> T, seed: T) -> Iterate<'a, T> {
+    Unfold::new((f, Some(seed), true), |st| {
+        let &(ref mut f, ref mut val, ref mut first) = st;
+        if *first {
+            *first = false;
+        } else {
+            val.mutate(|x| (*f)(x));
+        }
+        val.clone()
+    })
 }
 
 /// Functions for lexicographical ordering of sequences.
