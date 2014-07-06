@@ -1501,13 +1501,26 @@ mod test {
             0)
     }
 
-    // macro_rules in method position
-    #[test] fn macro_in_method_posn(){
+    // macro_rules in method position. Sadly, unimplemented.
+    #[ignore] #[test] fn macro_in_method_posn(){
         expand_crate_str(
             "macro_rules! my_method (() => fn thirteen(&self) -> int {13})
             struct A;
             impl A{ my_method!()}
             fn f(){A.thirteen;}".to_string());
+    }
+
+    // another nested macro
+    // expands to impl Entries {fn size_hint(&self_1) {self_1;}
+    #[test] fn item_macro_workaround(){
+        run_renaming_test(
+            &("macro_rules! item { ($i:item) => {$i}}
+              struct Entries;
+              macro_rules! iterator_impl {
+              () => { item!( impl Entries { fn size_hint(&self) { self;}})}}
+              iterator_impl! { }",
+              vec!(vec!(0)), true),
+            0)
     }
 
     // run one of the renaming tests
