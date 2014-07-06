@@ -1560,8 +1560,8 @@ impl<'a> Parser<'a> {
         match *tok {
             token::LIT_BYTE(i) => LitByte(parse::byte_lit(i.as_str()).val0()),
             token::LIT_CHAR(i) => LitChar(parse::char_lit(i.as_str()).val0()),
-            token::LIT_INTEGER(s) => parse::integer_lit(self.id_to_interned_str(s).get(),
-                                                       &self.sess.span_diagnostic, self.span),
+            token::LIT_INTEGER(s) => parse::integer_lit(s.as_str(),
+                                                        &self.sess.span_diagnostic, self.span),
             token::LIT_FLOAT(s) => parse::float_lit(s.as_str()),
             token::LIT_STR(s) => {
                 LitStr(token::intern_and_get_ident(parse::str_lit(s.as_str()).as_slice()),
@@ -1572,7 +1572,7 @@ impl<'a> Parser<'a> {
                        ast::RawStr(n))
             }
             token::LIT_BINARY(i) =>
-                LitBinary(parse::binary_lit(self.id_to_interned_str(i).get())),
+                LitBinary(parse::binary_lit(i.as_str())),
             token::LIT_BINARY_RAW(i, _) =>
                 LitBinary(Rc::new(i.as_str().as_bytes().iter().map(|&x| x).collect())),
             token::LPAREN => { self.expect(&token::RPAREN); LitNil },
@@ -1948,7 +1948,12 @@ impl<'a> Parser<'a> {
                     });
                 return self.mk_expr(lo, body.span.hi, ExprProc(decl, fakeblock));
             },
-            token::IDENT(id @ ast::Ident{name:token::SELF_KEYWORD_NAME,ctxt:_},false) => {
+            // FIXME #13626: Should be able to stick in
+            // token::SELF_KEYWORD_NAME
+            token::IDENT(id @ ast::Ident{
+                        name: ast::Name(token::SELF_KEYWORD_NAME_NUM),
+                        ctxt: _
+                    } ,false) => {
                 self.bump();
                 let path = ast_util::ident_to_path(mk_sp(lo, hi), id);
                 ex = ExprPath(path);
@@ -4770,8 +4775,7 @@ impl<'a> Parser<'a> {
         match self.token {
             token::LIT_STR(s) | token::LIT_STR_RAW(s, _) => {
                 self.bump();
-                let identifier_string = token::get_ident(s);
-                let the_string = identifier_string.get();
+                let the_string = s.as_str();
                 match abi::lookup(the_string) {
                     Some(abi) => Some(abi),
                     None => {
@@ -5389,9 +5393,9 @@ impl<'a> Parser<'a> {
     pub fn parse_optional_str(&mut self)
                               -> Option<(InternedString, ast::StrStyle)> {
         let (s, style) = match self.token {
-            token::LIT_STR(s) => (self.id_to_interned_str(s), ast::CookedStr),
+            token::LIT_STR(s) => (self.id_to_interned_str(s.ident()), ast::CookedStr),
             token::LIT_STR_RAW(s, n) => {
-                (self.id_to_interned_str(s), ast::RawStr(n))
+                (self.id_to_interned_str(s.ident()), ast::RawStr(n))
             }
             _ => return None
         };

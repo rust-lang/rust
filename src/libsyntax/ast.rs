@@ -52,10 +52,7 @@ impl Ident {
     pub fn new(name: Name) -> Ident { Ident {name: name, ctxt: EMPTY_CTXT}}
 
     pub fn as_str<'a>(&'a self) -> &'a str {
-        unsafe {
-            // FIXME #12938: can't use copy_lifetime since &str isn't a &T
-            ::std::mem::transmute(token::get_ident(*self).get())
-        }
+        self.name.as_str()
     }
 }
 
@@ -109,7 +106,26 @@ pub static ILLEGAL_CTXT : SyntaxContext = 1;
 
 /// A name is a part of an identifier, representing a string or gensym. It's
 /// the result of interning.
-pub type Name = u32;
+#[deriving(Eq, Ord, PartialEq, PartialOrd, Hash, Encodable, Decodable, Clone, Show)]
+pub struct Name(pub u32);
+
+impl Name {
+    pub fn as_str<'a>(&'a self) -> &'a str {
+        unsafe {
+            // FIXME #12938: can't use copy_lifetime since &str isn't a &T
+            ::std::mem::transmute(token::get_name(*self).get())
+        }
+    }
+
+    pub fn uint(&self) -> uint {
+        let Name(nm) = *self;
+        nm as uint
+    }
+
+    pub fn ident(&self) -> Ident {
+        Ident { name: *self, ctxt: 0 }
+    }
+}
 
 /// A mark represents a unique id associated with a macro expansion
 pub type Mrk = u32;

@@ -43,7 +43,7 @@ impl<'a> ParserAttr for Parser<'a> {
               token::DOC_COMMENT(s) => {
                 let attr = ::attr::mk_sugared_doc_attr(
                     attr::mk_attr_id(),
-                    self.id_to_interned_str(s),
+                    self.id_to_interned_str(s.ident()),
                     self.span.lo,
                     self.span.hi
                 );
@@ -139,7 +139,7 @@ impl<'a> ParserAttr for Parser<'a> {
                     let Span { lo, hi, .. } = self.span;
                     self.bump();
                     attr::mk_sugared_doc_attr(attr::mk_attr_id(),
-                                              self.id_to_interned_str(s),
+                                              self.id_to_interned_str(s.ident()),
                                               lo,
                                               hi)
                 }
