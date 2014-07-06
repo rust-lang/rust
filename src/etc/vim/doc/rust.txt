@@ -53,6 +53,18 @@ g:rust_conceal_pub~
 	    let g:rust_conceal_pub = 1
 <
 
+                                                                 *g:rust_fold*
+g:rust_fold~
+	Set this option to turn on |folding|: >
+	    let g:rust_fold = 1
+<
+	Value		Effect ~
+	0		No folding
+	1		Braced blocks are folded. All folds are open by
+			default.
+	2		Braced blocks are folded. 'foldlevel' is left at the
+			global value (all folds are closed by default).
+
                                                   *g:rust_bang_comment_leader*
 g:rust_bang_comment_leader~
 	Set this option to 1 to preserve the leader on multi-line doc comments
