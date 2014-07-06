@@ -197,7 +197,9 @@ impl<T: Clone> Vec<T> {
     /// ```
     #[inline]
     pub fn from_slice(values: &[T]) -> Vec<T> {
-        values.iter().map(|x| x.clone()).collect()
+        let mut vector = Vec::with_capacity(values.len());
+        vector.push_all(values);
+        vector
     }
 
     /// Constructs a `Vec` with copies of a value.
@@ -238,7 +240,10 @@ impl<T: Clone> Vec<T> {
     /// ```
     #[inline]
     pub fn push_all(&mut self, other: &[T]) {
-        self.extend(other.iter().map(|e| e.clone()));
+        unsafe {
+            self.reserve_additional(other.len());
+            unsafe_push_all_clone(self, other)
+        }
     }
 
     /// Grows the `Vec` in-place.
@@ -318,41 +323,31 @@ impl<T: Clone> Vec<T> {
 #[unstable]
 impl<T:Clone> Clone for Vec<T> {
     fn clone(&self) -> Vec<T> {
-        let len = self.len;
-        let mut vector = Vec::with_capacity(len);
-        // Unsafe code so this can be optimised to a memcpy (or something
-        // similarly fast) when T is Copy. LLVM is easily confused, so any
-        // extra operations during the loop can prevent this optimisation
-        {
-            let this_slice = self.as_slice();
-            while vector.len < len {
-                unsafe {
-                    let len = vector.len;
-                    ptr::write(
-                        vector.as_mut_slice().unsafe_mut_ref(len),
-                        this_slice.unsafe_ref(len).clone());
-                }
-                vector.len += 1;
-            }
+        unsafe {
+            let mut vector = Vec::with_capacity(self.len);
+            unsafe_push_all_clone(&mut vector, self.as_slice());
+            vector
         }
-        vector
     }
 
     fn clone_from(&mut self, other: &Vec<T>) {
-        // drop anything in self that will not be overwritten
-        if self.len() > other.len() {
-            self.truncate(other.len())
-        }
+        unsafe {
+            // drop anything in self that will not be overwritten
+            if self.len() > other.len() {
+                self.truncate(other.len())
+            }
 
-        // reuse the contained values' allocations/resources.
-        for (place, thing) in self.mut_iter().zip(other.iter()) {
-            place.clone_from(thing)
-        }
+            // reuse the contained values' allocations/resources.
+            for (place, thing) in self.mut_iter().zip(other.iter()) {
+                place.clone_from(thing)
+            }
 
-        // self.len <= other.len due to the truncate above, so the
-        // slice here is always in-bounds.
-        let len = self.len();
-        self.extend(other.slice_from(len).iter().map(|x| x.clone()));
+            // self.len <= other.len due to the truncate above, so the
+            // slice here is always in-bounds.
+            let slice = other.slice_from(self.len());
+            self.reserve_additional(slice.len());
+            unsafe_push_all_clone(self, slice)
+        }
     }
 }
 
@@ -1555,6 +1550,24 @@ pub mod raw {
     }
 }
 
+// Unsafe code so this can be optimised to a memcpy (or something similarly
+// fast) when T is Copy. LLVM is easily confused, so any extra operations
+// during the loop can prevent this optimisation.
+//
+// WARNING: You must preallocate space on the vector before you call this
+// method.
+#[inline(always)]
+unsafe fn unsafe_push_all_clone<T: Clone>(dst: &mut Vec<T>, src: &[T]) {
+    let mut dst_len = dst.len();
+
+    for i in range(0, src.len()) {
+        ptr::write(
+            dst.as_mut_slice().unsafe_mut_ref(dst_len),
+            src.unsafe_ref(i).clone());
+        dst_len += 1;
+        dst.set_len(dst_len);
+    }
+}
 
 #[cfg(test)]
 mod tests {
