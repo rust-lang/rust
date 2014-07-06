@@ -208,7 +208,7 @@ impl String {
     /// Appends a byte to this string buffer. The caller must preserve the valid UTF-8 property.
     #[inline]
     pub unsafe fn push_byte(&mut self, byte: u8) {
-        self.push_bytes([byte])
+        self.vec.push(byte)
     }
 
     /// Removes the last byte from the string buffer and returns it. Returns `None` if this string
