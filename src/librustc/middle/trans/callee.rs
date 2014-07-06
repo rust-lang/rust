@@ -277,10 +277,9 @@ pub fn trans_unboxing_shim(bcx: &Block,
                           &empty_param_substs,
                           None,
                           &block_arena);
-    init_function(&fcx, false, return_type);
+    let mut bcx = init_function(&fcx, false, return_type);
 
     // Create the substituted versions of the self type.
-    let mut bcx = fcx.entry_bcx.borrow().clone().unwrap();
     let arg_scope = fcx.push_custom_cleanup_scope();
     let arg_scope_id = cleanup::CustomScope(arg_scope);
     let boxed_arg_types = ty::ty_fn_args(boxed_function_type);
