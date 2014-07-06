@@ -1454,27 +1454,36 @@ mod test {
             assert!((shouldmatch.len() == 0) ||
                     (varrefs.len() > *shouldmatch.iter().max().unwrap()));
             for (idx,varref) in varrefs.iter().enumerate() {
+                let print_hygiene_debug_info = || {
+                    // good lord, you can't make a path with 0 segments, can you?
+                    let final_varref_ident = match varref.segments.last() {
+                        Some(pathsegment) => pathsegment.identifier,
+                        None => fail!("varref with 0 path segments?")
+                    };
+                    let varref_name = mtwt::resolve(final_varref_ident);
+                    let varref_idents : Vec<ast::Ident>
+                        = varref.segments.iter().map(|s| s.identifier)
+                        .collect();
+                    println!("varref #{}: {}, resolves to {}",idx, varref_idents, varref_name);
+                    let string = token::get_ident(final_varref_ident);
+                    println!("varref's first segment's string: \"{}\"", string.get());
+                    println!("binding #{}: {}, resolves to {}",
+                             binding_idx, *bindings.get(binding_idx), binding_name);
+                    mtwt::with_sctable(|x| mtwt::display_sctable(x));
+                };
                 if shouldmatch.contains(&idx) {
                     // it should be a path of length 1, and it should
                     // be free-identifier=? or bound-identifier=? to the given binding
                     assert_eq!(varref.segments.len(),1);
-                    let varref_name = mtwt::resolve(varref.segments
-                                                          .get(0)
-                                                          .identifier);
+                    let varref_name = mtwt::resolve(varref.segments.get(0).identifier);
                     let varref_marks = mtwt::marksof(varref.segments
                                                            .get(0)
                                                            .identifier
                                                            .ctxt,
                                                      invalid_name);
                     if !(varref_name==binding_name) {
-                        let varref_idents : Vec<ast::Ident>
-                            = varref.segments.iter().map(|s|
-                                                         s.identifier)
-                            .collect();
                         println!("uh oh, should match but doesn't:");
-                        println!("varref #{}: {}",idx, varref_idents);
-                        println!("binding #{}: {}", binding_idx, *bindings.get(binding_idx));
-                        mtwt::with_sctable(|x| mtwt::display_sctable(x));
+                        print_hygiene_debug_info();
                     }
                     assert_eq!(varref_name,binding_name);
                     if bound_ident_check {
@@ -1488,27 +1497,11 @@ mod test {
                         && (varref_name == binding_name);
                     // temp debugging:
                     if fail {
-                        let varref_idents : Vec<ast::Ident>
-                            = varref.segments.iter().map(|s|
-                                                         s.identifier)
-                            .collect();
                         println!("failure on test {}",test_idx);
                         println!("text of test case: \"{}\"", teststr);
                         println!("");
                         println!("uh oh, matches but shouldn't:");
-                        println!("varref #{}: {}, resolves to {}",idx, varref_idents,
-                                 varref_name);
-                        // good lord, you can't make a path with 0 segments, can you?
-                        let string = token::get_ident(varref.segments
-                                                            .get(0)
-                                                            .identifier);
-                        println!("varref's first segment's uint: {}, and string: \"{}\"",
-                                 varref.segments.get(0).identifier.name,
-                                 string.get());
-                        println!("binding #{}: {}, resolves to {}",
-                                 binding_idx, *bindings.get(binding_idx),
-                                 binding_name);
-                        mtwt::with_sctable(|x| mtwt::display_sctable(x));
+                        print_hygiene_debug_info();
                     }
                     assert!(!fail);
                 }
