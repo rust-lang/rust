@@ -306,7 +306,7 @@ Version 0.9 (January 2014)
       * A new facility for enabling experimental features (feature gating) has
         been added, using the crate-level `#[feature(foo)]` attribute.
       * Managed boxes (@) are now behind a feature gate
-        (`#[feature(managed_boxes)]`) in preperation for future removal. Use the
+        (`#[feature(managed_boxes)]`) in preparation for future removal. Use the
         standard library's `Gc` or `Rc` types instead.
       * `@mut` has been removed. Use `std::cell::{Cell, RefCell}` instead.
       * Jumping back to the top of a loop is now done with `continue` instead of
@@ -398,7 +398,7 @@ Version 0.9 (January 2014)
       * std: `fmt::Default` can be implemented for any type to provide default
         formatting to the `format!` macro, as in `format!("{}", myfoo)`.
       * std: The `rand` API continues to be tweaked.
-      * std: The `rust_begin_unwind` function, useful for insterting breakpoints
+      * std: The `rust_begin_unwind` function, useful for inserting breakpoints
         on failure in gdb, is now named `rust_fail`.
       * std: The `each_key` and `each_value` methods on `HashMap` have been
         replaced by the `keys` and `values` iterators.
@@ -429,7 +429,7 @@ Version 0.9 (January 2014)
         extensible interfaces and is now implemented by two different crates:
         libnative, for native threading and I/O; and libgreen, for green threading
         and I/O. This paves the way for using the standard library in more limited
-        embeded environments.
+        embedded environments.
       * std: The `comm` module has been rewritten to be much faster, have a
         simpler, more consistent API, and to work for both native and green
         threading.
