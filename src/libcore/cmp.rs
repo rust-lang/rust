@@ -38,8 +38,6 @@
 //! ```
 
 use option::{Option, Some};
-#[cfg(stage0)]
-use option::None;
 
 /// Trait for values that can be compared for equality and inequality.
 ///
@@ -162,19 +160,6 @@ pub fn lexical_ordering(o1: Ordering, o2: Ordering) -> Ordering {
 pub trait PartialOrd: PartialEq {
     /// This method returns an ordering between `self` and `other` values
     /// if one exists.
-    #[cfg(stage0)]
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        match (!self.lt(other), !other.lt(self)) {
-            (false, false) => None,
-            (false, true) => Some(Less),
-            (true, false) => Some(Greater),
-            (true, true) => Some(Equal),
-        }
-    }
-
-    /// This method returns an ordering between `self` and `other` values
-    /// if one exists.
-    #[cfg(not(stage0))]
     fn partial_cmp(&self, other: &Self) -> Option<Ordering>;
 
     /// This method tests less than (for `self` and `other`) and is used by the `<` operator.
