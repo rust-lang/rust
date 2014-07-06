@@ -46,6 +46,13 @@ pub fn main() {
         _ => fail!(),
     }
 
+    let buf = vec!(97u8, 98, 99, 100);
+    assert_eq!(match buf.slice(0, 3) {
+         b"def" => 1u,
+         b"abc" => 2u,
+         _ => 3u
+    }, 2);
+
     assert_eq!(BAZ, &[97u8, 92u8, 110u8]);
     assert_eq!(br"a\n", &[97u8, 92u8, 110u8]);
     assert_eq!(br"a\n", b"a\\n");
