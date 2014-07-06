@@ -535,6 +535,9 @@ impl<'a> ExtCtxt<'a> {
     pub fn ident_of(&self, st: &str) -> ast::Ident {
         str_to_ident(st)
     }
+    pub fn name_of(&self, st: &str) -> ast::Name {
+        token::intern(st)
+    }
 }
 
 /// Extract a string literal from the macro expanded version of `expr`,

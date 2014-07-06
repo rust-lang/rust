@@ -52,7 +52,7 @@ impl<T: Eq + Hash + Clone + 'static> Interner<T> {
         }
 
         let mut vect = self.vect.borrow_mut();
-        let new_idx = (*vect).len() as Name;
+        let new_idx = Name((*vect).len() as u32);
         (*map).insert(val.clone(), new_idx);
         (*vect).push(val);
         new_idx
@@ -60,7 +60,7 @@ impl<T: Eq + Hash + Clone + 'static> Interner<T> {
 
     pub fn gensym(&self, val: T) -> Name {
         let mut vect = self.vect.borrow_mut();
-        let new_idx = (*vect).len() as Name;
+        let new_idx = Name((*vect).len() as u32);
         // leave out of .map to avoid colliding
         (*vect).push(val);
         new_idx
@@ -68,7 +68,7 @@ impl<T: Eq + Hash + Clone + 'static> Interner<T> {
 
     pub fn get(&self, idx: Name) -> T {
         let vect = self.vect.borrow();
-        (*(*vect).get(idx as uint)).clone()
+        (*(*vect).get(idx.uint())).clone()
     }
 
     pub fn len(&self) -> uint {
@@ -155,7 +155,7 @@ impl StrInterner {
             None => (),
         }
 
-        let new_idx = self.len() as Name;
+        let new_idx = Name(self.len() as u32);
         let val = RcStr::new(val);
         map.insert(val.clone(), new_idx);
         self.vect.borrow_mut().push(val);
@@ -163,7 +163,7 @@ impl StrInterner {
     }
 
     pub fn gensym(&self, val: &str) -> Name {
-        let new_idx = self.len() as Name;
+        let new_idx = Name(self.len() as u32);
         // leave out of .map to avoid colliding
         self.vect.borrow_mut().push(RcStr::new(val));
         new_idx
@@ -180,23 +180,23 @@ impl StrInterner {
     /// Create a gensym with the same name as an existing
     /// entry.
     pub fn gensym_copy(&self, idx : Name) -> Name {
-        let new_idx = self.len() as Name;
+        let new_idx = Name(self.len() as u32);
         // leave out of map to avoid colliding
         let mut vect = self.vect.borrow_mut();
-        let existing = (*vect.get(idx as uint)).clone();
+        let existing = (*vect.get(idx.uint())).clone();
         vect.push(existing);
         new_idx
     }
 
     pub fn get(&self, idx: Name) -> RcStr {
-        (*self.vect.borrow().get(idx as uint)).clone()
+        (*self.vect.borrow().get(idx.uint())).clone()
     }
 
     /// Returns this string with lifetime tied to the interner. Since
     /// strings may never be removed from the interner, this is safe.
     pub fn get_ref<'a>(&'a self, idx: Name) -> &'a str {
         let vect = self.vect.borrow();
-        let s: &str = vect.get(idx as uint).as_slice();
+        let s: &str = vect.get(idx.uint()).as_slice();
         unsafe {
             mem::transmute(s)
         }

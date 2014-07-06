@@ -82,8 +82,8 @@ fn apply_rename_internal(id: Ident,
                        to: Name,
                        ctxt: SyntaxContext,
                        table: &SCTable) -> SyntaxContext {
-    let key = (ctxt,id,to);
-    let new_ctxt = |_: &(SyntaxContext, Ident, Mrk)|
+    let key = (ctxt, id, to);
+    let new_ctxt = |_: &(SyntaxContext, Ident, Name)|
                    idx_push(&mut *table.table.borrow_mut(), Rename(id, to, ctxt));
 
     *table.rename_memo.borrow_mut().find_or_insert_with(key, new_ctxt)
@@ -142,7 +142,7 @@ pub fn clear_tables() {
 }
 
 /// Add a value to the end of a vec, return its index
-fn idx_push<T>(vec: &mut Vec<T> , val: T) -> u32 {
+fn idx_push<T>(vec: &mut Vec<T>, val: T) -> u32 {
     vec.push(val);
     (vec.len() - 1) as u32
 }

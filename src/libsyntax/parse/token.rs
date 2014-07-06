@@ -78,14 +78,14 @@ pub enum Token {
     QUESTION,
 
     /* Literals */
-    LIT_BYTE(Ident),
-    LIT_CHAR(Ident),
-    LIT_INTEGER(Ident),
-    LIT_FLOAT(Ident),
-    LIT_STR(Ident),
-    LIT_STR_RAW(Ident, uint), /* raw str delimited by n hash symbols */
-    LIT_BINARY(Ident),
-    LIT_BINARY_RAW(Ident, uint), /* raw binary str delimited by n hash symbols */
+    LIT_BYTE(Name),
+    LIT_CHAR(Name),
+    LIT_INTEGER(Name),
+    LIT_FLOAT(Name),
+    LIT_STR(Name),
+    LIT_STR_RAW(Name, uint), /* raw str delimited by n hash symbols */
+    LIT_BINARY(Name),
+    LIT_BINARY_RAW(Name, uint), /* raw binary str delimited by n hash symbols */
 
     /* Name components */
     /// An identifier contains an "is_mod_name" boolean,
@@ -97,7 +97,7 @@ pub enum Token {
 
     /* For interpolation */
     INTERPOLATED(Nonterminal),
-    DOC_COMMENT(Ident),
+    DOC_COMMENT(Name),
 
     // Junk. These carry no data because we don't really care about the data
     // they *would* carry, and don't really want to allocate a new ident for
@@ -107,7 +107,7 @@ pub enum Token {
     WS,
     /// Comment
     COMMENT,
-    SHEBANG(Ident),
+    SHEBANG(Name),
 
     EOF,
 }
@@ -207,28 +207,28 @@ pub fn to_string(t: &Token) -> String {
 
       /* Literals */
       LIT_BYTE(b) => {
-          format!("b'{}'", get_ident(b).get())
+          format!("b'{}'", b.as_str())
       }
       LIT_CHAR(c) => {
-          format!("'{}'", get_ident(c).get())
+          format!("'{}'", c.as_str())
       }
       LIT_INTEGER(c) | LIT_FLOAT(c) => {
-          get_ident(c).get().to_string()
+          c.as_str().to_string()
       }
 
       LIT_STR(s) => {
-          format!("\"{}\"", get_ident(s).get())
+          format!("\"{}\"", s.as_str())
       }
       LIT_STR_RAW(s, n) => {
         format!("r{delim}\"{string}\"{delim}",
-                 delim="#".repeat(n), string=get_ident(s))
+                 delim="#".repeat(n), string=s.as_str())
       }
       LIT_BINARY(v) => {
-          format!("b\"{}\"", get_ident(v).get())
+          format!("b\"{}\"", v.as_str())
       }
       LIT_BINARY_RAW(s, n) => {
         format!("br{delim}\"{string}\"{delim}",
-                 delim="#".repeat(n), string=get_ident(s).get())
+                 delim="#".repeat(n), string=s.as_str())
       }
 
       /* Name components */
@@ -239,7 +239,7 @@ pub fn to_string(t: &Token) -> String {
       UNDERSCORE => "_".to_string(),
 
       /* Other */
-      DOC_COMMENT(s) => get_ident(s).get().to_string(),
+      DOC_COMMENT(s) => s.as_str().to_string(),
       EOF => "<eof>".to_string(),
       WS => " ".to_string(),
       COMMENT => "/* */".to_string(),
@@ -374,19 +374,19 @@ macro_rules! declare_special_idents_and_keywords {(
         $( ($rk_name:expr, $rk_variant:ident, $rk_str:expr); )*
     }
 ) => {
-    static STRICT_KEYWORD_START: Name = first!($( $sk_name, )*);
-    static STRICT_KEYWORD_FINAL: Name = last!($( $sk_name, )*);
-    static RESERVED_KEYWORD_START: Name = first!($( $rk_name, )*);
-    static RESERVED_KEYWORD_FINAL: Name = last!($( $rk_name, )*);
+    static STRICT_KEYWORD_START: Name = first!($( Name($sk_name), )*);
+    static STRICT_KEYWORD_FINAL: Name = last!($( Name($sk_name), )*);
+    static RESERVED_KEYWORD_START: Name = first!($( Name($rk_name), )*);
+    static RESERVED_KEYWORD_FINAL: Name = last!($( Name($rk_name), )*);
 
     pub mod special_idents {
-        use ast::Ident;
-        $( pub static $si_static: Ident = Ident { name: $si_name, ctxt: 0 }; )*
+        use ast::{Ident, Name};
+        $( pub static $si_static: Ident = Ident { name: Name($si_name), ctxt: 0 }; )*
     }
 
     pub mod special_names {
         use ast::Name;
-        $( pub static $si_static: Name =  $si_name; )*
+        $( pub static $si_static: Name =  Name($si_name); )*
     }
 
     /**
@@ -407,8 +407,8 @@ macro_rules! declare_special_idents_and_keywords {(
         impl Keyword {
             pub fn to_name(&self) -> Name {
                 match *self {
-                    $( $sk_variant => $sk_name, )*
-                    $( $rk_variant => $rk_name, )*
+                    $( $sk_variant => Name($sk_name), )*
+                    $( $rk_variant => Name($rk_name), )*
                 }
             }
         }
@@ -427,8 +427,11 @@ macro_rules! declare_special_idents_and_keywords {(
 }}
 
 // If the special idents get renumbered, remember to modify these two as appropriate
-pub static SELF_KEYWORD_NAME: Name = 1;
-static STATIC_KEYWORD_NAME: Name = 2;
+pub static SELF_KEYWORD_NAME: Name = Name(SELF_KEYWORD_NAME_NUM);
+static STATIC_KEYWORD_NAME: Name = Name(STATIC_KEYWORD_NAME_NUM);
+
+pub static SELF_KEYWORD_NAME_NUM: u32 = 1;
+static STATIC_KEYWORD_NAME_NUM: u32 = 2;
 
 // NB: leaving holes in the ident table is bad! a different ident will get
 // interned with the id from the hole, but it will be between the min and max
@@ -438,8 +441,8 @@ declare_special_idents_and_keywords! {
     pub mod special_idents {
         // These ones are statics
         (0,                          invalid,                "");
-        (super::SELF_KEYWORD_NAME,   self_,                  "self");
-        (super::STATIC_KEYWORD_NAME, statik,                 "static");
+        (super::SELF_KEYWORD_NAME_NUM,   self_,                  "self");
+        (super::STATIC_KEYWORD_NAME_NUM, statik,                 "static");
         (3,                          static_lifetime,        "'static");
 
         // for matcher NTs
@@ -479,8 +482,8 @@ declare_special_idents_and_keywords! {
         (29,                         Ref,        "ref");
         (30,                         Return,     "return");
         // Static and Self are also special idents (prefill de-dupes)
-        (super::STATIC_KEYWORD_NAME, Static,     "static");
-        (super::SELF_KEYWORD_NAME,   Self,       "self");
+        (super::STATIC_KEYWORD_NAME_NUM, Static,     "static");
+        (super::SELF_KEYWORD_NAME_NUM,   Self,       "self");
         (31,                         Struct,     "struct");
         (32,                         Super,      "super");
         (33,                         True,       "true");
@@ -687,7 +690,7 @@ pub fn fresh_name(src: &Ident) -> Name {
 
 // create a fresh mark.
 pub fn fresh_mark() -> Mrk {
-    gensym("mark")
+    gensym("mark").uint() as u32
 }
 
 // See the macro above about the types of keywords
@@ -701,10 +704,13 @@ pub fn is_keyword(kw: keywords::Keyword, tok: &Token) -> bool {
 
 pub fn is_any_keyword(tok: &Token) -> bool {
     match *tok {
-        token::IDENT(sid, false) => match sid.name {
-            SELF_KEYWORD_NAME | STATIC_KEYWORD_NAME |
-            STRICT_KEYWORD_START .. RESERVED_KEYWORD_FINAL => true,
-            _ => false,
+        token::IDENT(sid, false) => {
+            let n = sid.name;
+
+               n == SELF_KEYWORD_NAME
+            || n == STATIC_KEYWORD_NAME
+            || STRICT_KEYWORD_START <= n
+            && n <= RESERVED_KEYWORD_FINAL
         },
         _ => false
     }
@@ -712,10 +718,13 @@ pub fn is_any_keyword(tok: &Token) -> bool {
 
 pub fn is_strict_keyword(tok: &Token) -> bool {
     match *tok {
-        token::IDENT(sid, false) => match sid.name {
-            SELF_KEYWORD_NAME | STATIC_KEYWORD_NAME |
-            STRICT_KEYWORD_START .. STRICT_KEYWORD_FINAL => true,
-            _ => false,
+        token::IDENT(sid, false) => {
+            let n = sid.name;
+
+               n == SELF_KEYWORD_NAME
+            || n == STATIC_KEYWORD_NAME
+            || STRICT_KEYWORD_START <= n
+            && n <= STRICT_KEYWORD_FINAL
         },
         _ => false,
     }
@@ -723,9 +732,11 @@ pub fn is_strict_keyword(tok: &Token) -> bool {
 
 pub fn is_reserved_keyword(tok: &Token) -> bool {
     match *tok {
-        token::IDENT(sid, false) => match sid.name {
-            RESERVED_KEYWORD_START .. RESERVED_KEYWORD_FINAL => true,
-            _ => false,
+        token::IDENT(sid, false) => {
+            let n = sid.name;
+
+               RESERVED_KEYWORD_START <= n
+            && n <= RESERVED_KEYWORD_FINAL
         },
         _ => false,
     }

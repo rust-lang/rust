@@ -216,18 +216,18 @@ impl<'a> StringReader<'a> {
         self.with_str_from_to(start, self.last_pos, f)
     }
 
-    /// Create an Ident from a given offset to the current offset, each
+    /// Create a Name from a given offset to the current offset, each
     /// adjusted 1 towards each other (assumes that on either side there is a
     /// single-byte delimiter).
-    pub fn ident_from(&self, start: BytePos) -> ast::Ident {
+    pub fn name_from(&self, start: BytePos) -> ast::Name {
         debug!("taking an ident from {} to {}", start, self.last_pos);
-        self.with_str_from(start, str_to_ident)
+        self.with_str_from(start, token::intern)
     }
 
-    /// As ident_from, with an explicit endpoint.
-    pub fn ident_from_to(&self, start: BytePos, end: BytePos) -> ast::Ident {
+    /// As name_from, with an explicit endpoint.
+    pub fn name_from_to(&self, start: BytePos, end: BytePos) -> ast::Name {
         debug!("taking an ident from {} to {}", start, end);
-        self.with_str_from_to(start, end, str_to_ident)
+        self.with_str_from_to(start, end, token::intern)
     }
 
     /// Calls `f` with a string slice of the source text spanning from `start`
@@ -377,7 +377,7 @@ impl<'a> StringReader<'a> {
                         return self.with_str_from(start_bpos, |string| {
                             // but comments with only more "/"s are not
                             let tok = if is_doc_comment(string) {
-                                token::DOC_COMMENT(str_to_ident(string))
+                                token::DOC_COMMENT(token::intern(string))
                             } else {
                                 token::COMMENT
                             };
@@ -421,7 +421,7 @@ impl<'a> StringReader<'a> {
                     let start = self.last_pos;
                     while !self.curr_is('\n') && !self.is_eof() { self.bump(); }
                     return Some(TokenAndSpan {
-                        tok: token::SHEBANG(self.ident_from(start)),
+                        tok: token::SHEBANG(self.name_from(start)),
                         sp: codemap::mk_sp(start, self.last_pos)
                     });
                 }
@@ -500,7 +500,7 @@ impl<'a> StringReader<'a> {
                     self.translate_crlf(start_bpos, string,
                                         "bare CR not allowed in block doc-comment")
                 } else { string.into_maybe_owned() };
-                token::DOC_COMMENT(str_to_ident(string.as_slice()))
+                token::DOC_COMMENT(token::intern(string.as_slice()))
             } else {
                 token::COMMENT
             };
@@ -548,17 +548,17 @@ impl<'a> StringReader<'a> {
                 }
                 'u' | 'i' => {
                     self.scan_int_suffix();
-                    return token::LIT_INTEGER(self.ident_from(start_bpos));
+                    return token::LIT_INTEGER(self.name_from(start_bpos));
                 },
                 'f' => {
                     let last_pos = self.last_pos;
                     self.scan_float_suffix();
                     self.check_float_base(start_bpos, last_pos, base);
-                    return token::LIT_FLOAT(self.ident_from(start_bpos));
+                    return token::LIT_FLOAT(self.name_from(start_bpos));
                 }
                 _ => {
                     // just a 0
-                    return token::LIT_INTEGER(self.ident_from(start_bpos));
+                    return token::LIT_INTEGER(self.name_from(start_bpos));
                 }
             }
         } else if c.is_digit_radix(10) {
@@ -571,7 +571,7 @@ impl<'a> StringReader<'a> {
             self.err_span_(start_bpos, self.last_pos, "no valid digits found for number");
             // eat any suffix
             self.scan_int_suffix();
-            return token::LIT_INTEGER(str_to_ident("0"));
+            return token::LIT_INTEGER(token::intern("0"));
         }
 
         // might be a float, but don't be greedy if this is actually an
@@ -589,13 +589,13 @@ impl<'a> StringReader<'a> {
             }
             let last_pos = self.last_pos;
             self.check_float_base(start_bpos, last_pos, base);
-            return token::LIT_FLOAT(self.ident_from(start_bpos));
+            return token::LIT_FLOAT(self.name_from(start_bpos));
         } else if self.curr_is('f') {
             // or it might be an integer literal suffixed as a float
             self.scan_float_suffix();
             let last_pos = self.last_pos;
             self.check_float_base(start_bpos, last_pos, base);
-            return token::LIT_FLOAT(self.ident_from(start_bpos));
+            return token::LIT_FLOAT(self.name_from(start_bpos));
         } else {
             // it might be a float if it has an exponent
             if self.curr_is('e') || self.curr_is('E') {
@@ -603,11 +603,11 @@ impl<'a> StringReader<'a> {
                 self.scan_float_suffix();
                 let last_pos = self.last_pos;
                 self.check_float_base(start_bpos, last_pos, base);
-                return token::LIT_FLOAT(self.ident_from(start_bpos));
+                return token::LIT_FLOAT(self.name_from(start_bpos));
             }
             // but we certainly have an integer!
             self.scan_int_suffix();
-            return token::LIT_INTEGER(self.ident_from(start_bpos));
+            return token::LIT_INTEGER(self.name_from(start_bpos));
         }
     }
 
@@ -980,7 +980,7 @@ impl<'a> StringReader<'a> {
                                    start - BytePos(1), last_bpos,
                                    "unterminated character constant".to_string());
             }
-            let id = if valid { self.ident_from(start) } else { str_to_ident("0") };
+            let id = if valid { self.name_from(start) } else { token::intern("0") };
             self.bump(); // advance curr past token
             return token::LIT_CHAR(id);
           }
@@ -1010,8 +1010,8 @@ impl<'a> StringReader<'a> {
                 valid &= self.scan_char_or_byte(ch_start, ch, /* ascii_only = */ false, '"');
             }
             // adjust for the ACSII " at the start of the literal
-            let id = if valid { self.ident_from(start_bpos + BytePos(1)) }
-                     else { str_to_ident("??") };
+            let id = if valid { self.name_from(start_bpos + BytePos(1)) }
+                     else { token::intern("??") };
             self.bump();
             return token::LIT_STR(id);
           }
@@ -1076,9 +1076,9 @@ impl<'a> StringReader<'a> {
             }
             self.bump();
             let id = if valid {
-                self.ident_from_to(content_start_bpos, content_end_bpos)
+                self.name_from_to(content_start_bpos, content_end_bpos)
             } else {
-                str_to_ident("??")
+                token::intern("??")
             };
             return token::LIT_STR_RAW(id, hash_count);
           }
@@ -1168,7 +1168,7 @@ impl<'a> StringReader<'a> {
                 "unterminated byte constant".to_string());
         }
 
-        let id = if valid { self.ident_from(start) } else { str_to_ident("??") };
+        let id = if valid { self.name_from(start) } else { token::intern("??") };
         self.bump(); // advance curr past token
         return token::LIT_BYTE(id);
     }
@@ -1190,7 +1190,7 @@ impl<'a> StringReader<'a> {
             self.bump();
             valid &= self.scan_char_or_byte(ch_start, ch, /* ascii_only = */ true, '"');
         }
-        let id = if valid { self.ident_from(start) } else { str_to_ident("??") };
+        let id = if valid { self.name_from(start) } else { token::intern("??") };
         self.bump();
         return token::LIT_BINARY(id);
     }
@@ -1243,7 +1243,7 @@ impl<'a> StringReader<'a> {
             self.bump();
         }
         self.bump();
-        return token::LIT_BINARY_RAW(self.ident_from_to(content_start_bpos, content_end_bpos),
+        return token::LIT_BINARY_RAW(self.name_from_to(content_start_bpos, content_end_bpos),
                                      hash_count);
     }
 }

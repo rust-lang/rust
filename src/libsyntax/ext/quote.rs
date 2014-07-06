@@ -363,6 +363,15 @@ fn mk_ident(cx: &ExtCtxt, sp: Span, ident: ast::Ident) -> Gc<ast::Expr> {
                         vec!(e_str))
 }
 
+// Lift a name to the expr that evaluates to that name
+fn mk_name(cx: &ExtCtxt, sp: Span, ident: ast::Ident) -> Gc<ast::Expr> {
+    let e_str = cx.expr_str(sp, token::get_ident(ident));
+    cx.expr_method_call(sp,
+                        cx.expr_ident(sp, id_ext("ext_cx")),
+                        id_ext("name_of"),
+                        vec!(e_str))
+}
+
 fn mk_ast_path(cx: &ExtCtxt, sp: Span, name: &str) -> Gc<ast::Expr> {
     let idents = vec!(id_ext("syntax"), id_ext("ast"), id_ext(name));
     cx.expr_path(cx.path_global(sp, idents))
@@ -401,37 +410,37 @@ fn mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> Gc<ast::Expr> {
         }
 
         LIT_BYTE(i) => {
-            let e_byte = mk_ident(cx, sp, i);
+            let e_byte = mk_name(cx, sp, i.ident());
 
             return cx.expr_call(sp, mk_token_path(cx, sp, "LIT_BYTE"), vec!(e_byte));
         }
 
         LIT_CHAR(i) => {
-            let e_char = mk_ident(cx, sp, i);
+            let e_char = mk_name(cx, sp, i.ident());
 
             return cx.expr_call(sp, mk_token_path(cx, sp, "LIT_CHAR"), vec!(e_char));
         }
 
         LIT_INTEGER(i) => {
-            let e_int = mk_ident(cx, sp, i);
+            let e_int = mk_name(cx, sp, i.ident());
             return cx.expr_call(sp, mk_token_path(cx, sp, "LIT_INTEGER"), vec!(e_int));
         }
 
         LIT_FLOAT(fident) => {
-            let e_fident = mk_ident(cx, sp, fident);
+            let e_fident = mk_name(cx, sp, fident.ident());
             return cx.expr_call(sp, mk_token_path(cx, sp, "LIT_FLOAT"), vec!(e_fident));
         }
 
         LIT_STR(ident) => {
             return cx.expr_call(sp,
                                 mk_token_path(cx, sp, "LIT_STR"),
-                                vec!(mk_ident(cx, sp, ident)));
+                                vec!(mk_name(cx, sp, ident.ident())));
         }
 
         LIT_STR_RAW(ident, n) => {
             return cx.expr_call(sp,
                                 mk_token_path(cx, sp, "LIT_STR_RAW"),
-                                vec!(mk_ident(cx, sp, ident), cx.expr_uint(sp, n)));
+                                vec!(mk_name(cx, sp, ident.ident()), cx.expr_uint(sp, n)));
         }
 
         IDENT(ident, b) => {
@@ -449,7 +458,7 @@ fn mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> Gc<ast::Expr> {
         DOC_COMMENT(ident) => {
             return cx.expr_call(sp,
                                 mk_token_path(cx, sp, "DOC_COMMENT"),
-                                vec!(mk_ident(cx, sp, ident)));
+                                vec!(mk_name(cx, sp, ident.ident())));
         }
 
         INTERPOLATED(_) => fail!("quote! with interpolated token"),

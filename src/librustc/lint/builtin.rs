@@ -1114,7 +1114,7 @@ impl UnusedMut {
                 match mode {
                     ast::BindByValue(ast::MutMutable) => {
                         if !token::get_ident(ident).get().starts_with("_") {
-                            mutables.insert_or_update_with(ident.name as uint,
+                            mutables.insert_or_update_with(ident.name.uint(),
                                 vec!(id), |_, old| { old.push(id); });
                         }
                     }
