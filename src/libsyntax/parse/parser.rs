@@ -3748,13 +3748,18 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn expect_self_ident(&mut self) {
-        if !self.is_self_ident() {
-            let token_str = self.this_token_to_string();
-            self.fatal(format!("expected `self` but found `{}`",
-                               token_str).as_slice())
+    fn expect_self_ident(&mut self) -> ast::Ident {
+        match self.token {
+            token::IDENT(id, false) if id.name == special_idents::self_.name => {
+                self.bump();
+                id
+            },
+            _ => {
+                let token_str = self.this_token_to_string();
+                self.fatal(format!("expected `self` but found `{}`",
+                                   token_str).as_slice())
+            }
         }
-        self.bump();
     }
 
     // parse the argument list and result type of a function
@@ -3774,24 +3779,21 @@ impl<'a> Parser<'a> {
 
             if this.look_ahead(1, |t| token::is_keyword(keywords::Self, t)) {
                 this.bump();
-                this.expect_self_ident();
-                SelfRegion(None, MutImmutable)
+                SelfRegion(None, MutImmutable, this.expect_self_ident())
             } else if this.look_ahead(1, |t| Parser::token_is_mutability(t)) &&
                     this.look_ahead(2,
                                     |t| token::is_keyword(keywords::Self,
                                                           t)) {
                 this.bump();
                 let mutability = this.parse_mutability();
-                this.expect_self_ident();
-                SelfRegion(None, mutability)
+                SelfRegion(None, mutability, this.expect_self_ident())
             } else if this.look_ahead(1, |t| Parser::token_is_lifetime(t)) &&
                        this.look_ahead(2,
                                        |t| token::is_keyword(keywords::Self,
                                                              t)) {
                 this.bump();
                 let lifetime = this.parse_lifetime();
-                this.expect_self_ident();
-                SelfRegion(Some(lifetime), MutImmutable)
+                SelfRegion(Some(lifetime), MutImmutable, this.expect_self_ident())
             } else if this.look_ahead(1, |t| Parser::token_is_lifetime(t)) &&
                       this.look_ahead(2, |t| {
                           Parser::token_is_mutability(t)
@@ -3801,8 +3803,7 @@ impl<'a> Parser<'a> {
                 this.bump();
                 let lifetime = this.parse_lifetime();
                 let mutability = this.parse_mutability();
-                this.expect_self_ident();
-                SelfRegion(Some(lifetime), mutability)
+                SelfRegion(Some(lifetime), mutability, this.expect_self_ident())
             } else {
                 SelfStatic
             }
@@ -3822,15 +3823,13 @@ impl<'a> Parser<'a> {
                 // We need to make sure it isn't a type
                 if self.look_ahead(1, |t| token::is_keyword(keywords::Self, t)) {
                     self.bump();
-                    self.expect_self_ident();
-                    SelfUniq
+                    SelfUniq(self.expect_self_ident())
                 } else {
                     SelfStatic
                 }
             }
             token::IDENT(..) if self.is_self_ident() => {
-                self.bump();
-                SelfValue
+                SelfValue(self.expect_self_ident())
             }
             token::BINOP(token::STAR) => {
                 // Possibly "*self" or "*mut self" -- not supported. Try to avoid
@@ -3844,29 +3843,32 @@ impl<'a> Parser<'a> {
                     self.span_err(span, "cannot pass self by unsafe pointer");
                     self.bump();
                 }
-                SelfValue
+                // error case, making bogus self ident:
+                SelfValue(special_idents::self_)
             }
             _ if Parser::token_is_mutability(&self.token) &&
                     self.look_ahead(1, |t| token::is_keyword(keywords::Self, t)) => {
                 mutbl_self = self.parse_mutability();
-                self.expect_self_ident();
-                SelfValue
+                SelfValue(self.expect_self_ident())
             }
             _ if Parser::token_is_mutability(&self.token) &&
                     self.look_ahead(1, |t| *t == token::TILDE) &&
                     self.look_ahead(2, |t| token::is_keyword(keywords::Self, t)) => {
                 mutbl_self = self.parse_mutability();
                 self.bump();
-                self.expect_self_ident();
-                SelfUniq
+                SelfUniq(self.expect_self_ident())
             }
             _ => SelfStatic
         };
 
         let explicit_self_sp = mk_sp(lo, self.span.hi);
 
-        // If we parsed a self type, expect a comma before the argument list.
-        let fn_inputs = if explicit_self != SelfStatic {
+        // shared fall-through for the three cases below. borrowing prevents simply
+        // writing this as a closure
+        macro_rules! parse_remaining_arguments {
+            ($self_id:ident) =>
+            {
+            // If we parsed a self type, expect a comma before the argument list.
             match self.token {
                 token::COMMA => {
                     self.bump();
@@ -3876,11 +3878,11 @@ impl<'a> Parser<'a> {
                         sep,
                         parse_arg_fn
                     );
-                    fn_inputs.unshift(Arg::new_self(explicit_self_sp, mutbl_self));
+                    fn_inputs.unshift(Arg::new_self(explicit_self_sp, mutbl_self, $self_id));
                     fn_inputs
                 }
                 token::RPAREN => {
-                    vec!(Arg::new_self(explicit_self_sp, mutbl_self))
+                    vec!(Arg::new_self(explicit_self_sp, mutbl_self, $self_id))
                 }
                 _ => {
                     let token_str = self.this_token_to_string();
@@ -3888,10 +3890,20 @@ impl<'a> Parser<'a> {
                                        token_str).as_slice())
                 }
             }
-        } else {
-            let sep = seq_sep_trailing_disallowed(token::COMMA);
-            self.parse_seq_to_before_end(&token::RPAREN, sep, parse_arg_fn)
+            }
+        }
+
+        let fn_inputs = match explicit_self {
+            SelfStatic =>  {
+                let sep = seq_sep_trailing_disallowed(token::COMMA);
+                self.parse_seq_to_before_end(&token::RPAREN, sep, parse_arg_fn)
+            }
+            SelfValue(id) => parse_remaining_arguments!(id),
+            SelfRegion(_,_,id) => parse_remaining_arguments!(id),
+            SelfUniq(id) => parse_remaining_arguments!(id)
+
         };
+
 
         self.expect(&token::RPAREN);
 

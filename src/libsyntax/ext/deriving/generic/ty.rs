@@ -19,6 +19,7 @@ use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use codemap::{Span,respan};
 use owned_slice::OwnedSlice;
+use parse::token::special_idents;
 
 use std::gc::Gc;
 
@@ -244,22 +245,23 @@ impl<'a> LifetimeBounds<'a> {
     }
 }
 
-
 pub fn get_explicit_self(cx: &ExtCtxt, span: Span, self_ptr: &Option<PtrTy>)
     -> (Gc<Expr>, ast::ExplicitSelf) {
+    // this constructs a fresh `self` path, which will match the fresh `self` binding
+    // created below.
     let self_path = cx.expr_self(span);
     match *self_ptr {
         None => {
-            (self_path, respan(span, ast::SelfValue))
+            (self_path, respan(span, ast::SelfValue(special_idents::self_)))
         }
         Some(ref ptr) => {
             let self_ty = respan(
                 span,
                 match *ptr {
-                    Send => ast::SelfUniq,
+                    Send => ast::SelfUniq(special_idents::self_),
                     Borrowed(ref lt, mutbl) => {
                         let lt = lt.map(|s| cx.lifetime(span, cx.ident_of(s).name));
-                        ast::SelfRegion(lt, mutbl)
+                        ast::SelfRegion(lt, mutbl, special_idents::self_)
                     }
                 });
             let self_expr = cx.expr_deref(span, self_path);

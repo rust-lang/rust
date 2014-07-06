@@ -947,16 +947,16 @@ impl<'a> Rebuilder<'a> {
                          -> Option<ast::ExplicitSelf_> {
         match expl_self_opt {
             Some(expl_self) => match expl_self {
-                ast::SelfRegion(lt_opt, muta) => match lt_opt {
+                ast::SelfRegion(lt_opt, muta, id) => match lt_opt {
                     Some(lt) => if region_names.contains(&lt.name) {
-                        return Some(ast::SelfRegion(Some(lifetime), muta));
+                        return Some(ast::SelfRegion(Some(lifetime), muta, id));
                     },
                     None => {
                         let anon = self.cur_anon.get();
                         self.inc_and_offset_cur_anon(1);
                         if anon_nums.contains(&anon) {
                             self.track_anon(anon);
-                            return Some(ast::SelfRegion(Some(lifetime), muta));
+                            return Some(ast::SelfRegion(Some(lifetime), muta, id));
                         }
                     }
                 },

@@ -775,9 +775,9 @@ impl Clean<SelfTy> for ast::ExplicitSelf_ {
     fn clean(&self) -> SelfTy {
         match *self {
             ast::SelfStatic => SelfStatic,
-            ast::SelfValue => SelfValue,
-            ast::SelfUniq => SelfOwned,
-            ast::SelfRegion(lt, mt) => SelfBorrowed(lt.clean(), mt.clean()),
+            ast::SelfValue(_) => SelfValue,
+            ast::SelfUniq(_) => SelfOwned,
+            ast::SelfRegion(lt, mt, _) => SelfBorrowed(lt.clean(), mt.clean()),
         }
     }
 }
