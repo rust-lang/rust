@@ -542,7 +542,7 @@ impl<'a> Parser<'a> {
     // true. Otherwise, return false.
     pub fn eat_keyword(&mut self, kw: keywords::Keyword) -> bool {
         match self.token {
-            token::IDENT(sid, false) if kw.to_ident().name == sid.name => {
+            token::IDENT(sid, false) if kw.to_name() == sid.name => {
                 self.bump();
                 true
             }
@@ -555,7 +555,7 @@ impl<'a> Parser<'a> {
     // otherwise, eat it.
     pub fn expect_keyword(&mut self, kw: keywords::Keyword) {
         if !self.eat_keyword(kw) {
-            let id_interned_str = token::get_ident(kw.to_ident());
+            let id_interned_str = token::get_name(kw.to_name());
             let token_str = self.this_token_to_string();
             self.fatal(format!("expected `{}`, found `{}`",
                                id_interned_str, token_str).as_slice())
