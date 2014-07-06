@@ -91,7 +91,6 @@ You should see some output that looks something like this:
 
 ```{ignore}
 rustc 0.11.0-pre (443a1cd 2014-06-08 14:56:52 -0700)
-host: x86_64-unknown-linux-gnu
 ```
 
 If you did, Rust has been installed successfully! Congrats!
