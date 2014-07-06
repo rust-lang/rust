@@ -69,7 +69,7 @@ fn cs_clone(
             ctor_ident = variant.node.name;
             all_fields = af;
         },
-        EnumNonMatching(..) => {
+        EnumNonMatching(..) | EnumNonMatchingCollapsed (..) => {
             cx.span_bug(trait_span,
                         format!("non-matching enum variants in \
                                  `deriving({})`",

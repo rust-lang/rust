@@ -41,7 +41,7 @@ pub fn expand_deriving_totalord(cx: &mut ExtCtxt,
                 args: vec!(borrowed_self()),
                 ret_ty: Literal(Path::new(vec!("std", "cmp", "Ordering"))),
                 attributes: attrs,
-                on_nonmatching: NonMatchesExplode,
+                on_nonmatching: NonMatchesCollapseWithTags,
                 combine_substructure: combine_substructure(|a, b, c| {
                     cs_cmp(a, b, c)
                 }),
@@ -63,6 +63,14 @@ pub fn ordering_const(cx: &mut ExtCtxt, span: Span, cnst: Ordering) -> ast::Path
                    vec!(cx.ident_of("std"),
                      cx.ident_of("cmp"),
                      cx.ident_of(cnst)))
+}
+
+pub fn ordering_collapsed(cx: &mut ExtCtxt,
+                          span: Span,
+                          self_arg_tags: &[ast::Ident]) -> Gc<ast::Expr> {
+    let lft = cx.expr_ident(span, self_arg_tags[0]);
+    let rgt = cx.expr_addr_of(span, cx.expr_ident(span, self_arg_tags[1]));
+    cx.expr_method_call(span, lft, cx.ident_of("cmp"), vec![rgt])
 }
 
 pub fn cs_cmp(cx: &mut ExtCtxt, span: Span,
@@ -120,6 +128,13 @@ pub fn cs_cmp(cx: &mut ExtCtxt, span: Span,
                     cx.expr_path(order)
                 }
                 _ => cx.span_bug(span, "not exactly 2 arguments in `deriving(Ord)`")
+            }
+        },
+        |cx, span, (self_args, tag_tuple), _non_self_args| {
+            if self_args.len() != 2 {
+                cx.span_bug(span, "not exactly 2 arguments in `deriving(TotalOrd)`")
+            } else {
+                ordering_collapsed(cx, span, tag_tuple)
             }
         },
         cx, span, substr)

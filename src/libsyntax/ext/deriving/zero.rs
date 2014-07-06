@@ -57,6 +57,10 @@ pub fn expand_deriving_zero(cx: &mut ExtCtxt,
                                                         "Non-matching enum \
                                                          variant in \
                                                          deriving(Zero)"),
+                           |cx, span, _, _| cx.span_bug(span,
+                                                        "Non-matching enum \
+                                                         variant in \
+                                                         deriving(Zero)"),
                            cx, span, substr)
                 })
             }

@@ -67,7 +67,8 @@ fn show_substructure(cx: &mut ExtCtxt, span: Span,
         Struct(_) => substr.type_ident,
         EnumMatching(_, v, _) => v.node.name,
 
-        EnumNonMatching(..) | StaticStruct(..) | StaticEnum(..) => {
+        EnumNonMatching(..) | EnumNonMatchingCollapsed(..) |
+        StaticStruct(..) | StaticEnum(..) => {
             cx.span_bug(span, "nonsensical .fields in `#[deriving(Show)]`")
         }
     };
