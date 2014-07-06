@@ -413,7 +413,7 @@ macro_rules! declare_special_idents_and_keywords {(
      * the language and may not appear as identifiers.
      */
     pub mod keywords {
-        use ast::Ident;
+        use ast::Name;
 
         pub enum Keyword {
             $( $sk_variant, )*
@@ -421,10 +421,10 @@ macro_rules! declare_special_idents_and_keywords {(
         }
 
         impl Keyword {
-            pub fn to_ident(&self) -> Ident {
+            pub fn to_name(&self) -> Name {
                 match *self {
-                    $( $sk_variant => Ident { name: $sk_name, ctxt: 0 }, )*
-                    $( $rk_variant => Ident { name: $rk_name, ctxt: 0 }, )*
+                    $( $sk_variant => $sk_name, )*
+                    $( $rk_variant => $rk_name, )*
                 }
             }
         }
@@ -432,7 +432,7 @@ macro_rules! declare_special_idents_and_keywords {(
 
     fn mk_fresh_ident_interner() -> IdentInterner {
         // The indices here must correspond to the numbers in
-        // special_idents, in Keyword to_ident(), and in static
+        // special_idents, in Keyword to_name(), and in static
         // constants below.
         let mut init_vec = Vec::new();
         $(init_vec.push($si_str);)*
@@ -710,7 +710,7 @@ pub fn fresh_mark() -> Mrk {
 
 pub fn is_keyword(kw: keywords::Keyword, tok: &Token) -> bool {
     match *tok {
-        token::IDENT(sid, false) => { kw.to_ident().name == sid.name }
+        token::IDENT(sid, false) => { kw.to_name() == sid.name }
         _ => { false }
     }
 }
