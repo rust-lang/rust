@@ -1877,211 +1877,229 @@ impl<'a> Parser<'a> {
 
         let ex: Expr_;
 
-        if self.token == token::LPAREN {
-            self.bump();
-            // (e) is parenthesized e
-            // (e,) is a tuple with only one field, e
-            let mut trailing_comma = false;
-            if self.token == token::RPAREN {
+        match self.token {
+            token::LPAREN => {
+                self.bump();
+                // (e) is parenthesized e
+                // (e,) is a tuple with only one field, e
+                let mut trailing_comma = false;
+                if self.token == token::RPAREN {
+                    hi = self.span.hi;
+                    self.bump();
+                    let lit = box(GC) spanned(lo, hi, LitNil);
+                    return self.mk_expr(lo, hi, ExprLit(lit));
+                }
+                let mut es = vec!(self.parse_expr());
+                self.commit_expr(*es.last().unwrap(), &[], &[token::COMMA, token::RPAREN]);
+                while self.token == token::COMMA {
+                    self.bump();
+                    if self.token != token::RPAREN {
+                        es.push(self.parse_expr());
+                        self.commit_expr(*es.last().unwrap(), &[], &[token::COMMA, token::RPAREN]);
+                    }
+                        else {
+                        trailing_comma = true;
+                    }
+                }
                 hi = self.span.hi;
-                self.bump();
-                let lit = box(GC) spanned(lo, hi, LitNil);
-                return self.mk_expr(lo, hi, ExprLit(lit));
-            }
-            let mut es = vec!(self.parse_expr());
-            self.commit_expr(*es.last().unwrap(), &[], &[token::COMMA, token::RPAREN]);
-            while self.token == token::COMMA {
-                self.bump();
-                if self.token != token::RPAREN {
-                    es.push(self.parse_expr());
-                    self.commit_expr(*es.last().unwrap(), &[], &[token::COMMA, token::RPAREN]);
-                }
-                else {
-                    trailing_comma = true;
-                }
-            }
-            hi = self.span.hi;
-            self.commit_expr_expecting(*es.last().unwrap(), token::RPAREN);
+                self.commit_expr_expecting(*es.last().unwrap(), token::RPAREN);
 
-            return if es.len() == 1 && !trailing_comma {
-                self.mk_expr(lo, hi, ExprParen(*es.get(0)))
+                return if es.len() == 1 && !trailing_comma {
+                    self.mk_expr(lo, hi, ExprParen(*es.get(0)))
+                }
+                    else {
+                    self.mk_expr(lo, hi, ExprTup(es))
+                }
+            },
+            token::LBRACE => {
+                self.bump();
+                let blk = self.parse_block_tail(lo, DefaultBlock);
+                return self.mk_expr(blk.span.lo, blk.span.hi,
+                                    ExprBlock(blk));
+            },
+            _ if token::is_bar(&self.token) => {
+                return self.parse_lambda_expr();
+            },
+            _ if self.eat_keyword(keywords::Proc) => {
+                let decl = self.parse_proc_decl();
+                let body = self.parse_expr();
+                let fakeblock = P(ast::Block {
+                        view_items: Vec::new(),
+                        stmts: Vec::new(),
+                        expr: Some(body),
+                        id: ast::DUMMY_NODE_ID,
+                        rules: DefaultBlock,
+                        span: body.span,
+                    });
+                return self.mk_expr(lo, body.span.hi, ExprProc(decl, fakeblock));
+            },
+            _ if self.eat_keyword(keywords::Self) => {
+                let path = ast_util::ident_to_path(mk_sp(lo, hi), special_idents::self_);
+                ex = ExprPath(path);
+                hi = self.last_span.hi;
             }
-            else {
-                self.mk_expr(lo, hi, ExprTup(es))
-            }
-        } else if self.token == token::LBRACE {
-            self.bump();
-            let blk = self.parse_block_tail(lo, DefaultBlock);
-            return self.mk_expr(blk.span.lo, blk.span.hi,
-                                 ExprBlock(blk));
-        } else if token::is_bar(&self.token) {
-            return self.parse_lambda_expr();
-        } else if self.eat_keyword(keywords::Proc) {
-            let decl = self.parse_proc_decl();
-            let body = self.parse_expr();
-            let fakeblock = P(ast::Block {
-                view_items: Vec::new(),
-                stmts: Vec::new(),
-                expr: Some(body),
-                id: ast::DUMMY_NODE_ID,
-                rules: DefaultBlock,
-                span: body.span,
-            });
-
-            return self.mk_expr(lo, body.span.hi, ExprProc(decl, fakeblock));
-        } else if self.eat_keyword(keywords::Self) {
-            let path = ast_util::ident_to_path(mk_sp(lo, hi), special_idents::self_);
-            ex = ExprPath(path);
-            hi = self.last_span.hi;
-        } else if self.eat_keyword(keywords::If) {
-            return self.parse_if_expr();
-        } else if self.eat_keyword(keywords::For) {
-            return self.parse_for_expr(None);
-        } else if self.eat_keyword(keywords::While) {
-            return self.parse_while_expr();
-        } else if Parser::token_is_lifetime(&self.token) {
-            let lifetime = self.get_lifetime();
-            self.bump();
-            self.expect(&token::COLON);
-            if self.eat_keyword(keywords::For) {
-                return self.parse_for_expr(Some(lifetime))
-            } else if self.eat_keyword(keywords::Loop) {
-                return self.parse_loop_expr(Some(lifetime))
-            } else {
-                self.fatal("expected `for` or `loop` after a label")
-            }
-        } else if self.eat_keyword(keywords::Loop) {
-            return self.parse_loop_expr(None);
-        } else if self.eat_keyword(keywords::Continue) {
-            let lo = self.span.lo;
-            let ex = if Parser::token_is_lifetime(&self.token) {
+            _ if self.eat_keyword(keywords::If) => {
+                return self.parse_if_expr();
+            },
+            _ if self.eat_keyword(keywords::For) => {
+                return self.parse_for_expr(None);
+            },
+            _ if self.eat_keyword(keywords::While) => {
+                return self.parse_while_expr();
+            },
+            _ if Parser::token_is_lifetime(&self.token) => {
                 let lifetime = self.get_lifetime();
                 self.bump();
-                ExprAgain(Some(lifetime))
-            } else {
-                ExprAgain(None)
-            };
-            let hi = self.span.hi;
-            return self.mk_expr(lo, hi, ex);
-        } else if self.eat_keyword(keywords::Match) {
-            return self.parse_match_expr();
-        } else if self.eat_keyword(keywords::Unsafe) {
-            return self.parse_block_expr(lo, UnsafeBlock(ast::UserProvided));
-        } else if self.token == token::LBRACKET {
-            self.bump();
-
-            if self.token == token::RBRACKET {
-                // Empty vector.
-                self.bump();
-                ex = ExprVec(Vec::new());
-            } else {
-                // Nonempty vector.
-                let first_expr = self.parse_expr();
-                if self.token == token::COMMA &&
-                        self.look_ahead(1, |t| *t == token::DOTDOT) {
-                    // Repeating vector syntax: [ 0, ..512 ]
-                    self.bump();
-                    self.bump();
-                    let count = self.parse_expr();
-                    self.expect(&token::RBRACKET);
-                    ex = ExprRepeat(first_expr, count);
-                } else if self.token == token::COMMA {
-                    // Vector with two or more elements.
-                    self.bump();
-                    let remaining_exprs = self.parse_seq_to_end(
-                        &token::RBRACKET,
-                        seq_sep_trailing_allowed(token::COMMA),
-                        |p| p.parse_expr()
-                    );
-                    let mut exprs = vec!(first_expr);
-                    exprs.push_all_move(remaining_exprs);
-                    ex = ExprVec(exprs);
+                self.expect(&token::COLON);
+                if self.eat_keyword(keywords::For) {
+                    return self.parse_for_expr(Some(lifetime))
+                } else if self.eat_keyword(keywords::Loop) {
+                    return self.parse_loop_expr(Some(lifetime))
                 } else {
-                    // Vector with one element.
-                    self.expect(&token::RBRACKET);
-                    ex = ExprVec(vec!(first_expr));
+                    self.fatal("expected `for` or `loop` after a label")
                 }
-            }
-            hi = self.last_span.hi;
-        } else if self.eat_keyword(keywords::Return) {
-            // RETURN expression
-            if can_begin_expr(&self.token) {
-                let e = self.parse_expr();
-                hi = e.span.hi;
-                ex = ExprRet(Some(e));
-            } else { ex = ExprRet(None); }
-        } else if self.eat_keyword(keywords::Break) {
-            // BREAK expression
-            if Parser::token_is_lifetime(&self.token) {
-                let lifetime = self.get_lifetime();
-                self.bump();
-                ex = ExprBreak(Some(lifetime));
-            } else {
-                ex = ExprBreak(None);
-            }
-            hi = self.span.hi;
-        } else if self.token == token::MOD_SEP ||
-                is_ident(&self.token) && !self.is_keyword(keywords::True) &&
-                !self.is_keyword(keywords::False) {
-            let pth = self.parse_path(LifetimeAndTypesWithColons).path;
-
-            // `!`, as an operator, is prefix, so we know this isn't that
-            if self.token == token::NOT {
-                // MACRO INVOCATION expression
-                self.bump();
-
-                let ket = token::close_delimiter_for(&self.token)
-                                .unwrap_or_else(|| self.fatal("expected open delimiter"));
-                self.bump();
-
-                let tts = self.parse_seq_to_end(&ket,
-                                                seq_sep_none(),
-                                                |p| p.parse_token_tree());
-                let hi = self.span.hi;
-
-                return self.mk_mac_expr(lo, hi, MacInvocTT(pth, tts, EMPTY_CTXT));
-            } else if self.token == token::LBRACE {
-                // This is a struct literal, unless we're prohibited from
-                // parsing struct literals here.
-                if self.restriction != RESTRICT_NO_STRUCT_LITERAL {
-                    // It's a struct literal.
+            },
+            _ if self.eat_keyword(keywords::Loop) => {
+                return self.parse_loop_expr(None);
+            },
+            _ if self.eat_keyword(keywords::Continue) => {
+                let lo = self.span.lo;
+                let ex = if Parser::token_is_lifetime(&self.token) {
+                    let lifetime = self.get_lifetime();
                     self.bump();
-                    let mut fields = Vec::new();
-                    let mut base = None;
+                    ExprAgain(Some(lifetime))
+                } else {
+                    ExprAgain(None)
+                };
+                let hi = self.span.hi;
+                return self.mk_expr(lo, hi, ex);
+            },
+            _ if self.eat_keyword(keywords::Match) => {
+                return self.parse_match_expr();
+            },
+            _ if self.eat_keyword(keywords::Unsafe) => {
+                return self.parse_block_expr(lo, UnsafeBlock(ast::UserProvided));
+            },
+            token::LBRACKET => {
+                self.bump();
+                
+                if self.token == token::RBRACKET {
+                    // Empty vector.
+                    self.bump();
+                    ex = ExprVec(Vec::new());
+                } else {
+                    // Nonempty vector.
+                    let first_expr = self.parse_expr();
+                    if self.token == token::COMMA &&
+                        self.look_ahead(1, |t| *t == token::DOTDOT) {
+                        // Repeating vector syntax: [ 0, ..512 ]
+                        self.bump();
+                        self.bump();
+                        let count = self.parse_expr();
+                        self.expect(&token::RBRACKET);
+                        ex = ExprRepeat(first_expr, count);
+                    } else if self.token == token::COMMA {
+                        // Vector with two or more elements.
+                        self.bump();
+                        let remaining_exprs = self.parse_seq_to_end(
+                            &token::RBRACKET,
+                            seq_sep_trailing_allowed(token::COMMA),
+                            |p| p.parse_expr()
+                                );
+                        let mut exprs = vec!(first_expr);
+                        exprs.push_all_move(remaining_exprs);
+                        ex = ExprVec(exprs);
+                    } else {
+                        // Vector with one element.
+                        self.expect(&token::RBRACKET);
+                        ex = ExprVec(vec!(first_expr));
+                    }
+                }
+                hi = self.last_span.hi;
+            },
+            _ if self.eat_keyword(keywords::Return) => {
+                // RETURN expression
+                if can_begin_expr(&self.token) {
+                    let e = self.parse_expr();
+                    hi = e.span.hi;
+                    ex = ExprRet(Some(e));
+                } else { ex = ExprRet(None); }
+            },
+            _ if self.eat_keyword(keywords::Break) => {
+                // BREAK expression
+                if Parser::token_is_lifetime(&self.token) {
+                    let lifetime = self.get_lifetime();
+                    self.bump();
+                    ex = ExprBreak(Some(lifetime));
+                } else {
+                    ex = ExprBreak(None);
+                }
+                hi = self.span.hi;
+            },
+            _ if self.token == token::MOD_SEP ||
+                is_ident(&self.token) && !self.is_keyword(keywords::True) &&
+                !self.is_keyword(keywords::False) => {
+                let pth = self.parse_path(LifetimeAndTypesWithColons).path;
 
-                    while self.token != token::RBRACE {
-                        if self.eat(&token::DOTDOT) {
-                            base = Some(self.parse_expr());
-                            break;
+                // `!`, as an operator, is prefix, so we know this isn't that
+                if self.token == token::NOT {
+                    // MACRO INVOCATION expression
+                    self.bump();
+
+                    let ket = token::close_delimiter_for(&self.token)
+                        .unwrap_or_else(|| self.fatal("expected open delimiter"));
+                    self.bump();
+
+                    let tts = self.parse_seq_to_end(&ket,
+                                                    seq_sep_none(),
+                                                    |p| p.parse_token_tree());
+                    let hi = self.span.hi;
+
+                    return self.mk_mac_expr(lo, hi, MacInvocTT(pth, tts, EMPTY_CTXT));
+                } else if self.token == token::LBRACE {
+                    // This is a struct literal, unless we're prohibited from
+                    // parsing struct literals here.
+                    if self.restriction != RESTRICT_NO_STRUCT_LITERAL {
+                        // It's a struct literal.
+                        self.bump();
+                        let mut fields = Vec::new();
+                        let mut base = None;
+
+                        while self.token != token::RBRACE {
+                            if self.eat(&token::DOTDOT) {
+                                base = Some(self.parse_expr());
+                                break;
+                            }
+
+                            fields.push(self.parse_field());
+                            self.commit_expr(fields.last().unwrap().expr,
+                                             &[token::COMMA], &[token::RBRACE]);
                         }
 
-                        fields.push(self.parse_field());
-                        self.commit_expr(fields.last().unwrap().expr,
-                                         &[token::COMMA], &[token::RBRACE]);
-                    }
+                        if fields.len() == 0 && base.is_none() {
+                            let last_span = self.last_span;
+                            self.span_err(last_span,
+                                          "structure literal must either have at \
+                                          least one field or use functional \
+                                          structure update syntax");
+                        }
 
-                    if fields.len() == 0 && base.is_none() {
-                        let last_span = self.last_span;
-                        self.span_err(last_span,
-                                      "structure literal must either have at \
-                                       least one field or use functional \
-                                       structure update syntax");
+                        hi = self.span.hi;
+                        self.expect(&token::RBRACE);
+                        ex = ExprStruct(pth, fields, base);
+                        return self.mk_expr(lo, hi, ex);
                     }
-
-                    hi = self.span.hi;
-                    self.expect(&token::RBRACE);
-                    ex = ExprStruct(pth, fields, base);
-                    return self.mk_expr(lo, hi, ex);
                 }
-            }
 
             hi = pth.span.hi;
             ex = ExprPath(pth);
-        } else {
-            // other literal expression
-            let lit = self.parse_lit();
-            hi = lit.span.hi;
-            ex = ExprLit(box(GC) lit);
+            },
+            _ => {
+                // other literal expression
+                let lit = self.parse_lit();
+                hi = lit.span.hi;
+                ex = ExprLit(box(GC) lit);
+            }
         }
 
         return self.mk_expr(lo, hi, ex);
