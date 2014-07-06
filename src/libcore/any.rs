@@ -13,12 +13,61 @@
 //! This module implements the `Any` trait, which enables dynamic typing
 //! of any `'static` type through runtime reflection.
 //!
-//! `Any` itself can be used to get a `TypeId`, and has more features when used as a trait object.
-//! As `&Any` (a borrowed trait object), it has the `is` and `as_ref` methods, to test if the
-//! contained value is of a given type, and to get a reference to the inner value as a type. As
-//! `&mut Any`, there is also the `as_mut` method, for getting a mutable reference to the inner
-//! value. `Box<Any>` adds the `move` method, which will unwrap a `Box<T>` from the object.  See
-//! the extension traits (`*Ext`) for the full details.
+//! `Any` itself can be used to get a `TypeId`, and has more features when used
+//! as a trait object. As `&Any` (a borrowed trait object), it has the `is` and
+//! `as_ref` methods, to test if the contained value is of a given type, and to
+//! get a reference to the inner value as a type. As`&mut Any`, there is also
+//! the `as_mut` method, for getting a mutable reference to the inner value.
+//! `Box<Any>` adds the `move` method, which will unwrap a `Box<T>` from the
+//! object.  See the extension traits (`*Ext`) for the full details.
+//!
+//! Note that &Any is limited to testing whether a value is of a specified
+//! concrete type, and cannot be used to test whether a type implements a trait.
+//!
+//! # Examples
+//!
+//! Consider a situation where we want to log out a value passed to a function.
+//! We know the value we're working on implements Show, but we don't know its
+//! concrete type.  We want to give special treatment to certain types: in this
+//! case printing out the length of String values prior to their value.
+//! We don't know the concrete type of our value at compile time, so we need to
+//! use runtime reflection instead.
+//!
+//! ```rust
+//! use std::fmt::Show;
+//! use std::any::{Any, AnyRefExt};
+//!
+//! // Logger function for any type that implements Show.
+//! fn log<T: Any+Show>(value: &T) {
+//!     let value_any = value as &Any;
+//!
+//!     // try to convert our value to a String.  If successful, we want to
+//!     // output the String's length as well as its value.  If not, it's a
+//!     // different type: just print it out unadorned.
+//!     match value_any.as_ref::<String>() {
+//!         Some(as_string) => {
+//!             println!("String ({}): {}", as_string.len(), as_string);
+//!         }
+//!         None => {
+//!             println!("{}", value);
+//!         }
+//!     }
+//! }
+//!
+//! // This function wants to log its parameter out prior to doing work with it.
+//! fn do_work<T: Show>(value: &T) {
+//!     log(value);
+//!     // ...do some other work
+//! }
+//!
+//! fn main() {
+//!     let my_string = "Hello World".to_string();
+//!     do_work(&my_string);
+//!
+//!     let my_i8: i8 = 100;
+//!     do_work(&my_i8);
+//! }
+//! ```
 
 use mem::{transmute, transmute_copy};
 use option::{Option, Some, None};
