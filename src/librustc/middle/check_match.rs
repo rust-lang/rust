@@ -411,14 +411,7 @@ fn is_useful(cx: &MatchCheckCtxt, matrix @ &Matrix(ref rows): &Matrix,
         return NotUseful;
     }
     let real_pat = match rows.iter().find(|r| r.get(0).id != 0) {
-        Some(r) => {
-            match r.get(0).node {
-                // An arm of the form `ref x @ sub_pat` has type
-                // `sub_pat`, not `&sub_pat` as `x` itself does.
-                PatIdent(BindByRef(_), _, Some(sub)) => sub,
-                _ => *r.get(0)
-            }
-        }
+        Some(r) => raw_pat(*r.get(0)),
         None if v.len() == 0 => return NotUseful,
         None => v[0]
     };
