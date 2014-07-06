@@ -2,7 +2,7 @@
 " Description:  Vim syntax file for Rust
 " Maintainer:   Chris Morgan <me@chrismorgan.info>
 " Maintainer:   Kevin Ballard <kevin@sb.org>
-" Last Change:  May 27, 2014
+" Last Change:  July 06, 2014
 
 if exists("b:did_ftplugin")
 	finish
@@ -35,7 +35,24 @@ silent! setlocal formatoptions+=j
 " otherwise it's better than nothing.
 setlocal smartindent nocindent
 
-setlocal tabstop=4 shiftwidth=4 expandtab
+setlocal tabstop=4 shiftwidth=4 softtabstop=4 expandtab
+
+" Line lengths {{{2
+
+" Rust style conventions for line lengths say you SHOULD not go over 80
+" columns and MUST not go over 100.
+" Without a good 'formatexpr' we can't automatically wrap code, but we can
+" still wrap comments just fine with 'textwidth'.
+setlocal textwidth=80
+
+" We can also use 'colorcolumn' to highlight both the 80 and 100 limits. Not
+" everyone likes this so it's gated.
+if exists('g:rust_colorcolumn')
+	setlocal colorcolumn=+1,101
+	let b:rust_colorcolumn=1
+endif
+
+" }}}2
 
 " This includeexpr isn't perfect, but it's a good start
 setlocal includeexpr=substitute(v:fname,'::','/','g')
@@ -93,7 +110,12 @@ endif
 " Cleanup {{{1
 
 let b:undo_ftplugin = "
-		\setlocal formatoptions< comments< commentstring< includeexpr< suffixesadd<
+		\ setlocal formatoptions< comments< commentstring< includeexpr< suffixesadd<
+		\|setlocal tabstop< shiftwidth< softtabstop< expandtab< textwidth<
+		\|if exists('b:rust_colorcolumn')
+		  \|setlocal colorcolumn<
+		  \|unlet b:rust_colorcolumn
+		\|endif
 		\|if exists('b:rust_original_delimitMate_excluded_regions')
 		  \|let b:delimitMate_excluded_regions = b:rust_original_delimitMate_excluded_regions
 		  \|unlet b:rust_original_delimitMate_excluded_regions
