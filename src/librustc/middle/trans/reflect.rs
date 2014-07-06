@@ -313,7 +313,7 @@ impl<'a, 'b> Reflector<'a, 'b> {
                 let fcx = new_fn_ctxt(ccx, llfdecl, -1, false,
                                       ty::mk_u64(), &empty_param_substs,
                                       None, &arena);
-                init_function(&fcx, false, ty::mk_u64());
+                let bcx = init_function(&fcx, false, ty::mk_u64());
 
                 let arg = unsafe {
                     //
@@ -323,7 +323,6 @@ impl<'a, 'b> Reflector<'a, 'b> {
                     //
                     llvm::LLVMGetParam(llfdecl, fcx.arg_pos(0u) as c_uint)
                 };
-                let bcx = fcx.entry_bcx.borrow().clone().unwrap();
                 let arg = BitCast(bcx, arg, llptrty);
                 let ret = adt::trans_get_discr(bcx, &*repr, arg, Some(Type::i64(ccx)));
                 Store(bcx, ret, fcx.llretptr.get().unwrap());
