@@ -541,12 +541,13 @@ impl<'a> Parser<'a> {
     // if the next token is the given keyword, eat it and return
     // true. Otherwise, return false.
     pub fn eat_keyword(&mut self, kw: keywords::Keyword) -> bool {
-        let is_kw = match self.token {
-            token::IDENT(sid, false) => kw.to_ident().name == sid.name,
+        match self.token {
+            token::IDENT(sid, false) if kw.to_ident().name == sid.name => {
+                self.bump();
+                true
+            }
             _ => false
-        };
-        if is_kw { self.bump() }
-        is_kw
+        }
     }
 
     // if the given word is not a keyword, signal an error.
@@ -1917,7 +1918,7 @@ impl<'a> Parser<'a> {
                 return self.mk_expr(blk.span.lo, blk.span.hi,
                                     ExprBlock(blk));
             },
-            _ if token::is_bar(&self.token) => {
+            token::BINOP(token::OR) |  token::OROR => {
                 return self.parse_lambda_expr();
             },
             _ if self.eat_keyword(keywords::Proc) => {
@@ -1933,8 +1934,9 @@ impl<'a> Parser<'a> {
                     });
                 return self.mk_expr(lo, body.span.hi, ExprProc(decl, fakeblock));
             },
-            _ if self.eat_keyword(keywords::Self) => {
-                let path = ast_util::ident_to_path(mk_sp(lo, hi), special_idents::self_);
+            token::IDENT(id @ ast::Ident{name:token::SELF_KEYWORD_NAME,ctxt:_},false) => {
+                self.bump();
+                let path = ast_util::ident_to_path(mk_sp(lo, hi), id);
                 ex = ExprPath(path);
                 hi = self.last_span.hi;
             }
@@ -1982,7 +1984,7 @@ impl<'a> Parser<'a> {
             },
             token::LBRACKET => {
                 self.bump();
-                
+
                 if self.token == token::RBRACKET {
                     // Empty vector.
                     self.bump();
