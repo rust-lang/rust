@@ -563,6 +563,7 @@ pub fn constructor_arity(cx: &MatchCheckCtxt, ctor: &Constructor, ty: ty::t) -> 
         ty::ty_rptr(_, ty::mt { ty: ty, .. }) => match ty::get(ty).sty {
             ty::ty_vec(_, None) => match *ctor {
                 Slice(length) => length,
+                ConstantValue(_) => 0u,
                 _ => unreachable!()
             },
             ty::ty_str => 0u,
