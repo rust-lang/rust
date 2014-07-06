@@ -10,6 +10,7 @@
 
 use super::archive::{Archive, METADATA_FILENAME};
 use super::rpath;
+use super::rpath::RPathConfig;
 use super::svh::Svh;
 use driver::driver::{CrateTranslation, OutputFilenames, Input, FileInput};
 use driver::config::NoDebugInfo;
@@ -1385,7 +1386,24 @@ fn link_args(cmd: &mut Command,
     // where extern libraries might live, based on the
     // addl_lib_search_paths
     if sess.opts.cg.rpath {
-        cmd.args(rpath::get_rpath_flags(sess, out_filename).as_slice());
+        let sysroot = sess.sysroot();
+        let target_triple = sess.opts.target_triple.as_slice();
+        let get_install_prefix_lib_path = || {
+            let install_prefix = option_env!("CFG_PREFIX").expect("CFG_PREFIX");
+            let tlib = filesearch::relative_target_lib_path(sysroot, target_triple);
+            let mut path = Path::new(install_prefix);
+            path.push(&tlib);
+
+            path
+        };
+        let rpath_config = RPathConfig {
+            os: sess.targ_cfg.os,
+            used_crates: sess.cstore.get_used_crates(cstore::RequireDynamic),
+            out_filename: out_filename.clone(),
+            get_install_prefix_lib_path: get_install_prefix_lib_path,
+            realpath: ::util::fs::realpath
+        };
+        cmd.args(rpath::get_rpath_flags(rpath_config).as_slice());
     }
 
     // compiler-rt contains implementations of low-level LLVM helpers. This is
