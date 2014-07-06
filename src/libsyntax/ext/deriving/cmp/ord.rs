@@ -35,7 +35,7 @@ pub fn expand_deriving_ord(cx: &mut ExtCtxt,
                 args: vec!(borrowed_self()),
                 ret_ty: Literal(Path::new(vec!("bool"))),
                 attributes: attrs,
-                on_nonmatching: NonMatchesExplode,
+                on_nonmatching: NonMatchesCollapseWithTags,
                 combine_substructure: combine_substructure(|cx, span, substr| {
                     cs_op($op, $equal, cx, span, substr)
                 })
@@ -59,7 +59,7 @@ pub fn expand_deriving_ord(cx: &mut ExtCtxt,
         args: vec![borrowed_self()],
         ret_ty: ret_ty,
         attributes: attrs,
-        on_nonmatching: NonMatchesExplode,
+        on_nonmatching: NonMatchesCollapseWithTags,
         combine_substructure: combine_substructure(|cx, span, substr| {
             cs_partial_cmp(cx, span, substr)
         })
@@ -94,6 +94,24 @@ pub fn some_ordering_const(cx: &mut ExtCtxt, span: Span, cnst: Ordering) -> Gc<a
                                        cx.ident_of(cnst)));
     let ordering = cx.expr_path(ordering);
     cx.expr_some(span, ordering)
+}
+
+pub enum OrderingOp {
+    PartialCmpOp, LtOp, LeOp, GtOp, GeOp,
+}
+
+pub fn some_ordering_collapsed(cx: &mut ExtCtxt,
+                               span: Span,
+                               op: OrderingOp,
+                               self_arg_tags: &[ast::Ident]) -> Gc<ast::Expr> {
+    let lft = cx.expr_ident(span, self_arg_tags[0]);
+    let rgt = cx.expr_addr_of(span, cx.expr_ident(span, self_arg_tags[1]));
+    let op_str = match op {
+        PartialCmpOp => "partial_cmp",
+        LtOp => "lt", LeOp => "le",
+        GtOp => "gt", GeOp => "ge",
+    };
+    cx.expr_method_call(span, lft, cx.ident_of(op_str), vec![rgt])
 }
 
 pub fn cs_partial_cmp(cx: &mut ExtCtxt, span: Span,
@@ -147,7 +165,14 @@ pub fn cs_partial_cmp(cx: &mut ExtCtxt, span: Span,
                 // later one.
                 [(self_var, _, _), (other_var, _, _)] =>
                      some_ordering_const(cx, span, self_var.cmp(&other_var)),
-                _ => cx.span_bug(span, "not exactly 2 arguments in `deriving(Ord)`")
+                _ => cx.span_bug(span, "not exactly 2 arguments in `deriving(Ord)`"),
+            }
+        },
+        |cx, span, (self_args, tag_tuple), _non_self_args| {
+            if self_args.len() != 2 {
+                cx.span_bug(span, "not exactly 2 arguments in `deriving(Ord)`")
+            } else {
+                some_ordering_collapsed(cx, span, PartialCmpOp, tag_tuple)
             }
         },
         cx, span, substr)
@@ -204,6 +229,17 @@ fn cs_op(less: bool, equal: bool, cx: &mut ExtCtxt, span: Span,
                                      self_var > other_var
                                  }),
                 _ => cx.span_bug(span, "not exactly 2 arguments in `deriving(Ord)`")
+            }
+        },
+        |cx, span, (self_args, tag_tuple), _non_self_args| {
+            if self_args.len() != 2 {
+                cx.span_bug(span, "not exactly 2 arguments in `deriving(Ord)`")
+            } else {
+                let op = match (less, equal) {
+                    (true,  true) => LeOp, (true,  false) => LtOp,
+                    (false, true) => GeOp, (false, false) => GtOp,
+                };
+                some_ordering_collapsed(cx, span, op, tag_tuple)
             }
         },
         cx, span, substr)
