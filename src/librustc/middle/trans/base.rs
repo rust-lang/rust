@@ -1112,8 +1112,7 @@ pub fn make_return_pointer(fcx: &FunctionContext, output_type: ty::t)
             llvm::LLVMGetParam(fcx.llfn, 0)
         } else {
             let lloutputtype = type_of::type_of(fcx.ccx, output_type);
-            let bcx = fcx.entry_bcx.borrow().clone().unwrap();
-            Alloca(bcx, lloutputtype, "__make_return_pointer")
+            AllocaFcx(fcx, lloutputtype, "__make_return_pointer")
         }
     }
 }
@@ -1154,7 +1153,6 @@ pub fn new_fn_ctxt<'a>(ccx: &'a CrateContext,
           llfn: llfndecl,
           llenv: None,
           llretptr: Cell::new(None),
-          entry_bcx: RefCell::new(None),
           alloca_insert_pt: Cell::new(None),
           llreturn: Cell::new(None),
           personality: Cell::new(None),
@@ -1184,10 +1182,8 @@ pub fn new_fn_ctxt<'a>(ccx: &'a CrateContext,
 /// and allocating space for the return pointer.
 pub fn init_function<'a>(fcx: &'a FunctionContext<'a>,
                          skip_retptr: bool,
-                         output_type: ty::t) {
+                         output_type: ty::t) -> &'a Block<'a> {
     let entry_bcx = fcx.new_temp_block("entry-block");
-
-    *fcx.entry_bcx.borrow_mut() = Some(entry_bcx);
 
     // Use a dummy instruction as the insertion point for all allocas.
     // This is later removed in FunctionContext::cleanup.
@@ -1210,6 +1206,8 @@ pub fn init_function<'a>(fcx: &'a FunctionContext<'a>,
             fcx.llretptr.set(Some(make_return_pointer(fcx, substd_output_type)));
         }
     }
+
+    entry_bcx
 }
 
 // NB: must keep 4 fns in sync:
@@ -1364,15 +1362,11 @@ pub fn trans_closure(ccx: &CrateContext,
                           param_substs,
                           Some(body.span),
                           &arena);
-    init_function(&fcx, false, output_type);
+    let mut bcx = init_function(&fcx, false, output_type);
 
     // cleanup scope for the incoming arguments
     let arg_scope = fcx.push_custom_cleanup_scope();
 
-    // Create the first basic block in the function and keep a handle on it to
-    //  pass to finish_fn later.
-    let bcx_top = fcx.entry_bcx.borrow().clone().unwrap();
-    let mut bcx = bcx_top;
     let block_ty = node_id_type(bcx, body.id);
 
     // Set up arguments to the function.
@@ -1499,13 +1493,11 @@ fn trans_enum_variant_or_tuple_like_struct(ccx: &CrateContext,
     let arena = TypedArena::new();
     let fcx = new_fn_ctxt(ccx, llfndecl, ctor_id, false, result_ty,
                           param_substs, None, &arena);
-    init_function(&fcx, false, result_ty);
+    let bcx = init_function(&fcx, false, result_ty);
 
     let arg_tys = ty::ty_fn_args(ctor_ty);
 
     let arg_datums = create_datums_for_fn_args(&fcx, arg_tys.as_slice());
-
-    let bcx = fcx.entry_bcx.borrow().clone().unwrap();
 
     if !type_is_zero_size(fcx.ccx, result_ty) {
         let repr = adt::represent_type(ccx, result_ty);
