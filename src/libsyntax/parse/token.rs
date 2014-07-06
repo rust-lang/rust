@@ -405,6 +405,11 @@ macro_rules! declare_special_idents_and_keywords {(
         $( pub static $si_static: Ident = Ident { name: $si_name, ctxt: 0 }; )*
     }
 
+    pub mod special_names {
+        use ast::Name;
+        $( pub static $si_static: Name =  $si_name; )*
+    }
+
     /**
      * All the valid words that have meaning in the Rust language.
      *

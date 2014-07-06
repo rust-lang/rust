@@ -25,6 +25,7 @@ use syntax::ast;
 use syntax::ast_util::{local_def};
 use syntax::ast_util::{walk_pat, trait_method_to_ty_method};
 use syntax::ext::mtwt;
+use syntax::parse::token::special_names;
 use syntax::parse::token::special_idents;
 use syntax::parse::token;
 use syntax::codemap::{Span, DUMMY_SP, Pos};
@@ -830,9 +831,9 @@ struct Resolver<'a> {
     current_self_type: Option<Ty>,
 
     // The ident for the keyword "self".
-    self_ident: Ident,
+    self_name: Name,
     // The ident for the non-keyword "Self".
-    type_self_ident: Ident,
+    type_self_name: Name,
 
     // The idents for the primitive types.
     primitive_type_table: PrimitiveTypeTable,
@@ -926,8 +927,8 @@ impl<'a> Resolver<'a> {
             current_trait_ref: None,
             current_self_type: None,
 
-            self_ident: special_idents::self_,
-            type_self_ident: special_idents::type_self,
+            self_name: special_names::self_,
+            type_self_name: special_names::type_self,
 
             primitive_type_table: PrimitiveTypeTable::new(),
 
@@ -3628,8 +3629,8 @@ impl<'a> Resolver<'a> {
                 // Create a new rib for the self type.
                 let self_type_rib = Rib::new(ItemRibKind);
 
-                // plain insert (no renaming)
-                let name = self.type_self_ident.name;
+                // plain insert (no renaming, types are not currently hygienic....)
+                let name = self.type_self_name;
                 self_type_rib.bindings.borrow_mut()
                              .insert(name, DlDef(DefSelfTy(item.id)));
                 self.type_ribs.borrow_mut().push(self_type_rib);
@@ -5159,8 +5160,8 @@ impl<'a> Resolver<'a> {
                                     false // Stop advancing
                                 });
 
-                                if method_scope && token::get_name(self.self_ident.name).get()
-                                                                        == wrong_name.as_slice() {
+                                if method_scope && token::get_name(self.self_name).get()
+                                                                   == wrong_name.as_slice() {
                                         self.resolve_error(
                                             expr.span,
                                             "`self` is not available \
@@ -5532,6 +5533,7 @@ impl<'a> Resolver<'a> {
                     collect_mod(idents, &*module.upgrade().unwrap());
                 }
                 BlockParentLink(ref module, _) => {
+                    // danger, shouldn't be ident?
                     idents.push(special_idents::opaque);
                     collect_mod(idents, &*module.upgrade().unwrap());
                 }
