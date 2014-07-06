@@ -15,6 +15,7 @@ use Integer;
 use std::cmp;
 use std::fmt;
 use std::from_str::FromStr;
+use std::num;
 use std::num::{Zero, One, ToStrRadix, FromStrRadix};
 use bigint::{BigInt, BigUint, Sign, Plus, Minus};
 
@@ -273,6 +274,36 @@ impl<T: Clone + Integer + PartialOrd>
 impl<T: Clone + Integer + PartialOrd>
     Num for Ratio<T> {}
 
+impl<T: Clone + Integer + PartialOrd>
+    num::Signed for Ratio<T> {
+    #[inline]
+    fn abs(&self) -> Ratio<T> {
+        if self.is_negative() { -self.clone() } else { self.clone() }
+    }
+
+    #[inline]
+    fn abs_sub(&self, other: &Ratio<T>) -> Ratio<T> {
+        if *self <= *other { Zero::zero() } else { *self - *other }
+    }
+
+    #[inline]
+    fn signum(&self) -> Ratio<T> {
+        if *self > Zero::zero() {
+            num::one()
+        } else if self.is_zero() {
+            num::zero()
+        } else {
+            - num::one::<Ratio<T>>()
+        }
+    }
+
+    #[inline]
+    fn is_positive(&self) -> bool { *self > Zero::zero() }
+
+    #[inline]
+    fn is_negative(&self) -> bool { *self < Zero::zero() }
+}
+
 /* String conversions */
 impl<T: fmt::Show + Eq + One> fmt::Show for Ratio<T> {
     /// Renders as `numer/denom`. If denom=1, renders as numer.
@@ -338,6 +369,7 @@ mod test {
     use super::{Ratio, Rational, BigRational};
     use std::num::{Zero, One, FromStrRadix, FromPrimitive, ToStrRadix};
     use std::from_str::FromStr;
+    use std::num;
 
     pub static _0 : Rational = Ratio { numer: 0, denom: 1};
     pub static _1 : Rational = Ratio { numer: 1, denom: 1};
@@ -671,5 +703,17 @@ mod test {
         assert_eq!(Ratio::from_float(f64::NAN), None);
         assert_eq!(Ratio::from_float(f64::INFINITY), None);
         assert_eq!(Ratio::from_float(f64::NEG_INFINITY), None);
+    }
+
+    #[test]
+    fn test_signed() {
+        assert_eq!(_neg1_2.abs(), _1_2);
+        assert_eq!(_3_2.abs_sub(&_1_2), _1);
+        assert_eq!(_1_2.abs_sub(&_3_2), Zero::zero());
+        assert_eq!(_1_2.signum(), One::one());
+        assert_eq!(_neg1_2.signum(), - num::one::<Ratio<int>>());
+        assert!(_neg1_2.is_negative());
+        assert!(! _neg1_2.is_positive());
+        assert!(! _1_2.is_negative());
     }
 }
