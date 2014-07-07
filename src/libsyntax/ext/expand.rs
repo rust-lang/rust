@@ -484,6 +484,24 @@ fn expand_item_mac(it: Gc<ast::Item>, fld: &mut MacroExpander)
             let marked_tts = mark_tts(tts.as_slice(), fm);
             expander.expand(fld.cx, it.span, it.ident, marked_tts)
         }
+        Some(&LetSyntaxTT(ref expander, span)) => {
+            if it.ident.name == parse::token::special_idents::invalid.name {
+                fld.cx.span_err(pth.span,
+                                format!("macro {}! expects an ident argument",
+                                        extnamestr.get()).as_slice());
+                return SmallVector::zero();
+            }
+            fld.cx.bt_push(ExpnInfo {
+                call_site: it.span,
+                callee: NameAndSpan {
+                    name: extnamestr.get().to_string(),
+                    format: MacroBang,
+                    span: span
+                }
+            });
+            // DON'T mark before expansion:
+            expander.expand(fld.cx, it.span, it.ident, tts)
+        }
         _ => {
             fld.cx.span_err(it.span,
                             format!("{}! is not legal in item position",
