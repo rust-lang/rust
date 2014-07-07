@@ -197,14 +197,8 @@ impl<T: Clone> Vec<T> {
     /// ```
     #[inline]
     pub fn from_slice(values: &[T]) -> Vec<T> {
-        let mut vector = Vec::with_capacity(values.len());
-
-        // Directly call `unsafe_push_all_clone` so we can skip a call to
-        // `reserve_addtional`.
-        unsafe {
-            unsafe_push_all_clone(&mut vector, values);
-        }
-
+        let mut vector = Vec::new();
+        vector.push_all(values);
         vector
     }
 
@@ -248,8 +242,18 @@ impl<T: Clone> Vec<T> {
     pub fn push_all(&mut self, other: &[T]) {
         self.reserve_additional(other.len());
 
-        unsafe {
-            unsafe_push_all_clone(self, other)
+        for i in range(0, other.len()) {
+            let len = self.len();
+
+            // Unsafe code so this can be optimised to a memcpy (or something similarly
+            // fast) when T is Copy. LLVM is easily confused, so any extra operations
+            // during the loop can prevent this optimisation.
+            unsafe {
+                ptr::write(
+                    self.as_mut_slice().unsafe_mut_ref(len),
+                    other.unsafe_ref(i).clone());
+                self.set_len(len + 1);
+            }
         }
     }
 
@@ -1547,25 +1551,6 @@ pub mod raw {
         dst.set_len(elts);
         ptr::copy_nonoverlapping_memory(dst.as_mut_ptr(), ptr, elts);
         dst
-    }
-}
-
-// Unsafe code so this can be optimised to a memcpy (or something similarly
-// fast) when T is Copy. LLVM is easily confused, so any extra operations
-// during the loop can prevent this optimisation.
-//
-// WARNING: You must preallocate space on the vector before you call this
-// method.
-#[inline(always)]
-unsafe fn unsafe_push_all_clone<T: Clone>(dst: &mut Vec<T>, src: &[T]) {
-    let mut dst_len = dst.len();
-
-    for i in range(0, src.len()) {
-        ptr::write(
-            dst.as_mut_slice().unsafe_mut_ref(dst_len),
-            src.unsafe_ref(i).clone());
-        dst_len += 1;
-        dst.set_len(dst_len);
     }
 }
 
