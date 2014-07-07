@@ -30,8 +30,8 @@ use middle::ty_fold::TypeFolder;
 use middle::typeck::check::regionmanip::replace_late_bound_regions_in_fn_sig;
 use middle::typeck::infer::coercion::Coerce;
 use middle::typeck::infer::combine::{Combine, CombineFields, eq_tys};
-use middle::typeck::infer::region_inference::{RegionVarBindings,
-                                              RegionSnapshot};
+use middle::typeck::infer::region_inference::{RegionSnapshot};
+use middle::typeck::infer::region_inference::{RegionVarBindings};
 use middle::typeck::infer::resolve::{resolver};
 use middle::typeck::infer::sub::Sub;
 use middle::typeck::infer::lub::Lub;

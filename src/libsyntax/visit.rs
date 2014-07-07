@@ -215,7 +215,7 @@ pub fn walk_explicit_self<E: Clone, V: Visitor<E>>(visitor: &mut V,
         SelfRegion(ref lifetime, _, _) => {
             visitor.visit_opt_lifetime_ref(explicit_self.span, lifetime, env)
         }
-        SelfExplicit(ref typ, _) => visitor.visit_ty(*typ, env.clone()),
+        SelfExplicit(ref typ, _) => visitor.visit_ty(&**typ, env.clone()),
     }
 }
 
@@ -565,8 +565,8 @@ pub fn walk_method_helper<E: Clone, V: Visitor<E>>(visitor: &mut V,
         MethDecl(ident, ref generics, _, _, decl, body, _) => {
             visitor.visit_ident(method.span, ident, env.clone());
             visitor.visit_fn(&FkMethod(ident, generics, method),
-                             decl,
-                             body,
+                             &*decl,
+                             &*body,
                              method.span,
                              method.id,
                              env.clone());

@@ -20,6 +20,6 @@ fn x_coord<'r>(p: &'r Point) -> &'r int {
 
 pub fn main() {
     let p = box(GC) Point {x: 3, y: 4};
-    let xc = x_coord(p);
+    let xc = x_coord(&*p);
     assert_eq!(*xc, 3);
 }

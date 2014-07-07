@@ -799,7 +799,7 @@ fn print_flowgraph<W:io::Writer>(variants: Vec<borrowck_dot::Variant>,
     let ty_cx = &analysis.ty_cx;
     let cfg = match code {
         blocks::BlockCode(block) => cfg::CFG::new(ty_cx, &*block),
-        blocks::FnLikeCode(fn_like) => cfg::CFG::new(ty_cx, fn_like.body()),
+        blocks::FnLikeCode(fn_like) => cfg::CFG::new(ty_cx, &*fn_like.body()),
     };
     debug!("cfg: {:?}", cfg);
 

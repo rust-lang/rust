@@ -502,7 +502,9 @@ impl<'a> Parser<'a> {
                        inedible: &[token::Token]) {
         debug!("commit_stmt {:?}", s);
         let _s = s; // unused, but future checks might want to inspect `s`.
-        if self.last_token.as_ref().map_or(false, |t| is_ident_or_path(*t)) {
+        if self.last_token
+               .as_ref()
+               .map_or(false, |t| is_ident_or_path(&**t)) {
             let expected = edible.iter().map(|x| (*x).clone()).collect::<Vec<_>>()
                            .append(inedible.as_slice());
             self.check_for_erroneous_unit_struct_expecting(

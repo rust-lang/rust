@@ -79,7 +79,7 @@ pub fn get_dbpath_for_term(term: &str) -> Option<Box<Path>> {
 pub fn open(term: &str) -> Result<File, String> {
     match get_dbpath_for_term(term) {
         Some(x) => {
-            match File::open(x) {
+            match File::open(&*x) {
                 Ok(file) => Ok(file),
                 Err(e) => Err(format!("error opening file: {}", e)),
             }

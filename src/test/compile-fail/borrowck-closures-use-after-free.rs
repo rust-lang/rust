@@ -28,5 +28,5 @@ fn main() {
   let test = |foo: &Foo| {
     ptr = box Foo { x: ptr.x + 1 };
   };
-  test(ptr); //~ ERROR cannot borrow `*ptr`
+  test(&*ptr); //~ ERROR cannot borrow `*ptr`
 }

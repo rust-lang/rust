@@ -1,3 +1,5 @@
+// ignore-test
+
 // Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
@@ -17,6 +19,6 @@ struct Foo<'a> {
 }
 
 pub fn main() {
-    let f = Foo { x: box(GC) 3 }; //~ ERROR borrowed value does not live long enough
+    let f = Foo { x: &*(box(GC) 3) }; //~ ERROR borrowed value does not live long enough
     assert_eq!(*f.x, 3);
 }

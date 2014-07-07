@@ -120,46 +120,46 @@ use std::gc::{Gc, GC};
 
 fn main() {
     let bool_box: Gc<bool> = box(GC) true;
-    let bool_ref: &bool = bool_box;
+    let bool_ref: &bool = &*bool_box;
 
     let int_box: Gc<int> = box(GC) -1;
-    let int_ref: &int = int_box;
+    let int_ref: &int = &*int_box;
 
     let char_box: Gc<char> = box(GC) 'a';
-    let char_ref: &char = char_box;
+    let char_ref: &char = &*char_box;
 
     let i8_box: Gc<i8> = box(GC) 68;
-    let i8_ref: &i8 = i8_box;
+    let i8_ref: &i8 = &*i8_box;
 
     let i16_box: Gc<i16> = box(GC) -16;
-    let i16_ref: &i16 = i16_box;
+    let i16_ref: &i16 = &*i16_box;
 
     let i32_box: Gc<i32> = box(GC) -32;
-    let i32_ref: &i32 = i32_box;
+    let i32_ref: &i32 = &*i32_box;
 
     let i64_box: Gc<i64> = box(GC) -64;
-    let i64_ref: &i64 = i64_box;
+    let i64_ref: &i64 = &*i64_box;
 
     let uint_box: Gc<uint> = box(GC) 1;
-    let uint_ref: &uint = uint_box;
+    let uint_ref: &uint = &*uint_box;
 
     let u8_box: Gc<u8> = box(GC) 100;
-    let u8_ref: &u8 = u8_box;
+    let u8_ref: &u8 = &*u8_box;
 
     let u16_box: Gc<u16> = box(GC) 16;
-    let u16_ref: &u16 = u16_box;
+    let u16_ref: &u16 = &*u16_box;
 
     let u32_box: Gc<u32> = box(GC) 32;
-    let u32_ref: &u32 = u32_box;
+    let u32_ref: &u32 = &*u32_box;
 
     let u64_box: Gc<u64> = box(GC) 64;
-    let u64_ref: &u64 = u64_box;
+    let u64_ref: &u64 = &*u64_box;
 
     let f32_box: Gc<f32> = box(GC) 2.5;
-    let f32_ref: &f32 = f32_box;
+    let f32_ref: &f32 = &*f32_box;
 
     let f64_box: Gc<f64> = box(GC) 3.5;
-    let f64_ref: &f64 = f64_box;
+    let f64_ref: &f64 = &*f64_box;
 
     zzz(); // #break
 }

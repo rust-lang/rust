@@ -3243,7 +3243,7 @@ enum List { Nil, Cons(uint, Box<List>) }
 fn is_sorted(list: &List) -> bool {
     match *list {
         Nil | Cons(_, box Nil) => true,
-        Cons(x, ref r @ box Cons(y, _)) => (x <= y) && is_sorted(*r)
+        Cons(x, ref r @ box Cons(y, _)) => (x <= y) && is_sorted(&**r)
     }
 }
 
