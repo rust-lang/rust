@@ -55,6 +55,7 @@ pub mod back {
     pub use rustc_back::arm;
     pub use rustc_back::mips;
     pub use rustc_back::mipsel;
+    pub use rustc_back::rpath;
     pub use rustc_back::svh;
     pub use rustc_back::target_strs;
     pub use rustc_back::x86;
@@ -63,7 +64,6 @@ pub mod back {
     pub mod archive;
     pub mod link;
     pub mod lto;
-    pub mod rpath;
 
 }
 >>>>>>> Extract librustc_back from librustc

@@ -33,6 +33,7 @@ pub mod abi;
 pub mod arm;
 pub mod mips;
 pub mod mipsel;
+pub mod rpath;
 pub mod svh;
 pub mod target_strs;
 pub mod x86;
