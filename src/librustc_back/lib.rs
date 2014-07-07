@@ -8,10 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Some stuff used by rustc that doesn't have many dependencies
+//!
+//! Originally extracted from rustc::back, which was nominally the
+//! compiler 'backend', though LLVM is rustc's backend, so rustc_back
+//! is really just odds-and-ends relating to code gen and linking.
+//! This crate mostly exists to make rustc smaller, so we might put
+//! more 'stuff' here in the future.  It does not have a dependency on
+//! rustc_llvm.
+//!
+//! FIXME: Split this into two crates: one that has deps on syntax, and
+//! one that doesn't; the one that doesn't might get decent parallel
+//! build speedups.
+
 #![crate_id = "rustc_back#0.11.0-pre"]
 #![crate_name = "rustc_back"]
 #![experimental]
-#![comment = "The Rust compiler backend"]
+#![comment = "The Rust compiler minimal-dependency dumping-ground"]
 #![license = "MIT/ASL2"]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
