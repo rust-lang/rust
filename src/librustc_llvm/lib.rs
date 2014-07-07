@@ -351,10 +351,6 @@ pub mod llvm {
     use libc::{c_char, c_int, c_longlong, c_ushort, c_uint, c_ulonglong,
                size_t, uint64_t};
 
-    pub unsafe fn LLVMInitializeX86AsmPrinter() {
-        LLVMInitializeX86AsmPrinter_()
-    }
-
     // Link to our native llvm bindings (things that we need to use the C++ api
     // for) and because llvm is written in C++ we need to link against libstdc++
     //
@@ -1764,8 +1760,7 @@ pub mod llvm {
         pub fn LLVMInitializeX86TargetInfo();
         pub fn LLVMInitializeX86Target();
         pub fn LLVMInitializeX86TargetMC();
-        #[link_name = "LLVMInitializeX86AsmPrinter"]
-        pub fn LLVMInitializeX86AsmPrinter_();
+        pub fn LLVMInitializeX86AsmPrinter();
         pub fn LLVMInitializeX86AsmParser();
         pub fn LLVMInitializeARMTargetInfo();
         pub fn LLVMInitializeARMTarget();
