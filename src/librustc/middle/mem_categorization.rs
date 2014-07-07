@@ -443,10 +443,6 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
           }
 
           ast::ExprIndex(ref base, _) => {
-            if self.typer.is_method_call(expr.id) {
-                return Ok(self.cat_rvalue_node(expr.id(), expr.span(), expr_ty));
-            }
-
             let base_cmt = if_ok!(self.cat_expr(&**base));
             Ok(self.cat_index(expr, base_cmt, 0))
           }
@@ -759,7 +755,7 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
 
     pub fn cat_index<N:ast_node>(&self,
                                  elt: &N,
-                                 base_cmt: cmt,
+                                 mut base_cmt: cmt,
                                  derefs: uint)
                                  -> cmt {
         //! Creates a cmt for an indexing operation (`[]`); this
@@ -793,14 +789,26 @@ impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
         //! - `derefs`: the deref number to be used for
         //!   the implicit index deref, if any (see above)
 
-        let element_ty = match ty::array_element_ty(base_cmt.ty) {
-          Some(ref mt) => mt.ty,
-          None => {
-            self.tcx().sess.span_bug(
-                elt.span(),
-                format!("Explicit index of non-index type `{}`",
-                        base_cmt.ty.repr(self.tcx())).as_slice());
-          }
+        let method_call = typeck::MethodCall::expr(elt.id());
+        let method_ty = self.typer.node_method_ty(method_call);
+
+        let element_ty = match method_ty {
+            Some(method_ty) => {
+                let ref_ty = ty::ty_fn_ret(method_ty);
+                base_cmt = self.cat_rvalue_node(elt.id(), elt.span(), ref_ty);
+                *ty::ty_fn_args(method_ty).get(0)
+            }
+            None => {
+                match ty::array_element_ty(base_cmt.ty) {
+                    Some(ref mt) => mt.ty,
+                    None => {
+                        self.tcx().sess.span_bug(
+                            elt.span(),
+                            format!("Explicit index of non-index type `{}`",
+                                    base_cmt.ty.repr(self.tcx())).as_slice());
+                    }
+                }
+            }
         };
 
         return match deref_kind(self.tcx(), base_cmt.ty) {
