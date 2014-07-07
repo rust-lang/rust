@@ -126,10 +126,10 @@ pub mod lint;
 
 pub mod util {
     pub use rustc_back::fs;
+    pub use rustc_back::sha2;
 
     pub mod common;
     pub mod ppaux;
-    pub mod sha2;
     pub mod nodemap;
 }
 
