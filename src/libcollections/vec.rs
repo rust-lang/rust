@@ -198,7 +198,13 @@ impl<T: Clone> Vec<T> {
     #[inline]
     pub fn from_slice(values: &[T]) -> Vec<T> {
         let mut vector = Vec::with_capacity(values.len());
-        vector.push_all(values);
+
+        // Directly call `unsafe_push_all_clone` so we can skip a call to
+        // `reserve_addtional`.
+        unsafe {
+            unsafe_push_all_clone(&mut vector, values);
+        }
+
         vector
     }
 
@@ -240,8 +246,9 @@ impl<T: Clone> Vec<T> {
     /// ```
     #[inline]
     pub fn push_all(&mut self, other: &[T]) {
+        self.reserve_additional(other.len());
+
         unsafe {
-            self.reserve_additional(other.len());
             unsafe_push_all_clone(self, other)
         }
     }
@@ -323,31 +330,24 @@ impl<T: Clone> Vec<T> {
 #[unstable]
 impl<T:Clone> Clone for Vec<T> {
     fn clone(&self) -> Vec<T> {
-        unsafe {
-            let mut vector = Vec::with_capacity(self.len);
-            unsafe_push_all_clone(&mut vector, self.as_slice());
-            vector
-        }
+        Vec::from_slice(self.as_slice())
     }
 
     fn clone_from(&mut self, other: &Vec<T>) {
-        unsafe {
-            // drop anything in self that will not be overwritten
-            if self.len() > other.len() {
-                self.truncate(other.len())
-            }
-
-            // reuse the contained values' allocations/resources.
-            for (place, thing) in self.mut_iter().zip(other.iter()) {
-                place.clone_from(thing)
-            }
-
-            // self.len <= other.len due to the truncate above, so the
-            // slice here is always in-bounds.
-            let slice = other.slice_from(self.len());
-            self.reserve_additional(slice.len());
-            unsafe_push_all_clone(self, slice)
+        // drop anything in self that will not be overwritten
+        if self.len() > other.len() {
+            self.truncate(other.len())
         }
+
+        // reuse the contained values' allocations/resources.
+        for (place, thing) in self.mut_iter().zip(other.iter()) {
+            place.clone_from(thing)
+        }
+
+        // self.len <= other.len due to the truncate above, so the
+        // slice here is always in-bounds.
+        let slice = other.slice_from(self.len());
+        self.push_all(slice);
     }
 }
 
