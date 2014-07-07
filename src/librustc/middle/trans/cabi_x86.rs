@@ -59,7 +59,7 @@ pub fn compute_abi_info(ccx: &CrateContext,
             }
         }
     } else {
-        let attr = if rty == Type::bool(ccx) { Some(ZExtAttribute) } else { None };
+        let attr = if rty == Type::i1(ccx) { Some(ZExtAttribute) } else { None };
         ret_ty = ArgType::direct(rty, None, None, attr);
     }
 
@@ -74,7 +74,7 @@ pub fn compute_abi_info(ccx: &CrateContext,
                 }
             }
             _ => {
-                let attr = if t == Type::bool(ccx) { Some(ZExtAttribute) } else { None };
+                let attr = if t == Type::i1(ccx) { Some(ZExtAttribute) } else { None };
                 ArgType::direct(t, None, None, attr)
             }
         };

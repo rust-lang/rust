@@ -505,7 +505,7 @@ fn trans_index<'a>(bcx: &'a Block<'a>,
 
     let bounds_check = ICmp(bcx, lib::llvm::IntUGE, ix_val, len);
     let expect = ccx.get_intrinsic(&("llvm.expect.i1"));
-    let expected = Call(bcx, expect, [bounds_check, C_i1(ccx, false)], []);
+    let expected = Call(bcx, expect, [bounds_check, C_bool(ccx, false)], []);
     let bcx = with_cond(bcx, expected, |bcx| {
             controlflow::trans_fail_bounds_check(bcx, index_expr.span, ix_val, len)
         });
@@ -1149,13 +1149,7 @@ fn trans_unary<'a>(bcx: &'a Block<'a>,
     match op {
         ast::UnNot => {
             let datum = unpack_datum!(bcx, trans(bcx, sub_expr));
-            let llresult = if ty::type_is_bool(un_ty) {
-                let val = datum.to_llscalarish(bcx);
-                Xor(bcx, val, C_bool(ccx, true))
-            } else {
-                // Note: `Not` is bitwise, not suitable for logical not.
-                Not(bcx, datum.to_llscalarish(bcx))
-            };
+            let llresult = Not(bcx, datum.to_llscalarish(bcx));
             immediate_rvalue_bcx(bcx, llresult, un_ty).to_expr_datumblock()
         }
         ast::UnNeg => {
@@ -1380,7 +1374,7 @@ fn trans_lazy_binop<'a>(
     }
 
     Br(past_rhs, join.llbb);
-    let phi = Phi(join, Type::bool(bcx.ccx()), [lhs, rhs],
+    let phi = Phi(join, Type::i1(bcx.ccx()), [lhs, rhs],
                   [past_lhs.llbb, past_rhs.llbb]);
 
     return immediate_rvalue_bcx(join, phi, binop_ty).to_expr_datumblock();
@@ -1597,8 +1591,8 @@ fn trans_imm_cast<'a>(bcx: &'a Block<'a>,
     let k_in = cast_type_kind(t_in);
     let k_out = cast_type_kind(t_out);
     let s_in = k_in == cast_integral && ty::type_is_signed(t_in);
-    let ll_t_in = type_of::type_of(ccx, t_in);
-    let ll_t_out = type_of::type_of(ccx, t_out);
+    let ll_t_in = type_of::arg_type_of(ccx, t_in);
+    let ll_t_out = type_of::arg_type_of(ccx, t_out);
 
     // Convert the value to be cast into a ValueRef, either by-ref or
     // by-value as appropriate given its type:
@@ -1689,7 +1683,7 @@ fn trans_assign_op<'a>(
     let dst_datum = unpack_datum!(bcx, trans_to_lvalue(bcx, dst, "assign_op"));
     assert!(!ty::type_needs_drop(bcx.tcx(), dst_datum.ty));
     let dst_ty = dst_datum.ty;
-    let dst = Load(bcx, dst_datum.val);
+    let dst = load_ty(bcx, dst_datum.val, dst_datum.ty);
 
     // Evaluate RHS
     let rhs_datum = unpack_datum!(bcx, trans(bcx, &*src));

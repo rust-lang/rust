@@ -330,7 +330,7 @@ impl<'a, 'b> Reflector<'a, 'b> {
                     Some(llreturn) => Br(bcx, llreturn),
                     None => {}
                 };
-                finish_fn(&fcx, bcx);
+                finish_fn(&fcx, bcx, ty::mk_u64());
                 llfdecl
             };
 
