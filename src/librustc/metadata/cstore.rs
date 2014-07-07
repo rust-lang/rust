@@ -196,7 +196,7 @@ impl CStore {
     }
 
     pub fn add_used_link_args(&self, args: &str) {
-        for s in args.split(' ') {
+        for s in args.split(' ').filter(|s| !s.is_empty()) {
             self.used_link_args.borrow_mut().push(s.to_string());
         }
     }
