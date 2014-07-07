@@ -125,11 +125,12 @@ pub mod plugin;
 pub mod lint;
 
 pub mod util {
+    pub use rustc_back::fs;
+
     pub mod common;
     pub mod ppaux;
     pub mod sha2;
     pub mod nodemap;
-    pub mod fs;
 }
 
 pub mod lib {
