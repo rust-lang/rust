@@ -31,7 +31,7 @@ pub fn return_uses_outptr(ccx: &CrateContext, ty: ty::t) -> bool {
 }
 
 pub fn type_of_explicit_arg(ccx: &CrateContext, arg_ty: ty::t) -> Type {
-    let llty = type_of(ccx, arg_ty);
+    let llty = arg_type_of(ccx, arg_ty);
     if arg_is_indirect(ccx, arg_ty) {
         llty.ptr_to()
     } else {
@@ -46,7 +46,7 @@ pub fn type_of_rust_fn(cx: &CrateContext, has_env: bool,
     // Arg 0: Output pointer.
     // (if the output type is non-immediate)
     let use_out_pointer = return_uses_outptr(cx, output);
-    let lloutputtype = type_of(cx, output);
+    let lloutputtype = arg_type_of(cx, output);
     if use_out_pointer {
         atys.push(lloutputtype.ptr_to());
     }
@@ -165,6 +165,14 @@ pub fn sizing_type_of(cx: &CrateContext, t: ty::t) -> Type {
 
     cx.llsizingtypes.borrow_mut().insert(t, llsizingty);
     llsizingty
+}
+
+pub fn arg_type_of(cx: &CrateContext, t: ty::t) -> Type {
+    if ty::type_is_bool(t) {
+        Type::i1(cx)
+    } else {
+        type_of(cx, t)
+    }
 }
 
 // NB: If you update this, be sure to update `sizing_type_of()` as well.

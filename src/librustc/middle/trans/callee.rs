@@ -345,7 +345,7 @@ pub fn trans_unboxing_shim(bcx: &Block,
                            }).bcx;
 
     bcx = fcx.pop_and_trans_custom_cleanup_scope(bcx, arg_scope);
-    finish_fn(&fcx, bcx);
+    finish_fn(&fcx, bcx, return_type);
 
     llfn
 }
@@ -757,7 +757,7 @@ pub fn trans_call_inner<'a>(
                 if !type_of::return_uses_outptr(bcx.ccx(), ret_ty) &&
                     !type_is_zero_size(bcx.ccx(), ret_ty)
                 {
-                    Store(bcx, llret, llretslot);
+                    store_ty(bcx, llret, llretslot, ret_ty)
                 }
             }
             None => {}

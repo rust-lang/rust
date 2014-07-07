@@ -234,7 +234,7 @@ fn trans_struct_drop_flag<'a>(bcx: &'a Block<'a>,
                               -> &'a Block<'a> {
     let repr = adt::represent_type(bcx.ccx(), t);
     let drop_flag = adt::trans_drop_flag_ptr(bcx, &*repr, v0);
-    with_cond(bcx, IsNotNull(bcx, Load(bcx, drop_flag)), |cx| {
+    with_cond(bcx, load_ty(bcx, drop_flag, ty::mk_bool()), |cx| {
         trans_struct_drop(cx, t, v0, dtor_did, class_did, substs)
     })
 }
@@ -504,7 +504,7 @@ fn make_generic_glue(ccx: &CrateContext,
 
     let llrawptr0 = unsafe { llvm::LLVMGetParam(llfn, fcx.arg_pos(0) as c_uint) };
     let bcx = helper(bcx, llrawptr0, t);
-    finish_fn(&fcx, bcx);
+    finish_fn(&fcx, bcx, ty::mk_nil());
 
     llfn
 }

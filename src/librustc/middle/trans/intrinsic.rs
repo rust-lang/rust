@@ -96,13 +96,19 @@ pub fn trans_intrinsic(ccx: &CrateContext,
         let b = get_param(bcx.fcx.llfn, first_real_arg + 1);
         let llfn = bcx.ccx().get_intrinsic(&name);
 
+        // convert `i1` to a `bool`, and write to the out parameter
         let val = Call(bcx, llfn, [a, b], []);
+        let result = ExtractValue(bcx, val, 0);
+        let overflow = ZExt(bcx, ExtractValue(bcx, val, 1), Type::bool(bcx.ccx()));
+        let ret = C_undef(type_of::type_of(bcx.ccx(), t));
+        let ret = InsertValue(bcx, ret, result, 0);
+        let ret = InsertValue(bcx, ret, overflow, 1);
 
         if type_is_immediate(bcx.ccx(), t) {
-            Ret(bcx, val);
+            Ret(bcx, ret);
         } else {
             let retptr = get_param(bcx.fcx.llfn, bcx.fcx.out_arg_pos());
-            Store(bcx, val, retptr);
+            Store(bcx, ret, retptr);
             RetVoid(bcx);
         }
     }
@@ -150,7 +156,8 @@ pub fn trans_intrinsic(ccx: &CrateContext,
         let src_ptr = PointerCast(bcx, get_param(decl, first_real_arg + 1), Type::i8p(ccx));
         let count = get_param(decl, first_real_arg + 2);
         let llfn = ccx.get_intrinsic(&name);
-        Call(bcx, llfn, [dst_ptr, src_ptr, Mul(bcx, size, count), align, C_i1(ccx, volatile)], []);
+        Call(bcx, llfn,
+             [dst_ptr, src_ptr, Mul(bcx, size, count), align, C_bool(ccx, volatile)], []);
         RetVoid(bcx);
     }
 
@@ -171,13 +178,13 @@ pub fn trans_intrinsic(ccx: &CrateContext,
         let val = get_param(decl, first_real_arg + 1);
         let count = get_param(decl, first_real_arg + 2);
         let llfn = ccx.get_intrinsic(&name);
-        Call(bcx, llfn, [dst_ptr, val, Mul(bcx, size, count), align, C_i1(ccx, volatile)], []);
+        Call(bcx, llfn, [dst_ptr, val, Mul(bcx, size, count), align, C_bool(ccx, volatile)], []);
         RetVoid(bcx);
     }
 
     fn count_zeros_intrinsic(bcx: &Block, name: &'static str) {
         let x = get_param(bcx.fcx.llfn, bcx.fcx.arg_pos(0u));
-        let y = C_i1(bcx.ccx(), false);
+        let y = C_bool(bcx.ccx(), false);
         let llfn = bcx.ccx().get_intrinsic(&name);
         let llcall = Call(bcx, llfn, [x, y], []);
         Ret(bcx, llcall);
@@ -365,7 +372,7 @@ pub fn trans_intrinsic(ccx: &CrateContext,
             let retty = *substs.substs.types.get(FnSpace, 0);
             if type_is_immediate(ccx, retty) && !return_type_is_void(ccx, retty) {
                 unsafe {
-                    Ret(bcx, lib::llvm::llvm::LLVMGetUndef(type_of(ccx, retty).to_ref()));
+                    Ret(bcx, lib::llvm::llvm::LLVMGetUndef(arg_type_of(ccx, retty).to_ref()));
                 }
             } else {
                 RetVoid(bcx)

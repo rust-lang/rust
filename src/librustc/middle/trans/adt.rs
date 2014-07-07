@@ -618,7 +618,7 @@ pub fn trans_case<'a>(bcx: &'a Block<'a>, r: &Repr, discr: Disr)
         RawNullablePointer { .. } |
         StructWrappedNullablePointer { .. } => {
             assert!(discr == 0 || discr == 1);
-            _match::single_result(Result::new(bcx, C_i1(bcx.ccx(), discr != 0)))
+            _match::single_result(Result::new(bcx, C_bool(bcx.ccx(), discr != 0)))
         }
     }
 }
@@ -641,7 +641,7 @@ pub fn trans_start_init(bcx: &Block, r: &Repr, val: ValueRef, discr: Disr) {
         }
         Univariant(ref st, true) => {
             assert_eq!(discr, 0);
-            Store(bcx, C_bool(bcx.ccx(), true),
+            Store(bcx, C_u8(bcx.ccx(), 1),
                   GEPi(bcx, val, [0, st.fields.len() - 1]))
         }
         Univariant(..) => {

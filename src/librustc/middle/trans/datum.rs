@@ -13,10 +13,8 @@
  * Datums are and how they are intended to be used.
  */
 
-use lib;
 use lib::llvm::ValueRef;
 use middle::trans::base::*;
-use middle::trans::build::*;
 use middle::trans::common::*;
 use middle::trans::cleanup;
 use middle::trans::cleanup::CleanupMethods;
@@ -344,7 +342,7 @@ impl Datum<Rvalue> {
                 match self.kind.mode {
                     ByValue => DatumBlock::new(bcx, self),
                     ByRef => {
-                        let llval = load(bcx, self.val, self.ty);
+                        let llval = load_ty(bcx, self.val, self.ty);
                         DatumBlock::new(bcx, Datum::new(llval, self.ty, Rvalue::new(ByValue)))
                     }
                 }
@@ -471,7 +469,7 @@ impl Datum<Expr> {
                         DatumBlock::new(bcx, scratch)
                     }
                     ByValue => {
-                        let v = load(bcx, l.val, l.ty);
+                        let v = load_ty(bcx, l.val, l.ty);
                         bcx = l.kind.post_store(bcx, l.val, l.ty);
                         DatumBlock::new(bcx, Datum::new(v, l.ty, Rvalue::new(ByValue)))
                     }
@@ -513,24 +511,6 @@ impl Datum<Lvalue> {
         //! Converts a vector into the slice pair.
 
         tvec::get_base_and_len(bcx, self.val, self.ty)
-    }
-}
-
-fn load<'a>(bcx: &'a Block<'a>, llptr: ValueRef, ty: ty::t) -> ValueRef {
-    /*!
-     * Private helper for loading from a by-ref datum. Handles various
-     * special cases where the type gives us better information about
-     * what we are loading.
-     */
-
-    if type_is_zero_size(bcx.ccx(), ty) {
-        C_undef(type_of::type_of(bcx.ccx(), ty))
-    } else if ty::type_is_char(ty) {
-        // a char is a unicode codepoint, and so takes values from 0
-        // to 0x10FFFF inclusive only.
-        LoadRangeAssert(bcx, llptr, 0, 0x10FFFF + 1, lib::llvm::False)
-    } else {
-        Load(bcx, llptr)
     }
 }
 
@@ -591,7 +571,7 @@ impl<K:KindOps> Datum<K> {
         if self.kind.is_by_ref() {
             memcpy_ty(bcx, dst, self.val, self.ty);
         } else {
-            Store(bcx, self.val, dst);
+            store_ty(bcx, self.val, dst, self.ty);
         }
 
         return bcx;
@@ -642,7 +622,7 @@ impl<K:KindOps> Datum<K> {
         assert!(!ty::type_needs_drop(bcx.tcx(), self.ty));
         assert!(self.appropriate_rvalue_mode(bcx.ccx()) == ByValue);
         if self.kind.is_by_ref() {
-            load(bcx, self.val, self.ty)
+            load_ty(bcx, self.val, self.ty)
         } else {
             self.val
         }
