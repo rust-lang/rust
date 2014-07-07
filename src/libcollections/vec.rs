@@ -2209,78 +2209,141 @@ mod tests {
         do_bench_clone(b, 1000)
     }
 
-    fn do_bench_clone_from(b: &mut Bencher, dst_len: uint, src_len: uint) {
+    fn do_bench_clone_from(b: &mut Bencher, times: uint, dst_len: uint, src_len: uint) {
         let dst: Vec<uint> = FromIterator::from_iter(range(0, src_len));
         let src: Vec<uint> = FromIterator::from_iter(range(dst_len, dst_len + src_len));
 
-        b.bytes = src_len as u64;
+        b.bytes = (times * src_len) as u64;
 
         b.iter(|| {
             let mut dst = dst.clone();
-            let src = src.clone();
-            dst.clone_from(&src);
-            assert_eq!(dst.len(), src_len);
-            assert!(dst.iter().enumerate().all(|(i, x)| dst_len + i == *x));
+
+            for _ in range(0, times) {
+                dst.clone_from(&src);
+
+                assert_eq!(dst.len(), src_len);
+                assert!(dst.iter().enumerate().all(|(i, x)| dst_len + i == *x));
+            }
         });
     }
 
     #[bench]
-    fn bench_clone_from_0000_0000(b: &mut Bencher) {
-        do_bench_clone_from(b, 0, 0)
+    fn bench_clone_from_01_0000_0000(b: &mut Bencher) {
+        do_bench_clone_from(b, 1, 0, 0)
     }
 
     #[bench]
-    fn bench_clone_from_0000_0010(b: &mut Bencher) {
-        do_bench_clone_from(b, 0, 10)
+    fn bench_clone_from_01_0000_0010(b: &mut Bencher) {
+        do_bench_clone_from(b, 1, 0, 10)
     }
 
     #[bench]
-    fn bench_clone_from_0000_0100(b: &mut Bencher) {
-        do_bench_clone_from(b, 0, 100)
+    fn bench_clone_from_01_0000_0100(b: &mut Bencher) {
+        do_bench_clone_from(b, 1, 0, 100)
     }
 
     #[bench]
-    fn bench_clone_from_0000_1000(b: &mut Bencher) {
-        do_bench_clone_from(b, 0, 1000)
+    fn bench_clone_from_01_0000_1000(b: &mut Bencher) {
+        do_bench_clone_from(b, 1, 0, 1000)
     }
 
     #[bench]
-    fn bench_clone_from_0010_0010(b: &mut Bencher) {
-        do_bench_clone_from(b, 10, 10)
+    fn bench_clone_from_01_0010_0010(b: &mut Bencher) {
+        do_bench_clone_from(b, 1, 10, 10)
     }
 
     #[bench]
-    fn bench_clone_from_0100_0100(b: &mut Bencher) {
-        do_bench_clone_from(b, 100, 100)
+    fn bench_clone_from_01_0100_0100(b: &mut Bencher) {
+        do_bench_clone_from(b, 1, 100, 100)
     }
 
     #[bench]
-    fn bench_clone_from_1000_1000(b: &mut Bencher) {
-        do_bench_clone_from(b, 1000, 1000)
+    fn bench_clone_from_01_1000_1000(b: &mut Bencher) {
+        do_bench_clone_from(b, 1, 1000, 1000)
     }
 
     #[bench]
-    fn bench_clone_from_0010_0100(b: &mut Bencher) {
-        do_bench_clone_from(b, 10, 100)
+    fn bench_clone_from_01_0010_0100(b: &mut Bencher) {
+        do_bench_clone_from(b, 1, 10, 100)
     }
 
     #[bench]
-    fn bench_clone_from_0100_1000(b: &mut Bencher) {
-        do_bench_clone_from(b, 100, 1000)
+    fn bench_clone_from_01_0100_1000(b: &mut Bencher) {
+        do_bench_clone_from(b, 1, 100, 1000)
     }
 
     #[bench]
-    fn bench_clone_from_0010_0000(b: &mut Bencher) {
-        do_bench_clone_from(b, 10, 0)
+    fn bench_clone_from_01_0010_0000(b: &mut Bencher) {
+        do_bench_clone_from(b, 1, 10, 0)
     }
 
     #[bench]
-    fn bench_clone_from_0100_0010(b: &mut Bencher) {
-        do_bench_clone_from(b, 100, 10)
+    fn bench_clone_from_01_0100_0010(b: &mut Bencher) {
+        do_bench_clone_from(b, 1, 100, 10)
     }
 
     #[bench]
-    fn bench_clone_from_1000_0100(b: &mut Bencher) {
-        do_bench_clone_from(b, 1000, 100)
+    fn bench_clone_from_01_1000_0100(b: &mut Bencher) {
+        do_bench_clone_from(b, 1, 1000, 100)
+    }
+
+    #[bench]
+    fn bench_clone_from_10_0000_0000(b: &mut Bencher) {
+        do_bench_clone_from(b, 10, 0, 0)
+    }
+
+    #[bench]
+    fn bench_clone_from_10_0000_0010(b: &mut Bencher) {
+        do_bench_clone_from(b, 10, 0, 10)
+    }
+
+    #[bench]
+    fn bench_clone_from_10_0000_0100(b: &mut Bencher) {
+        do_bench_clone_from(b, 10, 0, 100)
+    }
+
+    #[bench]
+    fn bench_clone_from_10_0000_1000(b: &mut Bencher) {
+        do_bench_clone_from(b, 10, 0, 1000)
+    }
+
+    #[bench]
+    fn bench_clone_from_10_0010_0010(b: &mut Bencher) {
+        do_bench_clone_from(b, 10, 10, 10)
+    }
+
+    #[bench]
+    fn bench_clone_from_10_0100_0100(b: &mut Bencher) {
+        do_bench_clone_from(b, 10, 100, 100)
+    }
+
+    #[bench]
+    fn bench_clone_from_10_1000_1000(b: &mut Bencher) {
+        do_bench_clone_from(b, 10, 1000, 1000)
+    }
+
+    #[bench]
+    fn bench_clone_from_10_0010_0100(b: &mut Bencher) {
+        do_bench_clone_from(b, 10, 10, 100)
+    }
+
+    #[bench]
+    fn bench_clone_from_10_0100_1000(b: &mut Bencher) {
+        do_bench_clone_from(b, 10, 100, 1000)
+    }
+
+    #[bench]
+    fn bench_clone_from_10_0010_0000(b: &mut Bencher) {
+        do_bench_clone_from(b, 10, 10, 0)
+    }
+
+    #[bench]
+    fn bench_clone_from_10_0100_0010(b: &mut Bencher) {
+        do_bench_clone_from(b, 10, 100, 10)
+    }
+
+    #[bench]
+    fn bench_clone_from_10_1000_0100(b: &mut Bencher) {
+        do_bench_clone_from(b, 10, 1000, 100)
     }
 }
