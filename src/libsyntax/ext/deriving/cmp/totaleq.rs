@@ -33,7 +33,6 @@ pub fn expand_deriving_totaleq(cx: &mut ExtCtxt,
             cx.expr_block(block)
         },
                        |cx, sp, _, _| cx.span_bug(sp, "non matching enums in deriving(Eq)?"),
-                       |cx, sp, _, _| cx.span_bug(sp, "non matching enums in deriving(Eq)?"),
                        cx,
                        span,
                        substr)
@@ -58,7 +57,6 @@ pub fn expand_deriving_totaleq(cx: &mut ExtCtxt,
                 args: vec!(),
                 ret_ty: nil_ty(),
                 attributes: attrs,
-                on_nonmatching: NonMatchesCollapse,
                 combine_substructure: combine_substructure(|a, b, c| {
                     cs_total_eq_assert(a, b, c)
                 })
