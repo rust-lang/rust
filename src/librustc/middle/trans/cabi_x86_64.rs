@@ -350,7 +350,7 @@ pub fn compute_abi_info(ccx: &CrateContext,
                                 None)
             }
         } else {
-            let attr = if ty == Type::bool(ccx) { Some(ZExtAttribute) } else { None };
+            let attr = if ty == Type::i1(ccx) { Some(ZExtAttribute) } else { None };
             ArgType::direct(ty, None, None, attr)
         }
     }

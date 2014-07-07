@@ -522,10 +522,6 @@ pub fn C_nil(ccx: &CrateContext) -> ValueRef {
 }
 
 pub fn C_bool(ccx: &CrateContext, val: bool) -> ValueRef {
-    C_integral(Type::bool(ccx), val as u64, false)
-}
-
-pub fn C_i1(ccx: &CrateContext, val: bool) -> ValueRef {
     C_integral(Type::i1(ccx), val as u64, false)
 }
 
