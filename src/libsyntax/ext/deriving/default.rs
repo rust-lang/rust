@@ -39,7 +39,6 @@ pub fn expand_deriving_default(cx: &mut ExtCtxt,
                 args: Vec::new(),
                 ret_ty: Self,
                 attributes: attrs,
-                on_nonmatching: NonMatchHandlingIrrelevant,
                 combine_substructure: combine_substructure(|a, b, c| {
                     default_substructure(a, b, c)
                 })

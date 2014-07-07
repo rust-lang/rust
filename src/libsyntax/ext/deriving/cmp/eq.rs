@@ -27,12 +27,10 @@ pub fn expand_deriving_eq(cx: &mut ExtCtxt,
     // any fields are not equal or if the enum variants are different
     fn cs_eq(cx: &mut ExtCtxt, span: Span, substr: &Substructure) -> Gc<Expr> {
         cs_and(|cx, span, _, _| cx.expr_bool(span, false),
-               |cx, span, _, _| cx.expr_bool(span, false),
-               cx, span, substr)
+                                 cx, span, substr)
     }
     fn cs_ne(cx: &mut ExtCtxt, span: Span, substr: &Substructure) -> Gc<Expr> {
         cs_or(|cx, span, _, _| cx.expr_bool(span, true),
-              |cx, span, _, _| cx.expr_bool(span, true),
               cx, span, substr)
     }
 
@@ -47,7 +45,6 @@ pub fn expand_deriving_eq(cx: &mut ExtCtxt,
                 args: vec!(borrowed_self()),
                 ret_ty: Literal(Path::new(vec!("bool"))),
                 attributes: attrs,
-                on_nonmatching: NonMatchesCollapse,
                 combine_substructure: combine_substructure(|a, b, c| {
                     $f(a, b, c)
                 })

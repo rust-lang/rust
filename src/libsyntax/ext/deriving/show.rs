@@ -45,7 +45,6 @@ pub fn expand_deriving_show(cx: &mut ExtCtxt,
                 args: vec!(fmtr),
                 ret_ty: Literal(Path::new(vec!("std", "fmt", "Result"))),
                 attributes: Vec::new(),
-                on_nonmatching: NonMatchHandlingIrrelevant,
                 combine_substructure: combine_substructure(|a, b, c| {
                     show_substructure(a, b, c)
                 })
@@ -66,9 +65,7 @@ fn show_substructure(cx: &mut ExtCtxt, span: Span,
     let name = match *substr.fields {
         Struct(_) => substr.type_ident,
         EnumMatching(_, v, _) => v.node.name,
-
-        EnumNonMatching(..) | EnumNonMatchingCollapsed(..) |
-        StaticStruct(..) | StaticEnum(..) => {
+        EnumNonMatchingCollapsed(..) | StaticStruct(..) | StaticEnum(..) => {
             cx.span_bug(span, "nonsensical .fields in `#[deriving(Show)]`")
         }
     };

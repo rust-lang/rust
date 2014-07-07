@@ -35,7 +35,6 @@ pub fn expand_deriving_ord(cx: &mut ExtCtxt,
                 args: vec!(borrowed_self()),
                 ret_ty: Literal(Path::new(vec!("bool"))),
                 attributes: attrs,
-                on_nonmatching: NonMatchesCollapseWithTags,
                 combine_substructure: combine_substructure(|cx, span, substr| {
                     cs_op($op, $equal, cx, span, substr)
                 })
@@ -59,7 +58,6 @@ pub fn expand_deriving_ord(cx: &mut ExtCtxt,
         args: vec![borrowed_self()],
         ret_ty: ret_ty,
         attributes: attrs,
-        on_nonmatching: NonMatchesCollapseWithTags,
         combine_substructure: combine_substructure(|cx, span, substr| {
             cs_partial_cmp(cx, span, substr)
         })
@@ -80,20 +78,6 @@ pub fn expand_deriving_ord(cx: &mut ExtCtxt,
         ]
     };
     trait_def.expand(cx, mitem, item, push)
-}
-
-pub fn some_ordering_const(cx: &mut ExtCtxt, span: Span, cnst: Ordering) -> Gc<ast::Expr> {
-    let cnst = match cnst {
-        Less => "Less",
-        Equal => "Equal",
-        Greater => "Greater"
-    };
-    let ordering = cx.path_global(span,
-                                  vec!(cx.ident_of("std"),
-                                       cx.ident_of("cmp"),
-                                       cx.ident_of(cnst)));
-    let ordering = cx.expr_path(ordering);
-    cx.expr_some(span, ordering)
 }
 
 pub enum OrderingOp {
@@ -117,7 +101,12 @@ pub fn some_ordering_collapsed(cx: &mut ExtCtxt,
 pub fn cs_partial_cmp(cx: &mut ExtCtxt, span: Span,
               substr: &Substructure) -> Gc<Expr> {
     let test_id = cx.ident_of("__test");
-    let equals_expr = some_ordering_const(cx, span, Equal);
+    let ordering = cx.path_global(span,
+                                  vec!(cx.ident_of("std"),
+                                       cx.ident_of("cmp"),
+                                       cx.ident_of("Equal")));
+    let ordering = cx.expr_path(ordering);
+    let equals_expr = cx.expr_some(span, ordering);
 
     /*
     Builds:
@@ -159,15 +148,6 @@ pub fn cs_partial_cmp(cx: &mut ExtCtxt, span: Span,
             cx.expr_block(cx.block(span, vec!(assign), Some(if_)))
         },
         equals_expr.clone(),
-        |cx, span, list, _| {
-            match list {
-                // an earlier nonmatching variant is Less than a
-                // later one.
-                [(self_var, _, _), (other_var, _, _)] =>
-                     some_ordering_const(cx, span, self_var.cmp(&other_var)),
-                _ => cx.span_bug(span, "not exactly 2 arguments in `deriving(Ord)`"),
-            }
-        },
         |cx, span, (self_args, tag_tuple), _non_self_args| {
             if self_args.len() != 2 {
                 cx.span_bug(span, "not exactly 2 arguments in `deriving(Ord)`")
@@ -216,21 +196,6 @@ fn cs_op(less: bool, equal: bool, cx: &mut ExtCtxt, span: Span,
             cx.expr_binary(span, ast::BiOr, cmp, and)
         },
         cx.expr_bool(span, equal),
-        |cx, span, args, _| {
-            // nonmatching enums, order by the order the variants are
-            // written
-            match args {
-                [(self_var, _, _),
-                 (other_var, _, _)] =>
-                    cx.expr_bool(span,
-                                 if less {
-                                     self_var < other_var
-                                 } else {
-                                     self_var > other_var
-                                 }),
-                _ => cx.span_bug(span, "not exactly 2 arguments in `deriving(Ord)`")
-            }
-        },
         |cx, span, (self_args, tag_tuple), _non_self_args| {
             if self_args.len() != 2 {
                 cx.span_bug(span, "not exactly 2 arguments in `deriving(Ord)`")
