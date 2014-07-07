@@ -3233,18 +3233,6 @@ impl<'a> Parser<'a> {
         } else if is_ident(&self.token)
             && !token::is_any_keyword(&self.token)
             && self.look_ahead(1, |t| *t == token::NOT) {
-            // parse a macro invocation. Looks like there's serious
-            // overlap here; if this clause doesn't catch it (and it
-            // won't, for brace-delimited macros) it will fall through
-            // to the macro clause of parse_item_or_view_item. This
-            // could use some cleanup, it appears to me.
-
-            // whoops! I now have a guess: I'm guessing the "parens-only"
-            // rule here is deliberate, to allow macro users to use parens
-            // for things that should be parsed as stmt_mac, and braces
-            // for things that should expand into items. Tricky, and
-            // somewhat awkward... and probably undocumented. Of course,
-            // I could just be wrong.
 
             check_expected_item(self, !item_attrs.is_empty());
 
