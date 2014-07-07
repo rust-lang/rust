@@ -512,8 +512,10 @@ fn expand_item_mac(it: Gc<ast::Item>, fld: &mut MacroExpander)
 
     let items = match expanded.make_def() {
         Some(MacroDef { name, ext }) => {
-            // yikes... no idea how to apply the mark to this. I'm afraid
-            // we're going to have to wait-and-see on this one.
+            // hidden invariant: this should only be possible as the
+            // result of expanding a LetSyntaxTT, and thus doesn't
+            // need to be marked. Not that it could be marked anyway.
+            // create issue to recommend refactoring here?
             fld.extsbox.insert(intern(name.as_slice()), ext);
             if attr::contains_name(it.attrs.as_slice(), "macro_export") {
                 SmallVector::one(it)
@@ -1464,6 +1466,15 @@ mod test {
               vec!(vec!(1)),
               true),
             0)
+    }
+
+    // macro_rules in method position
+    #[test] fn macro_in_method_posn(){
+        expand_crate_str(
+            "macro_rules! my_method (() => fn thirteen(&self) -> int {13})
+            struct A;
+            impl A{ my_method!()}
+            fn f(){A.thirteen;}".to_string());
     }
 
     // run one of the renaming tests
