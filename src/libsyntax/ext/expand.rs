@@ -1403,6 +1403,19 @@ mod test {
             0)
     }
 
+    // ooh, got another bite?
+    // expands to struct A; impl A {fn thingy(&self_1) {self_1;}}
+    #[test] fn method_arg_hygiene_2(){
+        run_renaming_test(
+            &("struct A;
+              macro_rules! add_method (($T:ty) =>
+              (impl $T {  fn thingy(&self) {self;} }))
+              add_method!(A)",
+              vec!(vec!(0)),
+              true),
+            0)
+    }
+
     // item fn hygiene
     // expands to fn q(x_1:int){fn g(x_2:int){x_2 + x_1};}
     #[test] fn issue_9383(){
