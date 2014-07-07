@@ -884,6 +884,7 @@ pub enum ExplicitSelf_ {
 
 pub type ExplicitSelf = Spanned<ExplicitSelf_>;
 
+// Represents a method declaration
 #[deriving(PartialEq, Eq, Encodable, Decodable, Hash)]
 pub struct Method {
     pub ident: Ident,
