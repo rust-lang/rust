@@ -362,35 +362,15 @@ pub fn check_struct_pat_fields(pcx: &pat_ctxt,
     }
 }
 
-pub fn check_struct_pat(pcx: &pat_ctxt, pat_id: ast::NodeId, span: Span,
-                        expected: ty::t, path: &ast::Path,
+pub fn check_struct_pat(pcx: &pat_ctxt, _pat_id: ast::NodeId, span: Span,
+                        _expected: ty::t, _path: &ast::Path,
                         fields: &[ast::FieldPat], etc: bool,
                         struct_id: ast::DefId,
                         substitutions: &subst::Substs) {
-    let fcx = pcx.fcx;
+    let _fcx = pcx.fcx;
     let tcx = pcx.fcx.ccx.tcx;
 
     let class_fields = ty::lookup_struct_fields(tcx, struct_id);
-
-    // Check to ensure that the struct is the one specified.
-    match tcx.def_map.borrow().find(&pat_id) {
-        Some(&def::DefStruct(supplied_def_id))
-                if supplied_def_id == struct_id => {
-            // OK.
-        }
-        Some(&def::DefStruct(..)) | Some(&def::DefVariant(..)) => {
-            let name = pprust::path_to_str(path);
-            tcx.sess
-               .span_err(span,
-                         format!("mismatched types: expected `{}` but found \
-                                  `{}`",
-                                 fcx.infcx().ty_to_str(expected),
-                                 name).as_slice());
-        }
-        _ => {
-            tcx.sess.span_bug(span, "resolve didn't write in struct ID");
-        }
-    }
 
     check_struct_pat_fields(pcx, span, fields, class_fields, struct_id,
                             substitutions, etc);
@@ -535,6 +515,21 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
         let mut error_happened = false;
         match *structure {
             ty::ty_struct(cid, ref substs) => {
+                // Verify that the pattern named the right structure.
+                let item_did = tcx.def_map.borrow().get(&pat.id).def_id();
+                let struct_did =
+                    ty::ty_to_def_id(
+                        ty::lookup_item_type(tcx, item_did).ty).unwrap();
+                if struct_did != cid {
+                    tcx.sess
+                       .span_err(path.span,
+                                 format!("`{}` does not name the \
+                                          structure `{}`",
+                                         pprust::path_to_str(path),
+                                         fcx.infcx()
+                                            .ty_to_str(expected)).as_slice())
+                }
+
                 check_struct_pat(pcx, pat.id, pat.span, expected, path,
                                  fields.as_slice(), etc, cid, substs);
             }
@@ -562,7 +557,7 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
                             "a structure pattern".to_string(),
                             None);
                 match tcx.def_map.borrow().find(&pat.id) {
-                    Some(&def::DefStruct(supplied_def_id)) => {
+                    Some(def) => {
                          check_struct_pat(pcx,
                                           pat.id,
                                           pat.span,
@@ -570,10 +565,14 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
                                           path,
                                           fields.as_slice(),
                                           etc,
-                                          supplied_def_id,
+                                          def.def_id(),
                                           &subst::Substs::empty());
                     }
-                    _ => () // Error, but we're already in an error case
+                    None => {
+                        tcx.sess.span_bug(pat.span,
+                                          "whoops, looks like resolve didn't \
+                                           write a def in here")
+                    }
                 }
                 error_happened = true;
             }
